@@ -1,2 +1,2 @@
 # knowdy
-Meet Knowdy: a scalable graph database
+Meet Knowdy: a scalable knowledge base
