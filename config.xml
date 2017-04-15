@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<db name="000"
+    path="/var/glb/db/storage/part0"
+    webpath="/var/glb/www/db"
+    pass="000"
+    default_repo="09x"  
+    default_repo_title="Knowdy Repo"  
+    daemon="0">
+
+    <pids>
+       <pid name="write_pid" path="/var/glb/writer0.pid"/>
+       <pid name="read_pid" path="/var/glb/reader0.pid"/>
+    </pids>
+
+   <devices>
+
+      <device name="write_inbox"
+              frontend="ipc:///var/glb/writer_inbox_frontend"
+              backend="ipc:///var/glb/writer_inbox_backend"/>
+
+      <device name="read_inbox"
+              frontend="ipc:///var/glb/reader0"
+              backend="ipc:///var/glb/reader0_backend"/>
+
+   </devices>
+
+   <services>
+      <service name="monitor"
+               addr="ipc:///var/glb/coll_monitor"/>
+
+      <service name="delivery"
+               addr="ipc:///var/glb/deliv"/>
+
+   </services>
+
+
+</db>
