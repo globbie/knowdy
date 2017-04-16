@@ -1,0 +1,43 @@
+
+{R:ooProcObj
+    [_gloss
+      {ru_RU объект, необходимый для решения задачи}
+      {en_EN object needed to accomplish a task}
+    ]
+    {type ooTask}
+}
+
+/*  subordinate task */
+{R:ooSubTask
+    [_gloss
+      {ru_RU подзадача}
+      {en_EN subordinate task}
+    ]
+    {type ooTask}
+}
+
+
+{P:ooProcLogic
+    {type ooTask}
+}
+
+{P:ooConsequent
+    {type ooTask}
+}
+
+{P:ooAntecedent
+    {type ooTask}
+}
+
+
+{ooTask
+    [_gloss
+      {ru_RU вычислительная процедура}
+      {en_EN computational procedure}
+    ]
+    ooSummary summary,
+    [ooProcObj objs],
+    [ooSubTask tasks],
+    ooProcResult res,
+    ooProcLogic logic
+}

@@ -1,0 +1,28 @@
+{ooPath
+    [_gloss
+      {ru_RU Имя каталога}
+      {en_EN Directory path}
+    ]
+    ooDirName name,
+    ooTestName test,
+    ooDirName parent {_L{sep /}}
+}
+
+{ooDomain
+    ooDomain parent <sep:. pos:r>
+}
+
+{ooHostName
+    ooMachineName mn,
+    ooDomain parent <sep:. pos:r>
+}
+
+{ooWebResource
+    [_gloss
+      {ru_RU веб-ресурс}
+      {en_EN web resource}
+    ]
+    ooHostName h,
+    ooPath p,
+    ooFileObj fo
+}

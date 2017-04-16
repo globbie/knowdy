@@ -1,0 +1,173 @@
+{T:ooCommentText}
+{T:ooCommentSummary}
+
+{R:ooCommentTarget
+  {type ooContentItem}
+}
+
+{ooComment
+   ooCommentSummary summary,
+   ooCommentText txt,
+   ooCommentTarget target
+}
+
+
+{R:ooBaseDiv
+    [_gloss
+      {ru_RU вышестоящий раздел}
+      {en_EN parent div}
+    ]
+  {type ooDiv}}
+
+{T:ooTitle
+    [_gloss
+      {ru_RU наименование}
+      {en_EN heading}
+    ]
+   {concise 2}}
+
+{T:ooSummary
+    [_gloss
+      {ru_RU аннотация}
+      {en_EN summary}
+    ]
+    {concise 1}}
+
+{F:ooFileName}
+
+{A:ooMimeType}
+
+{ooImage
+    [_gloss
+      {ru_RU изображение}
+      {en_EN image}
+    ]
+     ooTitle title,
+     ooFileName fn,
+     ooMimeType mime
+}
+
+{R:ooFigure
+  {type ooImage}
+}
+
+{A:ooDataCellNum}
+
+{T:ooDataCellLabel}
+
+{ooDataCell
+    [_gloss
+      {ru_RU ячейка данных}
+      {en_EN data cell}
+    ]
+    ooDataCellNum num_a,
+    ooDataCellLabel label
+}
+
+{A:ooUnitSize}
+
+{ooTable
+    [_gloss
+      {ru_RU таблица данных}
+      {en_EN data spreadsheet}
+    ]
+  ooUnitSize unit_a,
+  [ooDataCell d]
+}
+
+{A:ooParGloss}
+
+{T:ooParText
+{concise 2}}
+
+{A:ooTextItemSort}
+
+{T:ooTextItemSeq
+{concise 2}}
+
+{ooTextItem
+    [_gloss
+      {ru_RU текстовый элемент}
+      {en_EN text item}
+    ]
+  ooTextItemSort val,
+  ooTextItemSeq txt
+}
+
+
+{ooTextItemSet
+    [_gloss
+      {ru_RU множество текстовых элементов}
+      {en_EN text item set}
+    ]
+  ooSetHeader head,
+  ooSetType type,
+  [ooTextItem ti]
+}
+
+
+{ooPar
+    [_gloss
+      {ru_RU текстовый абзац}
+      {en_EN text paragraph}
+    ]
+    ooParGloss gloss,
+    ooParText txt,
+    ooTextItemSet tset
+}
+
+{A:ooContentMeta}
+
+{ooContentItem
+    [_gloss
+      {ru_RU информационный объект}
+      {en_EN piece of content}
+    ]
+    ooContentMeta meta
+}
+
+
+{ooPresentObj
+    [_gloss
+      {ru_RU объект презентации}
+      {en_EN presentation object}
+    ]
+    ooFigure fig_r
+}
+
+{ooPresentation
+    [_gloss
+      {ru_RU презентация}
+      {en_EN presentation}
+    ]
+    [ooPresentObj obj]
+}
+
+{ooDiv
+    [_gloss
+      {ru_RU раздел информационного сообщения}
+      {en_EN content division}
+    ]
+     ooContentItem _role,
+     ooTitle title,
+     ooSummary summary,
+     ooBaseDiv aggr,
+     [ooPar par],
+     ooTable chart,
+     ooFigure fig_r,
+     ooPresentation present
+}
+
+{ooAbstract
+    [_gloss
+      {ru_RU тезисы}
+      {en_EN abstract}
+    ]
+     ooContentItem _role,
+     ooTitle title,
+     ooSummary summary,
+     [ooPar par],
+     ooTable chart,
+     ooFigure fig_r,
+     [ooConcCat cat {idx Attr}]
+}

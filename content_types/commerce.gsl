@@ -1,0 +1,24 @@
+
+{A:ooCurrencyCode}
+
+{ooPrice
+    [_gloss
+      {ru_RU цена}
+      {en_EN price}
+    ]
+     ooCurrencyCode cc,
+     ooCurrencyCode target_cc,
+     ooAmountUnit unit,
+     ooAmount tot,
+     ooDiscount disc
+     {concise 1}
+}
+
+{ooProduct
+    [_gloss
+      {ru_RU товар}
+      {en_EN product to sale}
+    ]
+     ooManager manager,
+     ooPrice price
+}

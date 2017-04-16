@@ -1,0 +1,36 @@
+
+{C:ooParentEvent
+    [_gloss
+      {ru_RU вышестоящая задача}
+      {en_EN upper objective}
+    ]
+  {type ooEvent}
+}
+
+{A:ooDate
+    [_gloss
+      {ru_RU дата}
+      {en_EN date}
+    ]
+}
+
+{A:ooYear
+    [_gloss
+      {ru_RU год}
+      {en_EN year}
+    ]
+{concise 1}
+}
+
+{ooEvent
+    [_gloss
+      {ru_RU мероприятие}
+      {en_EN event}
+    ]
+    ooTitle title,
+    ooSummary summary,
+    ooDate date,
+    ooLocation loc,
+    ooResourceEstimate estim,
+    ooManager_r manager
+}
