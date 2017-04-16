@@ -1,0 +1,343 @@
+{A:ooLang
+    [_gloss
+      {ru_RU язык}
+      {en_EN language}
+    ]
+}
+
+{A:ooLexId
+    [_gloss
+      {ru_RU лексема}
+      {en_EN lexical entry}
+    ]
+}
+
+{ooEtym
+    [_gloss
+      {ru_RU этимон}
+      {en_EN etymology}
+    ]
+    ooLang lang,
+    ooLexId lexid
+}
+
+
+{T:ooPhraseText
+{concise 2}}
+{A:ooPhraseType}
+{A:ooPhraseFreq}
+
+{ooSamplePhrase
+    [_gloss
+      {ru_RU пример употребления}
+      {en_EN sample phrase}
+    ]
+     ooPhraseType type,
+     ooPhraseText txt,
+     ooPhraseFreq freq
+}
+
+{T:ooConcGloss
+{concise 2}
+{descr 1}}
+
+{T:ooLexGloss
+{concise 2}}
+
+{A:ooConcResp}
+
+{A:ooCatName
+    [_gloss
+      {ru_RU сокращенное имя}
+      {en_EN shortcut name}
+    ]
+    {default GENERIC}
+    {idx Topic}
+}
+
+{A:ooCatScore}
+
+{ooConcCat
+    [_gloss
+      {ru_RU тематическая группа}
+      {en_EN topic category}
+    ]
+    ooCatName n,
+    ooCatScore sc
+}
+
+{ooConc
+    [_gloss
+      {ru_RU концепт}
+      {en_EN concept}
+    ]
+    ooLang lang,
+    ooConcGloss gloss,
+    ooConcResp resp,
+    [ooConcCat cat {idx Attr}]
+}
+
+{R:ooBaseCode
+    [_gloss
+      {ru_RU базовый код}
+      {en_EN base code}
+    ]
+    {type ooLexCode_RU}}
+
+{R:ooSpecCode
+    [_gloss
+      {ru_RU код расширения}
+      {en_EN extension code}
+    ]
+    {type ooLexCode_RU}}
+
+{R:ooDerivParent
+    [_gloss
+      {ru_RU структурный предок}
+      {en_EN structural parent}
+    ]
+    {type ooLexCode_RU}}
+
+{R:ooSemParent
+    [_gloss
+      {ru_RU семантический предок}
+      {en_EN semantic parent}
+    ]
+    {type ooLexCode_RU}
+    {idx semp}
+    {browse 1}}
+
+{A:ooAccentType
+    [_gloss
+      {ru_RU акцентологический тип}
+      {en_EN accentuation type}
+    ]
+}
+
+{A:ooOper
+    [_gloss
+      {ru_RU метод деривации}
+      {en_EN derivation method}
+    ]
+    {default SPEC}
+    {idx Category}
+}
+
+{A:ooPragma
+    [_gloss
+      {ru_RU прагматическая установка}
+      {en_EN pragmatic goal}
+    ]
+}
+
+{A:ooIsAccented
+    [_gloss
+      {ru_RU ударный слог?}
+      {en_EN accented syllable?}
+    ]
+    {default F}
+}
+
+{R:ooCodeDenot
+    [_gloss
+      {ru_RU значение кода}
+      {en_EN code denotation}
+    ]
+    {type ooConc}
+    {default $NAME}
+    {idx cat}
+    {concise 2}
+}
+
+{A:ooSyntClass}
+{A:ooSyntGender}
+{A:ooSyntFlex}
+
+{ooSyntRole
+    [_gloss
+      {ru_RU синтаксическая роль}
+      {en_EN syntax class}
+    ]
+    ooSyntClass c,
+    ooSyntGender gn,
+    ooSyntFlex fl
+}
+
+
+{R:ooInitSyll
+    [_gloss
+      {ru_RU начальный согласный слога}
+      {en_EN initital consonant}
+    ]
+    {type ooCons_RU}
+}
+
+{R:ooCoreSyll
+    [_gloss
+      {ru_RU гласный центр слога}
+      {en_EN vowel core}
+    ]
+    {type ooVowel_RU}}
+
+{ooSyll_RU
+    [_gloss
+      {ru_RU слог}
+      {en_EN syllable}
+    ]
+    ooInitSyll init,
+    ooCoreSyll core,
+    ooIsAccented is_accented
+}
+
+
+{ooPrintedLexicon
+    [_gloss
+      {ru_RU печатный словарь}
+      {en_EN printed lexicon}
+    ]
+    ooTitle title
+}
+
+{A:ooPubYear
+    [_gloss
+      {ru_RU год публикации}
+      {en_EN publication year}
+    ]
+    {idx Accu}
+}
+
+{ooPubLex
+    [_gloss
+      {ru_RU фиксация в словаре}
+      {en_EN lexicon registration}
+    ]
+    ooLexPerson pers,
+    ooPubAbbr abbr,
+    ooPubYear year
+}
+
+
+{A:ooStyleName
+{idx Category}}
+
+
+{ooStyleReg
+    [_gloss
+      {ru_RU стилевой регистр}
+      {en_EN style register}
+    ]
+    ooStyleName st
+}
+
+{A:ooLexPerson
+    [_gloss
+      {ru_RU лексикограф}
+      {en_EN lexicographer}
+    ]
+}
+
+{A:ooLexCompoundType
+    [_gloss
+      {ru_RU тип структуры}
+      {en_EN structure type}
+    ]
+    {default ATOM}}
+
+{A:ooUsage
+    [_gloss
+      {ru_RU нормативный статус}
+      {en_EN usage status}
+    ]
+    {default STD}
+    {idx Category}}
+
+{A:ooName}
+{A:ooVal}
+
+{A:ooOrthSpell}
+
+{ooPhonoSeq
+    [_gloss
+      {ru_RU фонокод}
+      {en_EN phonocode}
+    ]
+    ooUsage usg,
+    ooOrthSpell spell,
+    [ooSyll_RU syll {idx LinearSeq}]
+}
+
+{ooBaseAttr
+    [_gloss
+      {ru_RU атрибуты ядра}
+      {en_EN base attributes}
+    ]
+    ooName n,
+    ooVal val
+}
+
+{ooSpecAttr
+    [_gloss
+      {ru_RU атрибуты спецификатора}
+      {en_EN specifier attributes}
+    ]
+    ooName n,
+    ooVal val
+}
+
+{T:ooGloss}
+
+{ooLexCompound
+    [_gloss
+      {ru_RU состав кода}
+      {en_EN code structure}
+    ]
+    ooLexCompoundType t,
+    [ooPhonoSeq seq],
+    ooGloss gloss,
+    ooBaseCode b,
+    ooGloss bt,
+    [ooBaseAttr ba],
+    ooSpecCode spec,
+    ooGloss st,
+    [ooSpecAttr sa],
+    ooOper oper
+}
+
+
+{ooLexCode
+    [_gloss
+      {ru_RU лексический код}
+      {en_EN lexical code}
+    ]
+    ooContentItem _base,
+    ooLexGloss gloss,
+    ooEtym etym,
+    ooCodeDenot denot,
+    ooPragma pragma,
+    ooUsage usg,
+    [ooSamplePhrase phr]
+}
+
+
+{ooLexCode_RU
+    [_gloss
+      {ru_RU РУССКАЯ ЛЕКСИКА}
+      {en_EN Russian word}
+    ]
+    ooLexCode _base,
+    [ooPhonoSeq seq],
+    [ooStyleReg style {idx Attr}],
+    ooSyntRole synt,
+    ooDerivParent derp,
+    ooSemParent semp,
+    ooLexCompound comp,
+    [ooPubLex publex {idx Attr}]
+}
+
+{ooSyntClass_RU
+    [_gloss
+      {ru_RU синтаксический класс русского языка}
+      {en_EN Russian syntax class}
+    ]
+}
+

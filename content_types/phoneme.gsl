@@ -1,0 +1,54 @@
+
+{ooPhoneme_RU
+    [_gloss
+      {ru_RU фонема русского языка}
+      {en_EN Russian phoneme}
+    ]
+}
+
+{R:ooAltPhoneme
+    [_gloss
+      {ru_RU чередуемая фонема}
+      {en_EN alternating phoneme}
+    ]
+    {type ooPhoneme_RU}
+}
+
+{A:ooAltCause
+    [_gloss
+      {ru_RU причина чередования}
+      {en_EN alternation cause}
+    ]
+    {concise 1}}
+
+{ooAlloPhone
+    [_gloss
+      {ru_RU аллофон}
+      {en_EN allophone}
+    ]
+    ooAltPhoneme alt,
+    ooAltCause cause
+}
+
+{ooVowel_RU
+    [_gloss
+      {ru_RU русская гласная}
+      {en_EN Russian vowel}
+    ]
+    ooPhoneme_RU _base,
+    [ooAlloPhone allos]
+}
+
+{ooCons_RU
+    [_gloss
+      {ru_RU русская согласная}
+      {en_EN Russian consonant}
+    ]
+    ooPhoneme_RU _base,
+    [ooAlloPhone allos]
+}
+
+
+
+
+

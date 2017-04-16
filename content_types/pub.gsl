@@ -1,0 +1,105 @@
+
+{A:ooPubShare}
+{A:ooPersName}
+
+
+{ooPubAuthor
+    [_gloss
+      {ru_RU автор материала}
+      {en_EN content author}
+    ]
+   ooPubShare share,
+   ooPersName name
+}
+
+{T:ooPublisher}
+
+{A:ooPubType}
+
+{A:ooPubAbbr
+{concise 2}}
+
+{A:ooPubIssue}
+
+{ooPubItem
+    [_gloss
+      {ru_RU публикация}
+      {en_EN published content}
+    ]
+   ooPubType typ,
+   ooPubAbbr abbr,
+   [ooPubAuthor author],
+   ooPublisher pub,
+   ooDate date,
+   ooYear year,
+   ooPubIssue iss,
+   {style PLAIN}
+}
+
+{T:ooQuoteText 
+{concise 2}
+}
+
+{A:ooPosHilite}
+{A:isConcise}
+
+{R:ooLexRef
+    [_gloss
+      {ru_RU лексический код}
+      {en_EN lexical code}
+    ]
+    {type ooLexCode_RU}
+    {idx Positional}
+}
+
+{ooLexIdx
+    [_gloss
+      {ru_RU лексический указатель}
+      {en_EN lexical index}
+    ],
+   ooLexRef lex,
+   [ooPosHilite hi]
+}
+
+{ooQuote
+    [_gloss
+      {ru_RU цитата}
+      {en_EN quote}
+    ]
+   isConcise isc,
+   ooQuoteText txt,
+   ooPubItem src,
+   [ooLexIdx li {idx Attr}],
+   {style PLAIN}
+}
+
+{T:ooSubj}
+
+{T:ooGreeting}
+
+{T:ooPersonName}
+{A:ooPhoneNumber}
+
+{ooPersonContactData
+     ooContentItem _role,
+     ooPersonName  pname,
+     [ooPhoneNumber phone]
+}
+
+{I:ooTechWriter
+   {type ooPersonContactData}
+}
+
+{ooLetter
+     ooContentItem _role,
+     ooSummary summary,
+     ooSubj subj,
+     ooSenderData sender,
+     ooRegisterData regdata,
+     ooAdressee addr,
+     ooGreeting greet,
+     [ooPar par],
+     ooSender sender,
+     ooTechWriter tw
+}
+

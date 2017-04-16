@@ -1,0 +1,169 @@
+
+
+{ooGeoObj
+    [_gloss
+      {ru_RU статический пространственный объект, неподвижный относительно выбранной системы координат}
+      {en_EN static geospatial object}
+    ]
+    ooLocation loc
+}
+
+
+{R:ooGeoObjRef
+{type ooGeoObj}}
+
+
+{ooGeoRange
+    [_gloss
+      {ru_RU дистанция до пространственного объекта}
+      {en_EN distance to geospatial object}
+    ]
+    ooMeasure measure,
+    ooAmount amount
+}
+
+
+{ooPOI
+    [_gloss
+      {ru_RU интересный объект вблизи}
+      {en_EN nearby place of interest}
+    ]
+    ooSummary summary,
+    ooGeoRange range,
+    ooGeoObjRef ref
+}
+
+{A:ooMetroName
+{idx Positional}}
+
+{ooMetro
+    [_gloss
+      {ru_RU станция метро}
+      {en_EN nearby metro}
+    ]
+    ooMetroName mname
+}
+
+{ooLocation
+    [_gloss
+      {ru_RU месторасположение}
+      {en_EN location}
+    ]
+    ooGeoCoords coords,
+    ooGeoAddress addr,
+    [ooVisual vis],
+    [ooMetro metro],
+    [ooPOI poi]
+    {concise 1}
+}
+
+{A:ooNameId}
+
+{A:ooPostalCode}
+
+{A:ooGeoAddrClass}
+
+{ooGeoAddrSegm
+    [_gloss
+      {ru_RU адресный сегмент}
+      {en_EN address segment}
+    ]
+     ooNameId n,
+     ooGeoAddrClass c,
+     ooGeoAddrSegm sg
+}
+
+{ooGeoAddress
+    [_gloss
+      {ru_RU адрес}
+      {en_EN address}
+    ]
+     ooGeoAddrSegm sg,
+     ooPostalCode post
+}
+
+
+
+{T:ooFunction}
+
+{ooSpatialObj
+    [_gloss
+      {ru_RU постранственный объект}
+      {en_EN spatial object}
+    ]
+     ooSummary summary,
+     ooFunction func,
+     [ooVisual vis]
+}
+
+{ooRoom
+    [_gloss
+      {ru_RU комната}
+      {en_EN room}
+    ]
+     ooSpatialObj _base,
+     ooSummary summary
+}
+
+{ooKitchen
+    [_gloss
+      {ru_RU кухня}
+      {en_EN kitchen}
+    ]
+     ooSummary summary
+}
+
+{R:ooImageRef
+  {type ooImage}
+  {concise 1}
+}
+
+{ooVisual
+    [_gloss
+      {ru_RU снимок части пространства}
+      {en_EN spatial image}
+    ]
+     ooSummary summary,
+     ooImageRef img
+}
+
+
+/* TODO: add inherited specific values */
+{A:ooNumRooms
+{idx Accu}}
+
+{ooApartment
+    [_gloss
+      {ru_RU квартира}
+      {en_EN apartment}
+    ]
+     ooSpatialObj _base,
+     ooSummary summary,
+     ooNumRooms nrooms,
+     [ooVisual vis],
+     [ooKitchen kitchen],
+     [ooRoom room],
+     [ooStorage storage],
+     [ooBathRoom bathroom],
+     [ooHall hall]
+}
+
+
+{R:ooSpatialRef
+{type ooSpatialObj}
+{idx nrooms}}
+
+{ooImmo
+    [_gloss
+      {ru_RU недвижимость}
+      {en_EN real estate}
+    ]
+     ooProduct _base,
+     ooSummary summary,
+     ooVisual vis,
+     ooLocation loc,
+     ooSpatialRef spref
+}
+
+
+

@@ -1,0 +1,126 @@
+/*{ooManager
+    [_gloss
+      {ru_RU ответственное лицо}
+      {en_EN project manager}
+    ]
+    ooTitle title,
+    ooSummary summary
+}*/
+
+{A:ooManager
+    [_gloss
+      {ru_RU ответственное лицо}
+      {en_EN project manager}
+    ]
+}
+
+
+{R:ooParentObj
+    [_gloss
+      {ru_RU вышестоящая задача}
+      {en_EN upper objective}
+    ]
+  {type ooObjective}
+}
+
+{D:ooAggrEstimate
+   [_gloss
+      {ru_RU суммарные ресурсы}
+      {en_EN aggregated estimate}
+    ]
+  {oper SUM}
+  {attr ooResourceEstimate}
+  {concise 1}}
+
+{A:ooExpectedOutcome
+    [_gloss
+      {ru_RU ожидаемый результат}
+      {en_EN expected outcome}
+    ]
+}
+
+{A:ooRealOutcome
+    [_gloss
+      {ru_RU фактический результат}
+      {en_EN achieved outcome}
+    ]
+}
+
+{ooOutcome
+    [_gloss
+      {ru_RU результаты}
+      {en_EN outcome}
+    ]
+    ooExpectedOutcome expect,
+    ooRealOutcome real
+}
+
+
+{A:ooPlannedTimeSpan
+    [_gloss
+      {ru_RU плановый срок}
+      {en_EN time frame}
+    ]
+    {concise 1}}
+
+{A:ooActualTimeSpan
+    [_gloss
+      {ru_RU реальный срок}
+      {en_EN time frame}
+    ]
+    {concise 1}}
+
+{ooTimeSpan
+    [_gloss
+      {ru_RU срок выполнения}
+      {en_EN time span}
+    ]
+    ooPlannedTimeSpan plan,
+    ooActualTimeSpan  real
+}
+
+{A:ooResourceEstimate
+    [_gloss
+      {ru_RU ресурсы}
+      {en_EN costs estimate}
+    ]
+    {concise 1}}
+
+/*{R:ooManager_r
+    [_gloss
+      {ru_RU ответственный}
+      {en_EN manager}
+    ]
+    {type ooManager}
+}*/
+
+{ooObjective
+    [_gloss
+      {ru_RU ТЕКУЩИЕ ЗАДАЧИ}
+      {en_EN planned objective}
+    ]
+    ooTitle title,
+    ooSummary summary,
+    ooFigure fig_r,
+    ooParentObj aggr,
+    ooOutcome outcome,
+    ooTimeSpan time,
+    ooResourceEstimate estim,
+    ooAggrEstimate aggr_estim,
+    ooManager manager
+}
+
+
+{R:ooObjectiveRef
+   {type ooObjective}
+}
+
+{ooImplement
+    [_gloss
+      {ru_RU реализация плановой задачи}
+      {en_EN task implementation}
+    ]
+    ooSummary summary,
+    ooObjectiveRef obj,
+    ooJournal   journal
+}
