@@ -1,0 +1,13 @@
+/build
+
+*.tmp
+*.bak
+*.swp
+*~
+
+*.autosave
+*.idea
+
+tags
+cscope.out
+cscope.files
