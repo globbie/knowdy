@@ -104,19 +104,19 @@ find_package(LibXml2 REQUIRED)
 include_directories(${LIBXML2_INCLUDE_DIR})
 
 pkg_check_modules(ZEROMQ REQUIRED libzmq)
-
 find_path(ZEROMQ_INCLUDE_DIR NAMES zmq.h PATHS ${ZEROMQ_INCLUDE_DIRS})
 find_library(ZEROMQ_LIBRARY NAMES zmq PATHS ${ZEROMQ_LIBRARY_DIRS})
-
 include_directories(${ZEROMQ_INCLUDE_DIR})
 
-
-#add_executable(data_writer ${DATA_WRITER})
-#add_executable(data_reader ${DATA_READER})
-#add_executable(coll_server ${COLLECTION_SERVER})
+add_executable(data_writer ${DATA_WRITER})
+add_executable(data_reader ${DATA_READER})
+add_executable(coll_server ${COLLECTION_SERVER})
 add_executable(delivery_server ${DELIVERY_SERVER})
-#add_executable(storage_server ${STORAGE_SERVER})
+add_executable(storage_server ${STORAGE_SERVER})
 #add_executable(test_client ${TEST_CLIENT})
 
-
-target_link_libraries(delivery_server ${LIBXML2_LIBRARIES} zmq)
+target_link_libraries(data_writer ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY})
+target_link_libraries(data_reader ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY})
+target_link_libraries(coll_server ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY})
+target_link_libraries(delivery_server ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY})
+target_link_libraries(storage_server ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY})
