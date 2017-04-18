@@ -5,11 +5,6 @@
 #include "knd_repo.h"
 #include "knd_utils.h"
 
-#ifdef $
-#undef $
-#endif
-#define $ struct kndDataWriter *self
-
 struct kndUser;
 
 struct kndCacheRec

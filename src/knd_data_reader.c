@@ -32,17 +32,11 @@
 #define DEBUG_READER_LEVEL_TMP 1
 
 
-#ifdef $
-#undef $
-#endif
-#define $ struct kndDataReader *self
-
-
 static void
-kndDataReader_reset($);
+kndDataReader_reset(struct kndDataReader *self);
 
 static int
-kndDataReader_del($)
+kndDataReader_del(struct kndDataReader *self)
 {
     if (self->path) free(self->path);
 
@@ -56,7 +50,7 @@ kndDataReader_del($)
 
 
 static int
-kndDataReader_read_config($,
+kndDataReader_read_config(struct kndDataReader *self,
                          const char *config)
 {
     char buf[KND_TEMP_BUF_SIZE];
@@ -257,7 +251,7 @@ error:
 
 
 static int  
-kndDataReader_get_history($,
+kndDataReader_get_history(struct kndDataReader *self,
                           const char *classname,
                           struct kndObject *obj,
                           size_t state)
@@ -314,7 +308,7 @@ kndDataReader_get_history($,
 
 
 static int
-kndDataReader_get_user($, const char *spec)
+kndDataReader_get_user(struct kndDataReader *self, const char *spec)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size = KND_TEMP_BUF_SIZE;
@@ -358,7 +352,7 @@ kndDataReader_get_user($, const char *spec)
 
 
 static int
-kndDataReader_get_repo($,
+kndDataReader_get_repo(struct kndDataReader *self,
                        const char *name, size_t name_size,
                        struct kndRepo **result)
 {
@@ -413,7 +407,7 @@ kndDataReader_get_repo($,
 
 
 static int  
-kndDataReader_reply($,
+kndDataReader_reply(struct kndDataReader *self,
                     struct kndData *data,
                     int status)
 {
@@ -565,7 +559,7 @@ kndDataReader_reply($,
 
 
 static int  
-kndDataReader_start($)
+kndDataReader_start(struct kndDataReader *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;

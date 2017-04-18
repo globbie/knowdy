@@ -21,11 +21,6 @@
 #ifndef KND_OBJECT_H
 #define KND_OBJECT_H
 
-#ifdef $
-#undef $
-#endif
-#define $ struct kndObject *self
-
 #include "knd_config.h"
 #include "knd_dataclass.h"
 
@@ -126,12 +121,12 @@ struct kndObject
     struct kndObject *next;
 
     /******** public methods ********/
-    void (*str)($, size_t depth);
+    void (*str)(struct kndObject *self, size_t depth);
 
-    int (*reset)($);
-    void (*cleanup)($);
+    int (*reset)(struct kndObject *self);
+    void (*cleanup)(struct kndObject *self);
 
-    int (*del)($);
+    int (*del)(struct kndObject *self);
 
 
     int (*parse)(struct kndObject *self,
@@ -145,48 +140,48 @@ struct kndObject
 
     int (*index_inline)(struct kndObject *self);
 
-    int (*expand)($, size_t depth);
+    int (*expand)(struct kndObject *self, size_t depth);
 
 
-    /*int (*present_summary)($, knd_format format);
+    /*int (*present_summary)(struct kndObject *self, knd_format format);
 
-    int (*present_contexts)($,
+    int (*present_contexts)(struct kndObject *self,
                             struct kndElemRef *elemref,
                             knd_format        format);
     */
     
-    int (*get)($, struct kndData *data,
+    int (*get)(struct kndObject *self, struct kndData *data,
                struct kndObject **obj);
 
-    int (*get_by_id)($, const char *classname,
+    int (*get_by_id)(struct kndObject *self, const char *classname,
                      const char *obj_id,
                      struct kndObject **obj);
 
-    int (*import)($,
+    int (*import)(struct kndObject *self,
                   struct kndData *data,
                   knd_format format);
 
-    int (*update)($,
+    int (*update)(struct kndObject *self,
                   const char *rec,
                   size_t *total_size);
     
-    int (*flatten)($, struct kndFlatTable *table, long *span);
+    int (*flatten)(struct kndObject *self, struct kndFlatTable *table, long *span);
 
-    int (*match)($,  const char *rec,
+    int (*match)(struct kndObject *self,  const char *rec,
                  size_t         rec_size);
 
-    int (*contribute)($, size_t point_num, size_t orig_pos);
+    int (*contribute)(struct kndObject *self, size_t point_num, size_t orig_pos);
 
-    int (*export)($,
+    int (*export)(struct kndObject *self,
                   knd_format format,
                   bool is_concise);
 
-    int (*sync)($);
+    int (*sync)(struct kndObject *self);
 
 };
 
 /* constructors */
-extern void kndObject_init($);
+extern void kndObject_init(struct kndObject *self);
 extern int kndObject_new(struct kndObject **self);
 
 #endif /* KND_OBJECT_H */

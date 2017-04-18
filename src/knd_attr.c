@@ -17,14 +17,10 @@
 #define DEBUG_ATTR_LEVEL_5 0
 #define DEBUG_ATTR_LEVEL_TMP 1
 
-#ifdef $
-#undef $
-#endif
-#define $ struct kndAttr *self
 
 /*  Attr Destructor */
 static
-int kndAttr_del($)
+int kndAttr_del(struct kndAttr *self)
 {
     return knd_OK;
 }
@@ -78,7 +74,7 @@ kndAttr_str(struct kndAttr *self, size_t depth)
 
 
 static int
-kndAttr_read_GSL_glosses($,
+kndAttr_read_GSL_glosses(struct kndAttr *self,
                          const char *rec,
                          size_t *chunk_size)
 {
@@ -167,7 +163,7 @@ kndAttr_read_GSL_glosses($,
 
 
 static int
-kndAttr_resolve($)
+kndAttr_resolve(struct kndAttr *self)
 {
     struct kndDataClass *dc;
     int err;
@@ -227,7 +223,7 @@ kndAttr_resolve($)
 }
 
 static int
-kndAttr_read_GSL($,
+kndAttr_read_GSL(struct kndAttr *self,
                  const char *rec,
                  size_t *out_size)
 {
@@ -428,7 +424,7 @@ kndAttr_read_GSL($,
 
 
 static int 
-kndAttr_present_GSL($)
+kndAttr_present_GSL(struct kndAttr *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -452,7 +448,7 @@ kndAttr_present_GSL($)
 
 
 static int
-kndAttr_present_JSON($)
+kndAttr_present_JSON(struct kndAttr *self)
 {
     char buf[KND_MED_BUF_SIZE];
     size_t buf_size;
@@ -512,7 +508,7 @@ kndAttr_present_JSON($)
 
 
 static int 
-kndAttr_present($, knd_format format)
+kndAttr_present(struct kndAttr *self, knd_format format)
 {
     int err = knd_FAIL;
     
@@ -536,7 +532,7 @@ kndAttr_present($, knd_format format)
 
 
 /*  Attr Initializer */
-int kndAttr_init($)
+int kndAttr_init(struct kndAttr *self)
 {
     /* binding our methods */
     self->init = kndAttr_init;

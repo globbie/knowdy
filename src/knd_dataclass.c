@@ -15,19 +15,15 @@
 #define DEBUG_DATACLASS_LEVEL_5 0
 #define DEBUG_DATACLASS_LEVEL_TMP 1
 
-#ifdef $
-#undef $
-#endif
-#define $ struct kndDataClass *self
 
 static int
-kndDataClass_read_elems($,
+kndDataClass_read_elems(struct kndDataClass *self,
                         struct kndDataElem *parent,
                         xmlNodePtr input_node);
 
 /*  DataClass Destructor */
 static
-int kndDataClass_del($)
+int kndDataClass_del(struct kndDataClass *self)
 {
     return knd_OK;
 }
@@ -199,7 +195,7 @@ kndDataClass_next_elem(struct kndDataClass *self,
 
 
 static int
-kndDataClass_read_GSL_params($,
+kndDataClass_read_GSL_params(struct kndDataClass *self,
                              struct kndDataElem *elem,
                              const char *rec,
                              size_t *chunk_size)
@@ -240,7 +236,7 @@ kndDataClass_read_GSL_params($,
 
 
 static int
-kndDataClass_read_GSL_glosses($,
+kndDataClass_read_GSL_glosses(struct kndDataClass *self,
                               struct kndDataElem *elem,
                               const char *rec,
                               size_t *chunk_size)
@@ -341,7 +337,7 @@ kndDataClass_read_GSL_glosses($,
 
 
 static int
-kndDataClass_read_GSL_list($,
+kndDataClass_read_GSL_list(struct kndDataClass *self,
                            struct kndDataElem *elem,
                            const char *rec,
                            size_t *chunk_size)
@@ -485,7 +481,7 @@ kndDataClass_read_GSL_list($,
 
 
 static int
-kndDataClass_read_GSL($,
+kndDataClass_read_GSL(struct kndDataClass *self,
                       const char *rec,
                       size_t *out_size)
 {
@@ -798,7 +794,7 @@ kndDataClass_read_GSL($,
 
 
 static int 
-kndDataClass_resolve($)
+kndDataClass_resolve(struct kndDataClass *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -854,7 +850,7 @@ kndDataClass_resolve($)
 
 
 static int
-kndDataClass_add_class($,
+kndDataClass_add_class(struct kndDataClass *self,
                        const char *rec, size_t rec_size,
                        size_t *rec_total)
 {
@@ -990,7 +986,7 @@ kndDataClass_add_class($,
 
 
 static int
-kndDataClass_read_onto_GSL($,
+kndDataClass_read_onto_GSL(struct kndDataClass *self,
                            const char *filename)
 {
     char buf[KND_TEMP_BUF_SIZE];
@@ -1134,7 +1130,7 @@ kndDataClass_read_onto_GSL($,
 
 
 static int 
-kndDataClass_coordinate($)
+kndDataClass_coordinate(struct kndDataClass *self)
 {
     struct kndDataClass *dc, *bc;
     struct kndAttr *attr;
@@ -1201,7 +1197,7 @@ kndDataClass_coordinate($)
 
 
 static int 
-kndDataClass_export_GSL($)
+kndDataClass_export_GSL(struct kndDataClass *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -1217,7 +1213,7 @@ kndDataClass_export_GSL($)
 
 
 static int
-kndDataClass_export_elem_JSON($, struct kndDataElem *elem)
+kndDataClass_export_elem_JSON(struct kndDataClass *self, struct kndDataElem *elem)
 {
     char buf[KND_MED_BUF_SIZE];
     size_t buf_size;
@@ -1323,7 +1319,7 @@ kndDataClass_export_elem_JSON($, struct kndDataElem *elem)
 }
 
 static int
-kndDataClass_export_JSON($)
+kndDataClass_export_JSON(struct kndDataClass *self)
 {
     char buf[KND_MED_BUF_SIZE];
     size_t buf_size;
@@ -1412,7 +1408,7 @@ kndDataClass_export_JSON($)
 
 
 static int
-kndDataClass_export_HTML($)
+kndDataClass_export_HTML(struct kndDataClass *self)
 {
     char buf[KND_MED_BUF_SIZE];
     size_t buf_size;
@@ -1504,7 +1500,7 @@ kndDataClass_export_HTML($)
 
 
 static int 
-kndDataClass_export($, knd_format format)
+kndDataClass_export(struct kndDataClass *self, knd_format format)
 {
     int err = knd_FAIL;
     
@@ -1532,7 +1528,7 @@ kndDataClass_export($, knd_format format)
 
 
 /*  DataClass Initializer */
-int kndDataClass_init($)
+int kndDataClass_init(struct kndDataClass *self)
 {
     /* binding our methods */
     self->init = kndDataClass_init;

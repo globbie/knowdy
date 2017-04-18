@@ -20,20 +20,16 @@
 #define DEBUG_USER_LEVEL_3 0
 #define DEBUG_USER_LEVEL_TMP 1
 
-#ifdef $
-#undef $
-#endif
-#define $ struct kndUser *self
 
 static int 
-kndUser_export($,
+kndUser_export(struct kndUser *self,
                 knd_format format);
 
 static int
-kndUser_read($, const char *rec);
+kndUser_read(struct kndUser *self, const char *rec);
 
 static int 
-kndUser_del($)
+kndUser_del(struct kndUser *self)
 {
 
     free(self);
@@ -42,7 +38,7 @@ kndUser_del($)
 }
 
 static int 
-kndUser_str($)
+kndUser_str(struct kndUser *self)
 {
     struct kndDataClass *dc;
     const char *key = NULL;
@@ -67,7 +63,7 @@ kndUser_str($)
 
 
 /*static int 
-kndUser_set_policy($,
+kndUser_set_policy(struct kndUser *self,
                    const char *policy_id,
                    size_t policy_id_size)
 {
@@ -85,7 +81,7 @@ kndUser_set_policy($,
 
 
 static int
-kndUser_adduser($, struct kndData *data)
+kndUser_adduser(struct kndUser *self, struct kndData *data)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -139,7 +135,7 @@ kndUser_adduser($, struct kndData *data)
 
 
 static int
-kndUser_sync($)
+kndUser_sync(struct kndUser *self)
 {
     int err = knd_FAIL;
 
@@ -155,7 +151,7 @@ kndUser_sync($)
 
 
 static int
-kndUser_get_user($, const char *uid,
+kndUser_get_user(struct kndUser *self, const char *uid,
                  struct kndUser **user)
 {
     char buf[KND_TEMP_BUF_SIZE];
@@ -225,7 +221,7 @@ kndUser_get_user($, const char *uid,
 
 
 static int
-kndUser_update($, struct kndData *data)
+kndUser_update(struct kndUser *self, struct kndData *data)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -282,7 +278,7 @@ kndUser_update($, struct kndData *data)
 
 
 static int
-kndUser_import($, struct kndData *data)
+kndUser_import(struct kndUser *self, struct kndData *data)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -357,7 +353,7 @@ kndUser_import($, struct kndData *data)
 
 
 static int
-kndUser_update_select($, struct kndData *data)
+kndUser_update_select(struct kndUser *self, struct kndData *data)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -389,7 +385,7 @@ kndUser_update_select($, struct kndData *data)
 
 
 static int
-kndUser_select($, struct kndData *data)
+kndUser_select(struct kndUser *self, struct kndData *data)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -557,7 +553,7 @@ kndUser_select($, struct kndData *data)
 
 
 static int
-kndUser_get_obj($, struct kndData *data)
+kndUser_get_obj(struct kndUser *self, struct kndData *data)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -651,7 +647,7 @@ kndUser_get_obj($, struct kndData *data)
 }
 
 static int
-kndUser_update_get_obj($, struct kndData *data)
+kndUser_update_get_obj(struct kndUser *self, struct kndData *data)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -684,7 +680,7 @@ kndUser_update_get_obj($, struct kndData *data)
 
 
 static int
-kndUser_flatten($, struct kndData *data)
+kndUser_flatten(struct kndUser *self, struct kndData *data)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -727,7 +723,7 @@ kndUser_flatten($, struct kndData *data)
 }
 
 static int
-kndUser_update_flatten($, struct kndData *data)
+kndUser_update_flatten(struct kndUser *self, struct kndData *data)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -757,7 +753,7 @@ kndUser_update_flatten($, struct kndData *data)
 
 
 static int
-kndUser_match($, struct kndData *data)
+kndUser_match(struct kndUser *self, struct kndData *data)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -809,7 +805,7 @@ kndUser_match($, struct kndData *data)
 }
 
 static int
-kndUser_update_match($, struct kndData *data)
+kndUser_update_match(struct kndUser *self, struct kndData *data)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -840,7 +836,7 @@ kndUser_update_match($, struct kndData *data)
 
 
 static int
-kndUser_read_classes($, char *rec, size_t rec_size)
+kndUser_read_classes(struct kndUser *self, char *rec, size_t rec_size)
 {
     struct kndDataClass *dc;
     char *c;
@@ -878,7 +874,7 @@ kndUser_read_classes($, char *rec, size_t rec_size)
 
 
 static int
-kndUser_read_browse_classes($, char *rec, size_t rec_size)
+kndUser_read_browse_classes(struct kndUser *self, char *rec, size_t rec_size)
 {
     struct kndDataClass *dc;
     char *c;
@@ -914,7 +910,7 @@ kndUser_read_browse_classes($, char *rec, size_t rec_size)
 
 
 static int
-kndUser_read_repos($, char *rec, size_t rec_size)
+kndUser_read_repos(struct kndUser *self, char *rec, size_t rec_size)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -979,7 +975,7 @@ kndUser_read_repos($, char *rec, size_t rec_size)
 
 
 static int
-kndUser_read($, const char *rec)
+kndUser_read(struct kndUser *self, const char *rec)
 {
     char attr_buf[KND_NAME_SIZE];
     size_t attr_buf_size;
@@ -1067,7 +1063,7 @@ kndUser_read($, const char *rec)
 
 
 static int
-kndUser_read_db_state($, char *rec)
+kndUser_read_db_state(struct kndUser *self, char *rec)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -1147,7 +1143,7 @@ kndUser_read_db_state($, char *rec)
 
 
 static int 
-kndUser_restore($)
+kndUser_restore(struct kndUser *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -1196,7 +1192,7 @@ kndUser_restore($)
 
 
 static int 
-kndUser_export_GSL($)
+kndUser_export_GSL(struct kndUser *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -1220,7 +1216,7 @@ kndUser_export_GSL($)
 
 
 static int
-kndUser_export_JSON($)
+kndUser_export_JSON(struct kndUser *self)
 {
     char buf[KND_MED_BUF_SIZE];
     size_t buf_size;
@@ -1305,7 +1301,7 @@ kndUser_export_JSON($)
 
 
 static int 
-kndUser_export($, knd_format format)
+kndUser_export(struct kndUser *self, knd_format format)
 {
     int err = knd_FAIL;
     
@@ -1328,7 +1324,7 @@ kndUser_export($, knd_format format)
 
 
 extern int 
-kndUser_init($)
+kndUser_init(struct kndUser *self)
 {
     self->del = kndUser_del;
     self->str = kndUser_str;
@@ -1359,7 +1355,7 @@ kndUser_init($)
 extern int 
 kndUser_new(struct kndUser **user)
 {
-    $;
+    struct kndUser *self;
     int err = knd_OK;
     
     self = malloc(sizeof(struct kndUser));
