@@ -1,0 +1,32 @@
+language: c
+
+addons:
+  apt:
+    sources:
+      - george-edison55-precise-backports # cmake 3.2.3 / doxygen 1.8.3
+      - ubuntu-toolchain-r-test
+    packages:
+      - cmake
+      - cmake-data
+      - gcc-4.8
+      - clang
+      - libzmq-dev
+      - libxml2-dev
+
+dist: trusty
+
+compiler:
+  - gcc
+  - clang
+
+install:
+    - if [ "$CC" = "gcc" ]; then export CC="gcc-4.8"; fi
+
+before_script:
+  - mkdir build
+  - cd build
+  - cmake ..
+script: make
+notifications:
+  slack:
+    secure: qHQRdC1+CyGmzL4mk1bqyfSe1hjQIdLZs8WSE8Lird9rsfBLQ2elFFxrq5uFcb2Rl64M+2STbwa6TQm+5+XFs1J9X3pwWC9wsH6xEmgGOKISc0MebX68CIerVBz/LUq4W7lekl0hQ6LsykK+mbxiRfEJTWzaleYLj6VS+6+J6WKBr52E1YAzafM8vd3jxeyUAfTLZvyCaWTo0iRPywj/guB9OHEGEZSqenz6zywskvAJ4UPKIlxOMGkrw6B6N7JgkZlF4V9Nsh+L6pt1jcW4c+hvCntt4+W2eivIJ3+tHBPqozuyOEMcU9WL8LKZLT9MdTX9eKLR6q5pyEGiFEX/1fwD5YvW/uBsyEM6ZYR3+SoTcDZMoq3PQeaxLs4aP5LPMQtRqPdKp3efI31qXe4I3ld0ye8eZQ79JeGmpEb3pKzPcM3oUsjjTa3+koMIzrjR0nerMEeKYlCrCeIZt6PUeQMcRAlhDjeSxfgoPuYiLMxymK80+gSUu2Casz3OE369DO2MlXvH0uClZHRUbLC+O6lwkD7alxZsP/iNtHviL8UlsXDrArkDTn/fBD1xYKzOrOfHFNnOSlJ3Ptbyakh86w4Y+fnl6/Cg+7UgQ4H2B18IfVyT94JeDH1tUoQeBgfofySnjH5qnPuTZX9p5RVOreqSZFuTXP1n2qyMr8tmWbA=
