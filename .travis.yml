@@ -1,32 +1,27 @@
 language: c
-
 addons:
   apt:
     sources:
-      - george-edison55-precise-backports # cmake 3.2.3 / doxygen 1.8.3
-      - ubuntu-toolchain-r-test
+    - george-edison55-precise-backports
+    - ubuntu-toolchain-r-test
     packages:
-      - cmake
-      - cmake-data
-      - gcc-4.8
-      - clang
-      - libzmq3-dev
-      - libxml2-dev
-
+    - cmake
+    - cmake-data
+    - gcc-4.8
+    - clang
+    - libzmq3-dev
+    - libxml2-dev
 dist: trusty
-
 compiler:
-  - gcc
-  - clang
-
+- gcc
+- clang
 install:
-    - if [ "$CC" = "gcc" ]; then export CC="gcc-4.8"; fi
-
+- if [ "$CC" = "gcc" ]; then export CC="gcc-4.8"; fi
 before_script:
-  - mkdir build
-  - cd build
-  - cmake ..
+- mkdir build
+- cd build
+- cmake ..
 script: make
 notifications:
   slack:
-    secure: qHQRdC1+CyGmzL4mk1bqyfSe1hjQIdLZs8WSE8Lird9rsfBLQ2elFFxrq5uFcb2Rl64M+2STbwa6TQm+5+XFs1J9X3pwWC9wsH6xEmgGOKISc0MebX68CIerVBz/LUq4W7lekl0hQ6LsykK+mbxiRfEJTWzaleYLj6VS+6+J6WKBr52E1YAzafM8vd3jxeyUAfTLZvyCaWTo0iRPywj/guB9OHEGEZSqenz6zywskvAJ4UPKIlxOMGkrw6B6N7JgkZlF4V9Nsh+L6pt1jcW4c+hvCntt4+W2eivIJ3+tHBPqozuyOEMcU9WL8LKZLT9MdTX9eKLR6q5pyEGiFEX/1fwD5YvW/uBsyEM6ZYR3+SoTcDZMoq3PQeaxLs4aP5LPMQtRqPdKp3efI31qXe4I3ld0ye8eZQ79JeGmpEb3pKzPcM3oUsjjTa3+koMIzrjR0nerMEeKYlCrCeIZt6PUeQMcRAlhDjeSxfgoPuYiLMxymK80+gSUu2Casz3OE369DO2MlXvH0uClZHRUbLC+O6lwkD7alxZsP/iNtHviL8UlsXDrArkDTn/fBD1xYKzOrOfHFNnOSlJ3Ptbyakh86w4Y+fnl6/Cg+7UgQ4H2B18IfVyT94JeDH1tUoQeBgfofySnjH5qnPuTZX9p5RVOreqSZFuTXP1n2qyMr8tmWbA=
+    secure: GVXuIMJuzdFeBQmb6caDTiduZVFHbdLbDk9C4tMB6wh6dRueCgfxcrqhZYJ4b4y7v00gfZi/MwPqurvBzbajYp/x5r+MMIvYXlhayrl6XQV1zmdimNY9vySWUHtJk2ajhO9stYKYVamemB2TQpRYH5INvs6FEQE3Nk8QBmKQ8cZgRCz5W266jdnBVVZxMx5oOmJaS8yERyvoW7597PU8XNaWBYEkZOk+LwflYQWlmq0EugillfMLnWQclrejNJgz7CQCpjbI75/i3P7FcQdcGWR8XovoS9nK8iaDTwoLScZ3qmTdxjCQVN5kLb6nvykN9InU27XyaXzLBsVonv7Rzlp95z6/zkgLxQr1YU4R2BlCcPLEdrY9Fa0PeOdthJul0ZsYs3QdXqt9uEUrQILHvPNJblUi9T3AC4IOYw5AeiPWSUSaWd8LT/EgZXpG9ghcbl6X3WswXFQ0ZkUFlIQqhkUhl4dVzKbLiviwr6L+KLn6HlhsEzO2PfSBw+GsoHd8Ri18UPJrGoli6zw7RWcS5JG4YdJ2bOTodTkczaU4Gd72glzXEUdmuYd6GkplC82gxul7HEt1srYuUDhi0cZHD5X0rrFSM81XTNyC0uFjAOQ9nAhlHN5y2GG9VZUnlkSx1rwC59Gl2JrQySChAICnT9YdqQTnKlPgUZ3eNZSGFrs=
