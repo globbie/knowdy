@@ -10,7 +10,7 @@ addons:
       - cmake-data
       - gcc-4.8
       - clang
-      - libzmq-dev
+      - libzmq3-dev
       - libxml2-dev
 
 dist: trusty
