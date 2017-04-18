@@ -19,6 +19,7 @@
 #include "knd_spec.h"
 #include "knd_output.h"
 
+
 #define DEBUG_REPO_LEVEL_0 0
 #define DEBUG_REPO_LEVEL_1 0
 #define DEBUG_REPO_LEVEL_2 0
@@ -1357,7 +1358,7 @@ kndRepo_update_flatten(struct kndRepo *self, struct kndData *data)
     struct kndObject *obj = NULL;
     struct ooDict *idx = NULL;
     
-    struct kndFlatTable *table;
+    struct kndFlatTable *table = NULL;
     struct kndFlatRow *row;
     struct kndFlatCell *cell;
 
@@ -2658,7 +2659,7 @@ kndRepo_get_repo(struct kndRepo *self, const char *uid,
 
     *repo = curr_repo;
     
-    return err;
+    return knd_OK;
 }
 
 

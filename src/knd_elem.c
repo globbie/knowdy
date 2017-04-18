@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -2227,7 +2228,7 @@ kndElem_export_HTML(struct kndElem *self,
     struct kndText *text;
     size_t curr_size;
     unsigned long numval;
-    int err;
+    int err = knd_FAIL;
 
     if (DEBUG_ELEM_LEVEL_3)
         knd_log("  .. export elem HTML: %s\n", self->name);

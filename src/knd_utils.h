@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <sys/stat.h>
 #include <libxml/parser.h>
 
 #include "knd_config.h"
