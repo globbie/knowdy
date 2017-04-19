@@ -32,9 +32,6 @@
 #define DEBUG_READER_LEVEL_TMP 1
 
 
-static void
-kndDataReader_reset(struct kndDataReader *self);
-
 static int
 kndDataReader_del(struct kndDataReader *self)
 {
@@ -53,20 +50,17 @@ static int
 kndDataReader_read_config(struct kndDataReader *self,
                          const char *config)
 {
-    char buf[KND_TEMP_BUF_SIZE];
     struct kndDataClass *c = NULL;
-    struct kndObjCache *objc;
-    
+
     xmlDocPtr doc;
     xmlNodePtr root, cur_node, sub_node;
     xmlChar *val = NULL;
 
-    long num_value;
-    
+
     size_t curr_size;
     int err;
 
-    doc = xmlParseFile((const char*)config);
+    doc = xmlParseFile(config);
     if (!doc) {
 	fprintf(stderr, "\n    -- DataReader: no config file found."
                         " Fresh start!\n");
@@ -249,8 +243,8 @@ error:
     return err;
 }
 
-
-static int  
+/*
+static int
 kndDataReader_get_history(struct kndDataReader *self,
                           const char *classname,
                           struct kndObject *obj,
@@ -268,7 +262,6 @@ kndDataReader_get_history(struct kndDataReader *self,
     knd_log("\n ... check history of \"%s\" %s..\n",
             classname, obj->id);
 
-    /* creating spec */
     buf_size = sprintf(buf, "<spec action=\"get_history\" "
                        "  class=\"%s\" obj_id=\"%s\" state=\"%lu\"/>\n",
                        classname, obj->id, (unsigned long)state);
@@ -285,16 +278,14 @@ kndDataReader_get_history(struct kndDataReader *self,
         goto final;
     }
 
-    /* JSON reply */
     if (msg[0] == '{') {
         err = knd_OK;
         goto final;
     }
     
-    /*err = self->update->read_history(self->update,
-                                     classname, obj->id,
-                                     (const char*)msg, msg_size);
-    */
+    //err = self->update->read_history(self->update,
+    //                                 classname, obj->id,
+    //                                 (const char*)msg, msg_size);
  final:
 
     if (header)
@@ -305,7 +296,7 @@ kndDataReader_get_history(struct kndDataReader *self,
     
     return err;
 }
-
+*/
 
 static int
 kndDataReader_get_user(struct kndDataReader *self, const char *spec)
@@ -314,7 +305,7 @@ kndDataReader_get_user(struct kndDataReader *self, const char *spec)
     size_t buf_size = KND_TEMP_BUF_SIZE;
 
     struct kndUser *user;
-    struct kndPolicy *policy;
+    //struct kndPolicy *policy;
     int err;
 
     if (DEBUG_READER_LEVEL_3)
@@ -345,7 +336,6 @@ kndDataReader_get_user(struct kndDataReader *self, const char *spec)
 
     self->curr_user = user;
                     
- final:
     return err;
 }
 
@@ -357,7 +347,6 @@ kndDataReader_get_repo(struct kndDataReader *self,
                        struct kndRepo **result)
 {
     char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size = KND_TEMP_BUF_SIZE;
     struct kndRepo *repo = NULL;
     int err;
 
@@ -374,7 +363,6 @@ kndDataReader_get_repo(struct kndDataReader *self,
     err = kndRepo_new(&repo);
     if (err) return knd_NOMEM;
 
-    buf_size = sprintf(buf, "%s/repos", self->path);
     err = knd_make_id_path(repo->path, buf, name, NULL);
     if (err) return err;
 
@@ -414,15 +402,15 @@ kndDataReader_reply(struct kndDataReader *self,
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
-    char *header;
+    char *header = NULL;
     size_t header_size;
-    char *confirm;
+    char *confirm = NULL;
     size_t confirm_size;
 
     int err;
 
     data->tid_size = KND_TID_SIZE + 1;
-    
+
     err = knd_get_attr(data->spec, "tid",
                        data->tid, &data->tid_size);
     if (err) {
@@ -479,31 +467,27 @@ kndDataReader_reply(struct kndDataReader *self,
         break;
     }
 
-    if (data->filename) {
-        buf_size = sprintf(buf, " filename=\"%s\"",
-                           data->filename);
+    buf_size = sprintf(buf, " filename=\"%s\"",
+                       data->filename);
 
-        err = self->spec_out->write(self->spec_out, buf, buf_size);
-        if (err) goto final;
+    err = self->spec_out->write(self->spec_out, buf, buf_size);
+    if (err) goto final;
 
-        buf_size = sprintf(buf, " filesize=\"%lu\"",
-                           (unsigned long)data->filesize);
-        err = self->spec_out->write(self->spec_out, buf, buf_size);
-        if (err) goto final;
+    buf_size = sprintf(buf, " filesize=\"%lu\"",
+                       (unsigned long)data->filesize);
+    err = self->spec_out->write(self->spec_out, buf, buf_size);
+    if (err) goto final;
 
-        if (data->mimetype) {
-            buf_size = sprintf(buf, " mime=\"%s\"",
-                               data->mimetype);
+    buf_size = sprintf(buf, " mime=\"%s\"",
+                       data->mimetype);
 
-            err = self->spec_out->write(self->spec_out, buf, buf_size);
-            if (err) goto final;
-        }
+    err = self->spec_out->write(self->spec_out, buf, buf_size);
+    if (err) goto final;
 
-        /*err = kndDataReader_read_obj_file(self, obj, &objfile, &objfile_size);
-        if (err)
-        goto final; */
-    }
-    
+    /*err = kndDataReader_read_obj_file(self, obj, &objfile, &objfile_size);
+    if (err)
+    goto final; */
+
     err = self->spec_out->write(self->spec_out, "/>", strlen("/>"));
     if (err) goto final;
 
@@ -553,16 +537,10 @@ kndDataReader_reply(struct kndDataReader *self,
     return err;
 }
 
-
-
-
-
-
-static int  
+static int
 kndDataReader_start(struct kndDataReader *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
 
     struct kndData *data;
 
@@ -570,24 +548,11 @@ kndDataReader_start(struct kndDataReader *self)
     void *outbox;
 
     char *header = NULL;
-    size_t header_size = 0;
 
     char *confirm = NULL;
-    size_t confirm_size = 0;
 
-    const char *obj_id;
-
-    char attr_buf[KND_TEMP_BUF_SIZE];
-    size_t attr_size;
-    const char *tid;
 
     int err;
-
-    const char *no_results_msg = "{\"results\": {\"exact\": [],\"total\": 0}}";
-    size_t no_results_msg_size = strlen(no_results_msg);
-
-    const char *msg;
-    size_t msg_size;
 
     err = kndData_new(&data);
     if (err) return err;
@@ -714,9 +679,7 @@ kndDataReader_new(struct kndDataReader **rec,
                   const char *config)
 {
     struct kndDataReader *self;
-    struct kndObject *obj;
     int err;
-    size_t i;
 
     self = malloc(sizeof(struct kndDataReader));
     if (!self) return knd_NOMEM;
@@ -873,7 +836,6 @@ void *kndDataReader_subscriber(void *arg)
 {
     void *context;
     void *subscriber;
-    void *agents;
     void *inbox;
 
     struct kndDataReader *reader;

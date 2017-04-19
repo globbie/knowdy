@@ -161,8 +161,7 @@ kndOutput_new(struct kndOutput **output,
               size_t capacity)
 {
     struct kndOutput *self;
-    int err = knd_OK;
-    
+
     self = malloc(sizeof(struct kndOutput));
     if (!self) return knd_NOMEM;
 
@@ -182,10 +181,4 @@ kndOutput_new(struct kndOutput **output,
     *output = self;
 
     return knd_OK;
-
- error:
-
-    kndOutput_del(self);
-
-    return err;
 }
