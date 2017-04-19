@@ -1,6 +1,8 @@
 #ifndef KND_COLL_H
 #define KND_COLL_H
 
+#include <stdbool.h>
+
 struct kndCollRef
 {
     char *name;

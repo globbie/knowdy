@@ -142,6 +142,7 @@ s_sendmore (void *socket, const char *string, size_t string_size) {
 
 //  Receives all message parts from socket, prints neatly
 //
+/*
 static void
 s_dump (void *socket)
 {
@@ -179,9 +180,11 @@ s_dump (void *socket)
             break;      //  Last message part
     }
 }
+*/
 
 //  Set simple random printable identity on socket
 //
+/*
 static void
 s_set_id (void *socket)
 {
@@ -189,9 +192,11 @@ s_set_id (void *socket)
     sprintf (identity, "%04X-%04X", randof (0x10000), randof (0x10000));
     zmq_setsockopt (socket, ZMQ_IDENTITY, identity, strlen (identity));
 }
+*/
 
 
 //  Sleep for a number of milliseconds
+/*
 static void
 s_sleep (int msecs)
 {
@@ -204,8 +209,10 @@ s_sleep (int msecs)
     nanosleep (&t, NULL);
 #endif
 }
+*/
 
 //  Return current system clock as milliseconds
+/*
 static int64_t
 s_clock (void)
 {
@@ -219,10 +226,11 @@ s_clock (void)
     return (int64_t) (tv.tv_sec * 1000 + tv.tv_usec / 1000);
 #endif
 }
+*/
 
 //  Print formatted string to stdout, prefixed by date/time and
 //  terminated with a newline.
-
+/*
 static void
 s_console (const char *format, ...)
 {
@@ -239,5 +247,6 @@ s_console (const char *format, ...)
     va_end (argptr);
     printf ("\n");
 }
+*/
 
 #endif  //  __ZHELPERS_H_INCLUDED__
