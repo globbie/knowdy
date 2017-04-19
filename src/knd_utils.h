@@ -9,14 +9,6 @@
 #include "knd_config.h"
 #include "oodict.h"
 
-#define KND_MAX(a, b)  (((a) > (b)) ? (a) : (b))
-
-#define KND_MIN(a, b)  (((a) < (b)) ? (a) : (b))
-
-/* сколько символов в тексте перекрывают оба отрезка. 
- не пересечение, а отрезки + пространство между */
-#define KND_CONTEXT_AREA(b1, e1, b2, e2) (KND_MAX((e1), (e2))) + 1 - (KND_MIN((b1), (b2)))
-
 typedef enum output_dest_t { KND_SEARCH_RESULTS, 
 			     KND_IDX, 
 			     KND_OBJ_META,
