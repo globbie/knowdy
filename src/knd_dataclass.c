@@ -6,7 +6,6 @@
 #include "knd_output.h"
 #include "knd_attr.h"
 #include "knd_text.h"
-#include "knd_utils.h"
 
 #define DEBUG_DATACLASS_LEVEL_1 0
 #define DEBUG_DATACLASS_LEVEL_2 0
@@ -18,7 +17,7 @@
 
 /*  DataClass Destructor */
 static
-int kndDataClass_del(struct kndDataClass *self)
+int kndDataClass_del(struct kndDataClass *self __attribute__((unused)))
 {
     return knd_OK;
 }
@@ -825,7 +824,6 @@ kndDataClass_add_class(struct kndDataClass *self,
     struct kndAttr *attr = NULL;
     struct kndAttr *prev_attr = NULL;
 
-    const char *c;
     size_t prefix_size;
     int err;
 
@@ -1433,9 +1431,7 @@ kndDataClass_export_HTML(struct kndDataClass *self)
     }
 
     err = out->write(out, "]}", 2);
-    if (err) return err;
 
-final:
     return err;
 }
 
@@ -1492,8 +1488,7 @@ extern int
 kndDataClass_new(struct kndDataClass **c)
 {
     struct kndDataClass *self;
-    int err;
-    
+
     self = malloc(sizeof(struct kndDataClass));
     if (!self) return knd_NOMEM;
 
@@ -1505,8 +1500,4 @@ kndDataClass_new(struct kndDataClass **c)
     *c = self;
 
     return knd_OK;
-
- error:
-    free(self);
-    return err;
 }
