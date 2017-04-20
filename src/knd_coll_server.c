@@ -28,13 +28,10 @@ void *kndColl_recorder_agent(void *arg)
     void *publisher;
 
     const char *dest_coll_addr = NULL;
-    const char *result;
 
     struct kndData *data;
 
     int ret;
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
 
     args = (struct agent_args*)arg;
     coll = args->collection;
@@ -50,7 +47,7 @@ void *kndColl_recorder_agent(void *arg)
 
     publisher = zmq_socket(args->zmq_context, ZMQ_PUB);
     assert(publisher);
-    
+
     ret = zmq_connect(publisher, coll->publish_proxy_frontend);
     assert(ret == knd_OK);
 
@@ -98,7 +95,6 @@ void *kndColl_requester_agent(void *arg)
     void *selector;
 
     const char *dest_coll_addr = NULL;
-    const char *result;
 
     struct kndData *data;
 
@@ -163,21 +159,16 @@ main(int           const argc,
      const char ** const argv) 
 {
     void *context;
-    void *publisher;
-    void *frontend;
-    void *backend;
     struct kndColl *coll;
 
     pthread_t recorder;
-    pthread_t updater;
     pthread_t requester;
 
     struct agent_args rec_args[NUM_RECORDERS];
     struct agent_args req_args[NUM_REQUESTERS];
 
     const char *config = NULL;
-    const char *pid_filename = NULL;
-    
+
     int i, ret;
 
     if (argc - 1 != 1) {
@@ -228,8 +219,6 @@ main(int           const argc,
     coll->start(coll);
  
     /* we never get here */
-    zmq_close(frontend);
-    zmq_close(backend);
     zmq_term(context);
 
     return 0;

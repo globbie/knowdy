@@ -20,7 +20,7 @@
 
 /*  Attr Destructor */
 static
-int kndAttr_del(struct kndAttr *self)
+int kndAttr_del(struct kndAttr *self __attribute__((unused)))
 {
     return knd_OK;
 }
@@ -28,13 +28,9 @@ int kndAttr_del(struct kndAttr *self)
 static int
 kndAttr_str(struct kndAttr *self, size_t depth)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
     struct kndTranslation *tr;
 
-    size_t i, offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
-    int err;
+    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
 
     memset(offset, ' ', offset_size);
@@ -74,20 +70,20 @@ kndAttr_str(struct kndAttr *self, size_t depth)
 
 
 static int
-kndAttr_read_GSL_glosses(struct kndAttr *self,
+kndAttr_read_GSL_glosses(struct kndAttr *self __attribute__((unused)),
                          const char *rec,
                          size_t *chunk_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //char buf[KND_NAME_SIZE];
+    //size_t buf_size;
     const char *c;
     const char *b;
     
-    struct kndTranslation *tr = NULL;
+    //struct kndTranslation *tr = NULL;
     
-    size_t curr_size = 0;
-    bool in_key = false;
-    bool in_val = false;
+    //size_t curr_size = 0;
+    //bool in_key = false;
+    //bool in_val = false;
     int err = knd_FAIL;
 
     c = rec;
@@ -166,7 +162,6 @@ static int
 kndAttr_resolve(struct kndAttr *self)
 {
     struct kndDataClass *dc;
-    int err;
 
     if (DEBUG_ATTR_LEVEL_3)
         knd_log("     .. resolving ATTR template: %s\n",
@@ -235,10 +230,9 @@ kndAttr_read_GSL(struct kndAttr *self,
     const char *c;
     const char *b;
 
-    size_t curr_size = 0;
     size_t chunk_size = 0;
     
-    bool in_body = true;
+    //bool in_body = true;
     bool in_gloss = false;
 
     bool in_elem = false;
@@ -450,13 +444,13 @@ kndAttr_present_GSL(struct kndAttr *self)
 static int
 kndAttr_present_JSON(struct kndAttr *self)
 {
-    char buf[KND_MED_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_MED_BUF_SIZE];
+    //size_t buf_size;
 
     struct kndOutput *out;
-    const char *key = NULL;
-    void *val = NULL;
-    int i, err;
+    //const char *key = NULL;
+    //void *val = NULL;
+    int err;
     
     if (DEBUG_ATTR_LEVEL_TMP)
         knd_log("   .. present JSON ATTR: %s\n",
@@ -501,17 +495,14 @@ kndAttr_present_JSON(struct kndAttr *self)
     }
     */
 
-
- final:
     return err;
 }
-
 
 static int 
 kndAttr_present(struct kndAttr *self, knd_format format)
 {
     int err = knd_FAIL;
-    
+
     switch(format) {
         case KND_FORMAT_JSON:
         err = kndAttr_present_JSON(self);
@@ -528,8 +519,6 @@ kndAttr_present(struct kndAttr *self, knd_format format)
  final:
     return err;
 }
-
-
 
 /*  Attr Initializer */
 int kndAttr_init(struct kndAttr *self)
@@ -550,8 +539,7 @@ extern int
 kndAttr_new(struct kndAttr **c)
 {
     struct kndAttr *self;
-    int err;
-    
+
     self = malloc(sizeof(struct kndAttr));
     if (!self) return knd_NOMEM;
 
@@ -562,8 +550,4 @@ kndAttr_new(struct kndAttr **c)
     *c = self;
 
     return knd_OK;
-
- error:
-    free(self);
-    return err;
 }

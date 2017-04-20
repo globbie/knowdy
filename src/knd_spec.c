@@ -19,7 +19,7 @@ kndSpec_del(struct kndSpec *self)
 }
 
 static void
-kndSpec_str(struct kndSpec *self, size_t depth)
+kndSpec_str(struct kndSpec *self __attribute__((unused)), size_t depth __attribute__((unused)))
 {
     
 }
@@ -32,7 +32,7 @@ kndSpec_reset(struct kndSpec *self)
     self->tid_size = 0;
 }
 
-
+/* fixme
 static int 
 kndSpec_export_JSON(struct kndSpec *self)
 {
@@ -42,10 +42,9 @@ kndSpec_export_JSON(struct kndSpec *self)
 
     return knd_OK;
 }
+*/
 
-
-
-
+/* fixme
 static int 
 kndSpec_export_GSC(struct kndSpec *self)
 {
@@ -60,14 +59,13 @@ kndSpec_export_GSC(struct kndSpec *self)
     
     return knd_OK;
 }
-
-
+*/
 
 static int 
-kndSpec_export(struct kndSpec *self,
-               knd_format format)
+kndSpec_export(struct kndSpec *self __attribute__((unused)),
+               knd_format format __attribute__((unused)))
 {
-    int err;
+    //int err;
     
     /*  switch(format) {
     case KND_FORMAT_JSON:
@@ -98,14 +96,10 @@ kndSpec_parse_repo(struct kndSpec *self,
     char *b, *c;
     size_t buf_size;
     
-    bool in_body = true;
     bool in_proc = false;
     bool in_arg = false;
     bool in_val = false;
 
-    size_t chunk_size;
-    int err = knd_FAIL;
-    
     c = rec;
     b = c;
 
@@ -228,10 +222,8 @@ kndSpec_parse_auth(struct kndSpec *self,
     const char *uid_tag = "uid";
     const char *tid_tag = "tid";
     
-    size_t rec_size = *total_size;
     size_t buf_size;
     
-    bool in_body = true;
     bool in_field = false;
     bool in_sid = false;
     bool in_uid = false;
@@ -239,9 +231,7 @@ kndSpec_parse_auth(struct kndSpec *self,
     
     char *c;
     const char *b;
-    size_t chunk_size;
-    int err = knd_FAIL;
-    
+
     c = rec;
     b = c;
     
@@ -365,8 +355,6 @@ kndSpec_parse(struct kndSpec *self,
     
     bool in_body = false;
     bool in_header = false;
-    bool in_class = false;
-    bool in_auth = false;
     bool in_field = false;
     
     char *c;
@@ -484,8 +472,6 @@ kndSpec_parse(struct kndSpec *self,
         
         c++;
     }
-
- final:
 
     return err;
 }

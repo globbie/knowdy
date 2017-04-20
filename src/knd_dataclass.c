@@ -6,7 +6,6 @@
 #include "knd_output.h"
 #include "knd_attr.h"
 #include "knd_text.h"
-#include "knd_utils.h"
 
 #define DEBUG_DATACLASS_LEVEL_1 0
 #define DEBUG_DATACLASS_LEVEL_2 0
@@ -16,34 +15,21 @@
 #define DEBUG_DATACLASS_LEVEL_TMP 1
 
 
-static int
-kndDataClass_read_elems(struct kndDataClass *self,
-                        struct kndDataElem *parent,
-                        xmlNodePtr input_node);
-
 /*  DataClass Destructor */
 static
-int kndDataClass_del(struct kndDataClass *self)
+int kndDataClass_del(struct kndDataClass *self __attribute__((unused)))
 {
     return knd_OK;
 }
-
-
 
 static int
 kndDataClass_elem_str(struct kndDataClass *self,
                       struct kndDataElem *elem,
                       size_t depth)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-    
     struct kndDataElem *e;
-    struct kndDataClass *dc;
-    struct kndTranslation *tr;
-    
-    size_t i, offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
-    int err;
+
+    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
 
     memset(offset, ' ', offset_size);
@@ -100,14 +86,10 @@ kndDataClass_elem_str(struct kndDataClass *self,
 static int
 kndDataClass_str(struct kndDataClass *self, size_t depth)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-    
     struct kndDataElem *elem;
     struct kndTranslation *tr;
     
-    size_t i, offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
-    int err;
+    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
 
     memset(offset, ' ', offset_size);
@@ -168,11 +150,10 @@ kndDataClass_next_elem(struct kndDataClass *self,
                        struct kndDataElem **result)
 {
     struct kndDataElem *elem = NULL;
-    int err;
-    
+
     /* nested classes first */
     if (self->baseclass) {
-        err = self->baseclass->next_elem(self->baseclass, &elem);
+        self->baseclass->next_elem(self->baseclass, &elem);
         if (elem) {
             *result = elem;
             return knd_OK;
@@ -191,9 +172,7 @@ kndDataClass_next_elem(struct kndDataClass *self,
     return knd_OK;
 }
 
-
-
-
+/* fixme
 static int
 kndDataClass_read_GSL_params(struct kndDataClass *self,
                              struct kndDataElem *elem,
@@ -214,7 +193,6 @@ kndDataClass_read_GSL_params(struct kndDataClass *self,
     
     while (*c) {
         switch (*c) {
-            /* non-whitespace char */
         default:
             if (!in_param) {
                 in_param = true;
@@ -232,32 +210,31 @@ kndDataClass_read_GSL_params(struct kndDataClass *self,
  final:
     return err;
 }
-
-
+*/
 
 static int
-kndDataClass_read_GSL_glosses(struct kndDataClass *self,
-                              struct kndDataElem *elem,
+kndDataClass_read_GSL_glosses(struct kndDataClass *self __attribute__((unused)),
+                              struct kndDataElem *elem __attribute__((unused)),
                               const char *rec,
                               size_t *chunk_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
+    //char buf[KND_NAME_SIZE];
+    //size_t buf_size = 0;
     const char *c;
-    const char *b;
+    //const char *b;
+
+    //struct kndTranslation *tr = NULL;
     
-    struct kndTranslation *tr = NULL;
-    
-    size_t curr_size = 0;
-    bool in_key = false;
-    bool in_val = false;
+    //size_t curr_size = 0;
+    //bool in_key = false;
+    //bool in_val = false;
     int err = knd_FAIL;
 
     knd_log("  .. reading DATACLASS glosses..\n");
     
     c = rec;
-    b = rec;
-    
+    //b = rec;
+
     while (*c) {
 
         switch (*c) {
@@ -318,19 +295,17 @@ kndDataClass_read_GSL_glosses(struct kndDataClass *self,
                 b = c + 1;
                 break;
             }
-            
+
             break; */
         case ']':
-            
+
             *chunk_size = c - rec;
             return knd_OK;
         }
-        
+
         c++;
     }
 
-    
- final:
     return err;
 }
 
@@ -342,27 +317,23 @@ kndDataClass_read_GSL_list(struct kndDataClass *self,
                            const char *rec,
                            size_t *chunk_size)
 {
-    char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
-
-    char recbuf[KND_TEMP_BUF_SIZE];
-    size_t recbuf_size = 0;
 
     const char *c;
     const char *b;
-    
+
     size_t curr_size = 0;
     bool in_init = false;
     bool got_attr_name = false;
     bool got_abbr = false;
     bool in_abbr = false;
     bool in_idx = false;
-    
+
     int err = knd_FAIL;
 
     c = rec;
     b = rec;
-    
+
     while (*c) {
         switch (*c) {
         default:
@@ -438,13 +409,13 @@ kndDataClass_read_GSL_list(struct kndDataClass *self,
             if (in_idx) {
                 buf_size = c - b;
                 if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
-                
+
                 memcpy(elem->idx_name, b, buf_size);
                 elem->idx_name[buf_size] = '\0';
                 elem->idx_name_size = buf_size;
 
                 knd_log("  == IDX name: \"%s\"\n", elem->idx_name);
-                
+
             }
 
 
@@ -471,7 +442,7 @@ kndDataClass_read_GSL_list(struct kndDataClass *self,
             err = knd_OK;
             goto final;
         }
-        
+
         c++;
     }
     
@@ -488,16 +459,11 @@ kndDataClass_read_GSL(struct kndDataClass *self,
     char keybuf[KND_NAME_SIZE];
     size_t keybuf_size = 0;
 
-    char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
-
-    char recbuf[KND_TEMP_BUF_SIZE];
-    size_t recbuf_size = 0;
 
     const char *c;
     const char *b;
-    char *test;
-    
+
     struct kndDataElem *elem = NULL;
     
     size_t curr_size = 0;
@@ -796,13 +762,11 @@ kndDataClass_read_GSL(struct kndDataClass *self,
 static int 
 kndDataClass_resolve(struct kndDataClass *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
 
     struct kndDataClass *dc;
     struct kndDataElem *elem;
     struct kndAttr *attr;
-    
+
     int err;
 
     elem = self->elems;
@@ -816,7 +780,7 @@ kndDataClass_resolve(struct kndDataClass *self)
             elem->attr = attr;
             goto next_elem;
         }
-        
+
         /* try to resolve as an inline class */
         dc = (struct kndDataClass*)self->class_idx->get(self->class_idx,
                                                     (const char*)elem->attr_name);
@@ -831,20 +795,19 @@ kndDataClass_resolve(struct kndDataClass *self)
             if (DEBUG_DATACLASS_LEVEL_3)
                 knd_log("\n    -- elem \"%s\" not found in class_idx :(\n", elem->attr_name);
         }
-        
+
         if (DEBUG_DATACLASS_LEVEL_3)
             knd_log("\n   .. elem \"%s\" from class \"%s\" is not resolved?\n",
                     elem->attr_name, self->name);
-        
+
     next_elem:
         elem = elem->next;
     }
 
 
-    
+
     err = knd_OK;
-    
- final:
+
     return err;
 }
 
@@ -854,7 +817,6 @@ kndDataClass_add_class(struct kndDataClass *self,
                        const char *rec, size_t rec_size,
                        size_t *rec_total)
 {
-    char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
     struct kndDataClass *dc = NULL;
     struct kndDataClass *prev_dc = NULL;
@@ -862,14 +824,13 @@ kndDataClass_add_class(struct kndDataClass *self,
     struct kndAttr *attr = NULL;
     struct kndAttr *prev_attr = NULL;
 
-    const char *c;
     size_t prefix_size;
     int err;
-    
+
     if (rec[1] == ':') {
         err = kndAttr_new(&attr);
         if (err) goto final;
-        
+
         /* data attr */
         switch (*rec) {
         case 'A':
@@ -919,16 +880,16 @@ kndDataClass_add_class(struct kndDataClass *self,
             err = knd_FAIL;
             goto final;
         }
-        
+
         err = attr->read(attr, rec, &buf_size);
         if (err) goto final;
-        
+
         err = self->attr_idx->set(self->attr_idx,
                                   (const char*)attr->name, (void*)attr);
         if (err) return err;
-        
+
         *rec_total = buf_size;
-        
+
         return knd_OK;
     }
 
@@ -950,16 +911,16 @@ kndDataClass_add_class(struct kndDataClass *self,
 
     dc->class_idx = self->class_idx;
     dc->attr_idx = self->attr_idx;
-    
+
     rec += rec_size;
     buf_size = rec_size;
-    
+
     /*knd_log(" .. reading CLASS rec \"%s\"   size: %lu\n\n", rec, (unsigned long)buf_size);
      */
-    
+
     err = dc->read(dc, rec, &buf_size);
     if (err) goto final;
-    
+
     err = self->class_idx->set(self->class_idx,
                                (const char*)dc->name, (void*)dc);
     if (err) return err;
@@ -970,10 +931,10 @@ kndDataClass_add_class(struct kndDataClass *self,
         dc->str(dc, 1);
     }
 
-    
+
     return knd_OK;
-    
- final:
+
+final:
     if (dc)
         dc->del(dc);
 
@@ -1004,7 +965,6 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
     bool in_init = true;
     bool in_import = true;
     bool in_class = false;
-    bool is_complete = false;
     int err;
 
     buf_size = sprintf(buf, "%s/%s", self->path, filename);
@@ -1026,13 +986,13 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
         case '\t':
         case ' ':
             if (in_comment) break;
-            
+
             if (in_class) {
                 buf_size = 0;
-                
+
                 err = kndDataClass_add_class(self, b, c - b, &buf_size);
                 if (err) goto final;
-                
+
                 c += buf_size;
                 b = c;
                 in_class = false;
@@ -1049,7 +1009,7 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
                 }
                 b = c + 1;
             }
-            
+
             break;
         case '{':
             if (in_comment) break;
@@ -1069,7 +1029,7 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
 
                 err = kndDataClass_add_class(self, b, c - b, &buf_size);
                 if (err) goto final;
-                
+
                 c += buf_size;
                 b = c;
                 in_class = false;
@@ -1087,11 +1047,11 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
                 /*knd_log("IMPORT MODULE: \"%s\"\n", buf);*/
 
                 strncat(buf, ".gsl", 4);
-                
+
                 err = kndDataClass_read_onto_GSL(self,
                                                  (const char *)buf);
                 if (err) goto final;
-                
+
                 in_import = false;
                 b = c + 1;
             }
@@ -1121,10 +1081,10 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
     }
 
     err = knd_OK;
- final:
+final:
 
     out->del(out);
-    
+
     return err;
 }
 
@@ -1138,16 +1098,16 @@ kndDataClass_coordinate(struct kndDataClass *self)
     const char *key;
     void *val;
     int err = knd_FAIL;
-    
+
     /* TODO: coordinate classes, resolve all refs */
     key = NULL;
     self->class_idx->rewind(self->class_idx);
     do {
         self->class_idx->next_item(self->class_idx, &key, &val);
         if (!key) break;
-        
+
         dc = (struct kndDataClass*)val;
-        
+
         dc->attr_idx = self->attr_idx;
         err = dc->resolve(dc);
         if (err) goto final;
@@ -1190,7 +1150,7 @@ kndDataClass_coordinate(struct kndDataClass *self)
     
     err = knd_OK;
     
- final:
+final:
     return err;
 }
 
@@ -1215,15 +1175,9 @@ kndDataClass_export_GSL(struct kndDataClass *self)
 static int
 kndDataClass_export_elem_JSON(struct kndDataClass *self, struct kndDataElem *elem)
 {
-    char buf[KND_MED_BUF_SIZE];
-    size_t buf_size;
-
-    struct kndDataClass *dc;
     struct kndTranslation *tr;
     struct kndOutput *out;
-    const char *key = NULL;
-    void *val = NULL;
-    int i, err;
+    int err;
 
     
     if (DEBUG_DATACLASS_LEVEL_3)
@@ -1307,28 +1261,18 @@ kndDataClass_export_elem_JSON(struct kndDataClass *self, struct kndDataElem *ele
                      "\"", 1);
     if (err) return err;
 
-
-    
- json_final:
-
     err = out->write(out, "}", 1);
     if (err) return err;
 
- final:
     return err;
 }
 
 static int
 kndDataClass_export_JSON(struct kndDataClass *self)
 {
-    char buf[KND_MED_BUF_SIZE];
-    size_t buf_size;
-
     struct kndTranslation *tr;
     struct kndDataElem *elem;
     struct kndOutput *out;
-    const char *key = NULL;
-    void *val = NULL;
     int i, err;
     
     if (DEBUG_DATACLASS_LEVEL_3)
@@ -1401,7 +1345,7 @@ kndDataClass_export_JSON(struct kndDataClass *self)
     err = out->write(out, "]}", 2);
     if (err) return err;
 
- final:
+final:
     return err;
 }
 
@@ -1410,23 +1354,18 @@ kndDataClass_export_JSON(struct kndDataClass *self)
 static int
 kndDataClass_export_HTML(struct kndDataClass *self)
 {
-    char buf[KND_MED_BUF_SIZE];
-    size_t buf_size;
-
     struct kndTranslation *tr;
     struct kndDataElem *elem;
     struct kndOutput *out;
-    const char *key = NULL;
-    void *val = NULL;
-    int i, err;
-    
+    int i;
+    int err;
+
     if (DEBUG_DATACLASS_LEVEL_3)
         knd_log("   .. export HTML: %s\n",
                 self->name);
 
-
     return knd_OK;
-    
+
     out = self->out;
 
     err = out->write(out,
@@ -1492,9 +1431,7 @@ kndDataClass_export_HTML(struct kndDataClass *self)
     }
 
     err = out->write(out, "]}", 2);
-    if (err) return err;
 
- final:
     return err;
 }
 
@@ -1551,8 +1488,7 @@ extern int
 kndDataClass_new(struct kndDataClass **c)
 {
     struct kndDataClass *self;
-    int err;
-    
+
     self = malloc(sizeof(struct kndDataClass));
     if (!self) return knd_NOMEM;
 
@@ -1564,8 +1500,4 @@ kndDataClass_new(struct kndDataClass **c)
     *c = self;
 
     return knd_OK;
-
- error:
-    free(self);
-    return err;
 }

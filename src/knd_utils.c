@@ -4,6 +4,8 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <strings.h>
+#include <memory.h>
 
 #include <stdarg.h>
 #include <syslog.h>
@@ -61,9 +63,7 @@ knd_log(const char *fmt, ...)
 extern int 
 knd_compare(const char *a, const char *b)
 {
-    int i;
-
-    for (i = 0; i < KND_ID_SIZE; i++) {
+    for (size_t i = 0; i < KND_ID_SIZE; i++) {
         if (a[i] > b[i]) return knd_MORE;
         else if (a[i] < b[i]) return knd_LESS;
     }
@@ -90,10 +90,9 @@ knd_inc_id(char *id)
 extern int 
 knd_is_valid_id(const char *id, size_t id_size)
 {
-    int i;
     if (id_size > KND_ID_SIZE) return knd_FAIL;
     
-    for (i = 0; i < KND_ID_SIZE; i++) {
+    for (size_t i = 0; i < KND_ID_SIZE; i++) {
         if (id[i] >= '0' && id[i] <= '9') continue;
         if (id[i] >= 'A' && id[i] <= 'Z') continue;
         if (id[i] >= 'a' && id[i] <= 'z') continue;
@@ -260,16 +259,14 @@ knd_get_conc_prefix(const char *name,
 		    size_t name_size,
 			char *prefix)
 {
-    char *buf;
     int digit_size = KND_CONC_PREFIX_DIGIT_SIZE;
-    int pref_size;
-    int i = 0;
+    size_t i = 0;
 
     if (!name_size) return knd_FAIL;
 
     for (i = 0; i <= KND_CONC_PREFIX_SIZE; i += digit_size){
-	memcpy(prefix, name, i);
-	if (i > name_size) break;
+        memcpy(prefix, name, i);
+        if (i > name_size) break;
     }
 
     prefix[i - digit_size] = '\0';
@@ -291,7 +288,6 @@ knd_get_trailer(const char   *rec,
     size_t buf_size = 0;
 
     char num_buf[KND_SMALL_BUF_SIZE];
-    size_t num_buf_size = 0;
 
     char *c;
     char *b;
@@ -300,11 +296,10 @@ knd_get_trailer(const char   *rec,
     long numval = 0;
 
     size_t curr_size;
-    size_t offset = 0;
     size_t numfield_size = 0;
     bool in_facet = false;
     bool in_refset = false;
-    int i, err;
+    int err;
 
     buf_size = KND_NUMFIELD_MAX_SIZE;
     if (rec_size < KND_NUMFIELD_MAX_SIZE)
@@ -318,7 +313,7 @@ knd_get_trailer(const char   *rec,
     /*knd_log("TRAILER BUF: \"%s\"\n", buf);*/
     
     /* find last closing delimiter */
-    for (i = buf_size - 1; i > 0; i--) {
+    for (size_t i = buf_size - 1; i > 0; i--) {
         c = buf + i;
         if (!strncmp(c, GSL_CLOSE_DELIM, GSL_CLOSE_DELIM_SIZE)) {
             in_refset = true;
@@ -580,7 +575,6 @@ knd_copy_xmlattr(xmlNode    *input_node,
 {
      char *value;
      char *val_copy;
-     int err;
 
      value = (char*)xmlGetProp(input_node,  (const xmlChar *)attr_name);
      if (!value) return knd_FAIL;
@@ -617,7 +611,6 @@ knd_get_xmlattr(xmlNode    *input_node,
 {
      char *value;
      size_t attr_size;
-     int err;
 
      value = (char*)xmlGetProp(input_node,  (const xmlChar *)attr_name);
      if (!value) return knd_FAIL;
@@ -692,8 +685,6 @@ knd_parse_matching_braces(const char *rec,
     const char *c;
     size_t brace_count = 0;
     
-    int err = knd_FAIL;
-    
     c = rec;
     b = c;
     
@@ -729,7 +720,7 @@ knd_parse_num(const char *val,
 /*int *warning)*/
 {
     long numval;
-    char *c, *invalid_num_char = NULL;
+    char *invalid_num_char = NULL;
     int err = knd_OK;
 
     if (!val) return knd_FAIL;
@@ -749,11 +740,12 @@ knd_parse_num(const char *val,
     numval = strtol(val, &invalid_num_char, KND_NUM_ENCODE_BASE);
     
     /* check for various numeric decoding errors */
-    if ((errno == ERANGE && (numval == LONG_MAX || numval == LONG_MIN))
-	|| (errno != 0 && numval == 0)) {
-	perror("strtol");
-	err = knd_FAIL;
-	goto final;
+    if ((errno == ERANGE && (numval == LONG_MAX || numval == LONG_MIN)) ||
+            (errno != 0 && numval == 0))
+    {
+        perror("strtol");
+        err = knd_FAIL;
+        goto final;
     }
     
     if (invalid_num_char == val) {
@@ -814,10 +806,8 @@ knd_read_name(char *output,
               size_t rec_size)
 {
     const char *c;
-    size_t max_size = *output_size;
     size_t curr_size = 0;
     size_t i = 0;
-    int err = knd_OK;
 
     c = rec;
     

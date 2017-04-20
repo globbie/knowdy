@@ -196,7 +196,6 @@ kndColl_find_route(struct kndColl *self,
 static int
 kndColl_start(struct kndColl *self)
 {
-    void *context;
     void *frontend;
     void *backend;
 
@@ -345,13 +344,12 @@ kndColl_read_config(struct kndColl *self,
     xmlDocPtr doc;
     xmlNodePtr root, cur_node;
     char *val;
-    char *proxy_name, *frontend, *backend;
     size_t curr_size;
     int err;
 
     buf[0] = '\0';
 
-    doc = xmlParseFile((const char*)config);
+    doc = xmlParseFile(config);
     if (!doc) {
 	fprintf(stderr, "\n    -- No prior config file found."
                         " Fresh start!\n");
