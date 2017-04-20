@@ -363,6 +363,8 @@ kndDataReader_get_repo(struct kndDataReader *self,
     err = kndRepo_new(&repo);
     if (err) return knd_NOMEM;
 
+    sprintf(buf, "%s/repos", self->path);
+
     err = knd_make_id_path(repo->path, buf, name, NULL);
     if (err) return err;
 
