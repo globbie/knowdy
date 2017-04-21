@@ -97,10 +97,12 @@ ooList_get_item(struct ooList *self,
     tail_len = self->size - pos - 1;
 
     if (self->cur) {
-	if (self->cur_pos == pos)
+
+	    if (self->cur_pos == pos)
             return self->cur;
 
-        cur_len = abs(pos - self->cur_pos);
+        // fixme: pos >= self->cur_pos == true?
+        cur_len = pos - self->cur_pos;
 
         if (cur_len < pos && cur_len < tail_len) {
             if (pos < self->cur_pos) {
@@ -253,7 +255,7 @@ ooList_copy(struct ooList *self,
 
     while (curr) {
         new_curr = malloc(sizeof(struct ooListItem));
-	if (!new_curr) return oo_NOMEM;
+	    if (!new_curr) return oo_NOMEM;
  
         new_curr->data = curr->data;
         new_list->add(new_list, new_curr, new_list->tail);
@@ -306,9 +308,6 @@ int ooList_init(struct ooList *self)
 extern int
 ooList_new(struct ooList **list)
 {
-    size_t i;
-    struct ooList *l;
-
     struct ooList *self = malloc(sizeof(struct ooList));
     if (!self) return oo_NOMEM;
 
