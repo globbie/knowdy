@@ -2829,7 +2829,7 @@ kndObject_flatten(struct kndObject *self,
         cell = &row->cols[row->num_cols];
 
         // fixme: timespan < 0?
-        for (size_t i = 0; i < timespan; i++) {
+        for (size_t i = 0; i < (size_t)timespan; i++) {
             table->totals[i] += estim;
         }
         

@@ -754,7 +754,7 @@ kndRefSet_lookup_ref(struct kndRefSet     *self,
     
     /* first numeric position */
     // fixme: array subscript is of type char
-    numval = obj_id_base[ref->obj_id[0]];
+    numval = obj_id_base[(size_t)ref->obj_id[0]];
     if (numval == -1) return err;
     
     idx = self->idx[numval];
@@ -768,7 +768,7 @@ kndRefSet_lookup_ref(struct kndRefSet     *self,
     if (!idxs) return err;
 
     /* second numeric position */
-    numval = obj_id_base[ref->obj_id[1]];
+    numval = obj_id_base[(size_t)ref->obj_id[1]];
     if (numval == -1) return err;
 
     term_idx = idxs[numval];
@@ -780,7 +780,7 @@ kndRefSet_lookup_ref(struct kndRefSet     *self,
     }
 
     /* LAST numeric position */
-    numval = obj_id_base[ref->obj_id[2]];
+    numval = obj_id_base[(size_t)ref->obj_id[2]];
     if (numval == -1) return err;
     
     ref = term_idx->refs[numval];
@@ -1001,7 +1001,7 @@ kndRefSet_term_idx(struct kndRefSet *self,
     }
     
     /* first numeric position */
-    numval = obj_id_base[ref->obj_id[0]];
+    numval = obj_id_base[(size_t)ref->obj_id[0]];
     if (numval == -1) return knd_FAIL;
 
     if (DEBUG_REFSET_LEVEL_3) 
@@ -1030,7 +1030,7 @@ kndRefSet_term_idx(struct kndRefSet *self,
     }
 
     /* second numeric position */
-    numval = obj_id_base[ref->obj_id[1]];
+    numval = obj_id_base[(size_t)ref->obj_id[1]];
     if (numval == -1) return knd_FAIL;
 
     if (DEBUG_REFSET_LEVEL_3) 
@@ -1058,7 +1058,7 @@ kndRefSet_term_idx(struct kndRefSet *self,
     }
 
     /* LAST numeric position */
-    numval = obj_id_base[ref->obj_id[2]];
+    numval = obj_id_base[(size_t)ref->obj_id[2]];
     if (numval == -1) return knd_FAIL;
 
     if (DEBUG_REFSET_LEVEL_3) 
@@ -1090,7 +1090,7 @@ kndRefSet_term_idx_add_tag(struct kndRefSet *self,
     if (!self->idx) return knd_FAIL;
 
     /* first numeric position */
-    numval = obj_id_base[obj_id[0]];
+    numval = obj_id_base[(size_t)obj_id[0]];
     if (numval == -1) return knd_FAIL;
 
     if (DEBUG_REFSET_LEVEL_2) 
@@ -1103,7 +1103,7 @@ kndRefSet_term_idx_add_tag(struct kndRefSet *self,
     if (!idxs) return knd_FAIL;
 
     /* second numeric position */
-    numval = obj_id_base[obj_id[1]];
+    numval = obj_id_base[(size_t)obj_id[1]];
     if (numval == -1) return knd_FAIL;
 
     if (DEBUG_REFSET_LEVEL_2) 
@@ -1115,7 +1115,7 @@ kndRefSet_term_idx_add_tag(struct kndRefSet *self,
     if (!term_idx->refs) return knd_FAIL;
 
     /* LAST numeric position */
-    numval = obj_id_base[obj_id[2]];
+    numval = obj_id_base[(size_t)obj_id[2]];
     if (numval == -1) return knd_FAIL;
 
     if (DEBUG_REFSET_LEVEL_2) 
