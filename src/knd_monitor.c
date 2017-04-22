@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
 
 #include <time.h>
 
@@ -10,9 +9,7 @@
 #include "knd_config.h"
 #include "knd_monitor.h"
 #include "knd_refset.h"
-#include "knd_objref.h"
 #include "knd_sorttag.h"
-#include "knd_facet.h"
 #include "knd_output.h"
 
 /* forward */
@@ -41,28 +38,25 @@ kndMonitor_del(struct kndMonitor *self)
     return knd_OK;
 }
 
+/*
 static int
 kndMonitor_lookup(struct kndMonitor *self,
                   struct kndData    *data)
 {
-    
+
     knd_log("  Monitor lookup\n");
-    
-    /*if (trn->geoip) {
-            geoloc = self->geo_locs[trn->geoip->city_code];
-            memcpy(buf, geoip->country_code, 2);
-            buf[2] = '\0';
-            knd_log("CITY NAME: %s\n", geoloc->name);
-        }
-        }
-    */
 
+    //if (trn->geoip) {
+    //        geoloc = self->geo_locs[trn->geoip->city_code];
+    //        memcpy(buf, geoip->country_code, 2);
+    //        buf[2] = '\0';
+    //        knd_log("CITY NAME: %s\n", geoloc->name);
+    //    }
+    //    }
 
-    
     return knd_OK;
 }
-
-
+*/
 
 static struct kndGeoIP*
 kndMonitor_get_geoip(struct kndMonitor *self,
@@ -323,8 +317,9 @@ kndMonitor_datetime_idx(struct kndMonitor *self,
 }
 
 
+/*
 static int
-kndMonitor_query_idx(struct kndMonitor *self, 
+kndMonitor_query_idx(struct kndMonitor *self,
                      struct kndTrans *trn)
 {
     struct kndObjRef *ref;
@@ -355,7 +350,7 @@ kndMonitor_query_idx(struct kndMonitor *self,
     strcpy(attr->val, trn->action);
     attr->val_size = trn->action_size;
     
-    /* second attr: alphabetic */
+    // second attr: alphabetic
     attr = malloc(sizeof(struct kndSortAttr));
     if (!attr) return knd_NOMEM;
     memset(attr, 0, sizeof(struct kndSortAttr));
@@ -369,12 +364,13 @@ kndMonitor_query_idx(struct kndMonitor *self,
     strcpy(attr->val, trn->query);
     attr->val_size = strlen(trn->query);
 
-    /*knd_log("ALPHABETIC PART: \"%s\" [size: %lu]\n", attr->val, attr->val_size);
-     */
-    
+    //knd_log("ALPHABETIC PART: \"%s\" [size: %lu]\n", attr->val, attr->val_size);
+
     return self->query_browser->add_ref(self->query_browser, ref);
 }
+*/
 
+/*
 static int
 kndMonitor_geoloc_idx(struct kndMonitor *self, 
                       struct kndTrans *trn)
@@ -415,14 +411,12 @@ kndMonitor_geoloc_idx(struct kndMonitor *self,
         attr->val_size = 2;
     }
     
-    /*geoloc = self->geo_locs[trn->geoip->city_code];
-    memcpy(buf, geoip->country_code, 2);
-    */
-    
-    /*memcpy(c, "|", 1);
-    c++;
-    */
-    
+    //geoloc = self->geo_locs[trn->geoip->city_code];
+    //memcpy(buf, geoip->country_code, 2);
+
+    //memcpy(c, "|", 1);
+    //c++;
+
     attr = malloc(sizeof(struct kndSortAttr));
     if (!attr) return knd_NOMEM;
     memset(attr, 0, sizeof(struct kndSortAttr));
@@ -440,6 +434,7 @@ kndMonitor_geoloc_idx(struct kndMonitor *self,
 
     return self->geo_browser->add_ref(self->geo_browser, ref);
 }
+*/
 
 static int
 kndMonitor_process(struct kndMonitor *self, 
@@ -451,9 +446,9 @@ kndMonitor_process(struct kndMonitor *self,
     size_t buf_size = KND_NAME_SIZE;
 
     struct kndTrans *trn;
-    struct kndGeoLoc *geoloc;
+    //struct kndGeoLoc *geoloc;
     
-    const char *query;
+    //const char *query;
     struct kndGeoIP *geoip = NULL;
 
     time_t curr_time;
@@ -556,11 +551,10 @@ kndMonitor_process(struct kndMonitor *self,
     err = kndMonitor_geoloc_idx(self, trn);
     if (err) return err;
     */
-    
+
     err = knd_OK;
 
- final:
-    
+
     return err;
 }
 
@@ -568,7 +562,7 @@ kndMonitor_process(struct kndMonitor *self,
 
 static int
 kndMonitor_select(struct kndMonitor *self, 
-                  xmlNodePtr input_node,
+                  xmlNodePtr input_node __attribute__((unused)),
                   struct kndData *data)
 {
     struct kndOutput *out = self->out;
@@ -615,16 +609,16 @@ kndMonitor_select(struct kndMonitor *self,
 static int
 kndMonitor_sync(struct kndMonitor *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size = KND_TEMP_BUF_SIZE;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size = KND_TEMP_BUF_SIZE;
 
-    char recbuf[KND_TEMP_BUF_SIZE];
-    size_t recbuf_size = 0;
+    //char recbuf[KND_TEMP_BUF_SIZE];
+    //size_t recbuf_size = 0;
 
     struct kndTrans *trn;
-    const char *key = NULL;
+    //const char *key = NULL;
 
-    void *value = NULL;
+    //void *value = NULL;
     size_t i;
     int err;
 

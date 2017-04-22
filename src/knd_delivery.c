@@ -22,18 +22,16 @@
 #define DEBUG_DELIV_LEVEL_3 0
 #define DEBUG_DELIV_LEVEL_TMP 1
 
-static int kndDelivery_add_meta(struct kndDelivery *self,
-			       struct kndData *data);
+//static int kndDelivery_add_meta(struct kndDelivery *self,
+//                                struct kndData *data);
 
 static int
 kndDelivery_str(struct kndDelivery *self)
 {
     knd_log("<struct kndDelivery at %p>\n", self);
 
-
     return knd_OK;
 }
-
 
 static int
 kndDelivery_del(struct kndDelivery *self)
@@ -43,17 +41,15 @@ kndDelivery_del(struct kndDelivery *self)
     return knd_OK;
 }
 
-
-
 static int
 kndDelivery_check_SID(struct kndDelivery *self, 
-                      xmlNodePtr input_node,
+                      xmlNodePtr input_node __attribute__((unused)),
                       struct kndData *data,
                       const char *action)
 {
     struct kndAuthRec *rec;
-    size_t buf_size;
-    int err;
+    //size_t buf_size;
+    //int err;
 
     /* auth action doesn't require a valid SID */
     if (!strcmp(action, "retrieve")) {
@@ -132,13 +128,13 @@ static int
 kndDelivery_retrieve(struct kndDelivery *self, 
                      struct kndData *data)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //char buf[KND_NAME_SIZE];
+    //size_t buf_size;
 
     struct kndAuthRec *rec;
     struct kndResult *res;
-    time_t curr_time;
-    int i, err;
+    //time_t curr_time;
+    //int err;
 
     if (!strcmp(data->sid, "000")) {
         rec = self->default_rec;
@@ -279,8 +275,8 @@ kndDelivery_lookup(struct kndDelivery *self,
     
     struct kndAuthRec *rec;
     struct kndResult *res;
-    time_t curr_time;
-    int i, err;
+    //time_t curr_time;
+    //int i, err;
 
     /* non-authenticated user */
     if (!strcmp(data->uid, "000")) {
@@ -363,8 +359,8 @@ kndDelivery_get_updates(struct kndDelivery *self,
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size = KND_TEMP_BUF_SIZE;
     
-    char obj_id[KND_ID_SIZE + 1];
-    size_t obj_id_size = KND_ID_SIZE + 1;
+    //char obj_id[KND_ID_SIZE + 1];
+    //size_t obj_id_size = KND_ID_SIZE + 1;
 
     struct kndRepoRec *rec;
     int err;
@@ -419,8 +415,8 @@ kndDelivery_get_summaries(struct kndDelivery *self,
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size = KND_TEMP_BUF_SIZE;
     
-    char obj_id[KND_ID_SIZE + 1];
-    size_t obj_id_size = KND_ID_SIZE + 1;
+    //char obj_id[KND_ID_SIZE + 1];
+    //size_t obj_id_size = KND_ID_SIZE + 1;
 
     struct kndRepoRec *rec;
     int err;
@@ -480,8 +476,8 @@ kndDelivery_select(struct kndDelivery *self,
     const char *header;
     struct kndAuthRec *rec;
     struct kndResult *res;
-    time_t curr_time;
-    int i, err;
+    //time_t curr_time;
+    //int i, err;
 
     /* default reply */
     data->header_size = strlen("NOT_FOUND");
@@ -562,17 +558,17 @@ kndDelivery_select(struct kndDelivery *self,
 
 static int
 kndDelivery_match(struct kndDelivery *self, 
-                  xmlNodePtr input_node,
+                  xmlNodePtr input_node __attribute__((unused)),
                   struct kndData *data)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
 
-    const char *key;
+    //const char *key;
     struct kndRepoRec *rec, *curr_rec;
     const char *match;
-    time_t curr_time;
-    int i, err;
+    //time_t curr_time;
+    //int i, err;
 
     if (!data->classname_size) return knd_FAIL;
     if (!data->query_size) return knd_FAIL;
@@ -616,8 +612,6 @@ kndDelivery_match(struct kndDelivery *self,
     memcpy(data->header, "OK", data->header_size);
     data->header[data->header_size] = '\0';
 
- final:
-    
     return knd_OK;
 }
 
@@ -839,7 +833,7 @@ kndDelivery_set_SID(struct kndDelivery *self,
                     struct kndData *data)
 {
     struct kndAuthRec *rec;
-    size_t curr_size;
+    //size_t curr_size;
     int err;
 
     data->sid_size = KND_TEMP_BUF_SIZE;
@@ -988,7 +982,7 @@ kndDelivery_auth(struct kndDelivery *self,
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size = KND_TEMP_BUF_SIZE;
 
-    const char *query;
+    //const char *query;
     const char *key;
     struct kndResult *res;
     int err;
@@ -1049,11 +1043,11 @@ kndDelivery_report(struct kndDelivery *self,
                    xmlNodePtr input_node,
                    struct kndData *data)
 {
-    char buf[KND_TEMP_BUF_SIZE];
+    //char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size = KND_TEMP_BUF_SIZE;
 
     struct kndAuthRec *rec;
-    struct kndTrans *trn;
+    //struct kndTrans *trn;
     struct kndResult *res;
 
     long numval = 0;
@@ -1127,7 +1121,7 @@ kndDelivery_save(struct kndDelivery *self,
 
     struct kndAuthRec *rec;
     struct kndTrans *trn;
-    const char *query;
+    //const char *query;
     const char *key;
     knd_format format = KND_FORMAT_JSON;
     
@@ -1317,15 +1311,16 @@ kndDelivery_process(struct kndDelivery *self,
 		    struct kndData *data)
 {
     xmlDocPtr doc;
-    xmlNodePtr root, cur_node;
-    
+    xmlNodePtr root;
+    //xmlNodePtr cur_node;
+
     char action[KND_NAME_SIZE];
     size_t action_size;
 
     char buf[KND_NAME_SIZE];
     size_t buf_size = KND_NAME_SIZE;
 
-    long filesize = 0;
+    //long filesize = 0;
     int err = knd_OK;
     bool filter_set = false;
     int ret;
@@ -1562,16 +1557,16 @@ kndDelivery_start(struct kndDelivery *self)
 {
     void *context;
     void *service;
-    void *control;
+    //void *control;
 
     struct kndData *data;
 
     const char *reply = NULL;
     size_t reply_size = 0;
 
-    char buf[KND_TEMP_BUF_SIZE];
+    //char buf[KND_TEMP_BUF_SIZE];
 
-    int i, err;
+    int err;
 
     const char *err_msg = "{\"error\": \"incorrect call\"}";
     size_t err_msg_size = strlen(err_msg);
@@ -1692,7 +1687,7 @@ kndDelivery_read_config(struct kndDelivery *self,
     xmlDocPtr doc;
     xmlNodePtr root, cur_node, child;
     char *val;
-    char *proxy_name, *frontend, *backend;
+    //char *proxy_name, *frontend, *backend;
     size_t curr_size;
     int err;
 
@@ -1802,7 +1797,7 @@ kndDelivery_new(struct kndDelivery **deliv,
 {
     struct kndDelivery *self;
     struct kndAuthRec *rec;
-    char *path;
+    //char *path;
     int err;
     
     self = malloc(sizeof(struct kndDelivery));
