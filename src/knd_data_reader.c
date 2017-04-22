@@ -95,15 +95,7 @@ kndDataReader_read_config(struct kndDataReader *self,
     if (err) return err;
 
     
-    val = xmlGetProp(root,  (const xmlChar *)"daemon");
-    if (val) {
-        if (!xmlStrcmp(val, (const xmlChar *)"1")) {
-            self->is_daemon = true;
-        }
-        xmlFree(val);
-        val = NULL;
-    }
-
+    
     val = xmlGetProp(root,  (const xmlChar *)"default_repo");
     if (val) {
         self->default_repo_name_size = strlen((const char*)val);
@@ -131,7 +123,7 @@ kndDataReader_read_config(struct kndDataReader *self,
         if (cur_node->type != XML_ELEMENT_NODE) continue;
 
 
-        if ((!xmlStrcmp(cur_node->name, (const xmlChar *)"pids"))) {
+        /*if ((!xmlStrcmp(cur_node->name, (const xmlChar *)"pids"))) {
             for (sub_node = cur_node->children; 
                  sub_node; 
                  sub_node = sub_node->next) {
@@ -149,7 +141,7 @@ kndDataReader_read_config(struct kndDataReader *self,
                                        &curr_size);
                 if (err) return err;
             }
-        }
+            } */
 
 
         if ((!xmlStrcmp(cur_node->name, (const xmlChar *)"devices"))) {
@@ -312,12 +304,12 @@ kndDataReader_get_user(struct kndDataReader *self, const char *spec)
         knd_log("\n   .. checking current privileges: %s\n", spec);
 
     /* HACK : space added to diff from "guid" */
-    err = knd_get_attr(spec, " uid",
+    /*err = knd_get_attr(spec, " uid",
                        buf, &buf_size);
     if (err) {
         knd_log("-- no UID provided :(\n");
         return knd_FAIL;
-    }
+        }*/
     
     /*if (!strcmp(buf, "000")) {
         user = self->admin;
@@ -413,13 +405,14 @@ kndDataReader_reply(struct kndDataReader *self,
 
     data->tid_size = KND_TID_SIZE + 1;
 
-    err = knd_get_attr(data->spec, "tid",
+    /*err = knd_get_attr(data->spec, "tid",
                        data->tid, &data->tid_size);
     if (err) {
         knd_log("-- no TID provided :(\n");
         return knd_FAIL;
     }
-
+    */
+    
     if (status) {                   
         err = self->spec_out->write(self->spec_out, "<spec action=\"report\"", strlen("<spec action=\"report\""));
         if (err) goto final;
@@ -937,9 +930,7 @@ main(int const argc,
         return -1;
     }
 
-    if (reader->is_daemon)
-        knd_daemonize(reader->pid_filename);
-
+    
     /* add device */
     err = pthread_create(&inbox, 
 			 NULL,

@@ -165,19 +165,6 @@ kndStorage_read_config(struct kndStorage *self,
 			   &self->path, &self->path_size);
     if (err) goto final;
 
-    val = (char*)xmlGetProp(root,  (const xmlChar *)"daemon");
-    if (val) {
-        if (!xmlStrcmp((const xmlChar*)val, (const xmlChar *)"1")) {
-            self->is_daemon = true;
-        }
-        xmlFree(val);
-
-        if (self->is_daemon) {
-            err = knd_copy_xmlattr(root, "pid", 
-                                   &self->pid_filename, &curr_size);
-            if (err) return err;
-        }
-    }
 
 final:
     xmlFreeDoc(doc);

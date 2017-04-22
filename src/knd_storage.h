@@ -17,9 +17,6 @@ struct kndStorage
     char *path;
     size_t path_size;
 
-    bool is_daemon;
-    char *pid_filename;
-
     char *cur_id; /* next obj id */
     char *key_id;
 

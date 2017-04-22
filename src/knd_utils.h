@@ -199,9 +199,6 @@ extern int
 knd_parse_IPV4(char *ip, unsigned long *ip_val);
 
 extern void 
-knd_daemonize(const char *pid_filename);
-
-extern void 
 knd_log(const char *fmt, ...);
 
 extern int obj_id_base[256];

@@ -21,9 +21,6 @@ struct kndDataReader
     char *webpath;
     size_t webpath_size;
 
-    bool is_daemon;
-    char *pid_filename;
-
     char default_repo_name[KND_NAME_SIZE];
     size_t default_repo_name_size;
 

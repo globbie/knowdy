@@ -73,9 +73,6 @@ struct kndDelivery
     
     char *service_address;
 
-    bool is_daemon;
-    char *pid_filename;
-
     struct ooDict *auth_idx;
     struct ooDict *sid_idx;
     struct ooDict *uid_idx;

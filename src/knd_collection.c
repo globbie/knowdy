@@ -375,19 +375,6 @@ kndColl_read_config(struct kndColl *self,
 			   &self->name, &self->name_size);
     if (err) goto final;
 
-    val = (char*)xmlGetProp(root,  (const xmlChar *)"daemon");
-    if (val) {
-        if (!strcmp(val, "1")) {
-            self->is_daemon = true;
-        }
-        xmlFree(val);
-
-        if (self->is_daemon) {
-            err = knd_copy_xmlattr(root, "pid", 
-                                   &self->pid_filename, &curr_size);
-            if (err) return err;
-        }
-    }
 
     for (cur_node = root->children; cur_node; cur_node = cur_node->next) {
         if (cur_node->type != XML_ELEMENT_NODE) continue;

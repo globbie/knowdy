@@ -72,8 +72,6 @@ main(int const argc,
         return -1;
     }
 
-    if (delivery->is_daemon)
-        knd_daemonize(delivery->pid_filename);
 
     delivery->name = "KND DELIVERY SERVICE";
 

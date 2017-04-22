@@ -47,16 +47,9 @@ knd_log(const char *fmt, ...)
     va_list args;
     va_start(args, fmt);
 
-    /* as daemon use syslog */
-    if (getppid() == 1) {
-        openlog("knd", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-        vsyslog(LOG_NOTICE, fmt, args);
-        closelog();
-    }
-    else {
-        vprintf(fmt, args);
-        printf("\n");
-    }
+    vprintf(fmt, args);
+    printf("\n");
+    
     va_end(args);
 }
 
@@ -916,50 +909,6 @@ knd_signal_handler(int sig)
         exit(0);
         break;
     }
-}
-
-extern void 
-knd_daemonize(const char *pid_filename)
-{
-    pid_t pid, sid;
-    FILE *pid_file;
-    int i, err;
-
-    printf("process id: %d\n", getppid());
-
-    if (getppid() == 1) return; /* already a daemon */
-
-    pid = fork();
-    if (pid < 0) exit(1); /* fork error */
-
-    if (pid > 0) exit(0); /* parent exits */
-
-    /* child (daemon) continues */
-    sid = setsid(); /* obtain a new process group */
-
-    /* close all descriptors */
-    for (i = getdtablesize(); i >= 0; --i) close(i);
-    
-    /* handle standard I/O */
-    i = open("/dev/null", O_RDWR); dup(i); dup(i);
-
-    umask(027); /* set newly created file permissions */
-    err = chdir(KND_TMP_DIR); /* change running directory */
-    if (err) exit(1);
-    
-    if (sid < 0)
-        exit(1);
-
-    pid_file = fopen(pid_filename, "w");
-    fprintf(pid_file, "%d", sid);
-    fclose(pid_file);
-    
-    signal(SIGCHLD, SIG_IGN); /* ignore child */
-    signal(SIGTSTP, SIG_IGN); /* ignore tty signals */
-    signal(SIGTTOU, SIG_IGN);
-    signal(SIGTTIN, SIG_IGN);
-    signal(SIGHUP, knd_signal_handler);  /* catch hangup signal */
-    signal(SIGTERM, knd_signal_handler); /* catch kill signal */
 }
 
 

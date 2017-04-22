@@ -185,9 +185,6 @@ main(int           const argc,
         return -1;
     }
 
-    if (coll->is_daemon)
-        knd_daemonize(coll->pid_filename);
-    
     context = zmq_init(1);
 
     coll->context = context;

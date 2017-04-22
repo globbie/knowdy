@@ -319,40 +319,12 @@ kndDataWriter_read_config(struct kndDataWriter *self,
     self->admin->path[self->path_size] = '\0';
     self->admin->path_size = self->path_size;
     
-    val = xmlGetProp(root,  (const xmlChar *)"daemon");
-    if (val) {
-        if (!xmlStrcmp(val, (const xmlChar *)"1")) {
-            self->is_daemon = true;
-        }
-        xmlFree(val);
-        val = NULL;
-    }
+    
 
     for (cur_node = root->children; 
          cur_node; 
          cur_node = cur_node->next) {
         if (cur_node->type != XML_ELEMENT_NODE) continue;
-
-        if ((!xmlStrcmp(cur_node->name, (const xmlChar *)"pids"))) {
-            for (sub_node = cur_node->children; 
-                 sub_node; 
-                 sub_node = sub_node->next) {
-                if (sub_node->type != XML_ELEMENT_NODE) continue;
-
-                if ((xmlStrcmp(sub_node->name, (const xmlChar *)"pid")))
-                    continue;
-
-                val = xmlGetProp(sub_node,  (const xmlChar *)"name");
-                if (!val) continue;
-
-                if (xmlStrcmp(val, (const xmlChar*)"write_pid")) continue;
-
-                err = knd_copy_xmlattr(sub_node, "path", 
-                                       &self->pid_filename, 
-                                       &curr_size);
-                if (err) return err;
-            }
-        }
 
         
 	if ((!xmlStrcmp(cur_node->name, (const xmlChar *)"devices"))) {
@@ -841,11 +813,6 @@ main(int const argc,
         return -1;
     }
 
-    if (writer->is_daemon)
-        knd_daemonize(writer->pid_filename);
-
-    /*err = writer->init(writer);
-      if (err) return err; */
 
     /* add device */
     err = pthread_create(&inbox,

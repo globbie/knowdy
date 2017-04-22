@@ -216,8 +216,6 @@ main(int const argc,
         return -1;
     }
 
-    if (storage->is_daemon)
-        knd_daemonize(storage->pid_filename);
 
     context = zmq_init(1);
     storage->context = context;

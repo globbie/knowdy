@@ -23,9 +23,6 @@ struct kndDataWriter
     char *path;
     size_t path_size;
 
-    bool is_daemon;
-    char *pid_filename;
-
     void *delivery;
     char *delivery_addr;
     size_t delivery_addr_size;

@@ -20,7 +20,6 @@ struct kndColl
     char *path;
     size_t path_size;
 
-    bool is_daemon;
     char *pid_filename;
 
     void *context;
