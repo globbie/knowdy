@@ -2,16 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <zmq.h>
 #include "zhelpers.h"
 
 #include "knd_policy.h"
 #include "knd_data_writer.h"
 #include "knd_data_reader.h"
-#include "knd_dataclass.h"
 #include "knd_attr.h"
-#include "knd_facet.h"
-#include "knd_repo.h"
 #include "knd_refset.h"
 #include "knd_user.h"
 #include "knd_query.h"
@@ -54,7 +50,7 @@ kndRepo_del(struct kndRepo *self)
 }
 
 static int 
-kndRepo_str(struct kndRepo *self)
+kndRepo_str(struct kndRepo *self __attribute__((unused)))
 {
 
     knd_log("REPO");
@@ -67,10 +63,10 @@ static int
 kndRepo_open(struct kndRepo *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //size_t buf_size;
 
     char path[KND_TEMP_BUF_SIZE];
-    size_t path_size;
+    //size_t path_size;
     int err;
     
     sprintf(buf, "%s/repos", self->user->path);
@@ -104,13 +100,13 @@ static int
 kndRepo_add_repo(struct kndRepo *self, struct kndSpecArg *args, size_t num_args)
 {
     char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //size_t buf_size;
 
     char path[KND_TEMP_BUF_SIZE];
-    size_t path_size;
+    //size_t path_size;
 
     struct kndSpecArg *arg;
-    int i, err;
+    int err;
 
     memcpy(self->id, self->last_id, KND_ID_SIZE);
     self->id[KND_ID_SIZE] = '\0';
@@ -121,7 +117,7 @@ kndRepo_add_repo(struct kndRepo *self, struct kndSpecArg *args, size_t num_args)
     self->out = self->user->writer->out;
     self->out->reset(self->out);
 
-    for (i = 0; i < num_args; i++) {
+    for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
         if (!strcmp(arg->name, "n")) {
 
@@ -183,9 +179,8 @@ kndRepo_add_repo(struct kndRepo *self, struct kndSpecArg *args, size_t num_args)
     memcpy(self->last_id, self->id, KND_ID_SIZE);
 
 
-    
     self->open(self);
-    
+
     return knd_OK;
 }
 
@@ -195,13 +190,13 @@ static int
 kndRepo_read_idx(struct kndRepo *self,
                  struct kndRepoCache *cache,
                  const char *idx_name,
-                 size_t idx_name_size)
+                 size_t idx_name_size __attribute__((unused)))
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
     struct kndDataClass *dc;
-    struct kndRefSet *refset;
-    struct kndFacet *f;
+    //struct kndRefSet *refset;
+    //struct kndFacet *f;
     int err;
     
     dc = cache->baseclass;
@@ -360,26 +355,26 @@ kndRepo_read_indices(struct kndRepo *self,
 static int
 kndRepo_select(struct kndRepo *self, struct kndData *data)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
 
     struct kndDataClass *dc;
-    struct kndObject *obj;
+    //struct kndObject *obj;
     struct kndRepoCache *cache;
-    struct kndRefSet *browser;
-    struct kndRefSet *refset;
-    struct ooDict *idx;
+    //struct kndRefSet *browser;
+    //struct kndRefSet *refset;
+    //struct ooDict *idx;
     
-    void *delivery;
-    char *rec = NULL;
-    size_t rec_size;
-    char *header = NULL;
-    size_t header_size;
+    //void *delivery;
+    //char *rec = NULL;
+    //size_t rec_size;
+    //char *header = NULL;
+    //size_t header_size;
 
-    size_t num_objs;
+    //size_t num_objs;
     
-    const char *key = NULL;
-    void *val = NULL;
+    //const char *key = NULL;
+    //void *val = NULL;
 
     int err;
 
@@ -439,11 +434,11 @@ kndRepo_default_select(struct kndRepo *self, struct kndData *data)
     size_t buf_size;
 
     struct kndDataClass *dc;
-    struct kndObject *obj;
+    //struct kndObject *obj;
     struct kndRepoCache *cache;
-    struct kndRefSet *browser;
+    //struct kndRefSet *browser;
     struct kndRefSet *refset;
-    struct ooDict *idx;
+    //struct ooDict *idx;
     
     void *delivery;
     char *rec = NULL;
@@ -614,7 +609,7 @@ kndRepo_read_db_chunk(struct kndRepo *self,
                       struct kndRepoCache *cache,
                       const char *rec,
                       size_t rec_size,
-                      size_t pref_size,
+                      size_t pref_size __attribute__((unused)),
                       const char *obj_id,
                       struct kndObject **result)
 {
@@ -633,7 +628,7 @@ kndRepo_read_db_chunk(struct kndRepo *self,
     const char *s = NULL;
 
     unsigned char *c;
-    int i, err;
+    int err;
 
     memset(dir, 0, dir_size);
     memcpy(dir, rec + (rec_size - dir_size), dir_size);
@@ -1068,7 +1063,7 @@ kndRepo_get_obj(struct kndRepo *self,
     char buf[KND_NAME_SIZE];
     size_t buf_size;
 
-    char idbuf[KND_NAME_SIZE];
+    //char idbuf[KND_NAME_SIZE];
     size_t idbuf_size;
 
     struct kndDataClass *dc = NULL;
@@ -1365,7 +1360,7 @@ kndRepo_update_flatten(struct kndRepo *self, struct kndData *data)
     long span = 0;
     long total = 0;
     struct kndOutput *out;
-    int i, j, err;
+    int err;
 
     knd_log("  .. repo FLATTEN obj in progress..\n");
 
@@ -1435,7 +1430,7 @@ kndRepo_update_flatten(struct kndRepo *self, struct kndData *data)
     if (err) goto final;
 
     
-    for (i = 0; i < span; i++) {
+    for (size_t i = 0; i < span; i++) {
         total = table->totals[i];
         if (i) {
             out->write(out, ",", 1);
@@ -1455,7 +1450,7 @@ kndRepo_update_flatten(struct kndRepo *self, struct kndData *data)
     if (err) goto final;
     
 
-    for (i = 0; i < table->num_rows; i++) {
+    for (size_t i = 0; i < table->num_rows; i++) {
         if (i) {
             out->write(out, ",", 1);
             if (err) goto final;
@@ -1466,7 +1461,7 @@ kndRepo_update_flatten(struct kndRepo *self, struct kndData *data)
         
         row = &table->rows[i];
         
-        for (j = 0; j < row->num_cols; j++) {
+        for (size_t j = 0; j < row->num_cols; j++) {
             cell = &row->cols[j];
 
             if (j) {
@@ -1504,12 +1499,12 @@ kndRepo_update_flatten(struct kndRepo *self, struct kndData *data)
 
 
 static int
-kndRepo_flatten(struct kndRepo *self, struct kndData *data)
+kndRepo_flatten(struct kndRepo *self __attribute__((unused)), struct kndData *data __attribute__((unused)))
 {
-    struct kndDataClass *c = NULL;
-    struct kndRepoCache *cache;
-    struct kndObject *obj = NULL;
-    struct ooDict *idx = NULL;
+    //struct kndDataClass *c = NULL;
+    //struct kndRepoCache *cache;
+    //struct kndObject *obj = NULL;
+    //struct ooDict *idx = NULL;
 
     int err;
 
@@ -1517,7 +1512,6 @@ kndRepo_flatten(struct kndRepo *self, struct kndData *data)
 
     err = knd_OK;
 
- final:
     return err;
 }
 
@@ -1533,8 +1527,8 @@ kndRepo_update_match(struct kndRepo *self, struct kndData *data)
     struct kndRepoCache *cache;
     struct kndObject *obj = NULL;
     struct ooDict *idx = NULL;
-    long span = 0;
-    long total = 0;
+    //long span = 0;
+    //long total = 0;
 
     void *delivery;
 
@@ -1543,8 +1537,8 @@ kndRepo_update_match(struct kndRepo *self, struct kndData *data)
     char *confirm = NULL;
     size_t confirm_size;
 
-    struct kndOutput *out;
-    int i, j, err;
+    //struct kndOutput *out;
+    int err;
 
     knd_log("  .. repo MATCH obj in progress..\n");
 
@@ -1626,16 +1620,15 @@ kndRepo_update_match(struct kndRepo *self, struct kndData *data)
 
 
 static int
-kndRepo_match(struct kndRepo *self, struct kndData *data)
+kndRepo_match(struct kndRepo *self __attribute__((unused)), struct kndData *data __attribute__((unused)))
 {
-    struct kndDataClass *c = NULL;
-    struct kndRepoCache *cache;
-    struct kndObject *obj = NULL;
-    struct ooDict *idx = NULL;
+    //struct kndDataClass *c = NULL;
+    //struct kndRepoCache *cache;
+    //struct kndObject *obj = NULL;
+    //struct ooDict *idx = NULL;
     int err;
 
     knd_log("  .. repo MATCH obj in progress..\n");
-
 
     /*   knd_log("   .. get updates for the CLASS: %s\n", dc->name);
 
@@ -1649,24 +1642,24 @@ kndRepo_match(struct kndRepo *self, struct kndData *data)
             err = s_sendmore(delivery, "/", 1);
         else
             err = s_sendmore(delivery, data->query, data->query_size);
-            
+
         err = s_sendmore(delivery, "None", 4);
         err = s_send(delivery, "None", 4);
 
         header = s_recv(delivery, &header_size);
         rec = s_recv(delivery, &rec_size);
-        
+
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("  UPDATES SPEC: %s\n\n  == Delivery Service header: \"%s\" [rec size:%lu]\n",
                     buf, header, (unsigned long)rec_size);
     */
-    
+
     err = knd_OK;
 
- final:
     return err;
 }
 
+/*
 static int
 kndRepo_save_import_rec(struct kndRepo *self, struct kndData *data)
 {
@@ -1685,7 +1678,7 @@ kndRepo_save_import_rec(struct kndRepo *self, struct kndData *data)
  final:
     return err;
 }
-
+*/
 
 static int
 kndRepo_update_obj(struct kndRepo *self,
@@ -1696,7 +1689,7 @@ kndRepo_update_obj(struct kndRepo *self,
     char buf[KND_NAME_SIZE];
     size_t buf_size;
     
-    struct kndDataClass *dc;
+    //struct kndDataClass *dc;
     struct kndObject *obj;
    
     const char *c;
@@ -1704,7 +1697,7 @@ kndRepo_update_obj(struct kndRepo *self,
     size_t chunk_size = 0;
     
     bool in_body = false;
-    bool in_obj_list = false;
+    //bool in_obj_list = false;
     int err = knd_FAIL;
     
     c = rec;
@@ -1788,7 +1781,7 @@ kndRepo_update_class(struct kndRepo *self,
     size_t buf_size;
     
     struct kndDataClass *dc;
-    struct kndObject *obj;
+    //struct kndObject *obj;
     struct kndRepoCache *cache = NULL;
     const char *c;
     const char *b;
@@ -1888,14 +1881,14 @@ kndRepo_update_class(struct kndRepo *self,
 static int
 kndRepo_update(struct kndRepo *self,
                struct kndData *data,
-               knd_format format)
+               knd_format format __attribute__((unused)))
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //char buf[KND_NAME_SIZE];
+    //size_t buf_size;
     
-    struct kndDataClass *dc;
-    struct kndObject *obj;
-    struct kndRepoCache *cache;
+    //struct kndDataClass *dc;
+    //struct kndObject *obj;
+    //struct kndRepoCache *cache;
     char *c;
     char *b;
     bool in_class_list = false;
@@ -2249,15 +2242,15 @@ kndRepo_export_class_JSON(struct kndRepo *self, struct kndRepoCache *cache)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
-    
+
     struct kndDataClass *dc;
     struct kndOutput *out;
     struct kndObject *obj;
-    
-    int i, err;
+
+    int err;
 
     out = self->out;
-    
+
     dc = cache->baseclass;
 
     err = out->write(out, "{", 1);
@@ -2266,7 +2259,7 @@ kndRepo_export_class_JSON(struct kndRepo *self, struct kndRepoCache *cache)
     buf_size = sprintf(buf, "\"n\":\"%s\"", dc->name);
     err = out->write(out, buf, buf_size);
     if (err) return err;
-    
+
     if (cache->select_result) {
         cache->select_result->out = out;
         cache->select_result->export_depth = 1;
@@ -2276,12 +2269,12 @@ kndRepo_export_class_JSON(struct kndRepo *self, struct kndRepoCache *cache)
 
         /* TODO: define depth elsewhere */
         cache->select_result->export_depth = 1;
-        
+
         err = cache->select_result->export(cache->select_result, KND_FORMAT_JSON, 0);
         if (err) return err;
-            
+
         if (cache->num_matches) {
-            
+
             if (DEBUG_REPO_LEVEL_3) 
                 knd_log("\n\n .. export NUM MATCHES: %lu\n",
                         (unsigned long)cache->num_matches);
@@ -2289,47 +2282,45 @@ kndRepo_export_class_JSON(struct kndRepo *self, struct kndRepoCache *cache)
             err = out->write(out, ",\"objs\":[", strlen(",\"objs\":["));
             if (err) return err;
 
-            for (i = 0; i < cache->num_matches; i++) {
+            for (size_t i = 0; i < cache->num_matches; i++) {
                 obj = cache->matches[i];
                 if (!obj) break;
-                
+
                 obj->out = self->out;
-                
+
                 if (i) {
                     err = out->write(out, ",", 1);
                     if (err) return err;
                 }
-                
+
                 err = obj->export(obj, KND_FORMAT_JSON, 1);
                 if (err) return err;
             }
-            
+
             err = out->write(out, "]", 1);
             if (err) return err;
-            
+
         }
 
-    }
-    else {
+    } else {
         if (cache->browser->num_refs) {
             err = out->write(out, ",\"browser\":", strlen(",\"browser\":"));
             if (err) return err;
 
             cache->browser->out = out;
-                
+
             /* TODO: define depth elsewhere */
             cache->browser->export_depth = 2;
 
             err = cache->browser->export(cache->browser, KND_FORMAT_JSON, 0);
             if (err) return err;
         }
-        
+
     }
 
     err = out->write(out, "}", 1);
     if (err) return err;
 
-    
     /*knd_log("\n  == FINAL OUTPUT: %s\n\n", out->buf);*/
 
     return knd_OK;
@@ -2338,15 +2329,15 @@ kndRepo_export_class_JSON(struct kndRepo *self, struct kndRepoCache *cache)
 static int 
 kndRepo_export_JSON(struct kndRepo *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
     
     struct kndRepoCache *cache;
-    struct kndDataClass *dc;
+    //struct kndDataClass *dc;
     struct kndOutput *out;
-    struct kndObject *obj;
+    //struct kndObject *obj;
     
-    int i, err;
+    int err;
 
     out = self->out;
 
@@ -2397,7 +2388,6 @@ kndRepo_export_JSON(struct kndRepo *self)
     err = out->write(out, "}", 1);
     if (err) return err;
     
- final:
     return err;
 }
 
@@ -2406,14 +2396,14 @@ kndRepo_export_JSON(struct kndRepo *self)
 static int 
 kndRepo_export_class_HTML(struct kndRepo *self, struct kndRepoCache *cache)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
     
     struct kndDataClass *dc;
     struct kndOutput *out;
     struct kndObject *obj;
     
-    int i, err;
+    int err;
 
     out = self->out;
     dc = cache->baseclass;
@@ -2424,23 +2414,23 @@ kndRepo_export_class_HTML(struct kndRepo *self, struct kndRepoCache *cache)
 
         /* TODO: define depth elsewhere */
         cache->select_result->export_depth = 1;
-        
+
         err = cache->select_result->export(cache->select_result, KND_FORMAT_HTML, 0);
         if (err) return err;
-            
+
         if (cache->num_matches) {
             err = out->write(out, "<UL>", strlen("<UL>"));
             if (err) return err;
 
-            for (i = 0; i < cache->num_matches; i++) {
+            for (size_t i = 0; i < cache->num_matches; i++) {
                 obj = cache->matches[i];
                 if (!obj) break;
-                
+
                 obj->out = self->out;
 
                 err = out->write(out, "<LI>", strlen("<LI>"));
                 if (err) return err;
-                
+
                 err = obj->export(obj, KND_FORMAT_HTML, 1);
                 if (err) return err;
 
@@ -2471,7 +2461,7 @@ kndRepo_export_class_HTML(struct kndRepo *self, struct kndRepoCache *cache)
         if (err) return err;
 
         err = self->out->write(self->out, "</script>", strlen("</script>"));
-        
+
     }
     else {
         if (cache->browser->num_refs) {
@@ -2483,10 +2473,10 @@ kndRepo_export_class_HTML(struct kndRepo *self, struct kndRepoCache *cache)
             err = cache->browser->export(cache->browser, KND_FORMAT_HTML, 0);
             if (err) return err;
         }
-        
+
     }
 
-    
+
     return knd_OK;
 }
 
@@ -2494,15 +2484,15 @@ kndRepo_export_class_HTML(struct kndRepo *self, struct kndRepoCache *cache)
 static int 
 kndRepo_export_HTML(struct kndRepo *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
     
     struct kndRepoCache *cache;
-    struct kndDataClass *dc;
+    //struct kndDataClass *dc;
     struct kndOutput *out;
-    struct kndObject *obj;
+    //struct kndObject *obj;
     
-    int i, err;
+    int err;
 
     out = self->out;
     
@@ -2526,15 +2516,14 @@ kndRepo_export_HTML(struct kndRepo *self)
         if (err) return err;
     }
     
- final:
     return err;
 }
 
 static int 
 kndRepo_export_GSL(struct kndRepo *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
     struct kndOutput *out = self->out;
     int err;
 
@@ -2558,7 +2547,6 @@ kndRepo_export_GSL(struct kndRepo *self)
     
     err = out->write(out, "}", 1);
     if (err) return err;
-
 
     err = out->write(out, "}", 1);
     if (err) return err;
@@ -2631,13 +2619,13 @@ kndRepo_get_cache(struct kndRepo *self, struct kndDataClass *c,
     return err;
 }
 
-
+/*
 static int
 kndRepo_get_repo(struct kndRepo *self, const char *uid,
                  struct kndRepo **repo)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size = KND_TEMP_BUF_SIZE;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size = KND_TEMP_BUF_SIZE;
 
     struct kndRepo *curr_repo;
     int err;
@@ -2649,7 +2637,7 @@ kndRepo_get_repo(struct kndRepo *self, const char *uid,
     if (!curr_repo) {
         err = kndRepo_new(&curr_repo);
         if (err) return err;
-        
+
         err = self->repo_idx->set(self->repo_idx, (const char*)uid, (void*)curr_repo);
         if (err) return err;
 
@@ -2658,9 +2646,10 @@ kndRepo_get_repo(struct kndRepo *self, const char *uid,
     }
 
     *repo = curr_repo;
-    
+
     return knd_OK;
 }
+*/
 
 
 static int
@@ -2674,7 +2663,7 @@ kndRepo_get_guid(struct kndRepo *self,
     size_t buf_size;
     struct kndRepoCache *cache;
     struct kndRefSet *refset;
-    const char *guid;
+    //const char *guid;
     int err;
     
     if (DEBUG_REPO_LEVEL_TMP)
@@ -2769,8 +2758,8 @@ kndRepo_export(struct kndRepo *self, knd_format format)
 static int 
 kndRepo_run(struct kndRepo *self, struct kndSpecInstruction *instruct)
 {
-    struct kndSpecArg *arg;
-    int i, err;
+    //struct kndSpecArg *arg;
+    int err;
     
     if (DEBUG_REPO_LEVEL_2)
         knd_log(".. REPO task to run: %s",
@@ -2793,11 +2782,9 @@ kndRepo_read_state(struct kndRepo *self, char *rec, size_t *total_size)
     char *b, *c;
     size_t buf_size;
     
-    bool in_field = true;
+    //bool in_field = true;
     bool in_val = false;
     bool in_last_id = false;
-    
-    int err;
     
     c = rec;
     b = rec;
@@ -2901,7 +2888,7 @@ kndRepo_new(struct kndRepo **repo)
 {
     struct kndRepo *self;
     int err = knd_OK;
-    
+
     self = malloc(sizeof(struct kndRepo));
     if (!self) return knd_NOMEM;
 
@@ -2920,10 +2907,4 @@ kndRepo_new(struct kndRepo **repo)
     *repo = self;
 
     return knd_OK;
-
- error:
-
-    kndRepo_del(self);
-
-    return err;
 }
