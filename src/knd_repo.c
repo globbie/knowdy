@@ -381,11 +381,12 @@ kndRepo_select(struct kndRepo *self, struct kndData *data)
     self->curr_class = NULL;
     
     /* check class */
-    data->classname_size = KND_NAME_SIZE;
+    /*data->classname_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "class",
                        data->classname, &data->classname_size);
     if (err)
         return kndRepo_default_select(self, data);
+    */
     
     /* check classname */
     dc = (struct kndDataClass*)self->user->class_idx->get(self->user->class_idx,
@@ -633,7 +634,7 @@ kndRepo_read_db_chunk(struct kndRepo *self,
     memset(dir, 0, dir_size);
     memcpy(dir, rec + (rec_size - dir_size), dir_size);
 
-    numval = obj_id_base[*obj_id];
+    numval = obj_id_base[(size_t)*obj_id];
 
     if (DEBUG_REPO_LEVEL_3)
         knd_log(".. ID char: \"%c\" NUM VAL %d\n", (*obj_id), numval);
@@ -896,14 +897,16 @@ kndRepo_update_select(struct kndRepo *self, struct kndData *data)
     struct kndDataClass *dc = NULL;
     struct kndRepoCache *cache;
 
-    int err;
+    int err = knd_FAIL;
 
     knd_log("  .. repo SELECT in progress: %s\n", data->spec);
     
     /* select specific class */
-    data->classname_size = KND_NAME_SIZE;
+    /*data->classname_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "class",
                        data->classname, &data->classname_size);
+    */
+
     if (!err) {
         dc = self->user->class_idx->get(self->user->class_idx,
                                         (const char*)data->classname);
@@ -921,9 +924,10 @@ kndRepo_update_select(struct kndRepo *self, struct kndData *data)
     }
     
     /* set language */
-    self->lang_code_size = KND_NAME_SIZE;
+    /*self->lang_code_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "lang",
                        self->lang_code, &self->lang_code_size);
+    */
     if (err)
         self->lang_code_size = 0;
 
@@ -960,20 +964,22 @@ kndRepo_update_get_obj(struct kndRepo *self, struct kndData *data)
     if (DEBUG_REPO_LEVEL_3)
         knd_log("  .. repo GET obj in progress..\n");
 
-    data->name_size = KND_NAME_SIZE;
+    /*data->name_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "name",
                        data->name, &data->name_size);
     if (err) {
         knd_log("  -- no name provided :(\n");
         return knd_FAIL;
     }
+    */
     
     /* check class */
-    data->classname_size = KND_NAME_SIZE;
+    /*data->classname_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "class",
                        data->classname, &data->classname_size);
     if (err) return err;
-
+    */
+    
     /* check classname */
     idx = self->user->writer->dc->class_idx;
     if (!idx) return knd_FAIL;
@@ -990,12 +996,13 @@ kndRepo_update_get_obj(struct kndRepo *self, struct kndData *data)
     if (err) goto final;
 
     /* set language */
-    self->lang_code_size = KND_NAME_SIZE;
+    /*self->lang_code_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "lang",
                        self->lang_code, &self->lang_code_size);
     if (err)
         self->lang_code_size = 0;
-
+    */
+    
     /* get obj by name */
     obj = (struct kndObject*)cache->obj_idx->get(cache->obj_idx,
                                                  (const char*)data->name);
@@ -1060,9 +1067,10 @@ static int
 kndRepo_get_obj(struct kndRepo *self,
                 struct kndData *data)
 {
-    char buf[KND_NAME_SIZE];
+    /*char buf[KND_NAME_SIZE];
     size_t buf_size;
-
+    */
+    
     //char idbuf[KND_NAME_SIZE];
     size_t idbuf_size;
 
@@ -1072,13 +1080,13 @@ kndRepo_get_obj(struct kndRepo *self,
     struct ooDict *idx = NULL;
     long numval = 0;
     size_t curr_depth;
-    int err;
+    int err = knd_FAIL;
 
     if (DEBUG_REPO_LEVEL_2)
         knd_log("  .. repo GET in progress..\n");
 
     /* check class */
-    data->classname_size = KND_NAME_SIZE;
+    /*data->classname_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "class",
                        data->classname, &data->classname_size);
     if (err) {
@@ -1086,6 +1094,7 @@ kndRepo_get_obj(struct kndRepo *self,
             knd_log("  -- no class name specified :(\n");
         return err;
     }
+    */
     
     /* check classname */
     idx = self->user->reader->dc->class_idx;
@@ -1111,7 +1120,7 @@ kndRepo_get_obj(struct kndRepo *self,
         return err;
     }
     
-    data->name_size = KND_NAME_SIZE;
+    /*data->name_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "name",
                        data->name, &data->name_size);
     if (err) {
@@ -1123,6 +1132,7 @@ kndRepo_get_obj(struct kndRepo *self,
     idbuf_size = KND_ID_SIZE + 1;
     err = knd_get_attr(data->spec, "guid",
                        data->guid, &idbuf_size);
+    */
     if (err) {
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("  -- no obj GUID provided..   trying to resolve by name..\n");
@@ -1139,14 +1149,15 @@ kndRepo_get_obj(struct kndRepo *self,
     }
 
     /* set language */
-    self->lang_code_size = KND_NAME_SIZE;
+    /*self->lang_code_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "lang",
                        self->lang_code, &self->lang_code_size);
     if (err)
         self->lang_code_size = 0;
-
+    */
+    
     /* output format specified? */
-    buf_size = KND_NAME_SIZE;
+    /*buf_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "format",
                        buf, &buf_size);
     if (!err) {
@@ -1155,9 +1166,10 @@ kndRepo_get_obj(struct kndRepo *self,
         else if (!strcmp(buf, "JS"))
             data->format = KND_FORMAT_JS;
     }
+    */
     
     /* set nesting depth */
-    curr_depth = KND_DEFAULT_OBJ_DEPTH;
+    /*curr_depth = KND_DEFAULT_OBJ_DEPTH;
     buf_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "depth",
                        buf, &buf_size);
@@ -1168,7 +1180,8 @@ kndRepo_get_obj(struct kndRepo *self,
                 curr_depth = numval;
         }
     }
-
+    */
+    
     /* get obj by name */
     if (DEBUG_REPO_LEVEL_2)
         knd_log("   ?? get browser state obj \"%s\" (depth: %lu)\n",
@@ -1364,20 +1377,22 @@ kndRepo_update_flatten(struct kndRepo *self, struct kndData *data)
 
     knd_log("  .. repo FLATTEN obj in progress..\n");
 
-    data->name_size = KND_NAME_SIZE;
+    /*data->name_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "name",
                        data->name, &data->name_size);
     if (err) {
         knd_log("  -- no name provided :(\n");
         return knd_FAIL;
     }
+    */
     
     /* check class */
-    data->classname_size = KND_NAME_SIZE;
+    /*data->classname_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "class",
                        data->classname, &data->classname_size);
     if (err) return err;
-
+    */
+    
     /* check classname */
     idx = self->user->writer->dc->class_idx;
     if (!idx) return knd_FAIL;
@@ -1394,12 +1409,13 @@ kndRepo_update_flatten(struct kndRepo *self, struct kndData *data)
     if (err) goto final;
 
     /* set language */
-    self->lang_code_size = KND_NAME_SIZE;
+    /*self->lang_code_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "lang",
                        self->lang_code, &self->lang_code_size);
     if (err)
         self->lang_code_size = 0;
-
+    */
+    
     /* get obj by name */
     obj = (struct kndObject*)cache->obj_idx->get(cache->obj_idx,
                                                  (const char*)data->name);
@@ -1543,11 +1559,12 @@ kndRepo_update_match(struct kndRepo *self, struct kndData *data)
     knd_log("  .. repo MATCH obj in progress..\n");
 
     /* check class */
-    data->classname_size = KND_NAME_SIZE;
+    /*data->classname_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "class",
                        data->classname, &data->classname_size);
     if (err) return err;
-
+    */
+    
     /* check classname */
     idx = self->user->writer->dc->class_idx;
     if (!idx) return knd_FAIL;
@@ -1564,12 +1581,13 @@ kndRepo_update_match(struct kndRepo *self, struct kndData *data)
     if (err) goto final;
 
     /* set language */
-    self->lang_code_size = KND_NAME_SIZE;
+    /*self->lang_code_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "lang",
                        self->lang_code, &self->lang_code_size);
     if (err)
         self->lang_code_size = 0;
 
+    */
     
     knd_log("\n   .. MATCH OBJ of class \"%s\": \"%s\"..\n\n",
             c->name, data->body);
@@ -1967,22 +1985,24 @@ kndRepo_import(struct kndRepo *self,
                 self->path);
 
     /* batch mode? */
-    err = knd_get_attr(data->spec,
+    /*err = knd_get_attr(data->spec,
                        "bm",
                        buf, &buf_size);
     if (!err) self->batch_mode = true;
-
+    */
+    
     /* file attached? */
-    data->filename_size = KND_NAME_SIZE;
+    /*data->filename_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec,
                        "file",
                        data->filename, &data->filename_size);
     if (err) {
         data->filename_size = 0;
     }
-
+    */
+    
     /* check class */
-    data->classname_size = KND_NAME_SIZE;
+    /*data->classname_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec,
                        "class",
                        data->classname, &data->classname_size);
@@ -1992,7 +2012,7 @@ kndRepo_import(struct kndRepo *self,
         return err;
     }
 
-
+    */
 
     
     /* check classname */

@@ -97,9 +97,10 @@ kndUser_adduser(struct kndUser *self, struct kndData *data)
     
     self->name_size = KND_NAME_SIZE;
     
-    err = knd_get_attr(data->spec, "name",
+    /*err = knd_get_attr(data->spec, "name",
                        self->name, &self->name_size);
     if (err) goto final;
+    */
     
     sprintf(buf, "%s/users", self->writer->path);
     err = knd_make_id_path(self->path, buf, uid, NULL);
@@ -223,9 +224,9 @@ kndUser_update(struct kndUser *self, struct kndData *data)
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
     knd_format format = KND_FORMAT_GSL;
-    int err;
+    int err = knd_FAIL;
 
-    buf_size = KND_TEMP_BUF_SIZE;
+    /*buf_size = KND_TEMP_BUF_SIZE;
     err = knd_get_attr(data->spec, "tid",
                        data->tid, &buf_size);
     if (err) {
@@ -236,10 +237,10 @@ kndUser_update(struct kndUser *self, struct kndData *data)
     buf_size = KND_TEMP_BUF_SIZE;
     err = knd_get_attr(data->spec, "repo",
                        buf, &buf_size);
-    if (!err) {
-        /* check valid repo */
+    */
 
-        
+    if (!err) {
+        /* check if repo is a valid one */
     } else {
         if (DEBUG_USER_LEVEL_2)
             knd_log(" .. no repo specified: assuming home directory\n");
@@ -251,13 +252,13 @@ kndUser_update(struct kndUser *self, struct kndData *data)
             self->id, data->tid);
 
     /* specific format? */
-    buf_size = KND_TEMP_BUF_SIZE;
+    /*buf_size = KND_TEMP_BUF_SIZE;
     err = knd_get_attr(data->spec, "format",
                        buf, &buf_size);
     if (!err) {
         knd_log(" .. format specified: %s\n", buf);
     }
-
+    */
 
     /* actual import */
     err = self->repo->update(self->repo, data, format);
@@ -282,9 +283,9 @@ kndUser_import(struct kndUser *self, struct kndData *data)
     knd_format format = KND_FORMAT_GSL;
     struct kndRepo *repo = NULL;
     struct kndRepoAccess *acc = NULL;
-    int err;
+    int err = knd_FAIL;
 
-    buf_size = KND_TEMP_BUF_SIZE;
+    /*buf_size = KND_TEMP_BUF_SIZE;
     err = knd_get_attr(data->spec, "tid",
                        data->tid, &buf_size);
     if (err) return err;
@@ -292,6 +293,7 @@ kndUser_import(struct kndUser *self, struct kndData *data)
     buf_size = KND_TEMP_BUF_SIZE;
     err = knd_get_attr(data->spec, "repo",
                        buf, &buf_size);
+    */
     if (!err) {
         err = self->writer->get_repo(self->writer,
                                      (const char*)buf, buf_size, &repo);
@@ -331,12 +333,13 @@ kndUser_import(struct kndUser *self, struct kndData *data)
             self->id, data->tid);
 
     /* specific format? */
-    buf_size = KND_TEMP_BUF_SIZE;
+    /*buf_size = KND_TEMP_BUF_SIZE;
     err = knd_get_attr(data->spec, "format",
                        buf, &buf_size);
     if (!err) {
         knd_log(" .. format specified: %s\n", buf);
     }
+    */
     
     /* actual import */
     err = repo->import(repo, data, format);
@@ -356,7 +359,7 @@ kndUser_update_select(struct kndUser *self, struct kndData *data)
     size_t buf_size;
     int err;
     
-    buf_size = KND_TID_SIZE + 1;
+    /*buf_size = KND_TID_SIZE + 1;
     err = knd_get_attr(data->spec, "tid",
                        data->tid, &buf_size);
     if (err) goto final;
@@ -368,6 +371,7 @@ kndUser_update_select(struct kndUser *self, struct kndData *data)
         if (DEBUG_USER_LEVEL_TMP)
             knd_log("-- no repo specified: assuming the home directory of user \"%s\"\n", self->id);
     }
+    */
     
     /* TODO: check repo policy */
 
@@ -396,7 +400,7 @@ kndUser_select(struct kndUser *self, struct kndData *data)
     struct kndRepoAccess *acc = NULL;
 
     //void *update_inbox = self->reader->update;
-    int err;
+    int err = knd_FAIL;
 
     /*    sprintf(buf, "%s/users", self->reader->path);
     err = knd_make_id_path(self->path, buf, uid, NULL);
@@ -411,7 +415,7 @@ kndUser_select(struct kndUser *self, struct kndData *data)
     s_send(update_inbox, empty_msg, empty_msg_size);
     */
     
-    buf_size = KND_TID_SIZE + 1;
+    /*buf_size = KND_TID_SIZE + 1;
     err = knd_get_attr(data->spec, "tid",
                        data->tid, &buf_size);
     if (err) goto final;
@@ -426,6 +430,7 @@ kndUser_select(struct kndUser *self, struct kndData *data)
     buf_size = KND_TEMP_BUF_SIZE;
     err = knd_get_attr(data->spec, "repo",
                        buf, &buf_size);
+    */
     if (!err) {
 
         if (!strncmp(buf, "pub", strlen("pub"))) {
@@ -483,13 +488,14 @@ kndUser_select(struct kndUser *self, struct kndData *data)
     */
 
     /* output format specified? */
-    buf_size = KND_NAME_SIZE;
+    /*buf_size = KND_NAME_SIZE;
     err = knd_get_attr(data->spec, "format",
                        buf, &buf_size);
     if (!err) {
         if (!strcmp(buf, "HTML"))
             data->format = KND_FORMAT_HTML;
     }
+    */
     
     out = self->reader->out;
     out->reset(out);
@@ -562,7 +568,7 @@ kndUser_get_obj(struct kndUser *self, struct kndData *data)
     //size_t empty_msg_size = strlen(empty_msg);
 
     //void *update_inbox = self->reader->update;
-    int err;
+    int err = knd_FAIL;
 
     /*knd_log("  .. user get obj...\n");*/
     
@@ -574,7 +580,7 @@ kndUser_get_obj(struct kndUser *self, struct kndData *data)
     s_send(update_inbox, empty_msg, empty_msg_size);
     */
     
-    buf_size = KND_TID_SIZE + 1;
+    /*buf_size = KND_TID_SIZE + 1;
     err = knd_get_attr(data->spec, "tid",
                        data->tid, &buf_size);
     if (err) goto final;
@@ -582,6 +588,8 @@ kndUser_get_obj(struct kndUser *self, struct kndData *data)
     buf_size = KND_ID_SIZE + 1;
     err = knd_get_attr(data->spec, "repo",
                        buf, &buf_size);
+    */
+
     if (!err) {
 
         if (!strncmp(buf, "pub", strlen("pub"))) {
@@ -652,7 +660,7 @@ kndUser_update_get_obj(struct kndUser *self, struct kndData *data)
 
     knd_log("  .. UPDATE get obj...\n");
     
-    buf_size = KND_TID_SIZE + 1;
+    /*buf_size = KND_TID_SIZE + 1;
     err = knd_get_attr(data->spec, "tid",
                        data->tid, &buf_size);
     if (err) goto final;
@@ -665,7 +673,7 @@ kndUser_update_get_obj(struct kndUser *self, struct kndData *data)
 
         knd_log(" .. no repo specified: assuming home directory\n");
     }
-
+    */
     /* TODO: check repo policy */
     err = self->repo->update_get_obj(self->repo, data);
     
@@ -695,7 +703,7 @@ kndUser_flatten(struct kndUser *self, struct kndData *data)
     s_sendmore(update_inbox, empty_msg, empty_msg_size);
     s_send(update_inbox, empty_msg, empty_msg_size);
 
-    buf_size = KND_TID_SIZE + 1;
+    /*buf_size = KND_TID_SIZE + 1;
     err = knd_get_attr(data->spec, "tid",
                        data->tid, &buf_size);
     if (err) goto final;
@@ -706,7 +714,8 @@ kndUser_flatten(struct kndUser *self, struct kndData *data)
     if (err) {
         knd_log(" .. no repo specified: assuming home directory\n");
     }
-        
+    */
+    
     /* get the frozen state of flattened obj */
 
     /* delivery service will decide
@@ -728,7 +737,7 @@ kndUser_update_flatten(struct kndUser *self, struct kndData *data)
 
     knd_log("  .. UPDATE flatten obj...\n");
     
-    buf_size = KND_TID_SIZE + 1;
+    /*buf_size = KND_TID_SIZE + 1;
     err = knd_get_attr(data->spec, "tid",
                        data->tid, &buf_size);
     if (err) goto final;
@@ -739,7 +748,8 @@ kndUser_update_flatten(struct kndUser *self, struct kndData *data)
     if (err) {
         knd_log(" .. no repo specified: assuming home directory\n");
     }
-
+    */
+    
     /* TODO: check repo policy */
 
     err = self->repo->update_flatten(self->repo, data);
@@ -771,7 +781,7 @@ kndUser_match(struct kndUser *self, struct kndData *data)
     s_sendmore(update_inbox, empty_msg, empty_msg_size);
     s_send(update_inbox, empty_msg, empty_msg_size);
 
-    buf_size = KND_TID_SIZE + 1;
+    /*buf_size = KND_TID_SIZE + 1;
     err = knd_get_attr(data->spec, "tid",
                        data->tid, &buf_size);
     if (err) goto final;
@@ -782,7 +792,8 @@ kndUser_match(struct kndUser *self, struct kndData *data)
     if (err) {
         knd_log(" .. no repo specified: assuming home directory\n");
     }
-
+    */
+    
     /* get the frozen state of matched obj */
 
     sleep(0); // fixme! was sleep(0.1). why sleep?
@@ -806,7 +817,7 @@ kndUser_update_match(struct kndUser *self, struct kndData *data)
     knd_log("  .. UPDATE match obj...\n");
 
     
-    buf_size = KND_TID_SIZE + 1;
+    /*buf_size = KND_TID_SIZE + 1;
     err = knd_get_attr(data->spec, "tid",
                        data->tid, &buf_size);
     if (err) goto final;
@@ -817,7 +828,8 @@ kndUser_update_match(struct kndUser *self, struct kndData *data)
     if (err) {
         knd_log(" .. no repo specified: assuming home directory\n");
     }
-
+    */
+    
     /* TODO: check repo policy */
 
     err = self->repo->update_match(self->repo, data);

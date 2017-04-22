@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
-#include <signal.h>
 #include <sys/stat.h>
 #include <string.h>
 #include <strings.h>
@@ -833,45 +832,6 @@ knd_read_name(char *output,
     return knd_OK;
 }
 
-/* straitforward extraction of XML attrs */
-extern int
-knd_get_attr(const char *text,
-	     const char *attr,
-	     char *value,
-	     size_t *val_size)
-{
-    const char *begin;
-    const char *end;
-    size_t attr_size = 0;
-
-    begin = strstr(text, attr);
-    if (!begin) return knd_FAIL;
-    
-    begin = index(begin, '\"');
-    if (!begin) return knd_FAIL;
-
-    begin++;
-    
-    end = index(begin, '\"');
-    if (!end) return knd_FAIL;
-
-    attr_size = end - begin;
-    if (!attr_size) return knd_FAIL;
-
-    /*knd_log("ATTR SIZE: %lu BUF: %lu\n",
-            (unsigned long)attr_size,
-            (unsigned long)(*val_size)); */
-    
-    if (attr_size >= (*val_size)) return knd_FAIL;
-
-    memcpy(value, begin, attr_size);
-
-    value[attr_size] = '\0';
-
-    *val_size = attr_size;
-
-    return knd_OK;
-}
 
 extern int 
 knd_remove_nonprintables(char *data)
@@ -891,24 +851,6 @@ knd_remove_nonprintables(char *data)
     }
 
     return knd_OK;
-}
-
-
-
-static void 
-knd_signal_handler(int sig)
-{
-    knd_log("signal caught: %d\n", sig);
-    
-    switch(sig) {
-    case SIGHUP:
-        /*log_message(LOG_FILE,"hangup signal catched");*/
-        break;
-    case SIGTERM:
-        /*log_message(LOG_FILE,"terminate signal catched");*/
-        exit(0);
-        break;
-    }
 }
 
 
