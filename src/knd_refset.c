@@ -89,6 +89,7 @@ knd_compare_refset_by_size_ascend(const void *a,
     return -1;
 }
 
+/*
 static int 
 knd_compare_refset_by_size_descend(const void *a,
                                    const void *b)
@@ -104,6 +105,7 @@ knd_compare_refset_by_size_descend(const void *a,
 
     return -1;
 }
+*/
 
 static void
 kndRefSet_del(struct kndRefSet *self)
@@ -160,7 +162,7 @@ kndRefSet_str(struct kndRefSet *self, size_t depth, size_t max_depth)
     struct kndTrans *trn;
 
     char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //size_t buf_size;
     
     struct kndTermIdx *idx, *term_idx;
     size_t i, j, ri, offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
@@ -266,7 +268,7 @@ kndRefSet_export_JSON(struct kndRefSet *self,
     struct kndFacet *f;
     struct kndObjRef *ref;
     size_t curr_batch_size = 0;
-    int i, err;
+    int err;
     
     if (DEBUG_REFSET_LEVEL_3)
         knd_log("  .. jsonize refset \"%s\" depth: %lu of %lu..\n", self->name,
@@ -308,7 +310,7 @@ kndRefSet_export_JSON(struct kndRefSet *self,
         if (err) return err;
 
 
-        for (i = 0; i < self->inbox_size; i++) {
+        for (size_t i = 0; i < self->inbox_size; i++) {
             ref = self->inbox[i];
             if (i) {
                 err = out->write(out,  ",", 1);
@@ -352,7 +354,7 @@ kndRefSet_export_JSON(struct kndRefSet *self,
                           ",\"facets\":[", strlen(",\"facets\":["));
         if (err) return err;
 
-        for (i = 0; i < self->num_facets; i++) {
+        for (size_t i = 0; i < self->num_facets; i++) {
             f = self->facets[i];
 
             if (i) {
@@ -389,15 +391,15 @@ static int
 kndRefSet_export_HTML(struct kndRefSet *self,
                       size_t depth)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
 
     struct kndOutput *out = self->out;
 
     struct kndFacet *f;
     struct kndObjRef *ref;
     size_t curr_batch_size = 0;
-    int i, err;
+    int err;
 
     
     if (DEBUG_REFSET_LEVEL_TMP)
@@ -437,7 +439,7 @@ kndRefSet_export_HTML(struct kndRefSet *self,
         if (err) return err;
 
 
-        for (i = 0; i < self->inbox_size; i++) {
+        for (size_t i = 0; i < self->inbox_size; i++) {
             ref = self->inbox[i];
 
             err = out->write(out, "<LI>", strlen("<LI>"));
@@ -479,7 +481,7 @@ kndRefSet_export_HTML(struct kndRefSet *self,
                           "<UL>", strlen("<UL>"));
         if (err) return err;
 
-        for (i = 0; i < self->num_facets; i++) {
+        for (size_t i = 0; i < self->num_facets; i++) {
             f = self->facets[i];
 
             err = out->write(out, 
@@ -538,7 +540,7 @@ kndRefSet_export(struct kndRefSet *self,
     return knd_OK;
 }
 
-
+/*
 static int
 kndRefSet_check_refset_name(struct kndRefSet *self,
                              const char        *name,
@@ -546,13 +548,13 @@ kndRefSet_check_refset_name(struct kndRefSet *self,
 {
     const char *c;
     
-    /* no more sorting elems: stay in the same refset */
+    // no more sorting elems: stay in the same refset
     if (!name_size)
         return knd_FAIL;
 
     c = name;
     while (*c) {
-        /* filter out special symbols */
+        // filter out special symbols
         switch (*c) {
         case '&':
         case ' ':
@@ -574,8 +576,7 @@ kndRefSet_check_refset_name(struct kndRefSet *self,
 
     return knd_OK;
 }
-
-
+*/
 
 static int
 kndRefSet_lookup_name(struct kndRefSet *self,
@@ -595,8 +596,8 @@ kndRefSet_lookup_name(struct kndRefSet *self,
     struct kndTermIdx *idx, *term_idx;
     size_t i, j, ri;
 
-    char *b;
-    char *c;
+    //char *b;
+    //char *c;
     
     const char *tail = NULL;
     size_t tail_size = 0;
@@ -605,7 +606,7 @@ kndRefSet_lookup_name(struct kndRefSet *self,
     size_t val_size;
     
     size_t UTF_val;
-    long numval = 0;
+    //long numval = 0;
     int err;
 
     if (DEBUG_REFSET_LEVEL_3)
@@ -736,11 +737,11 @@ kndRefSet_lookup_ref(struct kndRefSet     *self,
                      struct kndObjRef     *ref)
 {
     struct kndTermIdx *idx, *term_idx, **idxs;
-    struct kndObjRef *curr_ref;
+    //struct kndObjRef *curr_ref;
     long numval = 0;
     
     int err = knd_NO_MATCH;
-    int i;
+    //int i;
 
     if (DEBUG_REFSET_LEVEL_3)
         knd_log("  .. looking up obj ref \"%s\" in %s ..\n",
@@ -752,6 +753,7 @@ kndRefSet_lookup_ref(struct kndRefSet     *self,
     }
     
     /* first numeric position */
+    // fixme: array subscript is of type char
     numval = obj_id_base[ref->obj_id[0]];
     if (numval == -1) return err;
     
@@ -796,9 +798,9 @@ kndRefSet_contribute(struct kndRefSet   *self,
     struct kndSortAttr *attr;
     struct kndTermIdx *idx, *term_idx;
     size_t numval;
-    int i, j, ri, err;
+    int err;
 
-    for (i = 0; i < self->inbox_size; i++) {
+    for (size_t i = 0; i < self->inbox_size; i++) {
         ref = self->inbox[i];
         if (!ref) continue;
         
@@ -814,16 +816,16 @@ kndRefSet_contribute(struct kndRefSet   *self,
 
     if (!self->idx) return knd_OK;
     
-    for (i = 0; i < KND_ID_BASE; i++) {
+    for (size_t i = 0; i < KND_ID_BASE; i++) {
         idx = self->idx[i];
         if (!idx) continue;
 
-        for (j = 0; j < KND_ID_BASE; j++) {
+        for (size_t j = 0; j < KND_ID_BASE; j++) {
             term_idx = idx->idx[j];
             if (!term_idx) continue;
 
-            for (ri = 0; ri < KND_ID_BASE; ri++) {
-                ref = term_idx->refs[ri];
+            for (size_t k = 0; k < KND_ID_BASE; k++) {
+                ref = term_idx->refs[k];
                 if (!ref) continue;
 
                 err = ref->obj->contribute(ref->obj, self->numval, seqnum);
@@ -832,9 +834,7 @@ kndRefSet_contribute(struct kndRefSet   *self,
         }
     }
 
-    
- final:
-    return err;
+    return knd_OK;
 }
 
 
@@ -846,8 +846,8 @@ kndRefSet_intersect(struct kndRefSet   *self,
     struct kndRefSet *base, *refset;
     struct kndObjRef *ref;
     struct kndTermIdx *idx, *term_idx;
-    struct kndFacet *f;
-    
+    //struct kndFacet *f;
+
     int i, j, ri, err;
 
     if (DEBUG_REFSET_LEVEL_TMP) 
@@ -912,9 +912,9 @@ kndRefSet_get_facet(struct kndRefSet  *self,
                    struct kndFacet  **result)
 {
     struct kndFacet *f;
-    int i, err;
+    int err;
     
-    for (i = 0; i < self->num_facets; i++) {
+    for (size_t i = 0; i < self->num_facets; i++) {
         f = self->facets[i];
 
         if (!strcmp(f->name, facet_name)) {
@@ -958,11 +958,9 @@ kndRefSet_term_idx(struct kndRefSet *self,
 {
     struct kndTermIdx *idx, *term_idx, **idxs;
     struct kndObjRef **refs;
-    struct kndObjRef *r = NULL;
     struct kndTrans **trns;
     size_t num_trns;
     
-    int i, err = knd_FAIL;
     int numval = -1;
 
     if (ref->type == KND_REF_TID) {
@@ -974,7 +972,7 @@ kndRefSet_term_idx(struct kndRefSet *self,
         
         /* more storage needed? */
         if (self->num_trns + 1 >= self->max_trns) {
-            num_trns = self->max_trns + (self->max_inbox_size * KND_INBOX_RESERVE_RATIO);
+            num_trns = self->max_trns + (self->max_inbox_size * KND_INBOX_RESERVE_RATIO); // fixme
             trns = realloc(self->trns, (sizeof(struct kndTrans*)) * num_trns);
             if (!trns) return knd_NOMEM;
 
@@ -1078,12 +1076,11 @@ kndRefSet_term_idx_add_tag(struct kndRefSet *self,
                            struct kndSortTag *tag)
 {
     struct kndTermIdx *idx, *term_idx, **idxs;
-    struct kndObjRef **refs;
+    //struct kndObjRef **refs;
     struct kndObjRef *ref = NULL;
-    struct kndTrans **trns;
-    size_t num_trns;
+    //struct kndTrans **trns;
+    //size_t num_trns;
     
-    int i, err = knd_FAIL;
     int numval = -1;
 
     if (DEBUG_REFSET_LEVEL_TMP) 
@@ -1140,10 +1137,12 @@ kndRefSet_facetize_ref(struct kndRefSet *self,
                        struct kndObjRef *ref)
 {
     struct kndFacet *f;
-    struct kndObjRef *subref;
-    struct kndSortTag *tag;
-    struct kndSortAttr *attr, *orig_attr, *sub_attr;
-    int i, j, err = knd_FAIL;
+    //struct kndObjRef *subref;
+    //struct kndSortTag *tag;
+    struct kndSortAttr *attr;
+    //struct kndSortAttr *orig_attr;
+    //struct kndSortAttr *sub_attr;
+    int err = knd_FAIL;
     
     if (DEBUG_REFSET_LEVEL_3) {
         knd_log("\n    .. passing REF to facets of refset \"%s\"..\n",
@@ -1171,7 +1170,7 @@ kndRefSet_facetize_ref(struct kndRefSet *self,
         return knd_OK;
     }
     
-    for (i = 0; i < ref->sorttag->num_attrs; i++) {
+    for (size_t i = 0; i < ref->sorttag->num_attrs; i++) {
         attr = ref->sorttag->attrs[i];
 
         if (DEBUG_REFSET_LEVEL_2) {
@@ -1217,7 +1216,7 @@ kndRefSet_read_tags(struct kndRefSet *self,
     char namebuf[KND_NAME_SIZE];
     size_t namebuf_size = 0;
 
-    struct kndFacet *f;
+    //struct kndFacet *f;
     
     const char *facet_rec;
     size_t facet_rec_size;
@@ -1233,7 +1232,7 @@ kndRefSet_read_tags(struct kndRefSet *self,
     const char *delim = KND_FIELD_SEPAR;
     char *last = NULL;
     
-    int i, err = knd_OK;
+    int err = knd_OK;
 
     if (DEBUG_REFSET_LEVEL_TMP) {
        knd_log("\n\n   .. Refset \"%s\" parsing IDX rec, input size [%lu]   depth: %lu\n",
@@ -1554,7 +1553,7 @@ kndRefSet_find(struct kndRefSet     *self,
 }
 
 
-
+/*
 static int
 kndRefSet_calc_aggr(struct kndRefSet     *self,
                     struct kndObjRef     *ref)
@@ -1562,9 +1561,7 @@ kndRefSet_calc_aggr(struct kndRefSet     *self,
     struct kndElem *elem;
     int err;
 
-    
     knd_log("   .. checking AGGR elems in obj \"%s\"..\n", ref->obj->name);
-
 
     elem = ref->obj->elems;
 
@@ -1572,26 +1569,24 @@ kndRefSet_calc_aggr(struct kndRefSet     *self,
 
         knd_log("  .. elem \"%s\" to AGGR?\n", elem->name);
 
-
-        
         elem = elem->next;
     }
-    
+
     err = knd_OK;
-    
- final:
+
     return err;
 }
+*/
 
 static int
 kndRefSet_add_ref(struct kndRefSet     *self,
                   struct kndObjRef     *ref)
 {
-    struct kndRefSet *refset = NULL;
-    struct kndFacet *f;
+    //struct kndRefSet *refset = NULL;
+    //struct kndFacet *f;
     struct kndObjRef  *objref;
-    struct kndElemRef *elemref;
-    int i, err;
+    //struct kndElemRef *elemref;
+    int err;
     
     if (self->num_facets) {
         err = kndRefSet_facetize_ref(self, ref);
@@ -1662,7 +1657,7 @@ kndRefSet_add_ref(struct kndRefSet     *self,
         knd_log("   .. Time to create facets...\n\n");
 
 
-    for (i = 0; i < self->inbox_size; i++) {
+    for (size_t i = 0; i < self->inbox_size; i++) {
         objref = self->inbox[i];
         
         err = kndRefSet_facetize_ref(self, objref);
@@ -1674,7 +1669,7 @@ kndRefSet_add_ref(struct kndRefSet     *self,
     }
     
     /* clean up the inbox */
-    for (i = 0; i < self->inbox_size; i++) {
+    for (size_t i = 0; i < self->inbox_size; i++) {
         objref = self->inbox[i];
         if (!objref) continue;
         
@@ -1761,9 +1756,9 @@ kndRefSet_merge_idx(struct kndRefSet *self,
 static int
 kndRefSet_read_term_idx_tags(struct kndRefSet *self,
                              const char       *rec,
-                             size_t            rec_size)
+                             size_t            rec_size __attribute__((unused)))
 {
-    char buf[KND_NAME_SIZE + 1];
+    //char buf[KND_NAME_SIZE + 1];
     size_t buf_size = 0;
 
     char namebuf[KND_NAME_SIZE + 1];
@@ -1992,9 +1987,9 @@ kndRefSet_read_term_idx_tags(struct kndRefSet *self,
 static int
 kndRefSet_read_term_idx(struct kndRefSet *self,
                         const char       *rec,
-                        size_t            rec_size)
+                        size_t            rec_size __attribute__((unused)))
 {
-    char buf[KND_NAME_SIZE + 1];
+    //char buf[KND_NAME_SIZE + 1];
     size_t buf_size = 0;
 
     char namebuf[KND_NAME_SIZE + 1];
@@ -2246,12 +2241,12 @@ kndRefSet_read_inbox(struct kndRefSet *self,
     size_t buf_size = KND_TEMP_BUF_SIZE;
 
     char recbuf[KND_TEMP_BUF_SIZE];
-    size_t recbuf_size = KND_TEMP_BUF_SIZE;
+    //size_t recbuf_size = KND_TEMP_BUF_SIZE;
 
     struct kndObjRef *ref;
     struct kndDataElem *elem;
     struct kndElemRef *elemref;
-    struct kndCodeRef *coderef;
+    //struct kndCodeRef *coderef;
     
     const char *delim = KND_FIELD_SEPAR;
     char *last = NULL;
@@ -2261,9 +2256,9 @@ kndRefSet_read_inbox(struct kndRefSet *self,
     char *n;
     long space_left;
     long numval;
-    size_t curr_size = 0;
+    //size_t curr_size = 0;
     size_t num_refs = 0;
-    int i, err;
+    int err;
 
     if (DEBUG_REFSET_LEVEL_3)
         knd_log("    .. reading Inbox: \"%s\" [%lu]\n",
@@ -2442,10 +2437,10 @@ kndRefSet_read(struct kndRefSet *self,
     char namebuf[KND_NAME_SIZE];
     size_t namebuf_size = 0;
 
-    char recbuf[KND_NAME_SIZE];
-    size_t recbuf_size = 0;
+    //char recbuf[KND_NAME_SIZE];
+    //size_t recbuf_size = 0;
 
-    struct kndObjRef *ref;
+    //struct kndObjRef *ref;
     struct kndFacet *f;
     struct kndRefSet *r;
     
@@ -2462,7 +2457,7 @@ kndRefSet_read(struct kndRefSet *self,
     const char *delim = KND_FIELD_SEPAR;
     char *last = NULL;
     
-    int i, err;
+    int err;
 
     if (DEBUG_REFSET_LEVEL_3) {
        knd_log("\n\n   .. Reading Refset \"%s\" IDX rec, input size [%lu]   depth: %lu\n",
@@ -2504,7 +2499,7 @@ kndRefSet_read(struct kndRefSet *self,
 
     /* parse trailer */
     for (c = strtok_r(buf, delim, &last);
-         c;
+         c; // fixme
          c = strtok_r(NULL, delim, &last)) {
 
         /* find the offset field */
@@ -2542,7 +2537,7 @@ kndRefSet_read(struct kndRefSet *self,
         if (err) return err;
         
         /* merge IDX */
-        for (i = 0; i < f->num_refsets; i++) {
+        for (size_t i = 0; i < f->num_refsets; i++) {
             r = f->refsets[i];
 
             err = kndRefSet_merge_idx(self, r);
@@ -2563,7 +2558,6 @@ kndRefSet_extract_objs(struct kndRefSet *self)
     struct kndObjRef *ref;
     struct kndTermIdx *idx, *term_idx;
     
-    size_t i, j, ri;
     int err;
 
     if (DEBUG_REFSET_LEVEL_3) {
@@ -2571,7 +2565,7 @@ kndRefSet_extract_objs(struct kndRefSet *self)
                 self->name, (unsigned long)self->batch_size);
     }
     
-    for (i = 0; i < self->inbox_size; i++) {
+    for (size_t i = 0; i < self->inbox_size; i++) {
         ref = self->inbox[i];
         
         ref->cache = self->cache;
@@ -2602,16 +2596,16 @@ kndRefSet_extract_objs(struct kndRefSet *self)
     /* terminal IDX */
     if (!self->idx) return knd_OK;
     
-    for (i = 0; i < KND_ID_BASE; i++) {
+    for (size_t i = 0; i < KND_ID_BASE; i++) {
         idx = self->idx[i];
         if (!idx) continue;
 
-        for (j = 0; j < KND_ID_BASE; j++) {
+        for (size_t j = 0; j < KND_ID_BASE; j++) {
             term_idx = idx->idx[j];
             if (!term_idx) continue;
 
-            for (ri = 0; ri < KND_ID_BASE; ri++) {
-                ref = term_idx->refs[ri];
+            for (size_t k = 0; k < KND_ID_BASE; k++) {
+                ref = term_idx->refs[k];
                 if (!ref) continue;
 
                 ref->cache = self->cache;
@@ -2656,8 +2650,8 @@ kndRefSet_export_summaries(struct kndRefSet *self,
     struct kndObject *obj;
     struct kndRefSet *rs;
     
-    size_t curr_size = 0;
-    int i, j, err;
+    //size_t curr_size = 0;
+    int err;
 
     
     if (DEBUG_REFSET_LEVEL_3)
@@ -2665,7 +2659,7 @@ kndRefSet_export_summaries(struct kndRefSet *self,
                 self->name, (unsigned long)depth);
 
     if (self->inbox_size) {
-        for (i = 0; i < self->inbox_size; i++) {
+        for (size_t i = 0; i < self->inbox_size; i++) {
             ref = self->inbox[i];
             
             if (num_items) {
@@ -2689,9 +2683,9 @@ kndRefSet_export_summaries(struct kndRefSet *self,
         return knd_OK;
     }
 
-    for (i = 0; i < self->num_facets; i++) {
+    for (size_t i = 0; i < self->num_facets; i++) {
         f = self->facets[i];
-        for (j = 0; j < f->num_refsets; j++) {
+        for (size_t j = 0; j < f->num_refsets; j++) {
             rs = f->refsets[j];
 
             rs->out = self->out;
@@ -2715,21 +2709,21 @@ kndRefSet_sync_objs(struct kndRefSet *self,
 
     unsigned char  root_dir[KND_ID_BASE * KND_MAX_INT_SIZE];
     size_t root_dir_size = KND_ID_BASE * KND_MAX_INT_SIZE;
-    size_t root_start_pos = 0;
+    //size_t root_start_pos = 0;
     unsigned char *rd;
 
     unsigned char  med_dir[KND_ID_BASE * KND_MAX_INT_SIZE];
     size_t med_dir_size = KND_ID_BASE * KND_MAX_INT_SIZE;
-    size_t med_start_pos = 0;
+    //size_t med_start_pos = 0;
     unsigned char *md;
 
     unsigned char term_dir[KND_ID_BASE * KND_MAX_INT_SIZE];
     size_t term_dir_size = KND_ID_BASE * KND_MAX_INT_SIZE;
 
-    size_t term_start_pos = 0;
+    //size_t term_start_pos = 0;
     unsigned char *td;
 
-    unsigned char numbuf[KND_MAX_INT_SIZE];
+    //unsigned char numbuf[KND_MAX_INT_SIZE];
     
     struct kndTermIdx *idx, *term_idx;
     struct kndObjRef *ref;
@@ -2741,8 +2735,8 @@ kndRefSet_sync_objs(struct kndRefSet *self,
     size_t med_offset = 0;
     size_t rec_offset = 0;
 
-    unsigned char *c;
-    unsigned long numval = 0;
+    //unsigned char *c;
+    //unsigned long numval = 0;
 
     const char *format_code = "GSC";
     size_t format_code_size = strlen(format_code);
@@ -2988,7 +2982,7 @@ static int
 kndRefSet_sync(struct kndRefSet *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size = 0;
+    //size_t buf_size = 0;
 
     char rec_buf[KND_TEMP_BUF_SIZE];
     size_t rec_size = 0;
@@ -2998,13 +2992,13 @@ kndRefSet_sync(struct kndRefSet *self)
     struct kndObjRef *ref;
 
     char *rec;
-    char *c;
+    //char *c;
     size_t curr_size = 0;
     size_t trailer_size, inbox_rec_size;
     size_t trailer_pos;
     size_t start_pos;
 
-    int i, err = knd_OK;
+    int err = knd_OK;
 
     if (DEBUG_REFSET_LEVEL_3)
         knd_log("\nREFSET \"%s\" in sync...\n", self->name);
@@ -3017,7 +3011,7 @@ kndRefSet_sync(struct kndRefSet *self)
     /* linearize the inbox */
     if (self->inbox_size) {
         if (!self->num_facets) {
-            for (i = 0; i < self->inbox_size; i++) {
+            for (size_t i = 0; i < self->inbox_size; i++) {
                 ref = self->inbox[i];
 
                 /*ref->str(ref, 1);*/
@@ -3045,7 +3039,7 @@ kndRefSet_sync(struct kndRefSet *self)
         if (err) return err;
         */
         
-        for (i = 0; i < self->inbox_size; i++) {
+        for (size_t i = 0; i < self->inbox_size; i++) {
             ref = self->inbox[i];
             if (i) {
                 err = out->write(out, 
@@ -3079,7 +3073,7 @@ kndRefSet_sync(struct kndRefSet *self)
     inbox_rec_size = start_pos - out->free_space;
     
     /* linearize facets  */
-    for (i = 0; i < self->num_facets; i++) {
+    for (size_t i = 0; i < self->num_facets; i++) {
         f = self->facets[i];
 
         f->out = out;
@@ -3166,8 +3160,7 @@ extern int
 kndRefSet_new(struct kndRefSet **refset)
 {
     struct kndRefSet *self;
-    int err = knd_OK;
-    
+
     self = malloc(sizeof(struct kndRefSet));
     if (!self) return knd_NOMEM;
 
@@ -3203,10 +3196,4 @@ kndRefSet_new(struct kndRefSet **refset)
     *refset = self;
 
     return knd_OK;
-
- error:
-
-    kndRefSet_del(self);
-
-    return err;
 }

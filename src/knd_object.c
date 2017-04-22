@@ -2,25 +2,18 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-
 #include "knd_dataclass.h"
 #include "knd_attr.h"
 #include "knd_elem.h"
 #include "knd_object.h"
 #include "knd_text.h"
 #include "knd_refset.h"
-#include "knd_facet.h"
-#include "knd_objref.h"
 #include "knd_sorttag.h"
-
-#include "knd_utils.h"
 
 #include "knd_data_writer.h"
 #include "knd_data_reader.h"
 
 #include "knd_output.h"
-#include "knd_repo.h"
 #include "knd_user.h"
 
 #define DEBUG_OBJ_LEVEL_1 0
@@ -50,10 +43,8 @@ knd_compare_obj_by_match_descend(const void *a,
 static int 
 kndObject_del(struct kndObject *self)
 {
-    
     knd_log("  .. free obj: \"%s\".. \n", self->name);
 
-    
     free(self);
 
     return knd_OK;
@@ -63,11 +54,11 @@ static void
 kndObject_str(struct kndObject *self,
               size_t depth)
 {
-    size_t i, offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
+    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
     struct kndElem *elem;
-    struct kndElemState *elem_state;
-    struct kndText *text;
+    //struct kndElemState *elem_state;
+    //struct kndText *text;
     
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
@@ -89,13 +80,12 @@ kndObject_str(struct kndObject *self,
 static int
 kndObject_index_CG(struct kndObject *self)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //char buf[KND_NAME_SIZE];
+    //size_t buf_size;
     struct kndElem *b = NULL;
     struct kndElem *spec = NULL;
     struct kndElem *oper = NULL;
     struct kndElem *elem;
-    int err;
 
     if (DEBUG_OBJ_LEVEL_TMP)
         knd_log("    .. indexing inline CG..\n");
@@ -147,7 +137,6 @@ kndObject_index_inline(struct kndObject *self)
         return kndObject_index_CG(self);
     }
 
-    /* */
     elem = self->elems;
     while (elem) {
         elem->out = self->out;
@@ -176,8 +165,8 @@ kndObject_index_dependent(struct kndObject *self,
     struct kndElem *e = NULL;
     struct kndObject *obj = NULL;
     struct kndRepoCache *cache = NULL;
-    struct kndRefSet *refset;
-    struct kndObjRef *ref;
+    //struct kndRefSet *refset;
+    //struct kndObjRef *ref;
     struct kndSortTag *tag;
     struct kndSortAttr *attr;
    
@@ -294,7 +283,6 @@ kndObject_index_dependent(struct kndObject *self,
         obj = obj->next;
     }
 
-    
     return knd_OK;
 }
 
@@ -302,8 +290,8 @@ kndObject_index_dependent(struct kndObject *self,
 static int
 kndObject_index_dependents(struct kndObject *self)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //char buf[KND_NAME_SIZE];
+    //size_t buf_size;
 
     struct kndDataClass *dc;
     struct kndRepoCache *cache = NULL;
@@ -503,10 +491,10 @@ static int
 kndObject_import_GSL(struct kndObject *self,
                      const char *rec,
                      size_t rec_size,
-                     struct kndData *data)
+                     struct kndData *data __attribute__((unused)))
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //char buf[KND_NAME_SIZE];
+    //size_t buf_size;
     const char *c;
     const char *b;
 
@@ -762,8 +750,7 @@ kndObject_check_dataclass(struct kndObject *self,
                           struct kndDataClass **result_dc)
 {
     struct kndDataClass *dc;
-    int err;
-    
+
     /* check classname */
     dc = (struct kndDataClass*)self->cache->repo->user->class_idx->get\
         (self->cache->repo->user->class_idx,
@@ -784,7 +771,7 @@ kndObject_check_dataclass(struct kndObject *self,
 static int
 kndObject_parse_special_GSC(struct kndObject *self,
                             const char *rec,
-                            size_t rec_size,
+                            size_t rec_size __attribute__((unused)),
                             size_t *total_size)
 {
     char buf[KND_NAME_SIZE];
@@ -799,7 +786,7 @@ kndObject_parse_special_GSC(struct kndObject *self,
     struct kndDataClass *dc = NULL;
     struct kndDataElem  *de = NULL;
     struct kndAttr *attr = NULL;
-    struct kndRepoCache *cache;
+    //struct kndRepoCache *cache;
     
     const char *c;
     const char *b;
@@ -1010,15 +997,15 @@ kndObject_parse_GSC(struct kndObject *self,
                     const char *rec,
                     size_t rec_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //char buf[KND_NAME_SIZE];
+    //size_t buf_size;
 
     char recbuf[KND_TEMP_BUF_SIZE + 1];
-    size_t recbuf_size;
+    //size_t recbuf_size;
 
     const char *c;
     const char *b;
-    const char *s;
+    //const char *s;
     
     struct kndElem *elem = NULL;
     struct kndObject *obj = NULL;
@@ -1419,7 +1406,7 @@ kndObject_import(struct kndObject *self,
     char dbpath[KND_TEMP_BUF_SIZE];
     char buf[KND_TEMP_BUF_SIZE];
 
-    int i, err;
+    int err;
 
     switch(format) {
     case KND_FORMAT_XML:
@@ -1679,7 +1666,7 @@ kndObject_parse_inline(struct kndObject *self,
     const char *c;
     const char *b;
 
-    bool in_name = false;
+    //bool in_name = false;
     size_t chunk_size;
     int err = knd_FAIL;
 
@@ -1794,7 +1781,6 @@ kndObject_export_inline_JSON(struct kndObject *self)
             if (err) return err;
         }
 
-    next_elem:
         elem = elem->next;
     }
 
@@ -1813,13 +1799,13 @@ kndObject_export_JSON(struct kndObject *self,
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
-    char pathbuf[KND_TEMP_BUF_SIZE];
-    size_t pathbuf_size;
+    //char pathbuf[KND_TEMP_BUF_SIZE];
+    //size_t pathbuf_size;
 
-    struct ooDict *idx;
-    struct kndDataClass *dc;
+    //struct ooDict *idx;
+    //struct kndDataClass *dc;
     struct kndElem *elem;
-    struct kndRefSet *refset;
+    //struct kndRefSet *refset;
 
     struct kndRelClass *relc;
     struct kndRepoCache *cache = NULL;
@@ -2107,14 +2093,14 @@ kndObject_export_HTML(struct kndObject *self,
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
-    char pathbuf[KND_TEMP_BUF_SIZE];
-    size_t pathbuf_size;
+    //char pathbuf[KND_TEMP_BUF_SIZE];
+    //size_t pathbuf_size;
 
     struct kndOutput *meta_out;
-    struct ooDict *idx;
-    struct kndDataClass *dc;
+    //struct ooDict *idx;
+    //struct kndDataClass *dc;
     struct kndElem *elem;
-    struct kndRefSet *refset;
+    //struct kndRefSet *refset;
     
     struct kndRelClass *relc;
     struct kndRepoCache *cache = NULL;
@@ -2392,11 +2378,11 @@ static int
 kndObject_export_GSC(struct kndObject *self,
                      bool is_concise)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
 
-    char pathbuf[KND_TEMP_BUF_SIZE];
-    size_t pathbuf_size;
+    //char pathbuf[KND_TEMP_BUF_SIZE];
+    //size_t pathbuf_size;
 
     bool got_elem = false;
     struct kndElem *elem;
@@ -2629,8 +2615,8 @@ kndObject_contribute(struct kndObject *self,
                      size_t orig_pos)
 {
     struct kndMatchPoint *mp;
-    struct kndMatchResult *res;
-    float score;
+    //struct kndMatchResult *res;
+    //float score;
     int idx_pos, err;
 
     if (!self->num_matchpoints) return knd_OK;
@@ -2706,7 +2692,7 @@ kndObject_match(struct kndObject *self,
     struct kndObject *obj;
     struct kndElem *elem;
     struct kndOutput *out;
-    int i, err;
+    int err;
 
     self->cache->num_matches = 0;
     
@@ -2731,7 +2717,7 @@ kndObject_match(struct kndObject *self,
     err = out->write(out, "[", 1);
     if (err) goto final;
 
-    for (i = 0; i < self->cache->num_matches; i++) {
+    for (size_t i = 0; i < self->cache->num_matches; i++) {
         obj = self->cache->matches[i];
 
         buf_size = sprintf(buf, "{%s {score %.2f}}",
@@ -2765,25 +2751,25 @@ kndObject_flatten(struct kndObject *self,
     struct kndObject *obj;
     struct kndFlatCell *cell;
     struct kndFlatRow *row;
-    struct ooDict *idx;
+    struct ooDict *idx = NULL;
     struct kndElem *elem, *e;
     long currspan;
     long timespan;
     long maxspan = 0;
-    long amount;
+    //long amount;
     long estim = 0;
-    int i, err;
+    int err;
 
     /*idx = self->cache->contain_idx;*/
 
     /* TODO */
-    
+    // fixme: idx is NULL
     refset = (struct kndRefSet*)idx->get(idx, (const char*)self->name);
     if (refset) {
 
         knd_log("    ++ DIV with children: %s\n", self->name);
 
-        for (i = 0; i < refset->num_refs; i++) {
+        for (size_t i = 0; i < refset->num_refs; i++) {
             ref = refset->inbox[i];
 
 
@@ -2810,8 +2796,7 @@ kndObject_flatten(struct kndObject *self,
         cell->obj = self;
         cell->estim = estim;
         
-    }
-    else {
+    } else {
 
         knd_log("  == terminal DIV: %s\n", self->name);
         timespan = 0;
@@ -2843,7 +2828,8 @@ kndObject_flatten(struct kndObject *self,
         row = &table->rows[table->num_rows];
         cell = &row->cols[row->num_cols];
 
-        for (i = 0; i < timespan; i++) {
+        // fixme: timespan < 0?
+        for (size_t i = 0; i < timespan; i++) {
             table->totals[i] += estim;
         }
         
@@ -2921,7 +2907,7 @@ kndObject_sync(struct kndObject *self)
     struct kndSortAttr *a;
     /*struct kndSortAttr *default_attr = NULL;*/
     struct kndObjRef *ref;
-    int err, i;
+    int err;
 
     if (DEBUG_OBJ_LEVEL_2) {
         if (!self->root) {
@@ -3000,7 +2986,7 @@ kndObject_sync(struct kndObject *self)
         return knd_OK;
     }
     
-    for (i = 0; i < self->tag->num_attrs; i++) {
+    for (size_t i = 0; i < self->tag->num_attrs; i++) {
         attr = self->tag->attrs[i];
         
         err = kndObject_get_idx(self,
@@ -3096,7 +3082,6 @@ extern int
 kndObject_new(struct kndObject **obj)
 {
     struct kndObject *self;
-    int err;
 
     self = malloc(sizeof(struct kndObject));
     if (!self) return knd_NOMEM;
@@ -3112,10 +3097,4 @@ kndObject_new(struct kndObject **obj)
     *obj = self;
 
     return knd_OK;
-
- error:
-
-    kndObject_del(self);
-
-    return err;
 }
