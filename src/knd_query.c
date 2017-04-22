@@ -10,8 +10,6 @@
 #include "knd_dataclass.h"
 #include "knd_object.h"
 #include "knd_refset.h"
-#include "knd_conc.h"
-#include "knd_facet.h"
 
 #define DEBUG_QUERY_LEVEL_1 0
 #define DEBUG_QUERY_LEVEL_2 0
@@ -28,14 +26,12 @@ void kndQuery_del(struct kndQuery *self)
     free(self);
 }
 
-
 static
 void kndQuery_reset(struct kndQuery *self)
 {
     struct kndQuery *q;
-    int i, err;
 
-    for (i = 0; i < self->num_children; i++) {
+    for (size_t i = 0; i < self->num_children; i++) {
         q = self->children[i];
         q->del(q);
     }
@@ -43,25 +39,23 @@ void kndQuery_reset(struct kndQuery *self)
     self->num_children = 0;
 }
 
-
 static
-void kndQuery_sort_children(struct kndQuery *self)
+void kndQuery_sort_children(struct kndQuery *self __attribute__((unused)))
 {
     knd_log(" .. sorting Query children ..\n");
 }
 
-
-
+/*
 static int
 kndQuery_lookup_coderefs(struct kndQuery *self,
                          struct kndQuery *q,
                          struct kndRefSet **result)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //char buf[KND_NAME_SIZE];
+    //size_t buf_size;
 
     struct kndRefSet *refset = NULL;
-    struct kndConc *conc;
+    struct kndConc *conc = NULL;
     struct kndCodeRef *coderef;
     
     struct kndRefSet *refsets[KND_MAX_CLAUSES];
@@ -79,12 +73,12 @@ kndQuery_lookup_coderefs(struct kndQuery *self,
         if (err) goto final;
 
         knd_log(".. lookup: %s\n", self->out->buf);
-                
-        /* get the conc proposition from IDX */
-        /*conc = self->maze->conc_idx->get(self->maze->conc_idx,
-                                          (const char*)self->out->buf);
-        */
-        
+
+        // fixme
+        // get the conc proposition from IDX
+        // conc = self->maze->conc_idx->get(self->maze->conc_idx,
+        //                                  (const char*)self->out->buf);
+
         if (!conc) {
             refset = NULL;
             err = knd_NO_MATCH;
@@ -120,7 +114,7 @@ kndQuery_lookup_coderefs(struct kndQuery *self,
         return knd_OK;
     }
 
-    /* refsets intersection  */
+    // refsets intersection
     err = kndRefSet_new(&refset);
     if (err) goto final;
             
@@ -137,13 +131,14 @@ kndQuery_lookup_coderefs(struct kndQuery *self,
  final:
     return err;
 }
+*/
 
 
 static int
 kndQuery_execute(struct kndQuery *self)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //char buf[KND_NAME_SIZE];
+    //size_t buf_size;
     
     struct kndQuery *q;
     struct kndRefSet *parent_refset = NULL;
@@ -153,7 +148,7 @@ kndQuery_execute(struct kndQuery *self)
     size_t num_refsets = 0;
     size_t num_objs;
     
-    int i, err;
+    int err;
 
     if (DEBUG_QUERY_LEVEL_TMP)
         knd_log("     .. Execute Query Facet \"%s\"\n",
@@ -173,7 +168,7 @@ kndQuery_execute(struct kndQuery *self)
 
 
     /* get refsets for each query clause */
-    for (i = 0; i < self->num_children; i++) {
+    for (size_t i = 0; i < self->num_children; i++) {
         q = self->children[i];
 
         if (DEBUG_QUERY_LEVEL_TMP)
@@ -282,21 +277,18 @@ kndQuery_execute(struct kndQuery *self)
     /* TODO: assign name from intersected refsets */
 
     /* for i < num_refsets..
-    
+
     memcpy(refset->name, "OO", 2);
     refset->name_size = 2;
     */
-    
 
-    
-    
- extract:
-    
+extract:
+
     num_objs = KND_RESULT_BATCH_SIZE;
-    
+
     if (refset->num_refs < KND_RESULT_BATCH_SIZE)
         num_objs = refset->num_refs;
-    
+
     refset->batch_size = num_objs;
 
     if (!refset->batch_size) {
@@ -306,7 +298,7 @@ kndQuery_execute(struct kndQuery *self)
 
         return knd_FAIL;
     }
-    
+
     if (DEBUG_QUERY_LEVEL_TMP)
         knd_log("     ++ got matching RefSet of class: \"%s\".  TOTAL refs: %lu\n\n",
                 refset->cache->baseclass->name,
@@ -322,22 +314,21 @@ kndQuery_execute(struct kndQuery *self)
                 err = refset->facetize(refset);
                 if (err) return err;
             }
-            
+
         }
-        
+
     }
 
 
     /*refset->str(refset, 1, 7);*/
 
-    
     /* reset selection results */
     self->cache->select_result = NULL;
     memset(self->cache->matches, 0, sizeof(struct kndObject*) * KND_MAX_MATCHES);
     self->cache->num_matches = 0;
 
     refset->cache = self->cache;
-    
+
     err = refset->extract_objs(refset);
     if (err) {
         if (DEBUG_QUERY_LEVEL_TMP)
@@ -345,7 +336,7 @@ kndQuery_execute(struct kndQuery *self)
                     refset->name);
         return err;
     }
-    
+
     self->cache->select_result = refset;
 
     return knd_OK;
@@ -359,13 +350,12 @@ kndQuery_add_child(struct kndQuery *self,
                    size_t           rec_size)
 {
     const char *c, *b;
-    size_t curr_size = 0;
     bool in_clause = false;
     bool in_base = false;
     bool in_spec = false;
 
     struct kndCodeRef *coderef = NULL;
-    int i, err = knd_FAIL;
+    int err = knd_FAIL;
 
     if (DEBUG_QUERY_LEVEL_TMP)
         knd_log("   .. adding query clause [type: %d]: \"%s\" => \"%s\"\n",
@@ -464,7 +454,7 @@ kndQuery_add_child(struct kndQuery *self,
 static int
 kndQuery_parse(struct kndQuery *self,
                const char      *rec,
-               size_t           rec_size)
+               size_t           rec_size __attribute__((unused)))
 {
     char buf[KND_NAME_SIZE + 1];
     size_t buf_size;
@@ -472,13 +462,12 @@ kndQuery_parse(struct kndQuery *self,
     struct kndQuery *q = NULL;
     struct kndQuery *prev_q = NULL;
     
-    const char *c, *b, *s;
-    size_t curr_size = 0;
+    const char *c, *b;
 
     bool in_clause = false;
-    bool in_facet = false;
+    //bool in_facet = false;
     
-    bool in_number = false;
+    //bool in_number = false;
     int err = knd_FAIL;
 
     if (DEBUG_QUERY_LEVEL_TMP)
@@ -639,8 +628,7 @@ extern int
 kndQuery_new(struct kndQuery **q)
 {
     struct kndQuery *self;
-    int err;
-    
+
     self = malloc(sizeof(struct kndQuery));
     if (!self) return knd_NOMEM;
 
@@ -649,14 +637,10 @@ kndQuery_new(struct kndQuery **q)
     /*err = kndOutput_new(&self->out, KND_TEMP_BUF_SIZE);
     if (err) return err;
     */
-    
+
     kndQuery_init(self);
 
     *q = self;
 
     return knd_OK;
-
- error:
-    free(self);
-    return err;
 }

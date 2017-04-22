@@ -49,22 +49,22 @@ ooDict_str(struct ooDict *self)
     struct ooListItem *cur;
     struct ooDictItem *item;
     struct ooList *l;
-    int i;
+    size_t i;
 
-    printf("  dict size: %lu\n",
-           (unsigned long)self->hash->size);
+    printf("  dict size: %lu\n", (unsigned long)self->hash->size);
 
     for (i = 0; i < self->hash->size; i++) {
         l = (struct ooList*)self->hash->data[i];
         if (l->size == 0) continue;
-	cur = l->head;
 
-	while (cur) {
-	    item = (struct ooDictItem*)cur->data;
+        cur = l->head;
 
-	    printf(" %d) KEY: \"%s\"\n", i, item->key);
+        while (cur) {
+            item = (struct ooDictItem*)cur->data;
 
-	    cur = cur->next;
+            printf(" %zu) KEY: \"%s\"\n", i, item->key);
+
+            cur = cur->next;
         }
     }
 

@@ -21,18 +21,13 @@ kndPolicy_del(struct kndPolicy *self)
 }
 
 static int 
-kndPolicy_str(struct kndPolicy *self)
+kndPolicy_str(struct kndPolicy *self __attribute__((unused)))
 {
 
     knd_log("POLICY");
 
     return knd_OK;
 }
-
-
-
-
-
 
 
 extern int 
@@ -52,8 +47,7 @@ extern int
 kndPolicy_new(struct kndPolicy **policy)
 {
     struct kndPolicy *self;
-    int ret = knd_OK;
-    
+
     self = malloc(sizeof(struct kndPolicy));
     if (!self) return knd_NOMEM;
 
@@ -67,10 +61,4 @@ kndPolicy_new(struct kndPolicy **policy)
     *policy = self;
 
     return knd_OK;
-
- error:
-
-    kndPolicy_del(self);
-
-    return ret;
 }

@@ -2,15 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <zmq.h>
 #include "zhelpers.h"
 
 #include "knd_policy.h"
 #include "knd_data_writer.h"
 #include "knd_data_reader.h"
-#include "knd_dataclass.h"
 #include "knd_user.h"
-#include "knd_repo.h"
 #include "knd_output.h"
 
 
@@ -84,7 +81,7 @@ static int
 kndUser_adduser(struct kndUser *self, struct kndData *data)
 {
     char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //size_t buf_size;
     
     char uid[KND_ID_SIZE + 1];
     int err;
@@ -392,13 +389,13 @@ kndUser_select(struct kndUser *self, struct kndData *data)
 
     struct kndOutput *out;
 
-    const char *empty_msg = "None";
-    size_t empty_msg_size = strlen(empty_msg);
+    //const char *empty_msg = "None";
+    //size_t empty_msg_size = strlen(empty_msg);
 
     struct kndRepo *repo = NULL;
     struct kndRepoAccess *acc = NULL;
 
-    void *update_inbox = self->reader->update;
+    //void *update_inbox = self->reader->update;
     int err;
 
     /*    sprintf(buf, "%s/users", self->reader->path);
@@ -561,10 +558,10 @@ kndUser_get_obj(struct kndUser *self, struct kndData *data)
     struct kndRepoAccess *acc = NULL;
     struct kndRepo *repo = NULL;
     
-    const char *empty_msg = "None";
-    size_t empty_msg_size = strlen(empty_msg);
+    //const char *empty_msg = "None";
+    //size_t empty_msg_size = strlen(empty_msg);
 
-    void *update_inbox = self->reader->update;
+    //void *update_inbox = self->reader->update;
     int err;
 
     /*knd_log("  .. user get obj...\n");*/
@@ -785,19 +782,14 @@ kndUser_match(struct kndUser *self, struct kndData *data)
     if (err) {
         knd_log(" .. no repo specified: assuming home directory\n");
     }
-        
 
     /* get the frozen state of matched obj */
 
-
-
-    sleep(0.1);
+    sleep(0); // fixme! was sleep(0.1). why sleep?
 
     err = self->repo->match(self->repo, data);
     if (err) goto final;
 
-    
-    
     err = knd_OK;
 
  final:
@@ -836,7 +828,7 @@ kndUser_update_match(struct kndUser *self, struct kndData *data)
 
 
 static int
-kndUser_read_classes(struct kndUser *self, char *rec, size_t rec_size)
+kndUser_read_classes(struct kndUser *self, char *rec, size_t rec_size __attribute__((unused)))
 {
     struct kndDataClass *dc;
     char *c;
@@ -874,7 +866,7 @@ kndUser_read_classes(struct kndUser *self, char *rec, size_t rec_size)
 
 
 static int
-kndUser_read_browse_classes(struct kndUser *self, char *rec, size_t rec_size)
+kndUser_read_browse_classes(struct kndUser *self, char *rec, size_t rec_size __attribute__((unused)))
 {
     struct kndDataClass *dc;
     char *c;
@@ -910,7 +902,7 @@ kndUser_read_browse_classes(struct kndUser *self, char *rec, size_t rec_size)
 
 
 static int
-kndUser_read_repos(struct kndUser *self, char *rec, size_t rec_size)
+kndUser_read_repos(struct kndUser *self, char *rec, size_t rec_size __attribute__((unused)))
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -930,20 +922,20 @@ kndUser_read_repos(struct kndUser *self, char *rec, size_t rec_size)
         if (b) {
             *b = '\0';
             b++;
-            
+
             buf_size = strlen(b);
             if (!buf_size) return knd_FAIL;
-            
+
             if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
 
             memcpy(buf, b, buf_size);
             buf[buf_size] = '\0';
         }
-        
+
         /* check repo's name */
         err = knd_is_valid_id(c, strlen(c));
         if (err) return err;
-        
+
         acc = malloc(sizeof(struct kndRepoAccess));
         if (!acc) return knd_NOMEM;
 
@@ -958,7 +950,7 @@ kndUser_read_repos(struct kndUser *self, char *rec, size_t rec_size)
             acc->may_update = true;
             /*knd_log("  ++ import & update granted: %s\n", acc->repo_id);*/
         }
-            
+
         err = self->repo_idx->set(self->repo_idx,
                                     (const char*)c, (void*)acc);
         if (err) {
@@ -968,8 +960,7 @@ kndUser_read_repos(struct kndUser *self, char *rec, size_t rec_size)
     }
 
     err = knd_OK;
-    
- final:
+
     return err;
 }
 
@@ -986,9 +977,9 @@ kndUser_read(struct kndUser *self, const char *rec)
     const char *c;
     const char *b;
     
-    bool in_base = true;
-    bool in_spec = false;
-    long numval;
+    //bool in_base = true;
+    //bool in_spec = false;
+    //long numval;
     int err;
     
     c = rec;
@@ -1065,13 +1056,13 @@ kndUser_read(struct kndUser *self, const char *rec)
 static int
 kndUser_read_db_state(struct kndUser *self, char *rec)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
 
     char *b, *c;
     
     bool in_body = false;
-    bool in_state = false;
+    //bool in_state = false;
     bool in_field = false;
     bool in_val = false;
     size_t chunk_size = 0;
@@ -1147,15 +1138,15 @@ kndUser_restore(struct kndUser *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
-    struct kndUser *user;
+    //struct kndUser *user;
 
-    const char *key = NULL;
-    void *val = NULL;
+    //const char *key = NULL;
+    //void *val = NULL;
     int err;
-    
+
     knd_log("   .. User \"%s\" restoring DB state: \"%s\"\n",
             self->id, self->path);
-    
+
     buf_size = sprintf(buf, "%s/state.gsl", self->path);
 
     err = self->out->read_file(self->out,
@@ -1167,25 +1158,24 @@ kndUser_restore(struct kndUser *self)
 
     err = kndUser_read_db_state(self, self->out->file);
     if (err) return err;
-    
+
     /*if (self->user_idx) {
         self->user_idx->rewind(self->user_idx);
         do {
             self->user_idx->next_item(self->user_idx, &key, &val);
             if (!key) break;
-            
+
             user = (struct kndUser*)val;
-            
+
             knd_log("USER: %s\n", user->id);
-            
+
         } while (key);
         }*/
-    
 
-    
+
+
     err = knd_OK;
-    
- final:
+
     return err;
 }
 
@@ -1218,8 +1208,8 @@ kndUser_export_GSL(struct kndUser *self)
 static int
 kndUser_export_JSON(struct kndUser *self)
 {
-    char buf[KND_MED_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_MED_BUF_SIZE];
+    //size_t buf_size;
 
     struct kndDataClass *dc;
     struct kndOutput *out;
@@ -1290,11 +1280,10 @@ kndUser_export_JSON(struct kndUser *self)
     self->repo->out = out;
     err = self->repo->export(self->repo, KND_FORMAT_JSON);
     if (err) return err;
-    
+
     err = out->write(out, "}", 1);
     if (err) return err;
 
- final:
 
     return err;
 }
@@ -1389,10 +1378,4 @@ kndUser_new(struct kndUser **user)
     *user = self;
 
     return knd_OK;
-
- error:
-
-    kndUser_del(self);
-
-    return err;
 }

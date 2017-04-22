@@ -34,18 +34,13 @@
 #include "knd_repo.h"
 #include "knd_dataclass.h"
 #include "knd_object.h"
-#include "knd_objref.h"
 #include "knd_coderef.h"
 #include "knd_sorttag.h"
 
-#include "knd_utils.h"
 #include "knd_output.h"
 #include "knd_refset.h"
 #include "knd_query.h"
-#include "knd_policy.h"
-#include "knd_data_writer.h"
 #include "knd_data_reader.h"
-#include "oodict.h"
 
 #define DEBUG_KND_CONC_LEVEL_1 0
 #define DEBUG_KND_CONC_LEVEL_2 0
@@ -56,7 +51,7 @@
 
 static int
 kndConc_str(struct kndConc *self, 
-            size_t depth)
+            size_t depth __attribute__((unused)))
 {
     knd_log("%s\n", self->name);
     return knd_OK;
@@ -74,10 +69,10 @@ kndConc_del(struct kndConc *self)
 
 
 static int 
-kndConc_export_JSON(struct kndConc *self)
+kndConc_export_JSON(struct kndConc *self __attribute__((unused)))
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
 
     /*
     struct kndElemLoc *elemloc;
@@ -144,18 +139,19 @@ kndConc_export(struct kndConc *self,
 
 
 static int
-kndConc_get_conc(struct kndConc     *self,
+kndConc_get_conc(struct kndConc     *self __attribute__((unused)),
                  const char         *name,
                  size_t              name_size,
                  struct kndConc     **result)
 {
-    struct kndConc *conc;
+    struct kndConc *conc = NULL;
     struct kndRefSet *refset;
     int err = knd_FAIL;
     
     /* get conc */
     /* ask in-memory cache */
 
+    // fixme
     /*conc = self->maze->conc_idx->get(self->maze->conc_idx,
                                       name);
     */
@@ -200,7 +196,7 @@ kndConc_get_conc(struct kndConc     *self,
 static int
 kndConc_parse(struct kndConc     *self,
               const char         *rec,
-              size_t              rec_size,
+              size_t             rec_size,
               struct kndElemRef  **result)
 {
     char buf[KND_TEMP_BUF_SIZE];
@@ -211,12 +207,12 @@ kndConc_parse(struct kndConc     *self,
     
     const char *b, *c, *s;
     
-    bool rec_is_valid = false;
+    //bool rec_is_valid = false;
 
     bool in_rec = false;
     bool in_elemref = false;
     
-    long parsed_num = 0;
+    //long parsed_num = 0;
     size_t curr_size = 0;
     
     int err = knd_FAIL;
@@ -362,25 +358,24 @@ kndConc_parse(struct kndConc     *self,
     return err;
 }
 
+/*
 static int
 kndConc_register_concpath(struct kndConc   *self,
-                           struct kndCodeRef *coderef)
+                          struct kndCodeRef *coderef)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
 
-    struct kndRefSet *refset;
-    char *b, *c;
+    //struct kndRefSet *refset;
+    //char *b, *c;
     int err = knd_FAIL;
 
     if (DEBUG_KND_CONC_LEVEL_TMP)
         knd_log("\n      ... register CONC PATH: %s\n\n", coderef->concpath);
 
-
-    
- final:
     return err;
 }
+*/
 
 static int
 kndConc_import(struct kndConc   *self,
@@ -388,8 +383,8 @@ kndConc_import(struct kndConc   *self,
                const char       *rec,
                size_t            rec_size)
 {
-    char buf[KND_MED_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_MED_BUF_SIZE];
+    //size_t buf_size;
 
     struct kndElemRef *elemref;
     struct kndDataElem *elem;
@@ -398,7 +393,7 @@ kndConc_import(struct kndConc   *self,
     struct kndConc *conc = NULL;
 
     struct kndRefSet *refset;
-    struct kndSpecRole *role;
+    //struct kndSpecRole *role;
 
     int err = knd_FAIL;
     
@@ -494,7 +489,7 @@ kndConc_import(struct kndConc   *self,
 
     return knd_OK;
     
- final:
+final:
 
     return err;
 }
@@ -505,7 +500,7 @@ static int
 kndConc_read(struct kndConc   *self,
              char             *rec,
              size_t            rec_size,
-             struct kndQuery  *q)
+             struct kndQuery  *q __attribute__((unused)))
 {
     char buf[KND_LARGE_BUF_SIZE];
     size_t buf_size;
@@ -519,7 +514,7 @@ kndConc_read(struct kndConc   *self,
     struct kndConc *conc = NULL;
     
     char *b, *c, *s;
-    long numval;
+    //long numval;
     int err = knd_FAIL;
 
     if (DEBUG_KND_CONC_LEVEL_TMP)
@@ -617,12 +612,9 @@ kndConc_read(struct kndConc   *self,
         c++;
     }
 
-
-    
-    
     err = knd_OK;
 
- final:
+final:
 
     /*if (conc)
       free(conc); */
@@ -635,7 +627,7 @@ static int
 kndConc_open(struct kndConc *self)
 {
     char filename[KND_TEMP_BUF_SIZE];
-    size_t filename_size;
+    size_t filename_size = 0;
 
     const char *dbfile = "conc.gsl";
     size_t dbfile_size = strlen(dbfile);
@@ -647,7 +639,7 @@ kndConc_open(struct kndConc *self)
     int err = knd_FAIL;
     
     /*filename_size = self->maze->cache->repo->path_size + dbfile_size;*/
-    
+    // fixme
     if (filename_size >= KND_TEMP_BUF_SIZE) return knd_NOMEM;
     
     /*strcpy(filename, self->maze->cache->repo->path);*/
@@ -707,25 +699,25 @@ kndConc_open(struct kndConc *self)
 
 
 static int
-kndConc_sync(struct kndConc   *self)
+kndConc_sync(struct kndConc   *self __attribute__((unused)))
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
 
     char filename[KND_TEMP_BUF_SIZE];
-    size_t filename_size;
+    //size_t filename_size;
 
     struct stat st;
 
-    struct kndConc *conc;
-    struct kndRefSet *refset;
+    //struct kndConc *conc;
+    //struct kndRefSet *refset;
 
 
-    const char *key = NULL;
-    void *val = NULL;
+    //const char *key = NULL;
+    //void *val = NULL;
 
-    const char *dbfile = "conc.gsl";
-    size_t dbfile_size = strlen(dbfile);
+    //const char *dbfile = "conc.gsl";
+    //size_t dbfile_size = strlen(dbfile);
     
     int err = knd_FAIL;
 
@@ -811,12 +803,12 @@ kndConc_init(struct kndConc *self)
 {
     memset(self, 0, sizeof(struct kndConc));
 
-    self->del          = kndConc_del;
-    self->str          = kndConc_str;
-    self->import       = kndConc_import;
-    self->export      = kndConc_export;
-    self->sync       = kndConc_sync;
-    self->open       = kndConc_open;
+    self->del       = kndConc_del;
+    self->str       = kndConc_str;
+    self->import    = kndConc_import;
+    self->export    = kndConc_export;
+    self->sync      = kndConc_sync;
+    self->open      = kndConc_open;
 
     return knd_OK;
 }
@@ -825,24 +817,16 @@ kndConc_init(struct kndConc *self)
 extern int
 kndConc_new(struct kndConc **conc)
 {
-    int i, err;
-    struct kndSet *set;
-    size_t *locset;
-    struct kndConcept *c;
+    //struct kndSet *set;
+    //size_t *locset;
+    //struct kndConcept *c;
 
     struct kndConc *self = malloc(sizeof(struct kndConc));
     if (!self) return knd_NOMEM;
-
 
     kndConc_init(self);
  
     *conc = self;
 
     return knd_OK;
-
-
-error:
-    kndConc_del(self);
-    
-    return err;
 }

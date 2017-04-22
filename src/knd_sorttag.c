@@ -6,7 +6,6 @@
 #include "knd_object.h"
 #include "knd_sorttag.h"
 #include "knd_output.h"
-#include "knd_utils.h"
 
 #define DEBUG_SORTTAG_LEVEL_0 0
 #define DEBUG_SORTTAG_LEVEL_1 0
@@ -86,11 +85,11 @@ kndSortTag_export_GSC(struct kndSortTag *self)
 {
     struct kndSortAttr *attr;
     struct kndOutput *out;
-    int i, err;
+    int err;
 
     out = self->out;
 
-    for (i = 0; i < self->num_attrs; i++) {
+    for (size_t i = 0; i < self->num_attrs; i++) {
         attr = self->attrs[i];
 
         err = out->write(out, "{", 1);
@@ -166,7 +165,7 @@ kndSortTag_import(struct kndSortTag   *self,
                   char                *rec)
 {
     char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size = KND_TEMP_BUF_SIZE;
+    //size_t buf_size = KND_TEMP_BUF_SIZE;
 
     struct kndDataIdx *idx;
     struct kndSortAttr *attr = NULL;
@@ -175,7 +174,7 @@ kndSortTag_import(struct kndSortTag   *self,
     char *n;
     long numval;
     size_t label_size;
-    int i, err;
+    int err;
     
     /* parse DB rec */
     b = rec;

@@ -2,19 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 #include "knd_repo.h"
 #include "knd_user.h"
 #include "knd_output.h"
 #include "knd_dataclass.h"
 #include "knd_data_reader.h"
 #include "knd_object.h"
-#include "knd_objref.h"
 #include "knd_coderef.h"
 #include "knd_sorttag.h"
-#include "knd_utils.h"
-#include "knd_conc.h"
-#include "knd_coderef.h"
 #include "knd_monitor.h"
 
 #define DEBUG_OBJREF_LEVEL_0 0
@@ -30,30 +25,30 @@ kndObjRef_del(struct kndObjRef *self)
     if (self->sorttag)
         self->sorttag->del(self->sorttag);
 
-    
+
     if (self->elemrefs) {
         /* TODO */
 
     }
-    
+
     free(self);
 }
 
 static int 
 kndObjRef_str(struct kndObjRef *self, size_t depth)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size, curr_size;
-    char *c;
-    size_t i, offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
-    struct kndSortAttr *attr = NULL;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size, curr_size;
+    //char *c;
+    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
+    //struct kndSortAttr *attr = NULL;
     char *offset;
     
-    struct kndOutput *out = self->out;
+    //struct kndOutput *out = self->out;
     struct kndElemRef *elemref;
     struct kndCodeRef *coderef;
     const char *is_delivered = "+";
-    int err;
+    //int err;
 
     offset = malloc(offset_size + 1);
     if (!offset) return knd_NOMEM;
@@ -110,7 +105,7 @@ kndObjRef_str(struct kndObjRef *self, size_t depth)
 
 static int 
 kndObjRef_export_JSON(struct kndObjRef *self,
-                       size_t depth)
+                       size_t depth __attribute__((unused)))
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -272,7 +267,7 @@ kndObjRef_export_GSC(struct kndObjRef *self)
     struct kndOutput *out = self->out;
     struct kndSortAttr *attr = NULL;
 
-    int i, err;
+    int err;
 
     /* REF only */
     if (!self->obj) {
@@ -281,7 +276,7 @@ kndObjRef_export_GSC(struct kndObjRef *self)
         err = out->write(out, "{", 1);
         if (err) return err;
 
-        for (i = 0; i < self->sorttag->num_attrs; i++) {
+        for (size_t i = 0; i < self->sorttag->num_attrs; i++) {
             attr =  self->sorttag->attrs[i];
             if (!attr) continue;
         
@@ -322,7 +317,7 @@ kndObjRef_export_GSC(struct kndObjRef *self)
     err = out->write(out, "{", 1);
     if (err) return err;
 
-    for (i = 0; i < self->obj->tag->num_attrs; i++) {
+    for (size_t i = 0; i < self->obj->tag->num_attrs; i++) {
         attr =  self->obj->tag->attrs[i];
         if (!attr) continue;
         
@@ -354,18 +349,15 @@ kndObjRef_export_GSC(struct kndObjRef *self)
     return knd_OK;
 }
 
-
-
-
-static int 
+static int
 kndObjRef_export_HTML(struct kndObjRef *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
 
     struct kndOutput *out = self->out;
-    struct kndElemRef *elemref;
-    struct kndCodeRef *coderef;
+    //struct kndElemRef *elemref;
+    //struct kndCodeRef *coderef;
 
     int err;
 
@@ -462,7 +454,7 @@ kndObjRef_export(struct kndObjRef *self,
 static int 
 kndObjRef_expand(struct kndObjRef *self)
 {
-    struct kndData *data;
+    //struct kndData *data;
     struct kndObject *obj = NULL;
     int err;
    
@@ -613,19 +605,12 @@ kndObjRef_read_coderefs(struct kndObjRef    *self,
 
 
 static int
-kndObjRef_add_elemref(struct kndObjRef    *self,
+kndObjRef_add_elemref(struct kndObjRef    *self __attribute__((unused)),
                       struct kndElemRef *elemref)
 {
-    int err;
-
     knd_log("  .. add elemref \"%s\"\n\n", elemref->name);
 
-
-
     return knd_OK;
-
- final:
-    return err;
 }
 
 
@@ -633,10 +618,10 @@ static int
 kndObjRef_sync_elemref(struct kndObjRef *self,
                        struct kndElemRef *elemref)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
     struct kndCodeRef *coderef;
-    char *c;
+    //char *c;
     int err;
 
     if (elemref->elem) {
@@ -656,27 +641,27 @@ kndObjRef_sync_elemref(struct kndObjRef *self,
                                     c, elemref->name_size - elemref->elem->path_size);
             if (err) goto final;
             }*/
-        
+
     }
     else {
         err = self->out->write(self->out, 
                                 elemref->name, elemref->name_size);
         if (err) goto final;
     }
-    
+
     coderef = elemref->coderefs;
     while (coderef) {
-        
+
         coderef->out = self->out;
         err = coderef->sync(coderef);
         if (err) goto final;
-        
+
         coderef = coderef->next;
     }
 
-    
- final:
-    
+
+final:
+
     return err;
 }
 static int 
@@ -686,7 +671,7 @@ kndObjRef_sync(struct kndObjRef *self)
     size_t buf_size;
     struct kndElemRef *elemref;
     struct kndSortAttr *attr;
-    int i, err;
+    int err;
 
     /*err = maze->write(maze,  GSL_OPEN_DELIM, GSL_OPEN_DELIM_SIZE);
     if (err) goto final;
@@ -752,7 +737,7 @@ kndObjRef_clone(struct kndObjRef *self,
     struct kndObjRef *ref = NULL;
     struct kndSortTag *tag;
    
-    int i, err;
+    int err;
 
     /* make a ref copy */
     err = kndObjRef_new(&ref);
@@ -816,7 +801,7 @@ kndObjRef_clone(struct kndObjRef *self,
         tag->num_attrs++;
     }
     
-    for (i = attr_id + 1; i < self->sorttag->num_attrs; i++) {
+    for (size_t i = attr_id + 1; i < self->sorttag->num_attrs; i++) {
         orig_attr = self->sorttag->attrs[i];
 
         if (orig_attr->skip) continue;
@@ -861,22 +846,21 @@ kndObjRef_clone(struct kndObjRef *self,
 
 
 static int 
-kndObjRef_import(struct kndObjRef     *self,
-                  struct kndDataClass *baseclass,
+kndObjRef_import(struct kndObjRef     *self __attribute__((unused)),
+                  struct kndDataClass *baseclass __attribute__((unused)),
                   char                *rec)
 {
     char *b;
     char *c;
-    size_t label_size;
-    int i, err;
-    
+    //size_t label_size;
+    int err;
+
     /* parse DB rec */
     b = rec;
     c = rec;
-    
+
     err = knd_OK;
 
- final:
     return err;
 }
 

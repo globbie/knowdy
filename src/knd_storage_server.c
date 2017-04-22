@@ -16,7 +16,7 @@ void *kndStorage_subscriber(void *arg)
 {
     void *context;
     void *reception;
-    void *agents;
+    //void *agents;
     void *inbox;
     void *publisher;
 
@@ -50,9 +50,9 @@ void *kndStorage_subscriber(void *arg)
     ret = zmq_connect(publisher, "ipc:///var/knd/storage_sub");
 
     while (1) {
-	data->reset(data);
+        data->reset(data);
         data->spec = s_recv(reception, &data->spec_size);
-	data->obj = s_recv(reception, &data->obj_size);
+        data->obj = s_recv(reception, &data->obj_size);
 
         /*printf("\n    ++ STORAGE Subscriber has got spec:\n"
           "       %s\n",  data->spec); */
@@ -64,13 +64,13 @@ void *kndStorage_subscriber(void *arg)
 
             goto flush;
             }*/
-        
-	/*printf("\n    ++ STORAGE Subscriber is updating the queue..\n");*/
-     
-	s_sendmore(inbox, data->spec, data->spec_size);
-	s_send(inbox, data->obj, data->obj_size);
 
-    flush:
+        /*printf("\n    ++ STORAGE Subscriber is updating the queue..\n");*/
+
+        s_sendmore(inbox, data->spec, data->spec_size);
+        s_send(inbox, data->obj, data->obj_size);
+
+    //flush:
         fflush(stdout);
     }
 
@@ -162,15 +162,14 @@ void *kndStorage_timer(void *arg)
     while (1) {
         sleep(KND_IDLE_TIMEOUT);
 
-	/*knd_log("\n    ++ STORAGE Timer is sending heartbeat signal to all Readers..\n");*/
+        /*knd_log("\n    ++ STORAGE Timer is sending heartbeat signal to all Readers..\n");*/
 
-	s_sendmore(inbox, spec, spec_size);
+        s_sendmore(inbox, spec, spec_size);
         s_sendmore(inbox, "None", 4);
         s_sendmore(inbox, "None", 4);
         s_sendmore(inbox, "None", 4);
-	s_send(inbox, "None", 4);
+        s_send(inbox, "None", 4);
 
-    final:
 
         fflush(stdout);
     }
@@ -195,8 +194,8 @@ main(int const argc,
     void *context;
 
     pthread_t reception;
-    pthread_t search_service;
-    pthread_t timer;
+    //pthread_t search_service;
+    //pthread_t timer;
 
     int err;
 

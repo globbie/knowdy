@@ -7,8 +7,6 @@
 #include "knd_output.h"
 #include "knd_elem.h"
 #include "knd_object.h"
-#include "knd_objref.h"
-#include "knd_utils.h"
 
 #define DEBUG_NUM_LEVEL_0 0
 #define DEBUG_NUM_LEVEL_1 0
@@ -28,10 +26,7 @@ kndNum_del(struct kndNum *self)
 static int 
 kndNum_str(struct kndNum *self, size_t depth)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size, curr_size;
-    char *c;
-    size_t i, offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
+    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
 
     struct kndNumState *curr_state;
@@ -48,69 +43,52 @@ kndNum_str(struct kndNum *self, size_t depth)
     return knd_OK;
 }
 
-
-
 static int 
-kndNum_index(struct kndNum *self)
+kndNum_index(struct kndNum *self __attribute__((unused)))
 {
-    char buf[KND_LARGE_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_LARGE_BUF_SIZE];
+    //size_t buf_size;
 
-    struct kndObject *obj;
-    struct kndNumState *curr_state;
+    //struct kndObject *obj;
+    //struct kndNumState *curr_state;
     
-    int err = knd_FAIL;
+    //int err = knd_FAIL;
 
-    obj = self->elem->obj;
+    //obj = self->elem->obj;
 
-    curr_state = self->states;
-    
+    //curr_state = self->states;
 
-        
     return knd_OK;
-
- final:
-    return err;
 }
 
 
 static int 
-kndNum_export(struct kndNum *self,
-               knd_format format)
+kndNum_export(struct kndNum *self __attribute__((unused)), knd_format format __attribute__((unused)))
 {
-    char buf[KND_LARGE_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_LARGE_BUF_SIZE];
+    //size_t buf_size;
 
-    struct kndNumState *curr_state;
+    //struct kndNumState *curr_state;
 
-    struct kndObject *obj;
+    //struct kndObject *obj;
     int err = knd_FAIL;
 
-    obj = self->elem->obj;
+    //obj = self->elem->obj;
 
-    curr_state = self->states;
+    //curr_state = self->states;
 
-    err = knd_OK;
+    //err = knd_OK;
     
- final:
     return err;
 }
 
 
 static int 
-kndNum_parse(struct kndNum *self,
-             const char     *rec,
-             size_t          *total_size)
+kndNum_parse(struct kndNum *self __attribute__((unused)),
+             const char    *rec __attribute__((unused)),
+             size_t        *total_size __attribute__((unused)))
 {
-    int err;
-
-
-
-
-    err = knd_OK;
-    
- final:
-    return err;
+    return knd_OK;
 }
 
 

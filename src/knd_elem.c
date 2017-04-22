@@ -12,15 +12,12 @@
 #include "knd_object.h"
 #include "knd_text.h"
 #include "knd_refset.h"
-#include "knd_objref.h"
 #include "knd_sorttag.h"
 
-#include "knd_utils.h"
 #include "knd_data_writer.h"
 #include "knd_data_reader.h"
 
 #include "knd_output.h"
-#include "knd_repo.h"
 #include "knd_user.h"
 
 #define DEBUG_ELEM_LEVEL_1 0
@@ -63,7 +60,7 @@ kndElem_del(struct kndElem *self)
 static int
 kndElem_str(struct kndElem *self, size_t depth)
 {
-    size_t i, offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
+    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
     struct kndObject *obj;
     struct kndElem *elem;
@@ -157,7 +154,7 @@ kndElem_str(struct kndElem *self, size_t depth)
     return knd_OK;
 }
 
-
+/*
 static int
 kndElem_register_seq(struct kndElem *self,
                      struct ooDict *idx,
@@ -172,13 +169,13 @@ kndElem_register_seq(struct kndElem *self,
     struct kndSortAttr *attr;
     int err;
     
-    /*knd_log("    .. SEQ \"%s\" [pos: %lu]\n",
-      seq, (unsigned long)seqnum); */
+    // knd_log("    .. SEQ \"%s\" [pos: %lu]\n",
+    //  seq, (unsigned long)seqnum);
     
     rec = idx->get(idx, seq);
     if (!rec) {
-        /*knd_log("    == first occurence of SEQ \"%s\"\n",
-          seq); */
+        //knd_log("    == first occurence of SEQ \"%s\"\n",
+        //  seq);
 
         rec = malloc(sizeof(struct kndLinearSeqRec));
         if (!rec) {
@@ -197,14 +194,14 @@ kndElem_register_seq(struct kndElem *self,
         if (err) goto final;
     }
     else {
-        /*knd_log("    == known SEQ \"%s\"!\n",
-          seq);*/
+        //knd_log("    == known SEQ \"%s\"!\n",
+        //  seq);
         refset = rec->refset;
-        /*refset->str(refset, 1, 6);*/
+        //refset->str(refset, 1, 6);
     }
 
     
-    /* build ref */
+    // build ref
     err = kndObjRef_new(&objref);
     if (err) goto final;
         
@@ -215,7 +212,7 @@ kndElem_register_seq(struct kndElem *self,
     memcpy(objref->name, self->obj->name, self->obj->name_size);
     objref->name_size = self->obj->name_size;
 
-    /* sorting by LINEAR POS */
+    // sorting by LINEAR POS
     err = kndSortTag_new(&tag);
     if (err) return err;
 
@@ -245,22 +242,19 @@ kndElem_register_seq(struct kndElem *self,
  final:
     return err;
 }
-
-
-
-
+*/
 
 static int
 kndElem_index_list_inner(struct kndElem *self)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //char buf[KND_NAME_SIZE];
+    //size_t buf_size;
 
     struct kndObject *obj;
     struct kndElem *elem;
     
-    const char *c;
-    const char *b;
+    //const char *c;
+    //const char *b;
     int i = 0;
     int err = knd_FAIL;
 
@@ -317,22 +311,22 @@ kndElem_index_list_inner(struct kndElem *self)
     return knd_OK;
 }
 
-
+/*
 static int
 kndElem_index_list(struct kndElem *self)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
 
-    struct ooDict *idx;
-    struct kndMatchPoint *mp;
+    struct ooDict *idx = NULL;
+    //struct kndMatchPoint *mp;
     struct kndObject *obj;
     struct kndElem *elem;
     
-    const char *c;
-    const char *b;
+    //const char *c;
+    //const char *b;
 
-    bool in_seq = false;
+    //bool in_seq = false;
     
     size_t seqnum = 0;
     long accented = -1;
@@ -340,14 +334,14 @@ kndElem_index_list(struct kndElem *self)
     int err = knd_FAIL;
 
     
-    /*knd_log("    .. indexing LIST ELEM \"%s\"..\n",
-      self->name); */
+    //knd_log("    .. indexing LIST ELEM \"%s\"..\n",
+    //  self->name);
 
     if (!strcmp(self->baseclass->idx_name, "Attr"))
         return kndElem_index_list_inner(self);
 
-    /* TODO: linear SEQ idx */
-    /*idx = self->obj->cache->linear_seq_idx; */
+    // TODO: linear SEQ idx
+    //idx = self->obj->cache->linear_seq_idx;
 
     obj = self->inner;
     while (obj) {
@@ -367,10 +361,11 @@ kndElem_index_list(struct kndElem *self)
             buf_size -= 1;
         }
         
-        /*knd_log("  idx SEQ %lu: \"%s\"\n",
-                (unsigned long)seqnum, buf);
-        */
-        
+        //knd_log("  idx SEQ %lu: \"%s\"\n",
+        //        (unsigned long)seqnum, buf);
+
+
+        // fixme: idx is always null.
         err = kndElem_register_seq(self, idx, buf, buf_size, seqnum);
         if (err) goto final;
         
@@ -378,7 +373,7 @@ kndElem_index_list(struct kndElem *self)
         obj = obj->next;
     }
 
-    /* integral body of matching points */
+    // integral body of matching points
     self->obj->matchpoints = malloc(sizeof(struct kndMatchPoint) * seqnum);
     if (!self->obj->matchpoints) return knd_NOMEM;
 
@@ -387,18 +382,18 @@ kndElem_index_list(struct kndElem *self)
     self->obj->max_score = KND_MATCH_MAX_SCORE * self->obj->num_matchpoints; 
 
 
-    /*knd_log("  == NUM matchpoints: %lu\n",
-            (unsigned long)self->obj->num_matchpoints);
-    */
-    
+    //knd_log("  == NUM matchpoints: %lu\n",
+    //        (unsigned long)self->obj->num_matchpoints);
+
     if (accented >= 0)
-        self->obj->accented = accented;
+        self->obj->accented = accented; // fixme
     
     err = knd_OK;
 
  final:
     return err;
 }
+*/
 
 static int
 kndElem_index_ref(struct kndElem *self)
@@ -411,8 +406,8 @@ kndElem_index_ref(struct kndElem *self)
     struct kndRelClass *relc;
     struct kndRelType *reltype;
     struct ooDict *idx;
-    const char *classname;
-    bool browse_level = 0;
+    //const char *classname;
+    //bool browse_level = 0;
     
     int err;
 
@@ -555,8 +550,8 @@ kndElem_set_full_name(struct kndElem *self,
                       char *name,
                       size_t *name_size)
 {
-    struct kndElem *elem;
-    struct kndObject *obj;
+    //struct kndElem *elem;
+    //struct kndObject *obj;
     char *s = name;
     size_t chunk_size = *name_size;
     int err;
@@ -584,7 +579,7 @@ kndElem_set_full_name(struct kndElem *self,
 
 static int
 kndElem_index_atom(struct kndElem *self,
-                   struct kndObject *obj)
+                   struct kndObject *obj __attribute__((unused)))
 {
     struct kndSortTag *tag = NULL;
     struct kndSortAttr *attr;
@@ -647,7 +642,6 @@ kndElem_index_atom(struct kndElem *self,
     
     err = knd_OK;
 
- final:
     return err;
 }
 
@@ -702,15 +696,15 @@ kndElem_index_container(struct kndElem *self)
 static int
 kndElem_index(struct kndElem *self)
 {
-    struct kndElem *elem;
-    struct kndText *text;
-    struct ooDict *idx;
+    //struct kndElem *elem;
+    //struct kndText *text;
+    //struct ooDict *idx;
 
-    struct kndAttr *elem_attr;
+    //struct kndAttr *elem_attr;
 
-    struct kndRefSet *refset;
-    struct kndObjRef *objref;
-    struct kndSortTag *tag;
+    //struct kndRefSet *refset;
+    //struct kndObjRef *objref;
+    //struct kndSortTag *tag;
     int err;
     
     if (!self->baseclass) return knd_FAIL;
@@ -726,8 +720,7 @@ kndElem_index(struct kndElem *self)
         err = kndElem_index_list_inner(self);
         if (err) goto final;
 
-    }
-    else {
+    } else {
 
         /*if (self->baseclass->dc && self->baseclass->dc->idx_name_size) {*/
 
@@ -779,50 +772,49 @@ kndElem_index(struct kndElem *self)
     
     err = knd_OK;
     
- final:
+final:
     return err;
 }
 
-
 static int
-kndElem_contribute_refset(struct kndElem *self,
+kndElem_contribute_refset(struct kndElem *self __attribute__((unused)),
                           struct kndLinearSeqRec *rec,
                           size_t seqnum)
 {
     struct kndFacet *facet;
     struct kndRefSet *refset;
-    struct kndObjRef *objref;
+    //struct kndObjRef *objref;
 
-    int i, j, err;
-    
+    int err;
+
     /* no facets */
     if (!rec->refset->num_facets) {
         rec->refset->numval = seqnum;
         err = rec->refset->contribute(rec->refset, seqnum);
         goto final;
     }
-    
-    for (i = 0; i < rec->refset->num_facets; i++) {
+
+    for (size_t i = 0; i < rec->refset->num_facets; i++) {
         facet = rec->refset->facets[i];
-        
+
         /*knd_log("Facet: %s [numval: %lu]\n", facet->name,
                 (unsigned long)facet->numval);
         */
-        for (j = 0; j < facet->num_refsets; j++) {
+        for (size_t j = 0; j < facet->num_refsets; j++) {
             refset = facet->refsets[j]; 
             if (refset->numval > (seqnum + 1)) break;
-            
+
             /*knd_log("  == RefSet: %s [numval: %lu] total: %lu\n", refset->name,
               (unsigned long)refset->numval, (unsigned long)refset->num_refs); */
             err = refset->contribute(refset, seqnum);
             if (err) goto final;
         }
-        
+
     }
 
     err = knd_OK;
-    
- final:
+
+final:
     return err;
 }
 
@@ -884,17 +876,17 @@ kndElem_intersect(struct kndElem *self,
 static int
 kndElem_match(struct kndElem *self,
               const char *rec,
-              size_t rec_size)
+              size_t rec_size __attribute__((unused)))
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
 
-    struct ooDict *idx;
+    struct ooDict *idx = NULL;
     
     const char *c;
     const char *b;
 
-    bool in_seq = false;
+    //bool in_seq = false;
     
     size_t seqnum = 0;
     int err = knd_FAIL;
@@ -914,6 +906,7 @@ kndElem_match(struct kndElem *self,
             memcpy(buf, b, buf_size);
             buf[buf_size] = '\0';
 
+            // fixme: idx is always null.
             err = kndElem_intersect(self, idx, buf, buf_size, seqnum);
             if (err) goto final;
 
@@ -946,14 +939,14 @@ kndElem_match(struct kndElem *self,
 static int
 kndElem_get_elemclass(struct kndElem *self,
                       const char *name,
-                      size_t name_size,
+                      size_t name_size __attribute__((unused)),
                       struct kndDataElem **elem)
 {
     struct kndAttr *attr;
     struct kndDataElem *de = NULL;
     struct kndDataClass *dc = NULL;
     int err;
-    
+
     if (self->obj->dc) {
         dc = self->obj->dc;
     }
@@ -1025,18 +1018,18 @@ kndElem_parse_list(struct kndElem *self,
                    const char *rec,
                    size_t *total_size)
 {
-    char buf[KND_NAME_SIZE];
+    //char buf[KND_NAME_SIZE];
     size_t buf_size;
 
     struct kndObject *obj = NULL;
-    struct kndElem *elem = NULL;
+    //struct kndElem *elem = NULL;
     struct kndDataElem *de = NULL;
     const char *c;
     const char *b;
 
-    bool in_item = false;
+    //bool in_item = false;
     bool in_name = true;
-    bool in_idx = true;
+    //bool in_idx = true;
 
     size_t chunk_size;
     int err;
@@ -1152,7 +1145,7 @@ kndElem_parse_list(struct kndElem *self,
         c++;
     }
 
- final:
+final:
     return err;
 }
 
@@ -1266,9 +1259,9 @@ kndElem_parse_ref(struct kndElem *self,
 
     const char *b;
     const char *c;
-    
+
     size_t chunk_size = 0;
-    size_t curr_size = 0;
+    //size_t curr_size = 0;
     int err = knd_FAIL;
 
     bool in_cls = false;
@@ -1277,7 +1270,7 @@ kndElem_parse_ref(struct kndElem *self,
 
     c = rec;
     b = c;
-    
+
     if (DEBUG_ELEM_LEVEL_3)
         knd_log("  .. REF parse from: \"%s\"\n\n",
                 rec);
@@ -1348,13 +1341,13 @@ kndElem_parse_ref(struct kndElem *self,
                                 self->refclass_name);
                     return knd_FAIL;
                 }
-        
+
                 self->refclass = dc;
                 in_cls = false;
                 break;
             }
 
-            
+
             if (in_name) {
                 chunk_size = c - b;
                 if (!chunk_size) {
@@ -1384,22 +1377,21 @@ kndElem_parse_ref(struct kndElem *self,
                 in_obj_id = false;
                 break;
             }
-            
+
             elem_state->state = self->obj->cache->repo->state;
             elem_state->next = self->states;
             self->states = elem_state;
             self->num_states++;
-            
+
             *total_size = c - rec;
             return knd_OK;
         }
         c++;
     }
 
-    
- final:
+
     if (elem_state) free(elem_state);
-    
+
     return err;
 }
 
@@ -1409,13 +1401,13 @@ kndElem_parse(struct kndElem *self,
               const char *rec,
               size_t *total_size)
 {
-    char buf[KND_NAME_SIZE];
+    //char buf[KND_NAME_SIZE];
     size_t buf_size;
 
-    struct kndDataElem *de = NULL;
+    //struct kndDataElem *de = NULL;
     struct kndElem *elem = NULL;
     struct kndElemState *elem_state = NULL;
-    
+
     const char *c;
     const char *b;
 
@@ -1519,7 +1511,7 @@ kndElem_parse(struct kndElem *self,
                 break;
             }
 
-            
+
             if (!in_elem) {
                 err = kndElem_new(&elem);
                 if (err) goto final;
@@ -1532,7 +1524,7 @@ kndElem_parse(struct kndElem *self,
                             self->name);
                     elem->parent = self->parent;
                 }
-                
+
                 err = elem->parse(elem, c, &chunk_size);
                 if (err) goto final;
 
@@ -1544,22 +1536,22 @@ kndElem_parse(struct kndElem *self,
                     self->tail->next = elem;
                     self->tail = elem;
                 }
-                
+
                 self->num_elems++;
-                
+
                 c += chunk_size;
 
                 b = c + 1;
 
                 if (DEBUG_ELEM_LEVEL_3)
                     knd_log(" ++ elem \"%s\" parsed OK, continue from: \"%s\"\n", elem->name, c);
-                
+
                 elem = NULL;
                 in_elem = false;
                 in_atomic_val = false;
                 break;
             }
-            
+
             break;
         case '}':
 
@@ -1571,22 +1563,22 @@ kndElem_parse(struct kndElem *self,
                     err = knd_FAIL;
                     goto final;
                 }
-                
+
                 if (DEBUG_ELEM_LEVEL_2)
                     knd_log("    == atomic VAL: %s [size: %lu]\n",
                             b, (unsigned long)buf_size);
-               
+
                 elem_state = malloc(sizeof(struct kndElemState));
                 if (!elem_state) {
                     err = knd_NOMEM;
                     goto final;
                 }
-                
+
                 memset(elem_state, 0, sizeof(struct kndElemState));
 
                 memcpy(elem_state->val, b, buf_size);
                 elem_state->val_size = buf_size;
-                
+
                 elem_state->state = self->obj->cache->repo->state;
 
                 elem_state->next = self->states;
@@ -1607,10 +1599,10 @@ kndElem_parse(struct kndElem *self,
                 goto final;
             }
 
-            
+
             if (DEBUG_ELEM_LEVEL_2)
                 knd_log("  -- end of elem \"%s\"\n", self->name);
-            
+
             *total_size = c - rec;
 
             return knd_OK;
@@ -1630,7 +1622,7 @@ kndElem_parse(struct kndElem *self,
                 in_name = true;
                 break;
             }
-            
+
             err = kndElem_new(&elem);
             if (err) goto final;
 
@@ -1640,7 +1632,7 @@ kndElem_parse(struct kndElem *self,
             if (DEBUG_ELEM_LEVEL_3)
                 knd_log("\n  == LIST ATTR: %s\n",
                         elem->parent->name, elem->parent->attr_name);
-            
+
             c++;
             err = kndElem_parse_list(elem, c, &chunk_size);
             if (err) goto final;
@@ -1656,26 +1648,26 @@ kndElem_parse(struct kndElem *self,
                 self->tail->next = elem;
                 self->tail = elem;
             }
-                
+
             self->num_elems++;
-            
+
             c += chunk_size;
 
             if (DEBUG_ELEM_LEVEL_3)
                 knd_log("  remainder after LIST parse: \"%s\"\n\n", c);
-            
+
             break;
         }
         c++;
     }
-            
+
     err = knd_FAIL;
 
- final:
+final:
 
     if (elem)
         elem->del(elem);
-    
+
     return err;
 }
 
@@ -1694,12 +1686,12 @@ kndElem_update(struct kndElem *self,
     char buf[KND_LARGE_BUF_SIZE];
     size_t buf_size;
 
-    struct kndElem *elem = NULL;
-    knd_elem_type type = 0;
+    //struct kndElem *elem = NULL;
+    knd_elem_type type = 0; // fixme
 
     struct kndElemState *elem_state = NULL;
-    struct kndText *text;
-    
+    //struct kndText *text;
+
     const char *c;
     const char *b;
 
@@ -1707,7 +1699,7 @@ kndElem_update(struct kndElem *self,
     bool in_state = false;
     bool in_val = false;
     bool in_set_val = false;
-    bool in_text = false;
+    //bool in_text = false;
 
     size_t chunk_size;
     long numval;
@@ -1802,17 +1794,17 @@ kndElem_update(struct kndElem *self,
                 memset(elem_state, 0, sizeof(struct kndElemState));
                 elem_state->state = self->obj->cache->repo->state;
 
-                
+
                 in_state = false;
                 in_val = true;
                 break;
             }
-            
+
             if (in_set_val) {
                 buf_size = c - b;
                 memcpy(elem_state->val, b, buf_size);
                 elem_state->val_size = buf_size;
-                
+
                 if (DEBUG_ELEM_LEVEL_3)
                     knd_log("   == SET VAL: %s\n", elem_state->val);
 
@@ -1823,27 +1815,27 @@ kndElem_update(struct kndElem *self,
                 in_set_val = false;
                 break;
             }
-            
+
             /*knd_log("  -- end of elem \"%s\"\n", self->name);*/
-            
+
             *total_size = c - rec;
 
             return knd_OK;
         }
         c++;
     }
-            
+
     err = knd_FAIL;
 
- final:
+final:
 
     if (elem_state)
         free(elem_state);
-    
+
     return err;
 }
 
-
+/*
 static int 
 kndElem_calc(struct kndElem *self,
              struct kndRefSet *refset,
@@ -1854,7 +1846,7 @@ kndElem_calc(struct kndElem *self,
     struct kndElem *elem;
     long numval;
     unsigned long total = 0;
-    int i, err;
+    int err;
 
     attr = self->baseclass->attr;
         
@@ -1862,7 +1854,7 @@ kndElem_calc(struct kndElem *self,
         knd_log("  ... calc oper %s on elem %s..\n",
                 attr->calc_oper, attr->calc_attr);
     
-    for (i = 0; i < refset->inbox_size; i++) {
+    for (size_t i = 0; i < refset->inbox_size; i++) {
         ref = refset->inbox[i];
 
         elem = ref->obj->elems;
@@ -1889,35 +1881,36 @@ kndElem_calc(struct kndElem *self,
  final:
     return err;
 }
+*/
 
 
 
 static int 
 kndElem_export_JSON(struct kndElem *self,
-                    bool is_concise)
+                    bool is_concise __attribute__((unused)))
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
     char pathbuf[KND_TEMP_BUF_SIZE];
-    size_t pathbuf_size;
+    //size_t pathbuf_size;
 
     char dirname[KND_NAME_SIZE];
     size_t dirname_size;
 
-    struct ooDict *idx;
-    struct kndRefSet *refset;
+    //struct ooDict *idx;
+    //struct kndRefSet *refset;
     struct kndObject *obj;
 
-    struct kndObject *refobj;
-    
+    //struct kndObject *refobj;
+
     struct kndElem *elem;
     struct kndText *text;
 
     struct stat linkstat;
 
     size_t curr_size;
-    unsigned long numval;
+    //unsigned long numval;
     int err;
 
     if (self->inner) {
@@ -1937,10 +1930,10 @@ kndElem_export_JSON(struct kndElem *self,
                     err = self->out->write(self->out, ",", 1);
                     if (err) return err;
                 }
-                
+
                 obj = obj->next;
             }
-            
+
             err = self->out->write(self->out, "]", 1);
             if (err) return err;
 
@@ -2201,7 +2194,7 @@ kndElem_export_JSON(struct kndElem *self,
         if (err) goto final;
     }*/
 
- final:
+final:
 
     return err;
 }
@@ -2212,22 +2205,22 @@ kndElem_export_JSON(struct kndElem *self,
 
 static int 
 kndElem_export_HTML(struct kndElem *self,
-                    bool is_concise)
+                    bool is_concise __attribute__((unused)))
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
-    char pathbuf[KND_TEMP_BUF_SIZE];
-    size_t pathbuf_size;
+    //char pathbuf[KND_TEMP_BUF_SIZE];
+    //size_t pathbuf_size;
 
-    struct ooDict *idx;
-    struct kndRefSet *refset;
+    //struct ooDict *idx;
+    //struct kndRefSet *refset;
     struct kndObject *obj;
     
-    struct kndElem *elem;
+    //struct kndElem *elem;
     struct kndText *text;
     size_t curr_size;
-    unsigned long numval;
+    //unsigned long numval;
     int err = knd_FAIL;
 
     if (DEBUG_ELEM_LEVEL_3)
@@ -2425,8 +2418,7 @@ kndElem_export_HTML(struct kndElem *self,
     }
     */
 
-
- final:
+final:
 
     return err;
 }
@@ -2439,10 +2431,10 @@ kndElem_export_GSL(struct kndElem *self)
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
-    char pathbuf[KND_TEMP_BUF_SIZE];
-    size_t pathbuf_size;
+    //char pathbuf[KND_TEMP_BUF_SIZE];
+    //size_t pathbuf_size;
 
-    struct kndElem *elem;
+    //struct kndElem *elem;
     struct kndElemState *elem_state;
 
     int err;
@@ -2508,8 +2500,8 @@ kndElem_export_GSL(struct kndElem *self)
 static int 
 kndElem_export_list_GSC(struct kndElem *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
     struct kndObject *obj;
     int err;
     
@@ -2539,11 +2531,11 @@ kndElem_export_list_GSC(struct kndElem *self)
 static int 
 kndElem_export_GSC(struct kndElem *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
 
-    char pathbuf[KND_TEMP_BUF_SIZE];
-    size_t pathbuf_size;
+    //char pathbuf[KND_TEMP_BUF_SIZE];
+    //size_t pathbuf_size;
 
     struct kndElemState *elem_state;
     
@@ -2753,7 +2745,6 @@ extern int
 kndElem_new(struct kndElem **obj)
 {
     struct kndElem *self;
-    int err;
 
     self = malloc(sizeof(struct kndElem));
     if (!self) return knd_NOMEM;
@@ -2765,10 +2756,4 @@ kndElem_new(struct kndElem **obj)
     *obj = self;
 
     return knd_OK;
-
- error:
-
-    kndElem_del(self);
-
-    return err;
 }

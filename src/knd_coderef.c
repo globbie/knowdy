@@ -5,7 +5,6 @@
 #include "knd_output.h"
 #include "knd_conc.h"
 #include "knd_coderef.h"
-#include "knd_utils.h"
 
 #define DEBUG_CODEREF_LEVEL_0 0
 #define DEBUG_CODEREF_LEVEL_1 0
@@ -26,11 +25,12 @@ static int
 kndCodeRef_str(struct kndCodeRef *self, size_t depth)
 {
     char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size, curr_size;
+    size_t buf_size;
+    //size_t curr_size;
     char *c;
-    size_t i, offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
+    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
-    struct kndSortAttr *attr = NULL;
+    //struct kndSortAttr *attr = NULL;
 
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
@@ -59,10 +59,10 @@ kndCodeRef_str(struct kndCodeRef *self, size_t depth)
 static int
 kndCodeRef_parse_term(struct kndCodeRef *self,
                       char *rec,
-                      size_t rec_size)
+                      size_t rec_size __attribute__((unused)))
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //char buf[KND_NAME_SIZE];
+    //size_t buf_size;
 
     long numval;
     
@@ -152,22 +152,23 @@ kndCodeRef_parse_prop(struct kndCodeRef *self,
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
-    long numval;
+    //long numval;
     
-    const char *delim = ";";
-    char *last;
-    char *tok;
-    char *val;
+    //const char *delim = ";";
+    //char *last;
+    //char *tok;
+    //char *val;
 
     struct kndCodeRef *spec = NULL;
     
-    const char *b, *c, *s;
+    const char *b;
+    const char *c;
    
-    bool pos_set = false;
-    bool len_set = false;
-    bool name_set = false;
+    //bool pos_set = false;
+    //bool len_set = false;
+    //bool name_set = false;
 
-    bool rec_is_valid = false;
+    //bool rec_is_valid = false;
 
     bool in_rec = false;
     bool in_complex = false;
@@ -339,8 +340,8 @@ kndCodeRef_sync(struct kndCodeRef *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
-    struct kndSortAttr *attr;
-    int i, err;
+    //struct kndSortAttr *attr;
+    int err;
 
     if (self->type == KND_ELEM_ATOM)
         return knd_OK;

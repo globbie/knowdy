@@ -32,10 +32,11 @@ kndText_del(struct kndText *self)
 static int 
 kndText_str(struct kndText *self, size_t depth)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size, curr_size;
-    char *c;
-    size_t i, offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
+    //size_t curr_size;
+    //char *c;
+    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
 
     struct kndTextState *curr_state;
@@ -94,7 +95,7 @@ kndText_index(struct kndText *self)
     
     struct kndTranslation *tr;
     
-    struct kndTextSelect *sel;
+    //struct kndTextSelect *sel;
     int err = knd_FAIL;
 
     obj = self->elem->obj;
@@ -122,7 +123,6 @@ kndText_index(struct kndText *self)
         
     return knd_OK;
 
- final:
     return err;
 }
 
@@ -140,9 +140,7 @@ kndText_export_JSON(struct kndText *self)
     struct kndOutput *out;
     
     int num_trs = 0;
-    size_t curr_size;
-    char *c;
-    
+
     int err = knd_FAIL;
 
     obj = self->elem->obj;
@@ -278,16 +276,16 @@ kndText_export_JSON(struct kndText *self)
 static int 
 kndText_export_HTML(struct kndText *self)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //char buf[KND_NAME_SIZE];
+    //size_t buf_size;
 
     struct kndObject *obj;
     struct kndTextState *curr_state;
     struct kndTranslation *tr;
-    struct kndTextSelect *sel;
+    //struct kndTextSelect *sel;
 
-    size_t curr_size;
-    char *c;
+    //size_t curr_size;
+    //char *c;
     
     int err = knd_FAIL;
 
@@ -383,7 +381,6 @@ kndText_export_HTML(struct kndText *self)
         }
 
 
-        
         return knd_OK;
     }
 
@@ -404,7 +401,6 @@ kndText_export_GSC(struct kndText *self)
     struct kndTranslation *tr;
     
     struct kndTextSelect *sel;
-    char *c;
     size_t curr_size;
     
     int err = knd_FAIL;
@@ -547,17 +543,17 @@ kndText_export(struct kndText *self,
 
 
 static int
-kndText_parse_synt_graph(struct kndText *self,
+kndText_parse_synt_graph(struct kndText *self __attribute__((unused)),
                          const char *rec,
                          size_t *total_size)
 {
-    char buf[KND_LARGE_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_LARGE_BUF_SIZE];
+    //size_t buf_size;
     
     const char *c;
     const char *b;
 
-    size_t chunk_size;
+    //size_t chunk_size;
     int err = knd_FAIL;
     
     c = rec;
@@ -579,14 +575,12 @@ kndText_parse_synt_graph(struct kndText *self,
         c++;
     }
 
-
- final:
     return err;
 }
 
 
 static int
-kndText_read_selections(struct kndText *self,
+kndText_read_selections(struct kndText *self __attribute__((unused)),
                         struct kndTranslation *tr,
                         const char *rec,
                         size_t *total_size)
@@ -613,7 +607,7 @@ kndText_read_selections(struct kndText *self,
     bool in_hilite = false;
     bool in_hilite_end = false;
     
-    size_t chunk_size;
+    //size_t chunk_size;
     int err = knd_FAIL;
     
     c = rec;
@@ -810,13 +804,13 @@ kndText_parse_selection(struct kndText *self,
                         size_t *total_size,
                         size_t *total_chunks)
 {
-    char buf[KND_NAME_SIZE];
+    //char buf[KND_NAME_SIZE];
     size_t buf_size;
 
     char refbuf[KND_NAME_SIZE];
     size_t refbuf_size;
 
-    size_t curr_size;
+    //size_t curr_size;
     struct kndTextSelect *sel;
     struct kndObjRef *ref;
     
@@ -824,10 +818,10 @@ kndText_parse_selection(struct kndText *self,
     const char *b;
 
     bool in_field = false;
-    bool in_field_name = false;
+    //bool in_field_name = false;
 
-    bool in_text = false;
-    bool in_text_val = false;
+    //bool in_text = false;
+    //bool in_text_val = false;
 
     size_t start_pos;
     size_t chunk_size;
@@ -971,7 +965,6 @@ kndText_parse_selection(struct kndText *self,
         c++;
     }
 
- final:
     return err;
 }
 
@@ -985,11 +978,11 @@ kndText_parse_translation(struct kndText *self,
     char buf[KND_NAME_SIZE];
     size_t buf_size;
 
-    char wchunk[KND_NAME_SIZE];
+    //char wchunk[KND_NAME_SIZE];
     size_t wchunk_size;
 
-    size_t char_num_val;
-    size_t curr_size;
+    //size_t char_num_val;
+    //size_t curr_size;
 
     const char *c;
     const char *b;
@@ -1003,7 +996,7 @@ kndText_parse_translation(struct kndText *self,
 
     bool in_text = false;
     bool in_text_val = false;
-    bool in_ref = false;
+    //bool in_ref = false;
 
     bool in_synt_graph = false;
 
@@ -1351,7 +1344,7 @@ kndText_parse_translations(struct kndText *self,
 
     bool in_list = true;
     bool in_list_class = false;
-    bool in_name = false;
+    //bool in_name = false;
 
     size_t chunk_size;
     int err = knd_FAIL;
@@ -1426,15 +1419,15 @@ kndText_parse(struct kndText *self,
               const char *rec,
               size_t *total_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //char buf[KND_NAME_SIZE];
+    //size_t buf_size;
 
     struct kndTextState *curr_state = NULL;
     const char *c;
     const char *b;
 
     bool in_body = true;
-    bool in_name = false;
+    //bool in_name = false;
     size_t chunk_size;
     int err = knd_FAIL;
     
@@ -1512,8 +1505,8 @@ kndText_update_translation(struct kndText *self,
     char buf[KND_NAME_SIZE];
     size_t buf_size;
 
-    size_t char_num_val;
-    size_t curr_size;
+    //size_t char_num_val;
+    //size_t curr_size;
     
     const char *c;
     const char *b;
@@ -1711,7 +1704,7 @@ kndText_update_translations(struct kndText *self,
 
     bool in_list = true;
     bool in_list_class = false;
-    bool in_name = false;
+    //bool in_name = false;
 
     size_t chunk_size;
     int err = knd_FAIL;
