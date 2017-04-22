@@ -1,13 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
-#include <sys/stat.h>
 
 #include <libxml/parser.h>
 
 #include <pthread.h>
-#include <unistd.h>
 
 #include <zmq.h>
 #include "zhelpers.h"
@@ -19,24 +16,22 @@
 #include "knd_data_writer.h"
 #include "knd_output.h"
 #include "knd_spec.h"
-#include "knd_object.h"
-#include "knd_dataclass.h"
 #include "knd_attr.h"
-#include "knd_policy.h"
 #include "knd_user.h"
-#include "knd_repo.h"
 
 #define DEBUG_WRITER_LEVEL_1 0
 #define DEBUG_WRITER_LEVEL_2 0
 #define DEBUG_WRITER_LEVEL_3 0
 #define DEBUG_WRITER_LEVEL_TMP 1
 
+/*
 static void
 kndDataWriter_reset(struct kndDataWriter *self);
 
 static int  
 kndDataWriter_get_obj(struct kndDataWriter *self,
                      struct kndData *data);
+*/
 
 static void
 kndDataWriter_del(struct kndDataWriter *self)
@@ -48,15 +43,13 @@ kndDataWriter_del(struct kndDataWriter *self)
     free(self);
 }
 
-
-
 static int
 kndDataWriter_run_tasks(struct kndDataWriter *self)
 {
     struct kndSpecInstruction *instruct;
-    int i, err;
+    int err;
 
-    for (i = 0; i < self->spec->num_instructions; i++) {
+    for (size_t i = 0; i < self->spec->num_instructions; i++) {
         instruct = &self->spec->instructions[i];
 
         knd_log(".. running task \"%s\" [type:%d]",
@@ -68,27 +61,25 @@ kndDataWriter_run_tasks(struct kndDataWriter *self)
             knd_log(".. REPO task in progress");
             err = self->admin->repo->run(self->admin->repo, instruct);
             if (err) return err;
-            
+
             break;
         case KND_AGENT_DEFAULT:
             break;
         default:
             break;
         }
-        
+
     }
 
-    
     return knd_OK;
 }
-
 
 static int
 kndDataWriter_check_privileges(struct kndDataWriter *self)
 {
     struct kndUser *user;
-    struct kndRepo *repo;
-    struct kndPolicy *policy;
+    //struct kndRepo *repo;
+    //struct kndPolicy *policy;
     int err;
 
     if (DEBUG_WRITER_LEVEL_TMP)
@@ -168,8 +159,8 @@ kndDataWriter_get_repo(struct kndDataWriter *self,
                        const char *name, size_t name_size,
                        struct kndRepo **result)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size = KND_TEMP_BUF_SIZE;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size = KND_TEMP_BUF_SIZE;
     struct kndRepo *repo = NULL;
     int err;
 
@@ -199,11 +190,12 @@ kndDataWriter_get_repo(struct kndDataWriter *self,
     return knd_OK;
 }
 
+/*
 static int
-kndDataWriter_sync(struct kndDataWriter *self, struct kndData *data)
+kndDataWriter_sync(struct kndDataWriter *self, struct kndData *data __attribute__((unused)))
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size = KND_TEMP_BUF_SIZE;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size = KND_TEMP_BUF_SIZE;
     const char *key = NULL;
     void *val = NULL;
     struct kndRepo *repo;
@@ -212,7 +204,7 @@ kndDataWriter_sync(struct kndDataWriter *self, struct kndData *data)
     knd_log(".. sync task in progress..");
 
     err = self->curr_user->sync(self->curr_user);
-    /* TODO: check repo policies */
+    // TODO: check repo policies
 
     self->repo_idx->rewind(self->repo_idx);
     do {
@@ -221,23 +213,24 @@ kndDataWriter_sync(struct kndDataWriter *self, struct kndData *data)
 
         repo = (struct kndRepo*)val;
         repo->user = self->curr_user;
-        
+
         err = repo->sync(repo);
         if (err) return err;
-        
-    } while (key);
-        
 
-    
+    } while (key);
+
+
+
     return err;
 }
+*/
 
-
+/*
 static int
 kndDataWriter_update(struct kndDataWriter *self, struct kndData *data)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size;
     int err;
 
     knd_log("\n  .. Update task in progress...\n");
@@ -246,7 +239,7 @@ kndDataWriter_update(struct kndDataWriter *self, struct kndData *data)
     if (err) {
         knd_log(" -- update task rejected .. :(\n");
 
-        /* report of update failure */
+        // report of update failure
         if (self->curr_user->out->buf_size) {
             err = self->out->write(self->out,
                                    self->curr_user->out->buf,
@@ -256,19 +249,17 @@ kndDataWriter_update(struct kndDataWriter *self, struct kndData *data)
         goto final;
     }
 
-
-    
- final:
+final:
     return err;
 }
-
+*/
 
 static int
 kndDataWriter_read_config(struct kndDataWriter *self,
                          const char *config)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size = KND_TEMP_BUF_SIZE;
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size = KND_TEMP_BUF_SIZE;
 
     size_t curr_size = 0;
     
@@ -276,7 +267,7 @@ kndDataWriter_read_config(struct kndDataWriter *self,
     xmlNodePtr root, cur_node, sub_node;
 
     xmlChar *val = NULL;
-    long num_value;
+    //long num_value;
     int err;
     
     doc = xmlParseFile((const char*)config);
@@ -442,9 +433,9 @@ kndDataWriter_reply(struct kndDataWriter *self,
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
-    char *header;
+    char *header = NULL;
     size_t header_size;
-    char *confirm;
+    char *confirm = NULL;
     size_t confirm_size;
 
     int err;
@@ -519,8 +510,8 @@ kndDataWriter_start(struct kndDataWriter *self)
 
     int err;
 
-    const char *msg;
-    size_t msg_size;
+    //const char *msg;
+    //size_t msg_size;
 
     /* restore in-memory data after incorrect failure? */
     err = self->admin->restore(self->admin);
@@ -588,12 +579,12 @@ kndDataWriter_start(struct kndDataWriter *self)
 
     }
 
- error:
-    zmq_close(outbox);
-    if (data)
-        data->del(data);
-
-    return knd_OK;
+//error:
+//    zmq_close(outbox);
+//    if (data)
+//        data->del(data);
+//
+//    return knd_OK;
 }
 
 
@@ -603,9 +594,9 @@ kndDataWriter_new(struct kndDataWriter **rec,
                   const char *config)
 {
     struct kndDataWriter *self;
-    struct kndObject *obj;
+    //struct kndObject *obj;
     int err;
-    size_t i;
+    //size_t i;
 
     self = malloc(sizeof(struct kndDataWriter));
     if (!self) return knd_NOMEM;
@@ -760,13 +751,13 @@ void *kndDataWriter_subscriber(void *arg)
 {
     void *context;
     void *subscriber;
-    void *agents;
+    //void *agents;
     void *inbox;
 
     struct kndDataWriter *writer;
     struct kndData *data;
-    const char *empty_msg = "None";
-    size_t empty_msg_size = strlen(empty_msg);
+    //const char *empty_msg = "None";
+    //size_t empty_msg_size = strlen(empty_msg);
 
     int err;
 

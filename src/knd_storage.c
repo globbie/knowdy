@@ -19,8 +19,7 @@
 static int
 kndStorage_str(struct kndStorage *self)
 {
-    printf("<struct kndStorage at %p>\n", self);
-
+    printf("<struct kndStorage at %p>\n", (void *)self);
 
     return knd_OK;
 }
@@ -41,12 +40,11 @@ kndStorage_del(struct kndStorage *self)
 }
 
 
-void *kndStorage_publisher(void *arg)
+void *kndStorage_publisher(void *arg __attribute__((unused)))
 {
     void *context;
     void *frontend;
     void *backend;
-    int ret;
 
     context = zmq_init(1);
 
@@ -111,6 +109,7 @@ kndStorage_start(struct kndStorage *self)
     return knd_OK;
 }
 
+/*
 static int
 kndStorage_init(struct kndStorage *self)
 {
@@ -120,6 +119,7 @@ kndStorage_init(struct kndStorage *self)
 
     return knd_OK;
 }
+*/
 
 static int
 kndStorage_read_config(struct kndStorage *self,
@@ -127,7 +127,8 @@ kndStorage_read_config(struct kndStorage *self,
 {
     char buf[KND_TEMP_BUF_SIZE];
     xmlDocPtr doc;
-    xmlNodePtr root, cur_node;
+    xmlNodePtr root;
+    //xmlNodePtr cur_node;
     char *val;
     size_t curr_size;
     int err;
@@ -177,9 +178,6 @@ kndStorage_read_config(struct kndStorage *self,
             if (err) return err;
         }
     }
-
-
-    
 
 final:
     xmlFreeDoc(doc);
