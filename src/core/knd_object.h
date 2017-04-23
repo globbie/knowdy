@@ -165,7 +165,7 @@ struct kndObject
                   const char *rec,
                   size_t *total_size);
     
-    int (*flatten)(struct kndObject *self, struct kndFlatTable *table, long *span);
+    int (*flatten)(struct kndObject *self, struct kndFlatTable *table, unsigned long *span);
 
     int (*match)(struct kndObject *self,  const char *rec,
                  size_t         rec_size);

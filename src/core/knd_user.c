@@ -80,7 +80,7 @@ kndUser_set_policy(struct kndUser *self,
 static int
 kndUser_adduser(struct kndUser *self, struct kndData *data)
 {
-    char buf[KND_TEMP_BUF_SIZE];
+    char buf[KND_TEMP_BUF_SIZE] = {0};
     //size_t buf_size;
     
     char uid[KND_ID_SIZE + 1];
@@ -152,7 +152,7 @@ static int
 kndUser_get_user(struct kndUser *self, const char *uid,
                  struct kndUser **user)
 {
-    char buf[KND_TEMP_BUF_SIZE];
+    char buf[KND_TEMP_BUF_SIZE] = {0};
     size_t buf_size = KND_TEMP_BUF_SIZE;
 
     struct kndUser *curr_user;
@@ -221,7 +221,7 @@ kndUser_get_user(struct kndUser *self, const char *uid,
 static int
 kndUser_update(struct kndUser *self, struct kndData *data)
 {
-    char buf[KND_TEMP_BUF_SIZE];
+    char buf[KND_TEMP_BUF_SIZE] = {0};
     size_t buf_size;
     knd_format format = KND_FORMAT_GSL;
     int err = knd_FAIL;
@@ -278,8 +278,8 @@ kndUser_update(struct kndUser *self, struct kndData *data)
 static int
 kndUser_import(struct kndUser *self, struct kndData *data)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    char buf[KND_TEMP_BUF_SIZE] = {0};
+    size_t buf_size = 0;
     knd_format format = KND_FORMAT_GSL;
     struct kndRepo *repo = NULL;
     struct kndRepoAccess *acc = NULL;
@@ -352,44 +352,27 @@ kndUser_import(struct kndUser *self, struct kndData *data)
 }
 
 
-static int
+/*static int
 kndUser_update_select(struct kndUser *self, struct kndData *data)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-    int err;
+    int err ;
     
-    /*buf_size = KND_TID_SIZE + 1;
-    err = knd_get_attr(data->spec, "tid",
-                       data->tid, &buf_size);
-    if (err) goto final;
-
-    buf_size = KND_TEMP_BUF_SIZE;
-    err = knd_get_attr(data->spec, "repo",
-                       buf, &buf_size);
-    if (err) {
-        if (DEBUG_USER_LEVEL_TMP)
-            knd_log("-- no repo specified: assuming the home directory of user \"%s\"\n", self->id);
-    }
-    */
     
-    /* TODO: check repo policy */
-
-    
-    /* err = self->repo->update_select(self->repo, data); */
+    err = self->repo->update_select(self->repo, data);
     
     err = knd_OK;
     
  final:
     return err;
 }
+*/
 
 
 static int
 kndUser_select(struct kndUser *self, struct kndData *data)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    char buf[KND_TEMP_BUF_SIZE] = {0};
+    size_t buf_size = 0;
 
     struct kndOutput *out;
 
@@ -558,8 +541,8 @@ kndUser_select(struct kndUser *self, struct kndData *data)
 static int
 kndUser_get_obj(struct kndUser *self, struct kndData *data)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    char buf[KND_NAME_SIZE] = {0};
+    size_t buf_size = 0;
 
     struct kndRepoAccess *acc = NULL;
     struct kndRepo *repo = NULL;
@@ -654,10 +637,7 @@ kndUser_get_obj(struct kndUser *self, struct kndData *data)
 static int
 kndUser_update_get_obj(struct kndUser *self, struct kndData *data)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
     int err;
-
     knd_log("  .. UPDATE get obj...\n");
     
     /*buf_size = KND_TID_SIZE + 1;
@@ -676,8 +656,6 @@ kndUser_update_get_obj(struct kndUser *self, struct kndData *data)
     */
     /* TODO: check repo policy */
     err = self->repo->update_get_obj(self->repo, data);
-    
- final:
     return err;
 }
 
@@ -687,14 +665,10 @@ kndUser_update_get_obj(struct kndUser *self, struct kndData *data)
 static int
 kndUser_flatten(struct kndUser *self, struct kndData *data)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
     const char *empty_msg = "None";
     size_t empty_msg_size = strlen(empty_msg);
 
     void *update_inbox = self->reader->update;
-    int err;
 
     /* get recent updates */
     knd_zmq_sendmore(update_inbox, data->spec, data->spec_size);
@@ -722,17 +696,12 @@ kndUser_flatten(struct kndUser *self, struct kndData *data)
        which state is a valid one */
 
     
-    err = knd_OK;
-
- final:
-    return err;
+    return knd_OK;
 }
 
 static int
 kndUser_update_flatten(struct kndUser *self, struct kndData *data)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
     int err;
 
     knd_log("  .. UPDATE flatten obj...\n");
@@ -753,8 +722,6 @@ kndUser_update_flatten(struct kndUser *self, struct kndData *data)
     /* TODO: check repo policy */
 
     err = self->repo->update_flatten(self->repo, data);
-    
- final:
     return err;
 }
 
@@ -762,9 +729,6 @@ kndUser_update_flatten(struct kndUser *self, struct kndData *data)
 static int
 kndUser_match(struct kndUser *self, struct kndData *data)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
     const char *empty_msg = "None";
     size_t empty_msg_size = strlen(empty_msg);
 
@@ -772,7 +736,6 @@ kndUser_match(struct kndUser *self, struct kndData *data)
     int err;
 
     knd_log("  .. match obj...\n");
-
     
     /* get recent updates */
     knd_zmq_sendmore(update_inbox, data->spec, data->spec_size);
@@ -796,22 +759,17 @@ kndUser_match(struct kndUser *self, struct kndData *data)
     
     /* get the frozen state of matched obj */
 
-    sleep(0); // fixme! was sleep(0.1). why sleep?
+    /*sleep(0);*/  // fixme! was sleep(0.1). why sleep?
 
     err = self->repo->match(self->repo, data);
-    if (err) goto final;
+    if (err) return err;
 
-    err = knd_OK;
-
- final:
-    return err;
+    return knd_OK;
 }
 
 static int
 kndUser_update_match(struct kndUser *self, struct kndData *data)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
     int err;
 
     knd_log("  .. UPDATE match obj...\n");
@@ -834,7 +792,6 @@ kndUser_update_match(struct kndUser *self, struct kndData *data)
 
     err = self->repo->update_match(self->repo, data);
     
- final:
     return err;
 }
 
@@ -916,8 +873,8 @@ kndUser_read_browse_classes(struct kndUser *self, char *rec, size_t rec_size __a
 static int
 kndUser_read_repos(struct kndUser *self, char *rec, size_t rec_size __attribute__((unused)))
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    char buf[KND_NAME_SIZE] = {0};
+    size_t buf_size = 0;
 
     struct kndRepoAccess *acc;
     char *c;
@@ -980,10 +937,10 @@ kndUser_read_repos(struct kndUser *self, char *rec, size_t rec_size __attribute_
 static int
 kndUser_read(struct kndUser *self, const char *rec)
 {
-    char attr_buf[KND_NAME_SIZE];
+    char attr_buf[KND_NAME_SIZE] = {0};
     size_t attr_buf_size;
 
-    char val_buf[KND_TEMP_BUF_SIZE];
+    char val_buf[KND_TEMP_BUF_SIZE] = {0};
     size_t val_buf_size;
 
     const char *c;
@@ -1068,8 +1025,8 @@ kndUser_read(struct kndUser *self, const char *rec)
 static int
 kndUser_read_db_state(struct kndUser *self, char *rec)
 {
-    //char buf[KND_TEMP_BUF_SIZE];
-    //size_t buf_size;
+    //char buf[KND_TEMP_BUF_SIZE] = {0};
+    //size_t buf_size = 0;
 
     char *b, *c;
     
@@ -1148,8 +1105,8 @@ kndUser_read_db_state(struct kndUser *self, char *rec)
 static int 
 kndUser_restore(struct kndUser *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    char buf[KND_TEMP_BUF_SIZE] = {0};
+    size_t buf_size = 0;
     //struct kndUser *user;
 
     //const char *key = NULL;
@@ -1196,8 +1153,8 @@ kndUser_restore(struct kndUser *self)
 static int 
 kndUser_export_GSL(struct kndUser *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    char buf[KND_TEMP_BUF_SIZE] = {0};
+    size_t buf_size = 0;
     struct kndOutput *out;
     int err;
 
@@ -1220,8 +1177,8 @@ kndUser_export_GSL(struct kndUser *self)
 static int
 kndUser_export_JSON(struct kndUser *self)
 {
-    //char buf[KND_MED_BUF_SIZE];
-    //size_t buf_size;
+    //char buf[KND_MED_BUF_SIZE] = {0};
+    //size_t buf_size = 0;
 
     struct kndDataClass *dc;
     struct kndOutput *out;
@@ -1337,7 +1294,7 @@ kndUser_init(struct kndUser *self)
     self->update = kndUser_update;
 
     self->select = kndUser_select;
-    self->update_select = kndUser_update_select;
+    /*   self->update_select = kndUser_update_select;*/
 
     self->get_obj = kndUser_get_obj;
     self->update_get_obj = kndUser_update_get_obj;

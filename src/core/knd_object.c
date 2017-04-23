@@ -2744,7 +2744,7 @@ kndObject_match(struct kndObject *self,
 static int 
 kndObject_flatten(struct kndObject *self,
                   struct kndFlatTable *table,
-                  long *span)
+                  unsigned long *span)
 {
     struct kndRefSet *refset;
     struct kndObjRef *ref;
@@ -2753,10 +2753,10 @@ kndObject_flatten(struct kndObject *self,
     struct kndFlatRow *row;
     struct ooDict *idx = NULL;
     struct kndElem *elem, *e;
-    long currspan;
-    long timespan;
-    long maxspan = 0;
-    //long amount;
+    unsigned long currspan;
+    unsigned long timespan = 0;
+    unsigned long maxspan = 0;
+    long numval = 0;
     long estim = 0;
     int err;
 
@@ -2808,7 +2808,9 @@ kndObject_flatten(struct kndObject *self,
                     e = elem->inner->elems;
                     while (e) {
                         if (!strcmp(e->name, "plan")) {
-                            err = knd_parse_num(e->states->val, &timespan);
+                            err = knd_parse_num(e->states->val, &numval);
+                            if (err) return err;
+                            if (numval >= 0) timespan = (unsigned long)numval;
                             break;
                         }
                         e = e->next;
@@ -2842,13 +2844,12 @@ kndObject_flatten(struct kndObject *self,
         maxspan = timespan;
         
         cell->obj = self;
-        
 
         table->num_rows++;
         
     }
     
-    *span = maxspan;
+    *span = (unsigned long)maxspan;
     err = knd_OK;
     
  final:

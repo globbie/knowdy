@@ -29,20 +29,16 @@
 #define DEBUG_READER_LEVEL_3 0
 #define DEBUG_READER_LEVEL_TMP 1
 
-
 static int
 kndDataReader_del(struct kndDataReader *self)
 {
     if (self->path) free(self->path);
-
     /* TODO: storage */
     
     free(self);
 
     return knd_OK;
 }
-
-
 
 static int
 kndDataReader_read_config(struct kndDataReader *self,
