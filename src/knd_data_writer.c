@@ -1,17 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include <libxml/parser.h>
 
 #include <pthread.h>
 
-#include <zmq.h>
-#include "zhelpers.h"
-
 #include "knd_config.h"
 #include "oodict.h"
 #include "knd_utils.h"
+#include "knd_msg.h"
 
 #include "knd_data_writer.h"
 #include "knd_output.h"
@@ -260,8 +259,6 @@ kndDataWriter_read_config(struct kndDataWriter *self,
 {
     //char buf[KND_TEMP_BUF_SIZE];
     //size_t buf_size = KND_TEMP_BUF_SIZE;
-
-    size_t curr_size = 0;
     
     xmlDocPtr doc = NULL;
     xmlNodePtr root, cur_node, sub_node;
@@ -447,14 +444,14 @@ kndDataWriter_reply(struct kndDataWriter *self,
         if (err) goto final;
     }
     
-    err = s_sendmore(self->delivery, (const char*)self->spec_out->buf, self->spec_out->buf_size);
-    err = s_sendmore(self->delivery, (const char*)data->name, data->name_size);
-    err = s_sendmore(self->delivery, self->out->buf, self->out->buf_size);
-    err = s_send(self->delivery, "None", strlen("None"));
+    err = knd_zmq_sendmore(self->delivery, (const char*)self->spec_out->buf, self->spec_out->buf_size);
+    err = knd_zmq_sendmore(self->delivery, (const char*)data->name, data->name_size);
+    err = knd_zmq_sendmore(self->delivery, self->out->buf, self->out->buf_size);
+    err = knd_zmq_send(self->delivery, "None", strlen("None"));
 
     /* get reply from delivery */
-    header = s_recv(self->delivery, &header_size);
-    confirm = s_recv(self->delivery, &confirm_size);
+    header = knd_zmq_recv(self->delivery, &header_size);
+    confirm = knd_zmq_recv(self->delivery, &confirm_size);
 
     if (DEBUG_WRITER_LEVEL_2)
         knd_log("  MSG SPEC: %s\n\n  == Delivery Service reply: %s\n",
@@ -520,8 +517,8 @@ kndDataWriter_start(struct kndDataWriter *self)
             knd_log("    ++ DATAWRITER AGENT #%s is ready to receive new tasks!", 
                     self->name);
 
-	data->spec = s_recv(outbox, &data->spec_size);
-	data->obj = s_recv(outbox, &data->obj_size);
+	data->spec = knd_zmq_recv(outbox, &data->spec_size);
+	data->obj = knd_zmq_recv(outbox, &data->obj_size);
         
 	knd_log("    ++ DATAWRITER AGENT #%s got spec: %s\n", 
                 self->name, data->spec);
@@ -759,11 +756,11 @@ void *kndDataWriter_subscriber(void *arg)
 
 	/*printf("\n    ++ WRITER SUBSCRIBER is waiting for new tasks...\n");*/
 
-        data->spec = s_recv(subscriber, &data->spec_size);
-	data->obj = s_recv(subscriber, &data->obj_size);
+        data->spec = knd_zmq_recv(subscriber, &data->spec_size);
+	data->obj = knd_zmq_recv(subscriber, &data->obj_size);
 
-	s_sendmore(inbox, data->spec, data->spec_size);
-	s_send(inbox, data->obj, data->obj_size);
+	knd_zmq_sendmore(inbox, data->spec, data->spec_size);
+	knd_zmq_send(inbox, data->obj, data->obj_size);
 
 	printf("    ++ all messages sent!\n");
 

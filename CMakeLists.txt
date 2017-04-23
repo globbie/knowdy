@@ -30,6 +30,7 @@ set(DELIVERY_SERVER
     src/knd_delivery.c
     src/knd_output.c
     src/knd_spec.c
+    src/knd_msg.c
     src/knd_utils.c
     src/knd_objref.c
     src/knd_facet.c
@@ -44,6 +45,7 @@ set(DELIVERY_SERVER
 
 set(DATA_READER
     src/knd_data_reader.c
+    src/knd_msg.c
     src/knd_utils.c
     src/knd_output.c
     src/knd_spec.c
@@ -70,6 +72,7 @@ set(DATA_READER
 
 set(DATA_WRITER
     src/knd_data_writer.c
+    src/knd_msg.c
     src/knd_utils.c
     src/knd_output.c
     src/knd_spec.c
@@ -97,6 +100,7 @@ set(DATA_WRITER
 set(STORAGE_SERVER
     src/knd_storage_server.c
     src/knd_storage.c
+    src/knd_msg.c
     src/knd_utils.c
 )
 

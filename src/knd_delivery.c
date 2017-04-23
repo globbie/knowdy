@@ -8,13 +8,13 @@
 
 #include <libxml/parser.h>
 
-#include <zmq.h>
-#include "zhelpers.h"
+#include <assert.h>
 
 #include "knd_config.h"
 #include "knd_delivery.h"
 #include "knd_monitor.h"
 #include "knd_output.h"
+#include "knd_msg.h"
 
 #define DEBUG_DELIV_LEVEL_0 0
 #define DEBUG_DELIV_LEVEL_1 0
@@ -1604,10 +1604,10 @@ kndDelivery_start(struct kndDelivery *self)
 
         knd_log("\n    ++ DELIVERY service is waiting for new tasks...\n");
 
-        data->spec = s_recv(service, &data->spec_size);
-        data->query = s_recv(service, &data->query_size);
-        data->body = s_recv(service, &data->body_size);
-        data->obj = s_recv(service, &data->obj_size);
+        data->spec = knd_zmq_recv(service, &data->spec_size);
+        data->query = knd_zmq_recv(service, &data->query_size);
+        data->body = knd_zmq_recv(service, &data->body_size);
+        data->obj = knd_zmq_recv(service, &data->obj_size);
 
 	knd_log("    ++ DELIVERY service has got spec:\n   %s  QUERY: %s  META/OBJ: %s\n\n",
                 data->spec, data->query, data->obj);
@@ -1664,8 +1664,8 @@ kndDelivery_start(struct kndDelivery *self)
                 err, data->header, data->reply);
 
         
-        s_sendmore(service, (const char*)data->header, data->header_size);
-	s_send(service, reply, reply_size);
+        knd_zmq_sendmore(service, (const char*)data->header, data->header_size);
+	knd_zmq_send(service, reply, reply_size);
 
         fflush(stdout);
     }

@@ -7,11 +7,9 @@
 
 #include <pthread.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include <libxml/parser.h>
-
-#include <zmq.h>
-#include "zhelpers.h"
 
 #include "knd_config.h"
 #include "oodict.h"
@@ -23,7 +21,7 @@
 #include "knd_dataclass.h"
 #include "knd_object.h"
 
-
+#include "knd_msg.h"
 #include "knd_utils.h"
 
 #define DEBUG_READER_LEVEL_1 0
@@ -56,8 +54,6 @@ kndDataReader_read_config(struct kndDataReader *self,
     xmlNodePtr root, cur_node, sub_node;
     xmlChar *val = NULL;
 
-
-    size_t curr_size;
     int err;
 
     doc = xmlParseFile(config);
@@ -258,13 +254,13 @@ kndDataReader_get_history(struct kndDataReader *self,
                        "  class=\"%s\" obj_id=\"%s\" state=\"%lu\"/>\n",
                        classname, obj->id, (unsigned long)state);
     
-    err = s_sendmore(self->delivery, (const char*)buf, buf_size);
-    err = s_sendmore(self->delivery, "None", 4);
-    err = s_sendmore(self->delivery, "None", 4);
-    err = s_send(self->delivery, "None", 4);
+    err = knd_zmq_sendmore(self->delivery, (const char*)buf, buf_size);
+    err = knd_zmq_sendmore(self->delivery, "None", 4);
+    err = knd_zmq_sendmore(self->delivery, "None", 4);
+    err = knd_zmq_send(self->delivery, "None", 4);
 
-    header = s_recv(self->delivery, &header_size);
-    msg = s_recv(self->delivery, &msg_size);
+    header = knd_zmq_recv(self->delivery, &header_size);
+    msg = knd_zmq_recv(self->delivery, &msg_size);
     if (!msg_size) {
         err = knd_FAIL;
         goto final;
@@ -294,8 +290,6 @@ static int
 kndDataReader_get_user(struct kndDataReader *self, const char *spec)
 {
     char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size = KND_TEMP_BUF_SIZE;
-
     struct kndUser *user;
     //struct kndPolicy *policy;
     int err;
@@ -491,32 +485,32 @@ kndDataReader_reply(struct kndDataReader *self,
         if (err) goto final;
     }
     
-    err = s_sendmore(self->delivery, (const char*)self->spec_out->buf, self->spec_out->buf_size);
+    err = knd_zmq_sendmore(self->delivery, (const char*)self->spec_out->buf, self->spec_out->buf_size);
 
     if (data->query_size && strcmp(data->query, "None")) {
-        err = s_sendmore(self->delivery, (const char*)data->query, data->query_size);
+        err = knd_zmq_sendmore(self->delivery, (const char*)data->query, data->query_size);
     }
     else if (data->name_size) {
-        err = s_sendmore(self->delivery, (const char*)data->name, data->name_size);
+        err = knd_zmq_sendmore(self->delivery, (const char*)data->name, data->name_size);
     }
     else {
-        err = s_sendmore(self->delivery, "None", strlen("None"));
+        err = knd_zmq_sendmore(self->delivery, "None", strlen("None"));
     }
 
     
-    err = s_sendmore(self->delivery, self->out->buf, self->out->buf_size);
+    err = knd_zmq_sendmore(self->delivery, self->out->buf, self->out->buf_size);
 
     if (self->obj_out->buf_size) {
-        err = s_send(self->delivery, self->obj_out->buf, self->obj_out->buf_size);
+        err = knd_zmq_send(self->delivery, self->obj_out->buf, self->obj_out->buf_size);
     }
     else {
-        err = s_send(self->delivery, "None", strlen("None"));
+        err = knd_zmq_send(self->delivery, "None", strlen("None"));
     }
 
 
     /* get reply from delivery */
-    header = s_recv(self->delivery, &header_size);
-    confirm = s_recv(self->delivery, &confirm_size);
+    header = knd_zmq_recv(self->delivery, &header_size);
+    confirm = knd_zmq_recv(self->delivery, &confirm_size);
 
     if (DEBUG_READER_LEVEL_TMP)
         knd_log("  .. Delivery Service reply: %s\n", confirm);
@@ -586,9 +580,9 @@ kndDataReader_start(struct kndDataReader *self)
 	knd_log("\n    ++ Reader #%s is ready to receive new tasks!\n",
                 self->name);
 
-	data->spec  = s_recv(outbox, &data->spec_size);
-	data->obj   = s_recv(outbox, &data->obj_size);
-	data->query = s_recv(outbox, &data->query_size);
+	data->spec  = knd_zmq_recv(outbox, &data->spec_size);
+	data->obj   = knd_zmq_recv(outbox, &data->obj_size);
+	data->query = knd_zmq_recv(outbox, &data->query_size);
 
 	knd_log("\n    ++ Reader #%s got spec: %s QUERY: %s\n", 
                 self->name, data->spec, data->query);
@@ -867,20 +861,20 @@ void *kndDataReader_subscriber(void *arg)
 
 	printf("\n    ++ READER SUBSCRIBER is waiting for new tasks...\n");
 
-        data->spec = s_recv(subscriber, &data->spec_size);
+        data->spec = knd_zmq_recv(subscriber, &data->spec_size);
 
 	printf("\n    ++ READER SUBSCRIBER has got spec:\n"
           "       %s\n",  data->spec);
 
-	data->body = s_recv(subscriber, &data->body_size);
+	data->body = knd_zmq_recv(subscriber, &data->body_size);
 
 	printf("\n    ++ READER SUBSCRIBER is updating its inbox..\n");
 
 
         
-	s_sendmore(inbox, data->spec, data->spec_size);
-	s_sendmore(inbox, data->body, data->body_size);
-	s_send(inbox, empty_msg, empty_msg_size);
+	knd_zmq_sendmore(inbox, data->spec, data->spec_size);
+	knd_zmq_sendmore(inbox, data->body, data->body_size);
+	knd_zmq_send(inbox, empty_msg, empty_msg_size);
 
 	printf("    ++ all messages sent!\n");
 

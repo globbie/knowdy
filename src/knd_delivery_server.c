@@ -2,10 +2,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#include <libxml/parser.h>
-
-#include <zmq.h>
-#include "zhelpers.h"
 
 #include "knd_utils.h"
 #include "knd_delivery.h"

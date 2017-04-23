@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "zhelpers.h"
-
 #include "knd_policy.h"
 #include "knd_data_writer.h"
 #include "knd_data_reader.h"
@@ -14,6 +12,7 @@
 #include "knd_sorttag.h"
 #include "knd_spec.h"
 #include "knd_output.h"
+#include "knd_msg.h"
 
 
 #define DEBUG_REPO_LEVEL_0 0
@@ -522,18 +521,18 @@ kndRepo_default_select(struct kndRepo *self, struct kndData *data)
                            "    class=\"%s\" sid=\"AUTH_SERVER_SID\"/>",
                            self->user->id, dc->name);
 
-        err = s_sendmore(delivery, (const char*)buf, buf_size);
+        err = knd_zmq_sendmore(delivery, (const char*)buf, buf_size);
 
         if (!strcmp(data->query, "None"))
-            err = s_sendmore(delivery, "/", 1);
+            err = knd_zmq_sendmore(delivery, "/", 1);
         else
-            err = s_sendmore(delivery, data->query, data->query_size);
+            err = knd_zmq_sendmore(delivery, data->query, data->query_size);
             
-        err = s_sendmore(delivery, "None", 4);
-        err = s_send(delivery, "None", 4);
+        err = knd_zmq_sendmore(delivery, "None", 4);
+        err = knd_zmq_send(delivery, "None", 4);
 
-        header = s_recv(delivery, &header_size);
-        rec = s_recv(delivery, &rec_size);
+        header = knd_zmq_recv(delivery, &header_size);
+        rec = knd_zmq_recv(delivery, &rec_size);
         
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("  UPDATES SPEC: %s\n\n  == Delivery Service header: \"%s\" [rec size:%lu]\n",
@@ -560,13 +559,13 @@ kndRepo_default_select(struct kndRepo *self, struct kndData *data)
         free(header);
         free(rec);
 
-        err = s_sendmore(delivery, (const char*)buf, buf_size);
-        err = s_sendmore(delivery, data->query, data->query_size);
-        err = s_sendmore(delivery, "None", 4);
-        err = s_send(delivery, "None", 4);
+        err = knd_zmq_sendmore(delivery, (const char*)buf, buf_size);
+        err = knd_zmq_sendmore(delivery, data->query, data->query_size);
+        err = knd_zmq_sendmore(delivery, "None", 4);
+        err = knd_zmq_send(delivery, "None", 4);
 
-        header = s_recv(delivery, &header_size);
-        rec = s_recv(delivery, &rec_size);
+        header = knd_zmq_recv(delivery, &header_size);
+        rec = knd_zmq_recv(delivery, &rec_size);
 
         if (DEBUG_REPO_LEVEL_3)
             knd_log("  == got header: %s  REC from delivery: %s [%lu]\n",
@@ -825,14 +824,14 @@ kndRepo_update_select_class(struct kndRepo *self, struct kndData *data,
                        "    class=\"%s\" sid=\"AUTH_SERVER_SID\"/>",
                        self->user->id,  cache->baseclass->name);
 
-    err = s_sendmore(delivery, (const char*)buf, buf_size);
-    err = s_sendmore(delivery, data->obj, data->obj_size);
-    err = s_sendmore(delivery, "None", 4);
-    err = s_send(delivery, browser->out->buf, browser->out->buf_size);
+    err = knd_zmq_sendmore(delivery, (const char*)buf, buf_size);
+    err = knd_zmq_sendmore(delivery, data->obj, data->obj_size);
+    err = knd_zmq_sendmore(delivery, "None", 4);
+    err = knd_zmq_send(delivery, browser->out->buf, browser->out->buf_size);
         
     /* get reply from delivery */
-    header = s_recv(delivery, &header_size);
-    confirm = s_recv(delivery, &confirm_size);
+    header = knd_zmq_recv(delivery, &header_size);
+    confirm = knd_zmq_recv(delivery, &confirm_size);
         
     if (DEBUG_REPO_LEVEL_3)
         knd_log("  SELECT UPDATE SPEC: %s\n\n  == Delivery Service reply: %s\n",
@@ -865,14 +864,14 @@ kndRepo_update_select_class(struct kndRepo *self, struct kndData *data,
                        "    class=\"%s\" format=\"JSON\" sid=\"AUTH_SERVER_SID\"/>",
                        self->user->id,  cache->baseclass->name);
 
-    err = s_sendmore(delivery, (const char*)buf, buf_size);
-    err = s_sendmore(delivery, "/", 1);
-    err = s_sendmore(delivery, "None", 4);
-    err = s_send(delivery, browser->out->buf, browser->out->buf_size);
+    err = knd_zmq_sendmore(delivery, (const char*)buf, buf_size);
+    err = knd_zmq_sendmore(delivery, "/", 1);
+    err = knd_zmq_sendmore(delivery, "None", 4);
+    err = knd_zmq_send(delivery, browser->out->buf, browser->out->buf_size);
         
     /* get reply from delivery */
-    header = s_recv(delivery, &header_size);
-    confirm = s_recv(delivery, &confirm_size);
+    header = knd_zmq_recv(delivery, &header_size);
+    confirm = knd_zmq_recv(delivery, &confirm_size);
     
     if (DEBUG_REPO_LEVEL_3)
         knd_log("    EXPORT SUMMARIES SPEC: %s\n\n  == Delivery Service reply: %s\n",
@@ -1612,14 +1611,14 @@ kndRepo_update_match(struct kndRepo *self, struct kndData *data)
 
     delivery = self->user->writer->delivery;
 
-    err = s_sendmore(delivery, (const char*)buf, buf_size);
-    err = s_sendmore(delivery, data->body, data->body_size);
-    err = s_sendmore(delivery, "None", 4);
-    err = s_send(delivery, obj->out->buf, obj->out->buf_size);
+    err = knd_zmq_sendmore(delivery, (const char*)buf, buf_size);
+    err = knd_zmq_sendmore(delivery, data->body, data->body_size);
+    err = knd_zmq_sendmore(delivery, "None", 4);
+    err = knd_zmq_send(delivery, obj->out->buf, obj->out->buf_size);
         
     /* get reply from delivery */
-    header = s_recv(delivery, &header_size);
-    confirm = s_recv(delivery, &confirm_size);
+    header = knd_zmq_recv(delivery, &header_size);
+    confirm = knd_zmq_recv(delivery, &confirm_size);
         
     if (DEBUG_REPO_LEVEL_TMP)
         knd_log("  MATCH UPDATE SPEC: %s\n\n  == Delivery Service reply: %s\n",
@@ -1654,18 +1653,18 @@ kndRepo_match(struct kndRepo *self __attribute__((unused)), struct kndData *data
                            "    class=\"%s\" sid=\"AUTH_SERVER_SID\"/>",
                            self->user->id, dc->name);
 
-        err = s_sendmore(delivery, (const char*)buf, buf_size);
+        err = knd_zmq_sendmore(delivery, (const char*)buf, buf_size);
 
         if (!strcmp(data->query, "None"))
-            err = s_sendmore(delivery, "/", 1);
+            err = knd_zmq_sendmore(delivery, "/", 1);
         else
-            err = s_sendmore(delivery, data->query, data->query_size);
+            err = knd_zmq_sendmore(delivery, data->query, data->query_size);
 
-        err = s_sendmore(delivery, "None", 4);
-        err = s_send(delivery, "None", 4);
+        err = knd_zmq_sendmore(delivery, "None", 4);
+        err = knd_zmq_send(delivery, "None", 4);
 
-        header = s_recv(delivery, &header_size);
-        rec = s_recv(delivery, &rec_size);
+        header = knd_zmq_recv(delivery, &header_size);
+        rec = knd_zmq_recv(delivery, &rec_size);
 
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("  UPDATES SPEC: %s\n\n  == Delivery Service header: \"%s\" [rec size:%lu]\n",

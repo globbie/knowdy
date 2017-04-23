@@ -2,13 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "zhelpers.h"
 
 #include "knd_policy.h"
 #include "knd_data_writer.h"
 #include "knd_data_reader.h"
 #include "knd_user.h"
 #include "knd_output.h"
+#include "knd_msg.h"
 
 
 #define DEBUG_USER_LEVEL_0 0
@@ -408,11 +408,11 @@ kndUser_select(struct kndUser *self, struct kndData *data)
     */
 
     /* TODO: get recent updates */
-    /* s_sendmore(update_inbox, data->spec, data->spec_size);
-    s_sendmore(update_inbox, data->query, data->query_size);
-    s_sendmore(update_inbox, empty_msg, empty_msg_size);
-    s_sendmore(update_inbox, empty_msg, empty_msg_size);
-    s_send(update_inbox, empty_msg, empty_msg_size);
+    /* knd_zmq_sendmore(update_inbox, data->spec, data->spec_size);
+    knd_zmq_sendmore(update_inbox, data->query, data->query_size);
+    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
+    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
+    knd_zmq_send(update_inbox, empty_msg, empty_msg_size);
     */
     
     /*buf_size = KND_TID_SIZE + 1;
@@ -573,11 +573,11 @@ kndUser_get_obj(struct kndUser *self, struct kndData *data)
     /*knd_log("  .. user get obj...\n");*/
     
     /* TODO: get recent updates */
-    /* s_sendmore(update_inbox, data->spec, data->spec_size);
-    s_sendmore(update_inbox, empty_msg, empty_msg_size);
-    s_sendmore(update_inbox, empty_msg, empty_msg_size);
-    s_sendmore(update_inbox, empty_msg, empty_msg_size);
-    s_send(update_inbox, empty_msg, empty_msg_size);
+    /* knd_zmq_sendmore(update_inbox, data->spec, data->spec_size);
+    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
+    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
+    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
+    knd_zmq_send(update_inbox, empty_msg, empty_msg_size);
     */
     
     /*buf_size = KND_TID_SIZE + 1;
@@ -697,11 +697,11 @@ kndUser_flatten(struct kndUser *self, struct kndData *data)
     int err;
 
     /* get recent updates */
-    s_sendmore(update_inbox, data->spec, data->spec_size);
-    s_sendmore(update_inbox, empty_msg, empty_msg_size);
-    s_sendmore(update_inbox, empty_msg, empty_msg_size);
-    s_sendmore(update_inbox, empty_msg, empty_msg_size);
-    s_send(update_inbox, empty_msg, empty_msg_size);
+    knd_zmq_sendmore(update_inbox, data->spec, data->spec_size);
+    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
+    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
+    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
+    knd_zmq_send(update_inbox, empty_msg, empty_msg_size);
 
     /*buf_size = KND_TID_SIZE + 1;
     err = knd_get_attr(data->spec, "tid",
@@ -775,11 +775,11 @@ kndUser_match(struct kndUser *self, struct kndData *data)
 
     
     /* get recent updates */
-    s_sendmore(update_inbox, data->spec, data->spec_size);
-    s_sendmore(update_inbox, data->obj, data->obj_size);
-    s_sendmore(update_inbox, empty_msg, empty_msg_size);
-    s_sendmore(update_inbox, empty_msg, empty_msg_size);
-    s_send(update_inbox, empty_msg, empty_msg_size);
+    knd_zmq_sendmore(update_inbox, data->spec, data->spec_size);
+    knd_zmq_sendmore(update_inbox, data->obj, data->obj_size);
+    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
+    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
+    knd_zmq_send(update_inbox, empty_msg, empty_msg_size);
 
     /*buf_size = KND_TID_SIZE + 1;
     err = knd_get_attr(data->spec, "tid",

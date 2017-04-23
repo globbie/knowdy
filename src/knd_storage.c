@@ -5,16 +5,14 @@
 
 #include <pthread.h>
 #include <unistd.h>
+#include <assert.h>
 
-#include <zmq.h>
 #include <libxml/parser.h>
 
 #include "knd_config.h"
-
 #include "knd_storage.h"
 #include "knd_utils.h"
-
-#include "zhelpers.h"
+#include "knd_msg.h"
 
 static int
 kndStorage_str(struct kndStorage *self)
@@ -129,8 +127,6 @@ kndStorage_read_config(struct kndStorage *self,
     xmlDocPtr doc;
     xmlNodePtr root;
     //xmlNodePtr cur_node;
-    char *val;
-    size_t curr_size;
     int err;
 
     buf[0] = '\0';
