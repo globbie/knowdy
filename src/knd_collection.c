@@ -7,11 +7,11 @@
 
 #include <pthread.h>
 
-#include <zmq.h>
 #include <libxml/parser.h>
 
 #include "knd_config.h"
 #include "knd_collection.h"
+#include "knd_msg.h"
 #include "knd_utils.h"
 
 
@@ -343,8 +343,6 @@ kndColl_read_config(struct kndColl *self,
     char buf[KND_TEMP_BUF_SIZE];
     xmlDocPtr doc;
     xmlNodePtr root, cur_node;
-    char *val;
-    size_t curr_size;
     int err;
 
     buf[0] = '\0';

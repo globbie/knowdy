@@ -862,7 +862,6 @@ kndData_del(struct kndData *self)
     return knd_OK;
 }
 
-
 static int
 kndData_reset(struct kndData *self)
 {

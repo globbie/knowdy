@@ -2,12 +2,12 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
+#include <assert.h>
 
-#include <zmq.h>
-#include "zhelpers.h"
 
 #include "knd_config.h"
 #include "knd_collection.h"
+#include "knd_msg.h"
 #include "knd_utils.h"
 
 #define NUM_RECORDERS 1
@@ -58,11 +58,11 @@ void *kndColl_recorder_agent(void *arg)
 	       args->agent_id);
 
 	/* waiting for spec */
-        data->spec = s_recv(inbox, &data->spec_size);
+        data->spec = knd_zmq_recv(inbox, &data->spec_size);
 
 	knd_log("    !! Collection Recorder Agent #%d: got spec \"%s\"\n", 
 	       args->agent_id, data->spec);
-	data->obj = s_recv(inbox, &data->obj_size);
+	data->obj = knd_zmq_recv(inbox, &data->obj_size);
 
 
         /* TODO: semantic routing */
@@ -72,8 +72,8 @@ void *kndColl_recorder_agent(void *arg)
 	if (!dest_coll_addr) {
             /* TODO check overflow */
             /* send task to all storages */
-	    s_sendmore(publisher, data->spec, data->spec_size);
-	    s_send(publisher, data->obj, data->obj_size);
+	    knd_zmq_sendmore(publisher, data->spec, data->spec_size);
+	    knd_zmq_send(publisher, data->obj, data->obj_size);
 	}
 
         fflush(stdout);
@@ -129,8 +129,8 @@ void *kndColl_requester_agent(void *arg)
                 args->agent_id, coll->request_proxy_backend);
 
 	/* waiting for spec */
-        data->spec = s_recv(inbox, &data->spec_size);
-	data->obj = s_recv(inbox, &data->obj_size);
+        data->spec = knd_zmq_recv(inbox, &data->spec_size);
+	data->obj = knd_zmq_recv(inbox, &data->obj_size);
 
 	knd_log("    !! Collection Requester Agent #%d: got spec \"%s\"\n", 
 	       args->agent_id, data->spec);
@@ -140,8 +140,8 @@ void *kndColl_requester_agent(void *arg)
 	/* stay in this collection */
 	if (!dest_coll_addr) {
             /* send task to one of the storages */
-	    s_sendmore(selector, data->spec, data->spec_size);
-	    s_send(selector, data->obj, data->obj_size);
+	    knd_zmq_sendmore(selector, data->spec, data->spec_size);
+	    knd_zmq_send(selector, data->obj, data->obj_size);
         }
 
         fflush(stdout);
