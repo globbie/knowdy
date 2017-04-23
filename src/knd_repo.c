@@ -28,8 +28,6 @@ kndRepo_get_guid(struct kndRepo *self,
                  size_t      obj_name_size,
                  char *result);
 
-static int
-kndRepo_default_select(struct kndRepo *self, struct kndData *data);
 
 static int
 kndRepo_get_cache(struct kndRepo *self, struct kndDataClass *c,
@@ -424,183 +422,6 @@ kndRepo_select(struct kndRepo *self, struct kndData *data)
     if (err) return err;
 
     return knd_OK;
-}
-
-
-static int
-kndRepo_default_select(struct kndRepo *self, struct kndData *data)
-{
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
-    struct kndDataClass *dc;
-    //struct kndObject *obj;
-    struct kndRepoCache *cache;
-    //struct kndRefSet *browser;
-    struct kndRefSet *refset;
-    //struct ooDict *idx;
-    
-    void *delivery;
-    char *rec = NULL;
-    size_t rec_size;
-    char *header = NULL;
-    size_t header_size;
-
-    size_t num_objs;
-    
-    const char *key = NULL;
-    void *val = NULL;
-
-    int err;
-
-    if (DEBUG_REPO_LEVEL_TMP) 
-        knd_log("   .. REPO:%s   selecting ALL from classes!!\n\n", self->name);
-    
-    delivery = self->user->reader->delivery;
-
-    /*idx = self->user->reader->dc->class_idx;
-    if (!idx) return knd_FAIL;
-    */
-    
-    /* browse local repo */
-    self->user->browse_class_idx->rewind(self->user->browse_class_idx);
-    do {
-        self->user->class_idx->next_item(self->user->browse_class_idx, &key, &val);
-        if (!key) break;
-
-        dc = (struct kndDataClass*)val;
-
-        if (DEBUG_REPO_LEVEL_TMP) 
-            knd_log("   .. select browser refset for the CLASS: %s\n",
-                    dc->name);
-
-        err = kndRepo_get_cache(self, dc, &cache);
-        if (err) goto final;
-
-        cache->select_result = NULL;
-        cache->num_matches = 0;
-        
-        if (!cache->browser->num_refs) {
-            err = kndRepo_read_indices(self, cache);
-            if (err) return err;
-        }
-
-
-        /* default batch of objs */
-        if (cache->browser->num_refs) {
-            refset = cache->browser;
-            num_objs = KND_RESULT_BATCH_SIZE;
-            if (refset->num_refs < KND_RESULT_BATCH_SIZE)
-                num_objs = refset->num_refs;
-    
-            refset->batch_size = num_objs;
-            
-            if (DEBUG_REPO_LEVEL_TMP)
-                knd_log("    RefSet of class: \"%s\"   Batch size to deliver: %lu\n",
-                        cache->baseclass->name,
-                        (unsigned long)refset->batch_size);
-    
-            err = refset->extract_objs(refset);
-            if (err) {
-                if (DEBUG_REPO_LEVEL_TMP)
-                    knd_log("-- no objs extracted from \"%s\"\n",
-                            cache->baseclass->name);
-                return err;
-            }
-                
-            cache->select_result = refset;
-        }
-        
-        
-        /* TODO: updates lookup */
-        goto next_rec;
-        
-        knd_log("   .. get updates for the CLASS: %s\n", dc->name);
-
-        buf_size = sprintf(buf, "<spec action=\"get_updates\" uid=\"%s\" "
-                           "    class=\"%s\" sid=\"AUTH_SERVER_SID\"/>",
-                           self->user->id, dc->name);
-
-        err = knd_zmq_sendmore(delivery, (const char*)buf, buf_size);
-
-        if (!strcmp(data->query, "None"))
-            err = knd_zmq_sendmore(delivery, "/", 1);
-        else
-            err = knd_zmq_sendmore(delivery, data->query, data->query_size);
-            
-        err = knd_zmq_sendmore(delivery, "None", 4);
-        err = knd_zmq_send(delivery, "None", 4);
-
-        header = knd_zmq_recv(delivery, &header_size);
-        rec = knd_zmq_recv(delivery, &rec_size);
-        
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("  UPDATES SPEC: %s\n\n  == Delivery Service header: \"%s\" [rec size:%lu]\n",
-                    buf, header, (unsigned long)rec_size);
-        
-        if (strcmp(header, "OK")) goto next_rec;
-        
-        err = kndRepo_get_cache(self, dc, &cache);
-        if (err) goto final;
-
-
-        /*err = cache->browser->read(cache->browser, rec, rec_size, NULL);
-        if (err) goto final;
-        */
-        
-        buf_size = sprintf(buf, "<spec action=\"get_summaries\" uid=\"%s\" "
-                           "    class=\"%s\" sid=\"AUTH_SERVER_SID\"/>",
-                           self->user->id, dc->name);
-
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("  SUMMARIES SPEC: %s\n free prev header: %s   .. free prev rec: %s\n\n",
-                    buf, header, rec);
-
-        free(header);
-        free(rec);
-
-        err = knd_zmq_sendmore(delivery, (const char*)buf, buf_size);
-        err = knd_zmq_sendmore(delivery, data->query, data->query_size);
-        err = knd_zmq_sendmore(delivery, "None", 4);
-        err = knd_zmq_send(delivery, "None", 4);
-
-        header = knd_zmq_recv(delivery, &header_size);
-        rec = knd_zmq_recv(delivery, &rec_size);
-
-        if (DEBUG_REPO_LEVEL_3)
-            knd_log("  == got header: %s  REC from delivery: %s [%lu]\n",
-                    header, rec, (unsigned long)rec_size);
-        
-        if (strcmp(header, "OK")) goto next_rec;
-
-        cache->browser->summaries = rec;
-        cache->browser->summaries_size = rec_size;
-        rec = NULL;
-        
-    next_rec:
-        
-        if (header)
-            free(header);
-        if (rec)
-            free(rec);
-
-        header = NULL;
-        rec = NULL;
-        
-    } while (key);
-
-    
-    err = knd_OK;
-    
- final:
-
-    if (header)
-        free(header);
-    
-    if (rec)
-        free(rec);
-
-    return err;
 }
 
 
@@ -1066,19 +887,11 @@ static int
 kndRepo_get_obj(struct kndRepo *self,
                 struct kndData *data)
 {
-    /*char buf[KND_NAME_SIZE];
-    size_t buf_size;
-    */
-    
-    //char idbuf[KND_NAME_SIZE];
-    size_t idbuf_size;
-
     struct kndDataClass *dc = NULL;
     struct kndRepoCache *cache;
     struct kndObject *obj = NULL;
     struct ooDict *idx = NULL;
-    long numval = 0;
-    size_t curr_depth;
+    size_t curr_depth = 0;
     int err = knd_FAIL;
 
     if (DEBUG_REPO_LEVEL_2)
@@ -1369,7 +1182,7 @@ kndRepo_update_flatten(struct kndRepo *self, struct kndData *data)
     struct kndFlatRow *row;
     struct kndFlatCell *cell;
 
-    long span = 0;
+    unsigned long span = 0;
     long total = 0;
     struct kndOutput *out;
     int err;
@@ -1443,7 +1256,6 @@ kndRepo_update_flatten(struct kndRepo *self, struct kndData *data)
                        (unsigned long)span);
     err = out->write(out, buf, buf_size);
     if (err) goto final;
-
     
     for (size_t i = 0; i < span; i++) {
         total = table->totals[i];
@@ -1971,9 +1783,6 @@ kndRepo_import(struct kndRepo *self,
                struct kndData *data,
                knd_format format)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = KND_NAME_SIZE;
-
     struct kndDataClass *c;
     struct kndObject *obj = NULL;
     struct kndRepoCache *cache;

@@ -3,7 +3,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-
+#include <unistd.h>
 #include <time.h>
 
 #include <libxml/parser.h>
@@ -1686,9 +1686,6 @@ kndDelivery_read_config(struct kndDelivery *self,
     char buf[KND_TEMP_BUF_SIZE];
     xmlDocPtr doc;
     xmlNodePtr root, cur_node, child;
-    char *val;
-    //char *proxy_name, *frontend, *backend;
-    size_t curr_size;
     int err;
 
     buf[0] = '\0';

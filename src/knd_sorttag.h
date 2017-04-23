@@ -40,7 +40,7 @@ struct kndSortAttr
     char val[KND_NAME_SIZE + 1];
     size_t val_size;
 
-    int numval;
+    unsigned int numval;
 
     bool is_trivia;
     
