@@ -19,89 +19,89 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(COLLECTION_SERVER
-    src/knd_coll_server.c
-    src/knd_collection.c
-    src/knd_msg.c
-    src/knd_utils.c
+        src/collection/knd_coll_server.c
+        src/collection/knd_collection.c
+        src/core/knd_msg.c
+        src/core/knd_utils.c
 )
 
 set(DELIVERY_SERVER
-    src/knd_delivery_server.c
-    src/knd_delivery.c
-    src/knd_output.c
-    src/knd_spec.c
-    src/knd_msg.c
-    src/knd_utils.c
-    src/knd_objref.c
-    src/knd_facet.c
-    src/knd_sorttag.c
-    src/knd_refset.c
-    src/knd_coderef.c
-    src/knd_monitor.c
-    src/oodict.c
-    src/ooarray.c
-    src/oolist.c
+        src/delivery/knd_delivery_server.c
+        src/delivery/knd_delivery.c
+        src/core/knd_output.c
+        src/core/knd_spec.c
+        src/core/knd_msg.c
+        src/core/knd_utils.c
+        src/core/knd_objref.c
+        src/core/knd_facet.c
+        src/core/knd_sorttag.c
+        src/core/knd_refset.c
+        src/core/knd_coderef.c
+        src/delivery/knd_monitor.c
+        src/core/oodict.c
+        src/core/ooarray.c
+        src/core/oolist.c
 )
 
 set(DATA_READER
-    src/knd_data_reader.c
-    src/knd_msg.c
-    src/knd_utils.c
-    src/knd_output.c
-    src/knd_spec.c
-    src/knd_dataclass.c
-    src/knd_attr.c
-    src/knd_query.c
-    src/knd_conc.c
-    src/knd_coderef.c
-    src/knd_objref.c
-    src/knd_facet.c
-    src/knd_sorttag.c
-    src/knd_user.c
-    src/knd_repo.c
-    src/knd_policy.c
-    src/knd_refset.c
-    src/knd_text.c
-    src/knd_object.c
-    src/knd_elem.c
-    src/knd_num.c
-    src/oodict.c
-    src/ooarray.c
-    src/oolist.c
+        src/data_reader/knd_data_reader.c
+        src/core/knd_msg.c
+        src/core/knd_utils.c
+        src/core/knd_output.c
+        src/core/knd_spec.c
+        src/core/knd_dataclass.c
+        src/core/knd_attr.c
+        src/core/knd_query.c
+        src/core/knd_conc.c
+        src/core/knd_coderef.c
+        src/core/knd_objref.c
+        src/core/knd_facet.c
+        src/core/knd_sorttag.c
+        src/core/knd_user.c
+        src/core/knd_repo.c
+        src/core/knd_policy.c
+        src/core/knd_refset.c
+        src/core/knd_text.c
+        src/core/knd_object.c
+        src/core/knd_elem.c
+        src/core/knd_num.c
+        src/core/oodict.c
+        src/core/ooarray.c
+        src/core/oolist.c
 )
 
 set(DATA_WRITER
-    src/knd_data_writer.c
-    src/knd_msg.c
-    src/knd_utils.c
-    src/knd_output.c
-    src/knd_spec.c
-    src/knd_dataclass.c
-    src/knd_attr.c
-    src/knd_conc.c
-    src/knd_coderef.c
-    src/knd_objref.c
-    src/knd_text.c
-    src/knd_facet.c
-    src/knd_sorttag.c
-    src/knd_query.c
-    src/knd_refset.c
-    src/knd_user.c
-    src/knd_repo.c
-    src/knd_policy.c
-    src/knd_object.c
-    src/knd_elem.c
-    src/knd_num.c
-    src/oodict.c
-    src/ooarray.c
-    src/oolist.c
+        src/data_writer/knd_data_writer.c
+        src/core/knd_msg.c
+        src/core/knd_utils.c
+        src/core/knd_output.c
+        src/core/knd_spec.c
+        src/core/knd_dataclass.c
+        src/core/knd_attr.c
+        src/core/knd_conc.c
+        src/core/knd_coderef.c
+        src/core/knd_objref.c
+        src/core/knd_text.c
+        src/core/knd_facet.c
+        src/core/knd_sorttag.c
+        src/core/knd_query.c
+        src/core/knd_refset.c
+        src/core/knd_user.c
+        src/core/knd_repo.c
+        src/core/knd_policy.c
+        src/core/knd_object.c
+        src/core/knd_elem.c
+        src/core/knd_num.c
+        src/core/oodict.c
+        src/core/ooarray.c
+        src/core/oolist.c
 )
 
 set(STORAGE_SERVER
-    src/knd_storage_server.c
-    src/knd_storage.c
-    src/knd_msg.c
-    src/knd_utils.c
+        src/storage/knd_storage_server.c
+        src/storage/knd_storage.c
+        src/core/knd_msg.c
+        src/core/knd_utils.c
 )
 
 #set(TEST_CLIENT
