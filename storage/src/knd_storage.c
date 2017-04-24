@@ -80,7 +80,8 @@ kndStorage_start(struct kndStorage *self)
     ret = pthread_create(&publisher, 
 			 NULL, 
 			 kndStorage_publisher, (void*)self);
-
+    if (ret) return knd_FAIL;
+    
     /* create queue device */
     frontend = zmq_socket(self->context, ZMQ_PULL);
     assert(frontend);
