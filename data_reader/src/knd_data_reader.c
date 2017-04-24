@@ -2,27 +2,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
-#include <sys/stat.h>
-#include <syslog.h>
-
 #include <pthread.h>
-#include <unistd.h>
 #include <assert.h>
 
 #include <libxml/parser.h>
 
-#include "knd_config.h"
-#include "oodict.h"
+#include <knd_policy.h>
+#include <knd_user.h>
+#include <knd_output.h>
+#include <knd_dataclass.h>
+#include <knd_object.h>
+#include <knd_msg.h>
 
-#include "knd_policy.h"
-#include "knd_user.h"
-#include "knd_output.h"
 #include "knd_data_reader.h"
-#include "knd_dataclass.h"
-#include "knd_object.h"
-
-#include "knd_msg.h"
-#include "knd_utils.h"
 
 #define DEBUG_READER_LEVEL_1 0
 #define DEBUG_READER_LEVEL_2 0

@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
 
-
-#include "knd_utils.h"
+#include <knd_utils.h>
 #include "knd_delivery.h"
 
 /*

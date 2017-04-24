@@ -1,16 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <time.h>
 
 #include <libxml/parser.h>
 
-#include "knd_config.h"
+#include <knd_refset.h>
+#include <knd_sorttag.h>
+#include <knd_output.h>
+
 #include "knd_monitor.h"
-#include "knd_refset.h"
-#include "knd_sorttag.h"
-#include "knd_output.h"
 
 /* forward */
 static struct kndTrans*

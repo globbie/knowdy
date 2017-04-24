@@ -719,7 +719,7 @@ knd_parse_num(const char *val,
 
     errno = 0;
 
-    /* fix common typos, raise a warning */
+    /* fix core typos, raise a warning */
     /*c = val;
     while (*c) {
         if ((*c) == 'O' || (*c) == 'o') {

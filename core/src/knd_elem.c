@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,11 +13,11 @@
 #include "knd_refset.h"
 #include "knd_sorttag.h"
 
-#include "knd_data_writer.h"
-#include "knd_data_reader.h"
-
 #include "knd_output.h"
 #include "knd_user.h"
+
+#include "knd_data_writer.h"
+#include "knd_data_reader.h"
 
 #define DEBUG_ELEM_LEVEL_1 0
 #define DEBUG_ELEM_LEVEL_2 0

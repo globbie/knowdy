@@ -5,8 +5,9 @@
 
 #include <time.h>
 
-#include "oodict.h"
-#include "knd_utils.h"
+#include <oodict.h>
+#include <knd_utils.h>
+
 #include "knd_monitor.h"
 
 #define KND_MAX_SRCS 4

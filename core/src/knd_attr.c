@@ -5,10 +5,11 @@
 #include "knd_attr.h"
 #include "knd_dataclass.h"
 #include "knd_output.h"
+
 #include "knd_data_reader.h"
 #include "knd_data_writer.h"
+
 #include "knd_text.h"
-#include "knd_utils.h"
 
 #define DEBUG_ATTR_LEVEL_1 0
 #define DEBUG_ATTR_LEVEL_2 0

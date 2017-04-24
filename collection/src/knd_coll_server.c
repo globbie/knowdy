@@ -1,14 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <string.h>
 #include <assert.h>
 
+#include <knd_config.h>
+#include <knd_msg.h>
+#include <knd_utils.h>
 
-#include "knd_config.h"
 #include "knd_collection.h"
-#include "knd_msg.h"
-#include "knd_utils.h"
 
 #define NUM_RECORDERS 1
 #define NUM_REQUESTERS 1

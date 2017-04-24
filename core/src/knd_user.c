@@ -2,14 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 #include "knd_policy.h"
-#include "knd_data_writer.h"
-#include "knd_data_reader.h"
 #include "knd_user.h"
 #include "knd_output.h"
 #include "knd_msg.h"
 
+#include "knd_data_writer.h"
+#include "knd_data_reader.h"
 
 #define DEBUG_USER_LEVEL_0 0
 #define DEBUG_USER_LEVEL_1 0

@@ -4,17 +4,15 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <time.h>
+#include <assert.h>
 
 #include <libxml/parser.h>
 
-#include <assert.h>
+#include <knd_config.h>
+#include <knd_output.h>
+#include <knd_msg.h>
 
-#include "knd_config.h"
 #include "knd_delivery.h"
-#include "knd_monitor.h"
-#include "knd_output.h"
-#include "knd_msg.h"
 
 #define DEBUG_DELIV_LEVEL_0 0
 #define DEBUG_DELIV_LEVEL_1 0

@@ -18,96 +18,6 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
 endif()
 
-set(COLLECTION_SERVER
-    src/knd_coll_server.c
-    src/knd_collection.c
-    src/knd_msg.c
-    src/knd_utils.c
-)
-
-set(DELIVERY_SERVER
-    src/knd_delivery_server.c
-    src/knd_delivery.c
-    src/knd_output.c
-    src/knd_spec.c
-    src/knd_msg.c
-    src/knd_utils.c
-    src/knd_objref.c
-    src/knd_facet.c
-    src/knd_sorttag.c
-    src/knd_refset.c
-    src/knd_coderef.c
-    src/knd_monitor.c
-    src/oodict.c
-    src/ooarray.c
-    src/oolist.c
-)
-
-set(DATA_READER
-    src/knd_data_reader.c
-    src/knd_msg.c
-    src/knd_utils.c
-    src/knd_output.c
-    src/knd_spec.c
-    src/knd_dataclass.c
-    src/knd_attr.c
-    src/knd_query.c
-    src/knd_conc.c
-    src/knd_coderef.c
-    src/knd_objref.c
-    src/knd_facet.c
-    src/knd_sorttag.c
-    src/knd_user.c
-    src/knd_repo.c
-    src/knd_policy.c
-    src/knd_refset.c
-    src/knd_text.c
-    src/knd_object.c
-    src/knd_elem.c
-    src/knd_num.c
-    src/oodict.c
-    src/ooarray.c
-    src/oolist.c
-)
-
-set(DATA_WRITER
-    src/knd_data_writer.c
-    src/knd_msg.c
-    src/knd_utils.c
-    src/knd_output.c
-    src/knd_spec.c
-    src/knd_dataclass.c
-    src/knd_attr.c
-    src/knd_conc.c
-    src/knd_coderef.c
-    src/knd_objref.c
-    src/knd_text.c
-    src/knd_facet.c
-    src/knd_sorttag.c
-    src/knd_query.c
-    src/knd_refset.c
-    src/knd_user.c
-    src/knd_repo.c
-    src/knd_policy.c
-    src/knd_object.c
-    src/knd_elem.c
-    src/knd_num.c
-    src/oodict.c
-    src/ooarray.c
-    src/oolist.c
-)
-
-set(STORAGE_SERVER
-    src/knd_storage_server.c
-    src/knd_storage.c
-    src/knd_msg.c
-    src/knd_utils.c
-)
-
-#set(TEST_CLIENT
-#    src/knd_test_client.c
-#)
-
 find_package(PkgConfig)
 
 find_package(LibXml2 REQUIRED)
@@ -118,18 +28,20 @@ find_path(ZEROMQ_INCLUDE_DIR NAMES zmq.h PATHS ${ZEROMQ_INCLUDE_DIRS})
 find_library(ZEROMQ_LIBRARY NAMES zmq PATHS ${ZEROMQ_LIBRARY_DIRS})
 include_directories(${ZEROMQ_INCLUDE_DIR})
 
-add_executable(data_writer ${DATA_WRITER})
-add_executable(data_reader ${DATA_READER})
-add_executable(coll_server ${COLLECTION_SERVER})
-add_executable(delivery_server ${DELIVERY_SERVER})
-add_executable(storage_server ${STORAGE_SERVER})
-#add_executable(test_client ${TEST_CLIENT})
+include_directories(core/include)
 
-target_link_libraries(data_writer pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY})
-target_link_libraries(data_reader pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY})
-target_link_libraries(coll_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY})
-target_link_libraries(delivery_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY})
-target_link_libraries(storage_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY})
+include_directories(collection/src)
+include_directories(data_reader/src)
+include_directories(data_writer/src)
+include_directories(delivery/src)
+include_directories(storage/src)
+
+add_subdirectory(core)
+add_subdirectory(collection)
+add_subdirectory(data_writer)
+add_subdirectory(data_reader)
+add_subdirectory(delivery)
+add_subdirectory(storage)
 
 #configure_file("${CMAKE_CURRENT_SOURCE_DIR}/knd.spec.in" "${CMAKE_CURRENT_BINARY_DIR}/knd.spec" @ONLY IMMEDIATE)
 set(CPACK_RPM_USER_BINARY_SPECFILE "${CMAKE_CURRENT_BINARY_DIR}/knd.spec")
