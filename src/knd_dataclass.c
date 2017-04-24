@@ -955,15 +955,18 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
 
     struct kndOutput *out = NULL;
     
-    const char *c;
-    const char *b;
+    char *c;
+    char *b;
 
+    const char *GSL_file_suffix = ".gsl";
+    size_t GSL_file_suffix_size = strlen(GSL_file_suffix);
+    
     bool in_comment = false;
     const char *slash = NULL;
     const char *asterisk = NULL;
 
-    bool in_init = true;
-    bool in_import = true;
+    bool in_body = false;
+    bool in_include = false;
     bool in_class = false;
     int err;
 
@@ -976,6 +979,8 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
                          (const char*)buf, buf_size);
     if (err) goto final;
 
+    knd_log("++ FILE read: \"%s\"!", filename);
+
     c = out->file;
     b = c;
     
@@ -985,7 +990,14 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
         case '\r':
         case '\t':
         case ' ':
+            if (!in_body) break;
+            
             if (in_comment) break;
+
+            if (in_include) {
+                b = c + 1;
+                break;
+            }
 
             if (in_class) {
                 buf_size = 0;
@@ -999,24 +1011,37 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
                 break;
             }
 
-            if (in_init) {
-                buf_size = c - b;
-                memcpy(buf, b, buf_size);
-                buf[buf_size] = '\0';
-
-                if (!strcmp(buf, "import")) {
-                    in_import = true;
-                }
-                b = c + 1;
+            buf_size = c - b;
+            if (!buf_size) {
+                return knd_FAIL;
             }
+            if (buf_size >= (KND_TEMP_BUF_SIZE + GSL_file_suffix_size)) {
+                return knd_LIMIT;
+            }
+                
+            memcpy(buf, b, buf_size);
+            buf[buf_size] = '\0';
+
+            if (strcmp(buf, "include")) {
+                return knd_FAIL;
+            }
+            
+            in_include = true;
+            b = c + 1;
 
             break;
         case '{':
+            if (!in_body) {
+                in_body = true;
+                b = c + 1;
+                break;
+            }
+
             if (in_comment) break;
 
             if (!in_class) {
                 in_class = true;
-                in_init = false;
+                in_body = false;
                 b = c + 1;
                 break;
             }
@@ -1033,29 +1058,30 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
                 c += buf_size;
                 b = c;
                 in_class = false;
-                in_init = true;
+                in_body = true;
             }
-            break;
-        case ';':
-            if (in_comment) break;
 
-            if (in_import) {
+            if (in_include) {
                 buf_size = c - b;
-                memcpy(buf, b, buf_size);
-                buf[buf_size] = '\0';
+                if (!buf_size) {
+                    return knd_FAIL;
+                }
+                if (buf_size >= (KND_TEMP_BUF_SIZE + GSL_file_suffix_size)) {
+                    return knd_LIMIT;
+                }
+                *c = '\0';
+                buf_size = sprintf(buf, "classes/%s%s", b, GSL_file_suffix);
 
-                /*knd_log("IMPORT MODULE: \"%s\"\n", buf);*/
+                knd_log("INCLUDE MODULE: \"%s\"", buf);
 
-                strncat(buf, ".gsl", 4);
-
-                err = kndDataClass_read_onto_GSL(self,
+                /*err = kndDataClass_read_onto_GSL(self,
                                                  (const char *)buf);
                 if (err) goto final;
-
-                in_import = false;
+                */
+                in_include = false;
+                in_body = false;
                 b = c + 1;
             }
-            in_init = true;
             break;
         case '/':
             slash = c + 1;
@@ -1071,7 +1097,6 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
                 in_comment = true;
                 asterisk = NULL;
                 slash = NULL;
-                /*knd_log("   == COMMENT: %s\n", c);*/
             }
             break;
         default:
@@ -1081,8 +1106,11 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
     }
 
     err = knd_OK;
-final:
 
+ final:
+
+    knd_log("DATA CLASS read: %d", err);
+    
     out->del(out);
 
     return err;

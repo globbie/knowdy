@@ -621,7 +621,7 @@ kndDataWriter_new(struct kndDataWriter **rec,
     if (err) goto error;
 
     /* read class definitions */
-    err = self->dc->read_onto(self->dc, "classes.gsl");
+    err = self->dc->read_onto(self->dc, "classes/index.gsl");
     if (err) goto error;
 
     err = self->dc->coordinate(self->dc);
