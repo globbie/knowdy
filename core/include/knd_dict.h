@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2017 by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the OOmnik Conceptual Processor, 
@@ -17,26 +17,27 @@
  *         * Jenia Krylov <info@e-krylov.ru>
  *
  *   --------
- *   oodict.h
- *   OOmnik Dictionary
+ *   knd_dict.h
+ *   Knowdy Dictionary
  */
 
 #ifndef OODICT_H
 #define OODICT_H
 
-#include "ooconfig.h"
-#include "ooarray.h"
+/*#include "ooconfig.h"*/
+
+#include "knd_array.h"
 
 typedef size_t (*oo_hash_func)(const char *key);
 
-typedef struct ooDictItem
+struct ooDictItem
 {
     char *key;
     void *data;
 
-} ooDictItem;
+};
 
-typedef struct ooDict
+struct ooDict
 {
     size_t size;
 
@@ -90,7 +91,7 @@ typedef struct ooDict
     size_t curr_pos;
     struct ooListItem *curr_item;
 
-} ooDict;
+};
 
 /* constructor */
 extern int ooDict_new(struct ooDict **self, size_t init_size);

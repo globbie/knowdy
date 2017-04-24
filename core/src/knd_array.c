@@ -25,8 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 
-
-#include "ooarray.h"
+#include <knd_array.h>
 
 static oo_compar_func local_function;
 

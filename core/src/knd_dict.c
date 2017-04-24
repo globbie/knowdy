@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2013 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2017 by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the OOmnik Conceptual Processor, 
@@ -17,7 +17,7 @@
  *         * Jenia Krylov <info@e-krylov.ru>
  *
  *   --------
- *   oodict.c
+ *   knd_dict.c
  *   OOmnik Dictionary implementation
  *
  */
@@ -26,8 +26,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "oodict.h"
-#include "oolist.h"
+#include <knd_dict.h>
+#include <knd_list.h>
 
 static size_t 
 oo_hash(const char *key)
@@ -83,7 +83,7 @@ ooDict_set_hash(struct ooDict *self,
     return oo_OK;
 }
 
-static ooDictItem* 
+static struct ooDictItem* 
 ooDict_find_item(struct ooDict *self,
 		 const char *key)
 {

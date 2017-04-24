@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2017 by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the OOmnik Conceptual Processor, 
@@ -18,14 +18,14 @@
  *
  *   --------
  *   oolist.c
- *   OOmnik List implementation
+ *   Knowdy list implementation
  */
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 
-#include "oolist.h"
+#include <knd_list.h>
 
 static
 int ooList_del(struct ooList *self)

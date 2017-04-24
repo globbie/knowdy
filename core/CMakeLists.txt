@@ -19,9 +19,9 @@ set(CORE_SOURCES
         src/knd_text.c
         src/knd_user.c
         src/knd_utils.c
-        src/ooarray.c
-        src/oodict.c
-        src/oolist.c)
+        src/knd_array.c
+        src/knd_dict.c
+        src/knd_list.c)
 
 add_library(core_obj OBJECT ${CORE_SOURCES})
 

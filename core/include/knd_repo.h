@@ -4,6 +4,7 @@
 #include "knd_utils.h"
 #include "knd_policy.h"
 #include "knd_facet.h"
+#include "knd_dict.h"
 
 struct kndDataWriter;
 struct kndDataReader;

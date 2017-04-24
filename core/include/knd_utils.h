@@ -7,7 +7,6 @@
 #include <libxml/parser.h>
 
 #include "knd_config.h"
-#include "oodict.h"
 
 typedef enum output_dest_t { KND_SEARCH_RESULTS, 
 			     KND_IDX, 

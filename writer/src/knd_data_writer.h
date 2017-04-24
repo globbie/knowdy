@@ -4,6 +4,7 @@
 #include "knd_object.h"
 #include "knd_repo.h"
 #include "knd_utils.h"
+#include "knd_dict.h"
 
 struct kndUser;
 

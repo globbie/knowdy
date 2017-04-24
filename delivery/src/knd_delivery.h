@@ -5,7 +5,7 @@
 
 #include <time.h>
 
-#include <oodict.h>
+#include <knd_dict.h>
 #include <knd_utils.h>
 
 #include "knd_monitor.h"

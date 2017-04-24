@@ -21,7 +21,7 @@
 #ifndef KND_ATTR_H
 #define KND_ATTR_H
 
-#include "oodict.h"
+#include "knd_dict.h"
 #include "knd_utils.h"
 #include "knd_config.h"
 

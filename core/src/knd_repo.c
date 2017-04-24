@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "knd_repo.h"
 #include "knd_policy.h"
 #include "knd_attr.h"
 #include "knd_refset.h"
@@ -11,10 +12,10 @@
 #include "knd_spec.h"
 #include "knd_output.h"
 #include "knd_msg.h"
+#include "knd_dict.h"
 
 #include "knd_data_writer.h"
 #include "knd_data_reader.h"
-
 
 #define DEBUG_REPO_LEVEL_0 0
 #define DEBUG_REPO_LEVEL_1 0

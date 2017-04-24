@@ -4,7 +4,7 @@
 #include <time.h>
 
 #include "knd_utils.h"
-#include "oodict.h"
+#include "knd_dict.h"
 
 typedef enum knd_geo_t { KND_GEO_COUNTRY, 
                          KND_GEO_DISTRICT, 
