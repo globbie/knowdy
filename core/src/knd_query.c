@@ -5,11 +5,11 @@
 #include "knd_query.h"
 #include "knd_repo.h"
 #include "knd_output.h"
-
-#include "knd_data_reader.h"
 #include "knd_dataclass.h"
 #include "knd_object.h"
 #include "knd_refset.h"
+
+#include "knd_data_reader.h"
 
 #define DEBUG_QUERY_LEVEL_1 0
 #define DEBUG_QUERY_LEVEL_2 0

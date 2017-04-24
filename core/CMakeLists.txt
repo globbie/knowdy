@@ -1,4 +1,3 @@
-
 set(CORE_SOURCES
         src/knd_attr.c
         src/knd_coderef.c

@@ -30,45 +30,18 @@ include_directories(${ZEROMQ_INCLUDE_DIR})
 
 include_directories(core/include)
 
-include_directories(collection)
-include_directories(data_reader)
-include_directories(data_writer)
-include_directories(delivery)
-include_directories(storage)
+include_directories(collection/src)
+include_directories(data_reader/src)
+include_directories(data_writer/src)
+include_directories(delivery/src)
+include_directories(storage/src)
 
 add_subdirectory(core)
-
-set(COLLECTION_SERVER_SOURCES
-        collection/knd_coll_server.c
-        collection/knd_collection.c)
-
-set(DELIVERY_SERVER_SOURCES
-        delivery/knd_delivery.c
-        delivery/knd_delivery_server.c
-        delivery/knd_monitor.c)
-
-set(STORAGE_SERVER_SOURCES
-        storage/knd_storage_server.c
-        storage/knd_storage.c)
-
-set(DATA_READER_SOURCES
-        data_reader/knd_data_reader.c)
-
-set(DATA_WRITER_SOURCES
-        data_writer/knd_data_writer.c)
-
-
-add_executable(data_writer ${DATA_WRITER_SOURCES})
-add_executable(data_reader ${DATA_READER_SOURCES})
-add_executable(coll_server ${COLLECTION_SERVER_SOURCES})
-add_executable(delivery_server ${DELIVERY_SERVER_SOURCES})
-add_executable(storage_server ${STORAGE_SERVER_SOURCES})
-
-target_link_libraries(data_writer pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} core_static)
-target_link_libraries(data_reader pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} core_static)
-target_link_libraries(coll_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} core_static)
-target_link_libraries(delivery_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} core_static)
-target_link_libraries(storage_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} core_static)
+add_subdirectory(collection)
+add_subdirectory(data_writer)
+add_subdirectory(data_reader)
+add_subdirectory(delivery)
+add_subdirectory(storage)
 
 #configure_file("${CMAKE_CURRENT_SOURCE_DIR}/knd.spec.in" "${CMAKE_CURRENT_BINARY_DIR}/knd.spec" @ONLY IMMEDIATE)
 set(CPACK_RPM_USER_BINARY_SPECFILE "${CMAKE_CURRENT_BINARY_DIR}/knd.spec")
