@@ -1,9 +1,9 @@
 #ifndef KND_DATAWRITER_H
 #define KND_DATAWRITER_H
 
-#include "../core/knd_object.h"
-#include "../core/knd_repo.h"
-#include "../core/knd_utils.h"
+#include "../../core/include/knd_object.h"
+#include "../../core/include/knd_repo.h"
+#include "../../core/include/knd_utils.h"
 
 struct kndUser;
 

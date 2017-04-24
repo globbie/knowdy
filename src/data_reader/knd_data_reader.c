@@ -11,13 +11,14 @@
 
 #include <libxml/parser.h>
 
-#include "../knd_config.h"
+#include "knd_data_reader.h"
+
+#include "../../core/include/knd_config.h"
 #include "../core/oodict.h"
 
 #include "../core/knd_policy.h"
 #include "../core/knd_user.h"
 #include "../core/knd_output.h"
-#include "knd_data_reader.h"
 #include "../core/knd_dataclass.h"
 #include "../core/knd_object.h"
 

@@ -10,7 +10,7 @@
 
 #include <assert.h>
 
-#include "../knd_config.h"
+#include "../../core/include/knd_config.h"
 #include "knd_delivery.h"
 #include "knd_monitor.h"
 #include "../core/knd_output.h"

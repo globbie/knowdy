@@ -3,8 +3,8 @@
 
 #include <time.h>
 
-#include "../core/knd_utils.h"
-#include "../core/oodict.h"
+#include "../../core/include/knd_utils.h"
+#include "../../core/include/oodict.h"
 
 typedef enum knd_geo_t { KND_GEO_COUNTRY, 
                          KND_GEO_DISTRICT, 

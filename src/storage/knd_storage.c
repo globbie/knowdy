@@ -9,7 +9,7 @@
 
 #include <libxml/parser.h>
 
-#include "../knd_config.h"
+#include "../../core/include/knd_config.h"
 #include "knd_storage.h"
 #include "../core/knd_utils.h"
 #include "../core/knd_msg.h"

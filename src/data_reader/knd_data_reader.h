@@ -2,8 +2,8 @@
 #define KND_DATAREADER_H
 
 
-#include "../core/knd_utils.h"
-#include "../core/knd_repo.h"
+#include "../../core/include/knd_utils.h"
+#include "../../core/include/knd_repo.h"
 
 struct kndObject;
 struct kndDataClass;

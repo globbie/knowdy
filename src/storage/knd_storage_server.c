@@ -6,7 +6,7 @@
 #include <assert.h>
 
 
-#include "../knd_config.h"
+#include "../../core/include/knd_config.h"
 #include "../core/knd_utils.h"
 #include "../core/knd_msg.h"
 #include "knd_storage.h"

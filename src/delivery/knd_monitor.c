@@ -6,7 +6,7 @@
 
 #include <libxml/parser.h>
 
-#include "../knd_config.h"
+#include "../../core/include/knd_config.h"
 #include "knd_monitor.h"
 #include "../core/knd_refset.h"
 #include "../core/knd_sorttag.h"
