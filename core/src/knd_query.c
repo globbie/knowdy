@@ -6,7 +6,7 @@
 #include "knd_repo.h"
 #include "knd_output.h"
 
-#include "../../src/data_reader/knd_data_reader.h"
+#include "knd_data_reader.h"
 #include "knd_dataclass.h"
 #include "knd_object.h"
 #include "knd_refset.h"

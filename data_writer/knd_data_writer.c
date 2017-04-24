@@ -2,21 +2,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <pthread.h>
 
 #include <libxml/parser.h>
 
-#include <pthread.h>
-
-#include "../../core/include/knd_config.h"
-#include "../core/oodict.h"
-#include "../core/knd_utils.h"
-#include "../core/knd_msg.h"
+#include <knd_config.h>
+#include <oodict.h>
+#include <knd_utils.h>
+#include <knd_msg.h>
+#include <knd_output.h>
+#include <knd_spec.h>
+#include <knd_attr.h>
+#include <knd_user.h>
 
 #include "knd_data_writer.h"
-#include "../core/knd_output.h"
-#include "../core/knd_spec.h"
-#include "../core/knd_attr.h"
-#include "../core/knd_user.h"
 
 #define DEBUG_WRITER_LEVEL_1 0
 #define DEBUG_WRITER_LEVEL_2 0

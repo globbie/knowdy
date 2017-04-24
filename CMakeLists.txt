@@ -29,106 +29,46 @@ find_library(ZEROMQ_LIBRARY NAMES zmq PATHS ${ZEROMQ_LIBRARY_DIRS})
 include_directories(${ZEROMQ_INCLUDE_DIR})
 
 include_directories(core/include)
+
+include_directories(collection)
+include_directories(data_reader)
+include_directories(data_writer)
+include_directories(delivery)
+include_directories(storage)
+
 add_subdirectory(core)
 
-#set(COLLECTION_SERVER
-#        src/collection/knd_coll_server.c
-#        src/collection/knd_collection.c
-#        core/knd_msg.c
-#        core/knd_utils.c
-#)
+set(COLLECTION_SERVER_SOURCES
+        collection/knd_coll_server.c
+        collection/knd_collection.c)
 
-#set(DELIVERY_SERVER
-#        src/delivery/knd_delivery_server.c
-#        src/delivery/knd_delivery.c
-#        core/knd_output.c
-#        core/knd_spec.c
-#        core/knd_msg.c
-#        core/knd_utils.c
-#        core/knd_objref.c
-#        core/knd_facet.c
-#        core/knd_sorttag.c
-#        core/knd_refset.c
-#        core/knd_coderef.c
-#        src/delivery/knd_monitor.c
-#        core/oodict.c
-#        core/ooarray.c
-#        core/oolist.c
-#)
+set(DELIVERY_SERVER_SOURCES
+        delivery/knd_delivery.c
+        delivery/knd_delivery_server.c
+        delivery/knd_monitor.c)
 
-#set(DATA_READER
-#        src/data_reader/knd_data_reader.c
-#        core/knd_msg.c
-#        core/knd_utils.c
-#        core/knd_output.c
-#        core/knd_spec.c
-#        core/knd_dataclass.c
-#        core/knd_attr.c
-#        core/knd_query.c
-#        core/knd_conc.c
-#        core/knd_coderef.c
-#        core/knd_objref.c
-#        core/knd_facet.c
-#        core/knd_sorttag.c
-#        core/knd_user.c
-#        core/knd_repo.c
-#        core/knd_policy.c
-#        core/knd_refset.c
-#        core/knd_text.c
-#        core/knd_object.c
-#        core/knd_elem.c
-#        core/knd_num.c
-#        core/oodict.c
-#        core/ooarray.c
-#        core/oolist.c
-#)
+set(STORAGE_SERVER_SOURCES
+        storage/knd_storage_server.c
+        storage/knd_storage.c)
 
-#set(DATA_WRITER
-#        src/data_writer/knd_data_writer.c
-#        core/knd_msg.c
-#        core/knd_utils.c
-#        core/knd_output.c
-#        core/knd_spec.c
-#        core/knd_dataclass.c
-#        core/knd_attr.c
-#        core/knd_conc.c
-#        core/knd_coderef.c
-#        core/knd_objref.c
-#        core/knd_text.c
-#        core/knd_facet.c
-#        core/knd_sorttag.c
-#        core/knd_query.c
-#        core/knd_refset.c
-#        core/knd_user.c
-#        core/knd_repo.c
-#        core/knd_policy.c
-#        core/knd_object.c
-#        core/knd_elem.c
-#        core/knd_num.c
-#        core/oodict.c
-#        core/ooarray.c
-#        core/oolist.c
-#)
+set(DATA_READER_SOURCES
+        data_reader/knd_data_reader.c)
 
-#set(STORAGE_SERVER
-#        src/storage/knd_storage_server.c
-#        src/storage/knd_storage.c
-#        core/knd_msg.c
-#        core/knd_utils.c
-#)
+set(DATA_WRITER_SOURCES
+        data_writer/knd_data_writer.c)
 
 
-#add_executable(data_writer ${DATA_WRITER})
-#add_executable(data_reader ${DATA_READER})
-#add_executable(coll_server ${COLLECTION_SERVER})
-#add_executable(delivery_server ${DELIVERY_SERVER})
-#add_executable(storage_server ${STORAGE_SERVER})
+add_executable(data_writer ${DATA_WRITER_SOURCES})
+add_executable(data_reader ${DATA_READER_SOURCES})
+add_executable(coll_server ${COLLECTION_SERVER_SOURCES})
+add_executable(delivery_server ${DELIVERY_SERVER_SOURCES})
+add_executable(storage_server ${STORAGE_SERVER_SOURCES})
 
-#target_link_libraries(data_writer pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY})
-#target_link_libraries(data_reader pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY})
-#target_link_libraries(coll_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY})
-#target_link_libraries(delivery_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY})
-#target_link_libraries(storage_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY})
+target_link_libraries(data_writer pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} core_static)
+target_link_libraries(data_reader pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} core_static)
+target_link_libraries(coll_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} core_static)
+target_link_libraries(delivery_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} core_static)
+target_link_libraries(storage_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} core_static)
 
 #configure_file("${CMAKE_CURRENT_SOURCE_DIR}/knd.spec.in" "${CMAKE_CURRENT_BINARY_DIR}/knd.spec" @ONLY IMMEDIATE)
 set(CPACK_RPM_USER_BINARY_SPECFILE "${CMAKE_CURRENT_BINARY_DIR}/knd.spec")

@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,8 +13,8 @@
 #include "knd_refset.h"
 #include "knd_sorttag.h"
 
-#include "../../src/data_writer/knd_data_writer.h"
-#include "../../src/data_reader/knd_data_reader.h"
+#include "knd_data_writer.h"
+#include "knd_data_reader.h"
 
 #include "knd_output.h"
 #include "knd_user.h"

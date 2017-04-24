@@ -40,7 +40,7 @@
 #include "knd_output.h"
 #include "knd_refset.h"
 #include "knd_query.h"
-#include "../../src/data_reader/knd_data_reader.h"
+#include "knd_data_reader.h"
 
 #define DEBUG_KND_CONC_LEVEL_1 0
 #define DEBUG_KND_CONC_LEVEL_2 0

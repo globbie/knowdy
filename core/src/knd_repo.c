@@ -12,8 +12,8 @@
 #include "knd_output.h"
 #include "knd_msg.h"
 
-#include "../../src/data_writer/knd_data_writer.h"
-#include "../../src/data_reader/knd_data_reader.h"
+#include "knd_data_writer.h"
+#include "knd_data_reader.h"
 
 
 #define DEBUG_REPO_LEVEL_0 0

@@ -5,10 +5,10 @@
 #include <unistd.h>
 #include <assert.h>
 
+#include <knd_config.h>
+#include <knd_utils.h>
+#include <knd_msg.h>
 
-#include "../../core/include/knd_config.h"
-#include "../core/knd_utils.h"
-#include "../core/knd_msg.h"
 #include "knd_storage.h"
 
 void *kndStorage_subscriber(void *arg)

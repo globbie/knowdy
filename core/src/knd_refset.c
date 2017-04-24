@@ -1,29 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
-#include <unistd.h>
 
 #include "knd_facet.h"
 #include "knd_output.h"
 #include "knd_repo.h"
-#include "knd_objref.h"
 #include "knd_sorttag.h"
-#include "knd_utils.h"
 #include "knd_refset.h"
 
 #include "knd_object.h"
-#include "knd_dataclass.h"
 #include "knd_attr.h"
 #include "knd_elem.h"
-#include "knd_conc.h"
 #include "knd_coderef.h"
 
-#include "../../src/data_reader/knd_data_reader.h"
-#include "../../src/data_writer/knd_data_writer.h"
-#include "../../src/delivery/knd_monitor.h"
+#include "knd_data_reader.h"
+#include "knd_monitor.h"
 
 #define DEBUG_REFSET_LEVEL_0 0
 #define DEBUG_REFSET_LEVEL_1 0
