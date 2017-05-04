@@ -2235,9 +2235,7 @@ kndRefSet_read_inbox(struct kndRefSet *self,
     //size_t recbuf_size = KND_TEMP_BUF_SIZE;
 
     struct kndObjRef *ref;
-    struct kndDataElem *elem;
     struct kndElemRef *elemref;
-    //struct kndCodeRef *coderef;
     
     const char *delim = KND_FIELD_SEPAR;
     char *last = NULL;
@@ -2337,17 +2335,13 @@ kndRefSet_read_inbox(struct kndRefSet *self,
             buf[buf_size] = '\0';
 
             /*knd_log("  == ABBR: %s\n", buf);*/
-            elem = self->baseclass->elems;
+            /*elem = self->baseclass->elems;
             while (elem) {
                 
-                /*if (!strcmp(elem->abbr, buf)) {
-                    memcpy(elemref->name, elem->path, elem->path_size);
-                    elemref->name_size = elem->path_size;
-                    elem->path[elem->path_size] = '\0';
-                    }*/
                 
                 elem = elem->next;
-            }
+                }*/
+            
         }
 
         

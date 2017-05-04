@@ -256,7 +256,7 @@ kndRepo_build_idx_path(struct kndRepo *self,
     char path[KND_TEMP_BUF_SIZE];
     size_t path_size = 0;
 
-    struct kndDataElem *de = NULL;
+    struct kndAttr *attr = NULL;
     char *b;
     int err;
 
@@ -266,23 +266,22 @@ kndRepo_build_idx_path(struct kndRepo *self,
     
     dc->rewind(dc);
     do {
-        err = dc->next_elem(dc, &de);
-        if (!de) break;
+        err = dc->next_attr(dc, &attr);
+        if (!attr) break;
 
         b = buf + pref_size;
-        memcpy(b, de->name, de->name_size);
-        buf_size = pref_size + de->name_size;
+        memcpy(b, attr->name, attr->name_size);
+        buf_size = pref_size + attr->name_size;
         
         buf[buf_size] = '\0';
 
+        if (attr->is_recursive) continue;
 
-        if (de->is_recursive) continue;
-
-        if (de->dc) {
+        if (attr->dc) {
             b = buf + buf_size;
             memcpy(b, "_", 1);
             buf_size++;
-            err = kndRepo_build_idx_path(self, de->dc, (const char*)buf, buf_size, cache);
+            err = kndRepo_build_idx_path(self, attr->dc, (const char*)buf, buf_size, cache);
             if (err) return err;
             continue;
         }
@@ -293,13 +292,12 @@ kndRepo_build_idx_path(struct kndRepo *self,
             knd_log("   == ATOMIC ELEM \"%s\"\n",
                     buf);
 
-        if (!de->attr) continue;
         
-        switch (de->attr->type) {
+        switch (attr->type) {
         case  KND_ELEM_REF:
             path_size = sprintf(path, "%s_%s",
-                               de->attr->dataclass->name,
-                               de->attr->idx_name);
+                               attr->dc->name,
+                               attr->idx_name);
             
             if (DEBUG_REPO_LEVEL_TMP)
                 knd_log("  == read dependent IDX: \"%s\"?\n", buf);
@@ -311,7 +309,7 @@ kndRepo_build_idx_path(struct kndRepo *self,
         case  KND_ELEM_ATOM:
 
             if (DEBUG_REPO_LEVEL_TMP)
-                knd_log("  .. atomic IDX for \"%s\"?\n", de->attr_name);
+                knd_log("  .. atomic IDX for \"%s\"?\n", attr->name);
 
             err = kndRepo_read_idx(self, cache, buf, buf_size);
             if (err) return err;
@@ -320,10 +318,8 @@ kndRepo_build_idx_path(struct kndRepo *self,
         default:
             break;
         }
-
-            
         
-    } while (de);
+    } while (attr);
 
     
     return knd_OK;
@@ -345,9 +341,6 @@ kndRepo_read_indices(struct kndRepo *self,
 
     return knd_OK;
 }
-            
-
-
 
 
 

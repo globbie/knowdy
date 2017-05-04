@@ -67,12 +67,11 @@ typedef enum knd_storage_type {
 
 typedef enum knd_elem_type {
     KND_ELEM_NONE,
-    KND_ELEM_INLINE,
-    KND_ELEM_MAP, 
+    KND_ELEM_ATOM,
+    KND_ELEM_AGGR,
     KND_ELEM_LIST,
     KND_ELEM_TEXT, 
     KND_ELEM_CG,
-    KND_ELEM_ATOM,
     KND_ELEM_NUM,
     KND_ELEM_REF,
     KND_ELEM_CALC,
@@ -84,12 +83,11 @@ typedef enum knd_elem_type {
 
 static const char* const knd_elem_names[] = {
     "NONE",
-    "INLINE",
-    "MAP", 
+    "ATOM",
+    "AGGR", 
     "LIST",
     "TEXT", 
     "CG",
-    "ATOM",
     "NUM",
     "REF",
     "CALC",
