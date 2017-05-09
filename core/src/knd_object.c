@@ -130,10 +130,10 @@ kndObject_index_inline(struct kndObject *self)
     
     if (DEBUG_OBJ_LEVEL_TMP)
         knd_log("\n    .. indexing inline OBJ of class %s  IDX: \"%s\"\n",
-                self->parent->baseclass->dc->name,
-                self->parent->baseclass->dc->idx_name);
+                self->parent->attr->dc->name,
+                self->parent->attr->dc->idx_name);
 
-    if (!strcmp(self->parent->baseclass->dc->idx_name, "CG")) {
+    if (!strcmp(self->parent->attr->dc->idx_name, "CG")) {
         return kndObject_index_CG(self);
     }
 
@@ -198,13 +198,13 @@ kndObject_index_dependent(struct kndObject *self,
 
 
     /* atomic value */
-    if (elem->baseclass->attr && elem->baseclass->attr->type == KND_ELEM_ATOM) {
+    if (elem->attr->type == KND_ELEM_ATOM) {
 
         knd_log("  ++ atomic dependant found: %s baseclass: %s\n",
-                elem->name, reltype->attr->dataclass->name);
+                elem->name, reltype->attr->dc->name);
 
         buf_size = sprintf(buf, "%s_%s",
-                           reltype->attr->dataclass->name,
+                           reltype->attr->dc->name,
                            reltype->attr->idx_name);
 
         knd_log(" == \"%s\" [%lu]\n\n",
@@ -242,15 +242,11 @@ kndObject_index_dependent(struct kndObject *self,
         while (e) {
             if (DEBUG_OBJ_LEVEL_TMP) {
                 knd_log("   inner elem idx: \"%s\"\n",
-                        e->baseclass->attr->idx_name);
-
+                        e->attr->idx_name);
                 e->str(e, 1);
             }
-
-            if (!e->baseclass->attr)
-                goto next_elem;
             
-            if (!e->baseclass->attr->idx_name_size)   
+            if (!e->attr->idx_name_size)   
                 goto next_elem;
 
             buf_size = sprintf(buf, "%s_%s",
@@ -329,9 +325,9 @@ kndObject_index_dependents(struct kndObject *self)
 
                 if (DEBUG_OBJ_LEVEL_TMP)
                     knd_log("    .. reltype \"%s\"\n",
-                            reltype->attr->dataclass->name);
+                            reltype->attr->dc->name);
    
-                if (reltype->attr->dataclass != dc) goto next_reltype;
+                if (reltype->attr->dc != dc) goto next_reltype;
             
                 refset = reltype->idx->get(reltype->idx, (const char*)self->name);
                 if (!refset) goto next_reltype;
@@ -376,7 +372,7 @@ kndObject_index(struct kndObject *self)
     struct kndElemState *elem_state;
     struct kndSortTag *tag = NULL;
     struct kndSortAttr *attr = NULL;
-    struct kndDataElem *e;
+    struct kndAttr *elem_attr;
     int err;
     
     if (DEBUG_OBJ_LEVEL_2)
@@ -433,20 +429,19 @@ kndObject_index(struct kndObject *self)
 
     self->cache->baseclass->rewind(self->cache->baseclass);
     do {
-        self->cache->baseclass->next_elem(self->cache->baseclass, &e);
-        if (!e) break;
-        if (!e->attr) continue;
-        if (!e->attr->default_val_size) continue;
+        self->cache->baseclass->next_attr(self->cache->baseclass, &elem_attr);
+        if (!elem_attr) break;
+        if (!elem_attr->default_val_size) continue;
 
         if (DEBUG_OBJ_LEVEL_3)
-            knd_log("  == DEFAULT IDX VAL: %s\n", e->attr->default_val);
+            knd_log("  == DEFAULT IDX VAL: %s\n", elem_attr->default_val);
 
-        memcpy(elem->name, e->name, e->name_size);
-        elem->name_size = e->name_size;
+        memcpy(elem->name, elem_attr->name, elem_attr->name_size);
+        elem->name_size = elem_attr->name_size;
         elem->name[elem->name_size] = '\0';
         
-        if (!strcmp(e->attr->default_val, "$NAME")) {
-            elem->baseclass = e;
+        if (!strcmp(elem_attr->default_val, "$NAME")) {
+            elem->attr = elem_attr;
 
             elem_state = malloc(sizeof(struct kndElemState));
             if (!elem_state) {
@@ -464,7 +459,7 @@ kndObject_index(struct kndObject *self)
             err = elem->index(elem);
             if (err) goto final;
         }
-    } while (e);
+    } while (elem_attr);
 
     /* dependent objs */
     err = kndObject_index_dependents(self);
@@ -771,7 +766,6 @@ kndObject_check_dataclass(struct kndObject *self,
 static int
 kndObject_parse_special_GSC(struct kndObject *self,
                             const char *rec,
-                            size_t rec_size __attribute__((unused)),
                             size_t *total_size)
 {
     char buf[KND_NAME_SIZE];
@@ -784,7 +778,6 @@ kndObject_parse_special_GSC(struct kndObject *self,
     size_t chunk_size;
 
     struct kndDataClass *dc = NULL;
-    struct kndDataElem  *de = NULL;
     struct kndAttr *attr = NULL;
     //struct kndRepoCache *cache;
     
@@ -902,18 +895,17 @@ kndObject_parse_special_GSC(struct kndObject *self,
                 
                 if (!dc) return knd_FAIL;
                 
-                de = dc->elems;
-                while (de) {
-                     if (de->dc) {
+                attr = dc->attrs;
+                while (attr) {
+                     if (attr->dc) {
                          /*knd_log("inner class: %s\n", de->dc->name);*/
                      }
                      
-                    if (!strcmp(de->attr_name, relbuf)) {
-                        attr = de->attr;
+                    if (!strcmp(attr->name, relbuf)) {
                         break;
                     }
                     
-                    de = de->next;
+                    attr = attr->next;
                 }
 
                 if (attr) {
@@ -1101,7 +1093,7 @@ kndObject_parse_GSC(struct kndObject *self,
             if (curr_size < rec_size) {
                 b = c + 1;
                 if (*b == '_') {
-                    err = kndObject_parse_special_GSC(self, c, curr_size, &chunk_size);
+                    err = kndObject_parse_special_GSC(self, c, &chunk_size);
                     if (err) return err;
 
                     c += chunk_size;
@@ -1208,7 +1200,7 @@ kndObject_expand(struct kndObject *self,
 {
     struct kndElem *elem;
     struct kndDataClass *dc;
-    struct kndDataElem *e;
+    struct kndAttr *attr;
     struct kndElemState *elem_state;
     struct kndRepoCache *cache;
 
@@ -1228,12 +1220,11 @@ kndObject_expand(struct kndObject *self,
     dc = self->cache->baseclass;
     dc->rewind(dc);
     do {
-        self->cache->baseclass->next_elem(self->cache->baseclass, &e);
-        if (!e) break;
-        if (!e->attr) continue;
-        if (!e->attr->default_val_size) continue;
+        self->cache->baseclass->next_attr(self->cache->baseclass, &attr);
+        if (!attr) break;
+        if (!attr->default_val_size) continue;
         
-        if (!strcmp(e->attr->default_val, "$NAME")) {
+        if (!strcmp(attr->default_val, "$NAME")) {
 
             err = kndElem_new(&elem);
             if (err) return err;
@@ -1242,11 +1233,11 @@ kndObject_expand(struct kndObject *self,
             elem->out = self->out;
             elem->is_default = true;
             
-            memcpy(elem->name, e->name, e->name_size);
-            elem->name_size = e->name_size;
+            memcpy(elem->name, attr->name, attr->name_size);
+            elem->name_size = attr->name_size;
             elem->name[elem->name_size] = '\0';
 
-            elem->baseclass = e;
+            elem->attr = attr;
 
             elem_state = malloc(sizeof(struct kndElemState));
             if (!elem_state)
@@ -1262,7 +1253,7 @@ kndObject_expand(struct kndObject *self,
 
             /* get GUID */
             err = self->cache->repo->get_guid(self->cache->repo,
-                                              e->attr->dataclass,
+                                              attr->dc,
                                               self->name, self->name_size,
                                               elem_state->ref);
             if (err) return err;
@@ -1280,7 +1271,7 @@ kndObject_expand(struct kndObject *self,
             }
             self->num_elems++;
         }
-    } while (e);
+    } while (attr);
 
 
     /*  expand REFS */
@@ -1308,18 +1299,15 @@ kndObject_expand(struct kndObject *self,
             
             goto next_elem;
         }
-        
-
-        if (!elem->baseclass->attr) goto next_elem;
-        
-        if (elem->baseclass->attr->type != KND_ELEM_REF)
+                
+        if (elem->attr->type != KND_ELEM_REF)
             goto next_elem;
 
-        dc = elem->baseclass->attr->dataclass;
+        dc = elem->attr->dc;
         if (!dc) goto next_elem;
 
-        if (elem->refclass)
-            dc = elem->refclass;
+        if (elem->ref_class)
+            dc = elem->ref_class;
 
         if (DEBUG_OBJ_LEVEL_2) {
             knd_log("    .. expanding elem REF to class \"%s\"\n",
@@ -1877,8 +1865,8 @@ kndObject_export_JSON(struct kndObject *self,
                 goto next_elem;
             }
             
-            if (elem->baseclass && elem->baseclass->attr) 
-                if (elem->baseclass->attr->concise_level)
+            if (elem->attr) 
+                if (elem->attr->concise_level)
                     goto export_elem;
 
             if (DEBUG_OBJ_LEVEL_2)
@@ -2048,8 +2036,8 @@ kndObject_export_inline_HTML(struct kndObject *self)
     while (elem) {
 
         /* filter out irrelevant elems */
-        if (elem->baseclass && elem->baseclass->attr) 
-            if (elem->baseclass->attr->concise_level < 2) {
+        if (elem->attr) 
+            if (elem->attr->concise_level < 2) {
                 /*knd_log("       -- filter out inner obj elem \"%s\" -- \n", elem->name);*/
                 goto next_elem;
             }
@@ -2183,8 +2171,8 @@ kndObject_export_HTML(struct kndObject *self,
         */
         
         /* filter out irrelevant elems */
-        if (elem->baseclass && elem->baseclass->attr) {
-            if (elem->baseclass->attr->concise_level < 2) {
+        if (elem->attr) {
+            if (elem->attr->concise_level < 2) {
                 
                 knd_log("   -- filter out elem \"%s\" -- \n", elem->name);
                 
@@ -2192,7 +2180,7 @@ kndObject_export_HTML(struct kndObject *self,
             }
 
 
-            if (elem->baseclass->attr->descr_level) {
+            if (elem->attr->descr_level) {
 
                 err = meta_out->write(meta_out,
                                       "<META name=\"description\" content=\"",
@@ -2200,7 +2188,7 @@ kndObject_export_HTML(struct kndObject *self,
                 if (err) return err;
 
 
-                if (elem->baseclass->attr->type == KND_ELEM_TEXT) {
+                if (elem->attr->type == KND_ELEM_TEXT) {
                     elem->text->out = meta_out;
 
                     err = elem->text->export(elem->text, KND_FORMAT_HTML);
@@ -2463,9 +2451,8 @@ kndObject_export_GSC(struct kndObject *self,
     while (elem) {
         /* filter out detailed presentation */
         if (is_concise) {
-            if (elem->baseclass && elem->baseclass->attr) 
-                if (elem->baseclass->attr->concise_level)
-                    goto export_elem;
+            if (elem->attr->concise_level)
+                goto export_elem;
             goto next_elem;
         }
 
@@ -2942,16 +2929,16 @@ kndObject_sync(struct kndObject *self)
             goto next_elem;
         }
         
-        if (!elem->baseclass->attr) goto next_elem;
+        if (!elem->attr) goto next_elem;
 
-        if (elem->baseclass->attr->type != KND_ELEM_REF)
+        if (elem->attr->type != KND_ELEM_REF)
             goto next_elem;
         
-        dc = elem->baseclass->attr->dataclass;
+        dc = elem->attr->dc;
         if (!dc) goto next_elem;
 
-        if (elem->refclass)
-            dc = elem->refclass;
+        if (elem->ref_class)
+            dc = elem->ref_class;
         
         if (DEBUG_OBJ_LEVEL_TMP)
             knd_log("\n    .. sync expanding ELEM REF: %s::%s..\n",

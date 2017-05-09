@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2015 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2017 by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Search Engine, 
@@ -380,16 +380,12 @@ kndConc_register_concpath(struct kndConc   *self,
 
 static int
 kndConc_import(struct kndConc   *self,
-               struct kndObject *obj,
                const char       *rec,
                size_t            rec_size)
 {
-    //char buf[KND_MED_BUF_SIZE];
-    //size_t buf_size;
-
     struct kndElemRef *elemref;
-    struct kndDataElem *elem;
-    
+    //struct kndAttr *attr;
+
     struct kndCodeRef *coderef;
     struct kndConc *conc = NULL;
 
@@ -409,7 +405,8 @@ kndConc_import(struct kndConc   *self,
     if (DEBUG_KND_CONC_LEVEL_TMP)
         knd_log("   == ELEMREF: %s\n\n", elemref->name);
 
-    elem = obj->cache->baseclass->elems;
+    /*attr = obj->cache->baseclass->attrs; */
+    
     /*while (elem) {
         
         if (!strncmp(elemref->name, elem->path, elem->path_size)) {
@@ -818,10 +815,6 @@ kndConc_init(struct kndConc *self)
 extern int
 kndConc_new(struct kndConc **conc)
 {
-    //struct kndSet *set;
-    //size_t *locset;
-    //struct kndConcept *c;
-
     struct kndConc *self = malloc(sizeof(struct kndConc));
     if (!self) return knd_NOMEM;
 

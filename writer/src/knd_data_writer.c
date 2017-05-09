@@ -338,7 +338,7 @@ kndDataWriter_read_config(struct kndDataWriter *self,
 
                 if (strcmp((const char*)val, "write_inbox")) continue;
 
-                err = knd_copy_xmlattr(sub_node, "frontend", 
+                err = knd_copy_xmlattr(sub_node, "frontend",
                                        &self->inbox_frontend_addr, 
                                        &self->inbox_frontend_addr_size);
                 if (err) return err;

@@ -15,7 +15,7 @@
  *
  *   ----------
  *   knd_attr.h
- *   Knowdy Attr
+ *   Knowdy DataClass Attr
  */
 
 #ifndef KND_ATTR_H
@@ -38,13 +38,26 @@ struct kndAttr
     char name[KND_NAME_SIZE];
     size_t name_size;
 
+    char fullname[KND_NAME_SIZE];
+    size_t fullname_size;
+
     char classname[KND_NAME_SIZE];
     size_t classname_size;
-    struct kndDataClass *dataclass;
 
+    struct kndDataClass *parent;
+    struct kndDataClass *dc;
+
+    /* refclass not set: self reference by default */
+    char ref_classname[KND_NAME_SIZE];
+    size_t ref_classname_size;
+    struct kndDataClass *ref_class;
+    
     int concise_level;
     int descr_level;
     int browse_level;
+
+    bool is_list;
+    bool is_recursive;
     
     char calc_oper[KND_NAME_SIZE];
     size_t calc_oper_size;
@@ -58,21 +71,20 @@ struct kndAttr
     char idx_name[KND_NAME_SIZE];
     size_t idx_name_size;
 
-    struct ooDict *class_idx;
+    struct kndOutput *out;
     
-    struct kndDataWriter *writer;
-    struct kndDataReader *reader;
-
     struct kndTranslation *tr;
+
+    struct kndAttr *next;
     
     /***********  public methods ***********/
-    int (*init)(struct kndAttr  *self);
-    int (*del)(struct kndAttr   *self);
-    int (*str)(struct kndAttr *self,
-               size_t depth);
+    void (*init)(struct kndAttr  *self);
+    void (*del)(struct kndAttr   *self);
+    void (*str)(struct kndAttr *self,
+                size_t depth);
 
     int (*read)(struct kndAttr *self,
-                const char     *rec,
+                char   *rec,
                 size_t *chunk_size);
 
     int (*resolve)(struct kndAttr *self);

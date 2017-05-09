@@ -60,8 +60,7 @@ struct kndElem
     char name[KND_NAME_SIZE + 1];
     size_t name_size;
 
-    struct kndDataElem *parent;
-    struct kndDataElem *baseclass;
+    struct kndAttr *attr;
 
     struct kndObject *obj;
     struct kndObject *root;
@@ -70,10 +69,10 @@ struct kndElem
     struct kndObject *inner;
     struct kndObject *inner_tail;
 
-    char refclass_name[KND_NAME_SIZE];
-    size_t refclass_name_size;
-    struct kndDataClass *refclass;
-
+    char ref_classname[KND_NAME_SIZE];
+    size_t ref_classname_size;
+    struct kndDataClass *ref_class;
+    
     bool is_list;
     bool is_list_item;
     bool is_default;

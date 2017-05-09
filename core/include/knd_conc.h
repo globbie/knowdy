@@ -82,7 +82,6 @@ struct kndConc
     int (*read)(struct kndConc *self);
     
     int (*import)(struct kndConc *self,
-                  struct kndObject *obj,
                   const char *rec,
                   size_t rec_size);
 
