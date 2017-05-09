@@ -209,7 +209,7 @@ kndDataClass_read_GSL(struct kndDataClass *self,
     c = rec;
     b = rec;
 
-    knd_log(".. reading a class..");
+    /*knd_log(".. reading a class..");*/
 
     err = kndDataClass_new(&dc);
     if (err) return err;
@@ -499,9 +499,6 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
                 err = kndDataClass_read_GSL(self, c, &chunk_size);
                 if (err) goto final;
 
-                knd_log("== class area chunk size: %lu\n",
-                        (unsigned long)chunk_size);
-
                 c += chunk_size;
                 b = c;
                 break;
@@ -524,7 +521,9 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
                 *c = '\0';
                 buf_size = sprintf(buf, "classes/%s%s", b, GSL_file_suffix);
 
-                knd_log("INCLUDE MODULE: \"%s\"", buf);
+                if (DEBUG_DATACLASS_LEVEL_2)
+                    knd_log("INCLUDE MODULE: \"%s\"", buf);
+
                 err = kndDataClass_read_onto_GSL(self,
                                                  (const char *)buf);
                 if (err) goto final;
@@ -554,14 +553,11 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
             memcpy(buf, b, buf_size);
             buf[buf_size] = '\0';
 
-            knd_log("KEYWORD: \"%s\"", buf);
+            if (DEBUG_DATACLASS_LEVEL_2)
+                knd_log("KEYWORD: \"%s\"", buf);
 
             if (in_body) {
-                
                 if (!strcmp(buf, "ns")) {
-
-                    knd_log("++ namespace area!");
-
                     in_namespace = true;
                     b = c + 1;
                     break;

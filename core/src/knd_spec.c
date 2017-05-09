@@ -287,7 +287,8 @@ kndSpec_parse_auth(struct kndSpec *self,
         case '}':
             *c = '\0';
             if (in_sid) {
-                knd_log("SID: \"%s\"", b);
+                if (DEBUG_SPEC_LEVEL_TMP)
+                    knd_log("SID: \"%s\"", b);
                 buf_size = c - b;
                 if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
                 memcpy(self->sid, b, buf_size);
@@ -300,7 +301,8 @@ kndSpec_parse_auth(struct kndSpec *self,
             }
             
             if (in_uid) {
-                knd_log("UID: \"%s\"", b);
+                if (DEBUG_SPEC_LEVEL_TMP)
+                    knd_log("UID: \"%s\"", b);
                 buf_size = c - b;
                 if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
                 memcpy(self->uid, b, buf_size);
@@ -341,14 +343,62 @@ kndSpec_parse_auth(struct kndSpec *self,
 }
 
 
+
+static int
+kndSpec_parse_domain(struct kndSpec *self,
+                     const char *name,
+                     size_t name_size,
+                     char *rec,
+                     size_t *total_size)
+{
+    char *c, *b;
+    size_t chunk_size;
+
+    const char *repo_tag = "Repo";
+    const char *auth_tag = "AUTH";
+    int err;
+    
+    b = rec;
+    c = rec;
+    
+    switch (*name) {
+    case 'a':
+    case 'A':
+        if (!strncmp(auth_tag, name, name_size)){
+            err = kndSpec_parse_auth(self, c, &chunk_size);
+            if (err) {
+                knd_log("-- AUTH parse failed");
+                return knd_FAIL;
+            }
+            *total_size = chunk_size;
+            return knd_OK;
+        }
+        break;
+    case 'r':
+    case 'R':
+        if (!strncmp(repo_tag, name, name_size)){
+            err = kndSpec_parse_repo(self, c, &chunk_size);
+            if (err) {
+                knd_log("-- REPO parse failed");
+                return knd_FAIL;
+            }
+            *total_size = chunk_size;
+            return knd_OK;
+        }
+        break;
+    default:
+        break;
+    }
+    
+    return knd_FAIL;
+}
+
 static int
 kndSpec_parse(struct kndSpec *self,
               char *rec,
               size_t *total_size)
 {
     const char *header_tag = "SPEC";
-    const char *repo_tag = "Repo";
-    const char *auth_tag = "AUTH";
     
     size_t rec_size = *total_size;
     size_t buf_size;
@@ -420,34 +470,15 @@ kndSpec_parse(struct kndSpec *self,
                 knd_log("-- empty tag");
                 return knd_FAIL;
             }
-            
-            *c = '\0';
-            if (!strcmp(b, auth_tag)){
-                *c = '{';
-                err = kndSpec_parse_auth(self, c, &chunk_size);
-                if (err) {
-                    knd_log("-- AUTH parse failed");
-                    return knd_FAIL;
-                }
-                c += chunk_size;
-                b = c + 1;
-                in_field = false;
-                break;
-            }
 
-            if (!strcmp(b, repo_tag)){
-                *c = '{';
-                err = kndSpec_parse_repo(self, c, &chunk_size);
-                if (err) {
-                    knd_log("-- REPO parse failed");
-                    return knd_FAIL;
-                }
-                c += chunk_size;
-                b = c + 1;
-                in_field = false;
-                break;
-            }
+            if (buf_size >= KND_NAME_SIZE)
+                return knd_LIMIT;
 
+            err = kndSpec_parse_domain(self, b, buf_size, c, &chunk_size);
+            if (err) return err;
+
+            c += chunk_size;
+            in_field = false;
             b = c + 1;
             break;
         case '}':
@@ -458,15 +489,14 @@ kndSpec_parse(struct kndSpec *self,
             
             *total_size = c - rec + 1;
 
-            knd_log("++ SPEC parse OK: %lu bytes of %lu",
-                    (unsigned long)*total_size, (unsigned long)rec_size);
-
+            if (DEBUG_SPEC_LEVEL_TMP)
+                knd_log("++ SPEC parse OK: %lu bytes of %lu",
+                        (unsigned long)*total_size, (unsigned long)rec_size);
             return knd_OK;
            
             break;
         case '[':
             c++;
-            
             break;
         }
         

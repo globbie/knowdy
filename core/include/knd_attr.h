@@ -38,6 +38,9 @@ struct kndAttr
     char name[KND_NAME_SIZE];
     size_t name_size;
 
+    char fullname[KND_NAME_SIZE];
+    size_t fullname_size;
+
     char classname[KND_NAME_SIZE];
     size_t classname_size;
 
