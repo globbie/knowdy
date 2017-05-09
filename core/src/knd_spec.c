@@ -103,17 +103,13 @@ kndSpec_parse_repo(struct kndSpec *self,
     c = rec;
     b = c;
 
-    if (DEBUG_SPEC_LEVEL_TMP)
-        knd_log("   .. parsing REPO rec: \"%s\"",
-                c);
+    if (DEBUG_SPEC_LEVEL_2)
+        knd_log("   .. parsing REPO rec: \"%s\"", c);
 
     instruct = &self->instructions[self->num_instructions];
     memset(instruct, 0, sizeof(struct kndSpecInstruction));
 
     instruct->type = KND_AGENT_REPO;
-    memcpy(instruct->name, "REPO", 4);
-    instruct->name[4] = '\0';
-    instruct->name_size = 4;
     
     while (*c) {
         switch (*c) {
@@ -143,7 +139,8 @@ kndSpec_parse_repo(struct kndSpec *self,
             memcpy(arg->name, b, buf_size);
             arg->name[buf_size] = '\0';
             
-            knd_log("ARG NAME: \"%s\"", b);
+            if (DEBUG_SPEC_LEVEL_TMP)
+                knd_log("ARG NAME: \"%s\"", b);
 
             b = c + 1;
             in_val = true;
@@ -161,7 +158,8 @@ kndSpec_parse_repo(struct kndSpec *self,
                 if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
                 *c = '\0';
                 
-                knd_log("PROC: \"%s\"", b);
+                if (DEBUG_SPEC_LEVEL_TMP)
+                    knd_log("PROC: \"%s\"", b);
 
                 memcpy(instruct->proc_name, b, buf_size);
                 instruct->proc_name[buf_size] = '\0';
@@ -175,7 +173,9 @@ kndSpec_parse_repo(struct kndSpec *self,
         case '}':
             *c = '\0';
             if (in_arg) {
-                knd_log("ARG VALUE: \"%s\"", b);
+                if (DEBUG_SPEC_LEVEL_TMP)
+                    knd_log("ARG VALUE: \"%s\"", b);
+
                 buf_size = c - b;
                 if (!buf_size) return knd_FAIL;
                 if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
@@ -415,7 +415,7 @@ kndSpec_parse(struct kndSpec *self,
     c = rec;
     b = c;
     
-    if (DEBUG_SPEC_LEVEL_TMP)
+    if (DEBUG_SPEC_LEVEL_2)
         knd_log("   .. parsing SPEC rec \"%s\" [total size: %lu]\n",
                 c, (unsigned long)rec_size);
     
@@ -489,12 +489,10 @@ kndSpec_parse(struct kndSpec *self,
             
             *total_size = c - rec + 1;
 
-            if (DEBUG_SPEC_LEVEL_TMP)
+            if (DEBUG_SPEC_LEVEL_2)
                 knd_log("++ SPEC parse OK: %lu bytes of %lu",
                         (unsigned long)*total_size, (unsigned long)rec_size);
             return knd_OK;
-           
-            break;
         case '[':
             c++;
             break;
