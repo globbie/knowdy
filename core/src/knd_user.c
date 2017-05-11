@@ -4,18 +4,16 @@
 
 #include "knd_policy.h"
 #include "knd_user.h"
+#include "knd_repo.h"
 #include "knd_output.h"
 #include "knd_msg.h"
-
-#include "knd_data_writer.h"
-#include "knd_data_reader.h"
+#include "knd_spec.h"
 
 #define DEBUG_USER_LEVEL_0 0
 #define DEBUG_USER_LEVEL_1 0
 #define DEBUG_USER_LEVEL_2 0
 #define DEBUG_USER_LEVEL_3 0
 #define DEBUG_USER_LEVEL_TMP 1
-
 
 static int 
 kndUser_export(struct kndUser *self,
@@ -24,6 +22,10 @@ kndUser_export(struct kndUser *self,
 static int
 kndUser_read(struct kndUser *self, const char *rec);
 
+static int
+kndUser_get_repo(struct kndUser *self,
+                 const char *name, size_t name_size,
+                 struct kndRepo **result);
 static int 
 kndUser_del(struct kndUser *self)
 {
@@ -58,26 +60,8 @@ kndUser_str(struct kndUser *self)
 }
 
 
-/*static int 
-kndUser_set_policy(struct kndUser *self,
-                   const char *policy_id,
-                   size_t policy_id_size)
-{
-
-    if (DEBUG_USER_LEVEL_1)
-        knd_log("  .. USER %s to set policy %s\n", self->id, policy_id);
-
-    memcpy(self->policy->id, policy_id, policy_id_size);
-    self->policy->id[policy_id_size] = '\0';
-
-    
-    return knd_OK;
-}
-*/
-
-
 static int
-kndUser_adduser(struct kndUser *self, struct kndData *data)
+kndUser_add_user(struct kndUser *self)
 {
     char buf[KND_TEMP_BUF_SIZE] = {0};
     //size_t buf_size;
@@ -85,12 +69,14 @@ kndUser_adduser(struct kndUser *self, struct kndData *data)
     char uid[KND_ID_SIZE + 1];
     int err;
 
+    /* check a human readable name */
+    
     memcpy(uid, self->last_uid, KND_ID_SIZE);
     uid[KND_ID_SIZE] = '\0';
     knd_inc_id(uid);
 
     if (DEBUG_USER_LEVEL_TMP)
-        knd_log("  .. create new user: ID \"%s\" %s\n", uid, data->spec);
+        knd_log(".. create new user: ID \"%s\"", uid);
     
     memcpy(self->id, uid, KND_ID_SIZE);
     
@@ -101,33 +87,29 @@ kndUser_adduser(struct kndUser *self, struct kndData *data)
     if (err) goto final;
     */
     
-    sprintf(buf, "%s/users", self->writer->path);
-    err = knd_make_id_path(self->path, buf, uid, NULL);
-    if (err) goto final;
+    err = knd_make_id_path(buf, self->path, uid, NULL);
+    if (err) return err;
 
-    knd_log("  ==  USER DIR: \"%s\"\n",
-            self->path);
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log("==  USER DIR: \"%s\"\n", buf);
 
     /* TODO: check if DIR already exists */
-    err = knd_mkpath(self->path, 0755, false);
+
+    err = knd_mkpath(buf, 0755, false);
     if (err) return err;
 
     err = kndUser_export(self, KND_FORMAT_GSL);
-    if (err) goto final;
+    if (err) return err;
     
-    err = knd_write_file((const char*)self->path,
+    err = knd_write_file((const char*)buf,
                          "user.gsl",
-                         self->writer->out->buf, self->writer->out->buf_size);
-    if (err) goto final;
+                         self->out->buf, self->out->buf_size);
+    if (err) return err;
 
     /* change last id */
     memcpy(self->last_uid, uid, KND_ID_SIZE);
 
-    err = knd_OK;
-
- final:
-    
-    return err;
+    return knd_OK;
 }
 
 
@@ -146,7 +128,6 @@ kndUser_sync(struct kndUser *self)
 
 
 
-
 static int
 kndUser_get_user(struct kndUser *self, const char *uid,
                  struct kndUser **user)
@@ -157,7 +138,7 @@ kndUser_get_user(struct kndUser *self, const char *uid,
     struct kndUser *curr_user;
     int err;
 
-    if (DEBUG_USER_LEVEL_3)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log("  ?? is \"%s\" a valid user?\n", uid);
 
     curr_user = self->user_idx->get(self->user_idx, uid);
@@ -165,25 +146,19 @@ kndUser_get_user(struct kndUser *self, const char *uid,
         err = kndUser_new(&curr_user);
         if (err) return err;
 
-        curr_user->writer = self->writer;
-        curr_user->reader = self->reader;
-
+        curr_user->out = self->out;
+        
         memcpy(curr_user->id, uid, KND_ID_SIZE);
 
-        /* set DB path */
-        if (self->reader)
-            buf_size = sprintf(buf, "%s/users", self->reader->path);
-        else
-            buf_size = sprintf(buf, "%s/users", self->writer->path);
-            
         err = knd_make_id_path(curr_user->path, buf, curr_user->id, NULL);
         if (err) goto final;
 
-        curr_user->path_size = strlen(curr_user->path);
+        /*curr_user->path_size = strlen(curr_user->path);
         memcpy(curr_user->repo->path, curr_user->path, curr_user->path_size);
         curr_user->repo->path[curr_user->path_size] = '\0';
         curr_user->repo->path_size = curr_user->path_size;
 
+        */
         
         /* open home repo */
         buf_size = sprintf(buf, "%s/user.gsl", curr_user->path);
@@ -294,8 +269,8 @@ kndUser_import(struct kndUser *self, struct kndData *data)
                        buf, &buf_size);
     */
     if (!err) {
-        err = self->writer->get_repo(self->writer,
-                                     (const char*)buf, buf_size, &repo);
+        err = kndUser_get_repo(self,
+                               (const char*)buf, buf_size, &repo);
         if (err) return err;
 
         /* TODO: check repo policy */
@@ -416,19 +391,20 @@ kndUser_select(struct kndUser *self, struct kndData *data)
     if (!err) {
 
         if (!strncmp(buf, "pub", strlen("pub"))) {
-            if (!self->reader->default_repo_name_size) return knd_FAIL;
+            /*if (!self->reader->default_repo_name_size) return knd_FAIL;
 
-            err = self->reader->get_repo(self->reader,
-                                         (const char*)self->reader->default_repo_name,
-                                         self->reader->default_repo_name_size, &repo);
+            err = kndUser_get_repo(self,
+                                   (const char*)self->reader->default_repo_name,
+                                   self->reader->default_repo_name_size, &repo);
             if (err) return err;
 
+            */
             
         }
         else {
-            err = self->reader->get_repo(self->reader,
-                                         (const char*)buf,
-                                         buf_size, &repo);
+            err = kndUser_get_repo(self,
+                                   (const char*)buf,
+                                   buf_size, &repo);
             if (err) return err;
         }
 
@@ -479,7 +455,7 @@ kndUser_select(struct kndUser *self, struct kndData *data)
     }
     */
     
-    out = self->reader->out;
+    out = self->out;
     out->reset(out);
 
     switch (data->format) {
@@ -519,19 +495,16 @@ kndUser_select(struct kndUser *self, struct kndData *data)
     }
 
     
-    /*knd_log("\n   == USER:%s  REPO:%s   select output: %s\n\n   == META: %s\n\n",
-            self->id, repo->name, self->reader->out->buf, self->reader->obj_out->buf);
-    */
     
     err = knd_OK;
 
  final:
 
-    if (self->reader->obj_out->file) {
+    /*if (self->obj_out->file) {
         free(self->reader->obj_out->file);
         self->reader->obj_out->file = NULL;
         self->reader->obj_out->file_size = 0;
-    }
+        } */
         
     return err;
 }
@@ -575,17 +548,18 @@ kndUser_get_obj(struct kndUser *self, struct kndData *data)
     if (!err) {
 
         if (!strncmp(buf, "pub", strlen("pub"))) {
-            if (!self->reader->default_repo_name_size) return knd_FAIL;
+            /*if (!self->reader->default_repo_name_size) return knd_FAIL;
 
             err = self->reader->get_repo(self->reader,
                                          (const char*)self->reader->default_repo_name,
                                          self->reader->default_repo_name_size, &repo);
-            if (err) return err;
+                                         if (err) return err; */
+            
         }
         else {
-            err = self->reader->get_repo(self->reader,
-                                         (const char*)buf,
-                                         buf_size, &repo);
+            err = kndUser_get_repo(self,
+                                   (const char*)buf,
+                                   buf_size, &repo);
             if (err) return err;
         }
         
@@ -667,8 +641,8 @@ kndUser_flatten(struct kndUser *self, struct kndData *data)
     const char *empty_msg = "None";
     size_t empty_msg_size = strlen(empty_msg);
 
-    void *update_inbox = self->reader->update;
-
+    void *update_inbox = self->update_inbox;
+    
     /* get recent updates */
     knd_zmq_sendmore(update_inbox, data->spec, data->spec_size);
     knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
@@ -688,6 +662,7 @@ kndUser_flatten(struct kndUser *self, struct kndData *data)
         knd_log(" .. no repo specified: assuming home directory\n");
     }
     */
+
     
     /* get the frozen state of flattened obj */
 
@@ -731,7 +706,7 @@ kndUser_match(struct kndUser *self, struct kndData *data)
     const char *empty_msg = "None";
     size_t empty_msg_size = strlen(empty_msg);
 
-    void *update_inbox = self->reader->update;
+    void *update_inbox = NULL; /*self->reader->update;*/
     int err;
 
     knd_log("  .. match obj...\n");
@@ -809,13 +784,8 @@ kndUser_read_classes(struct kndUser *self, char *rec, size_t rec_size __attribut
          c = strtok_r(NULL, delim, &last)) {
 
         /* check classname */
-        if (self->reader) 
-            dc = self->reader->dc->class_idx->get(self->reader->dc->class_idx,
-                                               (const char*)c);
-        else
-            dc = self->writer->dc->class_idx->get(self->writer->dc->class_idx,
-                                               (const char*)c);
-
+        dc = self->root_dc->class_idx->get(self->root_dc->class_idx,
+                                           (const char*)c);
         if (!dc) {
             if (DEBUG_USER_LEVEL_TMP)
                 knd_log("  .. classname \"%s\" is not valid...\n", c);
@@ -847,13 +817,8 @@ kndUser_read_browse_classes(struct kndUser *self, char *rec, size_t rec_size __a
          c = strtok_r(NULL, delim, &last)) {
 
         /* check classname */
-        if (self->reader) 
-            dc = self->reader->dc->class_idx->get(self->reader->dc->class_idx,
-                                               (const char*)c);
-        else
-            dc = self->writer->dc->class_idx->get(self->writer->dc->class_idx,
-                                               (const char*)c);
-
+        dc = self->root_dc->class_idx->get(self->root_dc->class_idx,
+                                           (const char*)c);
         if (!dc) {
             if (DEBUG_USER_LEVEL_TMP)
                 knd_log("   -- classname \"%s\" is not valid...\n", c);
@@ -930,6 +895,47 @@ kndUser_read_repos(struct kndUser *self, char *rec, size_t rec_size __attribute_
     err = knd_OK;
 
     return err;
+}
+
+
+
+
+static int
+kndUser_get_repo(struct kndUser *self,
+                 const char *name, size_t name_size,
+                 struct kndRepo **result)
+{
+    //char buf[KND_TEMP_BUF_SIZE];
+    //size_t buf_size = KND_TEMP_BUF_SIZE;
+    struct kndRepo *repo = NULL;
+    int err;
+
+    repo = self->repo_idx->get(self->repo_idx, name);
+    if (repo) {
+        *result = repo;
+        return knd_OK;
+    }
+
+    err = knd_is_valid_id(name, name_size);
+    if (err) return err;
+
+    err = kndRepo_new(&repo);
+    if (err) return knd_NOMEM;
+
+    memcpy(repo->id, name, KND_ID_SIZE);
+    repo->user = self;
+    
+    repo->out = self->out;
+    
+    err = repo->open(repo);
+    if (err) return err;
+    
+    err = self->repo_idx->set(self->repo_idx, name, (void*)repo);
+    if (err) return err;
+
+    *result = repo;
+    
+    return knd_OK;
 }
 
 
@@ -1040,7 +1046,7 @@ kndUser_read_db_state(struct kndUser *self, char *rec)
     b = rec;
     
     if (DEBUG_USER_LEVEL_TMP)
-        knd_log(".. User parsing DB state config", rec);
+        knd_log(".. User \"%s\" parsing DB state config", self->id, rec);
     
     while (*c) {
         switch (*c) {
@@ -1106,16 +1112,12 @@ kndUser_restore(struct kndUser *self)
 {
     char buf[KND_TEMP_BUF_SIZE] = {0};
     size_t buf_size = 0;
-    //struct kndUser *user;
-
-    //const char *key = NULL;
-    //void *val = NULL;
     int err;
 
-    knd_log("   .. User \"%s\" restoring DB state: \"%s\"\n",
-            self->id, self->path);
+    knd_log("   .. User \"%s\" restoring DB state  DBPATH: %s\n",
+            self->id, self->dbpath);
 
-    buf_size = sprintf(buf, "%s/state.gsl", self->path);
+    buf_size = sprintf(buf, "%s/state.gsl", self->dbpath);
 
     err = self->out->read_file(self->out,
                                (const char*)buf, buf_size);
@@ -1150,6 +1152,34 @@ kndUser_restore(struct kndUser *self)
 
 
 static int 
+kndUser_run(struct kndUser *self)
+{
+    struct kndSpecArg *arg;
+    const char *val;
+    int err;
+    
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log(".. USER task to run: %s",
+                self->instruct->proc_name);
+
+    if (!strcmp(self->instruct->proc_name, "add")) {
+        for (size_t i = 0; i < self->instruct->num_args; i++) {
+            arg = &self->instruct->args[i];
+
+            knd_log("== ARG NAME: %s", arg->name);
+        }
+        
+        err = kndUser_add_user(self);
+        if (err) return err;
+        
+    }
+
+    
+    return knd_OK;
+}
+
+
+static int 
 kndUser_export_GSL(struct kndUser *self)
 {
     char buf[KND_TEMP_BUF_SIZE] = {0};
@@ -1157,10 +1187,7 @@ kndUser_export_GSL(struct kndUser *self)
     struct kndOutput *out;
     int err;
 
-    if (self->writer) out = self->writer->out;
-    if (self->reader) out = self->reader->out;
-
-    if (!out) return knd_FAIL;
+    out = self->out;
     
     buf_size = sprintf(buf, "(ID^%s)(N^%s)(C^ooWebResource)",
                        self->id,
@@ -1190,10 +1217,9 @@ kndUser_export_JSON(struct kndUser *self)
         knd_log("JSON USER: %s [%s]\n",
                 self->name, self->id);
 
-    out = self->reader->out;
-
+    out = self->out;
     out->reset(out);
-    
+
     err = out->write(out,
                      "{", 1);
     if (err) return err;
@@ -1257,6 +1283,10 @@ kndUser_export_JSON(struct kndUser *self)
 }
 
 
+
+
+
+
 static int 
 kndUser_export(struct kndUser *self, knd_format format)
 {
@@ -1285,7 +1315,10 @@ kndUser_init(struct kndUser *self)
 {
     self->del = kndUser_del;
     self->str = kndUser_str;
-    self->adduser = kndUser_adduser;
+
+    self->run = kndUser_run;
+
+    self->add_user = kndUser_add_user;
     self->get_user = kndUser_get_user;
 
     self->read = kndUser_read;
@@ -1340,7 +1373,9 @@ kndUser_new(struct kndUser **user)
 
     err = kndOutput_new(&self->out, KND_TEMP_BUF_SIZE);
     if (err) return err;
+    self->repo->out =  self->out;
 
+    
     kndUser_init(self);
 
     *user = self;

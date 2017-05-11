@@ -68,7 +68,7 @@ kndRepo_open(struct kndRepo *self)
     //size_t path_size;
     int err;
     
-    sprintf(buf, "%s/repos", self->user->path);
+    sprintf(buf, "%s/repos", self->user->dbpath);
     err = knd_make_id_path(path, buf, self->id, "repo.gsl");
     if (err) return err;
 
@@ -107,13 +107,7 @@ kndRepo_add_repo(struct kndRepo *self, struct kndSpecArg *args, size_t num_args)
     struct kndSpecArg *arg;
     int err;
 
-    memcpy(self->id, self->last_id, KND_ID_SIZE);
-    self->id[KND_ID_SIZE] = '\0';
-    knd_inc_id(self->id);
-
     self->name_size = 0;
-
-    self->out = self->user->writer->out;
     self->out->reset(self->out);
 
     for (size_t i = 0; i < num_args; i++) {
@@ -133,15 +127,25 @@ kndRepo_add_repo(struct kndRepo *self, struct kndSpecArg *args, size_t num_args)
 
     if (!self->name_size) return knd_FAIL;
 
-    /* just in case: check Repo's existence */
+    /* check if name is unique */
+
+
+    
+    /* get new repo id */
+    memcpy(self->id, self->last_id, KND_ID_SIZE);
+    self->id[KND_ID_SIZE] = '\0';
+    knd_inc_id(self->id);
+    
+    /* check repo's existence: must be an error */
     err = kndRepo_open(self);
     if (!err) {
         if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("== %s REPO already exists?", self->id);
+            knd_log("-- \"%s\" REPO already exists?", self->id);
         return knd_FAIL;
     }
+    
+    sprintf(buf, "%s/repos", self->user->dbpath);
 
-    sprintf(buf, "%s/repos", self->user->path);
     err = knd_make_id_path(path, buf, self->id, NULL);
     if (err) return err;
 
@@ -150,13 +154,13 @@ kndRepo_add_repo(struct kndRepo *self, struct kndSpecArg *args, size_t num_args)
                 self->id, self->name_size, self->name, path);
     
     /* TODO: check if DIR already exists */
-    err = knd_mkpath(self->path, 0755, false);
+    err = knd_mkpath(path, 0755, false);
     if (err) return err;
     
     /* in batch mode:
           ignore incoming tasks
-       in non-batch mode:
-          appends incoming tasks to the inbox queue */
+       in non-batch mode (default):
+          append incoming tasks to the inbox queue */
 
     sprintf(buf, "%s/inbox", path);
     err = knd_mkpath(buf, 0755, false);
@@ -175,10 +179,15 @@ kndRepo_add_repo(struct kndRepo *self, struct kndSpecArg *args, size_t num_args)
                          self->out->buf, self->out->buf_size);
     if (err) return err;
 
+
+    /* TODO: register repo name */
+
+    /* increment id */
     memcpy(self->last_id, self->id, KND_ID_SIZE);
 
-
-    self->open(self);
+    
+    err = kndRepo_open(self);
+    if (err) return err;
 
     return knd_OK;
 }
@@ -209,7 +218,6 @@ kndRepo_read_idx(struct kndRepo *self,
         knd_log("  .. reading atom IDX file: \"%s\" ..\n",
                 buf);
 
-    self->out = self->user->reader->out;
     self->out->reset(self->out);
     
     err = self->out->read_file(self->out,
@@ -527,7 +535,8 @@ kndRepo_read_db_chunk(struct kndRepo *self,
     if (err) return err;
 
     obj->cache = cache;
-    obj->out = self->user->reader->obj_out;
+
+    obj->out = self->out;
     obj->out->reset(obj->out);
     
     err = obj->parse(obj, buf, buf_size, KND_FORMAT_GSC);
@@ -562,8 +571,6 @@ kndRepo_read_obj_db(struct kndRepo *self,
 
     buf_size = sprintf(buf, "%s/%s/objs.gsc",
                        self->path, cache->baseclass->name);
-
-    self->out = self->user->reader->out;
 
     if (DEBUG_REPO_LEVEL_3)
         knd_log("  .. open OBJ db file: \"%s\" ..\n", buf);
@@ -615,7 +622,7 @@ kndRepo_update_select_class(struct kndRepo *self, struct kndData *data,
     size_t confirm_size;
     int err;
 
-    delivery = self->user->writer->delivery;
+    delivery = NULL; /*self->user->writer->delivery;*/
 
     knd_log("   .. UPDATE select in CLASS  \"%s\"..\n",
             cache->baseclass->name);
@@ -629,7 +636,7 @@ kndRepo_update_select_class(struct kndRepo *self, struct kndData *data,
             goto next_cache;
             }*/
         
-    browser->out = self->user->writer->out;
+    browser->out = self->out;
     browser->out->reset(browser->out);
         
     err = browser->sync(browser);
@@ -707,7 +714,7 @@ kndRepo_update_select_class(struct kndRepo *self, struct kndData *data,
 }
 
 static int
-kndRepo_update_select(struct kndRepo *self, struct kndData *data)
+kndRepo_liquid_select(struct kndRepo *self, struct kndData *data)
 {
     struct kndDataClass *dc = NULL;
     struct kndRepoCache *cache;
@@ -768,7 +775,7 @@ kndRepo_update_select(struct kndRepo *self, struct kndData *data)
 
 
 static int
-kndRepo_update_get_obj(struct kndRepo *self, struct kndData *data)
+kndRepo_get_liquid_obj(struct kndRepo *self, struct kndData *data)
 {
     struct kndDataClass *c = NULL;
     struct kndRepoCache *cache;
@@ -796,7 +803,7 @@ kndRepo_update_get_obj(struct kndRepo *self, struct kndData *data)
     */
     
     /* check classname */
-    idx = self->user->writer->dc->class_idx;
+    idx = self->user->root_dc->class_idx;
     if (!idx) return knd_FAIL;
     
     c = idx->get(idx,
@@ -828,7 +835,7 @@ kndRepo_update_get_obj(struct kndRepo *self, struct kndData *data)
         goto final;
     }
 
-    obj->out = self->user->writer->out;
+    obj->out = self->out;
 
     /* export obj */
     err = obj->export(obj, KND_FORMAT_JSON, 0);
@@ -904,7 +911,7 @@ kndRepo_get_obj(struct kndRepo *self,
     */
     
     /* check classname */
-    idx = self->user->reader->dc->class_idx;
+    idx = self->user->root_dc->class_idx;
     if (!idx) {
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("    -- no class name IDX :(\n");
@@ -1025,10 +1032,9 @@ kndRepo_get_obj(struct kndRepo *self,
     }
 
     
-    self->out = self->user->reader->out;
+    self->out = self->out;
     self->out->reset(self->out);
     
-    /*self->user->reader->obj_out->reset(self->user->reader->obj_out);*/
 
     if (data->format == KND_FORMAT_JSON) {
         err = self->out->write(self->out,
@@ -1104,17 +1110,19 @@ kndRepo_get_obj(struct kndRepo *self,
     }
     */
 
-    /*self->out = self->user->writer->out;*/
+    /*self->out = self->out;*/
 
     /*err = self->out->write(self->out, "{", 1);
     if (err) goto final;
     */
 
 
-    if (DEBUG_REPO_LEVEL_1)
+    /*if (DEBUG_REPO_LEVEL_1)
         knd_log("\nEXPORT RESULT: %s [%lu]\n\nMETA: %s\n",
                 self->out->buf, (unsigned long)obj->out->buf_size,
                 self->user->reader->obj_out->buf);
+
+    */
 
     
     /*err = self->out->write(self->out,
@@ -1201,7 +1209,7 @@ kndRepo_update_flatten(struct kndRepo *self, struct kndData *data)
     */
     
     /* check classname */
-    idx = self->user->writer->dc->class_idx;
+    idx = self->user->root_dc->class_idx;
     if (!idx) return knd_FAIL;
     
     c = idx->get(idx,
@@ -1244,7 +1252,7 @@ kndRepo_update_flatten(struct kndRepo *self, struct kndData *data)
     knd_log("   FINAL FLATTENED TABLE:  span: %lu  num rows: %lu\n",
             (unsigned long)span, (unsigned long)table->num_rows);
 
-    out = self->user->writer->out;
+    out = self->out;
 
     buf_size = sprintf(buf, "{\"name\":\"%s\",\"span\":%lu,\"header\":[",
                        obj->name,
@@ -1340,7 +1348,7 @@ kndRepo_flatten(struct kndRepo *self __attribute__((unused)), struct kndData *da
 
 
 static int
-kndRepo_update_match(struct kndRepo *self, struct kndData *data)
+kndRepo_liquid_match(struct kndRepo *self, struct kndData *data)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -1372,7 +1380,7 @@ kndRepo_update_match(struct kndRepo *self, struct kndData *data)
     */
     
     /* check classname */
-    idx = self->user->writer->dc->class_idx;
+    idx = self->user->root_dc->class_idx;
     if (!idx) return knd_FAIL;
     
     c = idx->get(idx,
@@ -1405,7 +1413,7 @@ kndRepo_update_match(struct kndRepo *self, struct kndData *data)
     err = kndObject_new(&obj);
     if (err) return err;
     obj->cache = cache;
-    obj->out = self->user->writer->out;
+    obj->out = self->out;
     obj->out->reset(obj->out);
 
     err = obj->match(obj, data->body, data->body_size);
@@ -1416,7 +1424,7 @@ kndRepo_update_match(struct kndRepo *self, struct kndData *data)
                        "    class=\"%s\" sid=\"AUTH_SERVER_SID\"/>",
                        self->user->id,  cache->baseclass->name);
 
-    delivery = self->user->writer->delivery;
+    delivery = NULL; /*self->user->writer->delivery;*/
 
     err = knd_zmq_sendmore(delivery, (const char*)buf, buf_size);
     err = knd_zmq_sendmore(delivery, data->body, data->body_size);
@@ -1774,9 +1782,8 @@ kndRepo_update(struct kndRepo *self,
 
 
 static int
-kndRepo_import(struct kndRepo *self,
-               struct kndData *data,
-               knd_format format)
+kndRepo_import_obj(struct kndRepo *self,
+                   knd_format format)
 {
     struct kndDataClass *c;
     struct kndObject *obj = NULL;
@@ -1784,8 +1791,8 @@ kndRepo_import(struct kndRepo *self,
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("  .. repo \"%s\" import..\n",
-                self->path);
+        knd_log("  .. repo \"%s\" (%s) obj import..\n",
+                self->id, self->path);
 
     /* batch mode? */
     /*err = knd_get_attr(data->spec,
@@ -1835,7 +1842,7 @@ kndRepo_import(struct kndRepo *self,
     err = kndObject_new(&obj);
     if (err) return err;
     obj->cache = cache;
-    obj->out = self->user->writer->obj_out;
+    obj->out = self->out;
 
     /* assign local id */
     memcpy(obj->id, cache->obj_last_id, KND_ID_SIZE);
@@ -1993,7 +2000,7 @@ kndRepo_sync(struct kndRepo *self)
         err = knd_mkpath(buf, 0755, false);
         if (err) return err;
 
-        refset->out = self->user->writer->out;
+        refset->out = self->out;
         refset->out->reset(refset->out);
 
 
@@ -2024,7 +2031,7 @@ kndRepo_sync(struct kndRepo *self)
         /* check idxs */
         idx = cache->idxs;
         while (idx) {
-            idx->out = self->user->writer->out;
+            idx->out = self->out;
             idx->out->reset(idx->out);
 
             /*idx->str(idx, 0, 5);*/
@@ -2507,7 +2514,7 @@ kndRepo_get_guid(struct kndRepo *self,
                     buf);
 
     
-        self->out = self->user->reader->out;
+        self->out = self->out;
         self->out->reset(self->out);
     
         err = self->out->read_file(self->out,
@@ -2579,20 +2586,27 @@ kndRepo_export(struct kndRepo *self, knd_format format)
 }
 
 static int 
-kndRepo_run(struct kndRepo *self, struct kndSpecInstruction *instruct)
+kndRepo_run(struct kndRepo *self)
 {
     //struct kndSpecArg *arg;
     int err;
     
     if (DEBUG_REPO_LEVEL_2)
         knd_log(".. REPO task to run: %s",
-                instruct->proc_name);
+                self->instruct->proc_name);
 
-    if (!strcmp(instruct->proc_name, "add")) {
-        err = kndRepo_add_repo(self, instruct->args, instruct->num_args);
+    if (!strcmp(self->instruct->proc_name, "add")) {
+        err = kndRepo_add_repo(self,
+                               self->instruct->args, self->instruct->num_args);
         if (err) return err;
-        
     }
+
+    if (!strcmp(self->instruct->proc_name, "import")) {
+        err = kndRepo_import(self,
+                             self->instruct->args, self->instruct->num_args);
+        if (err) return err;
+    }
+
     
     return knd_OK;
 }
@@ -2680,15 +2694,15 @@ kndRepo_init(struct kndRepo *self)
     self->add_repo = kndRepo_add_repo;
     self->open = kndRepo_open;
     
-    self->import = kndRepo_import;
+    self->import = kndRepo_import_obj;
     self->update = kndRepo_update;
 
     self->select = kndRepo_select;
-    self->update_select = kndRepo_update_select;
+    self->liquid_select = kndRepo_liquid_select;
 
     self->export = kndRepo_export;
     
-    self->update_get_obj = kndRepo_update_get_obj;
+    self->get_liquid_obj = kndRepo_update_get_obj;
     self->get_obj = kndRepo_get_obj;
 
     self->read_obj = kndRepo_read_obj_db;
@@ -2696,7 +2710,7 @@ kndRepo_init(struct kndRepo *self)
     self->update_flatten = kndRepo_update_flatten;
     self->flatten = kndRepo_flatten;
 
-    self->update_match = kndRepo_update_match;
+    self->liquid_match = kndRepo_liquid_match;
     self->match = kndRepo_match;
 
     self->sync = kndRepo_sync;

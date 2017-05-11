@@ -169,7 +169,7 @@ kndDataClass_set_name(struct kndDataClass *self,
 
     self->name_size = name_size;
 
-    knd_log("++ normalized class name: \"%s\"", self->name);
+    /*knd_log("++ normalized class name: \"%s\"", self->name);*/
     
     dc = self->class_idx->get(self->class_idx,
                               (const char*)self->name);
@@ -177,9 +177,6 @@ kndDataClass_set_name(struct kndDataClass *self,
         knd_log("  -- class name \"%s\" already exists :(", self->name);
         return knd_FAIL;
     }
-
-
-    knd_log("  ++ class name OK: \"%s\"", self->name);
 
     
     return knd_OK;
@@ -213,6 +210,10 @@ kndDataClass_read_GSL(struct kndDataClass *self,
 
     err = kndDataClass_new(&dc);
     if (err) return err;
+
+    dc->dbpath = self->dbpath;
+    dc->dbpath_size = self->dbpath_size;
+    
     dc->out = self->out;
     dc->class_idx = self->class_idx;
 
@@ -220,7 +221,9 @@ kndDataClass_read_GSL(struct kndDataClass *self,
         memcpy(dc->namespace, self->namespace, self->namespace_size);
         dc->namespace_size = self->namespace_size;
     }
-    
+
+
+
     while (*c) {
         switch (*c) {
             /* non-whitespace char */
@@ -293,10 +296,12 @@ kndDataClass_read_GSL(struct kndDataClass *self,
                                        (const char*)dc->name, (void*)dc);
             if (err) return err;
             
+
             *total_size = c - rec;
             return  knd_OK;
             
         case '[':
+
             if (in_classname) {
                 *c = '\0';
                 err = dc->set_name(dc, b);
@@ -305,15 +310,16 @@ kndDataClass_read_GSL(struct kndDataClass *self,
                 *c = '[';
             }
 
+
             err = kndAttr_new(&attr);
             if (err) return err;
             attr->is_list = true;
             attr->dc = self;
 
-            
             chunk_size = 0;
             err = attr->read(attr, c, &chunk_size);
             if (err) goto final;
+
 
             c += chunk_size;
             
@@ -413,7 +419,7 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
     bool in_classes = false;
     int err;
 
-    buf_size = sprintf(buf, "%s/%s", self->path, filename);
+    buf_size = sprintf(buf, "%s/%s", self->dbpath, filename);
 
     err = kndOutput_new(&out, KND_IDX_BUF_SIZE);
     if (err) return err;
@@ -422,7 +428,7 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
                          (const char*)buf, buf_size);
     if (err) goto final;
 
-    knd_log("++ FILE \"%s\" read OK!", filename);
+    knd_log("++ FILE \"%s\" read OK!", buf);
 
     c = out->file;
     b = c;
@@ -521,7 +527,7 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
                 *c = '\0';
                 buf_size = sprintf(buf, "classes/%s%s", b, GSL_file_suffix);
 
-                if (DEBUG_DATACLASS_LEVEL_2)
+                if (DEBUG_DATACLASS_LEVEL_TMP)
                     knd_log("INCLUDE MODULE: \"%s\"", buf);
 
                 err = kndDataClass_read_onto_GSL(self,
@@ -585,8 +591,6 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
 
  final:
 
-    knd_log("DATA CLASS read: %d", err);
-    
     out->del(out);
 
     return err;
@@ -903,7 +907,6 @@ kndDataClass_new(struct kndDataClass **c)
     if (!self) return knd_NOMEM;
 
     memset(self, 0, sizeof(struct kndDataClass));
-
 
     kndDataClass_init(self);
 

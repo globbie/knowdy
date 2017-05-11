@@ -61,6 +61,9 @@ struct kndDataClass
     size_t namespace_size;
 
     /* ontology file location */
+    const char *dbpath;
+    size_t dbpath_size;
+    
     char *path;
     size_t path_size;
 

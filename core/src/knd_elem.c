@@ -1222,7 +1222,7 @@ kndElem_parse_ref(struct kndElem *self,
     size_t buf_size;
 
     struct kndElemState *elem_state;
-    struct kndDataClass *parent_dc, *dc;
+    struct kndDataClass *root_dc, *dc;
 
     const char *b;
     const char *c;
@@ -1292,16 +1292,12 @@ kndElem_parse_ref(struct kndElem *self,
                 memcpy(self->ref_classname, b, chunk_size);
                 self->ref_classname_size = chunk_size;
 
-                if (self->obj->cache->repo->user->reader)
-                    parent_dc = self->obj->cache->repo->user->reader->dc;
-                else
-                    parent_dc = self->obj->cache->repo->user->writer->dc;
-
+                root_dc = self->obj->cache->repo->user->root_dc;
+                
                 /* check classname */
-                dc = (struct kndDataClass*)parent_dc->class_idx->get\
-                    (parent_dc->class_idx,
+                dc = (struct kndDataClass*)root_dc->class_idx->get\
+                    (root_dc->class_idx,
                      self->ref_classname);
-
                 if (!dc) {
                     if (DEBUG_ELEM_LEVEL_TMP)
                         knd_log("  .. classname \"%s\" is not valid...\n",
@@ -1969,9 +1965,10 @@ kndElem_export_JSON(struct kndElem *self,
 
             
             /* soft link the actual file */
-            buf_size = sprintf(buf, "%s/%s",
+            /* TODO: remove reader
+                               buf_size = sprintf(buf, "%s/%s",
                                self->obj->cache->repo->user->reader->webpath,
-                               self->states->val);
+                               self->states->val); */
 
             dirname_size = sprintf(dirname,
                                    "%s/%s", self->obj->cache->repo->path,

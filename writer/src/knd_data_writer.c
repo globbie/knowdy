@@ -47,17 +47,22 @@ kndDataWriter_run_tasks(struct kndDataWriter *self)
     struct kndSpecInstruction *instruct;
     int err;
 
-    for (size_t i = 0; i < self->spec->num_instructions; i++) {
+    for (int i = 0; i < self->spec->num_instructions; i++) {
         instruct = &self->spec->instructions[i];
-
-        knd_log(".. running task \"%s\" [type:%d]",
-                instruct->name, instruct->type);
 
         switch (instruct->type) {
         case KND_AGENT_REPO:
+            knd_log(".. REPO task %d in progress", i);
+            self->admin->repo->instruct = instruct;
+            err = self->admin->repo->run(self->admin->repo);
+            if (err) return err;
 
-            knd_log(".. REPO task in progress");
-            err = self->admin->repo->run(self->admin->repo, instruct);
+            break;
+        case KND_AGENT_USER:
+
+            knd_log(".. USER task %d in progress", i);
+            self->admin->instruct = instruct;
+            err = self->admin->run(self->admin);
             if (err) return err;
 
             break;
@@ -95,11 +100,11 @@ kndDataWriter_check_privileges(struct kndDataWriter *self)
 
     if (DEBUG_WRITER_LEVEL_TMP)
         knd_log("++ valid SID: \"%s\"!", self->spec->sid);
-
     
     if (!self->spec->uid_size) {
-        knd_log("-- no UID provided :(");
-        return knd_FAIL;
+        knd_log("-- no UID provided: admin as default");
+        self->curr_user = self->admin;
+        return knd_OK;
     }
 
     if (DEBUG_WRITER_LEVEL_TMP)
@@ -152,41 +157,6 @@ kndDataWriter_check_privileges(struct kndDataWriter *self)
     return knd_OK;
 }
 
-static int
-kndDataWriter_get_repo(struct kndDataWriter *self,
-                       const char *name, size_t name_size,
-                       struct kndRepo **result)
-{
-    //char buf[KND_TEMP_BUF_SIZE];
-    //size_t buf_size = KND_TEMP_BUF_SIZE;
-    struct kndRepo *repo = NULL;
-    int err;
-
-    repo = self->repo_idx->get(self->repo_idx, name);
-    if (repo) {
-        *result = repo;
-        return knd_OK;
-    }
-
-    err = knd_is_valid_id(name, name_size);
-    if (err) return err;
-
-    err = kndRepo_new(&repo);
-    if (err) return knd_NOMEM;
-
-    memcpy(repo->id, name, KND_ID_SIZE);
-    repo->user = self->admin;
-
-    err = repo->open(repo);
-    if (err) return err;
-    
-    err = self->repo_idx->set(self->repo_idx, name, (void*)repo);
-    if (err) return err;
-
-    *result = repo;
-    
-    return knd_OK;
-}
 
 /*
 static int
@@ -293,7 +263,7 @@ kndDataWriter_read_config(struct kndDataWriter *self,
     if (err) return err;
 
     if (self->name_size > KND_ID_SIZE) {
-        knd_log("  -- DB name must not exceed %lu characters :(\n",
+        knd_log("  -- DB name must not exceed %lu characters :(",
                 (unsigned long)KND_ID_SIZE);
         return knd_FAIL;
     }
@@ -310,21 +280,22 @@ kndDataWriter_read_config(struct kndDataWriter *self,
     if (err) return err;
 
     memcpy(self->admin->id, self->name, self->name_size);
-    
+
+    /* users path */
+    self->admin->dbpath = self->path;
+    self->admin->dbpath_size = self->path_size;
+
     memcpy(self->admin->path, self->path, self->path_size);
-    self->admin->path[self->path_size] = '\0';
-    self->admin->path_size = self->path_size;
-    
-    
+    memcpy(self->admin->path + self->path_size, "/users", strlen("/users"));
+    self->admin->path_size = self->path_size + strlen("/users");
+    self->admin->path[self->admin->path_size] = '\0';
 
     for (cur_node = root->children; 
          cur_node; 
          cur_node = cur_node->next) {
         if (cur_node->type != XML_ELEMENT_NODE) continue;
-
         
 	if ((!xmlStrcmp(cur_node->name, (const xmlChar *)"devices"))) {
-
             for (sub_node = cur_node->children; 
                  sub_node; 
                  sub_node = sub_node->next) {
@@ -475,19 +446,17 @@ kndDataWriter_start(struct kndDataWriter *self)
     struct kndData *data;
     void *context;
     void *outbox;
-
+    char *spec = NULL;
+    size_t spec_size = 0;
+    char *obj = NULL;
+    size_t obj_size = 0;
+    
     int err;
-
-    //const char *msg;
-    //size_t msg_size;
 
     /* restore in-memory data after incorrect failure? */
     err = self->admin->restore(self->admin);
     if (err) return err;
-
-    err = kndData_new(&data);
-    if (err) return err;
-
+    
     context = zmq_init(1);
 
     knd_log("WRITER listener: %s\n",
@@ -507,7 +476,6 @@ kndDataWriter_start(struct kndDataWriter *self)
     assert(err == knd_OK);
     
     while (1) {
-	data->reset(data);
         self->spec->reset(self->spec);
         self->out->reset(self->out);
         self->spec_out->reset(self->spec_out);
@@ -516,13 +484,13 @@ kndDataWriter_start(struct kndDataWriter *self)
             knd_log("    ++ DATAWRITER AGENT #%s is ready to receive new tasks!", 
                     self->name);
 
-	data->spec = knd_zmq_recv(outbox, &data->spec_size);
-	data->obj = knd_zmq_recv(outbox, &data->obj_size);
+	spec = knd_zmq_recv(outbox, &spec_size);
+	obj = knd_zmq_recv(outbox, &obj_size);
         
 	knd_log("    ++ DATAWRITER AGENT #%s got spec: %s\n", 
-                self->name, data->spec);
+                self->name, spec);
 
-        err = self->spec->parse(self->spec, data->spec, &data->spec_size);
+        err = self->spec->parse(self->spec, spec, &spec_size);
         if (err) {
             knd_log("  -- SPEC parse failed: %d\n", err);
             goto final;
@@ -543,16 +511,19 @@ kndDataWriter_start(struct kndDataWriter *self)
 
     final:
 
-        err = kndDataWriter_reply(self,  data);
-
+        /*err = kndDataWriter_reply(self,  data);
+         */
+        
+        if (spec) free(spec);
+        if (obj) free(obj);
     }
 
 //error:
 //    zmq_close(outbox);
-//    if (data)
-//        data->del(data);
 //
-//    return knd_OK;
+
+    /* should never get here */
+    return knd_OK;
 }
 
 
@@ -562,15 +533,13 @@ kndDataWriter_new(struct kndDataWriter **rec,
                   const char *config)
 {
     struct kndDataWriter *self;
-    //struct kndObject *obj;
-    int err;
-    //size_t i;
+    struct kndDataClass *dc;
+     int err;
 
     self = malloc(sizeof(struct kndDataWriter));
     if (!self) return knd_NOMEM;
 
     memset(self, 0, sizeof(struct kndDataWriter));
-
 
     /* output buffer for linearized indices */
     err = kndOutput_new(&self->out, KND_IDX_BUF_SIZE);
@@ -584,51 +553,54 @@ kndDataWriter_new(struct kndDataWriter **rec,
     err = kndOutput_new(&self->obj_out, KND_LARGE_BUF_SIZE);
     if (err) return err;
 
+    /* task specification */
     err = kndSpec_new(&self->spec);
     if (err) return err;
-    self->spec->writer = self;
+    
+    err = kndOutput_new(&self->spec->out, KND_LARGE_BUF_SIZE);
+    if (err) return err;
     
     /* special user */
     err = kndUser_new(&self->admin);
     if (err) return err;
+
+    /* admin indices */
     err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-    
-    self->admin->writer = self;
-    self->admin->out = self->out;
+    err = ooDict_new(&self->admin->repo_idx, KND_SMALL_DICT_SIZE);
+    if (err) goto error;
 
     /* read config */
     err = kndDataWriter_read_config(self, config);
     if (err) return err;
 
-    err = kndDataClass_new(&self->dc);
+    /*knd_log("  == User Admin before DC PATH: %s\n",
+            self->admin->dbpath);
+    */
+    
+    err = kndDataClass_new(&dc);
     if (err) return err;
-    self->dc->out = self->out;
-    self->dc->name[0] = '/';
-    self->dc->name_size = 1;
+    dc->out = self->out;
+    dc->name[0] = '/';
+    dc->name_size = 1;
 
-    self->dc->path = self->path;
-    self->dc->path_size = self->path_size;
+    dc->dbpath = self->path;
+    dc->dbpath_size = self->path_size;
 
-    err = ooDict_new(&self->dc->class_idx, KND_MEDIUM_DICT_SIZE);
+    err = ooDict_new(&dc->class_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-
-    err = ooDict_new(&self->dc->attr_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) goto error;
-
-    err = ooDict_new(&self->repo_idx, KND_SMALL_DICT_SIZE);
-    if (err) goto error;
-
+    
     /* read class definitions */
-    err = self->dc->read_onto(self->dc, "classes/index.gsl");
+    err = dc->read_onto(dc, "classes/index.gsl");
     if (err) goto error;
-
-    err = self->dc->coordinate(self->dc);
+    
+    err = dc->coordinate(dc);
     if (err) goto error;
+    
+    self->admin->root_dc = dc;
 
     self->del = kndDataWriter_del;
     self->start = kndDataWriter_start;
-    self->get_repo = kndDataWriter_get_repo;
 
     *rec = self;
 

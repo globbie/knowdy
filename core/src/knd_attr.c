@@ -127,7 +127,6 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
     bool in_val = false;
     int err = knd_FAIL;
 
-    knd_log("  .. reading glosses..\n");
     
     c = rec;
     //b = rec;
@@ -141,7 +140,7 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
         case '\r':
         case '\t':
         case ' ':
-            if (in_key) {
+            /*if (in_key) {
                 tr = malloc(sizeof(struct kndTranslation));
                 if (!tr) return knd_NOMEM;
                 memset(tr, 0, sizeof(struct kndTranslation));
@@ -158,7 +157,7 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
                 b = c + 1;
                 break;
             }
-            
+            */
             
             break;
         case '{':
@@ -169,7 +168,7 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
             break;
         case '}':
 
-            if (in_val) {
+            /*if (in_val) {
                 buf_size = c - b;
 
                 if (!buf_size) return knd_FAIL;
@@ -186,15 +185,16 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
                 tr->next = self->dc->tr;
                 self->dc->tr = tr;
 
+                
                 tr = NULL;
                 in_val = false;
                 b = c + 1;
                 break;
             }
-
+            */
+            
             break;
         case ']':
-
             *chunk_size = c - rec;
             return knd_OK;
         }
@@ -253,17 +253,15 @@ kndAttr_read_list(struct kndAttr *self,
                 memcpy(self->name, b, buf_size);
                 self->name[buf_size] = '\0';
                 self->name_size = buf_size;
-
-                /*knd_log("LIST KEYWORD: \"%s\"", self->name);*/
                 
                 if (!strcmp(self->name, "_gloss")) {
                     err = kndAttr_read_GSL_glosses(self, c, &curr_size);
                     if (err) goto final;
-                        
+
                     *total_size = (c + curr_size) - rec;
                     return knd_OK;
                 }
-                    
+
                 got_attr_name = true;
                 break;
             }
@@ -523,7 +521,6 @@ kndAttr_resolve(struct kndAttr *self)
     
     if (DEBUG_ATTR_LEVEL_3)
         knd_log("   ++ ATTR template dataclass resolved: %s!\n", self->classname);
-
 
     return knd_OK;
 }

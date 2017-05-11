@@ -171,9 +171,8 @@ struct kndRepo
     char lang_code[KND_NAME_SIZE];
     size_t lang_code_size;
 
-    struct kndDataWriter *writer;
-    struct kndDataReader *reader;
-
+    struct kndSpecInstruction *instruct;
+    
     struct kndOutput *out;
     
     /* local repo index */
@@ -203,22 +202,22 @@ struct kndRepo
 
     int (*init)(struct kndRepo *self);
 
-    int (*run)(struct kndRepo *self, struct kndSpecInstruction *instruct);
+    int (*run)(struct kndRepo *self);
 
     int (*read_state)(struct kndRepo *self, char *rec, size_t *chunk_size);
 
     int (*add_repo)(struct kndRepo *self, struct kndSpecArg *args, size_t num_args);
 
-    int (*open)(struct kndRepo *self);
-
     int (*get_repo)(struct kndRepo *self, const char *uid, struct kndRepo **repo);
+
+    int (*open)(struct kndRepo *self);
 
     int (*read)(struct kndRepo *self, const char *id);
 
     int (*sync)(struct kndRepo *self);
 
-    int (*import)(struct kndRepo *self, struct kndData *data, knd_format format);
-    int (*update)(struct kndRepo *self, struct kndData *data, knd_format format);
+    int (*import)(struct kndRepo *self, knd_format format);
+    int (*update)(struct kndRepo *self, knd_format format);
 
     int (*export)(struct kndRepo *self, knd_format format);
 
@@ -226,13 +225,13 @@ struct kndRepo
     int (*update_select)(struct kndRepo *self, struct kndData *data);
 
     int (*get_obj)(struct kndRepo *self, struct kndData *data);
-    int (*update_get_obj)(struct kndRepo *self, struct kndData *data);
+    int (*get_liquid_obj)(struct kndRepo *self, struct kndData *data);
 
     int (*flatten)(struct kndRepo *self, struct kndData *data);
     int (*update_flatten)(struct kndRepo *self, struct kndData *data);
 
     int (*match)(struct kndRepo *self, struct kndData *data);
-    int (*update_match)(struct kndRepo *self, struct kndData *data);
+    int (*liquid_match)(struct kndRepo *self, struct kndData *data);
 
     int (*get_cache)(struct kndRepo *self, struct kndDataClass *c,
                      struct kndRepoCache **cache);

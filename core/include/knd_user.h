@@ -3,17 +3,14 @@
 
 #include "knd_utils.h"
 #include "knd_policy.h"
+#include "knd_dataclass.h"
 
-struct kndDataWriter;
-struct kndDataReader;
-struct kndDataClass;
-struct kndCustomer;
 struct kndObject;
-
 struct kndUser;
 struct kndOutput;
 struct kndRepo;
 struct kndRepoSet;
+struct kndSpecInstruction;
 
 struct kndRepoAccess
 {
@@ -36,6 +33,9 @@ struct kndUser
 
     size_t num_users;
 
+    const char *dbpath;
+    size_t dbpath_size;
+    
     char path[KND_TEMP_BUF_SIZE];
     size_t path_size;
 
@@ -51,13 +51,12 @@ struct kndUser
     char control_phrase[KND_TEMP_BUF_SIZE];
     size_t control_phrase_size;
 
-    struct kndDataWriter *writer;
-    struct kndDataReader *reader;
-
+    struct kndDataClass *root_dc;
+    struct kndSpecInstruction *instruct;
     struct kndOutput *out;
     
-    struct kndCustomer *customer;
-
+    void *update_inbox;
+    
     struct kndRepo *repo;
     struct ooDict *repo_idx;
 
@@ -72,7 +71,9 @@ struct kndUser
 
     int (*init)(struct kndUser *self);
 
-    int (*adduser)(struct kndUser *self, struct kndData *data);
+    int (*run)(struct kndUser *self);
+
+    int (*add_user)(struct kndUser *self);
 
     int (*get_user)(struct kndUser *self, const char *uid, struct kndUser **user);
 

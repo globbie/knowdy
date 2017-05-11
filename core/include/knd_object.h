@@ -158,7 +158,8 @@ struct kndObject
                      struct kndObject **obj);
 
     int (*import)(struct kndObject *self,
-                  struct kndData *data,
+                  char *rec,
+                  size_t rec_size,
                   knd_format format);
 
     int (*update)(struct kndObject *self,

@@ -62,6 +62,9 @@ struct kndSpecInstruction
     size_t repo_name_size;
     size_t repo_state;
 
+    char user_name[KND_NAME_SIZE];
+    size_t user_name_size;
+
     char class_name[KND_NAME_SIZE];
     size_t class_name_size;
 
@@ -88,8 +91,6 @@ struct kndSpec
     char tid[KND_NAME_SIZE];
     size_t tid_size;
     
-    struct kndDataWriter *writer;
-    struct kndDataReader *reader;
     struct kndOutput *out;
     
     /******** public methods ********/

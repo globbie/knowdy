@@ -78,6 +78,9 @@ kndDataReader_read_config(struct kndDataReader *self,
 			   &self->webpath, &self->webpath_size);
     if (err) return err;
 
+
+
+
     
     
     val = xmlGetProp(root,  (const xmlChar *)"default_repo");
@@ -681,7 +684,6 @@ kndDataReader_new(struct kndDataReader **rec,
     err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
 
-    self->admin->reader = self;
     
     /* read config */
     err = kndDataReader_read_config(self, config);

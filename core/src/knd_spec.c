@@ -30,6 +30,7 @@ kndSpec_reset(struct kndSpec *self)
     self->sid_size = 0;
     self->uid_size = 0;
     self->tid_size = 0;
+    self->num_instructions = 0;
 }
 
 /* fixme
@@ -212,6 +213,132 @@ kndSpec_parse_repo(struct kndSpec *self,
 }
 
 
+static int
+kndSpec_parse_user(struct kndSpec *self,
+                   char *rec,
+                   size_t *total_size)
+{
+    struct kndSpecInstruction *instruct;
+    struct kndSpecArg *arg;
+    
+    char *b, *c;
+    size_t buf_size;
+    
+    bool in_proc = false;
+    bool in_arg = false;
+    bool in_val = false;
+
+    c = rec;
+    b = c;
+
+    if (DEBUG_SPEC_LEVEL_2)
+        knd_log("   .. parsing USER rec: \"%s\"", c);
+
+    instruct = &self->instructions[self->num_instructions];
+    memset(instruct, 0, sizeof(struct kndSpecInstruction));
+
+    instruct->type = KND_AGENT_USER;
+    
+    while (*c) {
+        switch (*c) {
+        case '\n':
+        case '\r':
+        case '\t':
+        case ' ':
+            if (!in_proc) {
+                b = c + 1;
+                break;
+            }
+            
+            buf_size = c - b;
+            if (!buf_size) {
+                knd_log("-- empty tag");
+                return knd_FAIL;
+            }
+
+            if (in_val) break;
+
+            if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
+            
+            *c = '\0';
+            arg = &instruct->args[instruct->num_args];
+            memset(arg, 0, sizeof(struct kndSpecArg));
+
+            memcpy(arg->name, b, buf_size);
+            arg->name[buf_size] = '\0';
+            
+            if (DEBUG_SPEC_LEVEL_TMP)
+                knd_log("ARG NAME: \"%s\"", b);
+
+            b = c + 1;
+            in_val = true;
+            
+            break;
+        case '{':
+            if (!in_proc) {
+                in_proc = true;
+                b = c + 1;
+                break;
+            }
+
+            if (!in_arg) {
+                buf_size = c - b;
+                if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
+                *c = '\0';
+                
+                if (DEBUG_SPEC_LEVEL_TMP)
+                    knd_log("PROC: \"%s\"", b);
+
+                memcpy(instruct->proc_name, b, buf_size);
+                instruct->proc_name[buf_size] = '\0';
+                
+                in_arg = true;
+                b = c + 1;
+                break;
+            }
+
+            break;
+        case '}':
+            *c = '\0';
+            if (in_arg) {
+                if (DEBUG_SPEC_LEVEL_TMP)
+                    knd_log("ARG VALUE: \"%s\"", b);
+
+                buf_size = c - b;
+                if (!buf_size) return knd_FAIL;
+                if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+                memcpy(arg->val, b, buf_size);
+                arg->val[buf_size] = '\0';
+                arg->val_size = buf_size;
+                
+                /* valid arg added */
+                instruct->num_args++;
+                
+                in_arg = false;
+                break;
+            }
+
+            if (in_proc) {
+                in_proc = false;
+                break;
+            }
+
+            self->num_instructions++;
+            
+            *total_size = c - rec;
+            return knd_OK;
+        default:
+            break;
+        }
+
+        c++;
+    }
+    
+    return knd_FAIL;
+}
+
+
 
 static int
 kndSpec_parse_auth(struct kndSpec *self,
@@ -354,8 +481,10 @@ kndSpec_parse_domain(struct kndSpec *self,
     char *c, *b;
     size_t chunk_size;
 
-    const char *repo_tag = "Repo";
     const char *auth_tag = "AUTH";
+    const char *repo_tag = "Repo";
+    const char *user_tag = "User";
+
     int err;
     
     b = rec;
@@ -379,7 +508,19 @@ kndSpec_parse_domain(struct kndSpec *self,
         if (!strncmp(repo_tag, name, name_size)){
             err = kndSpec_parse_repo(self, c, &chunk_size);
             if (err) {
-                knd_log("-- REPO parse failed");
+                knd_log("-- Repo parse failed");
+                return knd_FAIL;
+            }
+            *total_size = chunk_size;
+            return knd_OK;
+        }
+        break;
+    case 'u':
+    case 'U':
+        if (!strncmp(user_tag, name, name_size)){
+            err = kndSpec_parse_user(self, c, &chunk_size);
+            if (err) {
+                knd_log("-- User parse failed");
                 return knd_FAIL;
             }
             *total_size = chunk_size;

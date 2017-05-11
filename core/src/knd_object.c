@@ -484,9 +484,8 @@ kndObject_index(struct kndObject *self)
 
 static int
 kndObject_import_GSL(struct kndObject *self,
-                     const char *rec,
-                     size_t rec_size,
-                     struct kndData *data __attribute__((unused)))
+                     char *rec,
+                     size_t rec_size)
 {
     //char buf[KND_NAME_SIZE];
     //size_t buf_size;
@@ -1388,12 +1387,12 @@ kndObject_expand(struct kndObject *self,
 
 static int 
 kndObject_import(struct kndObject *self,
-                 struct kndData *data,
+                 char *rec,
+                 size_t rec_size,
                  knd_format format)
 {
     char dbpath[KND_TEMP_BUF_SIZE];
     char buf[KND_TEMP_BUF_SIZE];
-
     int err;
 
     switch(format) {
@@ -1403,7 +1402,7 @@ kndObject_import(struct kndObject *self,
         err = knd_FAIL;
         break;
     case KND_FORMAT_GSL:
-        err = kndObject_import_GSL(self, data->body, data->body_size, data);
+        err = kndObject_import_GSL(self, rec, rec_size);
         if (err) {
             if (DEBUG_OBJ_LEVEL_TMP) {
                 knd_log("   -- GSL import of %s failed :(\n",
@@ -1417,12 +1416,12 @@ kndObject_import(struct kndObject *self,
     }
     
     if (DEBUG_OBJ_LEVEL_3) {
-        knd_log("   ++ obj body [%s] parsed and verified:\n %s\n\n",
-                self->id, data->body);
+        knd_log("   ++ obj REC [%s] parsed and verified:\n %s\n\n",
+                self->id, rec);
     }
     
     /* anything to save directly on the filesystem? */
-    if (data->obj_size) {
+    /*if (data->obj_size) {
         
         if (DEBUG_OBJ_LEVEL_2)
             knd_log("   ++ obj %s has attachment: %s [%s] size: %lu\n",
@@ -1431,7 +1430,6 @@ kndObject_import(struct kndObject *self,
                     data->mimetype,
                     (unsigned long)data->obj_size);
 
-        /* build path */
         sprintf(buf,
                 "%s/%s",
                 self->cache->repo->path, self->cache->baseclass->name);
@@ -1443,16 +1441,18 @@ kndObject_import(struct kndObject *self,
         if (DEBUG_OBJ_LEVEL_TMP)
             knd_log("  SAVE attachment file to: %s\n",
                     dbpath);
-
+    */
+    
         /* create path to object's folder */
-        err = knd_mkpath(dbpath, 0755, false);
+        /*err = knd_mkpath(dbpath, 0755, false);
         if (err) {
             knd_log("  -- mkpath failed :(\n");
             goto final;
         }
-        
+        */
+    
         /* write metadata */
-        err = knd_write_file((const char*)dbpath,
+        /*err = knd_write_file((const char*)dbpath,
                        data->filename, data->obj, data->obj_size);
         if (err) {
             knd_log("  -- write %s failed: %d :(\n", data->filename, err);
@@ -1461,7 +1461,9 @@ kndObject_import(struct kndObject *self,
         
         self->filesize = data->obj_size;
     }
+        */
 
+    
     err = kndObject_index(self);
     if (err) {
         knd_log("   .. index of obj \"%s\" failed :(\n",
@@ -2084,7 +2086,7 @@ kndObject_export_HTML(struct kndObject *self,
     //char pathbuf[KND_TEMP_BUF_SIZE];
     //size_t pathbuf_size;
 
-    struct kndOutput *meta_out;
+    struct kndOutput *meta_out = NULL;
     //struct ooDict *idx;
     //struct kndDataClass *dc;
     struct kndElem *elem;
@@ -2099,7 +2101,8 @@ kndObject_export_HTML(struct kndObject *self,
     int err;
 
 
-    meta_out = self->cache->repo->user->reader->obj_out;
+    /* TODO */
+    meta_out = self->out; /*self->cache->repo->user->reader->obj_out;*/
         
     if (self->dc) {
         if (DEBUG_OBJ_LEVEL_3)
@@ -2135,7 +2138,7 @@ kndObject_export_HTML(struct kndObject *self,
 
             
             /* generic site reference */
-            if (self->cache->repo->user->reader->default_repo_title_size) {
+            /*if (self->cache->repo->user->reader->default_repo_title_size) {
                 err = meta_out->write(meta_out,
                                       " | ", strlen(" | "));
                 if (err) return err;
@@ -2144,7 +2147,8 @@ kndObject_export_HTML(struct kndObject *self,
                                       self->cache->repo->user->reader->default_repo_title,
                                       self->cache->repo->user->reader->default_repo_title_size);
                 if (err) return err;
-            }
+                }*/
+            
 
             err = meta_out->write(meta_out,
                                   "</TITLE>", strlen("</TITLE>"));
