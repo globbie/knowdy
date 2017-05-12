@@ -234,8 +234,9 @@ kndUser_update(struct kndUser *self, struct kndData *data)
     }
     */
 
+    
     /* actual import */
-    err = self->repo->update(self->repo, data, format);
+    err = self->repo->update(self->repo, format);
     knd_log("   .. user update status: %d\n", err);
 
     buf_size = sprintf(buf, "{\"update\": %d}", err);
@@ -316,7 +317,7 @@ kndUser_import(struct kndUser *self, struct kndData *data)
     */
     
     /* actual import */
-    err = repo->import(repo, data, format);
+    err = repo->import(repo, format);
 
     buf_size = sprintf(buf, "{\"import\": %d}", err);
     err = self->out->write(self->out, buf, buf_size);
@@ -628,7 +629,7 @@ kndUser_update_get_obj(struct kndUser *self, struct kndData *data)
     }
     */
     /* TODO: check repo policy */
-    err = self->repo->update_get_obj(self->repo, data);
+    err = self->repo->get_liquid_obj(self->repo, data);
     return err;
 }
 
@@ -764,7 +765,7 @@ kndUser_update_match(struct kndUser *self, struct kndData *data)
     
     /* TODO: check repo policy */
 
-    err = self->repo->update_match(self->repo, data);
+    err = self->repo->liquid_match(self->repo, data);
     
     return err;
 }

@@ -1712,7 +1712,6 @@ kndRepo_update_class(struct kndRepo *self,
 
 static int
 kndRepo_update(struct kndRepo *self,
-               struct kndData *data,
                knd_format format __attribute__((unused)))
 {
     //char buf[KND_NAME_SIZE];
@@ -1733,7 +1732,7 @@ kndRepo_update(struct kndRepo *self,
 
     
     /* foreach class */
-    c = data->body;
+    c = self->instruct->obj;
     b = c;
     
     while (*c) {
@@ -1783,9 +1782,7 @@ kndRepo_update(struct kndRepo *self,
 
 static int
 kndRepo_import_obj(struct kndRepo *self,
-                   char *rec,
-                   size_t rec_size,
-                   knd_format format)
+                   char *rec)
 {
     char namespace[KND_NAME_SIZE];
     size_t namespace_size;
@@ -1793,12 +1790,12 @@ kndRepo_import_obj(struct kndRepo *self,
     char classname[KND_NAME_SIZE];
     size_t classname_size;
     
-    struct kndDataClass *dc;
+    //struct kndDataClass *dc;
     struct kndObject *obj = NULL;
     struct kndRepoCache *cache;
 
     char *b, *c;
-    bool in_body = false;
+    //bool in_body = false;
     bool in_namespace = false;
     bool in_colon = false;
 
@@ -1915,13 +1912,6 @@ kndRepo_import_obj(struct kndRepo *self,
     memcpy(cache->obj_last_id, obj->id, KND_ID_SIZE);
     cache->num_objs++;
 
-    obj = NULL;
-
- final:
-
-    if (obj) {
-        obj->del(obj);
-    }
     
     return err;
 }
@@ -2644,8 +2634,8 @@ kndRepo_run(struct kndRepo *self)
     }
 
     if (!strcmp(self->instruct->proc_name, "import")) {
-        err = kndRepo_import(self,
-                             self->instruct->args, self->instruct->num_args);
+        err = kndRepo_import_obj(self,
+                                 self->instruct->obj);
         if (err) return err;
     }
 
@@ -2744,7 +2734,7 @@ kndRepo_init(struct kndRepo *self)
 
     self->export = kndRepo_export;
     
-    self->get_liquid_obj = kndRepo_update_get_obj;
+    self->get_liquid_obj = kndRepo_get_liquid_obj;
     self->get_obj = kndRepo_get_obj;
 
     self->read_obj = kndRepo_read_obj_db;

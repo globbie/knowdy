@@ -71,6 +71,9 @@ struct kndSpecInstruction
     char proc_name[KND_NAME_SIZE];
     size_t proc_name_size;
 
+    char *obj;
+    size_t obj_size;
+
     struct kndSpecArg args[KND_MAX_INSTRUCTION_ARGS];
     size_t num_args;
 };
@@ -90,6 +93,9 @@ struct kndSpec
 
     char tid[KND_NAME_SIZE];
     size_t tid_size;
+
+    char *obj;
+    size_t obj_size;
     
     struct kndOutput *out;
     

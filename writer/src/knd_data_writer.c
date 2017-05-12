@@ -47,9 +47,12 @@ kndDataWriter_run_tasks(struct kndDataWriter *self)
     struct kndSpecInstruction *instruct;
     int err;
 
-    for (int i = 0; i < self->spec->num_instructions; i++) {
+    for (size_t i = 0; i < self->spec->num_instructions; i++) {
         instruct = &self->spec->instructions[i];
 
+        instruct->obj = self->spec->obj;
+        instruct->obj_size = self->spec->obj_size;
+        
         switch (instruct->type) {
         case KND_AGENT_REPO:
             knd_log(".. REPO task %d in progress", i);
@@ -443,7 +446,6 @@ kndDataWriter_reply(struct kndDataWriter *self,
 static int  
 kndDataWriter_start(struct kndDataWriter *self)
 {
-    struct kndData *data;
     void *context;
     void *outbox;
     char *spec = NULL;

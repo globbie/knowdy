@@ -216,13 +216,13 @@ struct kndRepo
 
     int (*sync)(struct kndRepo *self);
 
-    int (*import)(struct kndRepo *self, knd_format format);
+    int (*import)(struct kndRepo *self, char *rec);
     int (*update)(struct kndRepo *self, knd_format format);
 
     int (*export)(struct kndRepo *self, knd_format format);
 
+    int (*liquid_select)(struct kndRepo *self, struct kndData *data);
     int (*select)(struct kndRepo *self, struct kndData *data);
-    int (*update_select)(struct kndRepo *self, struct kndData *data);
 
     int (*get_obj)(struct kndRepo *self, struct kndData *data);
     int (*get_liquid_obj)(struct kndRepo *self, struct kndData *data);

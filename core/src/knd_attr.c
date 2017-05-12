@@ -117,14 +117,14 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
                          size_t *chunk_size)
 {
     struct kndTranslation *tr = NULL;
-    size_t buf_size = 0;
+    //size_t buf_size = 0;
     char *c;
     char *b;
     
     //size_t curr_size = 0;
 
     bool in_key = false;
-    bool in_val = false;
+    //bool in_val = false;
     int err = knd_FAIL;
 
     
@@ -192,6 +192,9 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
                 break;
             }
             */
+
+
+            self->tr = tr;
             
             break;
         case ']':
