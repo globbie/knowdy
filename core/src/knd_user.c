@@ -317,7 +317,7 @@ kndUser_import(struct kndUser *self, struct kndData *data)
     */
     
     /* actual import */
-    err = repo->import(repo, format);
+    err = repo->import(repo, data->obj);
 
     buf_size = sprintf(buf, "{\"import\": %d}", err);
     err = self->out->write(self->out, buf, buf_size);
