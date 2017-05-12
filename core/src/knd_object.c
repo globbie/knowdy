@@ -510,7 +510,7 @@ kndObject_import_GSL(struct kndObject *self,
         return knd_FAIL;
 
     if (DEBUG_OBJ_LEVEL_TMP)
-        knd_log("\n  .. importing OBJ of class \"%s\" [%s]\n\n%s\n\n",
+        knd_log("\n  .. importing OBJ of class \"%s\" [%s]\n\n%s",
                 self->cache->baseclass->name, self->id, rec);
     
     /* parse and validate OBJ */
@@ -732,6 +732,7 @@ kndObject_assign_rel(struct kndObject *self,
 
     reltype->num_refs++;
 
+    
     /*knd_log("  == total refs: %lu\n", (unsigned long)reltype->num_refs);*/
     
     return knd_OK;

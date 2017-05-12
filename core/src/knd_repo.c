@@ -1783,72 +1783,115 @@ kndRepo_update(struct kndRepo *self,
 
 static int
 kndRepo_import_obj(struct kndRepo *self,
+                   char *rec,
+                   size_t rec_size,
                    knd_format format)
 {
-    struct kndDataClass *c;
+    char namespace[KND_NAME_SIZE];
+    size_t namespace_size;
+
+    char classname[KND_NAME_SIZE];
+    size_t classname_size;
+    
+    struct kndDataClass *dc;
     struct kndObject *obj = NULL;
     struct kndRepoCache *cache;
+
+    char *b, *c;
+    bool in_body = false;
+    bool in_namespace = false;
+    bool in_colon = false;
+
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP)
         knd_log("  .. repo \"%s\" (%s) obj import..\n",
                 self->id, self->path);
 
-    /* batch mode? */
-    /*err = knd_get_attr(data->spec,
-                       "bm",
-                       buf, &buf_size);
-    if (!err) self->batch_mode = true;
-    */
+    c = rec;
+    b = rec;
     
-    /* file attached? */
-    /*data->filename_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec,
-                       "file",
-                       data->filename, &data->filename_size);
-    if (err) {
-        data->filename_size = 0;
-    }
-    */
-    
-    /* check class */
-    /*data->classname_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec,
-                       "class",
-                       data->classname, &data->classname_size);
-    if (err) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("  .. no classname specified...\n");
-        return err;
-    }
+    while (*c) {
+        switch (*c) {
+        case '\n':
+        case '\r':
+        case '\t':
+        case ' ':
+            break;
+        case ':':
+            if (in_namespace) return knd_FAIL;
 
-    */
+            if (!in_colon) {
+                namespace_size = c - b;
+                if (!namespace_size) return knd_FAIL;
+                if (namespace_size >= KND_NAME_SIZE) return knd_LIMIT;
+                *c = '\0';
+                
+                in_colon = true;
+                break;
+            }
+            
+            memcpy(namespace, b, namespace_size);
+            namespace[namespace_size] = '\0';
 
-    
-    /* check classname */
-    c = self->user->class_idx->get(self->user->class_idx,
+            if (DEBUG_REPO_LEVEL_TMP)
+                knd_log("== namespace: \"%s\"", namespace);
+            
+            in_namespace = true;
+            b = c + 1;
+            break;
+        case '{':
+
+            if (in_namespace) {
+                classname_size = c - b;
+                if (!classname_size) return knd_FAIL;
+                if (classname_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+                memcpy(classname, b, classname_size);
+                classname[classname_size] = '\0';
+
+                if (DEBUG_REPO_LEVEL_TMP)
+                    knd_log("== classname: \"%s\"", classname);
+            }
+            
+
+
+            
+            /* check classname */
+            /*c = self->user->class_idx->get(self->user->class_idx,
                                    (const char*)data->classname);
-    if (!c) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("  .. classname \"%s\" is not valid...\n", data->classname);
-        return knd_FAIL;
+            if (!c) {
+                if (DEBUG_REPO_LEVEL_TMP)
+                    knd_log("  .. classname \"%s\" is not valid...\n", data->classname);
+                return knd_FAIL;
+                }*/
+
+            
+            break;
+        default:
+            break;
+        }
+        
+        c++;
     }
 
-    err = kndRepo_get_cache(self,
+    return knd_OK;
+    
+    /*err = kndRepo_get_cache(self,
                             c,
                             &cache);
     if (err) goto final;
-
-    err = kndObject_new(&obj);
+    */
+    
+    /*err = kndObject_new(&obj);
     if (err) return err;
     obj->cache = cache;
     obj->out = self->out;
 
-    /* assign local id */
     memcpy(obj->id, cache->obj_last_id, KND_ID_SIZE);
     knd_inc_id(obj->id);
 
-    err = obj->import(obj, data, format);
+    err = obj->import(obj, rec, &chunk_size, format);
     if (err) goto final;
 
     err = cache->db->set(cache->db, obj->id, (void*)obj);
@@ -1856,8 +1899,7 @@ kndRepo_import_obj(struct kndRepo *self,
 
     err = cache->obj_idx->set(cache->obj_idx, obj->name, (void*)obj);
     if (err) goto final;
-
-
+    */
 
     /* append rec to the backup file */
     /*if (!self->batch_mode) {
