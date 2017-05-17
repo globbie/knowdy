@@ -6,3 +6,5 @@ set(DELIVERY_SERVER_SOURCES
 add_executable(delivery_server ${DELIVERY_SERVER_SOURCES})
 
 target_link_libraries(delivery_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} core_static)
+
+install(TARGETS delivery_server DESTINATION bin)
