@@ -1,0 +1,13 @@
+[Unit]
+Description=Knowdy Collection Service
+
+[Service]
+Type=simple
+User=knowdy
+WorkingDirectory=/home/knowdy
+ExecStart=/usr/local/bin/knd_collection /etc/knowdy/collection.ini
+Restart=on-failure
+
+[Install]
+
+

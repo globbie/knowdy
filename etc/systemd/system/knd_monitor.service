@@ -1,0 +1,13 @@
+[Unit]
+Description=Knowdy Monitor Service
+
+[Service]
+Type=simple
+User=knowdy
+WorkingDirectory=/home/knowdy
+ExecStart=/usr/local/bin/knd_monitor /etc/knowdy/monitor.ini
+Restart=on-failure
+
+[Install]
+
+
