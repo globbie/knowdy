@@ -43,7 +43,7 @@ add_subdirectory(reader)
 add_subdirectory(delivery)
 add_subdirectory(storage)
 
-set(VERSION "1.0.1")
+set(VERSION "0.0.1")
 
 set(CPACK_PACKAGE_VERSION ${VERSION})
 set(CPACK_GENERATOR "RPM")
