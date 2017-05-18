@@ -29,7 +29,6 @@ mv "@CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM/tmpBBroot" $RPM_BUILD_R
 
 %files
 %defattr(-,root,root,-)
-@CPACK_PACKAGING_INSTALL_PREFIX@/@LIB_INSTALL_DIR@/*
 @CPACK_PACKAGING_INSTALL_PREFIX@/bin/storage_server
 @CPACK_PACKAGING_INSTALL_PREFIX@/bin/delivery_server
 @CPACK_PACKAGING_INSTALL_PREFIX@/bin/data_writer
