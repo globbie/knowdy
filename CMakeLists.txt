@@ -43,10 +43,6 @@ add_subdirectory(reader)
 add_subdirectory(delivery)
 add_subdirectory(storage)
 
-#configure_file("${CMAKE_CURRENT_SOURCE_DIR}/knd.spec.in" "${CMAKE_CURRENT_BINARY_DIR}/knd.spec" @ONLY IMMEDIATE)
-#set(CPACK_RPM_USER_BINARY_SPECFILE "${CMAKE_CURRENT_BINARY_DIR}/knd.spec")
-#include(CPack)
-
 set(VERSION "1.0.1")
 
 set(CPACK_PACKAGE_VERSION ${VERSION})
@@ -57,5 +53,8 @@ set(CPACK_PACKAGE_CONTACT "info@globbie.net")
 set(CPACK_PACKAGE_VENDOR "globbie")
 set(CPACK_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
+
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/knd.spec.in" "${CMAKE_CURRENT_BINARY_DIR}/knd.spec" @ONLY IMMEDIATE)
+set(CPACK_RPM_USER_BINARY_SPECFILE "${CMAKE_CURRENT_BINARY_DIR}/knd.spec")
 
 include(CPack)
