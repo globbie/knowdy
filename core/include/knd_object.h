@@ -159,7 +159,7 @@ struct kndObject
 
     int (*import)(struct kndObject *self,
                   char *rec,
-                  size_t rec_size,
+                  size_t *total_size,
                   knd_format format);
 
     int (*update)(struct kndObject *self,
@@ -168,8 +168,9 @@ struct kndObject
     
     int (*flatten)(struct kndObject *self, struct kndFlatTable *table, unsigned long *span);
 
-    int (*match)(struct kndObject *self,  const char *rec,
-                 size_t         rec_size);
+    int (*match)(struct kndObject *self,
+                 const char *rec,
+                 size_t      rec_size);
 
     int (*contribute)(struct kndObject *self, size_t point_num, size_t orig_pos);
 

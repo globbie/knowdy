@@ -160,7 +160,9 @@ struct kndRepo
     size_t state;
     size_t match_state;
     size_t num_repos;
+
     bool batch_mode;
+    bool restore_mode;
 
     char path[KND_TEMP_BUF_SIZE];
     size_t path_size;
@@ -211,12 +213,13 @@ struct kndRepo
     int (*get_repo)(struct kndRepo *self, const char *uid, struct kndRepo **repo);
 
     int (*open)(struct kndRepo *self);
+    int (*restore)(struct kndRepo *self);
 
     int (*read)(struct kndRepo *self, const char *id);
 
     int (*sync)(struct kndRepo *self);
 
-    int (*import)(struct kndRepo *self, char *rec);
+    int (*import)(struct kndRepo *self, char *rec, size_t *total_size);
     int (*update)(struct kndRepo *self, knd_format format);
 
     int (*export)(struct kndRepo *self, knd_format format);
@@ -245,9 +248,6 @@ struct kndRepo
                     const char *guid,
                     struct kndRepoCache *cache,
                     struct kndObject **result);
-
-    /*int (*set_policy)(struct kndRepo *self, const char *policy_id,
-      size_t policy_id_size); */
 };
 
 extern int kndRepo_init(struct kndRepo *self);

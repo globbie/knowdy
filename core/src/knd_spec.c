@@ -33,57 +33,6 @@ kndSpec_reset(struct kndSpec *self)
     self->num_instructions = 0;
 }
 
-/* fixme
-static int 
-kndSpec_export_JSON(struct kndSpec *self)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
-
-
-    return knd_OK;
-}
-*/
-
-/* fixme
-static int 
-kndSpec_export_GSC(struct kndSpec *self)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
-
-    char *c;
-    size_t curr_size;
-    
-    int err = knd_FAIL;
-
-    
-    return knd_OK;
-}
-*/
-
-static int 
-kndSpec_export(struct kndSpec *self __attribute__((unused)),
-               knd_format format __attribute__((unused)))
-{
-    //int err;
-    
-    /*  switch(format) {
-    case KND_FORMAT_JSON:
-        err = kndSpec_export_JSON(self);
-        if (err) return err;
-        break;
-    case KND_FORMAT_GSC:
-        err = kndSpec_export_GSC(self);
-        if (err) return err;
-        break;
-    default:
-        break;
-    }
-    */
-    
-    return knd_OK;
-}
 
 
 static int
@@ -111,6 +60,7 @@ kndSpec_parse_repo(struct kndSpec *self,
     memset(instruct, 0, sizeof(struct kndSpecInstruction));
 
     instruct->type = KND_AGENT_REPO;
+    instruct->spec = self;
     
     while (*c) {
         switch (*c) {
@@ -133,16 +83,13 @@ kndSpec_parse_repo(struct kndSpec *self,
 
             if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
             
-            *c = '\0';
             arg = &instruct->args[instruct->num_args];
             memset(arg, 0, sizeof(struct kndSpecArg));
 
             memcpy(arg->name, b, buf_size);
             arg->name[buf_size] = '\0';
             
-            if (DEBUG_SPEC_LEVEL_TMP)
-                knd_log("ARG NAME: \"%s\"", b);
-
+            
             b = c + 1;
             in_val = true;
             
@@ -157,11 +104,12 @@ kndSpec_parse_repo(struct kndSpec *self,
             if (!in_arg) {
                 buf_size = c - b;
                 if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
-                *c = '\0';
                 
-                if (DEBUG_SPEC_LEVEL_TMP)
+                if (DEBUG_SPEC_LEVEL_2) {
+                    *c = '\0';
                     knd_log("PROC: \"%s\"", b);
-
+                }
+                
                 memcpy(instruct->proc_name, b, buf_size);
                 instruct->proc_name[buf_size] = '\0';
                 
@@ -172,11 +120,8 @@ kndSpec_parse_repo(struct kndSpec *self,
 
             break;
         case '}':
-            *c = '\0';
+            /**c = '\0'; */
             if (in_arg) {
-                if (DEBUG_SPEC_LEVEL_TMP)
-                    knd_log("ARG VALUE: \"%s\"", b);
-
                 buf_size = c - b;
                 if (!buf_size) return knd_FAIL;
                 if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
@@ -260,15 +205,11 @@ kndSpec_parse_user(struct kndSpec *self,
 
             if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
             
-            *c = '\0';
             arg = &instruct->args[instruct->num_args];
             memset(arg, 0, sizeof(struct kndSpecArg));
 
             memcpy(arg->name, b, buf_size);
             arg->name[buf_size] = '\0';
-            
-            if (DEBUG_SPEC_LEVEL_TMP)
-                knd_log("ARG NAME: \"%s\"", b);
 
             b = c + 1;
             in_val = true;
@@ -284,10 +225,6 @@ kndSpec_parse_user(struct kndSpec *self,
             if (!in_arg) {
                 buf_size = c - b;
                 if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
-                *c = '\0';
-                
-                if (DEBUG_SPEC_LEVEL_TMP)
-                    knd_log("PROC: \"%s\"", b);
 
                 memcpy(instruct->proc_name, b, buf_size);
                 instruct->proc_name[buf_size] = '\0';
@@ -299,11 +236,7 @@ kndSpec_parse_user(struct kndSpec *self,
 
             break;
         case '}':
-            *c = '\0';
             if (in_arg) {
-                if (DEBUG_SPEC_LEVEL_TMP)
-                    knd_log("ARG VALUE: \"%s\"", b);
-
                 buf_size = c - b;
                 if (!buf_size) return knd_FAIL;
                 if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
@@ -346,8 +279,13 @@ kndSpec_parse_auth(struct kndSpec *self,
                    size_t *total_size)
 {
     const char *sid_tag = "sid";
+    size_t sid_tag_size = strlen(sid_tag);
+
     const char *uid_tag = "uid";
+    size_t uid_tag_size = strlen(uid_tag);
+    
     const char *tid_tag = "tid";
+    size_t tid_tag_size = strlen(tid_tag);
     
     size_t buf_size;
     
@@ -362,7 +300,7 @@ kndSpec_parse_auth(struct kndSpec *self,
     c = rec;
     b = c;
     
-    if (DEBUG_SPEC_LEVEL_TMP)
+    if (DEBUG_SPEC_LEVEL_2)
         knd_log("   .. parsing AUTH rec: \"%s\"",
                 c);
     
@@ -378,20 +316,19 @@ kndSpec_parse_auth(struct kndSpec *self,
                 return knd_FAIL;
             }
             
-            *c = '\0';
-            if (!strcmp(b, uid_tag)){
+            if (!strncmp(b, uid_tag, uid_tag_size)){
                 in_uid = true;
                 b = c + 1;
                 break;
             }
 
-            if (!strcmp(b, sid_tag)){
+            if (!strncmp(b, sid_tag, sid_tag_size)){
                 in_sid = true;
                 b = c + 1;
                 break;
             }
 
-            if (!strcmp(b, tid_tag)){
+            if (!strncmp(b, tid_tag, tid_tag_size)){
                 in_tid = true;
                 b = c + 1;
                 break;
@@ -412,10 +349,7 @@ kndSpec_parse_auth(struct kndSpec *self,
 
             break;
         case '}':
-            *c = '\0';
             if (in_sid) {
-                if (DEBUG_SPEC_LEVEL_TMP)
-                    knd_log("SID: \"%s\"", b);
                 buf_size = c - b;
                 if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
                 memcpy(self->sid, b, buf_size);
@@ -428,8 +362,6 @@ kndSpec_parse_auth(struct kndSpec *self,
             }
             
             if (in_uid) {
-                if (DEBUG_SPEC_LEVEL_TMP)
-                    knd_log("UID: \"%s\"", b);
                 buf_size = c - b;
                 if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
                 memcpy(self->uid, b, buf_size);
@@ -443,7 +375,6 @@ kndSpec_parse_auth(struct kndSpec *self,
             }
 
             if (in_tid) {
-                knd_log("TID: \"%s\"", b);
                 buf_size = c - b;
                 if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
                 memcpy(self->tid, b, buf_size);
@@ -540,8 +471,8 @@ kndSpec_parse(struct kndSpec *self,
               size_t *total_size)
 {
     const char *header_tag = "SPEC";
+    size_t header_tag_size = strlen(header_tag);
     
-    size_t rec_size = *total_size;
     size_t buf_size;
     
     bool in_body = false;
@@ -557,8 +488,8 @@ kndSpec_parse(struct kndSpec *self,
     b = c;
     
     if (DEBUG_SPEC_LEVEL_2)
-        knd_log("   .. parsing SPEC rec \"%s\" [total size: %lu]\n",
-                c, (unsigned long)rec_size);
+        knd_log("   .. parsing SPEC rec \"%s\"",
+                c);
     
     while (*c) {
         switch (*c) {
@@ -589,8 +520,7 @@ kndSpec_parse(struct kndSpec *self,
                     return knd_LIMIT;
                 }
 
-                *c = '\0';
-                if (strcmp(b, header_tag)){
+                if (strncmp(b, header_tag, header_tag_size)){
                     knd_log("-- header tag mismatch");
                     return knd_FAIL;
                 }
@@ -619,6 +549,11 @@ kndSpec_parse(struct kndSpec *self,
             if (err) return err;
 
             c += chunk_size;
+
+            if (DEBUG_SPEC_LEVEL_2)
+                knd_log("++ Domain \"%s\" parse OK: %lu bytes     REMAINDER: %s",
+                        b, (unsigned long)chunk_size, c);
+
             in_field = false;
             b = c + 1;
             break;
@@ -627,12 +562,14 @@ kndSpec_parse(struct kndSpec *self,
                 knd_log("-- right brace mismatch :(");
                 return knd_FAIL;
             }
+
             
-            *total_size = c - rec + 1;
+            *total_size = c - rec;
 
             if (DEBUG_SPEC_LEVEL_2)
-                knd_log("++ SPEC parse OK: %lu bytes of %lu",
-                        (unsigned long)*total_size, (unsigned long)rec_size);
+                knd_log("++ SPEC parse OK: %lu bytes     REMAINDER: %s",
+                        (unsigned long)*total_size, c);
+
             return knd_OK;
         case '[':
             c++;
@@ -659,7 +596,6 @@ kndSpec_new(struct kndSpec **spec)
     self->del = kndSpec_del;
     self->str = kndSpec_str;
     self->reset = kndSpec_reset;
-    self->export = kndSpec_export;
     self->parse = kndSpec_parse;
 
     *spec = self;

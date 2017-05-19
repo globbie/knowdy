@@ -58,6 +58,7 @@ struct kndUser
     void *update_inbox;
     
     struct kndRepo *repo;
+    struct ooDict *repo_name_idx;
     struct ooDict *repo_idx;
 
     struct ooDict *class_idx;
@@ -76,6 +77,9 @@ struct kndUser
     int (*add_user)(struct kndUser *self);
 
     int (*get_user)(struct kndUser *self, const char *uid, struct kndUser **user);
+    int (*get_repo)(struct kndUser *self,
+                    const char *name, size_t name_size,
+                    struct kndRepo **result);
 
     int (*restore)(struct kndUser *self);
     
