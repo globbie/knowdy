@@ -2,8 +2,8 @@ set(STORAGE_SERVER_SOURCES
         src/knd_storage_server.c
         src/knd_storage.c)
 
-add_executable(storage_server ${STORAGE_SERVER_SOURCES})
+add_executable(${STORAGE} ${STORAGE_SERVER_SOURCES})
 
-target_link_libraries(storage_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} core_static)
+target_link_libraries(${STORAGE} pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} ${CORE}_static)
 
-install(TARGETS storage_server DESTINATION bin)
+install(TARGETS ${STORAGE} DESTINATION bin)
