@@ -28,6 +28,7 @@ find_path(ZEROMQ_INCLUDE_DIR NAMES zmq.h PATHS ${ZEROMQ_INCLUDE_DIRS})
 find_library(ZEROMQ_LIBRARY NAMES zmq PATHS ${ZEROMQ_LIBRARY_DIRS})
 include_directories(${ZEROMQ_INCLUDE_DIR})
 
+set(KNOWDY_PREFIX "knd")
 set(CORE "core")
 set(COLLECTION "collection")
 set(READER "reader")
@@ -35,26 +36,38 @@ set(WRITER "writer")
 set(DELIVERY "delivery")
 set(STORAGE "storage")
 
+set(KNOWDY_MODULES
+        ${CORE}
+        ${COLLECTION}
+        ${READER}
+        ${WRITER}
+        ${DELIVERY}
+        ${STORAGE})
+
 include_directories(${CORE}/include)
 
-include_directories(${COLLECTION}/src)
-include_directories(${READER}/src)
-include_directories(${WRITER}/src)
-include_directories(${DELIVERY}/src)
-include_directories(${STORAGE}/src)
+foreach(MODULE ${KNOWDY_MODULES})
+    include_directories(${MODULE}/src)
+endforeach()
 
-add_subdirectory(${CORE})
-add_subdirectory(${COLLECTION})
-add_subdirectory(${READER})
-add_subdirectory(${WRITER})
-add_subdirectory(${DELIVERY})
-add_subdirectory(${STORAGE})
+foreach(MODULE ${KNOWDY_MODULES})
+    set(${MODULE}_BINARY ${KNOWDY_PREFIX}-${MODULE})
+endforeach()
+
+#foreach(MODULE ${KNOWDY_MODULES})
+#    MESSAGE(${${MODULE}_BINARY})
+#endforeach()
+
+foreach(MODULE ${KNOWDY_MODULES})
+    set(BINARY ${${MODULE}_BINARY})
+    add_subdirectory(${MODULE})
+endforeach()
 
 set(VERSION "0.0.1")
 
 set(CPACK_PACKAGE_VERSION ${VERSION})
 set(CPACK_GENERATOR "RPM")
-set(CPACK_PACKAGE_NAME "knowdy")
+set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
 set(CPACK_PACKAGE_RELEASE 1)
 set(CPACK_PACKAGE_CONTACT "info@globbie.net")
 set(CPACK_PACKAGE_VENDOR "globbie")

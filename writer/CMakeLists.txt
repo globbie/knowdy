@@ -1,8 +1,9 @@
-set(DATA_WRITER_SOURCES
+
+set(SOURCES
         src/knd_data_writer.c)
 
-add_executable(${WRITER} ${DATA_WRITER_SOURCES})
+add_executable(${BINARY} ${SOURCES})
 
-target_link_libraries(${WRITER} pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} ${CORE}_static)
+target_link_libraries(${BINARY} pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} ${CORE}_static)
 
-install(TARGETS ${WRITER} DESTINATION bin)
+install(TARGETS ${BINARY} DESTINATION bin)

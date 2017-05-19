@@ -1,11 +1,9 @@
-project(${COLLECTION} C)
-
-set(COLLECTION_SERVER_SOURCES
+set(SOURCES
         src/knd_coll_server.c
         src/knd_collection.c)
 
-add_executable(${COLLECTION} ${COLLECTION_SERVER_SOURCES})
+add_executable(${BINARY} ${SOURCES})
 
-target_link_libraries(${COLLECTION} pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} ${CORE}_static)
+target_link_libraries(${BINARY} pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} ${CORE}_static)
 
-install(TARGETS ${COLLECTION} DESTINATION bin)
+install(TARGETS ${BINARY} DESTINATION bin)
