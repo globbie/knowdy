@@ -5,3 +5,5 @@ set(STORAGE_SERVER_SOURCES
 add_executable(storage_server ${STORAGE_SERVER_SOURCES})
 
 target_link_libraries(storage_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} core_static)
+
+install(TARGETS storage_server DESTINATION bin)
