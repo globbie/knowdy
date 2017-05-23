@@ -60,8 +60,8 @@ foreach(MODULE ${KNOWDY_MODULES})
     add_subdirectory(${MODULE})
 endforeach()
 
-
-install(FILES etc/knowdy/config.ini DESTINATION etc/knowdy)
+install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)
+install(DIRECTORY etc/systemd/system/ DESTINATION usr/lib/systemd/system)
 
 set(VERSION "0.0.1")
 
