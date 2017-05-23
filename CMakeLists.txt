@@ -4,6 +4,7 @@ project(knowdy C)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_INSTALL_PREFIX /)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -pedantic")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -g3")
@@ -59,6 +60,9 @@ foreach(MODULE ${KNOWDY_MODULES})
     add_subdirectory(${MODULE})
 endforeach()
 
+
+install(FILES etc/knowdy/config.ini DESTINATION etc/knowdy)
+
 set(VERSION "0.0.1")
 
 set(CPACK_PACKAGE_VERSION ${VERSION})
@@ -74,3 +78,4 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/knd.spec.in" "${CMAKE_CURRENT_BINARY
 set(CPACK_RPM_USER_BINARY_SPECFILE "${CMAKE_CURRENT_BINARY_DIR}/knd.spec")
 
 include(CPack)
+
