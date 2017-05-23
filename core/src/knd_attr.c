@@ -427,9 +427,14 @@ kndAttr_read_GSL(struct kndAttr *self,
                     return knd_FAIL;
                 if (buf_size >= KND_NAME_SIZE)
                     return knd_LIMIT;
-                memcpy(self->fullname, b, buf_size);
-                self->fullname_size = buf_size;
-                self->fullname[buf_size] = '\0';
+
+                self->fullname_size = self->parent_dc->namespace_size;
+                memcpy(self->fullname,
+                       self->parent_dc->namespace, self->fullname_size);
+                
+                memcpy(self->fullname + self->fullname_size, b, buf_size);
+                self->fullname_size += buf_size;
+                self->fullname[self->fullname_size] = '\0';
             }
             
             *total_size = c - rec;
@@ -467,66 +472,6 @@ kndAttr_read_GSL(struct kndAttr *self,
     return err;
 }
 
-
-
-
-static int
-kndAttr_resolve(struct kndAttr *self)
-{
-    struct kndDataClass *dc;
-
-    if (DEBUG_ATTR_LEVEL_3)
-        knd_log("     .. resolving ATTR template: %s\n",
-                self->name);
-
-    if (self->type == KND_ELEM_ATOM) {
-
-        if (DEBUG_ATTR_LEVEL_3)
-            knd_log("  ++ ATOM class resolved: \"%s\"\n", self->name);
-        return knd_OK;
-    }
-
-    if (self->type == KND_ELEM_FILE) {
-
-        if (DEBUG_ATTR_LEVEL_3)
-            knd_log("  ++ FILE class resolved: \"%s\"\n", self->name);
-        return knd_OK;
-    }
-
-    if (self->type == KND_ELEM_TEXT) {
-        if (DEBUG_ATTR_LEVEL_3)
-            knd_log("  ++ TEXT class resolved: \"%s\"\n", self->name);
-        return knd_OK;
-    }
-
-
-    if (self->type == KND_ELEM_CALC) {
-        if (DEBUG_ATTR_LEVEL_3)
-            knd_log("  ++ CALC class resolved: \"%s\"\n", self->name);
-
-        return knd_OK;
-    }
-
-    if (self->type == KND_ELEM_REF) {
-        if (DEBUG_ATTR_LEVEL_3)
-            knd_log("  .. resolving REF class \"%s\" ..\n", self->name);
-    }
-
-    
-    dc = (struct kndDataClass*)self->parent->class_idx->get(self->parent->class_idx,
-                                                        (const char*)self->classname);
-    if (!dc) {
-        knd_log("   -- no such dataclass: \"%s\"\n", self->classname);
-        return knd_FAIL;
-    }
-
-    self->dc = dc;
-    
-    if (DEBUG_ATTR_LEVEL_3)
-        knd_log("   ++ ATTR template dataclass resolved: %s!\n", self->classname);
-
-    return knd_OK;
-}
 
 
 static int 
@@ -639,9 +584,7 @@ kndAttr_init(struct kndAttr *self)
     self->del = kndAttr_del;
     self->str = kndAttr_str;
     self->read = kndAttr_read_GSL;
-    self->resolve = kndAttr_resolve;
     self->present = kndAttr_present;
-
 }
 
 

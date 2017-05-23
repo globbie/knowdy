@@ -24,7 +24,7 @@
 #include "knd_config.h"
 
 struct kndOutput;
-
+struct kndSpec;
 
 typedef enum knd_agent_type { KND_AGENT_DEFAULT, 
                               KND_AGENT_AUTH,
@@ -71,9 +71,8 @@ struct kndSpecInstruction
     char proc_name[KND_NAME_SIZE];
     size_t proc_name_size;
 
-    char *obj;
-    size_t obj_size;
-
+    struct kndSpec *spec;
+    
     struct kndSpecArg args[KND_MAX_INSTRUCTION_ARGS];
     size_t num_args;
 };
@@ -94,6 +93,9 @@ struct kndSpec
     char tid[KND_NAME_SIZE];
     size_t tid_size;
 
+    char *input;
+    size_t input_size;
+
     char *obj;
     size_t obj_size;
     
@@ -110,9 +112,6 @@ struct kndSpec
     int (*parse)(struct kndSpec *self,
                  char     *rec,
                  size_t          *total_size);
-    
-    int (*export)(struct kndSpec *self,
-                  knd_format format);
 };
 
 /* constructor */

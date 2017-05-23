@@ -57,7 +57,6 @@ kndDataClass_str(struct kndDataClass *self, size_t depth)
         attr = attr->next;
     }
 
-
     if (self->attrs) 
         knd_log("%s)", offset);
     
@@ -222,8 +221,6 @@ kndDataClass_read_GSL(struct kndDataClass *self,
         dc->namespace_size = self->namespace_size;
     }
 
-
-
     while (*c) {
         switch (*c) {
             /* non-whitespace char */
@@ -271,7 +268,7 @@ kndDataClass_read_GSL(struct kndDataClass *self,
 
             err = kndAttr_new(&attr);
             if (err) return err;
-            attr->dc = self;
+            attr->parent_dc = self;
 
             chunk_size = 0;
             err = attr->read(attr, c, &chunk_size);
@@ -291,11 +288,18 @@ kndDataClass_read_GSL(struct kndDataClass *self,
             break;
         case '}':
 
+            memcpy(buf, self->namespace, self->namespace_size);
+            memcpy(buf + self->namespace_size, dc->name, dc->name_size);
+            buf_size = self->namespace_size + dc->name_size;
+            buf[buf_size] = '\0';
+            
             /* save class */
             err = self->class_idx->set(self->class_idx,
-                                       (const char*)dc->name, (void*)dc);
+                                       (const char*)buf, (void*)dc);
             if (err) return err;
             
+            if (DEBUG_DATACLASS_LEVEL_TMP)
+                knd_log("++ register class: \"%s\"", buf);
 
             *total_size = c - rec;
             return  knd_OK;
@@ -351,42 +355,36 @@ kndDataClass_read_GSL(struct kndDataClass *self,
 static int 
 kndDataClass_resolve(struct kndDataClass *self)
 {
-
+    char buf[KND_TEMP_BUF_SIZE];
+    size_t buf_size;
     struct kndDataClass *dc;
     struct kndAttr *attr;
 
-    int err;
-
     attr = self->attrs;
     while (attr) {
+        if (attr->type != KND_ELEM_AGGR) goto next_attr;
+
         /* try to resolve as an inline class */
         dc = (struct kndDataClass*)self->class_idx->get(self->class_idx,
-                                                        (const char*)attr->classname);
+                                                        (const char*)attr->fullname);
         if (dc) {
-            if (DEBUG_DATACLASS_LEVEL_3)
-                knd_log("    ++ attr \"%s\" is resolved as inline CLASS!\n", attr->name);
-
+            if (DEBUG_DATACLASS_LEVEL_2)
+                knd_log("    ++ attr \"%s => %s\" is resolved as inline CLASS!",
+                        attr->name, attr->fullname);
             attr->dc = dc;
             goto next_attr;
         }
-        else {
-            if (DEBUG_DATACLASS_LEVEL_3)
-                knd_log("\n    -- attr \"%s\" not found in class_idx :(\n", attr->name);
-        }
 
-        if (DEBUG_DATACLASS_LEVEL_3)
-            knd_log("\n   .. attr \"%s\" from class \"%s\" is not resolved?\n",
-                    attr->name, self->name);
+        knd_log("-- attr \"%s => %s\" is not resolved? :(",
+                attr->name, attr->fullname);
 
+        return knd_FAIL;
+        
     next_attr:
         attr = attr->next;
     }
 
-
-
-    err = knd_OK;
-
-    return err;
+    return knd_OK;
 }
 
 
@@ -397,9 +395,6 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
-
-    char namespace[KND_NAME_SIZE];
-    size_t namespace_size = 0;
 
     struct kndOutput *out = NULL;
     
@@ -428,7 +423,7 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
                          (const char*)buf, buf_size);
     if (err) goto final;
 
-    knd_log("++ FILE \"%s\" read OK!", buf);
+    knd_log("++ GSL class file \"%s\" read OK!", buf);
 
     c = out->file;
     b = c;
@@ -448,19 +443,20 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
             }
 
             if (in_namespace) {
-                namespace_size = c - b;
-                if (!namespace_size) {
+                self->namespace_size = c - b;
+                if (!self->namespace_size) {
                     return knd_FAIL;
                 }
-                if (namespace_size >= KND_NAME_SIZE)
+                if (self->namespace_size >= KND_NAME_SIZE)
                     return knd_LIMIT;
             
-                memcpy(namespace, b, namespace_size);
-                namespace[namespace_size] = '\0';
+                memcpy(self->namespace, b, self->namespace_size);
+                self->namespace[self->namespace_size] = '\0';
 
-                knd_log("== namespace: %s [%lu]",
-                        namespace, (unsigned long)namespace_size);
-
+                /*knd_log("== namespace: %s [%lu]",
+                        self->namespace, (unsigned long)self->namespace_size);
+                */
+                
                 in_namespace = false;
                 in_classes = true;
                 break;
@@ -601,8 +597,6 @@ static int
 kndDataClass_coordinate(struct kndDataClass *self)
 {
     struct kndDataClass *dc, *bc;
-    //struct kndAttr *attr;
-
     const char *key;
     void *val;
     int err = knd_FAIL;

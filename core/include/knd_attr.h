@@ -44,7 +44,7 @@ struct kndAttr
     char classname[KND_NAME_SIZE];
     size_t classname_size;
 
-    struct kndDataClass *parent;
+    struct kndDataClass *parent_dc;
     struct kndDataClass *dc;
 
     /* refclass not set: self reference by default */
@@ -86,8 +86,6 @@ struct kndAttr
     int (*read)(struct kndAttr *self,
                 char   *rec,
                 size_t *chunk_size);
-
-    int (*resolve)(struct kndAttr *self);
 
     int (*present)(struct kndAttr   *self,
                    knd_format format);

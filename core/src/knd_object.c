@@ -309,8 +309,8 @@ kndObject_index_dependents(struct kndObject *self)
     dc = self->cache->baseclass;
 
     while (dc) {
-
-        knd_log("  .. check class %s..\n", dc->name);
+        if (DEBUG_OBJ_LEVEL_2)
+            knd_log("  .. check class %s..\n", dc->name);
         
         err = self->cache->repo->get_cache(self->cache->repo, dc, &cache);
         if (err) return knd_FAIL;
@@ -485,32 +485,29 @@ kndObject_index(struct kndObject *self)
 static int
 kndObject_import_GSL(struct kndObject *self,
                      char *rec,
-                     size_t rec_size)
+                     size_t *total_size)
 {
-    //char buf[KND_NAME_SIZE];
-    //size_t buf_size;
-    const char *c;
-    const char *b;
+    char *c;
+    char *b;
 
     struct kndElem *elem = NULL;
     struct kndObject *obj = NULL;
 
     size_t chunk_size = 0;
     
-    bool in_body = false;
+    bool in_name_attr = false;
     bool in_name = false;
-
+    bool in_attrs = false;
+    
     bool in_elem = false;
     bool in_elem_name = false;
     bool in_elem_val = false;
 
     int err = knd_FAIL;
 
-    if (!rec_size)
-        return knd_FAIL;
-
-    if (DEBUG_OBJ_LEVEL_TMP)
-        knd_log("\n  .. importing OBJ of class \"%s\" [%s]\n\n%s",
+    if (DEBUG_OBJ_LEVEL_2)
+        knd_log(".. importing OBJ of class \"%s::%s\" [%s]\n\n%s",
+                self->cache->baseclass->namespace,
                 self->cache->baseclass->name, self->id, rec);
     
     /* parse and validate OBJ */
@@ -536,53 +533,33 @@ kndObject_import_GSL(struct kndObject *self,
         case '\r':
         case '\t':
         case ' ':
-            /* whitespace */
-            if (!in_body)
-                break;
-
-            if (!in_name) {
-                chunk_size = c - b;
-                if (chunk_size >= KND_NAME_SIZE) {
-                    err = knd_LIMIT;
-                    return err;
+            if (in_name_attr) {
+                if (!in_name) {
+                    *c = '\0';
+                    if (!strcmp(b, "n")) {
+                        in_name = true;
+                        b = c + 1;
+                    }
+                    *c = ' ';
+                    break;
                 }
-                memcpy(self->name, b, chunk_size);
-                self->name[chunk_size] = '\0';
-                self->name_size = chunk_size;
-
-                /* anonymous obj takes obj id as name */
-                if (self->name[0] == '-') {
-                    memcpy(self->name, self->id, KND_ID_SIZE);
-                    self->name[KND_ID_SIZE] = '\0';
-                    self->name_size = KND_ID_SIZE;
-                }
-                
-                obj = self->cache->obj_idx->get(self->cache->obj_idx, self->name);
-                if (obj) {
-                    knd_log("   -- OBJ name doublet: \"%s\"\n", self->name);
-                    err = knd_FAIL;
-                    goto final;
-                }
-                /*knd_log("OBJ name: \"%s\" [%lu]\n\n", self->name,
-                        (unsigned long)chunk_size);
-                */
-                
-                in_name = true;
                 break;
             }
             
             b = c + 1;
             break;
         case '{':
-            if (!in_body) {
-                in_body = true;
-                b = c + 1;
+            if (!in_attrs) {
+                if (!in_name_attr) {
+                    in_name_attr = true;
+                    b = c + 1;
+                    break;
+                }
                 break;
             }
 
             err = kndElem_new(&elem);
             if (err) goto final;
-
             elem->obj = self;
             elem->root = self;
             elem->out = self->out;
@@ -602,25 +579,50 @@ kndObject_import_GSL(struct kndObject *self,
             }
             self->num_elems++;
             
-            
             elem = NULL;
             break;
         case '}':
+            if (in_name) {
+                chunk_size = c - b;
+                if (chunk_size >= KND_NAME_SIZE) {
+                    err = knd_LIMIT;
+                    return err;
+                }
 
-            if (in_body) {
-                in_body = false;
+                memcpy(self->name, b, chunk_size);
+                self->name[chunk_size] = '\0';
+                self->name_size = chunk_size;
 
-                /* all elems set? */
-                
-                /* check completeness */
-                
-                /* check doublets? */
-                
-                err = knd_OK;
-                goto final;
+                /* anonymous obj takes obj id as name */
+                if (self->name[0] == '-') {
+                    memcpy(self->name, self->id, KND_ID_SIZE);
+                    self->name[KND_ID_SIZE] = '\0';
+                    self->name_size = KND_ID_SIZE;
+                }
+
+                knd_log("OBJ name: \"%s\" [%lu]\n\n", self->name,
+                        (unsigned long)chunk_size);
+
+                obj = self->cache->obj_idx->get(self->cache->obj_idx, self->name);
+                if (obj) {
+                    knd_log("   -- OBJ name doublet: \"%s\"\n", self->name);
+                    err = knd_FAIL;
+                    goto final;
+                }
+                in_name = false;
+                in_attrs = true;
+                break;
             }
 
-            break;
+
+            /* TODO: all elems set? */
+            /* check completeness */
+                
+            /* check doublets? */
+
+            *total_size = c - rec;
+            
+            return knd_OK;
         case '[':
             err = kndElem_new(&elem);
             if (err) goto final;
@@ -672,7 +674,7 @@ kndObject_assign_rel(struct kndObject *self,
     int err;
 
     if (DEBUG_OBJ_LEVEL_2) 
-        knd_log("  .. assign rel: %s OBJ ID: %s\n",
+        knd_log("  .. assign rel: %s OBJ ID: %s",
                 relname, obj_id);
     
     relc = self->rel_classes;
@@ -1389,21 +1391,14 @@ kndObject_expand(struct kndObject *self,
 static int 
 kndObject_import(struct kndObject *self,
                  char *rec,
-                 size_t rec_size,
+                 size_t *total_size,
                  knd_format format)
 {
-    char dbpath[KND_TEMP_BUF_SIZE];
-    char buf[KND_TEMP_BUF_SIZE];
     int err;
 
     switch(format) {
-    case KND_FORMAT_XML:
-        /*err = kndObject_import_XML(self, data);
-          if (err) goto final;*/
-        err = knd_FAIL;
-        break;
     case KND_FORMAT_GSL:
-        err = kndObject_import_GSL(self, rec, rec_size);
+        err = kndObject_import_GSL(self, rec, total_size);
         if (err) {
             if (DEBUG_OBJ_LEVEL_TMP) {
                 knd_log("   -- GSL import of %s failed :(\n",
@@ -1657,14 +1652,14 @@ kndObject_parse_inline(struct kndObject *self,
     const char *c;
     const char *b;
 
-    //bool in_name = false;
     size_t chunk_size;
     int err = knd_FAIL;
 
     c = rec;
     b = c;
 
-    /*knd_log("  .. parsing inline OBJ: \"%s\"\n\n", rec);*/
+    if (DEBUG_OBJ_LEVEL_2)
+        knd_log("  .. parsing inline OBJ: \"%s\"\n", rec);
     
     while (*c) {
         switch (*c) {

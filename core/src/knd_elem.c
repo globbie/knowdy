@@ -73,12 +73,11 @@ kndElem_str(struct kndElem *self, size_t depth)
         knd_log("%s[\"%s\"\n",
             offset, self->name);
     else
-        knd_log("%sELEM \"%s\"\n",
+        knd_log("%s%s:",
                 offset, self->name);
 
     if (self->inner) {
         if (self->is_list) {
-            
             knd_log("%s   inline LIST\n",
                     offset);
             
@@ -90,15 +89,13 @@ kndElem_str(struct kndElem *self, size_t depth)
             }
         }
         else {
-            knd_log("%s   inline OBJ, root:%p\n",
-                    offset, self->root);
+            knd_log("%s   inline OBJ of class \"%s\"",
+                    offset, self->attr->fullname);
             self->inner->str(self->inner, depth + 1);
         }
-
     }
 
     if (self->attr) {
-        
         if (self->attr->type == KND_ELEM_TEXT) {
             text = self->text;
             text->str(text, depth + 1);
@@ -110,6 +107,22 @@ kndElem_str(struct kndElem *self, size_t depth)
                 knd_log("%s  ATOM -> %s [#%lu]\n", offset,
                         elem_state->val,
                         (unsigned long)elem_state->state);
+                elem_state = elem_state->next;
+            }
+        }
+        
+        if (self->attr->type == KND_ELEM_NUM) {
+            elem_state = self->states;
+            while (elem_state) {
+                if (elem_state->state) {
+                    knd_log("%s    NUM -> %s [#%lu]", offset,
+                            elem_state->val,
+                            (unsigned long)elem_state->state);
+                } else {
+                    knd_log("%s    NUM -> \"%s\"", offset,
+                            elem_state->val,
+                            (unsigned long)elem_state->state);
+                }
                 elem_state = elem_state->next;
             }
         }
@@ -137,7 +150,6 @@ kndElem_str(struct kndElem *self, size_t depth)
                 elem_state = elem_state->next;
             }
         }
-        
     }
     
     elem = self->elems;
@@ -943,36 +955,23 @@ kndElem_check_type(struct kndElem *self,
     self->name_size = name_size;
     self->name[name_size] = '\0';
 
+    if (DEBUG_ELEM_LEVEL_2)
+        knd_log(".. checking ELEM \"%s\"..", self->name);
+
+    dc = self->obj->cache->baseclass;
     if (self->obj->dc) {
         dc = self->obj->dc;
     }
-    /*else if (self->parent) {
-        de = self->parent->elems;
-        if (self->parent->attr) {
-            attr = self->parent->attr;
-            if (attr->ref_class) {
-                dc = attr->ref_class;
-            }
-        }
-        } */
-    else {
-        dc = self->obj->cache->baseclass;
-    }
-
-    if (!dc) return knd_FAIL;
-    
-    /*dc->str(dc, 1);*/
     
     dc->rewind(dc);
-
     do {
         err = dc->next_attr(dc, &attr);
         if (!attr) break;
         
-        if (!strcmp(attr->name, name)) {
-            if (DEBUG_ELEM_LEVEL_3)
+        if (!strcmp(attr->name, self->name)) {
+            if (DEBUG_ELEM_LEVEL_2)
                 knd_log("  ++ elem %s confirmed: %s!\n",
-                        name, attr->name);
+                        self->name, attr->name);
             *result = attr;
             return knd_OK;
         }
@@ -1058,6 +1057,7 @@ kndElem_parse_list(struct kndElem *self,
                     return knd_FAIL;
                 }
 
+                
                 err = kndElem_check_type(self, b, buf_size, &attr);
                 if (err) goto final;
                 
@@ -1137,15 +1137,15 @@ kndElem_check_name(struct kndElem *self,
                 b);
         return knd_FAIL;
     }
+    if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
     
     err = kndElem_check_type(self, b, buf_size, &attr);
     if (err) return err;
-                
     self->attr = attr;
 
-    if (DEBUG_ELEM_LEVEL_3)
-        knd_log("  ++ got elem class: \"%s\" attr: %s\n",
-                attr->name, attr->name);
+    if (DEBUG_ELEM_LEVEL_2)
+        knd_log("  ++ got attr: \"%s => %s  DC: %p",
+                attr->name, attr->fullname, attr->dc);
     
     if (attr->dc) {
         err = kndObject_new(&obj);
@@ -1156,25 +1156,25 @@ kndElem_check_name(struct kndElem *self,
         obj->dc = attr->dc;
         obj->cache = self->obj->cache;
         obj->out = self->out;
-        
+
+        if (DEBUG_ELEM_LEVEL_2)
+            knd_log(".. read inline class: \"%s\"",
+                    attr->dc->name);
+
         err = obj->parse_inline(obj, c, &chunk_size);
         if (err) return err;
         self->inner = obj;
         
         *total_size = chunk_size;
 
-        if (DEBUG_ELEM_LEVEL_3)
-            knd_log("\n\n  -- end of inline OBJ! REMAINDER: %s\n\n", c);
+        /*c += chunk_size;*/
         
         return knd_OK;
     }
-                
-    if (!attr)
-        return knd_FAIL;
 
-    
-    if (DEBUG_ELEM_LEVEL_3)
-        knd_log("   elem type: %s\n", knd_elem_names[attr->type]);
+    if (DEBUG_ELEM_LEVEL_2)
+        knd_log("   == basic elem type: %s\n",
+                knd_elem_names[attr->type]);
 
     switch (attr->type) {
     case KND_ELEM_ATOM:
@@ -1182,14 +1182,11 @@ kndElem_check_name(struct kndElem *self,
     case KND_ELEM_CALC:
         break;
     case KND_ELEM_REF:
-
         err = kndElem_parse_ref(self, c, &chunk_size);
         if (err) return err;
 
         *total_size = chunk_size;
         return knd_OK;
-
-        break;
     case KND_ELEM_TEXT:
         err = kndText_new(&text);
         if (err) return err;
@@ -1364,10 +1361,7 @@ kndElem_parse(struct kndElem *self,
               const char *rec,
               size_t *total_size)
 {
-    //char buf[KND_NAME_SIZE];
     size_t buf_size;
-
-    //struct kndDataElem *de = NULL;
     struct kndElem *elem = NULL;
     struct kndElemState *elem_state = NULL;
 
@@ -1386,7 +1380,7 @@ kndElem_parse(struct kndElem *self,
     c = rec;
     b = c;
 
-    if (DEBUG_ELEM_LEVEL_3)
+    if (DEBUG_ELEM_LEVEL_2)
         knd_log("   .. parsing elem REC: %s\n",
                 rec);
     
@@ -1428,6 +1422,7 @@ kndElem_parse(struct kndElem *self,
                 if (chunk_size) {
                     c += chunk_size;
                     *total_size = c - rec;
+
                     
                     return knd_OK;
                 }
@@ -1503,8 +1498,9 @@ kndElem_parse(struct kndElem *self,
 
                 b = c + 1;
 
-                if (DEBUG_ELEM_LEVEL_3)
-                    knd_log(" ++ elem \"%s\" parsed OK, continue from: \"%s\"\n", elem->name, c);
+                if (DEBUG_ELEM_LEVEL_TMP)
+                    knd_log(" ++ elem \"%s\" parsed OK, continue from: \"%s\"\n",
+                            elem->name, c);
 
                 elem = NULL;
                 in_elem = false;

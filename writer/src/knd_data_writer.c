@@ -49,9 +49,6 @@ kndDataWriter_run_tasks(struct kndDataWriter *self)
 
     for (size_t i = 0; i < self->spec->num_instructions; i++) {
         instruct = &self->spec->instructions[i];
-
-        instruct->obj = self->spec->obj;
-        instruct->obj_size = self->spec->obj_size;
         
         switch (instruct->type) {
         case KND_AGENT_REPO:
@@ -368,7 +365,7 @@ error:
 }
 
 
-static int  
+/*static int  
 kndDataWriter_reply(struct kndDataWriter *self,
                     struct kndData *data)
 {
@@ -395,8 +392,6 @@ kndDataWriter_reply(struct kndDataWriter *self,
     err = self->spec_out->write(self->spec_out, buf, buf_size);
     if (err) goto final;
 
-    /*knd_log("    .. send SAVE msg to delivery... Filepath: %s\n",
-      data->filepath);*/
     
     if (data->filepath_size) {
         buf_size = sprintf(buf,
@@ -422,7 +417,6 @@ kndDataWriter_reply(struct kndDataWriter *self,
     err = knd_zmq_sendmore(self->delivery, self->out->buf, self->out->buf_size);
     err = knd_zmq_send(self->delivery, "None", strlen("None"));
 
-    /* get reply from delivery */
     header = knd_zmq_recv(self->delivery, &header_size);
     confirm = knd_zmq_recv(self->delivery, &confirm_size);
 
@@ -441,6 +435,7 @@ kndDataWriter_reply(struct kndDataWriter *self,
     return err;
 }
 
+*/
 
 
 static int  
@@ -452,10 +447,11 @@ kndDataWriter_start(struct kndDataWriter *self)
     size_t spec_size = 0;
     char *obj = NULL;
     size_t obj_size = 0;
+    size_t chunk_size = 0;
     
     int err;
 
-    /* restore in-memory data after incorrect failure? */
+    /* restore in-memory data after failure or restart */
     err = self->admin->restore(self->admin);
     if (err) return err;
     
@@ -489,21 +485,29 @@ kndDataWriter_start(struct kndDataWriter *self)
 	spec = knd_zmq_recv(outbox, &spec_size);
 	obj = knd_zmq_recv(outbox, &obj_size);
         
-	knd_log("    ++ DATAWRITER AGENT #%s got spec: %s\n", 
-                self->name, spec);
+	knd_log("    ++ DATAWRITER AGENT #%s got spec: %s [%lu]\n", 
+                self->name, spec, (unsigned long)spec_size);
 
-        err = self->spec->parse(self->spec, spec, &spec_size);
+        err = self->spec->parse(self->spec, spec, &chunk_size);
         if (err) {
             knd_log("  -- SPEC parse failed: %d\n", err);
             goto final;
         }
-        
+
         /* check uid and privileges */
         err = kndDataWriter_check_privileges(self);
         if (err) {
             knd_log("  -- privileges checking failure: %d\n", err);
             goto final;
         }
+
+        knd_log("    SPEC after parsing: \"%s\" %lu\n", 
+                spec, (unsigned long)spec_size);
+
+        self->spec->input = spec;
+        self->spec->input_size = spec_size;
+        self->spec->obj = obj;
+        self->spec->obj_size = obj_size;
 
         err = kndDataWriter_run_tasks(self);
         if (err) {
@@ -569,6 +573,7 @@ kndDataWriter_new(struct kndDataWriter **rec,
     /* admin indices */
     err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
+    
     err = ooDict_new(&self->admin->repo_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
 
