@@ -7,12 +7,11 @@
 
 #include <libxml/parser.h>
 
-#include <knd_policy.h>
-#include <knd_user.h>
-#include <knd_output.h>
-#include <knd_dataclass.h>
-#include <knd_object.h>
-#include <knd_msg.h>
+#include "knd_user.h"
+#include "knd_output.h"
+#include "knd_dataclass.h"
+#include "knd_spec.h"
+#include "knd_msg.h"
 
 #include "knd_data_reader.h"
 
@@ -222,320 +221,138 @@ error:
     return err;
 }
 
-/*
-static int
-kndDataReader_get_history(struct kndDataReader *self,
-                          const char *classname,
-                          struct kndObject *obj,
-                          size_t state)
-{
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-    char *header = NULL;
-    size_t header_size;
 
-    char *msg = NULL;
-    size_t msg_size = 0;
+static int
+kndDataReader_run_tasks(struct kndDataReader *self)
+{
+    struct kndSpecInstruction *instruct;
     int err;
 
-    knd_log("\n ... check history of \"%s\" %s..\n",
-            classname, obj->id);
+    for (size_t i = 0; i < self->spec->num_instructions; i++) {
+        instruct = &self->spec->instructions[i];
+        
+        switch (instruct->type) {
+        case KND_AGENT_REPO:
+            knd_log(".. REPO task %d in progress", i);
+            self->admin->repo->instruct = instruct;
+            err = self->admin->repo->run(self->admin->repo);
+            if (err) return err;
 
-    buf_size = sprintf(buf, "<spec action=\"get_history\" "
-                       "  class=\"%s\" obj_id=\"%s\" state=\"%lu\"/>\n",
-                       classname, obj->id, (unsigned long)state);
-    
-    err = knd_zmq_sendmore(self->delivery, (const char*)buf, buf_size);
-    err = knd_zmq_sendmore(self->delivery, "None", 4);
-    err = knd_zmq_sendmore(self->delivery, "None", 4);
-    err = knd_zmq_send(self->delivery, "None", 4);
+            break;
+        case KND_AGENT_USER:
 
-    header = knd_zmq_recv(self->delivery, &header_size);
-    msg = knd_zmq_recv(self->delivery, &msg_size);
-    if (!msg_size) {
-        err = knd_FAIL;
-        goto final;
+            knd_log(".. USER task %d in progress", i);
+            self->admin->instruct = instruct;
+            err = self->admin->run(self->admin);
+            if (err) return err;
+
+            break;
+        case KND_AGENT_DEFAULT:
+            break;
+        default:
+            break;
+        }
+
     }
 
-    if (msg[0] == '{') {
-        err = knd_OK;
-        goto final;
-    }
-    
-    //err = self->update->read_history(self->update,
-    //                                 classname, obj->id,
-    //                                 (const char*)msg, msg_size);
- final:
-
-    if (header)
-        free(header);
-
-    if (msg)
-        free(msg);
-    
-    return err;
+    return knd_OK;
 }
-*/
+
 
 static int
-kndDataReader_get_user(struct kndDataReader *self, const char *spec)
+kndDataReader_check_privileges(struct kndDataReader *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
     struct kndUser *user;
-    //struct kndPolicy *policy;
     int err;
 
-    if (DEBUG_READER_LEVEL_3)
-        knd_log("\n   .. checking current privileges: %s\n", spec);
+    if (DEBUG_READER_LEVEL_TMP)
+        knd_log(".. checking current privileges");
 
-    /* HACK : space added to diff from "guid" */
-    /*err = knd_get_attr(spec, " uid",
-                       buf, &buf_size);
-    if (err) {
-        knd_log("-- no UID provided :(\n");
-        return knd_FAIL;
-        }*/
-    
-    /*if (!strcmp(buf, "000")) {
-        user = self->admin;
-    }
-    else { */
-    
-    err = self->admin->get_user(self->admin, (const char*)buf, &user);
-    if (err) {
-        knd_log(" -- user not approved :(\n");
+    if (!self->spec->sid_size) {
+        knd_log("-- no SID token provided :(");
         return knd_FAIL;
     }
 
-    /* set default LANG */
-    memcpy(self->lang_code, user->lang_code, user->lang_code_size);
-    self->lang_code_size = user->lang_code_size;
+    /* TODO: internal auth */
+    if (strcmp(self->spec->sid, "AUTH_SERVER_SID")) {
+        return knd_FAIL;
+    }
 
-    self->curr_user = user;
-                    
-    return err;
-}
-
-
-
-static int
-kndDataReader_get_repo(struct kndDataReader *self,
-                       const char *name, size_t name_size,
-                       struct kndRepo **result)
-{
-    char buf[KND_TEMP_BUF_SIZE];
-    struct kndRepo *repo = NULL;
-    int err;
-
-    repo = self->repo_idx->get(self->repo_idx, name);
-    if (repo) {
-        *result = repo;
+    if (DEBUG_READER_LEVEL_TMP)
+        knd_log("++ valid SID: \"%s\"!", self->spec->sid);
+    
+    if (!self->spec->uid_size) {
+        knd_log("-- no UID provided: admin as default");
+        self->curr_user = self->admin;
         return knd_OK;
     }
 
-    /* check repo's name */
-    err = knd_is_valid_id(name, name_size);
-    if (err) return err;
+    if (DEBUG_READER_LEVEL_TMP)
+        knd_log("== UID: \"%s\"", self->spec->uid);
+    
+    err = self->admin->get_user(self->admin, (const char*)self->spec->uid, &user);
+    if (err) {
+        knd_log(" -- UID \"%s\" not approved :(", self->spec->uid);
+        return knd_FAIL;
+    }
 
-    err = kndRepo_new(&repo);
-    if (err) return knd_NOMEM;
+    if (DEBUG_READER_LEVEL_TMP)
+        knd_log("++ valid UID: \"%s\"!",
+                user->id);
 
-    sprintf(buf, "%s/repos", self->path);
-
-    err = knd_make_id_path(repo->path, buf, name, NULL);
-    if (err) return err;
-
-    err = knd_mkpath(repo->path, 0755, false);
-    if (err) return err;
-
-    repo->user = self->admin;
-    strncpy(repo->name, name, name_size);
-    repo->name_size = name_size;
-
-    if (!strcmp(repo->name, self->default_repo_name)) {
-        if (self->default_repo_title_size) {
-            strncpy(repo->title, self->default_repo_title, self->default_repo_title_size);
-            repo->title_size = self->default_repo_title_size;
-        }
+    self->curr_user = user;
+    
+    /*  TODO: is UID granted access to Repo? */
+    
+    /* set DB path */
+    /*buf_size = sprintf(buf, "%s/repos", self->path);
+    
+    err = knd_make_id_path(repo->path, buf, repo->id, NULL);
+    if (err) goto final;
+    
+    self->curr_repo = repo;
+    */
+    
+    /*buf_size = KND_SMALL_BUF_SIZE;
+    err = knd_get_attr(spec, "policy",
+                       buf, &buf_size);
+    if (err) {
+        knd_log("-- Policy %s is not granted to repo \"%s\" :(\n",
+                buf, repo->id);
+        return knd_FAIL;
     }
 
     
-    knd_log("  ==  REPO DIR: \"%s\" TITLE: %s\n",
-            repo->path, repo->title);
-
+    err = repo->set_policy(repo, (const char*)buf, buf_size);
+    if (err) {
+        knd_log("-- Policy %s is not granted to repo \"%s\" :(\n",
+                buf, repo->id);
+        return err;
+    }
     
-    err = self->repo_idx->set(self->repo_idx, name, (void*)repo);
-    if (err) return err;
-
-    *result = repo;
+    if (DEBUG_READER_LEVEL_2)
+        knd_log("Policy %s is granted to repo \"%s\".\n", buf, repo->id);
+    */
     
     return knd_OK;
 }
 
 
-static int  
-kndDataReader_reply(struct kndDataReader *self,
-                    struct kndData *data,
-                    int status)
-{
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
-    char *header = NULL;
-    size_t header_size;
-    char *confirm = NULL;
-    size_t confirm_size;
-
-    int err;
-
-    data->tid_size = KND_TID_SIZE + 1;
-
-    /*err = knd_get_attr(data->spec, "tid",
-                       data->tid, &data->tid_size);
-    if (err) {
-        knd_log("-- no TID provided :(\n");
-        return knd_FAIL;
-    }
-    */
-    
-    if (status) {                   
-        err = self->spec_out->write(self->spec_out, "<spec action=\"report\"", strlen("<spec action=\"report\""));
-        if (err) goto final;
-
-        buf_size = sprintf(buf, " state=\"%d\"",
-                           status);
-
-        err = self->spec_out->write(self->spec_out, buf, buf_size);
-        if (err) goto final;
-    }
-    else {
-        err = self->spec_out->write(self->spec_out, "<spec action=\"save\"", strlen("<spec action=\"save\""));
-        if (err) goto final;
-    }
-
-    buf_size = sprintf(buf, " uid=\"%s\" tid=\"%s\" sid=\"AUTH_SERVER_SID\" ",
-                       self->curr_user->id, data->tid);
-
-    err = self->spec_out->write(self->spec_out, buf, buf_size);
-    if (err) goto final;
-
-    if (data->classname_size) {
-        err = self->spec_out->write(self->spec_out, " class=\"", strlen(" class=\""));
-        if (err) goto final;
-
-        err = self->spec_out->write(self->spec_out, data->classname, data->classname_size);
-        if (err) goto final;
-
-        err = self->spec_out->write(self->spec_out, "\"", 1);
-        if (err) goto final;
-    }
-
-    switch (data->format) {
-    case KND_FORMAT_XML:
-        err = self->spec_out->write(self->spec_out, " format=\"XML\"", strlen(" format=\"XML\""));
-        if (err) goto final;
-        break;
-    case KND_FORMAT_HTML:
-        err = self->spec_out->write(self->spec_out, " format=\"HTML\"", strlen(" format=\"HTML\""));
-        if (err) goto final;
-        break;
-    case KND_FORMAT_JS:
-        err = self->spec_out->write(self->spec_out, " format=\"JS\"", strlen(" format=\"JS\""));
-        if (err) goto final;
-        break;
-    default:
-        break;
-    }
-
-    buf_size = sprintf(buf, " filename=\"%s\"",
-                       data->filename);
-
-    err = self->spec_out->write(self->spec_out, buf, buf_size);
-    if (err) goto final;
-
-    buf_size = sprintf(buf, " filesize=\"%lu\"",
-                       (unsigned long)data->filesize);
-    err = self->spec_out->write(self->spec_out, buf, buf_size);
-    if (err) goto final;
-
-    buf_size = sprintf(buf, " mime=\"%s\"",
-                       data->mimetype);
-
-    err = self->spec_out->write(self->spec_out, buf, buf_size);
-    if (err) goto final;
-
-    /*err = kndDataReader_read_obj_file(self, obj, &objfile, &objfile_size);
-    if (err)
-    goto final; */
-
-    err = self->spec_out->write(self->spec_out, "/>", strlen("/>"));
-    if (err) goto final;
-
-    if (!self->out->buf_size) {
-        err = self->out->write(self->out, "None", strlen("None"));
-        if (err) goto final;
-    }
-    
-    err = knd_zmq_sendmore(self->delivery, (const char*)self->spec_out->buf, self->spec_out->buf_size);
-
-    if (data->query_size && strcmp(data->query, "None")) {
-        err = knd_zmq_sendmore(self->delivery, (const char*)data->query, data->query_size);
-    }
-    else if (data->name_size) {
-        err = knd_zmq_sendmore(self->delivery, (const char*)data->name, data->name_size);
-    }
-    else {
-        err = knd_zmq_sendmore(self->delivery, "None", strlen("None"));
-    }
-
-    
-    err = knd_zmq_sendmore(self->delivery, self->out->buf, self->out->buf_size);
-
-    if (self->obj_out->buf_size) {
-        err = knd_zmq_send(self->delivery, self->obj_out->buf, self->obj_out->buf_size);
-    }
-    else {
-        err = knd_zmq_send(self->delivery, "None", strlen("None"));
-    }
-
-
-    /* get reply from delivery */
-    header = knd_zmq_recv(self->delivery, &header_size);
-    confirm = knd_zmq_recv(self->delivery, &confirm_size);
-
-    if (DEBUG_READER_LEVEL_TMP)
-        knd_log("  .. Delivery Service reply: %s\n", confirm);
-
- final:
-
-    if (header)
-        free(header);
-
-    if (confirm)
-        free(confirm);
-    
-    return err;
-}
 
 static int
 kndDataReader_start(struct kndDataReader *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
-
-    struct kndData *data;
-
     void *context;
     void *outbox;
-
     char *header = NULL;
-
     char *confirm = NULL;
-
-
+    char *spec;
+    size_t spec_size;
+    char *obj;
+    size_t obj_size;
+    size_t chunk_size;
     int err;
-
-    err = kndData_new(&data);
-    if (err) return err;
 
     context = zmq_init(1);
 
@@ -560,78 +377,52 @@ kndDataReader_start(struct kndDataReader *self)
     assert((zmq_connect(self->delivery,  self->delivery_addr) == knd_OK));
 
     while (1) {
-
-        data->reset(data);
+        self->spec->reset(self->spec);
         self->out->reset(self->out);
         self->spec_out->reset(self->spec_out);
         self->obj_out->reset(self->obj_out);
 
         buf[0] = '\0';
         
-	knd_log("\n    ++ Reader #%s is ready to receive new tasks!\n",
+	knd_log("    ++ Reader #%s is ready to receive new tasks!\n",
                 self->name);
 
-	data->spec  = knd_zmq_recv(outbox, &data->spec_size);
-	data->obj   = knd_zmq_recv(outbox, &data->obj_size);
-	data->query = knd_zmq_recv(outbox, &data->query_size);
+	spec  = knd_zmq_recv(outbox, &spec_size);
+	obj   = knd_zmq_recv(outbox, &obj_size);
 
-	knd_log("\n    ++ Reader #%s got spec: %s QUERY: %s\n", 
-                self->name, data->spec, data->query);
+        knd_log("\n    ++ Reader #%s got SPEC: %s OBJ: %s\n", 
+                self->name, spec, obj);
 
-        /* TODO: regroup incoming messages  */
-        if (!data->spec_size) {
-            continue;
-        }
-        
-        /* check uid and privileges */
-        err = kndDataReader_get_user(self, data->spec);
+        err = self->spec->parse(self->spec, spec, &chunk_size);
         if (err) {
-            knd_log("  -- get user by uid  failure: %d\n", err);
+            knd_log("  -- SPEC parse failed: %d\n", err);
             goto final;
         }
 
-	if (strstr(data->spec, "action=\"idle\"")) {
-            printf("    ?? Any idle time jobs needed?\n");
-
-            /* TODO: check the number of uninterrupted idle calls and act:
-             * do time consuming tasks like sort, compress, dump indices.. etc.
-             */
+        /* check uid and privileges */
+        err = kndDataReader_check_privileges(self);
+        if (err) {
+            knd_log("  -- privileges checking failure: %d\n", err);
             goto final;
         }
 
-        if (strstr(data->spec, "action=\"update\"")) {
-            printf("Reader UPDATE: %s\n", data->spec);
+        knd_log("    SPEC after parsing: \"%s\" %lu\n", 
+                spec, (unsigned long)spec_size);
 
+        self->spec->input = spec;
+        self->spec->input_size = spec_size;
+        self->spec->obj = obj;
+        self->spec->obj_size = obj_size;
+
+        err = kndDataReader_run_tasks(self);
+        if (err) {
+            knd_log("  -- task running failure: %d", err);
             goto final;
         }
 
-        if (strstr(data->spec, "action=\"select\"")) {
-            err = self->curr_user->select(self->curr_user, data);
 
-            err = kndDataReader_reply(self, data, err);
-            goto final;
-        }
+        
 
-	if (strstr(data->spec, "action=\"get\"")) {
-            err = self->curr_user->get_obj(self->curr_user, data);
-
-            err = kndDataReader_reply(self, data, err);
-            goto final;
-        }
-
-        if (strstr(data->spec, "action=\"flatten\"")) {
-            err = self->curr_user->flatten(self->curr_user, data);
-
-            err = kndDataReader_reply(self, data, err);
-            goto final;
-        }
-
-        if (strstr(data->spec, "action=\"match\"")) {
-            err = self->curr_user->match(self->curr_user, data);
-
-            err = kndDataReader_reply(self, data, err);
-            goto final;
-        }
 
     final:
 
@@ -648,7 +439,6 @@ kndDataReader_start(struct kndDataReader *self)
     }
 
     zmq_close(outbox);
-    data->del(data);
 
     return knd_OK;
 }
@@ -659,6 +449,7 @@ kndDataReader_new(struct kndDataReader **rec,
                   const char *config)
 {
     struct kndDataReader *self;
+    struct kndDataClass *dc;
     int err;
 
     self = malloc(sizeof(struct kndDataReader));
@@ -678,6 +469,10 @@ kndDataReader_new(struct kndDataReader **rec,
     err = kndOutput_new(&self->obj_out, KND_LARGE_BUF_SIZE);
     if (err) return err;
 
+    /* task specification */
+    err = kndSpec_new(&self->spec);
+    if (err) return err;
+
     /* special user */
     err = kndUser_new(&self->admin);
     if (err) return err;
@@ -692,7 +487,7 @@ kndDataReader_new(struct kndDataReader **rec,
         goto error;
     }
     
-    err = kndDataClass_new(&self->dc);
+    /*err = kndDataClass_new(&self->dc);
     if (err) return err;
     self->dc->out = self->out;
     self->dc->name[0] = '/';
@@ -700,26 +495,32 @@ kndDataReader_new(struct kndDataReader **rec,
 
     self->dc->path = self->path;
     self->dc->path_size = self->path_size;
+    */
 
-    err = ooDict_new(&self->dc->class_idx, KND_MEDIUM_DICT_SIZE);
+    err = kndDataClass_new(&dc);
+    if (err) return err;
+    dc->out = self->out;
+    dc->name[0] = '/';
+    dc->name_size = 1;
+
+    dc->dbpath = self->path;
+    dc->dbpath_size = self->path_size;
+
+    err = ooDict_new(&dc->class_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-
-    err = ooDict_new(&self->dc->attr_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) goto error;
-
-    err = ooDict_new(&self->repo_idx, KND_SMALL_DICT_SIZE);
-    if (err) goto error;
-
+    
     /* read class definitions */
-    err = self->dc->read_onto(self->dc, "classes.gsl");
+    err = dc->read_onto(dc, "classes/index.gsl");
     if (err) goto error;
+    
+    err = dc->coordinate(dc);
+    if (err) goto error;
+    
+    self->admin->root_dc = dc;
 
-    err = self->dc->coordinate(self->dc);
-    if (err) goto error;
 
     self->del = kndDataReader_del;
     self->start = kndDataReader_start;
-    self->get_repo = kndDataReader_get_repo;
 
     *rec = self;
     return knd_OK;
