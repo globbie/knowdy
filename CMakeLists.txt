@@ -54,10 +54,6 @@ foreach(MODULE ${KNOWDY_MODULES})
     set(${MODULE}_BINARY ${KNOWDY_PREFIX}-${MODULE})
 endforeach()
 
-#foreach(MODULE ${KNOWDY_MODULES})
-#    MESSAGE(${${MODULE}_BINARY})
-#endforeach()
-
 foreach(MODULE ${KNOWDY_MODULES})
     set(BINARY ${${MODULE}_BINARY})
     add_subdirectory(${MODULE})
