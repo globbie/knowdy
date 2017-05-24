@@ -1,11 +1,11 @@
 [Unit]
 Description=Knowdy Collection Service
+After=network.target
 
 [Service]
 Type=simple
 User=knowdy
-WorkingDirectory=/home/knowdy
-ExecStart=/usr/local/bin/knd_collection /etc/knowdy/collection.ini
+ExecStart=/usr/bin/knd-collection /etc/knowdy/collection.ini
 Restart=on-failure
 
 [Install]

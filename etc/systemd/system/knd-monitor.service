@@ -1,11 +1,11 @@
 [Unit]
 Description=Knowdy Monitor Service
+After=network.target
 
 [Service]
 Type=simple
 User=knowdy
-WorkingDirectory=/home/knowdy
-ExecStart=/usr/local/bin/knd_monitor /etc/knowdy/monitor.ini
+ExecStart=/usr/bin/knd-monitor /etc/knowdy/monitor.ini
 Restart=on-failure
 
 [Install]

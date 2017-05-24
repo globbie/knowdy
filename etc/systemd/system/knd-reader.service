@@ -1,11 +1,11 @@
 [Unit]
 Description=Knowdy Reader Service
+After=network.target
 
 [Service]
 Type=simple
 User=knowdy
-WorkingDirectory=/home/knowdy
-ExecStart=/usr/local/bin/knd_reader /etc/knowdy/config.ini
+ExecStart=/usr/bin/knd-reader /etc/knowdy/config.ini
 Restart=on-failure
 
 [Install]
