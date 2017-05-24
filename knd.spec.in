@@ -30,20 +30,9 @@ then
 fi
 mv "@CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM/tmpBBroot" $RPM_BUILD_ROOT
 
-%files
-%defattr(-,root,root,-)
-
-@CPACK_PACKAGING_INSTALL_PREFIX@/usr/bin/@STORAGE_BINARY@
-@CPACK_PACKAGING_INSTALL_PREFIX@/usr/bin/@DELIVERY_BINARY@
-@CPACK_PACKAGING_INSTALL_PREFIX@/usr/bin/@WRITER_BINARY@
-@CPACK_PACKAGING_INSTALL_PREFIX@/usr/bin/@READER_BINARY@
-@CPACK_PACKAGING_INSTALL_PREFIX@/usr/bin/@COLLECTION_BINARY@
-%{_unitdir}/*.service
-%config(noreplace) @CPACK_PACKAGING_INSTALL_PREFIX@/etc/knowdy/*.ini
-
 %pre
 /usr/bin/getent group knowdy > /dev/null || /usr/sbin/groupadd -r knowdy
-/usr/bin/getent knowdy > /dev/null || /usr/sbin/useradd -r -d /var/knowdy -s /sbin/nologin -g knowdy knowdy
+/usr/bin/getent passwd knowdy > /dev/null || /usr/sbin/useradd -r -d /var/knowdy -s /sbin/nologin -g knowdy knowdy
 
 %postun
 case "$1" in
@@ -54,3 +43,12 @@ case "$1" in
        # do nothing
     ;;
 esac
+
+%files
+%defattr(-,root,root,-)
+@CPACK_PACKAGING_INSTALL_PREFIX@/usr/bin/*
+
+%{_unitdir}/*.service
+%config(noreplace) @CPACK_PACKAGING_INSTALL_PREFIX@/etc/knowdy/*.ini
+
+
