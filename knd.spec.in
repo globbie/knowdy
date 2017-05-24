@@ -1,14 +1,16 @@
 Buildroot: @CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM/@CPACK_PACKAGE_FILE_NAME@
-Summary:        Scalable semantic graph database
-Name:           @CPACK_PACKAGE_NAME@
-Version:        @CPACK_PACKAGE_VERSION@
-Release:        @CPACK_PACKAGE_RELEASE@
-License:        AGPL-3.0
-Group:          Applications/Databases
-Vendor:         @CPACK_PACKAGE_VENDOR@
-Prefix:         @CPACK_PACKAGING_INSTALL_PREFIX@
-Requires:	libxml2 czmq
-BuildRequires:  libxml2 czmq
+Summary:            Scalable semantic graph database
+Name:               @CPACK_PACKAGE_NAME@
+Version:            @CPACK_PACKAGE_VERSION@
+Release:            @CPACK_PACKAGE_RELEASE@
+License:            AGPL-3.0
+Group:              Applications/Databases
+Vendor:             @CPACK_PACKAGE_VENDOR@
+Prefix:             @CPACK_PACKAGING_INSTALL_PREFIX@
+Requires:           libxml2 czmq
+Requires(pre):      /usr/sbin/useradd /usr/bin/getent
+Requires(postun):   /usr/sbin/userdel
+BuildRequires:      libxml2 czmq
 
 %define _rpmdir @CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM
 %define _rpmfilename @CPACK_PACKAGE_FILE_NAME@.rpm
@@ -38,3 +40,17 @@ mv "@CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM/tmpBBroot" $RPM_BUILD_R
 @CPACK_PACKAGING_INSTALL_PREFIX@/usr/bin/@COLLECTION_BINARY@
 %{_unitdir}/*.service
 %config(noreplace) @CPACK_PACKAGING_INSTALL_PREFIX@/etc/knowdy/*.ini
+
+%pre
+/usr/bin/getent group knowdy > /dev/null || /usr/sbin/groupadd -r knowdy
+/usr/bin/getent knowdy > /dev/null || /usr/sbin/useradd -r -d /var/knowdy -s /sbin/nologin -g knowdy knowdy
+
+%postun
+case "$1" in
+    0) # remove
+       /usr/sbin/userdel knowdy
+    ;;
+    1) # upgrade
+       # do nothing
+    ;;
+esac

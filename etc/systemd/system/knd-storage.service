@@ -5,7 +5,7 @@ Description=Knowdy Storage Service
 Type=simple
 User=knowdy
 WorkingDirectory=/home/knowdy
-ExecStart=/usr/local/bin/knd_storage /etc/knowdy/storage.ini
+ExecStart=/usr/bin/knd-storage /etc/knowdy/storage.ini
 Restart=on-failure
 
 [Install]
