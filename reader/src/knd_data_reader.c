@@ -10,7 +10,8 @@
 #include "knd_user.h"
 #include "knd_output.h"
 #include "knd_dataclass.h"
-#include "knd_spec.h"
+#include "knd_task.h"
+#include "knd_utils.h"
 #include "knd_msg.h"
 
 #include "knd_data_reader.h"
@@ -24,6 +25,7 @@ static int
 kndDataReader_del(struct kndDataReader *self)
 {
     if (self->path) free(self->path);
+
     /* TODO: storage */
     
     free(self);
@@ -177,13 +179,6 @@ kndDataReader_read_config(struct kndDataReader *self,
                 if (!val) continue;
                 
                 
-                if (!xmlStrcmp(val, (const xmlChar*)"monitor")) {
-                    err = knd_copy_xmlattr(sub_node, "addr", 
-                                           &self->monitor_addr, 
-                                           &self->monitor_addr_size);
-                    if (err) return err;
-                }
-                
                 if (!xmlStrcmp(val, (const xmlChar*)"delivery")) {
                     err = knd_copy_xmlattr(sub_node, "addr", 
                                            &self->delivery_addr,
@@ -201,7 +196,6 @@ kndDataReader_read_config(struct kndDataReader *self,
 
     if (!self->inbox_frontend_addr ||
         !self->inbox_backend_addr  ||
-        !self->monitor_addr ||
         !self->delivery_addr)
         return oo_FAIL;
 
@@ -223,123 +217,6 @@ error:
 
 
 static int
-kndDataReader_run_tasks(struct kndDataReader *self)
-{
-    struct kndSpecInstruction *instruct;
-    int err;
-
-    for (size_t i = 0; i < self->spec->num_instructions; i++) {
-        instruct = &self->spec->instructions[i];
-        
-        switch (instruct->type) {
-        case KND_AGENT_REPO:
-            knd_log(".. REPO task %d in progress", i);
-            self->admin->repo->instruct = instruct;
-            err = self->admin->repo->run(self->admin->repo);
-            if (err) return err;
-
-            break;
-        case KND_AGENT_USER:
-
-            knd_log(".. USER task %d in progress", i);
-            self->admin->instruct = instruct;
-            err = self->admin->run(self->admin);
-            if (err) return err;
-
-            break;
-        case KND_AGENT_DEFAULT:
-            break;
-        default:
-            break;
-        }
-
-    }
-
-    return knd_OK;
-}
-
-
-static int
-kndDataReader_check_privileges(struct kndDataReader *self)
-{
-    struct kndUser *user;
-    int err;
-
-    if (DEBUG_READER_LEVEL_TMP)
-        knd_log(".. checking current privileges");
-
-    if (!self->spec->sid_size) {
-        knd_log("-- no SID token provided :(");
-        return knd_FAIL;
-    }
-
-    /* TODO: internal auth */
-    if (strcmp(self->spec->sid, "AUTH_SERVER_SID")) {
-        return knd_FAIL;
-    }
-
-    if (DEBUG_READER_LEVEL_TMP)
-        knd_log("++ valid SID: \"%s\"!", self->spec->sid);
-    
-    if (!self->spec->uid_size) {
-        knd_log("-- no UID provided: admin as default");
-        self->curr_user = self->admin;
-        return knd_OK;
-    }
-
-    if (DEBUG_READER_LEVEL_TMP)
-        knd_log("== UID: \"%s\"", self->spec->uid);
-    
-    err = self->admin->get_user(self->admin, (const char*)self->spec->uid, &user);
-    if (err) {
-        knd_log(" -- UID \"%s\" not approved :(", self->spec->uid);
-        return knd_FAIL;
-    }
-
-    if (DEBUG_READER_LEVEL_TMP)
-        knd_log("++ valid UID: \"%s\"!",
-                user->id);
-
-    self->curr_user = user;
-    
-    /*  TODO: is UID granted access to Repo? */
-    
-    /* set DB path */
-    /*buf_size = sprintf(buf, "%s/repos", self->path);
-    
-    err = knd_make_id_path(repo->path, buf, repo->id, NULL);
-    if (err) goto final;
-    
-    self->curr_repo = repo;
-    */
-    
-    /*buf_size = KND_SMALL_BUF_SIZE;
-    err = knd_get_attr(spec, "policy",
-                       buf, &buf_size);
-    if (err) {
-        knd_log("-- Policy %s is not granted to repo \"%s\" :(\n",
-                buf, repo->id);
-        return knd_FAIL;
-    }
-
-    
-    err = repo->set_policy(repo, (const char*)buf, buf_size);
-    if (err) {
-        knd_log("-- Policy %s is not granted to repo \"%s\" :(\n",
-                buf, repo->id);
-        return err;
-    }
-    
-    if (DEBUG_READER_LEVEL_2)
-        knd_log("Policy %s is granted to repo \"%s\".\n", buf, repo->id);
-    */
-    
-    return knd_OK;
-}
-
-
-
-static int
 kndDataReader_start(struct kndDataReader *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
@@ -347,8 +224,8 @@ kndDataReader_start(struct kndDataReader *self)
     void *outbox;
     char *header = NULL;
     char *confirm = NULL;
-    char *spec;
-    size_t spec_size;
+    char *task;
+    size_t task_size;
     char *obj;
     size_t obj_size;
     size_t chunk_size;
@@ -359,83 +236,41 @@ kndDataReader_start(struct kndDataReader *self)
     /* get messages from outbox */
     outbox = zmq_socket(context, ZMQ_PULL);
     if (!outbox) return knd_FAIL;
+
     err = zmq_connect(outbox, self->inbox_backend_addr);
-
-    /* inform monitor */
-    self->monitor = zmq_socket(context, ZMQ_PUSH);
-    if (!self->monitor) return knd_FAIL;
-    assert((zmq_connect(self->monitor,  self->monitor_addr) == knd_OK));
-
-    /* updates */
-    self->update = zmq_socket(context, ZMQ_PUSH);
-    if (!self->update) return knd_FAIL;
-    assert((zmq_connect(self->update,  self->update_addr) == knd_OK));
-
+    
+    /* liquid updates */
+    self->update_service = zmq_socket(context, ZMQ_PUSH);
+    if (!self->update_service) return knd_FAIL;
+    assert((zmq_connect(self->update_service,  self->update_addr) == knd_OK));
+    self->admin->update_service = self->update_service;
+    
     /* delivery service */
     self->delivery = zmq_socket(context, ZMQ_REQ);
     if (!self->delivery) return knd_FAIL;
     assert((zmq_connect(self->delivery,  self->delivery_addr) == knd_OK));
 
     while (1) {
-        self->spec->reset(self->spec);
-        self->out->reset(self->out);
-        self->spec_out->reset(self->spec_out);
-        self->obj_out->reset(self->obj_out);
-
-        buf[0] = '\0';
+        self->task->reset(self->task);
         
 	knd_log("    ++ Reader #%s is ready to receive new tasks!\n",
                 self->name);
 
-	spec  = knd_zmq_recv(outbox, &spec_size);
+	task  = knd_zmq_recv(outbox, &task_size);
 	obj   = knd_zmq_recv(outbox, &obj_size);
 
-        knd_log("\n    ++ Reader #%s got SPEC: %s OBJ: %s\n", 
-                self->name, spec, obj);
+        knd_log("\n    ++ Reader #%s got TASK: %s OBJ: %s\n", 
+                self->name, task, obj);
 
-        err = self->spec->parse(self->spec, spec, &chunk_size);
+        err = self->task->run(self->task, task, task_size, obj, obj_size);
         if (err) {
-            knd_log("  -- SPEC parse failed: %d\n", err);
+            knd_log("  -- TASK parse failed: %d\n", err);
             goto final;
         }
-
-        /* check uid and privileges */
-        err = kndDataReader_check_privileges(self);
-        if (err) {
-            knd_log("  -- privileges checking failure: %d\n", err);
-            goto final;
-        }
-
-        knd_log("    SPEC after parsing: \"%s\" %lu\n", 
-                spec, (unsigned long)spec_size);
-
-        self->spec->input = spec;
-        self->spec->input_size = spec_size;
-        self->spec->obj = obj;
-        self->spec->obj_size = obj_size;
-
-        err = kndDataReader_run_tasks(self);
-        if (err) {
-            knd_log("  -- task running failure: %d", err);
-            goto final;
-        }
-
-
-        
-
 
     final:
-
-	if (header) {
-	    free(header);
-	    header = NULL;
-	}
-	if (confirm) {
-	    free(confirm);
-	    confirm = NULL;
-	}
-
-	/*fflush(stdout);*/
+	if (task) free(task);
+	if (obj) free(obj);
     }
 
     zmq_close(outbox);
@@ -457,20 +292,8 @@ kndDataReader_new(struct kndDataReader **rec,
 
     memset(self, 0, sizeof(struct kndDataReader));
     
-    /* result output buffer */
-    err = kndOutput_new(&self->out, KND_IDX_BUF_SIZE);
-    if (err) return err;
-
-    /* spec output buffer */
-    err = kndOutput_new(&self->spec_out, KND_TEMP_BUF_SIZE);
-    if (err) return err;
-
-    /* obj output buffer */
-    err = kndOutput_new(&self->obj_out, KND_LARGE_BUF_SIZE);
-    if (err) return err;
-
-    /* task specification */
-    err = kndSpec_new(&self->spec);
+    /* task taskification */
+    err = kndTask_new(&self->task);
     if (err) return err;
 
     /* special user */
@@ -479,7 +302,6 @@ kndDataReader_new(struct kndDataReader **rec,
     err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
 
-    
     /* read config */
     err = kndDataReader_read_config(self, config);
     if (err) {
@@ -517,7 +339,6 @@ kndDataReader_new(struct kndDataReader **rec,
     if (err) goto error;
     
     self->admin->root_dc = dc;
-
 
     self->del = kndDataReader_del;
     self->start = kndDataReader_start;
@@ -619,18 +440,19 @@ void *kndDataReader_subscriber(void *arg)
     void *inbox;
 
     struct kndDataReader *reader;
-    struct kndData *data;
     const char *empty_msg = "None";
     size_t empty_msg_size = strlen(empty_msg);
 
+    char *obj;
+    size_t obj_size;
+    char *task;
+    size_t task_size;
+    
     int err;
 
     reader = (struct kndDataReader*)arg;
 
     context = zmq_init(1);
-
-    err = kndData_new(&data);
-    if (err) pthread_exit(NULL);
 
     subscriber = zmq_socket(context, ZMQ_SUB);
     assert(subscriber);
@@ -647,27 +469,21 @@ void *kndDataReader_subscriber(void *arg)
     assert(err == knd_OK);
     
     while (1) {
+	printf("    ++ READER SUBSCRIBER is waiting for new tasks...\n");
+
+        task = knd_zmq_recv(subscriber, &task_size);
+
+	printf("    ++ READER SUBSCRIBER has got task:\n"
+          "       %s",  task);
+
+	obj = knd_zmq_recv(subscriber, &obj_size);
+
+	printf("    ++ READER SUBSCRIBER is updating its inbox..\n");
         
-	data->reset(data);
+	knd_zmq_sendmore(inbox, task, task_size);
+	knd_zmq_send(inbox, obj, obj_size);
 
-	printf("\n    ++ READER SUBSCRIBER is waiting for new tasks...\n");
-
-        data->spec = knd_zmq_recv(subscriber, &data->spec_size);
-
-	printf("\n    ++ READER SUBSCRIBER has got spec:\n"
-          "       %s\n",  data->spec);
-
-	data->body = knd_zmq_recv(subscriber, &data->body_size);
-
-	printf("\n    ++ READER SUBSCRIBER is updating its inbox..\n");
-
-
-        
-	knd_zmq_sendmore(inbox, data->spec, data->spec_size);
-	knd_zmq_sendmore(inbox, data->body, data->body_size);
-	knd_zmq_send(inbox, empty_msg, empty_msg_size);
-
-	printf("    ++ all messages sent!\n");
+	printf("    ++ all messages sent!");
 
         fflush(stdout);
     }

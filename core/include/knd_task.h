@@ -14,17 +14,18 @@
  *         Dmitri Dmitriev aka M0nsteR <dmitri@globbie.net>
  *
  *   ----------
- *   knd_spec.h
- *   Knowdy Spec
+ *   knd_task.h
+ *   Knowdy Task
  */
 
-#ifndef KND_SPEC_H
-#define KND_SPEC_H
+#ifndef KND_TASK_H
+#define KND_TASK_H
 
 #include "knd_config.h"
 
 struct kndOutput;
-struct kndSpec;
+struct kndTask;
+struct kndUser;
 
 typedef enum knd_agent_type { KND_AGENT_DEFAULT, 
                               KND_AGENT_AUTH,
@@ -34,7 +35,7 @@ typedef enum knd_agent_type { KND_AGENT_DEFAULT,
 } knd_agent_type;
 
 
-struct kndSpecAgent
+struct kndTaskAgent
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
@@ -43,7 +44,7 @@ struct kndSpecAgent
 };
 
 
-struct kndSpecArg
+struct kndTaskArg
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
@@ -52,7 +53,7 @@ struct kndSpecArg
 };
 
 
-struct kndSpecInstruction
+struct kndTaskInstruction
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
@@ -71,17 +72,17 @@ struct kndSpecInstruction
     char proc_name[KND_NAME_SIZE];
     size_t proc_name_size;
 
-    struct kndSpec *spec;
+    struct kndTask *task;
     
-    struct kndSpecArg args[KND_MAX_INSTRUCTION_ARGS];
+    struct kndTaskArg args[KND_MAX_INSTRUCTION_ARGS];
     size_t num_args;
 };
 
 
 
-struct kndSpec
+struct kndTask
 {
-    struct kndSpecInstruction instructions[KND_MAX_INSTRUCTIONS];
+    struct kndTaskInstruction instructions[KND_MAX_INSTRUCTIONS];
     size_t num_instructions;
 
     char sid[KND_NAME_SIZE];
@@ -98,23 +99,33 @@ struct kndSpec
 
     char *obj;
     size_t obj_size;
+
+    char *curr_rec;
+    size_t chunk_size;
     
+    struct kndUser *admin;
     struct kndOutput *out;
     
     /******** public methods ********/
-    void (*str)(struct kndSpec *self,
+    void (*str)(struct kndTask *self,
                size_t depth);
 
-    void (*del)(struct kndSpec *self);
+    void (*del)(struct kndTask *self);
 
-    void (*reset)(struct kndSpec *self);
+    void (*reset)(struct kndTask *self);
     
-    int (*parse)(struct kndSpec *self,
+    int (*run)(struct kndTask *self,
                  char     *rec,
-                 size_t          *total_size);
+                 size_t   rec_size,
+                 char *obj,
+                 size_t obj_size);
+
+    int (*parse)(struct kndTask *self,
+                 char     *rec,
+                 size_t   *total_size);
 };
 
 /* constructor */
-extern int kndSpec_new(struct kndSpec **self);
+extern int kndTask_new(struct kndTask **self);
 
-#endif /* KND_SPEC_H */
+#endif /* KND_TASK_H */

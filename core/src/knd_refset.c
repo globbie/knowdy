@@ -586,9 +586,6 @@ kndRefSet_lookup_name(struct kndRefSet *self,
 
     struct kndTermIdx *idx, *term_idx;
     size_t i, j, ri;
-
-    //char *b;
-    //char *c;
     
     const char *tail = NULL;
     size_t tail_size = 0;
@@ -597,10 +594,9 @@ kndRefSet_lookup_name(struct kndRefSet *self,
     size_t val_size;
     
     size_t UTF_val;
-    //long numval = 0;
     int err;
 
-    if (DEBUG_REFSET_LEVEL_3)
+    if (DEBUG_REFSET_LEVEL_TMP)
         knd_log("  .. refset \"%s\" looking up obj name: \"%s\"..\n",
                 self->name, name);
 

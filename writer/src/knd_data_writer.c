@@ -11,7 +11,7 @@
 #include <knd_utils.h>
 #include <knd_msg.h>
 #include <knd_output.h>
-#include <knd_spec.h>
+#include <knd_task.h>
 #include <knd_attr.h>
 #include <knd_user.h>
 
@@ -41,186 +41,6 @@ kndDataWriter_del(struct kndDataWriter *self)
     free(self);
 }
 
-static int
-kndDataWriter_run_tasks(struct kndDataWriter *self)
-{
-    struct kndSpecInstruction *instruct;
-    int err;
-
-    for (size_t i = 0; i < self->spec->num_instructions; i++) {
-        instruct = &self->spec->instructions[i];
-        
-        switch (instruct->type) {
-        case KND_AGENT_REPO:
-            knd_log(".. REPO task %d in progress", i);
-            self->admin->repo->instruct = instruct;
-            err = self->admin->repo->run(self->admin->repo);
-            if (err) return err;
-
-            break;
-        case KND_AGENT_USER:
-
-            knd_log(".. USER task %d in progress", i);
-            self->admin->instruct = instruct;
-            err = self->admin->run(self->admin);
-            if (err) return err;
-
-            break;
-        case KND_AGENT_DEFAULT:
-            break;
-        default:
-            break;
-        }
-
-    }
-
-    return knd_OK;
-}
-
-static int
-kndDataWriter_check_privileges(struct kndDataWriter *self)
-{
-    struct kndUser *user;
-    //struct kndRepo *repo;
-    //struct kndPolicy *policy;
-    int err;
-
-    if (DEBUG_WRITER_LEVEL_TMP)
-        knd_log(".. checking current privileges");
-
-    if (!self->spec->sid_size) {
-        knd_log("-- no SID token provided :(");
-        return knd_FAIL;
-    }
-
-    /* TODO: internal auth */
-    if (strcmp(self->spec->sid, "AUTH_SERVER_SID")) {
-        return knd_FAIL;
-    }
-
-    if (DEBUG_WRITER_LEVEL_TMP)
-        knd_log("++ valid SID: \"%s\"!", self->spec->sid);
-    
-    if (!self->spec->uid_size) {
-        knd_log("-- no UID provided: admin as default");
-        self->curr_user = self->admin;
-        return knd_OK;
-    }
-
-    if (DEBUG_WRITER_LEVEL_TMP)
-        knd_log("== UID: \"%s\"", self->spec->uid);
-    
-    err = self->admin->get_user(self->admin, (const char*)self->spec->uid, &user);
-    if (err) {
-        knd_log(" -- UID \"%s\" not approved :(", self->spec->uid);
-        return knd_FAIL;
-    }
-
-    if (DEBUG_WRITER_LEVEL_TMP)
-        knd_log("++ valid UID: \"%s\"!",
-                user->id);
-
-    self->curr_user = user;
-    
-    /*  TODO: is UID granted access to Repo? */
-    
-    /* set DB path */
-    /*buf_size = sprintf(buf, "%s/repos", self->path);
-    
-    err = knd_make_id_path(repo->path, buf, repo->id, NULL);
-    if (err) goto final;
-    
-    self->curr_repo = repo;
-    */
-    
-    /*buf_size = KND_SMALL_BUF_SIZE;
-    err = knd_get_attr(spec, "policy",
-                       buf, &buf_size);
-    if (err) {
-        knd_log("-- Policy %s is not granted to repo \"%s\" :(\n",
-                buf, repo->id);
-        return knd_FAIL;
-    }
-
-    
-    err = repo->set_policy(repo, (const char*)buf, buf_size);
-    if (err) {
-        knd_log("-- Policy %s is not granted to repo \"%s\" :(\n",
-                buf, repo->id);
-        return err;
-    }
-    
-    if (DEBUG_WRITER_LEVEL_2)
-        knd_log("Policy %s is granted to repo \"%s\".\n", buf, repo->id);
-    */
-    
-    return knd_OK;
-}
-
-
-/*
-static int
-kndDataWriter_sync(struct kndDataWriter *self, struct kndData *data __attribute__((unused)))
-{
-    //char buf[KND_TEMP_BUF_SIZE];
-    //size_t buf_size = KND_TEMP_BUF_SIZE;
-    const char *key = NULL;
-    void *val = NULL;
-    struct kndRepo *repo;
-    int err;
-
-    knd_log(".. sync task in progress..");
-
-    err = self->curr_user->sync(self->curr_user);
-    // TODO: check repo policies
-
-    self->repo_idx->rewind(self->repo_idx);
-    do {
-        self->repo_idx->next_item(self->repo_idx, &key, &val);
-        if (!key) break;
-
-        repo = (struct kndRepo*)val;
-        repo->user = self->curr_user;
-
-        err = repo->sync(repo);
-        if (err) return err;
-
-    } while (key);
-
-
-
-    return err;
-}
-*/
-
-/*
-static int
-kndDataWriter_update(struct kndDataWriter *self, struct kndData *data)
-{
-    //char buf[KND_TEMP_BUF_SIZE];
-    //size_t buf_size;
-    int err;
-
-    knd_log("\n  .. Update task in progress...\n");
-
-    err = self->curr_user->update(self->curr_user, data);
-    if (err) {
-        knd_log(" -- update task rejected .. :(\n");
-
-        // report of update failure
-        if (self->curr_user->out->buf_size) {
-            err = self->out->write(self->out,
-                                   self->curr_user->out->buf,
-                                   self->curr_user->out->buf_size);
-            if (err) goto final;
-        }
-        goto final;
-    }
-
-final:
-    return err;
-}
-*/
 
 static int
 kndDataWriter_read_config(struct kndDataWriter *self,
@@ -275,7 +95,7 @@ kndDataWriter_read_config(struct kndDataWriter *self,
     knd_log("  == DB PATH: %s\n", self->path);
     
     self->admin->sid_size = KND_TID_SIZE + 1;
-    err = knd_get_xmlattr(root, "pass",
+    err = knd_get_xmlattr(root, "sid",
                           self->admin->sid, &self->admin->sid_size);
     if (err) return err;
 
@@ -443,8 +263,8 @@ kndDataWriter_start(struct kndDataWriter *self)
 {
     void *context;
     void *outbox;
-    char *spec = NULL;
-    size_t spec_size = 0;
+    char *task = NULL;
+    size_t task_size = 0;
     char *obj = NULL;
     size_t obj_size = 0;
     size_t chunk_size = 0;
@@ -474,42 +294,19 @@ kndDataWriter_start(struct kndDataWriter *self)
     assert(err == knd_OK);
     
     while (1) {
-        self->spec->reset(self->spec);
-        self->out->reset(self->out);
-        self->spec_out->reset(self->spec_out);
+        self->task->reset(self->task);
 
         if (DEBUG_WRITER_LEVEL_TMP)
             knd_log("    ++ DATAWRITER AGENT #%s is ready to receive new tasks!", 
                     self->name);
 
-	spec = knd_zmq_recv(outbox, &spec_size);
+	task = knd_zmq_recv(outbox, &task_size);
 	obj = knd_zmq_recv(outbox, &obj_size);
         
-	knd_log("    ++ DATAWRITER AGENT #%s got spec: %s [%lu]\n", 
-                self->name, spec, (unsigned long)spec_size);
+	knd_log("    ++ DATAWRITER AGENT #%s got task: %s [%lu]\n", 
+                self->name, task, (unsigned long)task_size);
 
-        err = self->spec->parse(self->spec, spec, &chunk_size);
-        if (err) {
-            knd_log("  -- SPEC parse failed: %d\n", err);
-            goto final;
-        }
-
-        /* check uid and privileges */
-        err = kndDataWriter_check_privileges(self);
-        if (err) {
-            knd_log("  -- privileges checking failure: %d\n", err);
-            goto final;
-        }
-
-        knd_log("    SPEC after parsing: \"%s\" %lu\n", 
-                spec, (unsigned long)spec_size);
-
-        self->spec->input = spec;
-        self->spec->input_size = spec_size;
-        self->spec->obj = obj;
-        self->spec->obj_size = obj_size;
-
-        err = kndDataWriter_run_tasks(self);
+        err = self->task->run(self->task, task, task_size, obj, obj_size);
         if (err) {
             knd_log("  -- task running failure: %d", err);
             goto final;
@@ -517,10 +314,10 @@ kndDataWriter_start(struct kndDataWriter *self)
 
     final:
 
-        /*err = kndDataWriter_reply(self,  data);
+        /*err = kndDataWriter_reply(self);
          */
         
-        if (spec) free(spec);
+        if (task) free(task);
         if (obj) free(obj);
     }
 
@@ -560,16 +357,17 @@ kndDataWriter_new(struct kndDataWriter **rec,
     if (err) return err;
 
     /* task specification */
-    err = kndSpec_new(&self->spec);
+    err = kndTask_new(&self->task);
     if (err) return err;
     
-    err = kndOutput_new(&self->spec->out, KND_LARGE_BUF_SIZE);
+    err = kndOutput_new(&self->task->out, KND_LARGE_BUF_SIZE);
     if (err) return err;
     
     /* special user */
     err = kndUser_new(&self->admin);
     if (err) return err;
-
+    self->task->admin = self->admin;
+    
     /* admin indices */
     err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;

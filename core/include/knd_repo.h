@@ -2,7 +2,6 @@
 #define KND_REPO_H
 
 #include "knd_utils.h"
-#include "knd_policy.h"
 #include "knd_facet.h"
 #include "knd_dict.h"
 
@@ -181,10 +180,10 @@ struct kndRepo
     struct ooDict *repo_idx;
 
     struct kndCustomer *customer;
-    struct kndPolicy *policy;
     struct kndRepoGroup *groups;
-    struct kndUser *user;
 
+    struct kndUser *user;
+    struct kndTask *task;
 
     struct kndRepoMigration *migrations[KND_MAX_MIGRATIONS];
     size_t num_migrations;
@@ -227,8 +226,8 @@ struct kndRepo
     int (*liquid_select)(struct kndRepo *self, struct kndData *data);
     int (*select)(struct kndRepo *self, struct kndData *data);
 
-    int (*get_obj)(struct kndRepo *self, struct kndData *data);
-    int (*get_liquid_obj)(struct kndRepo *self, struct kndData *data);
+    int (*get_obj)(struct kndRepo *self,  struct kndSpecArg *args, size_t num_args);
+    int (*get_liquid_obj)(struct kndRepo *self, struct kndSpecArg *args, size_t num_args);
 
     int (*flatten)(struct kndRepo *self, struct kndData *data);
     int (*update_flatten)(struct kndRepo *self, struct kndData *data);
