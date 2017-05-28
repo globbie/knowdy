@@ -1,0 +1,13 @@
+[Unit]
+Description=Knowdy Storage Service
+After=network.target
+
+[Service]
+Type=simple
+User=knowdy
+ExecStart=/usr/bin/knd-storage /etc/knowdy/storage.ini
+Restart=on-failure
+
+[Install]
+
+

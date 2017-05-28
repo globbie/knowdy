@@ -1,0 +1,13 @@
+[Unit]
+Description=Knowdy Delivery Service
+After=network.target
+
+[Service]
+Type=simple
+User=knowdy
+ExecStart=/usr/bin/knd-delivery /etc/knowdy/delivery.ini
+Restart=on-failure
+
+[Install]
+
+

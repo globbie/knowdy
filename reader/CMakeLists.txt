@@ -1,8 +1,8 @@
-set(DATA_READER_SOURCES
+set(SOURCES
         src/knd_data_reader.c)
 
-add_executable(data_reader ${DATA_READER_SOURCES})
+add_executable(${BINARY} ${SOURCES})
 
-target_link_libraries(data_reader pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} core_static)
+target_link_libraries(${BINARY} pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} ${CORE}_static)
 
-install(TARGETS data_reader DESTINATION bin)
+install(TARGETS ${BINARY} DESTINATION usr/bin)

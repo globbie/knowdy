@@ -4,6 +4,7 @@ project(knowdy C)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_INSTALL_PREFIX /)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -pedantic")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -g3")
@@ -28,26 +29,45 @@ find_path(ZEROMQ_INCLUDE_DIR NAMES zmq.h PATHS ${ZEROMQ_INCLUDE_DIRS})
 find_library(ZEROMQ_LIBRARY NAMES zmq PATHS ${ZEROMQ_LIBRARY_DIRS})
 include_directories(${ZEROMQ_INCLUDE_DIR})
 
-include_directories(core/include)
+set(KNOWDY_PREFIX "knd")
+set(CORE "core")
+set(COLLECTION "collection")
+set(READER "reader")
+set(WRITER "writer")
+set(DELIVERY "delivery")
+set(STORAGE "storage")
 
-include_directories(collection/src)
-include_directories(reader/src)
-include_directories(writer/src)
-include_directories(delivery/src)
-include_directories(storage/src)
+set(KNOWDY_MODULES
+        ${CORE}
+        ${COLLECTION}
+        ${READER}
+        ${WRITER}
+        ${DELIVERY}
+        ${STORAGE})
 
-add_subdirectory(core)
-add_subdirectory(collection)
-add_subdirectory(writer)
-add_subdirectory(reader)
-add_subdirectory(delivery)
-add_subdirectory(storage)
+include_directories(${CORE}/include)
+
+foreach(MODULE ${KNOWDY_MODULES})
+    include_directories(${MODULE}/src)
+endforeach()
+
+foreach(MODULE ${KNOWDY_MODULES})
+    set(${MODULE}_BINARY ${KNOWDY_PREFIX}-${MODULE})
+endforeach()
+
+foreach(MODULE ${KNOWDY_MODULES})
+    set(BINARY ${${MODULE}_BINARY})
+    add_subdirectory(${MODULE})
+endforeach()
+
+install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)
+install(DIRECTORY etc/systemd/system/ DESTINATION usr/lib/systemd/system)
 
 set(VERSION "0.0.1")
 
 set(CPACK_PACKAGE_VERSION ${VERSION})
 set(CPACK_GENERATOR "RPM")
-set(CPACK_PACKAGE_NAME "knowdy")
+set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
 set(CPACK_PACKAGE_RELEASE 1)
 set(CPACK_PACKAGE_CONTACT "info@globbie.net")
 set(CPACK_PACKAGE_VENDOR "globbie")
@@ -58,3 +78,4 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/knd.spec.in" "${CMAKE_CURRENT_BINARY
 set(CPACK_RPM_USER_BINARY_SPECFILE "${CMAKE_CURRENT_BINARY_DIR}/knd.spec")
 
 include(CPack)
+

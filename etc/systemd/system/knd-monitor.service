@@ -1,0 +1,13 @@
+[Unit]
+Description=Knowdy Monitor Service
+After=network.target
+
+[Service]
+Type=simple
+User=knowdy
+ExecStart=/usr/bin/knd-monitor /etc/knowdy/monitor.ini
+Restart=on-failure
+
+[Install]
+
+

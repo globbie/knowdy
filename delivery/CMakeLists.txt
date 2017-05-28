@@ -1,10 +1,10 @@
-set(DELIVERY_SERVER_SOURCES
+set(SOURCES
         src/knd_delivery.c
         src/knd_delivery_server.c
         src/knd_monitor.c)
 
-add_executable(delivery_server ${DELIVERY_SERVER_SOURCES})
+add_executable(${BINARY} ${SOURCES})
 
-target_link_libraries(delivery_server pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} core_static)
+target_link_libraries(${BINARY} pthread ${LIBXML2_LIBRARIES} ${ZEROMQ_LIBRARY} ${CORE}_static)
 
-install(TARGETS delivery_server DESTINATION bin)
+install(TARGETS ${BINARY} DESTINATION usr/bin)
