@@ -484,11 +484,10 @@ kndObject_index(struct kndObject *self)
 
 static int
 kndObject_import_GSL(struct kndObject *self,
-                     char *rec,
+                     const char *rec,
                      size_t *total_size)
 {
-    char *c;
-    char *b;
+    const char *c, *b;
 
     struct kndElem *elem = NULL;
     struct kndObject *obj = NULL;
@@ -535,12 +534,12 @@ kndObject_import_GSL(struct kndObject *self,
         case ' ':
             if (in_name_attr) {
                 if (!in_name) {
-                    *c = '\0';
+                    //*c = '\0';
                     if (!strcmp(b, "n")) {
                         in_name = true;
                         b = c + 1;
                     }
-                    *c = ' ';
+                    //*c = ' ';
                     break;
                 }
                 break;
@@ -1390,7 +1389,7 @@ kndObject_expand(struct kndObject *self,
 
 static int 
 kndObject_import(struct kndObject *self,
-                 char *rec,
+                 const char *rec,
                  size_t *total_size,
                  knd_format format)
 {

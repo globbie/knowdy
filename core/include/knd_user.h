@@ -74,7 +74,7 @@ struct kndUser
     int (*run)(struct kndUser *self);
 
     int (*parse_task)(struct kndUser *self,
-                      char *rec,
+                      const char *rec,
                       size_t *total_size);
 
     int (*add_user)(struct kndUser *self);
@@ -89,7 +89,7 @@ struct kndUser
     int (*import)(struct kndUser *self, char *rec, size_t *total_size);
     int (*update)(struct kndUser *self, struct kndData *data);
 
-    int (*select)(struct kndUser *self, struct kndData *data);
+    /*int (*select)(struct kndUser *self, struct kndData *data);
     int (*update_select)(struct kndUser *self, struct kndData *data);
 
     int (*get_obj)(struct kndUser *self);
@@ -100,12 +100,14 @@ struct kndUser
 
     int (*match)(struct kndUser *self, struct kndData *data);
     int (*update_match)(struct kndUser *self, struct kndData *data);
-
+    */
+    
     int (*read)(struct kndUser *self, const char *rec);
 
     int (*sync)(struct kndUser *self);
 
 };
+
 
 extern int kndUser_init(struct kndUser *self);
 extern int kndUser_new(struct kndUser **self);

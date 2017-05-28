@@ -43,8 +43,8 @@ kndDataWriter_del(struct kndDataWriter *self)
 
 
 static int
-kndDataWriter_read_config(struct kndDataWriter *self,
-                         const char *config)
+kndDataWriter_read_XML_config(struct kndDataWriter *self,
+                              const char *config)
 {
     //char buf[KND_TEMP_BUF_SIZE];
     //size_t buf_size = KND_TEMP_BUF_SIZE;
@@ -267,7 +267,6 @@ kndDataWriter_start(struct kndDataWriter *self)
     size_t task_size = 0;
     char *obj = NULL;
     size_t obj_size = 0;
-    size_t chunk_size = 0;
     
     int err;
 
@@ -321,11 +320,8 @@ kndDataWriter_start(struct kndDataWriter *self)
         if (obj) free(obj);
     }
 
-//error:
-//    zmq_close(outbox);
-//
 
-    /* should never get here */
+    /* we should never get here */
     return knd_OK;
 }
 
@@ -376,12 +372,8 @@ kndDataWriter_new(struct kndDataWriter **rec,
     if (err) goto error;
 
     /* read config */
-    err = kndDataWriter_read_config(self, config);
+    err = kndDataWriter_read_XML_config(self, config);
     if (err) return err;
-
-    /*knd_log("  == User Admin before DC PATH: %s\n",
-            self->admin->dbpath);
-    */
     
     err = kndDataClass_new(&dc);
     if (err) return err;
@@ -529,8 +521,6 @@ void *kndDataWriter_subscriber(void *arg)
 
     while (1) {
 	data->reset(data);
-
-	/*printf("\n    ++ WRITER SUBSCRIBER is waiting for new tasks...\n");*/
 
         data->spec = knd_zmq_recv(subscriber, &data->spec_size);
 	data->obj = knd_zmq_recv(subscriber, &data->obj_size);

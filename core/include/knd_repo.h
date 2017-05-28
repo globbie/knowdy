@@ -203,11 +203,8 @@ struct kndRepo
 
     int (*init)(struct kndRepo *self);
 
-    int (*run)(struct kndRepo *self);
-
-    int (*read_state)(struct kndRepo *self, char *rec, size_t *chunk_size);
-
-    int (*add_repo)(struct kndRepo *self, struct kndSpecArg *args, size_t num_args);
+    int (*read_state)(struct kndRepo *self, const char *rec, size_t *chunk_size);
+    int (*parse_task)(struct kndRepo *self, const char *rec, size_t *chunk_size);
 
     int (*get_repo)(struct kndRepo *self, const char *uid, struct kndRepo **repo);
 
@@ -218,8 +215,8 @@ struct kndRepo
 
     int (*sync)(struct kndRepo *self);
 
-    int (*import)(struct kndRepo *self, char *rec, size_t *total_size);
-    int (*update)(struct kndRepo *self, knd_format format);
+    int (*import)(struct kndRepo *self, const char *rec, size_t *total_size);
+    int (*update)(struct kndRepo *self, const char *rec);
 
     int (*export)(struct kndRepo *self, knd_format format);
 

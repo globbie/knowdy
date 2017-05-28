@@ -833,6 +833,178 @@ knd_read_name(char *output,
 }
 
 
+static inline int
+check_name_limits(const char *b, const char *e, size_t *buf_size)
+{
+    *buf_size = e - b;
+    if (!(*buf_size)) return knd_LIMIT;
+    if ((*buf_size) >= KND_NAME_SIZE) {
+        knd_log("-- field tag too large: %lu bytes",
+                (unsigned long)buf_size);
+        return knd_LIMIT;
+    }
+    return knd_OK;
+}
+
+extern int
+knd_parse_task(const char *rec,
+               size_t *total_size,
+               struct kndTaskSpec *specs,
+               size_t num_specs)
+{
+    const char *b, *c, *e;
+    size_t buf_size;
+
+    struct kndTaskSpec *spec;
+    struct kndTaskSpec *curr_spec = NULL;
+
+    struct kndTaskArg args[KND_MAX_ARGS];
+    size_t num_args = 0;
+    struct kndTaskArg *arg;
+    
+    bool in_field = false;
+    bool in_terminal = false;
+
+    size_t chunk_size;
+    int err;
+    
+    c = rec;
+    b = rec;
+    e = rec;
+    
+     if (DEBUG_UTILS_LEVEL_2)
+         knd_log(".. parse task: \"%s\"", rec);
+  
+    while (*c) {
+        switch (*c) {
+        case '\n':
+        case '\r':
+        case '\t':
+        case ' ':
+            if (!in_field) break;
+
+            if (!in_terminal) {
+                err = check_name_limits(b, e, &buf_size);
+                if (err) return err;
+
+                if (DEBUG_UTILS_LEVEL_TMP)
+                    knd_log("++ got field: \"%.*s\" [%lu]",
+                            buf_size, b, (unsigned long)buf_size);
+
+                for (size_t i = 0; i < num_specs; i++) {
+                    spec = &specs[i];
+
+                    if (spec->is_completed) {
+                        if (DEBUG_UTILS_LEVEL_TMP)
+                            knd_log("++ \"%s\" spec successfully completed!",
+                                    spec->name);
+                        continue;
+                    }
+                    
+                    if (DEBUG_UTILS_LEVEL_TMP)
+                        knd_log("== curr SPEC name: \"%s\"",
+                                spec->name);
+
+                    if (!strncmp(b, spec->name, spec->name_size)) {
+                        curr_spec = spec;
+
+                        if (!spec->parse) {
+                            if (DEBUG_UTILS_LEVEL_TMP)
+                                knd_log("   == ATOMIC SPEC found: %s! no further parsing is required.",
+                                        spec->name);
+                            in_terminal = true;
+                            b = c + 1;
+                            e = b;
+                           break;
+                        }
+
+                        /* nested parsing required */
+                        if (DEBUG_UTILS_LEVEL_TMP)
+                            knd_log("   == further parsing required in \"%s\"",
+                                    spec->name);
+
+                        err = spec->parse(spec->obj, b, &chunk_size);
+                        if (err) return err;
+
+                        c += chunk_size;
+                        
+                        spec->is_completed = true;
+                        in_terminal = false;
+                        in_field = false;
+
+                        if (DEBUG_UTILS_LEVEL_2)
+                            knd_log("\n\n   == remainder after parsing \"%s\": \"%s\"",
+                                    spec->name, c);
+                        
+                        b = c + 1;
+                        e = b;
+                        break;
+                    }
+
+                    if (DEBUG_UTILS_LEVEL_TMP)
+                        knd_log("-- unrecognized task: \"%.*s\" :(",
+                                buf_size, b);
+
+                    return knd_FAIL;
+                }
+            }
+            
+            break;
+        case '{':
+            if (!in_field) {
+                in_field = true;
+                b = c + 1;
+                e = b;
+                break;
+            }
+
+
+            
+            break;
+        case '}':
+            if (in_terminal) {
+                err = check_name_limits(b, e, &buf_size);
+                if (err) return err;
+
+                if (DEBUG_UTILS_LEVEL_TMP)
+                    knd_log("++ got arg: \"%.*s\" [%lu]",
+                            buf_size, b, (unsigned long)buf_size);
+
+                arg = &args[num_args];
+                num_args++;
+
+                memcpy(arg->name, curr_spec->name, curr_spec->name_size);
+                arg->name_size = curr_spec->name_size;
+                
+                memcpy(arg->val, b, buf_size);
+                arg->val_size = buf_size;
+
+                if (spec->run) {
+                    err = spec->run(spec->obj, args, num_args);
+                    if (err) return err;
+                }
+
+                if (DEBUG_UTILS_LEVEL_2)
+                    knd_log("\n  == remainder to parse: \"%s\"\n", c);
+
+                *total_size = c - rec;
+                return knd_OK;
+            }
+
+            
+            *total_size = c - rec;
+            return knd_OK;
+        default:
+            e = c + 1;
+            break;
+        }
+        c++;
+    }
+    
+    return knd_FAIL;
+}
+
+
 extern int 
 knd_remove_nonprintables(char *data)
 {

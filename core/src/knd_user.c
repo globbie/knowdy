@@ -599,7 +599,7 @@ kndUser_export_GSL(struct kndUser *self)
 
     out = self->out;
     
-    buf_size = sprintf(buf, "(ID^%s)(N^%s)(C^ooWebResource)",
+    buf_size = sprintf(buf, "{ID %s}{N %s}",
                        self->id,
                        self->name);
     out->reset(out);
@@ -691,273 +691,119 @@ kndUser_export_JSON(struct kndUser *self)
     return err;
 }
 
+
 static int
-kndUser_parse_repo(struct kndUser *self,
-                   char *rec,
+kndUser_parse_repo(void *obj,
+                   const char *rec,
                    size_t *total_size)
 {
-    char *b, *c, *e;
-    size_t buf_size;
+    struct kndUser *self = (struct kndUser*)obj;
+    int err;
+    
+    if (DEBUG_USER_LEVEL_2)
+        knd_log("   .. parsing the REPO rec: \"%s\"", rec);
 
-    const char *repo_add_tag = "add";
-    size_t repo_add_tag_tag_size = strlen(repo_add_tag);
-
-    bool in_field = false;
+    err = self->repo->parse_task(self->repo, rec, total_size);
+    if (err) return err;
     
-    c = rec;
-    b = c;
-    e = c;
-    
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log("   .. parsing REPO rec: \"%s\"", c);
-   
-    while (*c) {
-        switch (*c) {
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            if (!in_field) break;
-            
-            break;
-        case '{':
-            break;
-        default:
-            break;
-        }
-        c++;
-    }
-    
-    return knd_FAIL;
+    return knd_OK;
 }
-
 
 
 static int
-kndUser_parse_auth(struct kndUser *self,
-                   char *rec,
-                   size_t *total_size,
-                   struct kndUser **user)
+kndUser_run_sid_check(void *obj, struct kndTaskArg *args, size_t num_args)
 {
-    char *b, *c, *e;
-    size_t buf_size;
-
-    const char *sid_tag = "sid";
-    size_t sid_tag_size = strlen(sid_tag);
-
-    bool in_field = false;
-    bool in_sid = false;
-    bool auth_ok = false;
+    struct kndUser *self = (struct kndUser*)obj;
+    struct kndTaskArg *arg;
+    const char *sid = NULL;
+    size_t sid_size = 0;
     
-    c = rec;
-    b = c;
-    e = c;
-    
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log("   .. parsing  AUTH rec: \"%s\"", c);
-   
-    while (*c) {
-        switch (*c) {
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            if (!in_field) break;
-
-            if (!strncmp(b, sid_tag, sid_tag_size)) {
-                knd_log("++ sid tag: \"%s\"",
-                        b);
-                in_sid = true;
-                b = c + 1;
-                break;
-            }
-            
-            break;
-        case '{':
-            if (!in_field) {
-                in_field = true;
-                b = c + 1;
-                break;
-            }
-            
-            b = c + 1;
-            break;
-        case '}':
-            if (in_sid) {
-                buf_size = e - b;
-                if (!buf_size) return knd_FAIL;
-                if (buf_size >= KND_NAME_SIZE) {
-                    knd_log("-- sid too large: %lu bytes",
-                            (unsigned long)buf_size);
-                    return knd_LIMIT;
-                }
-
-                knd_log("SID: \"%s\" [%lu]",
-                        b, (unsigned long)buf_size);
-
-                if (!strncmp(self->sid, b, buf_size)) {
-                    knd_log("++ AUTH SID OK!");
-                    in_sid = false;
-                    auth_ok = true;
-                    *user = self;
-                    break;
-                }
-                
-                return knd_FAIL;
-            }
-
-            if (auth_ok) {
-                *total_size = c - rec;
-                return knd_OK;
-            }
-            
-            break;
-        default:
-            e = c + 1;
-            break;
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "sid", strlen("sid"))) {
+            sid = arg->val;
+            sid_size = arg->val_size;
         }
-        c++;
+    }
+
+    if (!sid_size) {
+        knd_log("  -- no SID provided :(");
+        return knd_FAIL;
     }
     
-    return knd_FAIL;
+
+    if (strncmp(self->sid, sid, sid_size)) {
+        knd_log("  -- wrong SID: \"%s\"", sid);
+        return knd_FAIL;
+    }
+
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log("  ++ SID confirmed: \"%s\"!", sid);
+    
+    return knd_OK;
 }
 
+
+static int
+kndUser_parse_auth(void *obj,
+                   const char *rec,
+                   size_t *total_size)
+{
+    struct kndTaskSpec specs[] = {
+        { .name = "sid",
+          .name_size = strlen("sid"),
+          .run = kndUser_run_sid_check,
+          .obj = obj
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
 
 
 static int
 kndUser_parse_task(struct kndUser *self,
-                   char *rec, size_t *total_size)
+                   const char *rec,
+                   size_t *total_size)
 {
-    char *b, *c, *e;
-    size_t buf_size;
-
-    const char *auth_tag = "auth";
-    size_t auth_tag_size = strlen(auth_tag);
-
-    const char *repo_tag = "repo";
-    size_t repo_tag_size = strlen(repo_tag);
-
-    struct kndUser *user = NULL;
-    size_t chunk_size;
-    
-    bool in_field = false;
-    bool in_auth = false;
-    bool in_repo = false;
+    struct kndTaskSpec specs[] = {
+        { .name = "auth",
+          .name_size = strlen("auth"),
+          .parse = kndUser_parse_auth,
+          .obj = self
+        },
+        { .name = "repo",
+          .name_size = strlen("repo"),
+          .parse = kndUser_parse_repo,
+          .obj = self
+        }
+    };
     int err;
     
-    c = rec;
-    b = c;
-    e = c;
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
     
-    if (DEBUG_USER_LEVEL_2)
-        knd_log("   .. parsing USER rec: \"%s\"", rec);
-   
-    while (*c) {
-        switch (*c) {
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            break;
-        case '{':
-            if (!in_field) {
-                in_field = true;
-                b = c + 1;
-                break;
-            }
-
-            buf_size = e - b;
-            if (!buf_size) return knd_FAIL;
-            if (buf_size >= KND_NAME_SIZE) {
-                knd_log("-- field tag too large: %lu bytes",
-                        (unsigned long)buf_size);
-                return knd_LIMIT;
-            }
-
-            if (!in_auth) {
-                if (!strncmp(b, auth_tag, auth_tag_size)) {
-                    if (DEBUG_USER_LEVEL_2)
-                        knd_log("++ auth tag: \"%s\" [%lu]",
-                                b, (unsigned long)buf_size);
-
-                    err = kndUser_parse_auth(self, b, &chunk_size, &user);
-                    if (err) {
-                        knd_log("-- authentication failed :(");
-                        return knd_FAIL;
-                    }
-
-                    c += chunk_size;
-                    b = c + 1;
-                    e = b;
-                    in_auth = true;
-                    in_field = false;
-                    
-                    knd_log("== remainder: \"%s\" [chunk: %lu]",
-                            c, (unsigned long)chunk_size);
-
-                    break;
-                }
-                
-                knd_log("-- no auth given :(");
-                return knd_FAIL;
-            }
-
-            
-            knd_log("== field TAG: \"%s\" [%lu]",
-                    b, (unsigned long)buf_size);
-
-            if (!strncmp(b, repo_tag, repo_tag_size)) {
-                knd_log("++ repo tag: \"%s\" [%lu]",
-                        b, (unsigned long)buf_size);
-
-                if (!user) {
-                    knd_log("-- no authenticated user to run the repo task :(");
-                    return knd_FAIL;
-                }
-
-                err = kndUser_parse_repo(user, b, &chunk_size);
-                if (err) return err;
-                
-                in_repo = true;
-            }
-
-            break;
-        case '}':
-
-            
-            *total_size = c - rec;
-            return knd_OK;
-        default:
-            e = c + 1;
-            break;
-        }
-
-        c++;
-    }
-    
-    return knd_FAIL;
+    return knd_OK;
 }
+
 
 static int 
 kndUser_export(struct kndUser *self, knd_format format)
 {
-    int err = knd_FAIL;
-    
     switch(format) {
         case KND_FORMAT_JSON:
-        err = kndUser_export_JSON(self);
-        if (err) goto final;
-        break;
+        return kndUser_export_JSON(self);
     case KND_FORMAT_GSL:
-        err = kndUser_export_GSL(self);
-        if (err) goto final;
-        break;
+        return kndUser_export_GSL(self);
     default:
         break;
     }
 
- final:
-    return err;
+    return knd_FAIL;
 }
 
 

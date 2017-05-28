@@ -27,23 +27,6 @@ struct kndOutput;
 struct kndTask;
 struct kndUser;
 
-typedef enum knd_agent_type { KND_AGENT_DEFAULT, 
-                              KND_AGENT_AUTH,
-                              KND_AGENT_USER,
-                              KND_AGENT_REPO,
-                              KND_AGENT_CONCEPT
-} knd_agent_type;
-
-
-struct kndTaskAgent
-{
-    char name[KND_NAME_SIZE];
-    size_t name_size;
-    knd_agent_type type;
-    
-};
-
-
 struct kndTaskArg
 {
     char name[KND_NAME_SIZE];
@@ -53,38 +36,20 @@ struct kndTaskArg
 };
 
 
-struct kndTaskInstruction
+struct kndTaskSpec
 {
-    char name[KND_NAME_SIZE];
+    const char *name;
     size_t name_size;
-    knd_agent_type type;
+    bool is_completed;
 
-    char repo_name[KND_NAME_SIZE];
-    size_t repo_name_size;
-    size_t repo_state;
-
-    char user_name[KND_NAME_SIZE];
-    size_t user_name_size;
-
-    char class_name[KND_NAME_SIZE];
-    size_t class_name_size;
-
-    char proc_name[KND_NAME_SIZE];
-    size_t proc_name_size;
-
-    struct kndTask *task;
-    
-    struct kndTaskArg args[KND_MAX_INSTRUCTION_ARGS];
-    size_t num_args;
+    void *obj;
+    int (*parse)(void *obj, const char *rec, size_t *total_size);
+    int (*run)(void *obj, struct kndTaskArg *args, size_t num_args);
 };
-
 
 
 struct kndTask
 {
-    struct kndTaskInstruction instructions[KND_MAX_INSTRUCTIONS];
-    size_t num_instructions;
-
     char sid[KND_NAME_SIZE];
     size_t sid_size;
 
@@ -94,14 +59,11 @@ struct kndTask
     char tid[KND_NAME_SIZE];
     size_t tid_size;
 
-    char *input;
+    const char *input;
     size_t input_size;
 
-    char *obj;
+    const char *obj;
     size_t obj_size;
-
-    char *curr_rec;
-    size_t chunk_size;
     
     struct kndUser *admin;
     struct kndOutput *out;
@@ -115,13 +77,13 @@ struct kndTask
     void (*reset)(struct kndTask *self);
     
     int (*run)(struct kndTask *self,
-                 char     *rec,
-                 size_t   rec_size,
-                 char *obj,
-                 size_t obj_size);
+               const char     *rec,
+               size_t   rec_size,
+               const char *obj,
+               size_t obj_size);
 
     int (*parse)(struct kndTask *self,
-                 char     *rec,
+                 const char     *rec,
                  size_t   *total_size);
 };
 

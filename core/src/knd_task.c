@@ -13,6 +13,21 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
+
+static inline int
+check_name_limits(const char *b, const char *e, size_t *buf_size)
+{
+    *buf_size = e - b;
+    if (!(*buf_size)) return knd_LIMIT;
+    if ((*buf_size) >= KND_NAME_SIZE) {
+        knd_log("-- field tag too large: %lu bytes",
+                (unsigned long)buf_size);
+        return knd_LIMIT;
+    }
+    return knd_OK;
+}
+
+
 static void
 kndTask_del(struct kndTask *self)
 {
@@ -31,7 +46,6 @@ kndTask_reset(struct kndTask *self)
     self->sid_size = 0;
     self->uid_size = 0;
     self->tid_size = 0;
-    self->num_instructions = 0;
 }
 
 
@@ -137,9 +151,9 @@ kndTask_parse_domain(struct kndTask *self,
 
 static int
 kndTask_run(struct kndTask *self,
-            char *rec,
+            const char *rec,
             size_t rec_size,
-            char *obj,
+            const char *obj,
             size_t obj_size)
 {
     const char *header_tag = "knd::Task";
@@ -151,16 +165,14 @@ kndTask_run(struct kndTask *self,
     bool in_header = false;
     bool in_field = false;
     
-    char *c;
-    char *b;
-    char *e;
+    const char *b, *c, *e;
     size_t chunk_size;
     size_t total_size;
     
     int err = knd_FAIL;
     
     c = rec;
-    b = c;
+    b = rec;
     e = rec;
     
     if (DEBUG_TASK_LEVEL_2)
@@ -183,22 +195,13 @@ kndTask_run(struct kndTask *self,
             if (!in_body) break;
 
             if (in_field) {
-                buf_size = c - b;
-                if (buf_size > strlen(header_tag)) {
-                    knd_log("-- header tag too large: %lu bytes",
-                    (unsigned long)buf_size);
-                    return knd_LIMIT;
-                }
+                err = check_name_limits(b, c, &buf_size);
+                if (err) return err;
 
                 err = kndTask_parse_domain(self, b, buf_size, c, &chunk_size);
                 if (err) return err;
 
                 c += chunk_size;
-                
-                if (DEBUG_TASK_LEVEL_TMP)
-                    knd_log("++ Domain \"%s\" parse OK: %lu bytes     REMAINDER: %s",
-                            b, (unsigned long)chunk_size, c);
-
                 in_field = false;
                 b = c + 1;
                 break;
@@ -213,15 +216,8 @@ kndTask_run(struct kndTask *self,
             }
 
             if (!in_header) {
-                buf_size = e - b;
-                if (buf_size > strlen(header_tag)) {
-                    knd_log("-- header tag too large: %lu bytes",
-                    (unsigned long)buf_size);
-                    return knd_LIMIT;
-                }
-                
-                if (DEBUG_TASK_LEVEL_2)
-                    knd_log("++ HEADER: \"%s\" [%lu]", b, (unsigned long)buf_size);
+                err = check_name_limits(b, e, &buf_size);
+                if (err) return err;
                 
                 if (strncmp(b, header_tag, header_tag_size)){
                     knd_log("-- header tag mismatch");
@@ -239,15 +235,9 @@ kndTask_run(struct kndTask *self,
                 b = c + 1;
                 break;
             }
-            
-            buf_size = c - b;
-            if (!buf_size) {
-                knd_log("-- empty tag");
-                return knd_FAIL;
-            }
 
-            if (buf_size >= KND_NAME_SIZE)
-                return knd_LIMIT;
+            err = check_name_limits(b, c, &buf_size);
+            if (err) return err;
 
             err = kndTask_parse_domain(self, b, buf_size, c, &chunk_size);
             if (err) return err;
