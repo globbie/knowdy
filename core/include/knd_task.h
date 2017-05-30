@@ -59,8 +59,8 @@ struct kndTask
     char tid[KND_NAME_SIZE];
     size_t tid_size;
 
-    const char *input;
-    size_t input_size;
+    const char *spec;
+    size_t spec_size;
 
     const char *obj;
     size_t obj_size;

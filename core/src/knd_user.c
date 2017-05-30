@@ -114,21 +114,6 @@ kndUser_add_user(struct kndUser *self)
 
 
 static int
-kndUser_sync(struct kndUser *self)
-{
-    int err = knd_FAIL;
-
-    /* TODO: check all repos */
-    
-    err = self->repo->sync(self->repo);
-    if (err) return err;
-    
-    return err;
-}
-
-
-
-static int
 kndUser_get_user(struct kndUser *self, const char *uid,
                  struct kndUser **user)
 {
@@ -321,50 +306,6 @@ kndUser_read_repos(struct kndUser *self, char *rec, size_t rec_size __attribute_
     return err;
 }
 
-
-static int
-kndUser_get_repo(struct kndUser *self,
-                 const char *name,
-                 size_t name_size,
-                 struct kndRepo **result)
-{
-    struct kndRepo *repo = NULL;
-    const char *repo_id;
-    int err;
-
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log("..  get repo: \"%s\"..", name);
-
-    repo = self->repo_idx->get(self->repo_idx, name);
-    if (repo) {
-        *result = repo;
-        return knd_OK;
-    }
-
-    repo_id = self->repo_name_idx->get(self->repo_name_idx, name);
-    if (!repo_id) return knd_FAIL;
-
-    err = kndRepo_new(&repo);
-    if (err) return knd_NOMEM;
-
-    memcpy(repo->id, repo_id, KND_ID_SIZE);
-    repo->user = self;
-    repo->out = self->out;
-
-    memcpy(repo->name, name, name_size);
-    repo->name_size = name_size;
-    repo->name[name_size] = '\0';
-    
-    err = repo->open(repo);
-    if (err) return err;
-    
-    err = self->repo_idx->set(self->repo_idx, name, (void*)repo);
-    if (err) return err;
-
-    *result = repo;
-    
-    return knd_OK;
-}
 
 
 static int
@@ -703,12 +644,12 @@ kndUser_parse_repo(void *obj,
     if (DEBUG_USER_LEVEL_2)
         knd_log("   .. parsing the REPO rec: \"%s\"", rec);
 
+    self->repo->task = self->task;
     err = self->repo->parse_task(self->repo, rec, total_size);
     if (err) return err;
     
     return knd_OK;
 }
-
 
 static int
 kndUser_run_sid_check(void *obj, struct kndTaskArg *args, size_t num_args)
@@ -818,12 +759,9 @@ kndUser_init(struct kndUser *self)
     self->add_user = kndUser_add_user;
     self->get_user = kndUser_get_user;
 
-    self->get_repo = kndUser_get_repo;
-
     self->read = kndUser_read;
     self->restore = kndUser_restore;
 
-    self->sync = kndUser_sync;
     return knd_OK;
 }
 
@@ -853,11 +791,6 @@ kndUser_new(struct kndUser **user)
     err = ooDict_new(&self->browse_class_idx, KND_SMALL_DICT_SIZE);
     if (err) return knd_NOMEM;
 
-    err = ooDict_new(&self->repo_idx, KND_SMALL_DICT_SIZE);
-    if (err) return knd_NOMEM;
-
-    err = ooDict_new(&self->repo_name_idx, KND_SMALL_DICT_SIZE);
-    if (err) return knd_NOMEM;
 
     err = kndOutput_new(&self->out, KND_TEMP_BUF_SIZE);
     if (err) return err;

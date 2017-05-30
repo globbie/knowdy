@@ -118,7 +118,7 @@ knd_write_file(const char *path, const char *filename,
 
 extern int 
 knd_append_file(const char *filename, 
-                void *buf, size_t buf_size);
+                const void *buf, size_t buf_size);
 
 extern int knd_make_id_path(char *buf,
 		     const char *path,

@@ -289,8 +289,13 @@ kndDataClass_read_GSL(struct kndDataClass *self,
         case '}':
 
             memcpy(buf, self->namespace, self->namespace_size);
-            memcpy(buf + self->namespace_size, dc->name, dc->name_size);
-            buf_size = self->namespace_size + dc->name_size;
+            buf_size = self->namespace_size;
+
+            memcpy(buf + buf_size, "::", strlen("::"));
+            buf_size += strlen("::");
+            
+            memcpy(buf + buf_size, dc->name, dc->name_size);
+            buf_size += dc->name_size;
             buf[buf_size] = '\0';
             
             /* save class */

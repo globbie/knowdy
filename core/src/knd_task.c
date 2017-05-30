@@ -134,6 +134,7 @@ kndTask_parse_domain(struct kndTask *self,
     case 'u':
     case 'U':
         if (!strncmp(user_tag, name, name_size)) {
+            self->admin->task = self;
             err = self->admin->parse_task(self->admin, rec, total_size);
             if (err) {
                 knd_log("-- User area parse failed");
@@ -170,6 +171,11 @@ kndTask_run(struct kndTask *self,
     size_t total_size;
     
     int err = knd_FAIL;
+
+    self->spec = rec;
+    self->spec_size = rec_size;
+    self->obj = obj;
+    self->obj_size = obj_size;
     
     c = rec;
     b = rec;

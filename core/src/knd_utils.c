@@ -230,7 +230,7 @@ knd_write_file(const char *path, const char *filename,
 
 extern int 
 knd_append_file(const char *filename, 
-                void *buf, size_t buf_size)
+                const void *buf, size_t buf_size)
 {
     int fd;
 
@@ -873,7 +873,7 @@ knd_parse_task(const char *rec,
     e = rec;
     
      if (DEBUG_UTILS_LEVEL_2)
-         knd_log(".. parse task: \"%s\"", rec);
+         knd_log("\n.. parse task: \"%s\"", rec);
   
     while (*c) {
         switch (*c) {
@@ -901,9 +901,8 @@ knd_parse_task(const char *rec,
                         continue;
                     }
                     
-                    if (DEBUG_UTILS_LEVEL_TMP)
-                        knd_log("== curr SPEC name: \"%s\"",
-                                spec->name);
+                    if (DEBUG_UTILS_LEVEL_2)
+                        knd_log("== curr SPEC name: \"%s\"", spec->name);
 
                     if (!strncmp(b, spec->name, spec->name_size)) {
                         curr_spec = spec;
@@ -941,11 +940,12 @@ knd_parse_task(const char *rec,
                         break;
                     }
 
-                    if (DEBUG_UTILS_LEVEL_TMP)
+                    /*if (DEBUG_UTILS_LEVEL_TMP)
                         knd_log("-- unrecognized task: \"%.*s\" :(",
                                 buf_size, b);
 
-                    return knd_FAIL;
+                                return knd_FAIL; */
+                    
                 }
             }
             
@@ -957,8 +957,6 @@ knd_parse_task(const char *rec,
                 e = b;
                 break;
             }
-
-
             
             break;
         case '}':
@@ -966,7 +964,7 @@ knd_parse_task(const char *rec,
                 err = check_name_limits(b, e, &buf_size);
                 if (err) return err;
 
-                if (DEBUG_UTILS_LEVEL_TMP)
+                if (DEBUG_UTILS_LEVEL_2)
                     knd_log("++ got arg: \"%.*s\" [%lu]",
                             buf_size, b, (unsigned long)buf_size);
 
@@ -981,16 +979,20 @@ knd_parse_task(const char *rec,
 
                 if (spec->run) {
                     err = spec->run(spec->obj, args, num_args);
-                    if (err) return err;
+                    if (err) {
+                        if (DEBUG_UTILS_LEVEL_TMP)
+                            knd_log("-- func run failed: %d :(", err);
+                        return err;
+                    }
                 }
 
-                if (DEBUG_UTILS_LEVEL_2)
-                    knd_log("\n  == remainder to parse: \"%s\"\n", c);
-
-                *total_size = c - rec;
-                return knd_OK;
+                b = c + 1;
+                e = b;
+                in_terminal = false;
+                in_field = false;
+                break;
             }
-
+            
             
             *total_size = c - rec;
             return knd_OK;

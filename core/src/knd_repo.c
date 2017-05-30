@@ -29,24 +29,25 @@ kndRepo_get_guid(struct kndRepo *self,
                  char *result);
 
 static int
+kndRepo_get_cache(struct kndRepo *self, struct kndDataClass *c,
+                  struct kndRepoCache **result);
+
+static int
 kndRepo_import_obj(struct kndRepo *self,
                    const char *rec,
                    size_t *total_size);
-
-static int
-kndRepo_get_cache(struct kndRepo *self, struct kndDataClass *c,
-                  struct kndRepoCache **result);
 
 static int 
 kndRepo_export(struct kndRepo *self,
                 knd_format format);
 
+static int
+kndRepo_sync(struct kndRepo *self);
+
 static int 
 kndRepo_del(struct kndRepo *self)
 {
-
     free(self);
-
     return knd_OK;
 }
 
@@ -191,8 +192,6 @@ kndRepo_open(struct kndRepo *self)
     self->path[buf_size] = '\0';
     self->path_size = buf_size;
 
-    
-
     if (self->restore_mode) {
         err = kndRepo_parse_config(self, self->out->file, &chunk_size);
         if (err) return err;
@@ -209,7 +208,6 @@ kndRepo_open(struct kndRepo *self)
     if (DEBUG_REPO_LEVEL_2)
         knd_log("++ REPO open success: \"%s\" PATH: \"%s\"",
                 self->out->file, self->path);
-
     
     return knd_OK;
 }
@@ -281,14 +279,15 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
 {
     char buf[KND_TEMP_BUF_SIZE];
     char path[KND_TEMP_BUF_SIZE];
+    size_t path_size;
     struct kndRepo *repo;
     int err;
 
     /* check if repo's name is unique */
     memcpy(buf, name, name_size);
     buf[name_size] = '\0';
-    repo = self->user->repo_name_idx->get(self->user->repo_name_idx,
-                                          buf);
+    repo = self->repo_idx->get(self->repo_idx,
+                               buf);
     if (repo) {
         knd_log("-- \"%s\" REPO name already taken?", buf);
         return knd_FAIL;
@@ -307,7 +306,6 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
     memcpy(repo->name, name, name_size);
     repo->name_size = name_size;
     repo->name[name_size] = '\0';
-
 
     /* check repo's existence: must be an error */
     err = kndRepo_open(repo);
@@ -328,6 +326,11 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
     /* TODO: check if DIR already exists */
     err = knd_mkpath(path, 0755, false);
     if (err) goto final;
+
+    path_size = strlen(path);
+    memcpy(self->path, path, path_size);
+    self->path_size = path_size;
+    self->path[path_size] = '\0';
     
     /* in batch mode:
           ignore incoming tasks
@@ -351,9 +354,9 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
                          repo->out->buf, repo->out->buf_size);
     if (err) goto final;
 
-    err = self->user->repo_name_idx->set(self->user->repo_name_idx,
-                                         repo->name,
-                                         repo);
+    err = self->repo_idx->set(self->repo_idx,
+                              repo->name,
+                              repo);
     if (err) goto final;
 
     /* increment id */
@@ -398,6 +401,125 @@ kndRepo_run_add_repo(void *obj, struct kndTaskArg *args, size_t num_args)
     return knd_OK;
 }
 
+
+
+static int
+kndRepo_run_get_repo(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndRepo *repo, *curr_repo;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    size_t name_size = 0;
+    
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "n", strlen("n"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+
+    if (!name_size) return knd_FAIL;
+
+    repo = (struct kndRepo*)obj;
+    repo->curr_repo = NULL;
+    
+    curr_repo = repo->repo_idx->get(repo->repo_idx,
+                                    name);
+    if (!curr_repo) {
+        if (DEBUG_REPO_LEVEL_TMP)
+            knd_log("-- no such repo: \"%s\" :(", name);
+        return knd_FAIL;
+    }
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("++ got repo: \"%s\"!\n", name);
+
+    repo->curr_repo = curr_repo;
+    
+    return knd_OK;
+}
+
+static int
+kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndRepo *self;
+    struct ooDict *idx;
+    struct kndDataClass *dc;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    size_t name_size = 0;
+    int err;
+
+    self = (struct kndRepo *)obj;
+    self->curr_cache = NULL;
+    
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "n", strlen("n"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+
+    if (!name_size) return knd_FAIL;
+
+    /* check classname */
+    idx = self->user->root_dc->class_idx;
+    dc = (struct kndDataClass*)idx->get(idx,
+                                        name);
+    if (!dc) {
+        if (DEBUG_REPO_LEVEL_TMP)
+            knd_log("   -- classname \"%s\" is not valid :(\n", name);
+        return knd_FAIL;
+    }
+    self->curr_class = dc;
+
+    err = kndRepo_get_cache(self, dc, &self->curr_cache);
+    if (err) return err;
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("++ got class cache: \"%s\"!", dc->name);
+
+    return knd_OK;
+}
+
+
+static int
+kndRepo_run_import_obj(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndRepo *self;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    size_t chunk_size = 0;
+    size_t name_size = 0;
+    int err;
+    
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "import", strlen("import"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+    if (!name_size) return knd_FAIL;
+
+    self = (struct kndRepo*)obj;
+
+    /* obj from separate msg */
+    if (!strncmp(name, "_obj", strlen("_obj"))) {
+        if (DEBUG_REPO_LEVEL_TMP)
+            knd_log("   .. IMPORT OBJ: \"%s\"", self->task->obj);
+
+        err = kndRepo_import_obj(self, self->task->obj, &chunk_size);
+        if (err) return err;
+        return knd_OK;
+    }
+    
+    return knd_FAIL;
+}
+
+
 static int
 kndRepo_import_inbox_data(struct kndRepo *self,
                           const char *rec)
@@ -410,6 +532,8 @@ kndRepo_import_inbox_data(struct kndRepo *self,
     
     err = kndTask_new(&task);
     if (err) return err;
+
+    self->task = task;
     
     c = rec;
     while (*c) {
@@ -432,8 +556,9 @@ kndRepo_import_inbox_data(struct kndRepo *self,
                 break;
             }
 
-            err = kndRepo_import_obj(self, c, &chunk_size);
+            /*err = kndRepo_read_obj(self, c, &chunk_size);
             if (err) return err;
+            */
             
             c += chunk_size;
             in_task = true;
@@ -547,9 +672,7 @@ kndRepo_read_idx(struct kndRepo *self,
 }
 
 
-
-
-static int
+/*static int
 kndRepo_build_idx_path(struct kndRepo *self,
                        struct kndDataClass *dc,
                        const char *pref,
@@ -597,7 +720,6 @@ kndRepo_build_idx_path(struct kndRepo *self,
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("   == ATOMIC ELEM \"%s\"\n",
                     buf);
-
         
         switch (attr->type) {
         case  KND_ELEM_REF:
@@ -631,98 +753,8 @@ kndRepo_build_idx_path(struct kndRepo *self,
     return knd_OK;
 }
 
+*/
 
-static int
-kndRepo_read_indices(struct kndRepo *self,
-                     struct kndRepoCache *cache)
-{
-    int err;
-
-    /* default alphabetic AZ idx */
-    err = kndRepo_read_idx(self, cache, "AZ", strlen("AZ"));
-    if (err) return err;
-    
-    err = kndRepo_build_idx_path(self, cache->baseclass, "", 0, cache);
-    if (err) return err;
-
-    return knd_OK;
-}
-
-
-static int
-kndRepo_select(struct kndRepo *self, struct kndData *data)
-{
-    //char buf[KND_TEMP_BUF_SIZE];
-    //size_t buf_size;
-
-    struct kndDataClass *dc;
-    //struct kndObject *obj;
-    struct kndRepoCache *cache;
-    //struct kndRefSet *browser;
-    //struct kndRefSet *refset;
-    //struct ooDict *idx;
-    
-    //void *delivery;
-    //char *rec = NULL;
-    //size_t rec_size;
-    //char *header = NULL;
-    //size_t header_size;
-
-    //size_t num_objs;
-    
-    //const char *key = NULL;
-    //void *val = NULL;
-
-    int err;
-
-    self->curr_class = NULL;
-    
-    /* check class */
-    /*data->classname_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "class",
-                       data->classname, &data->classname_size);
-    if (err)
-        return kndRepo_default_select(self, data);
-    */
-    
-    /* check classname */
-    dc = (struct kndDataClass*)self->user->class_idx->get(self->user->class_idx,
-                                    (const char*)data->classname);
-    if (!dc) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("   -- classname \"%s\" is not valid :(\n", data->classname);
-        return knd_FAIL;
-    }
-
-    if (DEBUG_REPO_LEVEL_TMP) 
-        knd_log("\n\n    .. REPO:%s    selecting class \"%s\"..\n",
-                self->name, data->classname);
-
-    err = kndRepo_get_cache(self, dc, &cache);
-    if (err) return err;
-
-    self->curr_class = dc;
-
-    if (!cache->browser->num_refs) {
-        err = kndRepo_read_indices(self, cache);
-        if (err) return err;
-    }
-
-    /* reset */
-    cache->select_result = NULL;
-    memset(cache->matches, 0, sizeof(struct kndObject*) * KND_MAX_MATCHES);
-    cache->num_matches = 0;
-    
-    cache->query->reset(cache->query);
-    err = cache->query->parse(cache->query,
-                              data->query, data->query_size);
-    if (err) return err;
-
-    err = cache->query->exec(cache->query);
-    if (err) return err;
-
-    return knd_OK;
-}
 
 
 static int
@@ -822,20 +854,18 @@ kndRepo_read_db_chunk(struct kndRepo *self,
     
     memcpy(buf, s, buf_size);
     buf[buf_size] = '\0';
-
     
     if (DEBUG_REPO_LEVEL_3)
         knd_log("  ++ OBJ REC: \"%s\" [SIZE: %lu]\n\n",
                 buf, (unsigned long)buf_size);
-    
+
     err = kndObject_new(&obj);
     if (err) return err;
 
     obj->cache = cache;
-
     obj->out = self->out;
     obj->out->reset(obj->out);
-    
+   
     err = obj->parse(obj, buf, buf_size, KND_FORMAT_GSC);
     if (err) {
         if (DEBUG_REPO_LEVEL_TMP)
@@ -904,907 +934,7 @@ kndRepo_read_obj_db(struct kndRepo *self,
     return knd_OK;
 }
 
-static int
-kndRepo_update_select_class(struct kndRepo *self, struct kndData *data,
-                            struct kndRepoCache *cache)
-{
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
 
-    struct kndRefSet *browser = NULL;
-    void *delivery;
-    char *header = NULL;
-    size_t header_size;
-    char *confirm = NULL;
-    size_t confirm_size;
-    int err;
-
-    delivery = NULL; /*self->user->writer->delivery;*/
-
-    knd_log("   .. UPDATE select in CLASS  \"%s\"..\n",
-            cache->baseclass->name);
-
-    browser = cache->browser;
-
-    /* got some fresh updates? */
-        /*if (!browser->is_updated) {
-            knd_log("   -- no new updates in RefSet for \"%s\"\n",
-                    cache->baseclass->name);
-            goto next_cache;
-            }*/
-        
-    browser->out = self->out;
-    browser->out->reset(browser->out);
-        
-    err = browser->sync(browser);
-    if (err) return err;
-
-    /* save refset in Delivery */
-    buf_size = sprintf(buf, "<spec action=\"update_select\" uid=\"%s\" "
-                       "    class=\"%s\" sid=\"AUTH_SERVER_SID\"/>",
-                       self->user->id,  cache->baseclass->name);
-
-    err = knd_zmq_sendmore(delivery, (const char*)buf, buf_size);
-    err = knd_zmq_sendmore(delivery, data->obj, data->obj_size);
-    err = knd_zmq_sendmore(delivery, "None", 4);
-    err = knd_zmq_send(delivery, browser->out->buf, browser->out->buf_size);
-        
-    /* get reply from delivery */
-    header = knd_zmq_recv(delivery, &header_size);
-    confirm = knd_zmq_recv(delivery, &confirm_size);
-
-    
-    if (DEBUG_REPO_LEVEL_3)
-        knd_log("  SELECT UPDATE SPEC: %s\n\n  == Delivery Service reply: %s\n",
-                buf, confirm);
-
-    /* TODO: check delivery reply */
-    
-    free(header);
-    free(confirm);
-
-    header = NULL;
-    confirm = NULL;
-    
-    browser->out->reset(browser->out);
-
-    err = browser->out->write(browser->out,  "\"objs\":[", strlen("\"objs\":["));
-    if (err) return err;
-   
-    err = browser->export_summaries(browser, KND_FORMAT_JSON, 0, 0);
-    if (err) return err;
-
-    err = browser->out->write(browser->out, "]", 1);
-    if (err) return err;
-
-    if (DEBUG_REPO_LEVEL_3)
-        knd_log("\n\n OBJ SUMMARIES:\n%s\n\n", browser->out->buf);
-        
-    /* save obj summaries in Delivery */
-    buf_size = sprintf(buf, "<spec action=\"update_summaries\" uid=\"%s\" "
-                       "    class=\"%s\" format=\"JSON\" sid=\"AUTH_SERVER_SID\"/>",
-                       self->user->id,  cache->baseclass->name);
-
-    err = knd_zmq_sendmore(delivery, (const char*)buf, buf_size);
-    err = knd_zmq_sendmore(delivery, "/", 1);
-    err = knd_zmq_sendmore(delivery, "None", 4);
-    err = knd_zmq_send(delivery, browser->out->buf, browser->out->buf_size);
-        
-    /* get reply from delivery */
-    header = knd_zmq_recv(delivery, &header_size);
-    confirm = knd_zmq_recv(delivery, &confirm_size);
-    
-    if (DEBUG_REPO_LEVEL_3)
-        knd_log("    EXPORT SUMMARIES SPEC: %s\n\n  == Delivery Service reply: %s\n",
-                buf, confirm);
-    
-    if (!strcmp(confirm, "OK")) 
-        browser->is_updated = false;
-
-    err = knd_OK;
-    
-    if (header)
-        free(header);
-    if (confirm)
-        free(confirm);
-
-    return err;
-}
-
-static int
-kndRepo_liquid_select(struct kndRepo *self, struct kndData *data)
-{
-    struct kndDataClass *dc = NULL;
-    struct kndRepoCache *cache;
-
-    int err = knd_FAIL;
-
-    knd_log("  .. repo SELECT in progress: %s\n", data->spec);
-    
-    /* select specific class */
-    /*data->classname_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "class",
-                       data->classname, &data->classname_size);
-    */
-
-    if (!err) {
-        dc = self->user->class_idx->get(self->user->class_idx,
-                                        (const char*)data->classname);
-        if (!dc) {
-            if (DEBUG_REPO_LEVEL_TMP)
-                knd_log("  .. classname \"%s\" is not valid...\n", data->classname);
-            return knd_FAIL;
-        }
-
-        err = kndRepo_get_cache(self, dc, &cache);
-        if (err) return err;
-
-        err = kndRepo_update_select_class(self, data, cache);
-        if (err) return err;
-    }
-    
-    /* set language */
-    /*self->lang_code_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "lang",
-                       self->lang_code, &self->lang_code_size);
-    */
-    if (err)
-        self->lang_code_size = 0;
-
-    cache = self->cache;
-    if (!cache) {
-        knd_log("   -- no cached data in Repo?\n");
-        return err;
-    }
-
-    /* select from all classes */
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("  .. selecting from all available classes ..\n");
-
-    while (cache) {
-        err = kndRepo_update_select_class(self, data, cache);
-        if (err) return err;
-        
-        cache = cache->next;
-    }
-    
-    return knd_OK;
-}
-
-
-static int
-kndRepo_get_liquid_obj(struct kndRepo *self)
-{
-    struct kndDataClass *c = NULL;
-    struct kndRepoCache *cache;
-    struct kndObject *obj = NULL;
-    struct ooDict *idx = NULL;
-    const char *classname;
-    const char *name;
-    
-    int err;
-
-    if (DEBUG_REPO_LEVEL_3)
-        knd_log("  .. repo GET obj in progress..");
-
-    /*data->name_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "name",
-                       data->name, &data->name_size);
-    if (err) {
-        knd_log("  -- no name provided :(\n");
-        return knd_FAIL;
-    }
-    */
-    
-    /* check class */
-    /*data->classname_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "class",
-                       data->classname, &data->classname_size);
-    if (err) return err;
-    */
-    
-    /* check classname */
-    idx = self->user->root_dc->class_idx;
-    if (!idx) return knd_FAIL;
-    
-    c = idx->get(idx,
-                 (const char*)classname);
-    if (!c) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("  .. classname \"%s\" is not valid...\n", classname);
-        return knd_FAIL;
-    }
-    
-    err = kndRepo_get_cache(self, c, &cache);
-    if (err) goto final;
-
-    /* set language */
-    /*self->lang_code_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "lang",
-                       self->lang_code, &self->lang_code_size);
-    if (err)
-        self->lang_code_size = 0;
-    */
-    
-    /* get obj by name */
-    obj = (struct kndObject*)cache->obj_idx->get(cache->obj_idx,
-                                                 (const char*)name);
-    if (!obj) {
-        knd_log("  -- obj %s not found :(\n",
-            name);
-        err = knd_NO_MATCH;
-        goto final;
-    }
-
-    obj->out = self->out;
-
-    /* export obj */
-    err = obj->export(obj, KND_FORMAT_JSON, 0);
-    if (err) {
-        knd_log("  -- obj %s export failure :(\n",
-            name);
-        goto final;
-    }
-
-    /*if (DEBUG_REPO_LEVEL_TMP) {
-        knd_log("\n    ++ CONTAINER refset:");
-        cache->contain_idx->str(cache->contain_idx, 1, 5);
-        }*/
-    
-    /* OBJ file attachment */
-    if (obj->filepath) {
-
-        knd_log("\n\n  == OBJ DATA filepath: \"%s\"\n", obj->filepath);
-        
-        /*data->filepath = strdup(obj->filepath);
-        if (!data->filepath) {
-            err = knd_NOMEM;
-            goto final;
-        }
-        data->filepath_size = obj->filepath_size;
-        
-        data->filesize = obj->filesize;
-        
-        if (obj->mimetype_size) {
-            strcpy(data->mimetype, obj->mimetype);
-            data->mimetype_size = obj->mimetype_size;
-            }*/
-        
-    }
-
-    knd_log("\nOBJ AFTER export: %s [%lu]\n\n",
-            obj->out->buf, (unsigned long)obj->out->buf_size);
-
-    
- final:
-    
-    
-    return err;
-}
-
-
-static int
-kndRepo_get_obj(struct kndRepo *self)
-{
-    char guid[KND_ID_SIZE + 1] = {0};
-    struct kndDataClass *dc = NULL;
-    struct kndRepoCache *cache;
-    struct kndObject *obj = NULL;
-    struct ooDict *idx = NULL;
-
-    const char *repo_name = NULL;
-    //size_t repo_name_size = 0;
-    
-    const char *class_name = NULL;
-    //size_t class_name_size = 0;
-    
-    const char *obj_name = NULL;
-    size_t obj_name_size = 0;
-    
-
-    knd_format format;
-    size_t curr_depth = 0;
-    int err = knd_FAIL;
-
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("  .. repo GET in progress..");
-    
-    /*  for (size_t i = 0; i < self->instruct->num_args; i++) {
-        arg = &self->instruct->args[i];
-        if (!strcmp(arg->name, "n")) {
-            repo_name = arg->name;
-            repo_name_size = arg->name_size;
-            continue;
-        }
-        if (!strcmp(arg->name, "cls")) {
-            class_name = arg->name;
-            class_name_size = arg->name_size;
-            continue;
-        }
-        if (!strcmp(arg->name, "obj")) {
-            obj_name = arg->name;
-            obj_name_size = arg->name_size;
-            continue;
-        }
-    }
-    */
-    
-    if (!repo_name) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("    -- no repo name :(");
-        return knd_FAIL;
-    }
-
-    if (!class_name) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("    -- no class name :(");
-        return knd_FAIL;
-    }
-
-    if (!class_name) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("    -- no obj name :(");
-        return knd_FAIL;
-    }
-    
-    /* check classname */
-    idx = self->user->root_dc->class_idx;
-    if (!idx) {
-        if (DEBUG_REPO_LEVEL_2)
-            knd_log("    -- no class name IDX :(");
-        return knd_FAIL;
-    }
-    
-    dc = idx->get(idx, class_name);
-    if (!dc) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("    -- \"%s\" class name is not valid :(", class_name);
-        return knd_FAIL;
-    }
-    
-    err = kndRepo_get_cache(self, dc, &cache);
-    if (err) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("    -- no cache found for class \"%s\" :(", class_name);
-        return err;
-    }
-
-    err = kndRepo_get_guid(self, dc,
-                           obj_name, obj_name_size,
-                           guid);
-    if (err) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("   -- \"%s\" name not recognized :(", obj_name);
-        return knd_FAIL;
-    }
-    guid[KND_ID_SIZE] = '\0';
-
-    /* set language */
-    /*self->lang_code_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "lang",
-                       self->lang_code, &self->lang_code_size);
-    if (err)
-        self->lang_code_size = 0;
-    */
-    
-    /* output format specified? */
-    /*buf_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "format",
-                       buf, &buf_size);
-    if (!err) {
-        if (!strcmp(buf, "HTML"))
-            data->format = KND_FORMAT_HTML;
-        else if (!strcmp(buf, "JS"))
-            data->format = KND_FORMAT_JS;
-    }
-    */
-    
-    /* set nesting depth */
-    /*curr_depth = KND_DEFAULT_OBJ_DEPTH;
-    buf_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "depth",
-                       buf, &buf_size);
-    if (!err) {
-        err = knd_parse_num((const char*)buf, &numval);
-        if (!err) {
-            if (numval >= 0 && numval < KND_MAX_OBJ_DEPTH)
-                curr_depth = numval;
-        }
-    }
-    */
-    
-    /* get obj by name */
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log("   ?? get browser state obj \"%s\" (depth: %lu)\n",
-                obj_name, (unsigned long)curr_depth);
-
-    obj = (struct kndObject*)cache->db->get(cache->db,
-                                            (const char*)guid);
-    if (!obj) {
-        if (DEBUG_REPO_LEVEL_2)
-            knd_log("   -- no obj in cache..\n");
-
-        err = kndRepo_read_obj_db(self,
-                                  (const char*)guid,
-                                  cache,
-                                  &obj);
-        if (err) return err;
-    }
-
-
-    if (DEBUG_REPO_LEVEL_TMP)
-        obj->str(obj, 1);
-    
-    if (curr_depth) {
-        obj->export_depth = curr_depth;
-
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log(" .. expanding obj %s [%s]..\n", obj->name, obj->id);
-
-        if (!obj->is_expanded) {
-            err = obj->expand(obj, 0);
-            if (err) return err;
-        }
-    }
-
-    
-    self->out = self->out;
-    self->out->reset(self->out);
-    
-
-    /*    if (data->format == KND_FORMAT_JSON) {
-        err = self->out->write(self->out,
-                               "{\"baseclass\":",
-                               strlen("{\"baseclass\":"));
-        if (err) return err;
-    }
-    
-    err = cache->baseclass->export(cache->baseclass, data->format);
-    if (err) return err;
-
-    if (data->format == KND_FORMAT_JSON) {
-        err = self->out->write(self->out,
-                               ",\"obj\":",
-                               strlen(",\"obj\":"));
-        if (err) return err;
-    }
-    */
-    
-    /*obj->str(obj, 1);*/
-    
-    /* export obj */
-    format = KND_FORMAT_JSON;
-    obj->out = self->out;
-    obj->export_depth = 0;
-    
-    err = obj->export(obj, format, 0);
-    if (err) return err;
-    
-    if (format == KND_FORMAT_JSON) {
-        err = self->out->write(self->out, "}", 1);
-    }
-
-    if (format == KND_FORMAT_HTML) {
-
-        err = self->out->write(self->out, "<script type=\"text/javascript\">", strlen("<script type=\"text/javascript\">"));
-
-        err = self->out->write(self->out, "oo_init.get_obj = ", strlen("oo_init.get_obj = "));
-
-        err = self->out->write(self->out,
-                               "{\"baseclass\":",
-                               strlen("{\"baseclass\":"));
-        if (err) return err;
-
-        err = cache->baseclass->export(cache->baseclass, KND_FORMAT_JSON);
-        if (err) return err;
-
-        err = self->out->write(self->out,
-                               ",\"obj\":",
-                               strlen(",\"obj\":"));
-        if (err) return err;
-
-        err = obj->export(obj, KND_FORMAT_JSON, 0);
-        if (err) return err;
-
-        err = self->out->write(self->out, "}", 1);
-        err = self->out->write(self->out, "</script>", strlen("</script>"));
-    }
-
-
-    /* OBJ file attachment */
-    /*if (obj->filepath) {
-        data->filename = strdup(obj->filepath);
-        if (!data->filename) {
-            err = knd_NOMEM;
-            goto final;
-        }
-
-        data->filesize = obj->filesize;
-        
-        if (obj->mimetype_size) {
-            strcpy(data->mimetype, obj->mimetype);
-            data->mimetype_size = obj->mimetype_size;
-        }
-    }
-    */
-
-    /*self->out = self->out;*/
-
-    /*err = self->out->write(self->out, "{", 1);
-    if (err) goto final;
-    */
-
-
-    /*if (DEBUG_REPO_LEVEL_1)
-        knd_log("\nEXPORT RESULT: %s [%lu]\n\nMETA: %s\n",
-                self->out->buf, (unsigned long)obj->out->buf_size,
-                self->user->reader->obj_out->buf);
-
-    */
-
-    
-    /*err = self->out->write(self->out,
-                           obj->out->buf,
-                           obj->out->buf_size);
-    if (err) goto final;
-    */
-    
-    /* export refs */
-    /*rel_entry = (struct kndRelEntry*)idx->get(idx,
-                                              data->name);
-    if (rel_entry) {
-        knd_log("   .. export refs..\n");
-        
-        err = self->out->write(self->out,
-                               ",\"reltypes\":[",
-                               strlen(",\"reltypes\":["));
-
-        cache->maze->rel_idx->out = self->out;
-        
-        err = cache->maze->rel_idx->export(cache->maze->rel_idx,
-                                           rel_entry, obj);
-        knd_log("   == REL IDX export result: %d\n", err);
-        if (err) goto final;
-
-        err = self->out->write(self->out, "]", 1);
-        if (err) goto final;
-    }
-
-    err = self->out->write(self->out, "}", 1);
-    if (err) goto final;
-    */
-
-    return knd_OK;
-}
-
-
-
-
-
-
-
-
-
-static int
-kndRepo_update_flatten(struct kndRepo *self, struct kndData *data)
-{
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
-    struct kndDataClass *c = NULL;
-    struct kndRepoCache *cache;
-    struct kndObject *obj = NULL;
-    struct ooDict *idx = NULL;
-    
-    struct kndFlatTable *table = NULL;
-    struct kndFlatRow *row;
-    struct kndFlatCell *cell;
-
-    unsigned long span = 0;
-    long total = 0;
-    struct kndOutput *out;
-    int err;
-
-    knd_log("  .. repo FLATTEN obj in progress..\n");
-
-    /*data->name_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "name",
-                       data->name, &data->name_size);
-    if (err) {
-        knd_log("  -- no name provided :(\n");
-        return knd_FAIL;
-    }
-    */
-    
-    /* check class */
-    /*data->classname_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "class",
-                       data->classname, &data->classname_size);
-    if (err) return err;
-    */
-    
-    /* check classname */
-    idx = self->user->root_dc->class_idx;
-    if (!idx) return knd_FAIL;
-    
-    c = idx->get(idx,
-                 (const char*)data->classname);
-    if (!c) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("  .. classname \"%s\" is not valid...\n", data->classname);
-        return knd_FAIL;
-    }
-    
-    err = kndRepo_get_cache(self, c, &cache);
-    if (err) goto final;
-
-    /* set language */
-    /*self->lang_code_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "lang",
-                       self->lang_code, &self->lang_code_size);
-    if (err)
-        self->lang_code_size = 0;
-    */
-    
-    /* get obj by name */
-    obj = (struct kndObject*)cache->obj_idx->get(cache->obj_idx,
-                                                 (const char*)data->name);
-    if (!obj) {
-        knd_log("  -- obj %s not found :(\n",
-            data->name);
-        err = knd_NO_MATCH;
-        goto final;
-    }
-
-
-    table  = malloc(sizeof(struct kndFlatTable));
-    if (!table) return knd_NOMEM;
-    memset(table, 0, sizeof(struct kndFlatTable));
-    
-    err = obj->flatten(obj, table, &span);
-    if (err) goto final;
-
-    knd_log("   FINAL FLATTENED TABLE:  span: %lu  num rows: %lu\n",
-            (unsigned long)span, (unsigned long)table->num_rows);
-
-    out = self->out;
-
-    buf_size = sprintf(buf, "{\"name\":\"%s\",\"span\":%lu,\"header\":[",
-                       obj->name,
-                       (unsigned long)span);
-    err = out->write(out, buf, buf_size);
-    if (err) goto final;
-    
-    for (size_t i = 0; i < span; i++) {
-        total = table->totals[i];
-        if (i) {
-            out->write(out, ",", 1);
-            if (err) goto final;
-        }
-        buf_size = sprintf(buf, "{\"tot\":%lu}",
-                           (unsigned long)total);
-        err = out->write(out, buf, buf_size);
-        if (err) goto final;
-    }
-
-    out->write(out, "]", 1);
-    if (err) goto final;
-
-    buf_size = sprintf(buf, ",\"table\":[");
-    err = out->write(out, buf, buf_size);
-    if (err) goto final;
-    
-
-    for (size_t i = 0; i < table->num_rows; i++) {
-        if (i) {
-            out->write(out, ",", 1);
-            if (err) goto final;
-        }
-
-        out->write(out, "[", 1);
-        if (err) goto final;
-        
-        row = &table->rows[i];
-        
-        for (size_t j = 0; j < row->num_cols; j++) {
-            cell = &row->cols[j];
-
-            if (j) {
-                out->write(out, ",", 1);
-                if (err) goto final;
-            }
-        
-            buf_size = sprintf(buf, "{\"name\":\"%s\",\"span\":%lu,\"estim\":%lu}",
-                               cell->obj->name,
-                               (unsigned long)cell->span,
-                               (unsigned long)cell->estim);
-
-            err = out->write(out, buf, buf_size);
-            if (err) goto final;
-        }
-
-        out->write(out, "]", 1);
-        if (err) goto final;
-
-    }
-
-    out->write(out, "]}", 2);
-    if (err) goto final;
-
-    knd_log("\nFLAT JSON TABLE: %s [%lu]\n\n",
-            out->buf, (unsigned long)out->buf_size);
-    
- final:
-
-    if (table)
-        free(table);
-
-    return err;
-}
-
-
-static int
-kndRepo_flatten(struct kndRepo *self __attribute__((unused)), struct kndData *data __attribute__((unused)))
-{
-    //struct kndDataClass *c = NULL;
-    //struct kndRepoCache *cache;
-    //struct kndObject *obj = NULL;
-    //struct ooDict *idx = NULL;
-
-    int err;
-
-    knd_log("  .. repo FLATTEN obj in progress..\n");
-
-    err = knd_OK;
-
-    return err;
-}
-
-
-
-static int
-kndRepo_liquid_match(struct kndRepo *self, struct kndData *data)
-{
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
-    struct kndDataClass *c = NULL;
-    struct kndRepoCache *cache;
-    struct kndObject *obj = NULL;
-    struct ooDict *idx = NULL;
-    //long span = 0;
-    //long total = 0;
-
-    void *delivery;
-
-    char *header = NULL;
-    size_t header_size;
-    char *confirm = NULL;
-    size_t confirm_size;
-
-    //struct kndOutput *out;
-    int err;
-
-    knd_log("  .. repo MATCH obj in progress..\n");
-
-    /* check class */
-    /*data->classname_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "class",
-                       data->classname, &data->classname_size);
-    if (err) return err;
-    */
-    
-    /* check classname */
-    idx = self->user->root_dc->class_idx;
-    if (!idx) return knd_FAIL;
-    
-    c = idx->get(idx,
-                 (const char*)data->classname);
-    if (!c) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("  .. classname \"%s\" is not valid...\n", data->classname);
-        return knd_FAIL;
-    }
-    
-    err = kndRepo_get_cache(self, c, &cache);
-    if (err) goto final;
-
-    /* set language */
-    /*self->lang_code_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "lang",
-                       self->lang_code, &self->lang_code_size);
-    if (err)
-        self->lang_code_size = 0;
-
-    */
-    
-    knd_log("\n   .. MATCH OBJ of class \"%s\": \"%s\"..\n\n",
-            c->name, data->body);
-
-    /*memset(cache->intersect_matrix, 0, cache->intersect_matrix_size);*/
-
-    self->match_state++;
-    
-    err = kndObject_new(&obj);
-    if (err) return err;
-    obj->cache = cache;
-    obj->out = self->out;
-    obj->out->reset(obj->out);
-
-    err = obj->match(obj, data->body, data->body_size);
-    if (err) goto final;
-
-    /* save matching results in Delivery */
-    buf_size = sprintf(buf, "<spec action=\"update_match\" uid=\"%s\" "
-                       "    class=\"%s\" sid=\"AUTH_SERVER_SID\"/>",
-                       self->user->id,  cache->baseclass->name);
-
-    delivery = NULL; /*self->user->writer->delivery;*/
-
-    err = knd_zmq_sendmore(delivery, (const char*)buf, buf_size);
-    err = knd_zmq_sendmore(delivery, data->body, data->body_size);
-    err = knd_zmq_sendmore(delivery, "None", 4);
-    err = knd_zmq_send(delivery, obj->out->buf, obj->out->buf_size);
-        
-    /* get reply from delivery */
-    header = knd_zmq_recv(delivery, &header_size);
-    confirm = knd_zmq_recv(delivery, &confirm_size);
-        
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("  MATCH UPDATE SPEC: %s\n\n  == Delivery Service reply: %s\n",
-                buf, confirm);
-
-    free(header);
-    free(confirm);
-        
-    err = knd_OK;
-    
- final:
-
-
-    return err;
-}
-
-
-static int
-kndRepo_match(struct kndRepo *self __attribute__((unused)), struct kndData *data __attribute__((unused)))
-{
-    //struct kndDataClass *c = NULL;
-    //struct kndRepoCache *cache;
-    //struct kndObject *obj = NULL;
-    //struct ooDict *idx = NULL;
-    int err;
-
-    knd_log("  .. repo MATCH obj in progress..\n");
-
-    /*   knd_log("   .. get updates for the CLASS: %s\n", dc->name);
-
-        buf_size = sprintf(buf, "<spec action=\"get_updates\" uid=\"%s\" "
-                           "    class=\"%s\" sid=\"AUTH_SERVER_SID\"/>",
-                           self->user->id, dc->name);
-
-        err = knd_zmq_sendmore(delivery, (const char*)buf, buf_size);
-
-        if (!strcmp(data->query, "None"))
-            err = knd_zmq_sendmore(delivery, "/", 1);
-        else
-            err = knd_zmq_sendmore(delivery, data->query, data->query_size);
-
-        err = knd_zmq_sendmore(delivery, "None", 4);
-        err = knd_zmq_send(delivery, "None", 4);
-
-        header = knd_zmq_recv(delivery, &header_size);
-        rec = knd_zmq_recv(delivery, &rec_size);
-
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("  UPDATES SPEC: %s\n\n  == Delivery Service header: \"%s\" [rec size:%lu]\n",
-                    buf, header, (unsigned long)rec_size);
-    */
-
-    err = knd_OK;
-
-    return err;
-}
 
 
 static int
@@ -1812,344 +942,45 @@ kndRepo_update_inbox(struct kndRepo *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
-    //int err;
-    
-    buf_size = sprintf(buf, "%sinbox/import.data", self->path);
-    
-    /*   if (DEBUG_REPO_LEVEL_TMP)
-        knd_log(".. update INBOX \"%s\" SPEC: %s [%lu]\nOBJ REC: \"%s\"\n",
-                buf, self->instruct->spec->input, (unsigned long)self->instruct->spec->input_size,
-                self->instruct->spec->obj);
-    
-    err = knd_append_file((const char*)buf,
-                          self->instruct->spec->input,
-                          self->instruct->spec->input_size);
-    if (err) return err;
-    
-    err = knd_append_file((const char*)buf,
-                          self->instruct->spec->obj,
-                          self->instruct->spec->obj_size);
-    if (err) return err;
-    */
-    
-    
-    /*
-    err = knd_append_file((const char*)buf, data->body, data->body_size);
-    if (err) goto final;
-    */
-    
-    return knd_OK;
-}
 
-static int
-kndRepo_update_obj(struct kndRepo *self,
-                   const char *rec,
-                   size_t *total_size,
-                   struct kndRepoCache *cache)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
-    
-    //struct kndDataClass *dc;
-    struct kndObject *obj;
-   
-    const char *c;
-    const char *b;
-    size_t chunk_size = 0;
-    
-    bool in_body = false;
-    //bool in_obj_list = false;
-    int err = knd_FAIL;
-    
-    c = rec;
-    b = c;
-    
-    while (*c) {
-        switch (*c) {
-            /* non-whitespace char */
-        default:
-            break;
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            /* whitespace */
-            b = c + 1;
-            break;
-        case '{':
-            if (!in_body) {
-                in_body = true;
-                b = c + 1;
-                break;
-            }
-
-            buf_size = c - b;
-            memcpy(buf, b, buf_size);
-            buf[buf_size] = '\0';
-            
-            knd_log("  ==  obj \"%s\" exists?\n", buf);
-
-            obj = (struct kndObject*)cache->obj_idx->get(cache->obj_idx,
-                                                 (const char*)buf);
-            if (!obj) {
-                knd_log("  -- obj \"%s\" not found :(\n",
-                        buf);
-                err = knd_NO_MATCH;
-                goto final;
-            }
-    
-            err = obj->update(obj, c, &chunk_size);
-            if (err) goto final;
-            c += (chunk_size - 1);
-
-            knd_log("\n  ++ Repo: OBJ update OK! [curr state: %lu] chunk: %lu remainder: %s\n",
-                    (unsigned long)self->state, (unsigned long)chunk_size, c);
-
-
-            /*obj->str(obj, 1);*/
-
-            
-            
-            break;
-        case '}':
-
-            knd_log("close remainder: %s chunk: %lu\n",
-                    c, (unsigned long)(c - rec));
-            
-            *total_size = c - rec;
-            return knd_OK;
-        }
-        
-        c++;
-    }
-
-    err = knd_FAIL;
-    
- final:
-
-    knd_log(" obj update return: %d\n", err);
-    
-    return err;
-}
-
-
-static int
-kndRepo_update_class(struct kndRepo *self,
-                     const char *rec,
-                     size_t *total_size)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
-    
-    struct kndDataClass *dc;
-    //struct kndObject *obj;
-    struct kndRepoCache *cache = NULL;
-    const char *c;
-    const char *b;
-    size_t chunk_size;
-    
-    bool in_class = false;
-    bool in_obj_list = false;
-    
+    const char *inbox = "/inbox/import.data";
+    size_t inbox_size = strlen(inbox);
     int err;
+
+    memcpy(buf, self->path, self->path_size);
+    buf_size = self->path_size;
+
+    memcpy(buf + buf_size, inbox, inbox_size);
+    buf_size += inbox_size;
+    buf[buf_size] = '\0';
     
-    c = rec;
-    b = c;
-    
-    while (*c) {
-        switch (*c) {
-            /* non-whitespace char */
-        default:
-            break;
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            /* whitespace */
-            b = c + 1;
-            break;
-        case '{':
-            if (!in_class) {
-                in_class = true;
-                b = c + 1;
-                break;
-            }
-
-            if (in_obj_list) {
-                b = c + 1;
-                err = kndRepo_update_obj(self, c, &chunk_size, cache);
-                if (err) goto final;
-
-                knd_log("chunk size: %lu\n", (unsigned long)chunk_size);
-                
-                c += chunk_size;
-
-                knd_log("class update: %d\n  .. remainder: %s\n", err, c);
-                
-
-                break;
-            }
-            
-            break;
-        case '[':
-            in_obj_list = true;
-
-            buf_size = c - b;
-            memcpy(buf, b, buf_size);
-            buf[buf_size] = '\0';
-
-            knd_log("  == update class \"%s\"..\n", buf);
-            
-            /* check classname */
-            dc = self->user->class_idx->get(self->user->class_idx,
-                                           (const char*)buf);
-            if (!dc) {
-                if (DEBUG_REPO_LEVEL_TMP)
-                    knd_log("  .. classname \"%s\" is not valid...\n", buf);
-                return knd_FAIL;
-            }
-
-            err = kndRepo_get_cache(self,
-                                    dc,
-                                    &cache);
-            if (err) goto final;
-            
-
-            knd_log(" ++ cache OK!\n");
-            
-
-            break;
-        case '}':
-            knd_log("  class end?\n");
-            in_class = false;
-            
-            break;
-        case ']':
-            c++;
-            *total_size = c - rec;
-            
-            return knd_OK;
-        }
-        c++;
-    }
-
-    
- final:
-    return err;
-}
-
-
-static int
-kndRepo_update(struct kndRepo *self,
-               const char *rec)
-{
-    //char buf[KND_NAME_SIZE];
-    //size_t buf_size;
-    
-    //struct kndDataClass *dc;
-    //struct kndObject *obj;
-    //struct kndRepoCache *cache;
-    const char *b, *c;
-    bool in_class_list = false;
-    size_t chunk_size;
-    int err = knd_FAIL;
-
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("  .. repo \"%s\" update..\n",
-                self->path);
-    
-    /* foreach class */
-    c = rec;
-    b = c;
-    
-    while (*c) {
-        switch (*c) {
-            /* non-whitespace char */
-        default:
-            break;
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            /* whitespace */
-            b = c + 1;
-            break;
-        case '{':
-            if (in_class_list) {
-                b = c + 1;
-                err = kndRepo_update_class(self, c, &chunk_size);
-                if (err) goto final;
-                c += chunk_size;
-                break;
-            }
-            break;
-        case '[':
-            if (!in_class_list) {
-                in_class_list = true;
-                break;
-            }
-            break;
-        case ']':
-            goto final;
-        }
-        c++;
-    }
+        knd_log(".. update INBOX \"%s\" SPEC: %s [%lu]\nOBJ REC: \"%s\"\n",
+                buf, self->task->spec, (unsigned long)self->task->spec_size,
+                self->task->obj);
 
-    err = knd_OK;
-
-    self->state++;
-
- final:
-    knd_log("   .. user update status: %d\n", err);
-
-    return err;
-}
-
-
-static int
-kndRepo_check_classname(struct kndRepo *self,
-                        const char *name,
-                        struct kndRepoCache **cache)
-{
-    struct kndDataClass *dc;
-    struct ooDict *idx = NULL;
-    int err;
-
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log(".. checking classname: \"%s\"", name);
-
-    idx = self->user->root_dc->class_idx;
-    if (!idx) return knd_FAIL;
-
-    dc = idx->get(idx, name);
-    if (!dc) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("-- \"%s\" classname is not valid...", name);
-        return knd_FAIL;
-    }
-
-    err = kndRepo_get_cache(self,
-                            dc,
-                            cache);
+    err = knd_append_file((const char*)buf,
+                          (const void*)self->task->spec,
+                          self->task->spec_size);
     if (err) return err;
-
+    
+    err = knd_append_file((const char*)buf,
+                          (const void*)self->task->obj,
+                          self->task->obj_size);
+    if (err) return err;
+    
     return knd_OK;
 }
 
-
 static int
-kndRepo_parse_obj(struct kndRepo *self,
-                  const char *classname,
-                  const char *rec,
-                  size_t *total_size)
+kndRepo_import_obj(struct kndRepo *self,
+                   const char *rec,
+                   size_t *total_size)
 {
-    struct kndRepoCache *cache;
+    struct kndRepoCache *cache = self->curr_cache;
     struct kndObject *obj;
     size_t chunk_size = 0;
     int err;
-    
-    err = kndRepo_check_classname(self, classname, &cache);
-    if (err) return err;
 
     err = kndObject_new(&obj);
     if (err) return err;
@@ -2170,7 +1001,7 @@ kndRepo_parse_obj(struct kndRepo *self,
 
     if (self->restore_mode) {
         knd_log("  ++ Repo %s: restored OBJ %s::%s import OK [total objs: %lu]\n",
-            self->name,
+                self->name,
                 cache->baseclass->name, obj->id,
                 (unsigned long)cache->num_objs + 1);
 
@@ -2181,13 +1012,20 @@ kndRepo_parse_obj(struct kndRepo *self,
         *total_size = chunk_size;
         return knd_OK;
     }
-
+    
     /* NB: append rec to the backup file */
     if (!self->batch_mode) {
         err = kndRepo_update_inbox(self);
+        if (err) {
+            knd_log("-- inbox update failed :(");
+            goto final;
+        }
+
+        err = kndRepo_sync(self);
         if (err) goto final;
     }
 
+    
     /* TODO: update repo state */
     
     /* import success */
@@ -2208,115 +1046,6 @@ kndRepo_parse_obj(struct kndRepo *self,
     obj->del(obj);
     
     return err;        
-}
-
-
-static int
-kndRepo_import_obj(struct kndRepo *self,
-                   const char *rec,
-                   size_t *total_size)
-{
-    char classname[KND_NAME_SIZE] = {0};
-    size_t classname_size = 0;
-
-    const char *b, *c, *e;
-    bool in_body = false;
-    bool in_namespace = false;
-    bool in_classname = false;
-    bool in_colon = false;
-    bool whitespace_separ = false;
-    size_t chunk_size = 0;
-    
-    int err;
-
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log("  .. repo \"%s\" (%s) obj import REC: \"%s\"",
-                self->id, self->path, rec);
-
-    c = rec;
-    b = rec;
-    e = rec;
-    
-    while (*c) {
-        switch (*c) {
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            whitespace_separ = true;
-            break;
-        case ':':
-            if (in_namespace) return knd_FAIL;
-
-            if (!in_colon) {
-                classname_size = c - b;
-                if (!classname_size) return knd_FAIL;
-                if (classname_size >= KND_NAME_SIZE) return knd_LIMIT;
-                /**c = '\0';*/
-                in_colon = true;
-                break;
-            }
-            
-            memcpy(classname, b, classname_size);
-            classname[classname_size] = '\0';
-            
-            if (DEBUG_REPO_LEVEL_2)
-                knd_log("== NS: \"%s\"", classname);
-
-            /* restore char value */
-            /**(b + classname_size) = ':';*/
-            
-            in_namespace = true;
-            b = c + 1;
-            break;
-        case '{':
-            if (!in_body) {
-                in_body = true;
-                b = c + 1;
-                break;
-            }
-            
-            if (in_namespace) {
-                if (!classname_size) return knd_FAIL;
-                if (classname_size >= KND_NAME_SIZE) return knd_LIMIT;
-
-                err = kndRepo_parse_obj(self, classname, c, &chunk_size);
-                if (err) return err;
-
-                c += chunk_size;
-                
-                *total_size = c - rec;
-                return knd_OK;
-            }
-            
-            break;
-        default:
-            if (in_namespace) {
-                if (whitespace_separ) {
-                    if (!in_classname) break;
-                    classname[classname_size] = ' ';
-                    classname_size++;
-
-                    classname[classname_size] = *c;
-                    classname_size++;
-
-                    whitespace_separ = false;
-                    break;
-                }
-                
-                classname[classname_size] = *c;
-                classname_size++;
-                in_classname = true;
-            }
-
-            break;
-        }
-        
-        c++;
-    }
-
-    
-    return knd_FAIL;
 }
 
 
@@ -2343,7 +1072,6 @@ kndRepo_sync(struct kndRepo *self)
 
     cache = self->cache;
     while (cache) {
-
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("   .. syncing objs of class \"%s\"..\n",
                     cache->baseclass->name);
@@ -2424,6 +1152,8 @@ kndRepo_sync(struct kndRepo *self)
         }
         while (key);
 
+        knd_log("== refset populated!");
+        
         if (!refset->idx) {
             refset->del(refset);
             refset = NULL;
@@ -2432,15 +1162,22 @@ kndRepo_sync(struct kndRepo *self)
 
         /* write OBJS to filesystem */
         buf_size = sprintf(buf, "%s/%s/", self->path, cache->baseclass->name);
-        err = knd_mkpath(buf, 0755, false);
-        if (err) return err;
 
+        knd_log("== PATH to liquid DB: %s", buf);
+                                
+        err = knd_mkpath(buf, 0755, false);
+        if (err) {
+            return err;
+        }
+        
         refset->out = self->out;
         refset->out->reset(refset->out);
 
-
         err = refset->sync_objs(refset, (const char*)buf);
-        if (err) goto final;
+        if (err) {
+            knd_log("-- refset failed to sync objs :(");
+            goto final;
+        }
         
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("\n    ++ sync objs of %s OK!\n", cache->baseclass->name);
@@ -2460,6 +1197,7 @@ kndRepo_sync(struct kndRepo *self)
         refset = NULL;
 
     sync_indices:
+
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("\n    .. syncing indices.. \n");
 
@@ -2849,13 +1587,6 @@ kndRepo_get_cache(struct kndRepo *self, struct kndDataClass *c,
     err = ooDict_new(&cache->obj_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto final;
     
-    /*err = ooDict_new(&cache->contain_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) goto final;
-
-    err = ooDict_new(&cache->linear_seq_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) goto final;
-    */
-    
     err = kndRefSet_new(&cache->browser);
     if (err) goto final;
     cache->browser->name[0] = '/';
@@ -2881,39 +1612,6 @@ kndRepo_get_cache(struct kndRepo *self, struct kndDataClass *c,
  final:
     return err;
 }
-
-
-/*
-static int
-kndRepo_get_repo(struct kndRepo *self, const char *uid,
-                 struct kndRepo **repo)
-{
-    //char buf[KND_TEMP_BUF_SIZE];
-    //size_t buf_size = KND_TEMP_BUF_SIZE;
-
-    struct kndRepo *curr_repo;
-    int err;
-
-    if (DEBUG_REPO_LEVEL_3)
-        knd_log("  ?? is \"%s\" a valid repo?\n", uid);
-
-    curr_repo = self->repo_idx->get(self->repo_idx, uid);
-    if (!curr_repo) {
-        err = kndRepo_new(&curr_repo);
-        if (err) return err;
-
-        err = self->repo_idx->set(self->repo_idx, (const char*)uid, (void*)curr_repo);
-        if (err) return err;
-
-        curr_repo->writer = self->writer;
-        curr_repo->reader = self->reader;
-    }
-
-    *repo = curr_repo;
-
-    return knd_OK;
-}
-*/
 
 
 static int
@@ -3020,7 +1718,7 @@ kndRepo_export(struct kndRepo *self, knd_format format)
 
 
 static int
-kndRepo_parse_add_repo(struct kndRepo *self,
+kndRepo_parse_add_repo(void *self,
                        const char *rec,
                        size_t *total_size)
 {
@@ -3039,21 +1737,27 @@ kndRepo_parse_add_repo(struct kndRepo *self,
     return knd_OK;
 }
 
-
-
 static int
-kndRepo_parse_import(struct kndRepo *self,
-                     const char *rec,
-                     size_t *total_size)
+kndRepo_parse_class(void *obj,
+                    const char *rec,
+                    size_t *total_size)
 {
     struct kndTaskSpec specs[] = {
         { .name = "n",
           .name_size = strlen("n"),
-          .run = kndRepo_run_add_repo,
-          .obj = self
+          .run = kndRepo_run_get_class_cache,
+          .obj = obj
+        },
+        { .name = "import",
+          .name_size = strlen("import"),
+          .run = kndRepo_run_import_obj,
+          .obj = obj
         }
     };
     int err;
+
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log("   .. parsing the CLASS rec: \"%s\"", rec);
     
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
@@ -3063,7 +1767,7 @@ kndRepo_parse_import(struct kndRepo *self,
 
 
 static int
-kndRepo_parse_task(struct kndRepo *self,
+kndRepo_parse_task(void *self,
                    const char *rec,
                    size_t *total_size)
 {
@@ -3072,6 +1776,16 @@ kndRepo_parse_task(struct kndRepo *self,
           .name_size = strlen("add"),
           .parse = kndRepo_parse_add_repo,
           .obj = self
+        },
+        { .name = "n",
+          .name_size = strlen("n"),
+          .run = kndRepo_run_get_repo,
+          .obj = self
+        },
+        { .name = "class",
+          .name_size = strlen("class"),
+          .parse = kndRepo_parse_class,
+          .obj = self
         }
     };
     int err;
@@ -3083,11 +1797,11 @@ kndRepo_parse_task(struct kndRepo *self,
 }
 
 
-
 static int
-kndRepo_read_state(struct kndRepo *self, char *rec, size_t *total_size)
+kndRepo_read_state(struct kndRepo *self,
+                   const char *rec, size_t *total_size)
 {
-    char *b, *c;
+    const char *b, *c;
     size_t buf_size;
     
     bool in_val = false;
@@ -3110,8 +1824,7 @@ kndRepo_read_state(struct kndRepo *self, char *rec, size_t *total_size)
                 break;
             }
             
-            *c = '\0';
-            if (!strcmp(b, "last")) {
+            if (!strncmp(b, "last", strlen("last"))) {
                 in_val = true;
                 in_last_id = true;
                 b = c + 1;
@@ -3164,24 +1877,7 @@ kndRepo_init(struct kndRepo *self)
     self->parse_task = kndRepo_parse_task;
     self->open = kndRepo_open;
     
-    self->import = kndRepo_import_obj;
-    self->update = kndRepo_update;
-
-    self->select = kndRepo_select;
-    self->liquid_select = kndRepo_liquid_select;
-
     self->export = kndRepo_export;
-    
-    self->get_liquid_obj = kndRepo_get_liquid_obj;
-    self->get_obj = kndRepo_get_obj;
-
-    self->read_obj = kndRepo_read_obj_db;
-
-    self->update_flatten = kndRepo_update_flatten;
-    self->flatten = kndRepo_flatten;
-
-    self->liquid_match = kndRepo_liquid_match;
-    self->match = kndRepo_match;
 
     self->restore = kndRepo_restore;
     self->sync = kndRepo_sync;
@@ -3205,6 +1901,9 @@ kndRepo_new(struct kndRepo **repo)
     memset(self->last_id, '0', KND_ID_SIZE);
 
     self->intersect_matrix_size = sizeof(struct kndObject*) * (KND_ID_BASE * KND_ID_BASE * KND_ID_BASE);
+
+    err = ooDict_new(&self->repo_idx, KND_SMALL_DICT_SIZE);
+    if (err) return knd_NOMEM;
 
     kndRepo_init(self);
 

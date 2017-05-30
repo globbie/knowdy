@@ -22,15 +22,6 @@
 #define DEBUG_WRITER_LEVEL_3 0
 #define DEBUG_WRITER_LEVEL_TMP 1
 
-/*
-static void
-kndDataWriter_reset(struct kndDataWriter *self);
-
-static int  
-kndDataWriter_get_obj(struct kndDataWriter *self,
-                     struct kndData *data);
-*/
-
 static void
 kndDataWriter_del(struct kndDataWriter *self)
 {
@@ -46,9 +37,6 @@ static int
 kndDataWriter_read_XML_config(struct kndDataWriter *self,
                               const char *config)
 {
-    //char buf[KND_TEMP_BUF_SIZE];
-    //size_t buf_size = KND_TEMP_BUF_SIZE;
-    
     xmlDocPtr doc = NULL;
     xmlNodePtr root, cur_node, sub_node;
 

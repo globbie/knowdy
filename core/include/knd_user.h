@@ -103,9 +103,6 @@ struct kndUser
     */
     
     int (*read)(struct kndUser *self, const char *rec);
-
-    int (*sync)(struct kndUser *self);
-
 };
 
 

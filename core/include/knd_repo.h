@@ -178,7 +178,8 @@ struct kndRepo
     
     /* local repo index */
     struct ooDict *repo_idx;
-
+    struct kndRepo *curr_repo;
+    
     struct kndCustomer *customer;
     struct kndRepoGroup *groups;
 
@@ -190,6 +191,7 @@ struct kndRepo
     struct kndRepoMigration *migration;
     
     struct kndRepoCache *cache;
+    struct kndRepoCache *curr_cache;
     
     size_t intersect_matrix_size;
     
@@ -204,7 +206,8 @@ struct kndRepo
     int (*init)(struct kndRepo *self);
 
     int (*read_state)(struct kndRepo *self, const char *rec, size_t *chunk_size);
-    int (*parse_task)(struct kndRepo *self, const char *rec, size_t *chunk_size);
+
+    int (*parse_task)(void *self, const char *rec, size_t *chunk_size);
 
     int (*get_repo)(struct kndRepo *self, const char *uid, struct kndRepo **repo);
 
@@ -224,7 +227,7 @@ struct kndRepo
     int (*select)(struct kndRepo *self, struct kndData *data);
 
     int (*get_obj)(struct kndRepo *self,  struct kndSpecArg *args, size_t num_args);
-    int (*get_liquid_obj)(struct kndRepo *self, struct kndSpecArg *args, size_t num_args);
+    //int (*get_liquid_obj)(struct kndRepo *self, struct kndSpecArg *args, size_t num_args);
 
     int (*flatten)(struct kndRepo *self, struct kndData *data);
     int (*update_flatten)(struct kndRepo *self, struct kndData *data);
