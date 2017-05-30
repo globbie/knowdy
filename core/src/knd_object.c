@@ -2944,13 +2944,16 @@ kndObject_sync(struct kndObject *self)
         elem = elem->next;
     }
 
+    knd_log("  .. to refset..");
 
     if (!self->tag) {
         if (DEBUG_OBJ_LEVEL_3)
-            knd_log("    -- obj %s:%s is not meant for browsing\n", self->id, self->name);
+            knd_log("    -- obj %s:%s is not meant for browsing\n",
+                    self->id, self->name);
         return knd_OK;
     }
-    
+
+  
     for (size_t i = 0; i < self->tag->num_attrs; i++) {
         attr = self->tag->attrs[i];
         
@@ -2962,7 +2965,6 @@ kndObject_sync(struct kndObject *self)
             return err;
         }
         
-        /* add ref */
         err = kndObjRef_new(&ref);
         if (err) return err;
         
@@ -3004,8 +3006,13 @@ kndObject_sync(struct kndObject *self)
                 continue;
             }
         }
+        
+        if (DEBUG_OBJ_LEVEL_TMP)
+            knd_log("  .. add ref: %s %p", ref->obj_id, refset);
 
         err = refset->add_ref(refset, ref);
+        if (DEBUG_OBJ_LEVEL_TMP)
+            knd_log("  .. result: %d", err);
         if (err) {
             if (DEBUG_OBJ_LEVEL_TMP) {
                 ref->str(ref, 1);

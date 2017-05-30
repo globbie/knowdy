@@ -598,6 +598,8 @@ kndRepo_restore(struct kndRepo *self)
     if (DEBUG_REPO_LEVEL_TMP)
         knd_log("  .. try importing recs from \"%s\"..",
                 buf);
+
+    return knd_OK;
     
     self->out->reset(self->out);
     err = self->out->read_file(self->out,
@@ -1142,13 +1144,16 @@ kndRepo_sync(struct kndRepo *self)
                 goto final;
             }
 
+            /*knd_log("sync OBJ %s..", obj->name);
+            
             err = obj->sync(obj);
             if (err) {
                 knd_log("  -- sync failure of OBJ %s::%s :(\n",
                         obj->id, obj->name);
 
                 goto final;
-            }
+                } */
+            
         }
         while (key);
 
@@ -1163,7 +1168,7 @@ kndRepo_sync(struct kndRepo *self)
         /* write OBJS to filesystem */
         buf_size = sprintf(buf, "%s/%s/", self->path, cache->baseclass->name);
 
-        knd_log("== PATH to liquid DB: %s", buf);
+        //knd_log("== PATH to liquid DB: %s", buf);
                                 
         err = knd_mkpath(buf, 0755, false);
         if (err) {
