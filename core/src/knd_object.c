@@ -484,21 +484,18 @@ kndObject_index(struct kndObject *self)
 
 static int
 kndObject_import_GSL(struct kndObject *self,
-                     char *rec,
+                     const char *rec,
                      size_t *total_size)
 {
-    char *c;
-    char *b;
+    const char *c, *b, *e;
 
     struct kndElem *elem = NULL;
     struct kndObject *obj = NULL;
-
+    size_t buf_size;
+    
     size_t chunk_size = 0;
     
-    bool in_name_attr = false;
     bool in_name = false;
-    bool in_attrs = false;
-    
     bool in_elem = false;
     bool in_elem_name = false;
     bool in_elem_val = false;
@@ -512,12 +509,14 @@ kndObject_import_GSL(struct kndObject *self,
     
     /* parse and validate OBJ */
     c = rec;
-    b = c;
+    b = rec;
+    e = rec;
     
     while (*c) {
         switch (*c) {
             /* non-whitespace char */
         default:
+            e = c + 1;
             if (!in_elem) break;
 
             if (!in_elem_name) break;
@@ -533,31 +532,44 @@ kndObject_import_GSL(struct kndObject *self,
         case '\r':
         case '\t':
         case ' ':
-            if (in_name_attr) {
-                if (!in_name) {
-                    *c = '\0';
-                    if (!strcmp(b, "n")) {
-                        in_name = true;
-                        b = c + 1;
-                    }
-                    *c = ' ';
-                    break;
-                }
-                break;
-            }
-            
-            b = c + 1;
             break;
         case '{':
-            if (!in_attrs) {
-                if (!in_name_attr) {
-                    in_name_attr = true;
-                    b = c + 1;
-                    break;
-                }
+            if (!in_name) {
+                in_name = true;
+                b = c + 1;
                 break;
             }
 
+            if (!self->name_size) {
+                buf_size = e - b;
+                if (!buf_size) return knd_LIMIT;
+                if (buf_size >= KND_NAME_SIZE)
+                    return knd_LIMIT;
+
+                memcpy(self->name, b, buf_size);
+                self->name[buf_size] = '\0';
+                
+                if (DEBUG_OBJ_LEVEL_2)
+                    knd_log("OBJ NAME: %s", self->name);
+
+                self->name_size = buf_size;
+
+                /* anonymous obj takes obj id as name */
+                if (self->name[0] == '-') {
+                    memcpy(self->name, self->id, KND_ID_SIZE);
+                    self->name[KND_ID_SIZE] = '\0';
+                    self->name_size = KND_ID_SIZE;
+                }
+
+                obj = self->cache->obj_idx->get(self->cache->obj_idx, self->name);
+                if (obj) {
+                    knd_log("   -- OBJ name doublet: \"%s\"\n", self->name);
+                    err = knd_FAIL;
+                    goto final;
+                }
+
+            }
+            
             err = kndElem_new(&elem);
             if (err) goto final;
             elem->obj = self;
@@ -582,39 +594,6 @@ kndObject_import_GSL(struct kndObject *self,
             elem = NULL;
             break;
         case '}':
-            if (in_name) {
-                chunk_size = c - b;
-                if (chunk_size >= KND_NAME_SIZE) {
-                    err = knd_LIMIT;
-                    return err;
-                }
-
-                memcpy(self->name, b, chunk_size);
-                self->name[chunk_size] = '\0';
-                self->name_size = chunk_size;
-
-                /* anonymous obj takes obj id as name */
-                if (self->name[0] == '-') {
-                    memcpy(self->name, self->id, KND_ID_SIZE);
-                    self->name[KND_ID_SIZE] = '\0';
-                    self->name_size = KND_ID_SIZE;
-                }
-
-                knd_log("OBJ name: \"%s\" [%lu]\n\n", self->name,
-                        (unsigned long)chunk_size);
-
-                obj = self->cache->obj_idx->get(self->cache->obj_idx, self->name);
-                if (obj) {
-                    knd_log("   -- OBJ name doublet: \"%s\"\n", self->name);
-                    err = knd_FAIL;
-                    goto final;
-                }
-                in_name = false;
-                in_attrs = true;
-                break;
-            }
-
-
             /* TODO: all elems set? */
             /* check completeness */
                 
@@ -1390,7 +1369,7 @@ kndObject_expand(struct kndObject *self,
 
 static int 
 kndObject_import(struct kndObject *self,
-                 char *rec,
+                 const char *rec,
                  size_t *total_size,
                  knd_format format)
 {
@@ -2897,7 +2876,7 @@ kndObject_sync(struct kndObject *self)
     struct kndObjRef *ref;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_2) {
+    if (DEBUG_OBJ_LEVEL_TMP) {
         if (!self->root) {
             knd_log("\n    !! syncing primary OBJ %s::%s\n",
                     self->id, self->name);
@@ -2910,11 +2889,9 @@ kndObject_sync(struct kndObject *self)
     
     elem = self->elems;
     while (elem) {
-
         /* resolve refs of inner obj */
         if (elem->inner) {
             obj = elem->inner;
-
             
             knd_log("    .. syncing inner obj in %s..\n",
                     elem->name);
@@ -2967,13 +2944,16 @@ kndObject_sync(struct kndObject *self)
         elem = elem->next;
     }
 
+    knd_log("  .. to refset..");
 
     if (!self->tag) {
         if (DEBUG_OBJ_LEVEL_3)
-            knd_log("    -- obj %s:%s is not meant for browsing\n", self->id, self->name);
+            knd_log("    -- obj %s:%s is not meant for browsing\n",
+                    self->id, self->name);
         return knd_OK;
     }
-    
+
+  
     for (size_t i = 0; i < self->tag->num_attrs; i++) {
         attr = self->tag->attrs[i];
         
@@ -2985,7 +2965,6 @@ kndObject_sync(struct kndObject *self)
             return err;
         }
         
-        /* add ref */
         err = kndObjRef_new(&ref);
         if (err) return err;
         
@@ -3027,8 +3006,13 @@ kndObject_sync(struct kndObject *self)
                 continue;
             }
         }
+        
+        if (DEBUG_OBJ_LEVEL_TMP)
+            knd_log("  .. add ref: %s %p", ref->obj_id, refset);
 
         err = refset->add_ref(refset, ref);
+        if (DEBUG_OBJ_LEVEL_TMP)
+            knd_log("  .. result: %d", err);
         if (err) {
             if (DEBUG_OBJ_LEVEL_TMP) {
                 ref->str(ref, 1);

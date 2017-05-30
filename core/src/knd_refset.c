@@ -586,9 +586,6 @@ kndRefSet_lookup_name(struct kndRefSet *self,
 
     struct kndTermIdx *idx, *term_idx;
     size_t i, j, ri;
-
-    //char *b;
-    //char *c;
     
     const char *tail = NULL;
     size_t tail_size = 0;
@@ -597,10 +594,9 @@ kndRefSet_lookup_name(struct kndRefSet *self,
     size_t val_size;
     
     size_t UTF_val;
-    //long numval = 0;
     int err;
 
-    if (DEBUG_REFSET_LEVEL_3)
+    if (DEBUG_REFSET_LEVEL_TMP)
         knd_log("  .. refset \"%s\" looking up obj name: \"%s\"..\n",
                 self->name, name);
 
@@ -1135,10 +1131,11 @@ kndRefSet_facetize_ref(struct kndRefSet *self,
     //struct kndSortAttr *sub_attr;
     int err = knd_FAIL;
     
-    if (DEBUG_REFSET_LEVEL_3) {
-        knd_log("\n    .. passing REF to facets of refset \"%s\"..\n",
-                self->name);
+    if (DEBUG_REFSET_LEVEL_TMP) {
+        knd_log("\n    .. passing REF to facets of refset \"%s\" ref sorttag: %p\n",
+                self->name, ref->sorttag);
     }
+
     
     /* conceptual facet? */
     /*if (item->type == KND_REF_CONC) {
@@ -1570,13 +1567,10 @@ kndRefSet_calc_aggr(struct kndRefSet     *self,
 */
 
 static int
-kndRefSet_add_ref(struct kndRefSet     *self,
-                  struct kndObjRef     *ref)
+kndRefSet_add_ref(struct kndRefSet *self,
+                  struct kndObjRef *ref)
 {
-    //struct kndRefSet *refset = NULL;
-    //struct kndFacet *f;
     struct kndObjRef  *objref;
-    //struct kndElemRef *elemref;
     int err;
     
     if (self->num_facets) {
@@ -1595,7 +1589,7 @@ kndRefSet_add_ref(struct kndRefSet     *self,
         return knd_OK;
     }
     
-    if (DEBUG_REFSET_LEVEL_3) {
+    if (DEBUG_REFSET_LEVEL_TMP) {
         if (ref->type == KND_REF_TID)
             knd_log("    ++ \"%s\" refset to put TID ref \"%s\" to INBOX  [total: %lu]\n",
                     self->name, ref->trn->tid, (unsigned long)self->inbox_size);
@@ -1635,6 +1629,9 @@ kndRefSet_add_ref(struct kndRefSet     *self,
         if (err) return err;
         }*/
     
+
+    knd_log(".. add ref to inbox: %p..", ref);
+
     self->inbox[self->inbox_size] = ref;
     self->inbox_size++;
     self->num_refs++;
@@ -1644,12 +1641,15 @@ kndRefSet_add_ref(struct kndRefSet     *self,
 
     /* inbox overflow?
        time to split the inbox into subrefsets */
-    if (DEBUG_REFSET_LEVEL_3)
-        knd_log("   .. Time to create facets...\n\n");
-
+    if (DEBUG_REFSET_LEVEL_TMP)
+        knd_log("Inbox size: %lu   .. Time to create facets...\n\n",
+                (unsigned long)self->inbox_size);
 
     for (size_t i = 0; i < self->inbox_size; i++) {
         objref = self->inbox[i];
+
+        if (DEBUG_REFSET_LEVEL_TMP)
+            knd_log("== %d) ref: %p", i, objref);
         
         err = kndRefSet_facetize_ref(self, objref);
         if (err) {
@@ -1658,7 +1658,10 @@ kndRefSet_add_ref(struct kndRefSet     *self,
         }
         self->inbox[i] = NULL;
     }
-    
+
+    if (DEBUG_REFSET_LEVEL_TMP)
+        knd_log(".. clean up the inbox..\n");
+
     /* clean up the inbox */
     for (size_t i = 0; i < self->inbox_size; i++) {
         objref = self->inbox[i];
@@ -2719,9 +2722,6 @@ kndRefSet_sync_objs(struct kndRefSet *self,
     size_t root_offset = 0;
     size_t med_offset = 0;
     size_t rec_offset = 0;
-
-    //unsigned char *c;
-    //unsigned long numval = 0;
 
     const char *format_code = "GSC";
     size_t format_code_size = strlen(format_code);

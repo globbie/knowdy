@@ -2,7 +2,7 @@
 #define KND_USER_H
 
 #include "knd_utils.h"
-#include "knd_policy.h"
+#include "knd_task.h"
 #include "knd_dataclass.h"
 
 struct kndObject;
@@ -10,7 +10,6 @@ struct kndUser;
 struct kndOutput;
 struct kndRepo;
 struct kndRepoSet;
-struct kndSpecInstruction;
 
 struct kndRepoAccess
 {
@@ -52,10 +51,10 @@ struct kndUser
     size_t control_phrase_size;
 
     struct kndDataClass *root_dc;
-    struct kndSpecInstruction *instruct;
+    struct kndTask *task;
     struct kndOutput *out;
     
-    void *update_inbox;
+    void *update_service;
     
     struct kndRepo *repo;
     struct ooDict *repo_name_idx;
@@ -74,6 +73,10 @@ struct kndUser
 
     int (*run)(struct kndUser *self);
 
+    int (*parse_task)(struct kndUser *self,
+                      const char *rec,
+                      size_t *total_size);
+
     int (*add_user)(struct kndUser *self);
 
     int (*get_user)(struct kndUser *self, const char *uid, struct kndUser **user);
@@ -83,13 +86,13 @@ struct kndUser
 
     int (*restore)(struct kndUser *self);
     
-    int (*import)(struct kndUser *self, struct kndData *data);
+    int (*import)(struct kndUser *self, char *rec, size_t *total_size);
     int (*update)(struct kndUser *self, struct kndData *data);
 
-    int (*select)(struct kndUser *self, struct kndData *data);
+    /*int (*select)(struct kndUser *self, struct kndData *data);
     int (*update_select)(struct kndUser *self, struct kndData *data);
 
-    int (*get_obj)(struct kndUser *self, struct kndData *data);
+    int (*get_obj)(struct kndUser *self);
     int (*update_get_obj)(struct kndUser *self, struct kndData *data);
 
     int (*flatten)(struct kndUser *self, struct kndData *data);
@@ -97,12 +100,11 @@ struct kndUser
 
     int (*match)(struct kndUser *self, struct kndData *data);
     int (*update_match)(struct kndUser *self, struct kndData *data);
-
+    */
+    
     int (*read)(struct kndUser *self, const char *rec);
-
-    int (*sync)(struct kndUser *self);
-
 };
+
 
 extern int kndUser_init(struct kndUser *self);
 extern int kndUser_new(struct kndUser **self);

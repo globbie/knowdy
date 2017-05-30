@@ -428,12 +428,16 @@ kndAttr_read_GSL(struct kndAttr *self,
                 if (buf_size >= KND_NAME_SIZE)
                     return knd_LIMIT;
 
-                self->fullname_size = self->parent_dc->namespace_size;
                 memcpy(self->fullname,
-                       self->parent_dc->namespace, self->fullname_size);
+                       self->parent_dc->namespace, self->parent_dc->namespace_size);
+                self->fullname_size = self->parent_dc->namespace_size;
+
+                memcpy(self->fullname + self->fullname_size, "::", strlen("::"));
+                self->fullname_size += strlen("::");
                 
                 memcpy(self->fullname + self->fullname_size, b, buf_size);
                 self->fullname_size += buf_size;
+                
                 self->fullname[self->fullname_size] = '\0';
             }
             

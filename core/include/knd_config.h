@@ -155,8 +155,8 @@ static const char* const knd_elem_names[] = {
 #define KND_LANG_CODE_SIZE 8
 
 #define KND_MAX_MIGRATIONS 256
-#define KND_MAX_INSTRUCTIONS 64
-#define KND_MAX_INSTRUCTION_ARGS 16
+#define KND_MAX_SPECS 64
+#define KND_MAX_ARGS 16
 
 #define KND_MATCH_MAX_SCORE 100
 #define KND_MATCH_SCORE_THRESHOLD 0.65

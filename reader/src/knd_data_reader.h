@@ -9,6 +9,7 @@ struct kndObject;
 struct kndDataClass;
 struct kndOutput;
 struct kndUser;
+struct kndTask;
 
 struct kndDataReader
 {
@@ -46,10 +47,8 @@ struct kndDataReader
 
     char *update_addr;
     size_t update_addr_size;
-    void *update;
+    void *update_service;
 
-    /* valid classes */
-    struct kndDataClass *dc;
 
     struct ooDict *repo_idx;
 
@@ -62,21 +61,11 @@ struct kndDataReader
     char *last_obj_id;
     char *curr_obj_id;
 
-    /* policies */
-    /*struct kndPolicy *policy_storage;
-    size_t policy_storage_size;
-    
-    struct ooDict *policy_index;
-    struct kndPolicy **policies;
-    size_t num_policies;
-    */
-
-    
     char lang_code[KND_NAME_SIZE];
     size_t lang_code_size;
 
+    struct kndTask *task;
     struct kndUser *admin;
-    struct kndUser *curr_user;
 
     /**********  interface methods  **********/
     int (*del)(struct kndDataReader *self);

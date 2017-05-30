@@ -56,7 +56,7 @@ struct kndDataWriter
     struct kndOutput *spec_out;
     struct kndOutput *obj_out;
 
-    struct kndSpec *spec;
+    struct kndTask *task;
     
     struct ooDict *repo_idx;
     struct kndUser *admin;

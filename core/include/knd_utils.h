@@ -7,6 +7,7 @@
 #include <libxml/parser.h>
 
 #include "knd_config.h"
+#include "knd_task.h"
 
 typedef enum output_dest_t { KND_SEARCH_RESULTS, 
 			     KND_IDX, 
@@ -117,7 +118,7 @@ knd_write_file(const char *path, const char *filename,
 
 extern int 
 knd_append_file(const char *filename, 
-                void *buf, size_t buf_size);
+                const void *buf, size_t buf_size);
 
 extern int knd_make_id_path(char *buf,
 		     const char *path,
@@ -196,6 +197,12 @@ knd_read_name(char *output,
               size_t rec_size);
 extern int
 knd_parse_IPV4(char *ip, unsigned long *ip_val);
+
+extern int
+knd_parse_task(const char *rec,
+               size_t *total_size,
+               struct kndTaskSpec *specs,
+               size_t num_specs);
 
 extern void 
 knd_log(const char *fmt, ...);

@@ -2,7 +2,6 @@
 #define KND_REPO_H
 
 #include "knd_utils.h"
-#include "knd_policy.h"
 #include "knd_facet.h"
 #include "knd_dict.h"
 
@@ -179,18 +178,20 @@ struct kndRepo
     
     /* local repo index */
     struct ooDict *repo_idx;
-
+    struct kndRepo *curr_repo;
+    
     struct kndCustomer *customer;
-    struct kndPolicy *policy;
     struct kndRepoGroup *groups;
-    struct kndUser *user;
 
+    struct kndUser *user;
+    struct kndTask *task;
 
     struct kndRepoMigration *migrations[KND_MAX_MIGRATIONS];
     size_t num_migrations;
     struct kndRepoMigration *migration;
     
     struct kndRepoCache *cache;
+    struct kndRepoCache *curr_cache;
     
     size_t intersect_matrix_size;
     
@@ -204,11 +205,9 @@ struct kndRepo
 
     int (*init)(struct kndRepo *self);
 
-    int (*run)(struct kndRepo *self);
+    int (*read_state)(struct kndRepo *self, const char *rec, size_t *chunk_size);
 
-    int (*read_state)(struct kndRepo *self, char *rec, size_t *chunk_size);
-
-    int (*add_repo)(struct kndRepo *self, struct kndSpecArg *args, size_t num_args);
+    int (*parse_task)(void *self, const char *rec, size_t *chunk_size);
 
     int (*get_repo)(struct kndRepo *self, const char *uid, struct kndRepo **repo);
 
@@ -219,16 +218,16 @@ struct kndRepo
 
     int (*sync)(struct kndRepo *self);
 
-    int (*import)(struct kndRepo *self, char *rec, size_t *total_size);
-    int (*update)(struct kndRepo *self, knd_format format);
+    int (*import)(struct kndRepo *self, const char *rec, size_t *total_size);
+    int (*update)(struct kndRepo *self, const char *rec);
 
     int (*export)(struct kndRepo *self, knd_format format);
 
     int (*liquid_select)(struct kndRepo *self, struct kndData *data);
     int (*select)(struct kndRepo *self, struct kndData *data);
 
-    int (*get_obj)(struct kndRepo *self, struct kndData *data);
-    int (*get_liquid_obj)(struct kndRepo *self, struct kndData *data);
+    int (*get_obj)(struct kndRepo *self,  struct kndSpecArg *args, size_t num_args);
+    //int (*get_liquid_obj)(struct kndRepo *self, struct kndSpecArg *args, size_t num_args);
 
     int (*flatten)(struct kndRepo *self, struct kndData *data);
     int (*update_flatten)(struct kndRepo *self, struct kndData *data);

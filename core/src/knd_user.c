@@ -7,7 +7,7 @@
 #include "knd_repo.h"
 #include "knd_output.h"
 #include "knd_msg.h"
-#include "knd_spec.h"
+#include "knd_task.h"
 
 #define DEBUG_USER_LEVEL_0 0
 #define DEBUG_USER_LEVEL_1 0
@@ -114,21 +114,6 @@ kndUser_add_user(struct kndUser *self)
 
 
 static int
-kndUser_sync(struct kndUser *self)
-{
-    int err = knd_FAIL;
-
-    /* TODO: check all repos */
-    
-    err = self->repo->sync(self->repo);
-    if (err) return err;
-    
-    return err;
-}
-
-
-
-static int
 kndUser_get_user(struct kndUser *self, const char *uid,
                  struct kndUser **user)
 {
@@ -183,6 +168,7 @@ kndUser_get_user(struct kndUser *self, const char *uid,
     }
     
     curr_user->out->reset(curr_user->out);
+    curr_user->update_service = self->update_service;
     
     err = knd_OK;
     *user = curr_user;
@@ -191,513 +177,6 @@ kndUser_get_user(struct kndUser *self, const char *uid,
     return err;
 }
 
-
-
-
-static int
-kndUser_import(struct kndUser *self, struct kndData *data)
-{
-    char buf[KND_TEMP_BUF_SIZE] = {0};
-    size_t buf_size = 0;
-    size_t chunk_size = 0;
-    
-    struct kndRepo *repo = NULL;
-    struct kndRepoAccess *acc = NULL;
-    int err = knd_FAIL;
-
-    /*buf_size = KND_TEMP_BUF_SIZE;
-    err = knd_get_attr(data->spec, "tid",
-                       data->tid, &buf_size);
-    if (err) return err;
-    buf_size = KND_TEMP_BUF_SIZE;
-    err = knd_get_attr(data->spec, "repo",
-                       buf, &buf_size);
-    */
-    if (!err) {
-        err = kndUser_get_repo(self,
-                               (const char*)buf, buf_size, &repo);
-        if (err) return err;
-
-        /* TODO: check repo policy */
-        if (DEBUG_USER_LEVEL_3)
-            knd_log(" .. checking user \"%s\" policy for the repo \"%s\"..\n",
-                    self->name, repo->name);
-
-
-        acc = self->repo_idx->get(self->repo_idx, (const char*)repo->name);
-        if (!acc) {
-            if (DEBUG_USER_LEVEL_TMP)
-                knd_log("   -- repo \"%s\" is not available to user \"%s\" :(\n",
-                        repo->name, self->name);
-            return knd_ACCESS;
-        }
-        
-        if (!acc->may_import) {
-            if (DEBUG_USER_LEVEL_TMP)
-                knd_log("   -- import operation on \"%s\" is not granted to user \"%s\" :(\n",
-                        repo->name, self->name);
-
-            return knd_ACCESS;
-        }
-
-        repo->user = self;
-    }
-    else {
-        if (DEBUG_USER_LEVEL_2)
-            knd_log(" .. no repo specified: assuming home directory\n");
-        repo = self->repo;
-    }
-
-    knd_log("  .. User \"%s\" import... [TID: %s]\n",
-            self->id, data->tid);
-
-    /* specific format? */
-    /*buf_size = KND_TEMP_BUF_SIZE;
-    err = knd_get_attr(data->spec, "format",
-                       buf, &buf_size);
-    if (!err) {
-        knd_log(" .. format specified: %s\n", buf);
-    }
-    */
-    
-    /* actual import */
-    err = repo->import(repo, data->obj, &chunk_size);
-
-    buf_size = sprintf(buf, "{\"import\": %d}", err);
-    err = self->out->write(self->out, buf, buf_size);
-    if (err) return err;
-
-    return knd_OK;
-}
-
-
-
-static int
-kndUser_select(struct kndUser *self, struct kndData *data)
-{
-    char buf[KND_TEMP_BUF_SIZE] = {0};
-    size_t buf_size = 0;
-
-    struct kndOutput *out;
-
-    //const char *empty_msg = "None";
-    //size_t empty_msg_size = strlen(empty_msg);
-
-    struct kndRepo *repo = NULL;
-    struct kndRepoAccess *acc = NULL;
-
-    //void *update_inbox = self->reader->update;
-    int err = knd_FAIL;
-
-    /*    sprintf(buf, "%s/users", self->reader->path);
-    err = knd_make_id_path(self->path, buf, uid, NULL);
-    if (err) goto final;
-    */
-
-    /* TODO: get recent updates */
-    /* knd_zmq_sendmore(update_inbox, data->spec, data->spec_size);
-    knd_zmq_sendmore(update_inbox, data->query, data->query_size);
-    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
-    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
-    knd_zmq_send(update_inbox, empty_msg, empty_msg_size);
-    */
-    
-    /*buf_size = KND_TID_SIZE + 1;
-    err = knd_get_attr(data->spec, "tid",
-                       data->tid, &buf_size);
-    if (err) goto final;
-
-    buf_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "l",
-                       data->tid, &buf_size);
-    
-    knd_log("  .. User \"%s\" select... [TID: %s]  LANG: \"%s\"\n",
-            self->id, data->tid, self->lang_code);
-
-    buf_size = KND_TEMP_BUF_SIZE;
-    err = knd_get_attr(data->spec, "repo",
-                       buf, &buf_size);
-    */
-    if (!err) {
-
-        if (!strncmp(buf, "pub", strlen("pub"))) {
-            /*if (!self->reader->default_repo_name_size) return knd_FAIL;
-
-            err = kndUser_get_repo(self,
-                                   (const char*)self->reader->default_repo_name,
-                                   self->reader->default_repo_name_size, &repo);
-            if (err) return err;
-
-            */
-            
-        }
-        else {
-            err = kndUser_get_repo(self,
-                                   (const char*)buf,
-                                   buf_size, &repo);
-            if (err) return err;
-        }
-
-        if (DEBUG_USER_LEVEL_3)
-            knd_log(" .. checking user \"%s\" policy for the repo \"%s\"..\n",
-                    self->name, repo->name);
-
-        acc = self->repo_idx->get(self->repo_idx, (const char*)repo->name);
-        if (!acc) {
-            if (DEBUG_USER_LEVEL_TMP)
-                knd_log("   -- repo \"%s\" is not available to user \"%s\" :(\n",
-                        repo->name, self->name);
-            return knd_ACCESS;
-        }
-        
-        if (!acc->may_select) {
-            if (DEBUG_USER_LEVEL_TMP)
-                knd_log("   -- select operation on \"%s\" is not granted to user \"%s\" :(\n",
-                        repo->name, self->name);
-
-            return knd_ACCESS;
-        }
-
-        repo->user = self;
-    } else {
-        if (DEBUG_USER_LEVEL_3)
-            knd_log("\n  .. no repo specified: assuming home directory..\n");
-        repo = self->repo;
-    }
-
-    err = repo->select(repo, data);
-    if (err) goto final;
-
-    /*if (repo == self->repo) {
-        err = kndUser_export(self, KND_FORMAT_JSON);
-        if (err) return err;
-    }
-    else {
-    */
-
-    /* output format specified? */
-    /*buf_size = KND_NAME_SIZE;
-    err = knd_get_attr(data->spec, "format",
-                       buf, &buf_size);
-    if (!err) {
-        if (!strcmp(buf, "HTML"))
-            data->format = KND_FORMAT_HTML;
-    }
-    */
-    
-    out = self->out;
-    out->reset(out);
-
-    switch (data->format) {
-    case KND_FORMAT_HTML:
-        err = out->write(out,
-                         "<DIV>", strlen("<DIV>"));
-        if (err) return err;
-        
-        break;
-    default:
-        err = out->write(out,
-                         "{\"repo\":", strlen(",\"repo\":"));
-        if (err) return err;
-        break;
-        
-    }
-    
-    repo->out = out;
-    
-    err = repo->export(repo, data->format);
-    if (err) {
-        knd_log("  -- repo export failed :(\n");
-        return err;
-    }
-    
-    switch (data->format) {
-    case KND_FORMAT_HTML:
-        err = out->write(out,
-                         "</DIV>", strlen("</DIV>"));
-        if (err) return err;
-        
-        break;
-    default:
-        err = out->write(out, "}", 1);
-        if (err) return err;
-        break;
-    }
-
-    
-    
-    err = knd_OK;
-
- final:
-
-    /*if (self->obj_out->file) {
-        free(self->reader->obj_out->file);
-        self->reader->obj_out->file = NULL;
-        self->reader->obj_out->file_size = 0;
-        } */
-        
-    return err;
-}
-
-
-static int
-kndUser_get_obj(struct kndUser *self, struct kndData *data)
-{
-    char buf[KND_NAME_SIZE] = {0};
-    size_t buf_size = 0;
-
-    struct kndRepoAccess *acc = NULL;
-    struct kndRepo *repo = NULL;
-    
-    //const char *empty_msg = "None";
-    //size_t empty_msg_size = strlen(empty_msg);
-
-    //void *update_inbox = self->reader->update;
-    int err = knd_FAIL;
-
-    /*knd_log("  .. user get obj...\n");*/
-    
-    /* TODO: get recent updates */
-    /* knd_zmq_sendmore(update_inbox, data->spec, data->spec_size);
-    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
-    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
-    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
-    knd_zmq_send(update_inbox, empty_msg, empty_msg_size);
-    */
-    
-    /*buf_size = KND_TID_SIZE + 1;
-    err = knd_get_attr(data->spec, "tid",
-                       data->tid, &buf_size);
-    if (err) goto final;
-
-    buf_size = KND_ID_SIZE + 1;
-    err = knd_get_attr(data->spec, "repo",
-                       buf, &buf_size);
-    */
-
-    if (!err) {
-
-        if (!strncmp(buf, "pub", strlen("pub"))) {
-            /*if (!self->reader->default_repo_name_size) return knd_FAIL;
-
-            err = self->reader->get_repo(self->reader,
-                                         (const char*)self->reader->default_repo_name,
-                                         self->reader->default_repo_name_size, &repo);
-                                         if (err) return err; */
-            
-        }
-        else {
-            err = kndUser_get_repo(self,
-                                   (const char*)buf,
-                                   buf_size, &repo);
-            if (err) return err;
-        }
-        
-        if (DEBUG_USER_LEVEL_3)
-            knd_log("\n   .. checking user \"%s\" policy for the repo \"%s\"..\n",
-                    self->name, repo->name);
-
-        acc = self->repo_idx->get(self->repo_idx, (const char*)repo->name);
-        if (!acc) {
-            if (DEBUG_USER_LEVEL_TMP)
-                knd_log("   -- repo \"%s\" is not available to user \"%s\" :(\n",
-                        repo->name, self->name);
-            return knd_ACCESS;
-        }
-        
-        if (!acc->may_get) {
-            if (DEBUG_USER_LEVEL_TMP)
-                knd_log("   -- GET operation on \"%s\" is not granted to user \"%s\" :(\n",
-                        repo->name, self->name);
-            return knd_ACCESS;
-        }
-        repo->user = self;
-    } else {
-        if (DEBUG_USER_LEVEL_3)
-            knd_log("\n  .. no repo specified for GET: assuming home directory..\n");
-
-        repo = self->repo;
-    }
-    
-    /* get the frozen state of obj */
-    err = repo->get_obj(repo, data);
-    if (err) goto final;
-
-    
-    /* delivery service will decide
-       which state is a valid one? */
-
-    
-    err = knd_OK;
-
- final:
-
-
-
-    return err;
-}
-
-static int
-kndUser_update_get_obj(struct kndUser *self, struct kndData *data)
-{
-    int err;
-    knd_log("  .. UPDATE get obj...\n");
-    
-    /*buf_size = KND_TID_SIZE + 1;
-    err = knd_get_attr(data->spec, "tid",
-                       data->tid, &buf_size);
-    if (err) goto final;
-
-    buf_size = KND_TEMP_BUF_SIZE;
-    err = knd_get_attr(data->spec, "repo",
-                       buf, &buf_size);
-    if (err) {
-        
-
-        knd_log(" .. no repo specified: assuming home directory\n");
-    }
-    */
-    /* TODO: check repo policy */
-    err = self->repo->get_liquid_obj(self->repo, data);
-    return err;
-}
-
-
-
-
-static int
-kndUser_flatten(struct kndUser *self, struct kndData *data)
-{
-    const char *empty_msg = "None";
-    size_t empty_msg_size = strlen(empty_msg);
-
-    void *update_inbox = self->update_inbox;
-    
-    /* get recent updates */
-    knd_zmq_sendmore(update_inbox, data->spec, data->spec_size);
-    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
-    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
-    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
-    knd_zmq_send(update_inbox, empty_msg, empty_msg_size);
-
-    /*buf_size = KND_TID_SIZE + 1;
-    err = knd_get_attr(data->spec, "tid",
-                       data->tid, &buf_size);
-    if (err) goto final;
-
-    buf_size = KND_TEMP_BUF_SIZE;
-    err = knd_get_attr(data->spec, "repo",
-                       buf, &buf_size);
-    if (err) {
-        knd_log(" .. no repo specified: assuming home directory\n");
-    }
-    */
-
-    
-    /* get the frozen state of flattened obj */
-
-    /* delivery service will decide
-       which state is a valid one */
-
-    
-    return knd_OK;
-}
-
-static int
-kndUser_update_flatten(struct kndUser *self, struct kndData *data)
-{
-    int err;
-
-    knd_log("  .. UPDATE flatten obj...\n");
-    
-    /*buf_size = KND_TID_SIZE + 1;
-    err = knd_get_attr(data->spec, "tid",
-                       data->tid, &buf_size);
-    if (err) goto final;
-
-    buf_size = KND_TEMP_BUF_SIZE;
-    err = knd_get_attr(data->spec, "repo",
-                       buf, &buf_size);
-    if (err) {
-        knd_log(" .. no repo specified: assuming home directory\n");
-    }
-    */
-    
-    /* TODO: check repo policy */
-
-    err = self->repo->update_flatten(self->repo, data);
-    return err;
-}
-
-
-static int
-kndUser_match(struct kndUser *self, struct kndData *data)
-{
-    const char *empty_msg = "None";
-    size_t empty_msg_size = strlen(empty_msg);
-
-    void *update_inbox = NULL; /*self->reader->update;*/
-    int err;
-
-    knd_log("  .. match obj...\n");
-    
-    /* get recent updates */
-    knd_zmq_sendmore(update_inbox, data->spec, data->spec_size);
-    knd_zmq_sendmore(update_inbox, data->obj, data->obj_size);
-    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
-    knd_zmq_sendmore(update_inbox, empty_msg, empty_msg_size);
-    knd_zmq_send(update_inbox, empty_msg, empty_msg_size);
-
-    /*buf_size = KND_TID_SIZE + 1;
-    err = knd_get_attr(data->spec, "tid",
-                       data->tid, &buf_size);
-    if (err) goto final;
-
-    buf_size = KND_TEMP_BUF_SIZE;
-    err = knd_get_attr(data->spec, "repo",
-                       buf, &buf_size);
-    if (err) {
-        knd_log(" .. no repo specified: assuming home directory\n");
-    }
-    */
-    
-    /* get the frozen state of matched obj */
-
-    /*sleep(0);*/  // fixme! was sleep(0.1). why sleep?
-
-    err = self->repo->match(self->repo, data);
-    if (err) return err;
-
-    return knd_OK;
-}
-
-static int
-kndUser_update_match(struct kndUser *self, struct kndData *data)
-{
-    int err;
-
-    knd_log("  .. UPDATE match obj...\n");
-
-    
-    /*buf_size = KND_TID_SIZE + 1;
-    err = knd_get_attr(data->spec, "tid",
-                       data->tid, &buf_size);
-    if (err) goto final;
-
-    buf_size = KND_TEMP_BUF_SIZE;
-    err = knd_get_attr(data->spec, "repo",
-                       buf, &buf_size);
-    if (err) {
-        knd_log(" .. no repo specified: assuming home directory\n");
-    }
-    */
-    
-    /* TODO: check repo policy */
-
-    err = self->repo->liquid_match(self->repo, data);
-    
-    return err;
-}
 
 
 static int
@@ -828,51 +307,6 @@ kndUser_read_repos(struct kndUser *self, char *rec, size_t rec_size __attribute_
 }
 
 
-static int
-kndUser_get_repo(struct kndUser *self,
-                 const char *name,
-                 size_t name_size,
-                 struct kndRepo **result)
-{
-    struct kndRepo *repo = NULL;
-    const char *repo_id;
-    int err;
-
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log("..  get repo: \"%s\"..", name);
-
-    repo = self->repo_idx->get(self->repo_idx, name);
-    if (repo) {
-        *result = repo;
-        return knd_OK;
-    }
-
-    repo_id = self->repo_name_idx->get(self->repo_name_idx, name);
-    if (!repo_id) return knd_FAIL;
-    
-    
-    err = kndRepo_new(&repo);
-    if (err) return knd_NOMEM;
-
-    memcpy(repo->id, repo_id, KND_ID_SIZE);
-    repo->user = self;
-    repo->out = self->out;
-
-    memcpy(repo->name, name, name_size);
-    repo->name_size = name_size;
-    repo->name[name_size] = '\0';
-    
-    err = repo->open(repo);
-    if (err) return err;
-    
-    err = self->repo_idx->set(self->repo_idx, name, (void*)repo);
-    if (err) return err;
-
-    *result = repo;
-    
-    return knd_OK;
-}
-
 
 static int
 kndUser_read(struct kndUser *self, const char *rec)
@@ -928,7 +362,6 @@ kndUser_read(struct kndUser *self, const char *rec)
                 self->name_size = val_buf_size;
                 self->name[val_buf_size] = '\0';
             }
-
             break;
         case '^':
             attr_buf_size = c - b;
@@ -957,9 +390,6 @@ kndUser_read(struct kndUser *self, const char *rec)
     
     return err;
 }
-
-
-
 
 
 static int
@@ -1100,34 +530,6 @@ kndUser_restore(struct kndUser *self)
 }
 
 
-
-static int 
-kndUser_run(struct kndUser *self)
-{
-    struct kndSpecArg *arg;
-    int err;
-    
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log(".. USER task to run: %s",
-                self->instruct->proc_name);
-
-    if (!strcmp(self->instruct->proc_name, "add")) {
-        for (size_t i = 0; i < self->instruct->num_args; i++) {
-            arg = &self->instruct->args[i];
-
-            knd_log("== ARG NAME: %s", arg->name);
-        }
-        
-        err = kndUser_add_user(self);
-        if (err) return err;
-        
-    }
-
-    
-    return knd_OK;
-}
-
-
 static int 
 kndUser_export_GSL(struct kndUser *self)
 {
@@ -1138,7 +540,7 @@ kndUser_export_GSL(struct kndUser *self)
 
     out = self->out;
     
-    buf_size = sprintf(buf, "(ID^%s)(N^%s)(C^ooWebResource)",
+    buf_size = sprintf(buf, "{ID %s}{N %s}",
                        self->id,
                        self->name);
     out->reset(out);
@@ -1227,35 +629,122 @@ kndUser_export_JSON(struct kndUser *self)
     err = out->write(out, "}", 1);
     if (err) return err;
 
-
     return err;
 }
 
 
+static int
+kndUser_parse_repo(void *obj,
+                   const char *rec,
+                   size_t *total_size)
+{
+    struct kndUser *self = (struct kndUser*)obj;
+    int err;
+    
+    if (DEBUG_USER_LEVEL_2)
+        knd_log("   .. parsing the REPO rec: \"%s\"", rec);
+
+    self->repo->task = self->task;
+    err = self->repo->parse_task(self->repo, rec, total_size);
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+static int
+kndUser_run_sid_check(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndUser *self = (struct kndUser*)obj;
+    struct kndTaskArg *arg;
+    const char *sid = NULL;
+    size_t sid_size = 0;
+    
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "sid", strlen("sid"))) {
+            sid = arg->val;
+            sid_size = arg->val_size;
+        }
+    }
+
+    if (!sid_size) {
+        knd_log("  -- no SID provided :(");
+        return knd_FAIL;
+    }
+    
+
+    if (strncmp(self->sid, sid, sid_size)) {
+        knd_log("  -- wrong SID: \"%s\"", sid);
+        return knd_FAIL;
+    }
+
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log("  ++ SID confirmed: \"%s\"!", sid);
+    
+    return knd_OK;
+}
 
 
+static int
+kndUser_parse_auth(void *obj,
+                   const char *rec,
+                   size_t *total_size)
+{
+    struct kndTaskSpec specs[] = {
+        { .name = "sid",
+          .name_size = strlen("sid"),
+          .run = kndUser_run_sid_check,
+          .obj = obj
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+
+static int
+kndUser_parse_task(struct kndUser *self,
+                   const char *rec,
+                   size_t *total_size)
+{
+    struct kndTaskSpec specs[] = {
+        { .name = "auth",
+          .name_size = strlen("auth"),
+          .parse = kndUser_parse_auth,
+          .obj = self
+        },
+        { .name = "repo",
+          .name_size = strlen("repo"),
+          .parse = kndUser_parse_repo,
+          .obj = self
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
 
 
 static int 
 kndUser_export(struct kndUser *self, knd_format format)
 {
-    int err = knd_FAIL;
-    
     switch(format) {
         case KND_FORMAT_JSON:
-        err = kndUser_export_JSON(self);
-        if (err) goto final;
-        break;
+        return kndUser_export_JSON(self);
     case KND_FORMAT_GSL:
-        err = kndUser_export_GSL(self);
-        if (err) goto final;
-        break;
+        return kndUser_export_GSL(self);
     default:
         break;
     }
 
- final:
-    return err;
+    return knd_FAIL;
 }
 
 
@@ -1265,31 +754,14 @@ kndUser_init(struct kndUser *self)
     self->del = kndUser_del;
     self->str = kndUser_str;
 
-    self->run = kndUser_run;
+    self->parse_task = kndUser_parse_task;
 
     self->add_user = kndUser_add_user;
     self->get_user = kndUser_get_user;
 
-    self->get_repo = kndUser_get_repo;
-
     self->read = kndUser_read;
-    self->import = kndUser_import;
-    /*self->update = kndUser_update;*/
-
-    self->select = kndUser_select;
-    /*   self->update_select = kndUser_update_select;*/
-
-    self->get_obj = kndUser_get_obj;
-    self->update_get_obj = kndUser_update_get_obj;
     self->restore = kndUser_restore;
 
-    self->flatten = kndUser_flatten;
-    self->update_flatten = kndUser_update_flatten;
-
-    self->match = kndUser_match;
-    self->update_match = kndUser_update_match;
-
-    self->sync = kndUser_sync;
     return knd_OK;
 }
 
@@ -1319,11 +791,6 @@ kndUser_new(struct kndUser **user)
     err = ooDict_new(&self->browse_class_idx, KND_SMALL_DICT_SIZE);
     if (err) return knd_NOMEM;
 
-    err = ooDict_new(&self->repo_idx, KND_SMALL_DICT_SIZE);
-    if (err) return knd_NOMEM;
-
-    err = ooDict_new(&self->repo_name_idx, KND_SMALL_DICT_SIZE);
-    if (err) return knd_NOMEM;
 
     err = kndOutput_new(&self->out, KND_TEMP_BUF_SIZE);
     if (err) return err;
