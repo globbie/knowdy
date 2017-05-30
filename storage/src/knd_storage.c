@@ -46,12 +46,12 @@ void *kndStorage_publisher(void *arg __attribute__((unused)))
 
     frontend = zmq_socket(context, ZMQ_SUB);
     if (!frontend) pthread_exit(NULL);
-    zmq_bind(frontend, "ipc:///var/knd/storage_sub");
+    zmq_bind(frontend, "ipc:///var/lib/knowdy/storage_sub"); // fixme
     zmq_setsockopt(frontend, ZMQ_SUBSCRIBE, "", 0);
 
     backend = zmq_socket(context, ZMQ_PUB);
     if (!backend) pthread_exit(NULL);
-    zmq_bind(backend, "ipc:///var/knd/storage_pub");
+    zmq_bind(backend, "ipc:///var/lib/knowdy/storage_pub"); // fixme
 
     printf("    ++ Storage Publisher device is ready....\n");
 
@@ -89,9 +89,9 @@ kndStorage_start(struct kndStorage *self)
     backend = zmq_socket(self->context, ZMQ_PUSH);
     assert(backend);
 
-    ret = zmq_bind(frontend, "ipc:///var/knd/storage_pull");
+    ret = zmq_bind(frontend, "ipc:///var/lib/knowdy/storage_pull"); // fixme
 
-    ret = zmq_bind(backend, "ipc:///var/knd/storage_push");
+    ret = zmq_bind(backend, "ipc:///var/lib/knowdy/storage_push"); // fixme
 
     printf("\n\n    ++ %s Storage Selector device is ready...\n\n",
 	   self->name);

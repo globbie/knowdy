@@ -33,20 +33,20 @@ void *kndStorage_subscriber(void *arg)
     reception = zmq_socket(context, ZMQ_SUB);
     if (!reception) pthread_exit(NULL);
 
-    ret = zmq_connect(reception, "ipc:///var/knd/coll_pub_backend");
+    ret = zmq_connect(reception, "ipc:///var/lib/knowdy/coll_pub_backend");
     assert(ret == knd_OK);
     zmq_setsockopt(reception, ZMQ_SUBSCRIBE, "", 0);
 
     inbox = zmq_socket(context, ZMQ_PUSH);
     assert(inbox);
     
-    ret = zmq_connect(inbox, "ipc:///var/knd/storage_pull");
+    ret = zmq_connect(inbox, "ipc:///var/lib/knowdy/storage_pull");
     assert(ret == knd_OK);
     
     publisher = zmq_socket(context, ZMQ_PUB);
     if (!publisher) pthread_exit(NULL);
     
-    ret = zmq_connect(publisher, "ipc:///var/knd/storage_sub");
+    ret = zmq_connect(publisher, "ipc:///var/lib/knowdy/storage_sub");
 
     while (1) {
         data->reset(data);

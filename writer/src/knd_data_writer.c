@@ -675,7 +675,7 @@ void *kndDataWriter_selector(void *arg)
     backend = zmq_socket(context, ZMQ_PUSH);
     assert(backend);
     
-    err = zmq_connect(frontend, "ipc:///var/knd/storage_push");
+    err = zmq_connect(frontend, "ipc:///var/lib/knowdy/storage_push");
     assert(err == knd_OK);
 
     err = zmq_connect(backend, writer->inbox_frontend_addr);
@@ -718,7 +718,7 @@ void *kndDataWriter_subscriber(void *arg)
     subscriber = zmq_socket(context, ZMQ_SUB);
     assert(subscriber);
 
-    err = zmq_connect(subscriber, "ipc:///var/knd/storage_pub");
+    err = zmq_connect(subscriber, "ipc:///var/lib/knowdy/storage_pub");
     assert(err == knd_OK);
     
     zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "", 0);

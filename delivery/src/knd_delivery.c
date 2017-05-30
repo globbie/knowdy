@@ -1585,13 +1585,13 @@ kndDelivery_start(struct kndDelivery *self)
     assert(service);
 
     /* tcp://127.0.0.1:6902 */
-    assert((zmq_bind(service, "ipc:///var/knd/deliv") == knd_OK));
+    assert((zmq_bind(service, "ipc:///var/lib/knowdy/deliv") == knd_OK)); // fixme: remove hardcode
 
     err = kndData_new(&data);
     if (err) return knd_FAIL;
 
     knd_log("\n\n    ++ %s is up and running: %s\n\n",
-            self->name, "ipc:///var/knd/deliv");
+            self->name, "ipc:///var/lib/knowdy/deliv"); // fixme: remove hardcode
 
     while (1) {
         /* reset data */
