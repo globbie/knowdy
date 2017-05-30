@@ -17,6 +17,8 @@ BuildRequires:      libxml2 czmq
 %define _unpackaged_files_terminate_build 0
 %define _topdir @CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM
 
+%define knowdy_home %{_localstatedir}/lib/knowdy
+
 %description
 Scalable semantic graph database
 
@@ -24,16 +26,20 @@ Scalable semantic graph database
 mv $RPM_BUILD_ROOT @CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM/tmpBBroot
 
 %install
+
+%{__install} -p -d -m 0755 %{buildroot}%{knowdy_home}
+
 if [ -e $RPM_BUILD_ROOT ];
 then
   rm -Rf $RPM_BUILD_ROOT
 fi
 mv "@CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM/tmpBBroot" $RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/knowdy/db
+
+#mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/knowdy/db
 
 %pre
 /usr/bin/getent group knowdy > /dev/null || /usr/sbin/groupadd -r knowdy
-/usr/bin/getent passwd knowdy > /dev/null || /usr/sbin/useradd -r -d /var/knowdy -s /sbin/nologin -g knowdy knowdy
+/usr/bin/getent passwd knowdy > /dev/null || /usr/sbin/useradd -r -d %{knowdy_home} -s /sbin/nologin -g knowdy knowdy
 
 %postun
 case "$1" in
@@ -49,7 +55,7 @@ esac
 %defattr(-,root,root,-)
 @CPACK_PACKAGING_INSTALL_PREFIX@/usr/bin/*
 
-%attr(0755,root,knowdy)%dir %{_localstatedir}/knowdy/db
+%attr(-,knowdy,knowdy) %dir %{knowdy_home}
 
 %{_unitdir}/*.service
 %config(noreplace) @CPACK_PACKAGING_INSTALL_PREFIX@/etc/knowdy/*.ini
