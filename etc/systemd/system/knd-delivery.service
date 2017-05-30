@@ -6,7 +6,6 @@ After=network.target
 Type=simple
 User=knowdy
 ExecStart=/usr/bin/knd-delivery /etc/knowdy/delivery.ini
-Restart=on-failure
 
 [Install]
 

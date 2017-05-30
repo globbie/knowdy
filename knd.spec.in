@@ -29,6 +29,7 @@ then
   rm -Rf $RPM_BUILD_ROOT
 fi
 mv "@CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM/tmpBBroot" $RPM_BUILD_ROOT
+mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/knowdy/db
 
 %pre
 /usr/bin/getent group knowdy > /dev/null || /usr/sbin/groupadd -r knowdy
@@ -47,6 +48,8 @@ esac
 %files
 %defattr(-,root,root,-)
 @CPACK_PACKAGING_INSTALL_PREFIX@/usr/bin/*
+
+%attr(0755,root,knowdy)%dir %{_localstatedir}/knowdy/db
 
 %{_unitdir}/*.service
 %config(noreplace) @CPACK_PACKAGING_INSTALL_PREFIX@/etc/knowdy/*.ini

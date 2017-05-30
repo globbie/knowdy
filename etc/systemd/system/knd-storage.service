@@ -6,7 +6,6 @@ After=network.target
 Type=simple
 User=knowdy
 ExecStart=/usr/bin/knd-storage /etc/knowdy/storage.ini
-Restart=on-failure
 
 [Install]
 

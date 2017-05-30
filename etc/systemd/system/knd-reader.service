@@ -6,7 +6,6 @@ After=network.target
 Type=simple
 User=knowdy
 ExecStart=/usr/bin/knd-reader /etc/knowdy/config.ini
-Restart=on-failure
 
 [Install]
 

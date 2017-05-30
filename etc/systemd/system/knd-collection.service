@@ -6,7 +6,6 @@ After=network.target
 Type=simple
 User=knowdy
 ExecStart=/usr/bin/knd-collection /etc/knowdy/collection.ini
-Restart=on-failure
 
 [Install]
 
