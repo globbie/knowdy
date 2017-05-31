@@ -80,13 +80,16 @@ kndDataWriter_read_XML_config(struct kndDataWriter *self,
 			   &self->path, &self->path_size);
     if (err) return err;
 
-    knd_log("  == DB PATH: %s\n", self->path);
+    knd_log("  == DB PATH OK: %s\n", self->path);
     
     self->admin->sid_size = KND_TID_SIZE + 1;
     err = knd_get_xmlattr(root, "sid",
                           self->admin->sid, &self->admin->sid_size);
-    if (err) return err;
-
+    if (err) {
+        knd_log("-- administrative SID is not set :(");
+        return err;
+    }
+    
     memcpy(self->admin->id, self->name, self->name_size);
 
     /* users path */
@@ -361,7 +364,10 @@ kndDataWriter_new(struct kndDataWriter **rec,
 
     /* read config */
     err = kndDataWriter_read_XML_config(self, config);
-    if (err) return err;
+    if (err) {
+        knd_log("config parse: %d", err);
+        return err;
+    }
     
     err = kndDataClass_new(&dc);
     if (err) return err;

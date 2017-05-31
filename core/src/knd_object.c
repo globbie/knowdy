@@ -80,8 +80,6 @@ kndObject_str(struct kndObject *self,
 static int
 kndObject_index_CG(struct kndObject *self)
 {
-    //char buf[KND_NAME_SIZE];
-    //size_t buf_size;
     struct kndElem *b = NULL;
     struct kndElem *spec = NULL;
     struct kndElem *oper = NULL;
@@ -2872,7 +2870,6 @@ kndObject_sync(struct kndObject *self)
     struct kndSortTag *tag;
     struct kndSortAttr *attr;
     struct kndSortAttr *a;
-    /*struct kndSortAttr *default_attr = NULL;*/
     struct kndObjRef *ref;
     int err;
 
@@ -2901,7 +2898,6 @@ kndObject_sync(struct kndObject *self)
                 if (err) return err;
                 obj = obj->next;
             }
-
             
             goto next_elem;
         }
@@ -2971,7 +2967,6 @@ kndObject_sync(struct kndObject *self)
         ref->obj = self;
         if (self->root)
             ref->obj = self->root;
-        
         
         memcpy(ref->obj_id, ref->obj->id, KND_ID_SIZE);
         ref->obj_id_size = KND_ID_SIZE;
