@@ -1630,8 +1630,9 @@ kndRefSet_add_ref(struct kndRefSet *self,
         }*/
     
 
-    knd_log(".. add ref to inbox: %p..", ref);
+    knd_log(".. add \"%s\" obj ref to inbox..", ref->obj_id);
 
+    
     self->inbox[self->inbox_size] = ref;
     self->inbox_size++;
     self->num_refs++;
@@ -2697,22 +2698,17 @@ kndRefSet_sync_objs(struct kndRefSet *self,
 
     unsigned char  root_dir[KND_ID_BASE * KND_MAX_INT_SIZE];
     size_t root_dir_size = KND_ID_BASE * KND_MAX_INT_SIZE;
-    //size_t root_start_pos = 0;
     unsigned char *rd;
 
     unsigned char  med_dir[KND_ID_BASE * KND_MAX_INT_SIZE];
     size_t med_dir_size = KND_ID_BASE * KND_MAX_INT_SIZE;
-    //size_t med_start_pos = 0;
     unsigned char *md;
 
     unsigned char term_dir[KND_ID_BASE * KND_MAX_INT_SIZE];
     size_t term_dir_size = KND_ID_BASE * KND_MAX_INT_SIZE;
 
-    //size_t term_start_pos = 0;
     unsigned char *td;
 
-    //unsigned char numbuf[KND_MAX_INT_SIZE];
-    
     struct kndTermIdx *idx, *term_idx;
     struct kndObjRef *ref;
     struct kndObject *obj;
@@ -2738,7 +2734,7 @@ kndRefSet_sync_objs(struct kndRefSet *self,
     err = knd_write_file(path,
                          "objs.gsc", (void*)format_code, format_code_size);
     if (err) {
-        knd_log("  -- file objs.gsc couldn't be opened in \"%s\" :(\n", path);
+        knd_log("  -- file objs.gsc couldn't be opened in \"%s\" :(", path);
         return err;
     }
     

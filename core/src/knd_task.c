@@ -87,8 +87,6 @@ kndTask_parse_tid(struct kndTask *self,
             self->tid_size = buf_size;
             self->tid[buf_size] = '\0';
 
-            knd_log("++ got tid: \"%s\"", self->tid);
-
             *total_size = c - rec;
             return knd_OK;
         default:

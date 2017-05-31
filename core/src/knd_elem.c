@@ -656,66 +656,10 @@ kndElem_index_atom(struct kndElem *self,
     return err;
 }
 
-/*
-static int
-kndElem_index_container(struct kndElem *self)
-{
-    struct kndRefSet *refset;
-    struct kndObjRef *objref;
-    struct kndSortTag *tag;
-    struct ooDict *idx;
-    int err;
-
-    knd_log("   .. index CONTAINER: %s\n", self->states->val);
-
-    idx = self->obj->cache->contain_idx;
-
-    refset = (struct kndRefSet*)idx->get(idx, (const char*)self->states->val);
-    if (!refset) {
-        err = kndRefSet_new(&refset);
-        if (err) goto final;
-            
-        memcpy(refset->name, self->states->val, self->states->val_size);
-        refset->name_size = self->states->val_size;
-            
-        err = idx->set(idx,  (const char*)self->states->val, (void*)refset);
-        if (err) goto final;
-    }
-    
-    err = kndObjRef_new(&objref);
-    if (err) goto final;
-        
-    objref->obj = self->obj;
-    memcpy(objref->obj_id, self->obj->id, KND_ID_SIZE);
-    objref->obj_id_size = KND_ID_SIZE;
-    
-    memcpy(objref->name, self->obj->name, self->obj->name_size);
-    objref->name_size = self->obj->name_size;
-        
-    err = kndSortTag_new(&tag);
-    if (err) return err;
-    objref->sorttag = tag;
-        
-    err = refset->add_ref(refset, objref);
-    if (err) goto final;
-
- final:
-    return err;
-}
-*/
 
 static int
 kndElem_index(struct kndElem *self)
 {
-    //struct kndElem *elem;
-    //struct kndText *text;
-    //struct ooDict *idx;
-
-    //struct kndAttr *elem_attr;
-
-    //struct kndRefSet *refset;
-    //struct kndObjRef *objref;
-    //struct kndSortTag *tag;
     int err;
     
     if (DEBUG_ELEM_LEVEL_3)
@@ -730,7 +674,6 @@ kndElem_index(struct kndElem *self)
         if (err) goto final;
 
     } else {
-
         /*if (self->attr->dc && self->attr->dc->idx_name_size) {*/
 
         if (self->attr->dc) {
@@ -753,7 +696,6 @@ kndElem_index(struct kndElem *self)
             err = kndElem_index_atom(self, NULL);
             return err;
         }
-        
         break;
     case KND_ELEM_REF:
         err = kndElem_index_ref(self);
@@ -989,7 +931,6 @@ kndElem_parse_list(struct kndElem *self,
                    const char *rec,
                    size_t *total_size)
 {
-    //char buf[KND_NAME_SIZE];
     size_t buf_size;
 
     struct kndObject *obj = NULL;

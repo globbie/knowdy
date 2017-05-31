@@ -22,6 +22,9 @@
 #define DEBUG_REPO_LEVEL_TMP 1
 
 static int
+kndRepo_linearize_objs(struct kndRepo *self);
+
+static int
 kndRepo_get_guid(struct kndRepo *self,
                  struct kndDataClass *dc,
                  const char *obj_name,
@@ -478,7 +481,7 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
     err = kndRepo_get_cache(self, dc, &self->curr_cache);
     if (err) return err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("++ got class cache: \"%s\"!", dc->name);
 
     return knd_OK;
@@ -977,8 +980,8 @@ kndRepo_update_inbox(struct kndRepo *self)
 
 
 static int
-kndRepo_sync_obj(struct kndRepo *self,
-                 struct kndObject *obj)
+kndRepo_index_obj(struct kndRepo *self,
+                  struct kndObject *obj)
 {
     struct kndRepoCache *cache = self->curr_cache;
     struct kndRefSet *refset;
@@ -988,10 +991,11 @@ kndRepo_sync_obj(struct kndRepo *self,
     int err;
 
     refset = cache->name_idx;
-    
+
+    /* save as obj id */
     err = kndObjRef_new(&objref);
     if (err) return err;
-        
+
     objref->obj = obj;
     memcpy(objref->obj_id, obj->id, KND_ID_SIZE);
     objref->obj_id_size = KND_ID_SIZE;
@@ -1006,6 +1010,9 @@ kndRepo_sync_obj(struct kndRepo *self,
         goto final;
     }
 
+    knd_log("++ \"%s\" refset accepted OBJ ref \"%s\"!",
+            refset->name, obj->name);
+
     /* register in the NAME IDX */
     err = kndObjRef_new(&objref);
     if (err) goto final;
@@ -1017,7 +1024,6 @@ kndRepo_sync_obj(struct kndRepo *self,
 
     err = kndSortTag_new(&tag);
     if (err) goto final;
-    objref->sorttag = tag;
 
     a = malloc(sizeof(struct kndSortAttr));
     if (!a)  {
@@ -1036,22 +1042,24 @@ kndRepo_sync_obj(struct kndRepo *self,
     tag->attrs[tag->num_attrs] = a;
     tag->num_attrs++;
 
+    objref->sorttag = tag;
+
     err = refset->add_ref(refset, objref);
     if (err) {
         knd_log("  -- ref %s not added to refset :(\n", objref->obj_id);
         goto final;
     }
-
-    knd_log(" OBJ %s..",
-            obj->name);
             
-    err = obj->sync(obj);
+    /*err = obj->sync(obj);
     if (err) {
         knd_log("  -- sync failure of OBJ %s::%s :(\n",
                 obj->id, obj->name);
         goto final;
     }
+    */
 
+    return knd_OK;
+    
  final:
     if (objref) objref->del(objref);
     if (tag) tag->del(tag);
@@ -1110,15 +1118,16 @@ kndRepo_import_obj(struct kndRepo *self,
             goto final;
         }
 
-        err = kndRepo_sync_obj(self, obj);
+        err = kndRepo_index_obj(self, obj);
         if (err) {
-            knd_log("-- \"%s\" obj sync failure :(", obj->name);
+            knd_log("-- \"%s\" obj indexing failure :(", obj->name);
             goto final;
         }
 
-        
-    }
+        err = kndRepo_linearize_objs(self);
+        if (err) goto final;
 
+    }
     
     /* TODO: update repo state */
     
@@ -1143,6 +1152,42 @@ kndRepo_import_obj(struct kndRepo *self,
 }
 
 
+static int
+kndRepo_linearize_objs(struct kndRepo *self)
+{
+    char buf[KND_TEMP_BUF_SIZE];
+    size_t buf_size;
+    struct kndRepoCache *cache = self->curr_cache;
+    struct kndRefSet *refset = cache->name_idx;
+    char *c;
+    int err;
+    
+    /* TODO: update state */
+
+    /* write OBJS to filesystem */
+    buf_size = sprintf(buf, "%s/%s/", self->path, cache->baseclass->name);
+
+    knd_log("== PATH to liquid DB: %s", buf);
+
+    err = knd_mkpath(buf, 0755, false);
+    if (err) {
+        return err;
+    }
+        
+    refset->out = self->out;
+    refset->out->reset(refset->out);
+
+    err = refset->sync_objs(refset, (const char*)buf);
+    if (err) {
+        knd_log("-- refset failed to sync objs :(");
+        return err;
+    }
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("\n    ++ sync objs of %s OK!\n", cache->baseclass->name);
+
+    return knd_OK;
+}
 static int
 kndRepo_batch_sync(struct kndRepo *self)
 {
@@ -1258,28 +1303,7 @@ kndRepo_batch_sync(struct kndRepo *self)
             goto sync_indices;
         }
 
-        /* write OBJS to filesystem */
-        buf_size = sprintf(buf, "%s/%s/", self->path, cache->baseclass->name);
-
-        //knd_log("== PATH to liquid DB: %s", buf);
-                                
-        err = knd_mkpath(buf, 0755, false);
-        if (err) {
-            return err;
-        }
-        
-        refset->out = self->out;
-        refset->out->reset(refset->out);
-
-        err = refset->sync_objs(refset, (const char*)buf);
-        if (err) {
-            knd_log("-- refset failed to sync objs :(");
-            goto final;
-        }
-        
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("\n    ++ sync objs of %s OK!\n", cache->baseclass->name);
-
+        /* TODO: sync objs */
         refset->out->reset(refset->out);
         err = refset->sync(refset);
         if (err) return err;
@@ -1655,7 +1679,8 @@ kndRepo_export_GSL(struct kndRepo *self)
 
 
 static int
-kndRepo_get_cache(struct kndRepo *self, struct kndDataClass *c,
+kndRepo_get_cache(struct kndRepo *self,
+                  struct kndDataClass *dc,
                   struct kndRepoCache **result)
 {
     struct kndRepoCache *cache;
@@ -1664,7 +1689,7 @@ kndRepo_get_cache(struct kndRepo *self, struct kndDataClass *c,
     /* set repo DB cache for writing */
     cache = self->cache;
     while (cache) {
-        if (cache->baseclass == c) {
+        if (cache->baseclass == dc) {
             *result = cache;
             return knd_OK;
         }
@@ -1676,7 +1701,7 @@ kndRepo_get_cache(struct kndRepo *self, struct kndDataClass *c,
     if (!cache) return knd_NOMEM;
     memset(cache, 0, sizeof(struct kndRepoCache));
 
-    cache->baseclass = c;
+    cache->baseclass = dc;
     cache->repo = self;
 
     err = ooDict_new(&cache->db, KND_MEDIUM_DICT_SIZE);
@@ -1684,14 +1709,21 @@ kndRepo_get_cache(struct kndRepo *self, struct kndDataClass *c,
 
     err = ooDict_new(&cache->obj_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto final;
-    
+
     err = kndRefSet_new(&cache->browser);
     if (err) goto final;
     cache->browser->name[0] = '/';
     cache->browser->name_size = 1;
     cache->browser->cache = cache;
     cache->browser->out = self->out;
-    
+
+    err = kndRefSet_new(&cache->name_idx);
+    if (err) goto final;
+    memcpy(cache->name_idx->name, "AZ", strlen("AZ"));
+    cache->name_idx->name_size = strlen("AZ");
+    cache->name_idx->cache = cache;
+    cache->name_idx->out = self->out;
+
     /* root query */
     err = kndQuery_new(&cache->query);
     if (err) return err;

@@ -678,7 +678,7 @@ kndUser_run_sid_check(void *obj, struct kndTaskArg *args, size_t num_args)
         return knd_FAIL;
     }
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log("  ++ SID confirmed: \"%s\"!", sid);
     
     return knd_OK;

@@ -887,7 +887,7 @@ knd_parse_task(const char *rec,
                 err = check_name_limits(b, e, &buf_size);
                 if (err) return err;
 
-                if (DEBUG_UTILS_LEVEL_TMP)
+                if (DEBUG_UTILS_LEVEL_2)
                     knd_log("++ got field: \"%.*s\" [%lu]",
                             buf_size, b, (unsigned long)buf_size);
 
@@ -895,7 +895,7 @@ knd_parse_task(const char *rec,
                     spec = &specs[i];
 
                     if (spec->is_completed) {
-                        if (DEBUG_UTILS_LEVEL_TMP)
+                        if (DEBUG_UTILS_LEVEL_2)
                             knd_log("++ \"%s\" spec successfully completed!",
                                     spec->name);
                         continue;
@@ -908,7 +908,7 @@ knd_parse_task(const char *rec,
                         curr_spec = spec;
 
                         if (!spec->parse) {
-                            if (DEBUG_UTILS_LEVEL_TMP)
+                            if (DEBUG_UTILS_LEVEL_2)
                                 knd_log("   == ATOMIC SPEC found: %s! no further parsing is required.",
                                         spec->name);
                             in_terminal = true;
@@ -918,7 +918,7 @@ knd_parse_task(const char *rec,
                         }
 
                         /* nested parsing required */
-                        if (DEBUG_UTILS_LEVEL_TMP)
+                        if (DEBUG_UTILS_LEVEL_3)
                             knd_log("   == further parsing required in \"%s\"",
                                     spec->name);
 

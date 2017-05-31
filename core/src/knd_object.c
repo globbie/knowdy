@@ -22,7 +22,6 @@
 #define DEBUG_OBJ_LEVEL_4 0
 #define DEBUG_OBJ_LEVEL_TMP 1
 
-
 static int 
 knd_compare_obj_by_match_descend(const void *a,
                                  const void *b)
@@ -50,6 +49,7 @@ kndObject_del(struct kndObject *self)
     return knd_OK;
 }
 
+
 static void
 kndObject_str(struct kndObject *self,
               size_t depth)
@@ -73,7 +73,6 @@ kndObject_str(struct kndObject *self,
         elem->str(elem, depth + 1);
         elem = elem->next;
     }
-
 }
 
 
@@ -85,7 +84,7 @@ kndObject_index_CG(struct kndObject *self)
     struct kndElem *oper = NULL;
     struct kndElem *elem;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log("    .. indexing inline CG..\n");
 
     elem = self->elems;
@@ -127,7 +126,7 @@ kndObject_index_inline(struct kndObject *self)
     int err;
     
     if (DEBUG_OBJ_LEVEL_TMP)
-        knd_log("\n    .. indexing inline OBJ of class %s  IDX: \"%s\"\n",
+        knd_log(".. indexing inline OBJ of class %s  IDX: \"%s\"..",
                 self->parent->attr->dc->name,
                 self->parent->attr->dc->idx_name);
 
@@ -163,8 +162,6 @@ kndObject_index_dependent(struct kndObject *self,
     struct kndElem *e = NULL;
     struct kndObject *obj = NULL;
     struct kndRepoCache *cache = NULL;
-    //struct kndRefSet *refset;
-    //struct kndObjRef *ref;
     struct kndSortTag *tag;
     struct kndSortAttr *attr;
    
@@ -284,9 +281,6 @@ kndObject_index_dependent(struct kndObject *self,
 static int
 kndObject_index_dependents(struct kndObject *self)
 {
-    //char buf[KND_NAME_SIZE];
-    //size_t buf_size;
-
     struct kndDataClass *dc;
     struct kndRepoCache *cache = NULL;
     struct kndRelClass *relc;
@@ -486,7 +480,6 @@ kndObject_import_GSL(struct kndObject *self,
                      size_t *total_size)
 {
     const char *c, *b, *e;
-
     struct kndElem *elem = NULL;
     struct kndObject *obj = NULL;
     size_t buf_size;
@@ -1437,13 +1430,6 @@ kndObject_import(struct kndObject *self,
         */
 
     
-    err = kndObject_index(self);
-    if (err) {
-        knd_log("   .. index of obj \"%s\" failed :(\n",
-                self->id);
-        goto final;
-    }
-    
     if (DEBUG_OBJ_LEVEL_TMP)
         self->str(self, 1);
 
@@ -2343,12 +2329,6 @@ static int
 kndObject_export_GSC(struct kndObject *self,
                      bool is_concise)
 {
-    //char buf[KND_TEMP_BUF_SIZE];
-    //size_t buf_size;
-
-    //char pathbuf[KND_TEMP_BUF_SIZE];
-    //size_t pathbuf_size;
-
     bool got_elem = false;
     struct kndElem *elem;
 
@@ -2438,7 +2418,10 @@ kndObject_export_GSC(struct kndObject *self,
         /* default export */
         elem->out = self->out;
         err = elem->export(elem, KND_FORMAT_GSC, is_concise);
-        if (err) return err;
+        if (err) {
+            knd_log("-- export of \"%s\" elem failed :(", elem->name);
+            return err;
+        }
         
         got_elem = true;
         
@@ -3039,9 +3022,6 @@ kndObject_init(struct kndObject *self)
     self->parse = kndObject_parse;
     self->parse_inline = kndObject_parse_inline;
     self->index_inline = kndObject_index_inline;
-
-    /*self->read = kndObject_read; */
-    /*self->present_contexts = kndObject_present_contexts; */
 }
 
 
