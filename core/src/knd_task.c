@@ -53,14 +53,11 @@ kndTask_reset(struct kndTask *self)
 
 static int
 kndTask_parse_tid(struct kndTask *self,
-                  char *rec,
+                  const char *rec,
                   size_t *total_size)
 {
-    const char *tid_tag = "tid";
-    size_t tid_tag_size = strlen(tid_tag);
     size_t buf_size;
-    
-    char *c;
+    const char *c;
     const char *b;
 
     c = rec;
@@ -105,7 +102,7 @@ static int
 kndTask_parse_domain(struct kndTask *self,
                      const char *name,
                      size_t name_size,
-                     char *rec,
+                     const char *rec,
                      size_t *total_size)
 {
     const char *tid_tag = "tid";

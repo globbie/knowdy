@@ -24,8 +24,6 @@
 static int
 kndDataReader_del(struct kndDataReader *self)
 {
-    if (self->path) free(self->path);
-
     /* TODO: storage */
     
     free(self);
@@ -247,16 +245,12 @@ error:
 static int
 kndDataReader_start(struct kndDataReader *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
     void *context;
     void *outbox;
-    char *header = NULL;
-    char *confirm = NULL;
     char *task;
     size_t task_size;
     char *obj;
     size_t obj_size;
-    size_t chunk_size;
     int err;
 
     context = zmq_init(1);
@@ -461,8 +455,6 @@ void *kndDataReader_subscriber(void *arg)
     void *inbox;
 
     struct kndDataReader *reader;
-    const char *empty_msg = "None";
-    size_t empty_msg_size = strlen(empty_msg);
 
     char *obj;
     size_t obj_size;

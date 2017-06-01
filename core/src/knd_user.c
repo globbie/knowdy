@@ -22,10 +22,6 @@ kndUser_export(struct kndUser *self,
 static int
 kndUser_read(struct kndUser *self, const char *rec);
 
-static int
-kndUser_get_repo(struct kndUser *self,
-                 const char *name, size_t name_size,
-                 struct kndRepo **result);
 static int 
 kndUser_del(struct kndUser *self)
 {
@@ -81,11 +77,6 @@ kndUser_add_user(struct kndUser *self)
     memcpy(self->id, uid, KND_ID_SIZE);
     
     self->name_size = KND_NAME_SIZE;
-    
-    /*err = knd_get_attr(data->spec, "name",
-                       self->name, &self->name_size);
-    if (err) goto final;
-    */
     
     err = knd_make_id_path(buf, self->path, uid, NULL);
     if (err) return err;

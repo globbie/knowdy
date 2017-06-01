@@ -360,8 +360,6 @@ kndDataClass_read_GSL(struct kndDataClass *self,
 static int 
 kndDataClass_resolve(struct kndDataClass *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
     struct kndDataClass *dc;
     struct kndAttr *attr;
 
