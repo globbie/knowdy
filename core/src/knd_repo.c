@@ -974,6 +974,93 @@ kndRepo_update_inbox(struct kndRepo *self)
     return knd_OK;
 }
 
+
+
+static int
+kndRepo_sync_obj(struct kndRepo *self,
+                 struct kndObject *obj)
+{
+    struct kndRepoCache *cache = self->curr_cache;
+    struct kndRefSet *refset;
+    struct kndObjRef *objref;
+    struct kndSortTag *tag = NULL;
+    struct kndSortAttr *a = NULL;
+    int err;
+
+    refset = cache->name_idx;
+    
+    err = kndObjRef_new(&objref);
+    if (err) return err;
+        
+    objref->obj = obj;
+    memcpy(objref->obj_id, obj->id, KND_ID_SIZE);
+    objref->obj_id_size = KND_ID_SIZE;
+    
+    memcpy(objref->name, obj->name, obj->name_size);
+    objref->name_size = obj->name_size;
+            
+    err = refset->term_idx(refset, objref);
+    if (err) {
+        knd_log("  -- objref %s::%s not added to refset :(\n",
+                objref->obj_id, objref->name);
+        goto final;
+    }
+
+    /* register in the NAME IDX */
+    err = kndObjRef_new(&objref);
+    if (err) goto final;
+        
+    memcpy(objref->obj_id, obj->id, KND_ID_SIZE);
+    objref->obj_id_size = KND_ID_SIZE;
+    memcpy(objref->name, obj->name, obj->name_size);
+    objref->name_size = obj->name_size;
+
+    err = kndSortTag_new(&tag);
+    if (err) goto final;
+    objref->sorttag = tag;
+
+    a = malloc(sizeof(struct kndSortAttr));
+    if (!a)  {
+        err = knd_NOMEM;
+        goto final;
+    }
+    memset(a, 0, sizeof(struct kndSortAttr));
+    a->type = KND_FACET_POSITIONAL;
+    
+    a->name_size = strlen("AZ");
+    memcpy(a->name, "AZ", a->name_size);
+            
+    memcpy(a->val, obj->name, obj->name_size);
+    a->val_size = obj->name_size;
+
+    tag->attrs[tag->num_attrs] = a;
+    tag->num_attrs++;
+
+    err = refset->add_ref(refset, objref);
+    if (err) {
+        knd_log("  -- ref %s not added to refset :(\n", objref->obj_id);
+        goto final;
+    }
+
+    knd_log(" OBJ %s..",
+            obj->name);
+            
+    err = obj->sync(obj);
+    if (err) {
+        knd_log("  -- sync failure of OBJ %s::%s :(\n",
+                obj->id, obj->name);
+        goto final;
+    }
+
+ final:
+    if (objref) objref->del(objref);
+    if (tag) tag->del(tag);
+    if (a) free(a);
+    
+    return err;
+}
+
+
 static int
 kndRepo_import_obj(struct kndRepo *self,
                    const char *rec,
@@ -1023,8 +1110,13 @@ kndRepo_import_obj(struct kndRepo *self,
             goto final;
         }
 
-        err = kndRepo_sync(self);
-        if (err) goto final;
+        err = kndRepo_sync_obj(self, obj);
+        if (err) {
+            knd_log("-- \"%s\" obj sync failure :(", obj->name);
+            goto final;
+        }
+
+        
     }
 
     
@@ -1052,7 +1144,7 @@ kndRepo_import_obj(struct kndRepo *self,
 
 
 static int
-kndRepo_sync(struct kndRepo *self)
+kndRepo_batch_sync(struct kndRepo *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -1107,6 +1199,7 @@ kndRepo_sync(struct kndRepo *self)
             }
 
             /* default NAME IDX */
+
             err = kndObjRef_new(&objref);
             if (err) goto final;
         
@@ -1144,16 +1237,16 @@ kndRepo_sync(struct kndRepo *self)
                 goto final;
             }
 
-            /*knd_log("sync OBJ %s..", obj->name);
+            /* linearize obj as GSC */
+            knd_log("sync OBJ %s..",
+                    obj->name);
             
             err = obj->sync(obj);
             if (err) {
                 knd_log("  -- sync failure of OBJ %s::%s :(\n",
                         obj->id, obj->name);
-
                 goto final;
-                } */
-            
+            }
         }
         while (key);
 
@@ -1883,9 +1976,9 @@ kndRepo_init(struct kndRepo *self)
     self->open = kndRepo_open;
     
     self->export = kndRepo_export;
-
+    
     self->restore = kndRepo_restore;
-    self->sync = kndRepo_sync;
+    self->sync = kndRepo_batch_sync;
     self->get_cache = kndRepo_get_cache;
     self->get_guid = kndRepo_get_guid;
     
