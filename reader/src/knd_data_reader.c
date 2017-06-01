@@ -78,8 +78,9 @@ kndDataReader_read_config(struct kndDataReader *self,
     memcpy(self->path, default_db_path, strlen(default_db_path));
     self->path_size = strlen(default_db_path);
 
-    err = knd_copy_xmlattr(root, "path", 
-			   &self->path, &self->path_size);
+    self->path_size = KND_TEMP_BUF_SIZE;
+    err = knd_get_xmlattr(root, "path", 
+                          self->path, &self->path_size);
     if (err) {
         knd_log("-- custom DB path not set, using default:  %s", self->path);
     }
@@ -342,15 +343,18 @@ kndDataReader_new(struct kndDataReader **rec,
     dc->name[0] = '/';
     dc->name_size = 1;
 
-    dc->dbpath = self->path;
-    dc->dbpath_size = self->path_size;
+    dc->dbpath = self->schema_path;
+    dc->dbpath_size = self->schema_path_size;
 
     err = ooDict_new(&dc->class_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
     
     /* read class definitions */
     err = dc->read_onto(dc, "index.gsl");
-    if (err) goto error;
+    if (err) {
+ 	knd_log("-- couldn't read any schema definitions :("); 
+        goto error;
+    }
     
     err = dc->coordinate(dc);
     if (err) goto error;
