@@ -301,18 +301,18 @@ kndDataWriter_start(struct kndDataWriter *self)
         self->task->reset(self->task);
 
         if (DEBUG_WRITER_LEVEL_TMP)
-            knd_log("    ++ DATAWRITER AGENT #%s is ready to receive new tasks!", 
+            knd_log("\n++ DATAWRITER AGENT #%s is ready to receive new tasks!", 
                     self->name);
 
 	task = knd_zmq_recv(outbox, &task_size);
 	obj = knd_zmq_recv(outbox, &obj_size);
-        
-	knd_log("    ++ DATAWRITER AGENT #%s got task: %s [%lu]\n", 
+
+	knd_log("++ DATAWRITER AGENT #%s got task: %s [%lu]", 
                 self->name, task, (unsigned long)task_size);
 
         err = self->task->run(self->task, task, task_size, obj, obj_size);
         if (err) {
-            knd_log("  -- task running failure: %d", err);
+            knd_log("-- task running failure: %d", err);
             goto final;
         }
 
@@ -361,7 +361,7 @@ kndDataWriter_new(struct kndDataWriter **rec,
     err = kndTask_new(&self->task);
     if (err) return err;
     
-    err = kndOutput_new(&self->task->out, KND_LARGE_BUF_SIZE);
+    err = kndOutput_new(&self->task->out, KND_IDX_BUF_SIZE);
     if (err) return err;
     
     /* special user */

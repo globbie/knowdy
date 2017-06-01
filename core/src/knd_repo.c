@@ -430,9 +430,6 @@ kndRepo_run_get_repo(void *obj, struct kndTaskArg *args, size_t num_args)
         return knd_FAIL;
     }
 
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("++ got repo: \"%s\"!\n", name);
-
     repo->curr_repo = curr_repo;
     
     return knd_OK;
@@ -506,7 +503,7 @@ kndRepo_run_import_obj(void *obj, struct kndTaskArg *args, size_t num_args)
 
     /* obj from separate msg */
     if (!strncmp(name, "_obj", strlen("_obj"))) {
-        if (DEBUG_REPO_LEVEL_TMP)
+        if (DEBUG_REPO_LEVEL_2)
             knd_log("   .. IMPORT OBJ: \"%s\"", self->task->obj);
 
         err = kndRepo_import_obj(self, self->task->obj, &chunk_size);
@@ -639,7 +636,7 @@ kndRepo_update_inbox(struct kndRepo *self)
     buf_size += inbox_size;
     buf[buf_size] = '\0';
     
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. update INBOX \"%s\" SPEC: %s [%lu]\nOBJ REC: \"%s\"\n",
                 buf, self->task->spec, (unsigned long)self->task->spec_size,
                 self->task->obj);
@@ -656,7 +653,6 @@ kndRepo_update_inbox(struct kndRepo *self)
     
     return knd_OK;
 }
-
 
 
 static int
@@ -689,9 +685,6 @@ kndRepo_index_obj(struct kndRepo *self,
                 objref->obj_id, objref->name);
         goto final;
     }
-
-    knd_log("++ \"%s\" refset accepted OBJ ref \"%s\"!",
-            refset->name, obj->name);
 
     /* register in the NAME IDX */
     err = kndObjRef_new(&objref);
@@ -726,7 +719,7 @@ kndRepo_index_obj(struct kndRepo *self,
 
     err = refset->add_ref(refset, objref);
     if (err) {
-        knd_log("  -- ref %s not added to refset :(\n", objref->obj_id);
+        knd_log("-- ref %s not added to refset :(\n", objref->obj_id);
         goto final;
     }
             
@@ -845,16 +838,19 @@ kndRepo_linearize_objs(struct kndRepo *self)
 
     /* write OBJS to filesystem */
     buf_size = sprintf(buf, "%s/%s/", self->path, cache->baseclass->name);
-
-    knd_log("== PATH to liquid DB: %s", buf);
-
     err = knd_mkpath(buf, 0755, false);
     if (err) {
         return err;
     }
-        
-    refset->out = self->out;
+
+    /* task provides space for the output */
+    /* TODO: write chunks directly to disk */
+    
+    refset->out = self->task->out;
     refset->out->reset(refset->out);
+
+    knd_log("== refset output buf size: %lu total: %lu",
+            (unsigned long)refset->out->buf_size, refset->out->max_size);
 
     err = refset->sync_objs(refset, (const char*)buf);
     if (err) {
@@ -863,7 +859,7 @@ kndRepo_linearize_objs(struct kndRepo *self)
     }
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("\n    ++ sync objs of %s OK!\n", cache->baseclass->name);
+        knd_log("  ++ sync objs of \"%s\" OK!\n", cache->baseclass->name);
 
     return knd_OK;
 }

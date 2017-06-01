@@ -782,7 +782,6 @@ kndUser_new(struct kndUser **user)
     err = ooDict_new(&self->browse_class_idx, KND_SMALL_DICT_SIZE);
     if (err) return knd_NOMEM;
 
-
     err = kndOutput_new(&self->out, KND_TEMP_BUF_SIZE);
     if (err) return err;
     self->repo->out =  self->out;

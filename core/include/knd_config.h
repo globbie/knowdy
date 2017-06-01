@@ -351,7 +351,9 @@ static const char* const knd_elem_names[] = {
 
 #define KND_TEMP_BUF_SIZE 1024
 #define KND_MED_BUF_SIZE 1024 * 10
+
 #define KND_LARGE_BUF_SIZE 1024 * 100
+
 #define KND_SMALL_BUF_SIZE 64
 #define KND_LABEL_SIZE 8
 #define KND_NAME_SIZE 512

@@ -232,7 +232,7 @@ kndObject_import_GSL(struct kndObject *self,
 
                 obj = self->cache->obj_idx->get(self->cache->obj_idx, self->name);
                 if (obj) {
-                    knd_log("   -- OBJ name doublet: \"%s\"\n", self->name);
+                    knd_log("-- OBJ name doublet: \"%s\"", self->name);
                     err = knd_FAIL;
                     goto final;
                 }
@@ -1107,7 +1107,7 @@ kndObject_import(struct kndObject *self,
     }
         */
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         self->str(self, 1);
 
     return knd_OK;
@@ -1522,7 +1522,7 @@ kndObject_export_JSON(struct kndObject *self,
         elem->out = self->out;
         err = elem->export(elem, KND_FORMAT_JSON, 0);
         if (err) {
-            knd_log("  -- elem not exported: %s\n", elem->name);
+            knd_log("-- elem not exported: %s", elem->name);
             goto final;
         }
         
@@ -2094,7 +2094,7 @@ kndObject_export_GSC(struct kndObject *self,
         elem->out = self->out;
         err = elem->export(elem, KND_FORMAT_GSC, is_concise);
         if (err) {
-            knd_log("-- export of \"%s\" elem failed :(", elem->name);
+            knd_log("-- export of \"%s\" elem failed: %d :(", elem->name, err);
             return err;
         }
         

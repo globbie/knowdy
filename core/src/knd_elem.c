@@ -1074,7 +1074,7 @@ kndElem_check_name(struct kndElem *self,
     
     buf_size = c - b;
     if (!buf_size) {
-        knd_log("  -- empty elem name in \"%s\"\n",
+        knd_log("-- empty elem name in \"%s\"\n",
                 b);
         return knd_FAIL;
     }
@@ -1119,6 +1119,7 @@ kndElem_check_name(struct kndElem *self,
 
     switch (attr->type) {
     case KND_ELEM_ATOM:
+    case KND_ELEM_NUM:
     case KND_ELEM_FILE:
     case KND_ELEM_CALC:
         break;
@@ -2399,8 +2400,6 @@ kndElem_export_GSL(struct kndElem *self)
 static int 
 kndElem_export_list_GSC(struct kndElem *self)
 {
-    //char buf[KND_TEMP_BUF_SIZE];
-    //size_t buf_size;
     struct kndObject *obj;
     int err;
     
@@ -2430,22 +2429,22 @@ kndElem_export_list_GSC(struct kndElem *self)
 static int 
 kndElem_export_GSC(struct kndElem *self)
 {
-    //char buf[KND_TEMP_BUF_SIZE];
-    //size_t buf_size;
-
-    //char pathbuf[KND_TEMP_BUF_SIZE];
-    //size_t pathbuf_size;
-
     struct kndElemState *elem_state;
-    
     int err;
+
+    if (DEBUG_ELEM_LEVEL_2)
+        knd_log(".. GSC export elem: %s", self->name);
 
     if (self->is_list)
         return kndElem_export_list_GSC(self);
 
     if (self->inner) {
         self->inner->out = self->out;
-        return self->inner->export(self->inner, KND_FORMAT_GSC, 0);
+        err = self->inner->export(self->inner, KND_FORMAT_GSC, 0);
+        if (err) {
+            knd_log("-- inner obj export failed :(");
+            return err;
+        }
     }
 
     err = self->out->write(self->out, "{", 1);
@@ -2454,12 +2453,9 @@ kndElem_export_GSC(struct kndElem *self)
     err = self->out->write(self->out, self->name, self->name_size);
     if (err) return err;
 
-
     if (self->attr) {
-
         if (self->attr->type == KND_ELEM_TEXT) {
             self->text->out = self->out;
-
             err = self->text->export(self->text,  KND_FORMAT_GSC);
             if (err) return err;
         }
@@ -2507,7 +2503,7 @@ kndElem_export_GSC(struct kndElem *self)
             if (err) return err;
 
             if (elem_state && elem_state->val_size) {
-                knd_remove_nonprintables(elem_state->val);
+                //knd_remove_nonprintables(elem_state->val);
 
                 err = self->out->write(self->out,
                                        elem_state->val, elem_state->val_size);
@@ -2520,6 +2516,27 @@ kndElem_export_GSC(struct kndElem *self)
             }
         }
 
+        if (self->attr->type == KND_ELEM_NUM) {
+            elem_state = self->states;
+
+            err = self->out->write(self->out, " ", 1);
+            if (err) return err;
+
+            if (elem_state && elem_state->val_size) {
+                //knd_remove_nonprintables(elem_state->val);
+
+                err = self->out->write(self->out,
+                                       elem_state->val, elem_state->val_size);
+                if (err) return err;
+            }
+            else {
+                err = self->out->write(self->out,
+                                       "0", 1);
+                if (err) return err;
+            }
+        }
+
+        
         if (self->attr->type == KND_ELEM_CALC) {
             elem_state = self->states;
 

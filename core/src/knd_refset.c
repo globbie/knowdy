@@ -1124,25 +1124,13 @@ kndRefSet_facetize_ref(struct kndRefSet *self,
                        struct kndObjRef *ref)
 {
     struct kndFacet *f;
-    //struct kndObjRef *subref;
-    //struct kndSortTag *tag;
     struct kndSortAttr *attr;
-    //struct kndSortAttr *orig_attr;
-    //struct kndSortAttr *sub_attr;
     int err = knd_FAIL;
     
-    if (DEBUG_REFSET_LEVEL_TMP) {
+    if (DEBUG_REFSET_LEVEL_2) {
         knd_log("\n    .. passing REF to facets of refset \"%s\" ref sorttag: %p\n",
                 self->name, ref->sorttag);
     }
-
-    
-    /* conceptual facet? */
-    /*if (item->type == KND_REF_CONC) {
-        knd_log("    RefItem: HEAD: %s SPEC: %s\n", ref->head.name, ref->spec.name);
-
-        return knd_OK;
-        }*/
     
     if (!ref->sorttag->num_attrs) {
         if (DEBUG_REFSET_LEVEL_2)
@@ -1589,7 +1577,7 @@ kndRefSet_add_ref(struct kndRefSet *self,
         return knd_OK;
     }
     
-    if (DEBUG_REFSET_LEVEL_TMP) {
+    if (DEBUG_REFSET_LEVEL_3) {
         if (ref->type == KND_REF_TID)
             knd_log("    ++ \"%s\" refset to put TID ref \"%s\" to INBOX  [total: %lu]\n",
                     self->name, ref->trn->tid, (unsigned long)self->inbox_size);
@@ -1629,10 +1617,6 @@ kndRefSet_add_ref(struct kndRefSet *self,
         if (err) return err;
         }*/
     
-
-    knd_log(".. add \"%s\" obj ref to inbox..", ref->obj_id);
-
-    
     self->inbox[self->inbox_size] = ref;
     self->inbox_size++;
     self->num_refs++;
@@ -1649,7 +1633,7 @@ kndRefSet_add_ref(struct kndRefSet *self,
     for (size_t i = 0; i < self->inbox_size; i++) {
         objref = self->inbox[i];
 
-        if (DEBUG_REFSET_LEVEL_TMP)
+        if (DEBUG_REFSET_LEVEL_2)
             knd_log("== %d) ref: %p", i, objref);
         
         err = kndRefSet_facetize_ref(self, objref);
@@ -1659,18 +1643,13 @@ kndRefSet_add_ref(struct kndRefSet *self,
         }
         self->inbox[i] = NULL;
     }
-
-    if (DEBUG_REFSET_LEVEL_TMP)
-        knd_log(".. clean up the inbox..\n");
-
+ 
     /* clean up the inbox */
     for (size_t i = 0; i < self->inbox_size; i++) {
         objref = self->inbox[i];
         if (!objref) continue;
-        
         objref->del(objref);
     }
-    
 
     memset(self->inbox, 0, sizeof(struct kndObjRef*) * (self->max_inbox_size + 1));
     self->inbox_size = 0;
@@ -2744,10 +2723,7 @@ kndRefSet_sync_objs(struct kndRefSet *self,
     rd = root_dir;
     root_offset = format_code_size;
 
-    /*knd_log(" .. filename: %s\n", buf); */
-
     count = 0;
-    
     /* first pos */
     for (i = 0; i < KND_ID_BASE; i++) {
         idx = self->idx[i];
@@ -2800,7 +2776,7 @@ kndRefSet_sync_objs(struct kndRefSet *self,
 
                 err = obj->export(obj, KND_FORMAT_GSC, 0);
                 if (err) {
-                    knd_log("  -- obj \"%s\" not exported :(\n", ref->obj_id);
+                    knd_log("-- GSC export of obj \"%s\" failed :(", ref->obj_id);
                     return err;
                 }
                 
