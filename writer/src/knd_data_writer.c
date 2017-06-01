@@ -85,8 +85,10 @@ kndDataWriter_read_XML_config(struct kndDataWriter *self,
     self->admin->sid_size = KND_TID_SIZE + 1;
     err = knd_get_xmlattr(root, "sid",
                           self->admin->sid, &self->admin->sid_size);
-    if (err) return err;
-
+    if (err) {
+        knd_log("-- administrative SID is not set :(");
+        return err;
+    }
     memcpy(self->admin->id, self->name, self->name_size);
 
     /* users path */
