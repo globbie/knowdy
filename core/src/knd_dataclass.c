@@ -526,7 +526,7 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
                     return knd_LIMIT;
                 }
                 *c = '\0';
-                buf_size = sprintf(buf, "classes/%s%s", b, GSL_file_suffix);
+                buf_size = sprintf(buf, "%s%s", b, GSL_file_suffix);
 
                 if (DEBUG_DATACLASS_LEVEL_TMP)
                     knd_log("INCLUDE MODULE: \"%s\"", buf);

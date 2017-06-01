@@ -83,8 +83,9 @@ kndDataWriter_read_XML_config(struct kndDataWriter *self,
     memcpy(self->path, default_db_path, strlen(default_db_path));
     self->path_size = strlen(default_db_path);
 
-    err = knd_copy_xmlattr(root, "path", 
-			   &self->path, &self->path_size);
+    self->path_size = KND_TEMP_BUF_SIZE;
+    err = knd_get_xmlattr(root, "path", 
+                          self->path, &self->path_size);
     if (err) {
         knd_log("-- custom DB path not set, using default:  %s", self->path);
     }

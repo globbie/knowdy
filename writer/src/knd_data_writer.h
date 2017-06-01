@@ -21,7 +21,7 @@ struct kndDataWriter
     char *name;
     size_t name_size;
 
-    char *path;
+    char path[KND_TEMP_BUF_SIZE];
     size_t path_size;
 
     char schema_path[KND_TEMP_BUF_SIZE];
