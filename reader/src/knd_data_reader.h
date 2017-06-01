@@ -19,6 +19,9 @@ struct kndDataReader
     char *path;
     size_t path_size;
 
+    char schema_path[KND_TEMP_BUF_SIZE];
+    size_t schema_path_size;
+
     char *webpath;
     size_t webpath_size;
 

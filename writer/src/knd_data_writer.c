@@ -39,6 +39,9 @@ kndDataWriter_read_XML_config(struct kndDataWriter *self,
 {
     xmlDocPtr doc = NULL;
     xmlNodePtr root, cur_node, sub_node;
+    
+    const char *default_db_path = "/usr/lib/knowdy/";
+    const char *default_schema_path = "/etc/knowdy/schemas/";
 
     xmlChar *val = NULL;
     //long num_value;
@@ -75,13 +78,24 @@ kndDataWriter_read_XML_config(struct kndDataWriter *self,
                 (unsigned long)KND_ID_SIZE);
         return knd_FAIL;
     }
-    
+
+
+    memcpy(self->path, default_db_path, strlen(default_db_path));
+    self->path_size = strlen(default_db_path);
+
     err = knd_copy_xmlattr(root, "path", 
 			   &self->path, &self->path_size);
-    if (err) return err;
-
-    knd_log("  == DB PATH: %s\n", self->path);
+    if (err) {
+        knd_log("-- custom DB path not set, using default:  %s", self->path);
+    }
+    else {
+        knd_log("== custom DB path set to \"%s\"", self->path);
+    }
     
+    /* default schema path */
+    memcpy(self->schema_path, default_schema_path, strlen(default_schema_path));
+    self->schema_path_size = strlen(default_schema_path);
+
     self->admin->sid_size = KND_TID_SIZE + 1;
     err = knd_get_xmlattr(root, "sid",
                           self->admin->sid, &self->admin->sid_size);
@@ -371,15 +385,18 @@ kndDataWriter_new(struct kndDataWriter **rec,
     dc->name[0] = '/';
     dc->name_size = 1;
 
-    dc->dbpath = self->path;
-    dc->dbpath_size = self->path_size;
+    dc->dbpath = self->schema_path;
+    dc->dbpath_size = self->schema_path_size;
 
     err = ooDict_new(&dc->class_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
     
     /* read class definitions */
-    err = dc->read_onto(dc, "classes/index.gsl");
-    if (err) goto error;
+    err = dc->read_onto(dc, "index.gsl");
+    if (err) {
+ 	knd_log("-- couldn't read any schema definitions :("); 
+        goto error;
+    }
     
     err = dc->coordinate(dc);
     if (err) goto error;

@@ -24,6 +24,9 @@ struct kndDataWriter
     char *path;
     size_t path_size;
 
+    char schema_path[KND_TEMP_BUF_SIZE];
+    size_t schema_path_size;
+
     void *delivery;
     char *delivery_addr;
     size_t delivery_addr_size;

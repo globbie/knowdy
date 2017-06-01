@@ -39,6 +39,9 @@ kndDataReader_read_config(struct kndDataReader *self,
 {
     struct kndDataClass *c = NULL;
 
+    const char *default_db_path = "/usr/lib/knowdy/";
+    const char *default_schema_path = "/etc/knowdy/schemas/";
+
     xmlDocPtr doc;
     xmlNodePtr root, cur_node, sub_node;
     xmlChar *val = NULL;
@@ -71,16 +74,40 @@ kndDataReader_read_config(struct kndDataReader *self,
 			   &self->name, &self->name_size);
     if (err) return err;
 
+    
+    memcpy(self->path, default_db_path, strlen(default_db_path));
+    self->path_size = strlen(default_db_path);
+
     err = knd_copy_xmlattr(root, "path", 
 			   &self->path, &self->path_size);
-    if (err) return err;
+    if (err) {
+        knd_log("-- custom DB path not set, using default:  %s", self->path);
+    }
+    else {
+        knd_log("== custom DB path set to \"%s\"", self->path);
+    }
+    
+    /* default schema path */
+    memcpy(self->schema_path, default_schema_path, strlen(default_schema_path));
+    self->schema_path_size = strlen(default_schema_path);
 
-    err = knd_copy_xmlattr(root, "webpath", 
-			   &self->webpath, &self->webpath_size);
-    if (err) return err;
+    self->admin->sid_size = KND_TID_SIZE + 1;
+    err = knd_get_xmlattr(root, "sid",
+                          self->admin->sid, &self->admin->sid_size);
+    if (err) {
+        knd_log("-- administrative SID is not set :(");
+        return err;
+    }
+    memcpy(self->admin->id, self->name, self->name_size);
 
+    /* users path */
+    self->admin->dbpath = self->path;
+    self->admin->dbpath_size = self->path_size;
 
-
+    memcpy(self->admin->path, self->path, self->path_size);
+    memcpy(self->admin->path + self->path_size, "/users", strlen("/users"));
+    self->admin->path_size = self->path_size + strlen("/users");
+    self->admin->path[self->admin->path_size] = '\0';
 
     
     
@@ -308,16 +335,6 @@ kndDataReader_new(struct kndDataReader **rec,
         knd_log("  -- XML config read error :(\n");
         goto error;
     }
-    
-    /*err = kndDataClass_new(&self->dc);
-    if (err) return err;
-    self->dc->out = self->out;
-    self->dc->name[0] = '/';
-    self->dc->name_size = 1;
-
-    self->dc->path = self->path;
-    self->dc->path_size = self->path_size;
-    */
 
     err = kndDataClass_new(&dc);
     if (err) return err;
@@ -332,7 +349,7 @@ kndDataReader_new(struct kndDataReader **rec,
     if (err) goto error;
     
     /* read class definitions */
-    err = dc->read_onto(dc, "classes/index.gsl");
+    err = dc->read_onto(dc, "index.gsl");
     if (err) goto error;
     
     err = dc->coordinate(dc);
