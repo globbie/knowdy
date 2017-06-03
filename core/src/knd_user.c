@@ -284,12 +284,12 @@ kndUser_read_repos(struct kndUser *self, char *rec, size_t rec_size __attribute_
             /*knd_log("  ++ import & update granted: %s\n", acc->repo_id);*/
         }
 
-        err = self->repo_idx->set(self->repo_idx,
+        /*err = self->repo_idx->set(self->repo_idx,
                                     (const char*)c, (void*)acc);
         if (err) {
             free(acc);
             return err;
-        }
+            } */
     }
 
     err = knd_OK;
@@ -472,7 +472,7 @@ kndUser_restore(struct kndUser *self)
     int err;
 
     if (DEBUG_USER_LEVEL_TMP)
-        knd_log("   .. User \"%s\" restoring DB state  DBPATH: %s\n",
+        knd_log(".. user \"%s\" restoring DB state  DBPATH: %s",
                 self->id, self->dbpath);
 
     buf_size = sprintf(buf, "%s/state.gsl", self->dbpath);
@@ -499,25 +499,25 @@ kndUser_restore(struct kndUser *self)
         memcpy(repo->id, idbuf, KND_ID_SIZE);
         repo->user = self;
         repo->out = self->out;
+
         repo->restore_mode = true;
         
         err = repo->open(repo);
         if (err) return err;
 
-        err = repo->restore(repo);
-        if (err) return err;
-
+        if (self->role == KND_USER_ROLE_WRITER) {
+            err = repo->restore(repo);
+            if (err) return err;
+        }
+        
         /* update repo full name idx */
-        err = self->repo_idx->set(self->repo_idx, repo->name, (void*)repo);
+        err = self->repo->repo_idx->set(self->repo->repo_idx, repo->name, (void*)repo);
         if (err) return err;
         
         repo->restore_mode = false;
     }
 
-
-    err = knd_OK;
-
-    return err;
+    return knd_OK;
 }
 
 

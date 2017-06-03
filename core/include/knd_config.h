@@ -96,16 +96,6 @@ static const char* const knd_elem_names[] = {
     "PROC" };
 
 
-#ifdef WIN32
-  #ifndef NO_BUILD_DLL
-      #define EXPORT __declspec(dllexport)
-  #else
-      #define EXPORT __declspec(dllimport)
-  #endif
-#else
-  #define EXPORT
-#endif
-
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 
 #include <stdbool.h>
@@ -121,6 +111,11 @@ static const char* const knd_elem_names[] = {
 #define false 0
 
 #endif
+
+
+
+
+
 
 #define LOGIC_NOT 0
 #define LOGIC_AND 1 

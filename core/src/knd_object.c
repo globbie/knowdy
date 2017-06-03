@@ -157,9 +157,9 @@ kndObject_import_GSL(struct kndObject *self,
                      const char *rec,
                      size_t *total_size)
 {
+    char idbuf[KND_ID_SIZE];
     const char *c, *b, *e;
     struct kndElem *elem = NULL;
-    struct kndObject *obj = NULL;
     size_t buf_size;
     
     size_t chunk_size = 0;
@@ -230,8 +230,10 @@ kndObject_import_GSL(struct kndObject *self,
                     self->name_size = KND_ID_SIZE;
                 }
 
-                obj = self->cache->obj_idx->get(self->cache->obj_idx, self->name);
-                if (obj) {
+                err = self->cache->name_idx->lookup_name(self->cache->name_idx,
+                                                         self->name, self->name_size,
+                                                         self->name, self->name_size, idbuf);
+                if (!err) {
                     knd_log("-- OBJ name doublet: \"%s\"", self->name);
                     err = knd_FAIL;
                     goto final;
@@ -639,18 +641,11 @@ kndObject_parse_GSC(struct kndObject *self,
                     const char *rec,
                     size_t rec_size)
 {
-    //char buf[KND_NAME_SIZE];
-    //size_t buf_size;
-
+    char idbuf[KND_ID_SIZE];
     char recbuf[KND_TEMP_BUF_SIZE + 1];
-    //size_t recbuf_size;
-
     const char *c;
     const char *b;
-    //const char *s;
-    
     struct kndElem *elem = NULL;
-    struct kndObject *obj = NULL;
 
     size_t chunk_size = 0;
     
@@ -718,9 +713,11 @@ kndObject_parse_GSC(struct kndObject *self,
                 memcpy(self->name, b, chunk_size);
                 self->name[chunk_size] = '\0';
                 self->name_size = chunk_size;
-                
-                obj = self->cache->obj_idx->get(self->cache->obj_idx, self->name);
-                if (obj) {
+
+                err = self->cache->name_idx->lookup_name(self->cache->name_idx,
+                                                         self->name, self->name_size,
+                                                         self->name, self->name_size, idbuf);
+                if (!err) {
                     knd_log("   -- OBJ name doublet: \"%s\"\n", self->name);
                     return knd_FAIL;
                 }
@@ -2368,14 +2365,14 @@ kndObject_flatten(struct kndObject *self,
                   struct kndFlatTable *table,
                   unsigned long *span)
 {
+    char idbuf[KND_ID_SIZE];
     struct kndRefSet *refset;
     struct kndObjRef *ref;
-    struct kndObject *obj;
     struct kndFlatCell *cell;
     struct kndFlatRow *row;
     struct ooDict *idx = NULL;
     struct kndElem *elem, *e;
-    unsigned long currspan;
+    //unsigned long currspan;
     unsigned long timespan = 0;
     unsigned long maxspan = 0;
     long numval = 0;
@@ -2394,18 +2391,19 @@ kndObject_flatten(struct kndObject *self,
         for (size_t i = 0; i < refset->num_refs; i++) {
             ref = refset->inbox[i];
 
-
-            obj = self->cache->obj_idx->get(self->cache->obj_idx, ref->name);
-            if (!obj) {
+            err = self->cache->name_idx->lookup_name(self->cache->name_idx,
+                                                     self->name, self->name_size,
+                                                     self->name, self->name_size, idbuf);
+            if (err) {
                 knd_log("  -- obj %s not found :(\n", self->name);
                 continue;
             }
             
-            err = obj->flatten(obj, table, &currspan);
-            if (err) goto final;
+            //err = obj->flatten(obj, table, &currspan);
+            //if (err) goto final;
 
-            if (currspan > maxspan)
-                maxspan = currspan;
+            //if (currspan > maxspan)
+            //    maxspan = currspan;
         }
 
 
@@ -2472,10 +2470,7 @@ kndObject_flatten(struct kndObject *self,
     }
     
     *span = (unsigned long)maxspan;
-    err = knd_OK;
-    
- final:
-    return err;
+    return knd_OK;
 }
 
 
@@ -2520,6 +2515,7 @@ kndObject_get_idx(struct kndObject *self,
 static int 
 kndObject_sync(struct kndObject *self)
 {
+    char idbuf[KND_ID_SIZE];
     struct kndElem *elem;
     struct kndDataClass *dc;
     struct kndRepoCache *cache;
@@ -2582,9 +2578,10 @@ kndObject_sync(struct kndObject *self)
             if (err) return knd_FAIL;
 
             /* get obj by name */
-            obj = (struct kndObject*)cache->obj_idx->get(cache->obj_idx,
-                                                        (const char*)elem->states->val);
-            if (!obj) {
+            err = self->cache->name_idx->lookup_name(self->cache->name_idx,
+                                                     self->name, self->name_size,
+                                                     self->name, self->name_size, idbuf);
+            if (err) {
                 if (DEBUG_OBJ_LEVEL_TMP)
                     knd_log("  -- failed to sync expand ELEM REF: %s::%s :(\n",
                         dc->name,

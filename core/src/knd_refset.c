@@ -597,7 +597,7 @@ kndRefSet_lookup_name(struct kndRefSet *self,
     int err;
 
     if (DEBUG_REFSET_LEVEL_TMP)
-        knd_log("  .. refset \"%s\" looking up obj name: \"%s\"..\n",
+        knd_log(".. refset \"%s\" looking up obj name: \"%s\"..",
                 self->name, name);
 
     if (self->inbox_size) {

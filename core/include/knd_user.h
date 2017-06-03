@@ -11,6 +11,10 @@ struct kndOutput;
 struct kndRepo;
 struct kndRepoSet;
 
+typedef enum knd_user_role { KND_USER_ROLE_READER, 
+                             KND_USER_ROLE_WRITER
+                         } knd_user_role;
+
 struct kndRepoAccess
 {
     char repo_id[KND_ID_SIZE + 1];
@@ -30,6 +34,7 @@ struct kndUser
     char name[KND_NAME_SIZE];
     size_t name_size;
 
+    knd_user_role role;
     size_t num_users;
 
     const char *dbpath;
@@ -57,9 +62,10 @@ struct kndUser
     void *update_service;
     
     struct kndRepo *repo;
-    struct ooDict *repo_name_idx;
+    /*struct ooDict *repo_name_idx;
     struct ooDict *repo_idx;
-
+    */
+    
     struct ooDict *class_idx;
     struct ooDict *browse_class_idx;
     struct ooDict *user_idx;

@@ -253,6 +253,9 @@ kndDataReader_start(struct kndDataReader *self)
     size_t obj_size;
     int err;
 
+    err = self->admin->restore(self->admin);
+    if (err) return err;
+
     context = zmq_init(1);
 
     /* get messages from outbox */
@@ -314,17 +317,20 @@ kndDataReader_new(struct kndDataReader **rec,
 
     memset(self, 0, sizeof(struct kndDataReader));
     
-    /* task taskification */
     err = kndTask_new(&self->task);
     if (err) return err;
 
-    /* special user */
     err = kndUser_new(&self->admin);
     if (err) return err;
+    self->task->admin = self->admin;
+    
     err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-
-    /* read config */
+    
+    /*err = ooDict_new(&self->admin->repo_idx, KND_SMALL_DICT_SIZE);
+    if (err) goto error;
+    */
+    
     err = kndDataReader_read_config(self, config);
     if (err) {
         knd_log("  -- XML config read error :(\n");

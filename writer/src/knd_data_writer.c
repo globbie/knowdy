@@ -276,6 +276,7 @@ kndDataWriter_start(struct kndDataWriter *self)
     int err;
 
     /* restore in-memory data after failure or restart */
+    self->admin->role = KND_USER_ROLE_WRITER;
     err = self->admin->restore(self->admin);
     if (err) return err;
     
@@ -373,9 +374,10 @@ kndDataWriter_new(struct kndDataWriter **rec,
     err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
     
-    err = ooDict_new(&self->admin->repo_idx, KND_SMALL_DICT_SIZE);
+    /*err = ooDict_new(&self->admin->repo_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-
+    */
+    
     /* read config */
     err = kndDataWriter_read_XML_config(self, config);
     if (err) return err;

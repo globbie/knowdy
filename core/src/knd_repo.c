@@ -39,6 +39,10 @@ static int
 kndRepo_import_obj(struct kndRepo *self,
                    const char *rec,
                    size_t *total_size);
+static int
+kndRepo_get_obj(struct kndRepo *self,
+                const char *name,
+                size_t name_size);
 
 static int 
 kndRepo_export(struct kndRepo *self,
@@ -181,7 +185,7 @@ kndRepo_open(struct kndRepo *self)
                                (const char*)self->path, self->path_size);
     if (err) {
         if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("   -- failed to open repo: \"%s\" :(",
+            knd_log("-- failed to open repo: \"%s\" :(",
                     self->path);
         return err;
     }
@@ -191,7 +195,7 @@ kndRepo_open(struct kndRepo *self)
     buf_size = self->path_size - strlen("repo.gsl");
     self->path[buf_size] = '\0';
     self->path_size = buf_size;
-
+    
     if (self->restore_mode) {
         err = kndRepo_parse_config(self, self->out->file, &chunk_size);
         if (err) return err;
@@ -203,7 +207,7 @@ kndRepo_open(struct kndRepo *self)
         }
     }
 
-    if (DEBUG_REPO_LEVEL_2)
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log("++ REPO open success: \"%s\" PATH: \"%s\"",
                 self->out->file, self->path);
     
@@ -481,6 +485,37 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
 
 
 static int
+kndRepo_run_get_obj(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndRepo *self;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    //size_t chunk_size = 0;
+    size_t name_size = 0;
+    int err;
+    
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "get", strlen("get"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+    if (!name_size) return knd_FAIL;
+
+    self = (struct kndRepo*)obj;
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log(".. repo %s to get OBJ: \"%s\"", self->name, name);
+    
+    err = kndRepo_get_obj(self, name, name_size);
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+
+static int
 kndRepo_run_import_obj(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndRepo *self;
@@ -616,9 +651,6 @@ kndRepo_restore(struct kndRepo *self)
     return knd_OK;
 }
 
-
-
-
 static int
 kndRepo_update_inbox(struct kndRepo *self)
 {
@@ -636,7 +668,7 @@ kndRepo_update_inbox(struct kndRepo *self)
     buf_size += inbox_size;
     buf[buf_size] = '\0';
     
-    if (DEBUG_REPO_LEVEL_2)
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log(".. update INBOX \"%s\" SPEC: %s [%lu]\nOBJ REC: \"%s\"\n",
                 buf, self->task->spec, (unsigned long)self->task->spec_size,
                 self->task->obj);
@@ -766,9 +798,10 @@ kndRepo_import_obj(struct kndRepo *self,
     err = cache->db->set(cache->db, obj->id, (void*)obj);
     if (err) goto final;
 
-    err = cache->obj_idx->set(cache->obj_idx, obj->name, (void*)obj);
+    /*err = cache->obj_idx->set(cache->obj_idx, obj->name, (void*)obj);
     if (err) goto final;
-
+    */
+    
     if (self->restore_mode) {
         knd_log("  ++ Repo %s: restored OBJ %s::%s import OK [total objs: %lu]\n",
                 self->name,
@@ -823,6 +856,260 @@ kndRepo_import_obj(struct kndRepo *self,
     
     return err;        
 }
+
+
+static int
+kndRepo_read_db_chunk(struct kndRepo *self,
+                      struct kndRepoCache *cache,
+                      const char *rec,
+                      size_t rec_size,
+                      const char *obj_id,
+                      struct kndObject **result)
+{
+    char buf[KND_MED_BUF_SIZE];
+    size_t buf_size;
+
+    unsigned char dir[KND_ID_BASE * KND_MAX_INT_SIZE];
+    size_t dir_size = KND_ID_BASE * KND_MAX_INT_SIZE;
+
+    struct kndObject *obj;
+    
+    unsigned long start_offset = 0;
+    unsigned long offset = 0;
+    int numval;
+    
+    const char *s = NULL;
+
+    unsigned char *c;
+    int err;
+
+    memset(dir, 0, dir_size);
+    memcpy(dir, rec + (rec_size - dir_size), dir_size);
+
+    numval = obj_id_base[(size_t)*obj_id];
+
+    if (DEBUG_REPO_LEVEL_3)
+        knd_log(".. ID char: \"%c\" NUM VAL %d\n", (*obj_id), numval);
+    
+    if (numval == -1) {
+        knd_log("-- wrong obj id value :(\n");
+        return knd_FAIL;
+    }
+
+    c = dir + (numval * KND_MAX_INT_SIZE);
+
+    start_offset = knd_unpack_int(c);
+    /*if (pref_size)
+      start_offset += pref_size; */
+
+    if (numval >= KND_ID_BASE) return knd_LIMIT;
+
+    /* get the next field */
+    c = dir + ((numval + 1) * KND_MAX_INT_SIZE);
+    offset = knd_unpack_int(c);
+    if (!offset) {
+        
+        offset = rec_size - dir_size;
+    }
+
+    if (start_offset >= offset) {
+        knd_log("  -- start offset is greater or equal..\n");
+        return knd_FAIL;
+    }
+
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log("   == DB CHUNK SIZE:  %lu\n", (unsigned long)rec_size);
+
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log("  == start offset: %lu next offset: %lu\n",
+                (unsigned long)start_offset, (unsigned long)offset);
+
+    
+    obj_id++;
+
+    /* read nested dir */
+    if (*obj_id) {
+        return kndRepo_read_db_chunk(self,
+                                     cache,
+                                     rec + start_offset,
+                                     offset - start_offset,
+                                     obj_id, result);
+    }
+
+    
+    if (DEBUG_REPO_LEVEL_3)
+        knd_log("  .. read terminal chunk from %lu to %lu..\n",
+                (unsigned long)start_offset, (unsigned long)offset);
+
+    if (start_offset >= rec_size) {
+        knd_log("  -- offset overflow? :(\n");
+        return knd_FAIL;
+    }
+    
+    buf_size = offset - start_offset;
+    if (buf_size >= KND_MED_BUF_SIZE) return knd_LIMIT;
+
+    s = rec + start_offset;
+    
+    memcpy(buf, s, buf_size);
+    buf[buf_size] = '\0';
+    
+    if (DEBUG_REPO_LEVEL_3)
+        knd_log("  ++ OBJ REC: \"%s\" [SIZE: %lu]\n\n",
+                buf, (unsigned long)buf_size);
+
+    err = kndObject_new(&obj);
+    if (err) return err;
+
+    obj->cache = cache;
+    obj->out = self->out;
+    obj->out->reset(obj->out);
+   
+    err = obj->parse(obj, buf, buf_size, KND_FORMAT_GSC);
+    if (err) {
+        if (DEBUG_REPO_LEVEL_TMP)
+            knd_log("    -- %s obj parse error: %d\n",
+                    obj->name, err);
+        return err;
+    }
+    
+    /*obj->str(obj, 0);*/
+    
+    *result = obj;
+    
+    return knd_OK;
+}
+
+
+
+
+
+static int
+kndRepo_read_obj_db(struct kndRepo *self,
+                    const char *guid,
+                    struct kndRepoCache *cache,
+                    struct kndObject **result)
+{
+    char buf[KND_TEMP_BUF_SIZE];
+    size_t buf_size;
+
+    struct kndObject *obj = NULL;
+    int err;
+
+    err = knd_FAIL;
+
+    buf_size = sprintf(buf, "%s/%s/objs.gsc",
+                       self->path, cache->baseclass->name);
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("  .. open OBJ db file: \"%s\" ..\n", buf);
+    
+    /* TODO: large file support */
+    err = self->out->read_file(self->out,
+                               (const char*)buf, buf_size);
+    if (err) {
+        knd_log("   -- no DB read for \"%s\" :(\n",
+                cache->baseclass->name);
+        return knd_FAIL;
+    }
+
+    if (DEBUG_REPO_LEVEL_3)
+        knd_log("  == DB file size: %lu\n",
+                (unsigned long)self->out->file_size);
+    
+    err = kndRepo_read_db_chunk(self,
+                                cache,
+                                self->out->file,
+                                self->out->file_size,
+                                guid, &obj);
+    if (err) return err;
+
+    obj->cache = cache;
+    memcpy(obj->id, guid, KND_ID_SIZE);
+    
+    *result = obj;
+
+    return knd_OK;
+}
+
+
+static int
+kndRepo_get_obj(struct kndRepo *self,
+                const char *name,
+                size_t name_size)
+{
+    struct kndRepoCache *cache = self->curr_cache;
+    struct kndDataClass *dc = cache->baseclass;
+    
+    char guid[KND_ID_SIZE + 1] = {0};
+    struct kndObject *obj = NULL;
+
+    knd_format format;
+    size_t curr_depth = 0;
+    int err = knd_FAIL;
+
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log(".. repo GET in progress..");
+
+    err = kndRepo_get_guid(self, dc,
+                           name, name_size,
+                           guid);
+    if (err) {
+        knd_log("-- \"%s\" name not recognized :(", name);
+        return knd_FAIL;
+    }
+    guid[KND_ID_SIZE] = '\0';
+
+    /* get obj by name */
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log("   ?? get browser state obj \"%s\" (depth: %lu)\n",
+                name, (unsigned long)curr_depth);
+
+    obj = (struct kndObject*)cache->db->get(cache->db,
+                                            (const char*)guid);
+    if (!obj) {
+        if (DEBUG_REPO_LEVEL_2)
+            knd_log("   -- no obj in cache..\n");
+        err = kndRepo_read_obj_db(self,
+                                  (const char*)guid,
+                                  cache,
+                                  &obj);
+        if (err) return err;
+    }
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        obj->str(obj, 1);
+    
+    if (curr_depth) {
+        obj->export_depth = curr_depth;
+
+        if (DEBUG_REPO_LEVEL_TMP)
+            knd_log(" .. expanding obj %s [%s]..\n", obj->name, obj->id);
+
+        if (!obj->is_expanded) {
+            err = obj->expand(obj, 0);
+            if (err) return err;
+        }
+    }
+    
+    self->out = self->out;
+    self->out->reset(self->out);
+    
+    
+    /* export obj */
+    format = KND_FORMAT_JSON;
+    obj->out = self->out;
+    obj->export_depth = 0;
+    
+    err = obj->export(obj, format, 0);
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+
+
+
 
 
 static int
@@ -1190,7 +1477,6 @@ kndRepo_get_cache(struct kndRepo *self,
     struct kndRepoCache *cache;
     int err;
     
-    /* set repo DB cache for writing */
     cache = self->cache;
     while (cache) {
         if (cache->baseclass == dc) {
@@ -1211,9 +1497,10 @@ kndRepo_get_cache(struct kndRepo *self,
     err = ooDict_new(&cache->db, KND_MEDIUM_DICT_SIZE);
     if (err) goto final;
 
-    err = ooDict_new(&cache->obj_idx, KND_MEDIUM_DICT_SIZE);
+    /*err = ooDict_new(&cache->obj_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto final;
-
+    */
+    
     err = kndRefSet_new(&cache->browser);
     if (err) goto final;
     cache->browser->name[0] = '/';
@@ -1251,20 +1538,19 @@ kndRepo_get_cache(struct kndRepo *self,
 static int
 kndRepo_get_guid(struct kndRepo *self,
                  struct kndDataClass *dc,
-                 const char *obj_name,
-                 size_t      obj_name_size,
+                 const char *name,
+                 size_t      name_size,
                  char *result)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
     struct kndRepoCache *cache;
     struct kndRefSet *refset;
-    //const char *guid;
     int err;
     
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("   .. get guid of %s::%s..\n",
-                dc->name, obj_name);
+        knd_log(".. get guid of %s::%s..",
+                dc->name, name);
     
     err = kndRepo_get_cache(self, dc, &cache);
     if (err) return err;
@@ -1276,17 +1562,17 @@ kndRepo_get_guid(struct kndRepo *self,
                            dc->name);
 
         if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("  .. reading name IDX file: \"%s\" ..\n",
+            knd_log(".. reading name IDX file: \"%s\" ..",
                     buf);
-    
+
         self->out = self->out;
         self->out->reset(self->out);
     
         err = self->out->read_file(self->out,
                                    (const char*)buf, buf_size);
         if (err) {
-            if (DEBUG_REPO_LEVEL_3)
-                knd_log("   -- no DB found for name IDX \"%s\" :(\n",
+            if (DEBUG_REPO_LEVEL_TMP)
+                knd_log("-- no IDX DB found: \"%s\" :(",
                         buf);
             return knd_FAIL;
         }
@@ -1312,12 +1598,10 @@ kndRepo_get_guid(struct kndRepo *self,
     }
 
     err = cache->name_idx->lookup_name(cache->name_idx,
-                                       obj_name, obj_name_size,
-                                       obj_name, obj_name_size, result);
+                                       name, name_size,
+                                       name, name_size, result);
     if (err) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("   -- obj name not recognized :(\n");
-
+        knd_log("-- obj name \"%s\" not recognized :(", name);
         return knd_NO_MATCH;
     }
     
@@ -1385,6 +1669,11 @@ kndRepo_parse_class(void *obj,
         { .name = "import",
           .name_size = strlen("import"),
           .run = kndRepo_run_import_obj,
+          .obj = obj
+        },
+        { .name = "get",
+          .name_size = strlen("get"),
+          .run = kndRepo_run_get_obj,
           .obj = obj
         }
     };

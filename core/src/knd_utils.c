@@ -981,7 +981,8 @@ knd_parse_task(const char *rec,
                     err = spec->run(spec->obj, args, num_args);
                     if (err) {
                         if (DEBUG_UTILS_LEVEL_TMP)
-                            knd_log("-- func run failed: %d :(", err);
+                            knd_log("-- \"%s\" func run failed: %d :(",
+                                    spec->name, err);
                         return err;
                     }
                 }
@@ -992,7 +993,6 @@ knd_parse_task(const char *rec,
                 in_field = false;
                 break;
             }
-            
             
             *total_size = c - rec;
             return knd_OK;
@@ -1005,7 +1005,6 @@ knd_parse_task(const char *rec,
     
     return knd_FAIL;
 }
-
 
 extern int 
 knd_remove_nonprintables(char *data)
@@ -1026,7 +1025,6 @@ knd_remove_nonprintables(char *data)
 
     return knd_OK;
 }
-
 
 static int
 kndData_del(struct kndData *self)

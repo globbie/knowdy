@@ -104,7 +104,7 @@ struct kndRepoCache
     struct kndRepo *repo;
 
     struct ooDict *db;
-    struct ooDict *obj_idx;
+    //struct ooDict *obj_idx;
     size_t num_objs;
 
     size_t cache_size;
