@@ -132,7 +132,6 @@ struct kndRepoCache
     struct kndRepoCache *next;
 };
 
-
 struct kndRepoMigration
 {
     char id[KND_ID_SIZE + 1];
@@ -142,8 +141,6 @@ struct kndRepoMigration
     struct kndRepo *repo;
     struct kndRepoCache *cache;
 };
-
-
 
 struct kndRepo
 {
@@ -175,6 +172,7 @@ struct kndRepo
     struct kndSpecInstruction *instruct;
     
     struct kndOutput *out;
+    struct kndOutput *logger;
     
     /* local repo index */
     struct ooDict *repo_idx;
@@ -196,12 +194,13 @@ struct kndRepo
     size_t intersect_matrix_size;
     
     struct kndDataClass *curr_class;
-
     
     /**********  interface methods  **********/
     int (*del)(struct kndRepo *self);
 
     int (*str)(struct kndRepo *self);
+
+    void (*log)(struct kndRepo *self);
 
     int (*init)(struct kndRepo *self);
 

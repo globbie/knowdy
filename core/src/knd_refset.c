@@ -601,11 +601,17 @@ kndRefSet_lookup_name(struct kndRefSet *self,
                 self->name, name);
 
     if (self->inbox_size) {
+
+        knd_log(".. inbox lookup, total num objs: %lu",
+                (unsigned long)self->inbox_size);
+        
         for (i = 0; i < self->inbox_size; i++) {
             ref = self->inbox[i];
 
+            knd_log("ref: %p", ref);
+
             if (!strcmp(ref->name, remainder)) {
-                if (DEBUG_REFSET_LEVEL_3)
+                if (DEBUG_REFSET_LEVEL_TMP)
                     knd_log("  ++ got obj match \"%s\"!\n", ref->obj_id);
 
                 memcpy(guid, ref->obj_id, KND_ID_SIZE);
@@ -702,7 +708,6 @@ kndRefSet_lookup_name(struct kndRefSet *self,
         if (!strcmp(f->name, "AZ")) {
             for (j = 0; j < f->num_refsets; j++) {
                 rs = f->refsets[j];
-
                 if (!strcmp(rs->name, buf)) {
                     err = kndRefSet_lookup_name(rs,
                                                 name, name_size,
@@ -710,7 +715,6 @@ kndRefSet_lookup_name(struct kndRefSet *self,
                                                 guid);
                     return err;
                 }
-
             }
             break;
         }
@@ -1577,7 +1581,7 @@ kndRefSet_add_ref(struct kndRefSet *self,
         return knd_OK;
     }
     
-    if (DEBUG_REFSET_LEVEL_3) {
+    if (DEBUG_REFSET_LEVEL_TMP) {
         if (ref->type == KND_REF_TID)
             knd_log("    ++ \"%s\" refset to put TID ref \"%s\" to INBOX  [total: %lu]\n",
                     self->name, ref->trn->tid, (unsigned long)self->inbox_size);
@@ -1588,7 +1592,7 @@ kndRefSet_add_ref(struct kndRefSet *self,
     }
 
     /* terminal trn storage? */
-    if (ref->type == KND_REF_TID) {
+    /*if (ref->type == KND_REF_TID) {
         if (self->num_trns) {
             err = kndRefSet_term_idx(self, ref);
             if (err) {
@@ -1596,6 +1600,7 @@ kndRefSet_add_ref(struct kndRefSet *self,
             }
         }
     }
+    */
     
     /* objref already exists? */
     /*if (ref->type == KND_REF_CONC) { */
@@ -1621,18 +1626,22 @@ kndRefSet_add_ref(struct kndRefSet *self,
     self->inbox_size++;
     self->num_refs++;
     
-    if ((self->inbox_size + 1) < self->max_inbox_size)
+    if ((self->inbox_size + 1) < self->max_inbox_size) {
+        if (DEBUG_REFSET_LEVEL_TMP)
+            knd_log("Inbox size: %lu REF: %p",
+                    (unsigned long)self->inbox_size, ref);
         return knd_OK;
-
+    }
+    
     /* inbox overflow?
        time to split the inbox into subrefsets */
+
     if (DEBUG_REFSET_LEVEL_TMP)
         knd_log("Inbox size: %lu   .. Time to create facets...\n\n",
                 (unsigned long)self->inbox_size);
 
     for (size_t i = 0; i < self->inbox_size; i++) {
         objref = self->inbox[i];
-
         if (DEBUG_REFSET_LEVEL_2)
             knd_log("== %d) ref: %p", i, objref);
         
@@ -2856,10 +2865,8 @@ kndRefSet_sync_idx(struct kndRefSet *self)
     struct kndObjRef *ref;
     int i, j, ri, err = knd_OK;
 
-
-    if (DEBUG_REFSET_LEVEL_3)
+    if (DEBUG_REFSET_LEVEL_TMP)
         knd_log("   .. syncing term IDX of \"%s\"..\n", self->name);
-
     
     out = self->out;
 
@@ -2908,9 +2915,7 @@ kndRefSet_sync_idx(struct kndRefSet *self)
                                  obj_id_seq + ri, 1); 
                 if (err) return err;
 
-
                 /* add sort tag */
-
                 ref->out = out;
                 err = ref->export(ref, KND_FORMAT_GSC);
                 if (err) return err;
@@ -2939,7 +2944,6 @@ static int
 kndRefSet_sync(struct kndRefSet *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
-    //size_t buf_size = 0;
 
     char rec_buf[KND_TEMP_BUF_SIZE];
     size_t rec_size = 0;
@@ -2967,11 +2971,10 @@ kndRefSet_sync(struct kndRefSet *self)
     
     /* linearize the inbox */
     if (self->inbox_size) {
-        if (!self->num_facets) {
+        /*if (!self->num_facets) {
             for (size_t i = 0; i < self->inbox_size; i++) {
                 ref = self->inbox[i];
 
-                /*ref->str(ref, 1);*/
                 
                 err = kndRefSet_term_idx(self, ref);
                 if (err) return err;
@@ -2980,7 +2983,7 @@ kndRefSet_sync(struct kndRefSet *self)
             }
 
             goto sync_idx;
-        }
+        }*/
 
         err = out->write(out, 
                           GSL_OPEN_DELIM, GSL_OPEN_DELIM_SIZE); 
@@ -3018,7 +3021,6 @@ kndRefSet_sync(struct kndRefSet *self)
 
     
  sync_idx:
-
     
     if (!self->num_facets) {
         if (self->idx) {

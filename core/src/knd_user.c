@@ -234,68 +234,6 @@ kndUser_read_browse_classes(struct kndUser *self, char *rec, size_t rec_size __a
 }
 
 
-static int
-kndUser_read_repos(struct kndUser *self, char *rec, size_t rec_size __attribute__((unused)))
-{
-    char buf[KND_NAME_SIZE] = {0};
-    size_t buf_size = 0;
-
-    struct kndRepoAccess *acc;
-    char *c;
-    char *b;
-    const char *delim = ";";
-    char *last;
-    int err;
-
-    for (c = strtok_r(rec, delim, &last);
-         c;
-         c = strtok_r(NULL, delim, &last)) {
-
-        b = strchr(c, '/');
-        if (b) {
-            *b = '\0';
-            b++;
-
-            buf_size = strlen(b);
-            if (!buf_size) return knd_FAIL;
-
-            if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
-
-            memcpy(buf, b, buf_size);
-            buf[buf_size] = '\0';
-        }
-
-        /* check repo's name */
-        err = knd_is_valid_id(c, strlen(c));
-        if (err) return err;
-
-        acc = malloc(sizeof(struct kndRepoAccess));
-        if (!acc) return knd_NOMEM;
-
-        memset(acc, 0, sizeof(struct kndRepoAccess));
-        memcpy(acc->repo_id, c, KND_ID_SIZE);
-
-        acc->may_select = true;
-        acc->may_get = true;
-
-        if (!strcmp(buf, "U")) {
-            acc->may_import = true;
-            acc->may_update = true;
-            /*knd_log("  ++ import & update granted: %s\n", acc->repo_id);*/
-        }
-
-        /*err = self->repo_idx->set(self->repo_idx,
-                                    (const char*)c, (void*)acc);
-        if (err) {
-            free(acc);
-            return err;
-            } */
-    }
-
-    err = knd_OK;
-
-    return err;
-}
 
 
 
@@ -343,10 +281,10 @@ kndUser_read(struct kndUser *self, const char *rec)
                 if (err) goto final;
             }
 
-            if (!strcmp(attr_buf, "R")) {
+            /*if (!strcmp(attr_buf, "R")) {
                 err = kndUser_read_repos(self, val_buf, val_buf_size);
                 if (err) goto final;
-            }
+                }*/
 
             if (!strcmp(attr_buf, "N")) {
                 memcpy(self->name, val_buf, val_buf_size);
@@ -513,7 +451,10 @@ kndUser_restore(struct kndUser *self)
         /* update repo full name idx */
         err = self->repo->repo_idx->set(self->repo->repo_idx, repo->name, (void*)repo);
         if (err) return err;
+
         
+        knd_log("++ repo opened: %s PATH: %s", repo->name, repo->path);
+
         repo->restore_mode = false;
     }
 

@@ -267,7 +267,7 @@ kndObjRef_export_GSC(struct kndObjRef *self)
     size_t buf_size;
     struct kndOutput *out = self->out;
     struct kndSortAttr *attr = NULL;
-
+    struct kndSortTag *tag = NULL;
     int err;
 
     /* REF only */
@@ -307,8 +307,12 @@ kndObjRef_export_GSC(struct kndObjRef *self)
 
         return knd_OK;
     }
-    
-    if (!self->obj->tag) {
+
+    tag = self->sorttag;
+    if (self->obj->tag)
+        tag = self->obj->tag;
+
+    if (!tag) {
         knd_log("  -- no OBJ sorttag in \"%s\"\n", self->obj_id);
         return knd_FAIL;
     }
@@ -318,8 +322,8 @@ kndObjRef_export_GSC(struct kndObjRef *self)
     err = out->write(out, "{", 1);
     if (err) return err;
 
-    for (size_t i = 0; i < self->obj->tag->num_attrs; i++) {
-        attr =  self->obj->tag->attrs[i];
+    for (size_t i = 0; i < tag->num_attrs; i++) {
+        attr =  tag->attrs[i];
         if (!attr) continue;
         
         err = out->write(out, "{", 1);
