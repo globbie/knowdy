@@ -205,6 +205,10 @@ kndRepo_open(struct kndRepo *self)
                     self->id);
             return knd_FAIL;
         }
+
+
+
+
     }
 
     if (DEBUG_REPO_LEVEL_TMP)
@@ -485,9 +489,8 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
     err = kndRepo_get_cache(self, dc, &self->curr_cache);
     if (err) return err;
 
-    if (DEBUG_REPO_LEVEL_TMP) {
+    if (DEBUG_REPO_LEVEL_2) {
         knd_log("++ got class cache: \"%s\": %p", dc->name, self->curr_cache);
-
         self->curr_cache->name_idx->str(self->curr_cache->name_idx, 0, 5);
 
     }
@@ -517,7 +520,7 @@ kndRepo_run_get_obj(void *obj, struct kndTaskArg *args, size_t num_args)
 
     self = (struct kndRepo*)obj;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. repo %s to get OBJ: \"%s\"", self->name, name);
     
     err = kndRepo_get_obj(self, name, name_size);
@@ -715,7 +718,7 @@ kndRepo_sync_name_idx(struct kndRepo *self)
     
     refset = cache->name_idx;
 
-    refset->str(refset, 0, 5);
+    //refset->str(refset, 0, 5);
     
     buf_size = sprintf(buf, "%s/%s/", self->path, cache->baseclass->name);
 
@@ -844,13 +847,8 @@ kndRepo_import_obj(struct kndRepo *self,
     err = obj->import(obj, rec, &chunk_size, KND_FORMAT_GSL);
     if (err) goto final;
 
-
     err = cache->db->set(cache->db, obj->id, (void*)obj);
     if (err) goto final;
-
-    /*err = cache->obj_idx->set(cache->obj_idx, obj->name, (void*)obj);
-    if (err) goto final;
-    */
     
     if (self->restore_mode) {
         knd_log("  ++ Repo %s: restored OBJ %s::%s import OK [total objs: %lu]\n",
@@ -880,8 +878,6 @@ kndRepo_import_obj(struct kndRepo *self,
             goto final;
         }
 
-        knd_log(".. linearizing indices ..");
-
         err = kndRepo_linearize_objs(self);
         if (err) goto final;
         
@@ -903,6 +899,9 @@ kndRepo_import_obj(struct kndRepo *self,
     cache->num_objs++;
 
     cache->name_idx->str(cache->name_idx, 0, 5);
+
+    if (DEBUG_REPO_LEVEL_3)
+        obj->str(obj, 1);
     
     *total_size = chunk_size;
     
@@ -1055,10 +1054,10 @@ kndRepo_read_obj_db(struct kndRepo *self,
 
     err = knd_FAIL;
 
-    buf_size = sprintf(buf, "%s/%s/objs.gsc",
+    buf_size = sprintf(buf, "%s%s/objs.gsc",
                        self->path, cache->baseclass->name);
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("  .. open OBJ db file: \"%s\" ..\n", buf);
     
     /* TODO: large file support */
@@ -1134,12 +1133,11 @@ kndRepo_get_obj(struct kndRepo *self,
         if (err) return err;
     }
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         obj->str(obj, 1);
     
     if (curr_depth) {
         obj->export_depth = curr_depth;
-
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log(" .. expanding obj %s [%s]..\n", obj->name, obj->id);
 
@@ -1152,7 +1150,6 @@ kndRepo_get_obj(struct kndRepo *self,
     self->out = self->out;
     self->out->reset(self->out);
     
-    
     /* export obj */
     format = KND_FORMAT_JSON;
     obj->out = self->out;
@@ -1160,13 +1157,13 @@ kndRepo_get_obj(struct kndRepo *self,
     
     err = obj->export(obj, format, 0);
     if (err) return err;
+
     
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("JSON: %s\n", obj->out->buf);
+
     return knd_OK;
 }
-
-
-
-
 
 
 static int
@@ -1534,6 +1531,8 @@ kndRepo_get_cache(struct kndRepo *self,
                   struct kndDataClass *dc,
                   struct kndRepoCache **result)
 {
+    char buf[KND_TEMP_BUF_SIZE];
+    size_t buf_size;
     struct kndRepoCache *cache;
     int err;
     
@@ -1575,6 +1574,43 @@ kndRepo_get_cache(struct kndRepo *self,
     cache->name_idx->cache = cache;
     cache->name_idx->out = self->out;
 
+    /* read name IDX */
+    if (self->user->role == KND_USER_ROLE_READER) {
+        buf_size = sprintf(buf, "%s/%s/AZ.idx",
+                           self->path,
+                           dc->name);
+
+        if (DEBUG_REPO_LEVEL_2)
+            knd_log(".. reading name IDX file: \"%s\" ..",
+                    buf);
+
+        self->out = self->out;
+        self->out->reset(self->out);
+    
+        err = self->out->read_file(self->out,
+                                   (const char*)buf, buf_size);
+        if (err) {
+            if (DEBUG_REPO_LEVEL_TMP)
+                knd_log("-- no IDX DB found: \"%s\" :(",
+                        buf);
+            return knd_FAIL;
+        }
+    
+        if (DEBUG_REPO_LEVEL_3)
+            knd_log("\n\n   ++  atom IDX DB rec size: %lu\n",
+                    (unsigned long)self->out->file_size);
+    
+        err = cache->name_idx->read(cache->name_idx,
+                                    self->out->file,
+                                    self->out->file_size);
+        if (err) {
+            if (DEBUG_REPO_LEVEL_TMP)
+                knd_log("    -- name IDX refset not parsed :(\n");
+            return err;
+        }
+    }
+
+    
     /* root query */
     err = kndQuery_new(&cache->query);
     if (err) return err;
@@ -1594,7 +1630,6 @@ kndRepo_get_cache(struct kndRepo *self,
     return err;
 }
 
-
 static int
 kndRepo_get_guid(struct kndRepo *self,
                  struct kndDataClass *dc,
@@ -1602,60 +1637,16 @@ kndRepo_get_guid(struct kndRepo *self,
                  size_t      name_size,
                  char *result)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
     struct kndRepoCache *cache;
-    struct kndRefSet *refset;
     int err;
     
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. get guid of %s::%s..",
                 dc->name, name);
     
     err = kndRepo_get_cache(self, dc, &cache);
     if (err) return err;
 
-    /* read name IDX */
-    if (!cache->name_idx) {
-        buf_size = sprintf(buf, "%s/%s/AZ.idx",
-                           self->path,
-                           dc->name);
-
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log(".. reading name IDX file: \"%s\" ..",
-                    buf);
-
-        self->out = self->out;
-        self->out->reset(self->out);
-    
-        err = self->out->read_file(self->out,
-                                   (const char*)buf, buf_size);
-        if (err) {
-            if (DEBUG_REPO_LEVEL_TMP)
-                knd_log("-- no IDX DB found: \"%s\" :(",
-                        buf);
-            return knd_FAIL;
-        }
-    
-        if (DEBUG_REPO_LEVEL_3)
-            knd_log("\n\n   ++  atom IDX DB rec size: %lu\n",
-                    (unsigned long)self->out->file_size);
-
-        err = kndRefSet_new(&refset);
-        if (err) return err;
-        refset->export_depth = 0;
-    
-        err = refset->read(refset,
-                           self->out->file,
-                           self->out->file_size);
-        if (err) {
-            if (DEBUG_REPO_LEVEL_TMP)
-                knd_log("    -- name IDX refset not parsed :(\n");
-            return err;
-        }
-        refset->cache = cache;
-        cache->name_idx = refset;
-    }
 
     err = cache->name_idx->lookup_name(cache->name_idx,
                                        name, name_size,
@@ -1749,7 +1740,7 @@ kndRepo_parse_class(void *obj,
     };
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("   .. parsing the CLASS rec: \"%s\" CURR REPO: %s", rec, repo->name);
     
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));

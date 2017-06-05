@@ -1364,8 +1364,6 @@ kndElem_parse(struct kndElem *self,
                 if (chunk_size) {
                     c += chunk_size;
                     *total_size = c - rec;
-
-                    
                     return knd_OK;
                 }
 
@@ -1407,13 +1405,9 @@ kndElem_parse(struct kndElem *self,
                 break;
             }
 
-
             if (!in_elem) {
                 err = kndElem_new(&elem);
                 if (err) goto final;
-                
-                /*elem->parent = self->attr;*/
-                
                 elem->obj = self->obj;
 
                 /*if (!self->attr) {
@@ -1452,7 +1446,7 @@ kndElem_parse(struct kndElem *self,
 
             break;
         case '}':
-
+            
             if (in_atomic_val) {
                 buf_size = c - b;
 
@@ -1497,10 +1491,15 @@ kndElem_parse(struct kndElem *self,
                 goto final;
             }
 
-
-            if (DEBUG_ELEM_LEVEL_2)
-                knd_log("  -- end of elem \"%s\"\n", self->name);
-
+            if (!self->name_size) {
+                if (DEBUG_ELEM_LEVEL_TMP) {
+                    knd_log("  -- elem \"%s\" not complete :(\n",
+                            self->name);
+                }
+                err = knd_FAIL;
+                goto final;
+            }
+            
             *total_size = c - rec;
 
             return knd_OK;
@@ -1889,6 +1888,20 @@ kndElem_export_JSON(struct kndElem *self,
             }
             
             break;
+        case KND_ELEM_NUM:
+            buf_size = sprintf(buf, "\"val\":\"%s\"",
+                               self->states->val);
+            err = self->out->write(self->out, buf, buf_size);
+            if (err) goto final;
+
+            if (self->states->state) {
+                buf_size = sprintf(buf, ",\"_st\":%lu",
+                                   (unsigned long)self->states->state);
+                err = self->out->write(self->out, buf, buf_size);
+                if (err) goto final;
+            }
+            
+            break;
         case KND_ELEM_FILE:
 
             err = self->out->write(self->out, "\"file\":\"", strlen("\"file\":\""));
@@ -2075,7 +2088,6 @@ kndElem_export_JSON(struct kndElem *self,
             err = self->out->write(self->out, "]", 1);
             if (err) goto final;
         }
-        
         else {
             err = self->out->write(self->out, "}", 1);
             if (err) goto final;
@@ -2432,8 +2444,8 @@ kndElem_export_GSC(struct kndElem *self)
     struct kndElemState *elem_state;
     int err;
 
-    if (DEBUG_ELEM_LEVEL_2)
-        knd_log(".. GSC export elem: %s", self->name);
+    if (DEBUG_ELEM_LEVEL_TMP)
+        knd_log(".. GSC export elem \"%s\"..", self->name);
 
     if (self->is_list)
         return kndElem_export_list_GSC(self);
@@ -2445,6 +2457,7 @@ kndElem_export_GSC(struct kndElem *self)
             knd_log("-- inner obj export failed :(");
             return err;
         }
+        return knd_OK;
     }
 
     err = self->out->write(self->out, "{", 1);

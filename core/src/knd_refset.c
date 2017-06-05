@@ -537,6 +537,7 @@ kndRefSet_check_refset_name(struct kndRefSet *self,
                              const char        *name,
                              size_t name_size)
 {
+
     const char *c;
     
     // no more sorting elems: stay in the same refset
@@ -596,24 +597,16 @@ kndRefSet_lookup_name(struct kndRefSet *self,
     size_t UTF_val;
     int err;
 
-    if (DEBUG_REFSET_LEVEL_TMP)
+    if (DEBUG_REFSET_LEVEL_2)
         knd_log(".. refset \"%s\" looking up obj name: \"%s\"..",
                 self->name, name);
 
     if (self->inbox_size) {
-
-        knd_log(".. inbox lookup, total num objs: %lu",
-                (unsigned long)self->inbox_size);
-        
         for (i = 0; i < self->inbox_size; i++) {
             ref = self->inbox[i];
-
-            knd_log("ref: %p", ref);
-
             if (!strcmp(ref->name, remainder)) {
-                if (DEBUG_REFSET_LEVEL_TMP)
-                    knd_log("  ++ got obj match \"%s\"!\n", ref->obj_id);
-
+                if (DEBUG_REFSET_LEVEL_2)
+                    knd_log("++ got obj match \"%s\"!", ref->obj_id);
                 memcpy(guid, ref->obj_id, KND_ID_SIZE);
                 return knd_OK;
             }
@@ -1627,7 +1620,7 @@ kndRefSet_add_ref(struct kndRefSet *self,
     self->num_refs++;
     
     if ((self->inbox_size + 1) < self->max_inbox_size) {
-        if (DEBUG_REFSET_LEVEL_TMP)
+        if (DEBUG_REFSET_LEVEL_2)
             knd_log("Inbox size: %lu REF: %p",
                     (unsigned long)self->inbox_size, ref);
         return knd_OK;
@@ -2224,8 +2217,6 @@ kndRefSet_read_inbox(struct kndRefSet *self,
     size_t buf_size = KND_TEMP_BUF_SIZE;
 
     char recbuf[KND_TEMP_BUF_SIZE];
-    //size_t recbuf_size = KND_TEMP_BUF_SIZE;
-
     struct kndObjRef *ref;
     struct kndElemRef *elemref;
     
@@ -2235,9 +2226,9 @@ kndRefSet_read_inbox(struct kndRefSet *self,
     char *b;
     char *c;
     char *n;
+    
     long space_left;
     long numval;
-    //size_t curr_size = 0;
     size_t num_refs = 0;
     int err;
 
@@ -2249,6 +2240,8 @@ kndRefSet_read_inbox(struct kndRefSet *self,
         knd_log("  -- inbox rec too large :(\n");
         return knd_LIMIT;
     }
+
+    /* TODO: remove copying and strtok */
     
     memcpy(recbuf, rec, rec_size);
     recbuf[rec_size - 1] = '\0';
@@ -2274,8 +2267,6 @@ kndRefSet_read_inbox(struct kndRefSet *self,
          ref_rec;
          ref_rec = strtok_r(NULL, delim, &last)) {
         
-        /*knd_log("REF: %s\n", ref_rec);*/
-
         err = kndObjRef_new(&ref);
         if (err) return err;
 
@@ -2284,13 +2275,8 @@ kndRefSet_read_inbox(struct kndRefSet *self,
         n = strstr(ref_rec, GSL_OFFSET);
         if (n) {
             n += GSL_OFFSET_SIZE;
-            
-            /* get the numeric offset */
             err = knd_parse_num((const char*)n, &numval);
             if (err) goto final;
-
-            /*ref->hilite_pos = (size_t)numval;*/
-            /* TODO: hilite len  */
         }
 
         memcpy(ref->obj_id, ref_rec, KND_ID_SIZE);
@@ -2306,9 +2292,13 @@ kndRefSet_read_inbox(struct kndRefSet *self,
             goto assign;
         }
         
-        b = strchr(ref_rec, '/');
+        /*b = strchr(ref_rec, '/');
         if (!b) goto assign;
+        */
 
+        /* TODO: handle refs */
+        goto assign;
+        
         /* elem ref */
         ref->type = KND_REF_ELEM;
 
@@ -2386,12 +2376,11 @@ kndRefSet_read_inbox(struct kndRefSet *self,
         num_refs++;
     }
 
-
-    if (num_refs != self->num_refs) {
+    /*if (num_refs != self->num_refs) {
         knd_log("   -- num refs not matched:  DB: %lu  ACTUAL: %lu\n",
                 self->num_refs, num_refs);
         return knd_FAIL;
-    }
+        }*/
     
     err = knd_OK;
     
@@ -2767,9 +2756,6 @@ kndRefSet_sync_objs(struct kndRefSet *self,
                     continue;
                 }
                 
-                /*if (!ref->obj_id_size) continue;*/
-                /*knd_log("%d)\n", ri);
-                  ref->str(ref, 1); */
 
                 if (!ref->obj) {
                     obj = self->cache->db->get(self->cache->db, ref->obj_id);
@@ -2789,7 +2775,7 @@ kndRefSet_sync_objs(struct kndRefSet *self,
                     return err;
                 }
                 
-                if (DEBUG_REFSET_LEVEL_3)
+                if (DEBUG_REFSET_LEVEL_TMP)
                     knd_log("%d) OBJ \"%s\" REC offset: %lu CURR BUF SIZE: %lu count: %lu\n",
                             ri, obj->id, (unsigned long)rec_offset,
                             (unsigned long)self->out->buf_size,
@@ -3020,7 +3006,7 @@ kndRefSet_sync(struct kndRefSet *self)
     }
 
     
- sync_idx:
+    // sync_idx:
     
     if (!self->num_facets) {
         if (self->idx) {

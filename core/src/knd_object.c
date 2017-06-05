@@ -22,7 +22,7 @@
 #define DEBUG_OBJ_LEVEL_4 0
 #define DEBUG_OBJ_LEVEL_TMP 1
 
-static int 
+static int
 knd_compare_obj_by_match_descend(const void *a,
                                  const void *b)
 {
@@ -643,8 +643,7 @@ kndObject_parse_GSC(struct kndObject *self,
 {
     char idbuf[KND_ID_SIZE];
     char recbuf[KND_TEMP_BUF_SIZE + 1];
-    const char *c;
-    const char *b;
+    const char *b, *c, *e;
     struct kndElem *elem = NULL;
 
     size_t chunk_size = 0;
@@ -661,9 +660,8 @@ kndObject_parse_GSC(struct kndObject *self,
 
     if (!rec_size)
         return knd_FAIL;
-
     
-    if (DEBUG_OBJ_LEVEL_3) {
+    if (DEBUG_OBJ_LEVEL_2) {
         if (rec_size < KND_TEMP_BUF_SIZE) {
             memcpy(recbuf, rec, rec_size);
             recbuf[rec_size] = '\0';
@@ -672,19 +670,21 @@ kndObject_parse_GSC(struct kndObject *self,
             memcpy(recbuf, rec, KND_TEMP_BUF_SIZE);
             recbuf[KND_TEMP_BUF_SIZE] = '\0';
         }
-
         knd_log("\n  .. parse OBJ of class \"%s\"..  REC:\n %s\n REC SIZE: %lu\n\n\n",
                 self->cache->baseclass->name, recbuf, (unsigned long)rec_size);
     }
     
     /* parse and validate OBJ */
     c = rec;
-    b = c;
+    b = rec;
+    e = rec;
     
     while (*c) {
         switch (*c) {
             /* non-whitespace char */
         default:
+            e = c + 1;
+            
             if (!in_elem) break;
 
             if (!in_elem_name) break;
@@ -703,31 +703,7 @@ kndObject_parse_GSC(struct kndObject *self,
             /* whitespace */
             if (!in_body)
                 break;
-
-            if (!in_name) {
-                chunk_size = c - b;
-                if (chunk_size >= KND_NAME_SIZE) {
-                    err = knd_LIMIT;
-                    return err;
-                }
-                memcpy(self->name, b, chunk_size);
-                self->name[chunk_size] = '\0';
-                self->name_size = chunk_size;
-
-                err = self->cache->name_idx->lookup_name(self->cache->name_idx,
-                                                         self->name, self->name_size,
-                                                         self->name, self->name_size, idbuf);
-                if (!err) {
-                    knd_log("   -- OBJ name doublet: \"%s\"\n", self->name);
-                    return knd_FAIL;
-                }
-                
-                in_name = true;
-                break;
-            }
-
             
-            b = c + 1;
             break;
         case '{':
             if (!in_body) {
@@ -736,8 +712,23 @@ kndObject_parse_GSC(struct kndObject *self,
                 break;
             }
 
+            if (!in_name) {
+                chunk_size = e - b;
+                if (chunk_size >= KND_NAME_SIZE) {
+                    err = knd_LIMIT;
+                    return err;
+                }
+                memcpy(self->name, b, chunk_size);
+                self->name[chunk_size] = '\0';
+                self->name_size = chunk_size;
+                
+                in_name = true;
+                b = c + 1;
+            }
+
+            
             /* special field? */
-            if (curr_size < rec_size) {
+            /*if (curr_size < rec_size) {
                 b = c + 1;
                 if (*b == '_') {
                     err = kndObject_parse_special_GSC(self, c, &chunk_size);
@@ -747,8 +738,9 @@ kndObject_parse_GSC(struct kndObject *self,
                     curr_size += chunk_size;
                     break;
                 }
-            }
-            
+                }*/
+      
+
             err = kndElem_new(&elem);
             if (err) return err;
 
@@ -776,7 +768,7 @@ kndObject_parse_GSC(struct kndObject *self,
             }
             self->num_elems++;
 
-            if (DEBUG_OBJ_LEVEL_3)
+            if (DEBUG_OBJ_LEVEL_2)
                 knd_log("\n   ++ obj elem \"%s\" parsed OK, continue from: \"%s\"\n",
                         elem->name, c);
             
@@ -1354,12 +1346,6 @@ kndObject_parse_inline(struct kndObject *self,
                 self->tail = elem;
             }
             self->num_elems++;
-
-            /*knd_log(" ++ obj elem \"%s\" parsed OK, continue from: \"%s\"\n",
-                    elem->name, c);
-
-            */
-            
             break;
 
         case '}':
@@ -1391,7 +1377,6 @@ kndObject_export_inline_JSON(struct kndObject *self)
 
     elem = self->elems;
     while (elem) {
-
 
         elem->out = self->out;
         err = elem->export(elem, KND_FORMAT_JSON, 1);
@@ -1440,7 +1425,6 @@ kndObject_export_JSON(struct kndObject *self,
     if (DEBUG_OBJ_LEVEL_3)
         knd_log("   .. export OBJ \"%s\"    is_concise: %d\n",
             self->name, is_concise);
-
     
     if (self->dc) {
         err = kndObject_export_inline_JSON(self);
@@ -1472,8 +1456,6 @@ kndObject_export_JSON(struct kndObject *self,
 
         /* filter out detailed presentation */
         if (is_concise) {
-
-
             /* inner obj? */
             if (elem->inner) {
                 obj = elem->inner;
@@ -1483,6 +1465,7 @@ kndObject_export_JSON(struct kndObject *self,
                     err = self->out->write(self->out, ",", 1);
                     if (err) return err;
                 }
+
 
                 err = self->out->write(self->out, "\"", 1);
                 if (err) return err;
@@ -2013,7 +1996,7 @@ kndObject_export_GSC(struct kndObject *self,
     size_t i, j, ri;
     int err;
     
-    if (DEBUG_OBJ_LEVEL_3)
+    if (DEBUG_OBJ_LEVEL_TMP)
         knd_log("  .. export GSC obj \"%s\" [id: %s]..\n",
                 self->name, self->id);
 
@@ -2028,7 +2011,6 @@ kndObject_export_GSC(struct kndObject *self,
         if (err) return err;
     }
     else {
-
         if (!self->parent->is_list) {
             err = self->out->write(self->out, self->parent->name, self->parent->name_size);
             if (err) return err;
@@ -2079,11 +2061,11 @@ kndObject_export_GSC(struct kndObject *self,
     elem = self->elems;
     while (elem) {
         /* filter out detailed presentation */
-        if (is_concise) {
+        /*if (is_concise) {
             if (elem->attr->concise_level)
                 goto export_elem;
             goto next_elem;
-        }
+            }*/
 
     export_elem:
 
@@ -2102,14 +2084,13 @@ kndObject_export_GSC(struct kndObject *self,
     }
 
 
-    relc = self->cache->rel_classes;
+    /*relc = self->cache->rel_classes;
     while (relc) {
         reltype = relc->rel_types;
         while (reltype) {
             refset = reltype->idx->get(reltype->idx, (const char*)self->name);
             if (!refset) goto next_reltype;
 
-            /* */
             err = self->out->write(self->out, "{_cls{", strlen("{_cls{"));
             if (err) return err;
 
@@ -2123,8 +2104,6 @@ kndObject_export_GSC(struct kndObject *self,
                                    reltype->attr->name,
                                    reltype->attr->name_size);
             
-            /*knd_log("++ got refset! num refs: %lu\n",
-              (unsigned long)refset->num_refs); */
 
             err = self->out->write(self->out, "[", 1);
             if (err) return err;
@@ -2169,7 +2148,7 @@ kndObject_export_GSC(struct kndObject *self,
         
         relc = relc->next;
     }
-
+    */
     
     err = self->out->write(self->out, "}", 1);
     if (err) return err;
