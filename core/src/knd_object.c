@@ -1096,7 +1096,7 @@ kndObject_import(struct kndObject *self,
     }
         */
 
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_OBJ_LEVEL_TMP)
         self->str(self, 1);
 
     return knd_OK;
@@ -1996,7 +1996,7 @@ kndObject_export_GSC(struct kndObject *self,
     size_t i, j, ri;
     int err;
     
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log("  .. export GSC obj \"%s\" [id: %s]..\n",
                 self->name, self->id);
 

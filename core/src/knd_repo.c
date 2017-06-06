@@ -124,7 +124,7 @@ kndRepo_parse_config(struct kndRepo *self,
                 self->name_size = buf_size;
                 self->name[buf_size] = '\0';
 
-                if (DEBUG_REPO_LEVEL_TMP)
+                if (DEBUG_REPO_LEVEL_2)
                     knd_log("== REPO NAME: \"%s\"", self->name);
 
                 in_repo_name = false;
@@ -176,7 +176,7 @@ kndRepo_open(struct kndRepo *self)
 
     self->path_size = strlen(self->path);
     
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("..opening repo:  ID:\"%s\" REPO FILE:%s",
                 self->id, self->path);
 
@@ -205,13 +205,9 @@ kndRepo_open(struct kndRepo *self)
                     self->id);
             return knd_FAIL;
         }
-
-
-
-
     }
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("++ REPO open success: \"%s\" PATH: \"%s\"",
                 self->out->file, self->path);
     
@@ -634,7 +630,7 @@ kndRepo_restore(struct kndRepo *self)
     const char *inbox_filename = "inbox/import.data";
     int err;
     
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("  .. restoring repo \"%s\".. PATH: %s [%lu]",
                 self->id, self->path, (unsigned long)self->path_size);
 
@@ -643,7 +639,7 @@ kndRepo_restore(struct kndRepo *self)
     buf_size = self->path_size + strlen(inbox_filename);
     buf[buf_size] = '\0';
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("  .. try importing recs from \"%s\"..",
                 buf);
 
@@ -1193,16 +1189,13 @@ kndRepo_linearize_objs(struct kndRepo *self)
     refset->out = self->task->out;
     refset->out->reset(refset->out);
 
-    knd_log("== refset output buf size: %lu total: %lu",
-            (unsigned long)refset->out->buf_size, refset->out->max_size);
-
     err = refset->sync_objs(refset, (const char*)buf);
     if (err) {
         knd_log("-- refset failed to sync objs :(");
         return err;
     }
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("  ++ sync objs of \"%s\" OK!\n", cache->baseclass->name);
 
     return knd_OK;
@@ -1580,7 +1573,7 @@ kndRepo_get_cache(struct kndRepo *self,
                            self->path,
                            dc->name);
 
-        if (DEBUG_REPO_LEVEL_2)
+        if (DEBUG_REPO_LEVEL_TMP)
             knd_log(".. reading name IDX file: \"%s\" ..",
                     buf);
 
@@ -1828,8 +1821,8 @@ kndRepo_read_state(struct kndRepo *self,
                 memcpy(self->last_id, b, buf_size);
                 self->last_id[buf_size] = '\0';
                 
-                if (DEBUG_REPO_LEVEL_TMP)
-                    knd_log("LAST REPO ID: %s", self->last_id);
+                if (DEBUG_REPO_LEVEL_2)
+                    knd_log("== LAST REPO ID: %s", self->last_id);
 
                 in_last_id = false;
                 in_val = false;

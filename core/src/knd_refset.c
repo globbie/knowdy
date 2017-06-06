@@ -2209,9 +2209,9 @@ kndRefSet_read_term_idx(struct kndRefSet *self,
 
 
 static int
-kndRefSet_read_inbox(struct kndRefSet *self,
-                     const char        *rec,
-                     size_t            rec_size)
+read_inbox(struct kndRefSet *self,
+           const char        *rec,
+           size_t            rec_size)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size = KND_TEMP_BUF_SIZE;
@@ -2232,7 +2232,7 @@ kndRefSet_read_inbox(struct kndRefSet *self,
     size_t num_refs = 0;
     int err;
 
-    if (DEBUG_REFSET_LEVEL_3)
+    if (DEBUG_REFSET_LEVEL_TMP)
         knd_log("    .. reading Inbox: \"%s\" [%lu]\n",
                 rec, (unsigned long)rec_size);
 
@@ -2287,8 +2287,18 @@ kndRefSet_read_inbox(struct kndRefSet *self,
         /* the rest of the obj name */
         if (*ref_rec == '~') {
             ref_rec++;
+
+            /* remaining bracket? */
+            b = strchr(ref_rec, ')');
+            if (b)
+                *b = '\0';
+            
             ref->name_size = strlen(ref_rec);
             memcpy(ref->name, ref_rec, ref->name_size);
+
+            if (DEBUG_REFSET_LEVEL_TMP)
+                knd_log("obj name: \"%s\" [%lu]",
+                        ref->name, (unsigned long)ref->name_size);
             goto assign;
         }
         
@@ -2426,7 +2436,7 @@ kndRefSet_read(struct kndRefSet *self,
     int err;
 
     if (DEBUG_REFSET_LEVEL_3) {
-       knd_log("\n\n   .. Reading Refset \"%s\" IDX rec, input size [%lu]   depth: %lu\n",
+       knd_log(".. Reading Refset \"%s\" IDX rec, input size [%lu]   depth: %lu\n",
                self->name, (unsigned long)rec_size, (unsigned long)self->export_depth);
     }
     
@@ -2442,7 +2452,7 @@ kndRefSet_read(struct kndRefSet *self,
         self->name_size = namebuf_size;
     }
     
-    if (DEBUG_REFSET_LEVEL_3)
+    if (DEBUG_REFSET_LEVEL_TMP)
         knd_log("   == DIR REC: %s [size: %lu]\n\n",
                 buf, (unsigned long)buf_size);
     
@@ -2457,7 +2467,7 @@ kndRefSet_read(struct kndRefSet *self,
             return knd_OK;
         }
         
-        err = kndRefSet_read_inbox(self, rec, rec_size);
+        err = read_inbox(self, rec, rec_size);
         return err;
     }
 

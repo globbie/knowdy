@@ -336,7 +336,7 @@ kndUser_read_db_state(struct kndUser *self, char *rec)
     c = rec;
     b = rec;
     
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. User \"%s\" parsing DB state config", self->id, rec);
     
     while (*c) {
@@ -358,7 +358,7 @@ kndUser_read_db_state(struct kndUser *self, char *rec)
             *c = '\0';
 
             if (!in_field) {
-                if (!strcmp(b, "STATE")) {
+                if (!strncmp(b, "STATE", strlen("STATE"))) {
                     in_field = true;
                     b = c + 1;
                     break;
@@ -409,7 +409,7 @@ kndUser_restore(struct kndUser *self)
     
     int err;
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. user \"%s\" restoring DB state  DBPATH: %s",
                 self->id, self->dbpath);
 

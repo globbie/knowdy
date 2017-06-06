@@ -27,20 +27,20 @@
 
 
 static int
-kndElem_index_atom(struct kndElem *self,
-                   struct kndObject *obj);
+index_atom(struct kndElem *self,
+           struct kndObject *obj);
 
 static int
-kndElem_index_ref(struct kndElem *self);
+index_ref(struct kndElem *self);
 
 static int
-kndElem_parse_ref(struct kndElem *self,
-                  const char *rec,
-                  size_t *total_size);
+parse_ref(struct kndElem *self,
+          const char *rec,
+          size_t *total_size);
 
 
 static void
-kndElem_del(struct kndElem *self)
+del(struct kndElem *self)
 {
     struct kndElem *elem, *curr_elem;
 
@@ -49,15 +49,14 @@ kndElem_del(struct kndElem *self)
         curr_elem = elem;
         elem = elem->next;
 
-        kndElem_del(curr_elem);
+        del(curr_elem);
     }
-
     free(self);
 }
 
 
 static int
-kndElem_str(struct kndElem *self, size_t depth)
+str(struct kndElem *self, size_t depth)
 {
     size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
@@ -299,7 +298,7 @@ kndElem_index_list_inner(struct kndElem *self)
                 break;
             case KND_ELEM_ATOM:
                 elem->out = self->out;
-                err = kndElem_index_atom(elem, self->inner);
+                err = index_atom(elem, self->inner);
                 if (err) return err;
                 break;
             case KND_ELEM_REF:
@@ -407,7 +406,7 @@ kndElem_index_list(struct kndElem *self)
 */
 
 static int
-kndElem_index_ref(struct kndElem *self)
+index_ref(struct kndElem *self)
 {
     struct kndDataClass *dc, *bc;
     struct kndRepoCache *cache = NULL;
@@ -535,7 +534,6 @@ kndElem_index_ref(struct kndElem *self)
         
     err = kndSortTag_new(&tag);
     if (err) return err;
-        
     objref->sorttag = tag;
 
     if (DEBUG_ELEM_LEVEL_2)
@@ -589,8 +587,8 @@ kndElem_set_full_name(struct kndElem *self,
 }
 
 static int
-kndElem_index_atom(struct kndElem *self,
-                   struct kndObject *obj __attribute__((unused)))
+index_atom(struct kndElem *self,
+           struct kndObject *obj __attribute__((unused)))
 {
     struct kndSortTag *tag = NULL;
     struct kndSortAttr *attr;
@@ -693,12 +691,12 @@ kndElem_index(struct kndElem *self)
         break;
     case KND_ELEM_ATOM:
         if (self->attr->idx_name_size) {
-            err = kndElem_index_atom(self, NULL);
+            err = index_atom(self, NULL);
             return err;
         }
         break;
     case KND_ELEM_REF:
-        err = kndElem_index_ref(self);
+        err = index_ref(self);
         return err;
         
         /*    case KND_ELEM_CONTAINER:
@@ -1084,9 +1082,9 @@ kndElem_check_name(struct kndElem *self,
     if (err) return err;
     self->attr = attr;
 
-    if (DEBUG_ELEM_LEVEL_2)
-        knd_log("  ++ got attr: \"%s => %s  DC: %p",
-                attr->name, attr->fullname, attr->dc);
+    if (DEBUG_ELEM_LEVEL_TMP)
+        knd_log("  ++ got attr: \"%s => %s (type: %s)",
+                attr->name, attr->fullname, knd_elem_names[attr->type]);
     
     if (attr->dc) {
         err = kndObject_new(&obj);
@@ -1124,7 +1122,7 @@ kndElem_check_name(struct kndElem *self,
     case KND_ELEM_CALC:
         break;
     case KND_ELEM_REF:
-        err = kndElem_parse_ref(self, c, &chunk_size);
+        err = parse_ref(self, c, &chunk_size);
         if (err) return err;
 
         *total_size = chunk_size;
@@ -1153,9 +1151,9 @@ kndElem_check_name(struct kndElem *self,
 
 
 static int
-kndElem_parse_ref(struct kndElem *self,
-                  const char *rec,
-                  size_t *total_size)
+parse_ref(struct kndElem *self,
+          const char *rec,
+          size_t *total_size)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -1163,11 +1161,9 @@ kndElem_parse_ref(struct kndElem *self,
     struct kndElemState *elem_state;
     struct kndDataClass *root_dc, *dc;
 
-    const char *b;
-    const char *c;
+    const char *b, *c, *e;
 
     size_t chunk_size = 0;
-    //size_t curr_size = 0;
     int err = knd_FAIL;
 
     bool in_cls = false;
@@ -1177,9 +1173,8 @@ kndElem_parse_ref(struct kndElem *self,
     c = rec;
     b = c;
 
-    if (DEBUG_ELEM_LEVEL_3)
-        knd_log("  .. REF parse from: \"%s\"\n\n",
-                rec);
+    if (DEBUG_ELEM_LEVEL_TMP)
+        knd_log(".. parse REF: \"%s\"", rec);
 
     elem_state = malloc(sizeof(struct kndElemState));
     if (!elem_state)
@@ -1190,6 +1185,7 @@ kndElem_parse_ref(struct kndElem *self,
         switch (*c) {
             /* non-whitespace char */
         default:
+            e = c + 1;
             break;
         case '\n':
         case '\r':
@@ -1222,6 +1218,8 @@ kndElem_parse_ref(struct kndElem *self,
 
             break;
         case '{':
+
+
             b = c + 1;
             break;
         case '}':
@@ -2444,7 +2442,7 @@ kndElem_export_GSC(struct kndElem *self)
     struct kndElemState *elem_state;
     int err;
 
-    if (DEBUG_ELEM_LEVEL_TMP)
+    if (DEBUG_ELEM_LEVEL_2)
         knd_log(".. GSC export elem \"%s\"..", self->name);
 
     if (self->is_list)
@@ -2650,8 +2648,8 @@ kndElem_export(struct kndElem *self,
 extern void
 kndElem_init(struct kndElem *self)
 {    
-    self->del = kndElem_del;
-    self->str = kndElem_str;
+    self->del = del;
+    self->str = str;
     self->parse = kndElem_parse;
     self->update = kndElem_update;
     self->index = kndElem_index;
