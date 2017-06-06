@@ -90,6 +90,15 @@ kndDataReader_read_config(struct kndDataReader *self,
     memcpy(self->schema_path, default_schema_path, strlen(default_schema_path));
     self->schema_path_size = strlen(default_schema_path);
 
+    self->schema_path_size = KND_TEMP_BUF_SIZE;
+    err = knd_get_xmlattr(root, "schema",
+                          self->schema_path, &self->schema_path_size);
+    if (err) {
+        knd_log("-- custom schemas path not set, using default:  '%s'", self->schema_path);
+    } else {
+        knd_log("== custom schemas path set to '%s'", self->schema_path);
+    }
+
     self->admin->sid_size = KND_TID_SIZE + 1;
     err = knd_get_xmlattr(root, "sid",
                           self->admin->sid, &self->admin->sid_size);
