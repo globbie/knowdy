@@ -321,7 +321,9 @@ kndDataWriter_start(struct kndDataWriter *self)
 	knd_log("++ DATAWRITER AGENT #%s got task: %s [%lu]", 
                 self->name, task, (unsigned long)task_size);
 
-        err = self->task->run(self->task, task, task_size, obj, obj_size);
+        err = self->task->run(self->task,
+                              task, task_size,
+                              obj, obj_size);
         if (err) {
             knd_log("-- task running failure: %d", err);
             goto final;
@@ -329,13 +331,13 @@ kndDataWriter_start(struct kndDataWriter *self)
 
     final:
 
-        /*err = kndDataWriter_reply(self);
+        /*
+          err = kndDataWriter_reply(self);
          */
         
         if (task) free(task);
         if (obj) free(obj);
     }
-
 
     /* we should never get here */
     return knd_OK;
@@ -383,11 +385,7 @@ kndDataWriter_new(struct kndDataWriter **rec,
     /* admin indices */
     err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-    
-    /*err = ooDict_new(&self->admin->repo_idx, KND_SMALL_DICT_SIZE);
-    if (err) goto error;
-    */
-    
+        
     /* read config */
     err = kndDataWriter_read_XML_config(self, config);
     if (err) return err;

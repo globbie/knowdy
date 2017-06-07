@@ -205,8 +205,6 @@ kndDataClass_read_GSL(struct kndDataClass *self,
     c = rec;
     b = rec;
 
-    /*knd_log(".. reading a class..");*/
-
     err = kndDataClass_new(&dc);
     if (err) return err;
 
@@ -323,12 +321,11 @@ kndDataClass_read_GSL(struct kndDataClass *self,
             err = kndAttr_new(&attr);
             if (err) return err;
             attr->is_list = true;
-            attr->dc = self;
+            attr->parent_dc = self;
 
             chunk_size = 0;
             err = attr->read(attr, c, &chunk_size);
             if (err) goto final;
-
 
             c += chunk_size;
             

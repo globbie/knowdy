@@ -34,10 +34,15 @@ kndAttr_str(struct kndAttr *self, size_t depth)
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
 
-    if (self->fullname_size) 
-        knd_log("\n%s{%s:%s %s", offset,  knd_elem_names[self->type], self->name, self->fullname);
+    if (self->is_list)
+        knd_log("\n%s[", offset);
     else
-        knd_log("\n%s{%s:%s", offset, knd_elem_names[self->type], self->name);
+        knd_log("\n%s{", offset);
+
+    if (self->fullname_size) 
+        knd_log("%s  %s:%s %s", offset, knd_elem_names[self->type], self->name, self->fullname);
+    else
+        knd_log("%s  %s:%s", offset, knd_elem_names[self->type], self->name);
 
     tr = self->tr;
     while (tr) {
@@ -47,6 +52,10 @@ kndAttr_str(struct kndAttr *self, size_t depth)
 
     if (self->classname_size) {
         knd_log("%s  class template: %s", offset, self->classname);
+    }
+
+    if (self->ref_classname_size) {
+        knd_log("%s  REF class template: %s", offset, self->ref_classname);
     }
 
     if (self->calc_oper_size) {
@@ -62,9 +71,11 @@ kndAttr_str(struct kndAttr *self, size_t depth)
         knd_log("%s  default VAL: %s", offset, self->default_val);
     }
     
-    knd_log("%s}", offset);
+    if (self->is_list)
+        knd_log("%s]", offset);
+    else
+        knd_log("%s}", offset);
 }
-
 
 
 static int
@@ -211,21 +222,20 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
 
 
 static int
-kndAttr_read_list(struct kndAttr *self,
-                  char *rec,
-                  size_t *total_size)
+kndAttr_read_list_GSL(struct kndAttr *self,
+                      char *rec,
+                      size_t *total_size)
 {
     size_t buf_size = 0;
 
-    char *c;
-    char *b;
+    char *c, *b;
 
     size_t curr_size = 0;
     bool in_init = false;
     bool got_attr_name = false;
 
     bool in_abbr = false;
-    bool in_idx = false;
+    bool in_fullname = false;
 
     int err = knd_FAIL;
 
@@ -236,8 +246,8 @@ kndAttr_read_list(struct kndAttr *self,
         switch (*c) {
         default:
             if (got_attr_name) {
-                if (!in_abbr) {
-                    in_abbr = true;
+                if (!in_fullname) {
+                    in_fullname = true;
                     b = c;
                 }
             }
@@ -266,48 +276,38 @@ kndAttr_read_list(struct kndAttr *self,
                 }
 
                 got_attr_name = true;
+                b = c + 1;
                 break;
             }
-
-            /*if (got_attr_name) {
-                if (!got_abbr) {
-                    buf_size = c - b;
-                    memcpy(elem->name, b, buf_size);
-                    elem->name[buf_size] = '\0';
-                    elem->name_size = buf_size;
-
-                    
-                    got_abbr = true;
-                }
-                }*/
             
-
-            if (in_idx) {
-                b = c + 1;
-            }
             
             break;
         case '{':
-            if (!in_idx) {
+            /*if (!in_idx) {
                 in_idx = true;
                 b = c + 1;
-            }
+                }*/
+            
             break;
         case '}':
-            /*if (in_idx) {
+
+            break;
+        case ':':
+            if (!in_abbr) {
                 buf_size = c - b;
-                if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
+                if (!buf_size) return knd_FAIL;
+                if (buf_size >= KND_NAME_SIZE)
+                    return knd_LIMIT;
 
-                memcpy(elem->idx_name, b, buf_size);
-                elem->idx_name[buf_size] = '\0';
-                elem->idx_name_size = buf_size;
+                *c = '\0';
 
-                knd_log("  == IDX name: \"%s\"\n", elem->idx_name);
-
+                err = kndAttr_set_type(self, b, buf_size);
+                if (err) goto final;
+                
+                b = c + 1;
+                in_abbr = true;
             }
-            */
             
-
             break;
         case '[':
             if (!in_init) {
@@ -317,6 +317,29 @@ kndAttr_read_list(struct kndAttr *self,
             break;
         case ']':
 
+            if (self->type == KND_ELEM_REF) {
+                buf_size = c - b;
+                if (!buf_size) return knd_FAIL;
+                if (buf_size >= KND_NAME_SIZE)
+                    return knd_LIMIT;
+                *c = '\0';
+
+
+                knd_log(".. DC: %p", self->parent_dc);
+
+                memcpy(self->ref_classname,
+                       self->parent_dc->namespace, self->parent_dc->namespace_size);
+                self->ref_classname_size = self->parent_dc->namespace_size;
+
+                memcpy(self->ref_classname + self->ref_classname_size, "::", strlen("::"));
+                self->ref_classname_size += strlen("::");
+
+                memcpy(self->ref_classname + self->ref_classname_size, b, buf_size);
+                self->ref_classname_size += buf_size;
+
+                knd_log(".. REF CLASS: \"%s\"", self->ref_classname);
+            }
+            
             /*if (!got_abbr) {
                 buf_size = c - b;
                 memcpy(elem->name, b, buf_size);
@@ -390,7 +413,7 @@ kndAttr_read_GSL(struct kndAttr *self,
         case '[':
             if (!in_body) {
                 chunk_size = 0;
-                err = kndAttr_read_list(self, c, &chunk_size);
+                err = kndAttr_read_list_GSL(self, c, &chunk_size);
                 if (err) return err;
                 
                 *total_size = chunk_size;

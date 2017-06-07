@@ -1602,15 +1602,15 @@ kndRepo_get_cache(struct kndRepo *self,
             return err;
         }
     }
-
     
     /* root query */
     err = kndQuery_new(&cache->query);
     if (err) return err;
+
     memcpy(cache->query->facet_name, "/", 1);
     cache->query->facet_name_size = 1;
     cache->query->cache = cache;
-    
+
     memset(cache->obj_last_id, '0', KND_ID_SIZE);
 
     cache->next = self->cache;
