@@ -846,6 +846,48 @@ check_name_limits(const char *b, const char *e, size_t *buf_size)
     return knd_OK;
 }
 
+
+extern int
+knd_get_schema_name(const char *rec,
+                    char *buf,
+                    size_t *buf_size,
+                    size_t *total_size)
+{
+    const char *b, *c, *e;
+    size_t chunk_size = 0;
+    size_t max_size = *buf_size;
+    
+    if (strncmp(rec, "::", strlen("::"))) return knd_FAIL;
+
+    c = rec + strlen("::");;
+    b = c;
+    e = c;
+
+    while (*c) {
+        switch (*c) {
+        case ' ':
+        case '\n':
+        case '\r':
+        case '\t':
+            break;
+        case '{':
+            chunk_size = e - b;
+            if (!chunk_size) return knd_FAIL;
+            if (chunk_size >= max_size) return knd_LIMIT;
+            memcpy(buf, b, chunk_size);
+            *buf_size = chunk_size;
+            *total_size = c - rec;
+            return knd_OK;
+        default:
+            e = c + 1;
+            break;
+        }
+        c++;
+    }
+
+    return knd_FAIL;
+}
+
 extern int
 knd_parse_task(const char *rec,
                size_t *total_size,
@@ -1002,8 +1044,10 @@ knd_parse_task(const char *rec,
         }
         c++;
     }
-    
-    return knd_FAIL;
+
+    *total_size = c - rec;
+    return knd_OK;
+    /*return knd_FAIL;*/
 }
 
 extern int 

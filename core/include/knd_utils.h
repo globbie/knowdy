@@ -204,6 +204,12 @@ knd_parse_task(const char *rec,
                struct kndTaskSpec *specs,
                size_t num_specs);
 
+extern int
+knd_get_schema_name(const char *rec,
+                    char *buf,
+                    size_t *buf_size,
+                    size_t *total_size);
+
 extern void 
 knd_log(const char *fmt, ...);
 

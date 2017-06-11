@@ -453,7 +453,8 @@ run_set_db_path(void *obj,
 
     self = (struct kndDelivery*)obj;
 
-    knd_log(".. set DB path to \"%.*s\"", path_size, path);
+    if (DEBUG_DELIV_LEVEL_TMP)
+        knd_log(".. set DB path to \"%.*s\"", path_size, path);
     
     return knd_OK;
 }
@@ -480,7 +481,9 @@ run_set_service_addr(void *obj,
 
     self = (struct kndDelivery*)obj;
 
-    knd_log(".. set service addr to \"%.*s\"", addr_size, addr);
+    
+    if (DEBUG_DELIV_LEVEL_TMP)
+        knd_log(".. set service addr to \"%.*s\"", addr_size, addr);
 
     
     return knd_OK;
@@ -491,6 +494,13 @@ parse_config_GSL(struct kndDelivery *self,
                  const char *rec,
                  size_t *total_size)
 {
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = KND_NAME_SIZE;
+    size_t chunk_size = 0;
+    
+    const char *gsl_format_tag = "{gsl";
+    size_t gsl_format_tag_size = strlen(gsl_format_tag);
+
     const char *header_tag = "{knd::Delivery Service Configuration";
     size_t header_tag_size = strlen(header_tag);
     const char *c;
@@ -509,14 +519,26 @@ parse_config_GSL(struct kndDelivery *self,
     };
     int err;
 
+    if (strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
+        knd_log("-- not a GSL format");
+        return err;
+    }
+
+    rec += gsl_format_tag_size;
+
+    err = knd_get_schema_name(rec,
+                              buf, &buf_size, &chunk_size);
+    if (!err) {
+        rec += chunk_size;
+        if (DEBUG_DELIV_LEVEL_TMP)
+            knd_log("== got schema: \"%s\"", buf);
+    }
+    
     if (strncmp(rec, header_tag, header_tag_size)) {
         knd_log("-- wrong GSL class header");
         return err;
     }
-
     c = rec + header_tag_size;
-
-    knd_log(".. parsing from \"%s\"", c);
     
     err = knd_parse_task(c, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) {
