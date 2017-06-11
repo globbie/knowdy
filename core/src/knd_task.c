@@ -6,6 +6,7 @@
 #include "knd_user.h"
 #include "knd_output.h"
 #include "knd_utils.h"
+#include "knd_msg.h"
 
 #define DEBUG_TASK_LEVEL_0 0
 #define DEBUG_TASK_LEVEL_1 0
@@ -29,32 +30,33 @@ check_name_limits(const char *b, const char *e, size_t *buf_size)
 
 
 static void
-kndTask_del(struct kndTask *self)
+del(struct kndTask *self)
 {
     free(self);
 }
 
 static void
-kndTask_str(struct kndTask *self __attribute__((unused)), size_t depth __attribute__((unused)))
+str(struct kndTask *self __attribute__((unused)), size_t depth __attribute__((unused)))
 {
     
 }
 
 static void
-kndTask_reset(struct kndTask *self)
+reset(struct kndTask *self)
 {
     self->sid_size = 0;
     self->uid_size = 0;
     self->tid_size = 0;
+    self->error = 0;
+    self->logger->reset(self->logger);
+    self->spec_out->reset(self->spec_out);
 }
 
 
-
-
 static int
-kndTask_parse_tid(struct kndTask *self,
-                  const char *rec,
-                  size_t *total_size)
+parse_tid(struct kndTask *self,
+          const char *rec,
+          size_t *total_size)
 {
     size_t buf_size;
     const char *c;
@@ -99,11 +101,11 @@ kndTask_parse_tid(struct kndTask *self,
 
 
 static int
-kndTask_parse_domain(struct kndTask *self,
-                     const char *name,
-                     size_t name_size,
-                     const char *rec,
-                     size_t *total_size)
+parse_domain(struct kndTask *self,
+             const char *name,
+             size_t name_size,
+             const char *rec,
+             size_t *total_size)
 {
     const char *tid_tag = "tid";
     const char *user_tag = "user";
@@ -117,7 +119,7 @@ kndTask_parse_domain(struct kndTask *self,
     case 't':
     case 'T':
         if (!strncmp(tid_tag, name, name_size)) {
-            err = kndTask_parse_tid(self, rec, &chunk_size);
+            err = parse_tid(self, rec, &chunk_size);
             if (err) {
                 knd_log("-- tid parse failed");
                 return knd_FAIL;
@@ -130,6 +132,7 @@ kndTask_parse_domain(struct kndTask *self,
     case 'U':
         if (!strncmp(user_tag, name, name_size)) {
             self->admin->task = self;
+            self->admin->out = self->out;
             err = self->admin->parse_task(self->admin, rec, total_size);
             if (err) {
                 knd_log("-- User area parse failed");
@@ -146,11 +149,11 @@ kndTask_parse_domain(struct kndTask *self,
 }
 
 static int
-kndTask_run(struct kndTask *self,
-            const char *rec,
-            size_t rec_size,
-            const char *obj,
-            size_t obj_size)
+run(struct kndTask *self,
+    const char *rec,
+    size_t rec_size,
+    const char *obj,
+    size_t obj_size)
 {
     const char *header_tag = "knd::Task";
     size_t header_tag_size = strlen(header_tag);
@@ -164,7 +167,7 @@ kndTask_run(struct kndTask *self,
     const char *b, *c, *e;
     size_t chunk_size;
     size_t total_size;
-    
+ 
     int err = knd_FAIL;
 
     self->spec = rec;
@@ -199,7 +202,7 @@ kndTask_run(struct kndTask *self,
                 err = check_name_limits(b, c, &buf_size);
                 if (err) return err;
 
-                err = kndTask_parse_domain(self, b, buf_size, c, &chunk_size);
+                err = parse_domain(self, b, buf_size, c, &chunk_size);
                 if (err) return err;
 
                 c += chunk_size;
@@ -240,7 +243,7 @@ kndTask_run(struct kndTask *self,
             err = check_name_limits(b, c, &buf_size);
             if (err) return err;
 
-            err = kndTask_parse_domain(self, b, buf_size, c, &chunk_size);
+            err = parse_domain(self, b, buf_size, c, &chunk_size);
             if (err) return err;
 
             c += chunk_size;
@@ -275,20 +278,84 @@ kndTask_run(struct kndTask *self,
     return err;
 }
 
+static int
+report(struct kndTask *self)
+{
+    const char *msg = "None";
+    size_t msg_size = strlen(msg);
+    int err;
+    
+    err = self->spec_out->write(self->spec_out, "{result", strlen("{res"));
+    if (err) return err;
+
+    err = self->spec_out->write(self->spec_out, "{tid ", strlen("{tid "));
+    if (err) return err;
+    err = self->spec_out->write(self->spec_out, self->tid, self->tid_size);
+    if (err) return err;
+    err = self->spec_out->write(self->spec_out, "}", 1);
+    if (err) return err;
+
+    err = self->spec_out->write(self->spec_out, "{sid ", strlen("{sid "));
+    if (err) return err;
+    err = self->spec_out->write(self->spec_out, self->sid, self->sid_size);
+    if (err) return err;
+    err = self->spec_out->write(self->spec_out, "}", 1);
+    if (err) return err;
+
+    if (self->error) {
+        err = self->spec_out->write(self->spec_out, "{err", strlen("{err"));
+        if (err) return err;
+        err = self->spec_out->write(self->spec_out, self->logger->buf, self->logger->buf_size);
+        if (err) return err;
+        err = self->spec_out->write(self->spec_out, "}", 1);
+        if (err) return err;
+    }
+    
+    
+    err = self->spec_out->write(self->spec_out, "}", 1);
+    if (err) return err;
+
+
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log(".. reporting \"%s\" task result: %s", self->spec_out->buf, self->out->buf);
+
+    /*    
+    err = knd_zmq_sendmore(self->delivery, (const char*)self->spec_out->buf, self->spec_out->buf_size);
+
+    if (self->out->buf_size) {
+        msg = self->out->buf;
+        msg_size = self->out->buf_size;
+    }
+
+    err = knd_zmq_send(self->delivery, msg, msg_size);
+    */
+    
+    return knd_OK;
+}
+
+
 extern int 
 kndTask_new(struct kndTask **task)
 {
     struct kndTask *self;
+    int err;
     
     self = malloc(sizeof(struct kndTask));
     if (!self) return knd_NOMEM;
 
     memset(self, 0, sizeof(struct kndTask));
 
-    self->del = kndTask_del;
-    self->str = kndTask_str;
-    self->reset = kndTask_reset;
-    self->run = kndTask_run;
+    err = kndOutput_new(&self->logger, KND_TEMP_BUF_SIZE);
+    if (err) return err;
+
+    err = kndOutput_new(&self->spec_out, KND_TEMP_BUF_SIZE);
+    if (err) return err;
+
+    self->del    = del;
+    self->str    = str;
+    self->reset  = reset;
+    self->run    = run;
+    self->report = report;
 
     *task = self;
 

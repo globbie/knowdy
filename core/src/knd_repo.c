@@ -1104,8 +1104,11 @@ kndRepo_get_obj(struct kndRepo *self,
                            guid);
     if (err) {
         knd_log("-- \"%s\" name not recognized :(", name);
+        self->task->logger->write(self->task->logger,
+                                  "object name unknown", strlen( "object name unknown"));
         return knd_FAIL;
     }
+    
     guid[KND_ID_SIZE] = '\0';
 
     /* get obj by name */

@@ -213,7 +213,6 @@ kndDataReader_read_config(struct kndDataReader *self,
                 val = xmlGetProp(sub_node,  (const xmlChar *)"name");
                 if (!val) continue;
                 
-                
                 if (!xmlStrcmp(val, (const xmlChar*)"delivery")) {
                     err = knd_copy_xmlattr(sub_node, "addr", 
                                            &self->delivery_addr,
@@ -280,7 +279,7 @@ kndDataReader_start(struct kndDataReader *self)
     self->admin->update_service = self->update_service;
     
     /* delivery service */
-    self->delivery = zmq_socket(context, ZMQ_REQ);
+    self->delivery = zmq_socket(context, ZMQ_PUSH);
     if (!self->delivery) return knd_FAIL;
     assert((zmq_connect(self->delivery,  self->delivery_addr) == knd_OK));
 
@@ -288,23 +287,29 @@ kndDataReader_start(struct kndDataReader *self)
     
     while (1) {
         self->task->reset(self->task);
-        
 	knd_log("    ++ Reader #%s is ready to receive new tasks!\n",
                 self->name);
 
 	task  = knd_zmq_recv(outbox, &task_size);
 	obj   = knd_zmq_recv(outbox, &obj_size);
 
-        knd_log("\n    ++ Reader #%s got TASK: %s OBJ: %s\n", 
+        knd_log("\n    ++ Reader #%s got task: %s OBJ: %s\n", 
                 self->name, task, obj);
 
         err = self->task->run(self->task, task, task_size, obj, obj_size);
         if (err) {
-            knd_log("  -- TASK parse failed: %d\n", err);
+            self->task->error = err;
+            knd_log("-- task run failed: %d", err);
             goto final;
         }
 
     final:
+        
+        err = self->task->report(self->task);
+        if (err) {
+            knd_log("-- task report failed: %d", err);
+        }
+
 	if (task) free(task);
 	if (obj) free(obj);
     }
@@ -327,13 +332,20 @@ kndDataReader_new(struct kndDataReader **rec,
     if (!self) return knd_NOMEM;
 
     memset(self, 0, sizeof(struct kndDataReader));
-    
+
+    err = kndOutput_new(&self->out, KND_IDX_BUF_SIZE);
+    if (err) return err;
+
     err = kndTask_new(&self->task);
+    if (err) return err;
+
+    err = kndOutput_new(&self->task->out, KND_IDX_BUF_SIZE);
     if (err) return err;
 
     err = kndUser_new(&self->admin);
     if (err) return err;
     self->task->admin = self->admin;
+    self->admin->out = self->out;
     
     err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;

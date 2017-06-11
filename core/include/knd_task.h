@@ -64,9 +64,14 @@ struct kndTask
 
     const char *obj;
     size_t obj_size;
+
+    int error;
     
     struct kndUser *admin;
+    
+    struct kndOutput *logger;
     struct kndOutput *out;
+    struct kndOutput *spec_out;
 
     void *delivery;
     
@@ -87,6 +92,8 @@ struct kndTask
     int (*parse)(struct kndTask *self,
                  const char     *rec,
                  size_t   *total_size);
+    
+    int (*report)(struct kndTask *self);
 };
 
 /* constructor */

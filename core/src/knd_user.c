@@ -577,6 +577,8 @@ kndUser_parse_repo(void *obj,
         knd_log("   .. parsing the REPO rec: \"%s\"", rec);
 
     self->repo->task = self->task;
+    self->repo->out = self->out;
+    
     err = self->repo->parse_task(self->repo, rec, total_size);
     if (err) return err;
     
@@ -722,11 +724,6 @@ kndUser_new(struct kndUser **user)
 
     err = ooDict_new(&self->browse_class_idx, KND_SMALL_DICT_SIZE);
     if (err) return knd_NOMEM;
-
-    err = kndOutput_new(&self->out, KND_TEMP_BUF_SIZE);
-    if (err) return err;
-    self->repo->out =  self->out;
-
     
     kndUser_init(self);
 

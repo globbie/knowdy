@@ -198,79 +198,6 @@ error:
 }
 
 
-/*static int  
-kndDataWriter_reply(struct kndDataWriter *self,
-                    struct kndData *data)
-{
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
-    char *header = NULL;
-    size_t header_size;
-    char *confirm = NULL;
-    size_t confirm_size;
-
-    int err;
-
-    if (!self->spec->tid_size) {
-        knd_log("-- no TID provided for reply :(\n");
-        return knd_FAIL;
-    }
-
-    
-    buf_size = sprintf(buf, "<spec action=\"save\" uid=\"%s\" "
-                       " tid=\"%s\" sid=\"AUTH_SERVER_SID\" ",
-                       self->curr_user->id, self->spec->tid);
-
-    err = self->spec_out->write(self->spec_out, buf, buf_size);
-    if (err) goto final;
-
-    
-    if (data->filepath_size) {
-        buf_size = sprintf(buf,
-                           " filepath=\"%s\" filesize=\"%lu\" mime=\"%s\"",
-                           data->filepath,
-                           (unsigned long)data->filesize,
-                           data->mimetype);
-
-        err = self->spec_out->write(self->spec_out, buf, buf_size);
-        if (err) goto final;
-    }
-    
-    err = self->spec_out->write(self->spec_out, "/>", strlen("/>"));
-    if (err) goto final;
-
-    if (!self->out->buf_size) {
-        err = self->out->write(self->out, "None", strlen("None"));
-        if (err) goto final;
-    }
-    
-    err = knd_zmq_sendmore(self->delivery, (const char*)self->spec_out->buf, self->spec_out->buf_size);
-    err = knd_zmq_sendmore(self->delivery, (const char*)data->name, data->name_size);
-    err = knd_zmq_sendmore(self->delivery, self->out->buf, self->out->buf_size);
-    err = knd_zmq_send(self->delivery, "None", strlen("None"));
-
-    header = knd_zmq_recv(self->delivery, &header_size);
-    confirm = knd_zmq_recv(self->delivery, &confirm_size);
-
-    if (DEBUG_WRITER_LEVEL_2)
-        knd_log("  MSG SPEC: %s\n\n  == Delivery Service reply: %s\n",
-                self->spec_out->buf, confirm);
-
- final:
-
-    if (header)
-        free(header);
-
-    if (confirm)
-        free(confirm);
-    
-    return err;
-}
-
-*/
-
-
 static int  
 kndDataWriter_start(struct kndDataWriter *self)
 {
@@ -305,7 +232,9 @@ kndDataWriter_start(struct kndDataWriter *self)
 
     err = zmq_connect(self->delivery, self->delivery_addr);
     assert(err == knd_OK);
-    
+
+    self->task->delivery = self->delivery;
+
     while (1) {
         self->task->reset(self->task);
 
@@ -329,9 +258,10 @@ kndDataWriter_start(struct kndDataWriter *self)
 
     final:
 
-        /*
-          err = kndDataWriter_reply(self);
-         */
+        err = self->task->report(self->task);
+        if (err) {
+            knd_log("-- task report failed: %d", err);
+        }
         
         if (task) free(task);
         if (obj) free(obj);
@@ -340,8 +270,6 @@ kndDataWriter_start(struct kndDataWriter *self)
     /* we should never get here */
     return knd_OK;
 }
-
-
 
 extern int
 kndDataWriter_new(struct kndDataWriter **rec,
@@ -356,16 +284,7 @@ kndDataWriter_new(struct kndDataWriter **rec,
 
     memset(self, 0, sizeof(struct kndDataWriter));
 
-    /* output buffer for linearized indices */
     err = kndOutput_new(&self->out, KND_IDX_BUF_SIZE);
-    if (err) return err;
-
-    /* buffer for specs */
-    err = kndOutput_new(&self->spec_out, KND_TEMP_BUF_SIZE);
-    if (err) return err;
-
-    /* obj output buffer */
-    err = kndOutput_new(&self->obj_out, KND_LARGE_BUF_SIZE);
     if (err) return err;
 
     /* task specification */
@@ -379,6 +298,7 @@ kndDataWriter_new(struct kndDataWriter **rec,
     err = kndUser_new(&self->admin);
     if (err) return err;
     self->task->admin = self->admin;
+    self->admin->out = self->out;
     
     /* admin indices */
     err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
