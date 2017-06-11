@@ -18,8 +18,7 @@
  *   Knowdy RefSet
  */
 
-#ifndef KND_REFSET_H
-#define KND_REFSET_H
+#pragma once
 
 struct kndObject;
 struct kndObjRef;
@@ -162,5 +161,3 @@ struct kndRefSet
 
 /* constructor */
 extern int kndRefSet_new(struct kndRefSet **self);
-
-#endif /* KND_REFSET_H */

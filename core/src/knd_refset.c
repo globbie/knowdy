@@ -1574,7 +1574,7 @@ kndRefSet_add_ref(struct kndRefSet *self,
         return knd_OK;
     }
     
-    if (DEBUG_REFSET_LEVEL_TMP) {
+    if (DEBUG_REFSET_LEVEL_2) {
         if (ref->type == KND_REF_TID)
             knd_log("    ++ \"%s\" refset to put TID ref \"%s\" to INBOX  [total: %lu]\n",
                     self->name, ref->trn->tid, (unsigned long)self->inbox_size);
@@ -2785,7 +2785,7 @@ kndRefSet_sync_objs(struct kndRefSet *self,
                     return err;
                 }
                 
-                if (DEBUG_REFSET_LEVEL_TMP)
+                if (DEBUG_REFSET_LEVEL_2)
                     knd_log("%d) OBJ \"%s\" REC offset: %lu CURR BUF SIZE: %lu count: %lu\n",
                             ri, obj->id, (unsigned long)rec_offset,
                             (unsigned long)self->out->buf_size,
@@ -2861,7 +2861,7 @@ kndRefSet_sync_idx(struct kndRefSet *self)
     struct kndObjRef *ref;
     int i, j, ri, err = knd_OK;
 
-    if (DEBUG_REFSET_LEVEL_TMP)
+    if (DEBUG_REFSET_LEVEL_2)
         knd_log("   .. syncing term IDX of \"%s\"..\n", self->name);
     
     out = self->out;

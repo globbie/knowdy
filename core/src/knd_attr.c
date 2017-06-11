@@ -324,9 +324,6 @@ kndAttr_read_list_GSL(struct kndAttr *self,
                     return knd_LIMIT;
                 *c = '\0';
 
-
-                knd_log(".. DC: %p", self->parent_dc);
-
                 memcpy(self->ref_classname,
                        self->parent_dc->namespace, self->parent_dc->namespace_size);
                 self->ref_classname_size = self->parent_dc->namespace_size;
@@ -336,17 +333,7 @@ kndAttr_read_list_GSL(struct kndAttr *self,
 
                 memcpy(self->ref_classname + self->ref_classname_size, b, buf_size);
                 self->ref_classname_size += buf_size;
-
-                knd_log(".. REF CLASS: \"%s\"", self->ref_classname);
             }
-            
-            /*if (!got_abbr) {
-                buf_size = c - b;
-                memcpy(elem->name, b, buf_size);
-                elem->name[buf_size] = '\0';
-                elem->name_size = buf_size;
-
-                } */
 
             *total_size = c - rec;
             return knd_OK;

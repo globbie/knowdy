@@ -40,7 +40,7 @@ knd_compare_obj_by_match_descend(const void *a,
 
 
 static int 
-kndObject_del(struct kndObject *self)
+del(struct kndObject *self)
 {
     knd_log("  .. free obj: \"%s\".. \n", self->name);
 
@@ -51,14 +51,12 @@ kndObject_del(struct kndObject *self)
 
 
 static void
-kndObject_str(struct kndObject *self,
-              size_t depth)
+str(struct kndObject *self,
+    size_t depth)
 {
     size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
     struct kndElem *elem;
-    //struct kndElemState *elem_state;
-    //struct kndText *text;
     
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
@@ -149,13 +147,10 @@ kndObject_index_inline(struct kndObject *self)
 }
 
 
-
-
-
 static int
-kndObject_import_GSL(struct kndObject *self,
-                     const char *rec,
-                     size_t *total_size)
+import_GSL(struct kndObject *self,
+           const char *rec,
+           size_t *total_size)
 {
     char idbuf[KND_ID_SIZE];
     const char *c, *b, *e;
@@ -311,329 +306,6 @@ kndObject_import_GSL(struct kndObject *self,
 }
 
 
-static int
-kndObject_assign_rel(struct kndObject *self,
-                     struct kndDataClass *dc,
-                     const char *relname,
-                     size_t relname_size,
-                     const char *obj_id)
-{
-    struct kndRelClass *relc;
-    struct kndRelType *reltype;
-    struct kndObjRef *r;
-    int err;
-
-    if (DEBUG_OBJ_LEVEL_2) 
-        knd_log("  .. assign rel: %s OBJ ID: %s",
-                relname, obj_id);
-    
-    relc = self->rel_classes;
-    while (relc) {
-        if (relc->dc == dc) break;
-        relc = relc->next;
-    }
-
-    /* add a relclass */
-    if (!relc) {
-        relc = malloc(sizeof(struct kndRelClass));
-        if (!relc) return knd_NOMEM;
-
-        memset(relc, 0, sizeof(struct kndRelClass));
-        
-        relc->dc = dc;
-        relc->next = self->rel_classes;
-        self->rel_classes = relc;
-    }
-    
-    reltype = relc->rel_types;
-    while (reltype) {
-        if (!strcmp(reltype->attr_name, relname))
-            break;
-
-        reltype = reltype->next;
-    }
-
-    /* add a reltype */
-    if (!reltype) {
-        reltype = malloc(sizeof(struct kndRelType));
-        if (!reltype) return knd_NOMEM;
-
-        memset(reltype, 0, sizeof(struct kndRelType));
-        
-        memcpy(reltype->attr_name, relname, relname_size);
-        reltype->attr_name_size = relname_size;
-        
-        reltype->next = relc->rel_types;
-        relc->rel_types = reltype;
-    }
-
-    err = kndObjRef_new(&r);
-    if (err) return knd_NOMEM;
-
-    memcpy(r->obj_id, obj_id, KND_ID_SIZE);
-    r->obj_id_size = KND_ID_SIZE;
-
-    if (!reltype->tail) {
-        reltype->tail = r;
-        reltype->refs = r;
-    }
-    else {
-        reltype->tail->next = r;
-        reltype->tail = r;
-    }
-
-    reltype->num_refs++;
-
-    
-    /*knd_log("  == total refs: %lu\n", (unsigned long)reltype->num_refs);*/
-    
-    return knd_OK;
-}
-
-
-static int
-kndObject_check_dataclass(struct kndObject *self,
-                          const char *classname,
-                          struct kndDataClass **result_dc)
-{
-    struct kndDataClass *dc;
-
-    /* check classname */
-    dc = (struct kndDataClass*)self->cache->repo->user->class_idx->get\
-        (self->cache->repo->user->class_idx,
-         classname);
-
-    if (!dc) {
-        if (DEBUG_OBJ_LEVEL_TMP)
-            knd_log("  .. classname \"%s\" is not valid...\n", classname);
-        return knd_FAIL;
-    }
-    
-
-    *result_dc = dc;
-    
-    return knd_OK;
-}
-
-static int
-kndObject_parse_special_GSC(struct kndObject *self,
-                            const char *rec,
-                            size_t *total_size)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
-
-    char relbuf[KND_NAME_SIZE];
-    size_t relbuf_size;
-
-    size_t curr_size;
-    size_t chunk_size;
-
-    struct kndDataClass *dc = NULL;
-    struct kndAttr *attr = NULL;
-    //struct kndRepoCache *cache;
-    
-    const char *c;
-    const char *b;
-
-    bool in_body = false;
-    bool in_field_name = false;
-    bool in_class = false;
-    bool in_rel = false;
-    bool in_ref_list = false;
-    bool in_ref = false;
-
-    int err;
-
-    c = rec;
-    b = rec;
-    curr_size = 0;
-
-    
-    if (DEBUG_OBJ_LEVEL_3) 
-        knd_log("\n   .. parse special GSC field: %s\n\n", rec);
-    
-    while (*c) {
-        switch (*c) {
-        default:
-            break;
-        case '_':
-
-            if (curr_size && *(c - 1) == '{') {
-                in_field_name = true;
-                b = c + 1;
-            }
-            
-            break;
-        case '{':
-            if (!in_body) {
-                in_body = true;
-                break;
-            }
-
-            if (in_field_name) {
-                chunk_size = c - b;
-                if (chunk_size >= KND_NAME_SIZE) {
-                    knd_log("    -- buf size limit reached: %lu\n", (unsigned long)chunk_size);
-                    return knd_LIMIT;
-                }
-                
-                memcpy(buf, b, chunk_size);
-                buf[chunk_size] = '\0';
-                
-                if (DEBUG_OBJ_LEVEL_3) 
-                    knd_log("\n  == FIELD NAME: %s\n", buf);
-
-                if (!strcmp(buf, "cls")) {
-                    in_class = true;
-                    b = c + 1;
-                    in_field_name = false;
-                    break;
-                }
-
-                if (!strcmp(buf, "rel")) {
-                    in_rel = true;
-                    b = c + 1;
-                    in_field_name = false;
-                    break;
-                }
-            }
-
-            if (in_ref_list) {
-                in_ref = true;
-                b = c + 1;
-                break;
-            }
-
-            if (in_ref) {
-                b = c + 1;
-                break;
-            }
-
-            if (in_class) {
-                chunk_size = c - b;
-                if (chunk_size >= KND_NAME_SIZE) {
-
-                    knd_log("    -- buf size limit reached: %lu\n",
-                            (unsigned long)chunk_size);
-
-                    return knd_LIMIT;
-                }
-                memcpy(buf, b, chunk_size);
-                buf[chunk_size] = '\0';
-                buf_size = chunk_size;
-                
-                if (DEBUG_OBJ_LEVEL_3)
-                    knd_log("  == CLASS NAME: %s\n", buf);
-
-                err = kndObject_check_dataclass(self, (const char*)buf, &dc);
-                if (err) return err;
-                break;
-            }
-            
-            break;
-        case '[':
-            if (in_rel) {
-                chunk_size = c - b;
-                if (chunk_size >= KND_NAME_SIZE) {
-                    knd_log("    -- buf size limit reached: %lu\n",
-                            (unsigned long)chunk_size);
-                    return knd_LIMIT;
-                }
-                
-                memcpy(relbuf, b, chunk_size);
-                relbuf[chunk_size] = '\0';
-                relbuf_size = chunk_size;
-                
-                if (!dc) return knd_FAIL;
-                
-                attr = dc->attrs;
-                while (attr) {
-                     if (attr->dc) {
-                         /*knd_log("inner class: %s\n", de->dc->name);*/
-                     }
-                     
-                    if (!strcmp(attr->name, relbuf)) {
-                        break;
-                    }
-                    
-                    attr = attr->next;
-                }
-
-                if (attr) {
-
-                    /*knd_log(" ++ attr confirmed: %s!\n", attr->name);*/
-
-                }
-                
-                in_ref_list = true;
-                break;
-            }
-            break;
-        case ']':
-            in_ref_list = false;
-            break;
-       case '}':
-
-           /*knd_log("    .. close bracket found: %s\n\n IN REF: %d\n",
-             c, in_ref); */
-
-            if (in_ref) {
-                chunk_size = c - b;
-                if (chunk_size >= KND_NAME_SIZE) {
-                    knd_log("    -- buf size limit reached: %lu\n",
-                            (unsigned long)chunk_size);
-                    return knd_LIMIT;
-                }
-
-                memcpy(buf, b, chunk_size);
-                buf[chunk_size] = '\0';
-
-                /* assign obj ref */
-                err = kndObject_assign_rel(self, dc,
-                                           relbuf, relbuf_size,
-                                           buf);
-                if (err) return err;
-                
-                in_ref = false;
-                break;
-            }
-
-            if (in_rel) {
-                in_rel = false;
-                break;
-            }
-
-            if (in_class) {
-                in_class = false;
-                break;
-            }
-
-            if (in_body) {
-                curr_size++;
-                
-                *total_size = curr_size;
-                return knd_OK;
-            }
-
-            return knd_FAIL;
-        }
-
-        curr_size++;
-        /*if (curr_size >= rec_size) {
-            
-            knd_log("   >> CURR SIZE: %lu  REC SIZE: %lu\n", (unsigned long)curr_size,
-                    (unsigned long)rec_size);
-
-            break;
-            }*/
-
-        c++;
-   }
-    
-    
-    return knd_OK;
-}
 
 
 static int
@@ -641,7 +313,6 @@ kndObject_parse_GSC(struct kndObject *self,
                     const char *rec,
                     size_t rec_size)
 {
-    char idbuf[KND_ID_SIZE];
     char recbuf[KND_TEMP_BUF_SIZE + 1];
     const char *b, *c, *e;
     struct kndElem *elem = NULL;
@@ -1026,16 +697,16 @@ kndObject_expand(struct kndObject *self,
 
 
 static int 
-kndObject_import(struct kndObject *self,
-                 const char *rec,
-                 size_t *total_size,
-                 knd_format format)
+import(struct kndObject *self,
+       const char *rec,
+       size_t *total_size,
+       knd_format format)
 {
     int err;
 
     switch(format) {
     case KND_FORMAT_GSL:
-        err = kndObject_import_GSL(self, rec, total_size);
+        err = import_GSL(self, rec, total_size);
         if (err) {
             if (DEBUG_OBJ_LEVEL_TMP) {
                 knd_log("   -- GSL import of %s failed :(\n",
@@ -1987,13 +1658,11 @@ kndObject_export_GSC(struct kndObject *self,
     bool got_elem = false;
     struct kndElem *elem;
 
-    struct kndRelClass *relc;
-    struct kndRelType *reltype;
-    struct kndRefSet *refset;
-    struct kndObjRef *ref;
-    struct kndTermIdx *idx, *term_idx;
+    //struct kndRelClass *relc;
+    //struct kndRelType *reltype;
+    //struct kndTermIdx *idx, *term_idx;
 
-    size_t i, j, ri;
+    //size_t i, j, ri;
     int err;
     
     if (DEBUG_OBJ_LEVEL_2)
@@ -2067,7 +1736,7 @@ kndObject_export_GSC(struct kndObject *self,
             goto next_elem;
             }*/
 
-    export_elem:
+        //export_elem:
 
         /* default export */
         elem->out = self->out;
@@ -2079,10 +1748,9 @@ kndObject_export_GSC(struct kndObject *self,
         
         got_elem = true;
         
-    next_elem:
+        //next_elem:
         elem = elem->next;
     }
-
 
     /*relc = self->cache->rel_classes;
     while (relc) {
@@ -2660,9 +2328,9 @@ kndObject_sync(struct kndObject *self)
 extern void
 kndObject_init(struct kndObject *self)
 {
-    self->del = kndObject_del;
-    self->str = kndObject_str;
-    self->import = kndObject_import;
+    self->del = del;
+    self->str = str;
+    self->import = import;
     self->sync = kndObject_sync;
     self->update = kndObject_update;
     self->expand = kndObject_expand;

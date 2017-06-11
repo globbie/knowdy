@@ -194,8 +194,6 @@ error:
      if (doc)
          xmlFreeDoc(doc);
      
-     knd_log("   == config read: %d\n", err);
-     
      return err;
 }
 

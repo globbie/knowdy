@@ -71,6 +71,9 @@ str(struct kndElem *self, size_t depth)
     if (self->is_list) 
         knd_log("%s[\"%s\"\n",
             offset, self->name);
+    else if (self->is_list_item)
+        knd_log("%s--",
+                offset);
     else
         knd_log("%s%s:",
                 offset, self->name);
@@ -141,7 +144,7 @@ str(struct kndElem *self, size_t depth)
             while (elem_state) {
                 knd_log("%s  REF -> %s:%s:%s => %p\n", offset,
                         /*self->attr->classname,*/
-                        self->attr->ref_class->name,
+                        self->attr->ref_classname,
                         self->ref_classname,
                         elem_state->val,
                         elem_state->refobj);
@@ -932,14 +935,12 @@ kndElem_parse_list(struct kndElem *self,
     size_t buf_size;
 
     struct kndObject *obj = NULL;
+    struct kndElem *elem = NULL;
     struct kndAttr *attr = NULL;
     const char *c;
     const char *b;
 
-    //bool in_item = false;
     bool in_name = true;
-    //bool in_idx = true;
-
     size_t chunk_size;
     int err;
 
@@ -961,8 +962,6 @@ kndElem_parse_list(struct kndElem *self,
         case ' ':
             /* whitespace */
             if (in_name) {
-                buf_size = c - b;
-
                 /*self->name_size = buf_size;
                 memcpy(self->name, b, buf_size);
                 self->name[buf_size] = '\0';
@@ -995,7 +994,6 @@ kndElem_parse_list(struct kndElem *self,
                             rec);
                     return knd_FAIL;
                 }
-
                 
                 err = kndElem_check_type(self, b, buf_size, &attr);
                 if (err) goto final;
@@ -1004,12 +1002,7 @@ kndElem_parse_list(struct kndElem *self,
                 in_name = false;
             }
 
-            if (DEBUG_ELEM_LEVEL_3)
-                knd_log("LIST OBJ: \"%s\" %p\n",
-                        self->attr->name, self->attr->dc);
-
             if (self->attr->dc) {
-
                 if (DEBUG_ELEM_LEVEL_3)
                     knd_log("  .. parsing inline obj \"%s\" from: \"%s\"\n",
                             self->attr->name, c);
@@ -1037,7 +1030,37 @@ kndElem_parse_list(struct kndElem *self,
                 }
                 
                 c += chunk_size;
+                break;
+            }
+
+            if (DEBUG_ELEM_LEVEL_2)
+                knd_log("== atomic list ELEM: \"%s\"",
+                        self->attr->name);
+
+            if (self->attr->type == KND_ELEM_REF) {
+
+                err = kndElem_new(&elem);
+                if (err) goto final;
+                elem->obj = self->obj;
+                elem->root = self->root;
+                elem->attr = self->attr;
+                elem->is_list_item = true;
                 
+                err = parse_ref(elem, c, &chunk_size);
+                if (err) goto final;
+                
+                if (!self->tail) {
+                    self->tail = elem;
+                    self->elems = elem;
+                }
+                else {
+                    self->tail->next = elem;
+                    self->tail = elem;
+                }
+                self->num_elems++;
+
+                c += chunk_size;
+                break;
             }
             
             break;
@@ -1051,6 +1074,9 @@ kndElem_parse_list(struct kndElem *self,
     }
 
 final:
+    if (obj) obj->del(obj);
+    if (elem) elem->del(elem);
+    
     return err;
 }
 
@@ -1082,7 +1108,7 @@ kndElem_check_name(struct kndElem *self,
     if (err) return err;
     self->attr = attr;
 
-    if (DEBUG_ELEM_LEVEL_TMP)
+    if (DEBUG_ELEM_LEVEL_2)
         knd_log("  ++ got attr: \"%s => %s (type: %s)",
                 attr->name, attr->fullname, knd_elem_names[attr->type]);
     
@@ -1158,7 +1184,7 @@ parse_ref(struct kndElem *self,
     char buf[KND_NAME_SIZE];
     size_t buf_size;
 
-    struct kndElemState *elem_state;
+    struct kndElemState *elem_state = NULL;
     struct kndDataClass *root_dc, *dc;
 
     const char *b, *c, *e;
@@ -1173,7 +1199,7 @@ parse_ref(struct kndElem *self,
     c = rec;
     b = c;
 
-    if (DEBUG_ELEM_LEVEL_TMP)
+    if (DEBUG_ELEM_LEVEL_2)
         knd_log(".. parse REF: \"%s\"", rec);
 
     elem_state = malloc(sizeof(struct kndElemState));
@@ -1219,7 +1245,6 @@ parse_ref(struct kndElem *self,
             break;
         case '{':
 
-
             b = c + 1;
             break;
         case '}':
@@ -1247,7 +1272,6 @@ parse_ref(struct kndElem *self,
                 break;
             }
 
-
             if (in_name) {
                 chunk_size = c - b;
                 if (!chunk_size) {
@@ -1256,8 +1280,13 @@ parse_ref(struct kndElem *self,
                                 rec);
                     return knd_FAIL;
                 }
+
+
                 memcpy(elem_state->val, b, chunk_size);
                 elem_state->val_size = chunk_size;
+
+                if (DEBUG_ELEM_LEVEL_2)
+                    knd_log("== obj REF name: \"%s\"", elem_state->val);
 
                 in_name = false;
                 break;
@@ -1266,9 +1295,8 @@ parse_ref(struct kndElem *self,
             if (in_obj_id) {
                 chunk_size = c - b;
                 if (!chunk_size) {
-                    if (DEBUG_ELEM_LEVEL_TMP)
-                        knd_log("  -- empty obj id in REF \"%s\" :(\n",
-                                rec);
+                    knd_log("  -- empty obj id in REF \"%s\" :(\n",
+                            rec);
                     return knd_FAIL;
                 }
                 memcpy(elem_state->ref, b, chunk_size);
@@ -1283,6 +1311,7 @@ parse_ref(struct kndElem *self,
             self->states = elem_state;
             self->num_states++;
 
+            
             *total_size = c - rec;
             return knd_OK;
         }
@@ -2411,6 +2440,8 @@ static int
 kndElem_export_list_GSC(struct kndElem *self)
 {
     struct kndObject *obj;
+    struct kndElem *elem;
+    bool is_concise = true;
     int err;
     
     err = self->out->write(self->out, "[", 1);
@@ -2429,6 +2460,17 @@ kndElem_export_list_GSC(struct kndElem *self)
         }
     }
 
+    elem = self->elems;
+    while (elem) {
+        elem->out = self->out;
+        err = elem->export(elem, KND_FORMAT_GSC, is_concise);
+        if (err) {
+            knd_log("-- export of \"%s\" elem failed: %d :(", elem->name, err);
+            return err;
+        }
+        elem = elem->next;
+    }
+    
     err = self->out->write(self->out, "]", 1);
     if (err) return err;
 

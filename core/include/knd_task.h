@@ -67,6 +67,8 @@ struct kndTask
     
     struct kndUser *admin;
     struct kndOutput *out;
+
+    void *delivery;
     
     /******** public methods ********/
     void (*str)(struct kndTask *self,

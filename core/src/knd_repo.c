@@ -435,11 +435,10 @@ kndRepo_run_get_repo(void *obj, struct kndTaskArg *args, size_t num_args)
         return knd_FAIL;
     }
 
-    if (DEBUG_REPO_LEVEL_TMP) {
+    if (DEBUG_REPO_LEVEL_2) {
         knd_log("++ got repo: \"%s\" PATH: %s",
                 name, curr_repo->path);
     }
-
     
     /* assign task */
     curr_repo->task = self->task;
@@ -535,12 +534,11 @@ kndRepo_run_import_obj(void *obj, struct kndTaskArg *args, size_t num_args)
     size_t chunk_size = 0;
     size_t name_size = 0;
     int err;
-
-    knd_log(".. import obj..");
     
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
-        knd_log("arg: %s val: %s", arg->name, arg->val);
+        if (DEBUG_REPO_LEVEL_2)
+            knd_log("arg: %s val: %s", arg->name, arg->val);
         if (!strncmp(arg->name, "import", strlen("import"))) {
             name = arg->val;
             name_size = arg->val_size;
@@ -552,7 +550,7 @@ kndRepo_run_import_obj(void *obj, struct kndTaskArg *args, size_t num_args)
 
     /* obj from separate msg */
     if (!strncmp(name, "_obj", strlen("_obj"))) {
-        if (DEBUG_REPO_LEVEL_TMP)
+        if (DEBUG_REPO_LEVEL_2)
             knd_log("   .. IMPORT OBJ: \"%s\"", self->task->obj);
 
         err = kndRepo_import_obj(self, self->task->obj, &chunk_size);
@@ -893,8 +891,6 @@ kndRepo_import_obj(struct kndRepo *self,
     /* assign new last_id */
     memcpy(cache->obj_last_id, obj->id, KND_ID_SIZE);
     cache->num_objs++;
-
-    cache->name_idx->str(cache->name_idx, 0, 5);
 
     if (DEBUG_REPO_LEVEL_3)
         obj->str(obj, 1);

@@ -18,8 +18,7 @@
  *   Knowdy Object
  */
 
-#ifndef KND_OBJECT_H
-#define KND_OBJECT_H
+#pragma once
 
 #include "knd_config.h"
 #include "knd_dataclass.h"
@@ -186,4 +185,3 @@ struct kndObject
 extern void kndObject_init(struct kndObject *self);
 extern int kndObject_new(struct kndObject **self);
 
-#endif /* KND_OBJECT_H */

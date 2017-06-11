@@ -1,5 +1,4 @@
-#ifndef KND_REPO_H
-#define KND_REPO_H
+#pragma once                                    \
 
 #include "knd_utils.h"
 #include "knd_facet.h"
@@ -250,4 +249,3 @@ struct kndRepo
 
 extern int kndRepo_init(struct kndRepo *self);
 extern int kndRepo_new(struct kndRepo **self);
-#endif

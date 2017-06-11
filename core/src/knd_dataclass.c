@@ -421,9 +421,10 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
 
     err = out->read_file(out,
                          (const char*)buf, buf_size);
-    if (err) goto final;
-
-    knd_log("++ GSL class file \"%s\" read OK!", buf);
+    if (err) {
+        knd_log("-- couldn't read GSL class file \"%s\" :(", buf);
+        goto final;
+    }
 
     c = out->file;
     b = c;
@@ -629,26 +630,9 @@ kndDataClass_coordinate(struct kndDataClass *self)
             dc->baseclass = bc;
         }
 
-        dc->str(dc, 1);
+        //dc->str(dc, 1);
         
     } while (key);
-
-    /*key = NULL;
-    self->attr_idx->rewind(self->attr_idx);
-    do {
-        self->attr_idx->next_item(self->attr_idx, &key, &val);
-        if (!key) break;
-        
-        attr = (struct kndAttr*)val;
-        
-        attr->class_idx = self->class_idx;
-        err = attr->resolve(attr);
-        if (err) goto final;
-        
-    } while (key);
-
-    */
-    
     
     err = knd_OK;
     

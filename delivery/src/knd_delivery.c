@@ -1603,8 +1603,6 @@ kndDelivery_start(struct kndDelivery *self)
         knd_log("\n    ++ DELIVERY service is waiting for new tasks...\n");
 
         data->spec = knd_zmq_recv(service, &data->spec_size);
-        data->query = knd_zmq_recv(service, &data->query_size);
-        data->body = knd_zmq_recv(service, &data->body_size);
         data->obj = knd_zmq_recv(service, &data->obj_size);
 
 	knd_log("    ++ DELIVERY service has got spec:\n   %s  QUERY: %s  META/OBJ: %s\n\n",
@@ -1660,7 +1658,6 @@ kndDelivery_start(struct kndDelivery *self)
 
         knd_log("     .. ERR code: %d  sending  HEADER: \"%s\"  REPLY: \"%s\"\n\n",
                 err, data->header, data->reply);
-
         
         knd_zmq_sendmore(service, (const char*)data->header, data->header_size);
 	knd_zmq_send(service, reply, reply_size);

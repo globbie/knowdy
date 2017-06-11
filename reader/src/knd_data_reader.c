@@ -284,6 +284,8 @@ kndDataReader_start(struct kndDataReader *self)
     if (!self->delivery) return knd_FAIL;
     assert((zmq_connect(self->delivery,  self->delivery_addr) == knd_OK));
 
+    self->task->delivery = self->delivery;
+    
     while (1) {
         self->task->reset(self->task);
         
