@@ -1105,7 +1105,7 @@ kndRepo_get_obj(struct kndRepo *self,
     if (err) {
         knd_log("-- \"%s\" name not recognized :(", name);
         self->task->logger->write(self->task->logger,
-                                  "object name unknown", strlen( "object name unknown"));
+                                  "{repo object name unknown}", strlen( "{repo object name unknown}"));
         return knd_FAIL;
     }
     
@@ -1142,8 +1142,9 @@ kndRepo_get_obj(struct kndRepo *self,
         }
     }
     
-    self->out = self->out;
-    self->out->reset(self->out);
+    obj->out = self->out;
+    obj->out->reset(obj->out);
+    obj->task = self->task;
     
     /* export obj */
     format = KND_FORMAT_JSON;
@@ -1152,10 +1153,9 @@ kndRepo_get_obj(struct kndRepo *self,
     
     err = obj->export(obj, format, 0);
     if (err) return err;
-
     
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("JSON: %s\n", obj->out->buf);
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log("OBJ OUT: %s\n", obj->out->buf);
 
     return knd_OK;
 }
@@ -1571,8 +1571,7 @@ kndRepo_get_cache(struct kndRepo *self,
         buf_size = sprintf(buf, "%s/%s/AZ.idx",
                            self->path,
                            dc->name);
-
-        if (DEBUG_REPO_LEVEL_TMP)
+        if (DEBUG_REPO_LEVEL_2)
             knd_log(".. reading name IDX file: \"%s\" ..",
                     buf);
 
@@ -1712,6 +1711,7 @@ kndRepo_parse_class(void *obj,
     }
 
     repo = self->curr_repo;
+    repo->out = self->task->out;
     
     struct kndTaskSpec specs[] = {
         { .name = "n",
@@ -1737,6 +1737,7 @@ kndRepo_parse_class(void *obj,
     
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
+
     
     return knd_OK;
 }

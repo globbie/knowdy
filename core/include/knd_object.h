@@ -32,6 +32,7 @@ struct kndRepoCache;
 struct kndObjRef;
 struct kndSortTag;
 struct kndElemRef;
+struct kndTask;
 
 struct kndElem;
 struct kndRelClass;
@@ -86,6 +87,7 @@ struct kndObject
 
     struct kndRepoCache *cache;
     struct kndOutput *out;
+    struct kndTask *task;
     
     /* full structure */
     struct kndElem *elems;

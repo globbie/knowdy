@@ -1227,7 +1227,7 @@ kndRefSet_read_tags(struct kndRefSet *self,
         }*/
 
     
-    if (DEBUG_REFSET_LEVEL_TMP)
+    if (DEBUG_REFSET_LEVEL_2)
         knd_log("   == DIR REC: %s [size: %lu]\n\n",
                 buf, (unsigned long)buf_size);
     
@@ -2232,7 +2232,7 @@ read_inbox(struct kndRefSet *self,
     size_t num_refs = 0;
     int err;
 
-    if (DEBUG_REFSET_LEVEL_TMP)
+    if (DEBUG_REFSET_LEVEL_2)
         knd_log("    .. reading Inbox: \"%s\" [%lu]\n",
                 rec, (unsigned long)rec_size);
 
@@ -2296,7 +2296,7 @@ read_inbox(struct kndRefSet *self,
             ref->name_size = strlen(ref_rec);
             memcpy(ref->name, ref_rec, ref->name_size);
 
-            if (DEBUG_REFSET_LEVEL_TMP)
+            if (DEBUG_REFSET_LEVEL_2)
                 knd_log("obj name: \"%s\" [%lu]",
                         ref->name, (unsigned long)ref->name_size);
             goto assign;
@@ -2452,7 +2452,7 @@ kndRefSet_read(struct kndRefSet *self,
         self->name_size = namebuf_size;
     }
     
-    if (DEBUG_REFSET_LEVEL_TMP)
+    if (DEBUG_REFSET_LEVEL_2)
         knd_log("   == DIR REC: %s [size: %lu]\n\n",
                 buf, (unsigned long)buf_size);
     

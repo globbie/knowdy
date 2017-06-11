@@ -297,7 +297,7 @@ report(struct kndTask *self)
 
     err = self->spec_out->write(self->spec_out, "{sid ", strlen("{sid "));
     if (err) return err;
-    err = self->spec_out->write(self->spec_out, self->sid, self->sid_size);
+    err = self->spec_out->write(self->spec_out, self->admin->sid, self->admin->sid_size);
     if (err) return err;
     err = self->spec_out->write(self->spec_out, "}", 1);
     if (err) return err;
@@ -311,7 +311,6 @@ report(struct kndTask *self)
         if (err) return err;
     }
     
-    
     err = self->spec_out->write(self->spec_out, "}", 1);
     if (err) return err;
 
@@ -319,7 +318,7 @@ report(struct kndTask *self)
     if (DEBUG_TASK_LEVEL_TMP)
         knd_log(".. reporting \"%s\" task result: %s", self->spec_out->buf, self->out->buf);
 
-    /*    
+
     err = knd_zmq_sendmore(self->delivery, (const char*)self->spec_out->buf, self->spec_out->buf_size);
 
     if (self->out->buf_size) {
@@ -328,8 +327,7 @@ report(struct kndTask *self)
     }
 
     err = knd_zmq_send(self->delivery, msg, msg_size);
-    */
-    
+
     return knd_OK;
 }
 
