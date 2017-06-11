@@ -40,13 +40,8 @@ static int
 kndDelivery_retrieve(struct kndDelivery *self, 
                      struct kndData *data)
 {
-    //char buf[KND_NAME_SIZE];
-    //size_t buf_size;
-
     struct kndAuthRec *rec;
     struct kndResult *res;
-    //time_t curr_time;
-    //int err;
 
     if (!strcmp(data->sid, "000")) {
         rec = self->default_rec;
@@ -262,61 +257,118 @@ kndDelivery_lookup(struct kndDelivery *self,
 }
 
 
-
 static int
-kndDelivery_set_SID(struct kndDelivery *self, 
-                    xmlNodePtr input_node,
-                    struct kndData *data)
+run_set_tid(void *obj,
+            struct kndTaskArg *args, size_t num_args)
 {
-    struct kndAuthRec *rec;
-    //size_t curr_size;
+    struct kndDelivery *self;
+    struct kndTaskArg *arg;
+    const char *tid = NULL;
+    size_t tid_size = 0;
     int err;
-
-    data->sid_size = KND_TEMP_BUF_SIZE;
-    err = knd_get_xmlattr(input_node, "acc_sid", 
-                          data->sid, &data->sid_size);
-    if (err) {
-        strcpy(data->sid, "RANDOM_SID");
-        err = knd_OK;
-        goto final;
-    }
     
-    knd_log("ACC SID: %s\n", data->sid);
-    
-    data->uid_size = KND_ID_SIZE + 1;
-    err = knd_get_xmlattr(input_node, "acc_uid", 
-                          data->uid, &data->uid_size);
-    if (err) {
-        goto final;
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "tid", strlen("tid"))) {
+            tid = arg->val;
+            tid_size = arg->val_size;
+        }
     }
 
-    knd_log("\n    Delivery Register SID: \"%s\" UID: \"%s\"\n", 
-            data->sid, data->uid);
+    if (!tid_size) return knd_FAIL;
 
-    /* create new auth record */
-    rec = malloc(sizeof(struct kndAuthRec));
-    if (!rec) return knd_NOMEM;
-    
-    memset(rec, 0, sizeof(struct kndAuthRec));
-    memcpy(rec->uid, data->uid, KND_ID_SIZE);
+    self = (struct kndDelivery*)obj;
 
-    err = ooDict_new(&rec->cache, KND_MEDIUM_DICT_SIZE);
-    if (err) goto final;
+    if (DEBUG_DELIV_LEVEL_TMP)
+        knd_log(".. set tid to \"%.*s\"", tid_size, tid);
 
-    err = self->sid_idx->set(self->sid_idx, 
-			       (const char*)data->sid, 
-			       (void*)rec);
-    if (err) return err;
-
-    err = self->uid_idx->set(self->uid_idx, 
-			       (const char*)data->uid, 
-			       (void*)rec);
-    if (err) return err;
-
- final:
-    return err;
+    memcpy(self->tid, tid, tid_size);
+    self->tid[tid_size] = '\0';
+    self->tid_size = tid_size;
+   
+    return knd_OK;
 }
 
+static int 
+parse_result(void *self,
+             const char *rec,
+             size_t *total_size)
+{
+    struct kndTaskSpec specs[] = {
+        { .name = "tid",
+          .name_size = strlen("tid"),
+          .run = run_set_tid,
+          .obj = self
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
+
+
+static int 
+run_task(struct kndDelivery *self)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = KND_NAME_SIZE;
+    size_t chunk_size = 0;
+    
+    const char *gsl_format_tag = "{gsl";
+    size_t gsl_format_tag_size = strlen(gsl_format_tag);
+
+    const char *header_tag = "{knd::Task";
+    size_t header_tag_size = strlen(header_tag);
+    const char *c;
+    
+    struct kndTaskSpec specs[] = {
+        { .name = "result",
+          .name_size = strlen("result"),
+          .parse = parse_result,
+          .obj = self
+        }/*,
+        { .name = "user",
+          .name_size = strlen("path"),
+          .run = run_set_db_path,
+          .obj = self
+          }*/
+    };
+    int err;
+
+    const char *rec = self->task;
+    size_t total_size;
+    
+    if (strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
+        knd_log("-- not a GSL format");
+        return err;
+    }
+    rec += gsl_format_tag_size;
+
+    err = knd_get_schema_name(rec,
+                              buf, &buf_size, &chunk_size);
+    if (!err) {
+        rec += chunk_size;
+        if (DEBUG_DELIV_LEVEL_TMP)
+            knd_log("== got schema: \"%s\"", buf);
+    }
+    
+    if (strncmp(rec, header_tag, header_tag_size)) {
+        knd_log("-- wrong GSL class header");
+        return err;
+    }
+    c = rec + header_tag_size;
+    
+    err = knd_parse_task(c, &total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) {
+        knd_log("-- task parse error: %d", err);
+        return err;
+    }
+    
+    return knd_OK;
+}
 
 
 
@@ -328,97 +380,46 @@ kndDelivery_start(struct kndDelivery *self)
 {
     void *context;
     void *service;
-    //void *control;
-
-    struct kndData *data;
-
-    const char *reply = NULL;
-    size_t reply_size = 0;
-
-    //char buf[KND_TEMP_BUF_SIZE];
-
+    char *task;
+    size_t task_size;
+    char *obj;
+    size_t obj_size;
     int err;
 
-    const char *err_msg = "{\"error\": \"incorrect call\"}";
-    size_t err_msg_size = strlen(err_msg);
+    const char *header = "DELIVERY";
+    size_t header_size = strlen(header);
 
-    const char *wait_msg = "{\"wait\": \"1\"}";
-    size_t wait_msg_size = strlen(wait_msg);
-
-    const char *auth_msg = "{\"error\": \"authentication failure\"}";
-    size_t auth_msg_size = strlen(auth_msg);
+    const char *reply = "OK";
+    size_t reply_size = strlen(reply);
 
     context = zmq_init(1);
 
-    /*control = zmq_socket(context, ZMQ_PUSH);
-    if (!control) return knd_FAIL;
-    err = zmq_connect(control, "tcp://127.0.0.1:5561"); */
-
     service = zmq_socket(context, ZMQ_REP);
     assert(service);
+    assert((zmq_bind(service, self->addr) == knd_OK));
 
-    /* tcp://127.0.0.1:6902 */
-    assert((zmq_bind(service, "ipc:///var/lib/knowdy/deliv") == knd_OK)); // fixme: remove hardcode
-
-    err = kndData_new(&data);
-    if (err) return knd_FAIL;
-
-    knd_log("\n\n    ++ %s is up and running: %s\n\n",
-            self->name, "ipc:///var/lib/knowdy/deliv"); // fixme: remove hardcode
+    knd_log("\n\n    ++ %s is up and running: %s\n",
+            self->name, self->addr);
 
     while (1) {
-        /* reset data */
-	data->reset(data);
-        
-	reply = err_msg;
-	reply_size = err_msg_size;
-
         knd_log("\n    ++ DELIVERY service is waiting for new tasks...\n");
 
-        data->spec = knd_zmq_recv(service, &data->spec_size);
-        data->obj = knd_zmq_recv(service, &data->obj_size);
+        self->task = knd_zmq_recv(service, &self->task_size);
+        self->obj = knd_zmq_recv(service, &self->obj_size);
 
-	knd_log("    ++ DELIVERY service has got spec:\n   %s  QUERY: %s  META/OBJ: %s\n\n",
-                data->spec, data->query, data->obj);
+	knd_log("    ++ DELIVERY service has got task:   \"%s\"",
+                self->task);
 
-	//err = self->process(self, data);
-        
-	/*if (err == knd_NO_MATCH || err == knd_AUTH_OK) {
-	    reply = data->uid;
-	    reply_size = KND_ID_SIZE;
-            goto final;
-	}
+        err = run_task(self);
 
-        if (err == knd_NEED_WAIT) {
-            data->header_size = strlen("WAIT");
-            memcpy(data->header, "WAIT", data->header_size);
-            data->header[data->header_size] = '\0';
-
-            reply = wait_msg;
-	    reply_size = wait_msg_size;
-            goto final;
-	}
-
-        if (err == knd_AUTH_FAIL) {
-	    reply = auth_msg;
-	    reply_size = auth_msg_size;
-	    goto final;
-	}
-        */
-	/* TODO: notify controller */
-	/*if (data->control_msg) {
-	}*/
-
-        
-
-    final:
-
-        knd_log("     .. ERR code: %d  sending  HEADER: \"%s\"  REPLY: \"%s\"\n\n",
+        /*knd_log("     .. ERR code: %d  sending  HEADER: \"%s\"  REPLY: \"%s\"\n\n",
                 err, data->header, data->reply);
+        */
         
-        knd_zmq_sendmore(service, (const char*)data->header, data->header_size);
+        knd_zmq_sendmore(service, header, header_size);
 	knd_zmq_send(service, reply, reply_size);
 
+        
         fflush(stdout);
     }
 
@@ -455,7 +456,11 @@ run_set_db_path(void *obj,
 
     if (DEBUG_DELIV_LEVEL_TMP)
         knd_log(".. set DB path to \"%.*s\"", path_size, path);
-    
+
+    memcpy(self->path, path, path_size);
+    self->path[path_size] = '\0';
+    self->path_size = path_size;
+   
     return knd_OK;
 }
 
@@ -481,9 +486,12 @@ run_set_service_addr(void *obj,
 
     self = (struct kndDelivery*)obj;
 
-    
     if (DEBUG_DELIV_LEVEL_TMP)
         knd_log(".. set service addr to \"%.*s\"", addr_size, addr);
+
+    memcpy(self->addr, addr, addr_size);
+    self->addr[addr_size] = '\0';
+    self->addr_size = addr_size;
 
     
     return knd_OK;
@@ -577,6 +585,7 @@ kndDelivery_new(struct kndDelivery **deliv,
 
     memset(self, 0, sizeof(struct kndDelivery));
 
+
     /* TODO: tid allocation ring */
 
     err = ooDict_new(&self->auth_idx, KND_LARGE_DICT_SIZE);
@@ -605,17 +614,7 @@ kndDelivery_new(struct kndDelivery **deliv,
     if (err) goto error;
 
     self->default_rec = rec;
-
-    /*  special user record */
-    rec = malloc(sizeof(struct kndAuthRec));
-    if (!rec) {
-        err = knd_NOMEM;
-        goto error;
-    }
     
-    memset(rec, 0, sizeof(struct kndAuthRec));
-    memcpy(rec->uid, "069", KND_ID_SIZE);
-
     err = ooDict_new(&rec->cache, KND_LARGE_DICT_SIZE);
     if (err) goto error;
     self->spec_rec = rec;
@@ -639,7 +638,7 @@ kndDelivery_new(struct kndDelivery **deliv,
     err = parse_config_GSL(self, self->out->file, &chunk_size);
     if (err) goto error;
 
-    if (self->path) {
+    if (self->path_size) {
         err = knd_mkpath(self->path, 0777, false);
         if (err) return err;
     }

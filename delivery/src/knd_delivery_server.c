@@ -57,17 +57,12 @@ main(int const argc,
     }
 
     config = argv[1];
-   
-    xmlInitParser();
 
     err = kndDelivery_new(&delivery, config);
     if (err) {
         fprintf(stderr, "Couldn\'t load kndDelivery... ");
         return -1;
     }
-
-
-    delivery->name = "KND DELIVERY SERVICE";
 
     /* add delivery service */
     /* ret = pthread_create(&delivery_service,

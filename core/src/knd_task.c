@@ -281,10 +281,20 @@ run(struct kndTask *self,
 static int
 report(struct kndTask *self)
 {
+    const char *gsl_header = "{gsl::Knowdy Basic{knd::Task";
+
     const char *msg = "None";
     size_t msg_size = strlen(msg);
-    int err;
+    char *header;
+    size_t header_size;
+    char *obj;
+    size_t obj_size;
     
+    int err;
+
+    err = self->spec_out->write(self->spec_out, gsl_header, strlen(gsl_header));
+    if (err) return err;
+
     err = self->spec_out->write(self->spec_out, "{result", strlen("{res"));
     if (err) return err;
 
@@ -314,10 +324,9 @@ report(struct kndTask *self)
     err = self->spec_out->write(self->spec_out, "}", 1);
     if (err) return err;
 
-
     if (DEBUG_TASK_LEVEL_TMP)
-        knd_log(".. reporting \"%s\" task result: %s", self->spec_out->buf, self->out->buf);
-
+        knd_log(".. reporting \"%s\" task result: %s",
+                self->spec_out->buf, self->out->buf);
 
     err = knd_zmq_sendmore(self->delivery, (const char*)self->spec_out->buf, self->spec_out->buf_size);
 
@@ -328,6 +337,13 @@ report(struct kndTask *self)
 
     err = knd_zmq_send(self->delivery, msg, msg_size);
 
+    header = knd_zmq_recv(self->delivery, &header_size);
+    obj = knd_zmq_recv(self->delivery, &obj_size);
+
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log("== Delivery reply header: \"%s\" obj: \"%s\"",
+                header, obj);
+    
     return knd_OK;
 }
 

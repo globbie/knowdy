@@ -10,8 +10,6 @@
 
 #include "knd_monitor.h"
 
-#define KND_MAX_SRCS 4
-#define KND_EXPIRY_TIMEOUT 5 /* seconds */
 
 struct kndAuthRec
 {
@@ -66,13 +64,20 @@ struct kndRepoRec
 
 struct kndDelivery
 {
-    char *name;
+    char name[KND_NAME_SIZE];
     size_t name_size;
     
-    char *path;
+    char path[KND_TEMP_BUF_SIZE];
     size_t path_size;
     
-    char *service_address;
+    char addr[KND_TEMP_BUF_SIZE];
+    size_t addr_size;
+
+    char inbox[KND_TEMP_BUF_SIZE];
+    size_t inbox_size;
+
+    char tid[KND_NAME_SIZE];
+    size_t tid_size;
 
     struct ooDict *auth_idx;
     struct ooDict *sid_idx;
@@ -83,6 +88,11 @@ struct kndDelivery
     
     struct ooDict *repo_idx;
 
+    char *task;
+    size_t task_size;
+    char *obj;
+    size_t obj_size;
+    
     struct kndOutput *out;
 
     struct kndMonitor *monitor;

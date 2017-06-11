@@ -279,7 +279,7 @@ kndDataReader_start(struct kndDataReader *self)
     self->admin->update_service = self->update_service;
     
     /* delivery service */
-    self->delivery = zmq_socket(context, ZMQ_PUSH);
+    self->delivery = zmq_socket(context, ZMQ_REQ);
     if (!self->delivery) return knd_FAIL;
     assert((zmq_connect(self->delivery,  self->delivery_addr) == knd_OK));
 
