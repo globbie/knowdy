@@ -6,10 +6,13 @@
 #include <unistd.h>
 #include <assert.h>
 
-#include <knd_config.h>
-#include <knd_output.h>
-#include <knd_msg.h>
-#include <knd_task.h>
+#include <libxml/parser.h>
+
+#include "knd_config.h"
+#include "knd_output.h"
+#include "knd_utils.h"
+#include "knd_msg.h"
+#include "knd_task.h"
 
 #include "knd_delivery.h"
 
@@ -32,7 +35,6 @@ del(struct kndDelivery *self)
     free(self);
     return knd_OK;
 }
-
 
 
 static int
