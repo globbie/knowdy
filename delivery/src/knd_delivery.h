@@ -79,6 +79,9 @@ struct kndDelivery
     char tid[KND_NAME_SIZE];
     size_t tid_size;
 
+    char sid[KND_NAME_SIZE];
+    size_t sid_size;
+
     struct ooDict *auth_idx;
     struct ooDict *sid_idx;
     struct ooDict *uid_idx;
@@ -99,7 +102,7 @@ struct kndDelivery
     
     /**********  interface methods  **********/
     int (*del)(struct kndDelivery *self);
-    int (*str)(struct kndDelivery *self);
+    void (*str)(struct kndDelivery *self);
 
     int (*start)(struct kndDelivery *self);
 

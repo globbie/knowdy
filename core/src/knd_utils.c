@@ -906,7 +906,8 @@ knd_parse_task(const char *rec,
     
     bool in_field = false;
     bool in_terminal = false;
-
+    bool got_task = false;
+    
     size_t chunk_size;
     int err;
     
@@ -972,6 +973,7 @@ knd_parse_task(const char *rec,
                         spec->is_completed = true;
                         in_terminal = false;
                         in_field = false;
+                        got_task = true;
 
                         if (DEBUG_UTILS_LEVEL_2)
                             knd_log("\n\n   == remainder after parsing \"%s\": \"%s\"",
@@ -1027,6 +1029,7 @@ knd_parse_task(const char *rec,
                                     spec->name, err);
                         return err;
                     }
+                    got_task = true;
                 }
 
                 b = c + 1;
@@ -1035,6 +1038,8 @@ knd_parse_task(const char *rec,
                 in_field = false;
                 break;
             }
+
+            if (!got_task) return knd_NO_MATCH;
             
             *total_size = c - rec;
             return knd_OK;
@@ -1045,6 +1050,9 @@ knd_parse_task(const char *rec,
         c++;
     }
 
+    if (!got_task) return knd_NO_MATCH;
+
+    
     *total_size = c - rec;
     return knd_OK;
     /*return knd_FAIL;*/

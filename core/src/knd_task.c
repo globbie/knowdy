@@ -295,8 +295,6 @@ report(struct kndTask *self)
     err = self->spec_out->write(self->spec_out, gsl_header, strlen(gsl_header));
     if (err) return err;
 
-    err = self->spec_out->write(self->spec_out, "{result", strlen("{res"));
-    if (err) return err;
 
     err = self->spec_out->write(self->spec_out, "{tid ", strlen("{tid "));
     if (err) return err;
@@ -312,6 +310,7 @@ report(struct kndTask *self)
     err = self->spec_out->write(self->spec_out, "}", 1);
     if (err) return err;
 
+
     if (self->error) {
         err = self->spec_out->write(self->spec_out, "{err", strlen("{err"));
         if (err) return err;
@@ -319,11 +318,11 @@ report(struct kndTask *self)
         if (err) return err;
         err = self->spec_out->write(self->spec_out, "}", 1);
         if (err) return err;
+    } else {
+        err = self->spec_out->write(self->spec_out, "{result _obj}", strlen("{result _obj}"));
+        if (err) return err;
     }
     
-    err = self->spec_out->write(self->spec_out, "}", 1);
-    if (err) return err;
-
     if (DEBUG_TASK_LEVEL_TMP)
         knd_log(".. reporting \"%s\" task result: %s",
                 self->spec_out->buf, self->out->buf);
