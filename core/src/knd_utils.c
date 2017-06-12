@@ -6,6 +6,8 @@
 #include <strings.h>
 #include <memory.h>
 
+#include <libxml/parser.h>
+
 #include <stdarg.h>
 #include <syslog.h>
 
@@ -15,7 +17,6 @@
 
 
 #include <unistd.h>
-
 
 #define DEBUG_UTILS_LEVEL_1 0
 #define DEBUG_UTILS_LEVEL_2 0
