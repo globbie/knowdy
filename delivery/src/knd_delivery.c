@@ -154,6 +154,8 @@ run_set_result(void *obj,
     }
     
     memcpy(tid->tid, self->tid, self->tid_size); 
+    tid->tid[self->tid_size] = '\0';
+    
     res->obj = self->obj;
     res->obj_size = self->obj_size;
     
