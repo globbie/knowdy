@@ -159,6 +159,8 @@ static const char* const knd_elem_names[] = {
 #define KND_MATCH_MAX_RESULTS 10
 
 #define KND_TID_SIZE 32
+#define KND_MAX_TIDS 1024
+
 #define KND_MAX_GEOIPS 160000
 #define KND_MAX_GEO_LOCS 3200
 

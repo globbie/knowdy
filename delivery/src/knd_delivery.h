@@ -7,6 +7,7 @@
 
 #include <knd_dict.h>
 #include <knd_utils.h>
+#include <knd_user.h>
 
 #include "knd_monitor.h"
 
@@ -24,6 +25,11 @@ struct kndAuthRec
     
 };
 
+struct kndTID
+{
+    char tid[KND_TID_SIZE];
+};
+    
 struct kndResult
 {
     knd_proc_state_t proc_state;
@@ -32,8 +38,8 @@ struct kndResult
     char   *header;
     size_t header_size;
 
-    char *body;
-    size_t body_size;
+    char *obj;
+    size_t obj_size;
 
     /* file */
     char *filename;
@@ -41,7 +47,6 @@ struct kndResult
     size_t filesize;
     char *mimetype;
     size_t mimetype_size;
-
     
     struct kndResult *next;
 };
@@ -89,13 +94,21 @@ struct kndDelivery
     struct kndAuthRec *default_rec;
     struct kndAuthRec *spec_rec;
     
-    struct ooDict *repo_idx;
+    struct ooDict *idx;
 
+    struct kndTID *tids;
+    size_t max_tids;
+    size_t num_tids;
+    
     char *task;
     size_t task_size;
     char *obj;
     size_t obj_size;
-    
+
+    char *reply_obj;
+    size_t reply_obj_size;
+
+    struct kndUser *admin;
     struct kndOutput *out;
 
     struct kndMonitor *monitor;
