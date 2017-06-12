@@ -949,6 +949,7 @@ knd_parse_task(const char *rec,
 
                     if (!strncmp(b, spec->name, spec->name_size)) {
                         curr_spec = spec;
+                        got_task = true;
 
                         if (!spec->parse) {
                             if (DEBUG_UTILS_LEVEL_2)
@@ -957,7 +958,7 @@ knd_parse_task(const char *rec,
                             in_terminal = true;
                             b = c + 1;
                             e = b;
-                           break;
+                            break;
                         }
 
                         /* nested parsing required */
@@ -973,7 +974,6 @@ knd_parse_task(const char *rec,
                         spec->is_completed = true;
                         in_terminal = false;
                         in_field = false;
-                        got_task = true;
 
                         if (DEBUG_UTILS_LEVEL_2)
                             knd_log("\n\n   == remainder after parsing \"%s\": \"%s\"",

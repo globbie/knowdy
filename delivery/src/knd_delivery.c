@@ -167,11 +167,11 @@ run_task(struct kndDelivery *self)
           .run = run_set_sid,
           .obj = self
         },
-        { .name = "result",
+        /*{ .name = "result",
           .name_size = strlen("result"),
           .parse = parse_result,
           .obj = self
-        },
+          },*/
         { .name = "retrieve",
           .name_size = strlen("retrieve"),
           .parse = parse_retrieve,
@@ -244,11 +244,10 @@ kndDelivery_start(struct kndDelivery *self)
         self->task = knd_zmq_recv(service, &self->task_size);
         self->obj = knd_zmq_recv(service, &self->obj_size);
 
-	knd_log("    ++ DELIVERY service has got task:   \"%s\"",
+	knd_log("    ++ DELIVERY service has got a task:   \"%s\"",
                 self->task);
-
+        
         err = run_task(self);
-
         knd_log("== err: %d", err);
         
         knd_zmq_sendmore(service, header, header_size);
