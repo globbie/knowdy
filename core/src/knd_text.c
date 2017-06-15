@@ -93,18 +93,13 @@ kndText_index(struct kndText *self)
 
     struct kndObject *obj;
     struct kndTextState *curr_state;
-    
     struct kndTranslation *tr;
-    
-    //struct kndTextSelect *sel;
     int err = knd_FAIL;
 
     obj = self->elem->obj;
-
     curr_state = self->states;
     
     tr = curr_state->translations;
-
     while (tr) {
         if (tr->seq) {
             
@@ -146,7 +141,10 @@ kndText_export_JSON(struct kndText *self)
 
     obj = self->elem->obj;
     out = self->out;
-    
+
+    if (DEBUG_TEXT_LEVEL_TMP)
+        knd_log(".. export text to JSON..");
+
     curr_state = self->states;
 
     if (curr_state->translations) {
@@ -1420,23 +1418,19 @@ kndText_parse(struct kndText *self,
               const char *rec,
               size_t *total_size)
 {
-    //char buf[KND_NAME_SIZE];
-    //size_t buf_size;
-
     struct kndTextState *curr_state = NULL;
     const char *c;
     const char *b;
 
     bool in_body = true;
-    //bool in_name = false;
     size_t chunk_size;
     int err = knd_FAIL;
     
     c = rec;
     b = c;
 
-    if (DEBUG_TEXT_LEVEL_3)
-        knd_log("   .. parse TEXT field from \"%s\"\n\n OUTPUT: %p\n", c, self->out);
+    if (DEBUG_TEXT_LEVEL_2)
+        knd_log(".. parse TEXT field from \"%s\"..", c);
     
     while (*c) {
         switch (*c) {

@@ -1888,7 +1888,6 @@ kndElem_export_JSON(struct kndElem *self,
     curr_size = self->out->buf_size;
 
     if (self->attr) {
-
         switch (self->attr->type) {
         case  KND_ELEM_TEXT:
             text = self->text;
