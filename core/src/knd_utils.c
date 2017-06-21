@@ -12,18 +12,16 @@
 /* numeric conversion by strtol */
 #include <errno.h>
 #include <limits.h>
-
-
 #include <unistd.h>
+
+#include "knd_config.h"
+#include "knd_utils.h"
 
 #define DEBUG_UTILS_LEVEL_1 0
 #define DEBUG_UTILS_LEVEL_2 0
 #define DEBUG_UTILS_LEVEL_3 0
 #define DEBUG_UTILS_LEVEL_4 0
 #define DEBUG_UTILS_LEVEL_TMP 1
-
-#include "knd_config.h"
-#include "knd_utils.h"
 
 /* base name to integer value mapping */
 int obj_id_base[256] = {

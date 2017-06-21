@@ -1,8 +1,6 @@
 #ifndef KND_DATAWRITER_H
 #define KND_DATAWRITER_H
 
-#include "knd_object.h"
-#include "knd_repo.h"
 #include "knd_utils.h"
 #include "knd_dict.h"
 
@@ -80,11 +78,6 @@ struct kndDataWriter
     
     /**********  interface methods  **********/
     void (*del)(struct kndDataWriter *self);
-
-    int (*get_repo)(struct kndDataWriter *self,
-                    const char *name,
-                    size_t name_size,
-                    struct kndRepo **repo);
 
     int (*start)(struct kndDataWriter *self);
 };

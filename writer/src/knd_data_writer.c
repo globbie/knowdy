@@ -4,8 +4,6 @@
 #include <assert.h>
 #include <pthread.h>
 
-#include <libxml/parser.h>
-
 #include <knd_config.h>
 #include <knd_dict.h>
 #include <knd_utils.h>
@@ -30,171 +28,6 @@ kndDataWriter_del(struct kndDataWriter *self)
     /* TODO: storage */
 
     free(self);
-}
-
-
-static int
-kndDataWriter_read_XML_config(struct kndDataWriter *self,
-                              const char *config)
-{
-    xmlDocPtr doc = NULL;
-    xmlNodePtr root, cur_node, sub_node;
-    
-    const char *default_db_path = "/usr/lib/knowdy/";
-    const char *default_schema_path = "/etc/knowdy/schemas/";
-
-    xmlChar *val = NULL;
-    //long num_value;
-    int err;
-    
-    doc = xmlParseFile((const char*)config);
-    if (!doc) {
-	knd_log("-- DataWriter: no config file found."
-                " Fresh start!\n");
-	err = -1;
-	goto error;
-    }
-
-    root = xmlDocGetRootElement(doc);
-    if (!root) {
-	knd_log("-- DataWriter: config is empty?\n");
-	err = -2;
-	goto error;
-    }
-
-    if (xmlStrcmp(root->name, (const xmlChar *) "db")) {
-	fprintf(stderr,"Document of the wrong type: the root node " 
-		" must be \"db\"");
-	err = -3;
-	goto error;
-    }
-
-    err = knd_copy_xmlattr(root, "name", 
-			   &self->name, &self->name_size);
-    if (err) return err;
-
-    if (self->name_size > KND_ID_SIZE) {
-        knd_log("  -- DB name must not exceed %lu characters :(",
-                (unsigned long)KND_ID_SIZE);
-        return knd_FAIL;
-    }
-
-
-    memcpy(self->path, default_db_path, strlen(default_db_path));
-    self->path_size = strlen(default_db_path);
-
-    self->path_size = KND_TEMP_BUF_SIZE;
-    err = knd_get_xmlattr(root, "path", 
-                          self->path, &self->path_size);
-    if (err) {
-        knd_log("-- custom DB path not set, using default:  %s", self->path);
-    }
-    else {
-        knd_log("== custom DB path set to \"%s\"", self->path);
-    }
-    
-    /* default schema path */
-    memcpy(self->schema_path, default_schema_path, strlen(default_schema_path));
-    self->schema_path_size = strlen(default_schema_path);
-
-    self->schema_path_size = KND_TEMP_BUF_SIZE;
-    err = knd_get_xmlattr(root, "schema",
-                          self->schema_path, &self->schema_path_size);
-    if (err) {
-        knd_log("-- custom schemas path not set, using default:  '%s'", self->schema_path);
-    } else {
-        knd_log("== custom schemas path set to '%s'", self->schema_path);
-    }
-
-
-    self->admin->sid_size = KND_TID_SIZE + 1;
-    err = knd_get_xmlattr(root, "sid",
-                          self->admin->sid, &self->admin->sid_size);
-    if (err) {
-        knd_log("-- administrative SID is not set :(");
-        return err;
-    }
-    memcpy(self->admin->id, self->name, self->name_size);
-
-    /* users path */
-    self->admin->dbpath = self->path;
-    self->admin->dbpath_size = self->path_size;
-
-    memcpy(self->admin->path, self->path, self->path_size);
-    memcpy(self->admin->path + self->path_size, "/users", strlen("/users"));
-    self->admin->path_size = self->path_size + strlen("/users");
-    self->admin->path[self->admin->path_size] = '\0';
-
-    for (cur_node = root->children; 
-         cur_node; 
-         cur_node = cur_node->next) {
-        if (cur_node->type != XML_ELEMENT_NODE) continue;
-        
-	if ((!xmlStrcmp(cur_node->name, (const xmlChar *)"devices"))) {
-            for (sub_node = cur_node->children; 
-                 sub_node; 
-                 sub_node = sub_node->next) {
-                if (sub_node->type != XML_ELEMENT_NODE) continue;
-
-                if ((xmlStrcmp(sub_node->name, (const xmlChar *)"device")))
-                    continue;
-
-                val = xmlGetProp(sub_node,  (const xmlChar *)"name");
-                if (!val) continue;
-
-                if (strcmp((const char*)val, "write_inbox")) continue;
-
-                err = knd_copy_xmlattr(sub_node, "frontend",
-                                       &self->inbox_frontend_addr, 
-                                       &self->inbox_frontend_addr_size);
-                if (err) return err;
-                
-                err = knd_copy_xmlattr(sub_node, "backend",
-                                       &self->inbox_backend_addr, 
-                                       &self->inbox_backend_addr_size);
-                if (err) return err;
-            }
-        }
-
-	if ((!xmlStrcmp(cur_node->name, (const xmlChar *)"services"))) {
-
-            for (sub_node = cur_node->children; 
-                 sub_node; 
-                 sub_node = sub_node->next) {
-                if (sub_node->type != XML_ELEMENT_NODE) continue;
-
-                if ((xmlStrcmp(sub_node->name, (const xmlChar *)"service")))
-                    continue;
-
-                val = xmlGetProp(sub_node,  (const xmlChar *)"name");
-                if (!val) continue;
-
-                if (!strcmp((const char*)val, "delivery")) {
-                    err = knd_copy_xmlattr(sub_node, "addr", 
-                                           &self->delivery_addr, 
-                                           &self->delivery_addr_size);
-                    if (err) return err;
-                }
-                xmlFree(val);
-            }
-        }
-        
-    }
-    
-    if (!self->inbox_frontend_addr ||
-        !self->inbox_backend_addr  ||
-        !self->delivery_addr)
-        return oo_FAIL;
-
-     err = knd_OK;
-
-     
-error:
-     
-     if (doc)
-         xmlFreeDoc(doc);
-     
-     return err;
 }
 
 
@@ -305,8 +138,9 @@ kndDataWriter_new(struct kndDataWriter **rec,
     if (err) goto error;
         
     /* read config */
-    err = kndDataWriter_read_XML_config(self, config);
+    /*err = kndDataWriter_read_XML_config(self, config);
     if (err) return err;
+    */
     
     err = kndDataClass_new(&dc);
     if (err) return err;
@@ -431,15 +265,17 @@ void *kndDataWriter_subscriber(void *arg)
     struct kndData *data;
     //const char *empty_msg = "None";
     //size_t empty_msg_size = strlen(empty_msg);
-
+    char *spec;
+    size_t spec_size;
+    char *obj;
+    size_t obj_size;
+    
     int err;
 
     writer = (struct kndDataWriter*)arg;
 
     context = zmq_init(1);
 
-    err = kndData_new(&data);
-    if (err) pthread_exit(NULL);
 
     subscriber = zmq_socket(context, ZMQ_SUB);
     assert(subscriber);
@@ -456,16 +292,14 @@ void *kndDataWriter_subscriber(void *arg)
     assert(err == knd_OK);
 
     while (1) {
-	data->reset(data);
 
-        data->spec = knd_zmq_recv(subscriber, &data->spec_size);
-	data->obj = knd_zmq_recv(subscriber, &data->obj_size);
+        spec = knd_zmq_recv(subscriber, &spec_size);
+	obj = knd_zmq_recv(subscriber, &obj_size);
 
-	knd_zmq_sendmore(inbox, data->spec, data->spec_size);
-	knd_zmq_send(inbox, data->obj, data->obj_size);
+	knd_zmq_sendmore(inbox, spec, spec_size);
+	knd_zmq_send(inbox, obj, obj_size);
 
 	printf("    ++ all messages sent!\n");
-
         fflush(stdout);
     }
 
@@ -503,8 +337,6 @@ main(int const argc,
     }
 
     config = argv[1];
-
-    xmlInitParser();
 
     err = kndDataWriter_new(&writer, config);
     if (err) {

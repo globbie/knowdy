@@ -11,7 +11,6 @@
 #include "knd_sorttag.h"
 
 #include "knd_data_reader.h"
-#include "knd_monitor.h"
 
 #define DEBUG_OBJREF_LEVEL_0 0
 #define DEBUG_OBJREF_LEVEL_1 0

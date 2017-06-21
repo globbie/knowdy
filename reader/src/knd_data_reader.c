@@ -5,8 +5,6 @@
 #include <pthread.h>
 #include <assert.h>
 
-#include <libxml/parser.h>
-
 #include "knd_user.h"
 #include "knd_output.h"
 #include "knd_dataclass.h"
@@ -30,225 +28,6 @@ kndDataReader_del(struct kndDataReader *self)
 
     return knd_OK;
 }
-
-static int
-kndDataReader_read_config(struct kndDataReader *self,
-                         const char *config)
-{
-    struct kndDataClass *c = NULL;
-
-    const char *default_db_path = "/usr/lib/knowdy/";
-    const char *default_schema_path = "/etc/knowdy/schemas/";
-
-    xmlDocPtr doc;
-    xmlNodePtr root, cur_node, sub_node;
-    xmlChar *val = NULL;
-
-    int err;
-
-    doc = xmlParseFile(config);
-    if (!doc) {
-	fprintf(stderr, "\n    -- DataReader: no config file found."
-                        " Fresh start!\n");
-	err = -1;
-	goto error;
-    }
-
-    root = xmlDocGetRootElement(doc);
-    if (!root) {
-	fprintf(stderr,"empty document\n");
-	err = -2;
-	goto error;
-    }
-
-    if (xmlStrcmp(root->name, (const xmlChar *) "db")) {
-	fprintf(stderr, "Document of the wrong type: the root node " 
-		" must be \"db\"");
-	err = -3;
-	goto error;
-    }
-
-    err = knd_copy_xmlattr(root, "name", 
-			   &self->name, &self->name_size);
-    if (err) return err;
-
-    
-    memcpy(self->path, default_db_path, strlen(default_db_path));
-    self->path_size = strlen(default_db_path);
-
-    self->path_size = KND_TEMP_BUF_SIZE;
-    err = knd_get_xmlattr(root, "path", 
-                          self->path, &self->path_size);
-    if (err) {
-        knd_log("-- custom DB path not set, using default:  %s", self->path);
-    }
-    else {
-        knd_log("== custom DB path set to \"%s\"", self->path);
-    }
-    
-    /* default schema path */
-    memcpy(self->schema_path, default_schema_path, strlen(default_schema_path));
-    self->schema_path_size = strlen(default_schema_path);
-
-    self->schema_path_size = KND_TEMP_BUF_SIZE;
-    err = knd_get_xmlattr(root, "schema",
-                          self->schema_path, &self->schema_path_size);
-    if (err) {
-        knd_log("-- custom schemas path not set, using default:  '%s'", self->schema_path);
-    } else {
-        knd_log("== custom schemas path set to '%s'", self->schema_path);
-    }
-
-    self->admin->sid_size = KND_TID_SIZE + 1;
-    err = knd_get_xmlattr(root, "sid",
-                          self->admin->sid, &self->admin->sid_size);
-    if (err) {
-        knd_log("-- administrative SID is not set :(");
-        return err;
-    }
-    memcpy(self->admin->id, self->name, self->name_size);
-
-    /* users path */
-    self->admin->dbpath = self->path;
-    self->admin->dbpath_size = self->path_size;
-
-    memcpy(self->admin->path, self->path, self->path_size);
-    memcpy(self->admin->path + self->path_size, "/users", strlen("/users"));
-    self->admin->path_size = self->path_size + strlen("/users");
-    self->admin->path[self->admin->path_size] = '\0';
-
-    
-    
-    val = xmlGetProp(root,  (const xmlChar *)"default_repo");
-    if (val) {
-        self->default_repo_name_size = strlen((const char*)val);
-        if (self->default_repo_name_size >= KND_NAME_SIZE) return knd_LIMIT;
-        
-        strcpy(self->default_repo_name, (const char*)val);
-        
-        xmlFree(val);
-        val = NULL;
-    }
-
-    val = xmlGetProp(root,  (const xmlChar *)"default_repo_title");
-    if (val) {
-        self->default_repo_title_size = strlen((const char*)val);
-        if (self->default_repo_title_size >= KND_TEMP_BUF_SIZE) return knd_LIMIT;
-        
-        strcpy(self->default_repo_title, (const char*)val);
-        xmlFree(val);
-        val = NULL;
-    }
-
-    for (cur_node = root->children; 
-         cur_node; 
-         cur_node = cur_node->next) {
-        if (cur_node->type != XML_ELEMENT_NODE) continue;
-
-
-        /*if ((!xmlStrcmp(cur_node->name, (const xmlChar *)"pids"))) {
-            for (sub_node = cur_node->children; 
-                 sub_node; 
-                 sub_node = sub_node->next) {
-                if (sub_node->type != XML_ELEMENT_NODE) continue;
-
-                if ((xmlStrcmp(sub_node->name, (const xmlChar *)"pid")))
-                    continue;
-
-                val = xmlGetProp(sub_node,  (const xmlChar *)"name");
-                if (!val) continue;
-
-                if (strcmp((const char*)val, "read_pid")) continue;
-                err = knd_copy_xmlattr(sub_node, "path", 
-                                       &self->pid_filename, 
-                                       &curr_size);
-                if (err) return err;
-            }
-            } */
-
-
-        if ((!xmlStrcmp(cur_node->name, (const xmlChar *)"devices"))) {
-
-            for (sub_node = cur_node->children; 
-                 sub_node; 
-                 sub_node = sub_node->next) {
-                if (sub_node->type != XML_ELEMENT_NODE) continue;
-
-                if ((xmlStrcmp(sub_node->name, (const xmlChar *)"device")))
-                    continue;
-
-                val = xmlGetProp(sub_node,  (const xmlChar *)"name");
-                if (!val) continue;
-
-                if (!strcmp((const char*)val, "write_inbox")) {
-                    err = knd_copy_xmlattr(sub_node, "frontend", 
-                                           &self->update_addr, 
-                                           &self->update_addr_size);
-                    if (err) return err;
-                    continue;
-                }
-
-                err = knd_copy_xmlattr(sub_node, "frontend", 
-                                       &self->inbox_frontend_addr, 
-                                       &self->inbox_frontend_addr_size);
-                if (err) return err;
-                
-                err = knd_copy_xmlattr(sub_node, "backend",
-                                       &self->inbox_backend_addr, 
-                                       &self->inbox_backend_addr_size);
-                if (err) return err;
-            }
-        }
-
-	if ((!xmlStrcmp(cur_node->name, (const xmlChar *)"services"))) {
-
-            for (sub_node = cur_node->children; 
-                 sub_node; 
-                 sub_node = sub_node->next) {
-                if (sub_node->type != XML_ELEMENT_NODE) continue;
-
-                if ((xmlStrcmp(sub_node->name, (const xmlChar *)"service")))
-                    continue;
-
-                val = xmlGetProp(sub_node,  (const xmlChar *)"name");
-                if (!val) continue;
-                
-                if (!xmlStrcmp(val, (const xmlChar*)"delivery")) {
-                    err = knd_copy_xmlattr(sub_node, "addr", 
-                                           &self->delivery_addr,
-                                           &self->delivery_addr_size);
-                    if (err) return err;
-                }
-
-                xmlFree(val);
-                val = NULL;
-            }
-        }
-
-
-    }
-
-    if (!self->inbox_frontend_addr ||
-        !self->inbox_backend_addr  ||
-        !self->delivery_addr)
-        return oo_FAIL;
-
-    err = knd_OK;
-    
-    
-error:
-
-    if (val)
-        xmlFree(val);
-
-    if (c)
-        c->del(c);
-    
-    xmlFreeDoc(doc);
-
-    return err;
-}
-
 
 static int
 kndDataReader_start(struct kndDataReader *self)
@@ -350,15 +129,11 @@ kndDataReader_new(struct kndDataReader **rec,
     err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
     
-    /*err = ooDict_new(&self->admin->repo_idx, KND_SMALL_DICT_SIZE);
-    if (err) goto error;
-    */
-    
-    err = kndDataReader_read_config(self, config);
+    /*err = kndDataReader_read_config(self, config);
     if (err) {
-        knd_log("  -- XML config read error :(\n");
+        knd_log("  -- config read error :(\n");
         goto error;
-    }
+        }*/
 
     err = kndDataClass_new(&dc);
     if (err) return err;
@@ -565,14 +340,11 @@ main(int const argc,
 
     config = argv[1];
 
-    xmlInitParser();
-
     err = kndDataReader_new(&reader, config);
     if (err) {
         fprintf(stderr, "Couldn\'t load the DataReader... ");
         return -1;
     }
-
     
     /* add device */
     err = pthread_create(&inbox, 

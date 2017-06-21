@@ -4,8 +4,6 @@
 #include <pthread.h>
 #include <assert.h>
 
-#include <libxml/parser.h>
-
 #include <knd_config.h>
 #include <knd_utils.h>
 #include <knd_msg.h>
@@ -118,68 +116,20 @@ kndStorage_init(struct kndStorage *self)
 }
 */
 
-static int
-kndStorage_read_config(struct kndStorage *self,
-                       const char *config)
-{
-    char buf[KND_TEMP_BUF_SIZE];
-    xmlDocPtr doc;
-    xmlNodePtr root;
-    //xmlNodePtr cur_node;
-    int err;
-
-    buf[0] = '\0';
-
-    doc = xmlParseFile((const char*)config);
-    if (!doc) {
-	fprintf(stderr, "\n    -- No prior config file found."
-                        " Fresh start!\n");
-	err = -1;
-	goto final;
-    }
-
-    root = xmlDocGetRootElement(doc);
-    if (!root) {
-	fprintf(stderr,"empty document\n");
-	err = -2;
-	goto final;
-    }
-
-    if (xmlStrcmp(root->name, (const xmlChar *) "storage")) {
-	fprintf(stderr,"Document of the wrong type: the root node " 
-		" must be \"storage\"");
-	err = -3;
-	goto final;
-    }
-
-    err = knd_copy_xmlattr(root, "name", 
-			   &self->name, &self->name_size);
-    if (err) goto final;
-
-    err = knd_copy_xmlattr(root, "path", 
-			   &self->path, &self->path_size);
-    if (err) goto final;
-
-
-final:
-    xmlFreeDoc(doc);
-
-    return err;
-}
 
 int kndStorage_new(struct kndStorage **rec,
 		   const char *config)
 {
     struct kndStorage *self;
-    int ret = knd_OK;
+    int err;
     
     self = malloc(sizeof(struct kndStorage));
     if (!self) return knd_NOMEM;
 
     memset(self, 0, sizeof(struct kndStorage));
 
-    ret = kndStorage_read_config(self, config);
-    if (ret != knd_OK) goto error;
+    //err = kndStorage_read_config(self, config);
+    //if (ret != knd_OK) goto error;
 
     self->str = kndStorage_str;
     self->del = kndStorage_del;
@@ -192,6 +142,5 @@ int kndStorage_new(struct kndStorage **rec,
  error:
 
     kndStorage_del(self);
-
-    return ret;
+    return err;
 }

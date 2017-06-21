@@ -17,13 +17,14 @@
 #include <unistd.h>
 
 #include "knd_config.h"
+#include "knd_task.h"
 #include "knd_utils.h"
 
-#define DEBUG_PARSE_LEVEL_1 0
-#define DEBUG_PARSE_LEVEL_2 0
-#define DEBUG_PARSE_LEVEL_3 0
-#define DEBUG_PARSE_LEVEL_4 0
-#define DEBUG_PARSE_LEVEL_TMP 1
+#define DEBUG_PARSER_LEVEL_1 0
+#define DEBUG_PARSER_LEVEL_2 0
+#define DEBUG_PARSER_LEVEL_3 0
+#define DEBUG_PARSER_LEVEL_4 0
+#define DEBUG_PARSER_LEVEL_TMP 1
 
 
 /* copy a sequence of non-whitespace chars */
@@ -95,7 +96,7 @@ knd_read_UTF8_char(const char *rec,
     
     /* single byte ASCII-code */
     if ((unsigned char)*rec < 128) {
-        if (DEBUG_UTILS_LEVEL_3)
+        if (DEBUG_PARSER_LEVEL_3)
             knd_log("    == ASCII code: %u\n", 
                     (unsigned char)*rec);
         num_bytes++;
@@ -108,13 +109,13 @@ knd_read_UTF8_char(const char *rec,
     /* 2-byte indicator */
     if ((*rec & 0xE0) == 0xC0) {
         if (rec_size < 2) {
-            if (DEBUG_UTILS_LEVEL_TMP) 
+            if (DEBUG_PARSER_LEVEL_TMP) 
                 knd_log("    -- No payload byte left :(\n");
             return knd_LIMIT;
         }
 
         if ((rec[1] & 0xC0) != 0x80) {
-            if (DEBUG_UTILS_LEVEL_4) 
+            if (DEBUG_PARSER_LEVEL_4) 
                 knd_log("    -- Invalid UTF-8 payload byte: %2.2x\n", 
                         rec[1]);
             return knd_FAIL;
@@ -123,7 +124,7 @@ knd_read_UTF8_char(const char *rec,
         numval = ((rec[0] & 0x1F) << 6) | 
             (rec[1] & 0x3F);
 
-        if (DEBUG_UTILS_LEVEL_3)
+        if (DEBUG_PARSER_LEVEL_3)
             knd_log("    == UTF-8 2-byte code: %lu\n",
                     (unsigned long)numval);
 
@@ -135,20 +136,20 @@ knd_read_UTF8_char(const char *rec,
     /* 3-byte indicator */
     if ((*rec & 0xF0) == 0xE0) {
         if (rec_size < 3) {
-            if (DEBUG_UTILS_LEVEL_3) 
+            if (DEBUG_PARSER_LEVEL_3) 
                 knd_log("    -- Not enough payload bytes left :(\n");
             return knd_LIMIT;
         }
             
         if ((rec[1] & 0xC0) != 0x80) {
-            if (DEBUG_UTILS_LEVEL_3) 
+            if (DEBUG_PARSER_LEVEL_3) 
                 knd_log("    -- Invalid UTF-8 payload byte: %2.2x\n", 
                         rec[1]);
             return knd_FAIL;
         }
             
         if ((rec[2] & 0xC0) != 0x80) {
-            if (DEBUG_UTILS_LEVEL_3) 
+            if (DEBUG_PARSER_LEVEL_3) 
                 knd_log("   -- Invalid UTF-8 payload byte: %2.2x\n", 
                         rec[2]);
             return knd_FAIL;
@@ -158,7 +159,7 @@ knd_read_UTF8_char(const char *rec,
             ((rec[1] & 0x3F) << 6) | 
             (rec[2] & 0x3F);
 
-        if (DEBUG_UTILS_LEVEL_3) 
+        if (DEBUG_PARSER_LEVEL_3) 
             knd_log("    == UTF-8 3-byte code: %lu\n", 
                     (unsigned long)numval);
 
@@ -168,7 +169,7 @@ knd_read_UTF8_char(const char *rec,
         return knd_OK;
     }
 
-    if (DEBUG_UTILS_LEVEL_3) 
+    if (DEBUG_PARSER_LEVEL_3) 
         knd_log("    -- Invalid UTF-8 code: %2.2x\n",
                 *rec);
     return knd_FAIL;
@@ -339,7 +340,7 @@ knd_get_trailer(const char   *rec,
         err = knd_parse_num((const char*)b, &numval);
         if (err) return err;
 
-        if (DEBUG_UTILS_LEVEL_3)
+        if (DEBUG_PARSER_LEVEL_3)
             knd_log("  TOTAL items: %lu\n", (unsigned long)numval);
         
         *num_items = (size_t)numval;
@@ -531,7 +532,7 @@ knd_parse_task(const char *rec,
     b = rec;
     e = rec;
     
-     if (DEBUG_PARSE_LEVEL_2)
+     if (DEBUG_PARSER_LEVEL_2)
          knd_log("\n.. parse task: \"%s\"", rec);
   
     while (*c) {
@@ -546,7 +547,7 @@ knd_parse_task(const char *rec,
                 err = check_name_limits(b, e, &buf_size);
                 if (err) return err;
 
-                if (DEBUG_PARSE_LEVEL_2)
+                if (DEBUG_PARSER_LEVEL_2)
                     knd_log("++ got field: \"%.*s\" [%lu]",
                             buf_size, b, (unsigned long)buf_size);
 
@@ -554,13 +555,13 @@ knd_parse_task(const char *rec,
                     spec = &specs[i];
 
                     if (spec->is_completed) {
-                        if (DEBUG_PARSE_LEVEL_2)
+                        if (DEBUG_PARSER_LEVEL_2)
                             knd_log("++ \"%s\" spec successfully completed!",
                                     spec->name);
                         continue;
                     }
                     
-                    if (DEBUG_PARSE_LEVEL_2)
+                    if (DEBUG_PARSER_LEVEL_2)
                         knd_log("== curr SPEC name: \"%s\"", spec->name);
 
                     if (!strncmp(b, spec->name, spec->name_size)) {
@@ -568,7 +569,7 @@ knd_parse_task(const char *rec,
                         got_task = true;
 
                         if (!spec->parse) {
-                            if (DEBUG_PARSE_LEVEL_2)
+                            if (DEBUG_PARSER_LEVEL_2)
                                 knd_log("   == ATOMIC SPEC found: %s! no further parsing is required.",
                                         spec->name);
                             in_terminal = true;
@@ -578,7 +579,7 @@ knd_parse_task(const char *rec,
                         }
 
                         /* nested parsing required */
-                        if (DEBUG_PARSE_LEVEL_3)
+                        if (DEBUG_PARSER_LEVEL_3)
                             knd_log("   == further parsing required in \"%s\"",
                                     spec->name);
 
@@ -591,7 +592,7 @@ knd_parse_task(const char *rec,
                         in_terminal = false;
                         in_field = false;
 
-                        if (DEBUG_PARSE_LEVEL_2)
+                        if (DEBUG_PARSER_LEVEL_2)
                             knd_log("\n\n   == remainder after parsing \"%s\": \"%s\"",
                                     spec->name, c);
                         
@@ -600,7 +601,7 @@ knd_parse_task(const char *rec,
                         break;
                     }
 
-                    /*if (DEBUG_PARSE_LEVEL_TMP)
+                    /*if (DEBUG_PARSER_LEVEL_TMP)
                         knd_log("-- unrecognized task: \"%.*s\" :(",
                                 buf_size, b);
 
@@ -624,7 +625,7 @@ knd_parse_task(const char *rec,
                 err = check_name_limits(b, e, &buf_size);
                 if (err) return err;
 
-                if (DEBUG_PARSE_LEVEL_2)
+                if (DEBUG_PARSER_LEVEL_2)
                     knd_log("++ got arg: \"%.*s\" [%lu]",
                             buf_size, b, (unsigned long)buf_size);
 
@@ -640,7 +641,7 @@ knd_parse_task(const char *rec,
                 if (spec->run) {
                     err = spec->run(spec->obj, args, num_args);
                     if (err) {
-                        if (DEBUG_PARSE_LEVEL_TMP)
+                        if (DEBUG_PARSER_LEVEL_TMP)
                             knd_log("-- \"%s\" func run failed: %d :(",
                                     spec->name, err);
                         return err;

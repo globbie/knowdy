@@ -28,15 +28,15 @@ void *kndColl_recorder_agent(void *arg)
 
     const char *dest_coll_addr = NULL;
 
-    struct kndData *data;
-
+    char *spec;
+    size_t spec_size;
+    char *obj;
+    size_t obj_size;
     int ret;
 
     args = (struct agent_args*)arg;
     coll = args->collection;
 
-    ret = kndData_new(&data);
-    if (ret != knd_OK) pthread_exit(NULL);
 
     inbox = zmq_socket(args->zmq_context, ZMQ_PULL);
     assert(inbox);
@@ -51,18 +51,13 @@ void *kndColl_recorder_agent(void *arg)
     assert(ret == knd_OK);
 
     while (1) {
-        data->reset(data);
 
 	knd_log("    !! Collection Recorder Agent #%d is ready!\n", 
 	       args->agent_id);
 
 	/* waiting for spec */
-        data->spec = knd_zmq_recv(inbox, &data->spec_size);
-
-	knd_log("    !! Collection Recorder Agent #%d: got spec \"%s\"\n", 
-	       args->agent_id, data->spec);
-	data->obj = knd_zmq_recv(inbox, &data->obj_size);
-
+        spec = knd_zmq_recv(inbox, &spec_size);
+	obj = knd_zmq_recv(inbox, &obj_size);
 
         /* TODO: semantic routing */
 	/*ret = coll->find_route(coll, buf, &dest_coll_addr); */
@@ -71,15 +66,15 @@ void *kndColl_recorder_agent(void *arg)
 	if (!dest_coll_addr) {
             /* TODO check overflow */
             /* send task to all storages */
-	    knd_zmq_sendmore(publisher, data->spec, data->spec_size);
-	    knd_zmq_send(publisher, data->obj, data->obj_size);
+	    knd_zmq_sendmore(publisher, spec, spec_size);
+	    knd_zmq_send(publisher, obj, obj_size);
 	}
-
-        fflush(stdout);
+        
+        if (spec) free(spec);
+        if (obj) free(obj);
     }
 
     zmq_close(inbox);
-
 
     return NULL;
 }
@@ -95,15 +90,17 @@ void *kndColl_requester_agent(void *arg)
 
     const char *dest_coll_addr = NULL;
 
-    struct kndData *data;
-
+    char *spec;
+    size_t spec_size;
+    
+    char *obj;
+    size_t obj_size;
+    
     int ret;
 
     args = (struct agent_args*)arg;
     coll = args->collection;
 
-    ret = kndData_new(&data);
-    assert(ret == knd_OK);
 
     inbox = zmq_socket(args->zmq_context, ZMQ_PULL);
     assert(inbox);
@@ -122,28 +119,28 @@ void *kndColl_requester_agent(void *arg)
     assert(ret == knd_OK);
 
     while (1) {
-	data->reset(data);
-
 	knd_log("    !! Collection Requester Agent #%d listens to %s\n", 
                 args->agent_id, coll->request_proxy_backend);
 
 	/* waiting for spec */
-        data->spec = knd_zmq_recv(inbox, &data->spec_size);
-	data->obj = knd_zmq_recv(inbox, &data->obj_size);
+        spec = knd_zmq_recv(inbox, &spec_size);
+	obj = knd_zmq_recv(inbox, &obj_size);
 
-	knd_log("    !! Collection Requester Agent #%d: got spec \"%s\"\n", 
-	       args->agent_id, data->spec);
-
-	ret = coll->find_route(coll, data->topics, &dest_coll_addr);
+	/*knd_log("    !! Collection Requester Agent #%d: got spec \"%s\"\n", 
+	       args->agent_id, spec);
+        */
+        
+	// TODO: ret = coll->find_route(coll, data->topics, &dest_coll_addr);
 
 	/* stay in this collection */
 	if (!dest_coll_addr) {
             /* send task to one of the storages */
-	    knd_zmq_sendmore(selector, data->spec, data->spec_size);
-	    knd_zmq_send(selector, data->obj, data->obj_size);
+	    knd_zmq_sendmore(selector, spec, spec_size);
+	    knd_zmq_send(selector, obj, obj_size);
         }
-
-        fflush(stdout);
+        
+        if (spec) free(spec);
+        if (obj) free(obj);
     }
 
     zmq_close(inbox);
