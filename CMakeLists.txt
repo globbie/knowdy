@@ -21,9 +21,6 @@ endif()
 
 find_package(PkgConfig)
 
-find_package(LibXml2 REQUIRED)
-include_directories(${LIBXML2_INCLUDE_DIR})
-
 pkg_check_modules(ZEROMQ REQUIRED libzmq)
 find_path(ZEROMQ_INCLUDE_DIR NAMES zmq.h PATHS ${ZEROMQ_INCLUDE_DIRS})
 find_library(ZEROMQ_LIBRARY NAMES zmq PATHS ${ZEROMQ_LIBRARY_DIRS})
@@ -31,6 +28,7 @@ include_directories(${ZEROMQ_INCLUDE_DIR})
 
 set(KNOWDY_PREFIX "knd")
 set(CORE "core")
+set(PARSER "parser")
 set(COLLECTION "collection")
 set(READER "reader")
 set(WRITER "writer")
@@ -39,6 +37,7 @@ set(STORAGE "storage")
 
 set(KNOWDY_MODULES
         ${CORE}
+        ${PARSER}
         ${COLLECTION}
         ${READER}
         ${WRITER}
@@ -46,6 +45,7 @@ set(KNOWDY_MODULES
         ${STORAGE})
 
 include_directories(${CORE}/include)
+include_directories(${PARSER}/include)
 
 foreach(MODULE ${KNOWDY_MODULES})
     include_directories(${MODULE}/src)
@@ -63,7 +63,7 @@ endforeach()
 install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)
 install(DIRECTORY etc/systemd/system/ DESTINATION usr/lib/systemd/system)
 
-set(VERSION "0.0.5")
+set(VERSION "0.0.6")
 
 set(CPACK_PACKAGE_VERSION ${VERSION})
 set(CPACK_GENERATOR "RPM")

@@ -9,7 +9,7 @@
 #include "knd_utils.h"
 #include "knd_user.h"
 
-#include "knd_monitor.h"
+//#include "knd_monitor.h"
 
 
 struct kndAuthRec
@@ -111,7 +111,7 @@ struct kndDelivery
     struct kndUser *admin;
     struct kndOutput *out;
 
-    struct kndMonitor *monitor;
+    //struct kndMonitor *monitor;
     
     /**********  interface methods  **********/
     int (*del)(struct kndDelivery *self);
