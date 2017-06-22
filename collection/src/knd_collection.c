@@ -7,10 +7,17 @@
 #include <pthread.h>
 
 #include "knd_collection.h"
+#include "knd_config.h"
+#include "knd_msg.h"
+#include "knd_utils.h"
+#include "knd_task.h"
+#include "knd_parser.h"
 
-#include <knd_config.h>
-#include <knd_msg.h>
-#include <knd_utils.h>
+#define DEBUG_COLL_LEVEL_0 0
+#define DEBUG_COLL_LEVEL_1 0
+#define DEBUG_COLL_LEVEL_2 0
+#define DEBUG_COLL_LEVEL_3 0
+#define DEBUG_COLL_LEVEL_TMP 1
 
 
 void *
@@ -240,10 +247,23 @@ kndColl_start(struct kndColl *self)
 static int
 kndColl_init(struct kndColl *self)
 {
+    
     self->str = kndColl_str;
     self->del = kndColl_del;
     self->start = kndColl_start;
     self->find_route = kndColl_find_route;
+    
+    self->request_proxy_frontend_size = KND_NAME_SIZE;
+    self->request_proxy_backend_size = KND_NAME_SIZE;
+
+    self->record_proxy_frontend_size = KND_NAME_SIZE;
+    self->record_proxy_backend_size = KND_NAME_SIZE;
+
+    self->publish_proxy_frontend_size = KND_NAME_SIZE;
+    self->publish_proxy_backend_size = KND_NAME_SIZE;
+
+    self->select_proxy_frontend_size = KND_NAME_SIZE;
+    self->select_proxy_backend_size = KND_NAME_SIZE;
 
     return knd_OK;
 }
@@ -254,18 +274,217 @@ kndColl_init(struct kndColl *self)
 static int
 kndColl_check_settings(struct kndColl *self)
 {
-
+    
     /* TODO: check proxies */
-    if (!self->request_proxy_frontend) {
+    if (!*self->request_proxy_frontend) {
         knd_log("  Alert: no request proxy frontend specified!\n");
         return knd_FAIL;
     }
-
-    if (!self->request_proxy_backend) {
+    if (!*self->request_proxy_backend) {
         knd_log("  Alert: no request proxy backend specified!\n");
         return knd_FAIL;
     }
 
+    if (!*self->record_proxy_backend) {
+        knd_log("  Alert: no record proxy frontend specified!\n");
+        return knd_FAIL;
+    }
+    if (!*self->record_proxy_backend) {
+        knd_log("  Alert: no record proxy backend specified!\n");
+        return knd_FAIL;
+    }
+    
+    if (!*self->select_proxy_backend) {
+        knd_log("  Alert: no select proxy frontend specified!\n");
+        return knd_FAIL;
+    }
+    if (!*self->select_proxy_backend) {
+        knd_log("  Alert: no select proxy backend specified!\n");
+        return knd_FAIL;
+    }
+
+    if (!*self->publish_proxy_backend) {
+        knd_log("  Alert: no publish proxy frontend specified!\n");
+        return knd_FAIL;
+    }
+    if (!*self->publish_proxy_backend) {
+        knd_log("  Alert: no publish proxy backend specified!\n");
+        return knd_FAIL;
+    }
+
+    
+    return knd_OK;
+}
+
+
+static int
+parse_request_service_addr(void *self,
+                           const char *rec,
+                           size_t *total_size)
+{
+    struct kndColl *coll = (struct kndColl*)self;
+    
+    struct kndTaskSpec specs[] = {
+        { .name = "frontend",
+          .name_size = strlen("frontend"),
+          .buf = coll->request_proxy_frontend,
+          .buf_size = &coll->request_proxy_frontend_size
+        },
+        { .name = "backend",
+          .name_size = strlen("backend"),
+          .buf = coll->request_proxy_backend,
+          .buf_size = &coll->request_proxy_backend_size
+        }
+    };
+    int err;
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+
+static int
+parse_record_service_addr(void *self,
+                           const char *rec,
+                           size_t *total_size)
+{
+    struct kndColl *coll = (struct kndColl*)self;
+    struct kndTaskSpec specs[] = {
+        { .name = "frontend",
+          .name_size = strlen("frontend"),
+          .buf = coll->record_proxy_frontend,
+          .buf_size = &coll->record_proxy_frontend_size
+        },
+        { .name = "backend",
+          .name_size = strlen("backend"),
+          .buf = coll->record_proxy_backend,
+          .buf_size = &coll->record_proxy_backend_size
+        }
+    };
+    int err;
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+static int
+parse_publish_service_addr(void *self,
+                           const char *rec,
+                           size_t *total_size)
+{
+    struct kndColl *coll = (struct kndColl*)self;
+    struct kndTaskSpec specs[] = {
+        { .name = "frontend",
+          .name_size = strlen("frontend"),
+          .buf = coll->publish_proxy_frontend,
+          .buf_size = &coll->publish_proxy_frontend_size
+        },
+        { .name = "backend",
+          .name_size = strlen("backend"),
+          .buf = coll->publish_proxy_backend,
+          .buf_size = &coll->publish_proxy_backend_size
+        }
+    };
+    int err;
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+static int
+parse_select_service_addr(void *self,
+                          const char *rec,
+                          size_t *total_size)
+{
+    struct kndColl *coll = (struct kndColl*)self;
+
+    struct kndTaskSpec specs[] = {
+        { .name = "frontend",
+          .name_size = strlen("frontend"),
+          .buf = coll->select_proxy_frontend,
+          .buf_size = &coll->select_proxy_frontend_size
+        },
+        { .name = "backend",
+          .name_size = strlen("backend"),
+          .buf = coll->select_proxy_backend,
+          .buf_size = &coll->select_proxy_backend_size
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+static int
+parse_config_GSL(struct kndColl *self,
+                 const char *rec,
+                 size_t *total_size)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = KND_NAME_SIZE;
+    size_t chunk_size = 0;
+    
+    const char *gsl_format_tag = "{gsl";
+    size_t gsl_format_tag_size = strlen(gsl_format_tag);
+
+    const char *header_tag = "{knd::Collection Service Configuration";
+    size_t header_tag_size = strlen(header_tag);
+    const char *c;
+    
+    struct kndTaskSpec specs[] = {
+        { .name = "request",
+          .name_size = strlen("request"),
+          .parse = parse_request_service_addr,
+          .obj = self
+        },
+        { .name = "record",
+          .name_size = strlen("record"),
+          .parse = parse_record_service_addr,
+          .obj = self
+        },
+        { .name = "publish",
+          .name_size = strlen("publish"),
+          .parse = parse_publish_service_addr,
+          .obj = self
+        },
+        { .name = "select",
+          .name_size = strlen("select"),
+          .parse = parse_select_service_addr,
+          .obj = self
+        }
+    };
+    int err;
+
+    if (!strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
+        rec += gsl_format_tag_size;
+        err = knd_get_schema_name(rec,
+                                  buf, &buf_size, &chunk_size);
+        if (!err) {
+            rec += chunk_size;
+            if (DEBUG_COLL_LEVEL_TMP)
+                knd_log("== got schema: \"%s\"", buf);
+        }
+    }
+    
+    if (strncmp(rec, header_tag, header_tag_size)) {
+        knd_log("-- wrong GSL class header");
+        return err;
+    }
+    c = rec + header_tag_size;
+    
+    err = knd_parse_task(c, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) {
+        knd_log("-- config parse error: %d", err);
+        return err;
+    }
+    
     return knd_OK;
 }
 
@@ -275,6 +494,8 @@ kndColl_new(struct kndColl **rec,
 		const char *config)
 {
     struct kndColl *self;
+    size_t total_chunk_parsed = 0;
+    
     int err;
     
     self = malloc(sizeof(struct kndColl));
@@ -284,8 +505,14 @@ kndColl_new(struct kndColl **rec,
 
     kndColl_init(self);
 
-    //err = kndColl_read_config(self, config);
-    //if (err) goto error;
+    err = kndOutput_new(&self->out, KND_TEMP_BUF_SIZE);
+    if (err) return err;
+
+    err = self->out->read_file(self->out, config, strlen(config));
+    if (err) return err;
+  
+    err = parse_config_GSL(self, self->out->file, &total_chunk_parsed);
+    if (err) goto error;
 
     err = kndColl_check_settings(self);
     if (err) goto error;

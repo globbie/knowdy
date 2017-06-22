@@ -5,8 +5,7 @@
 #include <sys/stat.h>
 
 #include "knd_config.h"
-
-
+#include "knd_task.h"
 
 extern int 
 knd_get_trailer(const char  *rec,

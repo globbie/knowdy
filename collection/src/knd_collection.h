@@ -1,7 +1,7 @@
-#ifndef KND_COLL_H
-#define KND_COLL_H
+#pragma once
 
-#include <stdbool.h>
+#include "knd_config.h"
+#include "knd_output.h"
 
 struct kndCollRef
 {
@@ -16,25 +16,29 @@ struct kndColl
 {
     char *name;
     size_t name_size;
-    
-    char *path;
-    size_t path_size;
-
-    char *pid_filename;
 
     void *context;
+    struct kndOutput *out;
+    
+    char request_proxy_frontend[KND_NAME_SIZE];
+    size_t request_proxy_frontend_size;
+    char request_proxy_backend[KND_NAME_SIZE];
+    size_t request_proxy_backend_size;
 
-    char *request_proxy_frontend;
-    char *request_proxy_backend;
+    char record_proxy_frontend[KND_NAME_SIZE];
+    size_t record_proxy_frontend_size;
+    char record_proxy_backend[KND_NAME_SIZE];
+    size_t record_proxy_backend_size;
 
-    char *record_proxy_frontend;
-    char *record_proxy_backend;
+    char publish_proxy_frontend[KND_NAME_SIZE];
+    size_t publish_proxy_frontend_size;
+    char publish_proxy_backend[KND_NAME_SIZE];
+    size_t publish_proxy_backend_size;
 
-    char *publish_proxy_frontend;
-    char *publish_proxy_backend;
-
-    char *select_proxy_frontend;
-    char *select_proxy_backend;
+    char select_proxy_frontend[KND_NAME_SIZE];
+    size_t select_proxy_frontend_size;
+    char select_proxy_backend[KND_NAME_SIZE];
+    size_t select_proxy_backend_size;
     
     size_t max_num_objs;
     size_t max_storage_size;
@@ -70,4 +74,3 @@ struct kndColl
 
 extern int kndColl_new(struct kndColl **self,
 		       const char *config);
-#endif

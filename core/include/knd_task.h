@@ -42,7 +42,11 @@ struct kndTaskSpec
     size_t name_size;
     bool is_completed;
 
+    char *buf;
+    size_t *buf_size;
+    
     void *obj;
+    
     int (*parse)(void *obj, const char *rec, size_t *total_size);
     int (*run)(void *obj, struct kndTaskArg *args, size_t num_args);
 };

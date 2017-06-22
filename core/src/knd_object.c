@@ -1016,7 +1016,6 @@ kndObject_parse_inline(struct kndObject *self,
             }
             self->num_elems++;
             break;
-
         case '}':
             
             /*knd_log("  == the end of inner OBJ reached!  remainder: %s\n", c);*/
@@ -1936,8 +1935,6 @@ kndObject_contribute(struct kndObject *self,
         }
 
     }
-
-    
     
     err = knd_OK;
  final:
@@ -1974,7 +1971,7 @@ kndObject_match(struct kndObject *self,
           sizeof(struct kndObject*),
           knd_compare_obj_by_match_descend);
 
-    knd_log("\n   MATCH RESULTS:\n");
+    knd_log("== MATCH RESULTS:");
 
     out = self->out;
 
@@ -2350,13 +2347,8 @@ kndObject_new(struct kndObject **obj)
     if (!self) return knd_NOMEM;
 
     memset(self, 0, sizeof(struct kndObject));
-
-    /*err = ooDict_new(&self->elem_index, KND_MEDIUM_DICT_SIZE);
-    if (err) goto error;
-    */
     
     kndObject_init(self);
-
     *obj = self;
 
     return knd_OK;

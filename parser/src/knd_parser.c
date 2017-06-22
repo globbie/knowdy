@@ -13,10 +13,10 @@
 #include <errno.h>
 #include <limits.h>
 
-
 #include <unistd.h>
 
 #include "knd_config.h"
+#include "knd_parser.h"
 #include "knd_task.h"
 #include "knd_utils.h"
 
@@ -188,7 +188,7 @@ knd_get_schema_name(const char *rec,
     
     if (strncmp(rec, "::", strlen("::"))) return knd_FAIL;
 
-    c = rec + strlen("::");;
+    c = rec + strlen("::");
     b = c;
     e = c;
 
@@ -504,7 +504,6 @@ knd_parse_IPV4(char *ip, unsigned long *ip_val)
     return knd_OK;
 }
 
-
 extern int
 knd_parse_task(const char *rec,
                size_t *total_size,
@@ -551,6 +550,7 @@ knd_parse_task(const char *rec,
                     knd_log("++ got field: \"%.*s\" [%lu]",
                             buf_size, b, (unsigned long)buf_size);
 
+                
                 for (size_t i = 0; i < num_specs; i++) {
                     spec = &specs[i];
 
@@ -623,11 +623,42 @@ knd_parse_task(const char *rec,
         case '}':
             if (in_terminal) {
                 err = check_name_limits(b, e, &buf_size);
-                if (err) return err;
-
+                if (err) {
+                    knd_log("-- name limit reached :(");
+                    return err;
+                }
+                
                 if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("++ got arg: \"%.*s\" [%lu]",
+                    knd_log("++ got val: \"%.*s\" [%lu]",
                             buf_size, b, (unsigned long)buf_size);
+
+                /* copy to buf */
+                if (spec->buf && spec->buf_size) {
+                    if (DEBUG_PARSER_LEVEL_2)
+                        knd_log(".. writing to buf \"%.*s\" [len: %lu]..",
+                                buf_size, b, (unsigned long)buf_size);
+
+                    if (buf_size >= *(spec->buf_size)) {
+                        knd_log("-- %s: buf limit reached: %lu max: %lu",
+                                spec->name,
+                                (unsigned long)buf_size,
+                                (unsigned long)*spec->buf_size);
+                        return knd_LIMIT;
+                    }
+                    
+                    memcpy(spec->buf, b, buf_size);
+                    spec->buf[buf_size] = '\0';
+                    *(spec->buf_size) = buf_size;
+
+                    spec->is_completed = true;
+                    
+                    b = c + 1;
+                    e = b;
+                    in_terminal = false;
+                    in_field = false;
+                    got_task = true;
+                    break;
+                }
 
                 arg = &args[num_args];
                 num_args++;
@@ -649,6 +680,8 @@ knd_parse_task(const char *rec,
                     got_task = true;
                 }
 
+
+                
                 b = c + 1;
                 e = b;
                 in_terminal = false;
@@ -668,7 +701,6 @@ knd_parse_task(const char *rec,
     }
 
     if (!got_task) return knd_NO_MATCH;
-
     
     *total_size = c - rec;
     return knd_OK;
