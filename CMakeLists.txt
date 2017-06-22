@@ -8,7 +8,7 @@ set(CMAKE_INSTALL_PREFIX /)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -pedantic")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -g3")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} -03 -Werrror")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} -03 -Werror")
 
 add_definitions(-D_POSIX_SOURCE=200809L)
 add_definitions(-D_GNU_SOURCE)
