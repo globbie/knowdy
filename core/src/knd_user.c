@@ -414,12 +414,12 @@ kndUser_restore(struct kndUser *self)
                 self->id, self->dbpath);
 
     buf_size = sprintf(buf, "%s/state.gsl", self->dbpath);
-
     err = self->out->read_file(self->out,
                                (const char*)buf, buf_size);
     if (err) {
-        knd_log("-- couldn't read state.gsl");
-        return err;
+        // TODO: check error status
+        knd_log("-- no state.gsl file found, assume initial state.");
+        return knd_OK;
     }
 
     err = kndUser_read_db_state(self, self->out->file);
