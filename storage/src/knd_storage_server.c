@@ -20,15 +20,15 @@ void *kndStorage_subscriber(void *arg)
     void *publisher;
 
     struct kndStorage *storage;
-    struct kndData *data;
-
+    char *spec;
+    size_t spec_size;
+    char *obj;
+    size_t obj_size;
+    
     int ret;
 
     storage = (struct kndStorage*)arg;
     context = storage->context;
-
-    ret = kndData_new(&data);
-    if (ret != knd_OK) pthread_exit(NULL);
 
     reception = zmq_socket(context, ZMQ_SUB);
     if (!reception) pthread_exit(NULL);
@@ -49,9 +49,8 @@ void *kndStorage_subscriber(void *arg)
     ret = zmq_connect(publisher, "ipc:///var/lib/knowdy/storage_sub");
 
     while (1) {
-        data->reset(data);
-        data->spec = knd_zmq_recv(reception, &data->spec_size);
-        data->obj = knd_zmq_recv(reception, &data->obj_size);
+        spec = knd_zmq_recv(reception, &spec_size);
+        obj = knd_zmq_recv(reception, &obj_size);
 
         /*printf("\n    ++ STORAGE Subscriber has got spec:\n"
           "       %s\n",  data->spec); */
@@ -66,11 +65,11 @@ void *kndStorage_subscriber(void *arg)
 
         /*printf("\n    ++ STORAGE Subscriber is updating the queue..\n");*/
 
-        knd_zmq_sendmore(inbox, data->spec, data->spec_size);
-        knd_zmq_send(inbox, data->obj, data->obj_size);
+        knd_zmq_sendmore(inbox, spec, spec_size);
+        knd_zmq_send(inbox, obj, obj_size);
 
-    //flush:
-        fflush(stdout);
+        if (spec) free(spec);
+        if (obj) free(obj);
     }
 
     /* we never get here */
@@ -206,8 +205,6 @@ main(int const argc,
     }
 
     config = argv[1];
-
-    xmlInitParser();
 
     err = kndStorage_new(&storage, config);
     if (err) {

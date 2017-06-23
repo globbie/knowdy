@@ -21,8 +21,6 @@
 #ifndef KND_CONC_H
 #define KND_CONC_H
 
-#include <libxml/parser.h>
-
 #include "knd_utils.h"
 
 struct kndRepoCache;

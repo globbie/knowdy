@@ -4,11 +4,9 @@
 
 #include "knd_output.h"
 #include "knd_objref.h"
+#include "knd_repo.h"
 #include "knd_sorttag.h"
 #include "knd_refset.h"
-
-#include "knd_data_reader.h"
-#include "knd_data_writer.h"
 
 #define DEBUG_FACET_LEVEL_0 0
 #define DEBUG_FACET_LEVEL_1 0

@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 
 #include "knd_dataclass.h"
+#include "knd_repo.h"
 #include "knd_elem.h"
 #include "knd_attr.h"
 #include "knd_object.h"
@@ -16,8 +17,6 @@
 #include "knd_output.h"
 #include "knd_user.h"
 
-#include "knd_data_writer.h"
-#include "knd_data_reader.h"
 
 #define DEBUG_ELEM_LEVEL_1 0
 #define DEBUG_ELEM_LEVEL_2 0

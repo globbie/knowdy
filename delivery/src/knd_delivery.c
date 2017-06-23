@@ -6,13 +6,12 @@
 #include <unistd.h>
 #include <assert.h>
 
-#include <libxml/parser.h>
-
 #include "knd_config.h"
 #include "knd_output.h"
 #include "knd_utils.h"
 #include "knd_msg.h"
 #include "knd_task.h"
+#include "knd_parser.h"
 
 #include "knd_delivery.h"
 
@@ -532,13 +531,14 @@ kndDelivery_new(struct kndDelivery **deliv,
     
     kndDelivery_init(self); 
 
-    err = kndMonitor_new(&self->monitor);
+    /*err = kndMonitor_new(&self->monitor);
     if (err) {
         fprintf(stderr, "Couldn\'t load kndMonitor... ");
         return -1;
     }
     self->monitor->out = self->out;
-
+    */
+    
     err = self->out->read_file(self->out, config, strlen(config));
     if (err) return err;
     

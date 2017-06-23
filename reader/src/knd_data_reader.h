@@ -1,9 +1,6 @@
-#ifndef KND_DATAREADER_H
-#define KND_DATAREADER_H
-
+#pragma once
 
 #include "knd_utils.h"
-#include "knd_repo.h"
 
 struct kndObject;
 struct kndDataClass;
@@ -52,9 +49,6 @@ struct kndDataReader
     size_t update_addr_size;
     void *update_service;
 
-
-    struct ooDict *repo_idx;
-
     struct kndOutput *out;
     struct kndOutput *spec_out;
     struct kndOutput *obj_out;
@@ -79,18 +73,9 @@ struct kndDataReader
 
     int (*start)(struct kndDataReader *self);
 
-    int (*get_repo)(struct kndDataReader *self,
-                    const char *name,
-                    size_t name_size,
-                    struct kndRepo **repo);
-
     void (*reset)(struct kndDataReader *self);
 
-    int (*get_class)(struct kndDataReader *self,
-                     const char *classname,
-                     struct kndDataClass **result);
 };
 
 extern int kndDataReader_new(struct kndDataReader **self,
 			    const char *config);
-#endif
