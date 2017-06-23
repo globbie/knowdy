@@ -1,13 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>
-#include <sys/stat.h>
 #include <string.h>
-#include <strings.h>
-#include <memory.h>
-
-#include <stdarg.h>
-#include <syslog.h>
 
 /* numeric conversion by strtol */
 #include <errno.h>
@@ -28,7 +21,7 @@
 
 
 /* copy a sequence of non-whitespace chars */
-extern int
+int
 knd_read_name(char *output,
               size_t *output_size,
               const char *rec,
@@ -39,7 +32,7 @@ knd_read_name(char *output,
     size_t i = 0;
 
     c = rec;
-    
+
     while (*c) {
         switch (*c) {
         case ' ':
@@ -62,16 +55,16 @@ knd_read_name(char *output,
         i++;
         c++;
     }
-   
+
     *output = '\0';
     *output_size = curr_size;
-    
+
     return knd_OK;
 }
 
 
 
-static inline int
+static int
 check_name_limits(const char *b, const char *e, size_t *buf_size)
 {
     *buf_size = e - b;
@@ -84,8 +77,7 @@ check_name_limits(const char *b, const char *e, size_t *buf_size)
     return knd_OK;
 }
 
-
-extern int
+int
 knd_read_UTF8_char(const char *rec,
                    size_t rec_size,
                    size_t *val,
@@ -93,19 +85,19 @@ knd_read_UTF8_char(const char *rec,
 {
     size_t num_bytes = 0;
     long numval = 0;
-    
+
     /* single byte ASCII-code */
     if ((unsigned char)*rec < 128) {
         if (DEBUG_PARSER_LEVEL_3)
             knd_log("    == ASCII code: %u\n", 
                     (unsigned char)*rec);
         num_bytes++;
-        
+
         *val = (size_t)*rec;
         *len = num_bytes;
         return knd_OK;
     }
-    
+
     /* 2-byte indicator */
     if ((*rec & 0xE0) == 0xC0) {
         if (rec_size < 2) {
@@ -120,7 +112,7 @@ knd_read_UTF8_char(const char *rec,
                         rec[1]);
             return knd_FAIL;
         }
-	    
+
         numval = ((rec[0] & 0x1F) << 6) | 
             (rec[1] & 0x3F);
 
@@ -140,14 +132,14 @@ knd_read_UTF8_char(const char *rec,
                 knd_log("    -- Not enough payload bytes left :(\n");
             return knd_LIMIT;
         }
-            
+
         if ((rec[1] & 0xC0) != 0x80) {
             if (DEBUG_PARSER_LEVEL_3) 
                 knd_log("    -- Invalid UTF-8 payload byte: %2.2x\n", 
                         rec[1]);
             return knd_FAIL;
         }
-            
+
         if ((rec[2] & 0xC0) != 0x80) {
             if (DEBUG_PARSER_LEVEL_3) 
                 knd_log("   -- Invalid UTF-8 payload byte: %2.2x\n", 
@@ -176,7 +168,7 @@ knd_read_UTF8_char(const char *rec,
 }
 
 
-extern int
+int
 knd_get_schema_name(const char *rec,
                     char *buf,
                     size_t *buf_size,
@@ -185,7 +177,7 @@ knd_get_schema_name(const char *rec,
     const char *b, *c, *e;
     size_t chunk_size = 0;
     size_t max_size = *buf_size;
-    
+
     if (strncmp(rec, "::", strlen("::"))) return knd_FAIL;
 
     c = rec + strlen("::");
@@ -218,7 +210,7 @@ knd_get_schema_name(const char *rec,
 }
 
 
-extern int 
+int
 knd_get_trailer(const char   *rec,
                 size_t  rec_size,
                 char   *trailer_name,
@@ -254,7 +246,7 @@ knd_get_trailer(const char   *rec,
     buf[buf_size] = '\0';
 
     /*knd_log("TRAILER BUF: \"%s\"\n", buf);*/
-    
+
     /* find last closing delimiter */
     for (size_t i = buf_size - 1; i > 0; i--) {
         c = buf + i;
@@ -282,10 +274,10 @@ knd_get_trailer(const char   *rec,
         *dir_rec_size = 0;
         return knd_OK;
     }
-    
+
     memcpy(num_buf, (const char*)c + 1, numfield_size);
     num_buf[numfield_size] = '\0';
-            
+
     err = knd_parse_num((const char*)num_buf, &numval);
     if (err) return err;
 
@@ -295,7 +287,7 @@ knd_get_trailer(const char   *rec,
 
     /* extract trailer */
     buf_size = (size_t)numval;
-    
+
     curr = rec + rec_size - numval - numfield_size;
     memcpy(buf, curr, buf_size);
 
@@ -320,40 +312,40 @@ knd_get_trailer(const char   *rec,
         }
         c = buf + GSL_OPEN_DELIM_SIZE;
     }
-    
+
     curr_size = buf - c;
     if (!curr_size) return knd_FAIL;
-    
+
     val = strstr(c, GSL_TERM_SEPAR);
     if (!val) return knd_FAIL;
 
     curr_size = val - c;
     *val = '\0';
-    
+
     /* total num items? */
     b = strstr(c, GSL_TOTAL);
     if (b) {
         numfield_size = b - c;
         *b = '\0';
         b++;
-        
+
         err = knd_parse_num((const char*)b, &numval);
         if (err) return err;
 
         if (DEBUG_PARSER_LEVEL_3)
             knd_log("  TOTAL items: %lu\n", (unsigned long)numval);
-        
+
         *num_items = (size_t)numval;
     }
 
     /* TODO: check limits */
-    
+
     strncpy(trailer_name, c, curr_size);
     *trailer_name_size = curr_size;
 
     if (!(buf_size - curr_size -  GSL_TERM_SEPAR_SIZE)) return knd_FAIL;
     c += (curr_size + GSL_TERM_SEPAR_SIZE);
-    
+
     *dir_rec_size = buf_size - curr_size -  GSL_TERM_SEPAR_SIZE;
     strncpy(dir_rec, c, *dir_rec_size);
 
@@ -361,7 +353,7 @@ knd_get_trailer(const char   *rec,
 }
 
 
-extern int 
+int
 knd_get_elem_suffix(const char *name,
                     char *buf)
 {
@@ -369,7 +361,7 @@ knd_get_elem_suffix(const char *name,
     const char *c;
 
     c = name;
-    
+
     while (*c++) {
         if (*c != '_') continue;
         if (!c[1]) return knd_FAIL;
@@ -384,17 +376,17 @@ knd_get_elem_suffix(const char *name,
 }
 
 
-extern int 
+int
 knd_parse_matching_braces(const char *rec,
                           size_t *chunk_size)
 {
     const char *b;
     const char *c;
     size_t brace_count = 0;
-    
+
     c = rec;
     b = c;
-    
+
     while (*c) {
         switch (*c) {
         case '{':
@@ -414,14 +406,14 @@ knd_parse_matching_braces(const char *rec,
         }
         c++;
     }
-    
+
     return knd_FAIL;
 }
 
 
 /**
  */
-extern int
+int
 knd_parse_num(const char *val,
 	      long *result)
 /*int *warning)*/
@@ -443,9 +435,9 @@ knd_parse_num(const char *val,
         }
         c++;
         }*/
-    
+
     numval = strtol(val, &invalid_num_char, KND_NUM_ENCODE_BASE);
-    
+
     /* check for various numeric decoding errors */
     if ((errno == ERANGE && (numval == LONG_MAX || numval == LONG_MIN)) ||
             (errno != 0 && numval == 0))
@@ -454,17 +446,17 @@ knd_parse_num(const char *val,
         err = knd_FAIL;
         goto final;
     }
-    
+
     if (invalid_num_char == val) {
 	fprintf(stderr, "  -- No digits were found in \"%s\"\n", val);
 	err = knd_FAIL;
 	goto final;
     }
-    
+
     *result = numval;
 
 final:
-   
+
     return err;
 }
 
@@ -499,12 +491,12 @@ knd_parse_IPV4(char *ip, unsigned long *ip_val)
         curr_shift -= bit_shift;
     }
 
-    *ip_val = (unsigned long)result;
-    
+    *ip_val = result;
+
     return knd_OK;
 }
 
-extern int
+int
 knd_parse_task(const char *rec,
                size_t *total_size,
                struct kndTaskSpec *specs,
@@ -519,21 +511,21 @@ knd_parse_task(const char *rec,
     struct kndTaskArg args[KND_MAX_ARGS];
     size_t num_args = 0;
     struct kndTaskArg *arg;
-    
+
     bool in_field = false;
     bool in_terminal = false;
     bool got_task = false;
-    
+
     size_t chunk_size;
     int err;
-    
+
     c = rec;
     b = rec;
     e = rec;
-    
-     if (DEBUG_PARSER_LEVEL_2)
-         knd_log("\n.. parse task: \"%s\"", rec);
-  
+
+    if (DEBUG_PARSER_LEVEL_2)
+        knd_log("\n.. parse task: \"%s\"", rec);
+
     while (*c) {
         switch (*c) {
         case '\n':
@@ -542,74 +534,73 @@ knd_parse_task(const char *rec,
         case ' ':
             if (!in_field) break;
 
-            if (!in_terminal) {
-                err = check_name_limits(b, e, &buf_size);
-                if (err) return err;
+            if (in_terminal) break;
+
+            err = check_name_limits(b, e, &buf_size);
+            if (err) return err;
+
+            if (DEBUG_PARSER_LEVEL_2)
+                knd_log("++ got field: \"%.*s\" [%lu]",
+                        buf_size, b, (unsigned long)buf_size);
+
+
+            for (size_t i = 0; i < num_specs; i++) {
+                spec = &specs[i];
+
+                if (spec->is_completed) {
+                    if (DEBUG_PARSER_LEVEL_2)
+                        knd_log("++ \"%s\" spec successfully completed!",
+                                spec->name);
+                    continue;
+                }
 
                 if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("++ got field: \"%.*s\" [%lu]",
-                            buf_size, b, (unsigned long)buf_size);
+                    knd_log("== curr SPEC name: \"%s\"", spec->name);
 
-                
-                for (size_t i = 0; i < num_specs; i++) {
-                    spec = &specs[i];
-
-                    if (spec->is_completed) {
-                        if (DEBUG_PARSER_LEVEL_2)
-                            knd_log("++ \"%s\" spec successfully completed!",
-                                    spec->name);
-                        continue;
-                    }
-                    
-                    if (DEBUG_PARSER_LEVEL_2)
-                        knd_log("== curr SPEC name: \"%s\"", spec->name);
-
-                    if (!strncmp(b, spec->name, spec->name_size)) {
-                        curr_spec = spec;
-                        got_task = true;
-
-                        if (!spec->parse) {
-                            if (DEBUG_PARSER_LEVEL_2)
-                                knd_log("   == ATOMIC SPEC found: %s! no further parsing is required.",
-                                        spec->name);
-                            in_terminal = true;
-                            b = c + 1;
-                            e = b;
-                            break;
-                        }
-
-                        /* nested parsing required */
-                        if (DEBUG_PARSER_LEVEL_3)
-                            knd_log("   == further parsing required in \"%s\"",
-                                    spec->name);
-
-                        err = spec->parse(spec->obj, b, &chunk_size);
-                        if (err) return err;
-
-                        c += chunk_size;
-                        
-                        spec->is_completed = true;
-                        in_terminal = false;
-                        in_field = false;
-
-                        if (DEBUG_PARSER_LEVEL_2)
-                            knd_log("\n\n   == remainder after parsing \"%s\": \"%s\"",
-                                    spec->name, c);
-                        
-                        b = c + 1;
-                        e = b;
-                        break;
-                    }
-
-                    /*if (DEBUG_PARSER_LEVEL_TMP)
-                        knd_log("-- unrecognized task: \"%.*s\" :(",
-                                buf_size, b);
-
-                                return knd_FAIL; */
-                    
+                if (strncmp(b, spec->name, spec->name_size) != 0) {
+                    //if (DEBUG_PARSER_LEVEL_TMP)
+                    //    knd_log("-- unrecognized task: \"%.*s\" :(",
+                    //            buf_size, b);
+                    //return knd_FAIL;
+                    break;
                 }
+
+                curr_spec = spec;
+                got_task = true;
+
+                if (!spec->parse) {
+                    if (DEBUG_PARSER_LEVEL_2)
+                        knd_log("   == ATOMIC SPEC found: %s! no further parsing is required.",
+                                spec->name);
+                    in_terminal = true;
+                    b = c + 1;
+                    e = b;
+                    break;
+                }
+
+                /* nested parsing required */
+                if (DEBUG_PARSER_LEVEL_3)
+                    knd_log("   == further parsing required in \"%s\"",
+                            spec->name);
+
+                err = spec->parse(spec->obj, b, &chunk_size);
+                if (err) return err;
+
+                c += chunk_size;
+
+                spec->is_completed = true;
+                in_terminal = false;
+                in_field = false;
+
+                if (DEBUG_PARSER_LEVEL_2)
+                    knd_log("\n\n   == remainder after parsing \"%s\": \"%s\"",
+                            spec->name, c);
+
+                b = c + 1;
+                e = b;
+                break;
             }
-            
+
             break;
         case '{':
             if (!in_field) {
@@ -618,7 +609,7 @@ knd_parse_task(const char *rec,
                 e = b;
                 break;
             }
-            
+
             break;
         case '}':
             if (in_terminal) {
@@ -627,7 +618,7 @@ knd_parse_task(const char *rec,
                     knd_log("-- name limit reached :(");
                     return err;
                 }
-                
+
                 if (DEBUG_PARSER_LEVEL_2)
                     knd_log("++ got val: \"%.*s\" [%lu]",
                             buf_size, b, (unsigned long)buf_size);
@@ -645,13 +636,13 @@ knd_parse_task(const char *rec,
                                 (unsigned long)*spec->buf_size);
                         return knd_LIMIT;
                     }
-                    
+
                     memcpy(spec->buf, b, buf_size);
                     spec->buf[buf_size] = '\0';
                     *(spec->buf_size) = buf_size;
 
                     spec->is_completed = true;
-                    
+
                     b = c + 1;
                     e = b;
                     in_terminal = false;
@@ -665,7 +656,7 @@ knd_parse_task(const char *rec,
 
                 memcpy(arg->name, curr_spec->name, curr_spec->name_size);
                 arg->name_size = curr_spec->name_size;
-                
+
                 memcpy(arg->val, b, buf_size);
                 arg->val_size = buf_size;
 
@@ -681,7 +672,7 @@ knd_parse_task(const char *rec,
                 }
 
 
-                
+
                 b = c + 1;
                 e = b;
                 in_terminal = false;
@@ -690,7 +681,7 @@ knd_parse_task(const char *rec,
             }
 
             if (!got_task) return knd_NO_MATCH;
-            
+
             *total_size = c - rec;
             return knd_OK;
         default:
@@ -701,7 +692,7 @@ knd_parse_task(const char *rec,
     }
 
     if (!got_task) return knd_NO_MATCH;
-    
+
     *total_size = c - rec;
     return knd_OK;
     /*return knd_FAIL;*/
