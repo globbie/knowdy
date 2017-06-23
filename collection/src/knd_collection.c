@@ -506,10 +506,10 @@ kndColl_new(struct kndColl **rec,
     kndColl_init(self);
 
     err = kndOutput_new(&self->out, KND_TEMP_BUF_SIZE);
-    if (err) return err;
+    if (err) goto error;
 
     err = self->out->read_file(self->out, config, strlen(config));
-    if (err) return err;
+    if (err) goto error;
   
     err = parse_config_GSL(self, self->out->file, &total_chunk_parsed);
     if (err) goto error;
