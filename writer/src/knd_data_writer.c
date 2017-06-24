@@ -63,6 +63,10 @@ kndDataWriter_start(struct kndDataWriter *self)
     self->delivery = zmq_socket(context, ZMQ_REQ);
     assert(self->delivery);
 
+    if (DEBUG_WRITER_LEVEL_TMP)
+        knd_log(".. establish delivery connection: %s..", 
+                self->delivery_addr);
+
     err = zmq_connect(self->delivery, self->delivery_addr);
     assert(err == knd_OK);
 
@@ -104,13 +108,158 @@ kndDataWriter_start(struct kndDataWriter *self)
     return knd_OK;
 }
 
+
+static int
+parse_write_inbox_addr(void *obj,
+                       const char *rec,
+                       size_t *total_size)
+{
+    struct kndDataWriter *self = (struct kndDataWriter*)obj;
+
+    self->inbox_frontend_addr_size = KND_NAME_SIZE;
+    self->inbox_backend_addr_size = KND_NAME_SIZE;
+
+    struct kndTaskSpec specs[] = {
+        { .name = "frontend",
+          .name_size = strlen("frontend"),
+          .buf = self->inbox_frontend_addr,
+          .buf_size = &self->inbox_frontend_addr_size
+        },
+        { .name = "backend",
+          .name_size = strlen("backend"),
+          .buf = self->inbox_backend_addr,
+          .buf_size = &self->inbox_backend_addr_size
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+
+static int
+parse_config_GSL(struct kndDataWriter *self,
+                 const char *rec,
+                 size_t *total_size)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = KND_NAME_SIZE;
+    size_t chunk_size = 0;
+    
+    const char *gsl_format_tag = "{gsl";
+    size_t gsl_format_tag_size = strlen(gsl_format_tag);
+
+    const char *header_tag = "{knd::Knowdy Writer Service Configuration";
+    size_t header_tag_size = strlen(header_tag);
+    const char *c;
+
+    self->path_size = KND_NAME_SIZE;
+    self->schema_path_size = KND_NAME_SIZE;
+    self->delivery_addr_size = KND_NAME_SIZE;
+    self->admin->sid_size = KND_NAME_SIZE;
+    
+    struct kndTaskSpec specs[] = {
+         { .name = "path",
+           .name_size = strlen("path"),
+           .buf = self->path,
+           .buf_size = &self->path_size
+         },
+         { .name = "schemas",
+           .name_size = strlen("schemas"),
+           .buf = self->schema_path,
+           .buf_size = &self->schema_path_size
+         },
+         { .name = "sid",
+           .name_size = strlen("sid"),
+           .buf = self->admin->sid,
+           .buf_size = &self->admin->sid_size
+         },
+         { .name = "delivery",
+           .name_size = strlen("delivery"),
+           .buf = self->delivery_addr,
+           .buf_size = &self->delivery_addr_size
+         },
+        { .name = "write_inbox",
+          .name_size = strlen("write_inbox"),
+          .parse = parse_write_inbox_addr,
+          .obj = self
+        }
+    };
+    int err = knd_FAIL;
+
+    if (!strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
+        rec += gsl_format_tag_size;
+        err = knd_get_schema_name(rec,
+                                  buf, &buf_size, &chunk_size);
+        if (!err) {
+            rec += chunk_size;
+            if (DEBUG_WRITER_LEVEL_TMP)
+                knd_log("== got schema: \"%s\"", buf);
+        }
+    }
+    
+    if (strncmp(rec, header_tag, header_tag_size)) {
+        knd_log("-- wrong GSL class header");
+        return knd_FAIL;
+    }
+    c = rec + header_tag_size;
+    
+    err = knd_parse_task(c, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) {
+        knd_log("-- config parse error: %d", err);
+        return err;
+    }
+
+    if (!*self->path) {
+        knd_log("-- DB path not set :(");
+        return knd_FAIL;
+    }
+    
+    if (!*self->schema_path) {
+        knd_log("-- schema path not set :(");
+        return knd_FAIL;
+    }
+
+    if (!*self->inbox_frontend_addr) {
+        knd_log("-- inbox frontend addr not set :(");
+        return knd_FAIL;
+    }
+    if (!*self->inbox_backend_addr) {
+        knd_log("-- inbox backend addr not set :(");
+        return knd_FAIL;
+    }
+
+    if (!*self->admin->sid) {
+        knd_log("-- administrative SID is not set :(");
+        return knd_FAIL;
+    }
+    
+    memcpy(self->admin->id, "000", strlen("000"));
+
+    /* users path */
+    self->admin->dbpath = self->path;
+    self->admin->dbpath_size = self->path_size;
+
+    memcpy(self->admin->path, self->path, self->path_size);
+    memcpy(self->admin->path + self->path_size, "/users", strlen("/users"));
+    self->admin->path_size = self->path_size + strlen("/users");
+    self->admin->path[self->admin->path_size] = '\0';
+
+    
+    return knd_OK;
+}
+
 extern int
 kndDataWriter_new(struct kndDataWriter **rec,
                   const char *config)
 {
     struct kndDataWriter *self;
     struct kndDataClass *dc;
-     int err;
+    size_t chunk_size;
+    int err;
 
     self = malloc(sizeof(struct kndDataWriter));
     if (!self) return knd_NOMEM;
@@ -138,9 +287,11 @@ kndDataWriter_new(struct kndDataWriter **rec,
     if (err) goto error;
         
     /* read config */
-    /*err = kndDataWriter_read_XML_config(self, config);
+    err = self->out->read_file(self->out, config, strlen(config));
     if (err) return err;
-    */
+    
+    err = parse_config_GSL(self, self->out->file, &chunk_size);
+    if (err) goto error;
     
     err = kndDataClass_new(&dc);
     if (err) return err;

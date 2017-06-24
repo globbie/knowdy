@@ -1,0 +1,10 @@
+
+      {read_inbox
+       {frontend ipc:///var/lib/knowdy/reader0}
+       {backend ipc:///var/lib/knowdy/reader0_backend}
+      }
+
+      {select
+        {frontend tcp://127.0.0.1:6912}
+        {backend tcp://127.0.0.1:6913}
+      }

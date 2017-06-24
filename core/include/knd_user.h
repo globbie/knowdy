@@ -43,7 +43,7 @@ struct kndUser
     char path[KND_TEMP_BUF_SIZE];
     size_t path_size;
 
-    char sid[KND_TEMP_BUF_SIZE];
+    char sid[KND_NAME_SIZE];
     size_t sid_size;
 
     char lang_code[KND_NAME_SIZE];
