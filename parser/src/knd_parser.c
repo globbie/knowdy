@@ -496,6 +496,51 @@ knd_parse_IPV4(char *ip, unsigned long *ip_val)
     return knd_OK;
 }
 
+static int
+knd_find_spec(struct kndTaskSpec *specs,
+              size_t num_specs,
+              const char *name,
+              size_t name_size,
+              struct kndTaskSpec **result)
+{
+    struct kndTaskSpec *spec;
+    struct kndTaskSpec *default_spec = NULL;
+   
+    for (size_t i = 0; i < num_specs; i++) {
+        spec = &specs[i];
+        if (spec->is_completed) {
+            if (DEBUG_PARSER_LEVEL_2)
+                knd_log("++ \"%s\" spec already completed!",
+                        spec->name);
+            continue;
+        }
+
+        if (spec->is_default) {
+            default_spec = spec;
+            continue;
+        }
+
+        if (name_size != spec->name_size) continue;
+        
+        if (strncmp(name, spec->name, spec->name_size) != 0) {
+            continue;
+        }
+        
+        if (DEBUG_PARSER_LEVEL_TMP)
+            knd_log("SPEC found: %s!",
+                    spec->name);
+        *result = spec;
+        return knd_OK;
+    }
+
+    if (default_spec) {
+        *result = default_spec;
+        return knd_OK;
+    }
+    
+    return knd_FAIL;
+}
+
 int
 knd_parse_task(const char *rec,
                size_t *total_size,
@@ -507,6 +552,7 @@ knd_parse_task(const char *rec,
 
     struct kndTaskSpec *spec;
     struct kndTaskSpec *curr_spec = NULL;
+    struct kndTaskSpec *default_spec = NULL;
 
     struct kndTaskArg args[KND_MAX_ARGS];
     size_t num_args = 0;
@@ -539,80 +585,54 @@ knd_parse_task(const char *rec,
             err = check_name_limits(b, e, &buf_size);
             if (err) return err;
 
-            if (DEBUG_PARSER_LEVEL_2)
+            if (DEBUG_PARSER_LEVEL_TMP)
                 knd_log("++ got field: \"%.*s\" [%lu]",
                         buf_size, b, (unsigned long)buf_size);
 
             got_task = false;
             
-            for (size_t i = 0; i < num_specs; i++) {
-                spec = &specs[i];
-                if (spec->is_completed) {
-                    if (DEBUG_PARSER_LEVEL_2)
-                        knd_log("++ \"%s\" spec successfully completed!",
-                                spec->name);
-                    continue;
-                }
-
-                if (strncmp(b, spec->name, spec->name_size) != 0) {
-                    continue;
-                }
-
-                curr_spec = spec;
-                got_task = true;
-
+            err = knd_find_spec(specs, num_specs, b, buf_size, &spec);
+            if (err) return err;
+            
+            if (!spec->parse) {
                 if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("SPEC found: %s! parse: %p",
-                            spec->name, spec->parse);
-
-                if (!spec->parse) {
-                    if (DEBUG_PARSER_LEVEL_2)
-                        knd_log("== ATOMIC SPEC found: %s! no further parsing is required.",
-                                spec->name);
-                    in_terminal = true;
-                    b = c + 1;
-                    e = b;
-                    break;
-                }
-
-                /* nested parsing required */
-                if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("== further parsing required in \"%s\"",
+                    knd_log("== ATOMIC SPEC found: %s! no further parsing is required.",
                             spec->name);
-
-                err = spec->parse(spec->obj, b, &chunk_size);
-                if (err) {
-                    if (DEBUG_PARSER_LEVEL_TMP)
-                        knd_log("-- parse failed from: %s", b);
-                    return err;
-                }
-                
-                c += chunk_size;
-
-                spec->is_completed = true;
-                in_terminal = false;
-                in_field = false;
-
-                if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("== remainder after parsing \"%s\": \"%s\"",
-                            spec->name, c);
-
+                in_terminal = true;
                 b = c + 1;
                 e = b;
                 break;
             }
 
-            if (!got_task) {
-                if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("--  no such task found: \"%.*s\" [%lu]",
-                            buf_size, b, (unsigned long)buf_size);
-                return knd_NO_MATCH;
+            /* nested parsing required */
+            if (DEBUG_PARSER_LEVEL_2)
+                knd_log("== further parsing required in \"%s\"",
+                        spec->name);
+
+            err = spec->parse(spec->obj, b, &chunk_size);
+            if (err) {
+                if (DEBUG_PARSER_LEVEL_TMP)
+                    knd_log("-- parse failed from: %s", b);
+                return err;
             }
+                
+            c += chunk_size;
+
+            spec->is_completed = true;
+            in_terminal = false;
+            in_field = false;
+
+            if (DEBUG_PARSER_LEVEL_TMP)
+                knd_log("== remainder after parsing \"%s\": \"%s\"",
+                        spec->name, c);
             
+            b = c + 1;
+            e = b;
             break;
         case '{':
-            if (DEBUG_PARSER_LEVEL_2)
-                knd_log("OPEN BRACKET [in field: %d in terminal: %d] from: %s", in_field, in_terminal, c);
+            if (DEBUG_PARSER_LEVEL_TMP)
+                knd_log("OPEN BRACKET [in field: %d in terminal: %d] from: %s",
+                        in_field, in_terminal, c);
 
             if (!in_field) {
                 in_field = true;
@@ -691,6 +711,9 @@ knd_parse_task(const char *rec,
 
             if (!got_task) return knd_NO_MATCH;
 
+            if (DEBUG_PARSER_LEVEL_TMP)
+                knd_log("== remainder: %s", c);
+
             *total_size = c - rec;
             return knd_OK;
         default:
@@ -704,6 +727,5 @@ knd_parse_task(const char *rec,
 
     *total_size = c - rec;
     return knd_OK;
-    /*return knd_FAIL;*/
 }
 

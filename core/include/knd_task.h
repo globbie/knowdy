@@ -40,7 +40,9 @@ struct kndTaskSpec
 {
     const char *name;
     size_t name_size;
+    
     bool is_completed;
+    bool is_default;
 
     char *buf;
     size_t *buf_size;
