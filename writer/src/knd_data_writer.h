@@ -16,23 +16,23 @@ struct kndCacheRec
     
 struct kndDataWriter
 {
-    char *name;
+    char name[KND_NAME_SIZE];
     size_t name_size;
 
-    char path[KND_TEMP_BUF_SIZE];
+    char path[KND_NAME_SIZE];
     size_t path_size;
 
-    char schema_path[KND_TEMP_BUF_SIZE];
+    char schema_path[KND_NAME_SIZE];
     size_t schema_path_size;
 
     void *delivery;
-    char *delivery_addr;
+    char delivery_addr[KND_NAME_SIZE];
     size_t delivery_addr_size;
     
-    char *inbox_frontend_addr;
+    char inbox_frontend_addr[KND_NAME_SIZE];
     size_t inbox_frontend_addr_size;
 
-    char *inbox_backend_addr;
+    char inbox_backend_addr[KND_NAME_SIZE];
     size_t inbox_backend_addr_size;
     
     size_t state_count;
@@ -41,17 +41,10 @@ struct kndDataWriter
     char *curr_obj_id;
     size_t num_objs;
     size_t max_num_objs;
-
-    /* current class */
-    char classname[KND_CONC_NAME_BUF_SIZE];
-    size_t classname_size;
   
     /* persistent storage */
     char db_path[KND_MED_BUF_SIZE];
     size_t db_path_size;
-
-    /* complex concept index */
-    struct kndMaze *maze;
 
     struct kndOutput *out;
     struct kndOutput *spec_out;
@@ -62,19 +55,12 @@ struct kndDataWriter
     struct ooDict *repo_idx;
     struct kndUser *admin;
 
-    struct kndUser *curr_user;
+    //struct kndUser *curr_user;
 
     /* valid classes */
     struct kndDataClass *dc;
 
-    struct kndPolicy *policy;
-
-    char uid[KND_SMALL_BUF_SIZE];
-    size_t uid_size;
-
-    char sid[KND_SMALL_BUF_SIZE];
-    size_t sid_size;
-
+    //struct kndPolicy *policy;
     
     /**********  interface methods  **********/
     void (*del)(struct kndDataWriter *self);

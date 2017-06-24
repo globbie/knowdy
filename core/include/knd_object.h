@@ -62,7 +62,7 @@ struct kndObject
 
     bool is_subord;
     bool is_concise;
-    
+
     struct kndObject *root;
     struct kndElem *parent;
     struct kndDataClass *dc;
