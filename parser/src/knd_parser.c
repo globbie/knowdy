@@ -591,7 +591,7 @@ knd_parse_task(const char *rec,
     b = rec;
     e = rec;
 
-    if (DEBUG_PARSER_LEVEL_TMP)
+    if (DEBUG_PARSER_LEVEL_2)
         knd_log("\n\n.. parse task: \"%s\" num specs: %lu",
                 rec, (unsigned long)num_specs);
 
@@ -607,7 +607,7 @@ knd_parse_task(const char *rec,
             err = check_name_limits(b, e, &name_size);
             if (err) return err;
 
-            if (DEBUG_PARSER_LEVEL_TMP)
+            if (DEBUG_PARSER_LEVEL_2)
                 knd_log("++ got tag: \"%.*s\" [%lu]",
                         name_size, b, (unsigned long)name_size);
 
@@ -618,7 +618,7 @@ knd_parse_task(const char *rec,
                             name_size, b);
                 return err;
             }
-            if (DEBUG_PARSER_LEVEL_TMP)
+            if (DEBUG_PARSER_LEVEL_2)
                 knd_log("++ got SPEC: \"%s\" (default: %d)",
                         spec->name, spec->is_default);
 
@@ -650,7 +650,7 @@ knd_parse_task(const char *rec,
             c += chunk_size;
 
             spec->is_completed = true;
-            if (DEBUG_PARSER_LEVEL_TMP)
+            if (DEBUG_PARSER_LEVEL_2)
                 knd_log("== remainder after parsing \"%s\": \"%s\" in_field:%d  in_tag:%d",
                         spec->name, c, in_field, in_tag);
 
@@ -728,11 +728,9 @@ knd_parse_task(const char *rec,
             }
 
             if (in_field) {
-                if (DEBUG_PARSER_LEVEL_TMP)
-                    knd_log(".. close field at %s", c);
 
                 if (!in_tag) {
-                    if (DEBUG_PARSER_LEVEL_TMP)
+                    if (DEBUG_PARSER_LEVEL_2)
                         knd_log(".. no tag in %s?", c);
 
                     err = check_name_limits(b, e, &name_size);
@@ -741,7 +739,7 @@ knd_parse_task(const char *rec,
                         return err;
                     }
                     
-                    if (DEBUG_PARSER_LEVEL_TMP)
+                    if (DEBUG_PARSER_LEVEL_2)
                         knd_log("++ got default spec val: \"%.*s\" [%lu]?",
                                 name_size, b, (unsigned long)name_size);
                     
@@ -752,7 +750,7 @@ knd_parse_task(const char *rec,
                                     name_size, b);
                         return err;
                     }
-                    if (DEBUG_PARSER_LEVEL_TMP)
+                    if (DEBUG_PARSER_LEVEL_2)
                         knd_log("++ got SPEC: \"%s\" (default: %d)",
                                 spec->name, spec->is_default);
 

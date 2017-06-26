@@ -1,5 +1,6 @@
 {gsl::Knowdy Basic
   {knd::Knowdy Writer Service Configuration
+      {MyWriter}
       {path /var/lib/knowdy/db}
       {schemas /etc/knowdy/schemas}
       {sid AUTH_SERVER_SID}
@@ -11,5 +12,4 @@
        {backend ipc:///var/lib/knowdy/writer_inbox_backend}
       }
       
-      {MyWriter}
 }}
