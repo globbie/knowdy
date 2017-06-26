@@ -10,7 +10,6 @@
        {frontend ipc:///var/lib/knowdy/writer_inbox_frontend}
        {backend ipc:///var/lib/knowdy/writer_inbox_backend}
       }
-      {ABC
-        {t OK}
-      }
+      
+      {MyWriter }
 }}

@@ -156,6 +156,7 @@ parse_config_GSL(struct kndDataWriter *self,
     size_t header_tag_size = strlen(header_tag);
     const char *c;
 
+    self->name_size = KND_NAME_SIZE;
     self->path_size = KND_NAME_SIZE;
     self->schema_path_size = KND_NAME_SIZE;
     self->delivery_addr_size = KND_NAME_SIZE;
@@ -186,7 +187,14 @@ parse_config_GSL(struct kndDataWriter *self,
           .name_size = strlen("write_inbox"),
           .parse = parse_write_inbox_addr,
           .obj = self
+        },
+        { .is_default = true,
+          .name = "set_service_id",
+          .name_size = strlen("set_service_id"),
+          .buf = self->name,
+          .buf_size = &self->name_size
         }
+
     };
     int err = knd_FAIL;
 
