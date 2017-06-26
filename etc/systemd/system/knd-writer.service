@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 User=knowdy
-ExecStart=/usr/bin/knd-writer /etc/knowdy/config.ini
+ExecStart=/usr/bin/knd-writer /etc/knowdy/writer.gsl
 
 [Install]
 
