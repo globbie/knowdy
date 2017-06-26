@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 User=knowdy
-ExecStart=/usr/bin/knd-storage /etc/knowdy/storage.ini
+ExecStart=/usr/bin/knd-storage /etc/knowdy/storage.gsl
 
 [Install]
 
