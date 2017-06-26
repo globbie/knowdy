@@ -542,7 +542,7 @@ knd_find_spec(struct kndTaskSpec *specs,
     return knd_FAIL;
 }
 
-int
+static int
 knd_spec_buf_copy(struct kndTaskSpec *spec,
                   const char *val,
                   size_t val_size)
@@ -591,7 +591,7 @@ knd_parse_task(const char *rec,
     b = rec;
     e = rec;
 
-    if (DEBUG_PARSER_LEVEL_1)
+    if (DEBUG_PARSER_LEVEL_TMP)
         knd_log("\n\n.. parse task: \"%s\" num specs: %lu",
                 rec, (unsigned long)num_specs);
 
@@ -650,12 +650,12 @@ knd_parse_task(const char *rec,
             c += chunk_size;
 
             spec->is_completed = true;
+            if (DEBUG_PARSER_LEVEL_TMP)
+                knd_log("== remainder after parsing \"%s\": \"%s\" in_field:%d  in_tag:%d",
+                        spec->name, c, in_field, in_tag);
+
             in_field = false;
             in_tag = false;
-            in_terminal = false;
-            if (DEBUG_PARSER_LEVEL_2)
-                knd_log("== remainder after parsing \"%s\": \"%s\"",
-                        spec->name, c);
             
             b = c + 1;
             e = b;
@@ -674,44 +674,24 @@ knd_parse_task(const char *rec,
             }
             break;
         case '}':
-            if (!in_tag) {
-                if (DEBUG_PARSER_LEVEL_TMP)
-                    knd_log(".. no tag in %s", c);
-
-                err = check_name_limits(b, e, &name_size);
-                if (err) {
-                    knd_log("-- name limit reached :(");
-                    return err;
-                }
-                if (DEBUG_PARSER_LEVEL_TMP)
-                    knd_log("++ got value instead of tag: \"%.*s\"?",
-                            name_size, b);
-                b = c + 1;
-                e = b;
-                in_terminal = false;
-                in_tag = false;
-                in_field = false;
-                break;
-            }
-            
             if (in_terminal) {
                 err = check_name_limits(b, e, &name_size);
                 if (err) {
                     knd_log("-- name limit reached :(");
                     return err;
                 }
-
+                    
                 if (DEBUG_PARSER_LEVEL_2)
                     knd_log("++ got val: \"%.*s\" [%lu]",
                             name_size, b, (unsigned long)name_size);
-
+                    
                 /* copy to buf */
                 if (spec->buf && spec->buf_size) {
                     err = knd_spec_buf_copy(spec, b, name_size);
                     if (err) return err;
-                
+                        
                     spec->is_completed = true;
-
+                    
                     b = c + 1;
                     e = b;
                     in_terminal = false;
@@ -719,16 +699,15 @@ knd_parse_task(const char *rec,
                     in_field = false;
                     break;
                 }
-                
+                    
                 arg = &args[num_args];
                 num_args++;
-
                 memcpy(arg->name, spec->name, spec->name_size);
                 arg->name_size = spec->name_size;
-
+                    
                 memcpy(arg->val, b, name_size);
                 arg->val_size = name_size;
-
+                    
                 if (spec->run) {
                     err = spec->run(spec->obj, args, num_args);
                     if (err) {
@@ -738,29 +717,64 @@ knd_parse_task(const char *rec,
                         return err;
                     }
                 }
-
+                
                 b = c + 1;
                 e = b;
+                
                 in_terminal = false;
                 in_tag = false;
                 in_field = false;
                 break;
             }
 
-            /*if (spec->is_default) {
-                b = c + 1;
-                e = b;
-                in_terminal = false;
+            if (in_field) {
+                if (DEBUG_PARSER_LEVEL_TMP)
+                    knd_log(".. close field at %s", c);
+
+                if (!in_tag) {
+                    if (DEBUG_PARSER_LEVEL_TMP)
+                        knd_log(".. no tag in %s?", c);
+
+                    err = check_name_limits(b, e, &name_size);
+                    if (err) {
+                        knd_log("-- value name limit reached :(");
+                        return err;
+                    }
+                    
+                    if (DEBUG_PARSER_LEVEL_TMP)
+                        knd_log("++ got default spec val: \"%.*s\" [%lu]?",
+                                name_size, b, (unsigned long)name_size);
+                    
+                    err = knd_find_spec(specs, num_specs, b, name_size, &spec);
+                    if (err) {
+                        if (DEBUG_PARSER_LEVEL_TMP)
+                            knd_log("-- no spec found to handle the \"%.*s\" tag :(",
+                                    name_size, b);
+                        return err;
+                    }
+                    if (DEBUG_PARSER_LEVEL_TMP)
+                        knd_log("++ got SPEC: \"%s\" (default: %d)",
+                                spec->name, spec->is_default);
+
+                    if (spec->buf && spec->buf_size) {
+                        err = knd_spec_buf_copy(spec, b, name_size);
+                        if (err) return err;
+                        spec->is_completed = true;
+                        b = c + 1;
+                        e = b;
+                        in_terminal = false;
+                        in_tag = false;
+                        in_field = false;
+                    }
+                }
+                
                 in_field = false;
                 break;
-            } */
+            }
             
-            if (DEBUG_PARSER_LEVEL_2)
-                knd_log(".. closing field %s\n == remainder: %s",
-                        rec, c);
-
             *total_size = c - rec;
             return knd_OK;
+
         default:
             e = c + 1;
             break;

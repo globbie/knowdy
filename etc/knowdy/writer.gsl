@@ -11,5 +11,5 @@
        {backend ipc:///var/lib/knowdy/writer_inbox_backend}
       }
       
-      {MyWriter }
+      {MyWriter}
 }}
