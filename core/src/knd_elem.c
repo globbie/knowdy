@@ -16,7 +16,7 @@
 
 #include "knd_output.h"
 #include "knd_user.h"
-
+#include "knd_parser.h"
 
 #define DEBUG_ELEM_LEVEL_1 0
 #define DEBUG_ELEM_LEVEL_2 0

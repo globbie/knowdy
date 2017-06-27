@@ -20,6 +20,12 @@
 #define DEBUG_PARSER_LEVEL_TMP 1
 
 
+static int
+knd_parse_func(const char *rec,
+               size_t *total_size,
+               struct kndTaskSpec *specs,
+               size_t num_specs);
+
 /* copy a sequence of non-whitespace chars */
 int
 knd_read_name(char *output,
@@ -641,7 +647,7 @@ knd_parse_task(const char *rec,
 
             err = spec->parse(spec->obj, b, &chunk_size);
             if (err) {
-                if (DEBUG_PARSER_LEVEL_TMP)
+                if (DEBUG_PARSER_LEVEL_2)
                     knd_log("-- ERR: %d parsing of spec \"%s\" failed starting from: %s", err, spec->name, b);
                 return err;
             }
@@ -772,7 +778,14 @@ knd_parse_task(const char *rec,
             
             *total_size = c - rec;
             return knd_OK;
+        case '(':
+            err = knd_parse_func(c, &chunk_size, specs, num_specs);
+            if (err) return err;
 
+            c += chunk_size;
+            b = c + 1;
+            e = b;
+            break;
         default:
             e = c + 1;
             break;
@@ -784,3 +797,204 @@ knd_parse_task(const char *rec,
     return knd_OK;
 }
 
+
+static int
+knd_parse_func_arg(const char *rec,
+                   size_t *total_size,
+                   struct kndTaskSpec *specs,
+                   size_t num_specs,
+                   struct kndTaskArg *args,
+                   size_t *num_args)
+{
+    const char *b, *c, *e;
+    size_t name_size;
+    
+    struct kndTaskSpec *spec = NULL;
+    struct kndTaskArg *arg;
+
+    bool in_arg = false;
+    bool in_tag = false;
+    int err;
+
+    c = rec;
+    b = rec;
+    e = rec;
+
+    if (DEBUG_PARSER_LEVEL_2)
+        knd_log("\n\n.. parse arg: \"%s\" num specs: %lu",
+                rec, (unsigned long)num_specs);
+
+    while (*c) {
+        switch (*c) {
+        case '\n':
+        case '\r':
+        case '\t':
+        case ' ':
+            if (!in_arg) break;
+            if (in_tag) break;
+            
+            err = check_name_limits(b, e, &name_size);
+            if (err) return err;
+
+            if (DEBUG_PARSER_LEVEL_2)
+                knd_log("++ got arg tag: \"%.*s\" [%lu]",
+                        name_size, b, (unsigned long)name_size);
+
+            err = knd_find_spec(specs, num_specs, b, name_size, &spec);
+            if (err) {
+                if (DEBUG_PARSER_LEVEL_TMP)
+                    knd_log("-- no spec found to handle the \"%.*s\" tag :(",
+                            name_size, b);
+                return err;
+            }
+            if (DEBUG_PARSER_LEVEL_2)
+                knd_log("++ got SPEC: \"%s\" (default: %d)",
+                        spec->name, spec->is_default);
+
+            in_tag = true;
+            b = c + 1;
+            e = b;
+            break;
+        case '{':
+            if (!in_arg) {
+                in_arg = true;
+                in_tag = false;
+                b = c + 1;
+                e = b;
+                break;
+            }
+            break;
+        case '}':
+            err = check_name_limits(b, e, &name_size);
+            if (err) {
+                knd_log("-- name limit reached :(");
+                return err;
+            }
+                    
+            if (DEBUG_PARSER_LEVEL_2)
+                knd_log("++ got arg val: \"%.*s\" [%lu]",
+                        name_size, b, (unsigned long)name_size);
+                 
+            arg = &args[*num_args];
+            (*num_args)++;
+                
+            memcpy(arg->name, spec->name, spec->name_size);
+            arg->name_size = spec->name_size;
+            
+            memcpy(arg->val, b, name_size);
+            arg->val_size = name_size;
+            
+            *total_size = c - rec;
+            return knd_OK;
+        default:
+            e = c + 1;
+            break;
+        }
+        c++;
+    }
+
+    *total_size = c - rec;
+    return knd_OK;
+}
+
+
+static int
+knd_parse_func(const char *rec,
+               size_t *total_size,
+               struct kndTaskSpec *specs,
+               size_t num_specs)
+{
+    const char *b, *c, *e;
+    size_t name_size;
+
+    struct kndTaskSpec *spec = NULL;
+    struct kndTaskArg args[KND_MAX_ARGS];
+    size_t num_args = 0;
+
+    bool in_func = false;
+    bool in_tag = false;
+
+    size_t chunk_size;
+    int err;
+
+    c = rec;
+    b = rec;
+    e = rec;
+
+    if (DEBUG_PARSER_LEVEL_2)
+        knd_log(".. parse func: \"%s\" num specs: %lu",
+                rec, (unsigned long)num_specs);
+
+    while (*c) {
+        switch (*c) {
+        case '\n':
+        case '\r':
+        case '\t':
+        case ' ':
+            if (!in_func) break;
+            if (in_tag) break;
+            
+            err = check_name_limits(b, e, &name_size);
+            if (err) return err;
+
+            if (DEBUG_PARSER_LEVEL_2)
+                knd_log("++ got tag: \"%.*s\" [%lu]",
+                        name_size, b, (unsigned long)name_size);
+
+            err = knd_find_spec(specs, num_specs, b, name_size, &spec);
+            if (err) {
+                if (DEBUG_PARSER_LEVEL_TMP)
+                    knd_log("-- no spec found to handle the \"%.*s\" tag :(",
+                            name_size, b);
+                return err;
+            }
+
+            if (DEBUG_PARSER_LEVEL_2)
+                knd_log("++ got SPEC: \"%s\" (default: %d)",
+                        spec->name, spec->is_default);
+
+            if (!spec->run) {
+                knd_log("-- no func in spec %s :(",
+                        spec->name);
+                return knd_FAIL;
+            }
+
+            in_tag = true;
+            b = c + 1;
+            e = b;
+            break;
+        case '{':
+            err = knd_parse_func_arg(c, &chunk_size,
+                                     spec->specs, spec->num_specs,
+                                     args, &num_args);
+            if (err) return err;
+            c += chunk_size;
+            break;
+        case '(':
+            if (!in_func) {
+                in_func = true;
+                b = c + 1;
+                e = b;
+                break;
+            }
+            break;
+        case ')':
+            err = spec->run(spec->obj, args, num_args);
+            if (err) {
+                if (DEBUG_PARSER_LEVEL_TMP)
+                    knd_log("-- \"%s\" func run failed: %d :(",
+                            spec->name, err);
+                return err;
+            }
+            *total_size = c - rec;
+            return knd_OK;
+        default:
+            e = c + 1;
+            break;
+        }
+        c++;
+    }
+
+    *total_size = c - rec;
+    return knd_OK;
+}
