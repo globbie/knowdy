@@ -670,6 +670,9 @@ kndRepo_update_inbox(struct kndRepo *self)
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
+    char trn_header[KND_TEMP_BUF_SIZE];
+    size_t buf_size;
+
     const char *inbox = "inbox/import.data";
     size_t inbox_size = strlen(inbox);
     int err;
@@ -681,11 +684,17 @@ kndRepo_update_inbox(struct kndRepo *self)
     buf_size += inbox_size;
     buf[buf_size] = '\0';
     
-    if (DEBUG_REPO_LEVEL_2)
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log(".. update INBOX \"%s\" SPEC: %s [%lu]\nOBJ REC: \"%s\"\n",
                 buf, self->task->spec, (unsigned long)self->task->spec_size,
                 self->task->obj);
 
+    err = knd_append_file((const char*)buf,
+                          (const void*)trn_header,
+                          trn_header_size);
+    if (err) return err;
+
+    
     err = knd_append_file((const char*)buf,
                           (const void*)self->task->spec,
                           self->task->spec_size);
