@@ -8,6 +8,7 @@
 #include "knd_output.h"
 #include "knd_msg.h"
 #include "knd_task.h"
+#include "knd_parser.h"
 
 #define DEBUG_USER_LEVEL_0 0
 #define DEBUG_USER_LEVEL_1 0
@@ -594,7 +595,7 @@ kndUser_run_sid_check(void *obj, struct kndTaskArg *args, size_t num_args)
     struct kndTaskArg *arg;
     const char *sid = NULL;
     size_t sid_size = 0;
-    
+
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
         if (!strncmp(arg->name, "sid", strlen("sid"))) {
@@ -607,36 +608,14 @@ kndUser_run_sid_check(void *obj, struct kndTaskArg *args, size_t num_args)
         knd_log("  -- no SID provided :(");
         return knd_FAIL;
     }
-    
 
     if (strncmp(self->sid, sid, sid_size)) {
         knd_log("  -- wrong SID: \"%s\"", sid);
         return knd_FAIL;
     }
 
-    if (DEBUG_USER_LEVEL_2)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log("  ++ SID confirmed: \"%s\"!", sid);
-    
-    return knd_OK;
-}
-
-
-static int
-kndUser_parse_auth(void *obj,
-                   const char *rec,
-                   size_t *total_size)
-{
-    struct kndTaskSpec specs[] = {
-        { .name = "sid",
-          .name_size = strlen("sid"),
-          .run = kndUser_run_sid_check,
-          .obj = obj
-        }
-    };
-    int err;
-    
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
     
     return knd_OK;
 }
@@ -647,10 +626,18 @@ kndUser_parse_task(struct kndUser *self,
                    const char *rec,
                    size_t *total_size)
 {
+    struct kndTaskSpec auth_specs[] = {
+        { .name = "sid",
+          .name_size = strlen("sid")
+        }
+    };
+
     struct kndTaskSpec specs[] = {
         { .name = "auth",
           .name_size = strlen("auth"),
-          .parse = kndUser_parse_auth,
+          .specs = auth_specs,
+          .num_specs = sizeof(auth_specs) / sizeof(struct kndTaskSpec),
+          .run = kndUser_run_sid_check,
           .obj = self
         },
         { .name = "repo",

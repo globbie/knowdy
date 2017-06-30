@@ -93,20 +93,6 @@ struct kndUser
     int (*restore)(struct kndUser *self);
     
     int (*import)(struct kndUser *self, char *rec, size_t *total_size);
-    int (*update)(struct kndUser *self, struct kndData *data);
-
-    /*int (*select)(struct kndUser *self, struct kndData *data);
-    int (*update_select)(struct kndUser *self, struct kndData *data);
-
-    int (*get_obj)(struct kndUser *self);
-    int (*update_get_obj)(struct kndUser *self, struct kndData *data);
-
-    int (*flatten)(struct kndUser *self, struct kndData *data);
-    int (*update_flatten)(struct kndUser *self, struct kndData *data);
-
-    int (*match)(struct kndUser *self, struct kndData *data);
-    int (*update_match)(struct kndUser *self, struct kndData *data);
-    */
     
     int (*read)(struct kndUser *self, const char *rec);
 };

@@ -4,14 +4,15 @@
 #include <assert.h>
 #include <pthread.h>
 
-#include <knd_config.h>
-#include <knd_dict.h>
-#include <knd_utils.h>
-#include <knd_msg.h>
-#include <knd_output.h>
-#include <knd_task.h>
-#include <knd_attr.h>
-#include <knd_user.h>
+#include "knd_config.h"
+#include "knd_dict.h"
+#include "knd_utils.h"
+#include "knd_msg.h"
+#include "knd_output.h"
+#include "knd_task.h"
+#include "knd_attr.h"
+#include "knd_user.h"
+#include "knd_parser.h"
 
 #include "knd_data_writer.h"
 
@@ -417,13 +418,9 @@ void *kndDataWriter_subscriber(void *arg)
 {
     void *context;
     void *subscriber;
-    //void *agents;
     void *inbox;
 
     struct kndDataWriter *writer;
-    struct kndData *data;
-    //const char *empty_msg = "None";
-    //size_t empty_msg_size = strlen(empty_msg);
     char *spec;
     size_t spec_size;
     char *obj;
@@ -451,7 +448,6 @@ void *kndDataWriter_subscriber(void *arg)
     assert(err == knd_OK);
 
     while (1) {
-
         spec = knd_zmq_recv(subscriber, &spec_size);
 	obj = knd_zmq_recv(subscriber, &obj_size);
 
@@ -503,13 +499,11 @@ main(int const argc,
         return -1;
     }
 
-
     /* add device */
     err = pthread_create(&inbox,
                          NULL,
 			 kndDataWriter_inbox, 
                          (void*)writer);
-    
     
     /* add subscriber */
     err = pthread_create(&subscriber, 

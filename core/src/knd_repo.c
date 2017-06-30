@@ -670,6 +670,9 @@ kndRepo_update_inbox(struct kndRepo *self)
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
+    char trn_header[KND_TEMP_BUF_SIZE];
+    size_t buf_size;
+
     const char *inbox = "inbox/import.data";
     size_t inbox_size = strlen(inbox);
     int err;
@@ -681,11 +684,17 @@ kndRepo_update_inbox(struct kndRepo *self)
     buf_size += inbox_size;
     buf[buf_size] = '\0';
     
-    if (DEBUG_REPO_LEVEL_2)
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log(".. update INBOX \"%s\" SPEC: %s [%lu]\nOBJ REC: \"%s\"\n",
                 buf, self->task->spec, (unsigned long)self->task->spec_size,
                 self->task->obj);
 
+    err = knd_append_file((const char*)buf,
+                          (const void*)trn_header,
+                          trn_header_size);
+    if (err) return err;
+
+    
     err = knd_append_file((const char*)buf,
                           (const void*)self->task->spec,
                           self->task->spec_size);
@@ -1676,27 +1685,6 @@ kndRepo_export(struct kndRepo *self, knd_format format)
     return err;
 }
 
-
-static int
-kndRepo_parse_add_repo(void *self,
-                       const char *rec,
-                       size_t *total_size)
-{
-    struct kndTaskSpec specs[] = {
-        { .name = "n",
-          .name_size = strlen("n"),
-          .run = kndRepo_run_add_repo,
-          .obj = self
-        }
-    };
-    int err;
-    
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-    
-    return knd_OK;
-}
-
 static int
 kndRepo_parse_class(void *obj,
                     const char *rec,
@@ -1748,10 +1736,18 @@ kndRepo_parse_task(void *self,
                    const char *rec,
                    size_t *total_size)
 {
+    struct kndTaskSpec add_specs[] = {
+        { .name = "n",
+          .name_size = strlen("n")
+        }
+    };
+
     struct kndTaskSpec specs[] = {
         { .name = "add",
           .name_size = strlen("add"),
-          .parse = kndRepo_parse_add_repo,
+          .specs = add_specs,
+          .num_specs = sizeof(add_specs) / sizeof(struct kndTaskSpec),
+          .run = kndRepo_run_add_repo,
           .obj = self
         },
         { .name = "n",
@@ -1853,9 +1849,8 @@ kndRepo_init(struct kndRepo *self)
     self->read_state = kndRepo_read_state;
     self->parse_task = kndRepo_parse_task;
     self->open = kndRepo_open;
-    
     self->export = kndRepo_export;
-    
+
     self->restore = kndRepo_restore;
     self->get_cache = kndRepo_get_cache;
     self->get_guid = kndRepo_get_guid;

@@ -4,11 +4,7 @@
 #include "knd_facet.h"
 #include "knd_dict.h"
 
-struct kndDataWriter;
-struct kndDataReader;
 struct kndDataClass;
-struct kndCustomer;
-struct kndRepoGroup;
 struct kndObject;
 struct kndRepo;
 struct kndRefSet;
@@ -177,8 +173,8 @@ struct kndRepo
     struct ooDict *repo_idx;
     struct kndRepo *curr_repo;
     
-    struct kndCustomer *customer;
-    struct kndRepoGroup *groups;
+    //struct kndCustomer *customer;
+    //struct kndRepoGroup *groups;
 
     struct kndUser *user;
     struct kndTask *task;
@@ -221,17 +217,17 @@ struct kndRepo
 
     int (*export)(struct kndRepo *self, knd_format format);
 
-    int (*liquid_select)(struct kndRepo *self, struct kndData *data);
-    int (*select)(struct kndRepo *self, struct kndData *data);
+    //int (*liquid_select)(struct kndRepo *self, struct kndData *data);
+    //int (*select)(struct kndRepo *self, struct kndData *data);
 
     int (*get_obj)(struct kndRepo *self,  struct kndSpecArg *args, size_t num_args);
     //int (*get_liquid_obj)(struct kndRepo *self, struct kndSpecArg *args, size_t num_args);
 
-    int (*flatten)(struct kndRepo *self, struct kndData *data);
-    int (*update_flatten)(struct kndRepo *self, struct kndData *data);
+    //int (*flatten)(struct kndRepo *self, struct kndData *data);
+    //int (*update_flatten)(struct kndRepo *self, struct kndData *data);
 
-    int (*match)(struct kndRepo *self, struct kndData *data);
-    int (*liquid_match)(struct kndRepo *self, struct kndData *data);
+    //int (*match)(struct kndRepo *self, struct kndData *data);
+    //int (*liquid_match)(struct kndRepo *self, struct kndData *data);
 
     int (*get_cache)(struct kndRepo *self, struct kndDataClass *c,
                      struct kndRepoCache **cache);
