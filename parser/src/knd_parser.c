@@ -709,9 +709,11 @@ knd_parse_task(const char *rec,
                 arg = &args[num_args];
                 num_args++;
                 memcpy(arg->name, spec->name, spec->name_size);
+                arg->name[spec->name_size] = '\0';
                 arg->name_size = spec->name_size;
                     
                 memcpy(arg->val, b, name_size);
+                arg->val[name_size] = '\0';
                 arg->val_size = name_size;
                     
                 if (spec->run) {

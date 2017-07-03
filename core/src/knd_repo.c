@@ -14,6 +14,7 @@
 #include "knd_output.h"
 #include "knd_msg.h"
 #include "knd_dict.h"
+#include "knd_parser.h"
 
 #define DEBUG_REPO_LEVEL_0 0
 #define DEBUG_REPO_LEVEL_1 0
@@ -431,7 +432,7 @@ kndRepo_run_get_repo(void *obj, struct kndTaskArg *args, size_t num_args)
                                     name);
     if (!curr_repo) {
         if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("-- no such repo: \".*s\" :(", name_size, name);
+            knd_log("-- no such repo: \"%.*s\" :(", name_size, name);
         return knd_FAIL;
     }
 
@@ -539,7 +540,7 @@ kndRepo_run_import_obj(void *obj, struct kndTaskArg *args, size_t num_args)
         arg = &args[i];
         if (DEBUG_REPO_LEVEL_2)
             knd_log("arg: %s val: %s", arg->name, arg->val);
-        if (!strncmp(arg->name, "import", strlen("import"))) {
+        if (!strncmp(arg->name, "obj", strlen("obj"))) {
             name = arg->val;
             name_size = arg->val_size;
         }
@@ -549,8 +550,8 @@ kndRepo_run_import_obj(void *obj, struct kndTaskArg *args, size_t num_args)
     self = (struct kndRepo*)obj;
 
     /* obj from separate msg */
-    if (!strncmp(name, "_obj", strlen("_obj"))) {
-        if (DEBUG_REPO_LEVEL_2)
+    if (!strncmp(name, "_attach", strlen("_attach"))) {
+        if (DEBUG_REPO_LEVEL_TMP)
             knd_log("   .. IMPORT OBJ: \"%s\"", self->task->obj);
 
         err = kndRepo_import_obj(self, self->task->obj, &chunk_size);
@@ -674,7 +675,7 @@ kndRepo_update_inbox(struct kndRepo *self)
     size_t buf_size;
 
     char trn_header[KND_TEMP_BUF_SIZE];
-    size_t trn_header_size;
+    size_t trn_header_size = 0;
 
     int err;
 
@@ -689,6 +690,7 @@ kndRepo_update_inbox(struct kndRepo *self)
         knd_log(".. update INBOX \"%s\" SPEC: %s [%lu]\nOBJ REC: \"%s\"\n",
                 buf, self->task->spec, (unsigned long)self->task->spec_size,
                 self->task->obj);
+
 
     err = knd_append_file((const char*)buf,
                           (const void*)trn_header,
@@ -1701,6 +1703,12 @@ kndRepo_parse_class(void *obj,
 
     repo = self->curr_repo;
     repo->out = self->task->out;
+
+    struct kndTaskSpec import_specs[] = {
+        { .name = "obj",
+          .name_size = strlen("obj")
+        }
+    };
     
     struct kndTaskSpec specs[] = {
         { .name = "n",
@@ -1710,6 +1718,8 @@ kndRepo_parse_class(void *obj,
         },
         { .name = "import",
           .name_size = strlen("import"),
+          .specs = import_specs,
+          .num_specs = sizeof(import_specs) / sizeof(struct kndTaskSpec),
           .run = kndRepo_run_import_obj,
           .obj = repo
         },
