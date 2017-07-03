@@ -431,7 +431,7 @@ kndRepo_run_get_repo(void *obj, struct kndTaskArg *args, size_t num_args)
                                     name);
     if (!curr_repo) {
         if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("-- no such repo: \"%s\" :(", name);
+            knd_log("-- no such repo: \".*s\" :(", name_size, name);
         return knd_FAIL;
     }
 
@@ -667,14 +667,15 @@ kndRepo_restore(struct kndRepo *self)
 static int
 kndRepo_update_inbox(struct kndRepo *self)
 {
+    const char *inbox = "inbox/import.data";
+    size_t inbox_size = strlen(inbox);
+
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
     char trn_header[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    size_t trn_header_size;
 
-    const char *inbox = "inbox/import.data";
-    size_t inbox_size = strlen(inbox);
     int err;
 
     memcpy(buf, self->path, self->path_size);

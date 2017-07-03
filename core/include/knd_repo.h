@@ -173,9 +173,6 @@ struct kndRepo
     struct ooDict *repo_idx;
     struct kndRepo *curr_repo;
     
-    //struct kndCustomer *customer;
-    //struct kndRepoGroup *groups;
-
     struct kndUser *user;
     struct kndTask *task;
 
