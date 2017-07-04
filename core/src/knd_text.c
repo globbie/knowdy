@@ -12,6 +12,7 @@
 #include "knd_utils.h"
 #include "knd_dataclass.h"
 #include "knd_attr.h"
+#include "knd_parser.h"
 
 #include "knd_data_reader.h"
 
@@ -404,15 +405,18 @@ kndText_export_GSC(struct kndText *self)
     
     int err = knd_FAIL;
 
+    if (DEBUG_TEXT_LEVEL_2)
+        knd_log(".. export text obj: %p  states: %p..", self->elem->obj, self->states);
+  
     obj = self->elem->obj;
-
+    
+    // NB: expects self->states != NULL
     curr_state = self->states;
-
     if (!curr_state->translations) {
         knd_log("-- no translations found :(\n");
         return knd_FAIL;
     }
-    
+
     tr = curr_state->translations;
             
     buf_size = sprintf(buf, "[tr ");
@@ -504,7 +508,10 @@ kndText_export_GSC(struct kndText *self)
     
     err = self->out->write(self->out,  "]", 1);
     if (err) return err;
-    
+
+    if (DEBUG_TEXT_LEVEL_2)
+        knd_log("++ text export OK!");
+
     return knd_OK;
 }
 

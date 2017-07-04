@@ -23,10 +23,6 @@
 #include "knd_config.h"
 #include "knd_dataclass.h"
 
-#define KND_OBJ_HEADER "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
-
-#define KND_OBJ_HEADER_SIZE strlen(KND_OBJ_HEADER)
-
 struct kndDataClass;
 struct kndRepoCache;
 struct kndObjRef;
@@ -59,6 +55,9 @@ struct kndObject
 
     char id[KND_ID_SIZE + 1];
     char batch_id[KND_ID_SIZE + 1];
+
+    knd_update_status update_oper;
+    size_t state;
 
     bool is_subord;
     bool is_concise;

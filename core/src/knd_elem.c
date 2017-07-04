@@ -2507,7 +2507,7 @@ kndElem_export_GSC(struct kndElem *self)
     if (self->attr) {
         if (self->attr->type == KND_ELEM_TEXT) {
             self->text->out = self->out;
-            err = self->text->export(self->text,  KND_FORMAT_GSC);
+            err = self->text->export(self->text, KND_FORMAT_GSC);
             if (err) return err;
         }
 

@@ -551,9 +551,6 @@ kndRepo_run_import_obj(void *obj, struct kndTaskArg *args, size_t num_args)
 
     /* obj from separate msg */
     if (!strncmp(name, "_attach", strlen("_attach"))) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("   .. IMPORT OBJ: \"%s\"", self->task->obj);
-
         err = kndRepo_import_obj(self, self->task->obj, &chunk_size);
         if (err) return err;
         return knd_OK;
@@ -638,7 +635,7 @@ kndRepo_restore(struct kndRepo *self)
     buf_size = self->path_size + strlen(inbox_filename);
     buf[buf_size] = '\0';
 
-    if (DEBUG_REPO_LEVEL_2)
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log("  .. try importing recs from \"%s\"..",
                 buf);
 
@@ -671,39 +668,41 @@ kndRepo_update_inbox(struct kndRepo *self)
     const char *inbox = "inbox/import.data";
     size_t inbox_size = strlen(inbox);
 
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
-    char trn_header[KND_TEMP_BUF_SIZE];
-    size_t trn_header_size = 0;
-
+    struct kndOutput *out = self->path_out;
     int err;
 
-    memcpy(buf, self->path, self->path_size);
-    buf_size = self->path_size;
+    out->reset(out);
 
-    memcpy(buf + buf_size, inbox, inbox_size);
-    buf_size += inbox_size;
-    buf[buf_size] = '\0';
-    
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log(".. update INBOX \"%s\" SPEC: %s [%lu]\nOBJ REC: \"%s\"\n",
-                buf, self->task->spec, (unsigned long)self->task->spec_size,
-                self->task->obj);
-
-
-    err = knd_append_file((const char*)buf,
-                          (const void*)trn_header,
-                          trn_header_size);
+    err = out->write(out, self->path, self->path_size);
+    if (err) return err;
+    err = out->write(out, "inbox/", strlen("inbox/"));
+    if (err) return err;
+    err = out->write(out, self->db_state, KND_ID_SIZE);
+    if (err) return err;
+    err = out->write(out, ".spec", strlen(".spec"));
     if (err) return err;
 
-    
-    err = knd_append_file((const char*)buf,
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log(".. update INBOX \"%.*s\"..  SPEC: %lu OBJ: %lu\n",
+                out->buf_size, out->buf,
+                (unsigned long)self->task->spec_size,
+                (unsigned long)self->task->obj_size);
+
+    /* TRN body */
+    err = knd_append_file((const char*)out->buf,
                           (const void*)self->task->spec,
                           self->task->spec_size);
     if (err) return err;
-    
-    err = knd_append_file((const char*)buf,
+
+    err = out->rtrim(out, strlen(".spec"));
+    if (err) return err;
+    err = out->write(out, ".obj", strlen(".obj"));
+    if (err) return err;
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log(".. save OBJ update log: \"%.*s\"..", out->buf_size, out->buf);
+
+    err = knd_append_file((const char*)out->buf,
                           (const void*)self->task->obj,
                           self->task->obj_size);
     if (err) return err;
@@ -756,6 +755,10 @@ kndRepo_index_obj(struct kndRepo *self,
     int err;
 
     refset = cache->name_idx;
+
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log(".. indexing %.*s obj ..",
+                KND_ID_SIZE, obj->id);
 
     /* save as obj id */
     err = kndObjRef_new(&objref);
@@ -820,6 +823,9 @@ kndRepo_index_obj(struct kndRepo *self,
         goto final;
     }
     */
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log("++ indexing %.*s OK!",
+                KND_ID_SIZE, obj->id);
 
     return knd_OK;
     
@@ -1182,6 +1188,10 @@ kndRepo_linearize_objs(struct kndRepo *self)
     struct kndRefSet *refset = cache->name_idx;
     int err;
 
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log(".. linearize objs..");
+
+
     /* TODO: send results directly to the delivery service,
        don't write any local files */
     
@@ -1206,7 +1216,7 @@ kndRepo_linearize_objs(struct kndRepo *self)
         return err;
     }
 
-    if (DEBUG_REPO_LEVEL_2)
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log("  ++ sync objs of \"%s\" OK!\n", cache->baseclass->name);
 
     return knd_OK;
@@ -1880,15 +1890,21 @@ kndRepo_new(struct kndRepo **repo)
 
     memset(self, 0, sizeof(struct kndRepo));
     memset(self->id, '0', KND_ID_SIZE);
+
     memset(self->last_id, '0', KND_ID_SIZE);
+    memset(self->db_state, '0', KND_ID_SIZE);
 
     self->intersect_matrix_size = sizeof(struct kndObject*) * (KND_ID_BASE * KND_ID_BASE * KND_ID_BASE);
 
     err = ooDict_new(&self->repo_idx, KND_SMALL_DICT_SIZE);
     if (err) return knd_NOMEM;
 
+    err = kndOutput_new(&self->path_out, KND_MED_BUF_SIZE);
+    if (err) return err;
+
     err = kndOutput_new(&self->logger, KND_TEMP_BUF_SIZE);
     if (err) return err;
+
 
     kndRepo_init(self);
 

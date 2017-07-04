@@ -105,6 +105,7 @@ struct kndRepoCache
     size_t cache_size;
     
     char obj_last_id[KND_ID_SIZE + 1];
+    char db_state[KND_ID_SIZE + 1];
     
     struct kndRelClass *rel_classes;
     
@@ -145,10 +146,12 @@ struct kndRepo
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    char title[KND_TEMP_BUF_SIZE];
-    size_t title_size;
-    
+    //char title[KND_TEMP_BUF_SIZE];
+    //size_t title_size;
+
+    char db_state[KND_ID_SIZE + 1];
     size_t state;
+    
     size_t match_state;
     size_t num_repos;
 
@@ -167,6 +170,7 @@ struct kndRepo
     struct kndSpecInstruction *instruct;
     
     struct kndOutput *out;
+    struct kndOutput *path_out;
     struct kndOutput *logger;
     
     /* local repo index */

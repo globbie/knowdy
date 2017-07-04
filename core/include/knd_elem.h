@@ -38,8 +38,9 @@ struct kndDataReader;
 struct kndElemState
 {
     knd_update_status update_oper;
+    char db_state[KND_ID_SIZE + 1];
     size_t state;
-
+    
     char ref[KND_ID_SIZE + 1];
     size_t ref_size;
 

@@ -118,16 +118,6 @@ struct kndDelivery
     void (*str)(struct kndDelivery *self);
 
     int (*start)(struct kndDelivery *self);
-
-    int (*process)(struct kndDelivery *self, 
-		   struct kndData *data);
-
-    int (*add)(struct kndDelivery *self, 
-		   struct kndData *data);
-
-    int (*get)(struct kndDelivery *self, 
-		   struct kndData *data);
-
 };
 
 extern int kndDelivery_new(struct kndDelivery **self, 

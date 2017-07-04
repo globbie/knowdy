@@ -6,6 +6,7 @@
 #include "knd_object.h"
 #include "knd_sorttag.h"
 #include "knd_output.h"
+#include "knd_parser.h"
 
 #define DEBUG_SORTTAG_LEVEL_0 0
 #define DEBUG_SORTTAG_LEVEL_1 0

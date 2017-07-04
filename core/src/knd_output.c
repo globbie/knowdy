@@ -145,11 +145,26 @@ kndOutput_read_file(struct kndOutput *self,
     return err;
 }
 
+
+static int
+kndOutput_rtrim(struct kndOutput *self,
+               size_t        trim_size)
+{
+    if (trim_size > self->buf_size) return knd_LIMIT;
+    
+    self->curr_buf -= trim_size;
+    self->buf_size -= trim_size;
+    self->free_space += trim_size;
+    
+    return knd_OK;
+}
+
 extern int 
 kndOutput_init(struct kndOutput *self)
 {
     self->del = kndOutput_del;
     self->reset = kndOutput_reset;
+    self->rtrim = kndOutput_rtrim;
     self->write = kndOutput_write;
     self->read_file = kndOutput_read_file;
     

@@ -5,6 +5,7 @@
 #include "knd_output.h"
 #include "knd_conc.h"
 #include "knd_coderef.h"
+#include "knd_parser.h"
 
 #define DEBUG_CODEREF_LEVEL_0 0
 #define DEBUG_CODEREF_LEVEL_1 0

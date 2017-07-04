@@ -7,6 +7,7 @@
 #include "knd_repo.h"
 #include "knd_sorttag.h"
 #include "knd_refset.h"
+#include "knd_parser.h"
 
 #define DEBUG_FACET_LEVEL_0 0
 #define DEBUG_FACET_LEVEL_1 0

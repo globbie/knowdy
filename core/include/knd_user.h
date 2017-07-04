@@ -34,6 +34,8 @@ struct kndUser
     char name[KND_NAME_SIZE];
     size_t name_size;
 
+    char db_state[KND_ID_SIZE + 1];
+    
     knd_user_role role;
     size_t num_users;
 

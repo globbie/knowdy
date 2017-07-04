@@ -605,17 +605,14 @@ kndUser_run_sid_check(void *obj, struct kndTaskArg *args, size_t num_args)
     }
 
     if (!sid_size) {
-        knd_log("  -- no SID provided :(");
+        knd_log("-- no SID provided :(");
         return knd_FAIL;
     }
 
     if (strncmp(self->sid, sid, sid_size)) {
-        knd_log("  -- wrong SID: \"%s\"", sid);
+        knd_log("-- wrong SID: \"%s\"", sid);
         return knd_FAIL;
     }
-
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log("  ++ SID confirmed: \"%s\"!", sid);
     
     return knd_OK;
 }
@@ -705,6 +702,7 @@ kndUser_new(struct kndUser **user)
 
     memset(self->id, '0', KND_ID_SIZE);
     memset(self->last_uid, '0', KND_ID_SIZE);
+    memset(self->db_state, '0', KND_ID_SIZE);
 
     err = kndRepo_new(&self->repo);
     if (err) return knd_NOMEM;

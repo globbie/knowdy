@@ -9,6 +9,7 @@
 #include "knd_object.h"
 #include "knd_coderef.h"
 #include "knd_sorttag.h"
+#include "knd_parser.h"
 
 #include "knd_data_reader.h"
 

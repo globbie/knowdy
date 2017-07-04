@@ -24,6 +24,9 @@ struct kndOutput
 
     void (*reset)(struct kndOutput *self);
 
+    int (*rtrim)(struct kndOutput *self,
+                 size_t        trim_size);
+
     int (*write)(struct kndOutput *self,
                  const char    *buf,
                  size_t        buf_size);

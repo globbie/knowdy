@@ -11,6 +11,7 @@
 #include "knd_attr.h"
 #include "knd_elem.h"
 #include "knd_coderef.h"
+#include "knd_parser.h"
 
 #include "knd_data_reader.h"
 
@@ -2542,7 +2543,6 @@ kndRefSet_extract_objs(struct kndRefSet *self)
     
     for (size_t i = 0; i < self->inbox_size; i++) {
         ref = self->inbox[i];
-        
         ref->cache = self->cache;
         
         err = ref->expand(ref);
@@ -2556,7 +2556,6 @@ kndRefSet_extract_objs(struct kndRefSet *self)
     }
 
     if (self->num_facets) {
-
         /* TODO: choose facet */
         f = self->facets[0];
         f->batch_size = self->batch_size;
@@ -2711,6 +2710,9 @@ kndRefSet_sync_objs(struct kndRefSet *self,
     size_t i, j, ri, count;
     int err;
 
+    if (DEBUG_REFSET_LEVEL_1)
+        knd_log(".. obj refset syncing objs..");
+
     /* terminal IDX */
     if (!self->idx) {
         knd_log("  -- no obj IDX :(\n");
@@ -2789,7 +2791,7 @@ kndRefSet_sync_objs(struct kndRefSet *self,
                             ri, obj->id, (unsigned long)rec_offset,
                             (unsigned long)self->out->buf_size,
                             (unsigned long)count);
-                
+
                 td = knd_pack_int(td, (unsigned int)rec_offset);
                 rec_offset = self->out->buf_size;
                 count++;
