@@ -848,6 +848,9 @@ kndRepo_import_obj(struct kndRepo *self,
     size_t chunk_size = 0;
     int err;
 
+    memcpy(self->db_state, self->last_db_state, KND_ID_SIZE);
+    knd_inc_id(self->db_state);
+
     err = kndObject_new(&obj);
     if (err) return err;
     obj->cache = cache;
@@ -899,7 +902,8 @@ kndRepo_import_obj(struct kndRepo *self,
     }
     
     /* TODO: update repo state */
-    
+
+
     /* import success */
     knd_log("  ++ Repo %s: OBJ %s::%s import OK [total objs: %lu]\n",
             self->name,
@@ -910,6 +914,9 @@ kndRepo_import_obj(struct kndRepo *self,
     memcpy(cache->obj_last_id, obj->id, KND_ID_SIZE);
     cache->num_objs++;
 
+    memcpy(self->last_db_state, self->db_state, KND_ID_SIZE);
+    self->state++;
+    
     if (DEBUG_REPO_LEVEL_3)
         obj->str(obj, 1);
     
@@ -1892,6 +1899,7 @@ kndRepo_new(struct kndRepo **repo)
     memset(self->id, '0', KND_ID_SIZE);
 
     memset(self->last_id, '0', KND_ID_SIZE);
+    memset(self->last_db_state, '0', KND_ID_SIZE);
     memset(self->db_state, '0', KND_ID_SIZE);
 
     self->intersect_matrix_size = sizeof(struct kndObject*) * (KND_ID_BASE * KND_ID_BASE * KND_ID_BASE);

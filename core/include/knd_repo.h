@@ -146,10 +146,9 @@ struct kndRepo
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    //char title[KND_TEMP_BUF_SIZE];
-    //size_t title_size;
-
+    char last_db_state[KND_ID_SIZE + 1];
     char db_state[KND_ID_SIZE + 1];
+
     size_t state;
     
     size_t match_state;
