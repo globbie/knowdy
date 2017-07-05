@@ -143,7 +143,7 @@ kndText_export_JSON(struct kndText *self)
     obj = self->elem->obj;
     out = self->out;
 
-    if (DEBUG_TEXT_LEVEL_TMP)
+    if (DEBUG_TEXT_LEVEL_2)
         knd_log(".. export text to JSON..");
 
     curr_state = self->states;

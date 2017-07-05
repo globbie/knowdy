@@ -31,24 +31,21 @@ struct kndDataReader
     size_t curr_state;
 
     /* services */
-    void *monitor;
-    char *monitor_addr;
-    size_t monitor_addr_size;
-
     void *delivery;
-    char *delivery_addr;
+    char delivery_addr[KND_NAME_SIZE];
     size_t delivery_addr_size;
 
-    char *inbox_frontend_addr;
+    char inbox_frontend_addr[KND_NAME_SIZE];
     size_t inbox_frontend_addr_size;
 
-    char *inbox_backend_addr;
+    char inbox_backend_addr[KND_NAME_SIZE];
     size_t inbox_backend_addr_size;
 
-    char *update_addr;
+    /*char *update_addr;
     size_t update_addr_size;
     void *update_service;
-
+    */
+    
     struct kndOutput *out;
     struct kndOutput *spec_out;
     struct kndOutput *obj_out;

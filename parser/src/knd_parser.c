@@ -597,7 +597,7 @@ knd_parse_task(const char *rec,
     b = rec;
     e = rec;
 
-    if (DEBUG_PARSER_LEVEL_2)
+    if (DEBUG_PARSER_LEVEL_1)
         knd_log("\n\n.. parse task: \"%s\" num specs: %lu",
                 rec, (unsigned long)num_specs);
 
@@ -609,7 +609,7 @@ knd_parse_task(const char *rec,
         case ' ':
             if (!in_field) break;
             if (in_terminal) break;
-            
+
             err = check_name_limits(b, e, &name_size);
             if (err) return err;
 
@@ -705,7 +705,8 @@ knd_parse_task(const char *rec,
                     in_field = false;
                     break;
                 }
-                    
+
+     
                 arg = &args[num_args];
                 num_args++;
                 memcpy(arg->name, spec->name, spec->name_size);
@@ -715,7 +716,8 @@ knd_parse_task(const char *rec,
                 memcpy(arg->val, b, name_size);
                 arg->val[name_size] = '\0';
                 arg->val_size = name_size;
-                    
+
+
                 if (spec->run) {
                     err = spec->run(spec->obj, args, num_args);
                     if (err) {
@@ -728,7 +730,7 @@ knd_parse_task(const char *rec,
                 
                 b = c + 1;
                 e = b;
-                
+
                 in_terminal = false;
                 in_tag = false;
                 in_field = false;
@@ -795,6 +797,7 @@ knd_parse_task(const char *rec,
         c++;
     }
 
+    
     *total_size = c - rec;
     return knd_OK;
 }

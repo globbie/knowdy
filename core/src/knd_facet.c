@@ -989,7 +989,7 @@ kndFacet_read(struct kndFacet  *self,
     char *s;
     int err;
     
-    if (DEBUG_FACET_LEVEL_2)
+    if (DEBUG_FACET_LEVEL_TMP)
         knd_log("  .. Reading Facet idx rec, input size [%lu]\n",
                 (unsigned long)rec_size);
 
@@ -1018,8 +1018,7 @@ kndFacet_read(struct kndFacet  *self,
     self->name[name_size] = '\0';
     self->name_size = name_size;
 
-    
-    if (DEBUG_FACET_LEVEL_2)
+    if (DEBUG_FACET_LEVEL_TMP)
         knd_log("\n     == reading Facet \"%s\" (type: %s)    DIR: \"%s\"  depth: %lu\n",
                 self->name, knd_facet_names[self->type],
                 buf,
@@ -1057,7 +1056,7 @@ kndFacet_read(struct kndFacet  *self,
         
         num_refs = (size_t)numval;
 
-        if (DEBUG_FACET_LEVEL_3)
+        if (DEBUG_FACET_LEVEL_TMP)
             knd_log("   == RefSet: \"%s\" num_refs: %lu  size: %lu\n",
                     c, (unsigned long)num_refs, (unsigned long)refset_rec_size);
 
@@ -1070,10 +1069,19 @@ kndFacet_read(struct kndFacet  *self,
         rs->num_refs = num_refs;
         rs->export_depth = self->export_depth + 1;
         rs->parent = self;
-        
-        err = rs->read(rs, refset_rec, refset_rec_size);
-        if (err) goto final;
 
+        if (DEBUG_FACET_LEVEL_TMP)
+            knd_log(".. refset reading: \"%s\"..", refset_rec);
+
+        err = rs->read(rs, refset_rec, refset_rec_size);
+
+        if (DEBUG_FACET_LEVEL_TMP)
+            knd_log("== refset read status: %d", err);
+
+        if (err) {
+            goto final;
+        }
+        
         offset += refset_rec_size;
     }
 

@@ -946,6 +946,9 @@ kndRefSet_term_idx(struct kndRefSet *self,
     size_t num_trns;
     
     int numval = -1;
+    
+    if (DEBUG_REFSET_LEVEL_TMP) 
+        knd_log(".. term idx: %p", ref);
 
     if (ref->type == KND_REF_TID) {
 
@@ -972,7 +975,7 @@ kndRefSet_term_idx(struct kndRefSet *self,
 
     if (!ref->obj_id_size) return knd_FAIL;
     
-    if (DEBUG_REFSET_LEVEL_3) 
+    if (DEBUG_REFSET_LEVEL_TMP) 
         knd_log("   .. add term idx for obj \"%s\" [%lu]: \"%s\"\n",
                 ref->obj_id, (unsigned long)ref->obj_id_size, ref->name);
     
@@ -1701,15 +1704,22 @@ kndRefSet_merge_idx(struct kndRefSet *self,
     struct kndObjRef *ref;
     size_t i, j, ri;
     int err;
+
+
+    if (!src->idx) {
+        if (DEBUG_REFSET_LEVEL_TMP)
+            knd_log("-- no term idx in refset %s", src->name);
+        return knd_OK;
+    }
     
     for (i = 0; i < KND_ID_BASE; i++) {
         idx = src->idx[i];
+
         if (!idx) continue;
 
         for (j = 0; j < KND_ID_BASE; j++) {
             term_idx = idx->idx[j];
             if (!term_idx) continue;
-
 
             for (ri = 0; ri < KND_ID_BASE; ri++) {
                 ref = term_idx->refs[ri];
@@ -1721,6 +1731,7 @@ kndRefSet_merge_idx(struct kndRefSet *self,
             
         }
     }
+
     
     return knd_OK;
 }
@@ -1994,7 +2005,7 @@ kndRefSet_read_term_idx(struct kndRefSet *self,
     int err = 0;
 
 
-    if (DEBUG_REFSET_LEVEL_3)
+    if (DEBUG_REFSET_LEVEL_TMP)
         knd_log("   .. reading term IDX of refset \"%s\"   [DB num refs: %lu]\n",
                 self->name, (unsigned long)self->num_refs);
 
@@ -2245,6 +2256,10 @@ read_inbox(struct kndRefSet *self,
     
     memcpy(recbuf, rec, rec_size);
     recbuf[rec_size - 1] = '\0';
+
+    if (DEBUG_REFSET_LEVEL_TMP)
+        knd_log("== INBOX REC: \"%s\" [%lu]\n",
+                recbuf, (unsigned long)rec_size);
     
     if (strncmp(rec, GSL_OPEN_DELIM, GSL_OPEN_DELIM_SIZE)) {
         knd_log("  -- incorrect inbox: doesn't start with an open delim :(\n");
@@ -2296,7 +2311,7 @@ read_inbox(struct kndRefSet *self,
             ref->name_size = strlen(ref_rec);
             memcpy(ref->name, ref_rec, ref->name_size);
 
-            if (DEBUG_REFSET_LEVEL_2)
+            if (DEBUG_REFSET_LEVEL_TMP)
                 knd_log("obj name: \"%s\" [%lu]",
                         ref->name, (unsigned long)ref->name_size);
             goto assign;
@@ -2335,7 +2350,6 @@ read_inbox(struct kndRefSet *self,
                 }*/
             
         }
-
         
         buf_size = strlen(b);
         if (elemref->name_size + buf_size >= KND_NAME_SIZE) {
@@ -2396,6 +2410,10 @@ read_inbox(struct kndRefSet *self,
     
  final:
 
+
+    if (DEBUG_REFSET_LEVEL_TMP)
+        knd_log("== inbox read status: %d", err);
+
     /* TODO: release resources */
     
     return err;
@@ -2435,7 +2453,7 @@ kndRefSet_read(struct kndRefSet *self,
     
     int err;
 
-    if (DEBUG_REFSET_LEVEL_3) {
+    if (DEBUG_REFSET_LEVEL_2) {
        knd_log(".. Reading Refset \"%s\" IDX rec, input size [%lu]   depth: %lu\n",
                self->name, (unsigned long)rec_size, (unsigned long)self->export_depth);
     }
@@ -2452,7 +2470,7 @@ kndRefSet_read(struct kndRefSet *self,
         self->name_size = namebuf_size;
     }
     
-    if (DEBUG_REFSET_LEVEL_2)
+    if (DEBUG_REFSET_LEVEL_TMP)
         knd_log("   == DIR REC: %s [size: %lu]\n\n",
                 buf, (unsigned long)buf_size);
     
@@ -2487,7 +2505,7 @@ kndRefSet_read(struct kndRefSet *self,
         *val = '\0';
         val++;
         
-        if (DEBUG_REFSET_LEVEL_3)
+        if (DEBUG_REFSET_LEVEL_TMP)
             knd_log("   == Facet: \"%s\" offset: %s\n", c, val);
         
         /* TODO: check facet name! */
@@ -2505,21 +2523,27 @@ kndRefSet_read(struct kndRefSet *self,
         facet_rec = rec + offset;
 
         err = kndRefSet_get_facet(self, (const char*)c, curr_size, &f);
-        if (err) return err;
+        if (err) {
+            knd_log("-- couldn't read the \"%s\" facet :(", c);
+            return err;
+        }
 
         f->export_depth = self->export_depth + 1;
         
         err = f->read(f, facet_rec, facet_rec_size);
-        if (err) return err;
+        if (err) {
+            return err;
+        }
         
         /* merge IDX */
+        
         for (size_t i = 0; i < f->num_refsets; i++) {
             r = f->refsets[i];
 
             err = kndRefSet_merge_idx(self, r);
             if (err) return err;
         }
-        
+      
         offset += facet_rec_size;
     }
 

@@ -459,6 +459,9 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
     size_t name_size = 0;
     int err;
 
+    if (DEBUG_REPO_LEVEL_TMP) 
+        knd_log(".. run get class cache.. %lu", (unsigned long)num_args);
+    
     self = (struct kndRepo *)obj;
     self->curr_cache = NULL;
     
@@ -469,7 +472,14 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
             name_size = arg->val_size;
         }
     }
-    if (!name_size) return knd_FAIL;
+    if (!name_size) {
+        if (DEBUG_REPO_LEVEL_TMP)
+            knd_log("   -- no classname provided :(");
+        return knd_FAIL;
+    }
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("user DC: %p", self->user->root_dc);
 
     /* check classname */
     idx = self->user->root_dc->class_idx;
@@ -482,10 +492,13 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
     }
     self->curr_class = dc;
 
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("curr DC: %p", dc);
+
     err = kndRepo_get_cache(self, dc, &self->curr_cache);
     if (err) return err;
 
-    if (DEBUG_REPO_LEVEL_2) {
+    if (DEBUG_REPO_LEVEL_TMP) {
         knd_log("++ got class cache: \"%s\": %p", dc->name, self->curr_cache);
         self->curr_cache->name_idx->str(self->curr_cache->name_idx, 0, 5);
 
@@ -501,13 +514,12 @@ kndRepo_run_get_obj(void *obj, struct kndTaskArg *args, size_t num_args)
     struct kndRepo *self;
     struct kndTaskArg *arg;
     const char *name = NULL;
-    //size_t chunk_size = 0;
     size_t name_size = 0;
     int err;
     
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
-        if (!strncmp(arg->name, "get", strlen("get"))) {
+        if (!strncmp(arg->name, "n", strlen("n"))) {
             name = arg->val;
             name_size = arg->val_size;
         }
@@ -516,7 +528,7 @@ kndRepo_run_get_obj(void *obj, struct kndTaskArg *args, size_t num_args)
 
     self = (struct kndRepo*)obj;
 
-    if (DEBUG_REPO_LEVEL_2)
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log(".. repo %s to get OBJ: \"%s\"", self->name, name);
     
     err = kndRepo_get_obj(self, name, name_size);
@@ -1600,7 +1612,7 @@ kndRepo_get_cache(struct kndRepo *self,
         buf_size = sprintf(buf, "%s/%s/AZ.idx",
                            self->path,
                            dc->name);
-        if (DEBUG_REPO_LEVEL_2)
+        if (DEBUG_REPO_LEVEL_TMP)
             knd_log(".. reading name IDX file: \"%s\" ..",
                     buf);
 
@@ -1616,13 +1628,17 @@ kndRepo_get_cache(struct kndRepo *self,
             return knd_FAIL;
         }
     
-        if (DEBUG_REPO_LEVEL_3)
+        if (DEBUG_REPO_LEVEL_TMP)
             knd_log("\n\n   ++  atom IDX DB rec size: %lu\n",
                     (unsigned long)self->out->file_size);
     
         err = cache->name_idx->read(cache->name_idx,
                                     self->out->file,
                                     self->out->file_size);
+
+        if (DEBUG_REPO_LEVEL_TMP)
+            knd_log("== name idx read: %d", err);
+
         if (err) {
             if (DEBUG_REPO_LEVEL_TMP)
                 knd_log("    -- name IDX refset not parsed :(\n");
@@ -1705,6 +1721,50 @@ kndRepo_export(struct kndRepo *self, knd_format format)
     return err;
 }
 
+
+static int
+kndRepo_parse_obj(void *obj,
+                  const char *rec,
+                  size_t *total_size)
+{
+    struct kndRepo *self, *repo;
+    self = (struct kndRepo*)obj;
+    
+    struct kndTaskSpec import_specs[] = {
+        { .name = "n",
+          .name_size = strlen("n")
+        }
+    };
+
+    struct kndTaskSpec specs[] = {
+        { .name = "n",
+          .name_size = strlen("n"),
+          .run = kndRepo_run_get_obj,
+          .obj = self
+        },
+        { .name = "import",
+          .name_size = strlen("import"),
+          .specs = import_specs,
+          .num_specs = sizeof(import_specs) / sizeof(struct kndTaskSpec),
+          .run = kndRepo_run_import_obj,
+          .obj = self
+        }
+    };
+    int err;
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("   .. parsing the OBJ rec: \"%s\" REPO: %s", rec, self->name);
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) {
+        if (DEBUG_REPO_LEVEL_TMP)
+            knd_log("-- failed to parse the OBJ rec: %d", err);
+        return err;
+    }
+    
+    return knd_OK;
+}
+
 static int
 kndRepo_parse_class(void *obj,
                     const char *rec,
@@ -1740,20 +1800,24 @@ kndRepo_parse_class(void *obj,
           .run = kndRepo_run_import_obj,
           .obj = repo
         },
-        { .name = "get",
-          .name_size = strlen("get"),
-          .run = kndRepo_run_get_obj,
+        { .name = "obj",
+          .name_size = strlen("obj"),
+          .parse = kndRepo_parse_obj,
           .obj = repo
         }
     };
     int err;
 
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log("   .. parsing the CLASS rec: \"%s\" CURR REPO: %s", rec, repo->name);
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("   .. parsing the CLASS rec: \"%s\" CURR REPO: %s",
+                rec, repo->name);
     
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-
+    if (err) {
+        if (DEBUG_REPO_LEVEL_TMP)
+            knd_log("-- failed to parse the CLASS rec: %d", err);
+        return err;
+    }
     
     return knd_OK;
 }

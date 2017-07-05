@@ -11,6 +11,7 @@
 #include "knd_task.h"
 #include "knd_utils.h"
 #include "knd_msg.h"
+#include "knd_parser.h"
 
 #include "knd_data_reader.h"
 
@@ -50,12 +51,6 @@ kndDataReader_start(struct kndDataReader *self)
     if (!outbox) return knd_FAIL;
 
     err = zmq_connect(outbox, self->inbox_backend_addr);
-    
-    /* liquid updates */
-    self->update_service = zmq_socket(context, ZMQ_PUSH);
-    if (!self->update_service) return knd_FAIL;
-    assert((zmq_connect(self->update_service,  self->update_addr) == knd_OK));
-    self->admin->update_service = self->update_service;
     
     /* delivery service */
     self->delivery = zmq_socket(context, ZMQ_REQ);
@@ -99,12 +94,166 @@ kndDataReader_start(struct kndDataReader *self)
 }
 
 
+static int
+parse_read_inbox_addr(void *obj,
+                      const char *rec,
+                      size_t *total_size)
+{
+    struct kndDataReader *self = (struct kndDataReader*)obj;
+
+    self->inbox_frontend_addr_size = KND_NAME_SIZE;
+    self->inbox_backend_addr_size = KND_NAME_SIZE;
+
+    struct kndTaskSpec specs[] = {
+        { .name = "frontend",
+          .name_size = strlen("frontend"),
+          .buf = self->inbox_frontend_addr,
+          .buf_size = &self->inbox_frontend_addr_size
+        },
+        { .name = "backend",
+          .name_size = strlen("backend"),
+          .buf = self->inbox_backend_addr,
+          .buf_size = &self->inbox_backend_addr_size
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+
+static int
+parse_config_GSL(struct kndDataReader *self,
+                 const char *rec,
+                 size_t *total_size)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = KND_NAME_SIZE;
+    size_t chunk_size = 0;
+    
+    const char *gsl_format_tag = "{gsl";
+    size_t gsl_format_tag_size = strlen(gsl_format_tag);
+
+    const char *header_tag = "{knd::Knowdy Reader Service Configuration";
+    size_t header_tag_size = strlen(header_tag);
+    const char *c;
+
+    self->name_size = KND_NAME_SIZE;
+    self->path_size = KND_NAME_SIZE;
+    self->schema_path_size = KND_NAME_SIZE;
+    self->delivery_addr_size = KND_NAME_SIZE;
+    self->admin->sid_size = KND_NAME_SIZE;
+    
+    struct kndTaskSpec specs[] = {
+         { .name = "path",
+           .name_size = strlen("path"),
+           .buf = self->path,
+           .buf_size = &self->path_size
+         },
+         { .name = "schemas",
+           .name_size = strlen("schemas"),
+           .buf = self->schema_path,
+           .buf_size = &self->schema_path_size
+         },
+         { .name = "sid",
+           .name_size = strlen("sid"),
+           .buf = self->admin->sid,
+           .buf_size = &self->admin->sid_size
+         },
+         { .name = "delivery",
+           .name_size = strlen("delivery"),
+           .buf = self->delivery_addr,
+           .buf_size = &self->delivery_addr_size
+         },
+        { .name = "read_inbox",
+          .name_size = strlen("read_inbox"),
+          .parse = parse_read_inbox_addr,
+          .obj = self
+        },
+        { .is_default = true,
+          .name = "set_service_id",
+          .name_size = strlen("set_service_id"),
+          .buf = self->name,
+          .buf_size = &self->name_size
+        }
+    };
+    int err = knd_FAIL;
+
+    if (!strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
+        rec += gsl_format_tag_size;
+        err = knd_get_schema_name(rec,
+                                  buf, &buf_size, &chunk_size);
+        if (!err) {
+            rec += chunk_size;
+            
+            if (DEBUG_READER_LEVEL_TMP)
+                knd_log("== got schema: \"%s\"", buf);
+        }
+    }
+    
+    if (strncmp(rec, header_tag, header_tag_size)) {
+        knd_log("-- wrong GSL class header");
+        return knd_FAIL;
+    }
+    
+    c = rec + header_tag_size;
+    
+    err = knd_parse_task(c, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) {
+        knd_log("-- config parse error: %d", err);
+        return err;
+    }
+
+    if (!*self->path) {
+        knd_log("-- DB path not set :(");
+        return knd_FAIL;
+    }
+    
+    if (!*self->schema_path) {
+        knd_log("-- schema path not set :(");
+        return knd_FAIL;
+    }
+
+    if (!*self->inbox_frontend_addr) {
+        knd_log("-- inbox frontend addr not set :(");
+        return knd_FAIL;
+    }
+    if (!*self->inbox_backend_addr) {
+        knd_log("-- inbox backend addr not set :(");
+        return knd_FAIL;
+    }
+
+    if (!*self->admin->sid) {
+        knd_log("-- administrative SID is not set :(");
+        return knd_FAIL;
+    }
+    
+    memcpy(self->admin->id, "000", strlen("000"));
+
+    /* users path */
+    self->admin->dbpath = self->path;
+    self->admin->dbpath_size = self->path_size;
+
+    memcpy(self->admin->path, self->path, self->path_size);
+    memcpy(self->admin->path + self->path_size, "/users", strlen("/users"));
+    self->admin->path_size = self->path_size + strlen("/users");
+    self->admin->path[self->admin->path_size] = '\0';
+
+    
+    return knd_OK;
+}
+
+
 extern int
 kndDataReader_new(struct kndDataReader **rec,
                   const char *config)
 {
     struct kndDataReader *self;
     struct kndDataClass *dc;
+    size_t chunk_size = 0;
     int err;
 
     self = malloc(sizeof(struct kndDataReader));
@@ -116,24 +265,31 @@ kndDataReader_new(struct kndDataReader **rec,
     if (err) return err;
 
     err = kndTask_new(&self->task);
-    if (err) return err;
+    if (err) goto error;
 
     err = kndOutput_new(&self->task->out, KND_IDX_BUF_SIZE);
-    if (err) return err;
+    if (err) goto error;
 
     err = kndUser_new(&self->admin);
-    if (err) return err;
+    if (err) goto error;
     self->task->admin = self->admin;
     self->admin->out = self->out;
     
     err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-    
-    /*err = kndDataReader_read_config(self, config);
+
+    /* read config */
+    err = self->out->read_file(self->out, config, strlen(config));
     if (err) {
-        knd_log("  -- config read error :(\n");
+        knd_log("  -- config file read error :(");
         goto error;
-        }*/
+    }
+    
+    err = parse_config_GSL(self, self->out->file, &chunk_size);
+    if (err) {
+        knd_log("  -- config parsing error :(");
+        goto error;
+    }
 
     err = kndDataClass_new(&dc);
     if (err) return err;

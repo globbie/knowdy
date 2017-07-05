@@ -1,10 +1,13 @@
+{gsl::Knowdy Basic
+  {knd::Knowdy Reader Service Configuration
+      {path /var/lib/knowdy/db}
+      {schemas /etc/knowdy/schemas}
+      {sid AUTH_SERVER_SID}
+
+      {delivery ipc:///var/lib/knowdy/delivery/inbox}
 
       {read_inbox
        {frontend ipc:///var/lib/knowdy/reader0}
        {backend ipc:///var/lib/knowdy/reader0_backend}
       }
-
-      {select
-        {frontend tcp://127.0.0.1:6912}
-        {backend tcp://127.0.0.1:6913}
-      }
+}}
