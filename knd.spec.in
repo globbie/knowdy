@@ -57,6 +57,6 @@ esac
 %attr(-,knowdy,knowdy) %dir %{knowdy_home}/db
 
 %{_unitdir}/*.service
-%config(noreplace) @CPACK_PACKAGING_INSTALL_PREFIX@/etc/knowdy/*.ini
+%config(noreplace) @CPACK_PACKAGING_INSTALL_PREFIX@/etc/knowdy/*.gsl
 
 
