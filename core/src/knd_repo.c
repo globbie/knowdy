@@ -478,13 +478,9 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
         return knd_FAIL;
     }
 
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("user DC: %p", self->user->root_dc);
-
     /* check classname */
     idx = self->user->root_dc->class_idx;
-    dc = (struct kndDataClass*)idx->get(idx,
-                                        name);
+    dc = (struct kndDataClass*)idx->get(idx, name);
     if (!dc) {
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("   -- classname \"%s\" is not valid :(\n", name);
@@ -492,18 +488,26 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
     }
     self->curr_class = dc;
 
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("curr DC: %p", dc);
-
     err = kndRepo_get_cache(self, dc, &self->curr_cache);
     if (err) return err;
 
-    if (DEBUG_REPO_LEVEL_TMP) {
+    if (DEBUG_REPO_LEVEL_2) {
         knd_log("++ got class cache: \"%s\": %p", dc->name, self->curr_cache);
         self->curr_cache->name_idx->str(self->curr_cache->name_idx, 0, 5);
 
     }
 
+    /* export schema */
+    dc->out = self->out;
+    dc->out->reset(dc->out);
+    
+    err = dc->export(dc, KND_FORMAT_JSON);
+    if (err) return err;
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("++ schema: %s", self->out->buf);
+
+        
     return knd_OK;
 }
 
@@ -1210,7 +1214,6 @@ kndRepo_linearize_objs(struct kndRepo *self)
     if (DEBUG_REPO_LEVEL_TMP)
         knd_log(".. linearize objs..");
 
-
     /* TODO: send results directly to the delivery service,
        don't write any local files */
     
@@ -1818,6 +1821,9 @@ kndRepo_parse_class(void *obj,
             knd_log("-- failed to parse the CLASS rec: %d", err);
         return err;
     }
+
+    /* call default action */
+
     
     return knd_OK;
 }

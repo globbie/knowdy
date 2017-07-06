@@ -75,25 +75,23 @@ typedef enum knd_elem_type {
     KND_ELEM_NUM,
     KND_ELEM_REF,
     KND_ELEM_CALC,
-    KND_ELEM_CONTAINER,
     KND_ELEM_FILE,
     KND_ELEM_PROC
 } knd_elem_type;
 
 
 static const char* const knd_elem_names[] = {
-    "NONE",
-    "ATOM",
-    "AGGR", 
-    "LIST",
-    "TEXT", 
+    "none",
+    "atom",
+    "aggr", 
+    "list",
+    "text", 
     "CG",
-    "NUM",
-    "REF",
-    "CALC",
-    "CONTAINER",
-    "FILE",
-    "PROC" };
+    "num",
+    "ref",
+    "calc",
+    "file",
+    "proc" };
 
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L

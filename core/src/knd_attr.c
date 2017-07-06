@@ -17,14 +17,12 @@
 
 
 /*  Attr Destructor */
-static void
-kndAttr_del(struct kndAttr *self)
+static void del(struct kndAttr *self)
 {
     free(self);
 }
 
-static void
-kndAttr_str(struct kndAttr *self, size_t depth)
+static void str(struct kndAttr *self, size_t depth)
 {
     struct kndTranslation *tr;
 
@@ -347,10 +345,9 @@ kndAttr_read_list_GSL(struct kndAttr *self,
 }
 
 
-static int
-kndAttr_read_GSL(struct kndAttr *self,
-                 char *rec,
-                 size_t *total_size)
+static int read_GSL(struct kndAttr *self,
+                    char *rec,
+                    size_t *total_size)
 {
     /*char buf[KND_NAME_SIZE];*/
     size_t buf_size = 0;
@@ -510,39 +507,39 @@ kndAttr_present_GSL(struct kndAttr *self)
 
 
 
-static int
-kndAttr_present_JSON(struct kndAttr *self)
+static int export_JSON(struct kndAttr *self)
 {
-    //char buf[KND_MED_BUF_SIZE];
-    //size_t buf_size;
-
     struct kndOutput *out;
-    //const char *key = NULL;
-    //void *val = NULL;
+    const char *type_name = knd_elem_names[self->type];
+    size_t type_name_size = strlen(knd_elem_names[self->type]);
     int err;
-    
-    if (DEBUG_ATTR_LEVEL_TMP)
-        knd_log("   .. present JSON ATTR: %s\n",
-                self->name);
 
     out = self->out;
 
-    err = out->write(out,
-                     "{", 1);
+    err = out->write(out, "\"", 1);
+    if (err) return err;
+    err = out->write(out, self->name, self->name_size);
+    if (err) return err;
+    err = out->write(out, "\":\"{\"type\":\"", strlen("\":\"{\"type\":\""));
+    if (err) return err;
+    
+    err = out->write(out, type_name, type_name_size);
     if (err) return err;
 
-    err = out->write(out,
-                     "\"n\":\"", strlen("\"n\":\""));
+    err = out->write(out, "\"", 1);
     if (err) return err;
 
-    err = out->write(out,
-                     self->name, self->name_size);
-    if (err) return err;
+    if (self->fullname_size) {
+        err = out->write(out, ",\"fullname\":\"", strlen(",\"fullname\":\""));
+        if (err) return err;
 
-    err = out->write(out,
-                     "\"", 1);
-    if (err) return err;
+        err = out->write(out, self->fullname, self->fullname_size);
+        if (err) return err;
 
+        err = out->write(out, "\"", 1);
+        if (err) return err;
+   }
+    
     /* choose gloss */
     /*tr = self->tr;
     while (tr) {
@@ -563,18 +560,20 @@ kndAttr_present_JSON(struct kndAttr *self)
         tr = tr->next;
     }
     */
+    
+    err = out->write(out, "}", 1);
+    if (err) return err;
 
-    return err;
+    return knd_OK;
 }
 
-static int 
-kndAttr_present(struct kndAttr *self, knd_format format)
+static int export(struct kndAttr *self, knd_format format)
 {
     int err = knd_FAIL;
 
     switch(format) {
         case KND_FORMAT_JSON:
-        err = kndAttr_present_JSON(self);
+        err = export_JSON(self);
         if (err) goto final;
         break;
     case KND_FORMAT_GSL:
@@ -590,15 +589,14 @@ kndAttr_present(struct kndAttr *self, knd_format format)
 }
 
 /*  Attr Initializer */
-static void
-kndAttr_init(struct kndAttr *self)
+static void init(struct kndAttr *self)
 {
     /* binding our methods */
-    self->init = kndAttr_init;
-    self->del = kndAttr_del;
-    self->str = kndAttr_str;
-    self->read = kndAttr_read_GSL;
-    self->present = kndAttr_present;
+    self->init = init;
+    self->del = del;
+    self->str = str;
+    self->read = read_GSL;
+    self->export = export;
 }
 
 
@@ -612,7 +610,7 @@ kndAttr_new(struct kndAttr **c)
 
     memset(self, 0, sizeof(struct kndAttr));
 
-    kndAttr_init(self);
+    init(self);
 
     *c = self;
 

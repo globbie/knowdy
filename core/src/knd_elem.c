@@ -701,11 +701,6 @@ kndElem_index(struct kndElem *self)
         err = index_ref(self);
         return err;
         
-        /*    case KND_ELEM_CONTAINER:
-        err = kndElem_index_container(self);
-        if (err) goto final;
-        */
-        
     default:
         break;
     }
@@ -2301,12 +2296,6 @@ kndElem_export_HTML(struct kndElem *self,
             if (err) goto final;
             */
             break;
-        case KND_ELEM_CONTAINER:
-            /*buf_size = sprintf(buf, "\"cont\":\"%s\"",
-                               self->states->val);
-            err = self->out->write(self->out, buf, buf_size);
-            if (err) goto final; */
-            break;
         default:
             break;
         }
@@ -2406,18 +2395,6 @@ kndElem_export_GSL(struct kndElem *self)
                 if (err) goto final;
             }
         }
-
-        /*if (self->attr->type == KND_ELEM_CONTAINER) {
-            elem_state = self->states;
-            while (elem_state) {
-                knd_log("%s  CONTAIN -> %s [#%lu]\n", offset,
-                        elem_state->val,
-                        (unsigned long)elem_state->state);
-                elem_state = elem_state->next;
-            }
-
-            }*/
-        
     }
 
 

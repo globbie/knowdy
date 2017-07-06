@@ -87,8 +87,8 @@ struct kndAttr
                 char   *rec,
                 size_t *chunk_size);
 
-    int (*present)(struct kndAttr   *self,
-                   knd_format format);
+    int (*export)(struct kndAttr   *self,
+                  knd_format format);
 };
 
 /* constructor */

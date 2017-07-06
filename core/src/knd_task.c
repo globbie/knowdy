@@ -295,7 +295,6 @@ report(struct kndTask *self)
     err = self->spec_out->write(self->spec_out, gsl_header, strlen(gsl_header));
     if (err) return err;
 
-
     err = self->spec_out->write(self->spec_out, "{tid ", strlen("{tid "));
     if (err) return err;
     err = self->spec_out->write(self->spec_out, self->tid, self->tid_size);
@@ -309,7 +308,6 @@ report(struct kndTask *self)
     if (err) return err;
     err = self->spec_out->write(self->spec_out, "}", 1);
     if (err) return err;
-
 
     if (self->error) {
         err = self->spec_out->write(self->spec_out, "{err", strlen("{err"));

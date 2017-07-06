@@ -16,14 +16,12 @@
 
 
 /*  DataClass Destructor */
-static void
-kndDataClass_del(struct kndDataClass *self)
+static void del(struct kndDataClass *self)
 {
     free(self);
 }
 
-static int
-kndDataClass_str(struct kndDataClass *self, size_t depth)
+static int str(struct kndDataClass *self, size_t depth)
 {
     struct kndAttr *attr;
     struct kndTranslation *tr;
@@ -182,10 +180,9 @@ kndDataClass_set_name(struct kndDataClass *self,
 }
 
 
-static int
-kndDataClass_read_GSL(struct kndDataClass *self,
-                      char *rec,
-                      size_t *total_size)
+static int read_GSL(struct kndDataClass *self,
+                    char *rec,
+                    size_t *total_size)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
@@ -499,7 +496,7 @@ kndDataClass_read_onto_GSL(struct kndDataClass *self,
             if (in_classes) {
                 size_t chunk_size = 0;
 
-                err = kndDataClass_read_GSL(self, c, &chunk_size);
+                err = read_GSL(self, c, &chunk_size);
                 if (err) goto final;
 
                 c += chunk_size;
@@ -726,9 +723,9 @@ kndDataClass_export_JSON(struct kndDataClass *self)
             if (err) return err;
         }
 
-        /*err = kndDataClass_export_attr_JSON(self, attr);
-        if (err) goto final;
-        */
+        attr->out = out;
+        err = attr->export(attr, KND_FORMAT_JSON);
+        if (err) return err;
         
         i++;
 
@@ -861,9 +858,9 @@ static void
 kndDataClass_init(struct kndDataClass *self)
 {
     self->init = kndDataClass_init;
-    self->del = kndDataClass_del;
-    self->str = kndDataClass_str;
-    self->read = kndDataClass_read_GSL;
+    self->del = del;
+    self->str = str;
+    self->read = read_GSL;
     self->read_onto = kndDataClass_read_onto_GSL;
     self->set_name = kndDataClass_set_name;
 
