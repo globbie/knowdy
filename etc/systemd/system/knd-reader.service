@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 User=knowdy
-ExecStart=/usr/bin/knd-reader /etc/knowdy/config.ini
+ExecStart=/usr/bin/knd-reader /etc/knowdy/reader.gsl
 
 [Install]
 
