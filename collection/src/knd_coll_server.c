@@ -126,9 +126,8 @@ void *kndColl_requester_agent(void *arg)
         spec = knd_zmq_recv(inbox, &spec_size);
 	obj = knd_zmq_recv(inbox, &obj_size);
 
-	/*knd_log("    !! Collection Requester Agent #%d: got spec \"%s\"\n", 
+	knd_log("    !! Collection Requester Agent #%d: got spec \"%s\"\n", 
 	       args->agent_id, spec);
-        */
         
 	// TODO: ret = coll->find_route(coll, data->topics, &dest_coll_addr);
 

@@ -2,8 +2,8 @@
   {knd::Collection Service Configuration
 
       {request
-       {frontend ipc:///var/lib/knowdy/coll_frontend}
-       {backend ipc:///var/lib/knowdy/coll_backend}
+       {frontend tcp://127.0.0.1:6900}
+       {backend tcp://127.0.0.1:6901}
       }
 
       {record
