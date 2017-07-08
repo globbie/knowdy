@@ -91,7 +91,7 @@ kndStorage_start(struct kndStorage *self)
 
     ret = zmq_bind(backend, "ipc:///var/lib/knowdy/storage_push"); // fixme
 
-    printf("\n\n    ++ %s Storage Selector device is ready...\n\n",
+    printf("\n\n++ %s Storage Selector device is ready...\n",
 	   self->name);
 
     zmq_device(ZMQ_QUEUE, frontend, backend);

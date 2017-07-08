@@ -459,11 +459,10 @@ kndObjRef_export(struct kndObjRef *self,
 static int 
 kndObjRef_expand(struct kndObjRef *self)
 {
-    //struct kndData *data;
     struct kndObject *obj = NULL;
     int err;
    
-    if (DEBUG_OBJREF_LEVEL_3)
+    if (DEBUG_OBJREF_LEVEL_TMP)
         knd_log("  .. expanding objref \"%s::%s\" of class \"%s\"..\n",
                 self->obj_id, self->name, self->cache->baseclass->name);
 
@@ -475,12 +474,20 @@ kndObjRef_expand(struct kndObjRef *self)
         self->obj = obj;
         return knd_OK;
     }
-    
+
+    if (DEBUG_OBJREF_LEVEL_TMP)
+        knd_log(".. reading obj \"%s\".. repo: %p",
+                self->obj_id, self->cache->repo);
+
     err = self->cache->repo->read_obj(self->cache->repo,
                                       self->obj_id,
                                       self->cache,
                                       &obj);
     if (err) return err;
+
+    if (DEBUG_OBJREF_LEVEL_TMP)
+        knd_log(".. expanding obj \"%s\"..",
+                self->obj_id);
 
     err = obj->expand(obj, 1);
     if (err) return err;

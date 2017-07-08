@@ -51,12 +51,10 @@ kndColl_requester(void *arg)
     if (ret != knd_OK)
         knd_log("bind %s zmqerr: %s\n",
                 coll->request_proxy_backend, zmq_strerror(errno));
-    
     assert(ret == knd_OK);
  
     knd_log("    ++ Collection Requester proxy is ready: %s\n",
             coll->request_proxy_frontend);
-
 
     zmq_proxy(frontend, backend, NULL);
     
@@ -144,7 +142,7 @@ void *kndColl_selector(void *arg)
                 coll->select_proxy_backend, zmq_strerror(errno));
     assert(ret == knd_OK);
  
-    knd_log("    ++ Collection Selector proxy is ready....\n");
+    knd_log("  ++ Collection Selector proxy is ready....\n");
 
     zmq_proxy(frontend, backend, NULL);
 
@@ -276,10 +274,13 @@ kndColl_check_settings(struct kndColl *self)
 {
     
     /* TODO: check proxies */
+    knd_log("== request proxy frontend: %s", self->request_proxy_frontend);
     if (!*self->request_proxy_frontend) {
         knd_log("  Alert: no request proxy frontend specified!\n");
         return knd_FAIL;
     }
+
+    knd_log("== request proxy backend: %s", self->request_proxy_backend);
     if (!*self->request_proxy_backend) {
         knd_log("  Alert: no request proxy backend specified!\n");
         return knd_FAIL;

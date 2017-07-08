@@ -535,7 +535,6 @@ knd_find_spec(struct kndTaskSpec *specs,
             continue;
         }
         
-        
         *result = spec;
         return knd_OK;
     }
@@ -545,7 +544,7 @@ knd_find_spec(struct kndTaskSpec *specs,
         return knd_OK;
     }
     
-    return knd_FAIL;
+    return knd_NO_MATCH;
 }
 
 static int
@@ -642,7 +641,7 @@ knd_parse_task(const char *rec,
 
             /* nested parsing required */
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("== further parsing required in \"%s\"\n",
+                knd_log("== further parsing required in \"%s\"",
                         spec->name);
 
             err = spec->parse(spec->obj, b, &chunk_size);
@@ -680,6 +679,29 @@ knd_parse_task(const char *rec,
             }
             break;
         case '}':
+            /* empty body */
+            if (!in_field) {
+                knd_log("NB: got empty body!");
+
+                /* fetch default spec if any */
+                err = knd_find_spec(specs, num_specs,
+                                    "default", strlen("default"), &spec);
+                if (!err) {
+                    if (spec->run) {
+                        err = spec->run(spec->obj, args, num_args);
+                        if (err) {
+                            if (DEBUG_PARSER_LEVEL_TMP)
+                                knd_log("-- \"%s\" func run failed: %d :(",
+                                        spec->name, err);
+                            return err;
+                        }
+                    }
+                }
+                
+                *total_size = c - rec;
+                return knd_OK;
+              }
+            
             if (in_terminal) {
                 err = check_name_limits(b, e, &name_size);
                 if (err) {
@@ -760,11 +782,22 @@ knd_parse_task(const char *rec,
                                     name_size, b);
                         return err;
                     }
-                    if (DEBUG_PARSER_LEVEL_2)
-                        knd_log("++ got SPEC: \"%s\" (default: %d)",
+
+                    if (DEBUG_PARSER_LEVEL_TMP)
+                        knd_log("++ got single SPEC: \"%s\" (default: %d)",
                                 spec->name, spec->is_default);
 
-                    if (spec->buf && spec->buf_size) {
+                    if (spec->parse) {
+                        err = spec->parse(spec->obj, c, &chunk_size);
+                        if (err) {
+                            if (DEBUG_PARSER_LEVEL_TMP)
+                                knd_log("-- ERR: %d parsing of spec \"%s\" failed starting from: %s",
+                                        err, spec->name, b);
+                            return err;
+                        }
+                    }
+                    
+                    /*if (spec->buf && spec->buf_size) {
                         err = knd_spec_buf_copy(spec, b, name_size);
                         if (err) return err;
                         spec->is_completed = true;
@@ -773,7 +806,8 @@ knd_parse_task(const char *rec,
                         in_terminal = false;
                         in_tag = false;
                         in_field = false;
-                    }
+                        }*/
+                    
                 }
                 
                 in_field = false;
@@ -885,9 +919,11 @@ knd_parse_func_arg(const char *rec,
                 
             memcpy(arg->name, spec->name, spec->name_size);
             arg->name_size = spec->name_size;
+            arg->name[spec->name_size] = '\0';
             
             memcpy(arg->val, b, name_size);
             arg->val_size = name_size;
+            arg->val[name_size] = '\0';
             
             *total_size = c - rec;
             return knd_OK;

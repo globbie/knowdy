@@ -610,7 +610,7 @@ kndUser_run_sid_check(void *obj, struct kndTaskArg *args, size_t num_args)
     }
 
     if (strncmp(self->sid, sid, sid_size)) {
-        knd_log("-- wrong SID: \"%s\"", sid);
+        knd_log("-- wrong SID: \"%.*s\"", sid_size, sid);
         return knd_FAIL;
     }
     

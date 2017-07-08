@@ -31,6 +31,9 @@ struct kndDataReader
     size_t curr_state;
 
     /* services */
+    char coll_request_addr[KND_NAME_SIZE];
+    size_t coll_request_addr_size;
+
     void *delivery;
     char delivery_addr[KND_NAME_SIZE];
     size_t delivery_addr_size;

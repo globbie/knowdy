@@ -4,6 +4,7 @@
       {schemas /etc/knowdy/schemas}
       {sid AUTH_SERVER_SID}
 
+      {coll_request tcp://127.0.0.1:6913}
       {delivery ipc:///var/lib/knowdy/delivery/inbox}
 
       {read_inbox

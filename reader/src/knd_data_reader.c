@@ -144,9 +144,10 @@ parse_config_GSL(struct kndDataReader *self,
     self->name_size = KND_NAME_SIZE;
     self->path_size = KND_NAME_SIZE;
     self->schema_path_size = KND_NAME_SIZE;
+    self->coll_request_addr_size = KND_NAME_SIZE;
     self->delivery_addr_size = KND_NAME_SIZE;
     self->admin->sid_size = KND_NAME_SIZE;
-    
+
     struct kndTaskSpec specs[] = {
          { .name = "path",
            .name_size = strlen("path"),
@@ -162,6 +163,11 @@ parse_config_GSL(struct kndDataReader *self,
            .name_size = strlen("sid"),
            .buf = self->admin->sid,
            .buf_size = &self->admin->sid_size
+         },
+         { .name = "coll_request",
+           .name_size = strlen("coll_request"),
+           .buf = self->coll_request_addr,
+           .buf_size = &self->coll_request_addr_size
          },
          { .name = "delivery",
            .name_size = strlen("delivery"),
@@ -388,7 +394,10 @@ void *kndDataReader_selector(void *arg)
     backend = zmq_socket(context, ZMQ_PUSH);
     assert(backend);
     
-    err = zmq_connect(frontend, "tcp://127.0.0.1:6913");
+    //err = zmq_connect(frontend, "tcp://127.0.0.1:6913");
+    //assert(err == knd_OK);
+
+    err = zmq_connect(frontend, reader->coll_request_addr);
     assert(err == knd_OK);
 
     err = zmq_connect(backend, reader->inbox_frontend_addr);

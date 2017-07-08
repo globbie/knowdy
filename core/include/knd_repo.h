@@ -217,17 +217,7 @@ struct kndRepo
 
     int (*export)(struct kndRepo *self, knd_format format);
 
-    //int (*liquid_select)(struct kndRepo *self, struct kndData *data);
-    //int (*select)(struct kndRepo *self, struct kndData *data);
-
     int (*get_obj)(struct kndRepo *self,  struct kndSpecArg *args, size_t num_args);
-    //int (*get_liquid_obj)(struct kndRepo *self, struct kndSpecArg *args, size_t num_args);
-
-    //int (*flatten)(struct kndRepo *self, struct kndData *data);
-    //int (*update_flatten)(struct kndRepo *self, struct kndData *data);
-
-    //int (*match)(struct kndRepo *self, struct kndData *data);
-    //int (*liquid_match)(struct kndRepo *self, struct kndData *data);
 
     int (*get_cache)(struct kndRepo *self, struct kndDataClass *c,
                      struct kndRepoCache **cache);

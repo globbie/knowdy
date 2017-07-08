@@ -37,7 +37,6 @@ void *kndColl_recorder_agent(void *arg)
     args = (struct agent_args*)arg;
     coll = args->collection;
 
-
     inbox = zmq_socket(args->zmq_context, ZMQ_PULL);
     assert(inbox);
 
@@ -51,7 +50,6 @@ void *kndColl_recorder_agent(void *arg)
     assert(ret == knd_OK);
 
     while (1) {
-
 	knd_log("    !! Collection Recorder Agent #%d is ready!\n", 
 	       args->agent_id);
 
@@ -100,7 +98,6 @@ void *kndColl_requester_agent(void *arg)
 
     args = (struct agent_args*)arg;
     coll = args->collection;
-
 
     inbox = zmq_socket(args->zmq_context, ZMQ_PULL);
     assert(inbox);

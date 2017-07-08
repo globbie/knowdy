@@ -2560,17 +2560,24 @@ kndRefSet_extract_objs(struct kndRefSet *self)
     
     int err;
 
-    if (DEBUG_REFSET_LEVEL_3) {
-        knd_log("    .. RefSet \"%s\" expanding refs..  batch to fill: %lu\n",
-                self->name, (unsigned long)self->batch_size);
+    if (DEBUG_REFSET_LEVEL_TMP) {
+        knd_log("    .. RefSet \"%s\" expanding refs..  batch to fill: %lu cache: %p\n",
+                self->name, (unsigned long)self->batch_size, self->cache);
     }
     
     for (size_t i = 0; i < self->inbox_size; i++) {
         ref = self->inbox[i];
         ref->cache = self->cache;
-        
+
+        if (DEBUG_REFSET_LEVEL_TMP)
+            knd_log("== ref: %p", ref);
+                
         err = ref->expand(ref);
+        if (DEBUG_REFSET_LEVEL_TMP)
+            knd_log("== ref expand: %d", err);
+
         if (err) return err;
+
 
         self->cache->matches[self->cache->num_matches] = ref->obj;
         self->cache->num_matches++;
@@ -2589,7 +2596,6 @@ kndRefSet_extract_objs(struct kndRefSet *self)
 
         return knd_OK;
     }
-
 
     /* terminal IDX */
     if (!self->idx) return knd_OK;

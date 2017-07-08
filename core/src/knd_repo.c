@@ -543,6 +543,65 @@ kndRepo_run_get_obj(void *obj, struct kndTaskArg *args, size_t num_args)
 
 
 static int
+kndRepo_run_select_objs(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndRepo *self;
+    struct kndRepoCache *cache;
+    struct kndRefSet *browser;
+    struct kndRefSet *refset;
+    size_t num_objs;
+    int err;
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log(".. run SELECT objs..");
+
+    self = (struct kndRepo*)obj;
+    cache = self->curr_cache;
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        cache->name_idx->str(cache->name_idx, 1, 5);
+    
+    /* default batch of objs */
+    if (cache->name_idx->num_refs) {
+        refset = cache->name_idx;
+        
+        num_objs = KND_RESULT_BATCH_SIZE;
+        if (refset->num_refs < KND_RESULT_BATCH_SIZE)
+            num_objs = refset->num_refs;
+    
+        refset->batch_size = num_objs;
+            
+        if (DEBUG_REPO_LEVEL_TMP)
+            knd_log("== RefSet of class: \"%s\"   Batch size to deliver: %lu\n",
+                    cache->baseclass->name,
+                    (unsigned long)refset->batch_size);
+
+        err = refset->extract_objs(refset);
+        if (err) {
+            if (DEBUG_REPO_LEVEL_TMP)
+                knd_log("-- no objs extracted from \"%s\"\n",
+                        cache->baseclass->name);
+            return err;
+        }
+                
+        //cache->select_result = refset;
+
+
+        /* TODO: define depth elsewhere */
+        refset->export_depth = 1;
+        refset->out = self->out;
+        refset->out->reset(refset->out);
+        
+        err = refset->export(refset, KND_FORMAT_JSON, 0);
+        if (err) return err;
+
+    }
+    
+
+    return knd_OK;
+}
+
+static int
 kndRepo_run_import_obj(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndRepo *self;
@@ -1090,7 +1149,7 @@ kndRepo_read_obj_db(struct kndRepo *self,
     buf_size = sprintf(buf, "%s%s/objs.gsc",
                        self->path, cache->baseclass->name);
 
-    if (DEBUG_REPO_LEVEL_2)
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log("  .. open OBJ db file: \"%s\" ..\n", buf);
     
     /* TODO: large file support */
@@ -1740,6 +1799,12 @@ kndRepo_parse_obj(void *obj,
     };
 
     struct kndTaskSpec specs[] = {
+        { .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = kndRepo_run_select_objs,
+          .obj = self
+        },
         { .name = "n",
           .name_size = strlen("n"),
           .run = kndRepo_run_get_obj,
@@ -1952,6 +2017,7 @@ kndRepo_init(struct kndRepo *self)
     self->restore = kndRepo_restore;
     self->get_cache = kndRepo_get_cache;
     self->get_guid = kndRepo_get_guid;
+    self->read_obj = kndRepo_read_obj_db;
     
     return knd_OK;
 }
