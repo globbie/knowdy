@@ -159,43 +159,49 @@ kndRepo_open(struct kndRepo *self)
     const char *repo_dir = "/repos";
     size_t repo_dir_size = strlen(repo_dir);
     int err;
+
+    struct kndOutput *out = self->path_out;
+
+    out->reset(out);
+    err = out->write(out, self->user->dbpath, self->user->dbpath_size);
+    if (err) return err;
     
-    memcpy(buf, self->user->dbpath, self->user->dbpath_size);
-    buf_size = self->user->dbpath_size;
-
-    if (buf_size + repo_dir_size >= KND_TEMP_BUF_SIZE)
-        return knd_LIMIT;
-
-    memcpy(buf + buf_size, repo_dir, repo_dir_size);
-    buf_size += repo_dir_size;
-    buf[buf_size] = '\0';
-
-    /* TODO: check overflow */
-    
-    err = knd_make_id_path(self->path, buf, self->id, "repo.gsl");
+    err = out->write(out, repo_dir, repo_dir_size);
     if (err) return err;
 
-    self->path_size = strlen(self->path);
+    err = knd_make_id_path(buf, NULL, self->id, NULL);
+    if (err) return err;
+    buf_size = strlen(buf);
+
+    err = out->write(out, buf, buf_size);
+    if (err) return err;
+
+    err = out->write(out, "/", 1);
+    if (err) return err;
     
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log("..opening repo:  ID:\"%s\" REPO FILE:%s",
+    if (out->buf_size >= KND_TEMP_BUF_SIZE) return knd_LIMIT;
+    memcpy(self->path, out->buf, out->buf_size);
+    self->path[out->buf_size] = '\0';
+    self->path_size = out->buf_size;
+    
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("..opening repo:  ID:\"%s\" REPO PATH:%s",
                 self->id, self->path);
 
+    err = out->write(out, "repo.gsl", strlen("repo.gsl"));
+    if (err) return err;
+    
     self->out->reset(self->out);
     err = self->out->read_file(self->out,
-                               (const char*)self->path, self->path_size);
+                               (const char*)out->buf, out->buf_size);
     if (err) {
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("-- failed to open repo: \"%s\" :(",
-                    self->path);
+                    out->buf);
         return err;
     }
 
     self->out->file[self->out->file_size] = '\0';
-
-    buf_size = self->path_size - strlen("repo.gsl");
-    self->path[buf_size] = '\0';
-    self->path_size = buf_size;
     
     if (self->restore_mode) {
         err = kndRepo_parse_config(self, self->out->file, &chunk_size);
@@ -743,20 +749,24 @@ kndRepo_restore(struct kndRepo *self)
 static int
 kndRepo_update_inbox(struct kndRepo *self)
 {
-    const char *inbox = "inbox/import.data";
-    size_t inbox_size = strlen(inbox);
-
     struct kndOutput *out = self->path_out;
     int err;
 
     out->reset(out);
 
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log("== repo DB PATH: \"%.*s\"",
+                self->path_size, self->path);
+
     err = out->write(out, self->path, self->path_size);
     if (err) return err;
+    
     err = out->write(out, "inbox/", strlen("inbox/"));
     if (err) return err;
+
     err = out->write(out, self->db_state, KND_ID_SIZE);
     if (err) return err;
+
     err = out->write(out, ".spec", strlen(".spec"));
     if (err) return err;
 

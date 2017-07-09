@@ -180,6 +180,99 @@ kndDataClass_set_name(struct kndDataClass *self,
 }
 
 
+static int
+kndDataClass_read_GSL_glosses(struct kndDataClass *self,
+                              char *rec,
+                              size_t *chunk_size)
+{
+    struct kndTranslation *tr = NULL;
+    size_t buf_size = 0;
+    char *c;
+    char *b;
+
+    bool in_key = false;
+    bool in_val = false;
+    int err = knd_FAIL;
+    
+    c = rec;
+    b = rec;
+
+    while (*c) {
+
+        switch (*c) {
+        default:
+            break;
+        case '\n':
+        case '\r':
+        case '\t':
+        case ' ':
+            if (in_key) {
+                tr = malloc(sizeof(struct kndTranslation));
+                if (!tr) return knd_NOMEM;
+                memset(tr, 0, sizeof(struct kndTranslation));
+
+                buf_size = c - b;
+                if (!buf_size) return knd_FAIL;
+                                   
+                tr->lang_code_size = buf_size;
+                memcpy(tr->lang_code, b, buf_size);
+                tr->lang_code[buf_size] = '\0';
+
+                in_key = false;
+                in_val = true;
+                b = c + 1;
+                break;
+            }
+            
+            break;
+        case '{':
+            if (!in_key) {
+                in_key = true;
+            }
+            b = c + 1;
+            break;
+        case '}':
+
+            if (in_val) {
+                buf_size = c - b;
+
+                if (!buf_size) return knd_FAIL;
+
+                if (buf_size > KND_LARGE_BUF_SIZE) return knd_LIMIT;
+
+                tr->seq = malloc(buf_size);
+                if (!tr->seq) return knd_NOMEM;
+
+                memcpy(tr->seq, b, buf_size);
+                tr->seq_size = buf_size;
+                tr->seq[buf_size] = '\0';
+
+                tr->next = self->tr;
+                self->tr = tr;
+                
+                tr = NULL;
+                in_val = false;
+                b = c + 1;
+                break;
+            }
+
+
+            self->tr = tr;
+            
+            break;
+        case ']':
+            *chunk_size = c - rec;
+            return knd_OK;
+        }
+
+        c++;
+    }
+
+    return err;
+}
+
+
+
 static int read_GSL(struct kndDataClass *self,
                     char *rec,
                     size_t *total_size)

@@ -126,19 +126,16 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
                          size_t *chunk_size)
 {
     struct kndTranslation *tr = NULL;
-    //size_t buf_size = 0;
+    size_t buf_size = 0;
     char *c;
     char *b;
-    
-    //size_t curr_size = 0;
 
     bool in_key = false;
-    //bool in_val = false;
+    bool in_val = false;
     int err = knd_FAIL;
-
     
     c = rec;
-    //b = rec;
+    b = rec;
 
     while (*c) {
 
@@ -149,7 +146,7 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
         case '\r':
         case '\t':
         case ' ':
-            /*if (in_key) {
+            if (in_key) {
                 tr = malloc(sizeof(struct kndTranslation));
                 if (!tr) return knd_NOMEM;
                 memset(tr, 0, sizeof(struct kndTranslation));
@@ -166,7 +163,6 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
                 b = c + 1;
                 break;
             }
-            */
             
             break;
         case '{':
@@ -177,7 +173,7 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
             break;
         case '}':
 
-            /*if (in_val) {
+            if (in_val) {
                 buf_size = c - b;
 
                 if (!buf_size) return knd_FAIL;
@@ -191,16 +187,17 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
                 tr->seq_size = buf_size;
                 tr->seq[buf_size] = '\0';
 
-                tr->next = self->dc->tr;
-                self->dc->tr = tr;
+                if (DEBUG_ATTR_LEVEL_TMP)
+                    knd_log(".. set attr gloss: %s => %s", tr->lang_code, tr->seq);
 
+                tr->next = self->tr;
+                self->tr = tr;
                 
                 tr = NULL;
                 in_val = false;
                 b = c + 1;
                 break;
             }
-            */
 
 
             self->tr = tr;
