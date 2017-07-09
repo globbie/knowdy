@@ -710,14 +710,13 @@ kndDataClass_export_JSON(struct kndDataClass *self)
         tr = tr->next;
     }
 
-    err = out->write(out, "\"attrs\": {",
-                     strlen("\"attrs\": {"));
+    err = out->write(out, ",\"attrs\": {",
+                     strlen(",\"attrs\": {"));
     if (err) return err;
 
     i = 0;
     attr = self->attrs;
     while (attr) {
-
         if (i) {
             err = out->write(out, ",", 1);
             if (err) return err;
