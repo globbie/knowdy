@@ -710,8 +710,8 @@ kndDataClass_export_JSON(struct kndDataClass *self)
         tr = tr->next;
     }
 
-    err = out->write(out,
-                     ",\"attr_l\":[", strlen(",\"attr_l\":["));
+    err = out->write(out, "\"attrs\": {",
+                     strlen("\"attrs\": {"));
     if (err) return err;
 
     i = 0;
@@ -725,14 +725,18 @@ kndDataClass_export_JSON(struct kndDataClass *self)
 
         attr->out = out;
         err = attr->export(attr, KND_FORMAT_JSON);
-        if (err) return err;
+        if (err) {
+            if (DEBUG_DATACLASS_LEVEL_TMP)
+                knd_log("-- failed to export %s attr to JSON: %s\n", attr->name);
+            return err;
+        }
         
         i++;
 
         attr = attr->next;
     }
 
-    err = out->write(out, "]}", 2);
+    err = out->write(out, "}}", 2);
     if (err) return err;
 
     return knd_OK;

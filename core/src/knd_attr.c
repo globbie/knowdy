@@ -520,7 +520,7 @@ static int export_JSON(struct kndAttr *self)
     if (err) return err;
     err = out->write(out, self->name, self->name_size);
     if (err) return err;
-    err = out->write(out, "\":\"{\"type\":\"", strlen("\":\"{\"type\":\""));
+    err = out->write(out, "\":{\"type\":\"", strlen("\":{\"type\":\""));
     if (err) return err;
     
     err = out->write(out, type_name, type_name_size);
@@ -528,12 +528,28 @@ static int export_JSON(struct kndAttr *self)
 
     err = out->write(out, "\"", 1);
     if (err) return err;
-
+    
     if (self->fullname_size) {
         err = out->write(out, ",\"fullname\":\"", strlen(",\"fullname\":\""));
         if (err) return err;
 
         err = out->write(out, self->fullname, self->fullname_size);
+        if (err) return err;
+
+        err = out->write(out, "\"", 1);
+        if (err) return err;
+   }
+
+    if (self->is_list) {
+        err = out->write(out, ",\"is_list\":true", strlen(",\"is_list\":true"));
+        if (err) return err;
+    }
+    
+    if (self->ref_classname_size) {
+        err = out->write(out, ",\"refclass\":\"", strlen(",\"refclass\":\""));
+        if (err) return err;
+
+        err = out->write(out, self->ref_classname, self->ref_classname_size);
         if (err) return err;
 
         err = out->write(out, "\"", 1);

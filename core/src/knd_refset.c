@@ -834,7 +834,7 @@ kndRefSet_intersect(struct kndRefSet   *self,
 
     int i, j, ri, err;
 
-    if (DEBUG_REFSET_LEVEL_TMP) 
+    if (DEBUG_REFSET_LEVEL_2) 
         knd_log(" .. intersection by RefSet \"%s\"..\n",
                 self->name);
 
@@ -947,7 +947,7 @@ kndRefSet_term_idx(struct kndRefSet *self,
     
     int numval = -1;
     
-    if (DEBUG_REFSET_LEVEL_TMP) 
+    if (DEBUG_REFSET_LEVEL_2) 
         knd_log(".. term idx: %p", ref);
 
     if (ref->type == KND_REF_TID) {
@@ -975,7 +975,7 @@ kndRefSet_term_idx(struct kndRefSet *self,
 
     if (!ref->obj_id_size) return knd_FAIL;
     
-    if (DEBUG_REFSET_LEVEL_TMP) 
+    if (DEBUG_REFSET_LEVEL_2) 
         knd_log("   .. add term idx for obj \"%s\" [%lu]: \"%s\"\n",
                 ref->obj_id, (unsigned long)ref->obj_id_size, ref->name);
     
@@ -1070,7 +1070,7 @@ kndRefSet_term_idx_add_tag(struct kndRefSet *self,
     
     int numval = -1;
 
-    if (DEBUG_REFSET_LEVEL_TMP) 
+    if (DEBUG_REFSET_LEVEL_2) 
         knd_log("   .. add TAG to  REF \"%s\"\n",
                 obj_id);
     
@@ -1210,7 +1210,7 @@ kndRefSet_read_tags(struct kndRefSet *self,
     
     int err = knd_OK;
 
-    if (DEBUG_REFSET_LEVEL_TMP) {
+    if (DEBUG_REFSET_LEVEL_1) {
        knd_log("\n\n   .. Refset \"%s\" parsing IDX rec, input size [%lu]   depth: %lu\n",
                self->name, (unsigned long)rec_size, (unsigned long)self->export_depth);
     }
@@ -1266,7 +1266,7 @@ kndRefSet_read_tags(struct kndRefSet *self,
         *val = '\0';
         val++;
         
-        if (DEBUG_REFSET_LEVEL_TMP)
+        if (DEBUG_REFSET_LEVEL_1)
             knd_log("   == Facet: \"%s\" offset: %s\n", c, val);
         
         /* get the numeric offset */
@@ -1309,7 +1309,7 @@ kndRefSet_facetize(struct kndRefSet *self)
     size_t i, j, ri, attr_count;
     int err;
     
-    if (DEBUG_REFSET_LEVEL_TMP) {
+    if (DEBUG_REFSET_LEVEL_1) {
         knd_log("\n    .. further facetize the refset \"%s\"..\n",
                 self->name);
     }
@@ -1707,8 +1707,8 @@ kndRefSet_merge_idx(struct kndRefSet *self,
 
 
     if (!src->idx) {
-        if (DEBUG_REFSET_LEVEL_TMP)
-            knd_log("-- no term idx in refset %s", src->name);
+        if (DEBUG_REFSET_LEVEL_2)
+            knd_log("?? no term idx in refset %s?", src->name);
         return knd_OK;
     }
     
@@ -2257,7 +2257,7 @@ read_inbox(struct kndRefSet *self,
     memcpy(recbuf, rec, rec_size);
     recbuf[rec_size - 1] = '\0';
 
-    if (DEBUG_REFSET_LEVEL_TMP)
+    if (DEBUG_REFSET_LEVEL_2)
         knd_log("== INBOX REC: \"%s\" [%lu]\n",
                 recbuf, (unsigned long)rec_size);
     
@@ -2311,7 +2311,7 @@ read_inbox(struct kndRefSet *self,
             ref->name_size = strlen(ref_rec);
             memcpy(ref->name, ref_rec, ref->name_size);
 
-            if (DEBUG_REFSET_LEVEL_TMP)
+            if (DEBUG_REFSET_LEVEL_2)
                 knd_log("obj name: \"%s\" [%lu]",
                         ref->name, (unsigned long)ref->name_size);
             goto assign;
@@ -2410,8 +2410,7 @@ read_inbox(struct kndRefSet *self,
     
  final:
 
-
-    if (DEBUG_REFSET_LEVEL_TMP)
+    if (DEBUG_REFSET_LEVEL_2)
         knd_log("== inbox read status: %d", err);
 
     /* TODO: release resources */
@@ -2470,7 +2469,7 @@ kndRefSet_read(struct kndRefSet *self,
         self->name_size = namebuf_size;
     }
     
-    if (DEBUG_REFSET_LEVEL_TMP)
+    if (DEBUG_REFSET_LEVEL_2)
         knd_log("   == DIR REC: %s [size: %lu]\n\n",
                 buf, (unsigned long)buf_size);
     
@@ -2505,7 +2504,7 @@ kndRefSet_read(struct kndRefSet *self,
         *val = '\0';
         val++;
         
-        if (DEBUG_REFSET_LEVEL_TMP)
+        if (DEBUG_REFSET_LEVEL_2)
             knd_log("   == Facet: \"%s\" offset: %s\n", c, val);
         
         /* TODO: check facet name! */

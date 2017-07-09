@@ -681,8 +681,7 @@ knd_parse_task(const char *rec,
         case '}':
             /* empty body */
             if (!in_field) {
-                knd_log("NB: got empty body!");
-
+                //knd_log("NB: got empty body!");
                 /* fetch default spec if any */
                 err = knd_find_spec(specs, num_specs,
                                     "default", strlen("default"), &spec);

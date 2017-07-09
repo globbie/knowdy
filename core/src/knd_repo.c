@@ -459,7 +459,7 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
     size_t name_size = 0;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP) 
+    if (DEBUG_REPO_LEVEL_1) 
         knd_log(".. run get class cache.. %lu", (unsigned long)num_args);
     
     self = (struct kndRepo *)obj;
@@ -502,8 +502,11 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
     dc->out->reset(dc->out);
     
     err = dc->export(dc, KND_FORMAT_JSON);
-    if (err) return err;
-
+    if (err) {
+        if (DEBUG_REPO_LEVEL_TMP)
+            knd_log("-- class JSON export failure: %d :(", err);
+    }
+    
     if (DEBUG_REPO_LEVEL_TMP)
         knd_log("++ schema: %s", self->out->buf);
 
@@ -1674,7 +1677,8 @@ kndRepo_get_cache(struct kndRepo *self,
         buf_size = sprintf(buf, "%s/%s/AZ.idx",
                            self->path,
                            dc->name);
-        if (DEBUG_REPO_LEVEL_TMP)
+
+        if (DEBUG_REPO_LEVEL_2)
             knd_log(".. reading name IDX file: \"%s\" ..",
                     buf);
 
@@ -1690,7 +1694,7 @@ kndRepo_get_cache(struct kndRepo *self,
             return knd_FAIL;
         }
     
-        if (DEBUG_REPO_LEVEL_TMP)
+        if (DEBUG_REPO_LEVEL_2)
             knd_log("\n\n   ++  atom IDX DB rec size: %lu\n",
                     (unsigned long)self->out->file_size);
     
@@ -1698,7 +1702,7 @@ kndRepo_get_cache(struct kndRepo *self,
                                     self->out->file,
                                     self->out->file_size);
 
-        if (DEBUG_REPO_LEVEL_TMP)
+        if (DEBUG_REPO_LEVEL_2)
             knd_log("== name idx read: %d", err);
 
         if (err) {
@@ -1876,7 +1880,7 @@ kndRepo_parse_class(void *obj,
     };
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_1)
         knd_log("   .. parsing the CLASS rec: \"%s\" CURR REPO: %s",
                 rec, repo->name);
     
