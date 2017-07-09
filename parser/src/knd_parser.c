@@ -681,7 +681,17 @@ knd_parse_task(const char *rec,
         case '}':
             /* empty body */
             if (!in_field) {
-                //knd_log("NB: got empty body!");
+
+                /* should we run a default action? */
+                for (size_t i = 0; i < num_specs; i++) {
+                    spec = &specs[i];
+                    /* some action spec is completed, don't call the default one */
+                    if (spec->is_completed) {
+                        *total_size = c - rec;
+                        return knd_OK;
+                    }
+                }
+                
                 /* fetch default spec if any */
                 err = knd_find_spec(specs, num_specs,
                                     "default", strlen("default"), &spec);
@@ -699,7 +709,7 @@ knd_parse_task(const char *rec,
                 
                 *total_size = c - rec;
                 return knd_OK;
-              }
+            }
             
             if (in_terminal) {
                 err = check_name_limits(b, e, &name_size);
@@ -747,6 +757,7 @@ knd_parse_task(const char *rec,
                                     spec->name, err);
                         return err;
                     }
+                    spec->is_completed = true;
                 }
                 
                 b = c + 1;
