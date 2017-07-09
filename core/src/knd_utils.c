@@ -251,7 +251,7 @@ knd_make_id_path(char *buf,
 {
     char *curr_buf = buf;
     size_t path_size = 0;
-    int i;
+    size_t i;
 
     if (path) {
         path_size = sprintf(curr_buf, "%s", path);
@@ -259,7 +259,7 @@ knd_make_id_path(char *buf,
     }
     
     /* treat each digit in the id as a folder */
-    for (i = 0; i < KND_ID_MATRIX_DEPTH; i++) {
+    for (i = 0; i < KND_ID_SIZE; i++) {
 	*curr_buf =  '/';
 	curr_buf++;
 	*curr_buf = id[i];
