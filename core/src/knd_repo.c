@@ -810,8 +810,6 @@ kndRepo_sync_name_idx(struct kndRepo *self)
     int err;
     
     refset = cache->name_idx;
-
-    //refset->str(refset, 0, 5);
     
     buf_size = sprintf(buf, "%s/%s/", self->path, cache->baseclass->name);
 
@@ -824,9 +822,6 @@ kndRepo_sync_name_idx(struct kndRepo *self)
                          (const char*)"AZ.idx",
                          refset->out->buf, refset->out->buf_size);
     if (err) return err;
-
-
-
     
     return knd_OK;
  }
@@ -933,6 +928,7 @@ kndRepo_import_obj(struct kndRepo *self,
 {
     struct kndRepoCache *cache = self->curr_cache;
     struct kndObject *obj;
+    struct kndOutput *out;
     size_t chunk_size = 0;
     int err;
 
@@ -988,11 +984,25 @@ kndRepo_import_obj(struct kndRepo *self,
         err = kndRepo_sync_name_idx(self);
         if (err) goto final;
     }
+
     
     /* TODO: update repo state */
 
 
     /* import success */
+    out = self->out;
+    out->reset(out);
+    err = out->write(out, "{success", strlen("{success"));
+    if (err) return err;
+    err = out->write(out, "{obj ", strlen("{obj "));
+    if (err) return err;
+    err = out->write(out, obj->id, KND_ID_SIZE);
+    if (err) return err;
+    err = out->write(out, "}", 1);
+    if (err) return err;
+    err = out->write(out, "}", 1);
+    if (err) return err;
+    
     knd_log("  ++ Repo %s: OBJ %s::%s import OK [total objs: %lu]\n",
             self->name,
             cache->baseclass->name, obj->id,
@@ -1004,7 +1014,7 @@ kndRepo_import_obj(struct kndRepo *self,
 
     memcpy(self->last_db_state, self->db_state, KND_ID_SIZE);
     self->state++;
-    
+
     if (DEBUG_REPO_LEVEL_3)
         obj->str(obj, 1);
     
