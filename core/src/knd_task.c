@@ -321,7 +321,7 @@ report(struct kndTask *self)
         if (err) return err;
     }
     
-    if (DEBUG_TASK_LEVEL_TMP)
+    if (DEBUG_TASK_LEVEL_2)
         knd_log(".. reporting \"%s\" task result: %s",
                 self->spec_out->buf, self->out->buf);
 
@@ -337,10 +337,10 @@ report(struct kndTask *self)
     header = knd_zmq_recv(self->delivery, &header_size);
     obj = knd_zmq_recv(self->delivery, &obj_size);
 
-    if (DEBUG_TASK_LEVEL_TMP)
+    if (DEBUG_TASK_LEVEL_2)
         knd_log("== Delivery reply header: \"%s\" obj: \"%s\"",
                 header, obj);
-    
+
     return knd_OK;
 }
 

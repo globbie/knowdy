@@ -512,10 +512,6 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("-- class JSON export failure: %d :(", err);
     }
-    
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("++ schema: %s", self->out->buf);
-
         
     return knd_OK;
 }
@@ -770,12 +766,13 @@ kndRepo_update_inbox(struct kndRepo *self)
     err = out->write(out, ".spec", strlen(".spec"));
     if (err) return err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. update INBOX \"%.*s\"..  SPEC: %lu OBJ: %lu\n",
                 out->buf_size, out->buf,
                 (unsigned long)self->task->spec_size,
                 (unsigned long)self->task->obj_size);
 
+    
     /* TRN body */
     err = knd_append_file((const char*)out->buf,
                           (const void*)self->task->spec,
@@ -786,9 +783,6 @@ kndRepo_update_inbox(struct kndRepo *self)
     if (err) return err;
     err = out->write(out, ".obj", strlen(".obj"));
     if (err) return err;
-
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log(".. save OBJ update log: \"%.*s\"..", out->buf_size, out->buf);
 
     err = knd_append_file((const char*)out->buf,
                           (const void*)self->task->obj,
@@ -1293,7 +1287,7 @@ kndRepo_linearize_objs(struct kndRepo *self)
     struct kndRefSet *refset = cache->name_idx;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. linearize objs..");
 
     /* TODO: send results directly to the delivery service,
@@ -1320,7 +1314,7 @@ kndRepo_linearize_objs(struct kndRepo *self)
         return err;
     }
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("  ++ sync objs of \"%s\" OK!\n", cache->baseclass->name);
 
     return knd_OK;
