@@ -1769,7 +1769,7 @@ kndRefSet_read_term_idx_tags(struct kndRefSet *self,
     int err = 0;
 
 
-    if (DEBUG_REFSET_LEVEL_TMP)
+    if (DEBUG_REFSET_LEVEL_2)
         knd_log("   .. reading tags from term IDX of refset \"%s\"   [DB num refs: %lu]\n",
                 self->name, (unsigned long)self->num_refs);
 
@@ -2001,7 +2001,7 @@ kndRefSet_read_term_idx(struct kndRefSet *self,
     int err = 0;
 
 
-    if (DEBUG_REFSET_LEVEL_TMP)
+    if (DEBUG_REFSET_LEVEL_1)
         knd_log("   .. reading term IDX of refset \"%s\"   [DB num refs: %lu]\n",
                 self->name, (unsigned long)self->num_refs);
 

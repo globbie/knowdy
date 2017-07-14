@@ -1827,7 +1827,7 @@ kndElem_export_JSON(struct kndElem *self,
     struct kndText *text;
 
     struct stat linkstat;
-
+    struct kndOutput *out = self->out;
     size_t curr_size;
     //unsigned long numval;
     int err;
@@ -1836,104 +1836,93 @@ kndElem_export_JSON(struct kndElem *self,
         if (self->is_list) {
             buf_size = sprintf(buf, "\"%s_l\":[",
                                self->name);
-            err = self->out->write(self->out, buf, buf_size);
+            err = out->write(out, buf, buf_size);
             if (err) return err;
 
 
             obj = self->inner;
             while (obj) {
-                obj->out = self->out;
+                obj->out = out;
                 err = obj->export(obj, KND_FORMAT_JSON, 0);
 
                 if (obj->next) {
-                    err = self->out->write(self->out, ",", 1);
+                    err = out->write(out, ",", 1);
                     if (err) return err;
                 }
 
                 obj = obj->next;
             }
 
-            err = self->out->write(self->out, "]", 1);
+            err = out->write(out, "]", 1);
             if (err) return err;
 
             return knd_OK;
         }
 
         /* single anonymous inner obj */
-        buf_size = sprintf(buf, "\"%s\":",
-                           self->name);
-
-        err = self->out->write(self->out, buf, buf_size);
+        err = out->write(out, "\"", 1);
         if (err) goto final;
-
-        self->inner->out = self->out;
+        err = out->write(out, self->name, self->name_size);
+        if (err) goto final;
+        err = out->write(out, "\":", strlen("\":"));
+        if (err) goto final;
+        
+        self->inner->out = out;
         err = self->inner->export(self->inner, KND_FORMAT_JSON, 0);
         
         return err;
     }
 
-
-    buf_size = sprintf(buf, "\"%s\":{",
-                       self->name);
-
-    err = self->out->write(self->out, buf, buf_size);
+    /* attr name */
+    err = out->write(out, "\"", 1);
+    if (err) goto final;
+    err = out->write(out, self->name, self->name_size);
+    if (err) goto final;
+    err = out->write(out, "\":", strlen("\":"));
     if (err) goto final;
 
-    curr_size = self->out->buf_size;
+    /* key:value repr */
+    if (self->attr) {
+        switch (self->attr->type) {
+        case KND_ELEM_NUM:
+            err = out->write(out, self->states->val, self->states->val_size);
+            if (err) goto final;
+            return knd_OK;
+        case KND_ELEM_ATOM:
+            err = out->write(out, "\"", 1);
+            if (err) goto final;
+            err = out->write(out, self->states->val, self->states->val_size);
+            if (err) goto final;
+            err = out->write(out, "\"", 1);
+            if (err) goto final;
+            return knd_OK;
+        default:
+            break;
+        }
+    }
+
+    /* nested repr */
+    err = out->write(out, "{", 1);
+    if (err) goto final;
+
+    curr_size = out->buf_size;
 
     if (self->attr) {
         switch (self->attr->type) {
         case  KND_ELEM_TEXT:
             text = self->text;
-            text->out = self->out;
-
+            text->out = out;
             err = text->export(text, KND_FORMAT_JSON);
             if (err) goto final;
-            
-            break;
-        case KND_ELEM_ATOM:
-
-            knd_remove_nonprintables(self->states->val);
-
-            buf_size = sprintf(buf, "\"val\":\"%s\"",
-                               self->states->val);
-            err = self->out->write(self->out, buf, buf_size);
-            if (err) goto final;
-
-            if (self->states->state) {
-                buf_size = sprintf(buf, ",\"_st\":%lu",
-                                   (unsigned long)self->states->state);
-                err = self->out->write(self->out, buf, buf_size);
-                if (err) goto final;
-            }
-            
-            break;
-        case KND_ELEM_NUM:
-            buf_size = sprintf(buf, "\"val\":\"%s\"",
-                               self->states->val);
-            err = self->out->write(self->out, buf, buf_size);
-            if (err) goto final;
-
-            if (self->states->state) {
-                buf_size = sprintf(buf, ",\"_st\":%lu",
-                                   (unsigned long)self->states->state);
-                err = self->out->write(self->out, buf, buf_size);
-                if (err) goto final;
-            }
-            
             break;
         case KND_ELEM_FILE:
-
-            err = self->out->write(self->out, "\"file\":\"", strlen("\"file\":\""));
+            err = out->write(out, "\"file\":\"", strlen("\"file\":\""));
             if (err) goto final;
-            
-            err = self->out->write(self->out,
+            err = out->write(out,
                                    self->states->val, self->states->val_size);
             if (err) goto final;
-
-            err = self->out->write(self->out, "\"", 1);
+            err = out->write(out, "\"", 1);
             if (err) goto final;
-
             
             /* soft link the actual file */
             /* TODO: remove reader
@@ -1944,7 +1933,6 @@ kndElem_export_JSON(struct kndElem *self,
             dirname_size = sprintf(dirname,
                                    "%s/%s", self->obj->cache->repo->path,
                                    self->obj->cache->baseclass->name);
-            
             knd_make_id_path(pathbuf,
                              dirname,
                              self->obj->id, self->states->val);
@@ -1965,55 +1953,55 @@ kndElem_export_JSON(struct kndElem *self,
             if (self->states->state) {
                 buf_size = sprintf(buf, ",\"_st\":%lu",
                                    (unsigned long)self->states->state);
-                err = self->out->write(self->out, buf, buf_size);
+                err = out->write(out, buf, buf_size);
                 if (err) goto final;
             }
             
             break;
         case KND_ELEM_REF:
 
-            err = self->out->write(self->out, "\"ref\":\"", strlen("\"ref\":\""));
+            err = out->write(out, "\"ref\":\"", strlen("\"ref\":\""));
             if (err) goto final;
 
             if (self->ref_classname_size) {
-                err = self->out->write(self->out, self->ref_classname,
+                err = out->write(out, self->ref_classname,
                                        self->ref_classname_size);
                 if (err) goto final;
-                err = self->out->write(self->out, "/", 1);
+                err = out->write(out, "/", 1);
                 if (err) goto final;
             }
 
             if (self->states->ref_size) {
-                err = self->out->write(self->out,
+                err = out->write(out,
                                        self->states->ref,
                                        self->states->ref_size);
                 if (err) goto final;
-                err = self->out->write(self->out, ":", 1);
+                err = out->write(out, ":", 1);
                 if (err) goto final;
             }
 
             if (self->states->val_size) {
-                err = self->out->write(self->out,
+                err = out->write(out,
                                        self->states->val,
                                        self->states->val_size);
                 if (err) goto final;
             }
             else {
-                err = self->out->write(self->out,
+                err = out->write(out,
                                        "?", 1);
                 if (err) goto final;
             }
 
-            err = self->out->write(self->out, "\"", 1);
+            err = out->write(out, "\"", 1);
             if (err) goto final;
             
             if (self->states->refobj) {
                 obj = self->states->refobj;
                 
-                err = self->out->write(self->out, ",\"obj\":", strlen(",\"obj\":"));
+                err = out->write(out, ",\"obj\":", strlen(",\"obj\":"));
                 if (err) goto final;
 
-                obj->out = self->out;
+                obj->out = out;
                 obj->export_depth = self->obj->export_depth + 1;
                 
                 err = obj->export(obj, KND_FORMAT_JSON, 0);
@@ -2023,7 +2011,7 @@ kndElem_export_JSON(struct kndElem *self,
             if (self->states->state) {
                 buf_size = sprintf(buf, ",\"_st\":%lu",
                                    (unsigned long)self->states->state);
-                err = self->out->write(self->out, buf, buf_size);
+                err = out->write(out, buf, buf_size);
                 if (err) goto final;
             }
 
@@ -2035,7 +2023,7 @@ kndElem_export_JSON(struct kndElem *self,
 
             buf_size = sprintf(buf, "\"val\":\"%s\"",
                                self->states->val);
-            err = self->out->write(self->out, buf, buf_size);
+            err = out->write(out, buf, buf_size);
             if (err) goto final;
 
 
@@ -2051,7 +2039,7 @@ kndElem_export_JSON(struct kndElem *self,
             buf_size = sprintf(buf, "\"calc\":\"%lu\"",
                                (unsigned long)numval);
             
-            err = self->out->write(self->out, buf, buf_size);
+            err = out->write(out, buf, buf_size);
             if (err) goto final;
             */
             break;
@@ -2063,40 +2051,38 @@ kndElem_export_JSON(struct kndElem *self,
         if (self->states->val_size) {
             buf_size = sprintf(buf, "\"val\":\"%s\"",
                                self->states->val);
-            err = self->out->write(self->out, buf, buf_size);
+            err = out->write(out, buf, buf_size);
             if (err) goto final;
         }
     }
     
-    
     /* ELEMS */
     if (self->elems) {
-        
-        if (self->out->buf_size > curr_size) {
-            err = self->out->write(self->out, ",", 1);
+        if (out->buf_size > curr_size) {
+            err = out->write(out, ",", 1);
             if (err) goto final;
         }
 
         if (self->is_list_item) {
-            err = self->out->write(self->out, ",", 1);
+            err = out->write(out, ",", 1);
             if (err) goto final;
         }
         
         if (!self->is_list) {
-            err = self->out->write(self->out, "\"elems\":{", strlen("\"elems\":{"));
+            err = out->write(out, "\"elems\":{", strlen("\"elems\":{"));
             if (err) goto final;
         }
     }
     
     elem = self->elems;
     while (elem) {
-        elem->out = self->out;
+        elem->out = out;
 
         err = elem->export(elem, KND_FORMAT_JSON, 1);
         if (err) goto final;
 
         if (elem->next) {
-            err = self->out->write(self->out, ",", 1);
+            err = out->write(out, ",", 1);
             if (err) goto final;
         }
 
@@ -2105,18 +2091,18 @@ kndElem_export_JSON(struct kndElem *self,
 
     if (self->elems) {
         if (self->is_list) {
-            err = self->out->write(self->out, "]", 1);
+            err = out->write(out, "]", 1);
             if (err) goto final;
         }
         else {
-            err = self->out->write(self->out, "}", 1);
+            err = out->write(out, "}", 1);
             if (err) goto final;
         }
     }
 
 
     if (!self->is_list) {
-        err = self->out->write(self->out, "}", 1);
+        err = out->write(out, "}", 1);
         if (err) goto final;
     }
     
