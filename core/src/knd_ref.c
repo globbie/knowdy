@@ -28,8 +28,7 @@ del(struct kndRef *self)
     free(self);
 }
 
-static void 
-str(struct kndRef *self, size_t depth)
+static void str(struct kndRef *self, size_t depth)
 {
     size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
@@ -45,8 +44,7 @@ str(struct kndRef *self, size_t depth)
 
 }
 
-static int 
-index(struct kndRef *self)
+static int kndRef_index(struct kndRef *self)
 {
     /*    char buf[KND_LARGE_BUF_SIZE];
     size_t buf_size;
@@ -214,7 +212,7 @@ kndRef_new(struct kndRef **ref)
     self->str = str;
     self->export = export;
     self->parse = parse_GSL;
-    self->index = index;
+    self->index = kndRef_index;
 
     *ref = self;
     return knd_OK;
