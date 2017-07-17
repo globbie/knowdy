@@ -5,15 +5,20 @@
 #include "knd_dataclass.h"
 #include "knd_output.h"
 #include "knd_attr.h"
+#include "knd_task.h"
 #include "knd_text.h"
+#include "knd_parser.h"
 
-#define DEBUG_DATACLASS_LEVEL_1 0
-#define DEBUG_DATACLASS_LEVEL_2 0
-#define DEBUG_DATACLASS_LEVEL_3 0
-#define DEBUG_DATACLASS_LEVEL_4 0
-#define DEBUG_DATACLASS_LEVEL_5 0
-#define DEBUG_DATACLASS_LEVEL_TMP 1
+#define DEBUG_DC_LEVEL_1 0
+#define DEBUG_DC_LEVEL_2 0
+#define DEBUG_DC_LEVEL_3 0
+#define DEBUG_DC_LEVEL_4 0
+#define DEBUG_DC_LEVEL_5 0
+#define DEBUG_DC_LEVEL_TMP 1
 
+static int read_GSL_file(struct kndDataClass *self,
+                         const char *filename,
+                         size_t filename_size);
 
 /*  DataClass Destructor */
 static void del(struct kndDataClass *self)
@@ -273,177 +278,6 @@ kndDataClass_read_GSL_glosses(struct kndDataClass *self,
 
 
 
-static int read_GSL(struct kndDataClass *self,
-                    char *rec,
-                    size_t *total_size)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
-    size_t chunk_size = 0;
-    
-    char *c;
-    char *b;
-
-    struct kndDataClass *dc;
-    struct kndAttr *attr;
-    
-    bool in_body = false;
-    bool in_classname = false;
-
-    int err = knd_FAIL;
-
-    c = rec;
-    b = rec;
-
-    err = kndDataClass_new(&dc);
-    if (err) return err;
-
-    dc->dbpath = self->dbpath;
-    dc->dbpath_size = self->dbpath_size;
-    
-    dc->out = self->out;
-    dc->class_idx = self->class_idx;
-
-    if (self->namespace_size) {
-        memcpy(dc->namespace, self->namespace, self->namespace_size);
-        dc->namespace_size = self->namespace_size;
-    }
-
-    while (*c) {
-        switch (*c) {
-            /* non-whitespace char */
-        default:
-            break;
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            if (!in_body)
-                break;
-
-            if (in_classname)
-                break;
-            
-            buf_size = c - b;
-            if (!buf_size)
-                return knd_FAIL;
-            if (buf_size >= KND_NAME_SIZE)
-                return knd_LIMIT;
-            
-            memcpy(buf, b, buf_size);
-            buf[buf_size] = '\0';
-            
-            if (!strcmp(buf, "class")) {
-                in_classname = true;
-                b = c + 1;
-                break;
-            }
-            
-            break;
-        case '{':
-            if (!in_body) {
-                in_body = true;
-                b = c + 1;
-                break;
-            }
-            
-            if (in_classname) {
-                *c = '\0';
-                err = dc->set_name(dc, b);
-                if (err) goto final;
-                in_classname = false;
-            }
-
-            err = kndAttr_new(&attr);
-            if (err) return err;
-            attr->parent_dc = self;
-
-            chunk_size = 0;
-            err = attr->read(attr, c, &chunk_size);
-            if (err) goto final;
-
-            c += chunk_size;
-            if (!dc->tail_attr) {
-                dc->tail_attr = attr;
-                dc->attrs = attr;
-            }
-            else {
-                dc->tail_attr->next = attr;
-                dc->tail_attr = attr;
-            }
-            
-            attr = NULL;
-            break;
-        case '}':
-
-            memcpy(buf, self->namespace, self->namespace_size);
-            buf_size = self->namespace_size;
-
-            memcpy(buf + buf_size, "::", strlen("::"));
-            buf_size += strlen("::");
-            
-            memcpy(buf + buf_size, dc->name, dc->name_size);
-            buf_size += dc->name_size;
-            buf[buf_size] = '\0';
-            
-            /* save class */
-            err = self->class_idx->set(self->class_idx,
-                                       (const char*)buf, (void*)dc);
-            if (err) return err;
-            
-            if (DEBUG_DATACLASS_LEVEL_TMP)
-                knd_log("++ register class: \"%s\"", buf);
-
-            *total_size = c - rec;
-            return  knd_OK;
-            
-        case '[':
-
-            if (in_classname) {
-                *c = '\0';
-                err = dc->set_name(dc, b);
-                if (err) goto final;
-                in_classname = false;
-                *c = '[';
-            }
-
-
-            err = kndAttr_new(&attr);
-            if (err) return err;
-            attr->is_list = true;
-            attr->parent_dc = self;
-
-            chunk_size = 0;
-            err = attr->read(attr, c, &chunk_size);
-            if (err) goto final;
-
-            c += chunk_size;
-            
-            if (!dc->tail_attr) {
-                dc->tail_attr = attr;
-                dc->attrs = attr;
-            }
-            else {
-                dc->tail_attr->next = attr;
-                dc->tail_attr = attr;
-            }
-            
-            attr = NULL;
-            break;
-        }
-        
-        c++;
-    }
-
-    
- final:
-
-    dc->del(dc);
-    
-    return err;
-}
-
-
 static int 
 kndDataClass_resolve(struct kndDataClass *self)
 {
@@ -458,7 +292,7 @@ kndDataClass_resolve(struct kndDataClass *self)
         dc = (struct kndDataClass*)self->class_idx->get(self->class_idx,
                                                         (const char*)attr->fullname);
         if (dc) {
-            if (DEBUG_DATACLASS_LEVEL_2)
+            if (DEBUG_DC_LEVEL_2)
                 knd_log("    ++ attr \"%s => %s\" is resolved as inline CLASS!",
                         attr->name, attr->fullname);
             attr->dc = dc;
@@ -479,208 +313,306 @@ kndDataClass_resolve(struct kndDataClass *self)
 
 
 
+
+
 static int
-kndDataClass_read_onto_GSL(struct kndDataClass *self,
-                           const char *filename)
+parse_aggr(void *obj,
+           const char *rec,
+           size_t *total_size)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
-    struct kndOutput *out = NULL;
-    
-    char *c;
-    char *b;
-
-    const char *GSL_file_suffix = ".gsl";
-    size_t GSL_file_suffix_size = strlen(GSL_file_suffix);
-    
-    bool in_comment = false;
-    const char *slash = NULL;
-    const char *asterisk = NULL;
-
-    bool in_body = false;
-    bool in_include = false;
-    bool in_namespace = false;
-    bool in_classes = false;
+    struct kndDataClass *self = (struct kndDataClass*)obj;
+    struct kndAttr *attr;
     int err;
 
-    buf_size = sprintf(buf, "%s/%s", self->dbpath, filename);
+    if (DEBUG_DC_LEVEL_1)
+        knd_log(".. parsing the AGGR attr: \"%s\"", rec);
 
-    err = kndOutput_new(&out, KND_IDX_BUF_SIZE);
+    err = kndAttr_new(&attr);
+    if (err) return err;
+    attr->parent_dc = self;
+    attr->type = KND_ELEM_AGGR;
+
+    err = attr->parse(attr, rec, total_size);
+    if (err) {
+        if (DEBUG_DC_LEVEL_TMP)
+            knd_log("-- failed to parse the AGGR attr: %d", err);
+        return err;
+    }
+    
+    return knd_OK;
+}
+
+static int
+parse_str(void *obj,
+          const char *rec,
+          size_t *total_size)
+{
+    struct kndDataClass *self = (struct kndDataClass*)obj;
+    struct kndAttr *attr;
+    int err;
+
+    if (DEBUG_DC_LEVEL_TMP)
+        knd_log(".. parsing the STR attr: \"%s\"", rec);
+
+    err = kndAttr_new(&attr);
+    if (err) return err;
+    attr->parent_dc = self;
+    attr->type = KND_ELEM_STR;
+
+    err = attr->parse(attr, rec, total_size);
+    if (err) {
+        if (DEBUG_DC_LEVEL_TMP)
+            knd_log("-- failed to parse the STR attr: %d", err);
+        return err;
+    }
+    
+    return knd_OK;
+}
+
+static int
+parse_ref(void *obj,
+          const char *rec,
+          size_t *total_size)
+{
+    struct kndDataClass *self = (struct kndDataClass*)obj;
+    struct kndAttr *attr;
+    int err;
+
+    if (DEBUG_DC_LEVEL_TMP)
+        knd_log(".. parsing the REF attr: \"%s\"", rec);
+
+    err = kndAttr_new(&attr);
+    if (err) return err;
+    attr->parent_dc = self;
+    attr->type = KND_ELEM_REF;
+
+    
+    err = attr->parse(attr, rec, total_size);
+    if (err) {
+        if (DEBUG_DC_LEVEL_TMP)
+            knd_log("-- failed to parse the REF attr: %d", err);
+        return err;
+    }
+    
+    return knd_OK;
+}
+
+static int parse_class(void *obj,
+                       const char *rec,
+                       size_t *total_size)
+{
+    struct kndDataClass *self = (struct kndDataClass*)obj;
+    size_t chunk_size;
+    int err;
+    
+    if (DEBUG_DC_LEVEL_1)
+        knd_log(".. parse CLASS fields: \"%s\"..", rec);
+
+    struct kndTaskSpec specs[] = {
+        { .name = "aggr",
+          .name_size = strlen("aggr"),
+          .parse = parse_aggr,
+          .obj = self
+        },
+        { .name = "str",
+          .name_size = strlen("str"),
+          .parse = parse_str,
+          .obj = self
+        },
+        { .name = "ref",
+          .name_size = strlen("ref"),
+          .parse = parse_ref,
+          .obj = self
+        }
+    };
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
 
-    err = out->read_file(out,
-                         (const char*)buf, buf_size);
-    if (err) {
-        knd_log("-- couldn't read GSL class file \"%s\" :(", buf);
-        goto final;
-    }
+    return knd_OK;
+}
 
-    c = out->file;
-    b = c;
+
+
+static int run_set_namespace(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndDataClass *self = (struct kndDataClass*)obj;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    size_t name_size = 0;
+    int err;
     
-    while (*c) {
-        switch (*c) {
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            if (!in_body) break;
-            if (in_comment) break;
+    if (DEBUG_DC_LEVEL_1)
+        knd_log(".. run set namespace..");
 
-            if (in_include) {
-                b = c + 1;
-                break;
-            }
-
-            if (in_namespace) {
-                self->namespace_size = c - b;
-                if (!self->namespace_size) {
-                    return knd_FAIL;
-                }
-                if (self->namespace_size >= KND_NAME_SIZE)
-                    return knd_LIMIT;
-            
-                memcpy(self->namespace, b, self->namespace_size);
-                self->namespace[self->namespace_size] = '\0';
-
-                /*knd_log("== namespace: %s [%lu]",
-                        self->namespace, (unsigned long)self->namespace_size);
-                */
-                
-                in_namespace = false;
-                in_classes = true;
-                break;
-            }
-
-            if (in_classes) {
-                b = c + 1;
-                break;
-            }
-            
-            buf_size = c - b;
-            if (!buf_size) {
-                return knd_FAIL;
-            }
-            if (buf_size >= (KND_TEMP_BUF_SIZE + GSL_file_suffix_size)) {
-                return knd_LIMIT;
-            }
-                
-            memcpy(buf, b, buf_size);
-            buf[buf_size] = '\0';
-
-            if (strcmp(buf, "include")) {
-                return knd_FAIL;
-            }
-            
-            in_include = true;
-            b = c + 1;
-
-            break;
-        case '{':
-            if (!in_body) {
-                in_body = true;
-                b = c + 1;
-                break;
-            }
-
-            if (in_comment) break;
-
-            if (in_classes) {
-                size_t chunk_size = 0;
-
-                err = read_GSL(self, c, &chunk_size);
-                if (err) goto final;
-
-                c += chunk_size;
-                b = c;
-                break;
-            }
-
-            b = c + 1;
-            
-            break;
-        case '}':
-            if (in_comment) break;
-
-            if (in_include) {
-                buf_size = c - b;
-                if (!buf_size) {
-                    return knd_FAIL;
-                }
-                if (buf_size >= (KND_TEMP_BUF_SIZE + GSL_file_suffix_size)) {
-                    return knd_LIMIT;
-                }
-                *c = '\0';
-                buf_size = sprintf(buf, "%s%s", b, GSL_file_suffix);
-
-                if (DEBUG_DATACLASS_LEVEL_TMP)
-                    knd_log("INCLUDE MODULE: \"%s\"", buf);
-
-                err = kndDataClass_read_onto_GSL(self,
-                                                 (const char *)buf);
-                if (err) goto final;
-
-                in_include = false;
-                in_body = false;
-                b = c + 1;
-            }
-            break;
-        case '/':
-            slash = c + 1;
-            if (in_comment && asterisk == c) {
-                in_comment = false;
-                asterisk = NULL;
-                slash = NULL;
-            }
-            break;
-        case ':':
-            buf_size = c - b;
-            if (!buf_size) {
-                return knd_FAIL;
-            }
-            if (buf_size >= (KND_NAME_SIZE)) {
-                return knd_LIMIT;
-            }
-                
-            memcpy(buf, b, buf_size);
-            buf[buf_size] = '\0';
-
-            if (DEBUG_DATACLASS_LEVEL_2)
-                knd_log("KEYWORD: \"%s\"", buf);
-
-            if (in_body) {
-                if (!strcmp(buf, "ns")) {
-                    in_namespace = true;
-                    b = c + 1;
-                    break;
-                }
-            }
-            
-            break;
-        case '*':
-            asterisk = c + 1;
-            if (!in_comment && slash == c) {
-                in_comment = true;
-                asterisk = NULL;
-                slash = NULL;
-            }
-            break;
-        default:
-            break;
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
         }
-
-        
-        c++;
     }
 
-    err = knd_OK;
+    if (!name_size) return knd_FAIL;
+    if (name_size >= KND_NAME_SIZE)
+        return knd_LIMIT;
+            
+    memcpy(self->namespace, name, name_size);
+    self->namespace_size = name_size;
+    self->namespace[name_size] = '\0';
 
- final:
+    return knd_OK;
+}
 
-    out->del(out);
+static int run_read_include(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndDataClass *self = (struct kndDataClass*)obj;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    size_t name_size = 0;
+    int err;
+    
+    if (DEBUG_DC_LEVEL_1)
+        knd_log(".. running include file func..");
 
-    return err;
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+
+    if (!name_size) return knd_FAIL;
+
+    if (DEBUG_DC_LEVEL_2)
+        knd_log("== got include file name: \"%s\"..", name);
+
+    err = read_GSL_file(self, name, name_size);
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+
+static int parse_namespace(void *self,
+                           const char *rec,
+                           size_t *total_size)
+{
+    if (DEBUG_DC_LEVEL_1)
+        knd_log(".. parse namespace REC: \"%s\"..", rec);
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_namespace,
+          .obj = self
+        },
+        { .name = "class",
+          .name_size = strlen("class"),
+          .parse = parse_class,
+          .obj = self
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
+
+static int parse_include(void *self,
+                         const char *rec,
+                         size_t *total_size)
+{
+    if (DEBUG_DC_LEVEL_TMP)
+        knd_log(".. parse include REC: \"%s\"..", rec);
+
+    struct kndTaskSpec specs[] = {
+        { .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = run_read_include,
+          .obj = self
+        },
+        { .name = "lazy",
+          .name_size = strlen("lazy"),
+          .obj = self
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
+
+
+static int parse_GSL(struct kndDataClass *self,
+                     const char *rec,
+                     size_t *total_size)
+{
+    if (DEBUG_DC_LEVEL_1)
+        knd_log(".. parse GSL REC: \"%s\"..", rec);
+
+    struct kndTaskSpec specs[] = {
+        { .name = "class",
+          .name_size = strlen("class"),
+          .parse = parse_class,
+          .obj = self
+        },
+        { .name = "ns",
+          .name_size = strlen("ns"),
+          .parse = parse_namespace,
+          .obj = self
+        },
+        { .name = "include",
+          .name_size = strlen("include"),
+          .parse = parse_include,
+          .obj = self
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
+
+static int read_GSL_file(struct kndDataClass *self,
+                         const char *filename,
+                         size_t filename_size)
+{
+    struct kndOutput *out = self->out;
+    size_t chunk_size = 0;
+    int err;
+
+    out->reset(out);
+    
+    err = out->write(out, self->dbpath, self->dbpath_size);
+    if (err) return err;
+    err = out->write(out, "/", 1);
+    if (err) return err;
+    err = out->write(out, filename, filename_size);
+    if (err) return err;
+    err = out->write(out, ".gsl", strlen(".gsl"));
+    if (err) return err;
+    
+    err = out->read_file(out,
+                         (const char*)out->buf, out->buf_size);
+    if (err) {
+        knd_log("-- couldn't read GSL class file \"%s\" :(", out->buf);
+        return err;
+    }
+
+    out->file[out->file_size] = '\0';
+    
+    err = parse_GSL(self, (const char*)out->file, &chunk_size);
+    if (err) return err;
+
+    return knd_OK;
 }
 
 
@@ -705,7 +637,7 @@ kndDataClass_coordinate(struct kndDataClass *self)
         if (err) goto final;
 
         if (dc->baseclass_name_size) {
-            if (DEBUG_DATACLASS_LEVEL_3)
+            if (DEBUG_DC_LEVEL_3)
                 knd_log("   .. looking up baseclass \"%s\" for \"%s\"..\n",
                         dc->baseclass_name, dc->name);
 
@@ -757,7 +689,7 @@ kndDataClass_export_JSON(struct kndDataClass *self)
     struct kndOutput *out;
     int i, err;
     
-    if (DEBUG_DATACLASS_LEVEL_3)
+    if (DEBUG_DC_LEVEL_3)
         knd_log("   .. export JSON DATACLASS: %s\n",
                 self->name);
 
@@ -782,7 +714,7 @@ kndDataClass_export_JSON(struct kndDataClass *self)
     /* choose gloss */
     tr = self->tr;
     while (tr) {
-        if (DEBUG_DATACLASS_LEVEL_3)
+        if (DEBUG_DC_LEVEL_3)
             knd_log("LANG: %s\n", self->lang_code);
         
         if (strcmp(tr->lang_code, self->lang_code)) goto next_tr;
@@ -818,7 +750,7 @@ kndDataClass_export_JSON(struct kndDataClass *self)
         attr->out = out;
         err = attr->export(attr, KND_FORMAT_JSON);
         if (err) {
-            if (DEBUG_DATACLASS_LEVEL_TMP)
+            if (DEBUG_DC_LEVEL_TMP)
                 knd_log("-- failed to export %s attr to JSON: %s\n", attr->name);
             return err;
         }
@@ -845,7 +777,7 @@ kndDataClass_export_HTML(struct kndDataClass *self)
     int i;
     int err;
 
-    if (DEBUG_DATACLASS_LEVEL_3)
+    if (DEBUG_DC_LEVEL_3)
         knd_log("   .. export HTML: %s\n",
                 self->name);
 
@@ -872,7 +804,7 @@ kndDataClass_export_HTML(struct kndDataClass *self)
     /* choose gloss */
     tr = self->tr;
     while (tr) {
-        if (DEBUG_DATACLASS_LEVEL_3)
+        if (DEBUG_DC_LEVEL_3)
             knd_log("LANG: %s\n", self->lang_code);
         
         if (strcmp(tr->lang_code, self->lang_code)) goto next_tr;
@@ -956,8 +888,7 @@ kndDataClass_init(struct kndDataClass *self)
     self->init = kndDataClass_init;
     self->del = del;
     self->str = str;
-    self->read = read_GSL;
-    self->read_onto = kndDataClass_read_onto_GSL;
+    self->read_file = read_GSL_file;
     self->set_name = kndDataClass_set_name;
 
     self->coordinate = kndDataClass_coordinate;

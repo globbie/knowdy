@@ -86,6 +86,7 @@ struct kndObject
 
     struct kndRepoCache *cache;
     struct kndOutput *out;
+    struct kndOutput *log;
     struct kndTask *task;
     
     /* full structure */

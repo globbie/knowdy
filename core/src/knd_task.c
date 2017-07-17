@@ -48,7 +48,7 @@ reset(struct kndTask *self)
     self->uid_size = 0;
     self->tid_size = 0;
     self->error = 0;
-    self->logger->reset(self->logger);
+    self->log->reset(self->log);
     self->spec_out->reset(self->spec_out);
 }
 
@@ -133,6 +133,7 @@ parse_domain(struct kndTask *self,
         if (!strncmp(user_tag, name, name_size)) {
             self->admin->task = self;
             self->admin->out = self->out;
+            self->admin->log = self->log;
             err = self->admin->parse_task(self->admin, rec, total_size);
             if (err) {
                 knd_log("-- User area parse failed");
@@ -312,7 +313,7 @@ report(struct kndTask *self)
     if (self->error) {
         err = self->spec_out->write(self->spec_out, "{err", strlen("{err"));
         if (err) return err;
-        err = self->spec_out->write(self->spec_out, self->logger->buf, self->logger->buf_size);
+        err = self->spec_out->write(self->spec_out, self->log->buf, self->log->buf_size);
         if (err) return err;
         err = self->spec_out->write(self->spec_out, "}", 1);
         if (err) return err;
@@ -321,8 +322,8 @@ report(struct kndTask *self)
         if (err) return err;
     }
     
-    if (DEBUG_TASK_LEVEL_2)
-        knd_log(".. reporting \"%s\" task result: %s",
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log("== TASK report: \"%s\"\n\n== RESULT: %s\n",
                 self->spec_out->buf, self->out->buf);
 
     err = knd_zmq_sendmore(self->delivery, (const char*)self->spec_out->buf, self->spec_out->buf_size);
@@ -356,7 +357,7 @@ kndTask_new(struct kndTask **task)
 
     memset(self, 0, sizeof(struct kndTask));
 
-    err = kndOutput_new(&self->logger, KND_TEMP_BUF_SIZE);
+    err = kndOutput_new(&self->log, KND_TEMP_BUF_SIZE);
     if (err) return err;
 
     err = kndOutput_new(&self->spec_out, KND_TEMP_BUF_SIZE);

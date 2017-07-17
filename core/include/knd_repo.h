@@ -170,7 +170,7 @@ struct kndRepo
     
     struct kndOutput *out;
     struct kndOutput *path_out;
-    struct kndOutput *logger;
+    struct kndOutput *log;
     
     /* local repo index */
     struct ooDict *repo_idx;
@@ -194,8 +194,6 @@ struct kndRepo
     int (*del)(struct kndRepo *self);
 
     int (*str)(struct kndRepo *self);
-
-    void (*log)(struct kndRepo *self);
 
     int (*init)(struct kndRepo *self);
 

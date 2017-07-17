@@ -315,7 +315,7 @@ kndDataWriter_new(struct kndDataWriter **rec,
     if (err) goto error;
     
     /* read class definitions */
-    err = dc->read_onto(dc, "index.gsl");
+    err = dc->read_file(dc, "index", strlen("index"));
     if (err) {
  	knd_log("-- couldn't read any schema definitions :("); 
         goto error;

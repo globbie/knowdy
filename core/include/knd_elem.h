@@ -22,18 +22,18 @@
 #define KND_ELEM_H
 
 #include "knd_config.h"
+#include "knd_ref.h"
+#include "knd_text.h"
 
 struct kndObject;
 struct kndOutput;
 struct kndObjRef;
-struct kndText;
 struct kndRelType;
 struct kndSortAttr;
 
-struct kndDataWriter;
-struct kndDataReader;
-
-
+struct kndUser;
+struct kndRepo;
+struct kndDataClass;
 
 struct kndElemState
 {
@@ -66,22 +66,20 @@ struct kndElem
     struct kndObject *obj;
     struct kndObject *root;
     struct kndSortTag *tag;
-     
+    
     struct kndObject *inner;
     struct kndObject *inner_tail;
-
-    char ref_classname[KND_NAME_SIZE];
-    size_t ref_classname_size;
-    struct kndDataClass *ref_class;
     
     bool is_list;
     bool is_list_item;
     bool is_default;
     
     struct kndOutput *out;
+    struct kndOutput *log;
 
     struct kndText *text;
     struct kndNum *num;
+    struct kndRef *ref;
 
     struct kndElem *elems;
     struct kndElem *tail;

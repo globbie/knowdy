@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "knd_attr.h"
+#include "knd_task.h"
 #include "knd_dataclass.h"
 #include "knd_output.h"
 
@@ -601,6 +602,68 @@ static int export(struct kndAttr *self, knd_format format)
     return err;
 }
 
+
+static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndAttr *self = (struct kndAttr*)obj;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    size_t name_size = 0;
+    int err;
+    
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+
+    if (!name_size) return knd_FAIL;
+    if (name_size >= KND_NAME_SIZE)
+        return knd_LIMIT;
+            
+    memcpy(self->name, name, name_size);
+    self->name_size = name_size;
+    self->name[name_size] = '\0';
+
+    if (DEBUG_ATTR_LEVEL_TMP)
+        knd_log("== got attr name: \"%s\"!", name);
+
+    return knd_OK;
+}
+
+
+static int parse_GSL(struct kndAttr *self,
+                     char *rec,
+                     size_t *total_size)
+{
+    if (DEBUG_ATTR_LEVEL_TMP)
+        knd_log(".. attr parsing: \"%s\"..", rec);
+
+    self->ref_classname_size = KND_NAME_SIZE;
+    
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_name,
+          .obj = self
+        },
+        { .name = "c",
+          .name_size = strlen("c"),
+          .buf = self->ref_classname,
+          .buf_size = &self->ref_classname_size,
+          .obj = self
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+
 /*  Attr Initializer */
 static void init(struct kndAttr *self)
 {
@@ -609,11 +672,12 @@ static void init(struct kndAttr *self)
     self->del = del;
     self->str = str;
     self->read = read_GSL;
+    self->parse = parse_GSL;
     self->export = export;
 }
 
 
-extern int 
+extern int
 kndAttr_new(struct kndAttr **c)
 {
     struct kndAttr *self;

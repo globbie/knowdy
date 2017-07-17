@@ -46,6 +46,7 @@ struct kndTaskSpec
     
     bool is_completed;
     bool is_default;
+    bool is_implied;
 
     char *buf;
     size_t *buf_size;
@@ -78,7 +79,7 @@ struct kndTask
     
     struct kndUser *admin;
     
-    struct kndOutput *logger;
+    struct kndOutput *log;
     struct kndOutput *out;
     struct kndOutput *spec_out;
 

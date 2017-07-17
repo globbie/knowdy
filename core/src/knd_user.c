@@ -579,6 +579,7 @@ kndUser_parse_repo(void *obj,
 
     self->repo->task = self->task;
     self->repo->out = self->out;
+    self->repo->log = self->log;
     
     err = self->repo->parse_task(self->repo, rec, total_size);
     if (err) {
@@ -647,7 +648,7 @@ kndUser_parse_task(struct kndUser *self,
     
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) {
-        self->task->logger->write(self->task->logger,
+        self->log->write(self->log,
                                   "{user task run failure}", strlen( "{repo task run failure}"));
         return err;
     }

@@ -60,13 +60,11 @@ struct kndUser
     struct kndDataClass *root_dc;
     struct kndTask *task;
     struct kndOutput *out;
-    
+    struct kndOutput *log;
+
     void *update_service;
     
     struct kndRepo *repo;
-    /*struct ooDict *repo_name_idx;
-    struct ooDict *repo_idx;
-    */
     
     struct ooDict *class_idx;
     struct ooDict *browse_class_idx;

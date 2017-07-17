@@ -17,6 +17,7 @@ set(SOURCES
         src/knd_sorttag.c
         src/knd_task.c
         src/knd_text.c
+        src/knd_ref.c
         src/knd_user.c
         src/knd_utils.c
         src/knd_array.c

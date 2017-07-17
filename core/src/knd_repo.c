@@ -449,6 +449,7 @@ kndRepo_run_get_repo(void *obj, struct kndTaskArg *args, size_t num_args)
     
     /* assign task */
     curr_repo->task = self->task;
+    curr_repo->log = self->log;
     self->curr_repo = curr_repo;
     
     return knd_OK;
@@ -537,7 +538,7 @@ kndRepo_run_get_obj(void *obj, struct kndTaskArg *args, size_t num_args)
 
     self = (struct kndRepo*)obj;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_1)
         knd_log(".. repo %s to get OBJ: \"%s\"", self->name, name);
     
     err = kndRepo_get_obj(self, name, name_size);
@@ -618,8 +619,6 @@ kndRepo_run_import_obj(void *obj, struct kndTaskArg *args, size_t num_args)
     
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
-        if (DEBUG_REPO_LEVEL_2)
-            knd_log("arg: %s val: %s", arg->name, arg->val);
         if (!strncmp(arg->name, "obj", strlen("obj"))) {
             name = arg->val;
             name_size = arg->val_size;
@@ -1166,9 +1165,9 @@ kndRepo_read_obj_db(struct kndRepo *self,
     buf_size = sprintf(buf, "%s%s/objs.gsc",
                        self->path, cache->baseclass->name);
 
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("  .. open OBJ db file: \"%s\" ..\n", buf);
-    
+    if (DEBUG_REPO_LEVEL_1)
+        knd_log(".. open OBJ db file: \"%s\" ..", buf);
+
     /* TODO: large file support */
     err = self->out->read_file(self->out,
                                (const char*)buf, buf_size);
@@ -1177,10 +1176,6 @@ kndRepo_read_obj_db(struct kndRepo *self,
                 cache->baseclass->name);
         return knd_FAIL;
     }
-
-    if (DEBUG_REPO_LEVEL_3)
-        knd_log("  == DB file size: %lu\n",
-                (unsigned long)self->out->file_size);
     
     err = kndRepo_read_db_chunk(self,
                                 cache,
@@ -1221,8 +1216,8 @@ kndRepo_get_obj(struct kndRepo *self,
                            guid);
     if (err) {
         knd_log("-- \"%s\" name not recognized :(", name);
-        self->task->logger->write(self->task->logger,
-                                  "{repo object name unknown}", strlen( "{repo object name unknown}"));
+        self->log->write(self->log,
+                         "{repo object name unknown}", strlen( "{repo object name unknown}"));
         return knd_FAIL;
     }
     
@@ -1838,7 +1833,7 @@ kndRepo_parse_obj(void *obj,
     };
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_1)
         knd_log("   .. parsing the OBJ rec: \"%s\" REPO: %s", rec, self->name);
     
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
@@ -2063,10 +2058,6 @@ kndRepo_new(struct kndRepo **repo)
 
     err = kndOutput_new(&self->path_out, KND_MED_BUF_SIZE);
     if (err) return err;
-
-    err = kndOutput_new(&self->logger, KND_TEMP_BUF_SIZE);
-    if (err) return err;
-
 
     kndRepo_init(self);
 

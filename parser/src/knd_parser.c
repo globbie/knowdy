@@ -552,7 +552,7 @@ knd_spec_buf_copy(struct kndTaskSpec *spec,
                   const char *val,
                   size_t val_size)
 {
-    if (DEBUG_PARSER_LEVEL_2)
+    if (DEBUG_PARSER_LEVEL_TMP)
         knd_log(".. writing to buf \"%.*s\" [len: %lu]..",
                 val_size, val, (unsigned long)val_size);
  
@@ -570,6 +570,58 @@ knd_spec_buf_copy(struct kndTaskSpec *spec,
     return knd_OK;
 }
 
+
+static int knd_check_implied_field(const char *name,
+                                   size_t name_size,
+                                   struct kndTaskSpec *specs,
+                                   size_t num_specs,
+                                   struct kndTaskArg *args,
+                                   size_t *num_args)
+{
+    struct kndTaskSpec *spec = NULL;
+    struct kndTaskArg *arg;
+    const char *impl_arg_name = "_impl";
+    size_t impl_arg_name_size = strlen("_impl");
+    int err;
+    
+    if (DEBUG_PARSER_LEVEL_TMP)
+        knd_log("++ got implied val: \"%.*s\" [%lu]",
+                name_size, name, (unsigned long)name_size);
+    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+                        
+    arg = &args[*num_args];
+    memcpy(arg->name, impl_arg_name, impl_arg_name_size);
+    arg->name[impl_arg_name_size] = '\0';
+    arg->name_size = impl_arg_name_size;
+
+    memcpy(arg->val, name, name_size);
+    arg->val[name_size] = '\0';
+    arg->val_size = name_size;
+
+    (*num_args)++;
+
+    /* any action needed? */
+    for (size_t i = 0; i < num_specs; i++) {
+        spec = &specs[i];
+        if (spec->is_implied) {
+            if (DEBUG_PARSER_LEVEL_2)
+                knd_log("++ got implied spec: \"%s\" run: %p!",
+                        spec->name, spec->run);
+            if (spec->run) {
+                err = spec->run(spec->obj, args, *num_args);
+                if (err) {
+                        knd_log("-- implied func for \"%s\" failed: %d :(",
+                                name, err);
+                    return err;
+                }
+            }
+            break;
+        }
+    }
+    
+    return knd_OK;
+}
+
 int
 knd_parse_task(const char *rec,
                size_t *total_size,
@@ -578,7 +630,7 @@ knd_parse_task(const char *rec,
 {
     const char *b, *c, *e;
     size_t name_size;
-
+    
     struct kndTaskSpec *spec = NULL;
 
     struct kndTaskArg args[KND_MAX_ARGS];
@@ -586,6 +638,7 @@ knd_parse_task(const char *rec,
     struct kndTaskArg *arg;
 
     bool in_field = false;
+    bool in_implied_field = false;
     bool in_tag = false;
     bool in_terminal = false;
 
@@ -606,7 +659,10 @@ knd_parse_task(const char *rec,
         case '\r':
         case '\t':
         case ' ':
-            if (!in_field) break;
+            if (!in_field) {
+                break;
+            }
+            
             if (in_terminal) break;
 
             err = check_name_limits(b, e, &name_size);
@@ -626,7 +682,6 @@ knd_parse_task(const char *rec,
             if (DEBUG_PARSER_LEVEL_2)
                 knd_log("++ got SPEC: \"%s\" (default: %d)",
                         spec->name, spec->is_default);
-
             in_tag = true;
 
             if (!spec->parse) {
@@ -641,17 +696,16 @@ knd_parse_task(const char *rec,
 
             /* nested parsing required */
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("== further parsing required in \"%s\"",
-                        spec->name);
-
-            err = spec->parse(spec->obj, b, &chunk_size);
+                knd_log("== further parsing required in \"%s\" FROM: \"%s\"",
+                        spec->name, c);
+            
+            err = spec->parse(spec->obj, c, &chunk_size);
             if (err) {
-                if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("-- ERR: %d parsing of spec \"%s\" failed starting from: %s", err, spec->name, b);
+                knd_log("-- ERR: %d parsing of spec \"%s\" failed :(",
+                        err, spec->name);
                 return err;
             }
             
-            c = b;    
             c += chunk_size;
 
             spec->is_completed = true;
@@ -666,11 +720,15 @@ knd_parse_task(const char *rec,
             e = b;
             break;
         case '{':
-            if (DEBUG_PARSER_LEVEL_2)
-                knd_log("OPEN BRACKET [in field: %d in terminal: %d] from: %s",
-                        in_field, in_terminal, c);
-
             if (!in_field) {
+                if (in_implied_field) {
+                    name_size = e - b;
+                    if (name_size) {
+                        err = knd_check_implied_field(b, name_size, specs, num_specs, args, &num_args);
+                        if (err) return err;
+                    }
+                }
+                
                 in_field = true;
                 in_terminal = false;
                 b = c + 1;
@@ -679,9 +737,17 @@ knd_parse_task(const char *rec,
             }
             break;
         case '}':
-            /* empty body */
+            /* empty body? */
             if (!in_field) {
 
+                if (in_implied_field) {
+                    name_size = e - b;
+                    if (name_size) {
+                        err = knd_check_implied_field(b, name_size, specs, num_specs, args, &num_args);
+                        if (err) return err;
+                    }
+                }
+                
                 /* should we run a default action? */
                 for (size_t i = 0; i < num_specs; i++) {
                     spec = &specs[i];
@@ -718,8 +784,8 @@ knd_parse_task(const char *rec,
                     return err;
                 }
                     
-                if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("++ got val: \"%.*s\" [%lu]",
+                if (DEBUG_PARSER_LEVEL_TMP)
+                    knd_log("++ got terminal val: \"%.*s\" [%lu]",
                             name_size, b, (unsigned long)name_size);
                     
                 /* copy to buf */
@@ -836,6 +902,12 @@ knd_parse_task(const char *rec,
             break;
         default:
             e = c + 1;
+            if (!in_field) {
+                if (!in_implied_field) {
+                    b = c;
+                    in_implied_field = true;
+                }
+            }
             break;
         }
         c++;

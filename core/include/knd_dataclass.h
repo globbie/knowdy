@@ -105,17 +105,13 @@ struct kndDataClass
     void (*del)(struct kndDataClass   *self);
     int (*str)(struct kndDataClass *self,
                size_t depth);
-
-    /* IO */
-    int (*read)(struct kndDataClass   *self,
-                char *rec,
-                size_t *chunk_size);
-
+ 
     int (*set_name)(struct kndDataClass   *self,
                     char *rec);
 
-    int (*read_onto)(struct kndDataClass   *self,
-                     const char *filename);
+    int (*read_file)(struct kndDataClass   *self,
+                     const char *filename,
+                     size_t filename_size);
 
     int (*coordinate)(struct kndDataClass   *self);
     int (*resolve)(struct kndDataClass   *self);

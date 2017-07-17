@@ -86,6 +86,9 @@ struct kndAttr
     int (*read)(struct kndAttr *self,
                 char   *rec,
                 size_t *chunk_size);
+    int (*parse)(struct kndAttr *self,
+                 char   *rec,
+                 size_t *chunk_size);
 
     int (*export)(struct kndAttr   *self,
                   knd_format format);

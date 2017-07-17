@@ -14,8 +14,6 @@
 #include "knd_attr.h"
 #include "knd_parser.h"
 
-#include "knd_data_reader.h"
-
 #define DEBUG_TEXT_LEVEL_0 0
 #define DEBUG_TEXT_LEVEL_1 0
 #define DEBUG_TEXT_LEVEL_2 0
