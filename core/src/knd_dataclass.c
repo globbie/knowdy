@@ -326,7 +326,6 @@ static int parse_class_change(void *obj,
     dc->out = self->out;
     dc->baseclass_name_size = KND_NAME_SIZE;
     dc->curr_val_size = KND_NAME_SIZE;
-
     
     memcpy(dc->baseclass_name, "None", strlen("None"));
     dc->baseclass_name[4] = '\0';
@@ -378,6 +377,10 @@ static int parse_class_change(void *obj,
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
 
+    if (!dc->name_size) {
+        return knd_FAIL;
+    }
+    
     if (!(*dc->baseclass_name)) {
         dc->baseclass_name_size = 0;
         dc->baseclass = self;
@@ -385,6 +388,9 @@ static int parse_class_change(void *obj,
     
     dc->str(dc, 1);
 
+    err = self->class_idx->set(self->class_idx,
+                               (const char*)dc->name, (void*)dc);
+    if (err) return err;
     
     return knd_OK;
 }
@@ -443,8 +449,6 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     self->name_size = name_size;
     self->name[name_size] = '\0';
 
-    if (DEBUG_DC_LEVEL_TMP)
-        knd_log("\n== class name: %s", self->name);
 
     return knd_OK;
 }
@@ -505,7 +509,7 @@ static int parse_schema(void *self,
     if (err) return err;
 
     if (DEBUG_DC_LEVEL_TMP)
-        knd_log("++ schema parse finished!");
+        knd_log("++ schema parse OK!");
 
     return knd_OK;
 }
@@ -514,7 +518,7 @@ static int parse_include(void *self,
                          const char *rec,
                          size_t *total_size)
 {
-    if (DEBUG_DC_LEVEL_TMP)
+    if (DEBUG_DC_LEVEL_2)
         knd_log(".. parse include REC: \"%s\"..", rec);
 
     struct kndTaskSpec specs[] = {
@@ -608,7 +612,6 @@ kndDataClass_coordinate(struct kndDataClass *self)
     void *val;
     int err = knd_FAIL;
 
-    /* TODO: coordinate classes, resolve all refs */
     key = NULL;
     self->class_idx->rewind(self->class_idx);
     do {

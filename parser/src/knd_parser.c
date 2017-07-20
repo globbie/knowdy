@@ -807,7 +807,6 @@ knd_parse_task(const char *rec,
             }
             
             if (in_terminal) {
-                
                 err = check_name_limits(b, e, &name_size);
                 if (err) {
                     knd_log("-- name limit reached :(");
@@ -816,14 +815,12 @@ knd_parse_task(const char *rec,
                 if (DEBUG_PARSER_LEVEL_2)
                     knd_log("++ got terminal val: \"%.*s\" [%lu]",
                             name_size, b, (unsigned long)name_size);
-                    
                 /* copy to buf */
                 if (spec->buf && spec->buf_size) {
                     err = knd_spec_buf_copy(spec, b, name_size);
                     if (err) return err;
                         
                     spec->is_completed = true;
-                    
                     b = c + 1;
                     e = b;
                     in_terminal = false;
@@ -838,11 +835,10 @@ knd_parse_task(const char *rec,
                 memcpy(arg->name, spec->name, spec->name_size);
                 arg->name[spec->name_size] = '\0';
                 arg->name_size = spec->name_size;
-                    
+
                 memcpy(arg->val, b, name_size);
                 arg->val[name_size] = '\0';
                 arg->val_size = name_size;
-
 
                 if (spec->run) {
                     err = spec->run(spec->obj, args, num_args);
@@ -950,6 +946,16 @@ knd_parse_task(const char *rec,
                 knd_log("\n\n-- END OF BASIC LOOP [%p]  STARTED at: \"%s\" FINISHED at: \"%s\"\n\n",
                         specs, rec, c);
 
+            if (!in_field) {
+                if (in_implied_field) {
+                    name_size = e - b;
+                    if (name_size) {
+                        err = knd_check_implied_field(b, name_size, specs, num_specs, args, &num_args);
+                        if (err) return err;
+                    }
+                }
+            }
+            
             *total_size = c - rec;
             return knd_OK;
         default:
@@ -1091,7 +1097,7 @@ knd_parse_state_change(const char *rec,
                     return err;
                 }
             
-                if (DEBUG_PARSER_LEVEL_TMP)
+                if (DEBUG_PARSER_LEVEL_2)
                     knd_log("++ got func terminal: \"%.*s\" [%lu]",
                             name_size, b, (unsigned long)name_size);
                 

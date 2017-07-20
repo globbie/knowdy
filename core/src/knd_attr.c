@@ -638,7 +638,7 @@ static int parse_GSL(struct kndAttr *self,
                      const char *rec,
                      size_t *total_size)
 {
-    if (DEBUG_ATTR_LEVEL_TMP)
+    if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. attr parsing: \"%s\"..", rec);
 
     self->ref_classname_size = KND_NAME_SIZE;
@@ -659,6 +659,9 @@ static int parse_GSL(struct kndAttr *self,
     
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
+
+    if (!*self->ref_classname)
+        self->ref_classname_size = 0;
     
     return knd_OK;
 }
