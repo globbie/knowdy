@@ -27,6 +27,10 @@ struct kndOutput;
 struct kndTask;
 struct kndUser;
 
+typedef enum knd_task_spec_type { KND_GET_STATE, 
+                                  KND_CHANGE_STATE
+} knd_task_spec_type;
+
 struct kndTaskArg
 {
     char name[KND_NAME_SIZE];
@@ -38,6 +42,8 @@ struct kndTaskArg
 
 struct kndTaskSpec
 {
+    knd_task_spec_type type;
+
     const char *name;
     size_t name_size;
 
@@ -47,6 +53,7 @@ struct kndTaskSpec
     bool is_completed;
     bool is_default;
     bool is_implied;
+    bool is_validator;
 
     char *buf;
     size_t *buf_size;

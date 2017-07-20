@@ -197,7 +197,6 @@ parse_GSL(struct kndRef *self,
     return knd_OK;
 }
 
-
 extern int 
 kndRef_new(struct kndRef **ref)
 {

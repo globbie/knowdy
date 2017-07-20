@@ -83,11 +83,8 @@ struct kndAttr
     void (*str)(struct kndAttr *self,
                 size_t depth);
 
-    int (*read)(struct kndAttr *self,
-                char   *rec,
-                size_t *chunk_size);
     int (*parse)(struct kndAttr *self,
-                 char   *rec,
+                 const char   *rec,
                  size_t *chunk_size);
 
     int (*export)(struct kndAttr   *self,

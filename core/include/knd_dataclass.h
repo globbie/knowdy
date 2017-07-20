@@ -84,6 +84,8 @@ struct kndDataClass
     struct kndAttr *curr_attr;
     size_t attrs_left;
 
+    char curr_val[KND_NAME_SIZE];
+    size_t curr_val_size;
     
     char lang_code[KND_NAME_SIZE];
     size_t lang_code_size;
@@ -103,11 +105,8 @@ struct kndDataClass
     /***********  public methods ***********/
     void (*init)(struct kndDataClass  *self);
     void (*del)(struct kndDataClass   *self);
-    int (*str)(struct kndDataClass *self,
-               size_t depth);
- 
-    int (*set_name)(struct kndDataClass   *self,
-                    char *rec);
+    void (*str)(struct kndDataClass *self,
+                size_t depth);
 
     int (*read_file)(struct kndDataClass   *self,
                      const char *filename,

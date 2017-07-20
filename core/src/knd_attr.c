@@ -38,10 +38,10 @@ static void str(struct kndAttr *self, size_t depth)
     else
         knd_log("\n%s{", offset);
 
-    if (self->fullname_size) 
-        knd_log("%s  %s:%s %s", offset, knd_elem_names[self->type], self->name, self->fullname);
+    if (self->fullname_size)
+        knd_log("%s  %s %s %s", offset, knd_elem_names[self->type], self->name, self->fullname);
     else
-        knd_log("%s  %s:%s", offset, knd_elem_names[self->type], self->name);
+        knd_log("%s  %s %s", offset, knd_elem_names[self->type], self->name);
 
     tr = self->tr;
     while (tr) {
@@ -635,7 +635,7 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
 
 
 static int parse_GSL(struct kndAttr *self,
-                     char *rec,
+                     const char *rec,
                      size_t *total_size)
 {
     if (DEBUG_ATTR_LEVEL_TMP)
@@ -671,7 +671,6 @@ static void init(struct kndAttr *self)
     self->init = init;
     self->del = del;
     self->str = str;
-    self->read = read_GSL;
     self->parse = parse_GSL;
     self->export = export;
 }
