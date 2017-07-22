@@ -47,20 +47,15 @@ struct kndLearner
     size_t db_path_size;
 
     struct kndOutput *out;
-    struct kndOutput *spec_out;
-    struct kndOutput *obj_out;
+    struct kndOutput *log;
 
     struct kndTask *task;
     
     struct ooDict *repo_idx;
     struct kndUser *admin;
 
-    //struct kndUser *curr_user;
-
     /* concept manager */
     struct kndConcept *dc;
-
-    //struct kndPolicy *policy;
     
     /**********  interface methods  **********/
     void (*del)(struct kndLearner *self);

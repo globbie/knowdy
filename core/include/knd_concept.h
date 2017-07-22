@@ -49,6 +49,13 @@ struct kndDataIdx
     struct kndDataIdx *next;
 };
 
+
+struct kndConcRef
+{
+    size_t state;
+    struct kndConcept *conc;
+};
+
 struct kndConcept 
 {
     char name[KND_NAME_SIZE];
@@ -97,12 +104,13 @@ struct kndConcept
     struct ooDict *class_idx;
     struct ooDict *attr_idx;
 
-    struct kndConcept *children;
+    struct kndConcRef children[KND_MAX_CONC_CHILDREN];
     size_t num_children;
     
     struct kndRefSet *browser;
 
     struct kndOutput *out;
+    struct kndOutput *log;
     
     /***********  public methods ***********/
     void (*init)(struct kndConcept  *self);

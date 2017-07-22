@@ -151,6 +151,7 @@ static const char* const knd_elem_names[] = {
 
 #define KND_MAX_MIGRATIONS 256
 #define KND_MAX_SPECS 64
+#define KND_MAX_CONC_CHILDREN 64
 #define KND_MAX_ARGS 16
 
 #define KND_MATCH_MAX_SCORE 100

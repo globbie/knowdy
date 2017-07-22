@@ -32,6 +32,7 @@ static void str(struct kndConcept *self, size_t depth)
 {
     struct kndAttr *attr;
     struct kndTranslation *tr;
+    struct kndConcRef *ref;
     
     size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
@@ -57,6 +58,11 @@ static void str(struct kndConcept *self, size_t depth)
         attr = attr->next;
     }
 
+    for (size_t i = 0; i < self->num_children; i++) {
+        ref = &self->children[i];
+        knd_log("%s%sbase of --> %s", offset, offset, ref->conc->name);
+    }
+    
     knd_log("%s}", offset);
 }
 
@@ -113,6 +119,7 @@ static int is_my_parent(struct kndConcept *self, struct kndConcept *parent)
 static int resolve_names(struct kndConcept *self)
 {
     struct kndConcept *dc;
+    struct kndConcRef *ref;
     struct kndAttr *attr;
     int err;
     
@@ -140,6 +147,11 @@ static int resolve_names(struct kndConcept *self)
         if (DEBUG_DC_LEVEL_TMP)
             knd_log("++ \"%s\" confirmed as a base class for \"%s\"!",
                     self->baseclass_name, self->name);
+
+        self->baseclass = dc;
+        ref = &dc->children[dc->num_children];
+        ref->conc = self;
+        dc->num_children++;
     }
     
     attr = self->attrs;
@@ -165,7 +177,7 @@ static int resolve_names(struct kndConcept *self)
     next_attr:
         attr = attr->next;
     }
-
+    
     return knd_OK;
 }
 
@@ -526,7 +538,7 @@ static int parse_class_change(void *obj,
         dc->baseclass = self;
     }
     
-    dc->str(dc, 1);
+    //dc->str(dc, 1);
 
     err = self->class_idx->set(self->class_idx,
                                (const char*)dc->name, (void*)dc);
@@ -780,9 +792,24 @@ static int resolve_class_refs(struct kndConcept *self)
             dc->baseclass = bc;
         }
         
-        //dc->str(dc, 1);
-        
     } while (key);
+
+
+    /* display all classes */
+    if (DEBUG_DC_LEVEL_TMP) {
+        key = NULL;
+        self->class_idx->rewind(self->class_idx);
+        do {
+            self->class_idx->next_item(self->class_idx, &key, &val);
+            if (!key) break;
+
+            dc = (struct kndConcept*)val;
+
+            dc->str(dc, 1);
+            
+        } while (key);
+    }
+
     
     err = knd_OK;
     

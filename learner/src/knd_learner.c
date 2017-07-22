@@ -277,18 +277,21 @@ kndLearner_new(struct kndLearner **rec,
     memset(self, 0, sizeof(struct kndLearner));
 
     err = kndOutput_new(&self->out, KND_IDX_BUF_SIZE);
-    if (err) return err;
+    if (err) goto error;
 
     /* task specification */
     err = kndTask_new(&self->task);
-    if (err) return err;
+    if (err) goto error;
     
     err = kndOutput_new(&self->task->out, KND_IDX_BUF_SIZE);
-    if (err) return err;
+    if (err) goto error;
+
+    err = kndOutput_new(&self->log, KND_MED_BUF_SIZE);
+    if (err) goto error;
     
     /* special user */
     err = kndUser_new(&self->admin);
-    if (err) return err;
+    if (err) goto error;
     self->task->admin = self->admin;
     self->admin->out = self->out;
     
@@ -298,14 +301,15 @@ kndLearner_new(struct kndLearner **rec,
         
     /* read config */
     err = self->out->read_file(self->out, config, strlen(config));
-    if (err) return err;
+    if (err) goto error;
     
     err = parse_config_GSL(self, self->out->file, &chunk_size);
     if (err) goto error;
     
     err = kndConcept_new(&dc);
-    if (err) return err;
+    if (err) goto error;
     dc->out = self->out;
+    dc->log = self->log;
     dc->name[0] = '/';
     dc->name_size = 1;
 
@@ -335,6 +339,8 @@ kndLearner_new(struct kndLearner **rec,
     return knd_OK;
 
  error:
+
+    
     kndLearner_del(self);
     return err;
 }
