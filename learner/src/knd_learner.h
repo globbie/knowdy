@@ -1,5 +1,5 @@
-#ifndef KND_DATAWRITER_H
-#define KND_DATAWRITER_H
+#ifndef KND_LEARNER_H
+#define KND_LEARNER_H
 
 #include "knd_utils.h"
 #include "knd_dict.h"
@@ -14,7 +14,7 @@ struct kndCacheRec
     size_t value_size;
 };
     
-struct kndDataWriter
+struct kndLearner
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
@@ -57,17 +57,17 @@ struct kndDataWriter
 
     //struct kndUser *curr_user;
 
-    /* valid classes */
-    struct kndDataClass *dc;
+    /* concept manager */
+    struct kndConcept *dc;
 
     //struct kndPolicy *policy;
     
     /**********  interface methods  **********/
-    void (*del)(struct kndDataWriter *self);
+    void (*del)(struct kndLearner *self);
 
-    int (*start)(struct kndDataWriter *self);
+    int (*start)(struct kndLearner *self);
 };
 
-extern int kndDataWriter_new(struct kndDataWriter **self,
+extern int kndLearner_new(struct kndLearner **self,
                              const char *config);
 #endif

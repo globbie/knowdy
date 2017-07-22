@@ -15,6 +15,7 @@
 #include "knd_msg.h"
 #include "knd_dict.h"
 #include "knd_parser.h"
+#include "knd_concept.h"
 
 #define DEBUG_REPO_LEVEL_0 0
 #define DEBUG_REPO_LEVEL_1 0
@@ -27,13 +28,13 @@ kndRepo_linearize_objs(struct kndRepo *self);
 
 static int
 kndRepo_get_guid(struct kndRepo *self,
-                 struct kndDataClass *dc,
+                 struct kndConcept *dc,
                  const char *obj_name,
                  size_t      obj_name_size,
                  char *result);
 
 static int
-kndRepo_get_cache(struct kndRepo *self, struct kndDataClass *c,
+kndRepo_get_cache(struct kndRepo *self, struct kndConcept *c,
                   struct kndRepoCache **result);
 
 static int
@@ -460,7 +461,7 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndRepo *self;
     struct ooDict *idx;
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     struct kndTaskArg *arg;
     const char *name = NULL;
     size_t name_size = 0;
@@ -487,7 +488,7 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
 
     /* check classname */
     idx = self->user->root_dc->class_idx;
-    dc = (struct kndDataClass*)idx->get(idx, name);
+    dc = (struct kndConcept*)idx->get(idx, name);
     if (!dc) {
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("   -- classname \"%s\" is not valid :(\n", name);
@@ -697,8 +698,7 @@ kndRepo_import_inbox_data(struct kndRepo *self,
 }
 
 
-static int
-kndRepo_restore(struct kndRepo *self)
+static int kndRepo_restore(struct kndRepo *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -715,8 +715,7 @@ kndRepo_restore(struct kndRepo *self)
     buf[buf_size] = '\0';
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("  .. try importing recs from \"%s\"..",
-                buf);
+        knd_log(".. importing recs from \"%s\"..", buf);
 
     // fixme: actual restore
     return knd_OK;
@@ -1199,7 +1198,7 @@ kndRepo_get_obj(struct kndRepo *self,
                 size_t name_size)
 {
     struct kndRepoCache *cache = self->curr_cache;
-    struct kndDataClass *dc = cache->baseclass;
+    struct kndConcept *dc = cache->baseclass;
     
     char guid[KND_ID_SIZE + 1] = {0};
     struct kndObject *obj = NULL;
@@ -1323,7 +1322,7 @@ kndRepo_export_class_JSON(struct kndRepo *self, struct kndRepoCache *cache)
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     struct kndOutput *out;
     struct kndObject *obj;
 
@@ -1413,7 +1412,7 @@ kndRepo_export_JSON(struct kndRepo *self)
     //size_t buf_size;
     
     struct kndRepoCache *cache;
-    //struct kndDataClass *dc;
+    //struct kndConcept *dc;
     struct kndOutput *out;
     //struct kndObject *obj;
     
@@ -1479,7 +1478,7 @@ kndRepo_export_class_HTML(struct kndRepo *self, struct kndRepoCache *cache)
     //char buf[KND_TEMP_BUF_SIZE];
     //size_t buf_size;
     
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     struct kndOutput *out;
     struct kndObject *obj;
     
@@ -1568,7 +1567,7 @@ kndRepo_export_HTML(struct kndRepo *self)
     //size_t buf_size;
     
     struct kndRepoCache *cache;
-    //struct kndDataClass *dc;
+    //struct kndConcept *dc;
     struct kndOutput *out;
     //struct kndObject *obj;
     
@@ -1635,7 +1634,7 @@ kndRepo_export_GSL(struct kndRepo *self)
 
 static int
 kndRepo_get_cache(struct kndRepo *self,
-                  struct kndDataClass *dc,
+                  struct kndConcept *dc,
                   struct kndRepoCache **result)
 {
     char buf[KND_TEMP_BUF_SIZE];
@@ -1682,7 +1681,7 @@ kndRepo_get_cache(struct kndRepo *self,
     cache->name_idx->out = self->out;
 
     /* read name IDX */
-    if (self->user->role == KND_USER_ROLE_READER) {
+    if (self->user->role == KND_USER_ROLE_RETRIEVER) {
         buf_size = sprintf(buf, "%s/%s/AZ.idx",
                            self->path,
                            dc->name);
@@ -1743,7 +1742,7 @@ kndRepo_get_cache(struct kndRepo *self,
 
 static int
 kndRepo_get_guid(struct kndRepo *self,
-                 struct kndDataClass *dc,
+                 struct kndConcept *dc,
                  const char *name,
                  size_t      name_size,
                  char *result)

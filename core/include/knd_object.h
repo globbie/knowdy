@@ -21,9 +21,8 @@
 #pragma once
 
 #include "knd_config.h"
-#include "knd_dataclass.h"
+#include "knd_concept.h"
 
-struct kndDataClass;
 struct kndRepoCache;
 struct kndObjRef;
 struct kndSortTag;
@@ -32,11 +31,9 @@ struct kndTask;
 
 struct kndElem;
 struct kndRelClass;
-struct kndData;
 
 struct kndOutput;
 struct kndFlatTable;
-
 
 
 struct kndMatchPoint
@@ -64,7 +61,7 @@ struct kndObject
 
     struct kndObject *root;
     struct kndElem *parent;
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
 
     struct kndSortTag *tag;
     
@@ -151,9 +148,10 @@ struct kndObject
                             knd_format        format);
     */
     
-    int (*get)(struct kndObject *self, struct kndData *data,
+    /*int (*get)(struct kndObject *self, struct kndData *data,
                struct kndObject **obj);
-
+    */
+    
     int (*get_by_id)(struct kndObject *self, const char *classname,
                      const char *obj_id,
                      struct kndObject **obj);

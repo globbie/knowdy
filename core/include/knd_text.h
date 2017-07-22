@@ -51,6 +51,9 @@ struct kndTranslation
     
     /* TODO: quality rating, spelling.. etc  */
     int verif_level;
+
+    char val[KND_NAME_SIZE];
+    size_t val_size;
     
     char *seq;
     size_t seq_size;

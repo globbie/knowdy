@@ -61,6 +61,8 @@ struct kndTaskSpec
     void *obj;
     
     int (*parse)(void *obj, const char *rec, size_t *total_size);
+    int (*validate)(void *obj, const char *name, size_t name_size,
+                    const char *rec, size_t *total_size);
     int (*run)(void *obj, struct kndTaskArg *args, size_t num_args);
 };
 

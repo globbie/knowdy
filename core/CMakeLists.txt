@@ -1,8 +1,7 @@
 set(SOURCES
         src/knd_attr.c
         src/knd_coderef.c
-        src/knd_conc.c
-        src/knd_dataclass.c
+        src/knd_concept.c
         src/knd_elem.c
         src/knd_facet.c
         src/knd_msg.c

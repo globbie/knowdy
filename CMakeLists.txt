@@ -30,8 +30,8 @@ set(KNOWDY_PREFIX "knd")
 set(CORE "core")
 set(PARSER "parser")
 set(COLLECTION "collection")
-set(READER "reader")
-set(WRITER "writer")
+set(RETRIEVER "retriever")
+set(LEARNER "learner")
 set(DELIVERY "delivery")
 set(STORAGE "storage")
 
@@ -39,8 +39,8 @@ set(KNOWDY_MODULES
         ${CORE}
         ${PARSER}
         ${COLLECTION}
-        ${READER}
-        ${WRITER}
+        ${RETRIEVER}
+        ${LEARNER}
         ${DELIVERY}
         ${STORAGE})
 

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "knd_dataclass.h"
+#include "knd_concept.h"
 #include "knd_attr.h"
 #include "knd_elem.h"
 #include "knd_repo.h"
@@ -515,7 +515,7 @@ kndObject_expand(struct kndObject *self,
                  size_t depth)
 {
     struct kndElem *elem;
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     struct kndAttr *attr;
     struct kndElemState *elem_state;
     struct kndRepoCache *cache;
@@ -1086,7 +1086,7 @@ kndObject_export_JSON(struct kndObject *self,
     //size_t pathbuf_size;
 
     //struct ooDict *idx;
-    //struct kndDataClass *dc;
+    //struct kndConcept *dc;
     struct kndElem *elem;
     //struct kndRefSet *refset;
 
@@ -1379,7 +1379,7 @@ kndObject_export_HTML(struct kndObject *self,
 
     struct kndOutput *meta_out = NULL;
     //struct ooDict *idx;
-    //struct kndDataClass *dc;
+    //struct kndConcept *dc;
     struct kndElem *elem;
     //struct kndRefSet *refset;
     
@@ -2168,7 +2168,7 @@ kndObject_sync(struct kndObject *self)
 {
     char idbuf[KND_ID_SIZE];
     struct kndElem *elem;
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     struct kndRepoCache *cache;
     struct kndObject *obj;
     struct kndRefSet *refset;

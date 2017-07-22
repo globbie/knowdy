@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "knd_dataclass.h"
+#include "knd_concept.h"
 #include "knd_object.h"
 #include "knd_sorttag.h"
 #include "knd_output.h"
@@ -162,7 +162,7 @@ kndSortTag_parse(struct kndSortTag *self)
 
 static int 
 kndSortTag_import(struct kndSortTag   *self,
-                  struct kndDataClass *baseclass,
+                  struct kndConcept *baseclass,
                   char                *rec)
 {
     char buf[KND_TEMP_BUF_SIZE];

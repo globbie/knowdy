@@ -3,7 +3,7 @@
 
 #include "knd_utils.h"
 #include "knd_task.h"
-#include "knd_dataclass.h"
+#include "knd_concept.h"
 
 struct kndObject;
 struct kndUser;
@@ -11,8 +11,8 @@ struct kndOutput;
 struct kndRepo;
 struct kndRepoSet;
 
-typedef enum knd_user_role { KND_USER_ROLE_READER, 
-                             KND_USER_ROLE_WRITER
+typedef enum knd_user_role { KND_USER_ROLE_RETRIEVER, 
+                             KND_USER_ROLE_LEARNER
                          } knd_user_role;
 
 struct kndRepoAccess
@@ -57,7 +57,7 @@ struct kndUser
     char control_phrase[KND_TEMP_BUF_SIZE];
     size_t control_phrase_size;
 
-    struct kndDataClass *root_dc;
+    struct kndConcept *root_dc;
     struct kndTask *task;
     struct kndOutput *out;
     struct kndOutput *log;

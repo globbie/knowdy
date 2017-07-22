@@ -27,12 +27,9 @@
 #include "knd_config.h"
 
 struct kndAttr;
-struct kndDataWriter;
-struct kndDataReader;
-struct kndDataClass;
+struct kndConcept;
 struct kndOutput;
 struct kndTranslation;
-
 
 struct kndDataIdx
 {
@@ -52,7 +49,7 @@ struct kndDataIdx
     struct kndDataIdx *next;
 };
 
-struct kndDataClass 
+struct kndConcept 
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
@@ -69,7 +66,7 @@ struct kndDataClass
 
     char baseclass_name[KND_NAME_SIZE];
     size_t baseclass_name_size;
-    struct kndDataClass *baseclass;
+    struct kndConcept *baseclass;
     
     struct kndTranslation *tr;
     
@@ -96,36 +93,44 @@ struct kndDataClass
     char style_name[KND_NAME_SIZE];
     size_t style_name_size;
 
-    /* children */
+    /* indices */
     struct ooDict *class_idx;
     struct ooDict *attr_idx;
+
+    struct kndConcept *children;
+    size_t num_children;
     
+    struct kndRefSet *browser;
+
     struct kndOutput *out;
     
     /***********  public methods ***********/
-    void (*init)(struct kndDataClass  *self);
-    void (*del)(struct kndDataClass   *self);
-    void (*str)(struct kndDataClass *self,
+    void (*init)(struct kndConcept  *self);
+    void (*del)(struct kndConcept   *self);
+    void (*str)(struct kndConcept *self,
                 size_t depth);
 
-    int (*read_file)(struct kndDataClass   *self,
+    int (*read_file)(struct kndConcept   *self,
                      const char *filename,
                      size_t filename_size);
 
-    int (*coordinate)(struct kndDataClass   *self);
-    int (*resolve)(struct kndDataClass   *self);
+    int (*coordinate)(struct kndConcept   *self);
+    int (*resolve)(struct kndConcept   *self);
 
-    int (*export)(struct kndDataClass   *self,
+    int (*export)(struct kndConcept   *self,
                   knd_format format);
 
+    int (*is_a)(struct kndConcept   *self,
+                struct kndConcept   *base);
+    
     /* traversal */
-    void (*rewind)(struct kndDataClass   *self);
-    int (*next_attr)(struct kndDataClass   *self,
+    void (*rewind)(struct kndConcept   *self);
+    int (*next_attr)(struct kndConcept   *self,
                      struct kndAttr **result);
     
 };
 
 /* constructor */
-extern int kndDataClass_new(struct kndDataClass **self);
+extern int kndConcept_new(struct kndConcept **self);
 
 #endif

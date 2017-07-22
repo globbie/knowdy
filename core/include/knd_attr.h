@@ -15,7 +15,7 @@
  *
  *   ----------
  *   knd_attr.h
- *   Knowdy DataClass Attr
+ *   Knowdy Concept Attr
  */
 
 #ifndef KND_ATTR_H
@@ -27,7 +27,7 @@
 
 struct kndDataWriter;
 struct kndDataReader;
-struct kndDataClass;
+struct kndConcept;
 struct kndOutput;
 struct kndTranslation;
 
@@ -38,19 +38,19 @@ struct kndAttr
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    char fullname[KND_NAME_SIZE];
-    size_t fullname_size;
+    //char fullname[KND_NAME_SIZE];
+    //size_t fullname_size;
 
     char classname[KND_NAME_SIZE];
     size_t classname_size;
 
-    struct kndDataClass *parent_dc;
-    struct kndDataClass *dc;
+    struct kndConcept *parent_dc;
+    struct kndConcept *dc;
 
     /* refclass not set: self reference by default */
     char ref_classname[KND_NAME_SIZE];
     size_t ref_classname_size;
-    struct kndDataClass *ref_class;
+    struct kndConcept *ref_class;
     
     int concise_level;
     int descr_level;
@@ -70,6 +70,8 @@ struct kndAttr
 
     char idx_name[KND_NAME_SIZE];
     size_t idx_name_size;
+
+    struct kndRefSet *browser;
 
     struct kndOutput *out;
     

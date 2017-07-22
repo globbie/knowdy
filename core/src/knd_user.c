@@ -9,6 +9,7 @@
 #include "knd_msg.h"
 #include "knd_task.h"
 #include "knd_parser.h"
+#include "knd_concept.h"
 
 #define DEBUG_USER_LEVEL_0 0
 #define DEBUG_USER_LEVEL_1 0
@@ -35,7 +36,7 @@ kndUser_del(struct kndUser *self)
 static int 
 kndUser_str(struct kndUser *self)
 {
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     const char *key = NULL;
     void *val = NULL;
 
@@ -46,7 +47,7 @@ kndUser_str(struct kndUser *self)
         self->class_idx->next_item(self->class_idx, &key, &val);
         if (!key) break;
 
-        dc = (struct kndDataClass*)val;
+        dc = (struct kndConcept*)val;
         
         knd_log("CLASS: %s\n", dc->name);
 
@@ -174,7 +175,7 @@ kndUser_get_user(struct kndUser *self, const char *uid,
 static int
 kndUser_read_classes(struct kndUser *self, char *rec, size_t rec_size __attribute__((unused)))
 {
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     char *c;
     const char *delim = ";";
     char *last;
@@ -207,7 +208,7 @@ kndUser_read_classes(struct kndUser *self, char *rec, size_t rec_size __attribut
 static int
 kndUser_read_browse_classes(struct kndUser *self, char *rec, size_t rec_size __attribute__((unused)))
 {
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     char *c;
     const char *delim = ";";
     char *last;
@@ -444,7 +445,7 @@ kndUser_restore(struct kndUser *self)
         err = repo->open(repo);
         if (err) return err;
 
-        if (self->role == KND_USER_ROLE_WRITER) {
+        if (self->role == KND_USER_ROLE_LEARNER) {
             err = repo->restore(repo);
             if (err) return err;
         }
@@ -490,7 +491,7 @@ kndUser_export_JSON(struct kndUser *self)
     //char buf[KND_MED_BUF_SIZE] = {0};
     //size_t buf_size = 0;
 
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     struct kndOutput *out;
     
     const char *key = NULL;
@@ -536,7 +537,7 @@ kndUser_export_JSON(struct kndUser *self)
             if (err) return err;
         }
 
-        dc = (struct kndDataClass*)val;
+        dc = (struct kndConcept*)val;
 
         memcpy(dc->lang_code, self->lang_code, self->lang_code_size);
         dc->lang_code_size = self->lang_code_size;

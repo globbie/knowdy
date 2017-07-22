@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#include "knd_dataclass.h"
+#include "knd_concept.h"
 #include "knd_repo.h"
 #include "knd_elem.h"
 #include "knd_attr.h"
@@ -86,7 +86,7 @@ str(struct kndElem *self, size_t depth)
         }
         else {
             knd_log("%s   inline OBJ of class \"%s\"",
-                    offset, self->attr->fullname);
+                    offset, self->attr->name);
             self->inner->str(self->inner, depth + 1);
         }
     }
@@ -394,7 +394,7 @@ kndElem_index_list(struct kndElem *self)
 static int
 index_ref(struct kndElem *self)
 {
-    struct kndDataClass *dc, *bc;
+    struct kndConcept *dc, *bc;
     struct kndRepoCache *cache = NULL;
     struct kndRefSet *refset;
     struct kndObjRef *objref;
@@ -868,7 +868,7 @@ kndElem_check_type(struct kndElem *self,
                    size_t name_size,
                    struct kndAttr **result)
 {
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     struct kndAttr *attr = NULL;
     int err;
     
@@ -1094,8 +1094,8 @@ kndElem_check_name(struct kndElem *self,
     self->attr = attr;
 
     if (DEBUG_ELEM_LEVEL_2)
-        knd_log("  ++ got attr: \"%s => %s (type: %s)",
-                attr->name, attr->fullname, knd_elem_names[attr->type]);
+        knd_log("  ++ got attr: \"%s\" (type: %s)",
+                attr->name, knd_elem_names[attr->type]);
     
     if (attr->dc) {
         err = kndObject_new(&obj);

@@ -554,8 +554,8 @@ knd_find_spec(struct kndTaskSpec *specs,
     }
 
     if (DEBUG_PARSER_LEVEL_2)
-        knd_log("-- no named spec found for \"%.*s\" [validator: %p] ",
-                name_size, name, validator_spec);
+        knd_log("-- no named spec found for \"%.*s\"",
+                name_size, name);
 
     if (validator_spec) {
         if (name_size >= *validator_spec->buf_size)
@@ -715,6 +715,24 @@ knd_parse_task(const char *rec,
                 knd_log("++ got SPEC: \"%s\" (default: %d) (is validator: %d)",
                         spec->name, spec->is_default, spec->is_validator);
             in_tag = true;
+
+            if (spec->validate) {
+                err = spec->validate(spec->obj,
+                                     (const char*)spec->buf, *spec->buf_size,
+                                     c, &chunk_size);
+                if (err) {
+                    knd_log("-- ERR: %d validation of spec \"%s\" failed :(",
+                            err, spec->name);
+                    return err;
+                }
+                c += chunk_size;
+                spec->is_completed = true;
+                in_field = false;
+                in_tag = false;
+                b = c;
+                e = b;
+                break;
+            }
             
             if (!spec->parse) {
                 if (DEBUG_PARSER_LEVEL_2)

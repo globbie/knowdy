@@ -11,7 +11,7 @@
 #include "knd_object.h"
 #include "knd_objref.h"
 #include "knd_utils.h"
-#include "knd_dataclass.h"
+#include "knd_concept.h"
 #include "knd_attr.h"
 #include "knd_parser.h"
 

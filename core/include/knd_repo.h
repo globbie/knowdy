@@ -4,7 +4,7 @@
 #include "knd_facet.h"
 #include "knd_dict.h"
 
-struct kndDataClass;
+struct kndConcept;
 struct kndObject;
 struct kndRepo;
 struct kndRefSet;
@@ -74,7 +74,7 @@ struct kndRelType
 
 struct kndRelClass
 {
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     struct kndRelType *rel_types;
     
     struct kndRelClass *next;
@@ -95,11 +95,10 @@ struct kndAtomIdx
 
 struct kndRepoCache
 {
-    struct kndDataClass *baseclass;
+    struct kndConcept *baseclass;
     struct kndRepo *repo;
 
     struct ooDict *db;
-    //struct ooDict *obj_idx;
     size_t num_objs;
 
     size_t cache_size;
@@ -188,7 +187,7 @@ struct kndRepo
     
     size_t intersect_matrix_size;
     
-    struct kndDataClass *curr_class;
+    struct kndConcept *curr_class;
     
     /**********  interface methods  **********/
     int (*del)(struct kndRepo *self);
@@ -217,10 +216,10 @@ struct kndRepo
 
     int (*get_obj)(struct kndRepo *self,  struct kndSpecArg *args, size_t num_args);
 
-    int (*get_cache)(struct kndRepo *self, struct kndDataClass *c,
+    int (*get_cache)(struct kndRepo *self, struct kndConcept *c,
                      struct kndRepoCache **cache);
 
-    int (*get_guid)(struct kndRepo *self, struct kndDataClass *c,
+    int (*get_guid)(struct kndRepo *self, struct kndConcept *c,
                     const char *obj_name,
                     size_t      obj_name_size,
                     char *result);

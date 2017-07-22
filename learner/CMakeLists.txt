@@ -1,6 +1,6 @@
 
 set(SOURCES
-        src/knd_data_writer.c)
+        src/knd_learner.c)
 
 add_executable(${BINARY} ${SOURCES})
 
