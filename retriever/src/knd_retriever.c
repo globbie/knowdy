@@ -15,10 +15,10 @@
 
 #include "knd_retriever.h"
 
-#define DEBUG_READER_LEVEL_1 0
-#define DEBUG_READER_LEVEL_2 0
-#define DEBUG_READER_LEVEL_3 0
-#define DEBUG_READER_LEVEL_TMP 1
+#define DEBUG_RETRIEVER_LEVEL_1 0
+#define DEBUG_RETRIEVER_LEVEL_2 0
+#define DEBUG_RETRIEVER_LEVEL_3 0
+#define DEBUG_RETRIEVER_LEVEL_TMP 1
 
 static int
 kndRetriever_del(struct kndRetriever *self)
@@ -195,7 +195,7 @@ parse_config_GSL(struct kndRetriever *self,
         if (!err) {
             rec += chunk_size;
             
-            if (DEBUG_READER_LEVEL_TMP)
+            if (DEBUG_RETRIEVER_LEVEL_TMP)
                 knd_log("== got schema: \"%s\"", buf);
         }
     }
@@ -451,16 +451,16 @@ void *kndRetriever_subscriber(void *arg)
     assert(err == knd_OK);
     
     while (1) {
-	printf("    ++ READER SUBSCRIBER is waiting for new tasks...\n");
+	printf("    ++ RETRIEVER SUBSCRIBER is waiting for new tasks...\n");
 
         task = knd_zmq_recv(subscriber, &task_size);
 
-	printf("    ++ READER SUBSCRIBER has got task:\n"
+	printf("    ++ RETRIEVER SUBSCRIBER has got task:\n"
           "       %s",  task);
 
 	obj = knd_zmq_recv(subscriber, &obj_size);
 
-	printf("    ++ READER SUBSCRIBER is updating its inbox..\n");
+	printf("    ++ RETRIEVER SUBSCRIBER is updating its inbox..\n");
         
 	knd_zmq_sendmore(inbox, task, task_size);
 	knd_zmq_send(inbox, obj, obj_size);

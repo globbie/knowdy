@@ -23,11 +23,8 @@
 
 #include <time.h>
 
-
 #include "knd_config.h"
-#include "knd_conc.h"
 
-struct kndDataClass;
 struct kndOutput;
 struct kndRepoCache;
 struct kndCodeRef;
@@ -155,7 +152,7 @@ struct kndObjRef
     char obj_id[KND_ID_SIZE + 1];
     size_t obj_id_size;
 
-    struct kndDataClass *baseclass;
+    struct kndConcept *baseclass;
     struct kndObject *obj;
     struct kndTrans *trn;
     struct kndSortTag *sorttag;
@@ -205,7 +202,7 @@ struct kndObjRef
     int (*sync)(struct kndObjRef *self);
 
     int (*import)(struct kndObjRef *self,
-                  struct kndDataClass *baseclass,
+                  struct kndConcept *baseclass,
                   char *rec);
     int (*export)(struct kndObjRef *self,
                    knd_format format);

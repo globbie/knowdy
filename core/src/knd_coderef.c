@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "knd_output.h"
-#include "knd_conc.h"
 #include "knd_coderef.h"
 #include "knd_parser.h"
 

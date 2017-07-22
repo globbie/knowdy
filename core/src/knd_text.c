@@ -5,7 +5,6 @@
 #include "knd_text.h"
 #include "knd_repo.h"
 #include "knd_output.h"
-#include "knd_conc.h"
 #include "knd_elem.h"
 #include "knd_object.h"
 #include "knd_objref.h"
