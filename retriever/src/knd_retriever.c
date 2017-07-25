@@ -61,13 +61,13 @@ kndRetriever_start(struct kndRetriever *self)
     
     while (1) {
         self->task->reset(self->task);
-	knd_log("    ++ Reader #%s is ready to receive new tasks!\n",
+	knd_log("    ++ Retriever #%s is ready to receive new tasks!\n",
                 self->name);
 
 	task  = knd_zmq_recv(outbox, &task_size);
 	obj   = knd_zmq_recv(outbox, &obj_size);
 
-        knd_log("\n    ++ Reader #%s got task: %s OBJ: %s\n", 
+        knd_log("\n    ++ Retriever #%s got task: %s OBJ: %s\n", 
                 self->name, task, obj);
 
         err = self->task->run(self->task, task, task_size, obj, obj_size);
@@ -101,19 +101,18 @@ parse_read_inbox_addr(void *obj,
 {
     struct kndRetriever *self = (struct kndRetriever*)obj;
 
-    self->inbox_frontend_addr_size = KND_NAME_SIZE;
-    self->inbox_backend_addr_size = KND_NAME_SIZE;
-
     struct kndTaskSpec specs[] = {
         { .name = "frontend",
           .name_size = strlen("frontend"),
           .buf = self->inbox_frontend_addr,
-          .buf_size = &self->inbox_frontend_addr_size
+          .buf_size = &self->inbox_frontend_addr_size,
+          .max_buf_size = KND_NAME_SIZE
         },
         { .name = "backend",
           .name_size = strlen("backend"),
           .buf = self->inbox_backend_addr,
-          .buf_size = &self->inbox_backend_addr_size
+          .buf_size = &self->inbox_backend_addr_size,
+          .max_buf_size = KND_NAME_SIZE
         }
     };
     int err;
@@ -137,42 +136,40 @@ parse_config_GSL(struct kndRetriever *self,
     const char *gsl_format_tag = "{gsl";
     size_t gsl_format_tag_size = strlen(gsl_format_tag);
 
-    const char *header_tag = "{knd::Knowdy Reader Service Configuration";
+    const char *header_tag = "{knd::Knowdy Retriever Service Configuration";
     size_t header_tag_size = strlen(header_tag);
     const char *c;
-
-    self->name_size = KND_NAME_SIZE;
-    self->path_size = KND_NAME_SIZE;
-    self->schema_path_size = KND_NAME_SIZE;
-    self->coll_request_addr_size = KND_NAME_SIZE;
-    self->delivery_addr_size = KND_NAME_SIZE;
-    self->admin->sid_size = KND_NAME_SIZE;
 
     struct kndTaskSpec specs[] = {
          { .name = "path",
            .name_size = strlen("path"),
            .buf = self->path,
-           .buf_size = &self->path_size
+           .buf_size = &self->path_size,
+          .max_buf_size = KND_NAME_SIZE
          },
          { .name = "schemas",
            .name_size = strlen("schemas"),
            .buf = self->schema_path,
-           .buf_size = &self->schema_path_size
+           .buf_size = &self->schema_path_size,
+           .max_buf_size = KND_NAME_SIZE
          },
          { .name = "sid",
            .name_size = strlen("sid"),
            .buf = self->admin->sid,
-           .buf_size = &self->admin->sid_size
+           .buf_size = &self->admin->sid_size,
+           .max_buf_size = KND_NAME_SIZE
          },
          { .name = "coll_request",
            .name_size = strlen("coll_request"),
            .buf = self->coll_request_addr,
-           .buf_size = &self->coll_request_addr_size
+           .buf_size = &self->coll_request_addr_size,
+           .max_buf_size = KND_NAME_SIZE
          },
          { .name = "delivery",
            .name_size = strlen("delivery"),
            .buf = self->delivery_addr,
-           .buf_size = &self->delivery_addr_size
+           .buf_size = &self->delivery_addr_size,
+           .max_buf_size = KND_NAME_SIZE
          },
         { .name = "read_inbox",
           .name_size = strlen("read_inbox"),
@@ -183,9 +180,11 @@ parse_config_GSL(struct kndRetriever *self,
           .name = "set_service_id",
           .name_size = strlen("set_service_id"),
           .buf = self->name,
-          .buf_size = &self->name_size
+          .buf_size = &self->name_size,
+          .max_buf_size = KND_NAME_SIZE
         }
     };
+    
     int err = knd_FAIL;
 
     if (!strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
@@ -329,7 +328,7 @@ kndRetriever_new(struct kndRetriever **rec,
 
  error:
 
-    knd_log("  -- Data Reader failure :(\n");
+    knd_log("  -- Retriever failure :(\n");
     
     kndRetriever_del(self);
     return err;
@@ -345,11 +344,11 @@ void *kndRetriever_inbox(void *arg)
     void *context;
     void *frontend;
     void *backend;
-    struct kndRetriever *reader;
+    struct kndRetriever *retriever;
     int err;
 
     context = zmq_init(1);
-    reader = (struct kndRetriever*)arg;
+    retriever = (struct kndRetriever*)arg;
 
     frontend = zmq_socket(context, ZMQ_PULL);
     assert(frontend);
@@ -357,16 +356,16 @@ void *kndRetriever_inbox(void *arg)
     backend = zmq_socket(context, ZMQ_PUSH);
     assert(backend);
 
-    /* knd_log("%s <-> %s\n", reader->inbox_frontend_addr, reader->inbox_backend_addr); */
+    /* knd_log("%s <-> %s\n", retriever->inbox_frontend_addr, retriever->inbox_backend_addr); */
 
-    err = zmq_bind(frontend, reader->inbox_frontend_addr);
+    err = zmq_bind(frontend, retriever->inbox_frontend_addr);
     assert(err == knd_OK);
 
-    err = zmq_bind(backend, reader->inbox_backend_addr);
+    err = zmq_bind(backend, retriever->inbox_backend_addr);
     assert(err == knd_OK);
 
     knd_log("    ++ Retriever \"%s\" Inbox device is ready...\n\n", 
-            reader->name);
+            retriever->name);
 
     zmq_device(ZMQ_QUEUE, frontend, backend);
 
@@ -382,11 +381,11 @@ void *kndRetriever_selector(void *arg)
     void *context;
     void *frontend;
     void *backend;
-    struct kndRetriever *reader;
+    struct kndRetriever *retriever;
     int err;
 
     context = zmq_init(1);
-    reader = (struct kndRetriever*)arg;
+    retriever = (struct kndRetriever*)arg;
 
     frontend = zmq_socket(context, ZMQ_PULL);
     assert(frontend);
@@ -397,15 +396,15 @@ void *kndRetriever_selector(void *arg)
     //err = zmq_connect(frontend, "tcp://127.0.0.1:6913");
     //assert(err == knd_OK);
 
-    err = zmq_connect(frontend, reader->coll_request_addr);
+    err = zmq_connect(frontend, retriever->coll_request_addr);
     assert(err == knd_OK);
 
-    err = zmq_connect(backend, reader->inbox_frontend_addr);
+    err = zmq_connect(backend, retriever->inbox_frontend_addr);
     assert(err == knd_OK);
 
     knd_log("    ++ Retriever %s Selector device is ready: %s...\n\n",
-            reader->name,
-            reader->inbox_frontend_addr);
+            retriever->name,
+            retriever->inbox_frontend_addr);
 
     zmq_device(ZMQ_QUEUE, frontend, backend);
 
@@ -423,7 +422,7 @@ void *kndRetriever_subscriber(void *arg)
     void *subscriber;
     void *inbox;
 
-    struct kndRetriever *reader;
+    struct kndRetriever *retriever;
 
     char *obj;
     size_t obj_size;
@@ -432,7 +431,7 @@ void *kndRetriever_subscriber(void *arg)
     
     int err;
 
-    reader = (struct kndRetriever*)arg;
+    retriever = (struct kndRetriever*)arg;
 
     context = zmq_init(1);
 
@@ -447,7 +446,7 @@ void *kndRetriever_subscriber(void *arg)
     inbox = zmq_socket(context, ZMQ_PUSH);
     assert(inbox);
 
-    err = zmq_connect(inbox, reader->inbox_frontend_addr);
+    err = zmq_connect(inbox, retriever->inbox_frontend_addr);
     assert(err == knd_OK);
     
     while (1) {
@@ -487,7 +486,7 @@ int
 main(int const argc, 
      const char ** const argv) 
 {
-    struct kndRetriever *reader;
+    struct kndRetriever *retriever;
 
     const char *config = NULL;
 
@@ -505,7 +504,7 @@ main(int const argc,
 
     config = argv[1];
 
-    err = kndRetriever_new(&reader, config);
+    err = kndRetriever_new(&retriever, config);
     if (err) {
         fprintf(stderr, "Couldn\'t load the Retriever... ");
         return -1;
@@ -515,22 +514,22 @@ main(int const argc,
     err = pthread_create(&inbox, 
 			 NULL,
 			 kndRetriever_inbox, 
-                         (void*)reader);
+                         (void*)retriever);
     
     /* add subscriber */
     err = pthread_create(&subscriber, 
 			 NULL,
 			 kndRetriever_subscriber, 
-                         (void*)reader);
+                         (void*)retriever);
    
     
     /* add selector */
     err = pthread_create(&selector, 
 			 NULL,
 			 kndRetriever_selector, 
-                         (void*)reader);
+                         (void*)retriever);
 
-    reader->start(reader);
+    retriever->start(retriever);
     
     
     return 0;

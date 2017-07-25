@@ -574,7 +574,7 @@ knd_spec_buf_copy(struct kndTaskSpec *spec,
                   const char *val,
                   size_t val_size)
 {
-    if (DEBUG_PARSER_LEVEL_TMP)
+    if (DEBUG_PARSER_LEVEL_2)
         knd_log(".. writing val \"%.*s\" to buf [max size: %lu] [len: %lu]..",
                 val_size, val,
                 (unsigned long)spec->max_buf_size,
@@ -1028,13 +1028,13 @@ static int knd_parse_state_change(const char *rec,
             if (!in_change) break;
             if (in_tag) break;
 
-            if (DEBUG_PARSER_LEVEL_TMP)
+            if (DEBUG_PARSER_LEVEL_2)
                 knd_log("+ whitespace in FUNC loop: \"%s\"\n\n\n", c);
 
             err = check_name_limits(b, e, &name_size);
             if (err) return err;
 
-            if (DEBUG_PARSER_LEVEL_TMP)
+            if (DEBUG_PARSER_LEVEL_2)
                 knd_log("++ FUNC LOOP got tag: \"%.*s\" [%lu]",
                         name_size, b, (unsigned long)name_size);
 
@@ -1045,7 +1045,7 @@ static int knd_parse_state_change(const char *rec,
                 return err;
             }
 
-            if (DEBUG_PARSER_LEVEL_TMP)
+            if (DEBUG_PARSER_LEVEL_2)
                 knd_log("++ got func SPEC: \"%s\"  default: %d  terminal: %d",
                         spec->name, spec->is_default, spec->is_terminal);
 
@@ -1140,7 +1140,7 @@ static int knd_parse_state_change(const char *rec,
                     return err;
                 }
             
-                if (DEBUG_PARSER_LEVEL_TMP)
+                if (DEBUG_PARSER_LEVEL_2)
                     knd_log("++ got func terminal: \"%.*s\" [%lu]",
                             name_size, b, (unsigned long)name_size);
                 

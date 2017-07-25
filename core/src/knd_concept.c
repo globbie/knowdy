@@ -408,8 +408,6 @@ static int parse_str_change(void *obj,
     if (err) return err;
     attr->parent_dc = self;
     attr->type = KND_ELEM_STR;
-
-    knd_log(".. parse str field: \"%s\"..", rec);
     
     err = attr->parse(attr, rec, total_size);
     if (err) {
@@ -516,7 +514,7 @@ static int run_set_baseclass_item(void *obj, struct kndTaskArg *args, size_t num
     item->name_size = name_size;
     item->name[name_size] = '\0';
 
-    if (DEBUG_DC_LEVEL_TMP)
+    if (DEBUG_DC_LEVEL_2)
         knd_log("== baseclass item name set: \"%s\"", item->name);
 
     item->next = self->baseclass_items;
@@ -537,9 +535,6 @@ static int set_attr_item_val(void *obj, struct kndTaskArg *args, size_t num_args
     size_t val_size = 0;
     int err;
 
-    if (DEBUG_DC_LEVEL_TMP)
-        knd_log(".. run set attr item val!");
-
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
         if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
@@ -551,7 +546,7 @@ static int set_attr_item_val(void *obj, struct kndTaskArg *args, size_t num_args
     if (!val_size) return knd_FAIL;
     if (val_size >= KND_NAME_SIZE) return knd_LIMIT;
 
-    if (DEBUG_DC_LEVEL_TMP)
+    if (DEBUG_DC_LEVEL_2)
         knd_log(".. run set attr item val: %s\n", val);
 
     memcpy(item->val, val, val_size);
@@ -572,10 +567,6 @@ static int parse_baseclass_item(void *obj,
     struct kndAttrItem *item;
     int err;
 
-    if (DEBUG_DC_LEVEL_TMP) {
-        knd_log(".. check baseclass attr item: \"%s\"\n",
-                name, rec);
-    }
     if (!self->baseclass_items) return knd_FAIL;
     
     baseclass_item = self->baseclass_items;
@@ -586,7 +577,7 @@ static int parse_baseclass_item(void *obj,
     item->name_size = name_size;
     item->name[name_size] = '\0';
 
-    if (DEBUG_DC_LEVEL_TMP)
+    if (DEBUG_DC_LEVEL_2)
         knd_log("== attr item name set: \"%s\" REC: %s", item->name, rec);
 
     item->val_size = KND_NAME_SIZE;
@@ -600,9 +591,6 @@ static int parse_baseclass_item(void *obj,
    
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
-
-    if (DEBUG_DC_LEVEL_TMP)
-        knd_log("== \"%s\" attr item assigned!!", item->name);
     
     item->next = baseclass_item->attrs;
     baseclass_item->attrs = item;
@@ -728,7 +716,7 @@ static int parse_class_change(void *obj,
         dc->baseclass = self;
     }
     
-    dc->str(dc, 1);
+    //dc->str(dc, 1);
 
     err = self->class_idx->set(self->class_idx,
                                (const char*)dc->name, (void*)dc);

@@ -50,8 +50,8 @@ void *kndColl_recorder_agent(void *arg)
     assert(ret == knd_OK);
 
     while (1) {
-	knd_log("    !! Collection Recorder Agent #%d is ready!\n", 
-	       args->agent_id);
+	//knd_log("    !! Collection Recorder Agent #%d is ready!\n", 
+	//       args->agent_id);
 
 	/* waiting for spec */
         spec = knd_zmq_recv(inbox, &spec_size);

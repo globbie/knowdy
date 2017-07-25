@@ -1852,7 +1852,10 @@ kndRepo_parse_class(void *obj,
 {
     struct kndRepo *self, *repo;
     self = (struct kndRepo*)obj;
-    
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("   .. parsing the CLASS rec: \"%s\" REPO: %s\n\n", rec, self->name);
+
     if (!self->curr_repo) {
         knd_log("-- no repo selected :(");
         return knd_FAIL;

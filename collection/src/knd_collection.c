@@ -329,18 +329,21 @@ parse_request_service_addr(void *self,
         { .name = "frontend",
           .name_size = strlen("frontend"),
           .buf = coll->request_proxy_frontend,
-          .buf_size = &coll->request_proxy_frontend_size
+          .buf_size = &coll->request_proxy_frontend_size,
+          .max_buf_size = KND_NAME_SIZE
         },
         { .name = "backend",
           .name_size = strlen("backend"),
           .buf = coll->request_proxy_backend,
-          .buf_size = &coll->request_proxy_backend_size
+          .buf_size = &coll->request_proxy_backend_size,
+          .max_buf_size = KND_NAME_SIZE
         }
     };
     int err;
+    
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
-    
+
     return knd_OK;
 }
 
@@ -355,12 +358,14 @@ parse_record_service_addr(void *self,
         { .name = "frontend",
           .name_size = strlen("frontend"),
           .buf = coll->record_proxy_frontend,
-          .buf_size = &coll->record_proxy_frontend_size
+          .buf_size = &coll->record_proxy_frontend_size,
+          .max_buf_size = KND_NAME_SIZE
         },
         { .name = "backend",
           .name_size = strlen("backend"),
           .buf = coll->record_proxy_backend,
-          .buf_size = &coll->record_proxy_backend_size
+          .buf_size = &coll->record_proxy_backend_size,
+          .max_buf_size = KND_NAME_SIZE
         }
     };
     int err;
@@ -380,12 +385,14 @@ parse_publish_service_addr(void *self,
         { .name = "frontend",
           .name_size = strlen("frontend"),
           .buf = coll->publish_proxy_frontend,
-          .buf_size = &coll->publish_proxy_frontend_size
+          .buf_size = &coll->publish_proxy_frontend_size,
+          .max_buf_size = KND_NAME_SIZE
         },
         { .name = "backend",
           .name_size = strlen("backend"),
           .buf = coll->publish_proxy_backend,
-          .buf_size = &coll->publish_proxy_backend_size
+          .buf_size = &coll->publish_proxy_backend_size,
+          .max_buf_size = KND_NAME_SIZE
         }
     };
     int err;
@@ -407,12 +414,14 @@ parse_select_service_addr(void *self,
         { .name = "frontend",
           .name_size = strlen("frontend"),
           .buf = coll->select_proxy_frontend,
-          .buf_size = &coll->select_proxy_frontend_size
+          .buf_size = &coll->select_proxy_frontend_size,
+          .max_buf_size = KND_NAME_SIZE
         },
         { .name = "backend",
           .name_size = strlen("backend"),
           .buf = coll->select_proxy_backend,
-          .buf_size = &coll->select_proxy_backend_size
+          .buf_size = &coll->select_proxy_backend_size,
+          .max_buf_size = KND_NAME_SIZE
         }
     };
     int err;
