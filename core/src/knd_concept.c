@@ -28,11 +28,28 @@ static void del(struct kndConcept *self)
     free(self);
 }
 
+
+static void str_attr_items(struct kndAttrItem *items, size_t depth)
+{
+    struct kndAttrItem *item;
+    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
+    char *offset = malloc(offset_size + 1);
+
+    memset(offset, ' ', offset_size);
+    offset[offset_size] = '\0';
+
+    for (item = items; item; item = item->next) {
+        knd_log("%s%s_attr: \"%s\" => %s", offset, offset, item->name, item->val);
+    }
+    
+}
+
 static void str(struct kndConcept *self, size_t depth)
 {
     struct kndAttr *attr;
     struct kndTranslation *tr;
     struct kndConcRef *ref;
+    struct kndConcItem *item;
     
     size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
@@ -41,17 +58,23 @@ static void str(struct kndConcept *self, size_t depth)
     offset[offset_size] = '\0';
 
     knd_log("\n\n%s{class %s%s", offset, self->namespace, self->name);
-
-    if (self->baseclass_name_size) {
-        knd_log("\n%s%s_base: \"%s\"", offset, offset, self->baseclass_name);
-    }
     
-    tr = self->tr;
-    while (tr) {
-        knd_log("%s%s~ %s:%s", offset, offset, tr->lang_code, tr->val);
-        tr = tr->next;
+    
+    for (tr = self->tr; tr; tr = tr->next) {
+        knd_log("%s%s~ %s %s", offset, offset, tr->lang_code, tr->val);
     }
-        
+
+    if (self->num_baseclass_items) {
+        for (item = self->baseclass_items; item; item = item->next) {
+            knd_log("%s%s_base \"%s\"", offset, offset, item->name);
+            if (item->attrs) {
+                str_attr_items(item->attrs, depth + 1);
+            }
+        }
+    }
+
+    
+    
     attr = self->attrs;
     while (attr) {
         attr->str(attr, depth + 1);
@@ -318,12 +341,11 @@ static int parse_gloss_change(void *obj,
     if (!tr) return knd_NOMEM;
     memset(tr, 0, sizeof(struct kndTranslation));
 
-    tr->lang_code_size = KND_LANG_CODE_SIZE;
-
     struct kndTaskSpec specs[] = {
         { .is_validator = true,
           .buf = tr->lang_code,
           .buf_size = &tr->lang_code_size,
+          .max_buf_size = KND_LANG_CODE_SIZE,
           .validate = parse_gloss_translation,
           .obj = tr
         }
@@ -387,6 +409,8 @@ static int parse_str_change(void *obj,
     attr->parent_dc = self;
     attr->type = KND_ELEM_STR;
 
+    knd_log(".. parse str field: \"%s\"..", rec);
+    
     err = attr->parse(attr, rec, total_size);
     if (err) {
         knd_log("-- failed to parse the STR attr: %d", err);
@@ -452,10 +476,177 @@ static int parse_text_change(void *obj,
         knd_log("-- failed to parse the TEXT attr: %d", err);
         return err;
     }
+    if (!self->tail_attr) {
+        self->tail_attr = attr;
+        self->attrs = attr;
+    }
+    else {
+        self->tail_attr->next = attr;
+        self->tail_attr = attr;
+    }
+    return knd_OK;
+}
+
+
+
+static int run_set_baseclass_item(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    size_t name_size = 0;
+    struct kndConcItem *item;
+    int err;
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+    if (!name_size) return knd_FAIL;
+    if (name_size >= KND_NAME_SIZE)
+        return knd_LIMIT;
+
+    item = malloc(sizeof(struct kndConcItem));
+    memset(item, 0, sizeof(struct kndConcItem));
+
+    memcpy(item->name, name, name_size);
+    item->name_size = name_size;
+    item->name[name_size] = '\0';
+
+    if (DEBUG_DC_LEVEL_TMP)
+        knd_log("== baseclass item name set: \"%s\"", item->name);
+
+    item->next = self->baseclass_items;
+    self->baseclass_items = item;
+    self->num_baseclass_items++;
+
+    return knd_OK;
+}
+
+
+
+
+static int set_attr_item_val(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndAttrItem *item = (struct kndAttrItem*)obj;
+    struct kndTaskArg *arg;
+    const char *val = NULL;
+    size_t val_size = 0;
+    int err;
+
+    if (DEBUG_DC_LEVEL_TMP)
+        knd_log(".. run set attr item val!");
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            val = arg->val;
+            val_size = arg->val_size;
+        }
+    }
+    
+    if (!val_size) return knd_FAIL;
+    if (val_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+    if (DEBUG_DC_LEVEL_TMP)
+        knd_log(".. run set attr item val: %s\n", val);
+
+    memcpy(item->val, val, val_size);
+    item->val[val_size] = '\0';
+    item->val_size = val_size;
     
     return knd_OK;
 }
 
+
+
+static int parse_baseclass_item(void *obj,
+                                const char *name, size_t name_size,
+                                const char *rec, size_t *total_size)
+{
+    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndConcItem *baseclass_item;
+    struct kndAttrItem *item;
+    int err;
+
+    if (DEBUG_DC_LEVEL_TMP) {
+        knd_log(".. check baseclass attr item: \"%s\"\n",
+                name, rec);
+    }
+    if (!self->baseclass_items) return knd_FAIL;
+    
+    baseclass_item = self->baseclass_items;
+    
+    item = malloc(sizeof(struct kndAttrItem));
+    memset(item, 0, sizeof(struct kndAttrItem));
+    memcpy(item->name, name, name_size);
+    item->name_size = name_size;
+    item->name[name_size] = '\0';
+
+    if (DEBUG_DC_LEVEL_TMP)
+        knd_log("== attr item name set: \"%s\" REC: %s", item->name, rec);
+
+    item->val_size = KND_NAME_SIZE;
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_attr_item_val,
+          .obj = item
+        }
+    };
+   
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    if (DEBUG_DC_LEVEL_TMP)
+        knd_log("== \"%s\" attr item assigned!!", item->name);
+    
+    item->next = baseclass_item->attrs;
+    baseclass_item->attrs = item;
+    baseclass_item->num_attrs++;
+    
+    return knd_OK;
+}
+
+static int parse_baseclass(void *obj,
+                           const char *rec,
+                           size_t *total_size)
+{
+    struct kndConcept *self = (struct kndConcept*)obj;
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+    int err;
+
+    if (DEBUG_DC_LEVEL_1)
+        knd_log(".. parsing the base class: \"%s\"", rec);
+
+    struct kndTaskSpec specs[] = {
+        { .name = "baseclass item",
+          .name_size = strlen("baseclass item"),
+          .is_implied = true,
+          .run = run_set_baseclass_item,
+          .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "baseclass_item",
+          .name_size = strlen("baseclass_item"),
+          .is_validator = true,
+          .buf = buf,
+          .buf_size = &buf_size,
+          .max_buf_size = KND_NAME_SIZE,
+          .validate = parse_baseclass_item,
+          .obj = self
+        }
+    };
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
 
 static int parse_class_change(void *obj,
                               const char *rec,
@@ -484,8 +675,7 @@ static int parse_class_change(void *obj,
         { .type = KND_CHANGE_STATE,
           .name = "base",
           .name_size = strlen("base"),
-          .buf = dc->baseclass_name,
-          .buf_size = &dc->baseclass_name_size,
+          .parse = parse_baseclass,
           .obj = dc
         },
         { .type = KND_CHANGE_STATE,
@@ -538,7 +728,7 @@ static int parse_class_change(void *obj,
         dc->baseclass = self;
     }
     
-    //dc->str(dc, 1);
+    dc->str(dc, 1);
 
     err = self->class_idx->set(self->class_idx,
                                (const char*)dc->name, (void*)dc);

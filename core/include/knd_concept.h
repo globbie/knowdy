@@ -27,9 +27,11 @@
 #include "knd_config.h"
 
 struct kndAttr;
+struct kndAttrItem;
 struct kndConcept;
 struct kndOutput;
 struct kndTranslation;
+struct kndConcept;
 
 struct kndDataIdx
 {
@@ -42,9 +44,7 @@ struct kndDataIdx
     size_t abbr_size;
 
     size_t numval;
-    
     bool is_default;
-
     
     struct kndDataIdx *next;
 };
@@ -54,6 +54,19 @@ struct kndConcRef
 {
     size_t state;
     struct kndConcept *conc;
+};
+
+struct kndConcItem
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+
+    struct kndAttrItem *attrs;
+    size_t num_attrs;
+    
+    struct kndConcept *ref;
+    
+    struct kndConcItem *next;
 };
 
 struct kndConcept 
@@ -67,16 +80,15 @@ struct kndConcept
     /* ontology file location */
     const char *dbpath;
     size_t dbpath_size;
-    
-    char *path;
-    size_t path_size;
 
     char baseclass_name[KND_NAME_SIZE];
     size_t baseclass_name_size;
     struct kndConcept *baseclass;
     
-    struct kndTranslation *tr;
+    struct kndConcItem *baseclass_items;
+    size_t num_baseclass_items;
     
+    struct kndTranslation *tr;
     struct kndDataIdx *indices;
     size_t num_indices;
 
@@ -135,8 +147,10 @@ struct kndConcept
     void (*rewind)(struct kndConcept   *self);
     int (*next_attr)(struct kndConcept   *self,
                      struct kndAttr **result);
-    
 };
+
+
+
 
 /* constructor */
 extern int kndConcept_new(struct kndConcept **self);

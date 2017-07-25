@@ -33,15 +33,17 @@ static void str(struct kndAttr *self, size_t depth)
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
 
+    const char *type_name = knd_elem_names[self->type];
+
     if (self->is_list)
-        knd_log("\n%s[", offset);
+        knd_log("\n%s[%s", offset, self->name);
     else
-        knd_log("\n%s{", offset);
+        knd_log("\n%s{%s %s", offset, type_name, self->name);
 
 
     tr = self->tr;
     while (tr) {
-        knd_log("%s   ~ %s:%s", offset, tr->lang_code, tr->seq);
+        knd_log("%s   ~ %s %s", offset, tr->lang_code, tr->seq);
         tr = tr->next;
     }
 
@@ -357,9 +359,6 @@ static int parse_GSL(struct kndAttr *self,
     if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. attr parsing: \"%s\"..", rec);
 
-    self->ref_classname_size = KND_NAME_SIZE;
-    self->default_val_size = KND_NAME_SIZE;
-    
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_name,
@@ -368,8 +367,10 @@ static int parse_GSL(struct kndAttr *self,
         { .type = KND_CHANGE_STATE,
           .name = "c",
           .name_size = strlen("c"),
+          .is_terminal = true,
           .buf = self->ref_classname,
           .buf_size = &self->ref_classname_size,
+          .max_buf_size = KND_NAME_SIZE,
           .obj = self
         },
         { .type = KND_CHANGE_STATE,
@@ -377,6 +378,7 @@ static int parse_GSL(struct kndAttr *self,
           .name_size = strlen("val"),
           .buf = self->default_val,
           .buf_size = &self->default_val_size,
+          .max_buf_size = KND_NAME_SIZE,
           .obj = self
         }
     };

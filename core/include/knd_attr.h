@@ -25,11 +25,23 @@
 #include "knd_utils.h"
 #include "knd_config.h"
 
-struct kndDataWriter;
-struct kndDataReader;
 struct kndConcept;
 struct kndOutput;
 struct kndTranslation;
+struct kndAttr;
+
+struct kndAttrItem
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+
+    char val[KND_NAME_SIZE];
+    size_t val_size;
+
+    struct kndAttr *ref;
+    
+    struct kndAttrSort *next;
+};
 
 struct kndAttr 
 {
@@ -37,9 +49,6 @@ struct kndAttr
 
     char name[KND_NAME_SIZE];
     size_t name_size;
-
-    //char fullname[KND_NAME_SIZE];
-    //size_t fullname_size;
 
     char classname[KND_NAME_SIZE];
     size_t classname_size;
@@ -92,6 +101,7 @@ struct kndAttr
     int (*export)(struct kndAttr   *self,
                   knd_format format);
 };
+
 
 /* constructor */
 extern int kndAttr_new(struct kndAttr **self);

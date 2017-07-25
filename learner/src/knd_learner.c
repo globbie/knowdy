@@ -118,19 +118,19 @@ parse_write_inbox_addr(void *obj,
 {
     struct kndLearner *self = (struct kndLearner*)obj;
 
-    self->inbox_frontend_addr_size = KND_NAME_SIZE;
-    self->inbox_backend_addr_size = KND_NAME_SIZE;
 
     struct kndTaskSpec specs[] = {
         { .name = "frontend",
           .name_size = strlen("frontend"),
           .buf = self->inbox_frontend_addr,
-          .buf_size = &self->inbox_frontend_addr_size
+          .buf_size = &self->inbox_frontend_addr_size,
+          .max_buf_size = KND_NAME_SIZE       
         },
         { .name = "backend",
           .name_size = strlen("backend"),
           .buf = self->inbox_backend_addr,
-          .buf_size = &self->inbox_backend_addr_size
+          .buf_size = &self->inbox_backend_addr_size,
+          .max_buf_size = KND_NAME_SIZE       
         }
     };
     int err;
@@ -157,33 +157,31 @@ parse_config_GSL(struct kndLearner *self,
     const char *header_tag = "{knd::Knowdy Learner Service Configuration";
     size_t header_tag_size = strlen(header_tag);
     const char *c;
-
-    self->name_size = KND_NAME_SIZE;
-    self->path_size = KND_NAME_SIZE;
-    self->schema_path_size = KND_NAME_SIZE;
-    self->delivery_addr_size = KND_NAME_SIZE;
-    self->admin->sid_size = KND_NAME_SIZE;
     
     struct kndTaskSpec specs[] = {
          { .name = "path",
            .name_size = strlen("path"),
            .buf = self->path,
-           .buf_size = &self->path_size
+           .buf_size = &self->path_size,
+           .max_buf_size = KND_NAME_SIZE
          },
          { .name = "schemas",
            .name_size = strlen("schemas"),
            .buf = self->schema_path,
-           .buf_size = &self->schema_path_size
+           .buf_size = &self->schema_path_size,
+           .max_buf_size = KND_NAME_SIZE
          },
          { .name = "sid",
            .name_size = strlen("sid"),
            .buf = self->admin->sid,
-           .buf_size = &self->admin->sid_size
+           .buf_size = &self->admin->sid_size,
+           .max_buf_size = KND_NAME_SIZE
          },
          { .name = "delivery",
            .name_size = strlen("delivery"),
            .buf = self->delivery_addr,
-           .buf_size = &self->delivery_addr_size
+           .buf_size = &self->delivery_addr_size,
+           .max_buf_size = KND_NAME_SIZE
          },
         { .name = "write_inbox",
           .name_size = strlen("write_inbox"),
@@ -194,7 +192,8 @@ parse_config_GSL(struct kndLearner *self,
           .name = "set_service_id",
           .name_size = strlen("set_service_id"),
           .buf = self->name,
-          .buf_size = &self->name_size
+          .buf_size = &self->name_size,
+          .max_buf_size = KND_NAME_SIZE
         }
 
     };

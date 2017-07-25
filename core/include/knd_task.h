@@ -54,9 +54,11 @@ struct kndTaskSpec
     bool is_default;
     bool is_implied;
     bool is_validator;
+    bool is_terminal;
 
     char *buf;
     size_t *buf_size;
+    size_t max_buf_size;
     
     void *obj;
     
