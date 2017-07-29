@@ -3,7 +3,7 @@
 
 #include "knd_utils.h"
 #include "knd_task.h"
-#include "knd_dataclass.h"
+#include "knd_concept.h"
 
 struct kndObject;
 struct kndUser;
@@ -11,8 +11,8 @@ struct kndOutput;
 struct kndRepo;
 struct kndRepoSet;
 
-typedef enum knd_user_role { KND_USER_ROLE_READER, 
-                             KND_USER_ROLE_WRITER
+typedef enum knd_user_role { KND_USER_ROLE_RETRIEVER, 
+                             KND_USER_ROLE_LEARNER
                          } knd_user_role;
 
 struct kndRepoAccess
@@ -48,25 +48,27 @@ struct kndUser
     char sid[KND_NAME_SIZE];
     size_t sid_size;
 
-    char lang_code[KND_NAME_SIZE];
-    size_t lang_code_size;
+    char default_locale[KND_NAME_SIZE];
+    size_t default_locale_size;
 
-    char login_phrase[KND_TEMP_BUF_SIZE];
+    const char *locale;
+    size_t locale_size;
+
+    /*char login_phrase[KND_TEMP_BUF_SIZE];
     size_t login_phrase_size;
 
     char control_phrase[KND_TEMP_BUF_SIZE];
     size_t control_phrase_size;
-
-    struct kndDataClass *root_dc;
+    */
+    
+    struct kndConcept *root_class;
     struct kndTask *task;
     struct kndOutput *out;
-    
+    struct kndOutput *log;
+
     void *update_service;
     
     struct kndRepo *repo;
-    /*struct ooDict *repo_name_idx;
-    struct ooDict *repo_idx;
-    */
     
     struct ooDict *class_idx;
     struct ooDict *browse_class_idx;

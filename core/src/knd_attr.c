@@ -3,10 +3,12 @@
 #include <string.h>
 
 #include "knd_attr.h"
-#include "knd_dataclass.h"
+#include "knd_task.h"
+#include "knd_concept.h"
 #include "knd_output.h"
 
 #include "knd_text.h"
+#include "knd_parser.h"
 
 #define DEBUG_ATTR_LEVEL_1 0
 #define DEBUG_ATTR_LEVEL_2 0
@@ -14,7 +16,6 @@
 #define DEBUG_ATTR_LEVEL_4 0
 #define DEBUG_ATTR_LEVEL_5 0
 #define DEBUG_ATTR_LEVEL_TMP 1
-
 
 /*  Attr Destructor */
 static void del(struct kndAttr *self)
@@ -32,19 +33,16 @@ static void str(struct kndAttr *self, size_t depth)
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
 
-    if (self->is_list)
-        knd_log("\n%s[", offset);
-    else
-        knd_log("\n%s{", offset);
+    const char *type_name = knd_elem_names[self->type];
 
-    if (self->fullname_size) 
-        knd_log("%s  %s:%s %s", offset, knd_elem_names[self->type], self->name, self->fullname);
+    if (self->is_list)
+        knd_log("\n%s[%s", offset, self->name);
     else
-        knd_log("%s  %s:%s", offset, knd_elem_names[self->type], self->name);
+        knd_log("\n%s{%s %s", offset, type_name, self->name);
 
     tr = self->tr;
     while (tr) {
-        knd_log("%s   ~ %s:%s", offset, tr->lang_code, tr->seq);
+        knd_log("%s   ~ %s %s", offset, tr->locale, tr->seq);
         tr = tr->next;
     }
 
@@ -154,10 +152,13 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
                 buf_size = c - b;
                 if (!buf_size) return knd_FAIL;
                                    
-                tr->lang_code_size = buf_size;
-                memcpy(tr->lang_code, b, buf_size);
-                tr->lang_code[buf_size] = '\0';
+                tr->curr_locale_size = buf_size;
+                memcpy(tr->curr_locale, b, buf_size);
+                tr->curr_locale[buf_size] = '\0';
 
+                tr->locale = tr->curr_locale;
+                tr->locale_size = tr->curr_locale_size;
+                
                 in_key = false;
                 in_val = true;
                 b = c + 1;
@@ -188,7 +189,7 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
                 tr->seq[buf_size] = '\0';
 
                 if (DEBUG_ATTR_LEVEL_TMP)
-                    knd_log(".. set attr gloss: %s => %s", tr->lang_code, tr->seq);
+                    knd_log(".. set attr gloss: %s => %s", tr->locale, tr->seq);
 
                 tr->next = self->tr;
                 self->tr = tr;
@@ -213,273 +214,6 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
 
     return err;
 }
-
-
-
-static int
-kndAttr_read_list_GSL(struct kndAttr *self,
-                      char *rec,
-                      size_t *total_size)
-{
-    size_t buf_size = 0;
-
-    char *c, *b;
-
-    size_t curr_size = 0;
-    bool in_init = false;
-    bool got_attr_name = false;
-
-    bool in_abbr = false;
-    bool in_fullname = false;
-
-    int err = knd_FAIL;
-
-    c = rec;
-    b = rec;
-
-    while (*c) {
-        switch (*c) {
-        default:
-            if (got_attr_name) {
-                if (!in_fullname) {
-                    in_fullname = true;
-                    b = c;
-                }
-            }
-            break;
-            /* whitespace char */
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            if (!got_attr_name) {
-                buf_size = c - b;
-
-                if (!buf_size) return knd_FAIL;
-                if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
-
-                memcpy(self->name, b, buf_size);
-                self->name[buf_size] = '\0';
-                self->name_size = buf_size;
-                
-                if (!strcmp(self->name, "_gloss")) {
-                    err = kndAttr_read_GSL_glosses(self, c, &curr_size);
-                    if (err) goto final;
-
-                    *total_size = (c + curr_size) - rec;
-                    return knd_OK;
-                }
-
-                got_attr_name = true;
-                b = c + 1;
-                break;
-            }
-            
-            
-            break;
-        case '{':
-            /*if (!in_idx) {
-                in_idx = true;
-                b = c + 1;
-                }*/
-            
-            break;
-        case '}':
-
-            break;
-        case ':':
-            if (!in_abbr) {
-                buf_size = c - b;
-                if (!buf_size) return knd_FAIL;
-                if (buf_size >= KND_NAME_SIZE)
-                    return knd_LIMIT;
-
-                *c = '\0';
-
-                err = kndAttr_set_type(self, b, buf_size);
-                if (err) goto final;
-                
-                b = c + 1;
-                in_abbr = true;
-            }
-            
-            break;
-        case '[':
-            if (!in_init) {
-                in_init = true;
-                b = c + 1;
-            }
-            break;
-        case ']':
-
-            if (self->type == KND_ELEM_REF) {
-                buf_size = c - b;
-                if (!buf_size) return knd_FAIL;
-                if (buf_size >= KND_NAME_SIZE)
-                    return knd_LIMIT;
-                *c = '\0';
-
-                memcpy(self->ref_classname,
-                       self->parent_dc->namespace, self->parent_dc->namespace_size);
-                self->ref_classname_size = self->parent_dc->namespace_size;
-
-                memcpy(self->ref_classname + self->ref_classname_size, "::", strlen("::"));
-                self->ref_classname_size += strlen("::");
-
-                memcpy(self->ref_classname + self->ref_classname_size, b, buf_size);
-                self->ref_classname_size += buf_size;
-            }
-
-            *total_size = c - rec;
-            return knd_OK;
-        }
-
-        c++;
-    }
-    
- final:
-    return err;
-}
-
-
-static int read_GSL(struct kndAttr *self,
-                    char *rec,
-                    size_t *total_size)
-{
-    /*char buf[KND_NAME_SIZE];*/
-    size_t buf_size = 0;
-    char *c;
-    char *b;
-
-    struct kndAttr *attr = NULL;
-
-    bool in_body = false;
-    bool in_abbr = false;
-    bool in_fullname = false;
-
-    c = rec;
-    b = rec;
-    size_t chunk_size;
-    int err = knd_FAIL;
-    
-    /*knd_log(".. reading attr from \"%s\"..", rec);*/
-    
-    while (*c) {
-        switch (*c) {
-            /* whitespace */
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            if (in_abbr) {
-                buf_size = c - b;
-                if (!buf_size)
-                    return knd_FAIL;
-                if (buf_size >= KND_NAME_SIZE)
-                    return knd_LIMIT;
-
-                memcpy(self->name, b, buf_size);
-                self->name_size = buf_size;
-                self->name[buf_size] = '\0';
-                
-                in_abbr = false;
-                in_fullname = true;
-                b = c + 1;
-            }
-
-            if (in_fullname) break;
-            
-            b = c + 1;
-            break;
-        case '[':
-            if (!in_body) {
-                chunk_size = 0;
-                err = kndAttr_read_list_GSL(self, c, &chunk_size);
-                if (err) return err;
-                
-                *total_size = chunk_size;
-                return knd_OK;
-            }
-            break;
-        case '{':
-            if (!in_body) {
-                in_body = true;
-                b = c + 1;
-            }
-            
-            break;
-        case '}':
-            if (!in_body)
-                return knd_FAIL;
-
-            /* no fullname found? */
-            if (in_abbr) {
-                buf_size = c - b;
-                if (!buf_size)
-                    return knd_FAIL;
-                if (buf_size >= KND_NAME_SIZE)
-                    return knd_LIMIT;
-                memcpy(self->name, b, buf_size);
-                self->name_size = buf_size;
-                self->name[buf_size] = '\0';
-            }
-
-            /* TODO: trim occasional whitespace */
-            if (in_fullname) {
-                buf_size = c - b;
-                if (!buf_size)
-                    return knd_FAIL;
-                if (buf_size >= KND_NAME_SIZE)
-                    return knd_LIMIT;
-
-                memcpy(self->fullname,
-                       self->parent_dc->namespace, self->parent_dc->namespace_size);
-                self->fullname_size = self->parent_dc->namespace_size;
-
-                memcpy(self->fullname + self->fullname_size, "::", strlen("::"));
-                self->fullname_size += strlen("::");
-                
-                memcpy(self->fullname + self->fullname_size, b, buf_size);
-                self->fullname_size += buf_size;
-                
-                self->fullname[self->fullname_size] = '\0';
-            }
-            
-            *total_size = c - rec;
-            return knd_OK;
-        case ':':
-            if (!in_abbr) {
-                buf_size = c - b;
-                if (!buf_size)
-                    return knd_FAIL;
-                if (buf_size >= KND_NAME_SIZE)
-                    return knd_LIMIT;
-
-                *c = '\0';
-                
-                err = kndAttr_set_type(self, b, buf_size);
-                if (err) goto final;
-                
-                b = c + 1;
-                in_abbr = true;
-            }
-            
-            break;
-        default:
-            break;
-        }
-
-        c++;
-    }
-
- final:
-
-    if (attr)
-        attr->del(attr);
-    
-    return err;
-}
-
 
 
 static int 
@@ -526,16 +260,6 @@ static int export_JSON(struct kndAttr *self)
     err = out->write(out, "\"", 1);
     if (err) return err;
     
-    if (self->fullname_size) {
-        err = out->write(out, ",\"fullname\":\"", strlen(",\"fullname\":\""));
-        if (err) return err;
-
-        err = out->write(out, self->fullname, self->fullname_size);
-        if (err) return err;
-
-        err = out->write(out, "\"", 1);
-        if (err) return err;
-   }
 
     if (self->is_list) {
         err = out->write(out, ",\"is_list\":true", strlen(",\"is_list\":true"));
@@ -556,7 +280,7 @@ static int export_JSON(struct kndAttr *self)
     /* choose gloss */
     /*tr = self->tr;
     while (tr) {
-        if (strcmp(tr->lang_code, self->reader->lang_code)) goto next_tr;
+        if (strcmp(tr->locale, self->reader->locale)) goto next_tr;
         
         err = out->write(out,
                          ",\"gloss\":\"", strlen(",\"gloss\":\""));
@@ -580,11 +304,11 @@ static int export_JSON(struct kndAttr *self)
     return knd_OK;
 }
 
-static int export(struct kndAttr *self, knd_format format)
+static int export(struct kndAttr *self)
 {
     int err = knd_FAIL;
 
-    switch(format) {
+    switch(self->format) {
         case KND_FORMAT_JSON:
         err = export_JSON(self);
         if (err) goto final;
@@ -601,6 +325,79 @@ static int export(struct kndAttr *self, knd_format format)
     return err;
 }
 
+
+static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndAttr *self = (struct kndAttr*)obj;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    size_t name_size = 0;
+    int err;
+    
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+
+    if (!name_size) return knd_FAIL;
+    if (name_size >= KND_NAME_SIZE)
+        return knd_LIMIT;
+            
+    memcpy(self->name, name, name_size);
+    self->name_size = name_size;
+    self->name[name_size] = '\0';
+
+    return knd_OK;
+}
+
+
+static int parse_GSL(struct kndAttr *self,
+                     const char *rec,
+                     size_t *total_size)
+{
+    if (DEBUG_ATTR_LEVEL_2)
+        knd_log(".. attr parsing: \"%s\"..", rec);
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_name,
+          .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "c",
+          .name_size = strlen("c"),
+          .is_terminal = true,
+          .buf = self->ref_classname,
+          .buf_size = &self->ref_classname_size,
+          .max_buf_size = KND_NAME_SIZE,
+          .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "val",
+          .name_size = strlen("val"),
+          .buf = self->default_val,
+          .buf_size = &self->default_val_size,
+          .max_buf_size = KND_NAME_SIZE,
+          .obj = self
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    if (!*self->ref_classname)
+        self->ref_classname_size = 0;
+    if (!*self->default_val)
+        self->default_val_size = 0;
+    
+    return knd_OK;
+}
+
+
 /*  Attr Initializer */
 static void init(struct kndAttr *self)
 {
@@ -608,12 +405,12 @@ static void init(struct kndAttr *self)
     self->init = init;
     self->del = del;
     self->str = str;
-    self->read = read_GSL;
+    self->parse = parse_GSL;
     self->export = export;
 }
 
 
-extern int 
+extern int
 kndAttr_new(struct kndAttr **c)
 {
     struct kndAttr *self;

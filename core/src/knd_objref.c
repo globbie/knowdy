@@ -5,13 +5,12 @@
 #include "knd_repo.h"
 #include "knd_user.h"
 #include "knd_output.h"
-#include "knd_dataclass.h"
+#include "knd_concept.h"
 #include "knd_object.h"
 #include "knd_coderef.h"
 #include "knd_sorttag.h"
 #include "knd_parser.h"
 
-#include "knd_data_reader.h"
 
 #define DEBUG_OBJREF_LEVEL_0 0
 #define DEBUG_OBJREF_LEVEL_1 0
@@ -859,7 +858,7 @@ kndObjRef_clone(struct kndObjRef *self,
 
 static int 
 kndObjRef_import(struct kndObjRef     *self __attribute__((unused)),
-                  struct kndDataClass *baseclass __attribute__((unused)),
+                  struct kndConcept *baseclass __attribute__((unused)),
                   char                *rec)
 {
     char *b;

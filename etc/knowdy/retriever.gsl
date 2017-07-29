@@ -1,8 +1,9 @@
 {gsl::Knowdy Basic
-  {knd::Knowdy Reader Service Configuration
+  {knd::Knowdy Retriever Service Configuration
       {path /var/lib/knowdy/db}
       {schemas /etc/knowdy/schemas}
       {sid AUTH_SERVER_SID}
+      {locale ru_RU}
 
       {coll_request tcp://127.0.0.1:6913}
       {delivery ipc:///var/lib/knowdy/delivery/inbox}

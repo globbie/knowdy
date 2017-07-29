@@ -47,8 +47,15 @@ reset(struct kndTask *self)
     self->sid_size = 0;
     self->uid_size = 0;
     self->tid_size = 0;
+    self->locale = self->admin->default_locale;
+    self->locale_size = self->admin->default_locale_size;
+
+    self->admin->locale = self->admin->default_locale;
+    self->admin->locale_size = self->admin->default_locale_size;
+
     self->error = 0;
-    self->logger->reset(self->logger);
+    self->log->reset(self->log);
+    self->out->reset(self->out);
     self->spec_out->reset(self->spec_out);
 }
 
@@ -98,6 +105,58 @@ parse_tid(struct kndTask *self,
     return knd_FAIL;
 }
 
+static int
+parse_locale(struct kndTask *self,
+             const char *rec,
+             size_t *total_size)
+{
+    size_t buf_size;
+    const char *c;
+    const char *b;
+
+    c = rec;
+    b = c;
+    
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log("   .. parsing locale field: \"%s\"", c);
+    
+    while (*c) {
+        switch (*c) {
+        case '\n':
+        case '\r':
+        case '\t':
+        case ' ':
+            b = c + 1;
+            break;
+        case '}':
+            buf_size = c - b;
+            if (!buf_size) return knd_FAIL;
+            if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+            memcpy(self->curr_locale, b, buf_size);
+            self->curr_locale_size = buf_size;
+            self->curr_locale[buf_size] = '\0';
+
+            self->locale = self->curr_locale;
+            self->locale_size = self->curr_locale_size;
+
+            self->admin->locale = self->curr_locale;
+            self->admin->locale_size = self->curr_locale_size;
+
+            knd_log("CURR LOCALE: %s [%lu]", self->locale, (unsigned long)self->locale_size);
+            
+            *total_size = c - rec;
+            return knd_OK;
+        default:
+            break;
+        }
+
+        c++;
+    }
+
+    return knd_FAIL;
+}
+
 
 
 static int
@@ -109,6 +168,7 @@ parse_domain(struct kndTask *self,
 {
     const char *tid_tag = "tid";
     const char *user_tag = "user";
+    const char *locale_tag = "locale";
     size_t chunk_size;
     int err;
 
@@ -116,6 +176,18 @@ parse_domain(struct kndTask *self,
         knd_log(".. parsing domain %s..", name);
 
     switch (*name) {
+    case 'l':
+    case 'L':
+        if (!strncmp(locale_tag, name, name_size)) {
+            err = parse_locale(self, rec, &chunk_size);
+            if (err) {
+                knd_log("-- locale parse failed");
+                return knd_FAIL;
+            }
+            *total_size = chunk_size;
+            return knd_OK;
+        }
+        break;
     case 't':
     case 'T':
         if (!strncmp(tid_tag, name, name_size)) {
@@ -133,6 +205,7 @@ parse_domain(struct kndTask *self,
         if (!strncmp(user_tag, name, name_size)) {
             self->admin->task = self;
             self->admin->out = self->out;
+            self->admin->log = self->log;
             err = self->admin->parse_task(self->admin, rec, total_size);
             if (err) {
                 knd_log("-- User area parse failed");
@@ -312,7 +385,7 @@ report(struct kndTask *self)
     if (self->error) {
         err = self->spec_out->write(self->spec_out, "{err", strlen("{err"));
         if (err) return err;
-        err = self->spec_out->write(self->spec_out, self->logger->buf, self->logger->buf_size);
+        err = self->spec_out->write(self->spec_out, self->log->buf, self->log->buf_size);
         if (err) return err;
         err = self->spec_out->write(self->spec_out, "}", 1);
         if (err) return err;
@@ -322,7 +395,7 @@ report(struct kndTask *self)
     }
     
     if (DEBUG_TASK_LEVEL_TMP)
-        knd_log(".. reporting \"%s\" task result: %s",
+        knd_log("== TASK report: \"%s\"\n\n== RESULT: %s\n",
                 self->spec_out->buf, self->out->buf);
 
     err = knd_zmq_sendmore(self->delivery, (const char*)self->spec_out->buf, self->spec_out->buf_size);
@@ -337,10 +410,10 @@ report(struct kndTask *self)
     header = knd_zmq_recv(self->delivery, &header_size);
     obj = knd_zmq_recv(self->delivery, &obj_size);
 
-    if (DEBUG_TASK_LEVEL_TMP)
+    if (DEBUG_TASK_LEVEL_2)
         knd_log("== Delivery reply header: \"%s\" obj: \"%s\"",
                 header, obj);
-    
+
     return knd_OK;
 }
 
@@ -356,7 +429,7 @@ kndTask_new(struct kndTask **task)
 
     memset(self, 0, sizeof(struct kndTask));
 
-    err = kndOutput_new(&self->logger, KND_TEMP_BUF_SIZE);
+    err = kndOutput_new(&self->log, KND_TEMP_BUF_SIZE);
     if (err) return err;
 
     err = kndOutput_new(&self->spec_out, KND_TEMP_BUF_SIZE);

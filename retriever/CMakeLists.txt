@@ -1,5 +1,5 @@
 set(SOURCES
-        src/knd_data_reader.c)
+      src/knd_retriever.c)
 
 add_executable(${BINARY} ${SOURCES})
 

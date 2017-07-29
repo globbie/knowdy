@@ -42,15 +42,21 @@ struct kndTextSelect
 
 struct kndTranslation
 {
-    char lang_code[KND_LANG_CODE_SIZE];
-    size_t lang_code_size;
+    char curr_locale[KND_LOCALE_SIZE];
+    size_t curr_locale_size;
 
+    const char *locale;
+    size_t locale_size;
+    
     size_t state;
 
     size_t chunk_count;
     
     /* TODO: quality rating, spelling.. etc  */
     int verif_level;
+
+    char val[KND_NAME_SIZE];
+    size_t val_size;
     
     char *seq;
     size_t seq_size;

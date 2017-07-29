@@ -13,8 +13,6 @@
 #include "knd_coderef.h"
 #include "knd_parser.h"
 
-#include "knd_data_reader.h"
-
 #define DEBUG_REFSET_LEVEL_0 0
 #define DEBUG_REFSET_LEVEL_1 0
 #define DEBUG_REFSET_LEVEL_2 0
@@ -1332,7 +1330,7 @@ kndRefSet_facetize(struct kndRefSet *self)
                                self->parent->name);
         }
         
-        if (DEBUG_REFSET_LEVEL_TMP)
+        if (DEBUG_REFSET_LEVEL_1)
             knd_log("  .. reading atom IDX file: \"%s\" .. OUTPUT: %p\n",
                     buf, self->out);
         
@@ -1340,23 +1338,20 @@ kndRefSet_facetize(struct kndRefSet *self)
                                    (const char*)buf, buf_size);
         if (err) {
             if (DEBUG_REFSET_LEVEL_TMP)
-                knd_log("   -- no such DB found: \"%s\" :(\n",
+                knd_log("   -- no such idx DB found: \"%s\" :(\n",
                         buf);
             return knd_OK;
         }
         
-        if (DEBUG_REFSET_LEVEL_TMP)
+        if (DEBUG_REFSET_LEVEL_1)
             knd_log("\n\n   ++  atom IDX DB rec size: %lu\n",
                     (unsigned long)self->out->file_size);
-        
         
         err = kndRefSet_read_tags(self,
                                   (const char*)self->out->file,
                                   self->out->file_size);
         if (err) return err;
     }
-
-    
     
     /* terminal IDX */
     if (self->idx) {
@@ -1631,8 +1626,7 @@ kndRefSet_add_ref(struct kndRefSet *self,
     
     /* inbox overflow?
        time to split the inbox into subrefsets */
-
-    if (DEBUG_REFSET_LEVEL_TMP)
+    if (DEBUG_REFSET_LEVEL_1)
         knd_log("Inbox size: %lu   .. Time to create facets...\n\n",
                 (unsigned long)self->inbox_size);
 
@@ -1773,7 +1767,7 @@ kndRefSet_read_term_idx_tags(struct kndRefSet *self,
     int err = 0;
 
 
-    if (DEBUG_REFSET_LEVEL_TMP)
+    if (DEBUG_REFSET_LEVEL_2)
         knd_log("   .. reading tags from term IDX of refset \"%s\"   [DB num refs: %lu]\n",
                 self->name, (unsigned long)self->num_refs);
 
@@ -2005,7 +1999,7 @@ kndRefSet_read_term_idx(struct kndRefSet *self,
     int err = 0;
 
 
-    if (DEBUG_REFSET_LEVEL_TMP)
+    if (DEBUG_REFSET_LEVEL_1)
         knd_log("   .. reading term IDX of refset \"%s\"   [DB num refs: %lu]\n",
                 self->name, (unsigned long)self->num_refs);
 

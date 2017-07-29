@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "knd_dataclass.h"
+#include "knd_concept.h"
 #include "knd_attr.h"
 #include "knd_elem.h"
 #include "knd_repo.h"
@@ -216,8 +216,15 @@ import_GSL(struct kndObject *self,
                     knd_log("OBJ NAME: %s", self->name);
 
                 self->name_size = buf_size;
+                
+                /* hypen sign indicates the absence of user-supplied
+                 * name of an object */
 
                 /* anonymous obj takes obj id as name */
+
+                /* TODO:  add function to generate a unique and meaningful
+                 * object name based on certain attr values */
+                
                 if (self->name[0] == '-') {
                     memcpy(self->name, self->id, KND_ID_SIZE);
                     self->name[KND_ID_SIZE] = '\0';
@@ -508,7 +515,7 @@ kndObject_expand(struct kndObject *self,
                  size_t depth)
 {
     struct kndElem *elem;
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     struct kndAttr *attr;
     struct kndElemState *elem_state;
     struct kndRepoCache *cache;
@@ -615,14 +622,17 @@ kndObject_expand(struct kndObject *self,
         dc = elem->attr->dc;
         if (!dc) goto next_elem;
 
-        if (elem->ref_class)
+
+        /* TODO */
+        
+        /*if (elem->ref_class)
             dc = elem->ref_class;
 
         if (DEBUG_OBJ_LEVEL_2) {
             knd_log("    .. expanding elem REF to class \"%s\"\n",
                     dc->name);
         }
-        
+
         err = self->cache->repo->get_cache(self->cache->repo, dc, &cache);
         if (err) return knd_FAIL;
 
@@ -654,7 +664,8 @@ kndObject_expand(struct kndObject *self,
             err = obj->expand(obj, depth + 1);
             if (err) return err;
         }
-
+        */
+        
         next_elem:
         elem = elem->next;
     }
@@ -662,10 +673,9 @@ kndObject_expand(struct kndObject *self,
     self->is_expanded = true;
     
     if (depth) return knd_OK;
-
     
     if (DEBUG_OBJ_LEVEL_3)
-        knd_log(".. expand back rels..\n");
+        knd_log(".. expand back rels..");
     
     /* expand back relations */
     relc = self->rel_classes;
@@ -707,10 +717,8 @@ import(struct kndObject *self,
     case KND_FORMAT_GSL:
         err = import_GSL(self, rec, total_size);
         if (err) {
-            if (DEBUG_OBJ_LEVEL_TMP) {
-                knd_log("   -- GSL import of %s failed :(\n",
-                        self->id);
-            }
+            knd_log("-- GSL import of \"%s\" obj failed :(",
+                    self->id);
             return err;
         }
         break;
@@ -1078,7 +1086,7 @@ kndObject_export_JSON(struct kndObject *self,
     //size_t pathbuf_size;
 
     //struct ooDict *idx;
-    //struct kndDataClass *dc;
+    //struct kndConcept *dc;
     struct kndElem *elem;
     //struct kndRefSet *refset;
 
@@ -1371,7 +1379,7 @@ kndObject_export_HTML(struct kndObject *self,
 
     struct kndOutput *meta_out = NULL;
     //struct ooDict *idx;
-    //struct kndDataClass *dc;
+    //struct kndConcept *dc;
     struct kndElem *elem;
     //struct kndRefSet *refset;
     
@@ -2160,7 +2168,7 @@ kndObject_sync(struct kndObject *self)
 {
     char idbuf[KND_ID_SIZE];
     struct kndElem *elem;
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     struct kndRepoCache *cache;
     struct kndObject *obj;
     struct kndRefSet *refset;
@@ -2207,6 +2215,7 @@ kndObject_sync(struct kndObject *self)
         dc = elem->attr->dc;
         if (!dc) goto next_elem;
 
+        /*
         if (elem->ref_class)
             dc = elem->ref_class;
         
@@ -2220,7 +2229,6 @@ kndObject_sync(struct kndObject *self)
             err = self->cache->repo->get_cache(self->cache->repo, dc, &cache);
             if (err) return knd_FAIL;
 
-            /* get obj by name */
             err = self->cache->name_idx->lookup_name(self->cache->name_idx,
                                                      self->name, self->name_size,
                                                      self->name, self->name_size, idbuf);
@@ -2233,7 +2241,8 @@ kndObject_sync(struct kndObject *self)
             }
             elem->states->refobj = obj;
         }
-
+        */
+        
         next_elem:
         elem = elem->next;
     }

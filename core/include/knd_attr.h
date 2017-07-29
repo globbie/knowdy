@@ -15,7 +15,7 @@
  *
  *   ----------
  *   knd_attr.h
- *   Knowdy DataClass Attr
+ *   Knowdy Concept Attr
  */
 
 #ifndef KND_ATTR_H
@@ -25,11 +25,23 @@
 #include "knd_utils.h"
 #include "knd_config.h"
 
-struct kndDataWriter;
-struct kndDataReader;
-struct kndDataClass;
+struct kndConcept;
 struct kndOutput;
 struct kndTranslation;
+struct kndAttr;
+
+struct kndAttrItem
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+
+    char val[KND_NAME_SIZE];
+    size_t val_size;
+
+    struct kndAttr *ref;
+    
+    struct kndAttrItem *next;
+};
 
 struct kndAttr 
 {
@@ -38,19 +50,20 @@ struct kndAttr
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    char fullname[KND_NAME_SIZE];
-    size_t fullname_size;
-
     char classname[KND_NAME_SIZE];
     size_t classname_size;
 
-    struct kndDataClass *parent_dc;
-    struct kndDataClass *dc;
+    struct kndConcept *parent_dc;
+    struct kndConcept *dc;
+
+    const char *locale;
+    size_t locale_size;
+    knd_format format;
 
     /* refclass not set: self reference by default */
     char ref_classname[KND_NAME_SIZE];
     size_t ref_classname_size;
-    struct kndDataClass *ref_class;
+    struct kndConcept *ref_class;
     
     int concise_level;
     int descr_level;
@@ -71,6 +84,8 @@ struct kndAttr
     char idx_name[KND_NAME_SIZE];
     size_t idx_name_size;
 
+    struct kndRefSet *browser;
+
     struct kndOutput *out;
     
     struct kndTranslation *tr;
@@ -80,16 +95,15 @@ struct kndAttr
     /***********  public methods ***********/
     void (*init)(struct kndAttr  *self);
     void (*del)(struct kndAttr   *self);
-    void (*str)(struct kndAttr *self,
-                size_t depth);
+    void (*str)(struct kndAttr *self, size_t depth);
 
-    int (*read)(struct kndAttr *self,
-                char   *rec,
-                size_t *chunk_size);
+    int (*parse)(struct kndAttr *self,
+                 const char   *rec,
+                 size_t *chunk_size);
 
-    int (*export)(struct kndAttr   *self,
-                  knd_format format);
+    int (*export)(struct kndAttr   *self);
 };
+
 
 /* constructor */
 extern int kndAttr_new(struct kndAttr **self);

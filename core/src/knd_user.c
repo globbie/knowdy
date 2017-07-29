@@ -9,6 +9,7 @@
 #include "knd_msg.h"
 #include "knd_task.h"
 #include "knd_parser.h"
+#include "knd_concept.h"
 
 #define DEBUG_USER_LEVEL_0 0
 #define DEBUG_USER_LEVEL_1 0
@@ -35,7 +36,7 @@ kndUser_del(struct kndUser *self)
 static int 
 kndUser_str(struct kndUser *self)
 {
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     const char *key = NULL;
     void *val = NULL;
 
@@ -46,7 +47,7 @@ kndUser_str(struct kndUser *self)
         self->class_idx->next_item(self->class_idx, &key, &val);
         if (!key) break;
 
-        dc = (struct kndDataClass*)val;
+        dc = (struct kndConcept*)val;
         
         knd_log("CLASS: %s\n", dc->name);
 
@@ -174,7 +175,7 @@ kndUser_get_user(struct kndUser *self, const char *uid,
 static int
 kndUser_read_classes(struct kndUser *self, char *rec, size_t rec_size __attribute__((unused)))
 {
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     char *c;
     const char *delim = ";";
     char *last;
@@ -185,7 +186,7 @@ kndUser_read_classes(struct kndUser *self, char *rec, size_t rec_size __attribut
          c = strtok_r(NULL, delim, &last)) {
 
         /* check classname */
-        dc = self->root_dc->class_idx->get(self->root_dc->class_idx,
+        dc = self->root_class->class_idx->get(self->root_class->class_idx,
                                            (const char*)c);
         if (!dc) {
             if (DEBUG_USER_LEVEL_TMP)
@@ -207,7 +208,7 @@ kndUser_read_classes(struct kndUser *self, char *rec, size_t rec_size __attribut
 static int
 kndUser_read_browse_classes(struct kndUser *self, char *rec, size_t rec_size __attribute__((unused)))
 {
-    struct kndDataClass *dc;
+    struct kndConcept *dc;
     char *c;
     const char *delim = ";";
     char *last;
@@ -218,7 +219,7 @@ kndUser_read_browse_classes(struct kndUser *self, char *rec, size_t rec_size __a
          c = strtok_r(NULL, delim, &last)) {
 
         /* check classname */
-        dc = self->root_dc->class_idx->get(self->root_dc->class_idx,
+        dc = self->root_class->class_idx->get(self->root_class->class_idx,
                                            (const char*)c);
         if (!dc) {
             if (DEBUG_USER_LEVEL_TMP)
@@ -308,11 +309,6 @@ kndUser_read(struct kndUser *self, const char *rec)
         c++;
     }
     
-    /* set default lang */
-    if (!self->lang_code_size) {
-        memcpy(self->lang_code, "ru_RU", 5);
-        self->lang_code_size = 5;
-    }
     
     err = knd_OK;
     
@@ -444,7 +440,7 @@ kndUser_restore(struct kndUser *self)
         err = repo->open(repo);
         if (err) return err;
 
-        if (self->role == KND_USER_ROLE_WRITER) {
+        if (self->role == KND_USER_ROLE_LEARNER) {
             err = repo->restore(repo);
             if (err) return err;
         }
@@ -490,7 +486,7 @@ kndUser_export_JSON(struct kndUser *self)
     //char buf[KND_MED_BUF_SIZE] = {0};
     //size_t buf_size = 0;
 
-    struct kndDataClass *dc;
+    struct kndConcept *c;
     struct kndOutput *out;
     
     const char *key = NULL;
@@ -536,14 +532,9 @@ kndUser_export_JSON(struct kndUser *self)
             if (err) return err;
         }
 
-        dc = (struct kndDataClass*)val;
-
-        memcpy(dc->lang_code, self->lang_code, self->lang_code_size);
-        dc->lang_code_size = self->lang_code_size;
-        
-        err = dc->export(dc, KND_FORMAT_JSON);
+        c = (struct kndConcept*)val;
+        err = c->export(c);
         if (err) return err;
-
         i++;
     } while (key);
 
@@ -566,19 +557,19 @@ kndUser_export_JSON(struct kndUser *self)
 }
 
 
-static int
-kndUser_parse_repo(void *obj,
-                   const char *rec,
-                   size_t *total_size)
+static int kndUser_parse_repo(void *obj,
+                              const char *rec,
+                              size_t *total_size)
 {
     struct kndUser *self = (struct kndUser*)obj;
     int err;
-    
-    if (DEBUG_USER_LEVEL_2)
+
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log("   .. parsing the REPO rec: \"%s\"", rec);
 
     self->repo->task = self->task;
     self->repo->out = self->out;
+    self->repo->log = self->log;
     
     err = self->repo->parse_task(self->repo, rec, total_size);
     if (err) {
@@ -588,22 +579,141 @@ kndUser_parse_repo(void *obj,
     return knd_OK;
 }
 
-static int
-kndUser_run_sid_check(void *obj, struct kndTaskArg *args, size_t num_args)
+
+static int run_select_classes(void *obj,
+                              struct kndTaskArg *args, size_t num_args)
 {
     struct kndUser *self = (struct kndUser*)obj;
     struct kndTaskArg *arg;
-    const char *sid = NULL;
-    size_t sid_size = 0;
+    int err;
+
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log(".. default repo class select..");
+
+    /* select filters */
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        
+    }
+
+    self->root_class->out = self->out;
+    self->root_class->log = self->log;
+    
+    self->root_class->locale = self->locale;
+    self->root_class->locale_size = self->locale_size;
+    
+    err = self->root_class->select(self->root_class, args, num_args);
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+
+static int run_get_class(void *obj,
+                         struct kndTaskArg *args, size_t num_args)
+{
+    struct kndUser *self = (struct kndUser*)obj;
+    struct kndTaskArg *arg;
+     const char *name = NULL;
+    size_t name_size = 0;
+    int err;
 
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
-        if (!strncmp(arg->name, "sid", strlen("sid"))) {
-            sid = arg->val;
-            sid_size = arg->val_size;
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
         }
     }
+    
+    if (!name_size) return knd_FAIL;
+    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
 
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log(".. default repo get class: \"%s\".. OUT BUF: %s", name, self->out->buf);
+
+    self->root_class->out = self->out;
+    self->root_class->log = self->log;
+    
+    self->root_class->locale = self->locale;
+    self->root_class->locale_size = self->locale_size;
+    self->root_class->format = KND_FORMAT_JSON;
+
+    err = self->root_class->get(self->root_class, name, name_size);
+    if (err) return err;
+
+    return knd_OK;
+}
+
+static int kndUser_parse_default_class(void *obj,
+                                       const char *rec,
+                                       size_t *total_size)
+{
+    struct kndUser *self = (struct kndUser*)obj;
+    int err;
+
+    if (DEBUG_USER_LEVEL_1)
+        knd_log(".. parsing the default class rec: \"%s\"", rec);
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_get_class,
+          .obj = self
+        },
+        { .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = run_select_classes,
+          .obj = self
+        }
+    };
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) {
+        self->log->write(self->log,
+                         "{user class failure}",
+                         strlen( "{user class failure}"));
+        return err;
+    }
+
+    return knd_OK;
+}
+
+
+static int
+kndUser_parse_auth(void *obj,
+                   const char *rec,
+                   size_t *total_size)
+{
+    struct kndUser *self = (struct kndUser*)obj;
+    char sid[KND_NAME_SIZE];
+    size_t sid_size;
+
+    struct kndTaskSpec specs[] = {
+        { .name = "sid",
+          .name_size = strlen("sid"),
+          .is_terminal = true,
+          .buf = sid,
+          .buf_size = &sid_size,
+          .max_buf_size = KND_NAME_SIZE
+        }
+    };
+    int err;
+
+    if (DEBUG_USER_LEVEL_2)
+        knd_log("   .. parsing the AUTH rec: \"%s\"", rec);
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) {
+        self->log->write(self->log,
+                         "{user auth failure}",
+                         strlen( "{repo auth failure}"));
+        return err;
+    }
+
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log("++ got SID: \"%s\"", sid);
+    
     if (!sid_size) {
         knd_log("-- no SID provided :(");
         return knd_FAIL;
@@ -617,29 +727,26 @@ kndUser_run_sid_check(void *obj, struct kndTaskArg *args, size_t num_args)
     return knd_OK;
 }
 
-
 static int
 kndUser_parse_task(struct kndUser *self,
                    const char *rec,
                    size_t *total_size)
 {
-    struct kndTaskSpec auth_specs[] = {
-        { .name = "sid",
-          .name_size = strlen("sid")
-        }
-    };
-
     struct kndTaskSpec specs[] = {
-        { .name = "auth",
+        { .type = KND_CHANGE_STATE,
+          .name = "auth",
           .name_size = strlen("auth"),
-          .specs = auth_specs,
-          .num_specs = sizeof(auth_specs) / sizeof(struct kndTaskSpec),
-          .run = kndUser_run_sid_check,
+          .parse = kndUser_parse_auth,
           .obj = self
         },
         { .name = "repo",
           .name_size = strlen("repo"),
           .parse = kndUser_parse_repo,
+          .obj = self
+        },
+        { .name = "class",
+          .name_size = strlen("class"),
+          .parse = kndUser_parse_default_class,
           .obj = self
         }
     };
@@ -647,8 +754,9 @@ kndUser_parse_task(struct kndUser *self,
     
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) {
-        self->task->logger->write(self->task->logger,
-                                  "{user task run failure}", strlen( "{repo task run failure}"));
+        self->log->write(self->log,
+                         "{user task run failure}",
+                         strlen( "{repo task run failure}"));
         return err;
     }
     

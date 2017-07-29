@@ -3,12 +3,11 @@
 #include "knd_utils.h"
 
 struct kndObject;
-struct kndDataClass;
 struct kndOutput;
 struct kndUser;
 struct kndTask;
 
-struct kndDataReader
+struct kndRetriever
 {
     char *name;
     size_t name_size;
@@ -65,17 +64,17 @@ struct kndDataReader
     struct kndUser *admin;
 
     /**********  interface methods  **********/
-    int (*del)(struct kndDataReader *self);
+    int (*del)(struct kndRetriever *self);
 
-    int (*str)(struct kndDataReader *self);
+    int (*str)(struct kndRetriever *self);
 
-    int (*init)(struct kndDataReader *self);
+    int (*init)(struct kndRetriever *self);
 
-    int (*start)(struct kndDataReader *self);
+    int (*start)(struct kndRetriever *self);
 
-    void (*reset)(struct kndDataReader *self);
+    void (*reset)(struct kndRetriever *self);
 
 };
 
-extern int kndDataReader_new(struct kndDataReader **self,
+extern int kndRetriever_new(struct kndRetriever **self,
 			    const char *config);

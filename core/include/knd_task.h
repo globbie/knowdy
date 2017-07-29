@@ -27,6 +27,10 @@ struct kndOutput;
 struct kndTask;
 struct kndUser;
 
+typedef enum knd_task_spec_type { KND_GET_STATE, 
+                                  KND_CHANGE_STATE
+} knd_task_spec_type;
+
 struct kndTaskArg
 {
     char name[KND_NAME_SIZE];
@@ -38,6 +42,8 @@ struct kndTaskArg
 
 struct kndTaskSpec
 {
+    knd_task_spec_type type;
+
     const char *name;
     size_t name_size;
 
@@ -46,13 +52,19 @@ struct kndTaskSpec
     
     bool is_completed;
     bool is_default;
+    bool is_implied;
+    bool is_validator;
+    bool is_terminal;
 
     char *buf;
     size_t *buf_size;
+    size_t max_buf_size;
     
     void *obj;
     
     int (*parse)(void *obj, const char *rec, size_t *total_size);
+    int (*validate)(void *obj, const char *name, size_t name_size,
+                    const char *rec, size_t *total_size);
     int (*run)(void *obj, struct kndTaskArg *args, size_t num_args);
 };
 
@@ -68,6 +80,12 @@ struct kndTask
     char tid[KND_NAME_SIZE];
     size_t tid_size;
 
+    char curr_locale[KND_NAME_SIZE];
+    size_t curr_locale_size;
+
+    const char *locale;
+    size_t locale_size;
+    
     const char *spec;
     size_t spec_size;
 
@@ -78,7 +96,7 @@ struct kndTask
     
     struct kndUser *admin;
     
-    struct kndOutput *logger;
+    struct kndOutput *log;
     struct kndOutput *out;
     struct kndOutput *spec_out;
 

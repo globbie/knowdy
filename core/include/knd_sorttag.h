@@ -23,7 +23,7 @@
 #include "knd_config.h"
 #include "knd_facet.h"
 
-struct kndDataClass;
+struct kndConcept;
 struct kndOutput;
 
 struct kndSortAttr
@@ -78,7 +78,7 @@ struct kndSortTag
     int (*reset)(struct kndSortTag *self);
 
     int (*import)(struct kndSortTag *self,
-                  struct kndDataClass *dc,
+                  struct kndConcept *dc,
                   char *rec);
 };
 

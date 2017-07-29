@@ -786,9 +786,11 @@ kndFacet_add_positional(struct kndFacet *self,
     while (*val) {
 
         switch (*val) {
-            /*case ' ':
-              case '_':*/
+        case ' ':
+        case '_':
         case '-':
+        case ':':
+        case '/':
             val++;
             val_size--;
 

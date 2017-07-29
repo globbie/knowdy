@@ -38,6 +38,6 @@ After this actions you will get rpm package at your build directory. If you want
 
     systemctl start knd-collection
     systemctl start knd-delivery
-    systemctl start knd-reader
-    systemctl start knd-writer
+    systemctl start knd-retriever
+    systemctl start knd-learner
     systemctl start knd-storage

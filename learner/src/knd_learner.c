@@ -1,119 +1,136 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
-#include <pthread.h>
 #include <assert.h>
+#include <pthread.h>
 
-#include "knd_user.h"
-#include "knd_output.h"
-#include "knd_dataclass.h"
-#include "knd_task.h"
+#include "knd_config.h"
+#include "knd_dict.h"
 #include "knd_utils.h"
 #include "knd_msg.h"
+#include "knd_output.h"
+#include "knd_task.h"
+#include "knd_attr.h"
+#include "knd_user.h"
 #include "knd_parser.h"
+#include "knd_concept.h"
 
-#include "knd_data_reader.h"
+#include "knd_learner.h"
 
-#define DEBUG_READER_LEVEL_1 0
-#define DEBUG_READER_LEVEL_2 0
-#define DEBUG_READER_LEVEL_3 0
-#define DEBUG_READER_LEVEL_TMP 1
+#define DEBUG_LEARNER_LEVEL_1 0
+#define DEBUG_LEARNER_LEVEL_2 0
+#define DEBUG_LEARNER_LEVEL_3 0
+#define DEBUG_LEARNER_LEVEL_TMP 1
 
-static int
-kndDataReader_del(struct kndDataReader *self)
+static void
+kndLearner_del(struct kndLearner *self)
 {
-    /* TODO: storage */
-    
-    free(self);
+    /*if (self->path) free(self->path);*/
 
-    return knd_OK;
+    /* TODO: storage */
+
+    free(self);
 }
 
-static int
-kndDataReader_start(struct kndDataReader *self)
+
+static int  
+kndLearner_start(struct kndLearner *self)
 {
     void *context;
     void *outbox;
-    char *task;
-    size_t task_size;
-    char *obj;
-    size_t obj_size;
+    char *task = NULL;
+    size_t task_size = 0;
+    char *obj = NULL;
+    size_t obj_size = 0;
+    
     int err;
 
+    /* restore in-memory data after failure or restart */
+    self->admin->role = KND_USER_ROLE_LEARNER;
     err = self->admin->restore(self->admin);
     if (err) return err;
-
+    
     context = zmq_init(1);
 
+    knd_log("LEARNER listener: %s\n",
+            self->inbox_backend_addr);
+    
     /* get messages from outbox */
     outbox = zmq_socket(context, ZMQ_PULL);
-    if (!outbox) return knd_FAIL;
-
-    err = zmq_connect(outbox, self->inbox_backend_addr);
+    assert(outbox);
     
-    /* delivery service */
+    err = zmq_connect(outbox, self->inbox_backend_addr);
+    assert(err == knd_OK);
+    
     self->delivery = zmq_socket(context, ZMQ_REQ);
-    if (!self->delivery) return knd_FAIL;
-    assert((zmq_connect(self->delivery,  self->delivery_addr) == knd_OK));
+    assert(self->delivery);
+
+    if (DEBUG_LEARNER_LEVEL_TMP)
+        knd_log(".. establish delivery connection: %s..", 
+                self->delivery_addr);
+
+    err = zmq_connect(self->delivery, self->delivery_addr);
+    assert(err == knd_OK);
 
     self->task->delivery = self->delivery;
-    
+
     while (1) {
         self->task->reset(self->task);
-	knd_log("    ++ Reader #%s is ready to receive new tasks!\n",
-                self->name);
 
-	task  = knd_zmq_recv(outbox, &task_size);
-	obj   = knd_zmq_recv(outbox, &obj_size);
+        if (DEBUG_LEARNER_LEVEL_TMP)
+            knd_log("\n++ DATALEARNER AGENT #%s is ready to receive new tasks!", 
+                    self->name);
 
-        knd_log("\n    ++ Reader #%s got task: %s OBJ: %s\n", 
-                self->name, task, obj);
+	task = knd_zmq_recv(outbox, &task_size);
+	obj = knd_zmq_recv(outbox, &obj_size);
 
-        err = self->task->run(self->task, task, task_size, obj, obj_size);
+	knd_log("++ DATALEARNER AGENT #%s got task: %s [%lu]", 
+                self->name, task, (unsigned long)task_size);
+
+        err = self->task->run(self->task,
+                              task, task_size,
+                              obj, obj_size);
         if (err) {
-            self->task->error = err;
-            knd_log("-- task run failed: %d", err);
+            knd_log("-- task running failure: %d", err);
             goto final;
         }
 
     final:
-        
+
         err = self->task->report(self->task);
         if (err) {
             knd_log("-- task report failed: %d", err);
         }
-
-	if (task) free(task);
-	if (obj) free(obj);
+        
+        if (task) free(task);
+        if (obj) free(obj);
     }
 
-    zmq_close(outbox);
-
+    /* we should never get here */
     return knd_OK;
 }
 
 
 static int
-parse_read_inbox_addr(void *obj,
-                      const char *rec,
-                      size_t *total_size)
+parse_write_inbox_addr(void *obj,
+                       const char *rec,
+                       size_t *total_size)
 {
-    struct kndDataReader *self = (struct kndDataReader*)obj;
+    struct kndLearner *self = (struct kndLearner*)obj;
 
-    self->inbox_frontend_addr_size = KND_NAME_SIZE;
-    self->inbox_backend_addr_size = KND_NAME_SIZE;
 
     struct kndTaskSpec specs[] = {
         { .name = "frontend",
           .name_size = strlen("frontend"),
           .buf = self->inbox_frontend_addr,
-          .buf_size = &self->inbox_frontend_addr_size
+          .buf_size = &self->inbox_frontend_addr_size,
+          .max_buf_size = KND_NAME_SIZE       
         },
         { .name = "backend",
           .name_size = strlen("backend"),
           .buf = self->inbox_backend_addr,
-          .buf_size = &self->inbox_backend_addr_size
+          .buf_size = &self->inbox_backend_addr_size,
+          .max_buf_size = KND_NAME_SIZE       
         }
     };
     int err;
@@ -126,7 +143,7 @@ parse_read_inbox_addr(void *obj,
 
 
 static int
-parse_config_GSL(struct kndDataReader *self,
+parse_config_GSL(struct kndLearner *self,
                  const char *rec,
                  size_t *total_size)
 {
@@ -137,54 +154,48 @@ parse_config_GSL(struct kndDataReader *self,
     const char *gsl_format_tag = "{gsl";
     size_t gsl_format_tag_size = strlen(gsl_format_tag);
 
-    const char *header_tag = "{knd::Knowdy Reader Service Configuration";
+    const char *header_tag = "{knd::Knowdy Learner Service Configuration";
     size_t header_tag_size = strlen(header_tag);
     const char *c;
-
-    self->name_size = KND_NAME_SIZE;
-    self->path_size = KND_NAME_SIZE;
-    self->schema_path_size = KND_NAME_SIZE;
-    self->coll_request_addr_size = KND_NAME_SIZE;
-    self->delivery_addr_size = KND_NAME_SIZE;
-    self->admin->sid_size = KND_NAME_SIZE;
-
+    
     struct kndTaskSpec specs[] = {
          { .name = "path",
            .name_size = strlen("path"),
            .buf = self->path,
-           .buf_size = &self->path_size
+           .buf_size = &self->path_size,
+           .max_buf_size = KND_NAME_SIZE
          },
          { .name = "schemas",
            .name_size = strlen("schemas"),
            .buf = self->schema_path,
-           .buf_size = &self->schema_path_size
+           .buf_size = &self->schema_path_size,
+           .max_buf_size = KND_NAME_SIZE
          },
          { .name = "sid",
            .name_size = strlen("sid"),
            .buf = self->admin->sid,
-           .buf_size = &self->admin->sid_size
-         },
-         { .name = "coll_request",
-           .name_size = strlen("coll_request"),
-           .buf = self->coll_request_addr,
-           .buf_size = &self->coll_request_addr_size
+           .buf_size = &self->admin->sid_size,
+           .max_buf_size = KND_NAME_SIZE
          },
          { .name = "delivery",
            .name_size = strlen("delivery"),
            .buf = self->delivery_addr,
-           .buf_size = &self->delivery_addr_size
+           .buf_size = &self->delivery_addr_size,
+           .max_buf_size = KND_NAME_SIZE
          },
-        { .name = "read_inbox",
-          .name_size = strlen("read_inbox"),
-          .parse = parse_read_inbox_addr,
+        { .name = "write_inbox",
+          .name_size = strlen("write_inbox"),
+          .parse = parse_write_inbox_addr,
           .obj = self
         },
         { .is_default = true,
           .name = "set_service_id",
           .name_size = strlen("set_service_id"),
           .buf = self->name,
-          .buf_size = &self->name_size
+          .buf_size = &self->name_size,
+          .max_buf_size = KND_NAME_SIZE
         }
+
     };
     int err = knd_FAIL;
 
@@ -194,8 +205,7 @@ parse_config_GSL(struct kndDataReader *self,
                                   buf, &buf_size, &chunk_size);
         if (!err) {
             rec += chunk_size;
-            
-            if (DEBUG_READER_LEVEL_TMP)
+            if (DEBUG_LEARNER_LEVEL_TMP)
                 knd_log("== got schema: \"%s\"", buf);
         }
     }
@@ -204,7 +214,6 @@ parse_config_GSL(struct kndDataReader *self,
         knd_log("-- wrong GSL class header");
         return knd_FAIL;
     }
-    
     c = rec + header_tag_size;
     
     err = knd_parse_task(c, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
@@ -252,54 +261,54 @@ parse_config_GSL(struct kndDataReader *self,
     return knd_OK;
 }
 
-
 extern int
-kndDataReader_new(struct kndDataReader **rec,
+kndLearner_new(struct kndLearner **rec,
                   const char *config)
 {
-    struct kndDataReader *self;
-    struct kndDataClass *dc;
-    size_t chunk_size = 0;
+    struct kndLearner *self;
+    struct kndConcept *dc;
+    size_t chunk_size;
     int err;
 
-    self = malloc(sizeof(struct kndDataReader));
+    self = malloc(sizeof(struct kndLearner));
     if (!self) return knd_NOMEM;
 
-    memset(self, 0, sizeof(struct kndDataReader));
+    memset(self, 0, sizeof(struct kndLearner));
 
     err = kndOutput_new(&self->out, KND_IDX_BUF_SIZE);
-    if (err) return err;
-
-    err = kndTask_new(&self->task);
     if (err) goto error;
 
+    /* task specification */
+    err = kndTask_new(&self->task);
+    if (err) goto error;
+    
     err = kndOutput_new(&self->task->out, KND_IDX_BUF_SIZE);
     if (err) goto error;
 
+    err = kndOutput_new(&self->log, KND_MED_BUF_SIZE);
+    if (err) goto error;
+    
+    /* special user */
     err = kndUser_new(&self->admin);
     if (err) goto error;
     self->task->admin = self->admin;
     self->admin->out = self->out;
     
+    /* admin indices */
     err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-
+        
     /* read config */
     err = self->out->read_file(self->out, config, strlen(config));
-    if (err) {
-        knd_log("  -- config file read error :(");
-        goto error;
-    }
+    if (err) goto error;
     
     err = parse_config_GSL(self, self->out->file, &chunk_size);
-    if (err) {
-        knd_log("  -- config parsing error :(");
-        goto error;
-    }
-
-    err = kndDataClass_new(&dc);
-    if (err) return err;
+    if (err) goto error;
+    
+    err = kndConcept_new(&dc);
+    if (err) goto error;
     dc->out = self->out;
+    dc->log = self->log;
     dc->name[0] = '/';
     dc->name_size = 1;
 
@@ -310,7 +319,7 @@ kndDataReader_new(struct kndDataReader **rec,
     if (err) goto error;
     
     /* read class definitions */
-    err = dc->read_onto(dc, "index.gsl");
+    err = dc->read_file(dc, "index", strlen("index"));
     if (err) {
  	knd_log("-- couldn't read any schema definitions :("); 
         goto error;
@@ -319,37 +328,35 @@ kndDataReader_new(struct kndDataReader **rec,
     err = dc->coordinate(dc);
     if (err) goto error;
     
-    self->admin->root_dc = dc;
+    self->admin->root_class = dc;
 
-    self->del = kndDataReader_del;
-    self->start = kndDataReader_start;
+    self->del = kndLearner_del;
+    self->start = kndLearner_start;
 
     *rec = self;
+
     return knd_OK;
 
  error:
 
-    knd_log("  -- Data Reader failure :(\n");
     
-    kndDataReader_del(self);
+    kndLearner_del(self);
     return err;
 }
 
 
-
-
 /** SERVICES */
 
-void *kndDataReader_inbox(void *arg)
+void *kndLearner_inbox(void *arg)
 {
     void *context;
     void *frontend;
     void *backend;
-    struct kndDataReader *reader;
+    struct kndLearner *learner;
     int err;
 
     context = zmq_init(1);
-    reader = (struct kndDataReader*)arg;
+    learner = (struct kndLearner*)arg;
 
     frontend = zmq_socket(context, ZMQ_PULL);
     assert(frontend);
@@ -357,16 +364,16 @@ void *kndDataReader_inbox(void *arg)
     backend = zmq_socket(context, ZMQ_PUSH);
     assert(backend);
 
-    /* knd_log("%s <-> %s\n", reader->inbox_frontend_addr, reader->inbox_backend_addr); */
+    knd_log("%s <-> %s\n", learner->inbox_frontend_addr, learner->inbox_backend_addr);
 
-    err = zmq_bind(frontend, reader->inbox_frontend_addr);
+    err = zmq_bind(frontend, learner->inbox_frontend_addr);
     assert(err == knd_OK);
 
-    err = zmq_bind(backend, reader->inbox_backend_addr);
+    err = zmq_bind(backend, learner->inbox_backend_addr);
     assert(err == knd_OK);
 
-    knd_log("    ++ DataReader \"%s\" Inbox device is ready...\n\n", 
-            reader->name);
+    knd_log("    ++ Learner \"%s\" Queue device is ready...\n\n", 
+            learner->name);
 
     zmq_device(ZMQ_QUEUE, frontend, backend);
 
@@ -377,16 +384,16 @@ void *kndDataReader_inbox(void *arg)
     return NULL;
 }
 
-void *kndDataReader_selector(void *arg)
+void *kndLearner_selector(void *arg)
 {
     void *context;
     void *frontend;
     void *backend;
-    struct kndDataReader *reader;
+    struct kndLearner *learner;
     int err;
 
     context = zmq_init(1);
-    reader = (struct kndDataReader*)arg;
+    learner = (struct kndLearner*)arg;
 
     frontend = zmq_socket(context, ZMQ_PULL);
     assert(frontend);
@@ -394,18 +401,14 @@ void *kndDataReader_selector(void *arg)
     backend = zmq_socket(context, ZMQ_PUSH);
     assert(backend);
     
-    //err = zmq_connect(frontend, "tcp://127.0.0.1:6913");
-    //assert(err == knd_OK);
-
-    err = zmq_connect(frontend, reader->coll_request_addr);
+    err = zmq_connect(frontend, "ipc:///var/lib/knowdy/storage_push");
     assert(err == knd_OK);
 
-    err = zmq_connect(backend, reader->inbox_frontend_addr);
+    err = zmq_connect(backend, learner->inbox_frontend_addr);
     assert(err == knd_OK);
-
-    knd_log("    ++ DataReader %s Selector device is ready: %s...\n\n",
-            reader->name,
-            reader->inbox_frontend_addr);
+    
+    knd_log("    ++ Learner %s Selector device is ready: %s...\n\n",
+            learner->name, learner->inbox_frontend_addr);
 
     zmq_device(ZMQ_QUEUE, frontend, backend);
 
@@ -417,29 +420,29 @@ void *kndDataReader_selector(void *arg)
     return NULL;
 }
 
-void *kndDataReader_subscriber(void *arg)
+void *kndLearner_subscriber(void *arg)
 {
     void *context;
     void *subscriber;
     void *inbox;
 
-    struct kndDataReader *reader;
-
+    struct kndLearner *learner;
+    char *spec;
+    size_t spec_size;
     char *obj;
     size_t obj_size;
-    char *task;
-    size_t task_size;
     
     int err;
 
-    reader = (struct kndDataReader*)arg;
+    learner = (struct kndLearner*)arg;
 
     context = zmq_init(1);
+
 
     subscriber = zmq_socket(context, ZMQ_SUB);
     assert(subscriber);
 
-    err = zmq_connect(subscriber, "ipc:///tmp/writer_pub");
+    err = zmq_connect(subscriber, "ipc:///var/lib/knowdy/storage_pub");
     assert(err == knd_OK);
     
     zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "", 0);
@@ -447,26 +450,17 @@ void *kndDataReader_subscriber(void *arg)
     inbox = zmq_socket(context, ZMQ_PUSH);
     assert(inbox);
 
-    err = zmq_connect(inbox, reader->inbox_frontend_addr);
+    err = zmq_connect(inbox, learner->inbox_frontend_addr);
     assert(err == knd_OK);
-    
+
     while (1) {
-	printf("    ++ READER SUBSCRIBER is waiting for new tasks...\n");
-
-        task = knd_zmq_recv(subscriber, &task_size);
-
-	printf("    ++ READER SUBSCRIBER has got task:\n"
-          "       %s",  task);
-
+        spec = knd_zmq_recv(subscriber, &spec_size);
 	obj = knd_zmq_recv(subscriber, &obj_size);
 
-	printf("    ++ READER SUBSCRIBER is updating its inbox..\n");
-        
-	knd_zmq_sendmore(inbox, task, task_size);
+	knd_zmq_sendmore(inbox, spec, spec_size);
 	knd_zmq_send(inbox, obj, obj_size);
 
-	printf("    ++ all messages sent!");
-
+	printf("    ++ all messages sent!\n");
         fflush(stdout);
     }
 
@@ -487,7 +481,7 @@ int
 main(int const argc, 
      const char ** const argv) 
 {
-    struct kndDataReader *reader;
+    struct kndLearner *learner;
 
     const char *config = NULL;
 
@@ -498,40 +492,39 @@ main(int const argc,
 
     if (argc - 1 != 1) {
         fprintf(stderr, "You must specify 1 argument:  "
-                " the name of the configuration file."
+                " the name of the configuration file. "
                 "You specified %d arguments.\n",  argc - 1);
         exit(1);
     }
 
     config = argv[1];
 
-    err = kndDataReader_new(&reader, config);
+    err = kndLearner_new(&learner, config);
     if (err) {
-        fprintf(stderr, "Couldn\'t load the DataReader... ");
+        fprintf(stderr, "Couldn\'t load the Learner... ");
         return -1;
     }
-    
+
     /* add device */
-    err = pthread_create(&inbox, 
-			 NULL,
-			 kndDataReader_inbox, 
-                         (void*)reader);
+    err = pthread_create(&inbox,
+                         NULL,
+			 kndLearner_inbox, 
+                         (void*)learner);
     
     /* add subscriber */
     err = pthread_create(&subscriber, 
 			 NULL,
-			 kndDataReader_subscriber, 
-                         (void*)reader);
-   
-    
+			 kndLearner_subscriber, 
+                         (void*)learner);
+
     /* add selector */
     err = pthread_create(&selector, 
 			 NULL,
-			 kndDataReader_selector, 
-                         (void*)reader);
+			 kndLearner_selector, 
+                         (void*)learner);
 
-    reader->start(reader);
-    
-    
+    learner->start(learner);
+
     return 0;
 }
+
