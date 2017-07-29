@@ -8,6 +8,7 @@
 #include "knd_output.h"
 
 #include "knd_text.h"
+#include "knd_parser.h"
 
 #define DEBUG_ATTR_LEVEL_1 0
 #define DEBUG_ATTR_LEVEL_2 0
@@ -15,7 +16,6 @@
 #define DEBUG_ATTR_LEVEL_4 0
 #define DEBUG_ATTR_LEVEL_5 0
 #define DEBUG_ATTR_LEVEL_TMP 1
-
 
 /*  Attr Destructor */
 static void del(struct kndAttr *self)
@@ -40,10 +40,9 @@ static void str(struct kndAttr *self, size_t depth)
     else
         knd_log("\n%s{%s %s", offset, type_name, self->name);
 
-
     tr = self->tr;
     while (tr) {
-        knd_log("%s   ~ %s %s", offset, tr->lang_code, tr->seq);
+        knd_log("%s   ~ %s %s", offset, tr->locale, tr->seq);
         tr = tr->next;
     }
 
@@ -153,10 +152,13 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
                 buf_size = c - b;
                 if (!buf_size) return knd_FAIL;
                                    
-                tr->lang_code_size = buf_size;
-                memcpy(tr->lang_code, b, buf_size);
-                tr->lang_code[buf_size] = '\0';
+                tr->curr_locale_size = buf_size;
+                memcpy(tr->curr_locale, b, buf_size);
+                tr->curr_locale[buf_size] = '\0';
 
+                tr->locale = tr->curr_locale;
+                tr->locale_size = tr->curr_locale_size;
+                
                 in_key = false;
                 in_val = true;
                 b = c + 1;
@@ -187,7 +189,7 @@ kndAttr_read_GSL_glosses(struct kndAttr *self,
                 tr->seq[buf_size] = '\0';
 
                 if (DEBUG_ATTR_LEVEL_TMP)
-                    knd_log(".. set attr gloss: %s => %s", tr->lang_code, tr->seq);
+                    knd_log(".. set attr gloss: %s => %s", tr->locale, tr->seq);
 
                 tr->next = self->tr;
                 self->tr = tr;
@@ -278,7 +280,7 @@ static int export_JSON(struct kndAttr *self)
     /* choose gloss */
     /*tr = self->tr;
     while (tr) {
-        if (strcmp(tr->lang_code, self->reader->lang_code)) goto next_tr;
+        if (strcmp(tr->locale, self->reader->locale)) goto next_tr;
         
         err = out->write(out,
                          ",\"gloss\":\"", strlen(",\"gloss\":\""));
@@ -302,11 +304,11 @@ static int export_JSON(struct kndAttr *self)
     return knd_OK;
 }
 
-static int export(struct kndAttr *self, knd_format format)
+static int export(struct kndAttr *self)
 {
     int err = knd_FAIL;
 
-    switch(format) {
+    switch(self->format) {
         case KND_FORMAT_JSON:
         err = export_JSON(self);
         if (err) goto final;

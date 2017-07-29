@@ -147,11 +147,11 @@ static const char* const knd_elem_names[] = {
 
 #define KND_ID_SIZE  (KND_ID_MATRIX_DEPTH * sizeof(char))
 #define KND_ID_BATCH_SIZE 10
-#define KND_LANG_CODE_SIZE 8
+#define KND_LOCALE_SIZE 8
 
 #define KND_MAX_MIGRATIONS 256
 #define KND_MAX_SPECS 64
-#define KND_MAX_CONC_CHILDREN 64
+#define KND_MAX_CONC_CHILDREN 256
 #define KND_MAX_ARGS 16
 
 #define KND_MATCH_MAX_SCORE 100
@@ -167,6 +167,9 @@ static const char* const knd_elem_names[] = {
 
 /* KND Object */
 #define KND_OBJ_METABUF_SIZE 1024
+
+#define KND_DEFAULT_CLASS_DEPTH 3
+#define KND_MAX_CLASS_BATCH 128
 
 #define KND_DEFAULT_OBJ_DEPTH 2
 #define KND_MAX_OBJ_DEPTH 4
@@ -378,7 +381,7 @@ static const char* const knd_elem_names[] = {
 #define KND_MAX_ERR_MSG_BUF_SIZE 1024 * 10 * sizeof(char)
 #define KND_MAX_UPDATE_BUF_SIZE 1024 * 100 * sizeof(char)
 
-#define KND_MAX_TEXT_SIZE 1024 * 256
+#define KND_MAX_TEXT_CHUNK_SIZE 1024 * 10
 
 #define KND_MAX_CONTEXTS 4
 

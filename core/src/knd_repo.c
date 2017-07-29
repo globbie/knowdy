@@ -461,7 +461,7 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndRepo *self;
     struct ooDict *idx;
-    struct kndConcept *dc;
+    struct kndConcept *c;
     struct kndTaskArg *arg;
     const char *name = NULL;
     size_t name_size = 0;
@@ -487,29 +487,28 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
     }
 
     /* check classname */
-    idx = self->user->root_dc->class_idx;
-    dc = (struct kndConcept*)idx->get(idx, name);
-    if (!dc) {
+    idx = self->user->root_class->class_idx;
+    c = (struct kndConcept*)idx->get(idx, name);
+    if (!c) {
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("   -- classname \"%s\" is not valid :(\n", name);
         return knd_FAIL;
     }
-    self->curr_class = dc;
+    self->curr_class = c;
 
-    err = kndRepo_get_cache(self, dc, &self->curr_cache);
+    err = kndRepo_get_cache(self, c, &self->curr_cache);
     if (err) return err;
 
     if (DEBUG_REPO_LEVEL_2) {
-        knd_log("++ got class cache: \"%s\": %p", dc->name, self->curr_cache);
+        knd_log("++ got class cache: \"%s\": %p", c->name, self->curr_cache);
         self->curr_cache->name_idx->str(self->curr_cache->name_idx, 0, 5);
-
     }
 
     /* export schema */
-    dc->out = self->out;
-    dc->out->reset(dc->out);
+    c->out = self->out;
+    c->out->reset(c->out);
     
-    err = dc->export(dc, KND_FORMAT_JSON);
+    err = c->export(c);
     if (err) {
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("-- class JSON export failure: %d :(", err);

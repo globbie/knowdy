@@ -522,11 +522,14 @@ knd_find_spec(struct kndTaskSpec *specs,
     struct kndTaskSpec *spec;
     struct kndTaskSpec *default_spec = NULL;
     struct kndTaskSpec *validator_spec = NULL;
-   
+    bool is_completed = false;
+    
     for (size_t i = 0; i < num_specs; i++) {
         spec = &specs[i];
 
         if (spec->type != spec_type) continue;
+
+        if (spec->is_completed) is_completed = true;
         
         if (spec->is_default) {
             default_spec = spec;
@@ -561,7 +564,8 @@ knd_find_spec(struct kndTaskSpec *specs,
         return knd_OK;
     }
 
-    if (default_spec) {
+    /* run default action only if nothing else was activated before */
+    if (default_spec && !is_completed) {
         *result = default_spec;
         return knd_OK;
     }
@@ -639,6 +643,7 @@ static int knd_check_implied_field(const char *name,
                                 name, err);
                     return err;
                 }
+                spec->is_completed = true;
             }
             break;
         }

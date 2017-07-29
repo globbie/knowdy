@@ -32,6 +32,7 @@ struct kndConcept;
 struct kndOutput;
 struct kndTranslation;
 struct kndConcept;
+struct kndTaskArg;
 
 struct kndDataIdx
 {
@@ -74,6 +75,9 @@ struct kndConcept
     char name[KND_NAME_SIZE];
     size_t name_size;
 
+    struct kndTranslation *tr;
+    struct kndText *summary;
+
     char namespace[KND_NAME_SIZE];
     size_t namespace_size;
 
@@ -81,14 +85,14 @@ struct kndConcept
     const char *dbpath;
     size_t dbpath_size;
 
-    char baseclass_name[KND_NAME_SIZE];
-    size_t baseclass_name_size;
-    struct kndConcept *baseclass;
+    const char *locale;
+    size_t locale_size;
+    knd_format format;
+    size_t depth;
     
     struct kndConcItem *baseclass_items;
     size_t num_baseclass_items;
-    
-    struct kndTranslation *tr;
+
     struct kndDataIdx *indices;
     size_t num_indices;
 
@@ -102,9 +106,6 @@ struct kndConcept
 
     char curr_val[KND_NAME_SIZE];
     size_t curr_val_size;
-    
-    char lang_code[KND_NAME_SIZE];
-    size_t lang_code_size;
 
     char idx_name[KND_NAME_SIZE];
     size_t idx_name_size;
@@ -112,6 +113,10 @@ struct kndConcept
     char style_name[KND_NAME_SIZE];
     size_t style_name_size;
 
+    bool ignore_children;
+    
+    struct kndConcept *root_class;
+    
     /* indices */
     struct ooDict *class_idx;
     struct ooDict *attr_idx;
@@ -134,14 +139,18 @@ struct kndConcept
                      const char *filename,
                      size_t filename_size);
 
-    int (*coordinate)(struct kndConcept   *self);
-    int (*resolve)(struct kndConcept   *self);
+    int (*coordinate)(struct kndConcept *self);
+    int (*resolve)(struct kndConcept    *self);
 
-    int (*export)(struct kndConcept   *self,
-                  knd_format format);
+    int (*select)(struct kndConcept  *self,
+                  struct kndTaskArg *args, size_t num_args);
+    int (*get)(struct kndConcept  *self,
+               const char *name, size_t name_size);
 
-    int (*is_a)(struct kndConcept   *self,
-                struct kndConcept   *base);
+    int (*export)(struct kndConcept *self);
+
+    int (*is_a)(struct kndConcept *self,
+                struct kndConcept *base);
     
     /* traversal */
     void (*rewind)(struct kndConcept   *self);

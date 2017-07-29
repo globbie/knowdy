@@ -80,6 +80,12 @@ struct kndTask
     char tid[KND_NAME_SIZE];
     size_t tid_size;
 
+    char curr_locale[KND_NAME_SIZE];
+    size_t curr_locale_size;
+
+    const char *locale;
+    size_t locale_size;
+    
     const char *spec;
     size_t spec_size;
 

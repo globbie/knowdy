@@ -48,16 +48,20 @@ struct kndUser
     char sid[KND_NAME_SIZE];
     size_t sid_size;
 
-    char lang_code[KND_NAME_SIZE];
-    size_t lang_code_size;
+    char default_locale[KND_NAME_SIZE];
+    size_t default_locale_size;
 
-    char login_phrase[KND_TEMP_BUF_SIZE];
+    const char *locale;
+    size_t locale_size;
+
+    /*char login_phrase[KND_TEMP_BUF_SIZE];
     size_t login_phrase_size;
 
     char control_phrase[KND_TEMP_BUF_SIZE];
     size_t control_phrase_size;
-
-    struct kndConcept *root_dc;
+    */
+    
+    struct kndConcept *root_class;
     struct kndTask *task;
     struct kndOutput *out;
     struct kndOutput *log;

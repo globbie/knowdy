@@ -186,7 +186,7 @@ kndUser_read_classes(struct kndUser *self, char *rec, size_t rec_size __attribut
          c = strtok_r(NULL, delim, &last)) {
 
         /* check classname */
-        dc = self->root_dc->class_idx->get(self->root_dc->class_idx,
+        dc = self->root_class->class_idx->get(self->root_class->class_idx,
                                            (const char*)c);
         if (!dc) {
             if (DEBUG_USER_LEVEL_TMP)
@@ -219,7 +219,7 @@ kndUser_read_browse_classes(struct kndUser *self, char *rec, size_t rec_size __a
          c = strtok_r(NULL, delim, &last)) {
 
         /* check classname */
-        dc = self->root_dc->class_idx->get(self->root_dc->class_idx,
+        dc = self->root_class->class_idx->get(self->root_class->class_idx,
                                            (const char*)c);
         if (!dc) {
             if (DEBUG_USER_LEVEL_TMP)
@@ -309,11 +309,6 @@ kndUser_read(struct kndUser *self, const char *rec)
         c++;
     }
     
-    /* set default lang */
-    if (!self->lang_code_size) {
-        memcpy(self->lang_code, "ru_RU", 5);
-        self->lang_code_size = 5;
-    }
     
     err = knd_OK;
     
@@ -491,7 +486,7 @@ kndUser_export_JSON(struct kndUser *self)
     //char buf[KND_MED_BUF_SIZE] = {0};
     //size_t buf_size = 0;
 
-    struct kndConcept *dc;
+    struct kndConcept *c;
     struct kndOutput *out;
     
     const char *key = NULL;
@@ -537,14 +532,9 @@ kndUser_export_JSON(struct kndUser *self)
             if (err) return err;
         }
 
-        dc = (struct kndConcept*)val;
-
-        memcpy(dc->lang_code, self->lang_code, self->lang_code_size);
-        dc->lang_code_size = self->lang_code_size;
-        
-        err = dc->export(dc, KND_FORMAT_JSON);
+        c = (struct kndConcept*)val;
+        err = c->export(c);
         if (err) return err;
-
         i++;
     } while (key);
 
@@ -594,19 +584,66 @@ static int run_select_classes(void *obj,
                               struct kndTaskArg *args, size_t num_args)
 {
     struct kndUser *self = (struct kndUser*)obj;
+    struct kndTaskArg *arg;
     int err;
 
     if (DEBUG_USER_LEVEL_TMP)
-        knd_log("   .. selecting all classes..");
+        knd_log(".. default repo class select..");
 
+    /* select filters */
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        
+    }
+
+    self->root_class->out = self->out;
+    self->root_class->log = self->log;
     
-    self->repo->task = self->task;
-    self->repo->out = self->out;
-    self->repo->log = self->log;
+    self->root_class->locale = self->locale;
+    self->root_class->locale_size = self->locale_size;
+    
+    err = self->root_class->select(self->root_class, args, num_args);
+    if (err) return err;
     
     return knd_OK;
 }
 
+
+static int run_get_class(void *obj,
+                         struct kndTaskArg *args, size_t num_args)
+{
+    struct kndUser *self = (struct kndUser*)obj;
+    struct kndTaskArg *arg;
+     const char *name = NULL;
+    size_t name_size = 0;
+    int err;
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+    
+    if (!name_size) return knd_FAIL;
+    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log(".. default repo get class: \"%s\".. OUT BUF: %s", name, self->out->buf);
+
+    self->root_class->out = self->out;
+    self->root_class->log = self->log;
+    
+    self->root_class->locale = self->locale;
+    self->root_class->locale_size = self->locale_size;
+    self->root_class->format = KND_FORMAT_JSON;
+
+    err = self->root_class->get(self->root_class, name, name_size);
+    if (err) return err;
+
+    return knd_OK;
+}
 
 static int kndUser_parse_default_class(void *obj,
                                        const char *rec,
@@ -619,6 +656,10 @@ static int kndUser_parse_default_class(void *obj,
         knd_log(".. parsing the default class rec: \"%s\"", rec);
 
     struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_get_class,
+          .obj = self
+        },
         { .name = "default",
           .name_size = strlen("default"),
           .is_default = true,
@@ -634,7 +675,7 @@ static int kndUser_parse_default_class(void *obj,
                          strlen( "{user class failure}"));
         return err;
     }
-    
+
     return knd_OK;
 }
 

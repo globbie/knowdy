@@ -159,6 +159,12 @@ parse_config_GSL(struct kndRetriever *self,
            .buf_size = &self->admin->sid_size,
            .max_buf_size = KND_NAME_SIZE
          },
+         { .name = "locale",
+           .name_size = strlen("locale"),
+           .buf = self->admin->default_locale,
+           .buf_size = &self->admin->default_locale_size,
+           .max_buf_size = KND_NAME_SIZE
+         },
          { .name = "coll_request",
            .name_size = strlen("coll_request"),
            .buf = self->coll_request_addr,
@@ -289,12 +295,15 @@ kndRetriever_new(struct kndRetriever **rec,
         knd_log("  -- config file read error :(");
         goto error;
     }
-    
+
+    knd_log(".. config parsing");
+
     err = parse_config_GSL(self, self->out->file, &chunk_size);
     if (err) {
         knd_log("  -- config parsing error :(");
         goto error;
     }
+    knd_log("++ config parse OK!");
 
     err = kndConcept_new(&dc);
     if (err) return err;
@@ -318,7 +327,7 @@ kndRetriever_new(struct kndRetriever **rec,
     err = dc->coordinate(dc);
     if (err) goto error;
     
-    self->admin->root_dc = dc;
+    self->admin->root_class = dc;
 
     self->del = kndRetriever_del;
     self->start = kndRetriever_start;

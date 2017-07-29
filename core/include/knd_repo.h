@@ -162,8 +162,8 @@ struct kndRepo
     char sid[KND_TID_SIZE + 1];
     size_t sid_size;
 
-    char lang_code[KND_NAME_SIZE];
-    size_t lang_code_size;
+    const char *locale;
+    size_t locale_size;
 
     struct kndSpecInstruction *instruct;
     

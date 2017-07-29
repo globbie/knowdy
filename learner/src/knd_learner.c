@@ -328,7 +328,7 @@ kndLearner_new(struct kndLearner **rec,
     err = dc->coordinate(dc);
     if (err) goto error;
     
-    self->admin->root_dc = dc;
+    self->admin->root_class = dc;
 
     self->del = kndLearner_del;
     self->start = kndLearner_start;

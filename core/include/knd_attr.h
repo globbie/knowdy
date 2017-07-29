@@ -40,7 +40,7 @@ struct kndAttrItem
 
     struct kndAttr *ref;
     
-    struct kndAttrSort *next;
+    struct kndAttrItem *next;
 };
 
 struct kndAttr 
@@ -55,6 +55,10 @@ struct kndAttr
 
     struct kndConcept *parent_dc;
     struct kndConcept *dc;
+
+    const char *locale;
+    size_t locale_size;
+    knd_format format;
 
     /* refclass not set: self reference by default */
     char ref_classname[KND_NAME_SIZE];
@@ -91,15 +95,13 @@ struct kndAttr
     /***********  public methods ***********/
     void (*init)(struct kndAttr  *self);
     void (*del)(struct kndAttr   *self);
-    void (*str)(struct kndAttr *self,
-                size_t depth);
+    void (*str)(struct kndAttr *self, size_t depth);
 
     int (*parse)(struct kndAttr *self,
                  const char   *rec,
                  size_t *chunk_size);
 
-    int (*export)(struct kndAttr   *self,
-                  knd_format format);
+    int (*export)(struct kndAttr   *self);
 };
 
 
