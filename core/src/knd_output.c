@@ -81,6 +81,9 @@ kndOutput_read_file(struct kndOutput *self,
     int fd;
     int err;
 
+    if (DEBUG_OUTPUT_LEVEL_2)
+        knd_log(".. IO [%p] reading the \"%s\" file..", self, filename);
+
     if (!filename_size) return knd_FAIL;
 
     if (self->filename_size) {
@@ -102,8 +105,7 @@ kndOutput_read_file(struct kndOutput *self,
 
     fd = open(filename, O_RDONLY);
     if (fd < 0) {
-        if (DEBUG_OUTPUT_LEVEL_3)
-            knd_log("  -- error reading FILE \"%s\": %d\n",
+        knd_log("-- error reading FILE \"%s\": %d",
                 filename, fd);
         return knd_IO_FAIL;
     }

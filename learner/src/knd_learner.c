@@ -319,7 +319,7 @@ kndLearner_new(struct kndLearner **rec,
     if (err) goto error;
     
     /* read class definitions */
-    err = dc->read_file(dc, "index", strlen("index"));
+    err = dc->open(dc, "index", strlen("index"));
     if (err) {
  	knd_log("-- couldn't read any schema definitions :("); 
         goto error;

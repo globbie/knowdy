@@ -147,6 +147,12 @@ parse_config_GSL(struct kndRetriever *self,
            .buf_size = &self->path_size,
           .max_buf_size = KND_NAME_SIZE
          },
+         { .name = "n",
+           .name_size = strlen("n"),
+           .buf = self->name,
+           .buf_size = &self->name_size,
+           .max_buf_size = KND_NAME_SIZE
+         },
          { .name = "schemas",
            .name_size = strlen("schemas"),
            .buf = self->schema_path,
@@ -200,7 +206,7 @@ parse_config_GSL(struct kndRetriever *self,
         if (!err) {
             rec += chunk_size;
             
-            if (DEBUG_RETRIEVER_LEVEL_TMP)
+            if (DEBUG_RETRIEVER_LEVEL_2)
                 knd_log("== got schema: \"%s\"", buf);
         }
     }
@@ -296,14 +302,11 @@ kndRetriever_new(struct kndRetriever **rec,
         goto error;
     }
 
-    knd_log(".. config parsing");
-
     err = parse_config_GSL(self, self->out->file, &chunk_size);
     if (err) {
         knd_log("  -- config parsing error :(");
         goto error;
     }
-    knd_log("++ config parse OK!");
 
     err = kndConcept_new(&dc);
     if (err) return err;
@@ -318,15 +321,15 @@ kndRetriever_new(struct kndRetriever **rec,
     if (err) goto error;
     
     /* read class definitions */
-    err = dc->read_file(dc, "index", strlen("index"));
+    err = dc->open(dc, "index", strlen("index"));
     if (err) {
- 	knd_log("-- couldn't read any schema definitions :("); 
+ 	knd_log("-- couldn't read the schema definitions :("); 
         goto error;
     }
     
     err = dc->coordinate(dc);
     if (err) goto error;
-    
+
     self->admin->root_class = dc;
 
     self->del = kndRetriever_del;
@@ -337,7 +340,7 @@ kndRetriever_new(struct kndRetriever **rec,
 
  error:
 
-    knd_log("  -- Retriever failure :(\n");
+    knd_log("-- Retriever construction failure :(");
     
     kndRetriever_del(self);
     return err;

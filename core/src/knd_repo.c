@@ -185,7 +185,7 @@ kndRepo_open(struct kndRepo *self)
     self->path[out->buf_size] = '\0';
     self->path_size = out->buf_size;
     
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("..opening repo:  ID:\"%s\" REPO PATH:%s",
                 self->id, self->path);
 

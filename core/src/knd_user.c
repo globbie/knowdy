@@ -449,9 +449,6 @@ kndUser_restore(struct kndUser *self)
         err = self->repo->repo_idx->set(self->repo->repo_idx, repo->name, (void*)repo);
         if (err) return err;
 
-        
-        knd_log("++ repo opened: %s PATH: %s", repo->name, repo->path);
-
         repo->restore_mode = false;
     }
 

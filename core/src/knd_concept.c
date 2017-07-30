@@ -172,8 +172,8 @@ static int resolve_names(struct kndConcept *self)
         if (!c) {
             knd_log("-- couldn't resolve the \"%s\" base class :(",
                     item->name);
-            continue;
-            // TODO: return knd_FAIL;
+            //continue;
+            return knd_FAIL;
         }
 
         /* prevent circled relations */
@@ -699,7 +699,7 @@ static int run_set_children_setting(void *obj, struct kndTaskArg *args, size_t n
     if (val_size >= KND_NAME_SIZE)
         return knd_LIMIT;
 
-    if (DEBUG_DC_LEVEL_TMP)
+    if (DEBUG_DC_LEVEL_2)
         knd_log(".. keep track of children option: %s\n", val);
 
     if (!strncmp("false", val, val_size))
@@ -889,12 +889,13 @@ static int run_read_include(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndConcept *self = (struct kndConcept*)obj;
     struct kndTaskArg *arg;
+    struct kndConcFolder *folder;
     const char *name = NULL;
     size_t name_size = 0;
     int err;
 
     if (DEBUG_DC_LEVEL_2)
-        knd_log(".. running include file func..");
+        knd_log(".. running include file func.. num args: %lu", (unsigned long)num_args);
 
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
@@ -909,8 +910,17 @@ static int run_read_include(void *obj, struct kndTaskArg *args, size_t num_args)
     if (DEBUG_DC_LEVEL_2)
         knd_log("== got include file name: \"%s\"..", name);
 
-    err = read_GSL_file(self, name, name_size);
-    if (err) return err;
+    folder = malloc(sizeof(struct kndConcFolder));
+    if (!folder) return knd_NOMEM;
+    memset(folder, 0, sizeof(struct kndConcFolder));
+
+    memcpy(folder->name, name, name_size);
+    folder->name_size = name_size;
+    folder->name[name_size] = '\0';
+
+    folder->next = self->folders;
+    self->folders = folder;
+    self->num_folders++;
 
     return knd_OK;
 }
@@ -920,7 +930,7 @@ static int parse_schema(void *self,
                         const char *rec,
                         size_t *total_size)
 {
-    if (DEBUG_DC_LEVEL_1)
+    if (DEBUG_DC_LEVEL_2)
         knd_log(".. parse schema REC: \"%s\"..", rec);
 
     struct kndTaskSpec specs[] = {
@@ -940,7 +950,7 @@ static int parse_schema(void *self,
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
 
-    if (DEBUG_DC_LEVEL_1)
+    if (DEBUG_DC_LEVEL_2)
         knd_log("++ schema parse OK!");
 
     return knd_OK;
@@ -950,6 +960,8 @@ static int parse_include(void *self,
                          const char *rec,
                          size_t *total_size)
 {
+    const char *c;
+    
     if (DEBUG_DC_LEVEL_2)
         knd_log(".. parse include REC: \"%s\"..", rec);
 
@@ -969,7 +981,7 @@ static int parse_include(void *self,
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
-
+    
     return knd_OK;
 }
 
@@ -1003,8 +1015,13 @@ static int read_GSL_file(struct kndConcept *self,
                          size_t filename_size)
 {
     struct kndOutput *out = self->out;
+    struct kndConcFolder *folder, **folders;
+    size_t num_folders;
     size_t chunk_size = 0;
     int err;
+
+    if (DEBUG_DC_LEVEL_TMP)
+        knd_log("..read \"%s\"..", filename);
 
     out->reset(out);
 
@@ -1024,23 +1041,35 @@ static int read_GSL_file(struct kndConcept *self,
     }
 
     out->file[out->file_size] = '\0';
-
+    
     err = parse_GSL(self, (const char*)out->file, &chunk_size);
     if (err) return err;
 
+    /* high time to read our folders */
+    folders = self->folders;
+    self->folders = NULL;
+    self->num_folders = 0;
+    
+    for (folder = folders; folder; folder = folder->next) {
+        /*knd_log(".. should now read the \"%s\" folder..",
+                folder->name);
+        */
+        
+        err = read_GSL_file(self, folder->name, folder->name_size);
+        if (err) return err;
+    }
     return knd_OK;
 }
-
 
 static int resolve_class_refs(struct kndConcept *self)
 {
     struct kndConcept *dc, *bc;
     const char *key;
     void *val;
-    int err = knd_FAIL;
+    int err;
 
-    if (DEBUG_DC_LEVEL_TMP)
-        knd_log("   .. resolving class refs by \"%s\"", self->name);
+    if (DEBUG_DC_LEVEL_2)
+        knd_log(".. resolving class refs by \"%s\"", self->name);
 
     key = NULL;
     self->class_idx->rewind(self->class_idx);
@@ -1051,12 +1080,14 @@ static int resolve_class_refs(struct kndConcept *self)
         dc = (struct kndConcept*)val;
 
         err = dc->resolve(dc);
-        if (err) goto final;
+        if (err) {
+            knd_log("-- couldn't resolve the \"%s\" class :(", dc->name);
+            return err;
+        }
     } while (key);
 
-
     /* display all classes */
-    if (DEBUG_DC_LEVEL_TMP) {
+    if (DEBUG_DC_LEVEL_2) {
         key = NULL;
         self->class_idx->rewind(self->class_idx);
         do {
@@ -1070,11 +1101,7 @@ static int resolve_class_refs(struct kndConcept *self)
         } while (key);
     }
 
-
-    err = knd_OK;
-
-final:
-    return err;
+    return knd_OK;
 }
 
 
@@ -1152,6 +1179,35 @@ kndConcept_export_GSL(struct kndConcept *self)
 
 
 
+static int attr_items_JSON(struct kndConcept *self,
+                           struct kndAttrItem *items, size_t depth)
+{
+    struct kndAttrItem *item;
+    struct kndOutput *out;
+    size_t attr_count = 0;
+    int err;
+
+    out = self->out;
+
+    for (item = items; item; item = item->next) {
+        err = out->write(out, ",", 1);
+        if (err) return err;
+        err = out->write(out, "\"", 1);
+        if (err) return err;
+        err = out->write(out, item->name, item->name_size);
+        if (err) return err;
+        err = out->write(out, "\":\"", strlen("\":\""));
+        if (err) return err;
+        err = out->write(out, item->val, item->val_size);
+        if (err) return err;
+        err = out->write(out, "\"", 1);
+        if (err) return err;
+    }
+    
+    return knd_OK;
+}
+
+
 static int
 kndConcept_export_JSON(struct kndConcept *self)
 {
@@ -1186,12 +1242,11 @@ kndConcept_export_JSON(struct kndConcept *self)
     /* choose gloss */
     tr = self->tr;
     while (tr) {
-        if (DEBUG_DC_LEVEL_TMP)
+        if (DEBUG_DC_LEVEL_2)
             knd_log("LANG: %s == CURR LOCALE: %s [%lu] => %s",
                     tr->locale, self->locale, (unsigned long)self->locale_size, tr->val);
 
-        if (strncmp(tr->locale, self->locale, self->locale_size)) {
-            knd_log("-- try next locale..\n");
+        if (strncmp(self->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
         }
         
@@ -1231,6 +1286,11 @@ kndConcept_export_JSON(struct kndConcept *self)
             if (err) return err;
             err = out->write(out, "\"", 1);
             if (err) return err;
+
+            if (item->attrs) {
+                err = attr_items_JSON(self, item->attrs, 0);
+                if (err) return err;
+            }
             
             err = out->write(out, "}", 1);
             if (err) return err;
@@ -1414,7 +1474,7 @@ static void init(struct kndConcept *self)
 {
     self->del = del;
     self->str = str;
-    self->read_file = read_GSL_file;
+    self->open = read_GSL_file;
 
     self->coordinate = resolve_class_refs;
     self->resolve = resolve_names;

@@ -70,6 +70,15 @@ struct kndConcItem
     struct kndConcItem *next;
 };
 
+struct kndConcFolder
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+    
+    size_t num_concepts;
+    struct kndConcFolder *next;
+};
+
 struct kndConcept 
 {
     char name[KND_NAME_SIZE];
@@ -116,6 +125,9 @@ struct kndConcept
     bool ignore_children;
     
     struct kndConcept *root_class;
+
+    struct kndConcFolder *folders;
+    size_t num_folders;
     
     /* indices */
     struct ooDict *class_idx;
@@ -135,9 +147,9 @@ struct kndConcept
     void (*str)(struct kndConcept *self,
                 size_t depth);
 
-    int (*read_file)(struct kndConcept   *self,
-                     const char *filename,
-                     size_t filename_size);
+    int (*open)(struct kndConcept   *self,
+                const char *filename,
+                size_t filename_size);
 
     int (*coordinate)(struct kndConcept *self);
     int (*resolve)(struct kndConcept    *self);
