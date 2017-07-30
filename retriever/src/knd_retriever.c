@@ -350,7 +350,6 @@ kndRetriever_new(struct kndRetriever **rec,
 
 
 /** SERVICES */
-
 void *kndRetriever_inbox(void *arg)
 {
     void *context;
@@ -440,7 +439,6 @@ void *kndRetriever_subscriber(void *arg)
     size_t obj_size;
     char *task;
     size_t task_size;
-    
     int err;
 
     retriever = (struct kndRetriever*)arg;
@@ -449,35 +447,32 @@ void *kndRetriever_subscriber(void *arg)
 
     subscriber = zmq_socket(context, ZMQ_SUB);
     assert(subscriber);
-
-    err = zmq_connect(subscriber, "ipc:///tmp/writer_pub");
+    err = zmq_connect(subscriber, "ipc:///var/lib/knowdy/learner_pub_backend");
     assert(err == knd_OK);
-    
     zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "", 0);
 
     inbox = zmq_socket(context, ZMQ_PUSH);
     assert(inbox);
-
     err = zmq_connect(inbox, retriever->inbox_frontend_addr);
     assert(err == knd_OK);
     
     while (1) {
-	printf("    ++ RETRIEVER SUBSCRIBER is waiting for new tasks...\n");
+	knd_log(".. \"%s\" Retriever is waiting for the updates from Learner...",
+                retriever->name);
 
         task = knd_zmq_recv(subscriber, &task_size);
 
-	printf("    ++ RETRIEVER SUBSCRIBER has got task:\n"
-          "       %s",  task);
+	printf("++ %s Retriever has got an update from Learner:"
+               "       %s", retriever->name, task);
 
 	obj = knd_zmq_recv(subscriber, &obj_size);
-
-	printf("    ++ RETRIEVER SUBSCRIBER is updating its inbox..\n");
         
 	knd_zmq_sendmore(inbox, task, task_size);
 	knd_zmq_send(inbox, obj, obj_size);
 
-	printf("    ++ all messages sent!");
-
+        free(task);
+        free(obj);
+        
         fflush(stdout);
     }
 
@@ -533,7 +528,6 @@ main(int const argc,
 			 NULL,
 			 kndRetriever_subscriber, 
                          (void*)retriever);
-   
     
     /* add selector */
     err = pthread_create(&selector, 

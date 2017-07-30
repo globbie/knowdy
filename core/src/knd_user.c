@@ -724,6 +724,30 @@ kndUser_parse_auth(void *obj,
     return knd_OK;
 }
 
+
+static int kndUser_parse_class_import(void *obj,
+                                      const char *rec,
+                                      size_t *total_size)
+{
+    struct kndUser *self = (struct kndUser*)obj;
+    int err;
+
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log(".. parsing the default class import: \"%s\"", rec);
+
+    self->root_class->out = self->out;
+    self->root_class->log = self->log;
+    
+    self->root_class->locale = self->locale;
+    self->root_class->locale_size = self->locale_size;
+    
+    err = self->root_class->import(self->root_class, rec, total_size);
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+
 static int
 kndUser_parse_task(struct kndUser *self,
                    const char *rec,
@@ -739,6 +763,12 @@ kndUser_parse_task(struct kndUser *self,
         { .name = "repo",
           .name_size = strlen("repo"),
           .parse = kndUser_parse_repo,
+          .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "class",
+          .name_size = strlen("class"),
+          .parse = kndUser_parse_class_import,
           .obj = self
         },
         { .name = "class",

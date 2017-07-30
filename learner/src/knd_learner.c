@@ -78,13 +78,13 @@ kndLearner_start(struct kndLearner *self)
         self->task->reset(self->task);
 
         if (DEBUG_LEARNER_LEVEL_TMP)
-            knd_log("\n++ DATALEARNER AGENT #%s is ready to receive new tasks!", 
+            knd_log("\n++ #%s learner agent is ready to receive new tasks!", 
                     self->name);
 
 	task = knd_zmq_recv(outbox, &task_size);
 	obj = knd_zmq_recv(outbox, &obj_size);
 
-	knd_log("++ DATALEARNER AGENT #%s got task: %s [%lu]", 
+	knd_log("++ #%s learner agent got task: %s [%lu]", 
                 self->name, task, (unsigned long)task_size);
 
         err = self->task->run(self->task,
@@ -107,6 +107,35 @@ kndLearner_start(struct kndLearner *self)
     }
 
     /* we should never get here */
+    return knd_OK;
+}
+
+
+
+static int parse_publisher_service_addr(void *obj,
+                                        const char *rec,
+                                        size_t *total_size)
+{
+    struct kndLearner *self = (struct kndLearner*)obj;
+    struct kndTaskSpec specs[] = {
+        { .name = "frontend",
+          .name_size = strlen("frontend"),
+          .buf = self->publish_proxy_frontend_addr,
+          .buf_size = &self->publish_proxy_frontend_addr_size,
+          .max_buf_size = KND_NAME_SIZE
+        },
+        { .name = "backend",
+          .name_size = strlen("backend"),
+          .buf = self->publish_proxy_backend_addr,
+          .buf_size = &self->publish_proxy_backend_addr_size,
+          .max_buf_size = KND_NAME_SIZE
+        }
+    };
+    int err;
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
     return knd_OK;
 }
 
@@ -186,6 +215,11 @@ parse_config_GSL(struct kndLearner *self,
         { .name = "write_inbox",
           .name_size = strlen("write_inbox"),
           .parse = parse_write_inbox_addr,
+          .obj = self
+        },
+        { .name = "publish",
+          .name_size = strlen("publish"),
+          .parse = parse_publisher_service_addr,
           .obj = self
         },
         { .is_default = true,
@@ -400,7 +434,7 @@ void *kndLearner_selector(void *arg)
     
     backend = zmq_socket(context, ZMQ_PUSH);
     assert(backend);
-    
+
     err = zmq_connect(frontend, "ipc:///var/lib/knowdy/storage_push");
     assert(err == knd_OK);
 
@@ -460,8 +494,8 @@ void *kndLearner_subscriber(void *arg)
 	knd_zmq_sendmore(inbox, spec, spec_size);
 	knd_zmq_send(inbox, obj, obj_size);
 
-	printf("    ++ all messages sent!\n");
-        fflush(stdout);
+        free(spec);
+        free(obj);
     }
 
     /* we never get here */
@@ -471,6 +505,50 @@ void *kndLearner_subscriber(void *arg)
     return NULL;
 }
 
+/* send live updates to all readers
+   aka retrievers */
+void *kndLearner_publisher(void *arg)
+{
+    void *context;
+    void *frontend;
+    void *backend;
+    struct kndLearner *learner;
+    int ret;
+
+    learner = (struct kndLearner*)arg;
+    context = zmq_init(1);
+
+    frontend = zmq_socket(context, ZMQ_SUB);
+    assert(frontend);
+
+    backend = zmq_socket(context, ZMQ_PUB);
+    assert(backend);
+
+    ret = zmq_bind(frontend, learner->publish_proxy_frontend_addr);
+    if (ret != knd_OK)
+        knd_log("bind %s zmqerr: %s\n",
+                learner->publish_proxy_frontend_addr, zmq_strerror(errno));
+    
+    assert((ret == knd_OK));
+    zmq_setsockopt(frontend, ZMQ_SUBSCRIBE, "", 0);
+    
+    ret = zmq_bind(backend, learner->publish_proxy_backend_addr);
+    if (ret != knd_OK)
+        knd_log("bind %s zmqerr: %s\n",
+                learner->publish_proxy_backend_addr, zmq_strerror(errno));
+    assert(ret == knd_OK);
+    
+    knd_log("++ The Learner's publisher proxy is up and running!");
+
+    zmq_proxy(frontend, backend, NULL);
+    
+    /* we never get here */
+    zmq_close(frontend);
+    zmq_close(backend);
+    zmq_term(context);
+
+    return NULL;
+}
 
 
 /**
@@ -482,10 +560,10 @@ main(int const argc,
      const char ** const argv) 
 {
     struct kndLearner *learner;
-
     const char *config = NULL;
 
     pthread_t subscriber;
+    pthread_t publisher;
     pthread_t selector;
     pthread_t inbox;
     int err;
@@ -521,6 +599,12 @@ main(int const argc,
     err = pthread_create(&selector, 
 			 NULL,
 			 kndLearner_selector, 
+                         (void*)learner);
+
+    /* add updates publisher */
+    err = pthread_create(&publisher, 
+			 NULL,
+			 kndLearner_publisher, 
                          (void*)learner);
 
     learner->start(learner);

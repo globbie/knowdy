@@ -731,102 +731,117 @@ static int parse_children_settings(void *obj,
     return knd_OK;
 }
 
-static int parse_class_change(void *obj,
-                              const char *rec,
-                              size_t *total_size)
+static int import_class(void *obj,
+                        const char *rec,
+                        size_t *total_size)
 {
     struct kndConcept *self = (struct kndConcept*)obj;
-    struct kndConcept *dc;
+    struct kndConcept *c, *prev;
     size_t chunk_size;
     int err;
 
     if (DEBUG_DC_LEVEL_2)
-        knd_log(".. parse CLASS change: \"%s\"..", rec);
+        knd_log(".. import \"%.*s\" class..", 16, rec);
 
-    err = kndConcept_new(&dc);
+    err = kndConcept_new(&c);
     if (err) return err;
-    dc->out = self->out;
-    dc->class_idx = self->class_idx;
-    dc->root_class = self;
+    c->out = self->out;
+    c->class_idx = self->class_idx;
+    c->root_class = self;
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_name,
-          .obj = dc
+          .obj = c
         },
         { .type = KND_CHANGE_STATE,
           .name = "base",
           .name_size = strlen("base"),
           .parse = parse_baseclass,
-          .obj = dc
+          .obj = c
         },
         { .type = KND_CHANGE_STATE,
           .name = "children",
           .name_size = strlen("children"),
           .parse = parse_children_settings,
-          .obj = dc
+          .obj = c
         },
         { .type = KND_CHANGE_STATE,
           .name = "gloss",
           .name_size = strlen("gloss"),
           .parse = parse_gloss_change,
-          .obj = dc
+          .obj = c
         },
         { .type = KND_CHANGE_STATE,
           .name = "summary",
           .name_size = strlen("summary"),
           .parse = parse_summary_change,
-          .obj = dc
+          .obj = c
         },
         { .type = KND_CHANGE_STATE,
           .name = "aggr",
           .name_size = strlen("aggr"),
           .parse = parse_aggr_change,
-          .obj = dc
+          .obj = c
         },
         { .type = KND_CHANGE_STATE,
           .name = "str",
           .name_size = strlen("str"),
           .parse = parse_str_change,
-          .obj = dc
+          .obj = c
         },
         {  .type = KND_CHANGE_STATE,
            .name = "ref",
           .name_size = strlen("ref"),
           .parse = parse_ref_change,
-          .obj = dc
+          .obj = c
         },
         { .type = KND_CHANGE_STATE,
           .name = "text",
           .name_size = strlen("text"),
           .parse = parse_text_change,
-          .obj = dc
+          .obj = c
         },
         { .is_validator = true,
-          .buf = dc->curr_val,
-          .buf_size = &dc->curr_val_size,
+          .buf = c->curr_val,
+          .buf_size = &c->curr_val_size,
           .max_buf_size = KND_NAME_SIZE,
           .validate = parse_field,
-          .obj = dc
+          .obj = c
         }
     };
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
+    if (err) goto final;
 
-    if (!dc->name_size) {
-        return knd_FAIL;
+    if (!c->name_size) {
+        err = knd_FAIL;
+        goto final;
     }
 
-    //dc->str(dc, 1);
+    //c->str(c, 1);
 
+    prev = (struct kndConcept*)self->class_idx->get(self->class_idx,
+                                                    (const char*)c->name);
+    if (prev) {
+        knd_log("-- %s class name doublet found :(", c->name);
+        err = knd_OK;
+        //goto final;
+    }
+    
     err = self->class_idx->set(self->class_idx,
-                               (const char*)dc->name, (void*)dc);
-    if (err) return err;
+                               (const char*)c->name, (void*)c);
+    if (err) goto final;
 
+
+
+    
     return knd_OK;
+ final:
+    
+    c->del(c);
+    return err;
 }
-
 
 
 static int run_set_namespace(void *obj, struct kndTaskArg *args, size_t num_args)
@@ -941,7 +956,7 @@ static int parse_schema(void *self,
         { .type = KND_CHANGE_STATE,
           .name = "class",
           .name_size = strlen("class"),
-          .parse = parse_class_change,
+          .parse = import_class,
           .obj = self
         }
     };
@@ -1478,6 +1493,9 @@ static void init(struct kndConcept *self)
 
     self->coordinate = resolve_class_refs;
     self->resolve = resolve_names;
+
+    self->import = import_class;
+
     self->export = export;
     self->select = select_classes;
     self->get = get_class;

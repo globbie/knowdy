@@ -158,6 +158,10 @@ struct kndConcept
                   struct kndTaskArg *args, size_t num_args);
     int (*get)(struct kndConcept  *self,
                const char *name, size_t name_size);
+    
+    int (*import)(struct kndConcept *self,
+                  const char *rec,
+                  size_t *total_size);
 
     int (*export)(struct kndConcept *self);
 
