@@ -28,7 +28,6 @@ static void del(struct kndConcept *self)
     free(self);
 }
 
-
 static void str_attr_items(struct kndAttrItem *items, size_t depth)
 {
     struct kndAttrItem *item;
@@ -819,7 +818,7 @@ static int import_class(void *obj,
         goto final;
     }
 
-    //c->str(c, 1);
+    c->str(c, 1);
 
     prev = (struct kndConcept*)self->class_idx->get(self->class_idx,
                                                     (const char*)c->name);
@@ -1315,10 +1314,6 @@ kndConcept_export_JSON(struct kndConcept *self)
         err = out->write(out, "]", 1);
         if (err) return err;
     }
-
-
-    
-
     
     if (self->attrs) {
         err = out->write(out, ",\"attrs\": {",
@@ -1334,7 +1329,9 @@ kndConcept_export_JSON(struct kndConcept *self)
             }
 
             attr->out = out;
-            attr->format = KND_FORMAT_JSON;
+            attr->locale = self->locale;
+            attr->locale_size = self->locale_size;
+            
             err = attr->export(attr);
             if (err) {
                 if (DEBUG_DC_LEVEL_TMP)

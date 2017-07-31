@@ -541,7 +541,7 @@ void *kndLearner_publisher(void *arg)
     knd_log("++ The Learner's publisher proxy is up and running!");
 
     zmq_proxy(frontend, backend, NULL);
-    
+
     /* we never get here */
     zmq_close(frontend);
     zmq_close(backend);

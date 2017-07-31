@@ -39,7 +39,6 @@ struct kndAttrItem
     size_t val_size;
 
     struct kndAttr *ref;
-    
     struct kndAttrItem *next;
 };
 
@@ -64,7 +63,7 @@ struct kndAttr
     char ref_classname[KND_NAME_SIZE];
     size_t ref_classname_size;
     struct kndConcept *ref_class;
-    
+
     int concise_level;
     int descr_level;
     int browse_level;
