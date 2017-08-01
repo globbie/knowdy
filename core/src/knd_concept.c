@@ -33,14 +33,17 @@ static void str_attr_items(struct kndAttrItem *items, size_t depth)
     struct kndAttrItem *item;
     size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
-
+    if (!offset) return;
+    
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
 
     for (item = items; item; item = item->next) {
         knd_log("%s%s_attr: \"%s\" => %s", offset, offset, item->name, item->val);
+        if (item->children)
+            str_attr_items(item->children, depth + 1);
     }
-
+    free(offset);
 }
 
 static void str(struct kndConcept *self, size_t depth)
@@ -286,6 +289,9 @@ static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t n
     size_t val_size = 0;
     int err;
 
+    if (DEBUG_DC_LEVEL_2)
+        knd_log(".. run set translation text..");
+
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
         if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
@@ -299,7 +305,8 @@ static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t n
         return knd_LIMIT;
 
     if (DEBUG_DC_LEVEL_2)
-        knd_log(".. run set translation text: %s\n", val);
+        knd_log(".. run set translation text: %.*s [%lu]\n", val_size, val,
+                (unsigned long)val_size);
 
     memcpy(tr->val, val, val_size);
     tr->val[val_size] = '\0';
@@ -318,8 +325,8 @@ static int parse_gloss_translation(void *obj,
     int err;
 
     if (DEBUG_DC_LEVEL_2) {
-        knd_log("..  gloss translation in \"%s\" REC: \"%s\"\n",
-                name, rec); }
+        knd_log("..  gloss translation in \"%s\" REC: \"%.*s\"\n",
+                name, 16, rec); }
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
@@ -350,7 +357,7 @@ static int parse_gloss_change(void *obj,
     int err;
 
     if (DEBUG_DC_LEVEL_2)
-        knd_log(".. parsing the gloss change: \"%s\"", rec);
+        knd_log(".. parsing the gloss update: \"%.*s\"", 16, rec);
 
     tr = malloc(sizeof(struct kndTranslation));
     if (!tr) return knd_NOMEM;
@@ -596,6 +603,54 @@ static int set_attr_item_val(void *obj, struct kndTaskArg *args, size_t num_args
     return knd_OK;
 }
 
+static int parse_item_child(void *obj,
+                            const char *name, size_t name_size,
+                            const char *rec, size_t *total_size)
+{
+    struct kndAttrItem *self = (struct kndAttrItem*)obj;
+    struct kndConcItem *baseclass_item;
+    struct kndAttrItem *item;
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+    int err;
+
+    item = malloc(sizeof(struct kndAttrItem));
+    memset(item, 0, sizeof(struct kndAttrItem));
+    memcpy(item->name, name, name_size);
+    item->name_size = name_size;
+    item->name[name_size] = '\0';
+
+    if (DEBUG_DC_LEVEL_TMP)
+        knd_log("== attr item name set: \"%s\" REC: %.*s",
+                item->name, 16, rec);
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_attr_item_val,
+          .obj = item
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "item_child",
+          .name_size = strlen("item_child"),
+          .is_validator = true,
+          .buf = buf,
+          .buf_size = &buf_size,
+          .max_buf_size = KND_NAME_SIZE,
+          .validate = parse_item_child,
+          .obj = item
+        }
+    };
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    item->next = self->children;
+    self->children = item;
+    self->num_children++;
+
+    return knd_OK;
+}
+
 
 
 static int parse_baseclass_item(void *obj,
@@ -605,6 +660,8 @@ static int parse_baseclass_item(void *obj,
     struct kndConcept *self = (struct kndConcept*)obj;
     struct kndConcItem *baseclass_item;
     struct kndAttrItem *item;
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
     int err;
 
     if (!self->baseclass_items) return knd_FAIL;
@@ -625,6 +682,16 @@ static int parse_baseclass_item(void *obj,
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_attr_item_val,
+          .obj = item
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "item_child",
+          .name_size = strlen("item_child"),
+          .is_validator = true,
+          .buf = buf,
+          .buf_size = &buf_size,
+          .max_buf_size = KND_NAME_SIZE,
+          .validate = parse_item_child,
           .obj = item
         }
     };

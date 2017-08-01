@@ -23,6 +23,7 @@
 
 #include "knd_dict.h"
 #include "knd_utils.h"
+#include "knd_task.h"
 #include "knd_config.h"
 
 struct kndConcept;
@@ -32,6 +33,7 @@ struct kndAttr;
 
 struct kndAttrItem
 {
+    knd_task_spec_type type;
     char name[KND_NAME_SIZE];
     size_t name_size;
 
@@ -39,6 +41,10 @@ struct kndAttrItem
     size_t val_size;
 
     struct kndAttr *ref;
+
+    struct kndAttrItem *children;
+    size_t num_children;
+    
     struct kndAttrItem *next;
 };
 

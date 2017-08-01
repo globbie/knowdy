@@ -1020,9 +1020,9 @@ static int knd_parse_state_change(const char *rec,
     b = rec;
     e = rec;
 
-    if (DEBUG_PARSER_LEVEL_1)
-        knd_log("\n\n == start FUNC parse: \"%s\" num specs: %lu [%p]",
-                rec, (unsigned long)num_specs, specs);
+    if (DEBUG_PARSER_LEVEL_2)
+        knd_log("\n\n == start FUNC parse: \"%.*s\" num specs: %lu [%p]",
+                16, rec, (unsigned long)num_specs, specs);
 
     while (*c) {
         switch (*c) {
@@ -1133,10 +1133,23 @@ static int knd_parse_state_change(const char *rec,
                 break;
             }
             */
-            if (DEBUG_PARSER_LEVEL_2)
-                knd_log("-- close bracket at FUNC loop: \"%s\"\nIN CHANGE: %d\nSPECS: %s\n",
-                        c, in_change, specs[0].name);
 
+            if (!spec) {
+                chunk_size = c - rec;
+                if (chunk_size > KND_MAX_DEBUG_CONTEXT_SIZE)
+                    chunk_size = KND_MAX_DEBUG_CONTEXT_SIZE;
+                knd_log("-- wrong bracket syntax at \"%.*s\" :(", chunk_size, c);
+                return knd_FAIL;
+            }
+
+            if (DEBUG_PARSER_LEVEL_2) {
+                chunk_size = c - rec;
+                if (chunk_size > KND_MAX_DEBUG_CONTEXT_SIZE)
+                    chunk_size = KND_MAX_DEBUG_CONTEXT_SIZE;
+                knd_log("-- close bracket at FUNC loop: \"%.*s\"\nIN CHANGE: %d\nSPECS: %s\n",
+                        chunk_size, c, in_change, specs[0].name);
+            }
+            
             /* copy to buf */
             if (spec->is_terminal) {
                 err = check_name_limits(b, e, &name_size);
@@ -1164,8 +1177,8 @@ static int knd_parse_state_change(const char *rec,
             }
 
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("== END parse state change: \"%s\" [%p]",
-                        c, specs);
+                knd_log("== END parse state change: \"%.*s\" [%p]",
+                        16, c, specs);
             
             *total_size = c - rec;
             return knd_OK;

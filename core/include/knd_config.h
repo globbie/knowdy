@@ -145,13 +145,16 @@ static const char* const knd_elem_names[] = {
 
 #define KND_MAX_INT_SIZE 4
 
+#define KND_MAX_DEBUG_CONTEXT_SIZE 16
+
 #define KND_ID_SIZE  (KND_ID_MATRIX_DEPTH * sizeof(char))
 #define KND_ID_BATCH_SIZE 10
 #define KND_LOCALE_SIZE 8
 
 #define KND_MAX_MIGRATIONS 256
 #define KND_MAX_SPECS 64
-#define KND_MAX_CONC_CHILDREN 256
+
+#define KND_MAX_CONC_CHILDREN 128
 #define KND_MAX_ARGS 16
 
 #define KND_MATCH_MAX_SCORE 100
