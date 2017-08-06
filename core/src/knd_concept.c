@@ -620,7 +620,7 @@ static int parse_item_child(void *obj,
     item->name_size = name_size;
     item->name[name_size] = '\0';
 
-    if (DEBUG_DC_LEVEL_TMP)
+    if (DEBUG_DC_LEVEL_2)
         knd_log("== attr item name set: \"%s\" REC: %.*s",
                 item->name, 16, rec);
 
@@ -647,6 +647,7 @@ static int parse_item_child(void *obj,
     item->next = self->children;
     self->children = item;
     self->num_children++;
+
 
     return knd_OK;
 }
@@ -699,8 +700,18 @@ static int parse_baseclass_item(void *obj,
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
 
-    item->next = baseclass_item->attrs;
-    baseclass_item->attrs = item;
+    /*item->next = baseclass_item->attrs;
+      baseclass_item->attrs = item;*/
+    
+    if (!baseclass_item->tail) {
+        baseclass_item->tail = item;
+        baseclass_item->attrs = item;
+    }
+    else {
+        baseclass_item->tail->next = item;
+        baseclass_item->tail = item;
+    }
+
     baseclass_item->num_attrs++;
 
     return knd_OK;
@@ -1163,7 +1174,8 @@ static int resolve_class_refs(struct kndConcept *self)
         err = dc->resolve(dc);
         if (err) {
             knd_log("-- couldn't resolve the \"%s\" class :(", dc->name);
-            return err;
+            // fixme            return err;
+            continue;
         }
     } while (key);
 
@@ -1221,7 +1233,7 @@ static int get_class(struct kndConcept *self,
     struct kndConcept *c;
     int err;
 
-    if (DEBUG_DC_LEVEL_TMP)
+    if (DEBUG_DC_LEVEL_2)
         knd_log(".. get class: \"%s\".. [locale: %s %lu] format: %d",
                 name, self->locale, (unsigned long)self->locale_size, self->format);
    

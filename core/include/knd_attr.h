@@ -43,6 +43,7 @@ struct kndAttrItem
     struct kndAttr *ref;
 
     struct kndAttrItem *children;
+    struct kndAttrItem *tail;
     size_t num_children;
     
     struct kndAttrItem *next;

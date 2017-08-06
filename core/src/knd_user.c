@@ -584,7 +584,7 @@ static int run_select_classes(void *obj,
     struct kndTaskArg *arg;
     int err;
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. default repo class select..");
 
     /* select filters */
@@ -626,7 +626,7 @@ static int run_get_class(void *obj,
     if (!name_size) return knd_FAIL;
     if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. default repo get class: \"%s\".. OUT BUF: %s", name, self->out->buf);
 
     self->root_class->out = self->out;
@@ -708,7 +708,7 @@ kndUser_parse_auth(void *obj,
         return err;
     }
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log("++ got SID: \"%s\"", sid);
     
     if (!sid_size) {
@@ -753,9 +753,11 @@ kndUser_parse_task(struct kndUser *self,
                    const char *rec,
                    size_t *total_size)
 {
+    if (DEBUG_USER_LEVEL_1)
+        knd_log(".. parsing user: \"%s\"..", rec);
+
     struct kndTaskSpec specs[] = {
-        { .type = KND_CHANGE_STATE,
-          .name = "auth",
+        { .name = "auth",
           .name_size = strlen("auth"),
           .parse = kndUser_parse_auth,
           .obj = self

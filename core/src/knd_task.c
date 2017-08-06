@@ -61,6 +61,51 @@ reset(struct kndTask *self)
 
 
 static int
+parse_schema(struct kndTask *self,
+             const char *rec,
+             size_t *total_size)
+{
+    size_t buf_size;
+    const char *c;
+    const char *b;
+
+    c = rec;
+    b = c;
+    
+    if (DEBUG_TASK_LEVEL_2)
+        knd_log("   .. parsing schema rec: \"%s\"",
+                c);
+    
+    while (*c) {
+        switch (*c) {
+        case '\n':
+        case '\r':
+        case '\t':
+        case ' ':
+            b = c + 1;
+            break;
+        case '}':
+            buf_size = c - b;
+            if (!buf_size) return knd_FAIL;
+            if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+            memcpy(self->schema_name, b, buf_size);
+            self->schema_name_size = buf_size;
+            self->schema_name[buf_size] = '\0';
+
+            *total_size = c - rec;
+            return knd_OK;
+        default:
+            break;
+        }
+
+        c++;
+    }
+
+    return knd_FAIL;
+}
+
+static int
 parse_tid(struct kndTask *self,
           const char *rec,
           size_t *total_size)
@@ -117,7 +162,7 @@ parse_locale(struct kndTask *self,
     c = rec;
     b = c;
     
-    if (DEBUG_TASK_LEVEL_TMP)
+    if (DEBUG_TASK_LEVEL_2)
         knd_log("   .. parsing locale field: \"%s\"", c);
     
     while (*c) {
@@ -166,6 +211,7 @@ parse_domain(struct kndTask *self,
              const char *rec,
              size_t *total_size)
 {
+    const char *schema_tag = "schema";
     const char *tid_tag = "tid";
     const char *user_tag = "user";
     const char *locale_tag = "locale";
@@ -182,6 +228,18 @@ parse_domain(struct kndTask *self,
             err = parse_locale(self, rec, &chunk_size);
             if (err) {
                 knd_log("-- locale parse failed");
+                return knd_FAIL;
+            }
+            *total_size = chunk_size;
+            return knd_OK;
+        }
+        break;
+    case 's':
+    case 'S':
+        if (!strncmp(schema_tag, name, name_size)) {
+            err = parse_schema(self, rec, &chunk_size);
+            if (err) {
+                knd_log("-- schema field parse failed");
                 return knd_FAIL;
             }
             *total_size = chunk_size;
@@ -217,6 +275,9 @@ parse_domain(struct kndTask *self,
     default:
         break;
     }
+
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log("-- domain tag not recognized: \"%s\" :(", name);
     
     return knd_FAIL;
 }
@@ -228,7 +289,7 @@ run(struct kndTask *self,
     const char *obj,
     size_t obj_size)
 {
-    const char *header_tag = "knd::Task";
+    const char *header_tag = "task";
     size_t header_tag_size = strlen(header_tag);
     
     size_t buf_size;
@@ -295,9 +356,9 @@ run(struct kndTask *self,
             if (!in_header) {
                 err = check_name_limits(b, e, &buf_size);
                 if (err) return err;
-                
+
                 if (strncmp(b, header_tag, header_tag_size)){
-                    knd_log("-- header tag mismatch");
+                    knd_log("-- header tag mismatch: \"%.*s\"", buf_size, b);
                     return knd_FAIL;
                 }
                 
@@ -354,7 +415,7 @@ run(struct kndTask *self,
 static int
 report(struct kndTask *self)
 {
-    const char *gsl_header = "{gsl::Knowdy Basic{knd::Task";
+    const char *gsl_header = "{task";
 
     const char *msg = "None";
     size_t msg_size = strlen(msg);
@@ -362,7 +423,6 @@ report(struct kndTask *self)
     size_t header_size;
     char *obj;
     size_t obj_size;
-    
     int err;
 
     err = self->spec_out->write(self->spec_out, gsl_header, strlen(gsl_header));
@@ -375,11 +435,14 @@ report(struct kndTask *self)
     err = self->spec_out->write(self->spec_out, "}", 1);
     if (err) return err;
 
+    err = self->spec_out->write(self->spec_out, "{user{auth", strlen("{user{auth"));
+    if (err) return err;
+    
     err = self->spec_out->write(self->spec_out, "{sid ", strlen("{sid "));
     if (err) return err;
     err = self->spec_out->write(self->spec_out, self->admin->sid, self->admin->sid_size);
     if (err) return err;
-    err = self->spec_out->write(self->spec_out, "}", 1);
+    err = self->spec_out->write(self->spec_out, "}}", strlen("}}"));
     if (err) return err;
 
     if (self->error) {
@@ -390,7 +453,7 @@ report(struct kndTask *self)
         err = self->spec_out->write(self->spec_out, "}", 1);
         if (err) return err;
     } else {
-        err = self->spec_out->write(self->spec_out, "{result _obj}", strlen("{result _obj}"));
+        err = self->spec_out->write(self->spec_out, "{save _obj}", strlen("{save _obj}"));
         if (err) return err;
     }
     
@@ -399,7 +462,6 @@ report(struct kndTask *self)
                 self->spec_out->buf, self->out->buf);
 
     err = knd_zmq_sendmore(self->delivery, (const char*)self->spec_out->buf, self->spec_out->buf_size);
-
     if (self->out->buf_size) {
         msg = self->out->buf;
         msg_size = self->out->buf_size;
@@ -414,6 +476,11 @@ report(struct kndTask *self)
         knd_log("== Delivery reply header: \"%s\" obj: \"%s\"",
                 header, obj);
 
+    if (header)
+        free(header);
+    if (obj)
+        free(obj);
+    
     return knd_OK;
 }
 

@@ -63,6 +63,7 @@ struct kndConcItem
     size_t name_size;
 
     struct kndAttrItem *attrs;
+    struct kndAttrItem *tail;
     size_t num_attrs;
     
     struct kndConcept *ref;

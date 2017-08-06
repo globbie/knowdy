@@ -702,7 +702,7 @@ int knd_parse_task(const char *rec,
             if (err) return err;
 
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ BASIC LOOP got tag: \"%.*s\" [%lu]",
+                knd_log("++ BASIC LOOP got tag after whitespace: \"%.*s\" [%lu]",
                         name_size, b, (unsigned long)name_size);
 
             err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
@@ -768,6 +768,7 @@ int knd_parse_task(const char *rec,
             e = b;
             break;
         case '{':
+            /* starting brace */
             if (!in_field) {
                 if (in_implied_field) {
                     name_size = e - b;
@@ -783,6 +784,76 @@ int knd_parse_task(const char *rec,
                 e = b;
                 break;
             }
+
+            /* inner field brace */
+            err = check_name_limits(b, e, &name_size);
+            if (err) return err;
+
+            if (DEBUG_PARSER_LEVEL_2)
+                knd_log("++ BASIC LOOP got tag after brace: \"%.*s\" [%lu]",
+                        name_size, b, (unsigned long)name_size);
+
+            err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
+            if (err) {
+                knd_log("-- no spec found to handle the \"%.*s\" tag: %d",
+                        name_size, b, err);
+                return err;
+            }
+
+            if (DEBUG_PARSER_LEVEL_2)
+                knd_log("++ got SPEC: \"%s\" (default: %d) (is validator: %d)",
+                        spec->name, spec->is_default, spec->is_validator);
+            in_tag = true;
+
+            if (spec->validate) {
+                err = spec->validate(spec->obj,
+                                     (const char*)spec->buf, *spec->buf_size,
+                                     c, &chunk_size);
+                if (err) {
+                    knd_log("-- ERR: %d validation of spec \"%s\" failed :(",
+                            err, spec->name);
+                    return err;
+                }
+                c += chunk_size;
+                spec->is_completed = true;
+                in_field = false;
+                in_tag = false;
+                b = c;
+                e = b;
+                break;
+            }
+            
+            if (!spec->parse) {
+                if (DEBUG_PARSER_LEVEL_2)
+                    knd_log("== ATOMIC SPEC found: %s! no further parsing is required.",
+                            spec->name);
+                in_terminal = true;
+                b = c + 1;
+                e = b;
+                break;
+            }
+
+            /* nested parsing required */
+            if (DEBUG_PARSER_LEVEL_2)
+                knd_log("== further parsing required in \"%s\" FROM: \"%s\"",
+                        spec->name, c);
+
+            err = spec->parse(spec->obj, c, &chunk_size);
+            if (err) {
+                knd_log("-- ERR: %d parsing of spec \"%s\" failed :(",
+                        err, spec->name);
+                return err;
+            }
+            
+            c += chunk_size;
+
+            spec->is_completed = true;
+
+            in_field = false;
+            in_tag = false;
+            
+            b = c;
+            e = b;
             break;
         case '}':
             /* empty body? */

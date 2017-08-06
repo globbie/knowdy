@@ -9,9 +9,6 @@
 #include "knd_utils.h"
 #include "knd_user.h"
 
-//#include "knd_monitor.h"
-
-
 struct kndAuthRec
 {
     char uid[KND_ID_SIZE];
