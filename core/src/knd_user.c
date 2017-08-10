@@ -732,12 +732,16 @@ static int kndUser_parse_class_import(void *obj,
     struct kndUser *self = (struct kndUser*)obj;
     int err;
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_1)
         knd_log(".. parsing the default class import: \"%s\"", rec);
 
     self->root_class->out = self->out;
     self->root_class->log = self->log;
-    
+    self->root_class->task = self->task;
+
+    self->root_class->dbpath = self->dbpath;
+    self->root_class->dbpath_size = self->dbpath_size;
+
     self->root_class->locale = self->locale;
     self->root_class->locale_size = self->locale_size;
     
@@ -754,7 +758,7 @@ kndUser_parse_task(struct kndUser *self,
                    size_t *total_size)
 {
     if (DEBUG_USER_LEVEL_1)
-        knd_log(".. parsing user: \"%s\"..", rec);
+        knd_log(".. parsing user task: \"%s\"..", rec);
 
     struct kndTaskSpec specs[] = {
         { .name = "auth",
@@ -788,7 +792,13 @@ kndUser_parse_task(struct kndUser *self,
                          strlen( "{repo task run failure}"));
         return err;
     }
-    
+
+    /* any transaction to close? */
+    if (self->root_class->inbox_size) {
+        err = self->root_class->update_state(self->root_class);
+        if (err) return err;
+        
+    }
     return knd_OK;
 }
 

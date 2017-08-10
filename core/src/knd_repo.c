@@ -296,8 +296,7 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
     /* check if repo's name is unique */
     memcpy(buf, name, name_size);
     buf[name_size] = '\0';
-    repo = self->repo_idx->get(self->repo_idx,
-                               buf);
+    repo = self->repo_idx->get(self->repo_idx, buf);
     if (repo) {
         knd_log("-- \"%s\" REPO name already taken?", buf);
         return knd_FAIL;

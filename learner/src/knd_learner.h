@@ -36,6 +36,7 @@ struct kndLearner
     size_t inbox_backend_addr_size;
 
     /* updates publisher */
+    void *publisher;
     char publish_proxy_frontend_addr[KND_NAME_SIZE];
     size_t publish_proxy_frontend_addr_size;
 

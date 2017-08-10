@@ -74,6 +74,14 @@ kndLearner_start(struct kndLearner *self)
 
     self->task->delivery = self->delivery;
 
+    /* publisher */
+    self->publisher = zmq_socket(context, ZMQ_PUB);
+    assert(self->publisher);
+
+    err = zmq_connect(self->publisher, self->publish_proxy_frontend_addr);
+    assert(err == knd_OK);
+    self->task->publisher = self->publisher;
+    
     while (1) {
         self->task->reset(self->task);
 
@@ -353,15 +361,28 @@ kndLearner_new(struct kndLearner **rec,
     if (err) goto error;
     
     /* read class definitions */
+    dc->batch_mode = true;
     err = dc->open(dc, "index", strlen("index"));
     if (err) {
  	knd_log("-- couldn't read any schema definitions :("); 
         goto error;
     }
-    
+
     err = dc->coordinate(dc);
     if (err) goto error;
-    
+
+    dc->batch_mode = false;
+    dc->dbpath = self->path;
+    dc->dbpath_size = self->path_size;
+
+    /* read any existing updates to the frozen DB */
+    err = dc->restore(dc);
+    if (err) return err;
+
+    // test
+    err = dc->build_diff(dc, "0001");
+    if (err) return err;
+
     self->admin->root_class = dc;
 
     self->del = kndLearner_del;
@@ -471,7 +492,6 @@ void *kndLearner_subscriber(void *arg)
     learner = (struct kndLearner*)arg;
 
     context = zmq_init(1);
-
 
     subscriber = zmq_socket(context, ZMQ_SUB);
     assert(subscriber);

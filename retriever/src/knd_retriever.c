@@ -461,15 +461,15 @@ void *kndRetriever_subscriber(void *arg)
                 retriever->name);
 
         task = knd_zmq_recv(subscriber, &task_size);
+	obj = knd_zmq_recv(subscriber, &obj_size);
 
 	printf("++ %s Retriever has got an update from Learner:"
-               "       %s", retriever->name, task);
-
-	obj = knd_zmq_recv(subscriber, &obj_size);
+               "       %.*s [%lu]", retriever->name, (unsigned int)task_size, task, (unsigned long)task_size);
+	printf("   OBJ: %.*s [%lu]", (unsigned int)obj_size, obj, (unsigned long)obj_size);
         
-	knd_zmq_sendmore(inbox, task, task_size);
-	knd_zmq_send(inbox, obj, obj_size);
-
+	err = knd_zmq_sendmore(inbox, task, task_size);
+	err = knd_zmq_send(inbox, obj, obj_size);
+        
         free(task);
         free(obj);
         

@@ -315,7 +315,7 @@ kndDelivery_start(struct kndDelivery *self)
     const char *header = "DELIVERY";
     size_t header_size = strlen(header);
 
-    const char *reply = "{}";
+    const char *reply = "{\"error\":\"delivery error\"}";
     size_t reply_size = strlen(reply);
 
     context = zmq_init(1);
@@ -353,12 +353,13 @@ kndDelivery_start(struct kndDelivery *self)
             self->task = NULL;
             self->task_size = 0;
         }
-        
-        if (self->obj) {
-            free(self->obj);
+
+        /* TODO: free obj if it was not set to index */
+        /*if (self->obj) {
             self->obj = NULL;
             self->obj_size = 0;
-        }
+        }*/
+        
     }
 
     /* we never get here */

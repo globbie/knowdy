@@ -104,7 +104,8 @@ struct kndTask
     struct kndOutput *spec_out;
 
     void *delivery;
-    
+    void *publisher;
+
     /******** public methods ********/
     void (*str)(struct kndTask *self,
                size_t depth);

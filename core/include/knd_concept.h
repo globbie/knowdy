@@ -32,6 +32,7 @@ struct kndConcept;
 struct kndOutput;
 struct kndTranslation;
 struct kndConcept;
+struct kndTask;
 struct kndTaskArg;
 
 struct kndDataIdx
@@ -85,16 +86,20 @@ struct kndConcept
     char name[KND_NAME_SIZE];
     size_t name_size;
 
+    char state[KND_STATE_SIZE];
+
     struct kndTranslation *tr;
     struct kndText *summary;
 
     char namespace[KND_NAME_SIZE];
     size_t namespace_size;
 
-    /* ontology file location */
+    /* initial scheme location */
     const char *dbpath;
     size_t dbpath_size;
 
+    struct kndTask *task;
+    
     const char *locale;
     size_t locale_size;
     knd_format format;
@@ -129,16 +134,21 @@ struct kndConcept
 
     struct kndConcFolder *folders;
     size_t num_folders;
-    
+
     /* indices */
     struct ooDict *class_idx;
     struct ooDict *attr_idx;
-
+    
+    struct kndConcept *inbox;
+    size_t inbox_size;
+    
     struct kndConcRef children[KND_MAX_CONC_CHILDREN];
     size_t num_children;
     
     struct kndRefSet *browser;
+    bool batch_mode;
 
+    struct kndConcept *next;
     struct kndOutput *out;
     struct kndOutput *log;
     
@@ -151,9 +161,15 @@ struct kndConcept
     int (*open)(struct kndConcept   *self,
                 const char *filename,
                 size_t filename_size);
+    
+    int (*restore)(struct kndConcept   *self);
+
+    int (*build_diff)(struct kndConcept   *self,
+                      const char *start_state);
 
     int (*coordinate)(struct kndConcept *self);
     int (*resolve)(struct kndConcept    *self);
+    int (*update_state)(struct kndConcept *self);
 
     int (*select)(struct kndConcept  *self,
                   struct kndTaskArg *args, size_t num_args);
@@ -163,6 +179,7 @@ struct kndConcept
     int (*import)(struct kndConcept *self,
                   const char *rec,
                   size_t *total_size);
+
 
     int (*export)(struct kndConcept *self);
 

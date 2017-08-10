@@ -151,6 +151,8 @@ static const char* const knd_elem_names[] = {
 #define KND_ID_BATCH_SIZE 10
 #define KND_LOCALE_SIZE 8
 
+#define KND_STATE_SIZE  (4 * sizeof(char))
+
 #define KND_MAX_MIGRATIONS 256
 #define KND_MAX_SPECS 64
 

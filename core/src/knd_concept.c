@@ -9,12 +9,12 @@
 #include "knd_text.h"
 #include "knd_parser.h"
 
-#define DEBUG_DC_LEVEL_1 0
-#define DEBUG_DC_LEVEL_2 0
-#define DEBUG_DC_LEVEL_3 0
-#define DEBUG_DC_LEVEL_4 0
-#define DEBUG_DC_LEVEL_5 0
-#define DEBUG_DC_LEVEL_TMP 1
+#define DEBUG_CONC_LEVEL_1 0
+#define DEBUG_CONC_LEVEL_2 0
+#define DEBUG_CONC_LEVEL_3 0
+#define DEBUG_CONC_LEVEL_4 0
+#define DEBUG_CONC_LEVEL_5 0
+#define DEBUG_CONC_LEVEL_TMP 1
 
 static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args);
 
@@ -59,7 +59,8 @@ static void str(struct kndConcept *self, size_t depth)
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
 
-    knd_log("\n\n%s{class %s%s", offset, self->namespace, self->name);
+    knd_log("\n\n%s{class %s%s     @%.*s", offset, self->namespace,
+            self->name, KND_STATE_SIZE, self->state);
 
     for (tr = self->tr; tr; tr = tr->next) {
         knd_log("%s%s~ %s %s", offset, offset, tr->locale, tr->val);
@@ -97,7 +98,6 @@ static void rewind_attrs(struct kndConcept *self)
     self->attrs_left = self->num_attrs;
 }
 
-
 static int next_attr(struct kndConcept *self,
                      struct kndAttr **result)
 {
@@ -110,8 +110,7 @@ static int next_attr(struct kndConcept *self,
             *result = attr;
             return knd_OK;
         }
-    }
-    */
+    } */
 
     if (!self->curr_attr) {
         *result = NULL;
@@ -147,7 +146,7 @@ static int resolve_names(struct kndConcept *self)
     struct kndAttr *attr;
     int err;
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. resolving class \"%s\"", self->name);
 
     if (!self->baseclass_items) {
@@ -160,22 +159,28 @@ static int resolve_names(struct kndConcept *self)
         root->num_children++;
     }
 
-
     /* check inheritance paths */
     for (item = self->baseclass_items; item; item = item->next) {
         if (!item->name_size) continue;
 
-        if (DEBUG_DC_LEVEL_2)
+        if (DEBUG_CONC_LEVEL_2)
             knd_log(".. \"%s\" class to check its base class: \"%s\"..",
                     self->name, item->name);
                 
         c = (struct kndConcept*)self->class_idx->get(self->class_idx,
                                                       (const char*)item->name);
         if (!c) {
-            knd_log("-- couldn't resolve the \"%s\" base class :(",
-                    item->name);
-            //continue;
-            return knd_FAIL;
+            /* check inbox */
+            if (self->inbox_size) {
+                for (c = self->inbox; c; c = c->next) {
+                    if (!strncmp(c->name, item->name, item->name_size)) break;
+                }
+            }
+
+            if (!c) {
+                knd_log("-- couldn't resolve the \"%s\" base class ref :(", item->name);
+                return knd_FAIL;
+            }
         }
 
         /* prevent circled relations */
@@ -186,7 +191,7 @@ static int resolve_names(struct kndConcept *self)
             return knd_FAIL;
         }
 
-        if (DEBUG_DC_LEVEL_2)
+        if (DEBUG_CONC_LEVEL_2)
             knd_log("++ \"%s\" confirmed as a base class for \"%s\"!",
                     item->name, self->name);
 
@@ -266,7 +271,7 @@ static int parse_field(void *obj,
     struct kndAttr *attr = NULL;
     int err;
 
-    if (DEBUG_DC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         knd_log("\n.. validating attr: \"%s\"\n", self->curr_val);
     }
 
@@ -289,7 +294,7 @@ static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t n
     size_t val_size = 0;
     int err;
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. run set translation text..");
 
     for (size_t i = 0; i < num_args; i++) {
@@ -304,7 +309,7 @@ static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t n
     if (val_size >= KND_NAME_SIZE)
         return knd_LIMIT;
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. run set translation text: %.*s [%lu]\n", val_size, val,
                 (unsigned long)val_size);
 
@@ -324,7 +329,7 @@ static int parse_gloss_translation(void *obj,
     struct kndTranslation *tr = (struct kndTranslation*)obj;
     int err;
 
-    if (DEBUG_DC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_2) {
         knd_log("..  gloss translation in \"%s\" REC: \"%.*s\"\n",
                 name, 16, rec); }
 
@@ -356,7 +361,7 @@ static int parse_gloss_change(void *obj,
     struct kndTranslation *tr;
     int err;
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parsing the gloss update: \"%.*s\"", 16, rec);
 
     tr = malloc(sizeof(struct kndTranslation));
@@ -392,7 +397,7 @@ static int parse_summary_change(void *obj,
     struct kndText *text;
     int err;
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parsing the summary change: \"%s\"", rec);
 
     text = self->summary;
@@ -417,7 +422,7 @@ static int parse_aggr_change(void *obj,
     struct kndAttr *attr;
     int err;
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parsing the AGGR attr change: \"%s\"", rec);
 
     err = kndAttr_new(&attr);
@@ -427,7 +432,7 @@ static int parse_aggr_change(void *obj,
 
     err = attr->parse(attr, rec, total_size);
     if (err) {
-        if (DEBUG_DC_LEVEL_TMP)
+        if (DEBUG_CONC_LEVEL_TMP)
             knd_log("-- failed to parse the AGGR attr: %d", err);
         return err;
     }
@@ -561,7 +566,7 @@ static int run_set_baseclass_item(void *obj, struct kndTaskArg *args, size_t num
     item->name_size = name_size;
     item->name[name_size] = '\0';
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("== baseclass item name set: \"%s\"", item->name);
 
     item->next = self->baseclass_items;
@@ -593,7 +598,7 @@ static int set_attr_item_val(void *obj, struct kndTaskArg *args, size_t num_args
     if (!val_size) return knd_FAIL;
     if (val_size >= KND_NAME_SIZE) return knd_LIMIT;
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. run set attr item val: %s\n", val);
 
     memcpy(item->val, val, val_size);
@@ -620,7 +625,7 @@ static int parse_item_child(void *obj,
     item->name_size = name_size;
     item->name[name_size] = '\0';
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("== attr item name set: \"%s\" REC: %.*s",
                 item->name, 16, rec);
 
@@ -675,7 +680,7 @@ static int parse_baseclass_item(void *obj,
     item->name_size = name_size;
     item->name[name_size] = '\0';
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("== attr item name set: \"%s\" REC: %s", item->name, rec);
 
     item->val_size = KND_NAME_SIZE;
@@ -726,7 +731,7 @@ static int parse_baseclass(void *obj,
     size_t buf_size = 0;
     int err;
 
-    if (DEBUG_DC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log(".. parsing the base class: \"%s\"", rec);
 
     struct kndTaskSpec specs[] = {
@@ -776,7 +781,7 @@ static int run_set_children_setting(void *obj, struct kndTaskArg *args, size_t n
     if (val_size >= KND_NAME_SIZE)
         return knd_LIMIT;
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. keep track of children option: %s\n", val);
 
     if (!strncmp("false", val, val_size))
@@ -817,7 +822,7 @@ static int import_class(void *obj,
     size_t chunk_size;
     int err;
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. import \"%.*s\" class..", 16, rec);
 
     err = kndConcept_new(&c);
@@ -825,7 +830,8 @@ static int import_class(void *obj,
     c->out = self->out;
     c->class_idx = self->class_idx;
     c->root_class = self;
-
+    memcpy(c->state, self->state, KND_STATE_SIZE);
+    
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_name,
@@ -896,23 +902,27 @@ static int import_class(void *obj,
         goto final;
     }
 
-    c->str(c, 1);
+    //c->str(c, 1);
 
     prev = (struct kndConcept*)self->class_idx->get(self->class_idx,
                                                     (const char*)c->name);
     if (prev) {
         knd_log("-- %s class name doublet found :(", c->name);
-        err = knd_OK;
-        //goto final;
+        err = knd_FAIL;
+        goto final;
     }
     
-    err = self->class_idx->set(self->class_idx,
-                               (const char*)c->name, (void*)c);
-    if (err) goto final;
-
-
-
-    
+    if (self->batch_mode) {
+        err = self->class_idx->set(self->class_idx,
+                                   (const char*)c->name, (void*)c);
+        if (err) goto final;
+    }
+    else {
+        c->next = self->inbox;
+        self->inbox = c;
+        self->inbox_size++;
+    }
+     
     return knd_OK;
  final:
     
@@ -929,7 +939,7 @@ static int run_set_namespace(void *obj, struct kndTaskArg *args, size_t num_args
     size_t name_size = 0;
     int err;
 
-    if (DEBUG_DC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log(".. run set namespace..");
 
     for (size_t i = 0; i < num_args; i++) {
@@ -973,7 +983,6 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     self->name_size = name_size;
     self->name[name_size] = '\0';
 
-
     return knd_OK;
 }
 
@@ -986,7 +995,7 @@ static int run_read_include(void *obj, struct kndTaskArg *args, size_t num_args)
     size_t name_size = 0;
     int err;
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. running include file func.. num args: %lu", (unsigned long)num_args);
 
     for (size_t i = 0; i < num_args; i++) {
@@ -999,7 +1008,7 @@ static int run_read_include(void *obj, struct kndTaskArg *args, size_t num_args)
 
     if (!name_size) return knd_FAIL;
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("== got include file name: \"%s\"..", name);
 
     folder = malloc(sizeof(struct kndConcFolder));
@@ -1022,7 +1031,7 @@ static int parse_schema(void *self,
                         const char *rec,
                         size_t *total_size)
 {
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parse schema REC: \"%s\"..", rec);
 
     struct kndTaskSpec specs[] = {
@@ -1042,7 +1051,7 @@ static int parse_schema(void *self,
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("++ schema parse OK!");
 
     return knd_OK;
@@ -1054,7 +1063,7 @@ static int parse_include(void *self,
 {
     const char *c;
     
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parse include REC: \"%s\"..", rec);
 
     struct kndTaskSpec specs[] = {
@@ -1112,7 +1121,7 @@ static int read_GSL_file(struct kndConcept *self,
     size_t chunk_size = 0;
     int err;
 
-    if (DEBUG_DC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("..read \"%s\"..", filename);
 
     out->reset(out);
@@ -1160,7 +1169,7 @@ static int resolve_class_refs(struct kndConcept *self)
     void *val;
     int err;
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. resolving class refs by \"%s\"", self->name);
 
     key = NULL;
@@ -1180,7 +1189,7 @@ static int resolve_class_refs(struct kndConcept *self)
     } while (key);
 
     /* display all classes */
-    if (DEBUG_DC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         key = NULL;
         self->class_idx->rewind(self->class_idx);
         do {
@@ -1206,7 +1215,7 @@ static int select_classes(struct kndConcept *self, struct kndTaskArg *args, size
     size_t name_size = 0;
     int err;
 
-    if (DEBUG_DC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. selecting classes in \"%s\".. [locale: %s] format: %d",
                 self->name, self->locale, self->format);
 
@@ -1225,15 +1234,13 @@ static int select_classes(struct kndConcept *self, struct kndTaskArg *args, size
 }
 
 
-
-
 static int get_class(struct kndConcept *self,
                      const char *name, size_t name_size)
 {
     struct kndConcept *c;
     int err;
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. get class: \"%s\".. [locale: %s %lu] format: %d",
                 name, self->locale, (unsigned long)self->locale_size, self->format);
    
@@ -1283,18 +1290,34 @@ static int attr_items_JSON(struct kndConcept *self,
     out = self->out;
 
     for (item = items; item; item = item->next) {
-        err = out->write(out, ",", 1);
-        if (err) return err;
-        err = out->write(out, "\"", 1);
+        err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));
         if (err) return err;
         err = out->write(out, item->name, item->name_size);
         if (err) return err;
-        err = out->write(out, "\":\"", strlen("\":\""));
+        err = out->write(out, "\",\"val\":\"", strlen("\",\"val\":\""));
         if (err) return err;
         err = out->write(out, item->val, item->val_size);
         if (err) return err;
-        err = out->write(out, "\"", 1);
+        err = out->write(out, "\"", strlen("\""));
         if (err) return err;
+
+
+        if (item->children) {
+            err = out->write(out, ",\"items\":[", strlen(",\"items\":["));
+            if (err) return err;
+            err = attr_items_JSON(self, item->children, 0);
+            if (err) return err;
+            err = out->write(out, "]", 1);
+            if (err) return err;
+        }
+        
+        err = out->write(out, "}", 1);
+        if (err) return err;
+
+        if (item->next) {
+            err = out->write(out, ",", 1);
+            if (err) return err;
+        }
     }
     
     return knd_OK;
@@ -1315,7 +1338,7 @@ kndConcept_export_JSON(struct kndConcept *self)
     size_t item_count;
     int i, err;
 
-    if (DEBUG_DC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. JSON export concept: \"%s\"   locale: %s\n", self->name, self->locale);
 
     out = self->out;
@@ -1335,7 +1358,7 @@ kndConcept_export_JSON(struct kndConcept *self)
     /* choose gloss */
     tr = self->tr;
     while (tr) {
-        if (DEBUG_DC_LEVEL_2)
+        if (DEBUG_CONC_LEVEL_2)
             knd_log("LANG: %s == CURR LOCALE: %s [%lu] => %s",
                     tr->locale, self->locale, (unsigned long)self->locale_size, tr->val);
 
@@ -1381,7 +1404,11 @@ kndConcept_export_JSON(struct kndConcept *self)
             if (err) return err;
 
             if (item->attrs) {
+                err = out->write(out, ",\"attrs\":[", strlen(",\"attrs\":["));
+                if (err) return err;
                 err = attr_items_JSON(self, item->attrs, 0);
+                if (err) return err;
+                err = out->write(out, "]", 1);
                 if (err) return err;
             }
             
@@ -1413,7 +1440,7 @@ kndConcept_export_JSON(struct kndConcept *self)
             
             err = attr->export(attr);
             if (err) {
-                if (DEBUG_DC_LEVEL_TMP)
+                if (DEBUG_CONC_LEVEL_TMP)
                     knd_log("-- failed to export %s attr to JSON: %s\n", attr->name);
                 return err;
             }
@@ -1432,7 +1459,7 @@ kndConcept_export_JSON(struct kndConcept *self)
         for (size_t i = 0; i < self->num_children; i++) {
             ref = &self->children[i];
 
-            if (DEBUG_DC_LEVEL_2)
+            if (DEBUG_CONC_LEVEL_2)
                 knd_log("base of --> %s", ref->conc->name);
 
             if (i) {
@@ -1471,7 +1498,7 @@ kndConcept_export_HTML(struct kndConcept *self)
     int i;
     int err;
 
-    if (DEBUG_DC_LEVEL_3)
+    if (DEBUG_CONC_LEVEL_3)
         knd_log("   .. export HTML: %s\n",
                 self->name);
 
@@ -1491,14 +1518,13 @@ kndConcept_export_HTML(struct kndConcept *self)
                      self->name, self->name_size);
     if (err) return err;
 
-    err = out->write(out,
-                     "\"", 1);
+    err = out->write(out, "\"", 1);
     if (err) return err;
 
     /* choose gloss */
     tr = self->tr;
     while (tr) {
-        if (DEBUG_DC_LEVEL_3)
+        if (DEBUG_CONC_LEVEL_3)
             knd_log("LANG: %s\n", self->locale);
 
         if (strcmp(tr->locale, self->locale)) goto next_tr;
@@ -1529,17 +1555,263 @@ kndConcept_export_HTML(struct kndConcept *self)
             err = out->write(out, ",", 1);
             if (err) return err;
         }
-
         /*err = kndConcept_export_attr_JSON(self, attr);
         if (err) goto final;
         */
-
         i++;
         attr = attr->next;
     }
 
     err = out->write(out, "]}", 2);
     return err;
+}
+
+static int update_state(struct kndConcept *self)
+{
+    char buf[KND_TEMP_BUF_SIZE];
+    size_t buf_size;
+
+    char next_state_buf[KND_STATE_SIZE];
+
+    struct kndConcept *c;
+    struct kndOutput *out = self->out;
+    const char *inbox_dir = "/inbox";
+    size_t inbox_dir_size = strlen(inbox_dir);
+    int err;
+
+    for (c = self->inbox; c; c = c->next) {
+        err = c->resolve(c);
+        if (err) return err;
+        c->str(c, 1);
+    }
+
+    /* resolve OK, let's register */
+    for (c = self->inbox; c; c = c->next) {
+        err = self->class_idx->set(self->class_idx,
+                                   (const char*)c->name, (void*)c);
+        if (err) return err;
+
+        
+    }
+    
+    knd_log(".. update state from \"%s\"", self->state);
+
+    memcpy(next_state_buf, self->state, KND_STATE_SIZE);
+    err = knd_next_state(next_state_buf);
+    if (err) return err;
+
+    out->reset(out);
+    err = out->write(out, self->dbpath, self->dbpath_size);
+    if (err) return err;
+    
+    err = out->write(out, inbox_dir, inbox_dir_size);
+    if (err) return err;
+
+    err = out->write_state_path(out, next_state_buf);
+    if (err) return err;
+
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. state update dir: \"%s\"", out->buf);
+
+    err = knd_mkpath(out->buf, 0755, false);
+    if (err) return err;
+
+    /* save the spec */
+    err = knd_write_file((const char*)out->buf,
+                         "spec.gsl",
+                         self->task->spec, self->task->spec_size);
+    if (err) return err;
+
+    /* change global class DB state */
+    out->reset(out);
+    err = out->write(out, self->dbpath, self->dbpath_size);
+    if (err) return err;
+    err = out->write(out, "/class_state_update.id", strlen("/class_state_update.id"));
+    if (err) return err;
+
+    if (out->buf_size >= KND_TEMP_BUF_SIZE) return knd_LIMIT;
+
+    memcpy(buf, out->buf, out->buf_size);
+    buf[out->buf_size] = '\0';
+
+    err = knd_write_file((const char*)self->dbpath,
+                         "class_state_update.id",
+                         next_state_buf, KND_STATE_SIZE);
+    if (err) return err;
+
+    out->rtrim(out, strlen("_update.id"));
+    err = out->write(out, ".id", strlen(".id"));
+    if (err) return err;
+
+    /* atomic state shift */
+    err = rename(buf, out->buf);
+    if (err) return err;
+
+    /* change global class state */
+    err = knd_next_state(self->state);
+    if (err) return err;
+
+    self->inbox = NULL;
+    self->inbox_size = 0;
+   
+    return knd_OK;
+}
+
+
+
+static int restore(struct kndConcept *self)
+{
+    char state_buf[KND_STATE_SIZE];
+    char last_state_buf[KND_STATE_SIZE];
+    struct kndOutput *out = self->out;
+    
+    const char *inbox_dir = "/inbox";
+    size_t inbox_dir_size = strlen(inbox_dir);
+    int err;
+
+    memset(state_buf, '0', KND_STATE_SIZE);
+    
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. conc \"%s\" restoring DB state in: %s",
+                self->name, self->dbpath, KND_STATE_SIZE);
+
+    out->reset(out);
+    err = out->write(out, self->dbpath, self->dbpath_size);
+    if (err) return err;
+    err = out->write(out, "/class_state.id", strlen("/class_state.id"));
+    if (err) return err;
+
+    err = out->read_file(out,
+                         (const char*)out->buf, out->buf_size);
+    if (err) {
+        knd_log("-- no class_state.id file found, assuming initial state ..");
+        return knd_OK;
+    }
+
+    /* check if state content is a valid state id */
+    err = knd_state_is_valid(out->file, out->file_size);
+    if (err) {
+        knd_log("-- state id is not valid: \"%.*s\"",
+                out->file_size, out->file);
+        return err;
+    }
+
+    memcpy(last_state_buf, out->file, KND_STATE_SIZE);
+    
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. last DB state: \"%.*s\"",
+                out->file_size, out->file);
+
+    out->rtrim(out, strlen("/class_state.id"));
+    err = out->write(out, inbox_dir, inbox_dir_size);
+    if (err) return err;
+    
+    while (1) {
+        knd_next_state(state_buf);
+
+        err = out->write_state_path(out, state_buf);
+        if (err) return err;
+
+        err = out->write(out, "/spec.gsl", strlen("/spec.gsl"));
+        if (err) return err;
+
+        
+        err = out->read_file(out, (const char*)out->buf, out->buf_size);
+        if (err) {
+            knd_log("-- couldn't read GSL spec \"%s\" :(", out->buf);
+            return err;
+        }
+
+        if (DEBUG_CONC_LEVEL_TMP)
+            knd_log(".. state update spec file: \"%.*s\" SPEC: %.*s\n\n",
+                    out->buf_size, out->buf, out->file_size, out->file);
+
+
+        /* last update */
+        if (!memcmp(state_buf, last_state_buf, KND_STATE_SIZE)) break;
+
+        /* cut the tail */
+        out->rtrim(out, strlen("/spec.gsl") + (KND_STATE_SIZE * 2));
+    }
+    
+
+    memcpy(self->state, last_state_buf, KND_STATE_SIZE);
+    
+    return knd_OK;
+}
+
+
+
+static int build_diff(struct kndConcept *self,
+                      const char *start_state)
+{
+    char state_buf[KND_STATE_SIZE];
+    struct kndOutput *out = self->out;
+    const char *inbox_dir = "/inbox";
+    size_t inbox_dir_size = strlen(inbox_dir);
+    int res, err;
+    
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log("\n\n.. building diff from state: %.*s",
+                KND_STATE_SIZE, start_state);
+
+    /* check if given string is a valid state id */
+    err = knd_state_is_valid(start_state, KND_STATE_SIZE);
+    if (err) {
+        knd_log("-- state id is not valid: \"%.*s\"",
+                KND_STATE_SIZE, start_state);
+        return err;
+    }
+
+    /* start state must be less than the current state */
+    res = knd_state_compare(start_state, self->state);
+    if (res != knd_LESS) {
+        knd_log("-- %s state is not less than the current state \"%.*s\"",
+                KND_STATE_SIZE, start_state, KND_STATE_SIZE, self->state);
+        return knd_FAIL;
+    }
+    
+    memcpy(state_buf, start_state, KND_STATE_SIZE);
+
+    out->reset(out);
+    err = out->write(out, self->dbpath, self->dbpath_size);
+    if (err) return err;
+    err = out->write(out, inbox_dir, inbox_dir_size);
+    if (err) return err;
+
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. last DB state: \"%.*s\"",
+                KND_STATE_SIZE, self->state);
+
+    while (1) {
+        knd_next_state(state_buf);
+
+        err = out->write_state_path(out, state_buf);
+        if (err) return err;
+
+        err = out->write(out, "/spec.gsl", strlen("/spec.gsl"));
+        if (err) return err;
+
+        
+        err = out->read_file(out, (const char*)out->buf, out->buf_size);
+        if (err) {
+            knd_log("-- couldn't read GSL spec \"%s\" :(", out->buf);
+            return err;
+        }
+
+        if (DEBUG_CONC_LEVEL_TMP)
+            knd_log(".. spec file to build DIFF: \"%.*s\" SPEC: %.*s\n\n",
+                    out->buf_size, out->buf, out->file_size, out->file);
+
+        /* last update */
+        if (!memcmp(state_buf, self->state, KND_STATE_SIZE)) break;
+
+        /* cut the tail */
+        out->rtrim(out, strlen("/spec.gsl") + (KND_STATE_SIZE * 2));
+    }
+    
+    
+    return knd_OK;
 }
 
 
@@ -1566,11 +1838,14 @@ static void init(struct kndConcept *self)
     self->del = del;
     self->str = str;
     self->open = read_GSL_file;
+    self->restore = restore;
+    self->build_diff = build_diff;
 
     self->coordinate = resolve_class_refs;
     self->resolve = resolve_names;
 
     self->import = import_class;
+    self->update_state = update_state;
 
     self->export = export;
     self->select = select_classes;
@@ -1591,6 +1866,7 @@ kndConcept_new(struct kndConcept **c)
     if (!self) return knd_NOMEM;
 
     memset(self, 0, sizeof(struct kndConcept));
+    memset(self->state, '0', KND_STATE_SIZE);
 
     init(self);
 

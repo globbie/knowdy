@@ -264,11 +264,14 @@ parse_domain(struct kndTask *self,
             self->admin->task = self;
             self->admin->out = self->out;
             self->admin->log = self->log;
+            
             err = self->admin->parse_task(self->admin, rec, total_size);
             if (err) {
                 knd_log("-- User area parse failed");
                 return knd_FAIL;
             }
+
+            
             return knd_OK;
         }
         break;
@@ -480,6 +483,16 @@ report(struct kndTask *self)
         free(header);
     if (obj)
         free(obj);
+
+    
+    msg = "PUB INFORM";
+    msg_size = strlen(msg);
+    err = knd_zmq_sendmore(self->publisher, msg, msg_size);
+
+    msg = "PUB BODY";
+    msg_size = strlen(msg);
+
+    err = knd_zmq_send(self->publisher, msg, msg_size);
     
     return knd_OK;
 }
