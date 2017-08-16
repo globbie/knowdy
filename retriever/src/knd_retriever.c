@@ -56,7 +56,6 @@ kndRetriever_start(struct kndRetriever *self)
     self->delivery = zmq_socket(context, ZMQ_REQ);
     if (!self->delivery) return knd_FAIL;
     assert((zmq_connect(self->delivery,  self->delivery_addr) == knd_OK));
-
     self->task->delivery = self->delivery;
     
     while (1) {
@@ -321,6 +320,7 @@ kndRetriever_new(struct kndRetriever **rec,
     if (err) goto error;
     
     /* read class definitions */
+    dc->batch_mode = true;
     err = dc->open(dc, "index", strlen("index"));
     if (err) {
  	knd_log("-- couldn't read the schema definitions :("); 
@@ -330,6 +330,7 @@ kndRetriever_new(struct kndRetriever **rec,
     err = dc->coordinate(dc);
     if (err) goto error;
 
+    dc->batch_mode = false;
     self->admin->root_class = dc;
 
     self->del = kndRetriever_del;
@@ -403,9 +404,6 @@ void *kndRetriever_selector(void *arg)
     
     backend = zmq_socket(context, ZMQ_PUSH);
     assert(backend);
-    
-    //err = zmq_connect(frontend, "tcp://127.0.0.1:6913");
-    //assert(err == knd_OK);
 
     err = zmq_connect(frontend, retriever->coll_request_addr);
     assert(err == knd_OK);
@@ -432,7 +430,6 @@ void *kndRetriever_subscriber(void *arg)
     void *context;
     void *subscriber;
     void *inbox;
-
     struct kndRetriever *retriever;
 
     char *obj;

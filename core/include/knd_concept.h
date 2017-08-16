@@ -17,7 +17,6 @@
  *   knd_dataclass.h
  *   Knowdy Data Class
  */
-
 #ifndef KND_DATACLASS_H
 #define KND_DATACLASS_H
 
@@ -66,7 +65,8 @@ struct kndConcItem
     struct kndAttrItem *attrs;
     struct kndAttrItem *tail;
     size_t num_attrs;
-    
+
+    struct kndConcept *parent;
     struct kndConcept *ref;
     
     struct kndConcItem *next;
@@ -86,7 +86,13 @@ struct kndConcept
     char name[KND_NAME_SIZE];
     size_t name_size;
 
+    char id[KND_ID_SIZE];
+    char next_id[KND_ID_SIZE];
+
     char state[KND_STATE_SIZE];
+    char next_state[KND_STATE_SIZE];
+
+    knd_state_phase phase;
 
     struct kndTranslation *tr;
     struct kndText *summary;
@@ -104,20 +110,19 @@ struct kndConcept
     size_t locale_size;
     knd_format format;
     size_t depth;
-    
-    struct kndConcItem *baseclass_items;
-    size_t num_baseclass_items;
-
-    struct kndDataIdx *indices;
-    size_t num_indices;
 
     struct kndAttr *attrs;
     struct kndAttr *tail_attr;
     size_t num_attrs;
-
     /* for traversal */
     struct kndAttr *curr_attr;
     size_t attrs_left;
+    
+    struct kndConcItem *conc_items;
+    size_t num_conc_items;
+
+    struct kndDataIdx *indices;
+    size_t num_indices;
 
     char curr_val[KND_NAME_SIZE];
     size_t curr_val_size;
@@ -129,8 +134,9 @@ struct kndConcept
     size_t style_name_size;
 
     bool ignore_children;
-    
+
     struct kndConcept *root_class;
+    struct kndConcept *curr_class;
 
     struct kndConcFolder *folders;
     size_t num_folders;
@@ -149,6 +155,7 @@ struct kndConcept
     bool batch_mode;
 
     struct kndConcept *next;
+
     struct kndOutput *out;
     struct kndOutput *log;
     
@@ -173,6 +180,7 @@ struct kndConcept
 
     int (*select)(struct kndConcept  *self,
                   struct kndTaskArg *args, size_t num_args);
+
     int (*get)(struct kndConcept  *self,
                const char *name, size_t name_size);
     

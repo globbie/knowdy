@@ -59,6 +59,11 @@ struct kndAttr
     char classname[KND_NAME_SIZE];
     size_t classname_size;
 
+    char cardinality[KND_NAME_SIZE];
+    size_t cardinality_size;
+    bool is_list;
+    bool is_recursive;
+
     struct kndConcept *parent_dc;
     struct kndConcept *dc;
 
@@ -75,9 +80,7 @@ struct kndAttr
     int descr_level;
     int browse_level;
 
-    bool is_list;
-    bool is_recursive;
-    
+
     char calc_oper[KND_NAME_SIZE];
     size_t calc_oper_size;
 

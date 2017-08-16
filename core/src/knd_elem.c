@@ -1346,7 +1346,7 @@ kndElem_parse(struct kndElem *self,
                 memcpy(elem_state->val, b, buf_size);
                 elem_state->val_size = buf_size;
 
-                elem_state->state = self->obj->cache->repo->state;
+                // TODO: elem_state->state = self->obj->cache->repo->state;
 
                 elem_state->next = self->states;
                 self->states = elem_state;
@@ -1565,7 +1565,7 @@ kndElem_update(struct kndElem *self,
                     goto final;
                 }
                 memset(elem_state, 0, sizeof(struct kndElemState));
-                elem_state->state = self->obj->cache->repo->state;
+                // TODO: elem_state->state = self->obj->cache->repo->state;
 
 
                 in_state = false;

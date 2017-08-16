@@ -99,6 +99,7 @@ kndLearner_start(struct kndLearner *self)
                               task, task_size,
                               obj, obj_size);
         if (err) {
+            self->task->error = err;
             knd_log("-- task running failure: %d", err);
             goto final;
         }
@@ -379,10 +380,11 @@ kndLearner_new(struct kndLearner **rec,
     err = dc->restore(dc);
     if (err) return err;
 
-    // test
+    /* test
     err = dc->build_diff(dc, "0001");
     if (err) return err;
-
+    */
+    
     self->admin->root_class = dc;
 
     self->del = kndLearner_del;

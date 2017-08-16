@@ -53,8 +53,8 @@ struct kndObject
     char id[KND_ID_SIZE + 1];
     char batch_id[KND_ID_SIZE + 1];
 
-    knd_update_status update_oper;
-    size_t state;
+    knd_state_phase phase;
+    char state[KND_STATE_SIZE];
 
     bool is_subord;
     bool is_concise;

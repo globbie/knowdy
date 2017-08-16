@@ -40,6 +40,10 @@ static void str(struct kndAttr *self, size_t depth)
     else
         knd_log("\n%s{%s %s", offset, type_name, self->name);
 
+    if (self->cardinality_size) {
+        knd_log("\n%s    [%s]", offset, self->cardinality);
+    }
+    
     tr = self->tr;
     while (tr) {
         knd_log("%s   ~ %s %s", offset, tr->locale, tr->val);
@@ -236,6 +240,38 @@ static int run_set_name(void *obj,
     return knd_OK;
 }
 
+
+static int run_set_cardinality(void *obj,
+                               struct kndTaskArg *args, size_t num_args)
+{
+    struct kndAttr *self = (struct kndAttr*)obj;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    size_t name_size = 0;
+    int err;
+
+    if (DEBUG_ATTR_LEVEL_TMP)
+        knd_log(".. run set cardinality!\n");
+    
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+
+    if (!name_size) return knd_FAIL;
+    if (name_size >= KND_NAME_SIZE)
+        return knd_LIMIT;
+            
+    memcpy(self->cardinality, name, name_size);
+    self->cardinality_size = name_size;
+    self->cardinality[name_size] = '\0';
+
+    return knd_OK;
+}
+
 static int run_set_translation_text(void *obj,
                                     struct kndTaskArg *args, size_t num_args)
 {
@@ -335,6 +371,30 @@ static int parse_gloss_change(void *obj,
 }
 
 
+static int parse_cardinality(void *obj,
+                             const char *rec,
+                             size_t *total_size)
+{
+    struct kndAttr *self = (struct kndAttr*)obj;
+    int err;
+
+    if (DEBUG_ATTR_LEVEL_TMP)
+        knd_log(".. parsing the cardinality: \"%s\"", rec);
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_cardinality,
+          .obj = self
+        }
+    };
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
+
+
 
 static int parse_GSL(struct kndAttr *self,
                      const char *rec,
@@ -361,6 +421,12 @@ static int parse_GSL(struct kndAttr *self,
           .buf = self->ref_classname,
           .buf_size = &self->ref_classname_size,
           .max_buf_size = KND_NAME_SIZE,
+          .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "card",
+          .name_size = strlen("card"),
+          .parse = parse_cardinality,
           .obj = self
         },
         { .type = KND_CHANGE_STATE,
