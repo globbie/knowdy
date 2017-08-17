@@ -170,13 +170,13 @@ struct kndConcept
                 size_t filename_size);
     
     int (*restore)(struct kndConcept   *self);
-
     int (*build_diff)(struct kndConcept   *self,
                       const char *start_state);
 
     int (*coordinate)(struct kndConcept *self);
     int (*resolve)(struct kndConcept    *self);
     int (*update_state)(struct kndConcept *self);
+    int (*apply_liquid_updates)(struct kndConcept *self);
 
     int (*select)(struct kndConcept  *self,
                   struct kndTaskArg *args, size_t num_args);

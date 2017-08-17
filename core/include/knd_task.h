@@ -72,6 +72,8 @@ struct kndTaskSpec
 
 struct kndTask
 {
+    knd_task_spec_type type;
+
     char sid[KND_NAME_SIZE];
     size_t sid_size;
 

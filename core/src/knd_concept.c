@@ -1940,6 +1940,28 @@ static int build_update_messages(struct kndConcept *self)
 }
 
 
+static int apply_liquid_updates(struct kndConcept *self)
+{
+    struct kndConcept *c;
+    int err;
+    
+    if (!self->inbox_size) return knd_OK;
+
+    for (c = self->inbox; c; c = c->next) {
+
+        err = self->class_idx->set(self->class_idx,
+                                   (const char*)c->name, (void*)c);
+        if (err) return err;
+
+    }
+
+    self->inbox = NULL;
+    self->inbox_size = 0;
+
+    return knd_OK;
+}
+
+
 static int update_state(struct kndConcept *self)
 {
     char pathbuf[KND_TEMP_BUF_SIZE];
@@ -2219,6 +2241,7 @@ static void init(struct kndConcept *self)
     self->select = parse_select_class;
 
     self->update_state = update_state;
+    self->apply_liquid_updates = apply_liquid_updates;
     self->export = export;
     self->get = get_class;
 

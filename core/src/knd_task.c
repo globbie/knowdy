@@ -65,13 +65,14 @@ static int parse_update(void *obj,
     struct kndTask *self = (struct kndTask*)obj;
     int err;
 
+    self->type = KND_UPDATE_STATE;
     self->admin->task = self;
     self->admin->out = self->out;
     self->admin->log = self->log;
             
     err = self->admin->parse_task(self->admin, rec, total_size);
     if (err) {
-        knd_log("-- update area parse failed");
+        knd_log("-- update parse failed :(");
         return knd_FAIL;
     }
 

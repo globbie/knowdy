@@ -417,6 +417,26 @@ static int kndUser_parse_class_select(void *obj,
 }
 
 
+static int kndUser_parse_liquid_updates(void *obj,
+                                        const char *rec,
+                                        size_t *total_size)
+{
+    struct kndUser *self = (struct kndUser*)obj;
+    struct kndConcept *c;
+    int err;
+
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log(".. parsing liquid updates..");
+
+    if (!self->root_class->inbox_size) 
+        return knd_OK;
+
+    err = self->root_class->apply_liquid_updates(self->root_class);
+    if (err) return err;
+    
+    return knd_OK;
+}
+
 static int
 kndUser_parse_task(struct kndUser *self,
                    const char *rec,
@@ -448,6 +468,11 @@ kndUser_parse_task(struct kndUser *self,
           .name_size = strlen("class"),
           .parse = kndUser_parse_class_select,
           .obj = self
+        },
+        { .name = "state",
+          .name_size = strlen("state"),
+          .parse = kndUser_parse_liquid_updates,
+          .obj = self
         }
     };
     int err, e;
@@ -463,13 +488,16 @@ kndUser_parse_task(struct kndUser *self,
         return err;
     }
 
+    if (self->task->type == KND_UPDATE_STATE) {
+        knd_log("++ all updates applied!");
+        return knd_OK;
+    }
+    
     /* any transaction to close? */
     if (self->root_class->inbox_size) {
         out = self->task->update;
-        
         err = out->write(out, "{task{update", strlen("{task{update"));
         if (err) return err;
-
         /* update spec body */
         err = out->write(out, rec, *total_size);
         if (err) return err;
