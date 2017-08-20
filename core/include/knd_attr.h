@@ -31,6 +31,37 @@ struct kndOutput;
 struct kndTranslation;
 struct kndAttr;
 
+typedef enum knd_attr_type {
+    KND_ATTR_NONE,
+    KND_ATTR_ATOM,
+    KND_ATTR_STR,
+    KND_ATTR_AGGR,
+    KND_ATTR_LIST,
+    KND_ATTR_TEXT, 
+    KND_ATTR_CG,
+    KND_ATTR_NUM,
+    KND_ATTR_REF,
+    KND_ATTR_CALC,
+    KND_ATTR_FILE,
+    KND_ATTR_PROC
+} knd_attr_type;
+
+static const char* const knd_attr_names[] = {
+    "none",
+    "atom",
+    "str",
+    "aggr", 
+    "list",
+    "text", 
+    "CG",
+    "num",
+    "ref",
+    "calc",
+    "file",
+    "proc"
+};
+
+
 struct kndAttrItem
 {
     knd_task_spec_type type;
@@ -40,7 +71,7 @@ struct kndAttrItem
     char val[KND_NAME_SIZE];
     size_t val_size;
 
-    struct kndAttr *ref;
+    struct kndAttr *attr;
 
     struct kndAttrItem *children;
     struct kndAttrItem *tail;
@@ -51,7 +82,7 @@ struct kndAttrItem
 
 struct kndAttr 
 {
-    knd_elem_type type;
+    knd_attr_type type;
 
     char name[KND_NAME_SIZE];
     size_t name_size;
@@ -64,8 +95,8 @@ struct kndAttr
     bool is_list;
     bool is_recursive;
 
-    struct kndConcept *parent_dc;
-    struct kndConcept *dc;
+    struct kndConcept *parent_conc;
+    struct kndConcept *conc;
 
     const char *locale;
     size_t locale_size;

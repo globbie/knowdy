@@ -61,7 +61,8 @@ struct kndObject
 
     struct kndObject *root;
     struct kndElem *parent;
-    struct kndConcept *dc;
+    
+    struct kndConcept *conc;
 
     struct kndSortTag *tag;
     
@@ -129,8 +130,7 @@ struct kndObject
 
     int (*parse)(struct kndObject *self,
                  const char       *rec,
-                 size_t           rec_size,
-                 knd_format format);
+                 size_t           *total_size);
 
     int (*parse_inline)(struct kndObject *self,
                         const char       *rec,

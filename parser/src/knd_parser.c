@@ -991,7 +991,6 @@ int knd_parse_task(const char *rec,
                 in_field = false;
                 break;
             }
-            
             *total_size = c - rec;
             return knd_OK;
         case '(':

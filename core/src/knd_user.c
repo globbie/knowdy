@@ -492,9 +492,9 @@ kndUser_parse_task(struct kndUser *self,
         knd_log("++ all updates applied!");
         return knd_OK;
     }
-    
+
     /* any transaction to close? */
-    if (self->root_class->inbox_size) {
+    if (self->root_class->inbox_size || self->root_class->obj_inbox_size) {
         out = self->task->update;
         err = out->write(out, "{task{update", strlen("{task{update"));
         if (err) return err;
@@ -505,6 +505,7 @@ kndUser_parse_task(struct kndUser *self,
         err = self->root_class->update_state(self->root_class);
         if (err) return err;
     }
+
     return knd_OK;
 }
 

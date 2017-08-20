@@ -390,7 +390,7 @@ kndQuery_add_child(struct kndQuery *self,
 
                 err =  kndCodeRef_new(&coderef);
                 if (err) goto final;
-                coderef->type = KND_ELEM_CG;
+                coderef->type = KND_ATTR_CG;
 
                 err = coderef->parse(coderef, b, c - b + 1);
                 if (err) goto final;

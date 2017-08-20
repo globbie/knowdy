@@ -33,7 +33,7 @@ static void str(struct kndAttr *self, size_t depth)
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
 
-    const char *type_name = knd_elem_names[self->type];
+    const char *type_name = knd_attr_names[self->type];
 
     if (self->is_list)
         knd_log("\n%s[%s", offset, self->name);
@@ -83,29 +83,28 @@ kndAttr_set_type(struct kndAttr *self,
                  const char *name,
                  size_t name_size)
 {
-
-    self->type = KND_ELEM_ATOM;
+    self->type = KND_ATTR_ATOM;
 
     switch (*name) {
     case 'a':
     case 'A':
         if (!strncmp("aggr", name, name_size))
-            self->type = KND_ELEM_AGGR;
+            self->type = KND_ATTR_AGGR;
         break;
     case 'n':
     case 'N':
         if (!strncmp("num", name, name_size))
-            self->type = KND_ELEM_NUM;
+            self->type = KND_ATTR_NUM;
         break;
     case 'r':
     case 'R':
         if (!strncmp("ref", name, name_size))
-            self->type = KND_ELEM_REF;
+            self->type = KND_ATTR_REF;
         break;
     case 't':
     case 'T':
         if (!strncmp("text", name, name_size))
-            self->type = KND_ELEM_TEXT;
+            self->type = KND_ATTR_TEXT;
         break;
     default:
         break;
@@ -126,8 +125,8 @@ static int export_JSON(struct kndAttr *self)
     struct kndOutput *out;
     struct kndTranslation *tr;
     
-    const char *type_name = knd_elem_names[self->type];
-    size_t type_name_size = strlen(knd_elem_names[self->type]);
+    const char *type_name = knd_attr_names[self->type];
+    size_t type_name_size = strlen(knd_attr_names[self->type]);
     int err;
 
     out = self->out;

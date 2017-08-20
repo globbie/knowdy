@@ -68,35 +68,6 @@ typedef enum knd_storage_type {
     KND_STORAGE_XML
 } knd_storage_type;
 
-typedef enum knd_elem_type {
-    KND_ELEM_NONE,
-    KND_ELEM_ATOM,
-    KND_ELEM_STR,
-    KND_ELEM_AGGR,
-    KND_ELEM_LIST,
-    KND_ELEM_TEXT, 
-    KND_ELEM_CG,
-    KND_ELEM_NUM,
-    KND_ELEM_REF,
-    KND_ELEM_CALC,
-    KND_ELEM_FILE,
-    KND_ELEM_PROC
-} knd_elem_type;
-
-
-static const char* const knd_elem_names[] = {
-    "none",
-    "atom",
-    "str",
-    "aggr", 
-    "list",
-    "text", 
-    "CG",
-    "num",
-    "ref",
-    "calc",
-    "file",
-    "proc" };
 
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L

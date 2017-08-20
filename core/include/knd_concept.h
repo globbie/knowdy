@@ -67,8 +67,8 @@ struct kndConcItem
     size_t num_attrs;
 
     struct kndConcept *parent;
-    struct kndConcept *ref;
-    
+    struct kndConcept *conc;
+
     struct kndConcItem *next;
 };
 
@@ -88,9 +88,11 @@ struct kndConcept
 
     char id[KND_ID_SIZE];
     char next_id[KND_ID_SIZE];
+    char next_obj_id[KND_ID_SIZE];
 
     char state[KND_STATE_SIZE];
     char next_state[KND_STATE_SIZE];
+    char next_obj_state[KND_STATE_SIZE];
 
     knd_state_phase phase;
 
@@ -141,18 +143,23 @@ struct kndConcept
     struct kndConcFolder *folders;
     size_t num_folders;
 
+    /* incoming */
+    struct kndConcept *inbox;
+    size_t inbox_size;
+    struct kndObject *obj_inbox;
+    size_t obj_inbox_size;
+    bool batch_mode;
+
     /* indices */
     struct ooDict *class_idx;
     struct ooDict *attr_idx;
-    
-    struct kndConcept *inbox;
-    size_t inbox_size;
+    struct ooDict *obj_idx;
     
     struct kndConcRef children[KND_MAX_CONC_CHILDREN];
     size_t num_children;
     
-    struct kndRefSet *browser;
-    bool batch_mode;
+    struct kndRefSet *obj_browser;
+
 
     struct kndConcept *next;
 
@@ -183,7 +190,11 @@ struct kndConcept
 
     int (*get)(struct kndConcept  *self,
                const char *name, size_t name_size);
-    
+
+    int (*get_attr)(struct kndConcept *self,
+                    const char *name, size_t name_size,
+                    struct kndAttr **result);
+
     int (*import)(struct kndConcept *self,
                   const char *rec,
                   size_t *total_size);
