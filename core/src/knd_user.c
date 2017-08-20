@@ -373,6 +373,8 @@ static int kndUser_parse_class_import(void *obj,
     if (DEBUG_USER_LEVEL_1)
         knd_log(".. parsing the default class import: \"%s\"", rec);
 
+    self->task->type = KND_CHANGE_STATE;
+
     self->root_class->out = self->out;
     self->root_class->log = self->log;
     self->root_class->task = self->task;
@@ -385,7 +387,7 @@ static int kndUser_parse_class_import(void *obj,
     
     err = self->root_class->import(self->root_class, rec, total_size);
     if (err) return err;
-    
+
     return knd_OK;
 }
 
@@ -397,7 +399,7 @@ static int kndUser_parse_class_select(void *obj,
     struct kndUser *self = (struct kndUser*)obj;
     int err;
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class select: \"%s\"", rec);
 
     self->root_class->out = self->out;
@@ -425,14 +427,15 @@ static int kndUser_parse_liquid_updates(void *obj,
     struct kndConcept *c;
     int err;
 
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log(".. parsing liquid updates..");
+    if (DEBUG_USER_LEVEL_2)
+        knd_log(".. parse and apply liquid updates..");
 
-    if (!self->root_class->inbox_size) 
-        return knd_OK;
+    self->task->type = KND_UPDATE_STATE;
+    self->root_class->task = self->task;
 
     err = self->root_class->apply_liquid_updates(self->root_class);
     if (err) return err;
+
     
     return knd_OK;
 }
@@ -488,22 +491,28 @@ kndUser_parse_task(struct kndUser *self,
         return err;
     }
 
-    if (self->task->type == KND_UPDATE_STATE) {
-        knd_log("++ all updates applied!");
+    switch (self->task->type) {
+    case KND_UPDATE_STATE:
+        if (DEBUG_USER_LEVEL_TMP)
+            knd_log("++ all updates applied!");
         return knd_OK;
-    }
-
-    /* any transaction to close? */
-    if (self->root_class->inbox_size || self->root_class->obj_inbox_size) {
-        out = self->task->update;
-        err = out->write(out, "{task{update", strlen("{task{update"));
-        if (err) return err;
-        /* update spec body */
-        err = out->write(out, rec, *total_size);
-        if (err) return err;
-
-        err = self->root_class->update_state(self->root_class);
-        if (err) return err;
+    case KND_GET_STATE:
+        if (DEBUG_USER_LEVEL_TMP)
+            knd_log("++ get task complete!");
+        return knd_OK;
+    default:
+        /* any transaction to close? */
+        if (self->root_class->inbox_size || self->root_class->obj_inbox_size) {
+            out = self->task->update;
+            err = out->write(out, "{task{update", strlen("{task{update"));
+            if (err) return err;
+            /* update spec body */
+            err = out->write(out, rec, *total_size);
+            if (err) return err;
+            
+            err = self->root_class->update_state(self->root_class);
+            if (err) return err;
+        }
     }
 
     return knd_OK;

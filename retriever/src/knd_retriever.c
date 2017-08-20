@@ -77,9 +77,19 @@ kndRetriever_start(struct kndRetriever *self)
         }
 
     final:
-        
+
+        /* ne need to inform delivery about every liquid update success */
+        if (self->task->type == KND_UPDATE_STATE) {
+            if (!err) {
+                if (task) free(task);
+                if (obj) free(obj);
+                continue;
+            }
+        }
+
         err = self->task->report(self->task);
         if (err) {
+            /* TODO */
             knd_log("-- task report failed: %d", err);
         }
 

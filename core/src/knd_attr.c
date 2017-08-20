@@ -249,7 +249,7 @@ static int run_set_cardinality(void *obj,
     size_t name_size = 0;
     int err;
 
-    if (DEBUG_ATTR_LEVEL_TMP)
+    if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. run set cardinality!\n");
     
     for (size_t i = 0; i < num_args; i++) {
@@ -377,7 +377,7 @@ static int parse_cardinality(void *obj,
     struct kndAttr *self = (struct kndAttr*)obj;
     int err;
 
-    if (DEBUG_ATTR_LEVEL_TMP)
+    if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. parsing the cardinality: \"%s\"", rec);
 
     struct kndTaskSpec specs[] = {

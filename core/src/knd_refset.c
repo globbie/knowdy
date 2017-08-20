@@ -352,7 +352,6 @@ kndRefSet_export_JSON(struct kndRefSet *self,
             }
             
             f->out = out;
-
             f->export_depth = self->export_depth;
             err = f->export(f, KND_FORMAT_JSON, depth + 1);
             if (err) return err;
@@ -2668,8 +2667,9 @@ kndRefSet_export_summaries(struct kndRefSet *self,
             if (!obj) return knd_FAIL;
         
             obj->out = self->out;
-            obj->export_depth = 0;
-            err = obj->export(obj, format, 1);
+            obj->depth = 0;
+            obj->format = self->format;
+            err = obj->export(obj);
             if (err) return err;
             num_items++;
         }
@@ -2802,8 +2802,8 @@ kndRefSet_sync_objs(struct kndRefSet *self,
 
                 obj = ref->obj;
                 obj->out = self->out;
-
-                err = obj->export(obj, KND_FORMAT_GSC, 0);
+                obj->format =  KND_FORMAT_GSC;
+                err = obj->export(obj);
                 if (err) {
                     knd_log("-- GSC export of obj \"%s\" failed :(", ref->obj_id);
                     return err;

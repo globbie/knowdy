@@ -1242,7 +1242,7 @@ kndRepo_get_obj(struct kndRepo *self,
         obj->str(obj, 1);
     
     if (curr_depth) {
-        obj->export_depth = curr_depth;
+        obj->depth = curr_depth;
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log(" .. expanding obj %s [%s]..\n", obj->name, obj->id);
 
@@ -1259,9 +1259,9 @@ kndRepo_get_obj(struct kndRepo *self,
     /* export obj */
     format = KND_FORMAT_JSON;
     obj->out = self->out;
-    obj->export_depth = 0;
-    
-    err = obj->export(obj, format, 0);
+    obj->depth = 0;
+    obj->format = format;
+    err = obj->export(obj);
     if (err) return err;
     
     if (DEBUG_REPO_LEVEL_2)
@@ -1370,8 +1370,8 @@ kndRepo_export_class_JSON(struct kndRepo *self, struct kndRepoCache *cache)
                     err = out->write(out, ",", 1);
                     if (err) return err;
                 }
-
-                err = obj->export(obj, KND_FORMAT_JSON, 1);
+                obj->format = KND_FORMAT_JSON;
+                err = obj->export(obj);
                 if (err) return err;
             }
 
@@ -1508,8 +1508,8 @@ kndRepo_export_class_HTML(struct kndRepo *self, struct kndRepoCache *cache)
 
                 err = out->write(out, "<LI>", strlen("<LI>"));
                 if (err) return err;
-
-                err = obj->export(obj, KND_FORMAT_HTML, 1);
+                obj->format =  KND_FORMAT_HTML;
+                err = obj->export(obj);
                 if (err) return err;
 
                 err = out->write(out, "</LI>", strlen("</LI>"));

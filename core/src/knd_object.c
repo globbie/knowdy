@@ -110,8 +110,7 @@ kndObject_export_inline_JSON(struct kndObject *self)
 
 
 static int 
-kndObject_export_JSON(struct kndObject *self,
-                      bool is_concise)
+kndObject_export_JSON(struct kndObject *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -129,7 +128,8 @@ kndObject_export_JSON(struct kndObject *self,
     struct kndRelType *reltype;
     struct kndObjRef *r;
     struct kndObject *obj;
-
+    
+    bool is_concise = true;
     bool need_separ;
     int err;
 
@@ -185,7 +185,7 @@ kndObject_export_JSON(struct kndObject *self,
                 err = self->out->write(self->out, "\":", 2);
                 if (err) return err;
                 
-                err = obj->export(obj, KND_FORMAT_JSON, 1);
+                err = obj->export(obj);
                 if (err) return err;
 
                 need_separ = true;
@@ -232,7 +232,7 @@ kndObject_export_JSON(struct kndObject *self,
     
 
     /* skip relations */
-    if (self->export_depth)
+    if (self->depth)
         goto closing;
     
     /*  relations */
@@ -274,8 +274,8 @@ kndObject_export_JSON(struct kndObject *self,
                     if (err) return err;
 
                     r->obj->out = self->out;
-                    r->obj->export_depth = self->export_depth + 1;
-                    err = r->obj->export(r->obj, KND_FORMAT_JSON, 0);
+                    r->obj->depth = self->depth + 1;
+                    err = r->obj->export(r->obj);
                     if (err) return err;
 
                     err = self->out->write(self->out, "}", 1);
@@ -340,11 +340,11 @@ kndObject_export_JSON(struct kndObject *self,
 
 
 static int 
-kndObject_export_GSC(struct kndObject *self,
-                     bool is_concise)
+kndObject_export_GSC(struct kndObject *self)
 {
     bool got_elem = false;
     struct kndElem *elem;
+    bool is_concise = true;
 
     //struct kndRelClass *relc;
     //struct kndRelType *reltype;
@@ -515,15 +515,13 @@ kndObject_export_GSC(struct kndObject *self,
 
 /* export object */
 static int 
-kndObject_export(struct kndObject *self,
-                 knd_format format,
-                 bool is_concise)
+kndObject_export(struct kndObject *self)
 {
     int err;
     
-    switch(format) {
+    switch(self->format) {
     case KND_FORMAT_JSON:
-        err = kndObject_export_JSON(self, is_concise);
+        err = kndObject_export_JSON(self);
         if (err) return err;
         break;
         /*case KND_FORMAT_HTML:
@@ -531,7 +529,7 @@ kndObject_export(struct kndObject *self,
         if (err) return err;
         break;*/
     case KND_FORMAT_GSC:
-        err = kndObject_export_GSC(self, is_concise);
+        err = kndObject_export_GSC(self);
         if (err) return err;
         break;
     default:
@@ -565,7 +563,7 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     self->name_size = name_size;
     self->name[name_size] = '\0';
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log("++ OBJ NAME: \"%.*s\"", self->name_size, self->name);
 
     return knd_OK;
@@ -589,8 +587,6 @@ kndObject_validate_attr(struct kndObject *self,
     conc = self->conc;
 
     err = conc->get_attr(conc, name, name_size, &attr);
-    knd_log("validate attr: %d", err);
-    
     if (err) {
         knd_log("  -- ELEM \"%.*s\" not approved :(\n", name_size, name);
         self->log->reset(self->log);
@@ -602,7 +598,6 @@ kndObject_validate_attr(struct kndObject *self,
         return err;
     }
     
-    knd_log("assign attr %.*s..", attr->name_size, attr->name);
     *result = attr;
     
     return knd_OK;
@@ -620,15 +615,13 @@ static int parse_elem(void *data,
     struct kndText *text = NULL;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP) {
+    if (DEBUG_OBJ_LEVEL_2) {
         knd_log("..  validation of \"%s\" elem REC: \"%.*s\"\n",
                 name, 16, rec);
     }
 
     err = kndObject_validate_attr(self, name, name_size, &attr);
     if (err) return err;
-
-    knd_log("++ attr \"%.*s\" is valid!", attr->name_size, attr->name);
 
     err = kndElem_new(&elem);
     if (err) return err;
@@ -647,7 +640,7 @@ static int parse_elem(void *data,
     }
     self->num_elems++;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log("   == basic elem type: %s\n",
                 knd_attr_names[attr->type]);
 
@@ -690,7 +683,6 @@ static int parse_elem(void *data,
     default:
         break;
     }
-    
 
     err = elem->parse(elem, rec, total_size);
     if (err) goto final;

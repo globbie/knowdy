@@ -100,7 +100,11 @@ struct kndObject
     size_t num_contexts;
     struct kndElem *last_context;
 
-    size_t export_depth;
+    const char *locale;
+    size_t locale_size;
+    knd_format format;
+    size_t depth;
+    //size_t export_depth;
     bool is_expanded;
     
     const char *file;
@@ -173,9 +177,7 @@ struct kndObject
 
     int (*contribute)(struct kndObject *self, size_t point_num, size_t orig_pos);
 
-    int (*export)(struct kndObject *self,
-                  knd_format format,
-                  bool is_concise);
+    int (*export)(struct kndObject *self);
 
     int (*sync)(struct kndObject *self);
 

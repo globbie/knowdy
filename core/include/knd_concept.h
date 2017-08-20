@@ -139,6 +139,7 @@ struct kndConcept
 
     struct kndConcept *root_class;
     struct kndConcept *curr_class;
+    struct kndObject *curr_obj;
 
     struct kndConcFolder *folders;
     size_t num_folders;
@@ -159,7 +160,6 @@ struct kndConcept
     size_t num_children;
     
     struct kndRefSet *obj_browser;
-
 
     struct kndConcept *next;
 

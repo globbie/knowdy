@@ -47,6 +47,8 @@ static void reset(struct kndTask *self)
 
     memset(self->state, '0', KND_STATE_SIZE);
     self->is_state_changed = false;
+
+    self->type = KND_GET_STATE;
     
     self->admin->locale = self->admin->default_locale;
     self->admin->locale_size = self->admin->default_locale_size;

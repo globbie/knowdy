@@ -900,7 +900,7 @@ kndElem_export_JSON(struct kndElem *self,
             obj = self->inner;
             while (obj) {
                 obj->out = out;
-                err = obj->export(obj, KND_FORMAT_JSON, 0);
+                err = obj->export(obj);
 
                 if (obj->next) {
                     err = out->write(out, ",", 1);
@@ -925,7 +925,7 @@ kndElem_export_JSON(struct kndElem *self,
         if (err) goto final;
         
         self->inner->out = out;
-        err = self->inner->export(self->inner, KND_FORMAT_JSON, 0);
+        err = self->inner->export(self->inner);
         
         return err;
     }
@@ -1185,7 +1185,8 @@ kndElem_export_list_GSC(struct kndElem *self)
         obj = self->inner;
         while (obj) {
             obj->out = self->out;
-            err = obj->export(obj, KND_FORMAT_GSC, 0);
+            obj->format = KND_FORMAT_GSC;
+            err = obj->export(obj);
             if (err) return err;
             obj = obj->next;
         }
@@ -1223,7 +1224,8 @@ kndElem_export_GSC(struct kndElem *self)
 
     if (self->inner) {
         self->inner->out = self->out;
-        err = self->inner->export(self->inner, KND_FORMAT_GSC, 0);
+        self->inner->format =  KND_FORMAT_GSC;
+        err = self->inner->export(self->inner);
         if (err) {
             knd_log("-- inner obj export failed :(");
             return err;
@@ -1411,7 +1413,7 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
     self->name_size = name_size;
     self->name[name_size] = '\0';
 
-    if (DEBUG_ELEM_LEVEL_TMP)
+    if (DEBUG_ELEM_LEVEL_2)
         knd_log("++ ELEM VAL: \"%.*s\"", self->name_size, self->name);
 
     return knd_OK;
@@ -1424,8 +1426,6 @@ static int parse_GSL(struct kndElem *self,
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
-
-    knd_log("elem parsing..");
     
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
@@ -1449,10 +1449,8 @@ kndElem_init(struct kndElem *self)
     self->str = str;
     self->parse = parse_GSL;
 
-    //self->update = kndElem_update;
     self->index = kndElem_index;
     self->match = kndElem_match;
-    //self->parse_list = kndElem_parse_list;
     self->export = kndElem_export;
 }
 
