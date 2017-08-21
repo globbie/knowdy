@@ -10,5 +10,10 @@
        {frontend ipc:///var/lib/knowdy/writer_inbox_frontend}
        {backend ipc:///var/lib/knowdy/writer_inbox_backend}
       }
-      
+
+      {publish
+       {frontend ipc:///var/lib/knowdy/learner_pub_frontend}
+       {backend ipc:///var/lib/knowdy/learner_pub_backend}
+      }
+
 }}

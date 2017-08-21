@@ -71,6 +71,29 @@ kndOutput_write(struct kndOutput *self,
     return knd_OK;
 }
 
+static int
+kndOutput_write_state_path(struct kndOutput *self,
+                           const char    *state)
+{
+    size_t rec_size = KND_STATE_SIZE * 2;
+    if (self->free_space <= rec_size) return knd_NOMEM;
+
+    char *c = self->curr_buf;
+    
+    for (size_t i = 0; i < KND_STATE_SIZE; i++) {
+	*c =  '/';
+	c++;
+	*c = state[i];
+	c++;
+    }
+    *c = '\0';
+
+    self->buf_size += rec_size;
+    self->free_space -= rec_size;
+    self->curr_buf += rec_size;
+    
+    return knd_OK;
+}
 
 static int
 kndOutput_read_file(struct kndOutput *self,
@@ -80,6 +103,9 @@ kndOutput_read_file(struct kndOutput *self,
     struct stat file_info;
     int fd;
     int err;
+
+    if (DEBUG_OUTPUT_LEVEL_2)
+        knd_log(".. IO [%p] reading the \"%s\" file..", self, filename);
 
     if (!filename_size) return knd_FAIL;
 
@@ -102,8 +128,7 @@ kndOutput_read_file(struct kndOutput *self,
 
     fd = open(filename, O_RDONLY);
     if (fd < 0) {
-        if (DEBUG_OUTPUT_LEVEL_3)
-            knd_log("  -- error reading FILE \"%s\": %d\n",
+        knd_log("-- error reading FILE \"%s\": %d",
                 filename, fd);
         return knd_IO_FAIL;
     }
@@ -166,6 +191,7 @@ kndOutput_init(struct kndOutput *self)
     self->reset = kndOutput_reset;
     self->rtrim = kndOutput_rtrim;
     self->write = kndOutput_write;
+    self->write_state_path = kndOutput_write_state_path;
     self->read_file = kndOutput_read_file;
     
     return knd_OK;

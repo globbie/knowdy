@@ -28,7 +28,7 @@ kndRepo_linearize_objs(struct kndRepo *self);
 
 static int
 kndRepo_get_guid(struct kndRepo *self,
-                 struct kndConcept *dc,
+                 struct kndConcept *conc,
                  const char *obj_name,
                  size_t      obj_name_size,
                  char *result);
@@ -185,7 +185,7 @@ kndRepo_open(struct kndRepo *self)
     self->path[out->buf_size] = '\0';
     self->path_size = out->buf_size;
     
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("..opening repo:  ID:\"%s\" REPO PATH:%s",
                 self->id, self->path);
 
@@ -296,8 +296,7 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
     /* check if repo's name is unique */
     memcpy(buf, name, name_size);
     buf[name_size] = '\0';
-    repo = self->repo_idx->get(self->repo_idx,
-                               buf);
+    repo = self->repo_idx->get(self->repo_idx, buf);
     if (repo) {
         knd_log("-- \"%s\" REPO name already taken?", buf);
         return knd_FAIL;
@@ -1127,13 +1126,14 @@ kndRepo_read_db_chunk(struct kndRepo *self,
     obj->out = self->out;
     obj->out->reset(obj->out);
    
-    err = obj->parse(obj, buf, buf_size, KND_FORMAT_GSC);
+    /*err = obj->parse(obj, buf, buf_size, KND_FORMAT_GSC);
     if (err) {
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("    -- %s obj parse error: %d\n",
                     obj->name, err);
         return err;
     }
+    */
     
     /*obj->str(obj, 0);*/
     
@@ -1197,7 +1197,7 @@ kndRepo_get_obj(struct kndRepo *self,
                 size_t name_size)
 {
     struct kndRepoCache *cache = self->curr_cache;
-    struct kndConcept *dc = cache->baseclass;
+    struct kndConcept *conc = cache->baseclass;
     
     char guid[KND_ID_SIZE + 1] = {0};
     struct kndObject *obj = NULL;
@@ -1209,7 +1209,7 @@ kndRepo_get_obj(struct kndRepo *self,
     if (DEBUG_REPO_LEVEL_2)
         knd_log(".. repo GET in progress..");
 
-    err = kndRepo_get_guid(self, dc,
+    err = kndRepo_get_guid(self, conc,
                            name, name_size,
                            guid);
     if (err) {
@@ -1242,7 +1242,7 @@ kndRepo_get_obj(struct kndRepo *self,
         obj->str(obj, 1);
     
     if (curr_depth) {
-        obj->export_depth = curr_depth;
+        obj->depth = curr_depth;
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log(" .. expanding obj %s [%s]..\n", obj->name, obj->id);
 
@@ -1259,9 +1259,9 @@ kndRepo_get_obj(struct kndRepo *self,
     /* export obj */
     format = KND_FORMAT_JSON;
     obj->out = self->out;
-    obj->export_depth = 0;
-    
-    err = obj->export(obj, format, 0);
+    obj->depth = 0;
+    obj->format = format;
+    err = obj->export(obj);
     if (err) return err;
     
     if (DEBUG_REPO_LEVEL_2)
@@ -1321,7 +1321,7 @@ kndRepo_export_class_JSON(struct kndRepo *self, struct kndRepoCache *cache)
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
-    struct kndConcept *dc;
+    struct kndConcept *conc;
     struct kndOutput *out;
     struct kndObject *obj;
 
@@ -1329,12 +1329,12 @@ kndRepo_export_class_JSON(struct kndRepo *self, struct kndRepoCache *cache)
 
     out = self->out;
 
-    dc = cache->baseclass;
+    conc = cache->baseclass;
 
     err = out->write(out, "{", 1);
     if (err) return err;
 
-    buf_size = sprintf(buf, "\"n\":\"%s\"", dc->name);
+    buf_size = sprintf(buf, "\"n\":\"%s\"", conc->name);
     err = out->write(out, buf, buf_size);
     if (err) return err;
 
@@ -1370,8 +1370,8 @@ kndRepo_export_class_JSON(struct kndRepo *self, struct kndRepoCache *cache)
                     err = out->write(out, ",", 1);
                     if (err) return err;
                 }
-
-                err = obj->export(obj, KND_FORMAT_JSON, 1);
+                obj->format = KND_FORMAT_JSON;
+                err = obj->export(obj);
                 if (err) return err;
             }
 
@@ -1411,7 +1411,7 @@ kndRepo_export_JSON(struct kndRepo *self)
     //size_t buf_size;
     
     struct kndRepoCache *cache;
-    //struct kndConcept *dc;
+    //struct kndConcept *conc;
     struct kndOutput *out;
     //struct kndObject *obj;
     
@@ -1477,14 +1477,14 @@ kndRepo_export_class_HTML(struct kndRepo *self, struct kndRepoCache *cache)
     //char buf[KND_TEMP_BUF_SIZE];
     //size_t buf_size;
     
-    struct kndConcept *dc;
+    struct kndConcept *conc;
     struct kndOutput *out;
     struct kndObject *obj;
     
     int err;
 
     out = self->out;
-    dc = cache->baseclass;
+    conc = cache->baseclass;
 
     if (cache->select_result) {
 
@@ -1508,8 +1508,8 @@ kndRepo_export_class_HTML(struct kndRepo *self, struct kndRepoCache *cache)
 
                 err = out->write(out, "<LI>", strlen("<LI>"));
                 if (err) return err;
-
-                err = obj->export(obj, KND_FORMAT_HTML, 1);
+                obj->format =  KND_FORMAT_HTML;
+                err = obj->export(obj);
                 if (err) return err;
 
                 err = out->write(out, "</LI>", strlen("</LI>"));
@@ -1566,7 +1566,7 @@ kndRepo_export_HTML(struct kndRepo *self)
     //size_t buf_size;
     
     struct kndRepoCache *cache;
-    //struct kndConcept *dc;
+    //struct kndConcept *conc;
     struct kndOutput *out;
     //struct kndObject *obj;
     
@@ -1633,7 +1633,7 @@ kndRepo_export_GSL(struct kndRepo *self)
 
 static int
 kndRepo_get_cache(struct kndRepo *self,
-                  struct kndConcept *dc,
+                  struct kndConcept *conc,
                   struct kndRepoCache **result)
 {
     char buf[KND_TEMP_BUF_SIZE];
@@ -1643,7 +1643,7 @@ kndRepo_get_cache(struct kndRepo *self,
     
     cache = self->cache;
     while (cache) {
-        if (cache->baseclass == dc) {
+        if (cache->baseclass == conc) {
             *result = cache;
             return knd_OK;
         }
@@ -1655,7 +1655,7 @@ kndRepo_get_cache(struct kndRepo *self,
     if (!cache) return knd_NOMEM;
     memset(cache, 0, sizeof(struct kndRepoCache));
 
-    cache->baseclass = dc;
+    cache->baseclass = conc;
     cache->repo = self;
 
     err = ooDict_new(&cache->db, KND_MEDIUM_DICT_SIZE);
@@ -1683,7 +1683,7 @@ kndRepo_get_cache(struct kndRepo *self,
     if (self->user->role == KND_USER_ROLE_RETRIEVER) {
         buf_size = sprintf(buf, "%s/%s/AZ.idx",
                            self->path,
-                           dc->name);
+                           conc->name);
 
         if (DEBUG_REPO_LEVEL_2)
             knd_log(".. reading name IDX file: \"%s\" ..",
@@ -1741,7 +1741,7 @@ kndRepo_get_cache(struct kndRepo *self,
 
 static int
 kndRepo_get_guid(struct kndRepo *self,
-                 struct kndConcept *dc,
+                 struct kndConcept *conc,
                  const char *name,
                  size_t      name_size,
                  char *result)
@@ -1751,9 +1751,9 @@ kndRepo_get_guid(struct kndRepo *self,
     
     if (DEBUG_REPO_LEVEL_2)
         knd_log(".. get guid of %s::%s..",
-                dc->name, name);
+                conc->name, name);
     
-    err = kndRepo_get_cache(self, dc, &cache);
+    err = kndRepo_get_cache(self, conc, &cache);
     if (err) return err;
 
 

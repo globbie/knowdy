@@ -53,15 +53,16 @@ struct kndObject
     char id[KND_ID_SIZE + 1];
     char batch_id[KND_ID_SIZE + 1];
 
-    knd_update_status update_oper;
-    size_t state;
+    knd_state_phase phase;
+    char state[KND_STATE_SIZE];
 
     bool is_subord;
     bool is_concise;
 
     struct kndObject *root;
     struct kndElem *parent;
-    struct kndConcept *dc;
+    
+    struct kndConcept *conc;
 
     struct kndSortTag *tag;
     
@@ -99,7 +100,11 @@ struct kndObject
     size_t num_contexts;
     struct kndElem *last_context;
 
-    size_t export_depth;
+    const char *locale;
+    size_t locale_size;
+    knd_format format;
+    size_t depth;
+    //size_t export_depth;
     bool is_expanded;
     
     const char *file;
@@ -129,8 +134,7 @@ struct kndObject
 
     int (*parse)(struct kndObject *self,
                  const char       *rec,
-                 size_t           rec_size,
-                 knd_format format);
+                 size_t           *total_size);
 
     int (*parse_inline)(struct kndObject *self,
                         const char       *rec,
@@ -173,9 +177,7 @@ struct kndObject
 
     int (*contribute)(struct kndObject *self, size_t point_num, size_t orig_pos);
 
-    int (*export)(struct kndObject *self,
-                  knd_format format,
-                  bool is_concise);
+    int (*export)(struct kndObject *self);
 
     int (*sync)(struct kndObject *self);
 

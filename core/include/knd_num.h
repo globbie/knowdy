@@ -57,8 +57,8 @@ struct kndQuant
 
 struct kndNumState
 {
-    knd_update_status update_oper;
-    size_t state;
+    knd_state_phase phase;
+    char state[KND_STATE_SIZE];
     
     struct kndQuant *val;
 

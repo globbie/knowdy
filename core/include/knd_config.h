@@ -29,8 +29,11 @@ extern enum { knd_OK, knd_FAIL, knd_NOMEM, knd_LIMIT, knd_AUTH_OK, knd_AUTH_FAIL
         KND_OPEN_DELIM_MISSING, KND_CLOSE_DELIM_MISSING } 
   knd_err_codes;
 
-/* update status */
-typedef enum knd_update_status { knd_INIT, knd_REMOVED, knd_LIST_APPENDED, knd_LIST_REMOVED, knd_UPDATED } knd_update_status;
+typedef enum knd_state_phase { KND_CREATED,
+                               KND_SELECTED,
+                               KND_UPDATED,
+                               KND_REMOVED,
+                               KND_RESTORED } knd_state_phase;
 
 /* comparison codes */
 extern enum { knd_EQUALS, knd_LESS, knd_MORE, knd_NOT_COMPARABLE } knd_comparison_codes; 
@@ -65,35 +68,6 @@ typedef enum knd_storage_type {
     KND_STORAGE_XML
 } knd_storage_type;
 
-typedef enum knd_elem_type {
-    KND_ELEM_NONE,
-    KND_ELEM_ATOM,
-    KND_ELEM_STR,
-    KND_ELEM_AGGR,
-    KND_ELEM_LIST,
-    KND_ELEM_TEXT, 
-    KND_ELEM_CG,
-    KND_ELEM_NUM,
-    KND_ELEM_REF,
-    KND_ELEM_CALC,
-    KND_ELEM_FILE,
-    KND_ELEM_PROC
-} knd_elem_type;
-
-
-static const char* const knd_elem_names[] = {
-    "none",
-    "atom",
-    "str",
-    "aggr", 
-    "list",
-    "text", 
-    "CG",
-    "num",
-    "ref",
-    "calc",
-    "file",
-    "proc" };
 
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
@@ -145,13 +119,18 @@ static const char* const knd_elem_names[] = {
 
 #define KND_MAX_INT_SIZE 4
 
-#define KND_ID_SIZE  (KND_ID_MATRIX_DEPTH * sizeof(char))
+#define KND_MAX_DEBUG_CONTEXT_SIZE 16
+
+#define KND_ID_SIZE  (4 * sizeof(char))
 #define KND_ID_BATCH_SIZE 10
 #define KND_LOCALE_SIZE 8
 
+#define KND_STATE_SIZE  (4 * sizeof(char))
+
 #define KND_MAX_MIGRATIONS 256
 #define KND_MAX_SPECS 64
-#define KND_MAX_CONC_CHILDREN 256
+
+#define KND_MAX_CONC_CHILDREN 128
 #define KND_MAX_ARGS 16
 
 #define KND_MATCH_MAX_SCORE 100
@@ -159,7 +138,10 @@ static const char* const knd_elem_names[] = {
 #define KND_MAX_MATCHES 512
 #define KND_MATCH_MAX_RESULTS 10
 
-#define KND_TID_SIZE 37
+
+#define KND_SID_SIZE 128
+#define KND_TID_SIZE 128
+
 #define KND_MAX_TIDS 1024
 
 #define KND_MAX_GEOIPS 160000

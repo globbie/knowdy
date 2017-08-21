@@ -1,6 +1,7 @@
 {gsl::Knowdy Basic
   {knd::Knowdy Retriever Service Configuration
       {path /var/lib/knowdy/db}
+      {n Alpha Tester}
       {schemas /etc/knowdy/schemas}
       {sid AUTH_SERVER_SID}
       {locale ru_RU}

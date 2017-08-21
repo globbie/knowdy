@@ -92,7 +92,6 @@ void *kndColl_publisher(void *arg)
     assert((ret == knd_OK));
     zmq_setsockopt(frontend, ZMQ_SUBSCRIBE, "", 0);
     
-    
     ret = zmq_bind(backend, coll->publish_proxy_backend);
     if (ret != knd_OK)
         knd_log("bind %s zmqerr: %s\n",
@@ -250,18 +249,6 @@ kndColl_init(struct kndColl *self)
     self->del = kndColl_del;
     self->start = kndColl_start;
     self->find_route = kndColl_find_route;
-    
-    self->request_proxy_frontend_size = KND_NAME_SIZE;
-    self->request_proxy_backend_size = KND_NAME_SIZE;
-
-    self->record_proxy_frontend_size = KND_NAME_SIZE;
-    self->record_proxy_backend_size = KND_NAME_SIZE;
-
-    self->publish_proxy_frontend_size = KND_NAME_SIZE;
-    self->publish_proxy_backend_size = KND_NAME_SIZE;
-
-    self->select_proxy_frontend_size = KND_NAME_SIZE;
-    self->select_proxy_backend_size = KND_NAME_SIZE;
 
     return knd_OK;
 }

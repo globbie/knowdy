@@ -38,8 +38,7 @@ knd_compare_obj_by_match_descend(const void *a,
 }
 
 
-static int 
-del(struct kndObject *self)
+static int del(struct kndObject *self)
 {
     knd_log("  .. free obj: \"%s\".. \n", self->name);
 
@@ -49,9 +48,8 @@ del(struct kndObject *self)
 }
 
 
-static void
-str(struct kndObject *self,
-    size_t depth)
+static void str(struct kndObject *self,
+                size_t depth)
 {
     size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
@@ -61,8 +59,10 @@ str(struct kndObject *self,
     offset[offset_size] = '\0';
 
     if (!self->parent) {
-        knd_log("\n%sOBJ %s \"%s\"\n",
-                offset, self->name, self->id);
+        knd_log("\n%sOBJ %.*s::%.*s [%.*s]\n",
+                offset, self->conc->name_size, self->conc->name,
+                self->name_size, self->name,
+                KND_ID_SIZE, self->id);
     }
 
     elem = self->elems;
@@ -73,973 +73,7 @@ str(struct kndObject *self,
 }
 
 
-static int
-kndObject_index_CG(struct kndObject *self)
-{
-    struct kndElem *b = NULL;
-    struct kndElem *spec = NULL;
-    struct kndElem *oper = NULL;
-    struct kndElem *elem;
 
-    if (DEBUG_OBJ_LEVEL_2)
-        knd_log("    .. indexing inline CG..\n");
-
-    elem = self->elems;
-    while (elem) {
-        if (!strcmp(elem->name, "b")) {
-            b = elem;
-            goto next_elem;
-        }
-
-        if (!strcmp(elem->name, "spec")) {
-            spec = elem;
-            goto next_elem;
-        }
-
-        if (!strcmp(elem->name, "oper")) {
-            oper = elem;
-            goto next_elem;
-        }
-
-    next_elem:
-        elem = elem->next;
-    }
-    
-
-    if (!b || !spec || !oper) {
-        if (DEBUG_OBJ_LEVEL_TMP)
-            knd_log("\n   -- incomplete CG: base: %p spec: %p oper: %p\n",
-                    b, spec, oper);
-        return knd_FAIL;
-    }
-    
-    return knd_OK;
-}
-
-static int
-kndObject_index_inline(struct kndObject *self)
-{
-    struct kndElem *elem;
-    int err;
-    
-    if (DEBUG_OBJ_LEVEL_TMP)
-        knd_log(".. indexing inline OBJ of class %s  IDX: \"%s\"..",
-                self->parent->attr->dc->name,
-                self->parent->attr->dc->idx_name);
-
-    if (!strcmp(self->parent->attr->dc->idx_name, "CG")) {
-        return kndObject_index_CG(self);
-    }
-
-    elem = self->elems;
-    while (elem) {
-        elem->out = self->out;
-        elem->tag = self->tag;
-
-        err = elem->index(elem);
-        if (err) return err;
-        
-        elem = elem->next;
-    }
-    
-    return knd_OK;
-}
-
-
-static int
-import_GSL(struct kndObject *self,
-           const char *rec,
-           size_t *total_size)
-{
-    char idbuf[KND_ID_SIZE];
-    const char *c, *b, *e;
-    struct kndElem *elem = NULL;
-    size_t buf_size;
-    
-    size_t chunk_size = 0;
-    
-    bool in_name = false;
-    bool in_elem = false;
-    bool in_elem_name = false;
-    bool in_elem_val = false;
-
-    int err = knd_FAIL;
-
-    if (DEBUG_OBJ_LEVEL_2)
-        knd_log(".. importing OBJ of class \"%s::%s\" [%s]\n\n%s",
-                self->cache->baseclass->namespace,
-                self->cache->baseclass->name, self->id, rec);
-    
-    /* parse and validate OBJ */
-    c = rec;
-    b = rec;
-    e = rec;
-    
-    while (*c) {
-        switch (*c) {
-            /* non-whitespace char */
-        default:
-            e = c + 1;
-            if (!in_elem) break;
-
-            if (!in_elem_name) break;
-
-            if (!in_elem_val) {
-                in_elem_val = true;
-                b = c;
-                break;
-            }
-            
-            break;
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            break;
-        case '{':
-            if (!in_name) {
-                in_name = true;
-                b = c + 1;
-                break;
-            }
-
-            if (!self->name_size) {
-                buf_size = e - b;
-                if (!buf_size) return knd_LIMIT;
-                if (buf_size >= KND_NAME_SIZE)
-                    return knd_LIMIT;
-
-                memcpy(self->name, b, buf_size);
-                self->name[buf_size] = '\0';
-                
-                if (DEBUG_OBJ_LEVEL_2)
-                    knd_log("OBJ NAME: %s", self->name);
-
-                self->name_size = buf_size;
-                
-                /* hypen sign indicates the absence of user-supplied
-                 * name of an object */
-
-                /* anonymous obj takes obj id as name */
-
-                /* TODO:  add function to generate a unique and meaningful
-                 * object name based on certain attr values */
-                
-                if (self->name[0] == '-') {
-                    memcpy(self->name, self->id, KND_ID_SIZE);
-                    self->name[KND_ID_SIZE] = '\0';
-                    self->name_size = KND_ID_SIZE;
-                }
-
-                err = self->cache->name_idx->lookup_name(self->cache->name_idx,
-                                                         self->name, self->name_size,
-                                                         self->name, self->name_size, idbuf);
-                if (!err) {
-                    knd_log("-- OBJ name doublet: \"%s\"", self->name);
-                    err = knd_FAIL;
-                    goto final;
-                }
-
-            }
-            
-            err = kndElem_new(&elem);
-            if (err) goto final;
-            elem->obj = self;
-            elem->root = self;
-            elem->out = self->out;
-            
-            err = elem->parse(elem, c, &chunk_size);
-            if (err) goto final;
-
-            c += chunk_size;
-
-            if (!self->tail) {
-                self->tail = elem;
-                self->elems = elem;
-            }
-            else {
-                self->tail->next = elem;
-                self->tail = elem;
-            }
-            self->num_elems++;
-            
-            elem = NULL;
-            break;
-        case '}':
-            /* TODO: all elems set? */
-            /* check completeness */
-                
-            /* check doublets? */
-
-            *total_size = c - rec;
-            
-            return knd_OK;
-        case '[':
-            err = kndElem_new(&elem);
-            if (err) goto final;
-
-            elem->obj = self;
-            elem->root = self;
-            elem->is_list = true;
-            elem->out = self->out;
-            
-            c++;
-            err = elem->parse_list(elem, c, &chunk_size);
-            if (err) goto final;
-
-            if (!self->tail) {
-                self->tail = elem;
-                self->elems = elem;
-            }
-            else {
-                self->tail->next = elem;
-                self->tail = elem;
-            }
-
-            self->num_elems++;
-            c += chunk_size;
-            break;
-        }
-
-        c++;
-    }
-    
-    err = knd_FAIL;
-
- final:
-    
-    return err;
-}
-
-
-
-
-static int
-kndObject_parse_GSC(struct kndObject *self,
-                    const char *rec,
-                    size_t rec_size)
-{
-    char recbuf[KND_TEMP_BUF_SIZE + 1];
-    const char *b, *c, *e;
-    struct kndElem *elem = NULL;
-
-    size_t chunk_size = 0;
-    
-    bool in_body = false;
-    bool in_name = false;
-
-    bool in_elem = false;
-    bool in_elem_name = false;
-    bool in_elem_val = false;
-    size_t curr_size = 0;
-    
-    int err = knd_FAIL;
-
-    if (!rec_size)
-        return knd_FAIL;
-    
-    if (DEBUG_OBJ_LEVEL_2) {
-        if (rec_size < KND_TEMP_BUF_SIZE) {
-            memcpy(recbuf, rec, rec_size);
-            recbuf[rec_size] = '\0';
-        }
-        else {
-            memcpy(recbuf, rec, KND_TEMP_BUF_SIZE);
-            recbuf[KND_TEMP_BUF_SIZE] = '\0';
-        }
-        knd_log("\n  .. parse OBJ of class \"%s\"..  REC:\n %s\n REC SIZE: %lu\n\n\n",
-                self->cache->baseclass->name, recbuf, (unsigned long)rec_size);
-    }
-    
-    /* parse and validate OBJ */
-    c = rec;
-    b = rec;
-    e = rec;
-    
-    while (*c) {
-        switch (*c) {
-            /* non-whitespace char */
-        default:
-            e = c + 1;
-            
-            if (!in_elem) break;
-
-            if (!in_elem_name) break;
-
-            if (!in_elem_val) {
-                in_elem_val = true;
-                b = c;
-                break;
-            }
-            
-            break;
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            /* whitespace */
-            if (!in_body)
-                break;
-            
-            break;
-        case '{':
-            if (!in_body) {
-                in_body = true;
-                b = c + 1;
-                break;
-            }
-
-            if (!in_name) {
-                chunk_size = e - b;
-                if (chunk_size >= KND_NAME_SIZE) {
-                    err = knd_LIMIT;
-                    return err;
-                }
-                memcpy(self->name, b, chunk_size);
-                self->name[chunk_size] = '\0';
-                self->name_size = chunk_size;
-                
-                in_name = true;
-                b = c + 1;
-            }
-
-            
-            /* special field? */
-            /*if (curr_size < rec_size) {
-                b = c + 1;
-                if (*b == '_') {
-                    err = kndObject_parse_special_GSC(self, c, &chunk_size);
-                    if (err) return err;
-
-                    c += chunk_size;
-                    curr_size += chunk_size;
-                    break;
-                }
-                }*/
-      
-
-            err = kndElem_new(&elem);
-            if (err) return err;
-
-            elem->obj = self;
-            elem->root = self;
-            elem->out = self->out;
-
-            err = elem->parse(elem, c, &chunk_size);
-            if (err) {
-                if (DEBUG_OBJ_LEVEL_TMP)
-                    knd_log("  -- failed to parse elem starting from \"%s\" :(\n\n", c);
-                return err;
-            }
-            
-            c += chunk_size;
-            curr_size += chunk_size;
-            
-            if (!self->tail) {
-                self->tail = elem;
-                self->elems = elem;
-            }
-            else {
-                self->tail->next = elem;
-                self->tail = elem;
-            }
-            self->num_elems++;
-
-            if (DEBUG_OBJ_LEVEL_2)
-                knd_log("\n   ++ obj elem \"%s\" parsed OK, continue from: \"%s\"\n",
-                        elem->name, c);
-            
-            elem = NULL;
-            break;
-        case '}':
-
-            if (in_body) {
-                in_body = false;
-
-                /* all elems set? */
-                
-                /* check completeness */
-                
-                /* check doublets? */
-                
-                return knd_OK;
-            }
-
-            break;
-        case '[':
-            err = kndElem_new(&elem);
-            if (err) return err;
-
-            elem->obj = self;
-            elem->root = self;
-            elem->is_list = true;
-            elem->out = self->out;
-            
-            c++;
-            curr_size++;
-            
-            err = elem->parse_list(elem, c, &chunk_size);
-            if (err) return err;
-
-            if (!self->tail) {
-                self->tail = elem;
-                self->elems = elem;
-            }
-            else {
-                self->tail->next = elem;
-                self->tail = elem;
-            }
-
-            self->num_elems++;
-            
-            c += chunk_size;
-            curr_size += chunk_size;
-            break;
-        }
-
-        
-        curr_size++;
-        
-        if (curr_size >= rec_size) break;
-        c++;
-    }
-    
-    return knd_FAIL;
-}
-
-
-
-
-static int 
-kndObject_expand(struct kndObject *self,
-                 size_t depth)
-{
-    struct kndElem *elem;
-    struct kndConcept *dc;
-    struct kndAttr *attr;
-    struct kndElemState *elem_state;
-    struct kndRepoCache *cache;
-
-    struct kndRelClass *relc;
-    struct kndRelType *reltype;
-    struct kndObjRef *r;
-
-    struct kndObject *obj;
-    int err;
-
-    
-    if (DEBUG_OBJ_LEVEL_3)
-        knd_log(" .. expanding OBJ %s/%s\n",
-                self->cache->baseclass->name, self->id);
-    
-    /* any default values of elems? */
-    dc = self->cache->baseclass;
-    dc->rewind(dc);
-    do {
-        self->cache->baseclass->next_attr(self->cache->baseclass, &attr);
-        if (!attr) break;
-        if (!attr->default_val_size) continue;
-        
-        if (!strcmp(attr->default_val, "$NAME")) {
-
-            err = kndElem_new(&elem);
-            if (err) return err;
-            elem->obj = self;
-            elem->root = self;
-            elem->out = self->out;
-            elem->is_default = true;
-            
-            memcpy(elem->name, attr->name, attr->name_size);
-            elem->name_size = attr->name_size;
-            elem->name[elem->name_size] = '\0';
-
-            elem->attr = attr;
-
-            elem_state = malloc(sizeof(struct kndElemState));
-            if (!elem_state)
-                return knd_NOMEM;
-
-            memset(elem_state, 0, sizeof(struct kndElemState));
-            elem->states = elem_state;
-            elem->num_states = 1;
-            
-            memcpy(elem_state->val, self->name, self->name_size);
-            elem_state->val[self->name_size] = '\0';
-            elem_state->val_size = self->name_size;
-
-            /* get GUID */
-            err = self->cache->repo->get_guid(self->cache->repo,
-                                              attr->dc,
-                                              self->name, self->name_size,
-                                              elem_state->ref);
-            if (err) return err;
-
-            elem_state->ref_size = KND_ID_SIZE;
-
-
-            if (!self->tail) {
-                self->tail = elem;
-                self->elems = elem;
-            }
-            else {
-                self->tail->next = elem;
-                self->tail = elem;
-            }
-            self->num_elems++;
-        }
-    } while (attr);
-
-
-    /*  expand REFS */
-    elem = self->elems;
-    while (elem) {
-        if (DEBUG_OBJ_LEVEL_2) {
-            knd_log("    .. expanding elem \"%s\"?\n",
-                    elem->name);
-        }
-
-        /* expand inner obj? */
-        if (elem->inner) {
-            
-            if (DEBUG_OBJ_LEVEL_2) {
-                knd_log("    .. expanding inner obj \"%s\"?\n",
-                        elem->name);
-            }
-
-            obj = elem->inner;
-            while (obj) {
-                err = obj->expand(obj, depth);
-                if (err) return err;
-                obj = obj->next;
-            }
-            
-            goto next_elem;
-        }
-                
-        if (elem->attr->type != KND_ELEM_REF)
-            goto next_elem;
-
-        dc = elem->attr->dc;
-        if (!dc) goto next_elem;
-
-
-        /* TODO */
-        
-        /*if (elem->ref_class)
-            dc = elem->ref_class;
-
-        if (DEBUG_OBJ_LEVEL_2) {
-            knd_log("    .. expanding elem REF to class \"%s\"\n",
-                    dc->name);
-        }
-
-        err = self->cache->repo->get_cache(self->cache->repo, dc, &cache);
-        if (err) return knd_FAIL;
-
-        obj = elem->states->refobj;
-        if (!obj) {
-            cache->repo->out = self->out;
-            
-            err = cache->repo->read_obj(cache->repo,
-                                      (const char*)elem->states->ref,
-                                      cache,
-                                      &obj);
-            if (err) {
-                if (DEBUG_OBJ_LEVEL_TMP)
-                    knd_log("  -- failed to expand ELEM REF: %s:%s:%s :(\n",
-                            dc->name, elem->states->ref,
-                            elem->states->val);
-                goto next_elem;
-            }
-            
-            elem->states->refobj = obj;
-        }
-
-        if (DEBUG_OBJ_LEVEL_3)
-            knd_log("  ?? further expansion needed? depth: %lu max: %lu \n",
-                    (unsigned long)depth, (unsigned long)self->export_depth);
-
-        if (depth < self->export_depth) {
-
-            err = obj->expand(obj, depth + 1);
-            if (err) return err;
-        }
-        */
-        
-        next_elem:
-        elem = elem->next;
-    }
-
-    self->is_expanded = true;
-    
-    if (depth) return knd_OK;
-    
-    if (DEBUG_OBJ_LEVEL_3)
-        knd_log(".. expand back rels..");
-    
-    /* expand back relations */
-    relc = self->rel_classes;
-    while (relc) {
-        err = self->cache->repo->get_cache(self->cache->repo, relc->dc, &cache);
-        if (err) return err;
-
-        reltype = relc->rel_types;
-        while (reltype) {
-            r = reltype->refs;
-            while (r) {
-                r->cache = cache;
-
-                err = r->expand(r);
-                if (err) return err;
-
-                r = r->next;
-            }
-            reltype = reltype->next;
-        }
-        relc = relc->next;
-    }
-
-
-    return knd_OK;
-}
-
-
-
-static int 
-import(struct kndObject *self,
-       const char *rec,
-       size_t *total_size,
-       knd_format format)
-{
-    int err;
-
-    switch(format) {
-    case KND_FORMAT_GSL:
-        err = import_GSL(self, rec, total_size);
-        if (err) {
-            knd_log("-- GSL import of \"%s\" obj failed :(",
-                    self->id);
-            return err;
-        }
-        break;
-    default:
-        break;
-    }
-    
-    if (DEBUG_OBJ_LEVEL_3) {
-        knd_log("   ++ obj REC [%s] parsed and verified:\n %s\n\n",
-                self->id, rec);
-    }
-    
-    /* anything to save directly on the filesystem? */
-    /*if (data->obj_size) {
-        
-        if (DEBUG_OBJ_LEVEL_2)
-            knd_log("   ++ obj %s has attachment: %s [%s] size: %lu\n",
-                    self->id,
-                    data->filename,
-                    data->mimetype,
-                    (unsigned long)data->obj_size);
-
-        sprintf(buf,
-                "%s/%s",
-                self->cache->repo->path, self->cache->baseclass->name);
-
-        knd_make_id_path(dbpath,
-                         buf,
-                         self->id, NULL);
-
-        if (DEBUG_OBJ_LEVEL_TMP)
-            knd_log("  SAVE attachment file to: %s\n",
-                    dbpath);
-    */
-    
-        /* create path to object's folder */
-        /*err = knd_mkpath(dbpath, 0755, false);
-        if (err) {
-            knd_log("  -- mkpath failed :(\n");
-            goto final;
-        }
-        */
-    
-        /* write metadata */
-        /*err = knd_write_file((const char*)dbpath,
-                       data->filename, data->obj, data->obj_size);
-        if (err) {
-            knd_log("  -- write %s failed: %d :(\n", data->filename, err);
-            goto final;
-        }
-        
-        self->filesize = data->obj_size;
-    }
-        */
-
-    if (DEBUG_OBJ_LEVEL_TMP)
-        self->str(self, 1);
-
-    return knd_OK;
-}
-
-
-static int
-kndObject_update(struct kndObject *self,
-                  const char *rec,
-                  size_t *total_size)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
-    const char *c;
-    const char *b;
-
-    struct kndElem *elem = NULL;
-
-    size_t chunk_size = 0;
-    
-    bool in_oper = false;
-    bool in_elem = false;
-    bool in_list_elem = false;
-    bool elem_found = false;
-    bool have_oper_name = false;
-    
-    int err = knd_FAIL;
-    
-    if (DEBUG_OBJ_LEVEL_TMP)
-        knd_log("  ...updating object \"%s\" (class: %s): %s\n\n",
-                self->id, self->cache->baseclass->name, rec);
-
-    /* parse and validate OBJ */
-    c = rec;
-    b = c;
-    
-    while (*c) {
-        switch (*c) {
-            /* non-whitespace char */
-        default:
-            break;
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            /* whitespace */
-            break;
-        case '[':
-            if (!in_list_elem) 
-                in_list_elem = true;
-            
-            break;
-        case ']':
-            if (in_list_elem)
-                in_list_elem = false;
-            break;
-        case '{':
-            if (!in_oper) {
-                in_oper = true;
-                b = c + 1;
-                break;
-            }
-            
-            if (in_list_elem) {
-                buf_size = c - b;
-                memcpy(buf, b, buf_size);
-                buf[buf_size] = '\0';
-                
-                /*knd_log("\n  == got LIST ELEM name: \"%s\"\n", buf);*/
-
-                elem = self->elems;
-                while (elem) {
-                    if (!strcmp(elem->name, buf)) {
-                        err = elem->update(elem, c, &chunk_size);
-                        if (err) goto final;
-                        c += chunk_size;
-                        break;
-                    }
-                    elem = elem->next;
-                }
-
-
-                break;
-            }
-            
-            if (!in_elem) {
-
-                if (!have_oper_name) {
-                    buf_size = c - b;
-                    memcpy(buf, b, buf_size);
-                    buf[buf_size] = '\0';
-                
-                    knd_log("\n  == OPER: \"%s\"\n", buf);
-                    
-                    if (!strcmp(buf, "UPD")) {
-                        knd_log("  .. updating elems of obj \"%s\"..\n", self->name);
-                    }
-                    have_oper_name = true;
-                }
-                
-                in_elem = true;
-                b = c + 1;
-                break;
-            }
-
-            buf_size = c - b;
-            memcpy(buf, b, buf_size);
-            buf[buf_size] = '\0';
-            
-            knd_log("\n  == got ELEM name: \"%s\"\n", buf);
-            in_elem = true;
-            
-            elem = self->elems;
-            elem_found = false;
-            while (elem) {
-                if (!strcmp(elem->name, buf)) {
-                    err = elem->update(elem, c, &chunk_size);
-                    if (err) goto final;
-                    
-                    knd_log("  == elem chunk: %lu\n", (unsigned long)chunk_size);
-                    
-                    c += chunk_size;
-                    elem_found = true;
-                    break;
-                    }
-                elem = elem->next;
-            }
-            
-            if (!elem_found) {
-                knd_log("   -- elem %s not found :(\n", buf);
-                return knd_FAIL;
-            }
-            
-            knd_log("\n  == remainder after elem update: \"%s\"\n", c);
-            b = c + 1;
-            in_elem = false;
-            
-            break;
-        case '}':
-            if (in_oper) {
-                buf_size = c - b;
-                memcpy(buf, b, buf_size);
-                buf[buf_size] = '\0';
-                
-                knd_log("\n  == OPER: \"%s\"\n", buf);
-
-                if (!strcmp(buf, "DEL")) {
-                    knd_log("\n  .. removing obj \"%s\"\n",
-                            self->name);
-
-
-                }
-                
-                in_oper = false;
-                break;
-            }
-            
-            
-            *total_size = c - rec;
-            return knd_OK;
-        }
-
-        c++;
-    }
-    
-    err = knd_FAIL;
-
- final:
-    
-    return err;
-}
-
-
-static int
-kndObject_parse_inline(struct kndObject *self,
-                       const char *rec,
-                       size_t *total_size)
-{
-    struct kndElem *elem = NULL;
-    const char *c;
-    const char *b;
-
-    size_t chunk_size;
-    int err = knd_FAIL;
-
-    c = rec;
-    b = c;
-
-    if (DEBUG_OBJ_LEVEL_2)
-        knd_log("  .. parsing inline OBJ: \"%s\"\n", rec);
-    
-    while (*c) {
-        switch (*c) {
-            /* non-whitespace char */
-        default:
-            break;
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            /* whitespace */
-            break;
-        case '[':
-            err = kndElem_new(&elem);
-            if (err) goto final;
-
-            elem->obj = self;
-            elem->root = self->root;
-            elem->is_list = true;
-            elem->out = self->out;
-            
-            c++;
-            err = elem->parse_list(elem, c, &chunk_size);
-            if (err) goto final;
-
-            if (!self->tail) {
-                self->tail = elem;
-                self->elems = elem;
-            }
-            else {
-                self->tail->next = elem;
-                self->tail = elem;
-            }
-
-            self->num_elems++;
-            c += chunk_size;
-            break;
-        case '{':
-            err = kndElem_new(&elem);
-            if (err) goto final;
-
-            elem->obj = self;
-            elem->root = self->root;
-            elem->out = self->out;
-            
-            err = elem->parse(elem, c, &chunk_size);
-            if (err) goto final;
-
-            c += chunk_size;
-
-            if (!self->tail) {
-                self->tail = elem;
-                self->elems = elem;
-            }
-            else {
-                self->tail->next = elem;
-                self->tail = elem;
-            }
-            self->num_elems++;
-            break;
-        case '}':
-            
-            /*knd_log("  == the end of inner OBJ reached!  remainder: %s\n", c);*/
-
-            *total_size = c - rec;
-
-            return knd_OK;
-        }
-        
-        c++;
-    }
-
- final:
-    return err;
-}
 
 
 static int 
@@ -1076,8 +110,7 @@ kndObject_export_inline_JSON(struct kndObject *self)
 
 
 static int 
-kndObject_export_JSON(struct kndObject *self,
-                      bool is_concise)
+kndObject_export_JSON(struct kndObject *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -1086,7 +119,7 @@ kndObject_export_JSON(struct kndObject *self,
     //size_t pathbuf_size;
 
     //struct ooDict *idx;
-    //struct kndConcept *dc;
+    //struct kndConcept *conc;
     struct kndElem *elem;
     //struct kndRefSet *refset;
 
@@ -1095,7 +128,8 @@ kndObject_export_JSON(struct kndObject *self,
     struct kndRelType *reltype;
     struct kndObjRef *r;
     struct kndObject *obj;
-
+    
+    bool is_concise = true;
     bool need_separ;
     int err;
 
@@ -1103,7 +137,7 @@ kndObject_export_JSON(struct kndObject *self,
         knd_log("   .. export OBJ \"%s\"    is_concise: %d\n",
             self->name, is_concise);
     
-    if (self->dc) {
+    if (self->conc) {
         err = kndObject_export_inline_JSON(self);
         return err;
     }
@@ -1151,7 +185,7 @@ kndObject_export_JSON(struct kndObject *self,
                 err = self->out->write(self->out, "\":", 2);
                 if (err) return err;
                 
-                err = obj->export(obj, KND_FORMAT_JSON, 1);
+                err = obj->export(obj);
                 if (err) return err;
 
                 need_separ = true;
@@ -1198,7 +232,7 @@ kndObject_export_JSON(struct kndObject *self,
     
 
     /* skip relations */
-    if (self->export_depth)
+    if (self->depth)
         goto closing;
     
     /*  relations */
@@ -1210,13 +244,13 @@ kndObject_export_JSON(struct kndObject *self,
     relc = self->rel_classes;
     while (relc) {
 
-        err = self->cache->repo->get_cache(self->cache->repo, relc->dc, &cache);
+        err = self->cache->repo->get_cache(self->cache->repo, relc->conc, &cache);
         if (err) return err;
         
         err = self->out->write(self->out, "{\"c\":\"",  strlen("{\"c\":\""));
         if (err) return err;
 
-        err = self->out->write(self->out, relc->dc->name, relc->dc->name_size);
+        err = self->out->write(self->out, relc->conc->name, relc->conc->name_size);
         if (err) return err;
         
         err = self->out->write(self->out, "\",\"attrs\":[", strlen("\",\"attrs\":["));
@@ -1240,8 +274,8 @@ kndObject_export_JSON(struct kndObject *self,
                     if (err) return err;
 
                     r->obj->out = self->out;
-                    r->obj->export_depth = self->export_depth + 1;
-                    err = r->obj->export(r->obj, KND_FORMAT_JSON, 0);
+                    r->obj->depth = self->depth + 1;
+                    err = r->obj->export(r->obj);
                     if (err) return err;
 
                     err = self->out->write(self->out, "}", 1);
@@ -1304,365 +338,13 @@ kndObject_export_JSON(struct kndObject *self,
 
 
 
-static int 
-kndObject_export_inline_HTML(struct kndObject *self)
-{
-    struct kndElem *elem;
-    bool plain_mode = false;
-    bool got_elem = false;
-    int err;
-
-    /* anonymous obj */
-    if (!strcmp(self->dc->style_name, "PLAIN"))
-        plain_mode = true;
-
-    if (plain_mode) {
-        err = self->out->write(self->out, "(", strlen("("));
-        if (err) return err;
-    }
-    else {
-        err = self->out->write(self->out, "<P class=\"oo-plain-txt\">", strlen("<P class=\"oo-plain-txt\">"));
-        if (err) return err;
-    }
-    
-    elem = self->elems;
-    while (elem) {
-
-        /* filter out irrelevant elems */
-        if (elem->attr) 
-            if (elem->attr->concise_level < 2) {
-                /*knd_log("       -- filter out inner obj elem \"%s\" -- \n", elem->name);*/
-                goto next_elem;
-            }
-
-        /* separator? */
-        if (got_elem && plain_mode) {
-            err = self->out->write(self->out, ", ", strlen(", "));
-            if (err) return err;
-        }
-        
-        elem->out = self->out;
-
-        err = elem->export(elem, KND_FORMAT_HTML, 1);
-        if (err) return err;
-
-        got_elem = true;
-        
-    next_elem:
-        elem = elem->next;
-    }
-
-
-    if (plain_mode) {
-        err = self->out->write(self->out, ")", strlen(")"));
-        if (err) return err;
-    }
-    else {
-        err = self->out->write(self->out, "</P>", strlen("</P>"));
-        if (err) return err;
-    }
-
-    return knd_OK;
-}
-
-
 
 static int 
-kndObject_export_HTML(struct kndObject *self,
-                      bool is_concise)
-{
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
-    //char pathbuf[KND_TEMP_BUF_SIZE];
-    //size_t pathbuf_size;
-
-    struct kndOutput *meta_out = NULL;
-    //struct ooDict *idx;
-    //struct kndConcept *dc;
-    struct kndElem *elem;
-    //struct kndRefSet *refset;
-    
-    struct kndRelClass *relc;
-    struct kndRepoCache *cache = NULL;
-    struct kndRelType *reltype;
-    struct kndObjRef *r;
-    int depth;
-    bool need_separ;
-    int err;
-
-
-    /* TODO */
-    meta_out = self->out; /*self->cache->repo->user->reader->obj_out;*/
-        
-    if (self->dc) {
-        if (DEBUG_OBJ_LEVEL_3)
-            knd_log("   .. export inline OBJ  style:\"%s\"\n",
-                    self->dc->style_name);
-        
-        err = kndObject_export_inline_HTML(self);
-        return err;
-    }
-
-
-    depth = self->export_depth + 1;
-
-    if (self->export_depth < 1) {
-
-        if (is_concise) {
-            buf_size = sprintf(buf, "<A HREF=\"/%s\">%s</A>",
-                               self->name, self->name);
-        }
-        else {
-            buf_size = sprintf(buf, "<H%d class=\"obj\">%s</H%d>",
-                               depth, self->name, depth);
-
-
-            /* build meta tag TITLE */
-            err = meta_out->write(meta_out,
-                                  "<TITLE>", strlen( "<TITLE>"));
-            if (err) return err;
-
-            err = meta_out->write(meta_out,
-                                  self->name, self->name_size);
-            if (err) return err;
-
-            
-            /* generic site reference */
-            /*if (self->cache->repo->user->reader->default_repo_title_size) {
-                err = meta_out->write(meta_out,
-                                      " | ", strlen(" | "));
-                if (err) return err;
-
-                err = meta_out->write(meta_out,
-                                      self->cache->repo->user->reader->default_repo_title,
-                                      self->cache->repo->user->reader->default_repo_title_size);
-                if (err) return err;
-                }*/
-            
-
-            err = meta_out->write(meta_out,
-                                  "</TITLE>", strlen("</TITLE>"));
-
-        }
-        
-        err = self->out->write(self->out, buf, buf_size);
-        if (err) goto final;
-
-    }
-
-    
-    /* ELEMS */
-    /*if (self->elems) {
-        err = self->out->write(self->out, ",\"elems\":{", strlen(",\"elems\":{"));
-        if (err) goto final;
-        }*/
-
-    elem = self->elems;
-    while (elem) {
-
-        /*knd_log("   .. make HTML elem: %s\n",
-                elem->name);
-        */
-        
-        /* filter out irrelevant elems */
-        if (elem->attr) {
-            if (elem->attr->concise_level < 2) {
-                
-                knd_log("   -- filter out elem \"%s\" -- \n", elem->name);
-                
-                goto next_elem;
-            }
-
-
-            if (elem->attr->descr_level) {
-
-                err = meta_out->write(meta_out,
-                                      "<META name=\"description\" content=\"",
-                                      strlen("<META name=\"description\" content=\""));
-                if (err) return err;
-
-
-                if (elem->attr->type == KND_ELEM_TEXT) {
-                    elem->text->out = meta_out;
-
-                    err = elem->text->export(elem->text, KND_FORMAT_HTML);
-                    if (err) goto final;
-                }
-
-                /* TODO: special description content */
-                
-                err = meta_out->write(meta_out,
-                                  "\">", strlen("\">"));
-                if (err) return err;
-             }
-
-            
-        }
-
-
-        /* default export */
-        elem->out = self->out;
-        err = elem->export(elem, KND_FORMAT_HTML, 0);
-        if (err) {
-            knd_log("-- elem not exported: %s\n", elem->name);
-            goto final;
-        }
-        
-        need_separ = true;
-        
-    next_elem:
-        elem = elem->next;
-    }
-
-    /*if (self->elems) {
-        err = self->out->write(self->out, "}", 1);
-        if (err) goto final;
-        }*/
-
-    /*dc = self->cache->baseclass;
-    if (dc) {
-        err = self->out->write(self->out, ",\"baseclass\":", strlen(",\"baseclass\":"));
-        if (err) goto final;
-
-        dc->out = self->out;
-        memcpy(dc->lang_code, self->cache->repo->lang_code, self->cache->repo->lang_code_size);
-        dc->lang_code_size = self->cache->repo->lang_code_size;
-        
-        err = dc->export(dc, KND_FORMAT_JSON);
-        if (err) goto final;
-        }*/
-    
-
-    /* skip relations */
-    if (self->export_depth) {
-        /*knd_log("   -- no export of RELS of %s\n", self->name);*/
-        goto closing;
-    }
-    
-    /*  relations */
-    /*if (self->rel_classes) {
-        err = self->out->write(self->out, "<DIV class=\"RELS\">", strlen("<DIV class=\"RELS\">"));
-        if (err) return err;
-        }*/
-
-    relc = self->rel_classes;
-    while (relc) {
-
-        err = self->cache->repo->get_cache(self->cache->repo, relc->dc, &cache);
-        if (err) return err;
-        
-
-        /*if (!strcmp(relc->dc->style_name, "PLAIN")) {
-            err = self->out->write(self->out, "<BLOCKQUOTE>",  strlen("<BLOCKQUOTE>"));
-              if (err) return err; 
-        }
-        else {
-            err = self->out->write(self->out, "<H2>",  strlen("<H2>"));
-            if (err) return err;
-
-            err = self->out->write(self->out, relc->dc->name, relc->dc->name_size);
-            if (err) return err;
-
-            err = self->out->write(self->out, "</H2>",  strlen("</H2>"));
-            if (err) return err;
-            }*/
-        
-        
-        /*err = self->out->write(self->out, "<DIV class=\"attrs\">", strlen("<DIV class=\"attrs\">"));
-        if (err) return err;
-        */
-        
-        reltype = relc->rel_types;
-        while (reltype) {
-
-            /*err = self->out->write(self->out, "{\"attr\":\"", strlen("{\"attr\":\""));
-            if (err) return err;
-
-            err = self->out->write(self->out, reltype->attr_name, reltype->attr_name_size);
-            if (err) return err;
-
-            err = self->out->write(self->out, "\",\"refs\":[", strlen("\",\"refs\":["));
-            if (err) return err;
-            */
-            
-            r = reltype->refs;
-            while (r) {
-                if (r->obj) {
-                    /*err = self->out->write(self->out, "<div>", strlen("<div>"));
-                    if (err) return err;
-                    */
-                    r->obj->out = self->out;
-                    r->obj->export_depth = self->export_depth + 1;
-                    err = r->obj->export(r->obj, KND_FORMAT_HTML, 0);
-                    if (err) return err;
-
-                    /*err = self->out->write(self->out, "</div>", strlen("</div>"));
-                      if (err) return err; */
-                    
-                }
-                else {
-                    
-                    /*err = self->out->write(self->out, "{\"ref\":\"", strlen("{\"ref\":\""));
-                    if (err) return err;
-
-                    err = self->out->write(self->out, r->obj_id, KND_ID_SIZE);
-                    if (err) return err;
-
-                    err = self->out->write(self->out, "\"}", 2);
-                    if (err) return err; */
-
-                }
-                
-                r = r->next;
-            }
-            
-            /*err = self->out->write(self->out, "]}", 2);
-            if (err) return err;
-
-            if (reltype->next) {
-                err = self->out->write(self->out, ",", 1);
-                if (err) return err;
-                } */
-
-            reltype = reltype->next;
-        }
-
-
-        /*if (!strcmp(relc->dc->style_name, "PLAIN")) {
-             err = self->out->write(self->out, "</BLOCKQUOTE>",  strlen("</BLOCKQUOTE>"));
-               if (err) return err; 
-        }
-        else {
-            err = self->out->write(self->out, "</DIV>", strlen("</DIV>"));
-            if (err) return err;
-            } */
-
-        relc = relc->next;
-    }
-
-    /*if (self->rel_classes) {
-        err = self->out->write(self->out, "</DIV>", strlen("</DIV>"));
-        if (err) return err;
-        }*/
-    
- closing:
-    
-    /*err = self->out->write(self->out, "</blockquote></blockquote>", strlen("</blockquote></blockquote>"));
-    if (err) goto final;
-    */
-    
- final:
-    return err;
-}
-
-
-static int 
-kndObject_export_GSC(struct kndObject *self,
-                     bool is_concise)
+kndObject_export_GSC(struct kndObject *self)
 {
     bool got_elem = false;
     struct kndElem *elem;
+    bool is_concise = true;
 
     //struct kndRelClass *relc;
     //struct kndRelType *reltype;
@@ -1768,7 +450,7 @@ kndObject_export_GSC(struct kndObject *self,
             err = self->out->write(self->out, "{_cls{", strlen("{_cls{"));
             if (err) return err;
 
-            err = self->out->write(self->out, relc->dc->name, relc->dc->name_size);
+            err = self->out->write(self->out, relc->conc->name, relc->conc->name_size);
             if (err) return err;
 
             err = self->out->write(self->out, "{_rel{", strlen("{_rel{"));
@@ -1833,23 +515,21 @@ kndObject_export_GSC(struct kndObject *self,
 
 /* export object */
 static int 
-kndObject_export(struct kndObject *self,
-                 knd_format format,
-                 bool is_concise)
+kndObject_export(struct kndObject *self)
 {
     int err;
     
-    switch(format) {
+    switch(self->format) {
     case KND_FORMAT_JSON:
-        err = kndObject_export_JSON(self, is_concise);
+        err = kndObject_export_JSON(self);
         if (err) return err;
         break;
-    case KND_FORMAT_HTML:
+        /*case KND_FORMAT_HTML:
         err = kndObject_export_HTML(self, is_concise);
         if (err) return err;
-        break;
+        break;*/
     case KND_FORMAT_GSC:
-        err = kndObject_export_GSC(self, is_concise);
+        err = kndObject_export_GSC(self);
         if (err) return err;
         break;
     default:
@@ -1859,23 +539,190 @@ kndObject_export(struct kndObject *self,
     return knd_OK;
 }
 
-/* parse object */
-static int 
-kndObject_parse(struct kndObject *self,
-                const char *rec,
-                size_t rec_size,
-                knd_format format)
+
+static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
 {
+    struct kndObject *self = (struct kndObject*)obj;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    size_t name_size = 0;
     int err;
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+    if (!name_size) return knd_FAIL;
+    if (name_size >= KND_NAME_SIZE)
+        return knd_LIMIT;
+
+    memcpy(self->name, name, name_size);
+    self->name_size = name_size;
+    self->name[name_size] = '\0';
+
+    if (DEBUG_OBJ_LEVEL_2)
+        knd_log("++ OBJ NAME: \"%.*s\"", self->name_size, self->name);
+
+    return knd_OK;
+}
+
+
+
+static int
+kndObject_validate_attr(struct kndObject *self,
+                        const char *name,
+                        size_t name_size,
+                        struct kndAttr **result)
+{
+    struct kndConcept *conc;
+    struct kndAttr *attr = NULL;
+    int err, e;
+
+    if (DEBUG_OBJ_LEVEL_2)
+        knd_log(".. validating ELEM \"%s\"..", self->name);
+
+    conc = self->conc;
+
+    err = conc->get_attr(conc, name, name_size, &attr);
+    if (err) {
+        knd_log("  -- ELEM \"%.*s\" not approved :(\n", name_size, name);
+        self->log->reset(self->log);
+        e = self->log->write(self->log, name, name_size);
+        if (e) return e;
+        e = self->log->write(self->log, " elem not confirmed",
+                               strlen(" elem not confirmed"));
+        if (e) return e;
+        return err;
+    }
     
-    switch(format) {
-    case KND_FORMAT_GSC:
-        err = kndObject_parse_GSC(self, rec, rec_size);
-        if (err) return err;
+    *result = attr;
+    
+    return knd_OK;
+}
+
+static int parse_elem(void *data,
+                      const char *name, size_t name_size,
+                      const char *rec, size_t *total_size)
+{
+    struct kndObject *self = (struct kndObject*)data;
+    struct kndObject *obj;
+    struct kndElem *elem = NULL;
+    struct kndAttr *attr = NULL;
+    struct kndRef *ref = NULL;
+    struct kndText *text = NULL;
+    int err;
+
+    if (DEBUG_OBJ_LEVEL_2) {
+        knd_log("..  validation of \"%s\" elem REC: \"%.*s\"\n",
+                name, 16, rec);
+    }
+
+    err = kndObject_validate_attr(self, name, name_size, &attr);
+    if (err) return err;
+
+    err = kndElem_new(&elem);
+    if (err) return err;
+    elem->obj = self;
+    elem->attr = attr;
+    elem->root = self;
+    elem->out = self->out;
+    
+    if (!self->tail) {
+        self->tail = elem;
+        self->elems = elem;
+    }
+    else {
+        self->tail->next = elem;
+        self->tail = elem;
+    }
+    self->num_elems++;
+
+    if (DEBUG_OBJ_LEVEL_2)
+        knd_log("   == basic elem type: %s\n",
+                knd_attr_names[attr->type]);
+
+    switch (attr->type) {
+    case KND_ATTR_ATOM:
+    case KND_ATTR_NUM:
+    case KND_ATTR_FILE:
+    case KND_ATTR_CALC:
         break;
+    case KND_ATTR_REF:
+        err = kndRef_new(&ref);
+        if (err) return err;
+        ref->elem = elem;
+        ref->out = self->out;
+
+        //chunk_size = 0;
+        /*err = ref->parse(ref, c, &chunk_size);
+        if (err) {
+            knd_log("-- \"%.*s\" elem parse failure :(", name_size, name);
+            return err;
+            }*/
+        elem->ref = ref;
+        //*total_size = chunk_size;
+        return knd_OK;
+    case KND_ATTR_TEXT:
+        err = kndText_new(&text);
+        if (err) return err;
+
+        text->elem = elem;
+        text->out = self->out;
+
+        //chunk_size = 0;
+        /*err = text->parse(text, c, &chunk_size);
+        if (err) return err;
+        */
+        elem->text = text;
+        
+        //*total_size = chunk_size;
+        return knd_OK;
     default:
         break;
     }
+
+    err = elem->parse(elem, rec, total_size);
+    if (err) goto final;
+
+    return knd_OK;
+
+ final:
+    elem->del(elem);
+    return err;
+}
+
+/* parse object */
+static int 
+kndObject_parse_GSL(struct kndObject *self,
+                    const char *rec,
+                    size_t *total_size)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_name,
+          .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "elem",
+          .name_size = strlen("elem"),
+          .is_validator = true,
+          .buf = buf,
+          .buf_size = &buf_size,
+          .max_buf_size = KND_NAME_SIZE,
+          .validate = parse_elem,
+          .obj = self
+        }
+    };
+    int err;
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
     
     return knd_OK;
 }
@@ -2012,120 +859,6 @@ kndObject_match(struct kndObject *self,
 
 
 static int 
-kndObject_flatten(struct kndObject *self,
-                  struct kndFlatTable *table,
-                  unsigned long *span)
-{
-    char idbuf[KND_ID_SIZE];
-    struct kndRefSet *refset;
-    struct kndObjRef *ref;
-    struct kndFlatCell *cell;
-    struct kndFlatRow *row;
-    struct ooDict *idx = NULL;
-    struct kndElem *elem, *e;
-    //unsigned long currspan;
-    unsigned long timespan = 0;
-    unsigned long maxspan = 0;
-    long numval = 0;
-    long estim = 0;
-    int err;
-
-    /*idx = self->cache->contain_idx;*/
-
-    /* TODO */
-    // fixme: idx is NULL
-    refset = (struct kndRefSet*)idx->get(idx, (const char*)self->name);
-    if (refset) {
-
-        knd_log("    ++ DIV with children: %s\n", self->name);
-
-        for (size_t i = 0; i < refset->num_refs; i++) {
-            ref = refset->inbox[i];
-
-            err = self->cache->name_idx->lookup_name(self->cache->name_idx,
-                                                     self->name, self->name_size,
-                                                     self->name, self->name_size, idbuf);
-            if (err) {
-                knd_log("  -- obj %s not found :(\n", self->name);
-                continue;
-            }
-            
-            //err = obj->flatten(obj, table, &currspan);
-            //if (err) goto final;
-
-            //if (currspan > maxspan)
-            //    maxspan = currspan;
-        }
-
-
-        row = &table->rows[refset->num_refs - 1];
-        cell = &row->cols[row->num_cols];
-        row->num_cols++;
-
-        /* write terminal cell values */
-        cell->span = row->num_cols;
-        cell->obj = self;
-        cell->estim = estim;
-        
-    } else {
-
-        knd_log("  == terminal DIV: %s\n", self->name);
-        timespan = 0;
-        estim = 0;
-        elem = self->elems;
-        while (elem) {
-            if (!strcmp(elem->name, "time")) {
-                if (elem->inner) {
-                    e = elem->inner->elems;
-                    while (e) {
-                        if (!strcmp(e->name, "plan")) {
-                            err = knd_parse_num(e->states->val, &numval);
-                            if (err) return err;
-                            if (numval >= 0) timespan = (unsigned long)numval;
-                            break;
-                        }
-                        e = e->next;
-                    }
-                }
-            }
-            
-            if (!strcmp(elem->name, "estim")) {
-                err = knd_parse_num(elem->states->val, &estim);
-                if (err) break;
-            }
-            
-            elem = elem->next;
-        }
-
-        
-        row = &table->rows[table->num_rows];
-        cell = &row->cols[row->num_cols];
-
-        // fixme: timespan < 0?
-        for (size_t i = 0; i < (size_t)timespan; i++) {
-            table->totals[i] += estim;
-        }
-        
-        row->num_cols++;
-
-        /* write terminal cell values */
-        cell->span = timespan;
-        cell->estim = estim;
-        
-        maxspan = timespan;
-        
-        cell->obj = self;
-
-        table->num_rows++;
-        
-    }
-    
-    *span = (unsigned long)maxspan;
-    return knd_OK;
-}
-
-
-static int 
 kndObject_get_idx(struct kndObject *self,
                   const char *idx_name,
                   size_t idx_name_size,
@@ -2168,7 +901,7 @@ kndObject_sync(struct kndObject *self)
 {
     char idbuf[KND_ID_SIZE];
     struct kndElem *elem;
-    struct kndConcept *dc;
+    struct kndConcept *conc;
     struct kndRepoCache *cache;
     struct kndObject *obj;
     struct kndRefSet *refset;
@@ -2208,25 +941,24 @@ kndObject_sync(struct kndObject *self)
         }
         
         if (!elem->attr) goto next_elem;
-
-        if (elem->attr->type != KND_ELEM_REF)
+        if (elem->attr->type != KND_ATTR_REF)
             goto next_elem;
         
-        dc = elem->attr->dc;
-        if (!dc) goto next_elem;
+        conc = elem->attr->conc;
+        if (!conc) goto next_elem;
 
         /*
         if (elem->ref_class)
-            dc = elem->ref_class;
+            conc = elem->ref_class;
         
         if (DEBUG_OBJ_LEVEL_TMP)
             knd_log("\n    .. sync expanding ELEM REF: %s::%s..\n",
-                    dc->name,
+                    conc->name,
                     elem->states->val);
 
         obj = elem->states->refobj;
         if (!obj) {
-            err = self->cache->repo->get_cache(self->cache->repo, dc, &cache);
+            err = self->cache->repo->get_cache(self->cache->repo, conc, &cache);
             if (err) return knd_FAIL;
 
             err = self->cache->name_idx->lookup_name(self->cache->name_idx,
@@ -2235,7 +967,7 @@ kndObject_sync(struct kndObject *self)
             if (err) {
                 if (DEBUG_OBJ_LEVEL_TMP)
                     knd_log("  -- failed to sync expand ELEM REF: %s::%s :(\n",
-                        dc->name,
+                        conc->name,
                         elem->states->val);
                 goto next_elem;
             }
@@ -2335,17 +1067,18 @@ kndObject_init(struct kndObject *self)
 {
     self->del = del;
     self->str = str;
-    self->import = import;
+
     self->sync = kndObject_sync;
-    self->update = kndObject_update;
-    self->expand = kndObject_expand;
+    //self->expand = kndObject_expand;
     self->export = kndObject_export;
-    self->flatten = kndObject_flatten;
+    //self->flatten = kndObject_flatten;
     self->match = kndObject_match;
     self->contribute = kndObject_contribute;
-    self->parse = kndObject_parse;
-    self->parse_inline = kndObject_parse_inline;
-    self->index_inline = kndObject_index_inline;
+
+    self->parse = kndObject_parse_GSL;
+
+    //self->parse_inline = kndObject_parse_inline;
+    //self->index_inline = kndObject_index_inline;
 }
 
 extern int

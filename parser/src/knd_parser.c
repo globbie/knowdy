@@ -523,7 +523,7 @@ knd_find_spec(struct kndTaskSpec *specs,
     struct kndTaskSpec *default_spec = NULL;
     struct kndTaskSpec *validator_spec = NULL;
     bool is_completed = false;
-    
+
     for (size_t i = 0; i < num_specs; i++) {
         spec = &specs[i];
 
@@ -643,7 +643,7 @@ static int knd_check_implied_field(const char *name,
                                 name, err);
                     return err;
                 }
-                spec->is_completed = true;
+                //spec->is_completed = true;
             }
             break;
         }
@@ -680,7 +680,7 @@ int knd_parse_task(const char *rec,
     b = rec;
     e = rec;
 
-    if (DEBUG_PARSER_LEVEL_2)
+    if (DEBUG_PARSER_LEVEL_1)
         knd_log("\n\n*** start basic PARSING: \"%s\" num specs: %lu [%p]",
                 rec, (unsigned long)num_specs, specs);
 
@@ -702,7 +702,91 @@ int knd_parse_task(const char *rec,
             if (err) return err;
 
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ BASIC LOOP got tag: \"%.*s\" [%lu]",
+                knd_log("++ BASIC LOOP got tag after whitespace: \"%.*s\" [%lu]",
+                        name_size, b, (unsigned long)name_size);
+
+            err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
+            if (err) {
+                knd_log("-- no spec found to handle the \"%.*s\" tag: %d",
+                        name_size, b, err);
+                return err;
+            }
+
+            if (DEBUG_PARSER_LEVEL_2)
+                knd_log("++ got SPEC: \"%s\" (default: %d) (is validator: %d)",
+                        spec->name, spec->is_default, spec->is_validator);
+            in_tag = true;
+
+            if (spec->validate) {
+                err = spec->validate(spec->obj,
+                                     (const char*)spec->buf, *spec->buf_size,
+                                     c, &chunk_size);
+                if (err) {
+                    knd_log("-- ERR: %d validation of spec \"%s\" failed :(",
+                            err, spec->name);
+                    return err;
+                }
+                c += chunk_size;
+                spec->is_completed = true;
+                in_field = false;
+                in_tag = false;
+                b = c;
+                e = b;
+                break;
+            }
+            
+            if (!spec->parse) {
+                if (DEBUG_PARSER_LEVEL_2)
+                    knd_log("== ATOMIC SPEC found: %s! no further parsing is required.",
+                            spec->name);
+                in_terminal = true;
+                b = c + 1;
+                e = b;
+                break;
+            }
+
+            /* nested parsing required */
+            if (DEBUG_PARSER_LEVEL_2)
+                knd_log("\n    >>> further parsing required in \"%s\" FROM: \"%s\" FUNC: %p",
+                        spec->name, c, spec->parse);
+            err = spec->parse(spec->obj, c, &chunk_size);
+            if (err) {
+                knd_log("-- ERR: %d parsing of spec \"%s\" failed :(",
+                        err, spec->name);
+                return err;
+            }
+            c += chunk_size;
+            spec->is_completed = true;
+            in_field = false;
+            in_tag = false;
+            
+            b = c;
+            e = b;
+            break;
+        case '{':
+            /* starting brace */
+            if (!in_field) {
+                if (in_implied_field) {
+                    name_size = e - b;
+                    if (name_size) {
+                        err = knd_check_implied_field(b, name_size, specs, num_specs, args, &num_args);
+                        if (err) return err;
+                    }
+                }
+                
+                in_field = true;
+                in_terminal = false;
+                b = c + 1;
+                e = b;
+                break;
+            }
+
+            /* inner field brace */
+            err = check_name_limits(b, e, &name_size);
+            if (err) return err;
+
+            if (DEBUG_PARSER_LEVEL_2)
+                knd_log("++ BASIC LOOP got tag after brace: \"%.*s\" [%lu]",
                         name_size, b, (unsigned long)name_size);
 
             err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
@@ -767,27 +851,9 @@ int knd_parse_task(const char *rec,
             b = c;
             e = b;
             break;
-        case '{':
-            if (!in_field) {
-                if (in_implied_field) {
-                    name_size = e - b;
-                    if (name_size) {
-                        err = knd_check_implied_field(b, name_size, specs, num_specs, args, &num_args);
-                        if (err) return err;
-                    }
-                }
-                
-                in_field = true;
-                in_terminal = false;
-                b = c + 1;
-                e = b;
-                break;
-            }
-            break;
         case '}':
             /* empty body? */
             if (!in_field) {
-                
                 if (in_implied_field) {
                     name_size = e - b;
                     if (name_size) {
@@ -880,7 +946,6 @@ int knd_parse_task(const char *rec,
 
             if (in_field) {
                 if (!in_tag) {
-
                     err = check_name_limits(b, e, &name_size);
                     if (err) {
                         knd_log("-- value name limit reached :(");
@@ -893,9 +958,7 @@ int knd_parse_task(const char *rec,
                     
                     err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
                     if (err) {
-                        if (DEBUG_PARSER_LEVEL_TMP)
-                            knd_log("-- no spec found to handle the \"%.*s\" tag :(",
-                                    name_size, b);
+                        knd_log("-- no spec found to handle the \"%.*s\" tag :(", name_size, b);
                         return err;
                     }
 
@@ -928,15 +991,16 @@ int knd_parse_task(const char *rec,
                 in_field = false;
                 break;
             }
-            
             *total_size = c - rec;
             return knd_OK;
         case '(':
-
             if (DEBUG_PARSER_LEVEL_2)
                 knd_log(".. basic LOOP %p detected func area: \"%s\"\n", specs, c);
  
             if (in_implied_field) {
+                if (DEBUG_PARSER_LEVEL_2)
+                    knd_log(".. basic LOOP is in implied field!");
+
                 name_size = e - b;
                 if (name_size) {
                     err = knd_check_implied_field(b, name_size, specs, num_specs, args, &num_args);
@@ -946,8 +1010,11 @@ int knd_parse_task(const char *rec,
             }
 
             err = knd_parse_state_change(c, &chunk_size, specs, num_specs);
-            if (err) return err;
-
+            if (err) {
+                knd_log("-- basic LOOP failed to parse state change area :(");
+                return err;
+            }
+            
             c += chunk_size;
 
             if (DEBUG_PARSER_LEVEL_2)
@@ -961,7 +1028,6 @@ int knd_parse_task(const char *rec,
             e = b;
             break;
         case ')':
-            
             if (DEBUG_PARSER_LEVEL_2)
                 knd_log("\n\n-- END OF BASIC LOOP [%p]  STARTED at: \"%s\" FINISHED at: \"%s\"\n\n",
                         specs, rec, c);
@@ -975,7 +1041,6 @@ int knd_parse_task(const char *rec,
                     }
                 }
             }
-
             *total_size = c - rec;
             return knd_OK;
         default:
@@ -990,6 +1055,10 @@ int knd_parse_task(const char *rec,
         }
         c++;
     }
+
+    if (DEBUG_PARSER_LEVEL_1)
+        knd_log("\n\n--- end of basic PARSING: \"%s\" num specs: %lu [%p]",
+                rec, (unsigned long)num_specs, specs);
     
     *total_size = c - rec;
     return knd_OK;
@@ -1020,9 +1089,9 @@ static int knd_parse_state_change(const char *rec,
     b = rec;
     e = rec;
 
-    if (DEBUG_PARSER_LEVEL_1)
-        knd_log("\n\n == start FUNC parse: \"%s\" num specs: %lu [%p]",
-                rec, (unsigned long)num_specs, specs);
+    if (DEBUG_PARSER_LEVEL_2)
+        knd_log("\n\n == start FUNC parse: \"%.*s\" num specs: %lu [%p]",
+                16, rec, (unsigned long)num_specs, specs);
 
     while (*c) {
         switch (*c) {
@@ -1125,7 +1194,6 @@ static int knd_parse_state_change(const char *rec,
             }
             break;
         case ')':
-
             /*if (in_change) {
                 in_implied_field = false;
                 in_change = false;
@@ -1133,10 +1201,36 @@ static int knd_parse_state_change(const char *rec,
                 break;
             }
             */
-            if (DEBUG_PARSER_LEVEL_2)
-                knd_log("-- close bracket at FUNC loop: \"%s\"\nIN CHANGE: %d\nSPECS: %s\n",
-                        c, in_change, specs[0].name);
 
+            if (!spec) {
+                /* activate spec search */
+                err = check_name_limits(b, e, &name_size);
+                if (err) return err;
+
+                if (DEBUG_PARSER_LEVEL_2)
+                    knd_log("++ FUNC LOOP got tag in close bracket: \"%.*s\" [%lu]",
+                            name_size, b, (unsigned long)name_size);
+
+                err = knd_find_spec(specs, num_specs, b, name_size, KND_CHANGE_STATE, &spec);
+                if (err) {
+                    knd_log("-- no spec found to handle the \"%.*s\" change state tag :(",
+                            name_size, b);
+                    return err;
+                }
+
+                if (DEBUG_PARSER_LEVEL_2)
+                    knd_log("++ got func SPEC: \"%s\"  default: %d  terminal: %d",
+                            spec->name, spec->is_default, spec->is_terminal);
+            }
+
+            if (DEBUG_PARSER_LEVEL_2) {
+                chunk_size = c - rec;
+                if (chunk_size > KND_MAX_DEBUG_CONTEXT_SIZE)
+                    chunk_size = KND_MAX_DEBUG_CONTEXT_SIZE;
+                knd_log("-- close bracket at FUNC loop: \"%.*s\"\nIN CHANGE: %d\nSPECS: %s\n",
+                        chunk_size, c, in_change, specs[0].name);
+            }
+            
             /* copy to buf */
             if (spec->is_terminal) {
                 err = check_name_limits(b, e, &name_size);
@@ -1164,8 +1258,8 @@ static int knd_parse_state_change(const char *rec,
             }
 
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("== END parse state change: \"%s\" [%p]",
-                        c, specs);
+                knd_log("== END parse state change: \"%.*s\" [%p]",
+                        16, c, specs);
             
             *total_size = c - rec;
             return knd_OK;

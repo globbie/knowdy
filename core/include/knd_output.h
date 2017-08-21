@@ -31,6 +31,9 @@ struct kndOutput
                  const char    *buf,
                  size_t        buf_size);
 
+    int (*write_state_path)(struct kndOutput *self,
+                            const char    *state);
+
     int (*read_file)(struct kndOutput *self,
                      const char *filename,
                      size_t filename_size);

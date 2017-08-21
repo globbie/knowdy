@@ -93,6 +93,7 @@ struct kndRefSet
     size_t query_size;
     
     struct kndRefSet *next;
+    knd_format format;
     
     /******** public methods ********/
     int (*init)(struct kndRefSet *self);

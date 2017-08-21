@@ -17,7 +17,6 @@
  *   knd_dataclass.h
  *   Knowdy Data Class
  */
-
 #ifndef KND_DATACLASS_H
 #define KND_DATACLASS_H
 
@@ -32,6 +31,7 @@ struct kndConcept;
 struct kndOutput;
 struct kndTranslation;
 struct kndConcept;
+struct kndTask;
 struct kndTaskArg;
 
 struct kndDataIdx
@@ -63,11 +63,22 @@ struct kndConcItem
     size_t name_size;
 
     struct kndAttrItem *attrs;
+    struct kndAttrItem *tail;
     size_t num_attrs;
-    
-    struct kndConcept *ref;
-    
+
+    struct kndConcept *parent;
+    struct kndConcept *conc;
+
     struct kndConcItem *next;
+};
+
+struct kndConcFolder
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+    
+    size_t num_concepts;
+    struct kndConcFolder *next;
 };
 
 struct kndConcept 
@@ -75,34 +86,45 @@ struct kndConcept
     char name[KND_NAME_SIZE];
     size_t name_size;
 
+    char id[KND_ID_SIZE];
+    char next_id[KND_ID_SIZE];
+    char next_obj_id[KND_ID_SIZE];
+
+    char state[KND_STATE_SIZE];
+    char next_state[KND_STATE_SIZE];
+    char next_obj_state[KND_STATE_SIZE];
+
+    knd_state_phase phase;
+
     struct kndTranslation *tr;
     struct kndText *summary;
 
     char namespace[KND_NAME_SIZE];
     size_t namespace_size;
 
-    /* ontology file location */
+    /* initial scheme location */
     const char *dbpath;
     size_t dbpath_size;
 
+    struct kndTask *task;
+    
     const char *locale;
     size_t locale_size;
     knd_format format;
     size_t depth;
-    
-    struct kndConcItem *baseclass_items;
-    size_t num_baseclass_items;
-
-    struct kndDataIdx *indices;
-    size_t num_indices;
 
     struct kndAttr *attrs;
     struct kndAttr *tail_attr;
     size_t num_attrs;
-
     /* for traversal */
     struct kndAttr *curr_attr;
     size_t attrs_left;
+    
+    struct kndConcItem *conc_items;
+    size_t num_conc_items;
+
+    struct kndDataIdx *indices;
+    size_t num_indices;
 
     char curr_val[KND_NAME_SIZE];
     size_t curr_val_size;
@@ -114,17 +136,32 @@ struct kndConcept
     size_t style_name_size;
 
     bool ignore_children;
-    
+
     struct kndConcept *root_class;
-    
+    struct kndConcept *curr_class;
+    struct kndObject *curr_obj;
+
+    struct kndConcFolder *folders;
+    size_t num_folders;
+
+    /* incoming */
+    struct kndConcept *inbox;
+    size_t inbox_size;
+    struct kndObject *obj_inbox;
+    size_t obj_inbox_size;
+    bool batch_mode;
+
     /* indices */
     struct ooDict *class_idx;
     struct ooDict *attr_idx;
-
+    struct ooDict *obj_idx;
+    
     struct kndConcRef children[KND_MAX_CONC_CHILDREN];
     size_t num_children;
     
-    struct kndRefSet *browser;
+    struct kndRefSet *obj_browser;
+
+    struct kndConcept *next;
 
     struct kndOutput *out;
     struct kndOutput *log;
@@ -135,17 +172,33 @@ struct kndConcept
     void (*str)(struct kndConcept *self,
                 size_t depth);
 
-    int (*read_file)(struct kndConcept   *self,
-                     const char *filename,
-                     size_t filename_size);
+    int (*open)(struct kndConcept   *self,
+                const char *filename,
+                size_t filename_size);
+    
+    int (*restore)(struct kndConcept   *self);
+    int (*build_diff)(struct kndConcept   *self,
+                      const char *start_state);
 
     int (*coordinate)(struct kndConcept *self);
     int (*resolve)(struct kndConcept    *self);
+    int (*update_state)(struct kndConcept *self);
+    int (*apply_liquid_updates)(struct kndConcept *self);
 
     int (*select)(struct kndConcept  *self,
                   struct kndTaskArg *args, size_t num_args);
+
     int (*get)(struct kndConcept  *self,
                const char *name, size_t name_size);
+
+    int (*get_attr)(struct kndConcept *self,
+                    const char *name, size_t name_size,
+                    struct kndAttr **result);
+
+    int (*import)(struct kndConcept *self,
+                  const char *rec,
+                  size_t *total_size);
+
 
     int (*export)(struct kndConcept *self);
 

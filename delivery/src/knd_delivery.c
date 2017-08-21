@@ -36,9 +36,8 @@ del(struct kndDelivery *self)
 }
 
 
-static int
-run_set_tid(void *obj,
-            struct kndTaskArg *args, size_t num_args)
+static int run_set_tid(void *obj,
+                       struct kndTaskArg *args, size_t num_args)
 {
     struct kndDelivery *self;
     struct kndTaskArg *arg;
@@ -59,9 +58,6 @@ run_set_tid(void *obj,
 
     if (tid_size >= KND_TID_SIZE) return knd_LIMIT;
 
-    if (DEBUG_DELIV_LEVEL_TMP)
-        knd_log(".. set tid to \"%.*s\"", tid_size, tid);
-
     memcpy(self->tid, tid, tid_size);
     self->tid[tid_size] = '\0';
     self->tid_size = tid_size;
@@ -69,11 +65,8 @@ run_set_tid(void *obj,
     return knd_OK;
 }
 
-
-
-static int
-run_set_sid(void *obj,
-            struct kndTaskArg *args, size_t num_args)
+static int run_set_sid(void *obj,
+                       struct kndTaskArg *args, size_t num_args)
 {
     struct kndDelivery *self;
     struct kndTaskArg *arg;
@@ -87,26 +80,20 @@ run_set_sid(void *obj,
             sid_size = arg->val_size;
         }
     }
-
     if (!sid_size) return knd_FAIL;
 
     self = (struct kndDelivery*)obj;
-
-    if (DEBUG_DELIV_LEVEL_TMP)
-        knd_log(".. set sid to \"%.*s\"", sid_size, sid);
-
     memcpy(self->sid, sid, sid_size);
     self->sid[sid_size] = '\0';
     self->sid_size = sid_size;
-   
+    if (DEBUG_DELIV_LEVEL_2)
+        knd_log("== sid set to \"%.*s\"", sid_size, sid);
+    
     return knd_OK;
 }
 
-
-
-static int
-run_set_result(void *obj,
-               struct kndTaskArg *args, size_t num_args)
+static int run_set_error(void *obj,
+                         struct kndTaskArg *args, size_t num_args)
 {
     struct kndDelivery *self;
     struct kndTaskArg *arg;
@@ -118,17 +105,91 @@ run_set_result(void *obj,
     
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
-        if (!strncmp(arg->name, "result", strlen("result"))) {
+        if (!strncmp(arg->name, "err", strlen("err"))) {
             name = arg->val;
             name_size = arg->val_size;
         }
     }
-
     if (!name_size) return knd_FAIL;
 
     self = (struct kndDelivery*)obj;
 
     if (DEBUG_DELIV_LEVEL_TMP)
+        knd_log(".. set the error: \"%.*s\"", name_size, name);
+
+    if (self->num_tids >= self->max_tids)
+        self->num_tids = 0;
+
+    tid = &self->tids[self->num_tids];
+    if (*(tid->tid) != '\0') {
+        res = self->idx->get(self->idx, tid->tid);
+        if (!res) {
+            knd_log("-- no rec found for TID \"%.*s\"", KND_TID_SIZE, tid->tid);
+            return knd_NO_MATCH;
+        }
+        /* free result memory */
+        if (res->obj) {
+            free(res->obj);
+            res->obj_size = 0;
+        }
+        /* remove this key from the idx */
+        if (DEBUG_DELIV_LEVEL_TMP)
+            knd_log(".. remove TID \"%.*s\" from idx", KND_TID_SIZE, tid->tid);
+
+        self->idx->remove(self->idx, tid->tid);
+    } else {
+        /* alloc result */
+        res = malloc(sizeof(struct kndResult));
+        if (!res) return knd_NOMEM;
+        memset(res, 0, sizeof(struct kndResult));
+    }
+    
+    memcpy(tid->tid, self->tid, self->tid_size);
+    tid->tid[self->tid_size] = '\0';
+
+    
+    memcpy(res->sid, self->sid, self->sid_size);
+    res->sid[self->sid_size] = '\0';
+    res->sid_size = self->sid_size;
+    
+    res->sid_required = true;
+    res->obj = self->obj;
+    res->obj_size = self->obj_size;
+    
+    /* assign key to idx */
+    err = self->idx->set(self->idx, tid->tid, (void*)res);
+    if (err) return err;
+
+    if (DEBUG_DELIV_LEVEL_2)
+        knd_log("== saved error for TID: \"%s\" => %s [%lu]",
+                tid->tid, res->obj, (unsigned long)res->obj_size);
+
+    self->num_tids++;
+    return knd_OK;
+}
+
+static int run_set_result(void *obj,
+                          struct kndTaskArg *args, size_t num_args)
+{
+    struct kndDelivery *self;
+    struct kndTaskArg *arg;
+    struct kndTID *tid;
+    struct kndResult *res = NULL;
+    const char *name = NULL;
+    size_t name_size = 0;
+    int err;
+    
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "save", strlen("save"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+    if (!name_size) return knd_FAIL;
+
+    self = (struct kndDelivery*)obj;
+    if (DEBUG_DELIV_LEVEL_2)
         knd_log(".. set result of \"%.*s\"", self->obj_size, self->obj);
 
     if (self->num_tids >= self->max_tids)
@@ -156,71 +217,188 @@ run_set_result(void *obj,
     
     memcpy(tid->tid, self->tid, self->tid_size); 
     tid->tid[self->tid_size] = '\0';
+
+    memcpy(res->sid, self->sid, self->sid_size);
+    res->sid[self->sid_size] = '\0';
+    res->sid_size = self->sid_size;
+    res->sid_required = true;
     
     res->obj = self->obj;
     res->obj_size = self->obj_size;
     
     /* assign key to idx */
-
     err = self->idx->set(self->idx, tid->tid, (void*)res);
     if (err) return err;
+    if (DEBUG_DELIV_LEVEL_2)
+        knd_log("== saved result for TID \"%s\" => %s [%lu]",
+                tid->tid, res->obj, (unsigned long)res->obj_size);
 
-    
-    knd_log("== result %s => %s [%lu]\n",
-            tid->tid, res->obj, (unsigned long)res->obj_size);
-    
     self->num_tids++;
-    
     return knd_OK;
 }
 
 
-static int 
-run_retrieve(void *obj,
-             struct kndTaskArg *args, size_t num_args)
+static int run_retrieve(void *obj,
+                        struct kndTaskArg *args, size_t num_args)
 {
     struct kndDelivery *self;
     struct kndTaskArg *arg;
     struct kndResult *res = NULL;
-    const char *name = NULL;
-    size_t name_size = 0;
+    const char *tid = NULL;
+    size_t tid_size = 0;
+    int err;
     
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
-        if (!strncmp(arg->name, "retrieve", strlen("retrieve"))) {
-            name = arg->val;
-            name_size = arg->val_size;
+        if (!strncmp(arg->name, "tid", strlen("tid"))) {
+            tid = arg->val;
+            tid_size = arg->val_size;
         }
     }
 
-    if (!name_size) return knd_FAIL;
+    if (!tid_size) return knd_FAIL;
 
     self = (struct kndDelivery*)obj;
+    if (DEBUG_DELIV_LEVEL_2)
+        knd_log(".. retrieving obj,  tid \"%.*s\"", tid_size, tid);
     
+    res = self->idx->get(self->idx, tid);
+    if (!res)  {
+        if (DEBUG_DELIV_LEVEL_TMP)
+            knd_log("-- no result found for tid \"%.*s\"!", tid_size, tid);
+        return knd_NO_MATCH;
+    }
+
+    if (res->sid_required) {
+        if (DEBUG_DELIV_LEVEL_2)
+            knd_log("NB: SID is required to retrieve tid \"%.*s\"  SID: \"%.*s\" [%lu] REQUIRED: \"%.*s\"",
+                    tid_size, tid, self->sid_size, self->sid, (unsigned long)self->sid_size,
+                    res->sid_size, res->sid);
+        
+        if (memcmp(self->sid, res->sid, res->sid_size)) {
+            err = self->out->write(self->out,
+                                   "{\"err\":\"authentication failure: ",
+                                   strlen("{\"err\":\"authentication failure: "));
+            if (err) return err;
+
+            err = self->out->write(self->out, self->sid, self->sid_size);
+            if (err) return err;
+            
+            err = self->out->write(self->out, " SID rejected\"}", strlen(" SID rejected\"}"));
+            if (err) return err;
+            
+            knd_log("AUTH ERROR: \"%.*s\" [%lu]\n",
+                    self->out->buf_size,
+                    self->out->buf,
+                    (unsigned long)self->out->buf_size);
+            
+            self->reply_obj = self->out->buf;
+            self->reply_obj_size = self->out->buf_size;
+            return knd_OK;
+        }
+    }
     if (DEBUG_DELIV_LEVEL_TMP)
-        knd_log(".. retrieve obj,  tid \"%.*s\"", self->tid_size, self->tid);
-
-    res = self->idx->get(self->idx, self->tid);
-    if (!res) return knd_NO_MATCH;
-
+        knd_log("== Result: \"%.*s\" [%lu]", res->obj_size, res->obj,
+                (unsigned long)res->obj_size);
     self->reply_obj = res->obj;
     self->reply_obj_size = res->obj_size;
+
+    return knd_OK;
+}
+
+static int parse_auth(void *obj,
+                      const char *rec,
+                      size_t *total_size)
+{
+    struct kndDelivery *self = (struct kndDelivery*)obj;
+    struct kndTaskSpec specs[] = {
+        { .name = "sid",
+          .name_size = strlen("sid"),
+          .run = run_set_sid,
+          .obj = self
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) {
+        knd_log("-- auth parse error: %d", err);
+        return err;
+    }
     
     return knd_OK;
 }
 
 
-static int 
-run_task(struct kndDelivery *self)
+static int parse_retrieve(void *obj,
+                          const char *rec,
+                          size_t *total_size)
+{
+    struct kndDelivery *self = (struct kndDelivery*)obj;
+    struct kndTaskSpec specs[] = {
+        { .name = "tid",
+          .name_size = strlen("tid"),
+          .run = run_retrieve,
+          .obj = self
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) {
+        knd_log("-- retrieve func parse error: %d", err);
+        return err;
+    }
+    
+    return knd_OK;
+}
+
+static int parse_user(void *obj,
+                      const char *rec,
+                      size_t *total_size)
+{
+    struct kndDelivery *self = (struct kndDelivery*)obj;
+    struct kndTaskSpec specs[] = {
+        { .name = "auth",
+          .name_size = strlen("auth"),
+          .parse = parse_auth,
+          .obj = self
+        },
+        { .name = "err",
+          .name_size = strlen("err"),
+          .run = run_set_error,
+          .obj = self
+        },
+        { .name = "save",
+          .name_size = strlen("save"),
+          .run = run_set_result,
+          .obj = self
+        },
+        { .name = "retrieve",
+          .name_size = strlen("retrieve"),
+          .parse = parse_retrieve,
+          .obj = self
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) {
+        knd_log("-- task parse error: %d", err);
+        return err;
+    }
+    
+    return knd_OK;
+}
+
+
+static int run_task(struct kndDelivery *self)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = KND_NAME_SIZE;
     size_t chunk_size = 0;
-    
-    const char *gsl_format_tag = "{gsl";
-    size_t gsl_format_tag_size = strlen(gsl_format_tag);
 
-    const char *header_tag = "{knd::Task";
+    const char *header_tag = "{task";
     size_t header_tag_size = strlen(header_tag);
     const char *c;
     
@@ -230,19 +408,9 @@ run_task(struct kndDelivery *self)
           .run = run_set_tid,
           .obj = self
         },
-        { .name = "sid",
-          .name_size = strlen("sid"),
-          .run = run_set_sid,
-          .obj = self
-        },
-        { .name = "result",
-          .name_size = strlen("result"),
-          .run = run_set_result,
-          .obj = self
-        },
-        { .name = "retrieve",
-          .name_size = strlen("retrieve"),
-          .run = run_retrieve,
+        { .name = "user",
+          .name_size = strlen("user"),
+          .parse = parse_user,
           .obj = self
         }
     };
@@ -251,21 +419,8 @@ run_task(struct kndDelivery *self)
     const char *rec = self->task;
     size_t total_size;
     
-    if (!strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
-        rec += gsl_format_tag_size;
-    
-        err = knd_get_schema_name(rec,
-                                  buf, &buf_size, &chunk_size);
-        if (!err) {
-            rec += chunk_size;
-            buf[buf_size] = '\0';
-            if (DEBUG_DELIV_LEVEL_TMP)
-                knd_log("== got schema: \"%s\"", buf);
-        }
-    }
-    
     if (strncmp(rec, header_tag, header_tag_size)) {
-        knd_log("-- wrong GSL class header");
+        knd_log("-- wrong GSL header");
         return knd_FAIL;
     }
 
@@ -280,8 +435,6 @@ run_task(struct kndDelivery *self)
     return knd_OK;
 }
 
-
-
 /**
  *  kndDelivery network service startup
  */
@@ -295,7 +448,7 @@ kndDelivery_start(struct kndDelivery *self)
     const char *header = "DELIVERY";
     size_t header_size = strlen(header);
 
-    const char *reply = "OK";
+    const char *reply = "{\"error\":\"delivery error\"}";
     size_t reply_size = strlen(reply);
 
     context = zmq_init(1);
@@ -304,23 +457,24 @@ kndDelivery_start(struct kndDelivery *self)
     assert(service);
     assert((zmq_bind(service, self->addr) == knd_OK));
 
-    knd_log("\n\n    ++ %s is up and running: %s\n",
+    knd_log("++ %s is up and running: %s",
             self->name, self->addr);
 
     while (1) {
-        knd_log("\n    ++ DELIVERY service is waiting for new tasks...\n");
-
+        knd_log("++ DELIVERY service is waiting for new tasks...");
+        self->out->reset(self->out);
         self->reply_obj = NULL;
         self->reply_obj_size = 0;
-        
+        self->tid[0] = '\0';
+        self->sid[0] = '\0';
+
         self->task = knd_zmq_recv(service, &self->task_size);
         self->obj = knd_zmq_recv(service, &self->obj_size);
 
-	knd_log("    ++ DELIVERY service has got a task:   \"%s\"",
+	knd_log("++ DELIVERY service has got a task:   \"%s\"",
                 self->task);
-        
+
         err = run_task(self);
-        knd_log("== err: %d", err);
 
         if (self->reply_obj_size) {
             reply = self->reply_obj;
@@ -329,6 +483,19 @@ kndDelivery_start(struct kndDelivery *self)
             
         knd_zmq_sendmore(service, header, header_size);
 	knd_zmq_send(service, reply, reply_size);
+
+        if (self->task) {
+            free(self->task);
+            self->task = NULL;
+            self->task_size = 0;
+        }
+
+        /* TODO: free obj if it was not set to index */
+        /*if (self->obj) {
+            self->obj = NULL;
+            self->obj_size = 0;
+        }*/
+        
     }
 
     /* we never get here */
@@ -361,7 +528,7 @@ run_set_db_path(void *obj,
 
     self = (struct kndDelivery*)obj;
 
-    if (DEBUG_DELIV_LEVEL_TMP)
+    if (DEBUG_DELIV_LEVEL_1)
         knd_log(".. set DB path to \"%.*s\"", path_size, path);
 
     memcpy(self->path, path, path_size);
@@ -392,7 +559,7 @@ run_set_service_addr(void *obj,
 
     self = (struct kndDelivery*)obj;
 
-    if (DEBUG_DELIV_LEVEL_TMP)
+    if (DEBUG_DELIV_LEVEL_1)
         knd_log(".. set service addr to \"%.*s\"", addr_size, addr);
 
     memcpy(self->addr, addr, addr_size);
@@ -440,8 +607,6 @@ parse_config_GSL(struct kndDelivery *self,
                                   buf, &buf_size, &chunk_size);
         if (!err) {
             rec += chunk_size;
-            if (DEBUG_DELIV_LEVEL_TMP)
-                knd_log("== got schema: \"%s\"", buf);
         }
     }
     

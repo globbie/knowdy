@@ -74,7 +74,7 @@ struct kndRelType
 
 struct kndRelClass
 {
-    struct kndConcept *dc;
+    struct kndConcept *conc;
     struct kndRelType *rel_types;
     
     struct kndRelClass *next;

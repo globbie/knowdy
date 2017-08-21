@@ -94,8 +94,7 @@ kndUser_add_user(struct kndUser *self)
     err = kndUser_export(self, KND_FORMAT_GSL);
     if (err) return err;
     
-    err = knd_write_file((const char*)buf,
-                         "user.gsl",
+    err = knd_write_file((const char*)buf, "user.gsl",
                          self->out->buf, self->out->buf_size);
     if (err) return err;
 
@@ -147,10 +146,11 @@ kndUser_get_user(struct kndUser *self, const char *uid,
             knd_log("   -- couldn't read the user profile in %s\n", curr_user->path);
             return err;
         }
-        
-        err = kndUser_read(curr_user, (const char*)self->out->file);
-        if (err) goto final;
 
+        /*err = kndUser_read(curr_user, (const char*)self->out->file);
+        if (err) goto final;
+        */
+        
         /*err = curr_user->repo->open(curr_user->repo);
         if (err) goto final;
         */
@@ -171,230 +171,6 @@ kndUser_get_user(struct kndUser *self, const char *uid,
 }
 
 
-
-static int
-kndUser_read_classes(struct kndUser *self, char *rec, size_t rec_size __attribute__((unused)))
-{
-    struct kndConcept *dc;
-    char *c;
-    const char *delim = ";";
-    char *last;
-    int err;
-
-    for (c = strtok_r(rec, delim, &last);
-         c;
-         c = strtok_r(NULL, delim, &last)) {
-
-        /* check classname */
-        dc = self->root_class->class_idx->get(self->root_class->class_idx,
-                                           (const char*)c);
-        if (!dc) {
-            if (DEBUG_USER_LEVEL_TMP)
-                knd_log("  .. classname \"%s\" is not valid...\n", c);
-            return knd_FAIL;
-        }
-
-        /*dc->str(dc, 1);*/
-        
-        err = self->class_idx->set(self->class_idx,
-                                    (const char*)c, (void*)dc);
-        if (err) return err;
-    }
-
-    return knd_OK;
-}
-
-
-static int
-kndUser_read_browse_classes(struct kndUser *self, char *rec, size_t rec_size __attribute__((unused)))
-{
-    struct kndConcept *dc;
-    char *c;
-    const char *delim = ";";
-    char *last;
-    int err;
-
-    for (c = strtok_r(rec, delim, &last);
-         c;
-         c = strtok_r(NULL, delim, &last)) {
-
-        /* check classname */
-        dc = self->root_class->class_idx->get(self->root_class->class_idx,
-                                           (const char*)c);
-        if (!dc) {
-            if (DEBUG_USER_LEVEL_TMP)
-                knd_log("   -- classname \"%s\" is not valid...\n", c);
-            return knd_FAIL;
-        }
-        
-        err = self->browse_class_idx->set(self->browse_class_idx,
-                                          (const char*)c, (void*)dc);
-        if (err) return err;
-    }
-
-    return knd_OK;
-}
-
-
-
-
-
-static int
-kndUser_read(struct kndUser *self, const char *rec)
-{
-    char attr_buf[KND_NAME_SIZE] = {0};
-    size_t attr_buf_size;
-
-    char val_buf[KND_TEMP_BUF_SIZE] = {0};
-    size_t val_buf_size;
-
-    const char *c;
-    const char *b;
-    
-    //bool in_base = true;
-    //bool in_spec = false;
-    //long numval;
-    int err;
-    
-    c = rec;
-    b = rec;
-    
-    if (DEBUG_USER_LEVEL_3)
-        knd_log("  .. User parsing rec: \"%s\"..\n", rec);
-    
-    while (*c) {
-        switch (*c) {
-        case '(':
-            b = c + 1;
-            break;
-        case ')':
-            val_buf_size = c - b;
-            memcpy(val_buf, b, val_buf_size);
-            val_buf[val_buf_size] = '\0';
-
-            /* data classes */
-            if (!strcmp(attr_buf, "C")) {
-                err = kndUser_read_classes(self, val_buf, val_buf_size);
-                if (err) goto final;
-            }
-
-            if (!strcmp(attr_buf, "B")) {
-                err = kndUser_read_browse_classes(self, val_buf, val_buf_size);
-                if (err) goto final;
-            }
-
-            /*if (!strcmp(attr_buf, "R")) {
-                err = kndUser_read_repos(self, val_buf, val_buf_size);
-                if (err) goto final;
-                }*/
-
-            if (!strcmp(attr_buf, "N")) {
-                memcpy(self->name, val_buf, val_buf_size);
-                self->name_size = val_buf_size;
-                self->name[val_buf_size] = '\0';
-            }
-            break;
-        case '^':
-            attr_buf_size = c - b;
-            memcpy(attr_buf, b, attr_buf_size);
-            attr_buf[attr_buf_size] = '\0';
-
-            /*knd_log("ATTR: %s\n", attr_buf);*/
-            b = c + 1;
-            break;
-            
-        default:
-            break;
-        }
-        c++;
-    }
-    
-    
-    err = knd_OK;
-    
- final:
-    
-    return err;
-}
-
-
-static int
-kndUser_read_db_state(struct kndUser *self, char *rec)
-{
-    char *b, *c;
-    
-    bool in_body = false;
-    //bool in_state = false;
-    bool in_field = false;
-    bool in_val = false;
-    size_t chunk_size = 0;
-    int err;
-    
-    c = rec;
-    b = rec;
-    
-    if (DEBUG_USER_LEVEL_2)
-        knd_log(".. User \"%s\" parsing DB state config", self->id, rec);
-    
-    while (*c) {
-        switch (*c) {
-        case ' ':
-        case '\n':
-        case '\r':
-        case '\t':
-            if (in_val) break;
-            
-            break;
-        case '{':
-            if (!in_body) {
-                in_body = true;
-                b = c + 1;
-                break;
-            }
-
-            *c = '\0';
-
-            if (!in_field) {
-                if (!strncmp(b, "STATE", strlen("STATE"))) {
-                    in_field = true;
-                    b = c + 1;
-                    break;
-                } else
-                    return knd_FAIL;
-            }
-            
-            if (!strcmp(b, "repo")) {
-                c++;
-                err = self->repo->read_state(self->repo, c, &chunk_size);
-                if (err) return err;
-
-                c += chunk_size;
-
-                /*knd_log("CHUNK: %lu continue parsing from \"%s\"",
-                  (unsigned long)chunk_size, c); */
-                break;
-            }
-            
-            b = c + 1;
-            break;
-        case '}':
-            
-            if (in_body)
-                return knd_OK;
-
-            break;
-        default:
-            break;
-        }
-
-        c++;
-    }
-
-    
-    return knd_FAIL;
-}
-
-
 static int 
 kndUser_restore(struct kndUser *self)
 {
@@ -409,52 +185,6 @@ kndUser_restore(struct kndUser *self)
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. user \"%s\" restoring DB state  DBPATH: %s",
                 self->id, self->dbpath);
-
-    buf_size = sprintf(buf, "%s/state.gsl", self->dbpath);
-    err = self->out->read_file(self->out,
-                               (const char*)buf, buf_size);
-    if (err) {
-        // TODO: check error status
-        knd_log("-- no state.gsl file found, assume initial state.");
-        return knd_OK;
-    }
-
-    err = kndUser_read_db_state(self, self->out->file);
-    if (err) return err;
-    
-    memset(idbuf, '0', KND_ID_SIZE);
-    idbuf[KND_ID_SIZE] = '\0';
-
-    while ((strncmp(idbuf, self->repo->last_id, KND_ID_SIZE)) < 0) {
-        knd_inc_id(idbuf);
-
-        err = kndRepo_new(&repo);
-        if (err) return knd_NOMEM;
-
-        memcpy(repo->id, idbuf, KND_ID_SIZE);
-        repo->user = self;
-        repo->out = self->out;
-
-        repo->restore_mode = true;
-        
-        err = repo->open(repo);
-        if (err) return err;
-
-        if (self->role == KND_USER_ROLE_LEARNER) {
-            err = repo->restore(repo);
-            if (err) return err;
-        }
-        
-        /* update repo full name idx */
-        err = self->repo->repo_idx->set(self->repo->repo_idx, repo->name, (void*)repo);
-        if (err) return err;
-
-        
-        knd_log("++ repo opened: %s PATH: %s", repo->name, repo->path);
-
-        repo->restore_mode = false;
-    }
-
     return knd_OK;
 }
 
@@ -572,113 +302,10 @@ static int kndUser_parse_repo(void *obj,
     self->repo->log = self->log;
     
     err = self->repo->parse_task(self->repo, rec, total_size);
-    if (err) {
-        return err;
-    }
-
-    return knd_OK;
-}
-
-
-static int run_select_classes(void *obj,
-                              struct kndTaskArg *args, size_t num_args)
-{
-    struct kndUser *self = (struct kndUser*)obj;
-    struct kndTaskArg *arg;
-    int err;
-
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log(".. default repo class select..");
-
-    /* select filters */
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        
-    }
-
-    self->root_class->out = self->out;
-    self->root_class->log = self->log;
-    
-    self->root_class->locale = self->locale;
-    self->root_class->locale_size = self->locale_size;
-    
-    err = self->root_class->select(self->root_class, args, num_args);
-    if (err) return err;
-    
-    return knd_OK;
-}
-
-
-static int run_get_class(void *obj,
-                         struct kndTaskArg *args, size_t num_args)
-{
-    struct kndUser *self = (struct kndUser*)obj;
-    struct kndTaskArg *arg;
-     const char *name = NULL;
-    size_t name_size = 0;
-    int err;
-
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            name = arg->val;
-            name_size = arg->val_size;
-        }
-    }
-    
-    if (!name_size) return knd_FAIL;
-    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
-
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log(".. default repo get class: \"%s\".. OUT BUF: %s", name, self->out->buf);
-
-    self->root_class->out = self->out;
-    self->root_class->log = self->log;
-    
-    self->root_class->locale = self->locale;
-    self->root_class->locale_size = self->locale_size;
-    self->root_class->format = KND_FORMAT_JSON;
-
-    err = self->root_class->get(self->root_class, name, name_size);
     if (err) return err;
 
     return knd_OK;
 }
-
-static int kndUser_parse_default_class(void *obj,
-                                       const char *rec,
-                                       size_t *total_size)
-{
-    struct kndUser *self = (struct kndUser*)obj;
-    int err;
-
-    if (DEBUG_USER_LEVEL_1)
-        knd_log(".. parsing the default class rec: \"%s\"", rec);
-
-    struct kndTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_get_class,
-          .obj = self
-        },
-        { .name = "default",
-          .name_size = strlen("default"),
-          .is_default = true,
-          .run = run_select_classes,
-          .obj = self
-        }
-    };
-
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) {
-        self->log->write(self->log,
-                         "{user class failure}",
-                         strlen( "{user class failure}"));
-        return err;
-    }
-
-    return knd_OK;
-}
-
 
 static int
 kndUser_parse_auth(void *obj,
@@ -698,20 +325,22 @@ kndUser_parse_auth(void *obj,
           .max_buf_size = KND_NAME_SIZE
         }
     };
-    int err;
+    int err, e;
 
     if (DEBUG_USER_LEVEL_2)
         knd_log("   .. parsing the AUTH rec: \"%s\"", rec);
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) {
-        self->log->write(self->log,
-                         "{user auth failure}",
-                         strlen( "{repo auth failure}"));
+        if (!self->log->buf_size) {
+            e = self->log->write(self->log, "user authentication failure",
+                                   strlen("user authentication failure"));
+            if (e) return e;
+        }
         return err;
     }
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log("++ got SID: \"%s\"", sid);
     
     if (!sid_size) {
@@ -719,10 +348,94 @@ kndUser_parse_auth(void *obj,
         return knd_FAIL;
     }
 
+    /* TODO: DB check auth token */
+
     if (strncmp(self->sid, sid, sid_size)) {
         knd_log("-- wrong SID: \"%.*s\"", sid_size, sid);
+        err = self->log->write(self->log, "SID authentication failure",
+                               strlen("SID authentication failure"));
+        if (err) return err;
+        
         return knd_FAIL;
     }
+    
+    return knd_OK;
+}
+
+
+static int kndUser_parse_class_import(void *obj,
+                                      const char *rec,
+                                      size_t *total_size)
+{
+    struct kndUser *self = (struct kndUser*)obj;
+    int err;
+
+    if (DEBUG_USER_LEVEL_1)
+        knd_log(".. parsing the default class import: \"%s\"", rec);
+
+    self->task->type = KND_CHANGE_STATE;
+
+    self->root_class->out = self->out;
+    self->root_class->log = self->log;
+    self->root_class->task = self->task;
+
+    self->root_class->dbpath = self->dbpath;
+    self->root_class->dbpath_size = self->dbpath_size;
+
+    self->root_class->locale = self->locale;
+    self->root_class->locale_size = self->locale_size;
+    
+    err = self->root_class->import(self->root_class, rec, total_size);
+    if (err) return err;
+
+    return knd_OK;
+}
+
+
+static int kndUser_parse_class_select(void *obj,
+                                      const char *rec,
+                                      size_t *total_size)
+{
+    struct kndUser *self = (struct kndUser*)obj;
+    int err;
+
+    if (DEBUG_USER_LEVEL_2)
+        knd_log(".. parsing the default class select: \"%s\"", rec);
+
+    self->root_class->out = self->out;
+    self->root_class->log = self->log;
+    self->root_class->task = self->task;
+
+    self->root_class->dbpath = self->dbpath;
+    self->root_class->dbpath_size = self->dbpath_size;
+
+    self->root_class->locale = self->locale;
+    self->root_class->locale_size = self->locale_size;
+    
+    err = self->root_class->select(self->root_class, rec, total_size);
+    if (err) return err;
+
+    return knd_OK;
+}
+
+
+static int kndUser_parse_liquid_updates(void *obj,
+                                        const char *rec,
+                                        size_t *total_size)
+{
+    struct kndUser *self = (struct kndUser*)obj;
+    struct kndConcept *c;
+    int err;
+
+    if (DEBUG_USER_LEVEL_2)
+        knd_log(".. parse and apply liquid updates..");
+
+    self->task->type = KND_UPDATE_STATE;
+    self->root_class->task = self->task;
+
+    err = self->root_class->apply_liquid_updates(self->root_class);
+    if (err) return err;
+
     
     return knd_OK;
 }
@@ -732,9 +445,13 @@ kndUser_parse_task(struct kndUser *self,
                    const char *rec,
                    size_t *total_size)
 {
+    struct kndOutput *out;
+
+    if (DEBUG_USER_LEVEL_1)
+        knd_log(".. parsing user task: \"%s\"..", rec);
+
     struct kndTaskSpec specs[] = {
-        { .type = KND_CHANGE_STATE,
-          .name = "auth",
+        { .name = "auth",
           .name_size = strlen("auth"),
           .parse = kndUser_parse_auth,
           .obj = self
@@ -744,24 +461,65 @@ kndUser_parse_task(struct kndUser *self,
           .parse = kndUser_parse_repo,
           .obj = self
         },
+        { .type = KND_CHANGE_STATE,
+          .name = "class",
+          .name_size = strlen("class"),
+          .parse = kndUser_parse_class_import,
+          .obj = self
+        },
         { .name = "class",
           .name_size = strlen("class"),
-          .parse = kndUser_parse_default_class,
+          .parse = kndUser_parse_class_select,
+          .obj = self
+        },
+        { .name = "state",
+          .name_size = strlen("state"),
+          .parse = kndUser_parse_liquid_updates,
           .obj = self
         }
     };
-    int err;
+    int err, e;
     
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) {
-        self->log->write(self->log,
-                         "{user task run failure}",
-                         strlen( "{repo task run failure}"));
+        knd_log("-- user task parse failure: \"%.*s\" :(", self->log->buf_size, self->log->buf);
+        if (!self->log->buf_size) {
+            e = self->log->write(self->log, "internal server error",
+                                   strlen("internal server error"));
+            if (e) return e;
+        }
         return err;
     }
-    
+
+    switch (self->task->type) {
+    case KND_UPDATE_STATE:
+        if (DEBUG_USER_LEVEL_TMP)
+            knd_log("++ all updates applied!");
+        return knd_OK;
+    case KND_GET_STATE:
+        if (DEBUG_USER_LEVEL_TMP)
+            knd_log("++ get task complete!");
+        return knd_OK;
+    default:
+        /* any transaction to close? */
+        if (self->root_class->inbox_size || self->root_class->obj_inbox_size) {
+            out = self->task->update;
+            err = out->write(out, "{task{update", strlen("{task{update"));
+            if (err) return err;
+            /* update spec body */
+            err = out->write(out, rec, *total_size);
+            if (err) return err;
+            
+            err = self->root_class->update_state(self->root_class);
+            if (err) return err;
+        }
+    }
+
     return knd_OK;
 }
+
+
+
 
 
 static int 
@@ -791,7 +549,7 @@ kndUser_init(struct kndUser *self)
     self->add_user = kndUser_add_user;
     self->get_user = kndUser_get_user;
 
-    self->read = kndUser_read;
+    //self->read = kndUser_read;
     self->restore = kndUser_restore;
 
     return knd_OK;

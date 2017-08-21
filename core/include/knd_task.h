@@ -28,7 +28,8 @@ struct kndTask;
 struct kndUser;
 
 typedef enum knd_task_spec_type { KND_GET_STATE, 
-                                  KND_CHANGE_STATE
+                                  KND_CHANGE_STATE,
+                                  KND_UPDATE_STATE
 } knd_task_spec_type;
 
 struct kndTaskArg
@@ -71,11 +72,16 @@ struct kndTaskSpec
 
 struct kndTask
 {
+    knd_task_spec_type type;
+
     char sid[KND_NAME_SIZE];
     size_t sid_size;
 
     char uid[KND_NAME_SIZE];
     size_t uid_size;
+
+    char schema_name[KND_NAME_SIZE];
+    size_t schema_name_size;
 
     char tid[KND_NAME_SIZE];
     size_t tid_size;
@@ -92,16 +98,21 @@ struct kndTask
     const char *obj;
     size_t obj_size;
 
+    char state[KND_STATE_SIZE];
+    bool is_state_changed;
+    
     int error;
     
     struct kndUser *admin;
-    
+
     struct kndOutput *log;
     struct kndOutput *out;
     struct kndOutput *spec_out;
+    struct kndOutput *update;
 
     void *delivery;
-    
+    void *publisher;
+
     /******** public methods ********/
     void (*str)(struct kndTask *self,
                size_t depth);

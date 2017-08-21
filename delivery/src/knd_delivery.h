@@ -9,9 +9,6 @@
 #include "knd_utils.h"
 #include "knd_user.h"
 
-//#include "knd_monitor.h"
-
-
 struct kndAuthRec
 {
     char uid[KND_ID_SIZE];
@@ -34,6 +31,11 @@ struct kndResult
 {
     knd_proc_state_t proc_state;
     knd_format format;
+
+    char sid[KND_SID_SIZE];
+    size_t sid_size;
+    
+    bool sid_required;
     
     char   *header;
     size_t header_size;
@@ -81,10 +83,10 @@ struct kndDelivery
     char inbox[KND_TEMP_BUF_SIZE];
     size_t inbox_size;
 
-    char tid[KND_NAME_SIZE];
+    char tid[KND_TID_SIZE];
     size_t tid_size;
 
-    char sid[KND_NAME_SIZE];
+    char sid[KND_SID_SIZE];
     size_t sid_size;
 
     struct ooDict *auth_idx;

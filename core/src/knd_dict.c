@@ -62,7 +62,7 @@ ooDict_str(struct ooDict *self)
         while (cur) {
             item = (struct ooDictItem*)cur->data;
 
-            printf(" %zu) KEY: \"%s\"\n", i, item->key);
+            printf(" %zu) KEY: \"%s\" VAL: %p\n", i, item->key, item->data);
 
             cur = cur->next;
         }
@@ -93,9 +93,7 @@ ooDict_find_item(struct ooDict *self,
     unsigned int h;
 
     h = oo_hash(key) % self->hash->size;
-
     l = (struct ooList*)self->hash->data[h];
-
     cur = l->head;
     while (cur) {
         cur_key = ((struct ooDictItem*)cur->data)->key;
@@ -134,11 +132,8 @@ ooDict_set(struct ooDict *self,
     if (!key) return oo_FAIL;
 
     h = oo_hash(key) % self->hash->size;
-
     l = (struct ooList*)self->hash->data[h];
-
     cur = l->head;
-
     while (cur) {
         cur_key = ((struct ooDictItem*)cur->data)->key;
         if (!strcmp(key, cur_key)) {

@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2015 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2017 by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Search Engine, 
@@ -22,12 +22,13 @@
 #define KND_CODEREF_H
 
 #include "knd_config.h"
+#include "knd_attr.h"
 
 struct kndOutput;
 
 struct kndCodeRef
 {
-    knd_elem_type type;
+    knd_attr_type type;
     
     char name[KND_NAME_SIZE];
     size_t name_size;

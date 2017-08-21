@@ -9,7 +9,7 @@ struct kndTask;
 
 struct kndRetriever
 {
-    char *name;
+    char name[KND_TEMP_BUF_SIZE];
     size_t name_size;
 
     char path[KND_TEMP_BUF_SIZE];

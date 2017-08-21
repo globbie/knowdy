@@ -76,6 +76,59 @@ knd_inc_id(char *id)
     return knd_OK;
 }
 
+extern int knd_next_state(char *s)
+{
+    char *c;
+
+    for (int i = KND_STATE_SIZE - 1; i > -1; i--) {
+        c = &s[i];
+        switch (*c) {
+        case '9':
+            *c = 'A';
+            return knd_OK;
+        case 'Z':
+            *c = 'a';
+            return knd_OK;
+        case 'z':
+            /* last position overflow */
+            if (i == 0) return knd_LIMIT; 
+            *c = '0';
+            continue;
+        default:
+            (*c)++;
+            return knd_OK;
+        }
+    }
+
+    return knd_OK;
+}
+
+extern int 
+knd_state_is_valid(const char *id, size_t id_size)
+{
+    if (id_size > KND_STATE_SIZE) return knd_FAIL;
+    
+    for (size_t i = 0; i < KND_STATE_SIZE; i++) {
+        if (id[i] >= '0' && id[i] <= '9') continue;
+        if (id[i] >= 'A' && id[i] <= 'Z') continue;
+        if (id[i] >= 'a' && id[i] <= 'z') continue;
+        return knd_FAIL;
+    }
+
+    return knd_OK;
+}
+
+extern int 
+knd_state_compare(const char *a, const char *b)
+{
+    for (size_t i = 0; i < KND_STATE_SIZE; i++) {
+        if (a[i] > b[i]) return knd_MORE;
+        else if (a[i] < b[i]) return knd_LESS;
+    }
+    return knd_EQUALS;
+}
+
+
 extern int 
 knd_is_valid_id(const char *id, size_t id_size)
 {
@@ -206,7 +259,8 @@ knd_mkpath(const char *path, mode_t mode, bool has_filename)
 }
 
 extern int 
-knd_write_file(const char *path, const char *filename, 
+knd_write_file(const char *path,
+               const char *filename, 
                void *buf, size_t buf_size)
 {
     char name_buf[KND_TEMP_BUF_SIZE];
@@ -273,7 +327,6 @@ knd_make_id_path(char *buf,
 
     return knd_OK;
 }
-
 
 
 extern int 

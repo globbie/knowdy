@@ -343,7 +343,7 @@ kndCodeRef_sync(struct kndCodeRef *self)
     //struct kndSortAttr *attr;
     int err;
 
-    if (self->type == KND_ELEM_ATOM)
+    if (self->type == KND_ATTR_ATOM)
         return knd_OK;
 
     buf_size = sprintf(buf, "@%lu+%lu",

@@ -56,7 +56,6 @@ kndRetriever_start(struct kndRetriever *self)
     self->delivery = zmq_socket(context, ZMQ_REQ);
     if (!self->delivery) return knd_FAIL;
     assert((zmq_connect(self->delivery,  self->delivery_addr) == knd_OK));
-
     self->task->delivery = self->delivery;
     
     while (1) {
@@ -78,9 +77,19 @@ kndRetriever_start(struct kndRetriever *self)
         }
 
     final:
-        
+
+        /* ne need to inform delivery about every liquid update success */
+        if (self->task->type == KND_UPDATE_STATE) {
+            if (!err) {
+                if (task) free(task);
+                if (obj) free(obj);
+                continue;
+            }
+        }
+
         err = self->task->report(self->task);
         if (err) {
+            /* TODO */
             knd_log("-- task report failed: %d", err);
         }
 
@@ -147,6 +156,12 @@ parse_config_GSL(struct kndRetriever *self,
            .buf_size = &self->path_size,
           .max_buf_size = KND_NAME_SIZE
          },
+         { .name = "n",
+           .name_size = strlen("n"),
+           .buf = self->name,
+           .buf_size = &self->name_size,
+           .max_buf_size = KND_NAME_SIZE
+         },
          { .name = "schemas",
            .name_size = strlen("schemas"),
            .buf = self->schema_path,
@@ -200,7 +215,7 @@ parse_config_GSL(struct kndRetriever *self,
         if (!err) {
             rec += chunk_size;
             
-            if (DEBUG_RETRIEVER_LEVEL_TMP)
+            if (DEBUG_RETRIEVER_LEVEL_2)
                 knd_log("== got schema: \"%s\"", buf);
         }
     }
@@ -296,14 +311,11 @@ kndRetriever_new(struct kndRetriever **rec,
         goto error;
     }
 
-    knd_log(".. config parsing");
-
     err = parse_config_GSL(self, self->out->file, &chunk_size);
     if (err) {
         knd_log("  -- config parsing error :(");
         goto error;
     }
-    knd_log("++ config parse OK!");
 
     err = kndConcept_new(&dc);
     if (err) return err;
@@ -318,15 +330,17 @@ kndRetriever_new(struct kndRetriever **rec,
     if (err) goto error;
     
     /* read class definitions */
-    err = dc->read_file(dc, "index", strlen("index"));
+    dc->batch_mode = true;
+    err = dc->open(dc, "index", strlen("index"));
     if (err) {
- 	knd_log("-- couldn't read any schema definitions :("); 
+ 	knd_log("-- couldn't read the schema definitions :("); 
         goto error;
     }
     
     err = dc->coordinate(dc);
     if (err) goto error;
-    
+
+    dc->batch_mode = false;
     self->admin->root_class = dc;
 
     self->del = kndRetriever_del;
@@ -337,7 +351,7 @@ kndRetriever_new(struct kndRetriever **rec,
 
  error:
 
-    knd_log("  -- Retriever failure :(\n");
+    knd_log("-- Retriever construction failure :(");
     
     kndRetriever_del(self);
     return err;
@@ -347,7 +361,6 @@ kndRetriever_new(struct kndRetriever **rec,
 
 
 /** SERVICES */
-
 void *kndRetriever_inbox(void *arg)
 {
     void *context;
@@ -401,9 +414,6 @@ void *kndRetriever_selector(void *arg)
     
     backend = zmq_socket(context, ZMQ_PUSH);
     assert(backend);
-    
-    //err = zmq_connect(frontend, "tcp://127.0.0.1:6913");
-    //assert(err == knd_OK);
 
     err = zmq_connect(frontend, retriever->coll_request_addr);
     assert(err == knd_OK);
@@ -430,14 +440,12 @@ void *kndRetriever_subscriber(void *arg)
     void *context;
     void *subscriber;
     void *inbox;
-
     struct kndRetriever *retriever;
 
     char *obj;
     size_t obj_size;
     char *task;
     size_t task_size;
-    
     int err;
 
     retriever = (struct kndRetriever*)arg;
@@ -446,35 +454,32 @@ void *kndRetriever_subscriber(void *arg)
 
     subscriber = zmq_socket(context, ZMQ_SUB);
     assert(subscriber);
-
-    err = zmq_connect(subscriber, "ipc:///tmp/writer_pub");
+    err = zmq_connect(subscriber, "ipc:///var/lib/knowdy/learner_pub_backend");
     assert(err == knd_OK);
-    
     zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "", 0);
 
     inbox = zmq_socket(context, ZMQ_PUSH);
     assert(inbox);
-
     err = zmq_connect(inbox, retriever->inbox_frontend_addr);
     assert(err == knd_OK);
     
     while (1) {
-	printf("    ++ RETRIEVER SUBSCRIBER is waiting for new tasks...\n");
+	knd_log(".. \"%s\" Retriever is waiting for the updates from Learner...",
+                retriever->name);
 
         task = knd_zmq_recv(subscriber, &task_size);
-
-	printf("    ++ RETRIEVER SUBSCRIBER has got task:\n"
-          "       %s",  task);
-
 	obj = knd_zmq_recv(subscriber, &obj_size);
 
-	printf("    ++ RETRIEVER SUBSCRIBER is updating its inbox..\n");
+	printf("++ %s Retriever has got an update from Learner:"
+               "       %.*s [%lu]", retriever->name, (unsigned int)task_size, task, (unsigned long)task_size);
+	printf("   OBJ: %.*s [%lu]", (unsigned int)obj_size, obj, (unsigned long)obj_size);
         
-	knd_zmq_sendmore(inbox, task, task_size);
-	knd_zmq_send(inbox, obj, obj_size);
-
-	printf("    ++ all messages sent!");
-
+	err = knd_zmq_sendmore(inbox, task, task_size);
+	err = knd_zmq_send(inbox, obj, obj_size);
+        
+        free(task);
+        free(obj);
+        
         fflush(stdout);
     }
 
@@ -530,7 +535,6 @@ main(int const argc,
 			 NULL,
 			 kndRetriever_subscriber, 
                          (void*)retriever);
-   
     
     /* add selector */
     err = pthread_create(&selector, 

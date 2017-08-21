@@ -583,12 +583,12 @@ static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t n
         tr->seq[val_size] = '\0';
         tr->seq_size = val_size;
 
-        if (DEBUG_TEXT_LEVEL_TMP)
+        if (DEBUG_TEXT_LEVEL_2)
             knd_log("== TEXT CHUNK val: \"%s\"", tr->seq);
         return knd_OK;
     }
 
-    if (DEBUG_TEXT_LEVEL_TMP)
+    if (DEBUG_TEXT_LEVEL_2)
         knd_log(".. set translation text \"%s\" => \"%s\"", tr->locale, val);
 
     memcpy(tr->val, val, val_size);
