@@ -1,6 +1,7 @@
 [Unit]
 Description=Knowdy Retriever Service
 After=network.target
+PartOf=knowdy.target
 
 [Service]
 Type=simple

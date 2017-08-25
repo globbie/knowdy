@@ -1,6 +1,7 @@
 [Unit]
 Description=Knowdy Collection Service
 After=network.target
+PartOf=knowdy.target
 
 [Service]
 Type=simple
