@@ -1,0 +1,12 @@
+[Unit]
+Description=Knowdy Learner Service
+After=network.target
+
+[Service]
+Type=simple
+User=knowdy
+ExecStart=/usr/bin/knd-learner /etc/knowdy/learner.gsl
+
+[Install]
+
+

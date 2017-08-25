@@ -1,0 +1,12 @@
+[Unit]
+Description=Knowdy Retriever Service
+After=network.target
+
+[Service]
+Type=simple
+User=knowdy
+ExecStart=/usr/bin/knd-retriever /etc/knowdy/retriever.gsl
+
+[Install]
+
+

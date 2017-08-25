@@ -1,0 +1,4 @@
+[Unit]
+Description=Knowdy Meta Service
+After=network.target
+Requires=knd-delivery.service knd-collection.service knd-storage.service knd-learner.service knd-retriever.service
