@@ -143,6 +143,7 @@ typedef enum knd_storage_type {
 #define KND_TID_SIZE 128
 
 #define KND_MAX_TIDS 1024
+#define KND_MAX_USERS 1024 * 1024
 
 #define KND_MAX_GEOIPS 160000
 #define KND_MAX_GEO_LOCS 3200
