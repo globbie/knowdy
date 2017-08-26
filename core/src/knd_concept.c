@@ -31,6 +31,9 @@ static int get_attr(struct kndConcept *self,
                     const char *name, size_t name_size,
                     struct kndAttr **result);
 
+static int build_diff(struct kndConcept *self,
+                      const char *start_state);
+
 /*  Concept Destructor */
 static void del(struct kndConcept *self)
 {
@@ -1562,6 +1565,7 @@ static int run_select_class(void *obj,
         c->locale = self->locale;
         c->locale_size = self->locale_size;
         c->format = KND_FORMAT_JSON;
+        c->depth = 0;
         err = c->export(c);
         if (err) return err;
 
@@ -1799,6 +1803,96 @@ static int parse_set_attr(void *obj,
 }
 
 
+
+
+
+
+static int run_delta_gt(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndTaskArg *arg;
+    const char *val = NULL;
+    size_t val_size = 0;
+    int err, e;
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "gt", strlen("gt"))) {
+            val = arg->val;
+            val_size = arg->val_size;
+        }
+    }
+
+    if (!val_size) return knd_FAIL;
+    if (val_size != KND_STATE_SIZE) {
+        self->log->reset(self->log);
+        e = self->log->write(self->log, "state id is not valid: ",
+                             strlen("state id is not valid: "));
+        if (e) return e; 
+        e = self->log->write(self->log, val, val_size);
+        if (e) return e;
+        return knd_LIMIT;
+    }
+
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. run delta calculation >= %.*s", val_size, val);
+
+    err = build_diff(self, val);
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+static int select_delta(struct kndConcept *self,
+                        const char *rec,
+                        size_t *total_size)
+{
+    struct kndTaskSpec specs[] = {
+        { .name = "gt",
+          .name_size = strlen("gt"),
+          .run = run_delta_gt,
+          .obj = self
+        }
+    };
+    int err;
+
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. select delta from \"%.*s\" class..",
+                self->name_size,
+                self->name);
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
+
+static int parse_select_class_delta(void *data,
+                                    const char *rec,
+                                    size_t *total_size)
+{
+    struct kndConcept *self = (struct kndConcept*)data;
+    struct kndObject *obj;
+    
+    struct kndOutput *out = self->out;
+    size_t chunk_size;
+    int err;
+
+    if (!self->curr_class) {
+        knd_log("-- class not set :(");
+        return knd_FAIL;
+    }
+
+    self->curr_class->task = self->task;
+    self->curr_class->log = self->log;
+    self->curr_class->out = self->out;
+
+    err = self->curr_class->select_delta(self->curr_class, rec, total_size);
+    if (err) return err;
+
+    return knd_OK;
+}
+
 static int parse_select_class(void *obj,
                               const char *rec,
                               size_t *total_size)
@@ -1842,6 +1936,11 @@ static int parse_select_class(void *obj,
         { .name = "obj",
           .name_size = strlen("obj"),
           .parse = parse_select_obj,
+          .obj = self
+        },
+        { .name = "delta",
+          .name_size = strlen("delta"),
+          .parse = parse_select_class_delta,
           .obj = self
         },
         { .name = "default",
@@ -1947,7 +2046,8 @@ kndConcept_export_JSON(struct kndConcept *self)
     int i, err;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. JSON export concept: \"%s\"   locale: %s\n", self->name, self->locale);
+        knd_log(".. JSON export concept: \"%s\"   locale: %s depth: %lu\n",
+                self->name, self->locale, (unsigned long)self->depth);
 
     out = self->out;
     err = out->write(out, "{", 1);
@@ -2075,31 +2175,33 @@ kndConcept_export_JSON(struct kndConcept *self)
     }
 
     if (self->num_children) {
-        err = out->write(out, ",\"children\":[", strlen(",\"children\":["));
-        if (err) return err;
-        for (size_t i = 0; i < self->num_children; i++) {
-            ref = &self->children[i];
+        if (self->depth + 1 < KND_MAX_CLASS_DEPTH) {
+        
+            err = out->write(out, ",\"children\":[", strlen(",\"children\":["));
+            if (err) return err;
+            for (size_t i = 0; i < self->num_children; i++) {
+                ref = &self->children[i];
+                
+                if (DEBUG_CONC_LEVEL_2)
+                    knd_log("base of --> %s", ref->conc->name);
 
-            if (DEBUG_CONC_LEVEL_2)
-                knd_log("base of --> %s", ref->conc->name);
-
-            if (i) {
-                err = out->write(out, ",", 1);
+                if (i) {
+                    err = out->write(out, ",", 1);
+                    if (err) return err;
+                }
+                
+                c = ref->conc;
+                c->out = self->out;
+                c->locale = self->locale;
+                c->locale_size = self->locale_size;
+                c->format =  KND_FORMAT_JSON;
+                c->depth = self->depth + 1;
+                err = c->export(c);
                 if (err) return err;
             }
-
-            c = ref->conc;
-            c->out = self->out;
-            c->locale = self->locale;
-            c->locale_size = self->locale_size;
-            c->format =  KND_FORMAT_JSON;
-            c->depth = self->depth + 1;
-            
-            err = c->export(c);
+            err = out->write(out, "]", 1);
             if (err) return err;
         }
-        err = out->write(out, "]", 1);
-        if (err) return err;
     }
 
     err = out->write(out, "}", 1);
@@ -2582,7 +2684,7 @@ static int build_diff(struct kndConcept *self,
     struct kndOutput *out = self->out;
     const char *inbox_dir = "/inbox";
     size_t inbox_dir_size = strlen(inbox_dir);
-    int res, err;
+    int res, err, e;
     
     if (DEBUG_CONC_LEVEL_TMP)
         knd_log("\n\n.. building diff from state: %.*s CURR STATE: \"%.*s\"",
@@ -2676,6 +2778,7 @@ static void init(struct kndConcept *self)
     self->open = read_GSL_file;
     self->restore = restore;
     self->build_diff = build_diff;
+    self->select_delta = select_delta;
 
     self->coordinate = resolve_class_refs;
     self->resolve = resolve_names;

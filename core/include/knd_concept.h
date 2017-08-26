@@ -177,6 +177,11 @@ struct kndConcept
                 size_t filename_size);
     
     int (*restore)(struct kndConcept   *self);
+    
+    int (*select_delta)(struct kndConcept *self,
+                        const char *rec,
+                        size_t *total_size);
+
     int (*build_diff)(struct kndConcept   *self,
                       const char *start_state);
 

@@ -151,6 +151,7 @@ typedef enum knd_storage_type {
 #define KND_OBJ_METABUF_SIZE 1024
 
 #define KND_DEFAULT_CLASS_DEPTH 3
+#define KND_MAX_CLASS_DEPTH 2
 #define KND_MAX_CLASS_BATCH 128
 
 #define KND_DEFAULT_OBJ_DEPTH 2
