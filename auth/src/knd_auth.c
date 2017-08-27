@@ -183,7 +183,6 @@ static int parse_auth(void *obj,
     return knd_OK;
 }
 
-
 static int parse_user(void *obj,
                       const char *rec,
                       size_t *total_size)
@@ -272,7 +271,8 @@ static int kndAuth_start(struct kndAuth *self)
     assert(service);
     assert((zmq_bind(service, self->addr) == knd_OK));
 
-    knd_log("++ %s is up and running: %s", self->name, self->addr);
+    knd_log("++ %s is up and running: %s",
+            self->name, self->addr);
 
     while (1) {
         knd_log("++ AUTH service is waiting for new tasks...");

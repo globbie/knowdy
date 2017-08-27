@@ -1,4 +1,4 @@
 {gsl::Knowdy Basic
     {knd::Auth Service Configuration
-       {db_host 10.133.255.6}
+       {db_host DB_HOST_NAME}
        {service ipc:///var/lib/knowdy/auth/inbox}
