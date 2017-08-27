@@ -10,7 +10,7 @@ addons:
     - gcc-4.8
     - clang
     - libzmq3-dev
-    - mysql
+    - mysql-client
 dist: trusty
 compiler:
 - gcc
