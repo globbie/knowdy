@@ -142,12 +142,10 @@ static int update_token(struct kndAuth *self,
         user_rec->id = (size_t)numval;
         user_rec->name_size = sprintf(user_rec->name, "%lu", (unsigned long)numval);
 
-        for (size_t i; i < KND_MAX_TOKEN_CACHE; i++) {
+        for (size_t i = 0; i < KND_MAX_TOKEN_CACHE; i++) {
             tok_rec = &user_rec->token_storage[i];
             tok_rec->user = user_rec;
-            
             if (!user_rec->tail) {
-                knd_log(".. add tail: %p", tok_rec);
                 user_rec->tail = tok_rec;
             }
             
