@@ -71,7 +71,10 @@ main(int const argc,
 			 (void*)auth); */
     err = auth->update(auth);
     if (err) return err;
-    
+
+    err = auth->update(auth);
+    if (err) return err;
+
     auth->start(auth);
 
     return 0;
