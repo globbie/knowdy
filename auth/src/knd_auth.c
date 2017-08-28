@@ -173,11 +173,14 @@ static int update_tokens(struct kndAuth *self)
     MYSQL_RES *result = NULL;
     MYSQL_ROW row;
     struct kndAuthTokenRec *tok_rec;
+    const char *userid;
+    size_t userid_size;
     unsigned int num_fields;
     unsigned int i;
     unsigned int row_count;
     unsigned int error_count;
     unsigned int doublet_count;
+    unsigned int empty_userid_count;
 
     const char *err_msg;
     const char *internal_err_msg = "{\"err\":\"internal error\",\"http_code\":500}";
@@ -220,11 +223,20 @@ static int update_tokens(struct kndAuth *self)
     row_count = 0;
     error_count = 0;
     doublet_count = 0;
+    empty_userid_count = 0;
 
     while ((row = mysql_fetch_row(result))) {
         unsigned long *lengths;
         lengths = mysql_fetch_lengths(result);
 
+        /* empty user id? */
+        userid = row[SQL_TOKEN_USER_FIELD_ID];
+        userid_size = lengths[SQL_TOKEN_USER_FIELD_ID];
+        if (!userid_size) {
+            empty_userid_count++;
+            continue;
+        }
+        
         tok_buf_size = lengths[SQL_TOKEN_STR_FIELD_ID];
         if (!tok_buf_size || tok_buf_size >= KND_MAX_TOKEN_SIZE) {
             error_count++;
@@ -242,15 +254,14 @@ static int update_tokens(struct kndAuth *self)
         }
 
         err = update_token(self,
-                           row[SQL_TOKEN_USER_FIELD_ID],   lengths[SQL_TOKEN_USER_FIELD_ID],
-                           tok_buf,                        tok_buf_size,
+                           userid,  userid_size,
+                           tok_buf, tok_buf_size,
                            row[SQL_TOKEN_EXPIRY_FIELD_ID], lengths[SQL_TOKEN_EXPIRY_FIELD_ID],
                            row[SQL_TOKEN_SCOPE_FIELD_ID],  lengths[SQL_TOKEN_SCOPE_FIELD_ID]);
         if (err) {
             /* TODO: report */
-            knd_log("-- token update failed in REC: %.*s USER: %.*s ERR:%d",
+            knd_log("-- token update failed in REC: %.*s ERR:%d",
                     lengths[0], row[0],
-                    row[SQL_TOKEN_USER_FIELD_ID], lengths[SQL_TOKEN_USER_FIELD_ID],
                     err);
             error_count++;
             continue;
@@ -258,8 +269,10 @@ static int update_tokens(struct kndAuth *self)
         row_count++;
     }
 
-    knd_log("== total tokens updated: %lu   failed: %lu  doublets: %lu",
-            (unsigned long)row_count, (unsigned long)error_count, (unsigned long)doublet_count);
+    knd_log("== total tokens updated: %lu   failed: %lu  empty: %lu  doublets: %lu",
+            (unsigned long)row_count, (unsigned long)error_count,
+            (unsigned long)empty_userid_count, (unsigned long)doublet_count);
+
     err = knd_OK;
 
  final:
@@ -505,8 +518,7 @@ static int kndAuth_start(struct kndAuth *self)
             }
         }
 
-        knd_log("== REPLY: %s\n\n", reply);
-        
+        knd_log("== AUTH REPLY: %s\n\n", reply);
         knd_zmq_sendmore(service, header, header_size);
 	knd_zmq_send(service, reply, reply_size);
 
@@ -515,13 +527,10 @@ static int kndAuth_start(struct kndAuth *self)
             self->task = NULL;
             self->task_size = 0;
         }
-
-        /* TODO: free obj if it was not set to index */
-        /*if (self->obj) {
+        if (self->obj) {
             self->obj = NULL;
             self->obj_size = 0;
-        }*/
-        
+        }
     }
 
     /* we never get here */
@@ -530,8 +539,6 @@ static int kndAuth_start(struct kndAuth *self)
 
     return knd_OK;
 }
-
-
 
 static int
 run_set_db_host(void *obj,
