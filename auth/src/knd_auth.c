@@ -114,8 +114,10 @@ static int update_token(struct kndAuth *self,
     unsigned long userid_num;
     int err;
 
+    knd_log(".. update token \"%.*s\"..", tok_size, tok);
+    
     /*** check user ***/
-
+    
     /* empty values? */
     if (!userid_size) return knd_LIMIT;
     if (!tok_size) return knd_LIMIT;
@@ -214,6 +216,7 @@ static int update_tokens(struct kndAuth *self)
     while ((row = mysql_fetch_row(result))) {
         unsigned long *lengths;
         lengths = mysql_fetch_lengths(result);
+        
         err = update_token(self,
                            row[SQL_TOKEN_USER_FIELD_ID],   lengths[SQL_TOKEN_USER_FIELD_ID],
                            row[SQL_TOKEN_STR_FIELD_ID],    lengths[SQL_TOKEN_STR_FIELD_ID],
