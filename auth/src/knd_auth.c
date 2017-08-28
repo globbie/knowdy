@@ -147,7 +147,7 @@ static int update_token(struct kndAuth *self,
             tok_rec->user = user_rec;
             
             if (!user_rec->tail) {
-                knd_log(".. add tail: %p", tok-rec);
+                knd_log(".. add tail: %p", tok_rec);
                 user_rec->tail = tok_rec;
             }
             
