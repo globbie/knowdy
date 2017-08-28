@@ -168,8 +168,8 @@ static int update_token(struct kndAuth *self,
 
 static int update_tokens(struct kndAuth *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    char tok_buf[KND_TEMP_BUF_SIZE];
+    size_t tok_buf_size;
     MYSQL_RES *result = NULL;
     MYSQL_ROW row;
     unsigned int num_fields;
@@ -192,8 +192,8 @@ static int update_tokens(struct kndAuth *self)
                            "content-server", "content-server",
                            "content-server_001", 0, NULL, 0) == NULL) {
         err_msg = mysql_error(conn);
-        buf_size = strlen(err_msg);
-        fprintf(stderr, "%s [%lu]\n", err_msg, (unsigned long)buf_size);
+        //buf_size = strlen(err_msg);
+        fprintf(stderr, "%s [%lu]\n", err_msg);
         err = knd_FAIL;
         goto final;
     }
