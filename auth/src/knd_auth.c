@@ -115,7 +115,7 @@ static int update_token(struct kndAuth *self,
     int err;
 
     knd_log(".. update token \"%.*s\"..", tok_size, tok);
-    
+
     /*** check user ***/
     
     /* empty values? */
@@ -128,6 +128,8 @@ static int update_token(struct kndAuth *self,
 
     user_rec = self->users[numval];
     if (!user_rec) {
+        knd_log(".. create new user rec: %.*s", userid_size, userid);
+        
         /* this user must be registered */
         user_rec = malloc(sizeof(struct kndUserRec));
         if (!user_rec) return knd_NOMEM;
@@ -150,9 +152,10 @@ static int update_token(struct kndAuth *self,
         }
 
         /* TODO: get user acc */
-
         self->users[numval] = user_rec;
     }
+
+    knd_log(".. register token..");
 
     /* save token to the pool */
     err = register_token(self, user_rec,
