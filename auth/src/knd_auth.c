@@ -48,7 +48,6 @@ del(struct kndAuth *self)
     return knd_OK;
 }
 
-
 static int register_token(struct kndAuth *self,
                           struct kndUserRec *user_rec,
                           const char *tok,    size_t tok_size,
@@ -97,7 +96,6 @@ static int register_token(struct kndAuth *self,
     user_rec->tokens->prev = tok_rec;
     tok_rec->next = user_rec->tokens;
     user_rec->tokens = tok_rec;
-
     
     return knd_OK;
 }
@@ -161,7 +159,7 @@ static int update_token(struct kndAuth *self,
                          expiry, expiry_size,
                          scope, scope_size);
     if (err) return err;
-    
+
     return knd_OK;
 }
 
@@ -260,9 +258,10 @@ static int update_tokens(struct kndAuth *self)
                            row[SQL_TOKEN_SCOPE_FIELD_ID],  lengths[SQL_TOKEN_SCOPE_FIELD_ID]);
         if (err) {
             /* TODO: report */
-            knd_log("-- token update failed in REC: %.*s ERR:%d",
-                    lengths[0], row[0],
-                    err);
+            if (DEBUG_AUTH_LEVEL_2)
+                knd_log("-- token update failed in REC: %.*s ERR:%d",
+                        lengths[0], row[0],
+                        err);
             error_count++;
             continue;
         }
