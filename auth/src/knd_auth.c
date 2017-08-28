@@ -20,16 +20,23 @@ typedef unsigned int uint;
 
 #include "knd_auth.h"
 
-#define DEBUG_DELIV_LEVEL_0 0
-#define DEBUG_DELIV_LEVEL_1 0
-#define DEBUG_DELIV_LEVEL_2 0
-#define DEBUG_DELIV_LEVEL_3 0
-#define DEBUG_DELIV_LEVEL_TMP 1
+#define DEBUG_AUTH_LEVEL_0 0
+#define DEBUG_AUTH_LEVEL_1 0
+#define DEBUG_AUTH_LEVEL_2 0
+#define DEBUG_AUTH_LEVEL_3 0
+#define DEBUG_AUTH_LEVEL_TMP 1
+
+/* DB dependent values */
+#define SQL_TOKEN_NUM_FIELDS      6
+#define SQL_TOKEN_USER_FIELD_ID   2
+#define SQL_TOKEN_STR_FIELD_ID    3
+#define SQL_TOKEN_EXPIRY_FIELD_ID 4
+#define SQL_TOKEN_SCOPE_FIELD_ID  5
+#define AUTH_MAX_USERS 1024 * 1024
 
 const char *get_tokens_query = "SELECT * FROM access_token WHERE expires_at > UNIX_TIMESTAMP()";
 
-static void
-str(struct kndAuth *self)
+static void str(struct kndAuth *self)
 {
     knd_log("<struct kndAuth at %p>", self);
 }
@@ -37,21 +44,139 @@ str(struct kndAuth *self)
 static int
 del(struct kndAuth *self)
 {
-
     free(self);
     return knd_OK;
 }
 
+
+static int register_token(struct kndAuth *self,
+                          struct kndUserRec *user_rec,
+                          const char *tok,    size_t tok_size,
+                          const char *expiry, size_t expiry_size,
+                          const char *scope,  size_t scope_size)
+{
+    struct kndAuthTokenRec *tok_rec, *prev_tok_rec;
+    long numval;
+    int err;
+
+    /* check limits */
+    err = knd_parse_num((const char*)expiry, &numval);
+    if (err) return err;
+
+    if (tok_size >= KND_MAX_TOKEN_SIZE) return knd_LIMIT;
+    if (scope_size >= KND_MAX_SCOPE_SIZE) return knd_LIMIT;
+
+    /* take the oldest token from the pool */
+    tok_rec = user_rec->tail;
+
+    /* remove old token from the IDX */
+    if (tok_rec->tok_size)
+        self->token_idx->remove(self->token_idx, tok_rec->tok);
+
+    /* assign new values */
+    memcpy(tok_rec->tok, tok, tok_size);
+    tok_rec->tok_size = tok_size;
+
+    tok_rec->expiry = (size_t)numval;
+
+    memcpy(tok_rec->scope, scope, scope_size);
+    tok_rec->scope_size = scope_size;
+
+    /* register token */
+    err = self->token_idx->set(self->token_idx, tok, (void*)tok_rec);
+    if (err) return knd_FAIL;
+
+    prev_tok_rec = tok_rec->prev;
+    
+    prev_tok_rec->next = NULL;
+    tok_rec->prev = NULL;
+    tok_rec->next = NULL;
+    user_rec->tail = prev_tok_rec;
+
+    /* put to front */
+    user_rec->tokens->prev = tok_rec;
+    tok_rec->next = user_rec->tokens;
+    user_rec->tokens = tok_rec;
+
+    
+    return knd_OK;
+}
+
+static int update_token(struct kndAuth *self,
+                        const char *userid, size_t userid_size,
+                        const char *tok,    size_t tok_size,
+                        const char *expiry, size_t expiry_size,
+                        const char *scope,  size_t scope_size)
+{
+    struct kndUserRec *user_rec;
+    struct kndAuthTokenRec *tok_rec;
+    long numval;
+    unsigned long userid_num;
+    int err;
+
+    /*** check user ***/
+
+    /* empty values? */
+    if (!userid_size) return knd_LIMIT;
+    if (!tok_size) return knd_LIMIT;
+
+    err = knd_parse_num((const char*)userid, &numval);
+    if (err) return err;
+    if (numval < 0 || numval >= AUTH_MAX_USERS) return knd_LIMIT;
+
+    user_rec = self->users[numval];
+    if (!user_rec) {
+        /* this user must be registered */
+        user_rec = malloc(sizeof(struct kndUserRec));
+        if (!user_rec) return knd_NOMEM;
+        memset(user_rec, 0, sizeof(struct kndUserRec));
+        user_rec->id = (size_t)numval;
+        user_rec->name_size = sprintf(user_rec->name, "%lu", (unsigned long)numval);
+
+        for (size_t i; i < KND_MAX_TOKEN_CACHE; i++) {
+            tok_rec = &user_rec->token_storage[i];
+            tok_rec->user = user_rec;
+            
+            if (!user_rec->tail) {
+                user_rec->tail = tok_rec;
+            }
+            
+            tok_rec->next = user_rec->tokens;
+            if (tok_rec->next) tok_rec->next->prev = tok_rec;
+
+            user_rec->tokens = tok_rec;
+        }
+
+        /* TODO: get user acc */
+
+        self->users[numval] = user_rec;
+    }
+
+    /* save token to the pool */
+    err = register_token(self, user_rec,
+                         tok, tok_size,
+                         expiry, expiry_size,
+                         scope, scope_size);
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+
 static int update_tokens(struct kndAuth *self)
 {
-    MYSQL *conn = mysql_init(NULL);
+    char buf[KND_TEMP_BUF_SIZE];
+    size_t buf_size;
     MYSQL_RES *result = NULL;
     MYSQL_ROW row;
     unsigned int num_fields;
     unsigned int i;
     unsigned int row_count;
-    int err;
-    
+    const char *err_msg;
+    const char *internal_err_msg = "{\"err\":\"internal error\",\"http_code\":500}";
+    int err, e;
+
+    MYSQL *conn = mysql_init(NULL);
     if (!conn) {
         fprintf(stderr, "%s\n", mysql_error(conn));
         return knd_FAIL;
@@ -60,7 +185,9 @@ static int update_tokens(struct kndAuth *self)
     if (mysql_real_connect(conn, self->db_host,
                            "content-server", "content-server",
                            "content-server_001", 0, NULL, 0) == NULL) {
-        fprintf(stderr, "%s\n", mysql_error(conn));
+        err_msg = mysql_error(conn);
+        buf_size = strlen(err_msg);
+        fprintf(stderr, "%s [%lu]\n", err_msg, (unsigned long)buf_size);
         err = knd_FAIL;
         goto final;
     }
@@ -78,18 +205,30 @@ static int update_tokens(struct kndAuth *self)
     }
 
     num_fields = mysql_num_fields(result);
+    if (num_fields != SQL_TOKEN_NUM_FIELDS) {
+        err = knd_FAIL;
+        goto final;
+    }
+    
     row_count = 0;
     while ((row = mysql_fetch_row(result))) {
         unsigned long *lengths;
         lengths = mysql_fetch_lengths(result);
-        printf("%d: ", row_count);
-        for (i = 0; i < num_fields; i++) {
-            printf("[%.*s] ", (int)lengths[i],
-                   row[i] ? row[i] : "NULL");
+        err = update_token(self,
+                           row[SQL_TOKEN_USER_FIELD_ID],   lengths[SQL_TOKEN_USER_FIELD_ID],
+                           row[SQL_TOKEN_STR_FIELD_ID],    lengths[SQL_TOKEN_STR_FIELD_ID],
+                           row[SQL_TOKEN_EXPIRY_FIELD_ID], lengths[SQL_TOKEN_EXPIRY_FIELD_ID],
+                           row[SQL_TOKEN_SCOPE_FIELD_ID],  lengths[SQL_TOKEN_SCOPE_FIELD_ID]);
+        if (err) {
+            /* TODO: report */
+            knd_log("-- token update failed for in REC: %.*s ERR:%d", lengths[0], row[0], err);
+            continue;
         }
-        printf("\n");
         row_count++;
     }
+
+    knd_log("== %lu of total %lu tokens updated!",
+            (unsigned long)row_count, (unsigned long)num_fields);
     
     err = knd_OK;
 
@@ -98,6 +237,13 @@ static int update_tokens(struct kndAuth *self)
         mysql_free_result(result);
 
     mysql_close(conn);
+
+    if (err) {
+        e = self->log->write(self->log, internal_err_msg,
+                             strlen(internal_err_msg));
+        if (e) return e;
+    }
+
     return err;
 }
 
@@ -133,8 +279,11 @@ static int run_check_sid(void *obj,
 {
     struct kndAuth *self;
     struct kndTaskArg *arg;
+    struct kndAuthTokenRec *tok_rec;
+    struct kndUserRec *user_rec;
     const char *sid = NULL;
     size_t sid_size = 0;
+    int err;
     
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
@@ -150,11 +299,35 @@ static int run_check_sid(void *obj,
     self->sid[sid_size] = '\0';
     self->sid_size = sid_size;
 
-    if (DEBUG_DELIV_LEVEL_TMP)
+    if (DEBUG_AUTH_LEVEL_TMP)
         knd_log("== check sid: \"%.*s\"", sid_size, sid);
 
+    tok_rec = self->token_idx->get(self->token_idx, sid);
+    if (!tok_rec) {
+        /* time to update our token cache */
+        err = update_tokens(self);
+        if (err) return err;
 
+        /* one more try */
+        tok_rec = self->token_idx->get(self->token_idx, sid);
+        if (!tok_rec) return knd_NO_MATCH;
+    }
 
+    user_rec = tok_rec->user;
+    
+    err = self->out->write(self->out,
+                           "{\"http_code\":200", strlen("{\"http_code\":200"));
+    if (err) return err;
+    err = self->out->write(self->out,
+                           ",\"user\":\"", strlen(",\"user\":\""));
+    if (err) return err;
+    err = self->out->write(self->out,
+                          user_rec->name, user_rec->name_size);
+    if (err) return err;
+    err = self->out->write(self->out, "\"}", 1);
+    if (err) return err;
+    err = self->out->write(self->out, "}", 1);
+    if (err) return err;
     
     return knd_OK;
 }
@@ -259,10 +432,11 @@ static int kndAuth_start(struct kndAuth *self)
     void *service;
     int err;
 
-    const char *header = "AUTH";
+    const char *header = "{reply{auth _obj}}";
     size_t header_size = strlen(header);
 
-    const char *reply = "{\"error\":\"auth error\"}";
+    /* default reply */
+    const char *reply = "{\"error\":\"auth error\",\"http_code\":401}";
     size_t reply_size = strlen(reply);
 
     context = zmq_init(1);
@@ -271,29 +445,38 @@ static int kndAuth_start(struct kndAuth *self)
     assert(service);
     assert((zmq_bind(service, self->addr) == knd_OK));
 
-    knd_log("++ %s is up and running: %s",
-            self->name, self->addr);
+    knd_log("++ %s is up and running: %s", self->name, self->addr);
 
     while (1) {
         knd_log("++ AUTH service is waiting for new tasks...");
+
         self->out->reset(self->out);
-        self->reply_obj = NULL;
-        self->reply_obj_size = 0;
+        self->log->reset(self->log);
         self->tid[0] = '\0';
         self->sid[0] = '\0';
+        self->sid_size = 0;
 
         self->task = knd_zmq_recv(service, &self->task_size);
         self->obj = knd_zmq_recv(service, &self->obj_size);
 
-	knd_log("++ AUTH service has got a task:   \"%s\"",
-                self->task);
+	knd_log("++ AUTH service has got a task: \"%s\"", self->task);
 
         err = run_task(self);
-        if (self->reply_obj_size) {
-            reply = self->reply_obj;
-            reply_size = self->reply_obj_size;
+        if (err) {
+            if (self->log->buf_size) {
+                reply = self->log->buf;
+                reply_size = self->log->buf_size;
+            }
         }
-            
+        else {
+            if (self->out->buf_size) {
+                reply = self->out->buf;
+                reply_size = self->out->buf_size;
+            }
+        }
+
+        knd_log("== REPLY: %s\n\n", reply);
+        
         knd_zmq_sendmore(service, header, header_size);
 	knd_zmq_send(service, reply, reply_size);
 
@@ -340,7 +523,7 @@ run_set_db_host(void *obj,
 
     self = (struct kndAuth*)obj;
 
-    if (DEBUG_DELIV_LEVEL_TMP)
+    if (DEBUG_AUTH_LEVEL_TMP)
         knd_log(".. set DB HOST to \"%.*s\"", db_host_size, db_host);
 
     memcpy(self->db_host, db_host, db_host_size);
@@ -371,7 +554,7 @@ run_set_service_addr(void *obj,
 
     self = (struct kndAuth*)obj;
 
-    if (DEBUG_DELIV_LEVEL_1)
+    if (DEBUG_AUTH_LEVEL_1)
         knd_log(".. set service addr to \"%.*s\"", addr_size, addr);
 
     memcpy(self->addr, addr, addr_size);
@@ -406,7 +589,9 @@ parse_config_GSL(struct kndAuth *self,
         },
         { .name = "db_host",
           .name_size = strlen("db_host"),
-          .run = run_set_db_host,
+          .buf = self->db_host,
+          .buf_size = &self->db_host_size,
+          .max_buf_size = KND_NAME_SIZE,
           .obj = self
         }
     };
@@ -445,18 +630,17 @@ kndAuth_init(struct kndAuth *self)
     
     self->str = str;
     self->del = del;
-
+    self->update = update_tokens;
     self->start = kndAuth_start;
     
     return knd_OK;
 }
 
 extern int
-kndAuth_new(struct kndAuth **deliv,
+kndAuth_new(struct kndAuth **result,
                 const char          *config)
 {
     struct kndAuth *self;
-    struct kndAuthRec *rec;
     size_t chunk_size = 0;
     int err;
     
@@ -465,46 +649,19 @@ kndAuth_new(struct kndAuth **deliv,
 
     memset(self, 0, sizeof(struct kndAuth));
 
-
-    
-    err = ooDict_new(&self->auth_idx, KND_LARGE_DICT_SIZE);
-    if (err) goto error;
-
-    err = ooDict_new(&self->sid_idx, KND_LARGE_DICT_SIZE);
-    if (err) goto error;
-
-    err = ooDict_new(&self->uid_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) goto error;
-
-    err = ooDict_new(&self->idx, KND_LARGE_DICT_SIZE);
+    err = ooDict_new(&self->token_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
 
     err = kndOutput_new(&self->out, KND_IDX_BUF_SIZE);
     if (err) return err;
-    
+
+    err = kndOutput_new(&self->log, KND_LARGE_BUF_SIZE);
+    if (err) return err;
+
     /* special user */
     err = kndUser_new(&self->admin);
     if (err) return err;
     self->admin->out = self->out;
-
-    /* create DEFAULT user record */
-    rec = malloc(sizeof(struct kndAuthRec));
-    if (!rec) {
-        err = knd_NOMEM;
-        goto error;
-    }
-    
-    memset(rec, 0, sizeof(struct kndAuthRec));
-    memcpy(rec->uid, "000", KND_ID_SIZE);
-
-    err = ooDict_new(&rec->cache, KND_LARGE_DICT_SIZE);
-    if (err) goto error;
-
-    self->default_rec = rec;
-    
-    err = ooDict_new(&rec->cache, KND_LARGE_DICT_SIZE);
-    if (err) goto error;
-    self->spec_rec = rec;
     
     kndAuth_init(self); 
     
@@ -514,14 +671,12 @@ kndAuth_new(struct kndAuth **deliv,
     err = parse_config_GSL(self, self->out->file, &chunk_size);
     if (err) goto error;
     
-    if (!self->max_users)
-        self->max_users = KND_MAX_USERS;
-
-    self->users = malloc(sizeof(struct kndUserRec) * self->max_users);
+    if (!self->max_users) self->max_users = AUTH_MAX_USERS;
+    self->users = malloc(sizeof(struct kndUserRec*) * self->max_users);
     if (!self->users) return knd_NOMEM;
-    memset(self->users, 0, sizeof(struct kndUserRec) * self->max_users);
+    memset(self->users, 0, sizeof(struct kndUserRec*) * self->max_users);
 
-    *deliv = self;
+    *result = self;
 
     return knd_OK;
 

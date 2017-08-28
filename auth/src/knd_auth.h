@@ -1,31 +1,44 @@
 #ifndef KND_AUTH_H
 #define KND_AUTH_H
 
-#define KND_NUM_AGENTS 1
-
 #include <time.h>
 
 #include "knd_dict.h"
 #include "knd_utils.h"
 #include "knd_user.h"
 
-struct kndAuthRec
+#define KND_NUM_AGENTS 1
+#define KND_MAX_TOKEN_CACHE 8
+#define KND_MAX_TOKEN_SIZE 256
+#define KND_MAX_SCOPE_SIZE 8
+
+struct kndUserRec;
+
+struct kndAuthTokenRec
 {
-    char uid[KND_ID_SIZE];
-    size_t num_requests;
-
-    struct ooDict *cache;
-
-    /* TODO: billing data */
-
-    /* one time passwords */
+    char tok[KND_MAX_TOKEN_SIZE];
+    size_t tok_size;
     
+    size_t expiry;
+
+    char scope[KND_MAX_SCOPE_SIZE];
+    size_t scope_size;
+
+    struct kndUserRec *user;
+    struct kndAuthTokenRec *prev;
+    struct kndAuthTokenRec *next;
 };
 
 struct kndUserRec
 {
-    char tid[KND_TID_SIZE];
+    size_t id;
+    char name[KND_NAME_SIZE];
+    size_t name_size;
     
+    struct kndAuthTokenRec token_storage[KND_MAX_TOKEN_CACHE];
+
+    struct kndAuthTokenRec *tokens;
+    struct kndAuthTokenRec *tail;
 };
     
 struct kndResult
@@ -67,19 +80,12 @@ struct kndAuth
     char sid[KND_SID_SIZE];
     size_t sid_size;
 
-    struct ooDict *auth_idx;
-    struct ooDict *sid_idx;
-    struct ooDict *uid_idx;
+    struct ooDict *token_idx;
 
-    struct kndAuthRec *default_rec;
-    struct kndAuthRec *spec_rec;
-    
-    struct ooDict *idx;
-
-    struct kndUserRec *users;
+    struct kndUserRec **users;
     size_t max_users;
     size_t num_users;
-    
+
     char *task;
     size_t task_size;
     char *obj;
@@ -90,12 +96,14 @@ struct kndAuth
 
     struct kndUser *admin;
     struct kndOutput *out;
-    
+    struct kndOutput *log;
+
     /**********  interface methods  **********/
     int (*del)(struct kndAuth *self);
     void (*str)(struct kndAuth *self);
 
     int (*start)(struct kndAuth *self);
+    int (*update)(struct kndAuth *self);
 };
 
 extern int kndAuth_new(struct kndAuth **self, 
