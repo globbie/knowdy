@@ -77,7 +77,7 @@ static int register_token(struct kndAuth *self,
 
     /* assign new values */
     memcpy(tok_rec->tok, tok, tok_size);
-    tok-rec->tok[tok_size] = '\0';
+    tok_rec->tok[tok_size] = '\0';
     tok_rec->tok_size = tok_size;
 
     tok_rec->expiry = (size_t)numval;
