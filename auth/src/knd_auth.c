@@ -172,6 +172,7 @@ static int update_tokens(struct kndAuth *self)
     size_t tok_buf_size;
     MYSQL_RES *result = NULL;
     MYSQL_ROW row;
+    struct kndAuthTokenRec *tok_rec;
     unsigned int num_fields;
     unsigned int i;
     unsigned int row_count;
