@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2012 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2017 by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the OOmnik Conceptual Processor, 
@@ -27,14 +27,15 @@
 /* return error codes */
 enum { oo_OK, oo_FAIL, oo_NOMEM, oo_MATCH, oo_NO_RESULTS } oo_err_codes;
 
-static const char *oo_err_codes_text[] =  \
+/*static const char *oo_err_codes_text[] =      \
   { "Everything is OK", 
     "Some internal error occured", 
     "Not enough memory :(",
     "Match found!",
     "No results :("  };
+*/
 
-#ifdef WIN32
+/*#ifdef WIN32
   #ifndef NO_BUILD_DLL
       #define EXPORT __declspec(dllexport)
   #else
@@ -43,6 +44,7 @@ static const char *oo_err_codes_text[] =  \
 #else
   #define EXPORT
 #endif
+*/
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 

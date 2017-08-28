@@ -357,7 +357,12 @@ static int run_check_sid(void *obj,
     }
 
     user_rec = tok_rec->user;
-    
+
+    if (DEBUG_AUTH_LEVEL_TMP)
+        knd_log("++ sid approved: \"%.*s\" USER: %.*s",
+                sid_size, sid,
+                user_rec->name_size, user_rec->name);
+
     err = self->out->write(self->out,
                            "{\"http_code\":200", strlen("{\"http_code\":200"));
     if (err) return err;
