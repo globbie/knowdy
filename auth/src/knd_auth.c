@@ -248,7 +248,10 @@ static int update_tokens(struct kndAuth *self)
                            row[SQL_TOKEN_SCOPE_FIELD_ID],  lengths[SQL_TOKEN_SCOPE_FIELD_ID]);
         if (err) {
             /* TODO: report */
-            knd_log("-- token update failed in REC: %.*s TOK: %s ERR:%d", lengths[0], row[0], tok_buf, err);
+            knd_log("-- token update failed in REC: %.*s USER: %.*s ERR:%d",
+                    lengths[0], row[0],
+                    row[SQL_TOKEN_USER_FIELD_ID], lengths[SQL_TOKEN_USER_FIELD_ID],
+                    err);
             error_count++;
             continue;
         }
