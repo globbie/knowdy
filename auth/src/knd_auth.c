@@ -87,10 +87,7 @@ static int register_token(struct kndAuth *self,
     err = self->token_idx->set(self->token_idx, tok_rec->tok, (void*)tok_rec);
     if (err) return knd_FAIL;
 
-    knd_log("++ IDX register OK!");
-
     prev_tok_rec = tok_rec->prev;
-    
     prev_tok_rec->next = NULL;
     tok_rec->prev = NULL;
     tok_rec->next = NULL;
@@ -157,6 +154,7 @@ static int update_token(struct kndAuth *self,
         self->users[numval] = user_rec;
     }
 
+
     /* save token to the pool */
     err = register_token(self, user_rec,
                          tok, tok_size,
@@ -178,6 +176,8 @@ static int update_tokens(struct kndAuth *self)
     unsigned int i;
     unsigned int row_count;
     unsigned int error_count;
+    unsigned int doublet_count;
+
     const char *err_msg;
     const char *internal_err_msg = "{\"err\":\"internal error\",\"http_code\":500}";
     int err, e;
@@ -218,13 +218,31 @@ static int update_tokens(struct kndAuth *self)
     
     row_count = 0;
     error_count = 0;
+    doublet_count = 0;
+
     while ((row = mysql_fetch_row(result))) {
         unsigned long *lengths;
         lengths = mysql_fetch_lengths(result);
+
+        tok_buf_size = lengths[SQL_TOKEN_STR_FIELD_ID];
+        if (!tok_buf_size || tok_buf_size >= KND_MAX_TOKEN_SIZE) {
+            error_count++;
+            continue;
+        }
         
+        memcpy(tok_buf, row[SQL_TOKEN_STR_FIELD_ID], tok_buf_size);
+        tok_buf[tok_buf_size] = '\0';
+        
+        /* lookup IDX */
+        tok_rec = self->token_idx->get(self->token_idx, (const char*)tok_buf);
+        if (tok_rec) {
+            doublet_count++;
+            continue;
+        }
+
         err = update_token(self,
                            row[SQL_TOKEN_USER_FIELD_ID],   lengths[SQL_TOKEN_USER_FIELD_ID],
-                           row[SQL_TOKEN_STR_FIELD_ID],    lengths[SQL_TOKEN_STR_FIELD_ID],
+                           tok_buf,                        tok_buf_size,
                            row[SQL_TOKEN_EXPIRY_FIELD_ID], lengths[SQL_TOKEN_EXPIRY_FIELD_ID],
                            row[SQL_TOKEN_SCOPE_FIELD_ID],  lengths[SQL_TOKEN_SCOPE_FIELD_ID]);
         if (err) {
@@ -236,8 +254,8 @@ static int update_tokens(struct kndAuth *self)
         row_count++;
     }
 
-    knd_log("== total tokens updated: %lu   failed: %lu",
-            (unsigned long)row_count, (unsigned long)error_count);
+    knd_log("== total tokens updated: %lu   failed: %lu  doublets: %lu",
+            (unsigned long)row_count, (unsigned long)error_count, (unsigned long)doublet_count);
     err = knd_OK;
 
  final:
