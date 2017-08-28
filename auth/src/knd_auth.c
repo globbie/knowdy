@@ -147,6 +147,7 @@ static int update_token(struct kndAuth *self,
             tok_rec->user = user_rec;
             
             if (!user_rec->tail) {
+                knd_log(".. add tail: %p", tok-rec);
                 user_rec->tail = tok_rec;
             }
             
@@ -160,7 +161,7 @@ static int update_token(struct kndAuth *self,
         self->users[numval] = user_rec;
     }
 
-    knd_log(".. register token..");
+    knd_log(".. register token, curr_tail: %p  head: %p", user_rec->tail, user_rec->tokens);
 
     /* save token to the pool */
     err = register_token(self, user_rec,
