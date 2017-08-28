@@ -68,8 +68,6 @@ static int register_token(struct kndAuth *self,
 
     /* take the oldest token from the pool */
     tok_rec = user_rec->tail;
-
-    knd_log("tail tok: %p", tok_rec);
     
     /* remove old token from the IDX */
     if (tok_rec->tok_size)
@@ -119,7 +117,8 @@ static int update_token(struct kndAuth *self,
     unsigned long userid_num;
     int err;
 
-    knd_log(".. update token \"%.*s\"..", tok_size, tok);
+    if (DEBUG_AUTH_LEVEL_1)
+        knd_log(".. update token \"%.*s\"..", tok_size, tok);
 
     /*** check user ***/
     
@@ -133,7 +132,8 @@ static int update_token(struct kndAuth *self,
 
     user_rec = self->users[numval];
     if (!user_rec) {
-        knd_log(".. create new user rec: %.*s", userid_size, userid);
+        if (DEBUG_AUTH_LEVEL_2)
+            knd_log(".. create new user rec: %.*s", userid_size, userid);
         
         /* this user must be registered */
         user_rec = malloc(sizeof(struct kndUserRec));
@@ -148,18 +148,14 @@ static int update_token(struct kndAuth *self,
             if (!user_rec->tail) {
                 user_rec->tail = tok_rec;
             }
-            
             tok_rec->next = user_rec->tokens;
             if (tok_rec->next) tok_rec->next->prev = tok_rec;
-
             user_rec->tokens = tok_rec;
         }
 
-        /* TODO: get user acc */
+        /* TODO: retrieve full user acc */
         self->users[numval] = user_rec;
     }
-
-    knd_log(".. register token, curr_tail: %p  head: %p", user_rec->tail, user_rec->tokens);
 
     /* save token to the pool */
     err = register_token(self, user_rec,
@@ -181,6 +177,7 @@ static int update_tokens(struct kndAuth *self)
     unsigned int num_fields;
     unsigned int i;
     unsigned int row_count;
+    unsigned int error_count;
     const char *err_msg;
     const char *internal_err_msg = "{\"err\":\"internal error\",\"http_code\":500}";
     int err, e;
@@ -220,6 +217,7 @@ static int update_tokens(struct kndAuth *self)
     }
     
     row_count = 0;
+    error_count = 0;
     while ((row = mysql_fetch_row(result))) {
         unsigned long *lengths;
         lengths = mysql_fetch_lengths(result);
@@ -232,14 +230,14 @@ static int update_tokens(struct kndAuth *self)
         if (err) {
             /* TODO: report */
             knd_log("-- token update failed for in REC: %.*s ERR:%d", lengths[0], row[0], err);
+            error_count++;
             continue;
         }
         row_count++;
     }
 
-    knd_log("== %lu of total %lu tokens updated!",
-            (unsigned long)row_count, (unsigned long)num_fields);
-    
+    knd_log("== total tokens updated: %lu   failed: %lu",
+            (unsigned long)row_count, (unsigned long)error_count);
     err = knd_OK;
 
  final:
