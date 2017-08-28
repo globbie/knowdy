@@ -69,12 +69,15 @@ static int register_token(struct kndAuth *self,
     /* take the oldest token from the pool */
     tok_rec = user_rec->tail;
 
+    knd_log("tail tok: %p", tok_rec);
+    
     /* remove old token from the IDX */
     if (tok_rec->tok_size)
         self->token_idx->remove(self->token_idx, tok_rec->tok);
 
     /* assign new values */
     memcpy(tok_rec->tok, tok, tok_size);
+    tok-rec->tok[tok_size] = '\0';
     tok_rec->tok_size = tok_size;
 
     tok_rec->expiry = (size_t)numval;
@@ -83,8 +86,10 @@ static int register_token(struct kndAuth *self,
     tok_rec->scope_size = scope_size;
 
     /* register token */
-    err = self->token_idx->set(self->token_idx, tok, (void*)tok_rec);
+    err = self->token_idx->set(self->token_idx, tok_rec->tok, (void*)tok_rec);
     if (err) return knd_FAIL;
+
+    knd_log("++ IDX register OK!");
 
     prev_tok_rec = tok_rec->prev;
     
