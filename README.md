@@ -41,3 +41,4 @@ After this actions you will get rpm package at your build directory. If you want
     systemctl start knd-retriever
     systemctl start knd-learner
     systemctl start knd-storage
+    systemctl start knd-auth
