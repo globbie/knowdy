@@ -36,7 +36,6 @@ typedef enum knd_attr_type {
     KND_ATTR_ATOM,
     KND_ATTR_STR,
     KND_ATTR_AGGR,
-    KND_ATTR_LIST,
     KND_ATTR_TEXT, 
     KND_ATTR_CG,
     KND_ATTR_NUM,
@@ -51,7 +50,6 @@ static const char* const knd_attr_names[] = {
     "atom",
     "str",
     "aggr", 
-    "list",
     "text", 
     "CG",
     "num",
@@ -60,7 +58,6 @@ static const char* const knd_attr_names[] = {
     "file",
     "proc"
 };
-
 
 struct kndAttrItem
 {
@@ -105,7 +102,6 @@ struct kndAttr
     /* refclass not set: self reference by default */
     char ref_classname[KND_NAME_SIZE];
     size_t ref_classname_size;
-    struct kndConcept *ref_class;
 
     int concise_level;
     int descr_level;

@@ -57,18 +57,18 @@ struct kndElemState
 
 struct kndElem
 {
-    char name[KND_NAME_SIZE + 1];
-    size_t name_size;
+    char val[KND_NAME_SIZE + 1];
+    size_t val_size;
 
     struct kndAttr *attr;
 
     struct kndObject *obj;
     struct kndObject *root;
     struct kndSortTag *tag;
-    
-    struct kndObject *inner;
-    struct kndObject *inner_tail;
-    
+
+    struct kndObject *aggr;
+    struct kndObject *aggr_tail;
+
     bool is_list;
     bool is_list_item;
     bool is_default;

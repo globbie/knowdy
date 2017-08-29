@@ -305,6 +305,7 @@ static int resolve_names(struct kndConcept *self)
                     attr->name);
             return knd_FAIL;
         }
+        
         attr->conc = c;
 
     next_attr:
@@ -1126,7 +1127,7 @@ static int parse_import_obj(void *data,
         knd_log("-- class not set :(");
         return knd_FAIL;
     }
-    
+
     err = kndObject_new(&obj);
     if (err) return err;
     obj->conc = self->curr_class;
@@ -1142,7 +1143,11 @@ static int parse_import_obj(void *data,
     obj->next = self->obj_inbox;
     self->obj_inbox = obj;
     self->obj_inbox_size++;
-
+    
+    if (DEBUG_CONC_LEVEL_2) {
+        obj->str(obj, 1);
+    }
+   
     return knd_OK;
 }
 
@@ -2410,6 +2415,10 @@ static int build_obj_updates(struct kndConcept *self)
             err = self->obj_idx->set(self->obj_idx,
                                      (const char*)obj->name, (void*)obj);
             if (err) return err;
+
+            if (DEBUG_CONC_LEVEL_TMP)
+                obj->str(obj, 1);
+
         }
         err = out->write(out, "\"", 1);
         if (err) return err;
@@ -2509,9 +2518,11 @@ static int apply_liquid_updates(struct kndConcept *self)
     
     if (self->obj_inbox_size) {
         for (obj = self->obj_inbox; obj; obj = obj->next) {
+
             /* TODO: err = obj->resolve(obj);
             if (err) return err;
             */
+
             c = obj->conc;
             if (!c->obj_idx) {
                 err = ooDict_new(&c->obj_idx, KND_LARGE_DICT_SIZE);
@@ -2522,9 +2533,11 @@ static int apply_liquid_updates(struct kndConcept *self)
                                   (const char*)obj->name, (void*)obj);
             if (err) return err;
 
-            if (DEBUG_CONC_LEVEL_2)
+            if (DEBUG_CONC_LEVEL_TMP) {
+                obj->str(obj, 1);
                 knd_log("++ obj registered: \"%.*s\"!",
                         obj->name_size, obj->name);
+            }
         }
     }
 

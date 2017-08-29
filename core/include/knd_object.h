@@ -35,6 +35,10 @@ struct kndRelClass;
 struct kndOutput;
 struct kndFlatTable;
 
+typedef enum knd_obj_type {
+    KND_OBJ_ADDR,
+    KND_OBJ_AGGR
+} knd_obj_type;
 
 struct kndMatchPoint
 {
@@ -46,6 +50,8 @@ struct kndMatchPoint
     
 struct kndObject
 {
+    knd_obj_type type;
+
     /* unique name */
     char name[KND_NAME_SIZE];
     size_t name_size;

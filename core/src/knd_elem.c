@@ -48,11 +48,11 @@ static void del(struct kndElem *self)
 }
 
 
-static int
-str(struct kndElem *self, size_t depth)
+static int str(struct kndElem *self, size_t depth)
 {
     size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
+
     struct kndObject *obj;
     struct kndElem *elem;
     struct kndElemState *elem_state;
@@ -61,22 +61,15 @@ str(struct kndElem *self, size_t depth)
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
 
-    if (self->is_list) 
-        knd_log("%s[\"%s\"\n",
-            offset, self->name);
-    else if (self->is_list_item)
-        knd_log("%s--",
-                offset);
-    else
-        knd_log("%s%s:",
-                offset, self->name);
+    if (self->val_size)
+        knd_log("%s%s => %s", offset, self->attr->name, self->val);
 
-    if (self->inner) {
+    if (self->aggr) {
         if (self->is_list) {
             knd_log("%s   inline LIST\n",
                     offset);
             
-            obj = self->inner;
+            obj = self->aggr;
             while (obj) {
                 obj->str(obj, depth + 1);
 
@@ -84,9 +77,9 @@ str(struct kndElem *self, size_t depth)
             }
         }
         else {
-            knd_log("%s   inline OBJ of class \"%s\"",
+            knd_log("%s%s:",
                     offset, self->attr->name);
-            self->inner->str(self->inner, depth + 1);
+            self->aggr->str(self->aggr, depth + 1);
         }
     }
 
@@ -240,7 +233,7 @@ kndElem_register_seq(struct kndElem *self,
 */
 
 static int
-kndElem_index_list_inner(struct kndElem *self)
+kndElem_index_list_aggr(struct kndElem *self)
 {
     //char buf[KND_NAME_SIZE];
     //size_t buf_size;
@@ -254,10 +247,10 @@ kndElem_index_list_inner(struct kndElem *self)
     int err = knd_FAIL;
 
     if (DEBUG_ELEM_LEVEL_2)
-        knd_log("\n\n  ELEM:    .. indexing LIST of inner objs \"%s\"..\n",
-                self->name);
+        knd_log("\n\n  ELEM:    .. indexing LIST of aggr objs \"%s\"..\n",
+                self->val);
     
-    obj = self->inner;
+    obj = self->aggr;
     while (obj) {
         elem = obj->elems;
         
@@ -266,7 +259,7 @@ kndElem_index_list_inner(struct kndElem *self)
             elem->tag = self->tag;
             
             if (DEBUG_ELEM_LEVEL_2) {
-                knd_log("\nELEM:   obj %d) inner elem idx: \"%s\"  TYPE: %d TAG: %p\n", i,
+                knd_log("\nELEM:   obj %d) aggr elem idx: \"%s\"  TYPE: %d TAG: %p\n", i,
                     elem->attr->idx_name,
                         elem->attr->type,
                         elem->tag);
@@ -283,7 +276,7 @@ kndElem_index_list_inner(struct kndElem *self)
                 break;
             case KND_ATTR_ATOM:
                 elem->out = self->out;
-                err = index_atom(elem, self->inner);
+                err = index_atom(elem, self->aggr);
                 if (err) return err;
                 break;
             case KND_ATTR_REF:
@@ -330,15 +323,15 @@ kndElem_index_list(struct kndElem *self)
 
     
     //knd_log("    .. indexing LIST ELEM \"%s\"..\n",
-    //  self->name);
+    //  self->val);
 
     if (!strcmp(self->attr->idx_name, "Attr"))
-        return kndElem_index_list_inner(self);
+        return kndElem_index_list_aggr(self);
 
     // TODO: linear SEQ idx
     //idx = self->obj->cache->linear_seq_idx;
 
-    obj = self->inner;
+    obj = self->aggr;
     while (obj) {
         elem = obj->elems;
         buf_size = 0;
@@ -390,8 +383,7 @@ kndElem_index_list(struct kndElem *self)
 }
 */
 
-static int
-index_ref(struct kndElem *self)
+static int index_ref(struct kndElem *self)
 {
     struct kndConcept *conc, *bc;
     struct kndRepoCache *cache = NULL;
@@ -408,7 +400,7 @@ index_ref(struct kndElem *self)
 
     if (!self->attr) return knd_FAIL;
 
-    conc = self->attr->ref_class;
+    conc = self->attr->conc;
     if (!conc) return knd_FAIL;
 
     if (DEBUG_ELEM_LEVEL_3)
@@ -507,7 +499,7 @@ index_ref(struct kndElem *self)
         
     objref->obj = self->obj;
 
-    /* inner obj */
+    /* aggr obj */
     if (self->obj->parent)
         objref->obj = self->obj->parent->obj;
 
@@ -562,8 +554,8 @@ kndElem_set_full_name(struct kndElem *self,
         chunk_size++;
     }
     
-    memcpy(s, self->name, self->name_size);
-    chunk_size += self->name_size;
+    memcpy(s, self->val, self->val_size);
+    chunk_size += self->val_size;
 
     
     *name_size += chunk_size;
@@ -627,7 +619,7 @@ index_atom(struct kndElem *self,
     
     tag = self->tag;
     if (!tag) {
-        knd_log("  -- no sort tag found for \"%s\"\n", self->name);
+        knd_log("  -- no sort tag found for \"%s\"\n", self->val);
         return knd_FAIL;
     }
 
@@ -647,21 +639,21 @@ kndElem_index(struct kndElem *self)
     
     if (DEBUG_ELEM_LEVEL_3)
         knd_log("    .. indexing ELEM \"%s\"  attr: \"%s\"..\n",
-                self->name,
+                self->val,
                 self->attr->name);
 
     if (self->is_list) {
         /*if (self->attr->idx_name_size) { */
 
-        err = kndElem_index_list_inner(self);
+        err = kndElem_index_list_aggr(self);
         if (err) goto final;
 
     } else {
         /*if (self->attr->conc && self->attr->conc->idx_name_size) {*/
 
         if (self->attr->conc) {
-            self->inner->tag = self->tag;
-            err = self->inner->index_inline(self->inner);
+            self->aggr->tag = self->tag;
+            err = self->aggr->index_inline(self->aggr);
             if (err) goto final;
 
             return knd_OK;
@@ -721,12 +713,11 @@ kndElem_contribute_refset(struct kndElem *self __attribute__((unused)),
 
     for (size_t i = 0; i < rec->refset->num_facets; i++) {
         facet = rec->refset->facets[i];
-
         /*knd_log("Facet: %s [numval: %lu]\n", facet->name,
                 (unsigned long)facet->numval);
         */
         for (size_t j = 0; j < facet->num_refsets; j++) {
-            refset = facet->refsets[j]; 
+            refset = facet->refsets[j];
             if (refset->numval > (seqnum + 1)) break;
 
             /*knd_log("  == RefSet: %s [numval: %lu] total: %lu\n", refset->name,
@@ -889,15 +880,15 @@ kndElem_export_JSON(struct kndElem *self,
     //unsigned long numval;
     int err;
 
-    if (self->inner) {
+    if (self->aggr) {
         if (self->is_list) {
             buf_size = sprintf(buf, "\"%s_l\":[",
-                               self->name);
+                               self->val);
             err = out->write(out, buf, buf_size);
             if (err) return err;
 
 
-            obj = self->inner;
+            obj = self->aggr;
             while (obj) {
                 obj->out = out;
                 err = obj->export(obj);
@@ -916,16 +907,16 @@ kndElem_export_JSON(struct kndElem *self,
             return knd_OK;
         }
 
-        /* single anonymous inner obj */
+        /* single anonymous aggr obj */
         err = out->write(out, "\"", 1);
         if (err) goto final;
-        err = out->write(out, self->name, self->name_size);
+        err = out->write(out, self->val, self->val_size);
         if (err) goto final;
         err = out->write(out, "\":", strlen("\":"));
         if (err) goto final;
         
-        self->inner->out = out;
-        err = self->inner->export(self->inner);
+        self->aggr->out = out;
+        err = self->aggr->export(self->aggr);
         
         return err;
     }
@@ -933,7 +924,7 @@ kndElem_export_JSON(struct kndElem *self,
     /* attr name */
     err = out->write(out, "\"", 1);
     if (err) goto final;
-    err = out->write(out, self->name, self->name_size);
+    err = out->write(out, self->val, self->val_size);
     if (err) goto final;
     err = out->write(out, "\":", strlen("\":"));
     if (err) goto final;
@@ -1122,7 +1113,7 @@ kndElem_export_GSL(struct kndElem *self)
     int err;
     
     buf_size = sprintf(buf, "{%s ",
-                       self->name);
+                       self->val);
     err = self->out->write(self->out, buf, buf_size);
     if (err) goto final;
 
@@ -1178,11 +1169,11 @@ kndElem_export_list_GSC(struct kndElem *self)
     err = self->out->write(self->out, "[", 1);
     if (err) return err;
 
-    err = self->out->write(self->out, self->name, self->name_size);
+    err = self->out->write(self->out, self->val, self->val_size);
     if (err) return err;
 
-    if (self->inner) {
-        obj = self->inner;
+    if (self->aggr) {
+        obj = self->aggr;
         while (obj) {
             obj->out = self->out;
             obj->format = KND_FORMAT_GSC;
@@ -1197,7 +1188,7 @@ kndElem_export_list_GSC(struct kndElem *self)
         elem->out = self->out;
         err = elem->export(elem, KND_FORMAT_GSC, is_concise);
         if (err) {
-            knd_log("-- export of \"%s\" elem failed: %d :(", elem->name, err);
+            knd_log("-- export of \"%s\" elem failed: %d :(", elem->attr->name, err);
             return err;
         }
         elem = elem->next;
@@ -1217,17 +1208,17 @@ kndElem_export_GSC(struct kndElem *self)
     int err;
 
     if (DEBUG_ELEM_LEVEL_2)
-        knd_log(".. GSC export elem \"%s\"..", self->name);
+        knd_log(".. GSC export elem \"%s\"..", self->val);
 
     if (self->is_list)
         return kndElem_export_list_GSC(self);
 
-    if (self->inner) {
-        self->inner->out = self->out;
-        self->inner->format =  KND_FORMAT_GSC;
-        err = self->inner->export(self->inner);
+    if (self->aggr) {
+        self->aggr->out = self->out;
+        self->aggr->format =  KND_FORMAT_GSC;
+        err = self->aggr->export(self->aggr);
         if (err) {
-            knd_log("-- inner obj export failed :(");
+            knd_log("-- aggr obj export failed :(");
             return err;
         }
         return knd_OK;
@@ -1236,7 +1227,7 @@ kndElem_export_GSC(struct kndElem *self)
     err = self->out->write(self->out, "{", 1);
     if (err) return err;
     
-    err = self->out->write(self->out, self->name, self->name_size);
+    err = self->out->write(self->out, self->val, self->val_size);
     if (err) return err;
 
     if (self->attr) {
@@ -1409,12 +1400,12 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
     if (name_size >= KND_NAME_SIZE)
         return knd_LIMIT;
 
-    memcpy(self->name, name, name_size);
-    self->name_size = name_size;
-    self->name[name_size] = '\0';
+    memcpy(self->val, name, name_size);
+    self->val_size = name_size;
+    self->val[name_size] = '\0';
 
     if (DEBUG_ELEM_LEVEL_2)
-        knd_log("++ ELEM VAL: \"%.*s\"", self->name_size, self->name);
+        knd_log("++ ELEM VAL: \"%.*s\"", self->val_size, self->val);
 
     return knd_OK;
 }

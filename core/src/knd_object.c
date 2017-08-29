@@ -58,7 +58,7 @@ static void str(struct kndObject *self,
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
 
-    if (!self->parent) {
+    if (self->type == KND_OBJ_ADDR) {
         knd_log("\n%sOBJ %.*s::%.*s [%.*s]\n",
                 offset, self->conc->name_size, self->conc->name,
                 self->name_size, self->name,
@@ -71,10 +71,6 @@ static void str(struct kndObject *self,
         elem = elem->next;
     }
 }
-
-
-
-
 
 static int 
 kndObject_export_inline_JSON(struct kndObject *self)
@@ -167,9 +163,9 @@ kndObject_export_JSON(struct kndObject *self)
 
         /* filter out detailed presentation */
         if (is_concise) {
-            /* inner obj? */
-            if (elem->inner) {
-                obj = elem->inner;
+            /* aggr obj? */
+            if (elem->aggr) {
+                obj = elem->aggr;
                 obj->out = self->out;
 
                 if (need_separ) {
@@ -180,7 +176,7 @@ kndObject_export_JSON(struct kndObject *self)
 
                 err = self->out->write(self->out, "\"", 1);
                 if (err) return err;
-                err = self->out->write(self->out, elem->name, elem->name_size);
+                err = self->out->write(self->out, elem->attr->name, elem->attr->name_size);
                 if (err) return err;
                 err = self->out->write(self->out, "\":", 2);
                 if (err) return err;
@@ -197,7 +193,7 @@ kndObject_export_JSON(struct kndObject *self)
                     goto export_elem;
 
             if (DEBUG_OBJ_LEVEL_2)
-                knd_log("  .. skip JSON elem: %s..\n", elem->name);
+                knd_log("  .. skip JSON elem: %s..\n", elem->attr->name);
 
             goto next_elem;
         }
@@ -213,7 +209,7 @@ kndObject_export_JSON(struct kndObject *self)
         elem->out = self->out;
         err = elem->export(elem, KND_FORMAT_JSON, 0);
         if (err) {
-            knd_log("-- elem not exported: %s", elem->name);
+            knd_log("-- elem not exported: %s", elem->attr->name);
             goto final;
         }
         
@@ -360,6 +356,7 @@ kndObject_export_GSC(struct kndObject *self)
     err = self->out->write(self->out, "{", 1);
     if (err) return err;
 
+    /*
     if (!self->parent) {
         err = self->out->write(self->out, self->name, self->name_size);
         if (err) return err;
@@ -374,6 +371,7 @@ kndObject_export_GSC(struct kndObject *self)
         }
 
     }
+    */
     
     /*if (self->filename_size) {
         err = knd_make_id_path(buf, "repos",
@@ -430,7 +428,7 @@ kndObject_export_GSC(struct kndObject *self)
         elem->out = self->out;
         err = elem->export(elem, KND_FORMAT_GSC, is_concise);
         if (err) {
-            knd_log("-- export of \"%s\" elem failed: %d :(", elem->name, err);
+            knd_log("-- export of \"%s\" elem failed: %d :(", elem->attr->name, err);
             return err;
         }
         
@@ -582,7 +580,7 @@ kndObject_validate_attr(struct kndObject *self,
     int err, e;
 
     if (DEBUG_OBJ_LEVEL_2)
-        knd_log(".. validating ELEM \"%s\"..", self->name);
+        knd_log(".. validating \"%s\" obj elem: \"%.*s\"", self->name, name_size, name);
 
     conc = self->conc;
 
@@ -597,9 +595,14 @@ kndObject_validate_attr(struct kndObject *self,
         if (e) return e;
         return err;
     }
+
+    if (DEBUG_OBJ_LEVEL_2) {
+        const char *type_name = knd_attr_names[attr->type];
+        knd_log("++ \"%.*s\" ELEM \"%s\" attr type: \"%s\"",
+                name_size, name, attr->name, type_name);
+    }
     
     *result = attr;
-    
     return knd_OK;
 }
 
@@ -619,7 +622,6 @@ static int parse_elem(void *data,
         knd_log("..  validation of \"%s\" elem REC: \"%.*s\"\n",
                 name, 16, rec);
     }
-
     err = kndObject_validate_attr(self, name, name_size, &attr);
     if (err) return err;
 
@@ -645,6 +647,21 @@ static int parse_elem(void *data,
                 knd_attr_names[attr->type]);
 
     switch (attr->type) {
+    case KND_ATTR_AGGR:
+        err = kndObject_new(&obj);
+        if (err) return err;
+        obj->type = KND_OBJ_AGGR;
+        obj->conc = attr->conc;
+        obj->out = self->out;
+        obj->log = self->log;
+        obj->task = self->task;
+        err = obj->parse(obj, rec, total_size);
+        if (err) return err;
+
+        elem->aggr = obj;
+        obj->parent = elem;
+        
+        return knd_OK;
     case KND_ATTR_ATOM:
     case KND_ATTR_NUM:
     case KND_ATTR_FILE:
@@ -911,25 +928,25 @@ kndObject_sync(struct kndObject *self)
     struct kndObjRef *ref;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP) {
+    /*if (DEBUG_OBJ_LEVEL_TMP) {
         if (!self->root) {
             knd_log("\n    !! syncing primary OBJ %s::%s\n",
                     self->id, self->name);
         }
         else {
-            knd_log("    .. syncing inner obj %s..\n",
+            knd_log("    .. syncing aggr obj %s..\n",
                     self->parent->name);
         }
-    }
+        } */
     
     elem = self->elems;
     while (elem) {
-        /* resolve refs of inner obj */
-        if (elem->inner) {
-            obj = elem->inner;
+        /* resolve refs of aggr obj */
+        if (elem->aggr) {
+            obj = elem->aggr;
             
-            knd_log("    .. syncing inner obj in %s..\n",
-                    elem->name);
+            knd_log("    .. syncing aggr obj in %s..\n",
+                    elem->attr->name);
 
             while (obj) {
                 err = obj->sync(obj);
