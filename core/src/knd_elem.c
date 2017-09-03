@@ -896,6 +896,7 @@ kndElem_export_JSON(struct kndElem *self,
         if (err) goto final;
         return knd_OK;
     case KND_ATTR_STR:
+    case KND_ATTR_BIN:
         err = out->write(out, "\"", 1);
         if (err) goto final;
         err = out->write(out, self->states->val, self->states->val_size);
@@ -1299,6 +1300,10 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
         switch (self->attr->type) {
         case KND_ATTR_STR:
             knd_log("++ ELEM STR val of class %.*s: \"%.*s\"",
+                    self->attr->name_size, self->attr->name, val_size, val);
+            break;
+        case KND_ATTR_BIN:
+            knd_log("++ ELEM BIN val of class %.*s: \"%.*s\"",
                     self->attr->name_size, self->attr->name, val_size, val);
             break;
         default:

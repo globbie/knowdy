@@ -614,6 +614,36 @@ static int parse_str_change(void *obj,
     return knd_OK;
 }
 
+static int parse_bin_change(void *obj,
+                            const char *rec,
+                            size_t *total_size)
+{
+    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndAttr *attr;
+    int err;
+
+    err = kndAttr_new(&attr);
+    if (err) return err;
+    attr->parent_conc = self;
+    attr->type = KND_ATTR_BIN;
+
+    err = attr->parse(attr, rec, total_size);
+    if (err) {
+        knd_log("-- failed to parse the BIN attr: %d", err);
+        return err;
+    }
+    if (!self->tail_attr) {
+        self->tail_attr = attr;
+        self->attrs = attr;
+    }
+    else {
+        self->tail_attr->next = attr;
+        self->tail_attr = attr;
+    }
+
+    return knd_OK;
+}
+
 static int parse_num_change(void *obj,
                             const char *rec,
                             size_t *total_size)
@@ -1033,6 +1063,12 @@ static int parse_import_class(void *obj,
           .name = "str",
           .name_size = strlen("str"),
           .parse = parse_str_change,
+          .obj = c
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "bin",
+          .name_size = strlen("bin"),
+          .parse = parse_bin_change,
           .obj = c
         },
         { .type = KND_CHANGE_STATE,
