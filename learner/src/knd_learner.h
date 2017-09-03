@@ -44,7 +44,9 @@ struct kndLearner
     size_t publish_proxy_backend_addr_size;
     
     size_t state_count;
-  
+
+    size_t max_objs;
+    
     char *last_obj_id;
     char *curr_obj_id;
     size_t num_objs;

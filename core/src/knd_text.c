@@ -156,7 +156,7 @@ kndText_export_JSON(struct kndText *self)
             
         while (tr) {
             /* check language */
-            if (obj->cache->repo->locale_size) {
+            /*if (obj->cache->repo->locale_size) {
                 if (DEBUG_TEXT_LEVEL_3)
                     knd_log("  .. text LANG: %s curr user lang: %s\n",
                             tr->locale, obj->cache->repo->locale);
@@ -164,7 +164,7 @@ kndText_export_JSON(struct kndText *self)
                 if (strncmp(tr->locale, obj->cache->repo->locale, tr->locale_size))
                     goto next_tr;
             }
-            
+            */
             if (num_trs) {
                 err = out->write(out, ",", 1);
                 if (err) return err;
@@ -301,7 +301,7 @@ kndText_export_HTML(struct kndText *self)
             
         while (tr) {
             /* check language */
-            if (obj->cache->repo->locale_size) {
+            /*if (obj->cache->repo->locale_size) {
 
                 if (DEBUG_TEXT_LEVEL_3)
                     knd_log("  .. text LANG: %s curr user lang: %s\n",
@@ -309,7 +309,7 @@ kndText_export_HTML(struct kndText *self)
                 
                 if (strcmp(tr->locale, obj->cache->repo->locale))
                     goto next_tr;
-            }
+                    }*/
 
             /*buf_size = sprintf(buf, "\"l\":\"%s\"",
                                tr->locale);

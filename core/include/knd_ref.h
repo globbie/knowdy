@@ -34,7 +34,10 @@ struct kndRefState
     knd_state_phase phase;
     char state[KND_STATE_SIZE];
 
-    /*struct kndConcRef *cg;*/
+    char val[KND_NAME_SIZE + 1];
+    size_t val_size;
+
+    struct kndObject *obj;
 
     struct kndRefState *next;
 };
@@ -43,27 +46,12 @@ struct kndRef
 {
     knd_ref_t type;
     struct kndElem *elem;
-    
+
     struct kndOutput *out;
     struct kndOutput *log;
 
     knd_ref_t reftype;
-    char user_name[KND_NAME_SIZE];
-    size_t user_name_size;
-    struct kndUser *user;
-
-    char repo_name[KND_NAME_SIZE];
-    size_t repo_name_size;
-    struct kndRepo *repo;
-
-    char classname[KND_NAME_SIZE];
-    size_t classname_size;
-    struct kndDataClass *dc;
-
-    char val[KND_NAME_SIZE + 1];
-    size_t val_size;
-
-
+    
     struct kndRefState *states;
     size_t num_states;
     
@@ -78,6 +66,7 @@ struct kndRef
                  size_t          *total_size);
 
     int (*index)(struct kndRef *self);
+    int (*resolve)(struct kndRef *self);
     
     int (*export)(struct kndRef *self,
                   knd_format format);

@@ -4,6 +4,8 @@
 #include <assert.h>
 #include <pthread.h>
 
+#include <time.h>
+
 #include "knd_config.h"
 #include "knd_dict.h"
 #include "knd_utils.h"
@@ -14,6 +16,7 @@
 #include "knd_user.h"
 #include "knd_parser.h"
 #include "knd_concept.h"
+#include "knd_object.h"
 
 #include "knd_learner.h"
 
@@ -42,7 +45,10 @@ kndLearner_start(struct kndLearner *self)
     size_t task_size = 0;
     char *obj = NULL;
     size_t obj_size = 0;
-    
+
+    time_t  t0, t1;
+    clock_t c0, c1;
+
     int err;
 
     /* restore in-memory data after failure or restart */
@@ -52,9 +58,8 @@ kndLearner_start(struct kndLearner *self)
     
     context = zmq_init(1);
 
-    knd_log("LEARNER listener: %s\n",
-            self->inbox_backend_addr);
-    
+    knd_log("LEARNER listener: %s\n", self->inbox_backend_addr);
+
     /* get messages from outbox */
     outbox = zmq_socket(context, ZMQ_PULL);
     assert(outbox);
@@ -81,23 +86,40 @@ kndLearner_start(struct kndLearner *self)
     err = zmq_connect(self->publisher, self->publish_proxy_frontend_addr);
     assert(err == knd_OK);
     self->task->publisher = self->publisher;
-    
+
     while (1) {
         self->task->reset(self->task);
 
-        if (DEBUG_LEARNER_LEVEL_TMP)
+        if (DEBUG_LEARNER_LEVEL_2)
             knd_log("\n++ #%s learner agent is ready to receive new tasks!", 
                     self->name);
 
 	task = knd_zmq_recv(outbox, &task_size);
 	obj = knd_zmq_recv(outbox, &obj_size);
 
-	knd_log("++ #%s learner agent got task: %s [%lu]", 
-                self->name, task, (unsigned long)task_size);
-
+        t0 = time(NULL);
+        c0 = clock();
+        
         err = self->task->run(self->task,
                               task, task_size,
                               obj, obj_size);
+
+        if (DEBUG_LEARNER_LEVEL_TMP) {
+            /*knd_log("++ #%s learner agent got task: %s [%lu]",
+              self->name, task, (unsigned long)task_size); */
+            if (!strcmp(obj, "100")) {
+                t1 = time(NULL);
+                c1 = clock();
+
+                printf ("\telapsed wall clock time: %ld\n", (long)  (t1 - t0));
+                printf ("\telapsed CPU time:        %f\n",  (float) (c1 - c0)/CLOCKS_PER_SEC);
+
+                knd_log("== total objs: %lu", (unsigned long)self->admin->root_class->num_objs);
+                
+                //exit(0);
+            }
+        }
+
         if (err) {
             self->task->error = err;
             knd_log("-- task running failure: %d", err);
@@ -180,6 +202,60 @@ parse_write_inbox_addr(void *obj,
 }
 
 
+static int run_set_max_objs(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndLearner *self = (struct kndObject*)obj;
+    struct kndTaskArg *arg;
+    const char *val = NULL;
+    size_t val_size = 0;
+    long numval;
+    int err;
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            val = arg->val;
+            val_size = arg->val_size;
+        }
+    }
+    if (!val_size) return knd_FAIL;
+    if (val_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+    err = knd_parse_num((const char*)val, &numval);
+    if (err) return err;
+
+    if (numval < KND_MIN_OBJS) return knd_LIMIT;
+
+    self->max_objs = numval;
+
+    if (DEBUG_LEARNER_LEVEL_TMP)
+        knd_log("++ MAX OBJS: %lu", (unsigned long)self->max_objs);
+
+    return knd_OK;
+}
+
+static int 
+parse_max_objs(void *obj,
+               const char *rec,
+               size_t *total_size)
+{
+    struct kndLearner *self = (struct kndLearner*)obj;
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_max_objs,
+          .obj = self
+        }
+    };
+    int err;
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+
 static int
 parse_config_GSL(struct kndLearner *self,
                  const char *rec,
@@ -214,6 +290,11 @@ parse_config_GSL(struct kndLearner *self,
            .buf = self->admin->sid,
            .buf_size = &self->admin->sid_size,
            .max_buf_size = KND_NAME_SIZE
+         },
+         { .name = "max_objs",
+           .name_size = strlen("max_objs"),
+           .parse = parse_max_objs,
+           .obj = self,
          },
          { .name = "delivery",
            .name_size = strlen("delivery"),
@@ -344,7 +425,7 @@ kndLearner_new(struct kndLearner **rec,
     /* read config */
     err = self->out->read_file(self->out, config, strlen(config));
     if (err) goto error;
-    
+
     err = parse_config_GSL(self, self->out->file, &chunk_size);
     if (err) goto error;
     
@@ -358,8 +439,21 @@ kndLearner_new(struct kndLearner **rec,
     dc->dbpath = self->schema_path;
     dc->dbpath_size = self->schema_path_size;
 
+    /* specific allocations of the root class */
     err = ooDict_new(&dc->class_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
+    err = ooDict_new(&dc->obj_idx, KND_LARGE_DICT_SIZE);
+    if (err) return err;
+
+    /* obj/elem allocator */
+    if (self->max_objs) {
+        dc->obj_storage = calloc(self->max_objs, 
+                                 sizeof(struct kndObject));
+        if (!dc->obj_storage) return knd_NOMEM;
+        dc->obj_storage_max = self->max_objs;
+
+        knd_log("++ OBJ alloc OK!");
+    }
     
     /* read class definitions */
     dc->batch_mode = true;
@@ -559,7 +653,7 @@ void *kndLearner_publisher(void *arg)
         knd_log("bind %s zmqerr: %s\n",
                 learner->publish_proxy_backend_addr, zmq_strerror(errno));
     assert(ret == knd_OK);
-    
+
     knd_log("++ The Learner's publisher proxy is up and running!");
 
     zmq_proxy(frontend, backend, NULL);

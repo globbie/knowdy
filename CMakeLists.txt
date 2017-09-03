@@ -8,7 +8,7 @@ set(CMAKE_INSTALL_PREFIX /)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -pedantic")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -g3")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} -03 -Werror")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O3 -Wall")
 
 add_definitions(-D_POSIX_SOURCE=200809L)
 add_definitions(-D_GNU_SOURCE)
@@ -16,7 +16,7 @@ add_definitions(-D_XOPEN_SOURCE=700)
 add_definitions(-D_BSD_SOURCE)
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
 endif()
 
 find_package(PkgConfig)

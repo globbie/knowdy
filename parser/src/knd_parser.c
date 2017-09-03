@@ -652,10 +652,10 @@ static int knd_check_implied_field(const char *name,
     return knd_OK;
 }
 
-int knd_parse_task(const char *rec,
-                   size_t *total_size,
-                   struct kndTaskSpec *specs,
-                   size_t num_specs)
+inline int knd_parse_task(const char *rec,
+                          size_t *total_size,
+                          struct kndTaskSpec *specs,
+                          size_t num_specs)
 {
     const char *b, *c, *e;
     size_t name_size;

@@ -32,11 +32,6 @@ kndRepo_get_guid(struct kndRepo *self,
                  const char *obj_name,
                  size_t      obj_name_size,
                  char *result);
-
-static int
-kndRepo_get_cache(struct kndRepo *self, struct kndConcept *c,
-                  struct kndRepoCache **result);
-
 static int
 kndRepo_import_obj(struct kndRepo *self,
                    const char *rec,
@@ -495,9 +490,9 @@ kndRepo_run_get_class_cache(void *obj, struct kndTaskArg *args, size_t num_args)
     }
     self->curr_class = c;
 
-    err = kndRepo_get_cache(self, c, &self->curr_cache);
+    /*    err = kndRepo_get_cache(self, c, &self->curr_cache);
     if (err) return err;
-
+    */
     if (DEBUG_REPO_LEVEL_2) {
         knd_log("++ got class cache: \"%s\": %p", c->name, self->curr_cache);
         self->curr_cache->name_idx->str(self->curr_cache->name_idx, 0, 5);
@@ -927,7 +922,6 @@ kndRepo_import_obj(struct kndRepo *self,
 
     err = kndObject_new(&obj);
     if (err) return err;
-    obj->cache = cache;
     obj->out = self->out;
 
     memcpy(obj->id, cache->obj_last_id, KND_ID_SIZE);
@@ -1122,7 +1116,6 @@ kndRepo_read_db_chunk(struct kndRepo *self,
     err = kndObject_new(&obj);
     if (err) return err;
 
-    obj->cache = cache;
     obj->out = self->out;
     obj->out->reset(obj->out);
    
@@ -1182,7 +1175,6 @@ kndRepo_read_obj_db(struct kndRepo *self,
                                 guid, &obj);
     if (err) return err;
 
-    obj->cache = cache;
     memcpy(obj->id, guid, KND_ID_SIZE);
     
     *result = obj;
@@ -1432,33 +1424,6 @@ kndRepo_export_JSON(struct kndRepo *self)
     err = out->write(out, "\"", 1);
     if (err) return err;
 
-    err = out->write(out, ",\"c_l\":[", strlen(",\"c_l\":["));
-    if (err) return err;
-    
-    /* export ALL classes */
-    if (!self->curr_class) {
-        cache = self->cache;
-        while (cache) {
-            err = kndRepo_export_class_JSON(self, cache);
-            if (err) return err;
-            
-            /* separator */
-            if (cache->next) {
-                err = out->write(out, ",", 1);
-                if (err) return err;
-            }
-            cache = cache->next;
-        }
-    }
-    else {
-        /* export just the selected class */
-        err = kndRepo_get_cache(self, self->curr_class, &cache);
-        if (err) return err;
-
-        err = kndRepo_export_class_JSON(self, cache);
-        if (err) return err;
-    }
-
     
     err = out->write(out, "]", 1);
     if (err) return err;
@@ -1560,44 +1525,6 @@ kndRepo_export_class_HTML(struct kndRepo *self, struct kndRepoCache *cache)
 
 
 static int 
-kndRepo_export_HTML(struct kndRepo *self)
-{
-    //char buf[KND_TEMP_BUF_SIZE];
-    //size_t buf_size;
-    
-    struct kndRepoCache *cache;
-    //struct kndConcept *conc;
-    struct kndOutput *out;
-    //struct kndObject *obj;
-    
-    int err;
-
-    out = self->out;
-    
-    /* export ALL classes */
-    if (!self->curr_class) {
-
-        cache = self->cache;
-        while (cache) {
-            err = kndRepo_export_class_HTML(self, cache);
-            if (err) return err;
-            
-            cache = cache->next;
-        }
-    }
-    else {
-        /* export just the selected class */
-        err = kndRepo_get_cache(self, self->curr_class, &cache);
-        if (err) return err;
-
-        err = kndRepo_export_class_HTML(self, cache);
-        if (err) return err;
-    }
-    
-    return err;
-}
-
-static int 
 kndRepo_export_GSL(struct kndRepo *self)
 {
     struct kndOutput *out = self->out;
@@ -1632,114 +1559,6 @@ kndRepo_export_GSL(struct kndRepo *self)
 
 
 static int
-kndRepo_get_cache(struct kndRepo *self,
-                  struct kndConcept *conc,
-                  struct kndRepoCache **result)
-{
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-    struct kndRepoCache *cache;
-    int err;
-    
-    cache = self->cache;
-    while (cache) {
-        if (cache->baseclass == conc) {
-            *result = cache;
-            return knd_OK;
-        }
-        cache = cache->next;
-    }
-
-    /* no cache found */
-    cache  = malloc(sizeof(struct kndRepoCache));
-    if (!cache) return knd_NOMEM;
-    memset(cache, 0, sizeof(struct kndRepoCache));
-
-    cache->baseclass = conc;
-    cache->repo = self;
-
-    err = ooDict_new(&cache->db, KND_MEDIUM_DICT_SIZE);
-    if (err) goto final;
-
-    /*err = ooDict_new(&cache->obj_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) goto final;
-    */
-    
-    err = kndRefSet_new(&cache->browser);
-    if (err) goto final;
-    cache->browser->name[0] = '/';
-    cache->browser->name_size = 1;
-    cache->browser->cache = cache;
-    cache->browser->out = self->out;
-
-    err = kndRefSet_new(&cache->name_idx);
-    if (err) goto final;
-    memcpy(cache->name_idx->name, "AZ", strlen("AZ"));
-    cache->name_idx->name_size = strlen("AZ");
-    cache->name_idx->cache = cache;
-    cache->name_idx->out = self->out;
-
-    /* read name IDX */
-    if (self->user->role == KND_USER_ROLE_RETRIEVER) {
-        buf_size = sprintf(buf, "%s/%s/AZ.idx",
-                           self->path,
-                           conc->name);
-
-        if (DEBUG_REPO_LEVEL_2)
-            knd_log(".. reading name IDX file: \"%s\" ..",
-                    buf);
-
-        self->out = self->out;
-        self->out->reset(self->out);
-    
-        err = self->out->read_file(self->out,
-                                   (const char*)buf, buf_size);
-        if (err) {
-            if (DEBUG_REPO_LEVEL_TMP)
-                knd_log("-- no IDX DB found: \"%s\" :(",
-                        buf);
-            return knd_FAIL;
-        }
-    
-        if (DEBUG_REPO_LEVEL_2)
-            knd_log("\n\n   ++  atom IDX DB rec size: %lu\n",
-                    (unsigned long)self->out->file_size);
-    
-        err = cache->name_idx->read(cache->name_idx,
-                                    self->out->file,
-                                    self->out->file_size);
-
-        if (DEBUG_REPO_LEVEL_2)
-            knd_log("== name idx read: %d", err);
-
-        if (err) {
-            if (DEBUG_REPO_LEVEL_TMP)
-                knd_log("    -- name IDX refset not parsed :(\n");
-            return err;
-        }
-    }
-    
-    /* root query */
-    err = kndQuery_new(&cache->query);
-    if (err) return err;
-
-    memcpy(cache->query->facet_name, "/", 1);
-    cache->query->facet_name_size = 1;
-    cache->query->cache = cache;
-
-    memset(cache->obj_last_id, '0', KND_ID_SIZE);
-
-    cache->next = self->cache;
-    self->cache = cache;
-
-    *result = cache;
-    return knd_OK;
-    
- final:
-    return err;
-}
-
-static int
 kndRepo_get_guid(struct kndRepo *self,
                  struct kndConcept *conc,
                  const char *name,
@@ -1753,7 +1572,7 @@ kndRepo_get_guid(struct kndRepo *self,
         knd_log(".. get guid of %s::%s..",
                 conc->name, name);
     
-    err = kndRepo_get_cache(self, conc, &cache);
+    /*    err = kndRepo_get_cache(self, conc, &cache);
     if (err) return err;
 
 
@@ -1764,7 +1583,7 @@ kndRepo_get_guid(struct kndRepo *self,
         knd_log("-- obj name \"%s\" not recognized :(", name);
         return knd_NO_MATCH;
     }
-    
+    */
     return knd_OK;
 }
 
@@ -1777,10 +1596,6 @@ kndRepo_export(struct kndRepo *self, knd_format format)
     switch (format) {
     case KND_FORMAT_JSON:
         err = kndRepo_export_JSON(self);
-        if (err) goto final;
-        break;
-    case KND_FORMAT_HTML:
-        err = kndRepo_export_HTML(self);
         if (err) goto final;
         break;
     case KND_FORMAT_GSL:
@@ -2029,7 +1844,6 @@ kndRepo_init(struct kndRepo *self)
     self->export = kndRepo_export;
 
     self->restore = kndRepo_restore;
-    self->get_cache = kndRepo_get_cache;
     self->get_guid = kndRepo_get_guid;
     self->read_obj = kndRepo_read_obj_db;
     

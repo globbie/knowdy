@@ -73,7 +73,7 @@ static void str(struct kndObject *self,
 }
 
 static int 
-kndObject_export_inline_JSON(struct kndObject *self)
+kndObject_export_aggr_JSON(struct kndObject *self)
 {
     struct kndElem *elem;
     int err;
@@ -103,9 +103,7 @@ kndObject_export_inline_JSON(struct kndObject *self)
     return knd_OK;
 }
 
-
-
-static int 
+static int
 kndObject_export_JSON(struct kndObject *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
@@ -124,43 +122,37 @@ kndObject_export_JSON(struct kndObject *self)
     struct kndRelType *reltype;
     struct kndObjRef *r;
     struct kndObject *obj;
-    
     bool is_concise = true;
     bool need_separ;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_3)
-        knd_log("   .. export OBJ \"%s\"    is_concise: %d\n",
+    if (DEBUG_OBJ_LEVEL_2)
+        knd_log("   .. export OBJ \"%s\"  is_concise: %d\n",
             self->name, is_concise);
-    
-    if (self->conc) {
-        err = kndObject_export_inline_JSON(self);
+
+    if (self->type == KND_OBJ_AGGR) {
+        err = kndObject_export_aggr_JSON(self);
         return err;
     }
-    
-    buf_size = sprintf(buf, "{\"n\":\"%s\"",
-                       self->name);
+
+    buf_size = sprintf(buf, "{\"n\":\"%s\"", self->name);
     err = self->out->write(self->out, buf, buf_size);
     if (err) goto final;
 
-
-    buf_size = sprintf(buf, ",\"guid\":\"%s\"",
-                       self->id);
+    /*buf_size = sprintf(buf, ",\"id\":%.*s", self->id);
     err = self->out->write(self->out, buf, buf_size);
     if (err) goto final;
+    */
     
-
     /* ELEMS */
-    if (self->elems) {
+    /*if (self->elems) {
         err = self->out->write(self->out, ",\"elems\":{", strlen(",\"elems\":{"));
         if (err) goto final;
-    }
+        }*/
 
     need_separ = false;
-
     elem = self->elems;
     while (elem) {
-
         /* filter out detailed presentation */
         if (is_concise) {
             /* aggr obj? */
@@ -168,11 +160,9 @@ kndObject_export_JSON(struct kndObject *self)
                 obj = elem->aggr;
                 obj->out = self->out;
 
-                if (need_separ) {
-                    err = self->out->write(self->out, ",", 1);
-                    if (err) return err;
-                }
-
+                /*if (need_separ) {*/
+                err = self->out->write(self->out, ",", 1);
+                if (err) return err;
 
                 err = self->out->write(self->out, "\"", 1);
                 if (err) return err;
@@ -200,10 +190,9 @@ kndObject_export_JSON(struct kndObject *self)
 
     export_elem:
 
-        if (need_separ) {
-            err = self->out->write(self->out, ",", 1);
-            if (err) goto final;
-        }
+        /*if (need_separ) {*/
+        err = self->out->write(self->out, ",", 1);
+        if (err) goto final;
 
         /* default export */
         elem->out = self->out;
@@ -219,17 +208,15 @@ kndObject_export_JSON(struct kndObject *self)
         elem = elem->next;
     }
 
-    if (self->elems) {
+    /*if (self->elems) {
         err = self->out->write(self->out, "}", 1);
         if (err) goto final;
-    }
+        }*/
 
     if (is_concise) goto closing;
-    
 
     /* skip relations */
-    if (self->depth)
-        goto closing;
+    if (self->depth) goto closing;
     
     /*  relations */
     if (self->rel_classes) {
@@ -237,7 +224,7 @@ kndObject_export_JSON(struct kndObject *self)
         if (err) return err;
     }
 
-    relc = self->rel_classes;
+    /*relc = self->rel_classes;
     while (relc) {
 
         err = self->cache->repo->get_cache(self->cache->repo, relc->conc, &cache);
@@ -316,7 +303,8 @@ kndObject_export_JSON(struct kndObject *self)
 
         relc = relc->next;
     }
-
+    */
+    
     if (self->rel_classes) {
         err = self->out->write(self->out, "]", 1);
         if (err) return err;
@@ -486,8 +474,6 @@ kndObject_export_GSC(struct kndObject *self)
                     
                 }
             }
-
-            
             err = self->out->write(self->out, "]", 1);
             if (err) return err;
             
@@ -498,7 +484,6 @@ kndObject_export_GSC(struct kndObject *self)
         next_reltype:
             reltype = reltype->next;
         }
-
         
         relc = relc->next;
     }
@@ -516,7 +501,6 @@ static int
 kndObject_export(struct kndObject *self)
 {
     int err;
-    
     switch(self->format) {
     case KND_FORMAT_JSON:
         err = kndObject_export_JSON(self);
@@ -566,8 +550,6 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
 
     return knd_OK;
 }
-
-
 
 static int
 kndObject_validate_attr(struct kndObject *self,
@@ -648,19 +630,19 @@ static int parse_elem(void *data,
 
     switch (attr->type) {
     case KND_ATTR_AGGR:
-        err = kndObject_new(&obj);
+     
+        err = kndConcept_alloc_obj(self->conc->root_class, &obj);
         if (err) return err;
+        
         obj->type = KND_OBJ_AGGR;
         obj->conc = attr->conc;
         obj->out = self->out;
         obj->log = self->log;
-        obj->task = self->task;
         err = obj->parse(obj, rec, total_size);
         if (err) return err;
 
         elem->aggr = obj;
         obj->parent = elem;
-        
         return knd_OK;
     case KND_ATTR_ATOM:
     case KND_ATTR_NUM:
@@ -672,15 +654,10 @@ static int parse_elem(void *data,
         if (err) return err;
         ref->elem = elem;
         ref->out = self->out;
+        err = ref->parse(ref, rec, total_size);
+        if (err) goto final;
 
-        //chunk_size = 0;
-        /*err = ref->parse(ref, c, &chunk_size);
-        if (err) {
-            knd_log("-- \"%.*s\" elem parse failure :(", name_size, name);
-            return err;
-            }*/
         elem->ref = ref;
-        //*total_size = chunk_size;
         return knd_OK;
     case KND_ATTR_TEXT:
         err = kndText_new(&text);
@@ -759,13 +736,14 @@ kndObject_contribute(struct kndObject *self,
 
     if ((matchpoint_num) > self->num_matchpoints) return knd_OK;
     
-    if (self->cache->repo->match_state > self->match_state) {
+    /*if (self->cache->repo->match_state > self->match_state) {
         self->match_state = self->cache->repo->match_state;
         memset(self->matchpoints, 0, sizeof(struct kndMatchPoint) * self->num_matchpoints);
         self->match_score = 0;
         self->match_idx_pos = -1;
     }
-        
+    */
+    
     mp = &self->matchpoints[matchpoint_num];
 
     if (mp->orig_pos) {
@@ -796,7 +774,7 @@ kndObject_contribute(struct kndObject *self,
             idx_pos = self->match_idx_pos;
         else {
 
-            if (self->cache->num_matches > KND_MAX_MATCHES) {
+            /*if (self->cache->num_matches > KND_MAX_MATCHES) {
                 knd_log("  -- results buffer limit reached :(\n");
                 return knd_FAIL;
             }
@@ -804,7 +782,7 @@ kndObject_contribute(struct kndObject *self,
             idx_pos = self->cache->num_matches;
             self->match_idx_pos = idx_pos;
             self->cache->matches[idx_pos] = self;
-            self->cache->num_matches++;
+            self->cache->num_matches++; */
         }
 
     }
@@ -828,7 +806,7 @@ kndObject_match(struct kndObject *self,
     struct kndOutput *out;
     int err;
 
-    self->cache->num_matches = 0;
+    /*    self->cache->num_matches = 0; */
     
     /* elem with linear seq */
     err = kndElem_new(&elem);
@@ -839,11 +817,12 @@ kndObject_match(struct kndObject *self,
     err = elem->match(elem, rec, rec_size);
     if (err) goto final;
 
-    qsort(self->cache->matches,
+    /*qsort(self->cache->matches,
           self->cache->num_matches,
           sizeof(struct kndObject*),
           knd_compare_obj_by_match_descend);
-
+    */
+    
     knd_log("== MATCH RESULTS:");
 
     out = self->out;
@@ -851,7 +830,7 @@ kndObject_match(struct kndObject *self,
     err = out->write(out, "[", 1);
     if (err) goto final;
 
-    for (size_t i = 0; i < self->cache->num_matches; i++) {
+    /*for (size_t i = 0; i < self->cache->num_matches; i++) {
         obj = self->cache->matches[i];
 
         buf_size = sprintf(buf, "{%s {score %.2f}}",
@@ -864,7 +843,7 @@ kndObject_match(struct kndObject *self,
 
         if (i >= KND_MATCH_MAX_RESULTS) break;
     }
-
+    */
     err = out->write(out, "]", 1);
     if (err) goto final;
     
@@ -875,43 +854,34 @@ kndObject_match(struct kndObject *self,
 }
 
 
+
 static int 
-kndObject_get_idx(struct kndObject *self,
-                  const char *idx_name,
-                  size_t idx_name_size,
-                  struct kndRefSet **result)
+kndObject_resolve(struct kndObject *self)
 {
-    struct kndRefSet *refset;
+    struct kndElem *elem;
     int err;
-    
-    refset = self->cache->idxs;
-    while (refset) {
-        if (!strcmp(refset->name, idx_name)) break;
 
-        refset = refset->next;
+    if (DEBUG_OBJ_LEVEL_3) {
+        if (self->type == KND_OBJ_ADDR) {
+            knd_log(".. resolve OBJ %.*s::%.*s [%.*s]",
+                    self->conc->name_size, self->conc->name,
+                    self->name_size, self->name,
+                    KND_ID_SIZE, self->id);
+        } else {
+            knd_log(".. resolve aggr elem \"%.*s\" %.*s..",
+                    self->parent->attr->name_size, self->parent->attr->name,
+                    self->conc->name_size, self->conc->name);
+        }
     }
-
-    if (!refset) {
-        err = kndRefSet_new(&refset);
+    
+    for (elem = self->elems; elem; elem = elem->next) {
+        elem->log = self->log;
+        err = elem->resolve(elem);
         if (err) return err;
-            
-        memcpy(refset->name,
-               idx_name,
-               idx_name_size);
-        refset->name_size = idx_name_size;
-
-        refset->cache = self->cache;
-        
-        refset->next = self->cache->idxs;
-        self->cache->idxs = refset;
-    }
-
-    
-    *result = refset;
+    } 
     
     return knd_OK;
 }
-
 
 static int 
 kndObject_sync(struct kndObject *self)
@@ -937,7 +907,8 @@ kndObject_sync(struct kndObject *self)
             knd_log("    .. syncing aggr obj %s..\n",
                     self->parent->name);
         }
-        } */
+        }
+    */
     
     elem = self->elems;
     while (elem) {
@@ -996,8 +967,6 @@ kndObject_sync(struct kndObject *self)
         elem = elem->next;
     }
 
-    knd_log("  .. to refset..");
-
     if (!self->tag) {
         if (DEBUG_OBJ_LEVEL_3)
             knd_log("    -- obj %s:%s is not meant for browsing\n",
@@ -1009,13 +978,14 @@ kndObject_sync(struct kndObject *self)
     for (size_t i = 0; i < self->tag->num_attrs; i++) {
         attr = self->tag->attrs[i];
         
-        err = kndObject_get_idx(self,
+        /*err = kndObject_get_idx(self,
                                 (const char*)attr->name,
                                 attr->name_size, &refset);
         if (err) {
             knd_log("  -- no refset %s :(\n", attr->name);
             return err;
         }
+        */
         
         err = kndObjRef_new(&ref);
         if (err) return err;
@@ -1085,17 +1055,14 @@ kndObject_init(struct kndObject *self)
     self->del = del;
     self->str = str;
 
-    self->sync = kndObject_sync;
-    //self->expand = kndObject_expand;
-    self->export = kndObject_export;
     //self->flatten = kndObject_flatten;
     self->match = kndObject_match;
     self->contribute = kndObject_contribute;
 
     self->parse = kndObject_parse_GSL;
-
-    //self->parse_inline = kndObject_parse_inline;
-    //self->index_inline = kndObject_index_inline;
+    self->resolve = kndObject_resolve;
+    self->export = kndObject_export;
+    self->sync = kndObject_sync;
 }
 
 extern int

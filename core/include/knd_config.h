@@ -341,7 +341,10 @@ typedef enum knd_storage_type {
 
 #define KND_SMALL_BUF_SIZE 64
 #define KND_LABEL_SIZE 8
-#define KND_NAME_SIZE 512
+#define KND_NAME_SIZE 500
+#define KND_SHORT_NAME_SIZE 64
+#define KND_VAL_SIZE 128
+
 #define KND_UID_SIZE 7
 
 #define KND_CONC_NAME_BUF_SIZE 1024
@@ -364,6 +367,8 @@ typedef enum knd_storage_type {
 #define KND_MAX_OBJ_BUF_SIZE 1024 * 100 * sizeof(char)
 #define KND_MAX_ERR_MSG_BUF_SIZE 1024 * 10 * sizeof(char)
 #define KND_MAX_UPDATE_BUF_SIZE 1024 * 100 * sizeof(char)
+
+#define KND_MIN_OBJS 1024
 
 #define KND_MAX_TEXT_CHUNK_SIZE 1024 * 10
 

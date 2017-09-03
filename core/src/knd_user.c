@@ -315,6 +315,7 @@ kndUser_parse_auth(void *obj,
     struct kndUser *self = (struct kndUser*)obj;
     char sid[KND_NAME_SIZE];
     size_t sid_size;
+    int err, e;
 
     struct kndTaskSpec specs[] = {
         { .name = "sid",
@@ -325,7 +326,6 @@ kndUser_parse_auth(void *obj,
           .max_buf_size = KND_NAME_SIZE
         }
     };
-    int err, e;
 
     if (DEBUG_USER_LEVEL_2)
         knd_log("   .. parsing the AUTH rec: \"%s\"", rec);
@@ -486,39 +486,62 @@ kndUser_parse_task(struct kndUser *self,
         if (!self->log->buf_size) {
             e = self->log->write(self->log, "internal server error",
                                    strlen("internal server error"));
-            if (e) return e;
+            if (e) {
+                err = e;
+                goto cleanup;
+            }
         }
-        return err;
+        goto cleanup;
     }
 
     switch (self->task->type) {
     case KND_UPDATE_STATE:
-        if (DEBUG_USER_LEVEL_TMP)
+        if (DEBUG_USER_LEVEL_1)
             knd_log("++ all updates applied!");
         return knd_OK;
     case KND_GET_STATE:
-        if (DEBUG_USER_LEVEL_TMP)
+        if (DEBUG_USER_LEVEL_1)
             knd_log("++ get task complete!");
         return knd_OK;
     default:
         /* any transaction to close? */
         if (self->root_class->inbox_size || self->root_class->obj_inbox_size) {
+            
             out = self->task->update;
             err = out->write(out, "{task{update", strlen("{task{update"));
-            if (err) return err;
+            if (err) goto cleanup;
+            
             /* update spec body */
             err = out->write(out, rec, *total_size);
-            if (err) return err;
+            if (err) goto cleanup;
             
             err = self->root_class->update_state(self->root_class);
-            if (err) return err;
+            if (err) goto cleanup;
         }
     }
 
     return knd_OK;
+
+
+ cleanup:
+
+    /* TODO */
+    if (self->root_class->obj_inbox_size) {
+        if (DEBUG_USER_LEVEL_TMP)
+            knd_log(".. obj inbox cleanup..\n\n");
+        self->root_class->obj_inbox = NULL;
+        self->root_class->obj_inbox_size = 0;
+    }
+    
+    if (self->root_class->inbox_size) {
+        if (DEBUG_USER_LEVEL_TMP)
+            knd_log(".. class inbox cleanup..\n\n");
+        self->root_class->inbox = NULL;
+        self->root_class->inbox_size = 0;
+    }
+    
+    return err;
 }
-
-
 
 
 

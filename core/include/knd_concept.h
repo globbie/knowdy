@@ -92,7 +92,9 @@ struct kndConcept
 
     char state[KND_STATE_SIZE];
     char next_state[KND_STATE_SIZE];
+    char diff_state[KND_STATE_SIZE];
     char next_obj_state[KND_STATE_SIZE];
+    size_t global_state_count;
 
     knd_state_phase phase;
 
@@ -144,11 +146,19 @@ struct kndConcept
     struct kndConcFolder *folders;
     size_t num_folders;
 
+    /* allocator */
+    struct kndObject *obj_storage;
+    size_t obj_storage_size;
+    size_t obj_storage_max;
+    
     /* incoming */
     struct kndConcept *inbox;
     size_t inbox_size;
+
     struct kndObject *obj_inbox;
     size_t obj_inbox_size;
+    size_t num_objs;
+
     bool batch_mode;
 
     /* indices */
@@ -183,7 +193,8 @@ struct kndConcept
                         size_t *total_size);
 
     int (*build_diff)(struct kndConcept   *self,
-                      const char *start_state);
+                      const char *start_state,
+                      size_t global_state_count);
 
     int (*coordinate)(struct kndConcept *self);
     int (*resolve)(struct kndConcept    *self);
@@ -216,8 +227,9 @@ struct kndConcept
                      struct kndAttr **result);
 };
 
-
-
+/* obj allocator */
+extern int kndConcept_alloc_obj(struct kndConcept *self,
+                                struct kndObject **result);
 
 /* constructor */
 extern int kndConcept_new(struct kndConcept **self);

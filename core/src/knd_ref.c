@@ -31,16 +31,49 @@ static void str(struct kndRef *self, size_t depth)
 {
     size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
-
-    struct kndRefState *curr_state;
-  
+    if (!offset) return;
+    
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
 
-    if (self->user_name_size) {
-        knd_log("%sUSER REF: %s [%p]", offset, self->user_name, self->user);
+    if (self->states) {
+        knd_log("%s%s -> \"%s\"", offset,
+                self->elem->attr->name, self->states->val);
+    }
+    free(offset);
+}
+
+
+static int kndRef_resolve(struct kndRef *self)
+{
+    struct kndConcept *conc;
+    struct kndObject *obj;
+    const char *obj_name;
+    int e;
+    
+    if (!self->states) return knd_FAIL;
+    conc = self->elem->attr->conc;
+     
+    if (DEBUG_REF_LEVEL_TMP)
+        knd_log(".. resolve REF: %s (%s) => %s",
+                self->elem->attr->name,
+                conc->name, self->states->val);
+
+    obj_name = self->states->val;
+    
+    obj = (struct kndObject*)conc->obj_idx->get(conc->obj_idx, obj_name);
+    if (!obj) {
+        knd_log("-- no such obj: \"%s\" :(", obj_name);
+        e = self->log->write(self->log, "no such obj: ", strlen("no such obj: "));
+        if (e) return e;
+        e = self->log->write(self->log, obj_name, self->states->val_size);
+        if (e) return e;
+        return knd_FAIL;
     }
 
+    self->states->obj = obj;
+
+    return knd_OK;
 }
 
 static int kndRef_index(struct kndRef *self)
@@ -61,36 +94,40 @@ static int kndRef_index(struct kndRef *self)
     return knd_OK;
 }
 
-
-
-
-static int
-kndRef_run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
+static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
 {
-    struct kndRef *self;
-    struct kndUser *user;
+    struct kndRef *self = (struct kndRef*)obj;
     struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
-    
+    struct kndRefState *state;
+    const char *val = NULL;
+    size_t val_size = 0;
+    int err;
+
+    if (DEBUG_REF_LEVEL_2)
+        knd_log(".. run set ref val..");
+
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
-        if (!strncmp(arg->name, "un", strlen("un"))) {
-            name = arg->val;
-            name_size = arg->val_size;
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            val = arg->val;
+            val_size = arg->val_size;
         }
     }
 
-    if (!name_size) return knd_FAIL;
+    if (!val_size) return knd_FAIL;
+    if (val_size >= KND_NAME_SIZE)
+        return knd_LIMIT;
 
-    self = (struct kndRef*)obj;
-    
-    if (DEBUG_REF_LEVEL_TMP) {
-        knd_log(".. get user: \"%s\"",
-                name);
-    }
-    
-    
+    state = malloc(sizeof(struct kndRefState));
+    if (!state) return knd_NOMEM;
+    memset(state, 0, sizeof(struct kndRefState));
+    self->states = state;
+    self->num_states = 1;
+
+    memcpy(state->val, val, val_size);
+    state->val[val_size] = '\0';
+    state->val_size = val_size;
+
     return knd_OK;
 }
 
@@ -145,14 +182,11 @@ export_GSC(struct kndRef *self)
     return knd_OK;
 }
 
-
-
-static int 
-export(struct kndRef *self,
-               knd_format format)
+static int export(struct kndRef *self,
+                  knd_format format)
 {
     int err;
-    
+
     switch(format) {
     case KND_FORMAT_JSON:
         err = export_JSON(self);
@@ -177,14 +211,10 @@ parse_GSL(struct kndRef *self,
 {
     if (DEBUG_REF_LEVEL_1)
         knd_log(".. parse REF field: \"%s\"..", rec);
-
-    self->user_name_size = KND_NAME_SIZE;
     
     struct kndTaskSpec specs[] = {
-        { .name = "un",
-          .name_size = strlen("un"),
-          .buf = self->user_name,
-          .buf_size = &self->user_name_size,
+        { .is_implied = true,
+          .run = run_set_val,
           .obj = self
         }
     };
@@ -209,6 +239,8 @@ kndRef_new(struct kndRef **ref)
     self->del = del;
     self->str = str;
     self->export = export;
+
+    self->resolve = kndRef_resolve;
     self->parse = parse_GSL;
     self->index = kndRef_index;
 

@@ -461,7 +461,6 @@ kndDelivery_start(struct kndDelivery *self)
             self->name, self->addr);
 
     while (1) {
-        knd_log("++ DELIVERY service is waiting for new tasks...");
         self->out->reset(self->out);
         self->reply_obj = NULL;
         self->reply_obj_size = 0;
@@ -471,8 +470,7 @@ kndDelivery_start(struct kndDelivery *self)
         self->task = knd_zmq_recv(service, &self->task_size);
         self->obj = knd_zmq_recv(service, &self->obj_size);
 
-	knd_log("++ DELIVERY service has got a task:   \"%s\"",
-                self->task);
+	//knd_log("++ DELIVERY service has got a task:   \"%s\"", self->task);
 
         err = run_task(self);
 

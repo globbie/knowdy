@@ -47,13 +47,28 @@ struct kndMatchPoint
     size_t seqnum;
     size_t orig_pos;
 };
+
+struct kndAggrObject
+{
+    knd_state_phase phase;
+    char state[KND_STATE_SIZE];
+
+    struct kndElem *parent;
     
+    struct kndConcept *conc;
+    struct kndElem *elems;
+    struct kndElem *tail;
+    size_t num_elems;
+   
+    struct kndAggrObject *next;
+};
+
 struct kndObject
 {
     knd_obj_type type;
 
     /* unique name */
-    char name[KND_NAME_SIZE];
+    char name[KND_SHORT_NAME_SIZE];
     size_t name_size;
 
     char id[KND_ID_SIZE + 1];
@@ -72,23 +87,6 @@ struct kndObject
 
     struct kndSortTag *tag;
     
-    /* filename */
-    char filename[KND_NAME_SIZE];
-    size_t filename_size;
-
-    /* full path from root collection */
-    char *filepath;
-    size_t filepath_size;
-    size_t filesize;
-
-    char dbpath[KND_OBJ_METABUF_SIZE];
-    size_t dbpath_size;
-
-    /* mimetype */
-    char mimetype[KND_OBJ_METABUF_SIZE];
-    size_t mimetype_size;
-
-    struct kndRepoCache *cache;
     struct kndOutput *out;
     struct kndOutput *log;
     struct kndTask *task;
@@ -110,7 +108,6 @@ struct kndObject
     size_t locale_size;
     knd_format format;
     size_t depth;
-    //size_t export_depth;
     bool is_expanded;
     
     const char *file;
@@ -131,7 +128,6 @@ struct kndObject
 
     /******** public methods ********/
     void (*str)(struct kndObject *self, size_t depth);
-
     int (*reset)(struct kndObject *self);
     void (*cleanup)(struct kndObject *self);
 
@@ -142,29 +138,7 @@ struct kndObject
                  const char       *rec,
                  size_t           *total_size);
 
-    int (*parse_inline)(struct kndObject *self,
-                        const char       *rec,
-                        size_t           *total_size);
-
-    int (*index_inline)(struct kndObject *self);
-
     int (*expand)(struct kndObject *self, size_t depth);
-
-
-    /*int (*present_summary)(struct kndObject *self, knd_format format);
-
-    int (*present_contexts)(struct kndObject *self,
-                            struct kndElemRef *elemref,
-                            knd_format        format);
-    */
-    
-    /*int (*get)(struct kndObject *self, struct kndData *data,
-               struct kndObject **obj);
-    */
-    
-    int (*get_by_id)(struct kndObject *self, const char *classname,
-                     const char *obj_id,
-                     struct kndObject **obj);
 
     int (*import)(struct kndObject *self,
                   const char *rec,
@@ -183,10 +157,10 @@ struct kndObject
 
     int (*contribute)(struct kndObject *self, size_t point_num, size_t orig_pos);
 
+    int (*resolve)(struct kndObject *self);
     int (*export)(struct kndObject *self);
 
     int (*sync)(struct kndObject *self);
-
 };
 
 /* constructors */

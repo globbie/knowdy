@@ -57,18 +57,19 @@ kndRetriever_start(struct kndRetriever *self)
     if (!self->delivery) return knd_FAIL;
     assert((zmq_connect(self->delivery,  self->delivery_addr) == knd_OK));
     self->task->delivery = self->delivery;
-    
+
+    knd_log("++ %s Retriever is up and running!", self->name);
+
     while (1) {
         self->task->reset(self->task);
-	knd_log("    ++ Retriever #%s is ready to receive new tasks!\n",
-                self->name);
 
 	task  = knd_zmq_recv(outbox, &task_size);
 	obj   = knd_zmq_recv(outbox, &obj_size);
 
-        knd_log("\n    ++ Retriever #%s got task: %s OBJ: %s\n", 
+        /*knd_log("\n    ++ Retriever #%s got task: %s OBJ: %s\n", 
                 self->name, task, obj);
-
+        */
+        
         err = self->task->run(self->task, task, task_size, obj, obj_size);
         if (err) {
             self->task->error = err;
@@ -462,7 +463,7 @@ void *kndRetriever_subscriber(void *arg)
     assert(inbox);
     err = zmq_connect(inbox, retriever->inbox_frontend_addr);
     assert(err == knd_OK);
-    
+
     while (1) {
 	knd_log(".. \"%s\" Retriever is waiting for the updates from Learner...",
                 retriever->name);

@@ -45,7 +45,7 @@ static const char* const knd_facet_names[] = {
     "TOPIC" };
 
 struct kndObjRef;
-struct kndDataClass;
+struct kndConcept;
 struct kndRefSet;
 struct kndRepoCache;
 struct kndQuery;
@@ -63,7 +63,7 @@ struct kndFacet
 
     size_t numval;
     
-    struct kndDataClass *baseclass;
+    struct kndConcept *baseclass;
     struct kndRepoCache *cache;
     
     struct kndObjRef *inbox[KND_MAX_INBOX_SIZE + 1];
