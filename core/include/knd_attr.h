@@ -134,7 +134,6 @@ struct kndAttr
     int descr_level;
     int browse_level;
 
-
     char calc_oper[KND_NAME_SIZE];
     size_t calc_oper_size;
 

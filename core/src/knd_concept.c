@@ -1598,12 +1598,12 @@ static int get_class(struct kndConcept *self,
 }
 
 static int get_obj(struct kndConcept *self,
-                     const char *name, size_t name_size)
+                   const char *name, size_t name_size)
 {
     struct kndObject *obj;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("\n\n.. \"%.*s\" class [%p] to get obj: \"%.*s\".. IDX: %p",
                 self->name_size, self->name, self,
                 name_size, name, self->obj_idx);
@@ -2622,9 +2622,8 @@ static int apply_liquid_updates(struct kndConcept *self)
     if (self->obj_inbox_size) {
         for (obj = self->obj_inbox; obj; obj = obj->next) {
 
-            /* TODO: err = obj->resolve(obj);
+            err = obj->resolve(obj);
             if (err) return err;
-            */
 
             c = obj->conc;
             if (!c->obj_idx) {
@@ -3174,6 +3173,7 @@ static void init(struct kndConcept *self)
     self->apply_liquid_updates = apply_liquid_updates;
     self->export = export;
     self->get = get_class;
+    self->get_obj = get_obj;
 
     self->is_a = is_my_parent;
 

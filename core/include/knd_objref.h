@@ -26,7 +26,6 @@
 #include "knd_config.h"
 
 struct kndOutput;
-struct kndRepoCache;
 struct kndCodeRef;
 struct kndTrans;
 
@@ -159,8 +158,6 @@ struct kndObjRef
 
     bool is_trivia;
 
-    struct kndRepoCache *cache;
-    
     /* for textual refs */
     struct kndElemRef *elemrefs;
  

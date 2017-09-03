@@ -239,9 +239,7 @@ static int report(struct kndTask *self)
         knd_log("== TASK report: SPEC: \"%s\"\n\n== BODY: %s\n",
                 out->buf, self->out->buf);
 
-    /*err = knd_zmq_sendmore(self->delivery, (const char*)out->buf, out->buf_size);
-     */
-    
+    err = knd_zmq_sendmore(self->delivery, (const char*)out->buf, out->buf_size);
     /* obj body */
     if (self->out->buf_size) {
         msg = self->out->buf;
@@ -256,28 +254,26 @@ static int report(struct kndTask *self)
         }
     }
 
-    /*err = knd_zmq_send(self->delivery, msg, msg_size);
+    err = knd_zmq_send(self->delivery, msg, msg_size);
 
+    /* get confirmation reply from delivery */
     header = knd_zmq_recv(self->delivery, &header_size);
     obj = knd_zmq_recv(self->delivery, &obj_size);
-    */
     
     if (DEBUG_TASK_LEVEL_2)
         knd_log("== Delivery reply header: \"%s\" obj: \"%s\"",
                 header, obj);
 
-    /*if (header)
+    if (header)
         free(header);
     if (obj)
         free(obj);
-    */
     
     if (!self->is_state_changed) return knd_OK;
 
     /* inform all retrievers about the state change */
-    /*err = knd_zmq_sendmore(self->publisher, self->update->buf, self->update->buf_size);
+    err = knd_zmq_sendmore(self->publisher, self->update->buf, self->update->buf_size);
     err = knd_zmq_send(self->publisher, "None", strlen("None"));
-    */
     
     return knd_OK;
 }

@@ -10,6 +10,7 @@
 #include "knd_task.h"
 #include "knd_parser.h"
 #include "knd_concept.h"
+#include "knd_object.h"
 
 #define DEBUG_USER_LEVEL_0 0
 #define DEBUG_USER_LEVEL_1 0
@@ -75,9 +76,9 @@ kndUser_add_user(struct kndUser *self)
 
     if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. create new user: ID \"%s\"", uid);
-    
+
     memcpy(self->id, uid, KND_ID_SIZE);
-    
+
     self->name_size = KND_NAME_SIZE;
     
     err = knd_make_id_path(buf, self->path, uid, NULL);
@@ -104,89 +105,6 @@ kndUser_add_user(struct kndUser *self)
     return knd_OK;
 }
 
-
-static int
-kndUser_get_user(struct kndUser *self, const char *uid,
-                 struct kndUser **user)
-{
-    char buf[KND_TEMP_BUF_SIZE] = {0};
-    size_t buf_size = KND_TEMP_BUF_SIZE;
-
-    struct kndUser *curr_user;
-    int err;
-
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log("  ?? is \"%s\" a valid user?\n", uid);
-
-    curr_user = self->user_idx->get(self->user_idx, uid);
-    if (!curr_user) {
-        err = kndUser_new(&curr_user);
-        if (err) return err;
-
-        curr_user->out = self->out;
-        
-        memcpy(curr_user->id, uid, KND_ID_SIZE);
-
-        err = knd_make_id_path(curr_user->path, buf, curr_user->id, NULL);
-        if (err) goto final;
-
-        /*curr_user->path_size = strlen(curr_user->path);
-        memcpy(curr_user->repo->path, curr_user->path, curr_user->path_size);
-        curr_user->repo->path[curr_user->path_size] = '\0';
-        curr_user->repo->path_size = curr_user->path_size;
-
-        */
-        
-        /* open home repo */
-        buf_size = sprintf(buf, "%s/user.gsl", curr_user->path);
-
-        err = self->out->read_file(self->out,
-                                   (const char*)buf, buf_size);
-        if (err) {
-            knd_log("   -- couldn't read the user profile in %s\n", curr_user->path);
-            return err;
-        }
-
-        /*err = kndUser_read(curr_user, (const char*)self->out->file);
-        if (err) goto final;
-        */
-        
-        /*err = curr_user->repo->open(curr_user->repo);
-        if (err) goto final;
-        */
-        
-        err = self->user_idx->set(self->user_idx,
-                                  (const char*)uid, (void*)curr_user);
-        if (err) return err;
-    }
-    
-    curr_user->out->reset(curr_user->out);
-    curr_user->update_service = self->update_service;
-    
-    err = knd_OK;
-    *user = curr_user;
-
- final:    
-    return err;
-}
-
-
-static int 
-kndUser_restore(struct kndUser *self)
-{
-    char buf[KND_TEMP_BUF_SIZE] = {0};
-    size_t buf_size = 0;
-
-    char idbuf[KND_ID_SIZE + 1];
-    struct kndRepo *repo;
-    
-    int err;
-
-    if (DEBUG_USER_LEVEL_2)
-        knd_log(".. user \"%s\" restoring DB state  DBPATH: %s",
-                self->id, self->dbpath);
-    return knd_OK;
-}
 
 
 static int 
@@ -440,6 +358,52 @@ static int kndUser_parse_liquid_updates(void *obj,
     return knd_OK;
 }
 
+
+
+static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndUser *self = (struct kndUser*)obj;
+    struct kndTaskArg *arg;
+    struct kndConcept *conc;
+    const char *name = NULL;
+    size_t name_size = 0;
+    int err;
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+    if (!name_size) return knd_FAIL;
+    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log(".. get user: \"%.*s\".. %p", name_size, name, self->root_class);
+
+    err = self->root_class->get(self->root_class, "User", strlen("User"));
+    if (err) return err;
+    conc = self->root_class->curr_class;
+    
+    err = conc->get_obj(conc, name, name_size);
+    if (err) return err;
+    
+    self->curr_user = conc->curr_obj;
+
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log("++ got user: \"%.*s\"!", name_size, name);
+
+    self->curr_user->out = self->out;
+    self->curr_user->log = self->log;
+
+    err = self->curr_user->export(self->curr_user);
+    if (err) return err;
+    
+    return knd_OK;
+}
+
 static int
 kndUser_parse_task(struct kndUser *self,
                    const char *rec,
@@ -451,6 +415,10 @@ kndUser_parse_task(struct kndUser *self,
         knd_log(".. parsing user task: \"%s\"..", rec);
 
     struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_get_user,
+          .obj = self
+        },
         { .name = "auth",
           .name_size = strlen("auth"),
           .parse = kndUser_parse_auth,
@@ -506,17 +474,28 @@ kndUser_parse_task(struct kndUser *self,
     default:
         /* any transaction to close? */
         if (self->root_class->inbox_size || self->root_class->obj_inbox_size) {
-            
             out = self->task->update;
+
+            if (DEBUG_USER_LEVEL_2)
+                knd_log(".. update state.. OUT SIZE: %lu TOTAL SPEC SIZE: %lu",
+                        (unsigned long)out->free_space,
+                        (unsigned long)*total_size);
+                        
             err = out->write(out, "{task{update", strlen("{task{update"));
             if (err) goto cleanup;
             
             /* update spec body */
             err = out->write(out, rec, *total_size);
-            if (err) goto cleanup;
+            if (err) {
+                knd_log("-- output failed :(");
+                goto cleanup;
+            }
             
             err = self->root_class->update_state(self->root_class);
-            if (err) goto cleanup;
+            if (err) {
+                knd_log("-- failed to update state :(");
+                goto cleanup;
+            }
         }
     }
 
@@ -570,10 +549,6 @@ kndUser_init(struct kndUser *self)
     self->parse_task = kndUser_parse_task;
 
     self->add_user = kndUser_add_user;
-    self->get_user = kndUser_get_user;
-
-    //self->read = kndUser_read;
-    self->restore = kndUser_restore;
 
     return knd_OK;
 }

@@ -54,18 +54,12 @@ struct kndUser
     const char *locale;
     size_t locale_size;
 
-    /*char login_phrase[KND_TEMP_BUF_SIZE];
-    size_t login_phrase_size;
-
-    char control_phrase[KND_TEMP_BUF_SIZE];
-    size_t control_phrase_size;
-    */
-    
+    struct kndObject *curr_user;
     struct kndConcept *root_class;
     struct kndTask *task;
     struct kndOutput *out;
     struct kndOutput *log;
-
+    
     void *update_service;
     
     struct kndRepo *repo;

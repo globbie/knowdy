@@ -7,6 +7,7 @@
 struct kndConcept;
 struct kndObject;
 struct kndRepo;
+struct kndRepoMigration;
 struct kndRefSet;
 struct kndUser;
 struct kndQuery;
@@ -56,29 +57,6 @@ struct kndLinearSeqRec
     struct kndSeqAlt *alts;
 };
 
-/* inverted rel IDX */
-struct kndRelType
-{
-    char attr_name[KND_NAME_SIZE];
-    size_t attr_name_size;
-
-    struct kndAttr *attr;
-    struct ooDict *idx;
-
-    struct kndObjRef *refs;
-    struct kndObjRef *tail;
-    size_t num_refs;
-    
-    struct kndRelType *next;
-};
-
-struct kndRelClass
-{
-    struct kndConcept *conc;
-    struct kndRelType *rel_types;
-    
-    struct kndRelClass *next;
-};
 
 
 struct kndAtomIdx
@@ -92,50 +70,6 @@ struct kndAtomIdx
     struct kndAtomIdx *next;
 };
 
-
-struct kndRepoCache
-{
-    struct kndConcept *baseclass;
-    struct kndRepo *repo;
-
-    struct ooDict *db;
-    size_t num_objs;
-
-    size_t cache_size;
-    
-    char obj_last_id[KND_ID_SIZE + 1];
-    char db_state[KND_ID_SIZE + 1];
-    
-    struct kndRelClass *rel_classes;
-    
-    struct kndRefSet *browser;
-    struct kndRefSet *name_idx;
-
-    struct kndRefSet *idxs;
-    size_t num_idxs;
-
-    struct kndQuery *query;
-    struct kndRefSet *select_result;
-
-    struct kndObject *matches[KND_MAX_MATCHES];
-    size_t num_matches;
-
-    struct kndRepoCache *parent;
-    struct kndRepoCache *children;
-    size_t num_children;
-    
-    struct kndRepoCache *next;
-};
-
-struct kndRepoMigration
-{
-    char id[KND_ID_SIZE + 1];
-    char name[KND_NAME_SIZE];
-    size_t name_size;
-
-    struct kndRepo *repo;
-    struct kndRepoCache *cache;
-};
 
 struct kndRepo
 {

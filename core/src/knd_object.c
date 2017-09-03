@@ -109,19 +109,10 @@ kndObject_export_JSON(struct kndObject *self)
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
-    //char pathbuf[KND_TEMP_BUF_SIZE];
-    //size_t pathbuf_size;
-
-    //struct ooDict *idx;
-    //struct kndConcept *conc;
     struct kndElem *elem;
-    //struct kndRefSet *refset;
-
-    struct kndRelClass *relc;
-    struct kndRepoCache *cache = NULL;
-    struct kndRelType *reltype;
-    struct kndObjRef *r;
+    struct kndRef *ref;
     struct kndObject *obj;
+    struct kndOutput *out = self->out;
     bool is_concise = true;
     bool need_separ;
     int err;
@@ -136,19 +127,13 @@ kndObject_export_JSON(struct kndObject *self)
     }
 
     buf_size = sprintf(buf, "{\"n\":\"%s\"", self->name);
-    err = self->out->write(self->out, buf, buf_size);
+    err = out->write(out, buf, buf_size);
     if (err) goto final;
 
     /*buf_size = sprintf(buf, ",\"id\":%.*s", self->id);
-    err = self->out->write(self->out, buf, buf_size);
+    err = out->write(out, buf, buf_size);
     if (err) goto final;
     */
-    
-    /* ELEMS */
-    /*if (self->elems) {
-        err = self->out->write(self->out, ",\"elems\":{", strlen(",\"elems\":{"));
-        if (err) goto final;
-        }*/
 
     need_separ = false;
     elem = self->elems;
@@ -158,17 +143,17 @@ kndObject_export_JSON(struct kndObject *self)
             /* aggr obj? */
             if (elem->aggr) {
                 obj = elem->aggr;
-                obj->out = self->out;
+                obj->out = out;
 
                 /*if (need_separ) {*/
-                err = self->out->write(self->out, ",", 1);
+                err = out->write(out, ",", 1);
                 if (err) return err;
 
-                err = self->out->write(self->out, "\"", 1);
+                err = out->write(out, "\"", 1);
                 if (err) return err;
-                err = self->out->write(self->out, elem->attr->name, elem->attr->name_size);
+                err = out->write(out, elem->attr->name, elem->attr->name_size);
                 if (err) return err;
-                err = self->out->write(self->out, "\":", 2);
+                err = out->write(out, "\":", 2);
                 if (err) return err;
                 
                 err = obj->export(obj);
@@ -191,11 +176,11 @@ kndObject_export_JSON(struct kndObject *self)
     export_elem:
 
         /*if (need_separ) {*/
-        err = self->out->write(self->out, ",", 1);
+        err = out->write(out, ",", 1);
         if (err) goto final;
 
         /* default export */
-        elem->out = self->out;
+        elem->out = out;
         err = elem->export(elem, KND_FORMAT_JSON, 0);
         if (err) {
             knd_log("-- elem not exported: %s", elem->attr->name);
@@ -209,110 +194,41 @@ kndObject_export_JSON(struct kndObject *self)
     }
 
     /*if (self->elems) {
-        err = self->out->write(self->out, "}", 1);
+        err = out->write(out, "}", 1);
         if (err) goto final;
         }*/
 
-    if (is_concise) goto closing;
+    //if (is_concise) goto closing;
 
-    /* skip relations */
-    if (self->depth) goto closing;
-    
-    /*  relations */
-    if (self->rel_classes) {
-        err = self->out->write(self->out, ",\"rels\":[", strlen(",\"rels\":["));
-        if (err) return err;
-    }
+    /* skip backref relations */
+    //if (self->depth) goto closing;
 
-    /*relc = self->rel_classes;
-    while (relc) {
-
-        err = self->cache->repo->get_cache(self->cache->repo, relc->conc, &cache);
+    /* backrefs */
+    if (self->num_backrefs) {
+        err = out->write(out, ",\"refs\":[", strlen(",\"refs\":["));
         if (err) return err;
         
-        err = self->out->write(self->out, "{\"c\":\"",  strlen("{\"c\":\""));
-        if (err) return err;
-
-        err = self->out->write(self->out, relc->conc->name, relc->conc->name_size);
-        if (err) return err;
-        
-        err = self->out->write(self->out, "\",\"attrs\":[", strlen("\",\"attrs\":["));
-        if (err) return err;
-
-        reltype = relc->rel_types;
-        while (reltype) {
-            err = self->out->write(self->out, "{\"attr\":\"", strlen("{\"attr\":\""));
-            if (err) return err;
-
-            err = self->out->write(self->out, reltype->attr_name, reltype->attr_name_size);
-            if (err) return err;
-
-            err = self->out->write(self->out, "\",\"refs\":[", strlen("\",\"refs\":["));
-            if (err) return err;
-
-            r = reltype->refs;
-            while (r) {
-                if (r->obj) {
-                    err = self->out->write(self->out, "{\"obj\":", strlen("{\"obj\":"));
-                    if (err) return err;
-
-                    r->obj->out = self->out;
-                    r->obj->depth = self->depth + 1;
-                    err = r->obj->export(r->obj);
-                    if (err) return err;
-
-                    err = self->out->write(self->out, "}", 1);
-                    if (err) return err;
-                }
-                else {
-                    err = self->out->write(self->out, "{\"ref\":\"", strlen("{\"ref\":\""));
-                    if (err) return err;
-
-                    err = self->out->write(self->out, r->obj_id, KND_ID_SIZE);
-                    if (err) return err;
-
-                    err = self->out->write(self->out, "\"}", 2);
-                    if (err) return err;
-                }
-                
-                if (r->next) {
-                    err = self->out->write(self->out, ",", 1);
-                    if (err) return err;
-                }
-                
-                r = r->next;
-            }
-            
-            err = self->out->write(self->out, "]}", 2);
-            if (err) return err;
-
-            if (reltype->next) {
-                err = self->out->write(self->out, ",", 1);
+        for (size_t i = 0; i < self->num_backrefs; i++) {
+            ref = self->backrefs[i];
+            if (i) {
+                err = out->write(out, ",", 1);
                 if (err) return err;
             }
-
-            reltype = reltype->next;
-        }
-        err = self->out->write(self->out, "]}", 2);
-        if (err) return err;
-
-        if (relc->next) {
-            err = self->out->write(self->out, ",", 1);
+            err = out->write(out, "\"", 1);
+            if (err) return err;
+            err = out->write(out, ref->elem->attr->name,  ref->elem->attr->name_size);
+            if (err) return err;
+            err = out->write(out, "\"", 1);
             if (err) return err;
         }
 
-        relc = relc->next;
-    }
-    */
-    
-    if (self->rel_classes) {
-        err = self->out->write(self->out, "]", 1);
+        err = out->write(out, "]", 1);
         if (err) return err;
     }
     
  closing:
 
-    err = self->out->write(self->out, "}", 1);
+    err = out->write(out, "}", 1);
     if (err) goto final;
 
     
@@ -853,15 +769,13 @@ kndObject_match(struct kndObject *self,
     return err;
 }
 
-
-
 static int 
 kndObject_resolve(struct kndObject *self)
 {
     struct kndElem *elem;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_3) {
+    if (DEBUG_OBJ_LEVEL_TMP) {
         if (self->type == KND_OBJ_ADDR) {
             knd_log(".. resolve OBJ %.*s::%.*s [%.*s]",
                     self->conc->name_size, self->conc->name,

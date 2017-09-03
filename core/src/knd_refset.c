@@ -307,7 +307,6 @@ kndRefSet_export_JSON(struct kndRefSet *self,
             }
 
             ref->out = self->out;
-            ref->cache = self->cache;
             
             err = ref->export(ref, KND_FORMAT_JSON);
             if (err) return err;
@@ -433,8 +432,6 @@ kndRefSet_export_HTML(struct kndRefSet *self,
             err = out->write(out, "<LI>", strlen("<LI>"));
 
             ref->out = self->out;
-            ref->cache = self->cache;
-            
             err = ref->export(ref, KND_FORMAT_HTML);
             if (err) return err;
 
@@ -917,7 +914,6 @@ kndRefSet_get_facet(struct kndRefSet  *self,
     
     f->baseclass = self->baseclass;
     f->parent = self;
-    f->cache = self->cache;
     f->out = self->out;
     
     self->facets[self->num_facets] = f;
@@ -1318,6 +1314,7 @@ kndRefSet_facetize(struct kndRefSet *self)
                     self->parent->name);
         
         /* get the sorttags */
+        /*
         if (self->name_size && !strcmp(self->name, "AZ")) {
             buf_size = sprintf(buf, "%s/%s/AZ.idx",
                                self->cache->repo->path,
@@ -1328,6 +1325,7 @@ kndRefSet_facetize(struct kndRefSet *self)
                                self->cache->baseclass->name,
                                self->parent->name);
         }
+        */
         
         if (DEBUG_REFSET_LEVEL_1)
             knd_log("  .. reading atom IDX file: \"%s\" .. OUTPUT: %p\n",
@@ -1469,8 +1467,6 @@ kndRefSet_find(struct kndRefSet     *self,
                         if (!ref) continue;
 
                         if (!ref->obj) {
-                            ref->cache = self->cache;
-
                             err = ref->expand(ref);
                             if (err) return err;
                         }
@@ -2552,7 +2548,7 @@ kndRefSet_extract_objs(struct kndRefSet *self)
     
     int err;
 
-    if (DEBUG_REFSET_LEVEL_TMP) {
+    /*    if (DEBUG_REFSET_LEVEL_TMP) {
         knd_log("    .. RefSet \"%s\" expanding refs..  batch to fill: %lu cache: %p\n",
                 self->name, (unsigned long)self->batch_size, self->cache);
     }
@@ -2577,12 +2573,12 @@ kndRefSet_extract_objs(struct kndRefSet *self)
         if (self->cache->num_matches >= self->batch_size)
             break;
     }
-
+    */
+    
     if (self->num_facets) {
         /* TODO: choose facet */
         f = self->facets[0];
         f->batch_size = self->batch_size;
-        
         err = f->extract_objs(f);
         if (err) return err;
 
@@ -2590,7 +2586,7 @@ kndRefSet_extract_objs(struct kndRefSet *self)
     }
 
     /* terminal IDX */
-    if (!self->idx) return knd_OK;
+    /*if (!self->idx) return knd_OK;
     
     for (size_t i = 0; i < KND_ID_BASE; i++) {
         idx = self->idx[i];
@@ -2615,7 +2611,6 @@ kndRefSet_extract_objs(struct kndRefSet *self)
                     return err;
                 }
                 
-                /* primary or subordinate OBJ? */
                 if (ref->obj->is_subord)
                     continue;
                 
@@ -2629,6 +2624,7 @@ kndRefSet_extract_objs(struct kndRefSet *self)
         }
     }
 
+    */
     
     return knd_OK;
 }
@@ -2663,9 +2659,10 @@ kndRefSet_export_summaries(struct kndRefSet *self,
                 if (err) return err;
             }
 
-            obj = self->cache->db->get(self->cache->db, ref->obj_id);
+            /*  obj = self->cache->db->get(self->cache->db, ref->obj_id);
             if (!obj) return knd_FAIL;
-        
+            */
+            
             obj->out = self->out;
             obj->depth = 0;
             obj->format = self->format;
@@ -2790,7 +2787,7 @@ kndRefSet_sync_objs(struct kndRefSet *self,
                     continue;
                 }
                 
-
+                /*
                 if (!ref->obj) {
                     obj = self->cache->db->get(self->cache->db, ref->obj_id);
                     if (!obj) {
@@ -2799,7 +2796,7 @@ kndRefSet_sync_objs(struct kndRefSet *self,
                     }
                     ref->obj = obj;
                 }
-
+                */
                 obj = ref->obj;
                 obj->out = self->out;
                 obj->format =  KND_FORMAT_GSC;
@@ -2817,7 +2814,7 @@ kndRefSet_sync_objs(struct kndRefSet *self,
 
                 td = knd_pack_int(td, (unsigned int)rec_offset);
                 rec_offset = self->out->buf_size;
-                count++;
+               count++;
             }
 
             /* save the directory offsets */

@@ -358,7 +358,6 @@ kndElem_index_list(struct kndElem *self)
 static int index_ref(struct kndElem *self)
 {
     struct kndConcept *conc, *bc;
-    struct kndRepoCache *cache = NULL;
     struct kndRefSet *refset;
     struct kndObjRef *objref;
     struct kndSortTag *tag;
@@ -387,83 +386,6 @@ static int index_ref(struct kndElem *self)
         self->obj->is_subord = true;
     }
     
-    /* err = self->obj->cache->repo->get_cache(self->obj->cache->repo, conc, &cache);
-    if (err) return knd_FAIL;
-    
-    bc = self->obj->cache->baseclass;
-    */
-    if (DEBUG_ELEM_LEVEL_2)
-        knd_log(" .. RELCLASS \"%s\" points to \"%s\"\n", bc->name, conc->name);
-    
-    relc = cache->rel_classes;
-    while (relc) {
-        if (relc->conc == bc) break;
-        relc = relc->next;
-    }
-
-    /* add a relclass */
-    if (!relc) {
-        relc = malloc(sizeof(struct kndRelClass));
-        if (!relc) return knd_NOMEM;
-
-        memset(relc, 0, sizeof(struct kndRelClass));
-        
-        relc->conc = bc;
-        
-        relc->next = cache->rel_classes;
-        cache->rel_classes = relc;
-    }
-
-    if (DEBUG_ELEM_LEVEL_2)
-        knd_log(" .. RELCLASS \"%s\" points to \"%s\"\n",
-                bc->name, conc->name);
-    
-    reltype = relc->rel_types;
-    while (reltype) {
-        if (reltype->attr == self->attr) break;
-
-        reltype = reltype->next;
-    }
-
-    /* add a reltype */
-    if (!reltype) {
-        reltype = malloc(sizeof(struct kndRelType));
-        if (!reltype) return knd_NOMEM;
-
-        reltype->attr = self->attr;
-
-        err = ooDict_new(&reltype->idx, KND_MEDIUM_DICT_SIZE);
-        if (err) return knd_NOMEM;
-        
-        reltype->next = relc->rel_types;
-        relc->rel_types = reltype;
-    }
-
-    if (DEBUG_ELEM_LEVEL_2)
-        knd_log(" .. got RELTYPE \"%s\"!\n", reltype->attr->name);
-
-    idx = reltype->idx;
-
-    refset = idx->get(idx, (const char*)self->states->val);
-    if (!refset) {
-        if (DEBUG_ELEM_LEVEL_3)
-            knd_log("    == first rec of RELated obj \"%s\" (CLASS: %s)!\n",
-                    self->states->val, conc->name);
-            
-        err = kndRefSet_new(&refset);
-        if (err) return err;
-            
-        memcpy(refset->name, self->states->val, self->states->val_size);
-        refset->name_size = self->states->val_size;
-            
-        err = idx->set(idx,  (const char*)self->states->val, (void*)refset);
-        if (err) return err;
-    }
-    
-    /*else {
-        if (DEBUG_ELEM_LEVEL_TMP)
-            refset->str(refset, 1, 5);
-            }*/
 
     /* add ref */
     err = kndObjRef_new(&objref);
@@ -1296,7 +1218,11 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
     self->states = state;
     self->num_states = 1;
 
-    if (DEBUG_ELEM_LEVEL_TMP) {
+
+    /* TODO: validate if needed */
+
+    
+    if (DEBUG_ELEM_LEVEL_2) {
         switch (self->attr->type) {
         case KND_ATTR_STR:
             knd_log("++ ELEM STR val of class %.*s: \"%.*s\"",

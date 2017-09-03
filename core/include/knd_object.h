@@ -23,12 +23,10 @@
 #include "knd_config.h"
 #include "knd_concept.h"
 
-struct kndRepoCache;
 struct kndObjRef;
 struct kndSortTag;
 struct kndElemRef;
 struct kndTask;
-
 struct kndElem;
 struct kndRelClass;
 
@@ -47,6 +45,27 @@ struct kndMatchPoint
     size_t seqnum;
     size_t orig_pos;
 };
+
+/* inverted rel */
+struct kndRelType
+{
+    struct kndAttr *attr;
+    struct ooDict *idx;
+
+    struct kndObjRef *refs;
+    struct kndObjRef *tail;
+    size_t num_refs;
+    
+    struct kndRelType *next;
+};
+
+struct kndRelClass
+{
+    struct kndConcept *conc;
+    struct kndRelType *rel_types;
+    struct kndRelClass *next;
+};
+
 
 struct kndAggrObject
 {
@@ -96,8 +115,11 @@ struct kndObject
     struct kndElem *tail;
     size_t num_elems;
 
-    /* rel refs */
+    /* backrefs */
     struct kndRelClass *rel_classes;
+
+    struct kndRef **backrefs[KND_MAX_BACKREFS];
+    size_t num_backrefs;
 
     /* list of hilited contexts */
     struct kndElem *contexts;

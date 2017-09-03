@@ -73,6 +73,18 @@ static int kndRef_resolve(struct kndRef *self)
 
     self->states->obj = obj;
 
+    /* set backref */
+    if (obj->num_backrefs >= KND_MAX_BACKREFS) {
+        knd_log("-- backrefs limit reached in %.*s :(", obj->name_size, obj->name);
+        return knd_LIMIT;
+    }
+    
+    obj->backrefs[obj->num_backrefs] = self;
+    obj->num_backrefs++;
+
+    knd_log("== %.*s obj num backrefs: %lu", obj->name_size, obj->name,
+            (unsigned long)obj->num_backrefs);
+
     return knd_OK;
 }
 

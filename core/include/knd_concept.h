@@ -207,6 +207,9 @@ struct kndConcept
     int (*get)(struct kndConcept  *self,
                const char *name, size_t name_size);
 
+    int (*get_obj)(struct kndConcept *self,
+                   const char *name, size_t name_size);
+
     int (*get_attr)(struct kndConcept *self,
                     const char *name, size_t name_size,
                     struct kndAttr **result);

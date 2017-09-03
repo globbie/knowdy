@@ -53,9 +53,11 @@ kndLearner_start(struct kndLearner *self)
 
     /* restore in-memory data after failure or restart */
     self->admin->role = KND_USER_ROLE_LEARNER;
-    err = self->admin->restore(self->admin);
+
+    /*err = self->admin->restore(self->admin);
     if (err) return err;
-    
+    */
+
     context = zmq_init(1);
 
     knd_log("LEARNER listener: %s\n", self->inbox_backend_addr);
@@ -204,7 +206,7 @@ parse_write_inbox_addr(void *obj,
 
 static int run_set_max_objs(void *obj, struct kndTaskArg *args, size_t num_args)
 {
-    struct kndLearner *self = (struct kndObject*)obj;
+    struct kndLearner *self = (struct Learner*)obj;
     struct kndTaskArg *arg;
     const char *val = NULL;
     size_t val_size = 0;
@@ -451,8 +453,6 @@ kndLearner_new(struct kndLearner **rec,
                                  sizeof(struct kndObject));
         if (!dc->obj_storage) return knd_NOMEM;
         dc->obj_storage_max = self->max_objs;
-
-        knd_log("++ OBJ alloc OK!");
     }
     
     /* read class definitions */

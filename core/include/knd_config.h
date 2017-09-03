@@ -86,11 +86,6 @@ typedef enum knd_storage_type {
 
 #endif
 
-
-
-
-
-
 #define LOGIC_NOT 0
 #define LOGIC_AND 1 
 #define LOGIC_OR  2
@@ -132,6 +127,8 @@ typedef enum knd_storage_type {
 
 #define KND_MAX_CONC_CHILDREN 128
 #define KND_MAX_ARGS 16
+
+#define KND_MAX_BACKREFS 128
 
 #define KND_MATCH_MAX_SCORE 100
 #define KND_MATCH_SCORE_THRESHOLD 0.65
@@ -337,7 +334,7 @@ typedef enum knd_storage_type {
 #define KND_TEMP_BUF_SIZE 1024
 #define KND_MED_BUF_SIZE 1024 * 10
 
-#define KND_LARGE_BUF_SIZE 1024 * 100
+#define KND_LARGE_BUF_SIZE 1024 * 1024
 
 #define KND_SMALL_BUF_SIZE 64
 #define KND_LABEL_SIZE 8

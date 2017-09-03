@@ -152,14 +152,14 @@ kndQuery_execute(struct kndQuery *self)
                 self->facet_name);
 
     /* reset */
-    self->cache->select_result = NULL;
+    //self->cache->select_result = NULL;
 
     /* default result */
-    if (!self->num_children) {
+    /*if (!self->num_children) {
         refset = self->cache->browser;
         goto extract;
     }
-
+    */
     /* TODO: lookup intersected refsets */
     
 
@@ -194,7 +194,7 @@ kndQuery_execute(struct kndQuery *self)
             }
 
                 
-            err = self->cache->browser->find(self->cache->browser,
+            /*            err = self->cache->browser->find(self->cache->browser,
                                              q->facet_name,
                                              q->val, q->val_size, &refset);
             if (err) {
@@ -205,7 +205,7 @@ kndQuery_execute(struct kndQuery *self)
 
             parent_refset = refset;
 
-            
+            */
 
             refsets[num_refsets] = refset;
             num_refsets++;
@@ -250,8 +250,6 @@ kndQuery_execute(struct kndQuery *self)
 
     refset->name[0] = '/';
     refset->name_size = 1;
-    
-    refset->cache = self->cache;
     refset->out = self->out;
     
     err = refset->intersect(refset, refsets, num_refsets);
@@ -296,23 +294,23 @@ extract:
         return knd_FAIL;
     }
 
-    if (DEBUG_QUERY_LEVEL_TMP)
+    /*    if (DEBUG_QUERY_LEVEL_TMP)
         knd_log("     ++ got matching RefSet of class: \"%s\".  TOTAL refs: %lu\n\n",
                 refset->cache->baseclass->name,
                 (unsigned long)refset->num_refs);
-
+    */
     /* activate facetizing? */
     if (refset->num_refs > KND_RESULT_BATCH_SIZE) {
-        if (refset != self->cache->browser) {
+        /*if (refset != self->cache->browser) {
 
-            if (refset->num_facets < self->cache->browser->num_facets) {
+                  if (refset->num_facets < self->cache->browser->num_facets) {
                 knd_log("    .. refset needs more facets!\n");
 
                 err = refset->facetize(refset);
                 if (err) return err;
             }
-
-        }
+            
+            } */
 
     }
 
@@ -320,7 +318,7 @@ extract:
     /*refset->str(refset, 1, 7);*/
 
     /* reset selection results */
-    self->cache->select_result = NULL;
+    /*    self->cache->select_result = NULL;
     memset(self->cache->matches, 0, sizeof(struct kndObject*) * KND_MAX_MATCHES);
     self->cache->num_matches = 0;
 
@@ -335,7 +333,8 @@ extract:
     }
 
     self->cache->select_result = refset;
-
+    */
+    
     return knd_OK;
 }
 

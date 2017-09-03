@@ -52,11 +52,13 @@ struct kndRetriever
     struct kndOutput *spec_out;
     struct kndOutput *obj_out;
     
-    size_t maze_cache_size;
+    //size_t maze_cache_size;
+    size_t max_objs;
 
-    char *last_obj_id;
+    /*char *last_obj_id;
     char *curr_obj_id;
-
+    */
+    
     char lang_code[KND_NAME_SIZE];
     size_t lang_code_size;
 
