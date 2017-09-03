@@ -31,6 +31,10 @@ struct kndOutput;
 struct kndTranslation;
 struct kndAttr;
 
+static int kndAttr_validate_email(struct kndAttr *self,
+                                  const char   *val,
+                                  size_t val_size);
+
 typedef enum knd_attr_type {
     KND_ATTR_NONE,
     KND_ATTR_ATOM,
@@ -61,6 +65,23 @@ static const char* const knd_attr_names[] = {
     "proc"
 };
 
+struct kndAttrValidator
+{
+    char name[KND_SHORT_NAME_SIZE];
+    size_t name_size;
+    int (*proc)(struct kndAttr *self,
+                const char   *val,
+                size_t val_size);
+};
+
+static struct kndAttrValidator knd_attr_validators[] = {
+    { .name = "email_address",
+      .name_size = strlen("email_address"),
+      .proc = kndAttr_validate_email,
+    }
+};
+
+
 struct kndAttrItem
 {
     knd_task_spec_type type;
@@ -89,8 +110,12 @@ struct kndAttr
     char classname[KND_NAME_SIZE];
     size_t classname_size;
 
-    char cardinality[KND_NAME_SIZE];
+    char cardinality[KND_SHORT_NAME_SIZE];
     size_t cardinality_size;
+
+    char validator_name[KND_SHORT_NAME_SIZE];
+    size_t validator_name_size;
+
     bool is_list;
     bool is_recursive;
 
@@ -128,6 +153,7 @@ struct kndAttr
     
     struct kndTranslation *tr;
 
+    
     struct kndAttr *next;
     
     /***********  public methods ***********/
@@ -138,6 +164,10 @@ struct kndAttr
     int (*parse)(struct kndAttr *self,
                  const char   *rec,
                  size_t *chunk_size);
+
+    int (*validate)(struct kndAttr *self,
+                    const char   *val,
+                    size_t val_size);
 
     int (*export)(struct kndAttr   *self);
 };

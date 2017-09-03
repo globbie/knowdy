@@ -118,8 +118,23 @@ kndAttr_set_type(struct kndAttr *self,
     return knd_OK;
 }
 
+/**
+ *  VALIDATORS
+ */
+static int kndAttr_validate_email(struct kndAttr *self,
+                                  const char   *val,
+                                  size_t val_size)
+{
+    if (DEBUG_ATTR_LEVEL_TMP)
+        knd_log(".. validating email: \"%s\"", val);
+    
+    return knd_OK;
+}
 
 
+/**
+ *  EXPORT
+ */
 static int export_JSON(struct kndAttr *self)
 {
     struct kndOutput *out;
@@ -211,6 +226,10 @@ static int export(struct kndAttr *self)
 }
 
 
+/**
+ * PARSER
+ */
+
 static int run_set_name(void *obj,
                         struct kndTaskArg *args, size_t num_args)
 {
@@ -261,9 +280,8 @@ static int run_set_cardinality(void *obj,
     }
 
     if (!name_size) return knd_FAIL;
-    if (name_size >= KND_NAME_SIZE)
-        return knd_LIMIT;
-            
+    if (name_size >= KND_SHORT_NAME_SIZE) return knd_LIMIT;
+
     memcpy(self->cardinality, name, name_size);
     self->cardinality_size = name_size;
     self->cardinality[name_size] = '\0';
@@ -394,6 +412,65 @@ static int parse_cardinality(void *obj,
 }
 
 
+static int run_set_validator(void *obj,
+                             struct kndTaskArg *args, size_t num_args)
+{
+    struct kndAttr *self = (struct kndAttr*)obj;
+    struct kndTaskArg *arg;
+    struct kndAttrValidator *validator;
+    
+    const char *name = NULL;
+    size_t name_size = 0;
+    int err;
+
+    
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+
+    if (!name_size) return knd_FAIL;
+    if (name_size >= KND_SHORT_NAME_SIZE) return knd_LIMIT;
+            
+    memcpy(self->validator_name, name, name_size);
+    self->validator_name_size = name_size;
+    self->validator_name[name_size] = '\0';
+
+    if (DEBUG_ATTR_LEVEL_TMP)
+        knd_log("== validator name set: %.*s", name_size, name);
+
+    size_t knd_num_attr_validators = sizeof(knd_attr_validators) / sizeof(struct kndAttrValidator);
+
+    for (size_t i = 0; i < knd_num_attr_validators; i++) {
+        validator = &knd_attr_validators[i];
+        knd_log("existing validator: \"%s\"", validator->name);
+    }
+    
+    return knd_OK;
+}
+
+
+static int parse_validator(void *obj,
+                             const char *rec,
+                             size_t *total_size)
+{
+    struct kndAttr *self = (struct kndAttr*)obj;
+    int err;
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_validator,
+          .obj = self
+        }
+    };
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
 
 static int parse_GSL(struct kndAttr *self,
                      const char *rec,
@@ -426,6 +503,12 @@ static int parse_GSL(struct kndAttr *self,
           .name = "card",
           .name_size = strlen("card"),
           .parse = parse_cardinality,
+          .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "validate",
+          .name_size = strlen("validate"),
+          .parse = parse_validator,
           .obj = self
         },
         { .type = KND_CHANGE_STATE,
