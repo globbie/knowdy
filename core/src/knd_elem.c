@@ -1295,6 +1295,17 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
     self->states = state;
     self->num_states = 1;
 
+    if (DEBUG_ELEM_LEVEL_TMP) {
+        switch (self->attr->type) {
+        case KND_ATTR_STR:
+            knd_log("++ ELEM STR val of class %.*s: \"%.*s\"",
+                    self->attr->name_size, self->attr->name, val_size, val);
+            break;
+        default:
+            break;
+        }
+    }
+    
     memcpy(state->val, val, val_size);
     state->val[val_size] = '\0';
     state->val_size = val_size;

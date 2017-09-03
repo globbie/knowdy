@@ -49,6 +49,12 @@ struct ooDict
     /* get data */
     void* (*get)(struct ooDict *self,
                  const char *key);
+
+    /* key with size */
+    void* (*getn)(struct ooDict *self,
+                  const char *key,
+                  size_t key_size);
+
     /*
      * set data
      * return true, if key already exists, false otherwise
