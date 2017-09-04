@@ -51,13 +51,17 @@ struct kndRef
     struct kndOutput *log;
 
     knd_ref_t reftype;
+
+    const char *locale;
+    size_t locale_size;
+    knd_format format;
     
     struct kndRefState *states;
     size_t num_states;
-    
+
     /******** public methods ********/
     void (*str)(struct kndRef *self,
-               size_t depth);
+                size_t depth);
 
     void (*del)(struct kndRef *self);
     
@@ -66,10 +70,11 @@ struct kndRef
                  size_t          *total_size);
 
     int (*index)(struct kndRef *self);
+
     int (*resolve)(struct kndRef *self);
     
-    int (*export)(struct kndRef *self,
-                  knd_format format);
+    int (*export)(struct kndRef *self);
+    int (*export_backref)(struct kndRef *self);
 };
 
 /* constructors */

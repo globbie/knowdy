@@ -171,6 +171,36 @@ export_JSON(struct kndRef *self)
 
 
 static int 
+export_backref_JSON(struct kndRef *self)
+{
+    struct kndObject *obj;
+    struct kndOutput *out;
+    int err = knd_FAIL;
+
+    obj = self->elem->root;
+    out = self->out;
+
+    if (DEBUG_REF_LEVEL_2)
+        knd_log(".. export backref to JSON..");
+
+    obj->out = out;
+    obj->depth = 0;
+    err = obj->export(obj);
+    if (err) return err;
+
+    /*err = out->write(out, "\"", 1);
+    if (err) return err;
+    err = out->write(out, obj->name, obj->name_size);
+    if (err) return err;
+
+    err = out->write(out, "\"", 1);
+    if (err) return err;
+    */
+    
+    return knd_OK;
+}
+
+static int 
 export_GSC(struct kndRef *self)
 {
     char buf[KND_NAME_SIZE];
@@ -194,12 +224,11 @@ export_GSC(struct kndRef *self)
     return knd_OK;
 }
 
-static int export(struct kndRef *self,
-                  knd_format format)
+static int export(struct kndRef *self)
 {
     int err;
 
-    switch(format) {
+    switch (self->format) {
     case KND_FORMAT_JSON:
         err = export_JSON(self);
         if (err) return err;
@@ -208,6 +237,27 @@ static int export(struct kndRef *self,
         err = export_GSC(self);
         if (err) return err;
         break;
+    default:
+        break;
+    }
+    
+    return knd_OK;
+}
+
+
+static int export_backref(struct kndRef *self)
+{
+    int err;
+
+    switch (self->format) {
+    case KND_FORMAT_JSON:
+        err = export_backref_JSON(self);
+        if (err) return err;
+        break;
+        /*    case KND_FORMAT_GSC:
+        err = export_GSC(self);
+        if (err) return err;
+        break; */
     default:
         break;
     }
@@ -251,6 +301,7 @@ kndRef_new(struct kndRef **ref)
     self->del = del;
     self->str = str;
     self->export = export;
+    self->export_backref = export_backref;
 
     self->resolve = kndRef_resolve;
     self->parse = parse_GSL;

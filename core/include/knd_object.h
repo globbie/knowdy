@@ -155,7 +155,6 @@ struct kndObject
 
     int (*del)(struct kndObject *self);
 
-
     int (*parse)(struct kndObject *self,
                  const char       *rec,
                  size_t           *total_size);

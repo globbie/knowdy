@@ -106,9 +106,6 @@ kndObject_export_aggr_JSON(struct kndObject *self)
 static int
 kndObject_export_JSON(struct kndObject *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
     struct kndElem *elem;
     struct kndRef *ref;
     struct kndObject *obj;
@@ -118,22 +115,31 @@ kndObject_export_JSON(struct kndObject *self)
     int err;
 
     if (DEBUG_OBJ_LEVEL_2)
-        knd_log("   .. export OBJ \"%s\"  is_concise: %d\n",
-            self->name, is_concise);
+        knd_log("   .. export OBJ \"%s\"  (class: %.*s)  is_concise: %d\n",
+                self->name, self->conc->name_size, self->conc->name, is_concise);
 
     if (self->type == KND_OBJ_AGGR) {
         err = kndObject_export_aggr_JSON(self);
         return err;
     }
+    
+    err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));
+    if (err) return err;
+    err = out->write(out, self->name, self->name_size);
+    if (err) return err;
+    err = out->write(out, "\"", 1);
+    if (err) return err;
 
-    buf_size = sprintf(buf, "{\"n\":\"%s\"", self->name);
-    err = out->write(out, buf, buf_size);
-    if (err) goto final;
+    /* TODO: conditional conc name  output */
 
-    /*buf_size = sprintf(buf, ",\"id\":%.*s", self->id);
-    err = out->write(out, buf, buf_size);
-    if (err) goto final;
-    */
+    err = out->write(out, ",\"c\":\"", strlen(",\"c\":\""));
+    if (err) return err;
+    err = out->write(out, self->conc->name, self->conc->name_size);
+    if (err) return err;
+    err = out->write(out, "\"", 1);
+    if (err) return err;
+
+    /* TODO: id */
 
     need_separ = false;
     elem = self->elems;
@@ -177,14 +183,14 @@ kndObject_export_JSON(struct kndObject *self)
 
         /*if (need_separ) {*/
         err = out->write(out, ",", 1);
-        if (err) goto final;
+        if (err) return err;
 
         /* default export */
         elem->out = out;
         err = elem->export(elem, KND_FORMAT_JSON, 0);
         if (err) {
             knd_log("-- elem not exported: %s", elem->attr->name);
-            goto final;
+            return err;
         }
         
         need_separ = true;
@@ -214,11 +220,8 @@ kndObject_export_JSON(struct kndObject *self)
                 err = out->write(out, ",", 1);
                 if (err) return err;
             }
-            err = out->write(out, "\"", 1);
-            if (err) return err;
-            err = out->write(out, ref->elem->attr->name,  ref->elem->attr->name_size);
-            if (err) return err;
-            err = out->write(out, "\"", 1);
+
+            err = ref->export_backref(ref);
             if (err) return err;
         }
 
@@ -229,8 +232,7 @@ kndObject_export_JSON(struct kndObject *self)
  closing:
 
     err = out->write(out, "}", 1);
-    if (err) goto final;
-
+    if (err) return err;
     
  final:
     return err;
@@ -546,7 +548,6 @@ static int parse_elem(void *data,
 
     switch (attr->type) {
     case KND_ATTR_AGGR:
-     
         err = kndConcept_alloc_obj(self->conc->root_class, &obj);
         if (err) return err;
         
@@ -636,7 +637,6 @@ kndObject_parse_GSL(struct kndObject *self,
     
     return knd_OK;
 }
-
 
 static int 
 kndObject_contribute(struct kndObject *self,

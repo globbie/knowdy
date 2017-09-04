@@ -890,7 +890,7 @@ kndElem_export_JSON(struct kndElem *self,
         case KND_ATTR_REF:
             ref = self->ref;
             ref->out = out;
-            err = ref->export(ref, KND_FORMAT_JSON);
+            err = ref->export(ref);
             if (err) goto final;
             break;
         case KND_ATTR_CALC:
@@ -1051,7 +1051,8 @@ kndElem_export_GSC(struct kndElem *self)
 
         if (self->attr->type == KND_ATTR_REF) {
             self->ref->out = self->out;
-            err = self->ref->export(self->ref, KND_FORMAT_GSC);
+            self->ref->format = KND_FORMAT_GSC;
+            err = self->ref->export(self->ref);
             if (err) return err;
         }
         
