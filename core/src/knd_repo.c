@@ -791,6 +791,8 @@ kndRepo_parse_class(void *obj,
                     size_t *total_size)
 {
     struct kndRepo *self, *repo;
+    int err;
+
     self = (struct kndRepo*)obj;
 
     if (DEBUG_REPO_LEVEL_TMP)
@@ -804,32 +806,12 @@ kndRepo_parse_class(void *obj,
     repo = self->curr_repo;
     repo->out = self->task->out;
 
-    struct kndTaskSpec import_specs[] = {
+    struct kndTaskSpec specs[] = {
         { .name = "obj",
           .name_size = strlen("obj")
         }
     };
     
-    struct kndTaskSpec specs[] = {
-        /*{ .name = "n",
-          .name_size = strlen("n"),
-          .run = kndRepo_run_get_class_cache,
-          .obj = repo
-          },*/
-        /*{ .name = "import",
-          .name_size = strlen("import"),
-          .specs = import_specs,
-          .num_specs = sizeof(import_specs) / sizeof(struct kndTaskSpec),
-          .run = kndRepo_run_import_obj,
-          .obj = repo
-        },
-        { .name = "obj",
-          .name_size = strlen("obj"),
-          .parse = kndRepo_parse_obj,
-          .obj = repo
-          }*/
-    };
-    int err;
 
     if (DEBUG_REPO_LEVEL_1)
         knd_log("   .. parsing the CLASS rec: \"%s\" CURR REPO: %s",
@@ -843,7 +825,6 @@ kndRepo_parse_class(void *obj,
     }
 
     /* call default action */
-
     
     return knd_OK;
 }
