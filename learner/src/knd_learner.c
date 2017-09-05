@@ -579,21 +579,39 @@ void *kndLearner_selector(void *arg)
     struct kndLearner *learner;
     int err;
 
+    learner = (struct kndLearner *) arg;
+
     context = zmq_init(1);
-    learner = (struct kndLearner*)arg;
+    if (!context) {
+        knd_log("zmq_init() failed, error: '%s'", strerror(errno));
+        return NULL;
+    }
 
     frontend = zmq_socket(context, ZMQ_PULL);
-    assert(frontend);
-    
-    backend = zmq_socket(context, ZMQ_PUSH);
-    assert(backend);
+    if (!frontend) {
+        knd_log("zmq_socket(frontend) failed, error '%s'", strerror(errno));
+        return NULL;
+    }
 
-    err = zmq_connect(frontend, "ipc:///var/lib/knowdy/storage_push");
-    assert(err == knd_OK);
+    backend = zmq_socket(context, ZMQ_PUSH);
+    if (!backend) {
+        knd_log("zmq_socket(backend) failed, error '%s'", strerror(errno));
+        return NULL;
+    }
+
+    err = zmq_connect(frontend, "ipc:///var/lib/knowdy/storage_push"); // todo: fix hardcode
+    if (err == -1) {
+        knd_log("zmq_connect(frontend, '%s') failed, error: '%s'", "ipc:///var/lib/knowdy/storage_push",
+                strerror(errno));
+        return NULL;
+    }
 
     err = zmq_connect(backend, learner->inbox_frontend_addr);
-    assert(err == knd_OK);
-    
+    if (err == -1) {
+        knd_log("zmq_connect(backend, '%s') failed, error: '%s'", learner->inbox_frontend_addr, strerror(errno));
+        return NULL;
+    }
+
     knd_log("    ++ Learner %s Selector device is ready: %s...\n\n",
             learner->name, learner->inbox_frontend_addr);
 
@@ -683,28 +701,39 @@ void *kndLearner_publisher(void *arg)
     struct kndLearner *learner;
     int ret;
 
-    learner = (struct kndLearner*)arg;
+    learner = (struct kndLearner *) arg;
+
     context = zmq_init(1);
+    if (!context) {
+        knd_log("zmq_init() failed, error: '%s'", zmq_strerror(errno));
+        return NULL;
+    }
 
     frontend = zmq_socket(context, ZMQ_SUB);
-    assert(frontend);
+    if (!frontend) {
+        knd_log("zmq_socket() failed, error: '%s'", zmq_strerror(errno));
+        return NULL;
+    }
 
     backend = zmq_socket(context, ZMQ_PUB);
-    assert(backend);
+    if (!frontend) {
+        knd_log("zmq_socket() failed, error: '%s'", zmq_strerror(errno));
+        return NULL;
+    }
 
     ret = zmq_bind(frontend, learner->publish_proxy_frontend_addr);
-    if (ret != knd_OK)
-        knd_log("bind %s zmqerr: %s\n",
-                learner->publish_proxy_frontend_addr, zmq_strerror(errno));
-    
-    assert((ret == knd_OK));
+    if (ret != knd_OK) {
+        knd_log("bind %s zmqerr: %s\n", learner->publish_proxy_frontend_addr, zmq_strerror(errno));
+        return NULL;
+    }
+
     zmq_setsockopt(frontend, ZMQ_SUBSCRIBE, "", 0);
-    
+
     ret = zmq_bind(backend, learner->publish_proxy_backend_addr);
-    if (ret != knd_OK)
-        knd_log("bind %s zmqerr: %s\n",
-                learner->publish_proxy_backend_addr, zmq_strerror(errno));
-    assert(ret == knd_OK);
+    if (ret != knd_OK) {
+        knd_log("bind %s zmqerr: %s\n", learner->publish_proxy_backend_addr, zmq_strerror(errno));
+        return NULL;
+    }
 
     knd_log("++ The Learner's publisher proxy is up and running!");
 
@@ -721,6 +750,12 @@ void *kndLearner_publisher(void *arg)
 
 /**
  *  MAIN SERVICE
+ *
+ *  todo:
+ *  - clean up all functions
+ *  - write classes or functions for zmq-patterns
+ *  - return and check errors from threads
+ *  - write assert macros for error checking and logging
  */
 
 int
