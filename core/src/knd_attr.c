@@ -125,9 +125,10 @@ static int kndAttr_validate_email(struct kndAttr *self,
                                   const char   *val,
                                   size_t val_size)
 {
-    if (DEBUG_ATTR_LEVEL_TMP)
-        knd_log(".. validating email: \"%s\"", val);
     
+    if (DEBUG_ATTR_LEVEL_TMP)
+        knd_log(".. %s attr validating email: \"%.*s\"", self->name, val_size, val);
+
     return knd_OK;
 }
 

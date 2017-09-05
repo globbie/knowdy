@@ -811,7 +811,6 @@ kndRepo_parse_class(void *obj,
           .name_size = strlen("obj")
         }
     };
-    
 
     if (DEBUG_REPO_LEVEL_1)
         knd_log("   .. parsing the CLASS rec: \"%s\" CURR REPO: %s",

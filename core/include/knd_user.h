@@ -37,7 +37,6 @@ struct kndUser
     char db_state[KND_ID_SIZE + 1];
     
     knd_user_role role;
-    size_t num_users;
 
     const char *dbpath;
     size_t dbpath_size;
@@ -54,6 +53,10 @@ struct kndUser
     const char *locale;
     size_t locale_size;
 
+    struct kndObject **user_idx;
+    size_t max_users;
+    size_t num_users;
+
     struct kndObject *curr_user;
     struct kndConcept *root_class;
     struct kndTask *task;
@@ -66,7 +69,6 @@ struct kndUser
     
     struct ooDict *class_idx;
     struct ooDict *browse_class_idx;
-    struct ooDict *user_idx;
    
     /**********  interface methods  **********/
     int (*del)(struct kndUser *self);

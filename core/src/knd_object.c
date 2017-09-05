@@ -775,7 +775,7 @@ kndObject_resolve(struct kndObject *self)
     struct kndElem *elem;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP) {
+    if (DEBUG_OBJ_LEVEL_2) {
         if (self->type == KND_OBJ_ADDR) {
             knd_log(".. resolve OBJ %.*s::%.*s [%.*s]",
                     self->conc->name_size, self->conc->name,

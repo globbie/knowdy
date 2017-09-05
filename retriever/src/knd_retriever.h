@@ -43,6 +43,7 @@ struct kndRetriever
     char inbox_backend_addr[KND_NAME_SIZE];
     size_t inbox_backend_addr_size;
 
+    size_t max_users;
     /*char *update_addr;
     size_t update_addr_size;
     void *update_service;

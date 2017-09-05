@@ -6,6 +6,7 @@
       {sid AUTH_SERVER_SID}
       {locale ru_RU}
       {max_objs 1000000}
+      {max_users 1000000}
 
       {coll_request tcp://127.0.0.1:6913}
       {delivery ipc:///var/lib/knowdy/delivery/inbox}

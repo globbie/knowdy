@@ -191,6 +191,59 @@ parse_max_objs(void *obj,
 }
 
 
+static int run_set_max_users(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndRetriever *self = (struct kndRetriever*)obj;
+    struct kndTaskArg *arg;
+    const char *val = NULL;
+    size_t val_size = 0;
+    long numval;
+    int err;
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            val = arg->val;
+            val_size = arg->val_size;
+        }
+    }
+    if (!val_size) return knd_FAIL;
+    if (val_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+    err = knd_parse_num((const char*)val, &numval);
+    if (err) return err;
+    if (numval < 1) return knd_LIMIT;
+
+    self->max_users = numval;
+
+    if (DEBUG_RETRIEVER_LEVEL_TMP)
+        knd_log("++ MAX USERS: %lu", (unsigned long)self->max_users);
+    
+    return knd_OK;
+}
+
+static int 
+parse_max_users(void *obj,
+               const char *rec,
+               size_t *total_size)
+{
+    struct kndRetriever *self = (struct kndRetriever*)obj;
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_max_users,
+          .obj = self
+        }
+    };
+    int err;
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+
 
 static int
 parse_config_GSL(struct kndRetriever *self,
@@ -236,6 +289,11 @@ parse_config_GSL(struct kndRetriever *self,
          { .name = "max_objs",
            .name_size = strlen("max_objs"),
            .parse = parse_max_objs,
+           .obj = self,
+         },
+         { .name = "max_users",
+           .name_size = strlen("max_users"),
+           .parse = parse_max_users,
            .obj = self,
          },
          { .name = "locale",
@@ -400,7 +458,15 @@ kndRetriever_new(struct kndRetriever **rec,
         if (!dc->obj_storage) return knd_NOMEM;
         dc->obj_storage_max = self->max_objs;
     }
-    
+
+    /* user idx */
+    if (self->max_users) {
+        self->admin->user_idx = calloc(self->max_users, 
+                                sizeof(struct kndObject*));
+        if (!self->admin->user_idx) return knd_NOMEM;
+        self->admin->max_users = self->max_users;
+    }
+
     /* read class definitions */
     dc->batch_mode = true;
     err = dc->open(dc, "index", strlen("index"));
@@ -414,7 +480,8 @@ kndRetriever_new(struct kndRetriever **rec,
 
     dc->batch_mode = false;
     self->admin->root_class = dc;
-
+    self->admin->root_class->user = self->admin;
+    
     self->del = kndRetriever_del;
     self->start = kndRetriever_start;
 

@@ -32,6 +32,7 @@ struct kndOutput;
 struct kndTranslation;
 struct kndConcept;
 struct kndTask;
+struct kndUser;
 struct kndTaskArg;
 
 struct kndDataIdx
@@ -173,6 +174,7 @@ struct kndConcept
 
     struct kndConcept *next;
 
+    struct kndUser *user;
     struct kndOutput *out;
     struct kndOutput *log;
     
@@ -221,8 +223,9 @@ struct kndConcept
 
     int (*export)(struct kndConcept *self);
 
-    int (*is_a)(struct kndConcept *self,
+    /*int (*is_a)(struct kndConcept *self,
                 struct kndConcept *base);
+    */
     
     /* traversal */
     void (*rewind)(struct kndConcept   *self);

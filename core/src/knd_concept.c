@@ -6,6 +6,7 @@
 #include "knd_output.h"
 #include "knd_attr.h"
 #include "knd_task.h"
+#include "knd_user.h"
 #include "knd_text.h"
 #include "knd_parser.h"
 #include "knd_object.h"
@@ -106,56 +107,6 @@ static void str(struct kndConcept *self, size_t depth)
     knd_log("%s}", offset);
 }
 
-static void rewind_attrs(struct kndConcept *self)
-{
-    self->curr_attr = self->attrs;
-    self->attrs_left = self->num_attrs;
-}
-
-static int next_attr(struct kndConcept *self,
-                     struct kndAttr **result)
-{
-    struct kndAttr *attr = NULL;
-
-    /* nested classes first */
-    /*if (self->baseclass) {
-        self->baseclass->next_attr(self->baseclass, &attr);
-        if (attr) {
-            *result = attr;
-            return knd_OK;
-        }
-    } */
-
-    if (!self->curr_attr) {
-        *result = NULL;
-        return knd_OK;
-    }
-
-    *result = self->curr_attr;
-    self->curr_attr = self->curr_attr->next;
-    self->attrs_left--;
-
-    return knd_OK;
-}
-
-static int is_my_parent(struct kndConcept *self, struct kndConcept *parent)
-{
-
-    /*struct kndConcept *dc = self->baseclass;
-
-    while (dc) {
-        knd_log(".. parent: %s", dc->name);
-        if (dc == parent) return knd_OK;
-
-        dc = dc->baseclass;
-        }*/
-
-
-    
-    return knd_NO_MATCH;
-}
-
-
 static int validate_attr_items(struct kndConcept *self,
                                struct kndAttrItem *items)
 {
@@ -255,13 +206,13 @@ static int resolve_names(struct kndConcept *self)
             }
         }
 
-        /* prevent circled relations */
-        err = c->is_a(c, self);
+        /* TODO: prevent circled relations */
+        /*err = c->is_a(c, self);
         if (!err) {
             knd_log("-- circled relationship detected: \"%s\" can't be the parent of \"%s\" :(",
                     item->name, self->name);
             return knd_FAIL;
-        }
+            } */
 
         if (DEBUG_CONC_LEVEL_2)
             knd_log("++ \"%s\" confirmed as a base class for \"%s\"!",
@@ -1204,6 +1155,17 @@ static int parse_import_obj(void *data,
     err = c->obj_idx->set(c->obj_idx, obj->name, (void*)obj);
     if (err) return err;
     
+    /* TODO: index by num id */
+    if (obj->numid) {
+        if (self->user && self->user->user_idx) {
+            knd_log(".. register User account: %lu",
+                    (unsigned long)obj->numid);
+
+            if (obj->numid < self->user->max_users) 
+                self->user->user_idx[obj->numid] = obj;
+        }
+    }
+    
     if (DEBUG_CONC_LEVEL_2) {
         obj->str(obj, 1);
     }
@@ -1432,7 +1394,6 @@ static int parse_include(void *self,
     return knd_OK;
 }
 
-
 static int parse_GSL(struct kndConcept *self,
                      const char *rec,
                      size_t *total_size)
@@ -1523,7 +1484,6 @@ static int resolve_class_refs(struct kndConcept *self)
     do {
         self->class_idx->next_item(self->class_idx, &key, &val);
         if (!key) break;
-
         c = (struct kndConcept*)val;
 
         err = c->resolve(c);
@@ -1551,8 +1511,6 @@ static int resolve_class_refs(struct kndConcept *self)
 
     return knd_OK;
 }
-
-
 
 static int get_class(struct kndConcept *self,
                      const char *name, size_t name_size)
@@ -1608,6 +1566,8 @@ static int get_obj(struct kndConcept *self,
                 self->name_size, self->name, self,
                 name_size, name, self->obj_idx);
 
+    if (!self->obj_idx) return knd_FAIL;
+    
     obj = (struct kndObject*)self->obj_idx->get(self->obj_idx, name);
     if (!obj) {
         knd_log("-- no such obj: \"%s\" :(", name);
@@ -3162,7 +3122,6 @@ static void init(struct kndConcept *self)
     self->restore = restore;
     self->build_diff = build_diff;
     self->select_delta = select_delta;
-
     self->coordinate = resolve_class_refs;
     self->resolve = resolve_names;
 
@@ -3175,9 +3134,8 @@ static void init(struct kndConcept *self)
     self->get = get_class;
     self->get_obj = get_obj;
 
-    self->is_a = is_my_parent;
-
-    self->rewind = rewind_attrs;
+    //self->is_a = is_my_parent;
+    //self->rewind = rewind_attrs;
     self->get_attr = get_attr;
 }
 

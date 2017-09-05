@@ -101,7 +101,7 @@ kndLearner_start(struct kndLearner *self)
 
         t0 = time(NULL);
         c0 = clock();
-        
+
         err = self->task->run(self->task,
                               task, task_size,
                               obj, obj_size);
@@ -109,16 +109,13 @@ kndLearner_start(struct kndLearner *self)
         if (DEBUG_LEARNER_LEVEL_TMP) {
             /*knd_log("++ #%s learner agent got task: %s [%lu]",
               self->name, task, (unsigned long)task_size); */
-            if (!strcmp(obj, "100")) {
+            if (!strcmp(obj, "TPS TEST")) {
                 t1 = time(NULL);
                 c1 = clock();
 
                 printf ("\telapsed wall clock time: %ld\n", (long)  (t1 - t0));
                 printf ("\telapsed CPU time:        %f\n",  (float) (c1 - c0)/CLOCKS_PER_SEC);
-
-                knd_log("== total objs: %lu", (unsigned long)self->admin->root_class->num_objs);
-                
-                //exit(0);
+                knd_log("\tTOTAL objs imported: %lu", (unsigned long)self->admin->root_class->num_objs);
             }
         }
 
