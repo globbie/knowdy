@@ -36,7 +36,7 @@ kndLearner_del(struct kndLearner *self)
 }
 
 
-static int  
+static int
 kndLearner_start(struct kndLearner *self)
 {
     void *context;
@@ -59,21 +59,31 @@ kndLearner_start(struct kndLearner *self)
     */
 
     context = zmq_init(1);
+    if (!context) {
+        knd_log("zmq_init() failed, error: '%s'", strerror(errno));
+        return knd_FAIL;
+    }
 
     knd_log("LEARNER listener: %s\n", self->inbox_backend_addr);
 
     /* get messages from outbox */
     outbox = zmq_socket(context, ZMQ_PULL);
-    assert(outbox);
-    
+    if (!outbox) {
+        knd_log("zmq_socket(outbox) failed, error: '%s'", strerror(errno));
+        return knd_FAIL;
+    }
+
     err = zmq_connect(outbox, self->inbox_backend_addr);
-    assert(err == knd_OK);
-    
+    if (err == -1) {
+        knd_log("zmq_connect(outbox) failed, error: '%s'", strerror(errno));
+        return knd_FAIL;
+    }
+
     self->delivery = zmq_socket(context, ZMQ_REQ);
     assert(self->delivery);
 
     if (DEBUG_LEARNER_LEVEL_TMP)
-        knd_log(".. establish delivery connection: %s..", 
+        knd_log(".. establish delivery connection: %s..",
                 self->delivery_addr);
 
     err = zmq_connect(self->delivery, self->delivery_addr);
@@ -389,17 +399,15 @@ parse_config_GSL(struct kndLearner *self,
 
 extern int
 kndLearner_new(struct kndLearner **rec,
-                  const char *config)
+               const char *config)
 {
     struct kndLearner *self;
     struct kndConcept *dc;
     size_t chunk_size;
     int err;
 
-    self = malloc(sizeof(struct kndLearner));
+    self = calloc(1, sizeof(struct kndLearner));
     if (!self) return knd_NOMEM;
-
-    memset(self, 0, sizeof(struct kndLearner));
 
     err = kndOutput_new(&self->out, KND_IDX_BUF_SIZE);
     if (err) goto error;
@@ -407,32 +415,33 @@ kndLearner_new(struct kndLearner **rec,
     /* task specification */
     err = kndTask_new(&self->task);
     if (err) goto error;
-    
+
     err = kndOutput_new(&self->task->out, KND_IDX_BUF_SIZE);
     if (err) goto error;
 
     err = kndOutput_new(&self->log, KND_MED_BUF_SIZE);
     if (err) goto error;
-    
+
     /* special user */
     err = kndUser_new(&self->admin);
     if (err) goto error;
     self->task->admin = self->admin;
     self->admin->out = self->out;
-    
+
     /* admin indices */
     err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-        
+
     /* read config */
     err = self->out->read_file(self->out, config, strlen(config));
     if (err) goto error;
 
     err = parse_config_GSL(self, self->out->file, &chunk_size);
     if (err) goto error;
-    
+
     err = kndConcept_new(&dc);
     if (err) goto error;
+
     dc->out = self->out;
     dc->log = self->log;
     dc->name[0] = '/';
@@ -444,22 +453,23 @@ kndLearner_new(struct kndLearner **rec,
     /* specific allocations of the root class */
     err = ooDict_new(&dc->class_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
+
     err = ooDict_new(&dc->obj_idx, KND_LARGE_DICT_SIZE);
     if (err) return err;
 
     /* obj/elem allocator */
     if (self->max_objs) {
-        dc->obj_storage = calloc(self->max_objs, 
-                                 sizeof(struct kndObject));
+        dc->obj_storage = calloc(self->max_objs, sizeof(struct kndObject));
         if (!dc->obj_storage) return knd_NOMEM;
+
         dc->obj_storage_max = self->max_objs;
     }
-    
+
     /* read class definitions */
     dc->batch_mode = true;
     err = dc->open(dc, "index", strlen("index"));
     if (err) {
- 	knd_log("-- couldn't read any schema definitions :("); 
+        knd_log("-- couldn't read any schema definitions :(");
         goto error;
     }
 
@@ -478,7 +488,7 @@ kndLearner_new(struct kndLearner **rec,
     err = dc->build_diff(dc, "0001");
     if (err) return err;
     */
-    
+
     self->admin->root_class = dc;
 
     self->del = kndLearner_del;
@@ -487,10 +497,7 @@ kndLearner_new(struct kndLearner **rec,
     *rec = self;
 
     return knd_OK;
-
- error:
-
-    
+error:
     kndLearner_del(self);
     return err;
 }
@@ -671,9 +678,9 @@ void *kndLearner_publisher(void *arg)
  *  MAIN SERVICE
  */
 
-int 
-main(int const argc, 
-     const char ** const argv) 
+int
+main(const int argc,
+     const char ** const argv)
 {
     struct kndLearner *learner;
     const char *config = NULL;
@@ -688,7 +695,7 @@ main(int const argc,
         fprintf(stderr, "You must specify 1 argument:  "
                 " the name of the configuration file. "
                 "You specified %d arguments.\n",  argc - 1);
-        exit(1);
+        return EXIT_FAILURE;
     }
 
     config = argv[1];
@@ -696,35 +703,23 @@ main(int const argc,
     err = kndLearner_new(&learner, config);
     if (err) {
         fprintf(stderr, "Couldn\'t load the Learner... ");
-        return -1;
+        return EXIT_FAILURE;
     }
 
     /* add device */
-    err = pthread_create(&inbox,
-                         NULL,
-			 kndLearner_inbox, 
-                         (void*)learner);
-    
+    err = pthread_create(&inbox, NULL, kndLearner_inbox, (void *) learner);
+
     /* add subscriber */
-    err = pthread_create(&subscriber, 
-			 NULL,
-			 kndLearner_subscriber, 
-                         (void*)learner);
+    err = pthread_create(&subscriber, NULL, kndLearner_subscriber, (void *) learner);
 
     /* add selector */
-    err = pthread_create(&selector, 
-			 NULL,
-			 kndLearner_selector, 
-                         (void*)learner);
+    err = pthread_create(&selector, NULL, kndLearner_selector, (void *) learner);
 
     /* add updates publisher */
-    err = pthread_create(&publisher, 
-			 NULL,
-			 kndLearner_publisher, 
-                         (void*)learner);
+    err = pthread_create(&publisher, NULL, kndLearner_publisher, (void *) learner);
 
     learner->start(learner);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
