@@ -51,12 +51,11 @@ kndLearner_start(struct kndLearner *self)
 
     int err;
 
-    /* restore in-memory data after failure or restart */
+    // restore in-memory data after failure or restart
     self->admin->role = KND_USER_ROLE_LEARNER;
 
-    /*err = self->admin->restore(self->admin);
-    if (err) return err;
-    */
+    //err = self->admin->restore(self->admin);
+    //if (err) return err;
 
     context = zmq_init(1);
     if (!context) {
@@ -66,7 +65,7 @@ kndLearner_start(struct kndLearner *self)
 
     knd_log("LEARNER listener: %s\n", self->inbox_backend_addr);
 
-    /* get messages from outbox */
+    // get messages from outbox
     outbox = zmq_socket(context, ZMQ_PULL);
     if (!outbox) {
         knd_log("zmq_socket(outbox) failed, error: '%s'", strerror(errno));
@@ -80,54 +79,63 @@ kndLearner_start(struct kndLearner *self)
     }
 
     self->delivery = zmq_socket(context, ZMQ_REQ);
-    assert(self->delivery);
+    if (!self->delivery) {
+        knd_log("zmq_socket(delivery) failed, error: '%s'", strerror(errno));
+        return knd_FAIL;
+    }
 
     if (DEBUG_LEARNER_LEVEL_TMP)
-        knd_log(".. establish delivery connection: %s..",
-                self->delivery_addr);
+        knd_log(".. establish delivery connection: %s..", self->delivery_addr);
 
     err = zmq_connect(self->delivery, self->delivery_addr);
-    assert(err == knd_OK);
+    if (err == -1) {
+        knd_log("zmq_connect(delivery) failed, error: '%s'", strerror(errno));
+        return knd_FAIL;
+    }
 
     self->task->delivery = self->delivery;
 
-    /* publisher */
+    // publisher
     self->publisher = zmq_socket(context, ZMQ_PUB);
-    assert(self->publisher);
+    if (!self->publisher) {
+        knd_log("zmq_socket(publisher) failed, error: '%s'", strerror(errno));
+        return knd_FAIL;
+    }
 
     err = zmq_connect(self->publisher, self->publish_proxy_frontend_addr);
-    assert(err == knd_OK);
+    if (err == -1) {
+        knd_log("zmq_connect(publisher) failed, error: '%s'", strerror(errno));
+        return knd_FAIL;
+    }
     self->task->publisher = self->publisher;
 
     while (1) {
         self->task->reset(self->task);
 
         if (DEBUG_LEARNER_LEVEL_2)
-            knd_log("\n++ #%s learner agent is ready to receive new tasks!", 
-                    self->name);
+            knd_log("\n++ #%s learner agent is ready to receive new tasks!", self->name);
 
-	task = knd_zmq_recv(outbox, &task_size);
-	obj = knd_zmq_recv(outbox, &obj_size);
+        task = knd_zmq_recv(outbox, &task_size);
+        obj = knd_zmq_recv(outbox, &obj_size);
 
         t0 = time(NULL);
         c0 = clock();
-        
-        err = self->task->run(self->task,
-                              task, task_size,
-                              obj, obj_size);
+
+        err = self->task->run(self->task, task, task_size, obj, obj_size);
 
         if (DEBUG_LEARNER_LEVEL_TMP) {
-            /*knd_log("++ #%s learner agent got task: %s [%lu]",
-              self->name, task, (unsigned long)task_size); */
+            //knd_log("++ #%s learner agent got task: %s [%lu]",
+            //self->name, task, (unsigned long)task_size);
+
             if (!strcmp(obj, "100")) {
                 t1 = time(NULL);
                 c1 = clock();
 
                 printf ("\telapsed wall clock time: %ld\n", (long)  (t1 - t0));
-                printf ("\telapsed CPU time:        %f\n",  (float) (c1 - c0)/CLOCKS_PER_SEC);
+                printf ("\telapsed CPU time:        %f\n",  (float) (c1 - c0) / CLOCKS_PER_SEC);
 
                 knd_log("== total objs: %lu", (unsigned long)self->admin->root_class->num_objs);
-                
+
                 //exit(0);
             }
         }
@@ -144,7 +152,7 @@ kndLearner_start(struct kndLearner *self)
         if (err) {
             knd_log("-- task report failed: %d", err);
         }
-        
+
         if (task) free(task);
         if (obj) free(obj);
     }
@@ -513,32 +521,53 @@ void *kndLearner_inbox(void *arg)
     struct kndLearner *learner;
     int err;
 
+    learner = (struct kndLearner *) arg;
+
     context = zmq_init(1);
-    learner = (struct kndLearner*)arg;
+    if (!context) {
+        knd_log("zmq_init() failed, error: '%s'", strerror(errno));
+        return NULL; // todo: set error
+    }
 
     frontend = zmq_socket(context, ZMQ_PULL);
-    assert(frontend);
-    
+    if (!fronted) {
+        knd_log("zmq_socket(inbox frontend) failed, error: '%s'", strerror(errno));
+        return NULL; // todo: set error
+    }
+
     backend = zmq_socket(context, ZMQ_PUSH);
-    assert(backend);
+    if (!backend) {
+        knd_log("zmq_socket(inbox backend) failed, error: '%s'", strerror(errno));
+        return NULL; // todo: set error
+    }
 
     knd_log("%s <-> %s\n", learner->inbox_frontend_addr, learner->inbox_backend_addr);
 
     err = zmq_bind(frontend, learner->inbox_frontend_addr);
-    assert(err == knd_OK);
+    if (err == -1) {
+        knd_log("zmq_bind(frontend) failed, error: '%s'", strerror(errno));
+        return NULL; // todo: set error
+    }
 
     err = zmq_bind(backend, learner->inbox_backend_addr);
-    assert(err == knd_OK);
+    if (err == -1) {
+        knd_log("zmq_bind(backend) failed, error: '%s'", strerror(errno));
+        return NULL; // todo: set error
+    }
 
-    knd_log("    ++ Learner \"%s\" Queue device is ready...\n\n", 
-            learner->name);
+    knd_log("    ++ Learner \"%s\" Queue device is ready...\n\n", learner->name);
 
-    zmq_device(ZMQ_QUEUE, frontend, backend);
+    err = zmq_device(ZMQ_QUEUE, frontend, backend);
+    if (err == -1) {
+        knd_log("zmq_device() failed, error: '%s'", strerror(errno));
+        return NULL;
+    }
 
     /* we never get here */
     zmq_close(frontend);
     zmq_close(backend);
     zmq_term(context);
+
     return NULL;
 }
 
@@ -589,33 +618,49 @@ void *kndLearner_subscriber(void *arg)
     size_t spec_size;
     char *obj;
     size_t obj_size;
-    
+
     int err;
 
-    learner = (struct kndLearner*)arg;
+    learner = (struct kndLearner *) arg;
 
     context = zmq_init(1);
+    if (!context) {
+        knd_log("zmq_init(subscriber) failed, error: '%s'", strerror(errno));
+        return NULL;
+    }
 
     subscriber = zmq_socket(context, ZMQ_SUB);
-    assert(subscriber);
+    if (!subscriber) {
+        knd_log("zmq_socket(subscriber) failed, error: '%s'", strerror(errno));
+        return NULL;
+    }
 
-    err = zmq_connect(subscriber, "ipc:///var/lib/knowdy/storage_pub");
-    assert(err == knd_OK);
-    
-    zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "", 0);
+    err = zmq_connect(subscriber, "ipc:///var/lib/knowdy/storage_pub"); // todo: fix hardcode
+    if (err == -1) {
+        knd_log("zmq_connect(subscriber) failed, error: '%s'", strerror(errno));
+        return NULL;
+    }
+
+    zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "", 0); // todo: error check
 
     inbox = zmq_socket(context, ZMQ_PUSH);
-    assert(inbox);
+    if (!inbox) {
+        knd_log("zmq_socket(inbox) failed, error: '%s'", strerror(errno));
+        return NULL;
+    }
 
     err = zmq_connect(inbox, learner->inbox_frontend_addr);
-    assert(err == knd_OK);
+    if (err == -1) {
+        knd_log("zmq_connect(inbox) failed, error: '%s'", strerror(errno));
+        return NULL;
+    }
 
     while (1) {
         spec = knd_zmq_recv(subscriber, &spec_size);
-	obj = knd_zmq_recv(subscriber, &obj_size);
+        obj = knd_zmq_recv(subscriber, &obj_size);
 
-	knd_zmq_sendmore(inbox, spec, spec_size);
-	knd_zmq_send(inbox, obj, obj_size);
+        knd_zmq_sendmore(inbox, spec, spec_size);
+        knd_zmq_send(inbox, obj, obj_size);
 
         free(spec);
         free(obj);
