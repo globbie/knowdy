@@ -530,7 +530,7 @@ void *kndLearner_inbox(void *arg)
     }
 
     frontend = zmq_socket(context, ZMQ_PULL);
-    if (!fronted) {
+    if (!frontend) {
         knd_log("zmq_socket(inbox frontend) failed, error: '%s'", strerror(errno));
         return NULL; // todo: set error
     }
