@@ -31,9 +31,10 @@ struct kndOutput;
 struct kndTranslation;
 struct kndAttr;
 
-static int kndAttr_validate_email(struct kndAttr *self,
+/*static int kndAttr_validate_email(struct kndAttr *self,
                                   const char   *val,
                                   size_t val_size);
+*/
 
 typedef enum knd_attr_type {
     KND_ATTR_NONE,
@@ -74,12 +75,6 @@ struct kndAttrValidator
                 size_t val_size);
 };
 
-static struct kndAttrValidator knd_attr_validators[] = {
-    { .name = "email_address",
-      .name_size = strlen("email_address"),
-      .proc = kndAttr_validate_email,
-    }
-};
 
 
 struct kndAttrItem

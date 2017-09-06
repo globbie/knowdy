@@ -39,13 +39,17 @@ struct kndElemState
 {
     knd_state_phase phase;
     char state[KND_STATE_SIZE];
-    
+
     char ref[KND_ID_SIZE + 1];
     size_t ref_size;
 
     char val[KND_VAL_SIZE];
     size_t val_size;
 
+    char *seq;
+    size_t seq_size;
+
+    
     struct kndObject *refobj;
     struct kndConcept *conc;
     
@@ -68,7 +72,7 @@ struct kndElem
     struct kndObject *aggr_tail;
 
     bool is_list;
-    bool is_list_item;
+    //bool is_list_item;
     
     struct kndOutput *out;
     struct kndOutput *log;

@@ -22,6 +22,8 @@ task_template = """{task
 
 def add_random_user(rec, count):
     user_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=MOCKUP_USER_NAME_SIZE))
+
+    user_motto = "Жизнь прекрасна без извилин."
     random_domain = ''.join(random.choices(string.ascii_lowercase, k=MOCKUP_DOMAIN_SIZE))
     user_email = user_name + "@" + random_domain + ".com"
     
@@ -32,6 +34,7 @@ def add_random_user(rec, count):
     phone_num = ''.join(random.choices(string.digits, k=MOCKUP_PHONE_NUM_SIZE))
     
     rec.append("(obj %s" % user_name)
+    rec.append("  (motto {ru %s})" % user_motto)
     rec.append("  (contacts (mail %s) (phone (prefix %s)(number %s)))" % (user_email, phone_prefix, phone_num))
     rec.append("  (ident (id %d)(salt %s)" % (count, pass_salt))
     rec.append("         (hash %s))" % pass_hash)

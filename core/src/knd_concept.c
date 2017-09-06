@@ -1155,7 +1155,7 @@ static int parse_import_obj(void *data,
     err = c->obj_idx->set(c->obj_idx, obj->name, (void*)obj);
     if (err) return err;
     
-    /* TODO: index by num id */
+    /* TODO: index users by num id */
     if (obj->numid) {
         if (self->user && self->user->user_idx) {
             knd_log(".. register User account: %lu",
@@ -1166,7 +1166,7 @@ static int parse_import_obj(void *data,
         }
     }
     
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         obj->str(obj, 1);
     }
    

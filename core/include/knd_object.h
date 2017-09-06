@@ -120,7 +120,7 @@ struct kndObject
     /* backrefs */
     struct kndRelClass *rel_classes;
 
-    struct kndRef **backrefs[KND_MAX_BACKREFS];
+    struct kndRef *backrefs[KND_MAX_BACKREFS];
     size_t num_backrefs;
 
     /* list of hilited contexts */

@@ -32,10 +32,6 @@ kndText_del(struct kndText *self)
 static int 
 kndText_str(struct kndText *self, size_t depth)
 {
-    //char buf[KND_TEMP_BUF_SIZE];
-    //size_t buf_size;
-    //size_t curr_size;
-    //char *c;
     size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
 
@@ -45,6 +41,9 @@ kndText_str(struct kndText *self, size_t depth)
   
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
+
+    knd_log("%s%s:", offset,
+            self->elem->attr->name);
 
     curr_state = self->states;
     while (curr_state) {
@@ -575,10 +574,10 @@ static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t n
             knd_log("-- max text limit reached: %lu :(", (unsigned long)val_size);
             return knd_LIMIT;
         }
-            
+
         tr->seq = malloc(val_size + 1);
-        if (!tr->seq)
-            return knd_NOMEM;
+        if (!tr->seq) return knd_NOMEM;
+
         memcpy(tr->seq, val, val_size);
         tr->seq[val_size] = '\0';
         tr->seq_size = val_size;

@@ -7,7 +7,11 @@
 #include "knd_elem.h"
 #include "knd_repo.h"
 #include "knd_object.h"
+
 #include "knd_text.h"
+#include "knd_num.h"
+#include "knd_ref.h"
+
 #include "knd_refset.h"
 #include "knd_sorttag.h"
 #include "knd_parser.h"
@@ -21,23 +25,6 @@
 #define DEBUG_OBJ_LEVEL_4 0
 #define DEBUG_OBJ_LEVEL_TMP 1
 
-static int
-knd_compare_obj_by_match_descend(const void *a,
-                                 const void *b)
-{
-    struct kndObject **obj1, **obj2;
-
-    obj1 = (struct kndObject**)a;
-    obj2 = (struct kndObject**)b;
-
-    if ((*obj1)->average_score == (*obj2)->average_score) return 0;
-
-    if ((*obj1)->average_score < (*obj2)->average_score) return 1;
-
-    return -1;
-}
-
-
 static int del(struct kndObject *self)
 {
     knd_log("  .. free obj: \"%s\".. \n", self->name);
@@ -47,13 +34,13 @@ static int del(struct kndObject *self)
     return knd_OK;
 }
 
-
 static void str(struct kndObject *self,
                 size_t depth)
 {
     size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
-    struct kndElem *elem;
+    if (!offset) return;
+
     
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
@@ -65,11 +52,12 @@ static void str(struct kndObject *self,
                 KND_ID_SIZE, self->id);
     }
 
-    elem = self->elems;
+    struct kndElem *elem = self->elems;
     while (elem) {
         elem->str(elem, depth + 1);
         elem = elem->next;
     }
+    free(offset);
 }
 
 static int 
@@ -204,7 +192,7 @@ kndObject_export_JSON(struct kndObject *self)
         if (err) goto final;
         }*/
 
-    //if (is_concise) goto closing;
+    if (is_concise) goto closing;
 
     /* skip backref relations */
     //if (self->depth) goto closing;
@@ -213,7 +201,7 @@ kndObject_export_JSON(struct kndObject *self)
     if (self->num_backrefs) {
         err = out->write(out, ",\"refs\":[", strlen(",\"refs\":["));
         if (err) return err;
-        
+
         for (size_t i = 0; i < self->num_backrefs; i++) {
             ref = self->backrefs[i];
             if (i) {
@@ -234,7 +222,6 @@ kndObject_export_JSON(struct kndObject *self)
     err = out->write(out, "}", 1);
     if (err) return err;
     
- final:
     return err;
 }
 
@@ -446,7 +433,6 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     struct kndTaskArg *arg;
     const char *name = NULL;
     size_t name_size = 0;
-    int err;
 
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
@@ -456,8 +442,7 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
         }
     }
     if (!name_size) return knd_FAIL;
-    if (name_size >= KND_NAME_SIZE)
-        return knd_LIMIT;
+    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
 
     memcpy(self->name, name, name_size);
     self->name_size = name_size;
@@ -515,6 +500,7 @@ static int parse_elem(void *data,
     struct kndElem *elem = NULL;
     struct kndAttr *attr = NULL;
     struct kndRef *ref = NULL;
+    struct kndNum *num = NULL;
     struct kndText *text = NULL;
     int err;
 
@@ -529,9 +515,8 @@ static int parse_elem(void *data,
     if (err) return err;
     elem->obj = self;
     elem->attr = attr;
-    elem->root = self;
     elem->out = self->out;
-    
+
     if (!self->tail) {
         self->tail = elem;
         self->elems = elem;
@@ -555,6 +540,9 @@ static int parse_elem(void *data,
         obj->conc = attr->conc;
         obj->out = self->out;
         obj->log = self->log;
+        
+        obj->root = self->root ? self->root : self;
+
         err = obj->parse(obj, rec, total_size);
         if (err) return err;
 
@@ -563,6 +551,14 @@ static int parse_elem(void *data,
         return knd_OK;
     case KND_ATTR_ATOM:
     case KND_ATTR_NUM:
+        err = kndNum_new(&num);
+        if (err) return err;
+        num->elem = elem;
+        num->out = self->out;
+        err = num->parse(num, rec, total_size);
+        if (err) goto final;
+        elem->num = num;
+        return knd_OK;
     case KND_ATTR_FILE:
     case KND_ATTR_CALC:
         break;
@@ -583,13 +579,10 @@ static int parse_elem(void *data,
         text->elem = elem;
         text->out = self->out;
 
-        //chunk_size = 0;
-        /*err = text->parse(text, c, &chunk_size);
+        err = text->parse(text, rec, total_size);
         if (err) return err;
-        */
-        elem->text = text;
         
-        //*total_size = chunk_size;
+        elem->text = text;
         return knd_OK;
     default:
         break;
@@ -709,65 +702,6 @@ kndObject_contribute(struct kndObject *self,
     return err;
 }
 
-static int 
-kndObject_match(struct kndObject *self,
-                const char *rec,
-                size_t     rec_size)
-{
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-    
-    struct kndObject *obj;
-    struct kndElem *elem;
-    struct kndOutput *out;
-    int err;
-
-    /*    self->cache->num_matches = 0; */
-    
-    /* elem with linear seq */
-    err = kndElem_new(&elem);
-    if (err) goto final;
-
-    elem->obj = self;
-    
-    err = elem->match(elem, rec, rec_size);
-    if (err) goto final;
-
-    /*qsort(self->cache->matches,
-          self->cache->num_matches,
-          sizeof(struct kndObject*),
-          knd_compare_obj_by_match_descend);
-    */
-    
-    knd_log("== MATCH RESULTS:");
-
-    out = self->out;
-
-    err = out->write(out, "[", 1);
-    if (err) goto final;
-
-    /*for (size_t i = 0; i < self->cache->num_matches; i++) {
-        obj = self->cache->matches[i];
-
-        buf_size = sprintf(buf, "{%s {score %.2f}}",
-                           obj->name, obj->average_score);
-
-        knd_log("%s\n", buf);
-
-        err = out->write(out, buf, buf_size);
-        if (err) goto final;
-
-        if (i >= KND_MATCH_MAX_RESULTS) break;
-    }
-    */
-    err = out->write(out, "]", 1);
-    if (err) goto final;
-    
-    err = knd_OK;
-
- final:
-    return err;
-}
 
 static int 
 kndObject_resolve(struct kndObject *self)
@@ -800,12 +734,10 @@ kndObject_resolve(struct kndObject *self)
 static int 
 kndObject_sync(struct kndObject *self)
 {
-    char idbuf[KND_ID_SIZE];
     struct kndElem *elem;
     struct kndConcept *conc;
-    struct kndRepoCache *cache;
     struct kndObject *obj;
-    struct kndRefSet *refset;
+    struct kndRefSet *refset = NULL;
     struct kndSortTag *tag;
     struct kndSortAttr *attr;
     struct kndSortAttr *a;
@@ -942,9 +874,10 @@ kndObject_sync(struct kndObject *self)
             }
         }
         
-        if (DEBUG_OBJ_LEVEL_TMP)
+        /*if (DEBUG_OBJ_LEVEL_TMP)
             knd_log("  .. add ref: %s %p", ref->obj_id, refset);
-
+        */
+        
         err = refset->add_ref(refset, ref);
         if (DEBUG_OBJ_LEVEL_TMP)
             knd_log("  .. result: %d", err);
@@ -970,7 +903,7 @@ kndObject_init(struct kndObject *self)
     self->str = str;
 
     //self->flatten = kndObject_flatten;
-    self->match = kndObject_match;
+    //self->match = kndObject_match;
     self->contribute = kndObject_contribute;
 
     self->parse = kndObject_parse_GSL;
