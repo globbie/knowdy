@@ -112,7 +112,7 @@ static int validate_attr_items(struct kndConcept *self,
 {
     struct kndAttr *attr = NULL;
     struct kndAttrItem *item;
-    int err, e;
+    int err;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log("\n\n.. validating attr items of \"%s\"..", self->name);
@@ -351,14 +351,15 @@ static int get_attr(struct kndConcept *self,
 
 static int parse_field(void *obj,
                        const char *name, size_t name_size,
-                       const char *rec, size_t *total_size)
+                       const char *rec __attribute__((unused)), size_t *total_size __attribute__((unused)))
 {
     struct kndConcept *self = (struct kndConcept*)obj;
     struct kndAttr *attr = NULL;
     int err;
 
     if (DEBUG_CONC_LEVEL_2) {
-        knd_log("\n.. validating attr: \"%s\"\n", self->curr_val);
+        knd_log("\n.. validating attr: \"%.*s\": %.*s\n",
+                self->curr_val_size, self->curr_val, name_size, name);
     }
 
     err = get_attr(self, (const char*)self->curr_val, self->curr_val_size, &attr);
@@ -378,7 +379,6 @@ static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t n
     struct kndTaskArg *arg;
     const char *val = NULL;
     size_t val_size = 0;
-    int err;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. run set translation text..");
@@ -692,7 +692,6 @@ static int run_set_conc_item(void *obj, struct kndTaskArg *args, size_t num_args
     const char *name = NULL;
     size_t name_size = 0;
     struct kndConcItem *item;
-    int err;
 
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
@@ -731,7 +730,6 @@ static int set_attr_item_val(void *obj, struct kndTaskArg *args, size_t num_args
     struct kndTaskArg *arg;
     const char *val = NULL;
     size_t val_size = 0;
-    int err;
 
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
@@ -759,12 +757,11 @@ static int parse_item_child(void *obj,
                             const char *rec, size_t *total_size)
 {
     struct kndAttrItem *self = (struct kndAttrItem*)obj;
-    struct kndConcItem *conc_item;
     struct kndAttrItem *item;
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
-    int err;
-
+    size_t err;
+    
     item = malloc(sizeof(struct kndAttrItem));
     memset(item, 0, sizeof(struct kndAttrItem));
     memcpy(item->name, name, name_size);
@@ -906,7 +903,6 @@ static int run_set_children_setting(void *obj, struct kndTaskArg *args, size_t n
     struct kndTaskArg *arg;
     const char *val = NULL;
     size_t val_size = 0;
-    int err;
 
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
@@ -935,8 +931,6 @@ static int parse_children_settings(void *obj,
                                    size_t *total_size)
 {
     struct kndConcept *self = (struct kndConcept*)obj;
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
@@ -958,8 +952,6 @@ static int parse_import_class(void *obj,
 {
     struct kndConcept *self = (struct kndConcept*)obj;
     struct kndConcept *c, *prev;
-    struct kndOutput *out = self->out;
-    size_t chunk_size;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -1107,9 +1099,6 @@ static int parse_import_obj(void *data,
     struct kndConcept *self = (struct kndConcept*)data;
     struct kndObject *obj;
     struct kndConcept *c;
-    
-    struct kndOutput *out = self->out;
-    size_t chunk_size;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -1178,10 +1167,6 @@ static int parse_select_obj(void *data,
                             size_t *total_size)
 {
     struct kndConcept *self = (struct kndConcept*)data;
-    struct kndObject *obj;
-    
-    struct kndOutput *out = self->out;
-    size_t chunk_size;
     int err, e;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -1244,7 +1229,6 @@ static int run_set_namespace(void *obj, struct kndTaskArg *args, size_t num_args
     struct kndTaskArg *arg;
     const char *name = NULL;
     size_t name_size = 0;
-    int err;
 
     if (DEBUG_CONC_LEVEL_1)
         knd_log(".. run set namespace..");
@@ -1273,7 +1257,6 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     struct kndTaskArg *arg;
     const char *name = NULL;
     size_t name_size = 0;
-    int err;
 
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
@@ -1300,7 +1283,6 @@ static int run_read_include(void *obj, struct kndTaskArg *args, size_t num_args)
     struct kndConcFolder *folder;
     const char *name = NULL;
     size_t name_size = 0;
-    int err;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. running include file func.. num args: %lu", (unsigned long)num_args);
@@ -1368,8 +1350,7 @@ static int parse_include(void *self,
                          const char *rec,
                          size_t *total_size)
 {
-    const char *c;
-    
+    int err;
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parse include REC: \"%s\"..", rec);
 
@@ -1385,7 +1366,6 @@ static int parse_include(void *self,
           .obj = self
         }
     };
-    int err;
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
@@ -1423,7 +1403,6 @@ static int read_GSL_file(struct kndConcept *self,
 {
     struct kndOutput *out = self->out;
     struct kndConcFolder *folder, *folders;
-    size_t num_folders;
     size_t chunk_size = 0;
     int err;
 
@@ -1470,7 +1449,7 @@ static int read_GSL_file(struct kndConcept *self,
 
 static int resolve_class_refs(struct kndConcept *self)
 {
-    struct kndConcept *c, *bc;
+    struct kndConcept *c;
     const char *key;
     void *val;
     int err;
@@ -1605,10 +1584,10 @@ static int get_obj(struct kndConcept *self,
 
 
 static int run_select_class(void *obj,
-                            struct kndTaskArg *args, size_t num_args)
+                            struct kndTaskArg *args __attribute__((unused)),
+                            size_t num_args __attribute__((unused)))
 {
     struct kndConcept *self = (struct kndConcept*)obj;
-    struct kndTaskArg *arg;
     struct kndConcept *c;
     int err;
 
@@ -2559,7 +2538,6 @@ static int build_update_messages(struct kndConcept *self)
     if (err) return err;
     return knd_OK;
 }
-
 
 static int apply_liquid_updates(struct kndConcept *self)
 {

@@ -15,17 +15,6 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
-static inline int check_name_limits(const char *b, const char *e, size_t *buf_size)
-{
-    *buf_size = e - b;
-    if (!(*buf_size)) return knd_LIMIT;
-    if ((*buf_size) >= KND_NAME_SIZE) {
-        knd_log("-- field tag too large: %lu bytes",
-                (unsigned long)buf_size);
-        return knd_LIMIT;
-    }
-    return knd_OK;
-}
 
 static void del(struct kndTask *self)
 {
@@ -106,6 +95,7 @@ static int parse_task(void *obj,
                       size_t *total_size)
 {
     struct kndTask *self = (struct kndTask*)obj;
+    int err;
    
     struct kndTaskSpec specs[] = {
         { .name = "schema",
@@ -133,7 +123,6 @@ static int parse_task(void *obj,
           .obj = self
         }
     };
-    int err, e;
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
