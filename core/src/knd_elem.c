@@ -387,7 +387,7 @@ kndElem_export_JSON(struct kndElem *self,
     /* key:value repr */
     switch (self->attr->type) {
     case KND_ATTR_NUM:
-        err = out->write(out, self->states->val, self->states->val_size);
+        err = out->write(out, self->num->states->val, self->num->states->val_size);
         if (err) goto final;
         return knd_OK;
     case KND_ATTR_STR:

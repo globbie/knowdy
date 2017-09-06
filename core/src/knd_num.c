@@ -10,6 +10,7 @@
 #include "knd_object.h"
 #include "knd_task.h"
 #include "knd_parser.h"
+#include "knd_user.h"
 
 #define DEBUG_NUM_LEVEL_0 0
 #define DEBUG_NUM_LEVEL_1 0
@@ -85,12 +86,14 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
     struct kndNum *self = (struct kndNum*)obj;
     struct kndTaskArg *arg;
     struct kndNumState *state;
+    struct kndConcept *root_class;
+    struct kndUser *user;
     const char *val = NULL;
     size_t val_size = 0;
     int err;
 
     if (DEBUG_NUM_LEVEL_2)
-        knd_log(".. run set ref val..");
+        knd_log(".. run set num val..");
 
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
@@ -116,6 +119,26 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
     state->val[val_size] = '\0';
     state->val_size = val_size;
 
+    
+    /* HACK: register special field: numeric user id */
+    if (!strncmp(self->elem->attr->name, "id", strlen("id"))) {
+       if (self->elem->root && self->elem->root->conc) {
+            root_class = self->elem->root->conc->root_class;
+            if (root_class && root_class->user) {
+                user = root_class->user;
+                if (state->numval > 0 && state->numval < KND_MAX_USERS) {
+
+                    if (DEBUG_NUM_LEVEL_2) {
+                        knd_log(".. set user num id of: %.*s",
+                                self->elem->root->name_size, self->elem->root->name);
+                    }
+                    
+                    user->user_idx[state->numval] = self->elem->root;
+                }
+            }
+       } 
+    }
+ 
     return knd_OK;
 }
 
@@ -126,7 +149,7 @@ static int parse_GSL(struct kndNum *self,
 {
    int err;
 
-   if (DEBUG_NUM_LEVEL_TMP)
+   if (DEBUG_NUM_LEVEL_2)
        knd_log(".. parse NUM field: \"%s\"..", rec);
 
     struct kndTaskSpec specs[] = {

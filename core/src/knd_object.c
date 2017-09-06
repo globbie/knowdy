@@ -514,6 +514,7 @@ static int parse_elem(void *data,
     err = kndElem_new(&elem);
     if (err) return err;
     elem->obj = self;
+    elem->root = self->root ? self->root : self;
     elem->attr = attr;
     elem->out = self->out;
 

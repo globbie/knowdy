@@ -31,11 +31,6 @@ struct kndOutput;
 struct kndTranslation;
 struct kndAttr;
 
-/*static int kndAttr_validate_email(struct kndAttr *self,
-                                  const char   *val,
-                                  size_t val_size);
-*/
-
 typedef enum knd_attr_type {
     KND_ATTR_NONE,
     KND_ATTR_ATOM,
@@ -65,6 +60,12 @@ static const char* const knd_attr_names[] = {
     "file",
     "proc"
 };
+
+typedef enum knd_attr_access_type {
+    KND_ATTR_ACCESS_USER,
+    KND_ATTR_ACCESS_RESTRICTED,
+    KND_ATTR_ACCESS_PUB
+} knd_attr_access_type;
 
 struct kndAttrValidator
 {

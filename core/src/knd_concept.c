@@ -1160,13 +1160,12 @@ static int parse_import_obj(void *data,
         if (self->user && self->user->user_idx) {
             knd_log(".. register User account: %lu",
                     (unsigned long)obj->numid);
-
             if (obj->numid < self->user->max_users) 
                 self->user->user_idx[obj->numid] = obj;
         }
     }
-    
-    if (DEBUG_CONC_LEVEL_TMP) {
+
+    if (DEBUG_CONC_LEVEL_2) {
         obj->str(obj, 1);
     }
    
@@ -2530,11 +2529,13 @@ static int build_update_messages(struct kndConcept *self)
     if (err) return err;
 
     /* for retrievers */
-    err = update->write(update, "{state ", strlen("{state "));
+    err = update->write(update, "{state}", strlen("{state}"));
     if (err) return err;
     err = update->write(update, self->next_state, KND_STATE_SIZE);
     if (err) return err;
 
+    return knd_OK;
+    
     /* report ids */
     if (self->inbox) {
         err = build_class_updates(self);

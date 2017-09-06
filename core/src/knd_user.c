@@ -386,7 +386,12 @@ static int kndUser_parse_liquid_updates(void *obj,
     err = self->root_class->apply_liquid_updates(self->root_class);
     if (err) return err;
 
+    /* TODO: state parsing */
+    *total_size = 0;
     
+    if (DEBUG_USER_LEVEL_2)
+        knd_log("++ liquid updates OK!");
+
     return knd_OK;
 }
 
@@ -479,10 +484,21 @@ static int run_get_user_by_id(void *obj, struct kndTaskArg *args, size_t num_arg
     
     self->curr_user = conc->curr_obj;
     */
+
     
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log("++ got user by nun id: \"%.*s\"!", numid_size, numid);
-    
+    if (DEBUG_USER_LEVEL_TMP) {
+        knd_log("++ got user by num id: \"%.*s\"!", numid_size, numid);
+        self->curr_user->str(self->curr_user, 1);
+    }
+
+
+    /* TODO */
+    self->curr_user->out = self->out;
+    self->curr_user->log = self->log;
+
+    err = self->curr_user->export(self->curr_user);
+    if (err) return err;
+
     return knd_OK;
 }
 
@@ -493,6 +509,8 @@ static int run_present_user(void *data,
     struct kndTaskArg *arg;
     struct kndObject *obj;
     int err;
+
+    knd_log(".. present user..");
 
     if (!self->curr_user) return knd_FAIL;
 
@@ -522,6 +540,7 @@ kndUser_parse_task(struct kndUser *self,
         },
         { .name = "id",
           .name_size = strlen("id"),
+          .is_selector = true,
           .parse = kndUser_parse_numid,
           .obj = self
         },
@@ -559,13 +578,13 @@ kndUser_parse_task(struct kndUser *self,
         }
     };
     int err, e;
-    
+
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) {
         knd_log("-- user task parse failure: \"%.*s\" :(", self->log->buf_size, self->log->buf);
         if (!self->log->buf_size) {
             e = self->log->write(self->log, "internal server error",
-                                   strlen("internal server error"));
+                                 strlen("internal server error"));
             if (e) {
                 err = e;
                 goto cleanup;
@@ -574,9 +593,12 @@ kndUser_parse_task(struct kndUser *self,
         goto cleanup;
     }
 
+    if (DEBUG_USER_LEVEL_2)
+        knd_log("user parse task OK!");
+
     switch (self->task->type) {
     case KND_UPDATE_STATE:
-        if (DEBUG_USER_LEVEL_1)
+        if (DEBUG_USER_LEVEL_TMP)
             knd_log("++ all updates applied!");
         return knd_OK;
     case KND_GET_STATE:

@@ -529,7 +529,10 @@ knd_find_spec(struct kndTaskSpec *specs,
 
         if (spec->type != spec_type) continue;
 
-        if (spec->is_completed) is_completed = true;
+        /* some useful action took place */
+        if (!spec->is_selector && spec->is_completed) {
+            is_completed = true;
+        }
         
         if (spec->is_default) {
             default_spec = spec;
@@ -546,6 +549,7 @@ knd_find_spec(struct kndTaskSpec *specs,
             continue;
         }
         
+
         *result = spec;
         return knd_OK;
     }
@@ -852,6 +856,7 @@ inline int knd_parse_task(const char *rec,
             e = b;
             break;
         case '}':
+
             /* empty body? */
             if (!in_field) {
                 if (in_implied_field) {
@@ -1014,16 +1019,15 @@ inline int knd_parse_task(const char *rec,
                 knd_log("-- basic LOOP failed to parse state change area :(");
                 return err;
             }
-            
             c += chunk_size;
 
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log(".. basic LOOP %p finished func parsing at: \"%s\"\n\n", specs, c);
+                knd_log(".. basic LOOP %p finished func parsing at: \"%s\"\n", specs, c);
 
             in_field = false;
             in_terminal = false;
             in_implied_field = false;
-            
+
             b = c + 1;
             e = b;
             break;

@@ -54,6 +54,7 @@ struct kndTaskSpec
     
     bool is_completed;
     bool is_default;
+    bool is_selector;
     bool is_implied;
     bool is_validator;
     bool is_terminal;
