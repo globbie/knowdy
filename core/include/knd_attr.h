@@ -99,6 +99,7 @@ struct kndAttrItem
 struct kndAttr 
 {
     knd_attr_type type;
+    knd_attr_access_type access_type;
 
     char name[KND_NAME_SIZE];
     size_t name_size;

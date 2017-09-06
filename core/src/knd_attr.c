@@ -381,6 +381,58 @@ static int parse_cardinality(void *obj,
     return knd_OK;
 }
 
+static int run_set_access_control(void *obj,
+                                  struct kndTaskArg *args, size_t num_args)
+{
+    struct kndAttr *self = (struct kndAttr*)obj;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    size_t name_size = 0;
+
+    if (DEBUG_ATTR_LEVEL_2)
+        knd_log(".. run set ACL..");
+    
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+
+    if (!name_size) return knd_FAIL;
+    if (name_size >= KND_SHORT_NAME_SIZE) return knd_LIMIT;
+
+    if (!strncmp(name, "restrict", strlen("restrict"))) {
+        self->access_type = KND_ATTR_ACCESS_RESTRICTED;
+        knd_log("** NB: restricted attr: %.*s!", self->name_size, self->name);
+    }
+    
+    return knd_OK;
+}
+
+static int parse_access_control(void *obj,
+                             const char *rec,
+                             size_t *total_size)
+{
+    struct kndAttr *self = (struct kndAttr*)obj;
+    int err;
+
+    if (DEBUG_ATTR_LEVEL_2)
+        knd_log(".. parsing ACL: \"%s\"", rec);
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_access_control,
+          .obj = self
+        }
+    };
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
 
 static int run_set_validator(void *obj,
                              struct kndTaskArg *args, size_t num_args)
@@ -471,6 +523,12 @@ static int parse_GSL(struct kndAttr *self,
           .name = "card",
           .name_size = strlen("card"),
           .parse = parse_cardinality,
+          .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "acl",
+          .name_size = strlen("acl"),
+          .parse = parse_access_control,
           .obj = self
         },
         { .type = KND_CHANGE_STATE,

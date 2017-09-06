@@ -130,8 +130,12 @@ kndObject_export_JSON(struct kndObject *self)
     /* TODO: id */
 
     need_separ = false;
-    elem = self->elems;
-    while (elem) {
+    for (elem = self->elems; elem; elem = elem->next) {
+
+        /* NB: restricted attr */
+        if (elem->attr->access_type == KND_ATTR_ACCESS_RESTRICTED)
+            continue;
+        
         /* filter out detailed presentation */
         if (is_concise) {
             /* aggr obj? */
@@ -154,7 +158,7 @@ kndObject_export_JSON(struct kndObject *self)
                 if (err) return err;
 
                 need_separ = true;
-                goto next_elem;
+                continue;
             }
             
             if (elem->attr) 
@@ -164,11 +168,10 @@ kndObject_export_JSON(struct kndObject *self)
             if (DEBUG_OBJ_LEVEL_2)
                 knd_log("  .. skip JSON elem: %s..\n", elem->attr->name);
 
-            goto next_elem;
+            continue;
         }
 
     export_elem:
-
         /*if (need_separ) {*/
         err = out->write(out, ",", 1);
         if (err) return err;
@@ -182,9 +185,6 @@ kndObject_export_JSON(struct kndObject *self)
         }
         
         need_separ = true;
-        
-    next_elem:
-        elem = elem->next;
     }
 
     /*if (self->elems) {
