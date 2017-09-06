@@ -330,12 +330,10 @@ typedef enum knd_storage_type {
 #define KND_MAZE_NUM_CACHE_SETS 1024
 
 #define KND_REFSET_MAX_DEPTH 10
-
 #define KND_TEMP_BUF_SIZE 1024
 #define KND_MED_BUF_SIZE 1024 * 10
 
 #define KND_LARGE_BUF_SIZE 1024 * 1024
-
 #define KND_SMALL_BUF_SIZE 64
 #define KND_LABEL_SIZE 8
 #define KND_NAME_SIZE 500

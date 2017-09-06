@@ -234,12 +234,6 @@ kndObject_export_GSC(struct kndObject *self)
     bool got_elem = false;
     struct kndElem *elem;
     bool is_concise = true;
-
-    //struct kndRelClass *relc;
-    //struct kndRelType *reltype;
-    //struct kndTermIdx *idx, *term_idx;
-
-    //size_t i, j, ri;
     int err;
     
     if (DEBUG_OBJ_LEVEL_2)
@@ -425,7 +419,6 @@ kndObject_export(struct kndObject *self)
     
     return knd_OK;
 }
-
 
 static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
 {

@@ -118,10 +118,9 @@ kndStorage_init(struct kndStorage *self)
 
 
 int kndStorage_new(struct kndStorage **rec,
-		   const char *config)
+		   const char *config __attribute__((unused)))
 {
     struct kndStorage *self;
-    int err;
     
     self = malloc(sizeof(struct kndStorage));
     if (!self) return knd_NOMEM;
@@ -139,8 +138,8 @@ int kndStorage_new(struct kndStorage **rec,
 
     return knd_OK;
 
- error:
+    /*error:
 
     kndStorage_del(self);
-    return err;
+    return err; */
 }

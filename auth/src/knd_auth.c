@@ -51,7 +51,7 @@ del(struct kndAuth *self)
 static int register_token(struct kndAuth *self,
                           struct kndUserRec *user_rec,
                           const char *tok,    size_t tok_size,
-                          const char *expiry, size_t expiry_size,
+                          const char *expiry, size_t expiry_size __attribute__((unused)),
                           const char *scope,  size_t scope_size)
 {
     struct kndAuthTokenRec *tok_rec, *prev_tok_rec;
@@ -109,7 +109,6 @@ static int update_token(struct kndAuth *self,
     struct kndUserRec *user_rec;
     struct kndAuthTokenRec *tok_rec;
     long numval;
-    unsigned long userid_num;
     int err;
 
     if (DEBUG_AUTH_LEVEL_1)
@@ -174,7 +173,6 @@ static int update_tokens(struct kndAuth *self)
     const char *userid;
     size_t userid_size;
     unsigned int num_fields;
-    unsigned int i;
     unsigned int row_count;
     unsigned int error_count;
     unsigned int doublet_count;
@@ -190,12 +188,12 @@ static int update_tokens(struct kndAuth *self)
         return knd_FAIL;
     }
 
-    if (mysql_real_connect(conn, self->db_host,
-                           "content-server", "content-server",
-                           "content-server_001", 0, NULL, 0) == NULL) {
+    if (mysql_real_connect(conn,
+                           self->db_host,
+                           self->db_user, self->db_user_pass,
+                           self->db_name, 0, NULL, 0) == NULL) {
         err_msg = mysql_error(conn);
-        //buf_size = strlen(err_msg);
-        fprintf(stderr, "%s [%lu]\n", err_msg);
+        fprintf(stderr, "%s\n", err_msg);
         err = knd_FAIL;
         goto final;
     }
@@ -429,10 +427,6 @@ static int parse_user(void *obj,
 
 static int run_task(struct kndAuth *self)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = KND_NAME_SIZE;
-    size_t chunk_size = 0;
-
     const char *header_tag = "{task";
     size_t header_tag_size = strlen(header_tag);
     const char *c;
@@ -544,35 +538,6 @@ static int kndAuth_start(struct kndAuth *self)
     return knd_OK;
 }
 
-static int
-run_set_db_host(void *obj,
-                struct kndTaskArg *args, size_t num_args)
-{
-    struct kndAuth *self;
-    struct kndTaskArg *arg;
-    const char *db_host = NULL;
-    size_t db_host_size = 0;
-    
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "db_host", strlen("db_host"))) {
-            db_host = arg->val;
-            db_host_size = arg->val_size;
-        }
-    }
-    if (!db_host_size) return knd_FAIL;
-
-    self = (struct kndAuth*)obj;
-
-    if (DEBUG_AUTH_LEVEL_TMP)
-        knd_log(".. set DB HOST to \"%.*s\"", db_host_size, db_host);
-
-    memcpy(self->db_host, db_host, db_host_size);
-    self->db_host[db_host_size] = '\0';
-    self->db_host_size = db_host_size;
-   
-    return knd_OK;
-}
 
 static int
 run_set_service_addr(void *obj,
@@ -634,13 +599,33 @@ parse_config_GSL(struct kndAuth *self,
           .buf_size = &self->db_host_size,
           .max_buf_size = KND_NAME_SIZE,
           .obj = self
+        },
+        { .name = "db_user",
+          .name_size = strlen("db_user"),
+          .buf = self->db_user,
+          .buf_size = &self->db_user_size,
+          .max_buf_size = KND_NAME_SIZE,
+          .obj = self
+        },
+        { .name = "db_user_pass",
+          .name_size = strlen("db_user_pass"),
+          .buf = self->db_user_pass,
+          .buf_size = &self->db_user_pass_size,
+          .max_buf_size = KND_NAME_SIZE,
+          .obj = self
+        },
+        { .name = "db_name",
+          .name_size = strlen("db_name"),
+          .buf = self->db_name,
+          .buf_size = &self->db_name_size,
+          .max_buf_size = KND_NAME_SIZE,
+          .obj = self
         }
     };
     int err;
 
     if (!strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
         rec += gsl_format_tag_size;
-
         err = knd_get_schema_name(rec,
                                   buf, &buf_size, &chunk_size);
         if (!err) {

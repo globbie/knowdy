@@ -67,7 +67,15 @@ struct kndAuth
     
     char db_host[KND_TEMP_BUF_SIZE];
     size_t db_host_size;
-    
+
+    char db_user[KND_NAME_SIZE];
+    size_t db_user_size;
+    char db_user_pass[KND_NAME_SIZE];
+    size_t db_user_pass_size;
+
+    char db_name[KND_NAME_SIZE];
+    size_t db_name_size;
+
     char addr[KND_TEMP_BUF_SIZE];
     size_t addr_size;
 
