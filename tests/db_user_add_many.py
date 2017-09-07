@@ -5,7 +5,7 @@ import random
 import string
 
 GLB_COLL_ADDR = "tcp://127.0.0.1:6908"
-MAX_USERS = 1000
+MAX_USERS = 100000
 
 MOCKUP_USER_NAME_SIZE = 16
 MOCKUP_DOMAIN_SIZE = 8
@@ -34,8 +34,8 @@ def add_random_user(rec, count):
     phone_num = ''.join(random.choices(string.digits, k=MOCKUP_PHONE_NUM_SIZE))
     
     rec.append("(obj %s" % user_name)
-    rec.append("  (motto {ru %s})" % user_motto)
-    rec.append("  (contacts (mail %s) (phone (prefix %s)(number %s)))" % (user_email, phone_prefix, phone_num))
+    #rec.append("  (motto {ru %s})" % user_motto)
+    #rec.append("  (contacts (mail %s) (phone (prefix %s)(number %s)))" % (user_email, phone_prefix, phone_num))
     rec.append("  (ident (id %d)(salt %s)" % (count, pass_salt))
     rec.append("         (hash %s))" % pass_hash)
     rec.append(")")

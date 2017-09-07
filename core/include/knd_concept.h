@@ -203,8 +203,9 @@ struct kndConcept
     int (*update_state)(struct kndConcept *self);
     int (*apply_liquid_updates)(struct kndConcept *self);
 
-    int (*select)(struct kndConcept  *self,
-                  struct kndTaskArg *args, size_t num_args);
+    int (*select)(void  *self,
+                  const char *rec,
+                  size_t *total_size);
 
     int (*get)(struct kndConcept  *self,
                const char *name, size_t name_size);
@@ -216,7 +217,7 @@ struct kndConcept
                     const char *name, size_t name_size,
                     struct kndAttr **result);
 
-    int (*import)(struct kndConcept *self,
+    int (*import)(void *self,
                   const char *rec,
                   size_t *total_size);
 
