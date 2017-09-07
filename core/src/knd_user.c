@@ -23,20 +23,13 @@ kndUser_export(struct kndUser *self,
                 knd_format format);
 static int run_get_user_by_id(void *obj, struct kndTaskArg *args, size_t num_args);
 
-static int
-kndUser_read(struct kndUser *self, const char *rec);
-
-static int 
+static void
 kndUser_del(struct kndUser *self)
 {
-
     free(self);
-
-    return knd_OK;
 }
 
-static int 
-kndUser_str(struct kndUser *self)
+static void kndUser_str(struct kndUser *self)
 {
     struct kndConcept *dc;
     const char *key = NULL;
@@ -54,11 +47,7 @@ kndUser_str(struct kndUser *self)
         knd_log("CLASS: %s\n", dc->name);
 
     } while (key);
-        
-
-    return knd_OK;
 }
-
 
 static int
 kndUser_add_user(struct kndUser *self)
@@ -374,7 +363,6 @@ static int kndUser_parse_liquid_updates(void *obj,
                                         size_t *total_size)
 {
     struct kndUser *self = (struct kndUser*)obj;
-    struct kndConcept *c;
     int err;
 
     if (DEBUG_USER_LEVEL_2)
@@ -387,6 +375,7 @@ static int kndUser_parse_liquid_updates(void *obj,
     if (err) return err;
 
     /* TODO: state parsing */
+    knd_log(".. parse updates rec: %s", rec);
     *total_size = 0;
     
     if (DEBUG_USER_LEVEL_2)
@@ -445,7 +434,6 @@ static int run_get_user_by_id(void *obj, struct kndTaskArg *args, size_t num_arg
 {
     struct kndUser *self = (struct kndUser*)obj;
     struct kndTaskArg *arg;
-    struct kndConcept *conc;
     const char *numid = NULL;
     size_t numid_size = 0;
     long numval = 0;
@@ -464,7 +452,7 @@ static int run_get_user_by_id(void *obj, struct kndTaskArg *args, size_t num_arg
     err = knd_parse_num((const char*)numid, &numval);
     if (err) return err;
 
-    if (numval < 0 || numval >= self->max_users) {
+    if (numval < 0 || (size_t)numval >= self->max_users) {
         return knd_LIMIT;
     }
 
@@ -503,11 +491,10 @@ static int run_get_user_by_id(void *obj, struct kndTaskArg *args, size_t num_arg
 }
 
 static int run_present_user(void *data,
-                            struct kndTaskArg *args, size_t num_args)
+                            struct kndTaskArg *args __attribute__((unused)),
+                            size_t num_args __attribute__((unused)))
 {
-    struct kndUser *self = (struct User*)data;
-    struct kndTaskArg *arg;
-    struct kndObject *obj;
+    struct kndUser *self = (struct kndUser*)data;
     int err;
 
     knd_log(".. present user..");

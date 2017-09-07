@@ -1768,7 +1768,6 @@ static int parse_set_attr(void *obj,
     struct kndConcItem *conc_item;
     const char *conc_item_name = "__self__";
     size_t conc_item_name_size = strlen(conc_item_name);
-
     struct kndAttrItem *item;
     int err;
 

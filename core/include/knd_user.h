@@ -71,9 +71,8 @@ struct kndUser
     struct ooDict *browse_class_idx;
    
     /**********  interface methods  **********/
-    int (*del)(struct kndUser *self);
-
-    int (*str)(struct kndUser *self);
+    void (*del)(struct kndUser *self);
+    void (*str)(struct kndUser *self);
 
     int (*init)(struct kndUser *self);
 
