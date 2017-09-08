@@ -1,0 +1,4 @@
+{gsl::Knowdy Basic
+    {knd::Auth Service Configuration
+       {db_host DB_HOST_NAME}
+       {service ipc:///var/lib/knowdy/auth/inbox}

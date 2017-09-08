@@ -31,111 +31,211 @@ static void str(struct kndRef *self, size_t depth)
 {
     size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
-
-    struct kndRefState *curr_state;
-  
+    if (!offset) return;
+    
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
 
-    if (self->user_name_size) {
-        knd_log("%sUSER REF: %s [%p]", offset, self->user_name, self->user);
+    if (self->states) {
+        knd_log("%s%s -> \"%s\"", offset,
+                self->elem->attr->name, self->states->val);
     }
-
+    free(offset);
 }
 
-static int kndRef_index(struct kndRef *self)
+static int
+kndRef_set_reverse_rel(struct kndRef *self,
+                   struct kndObject *obj)
 {
-    /*    char buf[KND_LARGE_BUF_SIZE];
-    size_t buf_size;
+    struct kndRelClass *relc;
+    struct kndRelType *reltype;
+    struct kndConcept *conc;
 
-    struct kndObject *obj;
-    struct kndRefState *curr_state;
-    struct kndTranslation *tr;
-    int err = knd_FAIL;
-
-    obj = self->elem->obj;
-    curr_state = self->states;
+    conc = self->elem->attr->parent_conc;
+     
+    if (DEBUG_REF_LEVEL_TMP)
+        knd_log(".. set REF from %s => %s",
+                conc->name,
+                obj->conc->name);
     
+    for (relc = obj->reverse_rel_classes; relc; relc = relc->next) {
+        if (relc->conc == conc) break;
+    }
+
+    /* add a relclass */
+    if (!relc) {
+        relc = malloc(sizeof(struct kndRelClass));
+        if (!relc) return knd_NOMEM;
+        memset(relc, 0, sizeof(struct kndRelClass));
+        relc->conc = conc;
+        relc->next = obj->reverse_rel_classes;
+        obj->reverse_rel_classes = relc;
+    }
+    
+    for (reltype = relc->rel_types; reltype; reltype = reltype->next) {
+        if (reltype->attr == self->elem->attr) break;
+    }
+
+    /* add a reltype */
+    if (!reltype) {
+        reltype = malloc(sizeof(struct kndRelType));
+        if (!reltype) return knd_NOMEM;
+        memset(reltype, 0, sizeof(struct kndRelType));
+        reltype->attr = self->elem->attr;
+        reltype->next = relc->rel_types;
+        relc->rel_types = reltype;
+    }
+
+    /*err = kndObjRef_new(&r);
+    if (err) return knd_NOMEM;
+
+    memcpy(r->obj_id, obj_id, KND_ID_SIZE);
+    r->obj_id_size = KND_ID_SIZE;
     */
+    
+    if (!reltype->tail) {
+        reltype->tail = self;
+        reltype->refs = self;
+    }
+    else {
+        reltype->tail->next = self;
+        reltype->tail = self;
+    }
+
+    reltype->num_refs++;
+    
+    /*knd_log("  == total refs: %lu\n", (unsigned long)reltype->num_refs);*/
     
     return knd_OK;
 }
 
 
-
-
-static int
-kndRef_run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
+static int kndRef_resolve(struct kndRef *self)
 {
-    struct kndRef *self;
-    struct kndUser *user;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
+    struct kndConcept *conc;
+    struct kndObject *obj;
+    const char *obj_name;
+    int err, e;
     
+    if (!self->states) return knd_FAIL;
+    conc = self->elem->attr->conc;
+     
+    if (DEBUG_REF_LEVEL_TMP)
+        knd_log(".. resolve REF: %s (%s) => %s",
+                self->elem->attr->name,
+                conc->name, self->states->val);
+
+    obj_name = self->states->val;
+    
+    obj = (struct kndObject*)conc->obj_idx->get(conc->obj_idx, obj_name);
+    if (!obj) {
+        knd_log("-- no such obj: \"%s\" :(", obj_name);
+        e = self->log->write(self->log, "no such obj: ", strlen("no such obj: "));
+        if (e) return e;
+        e = self->log->write(self->log, obj_name, self->states->val_size);
+        if (e) return e;
+        return knd_FAIL;
+    }
+
+    self->states->obj = obj;
+
+    /* set reverse_rel */
+    err = kndRef_set_reverse_rel(self, obj);
+    if (err) return err;
+    
+    /*if (obj->num_reverse_rels >= KND_MAX_REVERSE_RELS) {
+        knd_log("-- reverse_rels limit reached in %.*s :(", obj->name_size, obj->name);
+        return knd_LIMIT;
+    }
+    
+    obj->reverse_rels[obj->num_reverse_rels] = self;
+    obj->num_reverse_rels++;
+
+    knd_log("== %.*s obj num reverse_rels: %lu", obj->name_size, obj->name,
+            (unsigned long)obj->num_reverse_rels);
+    */
+    
+    return knd_OK;
+}
+
+static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndRef *self = (struct kndRef*)obj;
+    struct kndTaskArg *arg;
+    struct kndRefState *state;
+    const char *val = NULL;
+    size_t val_size = 0;
+
+    if (DEBUG_REF_LEVEL_2)
+        knd_log(".. run set ref val..");
+
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
-        if (!strncmp(arg->name, "un", strlen("un"))) {
-            name = arg->val;
-            name_size = arg->val_size;
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            val = arg->val;
+            val_size = arg->val_size;
         }
     }
 
-    if (!name_size) return knd_FAIL;
+    if (!val_size) return knd_FAIL;
+    if (val_size >= KND_NAME_SIZE)
+        return knd_LIMIT;
 
-    self = (struct kndRef*)obj;
-    
-    if (DEBUG_REF_LEVEL_TMP) {
-        knd_log(".. get user: \"%s\"",
-                name);
-    }
-    
-    
+    state = malloc(sizeof(struct kndRefState));
+    if (!state) return knd_NOMEM;
+    memset(state, 0, sizeof(struct kndRefState));
+    self->states = state;
+    self->num_states = 1;
+
+    memcpy(state->val, val, val_size);
+    state->val[val_size] = '\0';
+    state->val_size = val_size;
+
     return knd_OK;
 }
 
+
+
 static int 
-export_JSON(struct kndRef *self)
+export_reverse_rel_JSON(struct kndRef *self)
 {
-    /*    char buf[KND_NAME_SIZE];
-    size_t buf_size;
-
     struct kndObject *obj;
-    struct kndRefState *curr_state;
     struct kndOutput *out;
-    
-    int num_trs = 0;
-
     int err = knd_FAIL;
 
-    obj = self->elem->obj;
+    obj = self->elem->root;
     out = self->out;
 
     if (DEBUG_REF_LEVEL_2)
-        knd_log(".. export ref to JSON..");
+        knd_log(".. export reverse_rel to JSON..");
 
-    curr_state = self->states;
+    obj->out = out;
+    obj->depth = 0;
+    err = obj->export(obj);
+    if (err) return err;
+
+    /*err = out->write(out, "\"", 1);
+    if (err) return err;
+    err = out->write(out, obj->name, obj->name_size);
+    if (err) return err;
+
+    err = out->write(out, "\"", 1);
+    if (err) return err;
     */
-
+    
     return knd_OK;
 }
-
 
 static int 
 export_GSC(struct kndRef *self)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
-
-    struct kndObject *obj;
+    /*    struct kndObject *obj;
     struct kndRefState *curr_state;
     struct kndTranslation *tr;
     
     struct kndRefSelect *sel;
-    size_t curr_size;
+    */
     
-    int err = knd_FAIL;
-
     if (DEBUG_REF_LEVEL_2)
         knd_log(".. export ref obj: %p  states: %p..", self->elem->obj, self->states);
   
@@ -145,23 +245,40 @@ export_GSC(struct kndRef *self)
     return knd_OK;
 }
 
-
-
-static int 
-export(struct kndRef *self,
-               knd_format format)
+static int export(struct kndRef *self)
 {
     int err;
-    
-    switch(format) {
+
+    switch (self->format) {
     case KND_FORMAT_JSON:
-        err = export_JSON(self);
-        if (err) return err;
+        /*err = export_JSON(self);
+          if (err) return err; */
         break;
     case KND_FORMAT_GSC:
         err = export_GSC(self);
         if (err) return err;
         break;
+    default:
+        break;
+    }
+    
+    return knd_OK;
+}
+
+
+static int export_reverse_rel(struct kndRef *self)
+{
+    int err;
+
+    switch (self->format) {
+    case KND_FORMAT_JSON:
+        err = export_reverse_rel_JSON(self);
+        if (err) return err;
+        break;
+        /*    case KND_FORMAT_GSC:
+        err = export_GSC(self);
+        if (err) return err;
+        break; */
     default:
         break;
     }
@@ -177,14 +294,10 @@ parse_GSL(struct kndRef *self,
 {
     if (DEBUG_REF_LEVEL_1)
         knd_log(".. parse REF field: \"%s\"..", rec);
-
-    self->user_name_size = KND_NAME_SIZE;
     
     struct kndTaskSpec specs[] = {
-        { .name = "un",
-          .name_size = strlen("un"),
-          .buf = self->user_name,
-          .buf_size = &self->user_name_size,
+        { .is_implied = true,
+          .run = run_set_val,
           .obj = self
         }
     };
@@ -209,8 +322,11 @@ kndRef_new(struct kndRef **ref)
     self->del = del;
     self->str = str;
     self->export = export;
+    self->export_reverse_rel = export_reverse_rel;
+
+    self->resolve = kndRef_resolve;
     self->parse = parse_GSL;
-    self->index = kndRef_index;
+    //self->index = kndRef_index;
 
     *ref = self;
     return knd_OK;

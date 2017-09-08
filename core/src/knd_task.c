@@ -15,17 +15,6 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
-static inline int check_name_limits(const char *b, const char *e, size_t *buf_size)
-{
-    *buf_size = e - b;
-    if (!(*buf_size)) return knd_LIMIT;
-    if ((*buf_size) >= KND_NAME_SIZE) {
-        knd_log("-- field tag too large: %lu bytes",
-                (unsigned long)buf_size);
-        return knd_LIMIT;
-    }
-    return knd_OK;
-}
 
 static void del(struct kndTask *self)
 {
@@ -106,6 +95,7 @@ static int parse_task(void *obj,
                       size_t *total_size)
 {
     struct kndTask *self = (struct kndTask*)obj;
+    int err;
    
     struct kndTaskSpec specs[] = {
         { .name = "schema",
@@ -133,7 +123,6 @@ static int parse_task(void *obj,
           .obj = self
         }
     };
-    int err, e;
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
@@ -192,6 +181,9 @@ static int report(struct kndTask *self)
     size_t obj_size;
     int err;
 
+    if (DEBUG_TASK_LEVEL_2)
+        knd_log("..TASK reporting..");
+        
     out->reset(out);
     err = out->write(out, gsl_header, strlen(gsl_header));
     if (err) return err;
@@ -235,23 +227,31 @@ static int report(struct kndTask *self)
         if (err) return err;
     }
     
-    if (DEBUG_TASK_LEVEL_TMP)
+    if (DEBUG_TASK_LEVEL_2)
         knd_log("== TASK report: SPEC: \"%s\"\n\n== BODY: %s\n",
                 out->buf, self->out->buf);
 
     err = knd_zmq_sendmore(self->delivery, (const char*)out->buf, out->buf_size);
-
     /* obj body */
     if (self->out->buf_size) {
         msg = self->out->buf;
         msg_size = self->out->buf_size;
     }
 
+    /* send delta */
+    if (self->type == KND_DELTA_STATE) {
+        if (self->update->buf_size) {
+            msg = self->update->buf;
+            msg_size = self->update->buf_size;
+        }
+    }
+
     err = knd_zmq_send(self->delivery, msg, msg_size);
 
+    /* get confirmation reply from delivery */
     header = knd_zmq_recv(self->delivery, &header_size);
     obj = knd_zmq_recv(self->delivery, &obj_size);
-
+    
     if (DEBUG_TASK_LEVEL_2)
         knd_log("== Delivery reply header: \"%s\" obj: \"%s\"",
                 header, obj);
@@ -260,13 +260,13 @@ static int report(struct kndTask *self)
         free(header);
     if (obj)
         free(obj);
-
+    
     if (!self->is_state_changed) return knd_OK;
 
     /* inform all retrievers about the state change */
     err = knd_zmq_sendmore(self->publisher, self->update->buf, self->update->buf_size);
     err = knd_zmq_send(self->publisher, "None", strlen("None"));
-
+    
     return knd_OK;
 }
 

@@ -461,14 +461,10 @@ kndObjRef_expand(struct kndObjRef *self)
     struct kndObject *obj = NULL;
     int err;
    
-    if (DEBUG_OBJREF_LEVEL_TMP)
-        knd_log("  .. expanding objref \"%s::%s\" of class \"%s\"..\n",
-                self->obj_id, self->name, self->cache->baseclass->name);
-
     if (self->obj)
         return knd_OK;
 
-    obj = self->cache->db->get(self->cache->db, self->obj_id);
+    /*obj = self->cache->db->get(self->cache->db, self->obj_id);
     if (obj) {
         self->obj = obj;
         return knd_OK;
@@ -491,7 +487,7 @@ kndObjRef_expand(struct kndObjRef *self)
     err = obj->expand(obj, 1);
     if (err) return err;
 
-    
+    */
     self->obj = obj;
 
     return knd_OK;
@@ -761,7 +757,6 @@ kndObjRef_clone(struct kndObjRef *self,
     }
     
     ref->obj = self->obj;
-    ref->cache = self->cache;
     ref->trn = self->trn;
 
     if (self->name_size) {

@@ -43,6 +43,7 @@ struct kndRetriever
     char inbox_backend_addr[KND_NAME_SIZE];
     size_t inbox_backend_addr_size;
 
+    size_t max_users;
     /*char *update_addr;
     size_t update_addr_size;
     void *update_service;
@@ -52,11 +53,13 @@ struct kndRetriever
     struct kndOutput *spec_out;
     struct kndOutput *obj_out;
     
-    size_t maze_cache_size;
+    //size_t maze_cache_size;
+    size_t max_objs;
 
-    char *last_obj_id;
+    /*char *last_obj_id;
     char *curr_obj_id;
-
+    */
+    
     char lang_code[KND_NAME_SIZE];
     size_t lang_code_size;
 

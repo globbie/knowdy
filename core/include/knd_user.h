@@ -37,7 +37,6 @@ struct kndUser
     char db_state[KND_ID_SIZE + 1];
     
     knd_user_role role;
-    size_t num_users;
 
     const char *dbpath;
     size_t dbpath_size;
@@ -54,30 +53,26 @@ struct kndUser
     const char *locale;
     size_t locale_size;
 
-    /*char login_phrase[KND_TEMP_BUF_SIZE];
-    size_t login_phrase_size;
+    struct kndObject **user_idx;
+    size_t max_users;
+    size_t num_users;
 
-    char control_phrase[KND_TEMP_BUF_SIZE];
-    size_t control_phrase_size;
-    */
-    
+    struct kndObject *curr_user;
     struct kndConcept *root_class;
     struct kndTask *task;
     struct kndOutput *out;
     struct kndOutput *log;
-
+    
     void *update_service;
     
     struct kndRepo *repo;
     
     struct ooDict *class_idx;
     struct ooDict *browse_class_idx;
-    struct ooDict *user_idx;
    
     /**********  interface methods  **********/
-    int (*del)(struct kndUser *self);
-
-    int (*str)(struct kndUser *self);
+    void (*del)(struct kndUser *self);
+    void (*str)(struct kndUser *self);
 
     int (*init)(struct kndUser *self);
 

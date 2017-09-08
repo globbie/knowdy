@@ -24,9 +24,8 @@ struct kndObject;
 struct kndObjRef;
 struct kndElem;
 struct kndElemRef;
-struct kndDataClass;
+struct kndConcept;
 struct kndQuery;
-struct kndRepoCache;
 struct kndOutput;
 
 #include "knd_config.h"
@@ -58,8 +57,7 @@ struct kndRefSet
     
     size_t rec_size;
     
-    struct kndRepoCache *cache;
-    struct kndDataClass *baseclass;
+    struct kndConcept *baseclass;
 
     bool is_updated;
     bool tags_needed;

@@ -32,10 +32,6 @@ kndText_del(struct kndText *self)
 static int 
 kndText_str(struct kndText *self, size_t depth)
 {
-    //char buf[KND_TEMP_BUF_SIZE];
-    //size_t buf_size;
-    //size_t curr_size;
-    //char *c;
     size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
 
@@ -45,6 +41,9 @@ kndText_str(struct kndText *self, size_t depth)
   
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
+
+    knd_log("%s%s:", offset,
+            self->elem->attr->name);
 
     curr_state = self->states;
     while (curr_state) {
@@ -156,7 +155,7 @@ kndText_export_JSON(struct kndText *self)
             
         while (tr) {
             /* check language */
-            if (obj->cache->repo->locale_size) {
+            /*if (obj->cache->repo->locale_size) {
                 if (DEBUG_TEXT_LEVEL_3)
                     knd_log("  .. text LANG: %s curr user lang: %s\n",
                             tr->locale, obj->cache->repo->locale);
@@ -164,7 +163,7 @@ kndText_export_JSON(struct kndText *self)
                 if (strncmp(tr->locale, obj->cache->repo->locale, tr->locale_size))
                     goto next_tr;
             }
-            
+            */
             if (num_trs) {
                 err = out->write(out, ",", 1);
                 if (err) return err;
@@ -301,7 +300,7 @@ kndText_export_HTML(struct kndText *self)
             
         while (tr) {
             /* check language */
-            if (obj->cache->repo->locale_size) {
+            /*if (obj->cache->repo->locale_size) {
 
                 if (DEBUG_TEXT_LEVEL_3)
                     knd_log("  .. text LANG: %s curr user lang: %s\n",
@@ -309,7 +308,7 @@ kndText_export_HTML(struct kndText *self)
                 
                 if (strcmp(tr->locale, obj->cache->repo->locale))
                     goto next_tr;
-            }
+                    }*/
 
             /*buf_size = sprintf(buf, "\"l\":\"%s\"",
                                tr->locale);
@@ -575,10 +574,10 @@ static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t n
             knd_log("-- max text limit reached: %lu :(", (unsigned long)val_size);
             return knd_LIMIT;
         }
-            
+
         tr->seq = malloc(val_size + 1);
-        if (!tr->seq)
-            return knd_NOMEM;
+        if (!tr->seq) return knd_NOMEM;
+
         memcpy(tr->seq, val, val_size);
         tr->seq[val_size] = '\0';
         tr->seq_size = val_size;

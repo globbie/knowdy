@@ -13,7 +13,7 @@ struct kndCacheRec
     char *value;
     size_t value_size;
 };
-    
+
 struct kndLearner
 {
     char name[KND_NAME_SIZE];
@@ -28,7 +28,7 @@ struct kndLearner
     void *delivery;
     char delivery_addr[KND_NAME_SIZE];
     size_t delivery_addr_size;
-    
+
     char inbox_frontend_addr[KND_NAME_SIZE];
     size_t inbox_frontend_addr_size;
 
@@ -42,14 +42,16 @@ struct kndLearner
 
     char publish_proxy_backend_addr[KND_NAME_SIZE];
     size_t publish_proxy_backend_addr_size;
-    
+
     size_t state_count;
-  
+
+    size_t max_objs;
+
     char *last_obj_id;
     char *curr_obj_id;
     size_t num_objs;
     size_t max_num_objs;
-  
+
     /* persistent storage */
     char db_path[KND_MED_BUF_SIZE];
     size_t db_path_size;
@@ -58,13 +60,13 @@ struct kndLearner
     struct kndOutput *log;
 
     struct kndTask *task;
-    
+
     struct ooDict *repo_idx;
     struct kndUser *admin;
 
     /* concept manager */
     struct kndConcept *dc;
-    
+
     /**********  interface methods  **********/
     void (*del)(struct kndLearner *self);
 
@@ -74,3 +76,4 @@ struct kndLearner
 extern int kndLearner_new(struct kndLearner **self,
                              const char *config);
 #endif
+

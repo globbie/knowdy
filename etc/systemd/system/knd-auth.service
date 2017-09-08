@@ -1,0 +1,12 @@
+[Unit]
+Description=Knowdy Auth Service
+After=network.target
+
+[Service]
+Type=simple
+User=knowdy
+ExecStart=/usr/bin/knd-auth /etc/knowdy/auth.gsl
+
+[Install]
+
+

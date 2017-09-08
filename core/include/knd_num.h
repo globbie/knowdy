@@ -60,8 +60,12 @@ struct kndNumState
     knd_state_phase phase;
     char state[KND_STATE_SIZE];
     
-    struct kndQuant *val;
+    char val[KND_VAL_SIZE];
+    size_t val_size;
 
+    long numval;
+
+    //struct kndQuant *val;
     struct kndNumState *next;
 };
 
@@ -75,8 +79,8 @@ struct kndNum
     size_t num_states;
     
     /******** public methods ********/
-    int (*str)(struct kndNum *self,
-               size_t depth);
+    void (*str)(struct kndNum *self,
+                size_t depth);
 
     int (*del)(struct kndNum *self);
     

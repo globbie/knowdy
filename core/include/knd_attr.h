@@ -35,8 +35,8 @@ typedef enum knd_attr_type {
     KND_ATTR_NONE,
     KND_ATTR_ATOM,
     KND_ATTR_STR,
+    KND_ATTR_BIN,
     KND_ATTR_AGGR,
-    KND_ATTR_LIST,
     KND_ATTR_TEXT, 
     KND_ATTR_CG,
     KND_ATTR_NUM,
@@ -50,8 +50,8 @@ static const char* const knd_attr_names[] = {
     "none",
     "atom",
     "str",
+    "bin",
     "aggr", 
-    "list",
     "text", 
     "CG",
     "num",
@@ -60,6 +60,22 @@ static const char* const knd_attr_names[] = {
     "file",
     "proc"
 };
+
+typedef enum knd_attr_access_type {
+    KND_ATTR_ACCESS_USER,
+    KND_ATTR_ACCESS_RESTRICTED,
+    KND_ATTR_ACCESS_PUB
+} knd_attr_access_type;
+
+struct kndAttrValidator
+{
+    char name[KND_SHORT_NAME_SIZE];
+    size_t name_size;
+    int (*proc)(struct kndAttr *self,
+                const char   *val,
+                size_t val_size);
+};
+
 
 
 struct kndAttrItem
@@ -83,6 +99,7 @@ struct kndAttrItem
 struct kndAttr 
 {
     knd_attr_type type;
+    knd_attr_access_type access_type;
 
     char name[KND_NAME_SIZE];
     size_t name_size;
@@ -90,8 +107,12 @@ struct kndAttr
     char classname[KND_NAME_SIZE];
     size_t classname_size;
 
-    char cardinality[KND_NAME_SIZE];
+    char cardinality[KND_SHORT_NAME_SIZE];
     size_t cardinality_size;
+
+    char validator_name[KND_SHORT_NAME_SIZE];
+    size_t validator_name_size;
+
     bool is_list;
     bool is_recursive;
 
@@ -105,12 +126,10 @@ struct kndAttr
     /* refclass not set: self reference by default */
     char ref_classname[KND_NAME_SIZE];
     size_t ref_classname_size;
-    struct kndConcept *ref_class;
 
     int concise_level;
     int descr_level;
     int browse_level;
-
 
     char calc_oper[KND_NAME_SIZE];
     size_t calc_oper_size;
@@ -130,6 +149,7 @@ struct kndAttr
     
     struct kndTranslation *tr;
 
+    
     struct kndAttr *next;
     
     /***********  public methods ***********/
@@ -140,6 +160,10 @@ struct kndAttr
     int (*parse)(struct kndAttr *self,
                  const char   *rec,
                  size_t *chunk_size);
+
+    int (*validate)(struct kndAttr *self,
+                    const char   *val,
+                    size_t val_size);
 
     int (*export)(struct kndAttr   *self);
 };

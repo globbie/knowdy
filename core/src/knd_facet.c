@@ -309,7 +309,6 @@ kndFacet_get_refset(struct kndFacet  *self,
     rs->numval = numval;
 
     rs->baseclass = self->baseclass;
-    rs->cache = self->cache;
     rs->parent = self;
     rs->out = self->out;
     
@@ -1385,10 +1384,9 @@ kndFacet_extract_objs(struct kndFacet    *self)
     int err = knd_FAIL;
 
     if (DEBUG_FACET_LEVEL_3)
-        knd_log("  facet \"%s\" to extract objs   (batch size: %lu,   curr: %lu)\n",
+        knd_log("  facet \"%s\" to extract objs   (batch size: %lu)\n",
                 self->name,
-                (unsigned long)self->batch_size,
-                (unsigned long)self->cache->num_matches);
+                (unsigned long)self->batch_size);
 
     for (size_t i = 0; i < self->num_refsets; i++) {
         rs = self->refsets[i];
@@ -1398,9 +1396,9 @@ kndFacet_extract_objs(struct kndFacet    *self)
         err = rs->extract_objs(rs);
         if (err) return err;
 
-        if (self->cache->num_matches >= self->batch_size)
+        /*if (self->cache->num_matches >= self->batch_size)
             break;
-
+        */
     }
 
     return knd_OK;

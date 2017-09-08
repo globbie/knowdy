@@ -6,7 +6,11 @@
 #include "knd_repo.h"
 #include "knd_output.h"
 #include "knd_elem.h"
+#include "knd_attr.h"
 #include "knd_object.h"
+#include "knd_task.h"
+#include "knd_parser.h"
+#include "knd_user.h"
 
 #define DEBUG_NUM_LEVEL_0 0
 #define DEBUG_NUM_LEVEL_1 0
@@ -23,24 +27,19 @@ kndNum_del(struct kndNum *self)
     return knd_OK;
 }
 
-static int 
-kndNum_str(struct kndNum *self, size_t depth)
+static void str(struct kndNum *self, size_t depth)
 {
     size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
-
-    struct kndNumState *curr_state;
+    if (!offset) return;
      
     memset(offset, ' ', offset_size);
     offset[offset_size] = '\0';
 
-    curr_state = self->states;
-    while (curr_state) {
+    knd_log("%s%s = %s", offset,
+            self->elem->attr->name, self->states->val);
 
-        curr_state = curr_state->next;
-    }
-    
-    return knd_OK;
+    free(offset);
 }
 
 static int 
@@ -82,15 +81,89 @@ kndNum_export(struct kndNum *self __attribute__((unused)), knd_format format __a
     return err;
 }
 
-
-static int 
-kndNum_parse(struct kndNum *self __attribute__((unused)),
-             const char    *rec __attribute__((unused)),
-             size_t        *total_size __attribute__((unused)))
+static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
 {
+    struct kndNum *self = (struct kndNum*)obj;
+    struct kndTaskArg *arg;
+    struct kndNumState *state;
+    struct kndConcept *root_class;
+    struct kndUser *user;
+    const char *val = NULL;
+    size_t val_size = 0;
+    int err;
+
+    if (DEBUG_NUM_LEVEL_2)
+        knd_log(".. run set num val..");
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            val = arg->val;
+            val_size = arg->val_size;
+        }
+    }
+
+    if (!val_size) return knd_FAIL;
+    if (val_size >= KND_VAL_SIZE) return knd_LIMIT;
+
+    state = malloc(sizeof(struct kndNumState));
+    if (!state) return knd_NOMEM;
+    memset(state, 0, sizeof(struct kndNumState));
+    self->states = state;
+    self->num_states = 1;
+
+    err = knd_parse_num((const char*)val, &state->numval);
+    if (err) return err;
+
+    memcpy(state->val, val, val_size);
+    state->val[val_size] = '\0';
+    state->val_size = val_size;
+
+    
+    /* HACK: register special field: numeric user id */
+    if (!strncmp(self->elem->attr->name, "id", strlen("id"))) {
+       if (self->elem->root && self->elem->root->conc) {
+            root_class = self->elem->root->conc->root_class;
+            if (root_class && root_class->user) {
+                user = root_class->user;
+                if (state->numval > 0 && state->numval < KND_MAX_USERS) {
+
+                    if (DEBUG_NUM_LEVEL_2) {
+                        knd_log(".. set user num id of: %.*s",
+                                self->elem->root->name_size, self->elem->root->name);
+                    }
+                    
+                    user->user_idx[state->numval] = self->elem->root;
+                }
+            }
+       } 
+    }
+ 
     return knd_OK;
 }
 
+
+static int parse_GSL(struct kndNum *self,
+                     const char *rec,
+                     size_t *total_size)
+{
+   int err;
+
+   if (DEBUG_NUM_LEVEL_2)
+       knd_log(".. parse NUM field: \"%s\"..", rec);
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_val,
+          .obj = self
+        }
+    };
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
 
 extern int 
 kndNum_new(struct kndNum **num)
@@ -103,9 +176,9 @@ kndNum_new(struct kndNum **num)
     memset(self, 0, sizeof(struct kndNum));
 
     self->del = kndNum_del;
-    self->str = kndNum_str;
+    self->str = str;
     self->export = kndNum_export;
-    self->parse = kndNum_parse;
+    self->parse = parse_GSL;
     self->index = kndNum_index;
 
     *num = self;
