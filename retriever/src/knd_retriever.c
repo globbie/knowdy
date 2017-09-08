@@ -423,9 +423,10 @@ kndRetriever_new(struct kndRetriever **rec,
     self->task->admin = self->admin;
     self->admin->out = self->out;
     
-    err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
+    /*err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-
+    */
+    
     /* read config */
     err = self->out->read_file(self->out, config, strlen(config));
     if (err) {

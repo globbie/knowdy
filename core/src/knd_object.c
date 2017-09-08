@@ -25,13 +25,9 @@
 #define DEBUG_OBJ_LEVEL_4 0
 #define DEBUG_OBJ_LEVEL_TMP 1
 
-static int del(struct kndObject *self)
+static void del(struct kndObject *self)
 {
-    knd_log("  .. free obj: \"%s\".. \n", self->name);
-
     free(self);
-
-    return knd_OK;
 }
 
 static void str(struct kndObject *self,
@@ -92,10 +88,85 @@ kndObject_export_aggr_JSON(struct kndObject *self)
 }
 
 static int
+kndObject_export_reverse_rels_JSON(struct kndObject *self)
+{
+    struct kndRelClass *relc;
+    struct kndRelType *reltype;
+    struct kndRef *ref;
+    struct kndOutput *out = self->out;
+    int err;
+
+    /* sort refs by class */
+    knd_log("..export reverse_rels of %.*s..", self->name_size, self->name);
+
+    err = out->write(out, ",\"_reverse_rels\":[", strlen(",\"_reverse_rels\":["));
+    if (err) return err;
+
+    /* class conc */
+    for (relc = self->reverse_rel_classes; relc; relc = relc->next) {
+        err = out->write(out, "{\"c\":\"", strlen("{\"c\":\""));
+        if (err) return err;
+        err = out->write(out, relc->conc->name, relc->conc->name_size);
+        if (err) return err;
+        err = out->write(out, "\"", 1);
+        if (err) return err;
+
+        err = out->write(out, ",\"attrs\":[", strlen(",\"attrs\":["));
+        if (err) return err;
+
+        /* attr type */
+        for (reltype = relc->rel_types; reltype; reltype = reltype->next) {
+            err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));
+            if (err) return err;
+            err = out->write(out, reltype->attr->name, reltype->attr->name_size);
+            if (err) return err;
+            err = out->write(out, "\"", 1);
+            if (err) return err;
+
+            err = out->write(out, ",\"refs\":[", strlen(",\"refs\":["));
+            if (err) return err;
+
+            for (ref = reltype->refs; ref; ref = ref->next) {
+                err = ref->export_reverse_rel(ref);
+                if (err) return err;
+
+                if (ref->next) {
+                    err = out->write(out, ",", 1);
+                    if (err) return err;
+                }
+            }
+            err = out->write(out, "]", 1);
+            if (err) return err;
+            err = out->write(out, "}", 1);
+            if (err) return err;
+
+            if (reltype->next) {
+                err = out->write(out, ",", 1);
+                if (err) return err;
+            }
+        }
+        err = out->write(out, "]", 1);
+        if (err) return err;
+
+        err = out->write(out, "}", 1);
+        if (err) return err;
+
+        if (relc->next) {
+            err = out->write(out, ",", 1);
+            if (err) return err;
+        }
+    }
+    
+    err = out->write(out, "]", 1);
+    if (err) return err;
+
+    return knd_OK;
+}
+
+static int
 kndObject_export_JSON(struct kndObject *self)
 {
     struct kndElem *elem;
-    struct kndRef *ref;
     struct kndObject *obj;
     struct kndOutput *out = self->out;
     bool is_concise = true;
@@ -190,32 +261,19 @@ kndObject_export_JSON(struct kndObject *self)
     /*if (self->elems) {
         err = out->write(out, "}", 1);
         if (err) goto final;
-        }*/
+    }*/
 
-    if (is_concise) goto closing;
-
-    /* skip backref relations */
-    //if (self->depth) goto closing;
-
-    /* backrefs */
-    if (self->num_backrefs) {
-        err = out->write(out, ",\"refs\":[", strlen(",\"refs\":["));
-        if (err) return err;
-
-        for (size_t i = 0; i < self->num_backrefs; i++) {
-            ref = self->backrefs[i];
-            if (i) {
-                err = out->write(out, ",", 1);
-                if (err) return err;
-            }
-
-            err = ref->export_backref(ref);
-            if (err) return err;
-        }
-
-        err = out->write(out, "]", 1);
+    /* reverse_rels */
+    if (self->reverse_rel_classes) {
+        err = kndObject_export_reverse_rels_JSON(self);
         if (err) return err;
     }
+    
+    if (is_concise) goto closing;
+
+    /* skip reverse_rels */
+    //if (self->depth) goto closing;
+
     
  closing:
 

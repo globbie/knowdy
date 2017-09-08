@@ -59,6 +59,8 @@ struct kndRef
     struct kndRefState *states;
     size_t num_states;
 
+    struct kndRef *next;
+
     /******** public methods ********/
     void (*str)(struct kndRef *self,
                 size_t depth);
@@ -74,7 +76,7 @@ struct kndRef
     int (*resolve)(struct kndRef *self);
     
     int (*export)(struct kndRef *self);
-    int (*export_backref)(struct kndRef *self);
+    int (*export_reverse_rel)(struct kndRef *self);
 };
 
 /* constructors */

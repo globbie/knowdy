@@ -597,7 +597,7 @@ kndUser_parse_task(struct kndUser *self,
         if (self->root_class->inbox_size || self->root_class->obj_inbox_size) {
             out = self->task->update;
 
-            if (DEBUG_USER_LEVEL_2)
+            if (DEBUG_USER_LEVEL_TMP)
                 knd_log(".. update state.. OUT SIZE: %lu TOTAL SPEC SIZE: %lu",
                         (unsigned long)out->free_space,
                         (unsigned long)*total_size);

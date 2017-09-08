@@ -220,7 +220,7 @@ parse_write_inbox_addr(void *obj,
 
 static int run_set_max_objs(void *obj, struct kndTaskArg *args, size_t num_args)
 {
-    struct kndLearner *self = (struct Learner*)obj;
+    struct kndLearner *self = (struct kndLearner*)obj;
     struct kndTaskArg *arg;
     const char *val = NULL;
     size_t val_size = 0;
@@ -433,9 +433,10 @@ kndLearner_new(struct kndLearner **rec,
     self->admin->out = self->out;
 
     /* admin indices */
-    err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
+    /*err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-
+    */
+    
     /* read config */
     err = self->out->read_file(self->out, config, strlen(config));
     if (err) goto error;

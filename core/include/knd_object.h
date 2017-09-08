@@ -50,10 +50,10 @@ struct kndMatchPoint
 struct kndRelType
 {
     struct kndAttr *attr;
-    struct ooDict *idx;
+    struct kndObjRef *objrefs;
 
-    struct kndObjRef *refs;
-    struct kndObjRef *tail;
+    struct kndRef *refs;
+    struct kndRef *tail;
     size_t num_refs;
     
     struct kndRelType *next;
@@ -66,14 +66,12 @@ struct kndRelClass
     struct kndRelClass *next;
 };
 
-
 struct kndAggrObject
 {
     knd_state_phase phase;
     char state[KND_STATE_SIZE];
 
     struct kndElem *parent;
-    
     struct kndConcept *conc;
     struct kndElem *elems;
     struct kndElem *tail;
@@ -117,11 +115,8 @@ struct kndObject
     struct kndElem *tail;
     size_t num_elems;
 
-    /* backrefs */
-    struct kndRelClass *rel_classes;
-
-    struct kndRef *backrefs[KND_MAX_BACKREFS];
-    size_t num_backrefs;
+    /* reverse rels */
+    struct kndRelClass *reverse_rel_classes;
 
     /* list of hilited contexts */
     struct kndElem *contexts;
@@ -155,7 +150,7 @@ struct kndObject
     int (*reset)(struct kndObject *self);
     void (*cleanup)(struct kndObject *self);
 
-    int (*del)(struct kndObject *self);
+    void (*del)(struct kndObject *self);
 
     int (*parse)(struct kndObject *self,
                  const char       *rec,
