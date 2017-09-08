@@ -35,11 +35,20 @@ kndRepo_get_guid(struct kndRepo *self,
 static int
 kndRepo_import_obj(struct kndRepo *self,
                    const char *rec,
-                   size_t *total_size);
+                   size_t *total_size)
+{
+    // Not implemented yet
+    return knd_FAIL;
+}
+
 static int
 kndRepo_get_obj(struct kndRepo *self,
                 const char *name,
-                size_t name_size);
+                size_t name_size)
+{
+    // Not implemented yet
+    return knd_FAIL;
+}
 
 static int 
 kndRepo_del(struct kndRepo *self)
