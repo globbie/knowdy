@@ -346,7 +346,7 @@ parse_config_GSL(struct kndLearner *self,
         if (!err) {
             rec += chunk_size;
             if (DEBUG_LEARNER_LEVEL_TMP)
-                knd_log("== got schema: \"%s\"", buf);
+                knd_log("== got schema: \"%.*s\"", buf_size, buf);
         }
     }
     

@@ -209,7 +209,7 @@ knd_get_schema_name(const char *rec,
         case '{':
             chunk_size = e - b;
             if (!chunk_size) return knd_FAIL;
-            if (chunk_size >= max_size) return knd_LIMIT;
+            if (chunk_size > max_size) return knd_LIMIT;
             memcpy(buf, b, chunk_size);
             *buf_size = chunk_size;
             *total_size = c - rec;

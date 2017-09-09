@@ -338,7 +338,7 @@ parse_config_GSL(struct kndRetriever *self,
             rec += chunk_size;
             
             if (DEBUG_RETRIEVER_LEVEL_2)
-                knd_log("== got schema: \"%s\"", buf);
+                knd_log("== got schema: \"%.*s\"", buf_size, buf);
         }
     }
     
