@@ -83,41 +83,6 @@ static void str(struct kndText *self, size_t depth)
     free(offset);
 }
 
-static int index(struct kndText *self)
-{
-    char buf[KND_LARGE_BUF_SIZE];
-    size_t buf_size;
-
-    struct kndObject *obj;
-    struct kndTextState *curr_state;
-    struct kndTranslation *tr;
-    int err = knd_FAIL;
-
-    obj = self->elem->obj;
-    curr_state = self->states;
-    
-    tr = curr_state->translations;
-    while (tr) {
-        if (tr->seq) {
-            
-            buf_size = sprintf(buf, ",\"t\": \"%s\"",
-                               tr->seq);
-
-            if (DEBUG_TEXT_LEVEL_3)
-                knd_log("  .. indexing TEXT \"%s\"..\n",
-                        tr->seq);
-
-            /* TODO */
-        }
-            
-        
-        tr = tr->next;
-    }
-        
-    return knd_OK;
-
-    return err;
-}
 
 
 static int export_JSON(struct kndText *self)
@@ -657,7 +622,6 @@ kndText_new(struct kndText **text)
     self->str = str;
     self->export = export;
     self->parse = parse_GSL;
-    self->index = index;
 
     *text = self;
 
