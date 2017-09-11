@@ -229,7 +229,7 @@ ooDict_remove(struct ooDict *self,
     return oo_FAIL;
 }
 
-static int ooDict_del(struct ooDict *self)
+static void ooDict_del(struct ooDict *self)
 {
     unsigned int i;
     struct ooList *l;
@@ -253,8 +253,29 @@ static int ooDict_del(struct ooDict *self)
     self->hash->del(self->hash);
 
     free(self);
+}
 
-    return oo_OK;
+static void ooDict_reset(struct ooDict *self)
+{
+    unsigned int i;
+    struct ooList *l;
+    struct ooListItem *cur;
+    struct ooDictItem *item;
+
+    for (i = 0; i < self->hash->size; ++i) {
+        l = (struct ooList*)self->hash->data[i];
+        if (l->size) {
+            cur = l->head;
+            while (cur) {
+                item = (struct ooDictItem*)cur->data;
+                free(item->key);
+                free(item);
+                cur = cur->next;
+            }
+            l->head = NULL;
+            l->size = 0;
+        }
+    }
 }
 
 static int
@@ -364,6 +385,7 @@ ooDict_init(struct ooDict *self)
 {
     self->size          = 0;
     self->del           = ooDict_del;
+    self->reset         = ooDict_reset;
     self->str           = ooDict_str;
     self->remove        = ooDict_remove;
     self->get           = ooDict_get;

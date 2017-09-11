@@ -459,8 +459,6 @@ static int
 kndObjRef_expand(struct kndObjRef *self)
 {
     struct kndObject *obj = NULL;
-    int err;
-   
     if (self->obj)
         return knd_OK;
 

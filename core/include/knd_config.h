@@ -126,6 +126,7 @@ typedef enum knd_storage_type {
 #define KND_MAX_SPECS 64
 
 #define KND_MAX_CONC_CHILDREN 128
+#define KND_DIR_ENTRY_SIZE 16
 #define KND_MAX_ARGS 16
 
 #define KND_MAX_BACKREFS 128
@@ -366,6 +367,7 @@ typedef enum knd_storage_type {
 #define KND_MIN_OBJS 1024
 
 #define KND_MAX_TEXT_CHUNK_SIZE 1024 * 10
+#define KND_MAX_DEBUG_CHUNK_SIZE 256
 
 #define KND_MAX_CONTEXTS 4
 

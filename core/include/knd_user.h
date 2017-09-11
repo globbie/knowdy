@@ -47,6 +47,8 @@ struct kndUser
     char sid[KND_NAME_SIZE];
     size_t sid_size;
 
+    knd_format format;
+
     char default_locale[KND_NAME_SIZE];
     size_t default_locale_size;
 

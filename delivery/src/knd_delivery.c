@@ -394,10 +394,6 @@ static int parse_user(void *obj,
 
 static int run_task(struct kndDelivery *self)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = KND_NAME_SIZE;
-    size_t chunk_size = 0;
-
     const char *header_tag = "{task";
     size_t header_tag_size = strlen(header_tag);
     const char *c;

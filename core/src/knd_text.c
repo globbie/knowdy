@@ -1,4 +1,4 @@
-#include <stdio.h>
+include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -20,17 +20,12 @@
 #define DEBUG_TEXT_LEVEL_3 0
 #define DEBUG_TEXT_LEVEL_TMP 1
 
-static int 
-kndText_del(struct kndText *self)
+static void del(struct kndText *self)
 {
-
     free(self);
-
-    return knd_OK;
 }
 
-static int 
-kndText_str(struct kndText *self, size_t depth)
+static void str(struct kndText *self, size_t depth)
 {
     size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
@@ -84,12 +79,11 @@ kndText_str(struct kndText *self, size_t depth)
         }
         curr_state = curr_state->next;
     }
-    
-    return knd_OK;
+
+    free(offset);
 }
 
-static int 
-kndText_index(struct kndText *self)
+static int index(struct kndText *self)
 {
     char buf[KND_LARGE_BUF_SIZE];
     size_t buf_size;
@@ -126,8 +120,7 @@ kndText_index(struct kndText *self)
 }
 
 
-static int 
-kndText_export_JSON(struct kndText *self)
+static int export_JSON(struct kndText *self)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -142,7 +135,6 @@ kndText_export_JSON(struct kndText *self)
 
     int err = knd_FAIL;
 
-    obj = self->elem->obj;
     out = self->out;
 
     if (DEBUG_TEXT_LEVEL_2)
@@ -264,8 +256,6 @@ kndText_export_JSON(struct kndText *self)
             
             num_trs++;
             
-        next_tr:
-            
             tr = tr->next;
         }
 
@@ -275,8 +265,7 @@ kndText_export_JSON(struct kndText *self)
 }
 
 
-static int 
-kndText_export_HTML(struct kndText *self)
+static int export_HTML(struct kndText *self)
 {
     //char buf[KND_NAME_SIZE];
     //size_t buf_size;
@@ -376,8 +365,6 @@ kndText_export_HTML(struct kndText *self)
               err = self->out->write(self->out,  ",", 1);
               if (err) goto final;
               }*/
-
-        next_tr:
             
             tr = tr->next;
         }
@@ -392,13 +379,11 @@ kndText_export_HTML(struct kndText *self)
 
 
 
-static int 
-kndText_export_GSC(struct kndText *self)
+static int export_GSC(struct kndText *self)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
 
-    struct kndObject *obj;
     struct kndTextState *curr_state;
     struct kndTranslation *tr;
     
@@ -406,12 +391,7 @@ kndText_export_GSC(struct kndText *self)
     size_t curr_size;
     
     int err = knd_FAIL;
-
-    if (DEBUG_TEXT_LEVEL_2)
-        knd_log(".. export text obj: %p  states: %p..", self->elem->obj, self->states);
   
-    obj = self->elem->obj;
-    
     // NB: expects self->states != NULL
     curr_state = self->states;
     if (!curr_state->translations) {
@@ -421,8 +401,7 @@ kndText_export_GSC(struct kndText *self)
 
     tr = curr_state->translations;
             
-    buf_size = sprintf(buf, "[tr ");
-    err = self->out->write(self->out,  buf, buf_size);
+    err = self->out->write(self->out,  "[tr ", strlen("[tr "));
     if (err) return err;
         
     while (tr) {
@@ -522,26 +501,21 @@ kndText_export_GSC(struct kndText *self)
 
 
 static int 
-kndText_export(struct kndText *self,
-               knd_format format)
+kndText_export(struct kndText *self)
 {
     int err;
     
     switch(format) {
     case KND_FORMAT_JSON:
-        err = kndText_export_JSON(self);
+        err = export_JSON(self);
         if (err) return err;
         break;
     case KND_FORMAT_HTML:
-        err = kndText_export_HTML(self);
+        err = export_HTML(self);
         if (err) return err;
         break;
-        /*case KND_FORMAT_GSL:
-        err = kndText_export_GSL(self);
-        if (err) return err;
-        break;*/
     case KND_FORMAT_GSC:
-        err = kndText_export_GSC(self);
+        err = export_GSC(self);
         if (err) return err;
         break;
     default:
@@ -557,7 +531,6 @@ static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t n
     struct kndTaskArg *arg;
     const char *val = NULL;
     size_t val_size = 0;
-    int err;
 
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
@@ -681,11 +654,11 @@ kndText_new(struct kndText **text)
 
     memset(self, 0, sizeof(struct kndText));
 
-    self->del = kndText_del;
-    self->str = kndText_str;
-    self->export = kndText_export;
+    self->del = del;
+    self->str = str;
+    self->export = export;
     self->parse = parse_GSL;
-    self->index = kndText_index;
+    self->index = index;
 
     *text = self;
 

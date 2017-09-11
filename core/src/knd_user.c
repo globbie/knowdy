@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include "knd_policy.h"
 #include "knd_user.h"
 #include "knd_repo.h"
@@ -18,18 +22,15 @@
 #define DEBUG_USER_LEVEL_3 0
 #define DEBUG_USER_LEVEL_TMP 1
 
-static int 
-kndUser_export(struct kndUser *self,
-                knd_format format);
+static int export(struct kndUser *self);
 static int run_get_user_by_id(void *obj, struct kndTaskArg *args, size_t num_args);
 
-static void
-kndUser_del(struct kndUser *self)
+static void del(struct kndUser *self)
 {
     free(self);
 }
 
-static void kndUser_str(struct kndUser *self)
+static void str(struct kndUser *self)
 {
     struct kndConcept *dc;
     const char *key = NULL;
@@ -82,7 +83,7 @@ kndUser_add_user(struct kndUser *self)
     err = knd_mkpath(buf, 0755, false);
     if (err) return err;
 
-    err = kndUser_export(self, KND_FORMAT_GSL);
+    err = export(self);
     if (err) return err;
     
     err = knd_write_file((const char*)buf, "user.gsl",
@@ -96,7 +97,7 @@ kndUser_add_user(struct kndUser *self)
 }
 
 
-
+/*
 static int 
 kndUser_export_GSL(struct kndUser *self)
 {
@@ -116,10 +117,9 @@ kndUser_export_GSL(struct kndUser *self)
 
     return err;
 }
+*/
 
-
-static int
-kndUser_export_JSON(struct kndUser *self)
+static int export_JSON(struct kndUser *self)
 {
     //char buf[KND_MED_BUF_SIZE] = {0};
     //size_t buf_size = 0;
@@ -331,6 +331,64 @@ static int kndUser_parse_class_import(void *obj,
 }
 
 
+static int kndUser_parse_sync_task(void *obj,
+                                   const char *rec,
+                                   size_t *total_size)
+{
+    struct kndUser *self = (struct kndUser*)obj;
+    struct stat st;
+    char *s;
+    size_t path_size;
+    int err;
+
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log(".. got sync task..");
+
+    s = self->path;
+    memcpy(s, self->dbpath, self->dbpath_size);
+    s += self->dbpath_size;
+    self->path_size += self->dbpath_size;
+
+    path_size =  strlen("/frozen_merge.db");
+    memcpy(s, "/frozen_merge.db", path_size);
+    self->path_size += path_size;
+    self->path[self->path_size] = '\0';
+
+    /* file exists, remove it */
+    if (!stat(self->path, &st)) {
+        err = remove(self->path);
+        if (err) return err;
+        knd_log("-- existing frozen DB file removed..");
+    }
+
+    self->task->type = KND_SYNC_STATE;
+    self->root_class->out = self->out;
+    self->root_class->dir_out = self->task->spec_out;
+    self->root_class->log = self->log;
+    self->root_class->task = self->task;
+    self->root_class->frozen_output_file_name = (const char*)self->path;
+    
+    err = self->root_class->sync(self->root_class, rec, total_size);
+    if (err) return err;
+
+    /* bump frozen count */
+
+    /* inform retrievers */
+
+    /* release resources */
+    
+    self->root_class->reset(self->root_class);
+
+    if (!stat(self->path, &st)) {
+        if (DEBUG_USER_LEVEL_TMP)
+            knd_log("++ frozen DB file sync'ed OK, total bytes: %lu",
+                    (unsigned long)st.st_size);
+    }
+    
+    return knd_OK;
+}
+
+
 static int kndUser_parse_class_select(void *obj,
                                       const char *rec,
                                       size_t *total_size)
@@ -510,10 +568,9 @@ static int run_present_user(void *data,
     return knd_OK;
 }
 
-static int
-kndUser_parse_task(struct kndUser *self,
-                   const char *rec,
-                   size_t *total_size)
+static int parse_task(struct kndUser *self,
+                      const char *rec,
+                      size_t *total_size)
 {
     struct kndOutput *out;
 
@@ -555,6 +612,11 @@ kndUser_parse_task(struct kndUser *self,
         { .name = "state",
           .name_size = strlen("state"),
           .parse = kndUser_parse_liquid_updates,
+          .obj = self
+        },
+        { .name = "sync",
+          .name_size = strlen("sync"),
+          .parse = kndUser_parse_sync_task,
           .obj = self
         },
         { .name = "default",
@@ -642,14 +704,13 @@ kndUser_parse_task(struct kndUser *self,
     return err;
 }
 
-static int 
-kndUser_export(struct kndUser *self, knd_format format)
+static int export(struct kndUser *self)
 {
-    switch(format) {
-        case KND_FORMAT_JSON:
-        return kndUser_export_JSON(self);
-    case KND_FORMAT_GSL:
-        return kndUser_export_GSL(self);
+    switch(self->format) {
+    case KND_FORMAT_JSON:
+        return export_JSON(self);
+        /*case KND_FORMAT_GSL:
+          return kndUser_export_GSL(self); */
     default:
         break;
     }
@@ -660,11 +721,10 @@ kndUser_export(struct kndUser *self, knd_format format)
 extern int 
 kndUser_init(struct kndUser *self)
 {
-    self->del = kndUser_del;
-    self->str = kndUser_str;
+    self->del = del;
+    self->str = str;
 
-    self->parse_task = kndUser_parse_task;
-
+    self->parse_task = parse_task;
     self->add_user = kndUser_add_user;
 
     return knd_OK;

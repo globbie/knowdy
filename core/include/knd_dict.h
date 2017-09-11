@@ -24,8 +24,6 @@
 #ifndef OODICT_H
 #define OODICT_H
 
-/*#include "ooconfig.h"*/
-
 #include "knd_array.h"
 
 typedef size_t (*oo_hash_func)(const char *key);
@@ -43,7 +41,8 @@ struct ooDict
 
     /******** public methods ********/
     int (*init)(struct ooDict *self);
-    int (*del)(struct ooDict *self);
+    void (*del)(struct ooDict *self);
+    void (*reset)(struct ooDict *self);
     const char* (*str)(struct ooDict *self);
 
     /* get data */

@@ -169,18 +169,30 @@ struct kndConcept
     
     struct kndConcRef children[KND_MAX_CONC_CHILDREN];
     size_t num_children;
-    
+
+    struct kndConcRef frozen_dir[KND_MAX_CONC_CHILDREN];
+    size_t frozen_dir_size;
+    bool is_terminal;
+
+    char dir_buf[KND_MAX_CONC_CHILDREN * KND_DIR_ENTRY_SIZE];
+    size_t dir_buf_size;
+    const char *frozen_output_file_name;
+    size_t frozen_output_file_name_size;
+    size_t frozen_size;
+
     struct kndRefSet *obj_browser;
 
     struct kndConcept *next;
 
     struct kndUser *user;
     struct kndOutput *out;
+    struct kndOutput *dir_out;
     struct kndOutput *log;
     
     /***********  public methods ***********/
     void (*init)(struct kndConcept  *self);
     void (*del)(struct kndConcept   *self);
+    void (*reset)(struct kndConcept   *self);
     void (*str)(struct kndConcept *self,
                 size_t depth);
 
@@ -193,6 +205,11 @@ struct kndConcept
     int (*select_delta)(struct kndConcept *self,
                         const char *rec,
                         size_t *total_size);
+
+    int (*freeze)(struct kndConcept *self);
+    int (*sync)(void *obj,
+                const char *rec,
+                size_t *total_size);
 
     int (*build_diff)(struct kndConcept   *self,
                       const char *start_state,

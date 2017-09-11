@@ -284,7 +284,7 @@ extern int kndTask_new(struct kndTask **task)
     err = kndOutput_new(&self->log, KND_TEMP_BUF_SIZE);
     if (err) return err;
 
-    err = kndOutput_new(&self->spec_out, KND_TEMP_BUF_SIZE);
+    err = kndOutput_new(&self->spec_out, KND_MED_BUF_SIZE);
     if (err) return err;
 
     err = kndOutput_new(&self->update, KND_LARGE_BUF_SIZE);

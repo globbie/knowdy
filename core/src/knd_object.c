@@ -651,7 +651,7 @@ static int parse_elem(void *data,
 }
 
 /* parse object */
-static int 
+static int
 kndObject_parse_GSL(struct kndObject *self,
                     const char *rec,
                     size_t *total_size)
@@ -971,9 +971,7 @@ kndObject_new(struct kndObject **obj)
 
     self = malloc(sizeof(struct kndObject));
     if (!self) return knd_NOMEM;
-
     memset(self, 0, sizeof(struct kndObject));
-    
     kndObject_init(self);
     *obj = self;
 

@@ -43,6 +43,7 @@ kndLearner_start(struct kndLearner *self)
     void *outbox;
     char *task = NULL;
     size_t task_size = 0;
+    size_t chunk_size = 0;
     char *obj = NULL;
     size_t obj_size = 0;
 
@@ -112,19 +113,20 @@ kndLearner_start(struct kndLearner *self)
     while (1) {
         self->task->reset(self->task);
 
-        if (DEBUG_LEARNER_LEVEL_2)
-            knd_log("\n++ #%s learner agent is ready to receive new tasks!", self->name);
-
         task = knd_zmq_recv(outbox, &task_size);
         obj = knd_zmq_recv(outbox, &obj_size);
 
         t0 = time(NULL);
         c0 = clock();
 
+        if (DEBUG_LEARNER_LEVEL_TMP) {
+            chunk_size = task_size > KND_MAX_DEBUG_CHUNK_SIZE ? KND_MAX_DEBUG_CHUNK_SIZE : task_size;
+            knd_log("++ Learner got a new task: \"%.*s\"..", chunk_size, task);
+        }
+        
         err = self->task->run(self->task,
                               task, task_size,
                               obj, obj_size);
-
         if (DEBUG_LEARNER_LEVEL_TMP) {
             if (!strcmp(obj, "TPS TEST")) {
                 t1 = time(NULL);

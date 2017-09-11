@@ -29,14 +29,6 @@
 #define DEBUG_ELEM_LEVEL_TMP 1
 
 
-static int
-index_atom(struct kndElem *self,
-           struct kndObject *obj);
-
-static int
-index_ref(struct kndElem *self);
-
-
 static void del(struct kndElem *self)
 {
 
@@ -50,8 +42,6 @@ static void str(struct kndElem *self, size_t depth)
     char *offset = malloc(offset_size + 1);
 
     struct kndObject *obj;
-    struct kndElem *elem;
-    struct kndElemState *elem_state;
     struct kndText *text;
     
     memset(offset, ' ', offset_size);
@@ -104,208 +94,6 @@ static void str(struct kndElem *self, size_t depth)
 }
 
 
-static int index_ref(struct kndElem *self)
-{
-    struct kndConcept *conc, *bc;
-    struct kndRefSet *refset;
-    struct kndObjRef *objref;
-    struct kndSortTag *tag;
-    struct kndRelClass *relc;
-    struct kndRelType *reltype;
-    struct ooDict *idx;
-    //const char *classname;
-    //bool browse_level = 0;
-    
-    int err;
-
-    if (!self->attr) return knd_FAIL;
-
-    conc = self->attr->conc;
-    if (!conc) return knd_FAIL;
-
-    if (DEBUG_ELEM_LEVEL_3)
-        knd_log("    .. index REF: %s::%s   REF bound IDX: \"%s\"  BROWSE LEVEL: %d\n",
-                conc->name,
-                self->states->val, self->attr->idx_name,  self->attr->browse_level);
-
-    if (self->attr->browse_level) {
-        if (DEBUG_ELEM_LEVEL_3)
-            knd_log("\n\n    NB: this obj should be excluded from default browsing!\n\n\n");
-
-        self->obj->is_subord = true;
-    }
-    
-
-    /* add ref */
-    err = kndObjRef_new(&objref);
-    if (err) return err;
-        
-    objref->obj = self->obj;
-
-    /* aggr obj */
-    if (self->obj->parent)
-        objref->obj = self->obj->parent->obj;
-
-    memcpy(objref->obj_id, objref->obj->id, KND_ID_SIZE);
-    objref->obj_id_size = KND_ID_SIZE;
-    
-    memcpy(objref->name, objref->obj->name, objref->obj->name_size);
-    objref->name_size = objref->obj->name_size;
-        
-    err = kndSortTag_new(&tag);
-    if (err) return err;
-    objref->sorttag = tag;
-
-    if (DEBUG_ELEM_LEVEL_2)
-        knd_log("\n    .. add REF to \"%s\"..\n",
-                objref->obj_id);
-    
-    err = refset->term_idx(refset, objref);
-    if (err) return err;
-    
-    err = refset->add_ref(refset, objref);
-    if (err) return err;
-
-    if (DEBUG_ELEM_LEVEL_TMP)
-        knd_log("\n    ++ REF to \"%s\" OK!!\n",
-                objref->obj_id);
-
-    return knd_OK;
-}
-
-
-static int kndElem_set_full_name(struct kndElem *self,
-                                 char *name,
-                                 size_t *name_size)
-{
-    //struct kndElem *elem;
-    //struct kndObject *obj;
-    char *s = name;
-    size_t chunk_size = *name_size;
-    int err;
-    
-    if (self->obj && self->obj->parent) {
-        err = kndElem_set_full_name(self->obj->parent,
-                              name, name_size);
-        if (err) return err;
-
-        s = name + (*name_size);
-        
-        memcpy(s, "_", 1);
-        s++;
-        chunk_size++;
-    }
-    
-    memcpy(s, self->states->val, self->states->val_size);
-    chunk_size += self->states->val_size;
-    *name_size += chunk_size;
-    return knd_OK;
-}
-
-static int index_atom(struct kndElem *self,
-                      struct kndObject *obj __attribute__((unused)))
-{
-    struct kndSortTag *tag = NULL;
-    struct kndSortAttr *attr;
-    int err;
-
-    if (DEBUG_ELEM_LEVEL_TMP)
-        knd_log("\n    .. index ATOM: %s   VAL: %s\n",
-                self->attr->name,
-                self->states->val);
-
-    attr = malloc(sizeof(struct kndSortAttr));
-    if (!attr) return knd_NOMEM;
-    memset(attr, 0, sizeof(struct kndSortAttr));
-
-    /* default type */
-    attr->type = KND_FACET_ATOMIC;
-
-    err = kndElem_set_full_name(self, attr->name, &attr->name_size);
-    if (err) return err;
-    
-    knd_log("ELEM full name: \"%s\" [%lu]\n",
-            attr->name,
-            (unsigned long)attr->name_size);
-
-    /* special types */
-    if (self->attr->idx_name_size) {
-        if (!strcmp(self->attr->idx_name, "Accu")) {
-            attr->type = KND_FACET_ACCUMULATED;
-        }
-        
-        if (!strcmp(self->attr->idx_name, "Category")) {
-            attr->type = KND_FACET_CATEGORICAL;
-        }
-        
-        if (!strcmp(self->attr->idx_name, "Topic")) {
-            attr->type = KND_FACET_CATEGORICAL;
-        }
-    }
-    
-    memcpy(attr->val, self->states->val, self->states->val_size);
-    attr->val_size = self->states->val_size;
-
-    knd_log("    INDEX ATOM:  %s => \"%s\" [type: %d]\n",
-            attr->name, attr->val, attr->type);
-
-    /* do not index simple atomic values   TODO! */
-    /*if (attr->type == KND_FACET_ATOMIC) {
-        free(attr);
-        return knd_OK;
-        }*/
-    
-    tag = self->tag;
-    if (!tag) {
-        knd_log("  -- no sort tag found for \"%s\"\n", self->states->val);
-        return knd_FAIL;
-    }
-
-    tag->attrs[tag->num_attrs] = attr;
-    tag->num_attrs++;
-    
-    err = knd_OK;
-
-    return err;
-}
-
-
-static int
-kndElem_index(struct kndElem *self)
-{
-    int err;
-    
-    if (DEBUG_ELEM_LEVEL_3)
-        knd_log("    .. indexing ELEM \"%s\"  attr: \"%s\"..\n",
-                self->states->val,
-                self->attr->name);
-
-    switch (self->attr->type) {
-    case KND_ATTR_TEXT:
-        err = self->text->index(self->text);
-        if (err) goto final;
-        break;
-    case KND_ATTR_ATOM:
-        if (self->attr->idx_name_size) {
-            err = index_atom(self, NULL);
-            return err;
-        }
-        break;
-    case KND_ATTR_REF:
-        err = index_ref(self);
-        return err;
-        
-    default:
-        break;
-    }
-    
-    err = knd_OK;
-    
-final:
-    return err;
-}
-
-
 static int
 kndElem_export_JSON(struct kndElem *self,
                     bool is_concise __attribute__((unused)))
@@ -313,23 +101,10 @@ kndElem_export_JSON(struct kndElem *self,
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
-    char pathbuf[KND_TEMP_BUF_SIZE];
-    //size_t pathbuf_size;
-
-    char dirname[KND_NAME_SIZE];
-    size_t dirname_size;
-
-    //struct ooDict *idx;
-    //struct kndRefSet *refset;
     struct kndObject *obj;
-
-    //struct kndObject *refobj;
-
-    struct kndElem *elem;
     struct kndText *text;
     struct kndRef *ref;
 
-    struct stat linkstat;
     struct kndOutput *out = self->out;
     size_t curr_size;
     //unsigned long numval;
@@ -494,247 +269,6 @@ final:
     return err;
 }
 
-
-static int 
-kndElem_export_GSL(struct kndElem *self)
-{
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
-    //char pathbuf[KND_TEMP_BUF_SIZE];
-    //size_t pathbuf_size;
-
-    //struct kndElem *elem;
-    struct kndElemState *elem_state;
-
-    int err;
-    
-    buf_size = sprintf(buf, "{%s ", self->states->val);
-    err = self->out->write(self->out, buf, buf_size);
-    if (err) goto final;
-
-    if (self->attr) {
-        /*if (self->attr->type == KND_ATTR_TEXT) {
-            text = self->text;
-            text->str(text, depth + 1);
-            }*/
-
-        /*if (self->attr->type == KND_ATTR_ATOM) {
-            elem_state = self->states;
-            while (elem_state) {
-                knd_log("%s  ATOM -> %s [#%lu]\n", offset,
-                        elem_state->val,
-                        (unsigned long)elem_state->state);
-                elem_state = elem_state->next;
-            }
-            }*/
-
-        if (self->attr->type == KND_ATTR_REF) {
-            elem_state = self->states;
-
-            if (elem_state) {
-                err = self->out->write(self->out,
-                                       elem_state->val, elem_state->val_size);
-                if (err) goto final;
-            }
-        }
-    }
-
-
-    err = self->out->write(self->out, "}", 1);
-    if (err) goto final;
-
-
-    
-    /* TODO: nested ELEMS */
-
- final:
-
-    return err;
-}
-
-
-static int 
-kndElem_export_list_GSC(struct kndElem *self)
-{
-    struct kndObject *obj;
-    struct kndElem *elem;
-    bool is_concise = true;
-    int err;
-    
-    err = self->out->write(self->out, "[", 1);
-    if (err) return err;
-
-    err = self->out->write(self->out, self->attr->name, self->attr->name_size);
-    if (err) return err;
-
-    if (self->aggr) {
-        obj = self->aggr;
-        while (obj) {
-            obj->out = self->out;
-            obj->format = KND_FORMAT_GSC;
-            err = obj->export(obj);
-            if (err) return err;
-            obj = obj->next;
-        }
-    }
-    
-    err = self->out->write(self->out, "]", 1);
-    if (err) return err;
-
-    return knd_OK;
-}
-
-
-static int 
-kndElem_export_GSC(struct kndElem *self)
-{
-    struct kndElemState *elem_state;
-    int err;
-
-    if (DEBUG_ELEM_LEVEL_2)
-        knd_log(".. GSC export elem \"%s\"..", self->attr->name);
-
-    if (self->is_list)
-        return kndElem_export_list_GSC(self);
-
-    if (self->aggr) {
-        self->aggr->out = self->out;
-        self->aggr->format =  KND_FORMAT_GSC;
-        err = self->aggr->export(self->aggr);
-        if (err) {
-            knd_log("-- aggr obj export failed :(");
-            return err;
-        }
-        return knd_OK;
-    }
-
-    err = self->out->write(self->out, "{", 1);
-    if (err) return err;
-    
-    err = self->out->write(self->out, self->attr->name, self->attr->name_size);
-    if (err) return err;
-
-    if (self->attr) {
-        if (self->attr->type == KND_ATTR_TEXT) {
-            self->text->out = self->out;
-            err = self->text->export(self->text, KND_FORMAT_GSC);
-            if (err) return err;
-        }
-
-        if (self->attr->type == KND_ATTR_REF) {
-            self->ref->out = self->out;
-            self->ref->format = KND_FORMAT_GSC;
-            err = self->ref->export(self->ref);
-            if (err) return err;
-        }
-        
-        if (self->attr->type == KND_ATTR_ATOM) {
-            elem_state = self->states;
-
-            err = self->out->write(self->out, " ", 1);
-            if (err) return err;
-
-            if (elem_state && elem_state->val_size) {
-                //knd_remove_nonprintables(elem_state->val);
-
-                err = self->out->write(self->out,
-                                       elem_state->val, elem_state->val_size);
-                if (err) return err;
-            }
-            else {
-                err = self->out->write(self->out,
-                                       "?", 1);
-                if (err) return err;
-            }
-        }
-
-        if (self->attr->type == KND_ATTR_NUM) {
-            elem_state = self->states;
-
-            err = self->out->write(self->out, " ", 1);
-            if (err) return err;
-
-            if (elem_state && elem_state->val_size) {
-                //knd_remove_nonprintables(elem_state->val);
-
-                err = self->out->write(self->out,
-                                       elem_state->val, elem_state->val_size);
-                if (err) return err;
-            }
-            else {
-                err = self->out->write(self->out,
-                                       "0", 1);
-                if (err) return err;
-            }
-        }
-
-        
-        if (self->attr->type == KND_ATTR_CALC) {
-            elem_state = self->states;
-
-            err = self->out->write(self->out, " ", 1);
-            if (err) return err;
-
-            if (elem_state && elem_state->val_size) {
-                err = self->out->write(self->out,
-                                       elem_state->val, elem_state->val_size);
-                if (err) return err;
-            }
-            else {
-                err = self->out->write(self->out,
-                                       "?", 1);
-                if (err) return err;
-            }
-        }
-
-        if (self->attr->type == KND_ATTR_FILE) {
-            elem_state = self->states;
-
-            err = self->out->write(self->out, " ", 1);
-            if (err) return err;
-
-            if (elem_state && elem_state->val_size) {
-                knd_remove_nonprintables(elem_state->val);
-
-                err = self->out->write(self->out,
-                                       elem_state->val, elem_state->val_size);
-                if (err) return err;
-            }
-            else {
-                err = self->out->write(self->out,
-                                       "?", 1);
-                if (err) return err;
-            }
-        }
-
-        
-    } else {
-        elem_state = self->states;
-
-        if (elem_state && elem_state->val_size) {
-            err = self->out->write(self->out, " ", 1);
-            if (err) return err;
-
-            err = self->out->write(self->out,
-                                   elem_state->val, elem_state->val_size);
-            if (err) return err;
-        }
-        else {
-            err = self->out->write(self->out,
-                                   " ?", 2);
-            if (err) return err;
-        }
-
-    }
-    
-    err = self->out->write(self->out, "}", 1);
-    if (err) return err;
-
-    return knd_OK;
-}
-
-
 static int 
 kndElem_export(struct kndElem *self,
                knd_format format,
@@ -751,14 +285,14 @@ kndElem_export(struct kndElem *self,
         err = kndElem_export_HTML(self, is_concise);
         if (err) return err;
         break;*/
-    case KND_FORMAT_GSL:
+        /*case KND_FORMAT_GSL:
         err = kndElem_export_GSL(self);
         if (err) return err;
         break;
     case KND_FORMAT_GSC:
         err = kndElem_export_GSC(self);
         if (err) return err;
-        break;
+        break; */
     default:
         break;
     }
@@ -774,7 +308,6 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
     struct kndElemState *state;
     const char *val = NULL;
     size_t val_size = 0;
-    int err;
 
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
@@ -792,25 +325,23 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
     self->states = state;
     self->num_states = 1;
 
+    memcpy(state->val, val, val_size);
+    state->val[val_size] = '\0';
+    state->val_size = val_size;
 
     /* TODO: validate if needed */
-
-    switch (self->attr->type) {
+    /*switch (self->attr->type) {
     case KND_ATTR_NUM:
-        knd_log("++ ELEM STR val of class %.*s: \"%.*s\"",
+        knd_log(".. validate ELEM NUM val of class %.*s: \"%.*s\"",
                 self->attr->name_size, self->attr->name, val_size, val);
-        
         break;
     case KND_ATTR_BIN:
         knd_log("++ ELEM BIN val of class %.*s: \"%.*s\"",
                 self->attr->name_size, self->attr->name, val_size, val);
         break;
     default:
-        memcpy(state->val, val, val_size);
-        state->val[val_size] = '\0';
-        state->val_size = val_size;
         break;
-    }
+        } */
 
     if (DEBUG_ELEM_LEVEL_2)
         knd_log("++ ELEM VAL: \"%.*s\"", state->val_size, state->val);
@@ -822,8 +353,6 @@ static int parse_GSL(struct kndElem *self,
                      const char *rec,
                      size_t *total_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
     int err;
     
     struct kndTaskSpec specs[] = {
@@ -843,9 +372,6 @@ static int
 kndElem_resolve(struct kndElem *self)
 {
     struct kndObject *obj;
-    struct kndElem *elem;
-    struct kndElemState *elem_state;
-    struct kndText *text;
     int err;
     
     if (self->aggr) {

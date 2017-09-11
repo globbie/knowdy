@@ -90,12 +90,12 @@ struct kndText
 
     struct kndTextState *states;
     size_t num_states;
+    knd_format format;
     
     /******** public methods ********/
-    int (*str)(struct kndText *self,
+    void (*str)(struct kndText *self,
                size_t depth);
-
-    int (*del)(struct kndText *self);
+    void (*del)(struct kndText *self);
 
     int (*hilite)(struct kndText *self,
                   struct kndElemRef *elemref,
@@ -110,9 +110,7 @@ struct kndText
                  size_t          *total_size);
 
     int (*index)(struct kndText *self);
-    
-    int (*export)(struct kndText *self,
-                  knd_format format);
+    int (*export)(struct kndText *self);
 };
 
 /* constructors */
