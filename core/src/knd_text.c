@@ -1,4 +1,4 @@
-include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -500,12 +500,11 @@ static int export_GSC(struct kndText *self)
 
 
 
-static int 
-kndText_export(struct kndText *self)
+static int export(struct kndText *self)
 {
     int err;
     
-    switch(format) {
+    switch(self->format) {
     case KND_FORMAT_JSON:
         err = export_JSON(self);
         if (err) return err;

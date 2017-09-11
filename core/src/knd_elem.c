@@ -189,7 +189,7 @@ kndElem_export_JSON(struct kndElem *self,
         case  KND_ATTR_TEXT:
             text = self->text;
             text->out = out;
-            err = text->export(text, KND_FORMAT_JSON);
+            err = text->export(text);
             if (err) goto final;
             break;
             /*case KND_ATTR_FILE:
