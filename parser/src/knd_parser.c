@@ -84,7 +84,7 @@ check_name_limits(const char *b, const char *e, size_t *buf_size)
         knd_log("-- empty name?");
         return knd_LIMIT;
     }
-    if ((*buf_size) >= KND_NAME_SIZE) {
+    if ((*buf_size) > KND_NAME_SIZE) {
         knd_log("-- field tag too large: %lu bytes: BEGIN: %s\n\n END: %s",
                 (unsigned long)buf_size, b, e);
         return knd_LIMIT;
@@ -394,11 +394,10 @@ knd_find_spec(struct kndTaskSpec *specs,
                 name_size, name, validator_spec);
 
     if (validator_spec) {
-        if (name_size >= validator_spec->max_buf_size)
+        if (name_size > validator_spec->max_buf_size)
             return knd_LIMIT;
         memcpy(validator_spec->buf, name, name_size);
         *validator_spec->buf_size = name_size;
-        validator_spec->buf[name_size] = '\0';
         *result = validator_spec;
         return knd_OK;
     }
@@ -539,8 +538,8 @@ int knd_parse_task(const char *rec,
             if (err) return err;
 
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ BASIC LOOP got tag after whitespace: \"%.*s\" [%lu]",
-                        name_size, b, (unsigned long)name_size);
+                knd_log("++ BASIC LOOP got tag after whitespace: \"%.*s\" [%zu]",
+                        name_size, b, name_size);
 
             err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
             if (err) {
@@ -717,8 +716,8 @@ int knd_parse_task(const char *rec,
                     if (spec->run) {
                         err = spec->run(spec->obj, args, num_args);
                         if (err) {
-                            knd_log("-- \"%s\" func run failed: %d :(",
-                                    spec->name, err);
+                            knd_log("-- \"%.*s\" func run failed: %d :(",
+                                    spec->name_size, spec->name, err);
                             return err;
                         }
                     }
