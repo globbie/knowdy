@@ -264,12 +264,16 @@ static int report(struct kndTask *self)
     if (!self->is_state_changed) return knd_OK;
 
     /* inform all retrievers about the state change */
+    if (DEBUG_TASK_LEVEL_2)
+        knd_log("\n\n** UPDATE retrievers: \"%.*s\" [%lu]",
+                self->update->buf_size, self->update->buf,
+                (unsigned long)self->update->buf_size);
+
     err = knd_zmq_sendmore(self->publisher, self->update->buf, self->update->buf_size);
     err = knd_zmq_send(self->publisher, "None", strlen("None"));
     
     return knd_OK;
 }
-
 
 extern int kndTask_new(struct kndTask **task)
 {

@@ -218,7 +218,9 @@ struct kndConcept
     int (*coordinate)(struct kndConcept *self);
     int (*resolve)(struct kndConcept    *self);
     int (*update_state)(struct kndConcept *self);
-    int (*apply_liquid_updates)(struct kndConcept *self);
+    int (*apply_liquid_updates)(struct kndConcept *self,
+                                const char *rec,
+                                size_t *total_size);
 
     int (*select)(void  *self,
                   const char *rec,

@@ -415,10 +415,9 @@ static int kndUser_parse_class_select(void *obj,
     return knd_OK;
 }
 
-
-static int kndUser_parse_liquid_updates(void *obj,
-                                        const char *rec,
-                                        size_t *total_size)
+static int parse_liquid_updates(void *obj,
+                                const char *rec,
+                                size_t *total_size)
 {
     struct kndUser *self = (struct kndUser*)obj;
     int err;
@@ -429,15 +428,12 @@ static int kndUser_parse_liquid_updates(void *obj,
     self->task->type = KND_UPDATE_STATE;
     self->root_class->task = self->task;
 
-    err = self->root_class->apply_liquid_updates(self->root_class);
+    err = self->root_class->apply_liquid_updates(self->root_class,
+                                                 rec, total_size);
     if (err) return err;
 
-    /* TODO: state parsing */
-    knd_log(".. parse updates rec: %s", rec);
-    *total_size = 0;
-    
     if (DEBUG_USER_LEVEL_2)
-        knd_log("++ liquid updates OK!");
+        knd_log("++ liquid updates OK:  chars parsed: %lu", (unsigned long)*total_size);
 
     return knd_OK;
 }
@@ -531,12 +527,10 @@ static int run_get_user_by_id(void *obj, struct kndTaskArg *args, size_t num_arg
     self->curr_user = conc->curr_obj;
     */
 
-    
     if (DEBUG_USER_LEVEL_TMP) {
-        knd_log("++ got user by num id: \"%.*s\"!", numid_size, numid);
+        knd_log("++ got user by num id: %.*s", numid_size, numid);
         self->curr_user->str(self->curr_user, 1);
     }
-
 
     /* TODO */
     self->curr_user->out = self->out;
@@ -575,7 +569,8 @@ static int parse_task(struct kndUser *self,
     struct kndOutput *out;
 
     if (DEBUG_USER_LEVEL_1)
-        knd_log(".. parsing user task: \"%s\"..", rec);
+        knd_log(".. parsing user task: \"%s\" size: %lu..\n\n",
+                rec, (unsigned long)strlen(rec));
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
@@ -611,7 +606,7 @@ static int parse_task(struct kndUser *self,
         },
         { .name = "state",
           .name_size = strlen("state"),
-          .parse = kndUser_parse_liquid_updates,
+          .parse = parse_liquid_updates,
           .obj = self
         },
         { .name = "sync",
@@ -643,7 +638,8 @@ static int parse_task(struct kndUser *self,
     }
 
     if (DEBUG_USER_LEVEL_2)
-        knd_log("user parse task OK!");
+        knd_log("user parse task OK: total chars: %lu",
+                (unsigned long)*total_size);
 
     switch (self->task->type) {
     case KND_UPDATE_STATE:
@@ -659,11 +655,11 @@ static int parse_task(struct kndUser *self,
         if (self->root_class->inbox_size || self->root_class->obj_inbox_size) {
             out = self->task->update;
 
-            if (DEBUG_USER_LEVEL_TMP)
-                knd_log(".. update state.. OUT SIZE: %lu TOTAL SPEC SIZE: %lu",
+            if (DEBUG_USER_LEVEL_2)
+                knd_log(".. update state.. total output free space: %lu TOTAL SPEC SIZE: %lu",
                         (unsigned long)out->free_space,
                         (unsigned long)*total_size);
-                        
+
             err = out->write(out, "{task{update", strlen("{task{update"));
             if (err) goto cleanup;
             
@@ -673,12 +669,14 @@ static int parse_task(struct kndUser *self,
                 knd_log("-- output failed :(");
                 goto cleanup;
             }
-            
+
             err = self->root_class->update_state(self->root_class);
             if (err) {
                 knd_log("-- failed to update state :(");
                 goto cleanup;
             }
+            err = out->write(out, "}}", strlen("}}"));
+            if (err) goto cleanup;
         }
     }
 

@@ -1613,7 +1613,6 @@ static int get_obj(struct kndConcept *self,
         err = self->log->write(self->log, " obj name not found",
                                strlen(" obj name not found"));
         if (err) return err;
-
         return knd_NO_MATCH;
     }
 
@@ -2493,23 +2492,30 @@ static int build_obj_updates(struct kndConcept *self)
         err = out->write(out, obj->name, obj->name_size);
         if (err) return err;
         err = out->write(out, "\":\"", strlen("\":\""));
-
-        err = update->write(update, "{", 1);
+        if (err) return err;
+        
+        err = update->write(update, "{obj ", strlen("{obj "));
         if (err) return err;
         err = update->write(update, obj->name, obj->name_size);
         if (err) return err;
-        err = update->write(update, " ", 1);
-        if (err) return err;
 
         if (obj->phase == KND_REMOVED) {
+
             err = out->write(out, "removed", strlen("removed"));
             if (err) return err;
 
-            err = update->write(update, "rm", strlen("rm"));
+            err = update->write(update, "{phase rm}", strlen("{phase rm}"));
             if (err) return err;
         }
         else {
             err = out->write(out, obj->id, KND_ID_SIZE);
+            if (err) return err;
+
+            err = update->write(update, "{id ", strlen("{id "));
+            if (err) return err;
+            err = update->write(update, obj->id, KND_ID_SIZE);
+            if (err) return err;
+            err = update->write(update, "}", 1);
             if (err) return err;
         }
 
@@ -2549,7 +2555,7 @@ static int build_update_messages(struct kndConcept *self)
     if (err) return err;
 
     /* for retrievers */
-    err = update->write(update, "{state}", strlen("{state}"));
+    err = update->write(update, "{state ", strlen("{state "));
     if (err) return err;
     err = update->write(update, self->next_state, KND_STATE_SIZE);
     if (err) return err;
@@ -2568,20 +2574,162 @@ static int build_update_messages(struct kndConcept *self)
     /* close state update */
     err = update->write(update, "}", 1);
     if (err) return err;
-
-    /* close spec */
-    err = update->write(update, "}", 1);
-    if (err) return err;
     
     err = out->write(out, "}", 1);
     if (err) return err;
     return knd_OK;
 }
 
-static int apply_liquid_updates(struct kndConcept *self)
+
+static int run_set_liquid_obj_id(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndTaskArg *arg;
+    const char *val = NULL;
+    size_t val_size = 0;
+
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            val = arg->val;
+            val_size = arg->val_size;
+        }
+    }
+
+    if (val_size != KND_ID_SIZE) return knd_LIMIT;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. set curr liquid obj id: %.*s", KND_ID_SIZE, val);
+
+    if (self->curr_obj) {
+        memcpy(self->curr_obj->id, val, KND_ID_SIZE);
+    }
+
+    return knd_OK;
+}
+
+
+static int run_get_liquid_obj(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndTaskArg *arg;
+    struct kndConcept *c;
+    const char *name = NULL;
+    size_t name_size = 0;
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+
+    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+    if (!self->curr_class) return knd_FAIL;
+    c = self->curr_class;
+    if (!c->obj_idx) return knd_FAIL;
+    
+    self->curr_obj = c->obj_idx->get(c->obj_idx, name);
+
+    /*if (!self->curr_obj)
+      return knd_FAIL;
+      }*/
+    return knd_OK;
+}
+
+
+static int parse_liquid_obj_id(void *obj,
+                               const char *rec, size_t *total_size)
+{
+    struct kndConcept *self = (struct kndConcept*)obj;
+    int err;
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_liquid_obj_id,
+          .obj = self
+        }
+    };
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
+
+static int parse_liquid_obj_update(void *obj,
+                                   const char *rec, size_t *total_size)
+{
+    struct kndConcept *self = (struct kndConcept*)obj;
+    int err;
+
+    if (DEBUG_CONC_LEVEL_2) {
+        knd_log("..  liquid obj REC: \"%.*s\"..",
+                16, rec); }
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_get_liquid_obj,
+          .obj = self
+        },
+        { .name = "id",
+          .name_size = strlen("id"),
+          .parse = parse_liquid_obj_id,
+          .obj = self
+        }
+    };
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
+
+static int run_set_curr_state(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndTaskArg *arg;
+    const char *val = NULL;
+    size_t val_size = 0;
+
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            val = arg->val;
+            val_size = arg->val_size;
+        }
+    }
+
+    if (val_size != KND_STATE_SIZE) return knd_LIMIT;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. set curr liquid state: %.*s", KND_STATE_SIZE, val);
+
+    memcpy(self->state, val, KND_STATE_SIZE);
+    return knd_OK;
+}
+
+static int apply_liquid_updates(struct kndConcept *self,
+                                const char *rec,
+                                size_t *total_size)
 {
     struct kndConcept *c;
     struct kndObject *obj;
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_curr_state,
+          .obj = self
+        },
+        { .name = "obj",
+          .name_size = strlen("obj"),
+          .parse = parse_liquid_obj_update,
+          .obj = self
+        }
+    };
     int err;
 
     if (self->inbox_size) {
@@ -2623,6 +2771,12 @@ static int apply_liquid_updates(struct kndConcept *self)
         self->obj_inbox_size = 0;
     }
 
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log("\n\n== UPDATE REC: %s\n\n", rec);
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
     return knd_OK;
 }
 
