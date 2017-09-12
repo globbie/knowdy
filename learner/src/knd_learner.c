@@ -121,7 +121,7 @@ kndLearner_start(struct kndLearner *self)
 
         if (DEBUG_LEARNER_LEVEL_TMP) {
             chunk_size = task_size > KND_MAX_DEBUG_CHUNK_SIZE ? KND_MAX_DEBUG_CHUNK_SIZE : task_size;
-            knd_log("++ Learner got a new task: \"%.*s\".. [size: %lu]", chunk_size, task, (unsigned long)task_size);
+            knd_log("\n++ Learner got a new task: \"%.*s\".. [size: %lu]", chunk_size, task, (unsigned long)task_size);
         }
         
         err = self->task->run(self->task,
@@ -158,8 +158,6 @@ kndLearner_start(struct kndLearner *self)
     /* we should never get here */
     return knd_OK;
 }
-
-
 
 static int parse_publisher_service_addr(void *obj,
                                         const char *rec,

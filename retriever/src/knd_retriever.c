@@ -40,6 +40,7 @@ kndRetriever_start(struct kndRetriever *self)
     size_t task_size;
     char *obj;
     size_t obj_size;
+    size_t chunk_size = 0;
     int err;
 
     /*err = self->admin->restore(self->admin);
@@ -68,9 +69,11 @@ kndRetriever_start(struct kndRetriever *self)
 	task  = knd_zmq_recv(outbox, &task_size);
 	obj   = knd_zmq_recv(outbox, &obj_size);
 
-        /*knd_log("\n    ++ Retriever #%s got task: %s OBJ: %s\n", 
-                self->name, task, obj);
-        */
+        if (DEBUG_RETRIEVER_LEVEL_TMP) {
+            chunk_size = task_size > KND_MAX_DEBUG_CHUNK_SIZE ? KND_MAX_DEBUG_CHUNK_SIZE : task_size;
+            knd_log("\n++ Retriever got a new task: \"%.*s\".. [size: %lu]",
+                    chunk_size, task, (unsigned long)task_size);
+        }
         
         err = self->task->run(self->task, task, task_size, obj, obj_size);
         if (err) {

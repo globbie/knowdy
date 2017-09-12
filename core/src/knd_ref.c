@@ -52,8 +52,7 @@ kndRef_set_reverse_rel(struct kndRef *self,
     struct kndConcept *conc;
 
     conc = self->elem->attr->parent_conc;
-     
-    if (DEBUG_REF_LEVEL_TMP)
+    if (DEBUG_REF_LEVEL_2)
         knd_log(".. set REF from %s => %s",
                 conc->name,
                 obj->conc->name);
@@ -120,7 +119,7 @@ static int kndRef_resolve(struct kndRef *self)
     if (!self->states) return knd_FAIL;
     conc = self->elem->attr->conc;
      
-    if (DEBUG_REF_LEVEL_TMP)
+    if (DEBUG_REF_LEVEL_2)
         knd_log(".. resolve REF: %s (%s) => %s",
                 self->elem->attr->name,
                 conc->name, self->states->val);

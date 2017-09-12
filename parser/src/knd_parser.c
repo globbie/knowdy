@@ -276,7 +276,6 @@ knd_get_trailer(const char   *rec,
     }
 
     knd_log("   -- invalid IDX trailer.. no closing delimiter found.. :(\n");
-
     return knd_FAIL;
 
  got_close_delim:
@@ -643,8 +642,8 @@ static int knd_check_implied_field(const char *name,
             if (spec->run) {
                 err = spec->run(spec->obj, args, *num_args);
                 if (err) {
-                        knd_log("-- implied func for \"%s\" failed: %d :(",
-                                name, err);
+                        knd_log("-- implied func for \"%.*s\" failed: %d :(",
+                                name_size, name, err);
                     return err;
                 }
                 //spec->is_completed = true;
