@@ -19,13 +19,6 @@
 #define DEBUG_PARSER_LEVEL_4 0
 #define DEBUG_PARSER_LEVEL_TMP 1
 
-
-static int
-knd_parse_func(const char *rec,
-               size_t *total_size,
-               struct kndTaskSpec *specs,
-               size_t num_specs);
-
 static int
 knd_parse_state_change(const char *rec,
                        size_t *total_size,
@@ -225,14 +218,13 @@ knd_get_schema_name(const char *rec,
 }
 
 
-int
-knd_get_trailer(const char   *rec,
-                size_t  rec_size,
-                char   *trailer_name,
-                size_t *trailer_name_size,
-                size_t *num_items,
-                char   *dir_rec,
-                size_t *dir_rec_size)
+int knd_get_GSC_directory(const char   *rec,
+                          size_t  rec_size,
+                          char   *trailer_name,
+                          size_t *trailer_name_size,
+                          size_t *num_items,
+                          char   *dir_rec,
+                          size_t *dir_rec_size)
 {
     char buf[KND_LARGE_BUF_SIZE];
     size_t buf_size = 0;
@@ -655,10 +647,10 @@ static int knd_check_implied_field(const char *name,
     return knd_OK;
 }
 
-inline int knd_parse_task(const char *rec,
-                          size_t *total_size,
-                          struct kndTaskSpec *specs,
-                          size_t num_specs)
+int knd_parse_task(const char *rec,
+                   size_t *total_size,
+                   struct kndTaskSpec *specs,
+                   size_t num_specs)
 {
     const char *b, *c, *e;
     size_t name_size;
@@ -674,8 +666,6 @@ inline int knd_parse_task(const char *rec,
     bool in_tag = false;
     bool in_terminal = false;
 
-    bool in_change_state = false;
-    
     size_t chunk_size;
     int err;
 

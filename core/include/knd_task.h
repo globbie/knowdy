@@ -83,6 +83,9 @@ struct kndTask
     char uid[KND_NAME_SIZE];
     size_t uid_size;
 
+    char agent_name[KND_NAME_SIZE];
+    size_t agent_name_size;
+
     char schema_name[KND_NAME_SIZE];
     size_t schema_name_size;
 

@@ -328,9 +328,8 @@ parse_config_GSL(struct kndLearner *self,
           .parse = parse_publisher_service_addr,
           .obj = self
         },
-        { .is_default = true,
-          .name = "set_service_id",
-          .name_size = strlen("set_service_id"),
+        { .name = "agent",
+          .name_size = strlen("agent"),
           .buf = self->name,
           .buf_size = &self->name_size,
           .max_buf_size = KND_NAME_SIZE
@@ -443,6 +442,11 @@ kndLearner_new(struct kndLearner **rec,
 
     err = parse_config_GSL(self, self->out->file, &chunk_size);
     if (err) goto error;
+
+
+    memcpy(self->task->agent_name, self->name, self->name_size);
+    self->task->agent_name_size = self->name_size;
+    self->task->agent_name[self->name_size] = '\0';
 
     err = kndConcept_new(&dc);
     if (err) goto error;

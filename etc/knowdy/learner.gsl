@@ -1,5 +1,6 @@
 {gsl::Knowdy Basic
   {knd::Knowdy Learner Service Configuration
+      {agent 007}
       {path /var/lib/knowdy/db}
       {schemas /etc/knowdy/schemas}
       {sid AUTH_SERVER_SID}

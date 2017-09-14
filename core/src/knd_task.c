@@ -188,6 +188,13 @@ static int report(struct kndTask *self)
     err = out->write(out, gsl_header, strlen(gsl_header));
     if (err) return err;
 
+    err = out->write(out, "{agent ", strlen("{agent "));
+    if (err) return err;
+    err = out->write(out, self->agent_name, self->agent_name_size);
+    if (err) return err;
+    err = out->write(out, "}", 1);
+    if (err) return err;
+
     err = out->write(out, "{tid ", strlen("{tid "));
     if (err) return err;
     err = out->write(out, self->tid, self->tid_size);
@@ -248,7 +255,7 @@ static int report(struct kndTask *self)
 
     err = knd_zmq_send(self->delivery, msg, msg_size);
 
-    /* get confirmation reply from delivery */
+    /* get confirmation reply from  the manager */
     header = knd_zmq_recv(self->delivery, &header_size);
     obj = knd_zmq_recv(self->delivery, &obj_size);
     
@@ -260,7 +267,7 @@ static int report(struct kndTask *self)
         free(header);
     if (obj)
         free(obj);
-    
+
     if (!self->is_state_changed) return knd_OK;
 
     /* inform all retrievers about the state change */
