@@ -80,13 +80,13 @@ static int
 check_name_limits(const char *b, const char *e, size_t *buf_size)
 {
     *buf_size = e - b;
-    if (!(*buf_size)) {
+    if (!*buf_size) {
         knd_log("-- empty name?");
         return knd_LIMIT;
     }
-    if ((*buf_size) > KND_NAME_SIZE) {
-        knd_log("-- field tag too large: %lu bytes: BEGIN: %s\n\n END: %s",
-                (unsigned long)buf_size, b, e);
+    if (*buf_size > KND_NAME_SIZE) {
+        knd_log("-- field tag too large: %zu bytes: BEGIN: %s\n\n END: %s",
+                buf_size, b, e);
         return knd_LIMIT;
     }
     return knd_OK;
@@ -417,44 +417,43 @@ knd_spec_buf_copy(struct kndTaskSpec *spec,
                   size_t val_size)
 {
     if (DEBUG_PARSER_LEVEL_2)
-        knd_log(".. writing val \"%.*s\" to buf [max size: %lu] [len: %lu]..",
-                val_size, val,
-                (unsigned long)spec->max_buf_size,
-                (unsigned long)val_size);
+        knd_log(".. writing val \"%.*s\" to buf [max size: %zu] [len: %zu]..",
+                val_size, val, spec->max_buf_size, val_size);
  
-    if (val_size >= spec->max_buf_size) {
-        knd_log("-- %s: buf limit reached: %lu max: %lu",
-                spec->name,
-                (unsigned long)val_size,
-                (unsigned long)spec->max_buf_size);
+    if (val_size > spec->max_buf_size) {
+        knd_log("-- %.*s: buf limit reached: %zu max: %zu",
+                spec->name_size, spec->name, val_size, spec->max_buf_size);
         return knd_LIMIT;
     }
 
     memcpy(spec->buf, val, val_size);
-    spec->buf[val_size] = '\0';
     *spec->buf_size = val_size;
 
     return knd_OK;
 }
 
 
-static int knd_check_implied_field(const char *name,
-                                   size_t name_size,
-                                   struct kndTaskSpec *specs,
-                                   size_t num_specs,
-                                   struct kndTaskArg *args,
-                                   size_t *num_args)
+static int
+knd_check_implied_field(const char *name,
+                        size_t name_size,
+                        struct kndTaskSpec *specs,
+                        size_t num_specs,
+                        struct kndTaskArg *args,
+                        size_t *num_args)
 {
-    struct kndTaskSpec *spec = NULL;
+    struct kndTaskSpec *spec;
     struct kndTaskArg *arg;
     const char *impl_arg_name = "_impl";
     size_t impl_arg_name_size = strlen("_impl");
     int err;
     
+    assert(impl_arg_name_size <= KND_NAME_SIZE && "\"_impl\" is lengthier than KND_NAME_SIZE");
+    assert(name_size && "implied ");
+
     if (DEBUG_PARSER_LEVEL_2)
-        knd_log("++ got implied val: \"%.*s\" [%lu]",
-                name_size, name, (unsigned long)name_size);
-    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+        knd_log("++ got implied val: \"%.*s\" [%zu]",
+                name_size, name, name_size);
+    if (name_size > KND_NAME_SIZE) return knd_LIMIT;
                         
     arg = &args[*num_args];
     memcpy(arg->name, impl_arg_name, impl_arg_name_size);
@@ -465,23 +464,23 @@ static int knd_check_implied_field(const char *name,
     arg->val[name_size] = '\0';
     arg->val_size = name_size;
 
-    (*num_args)++;
+    *num_args++;
 
     /* any action needed? */
     for (size_t i = 0; i < num_specs; i++) {
         spec = &specs[i];
         if (spec->is_implied) {
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ got implied spec: \"%s\" run: %p!",
-                        spec->name, spec->run);
+                knd_log("++ got implied spec: \"%.*s\" run: %p!",
+                        spec->name_size, spec->name, spec->run);
             if (spec->run) {
                 err = spec->run(spec->obj, args, *num_args);
                 if (err) {
-                        knd_log("-- implied func for \"%.*s\" failed: %d :(",
-                                name_size, name, err);
+                    knd_log("-- implied func for \"%.*s\" failed: %d :(",
+                            name_size, name, err);
                     return err;
                 }
-                //spec->is_completed = true;
+                //spec->is_completed = true;  // TODO(ki.stfu): Uncomment?
             }
             break;
         }
@@ -498,7 +497,7 @@ int knd_parse_task(const char *rec,
     const char *b, *c, *e;
     size_t name_size;
     
-    struct kndTaskSpec *spec = NULL;
+    struct kndTaskSpec *spec;
 
     struct kndTaskArg args[KND_MAX_ARGS];
     size_t num_args = 0;
@@ -517,8 +516,8 @@ int knd_parse_task(const char *rec,
     e = rec;
 
     if (DEBUG_PARSER_LEVEL_1)
-        knd_log("\n\n*** start basic PARSING: \"%s\" num specs: %lu [%p]",
-                rec, (unsigned long)num_specs, specs);
+        knd_log("\n\n*** start basic PARSING: \"%s\" num specs: %zu [%p]",
+                rec, num_specs, specs);
 
     while (*c) {
         switch (*c) {
@@ -549,8 +548,8 @@ int knd_parse_task(const char *rec,
             }
 
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ got SPEC: \"%s\" (default: %d) (is validator: %d)",
-                        spec->name, spec->is_default, spec->is_validator);
+                knd_log("++ got SPEC: \"%.*s\" (default: %d) (is validator: %d)",
+                        spec->name_size, spec->name, spec->is_default, spec->is_validator);
             in_tag = true;
 
             if (spec->validate) {
@@ -558,8 +557,8 @@ int knd_parse_task(const char *rec,
                                      (const char*)spec->buf, *spec->buf_size,
                                      c, &chunk_size);
                 if (err) {
-                    knd_log("-- ERR: %d validation of spec \"%s\" failed :(",
-                            err, spec->name);
+                    knd_log("-- ERR: %d validation of spec \"%.*s\" failed :(",
+                            err, spec->name_size, spec->name);
                     return err;
                 }
                 c += chunk_size;
@@ -573,8 +572,8 @@ int knd_parse_task(const char *rec,
             
             if (!spec->parse) {
                 if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("== ATOMIC SPEC found: %s! no further parsing is required.",
-                            spec->name);
+                    knd_log("== ATOMIC SPEC found: %.*s! no further parsing is required.",
+                            spec->name_size, spec->name);
                 in_terminal = true;
                 b = c + 1;
                 e = b;
@@ -583,12 +582,12 @@ int knd_parse_task(const char *rec,
 
             /* nested parsing required */
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("\n    >>> further parsing required in \"%s\" FROM: \"%s\" FUNC: %p",
-                        spec->name, c, spec->parse);
+                knd_log("\n    >>> further parsing required in \"%.*s\" FROM: \"%s\" FUNC: %p",
+                        spec->name_size, spec->name, c, spec->parse);
             err = spec->parse(spec->obj, c, &chunk_size);
             if (err) {
-                knd_log("-- ERR: %d parsing of spec \"%s\" failed :(",
-                        err, spec->name);
+                knd_log("-- ERR: %d parsing of spec \"%.*s\" failed :(",
+                        err, spec->name_size, spec->name);
                 return err;
             }
             c += chunk_size;
@@ -603,11 +602,10 @@ int knd_parse_task(const char *rec,
             /* starting brace */
             if (!in_field) {
                 if (in_implied_field) {
-                    name_size = e - b;
-                    if (name_size) {
-                        err = knd_check_implied_field(b, name_size, specs, num_specs, args, &num_args);
-                        if (err) return err;
-                    }
+                    // TODO(ki.stfu): Use check_name_limits()?
+                    err = knd_check_implied_field(b, e - b, specs, num_specs, args, &num_args);
+                    if (err) return err;
+                    in_implied_field = false;
                 }
                 
                 in_field = true;
@@ -622,8 +620,8 @@ int knd_parse_task(const char *rec,
             if (err) return err;
 
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ BASIC LOOP got tag after brace: \"%.*s\" [%lu]",
-                        name_size, b, (unsigned long)name_size);
+                knd_log("++ BASIC LOOP got tag after brace: \"%.*s\" [%zu]",
+                        name_size, b, name_size);
 
             err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
             if (err) {
@@ -633,8 +631,8 @@ int knd_parse_task(const char *rec,
             }
 
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ got SPEC: \"%s\" (default: %d) (is validator: %d)",
-                        spec->name, spec->is_default, spec->is_validator);
+                knd_log("++ got SPEC: \"%.*s\" (default: %d) (is validator: %d)",
+                        spec->name_size, spec->name, spec->is_default, spec->is_validator);
             in_tag = true;
 
             if (spec->validate) {
@@ -642,8 +640,8 @@ int knd_parse_task(const char *rec,
                                      (const char*)spec->buf, *spec->buf_size,
                                      c, &chunk_size);
                 if (err) {
-                    knd_log("-- ERR: %d validation of spec \"%s\" failed :(",
-                            err, spec->name);
+                    knd_log("-- ERR: %d validation of spec \"%.*s\" failed :(",
+                            err, spec->name_size, spec->name);
                     return err;
                 }
                 c += chunk_size;
@@ -657,8 +655,8 @@ int knd_parse_task(const char *rec,
             
             if (!spec->parse) {
                 if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("== ATOMIC SPEC found: %s! no further parsing is required.",
-                            spec->name);
+                    knd_log("== ATOMIC SPEC found: %.*s! no further parsing is required.",
+                            spec->name_size, spec->name);
                 in_terminal = true;
                 b = c + 1;
                 e = b;
@@ -667,13 +665,13 @@ int knd_parse_task(const char *rec,
 
             /* nested parsing required */
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("== further parsing required in \"%s\" FROM: \"%s\"",
-                        spec->name, c);
+                knd_log("== further parsing required in \"%.*s\" FROM: \"%s\"",
+                        spec->name_size, spec->name, c);
 
             err = spec->parse(spec->obj, c, &chunk_size);
             if (err) {
-                knd_log("-- ERR: %d parsing of spec \"%s\" failed :(",
-                        err, spec->name);
+                knd_log("-- ERR: %d parsing of spec \"%.*s\" failed :(",
+                        err, spec->name_size, spec->name);
                 return err;
             }
             
@@ -692,11 +690,9 @@ int knd_parse_task(const char *rec,
             /* empty body? */
             if (!in_field) {
                 if (in_implied_field) {
-                    name_size = e - b;
-                    if (name_size) {
-                        err = knd_check_implied_field(b, name_size, specs, num_specs, args, &num_args);
-                        if (err) return err;
-                    }
+                    err = knd_check_implied_field(b, e - b, specs, num_specs, args, &num_args);
+                    if (err) return err;
+                    in_implied_field = false;
                 }
                 
                 /* should we run a default action? */
@@ -735,8 +731,8 @@ int knd_parse_task(const char *rec,
                     return err;
                 }
                 if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("++ got terminal val: \"%.*s\" [%lu]",
-                            name_size, b, (unsigned long)name_size);
+                    knd_log("++ got terminal val: \"%.*s\" [%zu]",
+                            name_size, b, name_size);
                 /* copy to buf */
                 if (spec->buf && spec->buf_size) {
                     err = knd_spec_buf_copy(spec, b, name_size);
@@ -765,8 +761,8 @@ int knd_parse_task(const char *rec,
                 if (spec->run) {
                     err = spec->run(spec->obj, args, num_args);
                     if (err) {
-                        knd_log("-- \"%s\" func run failed: %d :(",
-                                spec->name, err);
+                        knd_log("-- \"%.*s\" func run failed: %d :(",
+                                spec->name_size, spec->name, err);
                         return err;
                     }
                     spec->is_completed = true;
@@ -790,8 +786,8 @@ int knd_parse_task(const char *rec,
                     }
                     
                     if (DEBUG_PARSER_LEVEL_2)
-                        knd_log("++ got default spec val: \"%.*s\" [%lu]?",
-                                name_size, b, (unsigned long)name_size);
+                        knd_log("++ got default spec val: \"%.*s\" [%zu]?",
+                                name_size, b, name_size);
                     
                     err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
                     if (err) {
@@ -800,14 +796,14 @@ int knd_parse_task(const char *rec,
                     }
 
                     if (DEBUG_PARSER_LEVEL_2)
-                        knd_log("++ got single SPEC: \"%s\" (default: %d)",
-                                spec->name, spec->is_default);
+                        knd_log("++ got single SPEC: \"%.*s\" (default: %d)",
+                                spec->name_size, spec->name, spec->is_default);
 
                     if (spec->parse) {
                         err = spec->parse(spec->obj, c, &chunk_size);
                         if (err) {
-                            knd_log("-- ERR: %d parsing of spec \"%s\" failed starting from: %s",
-                                    err, spec->name, b);
+                            knd_log("-- ERR: %d parsing of spec \"%.*s\" failed starting from: %s",
+                                    err, spec->name_size, spec->name, b);
                             return err;
                         }
                     }
@@ -838,11 +834,8 @@ int knd_parse_task(const char *rec,
                 if (DEBUG_PARSER_LEVEL_2)
                     knd_log(".. basic LOOP is in implied field!");
 
-                name_size = e - b;
-                if (name_size) {
-                    err = knd_check_implied_field(b, name_size, specs, num_specs, args, &num_args);
-                    if (err) return err;
-                }
+                err = knd_check_implied_field(b, e - b, specs, num_specs, args, &num_args);
+                if (err) return err;
                 in_implied_field = false;
             }
 
@@ -870,11 +863,9 @@ int knd_parse_task(const char *rec,
 
             if (!in_field) {
                 if (in_implied_field) {
-                    name_size = e - b;
-                    if (name_size) {
-                        err = knd_check_implied_field(b, name_size, specs, num_specs, args, &num_args);
-                        if (err) return err;
-                    }
+                    err = knd_check_implied_field(b, e - b, specs, num_specs, args, &num_args);
+                    if (err) return err;
+                    in_implied_field = false;
                 }
             }
             *total_size = c - rec;
@@ -906,8 +897,8 @@ int knd_parse_task(const char *rec,
     }
 
     if (DEBUG_PARSER_LEVEL_1)
-        knd_log("\n\n--- end of basic PARSING: \"%s\" num specs: %lu [%p]",
-                rec, (unsigned long)num_specs, specs);
+        knd_log("\n\n--- end of basic PARSING: \"%s\" num specs: %zu [%p]",
+                rec, num_specs, specs);
     
     *total_size = c - rec;
     return knd_OK;
