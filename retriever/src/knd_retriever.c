@@ -392,7 +392,6 @@ parse_config_GSL(struct kndRetriever *self,
     memcpy(self->admin->path + self->path_size, "/users", strlen("/users"));
     self->admin->path_size = self->path_size + strlen("/users");
     self->admin->path[self->admin->path_size] = '\0';
-
     
     return knd_OK;
 }
@@ -403,7 +402,7 @@ kndRetriever_new(struct kndRetriever **rec,
                   const char *config)
 {
     struct kndRetriever *self;
-    struct kndConcept *dc;
+    struct kndConcept *conc;
     size_t chunk_size = 0;
     int err;
 
@@ -443,24 +442,30 @@ kndRetriever_new(struct kndRetriever **rec,
         goto error;
     }
 
-    err = kndConcept_new(&dc);
+    err = kndConcept_new(&conc);
     if (err) return err;
-    dc->out = self->out;
-    dc->name[0] = '/';
-    dc->name_size = 1;
+    conc->out = self->out;
+    conc->name[0] = '/';
+    conc->name_size = 1;
 
-    dc->dbpath = self->schema_path;
-    dc->dbpath_size = self->schema_path_size;
+    conc->dbpath = self->schema_path;
+    conc->dbpath_size = self->schema_path_size;
 
-    err = ooDict_new(&dc->class_idx, KND_SMALL_DICT_SIZE);
+    conc->dir = malloc(sizeof(struct kndConcDir));
+    if (!conc->dir) return knd_NOMEM;
+    memset(conc->dir, 0, sizeof(struct kndConcDir));
+    memset(conc->dir->id, '0', KND_ID_SIZE);
+    conc->dir->conc = conc;
+
+    err = ooDict_new(&conc->class_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
 
     /* obj/elem allocator */
     if (self->max_objs) {
-        dc->obj_storage = calloc(self->max_objs, 
+        conc->obj_storage = calloc(self->max_objs, 
                                  sizeof(struct kndObject));
-        if (!dc->obj_storage) return knd_NOMEM;
-        dc->obj_storage_max = self->max_objs;
+        if (!conc->obj_storage) return knd_NOMEM;
+        conc->obj_storage_max = self->max_objs;
     }
 
     /* user idx */
@@ -471,20 +476,28 @@ kndRetriever_new(struct kndRetriever **rec,
         self->admin->max_users = self->max_users;
     }
 
+    conc->user = self->admin;
+    self->admin->root_class = conc;
+
+    
+    /* open frozen DB */
+    err = conc->open(conc);
+    if (err) return err;
+
     /* read class definitions */
-    dc->batch_mode = true;
-    err = dc->open(dc, "index", strlen("index"));
+    /*conc->batch_mode = true;
+    err = conc->open(conc, "index", strlen("index"));
     if (err) {
  	knd_log("-- couldn't read the schema definitions :("); 
         goto error;
     }
     
-    err = dc->coordinate(dc);
+    err = conc->coordinate(conc);
     if (err) goto error;
 
-    dc->batch_mode = false;
-    self->admin->root_class = dc;
-    self->admin->root_class->user = self->admin;
+    conc->batch_mode = false;
+    */
+
     
     self->del = kndRetriever_del;
     self->start = kndRetriever_start;

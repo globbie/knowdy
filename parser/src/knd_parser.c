@@ -6,10 +6,14 @@
 #include <errno.h>
 #include <limits.h>
 
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include <unistd.h>
 
 #include "knd_config.h"
 #include "knd_parser.h"
+#include "knd_concept.h"
 #include "knd_task.h"
 #include "knd_utils.h"
 
@@ -218,170 +222,6 @@ knd_get_schema_name(const char *rec,
 }
 
 
-int knd_get_GSC_directory(const char   *rec,
-                          size_t  rec_size,
-                          char   *trailer_name,
-                          size_t *trailer_name_size,
-                          size_t *num_items,
-                          char   *dir_rec,
-                          size_t *dir_rec_size)
-{
-    char buf[KND_LARGE_BUF_SIZE];
-    size_t buf_size = 0;
-
-    char num_buf[KND_SMALL_BUF_SIZE];
-
-    char *c;
-    char *b;
-    const char *curr;
-    char *val;
-    long numval = 0;
-
-    size_t curr_size;
-    size_t numfield_size = 0;
-    bool in_facet = false;
-    bool in_refset = false;
-    int err;
-
-    buf_size = KND_NUMFIELD_MAX_SIZE;
-    if (rec_size < KND_NUMFIELD_MAX_SIZE)
-        buf_size = rec_size;
-
-    /* get size of trailer */
-    curr = rec + rec_size - buf_size;
-    memcpy(buf, curr, buf_size);
-    buf[buf_size] = '\0';
-
-    /*knd_log("TRAILER BUF: \"%s\"\n", buf);*/
-
-    /* find last closing delimiter */
-    for (size_t i = buf_size - 1; i > 0; i--) {
-        c = buf + i;
-        if (!strncmp(c, GSL_CLOSE_DELIM, GSL_CLOSE_DELIM_SIZE)) {
-            in_refset = true;
-            goto got_close_delim;
-        }
-        if (!strncmp(c, GSL_CLOSE_FACET_DELIM, GSL_CLOSE_FACET_DELIM_SIZE)) {
-            in_facet = true;
-            goto got_close_delim;
-        }
-    }
-
-    knd_log("   -- invalid IDX trailer.. no closing delimiter found.. :(\n");
-    return knd_FAIL;
-
- got_close_delim:
-    numfield_size = buf_size - (c - buf) - 1;
-
-    /*knd_log("   ++ Closing delim found, numfield size: %lu\n",
-      (unsigned long)numfield_size); */
-
-    if (!numfield_size) {
-        *dir_rec_size = 0;
-        return knd_OK;
-    }
-
-    memcpy(num_buf, (const char*)c + 1, numfield_size);
-    num_buf[numfield_size] = '\0';
-
-    err = knd_parse_num((const char*)num_buf, &numval);
-    if (err) return err;
-
-    /* check limits */
-    if (numval < 1 || numval >= KND_LARGE_BUF_SIZE)
-        return knd_FAIL;
-
-    /* extract trailer */
-    buf_size = (size_t)numval;
-
-    curr = rec + rec_size - numval - numfield_size;
-    memcpy(buf, curr, buf_size);
-
-    /* delete the closing delim */
-    buf[buf_size - 1] = '\0';
-
-    /*knd_log("   IDX TRAILER: %s [%lu]\n",
-      buf, (unsigned long)buf_size); */
-
-    if (in_facet) {
-        if (strncmp(buf, GSL_OPEN_FACET_DELIM, GSL_OPEN_FACET_DELIM_SIZE)) {
-            knd_log("   -- invalid IDX trailer.. Facet doesn't start with an opening delim..\n");
-            return knd_FAIL;
-        }
-        c = buf + GSL_OPEN_FACET_DELIM_SIZE;
-    }
-
-    if (in_refset) {
-        if (strncmp(buf, GSL_OPEN_DELIM, GSL_OPEN_DELIM_SIZE)) {
-            knd_log("   -- invalid IDX trailer.. Refset doesn't start with an opening delim..\n");
-            return knd_FAIL;
-        }
-        c = buf + GSL_OPEN_DELIM_SIZE;
-    }
-
-    curr_size = buf - c;
-    if (!curr_size) return knd_FAIL;
-
-    val = strstr(c, GSL_TERM_SEPAR);
-    if (!val) return knd_FAIL;
-
-    curr_size = val - c;
-    *val = '\0';
-
-    /* total num items? */
-    b = strstr(c, GSL_TOTAL);
-    if (b) {
-        numfield_size = b - c;
-        *b = '\0';
-        b++;
-
-        err = knd_parse_num((const char*)b, &numval);
-        if (err) return err;
-
-        if (DEBUG_PARSER_LEVEL_3)
-            knd_log("  TOTAL items: %lu\n", (unsigned long)numval);
-
-        *num_items = (size_t)numval;
-    }
-
-    /* TODO: check limits */
-
-    strncpy(trailer_name, c, curr_size);
-    *trailer_name_size = curr_size;
-
-    if (!(buf_size - curr_size -  GSL_TERM_SEPAR_SIZE)) return knd_FAIL;
-    c += (curr_size + GSL_TERM_SEPAR_SIZE);
-
-    *dir_rec_size = buf_size - curr_size -  GSL_TERM_SEPAR_SIZE;
-    strncpy(dir_rec, c, *dir_rec_size);
-
-    return knd_OK;
-}
-
-
-int
-knd_get_elem_suffix(const char *name,
-                    char *buf)
-{
-    char suff = 0;
-    const char *c;
-
-    c = name;
-
-    while (*c++) {
-        if (*c != '_') continue;
-        if (!c[1]) return knd_FAIL;
-        suff = c[1];
-    }
-
-    if (!suff)
-        return knd_FAIL;
-
-    buf[0] = suff;
-    return knd_OK;
-}
-
-
 int
 knd_parse_matching_braces(const char *rec,
                           size_t *chunk_size)
@@ -417,11 +257,12 @@ knd_parse_matching_braces(const char *rec,
 }
 
 
+
+
 /**
  */
-int
-knd_parse_num(const char *val,
-	      long *result)
+int knd_parse_num(const char *val,
+                  long *result)
 /*int *warning)*/
 {
     long numval;

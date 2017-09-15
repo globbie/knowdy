@@ -8,16 +8,6 @@
 #include "knd_task.h"
 
 extern int 
-knd_get_trailer(const char  *rec,
-                size_t rec_size,
-                char  *name,
-                size_t *name_size,
-                size_t *num_items,
-                char   *dir_rec,
-                size_t *dir_rec_size);
-
-
-extern int 
 knd_read_UTF8_char(const char *rec,
                    size_t rec_size,
                    size_t *val,

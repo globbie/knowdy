@@ -82,6 +82,24 @@ struct kndConcFolder
     struct kndConcFolder *next;
 };
 
+
+struct kndConcDir
+{
+    char id[KND_ID_SIZE];
+    struct kndConcept *conc;
+
+    size_t global_offset;
+    size_t block_size;
+
+    size_t body_size;
+    size_t dir_size;
+
+    struct kndConcDir *children;
+    size_t num_children;
+
+    struct kndConcDir *next;
+};
+
 struct kndConcept 
 {
     char name[KND_NAME_SIZE];
@@ -144,6 +162,7 @@ struct kndConcept
     struct kndConcept *curr_class;
     struct kndObject *curr_obj;
 
+    struct kndConcDir *dir;
     struct kndConcFolder *folders;
     size_t num_folders;
 
@@ -196,7 +215,9 @@ struct kndConcept
     void (*str)(struct kndConcept *self,
                 size_t depth);
 
-    int (*open)(struct kndConcept   *self,
+    int (*open)(struct kndConcept   *self);
+
+    int (*load)(struct kndConcept   *self,
                 const char *filename,
                 size_t filename_size);
     
@@ -239,8 +260,6 @@ struct kndConcept
     int (*import)(void *self,
                   const char *rec,
                   size_t *total_size);
-
-
     int (*export)(struct kndConcept *self);
 
     /*int (*is_a)(struct kndConcept *self,

@@ -298,10 +298,6 @@ kndUser_parse_auth(void *obj,
     return knd_OK;
 }
 
-
-
-
-
 static int kndUser_parse_class_import(void *obj,
                                       const char *rec,
                                       size_t *total_size)
@@ -329,7 +325,6 @@ static int kndUser_parse_class_import(void *obj,
 
     return knd_OK;
 }
-
 
 static int kndUser_parse_sync_task(void *obj,
                                    const char *rec,

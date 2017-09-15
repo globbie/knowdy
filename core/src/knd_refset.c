@@ -1327,12 +1327,11 @@ kndRefSet_facetize(struct kndRefSet *self)
         }
         */
         
-        if (DEBUG_REFSET_LEVEL_1)
+        /*if (DEBUG_REFSET_LEVEL_1)
             knd_log("  .. reading atom IDX file: \"%s\" .. OUTPUT: %p\n",
                     buf, self->out);
-        
-        err = self->out->read_file(self->out,
-                                   (const char*)buf, buf_size);
+
+        err = self->out->read_file(self->out, (const char*)buf, buf_size);
         if (err) {
             if (DEBUG_REFSET_LEVEL_TMP)
                 knd_log("   -- no such idx DB found: \"%s\" :(\n",
@@ -1348,6 +1347,7 @@ kndRefSet_facetize(struct kndRefSet *self)
                                   (const char*)self->out->file,
                                   self->out->file_size);
         if (err) return err;
+        */
     }
     
     /* terminal IDX */

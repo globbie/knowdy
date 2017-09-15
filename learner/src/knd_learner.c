@@ -476,7 +476,7 @@ kndLearner_new(struct kndLearner **rec,
 
     /* read class definitions */
     dc->batch_mode = true;
-    err = dc->open(dc, "index", strlen("index"));
+    err = dc->load(dc, "index", strlen("index"));
     if (err) {
         knd_log("-- couldn't read any schema definitions :(");
         goto error;
