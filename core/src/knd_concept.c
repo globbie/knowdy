@@ -128,6 +128,43 @@ static void str(struct kndConcept *self, size_t depth)
     free(offset);
 }
 
+
+
+static void dir_str(struct kndConcDir *self, size_t depth, int fd)
+{
+    char buf[KND_TEMP_BUF_SIZE];
+    size_t buf_size;
+
+    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
+    char *offset = malloc(offset_size + 1);
+    struct kndConcDir *dir;
+    int err;
+
+    memset(offset, ' ', offset_size);
+    offset[offset_size] = '\0';
+
+    knd_log("%s\"%.*s\" => (off: %zu, len: %zu)",
+            offset, KND_ID_SIZE, self->id, self->global_offset, self->block_size);
+
+    if (lseek(fd, self->global_offset, SEEK_SET) == -1) {
+        return;
+    }
+
+    buf_size = self->block_size;
+    err = read(fd, buf, buf_size);
+    if (err == -1) return;
+    buf[buf_size] = '\0';
+
+    knd_log("      %s%.*s", offset, buf_size, buf);
+    
+    for (dir = self->children; dir; dir = dir->next) {
+        dir_str(dir, depth + 1, fd);
+    }
+
+    knd_log("%s}", offset);
+    free(offset);
+}
+
 static int validate_attr_items(struct kndConcept *self,
                                struct kndAttrItem *items)
 {
@@ -1545,7 +1582,7 @@ static int knd_get_dir_size(struct kndConcept *self,
     if (numval <= 0) return knd_FAIL;
     if (numval >= KND_DIR_TRAILER_MAX_SIZE) return knd_LIMIT;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("  == DIR size: %lu    CHUNK SIZE: %lu", (unsigned long)numval, (unsigned long)rec_size - i);
 
     *dir_size = numval;
@@ -1587,7 +1624,7 @@ static int run_set_dir_size(void *obj, struct kndTaskArg *args, size_t num_args)
     }
 
     if (numval <= 0) return knd_FAIL;
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("== DIR size: %lu", (unsigned long)numval);
 
     self->block_size = numval;
@@ -1619,15 +1656,49 @@ static int parse_dir_entry(void *obj,
     return knd_OK;
 }
 
+static int parse_parent_dir_size(void *obj,
+                                 const char *rec,
+                                 size_t *total_size)
+{
+    struct kndConcDir *self = (struct kndConcDir*)obj;
+    int err;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. parsing parent dir size: \"%.*s\"", 16, rec);
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_dir_size,
+          .obj = self
+        }
+    };
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    self->curr_offset += self->block_size;
+
+    return knd_OK;
+}
+
 static int dir_entry_append(void *accu,
                             void *item)
 {
     struct kndConcDir *parent_dir = (struct kndConcDir *)accu;
     struct kndConcDir *dir = (struct kndConcDir *)item;
 
-    dir->next = parent_dir->children;
-    parent_dir->children = dir;
+    if (!parent_dir->tail) {
+        parent_dir->tail = dir;
+        parent_dir->children = dir;
+    }
+    else {
+        parent_dir->tail->next = dir;
+        parent_dir->tail = dir;
+    }
     parent_dir->num_children++;
+
+    dir->global_offset += parent_dir->curr_offset;
+    parent_dir->curr_offset += dir->block_size;
 
     return knd_OK;
 }
@@ -1667,7 +1738,6 @@ static int parse_dir_trailer(struct kndConcept *self,
     char *id, *b, *c;
     size_t id_size;
     size_t chunk_size;
-    size_t global_offset = parent_dir->global_offset;
     bool is_terminal = true;
     size_t parsed_size = 0;
     int err;
@@ -1675,9 +1745,8 @@ static int parse_dir_trailer(struct kndConcept *self,
     struct kndTaskSpec specs[] = {
         { .name = "C",
           .name_size = strlen("C"),
-          .buf = buf,
-          .buf_size = &buf_size,
-          .max_buf_size = KND_SHORT_NAME_SIZE,
+          .parse = parse_parent_dir_size,
+          .obj = parent_dir
         },
         { .is_list = true,
           .name = "c",
@@ -1690,28 +1759,38 @@ static int parse_dir_trailer(struct kndConcept *self,
         }
     };
 
+    parent_dir->curr_offset = parent_dir->global_offset;
+
     if (DEBUG_CONC_LEVEL_TMP)
-        knd_log("  .. parsing DIR REC: \"%.*s\" [%lu]",
-                dir_buf_size, dir_buf, (unsigned long)dir_buf_size);
+        knd_log("  .. parsing DIR REC: \"%.*s\"  curr offset: %zu   [dir size:%lu]",
+                dir_buf_size, dir_buf, parent_dir->curr_offset, (unsigned long)dir_buf_size);
 
     err = knd_parse_task(dir_buf, &parsed_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
-    
-    /* try reading each dir now */
+
+    /*int i = 0;
+    for (dir = parent_dir->children; dir; dir = dir->next) {
+        if (DEBUG_CONC_LEVEL_TMP)
+            knd_log("%d) child DIR %.*s    global offset: %lu  block size: %lu",
+                    i, KND_ID_SIZE, dir->id,
+                    (unsigned long)dir->global_offset, (unsigned long)dir->block_size);
+        i++;
+        }*/
+
+    /* now try reading each dir now */
     for (dir = parent_dir->children; dir; dir = dir->next) {
 
         if (DEBUG_CONC_LEVEL_TMP)
-            knd_log("\n.. read DIR: %.*s  offset: %lu  block size: %lu   is term: %d",
+            knd_log("\n.. read DIR: %.*s   global offset: %lu    block size: %lu",
                     KND_ID_SIZE, dir->id,
-                    (unsigned long)dir->global_offset, (unsigned long)dir->block_size, is_terminal);
+                    (unsigned long)dir->global_offset, (unsigned long)dir->block_size);
 
-        /*if (dir->is_terminal) continue;
         err = get_dir_trailer(self, dir, fd, encode_base);
         if (err) {
             knd_log("-- error reading trailer of \"%.*s\" DIR",
                     KND_ID_SIZE, dir->id);
             return err;
-            }*/
+        }
         
     }
     return knd_OK;
@@ -1823,6 +1902,9 @@ static int open_frozen_DB(struct kndConcept *self)
         goto final;
     }
     
+    if (DEBUG_CONC_LEVEL_TMP)
+        dir_str(self->dir, 1, fd);
+
     err = knd_OK;
     
  final:
@@ -3784,9 +3866,9 @@ static int freeze(struct kndConcept *self)
  print_total_len:
 
     if (curr_dir_size) {
-        if (DEBUG_CONC_LEVEL_2)
-            knd_log("== %.*s DIR: \"%.*s\" [%lu]",
-                    KND_ID_SIZE, self->id,
+        if (DEBUG_CONC_LEVEL_TMP)
+            knd_log("== %.*s (%.*s) DIR: \"%.*s\"  [%lu]",
+                    self->name_size, self->name, KND_ID_SIZE, self->id,
                     curr_dir_size,
                     self->dir_buf, (unsigned long)curr_dir_size);
 

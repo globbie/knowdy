@@ -89,6 +89,7 @@ struct kndConcDir
     struct kndConcept *conc;
 
     size_t global_offset;
+    size_t curr_offset;
     size_t block_size;
 
     size_t body_size;
@@ -96,6 +97,7 @@ struct kndConcDir
 
     struct kndConcDir *children;
     size_t num_children;
+    struct kndConcDir *tail;
 
     bool is_terminal;
     struct kndConcDir *next;
