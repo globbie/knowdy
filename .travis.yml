@@ -11,6 +11,7 @@ addons:
     - clang
     - libzmq3-dev
     - libmysqlclient-dev
+    - check
 dist: trusty
 compiler:
 - gcc
