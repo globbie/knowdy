@@ -59,19 +59,22 @@ struct kndTaskSpec
     bool is_implied;
     bool is_validator;
     bool is_terminal;
+    bool is_list;
 
     char *buf;
     size_t *buf_size;
     size_t max_buf_size;
     
     void *obj;
+    void *accu;
     
     int (*parse)(void *obj, const char *rec, size_t *total_size);
     int (*validate)(void *obj, const char *name, size_t name_size,
                     const char *rec, size_t *total_size);
     int (*run)(void *obj, struct kndTaskArg *args, size_t num_args);
+    int (*append)(void *accu, void *item);
+    int (*alloc)(void *accu, const char *name, size_t name_size, void **item);
 };
-
 
 struct kndTask
 {

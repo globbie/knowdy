@@ -97,6 +97,7 @@ struct kndConcDir
     struct kndConcDir *children;
     size_t num_children;
 
+    bool is_terminal;
     struct kndConcDir *next;
 };
 
@@ -108,6 +109,8 @@ struct kndConcept
     char id[KND_ID_SIZE];
     char next_id[KND_ID_SIZE];
     char next_obj_id[KND_ID_SIZE];
+
+    size_t numid;
 
     char state[KND_STATE_SIZE];
     char next_state[KND_STATE_SIZE];
