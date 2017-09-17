@@ -91,10 +91,9 @@ struct kndText
     struct kndTextState *states;
     size_t num_states;
     knd_format format;
-    
+    size_t depth;
     /******** public methods ********/
-    void (*str)(struct kndText *self,
-               size_t depth);
+    void (*str)(struct kndText *self);
     void (*del)(struct kndText *self);
 
     int (*hilite)(struct kndText *self,

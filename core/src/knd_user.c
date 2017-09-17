@@ -336,7 +336,7 @@ static int kndUser_parse_sync_task(void *obj,
     size_t path_size;
     int err;
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. got sync task..");
 
     s = self->path;
@@ -344,8 +344,8 @@ static int kndUser_parse_sync_task(void *obj,
     s += self->dbpath_size;
     self->path_size += self->dbpath_size;
 
-    path_size =  strlen("/frozen_merge.db");
-    memcpy(s, "/frozen_merge.db", path_size);
+    path_size =  strlen("/frozen_merge.gsp");
+    memcpy(s, "/frozen_merge.gsp", path_size);
     self->path_size += path_size;
     self->path[self->path_size] = '\0';
 
@@ -362,7 +362,8 @@ static int kndUser_parse_sync_task(void *obj,
     self->root_class->log = self->log;
     self->root_class->task = self->task;
     self->root_class->frozen_output_file_name = (const char*)self->path;
-    
+
+
     err = self->root_class->sync(self->root_class, rec, total_size);
     if (err) return err;
 
@@ -524,7 +525,7 @@ static int run_get_user_by_id(void *obj, struct kndTaskArg *args, size_t num_arg
 
     if (DEBUG_USER_LEVEL_TMP) {
         knd_log("++ got user by num id: %.*s", numid_size, numid);
-        self->curr_user->str(self->curr_user, 1);
+        self->curr_user->str(self->curr_user);
     }
 
     /* TODO */

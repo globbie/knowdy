@@ -77,10 +77,10 @@ struct kndNum
 
     struct kndNumState *states;
     size_t num_states;
+    size_t depth;
     
     /******** public methods ********/
-    void (*str)(struct kndNum *self,
-                size_t depth);
+void (*str)(struct kndNum *self);
 
     int (*del)(struct kndNum *self);
     

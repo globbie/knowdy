@@ -217,9 +217,7 @@ struct kndConcept
     void (*init)(struct kndConcept  *self);
     void (*del)(struct kndConcept   *self);
     void (*reset)(struct kndConcept   *self);
-    void (*str)(struct kndConcept *self,
-                size_t depth);
-
+    void (*str)(struct kndConcept *self);
     int (*open)(struct kndConcept   *self);
 
     int (*load)(struct kndConcept   *self,

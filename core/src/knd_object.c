@@ -30,30 +30,21 @@ static void del(struct kndObject *self)
     free(self);
 }
 
-static void str(struct kndObject *self,
-                size_t depth)
+static void str(struct kndObject *self)
 {
-    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
-    char *offset = malloc(offset_size + 1);
-    if (!offset) return;
-
-    
-    memset(offset, ' ', offset_size);
-    offset[offset_size] = '\0';
-
     if (self->type == KND_OBJ_ADDR) {
-        knd_log("\n%sOBJ %.*s::%.*s [%.*s]\n",
-                offset, self->conc->name_size, self->conc->name,
+        knd_log("\n%*sOBJ %.*s::%.*s [%.*s]\n",
+                self->depth * KND_OFFSET_SIZE, "", self->conc->name_size, self->conc->name,
                 self->name_size, self->name,
                 KND_ID_SIZE, self->id);
     }
 
     struct kndElem *elem = self->elems;
     while (elem) {
-        elem->str(elem, depth + 1);
+        elem->depth = self->depth + 1;
+        elem->str(elem);
         elem = elem->next;
     }
-    free(offset);
 }
 
 static int 
@@ -70,7 +61,8 @@ kndObject_export_aggr_JSON(struct kndObject *self)
     while (elem) {
 
         elem->out = self->out;
-        err = elem->export(elem, KND_FORMAT_JSON, 1);
+        elem->format = KND_FORMAT_JSON;
+        err = elem->export(elem);
         if (err) return err;
         
         if (elem->next) {
@@ -249,7 +241,8 @@ kndObject_export_JSON(struct kndObject *self)
 
         /* default export */
         elem->out = out;
-        err = elem->export(elem, KND_FORMAT_JSON, 0);
+        elem->format =  KND_FORMAT_JSON;
+        err = elem->export(elem);
         if (err) {
             knd_log("-- elem not exported: %s", elem->attr->name);
             return err;
@@ -287,19 +280,24 @@ kndObject_export_JSON(struct kndObject *self)
 
 
 static int 
-kndObject_export_GSC(struct kndObject *self)
+kndObject_export_GSP(struct kndObject *self)
 {
     bool got_elem = false;
     struct kndElem *elem;
     bool is_concise = true;
     int err;
-    
-    if (DEBUG_OBJ_LEVEL_2)
-        knd_log("  .. export GSC obj \"%s\" [id: %s]..\n",
-                self->name, self->id);
+
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log("%*s.. export GSP obj \"%.*s\" [id: %.*s]..",
+                self->depth *  KND_OFFSET_SIZE, "", self->name_size, self->name, KND_ID_SIZE, self->id);
 
     err = self->out->write(self->out, "{", 1);
     if (err) return err;
+
+    if (self->type == KND_OBJ_ADDR) {
+        err = self->out->write(self->out, self->name, self->name_size);
+        if (err) return err;
+    }
 
     /*
     if (!self->parent) {
@@ -318,43 +316,6 @@ kndObject_export_GSC(struct kndObject *self)
     }
     */
     
-    /*if (self->filename_size) {
-        err = knd_make_id_path(buf, "repos",
-                               self->cache->repo->id,
-                               self->cache->baseclass->name);
-        if (err) return err;
-
-        if (DEBUG_OBJ_LEVEL_3)
-            knd_log("  == relative Repo path: \"%s\"\n",
-                    buf);
-
-        err = knd_make_id_path(pathbuf, buf, self->id, self->filename);
-        if (err) return err;
-
-        if (DEBUG_OBJ_LEVEL_3)
-            knd_log("   == relative filename: %s\n",
-                    pathbuf);
-        
-        buf_size = sprintf(buf, "{_fn %s}",
-                           pathbuf);
-        err = self->out->write(self->out, buf, buf_size);
-        if (err) return err;
-        
-        self->filepath = strdup(pathbuf);
-        if (!self->filepath) {
-            err = knd_NOMEM;
-            return err;
-        }
-        
-    }
-
-    if (self->filesize) {
-        buf_size = sprintf(buf, "{_fsize %lu}",
-                           (unsigned long)self->filesize);
-        err = self->out->write(self->out, buf, buf_size);
-        if (err) return err;
-        } */
-    
 
     /* ELEMS */
     got_elem = false;
@@ -371,7 +332,8 @@ kndObject_export_GSC(struct kndObject *self)
 
         /* default export */
         elem->out = self->out;
-        err = elem->export(elem, KND_FORMAT_GSC, is_concise);
+        elem->format =  KND_FORMAT_GSP;
+        err = elem->export(elem);
         if (err) {
             knd_log("-- export of \"%s\" elem failed: %d :(", elem->attr->name, err);
             return err;
@@ -467,8 +429,8 @@ kndObject_export(struct kndObject *self)
         err = kndObject_export_HTML(self, is_concise);
         if (err) return err;
         break;*/
-    case KND_FORMAT_GSC:
-        err = kndObject_export_GSC(self);
+    case KND_FORMAT_GSP:
+        err = kndObject_export_GSP(self);
         if (err) return err;
         break;
     default:

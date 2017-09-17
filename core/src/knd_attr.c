@@ -35,58 +35,52 @@ static void del(struct kndAttr *self)
     free(self);
 }
 
-static void str(struct kndAttr *self, size_t depth)
+static void str(struct kndAttr *self)
 {
     struct kndTranslation *tr;
-
-    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
-    char *offset = malloc(offset_size + 1);
-
-    memset(offset, ' ', offset_size);
-    offset[offset_size] = '\0';
 
     const char *type_name = knd_attr_names[self->type];
 
     if (self->is_list)
-        knd_log("\n%s[%s", offset, self->name);
+        knd_log("\n%*s[%s", self->depth * KND_OFFSET_SIZE, "", self->name);
     else
-        knd_log("\n%s{%s %s", offset, type_name, self->name);
+        knd_log("\n%*s{%s %s", self->depth * KND_OFFSET_SIZE, "", type_name, self->name);
 
     if (self->cardinality_size) {
-        knd_log("\n%s    [%s]", offset, self->cardinality);
+        knd_log("\n%*s    [%s]", self->depth * KND_OFFSET_SIZE, "", self->cardinality);
     }
     
     tr = self->tr;
     while (tr) {
-        knd_log("%s   ~ %s %s", offset, tr->locale, tr->val);
+        knd_log("%*s   ~ %s %s", self->depth * KND_OFFSET_SIZE, "", tr->locale, tr->val);
         tr = tr->next;
     }
 
     if (self->classname_size) {
-        knd_log("%s  class template: %s", offset, self->classname);
+        knd_log("%*s  class template: %s", self->depth * KND_OFFSET_SIZE, "", self->classname);
     }
 
     if (self->ref_classname_size) {
-        knd_log("%s  REF class template: %s", offset, self->ref_classname);
+        knd_log("%*s  REF class template: %s", self->depth * KND_OFFSET_SIZE, "", self->ref_classname);
     }
 
     if (self->calc_oper_size) {
-        knd_log("%s  oper: %s attr: %s", offset,
+        knd_log("%*s  oper: %s attr: %s", self->depth * KND_OFFSET_SIZE, "",
                 self->calc_oper, self->calc_attr);
     }
 
     if (self->idx_name_size) {
-        knd_log("%s  idx: %s", offset, self->idx_name);
+        knd_log("%*s  idx: %s", self->depth * KND_OFFSET_SIZE, "", self->idx_name);
     }
 
     if (self->default_val_size) {
-        knd_log("%s  default VAL: %s", offset, self->default_val);
+        knd_log("%*s  default VAL: %s", self->depth * KND_OFFSET_SIZE, "", self->default_val);
     }
     
     if (self->is_list)
-        knd_log("%s]", offset);
+        knd_log("%*s]", self->depth * KND_OFFSET_SIZE, "");
     else
-        knd_log("%s}", offset);
+        knd_log("%*s}",  self->depth * KND_OFFSET_SIZE, "");
 }
 
 
@@ -299,8 +293,8 @@ static int parse_gloss_translation(void *obj,
     int err;
 
     if (DEBUG_ATTR_LEVEL_2) {
-        knd_log("..  gloss translation in \"%s\" REC: \"%s\"\n",
-                name, rec); }
+        knd_log("..  gloss translation in \"%.*s\" REC: \"%s\"\n",
+                name_size, name, rec); }
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,

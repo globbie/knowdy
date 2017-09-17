@@ -43,6 +43,7 @@ typedef enum knd_format { KND_FORMAT_JSON,
                           KND_FORMAT_HTML,
                           KND_FORMAT_JS,
                           KND_FORMAT_GSL,
+                          KND_FORMAT_GSP,
                           KND_FORMAT_GSC
                          } knd_format;
 
@@ -90,7 +91,7 @@ typedef enum knd_storage_type {
 #define LOGIC_AND 1 
 #define LOGIC_OR  2
 
-#define KND_OFFSET_SIZE 2
+#define KND_OFFSET_SIZE 4
 
 #define KND_IDLE_TIMEOUT 10 /* in seconds */
 

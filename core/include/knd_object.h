@@ -146,7 +146,7 @@ struct kndObject
     struct kndObject *next;
 
     /******** public methods ********/
-    void (*str)(struct kndObject *self, size_t depth);
+    void (*str)(struct kndObject *self);
     int (*reset)(struct kndObject *self);
     void (*cleanup)(struct kndObject *self);
 

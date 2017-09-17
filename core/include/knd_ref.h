@@ -59,11 +59,11 @@ struct kndRef
     struct kndRefState *states;
     size_t num_states;
 
+    size_t depth;
     struct kndRef *next;
 
     /******** public methods ********/
-    void (*str)(struct kndRef *self,
-                size_t depth);
+    void (*str)(struct kndRef *self);
 
     void (*del)(struct kndRef *self);
     
