@@ -2748,7 +2748,7 @@ static int export_JSON(struct kndConcept *self)
 }
 
 
-static int attr_items_export_GSC(struct kndConcept *self,
+static int attr_items_export_GSP(struct kndConcept *self,
                                  struct kndAttrItem *items, size_t depth)
 {
     struct kndAttrItem *item;
@@ -2791,7 +2791,7 @@ static int attr_items_export_GSC(struct kndConcept *self,
     return knd_OK;
 }
 
-static int export_GSC(struct kndConcept *self)
+static int export_GSP(struct kndConcept *self)
 {
     struct kndAttr *attr;
     struct kndConcItem *item;
@@ -2800,7 +2800,7 @@ static int export_GSC(struct kndConcept *self)
     int err;
 
     if (DEBUG_CONC_LEVEL_TMP)
-        knd_log(".. GSC export of \"%s\"", self->name);
+        knd_log(".. GSP export of \"%s\"", self->name);
 
     err = out->write(out, "{", 1);
     if (err) return err;
@@ -2822,7 +2822,7 @@ static int export_GSC(struct kndConcept *self)
 
     /*if (self->summary) {
         self->summary->out = self->out;
-        self->summary->format = KND_FORMAT_GSC;
+        self->summary->format = KND_FORMAT_GSP;
         err = self->summary->export(self->summary);
         if (err) return err;
     }
@@ -2830,13 +2830,13 @@ static int export_GSC(struct kndConcept *self)
     
     /*for (item = self->conc_items; item; item = item->next) {
         if (!item->attrs) continue;
-        err = attr_items_export_GSC(self, item->attrs, 0);
+        err = attr_items_export_GSP(self, item->attrs, 0);
         if (err) return err;
         }*/
 
     /*for (attr = self->attrs; attr; attr = attr->next) {
         attr->out = self->out;
-        attr->format = KND_FORMAT_GSC;
+        attr->format = KND_FORMAT_GSP;
         err = attr->export(attr);
         if (err) return err;
         }*/
@@ -2955,7 +2955,7 @@ static int build_obj_updates(struct kndConcept *self)
             err = self->obj_idx->set(self->obj_idx,
                                      (const char*)obj->name, (void*)obj);
             if (err) return err;
-
+            
             if (DEBUG_CONC_LEVEL_2)
                 obj->str(obj, 1);
         }
@@ -3235,7 +3235,7 @@ static int apply_liquid_updates(struct kndConcept *self,
                                   (const char*)obj->name, (void*)obj);
             if (err) return err;
 
-            if (DEBUG_CONC_LEVEL_2) {
+            if (DEBUG_CONC_LEVEL_TMP) {
                 obj->str(obj, 1);
                 knd_log("++ obj registered: \"%.*s\"!",
                         obj->name_size, obj->name);
@@ -3793,9 +3793,9 @@ static int freeze(struct kndConcept *self)
     if (err) return err;
 
     self->out->reset(self->out);
-    err = export_GSC(self);
+    err = export_GSP(self);
     if (err) {
-        knd_log("-- GSC export failed :(");
+        knd_log("-- GSP export failed :(");
         return err;
     }
         
