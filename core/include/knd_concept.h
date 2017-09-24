@@ -77,11 +77,27 @@ struct kndConcFolder
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
-    
+
     size_t num_concepts;
     struct kndConcFolder *next;
 };
 
+
+struct kndObjEntry
+{
+    size_t offset;
+    size_t block_size;
+    struct kndObject *obj;
+};
+
+struct kndObjDir
+{
+    struct kndObjEntry **objs;
+    size_t num_objs;
+
+    struct kndObjDir **dirs;
+    size_t num_dirs;
+};
 
 struct kndConcDir
 {
@@ -93,11 +109,17 @@ struct kndConcDir
     size_t block_size;
 
     size_t body_size;
+    size_t obj_block_size;
     size_t dir_size;
 
     struct kndConcDir *children;
     size_t num_children;
     struct kndConcDir *tail;
+
+    struct kndObjDir **obj_dirs;
+    size_t num_obj_dirs;
+    struct kndObjEntry **objs;
+    size_t num_objs;
 
     bool is_terminal;
     struct kndConcDir *next;
@@ -203,6 +225,9 @@ struct kndConcept
     const char *frozen_output_file_name;
     size_t frozen_output_file_name_size;
     size_t frozen_size;
+
+    const char *frozen_name_idx_path;
+    size_t frozen_name_idx_path_size;
 
     struct kndRefSet *obj_browser;
 

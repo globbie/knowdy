@@ -330,9 +330,11 @@ static int kndUser_parse_sync_task(void *obj,
                                    const char *rec,
                                    size_t *total_size)
 {
+    char buf[KND_TEMP_BUF_SIZE];
+    size_t buf_size;
     struct kndUser *self = (struct kndUser*)obj;
     struct stat st;
-    char *s;
+    char *s, *n;
     size_t path_size;
     int err;
 
@@ -356,18 +358,41 @@ static int kndUser_parse_sync_task(void *obj,
         knd_log("-- existing frozen DB file removed..");
     }
 
+    /* name IDX */
+    n = buf;
+    buf_size = 0;
+    memcpy(n, self->dbpath, self->dbpath_size);
+    n += self->dbpath_size;
+    buf_size += self->dbpath_size;
+    path_size =  strlen("/frozen_name.gsi");
+    memcpy(n, "/frozen_name.gsi", path_size);
+    buf_size += path_size;
+    buf[buf_size] = '\0';
+
+    
     self->task->type = KND_SYNC_STATE;
     self->root_class->out = self->out;
-    self->root_class->dir_out = self->task->spec_out;
+    self->root_class->dir_out = self->task->update;
     self->root_class->log = self->log;
     self->root_class->task = self->task;
     self->root_class->frozen_output_file_name = (const char*)self->path;
+    self->root_class->frozen_name_idx_path = buf;
+    self->root_class->frozen_name_idx_path_size = buf_size;
 
 
     err = self->root_class->sync(self->root_class, rec, total_size);
     if (err) return err;
 
     /* bump frozen count */
+
+    /* temp: simply rename the GSP file */
+    self->out->reset(self->out);
+    err = self->out->write(self->out, self->dbpath, self->dbpath_size);
+    if (err) return err;
+    err = self->out->write(self->out, "/frozen.gsp", strlen("/frozen.gsp"));
+    if (err) return err;
+    err = rename(self->path, self->out->buf);
+    if (err) return err;
 
     /* inform retrievers */
 
@@ -380,6 +405,7 @@ static int kndUser_parse_sync_task(void *obj,
             knd_log("++ frozen DB file sync'ed OK, total bytes: %lu",
                     (unsigned long)st.st_size);
     }
+
     
     return knd_OK;
 }
@@ -392,7 +418,7 @@ static int kndUser_parse_class_select(void *obj,
     struct kndUser *self = (struct kndUser*)obj;
     int err;
 
-    if (DEBUG_USER_LEVEL_2)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. parsing the default class select: \"%s\"", rec);
 
     self->root_class->out = self->out;

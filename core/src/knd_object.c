@@ -285,131 +285,41 @@ kndObject_export_GSP(struct kndObject *self)
     bool got_elem = false;
     struct kndElem *elem;
     bool is_concise = true;
+    size_t start_size = 0;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
-        knd_log("%*s.. export GSP obj \"%.*s\" [id: %.*s]..",
-                self->depth *  KND_OFFSET_SIZE, "", self->name_size, self->name, KND_ID_SIZE, self->id);
-
-    err = self->out->write(self->out, "{", 1);
-    if (err) return err;
-
     if (self->type == KND_OBJ_ADDR) {
+        start_size = self->out->buf_size;
+        if (DEBUG_OBJ_LEVEL_1)
+            knd_log("%*s.. export GSP obj \"%.*s\" [id: %.*s]..",
+                    self->depth *  KND_OFFSET_SIZE, "",
+                    self->name_size, self->name, KND_ID_SIZE, self->id);
+
+        err = self->out->write(self->out, "{", 1);
+        if (err) return err;
+
         err = self->out->write(self->out, self->name, self->name_size);
         if (err) return err;
-    }
-
-    /*
-    if (!self->parent) {
-        err = self->out->write(self->out, self->name, self->name_size);
-        if (err) return err;
-
-        err = self->out->write(self->out, " ", 1);
-        if (err) return err;
-    }
-    else {
-        if (!self->parent->is_list) {
-            err = self->out->write(self->out, self->parent->name, self->parent->name_size);
-            if (err) return err;
-        }
 
     }
-    */
-    
 
     /* ELEMS */
-    got_elem = false;
-    elem = self->elems;
-    while (elem) {
-        /* filter out detailed presentation */
-        /*if (is_concise) {
-            if (elem->attr->concise_level)
-                goto export_elem;
-            goto next_elem;
-            }*/
-
-        //export_elem:
-
-        /* default export */
+    for (elem = self->elems; elem; elem = elem->next) {
         elem->out = self->out;
-        elem->format =  KND_FORMAT_GSP;
+        elem->format = KND_FORMAT_GSP;
         err = elem->export(elem);
         if (err) {
             knd_log("-- export of \"%s\" elem failed: %d :(", elem->attr->name, err);
             return err;
         }
-        
-        got_elem = true;
-        
-        //next_elem:
-        elem = elem->next;
     }
-
-    /*relc = self->cache->rel_classes;
-    while (relc) {
-        reltype = relc->rel_types;
-        while (reltype) {
-            refset = reltype->idx->get(reltype->idx, (const char*)self->name);
-            if (!refset) goto next_reltype;
-
-            err = self->out->write(self->out, "{_cls{", strlen("{_cls{"));
-            if (err) return err;
-
-            err = self->out->write(self->out, relc->conc->name, relc->conc->name_size);
-            if (err) return err;
-
-            err = self->out->write(self->out, "{_rel{", strlen("{_rel{"));
-            if (err) return err;
-
-            err = self->out->write(self->out,
-                                   reltype->attr->name,
-                                   reltype->attr->name_size);
-            
-
-            err = self->out->write(self->out, "[", 1);
-            if (err) return err;
-
-            for (i = 0; i < KND_ID_BASE; i++) {
-                idx = refset->idx[i];
-                if (!idx) continue;
-
-                for (j = 0; j < KND_ID_BASE; j++) {
-                    term_idx = idx->idx[j];
-                    if (!term_idx) continue;
-
-                    for (ri = 0; ri < KND_ID_BASE; ri++) {
-                        ref = term_idx->refs[ri];
-                        if (!ref) continue;
-
-                        err = self->out->write(self->out, "{", 1);
-                        if (err) return err;
-
-                        err = self->out->write(self->out, ref->obj_id, KND_ID_SIZE);
-                        if (err) return err;
-                        
-                        err = self->out->write(self->out, "}", 1);
-                        if (err) return err;
-                    }
-                    
-                }
-            }
-            err = self->out->write(self->out, "]", 1);
-            if (err) return err;
-            
-
-            err = self->out->write(self->out, "}}}}", 4);
-            if (err) return err;
-            
-        next_reltype:
-            reltype = reltype->next;
-        }
-        
-        relc = relc->next;
-    }
-    */
     
-    err = self->out->write(self->out, "}", 1);
-    if (err) return err;
+    if (self->type == KND_OBJ_ADDR) {
+        err = self->out->write(self->out, "}", 1);
+        if (err) return err;
+
+        self->frozen_size = self->out->buf_size - start_size;
+    }
     
     return knd_OK;
 }

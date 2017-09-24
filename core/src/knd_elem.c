@@ -280,118 +280,70 @@ kndElem_export_GSP(struct kndElem *self)
     struct kndObject *obj;
     struct kndText *text;
     struct kndRef *ref;
-
     struct kndOutput *out = self->out;
     size_t curr_size;
-    //unsigned long numval;
     int err;
 
+    if (DEBUG_ELEM_LEVEL_2)
+        knd_log("  .. GSP export of %.*s elem.. ",
+                self->attr->name_size, self->attr->name);
+
     if (self->aggr) {
-        if (self->is_list) {
-            buf_size = sprintf(buf, "\"%s_l\":[",
-                               self->states->val);
-            err = out->write(out, buf, buf_size);
-            if (err) return err;
-
-
-            obj = self->aggr;
-            while (obj) {
-                obj->out = out;
-                err = obj->export(obj);
-                if (obj->next) {
-                    err = out->write(out, ",", 1);
-                    if (err) return err;
-                }
-
-                obj = obj->next;
-            }
-
-            err = out->write(out, "]", 1);
-            if (err) return err;
-
-            return knd_OK;
-        }
-
         /* single anonymous aggr obj */
-        err = out->write(out, "\"", 1);
-        if (err) goto final;
+        err = out->write(out, "{", 1);
+        if (err) return err;
         err = out->write(out, self->attr->name, self->attr->name_size);
-        if (err) goto final;
-        err = out->write(out, "\":", strlen("\":"));
-        if (err) goto final;
+        if (err) return err;
         
         self->aggr->out = out;
+        self->aggr->format = KND_FORMAT_GSP;
         err = self->aggr->export(self->aggr);
-        
+
+        err = out->write(out, "}", 1);
+        if (err) return err;
         return err;
     }
 
-    /* attr name */
-    err = out->write(out, "\"", 1);
-    if (err) goto final;
+    err = out->write(out, "{", 1);
+    if (err) return err;
     err = out->write(out, self->attr->name, self->attr->name_size);
-    if (err) goto final;
-    err = out->write(out, "\":", strlen("\":"));
-    if (err) goto final;
+    if (err) return err;
+    err = out->write(out, " ", 1);
+    if (err) return err;
 
     /* key:value repr */
     switch (self->attr->type) {
     case KND_ATTR_NUM:
         err = out->write(out, self->num->states->val, self->num->states->val_size);
-        if (err) goto final;
-        return knd_OK;
+        if (err) return err;
+        break;
     case KND_ATTR_STR:
     case KND_ATTR_BIN:
-        err = out->write(out, "\"", 1);
-        if (err) goto final;
         err = out->write(out, self->states->val, self->states->val_size);
-        if (err) goto final;
-        err = out->write(out, "\"", 1);
-        if (err) goto final;
-        return knd_OK;
+        if (err) return err;
+        break;
+    case  KND_ATTR_TEXT:
+        text = self->text;
+        text->out = out;
+        text->format = KND_FORMAT_GSP;
+        err = text->export(text);
+        if (err) return err;
+        break;
+    case KND_ATTR_REF:
+        ref = self->ref;
+        ref->out = out;
+        ref->format = KND_FORMAT_GSP;
+        err = ref->export(ref);
+        if (err) return err;
+        break;
     default:
         break;
     }
 
-    /* nested repr */
-    err = out->write(out, "{", 1);
-    if (err) goto final;
+    err = out->write(out, "}", 1);
+    if (err) return err;
 
-    curr_size = out->buf_size;
-
-    if (self->attr) {
-        switch (self->attr->type) {
-        case  KND_ATTR_TEXT:
-            text = self->text;
-            text->out = out;
-            text->format = KND_FORMAT_GSP;
-            err = text->export(text);
-            if (err) goto final;
-            break;
-        case KND_ATTR_REF:
-            ref = self->ref;
-            ref->out = out;
-            ref->format = KND_FORMAT_GSP;
-            err = ref->export(ref);
-            if (err) goto final;
-            break;
-        default:
-            break;
-        }
-    }
-    else {
-        if (self->states) {
-            buf_size = sprintf(buf, "\"val\":\"%s\"",
-                               self->states->val);
-            err = out->write(out, buf, buf_size);
-            if (err) goto final;
-        }
-    }
-    
-
-final:
-
-    return err;
+    return knd_OK;
 }
 
 static int 
@@ -399,7 +351,7 @@ kndElem_export(struct kndElem *self)
 {
     int err;
     bool is_concise = 0;
-    
+
     switch(self->format) {
     case KND_FORMAT_JSON:
         err = kndElem_export_JSON(self);
