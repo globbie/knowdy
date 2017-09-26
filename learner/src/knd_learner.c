@@ -460,12 +460,8 @@ kndLearner_new(struct kndLearner **rec,
     dc->dbpath_size = self->schema_path_size;
 
     /* specific allocations of the root class */
-    err = ooDict_new(&dc->class_idx, KND_SMALL_DICT_SIZE);
+    err = ooDict_new(&dc->class_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
-
-    /*err = ooDict_new(&dc->obj_idx, KND_LARGE_DICT_SIZE);
-    if (err) return err;
-    */
 
     /* obj/elem allocator */
     if (self->max_objs) {

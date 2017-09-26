@@ -416,10 +416,19 @@ static int kndUser_parse_class_select(void *obj,
                                       size_t *total_size)
 {
     struct kndUser *self = (struct kndUser*)obj;
+    struct kndOutput *out = self->out;
     int err;
 
     if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. parsing the default class select: \"%s\"", rec);
+
+    err = out->write(out, self->dbpath, self->dbpath_size);
+    if (err) return err;
+    err = out->write(out, "/frozen.gsp", strlen("/frozen.gsp"));
+    if (err) return err;
+    memcpy(self->path, out->buf, out->buf_size);
+    self->path_size = out->buf_size;
+    self->path[self->path_size] = '\0';
 
     self->root_class->out = self->out;
     self->root_class->log = self->log;
@@ -427,6 +436,8 @@ static int kndUser_parse_class_select(void *obj,
 
     self->root_class->dbpath = self->dbpath;
     self->root_class->dbpath_size = self->dbpath_size;
+    self->root_class->frozen_output_file_name = (const char*)self->path;
+    self->root_class->frozen_output_file_name_size = self->path_size;
 
     self->root_class->locale = self->locale;
     self->root_class->locale_size = self->locale_size;

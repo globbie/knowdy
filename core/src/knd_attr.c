@@ -176,13 +176,88 @@ static int export_JSON(struct kndAttr *self)
     return knd_OK;
 }
 
+static int export_GSP(struct kndAttr *self)
+{
+    struct kndOutput *out;
+    struct kndTranslation *tr;
+    
+    const char *type_name = knd_attr_names[self->type];
+    size_t type_name_size = strlen(knd_attr_names[self->type]);
+    int err;
+
+    out = self->out;
+
+    err = out->write(out, "{", 1);
+    if (err) return err;
+    err = out->write(out, type_name, type_name_size);
+    if (err) return err;
+    err = out->write(out, " ", 1);
+    if (err) return err;
+    err = out->write(out, self->name, self->name_size);
+    if (err) return err;
+    
+    if (self->is_list) {
+        err = out->write(out, "{list 1}", strlen("{list 1}"));
+        if (err) return err;
+    }
+    
+    if (self->ref_classname_size) {
+        err = out->write(out, "{refc ", strlen("{refc "));
+        if (err) return err;
+        err = out->write(out, self->ref_classname, self->ref_classname_size);
+        if (err) return err;
+        err = out->write(out, "}", 1);
+        if (err) return err;
+    }
+    
+    /* choose gloss */
+    tr = self->tr;
+    if (self->tr) {
+        err = out->write(out,
+                         "[gloss", strlen("[gloss"));
+        if (err) return err;
+    }
+    
+    while (tr) {
+        err = out->write(out,
+                         "{", 1);
+        if (err) return err;
+        err = out->write(out, tr->locale,  tr->locale_size);
+        if (err) return err;
+        err = out->write(out, " ", 1);
+        if (err) return err;
+        err = out->write(out, tr->val,  tr->val_size);
+        if (err) return err;
+        err = out->write(out, "}", 1);
+        if (err) return err;
+        break;
+
+    next_tr:
+        tr = tr->next;
+    }
+    if (self->tr) {
+        err = out->write(out,
+                         "]", 1);
+        if (err) return err;
+    }
+    
+    err = out->write(out, "}", 1);
+    if (err) return err;
+
+    return knd_OK;
+}
+
 static int export(struct kndAttr *self)
 {
     int err = knd_FAIL;
 
-    switch(self->format) {
-        case KND_FORMAT_JSON:
+    switch (self->format) {
+    case KND_FORMAT_JSON:
         err = export_JSON(self);
+        if (err) goto final;
+        break;
+    case KND_FORMAT_GSP:
+        err = export_GSP(self);
         if (err) goto final;
         break;
     default:

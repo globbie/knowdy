@@ -338,7 +338,7 @@ static int export_HTML(struct kndText *self)
 
 
 
-static int export_GSC(struct kndText *self)
+static int export_GSP(struct kndText *self)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -472,8 +472,8 @@ static int export(struct kndText *self)
         err = export_HTML(self);
         if (err) return err;
         break;
-    case KND_FORMAT_GSC:
-        err = export_GSC(self);
+    case KND_FORMAT_GSP:
+        err = export_GSP(self);
         if (err) return err;
         break;
     default:

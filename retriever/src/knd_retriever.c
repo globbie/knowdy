@@ -454,7 +454,8 @@ kndRetriever_new(struct kndRetriever **rec,
     conc->dir = malloc(sizeof(struct kndConcDir));
     if (!conc->dir) return knd_NOMEM;
     memset(conc->dir, 0, sizeof(struct kndConcDir));
-    memset(conc->dir->id, '0', KND_ID_SIZE);
+    memset(conc->dir->name, '0', KND_ID_SIZE);
+    conc->dir->name_size = KND_ID_SIZE;
     conc->dir->conc = conc;
 
     err = ooDict_new(&conc->class_idx, KND_SMALL_DICT_SIZE);
