@@ -12,6 +12,7 @@ addons:
     - libzmq3-dev
     - libmysqlclient-dev
     - check
+    - subunit
 dist: trusty
 compiler:
 - gcc
