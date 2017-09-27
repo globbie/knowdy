@@ -71,23 +71,23 @@ START_TEST(parse_tag_unknown)
     ck_assert(rc == knd_NO_MATCH);
 END_TEST
 
-START_TEST(parse_field_empty)
+START_TEST(parse_value_empty)
     char sid[6]; size_t sid_size = 0;
     struct kndTaskSpec specs[] = {{ .name = "sid", .name_size = strlen("sid"), .buf = sid, .buf_size = &sid_size, .max_buf_size = sizeof sid }};
 
     rc = knd_parse_task(rec = "{sid}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_LIMIT);  // FIXME(ki.stfu): or smth else?
+    ck_assert(rc == knd_FORMAT);
 END_TEST
 
-START_TEST(parse_field_empty_with_spaces)
+START_TEST(parse_value_empty_with_spaces)
     char sid[6]; size_t sid_size = 0;
     struct kndTaskSpec specs[] = {{ .name = "sid", .name_size = strlen("sid"), .buf = sid, .buf_size = &sid_size, .max_buf_size = sizeof sid }};
 
     rc = knd_parse_task(rec = "{sid   }", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_LIMIT);
+    ck_assert(rc == knd_FORMAT);
 END_TEST
 
-START_TEST(parse_field_max_size)
+START_TEST(parse_value_max_size)
     char sid[6]; size_t sid_size = 0;
     struct kndTaskSpec specs[] = {{ .name = "sid", .name_size = strlen("sid"), .buf = sid, .buf_size = &sid_size, .max_buf_size = sizeof sid }};
 
@@ -97,7 +97,7 @@ START_TEST(parse_field_max_size)
     ck_assert(sid_size == strlen("123456") && !memcmp(sid, "123456", sid_size));
 END_TEST
 
-START_TEST(parse_field_max_size_plus_one)
+START_TEST(parse_value_max_size_plus_one)
     char sid[6]; size_t sid_size = 0;
     struct kndTaskSpec specs[] = {{ .name = "sid", .name_size = strlen("sid"), .buf = sid, .buf_size = &sid_size, .max_buf_size = sizeof sid }};
 
@@ -112,10 +112,10 @@ int main() {
    tcase_add_test(tc, parse_tag_empty);
    tcase_add_test(tc, parse_tag_empty_with_spaces);
    tcase_add_test(tc, parse_tag_unknown);
-   tcase_add_test(tc, parse_field_empty);
-   tcase_add_test(tc, parse_field_empty_with_spaces);
-   tcase_add_test(tc, parse_field_max_size);
-   tcase_add_test(tc, parse_field_max_size_plus_one);
+   tcase_add_test(tc, parse_value_empty);
+   tcase_add_test(tc, parse_value_empty_with_spaces);
+   tcase_add_test(tc, parse_value_max_size);
+   tcase_add_test(tc, parse_value_max_size_plus_one);
 
    Suite* s = suite_create("suite");
    suite_add_tcase(s, tc);
