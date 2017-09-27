@@ -448,7 +448,7 @@ knd_check_implied_field(const char *name,
     size_t impl_arg_name_size = strlen("_impl");
     int err;
     
-    assert(impl_arg_name_size <= KND_NAME_SIZE && "\"_impl\" is lengthier than KND_NAME_SIZE");
+    assert(impl_arg_name_size <= KND_NAME_SIZE && "\"_impl\" is longer than KND_NAME_SIZE");
     assert(name_size && "implied val is empty");
 
     if (DEBUG_PARSER_LEVEL_2)
