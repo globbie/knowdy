@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -448,13 +449,13 @@ knd_check_implied_field(const char *name,
     int err;
     
     assert(impl_arg_name_size <= KND_NAME_SIZE && "\"_impl\" is lengthier than KND_NAME_SIZE");
-    assert(name_size && "implied ");
+    assert(name_size && "implied val is empty");
 
     if (DEBUG_PARSER_LEVEL_2)
         knd_log("++ got implied val: \"%.*s\" [%zu]",
                 name_size, name, name_size);
     if (name_size > KND_NAME_SIZE) return knd_LIMIT;
-                        
+
     arg = &args[*num_args];
     memcpy(arg->name, impl_arg_name, impl_arg_name_size);
     arg->name[impl_arg_name_size] = '\0';
@@ -726,6 +727,10 @@ int knd_parse_task(const char *rec,
             if (in_terminal) {
                 
                 err = check_name_limits(b, e, &name_size);
+                if (!name_size) {
+                    knd_log("-- empty value :(");
+                    return knd_FORMAT;
+                }
                 if (err) {
                     knd_log("-- name limit reached :(");
                     return err;
