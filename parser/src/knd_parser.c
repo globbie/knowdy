@@ -465,7 +465,7 @@ knd_check_implied_field(const char *name,
     arg->val[name_size] = '\0';
     arg->val_size = name_size;
 
-    *num_args++;
+    (*num_args)++;
 
     /* any action needed? */
     for (size_t i = 0; i < num_specs; i++) {
