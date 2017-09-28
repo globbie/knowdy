@@ -85,8 +85,7 @@ check_name_limits(const char *b, const char *e, size_t *buf_size)
         return knd_LIMIT;
     }
     if ((*buf_size) >= KND_NAME_SIZE) {
-        knd_log("-- field tag too large: %lu bytes: BEGIN: %s\n\n END: %s",
-                (unsigned long)buf_size, b, e);
+        knd_log("-- field tag too large: %zu", buf_size);
         return knd_LIMIT;
     }
     return knd_OK;
@@ -1145,12 +1144,13 @@ static int knd_parse_list(const char *rec,
 
     struct kndTaskSpec *spec = NULL;
     int (*append_item)(void *accu, void *item) = NULL;
-    int (*alloc_item)(void *accu, const char *name, size_t name_size, void **item) = NULL;
+    int (*alloc_item)(void *accu, const char *name, size_t name_size, size_t count, void **item) = NULL;
 
     bool in_list = false;
     bool got_tag = false;
     bool in_item = false;
     size_t chunk_size = 0;
+    size_t item_count = 0;
     int err;
 
     c = rec;
@@ -1169,8 +1169,24 @@ static int knd_parse_list(const char *rec,
         case ' ':
             if (!in_list) break;
             if (got_tag) {
-                if (!in_list) break;
 
+                if (spec->is_atomic) {
+                    /* get atomic item */
+                    err = check_name_limits(b, e, &name_size);
+                    if (err) return err;
+
+                    if (DEBUG_PARSER_LEVEL_2)
+                        knd_log("  == got new item: \"%.*s\"",
+                                name_size, b);
+                    err = alloc_item(accu, b, name_size, item_count, &item);
+                    if (err) return err;
+
+                    item_count++;
+                    b = c + 1;
+                    e = b;
+                    break;
+                }
+                
                 /* get list item's name */
                 err = check_name_limits(b, e, &name_size);
                 if (err) return err;
@@ -1179,7 +1195,7 @@ static int knd_parse_list(const char *rec,
                     knd_log("  == list got new item: \"%.*s\" %p",
                             name_size, b, alloc_item);
 
-                err = alloc_item(accu, b, name_size, &item);
+                err = alloc_item(accu, b, name_size, item_count, &item);
                 if (err) return err;
 
                 /* parse item */
@@ -1203,7 +1219,7 @@ static int knd_parse_list(const char *rec,
             err = check_name_limits(b, e, &name_size);
             if (err) return err;
 
-            if (DEBUG_PARSER_LEVEL_2)
+            if (DEBUG_PARSER_LEVEL_TMP)
                 knd_log("++ list got tag: \"%.*s\" [%lu]",
                         name_size, b, (unsigned long)name_size);
 
@@ -1214,10 +1230,21 @@ static int knd_parse_list(const char *rec,
                 return err;
             }
 
-            if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ got list SPEC: \"%s\"  alloc: %p",
-                        spec->name, spec->alloc);
+            if (DEBUG_PARSER_LEVEL_TMP)
+                knd_log("++ got list SPEC: \"%s\"",
+                        spec->name);
 
+            if (spec->is_atomic) {
+                if (!spec->accu) return knd_FAIL;
+                if (!spec->alloc) return knd_FAIL;
+                got_tag = true;
+                accu = spec->accu;
+                alloc_item = spec->alloc;
+                b = c + 1;
+                e = b;
+                break;
+            }
+            
             if (!spec->append) return knd_FAIL;
             if (!spec->accu) return knd_FAIL;
             if (!spec->alloc) return knd_FAIL;

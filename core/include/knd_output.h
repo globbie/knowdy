@@ -15,6 +15,7 @@ struct kndOutput
     size_t buf_size;
     size_t max_size;
     size_t free_space;
+    size_t threshold_size;
 
     char *file;
     size_t file_size;

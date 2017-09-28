@@ -36,60 +36,46 @@ static void del(struct kndElem *self)
 }
 
 
-static void str(struct kndElem *self, size_t depth)
+static void str(struct kndElem *self)
 {
-    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
-    char *offset = malloc(offset_size + 1);
-
-    struct kndObject *obj;
-    struct kndText *text;
-    
-    memset(offset, ' ', offset_size);
-    offset[offset_size] = '\0';
-
     if (self->states && self->states->val_size)
-        knd_log("%s%s => %s", offset, self->attr->name, self->states->val);
-
+        knd_log("%*s%s => %s", self->depth * KND_OFFSET_SIZE, "",
+                self->attr->name, self->states->val);
     if (self->aggr) {
         if (self->is_list) {
-            knd_log("%s   inline LIST\n",
-                    offset);
-            
-            obj = self->aggr;
+            knd_log("%*s[%.*s\n",
+                    self->depth * KND_OFFSET_SIZE, "", self->attr->name_size, self->attr->name);
+            struct kndObject *obj = self->aggr;
             while (obj) {
                 obj->depth = self->depth + 1;
                 obj->str(obj);
                 obj = obj->next;
             }
+            knd_log("%*s]\n",
+                    self->depth * KND_OFFSET_SIZE, "");
+            return;
         }
-        else {
-            knd_log("%s%s:",
-                    offset, self->attr->name);
-            self->aggr->depth = self->depth + 1;
-            self->aggr->str(self->aggr);
-        }
+
+        knd_log("%*s%.*s:",
+                self->depth * KND_OFFSET_SIZE, "", self->attr->name_size, self->attr->name);
+        self->aggr->depth = self->depth + 1;
+        self->aggr->str(self->aggr);
+        return;
     }
 
     switch (self->attr->type) {
     case KND_ATTR_REF:
+        self->ref->depth = self->depth + 1;
         self->ref->str(self->ref);
         return;
     case KND_ATTR_NUM:
+        self->num->depth = self->depth + 1;
         self->num->str(self->num);
         return;
     case KND_ATTR_TEXT:
-        text = self->text;
-        text->str(text);
+        self->text->depth = self->depth + 1;
+        self->text->str(self->text);
         return;
-        /*case KND_ATTR_FILE:
-        elem_state = self->states;
-        while (elem_state) {
-            knd_log("%s  FILE -> %s [#%lu]\n", offset,
-                    elem_state->val,
-                    (unsigned long)elem_state->state);
-            elem_state = elem_state->next;
-        }
-        return; */
     default:
         break;
     }
@@ -263,13 +249,11 @@ kndElem_export_JSON(struct kndElem *self)
             if (err) goto final;
         }
     }
-    
 
 final:
 
     return err;
 }
-
 
 static int
 kndElem_export_GSP(struct kndElem *self)

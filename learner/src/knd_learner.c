@@ -136,6 +136,12 @@ kndLearner_start(struct kndLearner *self)
                 printf ("\telapsed CPU time:        %f\n",  (float) (c1 - c0)/CLOCKS_PER_SEC);
                 knd_log("\tTOTAL objs imported: %lu", (unsigned long)self->admin->root_class->num_objs);
             }
+            if (!strcmp(obj, "SYNC TEST")) {
+                t1 = time(NULL);
+                c1 = clock();
+                printf ("\telapsed wall clock time: %ld\n", (long)  (t1 - t0));
+                printf ("\telapsed CPU time:        %f\n",  (float) (c1 - c0)/CLOCKS_PER_SEC);
+            }
         }
 
         if (err) {
@@ -464,12 +470,14 @@ kndLearner_new(struct kndLearner **rec,
     if (err) goto error;
 
     /* obj/elem allocator */
-    if (self->max_objs) {
-        dc->obj_storage = calloc(self->max_objs, sizeof(struct kndObject));
-        if (!dc->obj_storage) return knd_NOMEM;
+    if (!self->max_objs) self->max_objs = KND_MIN_OBJS;
 
-        dc->obj_storage_max = self->max_objs;
+    dc->obj_storage = calloc(self->max_objs, sizeof(struct kndObject));
+    if (!dc->obj_storage) {
+        knd_log("-- objs not allocated :(");
+        return knd_NOMEM;
     }
+    dc->max_objs = self->max_objs;
 
     /* read class definitions */
     dc->batch_mode = true;
@@ -487,9 +495,10 @@ kndLearner_new(struct kndLearner **rec,
     dc->dbpath_size = self->path_size;
 
     /* read any existing updates to the frozen DB */
-    err = dc->restore(dc);
+    /*err = dc->restore(dc);
     if (err) return err;
-
+    */
+    
     /* test
     err = dc->build_diff(dc, "0001");
     if (err) return err;

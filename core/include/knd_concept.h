@@ -196,8 +196,8 @@ struct kndConcept
     /* allocator */
     struct kndObject *obj_storage;
     size_t obj_storage_size;
-    size_t obj_storage_max;
-    
+    size_t max_objs;
+
     /* incoming */
     struct kndConcept *inbox;
     size_t inbox_size;

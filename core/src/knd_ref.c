@@ -23,24 +23,16 @@
 static void
 del(struct kndRef *self)
 {
-
     free(self);
 }
 
-static void str(struct kndRef *self, size_t depth)
+static void str(struct kndRef *self)
 {
-    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
-    char *offset = malloc(offset_size + 1);
-    if (!offset) return;
-    
-    memset(offset, ' ', offset_size);
-    offset[offset_size] = '\0';
-
     if (self->states) {
-        knd_log("%s%s -> \"%s\"", offset,
-                self->elem->attr->name, self->states->val);
+        knd_log("%*s%.*s -> \"%.*s\"", self->depth * KND_OFFSET_SIZE, "",
+                self->elem->attr->name_size, self->elem->attr->name,
+                self->states->val_size, self->states->val);
     }
-    free(offset);
 }
 
 static int
@@ -56,7 +48,6 @@ kndRef_set_reverse_rel(struct kndRef *self,
         knd_log(".. set REF from %s => %s",
                 conc->name,
                 obj->conc->name);
-    
     for (relc = obj->reverse_rel_classes; relc; relc = relc->next) {
         if (relc->conc == conc) break;
     }
@@ -70,7 +61,6 @@ kndRef_set_reverse_rel(struct kndRef *self,
         relc->next = obj->reverse_rel_classes;
         obj->reverse_rel_classes = relc;
     }
-    
     for (reltype = relc->rel_types; reltype; reltype = reltype->next) {
         if (reltype->attr == self->elem->attr) break;
     }
