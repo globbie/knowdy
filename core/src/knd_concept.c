@@ -1275,7 +1275,8 @@ static int parse_import_obj(void *data,
     err = c->obj_idx->set(c->obj_idx, obj->name, (void*)obj);
     if (err) return err;
     */
-    if (DEBUG_CONC_LEVEL_2) {
+
+    if (DEBUG_CONC_LEVEL_TMP) {
         obj->depth = self->depth + 1;
         obj->str(obj);
     }

@@ -516,9 +516,9 @@ int knd_parse_task(const char *rec,
     b = rec;
     e = rec;
 
-    if (DEBUG_PARSER_LEVEL_1)
-        knd_log("\n\n*** start basic PARSING: \"%s\" num specs: %lu [%p]",
-                rec, (unsigned long)num_specs, specs);
+    if (DEBUG_PARSER_LEVEL_2)
+        knd_log("\n\n*** start basic PARSING: \"%.*s\" num specs: %lu [%p]",
+                16, rec, (unsigned long)num_specs, specs);
 
     while (*c) {
         switch (*c) {
@@ -865,8 +865,8 @@ int knd_parse_task(const char *rec,
             break;
         case ')':
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("\n\n-- END OF BASIC LOOP [%p]  STARTED at: \"%s\" FINISHED at: \"%s\"\n\n",
-                        specs, rec, c);
+                knd_log("\n\n-- END OF BASIC LOOP [%p] STARTED at: \"%.*s\" FINISHED at: \"%.*s\"\n\n",
+                        specs, 16, rec, 16, c);
 
             if (!in_field) {
                 if (in_implied_field) {
@@ -875,8 +875,27 @@ int knd_parse_task(const char *rec,
                         err = knd_check_implied_field(b, name_size, specs, num_specs, args, &num_args);
                         if (err) return err;
                     }
+                    *total_size = c - rec;
+                    return knd_OK;
+                }
+
+                /* any default action to take? */
+                if (!spec) {
+                    err = knd_find_spec(specs, num_specs,
+                                        "default", strlen("default"), KND_CHANGE_STATE, &spec);
+                    if (!err) {
+                        if (spec->run) {
+                            err = spec->run(spec->obj, args, num_args);
+                            if (err) {
+                                knd_log("-- \"%.*s\" func run failed: %d :(",
+                                        spec->name_size, spec->name, err);
+                                return err;
+                            }
+                        }
+                    }
                 }
             }
+            
             *total_size = c - rec;
             return knd_OK;
         case '[':
@@ -969,8 +988,8 @@ static int knd_parse_state_change(const char *rec,
             }
 
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ got func SPEC: \"%s\"  default: %d  terminal: %d",
-                        spec->name, spec->is_default, spec->is_terminal);
+                knd_log("++ got func SPEC: \"%.*s\" default: %d  terminal: %d",
+                        spec->name_size, spec->name, spec->is_default, spec->is_terminal);
 
             if (spec->validate) {
                 err = spec->validate(spec->obj,
@@ -1043,13 +1062,12 @@ static int knd_parse_state_change(const char *rec,
             }
             break;
         case ')':
-            /*if (in_change) {
-                in_implied_field = false;
-                in_change = false;
-                in_tag = false;
-                break;
+            if (DEBUG_PARSER_LEVEL_2) {
+                if (spec) {
+                    knd_log("== END parse state change: \"%.*s\" [%.*s]",
+                            16, c, spec->name_size, spec->name);
+                }
             }
-            */
 
             if (!spec) {
                 /* activate spec search */

@@ -38,9 +38,6 @@ static void del(struct kndElem *self)
 
 static void str(struct kndElem *self)
 {
-    if (self->states && self->states->val_size)
-        knd_log("%*s%s => %s", self->depth * KND_OFFSET_SIZE, "",
-                self->attr->name, self->states->val);
     if (self->aggr) {
         if (self->is_list) {
             knd_log("%*s[%.*s\n",
@@ -79,6 +76,9 @@ static void str(struct kndElem *self)
     default:
         break;
     }
+
+    knd_log("%*s%s => %s", self->depth * KND_OFFSET_SIZE, "",
+            self->attr->name, self->states->val);
 }
 
 
@@ -103,7 +103,6 @@ kndElem_export_JSON(struct kndElem *self)
                                self->states->val);
             err = out->write(out, buf, buf_size);
             if (err) return err;
-
 
             obj = self->aggr;
             while (obj) {
@@ -361,6 +360,13 @@ kndElem_export(struct kndElem *self)
     return knd_OK;
 }
 
+static int run_empty_val_warning(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndElem *self = (struct kndElem*)obj;
+    knd_log("-- empty val of \"%.*s\" not accepted :(",
+            self->attr->name_size, self->attr->name);
+    return knd_FAIL;
+}
 
 static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
 {
@@ -377,9 +383,13 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
             val_size = arg->val_size;
         }
     }
+
+    if (DEBUG_ELEM_LEVEL_2)
+        knd_log(".. %.*s to set val \"%.*s\"", self->attr->name_size, self->attr->name,
+                val_size, val);
+
     if (!val_size) return knd_FAIL;
     if (val_size >= KND_VAL_SIZE) return knd_LIMIT;
-    
     state = malloc(sizeof(struct kndElemState));
     if (!state) return knd_NOMEM;
     memset(state, 0, sizeof(struct kndElemState));
@@ -420,8 +430,20 @@ static int parse_GSL(struct kndElem *self,
         { .is_implied = true,
           .run = run_set_val,
           .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = run_empty_val_warning,
+          .obj = self
         }
     };
+
+    if (DEBUG_ELEM_LEVEL_TMP)
+        knd_log(".. ELEM \"%.*s\" parse REC: \"%.*s\"",
+                self->attr->name_size, self->attr->name,
+                16, rec);
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
