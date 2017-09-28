@@ -433,7 +433,6 @@ knd_spec_buf_copy(struct kndTaskSpec *spec,
     return knd_OK;
 }
 
-
 static int
 knd_check_implied_field(const char *name,
                         size_t name_size,
@@ -490,6 +489,44 @@ knd_check_implied_field(const char *name,
     return knd_OK;
 }
 
+static int
+knd_check_field_tag(const char *name,
+                    size_t name_size,
+                    knd_task_spec_type type,
+                    struct kndTaskSpec *specs,
+                    size_t num_specs,
+                    struct kndTaskSpec **out_spec)
+{
+    int err;
+
+    if (!name_size) {
+        knd_log("-- empty field tag?");
+        return knd_FORMAT;
+    }
+    if (name_size > KND_NAME_SIZE) {
+        knd_log("-- field tag too large: %zu bytes: \"%.*s\"",
+                name_size, name_size, name);
+        return knd_LIMIT;
+    }
+
+    if (DEBUG_PARSER_LEVEL_2)
+        knd_log("++ BASIC LOOP got tag after brace: \"%.*s\" [%zu]",
+                name_size, name, name_size);
+
+    err = knd_find_spec(specs, num_specs, name, name_size, type, out_spec);
+    if (err) {
+        knd_log("-- no spec found to handle the \"%.*s\" tag: %d",
+                name_size, name, err);
+        return err;
+    }
+
+    if (DEBUG_PARSER_LEVEL_2)
+        knd_log("++ got SPEC: \"%.*s\" (default: %d) (is validator: %d)",
+                (*out_spec)->name_size, (*out_spec)->name, (*out_spec)->is_default, (*out_spec)->is_validator);
+
+    return knd_OK;
+}
+
 int knd_parse_task(const char *rec,
                    size_t *total_size,
                    struct kndTaskSpec *specs,
@@ -534,24 +571,10 @@ int knd_parse_task(const char *rec,
             if (DEBUG_PARSER_LEVEL_2)
                 knd_log("+ whitespace in basic PARSING!");
 
-            err = check_name_limits(b, e, &name_size);
-            if (err) return err;
-
-            if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ BASIC LOOP got tag after whitespace: \"%.*s\" [%zu]",
-                        name_size, b, name_size);
-
-            err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
-            if (err) {
-                knd_log("-- no spec found to handle the \"%.*s\" tag: %d",
-                        name_size, b, err);
-                return err;
-            }
-
-            if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ got SPEC: \"%.*s\" (default: %d) (is validator: %d)",
-                        spec->name_size, spec->name, spec->is_default, spec->is_validator);
             in_tag = true;
+
+            err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
+            if (err) return err;
 
             if (spec->validate) {
                 err = spec->validate(spec->obj,
@@ -617,23 +640,9 @@ int knd_parse_task(const char *rec,
             }
 
             /* inner field brace */
-            err = check_name_limits(b, e, &name_size);
+            err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
             if (err) return err;
 
-            if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ BASIC LOOP got tag after brace: \"%.*s\" [%zu]",
-                        name_size, b, name_size);
-
-            err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
-            if (err) {
-                knd_log("-- no spec found to handle the \"%.*s\" tag: %d",
-                        name_size, b, err);
-                return err;
-            }
-
-            if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ got SPEC: \"%.*s\" (default: %d) (is validator: %d)",
-                        spec->name_size, spec->name, spec->is_default, spec->is_validator);
             in_tag = true;
 
             if (spec->validate) {
