@@ -696,7 +696,6 @@ int knd_parse_task(const char *rec,
             e = b;
             break;
         case '}':
-
             /* empty body? */
             if (!in_field) {
                 if (in_implied_field) {
@@ -732,9 +731,10 @@ int knd_parse_task(const char *rec,
                 *total_size = c - rec;
                 return knd_OK;
             }
-            
+
+            assert(in_tag == in_terminal);
+
             if (in_terminal) {
-                
                 err = check_name_limits(b, e, &name_size);
                 if (!name_size) {
                     knd_log("-- empty value :(");
@@ -792,49 +792,22 @@ int knd_parse_task(const char *rec,
             }
 
             if (in_field) {
-                if (!in_tag) {
-                    err = check_name_limits(b, e, &name_size);
+                err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
+                if (err) return err;
+
+                if (DEBUG_PARSER_LEVEL_2)
+                    knd_log("++ got single SPEC: \"%.*s\" (default: %d)",
+                            spec->name_size, spec->name, spec->is_default);
+
+                if (spec->parse) {
+                    err = spec->parse(spec->obj, c, &chunk_size);
                     if (err) {
-                        knd_log("-- value name limit reached :(");
+                        knd_log("-- ERR: %d parsing of spec \"%.*s\" failed starting from: %s",
+                                err, spec->name_size, spec->name, b);
                         return err;
                     }
-                    
-                    if (DEBUG_PARSER_LEVEL_2)
-                        knd_log("++ got default spec val: \"%.*s\" [%zu]?",
-                                name_size, b, name_size);
-                    
-                    err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
-                    if (err) {
-                        knd_log("-- no spec found to handle the \"%.*s\" tag :(", name_size, b);
-                        return err;
-                    }
-
-                    if (DEBUG_PARSER_LEVEL_2)
-                        knd_log("++ got single SPEC: \"%.*s\" (default: %d)",
-                                spec->name_size, spec->name, spec->is_default);
-
-                    if (spec->parse) {
-                        err = spec->parse(spec->obj, c, &chunk_size);
-                        if (err) {
-                            knd_log("-- ERR: %d parsing of spec \"%.*s\" failed starting from: %s",
-                                    err, spec->name_size, spec->name, b);
-                            return err;
-                        }
-                    }
-                    
-                    /*if (spec->buf && spec->buf_size) {
-                        err = knd_spec_buf_copy(spec, b, name_size);
-                        if (err) return err;
-                        spec->is_completed = true;
-                        b = c + 1;
-                        e = b;
-                        in_terminal = false;
-                        in_tag = false;
-                        in_field = false;
-                        }*/
-                    
                 }
-                
+
                 in_field = false;
                 break;
             }
