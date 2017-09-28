@@ -36,9 +36,7 @@ START_TEST(parse_tag_empty)
     struct kndTaskSpec specs[] = {{ .name = "sid", .name_size = strlen("sid"), .buf = sid, .buf_size = &sid_size, .max_buf_size = sizeof sid }};
 
     rc = knd_parse_task(rec = "{}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_OK);
-    ck_assert(total_size == strlen(rec));
-    ck_assert(sid_size == 0);
+    ck_assert(rc == knd_FORMAT);
 END_TEST
 
 START_TEST(parse_tag_empty_with_spaces)
@@ -46,9 +44,7 @@ START_TEST(parse_tag_empty_with_spaces)
     struct kndTaskSpec specs[] = {{ .name = "sid", .name_size = strlen("sid"), .buf = sid, .buf_size = &sid_size, .max_buf_size = sizeof sid }};
 
     rc = knd_parse_task(rec = "{     }", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_OK);
-    ck_assert(total_size == strlen(rec));
-    ck_assert(sid_size == 0);
+    ck_assert(rc == knd_FORMAT);
 END_TEST
 
 START_TEST(parse_tag_unknown)
