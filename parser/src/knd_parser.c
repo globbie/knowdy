@@ -577,6 +577,8 @@ int knd_parse_task(const char *rec,
             if (err) return err;
 
             if (spec->validate) {
+                assert(!spec->parse && "parse cannot be used with validate");
+
                 err = spec->validate(spec->obj,
                                      (const char*)spec->buf, *spec->buf_size,
                                      c, &chunk_size);
@@ -646,6 +648,8 @@ int knd_parse_task(const char *rec,
             in_tag = true;
 
             if (spec->validate) {
+                assert(!spec->parse && "parse cannot be used with validate");
+
                 err = spec->validate(spec->obj,
                                      (const char*)spec->buf, *spec->buf_size,
                                      c, &chunk_size);
