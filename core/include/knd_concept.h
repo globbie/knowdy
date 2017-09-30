@@ -121,6 +121,8 @@ struct kndConcDir
     struct kndObjEntry **objs;
     size_t num_objs;
 
+    struct ooDict *obj_idx;
+
     bool is_terminal;
     struct kndConcDir *next;
 };
@@ -211,7 +213,6 @@ struct kndConcept
     /* indices */
     struct ooDict *class_idx;
     struct ooDict *attr_idx;
-    struct ooDict *obj_idx;
     
     struct kndConcRef children[KND_MAX_CONC_CHILDREN];
     size_t num_children;

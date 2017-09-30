@@ -224,13 +224,12 @@ knd_get_schema_name(const char *rec,
 }
 
 
-int
-knd_parse_matching_braces(const char *rec,
-                          size_t *chunk_size)
+int knd_parse_matching_braces(const char *rec,
+                              size_t brace_count,
+                              size_t *chunk_size)
 {
     const char *b;
     const char *c;
-    size_t brace_count = 0;
 
     c = rec;
     b = c;
@@ -522,6 +521,19 @@ int knd_parse_task(const char *rec,
 
     while (*c) {
         switch (*c) {
+        case '-':
+            if (!in_field) {
+                e = c + 1;
+                break;
+            }
+            /* comment out this region */
+            err = knd_parse_matching_braces(c, 1, &chunk_size);
+            if (err) return err;
+            c += chunk_size;
+            in_field = false;
+            b = c;
+            e = b;
+            break;
         case '\n':
         case '\r':
         case '\t':
@@ -750,8 +762,6 @@ int knd_parse_task(const char *rec,
                     in_field = false;
                     break;
                 }
-
-     
                 arg = &args[num_args];
                 num_args++;
                 memcpy(arg->name, spec->name, spec->name_size);
@@ -1237,7 +1247,7 @@ static int knd_parse_list(const char *rec,
             err = check_name_limits(b, e, &name_size);
             if (err) return err;
 
-            if (DEBUG_PARSER_LEVEL_TMP)
+            if (DEBUG_PARSER_LEVEL_2)
                 knd_log("++ list got tag: \"%.*s\" [%lu]",
                         name_size, b, (unsigned long)name_size);
 
@@ -1248,7 +1258,7 @@ static int knd_parse_list(const char *rec,
                 return err;
             }
 
-            if (DEBUG_PARSER_LEVEL_TMP)
+            if (DEBUG_PARSER_LEVEL_2)
                 knd_log("++ got list SPEC: \"%s\"",
                         spec->name);
 

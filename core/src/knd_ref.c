@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "knd_ref.h"
 #include "knd_task.h"
 #include "knd_repo.h"
@@ -115,8 +114,8 @@ static int kndRef_resolve(struct kndRef *self)
                 conc->name, self->states->val);
 
     obj_name = self->states->val;
-    
-    obj = (struct kndObject*)conc->obj_idx->get(conc->obj_idx, obj_name);
+
+    obj = (struct kndObject*)conc->dir->obj_idx->get(conc->dir->obj_idx, obj_name);
     if (!obj) {
         knd_log("-- no such obj: \"%s\" :(", obj_name);
         e = self->log->write(self->log, "no such obj: ", strlen("no such obj: "));
