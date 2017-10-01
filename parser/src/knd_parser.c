@@ -623,7 +623,7 @@ int knd_parse_task(const char *rec,
             if (DEBUG_PARSER_LEVEL_2)
                 knd_log("+ whitespace in basic PARSING!");
 
-            in_tag = true;
+            // Parse a tag after a first space.  Means in_tag can be set to true.
 
             err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
             if (err) return err;
@@ -632,15 +632,15 @@ int knd_parse_task(const char *rec,
             if (err) return err;
 
             if (in_terminal) {
-                // Waiting a terminal value.
+                // Parse an atomic value.  Remember that we are in in_tag state.
+                in_tag = true;
                 b = c + 1;
                 e = b;
                 break;
             }
 
-            c += chunk_size;
-            in_tag = false;
             in_field = false;
+            c += chunk_size;
             b = c;
             e = b;
             break;
@@ -661,9 +661,8 @@ int knd_parse_task(const char *rec,
                 break;
             }
 
-            in_tag = true;
+            // Parse a tag after an inner field brace.  Means in_tag can be set to true.
 
-            /* inner field brace */
             err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
             if (err) return err;
 
@@ -671,15 +670,15 @@ int knd_parse_task(const char *rec,
             if (err) return err;
 
             if (in_terminal) {
-                // Waiting a terminal value.
+                // Parse an atomic value.  Remember that we are in in_tag state.
+                in_tag = true;
                 b = c + 1;
                 e = b;
                 break;
             }
 
-            c += chunk_size;
-            in_tag = false;
             in_field = false;
+            c += chunk_size;
             b = c;
             e = b;
             break;
