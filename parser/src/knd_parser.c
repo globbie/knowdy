@@ -1,3 +1,4 @@
+#undef NDEBUG
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,10 +19,10 @@
 #include "knd_task.h"
 #include "knd_utils.h"
 
-#define DEBUG_PARSER_LEVEL_1 0
-#define DEBUG_PARSER_LEVEL_2 0
-#define DEBUG_PARSER_LEVEL_3 0
-#define DEBUG_PARSER_LEVEL_4 0
+#define DEBUG_PARSER_LEVEL_1 1
+#define DEBUG_PARSER_LEVEL_2 1
+#define DEBUG_PARSER_LEVEL_3 1
+#define DEBUG_PARSER_LEVEL_4 1
 #define DEBUG_PARSER_LEVEL_TMP 1
 
 static int knd_parse_state_change(const char *rec,
