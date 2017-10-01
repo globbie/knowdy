@@ -648,12 +648,12 @@ int knd_parse_task(const char *rec,
             /* starting brace */
             if (!in_field) {
                 if (in_implied_field) {
-                    // TODO(ki.stfu): Use check_name_limits()?
                     err = knd_check_implied_field(b, e - b, specs, num_specs, args, &num_args);
                     if (err) return err;
+
                     in_implied_field = false;
                 }
-                
+
                 in_field = true;
                 in_terminal = false;
                 b = c + 1;
