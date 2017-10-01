@@ -527,6 +527,57 @@ knd_check_field_tag(const char *name,
     return knd_OK;
 }
 
+static int
+knd_parse_field_value(struct kndTaskSpec *spec,
+                      const char *rec,
+                      size_t *total_size,
+                      bool *in_terminal)
+{
+    int err;
+
+    assert(!*in_terminal && "knd_parse_field_value is called for terminal value");
+
+    if (spec->validate) {
+        assert(!spec->parse && "parse cannot be used with validate");
+
+        err = spec->validate(spec->obj,
+                             (const char*)spec->buf, *spec->buf_size,
+                             rec, total_size);
+        if (err) {
+            knd_log("-- ERR: %d validation of spec \"%.*s\" failed :(",
+                    err, spec->name_size, spec->name);
+            return err;
+        }
+
+        spec->is_completed = true;
+        return knd_OK;
+    }
+
+    if (spec->parse) {
+        if (DEBUG_PARSER_LEVEL_2)
+            knd_log("\n    >>> further parsing required in \"%.*s\" FROM: \"%s\" FUNC: %p",
+                    spec->name_size, spec->name, rec, spec->parse);
+
+        err = spec->parse(spec->obj, rec, total_size);
+        if (err) {
+            knd_log("-- ERR: %d parsing of spec \"%.*s\" failed :(",
+                    err, spec->name_size, spec->name);
+            return err;
+        }
+
+        spec->is_completed = true;
+        return knd_OK;
+    }
+
+    if (DEBUG_PARSER_LEVEL_2)
+        knd_log("== ATOMIC SPEC found: %.*s! no further parsing is required.",
+                spec->name_size, spec->name);
+
+    *in_terminal = true;
+    // *total_size = 0;  // This actully isn't used.
+    return knd_OK;
+}
+
 int knd_parse_task(const char *rec,
                    size_t *total_size,
                    struct kndTaskSpec *specs,
@@ -576,51 +627,19 @@ int knd_parse_task(const char *rec,
             err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
             if (err) return err;
 
-            if (spec->validate) {
-                assert(!spec->parse && "parse cannot be used with validate");
+            err = knd_parse_field_value(spec, c, &chunk_size, &in_terminal);
+            if (err) return err;
 
-                err = spec->validate(spec->obj,
-                                     (const char*)spec->buf, *spec->buf_size,
-                                     c, &chunk_size);
-                if (err) {
-                    knd_log("-- ERR: %d validation of spec \"%.*s\" failed :(",
-                            err, spec->name_size, spec->name);
-                    return err;
-                }
-                c += chunk_size;
-                spec->is_completed = true;
-                in_field = false;
-                in_tag = false;
-                b = c;
-                e = b;
-                break;
-            }
-            
-            if (!spec->parse) {
-                if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("== ATOMIC SPEC found: %.*s! no further parsing is required.",
-                            spec->name_size, spec->name);
-                in_terminal = true;
+            if (in_terminal) {
+                // Waiting a terminal value.
                 b = c + 1;
                 e = b;
                 break;
             }
 
-            /* nested parsing required */
-            if (DEBUG_PARSER_LEVEL_2)
-                knd_log("\n    >>> further parsing required in \"%.*s\" FROM: \"%s\" FUNC: %p",
-                        spec->name_size, spec->name, c, spec->parse);
-            err = spec->parse(spec->obj, c, &chunk_size);
-            if (err) {
-                knd_log("-- ERR: %d parsing of spec \"%.*s\" failed :(",
-                        err, spec->name_size, spec->name);
-                return err;
-            }
             c += chunk_size;
-            spec->is_completed = true;
-            in_field = false;
             in_tag = false;
-            
+            in_field = false;
             b = c;
             e = b;
             break;
@@ -641,61 +660,25 @@ int knd_parse_task(const char *rec,
                 break;
             }
 
+            in_tag = true;
+
             /* inner field brace */
             err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
             if (err) return err;
 
-            in_tag = true;
+            err = knd_parse_field_value(spec, c, &chunk_size, &in_terminal);
+            if (err) return err;
 
-            if (spec->validate) {
-                assert(!spec->parse && "parse cannot be used with validate");
-
-                err = spec->validate(spec->obj,
-                                     (const char*)spec->buf, *spec->buf_size,
-                                     c, &chunk_size);
-                if (err) {
-                    knd_log("-- ERR: %d validation of spec \"%.*s\" failed :(",
-                            err, spec->name_size, spec->name);
-                    return err;
-                }
-                c += chunk_size;
-                spec->is_completed = true;
-                in_field = false;
-                in_tag = false;
-                b = c;
-                e = b;
-                break;
-            }
-            
-            if (!spec->parse) {
-                if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("== ATOMIC SPEC found: %.*s! no further parsing is required.",
-                            spec->name_size, spec->name);
-                in_terminal = true;
+            if (in_terminal) {
+                // Waiting a terminal value.
                 b = c + 1;
                 e = b;
                 break;
             }
 
-            /* nested parsing required */
-            if (DEBUG_PARSER_LEVEL_2)
-                knd_log("== further parsing required in \"%.*s\" FROM: \"%s\"",
-                        spec->name_size, spec->name, c);
-
-            err = spec->parse(spec->obj, c, &chunk_size);
-            if (err) {
-                knd_log("-- ERR: %d parsing of spec \"%.*s\" failed :(",
-                        err, spec->name_size, spec->name);
-                return err;
-            }
-            
             c += chunk_size;
-
-            spec->is_completed = true;
-
-            in_field = false;
             in_tag = false;
-            
+            in_field = false;
             b = c;
             e = b;
             break;
