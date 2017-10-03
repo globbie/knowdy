@@ -60,11 +60,12 @@ struct kndTaskSpec
     bool is_validator;
     bool is_terminal;
     bool is_list;
+    bool is_atomic;
 
     char *buf;
     size_t *buf_size;
     size_t max_buf_size;
-    
+
     void *obj;
     void *accu;
     
@@ -73,7 +74,7 @@ struct kndTaskSpec
                     const char *rec, size_t *total_size);
     int (*run)(void *obj, struct kndTaskArg *args, size_t num_args);
     int (*append)(void *accu, void *item);
-    int (*alloc)(void *accu, const char *name, size_t name_size, void **item);
+    int (*alloc)(void *accu, const char *name, size_t name_size, size_t count, void **item);
 };
 
 struct kndTask

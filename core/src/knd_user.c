@@ -397,10 +397,10 @@ static int kndUser_parse_sync_task(void *obj,
     /* inform retrievers */
 
     /* release resources */
-    
+
     self->root_class->reset(self->root_class);
 
-    if (!stat(self->path, &st)) {
+    if (!stat(self->out->buf, &st)) {
         if (DEBUG_USER_LEVEL_TMP)
             knd_log("++ frozen DB file sync'ed OK, total bytes: %lu",
                     (unsigned long)st.st_size);
@@ -419,7 +419,7 @@ static int kndUser_parse_class_select(void *obj,
     struct kndOutput *out = self->out;
     int err;
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class select: \"%s\"", rec);
 
     err = out->write(out, self->dbpath, self->dbpath_size);
@@ -670,7 +670,7 @@ static int parse_task(struct kndUser *self,
         goto cleanup;
     }
 
-    if (DEBUG_USER_LEVEL_2)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log("user parse task OK: total chars: %lu",
                 (unsigned long)*total_size);
 

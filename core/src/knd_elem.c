@@ -36,63 +36,49 @@ static void del(struct kndElem *self)
 }
 
 
-static void str(struct kndElem *self, size_t depth)
+static void str(struct kndElem *self)
 {
-    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
-    char *offset = malloc(offset_size + 1);
-
-    struct kndObject *obj;
-    struct kndText *text;
-    
-    memset(offset, ' ', offset_size);
-    offset[offset_size] = '\0';
-
-    if (self->states && self->states->val_size)
-        knd_log("%s%s => %s", offset, self->attr->name, self->states->val);
-
     if (self->aggr) {
         if (self->is_list) {
-            knd_log("%s   inline LIST\n",
-                    offset);
-            
-            obj = self->aggr;
+            knd_log("%*s[%.*s\n",
+                    self->depth * KND_OFFSET_SIZE, "", self->attr->name_size, self->attr->name);
+            struct kndObject *obj = self->aggr;
             while (obj) {
                 obj->depth = self->depth + 1;
                 obj->str(obj);
                 obj = obj->next;
             }
+            knd_log("%*s]\n",
+                    self->depth * KND_OFFSET_SIZE, "");
+            return;
         }
-        else {
-            knd_log("%s%s:",
-                    offset, self->attr->name);
-            self->aggr->depth = self->depth + 1;
-            self->aggr->str(self->aggr);
-        }
+
+        knd_log("%*s%.*s:",
+                self->depth * KND_OFFSET_SIZE, "", self->attr->name_size, self->attr->name);
+        self->aggr->depth = self->depth + 1;
+        self->aggr->str(self->aggr);
+        return;
     }
 
     switch (self->attr->type) {
     case KND_ATTR_REF:
+        self->ref->depth = self->depth + 1;
         self->ref->str(self->ref);
         return;
     case KND_ATTR_NUM:
+        self->num->depth = self->depth + 1;
         self->num->str(self->num);
         return;
     case KND_ATTR_TEXT:
-        text = self->text;
-        text->str(text);
+        self->text->depth = self->depth + 1;
+        self->text->str(self->text);
         return;
-        /*case KND_ATTR_FILE:
-        elem_state = self->states;
-        while (elem_state) {
-            knd_log("%s  FILE -> %s [#%lu]\n", offset,
-                    elem_state->val,
-                    (unsigned long)elem_state->state);
-            elem_state = elem_state->next;
-        }
-        return; */
     default:
         break;
     }
+
+    knd_log("%*s%s => %s", self->depth * KND_OFFSET_SIZE, "",
+            self->attr->name, self->states->val);
 }
 
 
@@ -117,7 +103,6 @@ kndElem_export_JSON(struct kndElem *self)
                                self->states->val);
             err = out->write(out, buf, buf_size);
             if (err) return err;
-
 
             obj = self->aggr;
             while (obj) {
@@ -263,13 +248,11 @@ kndElem_export_JSON(struct kndElem *self)
             if (err) goto final;
         }
     }
-    
 
 final:
 
     return err;
 }
-
 
 static int
 kndElem_export_GSP(struct kndElem *self)
@@ -377,6 +360,13 @@ kndElem_export(struct kndElem *self)
     return knd_OK;
 }
 
+static int run_empty_val_warning(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndElem *self = (struct kndElem*)obj;
+    knd_log("-- empty val of \"%.*s\" not accepted :(",
+            self->attr->name_size, self->attr->name);
+    return knd_FAIL;
+}
 
 static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
 {
@@ -393,9 +383,13 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
             val_size = arg->val_size;
         }
     }
+
+    if (DEBUG_ELEM_LEVEL_2)
+        knd_log(".. %.*s to set val \"%.*s\"", self->attr->name_size, self->attr->name,
+                val_size, val);
+
     if (!val_size) return knd_FAIL;
     if (val_size >= KND_VAL_SIZE) return knd_LIMIT;
-    
     state = malloc(sizeof(struct kndElemState));
     if (!state) return knd_NOMEM;
     memset(state, 0, sizeof(struct kndElemState));
@@ -436,8 +430,20 @@ static int parse_GSL(struct kndElem *self,
         { .is_implied = true,
           .run = run_set_val,
           .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = run_empty_val_warning,
+          .obj = self
         }
     };
+
+    if (DEBUG_ELEM_LEVEL_TMP)
+        knd_log(".. ELEM \"%.*s\" parse REC: \"%.*s\"",
+                self->attr->name_size, self->attr->name,
+                16, rec);
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;

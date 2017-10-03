@@ -22,7 +22,7 @@
 #define KND_CONFIG_H
 
 /* return error codes */
-extern enum { knd_OK, knd_FAIL, knd_NOMEM, knd_LIMIT, knd_AUTH_OK, knd_AUTH_FAIL,
+typedef enum { knd_OK, knd_FAIL, knd_NOMEM, knd_LIMIT, knd_AUTH_OK, knd_AUTH_FAIL,
         knd_INVALID_DATA, knd_ACCESS, knd_NO_MATCH, knd_MATCH_FOUND, knd_FORMAT,
         knd_IO_FAIL, knd_EOB, knd_STOP, knd_NEED_WAIT, 
         knd_EXPIRED, knd_MAX_LIMIT_REACHED,
@@ -131,7 +131,7 @@ typedef enum knd_storage_type {
 #define KND_DIR_SIZE_ENCODE_BASE 10
 #define KND_DIR_ENTRY_SIZE 16
 #define KND_MAX_ARGS 16
-#define KND_DIR_TRAILER_MAX_SIZE 1024 * 1024
+#define KND_DIR_TRAILER_MAX_SIZE 1024 * 100
 
 #define KND_MAX_BACKREFS 128
 
@@ -341,7 +341,7 @@ typedef enum knd_storage_type {
 #define KND_LARGE_BUF_SIZE 1024 * 1024 * 100
 #define KND_SMALL_BUF_SIZE 64
 #define KND_LABEL_SIZE 8
-#define KND_NAME_SIZE 500
+#define KND_NAME_SIZE 512
 #define KND_SHORT_NAME_SIZE 64
 #define KND_VAL_SIZE 128
 
@@ -381,6 +381,8 @@ typedef enum knd_storage_type {
 #define KND_MAX_INBOX_SIZE 8
 #define KND_REFSET_MIN_SIZE KND_MAX_INBOX_SIZE / 10
 #define KND_INBOX_RESERVE_RATIO 1.4
+
+#define KND_THRESHOLD_RATIO 0.85
 
 #define KND_FEATURED_SIZE 5
 #define KND_FEATURED_MAX_SIZE 10

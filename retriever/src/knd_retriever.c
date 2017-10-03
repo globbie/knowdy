@@ -466,7 +466,7 @@ kndRetriever_new(struct kndRetriever **rec,
         conc->obj_storage = calloc(self->max_objs, 
                                  sizeof(struct kndObject));
         if (!conc->obj_storage) return knd_NOMEM;
-        conc->obj_storage_max = self->max_objs;
+        conc->max_objs = self->max_objs;
     }
 
     /* user idx */

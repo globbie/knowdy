@@ -121,6 +121,8 @@ struct kndConcDir
     struct kndObjEntry **objs;
     size_t num_objs;
 
+    struct ooDict *obj_idx;
+
     bool is_terminal;
     struct kndConcDir *next;
 };
@@ -196,8 +198,8 @@ struct kndConcept
     /* allocator */
     struct kndObject *obj_storage;
     size_t obj_storage_size;
-    size_t obj_storage_max;
-    
+    size_t max_objs;
+
     /* incoming */
     struct kndConcept *inbox;
     size_t inbox_size;
@@ -211,7 +213,6 @@ struct kndConcept
     /* indices */
     struct ooDict *class_idx;
     struct ooDict *attr_idx;
-    struct ooDict *obj_idx;
     
     struct kndConcRef children[KND_MAX_CONC_CHILDREN];
     size_t num_children;

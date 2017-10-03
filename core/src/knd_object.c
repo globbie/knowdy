@@ -32,6 +32,7 @@ static void del(struct kndObject *self)
 
 static void str(struct kndObject *self)
 {
+    struct kndElem *elem;
     if (self->type == KND_OBJ_ADDR) {
         knd_log("\n%*sOBJ %.*s::%.*s [%.*s]\n",
                 self->depth * KND_OFFSET_SIZE, "", self->conc->name_size, self->conc->name,
@@ -39,11 +40,9 @@ static void str(struct kndObject *self)
                 KND_ID_SIZE, self->id);
     }
 
-    struct kndElem *elem = self->elems;
-    while (elem) {
+    for (elem = self->elems; elem; elem = elem->next) {
         elem->depth = self->depth + 1;
         elem->str(elem);
-        elem = elem->next;
     }
 }
 
@@ -290,7 +289,7 @@ kndObject_export_GSP(struct kndObject *self)
 
     if (self->type == KND_OBJ_ADDR) {
         start_size = self->out->buf_size;
-        if (DEBUG_OBJ_LEVEL_1)
+        if (DEBUG_OBJ_LEVEL_TMP)
             knd_log("%*s.. export GSP obj \"%.*s\" [id: %.*s]..",
                     self->depth *  KND_OFFSET_SIZE, "",
                     self->name_size, self->name, KND_ID_SIZE, self->id);
@@ -313,14 +312,14 @@ kndObject_export_GSP(struct kndObject *self)
             return err;
         }
     }
-    
+
     if (self->type == KND_OBJ_ADDR) {
         err = self->out->write(self->out, "}", 1);
         if (err) return err;
 
         self->frozen_size = self->out->buf_size - start_size;
     }
-    
+
     return knd_OK;
 }
 
@@ -441,16 +440,6 @@ static int parse_elem(void *data,
     elem->attr = attr;
     elem->out = self->out;
 
-    if (!self->tail) {
-        self->tail = elem;
-        self->elems = elem;
-    }
-    else {
-        self->tail->next = elem;
-        self->tail = elem;
-    }
-    self->num_elems++;
-
     if (DEBUG_OBJ_LEVEL_2)
         knd_log("   == basic elem type: %s\n",
                 knd_attr_names[attr->type]);
@@ -466,14 +455,12 @@ static int parse_elem(void *data,
         obj->log = self->log;
         
         obj->root = self->root ? self->root : self;
-
         err = obj->parse(obj, rec, total_size);
         if (err) return err;
 
         elem->aggr = obj;
         obj->parent = elem;
-        return knd_OK;
-    case KND_ATTR_ATOM:
+        goto append_elem;
     case KND_ATTR_NUM:
         err = kndNum_new(&num);
         if (err) return err;
@@ -481,11 +468,9 @@ static int parse_elem(void *data,
         num->out = self->out;
         err = num->parse(num, rec, total_size);
         if (err) goto final;
+
         elem->num = num;
-        return knd_OK;
-    case KND_ATTR_FILE:
-    case KND_ATTR_CALC:
-        break;
+        goto append_elem;
     case KND_ATTR_REF:
         err = kndRef_new(&ref);
         if (err) return err;
@@ -495,7 +480,7 @@ static int parse_elem(void *data,
         if (err) goto final;
 
         elem->ref = ref;
-        return knd_OK;
+        goto append_elem;
     case KND_ATTR_TEXT:
         err = kndText_new(&text);
         if (err) return err;
@@ -507,7 +492,7 @@ static int parse_elem(void *data,
         if (err) return err;
         
         elem->text = text;
-        return knd_OK;
+        goto append_elem;
     default:
         break;
     }
@@ -515,6 +500,18 @@ static int parse_elem(void *data,
     err = elem->parse(elem, rec, total_size);
     if (err) goto final;
 
+ append_elem:
+    if (!self->tail) {
+        self->tail = elem;
+        self->elems = elem;
+    }
+    else {
+        self->tail->next = elem;
+        self->tail = elem;
+    }
+    self->num_elems++;
+
+    
     return knd_OK;
 
  final:

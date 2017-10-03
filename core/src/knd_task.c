@@ -15,7 +15,6 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
-
 static void del(struct kndTask *self)
 {
     free(self);

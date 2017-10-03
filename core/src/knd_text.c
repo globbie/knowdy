@@ -30,7 +30,6 @@ static void str(struct kndText *self)
     struct kndTextState *curr_state;
     struct kndTranslation *tr;
     struct kndTextSelect *sel;
-  
 
     knd_log("%*s%s:", self->depth * KND_OFFSET_SIZE, "",
             self->elem->attr->name);
@@ -84,7 +83,6 @@ static int export_JSON(struct kndText *self)
     char buf[KND_NAME_SIZE];
     size_t buf_size;
 
-    struct kndObject *obj;
     struct kndTextState *curr_state;
     struct kndTranslation *tr;
     struct kndTextSelect *sel;

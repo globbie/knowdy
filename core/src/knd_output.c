@@ -217,6 +217,7 @@ kndOutput_new(struct kndOutput **output,
     self->max_size = capacity * sizeof(char);
     self->free_space = self->max_size;
 
+    self->threshold_size = self->max_size * KND_THRESHOLD_RATIO;
     kndOutput_init(self);
 
     *output = self;

@@ -4,7 +4,7 @@
       {path /var/lib/knowdy/db}
       {schemas /etc/knowdy/schemas}
       {sid AUTH_SERVER_SID}
-      {max_objs 2000000}
+      {max_objs 500000}
 
       {delivery ipc:///var/lib/knowdy/delivery/inbox}
 
