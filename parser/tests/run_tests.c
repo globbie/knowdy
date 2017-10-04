@@ -31,16 +31,14 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args) {
     return knd_OK;
 }
 
-//struct kndTaskSpec
-//    name_spec = { .is_implied = true, .run = NULL, .obj = &user },
-//    sid_spec = { .name = "sid", .name_size = sizeof "sid" - 1, .buf = user.sid, .buf_size = &user.sid_size, .max_buf_size = sizeof user.sid };
+struct kndTaskSpec
+    user_spec = { .name = "user", .name_size = sizeof "user" - 1, .parse = NULL, .obj = &user },
+    name_spec = { .is_implied = true, .run = run_set_name, .obj = &user },
+    sid_spec = { .name = "sid", .name_size = sizeof "sid" - 1, .buf = user.sid, .buf_size = &user.sid_size, .max_buf_size = sizeof user.sid };
 
 
 START_TEST(parse_task_empty)
-    struct kndTaskSpec specs[] = {
-        { .is_implied = true, .run = run_set_name, .obj = &user },
-        { .name = "sid", .name_size = strlen("sid"), .buf = user.sid, .buf_size = &user.sid_size, .max_buf_size = sizeof user.sid }
-    };
+    struct kndTaskSpec specs[] = { name_spec, sid_spec };
 
     rc = knd_parse_task(rec = "", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert(rc == knd_OK);
@@ -54,10 +52,7 @@ START_TEST(parse_task_empty)
 END_TEST
 
 START_TEST(parse_task_empty_with_spaces)
-    struct kndTaskSpec specs[] = {
-        { .is_implied = true, .run = run_set_name, .obj = &user },
-        { .name = "sid", .name_size = strlen("sid"), .buf = user.sid, .buf_size = &user.sid_size, .max_buf_size = sizeof user.sid }
-    };
+    struct kndTaskSpec specs[] = { name_spec, sid_spec };
 
     rc = knd_parse_task(rec = "     ", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert(rc == knd_OK);
@@ -71,10 +66,7 @@ START_TEST(parse_task_empty_with_spaces)
 END_TEST
 
 START_TEST(parse_task_empty_with_closing_brace)
-    struct kndTaskSpec specs[] = {
-        { .is_implied = true, .run = run_set_name, .obj = &user },
-        { .name = "sid", .name_size = strlen("sid"), .buf = user.sid, .buf_size = &user.sid_size, .max_buf_size = sizeof user.sid }
-    };
+    struct kndTaskSpec specs[] = { name_spec, sid_spec };
 
     rc = knd_parse_task(rec = " }     ", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert(rc == knd_OK);
@@ -82,7 +74,7 @@ START_TEST(parse_task_empty_with_closing_brace)
 END_TEST
 
 START_TEST(parse_implied_field_with_spaces)
-    struct kndTaskSpec specs[] = {{ .is_implied = true, .run = run_set_name, .obj = &user }};
+    struct kndTaskSpec specs[] = { name_spec };
 
     rc = knd_parse_task(rec = " John Smith}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert(rc == knd_OK);
@@ -96,7 +88,7 @@ START_TEST(parse_implied_field_with_spaces)
 END_TEST
 
 START_TEST(parse_implied_field_max_size)
-    struct kndTaskSpec specs[] = {{ .is_implied = true, .run = run_set_name, .obj = &user }};
+    struct kndTaskSpec specs[] = { name_spec };
     const char buf[] = { [0 ... KND_SHORT_NAME_SIZE - 1] = 'a', [KND_SHORT_NAME_SIZE] = '}', [KND_SHORT_NAME_SIZE + 1] = '\0' };
 
     rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
@@ -106,7 +98,7 @@ START_TEST(parse_implied_field_max_size)
 END_TEST
 
 START_TEST(parse_implied_field_max_size_plus_one)
-    struct kndTaskSpec specs[] = {{ .is_implied = true, .run = run_set_name, .obj = &user }};
+    struct kndTaskSpec specs[] = { name_spec };
     const char buf[] = { [0 ... KND_SHORT_NAME_SIZE] = 'a', [KND_SHORT_NAME_SIZE + 1] = '}', [KND_SHORT_NAME_SIZE + 2] = '\0' };
 
     rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
@@ -114,7 +106,7 @@ START_TEST(parse_implied_field_max_size_plus_one)
 END_TEST
 
 START_TEST(parse_implied_field_size_NAME_SIZE_plus_one)
-    struct kndTaskSpec specs[] = {{ .is_implied = true, .run = run_set_name, .obj = &user }};
+    struct kndTaskSpec specs[] = { name_spec };
     const char buf[] = { [0 ... KND_NAME_SIZE] = 'a', [KND_NAME_SIZE + 1] = '}', [KND_NAME_SIZE + 2] = '\0' };
 
     rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
@@ -122,21 +114,21 @@ START_TEST(parse_implied_field_size_NAME_SIZE_plus_one)
 END_TEST
 
 START_TEST(parse_tag_empty)
-    struct kndTaskSpec specs[] = {{ .name = "sid", .name_size = strlen("sid"), .buf = user.sid, .buf_size = &user.sid_size, .max_buf_size = sizeof user.sid }};
+    struct kndTaskSpec specs[] = { sid_spec };
 
     rc = knd_parse_task(rec = "{}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert(rc == knd_FORMAT);
 END_TEST
 
 START_TEST(parse_tag_empty_with_spaces)
-    struct kndTaskSpec specs[] = {{ .name = "sid", .name_size = strlen("sid"), .buf = user.sid, .buf_size = &user.sid_size, .max_buf_size = sizeof user.sid }};
+    struct kndTaskSpec specs[] = { sid_spec };
 
     rc = knd_parse_task(rec = "{     }}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert(rc == knd_FORMAT);
 END_TEST
 
 START_TEST(parse_tag_unknown)
-    struct kndTaskSpec specs[] = {{ .name = "sid", .name_size = strlen("sid"), .buf = user.sid, .buf_size = &user.sid_size, .max_buf_size = sizeof user.sid }};
+    struct kndTaskSpec specs[] = { sid_spec };
 
     rc = knd_parse_task(rec = "{ 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert(rc == knd_NO_MATCH);
@@ -155,21 +147,21 @@ START_TEST(parse_tag_unknown)
 END_TEST
 
 START_TEST(parse_value_empty)
-    struct kndTaskSpec specs[] = {{ .name = "sid", .name_size = strlen("sid"), .buf = user.sid, .buf_size = &user.sid_size, .max_buf_size = sizeof user.sid }};
+    struct kndTaskSpec specs[] = { sid_spec };
 
     rc = knd_parse_task(rec = "{sid}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert(rc == knd_FORMAT);  // TODO(ki.stfu): Call the default handler
 END_TEST
 
 START_TEST(parse_value_empty_with_spaces)
-    struct kndTaskSpec specs[] = {{ .name = "sid", .name_size = strlen("sid"), .buf = user.sid, .buf_size = &user.sid_size, .max_buf_size = sizeof user.sid }};
+    struct kndTaskSpec specs[] = { sid_spec };
 
     rc = knd_parse_task(rec = "{sid   }}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert(rc == knd_FORMAT);
 END_TEST
 
 START_TEST(parse_value_max_size)
-    struct kndTaskSpec specs[] = {{ .name = "sid", .name_size = strlen("sid"), .buf = user.sid, .buf_size = &user.sid_size, .max_buf_size = sizeof user.sid }};
+    struct kndTaskSpec specs[] = { sid_spec };
 
     rc = knd_parse_task(rec = "{sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert(rc == knd_OK);
@@ -178,7 +170,7 @@ START_TEST(parse_value_max_size)
 END_TEST
 
 START_TEST(parse_value_max_size_plus_one)
-    struct kndTaskSpec specs[] = {{ .name = "sid", .name_size = strlen("sid"), .buf = user.sid, .buf_size = &user.sid_size, .max_buf_size = sizeof user.sid }};
+    struct kndTaskSpec specs[] = { sid_spec };
 
     rc = knd_parse_task(rec = "{sid 1234567}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert(rc == knd_LIMIT);
