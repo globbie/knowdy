@@ -1214,17 +1214,18 @@ static int knd_parse_list(const char *rec,
                     e = b;
                     break;
                 }
-                
                 /* get list item's name */
                 err = check_name_limits(b, e, &name_size);
                 if (err) return err;
-
                 if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("  == list got new item: \"%.*s\" %p",
-                            name_size, b, alloc_item);
-
+                    knd_log("  == list got new item: \"%.*s\"",
+                            name_size, b);
                 err = alloc_item(accu, b, name_size, item_count, &item);
-                if (err) return err;
+                if (err) {
+                    knd_log("-- item alloc failed: %d :(", err);
+                    return err;
+                }
+                item_count++;
 
                 /* parse item */
                 err = spec->parse(item, c, &chunk_size);
@@ -1232,7 +1233,6 @@ static int knd_parse_list(const char *rec,
                     knd_log("-- list item parsing failed :(");
                     return err;
                 }
-
                 c += chunk_size;
 
                 err = append_item(accu, item);
@@ -1247,7 +1247,7 @@ static int knd_parse_list(const char *rec,
             err = check_name_limits(b, e, &name_size);
             if (err) return err;
 
-            if (DEBUG_PARSER_LEVEL_2)
+            if (DEBUG_PARSER_LEVEL_TMP)
                 knd_log("++ list got tag: \"%.*s\" [%lu]",
                         name_size, b, (unsigned long)name_size);
 

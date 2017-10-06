@@ -56,9 +56,9 @@ static void str(struct kndAttr *self)
         tr = tr->next;
     }
 
-    if (self->classname_size) {
+    /*if (self->classname_size) {
         knd_log("%*s  class template: %s", self->depth * KND_OFFSET_SIZE, "", self->classname);
-    }
+        }*/
 
     if (self->ref_classname_size) {
         knd_log("%*s  REF class template: %s", self->depth * KND_OFFSET_SIZE, "", self->ref_classname);
@@ -202,7 +202,7 @@ static int export_GSP(struct kndAttr *self)
     }
     
     if (self->ref_classname_size) {
-        err = out->write(out, "{refc ", strlen("{refc "));
+        err = out->write(out, "{c ", strlen("{c "));
         if (err) return err;
         err = out->write(out, self->ref_classname, self->ref_classname_size);
         if (err) return err;
@@ -211,16 +211,14 @@ static int export_GSP(struct kndAttr *self)
     }
     
     /* choose gloss */
-    tr = self->tr;
     if (self->tr) {
         err = out->write(out,
-                         "[gloss", strlen("[gloss"));
+                         "[_g", strlen("[_g"));
         if (err) return err;
     }
     
-    while (tr) {
-        err = out->write(out,
-                         "{", 1);
+    for (tr = self->tr; tr; tr = tr->next) {
+        err = out->write(out, "{", 1);
         if (err) return err;
         err = out->write(out, tr->locale,  tr->locale_size);
         if (err) return err;
@@ -230,14 +228,9 @@ static int export_GSP(struct kndAttr *self)
         if (err) return err;
         err = out->write(out, "}", 1);
         if (err) return err;
-        break;
-
-    next_tr:
-        tr = tr->next;
     }
     if (self->tr) {
-        err = out->write(out,
-                         "]", 1);
+        err = out->write(out, "]", 1);
         if (err) return err;
     }
     
@@ -581,6 +574,14 @@ static int parse_GSL(struct kndAttr *self,
         },
         { .type = KND_CHANGE_STATE,
           .name = "c",
+          .name_size = strlen("c"),
+          .is_terminal = true,
+          .buf = self->ref_classname,
+          .buf_size = &self->ref_classname_size,
+          .max_buf_size = KND_NAME_SIZE,
+          .obj = self
+        },
+        { .name = "c",
           .name_size = strlen("c"),
           .is_terminal = true,
           .buf = self->ref_classname,

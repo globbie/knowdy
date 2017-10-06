@@ -466,7 +466,7 @@ kndDelivery_start(struct kndDelivery *self)
         self->task = knd_zmq_recv(service, &self->task_size);
         self->obj = knd_zmq_recv(service, &self->obj_size);
 
-	//knd_log("++ DELIVERY service has got a task:   \"%s\"", self->task);
+	knd_log("++ DELIVERY service has got a task:   \"%s\"", self->task);
 
         err = run_task(self);
 

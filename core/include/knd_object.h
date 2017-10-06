@@ -17,7 +17,6 @@
  *   knd_object.h
  *   Knowdy Object
  */
-
 #pragma once
 
 #include "knd_config.h"
@@ -32,6 +31,7 @@ struct kndRelClass;
 
 struct kndOutput;
 struct kndFlatTable;
+struct kndObjEntry;
 
 typedef enum knd_obj_type {
     KND_OBJ_ADDR,
@@ -104,6 +104,7 @@ struct kndObject
     
     struct kndConcept *conc;
 
+    struct kndObjEntry *entry;
     struct kndSortTag *tag;
     
     struct kndOutput *out;
@@ -156,6 +157,9 @@ struct kndObject
     int (*parse)(struct kndObject *self,
                  const char       *rec,
                  size_t           *total_size);
+    int (*read)(struct kndObject *self,
+                const char *rec,
+                size_t *total_size);
 
     int (*expand)(struct kndObject *self, size_t depth);
 

@@ -496,14 +496,11 @@ static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
     if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. get user: \"%.*s\".. %p", name_size, name, self->root_class);
 
-    err = self->root_class->get(self->root_class, "User", strlen("User"));
+    err = self->root_class->get(self->root_class, "User", strlen("User"), &conc);
     if (err) return err;
-    conc = self->root_class->curr_class;
-    
-    err = conc->get_obj(conc, name, name_size);
+
+    err = conc->get_obj(conc, name, name_size, &self->curr_user);
     if (err) return err;
-    
-    self->curr_user = conc->curr_obj;
 
     if (DEBUG_USER_LEVEL_TMP)
         knd_log("++ got user: \"%.*s\"!", name_size, name);
@@ -688,7 +685,7 @@ static int parse_task(struct kndUser *self,
         if (self->root_class->inbox_size || self->root_class->obj_inbox_size) {
             out = self->task->update;
 
-            if (DEBUG_USER_LEVEL_2)
+            if (DEBUG_USER_LEVEL_TMP)
                 knd_log(".. update state.. total output free space: %lu TOTAL SPEC SIZE: %lu",
                         (unsigned long)out->free_space,
                         (unsigned long)*total_size);
