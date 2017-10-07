@@ -425,7 +425,7 @@ static int parse_GSL(struct kndElem *self,
                      size_t *total_size)
 {
     int err;
-    
+
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_val,
@@ -440,7 +440,7 @@ static int parse_GSL(struct kndElem *self,
         }
     };
 
-    if (DEBUG_ELEM_LEVEL_TMP)
+    if (DEBUG_ELEM_LEVEL_1)
         knd_log(".. ELEM \"%.*s\" parse REC: \"%.*s\"",
                 self->attr->name_size, self->attr->name,
                 16, rec);

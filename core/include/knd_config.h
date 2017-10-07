@@ -29,8 +29,9 @@ typedef enum { knd_OK, knd_FAIL, knd_NOMEM, knd_LIMIT, knd_AUTH_OK, knd_AUTH_FAI
         KND_OPEN_DELIM_MISSING, KND_CLOSE_DELIM_MISSING } 
   knd_err_codes;
 
-typedef enum knd_state_phase { KND_CREATED,
-                               KND_SELECTED,
+typedef enum knd_state_phase { KND_SELECTED,
+                               KND_SUBMITTED,
+                               KND_CREATED,
                                KND_UPDATED,
                                KND_REMOVED,
                                KND_FROZEN,

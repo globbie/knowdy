@@ -308,10 +308,11 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
     repo->out = self->out;
     
     /* get new repo id */
-    memcpy(repo->id, self->last_id, KND_ID_SIZE);
+    /*memcpy(repo->id, self->last_id, KND_ID_SIZE);
     repo->id[KND_ID_SIZE] = '\0';
     knd_inc_id(repo->id);
-
+    */
+    
     memcpy(repo->name, name, name_size);
     repo->name_size = name_size;
     repo->name[name_size] = '\0';

@@ -31,8 +31,10 @@ static void str(struct kndText *self)
     struct kndTranslation *tr;
     struct kndTextSelect *sel;
 
-    knd_log("%*s%s:", self->depth * KND_OFFSET_SIZE, "",
-            self->elem->attr->name);
+    if (self->elem) {
+        knd_log("%*s%s:", self->depth * KND_OFFSET_SIZE, "",
+                self->elem->attr->name);
+    }
 
     curr_state = self->states;
     while (curr_state) {

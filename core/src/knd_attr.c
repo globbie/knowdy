@@ -46,6 +46,10 @@ static void str(struct kndAttr *self)
     else
         knd_log("\n%*s{%s %s", self->depth * KND_OFFSET_SIZE, "", type_name, self->name);
 
+    if (self->access_type == KND_ATTR_ACCESS_RESTRICTED) {
+        knd_log("%*s  ACL:restricted", self->depth * KND_OFFSET_SIZE, "");
+    }
+    
     if (self->cardinality_size) {
         knd_log("\n%*s    [%s]", self->depth * KND_OFFSET_SIZE, "", self->cardinality);
     }
@@ -467,7 +471,9 @@ static int run_set_access_control(void *obj,
 
     if (!strncmp(name, "restrict", strlen("restrict"))) {
         self->access_type = KND_ATTR_ACCESS_RESTRICTED;
-        knd_log("** NB: restricted attr: %.*s!", self->name_size, self->name);
+        if (DEBUG_ATTR_LEVEL_2)
+            knd_log("** NB: restricted attr: %.*s!",
+                    self->name_size, self->name);
     }
     
     return knd_OK;
@@ -520,15 +526,16 @@ static int run_set_validator(void *obj,
     self->validator_name_size = name_size;
     self->validator_name[name_size] = '\0';
 
-    if (DEBUG_ATTR_LEVEL_TMP)
+    if (DEBUG_ATTR_LEVEL_2)
         knd_log("== validator name set: %.*s", name_size, name);
 
     size_t knd_num_attr_validators = sizeof(knd_attr_validators) / sizeof(struct kndAttrValidator);
 
     for (size_t i = 0; i < knd_num_attr_validators; i++) {
         validator = &knd_attr_validators[i];
-        knd_log("existing validator: \"%s\"", validator->name);
-
+        /* TODO: assign validator
+           knd_log("existing validator: \"%s\"", validator->name);
+        */
     }
     
     return knd_OK;

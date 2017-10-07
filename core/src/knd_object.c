@@ -34,10 +34,10 @@ static void str(struct kndObject *self)
 {
     struct kndElem *elem;
     if (self->type == KND_OBJ_ADDR) {
-        knd_log("\n%*sOBJ %.*s::%.*s [%.*s]\n",
+        knd_log("\n%*sOBJ %.*s::%.*s [%.*s]  phase:%d\n",
                 self->depth * KND_OFFSET_SIZE, "", self->conc->name_size, self->conc->name,
                 self->name_size, self->name,
-                KND_ID_SIZE, self->id);
+                KND_ID_SIZE, self->id, self->phase);
     }
 
     for (elem = self->elems; elem; elem = elem->next) {
@@ -454,7 +454,7 @@ kndObject_validate_attr(struct kndObject *self,
     struct kndAttr *attr = NULL;
     int err, e;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_1)
         knd_log(".. \"%.*s\" to validate elem: \"%.*s\" conc: %p",
                 self->name_size, self->name, name_size, name, self->conc);
     conc = self->conc;
@@ -471,7 +471,7 @@ kndObject_validate_attr(struct kndObject *self,
         return err;
     }
 
-    if (DEBUG_OBJ_LEVEL_TMP) {
+    if (DEBUG_OBJ_LEVEL_1) {
         const char *type_name = knd_attr_names[attr->type];
         knd_log("++ \"%.*s\" ELEM \"%s\" attr type: \"%s\"",
                 name_size, name, attr->name, type_name);
@@ -496,7 +496,7 @@ static int parse_elem(void *data,
     struct kndText *text = NULL;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP) {
+    if (DEBUG_OBJ_LEVEL_1) {
         knd_log("..  validation of \"%s\" elem REC: \"%.*s\"\n",
                 name, 16, rec);
     }
@@ -520,19 +520,20 @@ static int parse_elem(void *data,
         if (err) return err;
         
         obj->type = KND_OBJ_AGGR;
-        if (!attr->conc && self->phase == KND_FROZEN) {
-            knd_log(".. resolve attr \"%.*s\": \"%.*s\"..",
-                    attr->name_size, attr->name,
-                    attr->ref_classname_size, attr->ref_classname);
-            root_class = self->conc->root_class;
-            err = root_class->get(root_class,
-                                  attr->ref_classname, attr->ref_classname_size,
-                                  &c);
-            if (err) return err;
-            attr->conc = c;
-
-            c->str(c);
-            knd_log("\n\n");
+        if (!attr->conc) {
+            if (self->phase == KND_FROZEN) {
+                if (DEBUG_OBJ_LEVEL_1) {
+                    knd_log(".. resolve attr \"%.*s\": \"%.*s\"..",
+                            attr->name_size, attr->name,
+                            attr->ref_classname_size, attr->ref_classname);
+                }
+                root_class = self->conc->root_class;
+                err = root_class->get(root_class,
+                                      attr->ref_classname, attr->ref_classname_size,
+                                      &c);
+                if (err) return err;
+                attr->conc = c;
+            }
         }
 
         obj->conc = attr->conc;
@@ -611,8 +612,6 @@ static int parse_GSL(struct kndObject *self,
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
-
-    knd_log(".. parse obj GSL..");
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,

@@ -177,7 +177,7 @@ struct kndConcept
     /* for traversal */
     struct kndAttr *curr_attr;
     size_t attrs_left;
-    
+
     struct kndConcItem *bases;
     size_t num_bases;
 
