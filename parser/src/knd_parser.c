@@ -381,8 +381,6 @@ knd_find_spec(struct kndTaskSpec *specs,
         if (strncmp(name, spec->name, spec->name_size) != 0) {
             continue;
         }
-        
-
         *result = spec;
         return knd_OK;
     }
@@ -920,10 +918,42 @@ int knd_parse_task(const char *rec,
                     in_implied_field = false;
                 }
             }
+            else {
+                err = check_name_limits(b, e, &name_size);
+                if (err) return err;
+
+                if (DEBUG_PARSER_LEVEL_TMP)
+                    knd_log("++ BASIC LOOP got tag before square bracket: \"%.*s\" [%zu]",
+                            name_size, b, name_size);
+                  
+                err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
+                if (err) {
+                    knd_log("-- no spec found to handle the \"%.*s\" tag: %d",
+                            name_size, b, err);
+                    return err;
+                }
+
+                if (spec->validate) {
+                    err = spec->validate(spec->obj,
+                                         (const char*)spec->buf, *spec->buf_size,
+                                         c, &chunk_size);
+                    if (err) {
+                        knd_log("-- ERR: %d validation of spec \"%s\" failed :(",
+                                err, spec->name);
+                        return err;
+                    }
+                }
+                c += chunk_size;
+                spec->is_completed = true;
+                in_field = false;
+                b = c;
+                e = b;
+                break;
+            }
             
             err = knd_parse_list(c, &chunk_size, specs, num_specs);
             if (err) {
-                knd_log("-- basic LOOP failed to parse the list area :(");
+                knd_log("-- basic LOOP failed to parse the list area \"%.*s\" :(", 16, c);
                 return err;
             }
             c += chunk_size;
@@ -1259,7 +1289,7 @@ static int knd_parse_list(const char *rec,
             err = check_name_limits(b, e, &name_size);
             if (err) return err;
 
-            if (DEBUG_PARSER_LEVEL_TMP)
+            if (DEBUG_PARSER_LEVEL_2)
                 knd_log("++ list got tag: \"%.*s\" [%lu]",
                         name_size, b, (unsigned long)name_size);
 

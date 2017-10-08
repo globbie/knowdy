@@ -522,16 +522,38 @@ static int get_attr(struct kndConcept *self,
                     const char *name, size_t name_size,
                     struct kndAttr **result)
 {
+    struct kndAttr *attr;
     struct kndAttrEntry *entry;
+    int err;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         knd_log(".. \"%.*s\" class to check attr \"%.*s\"",
                 self->name_size, self->name, name_size, name);
     }
+
+    if (!self->attr_idx) {
+        err = ooDict_new(&self->attr_idx, KND_SMALL_DICT_SIZE);
+        if (err) return err;
+
+        for (attr = self->attrs; attr; attr = attr->next) {
+            entry = malloc(sizeof(struct kndAttrEntry));
+            if (!entry) return knd_NOMEM;
+            memset(entry, 0, sizeof(struct kndAttrEntry));
+            memcpy(entry->name, attr->name, attr->name_size);
+            entry->name_size = attr->name_size;
+            entry->name[entry->name_size] = '\0';
+            entry->attr = attr;
+
+            err = self->attr_idx->set(self->attr_idx, entry->name, (void*)entry);
+            if (err) return err;
+            if (DEBUG_CONC_LEVEL_2)
+                knd_log("++ register primary attr: \"%.*s\"",
+                        attr->name_size, attr->name);
+        }
+    }
+
     entry = self->attr_idx->getn(self->attr_idx, name, name_size);
     if (!entry) return knd_NO_MATCH;
-
-    /* TODO read dir */
 
     *result = entry->attr;
     return knd_OK;
@@ -2967,7 +2989,7 @@ static int get_class(struct kndConcept *self,
     buf[buf_size] = '\0';
 
     if (DEBUG_CONC_LEVEL_TMP)
-        knd_log("== Conc frozen REC: \"%.*s\"", buf_size, buf);
+        knd_log("== frozen Conc REC: \"%.*s\"", buf_size, buf);
 
     /* done reading */
     close(fd);
@@ -3134,8 +3156,7 @@ static int get_obj(struct kndConcept *self,
     buf[buf_size] = '\0';
 
     if (DEBUG_CONC_LEVEL_TMP)
-        knd_log("   == OBJ REC: \"%.*s\" root class: %p",
-                buf_size, buf, self->root_class);
+        knd_log("   == OBJ REC: \"%.*s\"", buf_size, buf);
 
     /* done reading */
     close(fd);
@@ -3238,7 +3259,7 @@ static int run_select_obj(void *data,
     struct kndObject *obj;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. run obj select..");
 
     /* TODO: log */

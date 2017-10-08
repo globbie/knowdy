@@ -92,8 +92,6 @@ kndRef_set_reverse_rel(struct kndRef *self,
 
     reltype->num_refs++;
     
-    /*knd_log("  == total refs: %lu\n", (unsigned long)reltype->num_refs);*/
-    
     return knd_OK;
 }
 
@@ -188,12 +186,20 @@ static int
 export_reverse_rel_JSON(struct kndRef *self)
 {
     struct kndObject *obj;
-    struct kndOutput *out;
+    struct kndOutput *out = self->out;
     int err = knd_FAIL;
 
-    obj = self->elem->root;
-    out = self->out;
+    if (!self->elem) {
+        err = out->write(out, "\"", 1);
+        if (err) return err;
+        err = out->write(out, self->name, self->name_size);
+        if (err) return err;
+        err = out->write(out, "\"", 1);
+        if (err) return err;
+        return knd_OK;
+    }
 
+    obj = self->elem->root;
     if (DEBUG_REF_LEVEL_2)
         knd_log(".. export reverse_rel to JSON..");
 

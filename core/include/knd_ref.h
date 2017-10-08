@@ -47,6 +47,10 @@ struct kndRef
     knd_ref_t type;
     struct kndElem *elem;
 
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+    char id[KND_ID_SIZE];
+
     struct kndOutput *out;
     struct kndOutput *log;
 
