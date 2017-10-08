@@ -136,6 +136,9 @@ START_TEST(parse_tag_empty)
 
     rc = knd_parse_task(rec = "{user {}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FORMAT);
+
+    rc = knd_parse_task(rec = "{user { 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FORMAT);
 END_TEST
 
 START_TEST(parse_tag_empty_with_spaces)
@@ -151,9 +154,6 @@ START_TEST(parse_tag_unknown)
     struct kndTaskSpec inner_specs[] = { sid_spec };
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
-
-    rc = knd_parse_task(rec = "{user { 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_NO_MATCH);
 
     rc = knd_parse_task(rec = "{user {s 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_NO_MATCH);
