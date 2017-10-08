@@ -329,7 +329,7 @@ static int run_set_cardinality(void *obj,
 static int run_set_translation_text(void *obj,
                                     struct kndTaskArg *args, size_t num_args)
 {
-    struct kndTranslation *tr = (struct kndTranslation*)obj;
+    struct kndTranslation *tr = obj;
     struct kndTaskArg *arg;
     const char *val = NULL;
     size_t val_size = 0;
@@ -356,12 +356,11 @@ static int run_set_translation_text(void *obj,
     return knd_OK;
 }
 
-
 static int parse_gloss_translation(void *obj,
                                    const char *name, size_t name_size,
                                    const char *rec, size_t *total_size)
 {
-    struct kndTranslation *tr = (struct kndTranslation*)obj;
+    struct kndTranslation *tr = obj;
     int err;
 
     if (DEBUG_ATTR_LEVEL_2) {
@@ -392,7 +391,7 @@ static int parse_gloss_change(void *obj,
                               const char *rec,
                               size_t *total_size)
 {
-    struct kndAttr *self = (struct kndAttr*)obj;
+    struct kndAttr *self = obj;
     struct kndTranslation *tr;
     int err;
 
@@ -422,6 +421,72 @@ static int parse_gloss_change(void *obj,
 
     return knd_OK;
 }
+
+
+static int read_gloss(void *obj,
+                      const char *rec,
+                      size_t *total_size)
+{
+    struct kndTranslation *tr = obj;
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_translation_text,
+          .obj = tr
+        }
+    };
+    int err;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. reading gloss translation: \"%.*s\"",
+                tr->locale_size, tr->locale);
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+static int gloss_append(void *accu,
+                        void *item)
+{
+    struct kndAttr *self = accu;
+    struct kndTranslation *tr = item;
+
+    tr->next = self->tr;
+    self->tr = tr;
+
+    return knd_OK;
+}
+
+static int gloss_alloc(void *obj,
+                       const char *name,
+                       size_t name_size,
+                       size_t count,
+                       void **item)
+{
+    struct kndAttr *self = obj;
+    struct kndTranslation *tr;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. %.*s: create gloss: %.*s count: %zu",
+                self->name_size, self->name, name_size, name, count);
+
+    if (name_size > KND_LOCALE_SIZE) return knd_LIMIT;
+
+    tr = malloc(sizeof(struct kndTranslation));
+    if (!tr) return knd_NOMEM;
+
+    memset(tr, 0, sizeof(struct kndTranslation));
+    memcpy(tr->curr_locale, name, name_size);
+    tr->curr_locale_size = name_size;
+
+    tr->locale = tr->curr_locale;
+    tr->locale_size = tr->curr_locale_size;
+    *item = tr;
+
+    return knd_OK;
+}
+
 
 
 static int parse_cardinality(void *obj,
@@ -578,6 +643,14 @@ static int parse_GSL(struct kndAttr *self,
           .name_size = strlen("gloss"),
           .parse = parse_gloss_change,
           .obj = self
+        },
+        { .is_list = true,
+          .name = "_g",
+          .name_size = strlen("_g"),
+          .accu = self,
+          .alloc = gloss_alloc,
+          .append = gloss_append,
+          .parse = read_gloss
         },
         { .type = KND_CHANGE_STATE,
           .name = "c",

@@ -2966,6 +2966,9 @@ static int get_class(struct kndConcept *self,
     }
     buf[buf_size] = '\0';
 
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log("== Conc frozen REC: \"%.*s\"", buf_size, buf);
+
     /* done reading */
     close(fd);
 

@@ -909,6 +909,18 @@ int knd_parse_task(const char *rec,
             *total_size = c - rec;
             return knd_OK;
         case '[':
+            /* starting brace */
+            if (!in_field) {
+                if (in_implied_field) {
+                    name_size = e - b;
+                    if (name_size) {
+                        err = knd_check_implied_field(b, name_size, specs, num_specs, args, &num_args);
+                        if (err) return err;
+                    }
+                    in_implied_field = false;
+                }
+            }
+            
             err = knd_parse_list(c, &chunk_size, specs, num_specs);
             if (err) {
                 knd_log("-- basic LOOP failed to parse the list area :(");

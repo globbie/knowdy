@@ -351,7 +351,7 @@ kndObject_export_GSP(struct kndObject *self)
 
     if (self->type == KND_OBJ_ADDR) {
         start_size = self->out->buf_size;
-        if (DEBUG_OBJ_LEVEL_TMP)
+        if (DEBUG_OBJ_LEVEL_2)
             knd_log("%*s.. export GSP obj \"%.*s\" [id: %.*s]..",
                     self->depth *  KND_OFFSET_SIZE, "",
                     self->name_size, self->name, KND_ID_SIZE, self->id);
