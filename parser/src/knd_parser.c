@@ -664,6 +664,7 @@ int knd_parse_task(const char *rec,
                 }
 
                 in_field = true;
+                assert(!in_terminal);
                 in_terminal = false;
                 b = c + 1;
                 e = b;
