@@ -28,9 +28,9 @@ static int parse_user(void *self, const char *rec, size_t *total_size) {
 
 static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args) {
     struct User *user = (struct User *)obj;
-    ck_assert(args && num_args == 1);
-    ck_assert(args[0].name_size == strlen("_impl") && !memcmp(args[0].name, "_impl", args[0].name_size));
-    ck_assert(args[0].val_size != 0);
+    ck_assert(args); ck_assert_uint_eq(num_args, 1);
+    ck_assert_uint_eq(args[0].name_size, strlen("_impl")); ck_assert_str_eq(args[0].name, "_impl");
+    ck_assert_uint_ne(args[0].val_size, 0);
     if (args[0].val_size > sizeof user->name)
         return knd_LIMIT;
     memcpy(user->name, args[0].val, args[0].val_size);
@@ -55,9 +55,9 @@ START_TEST(parse_task_empty)
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
     rc = knd_parse_task(rec = "", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_OK);
-    ck_assert(total_size == strlen(rec));
-    ck_assert(user.name_size == 0 && user.sid_size == 0);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_uint_eq(user.name_size, 0); ck_assert_uint_eq(user.sid_size, 0);
 END_TEST
 
 START_TEST(parse_task_empty_with_spaces)
@@ -66,9 +66,9 @@ START_TEST(parse_task_empty_with_spaces)
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
     rc = knd_parse_task(rec = "     ", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_OK);
-    ck_assert(total_size == strlen(rec));
-    ck_assert(user.name_size == 0 && user.sid_size == 0);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_uint_eq(user.name_size, 0); ck_assert_uint_eq(user.sid_size, 0);
 END_TEST
 
 START_TEST(parse_task_empty_with_closing_brace)
@@ -77,8 +77,8 @@ START_TEST(parse_task_empty_with_closing_brace)
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
     rc = knd_parse_task(rec = " }     ", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_OK);
-    ck_assert(total_size == (size_t)(strchr(rec, '}') - rec));  // shared brace
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strchr(rec, '}') - rec);  // shared brace
 END_TEST
 
 START_TEST(parse_implied_field_with_spaces)
@@ -87,14 +87,14 @@ START_TEST(parse_implied_field_with_spaces)
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
     rc = knd_parse_task(rec = "{user John Smith}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_OK);
-    ck_assert(total_size == strlen(rec));
-    ck_assert(user.name_size == strlen("John Smith") && !memcmp(user.name, "John Smith", user.name_size));
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
 
     rc = knd_parse_task(rec = "{user  John Space }", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_OK);
-    ck_assert(total_size == strlen(rec));
-    ck_assert(user.name_size == strlen("John Space") && !memcmp(user.name, "John Space", user.name_size));
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_uint_eq(user.name_size, strlen("John Space")); ck_assert_str_eq(user.name, "John Space");
 END_TEST
 
 START_TEST(parse_implied_field_max_size)
@@ -104,9 +104,9 @@ START_TEST(parse_implied_field_max_size)
     const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 5] = 'a', [KND_SHORT_NAME_SIZE + 6] = '}', [KND_SHORT_NAME_SIZE + 7] = '\0' };
 
     rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_OK);
-    ck_assert(total_size == strlen(rec));
-    ck_assert(user.name_size == KND_SHORT_NAME_SIZE && !memcmp(user.name, strchr(buf, 'a'), user.name_size));
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_uint_eq(user.name_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.name, strchr(buf, 'a'), user.name_size));
 END_TEST
 
 START_TEST(parse_implied_field_max_size_plus_one)
@@ -116,7 +116,7 @@ START_TEST(parse_implied_field_max_size_plus_one)
     const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 6] = 'a', [KND_SHORT_NAME_SIZE + 7] = '}', [KND_SHORT_NAME_SIZE + 8] = '\0' };
 
     rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_LIMIT);  // defined in run_set_name()
+    ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_name()
 END_TEST
 
 START_TEST(parse_implied_field_size_NAME_SIZE_plus_one)
@@ -126,7 +126,7 @@ START_TEST(parse_implied_field_size_NAME_SIZE_plus_one)
     const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_NAME_SIZE + 6] = 'a', [KND_NAME_SIZE + 7] = '}', [KND_NAME_SIZE + 8] = '\0' };
 
     rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_LIMIT);
+    ck_assert_int_eq(rc, knd_LIMIT);
 END_TEST
 
 START_TEST(parse_tag_empty)
@@ -135,7 +135,7 @@ START_TEST(parse_tag_empty)
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
     rc = knd_parse_task(rec = "{user {}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_FORMAT);
+    ck_assert_int_eq(rc, knd_FORMAT);
 END_TEST
 
 START_TEST(parse_tag_empty_with_spaces)
@@ -144,7 +144,7 @@ START_TEST(parse_tag_empty_with_spaces)
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
     rc = knd_parse_task(rec = "{user {     }}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_FORMAT);
+    ck_assert_int_eq(rc, knd_FORMAT);
 END_TEST
 
 START_TEST(parse_tag_unknown)
@@ -153,19 +153,19 @@ START_TEST(parse_tag_unknown)
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
     rc = knd_parse_task(rec = "{user { 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_NO_MATCH);
+    ck_assert_int_eq(rc, knd_NO_MATCH);
 
     rc = knd_parse_task(rec = "{user {s 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_NO_MATCH);
+    ck_assert_int_eq(rc, knd_NO_MATCH);
 
     rc = knd_parse_task(rec = "{user {si 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_NO_MATCH);
+    ck_assert_int_eq(rc, knd_NO_MATCH);
 
     rc = knd_parse_task(rec = "{user {sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_OK);
+    ck_assert_int_eq(rc, knd_OK);
 
     rc = knd_parse_task(rec = "{user {sido 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_NO_MATCH);
+    ck_assert_int_eq(rc, knd_NO_MATCH);
 END_TEST
 
 START_TEST(parse_value_empty)
@@ -174,7 +174,7 @@ START_TEST(parse_value_empty)
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
     rc = knd_parse_task(rec = "{user {sid}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_FORMAT);  // TODO(ki.stfu): Call the default handler
+    ck_assert_int_eq(rc, knd_FORMAT);  // TODO(ki.stfu): Call the default handler
 END_TEST
 
 START_TEST(parse_value_empty_with_spaces)
@@ -183,7 +183,7 @@ START_TEST(parse_value_empty_with_spaces)
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
     rc = knd_parse_task(rec = "{user {sid   }}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_FORMAT);
+    ck_assert_int_eq(rc, knd_FORMAT);
 END_TEST
 
 START_TEST(parse_value_max_size)
@@ -192,9 +192,9 @@ START_TEST(parse_value_max_size)
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
     rc = knd_parse_task(rec = "{user {sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_OK);
-    ck_assert(total_size == strlen(rec));
-    ck_assert(user.sid_size == strlen("123456") && !memcmp(user.sid, "123456", user.sid_size));
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
 END_TEST
 
 START_TEST(parse_value_max_size_plus_one)
@@ -203,7 +203,7 @@ START_TEST(parse_value_max_size_plus_one)
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
     rc = knd_parse_task(rec = "{user {sid 1234567}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert(rc == knd_LIMIT);
+    ck_assert_int_eq(rc, knd_LIMIT);
 END_TEST
 
 
