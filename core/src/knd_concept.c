@@ -30,6 +30,8 @@
 #define DEBUG_CONC_LEVEL_5 0
 #define DEBUG_CONC_LEVEL_TMP 1
 
+static int resolve_attrs(struct kndConcept *self);
+
 static int get_class(struct kndConcept *self,
                      const char *name, size_t name_size,
                      struct kndConcept **result);
@@ -86,9 +88,12 @@ static void str_attr_items(struct kndAttrItem *items, size_t depth)
 static void str(struct kndConcept *self)
 {
     struct kndAttr *attr;
+    struct kndAttrEntry *attr_entry;
     struct kndTranslation *tr;
     struct kndConcRef *ref;
     struct kndConcItem *item;
+    const char *key;
+    void *val;
 
     knd_log("\n%*s{class %.*s    id:%.*s  st:%.*s",
             self->depth * KND_OFFSET_SIZE, "",
@@ -104,8 +109,8 @@ static void str(struct kndConcept *self)
         self->summary->str(self->summary);
     }
 
-    if (self->num_bases) {
-        for (item = self->bases; item; item = item->next) {
+    if (self->num_base_items) {
+        for (item = self->base_items; item; item = item->next) {
             knd_log("%*s_base \"%s\" %.*s", (self->depth + 1) * KND_OFFSET_SIZE, "",
                     item->name, item->classname_size, item->classname);
             if (item->attrs) {
@@ -114,10 +119,24 @@ static void str(struct kndConcept *self)
         }
     }
 
-    for (attr = self->attrs; attr; attr = attr->next) {
+    /*for (attr = self->attrs; attr; attr = attr->next) {
         attr->depth = self->depth + 1;
         attr->str(attr);
+        }*/
+
+    if (self->attr_idx) {
+        key = NULL;
+        self->attr_idx->rewind(self->attr_idx);
+        do {
+            self->attr_idx->next_item(self->attr_idx, &key, &val);
+            if (!key) break;
+            attr_entry = val;
+            attr = attr_entry->attr;
+            attr->depth = self->depth + 1;
+            attr->str(attr);
+        } while (key);
     }
+
     for (size_t i = 0; i < self->num_children; i++) {
         ref = &self->children[i];
         knd_log("%*sbase of --> %s", (self->depth + 1) * KND_OFFSET_SIZE, "", ref->conc->name);
@@ -151,14 +170,13 @@ static void dir_str(struct kndConcDir *self, size_t depth, int fd)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
-
     struct kndConcDir *dir;
     struct kndObjEntry *entry;
     int err;
 
-    knd_log("%*s\"%.*s\" => (off: %zu, len: %zu, obj_idx: %p)",
+    knd_log("%*s\"%.*s\" => (off: %zu, len: %zu)",
             depth * KND_OFFSET_SIZE, "", self->name_size, self->name,
-            self->global_offset, self->block_size, self->obj_idx);
+            self->global_offset, self->block_size);
 
     if (lseek(fd, self->global_offset, SEEK_SET) == -1) {
         return;
@@ -206,7 +224,6 @@ static int validate_attr_items(struct kndConcept *self,
         err = get_attr(self, item->name, item->name_size, &attr);
         if (err) {
             knd_log("-- attr \"%.*s\" not approved :(\n", item->name_size, item->name);
-
             /*self->log->reset(self->log);
             e = self->log->write(self->log, name, name_size);
             if (e) return e;
@@ -222,7 +239,138 @@ static int validate_attr_items(struct kndConcept *self,
         if (DEBUG_CONC_LEVEL_2)
             knd_log("++ attr confirmed: %.*s!\n", attr->name_size, attr->name);
     }
+
+    return knd_OK;
+}
+
+
+static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
+{
+    struct kndConcDir *dir;
+    struct kndConcRef *ref;
+    struct kndAttr *attr;
+    struct kndAttrEntry *entry, *parent_entry;
+    struct kndConcItem *item;
+    const char *key;
+    void *val;
+    int err;
+
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. \"%.*s\" class to inherit attrs from \"%.*s\"..",
+                self->name_size, self->name, base->name_size, base->name);
+
+    /* check circled relations */
+    for (size_t i = 0; i < self->num_bases; i++) {
+        dir = self->bases[i];
+        if (dir->conc == base) {
+            knd_log("-- circle inheritance detected for \"%.*s\" :(",
+                    base->name_size, base->name);
+            return knd_FAIL;
+        }
+    }
     
+    /* get attrs from base */
+    for (attr = base->attrs; attr; attr = attr->next) {
+        /* compare with exiting attrs */
+        entry = self->attr_idx->getn(self->attr_idx, attr->name, attr->name_size);
+        if (entry) {
+            knd_log("-- %.*s attr collision between \"%.*s\" and base class \"%.*s\"?",
+                    entry->name_size, entry->name,
+                    self->name_size, self->name,
+                    base->name_size, base->name);
+            return knd_FAIL;
+        }
+
+        /* register attr entry */
+        entry = malloc(sizeof(struct kndAttrEntry));
+        if (!entry) return knd_NOMEM;
+        memset(entry, 0, sizeof(struct kndAttrEntry));
+        memcpy(entry->name, attr->name, attr->name_size);
+        entry->name_size = attr->name_size;
+        entry->name[entry->name_size] = '\0';
+        entry->attr = attr;
+
+        err = self->attr_idx->set(self->attr_idx, entry->name, (void*)entry);
+        if (err) return err;
+    }
+    
+    if (self->num_bases >= KND_MAX_BASES) {
+        knd_log("-- max bases exceeded for %.*s :(",
+                self->name_size, self->name);
+        return knd_FAIL;
+    }
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(" .. add %.*s parent to %.*s", base->dir->conc->name_size,
+                base->dir->conc->name, self->name_size, self->name);
+
+    self->bases[self->num_bases] = base->dir;
+    self->num_bases++;
+
+    /* contact the grandparents */
+    for (item = base->base_items; item; item = item->next) {
+        err = inherit_attrs(self, item->conc);
+        if (err) return err;
+    }
+    
+    return knd_OK;
+}
+
+
+static int resolve_attrs(struct kndConcept *self)
+{
+    struct kndAttr *attr;
+    struct kndAttrEntry *entry;
+    struct kndConcDir *dir;
+    int err, e;
+
+    err = ooDict_new(&self->attr_idx, KND_SMALL_DICT_SIZE);
+    if (err) return err;
+
+    for (attr = self->attrs; attr; attr = attr->next) {
+        entry = self->attr_idx->getn(self->attr_idx, attr->name, attr->name_size);
+        if (entry) {
+            knd_log("-- %.*s attr already exists?", attr->name_size, attr->name);
+            return knd_FAIL;
+        }
+        
+        entry = malloc(sizeof(struct kndAttrEntry));
+        if (!entry) return knd_NOMEM;
+        memset(entry, 0, sizeof(struct kndAttrEntry));
+        memcpy(entry->name, attr->name, attr->name_size);
+        entry->name_size = attr->name_size;
+        entry->name[entry->name_size] = '\0';
+        entry->attr = attr;
+
+        err = self->attr_idx->set(self->attr_idx, entry->name, (void*)entry);
+        if (err) return err;
+
+        if (DEBUG_CONC_LEVEL_2)
+            knd_log("++ register primary attr: \"%.*s\"",
+                    attr->name_size, attr->name);
+
+        switch (attr->type) {
+        case KND_ATTR_AGGR:
+        case KND_ATTR_REF:
+            if (!attr->ref_classname_size) {
+                knd_log("-- no classname specified for attr \"%s\"",
+                        attr->name);
+                return knd_FAIL;
+            }
+            dir = (struct kndConcDir*)self->class_idx->get(self->class_idx,
+                                                         (const char*)attr->ref_classname);
+            if (!dir) {
+                knd_log("-- couldn't resolve the \"%.*s\" attr of %.*s :(",
+                        attr->name_size, attr->name, self->name_size, self->name);
+                return knd_FAIL;
+            }
+            
+            attr->conc = dir->conc;
+            break;
+        default:
+            break;
+        }
+    }
     return knd_OK;
 }
 
@@ -235,15 +383,12 @@ static int resolve_name_refs(struct kndConcept *self)
     struct kndConcDir *dir;
     int err, e;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. resolving class \"%.*s\"",
                 self->name_size, self->name);
 
-    if (self->phase == KND_REMOVED) return knd_OK;
-
-    if (!self->bases) {
+    if (!self->base_items) {
         root = self->root_class;
-
         /* a child of the root class
          * TODO: refset */
         ref = &root->children[root->num_children];
@@ -251,8 +396,14 @@ static int resolve_name_refs(struct kndConcept *self)
         root->num_children++;
     }
 
-    /* check inheritance paths */
-    for (item = self->bases; item; item = item->next) {
+    /* resolve and index the attrs */
+    if (!self->attr_idx) {
+        err = resolve_attrs(self);
+        if (err) return err;
+    }
+
+    /* resolve refs to base classes */
+    for (item = self->base_items; item; item = item->next) {
         if (item->parent == self) {
             /* TODO */
             if (DEBUG_CONC_LEVEL_2)
@@ -262,7 +413,7 @@ static int resolve_name_refs(struct kndConcept *self)
         }
 
         if (DEBUG_CONC_LEVEL_2)
-            knd_log(".. \"%s\" class to check its base class: \"%s\"..",
+            knd_log(".. \"%s\" class to get its base class: \"%s\"..",
                     self->name, item->name);
         dir = (struct kndConcDir*)self->class_idx->get(self->class_idx,
                                                        (const char*)item->name);
@@ -277,7 +428,6 @@ static int resolve_name_refs(struct kndConcept *self)
                     if (!memcmp(c->name, item->name, item->name_size)) break;
                 }
             }
-
             if (!c) {
                 knd_log("-- couldn't resolve the \"%s\" base class ref :(", item->name);
                 return knd_FAIL;
@@ -299,29 +449,37 @@ static int resolve_name_refs(struct kndConcept *self)
             }
         }
 
-        /* TODO: prevent circled relations */
-        /*err = c->is_a(c, self);
-        if (!err) {
-            knd_log("-- circled relationship detected: \"%s\" can't be the parent of \"%s\" :(",
-                    item->name, self->name);
+        if (c == self) {
+            knd_log("-- self reference detected in \"%.*s\" :(",
+                    item->name_size, item->name);
             return knd_FAIL;
-            } */
+        }
 
         if (DEBUG_CONC_LEVEL_2)
-            knd_log("++ \"%s\" confirmed as a base class for \"%s\"!",
+            knd_log("++ \"%s\" ref established as a base class for \"%s\"!",
                     item->name, self->name);
 
         item->conc = c;
 
-        /* validate attrs */
-        if (item->attrs) {
+        /* validate attr items */
+        /*if (item->attrs) {
             err = validate_attr_items(c, item->attrs);
             if (err) return err;
-        }
+            }*/
 
         /* should we keep track of our children? */
-        if (c->ignore_children) continue;
-        
+        /*if (c->ignore_children) continue; */
+
+        /* check item doublets */
+        for (size_t i = 0; i < self->num_children; i++) {
+            ref = &self->children[i];
+            if (ref->conc == self) {
+                knd_log("-- doublet conc item found in \"%.*s\" :(",
+                        self->name_size, self->name);
+                return knd_FAIL;
+            }
+        }
+
         if (c->num_children >= KND_MAX_CONC_CHILDREN) {
             knd_log("-- %s as child to %s - max conc children exceeded :(",
                     self->name, item->name);
@@ -333,32 +491,7 @@ static int resolve_name_refs(struct kndConcept *self)
         c->num_children++;
     }
 
-    for (attr = self->attrs; attr; attr = attr->next) {
-        switch (attr->type) {
-        case KND_ATTR_AGGR:
-        case KND_ATTR_REF:
-            
-            if (!attr->ref_classname_size) {
-                knd_log("-- no classname specified for attr \"%s\"",
-                        attr->name);
-                return knd_FAIL;
-            }
-
-            /* try to resolve as an inline class */
-            dir = (struct kndConcDir*)self->class_idx->get(self->class_idx,
-                                                         (const char*)attr->ref_classname);
-            if (!dir) {
-                knd_log("-- couldn't resolve the \"%s\" aggr attr :(",
-                        attr->name);
-                return knd_FAIL;
-            }
-            
-            attr->conc = dir->conc;
-            break;
-        default:
-            break;
-        }
-    }
+    self->is_resolved = true;
 
     return knd_OK;
 }
@@ -389,60 +522,19 @@ static int get_attr(struct kndConcept *self,
                     const char *name, size_t name_size,
                     struct kndAttr **result)
 {
-    struct kndAttr *a;
-    struct kndConcept *c;
-    struct kndConcItem *item = NULL;
-    int err;
+    struct kndAttrEntry *entry;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_TMP) {
         knd_log(".. \"%.*s\" class to check attr \"%.*s\"",
                 self->name_size, self->name, name_size, name);
-
-    /* first check your immediate attrs */
-    for (a = self->attrs; a; a = a->next) {
-        if (DEBUG_CONC_LEVEL_2)
-            knd_log(".. \"%.*s\" class immediate attr: \"%.*s\"",
-                    self->name_size, self->name,
-                    a->name_size, a->name);
-        
-        if (!memcmp(a->name, name, name_size)) {
-            *result = a;
-            return knd_OK;
-        }
     }
+    entry = self->attr_idx->getn(self->attr_idx, name, name_size);
+    if (!entry) return knd_NO_MATCH;
 
-    /* ask parents */
-    if (!self->num_bases) return knd_NO_MATCH;
-    
-    for (item = self->bases; item; item = item->next) {
-        if (DEBUG_CONC_LEVEL_2) {
-            knd_log("    .. check parent class: \"%s\".. concref: %p",
-                    item->name, item->conc);
-        }
-        
-        if (item->attrs) {
-            err = get_attr_item(item->attrs, name, name_size, &a);
-            if (!err) {
-                *result = a;
-                return knd_OK;
-            }
-        }
+    /* TODO read dir */
 
-        if (!item->conc) {
-            err = get_class(self, item->name, item->name_size, &c);
-            if (err) return err;
-            
-            item->conc = c;
-        }
-            
-        err = item->conc->get_attr(item->conc, name, name_size, &a);
-        if (!err) {
-            *result = a;
-            return knd_OK;
-        }
-    }
-
-    return knd_NO_MATCH;
+    *result = entry->attr;
+    return knd_OK;
 }
 
 static int parse_field(void *obj,
@@ -619,7 +711,7 @@ static int parse_aggr(void *obj,
             knd_log("-- failed to parse the AGGR attr: %d", err);
         return err;
     }
-    
+
     if (!self->tail_attr) {
         self->tail_attr = attr;
         self->attrs = attr;
@@ -629,9 +721,8 @@ static int parse_aggr(void *obj,
         self->tail_attr = attr;
     }
 
-    /* resolve attr if read from GSP */
 
-
+    /* TODO: resolve attr if read from GSP */
     
     return knd_OK;
 }
@@ -651,7 +742,8 @@ static int parse_str(void *obj,
 
     err = attr->parse(attr, rec, total_size);
     if (err) {
-        knd_log("-- failed to parse the STR attr: %d", err);
+        knd_log("-- failed to parse the STR attr of \"%.*s\" :(",
+                self->name_size, self->name);
         return err;
     }
     if (!self->tail_attr) {
@@ -816,9 +908,9 @@ static int run_set_conc_item(void *obj, struct kndTaskArg *args, size_t num_args
         knd_log("== baseclass item name set: \"%.*s\"",
                 item->name_size, item->name);
 
-    item->next = self->bases;
-    self->bases = item;
-    self->num_bases++;
+    item->next = self->base_items;
+    self->base_items = item;
+    self->num_base_items++;
 
     return knd_OK;
 }
@@ -913,9 +1005,9 @@ static int parse_conc_item(void *obj,
     size_t buf_size = 0;
     int err;
 
-    if (!self->bases) return knd_FAIL;
+    if (!self->base_items) return knd_FAIL;
 
-    conc_item = self->bases;
+    conc_item = self->base_items;
 
     item = malloc(sizeof(struct kndAttrItem));
     memset(item, 0, sizeof(struct kndAttrItem));
@@ -1221,27 +1313,26 @@ static int parse_import_class(void *obj,
         goto final;
     }
 
-    if (self->batch_mode) {
-        err = knd_next_state(self->next_id);
-        if (err) return err;
-        memcpy(c->id, self->next_id, KND_ID_SIZE);
-
-        dir = malloc(sizeof(struct kndConcDir));
-        memset(dir, 0, sizeof(struct kndConcDir));
-        dir->conc = c;
-        c->dir = dir;
-        err = self->class_idx->set(self->class_idx,
-                                   (const char*)c->name, (void*)dir);
-        if (err) goto final;
-
-        if (DEBUG_CONC_LEVEL_TMP)
-            c->str(c);
-    }
-    else {
+    if (!self->batch_mode) {
         c->next = self->inbox;
         self->inbox = c;
         self->inbox_size++;
     }
+
+    /*err = knd_next_state(self->next_id);
+        if (err) return err;
+        memcpy(c->id, self->next_id, KND_ID_SIZE);
+    */
+    dir = malloc(sizeof(struct kndConcDir));
+    memset(dir, 0, sizeof(struct kndConcDir));
+    dir->conc = c;
+    c->dir = dir;
+    err = self->class_idx->set(self->class_idx,
+                               (const char*)c->name, (void*)dir);
+    if (err) goto final;
+
+    if (DEBUG_CONC_LEVEL_1)
+        c->str(c);
      
     return knd_OK;
  final:
@@ -2553,9 +2644,9 @@ static int conc_item_append(void *accu,
     struct kndConcept *self = accu;
     struct kndConcItem *ci = item;
 
-    ci->next = self->bases;
-    self->bases = ci;
-    self->num_bases++;
+    ci->next = self->base_items;
+    self->base_items = ci;
+    self->num_base_items++;
 
     return knd_OK;
 }
@@ -2703,8 +2794,9 @@ static int resolve_class_refs(struct kndConcept *self)
     void *val;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1)
-        knd_log(".. resolving class refs by \"%s\"", self->name);
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. resolving class refs by \"%.*s\"",
+                self->name_size, self->name);
 
     key = NULL;
     self->class_idx->rewind(self->class_idx);
@@ -2714,24 +2806,58 @@ static int resolve_class_refs(struct kndConcept *self)
 
         dir = (struct kndConcDir*)val;
         c = dir->conc;
+        if (c->is_resolved) continue;
 
         err = c->resolve(c);
         if (err) {
-            knd_log("-- couldn't resolve the \"%s\" class :(\n\n", c->name);
+            knd_log("-- couldn't resolve the \"%s\" class :(", c->name);
             return err;
         }
+    } while (key);
 
+    return knd_OK;
+}
+
+static int coordinate(struct kndConcept *self)
+{
+    struct kndConcept *c;
+    struct kndConcDir *dir;
+    struct kndConcItem *item;
+    const char *key;
+    void *val;
+    int err;
+
+    if (DEBUG_CONC_LEVEL_1)
+        knd_log(".. class coordination ..");
+
+    /* names to refs */
+    err = resolve_class_refs(self);
+    if (err) return err;
+
+    /* build attr indices, detect circles, assign ids */
+    key = NULL;
+    self->class_idx->rewind(self->class_idx);
+    do {
+        self->class_idx->next_item(self->class_idx, &key, &val);
+        if (!key) break;
+        dir = (struct kndConcDir*)val;
+        c = dir->conc;
+
+        for (item = c->base_items; item; item = item->next) {
+            err = inherit_attrs(c, item->conc);
+            if (err) return err;
+        }
+
+        /* assign id */
         err = knd_next_state(self->next_id);
         if (err) return err;
-
-        memcpy(c->id, self->next_id, KND_ID_SIZE);
-        if (DEBUG_CONC_LEVEL_3)
-            knd_log("next id: %.*s", KND_ID_SIZE, self->next_id);
         
+        memcpy(c->id, self->next_id, KND_ID_SIZE);
+        c->phase = KND_CREATED;
     } while (key);
 
     /* display all classes */
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         key = NULL;
         self->class_idx->rewind(self->class_idx);
         do {
@@ -3280,9 +3406,9 @@ static int parse_set_attr(void *obj,
 
     conc_item->parent = c;
     
-    conc_item->next = c->bases;
-    c->bases = conc_item;
-    c->num_bases++;
+    conc_item->next = c->base_items;
+    c->base_items = conc_item;
+    c->num_base_items++;
     
     item = malloc(sizeof(struct kndAttrItem));
     memset(item, 0, sizeof(struct kndAttrItem));
@@ -3610,12 +3736,12 @@ static int export_JSON(struct kndConcept *self)
     }
 
     /* display base classes only once */
-    if (self->num_bases) {
+    if (self->num_base_items) {
         err = out->write(out, ",\"base\":[", strlen(",\"base\":["));
         if (err) return err;
 
         item_count = 0;
-        for (item = self->bases; item; item = item->next) {
+        for (item = self->base_items; item; item = item->next) {
             if (item->conc && item->conc->ignore_children) continue;
 
             if (item_count) {
@@ -3795,11 +3921,11 @@ static int export_GSP(struct kndConcept *self)
         if (err) return err;
     }
 
-    if (self->bases) {
+    if (self->base_items) {
         err = out->write(out, "[_ci", strlen("[_ci"));
         if (err) return err;
 
-        for (item = self->bases; item; item = item->next) {
+        for (item = self->base_items; item; item = item->next) {
             err = out->write(out, "{", strlen("{"));
             if (err) return err;
             err = out->write(out, item->conc->id, KND_ID_SIZE);
@@ -4237,6 +4363,8 @@ static int update_state(struct kndConcept *self)
 
     }
 
+    /* TODO: coordinate classes */
+    
     for (obj = self->obj_inbox; obj; obj = obj->next) {
         obj->task = self->task;
         obj->log = self->log;
@@ -4261,6 +4389,7 @@ static int update_state(struct kndConcept *self)
         if (DEBUG_CONC_LEVEL_TMP)
             c->str(c);
     }
+
 
     for (obj = self->obj_inbox; obj; obj = obj->next) {
         obj->phase = KND_CREATED;
@@ -4458,13 +4587,6 @@ static int run_select_class_diff(void *obj, struct kndTaskArg *args, size_t num_
 
     c = dir->conc;
     knd_log("++ class confirmed: %s!", c->name);
-    
-    /* TODO: err = c->is_a(c, self);
-    if (err) {
-        knd_log("-- inheritance failed: %s is not a subclass of %s", c->name, self->name);
-        return err; 
-        }
-    */
 
     c->out = self->task->update;
     c->log = self->log;
@@ -5039,7 +5161,7 @@ static void init(struct kndConcept *self)
     self->reset = reset;
     self->build_diff = build_diff;
     self->select_delta = select_delta;
-    self->coordinate = resolve_class_refs;
+    self->coordinate = coordinate;
     self->resolve = resolve_name_refs;
 
     self->import = parse_import_class;

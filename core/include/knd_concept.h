@@ -90,6 +90,18 @@ struct kndConcFolder
     struct kndConcFolder *next;
 };
 
+struct kndAttrEntry
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+    struct kndAttr *attr;
+    struct kndConcDir *dir;
+
+    /* TODO: facets */
+
+    struct kndAttrEntry *next;
+};
+
 struct kndObjEntry
 {
     size_t offset;
@@ -178,7 +190,10 @@ struct kndConcept
     struct kndAttr *curr_attr;
     size_t attrs_left;
 
-    struct kndConcItem *bases;
+    struct kndConcItem *base_items;
+    size_t num_base_items;
+
+    struct kndConcDir *bases[KND_MAX_BASES];
     size_t num_bases;
 
     struct kndDataIdx *indices;
@@ -194,6 +209,7 @@ struct kndConcept
     size_t style_name_size;
 
     bool ignore_children;
+    bool is_resolved;
 
     struct kndConcept *root_class;
     struct kndConcept *curr_class;
@@ -303,10 +319,6 @@ struct kndConcept
                   size_t *total_size);
     int (*export)(struct kndConcept *self);
 
-    /*int (*is_a)(struct kndConcept *self,
-                struct kndConcept *base);
-    */
-    
     /* traversal */
     void (*rewind)(struct kndConcept   *self);
     int (*next_attr)(struct kndConcept   *self,
