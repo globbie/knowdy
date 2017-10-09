@@ -60,22 +60,6 @@ knd_compare(const char *a, const char *b)
     return knd_EQUALS;
 }
 
-extern int 
-knd_inc_id(char *id)
-{
-    size_t i;
-
-    i = KND_ID_SIZE - 1;
-    begin:
-    
-    if (id[i] == '9') { id[i] = 'A'; return knd_OK;}
-    if (id[i] == 'Z') { id[i] = 'a'; return knd_OK;}
-    if (id[i] == 'z') { id[i--] = '0'; goto begin; }
-    id[i]++;
-
-    return knd_OK;
-}
-
 extern int knd_next_state(char *s)
 {
     char *c;

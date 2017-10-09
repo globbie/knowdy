@@ -14,11 +14,10 @@
  *         Dmitri Dmitriev aka M0nsteR <dmitri@globbie.net>
  *
  *   ----------
- *   knd_dataclass.h
- *   Knowdy Data Class
+ *   knd_concept.h
+ *   Knowdy Concept
  */
-#ifndef KND_DATACLASS_H
-#define KND_DATACLASS_H
+#pragma once
 
 #include "knd_dict.h"
 #include "knd_facet.h"
@@ -34,6 +33,12 @@ struct kndConcept;
 struct kndTask;
 struct kndUser;
 struct kndTaskArg;
+
+typedef enum knd_conc_type {
+    KND_CONC_CLASS,
+    KND_CONC_PROC,
+    KND_CONC_ATTR
+} knd_conc_type;
 
 struct kndDataIdx
 {
@@ -63,6 +68,9 @@ struct kndConcItem
     char name[KND_NAME_SIZE];
     size_t name_size;
 
+    char classname[KND_NAME_SIZE];
+    size_t classname_size;
+
     struct kndAttrItem *attrs;
     struct kndAttrItem *tail;
     size_t num_attrs;
@@ -82,6 +90,17 @@ struct kndConcFolder
     struct kndConcFolder *next;
 };
 
+struct kndAttrEntry
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+    struct kndAttr *attr;
+    struct kndConcDir *dir;
+
+    /* TODO: facets */
+
+    struct kndAttrEntry *next;
+};
 
 struct kndObjEntry
 {
@@ -129,6 +148,7 @@ struct kndConcDir
 
 struct kndConcept 
 {
+    knd_conc_type type;
     char name[KND_NAME_SIZE];
     size_t name_size;
 
@@ -157,7 +177,7 @@ struct kndConcept
     size_t dbpath_size;
 
     struct kndTask *task;
-    
+
     const char *locale;
     size_t locale_size;
     knd_format format;
@@ -169,9 +189,12 @@ struct kndConcept
     /* for traversal */
     struct kndAttr *curr_attr;
     size_t attrs_left;
-    
-    struct kndConcItem *conc_items;
-    size_t num_conc_items;
+
+    struct kndConcItem *base_items;
+    size_t num_base_items;
+
+    struct kndConcDir *bases[KND_MAX_BASES];
+    size_t num_bases;
 
     struct kndDataIdx *indices;
     size_t num_indices;
@@ -186,6 +209,7 @@ struct kndConcept
     size_t style_name_size;
 
     bool ignore_children;
+    bool is_resolved;
 
     struct kndConcept *root_class;
     struct kndConcept *curr_class;
@@ -249,7 +273,9 @@ struct kndConcept
     int (*load)(struct kndConcept   *self,
                 const char *filename,
                 size_t filename_size);
-    
+    int (*read)(struct kndConcept   *self,
+                const char *rec,
+                size_t *total_size);
     int (*restore)(struct kndConcept   *self);
     
     int (*select_delta)(struct kndConcept *self,
@@ -277,10 +303,12 @@ struct kndConcept
                   size_t *total_size);
 
     int (*get)(struct kndConcept  *self,
-               const char *name, size_t name_size);
+               const char *name, size_t name_size,
+               struct kndConcept  **result);
 
     int (*get_obj)(struct kndConcept *self,
-                   const char *name, size_t name_size);
+                   const char *name, size_t name_size,
+                   struct kndObject **result);
 
     int (*get_attr)(struct kndConcept *self,
                     const char *name, size_t name_size,
@@ -291,10 +319,6 @@ struct kndConcept
                   size_t *total_size);
     int (*export)(struct kndConcept *self);
 
-    /*int (*is_a)(struct kndConcept *self,
-                struct kndConcept *base);
-    */
-    
     /* traversal */
     void (*rewind)(struct kndConcept   *self);
     int (*next_attr)(struct kndConcept   *self,
@@ -308,4 +332,3 @@ extern int kndConcept_alloc_obj(struct kndConcept *self,
 /* constructor */
 extern int kndConcept_new(struct kndConcept **self);
 
-#endif

@@ -187,12 +187,12 @@ static int report(struct kndTask *self)
     err = out->write(out, gsl_header, strlen(gsl_header));
     if (err) return err;
 
-    err = out->write(out, "{agent ", strlen("{agent "));
+    /*err = out->write(out, "{agent ", strlen("{agent "));
     if (err) return err;
     err = out->write(out, self->agent_name, self->agent_name_size);
     if (err) return err;
     err = out->write(out, "}", 1);
-    if (err) return err;
+    if (err) return err;*/
 
     err = out->write(out, "{tid ", strlen("{tid "));
     if (err) return err;
@@ -233,7 +233,7 @@ static int report(struct kndTask *self)
         if (err) return err;
     }
     
-    if (DEBUG_TASK_LEVEL_2)
+    if (DEBUG_TASK_LEVEL_TMP)
         knd_log("== TASK report: SPEC: \"%s\"\n\n== BODY: %s\n",
                 out->buf, self->out->buf);
 
@@ -258,7 +258,7 @@ static int report(struct kndTask *self)
     header = knd_zmq_recv(self->delivery, &header_size);
     obj = knd_zmq_recv(self->delivery, &obj_size);
     
-    if (DEBUG_TASK_LEVEL_2)
+    if (DEBUG_TASK_LEVEL_TMP)
         knd_log("== Delivery reply header: \"%s\" obj: \"%s\"",
                 header, obj);
 

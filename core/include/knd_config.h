@@ -29,14 +29,16 @@ typedef enum { knd_OK, knd_FAIL, knd_NOMEM, knd_LIMIT, knd_AUTH_OK, knd_AUTH_FAI
         KND_OPEN_DELIM_MISSING, KND_CLOSE_DELIM_MISSING } 
   knd_err_codes;
 
-typedef enum knd_state_phase { KND_CREATED,
-                               KND_SELECTED,
+typedef enum knd_state_phase { KND_SELECTED,
+                               KND_SUBMITTED,
+                               KND_CREATED,
                                KND_UPDATED,
                                KND_REMOVED,
+                               KND_FROZEN,
                                KND_RESTORED } knd_state_phase;
 
 /* comparison codes */
-extern enum { knd_EQUALS, knd_LESS, knd_MORE, knd_NOT_COMPARABLE } knd_comparison_codes; 
+typedef enum { knd_EQUALS, knd_LESS, knd_MORE, knd_NOT_COMPARABLE } knd_comparison_codes;
 
 typedef enum knd_format { KND_FORMAT_JSON, 
                           KND_FORMAT_XML,
@@ -53,6 +55,7 @@ static const char* const knd_format_names[] = {
     "HTML", 
     "JS",
     "GSL", 
+    "GSP", 
     "GSC" };
 
 typedef enum knd_logic { KND_LOGIC_AND, 
@@ -127,6 +130,7 @@ typedef enum knd_storage_type {
 #define KND_MAX_SPECS 64
 
 #define KND_MAX_CONC_CHILDREN 128
+#define KND_MAX_BASES 128
 
 #define KND_DIR_SIZE_ENCODE_BASE 10
 #define KND_DIR_ENTRY_SIZE 16

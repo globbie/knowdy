@@ -61,10 +61,11 @@ kndUser_add_user(struct kndUser *self)
 
     /* check a human readable name */
     
-    memcpy(uid, self->last_uid, KND_ID_SIZE);
+    /*memcpy(uid, self->last_uid, KND_ID_SIZE);
     uid[KND_ID_SIZE] = '\0';
     knd_inc_id(uid);
-
+    */
+    
     if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. create new user: ID \"%s\"", uid);
 
@@ -496,14 +497,11 @@ static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
     if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. get user: \"%.*s\".. %p", name_size, name, self->root_class);
 
-    err = self->root_class->get(self->root_class, "User", strlen("User"));
+    err = self->root_class->get(self->root_class, "User", strlen("User"), &conc);
     if (err) return err;
-    conc = self->root_class->curr_class;
-    
-    err = conc->get_obj(conc, name, name_size);
+
+    err = conc->get_obj(conc, name, name_size, &self->curr_user);
     if (err) return err;
-    
-    self->curr_user = conc->curr_obj;
 
     if (DEBUG_USER_LEVEL_TMP)
         knd_log("++ got user: \"%.*s\"!", name_size, name);
@@ -670,7 +668,7 @@ static int parse_task(struct kndUser *self,
         goto cleanup;
     }
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log("user parse task OK: total chars: %lu",
                 (unsigned long)*total_size);
 
@@ -717,16 +715,16 @@ static int parse_task(struct kndUser *self,
 
  cleanup:
 
-    /* TODO */
+    /* TODO : deallocate resources */
     if (self->root_class->obj_inbox_size) {
-        if (DEBUG_USER_LEVEL_TMP)
+        if (DEBUG_USER_LEVEL_2)
             knd_log(".. obj inbox cleanup..\n\n");
         self->root_class->obj_inbox = NULL;
         self->root_class->obj_inbox_size = 0;
     }
     
     if (self->root_class->inbox_size) {
-        if (DEBUG_USER_LEVEL_TMP)
+        if (DEBUG_USER_LEVEL_2)
             knd_log(".. class inbox cleanup..\n\n");
         self->root_class->inbox = NULL;
         self->root_class->inbox_size = 0;

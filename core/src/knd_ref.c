@@ -92,8 +92,6 @@ kndRef_set_reverse_rel(struct kndRef *self,
 
     reltype->num_refs++;
     
-    /*knd_log("  == total refs: %lu\n", (unsigned long)reltype->num_refs);*/
-    
     return knd_OK;
 }
 
@@ -188,12 +186,20 @@ static int
 export_reverse_rel_JSON(struct kndRef *self)
 {
     struct kndObject *obj;
-    struct kndOutput *out;
+    struct kndOutput *out = self->out;
     int err = knd_FAIL;
 
-    obj = self->elem->root;
-    out = self->out;
+    if (!self->elem) {
+        err = out->write(out, "\"", 1);
+        if (err) return err;
+        err = out->write(out, self->name, self->name_size);
+        if (err) return err;
+        err = out->write(out, "\"", 1);
+        if (err) return err;
+        return knd_OK;
+    }
 
+    obj = self->elem->root;
     if (DEBUG_REF_LEVEL_2)
         knd_log(".. export reverse_rel to JSON..");
 
@@ -226,10 +232,45 @@ export_GSC(struct kndRef *self)
     
     if (DEBUG_REF_LEVEL_2)
         knd_log(".. export ref obj: %p  states: %p..", self->elem->obj, self->states);
-  
     if (DEBUG_REF_LEVEL_2)
         knd_log("++ ref export OK!");
 
+    return knd_OK;
+}
+
+static int 
+export_reverse_rel_GSP(struct kndRef *self)
+{
+    struct kndObject *obj;
+    struct kndOutput *out;
+    int err = knd_FAIL;
+
+    obj = self->elem->root;
+    out = self->out;
+
+    if (DEBUG_REF_LEVEL_2)
+        knd_log(".. export reverse_rel to JSON..");
+
+    obj->out = out;
+    obj->depth = 0;
+    /*err = obj->export(obj);
+    if (err) return err;
+    */
+
+    err = out->write(out, "{", 1);
+    if (err) return err;
+    err = out->write(out, obj->id, KND_ID_SIZE);
+    if (err) return err;
+
+    err = out->write(out, " ", 1);
+    if (err) return err;
+
+    err = out->write(out, obj->name, obj->name_size);
+    if (err) return err;
+
+    err = out->write(out, "}", 1);
+    if (err) return err;
+    
     return knd_OK;
 }
 
@@ -253,7 +294,6 @@ static int export(struct kndRef *self)
     return knd_OK;
 }
 
-
 static int export_reverse_rel(struct kndRef *self)
 {
     int err;
@@ -263,10 +303,10 @@ static int export_reverse_rel(struct kndRef *self)
         err = export_reverse_rel_JSON(self);
         if (err) return err;
         break;
-        /*    case KND_FORMAT_GSC:
-        err = export_GSC(self);
+    case KND_FORMAT_GSP:
+        err = export_reverse_rel_GSP(self);
         if (err) return err;
-        break; */
+        break;
     default:
         break;
     }
