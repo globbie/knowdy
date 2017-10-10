@@ -81,8 +81,8 @@ START_TEST(parse_task_empty_with_closing_brace)
     ck_assert_uint_eq(total_size, strchr(rec, '}') - rec);  // shared brace
 END_TEST
 
-START_TEST(parse_implied_field_with_spaces)
-    struct kndTaskSpec inner_specs[] = { name_spec };
+START_TEST(parse_implied_field)
+    struct kndTaskSpec inner_specs[] = { name_spec, sid_spec };
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
@@ -91,42 +91,87 @@ START_TEST(parse_implied_field_with_spaces)
     ck_assert_uint_eq(total_size, strlen(rec));
     ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
 
+    rc = knd_parse_task(rec = "{user John Smith {sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
+    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+END_TEST
+
+START_TEST(parse_implied_field_with_spaces)
+    struct kndTaskSpec inner_specs[] = { name_spec, sid_spec };
+    struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
+    struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
+
     rc = knd_parse_task(rec = "{user  John Space }", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
     ck_assert_uint_eq(user.name_size, strlen("John Space")); ck_assert_str_eq(user.name, "John Space");
+
+    rc = knd_parse_task(rec = "{user  John Space  {sid 123456} }", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_uint_eq(user.name_size, strlen("John Space")); ck_assert_str_eq(user.name, "John Space");
+    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
 END_TEST
 
 START_TEST(parse_implied_field_max_size)
-    struct kndTaskSpec inner_specs[] = { name_spec };
+    struct kndTaskSpec inner_specs[] = { name_spec, sid_spec };
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
-    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 5] = 'a', '}', '\0' };
 
-    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_OK);
-    ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_uint_eq(user.name_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.name, strchr(buf, 'a'), user.name_size));
+    {
+        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 5] = 'a', '}', '\0' };
+        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+        ck_assert_int_eq(rc, knd_OK);
+        ck_assert_uint_eq(total_size, strlen(rec));
+        ck_assert_uint_eq(user.name_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.name, strchr(buf, 'a'), user.name_size));
+    }
+
+    {
+        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 5] = 'a', ' ', '{', 's', 'i', 'd', ' ', '1', '2', '3', '4', '5', '6', '}', '}', '\0' };
+        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+        ck_assert_int_eq(rc, knd_OK);
+        ck_assert_uint_eq(total_size, strlen(rec));
+        ck_assert_uint_eq(user.name_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.name, strchr(buf, 'a'), user.name_size));
+        ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+    }
 END_TEST
 
 START_TEST(parse_implied_field_max_size_plus_one)
     struct kndTaskSpec inner_specs[] = { name_spec };
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
-    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 6] = 'a', '}', '\0' };
 
-    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_name()
+    {
+        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 6] = 'a', '}', '\0' };
+        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+        ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_name()
+    }
+
+    {
+        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 6] = 'a', ' ', '{', 's', 'i', 'd', ' ', '1', '2', '3', '4', '5', '6', '}', '}', '\0' };
+        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+        ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_name()
+    }
 END_TEST
 
 START_TEST(parse_implied_field_size_NAME_SIZE_plus_one)
     struct kndTaskSpec inner_specs[] = { name_spec };
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
-    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_NAME_SIZE + 6] = 'a', '}', '\0' };
 
-    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_LIMIT);
+    {
+        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_NAME_SIZE + 6] = 'a', '}', '\0' };
+        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+        ck_assert_int_eq(rc, knd_LIMIT);
+    }
+
+    {
+        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_NAME_SIZE + 6] = 'a', ' ', '{', 's', 'i', 'd', ' ', '1', '2', '3', '4', '5', '6', '}', '}', '\0' };
+        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+        ck_assert_int_eq(rc, knd_LIMIT);
+    }
 END_TEST
 
 START_TEST(parse_tag_empty)
@@ -278,6 +323,7 @@ int main() {
     tcase_add_test(tc, parse_task_empty);
     tcase_add_test(tc, parse_task_empty_with_spaces);
     tcase_add_test(tc, parse_task_empty_with_closing_brace);
+    tcase_add_test(tc, parse_implied_field);
     tcase_add_test(tc, parse_implied_field_with_spaces);
     tcase_add_test(tc, parse_implied_field_max_size);
     tcase_add_test(tc, parse_implied_field_max_size_plus_one);
