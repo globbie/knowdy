@@ -56,6 +56,8 @@ static int parse_update(void *obj,
     int err;
 
     self->type = KND_UPDATE_STATE;
+    self->tid[0] = '0';
+    self->tid_size = 0;
     self->admin->task = self;
     self->admin->out = self->out;
     self->admin->log = self->log;
@@ -125,7 +127,12 @@ static int parse_task(void *obj,
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
-    
+
+    if (!self->tid_size) {
+        knd_log("-- no TID found");
+        return knd_FAIL;
+    }
+
     return knd_OK;
 }
 
@@ -196,14 +203,21 @@ static int report(struct kndTask *self)
 
     err = out->write(out, "{tid ", strlen("{tid "));
     if (err) return err;
-    err = out->write(out, self->tid, self->tid_size);
-    if (err) return err;
+
+    if (self->tid_size) {
+        err = out->write(out, self->tid, self->tid_size);
+        if (err) return err;
+    } else {
+        err = out->write(out, "0", 1);
+        if (err) return err;
+    }
+
     err = out->write(out, "}", 1);
     if (err) return err;
 
     err = out->write(out, "{user{auth", strlen("{user{auth"));
     if (err) return err;
-    
+
     err = out->write(out, "{sid ", strlen("{sid "));
     if (err) return err;
     err = out->write(out, self->admin->sid, self->admin->sid_size);
@@ -233,9 +247,18 @@ static int report(struct kndTask *self)
         if (err) return err;
     }
     
-    if (DEBUG_TASK_LEVEL_TMP)
-        knd_log("== TASK report: SPEC: \"%s\"\n\n== BODY: %s\n",
-                out->buf, self->out->buf);
+    if (DEBUG_TASK_LEVEL_TMP) {
+        obj_size = self->out->buf_size;
+        if (obj_size > KND_MAX_DEBUG_CONTEXT_SIZE) {
+            obj_size = KND_MAX_DEBUG_CONTEXT_SIZE;
+            knd_log("== TASK report: SPEC: \"%.*s\"\n\n== BODY: \"%.*s...\" [total size: %zu]\n",
+                    out->buf_size, out->buf, obj_size, self->out->buf, self->out->buf_size);
+        }
+        else {
+            knd_log("== TASK report: SPEC: \"%.*s\"\n\n== BODY: \"%.*s\" [size: %zu]\n",
+                    out->buf_size, out->buf, obj_size, self->out->buf, self->out->buf_size);
+        }
+    }
 
     err = knd_zmq_sendmore(self->delivery, (const char*)out->buf, out->buf_size);
     /* obj body */

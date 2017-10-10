@@ -152,6 +152,11 @@ kndLearner_start(struct kndLearner *self)
 
     final:
 
+        if (!self->task->tid_size) {
+            self->task->tid[0] = '0';
+            self->task->tid_size = 1;
+        }
+            
         err = self->task->report(self->task);
         if (err) {
             knd_log("-- task report failed: %d", err);

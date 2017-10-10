@@ -88,7 +88,8 @@ kndObject_export_reverse_rels_JSON(struct kndObject *self)
     int err;
 
     /* sort refs by class */
-    knd_log("..export reverse_rels of %.*s..", self->name_size, self->name);
+    if (DEBUG_OBJ_LEVEL_2)
+        knd_log("..export reverse_rels of %.*s..", self->name_size, self->name);
 
     err = out->write(out, ",\"_reverse_rels\":[", strlen(",\"_reverse_rels\":["));
     if (err) return err;
@@ -422,7 +423,6 @@ kndObject_export(struct kndObject *self)
     default:
         break;
     }
-    
     return knd_OK;
 }
 
@@ -637,7 +637,7 @@ static int run_set_relclass_name(void *obj, struct kndTaskArg *args, size_t num_
     self->name_size = name_size;
     self->name[name_size] = '\0';
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log("++ Rel Class name: \"%.*s\"",
                 self->name_size, self->name);
 
@@ -665,7 +665,7 @@ static int run_set_objref_name(void *obj, struct kndTaskArg *args, size_t num_ar
     self->name_size = name_size;
     self->name[name_size] = '\0';
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log("++ OBJ REF NAME: \"%.*s\"",
                 self->name_size, self->name);
 
@@ -685,7 +685,7 @@ static int objref_read(void *obj,
     };
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_1)
         knd_log(".. reading obj ref \"%.*s\"..",
                 KND_ID_SIZE, ref->id);
 
@@ -717,7 +717,7 @@ static int objref_alloc(void *obj,
     struct kndRef *ref;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. create objref: %.*s count: %zu",
                 name_size, name, count);
     if (name_size > KND_ID_SIZE) return knd_LIMIT;
@@ -731,8 +731,6 @@ static int objref_alloc(void *obj,
     return knd_OK;
 }
 
-
-
 static int reltype_read(void *data,
                         const char *name, size_t name_size,
                         const char *rec, size_t *total_size)
@@ -741,7 +739,7 @@ static int reltype_read(void *data,
     struct kndRelType *reltype;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP) {
+    if (DEBUG_OBJ_LEVEL_2) {
         knd_log("..  reltype validation of \"%.*s\" REC: \"%.*s\"\n",
                 name_size, name, 16, rec);
     }
@@ -792,10 +790,6 @@ static int rev_rel_read(void *obj,
     };
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
-        knd_log(".. reading rev rel \"%.*s\"..",
-                KND_ID_SIZE, relc->id);
-
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
     
@@ -823,7 +817,7 @@ static int rev_rel_alloc(void *obj,
     struct kndObject *self = obj;
     struct kndRelClass *relc;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. create rev_rel: %.*s count: %zu",
                 name_size, name, count);
     if (name_size > KND_ID_SIZE) return knd_LIMIT;

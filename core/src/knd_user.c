@@ -369,7 +369,6 @@ static int kndUser_parse_sync_task(void *obj,
     memcpy(n, "/frozen_name.gsi", path_size);
     buf_size += path_size;
     buf[buf_size] = '\0';
-
     
     self->task->type = KND_SYNC_STATE;
     self->root_class->out = self->out;
@@ -668,9 +667,9 @@ static int parse_task(struct kndUser *self,
         goto cleanup;
     }
 
-    if (DEBUG_USER_LEVEL_2)
-        knd_log("user parse task OK: total chars: %lu",
-                (unsigned long)*total_size);
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log("user parse task OK: total chars: %lu root class: %p",
+                (unsigned long)*total_size, self->root_class);
 
     switch (self->task->type) {
     case KND_UPDATE_STATE:
@@ -686,14 +685,14 @@ static int parse_task(struct kndUser *self,
         if (self->root_class->inbox_size || self->root_class->obj_inbox_size) {
             out = self->task->update;
 
-            if (DEBUG_USER_LEVEL_2)
+            if (DEBUG_USER_LEVEL_TMP)
                 knd_log(".. update state.. total output free space: %lu TOTAL SPEC SIZE: %lu",
                         (unsigned long)out->free_space,
                         (unsigned long)*total_size);
 
             err = out->write(out, "{task{update", strlen("{task{update"));
             if (err) goto cleanup;
-            
+
             /* update spec body */
             err = out->write(out, rec, *total_size);
             if (err) {

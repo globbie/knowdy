@@ -60,6 +60,16 @@ knd_compare(const char *a, const char *b)
     return knd_EQUALS;
 }
 
+extern void knd_calc_num_id(char *buf, size_t val)
+{
+    const char *c;
+    if (val > KND_RADIX_BASE) {
+        knd_calc_num_id(buf, val / KND_RADIX_BASE);
+    }
+    c = &obj_id_seq[val % KND_RADIX_BASE];
+    printf("%c\n", *c);
+}
+
 extern int knd_next_state(char *s)
 {
     char *c;
