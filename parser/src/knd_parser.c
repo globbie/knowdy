@@ -671,6 +671,14 @@ int knd_parse_task(const char *rec,
                 break;
             }
 
+            assert(in_tag == in_terminal);
+
+            if (in_terminal) {  // or in_tag
+                knd_log("-- terminal val for ATOMIC SPEC \"%.*s\" has an opening brace: %.*s",
+                        spec->name_size, spec->name, c - b + 16, b);
+                return knd_FORMAT;
+            }
+
             // Parse a tag after an inner field brace.  Means in_tag can be set to true.
 
             err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
@@ -680,11 +688,9 @@ int knd_parse_task(const char *rec,
             if (err) return err;
 
             if (in_terminal) {
-                // Parse an atomic value.  Remember that we are in in_tag state.
-                in_tag = true;
-                b = c + 1;
-                e = b;
-                break;
+                knd_log("-- terminal val for ATOMIC SPEC \"%.*s\" starts with an opening brace: %.*s",
+                        spec->name_size, spec->name, c - b + 16, b);
+                return knd_FORMAT;
             }
 
             in_field = false;
