@@ -134,7 +134,13 @@ START_TEST(parse_tag_empty)
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
+    rc = knd_parse_task(rec = "{user{}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FORMAT);
+
     rc = knd_parse_task(rec = "{user {}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FORMAT);
+
+    rc = knd_parse_task(rec = "{user{ 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FORMAT);
 
     rc = knd_parse_task(rec = "{user { 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
@@ -146,6 +152,9 @@ START_TEST(parse_tag_empty_with_spaces)
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
+    rc = knd_parse_task(rec = "{user{     }}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FORMAT);
+
     rc = knd_parse_task(rec = "{user {     }}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FORMAT);
 END_TEST
@@ -155,14 +164,26 @@ START_TEST(parse_tag_unknown)
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
+    rc = knd_parse_task(rec = "{user{s 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_NO_MATCH);
+
     rc = knd_parse_task(rec = "{user {s 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_NO_MATCH);
+
+    rc = knd_parse_task(rec = "{user{si 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_NO_MATCH);
 
     rc = knd_parse_task(rec = "{user {si 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_NO_MATCH);
 
+    rc = knd_parse_task(rec = "{user{sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+
     rc = knd_parse_task(rec = "{user {sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
+
+    rc = knd_parse_task(rec = "{user{sido 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_NO_MATCH);
 
     rc = knd_parse_task(rec = "{user {sido 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_NO_MATCH);
@@ -173,6 +194,9 @@ START_TEST(parse_value_terminal_empty)
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
+    rc = knd_parse_task(rec = "{user{sid}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FORMAT);  // TODO(ki.stfu): Call the default handler
+
     rc = knd_parse_task(rec = "{user {sid}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FORMAT);  // TODO(ki.stfu): Call the default handler
 END_TEST
@@ -182,6 +206,9 @@ START_TEST(parse_value_terminal_empty_with_spaces)
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
+    rc = knd_parse_task(rec = "{user{sid   }}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FORMAT);
+
     rc = knd_parse_task(rec = "{user {sid   }}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FORMAT);
 END_TEST
@@ -190,6 +217,11 @@ START_TEST(parse_value_terminal_max_size)
     struct kndTaskSpec inner_specs[] = { sid_spec };
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
+
+    rc = knd_parse_task(rec = "{user{sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
 
     rc = knd_parse_task(rec = "{user {sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
@@ -202,6 +234,9 @@ START_TEST(parse_value_terminal_max_size_plus_one)
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
+    rc = knd_parse_task(rec = "{user{sid 1234567}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_LIMIT);
+
     rc = knd_parse_task(rec = "{user {sid 1234567}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_LIMIT);
 END_TEST
@@ -211,10 +246,19 @@ START_TEST(parse_value_terminal_with_braces)
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
+    rc = knd_parse_task(rec = "{user{sid {123456}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FORMAT);
+
     rc = knd_parse_task(rec = "{user {sid {123456}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FORMAT);
 
+    rc = knd_parse_task(rec = "{user{sid{123456}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FORMAT);
+
     rc = knd_parse_task(rec = "{user {sid{123456}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FORMAT);
+
+    rc = knd_parse_task(rec = "{user{sid 123{456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FORMAT);
 
     rc = knd_parse_task(rec = "{user {sid 123{456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
