@@ -101,7 +101,7 @@ START_TEST(parse_implied_field_max_size)
     struct kndTaskSpec inner_specs[] = { name_spec };
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
-    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 5] = 'a', [KND_SHORT_NAME_SIZE + 6] = '}', [KND_SHORT_NAME_SIZE + 7] = '\0' };
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 5] = 'a', '}', '\0' };
 
     rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
@@ -113,7 +113,7 @@ START_TEST(parse_implied_field_max_size_plus_one)
     struct kndTaskSpec inner_specs[] = { name_spec };
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
-    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 6] = 'a', [KND_SHORT_NAME_SIZE + 7] = '}', [KND_SHORT_NAME_SIZE + 8] = '\0' };
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 6] = 'a', '}', '\0' };
 
     rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_name()
@@ -123,7 +123,7 @@ START_TEST(parse_implied_field_size_NAME_SIZE_plus_one)
     struct kndTaskSpec inner_specs[] = { name_spec };
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
-    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_NAME_SIZE + 6] = 'a', [KND_NAME_SIZE + 7] = '}', [KND_NAME_SIZE + 8] = '\0' };
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_NAME_SIZE + 6] = 'a', '}', '\0' };
 
     rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_LIMIT);
