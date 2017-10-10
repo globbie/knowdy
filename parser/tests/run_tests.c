@@ -168,7 +168,7 @@ START_TEST(parse_tag_unknown)
     ck_assert_int_eq(rc, knd_NO_MATCH);
 END_TEST
 
-START_TEST(parse_value_empty)
+START_TEST(parse_value_terminal_empty)
     struct kndTaskSpec inner_specs[] = { sid_spec };
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
@@ -177,7 +177,7 @@ START_TEST(parse_value_empty)
     ck_assert_int_eq(rc, knd_FORMAT);  // TODO(ki.stfu): Call the default handler
 END_TEST
 
-START_TEST(parse_value_empty_with_spaces)
+START_TEST(parse_value_terminal_empty_with_spaces)
     struct kndTaskSpec inner_specs[] = { sid_spec };
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
@@ -186,7 +186,7 @@ START_TEST(parse_value_empty_with_spaces)
     ck_assert_int_eq(rc, knd_FORMAT);
 END_TEST
 
-START_TEST(parse_value_max_size)
+START_TEST(parse_value_terminal_max_size)
     struct kndTaskSpec inner_specs[] = { sid_spec };
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
@@ -197,7 +197,7 @@ START_TEST(parse_value_max_size)
     ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
 END_TEST
 
-START_TEST(parse_value_max_size_plus_one)
+START_TEST(parse_value_terminal_max_size_plus_one)
     struct kndTaskSpec inner_specs[] = { sid_spec };
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
@@ -206,29 +206,45 @@ START_TEST(parse_value_max_size_plus_one)
     ck_assert_int_eq(rc, knd_LIMIT);
 END_TEST
 
+START_TEST(parse_value_terminal_with_braces)
+    struct kndTaskSpec inner_specs[] = { sid_spec };
+    struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
+    struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
+
+    rc = knd_parse_task(rec = "{user {sid {123456}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FORMAT);
+
+    rc = knd_parse_task(rec = "{user {sid{123456}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FORMAT);
+
+    rc = knd_parse_task(rec = "{user {sid 123{456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FORMAT);
+END_TEST
+
 
 int main() {
-   TCase* tc = tcase_create("all cases");
-   tcase_add_checked_fixture(tc, test_case_fixture_setup, NULL);
-   tcase_add_test(tc, parse_task_empty);
-   tcase_add_test(tc, parse_task_empty_with_spaces);
-   tcase_add_test(tc, parse_task_empty_with_closing_brace);
-   tcase_add_test(tc, parse_implied_field_with_spaces);
-   tcase_add_test(tc, parse_implied_field_max_size);
-   tcase_add_test(tc, parse_implied_field_max_size_plus_one);
-   tcase_add_test(tc, parse_implied_field_size_NAME_SIZE_plus_one);
-   tcase_add_test(tc, parse_tag_empty);
-   tcase_add_test(tc, parse_tag_empty_with_spaces);
-   tcase_add_test(tc, parse_tag_unknown);
-   tcase_add_test(tc, parse_value_empty);
-   tcase_add_test(tc, parse_value_empty_with_spaces);
-   tcase_add_test(tc, parse_value_max_size);
-   tcase_add_test(tc, parse_value_max_size_plus_one);
+    TCase* tc = tcase_create("all cases");
+    tcase_add_checked_fixture(tc, test_case_fixture_setup, NULL);
+    tcase_add_test(tc, parse_task_empty);
+    tcase_add_test(tc, parse_task_empty_with_spaces);
+    tcase_add_test(tc, parse_task_empty_with_closing_brace);
+    tcase_add_test(tc, parse_implied_field_with_spaces);
+    tcase_add_test(tc, parse_implied_field_max_size);
+    tcase_add_test(tc, parse_implied_field_max_size_plus_one);
+    tcase_add_test(tc, parse_implied_field_size_NAME_SIZE_plus_one);
+    tcase_add_test(tc, parse_tag_empty);
+    tcase_add_test(tc, parse_tag_empty_with_spaces);
+    tcase_add_test(tc, parse_tag_unknown);
+    tcase_add_test(tc, parse_value_terminal_empty);
+    tcase_add_test(tc, parse_value_terminal_empty_with_spaces);
+    tcase_add_test(tc, parse_value_terminal_max_size);
+    tcase_add_test(tc, parse_value_terminal_max_size_plus_one);
+    tcase_add_test(tc, parse_value_terminal_with_braces);
 
-   Suite* s = suite_create("suite");
-   suite_add_tcase(s, tc);
-   SRunner* sr = srunner_create(s);
-   srunner_run_all(sr, CK_NORMAL);
-   srunner_free(sr);
-   return 0;
+    Suite* s = suite_create("suite");
+    suite_add_tcase(s, tc);
+    SRunner* sr = srunner_create(s);
+    srunner_run_all(sr, CK_NORMAL);
+    srunner_free(sr);
+    return 0;
 }
