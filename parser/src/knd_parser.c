@@ -602,6 +602,57 @@ knd_parse_field_value(struct kndTaskSpec *spec,
     return knd_OK;
 }
 
+static int
+knd_check_field_terminal_value(const char *val,
+                               size_t val_size,
+                               struct kndTaskSpec *spec,
+                               struct kndTaskArg *args,
+                               size_t *num_args)
+{
+    int err;
+
+    if (!val_size) {
+        knd_log("-- empty value :(");
+        return knd_FORMAT;
+    }
+    if (val_size > KND_NAME_SIZE) {
+        knd_log("-- value too large: %zu bytes: \"%.*s\"",
+                val_size, val_size, val);
+        return knd_LIMIT;
+    }
+
+    if (DEBUG_PARSER_LEVEL_2)
+        knd_log("++ got terminal val: \"%.*s\" [%zu]",
+                val_size, val, val_size);
+
+    assert(!!spec->buf == !!spec->buf_size && "spec buf & buf_size are in an inconsistent state");
+    if (spec->buf) {
+        err = knd_spec_buf_copy(spec, val, val_size);
+        if (err) return err;
+
+        spec->is_completed = true;
+        return knd_OK;
+    }
+
+    // FIXME(ki.stfu): ?? push to args only if spec->run != NULL
+    err = knd_args_push_back(spec->name, spec->name_size, val, val_size, args, num_args);
+    if (err) return err;
+
+    if (spec->run) {
+        err = spec->run(spec->obj, args, *num_args);
+        if (err) {
+            knd_log("-- \"%.*s\" func run failed: %d :(",
+                    spec->name_size, spec->name, err);
+            return err;
+        }
+
+        spec->is_completed = true;
+        return knd_OK;
+    }
+
+    return knd_OK;
+}
+
 int knd_parse_task(const char *rec,
                    size_t *total_size,
                    struct kndTaskSpec *specs,
@@ -764,51 +815,14 @@ int knd_parse_task(const char *rec,
             assert(in_tag == in_terminal);
 
             if (in_terminal) {
-                err = check_name_limits(b, e, &name_size);
-                if (!name_size) {
-                    knd_log("-- empty value :(");
-                    return knd_FORMAT;
-                }
-                if (err) {
-                    knd_log("-- name limit reached :(");
-                    return err;
-                }
-                if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("++ got terminal val: \"%.*s\" [%zu]",
-                            name_size, b, name_size);
-                /* copy to buf */
-                if (spec->buf && spec->buf_size) {
-                    err = knd_spec_buf_copy(spec, b, name_size);
-                    if (err) return err;
-                        
-                    spec->is_completed = true;
-                    b = c + 1;
-                    e = b;
-                    in_terminal = false;
-                    in_tag = false;
-                    in_field = false;
-                    break;
-                }
-
-                err = knd_args_push_back(spec->name, spec->name_size, b, name_size, args, &num_args);
+                err = knd_check_field_terminal_value(b, e - b, spec, args, &num_args);
                 if (err) return err;
 
-                if (spec->run) {
-                    err = spec->run(spec->obj, args, num_args);
-                    if (err) {
-                        knd_log("-- \"%.*s\" func run failed: %d :(",
-                                spec->name_size, spec->name, err);
-                        return err;
-                    }
-                    spec->is_completed = true;
-                }
-                
+                in_field = false;
+                in_tag = false;
+                in_terminal = false;
                 b = c + 1;
                 e = b;
-
-                in_terminal = false;
-                in_tag = false;
-                in_field = false;
                 break;
             }
 
