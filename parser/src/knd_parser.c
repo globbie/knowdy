@@ -431,6 +431,42 @@ knd_spec_buf_copy(struct kndTaskSpec *spec,
 }
 
 static int
+knd_args_push_back(const char *name,
+                   size_t name_size,
+                   const char *val,
+                   size_t val_size,
+                   struct kndTaskArg *args,
+                   size_t *num_args)
+{
+    struct kndTaskArg *arg;
+
+    if (DEBUG_PARSER_LEVEL_2)
+        knd_log(".. adding (\"%.*s\", \"%.*s\") to args [size: %zu]..",
+                name_size, name, val_size, val, *num_args);
+
+    if (*num_args == KND_MAX_ARGS) {
+        knd_log("-- no slot for \"%.*s\" arg [num_args: %zu] :(",
+                name_size, name, *num_args);
+        return knd_LIMIT;
+    }
+    assert(name_size <= KND_NAME_SIZE && "arg name is longer than KND_NAME_SIZE");
+    if (val_size > KND_NAME_SIZE) return knd_LIMIT;
+
+    arg = &args[*num_args];
+    memcpy(arg->name, name, name_size);
+    arg->name[name_size] = '\0';
+    arg->name_size = name_size;
+
+    memcpy(arg->val, val, val_size);
+    arg->val[val_size] = '\0';
+    arg->val_size = val_size;
+
+    (*num_args)++;
+
+    return knd_OK;
+}
+
+static int
 knd_check_implied_field(const char *name,
                         size_t name_size,
                         struct kndTaskSpec *specs,
@@ -439,7 +475,6 @@ knd_check_implied_field(const char *name,
                         size_t *num_args)
 {
     struct kndTaskSpec *spec;
-    struct kndTaskArg *arg;
     const char *impl_arg_name = "_impl";
     size_t impl_arg_name_size = strlen("_impl");
     int err;
@@ -450,18 +485,10 @@ knd_check_implied_field(const char *name,
     if (DEBUG_PARSER_LEVEL_2)
         knd_log("++ got implied val: \"%.*s\" [%zu]",
                 name_size, name, name_size);
-    if (name_size > KND_NAME_SIZE) return knd_LIMIT;
+    // NOTE: if (name_size > KND_NAME_SIZE) return knd_LIMIT;  -- is being checked in knd_args_push_back()
 
-    arg = &args[*num_args];
-    memcpy(arg->name, impl_arg_name, impl_arg_name_size);
-    arg->name[impl_arg_name_size] = '\0';
-    arg->name_size = impl_arg_name_size;
-
-    memcpy(arg->val, name, name_size);
-    arg->val[name_size] = '\0';
-    arg->val_size = name_size;
-
-    (*num_args)++;
+    err = knd_args_push_back(impl_arg_name, impl_arg_name_size, name, name_size, args, num_args);
+    if (err) return err;
 
     /* any action needed? */
     for (size_t i = 0; i < num_specs; i++) {
@@ -587,7 +614,6 @@ int knd_parse_task(const char *rec,
 
     struct kndTaskArg args[KND_MAX_ARGS];
     size_t num_args = 0;
-    struct kndTaskArg *arg;
 
     bool in_field = false;
     bool in_implied_field = false;
@@ -763,15 +789,9 @@ int knd_parse_task(const char *rec,
                     in_field = false;
                     break;
                 }
-                arg = &args[num_args];
-                num_args++;
-                memcpy(arg->name, spec->name, spec->name_size);
-                arg->name[spec->name_size] = '\0';
-                arg->name_size = spec->name_size;
 
-                memcpy(arg->val, b, name_size);
-                arg->val[name_size] = '\0';
-                arg->val_size = name_size;
+                err = knd_args_push_back(spec->name, spec->name_size, b, name_size, args, &num_args);
+                if (err) return err;
 
                 if (spec->run) {
                     err = spec->run(spec->obj, args, num_args);
