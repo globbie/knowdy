@@ -450,7 +450,7 @@ knd_args_push_back(const char *name,
         return knd_LIMIT;
     }
     assert(name_size <= KND_NAME_SIZE && "arg name is longer than KND_NAME_SIZE");
-    if (val_size > KND_NAME_SIZE) return knd_LIMIT;
+    assert(val_size <= KND_NAME_SIZE && "arg val is longer than KND_NAME_SIZE");
 
     arg = &args[*num_args];
     memcpy(arg->name, name, name_size);
@@ -485,7 +485,7 @@ knd_check_implied_field(const char *name,
     if (DEBUG_PARSER_LEVEL_2)
         knd_log("++ got implied val: \"%.*s\" [%zu]",
                 name_size, name, name_size);
-    // NOTE: if (name_size > KND_NAME_SIZE) return knd_LIMIT;  -- is being checked in knd_args_push_back()
+    if (name_size > KND_NAME_SIZE) return knd_LIMIT;
 
     err = knd_args_push_back(impl_arg_name, impl_arg_name_size, name, name_size, args, num_args);
     if (err) return err;
