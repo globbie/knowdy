@@ -166,11 +166,35 @@ static void obj_str(struct kndObjEntry *self, size_t obj_id, int fd, size_t dept
     knd_log("    %*s%.*s", depth * KND_OFFSET_SIZE, "", buf_size, buf);
 }
 
+
+static void obj_dir_str(struct kndObjDir *self, size_t depth, int fd)
+{
+    struct kndObjDir *dir;
+    struct kndObjEntry *entry;
+
+    if (self->objs) {
+        for (size_t i = 0; i <  KND_RADIX_BASE; i++) {
+            entry = self->objs[i];
+            if (!entry) continue;
+            knd_log("    %*s== obj %zu", depth * KND_OFFSET_SIZE, "", i);
+        }
+    }
+    if (self->dirs) {
+        for (size_t i = 0; i <  KND_RADIX_BASE; i++) {
+            dir = self->dirs[i];
+            if (!dir) continue;
+            knd_log("    %*sobj dir: %zu", depth * KND_OFFSET_SIZE, "", i);
+            obj_dir_str(dir, depth + 1, fd);
+        }
+    }
+}
+
 static void dir_str(struct kndConcDir *self, size_t depth, int fd)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
     struct kndConcDir *dir;
+    struct kndObjDir *obj_dir;
     struct kndObjEntry *entry;
     int err;
 
@@ -194,6 +218,13 @@ static void dir_str(struct kndConcDir *self, size_t depth, int fd)
             entry = self->objs[i];
             if (!entry) continue;
             obj_str(entry, i, fd, depth + 1);
+        }
+        if (self->obj_dirs) {
+            for (size_t i = 0; i <  KND_RADIX_BASE; i++) {
+                obj_dir = self->obj_dirs[i];
+                if (!obj_dir) continue;
+                obj_dir_str(obj_dir, depth + 1, fd);
+            }
         }
     }
 
@@ -953,7 +984,7 @@ static int parse_item_child(void *obj,
     item->name_size = name_size;
     item->name[name_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("== attr item name set: \"%s\" REC: %.*s",
                 item->name, 16, rec);
 
@@ -2038,9 +2069,9 @@ static int get_conc_name(struct kndConcept *self,
     return knd_OK;
 }
 
-static int get_obj_name(struct kndConcDir *conc_dir,
-                        struct kndObjEntry *entry,
-                        int fd)
+static int index_obj_name(struct kndConcDir *conc_dir,
+                          struct kndObjEntry *entry,
+                          int fd)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = entry->block_size;
@@ -2096,18 +2127,44 @@ static int get_obj_name(struct kndConcDir *conc_dir,
     if (!name_size) return knd_FAIL;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("\n  .. OBJ NAME: \"%.*s\" [%zu]",
+        knd_log("\n  .. set OBJ NAME: \"%.*s\" [%zu]",
                 name_size, b, name_size);
     b[name_size] = '\0';
-
-    if (!conc_dir->obj_idx) {
-        err = ooDict_new(&conc_dir->obj_idx, KND_MEDIUM_DICT_SIZE);
-        if (err) return err;
-    }
 
     err = conc_dir->obj_idx->set(conc_dir->obj_idx, b, entry);
     if (err) return err;
 
+    return knd_OK;
+}
+
+
+static int populate_obj_name_idx(struct kndConcDir *conc_dir,
+                                 struct kndObjDir *dir,
+                                 int fd)
+{
+    struct kndObjEntry *entry;
+    struct kndObjDir *subdir;
+    int err;
+
+    if (dir->objs) {
+        for (size_t i = 0; i < KND_RADIX_BASE; i++) {
+            entry = dir->objs[i];
+            if (!entry) continue;
+
+            err = index_obj_name(conc_dir, entry, fd);
+            if (err) return err;
+        }
+    }
+
+    if (dir->dirs) {
+        for (size_t i = 0; i < KND_RADIX_BASE; i++) {
+            subdir = dir->dirs[i];
+            if (!subdir) continue;
+            err = populate_obj_name_idx(conc_dir, subdir, fd);
+            if (err) return err;
+        }
+    }
+    
     return knd_OK;
 }
 
@@ -2265,45 +2322,52 @@ static int parse_dir_trailer(struct kndConcept *self,
     return knd_OK;
 }
 
-static int register_obj_entry(struct kndConcDir *dir,
+static int register_obj_entry(struct kndObjDir **obj_dirs,
                               struct kndObjEntry *entry,
-                              size_t curr_depth,
+                              const char *obj_id,
+                              size_t depth,
                               size_t max_depth)
 {
-    char buf[KND_SHORT_NAME_SIZE];
-    size_t buf_size;
-    char c;
-    size_t depth;
+    struct kndObjDir *dir;
+    unsigned char c;
     int numval;
     int err;
 
-    depth = KND_ID_SIZE - max_depth + curr_depth;
-    c = dir->next_obj_id[depth];
-    knd_log("%c", c);
+    c = obj_id[KND_ID_SIZE - depth];
     numval = obj_id_base[(size_t)c];
-    knd_log("%d", numval);
 
+    /*knd_log("%c => %d", c, numval);*/
     if (numval == -1) return knd_LIMIT;
 
+    dir = obj_dirs[numval];
+    if (!dir) {
+        dir = malloc(sizeof(struct kndObjDir));
+        if (!dir) return knd_NOMEM;
+        memset(dir, 0, sizeof(struct kndObjDir));
+        obj_dirs[numval] = dir;
+    }
 
-    if (DEBUG_CONC_LEVEL_TMP)
-        knd_log("== register OBJ %.*s: (depth: %zu) size:%zu  idx:%d",
-                KND_ID_SIZE, dir->next_obj_id, depth, entry->block_size, numval);
-
-    /* root storage */
-    /*    if (count < KND_RADIX_BASE) {
-        if (!parent_dir->objs) {
-            parent_dir->objs = malloc(sizeof(struct kndObjEntry*) * KND_RADIX_BASE);
-            if (!parent_dir->objs) return knd_NOMEM;
+    if (depth < max_depth) {
+        if (!dir->dirs) {
+            dir->dirs = calloc(KND_RADIX_BASE, sizeof(struct kndObjDir*));
+            if (!dir->dirs) return knd_NOMEM;
         }
-        parent_dir->objs[count] = entry;
-        parent_dir->num_objs++;
-
-
-        *item = entry;
+        err = register_obj_entry(dir->dirs, entry, obj_id, depth + 1, max_depth);
+        if (err) return err;
         return knd_OK;
     }
-    */
+
+    /* terminal idx */
+    if (!dir->objs) {
+        dir->objs = calloc(KND_RADIX_BASE, sizeof(struct kndObjEntry*));
+        if (!dir->objs) return knd_NOMEM;
+    }
+    dir->objs[numval] = entry;
+    dir->num_objs++;
+
+    if (DEBUG_CONC_LEVEL_3)
+        knd_log("== register OBJ %.*s: (depth: %zu) size:%zu",
+                KND_ID_SIZE, obj_id, depth, entry->block_size);
     
     return knd_OK;
 }
@@ -2317,6 +2381,7 @@ static int obj_atomic_entry_alloc(void *self,
     char buf[KND_NAME_SIZE];
     size_t buf_size;
     struct kndConcDir *parent_dir = self;
+    struct kndObjDir *obj_dir;
     struct kndObjEntry *entry;
     char *invalid_num_char = NULL;
     const char *c;
@@ -2324,7 +2389,7 @@ static int obj_atomic_entry_alloc(void *self,
     size_t i, depth;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. create OBJ ENTRY: %.*s  count: %zu",
                 val_size, val, count);
 
@@ -2357,6 +2422,18 @@ static int obj_atomic_entry_alloc(void *self,
     err = knd_next_state(parent_dir->next_obj_id);
     if (err) return err;
 
+    /* assign entry to the terminal idx */
+    if (count < KND_RADIX_BASE) {
+        if (!parent_dir->objs) {
+            parent_dir->objs = calloc(KND_RADIX_BASE, sizeof(struct kndObjEntry*));
+            if (!parent_dir->objs) return knd_NOMEM;
+        }
+        parent_dir->objs[count] = entry;
+        parent_dir->num_objs++;
+        *item = entry;
+        return knd_OK;
+    }
+
     /* calculate base depth */
     i = 0;
     c = parent_dir->next_obj_id;
@@ -2366,10 +2443,16 @@ static int obj_atomic_entry_alloc(void *self,
     }
     depth = KND_ID_SIZE - i;
 
-    knd_log("%.*s, depth: %zu", KND_ID_SIZE, parent_dir->next_obj_id, depth);
+    if (!parent_dir->obj_dirs) {
+        parent_dir->obj_dirs = calloc(KND_RADIX_BASE, sizeof(struct kndObjDir*));
+        if (!parent_dir->obj_dirs) return knd_NOMEM;
+    }
+
+    //knd_log("\nOBJ %.*s, depth: %zu", KND_ID_SIZE, parent_dir->next_obj_id, depth);
 
     /* assign entry to a subordinate dir */
-    err = register_obj_entry(parent_dir, entry, 0, depth);
+    err = register_obj_entry(parent_dir->obj_dirs, entry,
+                             parent_dir->next_obj_id, 1, depth);
     if (err) return err;
 
     *item = entry;
@@ -2395,9 +2478,10 @@ static int parse_obj_dir_trailer(struct kndConcept *self,
     char *obj_dir_buf = self->out->buf;
     size_t obj_dir_buf_size = self->out->buf_size;
     struct kndObjEntry *entry;
+    struct kndObjDir *dir;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("\n\n.. parsing OBJ DIR REC: %.*s [size %zu]  num base: %d",
                 128, obj_dir_buf, obj_dir_buf_size, encode_base);
 
@@ -2406,12 +2490,30 @@ static int parse_obj_dir_trailer(struct kndConcept *self,
 
     /* build obj name idx */
     if (parent_dir->num_objs) {
+        
+        /* TODO: calc dict size */
+
+        if (!parent_dir->obj_idx) {
+            err = ooDict_new(&parent_dir->obj_idx, KND_MEDIUM_DICT_SIZE);
+            if (err) return err;
+        }
+
         for (size_t i = 0; i < KND_RADIX_BASE; i++) {
             entry = parent_dir->objs[i];
             if (!entry) continue;
 
-            err = get_obj_name(parent_dir, entry, fd);
+            err = index_obj_name(parent_dir, entry, fd);
             if (err) return err;
+        }
+
+        if (parent_dir->obj_dirs) {
+            for (size_t i = 0; i < KND_RADIX_BASE; i++) {
+                dir = parent_dir->obj_dirs[i];
+                if (!dir) continue;
+
+                err = populate_obj_name_idx(parent_dir, dir, fd);
+                if (err) return err;
+            }
         }
     }
 
@@ -2528,9 +2630,9 @@ static int open_frozen_DB(struct kndConcept *self)
         goto final;
     }
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_2)
         dir_str(self->dir, 1, fd);
-    
+
     err = knd_OK;
     
  final:
