@@ -580,10 +580,9 @@ int knd_parse_task(const char *rec,
                 e = b;
                 break;
             }
-            
             if (!spec->parse) {
                 if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("== ATOMIC SPEC found: %s! no further parsing is required.",
+                    knd_log("== terminal SPEC found: %s! no further parsing is required.",
                             spec->name);
                 in_terminal = true;
                 b = c + 1;
@@ -912,7 +911,9 @@ int knd_parse_task(const char *rec,
                 if (in_implied_field) {
                     name_size = e - b;
                     if (name_size) {
-                        err = knd_check_implied_field(b, name_size, specs, num_specs, args, &num_args);
+                        err = knd_check_implied_field(b, name_size,
+                                                      specs, num_specs,
+                                                      args, &num_args);
                         if (err) return err;
                     }
                     in_implied_field = false;
@@ -1034,8 +1035,8 @@ static int knd_parse_state_change(const char *rec,
 
             err = knd_find_spec(specs, num_specs, b, name_size, KND_CHANGE_STATE, &spec);
             if (err) {
-                knd_log("-- no spec found to handle the \"%.*s\" change state tag :(",
-                        name_size, b);
+                knd_log("-- no spec found to handle the \"%.*s\" change state tag in \"%.*s\" :(",
+                        name_size, b, 32, c);
                 return err;
             }
 
@@ -1080,6 +1081,8 @@ static int knd_parse_state_change(const char *rec,
                 in_tag = false;
                 b = c + 1;
                 e = b;
+
+                spec->is_completed = true;
 
                 if (DEBUG_PARSER_LEVEL_2)
                     knd_log("== END func parsing spec \"%s\" [%p] at: \"%s\"\n\n",
@@ -1132,8 +1135,8 @@ static int knd_parse_state_change(const char *rec,
 
                 err = knd_find_spec(specs, num_specs, b, name_size, KND_CHANGE_STATE, &spec);
                 if (err) {
-                    knd_log("-- no spec found to handle the \"%.*s\" change state tag :(",
-                            name_size, b);
+                    knd_log("-- no spec found to handle the \"%.*s\" change state tag, rec:  \"%.*s\" :(",
+                            name_size, b, 16, c);
                     return err;
                 }
 
@@ -1381,6 +1384,9 @@ static int knd_parse_list(const char *rec,
             break;
         case ']':
             if (!in_list) return knd_FAIL;
+
+            /* list requires a tag and some items */
+            if (!got_tag) return knd_FAIL;
 
             *total_size = c - rec;
             return knd_OK;

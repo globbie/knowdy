@@ -27,7 +27,16 @@
 
 static void del(struct kndObject *self)
 {
-    free(self);
+    struct kndElem *elem, *next_elem;
+
+    elem = self->elems;
+    while (elem) {
+        next_elem = elem->next;
+        elem->del(elem);
+        elem = next_elem;
+    }
+
+    self->phase = KND_FREED;
 }
 
 static void str(struct kndObject *self)
@@ -429,6 +438,8 @@ kndObject_export(struct kndObject *self)
 static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndObject *self = (struct kndObject*)obj;
+    struct kndConcept *conc;
+    struct kndObjEntry *entry;
     struct kndTaskArg *arg;
     const char *name = NULL;
     size_t name_size = 0;
@@ -442,6 +453,16 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     }
     if (!name_size) return knd_FAIL;
     if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+    /* check name doublets */
+    conc = self->conc;
+    if (conc->dir && conc->dir->obj_idx) {
+        entry = conc->dir->obj_idx->getn(conc->dir->obj_idx, name, name_size);
+        if (entry) {
+            knd_log("-- obj name doublet found: %.*s :(", name_size, name);
+            return knd_FAIL;
+        }
+    }
 
     memcpy(self->name, name, name_size);
     self->name_size = name_size;
@@ -464,7 +485,7 @@ kndObject_validate_attr(struct kndObject *self,
     struct kndAttr *attr = NULL;
     int err, e;
 
-    if (DEBUG_OBJ_LEVEL_1)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. \"%.*s\" to validate elem: \"%.*s\" conc: %p",
                 self->name_size, self->name, name_size, name, self->conc);
     conc = self->conc;
@@ -495,7 +516,7 @@ static int parse_elem(void *data,
                       const char *name, size_t name_size,
                       const char *rec, size_t *total_size)
 {
-    struct kndObject *self = (struct kndObject*)data;
+    struct kndObject *self = data;
     struct kndConcept *root_class;
     struct kndConcept *c;
     struct kndObject *obj;
@@ -507,8 +528,8 @@ static int parse_elem(void *data,
     int err;
 
     if (DEBUG_OBJ_LEVEL_1) {
-        knd_log("..  validation of \"%s\" elem REC: \"%.*s\"\n",
-                name, 16, rec);
+        knd_log("..  %s  needs to validate \"%s\" elem,   REC: \"%.*s\"\n",
+                obj->name, name, 16, rec);
     }
     err = kndObject_validate_attr(self, name, name_size, &attr);
     if (err) return err;
@@ -521,8 +542,8 @@ static int parse_elem(void *data,
     elem->out = self->out;
 
     if (DEBUG_OBJ_LEVEL_2)
-        knd_log("   == basic elem type: %s\n",
-                knd_attr_names[attr->type]);
+        knd_log("   == basic elem type: %s   obj phase: %d",
+                knd_attr_names[attr->type], self->phase);
 
     switch (attr->type) {
     case KND_ATTR_AGGR:
@@ -531,8 +552,9 @@ static int parse_elem(void *data,
         
         obj->type = KND_OBJ_AGGR;
         if (!attr->conc) {
-            if (self->phase == KND_FROZEN) {
-                if (DEBUG_OBJ_LEVEL_1) {
+            
+            if (self->phase == KND_FROZEN || self->phase == KND_SUBMITTED) {
+                if (DEBUG_OBJ_LEVEL_2) {
                     knd_log(".. resolve attr \"%.*s\": \"%.*s\"..",
                             attr->name_size, attr->name,
                             attr->ref_classname_size, attr->ref_classname);
@@ -543,6 +565,11 @@ static int parse_elem(void *data,
                                       &c);
                 if (err) return err;
                 attr->conc = c;
+            }
+            else {
+                knd_log("-- couldn't resolve the %.*s attr :(",
+                        attr->name_size, attr->name);
+                return knd_FAIL;
             }
         }
 
@@ -607,10 +634,15 @@ static int parse_elem(void *data,
     }
     self->num_elems++;
 
-    
+    if (DEBUG_OBJ_LEVEL_2)
+        knd_log("++ elem %s parsing OK!", elem->attr->name);
     return knd_OK;
 
  final:
+
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log("-- validation of \"%s\" elem failed :(", name);
+
     elem->del(elem);
     return err;
 }
@@ -959,6 +991,7 @@ static int
 kndObject_resolve(struct kndObject *self)
 {
     struct kndElem *elem;
+    struct kndObject *obj;
     int err;
 
     if (DEBUG_OBJ_LEVEL_2) {

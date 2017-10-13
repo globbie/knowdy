@@ -105,11 +105,18 @@ static int kndRef_resolve(struct kndRef *self)
     
     /*if (!self->states || !self->elem || !self->elem->attr || !self->elem->attr->conc) return knd_FAIL;*/
     conc = self->elem->attr->conc;
-     
-    if (DEBUG_REF_LEVEL_2)
-        knd_log(".. resolve REF: %s (%s) => %s dir: %p obj idx: %p",
-                self->elem->attr->name,
-                conc->name, self->states->val, conc->dir, conc->dir->obj_idx);
+
+    if (DEBUG_REF_LEVEL_2) {
+        knd_log(".. resolve REF: %.*s  state:%p",
+                conc->name_size, conc->name,
+                self->states);
+
+        knd_log(".. resolve REF: %.*s::%.*s => \"%.*s\" dir: %p",
+                conc->name_size, conc->name,
+                self->elem->attr->name_size, self->elem->attr->name,
+                self->states->val_size, self->states->val,
+                conc->dir);
+    }
 
     if (!conc->dir || !conc->dir->obj_idx) {
         knd_log("-- \"%.*s\" class has no obj idx, unable to resolve ref: \"%.*s\" :(",

@@ -31,6 +31,12 @@
 
 static void del(struct kndElem *self)
 {
+    struct kndElemState *state;
+
+    if (self->aggr)
+        self->aggr->del(self->aggr);
+    if (self->num)
+        self->num->del(self->num);
 
     free(self);
 }

@@ -265,7 +265,7 @@ kndUser_parse_auth(void *obj,
     };
 
     if (DEBUG_USER_LEVEL_2)
-        knd_log("   .. parsing the AUTH rec: \"%s\"", rec);
+        knd_log("   .. parsing the AUTH rec: \"%.*s\"", 32, rec);
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) {
@@ -455,7 +455,7 @@ static int parse_liquid_updates(void *obj,
     struct kndUser *self = (struct kndUser*)obj;
     int err;
 
-    if (DEBUG_USER_LEVEL_2)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. parse and apply liquid updates..");
 
     self->task->type = KND_UPDATE_STATE;
@@ -597,7 +597,9 @@ static int parse_task(struct kndUser *self,
                       size_t *total_size)
 {
     struct kndOutput *out;
-
+    struct kndConcept *conc;
+    struct kndObject *obj, *next_obj;
+    struct ooDict *idx;
     if (DEBUG_USER_LEVEL_1)
         knd_log(".. parsing user task: \"%s\" size: %lu..\n\n",
                 rec, (unsigned long)strlen(rec));
@@ -685,7 +687,7 @@ static int parse_task(struct kndUser *self,
         if (self->root_class->inbox_size || self->root_class->obj_inbox_size) {
             out = self->task->update;
 
-            if (DEBUG_USER_LEVEL_TMP)
+            if (DEBUG_USER_LEVEL_2)
                 knd_log(".. update state.. total output free space: %lu TOTAL SPEC SIZE: %lu",
                         (unsigned long)out->free_space,
                         (unsigned long)*total_size);
@@ -716,8 +718,22 @@ static int parse_task(struct kndUser *self,
 
     /* TODO : deallocate resources */
     if (self->root_class->obj_inbox_size) {
-        if (DEBUG_USER_LEVEL_2)
-            knd_log(".. obj inbox cleanup..\n\n");
+
+        if (DEBUG_USER_LEVEL_TMP)
+            knd_log("\n.. obj inbox cleanup..");
+        obj = self->root_class->obj_inbox;
+        while (obj) {
+            if (obj->conc && obj->conc->dir) {
+                idx = obj->conc->dir->obj_idx;
+                e = idx->remove(idx, obj->name);
+                knd_log("!! removed \"%.*s\" from obj idx: %d",
+                        obj->name_size, obj->name, e);
+            }
+            next_obj = obj->next;
+            obj->del(obj);
+            obj = next_obj;
+        }
+
         self->root_class->obj_inbox = NULL;
         self->root_class->obj_inbox_size = 0;
     }
