@@ -2609,7 +2609,7 @@ static int open_frozen_DB(struct kndConcept *self)
     filename =  out->buf;
     filename_size =  out->buf_size;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. open \"%.*s\" ..", out->buf_size, out->buf);
 
     if (stat(filename, &st)) {
