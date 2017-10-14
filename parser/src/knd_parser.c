@@ -347,6 +347,101 @@ knd_parse_IPV4(char *ip, unsigned long *ip_val)
 }
 
 static int
+knd_spec_is_correct(struct kndTaskSpec *spec)
+{
+    // Check the fields are not mutually exclusive (by groups):
+
+    assert(spec->type == KND_GET_STATE || spec->type == KND_CHANGE_STATE);
+
+    assert((spec->name != NULL) == (spec->name_size != 0));
+
+    assert(spec->specs == NULL && spec->num_specs == 0);  // TODO(ki.stfu): Remove these fields
+
+    assert(!spec->is_completed);
+
+    if (spec->is_default)
+        assert(!spec->is_selector && !spec->is_implied && !spec->is_validator && !spec->is_list && !spec->is_atomic);
+    if (spec->is_selector)
+        assert(!spec->is_default && !spec->is_validator && !spec->is_list && !spec->is_atomic);
+    if (spec->is_implied)
+        assert(!spec->is_default && !spec->is_validator && !spec->is_list && !spec->is_atomic);
+    if (spec->is_validator)
+        assert(!spec->is_default && !spec->is_selector && !spec->is_implied && !spec->is_list && !spec->is_atomic);
+    assert(!spec->is_terminal);  // TODO(ki.stfu): ?? Remove this field
+    // FIXME(ki.stfu): assert(!spec->is_list);  // TODO(ki.stfu): ?? Remove this field
+    assert(!spec->is_atomic);  // TODO(ki.stfu): ?? Remove this field
+
+    assert((spec->buf != NULL) == (spec->buf_size != NULL));
+    assert((spec->buf != NULL) == (spec->max_buf_size != 0));
+
+    assert(spec->accu == NULL);  // TODO(ki.stfu): ?? remove this field
+
+    if (spec->parse)
+        assert(spec->validate == NULL && spec->run == NULL);
+    if (spec->validate)
+        assert(spec->parse == NULL && spec->run == NULL);
+    if (spec->run)
+        assert(spec->parse == NULL && spec->validate == NULL);
+    assert(spec->append == NULL);  // TODO(ki.stfu): ?? remove this field
+    assert(spec->alloc == NULL);  // TODO(ki.stfu): ?? remove this field
+
+    // Check that they are not mutually exclusive (in general):
+
+    if (spec->name) {
+        bool name_is_default = spec->name_size == strlen("default") &&
+                               0 == memcmp(spec->name, "default", spec->name_size);
+        assert(name_is_default == spec->is_default);
+    }
+
+    if (spec->is_default) {
+        // |spec->name| can be set to "default"
+        assert(spec->buf == NULL);
+        assert(spec->obj != NULL);
+        assert(spec->run != NULL);
+    }
+
+    if (spec->is_implied) {
+        // |spec->name| can be NULL
+        assert(spec->buf == NULL);
+        assert(spec->obj != NULL);
+        assert(spec->run != NULL);
+    }
+
+    assert(spec->is_validator == (spec->validate != NULL));
+    if (spec->is_validator) {
+        // FIXME(ki.stfu): ?? assert(spec->name != NULL);
+        // FIXME(ki.stfu): ?? |spec->buf| can be NULL
+        assert(spec->obj != NULL);
+        assert(spec->validate != NULL);
+    }
+
+    if (spec->parse) {
+        assert(spec->name != NULL);
+        assert(spec->buf == NULL);
+        assert(spec->obj != NULL);
+    }
+
+    // if (spec->validate)  -- already handled in spec->is_validator
+
+    if (spec->run) {
+        assert(spec->is_default || spec->is_implied || spec->name != NULL);
+        assert(spec->buf == NULL);
+        assert(spec->obj != NULL);
+    }
+
+    if (spec->buf) {
+        // FIXME(ki.stfu): ?? assert(spec->obj == NULL); -- check .validate
+        assert(spec->parse == NULL);
+        // FIXME(ki.stfu): ?? assert(spec->validate == NULL);
+        assert(spec->run == NULL);
+    }
+
+    assert(spec->buf != NULL || spec->parse != NULL || spec->validate != NULL || spec->run != NULL);
+
+    return 1;
+}
+
+static int
 knd_find_spec(struct kndTaskSpec *specs,
               size_t num_specs,
               const char *name,
@@ -681,6 +776,10 @@ int knd_parse_task(const char *rec,
     if (DEBUG_PARSER_LEVEL_2)
         knd_log("\n\n*** start basic PARSING: \"%.*s\" num specs: %zu [%p]",
                 16, rec, num_specs, specs);
+
+    // Check kndTaskSpec is properly filled
+    for (size_t i = 0; i < num_specs; i++)
+        assert(knd_spec_is_correct(&specs[i]));
 
     while (*c) {
         switch (*c) {
