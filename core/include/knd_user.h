@@ -5,7 +5,7 @@
 #include "knd_task.h"
 #include "knd_concept.h"
 
-struct kndObject;
+struct kndObjEntry;
 struct kndUser;
 struct kndOutput;
 struct kndRepo;
@@ -47,6 +47,9 @@ struct kndUser
     char sid[KND_NAME_SIZE];
     size_t sid_size;
 
+    char frozen_output_file_name[KND_PATH_SIZE];
+    size_t frozen_output_file_name_size;
+
     knd_format format;
 
     char default_locale[KND_NAME_SIZE];
@@ -55,7 +58,7 @@ struct kndUser
     const char *locale;
     size_t locale_size;
 
-    struct kndObject **user_idx;
+    struct kndObjEntry **user_idx;
     size_t max_users;
     size_t num_users;
 
@@ -64,7 +67,7 @@ struct kndUser
     struct kndTask *task;
     struct kndOutput *out;
     struct kndOutput *log;
-    
+
     void *update_service;
     
     struct kndRepo *repo;

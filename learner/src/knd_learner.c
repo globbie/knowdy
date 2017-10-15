@@ -197,7 +197,6 @@ static int parse_publisher_service_addr(void *obj,
     return knd_OK;
 }
 
-
 static int
 parse_write_inbox_addr(void *obj,
                        const char *rec,
@@ -488,6 +487,14 @@ kndLearner_new(struct kndLearner **rec,
     }
     conc->max_objs = self->max_objs;
 
+    /* user idx */
+    if (self->max_users) {
+        self->admin->user_idx = calloc(self->max_users, 
+                                       sizeof(struct kndObject*));
+        if (!self->admin->user_idx) return knd_NOMEM;
+        self->admin->max_users = self->max_users;
+    }
+    
     /* try opening the frozen DB */
     conc->user = self->admin;
     self->admin->root_class = conc;

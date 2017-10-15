@@ -601,7 +601,8 @@ int knd_parse_task(const char *rec,
                 return err;
             }
             c += chunk_size;
-            spec->is_completed = true;
+            if (!spec->is_selector)
+                spec->is_completed = true;
             in_field = false;
             in_tag = false;
             
@@ -688,7 +689,8 @@ int knd_parse_task(const char *rec,
             
             c += chunk_size;
 
-            spec->is_completed = true;
+            if (!spec->is_selector)
+                spec->is_completed = true;
 
             in_field = false;
             in_tag = false;
@@ -707,12 +709,14 @@ int knd_parse_task(const char *rec,
                         if (err) return err;
                     }
                 }
-                
+
                 /* should we run a default action? */
                 for (size_t i = 0; i < num_specs; i++) {
                     spec = &specs[i];
                     /* some action spec is completed, don't call the default one */
                     if (spec->is_completed) {
+                        if (DEBUG_PARSER_LEVEL_2)
+                            knd_log("++ \"%.*s\" spec has been completed!", spec->name_size, spec->name);
                         *total_size = c - rec;
                         return knd_OK;
                     }
@@ -750,8 +754,8 @@ int knd_parse_task(const char *rec,
                 if (spec->buf && spec->buf_size) {
                     err = knd_spec_buf_copy(spec, b, name_size);
                     if (err) return err;
-                        
-                    spec->is_completed = true;
+                    if (!spec->is_selector)
+                        spec->is_completed = true;
                     b = c + 1;
                     e = b;
                     in_terminal = false;
@@ -923,7 +927,7 @@ int knd_parse_task(const char *rec,
                 err = check_name_limits(b, e, &name_size);
                 if (err) return err;
 
-                if (DEBUG_PARSER_LEVEL_TMP)
+                if (DEBUG_PARSER_LEVEL_2)
                     knd_log("++ BASIC LOOP got tag before square bracket: \"%.*s\" [%zu]",
                             name_size, b, name_size);
                   

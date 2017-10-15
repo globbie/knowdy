@@ -279,7 +279,7 @@ kndUser_parse_auth(void *obj,
 
     if (DEBUG_USER_LEVEL_2)
         knd_log("++ got SID: \"%s\"", sid);
-    
+
     if (!sid_size) {
         knd_log("-- no SID provided :(");
         return knd_FAIL;
@@ -421,23 +421,14 @@ static int kndUser_parse_class_select(void *obj,
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class select: \"%s\"", rec);
-
-    err = out->write(out, self->dbpath, self->dbpath_size);
-    if (err) return err;
-    err = out->write(out, "/frozen.gsp", strlen("/frozen.gsp"));
-    if (err) return err;
-    memcpy(self->path, out->buf, out->buf_size);
-    self->path_size = out->buf_size;
-    self->path[self->path_size] = '\0';
-
     self->root_class->out = self->out;
     self->root_class->log = self->log;
     self->root_class->task = self->task;
 
     self->root_class->dbpath = self->dbpath;
     self->root_class->dbpath_size = self->dbpath_size;
-    self->root_class->frozen_output_file_name = (const char*)self->path;
-    self->root_class->frozen_output_file_name_size = self->path_size;
+    self->root_class->frozen_output_file_name = self->frozen_output_file_name;
+    self->root_class->frozen_output_file_name_size = self->frozen_output_file_name_size;
 
     self->root_class->locale = self->locale;
     self->root_class->locale_size = self->locale_size;
@@ -492,7 +483,6 @@ static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
     if (!name_size) return knd_FAIL;
     if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
 
-
     if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. get user: \"%.*s\".. %p", name_size, name, self->root_class);
 
@@ -514,10 +504,13 @@ static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
     return knd_OK;
 }
 
-static int run_get_user_by_id(void *obj, struct kndTaskArg *args, size_t num_args)
+static int run_get_user_by_id(void *data, struct kndTaskArg *args, size_t num_args)
 {
-    struct kndUser *self = (struct kndUser*)obj;
+    struct kndUser *self = data;
     struct kndTaskArg *arg;
+    struct kndConcept *conc;
+    struct kndObjEntry *entry;
+    struct kndObject *obj;
     const char *numid = NULL;
     size_t numid_size = 0;
     long numval = 0;
@@ -540,24 +533,31 @@ static int run_get_user_by_id(void *obj, struct kndTaskArg *args, size_t num_arg
         return knd_LIMIT;
     }
 
-    self->curr_user = self->user_idx[numval];
+    if (DEBUG_USER_LEVEL_2)
+        knd_log(".. get user by id: %lu", numval);
 
-    if (!self->curr_user) return knd_NO_MATCH;
+    entry = self->user_idx[numval];
+    if (!entry) return knd_NO_MATCH;
+
+    self->root_class->out = self->out;
+    self->root_class->log = self->log;
+    self->root_class->task = self->task;
+    self->root_class->dbpath = self->dbpath;
+    self->root_class->dbpath_size = self->dbpath_size;
+    self->root_class->frozen_output_file_name = self->frozen_output_file_name;
+    self->root_class->frozen_output_file_name_size = self->frozen_output_file_name_size;
+    self->root_class->locale = self->locale;
+    self->root_class->locale_size = self->locale_size;
     
-    /*if (DEBUG_USER_LEVEL_TMP)
-        knd_log(".. get user by num id: \"%.*s\"..", numid_size, numid);
-
-    err = self->root_class->get(self->root_class, "User", strlen("User"));
+    err = self->root_class->get(self->root_class, "User", strlen("User"), &conc);
     if (err) return err;
-    conc = self->root_class->curr_class;
-    
-    err = conc->get_obj(conc, numid, numid_size);
-    if (err) return err;
-    
-    self->curr_user = conc->curr_obj;
-    */
 
-    if (DEBUG_USER_LEVEL_TMP) {
+    err = conc->read_obj_entry(conc, entry, &obj);
+    if (err) return err;
+
+    self->curr_user = obj;
+
+    if (DEBUG_USER_LEVEL_2) {
         knd_log("++ got user by num id: %.*s", numid_size, numid);
         self->curr_user->str(self->curr_user);
     }
@@ -566,8 +566,9 @@ static int run_get_user_by_id(void *obj, struct kndTaskArg *args, size_t num_arg
     self->curr_user->out = self->out;
     self->curr_user->log = self->log;
 
-    err = self->curr_user->export(self->curr_user);
+    /*err = self->curr_user->export(self->curr_user);
     if (err) return err;
+    */
 
     return knd_OK;
 }
@@ -578,9 +579,6 @@ static int run_present_user(void *data,
 {
     struct kndUser *self = (struct kndUser*)data;
     int err;
-
-    knd_log(".. present user..");
-
     if (!self->curr_user) return knd_FAIL;
 
     self->curr_user->out = self->out;
@@ -719,15 +717,17 @@ static int parse_task(struct kndUser *self,
     /* TODO : deallocate resources */
     if (self->root_class->obj_inbox_size) {
 
-        if (DEBUG_USER_LEVEL_TMP)
+        if (DEBUG_USER_LEVEL_1)
             knd_log("\n.. obj inbox cleanup..");
         obj = self->root_class->obj_inbox;
         while (obj) {
             if (obj->conc && obj->conc->dir) {
                 idx = obj->conc->dir->obj_idx;
                 e = idx->remove(idx, obj->name);
-                knd_log("!! removed \"%.*s\" from obj idx: %d",
-                        obj->name_size, obj->name, e);
+
+                if (DEBUG_USER_LEVEL_2)
+                    knd_log("!! removed \"%.*s\" from obj idx: %d",
+                            obj->name_size, obj->name, e);
             }
             next_obj = obj->next;
             obj->del(obj);

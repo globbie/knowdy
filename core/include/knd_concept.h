@@ -56,6 +56,12 @@ struct kndDataIdx
     struct kndDataIdx *next;
 };
 
+struct kndObjStateIdx
+{
+    struct kndObject **objs;
+    size_t num_objs;
+    struct kndStateIdx **children;
+};
 
 struct kndConcRef
 {
@@ -137,6 +143,7 @@ struct kndConcDir
     size_t num_children;
 
     char next_obj_id[KND_ID_SIZE];
+    size_t next_obj_numid;
 
     struct kndObjDir **obj_dirs;
     size_t num_obj_dirs;
@@ -158,6 +165,7 @@ struct kndConcept
     char id[KND_ID_SIZE];
     char next_id[KND_ID_SIZE];
     char next_obj_id[KND_ID_SIZE];
+    size_t next_obj_numid;
 
     size_t numid;
 
@@ -222,6 +230,7 @@ struct kndConcept
     struct kndConcFolder *folders;
     size_t num_folders;
 
+
     /* allocator */
     struct kndObject *obj_storage;
     size_t obj_storage_size;
@@ -240,7 +249,10 @@ struct kndConcept
     /* indices */
     struct ooDict *class_idx;
     struct ooDict *attr_idx;
-    
+
+    /* state idx */
+    struct kndObjStateIdx **obj_states;
+
     struct kndConcRef children[KND_MAX_CONC_CHILDREN];
     size_t num_children;
 
@@ -256,8 +268,6 @@ struct kndConcept
 
     const char *frozen_name_idx_path;
     size_t frozen_name_idx_path_size;
-
-    struct kndRefSet *obj_browser;
 
     struct kndConcept *next;
 
@@ -279,8 +289,11 @@ struct kndConcept
     int (*read)(struct kndConcept   *self,
                 const char *rec,
                 size_t *total_size);
+    int (*read_obj_entry)(struct kndConcept   *self,
+                          struct kndObjEntry *entry,
+                          struct kndObject **result);
     int (*restore)(struct kndConcept   *self);
-    
+
     int (*select_delta)(struct kndConcept *self,
                         const char *rec,
                         size_t *total_size);

@@ -43,10 +43,10 @@ static void str(struct kndObject *self)
 {
     struct kndElem *elem;
     if (self->type == KND_OBJ_ADDR) {
-        knd_log("\n%*sOBJ %.*s::%.*s [%.*s]  phase:%d\n",
+        knd_log("\n%*sOBJ %.*s::%.*s  id:%.*s  numid:%zu  state:%.*s  phase:%d\n",
                 self->depth * KND_OFFSET_SIZE, "", self->conc->name_size, self->conc->name,
                 self->name_size, self->name,
-                KND_ID_SIZE, self->id, self->phase);
+                KND_ID_SIZE, self->id, self->numid, KND_STATE_SIZE, self->state, self->phase);
     }
 
     for (elem = self->elems; elem; elem = elem->next) {
@@ -457,9 +457,11 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     /* check name doublets */
     conc = self->conc;
     if (conc->dir && conc->dir->obj_idx) {
-        entry = conc->dir->obj_idx->getn(conc->dir->obj_idx, name, name_size);
+        entry = conc->dir->obj_idx->get(conc->dir->obj_idx, name);
         if (entry) {
-            knd_log("-- obj name doublet found: %.*s :(", name_size, name);
+            knd_log("-- obj name doublet found: %.*s %p :(",
+                    name_size, name, entry->obj);
+            entry->obj->str(entry->obj);
             return knd_FAIL;
         }
     }
@@ -485,7 +487,7 @@ kndObject_validate_attr(struct kndObject *self,
     struct kndAttr *attr = NULL;
     int err, e;
 
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_OBJ_LEVEL_1)
         knd_log(".. \"%.*s\" to validate elem: \"%.*s\" conc: %p",
                 self->name_size, self->name, name_size, name, self->conc);
     conc = self->conc;
@@ -527,9 +529,9 @@ static int parse_elem(void *data,
     struct kndText *text = NULL;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_1) {
+    if (DEBUG_OBJ_LEVEL_2) {
         knd_log("..  %s  needs to validate \"%s\" elem,   REC: \"%.*s\"\n",
-                obj->name, name, 16, rec);
+                obj->name, name, 32, rec);
     }
     err = kndObject_validate_attr(self, name, name_size, &attr);
     if (err) return err;
@@ -542,8 +544,8 @@ static int parse_elem(void *data,
     elem->out = self->out;
 
     if (DEBUG_OBJ_LEVEL_2)
-        knd_log("   == basic elem type: %s   obj phase: %d",
-                knd_attr_names[attr->type], self->phase);
+        knd_log("   == basic elem type: %s   obj phase: %d root:%p",
+                knd_attr_names[attr->type], self->phase, self->conc->root_class);
 
     switch (attr->type) {
     case KND_ATTR_AGGR:

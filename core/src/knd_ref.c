@@ -44,9 +44,11 @@ kndRef_set_reverse_rel(struct kndRef *self,
 
     conc = self->elem->attr->parent_conc;
     if (DEBUG_REF_LEVEL_2)
-        knd_log(".. set REF from %s => %s",
+        knd_log(".. %.*s OBJ to get REF from %s => %s",
+                obj->name_size, obj->name, 
                 conc->name,
                 obj->conc->name);
+
     for (relc = obj->reverse_rel_classes; relc; relc = relc->next) {
         if (relc->conc == conc) break;
     }
@@ -99,6 +101,7 @@ kndRef_set_reverse_rel(struct kndRef *self,
 static int kndRef_resolve(struct kndRef *self)
 {
     struct kndConcept *conc;
+    struct kndObjEntry *entry;
     struct kndObject *obj;
     const char *obj_name;
     int err, e;
@@ -126,8 +129,8 @@ static int kndRef_resolve(struct kndRef *self)
     }
 
     obj_name = self->states->val;
-    obj = (struct kndObject*)conc->dir->obj_idx->get(conc->dir->obj_idx, obj_name);
-    if (!obj) {
+    entry = conc->dir->obj_idx->get(conc->dir->obj_idx, obj_name);
+    if (!entry) {
         knd_log("-- no such obj: \"%s\" :(", obj_name);
         e = self->log->write(self->log, "no such obj: ", strlen("no such obj: "));
         if (e) return e;
@@ -136,6 +139,7 @@ static int kndRef_resolve(struct kndRef *self)
         return knd_FAIL;
     }
 
+    obj = entry->obj;
     self->states->obj = obj;
 
     /* set reverse_rel */

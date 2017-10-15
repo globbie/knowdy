@@ -128,9 +128,15 @@ static int parse_task(void *obj,
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
 
+    /* check mandatory fields */
     if (!self->tid_size) {
-        knd_log("-- no TID found");
-        return knd_FAIL;
+        switch (self->type) {
+        case KND_UPDATE_STATE:
+            return knd_OK;
+        default:
+            knd_log("-- no TID found");
+            return knd_FAIL;
+        }
     }
 
     return knd_OK;
