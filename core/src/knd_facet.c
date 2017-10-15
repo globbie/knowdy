@@ -983,7 +983,6 @@ kndFacet_read(struct kndFacet  *self,
     size_t offset = 0;
     size_t total_items = 0;
     size_t num_refs = 0;
-    //size_t curr_size;
     
     const char *delim = KND_FIELD_SEPAR;
     char *last = NULL;
@@ -994,7 +993,7 @@ kndFacet_read(struct kndFacet  *self,
         knd_log("  .. Reading Facet idx rec, input size [%lu]\n",
                 (unsigned long)rec_size);
 
-    err = knd_get_trailer(rec, rec_size,
+    /*    err = knd_get_trailer(rec, rec_size,
                           name, &name_size,
                           &total_items,
                           buf, &buf_size);
@@ -1002,7 +1001,8 @@ kndFacet_read(struct kndFacet  *self,
         knd_log("  -- facet trailer not read: %d\n", err);
         goto final;
     }
-
+    */
+    
     s = strchr(name, '#');
     if (s) {
         *s = '\0';

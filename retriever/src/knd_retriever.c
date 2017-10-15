@@ -25,8 +25,6 @@ static int
 kndRetriever_del(struct kndRetriever *self)
 {
     /* TODO: storage */
-    
-    free(self);
 
     return knd_OK;
 }
@@ -392,7 +390,6 @@ parse_config_GSL(struct kndRetriever *self,
     memcpy(self->admin->path + self->path_size, "/users", strlen("/users"));
     self->admin->path_size = self->path_size + strlen("/users");
     self->admin->path[self->admin->path_size] = '\0';
-
     
     return knd_OK;
 }
@@ -403,7 +400,8 @@ kndRetriever_new(struct kndRetriever **rec,
                   const char *config)
 {
     struct kndRetriever *self;
-    struct kndConcept *dc;
+    struct kndConcept *conc;
+    struct kndOutput *out;
     size_t chunk_size = 0;
     int err;
 
@@ -443,24 +441,43 @@ kndRetriever_new(struct kndRetriever **rec,
         goto error;
     }
 
-    err = kndConcept_new(&dc);
+    out = self->out;
+    out->reset(out);
+    err = out->write(out, self->path, self->path_size);
     if (err) return err;
-    dc->out = self->out;
-    dc->name[0] = '/';
-    dc->name_size = 1;
+    err = out->write(out, "/frozen.gsp", strlen("/frozen.gsp"));
+    if (err) return err;
+    memcpy(self->admin->frozen_output_file_name, out->buf, out->buf_size);
+    self->admin->frozen_output_file_name_size = out->buf_size;
+    self->admin->frozen_output_file_name[out->buf_size] = '\0';
 
-    dc->dbpath = self->schema_path;
-    dc->dbpath_size = self->schema_path_size;
+    err = kndConcept_new(&conc);
+    if (err) return err;
+    conc->out = self->out;
+    conc->name[0] = '/';
+    conc->name_size = 1;
 
-    err = ooDict_new(&dc->class_idx, KND_SMALL_DICT_SIZE);
+    conc->dbpath = self->schema_path;
+    conc->dbpath_size = self->schema_path_size;
+    conc->frozen_output_file_name = self->admin->frozen_output_file_name;
+    conc->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
+
+    conc->dir = malloc(sizeof(struct kndConcDir));
+    if (!conc->dir) return knd_NOMEM;
+    memset(conc->dir, 0, sizeof(struct kndConcDir));
+    memset(conc->dir->name, '0', KND_ID_SIZE);
+    conc->dir->name_size = KND_ID_SIZE;
+    conc->dir->conc = conc;
+
+    err = ooDict_new(&conc->class_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
 
     /* obj/elem allocator */
     if (self->max_objs) {
-        dc->obj_storage = calloc(self->max_objs, 
+        conc->obj_storage = calloc(self->max_objs, 
                                  sizeof(struct kndObject));
-        if (!dc->obj_storage) return knd_NOMEM;
-        dc->obj_storage_max = self->max_objs;
+        if (!conc->obj_storage) return knd_NOMEM;
+        conc->max_objs = self->max_objs;
     }
 
     /* user idx */
@@ -471,37 +488,26 @@ kndRetriever_new(struct kndRetriever **rec,
         self->admin->max_users = self->max_users;
     }
 
-    /* read class definitions */
-    dc->batch_mode = true;
-    err = dc->open(dc, "index", strlen("index"));
-    if (err) {
- 	knd_log("-- couldn't read the schema definitions :("); 
-        goto error;
-    }
-    
-    err = dc->coordinate(dc);
-    if (err) goto error;
+    conc->user = self->admin;
+    self->admin->root_class = conc;
 
-    dc->batch_mode = false;
-    self->admin->root_class = dc;
-    self->admin->root_class->user = self->admin;
-    
     self->del = kndRetriever_del;
     self->start = kndRetriever_start;
+
+    /* open frozen DB */
+    err = conc->open(conc);
+    if (err && err != knd_NO_MATCH) goto error;
 
     *rec = self;
     return knd_OK;
 
  error:
 
-    knd_log("-- Retriever construction failure :(");
-    
-    kndRetriever_del(self);
+    knd_log("-- Retriever construction failure: %d :(", err);
+
+    //kndRetriever_del(self);
     return err;
 }
-
-
-
 
 /** SERVICES */
 void *kndRetriever_inbox(void *arg)
@@ -664,10 +670,10 @@ main(int const argc,
 
     err = kndRetriever_new(&retriever, config);
     if (err) {
-        fprintf(stderr, "Couldn\'t load the Retriever... ");
-        return -1;
+        fprintf(stderr, "-- couldn\'t init the Retriever... ");
+        exit(-1);
     }
-    
+
     /* add device */
     err = pthread_create(&inbox, 
 			 NULL,
@@ -687,7 +693,7 @@ main(int const argc,
                          (void*)retriever);
 
     retriever->start(retriever);
-    
+ 
     
     return 0;
 }

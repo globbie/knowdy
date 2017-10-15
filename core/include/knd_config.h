@@ -22,27 +22,31 @@
 #define KND_CONFIG_H
 
 /* return error codes */
-extern enum { knd_OK, knd_FAIL, knd_NOMEM, knd_LIMIT, knd_AUTH_OK, knd_AUTH_FAIL,
+typedef enum { knd_OK, knd_FAIL, knd_NOMEM, knd_LIMIT, knd_AUTH_OK, knd_AUTH_FAIL,
         knd_INVALID_DATA, knd_ACCESS, knd_NO_MATCH, knd_MATCH_FOUND, 
         knd_IO_FAIL, knd_EOB, knd_STOP, knd_NEED_WAIT, 
         knd_EXPIRED, knd_MAX_LIMIT_REACHED,
         KND_OPEN_DELIM_MISSING, KND_CLOSE_DELIM_MISSING } 
   knd_err_codes;
 
-typedef enum knd_state_phase { KND_CREATED,
-                               KND_SELECTED,
+typedef enum knd_state_phase { KND_SELECTED,
+                               KND_SUBMITTED,
+                               KND_CREATED,
                                KND_UPDATED,
                                KND_REMOVED,
+                               KND_FREED,
+                               KND_FROZEN,
                                KND_RESTORED } knd_state_phase;
 
 /* comparison codes */
-extern enum { knd_EQUALS, knd_LESS, knd_MORE, knd_NOT_COMPARABLE } knd_comparison_codes; 
+typedef enum { knd_EQUALS, knd_LESS, knd_MORE, knd_NOT_COMPARABLE } knd_comparison_codes;
 
 typedef enum knd_format { KND_FORMAT_JSON, 
                           KND_FORMAT_XML,
                           KND_FORMAT_HTML,
                           KND_FORMAT_JS,
                           KND_FORMAT_GSL,
+                          KND_FORMAT_GSP,
                           KND_FORMAT_GSC
                          } knd_format;
 
@@ -52,6 +56,7 @@ static const char* const knd_format_names[] = {
     "HTML", 
     "JS",
     "GSL", 
+    "GSP", 
     "GSC" };
 
 typedef enum knd_logic { KND_LOGIC_AND, 
@@ -90,7 +95,7 @@ typedef enum knd_storage_type {
 #define LOGIC_AND 1 
 #define LOGIC_OR  2
 
-#define KND_OFFSET_SIZE 2
+#define KND_OFFSET_SIZE 4
 
 #define KND_IDLE_TIMEOUT 10 /* in seconds */
 
@@ -114,7 +119,7 @@ typedef enum knd_storage_type {
 
 #define KND_MAX_INT_SIZE 4
 
-#define KND_MAX_DEBUG_CONTEXT_SIZE 16
+#define KND_MAX_DEBUG_CONTEXT_SIZE 100
 
 #define KND_ID_SIZE  (4 * sizeof(char))
 #define KND_ID_BATCH_SIZE 10
@@ -126,8 +131,12 @@ typedef enum knd_storage_type {
 #define KND_MAX_SPECS 64
 
 #define KND_MAX_CONC_CHILDREN 128
+#define KND_MAX_BASES 128
+
+#define KND_DIR_SIZE_ENCODE_BASE 10
 #define KND_DIR_ENTRY_SIZE 16
 #define KND_MAX_ARGS 16
+#define KND_DIR_TRAILER_MAX_SIZE 1024 * 1024 * 10
 
 #define KND_MAX_BACKREFS 128
 
@@ -150,7 +159,7 @@ typedef enum knd_storage_type {
 #define KND_OBJ_METABUF_SIZE 1024
 
 #define KND_DEFAULT_CLASS_DEPTH 3
-#define KND_MAX_CLASS_DEPTH 2
+#define KND_MAX_CLASS_DEPTH 3
 #define KND_MAX_CLASS_BATCH 128
 
 #define KND_DEFAULT_OBJ_DEPTH 2
@@ -337,7 +346,8 @@ typedef enum knd_storage_type {
 #define KND_LARGE_BUF_SIZE 1024 * 1024 * 100
 #define KND_SMALL_BUF_SIZE 64
 #define KND_LABEL_SIZE 8
-#define KND_NAME_SIZE 500
+#define KND_PATH_SIZE 1024
+#define KND_NAME_SIZE 512
 #define KND_SHORT_NAME_SIZE 64
 #define KND_VAL_SIZE 128
 
@@ -377,6 +387,8 @@ typedef enum knd_storage_type {
 #define KND_MAX_INBOX_SIZE 8
 #define KND_REFSET_MIN_SIZE KND_MAX_INBOX_SIZE / 10
 #define KND_INBOX_RESERVE_RATIO 1.4
+
+#define KND_THRESHOLD_RATIO 0.85
 
 #define KND_FEATURED_SIZE 5
 #define KND_FEATURED_MAX_SIZE 10

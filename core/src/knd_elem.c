@@ -31,72 +31,65 @@
 
 static void del(struct kndElem *self)
 {
+    struct kndElemState *state;
+
+    if (self->aggr)
+        self->aggr->del(self->aggr);
+    if (self->num)
+        self->num->del(self->num);
 
     free(self);
 }
 
 
-static void str(struct kndElem *self, size_t depth)
+static void str(struct kndElem *self)
 {
-    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
-    char *offset = malloc(offset_size + 1);
-
-    struct kndObject *obj;
-    struct kndText *text;
-    
-    memset(offset, ' ', offset_size);
-    offset[offset_size] = '\0';
-
-    if (self->states && self->states->val_size)
-        knd_log("%s%s => %s", offset, self->attr->name, self->states->val);
-
     if (self->aggr) {
         if (self->is_list) {
-            knd_log("%s   inline LIST\n",
-                    offset);
-            
-            obj = self->aggr;
+            knd_log("%*s[%.*s\n",
+                    self->depth * KND_OFFSET_SIZE, "", self->attr->name_size, self->attr->name);
+            struct kndObject *obj = self->aggr;
             while (obj) {
-                obj->str(obj, depth + 1);
+                obj->depth = self->depth + 1;
+                obj->str(obj);
                 obj = obj->next;
             }
+            knd_log("%*s]\n",
+                    self->depth * KND_OFFSET_SIZE, "");
+            return;
         }
-        else {
-            knd_log("%s%s:",
-                    offset, self->attr->name);
-            self->aggr->str(self->aggr, depth + 1);
-        }
+
+        knd_log("%*s%.*s:",
+                self->depth * KND_OFFSET_SIZE, "", self->attr->name_size, self->attr->name);
+        self->aggr->depth = self->depth + 1;
+        self->aggr->str(self->aggr);
+        return;
     }
 
     switch (self->attr->type) {
     case KND_ATTR_REF:
-        self->ref->str(self->ref, depth + 1);
+        self->ref->depth = self->depth + 1;
+        self->ref->str(self->ref);
         return;
     case KND_ATTR_NUM:
-        self->num->str(self->num, depth + 1);
+        self->num->depth = self->depth + 1;
+        self->num->str(self->num);
         return;
     case KND_ATTR_TEXT:
-        text = self->text;
-        text->str(text, depth + 1);
+        self->text->depth = self->depth + 1;
+        self->text->str(self->text);
         return;
-        /*case KND_ATTR_FILE:
-        elem_state = self->states;
-        while (elem_state) {
-            knd_log("%s  FILE -> %s [#%lu]\n", offset,
-                    elem_state->val,
-                    (unsigned long)elem_state->state);
-            elem_state = elem_state->next;
-        }
-        return; */
     default:
         break;
     }
+
+    knd_log("%*s%s => %s", self->depth * KND_OFFSET_SIZE, "",
+            self->attr->name, self->states->val);
 }
 
 
 static int
-kndElem_export_JSON(struct kndElem *self,
-                    bool is_concise __attribute__((unused)))
+kndElem_export_JSON(struct kndElem *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -116,7 +109,6 @@ kndElem_export_JSON(struct kndElem *self,
                                self->states->val);
             err = out->write(out, buf, buf_size);
             if (err) return err;
-
 
             obj = self->aggr;
             while (obj) {
@@ -262,23 +254,98 @@ kndElem_export_JSON(struct kndElem *self,
             if (err) goto final;
         }
     }
-    
 
 final:
 
     return err;
 }
 
+static int
+kndElem_export_GSP(struct kndElem *self)
+{
+    char buf[KND_TEMP_BUF_SIZE];
+    size_t buf_size;
+
+    struct kndObject *obj;
+    struct kndText *text;
+    struct kndRef *ref;
+    struct kndOutput *out = self->out;
+    size_t curr_size;
+    int err;
+
+    if (DEBUG_ELEM_LEVEL_2)
+        knd_log("  .. GSP export of %.*s elem.. ",
+                self->attr->name_size, self->attr->name);
+
+    if (self->aggr) {
+        /* single anonymous aggr obj */
+        err = out->write(out, "{", 1);
+        if (err) return err;
+        err = out->write(out, self->attr->name, self->attr->name_size);
+        if (err) return err;
+        
+        self->aggr->out = out;
+        self->aggr->format = KND_FORMAT_GSP;
+        err = self->aggr->export(self->aggr);
+
+        err = out->write(out, "}", 1);
+        if (err) return err;
+        return err;
+    }
+
+    err = out->write(out, "{", 1);
+    if (err) return err;
+    err = out->write(out, self->attr->name, self->attr->name_size);
+    if (err) return err;
+    err = out->write(out, " ", 1);
+    if (err) return err;
+
+    /* key:value repr */
+    switch (self->attr->type) {
+    case KND_ATTR_NUM:
+        knd_log("OUT:%p  free:%zu total:%zu", out, out->free_space, out->buf_size);
+        self->obj->str(self->obj);
+        err = out->write(out, self->num->states->val, self->num->states->val_size);
+        if (err) return err;
+        break;
+    case KND_ATTR_STR:
+    case KND_ATTR_BIN:
+        err = out->write(out, self->states->val, self->states->val_size);
+        if (err) return err;
+        break;
+    case  KND_ATTR_TEXT:
+        text = self->text;
+        text->out = out;
+        text->format = KND_FORMAT_GSP;
+        err = text->export(text);
+        if (err) return err;
+        break;
+    case KND_ATTR_REF:
+        ref = self->ref;
+        ref->out = out;
+        ref->format = KND_FORMAT_GSP;
+        err = ref->export(ref);
+        if (err) return err;
+        break;
+    default:
+        break;
+    }
+
+    err = out->write(out, "}", 1);
+    if (err) return err;
+
+    return knd_OK;
+}
+
 static int 
-kndElem_export(struct kndElem *self,
-               knd_format format,
-               bool is_concise)
+kndElem_export(struct kndElem *self)
 {
     int err;
-    
-    switch(format) {
+    bool is_concise = 0;
+
+    switch(self->format) {
     case KND_FORMAT_JSON:
-        err = kndElem_export_JSON(self, is_concise);
+        err = kndElem_export_JSON(self);
         if (err) return err;
         break;
         /*case KND_FORMAT_HTML:
@@ -289,10 +356,11 @@ kndElem_export(struct kndElem *self,
         err = kndElem_export_GSL(self);
         if (err) return err;
         break;
-    case KND_FORMAT_GSC:
-        err = kndElem_export_GSC(self);
+        */
+    case KND_FORMAT_GSP:
+        err = kndElem_export_GSP(self);
         if (err) return err;
-        break; */
+        break;
     default:
         break;
     }
@@ -300,6 +368,13 @@ kndElem_export(struct kndElem *self,
     return knd_OK;
 }
 
+static int run_empty_val_warning(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndElem *self = (struct kndElem*)obj;
+    knd_log("-- empty val of \"%.*s\" not accepted :(",
+            self->attr->name_size, self->attr->name);
+    return knd_FAIL;
+}
 
 static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
 {
@@ -316,9 +391,13 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
             val_size = arg->val_size;
         }
     }
+
+    if (DEBUG_ELEM_LEVEL_2)
+        knd_log(".. %.*s to set val \"%.*s\"", self->attr->name_size, self->attr->name,
+                val_size, val);
+
     if (!val_size) return knd_FAIL;
     if (val_size >= KND_VAL_SIZE) return knd_LIMIT;
-    
     state = malloc(sizeof(struct kndElemState));
     if (!state) return knd_NOMEM;
     memset(state, 0, sizeof(struct kndElemState));
@@ -354,13 +433,25 @@ static int parse_GSL(struct kndElem *self,
                      size_t *total_size)
 {
     int err;
-    
+
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_val,
           .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = run_empty_val_warning,
+          .obj = self
         }
     };
+
+    if (DEBUG_ELEM_LEVEL_1)
+        knd_log(".. ELEM \"%.*s\" parse REC: \"%.*s\"",
+                self->attr->name_size, self->attr->name,
+                16, rec);
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;

@@ -51,6 +51,7 @@ struct kndLearner
     char *curr_obj_id;
     size_t num_objs;
     size_t max_num_objs;
+    size_t max_users;
 
     /* persistent storage */
     char db_path[KND_MED_BUF_SIZE];

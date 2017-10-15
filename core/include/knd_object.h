@@ -17,7 +17,6 @@
  *   knd_object.h
  *   Knowdy Object
  */
-
 #pragma once
 
 #include "knd_config.h"
@@ -32,6 +31,7 @@ struct kndRelClass;
 
 struct kndOutput;
 struct kndFlatTable;
+struct kndObjEntry;
 
 typedef enum knd_obj_type {
     KND_OBJ_ADDR,
@@ -49,6 +49,9 @@ struct kndMatchPoint
 /* inverted rel */
 struct kndRelType
 {
+    char name[KND_SHORT_NAME_SIZE];
+    size_t name_size;
+
     struct kndAttr *attr;
     struct kndObjRef *objrefs;
 
@@ -61,6 +64,9 @@ struct kndRelType
 
 struct kndRelClass
 {
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+    char id[KND_ID_SIZE];
     struct kndConcept *conc;
     struct kndRelType *rel_types;
     struct kndRelClass *next;
@@ -92,7 +98,8 @@ struct kndObject
     char batch_id[KND_ID_SIZE + 1];
 
     size_t numid;
-    
+    size_t numval;
+
     knd_state_phase phase;
     char state[KND_STATE_SIZE];
 
@@ -104,6 +111,7 @@ struct kndObject
     
     struct kndConcept *conc;
 
+    struct kndObjEntry *entry;
     struct kndSortTag *tag;
     
     struct kndOutput *out;
@@ -128,7 +136,8 @@ struct kndObject
     knd_format format;
     size_t depth;
     bool is_expanded;
-    
+
+    size_t frozen_size;
     const char *file;
     size_t file_size;
 
@@ -146,7 +155,7 @@ struct kndObject
     struct kndObject *next;
 
     /******** public methods ********/
-    void (*str)(struct kndObject *self, size_t depth);
+    void (*str)(struct kndObject *self);
     int (*reset)(struct kndObject *self);
     void (*cleanup)(struct kndObject *self);
 
@@ -155,6 +164,9 @@ struct kndObject
     int (*parse)(struct kndObject *self,
                  const char       *rec,
                  size_t           *total_size);
+    int (*read)(struct kndObject *self,
+                const char *rec,
+                size_t *total_size);
 
     int (*expand)(struct kndObject *self, size_t depth);
 

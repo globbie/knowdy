@@ -60,20 +60,14 @@ knd_compare(const char *a, const char *b)
     return knd_EQUALS;
 }
 
-extern int 
-knd_inc_id(char *id)
+extern void knd_calc_num_id(char *buf, size_t val)
 {
-    size_t i;
-
-    i = KND_ID_SIZE - 1;
-    begin:
-    
-    if (id[i] == '9') { id[i] = 'A'; return knd_OK;}
-    if (id[i] == 'Z') { id[i] = 'a'; return knd_OK;}
-    if (id[i] == 'z') { id[i--] = '0'; goto begin; }
-    id[i]++;
-
-    return knd_OK;
+    const char *c;
+    if (val > KND_RADIX_BASE) {
+        knd_calc_num_id(buf, val / KND_RADIX_BASE);
+    }
+    c = &obj_id_seq[val % KND_RADIX_BASE];
+    printf("%c\n", *c);
 }
 
 extern int knd_next_state(char *s)

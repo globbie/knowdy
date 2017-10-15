@@ -148,14 +148,13 @@ struct kndAttr
     struct kndOutput *out;
     
     struct kndTranslation *tr;
-
-    
+    size_t depth;
     struct kndAttr *next;
     
     /***********  public methods ***********/
     void (*init)(struct kndAttr  *self);
     void (*del)(struct kndAttr   *self);
-    void (*str)(struct kndAttr *self, size_t depth);
+    void (*str)(struct kndAttr *self);
 
     int (*parse)(struct kndAttr *self,
                  const char   *rec,

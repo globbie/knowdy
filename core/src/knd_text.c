@@ -25,25 +25,21 @@ static void del(struct kndText *self)
     free(self);
 }
 
-static void str(struct kndText *self, size_t depth)
+static void str(struct kndText *self)
 {
-    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
-    char *offset = malloc(offset_size + 1);
-
     struct kndTextState *curr_state;
     struct kndTranslation *tr;
     struct kndTextSelect *sel;
-  
-    memset(offset, ' ', offset_size);
-    offset[offset_size] = '\0';
 
-    knd_log("%s%s:", offset,
-            self->elem->attr->name);
+    if (self->elem) {
+        knd_log("%*s%s:", self->depth * KND_OFFSET_SIZE, "",
+                self->elem->attr->name);
+    }
 
     curr_state = self->states;
     while (curr_state) {
         /*if (curr_state->text_size) {
-            knd_log("%s%s: %s [#%lu]\n", offset,
+            knd_log("%*s%s: %s [#%lu]\n", offset,
                     curr_state->locale, curr_state->text,
                     (unsigned long)curr_state->state);
                     }*/
@@ -52,23 +48,23 @@ static void str(struct kndText *self, size_t depth)
         while (tr) {
 
             if (tr->val_size) 
-                knd_log("%s%s: %s [#%lu]", offset, tr->locale, tr->val,
+                knd_log("%*s%s: %s [#%lu]", self->depth * KND_OFFSET_SIZE, "", tr->locale, tr->val,
                         tr->state, (unsigned long)tr->chunk_count);
 
             if (tr->seq_size)
-                knd_log("%s%s: %s [#%lu]", offset, tr->locale, tr->seq,
+                knd_log("%*s%s: %s [#%lu]", self->depth * KND_OFFSET_SIZE, "", tr->locale, tr->seq,
                         tr->state, (unsigned long)tr->chunk_count);
 
             sel = tr->selects;
             while (sel) {
 
                 if (sel->css_name_size) {
-                    knd_log("%sCSS: \"%s\" @%lu+%lu\n", offset,
+                    knd_log("%*sCSS: \"%s\" @%lu+%lu\n", self->depth * KND_OFFSET_SIZE, "",
                             sel->css_name, (unsigned long)sel->pos, (unsigned long)sel->len);
                 }
                 
                 if (sel->ref) {
-                    knd_log("%sREF: \"%s\" @%lu+%lu\n", offset,
+                    knd_log("%*sREF: \"%s\" @%lu+%lu\n", self->depth * KND_OFFSET_SIZE, "",
                             sel->ref->name, (unsigned long)sel->pos, (unsigned long)sel->len);
                 }
 
@@ -80,7 +76,6 @@ static void str(struct kndText *self, size_t depth)
         curr_state = curr_state->next;
     }
 
-    free(offset);
 }
 
 
@@ -90,7 +85,6 @@ static int export_JSON(struct kndText *self)
     char buf[KND_NAME_SIZE];
     size_t buf_size;
 
-    struct kndObject *obj;
     struct kndTextState *curr_state;
     struct kndTranslation *tr;
     struct kndTextSelect *sel;
@@ -344,7 +338,7 @@ static int export_HTML(struct kndText *self)
 
 
 
-static int export_GSC(struct kndText *self)
+static int export_GSP(struct kndText *self)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -478,8 +472,8 @@ static int export(struct kndText *self)
         err = export_HTML(self);
         if (err) return err;
         break;
-    case KND_FORMAT_GSC:
-        err = export_GSC(self);
+    case KND_FORMAT_GSP:
+        err = export_GSP(self);
         if (err) return err;
         break;
     default:

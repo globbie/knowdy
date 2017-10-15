@@ -47,6 +47,10 @@ struct kndRef
     knd_ref_t type;
     struct kndElem *elem;
 
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+    char id[KND_ID_SIZE];
+
     struct kndOutput *out;
     struct kndOutput *log;
 
@@ -59,11 +63,11 @@ struct kndRef
     struct kndRefState *states;
     size_t num_states;
 
+    size_t depth;
     struct kndRef *next;
 
     /******** public methods ********/
-    void (*str)(struct kndRef *self,
-                size_t depth);
+    void (*str)(struct kndRef *self);
 
     void (*del)(struct kndRef *self);
     

@@ -59,19 +59,23 @@ struct kndTaskSpec
     bool is_implied;
     bool is_validator;
     bool is_terminal;
+    bool is_list;
+    bool is_atomic;
 
     char *buf;
     size_t *buf_size;
     size_t max_buf_size;
-    
+
     void *obj;
+    void *accu;
     
     int (*parse)(void *obj, const char *rec, size_t *total_size);
     int (*validate)(void *obj, const char *name, size_t name_size,
                     const char *rec, size_t *total_size);
     int (*run)(void *obj, struct kndTaskArg *args, size_t num_args);
+    int (*append)(void *accu, void *item);
+    int (*alloc)(void *accu, const char *name, size_t name_size, size_t count, void **item);
 };
-
 
 struct kndTask
 {
@@ -82,6 +86,9 @@ struct kndTask
 
     char uid[KND_NAME_SIZE];
     size_t uid_size;
+
+    char agent_name[KND_NAME_SIZE];
+    size_t agent_name_size;
 
     char schema_name[KND_NAME_SIZE];
     size_t schema_name_size;

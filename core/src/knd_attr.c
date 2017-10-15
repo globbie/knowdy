@@ -35,58 +35,56 @@ static void del(struct kndAttr *self)
     free(self);
 }
 
-static void str(struct kndAttr *self, size_t depth)
+static void str(struct kndAttr *self)
 {
     struct kndTranslation *tr;
-
-    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
-    char *offset = malloc(offset_size + 1);
-
-    memset(offset, ' ', offset_size);
-    offset[offset_size] = '\0';
 
     const char *type_name = knd_attr_names[self->type];
 
     if (self->is_list)
-        knd_log("\n%s[%s", offset, self->name);
+        knd_log("\n%*s[%s", self->depth * KND_OFFSET_SIZE, "", self->name);
     else
-        knd_log("\n%s{%s %s", offset, type_name, self->name);
+        knd_log("\n%*s{%s %s", self->depth * KND_OFFSET_SIZE, "", type_name, self->name);
 
+    if (self->access_type == KND_ATTR_ACCESS_RESTRICTED) {
+        knd_log("%*s  ACL:restricted", self->depth * KND_OFFSET_SIZE, "");
+    }
+    
     if (self->cardinality_size) {
-        knd_log("\n%s    [%s]", offset, self->cardinality);
+        knd_log("\n%*s    [%s]", self->depth * KND_OFFSET_SIZE, "", self->cardinality);
     }
     
     tr = self->tr;
     while (tr) {
-        knd_log("%s   ~ %s %s", offset, tr->locale, tr->val);
+        knd_log("%*s   ~ %s %s", self->depth * KND_OFFSET_SIZE, "", tr->locale, tr->val);
         tr = tr->next;
     }
 
-    if (self->classname_size) {
-        knd_log("%s  class template: %s", offset, self->classname);
-    }
+    /*if (self->classname_size) {
+        knd_log("%*s  class template: %s", self->depth * KND_OFFSET_SIZE, "", self->classname);
+        }*/
 
     if (self->ref_classname_size) {
-        knd_log("%s  REF class template: %s", offset, self->ref_classname);
+        knd_log("%*s  REF class template: %s", self->depth * KND_OFFSET_SIZE, "", self->ref_classname);
     }
 
     if (self->calc_oper_size) {
-        knd_log("%s  oper: %s attr: %s", offset,
+        knd_log("%*s  oper: %s attr: %s", self->depth * KND_OFFSET_SIZE, "",
                 self->calc_oper, self->calc_attr);
     }
 
     if (self->idx_name_size) {
-        knd_log("%s  idx: %s", offset, self->idx_name);
+        knd_log("%*s  idx: %s", self->depth * KND_OFFSET_SIZE, "", self->idx_name);
     }
 
     if (self->default_val_size) {
-        knd_log("%s  default VAL: %s", offset, self->default_val);
+        knd_log("%*s  default VAL: %s", self->depth * KND_OFFSET_SIZE, "", self->default_val);
     }
     
     if (self->is_list)
-        knd_log("%s]", offset);
+        knd_log("%*s]", self->depth * KND_OFFSET_SIZE, "");
     else
-        knd_log("%s}", offset);
+        knd_log("%*s}",  self->depth * KND_OFFSET_SIZE, "");
 }
 
 
@@ -182,13 +180,81 @@ static int export_JSON(struct kndAttr *self)
     return knd_OK;
 }
 
+static int export_GSP(struct kndAttr *self)
+{
+    struct kndOutput *out;
+    struct kndTranslation *tr;
+    
+    const char *type_name = knd_attr_names[self->type];
+    size_t type_name_size = strlen(knd_attr_names[self->type]);
+    int err;
+
+    out = self->out;
+
+    err = out->write(out, "{", 1);
+    if (err) return err;
+    err = out->write(out, type_name, type_name_size);
+    if (err) return err;
+    err = out->write(out, " ", 1);
+    if (err) return err;
+    err = out->write(out, self->name, self->name_size);
+    if (err) return err;
+    
+    if (self->is_list) {
+        err = out->write(out, "{list 1}", strlen("{list 1}"));
+        if (err) return err;
+    }
+    
+    if (self->ref_classname_size) {
+        err = out->write(out, "{c ", strlen("{c "));
+        if (err) return err;
+        err = out->write(out, self->ref_classname, self->ref_classname_size);
+        if (err) return err;
+        err = out->write(out, "}", 1);
+        if (err) return err;
+    }
+    
+    /* choose gloss */
+    if (self->tr) {
+        err = out->write(out,
+                         "[_g", strlen("[_g"));
+        if (err) return err;
+    }
+    
+    for (tr = self->tr; tr; tr = tr->next) {
+        err = out->write(out, "{", 1);
+        if (err) return err;
+        err = out->write(out, tr->locale,  tr->locale_size);
+        if (err) return err;
+        err = out->write(out, " ", 1);
+        if (err) return err;
+        err = out->write(out, tr->val,  tr->val_size);
+        if (err) return err;
+        err = out->write(out, "}", 1);
+        if (err) return err;
+    }
+    if (self->tr) {
+        err = out->write(out, "]", 1);
+        if (err) return err;
+    }
+    
+    err = out->write(out, "}", 1);
+    if (err) return err;
+
+    return knd_OK;
+}
+
 static int export(struct kndAttr *self)
 {
     int err = knd_FAIL;
 
-    switch(self->format) {
-        case KND_FORMAT_JSON:
+    switch (self->format) {
+    case KND_FORMAT_JSON:
         err = export_JSON(self);
+        if (err) goto final;
+        break;
+    case KND_FORMAT_GSP:
+        err = export_GSP(self);
         if (err) goto final;
         break;
     default:
@@ -263,7 +329,7 @@ static int run_set_cardinality(void *obj,
 static int run_set_translation_text(void *obj,
                                     struct kndTaskArg *args, size_t num_args)
 {
-    struct kndTranslation *tr = (struct kndTranslation*)obj;
+    struct kndTranslation *tr = obj;
     struct kndTaskArg *arg;
     const char *val = NULL;
     size_t val_size = 0;
@@ -290,17 +356,16 @@ static int run_set_translation_text(void *obj,
     return knd_OK;
 }
 
-
 static int parse_gloss_translation(void *obj,
                                    const char *name, size_t name_size,
                                    const char *rec, size_t *total_size)
 {
-    struct kndTranslation *tr = (struct kndTranslation*)obj;
+    struct kndTranslation *tr = obj;
     int err;
 
     if (DEBUG_ATTR_LEVEL_2) {
-        knd_log("..  gloss translation in \"%s\" REC: \"%s\"\n",
-                name, rec); }
+        knd_log("..  gloss translation in \"%.*s\" REC: \"%s\"\n",
+                name_size, name, rec); }
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
@@ -326,7 +391,7 @@ static int parse_gloss_change(void *obj,
                               const char *rec,
                               size_t *total_size)
 {
-    struct kndAttr *self = (struct kndAttr*)obj;
+    struct kndAttr *self = obj;
     struct kndTranslation *tr;
     int err;
 
@@ -356,6 +421,72 @@ static int parse_gloss_change(void *obj,
 
     return knd_OK;
 }
+
+
+static int read_gloss(void *obj,
+                      const char *rec,
+                      size_t *total_size)
+{
+    struct kndTranslation *tr = obj;
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_translation_text,
+          .obj = tr
+        }
+    };
+    int err;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. reading gloss translation: \"%.*s\"",
+                tr->locale_size, tr->locale);
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+static int gloss_append(void *accu,
+                        void *item)
+{
+    struct kndAttr *self = accu;
+    struct kndTranslation *tr = item;
+
+    tr->next = self->tr;
+    self->tr = tr;
+
+    return knd_OK;
+}
+
+static int gloss_alloc(void *obj,
+                       const char *name,
+                       size_t name_size,
+                       size_t count,
+                       void **item)
+{
+    struct kndAttr *self = obj;
+    struct kndTranslation *tr;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. %.*s: create gloss: %.*s count: %zu",
+                self->name_size, self->name, name_size, name, count);
+
+    if (name_size > KND_LOCALE_SIZE) return knd_LIMIT;
+
+    tr = malloc(sizeof(struct kndTranslation));
+    if (!tr) return knd_NOMEM;
+
+    memset(tr, 0, sizeof(struct kndTranslation));
+    memcpy(tr->curr_locale, name, name_size);
+    tr->curr_locale_size = name_size;
+
+    tr->locale = tr->curr_locale;
+    tr->locale_size = tr->curr_locale_size;
+    *item = tr;
+
+    return knd_OK;
+}
+
 
 
 static int parse_cardinality(void *obj,
@@ -405,7 +536,9 @@ static int run_set_access_control(void *obj,
 
     if (!strncmp(name, "restrict", strlen("restrict"))) {
         self->access_type = KND_ATTR_ACCESS_RESTRICTED;
-        knd_log("** NB: restricted attr: %.*s!", self->name_size, self->name);
+        if (DEBUG_ATTR_LEVEL_2)
+            knd_log("** NB: restricted attr: %.*s!",
+                    self->name_size, self->name);
     }
     
     return knd_OK;
@@ -458,15 +591,16 @@ static int run_set_validator(void *obj,
     self->validator_name_size = name_size;
     self->validator_name[name_size] = '\0';
 
-    if (DEBUG_ATTR_LEVEL_TMP)
+    if (DEBUG_ATTR_LEVEL_2)
         knd_log("== validator name set: %.*s", name_size, name);
 
     size_t knd_num_attr_validators = sizeof(knd_attr_validators) / sizeof(struct kndAttrValidator);
 
     for (size_t i = 0; i < knd_num_attr_validators; i++) {
         validator = &knd_attr_validators[i];
-        knd_log("existing validator: \"%s\"", validator->name);
-
+        /* TODO: assign validator
+           knd_log("existing validator: \"%s\"", validator->name);
+        */
     }
     
     return knd_OK;
@@ -510,8 +644,24 @@ static int parse_GSL(struct kndAttr *self,
           .parse = parse_gloss_change,
           .obj = self
         },
+        { .is_list = true,
+          .name = "_g",
+          .name_size = strlen("_g"),
+          .accu = self,
+          .alloc = gloss_alloc,
+          .append = gloss_append,
+          .parse = read_gloss
+        },
         { .type = KND_CHANGE_STATE,
           .name = "c",
+          .name_size = strlen("c"),
+          .is_terminal = true,
+          .buf = self->ref_classname,
+          .buf_size = &self->ref_classname_size,
+          .max_buf_size = KND_NAME_SIZE,
+          .obj = self
+        },
+        { .name = "c",
           .name_size = strlen("c"),
           .is_terminal = true,
           .buf = self->ref_classname,

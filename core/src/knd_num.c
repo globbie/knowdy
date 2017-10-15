@@ -27,19 +27,12 @@ kndNum_del(struct kndNum *self)
     return knd_OK;
 }
 
-static void str(struct kndNum *self, size_t depth)
+static void str(struct kndNum *self)
 {
-    size_t offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
-    char *offset = malloc(offset_size + 1);
-    if (!offset) return;
-     
-    memset(offset, ' ', offset_size);
-    offset[offset_size] = '\0';
-
-    knd_log("%s%s = %s", offset,
-            self->elem->attr->name, self->states->val);
-
-    free(offset);
+    knd_log("%*s%.*s = %.*s",
+                self->depth * KND_OFFSET_SIZE, "",
+            self->elem->attr->name_size, self->elem->attr->name,
+            self->states->val_size, self->states->val);
 }
 
 static int 
@@ -118,26 +111,24 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
     memcpy(state->val, val, val_size);
     state->val[val_size] = '\0';
     state->val_size = val_size;
-
     
     /* HACK: register special field: numeric user id */
-    if (!strncmp(self->elem->attr->name, "id", strlen("id"))) {
+    /*if (!strncmp(self->elem->attr->name, "id", strlen("id"))) {
        if (self->elem->root && self->elem->root->conc) {
             root_class = self->elem->root->conc->root_class;
             if (root_class && root_class->user) {
                 user = root_class->user;
-                if (state->numval > 0 && state->numval < KND_MAX_USERS) {
-
+                if (state->numval > 0 && (size_t)state->numval < user->max_users) {
                     if (DEBUG_NUM_LEVEL_2) {
-                        knd_log(".. set user num id of: %.*s",
+                        knd_log(".. set user num id %lu of: %.*s",
+                                (unsigned long)state->numval,
                                 self->elem->root->name_size, self->elem->root->name);
                     }
-                    
                     user->user_idx[state->numval] = self->elem->root;
                 }
             }
        } 
-    }
+       }*/
  
     return knd_OK;
 }
@@ -149,8 +140,8 @@ static int parse_GSL(struct kndNum *self,
 {
    int err;
 
-   if (DEBUG_NUM_LEVEL_2)
-       knd_log(".. parse NUM field: \"%s\"..", rec);
+   if (DEBUG_NUM_LEVEL_1)
+       knd_log(".. parse NUM field: \"%.*s\"..", 16, rec);
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,

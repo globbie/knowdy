@@ -72,7 +72,6 @@ struct kndElem
     struct kndObject *aggr_tail;
 
     bool is_list;
-    //bool is_list_item;
     
     struct kndOutput *out;
     struct kndOutput *log;
@@ -85,28 +84,21 @@ struct kndElem
 
     struct kndElemState *states;
     size_t num_states;
-
+    knd_format format;
+    size_t depth;
     /******** public methods ********/
-    void (*str)(struct kndElem *self,
-                size_t depth);
-
+    void (*str)(struct kndElem *self);
     void (*del)(struct kndElem *self);
-
     int (*read)(struct kndElem *self);
-
     int (*resolve)(struct kndElem *self);
-
     int (*index)(struct kndElem *self);
-
     int (*parse)(struct kndElem *self,
                  const char *rec,
                  size_t *total_size);
-    
     int (*match)(struct kndElem *self,
                  const char *rec,
                  size_t rec_size);
-
-    int (*export)(struct kndElem *self, knd_format format, bool is_concise);
+    int (*export)(struct kndElem *self);
 };
 
 /* constructors */

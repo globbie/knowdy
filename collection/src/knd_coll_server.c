@@ -28,10 +28,10 @@ void *kndColl_recorder_agent(void *arg)
 
     const char *dest_coll_addr = NULL;
 
-    char *spec;
-    size_t spec_size;
-    char *obj;
-    size_t obj_size;
+    char *spec = NULL;
+    size_t spec_size = 0;
+    char *obj = NULL;
+    size_t obj_size = 0;
     int ret;
 
     args = (struct agent_args*)arg;
@@ -57,6 +57,9 @@ void *kndColl_recorder_agent(void *arg)
         spec = knd_zmq_recv(inbox, &spec_size);
 	obj = knd_zmq_recv(inbox, &obj_size);
 
+        /* sometimes bad messages arrive */
+        if (!spec || !spec_size) continue;
+
         /* TODO: semantic routing */
 	/*ret = coll->find_route(coll, buf, &dest_coll_addr); */
 
@@ -70,6 +73,8 @@ void *kndColl_recorder_agent(void *arg)
         
         if (spec) free(spec);
         if (obj) free(obj);
+        spec_size = 0;
+        obj_size = 0;
     }
 
     zmq_close(inbox);
@@ -88,11 +93,11 @@ void *kndColl_requester_agent(void *arg)
 
     const char *dest_coll_addr = NULL;
 
-    char *spec;
-    size_t spec_size;
+    char *spec = NULL;
+    size_t spec_size = 0;
     
-    char *obj;
-    size_t obj_size;
+    char *obj = NULL;
+    size_t obj_size = 0;
     
     int ret;
 
@@ -125,7 +130,10 @@ void *kndColl_requester_agent(void *arg)
 
 	knd_log("    !! Collection Requester Agent #%d: got spec \"%s\"\n", 
 	       args->agent_id, spec);
-        
+
+        /* sometimes bad messages arrive */
+        if (!spec || !spec_size) continue;
+
 	// TODO: ret = coll->find_route(coll, data->topics, &dest_coll_addr);
 
 	/* stay in this collection */
@@ -137,6 +145,8 @@ void *kndColl_requester_agent(void *arg)
         
         if (spec) free(spec);
         if (obj) free(obj);
+        spec_size = 0;
+        obj_size = 0;
     }
 
     zmq_close(inbox);

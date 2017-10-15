@@ -15,7 +15,6 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
-
 static void del(struct kndTask *self)
 {
     free(self);
@@ -57,6 +56,8 @@ static int parse_update(void *obj,
     int err;
 
     self->type = KND_UPDATE_STATE;
+    self->tid[0] = '0';
+    self->tid_size = 0;
     self->admin->task = self;
     self->admin->out = self->out;
     self->admin->log = self->log;
@@ -126,7 +127,18 @@ static int parse_task(void *obj,
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
-    
+
+    /* check mandatory fields */
+    if (!self->tid_size) {
+        switch (self->type) {
+        case KND_UPDATE_STATE:
+            return knd_OK;
+        default:
+            knd_log("-- no TID found");
+            return knd_FAIL;
+        }
+    }
+
     return knd_OK;
 }
 
@@ -188,16 +200,30 @@ static int report(struct kndTask *self)
     err = out->write(out, gsl_header, strlen(gsl_header));
     if (err) return err;
 
+    /*err = out->write(out, "{agent ", strlen("{agent "));
+    if (err) return err;
+    err = out->write(out, self->agent_name, self->agent_name_size);
+    if (err) return err;
+    err = out->write(out, "}", 1);
+    if (err) return err;*/
+
     err = out->write(out, "{tid ", strlen("{tid "));
     if (err) return err;
-    err = out->write(out, self->tid, self->tid_size);
-    if (err) return err;
+
+    if (self->tid_size) {
+        err = out->write(out, self->tid, self->tid_size);
+        if (err) return err;
+    } else {
+        err = out->write(out, "0", 1);
+        if (err) return err;
+    }
+
     err = out->write(out, "}", 1);
     if (err) return err;
 
     err = out->write(out, "{user{auth", strlen("{user{auth"));
     if (err) return err;
-    
+
     err = out->write(out, "{sid ", strlen("{sid "));
     if (err) return err;
     err = out->write(out, self->admin->sid, self->admin->sid_size);
@@ -227,9 +253,18 @@ static int report(struct kndTask *self)
         if (err) return err;
     }
     
-    if (DEBUG_TASK_LEVEL_2)
-        knd_log("== TASK report: SPEC: \"%s\"\n\n== BODY: %s\n",
-                out->buf, self->out->buf);
+    if (DEBUG_TASK_LEVEL_TMP) {
+        obj_size = self->out->buf_size;
+        if (obj_size > KND_MAX_DEBUG_CONTEXT_SIZE) {
+            obj_size = KND_MAX_DEBUG_CONTEXT_SIZE;
+            knd_log("== TASK report: SPEC: \"%.*s\"\n\n== BODY: \"%.*s...\" [total size: %zu]\n",
+                    out->buf_size, out->buf, obj_size, self->out->buf, self->out->buf_size);
+        }
+        else {
+            knd_log("== TASK report: SPEC: \"%.*s\"\n\n== BODY: \"%.*s\" [size: %zu]\n",
+                    out->buf_size, out->buf, obj_size, self->out->buf, self->out->buf_size);
+        }
+    }
 
     err = knd_zmq_sendmore(self->delivery, (const char*)out->buf, out->buf_size);
     /* obj body */
@@ -248,11 +283,11 @@ static int report(struct kndTask *self)
 
     err = knd_zmq_send(self->delivery, msg, msg_size);
 
-    /* get confirmation reply from delivery */
+    /* get confirmation reply from  the manager */
     header = knd_zmq_recv(self->delivery, &header_size);
     obj = knd_zmq_recv(self->delivery, &obj_size);
     
-    if (DEBUG_TASK_LEVEL_2)
+    if (DEBUG_TASK_LEVEL_TMP)
         knd_log("== Delivery reply header: \"%s\" obj: \"%s\"",
                 header, obj);
 
@@ -260,7 +295,7 @@ static int report(struct kndTask *self)
         free(header);
     if (obj)
         free(obj);
-    
+
     if (!self->is_state_changed) return knd_OK;
 
     /* inform all retrievers about the state change */

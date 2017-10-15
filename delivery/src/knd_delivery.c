@@ -114,7 +114,7 @@ static int run_set_error(void *obj,
 
     self = (struct kndDelivery*)obj;
 
-    if (DEBUG_DELIV_LEVEL_TMP)
+    if (DEBUG_DELIV_LEVEL_2)
         knd_log(".. set the error: \"%.*s\"", name_size, name);
 
     if (self->num_tids >= self->max_tids)
@@ -466,7 +466,7 @@ kndDelivery_start(struct kndDelivery *self)
         self->task = knd_zmq_recv(service, &self->task_size);
         self->obj = knd_zmq_recv(service, &self->obj_size);
 
-	//knd_log("++ DELIVERY service has got a task:   \"%s\"", self->task);
+	knd_log("++ DELIVERY service has got a task:   \"%s\"", self->task);
 
         err = run_task(self);
 
