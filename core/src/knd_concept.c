@@ -2132,11 +2132,16 @@ static int index_obj_name(struct kndConcept *self,
     }
 
     name_size = e - b;
-    if (!name_size) return knd_FAIL;
+    if (!name_size) {
+        return knd_FAIL;
+    }
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("\n  .. set OBJ NAME: \"%.*s\" [%zu]",
-                name_size, b, name_size);
+    if (DEBUG_CONC_LEVEL_2) {
+        if (!strncmp(b, "testdevel", strlen("testdevel"))) {
+            knd_log("\n  .. set OBJ NAME: \"%.*s\" [%zu] REMAINDER: %s",
+                    name_size, b, name_size, c);
+        }
+    }
     b[name_size] = '\0';
 
     err = conc_dir->obj_idx->set(conc_dir->obj_idx, b, entry);
@@ -2144,9 +2149,9 @@ static int index_obj_name(struct kndConcept *self,
 
     /* HACK: index numeric user ids */
     if (strncmp(conc_dir->name, "User", strlen("User"))) return knd_OK;
-    b = strstr(c, "{ident{id ");
+    b = strstr(c, "ident{id ");
     if (b) {
-        b += strlen("{ident{id ");
+        b += strlen("ident{id ");
         e = strchr(b, '{');
         if (e) {
             buf_size = e - b;
@@ -2157,9 +2162,10 @@ static int index_obj_name(struct kndConcept *self,
                 return err;
             }
             if (numval > 0 && numval < (long)self->user->max_users) {
-                if (DEBUG_CONC_LEVEL_2)
+                if (DEBUG_CONC_LEVEL_2) {
                     knd_log(".. register User account: %lu",
-                        (unsigned long)numval);
+                            (unsigned long)numval);
+                }
                 self->user->user_idx[numval] = entry;
             }
         }
@@ -3596,7 +3602,6 @@ static int run_remove_class(void *obj,
             name_size = arg->val_size;
         }
     }
-    
     /*if (!name_size) return knd_FAIL;
     if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
     */
