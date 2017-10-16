@@ -442,6 +442,27 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
 }
 
 static int
+knd_spec_buf_copy(struct kndTaskSpec *spec,
+                  const char *val,
+                  size_t val_size)
+{
+    if (DEBUG_PARSER_LEVEL_2)
+        knd_log(".. writing val \"%.*s\" to buf [max size: %zu] [len: %zu]..",
+                val_size, val, spec->max_buf_size, val_size);
+
+    if (val_size > spec->max_buf_size) {
+        knd_log("-- %.*s: buf limit reached: %zu max: %zu",
+                spec->name_size, spec->name, val_size, spec->max_buf_size);
+        return knd_LIMIT;
+    }
+
+    memcpy(spec->buf, val, val_size);
+    *spec->buf_size = val_size;
+
+    return knd_OK;
+}
+
+static int
 knd_find_spec(struct kndTaskSpec *specs,
               size_t num_specs,
               const char *name,
@@ -453,6 +474,7 @@ knd_find_spec(struct kndTaskSpec *specs,
     struct kndTaskSpec *default_spec = NULL;
     struct kndTaskSpec *validator_spec = NULL;
     bool is_completed = false;
+    int err;
 
     for (size_t i = 0; i < num_specs; i++) {
         spec = &specs[i];
@@ -487,10 +509,9 @@ knd_find_spec(struct kndTaskSpec *specs,
                 name_size, name, validator_spec);
 
     if (validator_spec) {
-        if (name_size > validator_spec->max_buf_size)
-            return knd_LIMIT;
-        memcpy(validator_spec->buf, name, name_size);
-        *validator_spec->buf_size = name_size;
+        err = knd_spec_buf_copy(validator_spec, name, name_size);
+        if (err) return err;
+
         *result = validator_spec;
         return knd_OK;
     }
@@ -502,27 +523,6 @@ knd_find_spec(struct kndTaskSpec *specs,
     }
     
     return knd_NO_MATCH;
-}
-
-static int
-knd_spec_buf_copy(struct kndTaskSpec *spec,
-                  const char *val,
-                  size_t val_size)
-{
-    if (DEBUG_PARSER_LEVEL_2)
-        knd_log(".. writing val \"%.*s\" to buf [max size: %zu] [len: %zu]..",
-                val_size, val, spec->max_buf_size, val_size);
- 
-    if (val_size > spec->max_buf_size) {
-        knd_log("-- %.*s: buf limit reached: %zu max: %zu",
-                spec->name_size, spec->name, val_size, spec->max_buf_size);
-        return knd_LIMIT;
-    }
-
-    memcpy(spec->buf, val, val_size);
-    *spec->buf_size = val_size;
-
-    return knd_OK;
 }
 
 static int
