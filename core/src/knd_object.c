@@ -477,6 +477,22 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     return knd_OK;
 }
 
+static int run_present_obj(void *data,
+                           struct kndTaskArg *args __attribute__((unused)),
+                           size_t num_args __attribute__((unused)))
+{
+    struct kndObject *self = data;
+    int err;
+
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log(".. present obj..");
+
+    err = kndObject_export(self);
+    if (err) return err;
+
+    return knd_OK;
+}
+
 static int
 kndObject_validate_attr(struct kndObject *self,
                         const char *name,
@@ -907,10 +923,16 @@ static int parse_GSL(struct kndObject *self,
           .alloc = rev_rel_alloc,
           .append = rev_rel_append,
           .parse = rev_rel_read
+        },
+        { .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = run_present_obj,
+          .obj = self
         }
     };
     int err;
-
+    
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
     
