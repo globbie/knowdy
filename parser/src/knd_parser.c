@@ -657,8 +657,6 @@ knd_parse_field_value(struct kndTaskSpec *spec,
     assert(!*in_terminal && "knd_parse_field_value is called for terminal value");
 
     if (spec->validate) {
-        assert(!spec->parse && "parse cannot be used with validate");
-
         err = spec->validate(spec->obj,
                              (const char*)spec->buf, *spec->buf_size,
                              rec, total_size);
@@ -720,7 +718,6 @@ knd_check_field_terminal_value(const char *val,
         knd_log("++ got terminal val: \"%.*s\" [%zu]",
                 val_size, val, val_size);
 
-    assert(!!spec->buf == !!spec->buf_size && "spec buf & buf_size are in an inconsistent state");
     if (spec->buf) {
         err = knd_spec_buf_copy(spec, val, val_size);
         if (err) return err;
