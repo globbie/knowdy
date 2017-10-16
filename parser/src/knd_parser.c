@@ -524,6 +524,10 @@ int knd_parse_task(const char *rec,
                 e = c + 1;
                 break;
             }
+            if (in_tag) {
+                e = c + 1;
+                break;
+            }
             /* comment out this region */
             err = knd_parse_matching_braces(c, 1, &chunk_size);
             if (err) return err;
@@ -548,8 +552,8 @@ int knd_parse_task(const char *rec,
             if (err) return err;
 
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ BASIC LOOP got tag after whitespace: \"%.*s\" [%lu]",
-                        name_size, b, (unsigned long)name_size);
+                knd_log("++ BASIC LOOP got tag after whitespace: \"%.*s\" [%lu] in_field: %d",
+                        name_size, b, (unsigned long)name_size, in_field);
 
             err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
             if (err) {
@@ -582,8 +586,8 @@ int knd_parse_task(const char *rec,
             }
             if (!spec->parse) {
                 if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("== terminal SPEC found: %s! no further parsing is required.",
-                            spec->name);
+                    knd_log("== terminal SPEC found: %s! no further parsing is required. in_field: %d",
+                            spec->name, in_field);
                 in_terminal = true;
                 b = c + 1;
                 e = b;
@@ -699,7 +703,6 @@ int knd_parse_task(const char *rec,
             e = b;
             break;
         case '}':
-
             /* empty body? */
             if (!in_field) {
                 if (in_implied_field) {
@@ -721,7 +724,9 @@ int knd_parse_task(const char *rec,
                         return knd_OK;
                     }
                 }
-                
+                if (DEBUG_PARSER_LEVEL_2)
+                    knd_log(".. looking for a default spec to handle \"%s\"", rec);
+
                 /* fetch default spec if any */
                 err = knd_find_spec(specs, num_specs,
                                     "default", strlen("default"), KND_GET_STATE, &spec);
@@ -729,8 +734,8 @@ int knd_parse_task(const char *rec,
                     if (spec->run) {
                         err = spec->run(spec->obj, args, num_args);
                         if (err) {
-                            knd_log("-- \"%s\" func run failed: %d :(",
-                                    spec->name, err);
+                            knd_log("-- \"%s\" func run failed: %d :( REC: %s  FUNC: %p",
+                                    spec->name, err, rec, spec->run);
                             return err;
                         }
                     }
@@ -741,7 +746,6 @@ int knd_parse_task(const char *rec,
             }
             
             if (in_terminal) {
-                
                 err = check_name_limits(b, e, &name_size);
                 if (err) {
                     knd_log("-- name limit reached :(");
@@ -782,7 +786,7 @@ int knd_parse_task(const char *rec,
                     }
                     spec->is_completed = true;
                 }
-                
+
                 b = c + 1;
                 e = b;
 

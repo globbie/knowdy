@@ -52,7 +52,6 @@ static int get_obj_dir_trailer(struct kndConcept *self,
                                struct kndConcDir *parent_dir,
                                int fd,
                                int encode_base);
-
 static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args);
 static int run_get_obj(void *obj,
                        struct kndTaskArg *args, size_t num_args);
@@ -1195,7 +1194,7 @@ static int run_sync_task(void *obj, struct kndTaskArg *args, size_t num_args)
             val_size = arg->val_size;
         }
     }
-    
+
     /* merge earlier frozen DB with liquid updates */
     err = freeze(self);
     if (err) return err;
@@ -1468,7 +1467,7 @@ static int parse_select_obj(void *data,
     struct kndConcept *self = (struct kndConcept*)data;
     int err, e;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. select \"%.*s\" obj.. task type: %d", 16, rec,
                 self->curr_class->task->type);
 
@@ -3293,8 +3292,8 @@ static int get_obj(struct kndConcept *self,
     }
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("++ got obj entry %.*s  size: %zu",
-                name_size, name, entry->block_size);
+        knd_log("++ got obj entry %.*s  size: %zu OBJ: %p",
+                name_size, name, entry->block_size, entry->obj);
 
     /*if (obj->phase == KND_REMOVED) {
         knd_log("-- \"%s\" obj was removed", name);
@@ -3312,11 +3311,11 @@ static int get_obj(struct kndConcept *self,
         obj = entry->obj;
         obj->phase = KND_SELECTED;
         obj->task = self->task;
-        self->curr_obj = obj;
+        *result = obj;
         return knd_OK;
     }
 
-    err = read_obj_entry(self, entry, &result);
+    err = read_obj_entry(self, entry, result);
     if (err) return err;
 
     return knd_OK;
@@ -3376,7 +3375,7 @@ static int read_obj_entry(struct kndConcept *self,
     }
     buf[buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log("   == OBJ REC: \"%.*s\"", buf_size, buf);
 
     /* done reading */
@@ -3430,7 +3429,7 @@ static int read_obj_entry(struct kndConcept *self,
         return err;
     }
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         obj->str(obj);
 
     *result = obj;
@@ -3485,15 +3484,16 @@ static int run_select_obj(void *data,
                           struct kndTaskArg *args __attribute__((unused)),
                           size_t num_args __attribute__((unused)))
 {
-    struct kndConcept *self = (struct kndConcept*)data;
+    struct kndConcept *self = data;
     struct kndObject *obj;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. run obj select..");
+        knd_log(".. run obj select.. conc: %s", self->name);
 
     /* TODO: log */
     if (!self->curr_obj) {
+        knd_log("-- no obj selected :(");
         return knd_FAIL;
     }
     obj = self->curr_obj;
@@ -3502,7 +3502,7 @@ static int run_select_obj(void *data,
 
     obj->log = self->log;
     obj->task = self->task;
-    
+
     obj->locale = self->locale;
     obj->locale_size = self->locale_size;
     obj->format = KND_FORMAT_JSON;
@@ -3540,7 +3540,7 @@ static int run_get_class(void *obj,
 
     self->curr_class = c;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_1) {
         c->str(c);
     }
     return knd_OK;
@@ -3567,11 +3567,13 @@ static int run_get_obj(void *obj,
 
     self->curr_obj = NULL;
     err = get_obj(self, name, name_size, &self->curr_obj);
-    if (err) return err;
-
+    if (err) {
+        knd_log("-- failed to get obj: %.*s :(", name_size, name);
+        return err;
+    }
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("++ got obj: \"%.*s\"! task type: %d\n",
-                name_size, name, self->task->type);
+        knd_log("++ got obj: \"%.*s\"! task type: %d CURR OBJ:%p\n",
+                name_size, name, self->task->type, self->curr_obj);
 
     return knd_OK;
 }
@@ -4468,7 +4470,7 @@ static int run_get_liquid_obj(void *obj, struct kndTaskArg *args, size_t num_arg
     entry = c->dir->obj_idx->get(c->dir->obj_idx, name);
     if (!entry) return knd_FAIL;
     self->curr_obj = entry->obj;
-     
+
     return knd_OK;
 }
 
