@@ -430,9 +430,9 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
     }
 
     if (spec->buf) {
-        // FIXME(ki.stfu): ?? assert(spec->obj == NULL); -- check .validate
+        // |spec->obj| can be NULL (depends on |spec->validate|)
         assert(spec->parse == NULL);
-        // FIXME(ki.stfu): ?? assert(spec->validate == NULL);
+        // |spec->validate| can be NULL
         assert(spec->run == NULL);
     }
 
