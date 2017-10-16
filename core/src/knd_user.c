@@ -533,11 +533,14 @@ static int run_get_user_by_id(void *data, struct kndTaskArg *args, size_t num_ar
         return knd_LIMIT;
     }
 
-    if (DEBUG_USER_LEVEL_2)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. get user by id: %lu", numval);
 
     entry = self->user_idx[numval];
-    if (!entry) return knd_NO_MATCH;
+    if (!entry) {
+        knd_log("-- no such user: %lu", numval);
+        return knd_NO_MATCH;
+    }
 
     self->root_class->out = self->out;
     self->root_class->log = self->log;
@@ -557,7 +560,7 @@ static int run_get_user_by_id(void *data, struct kndTaskArg *args, size_t num_ar
 
     self->curr_user = obj;
 
-    if (DEBUG_USER_LEVEL_2) {
+    if (DEBUG_USER_LEVEL_TMP) {
         knd_log("++ got user by num id: %.*s", numid_size, numid);
         self->curr_user->str(self->curr_user);
     }
@@ -579,8 +582,12 @@ static int run_present_user(void *data,
 {
     struct kndUser *self = (struct kndUser*)data;
     int err;
-    if (!self->curr_user) return knd_FAIL;
 
+    knd_log("..present user..");
+    if (!self->curr_user) {
+        knd_log("-- no user selected :(");
+        return knd_FAIL;
+    }
     self->curr_user->out = self->out;
     self->curr_user->log = self->log;
 
