@@ -798,6 +798,10 @@ static int reltype_read(void *data,
     if (!reltype) return knd_NOMEM;
     memset(reltype, 0, sizeof(struct kndRelType));
 
+    memcpy(reltype->name, name, name_size);
+    reltype->name_size = name_size;
+    reltype->name[name_size] = '\0';
+
     reltype->next = self->rel_types;
     self->rel_types = reltype;
     
