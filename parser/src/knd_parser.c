@@ -872,14 +872,15 @@ int knd_parse_task(const char *rec,
             e = b;
             break;
         case '}':
-            /* empty body? */
+            /* empty field? */
             if (!in_field) {
                 if (in_implied_field) {
                     err = knd_check_implied_field(b, e - b, specs, num_specs, args, &num_args);
                     if (err) return err;
+
                     in_implied_field = false;
                 }
-                
+
                 /* should we run a default action? */
                 for (size_t i = 0; i < num_specs; i++) {
                     spec = &specs[i];
@@ -889,21 +890,25 @@ int knd_parse_task(const char *rec,
                         return knd_OK;
                     }
                 }
-                
-                /* fetch default spec if any */
+
+                /* fetch default spec */
                 err = knd_find_spec(specs, num_specs,
                                     "default", strlen("default"), KND_GET_STATE, &spec);
-                if (!err) {
-                    if (spec->run) {
-                        err = spec->run(spec->obj, args, num_args);
-                        if (err) {
-                            knd_log("-- \"%.*s\" func run failed: %d :(",
-                                    spec->name_size, spec->name, err);
-                            return err;
-                        }
-                    }
+                if (err) {
+                    knd_log("-- no default spec found to handle an empty field: %.*s",
+                            16, rec);
+
+                    return knd_FORMAT;
                 }
-                
+                assert(spec->is_default); // TODO(ki.stfu): knd_find_spec() ignores validator_spec here
+
+                err = spec->run(spec->obj, args, num_args);
+                if (err) {
+                    knd_log("-- \"%.*s\" func run failed: %d :(",
+                            spec->name_size, spec->name, err);
+                    return err;
+                }
+
                 *total_size = c - rec;
                 return knd_OK;
             }
