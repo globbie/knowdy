@@ -599,7 +599,7 @@ knd_check_implied_field(const char *name,
                             name_size, name, err);
                     return err;
                 }
-                //spec->is_completed = true;  // TODO(ki.stfu): Uncomment?
+                spec->is_completed = true;
             }
             break;
         }
@@ -881,11 +881,11 @@ int knd_parse_task(const char *rec,
                     in_implied_field = false;
                 }
 
-                /* should we run a default action? */
+                /* should we run a default action? */ // FIXME(ki.stfu): knd_find_spec() checks it when fetching default spec
                 for (size_t i = 0; i < num_specs; i++) {
                     spec = &specs[i];
                     /* some action spec is completed, don't call the default one */
-                    if (spec->is_completed) {
+                    if (!spec->is_selector && spec->is_completed) {
                         *total_size = c - rec;
                         return knd_OK;
                     }
