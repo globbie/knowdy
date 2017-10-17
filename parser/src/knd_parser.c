@@ -815,13 +815,17 @@ int knd_parse_task(const char *rec,
 
             if (in_terminal) {
                 // Parse an atomic value.  Remember that we are in in_tag state.
+                // in_field == true
                 in_tag = true;
+                // in_terminal == true
                 b = c + 1;
                 e = b;
                 break;
             }
 
             in_field = false;
+            // in_tag == false
+            // in_terminal == false
             c += chunk_size;
             b = c;
             e = b;
@@ -837,8 +841,8 @@ int knd_parse_task(const char *rec,
                 }
 
                 in_field = true;
-                assert(!in_terminal);
-                in_terminal = false;
+                // in_tag == false
+                // in_terminal == false
                 b = c + 1;
                 e = b;
                 break;
@@ -867,6 +871,8 @@ int knd_parse_task(const char *rec,
             }
 
             in_field = false;
+            // in_tag == false
+            // in_terminal == false
             c += chunk_size;
             b = c;
             e = b;
@@ -927,6 +933,8 @@ int knd_parse_task(const char *rec,
                 break;
             }
 
+            // Parse a tag after a closing brace in an inner field.  Means in_tag can be set to true.
+
             err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
             if (err) return err;
 
@@ -941,8 +949,8 @@ int knd_parse_task(const char *rec,
             }
 
             in_field = false;
-            assert(!in_tag);
-            assert(!in_terminal);
+            // in_tag == false
+            // in_terminal == false
             break;
         case '(':
             if (DEBUG_PARSER_LEVEL_2)
