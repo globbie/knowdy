@@ -927,28 +927,23 @@ int knd_parse_task(const char *rec,
                 break;
             }
 
-            if (in_field) {
-                err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
-                if (err) return err;
+            err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
+            if (err) return err;
 
-                if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("++ got single SPEC: \"%.*s\" (default: %d)",
-                            spec->name_size, spec->name, spec->is_default);
+            // FIXME(ki.stfu): ?? passing an empty value for .validate / .parse
+            err = knd_parse_field_value(spec, c, &chunk_size, &in_terminal);  // TODO(ki.stfu): allow in_terminal parsing
+            if (err) return err;
 
-                if (spec->parse) {
-                    err = spec->parse(spec->obj, c, &chunk_size);
-                    if (err) {
-                        knd_log("-- ERR: %d parsing of spec \"%.*s\" failed starting from: %s",
-                                err, spec->name_size, spec->name, b);
-                        return err;
-                    }
-                }
-
-                in_field = false;
-                break;
+            if (in_terminal) {
+                knd_log("-- empty terminal val for ATOMIC SPEC \"%.*s\": %.*s",
+                        spec->name_size, spec->name, c - b + 16, b);
+                return knd_FORMAT;
             }
-            *total_size = c - rec;
-            return knd_OK;
+
+            in_field = false;
+            assert(!in_tag);
+            assert(!in_terminal);
+            break;
         case '(':
             if (DEBUG_PARSER_LEVEL_2)
                 knd_log(".. basic LOOP %p detected func area: \"%s\"\n", specs, c);
