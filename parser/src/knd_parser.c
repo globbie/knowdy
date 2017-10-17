@@ -895,7 +895,7 @@ int knd_parse_task(const char *rec,
                 err = knd_find_spec(specs, num_specs,
                                     "default", strlen("default"), KND_GET_STATE, &spec);
                 if (err) {
-                    knd_log("-- no default spec found to handle an empty field: %.*s",
+                    knd_log("-- no default spec found to handle an empty field (ignoring selectors): %.*s",
                             16, rec);
 
                     return knd_FORMAT;
