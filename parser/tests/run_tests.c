@@ -310,6 +310,24 @@ START_TEST(parse_value_terminal_max_size_plus_one)
     ck_assert_int_eq(rc, knd_LIMIT);
 END_TEST
 
+START_TEST(parse_value_terminal_NAME_SIZE_plus_one)
+    struct kndTaskSpec inner_specs[] = { sid_spec };
+    struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
+    struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
+
+    {
+        const char buf[] = { '{', 'u', 's', 'e', 'r', '{', 's', 'i', 'd', ' ', [10 ... KND_NAME_SIZE + 10] = '1', '}', '}', '\0' };
+        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+        ck_assert_int_eq(rc, knd_LIMIT);
+    }
+
+    {
+        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 's', 'i', 'd', ' ', [11 ... KND_NAME_SIZE + 11] = '1', '}', '}', '\0' };
+        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+        ck_assert_int_eq(rc, knd_LIMIT);
+    }
+END_TEST
+
 START_TEST(parse_value_terminal_with_braces)
     struct kndTaskSpec inner_specs[] = { sid_spec };
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
@@ -360,6 +378,7 @@ int main() {
     tcase_add_test(tc, parse_value_terminal_empty_with_spaces);
     tcase_add_test(tc, parse_value_terminal_max_size);
     tcase_add_test(tc, parse_value_terminal_max_size_plus_one);
+    tcase_add_test(tc, parse_value_terminal_NAME_SIZE_plus_one);
     tcase_add_test(tc, parse_value_terminal_with_braces);
     tcase_add_test(tc, parse_value_terminal_with_spaces_and_braces);
 
