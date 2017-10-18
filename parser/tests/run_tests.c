@@ -123,6 +123,18 @@ START_TEST(parse_implied_field_with_spaces)
     ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
 END_TEST
 
+START_TEST(parse_implied_field_unknown)
+    struct kndTaskSpec inner_specs[] = { sid_spec };
+    struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
+    struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
+
+    rc = knd_parse_task(rec = "{user John Smith}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_NO_MATCH);
+
+    rc = knd_parse_task(rec = "{user John Smith {sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_NO_MATCH);
+END_TEST
+
 START_TEST(parse_implied_field_max_size)
     struct kndTaskSpec inner_specs[] = { name_spec, sid_spec };
     struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
@@ -337,6 +349,7 @@ int main() {
     tcase_add_test(tc, parse_task_empty_with_closing_brace);
     tcase_add_test(tc, parse_implied_field);
     tcase_add_test(tc, parse_implied_field_with_spaces);
+    tcase_add_test(tc, parse_implied_field_unknown);
     tcase_add_test(tc, parse_implied_field_max_size);
     tcase_add_test(tc, parse_implied_field_max_size_plus_one);
     tcase_add_test(tc, parse_implied_field_size_NAME_SIZE_plus_one);
