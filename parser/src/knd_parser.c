@@ -588,24 +588,28 @@ knd_check_implied_field(const char *name,
     /* any action needed? */
     for (size_t i = 0; i < num_specs; i++) {
         spec = &specs[i];
+
         if (spec->is_implied) {
             if (DEBUG_PARSER_LEVEL_2)
                 knd_log("++ got implied spec: \"%.*s\" run: %p!",
                         spec->name_size, spec->name, spec->run);
-            if (spec->run) {
-                err = spec->run(spec->obj, args, *num_args);
-                if (err) {
-                    knd_log("-- implied func for \"%.*s\" failed: %d :(",
-                            name_size, name, err);
-                    return err;
-                }
-                spec->is_completed = true;
+
+            err = spec->run(spec->obj, args, *num_args);
+            if (err) {
+                knd_log("-- implied func for \"%.*s\" failed: %d :(",
+                        name_size, name, err);
+                return err;
             }
-            break;
+
+            spec->is_completed = true;
+            return knd_OK;
         }
     }
-    
-    return knd_OK;
+
+    knd_log("-- no implied spec found to handle the \"%.*s\" val",
+            name_size, name);
+
+    return knd_NO_MATCH;
 }
 
 static int
