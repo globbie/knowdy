@@ -68,12 +68,11 @@ struct kndFacet
     size_t inbox_size;
 
     struct kndOutput *out;
-    
     size_t rec_size;
 
     /*size_t num_items;*/
     struct kndRefSet *parent;
-    
+
     struct kndRefSet *refsets[KND_MAX_ATTRS];
     size_t num_refsets;
 

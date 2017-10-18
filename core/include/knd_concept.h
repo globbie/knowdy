@@ -66,6 +66,14 @@ struct kndObjStateIdx
 struct kndConcRef
 {
     size_t state;
+    struct kndConcDirt *dir;
+    struct kndConcept *conc;
+};
+
+struct kndConcRefSet
+{
+    size_t state;
+    struct kndConcDirt *dir;
     struct kndConcept *conc;
 };
 
