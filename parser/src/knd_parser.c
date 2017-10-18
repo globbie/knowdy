@@ -941,7 +941,6 @@ int knd_parse_task(const char *rec,
             err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
             if (err) return err;
 
-            // FIXME(ki.stfu): ?? passing an empty value for .validate / .parse
             err = knd_parse_field_value(spec, c, &chunk_size, &in_terminal);  // TODO(ki.stfu): allow in_terminal parsing
             if (err) return err;
 
