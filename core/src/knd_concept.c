@@ -1568,7 +1568,7 @@ static int run_read_include(void *obj, struct kndTaskArg *args, size_t num_args)
 
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
-        if (!memcmp(arg->name, "_impl", strlen("_impl"))) {
+        if (arg->name_size == strlen("_impl") && !memcmp(arg->name, "_impl", arg->name_size)) {
             name = arg->val;
             name_size = arg->val_size;
         }
@@ -1634,9 +1634,7 @@ static int parse_include(void *self,
         knd_log(".. parse include REC: \"%s\"..", rec);
 
     struct kndTaskSpec specs[] = {
-        { .name = "default",
-          .name_size = strlen("default"),
-          .is_default = true,
+        { .is_implied = true,
           .run = run_read_include,
           .obj = self
         },
