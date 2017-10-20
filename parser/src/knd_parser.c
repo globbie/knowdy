@@ -434,6 +434,29 @@ knd_spec_buf_copy(struct kndTaskSpec *spec,
     return knd_OK;
 }
 
+static int
+knd_spec_get_num(struct kndTaskSpec *spec,
+                 const char *val,
+                 size_t val_size)
+{
+    char buf[KND_SHORT_NAME_SIZE + 1];
+    long numval;
+    int err;
+
+    if (val_size > KND_SHORT_NAME_SIZE) return knd_LIMIT;
+
+    memcpy(buf, val, val_size);
+    buf[val_size] = '\0';
+
+    err = knd_parse_num(buf, &numval);
+    if (err) return err;
+    if (numval < 0) return knd_LIMIT;
+
+    *spec->num = (size_t)numval;
+
+    return knd_OK;
+}
+
 
 static int knd_check_implied_field(const char *name,
                                    size_t name_size,
@@ -740,7 +763,6 @@ int knd_parse_task(const char *rec,
                         }
                     }
                 }
-                
                 *total_size = c - rec;
                 return knd_OK;
             }
@@ -754,7 +776,8 @@ int knd_parse_task(const char *rec,
                 if (DEBUG_PARSER_LEVEL_2)
                     knd_log("++ got terminal val: \"%.*s\" [%lu]",
                             name_size, b, (unsigned long)name_size);
-                /* copy to buf */
+
+                /* copy string to buf */
                 if (spec->buf && spec->buf_size) {
                     err = knd_spec_buf_copy(spec, b, name_size);
                     if (err) return err;
@@ -767,6 +790,20 @@ int knd_parse_task(const char *rec,
                     in_field = false;
                     break;
                 }
+
+                if (spec->num) {
+                    err = knd_spec_get_num(spec, b, name_size);
+                    if (err) return err;
+                    if (!spec->is_selector)
+                        spec->is_completed = true;
+                    b = c + 1;
+                    e = b;
+                    in_terminal = false;
+                    in_tag = false;
+                    in_field = false;
+                    break;
+                }
+                
                 arg = &args[num_args];
                 num_args++;
                 memcpy(arg->name, spec->name, spec->name_size);
@@ -1010,6 +1047,7 @@ static int knd_parse_state_change(const char *rec,
     bool in_tag = false;
     bool in_field = false;
     bool in_implied_field = false;
+    bool in_terminal = false;
 
     size_t chunk_size;
     int err;
@@ -1193,6 +1231,61 @@ static int knd_parse_state_change(const char *rec,
             
             *total_size = c - rec;
             return knd_OK;
+        case '[':
+            knd_log("[ bracket in change state");
+
+            if (!in_field) {
+                if (in_implied_field) {
+                    name_size = e - b;
+                    if (name_size) {
+                        err = knd_check_implied_field(b, name_size,
+                                                      specs, num_specs,
+                                                      args, &num_args);
+                        if (err) return err;
+                    }
+                    in_implied_field = false;
+                }
+            }
+            else {
+                err = check_name_limits(b, e, &name_size);
+                if (err) return err;
+                err = knd_find_spec(specs, num_specs, b, name_size, KND_CHANGE_STATE, &spec);
+                if (err) {
+                    knd_log("-- no spec found to handle the \"%.*s\" tag: %d",
+                            name_size, b, err);
+                    return err;
+                }
+
+                if (spec->validate) {
+                    err = spec->validate(spec->obj,
+                                         (const char*)spec->buf, *spec->buf_size,
+                                         c, &chunk_size);
+                    if (err) {
+                        knd_log("-- ERR: %d validation of spec \"%s\" failed :(",
+                                err, spec->name);
+                        return err;
+                    }
+                }
+                c += chunk_size;
+                spec->is_completed = true;
+                in_field = false;
+                b = c;
+                e = b;
+                break;
+            }
+            
+            err = knd_parse_list(c, &chunk_size, specs, num_specs);
+            if (err) {
+                knd_log("-- change LOOP failed to parse the list area \"%.*s\" :(", 16, c);
+                return err;
+            }
+            c += chunk_size;
+            in_field = false;
+            in_terminal = false;
+            in_implied_field = false;
+            b = c + 1;
+            e = b;
+            break;
         default:
             e = c + 1;
 
@@ -1249,14 +1342,15 @@ static int knd_parse_list(const char *rec,
         case '\t':
         case ' ':
             if (!in_list) break;
-            if (got_tag) {
+            if (!in_item) break;
 
+            if (got_tag) {
                 if (spec->is_atomic) {
                     /* get atomic item */
                     err = check_name_limits(b, e, &name_size);
                     if (err) return err;
 
-                    if (DEBUG_PARSER_LEVEL_2)
+                    if (DEBUG_PARSER_LEVEL_TMP)
                         knd_log("  == got new item: \"%.*s\"",
                                 name_size, b);
                     err = alloc_item(accu, b, name_size, item_count, &item);
@@ -1310,7 +1404,6 @@ static int knd_parse_list(const char *rec,
                         name_size, b);
                 return err;
             }
-
             if (DEBUG_PARSER_LEVEL_2)
                 knd_log("++ got list SPEC: \"%s\"",
                         spec->name);
@@ -1325,7 +1418,7 @@ static int knd_parse_list(const char *rec,
                 e = b;
                 break;
             }
-            
+
             if (!spec->append) return knd_FAIL;
             if (!spec->accu) return knd_FAIL;
             if (!spec->alloc) return knd_FAIL;
@@ -1341,6 +1434,7 @@ static int knd_parse_list(const char *rec,
             break;
         case '{':
             if (!in_list) break;
+
             if (!got_tag) {
                 err = check_name_limits(b, e, &name_size);
                 if (err) return err;

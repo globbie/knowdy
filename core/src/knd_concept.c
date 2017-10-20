@@ -13,6 +13,7 @@
 #include <limits.h>
 
 #include "knd_config.h"
+#include "knd_mempool.h"
 #include "knd_concept.h"
 #include "knd_output.h"
 #include "knd_attr.h"
@@ -21,6 +22,8 @@
 #include "knd_text.h"
 #include "knd_parser.h"
 #include "knd_object.h"
+#include "knd_rel.h"
+#include "knd_proc.h"
 #include "knd_utils.h"
 
 #define DEBUG_CONC_LEVEL_1 0
@@ -29,6 +32,8 @@
 #define DEBUG_CONC_LEVEL_4 0
 #define DEBUG_CONC_LEVEL_5 0
 #define DEBUG_CONC_LEVEL_TMP 1
+
+static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t num_args);
 
 static int read_obj_entry(struct kndConcept *self,
                           struct kndObjEntry *entry,
@@ -239,6 +244,72 @@ static void dir_str(struct kndConcDir *self, size_t depth, int fd)
 
     knd_log("%*s}", depth * KND_OFFSET_SIZE, "");
 }
+
+
+static int read_gloss(void *obj,
+                      const char *rec,
+                      size_t *total_size)
+{
+    struct kndTranslation *tr = (struct kndTranslation*)obj;
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_translation_text,
+          .obj = tr
+        }
+    };
+    int err;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. reading gloss translation: \"%.*s\"",
+                tr->locale_size, tr->locale);
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+static int gloss_append(void *accu,
+                        void *item)
+{
+    struct kndConcept *self =   accu;
+    struct kndTranslation *tr = item;
+
+    tr->next = self->tr;
+    self->tr = tr;
+   
+    return knd_OK;
+}
+
+static int gloss_alloc(void *obj,
+                       const char *name,
+                       size_t name_size,
+                       size_t count,
+                       void **item)
+{
+    struct kndConcept *self = obj;
+    struct kndTranslation *tr;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. %.*s to create gloss: %.*s count: %zu",
+                self->name_size, self->name, name_size, name, count);
+
+    if (name_size > KND_LOCALE_SIZE) return knd_LIMIT;
+
+    tr = malloc(sizeof(struct kndTranslation));
+    if (!tr) return knd_NOMEM;
+
+    memset(tr, 0, sizeof(struct kndTranslation));
+    memcpy(tr->curr_locale, name, name_size);
+    tr->curr_locale_size = name_size;
+
+    tr->locale = tr->curr_locale;
+    tr->locale_size = tr->curr_locale_size;
+    *item = tr;
+
+    return knd_OK;
+}
+
 
 static int validate_attr_items(struct kndConcept *self,
                                struct kndAttrItem *items)
@@ -561,31 +632,6 @@ static int get_attr(struct kndConcept *self,
     *result = entry->attr;
     return knd_OK;
 }
-
-static int parse_field(void *obj,
-                       const char *name, size_t name_size,
-                       const char *rec __attribute__((unused)), size_t *total_size __attribute__((unused)))
-{
-    struct kndConcept *self = (struct kndConcept*)obj;
-    struct kndAttr *attr = NULL;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_2) {
-        knd_log("\n.. validating attr: \"%.*s\": %.*s\n",
-                self->curr_val_size, self->curr_val, name_size, name);
-    }
-
-    err = get_attr(self, (const char*)self->curr_val, self->curr_val_size, &attr);
-    knd_log("== get attr: %d", err);
-    if (err) {
-        knd_log("-- no such attr: \"%s\" :(", self->curr_val);
-        return err;
-    }
-
-    return knd_FAIL;
-}
-
-
 
 static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t num_args)
 {
@@ -1234,7 +1280,7 @@ static int parse_import_class(void *obj,
                               const char *rec,
                               size_t *total_size)
 {
-    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndConcept *self = obj;
     struct kndConcept *c;
     struct kndConcDir *dir;
     int err;
@@ -1267,6 +1313,14 @@ static int parse_import_class(void *obj,
           .name_size = strlen("children"),
           .parse = parse_children_settings,
           .obj = c
+        },
+        { .is_list = true,
+          .name = "_gloss",
+          .name_size = strlen("_gloss"),
+          .accu = c,
+          .alloc = gloss_alloc,
+          .append = gloss_append,
+          .parse = read_gloss
         },
         { .type = KND_CHANGE_STATE,
           .name = "gloss",
@@ -1314,13 +1368,6 @@ static int parse_import_class(void *obj,
           .name = "text",
           .name_size = strlen("text"),
           .parse = parse_text,
-          .obj = c
-        },
-        { .is_validator = true,
-          .buf = c->curr_val,
-          .buf_size = &c->curr_val_size,
-          .max_buf_size = KND_NAME_SIZE,
-          .validate = parse_field,
           .obj = c
         }
     };
@@ -1401,7 +1448,7 @@ static int parse_import_obj(void *data,
         return knd_FAIL;
     }
 
-    err = kndConcept_alloc_obj(self, &obj);
+    err = self->pool->new_obj(self->pool, &obj);
     if (err) return err;
 
     obj->phase = KND_SUBMITTED;
@@ -1522,33 +1569,6 @@ static int parse_select_obj(void *data,
     return knd_OK;
 }
 
-static int run_set_namespace(void *obj, struct kndTaskArg *args, size_t num_args)
-{
-    struct kndConcept *self = (struct kndConcept*)obj;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
-
-    if (DEBUG_CONC_LEVEL_1)
-        knd_log(".. run set namespace..");
-
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!memcmp(arg->name, "_impl", strlen("_impl"))) {
-            name = arg->val;
-            name_size = arg->val_size;
-        }
-    }
-    if (!name_size) return knd_FAIL;
-    if (name_size >= KND_NAME_SIZE)
-        return knd_LIMIT;
-
-    memcpy(self->namespace, name, name_size);
-    self->namespace_size = name_size;
-    self->namespace[name_size] = '\0';
-
-    return knd_OK;
-}
 
 static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
 {
@@ -1619,13 +1639,17 @@ static int parse_schema(void *self,
                         const char *rec,
                         size_t *total_size)
 {
+    char buf[KND_NAME_SIZE];
+    size_t buf_size;
+
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parse schema REC: \"%s\"..", rec);
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_set_namespace,
-          .obj = self
+          .buf = buf,
+          .buf_size = &buf_size,
+          .max_buf_size = KND_NAME_SIZE,
         },
         { .type = KND_CHANGE_STATE,
           .name = "class",
@@ -1658,10 +1682,6 @@ static int parse_include(void *self,
           .name_size = strlen("default"),
           .is_default = true,
           .run = run_read_include,
-          .obj = self
-        },
-        { .name = "lazy",
-          .name_size = strlen("lazy"),
           .obj = self
         }
     };
@@ -2726,71 +2746,6 @@ static int read_GSL_file(struct kndConcept *self,
 
 
 
-static int read_gloss(void *obj,
-                      const char *rec,
-                      size_t *total_size)
-{
-    struct kndTranslation *tr = (struct kndTranslation*)obj;
-    struct kndTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_set_translation_text,
-          .obj = tr
-        }
-    };
-    int err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. reading gloss translation: \"%.*s\"",
-                tr->locale_size, tr->locale);
-
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-    
-    return knd_OK;
-}
-
-static int gloss_append(void *accu,
-                        void *item)
-{
-    struct kndConcept *self =   accu;
-    struct kndTranslation *tr = item;
-
-    tr->next = self->tr;
-    self->tr = tr;
-   
-    return knd_OK;
-}
-
-static int gloss_alloc(void *obj,
-                       const char *name,
-                       size_t name_size,
-                       size_t count,
-                       void **item)
-{
-    struct kndConcept *self = obj;
-    struct kndTranslation *tr;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. %.*s to create gloss: %.*s count: %zu",
-                self->name_size, self->name, name_size, name, count);
-
-    if (name_size > KND_LOCALE_SIZE) return knd_LIMIT;
-
-    tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return knd_NOMEM;
-
-    memset(tr, 0, sizeof(struct kndTranslation));
-    memcpy(tr->curr_locale, name, name_size);
-    tr->curr_locale_size = name_size;
-
-    tr->locale = tr->curr_locale;
-    tr->locale_size = tr->curr_locale_size;
-    *item = tr;
-
-    return knd_OK;
-}
-
-
 static int conc_item_alloc(void *obj,
                            const char *name,
                            size_t name_size,
@@ -2936,6 +2891,8 @@ static int read_GSP(struct kndConcept *self,
                     const char *rec,
                     size_t *total_size)
 {
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -2991,14 +2948,7 @@ static int read_GSP(struct kndConcept *self,
           .name_size = strlen("text"),
           .parse = parse_text,
           .obj = self
-        },
-        { .is_validator = true,
-          .buf = self->curr_val,
-          .buf_size = &self->curr_val_size,
-          .max_buf_size = KND_NAME_SIZE,
-          .validate = parse_field,
-          .obj = self
-          }
+        }
     };
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
@@ -5439,7 +5389,6 @@ static int freeze(struct kndConcept *self)
     return knd_OK;
 }
 
-
 static void reset(struct kndConcept *self)
 {
     struct kndConcRef *ref;
@@ -5453,16 +5402,10 @@ static void reset(struct kndConcept *self)
         c->reset(c);
     }
     self->num_children = 0;
-
-    /* release any malloc'ed resources */
-    
-    /* objs */
-    /*obj = ;*/
-    self->obj_storage_size = 0;
 }
 
 /*  Concept initializer */
-static void init(struct kndConcept *self)
+extern void kndConcept_init(struct kndConcept *self)
 {
     self->del = del;
     self->str = str;
@@ -5491,30 +5434,6 @@ static void init(struct kndConcept *self)
 }
 
 extern int
-kndConcept_alloc_obj(struct kndConcept *self,
-                     struct kndObject **result)
-{
-    struct kndObject *obj;
-    int e;
-
-    if (self->obj_storage_size >= self->max_objs) {
-        self->log->reset(self->log);
-        e = self->log->write(self->log, "memory limit reached",
-                             strlen("memory limit reached"));
-        if (e) return e;
-
-        knd_log("-- memory limit reached :(");
-        return knd_MAX_LIMIT_REACHED;
-    }
-    obj = &self->obj_storage[self->obj_storage_size];
-    memset(obj, 0, sizeof(struct kndObject));
-    kndObject_init(obj);
-    self->obj_storage_size++;
-    *result = obj;
-    return knd_OK;
-}
-
-extern int
 kndConcept_new(struct kndConcept **c)
 {
     struct kndConcept *self;
@@ -5530,7 +5449,7 @@ kndConcept_new(struct kndConcept **c)
     memset(self->next_state,   '0', KND_STATE_SIZE);
     memset(self->diff_state,   '0', KND_STATE_SIZE);
 
-    init(self);
+    kndConcept_init(self);
     *c = self;
     return knd_OK;
 }

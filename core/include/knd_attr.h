@@ -107,8 +107,8 @@ struct kndAttr
     char classname[KND_NAME_SIZE];
     size_t classname_size;
 
-    char cardinality[KND_SHORT_NAME_SIZE];
-    size_t cardinality_size;
+    char quantif[KND_SHORT_NAME_SIZE];
+    size_t quantif_size;
 
     char validator_name[KND_SHORT_NAME_SIZE];
     size_t validator_name_size;

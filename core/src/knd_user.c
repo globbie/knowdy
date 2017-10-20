@@ -15,6 +15,7 @@
 #include "knd_parser.h"
 #include "knd_concept.h"
 #include "knd_object.h"
+#include "knd_proc.h"
 
 #define DEBUG_USER_LEVEL_0 0
 #define DEBUG_USER_LEVEL_1 0
@@ -249,7 +250,7 @@ kndUser_parse_auth(void *obj,
                    const char *rec,
                    size_t *total_size)
 {
-    struct kndUser *self = (struct kndUser*)obj;
+    struct kndUser *self = obj;
     char sid[KND_NAME_SIZE];
     size_t sid_size;
     int err, e;
@@ -296,6 +297,33 @@ kndUser_parse_auth(void *obj,
         return knd_FAIL;
     }
     
+    return knd_OK;
+}
+
+static int kndUser_parse_proc_import(void *obj,
+                                     const char *rec,
+                                     size_t *total_size)
+{
+    struct kndUser *self = obj;
+    int err;
+
+    self->task->type = KND_CHANGE_STATE;
+    /*self->root_class->out = self->out;
+    self->root_class->log = self->log;
+    self->root_class->task = self->task;
+
+    self->root_class->dbpath = self->dbpath;
+    self->root_class->dbpath_size = self->dbpath_size;
+    self->root_class->frozen_output_file_name = self->frozen_output_file_name;
+    self->root_class->frozen_output_file_name_size = self->frozen_output_file_name_size;
+
+    self->root_class->locale = self->locale;
+    self->root_class->locale_size = self->locale_size;
+    */
+
+    err = self->root_class->proc->parse(self->root_class->proc, rec, total_size);
+    if (err) return err;
+
     return knd_OK;
 }
 
@@ -639,6 +667,12 @@ static int parse_task(struct kndUser *self,
         { .name = "class",
           .name_size = strlen("class"),
           .parse = kndUser_parse_class_select,
+          .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "proc",
+          .name_size = strlen("proc"),
+          .parse = kndUser_parse_proc_import,
           .obj = self
         },
         { .name = "state",

@@ -30,6 +30,8 @@ struct kndConcept;
 struct kndOutput;
 struct kndTranslation;
 struct kndConcept;
+struct kndRel;
+struct kndRelObj;
 struct kndTask;
 struct kndUser;
 struct kndTaskArg;
@@ -40,21 +42,6 @@ typedef enum knd_conc_type {
     KND_CONC_ATTR
 } knd_conc_type;
 
-struct kndDataIdx
-{
-    knd_facet_type type;
-    
-    char name[KND_NAME_SIZE];
-    size_t name_size;
-
-    char abbr[KND_NAME_SIZE];
-    size_t abbr_size;
-
-    size_t numval;
-    bool is_default;
-    
-    struct kndDataIdx *next;
-};
 
 struct kndObjStateIdx
 {
@@ -188,9 +175,9 @@ struct kndConcept
     struct kndTranslation *tr;
     struct kndText *summary;
 
-    char namespace[KND_NAME_SIZE];
+    /*char namespace[KND_NAME_SIZE];
     size_t namespace_size;
-
+    */
     /* initial scheme location */
     const char *dbpath;
     size_t dbpath_size;
@@ -201,6 +188,8 @@ struct kndConcept
     size_t locale_size;
     knd_format format;
     size_t depth;
+
+    struct kndProc *proc;
 
     struct kndAttr *attrs;
     struct kndAttr *tail_attr;
@@ -218,7 +207,7 @@ struct kndConcept
     struct kndDataIdx *indices;
     size_t num_indices;
 
-    char curr_val[KND_NAME_SIZE];
+    /*char curr_val[KND_NAME_SIZE];
     size_t curr_val_size;
 
     char idx_name[KND_NAME_SIZE];
@@ -226,7 +215,7 @@ struct kndConcept
 
     char style_name[KND_NAME_SIZE];
     size_t style_name_size;
-
+    */
     bool ignore_children;
     bool is_resolved;
 
@@ -238,11 +227,8 @@ struct kndConcept
     struct kndConcFolder *folders;
     size_t num_folders;
 
-
     /* allocator */
-    struct kndObject *obj_storage;
-    size_t obj_storage_size;
-    size_t max_objs;
+    struct kndMemPool *pool;
 
     /* incoming */
     struct kndConcept *inbox;
@@ -349,10 +335,7 @@ struct kndConcept
                      struct kndAttr **result);
 };
 
-/* obj allocator */
-extern int kndConcept_alloc_obj(struct kndConcept *self,
-                                struct kndObject **result);
-
 /* constructor */
+extern void kndConcept_init(struct kndConcept *self);
 extern int kndConcept_new(struct kndConcept **self);
 

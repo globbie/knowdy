@@ -472,14 +472,6 @@ kndRetriever_new(struct kndRetriever **rec,
     err = ooDict_new(&conc->class_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
 
-    /* obj/elem allocator */
-    if (self->max_objs) {
-        conc->obj_storage = calloc(self->max_objs, 
-                                 sizeof(struct kndObject));
-        if (!conc->obj_storage) return knd_NOMEM;
-        conc->max_objs = self->max_objs;
-    }
-
     /* user idx */
     if (self->max_users) {
         self->admin->user_idx = calloc(self->max_users, 

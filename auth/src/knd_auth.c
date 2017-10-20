@@ -535,7 +535,6 @@ static int kndAuth_start(struct kndAuth *self)
     return knd_OK;
 }
 
-
 static int
 run_set_service_addr(void *obj,
                      struct kndTaskArg *args, size_t num_args)
@@ -556,14 +555,12 @@ run_set_service_addr(void *obj,
     if (!addr_size) return knd_FAIL;
 
     self = (struct kndAuth*)obj;
-
     if (DEBUG_AUTH_LEVEL_1)
         knd_log(".. set service addr to \"%.*s\"", addr_size, addr);
 
     memcpy(self->addr, addr, addr_size);
     self->addr[addr_size] = '\0';
     self->addr_size = addr_size;
-
     
     return knd_OK;
 }

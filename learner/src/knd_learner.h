@@ -5,6 +5,7 @@
 #include "knd_dict.h"
 
 struct kndUser;
+struct kndMemPool;
 
 struct kndCacheRec
 {
@@ -45,7 +46,7 @@ struct kndLearner
 
     size_t state_count;
 
-    size_t max_objs;
+    struct kndMemPool *mempool;
 
     char *last_obj_id;
     char *curr_obj_id;

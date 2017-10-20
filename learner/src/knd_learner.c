@@ -7,6 +7,7 @@
 #include <time.h>
 
 #include "knd_config.h"
+#include "knd_mempool.h"
 #include "knd_dict.h"
 #include "knd_utils.h"
 #include "knd_msg.h"
@@ -227,50 +228,39 @@ parse_write_inbox_addr(void *obj,
     return knd_OK;
 }
 
-
-static int run_set_max_objs(void *obj, struct kndTaskArg *args, size_t num_args)
+static int parse_memory_settings(void *obj,
+                                 const char *rec,
+                                 size_t *total_size)
 {
-    struct kndLearner *self = (struct kndLearner*)obj;
-    struct kndTaskArg *arg;
-    const char *val = NULL;
-    size_t val_size = 0;
-    long numval;
-    int err;
-
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val;
-            val_size = arg->val_size;
-        }
-    }
-    if (!val_size) return knd_FAIL;
-    if (val_size >= KND_NAME_SIZE) return knd_LIMIT;
-
-    err = knd_parse_num((const char*)val, &numval);
-    if (err) return err;
-
-    if (numval < KND_MIN_OBJS) return knd_LIMIT;
-
-    self->max_objs = numval;
-
-    if (DEBUG_LEARNER_LEVEL_2)
-        knd_log("++ MAX OBJS: %lu", (unsigned long)self->max_objs);
-
-    return knd_OK;
-}
-
-static int 
-parse_max_objs(void *obj,
-               const char *rec,
-               size_t *total_size)
-{
-    struct kndLearner *self = (struct kndLearner*)obj;
-
+    struct kndMemPool *self = obj;
     struct kndTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_set_max_objs,
-          .obj = self
+        { .name = "max_classes",
+          .name_size = strlen("max_classes"),
+          .num = &self->max_classes
+        },
+        { .name = "max_objs",
+          .name_size = strlen("max_objs"),
+          .num = &self->max_objs
+        },
+        { .name = "max_elems",
+          .name_size = strlen("max_elems"),
+          .num = &self->max_elems
+        },
+        { .name = "max_rels",
+          .name_size = strlen("max_rels"),
+          .num = &self->max_rels
+        },
+        { .name = "max_rel_instances",
+          .name_size = strlen("max_rel_instances"),
+          .num = &self->max_rel_instances
+        },
+        { .name = "max_procs",
+          .name_size = strlen("max_procs"),
+          .num = &self->max_procs
+        },
+        { .name = "max_proc_instances",
+          .name_size = strlen("max_proc_instances"),
+          .num = &self->max_proc_instances
         }
     };
     int err;
@@ -280,7 +270,6 @@ parse_max_objs(void *obj,
     
     return knd_OK;
 }
-
 
 static int
 parse_config_GSL(struct kndLearner *self,
@@ -317,10 +306,10 @@ parse_config_GSL(struct kndLearner *self,
            .buf_size = &self->admin->sid_size,
            .max_buf_size = KND_NAME_SIZE
          },
-         { .name = "max_objs",
-           .name_size = strlen("max_objs"),
-           .parse = parse_max_objs,
-           .obj = self,
+         { .name = "memory",
+           .name_size = strlen("memory"),
+           .parse = parse_memory_settings,
+           .obj = self->mempool,
          },
          { .name = "delivery",
            .name_size = strlen("delivery"),
@@ -416,6 +405,7 @@ kndLearner_new(struct kndLearner **rec,
 {
     struct kndLearner *self;
     struct kndConcept *conc;
+    struct kndOutput *out;
     size_t chunk_size;
     int err;
 
@@ -445,6 +435,8 @@ kndLearner_new(struct kndLearner **rec,
     /*err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
     */
+    err = kndMemPool_new(&self->mempool);
+    if (err) return err;
     
     /* read config */
     err = self->out->read_file(self->out, config, strlen(config));
@@ -453,10 +445,21 @@ kndLearner_new(struct kndLearner **rec,
     err = parse_config_GSL(self, self->out->file, &chunk_size);
     if (err) goto error;
 
+    self->mempool->alloc(self->mempool);
 
     memcpy(self->task->agent_name, self->name, self->name_size);
     self->task->agent_name_size = self->name_size;
     self->task->agent_name[self->name_size] = '\0';
+
+    out = self->out;
+    out->reset(out);
+    err = out->write(out, self->path, self->path_size);
+    if (err) return err;
+    err = out->write(out, "/frozen.gsp", strlen("/frozen.gsp"));
+    if (err) return err;
+    memcpy(self->admin->frozen_output_file_name, out->buf, out->buf_size);
+    self->admin->frozen_output_file_name_size = out->buf_size;
+    self->admin->frozen_output_file_name[out->buf_size] = '\0';
 
     err = kndConcept_new(&conc);
     if (err) goto error;
@@ -465,6 +468,11 @@ kndLearner_new(struct kndLearner **rec,
     conc->log = self->log;
     conc->name[0] = '/';
     conc->name_size = 1;
+
+    conc->dbpath = self->schema_path;
+    conc->dbpath_size = self->schema_path_size;
+    conc->frozen_output_file_name = self->admin->frozen_output_file_name;
+    conc->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
 
     conc->dir = malloc(sizeof(struct kndConcDir));
     if (!conc->dir) return knd_NOMEM;
@@ -477,15 +485,7 @@ kndLearner_new(struct kndLearner **rec,
     err = ooDict_new(&conc->class_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
-    /* obj/elem allocator */
-    if (!self->max_objs) self->max_objs = KND_MIN_OBJS;
-
-    conc->obj_storage = calloc(self->max_objs, sizeof(struct kndObject));
-    if (!conc->obj_storage) {
-        knd_log("-- objs not allocated :(");
-        return knd_NOMEM;
-    }
-    conc->max_objs = self->max_objs;
+    conc->pool = self->mempool;
 
     /* user idx */
     if (self->max_users) {
@@ -494,7 +494,7 @@ kndLearner_new(struct kndLearner **rec,
         if (!self->admin->user_idx) return knd_NOMEM;
         self->admin->max_users = self->max_users;
     }
-    
+
     /* try opening the frozen DB */
     conc->user = self->admin;
     self->admin->root_class = conc;
