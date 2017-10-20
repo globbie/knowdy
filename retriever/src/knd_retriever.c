@@ -172,6 +172,35 @@ static int run_set_max_objs(void *obj, struct kndTaskArg *args, size_t num_args)
     return knd_OK;
 }
 
+static int
+run_set_service_id(void *obj,
+                   struct kndTaskArg *args,
+                   size_t num_args)
+{
+    struct kndRetriever *self = (struct kndRetriever*)obj;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    size_t name_size = 0;
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (arg->name_size == strlen("_impl") && !memcmp(arg->name, "_impl", arg->name_size)) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+
+    if (!name_size) return knd_FAIL;
+    if (name_size >= KND_NAME_SIZE)
+        return knd_LIMIT;
+
+    memcpy(self->name, name, name_size);
+    self->name_size = name_size;
+    self->name[name_size] = '\0';
+
+    return knd_OK;
+}
+
 static int 
 parse_max_objs(void *obj,
                const char *rec,
@@ -265,6 +294,10 @@ parse_config_GSL(struct kndRetriever *self,
     const char *c;
 
     struct kndTaskSpec specs[] = {
+         { .is_implied = true,
+           .run = run_set_service_id,
+           .obj = self
+         },
          { .name = "path",
            .name_size = strlen("path"),
            .buf = self->path,
@@ -321,13 +354,6 @@ parse_config_GSL(struct kndRetriever *self,
           .name_size = strlen("read_inbox"),
           .parse = parse_read_inbox_addr,
           .obj = self
-        },
-        { .is_default = true,
-          .name = "set_service_id",
-          .name_size = strlen("set_service_id"),
-          .buf = self->name,
-          .buf_size = &self->name_size,
-          .max_buf_size = KND_NAME_SIZE
         }
     };
     
