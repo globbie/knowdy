@@ -374,7 +374,7 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
     assert((spec->buf != NULL) == (spec->buf_size != NULL));
     assert((spec->buf != NULL) == (spec->max_buf_size != 0));
 
-    assert(spec->accu == NULL);  // TODO(ki.stfu): ?? remove this field
+    // TODO(ki.stfu): ?? assert(spec->accu == NULL);  // TODO(ki.stfu): ?? remove this field
 
     if (spec->parse)
         assert(spec->validate == NULL && spec->run == NULL);
@@ -382,8 +382,8 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
         assert(spec->parse == NULL && spec->run == NULL);
     if (spec->run)
         assert(spec->parse == NULL && spec->validate == NULL);
-    assert(spec->append == NULL);  // TODO(ki.stfu): ?? remove this field
-    assert(spec->alloc == NULL);  // TODO(ki.stfu): ?? remove this field
+    // TODO(ki.stfu): ?? assert(spec->append == NULL);  // TODO(ki.stfu): ?? remove this field
+    // TODO(ki.stfu): ?? assert(spec->alloc == NULL);  // TODO(ki.stfu): ?? remove this field
 
     // Check that they are not mutually exclusive (in general):
 
