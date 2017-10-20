@@ -1221,6 +1221,10 @@ static int parse_import_class(void *obj,
     struct kndConcDir *dir;
     int err;
 
+    // TODO(ki.stfu): Don't ignore this field
+    char time[KND_NAME_SIZE];
+    size_t time_size = 0;
+
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. import \"%.*s\" class..", 16, rec);
 
@@ -1285,6 +1289,14 @@ static int parse_import_class(void *obj,
           .name_size = strlen("num"),
           .parse = parse_num,
           .obj = c
+        },
+        // FIXME(ki.stfu): Temporary spec to ignore the time tag
+        { .type = KND_CHANGE_STATE,
+          .name = "time",
+          .name_size = strlen("time"),
+          .buf = time,
+          .buf_size = &time_size,
+          .max_buf_size = KND_NAME_SIZE
         },
         {  .type = KND_CHANGE_STATE,
            .name = "ref",
