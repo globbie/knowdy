@@ -650,7 +650,8 @@ static int parse_GSL(struct kndAttr *self,
           .accu = self,
           .alloc = gloss_alloc,
           .append = gloss_append,
-          .parse = read_gloss
+          .parse = read_gloss,
+          .obj = self
         },
         { .type = KND_CHANGE_STATE,
           .name = "c",
