@@ -1,4 +1,4 @@
-#undef NDEBUG
+// #undef NDEBUG  // For developing
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
