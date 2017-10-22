@@ -50,8 +50,8 @@ static void str(struct kndAttr *self)
         knd_log("%*s  ACL:restricted", self->depth * KND_OFFSET_SIZE, "");
     }
     
-    if (self->cardinality_size) {
-        knd_log("\n%*s    [%s]", self->depth * KND_OFFSET_SIZE, "", self->cardinality);
+    if (self->quantif_size) {
+        knd_log("\n%*s    [%s]", self->depth * KND_OFFSET_SIZE, "", self->quantif);
     }
     
     tr = self->tr;
@@ -297,7 +297,7 @@ static int run_set_name(void *obj,
 }
 
 
-static int run_set_cardinality(void *obj,
+static int run_set_quantif(void *obj,
                                struct kndTaskArg *args, size_t num_args)
 {
     struct kndAttr *self = (struct kndAttr*)obj;
@@ -306,7 +306,7 @@ static int run_set_cardinality(void *obj,
     size_t name_size = 0;
 
     if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. run set cardinality!\n");
+        knd_log(".. run set quantif!\n");
     
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
@@ -319,9 +319,9 @@ static int run_set_cardinality(void *obj,
     if (!name_size) return knd_FAIL;
     if (name_size >= KND_SHORT_NAME_SIZE) return knd_LIMIT;
 
-    memcpy(self->cardinality, name, name_size);
-    self->cardinality_size = name_size;
-    self->cardinality[name_size] = '\0';
+    memcpy(self->quantif, name, name_size);
+    self->quantif_size = name_size;
+    self->quantif[name_size] = '\0';
 
     return knd_OK;
 }
@@ -489,7 +489,7 @@ static int gloss_alloc(void *obj,
 
 
 
-static int parse_cardinality(void *obj,
+static int parse_quantif(void *obj,
                              const char *rec,
                              size_t *total_size)
 {
@@ -497,11 +497,11 @@ static int parse_cardinality(void *obj,
     int err;
 
     if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. parsing the cardinality: \"%s\"", rec);
+        knd_log(".. parsing the quantif: \"%s\"", rec);
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_set_cardinality,
+          .run = run_set_quantif,
           .obj = self
         }
     };
@@ -669,9 +669,9 @@ static int parse_GSL(struct kndAttr *self,
           .obj = self
         },
         { .type = KND_CHANGE_STATE,
-          .name = "card",
-          .name_size = strlen("card"),
-          .parse = parse_cardinality,
+          .name = "quant",
+          .name_size = strlen("quant"),
+          .parse = parse_quantif,
           .obj = self
         },
         { .type = KND_CHANGE_STATE,

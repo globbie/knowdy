@@ -463,6 +463,29 @@ knd_spec_buf_copy(struct kndTaskSpec *spec,
 }
 
 static int
+knd_spec_get_num(struct kndTaskSpec *spec,
+                 const char *val,
+                 size_t val_size)
+{
+    char buf[KND_SHORT_NAME_SIZE + 1];
+    long numval;
+    int err;
+
+    if (val_size > KND_SHORT_NAME_SIZE) return knd_LIMIT;
+
+    memcpy(buf, val, val_size);
+    buf[val_size] = '\0';
+
+    err = knd_parse_num(buf, &numval);
+    if (err) return err;
+    if (numval < 0) return knd_LIMIT;
+
+    *spec->num = (size_t)numval;
+
+    return knd_OK;
+}
+
+static int
 knd_find_spec(struct kndTaskSpec *specs,
               size_t num_specs,
               const char *name,
@@ -732,6 +755,17 @@ knd_check_field_terminal_value(const char *val,
         return knd_OK;
     }
 
+<<<<<<< HEAD
+=======
+    if (spec->num) {
+        err = knd_spec_get_num(spec, b, name_size);
+        if (err) return err;
+        if (!spec->is_selector)
+            spec->is_completed = true;
+        return knd_OK;
+    }
+
+>>>>>>> devel
     // FIXME(ki.stfu): ?? valid case
     // FIXME(ki.stfu): ?? push to args only if spec->run != NULL
     err = knd_args_push_back(spec->name, spec->name_size, val, val_size, args, num_args);

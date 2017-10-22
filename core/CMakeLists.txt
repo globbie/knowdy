@@ -1,22 +1,18 @@
 set(SOURCES
         src/knd_attr.c
-        src/knd_coderef.c
         src/knd_concept.c
         src/knd_elem.c
-        src/knd_facet.c
+        src/knd_mempool.c
         src/knd_msg.c
         src/knd_num.c
         src/knd_object.c
-        src/knd_objref.c
         src/knd_output.c
-        src/knd_policy.c
-        src/knd_query.c
-        src/knd_refset.c
         src/knd_repo.c
-        src/knd_sorttag.c
         src/knd_task.c
         src/knd_text.c
+        src/knd_proc.c
         src/knd_ref.c
+        src/knd_rel.c
         src/knd_user.c
         src/knd_utils.c
         src/knd_array.c

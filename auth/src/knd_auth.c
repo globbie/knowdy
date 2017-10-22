@@ -339,7 +339,7 @@ static int run_check_sid(void *obj,
     self->sid[sid_size] = '\0';
     self->sid_size = sid_size;
 
-    if (DEBUG_AUTH_LEVEL_TMP)
+    if (DEBUG_AUTH_LEVEL_2)
         knd_log("== check sid: \"%.*s\"", sid_size, sid);
 
     tok_rec = self->token_idx->get(self->token_idx, sid);
@@ -355,11 +355,12 @@ static int run_check_sid(void *obj,
 
     user_rec = tok_rec->user;
 
-    if (DEBUG_AUTH_LEVEL_TMP)
+    if (DEBUG_AUTH_LEVEL_2)
         knd_log("++ sid approved: \"%.*s\" USER: %.*s",
                 sid_size, sid,
                 user_rec->name_size, user_rec->name);
 
+    self->out->reset(self->out);
     err = self->out->write(self->out,
                            "{\"http_code\":200", strlen("{\"http_code\":200"));
     if (err) return err;
@@ -411,7 +412,7 @@ static int parse_user(void *obj,
         }
     };
     int err;
-    
+
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) {
         knd_log("-- task parse error: %d", err);
@@ -534,7 +535,6 @@ static int kndAuth_start(struct kndAuth *self)
     return knd_OK;
 }
 
-
 static int
 run_set_service_addr(void *obj,
                      struct kndTaskArg *args, size_t num_args)
@@ -555,14 +555,12 @@ run_set_service_addr(void *obj,
     if (!addr_size) return knd_FAIL;
 
     self = (struct kndAuth*)obj;
-
     if (DEBUG_AUTH_LEVEL_1)
         knd_log(".. set service addr to \"%.*s\"", addr_size, addr);
 
     memcpy(self->addr, addr, addr_size);
     self->addr[addr_size] = '\0';
     self->addr_size = addr_size;
-
     
     return knd_OK;
 }

@@ -374,7 +374,13 @@ typedef enum knd_storage_type {
 #define KND_MAX_ERR_MSG_BUF_SIZE 1024 * 10 * sizeof(char)
 #define KND_MAX_UPDATE_BUF_SIZE 1024 * 100 * sizeof(char)
 
+#define KND_MIN_CLASSES 1024
 #define KND_MIN_OBJS 1024
+#define KND_MIN_ELEMS 1024
+#define KND_MIN_RELS 1024
+#define KND_MIN_REL_INSTANCES 1024
+#define KND_MIN_PROCS 1024
+#define KND_MIN_PROC_INSTANCES 1024
 
 #define KND_MAX_TEXT_CHUNK_SIZE 1024 * 10
 #define KND_MAX_DEBUG_CHUNK_SIZE 256

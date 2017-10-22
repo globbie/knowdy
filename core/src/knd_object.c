@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "knd_concept.h"
+#include "knd_mempool.h"
 #include "knd_attr.h"
 #include "knd_elem.h"
 #include "knd_repo.h"
@@ -67,7 +68,6 @@ kndObject_export_aggr_JSON(struct kndObject *self)
 
     elem = self->elems;
     while (elem) {
-
         elem->out = self->out;
         elem->format = KND_FORMAT_JSON;
         err = elem->export(elem);
@@ -77,7 +77,6 @@ kndObject_export_aggr_JSON(struct kndObject *self)
             err = self->out->write(self->out, ",", 1);
             if (err) return err;
         }
-
         elem = elem->next;
     }
 
@@ -565,12 +564,11 @@ static int parse_elem(void *data,
 
     switch (attr->type) {
     case KND_ATTR_AGGR:
-        err = kndConcept_alloc_obj(self->conc->root_class, &obj);
+        err = self->mempool->new_obj(self->mempool, &obj);
         if (err) return err;
         
         obj->type = KND_OBJ_AGGR;
         if (!attr->conc) {
-            
             if (self->phase == KND_FROZEN || self->phase == KND_SUBMITTED) {
                 if (DEBUG_OBJ_LEVEL_2) {
                     knd_log(".. resolve attr \"%.*s\": \"%.*s\"..",
@@ -943,77 +941,6 @@ static int parse_GSL(struct kndObject *self,
     return knd_OK;
 }
 
-static int 
-kndObject_contribute(struct kndObject *self,
-                     size_t  matchpoint_num,
-                     size_t orig_pos)
-{
-    struct kndMatchPoint *mp;
-    //struct kndMatchResult *res;
-    //float score;
-    int idx_pos, err;
-
-    if (!self->num_matchpoints) return knd_OK;
-
-    if ((matchpoint_num) > self->num_matchpoints) return knd_OK;
-    
-    /*if (self->cache->repo->match_state > self->match_state) {
-        self->match_state = self->cache->repo->match_state;
-        memset(self->matchpoints, 0, sizeof(struct kndMatchPoint) * self->num_matchpoints);
-        self->match_score = 0;
-        self->match_idx_pos = -1;
-    }
-    */
-    
-    mp = &self->matchpoints[matchpoint_num];
-
-    if (mp->orig_pos) {
-        knd_log("  .. this matchpoint was already covered by another unit?\n");
-        err = knd_FAIL;
-        goto final;
-    }
-    
-    mp->score = KND_MATCH_MAX_SCORE;
-    self->match_score += mp->score;
-    mp->orig_pos = orig_pos;
-    
-    self->average_score = (float)self->match_score / (float)self->max_score;
-
-    /*knd_log("   == \"%s\": matched in %lu!    SCORE: %.2f [%lu:%lu]\n",
-            self->name,
-            (unsigned long)matchpoint_num,
-            self->average_score,
-            (unsigned long)self->match_score,
-            (unsigned long)self->max_score); */
-
-    if (self->average_score >= KND_MATCH_SCORE_THRESHOLD) {
-
-        knd_log("   ++ \"%s\": matching threshold reached: %.2f!\n",
-                self->name, self->average_score);
-
-        if (self->match_idx_pos >= 0)
-            idx_pos = self->match_idx_pos;
-        else {
-
-            /*if (self->cache->num_matches > KND_MAX_MATCHES) {
-                knd_log("  -- results buffer limit reached :(\n");
-                return knd_FAIL;
-            }
-                
-            idx_pos = self->cache->num_matches;
-            self->match_idx_pos = idx_pos;
-            self->cache->matches[idx_pos] = self;
-            self->cache->num_matches++; */
-        }
-
-    }
-    
-    err = knd_OK;
- final:
-    
-    return err;
-}
-
 
 static int 
 kndObject_resolve(struct kndObject *self)
@@ -1044,170 +971,6 @@ kndObject_resolve(struct kndObject *self)
     return knd_OK;
 }
 
-static int 
-kndObject_sync(struct kndObject *self)
-{
-    struct kndElem *elem;
-    struct kndConcept *conc;
-    struct kndObject *obj;
-    struct kndRefSet *refset = NULL;
-    struct kndSortTag *tag;
-    struct kndSortAttr *attr;
-    struct kndSortAttr *a;
-    struct kndObjRef *ref;
-    int err;
-
-    /*if (DEBUG_OBJ_LEVEL_TMP) {
-        if (!self->root) {
-            knd_log("\n    !! syncing primary OBJ %s::%s\n",
-                    self->id, self->name);
-        }
-        else {
-            knd_log("    .. syncing aggr obj %s..\n",
-                    self->parent->name);
-        }
-        }
-    */
-    
-    elem = self->elems;
-    while (elem) {
-        /* resolve refs of aggr obj */
-        if (elem->aggr) {
-            obj = elem->aggr;
-            
-            knd_log("    .. syncing aggr obj in %s..\n",
-                    elem->attr->name);
-
-            while (obj) {
-                err = obj->sync(obj);
-                if (err) return err;
-                obj = obj->next;
-            }
-            
-            goto next_elem;
-        }
-        
-        if (!elem->attr) goto next_elem;
-        if (elem->attr->type != KND_ATTR_REF)
-            goto next_elem;
-        
-        conc = elem->attr->conc;
-        if (!conc) goto next_elem;
-
-        /*
-        if (elem->ref_class)
-            conc = elem->ref_class;
-        
-        if (DEBUG_OBJ_LEVEL_TMP)
-            knd_log("\n    .. sync expanding ELEM REF: %s::%s..\n",
-                    conc->name,
-                    elem->states->val);
-
-        obj = elem->states->refobj;
-        if (!obj) {
-            err = self->cache->repo->get_cache(self->cache->repo, conc, &cache);
-            if (err) return knd_FAIL;
-
-            err = self->cache->name_idx->lookup_name(self->cache->name_idx,
-                                                     self->name, self->name_size,
-                                                     self->name, self->name_size, idbuf);
-            if (err) {
-                if (DEBUG_OBJ_LEVEL_TMP)
-                    knd_log("  -- failed to sync expand ELEM REF: %s::%s :(\n",
-                        conc->name,
-                        elem->states->val);
-                goto next_elem;
-            }
-            elem->states->refobj = obj;
-        }
-        */
-        
-        next_elem:
-        elem = elem->next;
-    }
-
-    if (!self->tag) {
-        if (DEBUG_OBJ_LEVEL_3)
-            knd_log("    -- obj %s:%s is not meant for browsing\n",
-                    self->id, self->name);
-        return knd_OK;
-    }
-
-  
-    for (size_t i = 0; i < self->tag->num_attrs; i++) {
-        attr = self->tag->attrs[i];
-        
-        /*err = kndObject_get_idx(self,
-                                (const char*)attr->name,
-                                attr->name_size, &refset);
-        if (err) {
-            knd_log("  -- no refset %s :(\n", attr->name);
-            return err;
-        }
-        */
-        
-        err = kndObjRef_new(&ref);
-        if (err) return err;
-        
-        ref->obj = self;
-        if (self->root)
-            ref->obj = self->root;
-        
-        memcpy(ref->obj_id, ref->obj->id, KND_ID_SIZE);
-        ref->obj_id_size = KND_ID_SIZE;
-    
-        memcpy(ref->name, ref->obj->name, ref->obj->name_size);
-        ref->name_size = ref->obj->name_size;
-
-        err = kndSortTag_new(&tag);
-        if (err) return err;
-
-        ref->sorttag = tag;
-
-        a = malloc(sizeof(struct kndSortAttr));
-        if (!a) return knd_NOMEM;
-        memset(a, 0, sizeof(struct kndSortAttr));
-        a->type = attr->type;
-    
-        memcpy(a->name, attr->name, attr->name_size);
-        a->name_size = attr->name_size;
-            
-        memcpy(a->val, attr->val, attr->val_size);
-        a->val_size = attr->val_size;
-
-        tag->attrs[tag->num_attrs] = a;
-        tag->num_attrs++;
-
-        /* subordinate objs not included to AZ */
-        if (self->is_subord) {
-            if (!strcmp(attr->name, "AZ")) {
-                if (DEBUG_OBJ_LEVEL_3)
-                    knd_log("  -- %s:%s excluded from AZ\n", self->id, self->name);
-                continue;
-            }
-        }
-        
-        /*if (DEBUG_OBJ_LEVEL_TMP)
-            knd_log("  .. add ref: %s %p", ref->obj_id, refset);
-        */
-        
-        err = refset->add_ref(refset, ref);
-        if (DEBUG_OBJ_LEVEL_TMP)
-            knd_log("  .. result: %d", err);
-        if (err) {
-            if (DEBUG_OBJ_LEVEL_TMP) {
-                ref->str(ref, 1);
-                knd_log("  -- ref \"%s\" not added to refset :(\n", ref->obj_id);
-            }
-            return err;
-        }
-        
-    }
-    
-    
-    return knd_OK;
-}
-
 
 extern void
 kndObject_init(struct kndObject *self)
@@ -1215,15 +978,10 @@ kndObject_init(struct kndObject *self)
     self->del = del;
     self->str = str;
 
-    //self->flatten = kndObject_flatten;
-    //self->match = kndObject_match;
-    self->contribute = kndObject_contribute;
-
     self->parse = parse_GSL;
     self->read = parse_GSL;
     self->resolve = kndObject_resolve;
     self->export = kndObject_export;
-    self->sync = kndObject_sync;
 }
 
 extern int

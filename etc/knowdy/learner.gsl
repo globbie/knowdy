@@ -4,8 +4,16 @@
       {path /var/lib/knowdy/db}
       {schemas /etc/knowdy/schemas}
       {sid AUTH_SERVER_SID}
-      {max_objs 2500000}
 
+      {memory
+         {max_classes 100000}
+         {max_objs 500000}
+         {max_elems 2500000}
+         {max_rels 1000}
+         {max_rel_instances 1000000}
+         {max_procs 1000}
+         {max_proc_instances 1000000}
+      }
       {delivery ipc:///var/lib/knowdy/delivery/inbox}
 
       {write_inbox
