@@ -349,7 +349,8 @@ knd_parse_IPV4(char *ip, unsigned long *ip_val)
 static int
 knd_spec_is_correct(struct kndTaskSpec *spec)
 {
-    knd_log(".. check spec: %.*s..", spec->name_size, spec->name);
+    if (DEBUG_PARSER_LEVEL_3) 
+        knd_log(".. check spec: %.*s..", spec->name_size, spec->name);
 
     // Check the fields are not mutually exclusive (by groups):
 
@@ -417,10 +418,19 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
         assert(spec->validate != NULL);
     }
 
+    if (spec->is_list) {
+        assert(spec->accu != NULL);
+        assert(spec->alloc != NULL);
+        assert(spec->append != NULL);
+        assert(spec->parse != NULL);
+        assert(spec->obj == NULL);
+    }
+
     if (spec->parse) {
         assert(spec->name != NULL);
         assert(spec->buf == NULL);
-        assert(spec->obj != NULL);
+        if (!spec->is_list)
+            assert(spec->obj != NULL);
     }
 
     // if (spec->validate)  -- already handled in spec->is_validator
@@ -813,7 +823,7 @@ int knd_parse_task(const char *rec,
     b = rec;
     e = rec;
 
-    if (DEBUG_PARSER_LEVEL_TMP)
+    if (DEBUG_PARSER_LEVEL_2)
         knd_log("\n\n*** start basic PARSING: \"%.*s\" num specs: %zu [%p]",
                 16, rec, num_specs, specs);
 

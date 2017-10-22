@@ -1289,7 +1289,7 @@ static int parse_import_class(void *obj,
     char time[KND_NAME_SIZE];
     size_t time_size = 0;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. import \"%.*s\" class..", 16, rec);
 
     err  = self->mempool->new_class(self->mempool, &c);
