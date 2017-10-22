@@ -349,6 +349,8 @@ knd_parse_IPV4(char *ip, unsigned long *ip_val)
 static int
 knd_spec_is_correct(struct kndTaskSpec *spec)
 {
+    knd_log(".. check spec: %.*s..", spec->name_size, spec->name);
+
     // Check the fields are not mutually exclusive (by groups):
 
     assert(spec->type == KND_GET_STATE || spec->type == KND_CHANGE_STATE);
@@ -434,6 +436,7 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
         assert(spec->parse == NULL);
         // |spec->validate| can be NULL
         assert(spec->run == NULL);
+        assert(spec->num == NULL);
     }
 
     if (spec->num) {

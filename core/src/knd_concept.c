@@ -1289,11 +1289,8 @@ static int parse_import_class(void *obj,
     char time[KND_NAME_SIZE];
     size_t time_size = 0;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. import \"%.*s\" class..", 16, rec);
-
-    /*err = kndConcept_new(&c);
-      if (err) return err;*/
 
     err  = self->mempool->new_class(self->mempool, &c);
     if (err) return err;
@@ -1583,6 +1580,28 @@ static int parse_select_obj(void *data,
 }
 
 
+static int run_get_schema(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndConcept *self = obj;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    size_t name_size = 0;
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!memcmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+    if (!name_size) return knd_FAIL;
+    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+    /* TODO: get current schema */
+
+    return knd_OK;
+}
+
 static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndConcept *self = (struct kndConcept*)obj;
@@ -1652,17 +1671,13 @@ static int parse_schema(void *self,
                         const char *rec,
                         size_t *total_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
-
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. parse schema REC: \"%s\"..", rec);
+        knd_log(".. parse schema REC: \"%.*s\"..", 32, rec);
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
-          .buf = buf,
-          .buf_size = &buf_size,
-          .max_buf_size = KND_NAME_SIZE,
+          .run = run_get_schema,
+          .obj = self
         },
         { .type = KND_CHANGE_STATE,
           .name = "class",
@@ -1675,9 +1690,6 @@ static int parse_schema(void *self,
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("++ schema parse OK!");
 
     return knd_OK;
 }
