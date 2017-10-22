@@ -755,6 +755,14 @@ knd_check_field_terminal_value(const char *val,
         return knd_OK;
     }
 
+    if (spec->num) {
+        err = knd_spec_get_num(spec, b, name_size);
+        if (err) return err;
+        if (!spec->is_selector)
+            spec->is_completed = true;
+        return knd_OK;
+    }
+
     // FIXME(ki.stfu): ?? valid case
     // FIXME(ki.stfu): ?? push to args only if spec->run != NULL
     err = knd_args_push_back(spec->name, spec->name_size, val, val_size, args, num_args);
