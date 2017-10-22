@@ -36,9 +36,9 @@ typedef enum knd_task_spec_type { KND_GET_STATE,
 
 struct kndTaskArg
 {
-    char name[KND_NAME_SIZE];
+    char name[KND_NAME_SIZE + 1];  // null-terminated string
     size_t name_size;
-    char val[KND_NAME_SIZE];
+    char val[KND_NAME_SIZE + 1];  // null-terminated string
     size_t val_size;
 };
 

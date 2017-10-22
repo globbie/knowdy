@@ -1239,6 +1239,10 @@ static int parse_import_class(void *obj,
     struct kndConcDir *dir;
     int err;
 
+    // TODO(ki.stfu): Don't ignore this field
+    char time[KND_NAME_SIZE];
+    size_t time_size = 0;
+
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. import \"%.*s\" class..", 16, rec);
 
@@ -1303,6 +1307,14 @@ static int parse_import_class(void *obj,
           .name_size = strlen("num"),
           .parse = parse_num,
           .obj = c
+        },
+        // FIXME(ki.stfu): Temporary spec to ignore the time tag
+        { .type = KND_CHANGE_STATE,
+          .name = "time",
+          .name_size = strlen("time"),
+          .buf = time,
+          .buf_size = &time_size,
+          .max_buf_size = KND_NAME_SIZE
         },
         {  .type = KND_CHANGE_STATE,
            .name = "ref",
@@ -1588,7 +1600,7 @@ static int run_read_include(void *obj, struct kndTaskArg *args, size_t num_args)
 
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
-        if (!memcmp(arg->name, "_impl", strlen("_impl"))) {
+        if (arg->name_size == strlen("_impl") && !memcmp(arg->name, "_impl", arg->name_size)) {
             name = arg->val;
             name_size = arg->val_size;
         }
@@ -1654,16 +1666,14 @@ static int parse_include(void *self,
         knd_log(".. parse include REC: \"%s\"..", rec);
 
     struct kndTaskSpec specs[] = {
-        { .name = "default",
-          .name_size = strlen("default"),
-          .is_default = true,
+        { .is_implied = true,
           .run = run_read_include,
           .obj = self
         },
-        { .name = "lazy",
-          .name_size = strlen("lazy"),
-          .obj = self
-        }
+        //{ .name = "lazy",
+        //  .name_size = strlen("lazy"),
+        //  .obj = self
+        //}
     };
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
