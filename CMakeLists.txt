@@ -30,6 +30,7 @@ find_path(ZEROMQ_INCLUDE_DIR NAMES zmq.h PATHS ${ZEROMQ_INCLUDE_DIRS})
 find_library(ZEROMQ_LIBRARY NAMES zmq PATHS ${ZEROMQ_LIBRARY_DIRS})
 include_directories(${ZEROMQ_INCLUDE_DIR})
 
+
 #pkg_check_modules(MYSQL REQUIRED mysqlclient)
 #find_path(MYSQL_INCLUDE_DIR NAMES mysql.h PATHS ${MYSQL_INCLUDE_DIRS})
 #find_library(MYSQL_LIBRARY NAMES mysqlclient PATHS ${MYSQL_LIBRARY_DIRS})

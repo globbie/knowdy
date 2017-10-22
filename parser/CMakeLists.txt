@@ -11,7 +11,12 @@ set(TEST_SOURCES
 
 add_executable(${TEST_BINARY} ${TEST_SOURCES})
 
-set(CHECK_LIBRARY check_pic pthread rt m subunit)  # pkg-config --libs check
+pkg_check_modules(CHECK REQUIRED check)
+find_path(CHECK_INCLUDE_DIR NAMES check.h PATHS ${CHECK_INCLUDE_DIRS})
+find_library(CHECK_LIBRARY NAMES check PATHS ${CHECK_LIBRARY_DIRS})
+include_directories(${CHECK_INCLUDE_DIR})
+
+set(CHECK_LIBRARY check pthread rt m subunit)  # pkg-config --libs check
 
 target_link_libraries(${TEST_BINARY} ${CHECK_LIBRARY} ${PARSER}_static ${CORE}_static)
 
