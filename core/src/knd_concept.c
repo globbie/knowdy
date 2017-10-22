@@ -80,7 +80,6 @@ static int build_diff(struct kndConcept *self,
 /*  Concept Destructor */
 static void del(struct kndConcept *self)
 {
-    free(self);
 }
 
 static void str_attr_items(struct kndAttrItem *items, size_t depth)
@@ -119,8 +118,8 @@ static void str(struct kndConcept *self)
 
     if (self->num_base_items) {
         for (item = self->base_items; item; item = item->next) {
-            knd_log("%*s_base \"%.*s\" %.*s", (self->depth + 1) * KND_OFFSET_SIZE, "",
-                    KND_ID_SIZE, item->id, item->classname_size, item->classname);
+            knd_log("%*s_base \"%.*s\"", (self->depth + 1) * KND_OFFSET_SIZE, "",
+                    item->name_size, item->name);
             if (item->attrs) {
                 str_attr_items(item->attrs, self->depth + 1);
             }
@@ -764,12 +763,12 @@ static int parse_aggr(void *obj,
                       const char *rec,
                       size_t *total_size)
 {
-    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndConcept *self = obj;
     struct kndAttr *attr;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. parsing the AGGR attr: \"%s\"", rec);
+        knd_log(".. parsing the AGGR attr: \"%.*s\"", 32, rec);
 
     err = kndAttr_new(&attr);
     if (err) return err;
@@ -792,6 +791,8 @@ static int parse_aggr(void *obj,
         self->tail_attr = attr;
     }
 
+    if (DEBUG_CONC_LEVEL_2)
+        attr->str(attr);
 
     /* TODO: resolve attr if read from GSP */
     
@@ -976,8 +977,8 @@ static int run_set_conc_item(void *obj, struct kndTaskArg *args, size_t num_args
     item->name[name_size] = '\0';
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("== baseclass item name set: \"%.*s\"",
-                item->name_size, item->name);
+        knd_log("== baseclass item name set: \"%.*s\" %p",
+                item->name_size, item->name, item);
 
     item->next = self->base_items;
     self->base_items = item;
@@ -1150,7 +1151,7 @@ static int parse_baseclass(void *obj,
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. parsing the base class: \"%.*s\"", 16, rec);
+        knd_log(".. parsing the base class: \"%.*s\"", 32, rec);
 
     struct kndTaskSpec specs[] = {
         { .name = "baseclass item",
@@ -1290,7 +1291,7 @@ static int parse_import_class(void *obj,
     size_t time_size = 0;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. import \"%.*s\" class..", 16, rec);
+        knd_log(".. import \"%.*s\" class..", 64, rec);
 
     err  = self->mempool->new_class(self->mempool, &c);
     if (err) return err;
@@ -1322,6 +1323,14 @@ static int parse_import_class(void *obj,
         },
         { .type = KND_CHANGE_STATE,
           .is_list = true,
+          .name = "_gloss",
+          .name_size = strlen("_gloss"),
+          .accu = c,
+          .alloc = gloss_alloc,
+          .append = gloss_append,
+          .parse = read_gloss
+        },
+        { .is_list = true,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
           .accu = c,
@@ -2918,7 +2927,7 @@ static int read_GSP(struct kndConcept *self,
     size_t buf_size = 0;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. read \"%.*s\" class..", 32, rec);
 
     struct kndTaskSpec specs[] = {
@@ -3022,8 +3031,8 @@ static int coordinate(struct kndConcept *self)
     void *val;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
-        knd_log(".. class coordination ..");
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. class coordination in progress ..");
 
     /* names to refs */
     err = resolve_class_refs(self);
@@ -3042,7 +3051,7 @@ static int coordinate(struct kndConcept *self)
             err = inherit_attrs(c, item->conc);
             if (err) return err;
 
-            /* validate attr items */
+            /* TODO: validate attr items */
             /*if (item->attrs) {
               err = validate_attr_items(c, item->attrs);
               if (err) return err;
@@ -3058,7 +3067,7 @@ static int coordinate(struct kndConcept *self)
     } while (key);
 
     /* display all classes */
-    if (DEBUG_CONC_LEVEL_1) {
+    if (DEBUG_CONC_LEVEL_2) {
         key = NULL;
         self->class_idx->rewind(self->class_idx);
         do {

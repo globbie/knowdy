@@ -349,7 +349,7 @@ knd_parse_IPV4(char *ip, unsigned long *ip_val)
 static int
 knd_spec_is_correct(struct kndTaskSpec *spec)
 {
-    if (DEBUG_PARSER_LEVEL_3) 
+    if (DEBUG_PARSER_LEVEL_2) 
         knd_log(".. check spec: %.*s..", spec->name_size, spec->name);
 
     // Check the fields are not mutually exclusive (by groups):
@@ -1010,12 +1010,9 @@ int knd_parse_task(const char *rec,
             break;
         case '(':
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log(".. basic LOOP %p detected func area: \"%s\"\n", specs, c);
+                knd_log(".. basic LOOP %p detected the state change area: \"%s\"\n", specs, c);
  
             if (in_implied_field) {
-                if (DEBUG_PARSER_LEVEL_2)
-                    knd_log(".. basic LOOP is in implied field!");
-
                 err = knd_check_implied_field(b, e - b, specs, num_specs, args, &num_args);
                 if (err) return err;
                 in_implied_field = false;
@@ -1120,7 +1117,7 @@ int knd_parse_task(const char *rec,
             
             err = knd_parse_list(c, &chunk_size, specs, num_specs);
             if (err) {
-                knd_log("-- basic LOOP failed to parse the list area \"%.*s\" :(", 16, c);
+                knd_log("-- basic LOOP failed to parse the list area \"%.*s\" :(", 32, c);
                 return err;
             }
             c += chunk_size;
@@ -1168,6 +1165,7 @@ static int knd_parse_state_change(const char *rec,
     bool in_tag = false;
     bool in_field = false;
     bool in_implied_field = false;
+    bool in_terminal = false;
 
     size_t chunk_size;
     int err;
@@ -1177,7 +1175,7 @@ static int knd_parse_state_change(const char *rec,
     e = rec;
 
     if (DEBUG_PARSER_LEVEL_2)
-        knd_log("\n\n == start FUNC parse: \"%.*s\" num specs: %lu [%p]",
+        knd_log("\n\n == parsing the state change area: \"%.*s\" num specs: %lu [%p]",
                 16, rec, (unsigned long)num_specs, specs);
 
     while (*c) {
@@ -1196,7 +1194,7 @@ static int knd_parse_state_change(const char *rec,
             if (err) return err;
 
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ FUNC LOOP got tag: \"%.*s\" [%lu]",
+                knd_log("++ state change loop got tag: \"%.*s\" [%lu]",
                         name_size, b, (unsigned long)name_size);
 
             err = knd_find_spec(specs, num_specs, b, name_size, KND_CHANGE_STATE, &spec);
@@ -1207,7 +1205,7 @@ static int knd_parse_state_change(const char *rec,
             }
 
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ got func SPEC: \"%.*s\" default: %d  terminal: %d",
+                knd_log("++ got SPEC: \"%.*s\" default: %d  terminal: %d",
                         spec->name_size, spec->name, spec->is_default, spec->is_terminal);
 
             if (spec->validate) {
@@ -1255,7 +1253,8 @@ static int knd_parse_state_change(const char *rec,
                             spec->name, specs, c);
                 break;
             }
-            
+
+            in_terminal = true; // OK?
             in_tag = true;
             b = c + 1;
             e = b;
@@ -1306,8 +1305,8 @@ static int knd_parse_state_change(const char *rec,
                     return err;
                 }
 
-                if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("++ got func SPEC: \"%s\"  default: %d  terminal: %d",
+                if (DEBUG_PARSER_LEVEL_TMP)
+                    knd_log("++ got SPEC: \"%s\"  default: %d  terminal: %d",
                             spec->name, spec->is_default, spec->is_terminal);
             }
 
@@ -1320,21 +1319,24 @@ static int knd_parse_state_change(const char *rec,
             }
             
             /* copy to buf */
-            if (spec->is_terminal) {
+            if (in_terminal) {
                 err = check_name_limits(b, e, &name_size);
                 if (err) {
                     knd_log("-- name limit reached :(");
                     return err;
                 }
-            
                 if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("++ got func terminal: \"%.*s\" [%lu]",
+                    knd_log("++ got state change terminal: \"%.*s\" [%lu]",
                             name_size, b, (unsigned long)name_size);
-                
+
                 err = knd_spec_buf_copy(spec, b, name_size);
                 if (err) return err;
                 spec->is_completed = true;
+
+                *total_size = c - rec;
+                return knd_OK;
             }
+
             
             if (spec->run) {
                 err = spec->run(spec->obj, args, num_args);
@@ -1407,6 +1409,8 @@ static int knd_parse_list(const char *rec,
         case '\t':
         case ' ':
             if (!in_list) break;
+            if (!in_item) break;
+
             if (got_tag) {
 
                 if (spec->is_atomic) {

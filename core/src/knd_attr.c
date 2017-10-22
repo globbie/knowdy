@@ -638,20 +638,13 @@ static int parse_GSL(struct kndAttr *self,
           .run = run_set_name,
           .obj = self
         },
-        { .type = KND_CHANGE_STATE,
-          .name = "gloss",
-          .name_size = strlen("gloss"),
-          .parse = parse_gloss_change,
-          .obj = self
-        },
         { .is_list = true,
-          .name = "_g",
-          .name_size = strlen("_g"),
+          .name = "_gloss",
+          .name_size = strlen("_gloss"),
           .accu = self,
           .alloc = gloss_alloc,
           .append = gloss_append,
-          .parse = read_gloss,
-          .obj = self
+          .parse = read_gloss
         },
         { .type = KND_CHANGE_STATE,
           .name = "c",
@@ -659,14 +652,12 @@ static int parse_GSL(struct kndAttr *self,
           .buf = self->ref_classname,
           .buf_size = &self->ref_classname_size,
           .max_buf_size = KND_NAME_SIZE,
-          .obj = self
         },
         { .name = "c",
           .name_size = strlen("c"),
           .buf = self->ref_classname,
           .buf_size = &self->ref_classname_size,
           .max_buf_size = KND_NAME_SIZE,
-          .obj = self
         },
         { .type = KND_CHANGE_STATE,
           .name = "quant",
@@ -700,11 +691,18 @@ static int parse_GSL(struct kndAttr *self,
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
 
-    if (!*self->ref_classname)
-        self->ref_classname_size = 0;
-    if (!*self->default_val)
+    if (self->type == KND_ATTR_AGGR) {
+        if (!self->ref_classname_size) {
+            knd_log("-- ref class not specified in %.*s",
+                    self->name_size, self->name);
+            return knd_FAIL;
+        }
+    }
+
+    /*if (!*self->default_val)
         self->default_val_size = 0;
-    
+    */
+
     return knd_OK;
 }
 
