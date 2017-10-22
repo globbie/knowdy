@@ -756,7 +756,7 @@ knd_check_field_terminal_value(const char *val,
     }
 
     if (spec->num) {
-        err = knd_spec_get_num(spec, b, name_size);
+        err = knd_spec_get_num(spec, val, val_size);
         if (err) return err;
         if (!spec->is_selector)
             spec->is_completed = true;
