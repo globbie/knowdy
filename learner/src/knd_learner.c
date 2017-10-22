@@ -152,6 +152,11 @@ kndLearner_start(struct kndLearner *self)
 
     final:
 
+        if (!self->task->tid_size) {
+            self->task->tid[0] = '0';
+            self->task->tid_size = 1;
+        }
+            
         err = self->task->report(self->task);
         if (err) {
             knd_log("-- task report failed: %d", err);
@@ -191,7 +196,6 @@ static int parse_publisher_service_addr(void *obj,
     
     return knd_OK;
 }
-
 
 static int
 parse_write_inbox_addr(void *obj,
@@ -250,7 +254,7 @@ static int run_set_max_objs(void *obj, struct kndTaskArg *args, size_t num_args)
 
     self->max_objs = numval;
 
-    if (DEBUG_LEARNER_LEVEL_TMP)
+    if (DEBUG_LEARNER_LEVEL_2)
         knd_log("++ MAX OBJS: %lu", (unsigned long)self->max_objs);
 
     return knd_OK;
@@ -411,7 +415,7 @@ kndLearner_new(struct kndLearner **rec,
                const char *config)
 {
     struct kndLearner *self;
-    struct kndConcept *dc;
+    struct kndConcept *conc;
     size_t chunk_size;
     int err;
 
@@ -454,57 +458,78 @@ kndLearner_new(struct kndLearner **rec,
     self->task->agent_name_size = self->name_size;
     self->task->agent_name[self->name_size] = '\0';
 
-    err = kndConcept_new(&dc);
+    err = kndConcept_new(&conc);
     if (err) goto error;
 
-    dc->out = self->out;
-    dc->log = self->log;
-    dc->name[0] = '/';
-    dc->name_size = 1;
+    conc->out = self->out;
+    conc->log = self->log;
+    conc->name[0] = '/';
+    conc->name_size = 1;
 
-    dc->dbpath = self->schema_path;
-    dc->dbpath_size = self->schema_path_size;
+    conc->dir = malloc(sizeof(struct kndConcDir));
+    if (!conc->dir) return knd_NOMEM;
+    memset(conc->dir, 0, sizeof(struct kndConcDir));
+    memset(conc->dir->name, '0', KND_ID_SIZE);
+    conc->dir->name_size = KND_ID_SIZE;
+    conc->dir->conc = conc;
 
     /* specific allocations of the root class */
-    err = ooDict_new(&dc->class_idx, KND_MEDIUM_DICT_SIZE);
+    err = ooDict_new(&conc->class_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
     /* obj/elem allocator */
     if (!self->max_objs) self->max_objs = KND_MIN_OBJS;
 
-    dc->obj_storage = calloc(self->max_objs, sizeof(struct kndObject));
-    if (!dc->obj_storage) {
+    conc->obj_storage = calloc(self->max_objs, sizeof(struct kndObject));
+    if (!conc->obj_storage) {
         knd_log("-- objs not allocated :(");
         return knd_NOMEM;
     }
-    dc->max_objs = self->max_objs;
+    conc->max_objs = self->max_objs;
 
-    /* read class definitions */
-    dc->batch_mode = true;
-    err = dc->load(dc, "index", strlen("index"));
+    /* user idx */
+    if (self->max_users) {
+        self->admin->user_idx = calloc(self->max_users, 
+                                       sizeof(struct kndObject*));
+        if (!self->admin->user_idx) return knd_NOMEM;
+        self->admin->max_users = self->max_users;
+    }
+    
+    /* try opening the frozen DB */
+    conc->user = self->admin;
+    self->admin->root_class = conc;
+
+    err = conc->open(conc);
     if (err) {
-        knd_log("-- couldn't read any schema definitions :(");
-        goto error;
+        if (err != knd_NO_MATCH) goto error;
+        /* read class definitions */
+        knd_log("-- no frozen DB found, reading schemas..");
+        conc->dbpath = self->schema_path;
+        conc->dbpath_size = self->schema_path_size;
+        conc->batch_mode = true;
+        err = conc->load(conc, "index", strlen("index"));
+        if (err) {
+            knd_log("-- couldn't read any schema definitions :(");
+            goto error;
+        }
+        err = conc->coordinate(conc);
+        if (err) goto error;
+        conc->batch_mode = false;
     }
 
-    err = dc->coordinate(dc);
-    if (err) goto error;
+    conc->dbpath = self->path;
+    conc->dbpath_size = self->path_size;
 
-    dc->batch_mode = false;
-    dc->dbpath = self->path;
-    dc->dbpath_size = self->path_size;
-
-    /* read any existing updates to the frozen DB */
-    /*err = dc->restore(dc);
+    /* read any existing updates to the frozen DB (failure recovery) */
+    /*err = conc->restore(conc);
     if (err) return err;
     */
-    
     /* test
     err = dc->build_diff(dc, "0001");
     if (err) return err;
     */
 
-    self->admin->root_class = dc;
+    self->admin->root_class = conc;
 
     self->del = kndLearner_del;
     self->start = kndLearner_start;

@@ -34,6 +34,7 @@ typedef enum knd_state_phase { KND_SELECTED,
                                KND_CREATED,
                                KND_UPDATED,
                                KND_REMOVED,
+                               KND_FREED,
                                KND_FROZEN,
                                KND_RESTORED } knd_state_phase;
 
@@ -118,7 +119,7 @@ typedef enum knd_storage_type {
 
 #define KND_MAX_INT_SIZE 4
 
-#define KND_MAX_DEBUG_CONTEXT_SIZE 16
+#define KND_MAX_DEBUG_CONTEXT_SIZE 100
 
 #define KND_ID_SIZE  (4 * sizeof(char))
 #define KND_ID_BATCH_SIZE 10
@@ -135,7 +136,7 @@ typedef enum knd_storage_type {
 #define KND_DIR_SIZE_ENCODE_BASE 10
 #define KND_DIR_ENTRY_SIZE 16
 #define KND_MAX_ARGS 16
-#define KND_DIR_TRAILER_MAX_SIZE 1024 * 100
+#define KND_DIR_TRAILER_MAX_SIZE 1024 * 1024 * 10
 
 #define KND_MAX_BACKREFS 128
 
@@ -158,7 +159,7 @@ typedef enum knd_storage_type {
 #define KND_OBJ_METABUF_SIZE 1024
 
 #define KND_DEFAULT_CLASS_DEPTH 3
-#define KND_MAX_CLASS_DEPTH 2
+#define KND_MAX_CLASS_DEPTH 3
 #define KND_MAX_CLASS_BATCH 128
 
 #define KND_DEFAULT_OBJ_DEPTH 2
@@ -345,6 +346,7 @@ typedef enum knd_storage_type {
 #define KND_LARGE_BUF_SIZE 1024 * 1024 * 100
 #define KND_SMALL_BUF_SIZE 64
 #define KND_LABEL_SIZE 8
+#define KND_PATH_SIZE 1024
 #define KND_NAME_SIZE 512
 #define KND_SHORT_NAME_SIZE 64
 #define KND_VAL_SIZE 128

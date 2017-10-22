@@ -788,6 +788,10 @@ int knd_parse_task(const char *rec,
                 e = c + 1;
                 break;
             }
+            if (in_tag) {
+                e = c + 1;
+                break;
+            }
             /* comment out this region */
             err = knd_parse_matching_braces(c, 1, &chunk_size);
             if (err) return err;
@@ -1023,7 +1027,9 @@ int knd_parse_task(const char *rec,
                 if (in_implied_field) {
                     name_size = e - b;
                     if (name_size) {
-                        err = knd_check_implied_field(b, name_size, specs, num_specs, args, &num_args);
+                        err = knd_check_implied_field(b, name_size,
+                                                      specs, num_specs,
+                                                      args, &num_args);
                         if (err) return err;
                     }
                     in_implied_field = false;
@@ -1033,7 +1039,7 @@ int knd_parse_task(const char *rec,
                 err = check_name_limits(b, e, &name_size);
                 if (err) return err;
 
-                if (DEBUG_PARSER_LEVEL_TMP)
+                if (DEBUG_PARSER_LEVEL_2)
                     knd_log("++ BASIC LOOP got tag before square bracket: \"%.*s\" [%zu]",
                             name_size, b, name_size);
                   
@@ -1145,8 +1151,8 @@ static int knd_parse_state_change(const char *rec,
 
             err = knd_find_spec(specs, num_specs, b, name_size, KND_CHANGE_STATE, &spec);
             if (err) {
-                knd_log("-- no spec found to handle the \"%.*s\" change state tag :(",
-                        name_size, b);
+                knd_log("-- no spec found to handle the \"%.*s\" change state tag in \"%.*s\" :(",
+                        name_size, b, 32, c);
                 return err;
             }
 
@@ -1191,6 +1197,8 @@ static int knd_parse_state_change(const char *rec,
                 in_tag = false;
                 b = c + 1;
                 e = b;
+
+                spec->is_completed = true;
 
                 if (DEBUG_PARSER_LEVEL_2)
                     knd_log("== END func parsing spec \"%s\" [%p] at: \"%s\"\n\n",
@@ -1243,8 +1251,8 @@ static int knd_parse_state_change(const char *rec,
 
                 err = knd_find_spec(specs, num_specs, b, name_size, KND_CHANGE_STATE, &spec);
                 if (err) {
-                    knd_log("-- no spec found to handle the \"%.*s\" change state tag :(",
-                            name_size, b);
+                    knd_log("-- no spec found to handle the \"%.*s\" change state tag, rec:  \"%.*s\" :(",
+                            name_size, b, 16, c);
                     return err;
                 }
 
@@ -1492,6 +1500,9 @@ static int knd_parse_list(const char *rec,
             break;
         case ']':
             if (!in_list) return knd_FAIL;
+
+            /* list requires a tag and some items */
+            if (!got_tag) return knd_FAIL;
 
             *total_size = c - rec;
             return knd_OK;

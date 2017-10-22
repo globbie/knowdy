@@ -114,7 +114,7 @@ static int run_set_error(void *obj,
 
     self = (struct kndDelivery*)obj;
 
-    if (DEBUG_DELIV_LEVEL_TMP)
+    if (DEBUG_DELIV_LEVEL_2)
         knd_log(".. set the error: \"%.*s\"", name_size, name);
 
     if (self->num_tids >= self->max_tids)

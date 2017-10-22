@@ -31,6 +31,12 @@
 
 static void del(struct kndElem *self)
 {
+    struct kndElemState *state;
+
+    if (self->aggr)
+        self->aggr->del(self->aggr);
+    if (self->num)
+        self->num->del(self->num);
 
     free(self);
 }
@@ -297,6 +303,8 @@ kndElem_export_GSP(struct kndElem *self)
     /* key:value repr */
     switch (self->attr->type) {
     case KND_ATTR_NUM:
+        knd_log("OUT:%p  free:%zu total:%zu", out, out->free_space, out->buf_size);
+        self->obj->str(self->obj);
         err = out->write(out, self->num->states->val, self->num->states->val_size);
         if (err) return err;
         break;

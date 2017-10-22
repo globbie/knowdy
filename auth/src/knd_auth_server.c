@@ -69,11 +69,12 @@ main(int const argc,
 			 NULL,
 			 kndColl_auth_service,
 			 (void*)auth); */
-    err = auth->update(auth);
+    /*err = auth->update(auth);
     if (err) return err;
-
-    err = auth->update(auth);
+    */
+    /*err = auth->update(auth);
     if (err) return err;
+    */
 
     auth->start(auth);
 

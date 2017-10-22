@@ -370,8 +370,6 @@ static int run_check_sid(void *obj,
     if (err) return err;
     err = self->out->write(self->out, "}", 1);
     if (err) return err;
-    err = self->out->write(self->out, "}", 1);
-    if (err) return err;
     
     return knd_OK;
 }
@@ -422,7 +420,6 @@ static int parse_user(void *obj,
     
     return knd_OK;
 }
-
 
 static int run_task(struct kndAuth *self)
 {
@@ -637,13 +634,19 @@ parse_config_GSL(struct kndAuth *self,
         return err;
     }
     c = rec + header_tag_size;
-    
+
+    knd_log("..reading config: %", c);
+
     err = knd_parse_task(c, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) {
         knd_log("-- config parse error: %d", err);
         return err;
     }
-    
+
+    if (!self->db_user_size) {
+        return knd_FAIL;
+    }
+
     return knd_OK;
 }
 

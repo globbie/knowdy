@@ -16,7 +16,7 @@ add_definitions(-D_XOPEN_SOURCE=700)
 add_definitions(-D_BSD_SOURCE)
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
 endif()
 
 find_package(PkgConfig)
@@ -74,7 +74,7 @@ endforeach()
 install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)
 install(DIRECTORY etc/systemd/system/ DESTINATION usr/lib/systemd/system)
 
-set(VERSION "0.2.5")
+set(VERSION "0.3.1")
 
 set(CPACK_PACKAGE_VERSION ${VERSION})
 set(CPACK_GENERATOR "RPM")

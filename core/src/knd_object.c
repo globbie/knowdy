@@ -27,17 +27,26 @@
 
 static void del(struct kndObject *self)
 {
-    free(self);
+    struct kndElem *elem, *next_elem;
+
+    elem = self->elems;
+    while (elem) {
+        next_elem = elem->next;
+        elem->del(elem);
+        elem = next_elem;
+    }
+
+    self->phase = KND_FREED;
 }
 
 static void str(struct kndObject *self)
 {
     struct kndElem *elem;
     if (self->type == KND_OBJ_ADDR) {
-        knd_log("\n%*sOBJ %.*s::%.*s [%.*s]  phase:%d\n",
+        knd_log("\n%*sOBJ %.*s::%.*s  id:%.*s  numid:%zu  state:%.*s  phase:%d\n",
                 self->depth * KND_OFFSET_SIZE, "", self->conc->name_size, self->conc->name,
                 self->name_size, self->name,
-                KND_ID_SIZE, self->id, self->phase);
+                KND_ID_SIZE, self->id, self->numid, KND_STATE_SIZE, self->state, self->phase);
     }
 
     for (elem = self->elems; elem; elem = elem->next) {
@@ -88,7 +97,8 @@ kndObject_export_reverse_rels_JSON(struct kndObject *self)
     int err;
 
     /* sort refs by class */
-    knd_log("..export reverse_rels of %.*s..", self->name_size, self->name);
+    if (DEBUG_OBJ_LEVEL_2)
+        knd_log("..export reverse_rels of %.*s..", self->name_size, self->name);
 
     err = out->write(out, ",\"_reverse_rels\":[", strlen(",\"_reverse_rels\":["));
     if (err) return err;
@@ -422,13 +432,14 @@ kndObject_export(struct kndObject *self)
     default:
         break;
     }
-    
     return knd_OK;
 }
 
 static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndObject *self = (struct kndObject*)obj;
+    struct kndConcept *conc;
+    struct kndObjEntry *entry;
     struct kndTaskArg *arg;
     const char *name = NULL;
     size_t name_size = 0;
@@ -443,6 +454,18 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     if (!name_size) return knd_FAIL;
     if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
 
+    /* check name doublets */
+    conc = self->conc;
+    if (conc->dir && conc->dir->obj_idx) {
+        entry = conc->dir->obj_idx->get(conc->dir->obj_idx, name);
+        if (entry) {
+            knd_log("-- obj name doublet found: %.*s %p :(",
+                    name_size, name, entry->obj);
+            entry->obj->str(entry->obj);
+            return knd_FAIL;
+        }
+    }
+
     memcpy(self->name, name, name_size);
     self->name_size = name_size;
     self->name[name_size] = '\0';
@@ -450,6 +473,22 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     if (DEBUG_OBJ_LEVEL_2)
         knd_log("++ OBJ NAME: \"%.*s\"",
                 self->name_size, self->name);
+
+    return knd_OK;
+}
+
+static int run_present_obj(void *data,
+                           struct kndTaskArg *args __attribute__((unused)),
+                           size_t num_args __attribute__((unused)))
+{
+    struct kndObject *self = data;
+    int err;
+
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log(".. present obj..");
+
+    err = kndObject_export(self);
+    if (err) return err;
 
     return knd_OK;
 }
@@ -495,7 +534,7 @@ static int parse_elem(void *data,
                       const char *name, size_t name_size,
                       const char *rec, size_t *total_size)
 {
-    struct kndObject *self = (struct kndObject*)data;
+    struct kndObject *self = data;
     struct kndConcept *root_class;
     struct kndConcept *c;
     struct kndObject *obj;
@@ -506,9 +545,9 @@ static int parse_elem(void *data,
     struct kndText *text = NULL;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_1) {
-        knd_log("..  validation of \"%s\" elem REC: \"%.*s\"\n",
-                name, 16, rec);
+    if (DEBUG_OBJ_LEVEL_2) {
+        knd_log("..  %s  needs to validate \"%s\" elem,   REC: \"%.*s\"\n",
+                obj->name, name, 32, rec);
     }
     err = kndObject_validate_attr(self, name, name_size, &attr);
     if (err) return err;
@@ -521,8 +560,8 @@ static int parse_elem(void *data,
     elem->out = self->out;
 
     if (DEBUG_OBJ_LEVEL_2)
-        knd_log("   == basic elem type: %s\n",
-                knd_attr_names[attr->type]);
+        knd_log("   == basic elem type: %s   obj phase: %d root:%p",
+                knd_attr_names[attr->type], self->phase, self->conc->root_class);
 
     switch (attr->type) {
     case KND_ATTR_AGGR:
@@ -531,8 +570,9 @@ static int parse_elem(void *data,
         
         obj->type = KND_OBJ_AGGR;
         if (!attr->conc) {
-            if (self->phase == KND_FROZEN) {
-                if (DEBUG_OBJ_LEVEL_1) {
+            
+            if (self->phase == KND_FROZEN || self->phase == KND_SUBMITTED) {
+                if (DEBUG_OBJ_LEVEL_2) {
                     knd_log(".. resolve attr \"%.*s\": \"%.*s\"..",
                             attr->name_size, attr->name,
                             attr->ref_classname_size, attr->ref_classname);
@@ -543,6 +583,11 @@ static int parse_elem(void *data,
                                       &c);
                 if (err) return err;
                 attr->conc = c;
+            }
+            else {
+                knd_log("-- couldn't resolve the %.*s attr :(",
+                        attr->name_size, attr->name);
+                return knd_FAIL;
             }
         }
 
@@ -607,10 +652,15 @@ static int parse_elem(void *data,
     }
     self->num_elems++;
 
-    
+    if (DEBUG_OBJ_LEVEL_2)
+        knd_log("++ elem %s parsing OK!", elem->attr->name);
     return knd_OK;
 
  final:
+
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log("-- validation of \"%s\" elem failed :(", name);
+
     elem->del(elem);
     return err;
 }
@@ -637,7 +687,7 @@ static int run_set_relclass_name(void *obj, struct kndTaskArg *args, size_t num_
     self->name_size = name_size;
     self->name[name_size] = '\0';
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log("++ Rel Class name: \"%.*s\"",
                 self->name_size, self->name);
 
@@ -665,7 +715,7 @@ static int run_set_objref_name(void *obj, struct kndTaskArg *args, size_t num_ar
     self->name_size = name_size;
     self->name[name_size] = '\0';
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log("++ OBJ REF NAME: \"%.*s\"",
                 self->name_size, self->name);
 
@@ -685,7 +735,7 @@ static int objref_read(void *obj,
     };
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_1)
         knd_log(".. reading obj ref \"%.*s\"..",
                 KND_ID_SIZE, ref->id);
 
@@ -717,7 +767,7 @@ static int objref_alloc(void *obj,
     struct kndRef *ref;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. create objref: %.*s count: %zu",
                 name_size, name, count);
     if (name_size > KND_ID_SIZE) return knd_LIMIT;
@@ -731,8 +781,6 @@ static int objref_alloc(void *obj,
     return knd_OK;
 }
 
-
-
 static int reltype_read(void *data,
                         const char *name, size_t name_size,
                         const char *rec, size_t *total_size)
@@ -741,7 +789,7 @@ static int reltype_read(void *data,
     struct kndRelType *reltype;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP) {
+    if (DEBUG_OBJ_LEVEL_2) {
         knd_log("..  reltype validation of \"%.*s\" REC: \"%.*s\"\n",
                 name_size, name, 16, rec);
     }
@@ -749,6 +797,10 @@ static int reltype_read(void *data,
     reltype = malloc(sizeof(struct kndRelType));
     if (!reltype) return knd_NOMEM;
     memset(reltype, 0, sizeof(struct kndRelType));
+
+    memcpy(reltype->name, name, name_size);
+    reltype->name_size = name_size;
+    reltype->name[name_size] = '\0';
 
     reltype->next = self->rel_types;
     self->rel_types = reltype;
@@ -792,10 +844,6 @@ static int rev_rel_read(void *obj,
     };
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
-        knd_log(".. reading rev rel \"%.*s\"..",
-                KND_ID_SIZE, relc->id);
-
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
     
@@ -823,7 +871,7 @@ static int rev_rel_alloc(void *obj,
     struct kndObject *self = obj;
     struct kndRelClass *relc;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. create rev_rel: %.*s count: %zu",
                 name_size, name, count);
     if (name_size > KND_ID_SIZE) return knd_LIMIT;
@@ -879,10 +927,16 @@ static int parse_GSL(struct kndObject *self,
           .alloc = rev_rel_alloc,
           .append = rev_rel_append,
           .parse = rev_rel_read
+        },
+        { .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = run_present_obj,
+          .obj = self
         }
     };
     int err;
-
+    
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
     
@@ -965,6 +1019,7 @@ static int
 kndObject_resolve(struct kndObject *self)
 {
     struct kndElem *elem;
+    struct kndObject *obj;
     int err;
 
     if (DEBUG_OBJ_LEVEL_2) {

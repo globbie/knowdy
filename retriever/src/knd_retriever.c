@@ -25,8 +25,6 @@ static int
 kndRetriever_del(struct kndRetriever *self)
 {
     /* TODO: storage */
-    
-    free(self);
 
     return knd_OK;
 }
@@ -429,6 +427,7 @@ kndRetriever_new(struct kndRetriever **rec,
 {
     struct kndRetriever *self;
     struct kndConcept *conc;
+    struct kndOutput *out;
     size_t chunk_size = 0;
     int err;
 
@@ -468,6 +467,16 @@ kndRetriever_new(struct kndRetriever **rec,
         goto error;
     }
 
+    out = self->out;
+    out->reset(out);
+    err = out->write(out, self->path, self->path_size);
+    if (err) return err;
+    err = out->write(out, "/frozen.gsp", strlen("/frozen.gsp"));
+    if (err) return err;
+    memcpy(self->admin->frozen_output_file_name, out->buf, out->buf_size);
+    self->admin->frozen_output_file_name_size = out->buf_size;
+    self->admin->frozen_output_file_name[out->buf_size] = '\0';
+
     err = kndConcept_new(&conc);
     if (err) return err;
     conc->out = self->out;
@@ -476,6 +485,8 @@ kndRetriever_new(struct kndRetriever **rec,
 
     conc->dbpath = self->schema_path;
     conc->dbpath_size = self->schema_path_size;
+    conc->frozen_output_file_name = self->admin->frozen_output_file_name;
+    conc->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
 
     conc->dir = malloc(sizeof(struct kndConcDir));
     if (!conc->dir) return knd_NOMEM;
@@ -506,42 +517,23 @@ kndRetriever_new(struct kndRetriever **rec,
     conc->user = self->admin;
     self->admin->root_class = conc;
 
-    
-    /* open frozen DB */
-    err = conc->open(conc);
-    if (err) return err;
-
-    /* read class definitions */
-    /*conc->batch_mode = true;
-    err = conc->open(conc, "index", strlen("index"));
-    if (err) {
- 	knd_log("-- couldn't read the schema definitions :("); 
-        goto error;
-    }
-    
-    err = conc->coordinate(conc);
-    if (err) goto error;
-
-    conc->batch_mode = false;
-    */
-
-    
     self->del = kndRetriever_del;
     self->start = kndRetriever_start;
+
+    /* open frozen DB */
+    err = conc->open(conc);
+    if (err && err != knd_NO_MATCH) goto error;
 
     *rec = self;
     return knd_OK;
 
  error:
 
-    knd_log("-- Retriever construction failure :(");
-    
-    kndRetriever_del(self);
+    knd_log("-- Retriever construction failure: %d :(", err);
+
+    //kndRetriever_del(self);
     return err;
 }
-
-
-
 
 /** SERVICES */
 void *kndRetriever_inbox(void *arg)
@@ -704,10 +696,10 @@ main(int const argc,
 
     err = kndRetriever_new(&retriever, config);
     if (err) {
-        fprintf(stderr, "Couldn\'t load the Retriever... ");
-        return -1;
+        fprintf(stderr, "-- couldn\'t init the Retriever... ");
+        exit(-1);
     }
-    
+
     /* add device */
     err = pthread_create(&inbox, 
 			 NULL,
@@ -727,7 +719,7 @@ main(int const argc,
                          (void*)retriever);
 
     retriever->start(retriever);
-    
+ 
     
     return 0;
 }
