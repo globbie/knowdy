@@ -1,4 +1,4 @@
-// #undef NDEBUG  // For developing
+#undef NDEBUG  // For developing
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -458,6 +458,29 @@ knd_spec_buf_copy(struct kndTaskSpec *spec,
 
     memcpy(spec->buf, val, val_size);
     *spec->buf_size = val_size;
+
+    return knd_OK;
+}
+
+static int
+knd_spec_get_num(struct kndTaskSpec *spec,
+                 const char *val,
+                 size_t val_size)
+{
+    char buf[KND_SHORT_NAME_SIZE + 1];
+    long numval;
+    int err;
+
+    if (val_size > KND_SHORT_NAME_SIZE) return knd_LIMIT;
+
+    memcpy(buf, val, val_size);
+    buf[val_size] = '\0';
+
+    err = knd_parse_num(buf, &numval);
+    if (err) return err;
+    if (numval < 0) return knd_LIMIT;
+
+    *spec->num = (size_t)numval;
 
     return knd_OK;
 }
