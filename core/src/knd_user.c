@@ -16,6 +16,7 @@
 #include "knd_concept.h"
 #include "knd_object.h"
 #include "knd_proc.h"
+#include "knd_rel.h"
 
 #define DEBUG_USER_LEVEL_0 0
 #define DEBUG_USER_LEVEL_1 0
@@ -300,9 +301,9 @@ kndUser_parse_auth(void *obj,
     return knd_OK;
 }
 
-static int kndUser_parse_proc_import(void *obj,
-                                     const char *rec,
-                                     size_t *total_size)
+static int parse_proc_import(void *obj,
+                             const char *rec,
+                             size_t *total_size)
 {
     struct kndUser *self = obj;
     int err;
@@ -327,7 +328,22 @@ static int kndUser_parse_proc_import(void *obj,
     return knd_OK;
 }
 
-static int kndUser_parse_class_import(void *obj,
+static int parse_rel_import(void *obj,
+                            const char *rec,
+                            size_t *total_size)
+{
+    struct kndUser *self = obj;
+    int err;
+
+    self->task->type = KND_CHANGE_STATE;
+
+    err = self->root_class->rel->parse(self->root_class->rel, rec, total_size);
+    if (err) return err;
+
+    return knd_OK;
+}
+
+static int parse_class_import(void *obj,
                                       const char *rec,
                                       size_t *total_size)
 {
@@ -425,7 +441,6 @@ static int kndUser_parse_sync_task(void *obj,
     /* inform retrievers */
 
     /* release resources */
-
     self->root_class->reset(self->root_class);
 
     if (!stat(self->out->buf, &st)) {
@@ -433,8 +448,6 @@ static int kndUser_parse_sync_task(void *obj,
             knd_log("++ frozen DB file sync'ed OK, total bytes: %lu",
                     (unsigned long)st.st_size);
     }
-
-    
     return knd_OK;
 }
 
@@ -511,7 +524,7 @@ static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
     if (!name_size) return knd_FAIL;
     if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. get user: \"%.*s\".. %p", name_size, name, self->root_class);
 
     err = self->root_class->get(self->root_class, "User", strlen("User"), &conc);
@@ -519,9 +532,6 @@ static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
 
     err = conc->get_obj(conc, name, name_size, &self->curr_user);
     if (err) return err;
-
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log("++ got user: \"%.*s\"!", name_size, name);
 
     self->curr_user->out = self->out;
     self->curr_user->log = self->log;
@@ -561,12 +571,9 @@ static int run_get_user_by_id(void *data, struct kndTaskArg *args, size_t num_ar
         return knd_LIMIT;
     }
 
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log(".. get user by id: %lu", numval);
-
     entry = self->user_idx[numval];
     if (!entry) {
-        knd_log("-- no such user: %lu", numval);
+        knd_log("-- no such user id: %lu", numval);
         return knd_NO_MATCH;
     }
 
@@ -588,7 +595,7 @@ static int run_get_user_by_id(void *data, struct kndTaskArg *args, size_t num_ar
 
     self->curr_user = obj;
 
-    if (DEBUG_USER_LEVEL_TMP) {
+    if (DEBUG_USER_LEVEL_2) {
         knd_log("++ got user by num id: %.*s", numid_size, numid);
         self->curr_user->str(self->curr_user);
     }
@@ -661,7 +668,7 @@ static int parse_task(struct kndUser *self,
         { .type = KND_CHANGE_STATE,
           .name = "class",
           .name_size = strlen("class"),
-          .parse = kndUser_parse_class_import,
+          .parse = parse_class_import,
           .obj = self
         },
         { .name = "class",
@@ -672,7 +679,13 @@ static int parse_task(struct kndUser *self,
         { .type = KND_CHANGE_STATE,
           .name = "proc",
           .name_size = strlen("proc"),
-          .parse = kndUser_parse_proc_import,
+          .parse = parse_proc_import,
+          .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "rel",
+          .name_size = strlen("proc"),
+          .parse = parse_rel_import,
           .obj = self
         },
         { .name = "state",

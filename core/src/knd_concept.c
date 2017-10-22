@@ -1288,11 +1288,16 @@ static int parse_import_class(void *obj,
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. import \"%.*s\" class..", 16, rec);
 
-    err = kndConcept_new(&c);
+    /*err = kndConcept_new(&c);
+      if (err) return err;*/
+
+    err  = self->mempool->new_class(self->mempool, &c);
     if (err) return err;
+
     c->out = self->out;
     c->log = self->log;
     c->task = self->task;
+    c->mempool = self->mempool;
     c->class_idx = self->class_idx;
     c->root_class = self;
     memcpy(c->state, self->state, KND_STATE_SIZE);
@@ -1314,19 +1319,14 @@ static int parse_import_class(void *obj,
           .parse = parse_children_settings,
           .obj = c
         },
-        { .is_list = true,
+        { .type = KND_CHANGE_STATE,
+          .is_list = true,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
           .accu = c,
           .alloc = gloss_alloc,
           .append = gloss_append,
           .parse = read_gloss
-        },
-        { .type = KND_CHANGE_STATE,
-          .name = "gloss",
-          .name_size = strlen("gloss"),
-          .parse = parse_gloss,
-          .obj = c
         },
         { .type = KND_CHANGE_STATE,
           .name = "summary",
@@ -1448,7 +1448,7 @@ static int parse_import_obj(void *data,
         return knd_FAIL;
     }
 
-    err = self->pool->new_obj(self->pool, &obj);
+    err = self->mempool->new_obj(self->mempool, &obj);
     if (err) return err;
 
     obj->phase = KND_SUBMITTED;
@@ -1456,6 +1456,7 @@ static int parse_import_obj(void *data,
     obj->out = self->out;
     obj->log = self->log;
     obj->task = self->task;
+    obj->mempool = self->mempool;
 
     err = obj->parse(obj, rec, total_size);
     if (err) return err;

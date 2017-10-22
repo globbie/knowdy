@@ -52,10 +52,14 @@ struct kndRel
     const char *locale;
     size_t locale_size;
     knd_format format;
-    
+
+    struct kndConcept *base;
+    struct kndConcept *spec;
+
     struct kndRelState *states;
     size_t num_states;
 
+    struct ooDict *rel_idx;
     size_t depth;
     struct kndRel *next;
 
@@ -63,10 +67,10 @@ struct kndRel
     void (*str)(struct kndRel *self);
 
     void (*del)(struct kndRel *self);
-    
+
     int (*parse)(struct kndRel *self,
-                 const char     *rec,
-                 size_t          *total_size);
+                 const char    *rec,
+                 size_t        *total_size);
 
     int (*index)(struct kndRel *self);
 

@@ -18,6 +18,8 @@
 #include "knd_parser.h"
 #include "knd_concept.h"
 #include "knd_object.h"
+#include "knd_rel.h"
+#include "knd_proc.h"
 
 #include "knd_learner.h"
 
@@ -481,11 +483,23 @@ kndLearner_new(struct kndLearner **rec,
     conc->dir->name_size = KND_ID_SIZE;
     conc->dir->conc = conc;
 
-    /* specific allocations of the root class */
+    conc->mempool = self->mempool;
+
+    err = kndProc_new(&conc->proc);
+    if (err) goto error;
+    
+    err = kndRel_new(&conc->rel);
+    if (err) goto error;
+
+    /* specific allocations of the root concs */
     err = ooDict_new(&conc->class_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
-    conc->pool = self->mempool;
+    err = ooDict_new(&conc->proc->proc_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+
+    err = ooDict_new(&conc->rel->rel_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
 
     /* user idx */
     if (self->max_users) {

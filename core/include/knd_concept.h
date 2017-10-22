@@ -175,9 +175,6 @@ struct kndConcept
     struct kndTranslation *tr;
     struct kndText *summary;
 
-    /*char namespace[KND_NAME_SIZE];
-    size_t namespace_size;
-    */
     /* initial scheme location */
     const char *dbpath;
     size_t dbpath_size;
@@ -190,6 +187,7 @@ struct kndConcept
     size_t depth;
 
     struct kndProc *proc;
+    struct kndRel *rel;
 
     struct kndAttr *attrs;
     struct kndAttr *tail_attr;
@@ -207,15 +205,6 @@ struct kndConcept
     struct kndDataIdx *indices;
     size_t num_indices;
 
-    /*char curr_val[KND_NAME_SIZE];
-    size_t curr_val_size;
-
-    char idx_name[KND_NAME_SIZE];
-    size_t idx_name_size;
-
-    char style_name[KND_NAME_SIZE];
-    size_t style_name_size;
-    */
     bool ignore_children;
     bool is_resolved;
 
@@ -228,7 +217,7 @@ struct kndConcept
     size_t num_folders;
 
     /* allocator */
-    struct kndMemPool *pool;
+    struct kndMemPool *mempool;
 
     /* incoming */
     struct kndConcept *inbox;
@@ -307,7 +296,6 @@ struct kndConcept
     int (*apply_liquid_updates)(struct kndConcept *self,
                                 const char *rec,
                                 size_t *total_size);
-
     int (*select)(void  *self,
                   const char *rec,
                   size_t *total_size);

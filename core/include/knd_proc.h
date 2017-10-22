@@ -58,6 +58,8 @@ struct kndProc
     struct kndProcState *states;
     size_t num_states;
 
+    struct ooDict *proc_idx;
+
     size_t depth;
     struct kndProc *next;
 

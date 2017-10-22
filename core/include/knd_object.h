@@ -32,6 +32,7 @@ struct kndRelClass;
 struct kndOutput;
 struct kndFlatTable;
 struct kndObjEntry;
+struct kndMemPool;
 
 typedef enum knd_obj_type {
     KND_OBJ_ADDR,
@@ -106,6 +107,7 @@ struct kndObject
     bool is_subord;
     bool is_concise;
 
+    struct kndMemPool *mempool;
     struct kndObject *root;
     struct kndElem *parent;
     
