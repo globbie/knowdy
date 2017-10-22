@@ -436,7 +436,13 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
         assert(spec->run == NULL);
     }
 
-    assert(spec->buf != NULL || spec->parse != NULL || spec->validate != NULL || spec->run != NULL);
+    if (spec->num) {
+        assert(spec->buf == NULL);
+        assert(spec->parse == NULL);
+        assert(spec->run == NULL);
+    }
+
+    assert(spec->buf != NULL || spec->num != NULL || spec->parse != NULL || spec->validate != NULL || spec->run != NULL);
 
     return 1;
 }
@@ -804,7 +810,7 @@ int knd_parse_task(const char *rec,
     b = rec;
     e = rec;
 
-    if (DEBUG_PARSER_LEVEL_2)
+    if (DEBUG_PARSER_LEVEL_TMP)
         knd_log("\n\n*** start basic PARSING: \"%.*s\" num specs: %zu [%p]",
                 16, rec, num_specs, specs);
 
