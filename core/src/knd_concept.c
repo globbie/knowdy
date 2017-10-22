@@ -1694,15 +1694,7 @@ static int parse_include(void *self,
         { .is_implied = true,
           .run = run_read_include,
           .obj = self
-<<<<<<< HEAD
-        },
-        //{ .name = "lazy",
-        //  .name_size = strlen("lazy"),
-        //  .obj = self
-        //}
-=======
         }
->>>>>>> devel
     };
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
