@@ -456,7 +456,7 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     /* check name doublets */
     conc = self->conc;
     if (conc->dir && conc->dir->obj_idx) {
-        entry = conc->dir->obj_idx->get(conc->dir->obj_idx, name);
+        entry = conc->dir->obj_idx->get(conc->dir->obj_idx, name, name_size);
         if (entry) {
             knd_log("-- obj name doublet found: %.*s %p :(",
                     name_size, name, entry->obj);
@@ -467,7 +467,6 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
 
     memcpy(self->name, name, name_size);
     self->name_size = name_size;
-    self->name[name_size] = '\0';
 
     if (DEBUG_OBJ_LEVEL_2)
         knd_log("++ OBJ NAME: \"%.*s\"",

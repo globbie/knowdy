@@ -259,7 +259,6 @@ kndUser_parse_auth(void *obj,
     struct kndTaskSpec specs[] = {
         { .name = "sid",
           .name_size = strlen("sid"),
-          .is_terminal = true,
           .buf = sid,
           .buf_size = &sid_size,
           .max_buf_size = KND_NAME_SIZE
@@ -777,7 +776,7 @@ static int parse_task(struct kndUser *self,
         while (obj) {
             if (obj->conc && obj->conc->dir) {
                 idx = obj->conc->dir->obj_idx;
-                e = idx->remove(idx, obj->name);
+                e = idx->remove(idx, obj->name, obj->name_size);
 
                 if (DEBUG_USER_LEVEL_2)
                     knd_log("!! removed \"%.*s\" from obj idx: %d",

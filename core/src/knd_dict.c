@@ -30,16 +30,17 @@
 #include <knd_list.h>
 
 static size_t 
-oo_hash(const char *key)
+oo_hash(const char *key, size_t key_size)
 {
     const char *p = key;
     size_t h = 0;
 
-    if (!key) return 0;
+    if (!key_size) return 0;
 
-    while (*p)
+    while (key_size) {
         h = (h << 1) ^ *p++;
-
+        key_size--;
+    }
     return h;
 }
 
@@ -85,14 +86,15 @@ ooDict_set_hash(struct ooDict *self,
 
 static struct ooDictItem* 
 ooDict_find_item(struct ooDict *self,
-		 const char *key)
+		 const char *key,
+                 size_t key_size)
 {
     struct ooList *l;
     struct ooListItem *cur;
     const char *cur_key;
     unsigned int h;
 
-    h = oo_hash(key) % self->hash->size;
+    h = oo_hash(key, key_size) % self->hash->size;
     l = (struct ooList*)self->hash->data[h];
     cur = l->head;
     while (cur) {
@@ -107,19 +109,6 @@ ooDict_find_item(struct ooDict *self,
 
 static void*
 ooDict_get(struct ooDict *self,
-	   const char *key)
-{
-    struct ooDictItem *item;
-    if (!key) return NULL;
-
-    item = ooDict_find_item(self, key);
-    if (!item) return NULL;
-
-    return item->data;
-}
-
-static void*
-ooDict_getn(struct ooDict *self,
             const char *key,
             size_t key_size)
 {
@@ -131,7 +120,7 @@ ooDict_getn(struct ooDict *self,
 
     if (!key_size) return NULL;
 
-    h = oo_hash(key) % self->hash->size;
+    h = oo_hash(key, key_size) % self->hash->size;
     l = (struct ooList*)self->hash->data[h];
     cur = l->head;
     while (cur) {
@@ -150,6 +139,7 @@ ooDict_getn(struct ooDict *self,
 static int
 ooDict_set(struct ooDict *self,
 	   const char *key,
+           size_t key_size,
 	   void *data)
 {
     struct ooList *l;
@@ -160,7 +150,7 @@ ooDict_set(struct ooDict *self,
 
     if (!key) return oo_FAIL;
 
-    h = oo_hash(key) % self->hash->size;
+    h = oo_hash(key, key_size) % self->hash->size;
     l = (struct ooList*)self->hash->data[h];
     cur = l->head;
     while (cur) {
@@ -182,7 +172,7 @@ ooDict_set(struct ooDict *self,
 
     item->data = data;
     item->key = strdup(key);
-
+    item->key_size = key_size;
     l->add(l, (void*)item, NULL);
     self->size++;
 
@@ -191,15 +181,17 @@ ooDict_set(struct ooDict *self,
 
 static bool 
 ooDict_key_exists(struct ooDict *self,
-		  const char *key)
+		  const char *key,
+                  size_t key_size)
 {
-    struct ooDictItem *i = ooDict_find_item(self, key);
-    return (i != NULL);
+    struct ooDictItem *item = ooDict_find_item(self, key, key_size);
+    return (item != NULL);
 }
 
 static int
 ooDict_remove(struct ooDict *self,
-	      const char *key)
+	      const char *key,
+              size_t key_size)
 {
     struct ooList *l;
     char *cur_key;
@@ -207,7 +199,7 @@ ooDict_remove(struct ooDict *self,
     struct ooListItem *cur;
     unsigned int h;
     
-    h = self->hash_func(key) % self->hash->size;
+    h = self->hash_func(key, key_size) % self->hash->size;
     l = (ooList*)self->hash->data[h];
 
     cur = l->head;
@@ -309,7 +301,7 @@ ooDict_resize(struct ooDict *self,
 	cur = l->head;
 	while (cur) {
 	    item = (struct ooDictItem*)cur->data;
-	    h = self->hash_func(item->key) % self->hash->size;
+	    h = self->hash_func(item->key, item->key_size) % self->hash->size;
 	    new_list = (struct ooList*)self->hash->data[h];
 	    new_list->add(new_list, (void*)item, NULL);
 	    cur = cur->next;
@@ -389,7 +381,6 @@ ooDict_init(struct ooDict *self)
     self->str           = ooDict_str;
     self->remove        = ooDict_remove;
     self->get           = ooDict_get;
-    self->getn          = ooDict_getn;
     self->set           = ooDict_set;
     self->key_exists    = ooDict_key_exists;
     self->resize        = ooDict_resize;

@@ -21,18 +21,16 @@
  *   Knowdy Dictionary
  */
 
-#ifndef OODICT_H
-#define OODICT_H
-
+#pragma once
 #include "knd_array.h"
 
-typedef size_t (*oo_hash_func)(const char *key);
+typedef size_t (*oo_hash_func)(const char *key, size_t key_size);
 
 struct ooDictItem
 {
     char *key;
+    size_t key_size;
     void *data;
-
 };
 
 struct ooDict
@@ -47,27 +45,26 @@ struct ooDict
 
     /* get data */
     void* (*get)(struct ooDict *self,
-                 const char *key);
-
-    /* key with size */
-    void* (*getn)(struct ooDict *self,
-                  const char *key,
-                  size_t key_size);
+                 const char *key,
+                 size_t key_size);
 
     /*
      * set data
      * return true, if key already exists, false otherwise
      */
     int (*set)(struct ooDict *self,
-                const char *key,
-                void *data);
+               const char *key,
+               size_t key_size,
+               void *data);
 
     /* if exists */
     bool (*key_exists)(struct ooDict *self,
-                       const char    *key);
+                       const char    *key,
+                       size_t key_size);
     /* delete */
     int (*remove)(struct ooDict *self,
-                    const char *key);
+                  const char *key,
+                  size_t key_size);
 
     /* Resize the hash */
     int (*resize)(struct ooDict *self,
@@ -83,10 +80,6 @@ struct ooDict
 		     const char **key,
 		     void **data);
 
-    /*int (*set_compare)(struct ooDict *self,
-      oo_compar_func new_compar_func);
-    */
-
     /******** private attributes ********/
 
     struct ooArray *hash;
@@ -95,10 +88,7 @@ struct ooDict
 
     size_t curr_pos;
     struct ooListItem *curr_item;
-
 };
 
 /* constructor */
 extern int ooDict_new(struct ooDict **self, size_t init_size);
-
-#endif /* OODICT_H */

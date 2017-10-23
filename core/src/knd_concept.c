@@ -78,7 +78,7 @@ static int build_diff(struct kndConcept *self,
                       size_t global_state_count);
 
 /*  Concept Destructor */
-static void del(struct kndConcept *self)
+static void del(struct kndConcept *self __attribute__((unused)))
 {
 }
 
@@ -125,11 +125,6 @@ static void str(struct kndConcept *self)
             }
         }
     }
-
-    /*for (attr = self->attrs; attr; attr = attr->next) {
-        attr->depth = self->depth + 1;
-        attr->str(attr);
-        }*/
 
     if (self->attr_idx) {
         key = NULL;
@@ -373,7 +368,7 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
     /* get attrs from base */
     for (attr = base->attrs; attr; attr = attr->next) {
         /* compare with exiting attrs */
-        entry = self->attr_idx->getn(self->attr_idx, attr->name, attr->name_size);
+        entry = self->attr_idx->get(self->attr_idx, attr->name, attr->name_size);
         if (entry) {
             knd_log("-- %.*s attr collision between \"%.*s\" and base class \"%.*s\"?",
                     entry->name_size, entry->name,
@@ -388,10 +383,10 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
         memset(entry, 0, sizeof(struct kndAttrEntry));
         memcpy(entry->name, attr->name, attr->name_size);
         entry->name_size = attr->name_size;
-        entry->name[entry->name_size] = '\0';
         entry->attr = attr;
 
-        err = self->attr_idx->set(self->attr_idx, entry->name, (void*)entry);
+        err = self->attr_idx->set(self->attr_idx,
+                                  entry->name, entry->name_size, (void*)entry);
         if (err) return err;
     }
     
@@ -429,7 +424,7 @@ static int resolve_attrs(struct kndConcept *self)
     if (err) return err;
 
     for (attr = self->attrs; attr; attr = attr->next) {
-        entry = self->attr_idx->getn(self->attr_idx, attr->name, attr->name_size);
+        entry = self->attr_idx->get(self->attr_idx, attr->name, attr->name_size);
         if (entry) {
             knd_log("-- %.*s attr already exists?", attr->name_size, attr->name);
             return knd_FAIL;
@@ -440,10 +435,10 @@ static int resolve_attrs(struct kndConcept *self)
         memset(entry, 0, sizeof(struct kndAttrEntry));
         memcpy(entry->name, attr->name, attr->name_size);
         entry->name_size = attr->name_size;
-        entry->name[entry->name_size] = '\0';
         entry->attr = attr;
 
-        err = self->attr_idx->set(self->attr_idx, entry->name, (void*)entry);
+        err = self->attr_idx->set(self->attr_idx,
+                                  entry->name, entry->name_size, (void*)entry);
         if (err) return err;
 
         if (DEBUG_CONC_LEVEL_2)
@@ -459,7 +454,8 @@ static int resolve_attrs(struct kndConcept *self)
                 return knd_FAIL;
             }
             dir = (struct kndConcDir*)self->class_idx->get(self->class_idx,
-                                                         (const char*)attr->ref_classname);
+                                                           attr->ref_classname,
+                                                           attr->ref_classname_size);
             if (!dir) {
                 knd_log("-- couldn't resolve the \"%.*s\" attr of %.*s :(",
                         attr->name_size, attr->name, self->name_size, self->name);
@@ -516,7 +512,7 @@ static int resolve_name_refs(struct kndConcept *self)
             knd_log(".. \"%s\" class to get its base class: \"%s\"..",
                     self->name, item->name);
         dir = (struct kndConcDir*)self->class_idx->get(self->class_idx,
-                                                       (const char*)item->name);
+                                                       item->name, item->name_size);
         if (!dir) {
             if (DEBUG_CONC_LEVEL_2)
                 knd_log("-- no dir found, try inbox updates..");
@@ -604,7 +600,8 @@ static int get_attr(struct kndConcept *self,
                 self->name_size, self->name, name_size, name);
     }
 
-    if (!self->attr_idx) {
+    /*if (!self->attr_idx) {
+        
         err = ooDict_new(&self->attr_idx, KND_SMALL_DICT_SIZE);
         if (err) return err;
 
@@ -623,10 +620,13 @@ static int get_attr(struct kndConcept *self,
                 knd_log("++ register primary attr: \"%.*s\"",
                         attr->name_size, attr->name);
         }
-    }
+        } */
 
-    entry = self->attr_idx->getn(self->attr_idx, name, name_size);
-    if (!entry) return knd_NO_MATCH;
+    entry = self->attr_idx->get(self->attr_idx, name, name_size);
+    if (!entry) {
+        knd_log("-- attr idx has no entry: %.*s :(", name_size, name);
+        return knd_NO_MATCH;
+    }
 
     *result = entry->attr;
     return knd_OK;
@@ -1399,7 +1399,7 @@ static int parse_import_class(void *obj,
     }
 
     dir = (struct kndConcDir*)self->class_idx->get(self->class_idx,
-                                                   (const char*)c->name);
+                                                   c->name, c->name_size);
     if (dir) {
         knd_log("-- %s class name doublet found :(", c->name);
 
@@ -1433,7 +1433,7 @@ static int parse_import_class(void *obj,
     dir->conc = c;
     c->dir = dir;
     err = self->class_idx->set(self->class_idx,
-                               (const char*)c->name, (void*)dir);
+                               c->name, c->name_size, (void*)dir);
     if (err) goto final;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -1511,7 +1511,8 @@ static int parse_import_obj(void *data,
     memset(entry, 0, sizeof(struct kndObjEntry));
     entry->obj = obj;
 
-    err = c->dir->obj_idx->set(c->dir->obj_idx, obj->name, (void*)entry);
+    err = c->dir->obj_idx->set(c->dir->obj_idx,
+                               obj->name, obj->name_size, (void*)entry);
     if (err) return err;
 
     if (DEBUG_CONC_LEVEL_2) {
@@ -2115,12 +2116,11 @@ static int get_conc_name(struct kndConcept *self,
     if (DEBUG_CONC_LEVEL_2)
         knd_log("\n  .. CONC NAME: \"%.*s\" [%zu]",
                 name_size, b, name_size);
-    b[name_size] = '\0';
 
     memcpy(dir->name, b, name_size);
     dir->name_size = name_size;
 
-    err = self->class_idx->set(self->class_idx, b, dir);
+    err = self->class_idx->set(self->class_idx, b, name_size, dir);
     if (err) return err;
 
     return knd_OK;
@@ -2194,9 +2194,8 @@ static int index_obj_name(struct kndConcept *self,
                     name_size, b, name_size, c);
         }
     }
-    b[name_size] = '\0';
 
-    err = conc_dir->obj_idx->set(conc_dir->obj_idx, b, entry);
+    err = conc_dir->obj_idx->set(conc_dir->obj_idx, b, name_size, entry);
     if (err) return err;
 
     /* HACK: index numeric user ids */
@@ -3067,7 +3066,7 @@ static int coordinate(struct kndConcept *self)
     } while (key);
 
     /* display all classes */
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         key = NULL;
         self->class_idx->rewind(self->class_idx);
         do {
@@ -3105,7 +3104,7 @@ static int get_class(struct kndConcept *self,
         knd_log(".. %.*s to get class: \"%.*s\"..",
                 self->name_size, self->name, name_size, name);
 
-    dir = (struct kndConcDir*)self->class_idx->get(self->class_idx, name);
+    dir = (struct kndConcDir*)self->class_idx->get(self->class_idx, name, name_size);
     if (!dir) {
         knd_log("-- no such class: \"%s\" :(", name);
         self->log->reset(self->log);
@@ -3267,7 +3266,7 @@ static int get_obj(struct kndConcept *self,
         return knd_FAIL;
     }
 
-    entry = (struct kndObjEntry*)self->dir->obj_idx->get(self->dir->obj_idx, name);
+    entry = (struct kndObjEntry*)self->dir->obj_idx->get(self->dir->obj_idx, name, name_size);
     if (!entry) {
         knd_log("-- no such obj: \"%s\" :(", name);
         self->log->reset(self->log);
@@ -4454,10 +4453,10 @@ static int run_get_liquid_obj(void *obj, struct kndTaskArg *args, size_t num_arg
     c = self->curr_class;
     if (!c->dir->obj_idx) return knd_FAIL;
 
-    entry = c->dir->obj_idx->get(c->dir->obj_idx, name);
+    entry = c->dir->obj_idx->get(c->dir->obj_idx, name, name_size);
     if (!entry) return knd_FAIL;
-    self->curr_obj = entry->obj;
 
+    self->curr_obj = entry->obj;
     return knd_OK;
 }
 
@@ -4569,7 +4568,7 @@ static int apply_liquid_updates(struct kndConcept *self,
             dir->conc = c;
 
             err = self->class_idx->set(self->class_idx,
-                                   (const char*)c->name, (void*)dir);
+                                       c->name, c->name_size, (void*)dir);
             if (err) return err;
         }
         self->inbox = NULL;
@@ -4594,7 +4593,7 @@ static int apply_liquid_updates(struct kndConcept *self,
             entry->obj = obj;
 
             err = c->dir->obj_idx->set(c->dir->obj_idx,
-                                  (const char*)obj->name, (void*)entry);
+                                  obj->name, obj->name_size, (void*)entry);
             if (err) return err;
 
             if (DEBUG_CONC_LEVEL_TMP) {
@@ -4865,7 +4864,7 @@ static int run_select_class_diff(void *obj, struct kndTaskArg *args, size_t num_
                 (unsigned long)val_size);
 
     dir = (struct kndConcDir*)self->class_idx->get(self->class_idx,
-                                                 (const char*)val);
+                                                   val, val_size);
     if (!dir) {
         knd_log("-- no such class: %s", val);
         return knd_FAIL;

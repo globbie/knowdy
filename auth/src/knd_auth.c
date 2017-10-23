@@ -70,11 +70,10 @@ static int register_token(struct kndAuth *self,
     
     /* remove old token from the IDX */
     if (tok_rec->tok_size)
-        self->token_idx->remove(self->token_idx, tok_rec->tok);
+        self->token_idx->remove(self->token_idx, tok_rec->tok, tok_rec->tok_size);
 
     /* assign new values */
     memcpy(tok_rec->tok, tok, tok_size);
-    tok_rec->tok[tok_size] = '\0';
     tok_rec->tok_size = tok_size;
 
     tok_rec->expiry = (size_t)numval;
@@ -83,7 +82,8 @@ static int register_token(struct kndAuth *self,
     tok_rec->scope_size = scope_size;
 
     /* register token */
-    err = self->token_idx->set(self->token_idx, tok_rec->tok, (void*)tok_rec);
+    err = self->token_idx->set(self->token_idx,
+                               tok_rec->tok, tok_rec->tok_size, (void*)tok_rec);
     if (err) return knd_FAIL;
 
     prev_tok_rec = tok_rec->prev;
@@ -240,10 +240,9 @@ static int update_tokens(struct kndAuth *self)
         }
         
         memcpy(tok_buf, row[SQL_TOKEN_STR_FIELD_ID], tok_buf_size);
-        tok_buf[tok_buf_size] = '\0';
         
         /* lookup IDX */
-        tok_rec = self->token_idx->get(self->token_idx, (const char*)tok_buf);
+        tok_rec = self->token_idx->get(self->token_idx, (const char*)tok_buf, tok_buf_size);
         if (tok_rec) {
             doublet_count++;
             continue;
@@ -342,14 +341,14 @@ static int run_check_sid(void *obj,
     if (DEBUG_AUTH_LEVEL_2)
         knd_log("== check sid: \"%.*s\"", sid_size, sid);
 
-    tok_rec = self->token_idx->get(self->token_idx, sid);
+    tok_rec = self->token_idx->get(self->token_idx, sid, sid_size);
     if (!tok_rec) {
         /* time to update our token cache */
         err = update_tokens(self);
         if (err) return err;
 
         /* one more try */
-        tok_rec = self->token_idx->get(self->token_idx, sid);
+        tok_rec = self->token_idx->get(self->token_idx, sid, sid_size);
         if (!tok_rec) return knd_NO_MATCH;
     }
 

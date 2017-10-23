@@ -101,14 +101,12 @@ static int parse_task(void *obj,
     struct kndTaskSpec specs[] = {
         { .name = "schema",
           .name_size = strlen("schema"),
-          .is_terminal = true,
           .buf = self->schema_name,
           .buf_size = &self->schema_name_size,
           .max_buf_size = KND_NAME_SIZE
         },
         { .name = "tid",
           .name_size = strlen("tid"),
-          .is_terminal = true,
           .buf = self->tid,
           .buf_size = &self->tid_size,
           .max_buf_size = KND_NAME_SIZE

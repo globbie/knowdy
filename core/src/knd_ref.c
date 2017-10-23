@@ -120,9 +120,10 @@ static int kndRef_resolve(struct kndRef *self)
     }
 
     obj_name = self->states->val;
-    entry = conc->dir->obj_idx->get(conc->dir->obj_idx, obj_name);
+    entry = conc->dir->obj_idx->get(conc->dir->obj_idx, obj_name, self->states->val_size);
     if (!entry) {
         knd_log("-- no such obj: \"%s\" :(", obj_name);
+
         e = self->log->write(self->log, "no such obj: ", strlen("no such obj: "));
         if (e) return e;
         e = self->log->write(self->log, obj_name, self->states->val_size);

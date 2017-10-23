@@ -294,11 +294,9 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
     int err;
 
     /* check if repo's name is unique */
-    memcpy(buf, name, name_size);
-    buf[name_size] = '\0';
-    repo = self->repo_idx->get(self->repo_idx, buf);
+    repo = self->repo_idx->get(self->repo_idx, name, name_size);
     if (repo) {
-        knd_log("-- \"%s\" REPO name already taken?", buf);
+        knd_log("-- \"%.*s\" REPO name already taken?", name_size, name);
         return knd_FAIL;
     }
 
@@ -367,7 +365,7 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
     if (err) goto final;
 
     err = self->repo_idx->set(self->repo_idx,
-                              repo->name,
+                              repo->name, repo->name_size,
                               repo);
     if (err) goto final;
 
@@ -437,7 +435,7 @@ kndRepo_run_get_repo(void *obj, struct kndTaskArg *args, size_t num_args)
     self->curr_repo = NULL;
     
     curr_repo = self->repo_idx->get(self->repo_idx,
-                                    name);
+                                    name, name_size);
     if (!curr_repo) {
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("-- no such repo: \"%.*s\" :(", name_size, name);

@@ -122,7 +122,7 @@ static int run_set_error(void *obj,
 
     tid = &self->tids[self->num_tids];
     if (*(tid->tid) != '\0') {
-        res = self->idx->get(self->idx, tid->tid);
+        res = self->idx->get(self->idx, tid->tid, KND_TID_SIZE);
         if (!res) {
             knd_log("-- no rec found for TID \"%.*s\"", KND_TID_SIZE, tid->tid);
             return knd_NO_MATCH;
@@ -136,7 +136,7 @@ static int run_set_error(void *obj,
         if (DEBUG_DELIV_LEVEL_TMP)
             knd_log(".. remove TID \"%.*s\" from idx", KND_TID_SIZE, tid->tid);
 
-        self->idx->remove(self->idx, tid->tid);
+        self->idx->remove(self->idx, tid->tid, KND_TID_SIZE);
     } else {
         /* alloc result */
         res = malloc(sizeof(struct kndResult));
@@ -157,7 +157,7 @@ static int run_set_error(void *obj,
     res->obj_size = self->obj_size;
     
     /* assign key to idx */
-    err = self->idx->set(self->idx, tid->tid, (void*)res);
+    err = self->idx->set(self->idx, tid->tid, KND_TID_SIZE, (void*)res);
     if (err) return err;
 
     if (DEBUG_DELIV_LEVEL_2)
@@ -197,7 +197,7 @@ static int run_set_result(void *obj,
 
     tid = &self->tids[self->num_tids];
     if (*(tid->tid) != '\0') {
-        res = self->idx->get(self->idx, tid->tid);
+        res = self->idx->get(self->idx, tid->tid, KND_TID_SIZE);
         if (!res) return knd_NO_MATCH;
 
         /* free result memory */
@@ -207,7 +207,7 @@ static int run_set_result(void *obj,
         }
         
         /* remove this key from the idx */
-        self->idx->remove(self->idx, tid->tid);
+        self->idx->remove(self->idx, tid->tid, KND_TID_SIZE);
     } else {
         /* alloc result */
         res = malloc(sizeof(struct kndResult));
@@ -227,7 +227,7 @@ static int run_set_result(void *obj,
     res->obj_size = self->obj_size;
     
     /* assign key to idx */
-    err = self->idx->set(self->idx, tid->tid, (void*)res);
+    err = self->idx->set(self->idx, tid->tid, KND_TID_SIZE, (void*)res);
     if (err) return err;
     if (DEBUG_DELIV_LEVEL_2)
         knd_log("== saved result for TID \"%s\" => %s [%lu]",
@@ -262,7 +262,7 @@ static int run_retrieve(void *obj,
     if (DEBUG_DELIV_LEVEL_2)
         knd_log(".. retrieving obj,  tid \"%.*s\"", tid_size, tid);
     
-    res = self->idx->get(self->idx, tid);
+    res = self->idx->get(self->idx, tid, KND_TID_SIZE);
     if (!res)  {
         if (DEBUG_DELIV_LEVEL_TMP)
             knd_log("-- no result found for tid \"%.*s\"!", tid_size, tid);
