@@ -35,6 +35,10 @@ find_path(CHECK_INCLUDE_DIR NAMES check.h PATHS ${CHECK_INCLUDE_DIRS})
 find_library(CHECK_LIBRARY NAMES check PATHS ${CHECK_LIBRARY_DIRS})
 include_directories(${CHECK_INCLUDE_DIR})
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+        set(CHECK_LIBRARY ${CHECK_LIBRARY} rt m pthread subunit)
+endif()
+
 set(KNOWDY_PREFIX "knd")
 set(CORE "core")
 set(PARSER "parser")
