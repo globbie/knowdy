@@ -557,7 +557,6 @@ static int resolve_name_refs(struct kndConcept *self)
 
         item->conc = c;
 
-
         /* should we keep track of our children? */
         /*if (c->ignore_children) continue; */
 
@@ -576,7 +575,6 @@ static int resolve_name_refs(struct kndConcept *self)
                     self->name, item->name);
             return knd_FAIL;
         }
-
         ref = &c->children[c->num_children];
         ref->conc = self;
         c->num_children++;
@@ -601,7 +599,6 @@ static int get_attr(struct kndConcept *self,
     }
 
     /*if (!self->attr_idx) {
-        
         err = ooDict_new(&self->attr_idx, KND_SMALL_DICT_SIZE);
         if (err) return err;
 
@@ -1627,12 +1624,24 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
         }
     }
     if (!name_size) return knd_FAIL;
-    if (name_size >= KND_NAME_SIZE)
-        return knd_LIMIT;
+    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
 
     memcpy(self->name, name, name_size);
     self->name_size = name_size;
-    self->name[name_size] = '\0';
+
+    return knd_OK;
+}
+
+
+static int parse_rel_import(void *obj,
+                            const char *rec,
+                            size_t *total_size)
+{
+    struct kndConcept *self = obj;
+    int err;
+
+    err = self->rel->import(self->rel, rec, total_size);
+    if (err) return err;
 
     return knd_OK;
 }
@@ -1693,6 +1702,12 @@ static int parse_schema(void *self,
           .name = "class",
           .name_size = strlen("class"),
           .parse = parse_import_class,
+          .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "rel",
+          .name_size = strlen("rel"),
+          .parse = parse_rel_import,
           .obj = self
         }
     };

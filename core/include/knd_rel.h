@@ -23,6 +23,7 @@
 #include "knd_config.h"
 
 struct kndOutput;
+struct kndTask;
 
 struct kndRelState
 {
@@ -46,9 +47,12 @@ struct kndRel
     size_t name_size;
     char id[KND_ID_SIZE];
 
+    struct kndTranslation *tr;
+
     struct kndOutput *out;
     struct kndOutput *log;
 
+    struct kndTask *task;
     const char *locale;
     size_t locale_size;
     knd_format format;
@@ -58,6 +62,9 @@ struct kndRel
 
     struct kndRelState *states;
     size_t num_states;
+
+    /* allocator */
+    struct kndMemPool *mempool;
 
     struct ooDict *rel_idx;
     size_t depth;
@@ -71,6 +78,9 @@ struct kndRel
     int (*parse)(struct kndRel *self,
                  const char    *rec,
                  size_t        *total_size);
+    int (*import)(struct kndRel *self,
+                  const char    *rec,
+                  size_t        *total_size);
 
     int (*index)(struct kndRel *self);
 

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "knd_rel.h"
 #include "knd_task.h"
 #include "knd_repo.h"
@@ -8,8 +9,9 @@
 #include "knd_object.h"
 #include "knd_utils.h"
 #include "knd_concept.h"
-#include "knd_attr.h"
+#include "knd_mempool.h"
 #include "knd_parser.h"
+#include "knd_text.h"
 
 #define DEBUG_REL_LEVEL_0 0
 #define DEBUG_REL_LEVEL_1 0
@@ -18,14 +20,109 @@
 #define DEBUG_REL_LEVEL_TMP 1
 
 static void
-del(struct kndRel *self)
+del(struct kndRel *self __attribute__((unused)))
 {
-    free(self);
 }
 
-static void str(struct kndRel *self)
+static void str(struct kndRel *self __attribute__((unused)))
 {
 }
+
+static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndTranslation *tr = (struct kndTranslation*)obj;
+    struct kndTaskArg *arg;
+    const char *val = NULL;
+    size_t val_size = 0;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. run set translation text..");
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!memcmp(arg->name, "_impl", strlen("_impl"))) {
+            val = arg->val;
+            val_size = arg->val_size;
+        }
+    }
+    if (!val_size) return knd_FAIL;
+    if (val_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. run set translation text: %.*s [%lu]\n", val_size, val,
+                (unsigned long)val_size);
+
+    memcpy(tr->val, val, val_size);
+    tr->val_size = val_size;
+
+    return knd_OK;
+}
+
+
+static int read_gloss(void *obj,
+                      const char *rec,
+                      size_t *total_size)
+{
+    struct kndTranslation *tr = (struct kndTranslation*)obj;
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_translation_text,
+          .obj = tr
+        }
+    };
+    int err;
+
+    if (DEBUG_REL_LEVEL_2)
+        knd_log(".. reading gloss translation: \"%.*s\"",
+                tr->locale_size, tr->locale);
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+static int gloss_append(void *accu,
+                        void *item)
+{
+    struct kndRel *self = accu;
+    struct kndTranslation *tr = item;
+
+    tr->next = self->tr;
+    self->tr = tr;
+   
+    return knd_OK;
+}
+
+static int gloss_alloc(void *obj,
+                       const char *name,
+                       size_t name_size,
+                       size_t count,
+                       void **item)
+{
+    struct kndRel *self = obj;
+    struct kndTranslation *tr;
+
+    if (DEBUG_REL_LEVEL_2)
+        knd_log(".. %.*s to create gloss: %.*s count: %zu",
+                self->name_size, self->name, name_size, name, count);
+
+    if (name_size > KND_LOCALE_SIZE) return knd_LIMIT;
+
+    tr = malloc(sizeof(struct kndTranslation));
+    if (!tr) return knd_NOMEM;
+
+    memset(tr, 0, sizeof(struct kndTranslation));
+    memcpy(tr->curr_locale, name, name_size);
+    tr->curr_locale_size = name_size;
+
+    tr->locale = tr->curr_locale;
+    tr->locale_size = tr->curr_locale_size;
+    *item = tr;
+
+    return knd_OK;
+}
+
 
 static int
 kndRel_set_reverse_rel(struct kndRel *self,
@@ -130,6 +227,29 @@ static int kndRel_resolve(struct kndRel *self)
     /*err = kndRel_set_reverse_rel(self, obj);
     if (err) return err;
     */
+    return knd_OK;
+}
+
+static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndRel *self = obj;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    size_t name_size = 0;
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!memcmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+    if (!name_size) return knd_FAIL;
+    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+    memcpy(self->name, name, name_size);
+    self->name_size = name_size;
+
     return knd_OK;
 }
 
@@ -301,28 +421,116 @@ static int export_reverse_rel(struct kndRel *self)
     return knd_OK;
 }
 
-
-static int
-parse_GSL(struct kndRel *self,
-          const char *rec,
-          size_t *total_size)
+static int import_rel(struct kndRel *self,
+                      const char *rec,
+                      size_t *total_size)
 {
-    if (DEBUG_REL_LEVEL_1)
-        knd_log(".. parse REL field: \"%s\"..", rec);
+    struct kndRel *rel;
+    int err;
+
+    if (DEBUG_REL_LEVEL_TMP)
+        knd_log(".. import Rel: \"%.*s\"..  mempool: %p", 32, rec, self->mempool);
+
+    err  = self->mempool->new_rel(self->mempool, &rel);
+    if (err) return err;
+
+    knd_log("REL: %p", rel);
+    rel->out = self->out;
+    rel->log = self->log;
+    rel->task = self->task;
+    rel->mempool = self->mempool;
+    rel->rel_idx = self->rel_idx;
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_set_val,
-          .obj = self
-        }
+          .run = run_set_name,
+          .obj = rel
+        }/*,
+        { .type = KND_CHANGE_STATE,
+          .name = "base",
+          .name_size = strlen("base"),
+          .parse = parse_baseclass,
+          .obj = rel
+          }*/,
+        { .type = KND_CHANGE_STATE,
+          .is_list = true,
+          .name = "_gloss",
+          .name_size = strlen("_gloss"),
+          .accu = rel,
+          .alloc = gloss_alloc,
+          .append = gloss_append,
+          .parse = read_gloss
+        },
+        { .is_list = true,
+          .name = "_gloss",
+          .name_size = strlen("_gloss"),
+          .accu = rel,
+          .alloc = gloss_alloc,
+          .append = gloss_append,
+          .parse = read_gloss
+        }/*,
+        { .type = KND_CHANGE_STATE,
+          .name = "subj",
+          .name_size = strlen("subj"),
+          .parse = parse_aggr,
+          .obj = rel
+          },*/
     };
-    int err;
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-    
+    if (err) goto final;
+
+    if (!rel->name_size) {
+        err = knd_FAIL;
+        goto final;
+    }
+
+    /*dir = (struct kndConcDir*)self->class_idx->get(self->class_idx,
+                                                   rel->name, rel->name_size);
+    if (dir) {
+        knd_log("-- %s class name doublet found :(", rel->name);
+
+        self->log->reset(self->log);
+        err = self->log->write(self->log,
+                               rel->name,
+                               rel->name_size);
+        if (err) goto final;
+        
+        err = self->log->write(self->log,
+                               " class name already exists",
+                               strlen(" class name already exists"));
+        if (err) goto final;
+        
+        err = knd_FAIL;
+        goto final;
+    }
+    */
+
+    /*if (!self->batch_mode) {
+        rel->next = self->inbox;
+        self->inbox = c;
+        self->inbox_size++;
+        }*/
+
+    /*dir = malloc(sizeof(struct kndConcDir));
+    memset(dir, 0, sizeof(struct kndConcDir));
+    dir->conc = c;
+    rel->dir = dir;
+    err = self->class_idx->set(self->class_idx,
+                               rel->name, rel->name_size, (void*)dir);
+    if (err) goto final;
+    */
+
+    if (DEBUG_REL_LEVEL_TMP)
+        rel->str(rel);
+     
     return knd_OK;
+ final:
+    
+    rel->del(rel);
+    return err;
 }
+
 
 extern void 
 kndRel_init(struct kndRel *self)
@@ -331,7 +539,8 @@ kndRel_init(struct kndRel *self)
     self->str = str;
     self->export = export;
     self->resolve = kndRel_resolve;
-    self->parse = parse_GSL;
+    //self->parse = parse_GSL;
+    self->import = import_rel;
 }
 
 extern int 

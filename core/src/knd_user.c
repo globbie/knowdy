@@ -336,7 +336,7 @@ static int parse_rel_import(void *obj,
 
     self->task->type = KND_CHANGE_STATE;
 
-    err = self->root_class->rel->parse(self->root_class->rel, rec, total_size);
+    err = self->root_class->rel->import(self->root_class->rel, rec, total_size);
     if (err) return err;
 
     return knd_OK;
@@ -639,6 +639,7 @@ static int parse_task(struct kndUser *self,
     struct kndConcept *conc;
     struct kndObject *obj, *next_obj;
     struct ooDict *idx;
+
     if (DEBUG_USER_LEVEL_1)
         knd_log(".. parsing user task: \"%s\" size: %lu..\n\n",
                 rec, (unsigned long)strlen(rec));
@@ -683,7 +684,7 @@ static int parse_task(struct kndUser *self,
         },
         { .type = KND_CHANGE_STATE,
           .name = "rel",
-          .name_size = strlen("proc"),
+          .name_size = strlen("rel"),
           .parse = parse_rel_import,
           .obj = self
         },

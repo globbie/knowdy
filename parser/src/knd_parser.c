@@ -272,8 +272,8 @@ int knd_parse_num(const char *val,
     char *invalid_num_char = NULL;
     int err = knd_OK;
 
-    if (!val) return knd_FAIL;
-
+    assert(val != NULL);
+       
     errno = 0;
 
     /* fix core typos, raise a warning */
@@ -284,7 +284,7 @@ int knd_parse_num(const char *val,
             warning = KND_IS_TYPO;
         }
         c++;
-        }*/
+    }*/
 
     numval = strtol(val, &invalid_num_char, KND_NUM_ENCODE_BASE);
 

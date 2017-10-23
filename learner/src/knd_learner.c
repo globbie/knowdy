@@ -490,6 +490,7 @@ kndLearner_new(struct kndLearner **rec,
     
     err = kndRel_new(&conc->rel);
     if (err) goto error;
+    conc->rel->mempool = self->mempool;
 
     /* specific allocations of the root concs */
     err = ooDict_new(&conc->class_idx, KND_MEDIUM_DICT_SIZE);

@@ -71,7 +71,6 @@ static int new_rel(struct kndMemPool *self,
         e = self->log->write(self->log, "memory limit reached",
                              strlen("memory limit reached"));
         if (e) return e;
-
         knd_log("-- Rel pool memory limit reached :(");
         return knd_MAX_LIMIT_REACHED;
     }
