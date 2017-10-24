@@ -1,6 +1,8 @@
-// #undef NDEBUG  // For developing
+#undef NDEBUG  // For developing
 #include <assert.h>
+#include <ctype.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -20,7 +22,7 @@
 #include "knd_utils.h"
 
 #define DEBUG_PARSER_LEVEL_1 0
-#define DEBUG_PARSER_LEVEL_2 0
+#define DEBUG_PARSER_LEVEL_2 1
 #define DEBUG_PARSER_LEVEL_3 0
 #define DEBUG_PARSER_LEVEL_4 0
 #define DEBUG_PARSER_LEVEL_TMP 1
@@ -310,6 +312,81 @@ final:
     return err;
 }
 
+static int
+knd_run_set_num_size_t(void *obj,
+                       struct kndTaskArg *args, size_t num_args)
+{
+    size_t *self = (size_t *)obj;
+    struct kndTaskArg *arg;
+    char *num_end;
+    unsigned long long num;
+
+    assert(args && num_args == 1);
+    arg = &args[0];
+
+    assert(arg->name_size == strlen("_impl") && !memcmp(arg->name, "_impl", arg->name_size));
+    assert(arg->val && arg->val_size != 0);
+
+    if (!isdigit(arg->val[0])) {
+        knd_log("-- num size_t doesn't start from a digit: \"%.*s\"",
+                arg->val_size, arg->val);
+        return knd_FORMAT;
+    }
+
+    errno = 0;
+    num = strtoull(arg->val, &num_end, KND_NUM_ENCODE_BASE);  // FIXME(ki.stfu): Null-terminated string is expected
+    if (errno == ERANGE && num == ULLONG_MAX) {
+        knd_log("-- num limit reached: %.*s max: %llu",
+                arg->val_size, arg->val, ULLONG_MAX);
+        return knd_LIMIT;
+    }
+    else if (errno != 0 && num == 0) {
+        knd_log("-- cannot convert \"%.*s\" to num: %d",
+                arg->val_size, arg->val, errno);
+        return knd_FORMAT;
+    }
+
+    if (arg->val + arg->val_size != num_end) {
+        knd_log("-- not all characters in \"%.*s\" were parsed: \"%.*s\"",
+                arg->val_size, arg->val, num_end - arg->val, arg->val);
+        return knd_FORMAT;
+    }
+
+    if (ULLONG_MAX > SIZE_MAX && num > SIZE_MAX) {
+        knd_log("-- num size_t limit reached: %llu max: %llu",
+                num, (unsigned long long)SIZE_MAX);
+        return knd_LIMIT;
+    }
+
+    *self = (size_t)num;
+    if (DEBUG_PARSER_LEVEL_2)
+        knd_log("++ got num size_t: %zu",
+                *self);
+
+    return knd_OK;
+}
+
+int
+knd_parse_num_size_t(void *obj,
+                     const char *rec,
+                     size_t *total_size)
+{
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = knd_run_set_num_size_t,
+          .obj = obj
+        }
+    };
+    int err;
+
+    if (DEBUG_PARSER_LEVEL_2)
+        knd_log(".. parse num size_t: \"%.*s\"", 16, rec);
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
 
 int
 knd_parse_IPV4(char *ip, unsigned long *ip_val)
