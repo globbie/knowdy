@@ -427,7 +427,7 @@ static int
 knd_spec_is_correct(struct kndTaskSpec *spec)
 {
     if (DEBUG_PARSER_LEVEL_2) 
-        knd_log(".. check spec: %.*s..", spec->name_size, spec->name);
+        knd_log(".. check spec: \"%.*s\"..", spec->name_size, spec->name);
 
     // Check the fields are not mutually exclusive (by groups):
 
