@@ -523,16 +523,9 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
         assert(spec->parse == NULL);
         // |spec->validate| can be NULL
         assert(spec->run == NULL);
-        assert(spec->num == NULL);
     }
 
-    if (spec->num) {
-        assert(spec->buf == NULL);
-        assert(spec->parse == NULL);
-        assert(spec->run == NULL);
-    }
-
-    assert(spec->buf != NULL || spec->num != NULL || spec->parse != NULL || spec->validate != NULL || spec->run != NULL);
+    assert(spec->buf != NULL || spec->parse != NULL || spec->validate != NULL || spec->run != NULL);
 
     return 1;
 }
@@ -554,29 +547,6 @@ knd_spec_buf_copy(struct kndTaskSpec *spec,
 
     memcpy(spec->buf, val, val_size);
     *spec->buf_size = val_size;
-
-    return knd_OK;
-}
-
-static int
-knd_spec_get_num(struct kndTaskSpec *spec,
-                 const char *val,
-                 size_t val_size)
-{
-    char buf[KND_SHORT_NAME_SIZE + 1];
-    long numval;
-    int err;
-
-    if (val_size > KND_SHORT_NAME_SIZE) return knd_LIMIT;
-
-    memcpy(buf, val, val_size);
-    buf[val_size] = '\0';
-
-    err = knd_parse_num(buf, &numval);
-    if (err) return err;
-    if (numval < 0) return knd_LIMIT;
-
-    *spec->num = (size_t)numval;
 
     return knd_OK;
 }
@@ -848,14 +818,6 @@ knd_check_field_terminal_value(const char *val,
         if (err) return err;
 
         spec->is_completed = true;
-        return knd_OK;
-    }
-
-    if (spec->num) {
-        err = knd_spec_get_num(spec, val, val_size);
-        if (err) return err;
-        if (!spec->is_selector)
-            spec->is_completed = true;
         return knd_OK;
     }
 

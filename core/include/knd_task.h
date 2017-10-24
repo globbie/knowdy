@@ -66,8 +66,6 @@ struct kndTaskSpec
     size_t *buf_size;
     size_t max_buf_size;
 
-    size_t *num;
-
     void *obj;
     void *accu;
     
