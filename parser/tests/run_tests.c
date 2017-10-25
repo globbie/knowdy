@@ -98,28 +98,45 @@ START_TEST(parse_implied_field)
     ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
     RESET_IS_COMPLETED(specs); RESET_IS_COMPLETED(inner_specs);
 
+    rc = knd_parse_task(rec = "{user John Smith{sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
+    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+    RESET_IS_COMPLETED(specs); RESET_IS_COMPLETED(inner_specs);
+
     rc = knd_parse_task(rec = "{user John Smith {sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
     ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
     ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
-END_TEST
-
-START_TEST(parse_implied_field_with_spaces)
-    struct kndTaskSpec inner_specs[] = { name_spec, sid_spec };
-    struct TaskSpecs parse_args = { inner_specs, sizeof inner_specs / sizeof inner_specs[0] };
-    struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
-
-    rc = knd_parse_task(rec = "{user  John Space }", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_OK);
-    ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_uint_eq(user.name_size, strlen("John Space")); ck_assert_str_eq(user.name, "John Space");
     RESET_IS_COMPLETED(specs); RESET_IS_COMPLETED(inner_specs);
 
-    rc = knd_parse_task(rec = "{user  John Space  {sid 123456} }", &total_size, specs, sizeof specs / sizeof specs[0]);
+    rc = knd_parse_task(rec = "{user   John Smith   {sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_uint_eq(user.name_size, strlen("John Space")); ck_assert_str_eq(user.name, "John Space");
+    ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
+    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+    RESET_IS_COMPLETED(specs); RESET_IS_COMPLETED(inner_specs);
+
+    rc = knd_parse_task(rec = "{user {sid 123456}John Smith}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
+    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+    RESET_IS_COMPLETED(specs); RESET_IS_COMPLETED(inner_specs);
+
+    rc = knd_parse_task(rec = "{user {sid 123456} John Smith}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
+    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+    RESET_IS_COMPLETED(specs); RESET_IS_COMPLETED(inner_specs);
+
+    rc = knd_parse_task(rec = "{user {sid 123456}   John Smith   }", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
     ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
 END_TEST
 
@@ -366,7 +383,6 @@ int main() {
     tcase_add_test(tc, parse_task_empty_with_spaces);
     tcase_add_test(tc, parse_task_empty_with_closing_brace);
     tcase_add_test(tc, parse_implied_field);
-    tcase_add_test(tc, parse_implied_field_with_spaces);
     tcase_add_test(tc, parse_implied_field_unknown);
     tcase_add_test(tc, parse_implied_field_max_size);
     tcase_add_test(tc, parse_implied_field_max_size_plus_one);
