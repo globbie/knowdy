@@ -313,8 +313,8 @@ final:
 }
 
 static int
-knd_run_set_num_size_t(void *obj,
-                       struct kndTaskArg *args, size_t num_args)
+knd_run_set_size_t(void *obj,
+                   struct kndTaskArg *args, size_t num_args)
 {
     size_t *self = (size_t *)obj;
     struct kndTaskArg *arg;
@@ -367,13 +367,13 @@ knd_run_set_num_size_t(void *obj,
 }
 
 int
-knd_parse_num_size_t(void *obj,
-                     const char *rec,
-                     size_t *total_size)
+knd_parse_size_t(void *obj,
+                 const char *rec,
+                 size_t *total_size)
 {
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
-          .run = knd_run_set_num_size_t,
+          .run = knd_run_set_size_t,
           .obj = obj
         }
     };

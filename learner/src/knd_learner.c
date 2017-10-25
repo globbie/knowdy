@@ -238,37 +238,37 @@ static int parse_memory_settings(void *obj,
     struct kndTaskSpec specs[] = {
         { .name = "max_classes",
           .name_size = strlen("max_classes"),
-          .parse = knd_parse_num_size_t,
+          .parse = knd_parse_size_t,
           .obj = &self->max_classes
         },
         { .name = "max_objs",
           .name_size = strlen("max_objs"),
-          .parse = knd_parse_num_size_t,
+          .parse = knd_parse_size_t,
           .obj = &self->max_objs
         },
         { .name = "max_elems",
           .name_size = strlen("max_elems"),
-          .parse = knd_parse_num_size_t,
+          .parse = knd_parse_size_t,
           .obj = &self->max_elems
         },
         { .name = "max_rels",
           .name_size = strlen("max_rels"),
-          .parse = knd_parse_num_size_t,
+          .parse = knd_parse_size_t,
           .obj = &self->max_rels
         },
         { .name = "max_rel_instances",
           .name_size = strlen("max_rel_instances"),
-          .parse = knd_parse_num_size_t,
+          .parse = knd_parse_size_t,
           .obj = &self->max_rel_instances
         },
         { .name = "max_procs",
           .name_size = strlen("max_procs"),
-          .parse = knd_parse_num_size_t,
+          .parse = knd_parse_size_t,
           .obj = &self->max_procs
         },
         { .name = "max_proc_instances",
           .name_size = strlen("max_proc_instances"),
-          .parse = knd_parse_num_size_t,
+          .parse = knd_parse_size_t,
           .obj = &self->max_proc_instances
         }
     };

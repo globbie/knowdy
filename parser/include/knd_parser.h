@@ -31,9 +31,9 @@ knd_read_name(char *output,
               size_t rec_size);
 
 extern int
-knd_parse_num_size_t(void *obj,
-                     const char *rec,
-                     size_t *total_size);
+knd_parse_size_t(void *obj,
+                 const char *rec,
+                 size_t *total_size);
 
 extern int
 knd_parse_IPV4(char *ip, unsigned long *ip_val);
