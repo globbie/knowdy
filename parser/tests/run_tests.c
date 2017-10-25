@@ -61,7 +61,7 @@ START_TEST(parse_task_empty)
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
     rc = knd_parse_task(rec = "", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(rc, knd_OK);  // TODO(ki.stfu): Call the default handler
     ck_assert_uint_eq(total_size, strlen(rec));
     ck_assert_uint_eq(user.name_size, 0); ck_assert_uint_eq(user.sid_size, 0);
 END_TEST
@@ -72,7 +72,7 @@ START_TEST(parse_task_empty_with_spaces)
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
     rc = knd_parse_task(rec = "     ", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(rc, knd_OK);  // TODO(ki.stfu): Call the default handler
     ck_assert_uint_eq(total_size, strlen(rec));
     ck_assert_uint_eq(user.name_size, 0); ck_assert_uint_eq(user.sid_size, 0);
 END_TEST
@@ -83,7 +83,7 @@ START_TEST(parse_task_empty_with_closing_brace)
     struct kndTaskSpec specs[] = {{ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = &parse_args }};
 
     rc = knd_parse_task(rec = " }     ", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(rc, knd_OK);  // TODO(ki.stfu): Call the default handler
     ck_assert_uint_eq(total_size, strchr(rec, '}') - rec);  // shared brace
 END_TEST
 
