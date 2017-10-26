@@ -307,7 +307,6 @@ static int run_set_tid(void *obj,
 
     if (tid_size >= KND_TID_SIZE) return knd_LIMIT;
     memcpy(self->tid, tid, tid_size);
-    self->tid[tid_size] = '\0';
     self->tid_size = tid_size;
    
     return knd_OK;
@@ -335,7 +334,6 @@ static int run_check_sid(void *obj,
 
     self = (struct kndAuth*)obj;
     memcpy(self->sid, sid, sid_size);
-    self->sid[sid_size] = '\0';
     self->sid_size = sid_size;
 
     if (DEBUG_AUTH_LEVEL_2)
@@ -354,7 +352,7 @@ static int run_check_sid(void *obj,
 
     user_rec = tok_rec->user;
 
-    if (DEBUG_AUTH_LEVEL_2)
+    if (DEBUG_AUTH_LEVEL_TMP)
         knd_log("++ sid approved: \"%.*s\" USER: %.*s",
                 sid_size, sid,
                 user_rec->name_size, user_rec->name);
@@ -489,8 +487,6 @@ static int kndAuth_start(struct kndAuth *self)
 
         self->out->reset(self->out);
         self->log->reset(self->log);
-        self->tid[0] = '\0';
-        self->sid[0] = '\0';
         self->sid_size = 0;
 
         self->task = knd_zmq_recv(service, &self->task_size);
@@ -558,7 +554,6 @@ run_set_service_addr(void *obj,
         knd_log(".. set service addr to \"%.*s\"", addr_size, addr);
 
     memcpy(self->addr, addr, addr_size);
-    self->addr[addr_size] = '\0';
     self->addr_size = addr_size;
     
     return knd_OK;

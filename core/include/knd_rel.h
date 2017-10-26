@@ -24,7 +24,7 @@
 
 struct kndOutput;
 struct kndTask;
-
+struct kndRelArg;
 struct kndRelState
 {
     knd_state_phase phase;
@@ -62,6 +62,10 @@ struct kndRel
 
     struct kndRelState *states;
     size_t num_states;
+
+    struct kndRelArg *args;
+    struct kndRelArg *tail_arg;
+    size_t num_atrs;
 
     /* allocator */
     struct kndMemPool *mempool;

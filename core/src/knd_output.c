@@ -30,17 +30,13 @@ kndOutput_del(struct kndOutput *self)
 static void
 kndOutput_reset(struct kndOutput *self)
 {
-    self->buf[0] = '\0';
-    self->filename[0] = '\0';
     self->filename_size = 0;
 
     if (self->file) {
         free(self->file);
         self->file = NULL;
     }
-    
     self->file_size = 0;
-    
     self->curr_buf = self->buf;
     self->free_space = self->max_size;
     self->buf_size = 0;
@@ -64,7 +60,6 @@ kndOutput_write(struct kndOutput *self,
     memcpy(*output_buf, buf, buf_size);
 
     *output_buf += buf_size;
-    *output_buf[0] = '\0';
     *output_size += buf_size;
     *free_space -= buf_size;
 
