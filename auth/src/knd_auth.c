@@ -471,8 +471,10 @@ static int kndAuth_start(struct kndAuth *self)
     size_t header_size = strlen(header);
 
     /* default reply */
-    const char *reply = "{\"error\":\"auth error\",\"http_code\":401}";
-    size_t reply_size = strlen(reply);
+    const char *auth_fail_reply = "{\"error\":\"auth error\",\"http_code\":401}";
+    size_t auth_fail_reply_size = strlen(auth_fail_reply);
+    const char *reply = auth_fail_reply;
+    size_t reply_size = auth_fail_reply_size;
 
     context = zmq_init(1);
 
@@ -488,6 +490,8 @@ static int kndAuth_start(struct kndAuth *self)
         self->out->reset(self->out);
         self->log->reset(self->log);
         self->sid_size = 0;
+        reply = auth_fail_reply;
+        reply_size = auth_fail_reply_size;
 
         self->task = knd_zmq_recv(service, &self->task_size);
         self->obj = knd_zmq_recv(service, &self->obj_size);
