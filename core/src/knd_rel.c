@@ -273,8 +273,8 @@ static int export_reverse_rel(struct kndRel *self)
 
     switch (self->format) {
     case KND_FORMAT_JSON:
-        err = export_reverse_rel_JSON(self);
-        if (err) return err;
+        /*err = export_reverse_rel_JSON(self);
+          if (err) return err; */
         break;
     case KND_FORMAT_GSP:
         err = export_reverse_rel_GSP(self);
