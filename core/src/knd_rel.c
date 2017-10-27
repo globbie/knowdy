@@ -25,11 +25,17 @@ del(struct kndRel *self __attribute__((unused)))
 {
 }
 
-static void str(struct kndRel *self __attribute__((unused)))
+static void str(struct kndRel *self)
 {
+    struct kndRelArg *arg;
 
     knd_log("\n%*sREL: %.*s", self->depth * KND_OFFSET_SIZE, "", self->name_size, self->name);
 
+    for (arg = self->args; arg; arg = arg->next) {
+        arg->depth = self->depth + 1;
+        arg->str(arg);
+    }
+    
 }
 
 static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t num_args)
@@ -296,7 +302,7 @@ static int validate_rel_arg(void *obj,
     struct kndRelArg *arg;
     int err;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_2)
         knd_log(".. parsing the \"%.*s\" rel arg, rec:\"%.*s\"", name_size, name, 32, rec);
 
     err = kndRelArg_new(&arg);
@@ -340,9 +346,10 @@ static int import_rel(struct kndRel *self,
     char buf[KND_NAME_SIZE];
     size_t buf_size;
     struct kndRel *rel;
+    struct kndRelDir *dir;
     int err;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_2)
         knd_log(".. import Rel: \"%.*s\"..", 32, rec);
 
     err  = self->mempool->new_rel(self->mempool, &rel);
@@ -402,41 +409,36 @@ static int import_rel(struct kndRel *self,
         goto final;
     }
 
-    /*dir = (struct kndConcDir*)self->class_idx->get(self->class_idx,
-                                                   rel->name, rel->name_size);
+    dir = (struct kndRelDir*)self->rel_idx->get(self->rel_idx,
+                                                rel->name, rel->name_size);
     if (dir) {
-        knd_log("-- %s class name doublet found :(", rel->name);
-
+        knd_log("-- %s relation name doublet found :(", rel->name);
         self->log->reset(self->log);
         err = self->log->write(self->log,
                                rel->name,
                                rel->name_size);
         if (err) goto final;
-        
         err = self->log->write(self->log,
-                               " class name already exists",
-                               strlen(" class name already exists"));
+                               " relation name already exists",
+                               strlen(" relation name already exists"));
         if (err) goto final;
-        
         err = knd_FAIL;
         goto final;
     }
-    */
 
-    /*if (!self->batch_mode) {
+    if (!self->batch_mode) {
         rel->next = self->inbox;
-        self->inbox = c;
+        self->inbox = rel;
         self->inbox_size++;
-        }*/
+    }
 
-    /*dir = malloc(sizeof(struct kndConcDir));
-    memset(dir, 0, sizeof(struct kndConcDir));
-    dir->conc = c;
+    dir = malloc(sizeof(struct kndRelDir));
+    memset(dir, 0, sizeof(struct kndRelDir));
+    dir->rel = rel;
     rel->dir = dir;
-    err = self->class_idx->set(self->class_idx,
-                               rel->name, rel->name_size, (void*)dir);
+    err = self->rel_idx->set(self->rel_idx,
+                             rel->name, rel->name_size, (void*)dir);
     if (err) goto final;
-    */
 
     if (DEBUG_REL_LEVEL_TMP)
         rel->str(rel);

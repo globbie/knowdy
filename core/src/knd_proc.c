@@ -121,7 +121,7 @@ extern int
 kndProc_new(struct kndProc **proc)
 {
     struct kndProc *self;
-    
+
     self = malloc(sizeof(struct kndProc));
     if (!self) return knd_NOMEM;
 
@@ -130,7 +130,6 @@ kndProc_new(struct kndProc **proc)
     self->del = del;
     self->str = str;
     self->export = export;
-
     self->resolve = kndProc_resolve;
     self->parse = parse_GSL;
 

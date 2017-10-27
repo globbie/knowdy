@@ -5343,7 +5343,6 @@ static int freeze(struct kndConcept *self)
 
     /* any instances to freeze? */
     if (self->dir && self->dir->num_objs) {
-        //self->dir && self->dir->obj_idx && self->dir->obj_idx->size) {
         err = freeze_objs(self, &total_frozen_size, curr_dir, &chunk_size);
         if (err) return err;
         curr_dir +=      chunk_size;

@@ -27,14 +27,16 @@ static void str(struct kndRelArg *self)
 
     const char *type_name = knd_relarg_names[self->type];
 
-    knd_log("\n%*s{%s %s", self->depth * KND_OFFSET_SIZE, "", type_name, self->name);
+    knd_log("\n%*s{%s %.*s class:%.*s", self->depth * KND_OFFSET_SIZE, "", type_name,
+            self->name_size, self->name,
+            self->classname_size, self->classname);
     
     tr = self->tr;
     while (tr) {
         knd_log("%*s   ~ %s %s", self->depth * KND_OFFSET_SIZE, "", tr->locale, tr->val);
         tr = tr->next;
     }
-
+    
 }
 
 /**
@@ -291,7 +293,7 @@ static int parse_GSL(struct kndRelArg *self,
                      const char *rec,
                      size_t *total_size)
 {
-    if (DEBUG_RELARG_LEVEL_TMP)
+    if (DEBUG_RELARG_LEVEL_2)
         knd_log(".. Rel Arg parsing: \"%.*s\"..", 32, rec);
 
     struct kndTaskSpec specs[] = {

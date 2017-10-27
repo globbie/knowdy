@@ -73,7 +73,8 @@ struct kndRelArg
     char classname[KND_NAME_SIZE];
     size_t classname_size;
 
-
+    struct kndConcept *conc;
+    struct kndConcDir *conc_dir;
     struct kndRel *rel;
 
     const char *locale;
