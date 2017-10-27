@@ -387,6 +387,7 @@ parse_config_GSL(struct kndLearner *self,
     memcpy(self->admin->id, "000", strlen("000"));
 
     /* users path */
+    self->path[self->path_size] = '\0';
     self->admin->dbpath = self->path;
     self->admin->dbpath_size = self->path_size;
 

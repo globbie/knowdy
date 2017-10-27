@@ -2763,6 +2763,8 @@ static int read_GSL_file(struct kndConcept *self,
     err = out->write(out, ".gsl", strlen(".gsl"));
     if (err) return err;
 
+    out->buf[out->buf_size] = '\0';
+
     err = out->read_file(out, (const char*)out->buf, out->buf_size);
     if (err) {
         knd_log("-- couldn't read GSL class file \"%s\" :(", out->buf);
