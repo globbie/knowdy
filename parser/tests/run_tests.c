@@ -56,6 +56,18 @@ static int run_set_email(void *obj, struct kndTaskArg *args, size_t num_args) {
     return knd_OK;
 }
 
+static int run_set_default_email(void *obj,
+                                 struct kndTaskArg *args,
+                                 size_t num_args) {
+    struct User *self = (struct User *)obj;
+    ck_assert(self);
+    ck_assert(args); ck_assert_uint_eq(num_args, 0);
+
+    self->email_type = EMAIL_NONE;
+    assert(self->email_size == 0);
+    return knd_OK;  // ok: no email by default
+}
+
 static int parse_email_record(void *obj,
                               const char *name, size_t name_size,
                               const char *rec, size_t *total_size) {
@@ -63,6 +75,13 @@ static int parse_email_record(void *obj,
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_email,
+          .obj = self
+        },
+        {
+          .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = run_set_default_email,  // We are okay even if email is empty
           .obj = self
         }
     };
@@ -84,24 +103,8 @@ static int parse_email_record(void *obj,
         self->email_type = EMAIL_NONE;
         return err;
     }
-    else if (self->email_size == 0) {
-        self->email_type = EMAIL_NONE;
-        return knd_OK;  // ok: ignore empty field
-    }
 
     return knd_OK;
-}
-
-static int run_set_default_email(void *obj,
-                                 struct kndTaskArg *args,
-                                 size_t num_args) {
-    struct User *self = (struct User *)obj;
-    ck_assert(self);
-    ck_assert(args); ck_assert_uint_eq(num_args, 0);
-
-    assert(self->email_type == EMAIL_NONE);
-    assert(self->email_size == 0);
-    return knd_OK;  // ok: no email by default
 }
 
 static int parse_email(void *obj, const char *rec, size_t *total_size) {
