@@ -3,11 +3,16 @@
 
 #include <check.h>
 
+#include <assert.h>
 #include <string.h>
 
 // --------------------------------------------------------------------------------
 // User -- testable object
-struct User { char name[KND_SHORT_NAME_SIZE]; size_t name_size; char sid[6]; size_t sid_size; };
+struct User {
+    char name[KND_SHORT_NAME_SIZE]; size_t name_size;
+    char sid[6]; size_t sid_size;
+    char email[KND_SHORT_NAME_SIZE]; size_t email_size; enum { EMAIL_NONE, EMAIL_HOME, EMAIL_WORK } email_type;
+};
 
 // --------------------------------------------------------------------------------
 // TaskSpecs -- for passing inner specs into |parse_user|
@@ -19,6 +24,7 @@ static void test_case_fixture_setup(void) {
     extern struct User user;
     user.name_size = 0;
     user.sid_size = 0;
+    user.email_size = 0; user.email_type = EMAIL_NONE;
 }
 
 static int parse_user(void *obj, const char *rec, size_t *total_size) {
@@ -36,6 +42,90 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args) {
     memcpy(self->name, args[0].val, args[0].val_size);
     self->name_size = args[0].val_size;
     return knd_OK;
+}
+
+static int run_set_email(void *obj, struct kndTaskArg *args, size_t num_args) {
+    struct User *self = (struct User *)obj;
+    ck_assert(args); ck_assert_uint_eq(num_args, 1);
+    ck_assert_uint_eq(args[0].name_size, strlen("_impl")); ck_assert_str_eq(args[0].name, "_impl");
+    ck_assert_uint_ne(args[0].val_size, 0);
+    if (args[0].val_size > sizeof self->email)
+        return knd_LIMIT;
+    memcpy(self->email, args[0].val, args[0].val_size);
+    self->email_size = args[0].val_size;
+    return knd_OK;
+}
+
+static int parse_email_record(void *obj,
+                              const char *name, size_t name_size,
+                              const char *rec, size_t *total_size) {
+    struct User *self = (struct User *)obj;
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_email,
+          .obj = self
+        }
+    };
+    int err;
+
+    if (self->email_type != EMAIL_NONE)
+        return knd_FAIL;  // error: only 1 email address can be specified
+    assert(self->email_size == 0);
+
+    if (name_size == strlen("home") && !memcmp(name, "home", name_size))
+        self->email_type = EMAIL_HOME;
+    else if (name_size == strlen("work") && !memcmp(name, "work", name_size))
+        self->email_type = EMAIL_WORK;
+    else
+        return knd_FAIL;  // error: unknown type
+
+    err = knd_parse_task(rec, total_size, specs, sizeof specs  / sizeof specs[0]);
+    if (err) {
+        self->email_type = EMAIL_NONE;
+        return err;
+    }
+    else if (self->email_size == 0) {
+        self->email_type = EMAIL_NONE;
+        return knd_OK;  // ok: ignore empty field
+    }
+
+    return knd_OK;
+}
+
+static int run_set_default_email(void *obj,
+                                 struct kndTaskArg *args,
+                                 size_t num_args) {
+    struct User *self = (struct User *)obj;
+    ck_assert(self);
+    ck_assert(args); ck_assert_uint_eq(num_args, 0);
+
+    assert(self->email_type == EMAIL_NONE);
+    assert(self->email_size == 0);
+    return knd_OK;  // ok: no email by default
+}
+
+static int parse_email(void *obj, const char *rec, size_t *total_size) {
+    struct User *self = (struct User *)obj;
+    char email_type_buf[KND_NAME_SIZE];  // TODO(ki.stfu): Don't use external buffer for passing name to |spec->validate|
+    size_t email_type_buf_size;
+    struct kndTaskSpec specs[] = {
+        { .is_validator = true,
+          .buf = email_type_buf,
+          .buf_size = &email_type_buf_size,
+          .max_buf_size = sizeof email_type_buf,
+          .validate = parse_email_record,
+          .obj = self
+        },
+        {
+          .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = run_set_default_email,  // We are okay even if email is empty
+          .obj = self
+        }
+    };
+
+    return knd_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 #define RESET_IS_COMPLETED(specs, num_specs)   \
@@ -70,13 +160,16 @@ static struct kndTaskSpec gen_sid_spec(struct User *self) {
                                  .buf = self->sid, .buf_size = &self->sid_size, .max_buf_size = sizeof self->sid };
 }
 
+static struct kndTaskSpec gen_email_spec(struct User *self) {
+    return (struct kndTaskSpec){ .name = "email", .name_size = strlen("email"), .parse = parse_email, .obj = self };
+}
+
 // --------------------------------------------------------------------------------
 // Common variables
 int rc;
 const char *rec;
 size_t total_size;
 struct User user;
-    //email_spec = { .name = "email", .name_size = sizeof "email" - 1, .parse = parse_email, .obj = &parse_email_args };
 
 
 START_TEST(parse_task_empty)
@@ -388,6 +481,81 @@ START_TEST(parse_value_terminal_with_braces)
     ck_assert_int_eq(rc, knd_FORMAT);
 END_TEST
 
+START_TEST(parse_value_validate_empty)
+    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    rc = knd_parse_task(rec = "{user{email}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
+    RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user{email{home}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
+    RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user{email {home}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
+    RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user{email{home}{work}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
+    RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user{email{home} {work}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
+    RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user{email {home}{work}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
+    RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user{email {home} {work}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
+    RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
+    RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email{home}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
+    RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email {home}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
+    RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email{home}{work}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
+    RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email{home} {work}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
+    RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email {home}{work}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
+    RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email {home} {work}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
+    RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+END_TEST
+
 
 int main() {
     TCase* tc = tcase_create("all cases");
@@ -409,6 +577,7 @@ int main() {
     tcase_add_test(tc, parse_value_terminal_max_size_plus_one);
     tcase_add_test(tc, parse_value_terminal_NAME_SIZE_plus_one);
     tcase_add_test(tc, parse_value_terminal_with_braces);
+    tcase_add_test(tc, parse_value_validate_empty);
 
     Suite* s = suite_create("suite");
     suite_add_tcase(s, tc);
