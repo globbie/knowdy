@@ -552,17 +552,15 @@ knd_spec_buf_copy(struct kndTaskSpec *spec,
 }
 
 static int
-knd_find_spec(struct kndTaskSpec *specs,
-              size_t num_specs,
-              const char *name,
+knd_find_spec(const char *name,
               size_t name_size,
               knd_task_spec_type spec_type,
-              struct kndTaskSpec **result)
+              struct kndTaskSpec *specs,
+              size_t num_specs,
+              struct kndTaskSpec **out_spec)
 {
     struct kndTaskSpec *spec;
-    struct kndTaskSpec *default_spec = NULL;
     struct kndTaskSpec *validator_spec = NULL;
-    bool is_completed = false;
     int err;
 
     for (size_t i = 0; i < num_specs; i++) {
@@ -570,27 +568,22 @@ knd_find_spec(struct kndTaskSpec *specs,
 
         if (spec->type != spec_type) continue;
 
-        /* some useful action took place */
-        if (!spec->is_selector && spec->is_completed) {
-            is_completed = true;
-        }
-        
-        if (spec->is_default) {
-            default_spec = spec;
-            continue;
-        }
         if (spec->is_validator) {
+            assert(validator_spec == NULL && "validator_spec was already specified");
             validator_spec = spec;
             continue;
         }
 
-        if (name_size != spec->name_size) continue;
-        
-        if (strncmp(name, spec->name, spec->name_size) != 0) {
-            continue;
+        if (spec->name_size == name_size && !memcmp(spec->name, name, spec->name_size)) {
+            *out_spec = spec;
+            return knd_OK;
         }
-        *result = spec;
-        return knd_OK;
+
+        // TODO(ki.stfu): Remove this case
+        if (spec->is_default && name_size == strlen("default") && !memcmp(name, "default", name_size)) {
+            *out_spec = spec;
+            return knd_OK;
+        }
     }
 
     if (DEBUG_PARSER_LEVEL_2)
@@ -601,16 +594,10 @@ knd_find_spec(struct kndTaskSpec *specs,
         err = knd_spec_buf_copy(validator_spec, name, name_size);
         if (err) return err;
 
-        *result = validator_spec;
+        *out_spec = validator_spec;
         return knd_OK;
     }
 
-    /* run default action only if nothing else was activated before */
-    if (default_spec && !is_completed) {
-        *result = default_spec;
-        return knd_OK;
-    }
-    
     return knd_NO_MATCH;
 }
 
@@ -725,7 +712,7 @@ knd_check_field_tag(const char *name,
         knd_log("++ BASIC LOOP got tag after brace: \"%.*s\" [%zu]",
                 name_size, name, name_size);
 
-    err = knd_find_spec(specs, num_specs, name, name_size, type, out_spec);
+    err = knd_find_spec(name, name_size, type, specs, num_specs, out_spec);
     if (err) {
         knd_log("-- no spec found to handle the \"%.*s\" tag: %d",
                 name_size, name, err);
@@ -994,8 +981,8 @@ int knd_parse_task(const char *rec,
                 }
 
                 /* fetch default spec */
-                err = knd_find_spec(specs, num_specs,
-                                    "default", strlen("default"), KND_GET_STATE, &spec);
+                err = knd_find_spec("default", strlen("default"), KND_GET_STATE,
+                                    specs, num_specs, &spec);
                 if (err) {
                     knd_log("-- no default spec found to handle an empty field (ignoring selectors): %.*s",
                             16, rec);
@@ -1123,8 +1110,8 @@ int knd_parse_task(const char *rec,
 
                 /* any default action to take? */
                 if (!spec) {
-                    err = knd_find_spec(specs, num_specs,
-                                        "default", strlen("default"), KND_CHANGE_STATE, &spec);
+                    err = knd_find_spec("default", strlen("default"), KND_CHANGE_STATE,
+                                        specs, num_specs, &spec);
                     if (!err) {
                         if (spec->run) {
                             err = spec->run(spec->obj, args, num_args);
@@ -1162,7 +1149,7 @@ int knd_parse_task(const char *rec,
                     knd_log("++ BASIC LOOP got tag before square bracket: \"%.*s\" [%zu]",
                             name_size, b, name_size);
                   
-                err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
+                err = knd_find_spec(b, name_size, KND_GET_STATE, specs, num_specs, &spec);
                 if (err) {
                     knd_log("-- no spec found to handle the \"%.*s\" tag: %d",
                             name_size, b, err);
@@ -1269,7 +1256,7 @@ static int knd_parse_state_change(const char *rec,
                 knd_log("++ state change loop got tag: \"%.*s\" [%lu]",
                         name_size, b, (unsigned long)name_size);
 
-            err = knd_find_spec(specs, num_specs, b, name_size, KND_CHANGE_STATE, &spec);
+            err = knd_find_spec(b, name_size, KND_CHANGE_STATE, specs, num_specs, &spec);
             if (err) {
                 knd_log("-- no spec found to handle the \"%.*s\" change state tag in \"%.*s\" :(",
                         name_size, b, 32, c);
@@ -1370,7 +1357,7 @@ static int knd_parse_state_change(const char *rec,
                     knd_log("++ FUNC LOOP got tag in close bracket: \"%.*s\" [%lu]",
                             name_size, b, (unsigned long)name_size);
 
-                err = knd_find_spec(specs, num_specs, b, name_size, KND_CHANGE_STATE, &spec);
+                err = knd_find_spec(b, name_size, KND_CHANGE_STATE, specs, num_specs, &spec);
                 if (err) {
                     knd_log("-- no spec found to handle the \"%.*s\" change state tag, rec:  \"%.*s\" :(",
                             name_size, b, 16, c);
@@ -1538,7 +1525,7 @@ static int knd_parse_list(const char *rec,
                 knd_log("++ list got tag: \"%.*s\" [%lu]",
                         name_size, b, (unsigned long)name_size);
 
-            err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
+            err = knd_find_spec(b, name_size, KND_GET_STATE, specs, num_specs, &spec);
             if (err) {
                 knd_log("-- no spec found to handle the \"%.*s\" list tag :(",
                         name_size, b);
@@ -1583,7 +1570,7 @@ static int knd_parse_list(const char *rec,
                     knd_log("++ list got tag: \"%.*s\" [%lu]",
                             name_size, b, (unsigned long)name_size);
 
-                err = knd_find_spec(specs, num_specs, b, name_size, KND_GET_STATE, &spec);
+                err = knd_find_spec(b, name_size, KND_GET_STATE, specs, num_specs, &spec);
                 if (err) {
                     knd_log("-- no spec found to handle the \"%.*s\" list tag :(",
                             name_size, b);
