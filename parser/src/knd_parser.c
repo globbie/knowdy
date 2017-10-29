@@ -927,7 +927,7 @@ int knd_parse_task(const char *rec,
             e = b;
             break;
         case '{':
-            /* starting brace */
+            /* starting brace '{' */
             if (!in_field) {
                 if (in_implied_field) {
                     err = knd_check_implied_field(b, e - b, specs, num_specs, args, &num_args);
@@ -947,12 +947,12 @@ int knd_parse_task(const char *rec,
             assert(in_tag == in_terminal);
 
             if (in_terminal) {  // or in_tag
-                knd_log("-- terminal val for ATOMIC SPEC \"%.*s\" has an opening brace: %.*s",
+                knd_log("-- terminal val for ATOMIC SPEC \"%.*s\" has an opening brace '{': %.*s",
                         spec->name_size, spec->name, c - b + 16, b);
                 return knd_FORMAT;
             }
 
-            // Parse a tag after an inner field brace.  Means in_tag can be set to true.
+            // Parse a tag after an inner field brace '{'.  Means in_tag can be set to true.
 
             err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
             if (err) return err;
@@ -961,7 +961,7 @@ int knd_parse_task(const char *rec,
             if (err) return err;
 
             if (in_terminal) {
-                knd_log("-- terminal val for ATOMIC SPEC \"%.*s\" starts with an opening brace: %.*s",
+                knd_log("-- terminal val for ATOMIC SPEC \"%.*s\" starts with an opening brace '{': %.*s",
                         spec->name_size, spec->name, c - b + 16, b);
                 return knd_FORMAT;
             }
@@ -1029,7 +1029,7 @@ int knd_parse_task(const char *rec,
                 break;
             }
 
-            // Parse a tag after a closing brace in an inner field.  Means in_tag can be set to true.
+            // Parse a tag after a closing brace '}' in an inner field.  Means in_tag can be set to true.
 
             err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
             if (err) return err;
