@@ -1050,28 +1050,61 @@ int knd_parse_task(const char *rec,
         case '(':
             if (DEBUG_PARSER_LEVEL_2)
                 knd_log(".. basic LOOP %p detected the state change area: \"%s\"\n", specs, c);
- 
-            if (in_implied_field) {
-                err = knd_check_implied_field(b, e - b, specs, num_specs, args, &num_args);
-                if (err) return err;
-                in_implied_field = false;
+
+            /* starting brace '(' */
+            if (!in_field) {
+                if (in_implied_field) {
+                    err = knd_check_implied_field(b, e - b, specs, num_specs, args, &num_args);
+                    if (err) return err;
+
+                    in_implied_field = false;
+                }
+
+                err = knd_parse_state_change(c, &chunk_size, specs, num_specs);
+                if (err) {
+                    knd_log("-- basic LOOP failed to parse state change area :(");
+                    return err;
+                }
+                c += chunk_size;
+
+                if (DEBUG_PARSER_LEVEL_2)
+                    knd_log(".. basic LOOP %p finished func parsing at: \"%s\"\n", specs, c);
+
+                // in_field = false
+                // in_tag == false
+                // in_terminal == false
+                b = c + 1;
+                e = b;
+                break;
             }
 
-            err = knd_parse_state_change(c, &chunk_size, specs, num_specs);
-            if (err) {
-                knd_log("-- basic LOOP failed to parse state change area :(");
-                return err;
-            }
-            c += chunk_size;
+            assert(in_tag == in_terminal);
 
-            if (DEBUG_PARSER_LEVEL_2)
-                knd_log(".. basic LOOP %p finished func parsing at: \"%s\"\n", specs, c);
+            if (in_terminal) {  // or in_tag
+                knd_log("-- terminal val for ATOMIC SPEC \"%.*s\" has an opening brace '(': %.*s",
+                        spec->name_size, spec->name, c - b + 16, b);
+                return knd_FORMAT;
+            }
+
+            // Parse a tag after an inner field brace '('.  Means in_tag can be set to true.
+
+            err = knd_check_field_tag(b, e - b, KND_CHANGE_STATE, specs, num_specs, &spec);
+            if (err) return err;
+
+            err = knd_parse_field_value(spec, c, &chunk_size, &in_terminal);
+            if (err) return err;
+
+            if (in_terminal) {
+                knd_log("-- terminal val for ATOMIC SPEC \"%.*s\" starts with an opening brace '(': %.*s",
+                        spec->name_size, spec->name, c - b + 16, b);
+                return knd_FORMAT;
+            }
 
             in_field = false;
-            in_terminal = false;
-            in_implied_field = false;
-
-            b = c + 1;
+            // in_tag == false
+            // in_terminal == false
+            c += chunk_size;
+            b = c;
             e = b;
             break;
         case ')':
