@@ -893,10 +893,10 @@ int knd_parse_task(const char *rec,
         case '\r':
         case '\t':
         case ' ':
-            if (!in_field) {
+            if (!in_field)
                 break;
-            }
-            if (in_terminal) break;
+            if (in_terminal)
+                break;
 
             if (DEBUG_PARSER_LEVEL_2)
                 knd_log("+ whitespace in basic PARSING!");
