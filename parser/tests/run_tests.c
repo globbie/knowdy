@@ -64,7 +64,7 @@ static int run_set_default_email(void *obj,
     ck_assert(args); ck_assert_uint_eq(num_args, 0);
 
     self->email_type = EMAIL_NONE;
-    assert(self->email_size == 0);
+    self->email_size = 0;
     return knd_OK;  // ok: no email by default
 }
 
@@ -89,7 +89,6 @@ static int parse_email_record(void *obj,
 
     if (self->email_type != EMAIL_NONE)
         return knd_FAIL;  // error: only 1 email address can be specified
-    assert(self->email_size == 0);
 
     if (name_size == strlen("home") && !memcmp(name, "home", name_size))
         self->email_type = EMAIL_HOME;
@@ -559,6 +558,42 @@ START_TEST(parse_value_validate_empty)
     RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 END_TEST
 
+START_TEST(parse_value_validate_max_size)
+    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    {
+        const char buf[] = { '{', 'u', 's', 'e', 'r', '{', 'e', 'm', 'a', 'i', 'l', '{', 'h', 'o', 'm', 'e', ' ', [17 ... KND_SHORT_NAME_SIZE + 16] = 'b', '}', '}', '}', '\0' };
+        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+        ck_assert_int_eq(rc, knd_OK);
+        ck_assert_int_eq(user.email_type, EMAIL_HOME); ck_assert_uint_eq(user.email_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.email, strchr(buf, 'b'), user.email_size));
+    }
+    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    {
+        const char buf[] = { '{', 'u', 's', 'e', 'r', '{', 'e', 'm', 'a', 'i', 'l', ' ', '{', 'h', 'o', 'm', 'e', ' ', [18 ... KND_SHORT_NAME_SIZE + 17] = 'b', '}', '}', '}', '\0' };
+        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+        ck_assert_int_eq(rc, knd_OK);
+        ck_assert_int_eq(user.email_type, EMAIL_HOME); ck_assert_uint_eq(user.email_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.email, strchr(buf, 'b'), user.email_size));
+    }
+    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    {
+        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', '{', 'w', 'o', 'r', 'k', ' ', [18 ... KND_SHORT_NAME_SIZE + 17] = 'b', '}', '}', '}', '\0' };
+        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+        ck_assert_int_eq(rc, knd_OK);
+        ck_assert_int_eq(user.email_type, EMAIL_WORK); ck_assert_uint_eq(user.email_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.email, strchr(buf, 'b'), user.email_size));
+    }
+    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    {
+        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', ' ', '{', 'w', 'o', 'r', 'k', ' ', [19 ... KND_SHORT_NAME_SIZE + 18] = 'b', '}', '}', '}', '\0' };
+        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+        ck_assert_int_eq(rc, knd_OK);
+        ck_assert_int_eq(user.email_type, EMAIL_WORK); ck_assert_uint_eq(user.email_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.email, strchr(buf, 'b'), user.email_size));
+    }
+END_TEST
+
 
 int main() {
     TCase* tc = tcase_create("all cases");
@@ -581,6 +616,7 @@ int main() {
     tcase_add_test(tc, parse_value_terminal_NAME_SIZE_plus_one);
     tcase_add_test(tc, parse_value_terminal_with_braces);
     tcase_add_test(tc, parse_value_validate_empty);
+    tcase_add_test(tc, parse_value_validate_max_size);
 
     Suite* s = suite_create("suite");
     suite_add_tcase(s, tc);
