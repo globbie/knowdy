@@ -626,6 +626,23 @@ START_TEST(parse_value_validate_max_size)
     }
 END_TEST
 
+START_TEST(parse_value_validate_max_size_plus_one)
+    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    {
+        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', '{', 'h', 'o', 'm', 'e', ' ', [18 ... KND_SHORT_NAME_SIZE + 18] = 'b', '}', '}', '}', '\0' };
+        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+        ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_email()
+    }
+
+    {
+        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', ' ', '{', 'w', 'o', 'r', 'k', ' ', [19 ... KND_SHORT_NAME_SIZE + 19] = 'b', '}', '}', '}', '\0' };
+        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+        ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_email()
+    }
+END_TEST
+
 
 int main() {
     TCase* tc = tcase_create("all cases");
@@ -651,6 +668,7 @@ int main() {
     tcase_add_test(tc, parse_value_validate_single);
     tcase_add_test(tc, parse_value_validate_several);
     tcase_add_test(tc, parse_value_validate_max_size);
+    tcase_add_test(tc, parse_value_validate_max_size_plus_one);
 
     Suite* s = suite_create("suite");
     suite_add_tcase(s, tc);
