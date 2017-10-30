@@ -536,6 +536,72 @@ START_TEST(parse_value_validate_empty)
     RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 END_TEST
 
+START_TEST(parse_value_validate_single)
+    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    rc = knd_parse_task(rec = "{user {email{home john@iserver.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_int_eq(user.email_type, EMAIL_HOME); ck_assert_uint_eq(user.email_size, strlen("john@iserver.com")); ck_assert_str_eq(user.email, "john@iserver.com");
+    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email{work j.smith@gogel.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_int_eq(user.email_type, EMAIL_WORK); ck_assert_uint_eq(user.email_size, strlen("j.smith@gogel.com")); ck_assert_str_eq(user.email, "j.smith@gogel.com");
+    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email {home john@iserver.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_int_eq(user.email_type, EMAIL_HOME); ck_assert_uint_eq(user.email_size, strlen("john@iserver.com")); ck_assert_str_eq(user.email, "john@iserver.com");
+    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email {work j.smith@gogel.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_int_eq(user.email_type, EMAIL_WORK); ck_assert_uint_eq(user.email_size, strlen("j.smith@gogel.com")); ck_assert_str_eq(user.email, "j.smith@gogel.com");
+    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+END_TEST
+
+START_TEST(parse_value_validate_several)
+    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    rc = knd_parse_task(rec = "{user {email{home john@iserver.com}{work j.smith@gogel.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FAIL);  // defined in parse_email_record()
+    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email{home john@iserver.com} {work j.smith@gogel.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FAIL);  // defined in parse_email_record()
+    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email{work j.smith@gogel.com}{home john@iserver.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FAIL);  // defined in parse_email_record()
+    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email{work j.smith@gogel.com} {home john@iserver.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FAIL);  // defined in parse_email_record()
+    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email {home john@iserver.com}{work j.smith@gogel.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FAIL);  // defined in parse_email_record()
+    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email {home john@iserver.com} {work j.smith@gogel.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FAIL);  // defined in parse_email_record()
+    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email {work j.smith@gogel.com}{home john@iserver.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FAIL);  // defined in parse_email_record()
+    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {email {work j.smith@gogel.com} {home john@iserver.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_FAIL);  // defined in parse_email_record()
+    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+END_TEST
+
 START_TEST(parse_value_validate_max_size)
     DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
@@ -580,6 +646,8 @@ int main() {
     tcase_add_test(tc, parse_value_terminal_NAME_SIZE_plus_one);
     tcase_add_test(tc, parse_value_terminal_with_braces);
     tcase_add_test(tc, parse_value_validate_empty);
+    tcase_add_test(tc, parse_value_validate_single);
+    tcase_add_test(tc, parse_value_validate_several);
     tcase_add_test(tc, parse_value_validate_max_size);
 
     Suite* s = suite_create("suite");
