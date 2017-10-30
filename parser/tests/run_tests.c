@@ -579,27 +579,11 @@ START_TEST(parse_value_validate_several)
     ck_assert_int_eq(rc, knd_FAIL);  // defined in parse_email_record()
     user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
-    rc = knd_parse_task(rec = "{user {email{work j.smith@gogel.com}{home john@iserver.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_FAIL);  // defined in parse_email_record()
-    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
-
-    rc = knd_parse_task(rec = "{user {email{work j.smith@gogel.com} {home john@iserver.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_FAIL);  // defined in parse_email_record()
-    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
-
     rc = knd_parse_task(rec = "{user {email {home john@iserver.com}{work j.smith@gogel.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FAIL);  // defined in parse_email_record()
     user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
     rc = knd_parse_task(rec = "{user {email {home john@iserver.com} {work j.smith@gogel.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_FAIL);  // defined in parse_email_record()
-    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
-
-    rc = knd_parse_task(rec = "{user {email {work j.smith@gogel.com}{home john@iserver.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_FAIL);  // defined in parse_email_record()
-    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
-
-    rc = knd_parse_task(rec = "{user {email {work j.smith@gogel.com} {home john@iserver.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FAIL);  // defined in parse_email_record()
     user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 END_TEST
