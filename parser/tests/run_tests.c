@@ -489,41 +489,49 @@ START_TEST(parse_value_validate_empty)
 
     rc = knd_parse_task(rec = "{user{email}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
     ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
     RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
     rc = knd_parse_task(rec = "{user {email}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
     ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
     RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
     rc = knd_parse_task(rec = "{user {email{home}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
     ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
     RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
     rc = knd_parse_task(rec = "{user {email {home}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
     ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
     RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
     rc = knd_parse_task(rec = "{user {email{home}{work}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
     ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
     RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
     rc = knd_parse_task(rec = "{user {email{home} {work}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
     ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
     RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
     rc = knd_parse_task(rec = "{user {email {home}{work}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
     ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
     RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
     rc = knd_parse_task(rec = "{user {email {home} {work}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
     ck_assert_int_eq(user.email_type, EMAIL_NONE); ck_assert_uint_eq(user.email_size, 0);
     RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 END_TEST
