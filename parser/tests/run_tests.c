@@ -9,9 +9,9 @@
 // --------------------------------------------------------------------------------
 // User -- testable object
 struct User {
-    char name[KND_SHORT_NAME_SIZE]; size_t name_size;
+    char name[KND_SHORT_NAME_SIZE + 1]; size_t name_size;
     char sid[6]; size_t sid_size;
-    char email[KND_SHORT_NAME_SIZE]; size_t email_size; enum { EMAIL_NONE, EMAIL_HOME, EMAIL_WORK } email_type;
+    char email[KND_SHORT_NAME_SIZE + 1]; size_t email_size; enum { EMAIL_NONE, EMAIL_HOME, EMAIL_WORK } email_type;
 };
 
 // --------------------------------------------------------------------------------
@@ -37,9 +37,10 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args) {
     ck_assert(args); ck_assert_uint_eq(num_args, 1);
     ck_assert_uint_eq(args[0].name_size, strlen("_impl")); ck_assert_str_eq(args[0].name, "_impl");
     ck_assert_uint_ne(args[0].val_size, 0);
-    if (args[0].val_size > sizeof self->name)
+    if (args[0].val_size > sizeof self->name - 1)
         return knd_LIMIT;
     memcpy(self->name, args[0].val, args[0].val_size);
+    self->name[args[0].val_size] = '\0';
     self->name_size = args[0].val_size;
     return knd_OK;
 }
@@ -49,9 +50,10 @@ static int run_set_email(void *obj, struct kndTaskArg *args, size_t num_args) {
     ck_assert(args); ck_assert_uint_eq(num_args, 1);
     ck_assert_uint_eq(args[0].name_size, strlen("_impl")); ck_assert_str_eq(args[0].name, "_impl");
     ck_assert_uint_ne(args[0].val_size, 0);
-    if (args[0].val_size > sizeof self->email)
+    if (args[0].val_size > sizeof self->email - 1)
         return knd_LIMIT;
     memcpy(self->email, args[0].val, args[0].val_size);
+    self->email[args[0].val_size] = '\0';
     self->email_size = args[0].val_size;
     return knd_OK;
 }
