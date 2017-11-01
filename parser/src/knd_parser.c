@@ -482,9 +482,14 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
 
     if (spec->is_implied) {
         // |spec->name| can be NULL
-        assert(spec->buf == NULL);
-        assert(spec->obj != NULL);
-        assert(spec->run != NULL);
+        if (spec->buf) {
+            assert(spec->obj == NULL);
+            assert(spec->run == NULL);
+        }
+        if (spec->run) {
+            assert(spec->buf == NULL);
+            assert(spec->obj != NULL);
+        }
     }
 
     assert(spec->is_validator == (spec->validate != NULL));
@@ -672,6 +677,14 @@ knd_check_implied_field(const char *val,
     if (DEBUG_PARSER_LEVEL_2)
         knd_log("++ got implied spec: \"%.*s\" run: %p!",
                 implied_spec->name_size, implied_spec->name, implied_spec->run);
+
+    if (implied_spec->buf) {
+        err = knd_spec_buf_copy(implied_spec, val, val_size);
+        if (err) return err;
+
+        implied_spec->is_completed = true;
+        return knd_OK;
+    }
 
     err = knd_args_push_back(impl_arg_name, impl_arg_name_size, val, val_size, args, num_args);
     if (err) return err;
