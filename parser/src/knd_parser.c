@@ -818,6 +818,44 @@ knd_check_field_terminal_value(const char *val,
     return knd_OK;
 }
 
+static int
+knd_check_default(const char *rec,
+                  knd_task_spec_type type,
+                  struct kndTaskSpec *specs,
+                  size_t num_specs) {
+    struct kndTaskSpec *spec;
+    struct kndTaskSpec *default_spec = NULL;
+    int err;
+
+    for (size_t i = 0; i < num_specs; ++i) {
+        spec = &specs[i];
+
+        if (spec->is_default && spec->type == type) {
+            assert(default_spec == NULL && "default_spec was already specified");
+            default_spec = spec;
+            continue;
+        }
+
+        if (!spec->is_selector && spec->is_completed)
+            return knd_OK;
+    }
+
+    if (!default_spec) {
+        knd_log("-- no default spec found to handle an empty field (ignoring selectors): %.*s",
+                16, rec);
+        return knd_FORMAT;
+    }
+
+    err = default_spec->run(default_spec->obj, NULL, 0);
+    if (err) {
+        knd_log("-- default func run failed: %d :(",
+                err);
+        return err;
+    }
+
+    return knd_OK;
+}
+
 int knd_parse_task(const char *rec,
                    size_t *total_size,
                    struct kndTaskSpec *specs,
@@ -964,34 +1002,8 @@ int knd_parse_task(const char *rec,
                     in_implied_field = false;
                 }
 
-                // Should we run a default action?
-                struct kndTaskSpec *default_spec = NULL;
-                for (size_t i = 0; i < num_specs; ++i) {
-                    spec = &specs[i];
-
-                    if (spec->is_default && spec->type == KND_GET_STATE) {
-                        assert(default_spec == NULL && "default_spec was already specified");
-                        default_spec = spec;
-                        continue;
-                    }
-
-                    if (!spec->is_selector && spec->is_completed) {
-                        *total_size = c - rec;
-                        return knd_OK;
-                    }
-                }
-                if (!default_spec) {
-                    knd_log("-- no default spec found to handle an empty field (ignoring selectors): %.*s",
-                            16, rec);
-                    return knd_FORMAT;
-                }
-
-                err = default_spec->run(default_spec->obj, args, num_args);
-                if (err) {
-                    knd_log("-- default func run failed: %d :(",
-                            err);
-                    return err;
-                }
+                err = knd_check_default(rec, KND_GET_STATE, specs, num_specs);
+                if (err) return err;
 
                 *total_size = c - rec;
                 return knd_OK;
@@ -1105,23 +1117,8 @@ int knd_parse_task(const char *rec,
 
                 /* any default action to take? */
                 if (!spec) {
-                    struct kndTaskSpec *default_spec = NULL;
-                    for (size_t i = 0; i < num_specs; ++i) {
-                        spec = &specs[i];
-                        if (spec->is_default && spec->type == KND_CHANGE_STATE) {
-                            assert(default_spec == NULL && "default_spec was already specified");
-                            default_spec = spec;
-                            continue;
-                        }
-                    }
-                    if (default_spec) {
-                        err = default_spec->run(default_spec->obj, args, num_args);
-                        if (err) {
-                            knd_log("-- default func run failed: %d :(",
-                                    err);
-                            return err;
-                        }
-                    }
+                    err = knd_check_default(rec, KND_CHANGE_STATE, specs, num_specs);
+                    if (err) return err;
                 }
             }
             
