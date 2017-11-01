@@ -295,57 +295,57 @@ START_TEST(parse_implied_field_max_size)
     DEFINE_TaskSpecs(parse_user_args, gen_name_spec_with_run(&user), gen_sid_spec(&user));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
-    {
-        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 5] = 'a', '}', '\0' };
-        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-        ck_assert_int_eq(rc, knd_OK);
-        ck_assert_uint_eq(total_size, strlen(rec));
-        ck_assert_uint_eq(user.name_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.name, strchr(buf, 'a'), user.name_size));
-    }
+  {
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 5] = 'a', '}', '\0' };
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_uint_eq(user.name_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.name, strchr(buf, 'a'), user.name_size));
+  }
     RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
 
-    {
-        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 5] = 'a', ' ', '{', 's', 'i', 'd', ' ', '1', '2', '3', '4', '5', '6', '}', '}', '\0' };
-        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-        ck_assert_int_eq(rc, knd_OK);
-        ck_assert_uint_eq(total_size, strlen(rec));
-        ck_assert_uint_eq(user.name_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.name, strchr(buf, 'a'), user.name_size));
-        ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
-    }
+  {
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 5] = 'a', ' ', '{', 's', 'i', 'd', ' ', '1', '2', '3', '4', '5', '6', '}', '}', '\0' };
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_uint_eq(user.name_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.name, strchr(buf, 'a'), user.name_size));
+    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+  }
 END_TEST
 
 START_TEST(parse_implied_field_max_size_plus_one)
     DEFINE_TaskSpecs(parse_user_args, gen_name_spec_with_run(&user));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
-    {
-        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 6] = 'a', '}', '\0' };
-        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-        ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_name()
-    }
+  {
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 6] = 'a', '}', '\0' };
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_name()
+  }
 
-    {
-        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 6] = 'a', ' ', '{', 's', 'i', 'd', ' ', '1', '2', '3', '4', '5', '6', '}', '}', '\0' };
-        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-        ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_name()
-    }
+  {
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 6] = 'a', ' ', '{', 's', 'i', 'd', ' ', '1', '2', '3', '4', '5', '6', '}', '}', '\0' };
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_name()
+  }
 END_TEST
 
 START_TEST(parse_implied_field_size_NAME_SIZE_plus_one)
     DEFINE_TaskSpecs(parse_user_args, gen_name_spec_with_run(&user));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
-    {
-        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_NAME_SIZE + 6] = 'a', '}', '\0' };
-        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-        ck_assert_int_eq(rc, knd_LIMIT);
-    }
+  {
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_NAME_SIZE + 6] = 'a', '}', '\0' };
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_LIMIT);
+  }
 
-    {
-        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_NAME_SIZE + 6] = 'a', ' ', '{', 's', 'i', 'd', ' ', '1', '2', '3', '4', '5', '6', '}', '}', '\0' };
-        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-        ck_assert_int_eq(rc, knd_LIMIT);
-    }
+  {
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_NAME_SIZE + 6] = 'a', ' ', '{', 's', 'i', 'd', ' ', '1', '2', '3', '4', '5', '6', '}', '}', '\0' };
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_LIMIT);
+  }
 END_TEST
 
 START_TEST(parse_tag_empty)
@@ -472,17 +472,17 @@ START_TEST(parse_value_terminal_NAME_SIZE_plus_one)
     DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
-    {
-        const char buf[] = { '{', 'u', 's', 'e', 'r', '{', 's', 'i', 'd', ' ', [10 ... KND_NAME_SIZE + 10] = '1', '}', '}', '\0' };
-        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-        ck_assert_int_eq(rc, knd_LIMIT);
-    }
+  {
+    const char buf[] = { '{', 'u', 's', 'e', 'r', '{', 's', 'i', 'd', ' ', [10 ... KND_NAME_SIZE + 10] = '1', '}', '}', '\0' };
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_LIMIT);
+  }
 
-    {
-        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 's', 'i', 'd', ' ', [11 ... KND_NAME_SIZE + 11] = '1', '}', '}', '\0' };
-        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-        ck_assert_int_eq(rc, knd_LIMIT);
-    }
+  {
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 's', 'i', 'd', ' ', [11 ... KND_NAME_SIZE + 11] = '1', '}', '}', '\0' };
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_LIMIT);
+  }
 END_TEST
 
 START_TEST(parse_value_terminal_with_braces)
@@ -615,56 +615,56 @@ START_TEST(parse_value_validate_max_size)
     DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
-    {
-        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', '{', 'h', 'o', 'm', 'e', ' ', [18 ... KND_SHORT_NAME_SIZE + 17] = 'b', '}', '}', '}', '\0' };
-        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-        ck_assert_int_eq(rc, knd_OK);
-        ck_assert_uint_eq(total_size, strlen(rec));
-        ck_assert_int_eq(user.email_type, EMAIL_HOME); ck_assert_uint_eq(user.email_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.email, strchr(buf, 'b'), user.email_size));
-    }
-    user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
+  {
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', '{', 'h', 'o', 'm', 'e', ' ', [18 ... KND_SHORT_NAME_SIZE + 17] = 'b', '}', '}', '}', '\0' };
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_int_eq(user.email_type, EMAIL_HOME); ck_assert_uint_eq(user.email_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.email, strchr(buf, 'b'), user.email_size));
+  }
+  user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
 
-    {
-        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', ' ', '{', 'w', 'o', 'r', 'k', ' ', [19 ... KND_SHORT_NAME_SIZE + 18] = 'b', '}', '}', '}', '\0' };
-        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-        ck_assert_int_eq(rc, knd_OK);
-        ck_assert_uint_eq(total_size, strlen(rec));
-        ck_assert_int_eq(user.email_type, EMAIL_WORK); ck_assert_uint_eq(user.email_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.email, strchr(buf, 'b'), user.email_size));
-    }
+  {
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', ' ', '{', 'w', 'o', 'r', 'k', ' ', [19 ... KND_SHORT_NAME_SIZE + 18] = 'b', '}', '}', '}', '\0' };
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ck_assert_int_eq(user.email_type, EMAIL_WORK); ck_assert_uint_eq(user.email_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.email, strchr(buf, 'b'), user.email_size));
+  }
 END_TEST
 
 START_TEST(parse_value_validate_max_size_plus_one)
     DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
-    {
-        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', '{', 'h', 'o', 'm', 'e', ' ', [18 ... KND_SHORT_NAME_SIZE + 18] = 'b', '}', '}', '}', '\0' };
-        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-        ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_email()
-    }
+  {
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', '{', 'h', 'o', 'm', 'e', ' ', [18 ... KND_SHORT_NAME_SIZE + 18] = 'b', '}', '}', '}', '\0' };
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_email()
+  }
 
-    {
-        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', ' ', '{', 'w', 'o', 'r', 'k', ' ', [19 ... KND_SHORT_NAME_SIZE + 19] = 'b', '}', '}', '}', '\0' };
-        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-        ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_email()
-    }
+  {
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', ' ', '{', 'w', 'o', 'r', 'k', ' ', [19 ... KND_SHORT_NAME_SIZE + 19] = 'b', '}', '}', '}', '\0' };
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_email()
+  }
 END_TEST
 
 START_TEST(parse_value_validate_NAME_SIZE_plus_one)
     DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
-    {
-        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', '{', 'h', 'o', 'm', 'e', ' ', [18 ... KND_NAME_SIZE + 18] = 'b', '}', '}', '}', '\0' };
-        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-        ck_assert_int_eq(rc, knd_LIMIT);
-    }
+  {
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', '{', 'h', 'o', 'm', 'e', ' ', [18 ... KND_NAME_SIZE + 18] = 'b', '}', '}', '}', '\0' };
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_LIMIT);
+  }
 
-    {
-        const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', ' ', '{', 'w', 'o', 'r', 'k', ' ', [19 ... KND_NAME_SIZE + 19] = 'b', '}', '}', '}', '\0' };
-        rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-        ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_email()
-    }
+  {
+    const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', ' ', '{', 'w', 'o', 'r', 'k', ' ', [19 ... KND_NAME_SIZE + 19] = 'b', '}', '}', '}', '\0' };
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_email()
+  }
 END_TEST
 
 
