@@ -632,54 +632,59 @@ knd_args_push_back(const char *name,
 }
 
 static int
-knd_check_implied_field(const char *name,
-                        size_t name_size,
+knd_check_implied_field(const char *val,
+                        size_t val_size,
                         struct kndTaskSpec *specs,
                         size_t num_specs,
                         struct kndTaskArg *args,
                         size_t *num_args)
 {
     struct kndTaskSpec *spec;
+    struct kndTaskSpec *implied_spec = NULL;
     const char *impl_arg_name = "_impl";
     size_t impl_arg_name_size = strlen("_impl");
     int err;
     
     assert(impl_arg_name_size <= KND_NAME_SIZE && "\"_impl\" is longer than KND_NAME_SIZE");
-    assert(name_size && "implied val is empty");
+    assert(val_size && "implied val is empty");
 
     if (DEBUG_PARSER_LEVEL_2)
         knd_log("++ got implied val: \"%.*s\" [%zu]",
-                name_size, name, name_size);
-    if (name_size > KND_NAME_SIZE) return knd_LIMIT;
+                val_size, val, val_size);
+    if (val_size > KND_NAME_SIZE) return knd_LIMIT;
 
-    err = knd_args_push_back(impl_arg_name, impl_arg_name_size, name, name_size, args, num_args);
-    if (err) return err;
-
-    /* any action needed? */
     for (size_t i = 0; i < num_specs; i++) {
         spec = &specs[i];
 
         if (spec->is_implied) {
-            if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ got implied spec: \"%.*s\" run: %p!",
-                        spec->name_size, spec->name, spec->run);
-
-            err = spec->run(spec->obj, args, *num_args);
-            if (err) {
-                knd_log("-- implied func for \"%.*s\" failed: %d :(",
-                        name_size, name, err);
-                return err;
-            }
-
-            spec->is_completed = true;
-            return knd_OK;
+            assert(implied_spec == NULL && "implied_spec was already specified");
+            implied_spec = spec;
         }
     }
 
-    knd_log("-- no implied spec found to handle the \"%.*s\" val",
-            name_size, name);
+    if (!implied_spec) {
+        knd_log("-- no implied spec found to handle the \"%.*s\" val",
+                val_size, val);
 
-    return knd_NO_MATCH;
+        return knd_NO_MATCH;
+    }
+
+    if (DEBUG_PARSER_LEVEL_2)
+        knd_log("++ got implied spec: \"%.*s\" run: %p!",
+                implied_spec->name_size, implied_spec->name, implied_spec->run);
+
+    err = knd_args_push_back(impl_arg_name, impl_arg_name_size, val, val_size, args, num_args);
+    if (err) return err;
+
+    err = implied_spec->run(implied_spec->obj, args, *num_args);
+    if (err) {
+        knd_log("-- implied func for \"%.*s\" failed: %d :(",
+                val_size, val, err);
+        return err;
+    }
+
+    implied_spec->is_completed = true;
+    return knd_OK;
 }
 
 static int
