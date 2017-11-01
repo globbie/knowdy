@@ -63,7 +63,7 @@ static int run_set_default_email(void *obj,
                                  size_t num_args) {
     struct User *self = (struct User *)obj;
     ck_assert(self);
-    ck_assert(args); ck_assert_uint_eq(num_args, 0);
+    ck_assert(!args); ck_assert_uint_eq(num_args, 0);
 
     self->email_type = EMAIL_NONE;
     self->email_size = 0;
