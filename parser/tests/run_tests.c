@@ -148,15 +148,15 @@ static int parse_email(void *obj, const char *rec, size_t *total_size) {
     struct kndTaskSpec __specs##__LINE__[] = { __VA_ARGS__ }; \
     struct TaskSpecs name = { __specs##__LINE__, sizeof __specs##__LINE__ / sizeof __specs##__LINE__[0] }
 
-#define ASSERT_STR_EQ(act, act_size, exp)  \
-    do {                                   \
-        const char *__act = (act);         \
-        size_t __act_size = (act_size);    \
-        const char *__exp = (exp);         \
-        size_t __exp_size = strlen(__exp); \
-        ck_assert_msg(__act_size == __exp_size && 0 == strncmp(__act, __exp, __act_size),      \
-            "Assertion '%s' failed: %s == \"%.*s\" [len: %zu] but expected \"%s\" [len: %zu]", \
-            #act" == "#exp, #act, __act_size, __act, __act_size, __exp, __exp_size);           \
+#define ASSERT_STR_EQ(act, act_size, exp, exp_size...)  \
+    do {                                                \
+        const char *__act = (act);                      \
+        size_t __act_size = (act_size);                 \
+        const char *__exp = (exp);                      \
+        size_t __exp_size = (exp_size-0) == 0 ? strlen(__exp) : (exp_size-0);                    \
+        ck_assert_msg(__act_size == __exp_size && 0 == strncmp(__act, __exp, __act_size),        \
+            "Assertion '%s' failed: %s == \"%.*s\" [len: %zu] but expected \"%.*s\" [len: %zu]", \
+            #act" == "#exp, #act, __act_size, __act, __act_size, __exp_size, __exp, __exp_size); \
     } while (0)
 
 // --------------------------------------------------------------------------------
@@ -309,7 +309,7 @@ check_parse_implied_field_max_size(struct kndTaskSpec *specs,
     rc = knd_parse_task(rec = buf, &total_size, specs, num_specs);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_uint_eq(user.name_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.name, strchr(buf, 'a'), user.name_size));
+    ASSERT_STR_EQ(user.name, user.name_size, strchr(buf, 'a'), KND_SHORT_NAME_SIZE);
   }
     RESET_IS_COMPLETED(specs, num_specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
@@ -318,7 +318,7 @@ check_parse_implied_field_max_size(struct kndTaskSpec *specs,
     rc = knd_parse_task(rec = buf, &total_size, specs, num_specs);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_uint_eq(user.name_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.name, strchr(buf, 'a'), user.name_size));
+    ASSERT_STR_EQ(user.name, user.name_size, strchr(buf, 'a'), KND_SHORT_NAME_SIZE);
     ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
   }
     RESET_IS_COMPLETED(specs, num_specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
@@ -684,7 +684,7 @@ START_TEST(parse_value_validate_max_size)
     rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_int_eq(user.email_type, EMAIL_HOME); ck_assert_uint_eq(user.email_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.email, strchr(buf, 'b'), user.email_size));
+    ck_assert_int_eq(user.email_type, EMAIL_HOME); ASSERT_STR_EQ(user.email, user.email_size, strchr(buf, 'b'), KND_SHORT_NAME_SIZE);
   }
   user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
 
@@ -693,7 +693,7 @@ START_TEST(parse_value_validate_max_size)
     rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_int_eq(user.email_type, EMAIL_WORK); ck_assert_uint_eq(user.email_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.email, strchr(buf, 'b'), user.email_size));
+    ck_assert_int_eq(user.email_type, EMAIL_WORK); ASSERT_STR_EQ(user.email, user.email_size, strchr(buf, 'b'), KND_SHORT_NAME_SIZE);
   }
 END_TEST
 
