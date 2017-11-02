@@ -9,9 +9,9 @@
 // --------------------------------------------------------------------------------
 // User -- testable object
 struct User {
-    char name[KND_SHORT_NAME_SIZE + 1]; size_t name_size;
+    char name[KND_SHORT_NAME_SIZE]; size_t name_size;
     char sid[6]; size_t sid_size;
-    char email[KND_SHORT_NAME_SIZE + 1]; size_t email_size; enum { EMAIL_NONE, EMAIL_HOME, EMAIL_WORK } email_type;
+    char email[KND_SHORT_NAME_SIZE]; size_t email_size; enum { EMAIL_NONE, EMAIL_HOME, EMAIL_WORK } email_type;
 };
 
 // --------------------------------------------------------------------------------
@@ -37,7 +37,7 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args) {
     ck_assert(args); ck_assert_uint_eq(num_args, 1);
     ck_assert_uint_eq(args[0].name_size, strlen("_impl")); ck_assert_str_eq(args[0].name, "_impl");
     ck_assert_uint_ne(args[0].val_size, 0);
-    if (args[0].val_size > sizeof self->name - 1)
+    if (args[0].val_size > sizeof self->name)
         return knd_LIMIT;
     memcpy(self->name, args[0].val, args[0].val_size);
     self->name[args[0].val_size] = '\0';
@@ -50,7 +50,7 @@ static int run_set_email(void *obj, struct kndTaskArg *args, size_t num_args) {
     ck_assert(args); ck_assert_uint_eq(num_args, 1);
     ck_assert_uint_eq(args[0].name_size, strlen("_impl")); ck_assert_str_eq(args[0].name, "_impl");
     ck_assert_uint_ne(args[0].val_size, 0);
-    if (args[0].val_size > sizeof self->email - 1)
+    if (args[0].val_size > sizeof self->email)
         return knd_LIMIT;
     memcpy(self->email, args[0].val, args[0].val_size);
     self->email[args[0].val_size] = '\0';
@@ -148,6 +148,18 @@ static int parse_email(void *obj, const char *rec, size_t *total_size) {
     struct kndTaskSpec __specs##__LINE__[] = { __VA_ARGS__ }; \
     struct TaskSpecs name = { __specs##__LINE__, sizeof __specs##__LINE__ / sizeof __specs##__LINE__[0] }
 
+#define ASSERT_STR_EQ(act, act_size, exp)       \
+    do {                                        \
+        const char *__act = (act);              \
+        size_t __act_size = (act_size);         \
+        const char *__exp = (exp);              \
+        size_t __exp_size = strlen(__exp);      \
+        ck_assert_msg(__act_size == __exp_size, \
+            "Assertion '%s' failed: %s == %zu, %s == %zu", #act_size" == strlen("#exp")", #act_size, __act_size, "strlen("#exp")", __exp_size); \
+        ck_assert_msg(!strncmp(__act, __exp, __act_size), \
+            "Assertion '%s' failed: %s == \"%.*s\" but expected \"%s\"", #act" == "#exp, #act, __act_size, __act, __exp); \
+    } while (0)
+
 // --------------------------------------------------------------------------------
 // Generators for specs
 
@@ -157,7 +169,7 @@ static struct kndTaskSpec gen_user_spec(struct TaskSpecs *args) {
 
 static struct kndTaskSpec gen_name_spec_with_buf(struct User *self) {
     return (struct kndTaskSpec){ .is_implied = true,
-                                 .buf = self->name, .buf_size = &self->name_size, .max_buf_size = sizeof self->name - 1 };
+                                 .buf = self->name, .buf_size = &self->name_size, .max_buf_size = sizeof self->name };
 }
 
 static struct kndTaskSpec gen_name_spec_with_run(struct User *self) {
@@ -217,49 +229,49 @@ check_parse_implied_field(struct kndTaskSpec *specs,
     rc = knd_parse_task(rec = "{user John Smith}", &total_size, specs, num_specs);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
+    ASSERT_STR_EQ(user.name, user.name_size, "John Smith");
     RESET_IS_COMPLETED(specs, num_specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
     rc = knd_parse_task(rec = "{user John Smith{sid 123456}}", &total_size, specs, num_specs);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
-    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+    ASSERT_STR_EQ(user.name, user.name_size, "John Smith");
+    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
     RESET_IS_COMPLETED(specs, num_specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
     rc = knd_parse_task(rec = "{user John Smith {sid 123456}}", &total_size, specs, num_specs);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
-    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+    ASSERT_STR_EQ(user.name, user.name_size, "John Smith");
+    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
     RESET_IS_COMPLETED(specs, num_specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
     rc = knd_parse_task(rec = "{user   John Smith   {sid 123456}}", &total_size, specs, num_specs);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
-    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+    ASSERT_STR_EQ(user.name, user.name_size, "John Smith");
+    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
     RESET_IS_COMPLETED(specs, num_specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
     rc = knd_parse_task(rec = "{user {sid 123456}John Smith}", &total_size, specs, num_specs);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
-    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+    ASSERT_STR_EQ(user.name, user.name_size, "John Smith");
+    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
     RESET_IS_COMPLETED(specs, num_specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
     rc = knd_parse_task(rec = "{user {sid 123456} John Smith}", &total_size, specs, num_specs);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
-    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+    ASSERT_STR_EQ(user.name, user.name_size, "John Smith");
+    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
     RESET_IS_COMPLETED(specs, num_specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 
     rc = knd_parse_task(rec = "{user {sid 123456}   John Smith   }", &total_size, specs, num_specs);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_uint_eq(user.name_size, strlen("John Smith")); ck_assert_str_eq(user.name, "John Smith");
-    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+    ASSERT_STR_EQ(user.name, user.name_size, "John Smith");
+    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
 }
 
 START_TEST(parse_implied_field)
@@ -310,7 +322,7 @@ START_TEST(parse_implied_field_max_size)
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
     ck_assert_uint_eq(user.name_size, KND_SHORT_NAME_SIZE); ck_assert(!memcmp(user.name, strchr(buf, 'a'), user.name_size));
-    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
   }
 END_TEST
 
@@ -448,13 +460,13 @@ START_TEST(parse_value_terminal_max_size)
     rc = knd_parse_task(rec = "{user{sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
     RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
 
     rc = knd_parse_task(rec = "{user {sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_uint_eq(user.sid_size, strlen("123456")); ck_assert_str_eq(user.sid, "123456");
+    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
 END_TEST
 
 START_TEST(parse_value_terminal_max_size_plus_one)
@@ -568,25 +580,25 @@ START_TEST(parse_value_validate_single)
     rc = knd_parse_task(rec = "{user {email{home john@iserver.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_int_eq(user.email_type, EMAIL_HOME); ck_assert_uint_eq(user.email_size, strlen("john@iserver.com")); ck_assert_str_eq(user.email, "john@iserver.com");
+    ck_assert_int_eq(user.email_type, EMAIL_HOME); ASSERT_STR_EQ(user.email, user.email_size, "john@iserver.com");
     user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
 
     rc = knd_parse_task(rec = "{user {email{work j.smith@gogel.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_int_eq(user.email_type, EMAIL_WORK); ck_assert_uint_eq(user.email_size, strlen("j.smith@gogel.com")); ck_assert_str_eq(user.email, "j.smith@gogel.com");
+    ck_assert_int_eq(user.email_type, EMAIL_WORK); ASSERT_STR_EQ(user.email, user.email_size, "j.smith@gogel.com");
     user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
 
     rc = knd_parse_task(rec = "{user {email {home john@iserver.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_int_eq(user.email_type, EMAIL_HOME); ck_assert_uint_eq(user.email_size, strlen("john@iserver.com")); ck_assert_str_eq(user.email, "john@iserver.com");
+    ck_assert_int_eq(user.email_type, EMAIL_HOME); ASSERT_STR_EQ(user.email, user.email_size, "john@iserver.com");
     user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
 
     rc = knd_parse_task(rec = "{user {email {work j.smith@gogel.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
-    ck_assert_int_eq(user.email_type, EMAIL_WORK); ck_assert_uint_eq(user.email_size, strlen("j.smith@gogel.com")); ck_assert_str_eq(user.email, "j.smith@gogel.com");
+    ck_assert_int_eq(user.email_type, EMAIL_WORK); ASSERT_STR_EQ(user.email, user.email_size, "j.smith@gogel.com");
     user.email_type = EMAIL_NONE; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
 END_TEST
 
