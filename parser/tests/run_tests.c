@@ -159,7 +159,7 @@ static struct kndTaskSpec gen_name_spec(struct User *self, int flags) {
                                      .name = (flags & SPEC_NAME) ? "name" : NULL, .name_size = (flags & SPEC_NAME) ? strlen("name") : 0,
                                      .run = run_set_name, .obj = self };
     return (struct kndTaskSpec){ .is_implied = true,
-                                 .name = flags & SPEC_NAME ? "name" : NULL, .name_size = flags & SPEC_NAME ? strlen("name") : 0,
+                                 .name = (flags & SPEC_NAME) ? "name" : NULL, .name_size = (flags & SPEC_NAME) ? strlen("name") : 0,
                                  .buf = self->name, .buf_size = &self->name_size, .max_buf_size = sizeof self->name };
 }
 
@@ -259,6 +259,7 @@ check_parse_implied_field(struct kndTaskSpec *specs,
     ck_assert_uint_eq(total_size, strlen(rec));
     ASSERT_STR_EQ(user.name, user.name_size, "John Smith");
     ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
+    RESET_IS_COMPLETED(specs, num_specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
 }
 
 START_TEST(parse_implied_field)
@@ -276,6 +277,19 @@ START_TEST(parse_implied_field)
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
     check_parse_implied_field(specs, sizeof specs / sizeof specs[0], &parse_user_args);
+  }
+
+  // Check implied field with .name (regardless of whether it is .buf or .run)
+  {
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_NAME), gen_sid_spec(&user));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    check_parse_implied_field(specs, sizeof specs / sizeof specs[0], &parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {name John Smith}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ASSERT_STR_EQ(user.name, user.name_size, "John Smith");
   }
 END_TEST
 
