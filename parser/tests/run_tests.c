@@ -45,19 +45,6 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args) {
     return knd_OK;
 }
 
-static int run_set_email(void *obj, struct kndTaskArg *args, size_t num_args) {
-    struct User *self = (struct User *)obj;
-    ck_assert(args); ck_assert_uint_eq(num_args, 1);
-    ck_assert_uint_eq(args[0].name_size, strlen("_impl")); ck_assert_str_eq(args[0].name, "_impl");
-    ck_assert_uint_ne(args[0].val_size, 0);
-    if (args[0].val_size > sizeof self->email)
-        return knd_LIMIT;
-    memcpy(self->email, args[0].val, args[0].val_size);
-    self->email[args[0].val_size] = '\0';
-    self->email_size = args[0].val_size;
-    return knd_OK;
-}
-
 static int run_set_default_email(void *obj,
                                  struct kndTaskArg *args,
                                  size_t num_args) {
@@ -76,8 +63,9 @@ static int parse_email_record(void *obj,
     struct User *self = (struct User *)obj;
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_set_email,
-          .obj = self
+          .buf = self->email,
+          .buf_size = &self->email_size,
+          .max_buf_size = sizeof self->email
         },
         {
           .name = "default",
@@ -704,13 +692,13 @@ START_TEST(parse_value_validate_max_size_plus_one)
   {
     const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', '{', 'h', 'o', 'm', 'e', ' ', [18 ... KND_SHORT_NAME_SIZE + 18] = 'b', '}', '}', '}', '\0' };
     rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_email()
+    ck_assert_int_eq(rc, knd_LIMIT);
   }
 
   {
     const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', ' ', '{', 'w', 'o', 'r', 'k', ' ', [19 ... KND_SHORT_NAME_SIZE + 19] = 'b', '}', '}', '}', '\0' };
     rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_email()
+    ck_assert_int_eq(rc, knd_LIMIT);
   }
 END_TEST
 
@@ -727,7 +715,7 @@ START_TEST(parse_value_validate_NAME_SIZE_plus_one)
   {
     const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 'e', 'm', 'a', 'i', 'l', ' ', '{', 'w', 'o', 'r', 'k', ' ', [19 ... KND_NAME_SIZE + 19] = 'b', '}', '}', '}', '\0' };
     rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_LIMIT);  // defined in run_set_email()
+    ck_assert_int_eq(rc, knd_LIMIT);
   }
 END_TEST
 
