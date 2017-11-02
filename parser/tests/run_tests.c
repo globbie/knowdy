@@ -62,14 +62,13 @@ static int parse_email_record(void *obj,
                               const char *rec, size_t *total_size) {
     struct User *self = (struct User *)obj;
     struct kndTaskSpec specs[] = {
-        { .is_implied = true,
+        {
+          .is_implied = true,
           .buf = self->email,
           .buf_size = &self->email_size,
           .max_buf_size = sizeof self->email
         },
         {
-          .name = "default",
-          .name_size = strlen("default"),
           .is_default = true,
           .run = run_set_default_email,  // We are okay even if email is empty
           .obj = self
@@ -101,7 +100,8 @@ static int parse_email(void *obj, const char *rec, size_t *total_size) {
     char email_type_buf[KND_NAME_SIZE];  // TODO(ki.stfu): Don't use external buffer for passing name to |spec->validate|
     size_t email_type_buf_size;
     struct kndTaskSpec specs[] = {
-        { .is_validator = true,
+        {
+          .is_validator = true,
           .buf = email_type_buf,
           .buf_size = &email_type_buf_size,
           .max_buf_size = sizeof email_type_buf,
@@ -109,8 +109,6 @@ static int parse_email(void *obj, const char *rec, size_t *total_size) {
           .obj = self
         },
         {
-          .name = "default",
-          .name_size = strlen("default"),
           .is_default = true,
           .run = run_set_default_email,  // We are okay even if email is empty
           .obj = self
