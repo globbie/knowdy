@@ -166,12 +166,10 @@ static struct kndTaskSpec gen_user_spec(struct TaskSpecs *args) {
     return (struct kndTaskSpec){ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = args };
 }
 
-static struct kndTaskSpec gen_name_spec_with_buf(struct User *self) {
-    return (struct kndTaskSpec){ .is_implied = true,
-                                 .buf = self->name, .buf_size = &self->name_size, .max_buf_size = sizeof self->name };
-}
-
-static struct kndTaskSpec gen_name_spec_with_run(struct User *self) {
+static struct kndTaskSpec gen_name_spec(struct User *self, bool use_buf_else_run) {
+    if (use_buf_else_run)
+        return (struct kndTaskSpec){ .is_implied = true,
+                                     .buf = self->name, .buf_size = &self->name_size, .max_buf_size = sizeof self->name };
     return (struct kndTaskSpec){ .is_implied = true, .run = run_set_name, .obj = self };
 }
 
@@ -193,7 +191,7 @@ struct User user;
 
 
 START_TEST(parse_task_empty)
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec_with_run(&user), gen_sid_spec(&user));
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, false), gen_sid_spec(&user));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
     rc = knd_parse_task(rec = "", &total_size, specs, sizeof specs / sizeof specs[0]);
@@ -203,7 +201,7 @@ START_TEST(parse_task_empty)
 END_TEST
 
 START_TEST(parse_task_empty_with_spaces)
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec_with_run(&user), gen_sid_spec(&user));
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, false), gen_sid_spec(&user));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
     rc = knd_parse_task(rec = "     ", &total_size, specs, sizeof specs / sizeof specs[0]);
@@ -213,7 +211,7 @@ START_TEST(parse_task_empty_with_spaces)
 END_TEST
 
 START_TEST(parse_task_empty_with_closing_brace)
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec_with_run(&user), gen_sid_spec(&user));
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, false), gen_sid_spec(&user));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
     rc = knd_parse_task(rec = " }     ", &total_size, specs, sizeof specs / sizeof specs[0]);
@@ -276,7 +274,7 @@ check_parse_implied_field(struct kndTaskSpec *specs,
 START_TEST(parse_implied_field)
   // Check implied field with .buf
   {
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec_with_buf(&user), gen_sid_spec(&user));
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, true), gen_sid_spec(&user));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
     check_parse_implied_field(specs, sizeof specs / sizeof specs[0], &parse_user_args);
@@ -284,7 +282,7 @@ START_TEST(parse_implied_field)
 
   // Check implied field with .run
   {
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec_with_run(&user), gen_sid_spec(&user));
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, false), gen_sid_spec(&user));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
     check_parse_implied_field(specs, sizeof specs / sizeof specs[0], &parse_user_args);
@@ -303,7 +301,7 @@ START_TEST(parse_implied_field_unknown)
 END_TEST
 
 START_TEST(parse_implied_field_max_size)
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec_with_run(&user), gen_sid_spec(&user));
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, false), gen_sid_spec(&user));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
   {
@@ -326,7 +324,7 @@ START_TEST(parse_implied_field_max_size)
 END_TEST
 
 START_TEST(parse_implied_field_max_size_plus_one)
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec_with_run(&user));
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, false));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
   {
@@ -343,7 +341,7 @@ START_TEST(parse_implied_field_max_size_plus_one)
 END_TEST
 
 START_TEST(parse_implied_field_size_NAME_SIZE_plus_one)
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec_with_run(&user));
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, false));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
   {
