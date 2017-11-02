@@ -861,7 +861,7 @@ knd_check_default(const char *rec,
     if (!default_spec) {
         knd_log("-- no default spec found to handle an empty field (ignoring selectors): %.*s",
                 16, rec);
-        return knd_FORMAT;
+        return knd_NO_MATCH;
     }
 
     err = default_spec->run(default_spec->obj, NULL, 0);
