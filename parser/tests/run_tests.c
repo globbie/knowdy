@@ -148,16 +148,15 @@ static int parse_email(void *obj, const char *rec, size_t *total_size) {
     struct kndTaskSpec __specs##__LINE__[] = { __VA_ARGS__ }; \
     struct TaskSpecs name = { __specs##__LINE__, sizeof __specs##__LINE__ / sizeof __specs##__LINE__[0] }
 
-#define ASSERT_STR_EQ(act, act_size, exp)       \
-    do {                                        \
-        const char *__act = (act);              \
-        size_t __act_size = (act_size);         \
-        const char *__exp = (exp);              \
-        size_t __exp_size = strlen(__exp);      \
-        ck_assert_msg(__act_size == __exp_size, \
-            "Assertion '%s' failed: %s == %zu, %s == %zu", #act_size" == strlen("#exp")", #act_size, __act_size, "strlen("#exp")", __exp_size); \
-        ck_assert_msg(!strncmp(__act, __exp, __act_size), \
-            "Assertion '%s' failed: %s == \"%.*s\" but expected \"%s\"", #act" == "#exp, #act, __act_size, __act, __exp); \
+#define ASSERT_STR_EQ(act, act_size, exp)  \
+    do {                                   \
+        const char *__act = (act);         \
+        size_t __act_size = (act_size);    \
+        const char *__exp = (exp);         \
+        size_t __exp_size = strlen(__exp); \
+        ck_assert_msg(__act_size == __exp_size && 0 == strncmp(__act, __exp, __act_size),      \
+            "Assertion '%s' failed: %s == \"%.*s\" [len: %zu] but expected \"%s\" [len: %zu]", \
+            #act" == "#exp, #act, __act_size, __act, __act_size, __exp, __exp_size);           \
     } while (0)
 
 // --------------------------------------------------------------------------------
