@@ -25,6 +25,7 @@
 struct kndOutput;
 struct kndTask;
 struct kndRelArg;
+struct kndRelInstance;
 
 struct kndRelState
 {
@@ -35,6 +36,11 @@ struct kndRelState
     size_t val_size;
 
     struct kndRelState *next;
+};
+
+struct kndRelInstEntry
+{
+    struct kndRelInstance *inst;
 };
 
 struct kndRelInstance
@@ -79,7 +85,7 @@ struct kndRelDir
     struct kndRelInstanceEntry **objs;
     size_t num_objs;
     */
-    //struct ooDict *rel_inst_idx;
+    struct ooDict *inst_idx;
 
     bool is_terminal;
     struct kndRelDir *next;
@@ -122,15 +128,19 @@ struct kndRel
     struct kndRel *inbox;
     size_t inbox_size;
 
+    struct kndRelInstance *inst_inbox;
+    size_t inst_inbox_size;
+
     struct kndRelDir *dir;
     struct ooDict *rel_idx;
     struct ooDict *class_idx;
     const char *frozen_output_file_name;
     size_t frozen_output_file_name_size;
     size_t frozen_size;
-
+    
     bool is_resolved;
     size_t depth;
+
     struct kndRel *curr_rel;
     struct kndRel *next;
 

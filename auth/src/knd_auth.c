@@ -359,10 +359,12 @@ static int run_check_sid(void *obj,
 
     self->out->reset(self->out);
     err = self->out->write(self->out,
-                           "{\"http_code\":200", strlen("{\"http_code\":200"));
+                                  "{\"http_code\":200",
+                           strlen("{\"http_code\":200"));
     if (err) return err;
     err = self->out->write(self->out,
-                           ",\"user_id\":", strlen(",\"user_id\":"));
+                                  ",\"user_id\":",
+                           strlen(",\"user_id\":"));
     if (err) return err;
     err = self->out->write(self->out, user_rec->name, user_rec->name_size);
     if (err) return err;

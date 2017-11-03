@@ -677,6 +677,7 @@ static int parse_import_instance(void *data,
     struct kndRel *self = data;
     struct kndRel *rel;
     struct kndRelInstance *inst;
+    struct kndRelInstEntry *entry;
     int err;
 
     if (DEBUG_REL_LEVEL_TMP) {
@@ -719,17 +720,13 @@ static int parse_import_instance(void *data,
     self->inst_inbox = inst;
     self->inst_inbox_size++;
 
-    c = inst->conc;
-    if (!c->dir) {
-        if (c->root_rel) {
-            knd_log("-- no dir in %.*s :(", c->name_size, c->name);
-            return knd_FAIL;
-        }
+    rel = inst->rel;
+    if (!rel->dir) {
         return knd_OK;
     }
 
-    if (!c->dir->inst_idx) {
-        err = ooDict_new(&c->dir->inst_idx, KND_MEDIUM_DICT_SIZE);
+    if (!rel->dir->inst_idx) {
+        err = ooDict_new(&rel->dir->inst_idx, KND_MEDIUM_DICT_SIZE);
         if (err) return err;
     }
 
@@ -738,10 +735,10 @@ static int parse_import_instance(void *data,
     memset(entry, 0, sizeof(struct kndRelInstEntry));
     entry->inst = inst;
 
-    err = c->dir->inst_idx->set(c->dir->inst_idx,
-                                inst->name, inst->name_size, (void*)entry);
+    err = rel->dir->inst_idx->set(rel->dir->inst_idx,
+                                  inst->name, inst->name_size, (void*)entry);
     if (err) return err;
-
+        
     /*if (DEBUG_CONC_LEVEL_2) {
         knd_log("\n\nREGISTER INST in %.*s IDX:  [total:%zu valid:%zu]",
                 c->name_size, c->name, c->dir->inst_idx->size, c->dir->num_insts);
