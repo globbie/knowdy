@@ -34,7 +34,6 @@ kndLearner_del(struct kndLearner *self)
     /*if (self->path) free(self->path);*/
 
     /* TODO: storage */
-
     free(self);
 }
 
@@ -369,33 +368,33 @@ parse_config_GSL(struct kndLearner *self,
         return err;
     }
 
-    if (!*self->path) {
+    if (!self->path_size) {
         knd_log("-- DB path not set :(");
         return knd_FAIL;
     }
     
-    if (!*self->schema_path) {
+    if (!self->schema_path_size) {
         knd_log("-- schema path not set :(");
         return knd_FAIL;
     }
 
-    if (!*self->inbox_frontend_addr) {
+    if (!self->inbox_frontend_addr_size) {
         knd_log("-- inbox frontend addr not set :(");
         return knd_FAIL;
     }
-    if (!*self->inbox_backend_addr) {
+    if (!self->inbox_backend_addr_size) {
         knd_log("-- inbox backend addr not set :(");
         return knd_FAIL;
     }
 
-    if (!*self->admin->sid) {
+    if (!self->admin->sid_size) {
         knd_log("-- administrative SID is not set :(");
         return knd_FAIL;
     }
-    
     memcpy(self->admin->id, "000", strlen("000"));
 
     /* users path */
+    self->path[self->path_size] = '\0';
     self->admin->dbpath = self->path;
     self->admin->dbpath_size = self->path_size;
 
@@ -403,7 +402,6 @@ parse_config_GSL(struct kndLearner *self,
     memcpy(self->admin->path + self->path_size, "/users", strlen("/users"));
     self->admin->path_size = self->path_size + strlen("/users");
     self->admin->path[self->admin->path_size] = '\0';
-
     
     return knd_OK;
 }
@@ -440,10 +438,6 @@ kndLearner_new(struct kndLearner **rec,
     self->task->admin = self->admin;
     self->admin->out = self->out;
 
-    /* admin indices */
-    /*err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
-    if (err) goto error;
-    */
     err = kndMemPool_new(&self->mempool);
     if (err) return err;
     
@@ -559,7 +553,9 @@ kndLearner_new(struct kndLearner **rec,
     *rec = self;
 
     return knd_OK;
-error:
+
+ error:
+
     kndLearner_del(self);
     return err;
 }
@@ -831,7 +827,6 @@ main(const int argc,
                 "You specified %d arguments.\n",  argc - 1);
         return EXIT_FAILURE;
     }
-
     config = argv[1];
 
     err = kndLearner_new(&learner, config);
@@ -853,6 +848,8 @@ main(const int argc,
     err = pthread_create(&publisher, NULL, kndLearner_publisher, (void *) learner);
 
     learner->start(learner);
+
+    learner->del(learner);
 
     return EXIT_SUCCESS;
 }

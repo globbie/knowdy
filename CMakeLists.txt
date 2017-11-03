@@ -24,17 +24,20 @@ find_package(PkgConfig)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 find_package(MySQL REQUIRED)
 include_directories(${MYSQL_INCLUDE_DIR})
- 
+
 pkg_check_modules(ZEROMQ REQUIRED libzmq)
 find_path(ZEROMQ_INCLUDE_DIR NAMES zmq.h PATHS ${ZEROMQ_INCLUDE_DIRS})
 find_library(ZEROMQ_LIBRARY NAMES zmq PATHS ${ZEROMQ_LIBRARY_DIRS})
 include_directories(${ZEROMQ_INCLUDE_DIR})
 
+pkg_check_modules(CHECK REQUIRED check)
+find_path(CHECK_INCLUDE_DIR NAMES check.h PATHS ${CHECK_INCLUDE_DIRS})
+find_library(CHECK_LIBRARY NAMES check PATHS ${CHECK_LIBRARY_DIRS})
+include_directories(${CHECK_INCLUDE_DIR})
 
-#pkg_check_modules(MYSQL REQUIRED mysqlclient)
-#find_path(MYSQL_INCLUDE_DIR NAMES mysql.h PATHS ${MYSQL_INCLUDE_DIRS})
-#find_library(MYSQL_LIBRARY NAMES mysqlclient PATHS ${MYSQL_LIBRARY_DIRS})
-#include_directories(${MYSQL_INCLUDE_DIR})
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+        set(CHECK_LIBRARY ${CHECK_LIBRARY} rt m pthread subunit)
+endif()
 
 set(KNOWDY_PREFIX "knd")
 set(CORE "core")

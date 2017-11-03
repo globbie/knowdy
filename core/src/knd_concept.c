@@ -2763,6 +2763,8 @@ static int read_GSL_file(struct kndConcept *self,
     err = out->write(out, ".gsl", strlen(".gsl"));
     if (err) return err;
 
+    out->buf[out->buf_size] = '\0';
+
     err = out->read_file(out, (const char*)out->buf, out->buf_size);
     if (err) {
         knd_log("-- couldn't read GSL class file \"%s\" :(", out->buf);
@@ -3081,7 +3083,7 @@ static int coordinate(struct kndConcept *self)
     } while (key);
 
     /* display all classes */
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         key = NULL;
         self->class_idx->rewind(self->class_idx);
         do {
@@ -5341,7 +5343,6 @@ static int freeze(struct kndConcept *self)
 
     /* any instances to freeze? */
     if (self->dir && self->dir->num_objs) {
-        //self->dir && self->dir->obj_idx && self->dir->obj_idx->size) {
         err = freeze_objs(self, &total_frozen_size, curr_dir, &chunk_size);
         if (err) return err;
         curr_dir +=      chunk_size;

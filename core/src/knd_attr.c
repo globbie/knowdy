@@ -291,11 +291,9 @@ static int run_set_name(void *obj,
 
     memcpy(self->name, name, name_size);
     self->name_size = name_size;
-    self->name[name_size] = '\0';
 
     return knd_OK;
 }
-
 
 static int run_set_quantif(void *obj,
                                struct kndTaskArg *args, size_t num_args)
@@ -422,7 +420,6 @@ static int parse_gloss_change(void *obj,
     return knd_OK;
 }
 
-
 static int read_gloss(void *obj,
                       const char *rec,
                       size_t *total_size)
@@ -486,8 +483,6 @@ static int gloss_alloc(void *obj,
 
     return knd_OK;
 }
-
-
 
 static int parse_quantif(void *obj,
                              const char *rec,

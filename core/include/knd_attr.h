@@ -76,8 +76,6 @@ struct kndAttrValidator
                 size_t val_size);
 };
 
-
-
 struct kndAttrItem
 {
     knd_task_spec_type type;
@@ -88,7 +86,6 @@ struct kndAttrItem
     size_t val_size;
 
     struct kndAttr *attr;
-
     struct kndAttrItem *children;
     struct kndAttrItem *tail;
     size_t num_children;

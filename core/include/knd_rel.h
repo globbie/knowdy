@@ -24,6 +24,7 @@
 
 struct kndOutput;
 struct kndTask;
+struct kndRelArg;
 
 struct kndRelState
 {
@@ -39,6 +40,38 @@ struct kndRelState
 struct kndRelInstance
 {
     struct kndRel *rel;
+};
+
+
+struct kndRelDir
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+    struct kndRel *rel;
+
+    size_t global_offset;
+    size_t curr_offset;
+    size_t block_size;
+
+    size_t body_size;
+    size_t obj_block_size;
+    size_t dir_size;
+
+    struct kndRelDir **children;
+    size_t num_children;
+
+    char next_obj_id[KND_ID_SIZE];
+    size_t next_obj_numid;
+
+    /*struct kndRelInstDir **obj_dirs;
+    size_t num_obj_dirs;
+    struct kndRelInstanceEntry **objs;
+    size_t num_objs;
+    */
+    //struct ooDict *rel_inst_idx;
+
+    bool is_terminal;
+    struct kndRelDir *next;
 };
 
 struct kndRel
@@ -57,16 +90,24 @@ struct kndRel
     size_t locale_size;
     knd_format format;
 
-    struct kndConcept *base;
-    struct kndConcept *spec;
-
     struct kndRelState *states;
     size_t num_states;
+    bool batch_mode;
+
+    struct kndRelArg *args;
+    struct kndRelArg *tail_arg;
+    size_t num_atrs;
 
     /* allocator */
     struct kndMemPool *mempool;
 
+    /* incoming */
+    struct kndRel *inbox;
+    size_t inbox_size;
+
+    struct kndRelDir *dir;
     struct ooDict *rel_idx;
+
     size_t depth;
     struct kndRel *next;
 

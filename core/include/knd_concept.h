@@ -280,7 +280,6 @@ struct kndConcept
     int (*select_delta)(struct kndConcept *self,
                         const char *rec,
                         size_t *total_size);
-
     int (*freeze)(struct kndConcept *self);
     int (*sync)(void *obj,
                 const char *rec,
@@ -311,7 +310,6 @@ struct kndConcept
     int (*get_attr)(struct kndConcept *self,
                     const char *name, size_t name_size,
                     struct kndAttr **result);
-
     int (*import)(void *self,
                   const char *rec,
                   size_t *total_size);

@@ -13,6 +13,7 @@ set(SOURCES
         src/knd_proc.c
         src/knd_ref.c
         src/knd_rel.c
+        src/knd_rel_arg.c
         src/knd_user.c
         src/knd_utils.c
         src/knd_array.c
