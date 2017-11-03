@@ -83,14 +83,60 @@ static int new_rel(struct kndMemPool *self,
     return knd_OK;
 }
 
+static int new_rel_inst(struct kndMemPool *self,
+                        struct kndRelInstance **result)
+{
+    struct kndRelInstance *rel_inst;
+    int e;
+
+    if (self->num_rel_insts >= self->max_rel_insts) {
+        self->log->reset(self->log);
+        e = self->log->write(self->log, "memory limit reached",
+                             strlen("memory limit reached"));
+        if (e) return e;
+
+        knd_log("-- memory limit reached :(");
+        return knd_MAX_LIMIT_REACHED;
+    }
+    rel_inst = &self->rel_insts[self->num_rel_insts];
+    memset(rel_inst, 0, sizeof(struct kndRelInstance));
+    kndRelInstance_init(rel_inst);
+    self->num_rel_insts++;
+    *result = rel_inst;
+    return knd_OK;
+}
+
+static int new_proc(struct kndMemPool *self,
+                   struct kndProc **result)
+{
+    struct kndProc *proc;
+    int e;
+
+    if (self->num_procs >= self->max_procs) {
+        self->log->reset(self->log);
+        e = self->log->write(self->log, "memory limit reached",
+                             strlen("memory limit reached"));
+        if (e) return e;
+        knd_log("-- Proc pool memory limit reached :(");
+        return knd_MAX_LIMIT_REACHED;
+    }
+
+    proc = &self->procs[self->num_procs];
+    memset(proc, 0, sizeof(struct kndProc));
+    kndProc_init(proc);
+    self->num_procs++;
+    *result = proc;
+    return knd_OK;
+}
+
 static int alloc(struct kndMemPool *self)
 {
     if (!self->max_classes)  self->max_classes = KND_MIN_CLASSES;
     if (!self->max_objs)     self->max_objs =    KND_MIN_OBJS;
     if (!self->max_rels)     self->max_rels =    KND_MIN_RELS;
-    if (!self->max_rel_instances) self->max_rel_instances = KND_MIN_REL_INSTANCES;
+    if (!self->max_rel_insts) self->max_rel_insts = KND_MIN_REL_INSTANCES;
     if (!self->max_procs)    self->max_procs =  KND_MIN_PROCS;
-    if (!self->max_proc_instances) self->max_proc_instances = KND_MIN_PROC_INSTANCES;
+    if (!self->max_proc_insts) self->max_proc_insts = KND_MIN_PROC_INSTANCES;
 
     self->classes = calloc(self->max_classes, sizeof(struct kndConcept));
     if (!self->classes) {
@@ -110,9 +156,9 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    self->rel_instances = calloc(self->max_rel_instances, sizeof(struct kndRelInstance));
-    if (!self->rel_instances) {
-        knd_log("-- rel instances not allocated :(");
+    self->rel_insts = calloc(self->max_rel_insts, sizeof(struct kndRelInstance));
+    if (!self->rel_insts) {
+        knd_log("-- rel insts not allocated :(");
         return knd_NOMEM;
     }
 
@@ -122,9 +168,9 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    self->proc_instances = calloc(self->max_proc_instances, sizeof(struct kndProcInstance));
-    if (!self->proc_instances) {
-        knd_log("-- proc instances not allocated :(");
+    self->proc_insts = calloc(self->max_proc_insts, sizeof(struct kndProcInstance));
+    if (!self->proc_insts) {
+        knd_log("-- proc insts not allocated :(");
         return knd_NOMEM;
     }
 
@@ -141,6 +187,8 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_class = new_class;
     self->new_obj = new_obj;
     self->new_rel = new_rel;
+    self->new_rel_inst = new_rel_inst;
+    self->new_proc = new_proc;
 }
 
 extern int
@@ -151,6 +199,11 @@ kndMemPool_new(struct kndMemPool **obj)
     self = malloc(sizeof(struct kndMemPool));
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndMemPool));
+
+    memset(self->next_class_id, '0', KND_ID_SIZE);
+    memset(self->next_proc_id, '0', KND_ID_SIZE);
+    memset(self->next_rel_id, '0', KND_ID_SIZE);
+
     kndMemPool_init(self);
     *obj = self;
     return knd_OK;

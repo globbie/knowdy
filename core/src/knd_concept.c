@@ -1646,6 +1646,19 @@ static int parse_rel_import(void *obj,
     return knd_OK;
 }
 
+static int parse_proc_import(void *obj,
+                            const char *rec,
+                            size_t *total_size)
+{
+    struct kndConcept *self = obj;
+    int err;
+
+    err = self->proc->import(self->proc, rec, total_size);
+    if (err) return err;
+
+    return knd_OK;
+}
+
 static int run_read_include(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndConcept *self = (struct kndConcept*)obj;
@@ -1708,6 +1721,12 @@ static int parse_schema(void *self,
           .name = "rel",
           .name_size = strlen("rel"),
           .parse = parse_rel_import,
+          .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "proc",
+          .name_size = strlen("proc"),
+          .parse = parse_proc_import,
           .obj = self
         }
     };
@@ -3014,7 +3033,7 @@ static int resolve_class_refs(struct kndConcept *self)
     void *val;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. resolving class refs by \"%.*s\"",
                 self->name_size, self->name);
 
@@ -3096,6 +3115,12 @@ static int coordinate(struct kndConcept *self)
         } while (key);
     }
 
+    err = self->proc->coordinate(self->proc);
+    if (err) return err;
+
+    err = self->rel->coordinate(self->rel);
+    if (err) return err;
+    
     return knd_OK;
 }
 
@@ -3812,7 +3837,7 @@ static int parse_select_class(void *obj,
                               const char *rec,
                               size_t *total_size)
 {
-    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndConcept *self = obj;
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
     int err = knd_FAIL, e;

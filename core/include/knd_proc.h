@@ -42,6 +42,63 @@ struct kndProcInstance
     struct kndProc *proc;
 };
 
+struct kndProcDir
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+    struct kndProc *proc;
+
+    size_t global_offset;
+    size_t curr_offset;
+    size_t block_size;
+
+    size_t body_size;
+    size_t obj_block_size;
+    size_t dir_size;
+
+    struct kndProcDir **children;
+    size_t num_children;
+
+    /*struct kndProcInstDir **obj_dirs;
+    size_t num_obj_dirs;
+    struct kndProcInstanceEntry **objs;
+    size_t num_objs;
+    */
+    //struct ooDict *proc_inst_idx;
+
+    bool is_terminal;
+    struct kndProcDir *next;
+};
+
+typedef enum knd_procarg_type {
+    KND_PROCARG_NONE,
+    KND_PROCARG_SUBJ,
+    KND_PROCARG_OBJ,
+    KND_PROCARG_INS
+} knd_procarg_type;
+
+static const char* const knd_procarg_names[] = {
+    "none",
+    "subj",
+    "obj",
+    "ins",
+};
+
+struct kndProcArg 
+{
+    knd_procarg_type type;
+
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+
+    char classname[KND_NAME_SIZE];
+    size_t classname_size;
+
+    struct kndConcept *conc;
+    struct kndConcDir *conc_dir;
+    struct kndProcArg *next;
+};
+
 struct kndProc
 {
     char name[KND_NAME_SIZE];
@@ -51,6 +108,10 @@ struct kndProc
     struct kndOutput *out;
     struct kndOutput *log;
 
+    knd_state_phase phase;
+
+    struct kndTranslation *tr;
+
     const char *locale;
     size_t locale_size;
     knd_format format;
@@ -58,8 +119,24 @@ struct kndProc
     struct kndProcState *states;
     size_t num_states;
 
-    struct ooDict *proc_idx;
+    struct kndProcArg *args;
+    size_t num_args;
 
+    struct kndTask *task;
+
+    /* allocator */
+    struct kndMemPool *mempool;
+
+    /* incoming */
+    struct kndProc *inbox;
+    size_t inbox_size;
+
+    struct kndProcDir *dir;
+    struct ooDict *proc_idx;
+    struct ooDict *class_idx;
+
+    bool batch_mode;
+    bool is_resolved;
     size_t depth;
     struct kndProc *next;
 
@@ -71,15 +148,14 @@ struct kndProc
     int (*parse)(struct kndProc *self,
                  const char     *rec,
                  size_t          *total_size);
-
-    int (*index)(struct kndProc *self);
-
+    int (*import)(struct kndProc *self,
+                  const char    *rec,
+                  size_t        *total_size);
+    int (*coordinate)(struct kndProc *self);
     int (*resolve)(struct kndProc *self);
-    
     int (*export)(struct kndProc *self);
-    int (*export_reverse_proc)(struct kndProc *self);
 };
 
 /* constructors */
-extern int kndProc_init(struct kndProc *self);
+extern void kndProc_init(struct kndProc *self);
 extern int kndProc_new(struct kndProc **self);

@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "knd_rel_arg.h"
+#include "knd_rel.h"
 #include "knd_task.h"
 #include "knd_concept.h"
 #include "knd_output.h"
@@ -325,6 +326,27 @@ static int parse_GSL(struct kndRelArg *self,
     return knd_OK;
 }
 
+static int resolve(struct kndRelArg *self)
+{
+    struct kndRel *rel;
+    struct kndConcept *c;
+    
+    c = self->rel->class_idx->get(self->rel->class_idx,
+                                  self->classname, self->classname_size);
+    if (!c) {
+        knd_log("-- no such class: %.*s :(", self->classname_size, self->classname);
+        return knd_FAIL;
+    }
+
+    self->conc = c;
+
+    if (DEBUG_RELARG_LEVEL_1)
+        knd_log("++ Rel Arg resolved: \"%.*s\"!",
+                self->classname_size, self->classname);
+  
+    return knd_OK;
+}
+
 
 /*  RelArg Initializer */
 static void init(struct kndRelArg *self)
@@ -335,6 +357,7 @@ static void init(struct kndRelArg *self)
     self->str = str;
     self->parse = parse_GSL;
     self->export = export;
+    self->resolve = resolve;
 }
 
 

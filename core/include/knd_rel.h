@@ -39,7 +39,18 @@ struct kndRelState
 
 struct kndRelInstance
 {
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+
+    char subj_name[KND_SHORT_NAME_SIZE];
+    size_t subj_name_size;
+
+    char obj_name[KND_SHORT_NAME_SIZE];
+    size_t obj_name_size;
+
+    knd_state_phase phase;
     struct kndRel *rel;
+    struct kndRelInstance *next;
 };
 
 
@@ -79,11 +90,17 @@ struct kndRel
     char name[KND_NAME_SIZE];
     size_t name_size;
     char id[KND_ID_SIZE];
+    char next_id[KND_ID_SIZE];
+
+    knd_state_phase phase;
 
     struct kndTranslation *tr;
 
     struct kndOutput *out;
     struct kndOutput *log;
+
+    const char *dbpath;
+    size_t dbpath_size;
 
     struct kndTask *task;
     const char *locale;
@@ -107,8 +124,14 @@ struct kndRel
 
     struct kndRelDir *dir;
     struct ooDict *rel_idx;
+    struct ooDict *class_idx;
+    const char *frozen_output_file_name;
+    size_t frozen_output_file_name_size;
+    size_t frozen_size;
 
+    bool is_resolved;
     size_t depth;
+    struct kndRel *curr_rel;
     struct kndRel *next;
 
     /******** public methods ********/
@@ -122,9 +145,10 @@ struct kndRel
     int (*import)(struct kndRel *self,
                   const char    *rec,
                   size_t        *total_size);
-
-    int (*index)(struct kndRel *self);
-
+    int (*select)(struct kndRel  *self,
+                  const char *rec,
+                  size_t *total_size);
+    int (*coordinate)(struct kndRel *self);
     int (*resolve)(struct kndRel *self);
     
     int (*export)(struct kndRel *self);
@@ -132,4 +156,5 @@ struct kndRel
 };
 
 extern void kndRel_init(struct kndRel *self);
+extern void kndRelInstance_init(struct kndRelInstance *inst);
 extern int kndRel_new(struct kndRel **self);

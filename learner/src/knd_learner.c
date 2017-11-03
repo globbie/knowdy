@@ -253,7 +253,7 @@ static int parse_memory_settings(void *obj,
         },
         { .name = "max_rel_instances",
           .name_size = strlen("max_rel_instances"),
-          .num = &self->max_rel_instances
+          .num = &self->max_rel_insts
         },
         { .name = "max_procs",
           .name_size = strlen("max_procs"),
@@ -261,7 +261,7 @@ static int parse_memory_settings(void *obj,
         },
         { .name = "max_proc_instances",
           .name_size = strlen("max_proc_instances"),
-          .num = &self->max_proc_instances
+          .num = &self->max_proc_insts
         }
     };
     int err;
@@ -481,6 +481,7 @@ kndLearner_new(struct kndLearner **rec,
 
     err = kndProc_new(&conc->proc);
     if (err) goto error;
+    conc->proc->mempool = self->mempool;
     
     err = kndRel_new(&conc->rel);
     if (err) goto error;
@@ -492,9 +493,11 @@ kndLearner_new(struct kndLearner **rec,
 
     err = ooDict_new(&conc->proc->proc_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
+    conc->proc->class_idx = conc->class_idx;
 
     err = ooDict_new(&conc->rel->rel_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
+    conc->rel->class_idx = conc->class_idx;
 
     /* user idx */
     if (self->max_users) {

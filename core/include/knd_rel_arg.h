@@ -117,7 +117,7 @@ struct kndRelArg
     int (*validate)(struct kndRelArg *self,
                     const char   *val,
                     size_t val_size);
-
+    int (*resolve)(struct kndRelArg   *self);
     int (*export)(struct kndRelArg   *self);
 };
 

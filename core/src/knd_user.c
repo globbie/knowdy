@@ -455,7 +455,7 @@ static int kndUser_parse_class_select(void *obj,
                                       const char *rec,
                                       size_t *total_size)
 {
-    struct kndUser *self = (struct kndUser*)obj;
+    struct kndUser *self = obj;
     struct kndOutput *out = self->out;
     int err;
 
@@ -474,6 +474,35 @@ static int kndUser_parse_class_select(void *obj,
     self->root_class->locale_size = self->locale_size;
     
     err = self->root_class->select(self->root_class, rec, total_size);
+    if (err) return err;
+
+    return knd_OK;
+}
+
+static int parse_rel_select(void *obj,
+                            const char *rec,
+                            size_t *total_size)
+{
+    struct kndUser *self = obj;
+    struct kndOutput *out = self->out;
+    struct kndRel *rel = self->root_class->rel;
+    int err;
+
+    if (DEBUG_USER_LEVEL_2)
+        knd_log(".. parsing the default Rel select: \"%s\"", rec);
+    rel->out = self->out;
+    rel->log = self->log;
+    rel->task = self->task;
+
+    rel->dbpath = self->dbpath;
+    rel->dbpath_size = self->dbpath_size;
+    rel->frozen_output_file_name = self->frozen_output_file_name;
+    rel->frozen_output_file_name_size = self->frozen_output_file_name_size;
+
+    rel->locale = self->locale;
+    rel->locale_size = self->locale_size;
+    
+    err = rel->select(rel, rec, total_size);
     if (err) return err;
 
     return knd_OK;
@@ -686,6 +715,11 @@ static int parse_task(struct kndUser *self,
           .name = "rel",
           .name_size = strlen("rel"),
           .parse = parse_rel_import,
+          .obj = self
+        },
+        { .name = "rel",
+          .name_size = strlen("rel"),
+          .parse = parse_rel_select,
           .obj = self
         },
         { .name = "state",
