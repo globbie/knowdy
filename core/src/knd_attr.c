@@ -153,9 +153,9 @@ static int export_JSON(struct kndAttr *self)
     while (tr) {
         if (DEBUG_ATTR_LEVEL_2)
             knd_log("LANG: %s == CURR LOCALE: %s [%lu] => %s",
-                    tr->locale, self->locale, (unsigned long)self->locale_size, tr->val);
+                    tr->locale, self->task->locale, (unsigned long)self->locale_size, tr->val);
 
-        if (strncmp(self->locale, tr->locale, tr->locale_size)) {
+        if (strncmp(self->task->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
         }
         
@@ -636,6 +636,14 @@ static int parse_GSL(struct kndAttr *self,
         { .is_list = true,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
+          .accu = self,
+          .alloc = gloss_alloc,
+          .append = gloss_append,
+          .parse = read_gloss
+        },
+        { .is_list = true,
+          .name = "_g",
+          .name_size = strlen("_g"),
           .accu = self,
           .alloc = gloss_alloc,
           .append = gloss_append,

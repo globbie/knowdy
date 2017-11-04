@@ -25,6 +25,7 @@ struct kndAuthRec
 struct kndTID
 {
     char tid[KND_TID_SIZE];
+    size_t size;
 };
     
 struct kndResult

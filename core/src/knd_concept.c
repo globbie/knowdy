@@ -145,6 +145,8 @@ static void str(struct kndConcept *self)
     }
 
     knd_log("%*s}", self->depth * KND_OFFSET_SIZE, "");
+
+
 }
 
 static void obj_str(struct kndObjEntry *self, size_t obj_id, int fd, size_t depth)
@@ -1287,7 +1289,7 @@ static int parse_import_class(void *obj,
     char time[KND_NAME_SIZE];
     size_t time_size = 0;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. import \"%.*s\" class..", 64, rec);
 
     err  = self->mempool->new_class(self->mempool, &c);
@@ -1330,6 +1332,14 @@ static int parse_import_class(void *obj,
         { .is_list = true,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
+          .accu = c,
+          .alloc = gloss_alloc,
+          .append = gloss_append,
+          .parse = read_gloss
+        },
+        { .is_list = true,
+          .name = "_g",
+          .name_size = strlen("_g"),
           .accu = c,
           .alloc = gloss_alloc,
           .append = gloss_append,
@@ -2382,8 +2392,7 @@ static int parse_dir_trailer(struct kndConcept *self,
           .accu = parent_dir,
           .alloc = dir_entry_alloc,
           .append = dir_entry_append,
-          .parse = parse_dir_entry,
-          .obj = self
+          .parse = parse_dir_entry
         }
     };
 
@@ -2954,6 +2963,15 @@ static int base_conc_item_read(void *obj,
     return knd_OK;
 }
 
+static int confirm_class_read(void *obj,
+                              struct kndTaskArg *args __attribute__((unused)),
+                              size_t num_args __attribute__((unused)))
+{
+    struct kndConcept *self = obj;
+    knd_log("== class %.*s read OK!", self->name_size, self->name);
+    return knd_OK;
+}
+
 static int read_GSP(struct kndConcept *self,
                     const char *rec,
                     size_t *total_size)
@@ -3014,6 +3032,12 @@ static int read_GSP(struct kndConcept *self,
         { .name = "text",
           .name_size = strlen("text"),
           .parse = parse_text,
+          .obj = self
+        },
+        { .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = confirm_class_read,
           .obj = self
         }
     };
@@ -3102,7 +3126,7 @@ static int coordinate(struct kndConcept *self)
     } while (key);
 
     /* display all classes */
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         key = NULL;
         self->class_idx->rewind(self->class_idx);
         do {
@@ -3261,6 +3285,7 @@ static int get_class(struct kndConcept *self,
         c->del(c);
         return knd_FAIL;
     }
+
     err = c->read(c, b, &chunk_size);
     if (err) {
         c->del(c);
@@ -3469,18 +3494,19 @@ static int read_obj_entry(struct kndConcept *self,
     return err;
 }
 
-static int run_select_class(void *obj,
-                            struct kndTaskArg *args __attribute__((unused)),
-                            size_t num_args __attribute__((unused)))
+static int run_present_class(void *obj,
+                             struct kndTaskArg *args __attribute__((unused)),
+                             size_t num_args __attribute__((unused)))
 {
-    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndConcept *self = obj;
     struct kndConcept *c;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1)
-        knd_log(".. run class select: %.*s",
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. present class: %.*s  batch size:%zu    batch from:%zu",
                 self->curr_class->name_size,
-                self->curr_class->name);
+                self->curr_class->name,
+                self->task->batch_size, self->task->batch_from);
 
     if (self->curr_class) {
         c = self->curr_class;
@@ -3490,8 +3516,6 @@ static int run_select_class(void *obj,
         c->log = self->log;
         c->task = self->task;
     
-        c->locale = self->locale;
-        c->locale_size = self->locale_size;
         c->format = KND_FORMAT_JSON;
         c->depth = 0;
 
@@ -3508,6 +3532,7 @@ static int run_select_class(void *obj,
     
     return knd_FAIL;
 }
+
 
 static int run_select_obj(void *data,
                           struct kndTaskArg *args __attribute__((unused)),
@@ -3532,8 +3557,6 @@ static int run_select_obj(void *data,
     obj->log = self->log;
     obj->task = self->task;
 
-    obj->locale = self->locale;
-    obj->locale_size = self->locale_size;
     obj->format = KND_FORMAT_JSON;
     err = obj->export(obj);
     if (err) return err;
@@ -3878,7 +3901,13 @@ static int parse_select_class(void *obj,
           .parse = parse_select_obj,
           .obj = self
         },
-        { .name = "delta",
+        { .name = "_iter",
+          .name_size = strlen("_iter"),
+          .is_selector = true,
+          .parse = self->task->parse_iter,
+          .obj = self->task
+        },
+        { .name = "_delta",
           .name_size = strlen("delta"),
           .parse = parse_select_class_delta,
           .obj = self
@@ -3886,7 +3915,7 @@ static int parse_select_class(void *obj,
         { .name = "default",
           .name_size = strlen("default"),
           .is_default = true,
-          .run = run_select_class,
+          .run = run_present_class,
           .obj = self
         }
     };
@@ -3964,9 +3993,9 @@ static int export_JSON(struct kndConcept *self)
     size_t item_count;
     int i, err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. JSON export concept: \"%s\"   locale: %s depth: %lu\n",
-                self->name, self->locale, (unsigned long)self->depth);
+                self->name, self->task->locale, (unsigned long)self->depth);
 
     out = self->out;
     err = out->write(out, "{", 1);
@@ -3998,16 +4027,10 @@ static int export_JSON(struct kndConcept *self)
     /* choose gloss */
     tr = self->tr;
     while (tr) {
-        if (DEBUG_CONC_LEVEL_2)
-            knd_log("LANG: %s == CURR LOCALE: %s [%lu] => %s",
-                    tr->locale, self->locale, (unsigned long)self->locale_size, tr->val);
-
-        if (memcmp(self->locale, tr->locale, tr->locale_size)) {
+        if (memcmp(self->task->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
         }
-        
-        err = out->write(out,
-                         ",\"gloss\":\"", strlen(",\"gloss\":\""));
+        err = out->write(out, ",\"gloss\":\"", strlen(",\"gloss\":\""));
         if (err) return err;
 
         err = out->write(out, tr->val,  tr->val_size);
@@ -4080,8 +4103,7 @@ static int export_JSON(struct kndConcept *self)
             }
 
             attr->out = out;
-            attr->locale = self->locale;
-            attr->locale_size = self->locale_size;
+            attr->task = self->task;
             
             err = attr->export(attr);
             if (err) {
@@ -4141,8 +4163,7 @@ static int export_JSON(struct kndConcept *self)
                 
                 c = ref->conc;
                 c->out = self->out;
-                c->locale = self->locale;
-                c->locale_size = self->locale_size;
+                c->task = self->task;
                 c->format =  KND_FORMAT_JSON;
                 c->depth = self->depth + 1;
                 err = c->export(c);
@@ -4919,8 +4940,6 @@ static int run_select_class_diff(void *obj, struct kndTaskArg *args, size_t num_
     c->log = self->log;
     c->task = self->task;
     
-    c->locale = self->locale;
-    c->locale_size = self->locale_size;
     c->format = KND_FORMAT_JSON;
     c->depth = 0;
     err = c->export(c);

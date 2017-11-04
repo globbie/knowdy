@@ -34,6 +34,12 @@ typedef enum knd_task_spec_type { KND_GET_STATE,
                                   KND_DELTA_STATE
 } knd_task_spec_type;
 
+typedef enum knd_iter_type {
+    KND_ITER_NONE,
+    KND_ITER_BREADTH,
+    KND_ITER_DEPTH
+} knd_iter_type;
+
 struct kndTaskArg
 {
     char name[KND_NAME_SIZE + 1];  // null-terminated string
@@ -80,6 +86,7 @@ struct kndTaskSpec
 struct kndTask
 {
     knd_task_spec_type type;
+    knd_iter_type iter_type;
 
     char sid[KND_NAME_SIZE];
     size_t sid_size;
@@ -112,7 +119,10 @@ struct kndTask
     bool is_state_changed;
     
     int error;
-    
+
+    size_t batch_size;
+    size_t batch_from;
+
     struct kndUser *admin;
 
     struct kndOutput *log;
@@ -140,7 +150,9 @@ struct kndTask
     int (*parse)(struct kndTask *self,
                  const char     *rec,
                  size_t   *total_size);
-    
+    int (*parse_iter)(void *data,
+                      const char *rec,
+                      size_t *total_size);
     int (*report)(struct kndTask *self);
 };
 

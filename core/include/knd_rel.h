@@ -59,7 +59,6 @@ struct kndRelInstance
     struct kndRelInstance *next;
 };
 
-
 struct kndRelDir
 {
     char name[KND_NAME_SIZE];
