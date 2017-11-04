@@ -32,14 +32,15 @@ static void reset(struct kndTask *self)
     self->tid_size = 0;
     self->locale = self->admin->default_locale;
     self->locale_size = self->admin->default_locale_size;
+    self->curr_locale_size = 0;
 
     memset(self->state, '0', KND_STATE_SIZE);
     self->is_state_changed = false;
 
     self->type = KND_GET_STATE;
-    
-    self->admin->locale = self->admin->default_locale;
-    self->admin->locale_size = self->admin->default_locale_size;
+
+    /*self->admin->locale = self->admin->default_locale;
+      self->admin->locale_size = self->admin->default_locale_size; */
 
     self->error = 0;
     self->log->reset(self->log);
@@ -71,6 +72,52 @@ static int parse_update(void *obj,
     return knd_OK;
 }
 
+
+static int parse_iter_batch(void *obj,
+                            const char *rec,
+                            size_t *total_size)
+{
+    struct kndTask *self = obj;
+    struct kndTaskSpec specs[] = {
+        { .name = "size",
+          .name_size = strlen("size"),
+          .parse = knd_parse_size_t,
+          .obj = &self->batch_size
+        },
+        { .name = "from",
+          .name_size = strlen("from"),
+          .parse = knd_parse_size_t,
+          .obj = &self->batch_from
+        }
+    };
+    int err;
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
+
+
+static int parse_iter(void *obj,
+                      const char *rec,
+                      size_t *total_size)
+{
+    struct kndTaskSpec specs[] = {
+        { .name = "batch",
+          .name_size = strlen("batch"),
+          .parse = parse_iter_batch,
+          .obj = obj
+        }
+    };
+    int err;
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
+
 static int parse_user(void *obj,
                       const char *rec,
                       size_t *total_size)
@@ -81,7 +128,12 @@ static int parse_user(void *obj,
     self->admin->task = self;
     self->admin->out = self->out;
     self->admin->log = self->log;
-            
+
+    if (self->curr_locale_size) {
+        self->locale = self->curr_locale;
+        self->locale_size = self->curr_locale_size;
+    }
+
     err = self->admin->parse_task(self->admin, rec, total_size);
     if (err) {
         knd_log("-- User area parse failed");
@@ -109,6 +161,12 @@ static int parse_task(void *obj,
           .name_size = strlen("tid"),
           .buf = self->tid,
           .buf_size = &self->tid_size,
+          .max_buf_size = KND_NAME_SIZE
+        },
+        { .name = "locale",
+          .name_size = strlen("locale"),
+          .buf = self->curr_locale,
+          .buf_size = &self->curr_locale_size,
           .max_buf_size = KND_NAME_SIZE
         },
         { .name = "user",
@@ -332,6 +390,7 @@ extern int kndTask_new(struct kndTask **task)
     self->reset  = reset;
     self->run    = parse_GSL;
     self->report = report;
+    self->parse_iter = parse_iter;
 
     *task = self;
 

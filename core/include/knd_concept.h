@@ -42,7 +42,6 @@ typedef enum knd_conc_type {
     KND_CONC_ATTR
 } knd_conc_type;
 
-
 struct kndObjStateIdx
 {
     struct kndObject **objs;
@@ -181,8 +180,8 @@ struct kndConcept
 
     struct kndTask *task;
 
-    const char *locale;
-    size_t locale_size;
+    /*const char *locale;
+      size_t locale_size; */
     knd_format format;
     size_t depth;
 

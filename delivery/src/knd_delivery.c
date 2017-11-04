@@ -59,7 +59,6 @@ static int run_set_tid(void *obj,
     if (tid_size >= KND_TID_SIZE) return knd_LIMIT;
 
     memcpy(self->tid, tid, tid_size);
-    self->tid[tid_size] = '\0';
     self->tid_size = tid_size;
    
     return knd_OK;
@@ -117,14 +116,15 @@ static int run_set_error(void *obj,
     if (DEBUG_DELIV_LEVEL_2)
         knd_log(".. set the error: \"%.*s\"", name_size, name);
 
+    /* reset TID count */
     if (self->num_tids >= self->max_tids)
         self->num_tids = 0;
 
     tid = &self->tids[self->num_tids];
     if (*(tid->tid) != '\0') {
-        res = self->idx->get(self->idx, tid->tid, KND_TID_SIZE);
+        res = self->idx->get(self->idx, tid->tid, tid->size);
         if (!res) {
-            knd_log("-- no rec found for TID \"%.*s\"", KND_TID_SIZE, tid->tid);
+            knd_log("-- no rec found for TID \"%.*s\"", tid->size, tid->tid);
             return knd_NO_MATCH;
         }
         /* free result memory */
@@ -134,9 +134,9 @@ static int run_set_error(void *obj,
         }
         /* remove this key from the idx */
         if (DEBUG_DELIV_LEVEL_TMP)
-            knd_log(".. remove TID \"%.*s\" from idx", KND_TID_SIZE, tid->tid);
+            knd_log(".. remove TID \"%.*s\" from idx", tid->size, tid->tid);
 
-        self->idx->remove(self->idx, tid->tid, KND_TID_SIZE);
+        self->idx->remove(self->idx, tid->tid, tid->size);
     } else {
         /* alloc result */
         res = malloc(sizeof(struct kndResult));
@@ -145,11 +145,9 @@ static int run_set_error(void *obj,
     }
     
     memcpy(tid->tid, self->tid, self->tid_size);
-    tid->tid[self->tid_size] = '\0';
+    tid->size = self->tid_size;
 
-    
     memcpy(res->sid, self->sid, self->sid_size);
-    res->sid[self->sid_size] = '\0';
     res->sid_size = self->sid_size;
     
     res->sid_required = true;
@@ -157,12 +155,12 @@ static int run_set_error(void *obj,
     res->obj_size = self->obj_size;
     
     /* assign key to idx */
-    err = self->idx->set(self->idx, tid->tid, KND_TID_SIZE, (void*)res);
+    err = self->idx->set(self->idx, tid->tid, tid->size, (void*)res);
     if (err) return err;
 
     if (DEBUG_DELIV_LEVEL_2)
-        knd_log("== saved error for TID: \"%s\" => %s [%lu]",
-                tid->tid, res->obj, (unsigned long)res->obj_size);
+        knd_log("== saved error for TID: \"%.*s\" => %s [%lu]",
+                tid->size, tid->tid, res->obj, (unsigned long)res->obj_size);
 
     self->num_tids++;
     return knd_OK;
@@ -171,7 +169,7 @@ static int run_set_error(void *obj,
 static int run_set_result(void *obj,
                           struct kndTaskArg *args, size_t num_args)
 {
-    struct kndDelivery *self;
+    struct kndDelivery *self = obj;
     struct kndTaskArg *arg;
     struct kndTID *tid;
     struct kndResult *res = NULL;
@@ -188,16 +186,16 @@ static int run_set_result(void *obj,
     }
     if (!name_size) return knd_FAIL;
 
-    self = (struct kndDelivery*)obj;
-    if (DEBUG_DELIV_LEVEL_2)
-        knd_log(".. set result of \"%.*s\"", self->obj_size, self->obj);
+    if (DEBUG_DELIV_LEVEL_TMP)
+        knd_log(".. set result of \"%.*s\"",
+                self->obj_size, self->obj);
 
     if (self->num_tids >= self->max_tids)
         self->num_tids = 0;
 
     tid = &self->tids[self->num_tids];
     if (*(tid->tid) != '\0') {
-        res = self->idx->get(self->idx, tid->tid, KND_TID_SIZE);
+        res = self->idx->get(self->idx, tid->tid, tid->size);
         if (!res) return knd_NO_MATCH;
 
         /* free result memory */
@@ -207,19 +205,18 @@ static int run_set_result(void *obj,
         }
         
         /* remove this key from the idx */
-        self->idx->remove(self->idx, tid->tid, KND_TID_SIZE);
+        self->idx->remove(self->idx, tid->tid, tid->size);
     } else {
         /* alloc result */
         res = malloc(sizeof(struct kndResult));
         if (!res) return knd_NOMEM;
         memset(res, 0, sizeof(struct kndResult));
     }
-    
+
     memcpy(tid->tid, self->tid, self->tid_size); 
-    tid->tid[self->tid_size] = '\0';
+    tid->size = self->tid_size;
 
     memcpy(res->sid, self->sid, self->sid_size);
-    res->sid[self->sid_size] = '\0';
     res->sid_size = self->sid_size;
     res->sid_required = true;
     
@@ -227,11 +224,12 @@ static int run_set_result(void *obj,
     res->obj_size = self->obj_size;
     
     /* assign key to idx */
-    err = self->idx->set(self->idx, tid->tid, KND_TID_SIZE, (void*)res);
+    err = self->idx->set(self->idx, tid->tid, tid->size, (void*)res);
     if (err) return err;
-    if (DEBUG_DELIV_LEVEL_2)
-        knd_log("== saved result for TID \"%s\" => %s [%lu]",
-                tid->tid, res->obj, (unsigned long)res->obj_size);
+
+    if (DEBUG_DELIV_LEVEL_TMP)
+        knd_log("== saved result for TID \"%.*s\" => %s [%lu]",
+                tid->size, tid->tid, res->obj, (unsigned long)res->obj_size);
 
     self->num_tids++;
     return knd_OK;
@@ -259,10 +257,10 @@ static int run_retrieve(void *obj,
     if (!tid_size) return knd_FAIL;
 
     self = (struct kndDelivery*)obj;
-    if (DEBUG_DELIV_LEVEL_2)
-        knd_log(".. retrieving obj,  tid \"%.*s\"", tid_size, tid);
-    
-    res = self->idx->get(self->idx, tid, KND_TID_SIZE);
+    if (DEBUG_DELIV_LEVEL_TMP)
+        knd_log(".. retrieving obj, tid \"%.*s\"", tid_size, tid);
+
+    res = self->idx->get(self->idx, tid, tid_size);
     if (!res)  {
         if (DEBUG_DELIV_LEVEL_TMP)
             knd_log("-- no result found for tid \"%.*s\"!", tid_size, tid);

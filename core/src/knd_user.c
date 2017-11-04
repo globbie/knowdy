@@ -360,9 +360,6 @@ static int parse_class_import(void *obj,
 
     self->root_class->dbpath = self->dbpath;
     self->root_class->dbpath_size = self->dbpath_size;
-
-    self->root_class->locale = self->locale;
-    self->root_class->locale_size = self->locale_size;
     
     err = self->root_class->import(self->root_class, rec, total_size);
     if (err) return err;
@@ -469,9 +466,6 @@ static int kndUser_parse_class_select(void *obj,
     self->root_class->dbpath_size = self->dbpath_size;
     self->root_class->frozen_output_file_name = self->frozen_output_file_name;
     self->root_class->frozen_output_file_name_size = self->frozen_output_file_name_size;
-
-    self->root_class->locale = self->locale;
-    self->root_class->locale_size = self->locale_size;
     
     err = self->root_class->select(self->root_class, rec, total_size);
     if (err) return err;
@@ -498,9 +492,6 @@ static int parse_rel_select(void *obj,
     rel->dbpath_size = self->dbpath_size;
     rel->frozen_output_file_name = self->frozen_output_file_name;
     rel->frozen_output_file_name_size = self->frozen_output_file_name_size;
-
-    rel->locale = self->locale;
-    rel->locale_size = self->locale_size;
     
     err = rel->select(rel, rec, total_size);
     if (err) return err;
@@ -612,8 +603,6 @@ static int run_get_user_by_id(void *data, struct kndTaskArg *args, size_t num_ar
     self->root_class->dbpath_size = self->dbpath_size;
     self->root_class->frozen_output_file_name = self->frozen_output_file_name;
     self->root_class->frozen_output_file_name_size = self->frozen_output_file_name_size;
-    self->root_class->locale = self->locale;
-    self->root_class->locale_size = self->locale_size;
     
     err = self->root_class->get(self->root_class, "User", strlen("User"), &conc);
     if (err) return err;

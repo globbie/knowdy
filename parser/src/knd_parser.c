@@ -22,7 +22,7 @@
 #include "knd_utils.h"
 
 #define DEBUG_PARSER_LEVEL_1 0
-#define DEBUG_PARSER_LEVEL_2 1
+#define DEBUG_PARSER_LEVEL_2 0
 #define DEBUG_PARSER_LEVEL_3 0
 #define DEBUG_PARSER_LEVEL_4 0
 #define DEBUG_PARSER_LEVEL_TMP 1

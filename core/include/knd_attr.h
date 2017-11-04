@@ -115,6 +115,7 @@ struct kndAttr
 
     struct kndConcept *parent_conc;
     struct kndConcept *conc;
+    struct kndTask *task;
 
     const char *locale;
     size_t locale_size;
