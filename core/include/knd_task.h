@@ -120,8 +120,9 @@ struct kndTask
     
     int error;
 
-    size_t batch_size;
+    size_t batch_max;
     size_t batch_from;
+    size_t batch_size;
 
     struct kndUser *admin;
 

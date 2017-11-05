@@ -367,19 +367,19 @@ static int parse_class_import(void *obj,
     return knd_OK;
 }
 
-static int kndUser_parse_sync_task(void *obj,
-                                   const char *rec,
-                                   size_t *total_size)
+static int parse_sync_task(void *obj,
+                           const char *rec,
+                           size_t *total_size)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
-    struct kndUser *self = (struct kndUser*)obj;
+    struct kndUser *self = obj;
     struct stat st;
     char *s, *n;
     size_t path_size;
     int err;
 
-    if (DEBUG_USER_LEVEL_2)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. got sync task..");
 
     s = self->path;
@@ -419,7 +419,6 @@ static int kndUser_parse_sync_task(void *obj,
     self->root_class->frozen_name_idx_path = buf;
     self->root_class->frozen_name_idx_path_size = buf_size;
 
-
     err = self->root_class->sync(self->root_class, rec, total_size);
     if (err) return err;
 
@@ -431,8 +430,15 @@ static int kndUser_parse_sync_task(void *obj,
     if (err) return err;
     err = self->out->write(self->out, "/frozen.gsp", strlen("/frozen.gsp"));
     if (err) return err;
+
+    /* null-termination is needed to call rename */
+    self->out->buf[self->out->buf_size] = '\0';
+
     err = rename(self->path, self->out->buf);
-    if (err) return err;
+    if (err) {
+        knd_log("-- failed to rename GSP output file: \"%s\" :(", self->out->buf);
+        return err;
+    }
 
     /* inform retrievers */
 
@@ -718,7 +724,7 @@ static int parse_task(struct kndUser *self,
         },
         { .name = "sync",
           .name_size = strlen("sync"),
-          .parse = kndUser_parse_sync_task,
+          .parse = parse_sync_task,
           .obj = self
         },
         { .name = "default",
