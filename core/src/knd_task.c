@@ -82,7 +82,7 @@ static int parse_iter_batch(void *obj,
         { .name = "size",
           .name_size = strlen("size"),
           .parse = knd_parse_size_t,
-          .obj = &self->batch_size
+          .obj = &self->batch_max
         },
         { .name = "from",
           .name_size = strlen("from"),
@@ -94,6 +94,12 @@ static int parse_iter_batch(void *obj,
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
+
+    if (self->batch_max > KND_RESULT_MAX_BATCH_SIZE) {
+        knd_log("-- batch size exceeded: %zu (max limit: %d) :(",
+                self->batch_max, KND_RESULT_MAX_BATCH_SIZE);
+        return knd_LIMIT;
+    }
 
     return knd_OK;
 }

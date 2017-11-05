@@ -848,6 +848,9 @@ knd_check_default(const char *rec,
     for (size_t i = 0; i < num_specs; ++i) {
         spec = &specs[i];
 
+        if (DEBUG_PARSER_LEVEL_2)
+            knd_log(".. default spec: \"%.*s\"?", spec->name_size, spec->name);
+
         if (spec->is_default && spec->type == type) {
             assert(default_spec == NULL && "default_spec was already specified");
             default_spec = spec;

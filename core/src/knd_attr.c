@@ -603,8 +603,8 @@ static int run_set_validator(void *obj,
 
 
 static int parse_validator(void *obj,
-                             const char *rec,
-                             size_t *total_size)
+                           const char *rec,
+                           size_t *total_size)
 {
     struct kndAttr *self = (struct kndAttr*)obj;
     int err;
@@ -626,7 +626,7 @@ static int parse_GSL(struct kndAttr *self,
                      size_t *total_size)
 {
     if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. attr parsing: \"%s\"..", rec);
+        knd_log(".. attr parsing: \"%.*s\"..", 32, rec);
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,

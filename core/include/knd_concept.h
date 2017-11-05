@@ -135,6 +135,7 @@ struct kndConcDir
 
     struct kndConcDir **children;
     size_t num_children;
+    size_t num_terminals;
 
     char next_obj_id[KND_ID_SIZE];
     size_t next_obj_numid;
@@ -145,6 +146,9 @@ struct kndConcDir
     size_t num_objs;
 
     struct ooDict *obj_idx;
+
+    struct kndTask *task;
+    struct kndOutput *out;
 
     bool is_terminal;
     struct kndConcDir *next;
@@ -237,10 +241,11 @@ struct kndConcept
 
     struct kndConcRef children[KND_MAX_CONC_CHILDREN];
     size_t num_children;
+    size_t num_terminals;
+    bool is_terminal;
 
     struct kndConcRef frozen_dir[KND_MAX_CONC_CHILDREN];
     size_t frozen_dir_size;
-    bool is_terminal;
 
     char dir_buf[KND_MAX_CONC_CHILDREN * KND_DIR_ENTRY_SIZE];
     size_t dir_buf_size;
