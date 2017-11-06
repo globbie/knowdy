@@ -49,6 +49,35 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args) {
     return knd_OK;
 }
 
+static int run_set_default_sid(void *obj,
+                               struct kndTaskArg *args,
+                               size_t num_args) {
+    struct User *self = (struct User *)obj;
+    ck_assert(self);
+    ck_assert(!args); ck_assert_uint_eq(num_args, 0);
+
+    return knd_FORMAT;  // error: sid is required, return knd_FORMAT to match .buf & .run cases
+}
+
+static int parse_sid(void *obj, const char *rec, size_t *total_size) {
+    struct User *self = (struct User *)obj;
+    struct kndTaskSpec specs[] = {
+        {
+          .is_implied = true,
+          .buf = self->sid,
+          .buf_size = &self->sid_size,
+          .max_buf_size = sizeof self->sid
+        },
+        {
+          .is_default = true,
+          .run = run_set_default_sid,
+          .obj = self
+        }
+    };
+
+    return knd_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 static int run_set_sid(void *obj, struct kndTaskArg *args, size_t num_args) {
     struct User *self = (struct User *)obj;
     ck_assert(args); ck_assert_uint_eq(num_args, 1);
@@ -168,7 +197,7 @@ static struct kndTaskSpec gen_user_spec(struct TaskSpecs *args) {
     return (struct kndTaskSpec){ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = args };
 }
 
-enum { SPEC_BUF = 0x0, SPEC_RUN = 0x1, SPEC_NAME = 0x2 };
+enum { SPEC_BUF = 0x0, SPEC_PARSE = 0x1, SPEC_RUN = 0x2, SPEC_NAME = 0x4 };
 static struct kndTaskSpec gen_name_spec(struct User *self, int flags) {
     assert((flags & (SPEC_BUF | SPEC_RUN | SPEC_NAME)) == flags &&
            "Valid flags: [SPEC_BUF | SPEC_RUN] [SPEC_NAME]");
@@ -182,8 +211,11 @@ static struct kndTaskSpec gen_name_spec(struct User *self, int flags) {
 }
 
 static struct kndTaskSpec gen_sid_spec(struct User *self, int flags) {
-    assert((flags & (SPEC_BUF | SPEC_RUN)) == flags &&
-           "Valid flags: [SPEC_BUF | SPEC_RUN]");
+    assert((flags & (SPEC_BUF | SPEC_PARSE | SPEC_RUN)) == flags &&
+           "Valid flags: [SPEC_BUF | SPEC_PARSE | SPEC_RUN]");
+    if (flags & SPEC_PARSE)
+        return (struct kndTaskSpec){ .name = "sid", .name_size = strlen("sid"),
+                                     .parse = parse_sid, .obj = self };
     if (flags & SPEC_RUN)
         return (struct kndTaskSpec){ .name = "sid", .name_size = strlen("sid"),
                                      .run = run_set_sid, .obj = self };
@@ -563,6 +595,14 @@ START_TEST(parse_value_terminal_empty)
     check_parse_value_terminal_empty(specs, sizeof specs / sizeof specs[0]);
   }
 
+    // Check field with terminal value with .parse
+  {
+    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_PARSE));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    check_parse_value_terminal_empty(specs, sizeof specs / sizeof specs[0]);
+  }
+
     // Check field with terminal value with .run
   {
     DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_RUN));
@@ -597,6 +637,14 @@ START_TEST(parse_value_terminal_max_size)
     check_parse_value_terminal_max_size(specs, sizeof specs / sizeof specs[0], &parse_user_args);
   }
 
+    // Check field with terminal value with .parse
+  {
+    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_PARSE));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    check_parse_value_terminal_max_size(specs, sizeof specs / sizeof specs[0], &parse_user_args);
+  }
+
     // Check field with terminal value with .run
   {
     DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_RUN));
@@ -620,6 +668,14 @@ START_TEST(parse_value_terminal_max_size_plus_one)
     // Check field with terminal value with .buf
   {
     DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_BUF));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    check_parse_value_terminal_max_size_plus_one(specs, sizeof specs / sizeof specs[0]);
+  }
+
+    // Check field with terminal value with .parse
+  {
+    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_PARSE));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
     check_parse_value_terminal_max_size_plus_one(specs, sizeof specs / sizeof specs[0]);
@@ -654,6 +710,14 @@ START_TEST(parse_value_terminal_NAME_SIZE_plus_one)
     // Check field with terminal value with .buf
   {
     DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_BUF));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    check_parse_value_terminal_NAME_SIZE_plus_one(specs, sizeof specs / sizeof specs[0]);
+  }
+
+    // Check field with terminal value with .parse
+  {
+    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_PARSE));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
     check_parse_value_terminal_NAME_SIZE_plus_one(specs, sizeof specs / sizeof specs[0]);
