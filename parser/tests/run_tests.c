@@ -388,8 +388,7 @@ END_TEST
 
 static void
 check_parse_implied_field_max_size_plus_one(struct kndTaskSpec *specs,
-                                            size_t num_specs,
-                                            struct TaskSpecs *parse_user_args) {
+                                            size_t num_specs) {
   {
     const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 6] = 'a', '}', '\0' };
     rc = knd_parse_task(rec = buf, &total_size, specs, num_specs);
@@ -409,7 +408,7 @@ START_TEST(parse_implied_field_max_size_plus_one)
     DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_BUF));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
-    check_parse_implied_field_max_size_plus_one(specs, sizeof specs / sizeof specs[0], &parse_user_args);
+    check_parse_implied_field_max_size_plus_one(specs, sizeof specs / sizeof specs[0]);
   }
 
     // Check implied field with .run
@@ -417,14 +416,13 @@ START_TEST(parse_implied_field_max_size_plus_one)
     DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_RUN));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
-    check_parse_implied_field_max_size_plus_one(specs, sizeof specs / sizeof specs[0], &parse_user_args);
+    check_parse_implied_field_max_size_plus_one(specs, sizeof specs / sizeof specs[0]);
   }
 END_TEST
 
 static void
 check_parse_implied_field_size_NAME_SIZE_plus_one(struct kndTaskSpec *specs,
-                                                  size_t num_specs,
-                                                  struct TaskSpecs *parse_user_args) {
+                                                  size_t num_specs) {
   {
     const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_NAME_SIZE + 6] = 'a', '}', '\0' };
     rc = knd_parse_task(rec = buf, &total_size, specs, num_specs);
@@ -444,7 +442,7 @@ START_TEST(parse_implied_field_size_NAME_SIZE_plus_one)
     DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_BUF));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
-    check_parse_implied_field_size_NAME_SIZE_plus_one(specs, sizeof specs / sizeof specs[0], &parse_user_args);
+    check_parse_implied_field_size_NAME_SIZE_plus_one(specs, sizeof specs / sizeof specs[0]);
   }
 
     // Check implied field with .run
@@ -452,7 +450,7 @@ START_TEST(parse_implied_field_size_NAME_SIZE_plus_one)
     DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_RUN));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
-    check_parse_implied_field_size_NAME_SIZE_plus_one(specs, sizeof specs / sizeof specs[0], &parse_user_args);
+    check_parse_implied_field_size_NAME_SIZE_plus_one(specs, sizeof specs / sizeof specs[0]);
   }
 END_TEST
 
