@@ -42,6 +42,12 @@ static void reset(struct kndTask *self)
     /*self->admin->locale = self->admin->default_locale;
       self->admin->locale_size = self->admin->default_locale_size; */
 
+    self->batch_max = KND_RESULT_BATCH_SIZE;
+    self->batch_size = 0;
+    self->batch_from = 0;
+    self->start_from = 0;
+    self->match_count = 0;
+
     self->error = 0;
     self->log->reset(self->log);
     self->out->reset(self->out);
@@ -100,6 +106,8 @@ static int parse_iter_batch(void *obj,
                 self->batch_max, KND_RESULT_MAX_BATCH_SIZE);
         return knd_LIMIT;
     }
+
+    self->start_from = self->batch_max * self->batch_from;
 
     return knd_OK;
 }

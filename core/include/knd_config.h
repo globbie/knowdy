@@ -111,7 +111,7 @@ typedef enum knd_storage_type {
 #define KND_DEBUG_LEVEL_4 0
 #define KND_DEBUG_LEVEL_5 0
 
-#define KND_RESULT_BATCH_SIZE 30
+#define KND_RESULT_BATCH_SIZE 10
 #define KND_RESULT_MAX_BATCH_SIZE 100
 
 #define KND_ID_MATRIX_DEPTH 3
