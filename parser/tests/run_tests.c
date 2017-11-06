@@ -570,20 +570,38 @@ START_TEST(parse_value_terminal_empty)
   }
 END_TEST
 
+static void
+check_parse_value_terminal_max_size(struct kndTaskSpec *specs,
+                                    size_t num_specs,
+                                    struct TaskSpecs *parse_user_args) {
+    rc = knd_parse_task(rec = "{user{sid 123456}}", &total_size, specs, num_specs);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
+    RESET_IS_COMPLETED(specs, num_specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {sid 123456}}", &total_size, specs, num_specs);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
+}
+
 START_TEST(parse_value_terminal_max_size)
-    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, 0));
+  // Check field with terminal value with .buf
+  {
+    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_BUF));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
-    rc = knd_parse_task(rec = "{user{sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_OK);
-    ck_assert_uint_eq(total_size, strlen(rec));
-    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
-    RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
+    check_parse_value_terminal_max_size(specs, sizeof specs / sizeof specs[0], &parse_user_args);
+  }
 
-    rc = knd_parse_task(rec = "{user {sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_OK);
-    ck_assert_uint_eq(total_size, strlen(rec));
-    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
+  // Check field with terminal value with .run
+  {
+    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_RUN));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    check_parse_value_terminal_max_size(specs, sizeof specs / sizeof specs[0], &parse_user_args);
+  }
 END_TEST
 
 START_TEST(parse_value_terminal_max_size_plus_one)
