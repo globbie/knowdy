@@ -159,6 +159,7 @@ static struct kndTaskSpec gen_user_spec(struct TaskSpecs *args) {
 
 enum { SPEC_BUF = 0x0, SPEC_RUN = 0x1, SPEC_NAME = 0x2 };
 static struct kndTaskSpec gen_name_spec(struct User *self, int flags) {
+    // Valid flags: [SPEC_BUF | SPEC_RUN] [SPEC_NAME]
     if (flags & SPEC_RUN)
         return (struct kndTaskSpec){ .is_implied = true,
                                      .name = (flags & SPEC_NAME) ? "name" : NULL, .name_size = (flags & SPEC_NAME) ? strlen("name") : 0,
