@@ -525,7 +525,8 @@ START_TEST(parse_tag_unknown)
 END_TEST
 
 static void
-check_parse_value_terminal_empty(struct kndTaskSpec *specs, size_t num_specs) {
+check_parse_value_terminal_empty(struct kndTaskSpec *specs,
+                                 size_t num_specs) {
     rc = knd_parse_task(rec = "{user{sid}}", &total_size, specs, num_specs);
     ck_assert_int_eq(rc, knd_FORMAT);
 
