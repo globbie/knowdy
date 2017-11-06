@@ -529,7 +529,25 @@ check_parse_value_terminal_empty(struct kndTaskSpec *specs, size_t num_specs) {
     rc = knd_parse_task(rec = "{user{sid}}", &total_size, specs, num_specs);
     ck_assert_int_eq(rc, knd_FORMAT);
 
+    rc = knd_parse_task(rec = "{user{sid{}}}", &total_size, specs, num_specs);
+    ck_assert_int_eq(rc, knd_FORMAT);
+
+    rc = knd_parse_task(rec = "{user{sid   }}", &total_size, specs, num_specs);
+    ck_assert_int_eq(rc, knd_FORMAT);
+
+    rc = knd_parse_task(rec = "{user{sid   {}}}", &total_size, specs, num_specs);
+    ck_assert_int_eq(rc, knd_FORMAT);
+
     rc = knd_parse_task(rec = "{user {sid}}", &total_size, specs, num_specs);
+    ck_assert_int_eq(rc, knd_FORMAT);
+
+    rc = knd_parse_task(rec = "{user {sid{}}}", &total_size, specs, num_specs);
+    ck_assert_int_eq(rc, knd_FORMAT);
+
+    rc = knd_parse_task(rec = "{user {sid   }}", &total_size, specs, num_specs);
+    ck_assert_int_eq(rc, knd_FORMAT);
+
+    rc = knd_parse_task(rec = "{user {sid   {}}}", &total_size, specs, num_specs);
     ck_assert_int_eq(rc, knd_FORMAT);
 }
 
@@ -549,17 +567,6 @@ START_TEST(parse_value_terminal_empty)
 
     check_parse_value_terminal_empty(specs, sizeof specs / sizeof specs[0]);
   }
-END_TEST
-
-START_TEST(parse_value_terminal_empty_with_spaces)
-    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, 0));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
-
-    rc = knd_parse_task(rec = "{user{sid   }}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_FORMAT);
-
-    rc = knd_parse_task(rec = "{user {sid   }}", &total_size, specs, sizeof specs / sizeof specs[0]);
-    ck_assert_int_eq(rc, knd_FORMAT);
 END_TEST
 
 START_TEST(parse_value_terminal_max_size)
@@ -805,7 +812,6 @@ int main() {
     tcase_add_test(tc, parse_tag_empty_with_spaces);
     tcase_add_test(tc, parse_tag_unknown);
     tcase_add_test(tc, parse_value_terminal_empty);
-    tcase_add_test(tc, parse_value_terminal_empty_with_spaces);
     tcase_add_test(tc, parse_value_terminal_max_size);
     tcase_add_test(tc, parse_value_terminal_max_size_plus_one);
     tcase_add_test(tc, parse_value_terminal_NAME_SIZE_plus_one);
