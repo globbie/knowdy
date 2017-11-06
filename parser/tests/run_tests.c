@@ -45,7 +45,6 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args) {
     if (args[0].val_size > sizeof self->name)
         return knd_LIMIT;
     memcpy(self->name, args[0].val, args[0].val_size);
-    self->name[args[0].val_size] = '\0';
     self->name_size = args[0].val_size;
     return knd_OK;
 }
