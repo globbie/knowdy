@@ -337,6 +337,9 @@ START_TEST(parse_implied_field_unknown)
     rc = knd_parse_task(rec = "{user John Smith}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_NO_MATCH);
 
+    rc = knd_parse_task(rec = "{user John Smith{sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_NO_MATCH);
+
     rc = knd_parse_task(rec = "{user John Smith {sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_NO_MATCH);
 END_TEST
