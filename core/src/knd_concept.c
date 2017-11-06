@@ -4029,29 +4029,53 @@ static int attr_items_export_JSON(struct kndConcept *self,
 static int iter_export_JSON(struct kndConcDir *parent_dir)
 {
     struct kndConcDir *dir;
+    size_t start_from = parent_dir->task->start_from;
+    size_t match_count = parent_dir->task->match_count;
     int i, err;
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. iterate terminal classes of\"%.*s\".. batch_max:%zu",
-                parent_dir->name_size, parent_dir->name, parent_dir->task->batch_max);
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. iterate terminal classes of\"%.*s\".. start_from:%zu  match_count:%zu",
+                parent_dir->name_size, parent_dir->name, start_from, match_count);
 
     for (size_t i = 0; i < parent_dir->num_children; i++) {
         dir = parent_dir->children[i];
         if (!dir) continue;
 
         if (dir->is_terminal) {
-            knd_log("    :: terminal Conc: \"%.*s\"!", dir->name_size, dir->name);
+            if (match_count >= start_from) {
+                if (parent_dir->task->batch_size >= parent_dir->task->batch_max)
+                    return knd_OK;
+
+                knd_log("    :: export term Conc: \"%.*s\"!", dir->name_size, dir->name);
+                parent_dir->task->batch_size++;
+
+            }
+            match_count++;
+            continue;
+        }
+        
+        match_count += dir->num_terminals;
+
+        if (match_count < start_from) {
+            knd_log("-- class to skip over: \"%.*s\" num terminals:%zu",
+                    dir->name_size, dir->name, dir->num_terminals);
             continue;
         }
 
-        knd_log("== Conc: \"%.*s\" num terminals:%zu",
+        knd_log("++ class to explore: \"%.*s\" num terminals:%zu",
                 dir->name_size, dir->name, dir->num_terminals);
 
         dir->task = parent_dir->task;
+        dir->task->match_count = match_count;
         dir->out = parent_dir->out;
 
         err = iter_export_JSON(dir);
         if (err) return err;
+
+        if (parent_dir->task->batch_size >= parent_dir->task->batch_max) {
+            knd_log("== pagination batch is full!");
+            return knd_OK;
+        }
     }
     
     return knd_OK;
@@ -4069,11 +4093,11 @@ static int export_JSON(struct kndConcept *self)
 
     struct kndOutput *out;
     size_t item_count;
-    int i, err;
+    int i, err, e;
 
     if (DEBUG_CONC_LEVEL_TMP)
-        knd_log(".. JSON export concept: \"%s\"   locale: %s depth: %lu\n",
-                self->name, self->task->locale, (unsigned long)self->depth);
+        knd_log(".. JSON export concept: \"%s\"   locale: %s depth: %lu num_terminals:%zu\n",
+                self->name, self->task->locale, (unsigned long)self->depth, self->dir->num_terminals);
 
     out = self->out;
     err = out->write(out, "{", 1);
@@ -4199,6 +4223,14 @@ static int export_JSON(struct kndConcept *self)
 
     if (self->dir) {
         if (self->task->batch_max) {
+            if (self->task->start_from > self->dir->num_terminals) {
+                e = self->log->write(self->log,
+                                     "requested offset exceeds the total number of matches",
+                                     strlen("requested offset exceeds the total number of matches"));
+                if (e) return e;
+                return knd_LIMIT;
+            }
+
             self->dir->out = out;
             self->dir->task = self->task;
             err = iter_export_JSON(self->dir);

@@ -123,6 +123,8 @@ struct kndTask
     size_t batch_max;
     size_t batch_from;
     size_t batch_size;
+    size_t match_count;
+    size_t start_from;
 
     struct kndUser *admin;
 
