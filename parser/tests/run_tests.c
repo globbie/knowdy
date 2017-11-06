@@ -35,7 +35,12 @@ static int parse_user(void *obj, const char *rec, size_t *total_size) {
 static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args) {
     struct User *self = (struct User *)obj;
     ck_assert(args); ck_assert_uint_eq(num_args, 1);
-    ck_assert_uint_eq(args[0].name_size, strlen("_impl")); ck_assert_str_eq(args[0].name, "_impl");
+    if (args[0].name_size == strlen("_impl"))
+        ck_assert_str_eq(args[0].name, "_impl");
+    else if (args[0].name_size == strlen("name"))
+        ck_assert_str_eq(args[0].name, "name");
+    else
+        ck_assert(args[0].name_size == strlen("_impl") || args[0].name_size == strlen("name"));
     ck_assert_uint_ne(args[0].val_size, 0);
     if (args[0].val_size > sizeof self->name)
         return knd_LIMIT;
@@ -278,10 +283,25 @@ START_TEST(parse_implied_field)
 
     check_parse_implied_field(specs, sizeof specs / sizeof specs[0], &parse_user_args);
   }
+END_TEST
 
-  // Check implied field with .name (regardless of whether it is .buf or .run)
+START_TEST(parse_implied_field_with_name)
+  // Check implied field with .buf & .name
   {
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_NAME), gen_sid_spec(&user));
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_BUF | SPEC_NAME), gen_sid_spec(&user));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    check_parse_implied_field(specs, sizeof specs / sizeof specs[0], &parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {name John Smith}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ASSERT_STR_EQ(user.name, user.name_size, "John Smith");
+  }
+
+  // Check implied field with .run & .name
+  {
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_RUN | SPEC_NAME), gen_sid_spec(&user));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
     check_parse_implied_field(specs, sizeof specs / sizeof specs[0], &parse_user_args);
@@ -743,6 +763,7 @@ int main() {
     tcase_add_test(tc, parse_task_empty_with_spaces);
     tcase_add_test(tc, parse_task_empty_with_closing_brace);
     tcase_add_test(tc, parse_implied_field);
+    tcase_add_test(tc, parse_implied_field_with_name);
     tcase_add_test(tc, parse_implied_field_unknown);
     tcase_add_test(tc, parse_implied_field_max_size);
     tcase_add_test(tc, parse_implied_field_max_size_plus_one);
