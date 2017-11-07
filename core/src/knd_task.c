@@ -305,6 +305,15 @@ static int report(struct kndTask *self)
     if (err) return err;
 
     if (self->error) {
+        switch (self->error) {
+        case knd_NOMEM:
+        case knd_IO_FAIL:
+            self->http_code = HTTP_INTERNAL_SERVER_ERROR;
+            break;
+        default:
+            break;
+        }
+
         err = out->write(out, "{err ", strlen("{err "));
         if (err) return err;
         err = out->write(out, self->log->buf, self->log->buf_size);

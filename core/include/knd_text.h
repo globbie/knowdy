@@ -27,6 +27,14 @@ struct kndElem;
 struct kndElemRef;
 struct kndOutput;
 
+typedef enum knd_synt_role_t { KND_SYNT_SUBJ, 
+                               KND_SYNT_OBJ,
+                               KND_SYNT_GEN,
+                               KND_SYNT_DAT,
+                               KND_SYNT_INS,
+                               KND_SYNT_LOC
+} knd_synt_role_t;
+
 struct kndTextSelect
 {
     char css_name[KND_NAME_SIZE];
@@ -47,6 +55,7 @@ struct kndTranslation
 
     const char *locale;
     size_t locale_size;
+    knd_synt_role_t synt_role; 
     
     size_t state;
 
@@ -64,7 +73,9 @@ struct kndTranslation
     struct kndTextSelect *selects;
     struct kndTextSelect *tail;
     size_t num_selects;
-    
+
+    struct kndTranslation *synt_roles;
+
     struct kndTranslation *next;
 };
 
