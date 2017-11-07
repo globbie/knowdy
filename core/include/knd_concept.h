@@ -125,6 +125,8 @@ struct kndConcDir
     size_t name_size;
     struct kndConcept *conc;
 
+    knd_state_phase phase;
+
     size_t global_offset;
     size_t curr_offset;
     size_t block_size;

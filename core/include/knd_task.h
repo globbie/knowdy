@@ -22,6 +22,7 @@
 #define KND_TASK_H
 
 #include "knd_config.h"
+#include "knd_http_codes.h"
 
 struct kndOutput;
 struct kndTask;
@@ -117,8 +118,9 @@ struct kndTask
 
     char state[KND_STATE_SIZE];
     bool is_state_changed;
-    
+
     int error;
+    knd_http_code_t http_code;
 
     size_t batch_max;
     size_t batch_from;

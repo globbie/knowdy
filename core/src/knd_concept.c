@@ -25,6 +25,7 @@
 #include "knd_rel.h"
 #include "knd_proc.h"
 #include "knd_utils.h"
+#include "knd_http_codes.h"
 
 #define DEBUG_CONC_LEVEL_1 0
 #define DEBUG_CONC_LEVEL_2 0
@@ -1040,7 +1041,7 @@ static int parse_item_child(void *obj,
     item->name_size = name_size;
     item->name[name_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("== attr item name set: \"%s\" REC: %.*s",
                 item->name, 16, rec);
 
@@ -1313,7 +1314,10 @@ static int confirm_class_read(void *obj,
                               size_t num_args __attribute__((unused)))
 {
     struct kndConcept *self = obj;
-    knd_log("== class %.*s read OK!", self->name_size, self->name);
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log("== class %.*s read OK!",
+                self->name_size, self->name);
 
     return knd_OK;
 }
@@ -1457,7 +1461,6 @@ static int parse_import_class(void *obj,
                                                    c->name, c->name_size);
     if (dir) {
         knd_log("-- %s class name doublet found :(", c->name);
-
         self->log->reset(self->log);
         err = self->log->write(self->log,
                                c->name,
@@ -2832,7 +2835,7 @@ static int read_GSL_file(struct kndConcept *self,
     size_t chunk_size = 0;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("..read \"%s\"..", filename);
 
     out->reset(out);
@@ -3027,7 +3030,7 @@ static int read_GSP(struct kndConcept *self,
     size_t buf_size = 0;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log(".. read \"%.*s\" class..", 32, rec);
 
     struct kndTaskSpec specs[] = {
@@ -3195,15 +3198,15 @@ static int coordinate(struct kndConcept *self)
     return knd_OK;
 }
 
-static int get_class(struct kndConcept *self,
-                     const char *name, size_t name_size,
-                     struct kndConcept **result)
+
+static int unfreeze_class(struct kndConcept *self,
+                          struct kndConcDir *dir,
+                          struct kndConcept **result)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
-    size_t chunk_size;
-    struct kndConcDir *dir;
     struct kndConcept *c;
+    size_t chunk_size;
     const char *filename;
     size_t filename_size;
     const char *b;
@@ -3212,47 +3215,6 @@ static int get_class(struct kndConcept *self,
     size_t file_size = 0;
     struct stat file_info;
     int err;
-
-    if (DEBUG_CONC_LEVEL_1)
-        knd_log(".. %.*s to get class: \"%.*s\"..",
-                self->name_size, self->name, name_size, name);
-
-    dir = (struct kndConcDir*)self->class_idx->get(self->class_idx, name, name_size);
-    if (!dir) {
-        knd_log("-- no such class: \"%s\" :(", name);
-        self->log->reset(self->log);
-        err = self->log->write(self->log, name, name_size);
-        if (err) return err;
-        err = self->log->write(self->log, " class name not found",
-                               strlen(" class name not found"));
-        if (err) return err;
-        return knd_NO_MATCH;
-    }
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("++ got Conc Dir: %.*s from %.*s conc: %p", name_size, name,
-                self->frozen_output_file_name_size,
-                self->frozen_output_file_name, dir->conc);
-
-    /*if (c->phase == KND_REMOVED) {
-        knd_log("-- \"%s\" class was removed", name);
-        self->log->reset(self->log);
-        err = self->log->write(self->log, name, name_size);
-        if (err) return err;
-        err = self->log->write(self->log, " class was removed",
-                               strlen(" class was removed"));
-        if (err) return err;
-
-        return knd_NO_MATCH;
-        } */
-
-    if (dir->conc) {
-        c = dir->conc;
-        c->phase = KND_SELECTED;
-        c->task = self->task;
-        *result = c;
-        return knd_OK;
-    }
 
     /* parse DB rec */
     filename = self->frozen_output_file_name;
@@ -3289,7 +3251,7 @@ static int get_class(struct kndConcept *self,
     buf[buf_size] = '\0';
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("== frozen Conc REC: \"%.*s\"", buf_size, buf);
+        knd_log("\n== frozen Conc REC: \"%.*s\"", buf_size, buf);
 
     /* done reading */
     close(fd);
@@ -3350,6 +3312,68 @@ static int get_class(struct kndConcept *self,
     return err;
 }
 
+static int get_class(struct kndConcept *self,
+                     const char *name, size_t name_size,
+                     struct kndConcept **result)
+{
+    struct kndConcDir *dir;
+    struct kndConcept *c;
+    int err;
+
+    if (DEBUG_CONC_LEVEL_1)
+        knd_log(".. %.*s to get class: \"%.*s\"..",
+                self->name_size, self->name, name_size, name);
+
+    dir = (struct kndConcDir*)self->class_idx->get(self->class_idx, name, name_size);
+    if (!dir) {
+        knd_log("-- no such class: \"%s\" :(", name);
+        self->log->reset(self->log);
+        err = self->log->write(self->log, name, name_size);
+        if (err) return err;
+        err = self->log->write(self->log, " class name not found",
+                               strlen(" class name not found"));
+        if (err) return err;
+
+        self->task->http_code = HTTP_NOT_FOUND;
+        return knd_NO_MATCH;
+    }
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log("++ got Conc Dir: %.*s from %.*s conc: %p", name_size, name,
+                self->frozen_output_file_name_size,
+                self->frozen_output_file_name, dir->conc);
+
+    if (dir->phase == KND_REMOVED) {
+        knd_log("-- \"%s\" class was removed", name);
+        self->log->reset(self->log);
+        err = self->log->write(self->log, name, name_size);
+        if (err) return err;
+        err = self->log->write(self->log, " class was removed",
+                               strlen(" class was removed"));
+        if (err) return err;
+        
+        self->task->http_code = HTTP_GONE;
+        return knd_NO_MATCH;
+    }
+
+    if (dir->conc) {
+        c = dir->conc;
+        c->phase = KND_SELECTED;
+        c->task = self->task;
+        *result = c;
+        return knd_OK;
+    }
+
+    err = unfreeze_class(self, dir, &c);
+    if (err) return err;
+
+    c->phase = KND_SELECTED;
+    c->task = self->task;
+
+    *result = c;
+    return knd_OK;
+}
+
 static int get_obj(struct kndConcept *self,
                    const char *name, size_t name_size,
                    struct kndObject **result)
@@ -3389,6 +3413,7 @@ static int get_obj(struct kndConcept *self,
         err = self->log->write(self->log, " obj name not found",
                                strlen(" obj name not found"));
         if (err) return err;
+        self->task->http_code = HTTP_NOT_FOUND;
         return knd_NO_MATCH;
     }
 
@@ -3615,7 +3640,7 @@ static int run_select_obj(void *data,
 static int run_get_class(void *obj,
                          struct kndTaskArg *args, size_t num_args)
 {
-    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndConcept *self = obj;
     struct kndConcept *c;
     struct kndTaskArg *arg;
     const char *name = NULL;
@@ -4026,9 +4051,10 @@ static int attr_items_export_JSON(struct kndConcept *self,
 
 
 
-static int iter_export_JSON(struct kndConcDir *parent_dir)
+static int iter_export_JSON(struct kndConcept *self, struct kndConcDir *parent_dir)
 {
     struct kndConcDir *dir;
+    struct kndConcept *c;
     size_t start_from = parent_dir->task->start_from;
     size_t match_count = parent_dir->task->match_count;
     int i, err;
@@ -4041,15 +4067,37 @@ static int iter_export_JSON(struct kndConcDir *parent_dir)
         dir = parent_dir->children[i];
         if (!dir) continue;
 
+        /* a terminal class to export? */
         if (dir->is_terminal) {
-            if (match_count >= start_from) {
-                if (parent_dir->task->batch_size >= parent_dir->task->batch_max)
-                    return knd_OK;
-
-                knd_log("    :: export term Conc: \"%.*s\"!", dir->name_size, dir->name);
-                parent_dir->task->batch_size++;
-
+            if (match_count < start_from) {
+                match_count++;
+                continue;
             }
+
+            if (parent_dir->task->batch_size >= parent_dir->task->batch_max)
+                return knd_OK;
+
+            c = dir->conc;
+            if (!c) {
+                err = unfreeze_class(self, dir, &c);
+                if (err) return err;
+            }
+            c->out = parent_dir->out;
+
+            knd_log("    :: export term Conc: \"%.*s\"  match_count:%zu  start_from:%zu",
+                    dir->name_size, dir->name, match_count, start_from);
+            c->str(c);
+
+            /* separator needed? */
+            if (parent_dir->task->batch_size) {
+                err = c->out->write(c->out, ",", 1);
+                if (err) return err;
+            }
+            
+            err = c->export(c);
+            if (err) return err;
+
+            parent_dir->task->batch_size++;
             match_count++;
             continue;
         }
@@ -4069,7 +4117,7 @@ static int iter_export_JSON(struct kndConcDir *parent_dir)
         dir->task->match_count = match_count;
         dir->out = parent_dir->out;
 
-        err = iter_export_JSON(dir);
+        err = iter_export_JSON(self, dir);
         if (err) return err;
 
         if (parent_dir->task->batch_size >= parent_dir->task->batch_max) {
@@ -4221,19 +4269,28 @@ static int export_JSON(struct kndConcept *self)
         if (err) return err;
     }
 
-    if (self->dir) {
+    /* non-terminal classes */
+    if (self->dir && self->dir->num_children) {
         if (self->task->batch_max) {
             if (self->task->start_from > self->dir->num_terminals) {
                 e = self->log->write(self->log,
                                      "requested offset exceeds the total number of matches",
                                      strlen("requested offset exceeds the total number of matches"));
                 if (e) return e;
+
+                self->task->http_code = HTTP_REQUESTED_RANGE_NOT_SATISFIABLE;
                 return knd_LIMIT;
             }
 
+            err = out->write(out, ",\"_iter\":[", strlen(",\"_iter\":["));
+            if (err) return err;
+          
             self->dir->out = out;
             self->dir->task = self->task;
-            err = iter_export_JSON(self->dir);
+            err = iter_export_JSON(self, self->dir);
+            if (err) return err;
+
+            err = out->write(out, "]", 1);
             if (err) return err;
         }
         
