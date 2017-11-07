@@ -8,6 +8,7 @@
 #include "knd_utils.h"
 #include "knd_parser.h"
 #include "knd_msg.h"
+#include "knd_http_codes.h"
 
 #define DEBUG_TASK_LEVEL_0 0
 #define DEBUG_TASK_LEVEL_1 0
@@ -38,7 +39,6 @@ static void reset(struct kndTask *self)
     self->is_state_changed = false;
 
     self->type = KND_GET_STATE;
-
     /*self->admin->locale = self->admin->default_locale;
       self->admin->locale_size = self->admin->default_locale_size; */
 
@@ -49,6 +49,7 @@ static void reset(struct kndTask *self)
     self->match_count = 0;
 
     self->error = 0;
+    self->http_code = HTTP_OK;
     self->log->reset(self->log);
     self->out->reset(self->out);
     self->update->reset(self->update);
@@ -253,6 +254,8 @@ static int parse_GSL(struct kndTask *self,
 
 static int report(struct kndTask *self)
 {
+    char buf[KND_SHORT_NAME_SIZE];
+    size_t buf_size;
     const char *gsl_header = "{task";
     const char *msg = "None";
     size_t msg_size = strlen(msg);
@@ -315,7 +318,19 @@ static int report(struct kndTask *self)
         if (err) return err;
         err = self->out->write(self->out, self->log->buf, self->log->buf_size);
         if (err) return err;
-        err = self->out->write(self->out, "\"}", strlen("\"}"));
+        err = self->out->write(self->out, "\"", strlen("\""));
+        if (err) return err;
+
+        if (self->http_code != HTTP_OK) {
+            err = self->out->write(self->out,
+                                   ",\"http_code\":", strlen(",\"http_code\":"));
+            if (err) return err;
+            buf_size = sprintf(buf, "%d", self->http_code);
+            err = self->out->write(self->out, buf, buf_size);
+            if (err) return err;
+        }
+
+        err = self->out->write(self->out, "}", strlen("}"));
         if (err) return err;
 
     } else {
