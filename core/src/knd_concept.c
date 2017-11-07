@@ -354,7 +354,7 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
     struct kndConcItem *item;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. \"%.*s\" class to inherit attrs from \"%.*s\"..",
                 self->name_size, self->name, base->name_size, base->name);
 
@@ -665,13 +665,54 @@ static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t n
     return knd_OK;
 }
 
+static int parse_synt_role(void *obj,
+                           const char *name, size_t name_size,
+                           const char *rec, size_t *total_size)
+{
+    struct kndTranslation *self = obj;
+    struct kndTranslation *tr;
+    int err;
 
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. parsing gloss synt role: \"%.*s\"", 16, rec);
+
+    tr = malloc(sizeof(struct kndTranslation));
+    if (!tr) return knd_NOMEM;
+    memset(tr, 0, sizeof(struct kndTranslation));
+
+    if (!strncmp("obj", name, name_size))
+        tr->synt_role = KND_SYNT_OBJ;
+    else if (!strncmp("dat", name, name_size))
+        tr->synt_role = KND_SYNT_DAT;
+    else if (!strncmp("ins", name, name_size))
+        tr->synt_role = KND_SYNT_INS;
+    
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_translation_text,
+          .obj = tr
+        }
+    };
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    /* assign translation */
+    tr->next = self->synt_roles;
+    self->synt_roles = tr;
+
+    knd_log("== Translation: %.*s (synt role: %d)", tr->val_size, tr->val, tr->synt_role);
+
+    return knd_OK;
+}
 
 static int parse_gloss_translation(void *obj,
                                    const char *name, size_t name_size,
                                    const char *rec, size_t *total_size)
 {
-    struct kndTranslation *tr = (struct kndTranslation*)obj;
+    char buf[KND_SHORT_NAME_SIZE];
+    size_t buf_size;
+    struct kndTranslation *tr = obj;
     int err;
 
     if (DEBUG_CONC_LEVEL_2) {
@@ -681,6 +722,15 @@ static int parse_gloss_translation(void *obj,
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_translation_text,
+          .obj = tr
+        },
+        { .name = "synt_role",
+          .name_size = strlen("synt_role"),
+          .is_validator = true,
+          .buf = buf,
+          .buf_size = &buf_size,
+          .max_buf_size = KND_SHORT_NAME_SIZE,
+          .validate = parse_synt_role,
           .obj = tr
         }
     };
@@ -697,6 +747,7 @@ static int parse_gloss_translation(void *obj,
 
     return knd_OK;
 }
+
 
 static int parse_gloss(void *obj,
                        const char *rec,
@@ -1020,7 +1071,10 @@ static int set_attr_item_val(void *obj, struct kndTaskArg *args, size_t num_args
 
 static int confirm_attr_item(struct kndAttrItem *self)
 {
-    knd_log(".. confirm attr item: %.*s!", self->name_size, self->name);
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. confirm attr item: %.*s!",
+                self->name_size, self->name);
 
     return knd_OK;
 }
@@ -1395,6 +1449,12 @@ static int parse_import_class(void *obj,
           .name = "summary",
           .name_size = strlen("summary"),
           .parse = parse_summary,
+          .obj = c
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "gloss",
+          .name_size = strlen("gloss"),
+          .parse = parse_gloss,
           .obj = c
         },
         { .type = KND_CHANGE_STATE,
@@ -2835,8 +2895,8 @@ static int read_GSL_file(struct kndConcept *self,
     size_t chunk_size = 0;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("..read \"%s\"..", filename);
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log("..reading \"%.*s\"..", filename_size, filename);
 
     out->reset(out);
 
@@ -3471,6 +3531,7 @@ static int read_obj_entry(struct kndConcept *self,
         knd_log("-- no file name to read in conc %.*s :(", self->name_size, self->name);
         return knd_FAIL;
     }
+
     if (stat(filename, &st)) {
         knd_log("-- no such file: \"%.*s\"", filename_size, filename);
         return knd_NO_MATCH; 
@@ -3555,7 +3616,7 @@ static int read_obj_entry(struct kndConcept *self,
         return err;
     }
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         obj->str(obj);
 
     *result = obj;

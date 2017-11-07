@@ -229,32 +229,67 @@ knd_get_schema_name(const char *rec,
 
 
 int knd_parse_matching_braces(const char *rec,
-                              size_t brace_count,
+                              char open_brace,
                               size_t *chunk_size)
 {
     const char *b;
     const char *c;
+    size_t square_brace_count = 0;
+    size_t curly_brace_count = 0;
+    size_t round_brace_count = 0;
+
+    switch (open_brace) {
+    case '(':
+        round_brace_count++;
+        break;
+    case '{':
+        curly_brace_count++;
+        break;
+    case '[':
+        square_brace_count++;
+        break;
+    default:
+        break;
+    }
 
     c = rec;
     b = c;
 
     while (*c) {
         switch (*c) {
+        case '(':
+            round_brace_count++;
+            break;
         case '{':
-            brace_count++;
+            curly_brace_count++;
+            break;
+        case '[':
+            square_brace_count++;
             break;
         case '}':
-            if (!brace_count)
+            if (!curly_brace_count)
                 return knd_FAIL;
-            brace_count--;
-            if (!brace_count) {
-                *chunk_size = c - b;
-                return knd_OK;
-            }
+            curly_brace_count--;
+            break;
+        case ')':
+            if (!round_brace_count)
+                return knd_FAIL;
+            round_brace_count--;
+            break;
+        case ']':
+            if (!square_brace_count)
+                return knd_FAIL;
+            square_brace_count--;
             break;
         default:
             break;
         }
+
+        if (!curly_brace_count && !round_brace_count && !square_brace_count) {
+            *chunk_size = c - b;
+            return knd_OK;
+        }
+
         c++;
     }
 
@@ -922,7 +957,7 @@ int knd_parse_task(const char *rec,
                 break;
             }
             /* comment out this region */
-            err = knd_parse_matching_braces(c, 1, &chunk_size);
+            err = knd_parse_matching_braces(c, '{', &chunk_size);
             if (err) return err;
             c += chunk_size;
             in_field = false;
@@ -1257,6 +1292,19 @@ static int knd_parse_state_change(const char *rec,
 
     while (*c) {
         switch (*c) {
+        case '-':
+            if (in_tag) {
+                e = c + 1;
+                break;
+            }
+            /* comment out this region */
+            err = knd_parse_matching_braces(c, '(', &chunk_size);
+            if (err) return err;
+            c += chunk_size - 1;
+            in_field = false;
+            b = c;
+            e = b;
+            break;
         case '\n':
         case '\r':
         case '\t':
@@ -1367,6 +1415,11 @@ static int knd_parse_state_change(const char *rec,
             }
 
             if (!spec) {
+                if (!in_implied_field) {
+                    *total_size = c - rec;
+                    return knd_OK;
+                }
+                
                 /* activate spec search */
                 err = check_name_limits(b, e, &name_size);
                 if (err) return err;
