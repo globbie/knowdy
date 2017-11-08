@@ -549,7 +549,7 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
     //   validate:
     //     knd_parse_field_value:
     //       <space> - OK
-    //       { - NOT TESTED!
+    //       { - OK
     //       } - OK
     //       ( - NOT TESTED!
     //       ) - NOT TESTED!
