@@ -29,11 +29,14 @@ static void test_case_fixture_setup(void) {
 
 static int parse_user(void *obj, const char *rec, size_t *total_size) {
     struct TaskSpecs *args = (struct TaskSpecs *)obj;
+    ck_assert(args);
+    ck_assert(rec); ck_assert(total_size);
     return knd_parse_task(rec, total_size, args->specs, args->num_specs);
 }
 
 static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args) {
     struct User *self = (struct User *)obj;
+    ck_assert(self);
     ck_assert(args); ck_assert_uint_eq(num_args, 1);
     if (args[0].name_size == strlen("_impl"))
         ck_assert_str_eq(args[0].name, "_impl");
@@ -55,12 +58,14 @@ static int run_set_default_sid(void *obj,
     struct User *self = (struct User *)obj;
     ck_assert(self);
     ck_assert(!args); ck_assert_uint_eq(num_args, 0);
-
     return knd_FORMAT;  // error: sid is required, return knd_FORMAT to match .buf & .run cases
 }
 
 static int parse_sid(void *obj, const char *rec, size_t *total_size) {
     struct User *self = (struct User *)obj;
+    ck_assert(self);
+    ck_assert(rec); ck_assert(total_size);
+
     struct kndTaskSpec specs[] = {
         {
           .is_implied = true,
@@ -80,6 +85,7 @@ static int parse_sid(void *obj, const char *rec, size_t *total_size) {
 
 static int run_set_sid(void *obj, struct kndTaskArg *args, size_t num_args) {
     struct User *self = (struct User *)obj;
+    ck_assert(self);
     ck_assert(args); ck_assert_uint_eq(num_args, 1);
     ck_assert(args[0].name_size == strlen("sid")); ck_assert_str_eq(args[0].name, "sid");
     ck_assert_uint_ne(args[0].val_size, 0);
@@ -106,6 +112,10 @@ static int parse_email_record(void *obj,
                               const char *name, size_t name_size,
                               const char *rec, size_t *total_size) {
     struct User *self = (struct User *)obj;
+    ck_assert(self);
+    ck_assert(name); ck_assert_uint_ne(name_size, 0);
+    ck_assert(rec); ck_assert(total_size);
+
     struct kndTaskSpec specs[] = {
         {
           .is_implied = true,
@@ -142,6 +152,9 @@ static int parse_email_record(void *obj,
 
 static int parse_email(void *obj, const char *rec, size_t *total_size) {
     struct User *self = (struct User *)obj;
+    ck_assert(self);
+    ck_assert(rec); ck_assert(total_size);
+
     char email_type_buf[KND_NAME_SIZE];  // TODO(ki.stfu): Don't use external buffer for passing name to |spec->validate|
     size_t email_type_buf_size;
     struct kndTaskSpec specs[] = {
