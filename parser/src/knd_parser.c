@@ -560,6 +560,8 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
     //       ( - NOT TESTED!
     //       ) - NOT TESTED!
     //     knd_check_field_terminal_value:
+    //       } - OK
+    //     knd_check_default:
     //       } - NOT TESTED!
     //       ) - NOT TESTED!
     assert(spec->buf != NULL || spec->parse != NULL || spec->validate != NULL || spec->run != NULL);
