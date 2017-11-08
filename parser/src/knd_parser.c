@@ -530,6 +530,38 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
         assert(spec->run == NULL);
     }
 
+    // Test plans:
+    //   buf:
+    //     knd_check_implied_field:
+    //       } - OK
+    //       { - OK
+    //       ( - NOT TESTED!
+    //       ) - NOT TESTED!
+    //     knd_check_field_terminal_value:
+    //       } - OK
+    //   parse:
+    //     knd_parse_field_value:
+    //       <space> - OK
+    //       { - OK
+    //       } - OK
+    //       ( - NOT TESTED!
+    //       ) - NOT TESTED!
+    //   validate:
+    //     knd_parse_field_value:
+    //       <space> - OK
+    //       { - NOT TESTED!
+    //       } - OK
+    //       ( - NOT TESTED!
+    //       ) - NOT TESTED!
+    //   run:
+    //     knd_check_implied_field:
+    //       } - OK
+    //       { - OK
+    //       ( - NOT TESTED!
+    //       ) - NOT TESTED!
+    //     knd_check_field_terminal_value:
+    //       } - NOT TESTED!
+    //       ) - NOT TESTED!
     assert(spec->buf != NULL || spec->parse != NULL || spec->validate != NULL || spec->run != NULL);
 
     return 1;
