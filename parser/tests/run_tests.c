@@ -1036,6 +1036,16 @@ START_TEST(parse_value_default)
     ASSERT_STR_EQ(user.name, user.name_size, "");
     ck_assert_int_eq(user.email_type, EMAIL_NONE); ASSERT_STR_EQ(user.email, user.email_size, "");
   }
+
+  {
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, 0), gen_sid_spec(&user, 0), gen_email_spec(&user), gen_default_spec(&user, 0));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    rc = knd_parse_task(rec = "{user John Smith}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ASSERT_STR_EQ(user.name, user.name_size, "John Smith");
+  }
 END_TEST
 
 
