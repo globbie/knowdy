@@ -467,14 +467,8 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
 
     // Check that they are not mutually exclusive (in general):
 
-    if (spec->name) {
-        bool name_is_default = spec->name_size == strlen("default") &&
-                               0 == memcmp(spec->name, "default", spec->name_size);
-        assert(name_is_default == spec->is_default);
-    }
-
     if (spec->is_default) {
-        // |spec->name| can be set to "default"
+        // |spec->name| can be NULL
         assert(spec->buf == NULL);
         assert(spec->obj != NULL);
         assert(spec->run != NULL);
