@@ -176,6 +176,20 @@ static int parse_email(void *obj, const char *rec, size_t *total_size) {
     return knd_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static int run_set_anonymous_user(void *obj, struct kndTaskArg *args, size_t num_args) {
+    struct User *self = (struct User *)obj;
+    ck_assert(self);
+    ck_assert(!args); ck_assert_uint_eq(num_args, 0);
+
+    const char *none = "(none)";
+    size_t none_size = strlen("(none)");
+
+    assert(none_size <= sizeof self->name);
+    memcpy(self->name, none, none_size);
+    self->name_size = none_size;
+    return knd_OK;
+}
+
 #define RESET_IS_COMPLETED(specs, num_specs)   \
     do {                                       \
         for (size_t i = 0; i < num_specs; ++i) \
@@ -238,6 +252,13 @@ static struct kndTaskSpec gen_sid_spec(struct User *self, int flags) {
 
 static struct kndTaskSpec gen_email_spec(struct User *self) {
     return (struct kndTaskSpec){ .name = "email", .name_size = strlen("email"), .parse = parse_email, .obj = self };
+}
+
+static struct kndTaskSpec gen_default_spec(struct User *self, int flags) {
+    assert((flags & SPEC_NAME) == flags && "Valid flags: [SPEC_NAME]");
+    return (struct kndTaskSpec){ .is_default = true,
+                                 .name = (flags & SPEC_NAME) ? "anon" : NULL, .name_size = (flags & SPEC_NAME) ? strlen("anon") : 0,
+                                 .run = run_set_anonymous_user, .obj = self };
 }
 
 // --------------------------------------------------------------------------------
@@ -951,6 +972,72 @@ START_TEST(parse_value_validate_NAME_SIZE_plus_one)
   }
 END_TEST
 
+static void
+check_parse_value_default_when_implied_field(int name_flags) {
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, name_flags), gen_default_spec(&user, 0));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    rc = knd_parse_task(rec = "{user John Smith}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ASSERT_STR_EQ(user.name, user.name_size, "John Smith");
+    user.name_size = 0;  // reset
+}
+
+static void
+check_parse_value_default_when_value_terminal(int sid_flags) {
+    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, sid_flags), gen_default_spec(&user, 0));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    rc = knd_parse_task(rec = "{user {sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ASSERT_STR_EQ(user.name, user.name_size, "");
+    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
+}
+
+START_TEST(parse_value_default)
+  {
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, 0));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    rc = knd_parse_task(rec = "{user}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_NO_MATCH);
+  }
+
+  {
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, 0), gen_default_spec(&user, 0));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    rc = knd_parse_task(rec = "{user}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ASSERT_STR_EQ(user.name, user.name_size, "(none)");
+    user.name_size = 0;  // reset
+  }
+
+    check_parse_value_default_when_implied_field(SPEC_BUF);
+
+    check_parse_value_default_when_implied_field(SPEC_RUN);
+
+    check_parse_value_default_when_value_terminal(SPEC_BUF);
+
+    check_parse_value_default_when_value_terminal(SPEC_PARSE);
+
+    check_parse_value_default_when_value_terminal(SPEC_RUN);
+
+  {
+    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user), gen_default_spec(&user, 0));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    rc = knd_parse_task(rec = "{user {email}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ASSERT_STR_EQ(user.name, user.name_size, "");
+    ck_assert_int_eq(user.email_type, EMAIL_NONE); ASSERT_STR_EQ(user.email, user.email_size, "");
+  }
+END_TEST
+
 
 int main() {
     TCase* tc = tcase_create("all cases");
@@ -978,6 +1065,7 @@ int main() {
     tcase_add_test(tc, parse_value_validate_max_size);
     tcase_add_test(tc, parse_value_validate_max_size_plus_one);
     tcase_add_test(tc, parse_value_validate_NAME_SIZE_plus_one);
+    tcase_add_test(tc, parse_value_default);
 
     Suite* s = suite_create("suite");
     suite_add_tcase(s, tc);
