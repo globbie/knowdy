@@ -61,6 +61,7 @@ struct kndRelInstance
 
 struct kndRelDir
 {
+    char id[KND_ID_SIZE];
     char name[KND_NAME_SIZE];
     size_t name_size;
     struct kndRel *rel;
@@ -76,8 +77,8 @@ struct kndRelDir
     struct kndRelDir **children;
     size_t num_children;
 
-    char next_obj_id[KND_ID_SIZE];
-    size_t next_obj_numid;
+    char next_inst_id[KND_ID_SIZE];
+    size_t next_inst_numid;
 
     /*struct kndRelInstDir **obj_dirs;
     size_t num_obj_dirs;
@@ -94,6 +95,7 @@ struct kndRel
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
+
     char id[KND_ID_SIZE];
     char next_id[KND_ID_SIZE];
 
@@ -159,7 +161,10 @@ struct kndRel
                   size_t *total_size);
     int (*coordinate)(struct kndRel *self);
     int (*resolve)(struct kndRel *self);
-    
+    int (*freeze)(struct kndRel *self,
+                  size_t *total_frozen_size,
+                  char *output,
+                  size_t *total_size);
     int (*export)(struct kndRel *self);
     int (*export_reverse_rel)(struct kndRel *self);
 };

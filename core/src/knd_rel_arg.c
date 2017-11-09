@@ -118,8 +118,14 @@ static int export_GSP(struct kndRelArg *self)
     if (err) return err;
     err = out->write(out, self->name, self->name_size);
     if (err) return err;
-    
-    /* choose gloss */
+
+    err = out->write(out, "{c ", strlen("{c "));
+    if (err) return err;
+    err = out->write(out, self->classname, self->classname_size);
+    if (err) return err;
+    err = out->write(out, "}", 1);
+    if (err) return err;
+
     if (self->tr) {
         err = out->write(out,
                          "[_g", strlen("[_g"));

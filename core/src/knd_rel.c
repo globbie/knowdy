@@ -34,7 +34,8 @@ static void str(struct kndRel *self)
 {
     struct kndRelArg *arg;
 
-    knd_log("\n%*sREL: %.*s", self->depth * KND_OFFSET_SIZE, "", self->name_size, self->name);
+    knd_log("\n%*sREL: %.*s [%.*s]", self->depth * KND_OFFSET_SIZE, "",
+            self->name_size, self->name, KND_ID_SIZE, self->id);
 
     for (arg = self->args; arg; arg = arg->next) {
         arg->depth = self->depth + 1;
@@ -201,26 +202,50 @@ static int export_GSP(struct kndRel *self)
 {
     struct kndObject *obj;
     struct kndOutput *out = self->out;
+    struct kndRelArg *arg;
+    struct kndTranslation *tr;
     int err;
-
-    /*if (!self->states) return knd_FAIL;
-
-    obj = self->elem->root;
-    
     
     err = out->write(out, "{", 1);
     if (err) return err;
-    err = out->write(out, self->states->val, self->states->val_size);
-    if (err) return err;
-    err = out->write(out, "{c ", strlen("{c "));
+
+    err = out->write(out, self->name, self->name_size);
     if (err) return err;
 
-    err = out->write(out, obj->conc->name, obj->conc->name_size);
+    if (self->tr) {
+        err = out->write(out,
+                         "[_g", strlen("[_g"));
+        if (err) return err;
+    }
+    
+    for (tr = self->tr; tr; tr = tr->next) {
+        err = out->write(out, "{", 1);
+        if (err) return err;
+        err = out->write(out, tr->locale,  tr->locale_size);
+        if (err) return err;
+        err = out->write(out, " ", 1);
+        if (err) return err;
+        err = out->write(out, tr->val,  tr->val_size);
+        if (err) return err;
+        err = out->write(out, "}", 1);
+        if (err) return err;
+    }
+    if (self->tr) {
+        err = out->write(out, "]", 1);
+        if (err) return err;
+    }
+
+    
+    for (arg = self->args; arg; arg = arg->next) {
+        arg->format = KND_FORMAT_GSP;
+        arg->out = self->out;
+        err = arg->export(arg);
+        if (err) return err;
+    }
+
+    err = out->write(out, "}", 1);
     if (err) return err;
 
-    err = out->write(out, "}}", strlen("}}"));
-    if (err) return err;
-    */
     return knd_OK;
 }
 
@@ -849,7 +874,7 @@ static int kndRel_coordinate(struct kndRel *self)
     void *val;
     int err;
 
-    if (DEBUG_REL_LEVEL_2)
+    if (DEBUG_REL_LEVEL_TMP)
         knd_log(".. rel coordination in progress ..");
 
     err = resolve_rels(self);
@@ -868,12 +893,12 @@ static int kndRel_coordinate(struct kndRel *self)
         /* assign id */
         err = knd_next_state(self->next_id);
         if (err) return err;
-        
+
         memcpy(rel->id, self->next_id, KND_ID_SIZE);
         rel->phase = KND_CREATED;
     } while (key);
 
-    /* display all reles */
+    /* display all rels */
     if (DEBUG_REL_LEVEL_TMP) {
         key = NULL;
         self->rel_idx->rewind(self->rel_idx);
@@ -890,7 +915,58 @@ static int kndRel_coordinate(struct kndRel *self)
     return knd_OK;
 }
 
+static int freeze(struct kndRel *self,
+                  size_t *total_frozen_size,
+                  char *output,
+                  size_t *total_size)
+{
+    struct kndOutput *out;
+    char *curr_dir = output;
+    size_t chunk_size;
+    size_t curr_dir_size = 0;
+    int err;
 
+    out = self->out;
+    out->reset(out);
+
+    err = export_GSP(self);
+    if (err) {
+        knd_log("-- GSP export of %.*s Rel failed :(",
+                self->name_size, self->name);
+        return err;
+    }
+
+    if (DEBUG_REL_LEVEL_2)
+        knd_log("GSP: %.*s  FILE: %s",
+                out->buf_size, out->buf, self->frozen_output_file_name);
+
+    /* persistent write */
+    err = knd_append_file(self->frozen_output_file_name,
+                          out->buf, out->buf_size);
+    if (err) return err;
+
+    /* add dir entry */
+    memcpy(curr_dir, "{", 1); 
+    curr_dir++;
+    curr_dir_size++;
+
+    memcpy(curr_dir, self->id, KND_ID_SIZE); 
+    curr_dir += KND_ID_SIZE;
+    curr_dir_size += KND_ID_SIZE;
+
+    memcpy(curr_dir, " ", 1); 
+    curr_dir++;
+    curr_dir_size++;
+
+    chunk_size = sprintf(curr_dir, "%lu}",
+                         (unsigned long)out->buf_size);
+    curr_dir_size += chunk_size;
+
+    *total_frozen_size += out->buf_size;
+    *total_size = curr_dir_size;
+
+    return knd_OK;
+}
 
 extern void 
 kndRel_init(struct kndRel *self)
@@ -900,9 +976,10 @@ kndRel_init(struct kndRel *self)
     self->export = export;
     self->resolve = kndRel_resolve;
     self->coordinate = kndRel_coordinate;
-    //self->parse = parse_GSL;
+    self->freeze = freeze;
     self->import = import_rel;
     self->select = parse_rel_select;
+    memset(self->id, '0', KND_ID_SIZE);
 }
 
 extern void 
@@ -920,7 +997,9 @@ kndRel_new(struct kndRel **rel)
     if (!self) return knd_NOMEM;
 
     memset(self, 0, sizeof(struct kndRel));
-    
+    memset(self->id, '0', KND_ID_SIZE);
+    memset(self->next_id, '0', KND_ID_SIZE);
+
     kndRel_init(self);
     *rel = self;
     return knd_OK;
