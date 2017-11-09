@@ -224,34 +224,42 @@ static struct kndTaskSpec gen_user_spec(struct TaskSpecs *args) {
     return (struct kndTaskSpec){ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = args };
 }
 
-enum { SPEC_BUF = 0x0, SPEC_PARSE = 0x1, SPEC_RUN = 0x2, SPEC_NAME = 0x4 };
+enum { SPEC_BUF = 0x0, SPEC_PARSE = 0x1, SPEC_RUN = 0x2, SPEC_NAME = 0x4, SPEC_SELECTOR = 0x8 };
 static struct kndTaskSpec gen_name_spec(struct User *self, int flags) {
-    assert((flags & (SPEC_BUF | SPEC_RUN | SPEC_NAME)) == flags &&
-           "Valid flags: [SPEC_BUF | SPEC_RUN] [SPEC_NAME]");
+    assert((flags & (SPEC_BUF | SPEC_RUN | SPEC_NAME | SPEC_SELECTOR)) == flags &&
+           "Valid flags: [SPEC_BUF | SPEC_RUN] [SPEC_NAME] [SPEC_SELECTOR]");
     if (flags & SPEC_RUN)
         return (struct kndTaskSpec){ .is_implied = true,
                                      .name = (flags & SPEC_NAME) ? "name" : NULL, .name_size = (flags & SPEC_NAME) ? strlen("name") : 0,
+                                     .is_selector = (flags & SPEC_SELECTOR),
                                      .run = run_set_name, .obj = self };
     return (struct kndTaskSpec){ .is_implied = true,
                                  .name = (flags & SPEC_NAME) ? "name" : NULL, .name_size = (flags & SPEC_NAME) ? strlen("name") : 0,
+                                 .is_selector = (flags & SPEC_SELECTOR),
                                  .buf = self->name, .buf_size = &self->name_size, .max_buf_size = sizeof self->name };
 }
 
 static struct kndTaskSpec gen_sid_spec(struct User *self, int flags) {
-    assert((flags & (SPEC_BUF | SPEC_PARSE | SPEC_RUN)) == flags &&
-           "Valid flags: [SPEC_BUF | SPEC_PARSE | SPEC_RUN]");
+    assert((flags & (SPEC_BUF | SPEC_PARSE | SPEC_RUN | SPEC_SELECTOR)) == flags &&
+           "Valid flags: [SPEC_BUF | SPEC_PARSE | SPEC_RUN] [SPEC_SELECTOR]");
     if (flags & SPEC_PARSE)
         return (struct kndTaskSpec){ .name = "sid", .name_size = strlen("sid"),
+                                     .is_selector = (flags & SPEC_SELECTOR),
                                      .parse = parse_sid, .obj = self };
     if (flags & SPEC_RUN)
         return (struct kndTaskSpec){ .name = "sid", .name_size = strlen("sid"),
+                                     .is_selector = (flags & SPEC_SELECTOR),
                                      .run = run_set_sid, .obj = self };
     return (struct kndTaskSpec){ .name = "sid", .name_size = strlen("sid"),
+                                 .is_selector = (flags & SPEC_SELECTOR),
                                  .buf = self->sid, .buf_size = &self->sid_size, .max_buf_size = sizeof self->sid };
 }
 
-static struct kndTaskSpec gen_email_spec(struct User *self) {
-    return (struct kndTaskSpec){ .name = "email", .name_size = strlen("email"), .parse = parse_email, .obj = self };
+static struct kndTaskSpec gen_email_spec(struct User *self, int flags) {
+    assert((flags & SPEC_SELECTOR) == flags && "Valid flags: [SPEC_SELECTOR]");
+    return (struct kndTaskSpec){ .name = "email", .name_size = strlen("email"),
+                                 .is_selector = (flags & SPEC_SELECTOR),
+                                 .parse = parse_email, .obj = self };
 }
 
 static struct kndTaskSpec gen_default_spec(struct User *self, int flags) {
@@ -790,7 +798,7 @@ START_TEST(parse_value_terminal_with_braces)
 END_TEST
 
 START_TEST(parse_value_validate_empty)
-    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user));
+    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user, 0));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
     rc = knd_parse_task(rec = "{user{email}}", &total_size, specs, sizeof specs / sizeof specs[0]);
@@ -867,7 +875,7 @@ START_TEST(parse_value_validate_empty)
 END_TEST
 
 START_TEST(parse_value_validate_single)
-    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user));
+    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user, 0));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
     rc = knd_parse_task(rec = "{user {email{home john@iserver.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
@@ -896,7 +904,7 @@ START_TEST(parse_value_validate_single)
 END_TEST
 
 START_TEST(parse_value_validate_several)
-    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user));
+    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user, 0));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
     rc = knd_parse_task(rec = "{user {email{home john@iserver.com}{work j.smith@gogel.com}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
@@ -917,7 +925,7 @@ START_TEST(parse_value_validate_several)
 END_TEST
 
 START_TEST(parse_value_validate_max_size)
-    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user));
+    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user, 0));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
   {
@@ -939,7 +947,7 @@ START_TEST(parse_value_validate_max_size)
 END_TEST
 
 START_TEST(parse_value_validate_max_size_plus_one)
-    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user));
+    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user, 0));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
   {
@@ -956,7 +964,7 @@ START_TEST(parse_value_validate_max_size_plus_one)
 END_TEST
 
 START_TEST(parse_value_validate_NAME_SIZE_plus_one)
-    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user));
+    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user, 0));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
   {
@@ -1027,7 +1035,7 @@ START_TEST(parse_value_default)
     check_parse_value_default_when_value_terminal(SPEC_RUN);
 
   {
-    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user), gen_default_spec(&user, 0));
+    DEFINE_TaskSpecs(parse_user_args, gen_email_spec(&user, 0), gen_default_spec(&user, 0));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
     rc = knd_parse_task(rec = "{user {email}}", &total_size, specs, sizeof specs / sizeof specs[0]);
@@ -1038,7 +1046,7 @@ START_TEST(parse_value_default)
   }
 
   {
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, 0), gen_sid_spec(&user, 0), gen_email_spec(&user), gen_default_spec(&user, 0));
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, 0), gen_sid_spec(&user, 0), gen_email_spec(&user, 0), gen_default_spec(&user, 0));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
 
     rc = knd_parse_task(rec = "{user John Smith}", &total_size, specs, sizeof specs / sizeof specs[0]);
