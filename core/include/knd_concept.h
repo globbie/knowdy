@@ -121,6 +121,7 @@ struct kndObjDir
 
 struct kndConcDir
 {
+    char id[KND_ID_SIZE];
     char name[KND_NAME_SIZE];
     size_t name_size;
     struct kndConcept *conc;
@@ -138,6 +139,9 @@ struct kndConcDir
     struct kndConcDir **children;
     size_t num_children;
     size_t num_terminals;
+
+    struct kndRelDir **rels;
+    size_t num_rels;
 
     char next_obj_id[KND_ID_SIZE];
     size_t next_obj_numid;

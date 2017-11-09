@@ -379,7 +379,7 @@ static int parse_sync_task(void *obj,
     size_t path_size;
     int err;
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_1)
         knd_log(".. got sync task..");
 
     s = self->path;
@@ -450,6 +450,20 @@ static int parse_sync_task(void *obj,
             knd_log("++ frozen DB file sync'ed OK, total bytes: %lu",
                     (unsigned long)st.st_size);
     }
+    
+
+    self->out->reset(self->out);
+    err = self->out->write(self->out,
+                           "{\"file_size\":",
+                           strlen("{\"file_size\":"));
+    if (err) return err;
+
+    buf_size = sprintf(buf, "%lu", (unsigned long)st.st_size);
+    err = self->out->write(self->out, buf, buf_size);
+    if (err) return err;
+    err = self->out->write(self->out, "}", 1);
+    if (err) return err;
+    
     return knd_OK;
 }
 

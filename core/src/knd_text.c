@@ -506,13 +506,13 @@ static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t n
             return knd_LIMIT;
         }
 
-        tr->seq = malloc(val_size + 1);
+        /*tr->seq = malloc(val_size + 1);
         if (!tr->seq) return knd_NOMEM;
 
         memcpy(tr->seq, val, val_size);
         tr->seq[val_size] = '\0';
         tr->seq_size = val_size;
-
+        */
         if (DEBUG_TEXT_LEVEL_2)
             knd_log("== TEXT CHUNK val: \"%s\"", tr->seq);
         return knd_OK;
