@@ -709,8 +709,8 @@ knd_check_implied_field(const char *val,
     }
 
     if (DEBUG_PARSER_LEVEL_2)
-        knd_log("++ got implied spec: \"%.*s\" run: %p!",
-                implied_spec->name_size, implied_spec->name, implied_spec->run);
+        knd_log("++ got implied spec: \"%.*s\" buf: %p run: %p!",
+                implied_spec->name_size, implied_spec->name, implied_spec->buf, implied_spec->run);
 
     if (implied_spec->buf) {
         err = knd_spec_buf_copy(implied_spec, val, val_size);
