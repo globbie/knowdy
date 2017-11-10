@@ -303,8 +303,7 @@ kndElem_export_GSP(struct kndElem *self)
     /* key:value repr */
     switch (self->attr->type) {
     case KND_ATTR_NUM:
-        knd_log("OUT:%p  free:%zu total:%zu", out, out->free_space, out->buf_size);
-        self->obj->str(self->obj);
+        //self->obj->str(self->obj);
         err = out->write(out, self->num->states->val, self->num->states->val_size);
         if (err) return err;
         break;
@@ -405,8 +404,8 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
     self->num_states = 1;
 
     memcpy(state->val, val, val_size);
-    state->val[val_size] = '\0';
     state->val_size = val_size;
+    state->val[val_size] = '\0';
 
     /* TODO: validate if needed */
     /*switch (self->attr->type) {

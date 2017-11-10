@@ -370,6 +370,7 @@ kndObject_export_GSP(struct kndObject *self)
 
     if (self->type == KND_OBJ_ADDR) {
         start_size = self->out->buf_size;
+
         if (DEBUG_OBJ_LEVEL_2)
             knd_log("%*s.. export GSP obj \"%.*s\" [id: %.*s]..",
                     self->depth *  KND_OFFSET_SIZE, "",
@@ -482,11 +483,25 @@ static int run_present_obj(void *data,
     struct kndObject *self = data;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. present obj..");
 
     err = kndObject_export(self);
     if (err) return err;
+
+    return knd_OK;
+}
+
+static int confirm_obj_import(void *data,
+                              struct kndTaskArg *args __attribute__((unused)),
+                              size_t num_args __attribute__((unused)))
+{
+    struct kndObject *self = data;
+    //int err;
+
+    if (DEBUG_OBJ_LEVEL_2)
+        knd_log(".. confirm obj import..");
+
 
     return knd_OK;
 }
@@ -930,10 +945,20 @@ static int parse_GSL(struct kndObject *self,
           .is_default = true,
           .run = run_present_obj,
           .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = confirm_obj_import,
+          .obj = self
         }
     };
     int err;
     
+    if (DEBUG_OBJ_LEVEL_2)
+        knd_log(".. parsing obj..");
+ 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
     
@@ -976,7 +1001,6 @@ kndObject_init(struct kndObject *self)
 {
     self->del = del;
     self->str = str;
-
     self->parse = parse_GSL;
     self->read = parse_GSL;
     self->resolve = kndObject_resolve;
