@@ -572,8 +572,10 @@ knd_spec_buf_copy(struct kndTaskSpec *spec,
                   size_t val_size)
 {
     if (DEBUG_PARSER_LEVEL_2)
-        knd_log(".. writing val \"%.*s\" to buf [max size: %zu] [len: %zu]..",
-                val_size, val, spec->max_buf_size, val_size);
+        knd_log(".. writing val \"%.*s\" [%zu] to buf [max size: %zu]..",
+                val_size, val, val_size, spec->max_buf_size);
+
+    assert(val_size && "val is empty");
 
     if (val_size > spec->max_buf_size) {
         knd_log("-- %.*s: buf limit reached: %zu max: %zu",
