@@ -453,6 +453,8 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
 
     assert((spec->buf != NULL) == (spec->buf_size != NULL));
     assert((spec->buf != NULL) == (spec->max_buf_size != 0));
+    if (spec->buf)
+        assert(*spec->buf_size == 0);
 
     // TODO(ki.stfu): ?? assert(spec->accu == NULL);  // TODO(ki.stfu): ?? remove this field
 
@@ -583,6 +585,12 @@ knd_spec_buf_copy(struct kndTaskSpec *spec,
         return knd_LIMIT;
     }
 
+    if (*spec->buf_size) {
+        knd_log("-- %.*s: buf already contains \"%.*s\"",
+                spec->name_size, spec->name, spec->buf_size, spec->buf);
+        return knd_EXISTS;
+    }
+
     memcpy(spec->buf, val, val_size);
     *spec->buf_size = val_size;
 
@@ -623,6 +631,7 @@ knd_find_spec(const char *name,
                 name_size, name, validator_spec);
 
     if (validator_spec) {
+        *validator_spec->buf_size = 0;  // TODO(ki.stfu): remove this
         err = knd_spec_buf_copy(validator_spec, name, name_size);
         if (err) return err;
 
