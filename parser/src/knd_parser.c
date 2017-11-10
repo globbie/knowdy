@@ -468,10 +468,10 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
     // Check that they are not mutually exclusive (in general):
 
     if (spec->name)
-        assert(!spec->is_validator);
+        assert(!spec->is_default && !spec->is_validator);
 
     if (spec->is_default) {
-        // |spec->name| can be NULL
+        assert(spec->name == NULL);
         assert(spec->buf == NULL);
         assert(spec->obj != NULL);
         assert(spec->run != NULL);
