@@ -484,7 +484,7 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
         assert(!spec->is_default && !spec->is_selector && !spec->is_implied && !spec->is_list && !spec->is_atomic);
     assert(!spec->is_terminal);  // TODO(ki.stfu): ?? Remove this field
     // FIXME(ki.stfu): assert(!spec->is_list);  // TODO(ki.stfu): ?? Remove this field
-    assert(!spec->is_atomic);  // TODO(ki.stfu): ?? Remove this field
+    //assert(!spec->is_atomic);  // TODO(ki.stfu): ?? Remove this field
 
     assert((spec->buf != NULL) == (spec->buf_size != NULL));
     assert((spec->buf != NULL) == (spec->max_buf_size != 0));
@@ -1528,7 +1528,7 @@ static int knd_parse_list(const char *rec,
     b = rec;
     e = rec;
 
-    if (DEBUG_PARSER_LEVEL_2)
+    if (DEBUG_PARSER_LEVEL_TMP)
         knd_log(".. start list parsing: \"%.*s\" num specs: %lu [%p]",
                 16, rec, (unsigned long)num_specs, specs);
 
@@ -1539,33 +1539,59 @@ static int knd_parse_list(const char *rec,
         case '\t':
         case ' ':
             if (!in_list) break;
-            if (!in_item) break;
+
+            if (!got_tag) {
+                err = check_name_limits(b, e, &name_size);
+                if (err) return err;
+
+                if (DEBUG_PARSER_LEVEL_TMP)
+                    knd_log("++ list got tag: \"%.*s\" [%lu]",
+                            name_size, b, (unsigned long)name_size);
+                err = knd_find_spec(b, name_size, KND_GET_STATE, specs, num_specs, &spec);
+                if (err) {
+                    knd_log("-- no spec found to handle the \"%.*s\" list tag :(",
+                            name_size, b);
+                    return err;
+                }
+
+                if (DEBUG_PARSER_LEVEL_TMP)
+                    knd_log("++ got list SPEC: \"%s\"",
+                            spec->name);
+                b = c + 1;
+                e = b;
+                got_tag = true;
+                break;
+            }
 
             if (got_tag) {
-
                 if (spec->is_atomic) {
                     /* get atomic item */
                     err = check_name_limits(b, e, &name_size);
                     if (err) return err;
-
+                    
                     if (DEBUG_PARSER_LEVEL_2)
                         knd_log("  == got new item: \"%.*s\"",
                                 name_size, b);
-                    err = alloc_item(accu, b, name_size, item_count, &item);
+                    err = spec->alloc(spec->accu, b, name_size, item_count, &item);
                     if (err) return err;
-
                     item_count++;
                     b = c + 1;
                     e = b;
                     break;
                 }
+            }
+            
+            if (!in_item) break;
+
+            if (got_tag) {
                 /* get list item's name */
                 err = check_name_limits(b, e, &name_size);
                 if (err) return err;
                 if (DEBUG_PARSER_LEVEL_2)
                     knd_log("  == list got new item: \"%.*s\"",
                             name_size, b);
-                err = alloc_item(accu, b, name_size, item_count, &item);
+
+                err = spec->alloc(spec->accu, b, name_size, item_count, &item);
                 if (err) {
                     knd_log("-- item alloc failed: %d :(", err);
                     return err;
@@ -1580,7 +1606,7 @@ static int knd_parse_list(const char *rec,
                 }
                 c += chunk_size;
 
-                err = append_item(accu, item);
+                err = spec->append(spec->accu, item);
                 if (err) return err;
 
                 in_item = false;
@@ -1637,7 +1663,7 @@ static int knd_parse_list(const char *rec,
                 err = check_name_limits(b, e, &name_size);
                 if (err) return err;
 
-                if (DEBUG_PARSER_LEVEL_2)
+                if (DEBUG_PARSER_LEVEL_TMP)
                     knd_log("++ list got tag: \"%.*s\" [%lu]",
                             name_size, b, (unsigned long)name_size);
 

@@ -150,6 +150,7 @@ struct kndConcDir
     size_t num_obj_dirs;
     struct kndObjEntry **objs;
     size_t num_objs;
+    size_t total_objs;
 
     struct ooDict *obj_idx;
 

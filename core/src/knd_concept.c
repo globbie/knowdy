@@ -1645,7 +1645,6 @@ static int parse_import_obj(void *data,
         obj->depth = self->depth + 1;
         obj->str(obj);
     }
-
    
     return knd_OK;
 }
@@ -2098,6 +2097,11 @@ static int parse_dir_entry(void *obj,
           .name_size = strlen("t"),
           .parse = knd_parse_size_t,
           .obj = &self->num_terminals
+        },
+        { .name = "o",
+          .name_size = strlen("o"),
+          .parse = knd_parse_size_t,
+          .obj = &self->total_objs
         }
     };
 
@@ -2468,7 +2472,7 @@ static int index_obj_name(struct kndConcept *self,
         return knd_FAIL;
     }
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         if (!strncmp(b, "testdevel", strlen("testdevel"))) {
             knd_log("\n  .. set OBJ NAME: \"%.*s\" [%zu] REMAINDER: %s",
                     name_size, b, name_size, c);
@@ -2670,9 +2674,10 @@ static int parse_dir_trailer(struct kndConcept *self,
     }
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("\nDIR: %.*s   num_children: %zu",
-                KND_ID_SIZE, parent_dir->id, parent_dir->num_children);
-    
+        knd_log("\nDIR: %.*s   num_children: %zu obj block:%zu",
+                KND_ID_SIZE, parent_dir->id, parent_dir->num_children,
+                parent_dir->obj_block_size);
+
     /* try reading each dir */
     for (size_t i = 0; i < parent_dir->num_children; i++) {
         dir = parent_dir->children[i];
@@ -2684,13 +2689,14 @@ static int parse_dir_trailer(struct kndConcept *self,
 
         if (!dir->num_terminals) {
             dir->is_terminal = true;
-
-            err = get_conc_name(self, dir, fd);
-            if (err) return err;
-            continue;
+            if (!dir->total_objs) {
+                err = get_conc_name(self, dir, fd);
+                if (err) return err;
+                continue;
+            }
         }
 
-        if (DEBUG_CONC_LEVEL_3)
+        if (DEBUG_CONC_LEVEL_2)
             knd_log("\n\n.. read DIR: %.*s   global offset: %zu    block size: %zu  num terminals:%zu",
                     dir->name_size, dir->name,
                     dir->global_offset, dir->block_size, dir->num_terminals);
@@ -2774,8 +2780,8 @@ static int obj_atomic_entry_alloc(void *self,
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. create OBJ ENTRY: %.*s  count: %zu",
-                val_size, val, count);
+        knd_log(".. create OBJ ENTRY: %.*s  count: %zu  parent_dir:%p",
+                val_size, val, count, parent_dir);
 
     entry = malloc(sizeof(struct kndObjEntry));
     if (!entry) return knd_NOMEM;
@@ -2844,6 +2850,25 @@ static int obj_atomic_entry_alloc(void *self,
     return knd_OK;
 }
 
+static int obj_atomic_append(void *accu,
+                             void *item)
+{
+    struct kndConcDir *parent_dir = accu;
+    struct kndObjEntry *entry = item;
+
+    knd_log(".. append atomic obj entry..");
+
+    return knd_OK;
+}
+
+static int obj_atomic_parse(void *obj,
+                      const char *rec,
+                      size_t *total_size)
+{
+    knd_log(".. parse atomic obj entry..");
+    return knd_OK;
+}
+
 static int parse_obj_dir_trailer(struct kndConcept *self,
                                  struct kndConcDir *parent_dir,
                                  int fd,
@@ -2855,7 +2880,9 @@ static int parse_obj_dir_trailer(struct kndConcept *self,
           .name = "o",
           .name_size = strlen("o"),
           .accu = parent_dir,
-          .alloc = obj_atomic_entry_alloc
+          .alloc = obj_atomic_entry_alloc,
+          .append = obj_atomic_append,
+          .parse = obj_atomic_parse
         }
     };
     size_t parsed_size;
@@ -5371,7 +5398,6 @@ static int parse_class_diff_update(void *self,
     return knd_OK;
 }
 
-
 static int parse_class_diff(void *self,
                             const char *rec,
                             size_t *total_size)
@@ -5395,10 +5421,6 @@ static int parse_class_diff(void *self,
     return knd_OK;
 }
 
-
-
-
-
 static int run_set_diff_state(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndConcept *self = (struct kndConcept*)obj;
@@ -5420,7 +5442,6 @@ static int run_set_diff_state(void *obj, struct kndTaskArg *args, size_t num_arg
     if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. \"%s\" runs set diff state: %.*s [%lu]\n", self->name, val_size, val,
                 (unsigned long)val_size);
-
     
     return knd_OK;
 }
@@ -5786,6 +5807,22 @@ static int freeze_subclasses(struct kndConcept *self,
             curr_dir_size++;
         }
 
+        if (c->dir && c->dir->num_objs) {
+            chunk_size = strlen("{o ");
+            memcpy(curr_dir, "{o ", chunk_size); 
+            curr_dir += chunk_size;
+            curr_dir_size += chunk_size;
+
+            num_size = sprintf(curr_dir, "%lu",
+                               (unsigned long)c->dir->num_objs);
+            curr_dir +=      num_size;
+            curr_dir_size += num_size;
+
+            memcpy(curr_dir, "}", 1);
+            curr_dir++;
+            curr_dir_size++;
+        }
+
         memcpy(curr_dir, "}", 1);
         curr_dir++;
         curr_dir_size++;
@@ -5911,7 +5948,7 @@ static int freeze(struct kndConcept *self)
     }
 
     /* rels */
-    if (self->rel) {
+    if (self->rel && self->rel->rel_idx->size) {
         chunk_size = strlen("[R ");
         memcpy(curr_dir, "[R ", chunk_size); 
         curr_dir += chunk_size;
