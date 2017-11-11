@@ -46,9 +46,9 @@ struct kndTaskArg
     char name[KND_NAME_SIZE + 1];  // null-terminated string
     size_t name_size;
     char val[KND_NAME_SIZE + 1];  // null-terminated string
+    const char *val_ref; 
     size_t val_size;
 };
-
 
 struct kndTaskSpec
 {

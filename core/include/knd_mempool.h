@@ -31,6 +31,8 @@ struct kndProcInstance;
 struct kndMemPool
 {
     char next_class_id[KND_ID_SIZE];
+    size_t max_users;
+
     struct kndConcept *classes;
     size_t max_classes;
     size_t num_classes;

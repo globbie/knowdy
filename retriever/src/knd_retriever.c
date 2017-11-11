@@ -13,6 +13,7 @@
 #include "knd_utils.h"
 #include "knd_msg.h"
 #include "knd_parser.h"
+#include "knd_mempool.h"
 
 #include "knd_retriever.h"
 
@@ -137,39 +138,6 @@ parse_read_inbox_addr(void *obj,
 }
 
 
-
-static int run_set_max_objs(void *obj, struct kndTaskArg *args, size_t num_args)
-{
-    struct kndRetriever *self = (struct kndRetriever*)obj;
-    struct kndTaskArg *arg;
-    const char *val = NULL;
-    size_t val_size = 0;
-    long numval;
-    int err;
-
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val;
-            val_size = arg->val_size;
-        }
-    }
-    if (!val_size) return knd_FAIL;
-    if (val_size >= KND_NAME_SIZE) return knd_LIMIT;
-
-    err = knd_parse_num((const char*)val, &numval);
-    if (err) return err;
-
-    if (numval < KND_MIN_OBJS) return knd_LIMIT;
-
-    self->max_objs = numval;
-
-    if (DEBUG_RETRIEVER_LEVEL_TMP)
-        knd_log("++ MAX OBJS: %lu", (unsigned long)self->max_objs);
-
-    return knd_OK;
-}
-
 static int
 run_set_service_id(void *obj,
                    struct kndTaskArg *args,
@@ -199,17 +167,52 @@ run_set_service_id(void *obj,
     return knd_OK;
 }
 
-static int 
-parse_max_objs(void *obj,
-               const char *rec,
-               size_t *total_size)
-{
-    struct kndRetriever *self = (struct kndRetriever*)obj;
 
+static int parse_memory_settings(void *obj,
+                                 const char *rec,
+                                 size_t *total_size)
+{
+    struct kndMemPool *self = obj;
     struct kndTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_set_max_objs,
-          .obj = self
+        { .name = "max_users",
+          .name_size = strlen("max_users"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_users
+        },
+        { .name = "max_classes",
+          .name_size = strlen("max_classes"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_classes
+        },
+        { .name = "max_objs",
+          .name_size = strlen("max_objs"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_objs
+        },
+        { .name = "max_elems",
+          .name_size = strlen("max_elems"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_elems
+        },
+        { .name = "max_rels",
+          .name_size = strlen("max_rels"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rels
+        },
+        { .name = "max_rel_instances",
+          .name_size = strlen("max_rel_instances"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_insts
+        },
+        { .name = "max_procs",
+          .name_size = strlen("max_procs"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_procs
+        },
+        { .name = "max_proc_instances",
+          .name_size = strlen("max_proc_instances"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_proc_insts
         }
     };
     int err;
@@ -219,61 +222,6 @@ parse_max_objs(void *obj,
     
     return knd_OK;
 }
-
-
-static int run_set_max_users(void *obj, struct kndTaskArg *args, size_t num_args)
-{
-    struct kndRetriever *self = (struct kndRetriever*)obj;
-    struct kndTaskArg *arg;
-    const char *val = NULL;
-    size_t val_size = 0;
-    long numval;
-    int err;
-
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val;
-            val_size = arg->val_size;
-        }
-    }
-    if (!val_size) return knd_FAIL;
-    if (val_size >= KND_NAME_SIZE) return knd_LIMIT;
-
-    err = knd_parse_num((const char*)val, &numval);
-    if (err) return err;
-    if (numval < 1) return knd_LIMIT;
-
-    self->max_users = numval;
-
-    if (DEBUG_RETRIEVER_LEVEL_TMP)
-        knd_log("++ MAX USERS: %lu", (unsigned long)self->max_users);
-    
-    return knd_OK;
-}
-
-static int 
-parse_max_users(void *obj,
-               const char *rec,
-               size_t *total_size)
-{
-    struct kndRetriever *self = (struct kndRetriever*)obj;
-
-    struct kndTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_set_max_users,
-          .obj = self
-        }
-    };
-    int err;
-
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-    
-    return knd_OK;
-}
-
-
 
 static int
 parse_config_GSL(struct kndRetriever *self,
@@ -320,15 +268,10 @@ parse_config_GSL(struct kndRetriever *self,
            .buf_size = &self->admin->sid_size,
            .max_buf_size = KND_NAME_SIZE
          },
-         { .name = "max_objs",
-           .name_size = strlen("max_objs"),
-           .parse = parse_max_objs,
-           .obj = self,
-         },
-         { .name = "max_users",
-           .name_size = strlen("max_users"),
-           .parse = parse_max_users,
-           .obj = self,
+         { .name = "memory",
+           .name_size = strlen("memory"),
+           .parse = parse_memory_settings,
+           .obj = self->mempool,
          },
          { .name = "locale",
            .name_size = strlen("locale"),
@@ -461,11 +404,19 @@ kndRetriever_new(struct kndRetriever **rec,
         goto error;
     }
 
+    err = kndMemPool_new(&self->mempool);
+    if (err) return err;
+
     err = parse_config_GSL(self, self->out->file, &chunk_size);
     if (err) {
         knd_log("  -- config parsing error :(");
         goto error;
     }
+
+    self->mempool->alloc(self->mempool);
+    memcpy(self->task->agent_name, self->name, self->name_size);
+    self->task->agent_name_size = self->name_size;
+    self->task->agent_name[self->name_size] = '\0';
 
     out = self->out;
     out->reset(out);
@@ -494,16 +445,17 @@ kndRetriever_new(struct kndRetriever **rec,
     memset(conc->dir->name, '0', KND_ID_SIZE);
     conc->dir->name_size = KND_ID_SIZE;
     conc->dir->conc = conc;
+    conc->mempool = self->mempool;
 
     err = ooDict_new(&conc->class_idx, KND_SMALL_DICT_SIZE);
     if (err) goto error;
 
     /* user idx */
-    if (self->max_users) {
-        self->admin->user_idx = calloc(self->max_users, 
-                                sizeof(struct kndObject*));
+    if (self->mempool->max_users) {
+        self->admin->user_idx = calloc(self->mempool->max_users, 
+                                       sizeof(struct kndObject*));
         if (!self->admin->user_idx) return knd_NOMEM;
-        self->admin->max_users = self->max_users;
+        self->admin->max_users = self->mempool->max_users;
     }
 
     conc->user = self->admin;

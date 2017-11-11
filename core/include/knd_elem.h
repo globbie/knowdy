@@ -43,13 +43,11 @@ struct kndElemState
     char ref[KND_ID_SIZE + 1];
     size_t ref_size;
 
-    char val[KND_VAL_SIZE];
+    const char *val;
     size_t val_size;
-
-    char *seq;
+    /*char *seq;
     size_t seq_size;
-
-    
+    */
     struct kndObject *refobj;
     struct kndConcept *conc;
     

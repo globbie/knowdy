@@ -103,9 +103,10 @@ static void str(struct kndConcept *self)
     const char *key;
     void *val;
 
-    knd_log("\n%*s{class %.*s    id:%.*s  st:%.*s",
+    knd_log("\n%*s{class %.*s    id:%.*s  st:%.*s  attr_idx:%p",
             self->depth * KND_OFFSET_SIZE, "",
-            self->name_size, self->name, KND_ID_SIZE, self->id, KND_STATE_SIZE, self->state);
+            self->name_size, self->name, KND_ID_SIZE, self->id,
+            KND_STATE_SIZE, self->state, self->attr_idx);
 
     for (tr = self->tr; tr; tr = tr->next) {
         knd_log("%*s~ %s %.*s", (self->depth + 1) * KND_OFFSET_SIZE, "",
@@ -607,7 +608,7 @@ static int get_attr(struct kndConcept *self,
                 self->name_size, self->name, name_size, name);
     }
 
-    /*if (!self->attr_idx) {
+    if (!self->attr_idx) {
         err = ooDict_new(&self->attr_idx, KND_SMALL_DICT_SIZE);
         if (err) return err;
 
@@ -620,13 +621,14 @@ static int get_attr(struct kndConcept *self,
             entry->name[entry->name_size] = '\0';
             entry->attr = attr;
 
-            err = self->attr_idx->set(self->attr_idx, entry->name, (void*)entry);
+            err = self->attr_idx->set(self->attr_idx,
+                                      entry->name, entry->name_size, (void*)entry);
             if (err) return err;
             if (DEBUG_CONC_LEVEL_2)
                 knd_log("++ register primary attr: \"%.*s\"",
                         attr->name_size, attr->name);
         }
-        } */
+    }
 
     entry = self->attr_idx->get(self->attr_idx, name, name_size);
     if (!entry) {
@@ -2472,7 +2474,7 @@ static int index_obj_name(struct kndConcept *self,
         return knd_FAIL;
     }
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         if (!strncmp(b, "testdevel", strlen("testdevel"))) {
             knd_log("\n  .. set OBJ NAME: \"%.*s\" [%zu] REMAINDER: %s",
                     name_size, b, name_size, c);
@@ -3253,8 +3255,8 @@ static int read_GSP(struct kndConcept *self,
     size_t buf_size = 0;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1)
-        knd_log(".. read \"%.*s\" class..", 32, rec);
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. reading GSP: \"%.*s\"..", 32, rec);
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
@@ -3439,6 +3441,10 @@ static int unfreeze_class(struct kndConcept *self,
     struct stat file_info;
     int err;
 
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. unfreezing class: \"%.*s\"..",
+                dir->name_size, dir->name);
+
     /* parse DB rec */
     filename = self->frozen_output_file_name;
     filename_size = self->frozen_output_file_name_size;
@@ -3473,7 +3479,7 @@ static int unfreeze_class(struct kndConcept *self,
     }
     buf[buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("\n== frozen Conc REC: \"%.*s\"", buf_size, buf);
 
     /* done reading */
@@ -3489,6 +3495,7 @@ static int unfreeze_class(struct kndConcept *self,
     c->task = self->task;
     c->root_class = self->root_class ? self->root_class : self;
     c->dir = dir;
+    c->mempool = self->mempool;
     dir->conc = c;
 
     c->frozen_output_file_name = self->frozen_output_file_name;
@@ -3524,9 +3531,14 @@ static int unfreeze_class(struct kndConcept *self,
         goto final;
     }
 
+    if (DEBUG_CONC_LEVEL_TMP)
+        c->str(c);
+
     /* TODO: read base classes */
     /* inherit attrs */
 
+
+    
     *result = c;
     return knd_OK;
 
@@ -3543,7 +3555,7 @@ static int get_class(struct kndConcept *self,
     struct kndConcept *c;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. %.*s to get class: \"%.*s\"..",
                 self->name_size, self->name, name_size, name);
 
@@ -3590,6 +3602,8 @@ static int get_class(struct kndConcept *self,
     err = unfreeze_class(self, dir, &c);
     if (err) return err;
 
+    knd_log("++ unfrozen!");
+
     c->phase = KND_SELECTED;
     c->task = self->task;
 
@@ -3605,7 +3619,7 @@ static int get_obj(struct kndConcept *self,
     struct kndObject *obj;
     int err, e;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("\n\n.. \"%.*s\" class to get obj: \"%.*s\"..",
                 self->name_size, self->name,
                 name_size, name);
@@ -3640,7 +3654,7 @@ static int get_obj(struct kndConcept *self,
         return knd_NO_MATCH;
     }
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("++ got obj entry %.*s  size: %zu OBJ: %p",
                 name_size, name, entry->block_size, entry->obj);
 
@@ -3731,14 +3745,16 @@ static int read_obj_entry(struct kndConcept *self,
     /* done reading */
     close(fd);
 
-    err = kndObject_new(&obj);
-    if (err) goto final;
+    err = self->mempool->new_obj(self->mempool, &obj);
+    if (err) return err;
+
     obj->phase = KND_FROZEN;
     obj->out = self->out;
     obj->log = self->log;
     obj->task = self->task;
     obj->entry = entry;
     obj->conc = self;
+    obj->mempool = self->mempool;
     entry->obj = obj;
 
     c = buf + 1;
@@ -3888,9 +3904,10 @@ static int run_get_class(void *obj,
 
     self->curr_class = c;
 
-    if (DEBUG_CONC_LEVEL_1) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         c->str(c);
     }
+
     return knd_OK;
 }
 
@@ -5176,8 +5193,9 @@ static int update_state(struct kndConcept *self)
     if (DEBUG_CONC_LEVEL_2)
         knd_log("++ state update dir created: \"%s\"!", pathbuf);
 
-    err = build_update_messages(self);
+    /*   err = build_update_messages(self);
     if (err) return err;
+    */
 
     /* save the update spec */
     /*err = knd_write_file(pathbuf, "spec.gsl",
@@ -5200,7 +5218,6 @@ static int update_state(struct kndConcept *self)
     out->rtrim(out, strlen("_update.id"));
     err = out->write(out, ".id", strlen(".id"));
     if (err) return err;
-
 
     /* atomic state shift */
     /*err = rename(pathbuf, out->buf);
