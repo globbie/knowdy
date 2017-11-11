@@ -652,6 +652,9 @@ knd_args_push_back(const char *name,
 {
     struct kndTaskArg *arg;
 
+    // TODO(ki.stfu): ?? do not use kndTaskArg(s)
+    *num_args = 0;  // clear args
+
     if (DEBUG_PARSER_LEVEL_2)
         knd_log(".. adding (\"%.*s\", \"%.*s\") to args [size: %zu]..",
                 name_size, name, val_size, val, *num_args);
