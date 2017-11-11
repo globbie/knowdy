@@ -529,6 +529,47 @@ START_TEST(parse_implied_field_size_NAME_SIZE_plus_one)
   }
 END_TEST
 
+static void
+check_parse_implied_field_duplicate(struct kndTaskSpec *specs,
+                                    size_t num_specs,
+                                    struct TaskSpecs *parse_user_args) {
+    rc = knd_parse_task(rec = "{user John Smith}", &total_size, specs, num_specs);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ASSERT_STR_EQ(user.name, user.name_size, "John Smith");
+    user.name_size = 0; RESET_IS_COMPLETED(specs, num_specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user John Smith{name John Smith}}", &total_size, specs, num_specs);
+    ck_assert_int_eq(rc, knd_EXISTS);
+    user.name_size = 0; RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user John Smith {name John Smith}}", &total_size, specs, num_specs);
+    ck_assert_int_eq(rc, knd_EXISTS);
+    user.name_size = 0; RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+
+    rc = knd_parse_task(rec = "{user {name John Smith} {name John Smith}}", &total_size, specs, num_specs);
+    ck_assert_int_eq(rc, knd_EXISTS);
+    user.name_size = 0; RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+}
+
+START_TEST(parse_implied_field_duplicate)
+    // Check implied field with .buf & .name
+  {
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_BUF | SPEC_NAME));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    check_parse_implied_field_duplicate(specs, sizeof specs / sizeof specs[0], &parse_user_args);
+  }
+
+    // Check implied field with .run & .name
+  {
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_RUN | SPEC_NAME));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    check_parse_implied_field_duplicate(specs, sizeof specs / sizeof specs[0], &parse_user_args);
+  }
+END_TEST
+
 START_TEST(parse_tag_empty)
     DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, 0));
     struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
@@ -1167,6 +1208,7 @@ int main() {
     tcase_add_test(tc, parse_implied_field_max_size);
     tcase_add_test(tc, parse_implied_field_max_size_plus_one);
     tcase_add_test(tc, parse_implied_field_size_NAME_SIZE_plus_one);
+    tcase_add_test(tc, parse_implied_field_duplicate);
     tcase_add_test(tc, parse_tag_empty);
     tcase_add_test(tc, parse_tag_empty_with_spaces);
     tcase_add_test(tc, parse_tag_unknown);
