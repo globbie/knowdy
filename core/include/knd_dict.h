@@ -28,7 +28,7 @@ typedef size_t (*oo_hash_func)(const char *key, size_t key_size);
 
 struct ooDictItem
 {
-    char *key;
+    const char *key;
     size_t key_size;
     void *data;
 };
@@ -57,10 +57,10 @@ struct ooDict
                size_t key_size,
                void *data);
 
-    /* if exists */
-    bool (*key_exists)(struct ooDict *self,
-                       const char    *key,
-                       size_t key_size);
+    /* if key exists */
+    bool (*exists)(struct ooDict *self,
+                   const char    *key,
+                   size_t key_size);
     /* delete */
     int (*remove)(struct ooDict *self,
                   const char *key,

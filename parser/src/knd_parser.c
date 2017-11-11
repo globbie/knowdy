@@ -605,7 +605,6 @@ knd_find_spec(const char *name,
 
     for (size_t i = 0; i < num_specs; i++) {
         spec = &specs[i];
-
         if (spec->type != spec_type) continue;
 
         if (spec->is_validator) {
@@ -620,7 +619,7 @@ knd_find_spec(const char *name,
         }
     }
 
-    if (DEBUG_PARSER_LEVEL_2)
+    if (DEBUG_PARSER_LEVEL_3)
         knd_log("-- no named spec found for \"%.*s\"  validator: %p",
                 name_size, name, validator_spec);
 
@@ -665,7 +664,8 @@ knd_args_push_back(const char *name,
     memcpy(arg->val, val, val_size);
     arg->val[val_size] = '\0';
     arg->val_size = val_size;
-
+    arg->val_ref = val;
+    
     (*num_args)++;
 
     return knd_OK;
@@ -1233,6 +1233,7 @@ int knd_parse_task(const char *rec,
                 return err;
             }
             c += chunk_size;
+
             in_field = false;
             in_terminal = false;
             in_implied_field = false;
@@ -1330,8 +1331,9 @@ static int knd_parse_state_change(const char *rec,
             }
 
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log("++ got SPEC: \"%.*s\" default: %d  terminal: %d",
-                        spec->name_size, spec->name, spec->is_default, spec->is_terminal);
+                knd_log("++ got SPEC: \"%.*s\" default: %d  terminal: %d validate:%p",
+                        spec->name_size, spec->name, spec->is_default,
+                        spec->is_terminal, spec->validate);
 
             if (spec->validate) {
                 err = spec->validate(spec->obj,
@@ -1528,7 +1530,7 @@ static int knd_parse_list(const char *rec,
     b = rec;
     e = rec;
 
-    if (DEBUG_PARSER_LEVEL_TMP)
+    if (DEBUG_PARSER_LEVEL_2)
         knd_log(".. start list parsing: \"%.*s\" num specs: %lu [%p]",
                 16, rec, (unsigned long)num_specs, specs);
 
@@ -1544,7 +1546,7 @@ static int knd_parse_list(const char *rec,
                 err = check_name_limits(b, e, &name_size);
                 if (err) return err;
 
-                if (DEBUG_PARSER_LEVEL_TMP)
+                if (DEBUG_PARSER_LEVEL_2)
                     knd_log("++ list got tag: \"%.*s\" [%lu]",
                             name_size, b, (unsigned long)name_size);
                 err = knd_find_spec(b, name_size, KND_GET_STATE, specs, num_specs, &spec);
@@ -1555,8 +1557,8 @@ static int knd_parse_list(const char *rec,
                 }
 
                 if (DEBUG_PARSER_LEVEL_TMP)
-                    knd_log("++ got list SPEC: \"%s\"",
-                            spec->name);
+                    knd_log("++ got list SPEC: \"%.*s\"",
+                            spec->name_size, spec->name);
                 b = c + 1;
                 e = b;
                 got_tag = true;
@@ -1633,7 +1635,7 @@ static int knd_parse_list(const char *rec,
                 knd_log("++ got list SPEC: \"%s\"",
                         spec->name);
 
-            if (spec->is_atomic) {
+            /*if (spec->is_atomic) {
                 if (!spec->accu) return knd_FAIL;
                 if (!spec->alloc) return knd_FAIL;
                 got_tag = true;
@@ -1642,16 +1644,17 @@ static int knd_parse_list(const char *rec,
                 b = c + 1;
                 e = b;
                 break;
-            }
+                }*/
             
-            if (!spec->append) return knd_FAIL;
+            /*if (!spec->append) return knd_FAIL;
             if (!spec->accu) return knd_FAIL;
             if (!spec->alloc) return knd_FAIL;
             if (!spec->parse) return knd_FAIL;
-
-            append_item = spec->append;
+            */
+            /*append_item = spec->append;
             accu = spec->accu;
             alloc_item = spec->alloc;
+            */
 
             got_tag = true;
             b = c + 1;
@@ -1663,8 +1666,8 @@ static int knd_parse_list(const char *rec,
                 err = check_name_limits(b, e, &name_size);
                 if (err) return err;
 
-                if (DEBUG_PARSER_LEVEL_TMP)
-                    knd_log("++ list got tag: \"%.*s\" [%lu]",
+                if (DEBUG_PARSER_LEVEL_2)
+                    knd_log("++ list tag: \"%.*s\" [%lu]",
                             name_size, b, (unsigned long)name_size);
 
                 err = knd_find_spec(b, name_size, KND_GET_STATE, specs, num_specs, &spec);
@@ -1675,9 +1678,10 @@ static int knd_parse_list(const char *rec,
                 }
 
                 if (DEBUG_PARSER_LEVEL_2)
-                    knd_log("++ got list SPEC: \"%s\"", spec->name);
+                    knd_log("++ got list SPEC: \"%.*s\"",
+                            spec->name_size, spec->name);
 
-                if (!spec->append) return knd_FAIL;
+                /*if (!spec->append) return knd_FAIL;
                 if (!spec->accu) return knd_FAIL;
                 if (!spec->alloc) return knd_FAIL;
                 if (!spec->parse) return knd_FAIL;
@@ -1685,7 +1689,7 @@ static int knd_parse_list(const char *rec,
                 append_item = spec->append;
                 accu = spec->accu;
                 alloc_item = spec->alloc;
-
+                */
                 got_tag = true;
             }
 

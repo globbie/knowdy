@@ -131,6 +131,7 @@ static int new_proc(struct kndMemPool *self,
 
 static int alloc(struct kndMemPool *self)
 {
+    if (!self->max_users)  self->max_users = KND_MIN_USERS;
     if (!self->max_classes)  self->max_classes = KND_MIN_CLASSES;
     if (!self->max_objs)     self->max_objs =    KND_MIN_OBJS;
     if (!self->max_rels)     self->max_rels =    KND_MIN_RELS;

@@ -447,7 +447,7 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
         if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            name = arg->val;
+            name = arg->val_ref;
             name_size = arg->val_size;
         }
     }
@@ -457,16 +457,15 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     /* check name doublets */
     conc = self->conc;
     if (conc->dir && conc->dir->obj_idx) {
-        entry = conc->dir->obj_idx->get(conc->dir->obj_idx, name, name_size);
-        if (entry) {
-            knd_log("-- obj name doublet found: %.*s %p :(",
-                    name_size, name, entry->obj);
+        if (conc->dir->obj_idx->exists(conc->dir->obj_idx, name, name_size)) {
+            knd_log("-- obj name doublet found: %.*s:(",
+                    name_size, name);
             entry->obj->str(entry->obj);
-            return knd_FAIL;
+            return knd_EXISTS;
         }
     }
 
-    memcpy(self->name, name, name_size);
+    self->name = name;
     self->name_size = name_size;
 
     if (DEBUG_OBJ_LEVEL_2)
@@ -516,7 +515,7 @@ kndObject_validate_attr(struct kndObject *self,
     struct kndAttr *attr = NULL;
     int err, e;
 
-    if (DEBUG_OBJ_LEVEL_1)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. \"%.*s\" to validate elem: \"%.*s\" conc: %p",
                 self->name_size, self->name, name_size, name, self->conc);
     conc = self->conc;
@@ -533,7 +532,7 @@ kndObject_validate_attr(struct kndObject *self,
         return err;
     }
 
-    if (DEBUG_OBJ_LEVEL_1) {
+    if (DEBUG_OBJ_LEVEL_2) {
         const char *type_name = knd_attr_names[attr->type];
         knd_log("++ \"%.*s\" ELEM \"%s\" attr type: \"%s\"",
                 name_size, name, attr->name, type_name);
@@ -559,9 +558,10 @@ static int parse_elem(void *data,
     int err;
 
     if (DEBUG_OBJ_LEVEL_2) {
-        knd_log("..  %s  needs to validate \"%s\" elem,   REC: \"%.*s\"\n",
-                obj->name, name, 32, rec);
+        knd_log("..  validating \"%.*s\" elem,   REC: \"%.*s\"\n",
+                name_size, name, 32, rec);
     }
+
     err = kndObject_validate_attr(self, name, name_size, &attr);
     if (err) return err;
 
@@ -573,8 +573,8 @@ static int parse_elem(void *data,
     elem->out = self->out;
 
     if (DEBUG_OBJ_LEVEL_2)
-        knd_log("   == basic elem type: %s   obj phase: %d root:%p",
-                knd_attr_names[attr->type], self->phase, self->conc->root_class);
+        knd_log("   == basic elem type: %s   obj phase: %d mempool:%p",
+                knd_attr_names[attr->type], self->phase, self->mempool);
 
     switch (attr->type) {
     case KND_ATTR_AGGR:
@@ -584,6 +584,7 @@ static int parse_elem(void *data,
         obj->type = KND_OBJ_AGGR;
         if (!attr->conc) {
             if (self->phase == KND_FROZEN || self->phase == KND_SUBMITTED) {
+
                 if (DEBUG_OBJ_LEVEL_2) {
                     knd_log(".. resolve attr \"%.*s\": \"%.*s\"..",
                             attr->name_size, attr->name,
@@ -664,14 +665,14 @@ static int parse_elem(void *data,
     }
     self->num_elems++;
 
-    if (DEBUG_OBJ_LEVEL_2)
-        knd_log("++ elem %s parsing OK!", elem->attr->name);
+    if (DEBUG_OBJ_LEVEL_3)
+        knd_log("++ elem %.*s parsing OK!",
+                elem->attr->name_size, elem->attr->name);
     return knd_OK;
 
  final:
 
-    if (DEBUG_OBJ_LEVEL_TMP)
-        knd_log("-- validation of \"%s\" elem failed :(", name);
+    knd_log("-- validation of \"%s\" elem failed :(", name);
 
     elem->del(elem);
     return err;
@@ -907,7 +908,6 @@ static int parse_GSL(struct kndObject *self,
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
-
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_name,
@@ -955,13 +955,13 @@ static int parse_GSL(struct kndObject *self,
         }
     };
     int err;
-    
+
     if (DEBUG_OBJ_LEVEL_2)
-        knd_log(".. parsing obj..");
+        knd_log(".. parsing obj REC: %.*s", 64, rec);
  
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
-    
+
     return knd_OK;
 }
 
@@ -999,6 +999,7 @@ kndObject_resolve(struct kndObject *self)
 extern void
 kndObject_init(struct kndObject *self)
 {
+    self->name_size = 0;
     self->del = del;
     self->str = str;
     self->parse = parse_GSL;

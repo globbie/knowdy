@@ -542,8 +542,6 @@ static int parse_liquid_updates(void *obj,
     return knd_OK;
 }
 
-
-
 static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndUser *self = (struct kndUser*)obj;
@@ -563,7 +561,7 @@ static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
     if (!name_size) return knd_FAIL;
     if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
 
-    if (DEBUG_USER_LEVEL_2)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. get user: \"%.*s\".. %p", name_size, name, self->root_class);
 
     err = self->root_class->get(self->root_class, "User", strlen("User"), &conc);
@@ -627,12 +625,16 @@ static int run_get_user_by_id(void *data, struct kndTaskArg *args, size_t num_ar
     err = self->root_class->get(self->root_class, "User", strlen("User"), &conc);
     if (err) return err;
 
+    conc->mempool = self->root_class->mempool;
+
+    knd_log("\n\n..reading user obj: %p", conc->mempool);
+
     err = conc->read_obj_entry(conc, entry, &obj);
     if (err) return err;
 
     self->curr_user = obj;
 
-    if (DEBUG_USER_LEVEL_2) {
+    if (DEBUG_USER_LEVEL_TMP) {
         knd_log("++ got user by num id: %.*s", numid_size, numid);
         self->curr_user->str(self->curr_user);
     }
