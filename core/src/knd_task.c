@@ -42,7 +42,7 @@ static void reset(struct kndTask *self)
     /*self->admin->locale = self->admin->default_locale;
       self->admin->locale_size = self->admin->default_locale_size; */
 
-    self->batch_max = KND_RESULT_BATCH_SIZE;
+    self->batch_max = 0;
     self->batch_size = 0;
     self->batch_from = 0;
     self->start_from = 0;
