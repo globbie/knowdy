@@ -2257,6 +2257,8 @@ static int dir_entry_alloc(void *self,
 
     memset(dir->next_obj_id, '0', KND_ID_SIZE);
 
+    knd_calc_num_id(name, &dir->numid);
+
     *item = dir;
     return knd_OK;
 }
@@ -3123,6 +3125,8 @@ static int conc_item_alloc(void *obj,
 
     if (name_size > KND_ID_SIZE) return knd_LIMIT;
     memcpy(ci->id, name, name_size);
+
+    knd_calc_num_id(name, &ci->numid);
 
     *item = ci;
 
@@ -4438,12 +4442,13 @@ static int export_JSON(struct kndConcept *self)
     err = out->write(out, "\"", 1);
     if (err) return err;
 
-    err = out->write(out, ",\"id\":\"", strlen(",\"id\":\""));
-    if (err) return err;
-    err = out->write(out, self->id, KND_ID_SIZE);
-    if (err) return err;
-    err = out->write(out, "\"", 1);
-    if (err) return err;
+    if (self->dir && self->dir->numid) {
+        err = out->write(out, ",\"id\":", strlen(",\"id\":"));
+        if (err) return err;
+        buf_size = sprintf(buf, "%zu", self->dir->numid);
+        err = out->write(out, buf, buf_size);
+        if (err) return err;
+    }
 
     if (self->phase == KND_UPDATED) {
         err = out->write(out, "\"state\":\"", strlen("\"state\":\""));
@@ -4488,18 +4493,17 @@ static int export_JSON(struct kndConcept *self)
                 if (err) return err;
             }
 
-            err = out->write(out, "{\"id\":\"", strlen("{\"id\":\""));
-            if (err) return err;
-            err = out->write(out, item->id, KND_ID_SIZE);
-            if (err) return err;
-            err = out->write(out, "\"", 1);
-            if (err) return err;
-
-            err = out->write(out, ",\"n\":\"", strlen(",\"n\":\""));
+            err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));
             if (err) return err;
             err = out->write(out, item->classname, item->classname_size);
             if (err) return err;
             err = out->write(out, "\"", 1);
+            if (err) return err;
+
+            err = out->write(out, ",\"id\":", strlen(",\"id\":"));
+            if (err) return err;
+            buf_size = sprintf(buf, "%zu", item->numid);
+            err = out->write(out, buf, buf_size);
             if (err) return err;
 
             if (item->attrs) {
@@ -4576,11 +4580,19 @@ static int export_JSON(struct kndConcept *self)
                     err = out->write(out, ",", 1);
                     if (err) return err;
                 }
-                err = out->write(out, "\"", 1);
+                err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));
                 if (err) return err;
                 err = out->write(out, dir->name, dir->name_size);
                 if (err) return err;
                 err = out->write(out, "\"", 1);
+                if (err) return err;
+
+                err = out->write(out, ",\"id\":", strlen(",\"id\":"));
+                if (err) return err;
+                buf_size = sprintf(buf, "%zu", dir->numid);
+                err = out->write(out, buf, buf_size);
+                if (err) return err;
+                err = out->write(out, "}", 1);
                 if (err) return err;
             }
             err = out->write(out, "]", 1);
