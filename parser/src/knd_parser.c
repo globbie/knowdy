@@ -360,7 +360,7 @@ knd_run_set_size_t(void *obj,
     arg = &args[0];
 
     assert(arg->name_size == strlen("_impl") && !memcmp(arg->name, "_impl", arg->name_size));
-    assert(arg->val && arg->val_size != 0);
+    assert(arg->val[0] && arg->val_size != 0);
 
     if (!isdigit(arg->val[0])) {
         knd_log("-- num size_t doesn't start from a digit: \"%.*s\"",
@@ -639,6 +639,7 @@ knd_args_push_back(const char *name,
                    size_t name_size,
                    const char *val,
                    size_t val_size,
+                   size_t hash_val,
                    struct kndTaskArg *args,
                    size_t *num_args)
 {
@@ -665,7 +666,8 @@ knd_args_push_back(const char *name,
     arg->val[val_size] = '\0';
     arg->val_size = val_size;
     arg->val_ref = val;
-    
+    arg->hash_val = hash_val;
+
     (*num_args)++;
 
     return knd_OK;
@@ -674,6 +676,7 @@ knd_args_push_back(const char *name,
 static int
 knd_check_implied_field(const char *val,
                         size_t val_size,
+                        size_t hash_val,
                         struct kndTaskSpec *specs,
                         size_t num_specs,
                         struct kndTaskArg *args,
@@ -689,8 +692,9 @@ knd_check_implied_field(const char *val,
     assert(val_size && "implied val is empty");
 
     if (DEBUG_PARSER_LEVEL_2)
-        knd_log("++ got implied val: \"%.*s\" [%zu]",
-                val_size, val, val_size);
+        knd_log("++ got implied val: \"%.*s\" [%zu]  hash:%zu",
+                val_size, val, val_size, hash_val);
+
     if (val_size > KND_NAME_SIZE) return knd_LIMIT;
 
     for (size_t i = 0; i < num_specs; i++) {
@@ -721,7 +725,8 @@ knd_check_implied_field(const char *val,
         return knd_OK;
     }
 
-    err = knd_args_push_back(impl_arg_name, impl_arg_name_size, val, val_size, args, num_args);
+    err = knd_args_push_back(impl_arg_name, impl_arg_name_size,
+                             val, val_size, hash_val, args, num_args);
     if (err) return err;
 
     err = implied_spec->run(implied_spec->obj, args, *num_args);
@@ -857,7 +862,7 @@ knd_check_field_terminal_value(const char *val,
 
     // FIXME(ki.stfu): ?? valid case
     // FIXME(ki.stfu): ?? push to args only if spec->run != NULL
-    err = knd_args_push_back(spec->name, spec->name_size, val, val_size, args, num_args);
+    err = knd_args_push_back(spec->name, spec->name_size, val, val_size, 0, args, num_args);
     if (err) return err;
 
     err = spec->run(spec->obj, args, *num_args);
@@ -929,6 +934,7 @@ int knd_parse_task(const char *rec,
     bool in_implied_field = false;
     bool in_tag = false;
     bool in_terminal = false;
+    size_t hash_val = 0;
 
     size_t chunk_size;
     int err;
@@ -942,8 +948,9 @@ int knd_parse_task(const char *rec,
                 16, rec, num_specs, specs);
 
     // Check kndTaskSpec is properly filled
-    for (size_t i = 0; i < num_specs; i++)
-        assert(knd_spec_is_correct(&specs[i]));
+    if (DEBUG_PARSER_LEVEL_2)
+        for (size_t i = 0; i < num_specs; i++)
+            assert(knd_spec_is_correct(&specs[i]));
 
     while (*c) {
         switch (*c) {
@@ -963,6 +970,7 @@ int knd_parse_task(const char *rec,
             in_field = false;
             b = c;
             e = b;
+            hash_val = 0;
             break;
         case '\n':
         case '\r':
@@ -991,6 +999,7 @@ int knd_parse_task(const char *rec,
                 // in_terminal == true
                 b = c + 1;
                 e = b;
+                hash_val = 0;
                 break;
             }
 
@@ -1000,12 +1009,14 @@ int knd_parse_task(const char *rec,
             c += chunk_size;
             b = c;
             e = b;
+            hash_val = 0;
             break;
         case '{':
             /* starting brace '{' */
             if (!in_field) {
                 if (in_implied_field) {
-                    err = knd_check_implied_field(b, e - b, specs, num_specs, args, &num_args);
+                    err = knd_check_implied_field(b, e - b, hash_val,
+                                                  specs, num_specs, args, &num_args);
                     if (err) return err;
 
                     in_implied_field = false;
@@ -1016,6 +1027,7 @@ int knd_parse_task(const char *rec,
                 // in_terminal == false
                 b = c + 1;
                 e = b;
+                hash_val = 0;
                 break;
             }
 
@@ -1047,12 +1059,14 @@ int knd_parse_task(const char *rec,
             c += chunk_size;
             b = c;
             e = b;
+            hash_val = 0;
             break;
         case '}':
             /* empty field? */
             if (!in_field) {
                 if (in_implied_field) {
-                    err = knd_check_implied_field(b, e - b, specs, num_specs, args, &num_args);
+                    err = knd_check_implied_field(b, e - b, hash_val,
+                                                  specs, num_specs, args, &num_args);
                     if (err) return err;
 
                     in_implied_field = false;
@@ -1076,6 +1090,7 @@ int knd_parse_task(const char *rec,
                 in_terminal = false;
                 b = c + 1;
                 e = b;
+                hash_val = 0;
                 break;
             }
 
@@ -1099,12 +1114,14 @@ int knd_parse_task(const char *rec,
             break;
         case '(':
             if (DEBUG_PARSER_LEVEL_2)
-                knd_log(".. basic LOOP %p detected the state change area: \"%s\"\n", specs, c);
+                knd_log("\n.. basic LOOP detected the state change area: \"%.*s\"",
+                        32, c);
 
             /* starting brace '(' */
             if (!in_field) {
                 if (in_implied_field) {
-                    err = knd_check_implied_field(b, e - b, specs, num_specs, args, &num_args);
+                    err = knd_check_implied_field(b, e - b, hash_val,
+                                                  specs, num_specs, args, &num_args);
                     if (err) return err;
 
                     in_implied_field = false;
@@ -1125,6 +1142,7 @@ int knd_parse_task(const char *rec,
                 // in_terminal == false
                 b = c + 1;
                 e = b;
+                hash_val = 0;
                 break;
             }
 
@@ -1156,6 +1174,7 @@ int knd_parse_task(const char *rec,
             c += chunk_size;
             b = c;
             e = b;
+            hash_val = 0;
             break;
         case ')':
             if (DEBUG_PARSER_LEVEL_2)
@@ -1164,7 +1183,8 @@ int knd_parse_task(const char *rec,
 
             if (!in_field) {
                 if (in_implied_field) {
-                    err = knd_check_implied_field(b, e - b, specs, num_specs, args, &num_args);
+                    err = knd_check_implied_field(b, e - b, hash_val,
+                                                  specs, num_specs, args, &num_args);
                     if (err) return err;
                     in_implied_field = false;
                     *total_size = c - rec;
@@ -1186,7 +1206,7 @@ int knd_parse_task(const char *rec,
                 if (in_implied_field) {
                     name_size = e - b;
                     if (name_size) {
-                        err = knd_check_implied_field(b, name_size,
+                        err = knd_check_implied_field(b, name_size, hash_val,
                                                       specs, num_specs,
                                                       args, &num_args);
                         if (err) return err;
@@ -1224,6 +1244,7 @@ int knd_parse_task(const char *rec,
                 in_field = false;
                 b = c;
                 e = b;
+                hash_val = 0;
                 break;
             }
             
@@ -1239,12 +1260,17 @@ int knd_parse_task(const char *rec,
             in_implied_field = false;
             b = c + 1;
             e = b;
+            hash_val = 0;
             break;
         default:
+            /* calculate string hash */
+            hash_val = (hash_val << 1) ^ *e;
             e = c + 1;
+
             if (!in_field) {
                 if (!in_implied_field) {
                     b = c;
+                    hash_val = 0;
                     in_implied_field = true;
                 }
             }
@@ -1279,7 +1305,7 @@ static int knd_parse_state_change(const char *rec,
     bool in_field = false;
     bool in_implied_field = false;
     bool in_terminal = false;
-
+    size_t hash_val = 0;
     size_t chunk_size;
     int err;
 
@@ -1305,6 +1331,7 @@ static int knd_parse_state_change(const char *rec,
             in_field = false;
             b = c;
             e = b;
+            hash_val = 0;
             break;
         case '\n':
         case '\r':
@@ -1350,6 +1377,7 @@ static int knd_parse_state_change(const char *rec,
                 in_tag = false;
                 b = c;
                 e = b;
+                hash_val = 0;
                 break;
             }
 
@@ -1372,6 +1400,7 @@ static int knd_parse_state_change(const char *rec,
                 in_tag = false;
                 b = c + 1;
                 e = b;
+                hash_val = 0;
 
                 spec->is_completed = true;
 
@@ -1385,18 +1414,21 @@ static int knd_parse_state_change(const char *rec,
             in_tag = true;
             b = c + 1;
             e = b;
+            hash_val = 0;
             break;
         case '(':
             if (in_implied_field) {
                 name_size = e - b;
                 if (name_size) {
-                    err = knd_check_implied_field(b, name_size, specs, num_specs, args, &num_args);
+                    err = knd_check_implied_field(b, name_size, hash_val,
+                                                  specs, num_specs, args, &num_args);
                     if (err) return err;
                 }
                 
                 in_implied_field = false;
                 b = c + 1;
                 e = b;
+                hash_val = 0;
                 break;
             }
 
@@ -1405,6 +1437,7 @@ static int knd_parse_state_change(const char *rec,
                 
                 b = c + 1;
                 e = b;
+                hash_val = 0;
                 break;
             }
             break;
@@ -1486,11 +1519,14 @@ static int knd_parse_state_change(const char *rec,
             *total_size = c - rec;
             return knd_OK;
         default:
+            /* calculate string hash */
+            hash_val = (hash_val << 1) ^ *e;
             e = c + 1;
 
             if (!in_field) {
                 if (!in_implied_field) {
                     b = c;
+                    hash_val = 0;
                     in_implied_field = true;
                 }
             }
@@ -1556,7 +1592,7 @@ static int knd_parse_list(const char *rec,
                     return err;
                 }
 
-                if (DEBUG_PARSER_LEVEL_TMP)
+                if (DEBUG_PARSER_LEVEL_2)
                     knd_log("++ got list SPEC: \"%.*s\"",
                             spec->name_size, spec->name);
                 b = c + 1;

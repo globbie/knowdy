@@ -7,8 +7,8 @@
 
       {memory
          {max_classes 100000}
-         {max_objs 500000}
-         {max_elems 2500000}
+         {max_objs 400000}
+         {max_elems 1500000}
          {max_rels 1000}
          {max_rel_instances 1000000}
          {max_procs 1000}

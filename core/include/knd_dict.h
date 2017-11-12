@@ -56,6 +56,11 @@ struct ooDict
                const char *key,
                size_t key_size,
                void *data);
+    int (*set_by_hash)(struct ooDict *self,
+                       const char *key,
+                       size_t key_size,
+                       size_t hash_val,
+                       void *data);
 
     /* if key exists */
     bool (*exists)(struct ooDict *self,

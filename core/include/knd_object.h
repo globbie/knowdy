@@ -92,7 +92,7 @@ struct kndObject
     knd_obj_type type;
 
     /* unique name */
-    char *name;
+    const char *name;
     size_t name_size;
 
     char id[KND_ID_SIZE + 1];
@@ -100,6 +100,7 @@ struct kndObject
 
     size_t numid;
     size_t numval;
+    size_t name_hash;
 
     knd_state_phase phase;
     char state[KND_STATE_SIZE];

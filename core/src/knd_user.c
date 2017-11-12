@@ -627,14 +627,12 @@ static int run_get_user_by_id(void *data, struct kndTaskArg *args, size_t num_ar
 
     conc->mempool = self->root_class->mempool;
 
-    knd_log("\n\n..reading user obj: %p", conc->mempool);
-
     err = conc->read_obj_entry(conc, entry, &obj);
     if (err) return err;
 
     self->curr_user = obj;
 
-    if (DEBUG_USER_LEVEL_TMP) {
+    if (DEBUG_USER_LEVEL_2) {
         knd_log("++ got user by num id: %.*s", numid_size, numid);
         self->curr_user->str(self->curr_user);
     }
