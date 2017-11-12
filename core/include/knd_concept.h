@@ -68,6 +68,7 @@ struct kndConcItem
     char name[KND_NAME_SIZE];
     size_t name_size;
     char id[KND_ID_SIZE];
+    size_t numid;
 
     char classname[KND_NAME_SIZE];
     size_t classname_size;
@@ -125,6 +126,8 @@ struct kndObjDir
 struct kndConcDir
 {
     char id[KND_ID_SIZE];
+    size_t numid;
+
     char name[KND_NAME_SIZE];
     size_t name_size;
     struct kndConcept *conc;
