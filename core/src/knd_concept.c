@@ -40,6 +40,8 @@ static int read_obj_entry(struct kndConcept *self,
                           struct kndObjEntry *entry,
                           struct kndObject **result);
 
+static int iter_export_JSON(struct kndConcept *self, struct kndConcDir *parent_dir);
+
 static int resolve_attrs(struct kndConcept *self);
 
 static int get_class(struct kndConcept *self,
@@ -3810,7 +3812,8 @@ static int run_present_class(void *obj,
 {
     struct kndConcept *self = obj;
     struct kndConcept *c;
-    int err;
+    struct kndOutput *out = self->out;
+    int e, err;
 
     if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. present class: %.*s  batch size:%zu    batch from:%zu",
@@ -3818,29 +3821,62 @@ static int run_present_class(void *obj,
                 self->curr_class->name,
                 self->task->batch_max, self->task->batch_from);
 
-    if (self->curr_class) {
-        c = self->curr_class;
-        c->out = self->out;
-        c->out->reset(c->out);
+    if (!self->curr_class) return knd_FAIL;
 
-        c->log = self->log;
-        c->task = self->task;
+    c = self->curr_class;
+    c->out = self->out;
+    c->out->reset(c->out);
+
+    c->log = self->log;
+    c->task = self->task;
     
-        c->format = KND_FORMAT_JSON;
-        c->depth = 0;
+    c->format = KND_FORMAT_JSON;
+    c->depth = 0;
 
-        err = c->export(c);
-        if (err) return err;
-        
-        if (DEBUG_CONC_LEVEL_2) {
-            knd_log("JSON: \"%.*s\"", self->out->buf_size, self->out->buf);
-            c->str(c);
+    /* export iterator */
+    if (self->task->batch_max) {
+        if (!c->dir) return knd_FAIL;
+
+        if (self->task->start_from > c->dir->num_terminals) {
+            e = self->log->write(self->log,
+                                 "requested offset exceeds the total number of matches",
+                                 strlen("requested offset exceeds the total number of matches"));
+            if (e) return e;
+
+            self->task->http_code = HTTP_REQUESTED_RANGE_NOT_SATISFIABLE;
+            return knd_LIMIT;
         }
+
+        c->dir->out = out;
+        c->dir->task = self->task;
+
+        out->reset(out);
+        err = out->write(out, "{\"_term_class_iter\":[", strlen("{\"_term_class_iter\":["));
+        if (err) return err;
+
+        err = iter_export_JSON(c, c->dir);
+        if (err) return err;
+
+        err = out->write(out, "]", 1);
+        if (err) return err;
+
+        /* TODO: total batch? any updates? */
+
+        err = out->write(out, "}", 1);
+        if (err) return err;
         
         return knd_OK;
     }
+
+    err = c->export(c);
+    if (err) return err;
+        
+    if (DEBUG_CONC_LEVEL_2) {
+        knd_log("JSON: \"%.*s\"", self->out->buf_size, self->out->buf);
+        c->str(c);
+    }
     
-    return knd_FAIL;
+    return knd_OK;
 }
 
 
@@ -4288,12 +4324,11 @@ static int attr_items_export_JSON(struct kndConcept *self,
     return knd_OK;
 }
 
-
-
 static int iter_export_JSON(struct kndConcept *self, struct kndConcDir *parent_dir)
 {
     struct kndConcDir *dir;
     struct kndConcept *c;
+    struct kndOutput *out = self->out;
     size_t start_from = parent_dir->task->start_from;
     size_t match_count = parent_dir->task->match_count;
     int i, err;
@@ -4368,12 +4403,14 @@ static int iter_export_JSON(struct kndConcept *self, struct kndConcDir *parent_d
             return knd_OK;
         }
     }
-    
+
     return knd_OK;
 }
 
 static int export_JSON(struct kndConcept *self)
 {
+    char buf[KND_SHORT_NAME_SIZE];
+    size_t buf_size;
     struct kndTranslation *tr;
     struct kndAttr *attr;
 
@@ -4514,31 +4551,23 @@ static int export_JSON(struct kndConcept *self)
 
     /* non-terminal classes */
     if (self->dir && self->dir->num_children) {
-        if (self->task->batch_max) {
-            if (self->task->start_from > self->dir->num_terminals) {
-                e = self->log->write(self->log,
-                                     "requested offset exceeds the total number of matches",
-                                     strlen("requested offset exceeds the total number of matches"));
-                if (e) return e;
+        err = out->write(out, ",\"_num_subclasses\":", strlen(",\"_num_subclasses\":"));
+        if (err) return err;
+        buf_size = sprintf(buf, "%zu", self->dir->num_children);
+        err = out->write(out, buf, buf_size);
+        if (err) return err;
 
-                self->task->http_code = HTTP_REQUESTED_RANGE_NOT_SATISFIABLE;
-                return knd_LIMIT;
-            }
-
-            err = out->write(out, ",\"_iter\":[", strlen(",\"_iter\":["));
+        if (self->dir->num_terminals) {
+            err = out->write(out, ",\"_num_term_classes\":", strlen(",\"_num_term_classes\":"));
             if (err) return err;
-          
-            self->dir->out = out;
-            self->dir->task = self->task;
-            err = iter_export_JSON(self, self->dir);
-            if (err) return err;
-
-            err = out->write(out, "]", 1);
+            buf_size = sprintf(buf, "%zu", self->dir->num_terminals);
+            err = out->write(out, buf, buf_size);
             if (err) return err;
         }
+
         
         if (self->dir->num_children) {
-            err = out->write(out, ",\"children\":[", strlen(",\"children\":["));
+            err = out->write(out, ",\"_subclasses\":[", strlen(",\"_subclasses\":["));
             if (err) return err;
 
             for (size_t i = 0; i < self->dir->num_children; i++) {
@@ -4564,8 +4593,14 @@ static int export_JSON(struct kndConcept *self)
     }
     
     if (self->num_children) {
+        err = out->write(out, ",\"_num_subclasses\":", strlen(",\"_num_subclasses\":"));
+        if (err) return err;
+        buf_size = sprintf(buf, "%zu", self->num_children);
+        err = out->write(out, buf, buf_size);
+        if (err) return err;
+
         if (self->depth + 1 < KND_MAX_CLASS_DEPTH) {
-            err = out->write(out, ",\"children\":[", strlen(",\"children\":["));
+            err = out->write(out, ",\"_subclasses\":[", strlen(",\"_subclasses\":["));
             if (err) return err;
             for (size_t i = 0; i < self->num_children; i++) {
                 ref = &self->children[i];
