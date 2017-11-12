@@ -105,8 +105,11 @@ struct kndAttrEntry
 
 struct kndObjEntry
 {
-    size_t offset;
+    char *name;
+    size_t name_size;
+    char *block;
     size_t block_size;
+    size_t offset;
     struct kndObject *obj;
 };
 

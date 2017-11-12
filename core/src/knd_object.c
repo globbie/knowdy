@@ -443,12 +443,14 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     struct kndTaskArg *arg;
     const char *name = NULL;
     size_t name_size = 0;
+    size_t name_hash = 0;
 
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
         if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
             name = arg->val_ref;
             name_size = arg->val_size;
+            name_hash = arg->hash_val;
         }
     }
     if (!name_size) return knd_FAIL;
@@ -467,6 +469,7 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
 
     self->name = name;
     self->name_size = name_size;
+    self->name_hash = name_hash;
 
     if (DEBUG_OBJ_LEVEL_2)
         knd_log("++ OBJ NAME: \"%.*s\"",
@@ -985,12 +988,12 @@ kndObject_resolve(struct kndObject *self)
                     self->conc->name_size, self->conc->name);
         }
     }
-    
+
     for (elem = self->elems; elem; elem = elem->next) {
         elem->log = self->log;
         err = elem->resolve(elem);
         if (err) return err;
-    } 
+    }
     
     return knd_OK;
 }

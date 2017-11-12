@@ -144,7 +144,6 @@ kndLearner_start(struct kndLearner *self)
                 printf ("\telapsed wall clock time: %ld\n", (long)  (t1 - t0));
                 printf ("\telapsed CPU time:        %f\n",  (float) (c1 - c0)/CLOCKS_PER_SEC);
             }
-            exit(0);
         }
 
         if (err) {
