@@ -494,7 +494,7 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
     assert(spec->is_validator == (spec->validate != NULL));
     if (spec->is_validator) {
         assert(spec->name == NULL);
-        assert(spec->buf != NULL);
+        assert(spec->buf == NULL);
         assert(spec->obj != NULL);
         assert(spec->validate != NULL);
     }
@@ -607,7 +607,6 @@ knd_find_spec(const char *name,
 {
     struct kndTaskSpec *spec;
     struct kndTaskSpec *validator_spec = NULL;
-    int err;
 
     for (size_t i = 0; i < num_specs; i++) {
         spec = &specs[i];
@@ -631,10 +630,6 @@ knd_find_spec(const char *name,
                 name_size, name, validator_spec);
 
     if (validator_spec) {
-        *validator_spec->buf_size = 0;  // TODO(ki.stfu): remove this
-        err = knd_spec_buf_copy(validator_spec, name, name_size);
-        if (err) return err;
-
         *out_spec = validator_spec;
         return knd_OK;
     }
@@ -785,21 +780,22 @@ knd_check_field_tag(const char *name,
 
 static int
 knd_parse_field_value(struct kndTaskSpec *spec,
+                      const char *name,
+                      size_t name_size,
                       const char *rec,
                       size_t *total_size,
                       bool *in_terminal)
 {
     int err;
 
+    assert(name_size && "name is empty");
     assert(!*in_terminal && "knd_parse_field_value is called for terminal value");
 
     if (spec->validate) {
-        err = spec->validate(spec->obj,
-                             (const char*)spec->buf, *spec->buf_size,
-                             rec, total_size);
+        err = spec->validate(spec->obj, name, name_size, rec, total_size);
         if (err) {
-            knd_log("-- ERR: %d validation of spec \"%.*s\" failed :(",
-                    err, spec->name_size, spec->name);
+            knd_log("-- ERR: %d validation spec for \"%.*s\" failed :(",
+                    err, name_size, name);
             return err;
         }
 
@@ -809,8 +805,8 @@ knd_parse_field_value(struct kndTaskSpec *spec,
 
     if (spec->parse) {
         if (DEBUG_PARSER_LEVEL_2)
-            knd_log("\n    >>> further parsing required in \"%.*s\" FROM: \"%s\" FUNC: %p",
-                    spec->name_size, spec->name, rec, spec->parse);
+            knd_log("\n    >>> further parsing required in \"%.*s\" FROM: \"%.*s\" FUNC: %p",
+                    spec->name_size, spec->name, 16, rec, spec->parse);
 
         err = spec->parse(spec->obj, rec, total_size);
         if (err) {
@@ -988,7 +984,7 @@ int knd_parse_task(const char *rec,
             err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
             if (err) return err;
 
-            err = knd_parse_field_value(spec, c, &chunk_size, &in_terminal);
+            err = knd_parse_field_value(spec, b, e - b, c, &chunk_size, &in_terminal);
             if (err) return err;
 
             if (in_terminal) {
@@ -1039,7 +1035,7 @@ int knd_parse_task(const char *rec,
             err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
             if (err) return err;
 
-            err = knd_parse_field_value(spec, c, &chunk_size, &in_terminal);
+            err = knd_parse_field_value(spec, b, e - b, c, &chunk_size, &in_terminal);
             if (err) return err;
 
             if (in_terminal) {
@@ -1091,7 +1087,7 @@ int knd_parse_task(const char *rec,
             err = knd_check_field_tag(b, e - b, KND_GET_STATE, specs, num_specs, &spec);
             if (err) return err;
 
-            err = knd_parse_field_value(spec, c, &chunk_size, &in_terminal);  // TODO(ki.stfu): allow in_terminal parsing
+            err = knd_parse_field_value(spec, b, e - b, c, &chunk_size, &in_terminal);  // TODO(ki.stfu): allow in_terminal parsing
             if (err) return err;
 
             if (in_terminal) {
@@ -1148,7 +1144,7 @@ int knd_parse_task(const char *rec,
             err = knd_check_field_tag(b, e - b, KND_CHANGE_STATE, specs, num_specs, &spec);
             if (err) return err;
 
-            err = knd_parse_field_value(spec, c, &chunk_size, &in_terminal);
+            err = knd_parse_field_value(spec, b, e - b, c, &chunk_size, &in_terminal);
             if (err) return err;
 
             if (in_terminal) {
