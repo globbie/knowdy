@@ -157,14 +157,9 @@ static int parse_email(void *obj, const char *rec, size_t *total_size) {
     ck_assert(self);
     ck_assert(rec); ck_assert(total_size);
 
-    char email_type_buf[KND_NAME_SIZE];  // TODO(ki.stfu): Don't use external buffer for passing name to |spec->validate|
-    size_t email_type_buf_size = 0;
     struct kndTaskSpec specs[] = {
         {
           .is_validator = true,
-          .buf = email_type_buf,
-          .buf_size = &email_type_buf_size,
-          .max_buf_size = sizeof email_type_buf,
           .validate = parse_email_record,
           .obj = self
         },
