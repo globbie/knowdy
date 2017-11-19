@@ -415,154 +415,112 @@ START_TEST(parse_implied_field_unknown)
 END_TEST
 
 static void
-check_parse_implied_field_max_size(struct kndTaskSpec *specs,
-                                   size_t num_specs,
-                                   struct TaskSpecs *parse_user_args) {
+check_parse_implied_field_max_size(int name_flags) {
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, name_flags), gen_sid_spec(&user, 0));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
   {
     const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 5] = 'a', '}', '\0' };
-    rc = knd_parse_task(rec = buf, &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
     ASSERT_STR_EQ(user.name, user.name_size, strchr(buf, 'a'), KND_SHORT_NAME_SIZE);
   }
-    user.name_size = 0; RESET_IS_COMPLETED(specs, num_specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+    user.name_size = 0; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
 
   {
     const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 5] = 'a', ' ', '{', 's', 'i', 'd', ' ', '1', '2', '3', '4', '5', '6', '}', '}', '\0' };
-    rc = knd_parse_task(rec = buf, &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
     ASSERT_STR_EQ(user.name, user.name_size, strchr(buf, 'a'), KND_SHORT_NAME_SIZE);
     ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
   }
-    user.name_size = 0; user.sid_size = 0; RESET_IS_COMPLETED(specs, num_specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+    user.name_size = 0; user.sid_size = 0;
 }
 
 START_TEST(parse_implied_field_max_size)
-    // Check implied field with .buf
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_BUF), gen_sid_spec(&user, 0));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+    check_parse_implied_field_max_size(SPEC_BUF);
 
-    check_parse_implied_field_max_size(specs, sizeof specs / sizeof specs[0], &parse_user_args);
-  }
-
-    // Check implied field with .run
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_RUN), gen_sid_spec(&user, 0));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
-
-    check_parse_implied_field_max_size(specs, sizeof specs / sizeof specs[0], &parse_user_args);
-  }
+    check_parse_implied_field_max_size(SPEC_RUN);
 END_TEST
 
 static void
-check_parse_implied_field_max_size_plus_one(struct kndTaskSpec *specs,
-                                            size_t num_specs) {
+check_parse_implied_field_max_size_plus_one(int name_flags) {
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, name_flags));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
   {
     const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 6] = 'a', '}', '\0' };
-    rc = knd_parse_task(rec = buf, &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_LIMIT);
   }
 
   {
     const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_SHORT_NAME_SIZE + 6] = 'a', ' ', '{', 's', 'i', 'd', ' ', '1', '2', '3', '4', '5', '6', '}', '}', '\0' };
-    rc = knd_parse_task(rec = buf, &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_LIMIT);
   }
 }
 
 START_TEST(parse_implied_field_max_size_plus_one)
-    // Check implied field with .buf
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_BUF));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+    check_parse_implied_field_max_size_plus_one(SPEC_BUF);
 
-    check_parse_implied_field_max_size_plus_one(specs, sizeof specs / sizeof specs[0]);
-  }
-
-    // Check implied field with .run
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_RUN));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
-
-    check_parse_implied_field_max_size_plus_one(specs, sizeof specs / sizeof specs[0]);
-  }
+    check_parse_implied_field_max_size_plus_one(SPEC_RUN);
 END_TEST
 
 static void
-check_parse_implied_field_size_NAME_SIZE_plus_one(struct kndTaskSpec *specs,
-                                                  size_t num_specs) {
+check_parse_implied_field_size_NAME_SIZE_plus_one(int name_flags) {
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, name_flags));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
   {
     const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_NAME_SIZE + 6] = 'a', '}', '\0' };
-    rc = knd_parse_task(rec = buf, &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_LIMIT);
   }
 
   {
     const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', [6 ... KND_NAME_SIZE + 6] = 'a', ' ', '{', 's', 'i', 'd', ' ', '1', '2', '3', '4', '5', '6', '}', '}', '\0' };
-    rc = knd_parse_task(rec = buf, &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_LIMIT);
   }
 }
 
 START_TEST(parse_implied_field_size_NAME_SIZE_plus_one)
-    // Check implied field with .buf
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_BUF));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+    check_parse_implied_field_size_NAME_SIZE_plus_one(SPEC_BUF);
 
-    check_parse_implied_field_size_NAME_SIZE_plus_one(specs, sizeof specs / sizeof specs[0]);
-  }
-
-    // Check implied field with .run
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_RUN));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
-
-    check_parse_implied_field_size_NAME_SIZE_plus_one(specs, sizeof specs / sizeof specs[0]);
-  }
+    check_parse_implied_field_size_NAME_SIZE_plus_one(SPEC_RUN);
 END_TEST
 
 static void
-check_parse_implied_field_duplicate(struct kndTaskSpec *specs,
-                                    size_t num_specs,
-                                    struct TaskSpecs *parse_user_args) {
-    rc = knd_parse_task(rec = "{user John Smith}", &total_size, specs, num_specs);
+check_parse_implied_field_duplicate(int name_flags) {
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, name_flags));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    rc = knd_parse_task(rec = "{user John Smith}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
     ASSERT_STR_EQ(user.name, user.name_size, "John Smith");
-    user.name_size = 0; RESET_IS_COMPLETED(specs, num_specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+    user.name_size = 0; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
 
-    rc = knd_parse_task(rec = "{user John Smith{name John Smith}}", &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = "{user John Smith{name John Smith}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_EXISTS);
-    user.name_size = 0; RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+    user.name_size = 0; RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
 
-    rc = knd_parse_task(rec = "{user John Smith {name John Smith}}", &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = "{user John Smith {name John Smith}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_EXISTS);
-    user.name_size = 0; RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+    user.name_size = 0; RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
 
-    rc = knd_parse_task(rec = "{user {name John Smith} {name John Smith}}", &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = "{user {name John Smith} {name John Smith}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_EXISTS);
-    user.name_size = 0; RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+    user.name_size = 0;
 }
 
 START_TEST(parse_implied_field_duplicate)
-    // Check implied field with .buf & .name
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_BUF | SPEC_NAME));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+    check_parse_implied_field_duplicate(SPEC_BUF | SPEC_NAME);
 
-    check_parse_implied_field_duplicate(specs, sizeof specs / sizeof specs[0], &parse_user_args);
-  }
-
-    // Check implied field with .run & .name
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_RUN | SPEC_NAME));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
-
-    check_parse_implied_field_duplicate(specs, sizeof specs / sizeof specs[0], &parse_user_args);
-  }
+    check_parse_implied_field_duplicate(SPEC_RUN | SPEC_NAME);
 END_TEST
 
 START_TEST(parse_tag_empty)
@@ -637,70 +595,55 @@ START_TEST(parse_tag_unknown)
 END_TEST
 
 static void
-check_parse_value_terminal_empty(struct kndTaskSpec *specs,
-                                 size_t num_specs) {
-    rc = knd_parse_task(rec = "{user{sid}}", &total_size, specs, num_specs);
+check_parse_value_terminal_empty(int sid_flags) {
+    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, sid_flags));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    rc = knd_parse_task(rec = "{user{sid}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FORMAT);
 
-    rc = knd_parse_task(rec = "{user{sid{}}}", &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = "{user{sid{}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FORMAT);
 
-    rc = knd_parse_task(rec = "{user{sid   }}", &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = "{user{sid   }}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FORMAT);
 
-    rc = knd_parse_task(rec = "{user{sid   {}}}", &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = "{user{sid   {}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FORMAT);
 
-    rc = knd_parse_task(rec = "{user {sid}}", &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = "{user {sid}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FORMAT);
 
-    rc = knd_parse_task(rec = "{user {sid{}}}", &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = "{user {sid{}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FORMAT);
 
-    rc = knd_parse_task(rec = "{user {sid   }}", &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = "{user {sid   }}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FORMAT);
 
-    rc = knd_parse_task(rec = "{user {sid   {}}}", &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = "{user {sid   {}}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_FORMAT);
 }
 
 START_TEST(parse_value_terminal_empty)
-    // Check field with terminal value with .buf
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_BUF));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+    check_parse_value_terminal_empty(SPEC_BUF);
 
-    check_parse_value_terminal_empty(specs, sizeof specs / sizeof specs[0]);
-  }
+    check_parse_value_terminal_empty(SPEC_PARSE);
 
-    // Check field with terminal value with .parse
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_PARSE));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
-
-    check_parse_value_terminal_empty(specs, sizeof specs / sizeof specs[0]);
-  }
-
-    // Check field with terminal value with .run
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_RUN));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
-
-    check_parse_value_terminal_empty(specs, sizeof specs / sizeof specs[0]);
-  }
+    check_parse_value_terminal_empty(SPEC_RUN);
 END_TEST
 
 static void
-check_parse_value_terminal_max_size(struct kndTaskSpec *specs,
-                                    size_t num_specs,
-                                    struct TaskSpecs *parse_user_args) {
-    rc = knd_parse_task(rec = "{user{sid 123456}}", &total_size, specs, num_specs);
+check_parse_value_terminal_max_size(int sid_flags) {
+    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, sid_flags));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    rc = knd_parse_task(rec = "{user{sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
     ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
-    user.sid_size = 0; RESET_IS_COMPLETED(specs, num_specs); RESET_IS_COMPLETED_TaskSpecs(parse_user_args);
+    user.sid_size = 0; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
 
-    rc = knd_parse_task(rec = "{user {sid 123456}}", &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = "{user {sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_OK);
     ck_assert_uint_eq(total_size, strlen(rec));
     ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
@@ -708,107 +651,57 @@ check_parse_value_terminal_max_size(struct kndTaskSpec *specs,
 }
 
 START_TEST(parse_value_terminal_max_size)
-    // Check field with terminal value with .buf
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_BUF));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+    check_parse_value_terminal_max_size(SPEC_BUF);
 
-    check_parse_value_terminal_max_size(specs, sizeof specs / sizeof specs[0], &parse_user_args);
-  }
+    check_parse_value_terminal_max_size(SPEC_PARSE);
 
-    // Check field with terminal value with .parse
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_PARSE));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
-
-    check_parse_value_terminal_max_size(specs, sizeof specs / sizeof specs[0], &parse_user_args);
-  }
-
-    // Check field with terminal value with .run
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_RUN));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
-
-    check_parse_value_terminal_max_size(specs, sizeof specs / sizeof specs[0], &parse_user_args);
-  }
+    check_parse_value_terminal_max_size(SPEC_RUN);
 END_TEST
 
 static void
-check_parse_value_terminal_max_size_plus_one(struct kndTaskSpec *specs,
-                                             size_t num_specs) {
-    rc = knd_parse_task(rec = "{user{sid 1234567}}", &total_size, specs, num_specs);
+check_parse_value_terminal_max_size_plus_one(int sid_flags) {
+    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, sid_flags));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    rc = knd_parse_task(rec = "{user{sid 1234567}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_LIMIT);
 
-    rc = knd_parse_task(rec = "{user {sid 1234567}}", &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = "{user {sid 1234567}}", &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_LIMIT);
 }
 
 START_TEST(parse_value_terminal_max_size_plus_one)
-    // Check field with terminal value with .buf
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_BUF));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+    check_parse_value_terminal_max_size_plus_one(SPEC_BUF);
 
-    check_parse_value_terminal_max_size_plus_one(specs, sizeof specs / sizeof specs[0]);
-  }
+    check_parse_value_terminal_max_size_plus_one(SPEC_PARSE);
 
-    // Check field with terminal value with .parse
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_PARSE));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
-
-    check_parse_value_terminal_max_size_plus_one(specs, sizeof specs / sizeof specs[0]);
-  }
-
-    // Check field with terminal value with .run
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_RUN));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
-
-    check_parse_value_terminal_max_size_plus_one(specs, sizeof specs / sizeof specs[0]);
-  }
+    check_parse_value_terminal_max_size_plus_one(SPEC_RUN);
 END_TEST
 
 static void
-check_parse_value_terminal_NAME_SIZE_plus_one(struct kndTaskSpec *specs,
-                                              size_t num_specs) {
+check_parse_value_terminal_NAME_SIZE_plus_one(int sid_flags) {
+    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, sid_flags));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
   {
     const char buf[] = { '{', 'u', 's', 'e', 'r', '{', 's', 'i', 'd', ' ', [10 ... KND_NAME_SIZE + 10] = '1', '}', '}', '\0' };
-    rc = knd_parse_task(rec = buf, &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_LIMIT);
   }
 
   {
     const char buf[] = { '{', 'u', 's', 'e', 'r', ' ', '{', 's', 'i', 'd', ' ', [11 ... KND_NAME_SIZE + 11] = '1', '}', '}', '\0' };
-    rc = knd_parse_task(rec = buf, &total_size, specs, num_specs);
+    rc = knd_parse_task(rec = buf, &total_size, specs, sizeof specs / sizeof specs[0]);
     ck_assert_int_eq(rc, knd_LIMIT);
   }
 }
 
 START_TEST(parse_value_terminal_NAME_SIZE_plus_one)
-    // Check field with terminal value with .buf
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_BUF));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+    check_parse_value_terminal_NAME_SIZE_plus_one(SPEC_BUF);
 
-    check_parse_value_terminal_NAME_SIZE_plus_one(specs, sizeof specs / sizeof specs[0]);
-  }
+    check_parse_value_terminal_NAME_SIZE_plus_one(SPEC_PARSE);
 
-    // Check field with terminal value with .parse
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_PARSE));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
-
-    check_parse_value_terminal_NAME_SIZE_plus_one(specs, sizeof specs / sizeof specs[0]);
-  }
-
-    // Check field with terminal value with .run
-  {
-    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_RUN));
-    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
-
-    check_parse_value_terminal_NAME_SIZE_plus_one(specs, sizeof specs / sizeof specs[0]);
-  }
+    check_parse_value_terminal_NAME_SIZE_plus_one(SPEC_RUN);
 END_TEST
 
 START_TEST(parse_value_terminal_with_braces)
