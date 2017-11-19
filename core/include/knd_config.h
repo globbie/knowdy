@@ -73,6 +73,7 @@ typedef enum knd_storage_type {
 } knd_storage_type;
 
 
+#define RET_ERR(s) if (err) { printf(#s); return err; } 
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 
@@ -374,6 +375,7 @@ typedef enum knd_storage_type {
 #define KND_MAX_ERR_MSG_BUF_SIZE 1024 * 10 * sizeof(char)
 #define KND_MAX_UPDATE_BUF_SIZE 1024 * 100 * sizeof(char)
 
+#define KND_MIN_UPDATES 1024
 #define KND_MIN_USERS 1024
 #define KND_MIN_CLASSES 1024
 #define KND_MIN_OBJS 1024

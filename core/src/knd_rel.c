@@ -363,7 +363,9 @@ static int validate_rel_arg(void *obj,
         self->tail_arg = arg;
     }
 
-    if (DEBUG_REL_LEVEL_2)
+    self->num_args++;
+
+    if (DEBUG_REL_LEVEL_TMP)
         arg->str(arg);
 
     return knd_OK;
@@ -481,6 +483,66 @@ static int import_rel(struct kndRel *self,
     return err;
 }
 
+static int confirm_rel_read(void *obj,
+                            struct kndTaskArg *args __attribute__((unused)),
+                            size_t num_args __attribute__((unused)))
+{
+    struct kndRel *self = obj;
+
+    if (DEBUG_REL_LEVEL_2)
+        knd_log("== REL %.*s read OK!",
+                self->name_size, self->name);
+
+    return knd_OK;
+}
+
+static int read_GSP(struct kndRel *self,
+                    const char *rec,
+                    size_t *total_size)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+    int err;
+
+    if (DEBUG_REL_LEVEL_TMP)
+        knd_log(".. reading rel GSP: \"%.*s\"..", 32, rec);
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_name,
+          .obj = self
+        },
+        { .is_list = true,
+          .name = "_g",
+          .name_size = strlen("_g"),
+          .accu = self,
+          .alloc = gloss_alloc,
+          .append = gloss_append,
+          .parse = read_gloss
+        },
+        { .name = "arg",
+          .name_size = strlen("arg"),
+          .buf = buf,
+          .buf_size = &buf_size,
+          .max_buf_size = KND_NAME_SIZE,
+          .is_validator = true,
+          .validate = validate_rel_arg,
+          .obj = self
+        },
+        { .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = confirm_rel_read,
+          .obj = self
+        }
+    };
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
+
 
 static int get_rel(struct kndRel *self,
                    const char *name, size_t name_size,
@@ -501,8 +563,8 @@ static int get_rel(struct kndRel *self,
     int err;
 
     if (DEBUG_REL_LEVEL_TMP)
-        knd_log(".. %.*s to get rel: \"%.*s\"..",
-                self->name_size, self->name, name_size, name);
+        knd_log(".. %.*s to get rel: \"%.*s\"  IDX:%p..",
+                self->name_size, self->name, name_size, name, self->rel_idx);
 
     dir = (struct kndRelDir*)self->rel_idx->get(self->rel_idx, name, name_size);
     if (!dir) {
@@ -558,26 +620,28 @@ static int get_rel(struct kndRel *self,
     }
     buf[buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_REL_LEVEL_TMP)
         knd_log("== frozen Rel REC: \"%.*s\"", buf_size, buf);
 
     /* done reading */
     close(fd);
 
-    /*err = kndConcept_new(&c);
+    err = self->mempool->new_rel(self->mempool, &rel);
     if (err) return err;
 
-    memcpy(c->name, dir->name, dir->name_size);
-    c->name_size = dir->name_size;
-    c->out = self->out;
-    c->log = self->log;
-    c->task = self->task;
-    c->root_class = self->root_class ? self->root_class : self;
-    c->dir = dir;
-    dir->conc = c;
+    rel->out = self->out;
+    rel->log = self->log;
+    rel->task = self->task;
+    rel->mempool = self->mempool;
+    rel->rel_idx = self->rel_idx;
+    rel->class_idx = self->class_idx;
+    rel->dir = dir;
 
-    c->frozen_output_file_name = self->frozen_output_file_name;
-    c->frozen_output_file_name_size = self->frozen_output_file_name_size;
+    memcpy(rel->name, dir->name, dir->name_size);
+    rel->name_size = dir->name_size;
+
+    rel->frozen_output_file_name = self->frozen_output_file_name;
+    rel->frozen_output_file_name_size = self->frozen_output_file_name_size;
 
     b = buf + 1;
     bool got_separ = false;
@@ -597,16 +661,18 @@ static int get_rel(struct kndRel *self,
     }
 
     if (!got_separ) {
-        knd_log("-- conc name not found in %.*s :(", buf_size, buf);
-        c->del(c);
+        knd_log("-- rel name not found in %.*s :(", buf_size, buf);
         return knd_FAIL;
     }
-    err = c->read(c, b, &chunk_size);
-    if (err) {
-        c->del(c);
-        goto final;
-    }
-    */
+    err = rel->read(rel, b, &chunk_size);
+    if (err) return err;
+
+    dir->rel = rel;
+
+    if (DEBUG_REL_LEVEL_TMP)
+        rel->str(rel);
+    exit(0);
+
     *result = rel;
     return knd_OK;
 
@@ -649,47 +715,38 @@ static int run_get_rel(void *obj,
 }
 
 
-static int parse_rel_arg_inst(void *obj,
-                              const char *name, size_t name_size,
-                              const char *rec,
-                              size_t *total_size)
+static int read_rel_arg_inst(void *obj,
+                             const char *name, size_t name_size,
+                             const char *rec,
+                             size_t *total_size)
 {
-    struct kndRelInstance *self = obj;
-    struct kndRel *rel = self->rel;
-    struct kndRelArg *arg;
+    struct kndRelInstance *inst = obj;
+    struct kndRel *rel = inst->rel;
+    struct kndRelArg *arg = NULL;
     int err;
 
     if (DEBUG_REL_LEVEL_TMP)
-        knd_log(".. parsing the \"%.*s\" rel arg instance, rec:\"%.*s\"", name_size, name, 32, rec);
+        knd_log(".. reading the \"%.*s\" rel arg instance, rec:\"%.*s\" args:%p",
+                name_size, name, 32, rec, rel->args);
 
-    /*    rel->mempool->new
-    if (!strncmp(name, "subj", strlen("subj"))) {
-        arg->type = KND_RELARG_SUBJ;
-    } else if (!strncmp(name, "obj", strlen("obj"))) {
-        arg->type = KND_RELARG_OBJ;
-    } else if (!strncmp(name, "ins", strlen("ins"))) {
-        arg->type = KND_RELARG_INS;
+    for (arg = rel->args; arg; arg = arg->next) {
+        knd_log("REL ARG: %.*s", arg->name_size, arg->name);
+        if (arg->name_size != name_size) continue;
+        if (memcmp(arg->name, name, name_size)) continue;
+        break;
     }
 
-    err = arg->parse(arg, rec, total_size);
+    if (!arg) {
+        knd_log("-- no such rel arg: %.*s :(", name_size, name);
+        return knd_FAIL;
+    }
+
+    err = arg->read_inst(arg, inst, rec, total_size);
     if (err) {
-        if (DEBUG_REL_LEVEL_TMP)
-            knd_log("-- failed to parse rel arg: %d", err);
+        knd_log("-- failed to parse rel arg instance: %d", err);
         return err;
     }
 
-    if (!self->tail_arg) {
-        self->tail_arg = arg;
-        self->args = arg;
-    }
-    else {
-        self->tail_arg->next = arg;
-        self->tail_arg = arg;
-    }
-
-    if (DEBUG_REL_LEVEL_2)
-        arg->str(arg);
-    */
     return knd_OK;
 }
 
@@ -721,6 +778,9 @@ static int parse_import_instance(void *data,
     inst->phase = KND_SUBMITTED;
     inst->rel = self->curr_rel;
 
+    if (DEBUG_REL_LEVEL_TMP)
+        self->curr_rel->str(self->curr_rel);
+
     struct kndTaskSpec specs[] = {
          { .type = KND_CHANGE_STATE,
            .name = "relarg",
@@ -729,7 +789,7 @@ static int parse_import_instance(void *data,
            .buf_size = &buf_size,
            .max_buf_size = KND_NAME_SIZE,
            .is_validator = true,
-           .validate = parse_rel_arg_inst,
+           .validate = read_rel_arg_inst,
            .obj = inst
          }
    };
@@ -763,8 +823,8 @@ static int parse_import_instance(void *data,
     err = rel->dir->inst_idx->set(rel->dir->inst_idx,
                                   inst->name, inst->name_size, (void*)entry);
     if (err) return err;
-        
-    /*if (DEBUG_CONC_LEVEL_2) {
+
+    /*if (DEBUG_REL_LEVEL_2) {
         knd_log("\n\nREGISTER INST in %.*s IDX:  [total:%zu valid:%zu]",
                 c->name_size, c->name, c->dir->inst_idx->size, c->dir->num_insts);
         inst->depth = self->depth + 1;
@@ -978,6 +1038,7 @@ kndRel_init(struct kndRel *self)
     self->coordinate = kndRel_coordinate;
     self->freeze = freeze;
     self->import = import_rel;
+    self->read = read_GSP;
     self->select = parse_rel_select;
     memset(self->id, '0', KND_ID_SIZE);
 }

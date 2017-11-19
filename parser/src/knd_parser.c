@@ -95,8 +95,7 @@ check_name_limits(const char *b, const char *e, size_t *buf_size)
     return knd_OK;
 }
 
-int
-knd_read_UTF8_char(const char *rec,
+int knd_read_UTF8_char(const char *rec,
                    size_t rec_size,
                    size_t *val,
                    size_t *len)

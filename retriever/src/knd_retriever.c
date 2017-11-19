@@ -83,7 +83,7 @@ kndRetriever_start(struct kndRetriever *self)
 
     final:
 
-        /* ne need to inform delivery about every liquid update success */
+        /* no need to inform delivery about every liquid update success */
         if (self->task->type == KND_UPDATE_STATE) {
             if (!err) {
                 if (task) free(task);

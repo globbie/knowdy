@@ -199,6 +199,7 @@ static int parse_task(void *obj,
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
 
+
     /* check mandatory fields */
     if (!self->tid_size) {
         switch (self->type) {
@@ -220,7 +221,7 @@ static int parse_GSL(struct kndTask *self,
                      size_t obj_size)
 {
     if (DEBUG_TASK_LEVEL_2)
-        knd_log(".. parsing task: \"%s\"..", rec);
+        knd_log(".. parsing task: \"%.*s\"..", 64, rec);
 
     struct kndTaskSpec specs[] = {
         { .name = "task",
@@ -236,7 +237,7 @@ static int parse_GSL(struct kndTask *self,
     self->spec_size = rec_size;
     self->obj = obj;
     self->obj_size = obj_size;
-   
+  
     err = knd_parse_task(rec, &total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) {
         knd_log("-- task parse failure: \"%.*s\" :(", self->log->buf_size, self->log->buf);
@@ -385,22 +386,20 @@ static int report(struct kndTask *self)
         knd_log("== Delivery reply header: \"%s\" obj: \"%s\"",
                 header, obj);
 
-    if (header)
-        free(header);
-    if (obj)
-        free(obj);
-
-    if (!self->is_state_changed) return knd_OK;
+    if (header) free(header);
+    if (obj) free(obj);
 
     /* inform all retrievers about the state change */
-    if (DEBUG_TASK_LEVEL_2)
-        knd_log("\n\n** UPDATE retrievers: \"%.*s\" [%lu]",
-                self->update->buf_size, self->update->buf,
-                (unsigned long)self->update->buf_size);
+    if (self->type == KND_UPDATE_STATE) {
+        if (DEBUG_TASK_LEVEL_TMP)
+            knd_log("\n\n** UPDATE retrievers: \"%.*s\" [%lu]",
+                    self->update->buf_size, self->update->buf,
+                    (unsigned long)self->update->buf_size);
+        
+        err = knd_zmq_sendmore(self->publisher, self->update->buf, self->update->buf_size);
+        err = knd_zmq_send(self->publisher, "None", strlen("None"));
+    }
 
-    err = knd_zmq_sendmore(self->publisher, self->update->buf, self->update->buf_size);
-    err = knd_zmq_send(self->publisher, "None", strlen("None"));
-    
     return knd_OK;
 }
 

@@ -120,7 +120,7 @@ struct kndRel
 
     struct kndRelArg *args;
     struct kndRelArg *tail_arg;
-    size_t num_atrs;
+    size_t num_args;
 
     /* allocator */
     struct kndMemPool *mempool;
@@ -156,6 +156,9 @@ struct kndRel
     int (*import)(struct kndRel *self,
                   const char    *rec,
                   size_t        *total_size);
+    int (*read)(struct kndRel *self,
+                const char    *rec,
+                size_t        *total_size);
     int (*select)(struct kndRel  *self,
                   const char *rec,
                   size_t *total_size);

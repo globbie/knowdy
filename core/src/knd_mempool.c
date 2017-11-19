@@ -8,6 +8,7 @@
 #include "knd_object.h"
 #include "knd_rel.h"
 #include "knd_proc.h"
+#include "knd_state.h"
 
 static void del(struct kndMemPool *self)
 {
@@ -25,7 +26,7 @@ static int new_class(struct kndMemPool *self,
         e = self->log->write(self->log, "memory limit reached",
                              strlen("memory limit reached"));
         if (e) return e;
-        
+
         knd_log("-- memory limit reached :(");
         return knd_MAX_LIMIT_REACHED;
     }
@@ -34,6 +35,52 @@ static int new_class(struct kndMemPool *self,
     kndConcept_init(c);
     self->num_classes++;
     *result = c;
+    return knd_OK;
+}
+
+static int new_update(struct kndMemPool *self,
+                      struct kndUpdate **result)
+{
+    struct kndUpdate *upd;
+    int e;
+
+    if (self->num_updates >= self->max_updates) {
+        self->log->reset(self->log);
+        e = self->log->write(self->log, "memory limit reached",
+                             strlen("memory limit reached"));
+        if (e) return e;
+
+        knd_log("-- memory limit reached :(");
+        return knd_MAX_LIMIT_REACHED;
+    }
+    upd = &self->updates[self->num_updates];
+    memset(upd, 0, sizeof(struct kndUpdate));
+    self->num_updates++;
+    upd->id = self->num_updates;
+    *result = upd;
+    return knd_OK;
+}
+
+static int new_class_update(struct kndMemPool *self,
+                            struct kndClassUpdate **result)
+{
+    struct kndClassUpdate *upd;
+    int e;
+
+    if (self->num_class_updates >= self->max_class_updates) {
+        self->log->reset(self->log);
+        e = self->log->write(self->log, "memory limit reached",
+                             strlen("memory limit reached"));
+        if (e) return e;
+
+        knd_log("-- memory limit reached :(");
+        return knd_MAX_LIMIT_REACHED;
+    }
+    upd = &self->class_updates[self->num_class_updates];
+    memset(upd, 0, sizeof(struct kndClassUpdate));
+
+    self->num_class_updates++;
+    *result = upd;
     return knd_OK;
 }
 
@@ -131,6 +178,8 @@ static int new_proc(struct kndMemPool *self,
 
 static int alloc(struct kndMemPool *self)
 {
+    if (!self->max_updates)  self->max_updates = KND_MIN_UPDATES;
+    if (!self->max_class_updates)  self->max_class_updates = KND_MIN_UPDATES;
     if (!self->max_users)  self->max_users = KND_MIN_USERS;
     if (!self->max_classes)  self->max_classes = KND_MIN_CLASSES;
     if (!self->max_objs)     self->max_objs =    KND_MIN_OBJS;
@@ -142,6 +191,23 @@ static int alloc(struct kndMemPool *self)
     self->classes = calloc(self->max_classes, sizeof(struct kndConcept));
     if (!self->classes) {
         knd_log("-- classes not allocated :(");
+        return knd_NOMEM;
+    }
+
+    self->updates = calloc(self->max_updates, sizeof(struct kndUpdate));
+    if (!self->updates) {
+        knd_log("-- updates not allocated :(");
+        return knd_NOMEM;
+    }
+    self->update_idx = calloc(self->max_updates, sizeof(struct kndUpdate*));
+    if (!self->update_idx) {
+        knd_log("-- update idx not allocated :(");
+        return knd_NOMEM;
+    }
+
+    self->class_updates = calloc(self->max_updates, sizeof(struct kndClassUpdate));
+    if (!self->class_updates) {
+        knd_log("-- class updates not allocated :(");
         return knd_NOMEM;
     }
 
@@ -185,6 +251,8 @@ extern void
 kndMemPool_init(struct kndMemPool *self)
 {
     self->alloc = alloc;
+    self->new_update = new_update;
+    self->new_class_update = new_class_update;
     self->new_class = new_class;
     self->new_obj = new_obj;
     self->new_rel = new_rel;
