@@ -27,6 +27,7 @@
 struct kndOutput;
 struct kndTask;
 struct kndUser;
+struct kndStateControl;
 
 typedef enum knd_task_spec_type { KND_GET_STATE, 
                                   KND_CHANGE_STATE,
@@ -114,6 +115,9 @@ struct kndTask
     const char *spec;
     size_t spec_size;
 
+    const char *update_spec;
+    size_t update_spec_size;
+
     const char *obj;
     size_t obj_size;
 
@@ -130,6 +134,7 @@ struct kndTask
     size_t start_from;
 
     struct kndUser *admin;
+    struct kndStateControl *state_ctrl;
 
     struct kndOutput *log;
     struct kndOutput *out;
