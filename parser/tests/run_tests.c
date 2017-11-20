@@ -221,33 +221,38 @@ static struct kndTaskSpec gen_user_spec(struct TaskSpecs *args) {
     return (struct kndTaskSpec){ .name = "user", .name_size = strlen("user"), .parse = parse_user, .obj = args };
 }
 
-enum { SPEC_BUF = 0x0, SPEC_PARSE = 0x1, SPEC_RUN = 0x2, SPEC_NAME = 0x4, SPEC_SELECTOR = 0x8 };
+enum { SPEC_BUF = 0x0, SPEC_PARSE = 0x1, SPEC_RUN = 0x2, SPEC_NAME = 0x4, SPEC_SELECTOR = 0x8, SPEC_CHANGE = 0x10 };
 static struct kndTaskSpec gen_name_spec(struct User *self, int flags) {
-    assert((flags & (SPEC_BUF | SPEC_RUN | SPEC_NAME | SPEC_SELECTOR)) == flags &&
-           "Valid flags: [SPEC_BUF | SPEC_RUN] [SPEC_NAME] [SPEC_SELECTOR]");
+    assert((flags & (SPEC_BUF | SPEC_RUN | SPEC_NAME | SPEC_SELECTOR | SPEC_CHANGE)) == flags &&
+           "Valid flags: [SPEC_BUF | SPEC_RUN] [SPEC_NAME] [SPEC_SELECTOR] [SPEC_CHANGE]");
     if (flags & SPEC_RUN)
         return (struct kndTaskSpec){ .is_implied = true,
+                                     .type = !(flags & SPEC_CHANGE) ? KND_GET_STATE : KND_CHANGE_STATE,
                                      .name = (flags & SPEC_NAME) ? "name" : NULL, .name_size = (flags & SPEC_NAME) ? strlen("name") : 0,
                                      .is_selector = (flags & SPEC_SELECTOR),
                                      .run = run_set_name, .obj = self };
     return (struct kndTaskSpec){ .is_implied = true,
+                                 .type = !(flags & SPEC_CHANGE) ? KND_GET_STATE : KND_CHANGE_STATE,
                                  .name = (flags & SPEC_NAME) ? "name" : NULL, .name_size = (flags & SPEC_NAME) ? strlen("name") : 0,
                                  .is_selector = (flags & SPEC_SELECTOR),
                                  .buf = self->name, .buf_size = &self->name_size, .max_buf_size = sizeof self->name };
 }
 
 static struct kndTaskSpec gen_sid_spec(struct User *self, int flags) {
-    assert((flags & (SPEC_BUF | SPEC_PARSE | SPEC_RUN | SPEC_SELECTOR)) == flags &&
-           "Valid flags: [SPEC_BUF | SPEC_PARSE | SPEC_RUN] [SPEC_SELECTOR]");
+    assert((flags & (SPEC_BUF | SPEC_PARSE | SPEC_RUN | SPEC_SELECTOR | SPEC_CHANGE)) == flags &&
+           "Valid flags: [SPEC_BUF | SPEC_PARSE | SPEC_RUN] [SPEC_SELECTOR] [SPEC_CHANGE]");
     if (flags & SPEC_PARSE)
-        return (struct kndTaskSpec){ .name = "sid", .name_size = strlen("sid"),
+        return (struct kndTaskSpec){ .type = !(flags & SPEC_CHANGE) ? KND_GET_STATE : KND_CHANGE_STATE,
+                                     .name = "sid", .name_size = strlen("sid"),
                                      .is_selector = (flags & SPEC_SELECTOR),
                                      .parse = parse_sid, .obj = self };
     if (flags & SPEC_RUN)
-        return (struct kndTaskSpec){ .name = "sid", .name_size = strlen("sid"),
+        return (struct kndTaskSpec){ .type = !(flags & SPEC_CHANGE) ? KND_GET_STATE : KND_CHANGE_STATE,
+                                     .name = "sid", .name_size = strlen("sid"),
                                      .is_selector = (flags & SPEC_SELECTOR),
                                      .run = run_set_sid, .obj = self };
-    return (struct kndTaskSpec){ .name = "sid", .name_size = strlen("sid"),
+    return (struct kndTaskSpec){ .type = !(flags & SPEC_CHANGE) ? KND_GET_STATE : KND_CHANGE_STATE,
+                                 .name = "sid", .name_size = strlen("sid"),
                                  .is_selector = (flags & SPEC_SELECTOR),
                                  .buf = self->sid, .buf_size = &self->sid_size, .max_buf_size = sizeof self->sid };
 }
@@ -270,6 +275,8 @@ const char *rec;
 size_t total_size;
 struct User user;
 
+// --------------------------------------------------------------------------------
+// KND_GET_STATE cases
 
 START_TEST(parse_task_empty)
     DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, 0), gen_sid_spec(&user, 0));
@@ -1083,39 +1090,97 @@ START_TEST(parse_value_default_with_selectors)
   }
 END_TEST
 
+// --------------------------------------------------------------------------------
+// KND_CHANGE_STATE cases
+
+START_TEST(parse_change_implied_field)
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_CHANGE), gen_sid_spec(&user, 0));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    check_parse_implied_field(specs, sizeof specs / sizeof specs[0], &parse_user_args);
+END_TEST
+
+START_TEST(parse_change_implied_field_with_name)
+    DEFINE_TaskSpecs(parse_user_args, gen_name_spec(&user, SPEC_NAME | SPEC_CHANGE), gen_sid_spec(&user, 0));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    check_parse_implied_field(specs, sizeof specs / sizeof specs[0], &parse_user_args);
+
+    rc = knd_parse_task(rec = "{user (name John Smith)}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ASSERT_STR_EQ(user.name, user.name_size, "John Smith");
+    user.name_size = 0; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
+
+    // TODO(ki.stfu): check that () fails if change spec
+    rc = knd_parse_task(rec = "{user {name John Smith}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_NO_MATCH);
+END_TEST
+
+START_TEST(parse_change_value_terminal)
+    DEFINE_TaskSpecs(parse_user_args, gen_sid_spec(&user, SPEC_CHANGE));
+    struct kndTaskSpec specs[] = { gen_user_spec(&parse_user_args) };
+
+    rc = knd_parse_task(rec = "{user(sid 123456)}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
+    user.sid_size = 0; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
+
+    rc = knd_parse_task(rec = "{user (sid 123456)}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_OK);
+    ck_assert_uint_eq(total_size, strlen(rec));
+    ASSERT_STR_EQ(user.sid, user.sid_size, "123456");
+    user.sid_size = 0; RESET_IS_COMPLETED_kndTaskSpec(specs); RESET_IS_COMPLETED_TaskSpecs(&parse_user_args);
+
+    // TODO(ki.stfu): check that () fails if change spec
+    rc = knd_parse_task(rec = "{user {sid 123456}}", &total_size, specs, sizeof specs / sizeof specs[0]);
+    ck_assert_int_eq(rc, knd_NO_MATCH);
+END_TEST
+
+// --------------------------------------------------------------------------------
+// main
 
 int main() {
-    TCase* tc = tcase_create("all cases");
-    tcase_add_checked_fixture(tc, test_case_fixture_setup, NULL);
-    tcase_add_test(tc, parse_task_empty);
-    tcase_add_test(tc, parse_task_empty_with_spaces);
-    tcase_add_test(tc, parse_task_empty_with_closing_brace);
-    tcase_add_test(tc, parse_implied_field);
-    tcase_add_test(tc, parse_implied_field_with_name);
-    tcase_add_test(tc, parse_implied_field_unknown);
-    tcase_add_test(tc, parse_implied_field_max_size);
-    tcase_add_test(tc, parse_implied_field_max_size_plus_one);
-    tcase_add_test(tc, parse_implied_field_size_NAME_SIZE_plus_one);
-    tcase_add_test(tc, parse_implied_field_duplicate);
-    tcase_add_test(tc, parse_tag_empty);
-    tcase_add_test(tc, parse_tag_empty_with_spaces);
-    tcase_add_test(tc, parse_tag_unknown);
-    tcase_add_test(tc, parse_value_terminal_empty);
-    tcase_add_test(tc, parse_value_terminal_max_size);
-    tcase_add_test(tc, parse_value_terminal_max_size_plus_one);
-    tcase_add_test(tc, parse_value_terminal_NAME_SIZE_plus_one);
-    tcase_add_test(tc, parse_value_terminal_with_braces);
-    tcase_add_test(tc, parse_value_validate_empty);
-    tcase_add_test(tc, parse_value_validate_single);
-    tcase_add_test(tc, parse_value_validate_several);
-    tcase_add_test(tc, parse_value_validate_max_size);
-    tcase_add_test(tc, parse_value_validate_max_size_plus_one);
-    tcase_add_test(tc, parse_value_validate_NAME_SIZE_plus_one);
-    tcase_add_test(tc, parse_value_default);
-    tcase_add_test(tc, parse_value_default_with_selectors);
-
     Suite* s = suite_create("suite");
-    suite_add_tcase(s, tc);
+
+    TCase* tc_get = tcase_create("get cases");
+    tcase_add_checked_fixture(tc_get, test_case_fixture_setup, NULL);
+    tcase_add_test(tc_get, parse_task_empty);
+    tcase_add_test(tc_get, parse_task_empty_with_spaces);
+    tcase_add_test(tc_get, parse_task_empty_with_closing_brace);
+    tcase_add_test(tc_get, parse_implied_field);
+    tcase_add_test(tc_get, parse_implied_field_with_name);
+    tcase_add_test(tc_get, parse_implied_field_unknown);
+    tcase_add_test(tc_get, parse_implied_field_max_size);
+    tcase_add_test(tc_get, parse_implied_field_max_size_plus_one);
+    tcase_add_test(tc_get, parse_implied_field_size_NAME_SIZE_plus_one);
+    tcase_add_test(tc_get, parse_implied_field_duplicate);
+    tcase_add_test(tc_get, parse_tag_empty);
+    tcase_add_test(tc_get, parse_tag_empty_with_spaces);
+    tcase_add_test(tc_get, parse_tag_unknown);
+    tcase_add_test(tc_get, parse_value_terminal_empty);
+    tcase_add_test(tc_get, parse_value_terminal_max_size);
+    tcase_add_test(tc_get, parse_value_terminal_max_size_plus_one);
+    tcase_add_test(tc_get, parse_value_terminal_NAME_SIZE_plus_one);
+    tcase_add_test(tc_get, parse_value_terminal_with_braces);
+    tcase_add_test(tc_get, parse_value_validate_empty);
+    tcase_add_test(tc_get, parse_value_validate_single);
+    tcase_add_test(tc_get, parse_value_validate_several);
+    tcase_add_test(tc_get, parse_value_validate_max_size);
+    tcase_add_test(tc_get, parse_value_validate_max_size_plus_one);
+    tcase_add_test(tc_get, parse_value_validate_NAME_SIZE_plus_one);
+    tcase_add_test(tc_get, parse_value_default);
+    tcase_add_test(tc_get, parse_value_default_with_selectors);
+    suite_add_tcase(s, tc_get);
+
+    TCase* tc_change = tcase_create("change cases");
+    tcase_add_checked_fixture(tc_change, test_case_fixture_setup, NULL);
+    tcase_add_test(tc_change, parse_change_implied_field);
+    tcase_add_test(tc_change, parse_change_implied_field_with_name);
+    tcase_add_test(tc_change, parse_change_value_terminal);
+    suite_add_tcase(s, tc_change);
+
     SRunner* sr = srunner_create(s);
     srunner_run_all(sr, CK_NORMAL);
     srunner_free(sr);
