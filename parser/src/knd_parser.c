@@ -626,8 +626,10 @@ knd_find_spec(const char *name,
     }
 
     if (DEBUG_PARSER_LEVEL_2)
-        knd_log("-- no named spec found for \"%.*s\"  validator: %p",
-                name_size, name, validator_spec);
+        knd_log("-- no named spec found for \"%.*s\" of type %s  validator: %p",
+                name_size, name,
+                spec_type == KND_GET_STATE ? "GET" : "CHANGE",
+                validator_spec);
 
     if (validator_spec) {
         *out_spec = validator_spec;
