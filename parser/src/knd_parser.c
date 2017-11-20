@@ -458,12 +458,14 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
 
     // TODO(ki.stfu): ?? assert(spec->accu == NULL);  // TODO(ki.stfu): ?? remove this field
 
+    if (spec->buf)
+        assert(spec->parse == NULL && spec->validate == NULL && spec->run == NULL);
     if (spec->parse)
-        assert(spec->validate == NULL && spec->run == NULL);
+        assert(spec->buf == NULL && spec->validate == NULL && spec->run == NULL);
     if (spec->validate)
-        assert(spec->parse == NULL && spec->run == NULL);
+        assert(spec->buf == NULL && spec->parse == NULL && spec->run == NULL);
     if (spec->run)
-        assert(spec->parse == NULL && spec->validate == NULL);
+        assert(spec->buf == NULL && spec->parse == NULL && spec->validate == NULL);
     // TODO(ki.stfu): ?? assert(spec->append == NULL);  // TODO(ki.stfu): ?? remove this field
     // TODO(ki.stfu): ?? assert(spec->alloc == NULL);  // TODO(ki.stfu): ?? remove this field
 
@@ -474,27 +476,21 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
 
     if (spec->is_default) {
         assert(spec->name == NULL);
-        assert(spec->buf == NULL);
         assert(spec->obj != NULL);
         assert(spec->run != NULL);
     }
 
     if (spec->is_implied) {
         // |spec->name| can be NULL
-        if (spec->buf) {
+        if (spec->buf)
             assert(spec->obj == NULL);
-            assert(spec->run == NULL);
-        }
-        if (spec->run) {
-            assert(spec->buf == NULL);
+        if (spec->run)
             assert(spec->obj != NULL);
-        }
     }
 
     assert(spec->is_validator == (spec->validate != NULL));
     if (spec->is_validator) {
         assert(spec->name == NULL);
-        assert(spec->buf == NULL);
         assert(spec->obj != NULL);
         assert(spec->validate != NULL);
     }
@@ -507,9 +503,13 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
         assert(spec->obj == NULL);
     }
 
+    if (spec->buf) {
+        assert(spec->is_implied || spec->name != NULL);
+        assert(spec->obj == NULL);
+    }
+
     if (spec->parse) {
         assert(spec->name != NULL);
-        assert(spec->buf == NULL);
         if (!spec->is_list)
             assert(spec->obj != NULL);
     }
@@ -518,15 +518,7 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
 
     if (spec->run) {
         assert(spec->is_default || spec->is_implied || spec->name != NULL);
-        assert(spec->buf == NULL);
         assert(spec->obj != NULL);
-    }
-
-    if (spec->buf) {
-        // |spec->obj| can be NULL (depends on |spec->validate|)
-        assert(spec->parse == NULL);
-        // |spec->validate| can be NULL
-        assert(spec->run == NULL);
     }
 
     // Test plans:
