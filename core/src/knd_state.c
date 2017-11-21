@@ -63,7 +63,7 @@ static int confirm(struct kndStateControl *self,
     return knd_OK;
 }
 
-static int select(struct kndStateControl *self)
+static int make_selection(struct kndStateControl *self)
 {
     struct kndUpdate *update;
     size_t start_pos;
@@ -125,7 +125,7 @@ extern int kndStateControl_new(struct kndStateControl **state)
     self->str    = str;
     self->reset  = reset;
     self->confirm  = confirm;
-    self->select  = select;
+    self->select  = make_selection;
 
     *state = self;
 
