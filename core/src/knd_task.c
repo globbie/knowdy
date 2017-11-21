@@ -6,6 +6,7 @@
 #include "knd_user.h"
 #include "knd_output.h"
 #include "knd_utils.h"
+#include "knd_concept.h"
 #include "knd_parser.h"
 #include "knd_msg.h"
 #include "knd_http_codes.h"
@@ -47,6 +48,8 @@ static void reset(struct kndTask *self)
     self->batch_from = 0;
     self->start_from = 0;
     self->match_count = 0;
+
+    self->num_class_selects = 0;
 
     self->error = 0;
     self->http_code = HTTP_OK;

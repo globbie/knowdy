@@ -60,12 +60,45 @@ static int confirm(struct kndStateControl *self,
         knd_log("++  \"%zu\" update confirmed!   global STATE: %zu",
                 update->id, self->num_updates);
 
-    /* inform task manager about the state change */
-    //self->task->is_state_changed = true;
-
     return knd_OK;
 }
 
+static int select(struct kndStateControl *self)
+{
+    struct kndUpdate *update;
+    size_t start_pos;
+    size_t end_pos;
+
+    start_pos = self->task->batch_gt;
+    end_pos = self->task->batch_lt;
+
+    if (self->task->batch_eq) {
+        start_pos = self->task->batch_eq;
+        end_pos = self->task->batch_eq + 1;
+    }
+
+    if (!end_pos)
+        end_pos = self->num_updates;
+    else
+        end_pos = end_pos - 1;
+
+    if (end_pos > self->num_updates) {
+        knd_log("-- requested range of updates exceeded :(");
+        return knd_RANGE;
+    }
+
+    if (start_pos > end_pos) return knd_RANGE;
+
+    self->num_selected = 0;
+
+    for (size_t i = start_pos; i < end_pos; i++) {
+        update = self->updates[i];
+        self->selected[self->num_selected] = update;
+        self->num_selected++;
+    }
+
+    return knd_OK;
+}
 
 extern int kndStateControl_new(struct kndStateControl **state)
 {
@@ -92,6 +125,7 @@ extern int kndStateControl_new(struct kndStateControl **state)
     self->str    = str;
     self->reset  = reset;
     self->confirm  = confirm;
+    self->select  = select;
 
     *state = self;
 
