@@ -413,7 +413,7 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
         return knd_FAIL;
     }
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(" .. add %.*s parent to %.*s", base->dir->conc->name_size,
                 base->dir->conc->name, self->name_size, self->name);
 
@@ -526,7 +526,7 @@ static int resolve_base_classes(struct kndConcept *self)
             continue;
         }
 
-        if (DEBUG_CONC_LEVEL_TMP)
+        if (DEBUG_CONC_LEVEL_2)
             knd_log(".. \"%s\" class to get its base class: \"%s\"..",
                     self->name, item->name);
 
@@ -539,7 +539,7 @@ static int resolve_base_classes(struct kndConcept *self)
             return knd_FAIL;
         }
 
-        if (DEBUG_CONC_LEVEL_TMP)
+        if (DEBUG_CONC_LEVEL_2)
             knd_log("++ \"%s\" ref established as a base class for \"%s\"!",
                     item->name, self->name);
 
@@ -2005,7 +2005,6 @@ static int knd_get_dir_size(struct kndConcept *self,
 
     for (i = rec_size - 1; i >= 0; i--) { 
         c = rec + i;
-        //knd_log("C: %.*s", 1, c);
         switch (*c) {
         case '\n':
         case '\r':
@@ -3976,7 +3975,6 @@ static int present_class_selection(void *obj,
     struct kndConcept *self = obj;
     struct kndConcept *c;
     struct kndOutput *out = self->out;
-    
     int e, err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -4048,10 +4046,8 @@ static int present_class_selection(void *obj,
             err = out->write(out, ",", 1);
             if (err) return err;
         }
-
         err = c->export(c);
         if (err) return err;
-        
     }
 
     err = out->write(out, "]", 1);
@@ -4063,7 +4059,6 @@ static int present_class_selection(void *obj,
     
     return knd_OK;
 }
-
 
 static int run_select_obj(void *data,
                           struct kndTaskArg *args __attribute__((unused)),
@@ -4123,7 +4118,7 @@ static int run_get_class(void *obj,
 
     self->curr_class = c;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         c->str(c);
     }
 
@@ -4335,11 +4330,13 @@ static int select_delta(struct kndConcept *self,
 
     for (size_t i = 0; i < state_ctrl->num_selected; i++) {
         update = state_ctrl->selected[i];
+        
         for (size_t j = 0; j < update->num_classes; j++) {
             class_update = update->classes[j];
             c = class_update->conc;
 
-            c->str(c);
+            //c->str(c);
+            if (!c) return knd_FAIL;
 
             if (!self->curr_baseclass) {
                 self->task->class_selects[self->task->num_class_selects] = c;
@@ -4348,14 +4345,10 @@ static int select_delta(struct kndConcept *self,
             }
 
             /* filter by baseclass */
-            for (size_t j = 0; j < c->num_bases; j++) {
+            /*for (size_t j = 0; j < c->num_bases; j++) {
                 dir = c->bases[j];
                 knd_log("== base class: %.*s", dir->name_size, dir->name);
-                /* if (dir->conc == self->curr_baseclass) {
-                    return knd_FAIL;
-                    }*/
-            }
-
+                }*/
         }
     }
 
@@ -4606,7 +4599,7 @@ static int export_JSON(struct kndConcept *self)
     size_t item_count;
     int i, err, e;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. JSON export concept: \"%s\"  "
                 "locale: %s depth: %lu num_terminals:%zu\n",
                 self->name, self->task->locale,
@@ -4614,12 +4607,12 @@ static int export_JSON(struct kndConcept *self)
 
     out = self->out;
     err = out->write(out, "{", 1);                                                RET_ERR();
-    err = out->write(out, "\"n\":\"", strlen("\"n\":\""));                        RET_ERR();
+    err = out->write(out, "\"_n\":\"", strlen("\"_n\":\""));                      RET_ERR();
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
     err = out->write(out, "\"", 1);                                               RET_ERR();
 
     if (self->dir && self->dir->numid) {
-        err = out->write(out, ",\"id\":", strlen(",\"id\":"));                    RET_ERR();
+        err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                    RET_ERR();
         buf_size = sprintf(buf, "%zu", self->dir->numid);
         err = out->write(out, buf, buf_size);                                     RET_ERR();
     }
@@ -4627,14 +4620,14 @@ static int export_JSON(struct kndConcept *self)
     if (self->num_updates) {
         /* latest update */
         update = self->updates->update;
-        err = out->write(out, ",\"upd\":", strlen(",\"upd\":"));                  RET_ERR();
+        err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));            RET_ERR();
         buf_size = sprintf(buf, "%zu", update->id);
         err = out->write(out, buf, buf_size);                                     RET_ERR();
 
         time(&update->timestamp);
         localtime_r(&update->timestamp, &tm_info);
         buf_size = strftime(buf, KND_NAME_SIZE,
-                            ",\"latest\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
+                            ",\"_timestamp\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
         err = out->write(out, buf, buf_size);                                     RET_ERR();
     }
 
@@ -4655,7 +4648,7 @@ static int export_JSON(struct kndConcept *self)
 
     /* display base classes only once */
     if (self->num_base_items) {
-        err = out->write(out, ",\"base\":[", strlen(",\"base\":["));              RET_ERR();
+        err = out->write(out, ",\"_base\":[", strlen(",\"_base\":["));            RET_ERR();
 
         item_count = 0;
         for (item = self->base_items; item; item = item->next) {
@@ -4664,21 +4657,20 @@ static int export_JSON(struct kndConcept *self)
                 err = out->write(out, ",", 1);                                    RET_ERR();
             }
 
-            err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));
-            if (err) return err;
+            err = out->write(out, "{\"_n\":\"", strlen("{\"_n\":\""));              RET_ERR();
             err = out->write(out, item->name, item->name_size);
             if (err) return err;
             err = out->write(out, "\"", 1);
             if (err) return err;
 
-            err = out->write(out, ",\"id\":", strlen(",\"id\":"));
+            err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));
             if (err) return err;
             buf_size = sprintf(buf, "%zu", item->numid);
             err = out->write(out, buf, buf_size);
             if (err) return err;
 
             if (item->attrs) {
-                err = out->write(out, ",\"attrs\":[", strlen(",\"attrs\":["));
+                err = out->write(out, ",\"_attrs\":[", strlen(",\"_attrs\":["));
                 if (err) return err;
                 err = attr_items_export_JSON(self, item->attrs, 0);
                 if (err) return err;
@@ -4695,8 +4687,8 @@ static int export_JSON(struct kndConcept *self)
     }
     
     if (self->attrs) {
-        err = out->write(out, ",\"attrs\": {",
-                         strlen(",\"attrs\": {"));
+        err = out->write(out, ",\"_attrs\": {",
+                         strlen(",\"_attrs\": {"));
         if (err) return err;
 
         i = 0;
@@ -4751,14 +4743,14 @@ static int export_JSON(struct kndConcept *self)
                     err = out->write(out, ",", 1);
                     if (err) return err;
                 }
-                err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));
+                err = out->write(out, "{\"_n\":\"", strlen("{\"_n\":\""));
                 if (err) return err;
                 err = out->write(out, dir->name, dir->name_size);
                 if (err) return err;
                 err = out->write(out, "\"", 1);
                 if (err) return err;
 
-                err = out->write(out, ",\"id\":", strlen(",\"id\":"));
+                err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));
                 if (err) return err;
                 buf_size = sprintf(buf, "%zu", dir->numid);
                 err = out->write(out, buf, buf_size);
@@ -4942,6 +4934,9 @@ static int build_class_updates(struct kndConcept *self)
         err = out->write(out, "(id ", strlen("(id "));         RET_ERR();
         buf_size = sprintf(buf, "%zu", c->numid);
         err = out->write(out, buf, buf_size);                  RET_ERR();
+
+        /* TODO: timestamp */
+
         /*if (c->phase == KND_REMOVED) {
             err = out->write(out, "removed", strlen("removed"));
             if (err) return err;
@@ -5054,7 +5049,6 @@ static int parse_liquid_class_id(void *obj,
 {
     struct kndConcept *self = obj;
     struct kndUpdate *update = self->curr_update;
-    struct kndStateControl *state_ctrl = self->task->state_ctrl;
     struct kndConcept *c;
     struct kndClassUpdate *class_update;
     struct kndClassUpdateRef *class_update_ref;
@@ -5066,6 +5060,8 @@ static int parse_liquid_class_id(void *obj,
           .obj = self
         }
     };
+
+    if (!self->curr_class) return knd_FAIL;
 
     err = knd_parse_task(rec, total_size, specs,
                          sizeof(specs) / sizeof(struct kndTaskSpec));            PARSE_ERR();

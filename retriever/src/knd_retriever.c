@@ -372,6 +372,7 @@ kndRetriever_new(struct kndRetriever **rec,
     struct kndRetriever *self;
     struct kndConcept *conc;
     struct kndOutput *out;
+    struct kndStateControl *state_ctrl;
     size_t chunk_size = 0;
     int err;
 
