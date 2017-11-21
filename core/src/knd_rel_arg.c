@@ -332,6 +332,29 @@ static int parse_GSL(struct kndRelArg *self,
     return knd_OK;
 }
 
+static int read_inst_GSP(struct kndRelArg *self,
+                         struct kndRelInstance *inst,
+                         const char *rec,
+                         size_t *total_size)
+{
+    if (DEBUG_RELARG_LEVEL_TMP)
+        knd_log(".. %.*s Rel Arg instance parsing: \"%.*s\"..",
+                self->name_size, self->name, 32, rec);
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_name,
+          .obj = self
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
+
 static int resolve(struct kndRelArg *self)
 {
     struct kndRel *rel;
@@ -363,9 +386,9 @@ static void init(struct kndRelArg *self)
     self->str = str;
     self->parse = parse_GSL;
     self->export = export;
+    self->read_inst = read_inst_GSP;
     self->resolve = resolve;
 }
-
 
 extern int
 kndRelArg_new(struct kndRelArg **c)

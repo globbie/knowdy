@@ -8,6 +8,7 @@
 
 #include "knd_config.h"
 #include "knd_mempool.h"
+#include "knd_state.h"
 #include "knd_dict.h"
 #include "knd_utils.h"
 #include "knd_msg.h"
@@ -164,8 +165,8 @@ kndLearner_start(struct kndLearner *self)
             knd_log("-- task report failed: %d", err);
         }
 
-        if (task) free(task);
-        if (obj) free(obj);
+        /*if (task) free(task);
+          if (obj) free(obj);*/
     }
 
     /* we should never get here */
@@ -438,6 +439,7 @@ kndLearner_new(struct kndLearner **rec,
     self->task->admin = self->admin;
     self->admin->out = self->out;
 
+
     err = kndMemPool_new(&self->mempool);
     if (err) return err;
     
@@ -449,6 +451,11 @@ kndLearner_new(struct kndLearner **rec,
     if (err) goto error;
 
     self->mempool->alloc(self->mempool);
+
+    err = kndStateControl_new(&self->task->state_ctrl);
+    if (err) return err;
+    self->task->state_ctrl->max_updates = self->mempool->max_updates;
+    self->task->state_ctrl->updates = self->mempool->update_idx;
 
     memcpy(self->task->agent_name, self->name, self->name_size);
     self->task->agent_name_size = self->name_size;

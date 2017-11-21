@@ -68,6 +68,7 @@ struct kndConcItem
     char name[KND_NAME_SIZE];
     size_t name_size;
     char id[KND_ID_SIZE];
+    size_t numid;
 
     char classname[KND_NAME_SIZE];
     size_t classname_size;
@@ -105,8 +106,11 @@ struct kndAttrEntry
 
 struct kndObjEntry
 {
-    size_t offset;
+    char *name;
+    size_t name_size;
+    char *block;
     size_t block_size;
+    size_t offset;
     struct kndObject *obj;
 };
 
@@ -122,6 +126,8 @@ struct kndObjDir
 struct kndConcDir
 {
     char id[KND_ID_SIZE];
+    size_t numid;
+
     char name[KND_NAME_SIZE];
     size_t name_size;
     struct kndConcept *conc;
@@ -150,6 +156,7 @@ struct kndConcDir
     size_t num_obj_dirs;
     struct kndObjEntry **objs;
     size_t num_objs;
+    size_t total_objs;
 
     struct ooDict *obj_idx;
 
@@ -158,6 +165,13 @@ struct kndConcDir
 
     bool is_terminal;
     struct kndConcDir *next;
+};
+
+struct kndClassUpdateRef
+{
+    knd_state_phase phase;
+    struct kndUpdate *update;
+    struct kndClassUpdateRef *next;
 };
 
 struct kndConcept 
@@ -172,14 +186,10 @@ struct kndConcept
     size_t next_obj_numid;
 
     size_t numid;
+    size_t next_numid;
 
-    char state[KND_STATE_SIZE];
-    char next_state[KND_STATE_SIZE];
-    char diff_state[KND_STATE_SIZE];
-    char next_obj_state[KND_STATE_SIZE];
-    size_t global_state_count;
-
-    knd_state_phase phase;
+    struct kndClassUpdateRef *updates;
+    size_t num_updates;
 
     struct kndTranslation *tr;
     struct kndText *summary;
@@ -190,8 +200,6 @@ struct kndConcept
 
     struct kndTask *task;
 
-    /*const char *locale;
-      size_t locale_size; */
     knd_format format;
     size_t depth;
 
@@ -219,6 +227,7 @@ struct kndConcept
 
     struct kndConcept *root_class;
     struct kndConcept *curr_class;
+    struct kndConcept *curr_baseclass;
     struct kndObject *curr_obj;
 
     struct kndConcDir *dir;
@@ -262,6 +271,7 @@ struct kndConcept
     const char *frozen_name_idx_path;
     size_t frozen_name_idx_path_size;
 
+    struct kndUpdate *curr_update;
     struct kndConcept *next;
 
     struct kndUser *user;

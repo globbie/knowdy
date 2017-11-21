@@ -22,10 +22,10 @@
 #define KND_CONFIG_H
 
 /* return error codes */
-typedef enum { knd_OK, knd_FAIL, knd_NOMEM, knd_LIMIT, knd_AUTH_OK, knd_AUTH_FAIL,
+typedef enum { knd_OK, knd_FAIL, knd_NOMEM, knd_LIMIT, knd_RANGE, knd_AUTH,
         knd_INVALID_DATA, knd_ACCESS, knd_NO_MATCH, knd_MATCH_FOUND, knd_FORMAT,
-        knd_IO_FAIL, knd_EOB, knd_STOP, knd_NEED_WAIT, 
-        knd_EXPIRED, knd_MAX_LIMIT_REACHED } 
+        knd_IO_FAIL, knd_EXISTS, knd_EOB, knd_STOP, knd_NEED_WAIT, 
+        knd_EXPIRED } 
   knd_err_codes;
 
 typedef enum knd_state_phase { KND_SELECTED,
@@ -73,6 +73,9 @@ typedef enum knd_storage_type {
 } knd_storage_type;
 
 
+#define RET_ERR(S) if (err) { printf(#S); return err; } 
+#define ALLOC_ERR(V) if (!(V)) { return knd_NOMEM; }
+#define PARSE_ERR(V) if (err) { printf("LINEAR POS:%zu", *total_size); return err; } 
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 
@@ -374,6 +377,8 @@ typedef enum knd_storage_type {
 #define KND_MAX_ERR_MSG_BUF_SIZE 1024 * 10 * sizeof(char)
 #define KND_MAX_UPDATE_BUF_SIZE 1024 * 100 * sizeof(char)
 
+#define KND_MIN_UPDATES 1024
+#define KND_MIN_USERS 1024
 #define KND_MIN_CLASSES 1024
 #define KND_MIN_OBJS 1024
 #define KND_MIN_ELEMS 1024

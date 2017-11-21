@@ -196,16 +196,15 @@ static int run_set_result(void *obj,
     tid = &self->tids[self->num_tids];
     if (*(tid->tid) != '\0') {
         res = self->idx->get(self->idx, tid->tid, tid->size);
-        if (!res) return knd_NO_MATCH;
-
-        /* free result memory */
-        if (res->obj) {
-            free(res->obj);
-            res->obj_size = 0;
+        if (res) {
+            /* free result memory */
+            if (res->obj) {
+                free(res->obj);
+                res->obj_size = 0;
+            }
+            /* remove this key from the idx */
+            self->idx->remove(self->idx, tid->tid, tid->size);
         }
-        
-        /* remove this key from the idx */
-        self->idx->remove(self->idx, tid->tid, tid->size);
     } else {
         /* alloc result */
         res = malloc(sizeof(struct kndResult));
@@ -388,7 +387,6 @@ static int parse_user(void *obj,
     
     return knd_OK;
 }
-
 
 static int run_task(struct kndDelivery *self)
 {

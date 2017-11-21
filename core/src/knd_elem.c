@@ -303,8 +303,7 @@ kndElem_export_GSP(struct kndElem *self)
     /* key:value repr */
     switch (self->attr->type) {
     case KND_ATTR_NUM:
-        knd_log("OUT:%p  free:%zu total:%zu", out, out->free_space, out->buf_size);
-        self->obj->str(self->obj);
+        //self->obj->str(self->obj);
         err = out->write(out, self->num->states->val, self->num->states->val_size);
         if (err) return err;
         break;
@@ -387,25 +386,26 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
         if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val;
+            val = arg->val_ref;
             val_size = arg->val_size;
         }
     }
 
     if (DEBUG_ELEM_LEVEL_2)
-        knd_log(".. %.*s to set val \"%.*s\"", self->attr->name_size, self->attr->name,
+        knd_log(".. %.*s to set val \"%.*s\"",
+                self->attr->name_size, self->attr->name,
                 val_size, val);
 
     if (!val_size) return knd_FAIL;
     if (val_size >= KND_VAL_SIZE) return knd_LIMIT;
+
     state = malloc(sizeof(struct kndElemState));
     if (!state) return knd_NOMEM;
     memset(state, 0, sizeof(struct kndElemState));
     self->states = state;
     self->num_states = 1;
 
-    memcpy(state->val, val, val_size);
-    state->val[val_size] = '\0';
+    state->val = val;
     state->val_size = val_size;
 
     /* TODO: validate if needed */

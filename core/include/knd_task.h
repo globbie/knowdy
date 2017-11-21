@@ -27,6 +27,8 @@
 struct kndOutput;
 struct kndTask;
 struct kndUser;
+struct kndStateControl;
+struct kndConcept;
 
 typedef enum knd_task_spec_type { KND_GET_STATE, 
                                   KND_CHANGE_STATE,
@@ -46,9 +48,10 @@ struct kndTaskArg
     char name[KND_NAME_SIZE + 1];  // null-terminated string
     size_t name_size;
     char val[KND_NAME_SIZE + 1];  // null-terminated string
+    const char *val_ref;
     size_t val_size;
+    size_t hash_val;
 };
-
 
 struct kndTaskSpec
 {
@@ -113,6 +116,9 @@ struct kndTask
     const char *spec;
     size_t spec_size;
 
+    const char *update_spec;
+    size_t update_spec_size;
+
     const char *obj;
     size_t obj_size;
 
@@ -128,7 +134,15 @@ struct kndTask
     size_t match_count;
     size_t start_from;
 
+    size_t batch_eq;
+    size_t batch_gt;
+    size_t batch_lt;
+
+    struct kndConcept *class_selects[KND_MAX_CLASS_BATCH];
+    size_t num_class_selects;
+
     struct kndUser *admin;
+    struct kndStateControl *state_ctrl;
 
     struct kndOutput *log;
     struct kndOutput *out;
