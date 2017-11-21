@@ -471,16 +471,23 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
 
     // Check that they are not mutually exclusive (in general):
 
+    if (spec->type) {
+        assert(!spec->is_default && (!spec->is_implied || spec->name));
+        assert(spec->name || spec->is_validator);
+    }
+
     if (spec->name)
         assert(!spec->is_default && !spec->is_validator);
 
     if (spec->is_default) {
+        assert(spec->type == 0);  // type is useless for default_spec
         assert(spec->name == NULL);
         assert(spec->obj != NULL);
         assert(spec->run != NULL);
     }
 
     if (spec->is_implied) {
+        // |spec->type| can be set (depends on |spec->name|)
         // |spec->name| can be NULL
         if (spec->buf)
             assert(spec->obj == NULL);
@@ -490,12 +497,14 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
 
     assert(spec->is_validator == (spec->validate != NULL));
     if (spec->is_validator) {
+        // |spec->type| can be set
         assert(spec->name == NULL);
         assert(spec->obj != NULL);
         assert(spec->validate != NULL);
     }
 
     if (spec->is_list) {
+        // TODO(ki.stfu): ?? assert(spec->type == 0);
         assert(spec->accu != NULL);
         assert(spec->alloc != NULL);
         assert(spec->append != NULL);
@@ -504,11 +513,13 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
     }
 
     if (spec->buf) {
+        // |spec->type| can be set (depends on |spec->name|)
         assert(spec->is_implied || spec->name != NULL);
         assert(spec->obj == NULL);
     }
 
     if (spec->parse) {
+        // |spec->type| can be set
         assert(spec->name != NULL);
         if (!spec->is_list)
             assert(spec->obj != NULL);
@@ -517,6 +528,7 @@ knd_spec_is_correct(struct kndTaskSpec *spec)
     // if (spec->validate)  -- already handled in spec->is_validator
 
     if (spec->run) {
+        // |spec->type| can be set (depends on |spec->name|)
         assert(spec->is_default || spec->is_implied || spec->name != NULL);
         assert(spec->obj != NULL);
     }
