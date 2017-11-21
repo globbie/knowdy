@@ -28,6 +28,7 @@ struct kndOutput;
 struct kndTask;
 struct kndUser;
 struct kndStateControl;
+struct kndConcept;
 
 typedef enum knd_task_spec_type { KND_GET_STATE, 
                                   KND_CHANGE_STATE,
@@ -132,6 +133,13 @@ struct kndTask
     size_t batch_size;
     size_t match_count;
     size_t start_from;
+
+    size_t batch_eq;
+    size_t batch_gt;
+    size_t batch_lt;
+
+    struct kndConcept *class_selects[KND_MAX_CLASS_BATCH];
+    size_t num_class_selects;
 
     struct kndUser *admin;
     struct kndStateControl *state_ctrl;

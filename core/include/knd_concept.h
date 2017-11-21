@@ -167,11 +167,11 @@ struct kndConcDir
     struct kndConcDir *next;
 };
 
-struct kndConcUpdate
+struct kndClassUpdateRef
 {
     knd_state_phase phase;
     struct kndUpdate *update;
-    struct kndConcUpdate *next;
+    struct kndClassUpdateRef *next;
 };
 
 struct kndConcept 
@@ -188,16 +188,8 @@ struct kndConcept
     size_t numid;
     size_t next_numid;
 
-    struct kndConcUpdate *updates;
+    struct kndClassUpdateRef *updates;
     size_t num_updates;
-
-    /*char state[KND_STATE_SIZE];
-    char next_state[KND_STATE_SIZE];
-    char diff_state[KND_STATE_SIZE];
-    char next_obj_state[KND_STATE_SIZE];
-    size_t global_state_count;
-    knd_state_phase phase;
-    */
 
     struct kndTranslation *tr;
     struct kndText *summary;
@@ -235,6 +227,7 @@ struct kndConcept
 
     struct kndConcept *root_class;
     struct kndConcept *curr_class;
+    struct kndConcept *curr_baseclass;
     struct kndObject *curr_obj;
 
     struct kndConcDir *dir;

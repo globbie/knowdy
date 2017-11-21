@@ -59,11 +59,15 @@ struct kndStateControl
     char next_state[KND_STATE_SIZE];
     size_t global_state_count;
 
+    struct kndTask *task;
+
     /** transaction ledger:
      * index of confirmed updates */
     struct kndUpdate **updates;
     size_t max_updates;
     size_t num_updates;
+    struct kndUpdate **selected;
+    size_t num_selected;
 
     struct kndOutput *log;
     struct kndOutput *out;
@@ -82,6 +86,8 @@ struct kndStateControl
 
     int (*confirm)(struct kndStateControl *self,
                    struct kndUpdate *update);
+
+    int (*select)(struct kndStateControl *self);
 };
 
 /* constructors */

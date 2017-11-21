@@ -9,6 +9,7 @@
 #include "knd_output.h"
 #include "knd_concept.h"
 #include "knd_object.h"
+#include "knd_state.h"
 #include "knd_task.h"
 #include "knd_utils.h"
 #include "knd_msg.h"
@@ -414,6 +415,14 @@ kndRetriever_new(struct kndRetriever **rec,
     }
 
     self->mempool->alloc(self->mempool);
+
+    err = kndStateControl_new(&self->task->state_ctrl);
+    if (err) return err;
+    self->task->state_ctrl->max_updates = self->mempool->max_updates;
+    self->task->state_ctrl->updates = self->mempool->update_idx;
+    self->task->state_ctrl->selected = self->mempool->update_selected_idx;
+    self->task->state_ctrl->task = self->task;
+
     memcpy(self->task->agent_name, self->name, self->name_size);
     self->task->agent_name_size = self->name_size;
     self->task->agent_name[self->name_size] = '\0';

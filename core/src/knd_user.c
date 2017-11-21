@@ -486,7 +486,10 @@ static int parse_class_select(void *obj,
     self->root_class->dbpath_size = self->dbpath_size;
     self->root_class->frozen_output_file_name = self->frozen_output_file_name;
     self->root_class->frozen_output_file_name_size = self->frozen_output_file_name_size;
-    
+
+    self->root_class->curr_class = NULL;
+    self->root_class->curr_baseclass = NULL;
+
     err = self->root_class->select(self->root_class, rec, total_size);
     if (err) return err;
 
@@ -846,7 +849,6 @@ kndUser_init(struct kndUser *self)
 {
     self->del = del;
     self->str = str;
-
     self->parse_task = parse_task;
     self->add_user = kndUser_add_user;
 
@@ -859,26 +861,19 @@ kndUser_new(struct kndUser **user)
     struct kndUser *self;
     int err = knd_OK;
     
-    self = malloc(sizeof(struct kndUser));
-    if (!self) return knd_NOMEM;
-
+    self = malloc(sizeof(struct kndUser));                                       ALLOC_ERR(self);
     memset(self, 0, sizeof(struct kndUser));
-
     memset(self->id, '0', KND_ID_SIZE);
     memset(self->last_uid, '0', KND_ID_SIZE);
     memset(self->db_state, '0', KND_ID_SIZE);
 
-    err = kndRepo_new(&self->repo);
-    if (err) return knd_NOMEM;
+    err = kndRepo_new(&self->repo);                                              RET_ERR();
     self->repo->user = self;
     self->repo->name[0] = '~';
     self->repo->name_size = 1;
     
-    err = ooDict_new(&self->class_idx, KND_SMALL_DICT_SIZE);
-    if (err) return knd_NOMEM;
-
-    err = ooDict_new(&self->browse_class_idx, KND_SMALL_DICT_SIZE);
-    if (err) return knd_NOMEM;
+    err = ooDict_new(&self->class_idx, KND_SMALL_DICT_SIZE);                     RET_ERR();
+    err = ooDict_new(&self->browse_class_idx, KND_SMALL_DICT_SIZE);              RET_ERR();
     
     kndUser_init(self);
 
