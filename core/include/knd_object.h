@@ -92,7 +92,7 @@ struct kndObject
     knd_obj_type type;
 
     /* unique name */
-    char name[KND_SHORT_NAME_SIZE];
+    const char *name;
     size_t name_size;
 
     char id[KND_ID_SIZE + 1];
@@ -100,6 +100,7 @@ struct kndObject
 
     size_t numid;
     size_t numval;
+    size_t name_hash;
 
     knd_state_phase phase;
     char state[KND_STATE_SIZE];
@@ -158,9 +159,6 @@ struct kndObject
 
     /******** public methods ********/
     void (*str)(struct kndObject *self);
-    int (*reset)(struct kndObject *self);
-    void (*cleanup)(struct kndObject *self);
-
     void (*del)(struct kndObject *self);
 
     int (*parse)(struct kndObject *self,
@@ -181,12 +179,6 @@ struct kndObject
                   const char *rec,
                   size_t *total_size);
     
-    int (*flatten)(struct kndObject *self, struct kndFlatTable *table, unsigned long *span);
-
-    int (*match)(struct kndObject *self,
-                 const char *rec,
-                 size_t      rec_size);
-
     int (*contribute)(struct kndObject *self, size_t point_num, size_t orig_pos);
 
     int (*resolve)(struct kndObject *self);

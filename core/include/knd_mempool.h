@@ -27,10 +27,28 @@ struct kndRel;
 struct kndRelInstance;
 struct kndProc;
 struct kndProcInstance;
+struct kndUpdate;
+struct kndClassUpdate;
 
 struct kndMemPool
 {
     char next_class_id[KND_ID_SIZE];
+    size_t max_users;
+    
+    struct kndUpdate *updates;
+    struct kndUpdate **update_idx;
+    size_t max_updates;
+    size_t num_updates;
+    struct kndUpdate **update_selected_idx;
+
+    struct kndClassUpdate *class_updates;
+    size_t max_class_updates;
+    size_t num_class_updates;
+
+    struct kndClassUpdateRef *class_update_refs;
+    size_t max_class_update_refs;
+    size_t num_class_update_refs;
+
     struct kndConcept *classes;
     size_t max_classes;
     size_t num_classes;
@@ -65,6 +83,12 @@ struct kndMemPool
 
     int (*alloc)(struct kndMemPool   *self);
 
+    int (*new_update)(struct kndMemPool   *self,
+                      struct kndUpdate **result);
+    int (*new_class_update)(struct kndMemPool   *self,
+                            struct kndClassUpdate **result);
+    int (*new_class_update_ref)(struct kndMemPool   *self,
+                                struct kndClassUpdateRef **result);
     int (*new_class)(struct kndMemPool   *self,
                      struct kndConcept **result);
     int (*new_obj)(struct kndMemPool   *self,

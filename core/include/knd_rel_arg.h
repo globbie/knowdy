@@ -31,6 +31,7 @@ struct kndOutput;
 struct kndTranslation;
 struct kndRel;
 struct kndRelArg;
+struct kndRelInstance;
 
 typedef enum knd_relarg_type {
     KND_RELARG_NONE,
@@ -119,6 +120,11 @@ struct kndRelArg
                     size_t val_size);
     int (*resolve)(struct kndRelArg   *self);
     int (*export)(struct kndRelArg   *self);
+
+    int (*read_inst)(struct kndRelArg *self,
+                     struct kndRelInstance *inst,
+                     const char *rec,
+                     size_t *total_size);
 };
 
 

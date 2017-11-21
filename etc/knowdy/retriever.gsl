@@ -5,8 +5,17 @@
       {schemas /etc/knowdy/schemas}
       {sid AUTH_SERVER_SID}
       {locale en}
-      {max_objs 1000000}
-      {max_users 500000}
+
+      {memory
+         {max_users 500000}
+         {max_classes 100000}
+         {max_objs 1000000}
+         {max_elems 2500000}
+         {max_rels 1000}
+         {max_rel_instances 1000000}
+         {max_procs 1000}
+         {max_proc_instances 1000000}
+      }
 
       {coll_request tcp://127.0.0.1:6913}
       {delivery ipc:///var/lib/knowdy/delivery/inbox}
