@@ -474,23 +474,24 @@ static int parse_class_select(void *obj,
 {
     struct kndUser *self = obj;
     struct kndOutput *out = self->out;
+    struct kndConcept *c = self->root_class;
     int err;
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class select: \"%s\"", rec);
-    self->root_class->out = self->out;
-    self->root_class->log = self->log;
-    self->root_class->task = self->task;
+    c->out = self->out;
+    c->log = self->log;
+    c->task = self->task;
 
-    self->root_class->dbpath = self->dbpath;
-    self->root_class->dbpath_size = self->dbpath_size;
-    self->root_class->frozen_output_file_name = self->frozen_output_file_name;
-    self->root_class->frozen_output_file_name_size = self->frozen_output_file_name_size;
+    c->dbpath = self->dbpath;
+    c->dbpath_size = self->dbpath_size;
+    c->frozen_output_file_name = self->frozen_output_file_name;
+    c->frozen_output_file_name_size = self->frozen_output_file_name_size;
 
-    self->root_class->curr_class = NULL;
-    self->root_class->curr_baseclass = NULL;
+    c->curr_class = NULL;
+    c->curr_baseclass = NULL;
 
-    err = self->root_class->select(self->root_class, rec, total_size);
+    err = c->select(c, rec, total_size);
     if (err) return err;
 
     return knd_OK;
@@ -529,16 +530,14 @@ static int parse_liquid_updates(void *obj,
     struct kndUser *self = (struct kndUser*)obj;
     int err;
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. parse and apply liquid updates..");
 
     self->task->type = KND_UPDATE_STATE;
     self->root_class->task = self->task;
 
     err = self->root_class->apply_liquid_updates(self->root_class,
-                                                 rec, total_size);
-    if (err) return err;
-
+                                                 rec, total_size);                RET_ERR();
     return knd_OK;
 }
 

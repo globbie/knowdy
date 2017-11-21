@@ -38,7 +38,7 @@ static int confirm(struct kndStateControl *self,
     struct kndOutput *out;
     int err;
 
-    if (DEBUG_STATE_LEVEL_TMP)
+    if (DEBUG_STATE_LEVEL_2)
         knd_log(".. confirming update: %zu", update->id);
 
     /* TODO: update conflicts */
@@ -56,7 +56,7 @@ static int confirm(struct kndStateControl *self,
     self->updates[self->num_updates] = update;
     self->num_updates++;
 
-    if (DEBUG_STATE_LEVEL_TMP)
+    if (DEBUG_STATE_LEVEL_2)
         knd_log("++  \"%zu\" update confirmed!   global STATE: %zu",
                 update->id, self->num_updates);
 
@@ -68,6 +68,8 @@ static int make_selection(struct kndStateControl *self)
     struct kndUpdate *update;
     size_t start_pos;
     size_t end_pos;
+
+    self->num_selected = 0;
 
     start_pos = self->task->batch_gt;
     end_pos = self->task->batch_lt;
@@ -88,8 +90,6 @@ static int make_selection(struct kndStateControl *self)
     }
 
     if (start_pos > end_pos) return knd_RANGE;
-
-    self->num_selected = 0;
 
     for (size_t i = start_pos; i < end_pos; i++) {
         update = self->updates[i];
