@@ -164,7 +164,8 @@ static void str(struct kndConcept *self)
 
 }
 
-static void obj_str(struct kndObjEntry *self, size_t obj_id, int fd, size_t depth)
+static void obj_str(struct kndObjEntry *self, size_t obj_id,
+                    int fd, size_t depth)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -274,7 +275,8 @@ static int read_gloss(void *obj,
         knd_log(".. reading gloss translation: \"%.*s\"",
                 tr->locale_size, tr->locale);
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    err = knd_parse_task(rec, total_size, specs,
+                         sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
     
     return knd_OK;
@@ -335,11 +337,13 @@ static int validate_attr_items(struct kndConcept *self,
 
     for (item = items; item; item = item->next) {
         if (DEBUG_CONC_LEVEL_2)
-            knd_log(".. attr to validate: \"%.*s\"", item->name_size, item->name);
+            knd_log(".. attr to validate: \"%.*s\"",
+                    item->name_size, item->name);
 
         err = get_attr(self, item->name, item->name_size, &attr);
         if (err) {
-            knd_log("-- attr \"%.*s\" not approved :(\n", item->name_size, item->name);
+            knd_log("-- attr \"%.*s\" not approved :(\n",
+                    item->name_size, item->name);
             /*self->log->reset(self->log);
             e = self->log->write(self->log, name, name_size);
             if (e) return e;
@@ -473,12 +477,13 @@ static int resolve_attrs(struct kndConcept *self)
                         attr->name);
                 return knd_FAIL;
             }
-            dir = (struct kndConcDir*)self->class_idx->get(self->class_idx,
-                                                           attr->ref_classname,
-                                                           attr->ref_classname_size);
+            dir = self->class_idx->get(self->class_idx,
+                                       attr->ref_classname,
+                                       attr->ref_classname_size);
             if (!dir) {
                 knd_log("-- couldn't resolve the \"%.*s\" attr of %.*s :(",
-                        attr->name_size, attr->name, self->name_size, self->name);
+                        attr->name_size, attr->name,
+                        self->name_size, self->name);
                 return knd_FAIL;
             }
             
@@ -778,8 +783,8 @@ static int parse_gloss_translation(void *obj,
     tr->locale = tr->curr_locale;
     tr->locale_size = tr->curr_locale_size;
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
+    err = knd_parse_task(rec, total_size, specs,
+                         sizeof(specs) / sizeof(struct kndTaskSpec));             RET_ERR();
 
     return knd_OK;
 }
@@ -810,7 +815,8 @@ static int parse_gloss(void *obj,
         }
     };
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    err = knd_parse_task(rec, total_size, specs,
+                         sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
 
     /* assign translation */
@@ -1232,7 +1238,8 @@ static int parse_conc_item(void *obj,
         }
     };
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    err = knd_parse_task(rec, total_size, specs,
+                         sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
 
     /*item->next = conc_item->attrs;
@@ -1291,7 +1298,8 @@ static int parse_baseclass(void *obj,
         }
     };
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    err = knd_parse_task(rec, total_size, specs,
+                         sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
 
     return knd_OK;
@@ -1299,7 +1307,8 @@ static int parse_baseclass(void *obj,
 
 
 /* TODO: reconsider this */
-static int run_set_children_setting(void *obj, struct kndTaskArg *args, size_t num_args)
+static int run_set_children_setting(void *obj,
+                                    struct kndTaskArg *args, size_t num_args)
 {
     struct kndConcept *self = (struct kndConcept*)obj;
     struct kndTaskArg *arg;
@@ -1339,7 +1348,8 @@ static int parse_children_settings(void *obj,
     };
     int err;
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    err = knd_parse_task(rec, total_size, specs,
+                         sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
 
     return knd_OK;
@@ -1392,11 +1402,8 @@ static int parse_sync_task(void *obj,
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. freezing DB to GSP files..");
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) {
-        knd_log("-- freeze proc failed :(");
-        return err;
-    }
+    err = knd_parse_task(rec, total_size, specs,
+                         sizeof(specs) / sizeof(struct kndTaskSpec));             PARSE_ERR();
 
     return knd_OK;
 }
@@ -1720,9 +1727,11 @@ static int parse_select_obj(void *data,
         }
     };
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    err = knd_parse_task(rec, total_size, specs,
+                         sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) {
-        knd_log("-- obj select parse error: \"%.*s\"", self->log->buf_size, self->log->buf);
+        knd_log("-- obj select parse error: \"%.*s\"",
+                self->log->buf_size, self->log->buf);
         if (!self->log->buf_size) {
             e = self->log->write(self->log, "obj select parse failure",
                                  strlen("obj select parse failure"));
@@ -1778,7 +1787,8 @@ static int parse_baseclass_select(void *obj,
         }
     };
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    err = knd_parse_task(rec, total_size, specs,
+                         sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
 
     return knd_OK;
@@ -1857,7 +1867,8 @@ static int parse_proc_import(void *obj,
     return knd_OK;
 }
 
-static int run_read_include(void *obj, struct kndTaskArg *args, size_t num_args)
+static int run_read_include(void *obj,
+                            struct kndTaskArg *args, size_t num_args)
 {
     struct kndConcept *self = (struct kndConcept*)obj;
     struct kndTaskArg *arg;
@@ -1866,11 +1877,13 @@ static int run_read_include(void *obj, struct kndTaskArg *args, size_t num_args)
     size_t name_size = 0;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. running include file func.. num args: %lu", (unsigned long)num_args);
+        knd_log(".. running include file func.. num args: %lu",
+                (unsigned long)num_args);
 
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
-        if (arg->name_size == strlen("_impl") && !memcmp(arg->name, "_impl", arg->name_size)) {
+        if (arg->name_size == strlen("_impl")
+            && !memcmp(arg->name, "_impl", arg->name_size)) {
             name = arg->val;
             name_size = arg->val_size;
         }
@@ -1930,8 +1943,8 @@ static int parse_schema(void *self,
     };
     int err;
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
+    err = knd_parse_task(rec, total_size, specs,
+                         sizeof(specs) / sizeof(struct kndTaskSpec));             PARSE_ERR();
 
     return knd_OK;
 }
@@ -4612,7 +4625,7 @@ static int export_JSON(struct kndConcept *self)
     err = out->write(out, "\"", 1);                                               RET_ERR();
 
     if (self->dir && self->dir->numid) {
-        err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                    RET_ERR();
+        err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                  RET_ERR();
         buf_size = sprintf(buf, "%zu", self->dir->numid);
         err = out->write(out, buf, buf_size);                                     RET_ERR();
     }
@@ -5264,15 +5277,14 @@ static int update_state(struct kndConcept *self)
         update->num_classes++;
     }
 
-    err = state_ctrl->confirm(state_ctrl, update);
-    if (err) return err;
+    err = self->rel->update(self->rel, update);                                   RET_ERR();
+    //err = self->proc->update(self->proc, update);                               RET_ERR();
 
-    err = build_update_messages(self, update);
-    if (err) return err;
+    err = state_ctrl->confirm(state_ctrl, update);                                RET_ERR();
+    err = build_update_messages(self, update);                                    RET_ERR();
 
     self->inbox = NULL;
     self->inbox_size = 0;
-
     self->obj_inbox = NULL;
     self->obj_inbox_size = 0; 
     return knd_OK;

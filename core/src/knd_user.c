@@ -25,7 +25,7 @@
 #define DEBUG_USER_LEVEL_TMP 1
 
 static int export(struct kndUser *self);
-static int run_get_user_by_id(void *obj, struct kndTaskArg *args, size_t num_args);
+static int get_user_by_id(void *obj, struct kndTaskArg *args, size_t num_args);
 
 static void del(struct kndUser *self)
 {
@@ -223,17 +223,18 @@ kndUser_parse_numid(void *obj,
                     const char *rec,
                     size_t *total_size)
 {
-    struct kndUser *self = (struct kndUser*)obj;
+    struct kndUser *self = obj;
     int err, e;
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_get_user_by_id,
+          .run = get_user_by_id,
           .obj = self
         }
     };
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    err = knd_parse_task(rec, total_size, specs,
+                         sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) {
         if (!self->log->buf_size) {
             e = self->log->write(self->log, "user identification failure",
@@ -578,7 +579,7 @@ static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
     return knd_OK;
 }
 
-static int run_get_user_by_id(void *data, struct kndTaskArg *args, size_t num_args)
+static int get_user_by_id(void *data, struct kndTaskArg *args, size_t num_args)
 {
     struct kndUser *self = data;
     struct kndTaskArg *arg;
@@ -604,6 +605,7 @@ static int run_get_user_by_id(void *data, struct kndTaskArg *args, size_t num_ar
     if (err) return err;
 
     if (numval < 0 || (size_t)numval >= self->max_users) {
+        knd_log("-- max user limit exceeded");
         return knd_LIMIT;
     }
 
@@ -631,18 +633,10 @@ static int run_get_user_by_id(void *data, struct kndTaskArg *args, size_t num_ar
 
     self->curr_user = obj;
 
-    if (DEBUG_USER_LEVEL_2) {
+    if (DEBUG_USER_LEVEL_TMP) {
         knd_log("++ got user by num id: %.*s", numid_size, numid);
         self->curr_user->str(self->curr_user);
     }
-
-    /* TODO */
-    self->curr_user->out = self->out;
-    self->curr_user->log = self->log;
-    
-    /*err = self->curr_user->export(self->curr_user);
-    if (err) return err;
-    */
 
     return knd_OK;
 }

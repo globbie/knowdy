@@ -10,6 +10,7 @@
 #include "knd_rel.h"
 #include "knd_rel_arg.h"
 #include "knd_task.h"
+#include "knd_state.h"
 #include "knd_repo.h"
 #include "knd_output.h"
 #include "knd_object.h"
@@ -800,12 +801,13 @@ static int parse_import_instance(void *data,
     if (DEBUG_REL_LEVEL_TMP)
         knd_log("++ %.*s rel inst parse OK!", inst->name_size, inst->name);
 
-    /* send to the root rel inbox */
-    inst->next = self->inst_inbox;
-    self->inst_inbox = inst;
-    self->inst_inbox_size++;
 
     rel = inst->rel;
+    /* save in inbox */
+    inst->next = rel->inst_inbox;
+    rel->inst_inbox = inst;
+    rel->inst_inbox_size++;
+
     if (!rel->dir) {
         return knd_OK;
     }
@@ -841,7 +843,7 @@ static int parse_rel_select(struct kndRel *self,
 {
     int err = knd_FAIL, e;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_2)
         knd_log(".. parsing Rel select: \"%.*s\"", 16, rec);
 
     struct kndTaskSpec specs[] = {
@@ -873,6 +875,12 @@ static int parse_rel_select(struct kndRel *self,
             if (e) return e;
         }
         return err;
+    }
+
+    /* any updates happened? */
+    if (self->curr_rel && self->curr_rel->inbox_size) {
+        self->curr_rel->next = self->inbox;
+        self->inbox = self->curr_rel;
     }
 
     return knd_OK;
@@ -975,6 +983,36 @@ static int kndRel_coordinate(struct kndRel *self)
     return knd_OK;
 }
 
+static int kndRel_update_state(struct kndRel *self,
+                               struct kndUpdate *update)
+{
+    struct kndRel *rel;
+    int err;
+    if (!self->inbox_size) return knd_OK;
+
+    /* create index of REL updates */
+    /*    class_updates = realloc(update->classes,
+                            (self->inbox_size * sizeof(struct kndClassUpdate*)));
+    if (!class_updates) return knd_NOMEM;
+    update->classes = class_updates;
+    */
+
+    /*for (rel = self->inbox; rel; rel = rel->next) {
+        err = rel->resolve(rel);                                                  RET_ERR();
+        err = self->mempool->new_rel_update(self->mempool, &rel_update);          RET_ERR();
+
+        self->next_numid++;
+        c->numid = self->next_numid;
+        
+        class_update->conc = c;
+        update->classes[update->num_classes] = class_update;
+        update->num_classes++;
+    }
+    */
+
+    return knd_OK;
+}
+
 static int freeze(struct kndRel *self,
                   size_t *total_frozen_size,
                   char *output,
@@ -1039,6 +1077,7 @@ kndRel_init(struct kndRel *self)
     self->freeze = freeze;
     self->import = import_rel;
     self->read = read_GSP;
+    self->update = kndRel_update_state;
     self->select = parse_rel_select;
     memset(self->id, '0', KND_ID_SIZE);
 }
