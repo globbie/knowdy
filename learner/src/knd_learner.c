@@ -236,6 +236,11 @@ static int parse_memory_settings(void *obj,
 {
     struct kndMemPool *self = obj;
     struct kndTaskSpec specs[] = {
+        { .name = "max_users",
+          .name_size = strlen("max_users"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_users
+        },
         { .name = "max_classes",
           .name_size = strlen("max_classes"),
           .parse = knd_parse_size_t,
