@@ -26,6 +26,7 @@ struct kndOutput;
 struct kndTask;
 struct kndRelArg;
 struct kndRelInstance;
+struct kndUpdate;
 
 struct kndRelState
 {
@@ -164,6 +165,7 @@ struct kndRel
                   size_t *total_size);
     int (*coordinate)(struct kndRel *self);
     int (*resolve)(struct kndRel *self);
+    int (*update)(struct kndRel *self, struct kndUpdate *update);
     int (*freeze)(struct kndRel *self,
                   size_t *total_frozen_size,
                   char *output,
