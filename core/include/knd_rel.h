@@ -25,6 +25,7 @@
 struct kndOutput;
 struct kndTask;
 struct kndRelArg;
+struct kndRelArgInstance;
 struct kndRelInstance;
 struct kndUpdate;
 
@@ -46,17 +47,14 @@ struct kndRelInstEntry
 
 struct kndRelInstance
 {
+    size_t id;
     char name[KND_NAME_SIZE];
     size_t name_size;
-
-    char subj_name[KND_SHORT_NAME_SIZE];
-    size_t subj_name_size;
-
-    char obj_name[KND_SHORT_NAME_SIZE];
-    size_t obj_name_size;
-
     knd_state_phase phase;
+
     struct kndRel *rel;
+    struct kndRelArgInstance *args;
+
     struct kndRelInstance *next;
 };
 
@@ -92,15 +90,24 @@ struct kndRelDir
     struct kndRelDir *next;
 };
 
+struct kndRelUpdateRef
+{
+    knd_state_phase phase;
+    struct kndUpdate *update;
+    struct kndRelUpdateRef *next;
+};
+
 struct kndRel
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    char id[KND_ID_SIZE];
-    char next_id[KND_ID_SIZE];
-
+    size_t id;
+    size_t next_id;
     knd_state_phase phase;
+
+    struct kndRelUpdateRef *updates;
+    size_t num_updates;
 
     struct kndTranslation *tr;
 

@@ -47,21 +47,20 @@ static const char* const knd_relarg_names[] = {
     "ins",
 };
 
-struct kndRelArgItem
+struct kndRelArgInstance
 {
     knd_task_spec_type type;
-    char name[KND_NAME_SIZE];
-    size_t name_size;
-
-    char val[KND_NAME_SIZE];
-    size_t val_size;
-
     struct kndRelArg *relarg;
-    struct kndRelArgItem *children;
-    struct kndRelArgItem *tail;
-    size_t num_children;
+
+    const char *classname;
+    size_t classname_size;
+    struct kndConcDir *conc_dir;
+
+    const char *objname;
+    size_t objname_size;
+    struct kndObjEntry *obj;
     
-    struct kndRelArgItem *next;
+    struct kndRelArgInstance *next;
 };
 
 struct kndRelArg 
@@ -121,13 +120,14 @@ struct kndRelArg
     int (*resolve)(struct kndRelArg   *self);
     int (*export)(struct kndRelArg   *self);
 
-    int (*read_inst)(struct kndRelArg *self,
-                     struct kndRelInstance *inst,
-                     const char *rec,
-                     size_t *total_size);
+    int (*parse_inst)(struct kndRelArg *self,
+                      struct kndRelArgInstance *inst,
+                      const char *rec,
+                      size_t *total_size);
 };
 
 
 /* constructor */
+extern void kndRelArgInstance_init(struct kndRelArgInstance *self);
 extern int kndRelArg_new(struct kndRelArg **self);
 #endif

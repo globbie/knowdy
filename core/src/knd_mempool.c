@@ -7,6 +7,7 @@
 #include "knd_concept.h"
 #include "knd_object.h"
 #include "knd_rel.h"
+#include "knd_rel_arg.h"
 #include "knd_proc.h"
 #include "knd_state.h"
 
@@ -128,14 +129,7 @@ static int new_rel(struct kndMemPool *self,
     struct kndRel *rel;
     int e;
 
-    if (self->num_rels >= self->max_rels) {
-        self->log->reset(self->log);
-        e = self->log->write(self->log, "memory limit reached",
-                             strlen("memory limit reached"));
-        if (e) return e;
-        knd_log("-- Rel pool memory limit reached :(");
-        return knd_LIMIT;
-    }
+    if (self->num_rels >= self->max_rels) return knd_NOMEM;
 
     rel = &self->rels[self->num_rels];
     memset(rel, 0, sizeof(struct kndRel));
@@ -165,6 +159,21 @@ static int new_rel_inst(struct kndMemPool *self,
     kndRelInstance_init(rel_inst);
     self->num_rel_insts++;
     *result = rel_inst;
+    return knd_OK;
+}
+
+static int new_rel_arg_inst(struct kndMemPool *self,
+                            struct kndRelArgInstance **result)
+{
+    struct kndRelArgInstance *rel_arg_inst;
+    int e;
+
+    if (self->num_rel_arg_insts >= self->max_rel_arg_insts) return knd_LIMIT;
+    rel_arg_inst = &self->rel_arg_insts[self->num_rel_arg_insts];
+    memset(rel_arg_inst, 0, sizeof(struct kndRelArgInstance));
+    kndRelArgInstance_init(rel_arg_inst);
+    self->num_rel_arg_insts++;
+    *result = rel_arg_inst;
     return knd_OK;
 }
 
@@ -201,6 +210,7 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_objs)     self->max_objs =    KND_MIN_OBJS;
     if (!self->max_rels)     self->max_rels =    KND_MIN_RELS;
     if (!self->max_rel_insts) self->max_rel_insts = KND_MIN_REL_INSTANCES;
+    if (!self->max_rel_arg_insts) self->max_rel_arg_insts = KND_MIN_RELARG_INSTANCES;
     if (!self->max_procs)    self->max_procs =  KND_MIN_PROCS;
     if (!self->max_proc_insts) self->max_proc_insts = KND_MIN_PROC_INSTANCES;
 
@@ -256,20 +266,30 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
+    self->rel_arg_insts = calloc(self->max_rel_arg_insts,
+                                 sizeof(struct kndRelArgInstance));
+    if (!self->rel_arg_insts) {
+        knd_log("-- rel arg insts not allocated :(");
+        return knd_NOMEM;
+    }
+
     self->procs = calloc(self->max_procs, sizeof(struct kndProc));
     if (!self->procs) {
         knd_log("-- procs not allocated :(");
         return knd_NOMEM;
     }
 
-    self->proc_insts = calloc(self->max_proc_insts, sizeof(struct kndProcInstance));
+    self->proc_insts = calloc(self->max_proc_insts,
+                              sizeof(struct kndProcInstance));
     if (!self->proc_insts) {
         knd_log("-- proc insts not allocated :(");
         return knd_NOMEM;
     }
 
-    knd_log("TOTAL allocations: classes:%zu  objs:%zu  elems:%zu  rels:%zu  procs:%zu",
-            self->max_classes, self->max_objs, self->max_elems, self->max_rels, self->max_procs);
+    knd_log("TOTAL allocations: classes:%zu  objs:%zu  "
+            "elems:%zu  rels:%zu  procs:%zu",
+            self->max_classes, self->max_objs, self->max_elems,
+            self->max_rels, self->max_procs);
 
     return knd_OK;
 }
@@ -285,6 +305,7 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_obj = new_obj;
     self->new_rel = new_rel;
     self->new_rel_inst = new_rel_inst;
+    self->new_rel_arg_inst = new_rel_arg_inst;
     self->new_proc = new_proc;
 }
 

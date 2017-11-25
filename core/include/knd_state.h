@@ -34,6 +34,13 @@ struct kndClassUpdate
     size_t num_objs;
 };
 
+struct kndRelUpdate
+{
+    struct kndRel *rel;
+    struct kndRelInstance **insts;
+    size_t num_insts;
+};
+
 struct kndUpdate
 {
     size_t id;

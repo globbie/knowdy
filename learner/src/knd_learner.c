@@ -261,10 +261,20 @@ static int parse_memory_settings(void *obj,
           .parse = knd_parse_size_t,
           .obj = &self->max_rels
         },
+        { .name = "max_rel_args",
+          .name_size = strlen("max_rels_args"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_args
+        },
         { .name = "max_rel_instances",
           .name_size = strlen("max_rel_instances"),
           .parse = knd_parse_size_t,
           .obj = &self->max_rel_insts
+        },
+        { .name = "max_rel_arg_instances",
+          .name_size = strlen("max_rel_arg_instances"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_arg_insts
         },
         { .name = "max_procs",
           .name_size = strlen("max_procs"),
@@ -455,7 +465,7 @@ kndLearner_new(struct kndLearner **rec,
     err = parse_config_GSL(self, self->out->file, &chunk_size);
     if (err) goto error;
 
-    self->mempool->alloc(self->mempool);
+    err = self->mempool->alloc(self->mempool);                                    RET_ERR();
 
     err = kndStateControl_new(&self->task->state_ctrl);
     if (err) return err;
@@ -825,9 +835,8 @@ void *kndLearner_publisher(void *arg)
  *  - write assert macros for error checking and logging
  */
 
-int
-main(const int argc,
-     const char ** const argv)
+int main(const int argc,
+         const char ** const argv)
 {
     struct kndLearner *learner;
     const char *config = NULL;
@@ -846,26 +855,18 @@ main(const int argc,
     }
     config = argv[1];
 
-    err = kndLearner_new(&learner, config);
-    if (err) {
-        fprintf(stderr, "Couldn\'t load the Learner... ");
-        return EXIT_FAILURE;
-    }
+    err = kndLearner_new(&learner, config);   RET_ERR();
 
-    /* add device */
-    err = pthread_create(&inbox, NULL, kndLearner_inbox, (void *) learner);
+    /*err = pthread_create(&inbox, NULL, kndLearner_inbox, (void *) learner);
 
-    /* add subscriber */
     err = pthread_create(&subscriber, NULL, kndLearner_subscriber, (void *) learner);
 
-    /* add selector */
     err = pthread_create(&selector, NULL, kndLearner_selector, (void *) learner);
 
-    /* add updates publisher */
     err = pthread_create(&publisher, NULL, kndLearner_publisher, (void *) learner);
 
     learner->start(learner);
-
+    */
     learner->del(learner);
 
     return EXIT_SUCCESS;
