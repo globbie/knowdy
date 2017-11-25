@@ -26,7 +26,6 @@ kndOutput_del(struct kndOutput *self)
     return knd_OK;
 }
 
-
 static void
 kndOutput_reset(struct kndOutput *self)
 {

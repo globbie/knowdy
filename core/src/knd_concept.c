@@ -3650,6 +3650,8 @@ static int unfreeze_class(struct kndConcept *self,
     }
 
     buf_size = dir->block_size;
+    if (buf_size >= KND_TEMP_BUF_SIZE) return knd_NOMEM;
+
     err = read(fd, buf, buf_size);
     if (err == -1) {
         err = knd_IO_FAIL;
@@ -3663,9 +3665,10 @@ static int unfreeze_class(struct kndConcept *self,
     /* done reading */
     close(fd);
 
-    err = kndConcept_new(&c);
+    self->mempool->new_class(self->mempool, &c);                                  RET_ERR();
+    /*err = kndConcept_new(&c);
     if (err) return err;
-
+    */
     memcpy(c->name, dir->name, dir->name_size);
     c->name_size = dir->name_size;
     c->out = self->out;
@@ -5266,9 +5269,7 @@ static int update_state(struct kndConcept *self)
             return err;
         }
 
-        err = self->mempool->new_class_update(self->mempool, &class_update);
-        if (err) return err;
-
+        err = self->mempool->new_class_update(self->mempool, &class_update);      RET_ERR();
         self->next_numid++;
         c->numid = self->next_numid;
         
@@ -5277,7 +5278,9 @@ static int update_state(struct kndConcept *self)
         update->num_classes++;
     }
 
-    err = self->rel->update(self->rel, update);                                   RET_ERR();
+    if (self->rel->inbox_size) {
+        err = self->rel->update(self->rel, update);                               RET_ERR();
+    }
     //err = self->proc->update(self->proc, update);                               RET_ERR();
 
     err = state_ctrl->confirm(state_ctrl, update);                                RET_ERR();
