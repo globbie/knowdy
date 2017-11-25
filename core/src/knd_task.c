@@ -19,6 +19,9 @@
 
 static void del(struct kndTask *self)
 {
+    self->log->del(self->log);
+    self->spec_out->del(self->spec_out);
+    self->update->del(self->update);
     free(self);
 }
 

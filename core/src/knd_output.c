@@ -17,13 +17,11 @@
 #define DEBUG_OUTPUT_LEVEL_TMP 1
 
 
-static int 
-kndOutput_del(struct kndOutput *self)
+static void del(struct kndOutput *self)
 {
-
+    if (self->file) free(self->file);
+    if (self->buf) free(self->buf);
     free(self);
-
-    return knd_OK;
 }
 
 static void
@@ -181,7 +179,7 @@ kndOutput_rtrim(struct kndOutput *self,
 extern int 
 kndOutput_init(struct kndOutput *self)
 {
-    self->del = kndOutput_del;
+    self->del = del;
     self->reset = kndOutput_reset;
     self->rtrim = kndOutput_rtrim;
     self->write = kndOutput_write;

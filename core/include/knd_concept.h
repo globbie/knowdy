@@ -22,6 +22,7 @@
 #include "knd_dict.h"
 #include "knd_facet.h"
 #include "knd_utils.h"
+#include "knd_object.h"
 #include "knd_config.h"
 
 struct kndAttr;
@@ -104,24 +105,6 @@ struct kndAttrEntry
     struct kndAttrEntry *next;
 };
 
-struct kndObjEntry
-{
-    char *name;
-    size_t name_size;
-    char *block;
-    size_t block_size;
-    size_t offset;
-    struct kndObject *obj;
-};
-
-struct kndObjDir
-{
-    struct kndObjEntry **objs;
-    size_t num_objs;
-
-    struct kndObjDir **dirs;
-    size_t num_dirs;
-};
 
 struct kndConcDir
 {
@@ -131,6 +114,7 @@ struct kndConcDir
     char name[KND_NAME_SIZE];
     size_t name_size;
     struct kndConcept *conc;
+    struct kndMemPool *mempool;
 
     knd_state_phase phase;
 
@@ -154,6 +138,7 @@ struct kndConcDir
 
     struct kndObjDir **obj_dirs;
     size_t num_obj_dirs;
+
     struct kndObjEntry **objs;
     size_t num_objs;
     size_t total_objs;

@@ -999,6 +999,11 @@ kndObject_resolve(struct kndObject *self)
 }
 
 
+extern void kndObjEntry_init(struct kndObjEntry *self)
+{
+    memset(self, 0, sizeof(struct kndObjEntry));
+}
+
 extern void
 kndObject_init(struct kndObject *self)
 {

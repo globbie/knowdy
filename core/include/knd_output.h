@@ -21,7 +21,7 @@ struct kndOutput
     size_t file_size;
 
     /**********  interface methods  **********/
-    int (*del)(struct kndOutput *self);
+    void (*del)(struct kndOutput *self);
 
     void (*reset)(struct kndOutput *self);
 
