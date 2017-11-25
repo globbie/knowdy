@@ -27,8 +27,9 @@
 #define DEBUG_REL_LEVEL_TMP 1
 
 static void
-del(struct kndRel *self __attribute__((unused)))
+del(struct kndRel *self)
 {
+    free(self);
 }
 
 static void str(struct kndRel *self)
@@ -488,21 +489,19 @@ static int import_rel(struct kndRel *self,
         self->inbox_size++;
     }
 
-    dir = malloc(sizeof(struct kndRelDir));
-    memset(dir, 0, sizeof(struct kndRelDir));
+    err = self->mempool->new_rel_dir(self->mempool, &dir);                        RET_ERR();
     dir->rel = rel;
     rel->dir = dir;
     err = self->rel_idx->set(self->rel_idx,
                              rel->name, rel->name_size, (void*)dir);
     if (err) goto final;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_2)
         rel->str(rel);
 
     return knd_OK;
  final:
     
-    rel->del(rel);
     return err;
 }
 

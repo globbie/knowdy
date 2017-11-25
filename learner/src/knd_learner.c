@@ -32,9 +32,30 @@
 static void
 kndLearner_del(struct kndLearner *self)
 {
-    /*if (self->path) free(self->path);*/
+    struct kndConcept *conc;
+    self->mempool->del(self->mempool);
+    self->out->del(self->out);
+    self->log->del(self->log);
 
-    /* TODO: storage */
+    self->task->state_ctrl->del(self->task->state_ctrl);
+    self->task->out->del(self->task->out);
+    self->task->del(self->task);
+
+    free(self->admin->user_idx);
+
+    conc = self->admin->root_class;
+    conc->class_idx->del(conc->class_idx);
+
+    conc->rel->rel_idx->del(conc->rel->rel_idx);
+    conc->rel->del(conc->rel);
+
+    conc->proc->proc_idx->del(conc->proc->proc_idx);
+    conc->proc->del(conc->proc);
+
+    conc->del(conc);
+
+    self->admin->del(self->admin);
+
     free(self);
 }
 
@@ -505,13 +526,13 @@ kndLearner_new(struct kndLearner **rec,
     memset(conc->dir->name, '0', KND_ID_SIZE);
     conc->dir->name_size = KND_ID_SIZE;
     conc->dir->conc = conc;
-
     conc->mempool = self->mempool;
+    conc->dir->mempool = self->mempool;
 
     err = kndProc_new(&conc->proc);
     if (err) goto error;
     conc->proc->mempool = self->mempool;
-    
+
     err = kndRel_new(&conc->rel);
     if (err) goto error;
     conc->rel->mempool = self->mempool;

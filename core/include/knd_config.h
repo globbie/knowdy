@@ -383,6 +383,7 @@ typedef enum knd_storage_type {
 #define KND_MIN_USERS 1024
 #define KND_MIN_CLASSES 1024
 #define KND_MIN_OBJS 1024
+#define KND_MIN_OBJ_ENTRIES 1024
 #define KND_MIN_ELEMS 1024
 #define KND_MIN_RELS 1024
 #define KND_MIN_REL_INSTANCES 1024

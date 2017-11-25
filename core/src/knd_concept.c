@@ -86,16 +86,78 @@ static int build_diff(struct kndConcept *self,
                       const char *start_state,
                       size_t global_state_count);
 
-/*  Concept Destructor */
-static void del(struct kndConcept *self __attribute__((unused)))
+
+static void del_obj_dir(struct kndObjDir *parent_dir)
 {
+    struct kndObjDir *obj_dir;
+
+    if (parent_dir->num_dirs) {
+        for (size_t i = 0; i < KND_RADIX_BASE; i++) {
+            obj_dir = parent_dir->dirs[i];
+            if (!obj_dir) continue;
+            del_obj_dir(obj_dir);
+        }
+    }
+
+    if (parent_dir->num_objs) free(parent_dir->objs);
+    if (parent_dir->num_dirs) free(parent_dir->dirs);
+}
+
+static void del_conc_dir(struct kndConcDir *parent_dir)
+{
+    struct kndConcDir *dir;
+    struct kndObjDir *obj_dir;
+    size_t i;
+
+    for (i = 0; i < parent_dir->num_children; i++) {
+        dir = parent_dir->children[i];
+        if (!dir) continue;
+        del_conc_dir(dir);
+    }
+    if (parent_dir->children) free(parent_dir->children);
+
+    if (parent_dir->obj_dirs) {
+        for (i = 0; i <  KND_RADIX_BASE; i++) {
+            obj_dir = parent_dir->obj_dirs[i];
+            if (!obj_dir) continue;
+            del_obj_dir(obj_dir);
+        }
+        free(parent_dir->obj_dirs);
+    }
+    if (parent_dir->objs) free(parent_dir->objs);
+
+    if (parent_dir->obj_idx) {
+        parent_dir->obj_idx->del(parent_dir->obj_idx);
+    }
+
+    if (parent_dir->rels)
+        free(parent_dir->rels);
+
+    free(parent_dir);
+}
+
+/*  class destructor */
+static void del(struct kndConcept *self)
+{
+    struct kndConcRef *ref;
+    if (self->attr_idx) self->attr_idx->del(self->attr_idx);
+    if (self->summary) self->summary->del(self->summary);
+    if (self->dir) del_conc_dir(self->dir);
+
+    for (size_t i = 0; i < self->num_children; i++) {
+        ref = &self->children[i];
+        ref->conc->del(ref->conc);
+    }
+
+    free(self);
 }
 
 static void str_attr_items(struct kndAttrItem *items, size_t depth)
 {
     struct kndAttrItem *item;
     for (item = items; item; item = item->next) {
-        knd_log("%*s_attr: \"%s\" => %s", depth * KND_OFFSET_SIZE, "", item->name, item->val);
+        knd_log("%*s_attr: \"%s\" => %s", depth * KND_OFFSET_SIZE, "",
+                item->name, item->val);
         if (item->children)
             str_attr_items(item->children, depth + 1);
     }
@@ -160,8 +222,6 @@ static void str(struct kndConcept *self)
     }
 
     knd_log("%*s}", self->depth * KND_OFFSET_SIZE, "");
-
-
 }
 
 static void obj_str(struct kndObjEntry *self, size_t obj_id,
@@ -847,7 +907,7 @@ static int parse_summary(void *obj,
 
     err = text->parse(text, rec, total_size);
     if (err) return err;
-
+    
     return knd_OK;
 }
 
@@ -1588,8 +1648,11 @@ static int parse_import_class(void *obj,
 
     dir = malloc(sizeof(struct kndConcDir));
     memset(dir, 0, sizeof(struct kndConcDir));
+
     dir->conc = c;
     c->dir = dir;
+    dir->mempool = self->mempool;
+
     err = self->class_idx->set(self->class_idx,
                                c->name, c->name_size, (void*)dir);
     if (err) goto final;
@@ -1608,7 +1671,7 @@ static int parse_import_obj(void *data,
                             const char *rec,
                             size_t *total_size)
 {
-    struct kndConcept *self = (struct kndConcept*)data;
+    struct kndConcept *self = data;
     struct kndConcept *c;
     struct kndObject *obj;
     struct kndObjEntry *entry;
@@ -1658,9 +1721,7 @@ static int parse_import_obj(void *data,
         if (err) return err;
     }
 
-    entry = malloc(sizeof(struct kndObjEntry));
-    if (!entry) return knd_NOMEM;
-    memset(entry, 0, sizeof(struct kndObjEntry));
+    err = self->mempool->new_obj_entry(self->mempool, &entry);                    RET_ERR();
     entry->obj = obj;
 
     err = c->dir->obj_idx->set(c->dir->obj_idx,
@@ -2289,8 +2350,8 @@ static int parse_obj_dir_size(void *obj,
 static int dir_entry_append(void *accu,
                             void *item)
 {
-    struct kndConcDir *parent_dir = (struct kndConcDir *)accu;
-    struct kndConcDir *dir = (struct kndConcDir *)item;
+    struct kndConcDir *parent_dir = accu;
+    struct kndConcDir *dir = item;
 
     if (!parent_dir->children) {
         parent_dir->children = malloc(sizeof(struct kndConcDir*) * KND_MAX_CONC_CHILDREN);
@@ -2333,11 +2394,13 @@ static int dir_entry_alloc(void *self,
 
     memset(dir, 0, sizeof(struct kndConcDir));
     memcpy(dir->id, name, KND_ID_SIZE);
+    dir->mempool = parent_dir->mempool;
 
     memset(dir->next_obj_id, '0', KND_ID_SIZE);
 
     knd_calc_num_id(name, &dir->numid);
 
+    
     *item = dir;
     return knd_OK;
 }
@@ -2350,6 +2413,7 @@ static int reldir_entry_alloc(void *self,
 {
     struct kndConcDir *parent_dir = self;
     struct kndRelDir *dir;
+    int err;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. create REL DIR ENTRY: %.*s count: %zu",
@@ -2357,10 +2421,7 @@ static int reldir_entry_alloc(void *self,
 
     if (name_size > KND_ID_SIZE) return knd_LIMIT;
 
-    dir = malloc(sizeof(struct kndRelDir));
-    if (!dir) return knd_NOMEM;
-
-    memset(dir, 0, sizeof(struct kndRelDir));
+    err = parent_dir->mempool->new_rel_dir(parent_dir->mempool, &dir);            RET_ERR();
     memcpy(dir->id, name, KND_ID_SIZE);
 
     memset(dir->next_inst_id, '0', KND_ID_SIZE);
@@ -2558,10 +2619,10 @@ static int index_obj_name(struct kndConcept *self,
     if (!name_size) {
         return knd_FAIL;
     }
+    if (name_size > KND_NAME_SIZE)
 
-    entry->name = malloc(name_size);
-    if (!entry->name) return knd_NOMEM;
     memcpy(entry->name, b, name_size);
+    entry->name_size = name_size;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. index obj name: \"%.*s\"", name_size, entry->name);
@@ -2850,6 +2911,8 @@ static int parse_dir_trailer(struct kndConcept *self,
         dir = parent_dir->children[i];
         if (!dir) continue;
 
+        dir->mempool = parent_dir->mempool;
+
         if (DEBUG_CONC_LEVEL_2)
             knd_log("== child DIR %.*s block size: %zu",
                     KND_ID_SIZE, dir->id, dir->block_size);
@@ -2890,7 +2953,8 @@ static int parse_dir_trailer(struct kndConcept *self,
     return knd_OK;
 }
 
-static int register_obj_entry(struct kndObjDir **obj_dirs,
+static int register_obj_entry(struct kndMemPool *mempool,
+                              struct kndObjDir **obj_dirs,
                               struct kndObjEntry *entry,
                               const char *obj_id,
                               size_t depth,
@@ -2903,25 +2967,22 @@ static int register_obj_entry(struct kndObjDir **obj_dirs,
 
     c = obj_id[KND_ID_SIZE - depth];
     numval = obj_id_base[(size_t)c];
-
-    /*knd_log("%c => %d", c, numval);*/
     if (numval == -1) return knd_LIMIT;
 
     dir = obj_dirs[numval];
     if (!dir) {
-        dir = malloc(sizeof(struct kndObjDir));
-        if (!dir) return knd_NOMEM;
-        memset(dir, 0, sizeof(struct kndObjDir));
+        err = mempool->new_obj_dir(mempool, &dir);                                RET_ERR();
         obj_dirs[numval] = dir;
     }
 
     if (depth < max_depth) {
         if (!dir->dirs) {
+            return knd_OK;
             dir->dirs = calloc(KND_RADIX_BASE, sizeof(struct kndObjDir*));
             if (!dir->dirs) return knd_NOMEM;
         }
-        err = register_obj_entry(dir->dirs, entry, obj_id, depth + 1, max_depth);
-        if (err) return err;
+        err = register_obj_entry(mempool, dir->dirs, entry,
+                                 obj_id, depth + 1, max_depth);                   RET_ERR();
         return knd_OK;
     }
 
@@ -2940,7 +3001,7 @@ static int register_obj_entry(struct kndObjDir **obj_dirs,
     return knd_OK;
 }
 
-static int obj_atomic_entry_alloc(void *self,
+static int obj_atomic_entry_alloc(void *obj,
                                   const char *val,
                                   size_t val_size,
                                   size_t count,
@@ -2948,9 +3009,9 @@ static int obj_atomic_entry_alloc(void *self,
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
-    struct kndConcDir *parent_dir = self;
+    struct kndConcDir *parent_dir = obj;
     struct kndObjDir *obj_dir;
-    struct kndObjEntry *entry;
+    struct kndObjEntry *entry = NULL;
     char *invalid_num_char = NULL;
     const char *c;
     long numval;
@@ -2961,10 +3022,9 @@ static int obj_atomic_entry_alloc(void *self,
         knd_log(".. create OBJ ENTRY: %.*s  count: %zu  parent_dir:%p",
                 val_size, val, count, parent_dir);
 
-    entry = malloc(sizeof(struct kndObjEntry));
-    if (!entry) return knd_NOMEM;
-    memset(entry, 0, sizeof(struct kndObjEntry));
+    err = parent_dir->mempool->new_obj_entry(parent_dir->mempool, &entry);        RET_ERR();
 
+    if (val_size >= KND_NAME_SIZE) return knd_FAIL;
     memcpy(buf, val, val_size);
     buf[val_size] = '\0';
 
@@ -3016,10 +3076,9 @@ static int obj_atomic_entry_alloc(void *self,
         if (!parent_dir->obj_dirs) return knd_NOMEM;
     }
 
-    //knd_log("\nOBJ %.*s, depth: %zu", KND_ID_SIZE, parent_dir->next_obj_id, depth);
-
     /* assign entry to a subordinate dir */
-    err = register_obj_entry(parent_dir->obj_dirs, entry,
+    err = register_obj_entry(parent_dir->mempool,
+                             parent_dir->obj_dirs, entry,
                              parent_dir->next_obj_id, 1, depth);
     if (err) return err;
 
@@ -3205,7 +3264,8 @@ static int open_frozen_DB(struct kndConcept *self)
 
     self->dir->block_size = file_size;
     self->dir->id[0] = '/';
-    
+    self->dir->mempool = self->mempool;
+
     /* TODO: get encode base from config */
     err = get_dir_trailer(self, self->dir, fd, KND_DIR_SIZE_ENCODE_BASE);
     if (err) {
@@ -3666,9 +3726,6 @@ static int unfreeze_class(struct kndConcept *self,
     close(fd);
 
     self->mempool->new_class(self->mempool, &c);                                  RET_ERR();
-    /*err = kndConcept_new(&c);
-    if (err) return err;
-    */
     memcpy(c->name, dir->name, dir->name_size);
     c->name_size = dir->name_size;
     c->out = self->out;
@@ -5200,6 +5257,7 @@ static int apply_liquid_updates(struct kndConcept *self,
             c->log = self->log;
             c->frozen_output_file_name = self->frozen_output_file_name;
             c->frozen_output_file_name_size = self->frozen_output_file_name_size;
+            c->mempool = self->mempool;
 
             err = c->resolve(c);
             if (err) return err;
@@ -5207,6 +5265,7 @@ static int apply_liquid_updates(struct kndConcept *self,
             dir = malloc(sizeof(struct kndConcDir));
             memset(dir, 0, sizeof(struct kndConcDir));
             dir->conc = c;
+            dir->mempool = self->mempool;
 
             err = self->class_idx->set(self->class_idx,
                                        c->name, c->name_size, (void*)dir);
@@ -5409,7 +5468,8 @@ static int freeze_objs(struct kndConcept *self,
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. freezing objs of class \"%.*s\", total:%zu  valid:%zu",
-                self->name_size, self->name, self->dir->obj_idx->size, self->dir->num_objs);
+                self->name_size, self->name,
+                self->dir->obj_idx->size, self->dir->num_objs);
 
     out = self->out;
     out->reset(out);

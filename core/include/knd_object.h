@@ -87,6 +87,25 @@ struct kndAggrObject
     struct kndAggrObject *next;
 };
 
+struct kndObjEntry
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+    char *block;
+    size_t block_size;
+    size_t offset;
+    struct kndObject *obj;
+};
+
+struct kndObjDir
+{
+    struct kndObjEntry **objs;
+    size_t num_objs;
+
+    struct kndObjDir **dirs;
+    size_t num_dirs;
+};
+
 struct kndObject
 {
     knd_obj_type type;
@@ -189,5 +208,6 @@ struct kndObject
 
 /* constructors */
 extern void kndObject_init(struct kndObject *self);
+extern void kndObjEntry_init(struct kndObjEntry *self);
 extern int kndObject_new(struct kndObject **self);
 

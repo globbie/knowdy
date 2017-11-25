@@ -29,6 +29,8 @@ static int get_user_by_id(void *obj, struct kndTaskArg *args, size_t num_args);
 
 static void del(struct kndUser *self)
 {
+    if (self->repo)
+        self->repo->del(self->repo);
     free(self);
 }
 
@@ -865,9 +867,10 @@ kndUser_new(struct kndUser **user)
     self->repo->name[0] = '~';
     self->repo->name_size = 1;
     
-    err = ooDict_new(&self->class_idx, KND_SMALL_DICT_SIZE);                     RET_ERR();
+    /*err = ooDict_new(&self->class_idx, KND_SMALL_DICT_SIZE);                     RET_ERR();
     err = ooDict_new(&self->browse_class_idx, KND_SMALL_DICT_SIZE);              RET_ERR();
-    
+    */
+
     kndUser_init(self);
 
     *user = self;

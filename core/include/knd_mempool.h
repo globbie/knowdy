@@ -54,9 +54,21 @@ struct kndMemPool
     size_t max_classes;
     size_t num_classes;
 
+    struct kndConcDir *conc_dirs;
+    size_t max_conc_dirs;
+    size_t num_conc_dirs;
+
     struct kndObject *objs;
     size_t max_objs;
     size_t num_objs;
+
+    struct kndObjDir *obj_dirs;
+    size_t max_obj_dirs;
+    size_t num_obj_dirs;
+
+    struct kndObjEntry *obj_entries;
+    size_t max_obj_entries;
+    size_t num_obj_entries;
 
     struct kndElem *elems;
     size_t max_elems;
@@ -74,6 +86,10 @@ struct kndMemPool
     struct kndRelUpdateRef *rel_update_refs;
     size_t max_rel_update_refs;
     size_t num_rel_update_refs;
+
+    struct kndRelDir *rel_dirs;
+    size_t max_rel_dirs;
+    size_t num_rel_dirs;
 
     struct kndRelInstance *rel_insts;
     size_t max_rel_insts;
@@ -98,6 +114,7 @@ struct kndMemPool
 
     struct kndOutput *log;
 
+    void (*del)(struct kndMemPool   *self);
     int (*alloc)(struct kndMemPool   *self);
 
     int (*new_update)(struct kndMemPool   *self,
@@ -108,10 +125,18 @@ struct kndMemPool
                                 struct kndClassUpdateRef **result);
     int (*new_class)(struct kndMemPool   *self,
                      struct kndConcept **result);
+    int (*new_conc_dir)(struct kndMemPool   *self,
+                       struct kndConcDir **result);
     int (*new_obj)(struct kndMemPool   *self,
                    struct kndObject **result);
+    int (*new_obj_dir)(struct kndMemPool   *self,
+                       struct kndObjDir **result);
+    int (*new_obj_entry)(struct kndMemPool   *self,
+                         struct kndObjEntry **result);
     int (*new_rel)(struct kndMemPool   *self,
                    struct kndRel **result);
+    int (*new_rel_dir)(struct kndMemPool   *self,
+                       struct kndRelDir **result);
     int (*new_rel_update)(struct kndMemPool   *self,
                           struct kndRelUpdate **result);
     int (*new_rel_update_ref)(struct kndMemPool   *self,
