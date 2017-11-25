@@ -137,12 +137,13 @@ static void del_conc_dir(struct kndConcDir *parent_dir)
 }
 
 /*  class destructor */
-static void del(struct kndConcept *self)
+static void kndConcept_del(struct kndConcept *self)
 {
     struct kndConcRef *ref;
+
     if (self->attr_idx) self->attr_idx->del(self->attr_idx);
     if (self->summary) self->summary->del(self->summary);
-    if (self->dir) del_conc_dir(self->dir);
+    //if (self->dir) del_conc_dir(self->dir);
 
     for (size_t i = 0; i < self->num_children; i++) {
         ref = &self->children[i];
@@ -5875,7 +5876,7 @@ static void reset(struct kndConcept *self)
 /*  Concept initializer */
 extern void kndConcept_init(struct kndConcept *self)
 {
-    self->del = del;
+    self->del = kndConcept_del;
     self->str = str;
     self->open = open_frozen_DB;
     self->load = read_GSL_file;
