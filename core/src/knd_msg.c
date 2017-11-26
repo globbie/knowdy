@@ -27,7 +27,7 @@ knd_zmq_recv(void *socket, size_t *msg_size)
     string = malloc(size + 1);
     if (!string) goto final;
     
-    memcpy(string, zmq_msg_data (&message), size);
+    memcpy(string, zmq_msg_data(&message), size);
     string[size] = 0;
 
     *msg_size = size;

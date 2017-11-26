@@ -19,6 +19,7 @@ static void del(struct kndMemPool *self)
     if (self->class_update_refs) free(self->class_update_refs);
     if (self->classes)         free(self->classes);
     if (self->class_updates)   free(self->class_updates);
+    if (self->conc_dirs)       free(self->conc_dirs);
     if (self->objs)            free(self->objs);
     if (self->obj_dirs)        free(self->obj_dirs);
     if (self->obj_entries)     free(self->obj_entries);
@@ -156,6 +157,22 @@ static int new_obj_entry(struct kndMemPool *self,
     return knd_OK;
 }
 
+static int new_conc_dir(struct kndMemPool *self,
+                       struct kndConcDir **result)
+{
+    struct kndConcDir *dir;
+    int e;
+
+    if (self->num_conc_dirs >= self->max_conc_dirs) {
+        return knd_LIMIT;
+    }
+    dir = &self->conc_dirs[self->num_conc_dirs];
+    memset(dir, 0, sizeof(struct kndConcDir));
+    self->num_conc_dirs++;
+    *result = dir;
+    return knd_OK;
+}
+
 static int new_obj_dir(struct kndMemPool *self,
                        struct kndObjDir **result)
 {
@@ -271,6 +288,7 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_class_update_refs) self->max_class_update_refs = KND_MIN_UPDATES;
     if (!self->max_users)        self->max_users = KND_MIN_USERS;
     if (!self->max_classes)      self->max_classes = KND_MIN_CLASSES;
+    if (!self->max_conc_dirs)    self->max_conc_dirs = KND_MIN_CLASSES;
     if (!self->max_objs)         self->max_objs =    KND_MIN_OBJS;
     if (!self->max_obj_dirs)     self->max_obj_dirs = self->max_objs;
     if (!self->max_obj_entries)  self->max_obj_entries = self->max_objs;
@@ -284,6 +302,12 @@ static int alloc(struct kndMemPool *self)
     self->classes = calloc(self->max_classes, sizeof(struct kndConcept));
     if (!self->classes) {
         knd_log("-- classes not allocated :(");
+        return knd_NOMEM;
+    }
+
+    self->conc_dirs = calloc(self->max_conc_dirs, sizeof(struct kndConcDir));
+    if (!self->conc_dirs) {
+        knd_log("-- conc dirs not allocated :(");
         return knd_NOMEM;
     }
 
@@ -388,6 +412,7 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_class_update = new_class_update;
     self->new_class_update_ref = new_class_update_ref;
     self->new_class = new_class;
+    self->new_conc_dir = new_conc_dir;
     self->new_obj = new_obj;
     self->new_obj_dir = new_obj_dir;
     self->new_obj_entry = new_obj_entry;
