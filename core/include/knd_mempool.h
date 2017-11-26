@@ -126,7 +126,7 @@ struct kndMemPool
     int (*new_class)(struct kndMemPool   *self,
                      struct kndConcept **result);
     int (*new_conc_dir)(struct kndMemPool   *self,
-                       struct kndConcDir **result);
+                        struct kndConcDir **result);
     int (*new_obj)(struct kndMemPool   *self,
                    struct kndObject **result);
     int (*new_obj_dir)(struct kndMemPool   *self,

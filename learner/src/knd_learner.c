@@ -33,28 +33,26 @@ static void
 kndLearner_del(struct kndLearner *self)
 {
     struct kndConcept *conc;
-    self->mempool->del(self->mempool);
-    self->out->del(self->out);
-    self->log->del(self->log);
+
+    conc = self->admin->root_class;
+    conc->class_idx->del(conc->class_idx);
+    conc->rel->rel_idx->del(conc->rel->rel_idx);
+    conc->rel->del(conc->rel);
+
+    conc->proc->proc_idx->del(conc->proc->proc_idx);
+    conc->proc->del(conc->proc);
+    conc->del(conc);
 
     self->task->state_ctrl->del(self->task->state_ctrl);
     self->task->out->del(self->task->out);
     self->task->del(self->task);
 
     free(self->admin->user_idx);
-
-    conc = self->admin->root_class;
-    conc->class_idx->del(conc->class_idx);
-
-    conc->rel->rel_idx->del(conc->rel->rel_idx);
-    conc->rel->del(conc->rel);
-
-    conc->proc->proc_idx->del(conc->proc->proc_idx);
-    conc->proc->del(conc->proc);
-
-    conc->del(conc);
-
     self->admin->del(self->admin);
+
+    self->out->del(self->out);
+    self->log->del(self->log);
+    self->mempool->del(self->mempool);
 
     free(self);
 }
@@ -507,9 +505,7 @@ kndLearner_new(struct kndLearner **rec,
     self->admin->frozen_output_file_name_size = out->buf_size;
     self->admin->frozen_output_file_name[out->buf_size] = '\0';
 
-    err = kndConcept_new(&conc);
-    if (err) goto error;
-
+    err = self->mempool->new_class(self->mempool, &conc);                         RET_ERR();
     conc->out = self->out;
     conc->log = self->log;
     conc->name[0] = '/';
@@ -520,9 +516,7 @@ kndLearner_new(struct kndLearner **rec,
     conc->frozen_output_file_name = self->admin->frozen_output_file_name;
     conc->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
 
-    conc->dir = malloc(sizeof(struct kndConcDir));
-    if (!conc->dir) return knd_NOMEM;
-    memset(conc->dir, 0, sizeof(struct kndConcDir));
+    err = self->mempool->new_conc_dir(self->mempool, &conc->dir);                 RET_ERR();
     memset(conc->dir->name, '0', KND_ID_SIZE);
     conc->dir->name_size = KND_ID_SIZE;
     conc->dir->conc = conc;

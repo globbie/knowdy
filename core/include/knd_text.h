@@ -27,6 +27,8 @@ struct kndElem;
 struct kndElemRef;
 struct kndOutput;
 
+#define KND_SYNT_ROLE_NAME_SIZE 3
+
 typedef enum knd_synt_role_t { KND_SYNT_SUBJ, 
                                KND_SYNT_OBJ,
                                KND_SYNT_GEN,
