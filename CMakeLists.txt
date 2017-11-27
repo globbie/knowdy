@@ -21,10 +21,6 @@ endif()
 
 find_package(PkgConfig)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
-find_package(MySQL REQUIRED)
-include_directories(${MYSQL_INCLUDE_DIR})
-
 pkg_check_modules(ZEROMQ REQUIRED libzmq)
 find_path(ZEROMQ_INCLUDE_DIR NAMES zmq.h PATHS ${ZEROMQ_INCLUDE_DIRS})
 find_library(ZEROMQ_LIBRARY NAMES zmq PATHS ${ZEROMQ_LIBRARY_DIRS})
@@ -46,7 +42,6 @@ set(COLLECTION "collection")
 set(RETRIEVER "retriever")
 set(LEARNER "learner")
 set(DELIVERY "delivery")
-set(AUTH "auth")
 set(STORAGE "storage")
 
 set(KNOWDY_MODULES
@@ -56,7 +51,6 @@ set(KNOWDY_MODULES
         ${RETRIEVER}
         ${LEARNER}
         ${DELIVERY}
-        ${AUTH}
         ${STORAGE})
 
 include_directories(${CORE}/include)
