@@ -59,7 +59,7 @@ static int confirm(struct kndStateControl *self,
     self->updates[self->num_updates] = update;
     self->num_updates++;
 
-    if (DEBUG_STATE_LEVEL_2)
+    if (DEBUG_STATE_LEVEL_TMP)
         knd_log("++  \"%zu\" update confirmed!   global STATE: %zu",
                 update->id, self->num_updates);
 

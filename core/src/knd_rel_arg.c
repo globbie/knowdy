@@ -300,7 +300,7 @@ static int parse_GSL(struct kndRelArg *self,
                      const char *rec,
                      size_t *total_size)
 {
-    if (DEBUG_RELARG_LEVEL_2)
+    if (DEBUG_RELARG_LEVEL_TMP)
         knd_log(".. Rel Arg parsing: \"%.*s\"..", 32, rec);
 
     struct kndTaskSpec specs[] = {

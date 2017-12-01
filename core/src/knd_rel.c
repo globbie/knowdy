@@ -748,7 +748,7 @@ static int parse_rel_arg_inst(void *obj,
     struct kndRelArgInstance *arg_inst = NULL;
     int err;
 
-    if (DEBUG_REL_LEVEL_2)
+    if (DEBUG_REL_LEVEL_TMP)
         knd_log(".. reading the \"%.*s\" rel arg instance, rec:\"%.*s\" args:%p",
                 name_size, name, 32, rec, rel->args);
 
@@ -798,7 +798,7 @@ static int parse_import_instance(void *data,
         knd_log("-- curr rel not set :(");
         return knd_FAIL;
     }
-    self->task->type = KND_CHANGE_STATE;
+    self->task->type = KND_UPDATE_STATE;
 
     err = self->mempool->new_rel_inst(self->mempool, &inst);                      RET_ERR();
     inst->phase = KND_SUBMITTED;
@@ -1027,7 +1027,7 @@ static int kndRel_update_state(struct kndRel *self,
     struct kndRelUpdate **rel_updates;
     int err;
 
-    knd_log("rel state update..");
+    knd_log("\n.. rel state update..");
 
     /* create index of REL updates */
     rel_updates = realloc(update->rels,
@@ -1046,6 +1046,39 @@ static int kndRel_update_state(struct kndRel *self,
     }
     return knd_OK;
 }
+
+static int export_updates(struct kndRel *self)
+{
+    char buf[KND_SHORT_NAME_SIZE];
+    size_t buf_size;
+    struct kndRel *rel;
+    struct kndRelInstance *inst;
+    struct kndOutput *out = self->out;
+    int err;
+
+    for (rel = self->inbox; rel; rel = rel->next) {
+        err = out->write(out, "{rel ", strlen("{rel "));   RET_ERR();
+        err = out->write(out, rel->name, rel->name_size);
+
+	if (rel->inst_inbox_size) {
+	    for (inst = self->inst_inbox; inst; inst = inst->next) {
+		knd_log(".. export liquid update: %.*s", 
+			inst->name_size, inst->name);
+
+		err = out->write(out, "(id ", strlen("(id "));         RET_ERR();
+		buf_size = sprintf(buf, "%zu", inst->id);
+		err = out->write(out, buf, buf_size);                  RET_ERR();
+		err = out->write(out, ")", 1);                         RET_ERR();
+	    }
+	}
+
+	err = out->write(out, ")}", 2);                        RET_ERR();
+    }
+
+
+    return knd_OK;
+}
+
 
 static int freeze(struct kndRel *self,
                   size_t *total_frozen_size,
@@ -1107,6 +1140,7 @@ kndRel_init(struct kndRel *self)
     self->del = del;
     self->str = str;
     self->export = export;
+    self->export_updates = export_updates;
     self->resolve = kndRel_resolve;
     self->coordinate = kndRel_coordinate;
     self->freeze = freeze;

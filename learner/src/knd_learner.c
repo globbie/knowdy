@@ -71,7 +71,6 @@ kndLearner_start(struct kndLearner *self)
 
     time_t  t0, t1;
     clock_t c0, c1;
-
     int err;
 
     // restore in-memory data after failure or restart
@@ -872,8 +871,7 @@ int main(const int argc,
 
     err = kndLearner_new(&learner, config);   RET_ERR();
 
-    /*err = pthread_create(&inbox, NULL, kndLearner_inbox, (void *) learner);
-
+    err = pthread_create(&inbox, NULL, kndLearner_inbox, (void *) learner);
     err = pthread_create(&subscriber, NULL, kndLearner_subscriber, (void *) learner);
 
     err = pthread_create(&selector, NULL, kndLearner_selector, (void *) learner);
@@ -881,7 +879,7 @@ int main(const int argc,
     err = pthread_create(&publisher, NULL, kndLearner_publisher, (void *) learner);
 
     learner->start(learner);
-    */
+
     learner->del(learner);
 
     return EXIT_SUCCESS;
