@@ -178,6 +178,7 @@ struct kndRel
                   char *output,
                   size_t *total_size);
     int (*export)(struct kndRel *self);
+    int (*export_updates)(struct kndRel *self);
     int (*export_reverse_rel)(struct kndRel *self);
 };
 

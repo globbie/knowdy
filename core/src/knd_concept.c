@@ -5026,8 +5026,8 @@ static int build_class_updates(struct kndConcept *self)
     return knd_OK;
 }
 
-static int build_update_messages(struct kndConcept *self,
-                                 struct kndUpdate *update)
+static int export_updates(struct kndConcept *self,
+			  struct kndUpdate *update)
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size;
@@ -5049,6 +5049,11 @@ static int build_update_messages(struct kndConcept *self,
 
     if (self->inbox) {
         err = build_class_updates(self);                                         RET_ERR();
+    }
+
+    if (self->rel->inbox_size) {
+	self->rel->out = out;
+        err = self->rel->export_updates(self->rel);                              RET_ERR();
     }
    
     err = out->write(out, ")}}", strlen(")}}"));                                 RET_ERR();
@@ -5286,9 +5291,10 @@ static int apply_liquid_updates(struct kndConcept *self,
     return knd_OK;
 }
 
-
-static int update_state(struct kndConcept *self)
+static int knd_update_state(struct kndConcept *self)
 {
+    knd_log("knd update.. %p", self->task);
+
     char pathbuf[KND_TEMP_BUF_SIZE];
     struct kndConcept *c;
     struct kndObject *obj;
@@ -5301,6 +5307,8 @@ static int update_state(struct kndConcept *self)
     size_t inbox_dir_size = strlen(inbox_dir);
     size_t update_id;
     int err;
+
+    knd_log("..update state.. ctrl: %p", state_ctrl);
 
     /* new update obj */
     err = self->mempool->new_update(self->mempool, &update);
@@ -5344,7 +5352,10 @@ static int update_state(struct kndConcept *self)
     //err = self->proc->update(self->proc, update);                               RET_ERR();
 
     err = state_ctrl->confirm(state_ctrl, update);                                RET_ERR();
-    err = build_update_messages(self, update);                                    RET_ERR();
+
+    err = export_updates(self, update);                                           RET_ERR();
+
+    knd_log("task type: %d", self->task->type);
 
     self->inbox = NULL;
     self->inbox_size = 0;
@@ -5891,7 +5902,7 @@ extern void kndConcept_init(struct kndConcept *self)
     self->freeze = freeze;
     self->select = parse_select_class;
 
-    self->update_state = update_state;
+    self->update_state = knd_update_state;
     self->apply_liquid_updates = apply_liquid_updates;
     self->export = export;
     self->get = get_class;

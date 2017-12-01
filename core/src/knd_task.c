@@ -273,8 +273,8 @@ static int report(struct kndTask *self)
     size_t obj_size;
     int err;
 
-    if (DEBUG_TASK_LEVEL_2)
-        knd_log("..TASK reporting..");
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log("..TASK (type: %d) reporting..", self->type);
         
     out->reset(out);
     err = out->write(out, gsl_header, strlen(gsl_header));

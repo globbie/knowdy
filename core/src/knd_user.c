@@ -760,13 +760,12 @@ static int parse_task(struct kndUser *self,
         goto cleanup;
     }
 
-    if (DEBUG_USER_LEVEL_2)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log("user parse task OK: total chars: %lu root class: %p",
                 (unsigned long)*total_size, self->root_class);
 
-
     switch (self->task->type) {
-    case KND_UPDATE_STATE:
+    case KND_LIQUID_STATE:
         if (DEBUG_USER_LEVEL_2)
             knd_log("++ all updates applied!");
         return knd_OK;
@@ -774,18 +773,21 @@ static int parse_task(struct kndUser *self,
         if (DEBUG_USER_LEVEL_1)
             knd_log("++ get task complete!");
         return knd_OK;
-    default:
-        /* any transaction to close? */
-        if (self->root_class->inbox_size) {
-            self->task->update_spec = rec;
-            self->task->update_spec_size = *total_size;
+    case KND_UPDATE_STATE:
+	knd_log(".. update state? root class: %zu  func:%p", *total_size, self->root_class->update_state);
 
-            err = self->root_class->update_state(self->root_class);
-            if (err) {
-                knd_log("-- failed to update state :(");
-                goto cleanup;
-            }
-        }
+        /* any transaction to close? */
+	self->task->update_spec = rec;
+	self->task->update_spec_size = *total_size;
+	self->root_class->task = self->task;
+
+	err = self->root_class->update_state(self->root_class);
+	if (err) {
+	    knd_log("-- failed to update state :(");
+	    goto cleanup;
+	}
+    default:
+	break;
     }
 
     return knd_OK;
