@@ -35,14 +35,26 @@ static void reset(struct kndStateControl *self)
     self->out->reset(self->out);
 }
 
-static int confirm(struct kndStateControl *self,
-                   struct kndUpdate *update)
+static int knd_confirm(struct kndStateControl *self,
+		       struct kndUpdate *update)
 {
     struct kndOutput *out;
     int err;
 
     if (DEBUG_STATE_LEVEL_2)
-        knd_log(".. confirming update: %zu", update->id);
+        knd_log(".. confirming update: %p  task:%p..", update,
+		self->task);
+
+    if (self->task->type == KND_LIQUID_STATE) {
+	self->updates[self->num_updates] = update;
+	self->num_updates++;
+
+	if (DEBUG_STATE_LEVEL_TMP)
+	    knd_log("++  \"%zu\" liquid update confirmed!   global STATE: %zu",
+		    update->id, self->num_updates);
+
+	return knd_OK;
+    }
 
     /* TODO: update conflicts */
 
@@ -127,7 +139,7 @@ extern int kndStateControl_new(struct kndStateControl **state)
     self->del    = del;
     self->str    = str;
     self->reset  = reset;
-    self->confirm  = confirm;
+    self->confirm  = knd_confirm;
     self->select  = make_selection;
 
     *state = self;

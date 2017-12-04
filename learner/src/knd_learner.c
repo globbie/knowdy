@@ -137,6 +137,9 @@ kndLearner_start(struct kndLearner *self)
         task = knd_zmq_recv(outbox, &task_size);
         obj = knd_zmq_recv(outbox, &obj_size);
 
+        /* sometimes bad messages arrive */
+        if (!task || !task_size) continue;
+
         t0 = time(NULL);
         c0 = clock();
 
@@ -489,6 +492,7 @@ kndLearner_new(struct kndLearner **rec,
     if (err) return err;
     self->task->state_ctrl->max_updates = self->mempool->max_updates;
     self->task->state_ctrl->updates = self->mempool->update_idx;
+    self->task->state_ctrl->task = self->task;
 
     memcpy(self->task->agent_name, self->name, self->name_size);
     self->task->agent_name_size = self->name_size;

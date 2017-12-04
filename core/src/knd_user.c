@@ -337,8 +337,6 @@ static int parse_rel_import(void *obj,
     struct kndUser *self = obj;
     int err;
 
-    self->task->type = KND_CHANGE_STATE;
-
     err = self->root_class->rel->import(self->root_class->rel, rec, total_size);
     if (err) return err;
 
@@ -506,11 +504,14 @@ static int parse_rel_select(void *obj,
 {
     struct kndUser *self = obj;
     struct kndOutput *out = self->out;
-    struct kndRel *rel = self->root_class->rel;
+    struct kndRel *rel;
     int err;
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default Rel select: \"%s\"", rec);
+
+    rel = self->root_class->rel;
+
     rel->out = self->out;
     rel->log = self->log;
     rel->task = self->task;
@@ -519,7 +520,7 @@ static int parse_rel_select(void *obj,
     rel->dbpath_size = self->dbpath_size;
     rel->frozen_output_file_name = self->frozen_output_file_name;
     rel->frozen_output_file_name_size = self->frozen_output_file_name_size;
-    
+
     err = rel->select(rel, rec, total_size);
     if (err) return err;
 
@@ -536,7 +537,7 @@ static int parse_liquid_updates(void *obj,
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parse and apply liquid updates..");
 
-    self->task->type = KND_UPDATE_STATE;
+    self->task->type = KND_LIQUID_STATE;
     self->root_class->task = self->task;
 
     err = self->root_class->apply_liquid_updates(self->root_class,
@@ -760,27 +761,23 @@ static int parse_task(struct kndUser *self,
         goto cleanup;
     }
 
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log("user parse task OK: total chars: %lu root class: %p",
-                (unsigned long)*total_size, self->root_class);
+    if (DEBUG_USER_LEVEL_2)
+        knd_log("task type: %d   ++ user parse task OK: total chars: %lu root class: %p mempool:%p",
+                self->task->type, (unsigned long)*total_size, self->root_class, self->root_class->mempool);
 
     switch (self->task->type) {
     case KND_LIQUID_STATE:
-        if (DEBUG_USER_LEVEL_2)
-            knd_log("++ all updates applied!");
+        if (DEBUG_USER_LEVEL_TMP)
+            knd_log("++ liquid updates applied!");
         return knd_OK;
     case KND_GET_STATE:
         if (DEBUG_USER_LEVEL_1)
             knd_log("++ get task complete!");
         return knd_OK;
     case KND_UPDATE_STATE:
-	knd_log(".. update state? root class: %zu  func:%p", *total_size, self->root_class->update_state);
-
-        /* any transaction to close? */
 	self->task->update_spec = rec;
 	self->task->update_spec_size = *total_size;
 	self->root_class->task = self->task;
-
 	err = self->root_class->update_state(self->root_class);
 	if (err) {
 	    knd_log("-- failed to update state :(");

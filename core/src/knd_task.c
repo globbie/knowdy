@@ -69,7 +69,7 @@ static int parse_update(void *obj,
     struct kndTask *self = (struct kndTask*)obj;
     int err;
 
-    self->type = KND_UPDATE_STATE;
+    self->type = KND_LIQUID_STATE;
     self->tid[0] = '0';
     self->tid_size = 0;
     self->admin->task = self;
@@ -273,7 +273,7 @@ static int report(struct kndTask *self)
     size_t obj_size;
     int err;
 
-    if (DEBUG_TASK_LEVEL_TMP)
+    if (DEBUG_TASK_LEVEL_2)
         knd_log("..TASK (type: %d) reporting..", self->type);
         
     out->reset(out);
