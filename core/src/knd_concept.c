@@ -5206,7 +5206,7 @@ static int parse_liquid_class_update(void *obj,
 static int parse_liquid_rel_update(void *obj,
                                    const char *rec, size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndRel *self = obj;
     int err;
 
     if (DEBUG_CONC_LEVEL_TMP) {
@@ -5214,13 +5214,13 @@ static int parse_liquid_rel_update(void *obj,
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_get_liquid_class,
+          .run = run_get_liquid_rel,
           .obj = self
         },
         { .type = KND_CHANGE_STATE,
           .name = "id",
           .name_size = strlen("id"),
-          .parse = parse_liquid_class_id,
+          .parse = parse_liquid_rel_id,
           .obj = self
         }
     };
@@ -5293,7 +5293,7 @@ static int apply_liquid_updates(struct kndConcept *self,
         { .name = "rel",
           .name_size = strlen("rel"),
           .parse = parse_liquid_rel_update,
-          .obj = self
+          .obj = self->rel
         }
     };
     int err;

@@ -82,6 +82,14 @@ static void inst_str(struct kndRel *self, struct kndRelInstance *inst)
     }
 }
 
+static int run_select_rel(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    if (DEBUG_REL_LEVEL_2)
+        knd_log(".. run select..");
+
+    return knd_OK;
+}
+
 static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndTranslation *tr = (struct kndTranslation*)obj;
@@ -766,7 +774,7 @@ static int parse_rel_arg_inst(void *obj,
     int err;
 
     if (DEBUG_REL_LEVEL_2)
-        knd_log(".. reading the \"%.*s\" rel arg instance, rec:\"%.*s\" args:%p",
+        knd_log(".. parsing the \"%.*s\" rel arg instance, rec:\"%.*s\" args:%p",
                 name_size, name, 32, rec, rel->args);
 
     for (arg = rel->args; arg; arg = arg->next) {
@@ -807,7 +815,7 @@ static int parse_import_instance(void *data,
     struct kndRelInstEntry *entry;
     int err;
 
-    if (DEBUG_REL_LEVEL_2) {
+    if (DEBUG_REL_LEVEL_TMP) {
         knd_log(".. import \"%.*s\" rel instance..", 128, rec);
     }
 
@@ -833,7 +841,14 @@ static int parse_import_instance(void *data,
            .is_validator = true,
            .validate = parse_rel_arg_inst,
            .obj = inst
-         }
+	 },
+	 { .type = KND_CHANGE_STATE,
+	   .name = "default",
+	   .name_size = strlen("default"),
+	   .is_default = true,
+	   .run = run_select_rel,
+	   .obj = inst
+	 }
    };
 
     err = knd_parse_task(rec, total_size, specs,
@@ -895,13 +910,13 @@ static int parse_rel_select(struct kndRel *self,
           .name_size = strlen("inst"),
           .parse = parse_import_instance,
           .obj = self
-        }/*,
+        },
         { .name = "default",
           .name_size = strlen("default"),
           .is_default = true,
           .run = run_select_rel,
           .obj = self
-          }*/
+	}
     };
 
     self->curr_rel = NULL;
@@ -1067,6 +1082,7 @@ static int kndRel_update_state(struct kndRel *self,
         update->num_rels++;
     }
 
+    
     return knd_OK;
 }
 
