@@ -157,6 +157,7 @@ struct kndRel
     void (*str)(struct kndRel *self);
 
     void (*del)(struct kndRel *self);
+    void (*reset_inbox)(struct kndRel *self);
 
     int (*parse)(struct kndRel *self,
                  const char    *rec,

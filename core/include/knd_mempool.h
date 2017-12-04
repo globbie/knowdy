@@ -28,8 +28,12 @@ struct kndRelInstance;
 struct kndRelArgInstance;
 struct kndProc;
 struct kndProcInstance;
+
 struct kndUpdate;
 struct kndClassUpdate;
+struct kndClassUpdateRef;
+struct kndRelUpdate;
+struct kndRelUpdateRef;
 
 struct kndMemPool
 {

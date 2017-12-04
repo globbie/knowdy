@@ -8,6 +8,8 @@
 #include "knd_user.h"
 #include "knd_output.h"
 #include "knd_concept.h"
+#include "knd_rel.h"
+#include "knd_proc.h"
 #include "knd_object.h"
 #include "knd_state.h"
 #include "knd_task.h"
@@ -454,9 +456,27 @@ kndRetriever_new(struct kndRetriever **rec,
     conc->dir->name_size = KND_ID_SIZE;
     conc->dir->conc = conc;
     conc->mempool = self->mempool;
+    conc->dir->mempool = self->mempool;
 
-    err = ooDict_new(&conc->class_idx, KND_SMALL_DICT_SIZE);
+    err = kndProc_new(&conc->proc);
     if (err) goto error;
+    conc->proc->mempool = self->mempool;
+
+    err = kndRel_new(&conc->rel);
+    if (err) goto error;
+    conc->rel->mempool = self->mempool;
+
+    /* specific allocations of the root concs */
+    err = ooDict_new(&conc->class_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+
+    err = ooDict_new(&conc->proc->proc_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+    conc->proc->class_idx = conc->class_idx;
+
+    err = ooDict_new(&conc->rel->rel_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+    conc->rel->class_idx = conc->class_idx;
 
     /* user idx */
     if (self->mempool->max_users) {

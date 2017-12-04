@@ -5168,10 +5168,13 @@ static int parse_liquid_class_update(void *obj,
                                    const char *rec, size_t *total_size)
 {
     struct kndConcept *self = obj;
+    struct kndClassUpdate **class_updates;
     int err;
 
     if (DEBUG_CONC_LEVEL_2) {
         knd_log("..  liquid class update REC: \"%.*s\"..", 32, rec); }
+
+    if (!self->curr_update) return knd_FAIL;
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
@@ -5186,6 +5189,49 @@ static int parse_liquid_class_update(void *obj,
         }
     };
 
+
+    /* create index of class updates */
+    class_updates = realloc(self->curr_update->classes,
+                            (self->inbox_size * sizeof(struct kndClassUpdate*)));
+    if (!class_updates) return knd_NOMEM;
+    self->curr_update->classes = class_updates;
+
+    err = knd_parse_task(rec, total_size, specs,
+                         sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
+
+static int parse_liquid_rel_update(void *obj,
+                                   const char *rec, size_t *total_size)
+{
+    struct kndConcept *self = obj;
+    int err;
+
+    if (DEBUG_CONC_LEVEL_TMP) {
+        knd_log(".. liquid rel update REC: \"%.*s\"..", 32, rec); }
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_get_liquid_class,
+          .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "id",
+          .name_size = strlen("id"),
+          .parse = parse_liquid_class_id,
+          .obj = self
+        }
+    };
+
+
+    /* create index of rel updates */
+    /* class_updates = realloc(update->classes, */
+    /*                         (self->inbox_size * sizeof(struct kndClassUpdate*))); */
+    /* if (!class_updates) return knd_NOMEM; */
+    /* self->curr_update->classes = class_updates; */
+
     err = knd_parse_task(rec, total_size, specs,
                          sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
@@ -5198,7 +5244,6 @@ static int new_liquid_update(void *obj, struct kndTaskArg *args, size_t num_args
     struct kndConcept *self = obj;
     struct kndTaskArg *arg;
     struct kndUpdate *update;
-    struct kndClassUpdate **class_updates;
     const char *val = NULL;
     size_t val_size = 0;
     long numval = 0;
@@ -5217,12 +5262,6 @@ static int new_liquid_update(void *obj, struct kndTaskArg *args, size_t num_args
 
     err = self->mempool->new_update(self->mempool, &update);
     if (err) return err;
-
-    /* create index of class updates */
-    class_updates = realloc(update->classes,
-                            (self->inbox_size * sizeof(struct kndClassUpdate*)));
-    if (!class_updates) return knd_NOMEM;
-    update->classes = class_updates;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log("== new class update: %zu", update->id);
@@ -5250,12 +5289,17 @@ static int apply_liquid_updates(struct kndConcept *self,
           .name_size = strlen("class"),
           .parse = parse_liquid_class_update,
           .obj = self
+        },
+        { .name = "rel",
+          .name_size = strlen("rel"),
+          .parse = parse_liquid_rel_update,
+          .obj = self
         }
     };
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("..resolving liquid classes..");
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log("..resolving liquid updates..");
 
     if (self->inbox_size) {
         for (c = self->inbox; c; c = c->next) {
@@ -5281,6 +5325,12 @@ static int apply_liquid_updates(struct kndConcept *self,
         self->inbox_size = 0;
     }
 
+    if (self->rel->inbox_size) {
+	knd_log("liquid rel resolve..");
+	err = self->rel->resolve(self->rel);
+	if (err) return err;
+    }
+
     err = knd_parse_task(rec, total_size, specs,
                          sizeof(specs) / sizeof(struct kndTaskSpec));             PARSE_ERR();
 
@@ -5291,10 +5341,21 @@ static int apply_liquid_updates(struct kndConcept *self,
     return knd_OK;
 }
 
+
+static void reset_inbox(struct kndConcept *self)
+{
+
+    self->inbox = NULL;
+    self->inbox_size = 0;
+    self->obj_inbox = NULL;
+    self->obj_inbox_size = 0; 
+
+    self->rel->reset_inbox(self->rel);
+}
+
+
 static int knd_update_state(struct kndConcept *self)
 {
-    knd_log("knd update.. %p", self->task);
-
     char pathbuf[KND_TEMP_BUF_SIZE];
     struct kndConcept *c;
     struct kndObject *obj;
@@ -5308,7 +5369,8 @@ static int knd_update_state(struct kndConcept *self)
     size_t update_id;
     int err;
 
-    knd_log("..update state.. ctrl: %p", state_ctrl);
+    if (DEBUG_CONC_LEVEL_2)
+	knd_log("..update state..");
 
     /* new update obj */
     err = self->mempool->new_update(self->mempool, &update);
@@ -5316,7 +5378,6 @@ static int knd_update_state(struct kndConcept *self)
 
     update->spec = self->task->spec;
     update->spec_size = self->task->spec_size;
-    self->task->type = KND_UPDATE_STATE;
 
     /* create index of class updates */
     class_updates = realloc(update->classes,
@@ -5355,12 +5416,8 @@ static int knd_update_state(struct kndConcept *self)
 
     err = export_updates(self, update);                                           RET_ERR();
 
-    knd_log("task type: %d", self->task->type);
+    reset_inbox(self);
 
-    self->inbox = NULL;
-    self->inbox_size = 0;
-    self->obj_inbox = NULL;
-    self->obj_inbox_size = 0; 
     return knd_OK;
 }
 

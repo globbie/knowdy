@@ -16,9 +16,9 @@ static void del(struct kndMemPool *self)
     if (self->updates)         free(self->updates);
     if (self->update_idx) free(self->update_idx);
     if (self->update_selected_idx) free(self->update_selected_idx);
+    if (self->class_updates)   free(self->class_updates);
     if (self->class_update_refs) free(self->class_update_refs);
     if (self->classes)         free(self->classes);
-    if (self->class_updates)   free(self->class_updates);
     if (self->conc_dirs)       free(self->conc_dirs);
     if (self->objs)            free(self->objs);
     if (self->obj_dirs)        free(self->obj_dirs);
@@ -27,6 +27,8 @@ static void del(struct kndMemPool *self)
     if (self->rel_dirs)        free(self->rel_dirs);
     if (self->rel_insts)       free(self->rel_insts);
     if (self->rel_arg_insts)   free(self->rel_arg_insts);
+    if (self->rel_updates)   free(self->rel_updates);
+    if (self->rel_update_refs) free(self->rel_update_refs);
     if (self->procs)           free(self->procs);
     if (self->proc_insts)      free(self->proc_insts);
 
@@ -258,6 +260,46 @@ static int new_rel_arg_inst(struct kndMemPool *self,
     return knd_OK;
 }
 
+
+
+static int new_rel_update(struct kndMemPool *self,
+                            struct kndRelUpdate **result)
+{
+    struct kndRelUpdate *upd;
+    int e;
+
+    if (self->num_rel_updates >= self->max_rel_updates) {
+        self->log->reset(self->log);
+        e = self->log->write(self->log, "memory limit reached",
+                             strlen("memory limit reached"));
+        if (e) return e;
+
+        knd_log("-- memory limit reached :(");
+        return knd_LIMIT;
+    }
+    upd = &self->rel_updates[self->num_rel_updates];
+    memset(upd, 0, sizeof(struct kndRelUpdate));
+
+    self->num_rel_updates++;
+    *result = upd;
+    return knd_OK;
+}
+
+static int new_rel_update_ref(struct kndMemPool *self,
+                                struct kndRelUpdateRef **result)
+{
+    struct kndRelUpdateRef *upd;
+    int e;
+
+    if (self->num_rel_update_refs >= self->max_rel_update_refs) return knd_NOMEM;
+    upd = &self->rel_update_refs[self->num_rel_update_refs];
+    memset(upd, 0, sizeof(struct kndRelUpdateRef));
+
+    self->num_rel_update_refs++;
+    *result = upd;
+    return knd_OK;
+}
+
 static int new_proc(struct kndMemPool *self,
                    struct kndProc **result)
 {
@@ -296,6 +338,8 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_rel_dirs)     self->max_rel_dirs = KND_MIN_REL_INSTANCES;
     if (!self->max_rel_insts)    self->max_rel_insts = KND_MIN_REL_INSTANCES;
     if (!self->max_rel_arg_insts) self->max_rel_arg_insts = KND_MIN_RELARG_INSTANCES;
+    if (!self->max_rel_updates) self->max_rel_updates = KND_MIN_UPDATES;
+    if (!self->max_rel_update_refs) self->max_rel_update_refs = KND_MIN_UPDATES;
     if (!self->max_procs)         self->max_procs =  KND_MIN_PROCS;
     if (!self->max_proc_insts)    self->max_proc_insts = KND_MIN_PROC_INSTANCES;
 
@@ -382,6 +426,19 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
+    self->rel_updates = calloc(self->max_updates, sizeof(struct kndRelUpdate));
+    if (!self->rel_updates) {
+        knd_log("-- rel updates not allocated :(");
+        return knd_NOMEM;
+    }
+
+    self->rel_update_refs = calloc(self->max_updates, sizeof(struct kndRelUpdateRef));
+    if (!self->rel_update_refs) {
+        knd_log("-- rel updates not allocated :(");
+        return knd_NOMEM;
+    }
+
+
     self->procs = calloc(self->max_procs, sizeof(struct kndProc));
     if (!self->procs) {
         knd_log("-- procs not allocated :(");
@@ -420,6 +477,8 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_rel_dir = new_rel_dir;
     self->new_rel_inst = new_rel_inst;
     self->new_rel_arg_inst = new_rel_arg_inst;
+    self->new_rel_update = new_rel_update;
+    self->new_rel_update_ref = new_rel_update_ref;
     self->new_proc = new_proc;
 }
 
