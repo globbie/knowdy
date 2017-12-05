@@ -61,6 +61,8 @@ struct kndRelInstance
 struct kndRelDir
 {
     char id[KND_ID_SIZE];
+    size_t numid;
+
     char name[KND_NAME_SIZE];
     size_t name_size;
     struct kndRel *rel;
@@ -133,6 +135,8 @@ struct kndRel
     /* allocator */
     struct kndMemPool *mempool;
 
+    struct kndUpdate *curr_update;
+
     /* incoming */
     struct kndRel *inbox;
     size_t inbox_size;
@@ -162,6 +166,9 @@ struct kndRel
     int (*parse)(struct kndRel *self,
                  const char    *rec,
                  size_t        *total_size);
+    int (*parse_liquid_updates)(struct kndRel *self,
+				const char    *rec,
+				size_t        *total_size);
     int (*import)(struct kndRel *self,
                   const char    *rec,
                   size_t        *total_size);

@@ -483,7 +483,7 @@ static int resolve(struct kndRelArg *self)
 
     self->conc = c;
 
-    if (DEBUG_RELARG_LEVEL_1)
+    if (DEBUG_RELARG_LEVEL_TMP)
         knd_log("++ Rel Arg resolved: \"%.*s\"!",
                 self->classname_size, self->classname);
   

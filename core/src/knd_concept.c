@@ -5206,35 +5206,13 @@ static int parse_liquid_class_update(void *obj,
 static int parse_liquid_rel_update(void *obj,
                                    const char *rec, size_t *total_size)
 {
-    struct kndRel *self = obj;
+    struct kndConcept *self = obj;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
-        knd_log(".. liquid rel update REC: \"%.*s\"..", 32, rec); }
+    if (!self->curr_update) return knd_FAIL;
 
-    struct kndTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_get_liquid_rel,
-          .obj = self
-        },
-        { .type = KND_CHANGE_STATE,
-          .name = "id",
-          .name_size = strlen("id"),
-          .parse = parse_liquid_rel_id,
-          .obj = self
-        }
-    };
-
-
-    /* create index of rel updates */
-    /* class_updates = realloc(update->classes, */
-    /*                         (self->inbox_size * sizeof(struct kndClassUpdate*))); */
-    /* if (!class_updates) return knd_NOMEM; */
-    /* self->curr_update->classes = class_updates; */
-
-    err = knd_parse_task(rec, total_size, specs,
-                         sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
+    self->rel->curr_update = self->curr_update;
+    err = self->rel->parse_liquid_updates(self->rel, rec, total_size);                RET_ERR();
 
     return knd_OK;
 }
@@ -5279,6 +5257,7 @@ static int apply_liquid_updates(struct kndConcept *self,
     struct kndConcDir *dir;
     struct kndObjEntry *entry;
     struct kndObject *obj;
+    struct kndRel *rel;
     struct kndStateControl *state_ctrl = self->task->state_ctrl;
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
@@ -5293,13 +5272,13 @@ static int apply_liquid_updates(struct kndConcept *self,
         { .name = "rel",
           .name_size = strlen("rel"),
           .parse = parse_liquid_rel_update,
-          .obj = self->rel
+          .obj = self
         }
     };
     int err;
 
     if (DEBUG_CONC_LEVEL_TMP)
-        knd_log("..resolving liquid updates..");
+        knd_log("..apply liquid updates..");
 
     if (self->inbox_size) {
         for (c = self->inbox; c; c = c->next) {
@@ -5326,9 +5305,10 @@ static int apply_liquid_updates(struct kndConcept *self,
     }
 
     if (self->rel->inbox_size) {
-	knd_log("liquid rel resolve..");
-	err = self->rel->resolve(self->rel);
-	if (err) return err;
+	for (rel = self->rel->inbox; rel; rel = rel->next) {
+	    err = rel->resolve(rel);
+	    if (err) return err;
+	}
     }
 
     err = knd_parse_task(rec, total_size, specs,
@@ -5337,6 +5317,9 @@ static int apply_liquid_updates(struct kndConcept *self,
     if (!self->curr_update) return knd_FAIL;
 
     err = state_ctrl->confirm(state_ctrl, self->curr_update);                     RET_ERR();
+
+    if (self->rel->inbox_size)
+	self->rel->reset_inbox(self->rel);
 
     return knd_OK;
 }

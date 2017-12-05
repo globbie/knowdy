@@ -210,6 +210,7 @@ static int parse_task(void *obj,
     if (!self->tid_size) {
         switch (self->type) {
         case KND_UPDATE_STATE:
+        case KND_LIQUID_STATE:
             return knd_OK;
         default:
             knd_log("-- no TID found");

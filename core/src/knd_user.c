@@ -767,7 +767,7 @@ static int parse_task(struct kndUser *self,
 
     switch (self->task->type) {
     case KND_LIQUID_STATE:
-        if (DEBUG_USER_LEVEL_TMP)
+        if (DEBUG_USER_LEVEL_2)
             knd_log("++ liquid updates applied!");
         return knd_OK;
     case KND_GET_STATE:
