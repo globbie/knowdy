@@ -49,15 +49,28 @@ static void str(struct kndRel *self)
 
 static void reset_inbox(struct kndRel *self)
 {
-    struct kndRel *rel;
+    struct kndRel *rel, *next_rel;
+    struct kndRelInstance *inst, *next_inst;
 
-    for (rel = self->inbox; rel; rel = rel->next)
+    rel = self->inbox; 
+    while (rel) {
 	rel->reset_inbox(rel);
+	next_rel = rel->next;
+	rel->next = NULL;
+	rel = next_rel;
+    }
+
+    inst = self->inst_inbox; 
+    while (inst) {
+	next_inst = inst->next;
+	inst->next = NULL;
+	inst = next_inst;
+    }
+    self->inst_inbox = NULL;
+    self->inst_inbox_size = 0;
 
     self->inbox = NULL;
     self->inbox_size = 0;
-    self->inst_inbox = NULL;
-    self->inst_inbox_size = 0;
 }
 
 static void inst_arg_str(struct kndRelArgInstance *inst)
@@ -815,7 +828,7 @@ static int parse_import_instance(void *data,
     struct kndRelInstEntry *entry;
     int err;
 
-    if (DEBUG_REL_LEVEL_TMP) {
+    if (DEBUG_REL_LEVEL_2) {
         knd_log(".. import \"%.*s\" rel instance..", 128, rec);
     }
 
@@ -946,9 +959,25 @@ static int parse_rel_select(struct kndRel *self,
     return knd_OK;
 }
 
-static int kndRel_resolve_inst(struct kndRel *self,
-                               struct kndRelInstance *inst)
+
+
+static int resolve_inst(struct kndRel *self,
+			struct kndRelInstance *inst)
 {
+    struct kndRelArgInstance *arg;
+
+    knd_log("\n%*sRel Instance: %.*s [%zu]", self->depth * KND_OFFSET_SIZE, "",
+            self->name_size, self->name, inst->id);
+
+    for (arg = inst->args; arg; arg = arg->next) {
+        inst_arg_str(arg);
+    }
+
+    knd_log("..resolve rel inst: %zu", inst->id);
+
+    inst_str(self, inst);
+
+
 
     return knd_OK;
 }
@@ -960,13 +989,13 @@ static int kndRel_resolve(struct kndRel *self)
     int err;
 
     if (DEBUG_REL_LEVEL_TMP)
-        knd_log("\n.. resolving REL: %.*s     inst inbox size: %zu",
+        knd_log("\n.. resolving REL: \"%.*s\"     inst inbox size: %zu",
                 self->name_size, self->name, self->inst_inbox_size);
 
     /* resolve instances */
     if (self->inst_inbox_size) {
         for (inst = self->inst_inbox; inst; inst = inst->next) {
-            err = kndRel_resolve_inst(self, inst);                                RET_ERR();
+            err = resolve_inst(self, inst);                                RET_ERR();
         }
         return knd_OK;
     }
@@ -1086,6 +1115,146 @@ static int kndRel_update_state(struct kndRel *self,
     return knd_OK;
 }
 
+
+static int set_liquid_rel_id(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndRel *self = (struct kndRel*)obj;
+    struct kndRel *rel;
+    struct kndTaskArg *arg;
+    const char *val = NULL;
+    size_t val_size = 0;
+    long numval = 0;
+    int err;
+
+    if (!self->curr_rel) return knd_FAIL;
+    rel = self->curr_rel;
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!memcmp(arg->name, "_impl", strlen("_impl"))) {
+            val = arg->val;
+            val_size = arg->val_size;
+        }
+    }
+
+    err = knd_parse_num((const char*)val, &numval);               RET_ERR();
+    rel->id = numval;
+    if (rel->dir) {
+        rel->dir->numid = numval;
+    }
+
+    //self->curr_rel->update_id = self->curr_update->id;
+
+    if (DEBUG_REL_LEVEL_TMP)
+        knd_log(".. set curr liquid rel id: %zu",
+                rel->id);
+
+    return knd_OK;
+}
+
+
+static int run_get_liquid_rel(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndRel *self = obj;
+    struct kndTaskArg *arg;
+    struct kndRel *rel;
+    struct kndObjEntry *entry;
+    const char *name = NULL;
+    size_t name_size = 0;
+    int err;
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!memcmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val;
+            name_size = arg->val_size;
+        }
+    }
+    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+    err = get_rel(self, name, name_size, &self->curr_rel);
+    if (err) return err;
+    
+    return knd_OK;
+}
+
+static int parse_liquid_rel_id(void *obj,
+                               const char *rec, size_t *total_size)
+{
+    struct kndRel *self = obj;
+    struct kndUpdate *update = self->curr_update;
+    struct kndRel *rel;
+    struct kndRelUpdate *rel_update;
+    struct kndRelUpdateRef *rel_update_ref;
+    int err;
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_liquid_rel_id,
+          .obj = self
+        }
+    };
+
+    if (!self->curr_rel) return knd_FAIL;
+
+    err = knd_parse_task(rec, total_size, specs,
+                         sizeof(specs) / sizeof(struct kndTaskSpec));            PARSE_ERR();
+
+    rel = self->curr_rel;
+
+    /* register rel update */
+    err = self->mempool->new_rel_update(self->mempool, &rel_update);         RET_ERR();
+    rel_update->rel = rel;
+
+    update->rels[update->num_rels] = rel_update;
+    update->num_rels++;
+
+    err = self->mempool->new_rel_update_ref(self->mempool, &rel_update_ref); RET_ERR();
+    rel_update_ref->update = update;
+
+    rel_update_ref->next = rel->updates;
+    rel->updates =  rel_update_ref;
+    rel->num_updates++;
+
+    return knd_OK;
+}
+
+static int parse_liquid_updates(struct kndRel *self,
+				const char *rec,
+				size_t *total_size)
+{
+    struct kndUpdate *update = self->curr_update;
+    struct kndRelUpdate **rel_updates;
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_get_liquid_rel,
+          .obj = self
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "id",
+          .name_size = strlen("id"),
+          .parse = parse_liquid_rel_id,
+          .obj = self
+        }
+    };
+    int err;
+
+    if (DEBUG_REL_LEVEL_2)
+	knd_log("..parsing liquid REL updates..");
+
+    /* create index of rel updates */
+    rel_updates = realloc(update->rels,
+			  (self->inbox_size * sizeof(struct kndRelUpdate*)));
+    if (!rel_updates) return knd_NOMEM;
+    update->rels = rel_updates;
+
+    err = knd_parse_task(rec, total_size, specs,
+                         sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
+
 static int export_updates(struct kndRel *self)
 {
     char buf[KND_SHORT_NAME_SIZE];
@@ -1184,6 +1353,7 @@ kndRel_init(struct kndRel *self)
     self->read = read_GSP;
     self->reset_inbox = reset_inbox;
     self->update = kndRel_update_state;
+    self->parse_liquid_updates = parse_liquid_updates;
     self->select = parse_rel_select;
 }
 
