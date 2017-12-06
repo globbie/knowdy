@@ -964,19 +964,18 @@ static int parse_rel_select(struct kndRel *self,
 static int resolve_inst(struct kndRel *self,
 			struct kndRelInstance *inst)
 {
-    struct kndRelArgInstance *arg;
+    struct kndRelArg *arg;
+    struct kndRelArgInstance *arg_inst;
+    int err;
 
-    knd_log("\n%*sRel Instance: %.*s [%zu]", self->depth * KND_OFFSET_SIZE, "",
+    knd_log("\n%*s.. resolving Rel Instance: %.*s [%zu]", 
+	    self->depth * KND_OFFSET_SIZE, "",
             self->name_size, self->name, inst->id);
 
-    for (arg = inst->args; arg; arg = arg->next) {
-        inst_arg_str(arg);
+    for (arg_inst = inst->args; arg_inst; arg_inst = arg_inst->next) {
+        arg = arg_inst->relarg;
+	err = arg->resolve_inst(arg, arg_inst);                            RET_ERR();
     }
-
-    knd_log("..resolve rel inst: %zu", inst->id);
-
-    inst_str(self, inst);
-
 
 
     return knd_OK;

@@ -405,6 +405,7 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
 {
     struct kndConcDir *dir;
     struct kndAttr *attr;
+    struct kndConcept *c;
     struct kndAttrEntry *entry;
     struct kndConcItem *item;
     int err;
@@ -416,6 +417,12 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
     /* check circled relations */
     for (size_t i = 0; i < self->num_bases; i++) {
         dir = self->bases[i];
+
+	c = dir->conc;
+	knd_log("== (%zu of %zu)  \"%.*s\" is a base of \"%.*s\"", 
+		i, self->num_bases, c->name_size, c->name,
+		self->name_size, self->name);
+
         if (dir->conc == base) {
             knd_log("-- circle inheritance detected for \"%.*s\" :(",
                     base->name_size, base->name);
@@ -425,6 +432,7 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
     
     /* get attrs from base */
     for (attr = base->attrs; attr; attr = attr->next) {
+
         /* compare with exiting attrs */
         entry = self->attr_idx->get(self->attr_idx, attr->name, attr->name_size);
         if (entry) {
@@ -438,6 +446,7 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
         /* register attr entry */
         entry = malloc(sizeof(struct kndAttrEntry));
         if (!entry) return knd_NOMEM;
+
         memset(entry, 0, sizeof(struct kndAttrEntry));
         memcpy(entry->name, attr->name, attr->name_size);
         entry->name_size = attr->name_size;
@@ -454,9 +463,11 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
         return knd_FAIL;
     }
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(" .. add %.*s parent to %.*s", base->dir->conc->name_size,
-                base->dir->conc->name, self->name_size, self->name);
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(" .. add %.*s parent to %.*s", 
+		base->dir->conc->name_size,
+                base->dir->conc->name, 
+		self->name_size, self->name);
 
     self->bases[self->num_bases] = base->dir;
     self->num_bases++;
@@ -464,6 +475,7 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
     /* contact the grandparents */
     for (item = base->base_items; item; item = item->next) {
         knd_log("    == conc item: %.*s", item->name_size, item->name);
+
         if (item->conc) {
             err = inherit_attrs(self, item->conc);
             if (err) return err;
@@ -568,8 +580,8 @@ static int resolve_base_classes(struct kndConcept *self)
             continue;
         }
 
-        if (DEBUG_CONC_LEVEL_2)
-            knd_log(".. \"%s\" class to get its base class: \"%s\"..",
+        if (DEBUG_CONC_LEVEL_TMP)
+            knd_log("\n.. \"%s\" class to get its base class: \"%s\"..",
                     self->name, item->name);
 
         err = get_class(self, item->name, item->name_size, &c);
@@ -581,7 +593,7 @@ static int resolve_base_classes(struct kndConcept *self)
             return knd_FAIL;
         }
 
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_CONC_LEVEL_TMP)
             knd_log("++ \"%s\" ref established as a base class for \"%s\"!",
                     item->name, self->name);
 
@@ -605,9 +617,14 @@ static int resolve_base_classes(struct kndConcept *self)
                     self->name, item->name);
             return knd_FAIL;
         }
+
         ref = &c->children[c->num_children];
         ref->conc = self;
         c->num_children++;
+
+	if (DEBUG_CONC_LEVEL_TMP)
+	    knd_log("\n\n.. children of class \"%.*s\": %zu",
+		    c->name_size, c->name, c->num_children);
 
         /* ATTRS */
         err = inherit_attrs(self, item->conc);
@@ -623,8 +640,8 @@ static int resolve_name_refs(struct kndConcept *self)
     struct kndConcRef *ref;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. resolving class \"%.*s\"",
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log("\n.. resolving class \"%.*s\"",
                 self->name_size, self->name);
 
     if (self->is_resolved) {
@@ -2578,7 +2595,7 @@ static int index_obj_name(struct kndConcept *self,
     if (err == -1) return knd_IO_FAIL;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("\n  .. OBJ BODY INCIPIT: \"%.*s\"",
+        knd_log(".. OBJ BODY INCIPIT: \"%.*s\"",
                 buf_size, buf);
     c = buf;
     b = buf;
@@ -2614,12 +2631,16 @@ static int index_obj_name(struct kndConcept *self,
         return knd_FAIL;
     }
     if (name_size > KND_NAME_SIZE)
+	return knd_LIMIT;
 
     memcpy(entry->name, b, name_size);
     entry->name_size = name_size;
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. index obj name: \"%.*s\"", name_size, entry->name);
+    if (DEBUG_CONC_LEVEL_2) {
+	if (!strncmp(entry->name, "Username", strlen("Username"))) {
+	    knd_log("\n\n!!! index obj name: \"%.*s\"", name_size, entry->name);
+	}
+    }
 
     err = conc_dir->obj_idx->set(conc_dir->obj_idx, entry->name, name_size, entry);
     if (err) return err;
@@ -2971,7 +2992,6 @@ static int register_obj_entry(struct kndMemPool *mempool,
 
     if (depth < max_depth) {
         if (!dir->dirs) {
-            return knd_OK;
             dir->dirs = calloc(KND_RADIX_BASE, sizeof(struct kndObjDir*));
             if (!dir->dirs) return knd_NOMEM;
         }
@@ -3569,7 +3589,7 @@ static int resolve_class_refs(struct kndConcept *self)
     void *val;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. resolving class refs by \"%.*s\"",
                 self->name_size, self->name);
 
@@ -3584,11 +3604,18 @@ static int resolve_class_refs(struct kndConcept *self)
         if (c->is_resolved) continue;
 
         err = c->resolve(c);
+	knd_log("== %.*s resolve result: %d", c->name_size, c->name, err);
+
         if (err) {
             knd_log("-- couldn't resolve the \"%s\" class :(", c->name);
             return err;
         }
+	c->is_resolved = true;
+
     } while (key);
+
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log("++ classes resolved!\n\n");
 
     return knd_OK;
 }
@@ -3602,7 +3629,7 @@ static int coordinate(struct kndConcept *self)
     void *val;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. class coordination in progress ..");
 
     /* names to refs */
@@ -3610,7 +3637,7 @@ static int coordinate(struct kndConcept *self)
     if (err) return err;
 
     /* build attr indices, detect circles, assign ids */
-    key = NULL;
+    /*key = NULL;
     self->class_idx->rewind(self->class_idx);
     do {
         self->class_idx->next_item(self->class_idx, &key, &val);
@@ -3621,21 +3648,23 @@ static int coordinate(struct kndConcept *self)
         for (item = c->base_items; item; item = item->next) {
             err = inherit_attrs(c, item->conc);
             if (err) return err;
+    */
 
             /* TODO: validate attr items */
             /*if (item->attrs) {
               err = validate_attr_items(c, item->attrs);
               if (err) return err;
             }*/
-        }
+
+//        }
 
         /* assign id */
-        err = knd_next_state(self->next_id);
+/*        err = knd_next_state(self->next_id);
         if (err) return err;
         
         memcpy(c->id, self->next_id, KND_ID_SIZE);
-        //c->phase = KND_CREATED;
     } while (key);
+*/
 
     /* display all classes */
     if (DEBUG_CONC_LEVEL_TMP) {
@@ -3797,15 +3826,16 @@ static int get_class(struct kndConcept *self,
 
     dir = self->class_idx->get(self->class_idx, name, name_size);
     if (!dir) {
-        knd_log("-- no such class: \"%s\" :(", name);
+        knd_log("-- no such class: \"%.*s\"  task: %p :(", name_size, name, self->task);
         self->log->reset(self->log);
         err = self->log->write(self->log, name, name_size);
         if (err) return err;
         err = self->log->write(self->log, " class name not found",
                                strlen(" class name not found"));
         if (err) return err;
+	if (self->task) 
+	    self->task->http_code = HTTP_NOT_FOUND;
 
-        self->task->http_code = HTTP_NOT_FOUND;
         return knd_NO_MATCH;
     }
 
