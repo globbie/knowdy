@@ -490,6 +490,44 @@ static int resolve(struct kndRelArg *self)
     return knd_OK;
 }
 
+static int resolve_inst(struct kndRelArg *self,
+			struct kndRelArgInstance *inst)
+{
+    struct kndRel *rel;
+    struct kndConcDir *dir;
+    struct kndObjEntry *obj;
+
+    dir = self->rel->class_idx->get(self->rel->class_idx,
+				    inst->classname, inst->classname_size);
+    if (!dir) {
+        knd_log("-- no such class: %.*s :(", inst->classname_size, inst->classname);
+        return knd_FAIL;
+    }
+
+
+    inst->conc_dir = dir;
+
+    /* resolve User */
+    if (inst->objname_size) {
+	if (dir->obj_idx) {
+	    obj = dir->obj_idx->get(dir->obj_idx, 
+				    inst->objname, inst->objname_size);
+	    if (!obj) {
+		knd_log("-- no such obj: %.*s :(", inst->objname_size, inst->objname);
+		return knd_FAIL;
+	    }
+	    knd_log("++ obj resolved: \"%.*s\"!",  inst->objname_size, inst->objname);
+	}
+    }
+
+
+    if (DEBUG_RELARG_LEVEL_TMP)
+        knd_log("++ Rel Arg instance resolved: \"%.*s\"!",
+                inst->classname_size, inst->classname);
+
+    return knd_OK;
+}
+
 extern void kndRelArgInstance_init(struct kndRelArgInstance *self)
 {
     memset(self, 0, sizeof(struct kndRelArgInstance));
@@ -506,6 +544,7 @@ static void init(struct kndRelArg *self)
     self->export = export;
     self->parse_inst = parse_inst_GSL;
     self->resolve = resolve;
+    self->resolve_inst = resolve_inst;
 }
 
 extern int

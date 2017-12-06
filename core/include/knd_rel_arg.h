@@ -124,6 +124,8 @@ struct kndRelArg
                       struct kndRelArgInstance *inst,
                       const char *rec,
                       size_t *total_size);
+    int (*resolve_inst)(struct kndRelArg *self,
+			struct kndRelArgInstance *inst);
 };
 
 
