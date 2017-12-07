@@ -41,9 +41,11 @@ static int knd_confirm(struct kndStateControl *self,
     struct kndOutput *out;
     int err;
 
-    if (DEBUG_STATE_LEVEL_2)
+    if (DEBUG_STATE_LEVEL_TMP)
         knd_log(".. confirming update: %p  task:%p..", update,
 		self->task);
+
+    self->total_objs += update->total_objs;
 
     if (self->task->type == KND_LIQUID_STATE) {
 	self->updates[self->num_updates] = update;
@@ -74,6 +76,10 @@ static int knd_confirm(struct kndStateControl *self,
     if (DEBUG_STATE_LEVEL_TMP)
         knd_log("++  \"%zu\" update confirmed!   global STATE: %zu",
                 update->id, self->num_updates);
+    out = self->task->out;
+    err = out->write(out, "{", 1);  RET_ERR();
+    err = out->write(out, "\"tid\":\"OK\"", strlen("\"tid\":\"OK\""));  RET_ERR();
+    err = out->write(out, "}", 1);  RET_ERR();
 
     return knd_OK;
 }

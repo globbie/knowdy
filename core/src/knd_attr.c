@@ -385,40 +385,6 @@ static int parse_gloss_translation(void *obj,
     return knd_OK;
 }
 
-static int parse_gloss_change(void *obj,
-                              const char *rec,
-                              size_t *total_size)
-{
-    struct kndAttr *self = obj;
-    struct kndTranslation *tr;
-    int err;
-
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. parsing the gloss change: \"%s\"", rec);
-
-    tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return knd_NOMEM;
-    memset(tr, 0, sizeof(struct kndTranslation));
-
-    struct kndTaskSpec specs[] = {
-        { .is_validator = true,
-          .buf = tr->curr_locale,
-          .buf_size = &tr->curr_locale_size,
-          .max_buf_size = KND_LOCALE_SIZE,
-          .validate = parse_gloss_translation,
-          .obj = tr
-        }
-    };
-
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-
-    /* assign translation */
-    tr->next = self->tr;
-    self->tr = tr;
-
-    return knd_OK;
-}
 
 static int read_gloss(void *obj,
                       const char *rec,

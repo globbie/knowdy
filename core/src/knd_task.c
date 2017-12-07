@@ -272,6 +272,7 @@ static int report(struct kndTask *self)
     size_t header_size;
     char *obj;
     size_t obj_size;
+    size_t chunk_size;
     int err;
 
     if (DEBUG_TASK_LEVEL_2)
@@ -359,16 +360,21 @@ static int report(struct kndTask *self)
         obj_size = self->out->buf_size;
         if (obj_size > KND_MAX_DEBUG_CONTEXT_SIZE) {
             obj_size = KND_MAX_DEBUG_CONTEXT_SIZE;
-            knd_log("== TASK report: SPEC: \"%.*s\"\n\n== BODY: \"%.*s...\" [total size: %zu]\n",
-                    out->buf_size, out->buf, obj_size, self->out->buf, self->out->buf_size);
+            knd_log("== TASK report: SPEC: \"%.*s\"\n\n"
+		    "== BODY: \"%.*s...\" [total size: %zu]\n",
+                    out->buf_size, out->buf, obj_size,
+		    self->out->buf, self->out->buf_size);
         }
         else {
-            knd_log("== TASK report: SPEC: \"%.*s\"\n\n== BODY: \"%.*s\" [size: %zu]\n",
-                    out->buf_size, out->buf, obj_size, self->out->buf, self->out->buf_size);
+            knd_log("== TASK report: SPEC: \"%.*s\"\n\n"
+		    "== BODY: \"%.*s\" [size: %zu]\n",
+                    out->buf_size, out->buf, obj_size,
+		    self->out->buf, self->out->buf_size);
         }
     }
 
-    err = knd_zmq_sendmore(self->delivery, (const char*)out->buf, out->buf_size);
+    err = knd_zmq_sendmore(self->delivery,
+			   (const char*)out->buf, out->buf_size);
     /* obj body */
     if (self->out->buf_size) {
         msg = self->out->buf;
@@ -398,11 +404,16 @@ static int report(struct kndTask *self)
 
     /* inform all retrievers about the state change */
     if (self->type == KND_UPDATE_STATE) {
-        if (DEBUG_TASK_LEVEL_TMP)
-            knd_log("\n\n** UPDATE retrievers: \"%.*s\" [%lu]",
-                    self->update->buf_size, self->update->buf,
-                    (unsigned long)self->update->buf_size);
-        
+
+        if (DEBUG_TASK_LEVEL_TMP) {
+	    chunk_size =  self->update->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ?\
+		KND_MAX_DEBUG_CHUNK_SIZE :  self->update->buf_size;
+
+            knd_log("\n\n** UPDATE retrievers: \"%.*s\" [%zu]",
+                    chunk_size, self->update->buf,
+                    self->update->buf_size);
+        }
+
         err = knd_zmq_sendmore(self->publisher, self->update->buf, self->update->buf_size);
         err = knd_zmq_send(self->publisher, "None", strlen("None"));
     }

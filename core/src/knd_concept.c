@@ -82,9 +82,6 @@ static int get_attr(struct kndConcept *self,
                     const char *name, size_t name_size,
                     struct kndAttr **result);
 
-static int build_diff(struct kndConcept *self,
-                      const char *start_state,
-                      size_t global_state_count);
 
 
 static void del_obj_dir(struct kndObjDir *dir)
@@ -1692,7 +1689,7 @@ static int parse_import_obj(void *data,
     if (DEBUG_CONC_LEVEL_2) {
         knd_log(".. import \"%.*s\" obj.. conc: %p", 128, rec, self->curr_class);
     }
-    self->task->type = KND_CHANGE_STATE;
+    self->task->type = KND_UPDATE_STATE;
 
     if (!self->curr_class) {
         knd_log("-- class not set :(");
@@ -3117,9 +3114,10 @@ static int obj_atomic_parse(void *obj,
                             const char *rec,
                             size_t *total_size)
 {
+    struct kndObjEntry *entry = obj;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. parse atomic obj entry..");
+	knd_log(".. parse atomic obj entry: %s [size: %zu] %p", rec, *total_size, entry);
 
     return knd_OK;
 }
@@ -3248,7 +3246,6 @@ static int get_obj_dir_trailer(struct kndConcept *self,
 
 static int open_frozen_DB(struct kndConcept *self)
 {
-    struct kndOutput *out = self->out;
     const char *filename;
     size_t filename_size;
     struct stat st;
@@ -3363,23 +3360,20 @@ static int read_GSL_file(struct kndConcept *self,
 static int conc_item_alloc(void *obj,
                            const char *name,
                            size_t name_size,
-                           size_t count,
+                           size_t count  __attribute__((unused)),
                            void **item)
 {
     struct kndConcept *self = obj;
     struct kndConcItem *ci;
-
-    ci = malloc(sizeof(struct kndConcItem));
-    if (!ci) return knd_NOMEM;
-    memset(ci, 0, sizeof(struct kndConcItem));
+    int err;
 
     if (name_size > KND_ID_SIZE) return knd_LIMIT;
+
+    err = self->mempool->new_conc_item(self->mempool, &ci);    RET_ERR();
+    
     memcpy(ci->id, name, name_size);
-
     knd_calc_num_id(name, &ci->numid);
-
     *item = ci;
-
     return knd_OK;
 }
 
@@ -3508,8 +3502,6 @@ static int read_GSP(struct kndConcept *self,
                     const char *rec,
                     size_t *total_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -3624,7 +3616,6 @@ static int coordinate(struct kndConcept *self)
 {
     struct kndConcept *c;
     struct kndConcDir *dir;
-    struct kndConcItem *item;
     const char *key;
     void *val;
     int err;
@@ -4400,7 +4391,6 @@ static int select_delta(struct kndConcept *self,
     struct kndUpdate *update;
     struct kndClassUpdate *class_update;
     struct kndConcept *c;
-    struct kndConcDir *dir;
     int err;
 
     struct kndTaskSpec specs[] = {
@@ -4560,7 +4550,8 @@ static int parse_select_class(void *obj,
 }
 
 static int attr_items_export_JSON(struct kndConcept *self,
-                                  struct kndAttrItem *items, size_t depth)
+                                  struct kndAttrItem *items,
+				  size_t depth __attribute__((unused)))
 {
     struct kndAttrItem *item;
     struct kndOutput *out;
@@ -4606,10 +4597,9 @@ static int iter_export_JSON(struct kndConcept *self, struct kndConcDir *parent_d
 {
     struct kndConcDir *dir;
     struct kndConcept *c;
-    struct kndOutput *out = self->out;
     size_t start_from = parent_dir->task->start_from;
     size_t match_count = parent_dir->task->match_count;
-    int i, err;
+    int err;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. iterate terminal classes of\"%.*s\".. start_from:%zu  match_count:%zu",
@@ -4701,7 +4691,7 @@ static int export_JSON(struct kndConcept *self)
     struct tm tm_info;
     struct kndOutput *out;
     size_t item_count;
-    int i, err, e;
+    int i, err;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. JSON export concept: \"%s\"  "
@@ -4911,7 +4901,8 @@ static int export_JSON(struct kndConcept *self)
 }
 
 static int attr_items_export_GSP(struct kndConcept *self,
-                                 struct kndAttrItem *items, size_t depth)
+                                 struct kndAttrItem *items,
+				 size_t depth  __attribute__((unused)))
 {
     struct kndAttrItem *item;
     struct kndOutput *out;
@@ -5132,8 +5123,6 @@ static int run_get_liquid_class(void *obj, struct kndTaskArg *args, size_t num_a
 {
     struct kndConcept *self = obj;
     struct kndTaskArg *arg;
-    struct kndConcept *c;
-    struct kndObjEntry *entry;
     const char *name = NULL;
     size_t name_size = 0;
     int err;
@@ -5285,8 +5274,6 @@ static int apply_liquid_updates(struct kndConcept *self,
 {
     struct kndConcept *c;
     struct kndConcDir *dir;
-    struct kndObjEntry *entry;
-    struct kndObject *obj;
     struct kndRel *rel;
     struct kndStateControl *state_ctrl = self->task->state_ctrl;
     struct kndTaskSpec specs[] = {
@@ -5366,23 +5353,16 @@ static void reset_inbox(struct kndConcept *self)
     self->rel->reset_inbox(self->rel);
 }
 
-
 static int knd_update_state(struct kndConcept *self)
 {
-    char pathbuf[KND_TEMP_BUF_SIZE];
     struct kndConcept *c;
-    struct kndObject *obj;
-    struct kndOutput *out = self->task->spec_out;
     struct kndStateControl *state_ctrl = self->task->state_ctrl;
     struct kndUpdate *update;
     struct kndClassUpdate *class_update;
     struct kndClassUpdate **class_updates;
-    const char *inbox_dir = "/schema/inbox";
-    size_t inbox_dir_size = strlen(inbox_dir);
-    size_t update_id;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
 	knd_log("..update state..");
 
     /* new update obj */
@@ -5418,6 +5398,9 @@ static int knd_update_state(struct kndConcept *self)
         class_update->conc = c;
         update->classes[update->num_classes] = class_update;
         update->num_classes++;
+
+	/* stats */
+	update->total_objs += c->obj_inbox_size;
     }
 
     if (self->rel->inbox_size) {
@@ -5662,8 +5645,6 @@ static int freeze_subclasses(struct kndConcept *self,
                              char *output,
                              size_t *total_size)
 {
-    char buf[KND_SHORT_NAME_SIZE];
-    size_t buf_size;
     struct kndConcept *c;
     struct kndConcRef *ref;
     char *curr_dir = output;
@@ -5776,7 +5757,6 @@ static int freeze_rels(struct kndRel *self,
     char *curr_dir = output;
     size_t curr_dir_size = 0;
     size_t chunk_size;
-    size_t num_size;
     int err;
 
     if (DEBUG_CONC_LEVEL_1)
@@ -5812,7 +5792,6 @@ static int freeze(struct kndConcept *self)
 {
     char *curr_dir = self->dir_buf;
     size_t curr_dir_size = 0;
-    struct kndRel *rel;
     size_t total_frozen_size = 0;
     size_t num_size;
     size_t chunk_size;
@@ -5941,7 +5920,6 @@ static void reset(struct kndConcept *self)
 {
     struct kndConcRef *ref;
     struct kndConcept *c;
-    struct kndObject *obj;
 
     /* reset children */
     for (size_t i = 0; i < self->num_children; i++) {
