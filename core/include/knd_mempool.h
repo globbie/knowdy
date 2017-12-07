@@ -62,6 +62,10 @@ struct kndMemPool
     size_t max_conc_dirs;
     size_t num_conc_dirs;
 
+    struct kndConcItem *conc_items;
+    size_t max_conc_items;
+    size_t num_conc_items;
+
     struct kndObject *objs;
     size_t max_objs;
     size_t num_objs;
@@ -131,6 +135,8 @@ struct kndMemPool
                      struct kndConcept **result);
     int (*new_conc_dir)(struct kndMemPool   *self,
                         struct kndConcDir **result);
+    int (*new_conc_item)(struct kndMemPool   *self,
+			 struct kndConcItem **result);
     int (*new_obj)(struct kndMemPool   *self,
                    struct kndObject **result);
     int (*new_obj_dir)(struct kndMemPool   *self,
