@@ -362,9 +362,7 @@ kndObject_export_reverse_rels_GSP(struct kndObject *self)
 static int 
 kndObject_export_GSP(struct kndObject *self)
 {
-    bool got_elem = false;
     struct kndElem *elem;
-    bool is_concise = true;
     size_t start_size = 0;
     int err;
 
@@ -439,7 +437,6 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndObject *self = (struct kndObject*)obj;
     struct kndConcept *conc;
-    struct kndObjEntry *entry;
     struct kndTaskArg *arg;
     const char *name = NULL;
     size_t name_size = 0;
@@ -462,7 +459,6 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
         if (conc->dir->obj_idx->exists(conc->dir->obj_idx, name, name_size)) {
             knd_log("-- obj name doublet found: %.*s:(",
                     name_size, name);
-            entry->obj->str(entry->obj);
             return knd_EXISTS;
         }
     }
@@ -499,11 +495,9 @@ static int confirm_obj_import(void *data,
                               size_t num_args __attribute__((unused)))
 {
     struct kndObject *self = data;
-    //int err;
 
     if (DEBUG_OBJ_LEVEL_2)
-        knd_log(".. confirm obj import..");
-
+        knd_log(".. confirm obj import.. %p", self);
 
     return knd_OK;
 }
@@ -784,8 +778,8 @@ static int objref_alloc(void *obj,
     int err;
 
     if (DEBUG_OBJ_LEVEL_2)
-        knd_log(".. create objref: %.*s count: %zu",
-                name_size, name, count);
+        knd_log(".. create objref: %.*s count: %zu %p",
+                name_size, name, count, self);
     if (name_size > KND_ID_SIZE) return knd_LIMIT;
 
     err = kndRef_new(&ref);
@@ -888,8 +882,8 @@ static int rev_rel_alloc(void *obj,
     struct kndRelClass *relc;
 
     if (DEBUG_OBJ_LEVEL_2)
-        knd_log(".. create rev_rel: %.*s count: %zu",
-                name_size, name, count);
+        knd_log(".. create rev_rel: %.*s count: %zu  %p",
+                name_size, name, count, self);
     if (name_size > KND_ID_SIZE) return knd_LIMIT;
 
     relc = malloc(sizeof(struct kndRelClass));
@@ -973,7 +967,6 @@ static int
 kndObject_resolve(struct kndObject *self)
 {
     struct kndElem *elem;
-    struct kndObject *obj;
     int err;
 
     if (DEBUG_OBJ_LEVEL_2) {

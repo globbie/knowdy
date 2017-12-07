@@ -158,7 +158,7 @@ kndLearner_start(struct kndLearner *self)
 
                 printf ("\telapsed wall clock time: %ld\n", (long)  (t1 - t0));
                 printf ("\telapsed CPU time:        %f\n",  (float) (c1 - c0)/CLOCKS_PER_SEC);
-                knd_log("\tTOTAL objs imported: %lu", (unsigned long)self->admin->root_class->num_objs);
+                knd_log("\tTOTAL objs imported: %zu", self->task->state_ctrl->total_objs);
             }
             if (!strcmp(obj, "SYNC TEST")) {
                 t1 = time(NULL);
