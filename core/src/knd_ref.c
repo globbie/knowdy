@@ -34,7 +34,7 @@ static void str(struct kndRef *self)
     }
 }
 
-static int
+/*static int
 kndRef_set_reverse_rel(struct kndRef *self,
                    struct kndObject *obj)
 {
@@ -53,7 +53,7 @@ kndRef_set_reverse_rel(struct kndRef *self,
         if (relc->conc == conc) break;
     }
 
-    /* add a relclass */
+
     if (!relc) {
         relc = malloc(sizeof(struct kndRelClass));
         if (!relc) return knd_NOMEM;
@@ -66,7 +66,7 @@ kndRef_set_reverse_rel(struct kndRef *self,
         if (reltype->attr == self->elem->attr) break;
     }
 
-    /* add a reltype */
+
     if (!reltype) {
         reltype = malloc(sizeof(struct kndRelType));
         if (!reltype) return knd_NOMEM;
@@ -88,9 +88,9 @@ kndRef_set_reverse_rel(struct kndRef *self,
     reltype->num_refs++;
     return knd_OK;
 }
+*/
 
-
-static int kndRef_resolve(struct kndRef *self)
+ /*static int kndRef_resolve(struct kndRef *self)
 {
     struct kndConcept *conc;
     struct kndObjEntry *entry;
@@ -134,13 +134,13 @@ static int kndRef_resolve(struct kndRef *self)
     obj = entry->obj;
     self->states->obj = obj;
 
-    /* set reverse_rel */
     err = kndRef_set_reverse_rel(self, obj);
     if (err) return err;
     
     return knd_OK;
 }
-
+ */
+ 
 static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndRef *self = (struct kndRef*)obj;
@@ -355,10 +355,7 @@ kndRef_new(struct kndRef **ref)
     self->str = str;
     self->export = export;
     self->export_reverse_rel = export_reverse_rel;
-
-    self->resolve = kndRef_resolve;
     self->parse = parse_GSL;
-    //self->index = kndRef_index;
 
     *ref = self;
     return knd_OK;

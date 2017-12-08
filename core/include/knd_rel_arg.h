@@ -15,7 +15,7 @@
  *
  *   ----------
  *   knd_rel_arg.h
- *   Knowdy Concept RelArg
+ *   Knowdy Concept Rel Arg
  */
 
 #ifndef KND_RELARG_H
@@ -30,8 +30,9 @@ struct kndConcept;
 struct kndOutput;
 struct kndTranslation;
 struct kndRel;
-struct kndRelArg;
 struct kndRelInstance;
+struct kndRelArg;
+struct kndRelArgInstance;
 
 typedef enum knd_relarg_type {
     KND_RELARG_NONE,
@@ -47,10 +48,17 @@ static const char* const knd_relarg_names[] = {
     "ins",
 };
 
+struct kndRelArgInstRef
+{
+    struct kndRelArgInstance *inst;
+    struct kndRelArgInstRef *next;
+};
+
 struct kndRelArgInstance
 {
     knd_task_spec_type type;
     struct kndRelArg *relarg;
+    struct kndRelInstance *rel_inst;
 
     const char *classname;
     size_t classname_size;
@@ -131,5 +139,6 @@ struct kndRelArg
 
 /* constructor */
 extern void kndRelArgInstance_init(struct kndRelArgInstance *self);
+extern void kndRelArgInstRef_init(struct kndRelArgInstRef *self);
 extern int kndRelArg_new(struct kndRelArg **self);
 #endif

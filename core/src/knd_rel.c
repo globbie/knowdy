@@ -45,8 +45,6 @@ static void str(struct kndRel *self)
     }
 }
 
-
-
 static void reset_inbox(struct kndRel *self)
 {
     struct kndRel *rel, *next_rel;
@@ -803,6 +801,7 @@ static int parse_rel_arg_inst(void *obj,
 
     err = mempool->new_rel_arg_inst(mempool, &arg_inst);                          RET_ERR();
     arg_inst->relarg = arg;
+    arg_inst->rel_inst = inst;
 
     err = arg->parse_inst(arg, arg_inst, rec, total_size);
     if (err) {
@@ -987,7 +986,7 @@ static int kndRel_resolve(struct kndRel *self)
     struct kndRelInstance *inst;
     int err;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_2)
         knd_log("\n.. resolving REL: \"%.*s\"     inst inbox size: %zu",
                 self->name_size, self->name, self->inst_inbox_size);
 
