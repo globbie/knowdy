@@ -47,8 +47,8 @@ struct kndMatchPoint
     size_t orig_pos;
 };
 
-/* inverted rel */
-struct kndRelType
+/* reverse rel */
+/*struct kndRelType
 {
     char name[KND_SHORT_NAME_SIZE];
     size_t name_size;
@@ -68,10 +68,12 @@ struct kndRelClass
     char name[KND_NAME_SIZE];
     size_t name_size;
     char id[KND_ID_SIZE];
+
     struct kndConcept *conc;
     struct kndRelType *rel_types;
     struct kndRelClass *next;
 };
+*/
 
 struct kndAggrObject
 {
@@ -94,6 +96,10 @@ struct kndObjEntry
     char *block;
     size_t block_size;
     size_t offset;
+
+    /* reverse rels */
+    struct kndRelRef *reverse_rels;
+
     struct kndObject *obj;
 };
 

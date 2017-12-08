@@ -109,6 +109,7 @@ struct kndAttrEntry
 struct kndConcDir
 {
     char id[KND_ID_SIZE];
+    size_t id_size;
     size_t numid;
 
     char name[KND_NAME_SIZE];
@@ -166,12 +167,14 @@ struct kndConcept
     size_t name_size;
 
     char id[KND_ID_SIZE];
-    char next_id[KND_ID_SIZE];
-    char next_obj_id[KND_ID_SIZE];
-    size_t next_obj_numid;
-
+    size_t id_size;
     size_t numid;
     size_t next_numid;
+
+    /*char next_id[KND_ID_SIZE];
+    char next_obj_id[KND_ID_SIZE];
+    size_t next_obj_numid;
+    */
 
     struct kndClassUpdateRef *updates;
     size_t num_updates;

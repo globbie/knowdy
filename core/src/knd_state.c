@@ -39,11 +39,9 @@ static int knd_confirm(struct kndStateControl *self,
 		       struct kndUpdate *update)
 {
     struct kndOutput *out;
+    struct kndClassUpdate *class_update;
+    struct kndConcDir *dir;
     int err;
-
-    if (DEBUG_STATE_LEVEL_TMP)
-        knd_log(".. confirming update: %p  task:%p..", update,
-		self->task);
 
     self->total_objs += update->total_objs;
 
@@ -76,6 +74,15 @@ static int knd_confirm(struct kndStateControl *self,
     if (DEBUG_STATE_LEVEL_TMP)
         knd_log("++  \"%zu\" update confirmed!   global STATE: %zu",
                 update->id, self->num_updates);
+
+    /* bump counters */
+    for (size_t i = 0; i < update->num_classes; i++) {
+	class_update = update->classes[i];
+	dir = class_update->conc->dir;
+	dir->num_objs += class_update->num_objs;
+	knd_log("confirm DIR update: num objs: %zu", dir->num_objs);
+    }
+    
     out = self->task->out;
     err = out->write(out, "{", 1);  RET_ERR();
     err = out->write(out, "\"tid\":\"OK\"", strlen("\"tid\":\"OK\""));  RET_ERR();

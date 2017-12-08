@@ -11,7 +11,8 @@
 
 #include "knd_text.h"
 #include "knd_num.h"
-#include "knd_ref.h"
+#include "knd_rel.h"
+#include "knd_rel_arg.h"
 
 #include "knd_refset.h"
 #include "knd_sorttag.h"
@@ -87,60 +88,55 @@ kndObject_export_aggr_JSON(struct kndObject *self)
 }
 
 static int
-kndObject_export_reverse_rels_JSON(struct kndObject *self)
+export_reverse_rels_JSON(struct kndObject *self)
 {
-    struct kndRelClass *relc;
-    struct kndRelType *reltype;
-    struct kndRef *ref;
+    char buf[KND_NAME_SIZE];
+    size_t buf_size;
+    struct kndRelRef *relref;
+    struct kndRel *rel;
+    struct kndRelArgInstance *rel_arg_inst;
+    struct kndRelArgInstRef *rel_arg_inst_ref;
+
     struct kndOutput *out = self->out;
     int err;
 
     /* sort refs by class */
-    if (DEBUG_OBJ_LEVEL_2)
-        knd_log("..export reverse_rels of %.*s..", self->name_size, self->name);
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log("..export reverse_rels of %.*s..",
+		self->name_size, self->name);
 
-    err = out->write(out, ",\"_reverse_rels\":[", strlen(",\"_reverse_rels\":["));
+    err = out->write(out, ",\"_rels\":[", strlen(",\"_rels\":["));
     if (err) return err;
 
     /* class conc */
-    for (relc = self->reverse_rel_classes; relc; relc = relc->next) {
-        err = out->write(out, "{\"c\":\"", strlen("{\"c\":\""));
+    for (relref = self->entry->reverse_rels; relref; relref = relref->next) {
+        err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));
         if (err) return err;
 
-        if (relc->conc) {
-            err = out->write(out, relc->conc->name, relc->conc->name_size);
-            if (err) return err;
-        }
-        else {
-            err = out->write(out, relc->name, relc->name_size);
-            if (err) return err;
-        }
+	/* TODO: defreeze */
+        if (!relref->rel) return knd_FAIL;
+
+	rel = relref->rel;
+	err = out->write(out, rel->name, rel->name_size);
+	if (err) return err;
+
         err = out->write(out, "\"", 1);
         if (err) return err;
 
-        err = out->write(out, ",\"attrs\":[", strlen(",\"attrs\":["));
+        err = out->write(out, ",\"instances\":[", strlen(",\"instances\":["));
         if (err) return err;
 
-        /* attr type */
-        for (reltype = relc->rel_types; reltype; reltype = reltype->next) {
-            err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));
-            if (err) return err;
+        for (rel_arg_inst_ref = relref->insts;
+	     rel_arg_inst_ref;
+	     rel_arg_inst_ref = rel_arg_inst_ref->next) {
 
-            if (reltype->attr) {
-                err = out->write(out, reltype->attr->name, reltype->attr->name_size);
-                if (err) return err;
-            }
-            else {
-                err = out->write(out, reltype->name, reltype->name_size);
-                if (err) return err;
-            }
-            err = out->write(out, "\"", 1);
-            if (err) return err;
+	    rel_arg_inst = rel_arg_inst_ref->inst;
 
-            err = out->write(out, ",\"refs\":[", strlen(",\"refs\":["));
-            if (err) return err;
+	    buf_size = snprintf(buf, KND_NAME_SIZE, "\"%p\"", (void*)rel_arg_inst);
+	    err = out->write(out, buf, buf_size);
+	    if (err) return err;
 
-            for (ref = reltype->refs; ref; ref = ref->next) {
+            /*for (ref = reltype->refs; ref; ref = ref->next) {
                 ref->out = out;
                 ref->log = self->log;
                 err = ref->export_reverse_rel(ref);
@@ -150,29 +146,23 @@ kndObject_export_reverse_rels_JSON(struct kndObject *self)
                     err = out->write(out, ",", 1);
                     if (err) return err;
                 }
-            }
-            err = out->write(out, "]", 1);
-            if (err) return err;
-            err = out->write(out, "}", 1);
-            if (err) return err;
+		}*/
+	    if (rel_arg_inst_ref->next) {
+		err = out->write(out, ",", 1);
+		if (err) return err;
+	    }
+	}
+	err = out->write(out, "]", 1);
+	if (err) return err;
+	err = out->write(out, "}", 1);
+	if (err) return err;
 
-            if (reltype->next) {
-                err = out->write(out, ",", 1);
-                if (err) return err;
-            }
-        }
-        err = out->write(out, "]", 1);
-        if (err) return err;
-
-        err = out->write(out, "}", 1);
-        if (err) return err;
-
-        if (relc->next) {
+        if (relref->next) {
             err = out->write(out, ",", 1);
             if (err) return err;
         }
     }
-    
+
     err = out->write(out, "]", 1);
     if (err) return err;
 
@@ -281,8 +271,8 @@ kndObject_export_JSON(struct kndObject *self)
     }*/
 
     /* reverse_rels */
-    if (self->reverse_rel_classes) {
-        err = kndObject_export_reverse_rels_JSON(self);
+    if (self->entry->reverse_rels) {
+        err = export_reverse_rels_JSON(self);
         if (err) return err;
     }
     
@@ -298,64 +288,6 @@ kndObject_export_JSON(struct kndObject *self)
     if (err) return err;
     
     return err;
-}
-
-
-static int
-kndObject_export_reverse_rels_GSP(struct kndObject *self)
-{
-    struct kndRelClass *relc;
-    struct kndRelType *reltype;
-    struct kndRef *ref;
-    struct kndOutput *out = self->out;
-    int err;
-
-    /* sort refs by class */
-    if (DEBUG_OBJ_LEVEL_2)
-        knd_log(".. GSP export reverse_rels of %.*s..", self->name_size, self->name);
-
-    err = out->write(out, "[_rev", strlen("[_rev"));
-    if (err) return err;
-
-    /* class conc */
-    for (relc = self->reverse_rel_classes; relc; relc = relc->next) {
-        err = out->write(out, "{", 1);
-        if (err) return err;
-        err = out->write(out, relc->conc->id, KND_ID_SIZE);
-        if (err) return err;
-        err = out->write(out, " ", 1);
-        if (err) return err;
-        err = out->write(out, relc->conc->name, relc->conc->name_size);
-        if (err) return err;
-
-        /* attr type */
-        for (reltype = relc->rel_types; reltype; reltype = reltype->next) {
-            err = out->write(out, "{", 1);
-            if (err) return err;
-            err = out->write(out, reltype->attr->name, reltype->attr->name_size);
-            if (err) return err;
-
-            err = out->write(out, "[ref", strlen("[ref"));
-            if (err) return err;
-
-            for (ref = reltype->refs; ref; ref = ref->next) {
-                ref->format = KND_FORMAT_GSP;
-                err = ref->export_reverse_rel(ref);
-                if (err) return err;
-            }
-            err = out->write(out, "]", 1);
-            if (err) return err;
-            err = out->write(out, "}", 1);
-            if (err) return err;
-        }
-        err = out->write(out, "}", 1);
-        if (err) return err;
-    }
-    
-    err = out->write(out, "]", 1);
-    if (err) return err;
-
-    return knd_OK;
 }
 
 
@@ -387,16 +319,18 @@ kndObject_export_GSP(struct kndObject *self)
         elem->format = KND_FORMAT_GSP;
         err = elem->export(elem);
         if (err) {
-            knd_log("-- export of \"%s\" elem failed: %d :(", elem->attr->name, err);
+            knd_log("-- export of \"%s\" elem failed: %d :(",
+		    elem->attr->name, err);
             return err;
         }
     }
 
     /* reverse_rels */
-    if (self->reverse_rel_classes) {
+    /*if (self->reverse_rel_classes) {
         err = kndObject_export_reverse_rels_GSP(self);
         if (err) return err;
     }
+    */
 
     if (self->type == KND_OBJ_ADDR) {
         err = self->out->write(self->out, "}", 1);
@@ -675,7 +609,7 @@ static int parse_elem(void *data,
     return err;
 }
 
-
+/*
 static int run_set_relclass_name(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndRelClass *self = obj;
@@ -703,6 +637,7 @@ static int run_set_relclass_name(void *obj, struct kndTaskArg *args, size_t num_
 
     return knd_OK;
 }
+*/
 
 static int run_set_objref_name(void *obj, struct kndTaskArg *args, size_t num_args)
 {
@@ -755,7 +690,7 @@ static int objref_read(void *obj,
     return knd_OK;
 }
 
-static int objref_append(void *accu,
+/*static int objref_append(void *accu,
                          void *item)
 {
     struct kndRelType *self = accu;
@@ -896,7 +831,7 @@ static int rev_rel_alloc(void *obj,
 
     return knd_OK;
 }
-
+*/
 
 /* parse object */
 static int parse_GSL(struct kndObject *self,
@@ -928,7 +863,7 @@ static int parse_GSL(struct kndObject *self,
           .max_buf_size = KND_NAME_SIZE,
           .validate = parse_elem,
           .obj = self
-        },
+        }/*,
         { .is_list = true,
           .name = "_rev",
           .name_size = strlen("_rev"),
@@ -936,7 +871,7 @@ static int parse_GSL(struct kndObject *self,
           .alloc = rev_rel_alloc,
           .append = rev_rel_append,
           .parse = rev_rel_read
-        },
+	  }*/,
         { .name = "default",
           .name_size = strlen("default"),
           .is_default = true,

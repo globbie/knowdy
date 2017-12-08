@@ -9,6 +9,7 @@
 #include "knd_output.h"
 #include "knd_text.h"
 #include "knd_parser.h"
+#include "knd_mempool.h"
 
 #define DEBUG_RELARG_LEVEL_1 0
 #define DEBUG_RELARG_LEVEL_2 0
@@ -463,17 +464,49 @@ static int parse_inst_GSL(struct kndRelArg *self,
     err = knd_parse_task(rec, total_size, specs,
                          sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
-
-
     
     return knd_OK;
 }
 
+static int
+set_reverse_rel(struct kndRelArg *self,
+		struct kndRelArgInstance *inst,
+		struct kndObjEntry *obj_entry)
+{
+    struct kndRel *rel = self->rel;
+    struct kndRelRef *ref = NULL;
+    struct kndRelArgInstRef *rel_arg_inst_ref = NULL;
+    int err;
+
+    if (DEBUG_RELARG_LEVEL_TMP)
+        knd_log(".. %.*s OBJ to set reverse rel %.*s..",
+                obj_entry->name_size, obj_entry->name,
+		rel->name_size, rel->name);
+
+    for (ref = obj_entry->reverse_rels; ref; ref = ref->next) {
+        if (ref->rel == rel) break;
+    }
+
+    if (!ref) {
+	err = rel->mempool->new_rel_ref(rel->mempool, &ref);                         RET_ERR();
+        ref->rel = rel;
+        ref->next = obj_entry->reverse_rels;
+        obj_entry->reverse_rels = ref;
+    }
+
+    err = rel->mempool->new_rel_arg_inst_ref(rel->mempool, &rel_arg_inst_ref);           RET_ERR();
+    rel_arg_inst_ref->inst = inst;
+    rel_arg_inst_ref->next = ref->insts;
+    ref->insts = rel_arg_inst_ref;
+
+    return knd_OK;
+}
+
+
 static int resolve(struct kndRelArg *self)
 {
-    struct kndRel *rel;
     struct kndConcept *c;
-    
+
     c = self->rel->class_idx->get(self->rel->class_idx,
                                   self->classname, self->classname_size);
     if (!c) {
@@ -483,19 +516,19 @@ static int resolve(struct kndRelArg *self)
 
     self->conc = c;
 
-    if (DEBUG_RELARG_LEVEL_TMP)
+    if (DEBUG_RELARG_LEVEL_2)
         knd_log("++ Rel Arg resolved: \"%.*s\"!",
                 self->classname_size, self->classname);
-  
+
     return knd_OK;
 }
 
 static int resolve_inst(struct kndRelArg *self,
 			struct kndRelArgInstance *inst)
 {
-    struct kndRel *rel;
     struct kndConcDir *dir;
     struct kndObjEntry *obj;
+    int err;
 
     dir = self->rel->class_idx->get(self->rel->class_idx,
 				    inst->classname, inst->classname_size);
@@ -503,11 +536,9 @@ static int resolve_inst(struct kndRelArg *self,
         knd_log("-- no such class: %.*s :(", inst->classname_size, inst->classname);
         return knd_FAIL;
     }
-
-
     inst->conc_dir = dir;
 
-    /* resolve User */
+    /* resolve obj ref */
     if (inst->objname_size) {
 	if (dir->obj_idx) {
 	    obj = dir->obj_idx->get(dir->obj_idx, 
@@ -516,7 +547,12 @@ static int resolve_inst(struct kndRelArg *self,
 		knd_log("-- no such obj: %.*s :(", inst->objname_size, inst->objname);
 		return knd_FAIL;
 	    }
-	    knd_log("++ obj resolved: \"%.*s\"!",  inst->objname_size, inst->objname);
+
+	    if (DEBUG_RELARG_LEVEL_TMP)
+		knd_log("++ obj resolved: \"%.*s\"!",  inst->objname_size, inst->objname);
+
+	    /* set reverse rel */
+	    err = set_reverse_rel(self, inst, obj);        RET_ERR();
 	}
     }
 
@@ -531,6 +567,10 @@ static int resolve_inst(struct kndRelArg *self,
 extern void kndRelArgInstance_init(struct kndRelArgInstance *self)
 {
     memset(self, 0, sizeof(struct kndRelArgInstance));
+}
+extern void kndRelArgInstRef_init(struct kndRelArgInstRef *self)
+{
+    memset(self, 0, sizeof(struct kndRelArgInstRef));
 }
 
 /*  RelArg Initializer */

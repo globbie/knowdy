@@ -99,6 +99,13 @@ struct kndRelUpdateRef
     struct kndRelUpdateRef *next;
 };
 
+struct kndRelRef
+{
+    struct kndRel *rel;
+    struct kndRelArgInstRef *insts;
+    struct kndRelRef *next;
+};
+
 struct kndRel
 {
     char name[KND_NAME_SIZE];

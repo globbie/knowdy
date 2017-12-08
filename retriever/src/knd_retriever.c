@@ -25,12 +25,11 @@
 #define DEBUG_RETRIEVER_LEVEL_3 0
 #define DEBUG_RETRIEVER_LEVEL_TMP 1
 
-static int
+static void
 kndRetriever_del(struct kndRetriever *self)
 {
-    /* TODO: storage */
-
-    return knd_OK;
+    /* TODO: free aggrs  */
+    free(self);
 }
 
 static int
@@ -205,6 +204,11 @@ static int parse_memory_settings(void *obj,
           .parse = knd_parse_size_t,
           .obj = &self->max_rel_insts
         },
+        { .name = "max_rel_arg_instances",
+          .name_size = strlen("max_rel_arg_instances"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_arg_insts
+        },
         { .name = "max_procs",
           .name_size = strlen("max_procs"),
           .parse = knd_parse_size_t,
@@ -372,7 +376,6 @@ kndRetriever_new(struct kndRetriever **rec,
     struct kndRetriever *self;
     struct kndConcept *conc;
     struct kndOutput *out;
-    struct kndStateControl *state_ctrl;
     size_t chunk_size = 0;
     int err;
 
@@ -394,11 +397,8 @@ kndRetriever_new(struct kndRetriever **rec,
     if (err) goto error;
     self->task->admin = self->admin;
     self->admin->out = self->out;
-    
-    /*err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
-    if (err) goto error;
-    */
-    
+    self->admin->log = self->task->log;
+
     /* read config */
     err = self->out->read_file(self->out, config, strlen(config));
     if (err) {
@@ -457,6 +457,9 @@ kndRetriever_new(struct kndRetriever **rec,
     conc->dir->conc = conc;
     conc->mempool = self->mempool;
     conc->dir->mempool = self->mempool;
+
+    conc->task = self->task;
+    conc->log = self->task->log;
 
     err = kndProc_new(&conc->proc);
     if (err) goto error;

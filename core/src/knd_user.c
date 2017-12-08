@@ -441,7 +441,7 @@ static int parse_sync_task(void *obj,
         return err;
     }
 
-    /* inform retrievers */
+    /* TODO: inform retrievers */
 
     /* release resources */
     self->root_class->reset(self->root_class);
@@ -451,7 +451,6 @@ static int parse_sync_task(void *obj,
             knd_log("++ frozen DB file sync'ed OK, total bytes: %lu",
                     (unsigned long)st.st_size);
     }
-    
 
     self->out->reset(self->out);
     err = self->out->write(self->out,
@@ -474,7 +473,6 @@ static int parse_class_select(void *obj,
                               size_t *total_size)
 {
     struct kndUser *self = obj;
-    struct kndOutput *out = self->out;
     struct kndConcept *c = self->root_class;
     int err;
 
@@ -503,7 +501,6 @@ static int parse_rel_select(void *obj,
                             size_t *total_size)
 {
     struct kndUser *self = obj;
-    struct kndOutput *out = self->out;
     struct kndRel *rel;
     int err;
 
@@ -547,7 +544,8 @@ static int parse_liquid_updates(void *obj,
 
 static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
 {
-    struct kndUser *self = (struct kndUser*)obj;
+    struct kndUser *self = obj;
+    struct kndObject *user;
     struct kndTaskArg *arg;
     struct kndConcept *conc;
     const char *name = NULL;
@@ -564,8 +562,8 @@ static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
     if (!name_size) return knd_FAIL;
     if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
 
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log(".. get user: \"%.*s\".. %p", name_size, name, self->root_class);
+    if (DEBUG_USER_LEVEL_2)
+        knd_log(".. get user: \"%.*s\".. log:%p", name_size, name, self->root_class->log);
 
     err = self->root_class->get(self->root_class, "User", strlen("User"), &conc);
     if (err) return err;
@@ -573,10 +571,11 @@ static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
     err = conc->get_obj(conc, name, name_size, &self->curr_user);
     if (err) return err;
 
-    self->curr_user->out = self->out;
-    self->curr_user->log = self->log;
+    user = self->curr_user;
+    user->out = self->out;
+    user->log = self->log;
 
-    err = self->curr_user->export(self->curr_user);
+    err = user->export(user);
     if (err) return err;
     
     return knd_OK;
@@ -669,8 +668,6 @@ static int parse_task(struct kndUser *self,
                       const char *rec,
                       size_t *total_size)
 {
-    struct kndOutput *out;
-    struct kndConcept *conc;
     struct kndObject *obj, *next_obj;
     struct ooDict *idx;
 
@@ -761,9 +758,9 @@ static int parse_task(struct kndUser *self,
         goto cleanup;
     }
 
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log("task type: %d   ++ user parse task OK: total chars: %lu root class: %p mempool:%p",
-                self->task->type, (unsigned long)*total_size, self->root_class, self->root_class->mempool);
+    if (DEBUG_USER_LEVEL_2)
+        knd_log("task type: %d   ++ user parse task OK: total chars: %lu",
+                self->task->type, (unsigned long)*total_size);
 
     switch (self->task->type) {
     case KND_LIQUID_STATE:
@@ -816,7 +813,7 @@ static int parse_task(struct kndUser *self,
     
     if (self->root_class->inbox_size) {
         if (DEBUG_USER_LEVEL_2)
-            knd_log(".. class inbox cleanup..\n\n");
+            knd_log(".. class inbox cleanup..");
         self->root_class->inbox = NULL;
         self->root_class->inbox_size = 0;
     }
