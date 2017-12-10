@@ -306,10 +306,9 @@ static int export_GSP(struct kndRel *self)
     return knd_OK;
 }
 
-static int 
-export_reverse_rel_GSP(struct kndRel *self)
+static int export_inst_GSP(struct kndRel *self,
+			   struct kndRelInstance *inst)
 {
-    struct kndObject *obj;
     struct kndOutput *out;
     int err = knd_FAIL;
 
@@ -317,7 +316,7 @@ export_reverse_rel_GSP(struct kndRel *self)
     out = self->out;
 
     if (DEBUG_REL_LEVEL_2)
-        knd_log(".. export reverse_rel to JSON..");
+        knd_log(".. export rel instance to GSP..");
 
     obj->out = out;
     obj->depth = 0;
@@ -336,6 +335,50 @@ export_reverse_rel_GSP(struct kndRel *self)
     err = out->write(out, "}", 1);
     if (err) return err;
     */
+    
+    return knd_OK;
+}
+
+static int export_inst_JSON(struct kndRel *self,
+			    struct kndRelInstance *inst)
+{
+    struct kndRelArg *relarg;
+    struct kndRelArgInstance *relarg_inst;
+    struct kndOutput *out = self->out;
+    struct kndObjEntry *entry = NULL;
+    bool in_list = false;
+    int err;
+
+    err = out->write(out, "{", 1);
+    if (err) return err;
+    
+    for (relarg_inst = inst->args;
+	 relarg_inst;
+	 relarg_inst = relarg_inst->next) {
+
+	relarg = relarg_inst->relarg;
+	/* skip over the selected obj */
+	if (relarg_inst->obj) {
+	    entry = relarg_inst->obj;
+
+	    if (relarg->curr_obj == entry->obj) continue;
+	}
+
+	relarg->out = out;
+	if (in_list) {
+	    err = out->write(out, ",", 1);                                       RET_ERR();
+	}
+	err = out->write(out, "\"", strlen("\""));                               RET_ERR();
+	err = out->write(out, relarg->name, relarg->name_size);                  RET_ERR();
+	err = out->write(out, "\":", strlen("\":"));                             RET_ERR();
+
+        err = relarg->export_inst(relarg, relarg_inst);                          RET_ERR();
+
+	in_list = true;
+    }
+
+    err = out->write(out, "}", 1);
+    if (err) return err;
     
     return knd_OK;
 }
@@ -360,7 +403,28 @@ static int export(struct kndRel *self)
     return knd_OK;
 }
 
-static int export_reverse_rel(struct kndRel *self)
+static int export_inst(struct kndRel *self,
+		       struct kndRelInstance *inst)
+{
+    int err;
+
+    switch (self->format) {
+    case KND_FORMAT_JSON:
+        err = export_inst_JSON(self, inst);
+	if (err) return err;
+        break;
+    case KND_FORMAT_GSP:
+        err = export_inst_GSP(self, inst);
+        if (err) return err;
+        break;
+    default:
+        break;
+    }
+    
+    return knd_OK;
+}
+
+static int export_rel(struct kndRel *self)
 {
     int err;
 
@@ -786,7 +850,7 @@ static int parse_rel_arg_inst(void *obj,
 
     if (DEBUG_REL_LEVEL_2)
         knd_log(".. parsing the \"%.*s\" rel arg instance, rec:\"%.*s\" args:%p",
-                name_size, name, 32, rec, rel->args);
+                name_size, name, 128, rec, rel->args);
 
     for (arg = rel->args; arg; arg = arg->next) {
         if (arg->name_size != name_size) continue;
@@ -867,7 +931,7 @@ static int parse_import_instance(void *data,
                          sizeof(specs) / sizeof(struct kndTaskSpec));             PARSE_ERR();
     rel = inst->rel;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_2)
         inst_str(rel, inst);
 
     /* save in inbox */
@@ -967,9 +1031,10 @@ static int resolve_inst(struct kndRel *self,
     struct kndRelArgInstance *arg_inst;
     int err;
 
-    knd_log("\n%*s.. resolving Rel Instance: %.*s [%zu]", 
-	    self->depth * KND_OFFSET_SIZE, "",
-            self->name_size, self->name, inst->id);
+    if (DEBUG_REL_LEVEL_2) 
+	knd_log("\n%*s.. resolving Rel Instance: %.*s [%zu]", 
+		self->depth * KND_OFFSET_SIZE, "",
+		self->name_size, self->name, inst->id);
 
     for (arg_inst = inst->args; arg_inst; arg_inst = arg_inst->next) {
         arg = arg_inst->relarg;
@@ -1353,6 +1418,7 @@ kndRel_init(struct kndRel *self)
     self->update = kndRel_update_state;
     self->parse_liquid_updates = parse_liquid_updates;
     self->select = parse_rel_select;
+    self->export_inst = export_inst;
 }
 
 extern void 

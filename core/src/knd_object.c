@@ -88,79 +88,67 @@ kndObject_export_aggr_JSON(struct kndObject *self)
 }
 
 static int
-export_reverse_rels_JSON(struct kndObject *self)
+export_rels_JSON(struct kndObject *self)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
-    struct kndRelRef *relref;
+
     struct kndRel *rel;
+    struct kndRelRef *relref;
+    struct kndRelInstance *rel_inst;
+    struct kndRelArg *rel_arg;
     struct kndRelArgInstance *rel_arg_inst;
     struct kndRelArgInstRef *rel_arg_inst_ref;
 
     struct kndOutput *out = self->out;
+    bool in_list = false;
     int err;
 
     /* sort refs by class */
-    if (DEBUG_OBJ_LEVEL_TMP)
-        knd_log("..export reverse_rels of %.*s..",
+    if (DEBUG_OBJ_LEVEL_2)
+        knd_log("..export rels of %.*s..",
 		self->name_size, self->name);
 
     err = out->write(out, ",\"_rels\":[", strlen(",\"_rels\":["));
     if (err) return err;
 
     /* class conc */
-    for (relref = self->entry->reverse_rels; relref; relref = relref->next) {
-        err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));
-        if (err) return err;
-
-	/* TODO: defreeze */
-        if (!relref->rel) return knd_FAIL;
-
+    for (relref = self->entry->rels; relref; relref = relref->next) {
 	rel = relref->rel;
-	err = out->write(out, rel->name, rel->name_size);
-	if (err) return err;
 
-        err = out->write(out, "\"", 1);
-        if (err) return err;
+        err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));                 RET_ERR();
+	err = out->write(out, rel->name, rel->name_size);                        RET_ERR();
+        err = out->write(out, "\"", 1);                                          RET_ERR();
 
-        err = out->write(out, ",\"instances\":[", strlen(",\"instances\":["));
-        if (err) return err;
+        err = out->write(out, ",\"num_instances\":",
+		       strlen(",\"num_instances\":"));                           RET_ERR();
+	buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", relref->num_insts);
+        err = out->write(out, buf, buf_size);                                    RET_ERR();
+
+        err = out->write(out, ",\"instances\":[", strlen(",\"instances\":["));   RET_ERR();
 
         for (rel_arg_inst_ref = relref->insts;
 	     rel_arg_inst_ref;
 	     rel_arg_inst_ref = rel_arg_inst_ref->next) {
 
-	    rel_arg_inst = rel_arg_inst_ref->inst;
-
-	    buf_size = snprintf(buf, KND_NAME_SIZE, "\"%p\"", (void*)rel_arg_inst);
-	    err = out->write(out, buf, buf_size);
-	    if (err) return err;
-
-            /*for (ref = reltype->refs; ref; ref = ref->next) {
-                ref->out = out;
-                ref->log = self->log;
-                err = ref->export_reverse_rel(ref);
-                if (err) return err;
-
-                if (ref->next) {
-                    err = out->write(out, ",", 1);
-                    if (err) return err;
-                }
-		}*/
-	    if (rel_arg_inst_ref->next) {
-		err = out->write(out, ",", 1);
-		if (err) return err;
+	    if (in_list) {
+		err = out->write(out, ",", 1);                                   RET_ERR();
 	    }
+
+	    rel_arg_inst = rel_arg_inst_ref->inst;
+	    rel_inst = rel_arg_inst->rel_inst;
+
+	    /* NB: exclude self object from the output */
+	    rel_arg_inst->relarg->curr_obj = self;
+
+	    rel->out = self->out;
+	    err = rel->export_inst(rel, rel_inst);                               RET_ERR();
+	    in_list = true;
 	}
 	err = out->write(out, "]", 1);
 	if (err) return err;
 	err = out->write(out, "}", 1);
 	if (err) return err;
-
-        if (relref->next) {
-            err = out->write(out, ",", 1);
-            if (err) return err;
-        }
     }
 
     err = out->write(out, "]", 1);
@@ -270,15 +258,14 @@ kndObject_export_JSON(struct kndObject *self)
         if (err) goto final;
     }*/
 
-    /* reverse_rels */
-    if (self->entry->reverse_rels) {
-        err = export_reverse_rels_JSON(self);
+    if (self->entry->rels) {
+        err = export_rels_JSON(self);
         if (err) return err;
     }
     
     if (is_concise) goto closing;
 
-    /* skip reverse_rels */
+    /* skip rels */
     //if (self->depth) goto closing;
 
     
@@ -325,12 +312,6 @@ kndObject_export_GSP(struct kndObject *self)
         }
     }
 
-    /* reverse_rels */
-    /*if (self->reverse_rel_classes) {
-        err = kndObject_export_reverse_rels_GSP(self);
-        if (err) return err;
-    }
-    */
 
     if (self->type == KND_OBJ_ADDR) {
         err = self->out->write(self->out, "}", 1);

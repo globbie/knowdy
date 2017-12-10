@@ -103,6 +103,7 @@ struct kndRelRef
 {
     struct kndRel *rel;
     struct kndRelArgInstRef *insts;
+    size_t num_insts;
     struct kndRelRef *next;
 };
 
@@ -194,7 +195,8 @@ struct kndRel
                   size_t *total_size);
     int (*export)(struct kndRel *self);
     int (*export_updates)(struct kndRel *self);
-    int (*export_reverse_rel)(struct kndRel *self);
+    int (*export_inst)(struct kndRel *self,
+		       struct kndRelInstance *inst);
 };
 
 extern void kndRel_init(struct kndRel *self);

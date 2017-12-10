@@ -156,6 +156,45 @@ static int export_GSP(struct kndRelArg *self)
     return knd_OK;
 }
 
+static int export_inst_GSP(struct kndRelArg *self,
+			   struct kndRelArgInstance *inst)
+{
+    struct kndOutput *out;
+    int err;
+
+    out = self->out;
+
+    err = out->write(out, "{class ", strlen("{class "));               RET_ERR();
+    err = out->write(out, inst->classname, inst->classname_size);                RET_ERR();
+    err = out->write(out, "{obj ", strlen("{obj "));                 RET_ERR();
+    err = out->write(out, inst->objname, inst->objname_size);                    RET_ERR();
+    err = out->write(out, "}}", 1);                                              RET_ERR();
+
+    return knd_OK;
+}
+
+static int export_inst_JSON(struct kndRelArg *self,
+			    struct kndRelArgInstance *inst)
+{
+    struct kndOutput *out = self->out;
+    /*const char *type_name = knd_relarg_names[self->type];
+      size_t type_name_size = strlen(knd_relarg_names[self->type]); */
+    int err;
+
+    err = out->write(out, "{", 1);                                               RET_ERR();
+    err = out->write(out, "\"class\":\"", strlen("\"class\":\""));               RET_ERR();
+    err = out->write(out, inst->classname, inst->classname_size);                RET_ERR();
+    err = out->write(out, "\"", 1);                                              RET_ERR();
+
+    err = out->write(out, ",\"obj\":\"", strlen(",\"obj\":\""));                 RET_ERR();
+    err = out->write(out, inst->objname, inst->objname_size);                    RET_ERR();
+    err = out->write(out, "\"", 1);                                              RET_ERR();
+    
+    err = out->write(out, "}", 1);                                               RET_ERR();
+
+    return knd_OK;
+}
+
 static int export(struct kndRelArg *self)
 {
     int err = knd_FAIL;
@@ -167,6 +206,28 @@ static int export(struct kndRelArg *self)
         break;
     case KND_FORMAT_GSP:
         err = export_GSP(self);
+        if (err) goto final;
+        break;
+    default:
+        break;
+    }
+
+ final:
+    return err;
+}
+
+static int export_inst(struct kndRelArg *self,
+		       struct kndRelArgInstance *inst)
+{
+    int err = knd_FAIL;
+
+    switch (self->format) {
+    case KND_FORMAT_JSON:
+        err = export_inst_JSON(self, inst);
+        if (err) goto final;
+        break;
+    case KND_FORMAT_GSP:
+        err = export_inst_GSP(self, inst);
         if (err) goto final;
         break;
     default:
@@ -301,7 +362,7 @@ static int parse_GSL(struct kndRelArg *self,
                      const char *rec,
                      size_t *total_size)
 {
-    if (DEBUG_RELARG_LEVEL_TMP)
+    if (DEBUG_RELARG_LEVEL_2)
         knd_log(".. Rel Arg parsing: \"%.*s\"..", 32, rec);
 
     struct kndTaskSpec specs[] = {
@@ -468,36 +529,36 @@ static int parse_inst_GSL(struct kndRelArg *self,
     return knd_OK;
 }
 
-static int
-set_reverse_rel(struct kndRelArg *self,
-		struct kndRelArgInstance *inst,
-		struct kndObjEntry *obj_entry)
+static int link_rel(struct kndRelArg *self,
+		    struct kndRelArgInstance *inst,
+		    struct kndObjEntry *obj_entry)
 {
     struct kndRel *rel = self->rel;
     struct kndRelRef *ref = NULL;
     struct kndRelArgInstRef *rel_arg_inst_ref = NULL;
     int err;
 
-    if (DEBUG_RELARG_LEVEL_TMP)
-        knd_log(".. %.*s OBJ to set reverse rel %.*s..",
+    if (DEBUG_RELARG_LEVEL_2)
+        knd_log(".. %.*s OBJ to link rel %.*s..",
                 obj_entry->name_size, obj_entry->name,
 		rel->name_size, rel->name);
 
-    for (ref = obj_entry->reverse_rels; ref; ref = ref->next) {
+    for (ref = obj_entry->rels; ref; ref = ref->next) {
         if (ref->rel == rel) break;
     }
 
     if (!ref) {
 	err = rel->mempool->new_rel_ref(rel->mempool, &ref);                         RET_ERR();
         ref->rel = rel;
-        ref->next = obj_entry->reverse_rels;
-        obj_entry->reverse_rels = ref;
+        ref->next = obj_entry->rels;
+        obj_entry->rels = ref;
     }
 
     err = rel->mempool->new_rel_arg_inst_ref(rel->mempool, &rel_arg_inst_ref);           RET_ERR();
     rel_arg_inst_ref->inst = inst;
     rel_arg_inst_ref->next = ref->insts;
     ref->insts = rel_arg_inst_ref;
+    ref->num_insts++;
 
     return knd_OK;
 }
@@ -513,7 +574,6 @@ static int resolve(struct kndRelArg *self)
         knd_log("-- no such class: %.*s :(", self->classname_size, self->classname);
         return knd_FAIL;
     }
-
     self->conc = c;
 
     if (DEBUG_RELARG_LEVEL_2)
@@ -547,17 +607,15 @@ static int resolve_inst(struct kndRelArg *self,
 		knd_log("-- no such obj: %.*s :(", inst->objname_size, inst->objname);
 		return knd_FAIL;
 	    }
+	    err = link_rel(self, inst, obj);        RET_ERR();
+	    inst->obj = obj;
 
-	    if (DEBUG_RELARG_LEVEL_TMP)
+	    if (DEBUG_RELARG_LEVEL_2)
 		knd_log("++ obj resolved: \"%.*s\"!",  inst->objname_size, inst->objname);
-
-	    /* set reverse rel */
-	    err = set_reverse_rel(self, inst, obj);        RET_ERR();
 	}
     }
 
-
-    if (DEBUG_RELARG_LEVEL_TMP)
+    if (DEBUG_RELARG_LEVEL_2)
         knd_log("++ Rel Arg instance resolved: \"%.*s\"!",
                 inst->classname_size, inst->classname);
 
@@ -581,10 +639,11 @@ static void init(struct kndRelArg *self)
     self->del = del;
     self->str = str;
     self->parse = parse_GSL;
+    self->resolve = resolve;
     self->export = export;
     self->parse_inst = parse_inst_GSL;
-    self->resolve = resolve;
     self->resolve_inst = resolve_inst;
+    self->export_inst = export_inst;
 }
 
 extern int

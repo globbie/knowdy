@@ -137,14 +137,11 @@ static int new_obj_entry(struct kndMemPool *self,
                          struct kndObjEntry **result)
 {
     struct kndObjEntry *entry;
-    
-
     if (self->num_obj_entries >= self->max_obj_entries) {
         return knd_LIMIT;
     }
     entry = &self->obj_entries[self->num_obj_entries];
     memset(entry, 0, sizeof(struct kndObjEntry));
-    //kndObjEntry_init(entry);
     self->num_obj_entries++;
     *result = entry;
     return knd_OK;
@@ -154,8 +151,6 @@ static int new_conc_dir(struct kndMemPool *self,
                        struct kndConcDir **result)
 {
     struct kndConcDir *dir;
-    
-
     if (self->num_conc_dirs >= self->max_conc_dirs) {
         return knd_LIMIT;
     }
@@ -170,7 +165,6 @@ static int new_conc_item(struct kndMemPool *self,
 			 struct kndConcItem **result)
 {
     struct kndConcItem *item;
-    
 
     if (self->num_conc_items >= self->max_conc_items) {
         return knd_LIMIT;
@@ -273,7 +267,10 @@ static int new_rel_arg_inst(struct kndMemPool *self,
     struct kndRelArgInstance *rel_arg_inst;
     
 
-    if (self->num_rel_arg_insts >= self->max_rel_arg_insts) return knd_LIMIT;
+    if (self->num_rel_arg_insts >= self->max_rel_arg_insts) {
+	knd_log("-- rel arg inst limit reached :(");
+	return knd_LIMIT;
+    }
     rel_arg_inst = &self->rel_arg_insts[self->num_rel_arg_insts];
     memset(rel_arg_inst, 0, sizeof(struct kndRelArgInstance));
     kndRelArgInstance_init(rel_arg_inst);
@@ -372,10 +369,12 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_obj_entries)  self->max_obj_entries = self->max_objs;
     if (!self->max_rels)         self->max_rels =    KND_MIN_RELS;
     if (!self->max_rel_dirs)     self->max_rel_dirs = KND_MIN_REL_INSTANCES;
-    if (!self->max_rel_refs)     self->max_rel_refs = KND_MIN_REL_INSTANCES;
+
+    if (!self->max_rel_refs)     self->max_rel_refs = self->max_rels;
     if (!self->max_rel_insts)    self->max_rel_insts = KND_MIN_REL_INSTANCES;
     if (!self->max_rel_arg_insts) self->max_rel_arg_insts = KND_MIN_RELARG_INSTANCES;
     if (!self->max_rel_arg_inst_refs) self->max_rel_arg_inst_refs = self->max_rel_arg_insts;
+
     if (!self->max_rel_updates) self->max_rel_updates = KND_MIN_UPDATES;
     if (!self->max_rel_update_refs) self->max_rel_update_refs = KND_MIN_UPDATES;
     if (!self->max_procs)         self->max_procs =  KND_MIN_PROCS;

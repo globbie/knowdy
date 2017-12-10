@@ -199,6 +199,16 @@ static int parse_memory_settings(void *obj,
           .parse = knd_parse_size_t,
           .obj = &self->max_rels
         },
+	{ .name = "max_rel_args",
+          .name_size = strlen("max_rels_args"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_args
+        },
+        { .name = "max_rel_refs",
+          .name_size = strlen("max_rel_refs"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_refs
+        },
         { .name = "max_rel_instances",
           .name_size = strlen("max_rel_instances"),
           .parse = knd_parse_size_t,
@@ -208,6 +218,11 @@ static int parse_memory_settings(void *obj,
           .name_size = strlen("max_rel_arg_instances"),
           .parse = knd_parse_size_t,
           .obj = &self->max_rel_arg_insts
+        },
+        { .name = "max_rel_arg_inst_refs",
+          .name_size = strlen("max_rel_arg_inst_refs"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_arg_inst_refs
         },
         { .name = "max_procs",
           .name_size = strlen("max_procs"),

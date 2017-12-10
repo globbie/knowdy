@@ -2673,7 +2673,7 @@ static int index_obj_name(struct kndConcept *self,
 
     if (DEBUG_CONC_LEVEL_2) {
 	if (!strncmp(entry->name, "Username", strlen("Username"))) {
-	    knd_log("\n\n!!! index obj name: \"%.*s\"", name_size, entry->name);
+	    knd_log("\n\n!!! check index obj name: \"%.*s\"", name_size, entry->name);
 	}
     }
 
@@ -5412,8 +5412,8 @@ static int knd_update_state(struct kndConcept *self)
     struct kndClassUpdate **class_updates;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
-	knd_log("..update state: %p", self->inbox);
+    if (DEBUG_CONC_LEVEL_2)
+	knd_log("..update state..");
 
     /* new update obj */
     err = self->mempool->new_update(self->mempool, &update);
