@@ -424,26 +424,6 @@ static int export_inst(struct kndRel *self,
     return knd_OK;
 }
 
-static int export_rel(struct kndRel *self)
-{
-    int err;
-
-    switch (self->format) {
-    case KND_FORMAT_JSON:
-        /*err = export_reverse_rel_JSON(self);
-          if (err) return err; */
-        break;
-    case KND_FORMAT_GSP:
-        err = export_reverse_rel_GSP(self);
-        if (err) return err;
-        break;
-    default:
-        break;
-    }
-    
-    return knd_OK;
-}
-
 static int validate_rel_arg(void *obj,
                             const char *name, size_t name_size,
                             const char *rec,
