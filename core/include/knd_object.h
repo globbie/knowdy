@@ -47,32 +47,6 @@ struct kndMatchPoint
     size_t orig_pos;
 };
 
-/* inverted rel */
-struct kndRelType
-{
-    char name[KND_SHORT_NAME_SIZE];
-    size_t name_size;
-
-    struct kndAttr *attr;
-    struct kndObjRef *objrefs;
-
-    struct kndRef *refs;
-    struct kndRef *tail;
-    size_t num_refs;
-    
-    struct kndRelType *next;
-};
-
-struct kndRelClass
-{
-    char name[KND_NAME_SIZE];
-    size_t name_size;
-    char id[KND_ID_SIZE];
-    struct kndConcept *conc;
-    struct kndRelType *rel_types;
-    struct kndRelClass *next;
-};
-
 struct kndAggrObject
 {
     knd_state_phase phase;
@@ -85,6 +59,27 @@ struct kndAggrObject
     size_t num_elems;
    
     struct kndAggrObject *next;
+};
+
+struct kndObjEntry
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+    char *block;
+    size_t block_size;
+    size_t offset;
+
+    struct kndObject *obj;
+    struct kndRelRef *rels;
+};
+
+struct kndObjDir
+{
+    struct kndObjEntry **objs;
+    size_t num_objs;
+
+    struct kndObjDir **dirs;
+    size_t num_dirs;
 };
 
 struct kndObject
@@ -189,5 +184,6 @@ struct kndObject
 
 /* constructors */
 extern void kndObject_init(struct kndObject *self);
+extern void kndObjEntry_init(struct kndObjEntry *self);
 extern int kndObject_new(struct kndObject **self);
 

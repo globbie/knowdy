@@ -73,7 +73,9 @@ typedef enum knd_storage_type {
 } knd_storage_type;
 
 
-#define RET_ERR(S) if (err) { printf(#S); return err; } 
+#define RET_ERR(S) if (err) { printf(#S);                               \
+                              printf ("-- <%s> failed at line %d of file \"%s\"\n",\
+                                      __func__, __LINE__, __FILE__); return err; } 
 #define ALLOC_ERR(V) if (!(V)) { return knd_NOMEM; }
 #define PARSE_ERR(V) if (err) { printf("LINEAR POS:%zu", *total_size); return err; } 
 
@@ -352,7 +354,7 @@ typedef enum knd_storage_type {
 #define KND_PATH_SIZE 1024
 #define KND_NAME_SIZE 512
 #define KND_SHORT_NAME_SIZE 64
-#define KND_VAL_SIZE 128
+#define KND_VAL_SIZE 1024
 
 #define KND_UID_SIZE 7
 
@@ -381,9 +383,11 @@ typedef enum knd_storage_type {
 #define KND_MIN_USERS 1024
 #define KND_MIN_CLASSES 1024
 #define KND_MIN_OBJS 1024
+#define KND_MIN_OBJ_ENTRIES 1024
 #define KND_MIN_ELEMS 1024
 #define KND_MIN_RELS 1024
 #define KND_MIN_REL_INSTANCES 1024
+#define KND_MIN_RELARG_INSTANCES 1024 * 4
 #define KND_MIN_PROCS 1024
 #define KND_MIN_PROC_INSTANCES 1024
 

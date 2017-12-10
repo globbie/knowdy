@@ -69,14 +69,11 @@ struct kndRetriever
     struct kndUser *admin;
 
     /**********  interface methods  **********/
-    int (*del)(struct kndRetriever *self);
-
+    void (*del)(struct kndRetriever *self);
     int (*str)(struct kndRetriever *self);
 
     int (*init)(struct kndRetriever *self);
-
     int (*start)(struct kndRetriever *self);
-
     void (*reset)(struct kndRetriever *self);
 
 };

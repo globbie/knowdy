@@ -853,12 +853,12 @@ kndRepo_new(struct kndRepo **repo)
 
     //self->intersect_matrix_size = sizeof(struct kndObject*) * (KND_ID_BASE * KND_ID_BASE * KND_ID_BASE);
 
-    err = ooDict_new(&self->repo_idx, KND_SMALL_DICT_SIZE);
+    /*err = ooDict_new(&self->repo_idx, KND_SMALL_DICT_SIZE);
     if (err) return knd_NOMEM;
 
     err = kndOutput_new(&self->path_out, KND_MED_BUF_SIZE);
     if (err) return err;
-
+    */
     kndRepo_init(self);
 
     *repo = self;

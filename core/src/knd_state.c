@@ -18,6 +18,9 @@
 
 static void del(struct kndStateControl *self)
 {
+    self->log->del(self->log);
+    self->spec_out->del(self->spec_out);
+    self->update->del(self->update);
     free(self);
 }
 
@@ -32,14 +35,26 @@ static void reset(struct kndStateControl *self)
     self->out->reset(self->out);
 }
 
-static int confirm(struct kndStateControl *self,
-                   struct kndUpdate *update)
+static int knd_confirm(struct kndStateControl *self,
+		       struct kndUpdate *update)
 {
     struct kndOutput *out;
+    struct kndClassUpdate *class_update;
+    struct kndConcDir *dir;
     int err;
 
-    if (DEBUG_STATE_LEVEL_2)
-        knd_log(".. confirming update: %zu", update->id);
+    self->total_objs += update->total_objs;
+
+    if (self->task->type == KND_LIQUID_STATE) {
+	self->updates[self->num_updates] = update;
+	self->num_updates++;
+
+	if (DEBUG_STATE_LEVEL_TMP)
+	    knd_log("++  \"%zu\" liquid update confirmed!   global STATE: %zu",
+		    update->id, self->num_updates);
+
+	return knd_OK;
+    }
 
     /* TODO: update conflicts */
 
@@ -56,9 +71,22 @@ static int confirm(struct kndStateControl *self,
     self->updates[self->num_updates] = update;
     self->num_updates++;
 
-    if (DEBUG_STATE_LEVEL_2)
+    if (DEBUG_STATE_LEVEL_TMP)
         knd_log("++  \"%zu\" update confirmed!   global STATE: %zu",
                 update->id, self->num_updates);
+
+    /* bump counters */
+    for (size_t i = 0; i < update->num_classes; i++) {
+	class_update = update->classes[i];
+	dir = class_update->conc->dir;
+	dir->num_objs += class_update->num_objs;
+	knd_log("confirm DIR update: num objs: %zu", dir->num_objs);
+    }
+    
+    out = self->task->out;
+    err = out->write(out, "{", 1);  RET_ERR();
+    err = out->write(out, "\"tid\":\"OK\"", strlen("\"tid\":\"OK\""));  RET_ERR();
+    err = out->write(out, "}", 1);  RET_ERR();
 
     return knd_OK;
 }
@@ -124,7 +152,7 @@ extern int kndStateControl_new(struct kndStateControl **state)
     self->del    = del;
     self->str    = str;
     self->reset  = reset;
-    self->confirm  = confirm;
+    self->confirm  = knd_confirm;
     self->select  = make_selection;
 
     *state = self;

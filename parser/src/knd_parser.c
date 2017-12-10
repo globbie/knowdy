@@ -902,7 +902,7 @@ knd_check_default(const char *rec,
 
     if (!default_spec) {
         knd_log("-- no default spec found to handle an empty field (ignoring selectors): %.*s",
-                16, rec);
+                64, rec);
         return knd_NO_MATCH;
     }
 

@@ -7,10 +7,13 @@
 
       {memory
          {max_classes 100000}
-         {max_objs 400000}
+         {max_objs 1500000}
          {max_elems 1500000}
          {max_rels 1000}
          {max_rel_instances 1000000}
+         {max_rel_refs 1000000}
+         {max_rel_arg_instances 2500000}
+         {max_rel_arg_inst_refs 2500000}
          {max_procs 1000}
          {max_proc_instances 1000000}
       }
