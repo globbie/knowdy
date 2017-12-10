@@ -492,9 +492,7 @@ kndElem_init(struct kndElem *self)
     self->del = del;
     self->str = str;
     self->parse = parse_GSL;
-
     self->resolve = kndElem_resolve;
-    //self->index = kndElem_index;
     self->export = kndElem_export;
 }
 

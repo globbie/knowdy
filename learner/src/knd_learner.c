@@ -32,9 +32,28 @@
 static void
 kndLearner_del(struct kndLearner *self)
 {
-    /*if (self->path) free(self->path);*/
+    struct kndConcept *conc;
 
-    /* TODO: storage */
+    conc = self->admin->root_class;
+    conc->class_idx->del(conc->class_idx);
+    conc->rel->rel_idx->del(conc->rel->rel_idx);
+    conc->rel->del(conc->rel);
+
+    conc->proc->proc_idx->del(conc->proc->proc_idx);
+    conc->proc->del(conc->proc);
+    conc->del(conc);
+
+    self->task->state_ctrl->del(self->task->state_ctrl);
+    self->task->out->del(self->task->out);
+    self->task->del(self->task);
+
+    free(self->admin->user_idx);
+    self->admin->del(self->admin);
+
+    self->out->del(self->out);
+    self->log->del(self->log);
+    self->mempool->del(self->mempool);
+
     free(self);
 }
 
@@ -52,7 +71,6 @@ kndLearner_start(struct kndLearner *self)
 
     time_t  t0, t1;
     clock_t c0, c1;
-
     int err;
 
     // restore in-memory data after failure or restart
@@ -119,6 +137,9 @@ kndLearner_start(struct kndLearner *self)
         task = knd_zmq_recv(outbox, &task_size);
         obj = knd_zmq_recv(outbox, &obj_size);
 
+        /* sometimes bad messages arrive */
+        if (!task || !task_size) continue;
+
         t0 = time(NULL);
         c0 = clock();
 
@@ -137,7 +158,7 @@ kndLearner_start(struct kndLearner *self)
 
                 printf ("\telapsed wall clock time: %ld\n", (long)  (t1 - t0));
                 printf ("\telapsed CPU time:        %f\n",  (float) (c1 - c0)/CLOCKS_PER_SEC);
-                knd_log("\tTOTAL objs imported: %lu", (unsigned long)self->admin->root_class->num_objs);
+                knd_log("\tTOTAL objs imported: %zu", self->task->state_ctrl->total_objs);
             }
             if (!strcmp(obj, "SYNC TEST")) {
                 t1 = time(NULL);
@@ -236,6 +257,11 @@ static int parse_memory_settings(void *obj,
 {
     struct kndMemPool *self = obj;
     struct kndTaskSpec specs[] = {
+        { .name = "max_users",
+          .name_size = strlen("max_users"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_users
+        },
         { .name = "max_classes",
           .name_size = strlen("max_classes"),
           .parse = knd_parse_size_t,
@@ -256,10 +282,30 @@ static int parse_memory_settings(void *obj,
           .parse = knd_parse_size_t,
           .obj = &self->max_rels
         },
+        { .name = "max_rel_args",
+          .name_size = strlen("max_rels_args"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_args
+        },
+        { .name = "max_rel_refs",
+          .name_size = strlen("max_rel_refs"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_refs
+        },
         { .name = "max_rel_instances",
           .name_size = strlen("max_rel_instances"),
           .parse = knd_parse_size_t,
           .obj = &self->max_rel_insts
+        },
+        { .name = "max_rel_arg_instances",
+          .name_size = strlen("max_rel_arg_instances"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_arg_insts
+        },
+        { .name = "max_rel_arg_inst_refs",
+          .name_size = strlen("max_rel_arg_inst_refs"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_arg_inst_refs
         },
         { .name = "max_procs",
           .name_size = strlen("max_procs"),
@@ -450,12 +496,13 @@ kndLearner_new(struct kndLearner **rec,
     err = parse_config_GSL(self, self->out->file, &chunk_size);
     if (err) goto error;
 
-    self->mempool->alloc(self->mempool);
+    err = self->mempool->alloc(self->mempool);                                    RET_ERR();
 
     err = kndStateControl_new(&self->task->state_ctrl);
     if (err) return err;
     self->task->state_ctrl->max_updates = self->mempool->max_updates;
     self->task->state_ctrl->updates = self->mempool->update_idx;
+    self->task->state_ctrl->task = self->task;
 
     memcpy(self->task->agent_name, self->name, self->name_size);
     self->task->agent_name_size = self->name_size;
@@ -471,9 +518,7 @@ kndLearner_new(struct kndLearner **rec,
     self->admin->frozen_output_file_name_size = out->buf_size;
     self->admin->frozen_output_file_name[out->buf_size] = '\0';
 
-    err = kndConcept_new(&conc);
-    if (err) goto error;
-
+    err = self->mempool->new_class(self->mempool, &conc);                         RET_ERR();
     conc->out = self->out;
     conc->log = self->log;
     conc->name[0] = '/';
@@ -484,19 +529,17 @@ kndLearner_new(struct kndLearner **rec,
     conc->frozen_output_file_name = self->admin->frozen_output_file_name;
     conc->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
 
-    conc->dir = malloc(sizeof(struct kndConcDir));
-    if (!conc->dir) return knd_NOMEM;
-    memset(conc->dir, 0, sizeof(struct kndConcDir));
+    err = self->mempool->new_conc_dir(self->mempool, &conc->dir);                 RET_ERR();
     memset(conc->dir->name, '0', KND_ID_SIZE);
     conc->dir->name_size = KND_ID_SIZE;
     conc->dir->conc = conc;
-
     conc->mempool = self->mempool;
+    conc->dir->mempool = self->mempool;
 
     err = kndProc_new(&conc->proc);
     if (err) goto error;
     conc->proc->mempool = self->mempool;
-    
+
     err = kndRel_new(&conc->rel);
     if (err) goto error;
     conc->rel->mempool = self->mempool;
@@ -514,7 +557,9 @@ kndLearner_new(struct kndLearner **rec,
     conc->rel->class_idx = conc->class_idx;
 
     /* user idx */
-    if (self->max_users) {
+    if (self->mempool->max_users) {
+        knd_log("MAX USERS: %zu", self->mempool->max_users);
+        self->max_users = self->mempool->max_users;
         self->admin->user_idx = calloc(self->max_users, 
                                        sizeof(struct kndObject*));
         if (!self->admin->user_idx) return knd_NOMEM;
@@ -818,9 +863,8 @@ void *kndLearner_publisher(void *arg)
  *  - write assert macros for error checking and logging
  */
 
-int
-main(const int argc,
-     const char ** const argv)
+int main(const int argc,
+         const char ** const argv)
 {
     struct kndLearner *learner;
     const char *config = NULL;
@@ -839,22 +883,13 @@ main(const int argc,
     }
     config = argv[1];
 
-    err = kndLearner_new(&learner, config);
-    if (err) {
-        fprintf(stderr, "Couldn\'t load the Learner... ");
-        return EXIT_FAILURE;
-    }
+    err = kndLearner_new(&learner, config);   RET_ERR();
 
-    /* add device */
     err = pthread_create(&inbox, NULL, kndLearner_inbox, (void *) learner);
-
-    /* add subscriber */
     err = pthread_create(&subscriber, NULL, kndLearner_subscriber, (void *) learner);
 
-    /* add selector */
     err = pthread_create(&selector, NULL, kndLearner_selector, (void *) learner);
 
-    /* add updates publisher */
     err = pthread_create(&publisher, NULL, kndLearner_publisher, (void *) learner);
 
     learner->start(learner);

@@ -40,12 +40,10 @@ const char *obj_id_seq = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqr
 extern void 
 knd_log(const char *fmt, ...)
 {
-    va_list args;
+  va_list args;
     va_start(args, fmt);
-
     vprintf(fmt, args);
     printf("\n");
-    
     va_end(args);
 }
 

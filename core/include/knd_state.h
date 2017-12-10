@@ -34,6 +34,13 @@ struct kndClassUpdate
     size_t num_objs;
 };
 
+struct kndRelUpdate
+{
+    struct kndRel *rel;
+    struct kndRelInstance **insts;
+    size_t num_insts;
+};
+
 struct kndUpdate
 {
     size_t id;
@@ -46,6 +53,7 @@ struct kndUpdate
 
     struct kndClassUpdate **classes;
     size_t num_classes;
+    size_t total_objs;
 
     struct kndRelUpdate **rels;
     size_t num_rels;
@@ -68,6 +76,8 @@ struct kndStateControl
     size_t num_updates;
     struct kndUpdate **selected;
     size_t num_selected;
+
+    size_t total_objs;
 
     struct kndOutput *log;
     struct kndOutput *out;

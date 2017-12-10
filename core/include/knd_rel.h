@@ -25,7 +25,9 @@
 struct kndOutput;
 struct kndTask;
 struct kndRelArg;
+struct kndRelArgInstance;
 struct kndRelInstance;
+struct kndUpdate;
 
 struct kndRelState
 {
@@ -45,23 +47,22 @@ struct kndRelInstEntry
 
 struct kndRelInstance
 {
+    size_t id;
     char name[KND_NAME_SIZE];
     size_t name_size;
-
-    char subj_name[KND_SHORT_NAME_SIZE];
-    size_t subj_name_size;
-
-    char obj_name[KND_SHORT_NAME_SIZE];
-    size_t obj_name_size;
-
     knd_state_phase phase;
+
     struct kndRel *rel;
+    struct kndRelArgInstance *args;
+
     struct kndRelInstance *next;
 };
 
 struct kndRelDir
 {
     char id[KND_ID_SIZE];
+    size_t numid;
+
     char name[KND_NAME_SIZE];
     size_t name_size;
     struct kndRel *rel;
@@ -91,15 +92,32 @@ struct kndRelDir
     struct kndRelDir *next;
 };
 
+struct kndRelUpdateRef
+{
+    knd_state_phase phase;
+    struct kndUpdate *update;
+    struct kndRelUpdateRef *next;
+};
+
+struct kndRelRef
+{
+    struct kndRel *rel;
+    struct kndRelArgInstRef *insts;
+    size_t num_insts;
+    struct kndRelRef *next;
+};
+
 struct kndRel
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    char id[KND_ID_SIZE];
-    char next_id[KND_ID_SIZE];
-
+    size_t id;
+    size_t next_id;
     knd_state_phase phase;
+
+    struct kndRelUpdateRef *updates;
+    size_t num_updates;
 
     struct kndTranslation *tr;
 
@@ -125,6 +143,8 @@ struct kndRel
     /* allocator */
     struct kndMemPool *mempool;
 
+    struct kndUpdate *curr_update;
+
     /* incoming */
     struct kndRel *inbox;
     size_t inbox_size;
@@ -149,10 +169,14 @@ struct kndRel
     void (*str)(struct kndRel *self);
 
     void (*del)(struct kndRel *self);
+    void (*reset_inbox)(struct kndRel *self);
 
     int (*parse)(struct kndRel *self,
                  const char    *rec,
                  size_t        *total_size);
+    int (*parse_liquid_updates)(struct kndRel *self,
+				const char    *rec,
+				size_t        *total_size);
     int (*import)(struct kndRel *self,
                   const char    *rec,
                   size_t        *total_size);
@@ -164,12 +188,15 @@ struct kndRel
                   size_t *total_size);
     int (*coordinate)(struct kndRel *self);
     int (*resolve)(struct kndRel *self);
+    int (*update)(struct kndRel *self, struct kndUpdate *update);
     int (*freeze)(struct kndRel *self,
                   size_t *total_frozen_size,
                   char *output,
                   size_t *total_size);
     int (*export)(struct kndRel *self);
-    int (*export_reverse_rel)(struct kndRel *self);
+    int (*export_updates)(struct kndRel *self);
+    int (*export_inst)(struct kndRel *self,
+		       struct kndRelInstance *inst);
 };
 
 extern void kndRel_init(struct kndRel *self);

@@ -33,6 +33,7 @@ struct kndConcept;
 typedef enum knd_task_spec_type { KND_GET_STATE, 
                                   KND_CHANGE_STATE,
                                   KND_UPDATE_STATE,
+                                  KND_LIQUID_STATE,
                                   KND_SYNC_STATE,
                                   KND_DELTA_STATE
 } knd_task_spec_type;
