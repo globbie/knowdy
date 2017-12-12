@@ -94,9 +94,9 @@ void *kndColl_requester_agent(void *arg)
 
     const char *dest_coll_addr = NULL;
 
-    char *spec = NULL;
-    size_t spec_size = 0;
-    
+    char *task = NULL;
+    size_t task_size = 0;
+
     char *obj = NULL;
     size_t obj_size = 0;
     
@@ -122,37 +122,51 @@ void *kndColl_requester_agent(void *arg)
     assert(ret == knd_OK);
 
     while (1) {
-
-	knd_log("    !! Collection Requester Agent #%d listens to %s\n", 
-                args->agent_id, coll->request_proxy_backend);
+	knd_log("    .. Collection Requester Agent #%lu is waiting for tasks..\n", 
+                (unsigned long)args->agent_id);
 
 	/* waiting for spec */
-        spec = knd_zmq_recv(inbox, &spec_size);
+	if (!task) {
+	    task = knd_zmq_recv(inbox, &task_size);
+	    if (!task || !task_size) continue;
+	}
+
+	if (memcmp(task, "{task", strlen("{task"))) {
+	    task = NULL;
+	    task_size = 0;
+	    continue;
+	}
+
 	obj = knd_zmq_recv(inbox, &obj_size);
+	if (!obj || !obj_size) {
+	    task = NULL;
+	    task_size = 0;
+	    obj = NULL;
+	    obj_size = 0;
+	    continue;
+	}
 
-        /* sometimes bad messages arrive */
-        if (!spec || !spec_size) continue;
-
-	knd_log("    !! Collection Requester Agent #%d: got spec \"%s\"\n", 
-		args->agent_id, spec);
+	knd_log("    !! Collection Requester Agent #%d: got task \"%.*s\" [%zu]\n", 
+		args->agent_id, task_size, task, task_size);
 
 	// TODO: ret = coll->find_route(coll, data->topics, &dest_coll_addr);
 
 	/* stay in this collection */
 	if (!dest_coll_addr) {
             /* send task to one of the storages */
-	    knd_zmq_sendmore(selector, spec, spec_size);
+	    knd_zmq_sendmore(selector, task, task_size);
 	    knd_zmq_send(selector, obj, obj_size);
         }
         
-        if (spec) free(spec);
-        if (obj) free(obj);
-        spec_size = 0;
+        free(task);
+        free(obj);
+	task = NULL;
+	obj = NULL;
+        task_size = 0;
         obj_size = 0;
     }
 
     zmq_close(inbox);
-
 
     return NULL;
 }
@@ -207,7 +221,7 @@ main(int           const argc,
 
     /* pool of collection requesters */
     for (i = 0; i < NUM_REQUESTERS; i++) {
-        req_args[i].agent_id = i; 
+        req_args[i].agent_id = i;
         req_args[i].collection = coll; 
         req_args[i].zmq_context = context;
  
