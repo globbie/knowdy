@@ -458,7 +458,7 @@ kndDelivery_start(struct kndDelivery *self)
 
     while (1) {
 	if (!self->task) {
-	    self->task = knd_zmq_recv(inbox, &self->task_size);
+	    self->task = knd_zmq_recv(service, &self->task_size);
 	    if (!self->task || !self->task_size) continue;
 	}
 
@@ -468,7 +468,7 @@ kndDelivery_start(struct kndDelivery *self)
 	    continue;
 	}
 
-	self->obj = knd_zmq_recv(inbox, &self->obj_size);
+	self->obj = knd_zmq_recv(service, &self->obj_size);
 	if (!self->obj || !self->obj_size) {
 	    self->task = NULL;
 	    self->task_size = 0;
