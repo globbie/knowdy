@@ -77,6 +77,7 @@ kndRetriever_start(struct kndRetriever *self)
         if (!task || !task_size) continue;
         if (!obj || !obj_size) continue;
 
+	knd_log("TASK: \"%.*s\"", task_size, task);
 	if (memcmp(task, "{task", strlen("{task"))) continue;
 
 	self->task->reset(self->task);
