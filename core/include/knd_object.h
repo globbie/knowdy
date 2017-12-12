@@ -148,7 +148,10 @@ struct kndObject
     float average_score;
     int match_idx_pos;
     int accented;
-    
+
+    /* relations */
+    struct kndRelRef *rels;
+
     /* for lists */
     struct kndObject *next;
 

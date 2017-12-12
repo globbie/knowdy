@@ -451,18 +451,40 @@ kndDelivery_start(struct kndDelivery *self)
 
     knd_log("++ %s is up and running: %s",
             self->name, self->addr);
+    self->task = NULL;
+    self->task_size = 0;
+    self->obj = NULL;
+    self->obj_size = 0;
 
     while (1) {
-        self->out->reset(self->out);
+	if (!self->task) {
+	    self->task = knd_zmq_recv(service, &self->task_size);
+	    if (!self->task || !self->task_size) continue;
+	}
+
+	if (memcmp(self->task, "{task", strlen("{task"))) {
+	    self->task = NULL;
+	    self->task_size = 0;
+	    continue;
+	}
+
+	self->obj = knd_zmq_recv(service, &self->obj_size);
+	if (!self->obj || !self->obj_size) {
+	    self->task = NULL;
+	    self->task_size = 0;
+	    self->obj = NULL;
+	    self->obj_size = 0;
+	    continue;
+	}
+	
+	knd_log("++ DELIVERY service has got a task:   \"%s\"",
+		self->task);
+
+	self->out->reset(self->out);
         self->reply_obj = NULL;
         self->reply_obj_size = 0;
         self->tid[0] = '\0';
         self->sid[0] = '\0';
-
-        self->task = knd_zmq_recv(service, &self->task_size);
-        self->obj = knd_zmq_recv(service, &self->obj_size);
-
-	knd_log("++ DELIVERY service has got a task:   \"%s\"", self->task);
 
         err = run_task(self);
 
@@ -470,7 +492,7 @@ kndDelivery_start(struct kndDelivery *self)
             reply = self->reply_obj;
             reply_size = self->reply_obj_size;
         }
-            
+   
         knd_zmq_sendmore(service, header, header_size);
 	knd_zmq_send(service, reply, reply_size);
 
@@ -479,12 +501,11 @@ kndDelivery_start(struct kndDelivery *self)
             self->task = NULL;
             self->task_size = 0;
         }
-
         /* TODO: free obj if it was not set to index */
-        /*if (self->obj) {
+        if (self->obj) {
             self->obj = NULL;
             self->obj_size = 0;
-        }*/
+        }
         
     }
 

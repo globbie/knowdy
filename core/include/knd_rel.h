@@ -104,6 +104,7 @@ struct kndRelRef
     struct kndRel *rel;
     struct kndRelArgInstRef *insts;
     size_t num_insts;
+
     struct kndRelRef *next;
 };
 
@@ -171,9 +172,19 @@ struct kndRel
     void (*del)(struct kndRel *self);
     void (*reset_inbox)(struct kndRel *self);
 
+    int (*get_rel)(struct kndRel *self,
+                   const char *name, size_t name_size,
+                   struct kndRel **result);
+
     int (*parse)(struct kndRel *self,
                  const char    *rec,
                  size_t        *total_size);
+
+    int (*read_inst)(struct kndRel *self,
+		     struct kndRelInstance *inst,
+		     const char *rec,
+		     size_t *total_size);
+
     int (*parse_liquid_updates)(struct kndRel *self,
 				const char    *rec,
 				size_t        *total_size);

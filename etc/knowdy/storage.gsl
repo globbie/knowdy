@@ -1,8 +1,7 @@
 {gsl::Knowdy Basic
   {knd::Storage Service Configuration
-
       {request
-       {frontend tcp://127.0.0.1:6900}
-       {backend tcp://127.0.0.1:6901}
+       {frontend ipc:///var/lib/knowdy/coll_req}
+       {backend ipc:///var/lib/knowdy/coll_req_backend}
       }
 }}
