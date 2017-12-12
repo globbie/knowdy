@@ -55,7 +55,7 @@ kndRetriever_start(struct kndRetriever *self)
     if (!outbox) return knd_FAIL;
 
     err = zmq_connect(outbox, self->inbox_backend_addr);
-    
+
     /* delivery service */
     self->delivery = zmq_socket(context, ZMQ_REQ);
     if (!self->delivery) return knd_FAIL;
@@ -631,8 +631,17 @@ void *kndRetriever_subscriber(void *arg)
     assert(err == knd_OK);
 
     while (1) {
+	task = NULL;
+	task_size = 0;
+	obj = NULL;
+	obj_size = 0;
+	
         task = knd_zmq_recv(subscriber, &task_size);
 	obj = knd_zmq_recv(subscriber, &obj_size);
+
+	/* sometimes bad messages arrive */
+        if (!task || !task_size) continue;
+        if (!obj || !obj_size) continue;
 
         if (DEBUG_RETRIEVER_LEVEL_2) {
             printf("++ %s Retriever has got an update from Learner:"
@@ -642,6 +651,7 @@ void *kndRetriever_subscriber(void *arg)
 
 	err = knd_zmq_sendmore(inbox, task, task_size);
 	err = knd_zmq_send(inbox, obj, obj_size);
+
         if (task)
             free(task);
         if (obj)

@@ -122,6 +122,7 @@ void *kndColl_requester_agent(void *arg)
     assert(ret == knd_OK);
 
     while (1) {
+
 	knd_log("    !! Collection Requester Agent #%d listens to %s\n", 
                 args->agent_id, coll->request_proxy_backend);
 
