@@ -100,6 +100,7 @@ void *kndColl_requester_agent(void *arg)
 
     char *obj = NULL;
     size_t obj_size = 0;
+    size_t null_msg_count = 0;
     int ret;
 
     args = (struct agent_args*)arg;
@@ -128,7 +129,12 @@ void *kndColl_requester_agent(void *arg)
 
 	if (!task) {
 	    task = knd_zmq_recv(inbox, &task_size);
-	    if (!task || !task_size) continue;
+	    if (!task || !task_size) {
+		printf("?? incoming NULL messages: %lu\r",
+		       (unsigned long)null_msg_count);
+		null_msg_count++;
+		continue;
+	    }
 	}
 
 	if (memcmp(task, "{task", strlen("{task"))) {
@@ -146,8 +152,9 @@ void *kndColl_requester_agent(void *arg)
 	    continue;
 	}
 
-	knd_log("    !! Collection Requester Agent #%d: got task \"%.*s\" [%zu]\n", 
+	knd_log("\n    !! Collection Requester Agent #%d: got task \"%.*s\" [%zu]\n", 
 		args->agent_id, task_size, task, task_size);
+	null_msg_count = 0;
 
 	// TODO: ret = coll->find_route(coll, data->topics, &dest_coll_addr);
 
