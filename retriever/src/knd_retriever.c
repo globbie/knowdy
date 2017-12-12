@@ -483,6 +483,8 @@ kndRetriever_new(struct kndRetriever **rec,
     err = kndRel_new(&conc->rel);
     if (err) goto error;
     conc->rel->mempool = self->mempool;
+    conc->rel->frozen_output_file_name = self->admin->frozen_output_file_name;
+    conc->rel->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
 
     /* specific allocations of the root concs */
     err = ooDict_new(&conc->class_idx, KND_MEDIUM_DICT_SIZE);

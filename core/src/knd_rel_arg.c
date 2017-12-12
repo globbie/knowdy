@@ -71,25 +71,18 @@ static int export_JSON(struct kndRelArg *self)
     /* choose gloss */
     tr = self->tr;
     while (tr) {
+
         if (DEBUG_RELARG_LEVEL_2)
-            knd_log("LANG: %s == CURR LOCALE: %s [%lu] => %s",
-                    tr->locale, self->locale, (unsigned long)self->locale_size, tr->val);
+            knd_log("LANG: %s == CURR LOCALE: %s [%zu] => %s",
+                    tr->locale, self->locale, self->locale_size, tr->val);
 
         if (strncmp(self->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
         }
-        
-        err = out->write(out,
-                         ",\"gloss\":\"", strlen(",\"gloss\":\""));
-        if (err) return err;
-
-        err = out->write(out, tr->val,  tr->val_size);
-        if (err) return err;
-
-        err = out->write(out, "\"", 1);
-        if (err) return err;
+        err = out->write(out, ",\"gloss\":\"", strlen(",\"gloss\":\""));          RET_ERR();
+        err = out->write(out, tr->val,  tr->val_size);                            RET_ERR();
+        err = out->write(out, "\"", 1);                                           RET_ERR();
         break;
-
     next_tr:
         tr = tr->next;
     }
@@ -163,12 +156,11 @@ static int export_inst_GSP(struct kndRelArg *self,
     int err;
 
     out = self->out;
-
-    err = out->write(out, "{class ", strlen("{class "));               RET_ERR();
-    err = out->write(out, inst->classname, inst->classname_size);                RET_ERR();
-    err = out->write(out, "{obj ", strlen("{obj "));                 RET_ERR();
-    err = out->write(out, inst->objname, inst->objname_size);                    RET_ERR();
-    err = out->write(out, "}}", 1);                                              RET_ERR();
+    err = out->write(out, "{class ", strlen("{class "));                          RET_ERR();
+    err = out->write(out, inst->classname, inst->classname_size);                 RET_ERR();
+    err = out->write(out, "{obj ", strlen("{obj "));                              RET_ERR();
+    err = out->write(out, inst->objname, inst->objname_size);                     RET_ERR();
+    err = out->write(out, "}}", strlen("}}"));                                    RET_ERR();
 
     return knd_OK;
 }
@@ -548,13 +540,13 @@ static int link_rel(struct kndRelArg *self,
     }
 
     if (!ref) {
-	err = rel->mempool->new_rel_ref(rel->mempool, &ref);                         RET_ERR();
+	err = rel->mempool->new_rel_ref(rel->mempool, &ref);                      RET_ERR();
         ref->rel = rel;
         ref->next = obj_entry->rels;
         obj_entry->rels = ref;
     }
 
-    err = rel->mempool->new_rel_arg_inst_ref(rel->mempool, &rel_arg_inst_ref);           RET_ERR();
+    err = rel->mempool->new_rel_arg_inst_ref(rel->mempool, &rel_arg_inst_ref);    RET_ERR();
     rel_arg_inst_ref->inst = inst;
     rel_arg_inst_ref->next = ref->insts;
     ref->insts = rel_arg_inst_ref;

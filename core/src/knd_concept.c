@@ -1763,17 +1763,16 @@ static int parse_import_obj(void *data,
     }
     
     if (!c->dir->obj_idx) {
-        err = ooDict_new(&c->dir->obj_idx, KND_HUGE_DICT_SIZE);
-        if (err) return err;
+        err = ooDict_new(&c->dir->obj_idx, KND_HUGE_DICT_SIZE);                    RET_ERR();
     }
 
     err = self->mempool->new_obj_entry(self->mempool, &entry);                    RET_ERR();
     entry->obj = obj;
+    obj->entry = entry;
 
     err = c->dir->obj_idx->set(c->dir->obj_idx,
                                obj->name, obj->name_size,
-                               (void*)entry);
-    if (err) return err;
+                               (void*)entry);                                RET_ERR();
 
     if (DEBUG_CONC_LEVEL_2) {
         knd_log("\n\nREGISTER OBJ in %.*s IDX:  [total:%zu valid:%zu]",
@@ -4033,10 +4032,10 @@ static int read_obj_entry(struct kndConcept *self,
         err = knd_IO_FAIL;
         goto final;
     }
-    // current parser expects a null terminated string
+    /* NB: current parser expects a null terminated string */
     entry->block[entry->block_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("   == OBJ REC: \"%.*s\"", entry->block_size, entry->block);
 
     /* done reading */
@@ -4053,6 +4052,7 @@ static int read_obj_entry(struct kndConcept *self,
     obj->conc = self;
     obj->mempool = self->mempool;
     entry->obj = obj;
+    obj->entry = entry;
 
     /* skip over initial brace '{' */
     c = entry->block + 1;
@@ -4087,6 +4087,7 @@ static int read_obj_entry(struct kndConcept *self,
 
     err = obj->read(obj, c, &chunk_size);
     if (err) {
+	knd_log("-- failed to parse obj %.*s :(", obj->name_size, obj->name);
         obj->del(obj);
         return err;
     }
