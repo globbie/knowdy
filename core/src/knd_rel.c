@@ -309,33 +309,36 @@ static int export_GSP(struct kndRel *self)
 static int export_inst_GSP(struct kndRel *self,
 			   struct kndRelInstance *inst)
 {
-    struct kndOutput *out;
-    int err = knd_FAIL;
+    struct kndRelArg *relarg;
+    struct kndRelArgInstance *relarg_inst;
+    struct kndOutput *out = self->out;
+    struct kndObjEntry *entry = NULL;
+    int err;
 
-    /* obj = self->elem->root;
-    out = self->out;
+    err = out->write(out, "{inst", strlen("{inst"));                                   RET_ERR();
 
-    if (DEBUG_REL_LEVEL_2)
-        knd_log(".. export rel instance to GSP..");
+    for (relarg_inst = inst->args;
+	 relarg_inst;
+	 relarg_inst = relarg_inst->next) {
 
-    obj->out = out;
-    obj->depth = 0;
+	relarg = relarg_inst->relarg;
+	/* skip over the selected obj */
+	if (relarg_inst->obj) {
+	    entry = relarg_inst->obj;
+	    if (relarg->curr_obj == entry->obj) continue;
+	}
 
-    err = out->write(out, "{", 1);
-    if (err) return err;
-    err = out->write(out, obj->id, KND_ID_SIZE);
-    if (err) return err;
+	relarg->out = out;
+	relarg->format = KND_FORMAT_GSP;
 
-    err = out->write(out, " ", 1);
-    if (err) return err;
+	err = out->write(out, " {", 2);                                            RET_ERR();
+	err = out->write(out, relarg->name, relarg->name_size);                   RET_ERR();
+	err = out->write(out, " ", 1);                                            RET_ERR();
+        err = relarg->export_inst(relarg, relarg_inst);                           RET_ERR();
+	err = out->write(out, "}", 1);                                            RET_ERR();
+    }
 
-    err = out->write(out, obj->name, obj->name_size);
-    if (err) return err;
-
-    err = out->write(out, "}", 1);
-    if (err) return err;
-    */
-    
+    err = out->write(out, "}", 1);                                                RET_ERR();
     return knd_OK;
 }
 
@@ -467,7 +470,7 @@ static int validate_rel_arg(void *obj,
 
     self->num_args++;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_2)
         arg->str(arg);
 
     return knd_OK;
@@ -483,7 +486,7 @@ static int import_rel(struct kndRel *self,
     struct kndRelDir *dir;
     int err;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_2)
         knd_log(".. import Rel: \"%.*s\"..", 32, rec);
 
     err  = self->mempool->new_rel(self->mempool, &rel);
@@ -574,7 +577,7 @@ static int import_rel(struct kndRel *self,
                              rel->name, rel->name_size, (void*)dir);
     if (err) goto final;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_2)
         rel->str(rel);
 
     return knd_OK;
@@ -605,7 +608,7 @@ static int read_GSP(struct kndRel *self,
     int err;
 
     if (DEBUG_REL_LEVEL_2)
-        knd_log(".. reading rel GSP: \"%.*s\"..", 32, rec);
+        knd_log(".. reading rel GSP: \"%.*s\"..", 64, rec);
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
@@ -819,7 +822,7 @@ static int run_get_rel(void *obj,
 static int parse_rel_arg_inst(void *obj,
                               const char *name, size_t name_size,
                               const char *rec,
-                             size_t *total_size)
+			      size_t *total_size)
 {
     struct kndRelInstance *inst = obj;
     struct kndRel *rel = inst->rel;
@@ -828,9 +831,9 @@ static int parse_rel_arg_inst(void *obj,
     struct kndRelArgInstance *arg_inst = NULL;
     int err;
 
-    if (DEBUG_REL_LEVEL_2)
-        knd_log(".. parsing the \"%.*s\" rel arg instance, rec:\"%.*s\" args:%p",
-                name_size, name, 128, rec, rel->args);
+    if (DEBUG_REL_LEVEL_1)
+        knd_log(".. parsing the \"%.*s\" rel arg instance, rec:\"%.*s\"\n",
+                name_size, name, 128, rec);
 
     for (arg = rel->args; arg; arg = arg->next) {
         if (arg->name_size != name_size) continue;
@@ -858,6 +861,59 @@ static int parse_rel_arg_inst(void *obj,
 
     return knd_OK;
 }
+
+
+static int read_instance(struct kndRel *self,
+			 struct kndRelInstance *inst,
+			 const char *rec,
+			 size_t *total_size)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size;
+    int err;
+
+    if (DEBUG_REL_LEVEL_2) {
+        knd_log(".. reading \"%.*s\" rel instance..", 128, rec);
+    }
+    
+    struct kndTaskSpec specs[] = {
+         { .name = "relarg",
+           .name_size = strlen("relarg"),
+           .buf = buf,
+           .buf_size = &buf_size,
+           .max_buf_size = KND_NAME_SIZE,
+           .is_validator = true,
+           .validate = parse_rel_arg_inst,
+           .obj = inst
+	 },
+         { .type = KND_CHANGE_STATE,
+           .name = "relarg",
+           .name_size = strlen("relarg"),
+           .buf = buf,
+           .buf_size = &buf_size,
+           .max_buf_size = KND_NAME_SIZE,
+           .is_validator = true,
+           .validate = parse_rel_arg_inst,
+           .obj = inst
+	 },
+	 { .type = KND_CHANGE_STATE,
+	   .name = "default",
+	   .name_size = strlen("default"),
+	   .is_default = true,
+	   .run = run_select_rel,
+	   .obj = inst
+	 }
+   };
+
+    err = knd_parse_task(rec, total_size, specs,
+                         sizeof(specs) / sizeof(struct kndTaskSpec));             PARSE_ERR();
+
+    if (DEBUG_REL_LEVEL_2)
+        inst_str(self, inst);
+
+    return knd_OK;
+}
+
 
 static int parse_import_instance(void *data,
                                  const char *rec,
@@ -887,6 +943,7 @@ static int parse_import_instance(void *data,
     inst->phase = KND_SUBMITTED;
     inst->rel = self->curr_rel;
 
+    
     struct kndTaskSpec specs[] = {
          { .type = KND_CHANGE_STATE,
            .name = "relarg",
@@ -1153,11 +1210,8 @@ static int kndRel_update_state(struct kndRel *self,
         update->rels[update->num_rels] = rel_update;
         update->num_rels++;
     }
-
-    
     return knd_OK;
 }
-
 
 static int set_liquid_rel_id(void *obj, struct kndTaskArg *args, size_t num_args)
 {
@@ -1246,13 +1300,13 @@ static int parse_liquid_rel_id(void *obj,
     rel = self->curr_rel;
 
     /* register rel update */
-    err = self->mempool->new_rel_update(self->mempool, &rel_update);         RET_ERR();
+    err = self->mempool->new_rel_update(self->mempool, &rel_update);             RET_ERR();
     rel_update->rel = rel;
 
     update->rels[update->num_rels] = rel_update;
     update->num_rels++;
 
-    err = self->mempool->new_rel_update_ref(self->mempool, &rel_update_ref); RET_ERR();
+    err = self->mempool->new_rel_update_ref(self->mempool, &rel_update_ref);     RET_ERR();
     rel_update_ref->update = update;
 
     rel_update_ref->next = rel->updates;
@@ -1393,11 +1447,13 @@ kndRel_init(struct kndRel *self)
     self->coordinate = kndRel_coordinate;
     self->freeze = freeze;
     self->import = import_rel;
+    self->get_rel = get_rel;
     self->read = read_GSP;
     self->reset_inbox = reset_inbox;
     self->update = kndRel_update_state;
     self->parse_liquid_updates = parse_liquid_updates;
     self->select = parse_rel_select;
+    self->read_inst = read_instance;
     self->export_inst = export_inst;
 }
 
