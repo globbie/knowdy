@@ -73,6 +73,7 @@ void *kndColl_recorder_agent(void *arg)
         
         if (spec) free(spec);
         if (obj) free(obj);
+
         spec_size = 0;
         obj_size = 0;
     }
@@ -128,11 +129,11 @@ void *kndColl_requester_agent(void *arg)
         spec = knd_zmq_recv(inbox, &spec_size);
 	obj = knd_zmq_recv(inbox, &obj_size);
 
-	knd_log("    !! Collection Requester Agent #%d: got spec \"%s\"\n", 
-	       args->agent_id, spec);
-
         /* sometimes bad messages arrive */
         if (!spec || !spec_size) continue;
+
+	knd_log("    !! Collection Requester Agent #%d: got spec \"%s\"\n", 
+		args->agent_id, spec);
 
 	// TODO: ret = coll->find_route(coll, data->topics, &dest_coll_addr);
 
