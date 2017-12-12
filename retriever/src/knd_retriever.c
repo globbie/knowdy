@@ -64,30 +64,38 @@ kndRetriever_start(struct kndRetriever *self)
 
     knd_log("++ %s Retriever is up and running!", self->name);
 
+    task = NULL;
+    task_size = 0;
+    obj = NULL;
+    obj_size = 0;
+    
     while (1) {
- 	task = NULL;
-	task_size = 0;
-	obj = NULL;
-	obj_size = 0;
+	if (!task) {
+	    task = knd_zmq_recv(outbox, &task_size);
+	    if (!task || !task_size) continue;
+	}
 
-	task  = knd_zmq_recv(outbox, &task_size);
-	obj   = knd_zmq_recv(outbox, &obj_size);
-
-        /* sometimes bad messages arrive */
-        if (!task || !task_size) continue;
-        if (!obj || !obj_size) continue;
-
-	knd_log("TASK: \"%.*s\"", task_size, task);
-	if (memcmp(task, "{task", strlen("{task"))) continue;
-
-	self->task->reset(self->task);
+	if (memcmp(task, "{task", strlen("{task"))) {
+	    task = NULL;
+	    task_size = 0;
+	    continue;
+	}
+	obj = knd_zmq_recv(outbox, &obj_size);
+	if (!obj || !obj_size) {
+	    task = NULL;
+	    task_size = 0;
+	    obj = NULL;
+	    obj_size = 0;
+	    continue;
+	}
 
         if (DEBUG_RETRIEVER_LEVEL_TMP) {
             chunk_size = task_size > KND_MAX_DEBUG_CHUNK_SIZE ? KND_MAX_DEBUG_CHUNK_SIZE : task_size;
             knd_log("\n++ Retriever got a new task: \"%.*s\".. [size: %lu]",
                     chunk_size, task, (unsigned long)task_size);
         }
-        
+
+	self->task->reset(self->task);
         err = self->task->run(self->task, task, task_size, obj, obj_size);
         if (err) {
             self->task->error = err;
@@ -97,7 +105,6 @@ kndRetriever_start(struct kndRetriever *self)
 	    if (self->task->type == KND_UPDATE_STATE)
 		goto reset;
         }
-
         err = self->task->report(self->task);
         if (err) {
             /* TODO */
@@ -105,8 +112,8 @@ kndRetriever_start(struct kndRetriever *self)
         }
 
     reset:
-	/*if (task) free(task);
-	  if (obj) free(obj); */
+	free(task);
+	free(obj);
 	task_size = 0;
 	obj_size = 0;
     }
