@@ -277,7 +277,7 @@ static int report(struct kndTask *self)
 
     if (DEBUG_TASK_LEVEL_2)
         knd_log("..TASK (type: %d) reporting..", self->type);
-        
+
     out->reset(out);
     err = out->write(out, gsl_header, strlen(gsl_header));
     if (err) return err;
@@ -396,15 +396,14 @@ static int report(struct kndTask *self)
     obj = knd_zmq_recv(self->delivery, &obj_size);
     
     if (DEBUG_TASK_LEVEL_TMP)
-        knd_log("== Delivery reply header: \"%s\" obj: \"%s\"",
-                header, obj);
+        knd_log("== Delivery reply HEADER: \"%.*s\" [%zu]\n OBJ: \"%.*s\" [%zu]",
+                header_size, header, header_size, obj_size, obj, obj_size);
 
     if (header) free(header);
-    if (obj) free(obj);
+    if (obj)    free(obj);
 
     /* inform all retrievers about the state change */
     if (self->type == KND_UPDATE_STATE) {
-
         if (DEBUG_TASK_LEVEL_TMP) {
 	    chunk_size =  self->update->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ?\
 		KND_MAX_DEBUG_CHUNK_SIZE :  self->update->buf_size;
