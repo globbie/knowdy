@@ -55,7 +55,7 @@ kndRetriever_start(struct kndRetriever *self)
     if (!outbox) return knd_FAIL;
 
     err = zmq_connect(outbox, self->inbox_backend_addr);
-    
+
     /* delivery service */
     self->delivery = zmq_socket(context, ZMQ_REQ);
     if (!self->delivery) return knd_FAIL;
@@ -64,21 +64,38 @@ kndRetriever_start(struct kndRetriever *self)
 
     knd_log("++ %s Retriever is up and running!", self->name);
 
+    task = NULL;
+    task_size = 0;
+    obj = NULL;
+    obj_size = 0;
+    
     while (1) {
-        self->task->reset(self->task);
+	if (!task) {
+	    task = knd_zmq_recv(outbox, &task_size);
+	    if (!task || !task_size) continue;
+	}
 
-	task  = knd_zmq_recv(outbox, &task_size);
-	obj   = knd_zmq_recv(outbox, &obj_size);
-
-        /* sometimes bad messages arrive */
-        if (!task || !task_size) continue;
+	if (memcmp(task, "{task", strlen("{task"))) {
+	    task = NULL;
+	    task_size = 0;
+	    continue;
+	}
+	obj = knd_zmq_recv(outbox, &obj_size);
+	if (!obj || !obj_size) {
+	    task = NULL;
+	    task_size = 0;
+	    obj = NULL;
+	    obj_size = 0;
+	    continue;
+	}
 
         if (DEBUG_RETRIEVER_LEVEL_TMP) {
             chunk_size = task_size > KND_MAX_DEBUG_CHUNK_SIZE ? KND_MAX_DEBUG_CHUNK_SIZE : task_size;
             knd_log("\n++ Retriever got a new task: \"%.*s\".. [size: %lu]",
                     chunk_size, task, (unsigned long)task_size);
         }
-        
+
+	self->task->reset(self->task);
         err = self->task->run(self->task, task, task_size, obj, obj_size);
         if (err) {
             self->task->error = err;
@@ -88,7 +105,6 @@ kndRetriever_start(struct kndRetriever *self)
 	    if (self->task->type == KND_UPDATE_STATE)
 		goto reset;
         }
-
         err = self->task->report(self->task);
         if (err) {
             /* TODO */
@@ -96,8 +112,8 @@ kndRetriever_start(struct kndRetriever *self)
         }
 
     reset:
-	/*if (task) free(task);
-	  if (obj) free(obj); */
+	free(task);
+	free(obj);
 	task_size = 0;
 	obj_size = 0;
     }
@@ -483,6 +499,8 @@ kndRetriever_new(struct kndRetriever **rec,
     err = kndRel_new(&conc->rel);
     if (err) goto error;
     conc->rel->mempool = self->mempool;
+    conc->rel->frozen_output_file_name = self->admin->frozen_output_file_name;
+    conc->rel->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
 
     /* specific allocations of the root concs */
     err = ooDict_new(&conc->class_idx, KND_MEDIUM_DICT_SIZE);
@@ -629,8 +647,17 @@ void *kndRetriever_subscriber(void *arg)
     assert(err == knd_OK);
 
     while (1) {
+	task = NULL;
+	task_size = 0;
+	obj = NULL;
+	obj_size = 0;
+	
         task = knd_zmq_recv(subscriber, &task_size);
 	obj = knd_zmq_recv(subscriber, &obj_size);
+
+	/* sometimes bad messages arrive */
+        if (!task || !task_size) continue;
+        if (!obj || !obj_size) continue;
 
         if (DEBUG_RETRIEVER_LEVEL_2) {
             printf("++ %s Retriever has got an update from Learner:"
@@ -640,6 +667,7 @@ void *kndRetriever_subscriber(void *arg)
 
 	err = knd_zmq_sendmore(inbox, task, task_size);
 	err = knd_zmq_send(inbox, obj, obj_size);
+
         if (task)
             free(task);
         if (obj)
