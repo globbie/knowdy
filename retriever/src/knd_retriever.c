@@ -65,13 +65,21 @@ kndRetriever_start(struct kndRetriever *self)
     knd_log("++ %s Retriever is up and running!", self->name);
 
     while (1) {
-        self->task->reset(self->task);
+ 	task = NULL;
+	task_size = 0;
+	obj = NULL;
+	obj_size = 0;
 
 	task  = knd_zmq_recv(outbox, &task_size);
 	obj   = knd_zmq_recv(outbox, &obj_size);
 
         /* sometimes bad messages arrive */
         if (!task || !task_size) continue;
+        if (!obj || !obj_size) continue;
+
+	if (memcmp(task, "{task", strlen("{task"))) continue;
+
+	self->task->reset(self->task);
 
         if (DEBUG_RETRIEVER_LEVEL_TMP) {
             chunk_size = task_size > KND_MAX_DEBUG_CHUNK_SIZE ? KND_MAX_DEBUG_CHUNK_SIZE : task_size;
