@@ -100,7 +100,6 @@ void *kndColl_requester_agent(void *arg)
 
     char *obj = NULL;
     size_t obj_size = 0;
-    
     int ret;
 
     args = (struct agent_args*)arg;
@@ -127,7 +126,6 @@ void *kndColl_requester_agent(void *arg)
                 (unsigned long)args->agent_id);
 	*/
 
-	/* waiting for spec */
 	if (!task) {
 	    task = knd_zmq_recv(inbox, &task_size);
 	    if (!task || !task_size) continue;
