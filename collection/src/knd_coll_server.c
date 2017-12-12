@@ -123,8 +123,9 @@ void *kndColl_requester_agent(void *arg)
     assert(ret == knd_OK);
 
     while (1) {
-	knd_log("    .. Collection Requester Agent #%lu is waiting for tasks..\n", 
+	/*knd_log("    .. Collection Requester Agent #%lu is waiting for tasks..\n", 
                 (unsigned long)args->agent_id);
+	*/
 
 	/* waiting for spec */
 	if (!task) {
