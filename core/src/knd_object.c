@@ -27,6 +27,9 @@
 #define DEBUG_OBJ_LEVEL_4 0
 #define DEBUG_OBJ_LEVEL_TMP 1
 
+static int
+export_rel_dir_JSON(struct kndObject *self);
+
 static void del(struct kndObject *self)
 {
     struct kndElem *elem, *next_elem;
@@ -87,8 +90,10 @@ kndObject_export_aggr_JSON(struct kndObject *self)
     return knd_OK;
 }
 
+
+
 static int
-export_rels_JSON(struct kndObject *self)
+export_rel_dir_JSON(struct kndObject *self)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -105,54 +110,36 @@ export_rels_JSON(struct kndObject *self)
 
     /* sort refs by class */
     if (DEBUG_OBJ_LEVEL_2)
-        knd_log("..export rels of %.*s..",
+        knd_log("..export rel dir of %.*s..",
 		self->name_size, self->name);
 
-    err = out->write(out, ",\"_rels\":[", strlen(",\"_rels\":["));
-    if (err) return err;
+    err = out->write(out, "[", 1);  RET_ERR();
 
     /* class conc */
     for (relref = self->entry->rels; relref; relref = relref->next) {
 	rel = relref->rel;
 
-        err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));                 RET_ERR();
-	err = out->write(out, rel->name, rel->name_size);                        RET_ERR();
-        err = out->write(out, "\"", 1);                                          RET_ERR();
+        err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));                  RET_ERR();
+	err = out->write(out, rel->name, rel->name_size);                         RET_ERR();
+        err = out->write(out, "\"", 1);                                           RET_ERR();
 
         err = out->write(out, ",\"num_instances\":",
-		       strlen(",\"num_instances\":"));                           RET_ERR();
+		       strlen(",\"num_instances\":"));                            RET_ERR();
 	buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", relref->num_insts);
-        err = out->write(out, buf, buf_size);                                    RET_ERR();
+        err = out->write(out, buf, buf_size);                                     RET_ERR();
 
-        /*err = out->write(out, ",\"instances\":[", strlen(",\"instances\":["));   RET_ERR();
-
-        for (rel_arg_inst_ref = relref->insts;
-	     rel_arg_inst_ref;
-	     rel_arg_inst_ref = rel_arg_inst_ref->next) {
-
-	    if (in_list) {
-		err = out->write(out, ",", 1);                                   RET_ERR();
-	    }
-
-	    rel_arg_inst = rel_arg_inst_ref->inst;
-	    rel_inst = rel_arg_inst->rel_inst;
-	*/
-	    /* NB: exclude self object from the output */
-	/*    rel_arg_inst->relarg->curr_obj = self;
-
+	if (self->expand_depth) {
+	    err = out->write(out, ",\"instances\":",
+			     strlen(",\"instances\":"));                          RET_ERR();
 	    rel->out = self->out;
-	    err = rel->export_inst(rel, rel_inst);                               RET_ERR();
-	    in_list = true;
-	    } 
-	err = out->write(out, "]", 1);
-	if (err) return err;  */
+	    err = rel->export_insts(rel, relref->insts);                          RET_ERR();
+	}
 
 	err = out->write(out, "}", 1);
 	if (err) return err;
     }
 
-    err = out->write(out, "]", 1);
-    if (err) return err;
+    err = out->write(out, "]", 1);                                                RET_ERR();
 
     return knd_OK;
 }
@@ -253,20 +240,10 @@ kndObject_export_JSON(struct kndObject *self)
         need_separ = true;
     }
 
-    /*if (self->elems) {
-        err = out->write(out, "}", 1);
-        if (err) goto final;
-    }*/
-
     if (self->entry->rels) {
-        err = export_rels_JSON(self);
-        if (err) return err;
+	err = out->write(out, ",\"_rels\":", strlen(",\"_rels\":"));   RET_ERR();
+	err = export_rel_dir_JSON(self);      RET_ERR();
     }
-    
-    if (is_concise) goto closing;
-
-    /* skip rels */
-    //if (self->depth) goto closing;
 
     
  closing:
@@ -443,9 +420,47 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     return knd_OK;
 }
 
-static int run_present_obj(void *data,
-                           struct kndTaskArg *args __attribute__((unused)),
-                           size_t num_args __attribute__((unused)))
+
+static int find_obj_rel(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    struct kndObject *self = obj;
+    struct kndRelRef *relref = NULL;
+    struct kndRel *rel;
+    struct kndTaskArg *arg;
+    const char *name = NULL;
+    size_t name_size = 0;
+    size_t name_hash = 0;
+
+    for (size_t i = 0; i < num_args; i++) {
+        arg = &args[i];
+        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
+            name = arg->val_ref;
+            name_size = arg->val_size;
+            name_hash = arg->hash_val;
+        }
+    }
+    if (!name_size) return knd_FAIL;
+    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log("++ find Rel Ref: \"%.*s\"", name_size, name);
+
+    for (relref = self->entry->rels; relref; relref = relref->next) {
+	rel = relref->rel;
+
+	if (!memcmp(rel->name, name, name_size)) {
+	    knd_log("++ got REL: %.*s", rel->name_size, rel->name);
+	    self->curr_rel = relref;
+	    return knd_OK;
+	}
+    }
+
+    return knd_NO_MATCH;
+}
+
+static int present_obj(void *data,
+		       struct kndTaskArg *args __attribute__((unused)),
+		       size_t num_args __attribute__((unused)))
 {
     struct kndObject *self = data;
     int err;
@@ -455,6 +470,63 @@ static int run_present_obj(void *data,
 
     err = kndObject_export(self);
     if (err) return err;
+
+    return knd_OK;
+}
+
+static int present_rels(void *data,
+			struct kndTaskArg *args __attribute__((unused)),
+			size_t num_args __attribute__((unused)))
+{
+    struct kndObject *self = data;
+    int err;
+
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log(".. present obj rels..");
+
+    self->expand_depth = 1;
+    err = export_rel_dir_JSON(self);                                              RET_ERR();
+
+    return knd_OK;
+}
+
+static int present_rel(void *data,
+		       struct kndTaskArg *args __attribute__((unused)),
+		       size_t num_args __attribute__((unused)))
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size;
+    struct kndObject *self = data;
+    struct kndRelRef *relref;
+    struct kndRel *rel;
+    struct kndOutput *out;
+    int err;
+
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log(".. present obj rel..");
+
+    if (!self->curr_rel) return knd_NO_MATCH;
+
+    out = self->out;
+    relref = self->curr_rel;
+    rel = relref->rel;
+
+    err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));                  RET_ERR();
+    err = out->write(out, rel->name, rel->name_size);                         RET_ERR();
+    err = out->write(out, "\"", 1);                                           RET_ERR();
+
+    err = out->write(out, ",\"num_instances\":",
+		     strlen(",\"num_instances\":"));                            RET_ERR();
+    buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", relref->num_insts);
+    err = out->write(out, buf, buf_size);                                     RET_ERR();
+
+    err = out->write(out, ",\"instances\":",
+		     strlen(",\"instances\":"));                         RET_ERR();
+
+    rel->out = self->out;
+    err = rel->export_insts(rel, relref->insts);                          RET_ERR();
+
+    err = out->write(out, "}", 1);     RET_ERR();
 
     return knd_OK;
 }
@@ -837,6 +909,31 @@ static int rel_alloc(void *obj,
     return knd_OK;
 }
 
+static int select_rel(void *obj,
+		      const char *rec,
+		      size_t *total_size)
+{
+    struct kndObject *self = obj;
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+	  .is_selector = true,
+          .run = find_obj_rel,
+          .obj = self
+        },
+        { .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = present_rel,
+          .obj = self
+        }
+    };
+    int err;
+    
+    err = knd_parse_task(rec, total_size, specs,
+			 sizeof(specs) / sizeof(struct kndTaskSpec));          PARSE_ERR();
+
+    return knd_OK;
+}
 
 /* parse object */
 static int parse_GSL(struct kndObject *self,
@@ -880,7 +977,7 @@ static int parse_GSL(struct kndObject *self,
         { .name = "default",
           .name_size = strlen("default"),
           .is_default = true,
-          .run = run_present_obj,
+          .run = present_obj,
           .obj = self
         },
         { .type = KND_CHANGE_STATE,
@@ -895,6 +992,34 @@ static int parse_GSL(struct kndObject *self,
 
     if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. parsing obj REC: %.*s", 64, rec);
+ 
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    return knd_OK;
+}
+
+
+static int select_rels(struct kndObject *self,
+		       const char *rec,
+		       size_t *total_size)
+{
+    struct kndTaskSpec specs[] = {
+        { .name = "rel",
+          .name_size = strlen("rel"),
+          .parse = select_rel,
+          .obj = self
+        },
+        { .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = present_rels,
+          .obj = self
+        }
+    };
+    int err;
+
+    knd_log(".. select rels.. ");
  
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
@@ -947,7 +1072,7 @@ kndObject_init(struct kndObject *self)
     self->read = parse_GSL;
     self->resolve = kndObject_resolve;
     self->export = kndObject_export;
-    //self->export_rels = export_rels_JSON;
+    self->select_rels = select_rels;
 }
 
 extern int

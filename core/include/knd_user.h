@@ -52,6 +52,7 @@ struct kndUser
     size_t frozen_output_file_name_size;
 
     knd_format format;
+    size_t expand_depth;
 
     char default_locale[KND_NAME_SIZE];
     size_t default_locale_size;

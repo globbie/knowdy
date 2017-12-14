@@ -208,6 +208,8 @@ struct kndRel
     int (*export_updates)(struct kndRel *self);
     int (*export_inst)(struct kndRel *self,
 		       struct kndRelInstance *inst);
+    int (*export_insts)(struct kndRel *self,
+		       struct kndRelArgInstRef *insts);
 };
 
 extern void kndRel_init(struct kndRel *self);
