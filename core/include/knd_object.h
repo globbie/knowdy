@@ -181,6 +181,9 @@ struct kndObject
 
     int (*resolve)(struct kndObject *self);
     int (*export)(struct kndObject *self);
+    int (*select_rels)(struct kndObject *self,
+		       const char *rec,
+		       size_t *total_size);
 
     int (*sync)(struct kndObject *self);
 };

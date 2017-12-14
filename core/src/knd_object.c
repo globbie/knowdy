@@ -124,7 +124,7 @@ export_rels_JSON(struct kndObject *self)
 	buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", relref->num_insts);
         err = out->write(out, buf, buf_size);                                    RET_ERR();
 
-        err = out->write(out, ",\"instances\":[", strlen(",\"instances\":["));   RET_ERR();
+        /*err = out->write(out, ",\"instances\":[", strlen(",\"instances\":["));   RET_ERR();
 
         for (rel_arg_inst_ref = relref->insts;
 	     rel_arg_inst_ref;
@@ -136,16 +136,17 @@ export_rels_JSON(struct kndObject *self)
 
 	    rel_arg_inst = rel_arg_inst_ref->inst;
 	    rel_inst = rel_arg_inst->rel_inst;
-
+	*/
 	    /* NB: exclude self object from the output */
-	    rel_arg_inst->relarg->curr_obj = self;
+	/*    rel_arg_inst->relarg->curr_obj = self;
 
 	    rel->out = self->out;
 	    err = rel->export_inst(rel, rel_inst);                               RET_ERR();
 	    in_list = true;
-	}
+	    } 
 	err = out->write(out, "]", 1);
-	if (err) return err;
+	if (err) return err;  */
+
 	err = out->write(out, "}", 1);
 	if (err) return err;
     }
@@ -946,6 +947,7 @@ kndObject_init(struct kndObject *self)
     self->read = parse_GSL;
     self->resolve = kndObject_resolve;
     self->export = kndObject_export;
+    //self->export_rels = export_rels_JSON;
 }
 
 extern int
