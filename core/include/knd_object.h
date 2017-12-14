@@ -110,7 +110,8 @@ struct kndObject
     struct kndConcept *conc;
 
     struct kndObjEntry *entry;
-    struct kndSortTag *tag;
+    //struct kndSortTag *tag;
+
     
     struct kndOutput *out;
     struct kndOutput *log;
@@ -121,9 +122,6 @@ struct kndObject
     struct kndElem *tail;
     size_t num_elems;
 
-    /* reverse rels */
-    struct kndRelClass *reverse_rel_classes;
-
     /* list of hilited contexts */
     struct kndElem *contexts;
     size_t num_contexts;
@@ -131,8 +129,11 @@ struct kndObject
 
     const char *locale;
     size_t locale_size;
+
     knd_format format;
     size_t depth;
+
+    size_t expand_depth;
     bool is_expanded;
 
     size_t frozen_size;
@@ -151,6 +152,9 @@ struct kndObject
 
     /* relations */
     struct kndRelRef *rels;
+
+    /* rel selection */
+    struct kndRelRef *curr_rel;
 
     /* for lists */
     struct kndObject *next;

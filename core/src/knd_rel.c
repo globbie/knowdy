@@ -486,6 +486,57 @@ static int export_inst(struct kndRel *self,
     return knd_OK;
 }
 
+static int export_insts_JSON(struct kndRel *self,
+			     struct kndRelArgInstRef *insts)
+{
+    struct kndRelArg *relarg;
+    struct kndRelArgInstance *rel_arg_inst;
+    struct kndRelArgInstRef *rel_arg_inst_ref = NULL;
+    struct kndRelInstance *rel_inst;
+    struct kndOutput *out = self->out;
+    struct kndObjEntry *entry = NULL;
+    bool in_list = false;
+    int err;
+
+    err = out->write(out, "[", 1);                                   RET_ERR();
+    for (rel_arg_inst_ref = insts;
+	 rel_arg_inst_ref;
+	 rel_arg_inst_ref = rel_arg_inst_ref->next) {
+
+	if (in_list) {
+	    err = out->write(out, ",", 1);                                   RET_ERR();
+	}
+
+	rel_arg_inst = rel_arg_inst_ref->inst;
+	rel_inst = rel_arg_inst->rel_inst;
+
+	/* NB: exclude self object from the output */
+	/*rel_arg_inst->relarg->curr_obj = self;*/
+	err = export_inst(self, rel_inst);                               RET_ERR();
+	in_list = true;
+    } 
+    err = out->write(out, "]", 1);
+    if (err) return err; 
+
+    return knd_OK;
+}
+
+static int export_insts(struct kndRel *self,
+			struct kndRelArgInstRef *insts)
+{
+    int err;
+
+    switch (self->format) {
+    case KND_FORMAT_JSON:
+        err = export_insts_JSON(self, insts);          RET_ERR();
+        break;
+    default:
+        break;
+    }
+    
+    return knd_OK;
+}
+
 static int validate_rel_arg(void *obj,
                             const char *name, size_t name_size,
                             const char *rec,
@@ -1514,6 +1565,7 @@ kndRel_init(struct kndRel *self)
     self->select = parse_rel_select;
     self->read_inst = read_instance;
     self->export_inst = export_inst;
+    self->export_insts = export_insts;
 }
 
 extern void 

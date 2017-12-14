@@ -589,11 +589,12 @@ static int select_user_rels(void *obj,
     if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. selecting User rels: \"%.*s\"", 32, rec);
 
+    self->out->reset(self->out);
     user = self->curr_user;
     user->out = self->out;
     user->log = self->log;
 
-    err = user->select_rels(user, rec, total_size);             PARSE_ERR();
+    err = user->select_rels(user, rec, total_size);                               PARSE_ERR();
 
     return knd_OK;
 }
@@ -674,9 +675,13 @@ static int run_present_user(void *data,
         return knd_FAIL;
     }
 
+    knd_log(".. present user..");
+    self->out->reset(self->out);
+
     user = self->curr_user;
     user->out = self->out;
     user->log = self->log;
+    user->expand_depth = self->expand_depth;
 
     err = user->export(user);
     if (err) return err;
@@ -695,8 +700,13 @@ static int parse_task(struct kndUser *self,
         knd_log(".. parsing user task: \"%s\" size: %lu..\n\n",
                 rec, (unsigned long)strlen(rec));
 
+    /* reset defaults */
+    self->expand_depth = 0;
+    self->curr_user = NULL;
+
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
+          .is_selector = true,
           .run = run_get_user,
           .obj = self
         },
@@ -705,6 +715,12 @@ static int parse_task(struct kndUser *self,
           .is_selector = true,
           .parse = kndUser_parse_numid,
           .obj = self
+        },
+        { .name = "_depth",
+          .name_size = strlen("_depth"),
+          .is_selector = true,
+          .parse = knd_parse_size_t,
+          .obj = &self->expand_depth
         },
         { .name = "auth",
           .name_size = strlen("auth"),
@@ -745,7 +761,7 @@ static int parse_task(struct kndUser *self,
           .obj = self
         },
         { .name = "_rels",
-          .name_size = strlen("rel"),
+          .name_size = strlen("_rels"),
           .parse = select_user_rels,
           .obj = self
         },
