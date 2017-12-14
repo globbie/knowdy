@@ -93,11 +93,20 @@ static void inst_str(struct kndRel *self, struct kndRelInstance *inst)
     }
 }
 
+static int run_present_rel(void *obj, struct kndTaskArg *args, size_t num_args)
+{
+    if (DEBUG_REL_LEVEL_TMP)
+        knd_log(".. present rel..");
+
+    
+    return knd_OK;
+}
 static int run_select_rel(void *obj, struct kndTaskArg *args, size_t num_args)
 {
-    if (DEBUG_REL_LEVEL_2)
-        knd_log(".. run select..");
+    if (DEBUG_REL_LEVEL_TMP)
+        knd_log(".. present rel..");
 
+    
     return knd_OK;
 }
 
@@ -255,6 +264,56 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
     return knd_OK;
 }
 
+static int export_JSON(struct kndRel *self)
+{
+    struct kndObject *obj;
+    struct kndOutput *out = self->out;
+    struct kndRelArg *arg;
+    struct kndTranslation *tr;
+    int err;
+    
+    err = out->write(out, "{", 1);
+    if (err) return err;
+
+    err = out->write(out, self->name, self->name_size);
+    if (err) return err;
+
+    if (self->tr) {
+        err = out->write(out,
+                         "[_g", strlen("[_g"));
+        if (err) return err;
+    }
+    
+    for (tr = self->tr; tr; tr = tr->next) {
+        err = out->write(out, "{", 1);
+        if (err) return err;
+        err = out->write(out, tr->locale,  tr->locale_size);
+        if (err) return err;
+        err = out->write(out, " ", 1);
+        if (err) return err;
+        err = out->write(out, tr->val,  tr->val_size);
+        if (err) return err;
+        err = out->write(out, "}", 1);
+        if (err) return err;
+    }
+    if (self->tr) {
+        err = out->write(out, "]", 1);
+        if (err) return err;
+    }
+    
+    for (arg = self->args; arg; arg = arg->next) {
+        arg->format = KND_FORMAT_GSP;
+        arg->out = self->out;
+        err = arg->export(arg);
+        if (err) return err;
+    }
+
+    err = out->write(out, "}", 1);
+    if (err) return err;
+
+    return knd_OK;
+}
+
 static int export_GSP(struct kndRel *self)
 {
     struct kndObject *obj;
@@ -392,8 +451,8 @@ static int export(struct kndRel *self)
 
     switch (self->format) {
     case KND_FORMAT_JSON:
-        /*err = export_JSON(self);
-          if (err) return err; */
+        err = export_JSON(self);
+	if (err) return err;
         break;
     case KND_FORMAT_GSP:
         err = export_GSP(self);
@@ -1008,7 +1067,7 @@ static int parse_rel_select(struct kndRel *self,
 {
     int err = knd_FAIL, e;
 
-    if (DEBUG_REL_LEVEL_2)
+    if (DEBUG_REL_LEVEL_TMP)
         knd_log(".. parsing Rel select: \"%.*s\"",
                 16, rec);
 
@@ -1027,7 +1086,7 @@ static int parse_rel_select(struct kndRel *self,
         { .name = "default",
           .name_size = strlen("default"),
           .is_default = true,
-          .run = run_select_rel,
+          .run = run_present_rel,
           .obj = self
 	}
     };

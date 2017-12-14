@@ -84,7 +84,6 @@ kndUser_add_user(struct kndUser *self)
         knd_log("==  USER DIR: \"%s\"\n", buf);
 
     /* TODO: check if DIR already exists */
-
     err = knd_mkpath(buf, 0755, false);
     if (err) return err;
 
@@ -504,7 +503,7 @@ static int parse_rel_select(void *obj,
     struct kndRel *rel;
     int err;
 
-    if (DEBUG_USER_LEVEL_2)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. parsing the default Rel select: \"%s\"", rec);
 
     rel = self->root_class->rel;
@@ -571,15 +570,34 @@ static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
     err = conc->get_obj(conc, name, name_size, &self->curr_user);
     if (err) return err;
 
+    return knd_OK;
+}
+
+static int select_user_rels(void *obj,
+                            const char *rec,
+                            size_t *total_size)
+{
+    struct kndUser *self = obj;
+    struct kndObject *user;
+    int err;
+
+    if (!self->curr_user) {
+        knd_log("-- no user selected :(");
+        return knd_FAIL;
+    }
+
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log(".. selecting User rels: \"%.*s\"", 32, rec);
+
     user = self->curr_user;
     user->out = self->out;
     user->log = self->log;
 
-    err = user->export(user);
-    if (err) return err;
-    
+    err = user->select_rels(user, rec, total_size);             PARSE_ERR();
+
     return knd_OK;
 }
+
 
 static int get_user_by_id(void *data, struct kndTaskArg *args, size_t num_args)
 {
@@ -647,18 +665,20 @@ static int run_present_user(void *data,
                             struct kndTaskArg *args __attribute__((unused)),
                             size_t num_args __attribute__((unused)))
 {
-    struct kndUser *self = (struct kndUser*)data;
+    struct kndUser *self = data;
+    struct kndObject *user;
     int err;
 
-    knd_log("..present user..");
     if (!self->curr_user) {
         knd_log("-- no user selected :(");
         return knd_FAIL;
     }
-    self->curr_user->out = self->out;
-    self->curr_user->log = self->log;
 
-    err = self->curr_user->export(self->curr_user);
+    user = self->curr_user;
+    user->out = self->out;
+    user->log = self->log;
+
+    err = user->export(user);
     if (err) return err;
 
     return knd_OK;
@@ -722,6 +742,11 @@ static int parse_task(struct kndUser *self,
         { .name = "rel",
           .name_size = strlen("rel"),
           .parse = parse_rel_select,
+          .obj = self
+        },
+        { .name = "_rels",
+          .name_size = strlen("rel"),
+          .parse = select_user_rels,
           .obj = self
         },
         { .type = KND_CHANGE_STATE,

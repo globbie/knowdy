@@ -99,6 +99,7 @@ struct kndUser
     int (*restore)(struct kndUser *self);
     
     int (*import)(struct kndUser *self, char *rec, size_t *total_size);
+    int (*export)(struct kndUser *self);
     
     int (*read)(struct kndUser *self, const char *rec);
 };
