@@ -529,8 +529,9 @@ kndRetriever_new(struct kndRetriever **rec,
     self->start = kndRetriever_start;
 
     /* open frozen DB */
-    err = conc->open(conc);
+    /*err = conc->open(conc);
     if (err && err != knd_NO_MATCH) goto error;
+    */
 
     *rec = self;
     return knd_OK;
