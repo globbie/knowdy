@@ -764,8 +764,10 @@ static int get_rel(struct kndRel *self,
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
-    size_t chunk_size;
+    size_t chunk_size = 0;
+    size_t *total_size;
     struct kndRelDir *dir;
+    struct kndRelArg *arg;
     struct kndRel *rel;
     const char *filename;
     size_t filename_size;
@@ -880,11 +882,15 @@ static int get_rel(struct kndRel *self,
         knd_log("-- rel name not found in %.*s :(", buf_size, buf);
         return knd_FAIL;
     }
-    err = rel->read(rel, b, &chunk_size);
-    if (err) return err;
+    total_size = &chunk_size;
+    err = rel->read(rel, b, total_size);                                         PARSE_ERR();
 
+    /* resolve args */
+    for (arg = self->args; arg; arg = arg->next) {
+        err = arg->resolve(arg);                                                  RET_ERR();
+    }
+    
     dir->rel = rel;
-
     if (DEBUG_REL_LEVEL_2)
         rel->str(rel);
 
@@ -971,7 +977,6 @@ static int parse_rel_arg_inst(void *obj,
 
     return knd_OK;
 }
-
 
 static int read_instance(struct kndRel *self,
 			 struct kndRelInstance *inst,
@@ -1168,8 +1173,6 @@ static int parse_rel_select(struct kndRel *self,
 
     return knd_OK;
 }
-
-
 
 static int resolve_inst(struct kndRel *self,
 			struct kndRelInstance *inst)

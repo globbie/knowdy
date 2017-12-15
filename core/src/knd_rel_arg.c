@@ -558,36 +558,42 @@ static int link_rel(struct kndRelArg *self,
 
 static int resolve(struct kndRelArg *self)
 {
-    struct kndConcept *c;
+    struct kndConcDir *dir;
 
-    c = self->rel->class_idx->get(self->rel->class_idx,
+    dir = self->rel->class_idx->get(self->rel->class_idx,
                                   self->classname, self->classname_size);
-    if (!c) {
+    if (!dir) {
         knd_log("-- no such class: %.*s :(", self->classname_size, self->classname);
         return knd_FAIL;
     }
-    self->conc = c;
 
-    if (DEBUG_RELARG_LEVEL_2)
+    self->conc_dir = dir;
+
+    if (DEBUG_RELARG_LEVEL_TMP)
         knd_log("++ Rel Arg resolved: \"%.*s\"!",
                 self->classname_size, self->classname);
-
+    
     return knd_OK;
 }
 
 static int resolve_inst(struct kndRelArg *self,
 			struct kndRelArgInstance *inst)
 {
+    struct kndConcDir *role_class_dir;
     struct kndConcDir *dir;
     struct kndObjEntry *obj;
     int err;
 
+    
     dir = self->rel->class_idx->get(self->rel->class_idx,
 				    inst->classname, inst->classname_size);
     if (!dir) {
         knd_log("-- no such class: %.*s :(", inst->classname_size, inst->classname);
         return knd_FAIL;
     }
+
+    /* TODO: check inheritance or role */
+
     inst->conc_dir = dir;
 
     /* resolve obj ref */
@@ -607,7 +613,7 @@ static int resolve_inst(struct kndRelArg *self,
 	}
     }
 
-    if (DEBUG_RELARG_LEVEL_2)
+    if (DEBUG_RELARG_LEVEL_TMP)
         knd_log("++ Rel Arg instance resolved: \"%.*s\"!",
                 inst->classname_size, inst->classname);
 
