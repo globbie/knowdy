@@ -515,12 +515,12 @@ kndRetriever_new(struct kndRetriever **rec,
     conc->rel->class_idx = conc->class_idx;
 
     /* user idx */
-    if (self->mempool->max_users) {
+    /*if (self->mempool->max_users) {
         self->admin->user_idx = calloc(self->mempool->max_users, 
                                        sizeof(struct kndObject*));
         if (!self->admin->user_idx) return knd_NOMEM;
         self->admin->max_users = self->mempool->max_users;
-    }
+	} */
 
     conc->user = self->admin;
     self->admin->root_class = conc;
