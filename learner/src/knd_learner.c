@@ -821,7 +821,7 @@ void *kndLearner_publisher(void *arg)
     }
 
     backend = zmq_socket(context, ZMQ_PUB);
-    if (!frontend) {
+    if (!backend) {
         knd_log("zmq_socket() failed, error: '%s'", zmq_strerror(errno));
         return NULL;
     }

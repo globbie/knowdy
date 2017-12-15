@@ -2674,7 +2674,7 @@ static int index_obj_name(struct kndConcept *self,
     if (err) return err;
 
     /* HACK: index numeric user ids */
-    if (strncmp(conc_dir->name, "User", strlen("User"))) return knd_OK;
+    /*if (strncmp(conc_dir->name, "User", strlen("User"))) return knd_OK;
     b = strstr(c, "ident{id ");
     if (b) {
         b += strlen("ident{id ");
@@ -2693,9 +2693,10 @@ static int index_obj_name(struct kndConcept *self,
                             (unsigned long)numval);
                 }
                 self->user->user_idx[numval] = entry;
-            }
+		
         }
-    }
+	} */
+    
     return knd_OK;
 }
 
@@ -4480,7 +4481,7 @@ static int select_delta(struct kndConcept *self,
                          sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. select delta:  gt %zu  lt %zu ..",
                 self->task->batch_gt,
                 self->task->batch_lt);
