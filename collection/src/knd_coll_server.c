@@ -108,7 +108,7 @@ void *kndColl_requester_agent(void *arg)
 
     inbox = zmq_socket(args->zmq_context, ZMQ_PULL);
     assert(inbox);
-    
+
     ret = zmq_connect(inbox, coll->request_proxy_backend);
     if (ret != knd_OK)
         knd_log("ERR: %s\n", zmq_strerror(errno));
@@ -123,10 +123,6 @@ void *kndColl_requester_agent(void *arg)
     assert(ret == knd_OK);
 
     while (1) {
-	/*knd_log("    .. Collection Requester Agent #%lu is waiting for tasks..\n", 
-                (unsigned long)args->agent_id);
-	*/
-
 	if (!task) {
 	    task = knd_zmq_recv(inbox, &task_size);
 	    if (!task || !task_size) {
@@ -211,13 +207,12 @@ main(int           const argc,
     }
 
     context = zmq_init(1);
-
     coll->context = context;
 
     /* pool of collection recorders */
     for (i = 0; i < NUM_RECORDERS; i++) {
-        rec_args[i].agent_id = i; 
-        rec_args[i].collection = coll; 
+        rec_args[i].agent_id = i;
+        rec_args[i].collection = coll;
         rec_args[i].zmq_context = context;
  
         ret = pthread_create(&recorder,
@@ -229,7 +224,7 @@ main(int           const argc,
     /* pool of collection requesters */
     for (i = 0; i < NUM_REQUESTERS; i++) {
         req_args[i].agent_id = i;
-        req_args[i].collection = coll; 
+        req_args[i].collection = coll;
         req_args[i].zmq_context = context;
  
         ret = pthread_create(&requester, 

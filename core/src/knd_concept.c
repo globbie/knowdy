@@ -457,13 +457,14 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
     if (self->num_bases >= KND_MAX_BASES) {
         knd_log("-- max bases exceeded for %.*s :(",
                 self->name_size, self->name);
+
         return knd_FAIL;
     }
 
     if (DEBUG_CONC_LEVEL_TMP)
         knd_log(" .. add %.*s parent to %.*s", 
 		base->dir->conc->name_size,
-                base->dir->conc->name, 
+                base->dir->conc->name,
 		self->name_size, self->name);
 
     self->bases[self->num_bases] = base->dir;
@@ -482,7 +483,6 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
     return knd_OK;
 }
 
-
 static int resolve_attrs(struct kndConcept *self)
 {
     struct kndAttr *attr;
@@ -490,8 +490,7 @@ static int resolve_attrs(struct kndConcept *self)
     struct kndConcDir *dir;
     int err;
 
-    err = ooDict_new(&self->attr_idx, KND_SMALL_DICT_SIZE);
-    if (err) return err;
+    err = ooDict_new(&self->attr_idx, KND_SMALL_DICT_SIZE);                       RET_ERR();
 
     for (attr = self->attrs; attr; attr = attr->next) {
         entry = self->attr_idx->get(self->attr_idx, attr->name, attr->name_size);
@@ -499,7 +498,6 @@ static int resolve_attrs(struct kndConcept *self)
             knd_log("-- %.*s attr already exists?", attr->name_size, attr->name);
             return knd_FAIL;
         }
-        
         entry = malloc(sizeof(struct kndAttrEntry));
         if (!entry) return knd_NOMEM;
         memset(entry, 0, sizeof(struct kndAttrEntry));
@@ -508,8 +506,7 @@ static int resolve_attrs(struct kndConcept *self)
         entry->attr = attr;
 
         err = self->attr_idx->set(self->attr_idx,
-                                  entry->name, entry->name_size, (void*)entry);
-        if (err) return err;
+                                  entry->name, entry->name_size, (void*)entry);   RET_ERR();
 
         if (DEBUG_CONC_LEVEL_2)
             knd_log("++ register primary attr: \"%.*s\"",
@@ -1331,8 +1328,6 @@ static int parse_conc_item(void *obj,
     return knd_OK;
 }
 
-
-
 static int parse_baseclass(void *obj,
                            const char *rec,
                            size_t *total_size)
@@ -1376,7 +1371,6 @@ static int parse_baseclass(void *obj,
 
     return knd_OK;
 }
-
 
 /* TODO: reconsider this */
 static int run_set_children_setting(void *obj,
@@ -4112,7 +4106,7 @@ static int present_class_selection(void *obj,
     struct kndOutput *out = self->out;
     int e, err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. presenting class selection: batch size:%zu  batch from:%zu  total selects:%zu",
                 self->task->batch_max, self->task->batch_from,
                 self->task->num_class_selects);
@@ -4125,6 +4119,37 @@ static int present_class_selection(void *obj,
         c->format = KND_FORMAT_JSON;
         c->depth = 0;
 
+        /* export iterator */
+        if (self->task->batch_max) {
+            if (!c->dir) return knd_FAIL;
+            if (self->task->start_from > c->dir->num_terminals) {
+                e = self->log->write(self->log,
+                            "requested offset exceeds the total number of matches",
+                     strlen("requested offset exceeds the total number of matches"));
+                if (e) return e;
+                
+                self->task->http_code = HTTP_REQUESTED_RANGE_NOT_SATISFIABLE;
+                return knd_LIMIT;
+            }
+            c->dir->out = out;
+            c->dir->task = self->task;
+            out->reset(out);
+            err = out->write(out, "{\"_term_class_iter\":[", strlen("{\"_term_class_iter\":["));
+            if (err) return err;
+
+            err = iter_export_JSON(c, c->dir);
+            if (err) return err;
+
+            err = out->write(out, "]", 1);
+            if (err) return err;
+
+            /* TODO: total batch? any updates? */
+            
+            err = out->write(out, "}", 1);
+            if (err) return err;
+            return knd_OK;
+        }
+	
         err = c->export(c);
         if (err) return err;
         return knd_OK;
@@ -4148,8 +4173,8 @@ static int present_class_selection(void *obj,
 
             if (self->task->start_from > c->dir->num_terminals) {
                 e = self->log->write(self->log,
-                                     "requested offset exceeds the total number of matches",
-                                     strlen("requested offset exceeds the total number of matches"));
+                            "requested offset exceeds the total number of matches",
+                     strlen("requested offset exceeds the total number of matches"));
                 if (e) return e;
                 
                 self->task->http_code = HTTP_REQUESTED_RANGE_NOT_SATISFIABLE;
@@ -4874,7 +4899,6 @@ static int export_JSON(struct kndConcept *self)
             err = out->write(out, buf, buf_size);
             if (err) return err;
         }
-
         
         if (self->dir->num_children) {
             err = out->write(out, ",\"_subclasses\":[", strlen(",\"_subclasses\":["));

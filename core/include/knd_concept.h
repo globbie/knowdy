@@ -197,6 +197,7 @@ struct kndConcept
     struct kndAttr *attrs;
     struct kndAttr *tail_attr;
     size_t num_attrs;
+
     /* for traversal */
     struct kndAttr *curr_attr;
     size_t attrs_left;
