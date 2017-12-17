@@ -22,8 +22,8 @@
       {coll_request tcp://127.0.0.1:6913}
       {delivery ipc:///var/lib/knowdy/delivery/inbox}
 
-      {read_inbox
-       {frontend ipc:///var/lib/knowdy/reader0}
-       {backend ipc:///var/lib/knowdy/reader0_backend}
+      {inbox
+       {frontend ipc:///var/lib/knowdy/retriever}
+       {backend ipc:///var/lib/knowdy/retriever_backend}
       }
 }}

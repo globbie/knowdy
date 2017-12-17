@@ -39,15 +39,22 @@ kndRetriever_start(struct kndRetriever *self)
     void *outbox;
     char *task;
     size_t task_size = 0;
-    char *obj;
+    const char *obj = "None";
     size_t obj_size = 0;
     size_t chunk_size = 0;
+    zmq_msg_t message;
+    char *inbox_buf;
+    size_t inbox_buf_size;
+    int msg_size = 0;
     int err;
 
     /*err = self->admin->restore(self->admin);
     if (err) return err;
     */
-    
+    inbox_buf_size = KND_MED_BUF_SIZE + 1;
+    inbox_buf = malloc(inbox_buf_size);
+    if (!inbox_buf) return knd_NOMEM;
+
     context = zmq_init(1);
 
     /* get messages from outbox */
@@ -70,27 +77,34 @@ kndRetriever_start(struct kndRetriever *self)
     obj_size = 0;
     
     while (1) {
-	if (!task) {
-	    task = knd_zmq_recv(outbox, &task_size);
-	    if (!task || !task_size) continue;
+	zmq_msg_init(&message);
+
+	msg_size = zmq_msg_recv(&message, outbox, 0);
+	if (msg_size == -1) {
+	    knd_log("-- mo msg received :(");
+	    continue;
+	}
+	msg_size = zmq_msg_size(&message);
+	if (msg_size < 1) {
+	    knd_log("-- negative msg size :(");
+	    continue;
 	}
 
-	if (memcmp(task, "{task", strlen("{task"))) {
-	    task = NULL;
-	    task_size = 0;
+	if ((size_t)msg_size >= inbox_buf_size) {
+	    knd_log("-- msg too large :(");
 	    continue;
 	}
-	obj = knd_zmq_recv(outbox, &obj_size);
-	if (!obj || !obj_size) {
-	    task = NULL;
-	    task_size = 0;
-	    obj = NULL;
-	    obj_size = 0;
-	    continue;
-	}
+
+	memcpy(inbox_buf, zmq_msg_data(&message), msg_size);
+	inbox_buf[msg_size] = '\0';
+
+	task = inbox_buf;
+	task_size = msg_size;
 
         if (DEBUG_RETRIEVER_LEVEL_TMP) {
-            chunk_size = task_size > KND_MAX_DEBUG_CHUNK_SIZE ? KND_MAX_DEBUG_CHUNK_SIZE : task_size;
+            chunk_size = (task_size > KND_MAX_DEBUG_CHUNK_SIZE) ?\
+		KND_MAX_DEBUG_CHUNK_SIZE : task_size;
+
             knd_log("\n++ Retriever got a new task: \"%.*s\".. [size: %lu]",
                     chunk_size, task, (unsigned long)task_size);
         }
@@ -112,10 +126,8 @@ kndRetriever_start(struct kndRetriever *self)
         }
 
     reset:
-	free(task);
-	free(obj);
+	task = NULL;
 	task_size = 0;
-	obj_size = 0;
     }
 
     zmq_close(outbox);
@@ -125,9 +137,9 @@ kndRetriever_start(struct kndRetriever *self)
 
 
 static int
-parse_read_inbox_addr(void *obj,
-                      const char *rec,
-                      size_t *total_size)
+parse_inbox_addr(void *obj,
+		 const char *rec,
+		 size_t *total_size)
 {
     struct kndRetriever *self = (struct kndRetriever*)obj;
 
@@ -327,9 +339,9 @@ parse_config_GSL(struct kndRetriever *self,
            .buf_size = &self->delivery_addr_size,
            .max_buf_size = KND_NAME_SIZE
          },
-        { .name = "read_inbox",
-          .name_size = strlen("read_inbox"),
-          .parse = parse_read_inbox_addr,
+        { .name = "inbox",
+          .name_size = strlen("inbox"),
+          .parse = parse_inbox_addr,
           .obj = self
         }
     };
@@ -529,9 +541,8 @@ kndRetriever_new(struct kndRetriever **rec,
     self->start = kndRetriever_start;
 
     /* open frozen DB */
-    /*err = conc->open(conc);
+    err = conc->open(conc);
     if (err && err != knd_NO_MATCH) goto error;
-    */
 
     *rec = self;
     return knd_OK;
@@ -690,12 +701,10 @@ void *kndRetriever_subscriber(void *arg)
  *  MAIN SERVICE
  */
 
-int 
-main(int const argc, 
-     const char ** const argv) 
+int main(int const argc, 
+	 const char ** const argv) 
 {
     struct kndRetriever *retriever;
-
     const char *config = NULL;
 
     pthread_t subscriber;
@@ -723,18 +732,18 @@ main(int const argc,
 			 NULL,
 			 kndRetriever_inbox, 
                          (void*)retriever);
-    
+
     /* add subscriber */
     err = pthread_create(&subscriber, 
 			 NULL,
 			 kndRetriever_subscriber, 
                          (void*)retriever);
-    
+
     /* add selector */
-    err = pthread_create(&selector, 
+    /*err = pthread_create(&selector,
 			 NULL,
 			 kndRetriever_selector, 
-                         (void*)retriever);
+                         (void*)retriever); */
 
     retriever->start(retriever);
  
