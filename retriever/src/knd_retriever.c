@@ -81,6 +81,13 @@ static int recv_task(void *outbox, char *task, size_t *task_size,
 	}
 
 	/* body arrived */
+	if ((size_t)msg_size >= KND_MED_BUF_SIZE) {
+	    knd_log("-- obj msg too large :(");
+	    *task_size = 0;
+	    *obj_size = 0;
+	    return knd_LIMIT;
+	}
+
 	memcpy(obj, zmq_msg_data(&message), msg_size);
 	obj[msg_size] = '\0';
 	*obj_size = msg_size;
@@ -144,6 +151,8 @@ kndRetriever_start(struct kndRetriever *self)
 	err = recv_task(outbox, task, &task_size, obj, &obj_size);
 	if (err) {
 	    knd_log("-- failed to recv task :(");
+	    task_size = 0;
+	    obj_size = 0;
 	    continue;
 	}
 
