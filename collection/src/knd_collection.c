@@ -197,11 +197,9 @@ kndColl_start(struct kndColl *self)
 {
     void *frontend;
     void *backend;
-
     pthread_t requester;
     pthread_t publisher;
     pthread_t selector;
-
     int ret;
 
     /* search and request service */

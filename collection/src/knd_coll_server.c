@@ -116,7 +116,7 @@ void *kndColl_requester_agent(void *arg)
     
     selector = zmq_socket(args->zmq_context, ZMQ_PUSH);
     assert(selector);
-    
+
     ret = zmq_connect(selector, coll->select_proxy_frontend);
     if (ret != knd_OK)
         knd_log("ERR: %s\n", zmq_strerror(errno));
