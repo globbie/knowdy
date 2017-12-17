@@ -575,7 +575,7 @@ static int resolve_base_classes(struct kndConcept *self)
             continue;
         }
 
-        if (DEBUG_CONC_LEVEL_TMP)
+        if (DEBUG_CONC_LEVEL_2)
             knd_log("\n.. \"%s\" class to get its base class: \"%s\"..",
                     self->name, item->name);
 
@@ -3907,7 +3907,7 @@ static int get_obj(struct kndConcept *self,
     struct kndObject *obj;
     int err, e;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("\n\n.. \"%.*s\" class to get obj: \"%.*s\"..",
                 self->name_size, self->name,
                 name_size, name);
@@ -3943,7 +3943,7 @@ static int get_obj(struct kndConcept *self,
         return knd_NO_MATCH;
     }
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("++ got obj entry %.*s  size: %zu OBJ: %p",
                 name_size, name, entry->block_size, entry->obj);
 

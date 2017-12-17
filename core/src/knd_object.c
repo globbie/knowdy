@@ -481,7 +481,7 @@ static int present_rels(void *data,
     struct kndObject *self = data;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. present obj rels..");
 
     self->expand_depth = 1;
@@ -893,7 +893,7 @@ static int rel_alloc(void *obj,
     struct kndRelArgInstRef *rel_arg_inst_ref = NULL;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. %.*s OBJ to alloc rel ref %.*s..",
                 self->name_size, self->name,
 		name_size, name);
@@ -901,9 +901,7 @@ static int rel_alloc(void *obj,
     err = self->mempool->new_rel_ref(self->mempool, &relref);                      RET_ERR();
 
     root_rel = self->conc->root_class->rel;
-
     relref->rel = root_rel;
-
     *item = (void*)relref;
 
     return knd_OK;
@@ -1018,8 +1016,6 @@ static int select_rels(struct kndObject *self,
         }
     };
     int err;
-
-    knd_log(".. select rels.. ");
  
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
