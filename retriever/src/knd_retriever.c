@@ -37,22 +37,31 @@ kndRetriever_start(struct kndRetriever *self)
 {
     void *context;
     void *outbox;
+
     char *task;
     size_t task_size = 0;
-    const char *obj = "None";
+    char *obj;
     size_t obj_size = 0;
+
     size_t chunk_size = 0;
     zmq_msg_t message;
     char *inbox_buf;
     size_t inbox_buf_size;
+    char *body_buf;
+    size_t body_buf_size;
     int msg_size = 0;
+
+    int more;
+    size_t more_size = sizeof(more);
+
     int err;
 
-    /*err = self->admin->restore(self->admin);
-    if (err) return err;
-    */
     inbox_buf_size = KND_MED_BUF_SIZE + 1;
     inbox_buf = malloc(inbox_buf_size);
+    if (!inbox_buf) return knd_NOMEM;
+
+    body_buf_size = KND_MED_BUF_SIZE + 1;
+    body_buf = malloc(inbox_buf_size);
     if (!inbox_buf) return knd_NOMEM;
 
     context = zmq_init(1);
@@ -100,7 +109,36 @@ kndRetriever_start(struct kndRetriever *self)
 
 	task = inbox_buf;
 	task_size = msg_size;
+	zmq_msg_close (&message);
 
+	zmq_getsockopt (outbox, ZMQ_RCVMORE, &more, &more_size);
+	if (!more) {
+	    knd_log("-- some msg parts are missing? ");
+	    break;
+	}
+
+	/* get BODY */
+	zmq_msg_init(&message);
+	msg_size = zmq_msg_recv(&message, outbox, 0);
+	if (msg_size == -1) {
+	    knd_log("-- mo msg received :(");
+	    continue;
+	}
+	msg_size = zmq_msg_size(&message);
+	if (msg_size < 1) {
+	    knd_log("-- negative msg size :(");
+	    continue;
+	}
+	if ((size_t)msg_size >= inbox_buf_size) {
+	    knd_log("-- msg too large :(");
+	    continue;
+	}
+	memcpy(body_buf, zmq_msg_data(&message), msg_size);
+	body_buf[msg_size] = '\0';
+	obj = body_buf;
+	obj_size = msg_size;
+	zmq_msg_close (&message);
+	
         if (DEBUG_RETRIEVER_LEVEL_TMP) {
             chunk_size = (task_size > KND_MAX_DEBUG_CHUNK_SIZE) ?\
 		KND_MAX_DEBUG_CHUNK_SIZE : task_size;
@@ -108,7 +146,7 @@ kndRetriever_start(struct kndRetriever *self)
             knd_log("\n++ Retriever got a new task: \"%.*s\".. [size: %lu]",
                     chunk_size, task, (unsigned long)task_size);
         }
-
+	
 	self->task->reset(self->task);
         err = self->task->run(self->task, task, task_size, obj, obj_size);
         if (err) {
