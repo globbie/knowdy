@@ -32,122 +32,128 @@ kndRetriever_del(struct kndRetriever *self)
     free(self);
 }
 
+static int recv_task(void *outbox, char *task, size_t *task_size,
+		     char *obj, size_t *obj_size)
+{
+    zmq_msg_t message;
+    int64_t has_more = 0;
+    size_t has_more_size = sizeof(has_more);
+    bool got_task = false;
+    int64_t msg_size = 0;
+
+    do {
+	zmq_msg_init(&message);
+	msg_size = zmq_msg_recv(&message, outbox, 0);
+	if (msg_size == -1) {
+	    knd_log("-- no msg received :(");
+	    knd_log("ZMQ err: %s\n", zmq_strerror(errno));
+	    zmq_msg_close(&message);
+	    continue;
+	}
+	msg_size = zmq_msg_size(&message);
+	if (msg_size < 1) {
+	    knd_log("-- negative msg size :(");
+	    knd_log("ZMQ err: %s\n", zmq_strerror(errno));
+	    zmq_msg_close(&message);
+	    continue;
+	}
+
+	zmq_getsockopt(outbox, ZMQ_RCVMORE, &has_more, &has_more_size);
+
+	/* task spec arrived */
+	if (has_more) {
+	    if (got_task) {
+		knd_log("-- prev task got no obj body? :(");
+	    }
+	    if ((size_t)msg_size >= KND_MED_BUF_SIZE) {
+		knd_log("-- msg too large :(");
+		*task_size = 0;
+		zmq_msg_close(&message);
+		continue;
+	    }
+
+	    memcpy(task, zmq_msg_data(&message), msg_size);
+	    task[msg_size] = '\0';
+	    *task_size = msg_size;
+	    got_task = true;
+	    zmq_msg_close(&message);
+	    continue;
+	}
+
+	/* body arrived */
+	memcpy(obj, zmq_msg_data(&message), msg_size);
+	obj[msg_size] = '\0';
+	*obj_size = msg_size;
+	zmq_msg_close(&message);
+	break;
+    } while (has_more);
+
+    if (!(*task_size) || !(*obj_size)) return knd_FAIL;
+
+    return knd_OK;
+}
+
 static int
 kndRetriever_start(struct kndRetriever *self)
 {
     void *context;
     void *outbox;
 
-    char *task;
-    size_t task_size = 0;
-    char *obj;
-    size_t obj_size = 0;
-
     size_t chunk_size = 0;
-    zmq_msg_t message;
-    char *inbox_buf;
-    size_t inbox_buf_size;
-    char *body_buf;
-    size_t body_buf_size;
+    char *task;
+    size_t task_size;
+    char *obj;
+    size_t obj_size;
     int msg_size = 0;
-
-    int more;
-    size_t more_size = sizeof(more);
-
     int err;
 
-    inbox_buf_size = KND_MED_BUF_SIZE + 1;
-    inbox_buf = malloc(inbox_buf_size);
-    if (!inbox_buf) return knd_NOMEM;
+    task = malloc(KND_MED_BUF_SIZE + 1);
+    if (!task) return knd_NOMEM;
 
-    body_buf_size = KND_MED_BUF_SIZE + 1;
-    body_buf = malloc(inbox_buf_size);
-    if (!inbox_buf) return knd_NOMEM;
+    obj = malloc(KND_MED_BUF_SIZE + 1);
+    if (!obj) return knd_NOMEM;
 
     context = zmq_init(1);
 
-    /* get messages from outbox */
     outbox = zmq_socket(context, ZMQ_PULL);
-    if (!outbox) return knd_FAIL;
+    if (!outbox) {
+	free(task);
+	free(obj);
+	return knd_FAIL;
+    }
 
-    err = zmq_connect(outbox, self->inbox_backend_addr);
+    assert((zmq_connect(outbox, self->inbox_backend_addr) == knd_OK));
 
     /* delivery service */
     self->delivery = zmq_socket(context, ZMQ_REQ);
-    if (!self->delivery) return knd_FAIL;
+    if (!self->delivery) {
+	free(task);
+	free(obj);
+	return knd_FAIL;
+    }
+
     assert((zmq_connect(self->delivery,  self->delivery_addr) == knd_OK));
     self->task->delivery = self->delivery;
 
     knd_log("++ %s Retriever is up and running!", self->name);
 
-    task = NULL;
     task_size = 0;
-    obj = NULL;
     obj_size = 0;
 
     while (1) {
-	zmq_msg_init(&message);
-	msg_size = zmq_msg_recv(&message, outbox, 0);
-	if (msg_size == -1) {
-	    knd_log("-- no msg received :(");
-	    knd_log("ZMQ err: %s\n", zmq_strerror(errno));
-	    continue;
-	}
-	msg_size = zmq_msg_size(&message);
-	if (msg_size < 1) {
-	    knd_log("-- negative msg size :(");
-	    knd_log("ZMQ err: %s\n", zmq_strerror(errno));
+	err = recv_task(outbox, task, &task_size, obj, &obj_size);
+	if (err) {
+	    knd_log("-- failed to recv task :(");
 	    continue;
 	}
 
-	if ((size_t)msg_size >= inbox_buf_size) {
-	    knd_log("-- msg too large :(");
-	    continue;
-	}
-
-	memcpy(inbox_buf, zmq_msg_data(&message), msg_size);
-	inbox_buf[msg_size] = '\0';
-
-	task = inbox_buf;
-	task_size = msg_size;
-	zmq_msg_close (&message);
-
-	zmq_getsockopt (outbox, ZMQ_RCVMORE, &more, &more_size);
-	if (!more) {
-	    knd_log("-- some msg parts are missing? ");
-	    break;
-	}
-
-	/* get BODY */
-	zmq_msg_init(&message);
-	msg_size = zmq_msg_recv(&message, outbox, 0);
-	if (msg_size == -1) {
-	    knd_log("-- no body msg received :(");
-	    knd_log("ZMQ err: %s\n", zmq_strerror(errno));
-	    continue;
-	}
-	msg_size = zmq_msg_size(&message);
-	if (msg_size < 1) {
-	    knd_log("-- negative msg size :(");
-	    knd_log("ZMQ err: %s\n", zmq_strerror(errno));
-	    continue;
-	}
-	if ((size_t)msg_size >= inbox_buf_size) {
-	    knd_log("-- msg too large :(");
-	    continue;
-	}
-	memcpy(body_buf, zmq_msg_data(&message), msg_size);
-	body_buf[msg_size] = '\0';
-	obj = body_buf;
-	obj_size = msg_size;
-	zmq_msg_close (&message);
-	
-        if (DEBUG_RETRIEVER_LEVEL_TMP) {
+	if (DEBUG_RETRIEVER_LEVEL_TMP) {
             chunk_size = (task_size > KND_MAX_DEBUG_CHUNK_SIZE) ?\
 		KND_MAX_DEBUG_CHUNK_SIZE : task_size;
 
-            knd_log("\n++ Retriever got a new task: \"%.*s\".. [size: %lu]",
-                    chunk_size, task, (unsigned long)task_size);
+            knd_log("\n++ Retriever got a new task: \"%.*s\".. [size: %zu]\n OBJ: %.*s [size:%zu]",
+                    chunk_size, task, task_size,
+		    obj_size, obj, obj_size);
         }
 	
 	self->task->reset(self->task);
@@ -167,13 +173,12 @@ kndRetriever_start(struct kndRetriever *self)
         }
 
     reset:
-	task = NULL;
 	task_size = 0;
-	obj = NULL;
 	obj_size = 0;
     }
 
     zmq_close(outbox);
+    zmq_close(self->delivery);
 
     return knd_OK;
 }

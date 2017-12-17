@@ -356,17 +356,17 @@ static int report(struct kndTask *self)
         if (err) return err;
     }
     
-    if (DEBUG_TASK_LEVEL_TMP) {
+    if (DEBUG_TASK_LEVEL_2) {
         obj_size = self->out->buf_size;
         if (obj_size > KND_MAX_DEBUG_CONTEXT_SIZE) {
             obj_size = KND_MAX_DEBUG_CONTEXT_SIZE;
-            knd_log("== TASK report: SPEC: \"%.*s\"\n\n"
-		    "== BODY: \"%.*s...\" [total size: %zu]\n",
+            knd_log("== TASK report: SPEC: \"%.*s\"\n"
+		    "== BODY: \"%.*s..\" [total size: %zu]\n",
                     out->buf_size, out->buf, obj_size,
 		    self->out->buf, self->out->buf_size);
         }
         else {
-            knd_log("== TASK report: SPEC: \"%.*s\"\n\n"
+            knd_log("== TASK report: SPEC: \"%.*s\"\n"
 		    "== BODY: \"%.*s\" [size: %zu]\n",
                     out->buf_size, out->buf, obj_size,
 		    self->out->buf, self->out->buf_size);

@@ -586,14 +586,13 @@ static int select_user_rels(void *obj,
         return knd_FAIL;
     }
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. selecting User rels: \"%.*s\"", 32, rec);
 
     self->out->reset(self->out);
     user = self->curr_user;
     user->out = self->out;
     user->log = self->log;
-
     err = user->select_rels(user, rec, total_size);                               PARSE_ERR();
 
     return knd_OK;
