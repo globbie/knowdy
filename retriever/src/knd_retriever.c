@@ -84,18 +84,19 @@ kndRetriever_start(struct kndRetriever *self)
     task_size = 0;
     obj = NULL;
     obj_size = 0;
-    
+
     while (1) {
 	zmq_msg_init(&message);
-
 	msg_size = zmq_msg_recv(&message, outbox, 0);
 	if (msg_size == -1) {
-	    knd_log("-- mo msg received :(");
+	    knd_log("-- no msg received :(");
+	    knd_log("ZMQ err: %s\n", zmq_strerror(errno));
 	    continue;
 	}
 	msg_size = zmq_msg_size(&message);
 	if (msg_size < 1) {
 	    knd_log("-- negative msg size :(");
+	    knd_log("ZMQ err: %s\n", zmq_strerror(errno));
 	    continue;
 	}
 
@@ -121,12 +122,14 @@ kndRetriever_start(struct kndRetriever *self)
 	zmq_msg_init(&message);
 	msg_size = zmq_msg_recv(&message, outbox, 0);
 	if (msg_size == -1) {
-	    knd_log("-- mo msg received :(");
+	    knd_log("-- no body msg received :(");
+	    knd_log("ZMQ err: %s\n", zmq_strerror(errno));
 	    continue;
 	}
 	msg_size = zmq_msg_size(&message);
 	if (msg_size < 1) {
 	    knd_log("-- negative msg size :(");
+	    knd_log("ZMQ err: %s\n", zmq_strerror(errno));
 	    continue;
 	}
 	if ((size_t)msg_size >= inbox_buf_size) {
@@ -166,6 +169,8 @@ kndRetriever_start(struct kndRetriever *self)
     reset:
 	task = NULL;
 	task_size = 0;
+	obj = NULL;
+	obj_size = 0;
     }
 
     zmq_close(outbox);
