@@ -32,13 +32,9 @@ kndRetriever_del(struct kndRetriever *self)
     free(self);
 }
 
-static int recv_task(void *outbox, char *task, size_t *task_size,
-		     char *obj, size_t *obj_size)
+static int knd_recv_task(void *outbox, char *task, size_t *task_size)
 {
     zmq_msg_t message;
-    int64_t has_more = 0;
-    size_t has_more_size = sizeof(has_more);
-    bool got_task = false;
     int64_t msg_size = 0;
 
     do {
@@ -57,45 +53,26 @@ static int recv_task(void *outbox, char *task, size_t *task_size,
 	    zmq_msg_close(&message);
 	    continue;
 	}
-
-	zmq_getsockopt(outbox, ZMQ_RCVMORE, &has_more, &has_more_size);
-
-	/* task spec arrived */
-	if (has_more) {
-	    if (got_task) {
-		knd_log("-- prev task got no obj body? :(");
-	    }
-	    if ((size_t)msg_size >= KND_MED_BUF_SIZE) {
-		knd_log("-- msg too large :(");
-		*task_size = 0;
-		zmq_msg_close(&message);
-		continue;
-	    }
-
-	    memcpy(task, zmq_msg_data(&message), msg_size);
-	    task[msg_size] = '\0';
-	    *task_size = msg_size;
-	    got_task = true;
+	if (!msg_size) {
+	    knd_log("-- zero msg size :(");
+	    knd_log("ZMQ err: %s\n", zmq_strerror(errno));
 	    zmq_msg_close(&message);
 	    continue;
 	}
-
-	/* body arrived */
 	if ((size_t)msg_size >= KND_MED_BUF_SIZE) {
-	    knd_log("-- obj msg too large :(");
+	    knd_log("-- msg too large :(");
 	    *task_size = 0;
-	    *obj_size = 0;
-	    return knd_LIMIT;
+	    zmq_msg_close(&message);
+	    continue;
 	}
-
-	memcpy(obj, zmq_msg_data(&message), msg_size);
-	obj[msg_size] = '\0';
-	*obj_size = msg_size;
+	memcpy(task, zmq_msg_data(&message), msg_size);
+	task[msg_size] = '\0';
+	*task_size = msg_size;
 	zmq_msg_close(&message);
 	break;
-    } while (has_more);
+    } while (1);
 
-    if (!(*task_size) || !(*obj_size)) return knd_FAIL;
+    if (!(*task_size)) return knd_FAIL;
 
     return knd_OK;
 }
@@ -148,11 +125,10 @@ kndRetriever_start(struct kndRetriever *self)
     obj_size = 0;
 
     while (1) {
-	err = recv_task(outbox, task, &task_size, obj, &obj_size);
+	err = knd_recv_task(outbox, task, &task_size);
 	if (err) {
 	    knd_log("-- failed to recv task :(");
 	    task_size = 0;
-	    obj_size = 0;
 	    continue;
 	}
 

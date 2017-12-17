@@ -394,8 +394,8 @@ static int report(struct kndTask *self)
     /* get confirmation reply from  the manager */
     header = knd_zmq_recv(self->delivery, &header_size);
     obj = knd_zmq_recv(self->delivery, &obj_size);
-    
-    if (DEBUG_TASK_LEVEL_TMP)
+
+    if (DEBUG_TASK_LEVEL_2)
         knd_log("== Delivery reply HEADER: \"%.*s\" [%zu]\n OBJ: \"%.*s\" [%zu]",
                 header_size, header, header_size, obj_size, obj, obj_size);
 
