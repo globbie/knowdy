@@ -6,6 +6,7 @@
       {sid AUTH_SERVER_SID}
 
       {memory
+         {max_states 10000}
          {max_classes 100000}
          {max_objs 1500000}
          {max_elems 1500000}
@@ -19,14 +20,14 @@
       }
       {delivery ipc:///var/lib/knowdy/delivery/inbox}
 
-      {write_inbox
-       {frontend ipc:///var/lib/knowdy/writer_inbox_frontend}
-       {backend ipc:///var/lib/knowdy/writer_inbox_backend}
+      {inbox
+        {frontend ipc:///var/lib/knowdy/learner_inbox}
+        {backend ipc:///var/lib/knowdy/learner_inbox_backend}
       }
 
       {publish
-       {frontend ipc:///var/lib/knowdy/learner_pub_frontend}
-       {backend ipc:///var/lib/knowdy/learner_pub_backend}
+        {frontend ipc:///var/lib/knowdy/learner_pub}
+        {backend ipc:///var/lib/knowdy/learner_pub_backend}
       }
 
 }}

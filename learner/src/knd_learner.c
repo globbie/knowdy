@@ -63,15 +63,27 @@ kndLearner_start(struct kndLearner *self)
 {
     void *context;
     void *outbox;
+
+    char *task_buf = NULL;
+    size_t task_buf_size = 0;
+
     char *task = NULL;
     size_t task_size = 0;
+    size_t total_task_size = 0;
+
     size_t chunk_size = 0;
-    char *obj = NULL;
-    size_t obj_size = 0;
+
+    const char *obj = "None";
+    size_t obj_size = strlen("None");
 
     time_t  t0, t1;
     clock_t c0, c1;
     int err;
+
+    task_buf = malloc(KND_LARGE_BUF_SIZE + 1);
+    if (!task_buf) return knd_NOMEM;
+
+    task = task_buf;
 
     // restore in-memory data after failure or restart
     self->admin->role = KND_USER_ROLE_LEARNER;
@@ -132,22 +144,24 @@ kndLearner_start(struct kndLearner *self)
     self->task->publisher = self->publisher;
 
     while (1) {
-        self->task->reset(self->task);
-
-        task = knd_zmq_recv(outbox, &task_size);
-        obj = knd_zmq_recv(outbox, &obj_size);
-
-        /* sometimes bad messages arrive */
-        if (!task || !task_size) continue;
-
+	task_size = KND_LARGE_BUF_SIZE;
+	err = knd_recv_task(outbox, task, &task_size);
+	if (err) {
+	    knd_log("-- failed to recv task :(");
+	    task_size = 0;
+	    continue;
+	}
+	
         t0 = time(NULL);
         c0 = clock();
 
         if (DEBUG_LEARNER_LEVEL_TMP) {
             chunk_size = task_size > KND_MAX_DEBUG_CHUNK_SIZE ? KND_MAX_DEBUG_CHUNK_SIZE : task_size;
-            knd_log("\n++ Learner got a new task: \"%.*s\".. [size: %lu]", chunk_size, task, (unsigned long)task_size);
+            knd_log("\n++ Learner got a new task: \"%.*s\".. [size: %lu]",
+		    chunk_size, task, (unsigned long)task_size);
         }
         
+        self->task->reset(self->task);
         err = self->task->run(self->task,
                               task, task_size,
                               obj, obj_size);
@@ -174,6 +188,9 @@ kndLearner_start(struct kndLearner *self)
             goto final;
         }
 
+	task += task_size;
+	total_task_size += task_size;
+
     final:
 
         if (!self->task->tid_size) {
@@ -185,9 +202,6 @@ kndLearner_start(struct kndLearner *self)
         if (err) {
             knd_log("-- task report failed: %d", err);
         }
-
-        /*if (task) free(task);
-          if (obj) free(obj);*/
     }
 
     /* we should never get here */
@@ -222,9 +236,9 @@ static int parse_publisher_service_addr(void *obj,
 }
 
 static int
-parse_write_inbox_addr(void *obj,
-                       const char *rec,
-                       size_t *total_size)
+parse_inbox_addr(void *obj,
+		 const char *rec,
+		 size_t *total_size)
 {
     struct kndLearner *self = (struct kndLearner*)obj;
 
@@ -266,6 +280,11 @@ static int parse_memory_settings(void *obj,
           .name_size = strlen("max_classes"),
           .parse = knd_parse_size_t,
           .obj = &self->max_classes
+        },
+        { .name = "max_states",
+          .name_size = strlen("max_states"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_states
         },
         { .name = "max_objs",
           .name_size = strlen("max_objs"),
@@ -372,9 +391,9 @@ parse_config_GSL(struct kndLearner *self,
            .buf_size = &self->delivery_addr_size,
            .max_buf_size = KND_NAME_SIZE
          },
-        { .name = "write_inbox",
-          .name_size = strlen("write_inbox"),
-          .parse = parse_write_inbox_addr,
+        { .name = "inbox",
+          .name_size = strlen("inbox"),
+          .parse = parse_inbox_addr,
           .obj = self
         },
         { .name = "publish",
@@ -520,7 +539,8 @@ kndLearner_new(struct kndLearner **rec,
 
     err = self->mempool->new_class(self->mempool, &conc);                         RET_ERR();
     conc->out = self->out;
-    conc->log = self->log;
+    conc->task = self->task;
+    conc->log = self->task->log;
     conc->name[0] = '/';
     conc->name_size = 1;
 
@@ -543,6 +563,8 @@ kndLearner_new(struct kndLearner **rec,
     err = kndRel_new(&conc->rel);
     if (err) goto error;
     conc->rel->mempool = self->mempool;
+    conc->rel->frozen_output_file_name = self->admin->frozen_output_file_name;
+    conc->rel->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
 
     /* specific allocations of the root concs */
     err = ooDict_new(&conc->class_idx, KND_MEDIUM_DICT_SIZE);
@@ -590,6 +612,10 @@ kndLearner_new(struct kndLearner **rec,
 
     conc->dbpath = self->path;
     conc->dbpath_size = self->path_size;
+
+    /* obj manager */
+    err = self->mempool->new_obj(self->mempool, &conc->curr_obj);                 RET_ERR();
+    conc->curr_obj->mempool = self->mempool;
 
     /* read any existing updates to the frozen DB (failure recovery) */
     /*err = conc->restore(conc);
@@ -671,126 +697,6 @@ void *kndLearner_inbox(void *arg)
     /* we never get here */
     zmq_close(frontend);
     zmq_close(backend);
-    zmq_term(context);
-
-    return NULL;
-}
-
-void *kndLearner_selector(void *arg)
-{
-    void *context;
-    void *frontend;
-    void *backend;
-    struct kndLearner *learner;
-    int err;
-
-    learner = (struct kndLearner *) arg;
-
-    context = zmq_init(1);
-    if (!context) {
-        knd_log("zmq_init() failed, error: '%s'", strerror(errno));
-        return NULL;
-    }
-
-    frontend = zmq_socket(context, ZMQ_PULL);
-    if (!frontend) {
-        knd_log("zmq_socket(frontend) failed, error '%s'", strerror(errno));
-        return NULL;
-    }
-
-    backend = zmq_socket(context, ZMQ_PUSH);
-    if (!backend) {
-        knd_log("zmq_socket(backend) failed, error '%s'", strerror(errno));
-        return NULL;
-    }
-
-    err = zmq_connect(frontend, "ipc:///var/lib/knowdy/storage_push"); // todo: fix hardcode
-    if (err == -1) {
-        knd_log("zmq_connect(frontend, '%s') failed, error: '%s'", "ipc:///var/lib/knowdy/storage_push",
-                strerror(errno));
-        return NULL;
-    }
-
-    err = zmq_connect(backend, learner->inbox_frontend_addr);
-    if (err == -1) {
-        knd_log("zmq_connect(backend, '%s') failed, error: '%s'", learner->inbox_frontend_addr, strerror(errno));
-        return NULL;
-    }
-
-    knd_log("    ++ Learner %s Selector device is ready: %s...\n\n",
-            learner->name, learner->inbox_frontend_addr);
-
-    zmq_device(ZMQ_QUEUE, frontend, backend);
-
-    /* we never get here */
-    zmq_close(frontend);
-    zmq_close(backend);
-    zmq_term(context);
-
-    return NULL;
-}
-
-void *kndLearner_subscriber(void *arg)
-{
-    void *context;
-    void *subscriber;
-    void *inbox;
-
-    struct kndLearner *learner;
-    char *spec;
-    size_t spec_size;
-    char *obj;
-    size_t obj_size;
-
-    int err;
-
-    learner = (struct kndLearner *) arg;
-
-    context = zmq_init(1);
-    if (!context) {
-        knd_log("zmq_init(subscriber) failed, error: '%s'", strerror(errno));
-        return NULL;
-    }
-
-    subscriber = zmq_socket(context, ZMQ_SUB);
-    if (!subscriber) {
-        knd_log("zmq_socket(subscriber) failed, error: '%s'", strerror(errno));
-        return NULL;
-    }
-
-    err = zmq_connect(subscriber, "ipc:///var/lib/knowdy/storage_pub"); // todo: fix hardcode
-    if (err == -1) {
-        knd_log("zmq_connect(subscriber) failed, error: '%s'", strerror(errno));
-        return NULL;
-    }
-
-    zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "", 0); // todo: error check
-
-    inbox = zmq_socket(context, ZMQ_PUSH);
-    if (!inbox) {
-        knd_log("zmq_socket(inbox) failed, error: '%s'", strerror(errno));
-        return NULL;
-    }
-
-    err = zmq_connect(inbox, learner->inbox_frontend_addr);
-    if (err == -1) {
-        knd_log("zmq_connect(inbox) failed, error: '%s'", strerror(errno));
-        return NULL;
-    }
-
-    while (1) {
-        spec = knd_zmq_recv(subscriber, &spec_size);
-        obj = knd_zmq_recv(subscriber, &obj_size);
-
-        knd_zmq_sendmore(inbox, spec, spec_size);
-        knd_zmq_send(inbox, obj, obj_size);
-
-        free(spec);
-        free(obj);
-    }
-
-    /* we never get here */
-    zmq_close(subscriber);
     zmq_term(context);
 
     return NULL;
@@ -886,9 +792,10 @@ int main(const int argc,
     err = kndLearner_new(&learner, config);   RET_ERR();
 
     err = pthread_create(&inbox, NULL, kndLearner_inbox, (void *) learner);
-    err = pthread_create(&subscriber, NULL, kndLearner_subscriber, (void *) learner);
 
+    /*err = pthread_create(&subscriber, NULL, kndLearner_subscriber, (void *) learner);
     err = pthread_create(&selector, NULL, kndLearner_selector, (void *) learner);
+    */
 
     err = pthread_create(&publisher, NULL, kndLearner_publisher, (void *) learner);
 

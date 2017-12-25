@@ -17,6 +17,7 @@
 #include "knd_object.h"
 #include "knd_proc.h"
 #include "knd_rel.h"
+#include "knd_state.h"
 
 #define DEBUG_USER_LEVEL_0 0
 #define DEBUG_USER_LEVEL_1 0
@@ -212,7 +213,7 @@ static int kndUser_parse_repo(void *obj,
     self->repo->task = self->task;
     self->repo->out = self->out;
     self->repo->log = self->log;
-    
+
     err = self->repo->parse_task(self->repo, rec, total_size);
     if (err) return err;
 
@@ -477,6 +478,7 @@ static int parse_class_select(void *obj,
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class select: \"%s\"", rec);
+
     c->out = self->out;
     c->log = self->log;
     c->task = self->task;
@@ -488,9 +490,9 @@ static int parse_class_select(void *obj,
 
     c->curr_class = NULL;
     c->curr_baseclass = NULL;
+    c->root_class = self->root_class;
 
-    err = c->select(c, rec, total_size);
-    if (err) return err;
+    err = c->select(c, rec, total_size);                                          RET_ERR();
 
     return knd_OK;
 }
@@ -562,13 +564,14 @@ static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
     if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
 
     if (DEBUG_USER_LEVEL_2)
-        knd_log(".. get user: \"%.*s\".. log:%p", name_size, name, self->root_class->log);
+        knd_log(".. get user: \"%.*s\".. log:%p",
+		name_size, name, self->root_class->log);
 
-    err = self->root_class->get(self->root_class, "User", strlen("User"), &conc);
-    if (err) return err;
+    err = self->root_class->get(self->root_class,
+				"User", strlen("User"), &conc);                   RET_ERR();
+    conc->task = self->root_class->task;
 
-    err = conc->get_obj(conc, name, name_size, &self->curr_user);
-    if (err) return err;
+    err = conc->get_obj(conc, name, name_size, &self->curr_user);                 RET_ERR();
 
     return knd_OK;
 }
@@ -673,17 +676,56 @@ static int run_present_user(void *data,
         knd_log("-- no user selected :(");
         return knd_FAIL;
     }
-
-    knd_log(".. present user..");
     self->out->reset(self->out);
-
     user = self->curr_user;
     user->out = self->out;
     user->log = self->log;
     user->expand_depth = self->expand_depth;
 
-    err = user->export(user);
-    if (err) return err;
+    err = user->export(user);                                                   RET_ERR();
+
+    return knd_OK;
+}
+
+static int remove_user(void *data,
+		       struct kndTaskArg *args, size_t num_args)
+{
+    struct kndUser *self = data;
+    struct kndConcept *conc;
+    struct kndConcept *root_class;
+    struct kndObject *obj;
+    int err;
+
+    if (!self->curr_user) {
+        knd_log("-- remove operation: no user selected :(");
+	return knd_FAIL;
+    }
+
+    obj = self->curr_user;
+    if (DEBUG_USER_LEVEL_2)
+        knd_log("== obj to remove: \"%.*s\"", obj->name_size, obj->name);
+
+    /* TODO: add state */
+
+    obj->state->phase = KND_REMOVED;
+
+    self->log->reset(self->log);
+    err = self->log->write(self->log, obj->name, obj->name_size);    RET_ERR();
+    err = self->log->write(self->log, " obj removed",
+                           strlen(" obj removed"));                  RET_ERR();
+    conc = obj->conc;
+
+    self->task->type = KND_UPDATE_STATE;
+
+    obj->next = conc->obj_inbox;
+    conc->obj_inbox = obj;
+    conc->obj_inbox_size++;
+
+    root_class = conc->root_class;
+
+    conc->next = root_class->inbox;
+    root_class->inbox = conc;
+    root_class->inbox_size++;
 
     return knd_OK;
 }
@@ -726,7 +768,13 @@ static int parse_task(struct kndUser *self,
           .parse = kndUser_parse_auth,
           .obj = self
         },
-        { .name = "repo",
+        { .type = KND_CHANGE_STATE,
+          .name = "_rm",
+          .name_size = strlen("_rm"),
+          .run = remove_user,
+          .obj = self
+        },
+	{ .name = "repo",
           .name_size = strlen("repo"),
           .parse = kndUser_parse_repo,
           .obj = self
@@ -902,10 +950,6 @@ kndUser_new(struct kndUser **user)
     self->repo->user = self;
     self->repo->name[0] = '~';
     self->repo->name_size = 1;
-    
-    /*err = ooDict_new(&self->class_idx, KND_SMALL_DICT_SIZE);                     RET_ERR();
-    err = ooDict_new(&self->browse_class_idx, KND_SMALL_DICT_SIZE);              RET_ERR();
-    */
 
     kndUser_init(self);
 

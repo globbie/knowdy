@@ -22,6 +22,7 @@
 #include "knd_config.h"
 #include "knd_concept.h"
 
+struct kndState;
 struct kndObjRef;
 struct kndSortTag;
 struct kndElemRef;
@@ -69,6 +70,8 @@ struct kndObjEntry
     size_t block_size;
     size_t offset;
 
+    knd_state_phase phase;
+
     struct kndObject *obj;
     struct kndRelRef *rels;
 };
@@ -97,21 +100,19 @@ struct kndObject
     size_t numval;
     size_t name_hash;
 
-    knd_state_phase phase;
-    char state[KND_STATE_SIZE];
+    //char state[KND_STATE_SIZE];
+    struct kndState *state;
 
     bool is_subord;
     bool is_concise;
 
     struct kndMemPool *mempool;
+    struct kndObjEntry *entry;
     struct kndObject *root;
     struct kndElem *parent;
-    
+    struct kndObject *curr_obj;
+
     struct kndConcept *conc;
-
-    struct kndObjEntry *entry;
-    //struct kndSortTag *tag;
-
     
     struct kndOutput *out;
     struct kndOutput *log;
@@ -150,6 +151,7 @@ struct kndObject
     int match_idx_pos;
     int accented;
 
+
     /* relations */
     struct kndRelRef *rels;
 
@@ -185,10 +187,13 @@ struct kndObject
 
     int (*resolve)(struct kndObject *self);
     int (*export)(struct kndObject *self);
+
+    int (*select)(struct kndObject *self,
+		  const char *rec,
+		  size_t *total_size);
     int (*select_rels)(struct kndObject *self,
 		       const char *rec,
 		       size_t *total_size);
-
     int (*sync)(struct kndObject *self);
 };
 
