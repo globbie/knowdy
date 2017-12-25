@@ -27,6 +27,12 @@ struct kndOutput;
 struct kndState;
 struct kndConcept;
 
+typedef enum knd_state_type { KND_INIT_STATE, 
+                              KND_FAILED_STATE,
+                              KND_CONFLICT_STATE,
+                              KND_VALID_STATE
+} knd_state_type;
+
 struct kndClassUpdate
 {
     struct kndConcept *conc;
@@ -44,9 +50,11 @@ struct kndRelUpdate
 struct kndUpdate
 {
     size_t id;
+    knd_state_type phase;
     time_t timestamp;
     size_t orig_state;
-    size_t userid;
+
+    struct kndUser *user;
 
     const char *spec;
     size_t spec_size;
@@ -58,6 +66,15 @@ struct kndUpdate
     struct kndRelUpdate **rels;
     size_t num_rels;
 };
+
+struct kndState
+{
+    knd_state_phase phase;
+    struct kndUpdate *update;
+    void *val;
+    struct kndState *next;
+};
+
 
 struct kndStateControl
 {
@@ -101,7 +118,5 @@ struct kndStateControl
 };
 
 /* constructors */
-extern void kndUpdate_init(struct kndUpdate *self);
-extern void kndClassUpdate_init(struct kndClassUpdate *self);
 extern int kndStateControl_new(struct kndStateControl **self);
 

@@ -43,8 +43,6 @@ static int knd_confirm(struct kndStateControl *self,
     struct kndConcDir *dir;
     int err;
 
-    self->total_objs += update->total_objs;
-
     if (self->task->type == KND_LIQUID_STATE) {
 	self->updates[self->num_updates] = update;
 	self->num_updates++;
@@ -56,8 +54,10 @@ static int knd_confirm(struct kndStateControl *self,
 	return knd_OK;
     }
 
-    /* TODO: update conflicts */
+    /* TODO: check conflicts with previous updates */
 
+    
+    
     if (self->num_updates + 1 >= self->max_updates) {
         knd_log("-- max update limit exceeded, time to freeze?");
         return knd_FAIL;
@@ -75,13 +75,6 @@ static int knd_confirm(struct kndStateControl *self,
         knd_log("++  \"%zu\" update confirmed!   global STATE: %zu",
                 update->id, self->num_updates);
 
-    /* bump counters */
-    for (size_t i = 0; i < update->num_classes; i++) {
-	class_update = update->classes[i];
-	dir = class_update->conc->dir;
-	dir->num_objs += class_update->num_objs;
-	knd_log("confirm DIR update: num objs: %zu", dir->num_objs);
-    }
     
     out = self->task->out;
     err = out->write(out, "{", 1);  RET_ERR();

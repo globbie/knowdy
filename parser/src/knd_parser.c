@@ -1469,7 +1469,7 @@ static int knd_parse_state_change(const char *rec,
                     return err;
                 }
 
-                if (DEBUG_PARSER_LEVEL_TMP)
+                if (DEBUG_PARSER_LEVEL_2)
                     knd_log("++ got SPEC: \"%s\"  default: %d  terminal: %d",
                             spec->name, spec->is_default, spec->is_terminal);
             }

@@ -13,11 +13,12 @@
 
 static void del(struct kndMemPool *self)
 {
-    if (self->updates)         free(self->updates);
-    if (self->update_idx) free(self->update_idx);
+    if (self->updates)             free(self->updates);
+    if (self->update_idx)          free(self->update_idx);
     if (self->update_selected_idx) free(self->update_selected_idx);
-    if (self->class_updates)   free(self->class_updates);
-    if (self->class_update_refs) free(self->class_update_refs);
+    if (self->states)              free(self->states);
+    if (self->class_updates)       free(self->class_updates);
+    if (self->class_update_refs)   free(self->class_update_refs);
 
     if (self->classes)         free(self->classes);
     if (self->conc_dirs)       free(self->conc_dirs);
@@ -130,6 +131,20 @@ static int new_obj(struct kndMemPool *self,
     kndObject_init(obj);
     self->num_objs++;
     *result = obj;
+    return knd_OK;
+}
+
+static int new_state(struct kndMemPool *self,
+		     struct kndState **result)
+{
+    struct kndState *state;
+    if (self->num_states >= self->max_states) {
+        return knd_NOMEM;
+    }
+    state = &self->states[self->num_states];
+    memset(state, 0, sizeof(struct kndState));
+    self->num_states++;
+    *result = state;
     return knd_OK;
 }
 
@@ -357,7 +372,8 @@ static int new_proc(struct kndMemPool *self,
 
 static int alloc(struct kndMemPool *self)
 {
-    if (!self->max_updates)       self->max_updates = KND_MIN_UPDATES;
+    if (!self->max_updates)      self->max_updates = KND_MIN_UPDATES;
+    if (!self->max_states)       self->max_states = KND_MIN_STATES;
     if (!self->max_class_updates) self->max_class_updates = KND_MIN_UPDATES;
     if (!self->max_class_update_refs) self->max_class_update_refs = KND_MIN_UPDATES;
     if (!self->max_users)        self->max_users = KND_MIN_USERS;
@@ -413,7 +429,12 @@ static int alloc(struct kndMemPool *self)
         knd_log("-- selected update idx not allocated :(");
         return knd_NOMEM;
     }
-
+    self->states = calloc(self->max_states, sizeof(struct kndState));
+    if (!self->states) {
+        knd_log("-- states not allocated :(");
+        return knd_NOMEM;
+    }
+    
     self->class_updates = calloc(self->max_updates, sizeof(struct kndClassUpdate));
     if (!self->class_updates) {
         knd_log("-- class updates not allocated :(");
@@ -521,6 +542,7 @@ kndMemPool_init(struct kndMemPool *self)
     self->del = del;
     self->alloc = alloc;
     self->new_update = new_update;
+    self->new_state = new_state;
     self->new_class_update = new_class_update;
     self->new_class_update_ref = new_class_update_ref;
     self->new_class = new_class;

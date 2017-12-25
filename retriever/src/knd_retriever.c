@@ -32,51 +32,6 @@ kndRetriever_del(struct kndRetriever *self)
     free(self);
 }
 
-static int knd_recv_task(void *outbox, char *task, size_t *task_size)
-{
-    zmq_msg_t message;
-    int64_t msg_size = 0;
-
-    do {
-	zmq_msg_init(&message);
-	msg_size = zmq_msg_recv(&message, outbox, 0);
-	if (msg_size == -1) {
-	    knd_log("-- no msg received :(");
-	    knd_log("ZMQ err: %s\n", zmq_strerror(errno));
-	    zmq_msg_close(&message);
-	    continue;
-	}
-	msg_size = zmq_msg_size(&message);
-	if (msg_size < 1) {
-	    knd_log("-- negative msg size :(");
-	    knd_log("ZMQ err: %s\n", zmq_strerror(errno));
-	    zmq_msg_close(&message);
-	    continue;
-	}
-	if (!msg_size) {
-	    knd_log("-- zero msg size :(");
-	    knd_log("ZMQ err: %s\n", zmq_strerror(errno));
-	    zmq_msg_close(&message);
-	    continue;
-	}
-	if ((size_t)msg_size >= KND_MED_BUF_SIZE) {
-	    knd_log("-- msg too large :(");
-	    *task_size = 0;
-	    zmq_msg_close(&message);
-	    continue;
-	}
-	memcpy(task, zmq_msg_data(&message), msg_size);
-	task[msg_size] = '\0';
-	*task_size = msg_size;
-	zmq_msg_close(&message);
-	break;
-    } while (1);
-
-    if (!(*task_size)) return knd_FAIL;
-
-    return knd_OK;
-}
-
 static int
 kndRetriever_start(struct kndRetriever *self)
 {
@@ -94,9 +49,9 @@ kndRetriever_start(struct kndRetriever *self)
     task = malloc(KND_MED_BUF_SIZE + 1);
     if (!task) return knd_NOMEM;
 
-    obj = malloc(KND_MED_BUF_SIZE + 1);
+    /*obj = malloc(KND_MED_BUF_SIZE + 1);
     if (!obj) return knd_NOMEM;
-
+    */
     context = zmq_init(1);
 
     outbox = zmq_socket(context, ZMQ_PULL);
@@ -125,10 +80,10 @@ kndRetriever_start(struct kndRetriever *self)
     obj_size = 0;
 
     while (1) {
+	task_size = KND_MED_BUF_SIZE;
 	err = knd_recv_task(outbox, task, &task_size);
 	if (err) {
 	    knd_log("-- failed to recv task :(");
-	    task_size = 0;
 	    continue;
 	}
 
@@ -149,17 +104,12 @@ kndRetriever_start(struct kndRetriever *self)
         } else {
 	    /* no need to inform delivery about every liquid update success */
 	    if (self->task->type == KND_UPDATE_STATE)
-		goto reset;
+		continue;
         }
         err = self->task->report(self->task);
         if (err) {
-            /* TODO */
             knd_log("-- task report failed: %d", err);
         }
-
-    reset:
-	task_size = 0;
-	obj_size = 0;
     }
 
     zmq_close(outbox);

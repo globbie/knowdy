@@ -380,6 +380,7 @@ typedef enum knd_storage_type {
 #define KND_MAX_UPDATE_BUF_SIZE 1024 * 100 * sizeof(char)
 
 #define KND_MIN_UPDATES 1024
+#define KND_MIN_STATES 1024 * 10
 #define KND_MIN_USERS 1024
 #define KND_MIN_CLASSES 1024
 #define KND_MIN_OBJS 1024

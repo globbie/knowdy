@@ -30,6 +30,7 @@ struct kndProc;
 struct kndProcInstance;
 
 struct kndUpdate;
+struct kndState;
 struct kndClassUpdate;
 struct kndClassUpdateRef;
 struct kndRelUpdate;
@@ -46,6 +47,10 @@ struct kndMemPool
     size_t num_updates;
     struct kndUpdate **update_selected_idx;
 
+    struct kndState *states;
+    size_t max_states;
+    size_t num_states;
+    
     struct kndClassUpdate *class_updates;
     size_t max_class_updates;
     size_t num_class_updates;
@@ -135,6 +140,8 @@ struct kndMemPool
 
     int (*new_update)(struct kndMemPool   *self,
                       struct kndUpdate **result);
+    int (*new_state)(struct kndMemPool   *self,
+                      struct kndState **result);
     int (*new_class_update)(struct kndMemPool   *self,
                             struct kndClassUpdate **result);
     int (*new_class_update_ref)(struct kndMemPool   *self,

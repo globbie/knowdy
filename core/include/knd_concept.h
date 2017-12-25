@@ -36,6 +36,8 @@ struct kndRelObj;
 struct kndTask;
 struct kndUser;
 struct kndTaskArg;
+struct kndClassUpdate;
+struct kndClassUpdateRef;
 
 typedef enum knd_conc_type {
     KND_CONC_CLASS,
@@ -171,10 +173,8 @@ struct kndConcept
     size_t numid;
     size_t next_numid;
 
-    /*char next_id[KND_ID_SIZE];
-    char next_obj_id[KND_ID_SIZE];
-    size_t next_obj_numid;
-    */
+    struct kndState *state;
+    size_t num_states;
 
     struct kndClassUpdateRef *updates;
     size_t num_updates;
@@ -297,9 +297,11 @@ struct kndConcept
     int (*build_diff)(struct kndConcept   *self,
                       const char *start_state,
                       size_t global_state_count);
-
     int (*coordinate)(struct kndConcept *self);
-    int (*resolve)(struct kndConcept    *self);
+
+    int (*resolve)(struct kndConcept     *self,
+		   struct kndClassUpdate *update);
+
     int (*update_state)(struct kndConcept *self);
     int (*apply_liquid_updates)(struct kndConcept *self,
                                 const char *rec,
