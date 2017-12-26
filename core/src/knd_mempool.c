@@ -6,6 +6,7 @@
 #include "knd_output.h"
 #include "knd_concept.h"
 #include "knd_object.h"
+#include "knd_elem.h"
 #include "knd_rel.h"
 #include "knd_rel_arg.h"
 #include "knd_proc.h"
@@ -26,6 +27,7 @@ static void del(struct kndMemPool *self)
     if (self->objs)            free(self->objs);
     if (self->obj_dirs)        free(self->obj_dirs);
     if (self->obj_entries)     free(self->obj_entries);
+    if (self->elems)           free(self->elems);
 
     if (self->rels)            free(self->rels);
     if (self->rel_dirs)        free(self->rel_dirs);
@@ -159,6 +161,21 @@ static int new_obj_entry(struct kndMemPool *self,
     memset(entry, 0, sizeof(struct kndObjEntry));
     self->num_obj_entries++;
     *result = entry;
+    return knd_OK;
+}
+
+static int new_obj_elem(struct kndMemPool *self,
+                         struct kndElem **result)
+{
+    struct kndElem *elem;
+    if (self->num_elems >= self->max_elems) {
+        return knd_LIMIT;
+    }
+    elem = &self->elems[self->num_elems];
+    memset(elem, 0, sizeof(struct kndElem));
+    kndElem_init(elem);
+    self->num_elems++;
+    *result = elem;
     return knd_OK;
 }
 
@@ -383,6 +400,7 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_objs)         self->max_objs =    KND_MIN_OBJS;
     if (!self->max_obj_dirs)     self->max_obj_dirs = self->max_objs;
     if (!self->max_obj_entries)  self->max_obj_entries = self->max_objs;
+    if (!self->max_elems)        self->max_elems = self->max_objs;
     if (!self->max_rels)         self->max_rels =    KND_MIN_RELS;
     if (!self->max_rel_dirs)     self->max_rel_dirs = KND_MIN_REL_INSTANCES;
 
@@ -456,6 +474,11 @@ static int alloc(struct kndMemPool *self)
     self->obj_entries = calloc(self->max_obj_entries, sizeof(struct kndObjEntry));
     if (!self->obj_entries) {
         knd_log("-- obj entries not allocated :(");
+        return knd_NOMEM;
+    }
+    self->elems = calloc(self->max_elems, sizeof(struct kndElem));
+    if (!self->elems) {
+        knd_log("-- obj elems not allocated :(");
         return knd_NOMEM;
     }
 
@@ -551,6 +574,7 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_obj = new_obj;
     self->new_obj_dir = new_obj_dir;
     self->new_obj_entry = new_obj_entry;
+    self->new_obj_elem = new_obj_elem;
     self->new_rel = new_rel;
     self->new_rel_dir = new_rel_dir;
     self->new_rel_ref = new_rel_ref;

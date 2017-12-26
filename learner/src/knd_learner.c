@@ -80,7 +80,8 @@ kndLearner_start(struct kndLearner *self)
     clock_t c0, c1;
     int err;
 
-    task_buf = malloc(KND_LARGE_BUF_SIZE + 1);
+    task_buf_size = KND_LARGE_BUF_SIZE + 1;
+    task_buf = malloc(task_buf_size);
     if (!task_buf) return knd_NOMEM;
 
     task = task_buf;
@@ -775,9 +776,9 @@ int main(const int argc,
     struct kndLearner *learner;
     const char *config = NULL;
 
-    pthread_t subscriber;
+    //pthread_t subscriber;
     pthread_t publisher;
-    pthread_t selector;
+    //pthread_t selector;
     pthread_t inbox;
     int err;
 
