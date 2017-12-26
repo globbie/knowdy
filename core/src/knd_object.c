@@ -49,10 +49,10 @@ static void str(struct kndObject *self)
 {
     struct kndElem *elem;
     if (self->type == KND_OBJ_ADDR) {
-        knd_log("\n%*sOBJ %.*s::%.*s  id:%.*s  numid:%zu",
+        knd_log("\n%*sOBJ %.*s::%.*s  id:%.*s  numid:%zu num_elems:%zu",
                 self->depth * KND_OFFSET_SIZE, "", self->conc->name_size, self->conc->name,
                 self->name_size, self->name,
-                KND_ID_SIZE, self->id, self->numid);
+                KND_ID_SIZE, self->id, self->numid, self->num_elems);
     }
 
     for (elem = self->elems; elem; elem = elem->next) {
@@ -596,6 +596,9 @@ static int parse_elem(void *data,
                       const char *rec, size_t *total_size)
 {
     struct kndObject *self = data;
+    if (self->curr_obj)
+	self = self->curr_obj;
+
     struct kndConcept *root_class;
     struct kndConcept *c;
     struct kndObject *obj;
@@ -606,18 +609,27 @@ static int parse_elem(void *data,
     struct kndText *text = NULL;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP) {
+    if (DEBUG_OBJ_LEVEL_2) {
         knd_log("..  validating \"%.*s\" elem,   REC: \"%.*s\"",
                 name_size, name, 32, rec);
     }
 
-    /* no obj selected */
-    if (!self) return knd_FAIL;
-
     err = kndObject_validate_attr(self, name, name_size, &attr, &elem);           RET_ERR();
 
     if (elem) {
-	err = elem->parse(elem, rec, total_size);                                 PARSE_ERR();  
+	switch (elem->attr->type) {
+	case KND_ATTR_AGGR:
+	    err = elem->aggr->parse(elem->aggr, rec, total_size);                 PARSE_ERR();
+	    break;
+	case KND_ATTR_NUM:
+	    knd_log(".. set numeric elem");
+	    num = elem->num;
+	    err = num->parse(num, rec, total_size);                               PARSE_ERR();
+	    break;
+	default:
+	    break;
+	}
+
 	return knd_OK;
     }	
 
@@ -664,8 +676,7 @@ static int parse_elem(void *data,
 	obj->mempool = self->mempool;
 
         obj->root = self->root ? self->root : self;
-        err = obj->parse(obj, rec, total_size);
-        if (err) return err;
+        err = obj->parse(obj, rec, total_size);                       PARSE_ERR();
 
         elem->aggr = obj;
         obj->parent = elem;
@@ -1115,9 +1126,11 @@ static int run_get_obj(void *obj,
 
     self->curr_obj->mempool = self->mempool;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
-        knd_log("++ got obj: \"%.*s\"!", name_size, name);
-
+    if (DEBUG_OBJ_LEVEL_TMP) {
+        knd_log("++ got obj: \"%.*s\" %p!", name_size, name, self->curr_obj);
+	self->curr_obj->str(self->curr_obj);
+    }
+    
     return knd_OK;
 }
 
@@ -1130,7 +1143,7 @@ static int parse_select_obj(struct kndObject *self,
     int err, e;
 
     if (DEBUG_OBJ_LEVEL_TMP)
-        knd_log(".. parsing OBJ select rec: \"%.*s\"", 32, rec);
+        knd_log(".. parsing OBJ select rec: \"%.*s\" SELF:%p", 32, rec, self);
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
@@ -1145,7 +1158,7 @@ static int parse_select_obj(struct kndObject *self,
           .buf_size = &buf_size,
           .max_buf_size = KND_NAME_SIZE,
           .validate = parse_elem,
-          .obj = self->curr_obj
+          .obj = self
         },
 	{ .type = KND_CHANGE_STATE,
           .name = "_rm",
