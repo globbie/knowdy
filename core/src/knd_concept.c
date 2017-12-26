@@ -1832,6 +1832,13 @@ static int parse_select_obj(void *data,
 
     err = obj->select(obj, rec, total_size);                                      PARSE_ERR();
 
+    if (DEBUG_CONC_LEVEL_TMP) {
+	if (obj->curr_obj) 
+	    obj->curr_obj->str(obj->curr_obj);
+    }
+
+    /* TODO: update obj_inbox */
+    
     return knd_OK;
 }
 

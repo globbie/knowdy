@@ -31,13 +31,10 @@
 
 static void del(struct kndElem *self)
 {
-    struct kndElemState *state;
-
     if (self->aggr)
         self->aggr->del(self->aggr);
     if (self->num)
         self->num->del(self->num);
-
     free(self);
 }
 
@@ -263,14 +260,9 @@ final:
 static int
 kndElem_export_GSP(struct kndElem *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
-    struct kndObject *obj;
     struct kndText *text;
     struct kndRef *ref;
     struct kndOutput *out = self->out;
-    size_t curr_size;
     int err;
 
     if (DEBUG_ELEM_LEVEL_2)
@@ -340,7 +332,6 @@ static int
 kndElem_export(struct kndElem *self)
 {
     int err;
-    bool is_concise = 0;
 
     switch(self->format) {
     case KND_FORMAT_JSON:
@@ -367,7 +358,9 @@ kndElem_export(struct kndElem *self)
     return knd_OK;
 }
 
-static int run_empty_val_warning(void *obj, struct kndTaskArg *args, size_t num_args)
+static int run_empty_val_warning(void *obj,
+				 struct kndTaskArg *args __attribute__((unused)),
+				 size_t num_args __attribute__((unused)))
 {
     struct kndElem *self = (struct kndElem*)obj;
     knd_log("-- empty val of \"%.*s\" not accepted :(",
@@ -439,6 +432,7 @@ static int parse_GSL(struct kndElem *self,
           .run = run_set_val,
           .obj = self
         },
+
         { .type = KND_CHANGE_STATE,
           .name = "default",
           .name_size = strlen("default"),
