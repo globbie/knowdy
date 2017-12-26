@@ -373,6 +373,7 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndObject *self = (struct kndObject*)obj;
     struct kndConcept *conc;
+    struct kndObjEntry *entry;
     struct kndTaskArg *arg;
     const char *name = NULL;
     size_t name_size = 0;
@@ -392,12 +393,20 @@ static int run_set_name(void *obj, struct kndTaskArg *args, size_t num_args)
     /* check name doublets */
     conc = self->conc;
     if (conc->dir && conc->dir->obj_idx) {
-        if (conc->dir->obj_idx->exists(conc->dir->obj_idx, name, name_size)) {
-            knd_log("-- obj name doublet found: %.*s:(",
+	entry = conc->dir->obj_idx->get(conc->dir->obj_idx, name, name_size);
+	if (entry) {
+	    if (entry->obj && entry->obj->state->phase == KND_REMOVED) {
+		knd_log("-- this obj has been removed lately: %.*s :(",
+                    name_size, name);
+		goto assign_name;
+	    }
+	    knd_log("-- obj name doublet found: %.*s:(",
                     name_size, name);
             return knd_EXISTS;
         }
     }
+
+ assign_name:
     self->name = name;
     self->name_size = name_size;
     self->name_hash = name_hash;
@@ -537,17 +546,29 @@ static int
 kndObject_validate_attr(struct kndObject *self,
                         const char *name,
                         size_t name_size,
-                        struct kndAttr **result)
+                        struct kndAttr **result,
+                        struct kndElem **result_elem)
 {
     struct kndConcept *conc;
     struct kndAttr *attr = NULL;
+    struct kndElem *elem = NULL;
     int err, e;
 
-    if (DEBUG_OBJ_LEVEL_2)
-        knd_log(".. \"%.*s\" to validate elem: \"%.*s\" conc: %p",
-                self->name_size, self->name, name_size, name, self->conc);
-    conc = self->conc;
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log(".. \"%.*s\" to validate elem: \"%.*s\"",
+                self->name_size, self->name, name_size, name);
 
+    /* check existing elems */
+    for (elem = self->elems; elem; elem = elem->next) {
+	if (!memcmp(elem->attr->name, name, name_size)) {
+	    if (DEBUG_OBJ_LEVEL_TMP)
+		knd_log("++ ELEM \"%.*s\" is already set!", name_size, name);
+	    *result_elem = elem;
+	    return knd_OK;
+	}
+    }
+    
+    conc = self->conc;
     err = conc->get_attr(conc, name, name_size, &attr);
     if (err) {
         knd_log("  -- ELEM \"%.*s\" not approved :(\n", name_size, name);
@@ -560,7 +581,7 @@ kndObject_validate_attr(struct kndObject *self,
         return err;
     }
 
-    if (DEBUG_OBJ_LEVEL_2) {
+    if (DEBUG_OBJ_LEVEL_TMP) {
         const char *type_name = knd_attr_names[attr->type];
         knd_log("++ \"%.*s\" ELEM \"%s\" attr type: \"%s\"",
                 name_size, name, attr->name, type_name);
@@ -585,21 +606,27 @@ static int parse_elem(void *data,
     struct kndText *text = NULL;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_2) {
-        knd_log("..  validating \"%.*s\" elem,   REC: \"%.*s\"\n",
+    if (DEBUG_OBJ_LEVEL_TMP) {
+        knd_log("..  validating \"%.*s\" elem,   REC: \"%.*s\"",
                 name_size, name, 32, rec);
     }
 
-    err = kndObject_validate_attr(self, name, name_size, &attr);
-    if (err) return err;
+    /* no obj selected */
+    if (!self) return knd_FAIL;
 
-    err = kndElem_new(&elem);
-    if (err) return err;
+    err = kndObject_validate_attr(self, name, name_size, &attr, &elem);           RET_ERR();
+
+    if (elem) {
+	err = elem->parse(elem, rec, total_size);                                 PARSE_ERR();  
+	return knd_OK;
+    }	
+
+    err = self->mempool->new_obj_elem(self->mempool, &elem);                      RET_ERR();
     elem->obj = self;
     elem->root = self->root ? self->root : self;
     elem->attr = attr;
     elem->out = self->out;
-
+    
     if (DEBUG_OBJ_LEVEL_2)
         knd_log("   == basic elem type: %s",
                 knd_attr_names[attr->type]);
@@ -634,7 +661,8 @@ static int parse_elem(void *data,
         obj->conc = attr->conc;
         obj->out = self->out;
         obj->log = self->log;
-        
+	obj->mempool = self->mempool;
+
         obj->root = self->root ? self->root : self;
         err = obj->parse(obj, rec, total_size);
         if (err) return err;
@@ -695,6 +723,7 @@ static int parse_elem(void *data,
     if (DEBUG_OBJ_LEVEL_3)
         knd_log("++ elem %.*s parsing OK!",
                 elem->attr->name_size, elem->attr->name);
+
     return knd_OK;
 
  final:
@@ -1084,6 +1113,8 @@ static int run_get_obj(void *obj,
         return err;
     }
 
+    self->curr_obj->mempool = self->mempool;
+
     if (DEBUG_OBJ_LEVEL_TMP)
         knd_log("++ got obj: \"%.*s\"!", name_size, name);
 
@@ -1094,6 +1125,8 @@ static int parse_select_obj(struct kndObject *self,
 			    const char *rec,
 			    size_t *total_size)
 {
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
     int err, e;
 
     if (DEBUG_OBJ_LEVEL_TMP)
@@ -1105,6 +1138,16 @@ static int parse_select_obj(struct kndObject *self,
           .obj = self
         },
         { .type = KND_CHANGE_STATE,
+          .name = "elem",
+          .name_size = strlen("elem"),
+          .is_validator = true,
+          .buf = buf,
+          .buf_size = &buf_size,
+          .max_buf_size = KND_NAME_SIZE,
+          .validate = parse_elem,
+          .obj = self->curr_obj
+        },
+	{ .type = KND_CHANGE_STATE,
           .name = "_rm",
           .name_size = strlen("_rm"),
           .run = remove_obj,

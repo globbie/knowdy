@@ -35,6 +35,7 @@ struct kndClassUpdate;
 struct kndClassUpdateRef;
 struct kndRelUpdate;
 struct kndRelUpdateRef;
+struct kndElem;
 
 struct kndMemPool
 {
@@ -158,6 +159,8 @@ struct kndMemPool
                        struct kndObjDir **result);
     int (*new_obj_entry)(struct kndMemPool   *self,
                          struct kndObjEntry **result);
+    int (*new_obj_elem)(struct kndMemPool   *self,
+			struct kndElem     **result);
     int (*new_rel)(struct kndMemPool   *self,
                    struct kndRel **result);
     int (*new_rel_dir)(struct kndMemPool   *self,

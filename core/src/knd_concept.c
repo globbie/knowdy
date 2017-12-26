@@ -591,13 +591,12 @@ static int resolve_base_classes(struct kndConcept *self)
     struct kndConcRef *ref;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
 	knd_log(".. resolve base classes of \"%.*s\"..",
 		self->name_size, self->name);
-    
+
     /* resolve refs to base classes */
     for (item = self->base_items; item; item = item->next) {
-
         if (item->parent == self) {
             /* TODO */
             if (DEBUG_CONC_LEVEL_2)
@@ -652,7 +651,6 @@ static int resolve_base_classes(struct kndConcept *self)
 	    knd_log("\n\n.. children of class \"%.*s\": %zu",
 		    c->name_size, c->name, c->num_children);
 
-        /* ATTRS */
         err = inherit_attrs(self, item->conc);
         if (err) return err;
     }
@@ -668,8 +666,8 @@ static int resolve_name_refs(struct kndConcept *self,
     int err;
 
     if (DEBUG_CONC_LEVEL_TMP)
-        knd_log(".. resolving class \"%.*s\"..",
-		self->name_size, self->name);
+        knd_log(".. resolving class \"%.*s\".. is_resolved:%d",
+		self->name_size, self->name, self->is_resolved);
 
     if (self->is_resolved) {
         if (self->obj_inbox_size) {
@@ -701,6 +699,7 @@ static int resolve_name_refs(struct kndConcept *self,
 	self->obj_inbox = NULL;
 	self->obj_inbox_size = 0;
     }
+
     self->is_resolved = true;
     return knd_OK;
 }
@@ -1824,10 +1823,12 @@ static int parse_select_obj(void *data,
     if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. select \"%.*s\" obj.. task type: %d", 16, rec,
                 self->curr_class->task->type);
+
     self->curr_class->task->type = KND_GET_STATE;
     obj->conc = self->curr_class;
     obj->task = self->task;
     obj->log = self->log;
+    obj->mempool = self->mempool;
 
     err = obj->select(obj, rec, total_size);                                      PARSE_ERR();
 
@@ -2753,7 +2754,7 @@ static int get_rel_name(struct kndRel *self,
     name_size = e - b;
     if (!name_size) return knd_FAIL;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. set REL NAME: \"%.*s\" [%zu]",
                 name_size, b, name_size);
 
@@ -3682,7 +3683,7 @@ static int unfreeze_class(struct kndConcept *self,
     struct stat file_info;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. unfreezing class: \"%.*s\"..",
                 dir->name_size, dir->name);
 
@@ -3722,7 +3723,7 @@ static int unfreeze_class(struct kndConcept *self,
     }
     buf[buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("\n== frozen Conc REC: \"%.*s\"",
 		buf_size, buf);
 
@@ -3736,6 +3737,7 @@ static int unfreeze_class(struct kndConcept *self,
     c->log = self->log;
     c->task = self->task;
     c->root_class = self->root_class ? self->root_class : self;
+    c->class_idx = self->class_idx;
     c->dir = dir;
     c->mempool = self->mempool;
     dir->conc = c;
@@ -3773,12 +3775,12 @@ static int unfreeze_class(struct kndConcept *self,
         goto final;
     }
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         c->str(c);
 
     /* TODO: read base classes */
     /* inherit attrs */
-
+    err = c->resolve(c, NULL);                                                        RET_ERR();
     
     *result = c;
     return knd_OK;
@@ -3796,7 +3798,7 @@ static int get_class(struct kndConcept *self,
     struct kndConcept *c;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. %.*s to get class: \"%.*s\"..",
                 self->name_size, self->name, name_size, name);
 
@@ -3817,9 +3819,10 @@ static int get_class(struct kndConcept *self,
     }
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("++ got Conc Dir: %.*s from \"%.*s\" conc: %p block size: %zu", name_size, name,
+        knd_log("++ got Conc Dir: %.*s from \"%.*s\" block size: %zu",
+		name_size, name,
                 self->frozen_output_file_name_size,
-                self->frozen_output_file_name, dir->conc, dir->block_size);
+                self->frozen_output_file_name, dir->block_size);
 
     if (dir->phase == KND_REMOVED) {
         knd_log("-- \"%s\" class was removed", name);
@@ -3841,7 +3844,7 @@ static int get_class(struct kndConcept *self,
         return knd_OK;
     }
 
-    err = unfreeze_class(self, dir, &c);              RET_ERR();
+    err = unfreeze_class(self, dir, &c);                                          RET_ERR();
 
     c->task = self->task;
     c->class_idx = self->class_idx;
@@ -3898,7 +3901,9 @@ static int get_obj(struct kndConcept *self,
         knd_log("++ got obj entry %.*s  size: %zu OBJ: %p",
                 name_size, name, entry->block_size, entry->obj);
 
-    /*if (obj->phase == KND_REMOVED) {
+    if (!entry->obj) goto read_entry;
+
+    if (entry->obj->state->phase == KND_REMOVED) {
         knd_log("-- \"%s\" obj was removed", name);
         self->log->reset(self->log);
         err = self->log->write(self->log, name, name_size);
@@ -3908,16 +3913,14 @@ static int get_obj(struct kndConcept *self,
         if (err) return err;
         return knd_NO_MATCH;
     }
-   */
 
-    if (entry->obj) {
-        obj = entry->obj;
-        obj->state->phase = KND_SELECTED;
-        obj->task = self->task;
-        *result = obj;
-        return knd_OK;
-    }
+    obj = entry->obj;
+    obj->state->phase = KND_SELECTED;
+    obj->task = self->task;
+    *result = obj;
+    return knd_OK;
 
+ read_entry:
     err = read_obj_entry(self, entry, result);
     if (err) return err;
 
