@@ -95,7 +95,6 @@ static void del_obj_dir(struct kndObjDir *dir)
         dir->dirs = 0;
         dir->num_dirs = 0;
     }
-
     if (dir->num_objs) {
         free(dir->objs);
         dir->objs = NULL;
@@ -1561,9 +1560,7 @@ static int parse_import_class(void *obj,
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. import \"%.*s\" class..", 64, rec);
 
-    err  = self->mempool->new_class(self->mempool, &c);
-    if (err) return err;
-
+    err  = self->mempool->new_class(self->mempool, &c);                           RET_ERR();
     c->out = self->out;
     c->log = self->log;
     c->task = self->task;
@@ -5408,7 +5405,11 @@ static int knd_update_state(struct kndConcept *self)
     if (self->rel->inbox_size) {
         err = self->rel->update(self->rel, update);                               RET_ERR();
     }
-    //err = self->proc->update(self->proc, update);                               RET_ERR();
+
+    if (self->proc->inbox_size) {
+	err = self->proc->update(self->proc, update);                             RET_ERR();
+    }
+
 
     err = state_ctrl->confirm(state_ctrl, update);                                RET_ERR();
     err = export_updates(self, update);                                           RET_ERR();

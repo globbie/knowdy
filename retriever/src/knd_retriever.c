@@ -41,23 +41,17 @@ kndRetriever_start(struct kndRetriever *self)
     size_t chunk_size = 0;
     char *task;
     size_t task_size;
-    char *obj;
-    size_t obj_size;
-    int msg_size = 0;
+    const char *obj = NULL;
+    size_t obj_size = 0;
     int err;
 
     task = malloc(KND_MED_BUF_SIZE + 1);
     if (!task) return knd_NOMEM;
 
-    /*obj = malloc(KND_MED_BUF_SIZE + 1);
-    if (!obj) return knd_NOMEM;
-    */
     context = zmq_init(1);
-
     outbox = zmq_socket(context, ZMQ_PULL);
     if (!outbox) {
 	free(task);
-	free(obj);
 	return knd_FAIL;
     }
 
@@ -67,7 +61,6 @@ kndRetriever_start(struct kndRetriever *self)
     self->delivery = zmq_socket(context, ZMQ_REQ);
     if (!self->delivery) {
 	free(task);
-	free(obj);
 	return knd_FAIL;
     }
 
@@ -648,11 +641,11 @@ void *kndRetriever_subscriber(void *arg)
 	obj_size = 0;
 	
         task = knd_zmq_recv(subscriber, &task_size);
-	obj = knd_zmq_recv(subscriber, &obj_size);
+	//obj = knd_zmq_recv(subscriber, &obj_size);
 
 	/* sometimes bad messages arrive */
         if (!task || !task_size) continue;
-        if (!obj || !obj_size) continue;
+        //if (!obj || !obj_size) continue;
 
         if (DEBUG_RETRIEVER_LEVEL_2) {
             printf("++ %s Retriever has got an update from Learner:"
@@ -660,13 +653,11 @@ void *kndRetriever_subscriber(void *arg)
             printf("   OBJ: %.*s [%lu]", (unsigned int)obj_size, obj, (unsigned long)obj_size);
         }
 
-	err = knd_zmq_sendmore(inbox, task, task_size);
-	err = knd_zmq_send(inbox, obj, obj_size);
+	err = knd_zmq_send(inbox, task, task_size);
+	//err = knd_zmq_send(inbox, obj, obj_size);
 
         if (task)
             free(task);
-        if (obj)
-            free(obj);
         
         fflush(stdout);
     }
@@ -691,7 +682,7 @@ int main(int const argc,
     const char *config = NULL;
 
     pthread_t subscriber;
-    pthread_t selector;
+    //pthread_t selector;
     pthread_t inbox;
     int err;
 

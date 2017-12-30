@@ -47,6 +47,13 @@ struct kndRelUpdate
     size_t num_insts;
 };
 
+struct kndProcUpdate
+{
+    struct kndProc *proc;
+    struct kndProcInstance **insts;
+    size_t num_insts;
+};
+
 struct kndUpdate
 {
     size_t id;
@@ -65,6 +72,9 @@ struct kndUpdate
 
     struct kndRelUpdate **rels;
     size_t num_rels;
+
+    struct kndProcUpdate **procs;
+    size_t num_procs;
 };
 
 struct kndState

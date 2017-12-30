@@ -111,6 +111,9 @@ struct kndTask
     char curr_locale[KND_NAME_SIZE];
     size_t curr_locale_size;
 
+    char timestamp[KND_NAME_SIZE];
+    size_t timestamp_size;
+
     const char *locale;
     size_t locale_size;
     

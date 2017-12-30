@@ -299,7 +299,6 @@ kndUser_parse_auth(void *obj,
         
         return knd_FAIL;
     }
-    
     return knd_OK;
 }
 
@@ -310,22 +309,9 @@ static int parse_proc_import(void *obj,
     struct kndUser *self = obj;
     int err;
 
-    self->task->type = KND_CHANGE_STATE;
-    /*self->root_class->out = self->out;
-    self->root_class->log = self->log;
-    self->root_class->task = self->task;
-
-    self->root_class->dbpath = self->dbpath;
-    self->root_class->dbpath_size = self->dbpath_size;
-    self->root_class->frozen_output_file_name = self->frozen_output_file_name;
-    self->root_class->frozen_output_file_name_size = self->frozen_output_file_name_size;
-
-    self->root_class->locale = self->locale;
-    self->root_class->locale_size = self->locale_size;
-    */
-
-    err = self->root_class->proc->parse(self->root_class->proc, rec, total_size);
-    if (err) return err;
+    self->task->type = KND_UPDATE_STATE;
+    err = self->root_class->proc->import(self->root_class->proc,
+					 rec, total_size);                         PARSE_ERR();
 
     return knd_OK;
 }
@@ -347,7 +333,7 @@ static int parse_class_import(void *obj,
                               const char *rec,
                               size_t *total_size)
 {
-    struct kndUser *self = (struct kndUser*)obj;
+    struct kndUser *self = obj;
     int err;
 
     if (DEBUG_USER_LEVEL_2)
@@ -546,7 +532,6 @@ static int parse_liquid_updates(void *obj,
 static int run_get_user(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     struct kndUser *self = obj;
-    struct kndObject *user;
     struct kndTaskArg *arg;
     struct kndConcept *conc;
     const char *name = NULL;
@@ -688,7 +673,8 @@ static int run_present_user(void *data,
 }
 
 static int remove_user(void *data,
-		       struct kndTaskArg *args, size_t num_args)
+		       struct kndTaskArg *args __attribute__((unused)),
+		       size_t num_args __attribute__((unused)))
 {
     struct kndUser *self = data;
     struct kndConcept *conc;

@@ -17,6 +17,10 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
+static int parse_user(void *obj,
+                      const char *rec,
+                      size_t *total_size);
+
 static void del(struct kndTask *self)
 {
     self->log->del(self->log);
@@ -66,21 +70,27 @@ static int parse_update(void *obj,
                         const char *rec,
                         size_t *total_size)
 {
-    struct kndTask *self = (struct kndTask*)obj;
+    struct kndTask *self = obj;
     int err;
-
+    
     self->type = KND_LIQUID_STATE;
-    self->tid[0] = '0';
-    self->tid_size = 0;
-    self->admin->task = self;
-    self->admin->out = self->out;
-    self->admin->log = self->log;
-            
-    err = self->admin->parse_task(self->admin, rec, total_size);
-    if (err) {
-        knd_log("-- update parse failed :(");
-        return knd_FAIL;
-    }
+
+    struct kndTaskSpec specs[] = {
+        { .name = "_ts",
+          .name_size = strlen("_ts"),
+          .buf = self->timestamp,
+          .buf_size = &self->timestamp_size,
+          .max_buf_size = KND_NAME_SIZE
+        },
+        { .name = "user",
+          .name_size = strlen("user"),
+          .parse = parse_user,
+          .obj = self
+        }
+    };
+
+    err = knd_parse_task(rec, total_size, specs,
+			 sizeof(specs) / sizeof(struct kndTaskSpec));             RET_ERR();
 
     return knd_OK;
 }
@@ -143,7 +153,7 @@ static int parse_user(void *obj,
                       const char *rec,
                       size_t *total_size)
 {
-    struct kndTask *self = (struct kndTask*)obj;
+    struct kndTask *self = obj;
     int err;
 
     self->admin->task = self;
@@ -168,7 +178,7 @@ static int parse_task(void *obj,
                       const char *rec,
                       size_t *total_size)
 {
-    struct kndTask *self = (struct kndTask*)obj;
+    struct kndTask *self = obj;
     int err;
    
     struct kndTaskSpec specs[] = {
@@ -413,8 +423,8 @@ static int report(struct kndTask *self)
                     self->update->buf_size);
         }
 
-        err = knd_zmq_sendmore(self->publisher, self->update->buf, self->update->buf_size);
-        err = knd_zmq_send(self->publisher, "None", strlen("None"));
+        err = knd_zmq_send(self->publisher, self->update->buf, self->update->buf_size);
+        //err = knd_zmq_send(self->publisher, "None", strlen("None"));
     }
 
     return knd_OK;
