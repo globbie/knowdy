@@ -10,6 +10,7 @@
 #include "knd_rel.h"
 #include "knd_rel_arg.h"
 #include "knd_proc.h"
+#include "knd_proc_arg.h"
 #include "knd_state.h"
 
 static void del(struct kndMemPool *self)
@@ -39,6 +40,8 @@ static void del(struct kndMemPool *self)
     if (self->rel_update_refs) free(self->rel_update_refs);
 
     if (self->procs)           free(self->procs);
+    if (self->proc_dirs)       free(self->proc_dirs);
+    if (self->proc_args)       free(self->proc_args);
     if (self->proc_insts)      free(self->proc_insts);
 
     free(self);
@@ -384,8 +387,77 @@ static int new_proc(struct kndMemPool *self,
     kndProc_init(proc);
     self->num_procs++;
     *result = proc;
+
     return knd_OK;
 }
+
+static int new_proc_dir(struct kndMemPool *self,
+                       struct kndProcDir **result)
+{
+    struct kndProcDir *dir;
+    if (self->num_proc_dirs >= self->max_proc_dirs) {
+        return knd_LIMIT;
+    }
+    dir = &self->proc_dirs[self->num_proc_dirs];
+    memset(dir, 0, sizeof(struct kndProcDir));
+    self->num_proc_dirs++;
+    *result = dir;
+    return knd_OK;
+}
+
+static int new_proc_arg(struct kndMemPool *self,
+			struct kndProcArg **result)
+{
+    struct kndProcArg *arg;
+    if (self->num_proc_args >= self->max_proc_args) {
+        return knd_LIMIT;
+    }
+    arg = &self->proc_args[self->num_proc_args];
+    memset(arg, 0, sizeof(struct kndProcArg));
+    kndProcArg_init(arg);
+    self->num_proc_args++;
+    *result = arg;
+    return knd_OK;
+}
+
+static int new_proc_update(struct kndMemPool *self,
+                            struct kndProcUpdate **result)
+{
+    struct kndProcUpdate *upd;
+    int e;
+
+    if (self->num_proc_updates >= self->max_proc_updates) {
+        self->log->reset(self->log);
+        e = self->log->write(self->log, "memory limit reached",
+                             strlen("memory limit reached"));
+        if (e) return e;
+
+        knd_log("-- memory limit reached :(");
+        return knd_LIMIT;
+    }
+    upd = &self->proc_updates[self->num_proc_updates];
+    memset(upd, 0, sizeof(struct kndProcUpdate));
+
+    self->num_proc_updates++;
+    *result = upd;
+    return knd_OK;
+}
+
+static int new_proc_update_ref(struct kndMemPool *self,
+                                struct kndProcUpdateRef **result)
+{
+    struct kndProcUpdateRef *upd;
+    
+
+    if (self->num_proc_update_refs >= self->max_proc_update_refs) return knd_NOMEM;
+    upd = &self->proc_update_refs[self->num_proc_update_refs];
+    memset(upd, 0, sizeof(struct kndProcUpdateRef));
+
+    self->num_proc_update_refs++;
+    *result = upd;
+    return knd_OK;
+}
+
 
 static int alloc(struct kndMemPool *self)
 {
@@ -411,8 +483,13 @@ static int alloc(struct kndMemPool *self)
 
     if (!self->max_rel_updates) self->max_rel_updates = KND_MIN_UPDATES;
     if (!self->max_rel_update_refs) self->max_rel_update_refs = KND_MIN_UPDATES;
+
     if (!self->max_procs)         self->max_procs =  KND_MIN_PROCS;
+    if (!self->max_proc_dirs)     self->max_proc_dirs = self->max_procs;
+    if (!self->max_proc_args)     self->max_proc_args =  self->max_procs;
     if (!self->max_proc_insts)    self->max_proc_insts = KND_MIN_PROC_INSTANCES;
+    if (!self->max_proc_updates) self->max_proc_updates = KND_MIN_UPDATES;
+    if (!self->max_proc_update_refs) self->max_proc_update_refs = KND_MIN_UPDATES;
 
     self->classes = calloc(self->max_classes, sizeof(struct kndConcept));
     if (!self->classes) {
@@ -544,10 +621,33 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
+    self->proc_dirs = calloc(self->max_proc_dirs, sizeof(struct kndProcDir));
+    if (!self->proc_dirs) {
+        knd_log("-- proc dirs not allocated :(");
+        return knd_NOMEM;
+    }
+    self->proc_args = calloc(self->max_proc_args, sizeof(struct kndProcArg));
+    if (!self->proc_args) {
+        knd_log("-- proc args not allocated :(");
+        return knd_NOMEM;
+    }
+
     self->proc_insts = calloc(self->max_proc_insts,
                               sizeof(struct kndProcInstance));
     if (!self->proc_insts) {
         knd_log("-- proc insts not allocated :(");
+        return knd_NOMEM;
+    }
+
+    self->proc_updates = calloc(self->max_updates, sizeof(struct kndProcUpdate));
+    if (!self->proc_updates) {
+        knd_log("-- proc updates not allocated :(");
+        return knd_NOMEM;
+    }
+
+    self->proc_update_refs = calloc(self->max_updates, sizeof(struct kndProcUpdateRef));
+    if (!self->proc_update_refs) {
+        knd_log("-- proc updates not allocated :(");
         return knd_NOMEM;
     }
 
@@ -584,6 +684,10 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_rel_update = new_rel_update;
     self->new_rel_update_ref = new_rel_update_ref;
     self->new_proc = new_proc;
+    self->new_proc_dir = new_proc_dir;
+    self->new_proc_arg = new_proc_arg;
+    self->new_proc_update = new_proc_update;
+    self->new_proc_update_ref = new_proc_update_ref;
 }
 
 extern int

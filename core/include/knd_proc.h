@@ -15,7 +15,7 @@
  *
  *   ----------
  *   knd_proc.h
- *   Knowdy Proc Element
+ *   Knowdy Proc
  */
 
 #pragma once
@@ -23,6 +23,8 @@
 #include "knd_config.h"
 
 struct kndOutput;
+struct kndProcCallArg;
+struct kndUpdate;
 
 struct kndProcState
 {
@@ -36,9 +38,26 @@ struct kndProcState
     struct kndProcState *next;
 };
 
+struct kndProcUpdateRef
+{
+    knd_state_phase phase;
+    struct kndUpdate *update;
+    struct kndProcUpdateRef *next;
+};
 
 struct kndProcInstance
 {
+    struct kndProc *proc;
+};
+
+struct kndProcCall
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+
+    struct kndProcCallArg *args;
+    size_t num_args;
+
     struct kndProc *proc;
 };
 
@@ -59,44 +78,15 @@ struct kndProcDir
     struct kndProcDir **children;
     size_t num_children;
 
-    /*struct kndProcInstDir **obj_dirs;
-    size_t num_obj_dirs;
-    struct kndProcInstanceEntry **objs;
-    size_t num_objs;
+    /*struct kndProcInstDir **inst_dirs;
+    size_t num_inst_dirs;
+    struct kndProcInstanceEntry **insts;
+    size_t num_insts;
     */
-    //struct ooDict *proc_inst_idx;
+    struct ooDict *inst_idx;
 
     bool is_terminal;
     struct kndProcDir *next;
-};
-
-typedef enum knd_procarg_type {
-    KND_PROCARG_NONE,
-    KND_PROCARG_SUBJ,
-    KND_PROCARG_OBJ,
-    KND_PROCARG_INS
-} knd_procarg_type;
-
-static const char* const knd_procarg_names[] = {
-    "none",
-    "subj",
-    "obj",
-    "ins",
-};
-
-struct kndProcArg 
-{
-    knd_procarg_type type;
-
-    char name[KND_NAME_SIZE];
-    size_t name_size;
-
-    char classname[KND_NAME_SIZE];
-    size_t classname_size;
-
-    struct kndConcept *conc;
-    struct kndConcDir *conc_dir;
-    struct kndProcArg *next;
 };
 
 struct kndProc
@@ -121,6 +111,9 @@ struct kndProc
 
     struct kndProcArg *args;
     size_t num_args;
+
+    struct kndProcCall *proc_call;
+    size_t num_proc_calls;
 
     struct kndTask *task;
 
@@ -154,6 +147,7 @@ struct kndProc
     int (*coordinate)(struct kndProc *self);
     int (*resolve)(struct kndProc *self);
     int (*export)(struct kndProc *self);
+    int (*update)(struct kndProc *self, struct kndUpdate *update);
 };
 
 /* constructors */
