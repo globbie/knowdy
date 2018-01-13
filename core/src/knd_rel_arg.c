@@ -563,15 +563,10 @@ static int resolve(struct kndRelArg *self)
     dir = self->rel->class_idx->get(self->rel->class_idx,
                                   self->classname, self->classname_size);
     if (!dir) {
-        knd_log("-- no such class: %.*s :(", self->classname_size, self->classname);
+        knd_log("-- Rel Arg resolve failed: no such class: %.*s :(", self->classname_size, self->classname);
         return knd_FAIL;
     }
-
     self->conc_dir = dir;
-
-    if (DEBUG_RELARG_LEVEL_TMP)
-        knd_log("++ Rel Arg resolved: \"%.*s\"!",
-                self->classname_size, self->classname);
     
     return knd_OK;
 }

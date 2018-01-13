@@ -98,8 +98,6 @@ kndLearner_start(struct kndLearner *self)
         return knd_FAIL;
     }
 
-    knd_log("LEARNER listener: %s\n", self->inbox_backend_addr);
-
     // get messages from outbox
     outbox = zmq_socket(context, ZMQ_PULL);
     if (!outbox) {
@@ -118,9 +116,6 @@ kndLearner_start(struct kndLearner *self)
         knd_log("zmq_socket(delivery) failed, error: '%s'", strerror(errno));
         return knd_FAIL;
     }
-
-    if (DEBUG_LEARNER_LEVEL_TMP)
-        knd_log(".. establish delivery connection: %s..", self->delivery_addr);
 
     err = zmq_connect(self->delivery, self->delivery_addr);
     if (err == -1) {
@@ -672,8 +667,6 @@ void *kndLearner_inbox(void *arg)
         knd_log("zmq_socket(inbox backend) failed, error: '%s'", strerror(errno));
         return NULL; // todo: set error
     }
-
-    knd_log("%s <-> %s\n", learner->inbox_frontend_addr, learner->inbox_backend_addr);
 
     err = zmq_bind(frontend, learner->inbox_frontend_addr);
     if (err == -1) {

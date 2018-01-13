@@ -137,6 +137,7 @@ typedef enum knd_storage_type {
 #define KND_MAX_CONC_CHILDREN 128
 #define KND_MAX_BASES 128
 #define KND_MAX_RELS 128
+#define KND_MAX_PROCS 1024
 
 #define KND_DIR_SIZE_ENCODE_BASE 10
 #define KND_DIR_ENTRY_SIZE 16
@@ -163,6 +164,7 @@ typedef enum knd_storage_type {
 /* KND Object */
 #define KND_OBJ_METABUF_SIZE 1024
 
+#define KND_MAX_DEPTH 256
 #define KND_DEFAULT_CLASS_DEPTH 3
 #define KND_MAX_CLASS_DEPTH 3
 #define KND_MAX_CLASS_BATCH 128
@@ -201,7 +203,6 @@ typedef enum knd_storage_type {
 
 #define KND_OBJ_ELEM_TAG "E"
 #define KND_OBJ_ELEM_TAG_SIZE strlen(KND_OBJ_ELEM_TAG)
-
 
 #define KND_NUMFIELD_MAX_SIZE 8
 
@@ -276,7 +277,6 @@ typedef enum knd_storage_type {
 
 #define KND_FIELD_SEPAR ";"
 #define KND_FIELD_SEPAR_SIZE strlen(KND_FIELD_SEPAR)
-
 
 
 #define KND_GROW_FACTOR 2

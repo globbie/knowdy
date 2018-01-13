@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2017 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2018 by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Search Engine, 
@@ -63,6 +63,9 @@ struct kndProcCall
 
 struct kndProcDir
 {
+    char id[KND_ID_SIZE];
+    size_t numid;
+
     char name[KND_NAME_SIZE];
     size_t name_size;
     struct kndProc *proc;
@@ -78,11 +81,9 @@ struct kndProcDir
     struct kndProcDir **children;
     size_t num_children;
 
-    /*struct kndProcInstDir **inst_dirs;
-    size_t num_inst_dirs;
-    struct kndProcInstanceEntry **insts;
-    size_t num_insts;
-    */
+    char next_inst_id[KND_ID_SIZE];
+    size_t next_inst_numid;
+
     struct ooDict *inst_idx;
 
     bool is_terminal;
@@ -93,7 +94,9 @@ struct kndProc
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
-    char id[KND_ID_SIZE];
+
+    size_t id;
+    size_t next_id;
 
     struct kndOutput *out;
     struct kndOutput *log;
@@ -112,7 +115,7 @@ struct kndProc
     struct kndProcArg *args;
     size_t num_args;
 
-    struct kndProcCall *proc_call;
+    struct kndProcCall proc_call;
     size_t num_proc_calls;
 
     struct kndTask *task;
@@ -124,13 +127,25 @@ struct kndProc
     struct kndProc *inbox;
     size_t inbox_size;
 
+    struct kndProcInstance *inst_inbox;
+    size_t inst_inbox_size;
+
     struct kndProcDir *dir;
+
     struct ooDict *proc_idx;
+    struct ooDict *rel_idx;
     struct ooDict *class_idx;
+
+    const char *frozen_output_file_name;
+    size_t frozen_output_file_name_size;
+    size_t frozen_size;
 
     bool batch_mode;
     bool is_resolved;
     size_t depth;
+    size_t max_depth;
+
+    struct kndProc *curr_proc;
     struct kndProc *next;
 
     /******** public methods ********/
@@ -138,15 +153,25 @@ struct kndProc
 
     void (*del)(struct kndProc *self);
     
-    int (*parse)(struct kndProc *self,
-                 const char     *rec,
-                 size_t          *total_size);
+    int (*read)(struct kndProc *self,
+                const char    *rec,
+                size_t        *total_size);
     int (*import)(struct kndProc *self,
                   const char    *rec,
                   size_t        *total_size);
+    int (*select)(struct kndProc *self,
+		  const char    *rec,
+		  size_t        *total_size);
+    int (*get_proc)(struct kndProc *self,
+		    const char *name, size_t name_size,
+		    struct kndProc **result);
     int (*coordinate)(struct kndProc *self);
     int (*resolve)(struct kndProc *self);
     int (*export)(struct kndProc *self);
+    int (*freeze)(struct kndProc *self,
+                  size_t *total_frozen_size,
+                  char *output,
+		  size_t *total_size);
     int (*update)(struct kndProc *self, struct kndUpdate *update);
 };
 
