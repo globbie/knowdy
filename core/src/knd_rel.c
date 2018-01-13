@@ -101,6 +101,7 @@ static int run_present_rel(void *obj, struct kndTaskArg *args, size_t num_args)
     
     return knd_OK;
 }
+
 static int run_select_rel(void *obj, struct kndTaskArg *args, size_t num_args)
 {
     if (DEBUG_REL_LEVEL_TMP)
@@ -329,9 +330,7 @@ static int export_GSP(struct kndRel *self)
     if (err) return err;
 
     if (self->tr) {
-        err = out->write(out,
-                         "[_g", strlen("[_g"));
-        if (err) return err;
+        err = out->write(out, "[_g", strlen("[_g"));                    RET_ERR();
     }
     
     for (tr = self->tr; tr; tr = tr->next) {
@@ -756,7 +755,6 @@ static int read_GSP(struct kndRel *self,
 
     return knd_OK;
 }
-
 
 static int get_rel(struct kndRel *self,
                    const char *name, size_t name_size,
@@ -1260,7 +1258,7 @@ static int kndRel_coordinate(struct kndRel *self)
     void *val;
     int err;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_1)
         knd_log(".. rel coordination in progress ..");
 
     err = resolve_rels(self);
@@ -1283,7 +1281,7 @@ static int kndRel_coordinate(struct kndRel *self)
     } while (key);
 
     /* display all rels */
-    if (DEBUG_REL_LEVEL_TMP) {
+    if (DEBUG_REL_LEVEL_1) {
         key = NULL;
         self->rel_idx->rewind(self->rel_idx);
         do {
@@ -1530,8 +1528,7 @@ static int freeze(struct kndRel *self,
     curr_dir++;
     curr_dir_size++;
 
-    chunk_size = sprintf(curr_dir, "%lu",
-                         (unsigned long)self->id);
+    chunk_size = sprintf(curr_dir, "%lu", (unsigned long)self->id);
     curr_dir += chunk_size;
     curr_dir_size += chunk_size;
 

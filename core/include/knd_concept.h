@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2017 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2018 by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Search Engine, 
@@ -135,6 +135,9 @@ struct kndConcDir
 
     struct kndRelDir **rels;
     size_t num_rels;
+
+    struct kndProcDir **procs;
+    size_t num_procs;
 
     char next_obj_id[KND_ID_SIZE];
     size_t next_obj_numid;

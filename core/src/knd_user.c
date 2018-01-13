@@ -316,6 +316,27 @@ static int parse_proc_import(void *obj,
     return knd_OK;
 }
 
+static int parse_proc_select(void *obj,
+                             const char *rec,
+                             size_t *total_size)
+{
+    struct kndUser *self = obj;
+    struct kndProc *proc = self->root_class->proc;
+    int err;
+
+    proc->log = self->log;
+    proc->task = self->task;
+    proc->out = self->out;
+
+    proc->frozen_output_file_name = self->frozen_output_file_name;
+    proc->frozen_output_file_name_size = self->frozen_output_file_name_size;
+
+    err = proc->select(proc, rec, total_size);                                    PARSE_ERR();
+
+    return knd_OK;
+}
+
+
 static int parse_rel_import(void *obj,
                             const char *rec,
                             size_t *total_size)
@@ -782,6 +803,11 @@ static int parse_task(struct kndUser *self,
           .parse = parse_proc_import,
           .obj = self
         },
+        { .name = "proc",
+          .name_size = strlen("proc"),
+          .parse = parse_proc_select,
+          .obj = self
+        },
         { .type = KND_CHANGE_STATE,
           .name = "rel",
           .name_size = strlen("rel"),
@@ -832,7 +858,7 @@ static int parse_task(struct kndUser *self,
         goto cleanup;
     }
 
-    if (DEBUG_USER_LEVEL_2)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log("task type: %d   ++ user parse task OK: total chars: %lu",
                 self->task->type, (unsigned long)*total_size);
 
@@ -842,8 +868,8 @@ static int parse_task(struct kndUser *self,
             knd_log("++ liquid updates applied!");
         return knd_OK;
     case KND_GET_STATE:
-        if (DEBUG_USER_LEVEL_1)
-            knd_log("++ get task complete!");
+        if (DEBUG_USER_LEVEL_2)
+            knd_log("++ select task complete!");
         return knd_OK;
     case KND_UPDATE_STATE:
 	self->task->update_spec = rec;

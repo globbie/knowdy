@@ -83,10 +83,8 @@ kndRetriever_start(struct kndRetriever *self)
 	if (DEBUG_RETRIEVER_LEVEL_TMP) {
             chunk_size = (task_size > KND_MAX_DEBUG_CHUNK_SIZE) ?\
 		KND_MAX_DEBUG_CHUNK_SIZE : task_size;
-
-            knd_log("\n++ Retriever got a new task: \"%.*s\".. [size: %zu]\n OBJ: %.*s [size:%zu]",
-                    chunk_size, task, task_size,
-		    obj_size, obj, obj_size);
+            knd_log("\n++ Retriever got a new task: \"%.*s\".. [size: %zu]",
+                    chunk_size, task, task_size);
         }
 	
 	self->task->reset(self->task);
@@ -649,8 +647,8 @@ void *kndRetriever_subscriber(void *arg)
 
         if (DEBUG_RETRIEVER_LEVEL_2) {
             printf("++ %s Retriever has got an update from Learner:"
-                   "       %.*s [%lu]", retriever->name, (unsigned int)task_size, task, (unsigned long)task_size);
-            printf("   OBJ: %.*s [%lu]", (unsigned int)obj_size, obj, (unsigned long)obj_size);
+                   "       %.*s [%lu]", retriever->name,
+		   (unsigned int)task_size, task, (unsigned long)task_size);
         }
 
 	err = knd_zmq_send(inbox, task, task_size);
