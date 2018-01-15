@@ -8,11 +8,15 @@
 #include "knd_user.h"
 #include "knd_output.h"
 #include "knd_concept.h"
+#include "knd_rel.h"
+#include "knd_proc.h"
 #include "knd_object.h"
+#include "knd_state.h"
 #include "knd_task.h"
 #include "knd_utils.h"
 #include "knd_msg.h"
 #include "knd_parser.h"
+#include "knd_mempool.h"
 
 #include "knd_retriever.h"
 
@@ -21,12 +25,11 @@
 #define DEBUG_RETRIEVER_LEVEL_3 0
 #define DEBUG_RETRIEVER_LEVEL_TMP 1
 
-static int
+static void
 kndRetriever_del(struct kndRetriever *self)
 {
-    /* TODO: storage */
-
-    return knd_OK;
+    /* TODO: free aggrs  */
+    free(self);
 }
 
 static int
@@ -34,83 +37,83 @@ kndRetriever_start(struct kndRetriever *self)
 {
     void *context;
     void *outbox;
+
+    size_t chunk_size = 0;
     char *task;
     size_t task_size;
-    char *obj;
-    size_t obj_size;
-    size_t chunk_size = 0;
+    const char *obj = NULL;
+    size_t obj_size = 0;
     int err;
 
-    /*err = self->admin->restore(self->admin);
-    if (err) return err;
-    */
-    
+    task = malloc(KND_MED_BUF_SIZE + 1);
+    if (!task) return knd_NOMEM;
+
     context = zmq_init(1);
-
-    /* get messages from outbox */
     outbox = zmq_socket(context, ZMQ_PULL);
-    if (!outbox) return knd_FAIL;
+    if (!outbox) {
+	free(task);
+	return knd_FAIL;
+    }
 
-    err = zmq_connect(outbox, self->inbox_backend_addr);
-    
+    assert((zmq_connect(outbox, self->inbox_backend_addr) == knd_OK));
+
     /* delivery service */
     self->delivery = zmq_socket(context, ZMQ_REQ);
-    if (!self->delivery) return knd_FAIL;
+    if (!self->delivery) {
+	free(task);
+	return knd_FAIL;
+    }
+
     assert((zmq_connect(self->delivery,  self->delivery_addr) == knd_OK));
     self->task->delivery = self->delivery;
 
     knd_log("++ %s Retriever is up and running!", self->name);
 
+    task_size = 0;
+    obj_size = 0;
+
     while (1) {
-        self->task->reset(self->task);
+	task_size = KND_MED_BUF_SIZE;
+	err = knd_recv_task(outbox, task, &task_size);
+	if (err) {
+	    knd_log("-- failed to recv task :(");
+	    continue;
+	}
 
-	task  = knd_zmq_recv(outbox, &task_size);
-	obj   = knd_zmq_recv(outbox, &obj_size);
-
-        if (DEBUG_RETRIEVER_LEVEL_TMP) {
-            chunk_size = task_size > KND_MAX_DEBUG_CHUNK_SIZE ? KND_MAX_DEBUG_CHUNK_SIZE : task_size;
-            knd_log("\n++ Retriever got a new task: \"%.*s\".. [size: %lu]",
-                    chunk_size, task, (unsigned long)task_size);
+	if (DEBUG_RETRIEVER_LEVEL_TMP) {
+            chunk_size = (task_size > KND_MAX_DEBUG_CHUNK_SIZE) ?\
+		KND_MAX_DEBUG_CHUNK_SIZE : task_size;
+            knd_log("\n++ Retriever got a new task: \"%.*s\".. [size: %zu]",
+                    chunk_size, task, task_size);
         }
-        
+	
+	self->task->reset(self->task);
         err = self->task->run(self->task, task, task_size, obj, obj_size);
         if (err) {
             self->task->error = err;
             knd_log("-- task run failed: %d", err);
-            goto final;
+        } else {
+	    /* no need to inform delivery about every liquid update success */
+	    if (self->task->type == KND_UPDATE_STATE)
+		continue;
         }
-
-    final:
-
-        /* ne need to inform delivery about every liquid update success */
-        if (self->task->type == KND_UPDATE_STATE) {
-            if (!err) {
-                if (task) free(task);
-                if (obj) free(obj);
-                continue;
-            }
-        }
-
         err = self->task->report(self->task);
         if (err) {
-            /* TODO */
             knd_log("-- task report failed: %d", err);
         }
-
-	if (task) free(task);
-	if (obj) free(obj);
     }
 
     zmq_close(outbox);
+    zmq_close(self->delivery);
 
     return knd_OK;
 }
 
 
 static int
-parse_read_inbox_addr(void *obj,
-                      const char *rec,
-                      size_t *total_size)
+parse_inbox_addr(void *obj,
+		 const char *rec,
+		 size_t *total_size)
 {
     struct kndRetriever *self = (struct kndRetriever*)obj;
 
@@ -136,39 +139,6 @@ parse_read_inbox_addr(void *obj,
     return knd_OK;
 }
 
-
-
-static int run_set_max_objs(void *obj, struct kndTaskArg *args, size_t num_args)
-{
-    struct kndRetriever *self = (struct kndRetriever*)obj;
-    struct kndTaskArg *arg;
-    const char *val = NULL;
-    size_t val_size = 0;
-    long numval;
-    int err;
-
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val;
-            val_size = arg->val_size;
-        }
-    }
-    if (!val_size) return knd_FAIL;
-    if (val_size >= KND_NAME_SIZE) return knd_LIMIT;
-
-    err = knd_parse_num((const char*)val, &numval);
-    if (err) return err;
-
-    if (numval < KND_MIN_OBJS) return knd_LIMIT;
-
-    self->max_objs = numval;
-
-    if (DEBUG_RETRIEVER_LEVEL_TMP)
-        knd_log("++ MAX OBJS: %lu", (unsigned long)self->max_objs);
-
-    return knd_OK;
-}
 
 static int
 run_set_service_id(void *obj,
@@ -199,17 +169,72 @@ run_set_service_id(void *obj,
     return knd_OK;
 }
 
-static int 
-parse_max_objs(void *obj,
-               const char *rec,
-               size_t *total_size)
-{
-    struct kndRetriever *self = (struct kndRetriever*)obj;
 
+static int parse_memory_settings(void *obj,
+                                 const char *rec,
+                                 size_t *total_size)
+{
+    struct kndMemPool *self = obj;
     struct kndTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_set_max_objs,
-          .obj = self
+        { .name = "max_users",
+          .name_size = strlen("max_users"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_users
+        },
+        { .name = "max_classes",
+          .name_size = strlen("max_classes"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_classes
+        },
+        { .name = "max_objs",
+          .name_size = strlen("max_objs"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_objs
+        },
+        { .name = "max_elems",
+          .name_size = strlen("max_elems"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_elems
+        },
+        { .name = "max_rels",
+          .name_size = strlen("max_rels"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rels
+        },
+	{ .name = "max_rel_args",
+          .name_size = strlen("max_rels_args"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_args
+        },
+        { .name = "max_rel_refs",
+          .name_size = strlen("max_rel_refs"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_refs
+        },
+        { .name = "max_rel_instances",
+          .name_size = strlen("max_rel_instances"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_insts
+        },
+        { .name = "max_rel_arg_instances",
+          .name_size = strlen("max_rel_arg_instances"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_arg_insts
+        },
+        { .name = "max_rel_arg_inst_refs",
+          .name_size = strlen("max_rel_arg_inst_refs"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_rel_arg_inst_refs
+        },
+        { .name = "max_procs",
+          .name_size = strlen("max_procs"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_procs
+        },
+        { .name = "max_proc_instances",
+          .name_size = strlen("max_proc_instances"),
+          .parse = knd_parse_size_t,
+          .obj = &self->max_proc_insts
         }
     };
     int err;
@@ -219,61 +244,6 @@ parse_max_objs(void *obj,
     
     return knd_OK;
 }
-
-
-static int run_set_max_users(void *obj, struct kndTaskArg *args, size_t num_args)
-{
-    struct kndRetriever *self = (struct kndRetriever*)obj;
-    struct kndTaskArg *arg;
-    const char *val = NULL;
-    size_t val_size = 0;
-    long numval;
-    int err;
-
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val;
-            val_size = arg->val_size;
-        }
-    }
-    if (!val_size) return knd_FAIL;
-    if (val_size >= KND_NAME_SIZE) return knd_LIMIT;
-
-    err = knd_parse_num((const char*)val, &numval);
-    if (err) return err;
-    if (numval < 1) return knd_LIMIT;
-
-    self->max_users = numval;
-
-    if (DEBUG_RETRIEVER_LEVEL_TMP)
-        knd_log("++ MAX USERS: %lu", (unsigned long)self->max_users);
-    
-    return knd_OK;
-}
-
-static int 
-parse_max_users(void *obj,
-               const char *rec,
-               size_t *total_size)
-{
-    struct kndRetriever *self = (struct kndRetriever*)obj;
-
-    struct kndTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_set_max_users,
-          .obj = self
-        }
-    };
-    int err;
-
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-    
-    return knd_OK;
-}
-
-
 
 static int
 parse_config_GSL(struct kndRetriever *self,
@@ -320,15 +290,10 @@ parse_config_GSL(struct kndRetriever *self,
            .buf_size = &self->admin->sid_size,
            .max_buf_size = KND_NAME_SIZE
          },
-         { .name = "max_objs",
-           .name_size = strlen("max_objs"),
-           .parse = parse_max_objs,
-           .obj = self,
-         },
-         { .name = "max_users",
-           .name_size = strlen("max_users"),
-           .parse = parse_max_users,
-           .obj = self,
+         { .name = "memory",
+           .name_size = strlen("memory"),
+           .parse = parse_memory_settings,
+           .obj = self->mempool,
          },
          { .name = "locale",
            .name_size = strlen("locale"),
@@ -348,9 +313,9 @@ parse_config_GSL(struct kndRetriever *self,
            .buf_size = &self->delivery_addr_size,
            .max_buf_size = KND_NAME_SIZE
          },
-        { .name = "read_inbox",
-          .name_size = strlen("read_inbox"),
-          .parse = parse_read_inbox_addr,
+        { .name = "inbox",
+          .name_size = strlen("inbox"),
+          .parse = parse_inbox_addr,
           .obj = self
         }
     };
@@ -449,11 +414,8 @@ kndRetriever_new(struct kndRetriever **rec,
     if (err) goto error;
     self->task->admin = self->admin;
     self->admin->out = self->out;
-    
-    /*err = ooDict_new(&self->admin->user_idx, KND_SMALL_DICT_SIZE);
-    if (err) goto error;
-    */
-    
+    self->admin->log = self->task->log;
+
     /* read config */
     err = self->out->read_file(self->out, config, strlen(config));
     if (err) {
@@ -461,11 +423,27 @@ kndRetriever_new(struct kndRetriever **rec,
         goto error;
     }
 
+    err = kndMemPool_new(&self->mempool);
+    if (err) return err;
+
     err = parse_config_GSL(self, self->out->file, &chunk_size);
     if (err) {
         knd_log("  -- config parsing error :(");
         goto error;
     }
+
+    self->mempool->alloc(self->mempool);
+
+    err = kndStateControl_new(&self->task->state_ctrl);
+    if (err) return err;
+    self->task->state_ctrl->max_updates = self->mempool->max_updates;
+    self->task->state_ctrl->updates = self->mempool->update_idx;
+    self->task->state_ctrl->selected = self->mempool->update_selected_idx;
+    self->task->state_ctrl->task = self->task;
+
+    memcpy(self->task->agent_name, self->name, self->name_size);
+    self->task->agent_name_size = self->name_size;
+    self->task->agent_name[self->name_size] = '\0';
 
     out = self->out;
     out->reset(out);
@@ -494,17 +472,41 @@ kndRetriever_new(struct kndRetriever **rec,
     memset(conc->dir->name, '0', KND_ID_SIZE);
     conc->dir->name_size = KND_ID_SIZE;
     conc->dir->conc = conc;
+    conc->mempool = self->mempool;
+    conc->dir->mempool = self->mempool;
 
-    err = ooDict_new(&conc->class_idx, KND_SMALL_DICT_SIZE);
+    conc->task = self->task;
+    conc->log = self->task->log;
+
+    err = kndProc_new(&conc->proc);
+    if (err) goto error;
+    conc->proc->mempool = self->mempool;
+
+    err = kndRel_new(&conc->rel);
+    if (err) goto error;
+    conc->rel->mempool = self->mempool;
+    conc->rel->frozen_output_file_name = self->admin->frozen_output_file_name;
+    conc->rel->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
+
+    /* specific allocations of the root concs */
+    err = ooDict_new(&conc->class_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
+    err = ooDict_new(&conc->proc->proc_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+    conc->proc->class_idx = conc->class_idx;
+
+    err = ooDict_new(&conc->rel->rel_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+    conc->rel->class_idx = conc->class_idx;
+
     /* user idx */
-    if (self->max_users) {
-        self->admin->user_idx = calloc(self->max_users, 
-                                sizeof(struct kndObject*));
+    /*if (self->mempool->max_users) {
+        self->admin->user_idx = calloc(self->mempool->max_users, 
+                                       sizeof(struct kndObject*));
         if (!self->admin->user_idx) return knd_NOMEM;
-        self->admin->max_users = self->max_users;
-    }
+        self->admin->max_users = self->mempool->max_users;
+	} */
 
     conc->user = self->admin;
     self->admin->root_class = conc;
@@ -631,22 +633,29 @@ void *kndRetriever_subscriber(void *arg)
     assert(err == knd_OK);
 
     while (1) {
+	task = NULL;
+	task_size = 0;
+	obj = NULL;
+	obj_size = 0;
+	
         task = knd_zmq_recv(subscriber, &task_size);
-	obj = knd_zmq_recv(subscriber, &obj_size);
+	//obj = knd_zmq_recv(subscriber, &obj_size);
+
+	/* sometimes bad messages arrive */
+        if (!task || !task_size) continue;
+        //if (!obj || !obj_size) continue;
 
         if (DEBUG_RETRIEVER_LEVEL_2) {
             printf("++ %s Retriever has got an update from Learner:"
-                   "       %.*s [%lu]", retriever->name, (unsigned int)task_size, task, (unsigned long)task_size);
-            printf("   OBJ: %.*s [%lu]", (unsigned int)obj_size, obj, (unsigned long)obj_size);
+                   "       %.*s [%lu]", retriever->name,
+		   (unsigned int)task_size, task, (unsigned long)task_size);
         }
-        
-	err = knd_zmq_sendmore(inbox, task, task_size);
-	err = knd_zmq_send(inbox, obj, obj_size);
+
+	err = knd_zmq_send(inbox, task, task_size);
+	//err = knd_zmq_send(inbox, obj, obj_size);
 
         if (task)
             free(task);
-        if (obj)
-            free(obj);
         
         fflush(stdout);
     }
@@ -664,16 +673,14 @@ void *kndRetriever_subscriber(void *arg)
  *  MAIN SERVICE
  */
 
-int 
-main(int const argc, 
-     const char ** const argv) 
+int main(int const argc, 
+	 const char ** const argv) 
 {
     struct kndRetriever *retriever;
-
     const char *config = NULL;
 
     pthread_t subscriber;
-    pthread_t selector;
+    //pthread_t selector;
     pthread_t inbox;
     int err;
 
@@ -697,18 +704,18 @@ main(int const argc,
 			 NULL,
 			 kndRetriever_inbox, 
                          (void*)retriever);
-    
+
     /* add subscriber */
     err = pthread_create(&subscriber, 
 			 NULL,
 			 kndRetriever_subscriber, 
                          (void*)retriever);
-    
+
     /* add selector */
-    err = pthread_create(&selector, 
+    /*err = pthread_create(&selector,
 			 NULL,
 			 kndRetriever_selector, 
-                         (void*)retriever);
+                         (void*)retriever); */
 
     retriever->start(retriever);
  

@@ -44,6 +44,7 @@ void *kndStorage_publisher(void *arg __attribute__((unused)))
 
     frontend = zmq_socket(context, ZMQ_SUB);
     if (!frontend) pthread_exit(NULL);
+
     zmq_bind(frontend, "ipc:///var/lib/knowdy/storage_sub"); // fixme
     zmq_setsockopt(frontend, ZMQ_SUBSCRIBE, "", 0);
 

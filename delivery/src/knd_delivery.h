@@ -1,7 +1,7 @@
 #ifndef KND_DELIVERY_H
 #define KND_DELIVERY_H
 
-#define KND_NUM_AGENTS 1
+#define KND_NUM_AGENTS 4
 
 #include <time.h>
 
@@ -25,6 +25,7 @@ struct kndAuthRec
 struct kndTID
 {
     char tid[KND_TID_SIZE];
+    size_t size;
 };
     
 struct kndResult
@@ -36,12 +37,15 @@ struct kndResult
     size_t sid_size;
     
     bool sid_required;
-    
+
     char   *header;
     size_t header_size;
 
     char *obj;
     size_t obj_size;
+
+    time_t start;
+    time_t finish;
 
     /* file */
     char *filename;

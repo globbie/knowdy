@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2017 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2018 by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Search Engine, 
@@ -30,6 +30,7 @@ struct kndConcept;
 struct kndOutput;
 struct kndTranslation;
 struct kndAttr;
+struct kndProc;
 
 typedef enum knd_attr_type {
     KND_ATTR_NONE,
@@ -67,6 +68,12 @@ typedef enum knd_attr_access_type {
     KND_ATTR_ACCESS_PUB
 } knd_attr_access_type;
 
+typedef enum knd_attr_quant_type {
+    KND_ATTR_SINGLE,
+    KND_ATTR_SET,
+    KND_ATTR_LIST
+} knd_attr_quant_type;
+
 struct kndAttrValidator
 {
     char name[KND_SHORT_NAME_SIZE];
@@ -89,7 +96,7 @@ struct kndAttrItem
     struct kndAttrItem *children;
     struct kndAttrItem *tail;
     size_t num_children;
-    
+
     struct kndAttrItem *next;
 };
 
@@ -97,6 +104,7 @@ struct kndAttr
 {
     knd_attr_type type;
     knd_attr_access_type access_type;
+    knd_attr_quant_type quant_type;
 
     char name[KND_NAME_SIZE];
     size_t name_size;
@@ -104,8 +112,9 @@ struct kndAttr
     char classname[KND_NAME_SIZE];
     size_t classname_size;
 
-    char quantif[KND_SHORT_NAME_SIZE];
-    size_t quantif_size;
+    char uniq_attr_name[KND_SHORT_NAME_SIZE];
+    size_t uniq_attr_name_size;
+    struct kndAttr *uniq_attr;
 
     char validator_name[KND_SHORT_NAME_SIZE];
     size_t validator_name_size;
@@ -115,14 +124,19 @@ struct kndAttr
 
     struct kndConcept *parent_conc;
     struct kndConcept *conc;
+    struct kndTask *task;
 
     const char *locale;
     size_t locale_size;
     knd_format format;
 
-    /* refclass not set: self reference by default */
+    /* if refclass is empty: assume self reference by default */
     char ref_classname[KND_NAME_SIZE];
     size_t ref_classname_size;
+
+    char ref_procname[KND_NAME_SIZE];
+    size_t ref_procname_size;
+    struct kndProc *proc;
 
     int concise_level;
     int descr_level;
@@ -141,7 +155,6 @@ struct kndAttr
     size_t idx_name_size;
 
     struct kndRefSet *browser;
-
     struct kndOutput *out;
     
     struct kndTranslation *tr;

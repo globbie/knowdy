@@ -22,11 +22,13 @@
 #define KND_CONFIG_H
 
 /* return error codes */
+
 typedef enum { knd_OK, knd_FAIL, knd_NOMEM, knd_LIMIT, knd_AUTH_OK, knd_AUTH_FAIL,
         knd_INVALID_DATA, knd_ACCESS, knd_NO_MATCH, knd_MATCH_FOUND, knd_FORMAT, knd_EXISTS,
         knd_IO_FAIL, knd_EOB, knd_STOP, knd_NEED_WAIT, 
         knd_EXPIRED, knd_MAX_LIMIT_REACHED,
         KND_OPEN_DELIM_MISSING, KND_CLOSE_DELIM_MISSING } 
+
   knd_err_codes;
 
 typedef enum knd_state_phase { KND_SELECTED,
@@ -74,6 +76,11 @@ typedef enum knd_storage_type {
 } knd_storage_type;
 
 
+#define RET_ERR(S) if (err) { printf(#S);                               \
+                              printf ("-- <%s> failed at line %d of file \"%s\"\n",\
+                                      __func__, __LINE__, __FILE__); return err; } 
+#define ALLOC_ERR(V) if (!(V)) { return knd_NOMEM; }
+#define PARSE_ERR(V) if (err) { printf("LINEAR POS:%zu", *total_size); return err; } 
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 
@@ -111,8 +118,8 @@ typedef enum knd_storage_type {
 #define KND_DEBUG_LEVEL_4 0
 #define KND_DEBUG_LEVEL_5 0
 
-#define KND_RESULT_BATCH_SIZE 30
-#define KND_RESULT_MAX_BATCH_SIZE 1000
+#define KND_RESULT_BATCH_SIZE 10
+#define KND_RESULT_MAX_BATCH_SIZE 100
 
 #define KND_ID_MATRIX_DEPTH 3
 #define KND_ID_BASE 64
@@ -132,6 +139,8 @@ typedef enum knd_storage_type {
 
 #define KND_MAX_CONC_CHILDREN 128
 #define KND_MAX_BASES 128
+#define KND_MAX_RELS 128
+#define KND_MAX_PROCS 1024
 
 #define KND_DIR_SIZE_ENCODE_BASE 10
 #define KND_DIR_ENTRY_SIZE 16
@@ -158,6 +167,7 @@ typedef enum knd_storage_type {
 /* KND Object */
 #define KND_OBJ_METABUF_SIZE 1024
 
+#define KND_MAX_DEPTH 256
 #define KND_DEFAULT_CLASS_DEPTH 3
 #define KND_MAX_CLASS_DEPTH 3
 #define KND_MAX_CLASS_BATCH 128
@@ -196,7 +206,6 @@ typedef enum knd_storage_type {
 
 #define KND_OBJ_ELEM_TAG "E"
 #define KND_OBJ_ELEM_TAG_SIZE strlen(KND_OBJ_ELEM_TAG)
-
 
 #define KND_NUMFIELD_MAX_SIZE 8
 
@@ -271,7 +280,6 @@ typedef enum knd_storage_type {
 
 #define KND_FIELD_SEPAR ";"
 #define KND_FIELD_SEPAR_SIZE strlen(KND_FIELD_SEPAR)
-
 
 
 #define KND_GROW_FACTOR 2
@@ -349,7 +357,7 @@ typedef enum knd_storage_type {
 #define KND_PATH_SIZE 1024
 #define KND_NAME_SIZE 512
 #define KND_SHORT_NAME_SIZE 64
-#define KND_VAL_SIZE 128
+#define KND_VAL_SIZE 1024
 
 #define KND_UID_SIZE 7
 
@@ -374,14 +382,20 @@ typedef enum knd_storage_type {
 #define KND_MAX_ERR_MSG_BUF_SIZE 1024 * 10 * sizeof(char)
 #define KND_MAX_UPDATE_BUF_SIZE 1024 * 100 * sizeof(char)
 
+#define KND_MIN_UPDATES 1024
+#define KND_MIN_STATES 1024 * 10
+#define KND_MIN_USERS 1024
 #define KND_MIN_CLASSES 1024
 #define KND_MIN_OBJS 1024
+#define KND_MIN_OBJ_ENTRIES 1024
 #define KND_MIN_ELEMS 1024
 #define KND_MIN_RELS 1024
 #define KND_MIN_REL_INSTANCES 1024
+#define KND_MIN_RELARG_INSTANCES 1024 * 4
 #define KND_MIN_PROCS 1024
 #define KND_MIN_PROC_INSTANCES 1024
 
+#define KND_TEXT_CHUNK_SIZE 128
 #define KND_MAX_TEXT_CHUNK_SIZE 1024 * 10
 #define KND_MAX_DEBUG_CHUNK_SIZE 256
 

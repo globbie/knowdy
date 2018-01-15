@@ -4,15 +4,26 @@
       {n Alpha Tester}
       {schemas /etc/knowdy/schemas}
       {sid AUTH_SERVER_SID}
-      {locale ru_RU}
-      {max_objs 1000000}
-      {max_users 500000}
+      {locale en}
+
+      {memory
+         {max_users 500000}
+         {max_classes 100000}
+         {max_objs 1000000}
+         {max_elems 2500000}
+         {max_rel_instances 1000000}
+         {max_rel_refs 1000000}
+         {max_rel_arg_instances 2500000}
+         {max_rel_arg_inst_refs 2500000}
+         {max_procs 1000}
+         {max_proc_instances 1000000}
+      }
 
       {coll_request tcp://127.0.0.1:6913}
       {delivery ipc:///var/lib/knowdy/delivery/inbox}
 
-      {read_inbox
-       {frontend ipc:///var/lib/knowdy/reader0}
-       {backend ipc:///var/lib/knowdy/reader0_backend}
+      {inbox
+       {frontend ipc:///var/lib/knowdy/retriever}
+       {backend ipc:///var/lib/knowdy/retriever_backend}
       }
 }}

@@ -6,8 +6,10 @@
 #include "knd_user.h"
 #include "knd_output.h"
 #include "knd_utils.h"
+#include "knd_concept.h"
 #include "knd_parser.h"
 #include "knd_msg.h"
+#include "knd_http_codes.h"
 
 #define DEBUG_TASK_LEVEL_0 0
 #define DEBUG_TASK_LEVEL_1 0
@@ -15,8 +17,15 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
+static int parse_user(void *obj,
+                      const char *rec,
+                      size_t *total_size);
+
 static void del(struct kndTask *self)
 {
+    self->log->del(self->log);
+    self->spec_out->del(self->spec_out);
+    self->update->del(self->update);
     free(self);
 }
 
@@ -32,16 +41,25 @@ static void reset(struct kndTask *self)
     self->tid_size = 0;
     self->locale = self->admin->default_locale;
     self->locale_size = self->admin->default_locale_size;
+    self->curr_locale_size = 0;
 
     memset(self->state, '0', KND_STATE_SIZE);
     self->is_state_changed = false;
 
     self->type = KND_GET_STATE;
-    
-    self->admin->locale = self->admin->default_locale;
-    self->admin->locale_size = self->admin->default_locale_size;
+    /*self->admin->locale = self->admin->default_locale;
+      self->admin->locale_size = self->admin->default_locale_size; */
+
+    self->batch_max = 0;
+    self->batch_size = 0;
+    self->batch_from = 0;
+    self->start_from = 0;
+    self->match_count = 0;
+
+    self->num_class_selects = 0;
 
     self->error = 0;
+    self->http_code = HTTP_OK;
     self->log->reset(self->log);
     self->out->reset(self->out);
     self->update->reset(self->update);
@@ -52,21 +70,81 @@ static int parse_update(void *obj,
                         const char *rec,
                         size_t *total_size)
 {
-    struct kndTask *self = (struct kndTask*)obj;
+    struct kndTask *self = obj;
+    int err;
+    
+    self->type = KND_LIQUID_STATE;
+
+    struct kndTaskSpec specs[] = {
+        { .name = "_ts",
+          .name_size = strlen("_ts"),
+          .buf = self->timestamp,
+          .buf_size = &self->timestamp_size,
+          .max_buf_size = KND_NAME_SIZE
+        },
+        { .name = "user",
+          .name_size = strlen("user"),
+          .parse = parse_user,
+          .obj = self
+        }
+    };
+
+    err = knd_parse_task(rec, total_size, specs,
+			 sizeof(specs) / sizeof(struct kndTaskSpec));             RET_ERR();
+
+    return knd_OK;
+}
+
+
+static int parse_iter_batch(void *obj,
+                            const char *rec,
+                            size_t *total_size)
+{
+    struct kndTask *self = obj;
+    struct kndTaskSpec specs[] = {
+        { .name = "size",
+          .name_size = strlen("size"),
+          .parse = knd_parse_size_t,
+          .obj = &self->batch_max
+        },
+        { .name = "from",
+          .name_size = strlen("from"),
+          .parse = knd_parse_size_t,
+          .obj = &self->batch_from
+        }
+    };
     int err;
 
-    self->type = KND_UPDATE_STATE;
-    self->tid[0] = '0';
-    self->tid_size = 0;
-    self->admin->task = self;
-    self->admin->out = self->out;
-    self->admin->log = self->log;
-            
-    err = self->admin->parse_task(self->admin, rec, total_size);
-    if (err) {
-        knd_log("-- update parse failed :(");
-        return knd_FAIL;
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+
+    if (self->batch_max > KND_RESULT_MAX_BATCH_SIZE) {
+        knd_log("-- batch size exceeded: %zu (max limit: %d) :(",
+                self->batch_max, KND_RESULT_MAX_BATCH_SIZE);
+        return knd_LIMIT;
     }
+
+    self->start_from = self->batch_max * self->batch_from;
+
+    return knd_OK;
+}
+
+
+static int parse_iter(void *obj,
+                      const char *rec,
+                      size_t *total_size)
+{
+    struct kndTaskSpec specs[] = {
+        { .name = "batch",
+          .name_size = strlen("batch"),
+          .parse = parse_iter_batch,
+          .obj = obj
+        }
+    };
+    int err;
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
 
     return knd_OK;
 }
@@ -75,13 +153,18 @@ static int parse_user(void *obj,
                       const char *rec,
                       size_t *total_size)
 {
-    struct kndTask *self = (struct kndTask*)obj;
+    struct kndTask *self = obj;
     int err;
 
     self->admin->task = self;
     self->admin->out = self->out;
     self->admin->log = self->log;
-            
+
+    if (self->curr_locale_size) {
+        self->locale = self->curr_locale;
+        self->locale_size = self->curr_locale_size;
+    }
+
     err = self->admin->parse_task(self->admin, rec, total_size);
     if (err) {
         knd_log("-- User area parse failed");
@@ -95,7 +178,7 @@ static int parse_task(void *obj,
                       const char *rec,
                       size_t *total_size)
 {
-    struct kndTask *self = (struct kndTask*)obj;
+    struct kndTask *self = obj;
     int err;
    
     struct kndTaskSpec specs[] = {
@@ -109,6 +192,12 @@ static int parse_task(void *obj,
           .name_size = strlen("tid"),
           .buf = self->tid,
           .buf_size = &self->tid_size,
+          .max_buf_size = KND_NAME_SIZE
+        },
+        { .name = "locale",
+          .name_size = strlen("locale"),
+          .buf = self->curr_locale,
+          .buf_size = &self->curr_locale_size,
           .max_buf_size = KND_NAME_SIZE
         },
         { .name = "user",
@@ -126,10 +215,12 @@ static int parse_task(void *obj,
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) return err;
 
+
     /* check mandatory fields */
     if (!self->tid_size) {
         switch (self->type) {
         case KND_UPDATE_STATE:
+        case KND_LIQUID_STATE:
             return knd_OK;
         default:
             knd_log("-- no TID found");
@@ -147,7 +238,7 @@ static int parse_GSL(struct kndTask *self,
                      size_t obj_size)
 {
     if (DEBUG_TASK_LEVEL_2)
-        knd_log(".. parsing task: \"%s\"..", rec);
+        knd_log(".. parsing task: \"%.*s\"..", 64, rec);
 
     struct kndTaskSpec specs[] = {
         { .name = "task",
@@ -163,7 +254,7 @@ static int parse_GSL(struct kndTask *self,
     self->spec_size = rec_size;
     self->obj = obj;
     self->obj_size = obj_size;
-   
+  
     err = knd_parse_task(rec, &total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) {
         knd_log("-- task parse failure: \"%.*s\" :(", self->log->buf_size, self->log->buf);
@@ -181,6 +272,8 @@ static int parse_GSL(struct kndTask *self,
 
 static int report(struct kndTask *self)
 {
+    char buf[KND_SHORT_NAME_SIZE];
+    size_t buf_size;
     const char *gsl_header = "{task";
     const char *msg = "None";
     size_t msg_size = strlen(msg);
@@ -189,11 +282,12 @@ static int report(struct kndTask *self)
     size_t header_size;
     char *obj;
     size_t obj_size;
+    size_t chunk_size;
     int err;
 
     if (DEBUG_TASK_LEVEL_2)
-        knd_log("..TASK reporting..");
-        
+        knd_log("..TASK (type: %d) reporting..", self->type);
+
     out->reset(out);
     err = out->write(out, gsl_header, strlen(gsl_header));
     if (err) return err;
@@ -230,6 +324,15 @@ static int report(struct kndTask *self)
     if (err) return err;
 
     if (self->error) {
+        switch (self->error) {
+        case knd_NOMEM:
+        case knd_IO_FAIL:
+            self->http_code = HTTP_INTERNAL_SERVER_ERROR;
+            break;
+        default:
+            break;
+        }
+
         err = out->write(out, "{err ", strlen("{err "));
         if (err) return err;
         err = out->write(out, self->log->buf, self->log->buf_size);
@@ -243,7 +346,19 @@ static int report(struct kndTask *self)
         if (err) return err;
         err = self->out->write(self->out, self->log->buf, self->log->buf_size);
         if (err) return err;
-        err = self->out->write(self->out, "\"}", strlen("\"}"));
+        err = self->out->write(self->out, "\"", strlen("\""));
+        if (err) return err;
+
+        if (self->http_code != HTTP_OK) {
+            err = self->out->write(self->out,
+                                   ",\"http_code\":", strlen(",\"http_code\":"));
+            if (err) return err;
+            buf_size = sprintf(buf, "%d", self->http_code);
+            err = self->out->write(self->out, buf, buf_size);
+            if (err) return err;
+        }
+
+        err = self->out->write(self->out, "}", strlen("}"));
         if (err) return err;
 
     } else {
@@ -251,20 +366,25 @@ static int report(struct kndTask *self)
         if (err) return err;
     }
     
-    if (DEBUG_TASK_LEVEL_TMP) {
+    if (DEBUG_TASK_LEVEL_2) {
         obj_size = self->out->buf_size;
         if (obj_size > KND_MAX_DEBUG_CONTEXT_SIZE) {
             obj_size = KND_MAX_DEBUG_CONTEXT_SIZE;
-            knd_log("== TASK report: SPEC: \"%.*s\"\n\n== BODY: \"%.*s...\" [total size: %zu]\n",
-                    out->buf_size, out->buf, obj_size, self->out->buf, self->out->buf_size);
+            knd_log("== TASK report: SPEC: \"%.*s\"\n"
+		    "== BODY: \"%.*s..\" [total size: %zu]\n",
+                    out->buf_size, out->buf, obj_size,
+		    self->out->buf, self->out->buf_size);
         }
         else {
-            knd_log("== TASK report: SPEC: \"%.*s\"\n\n== BODY: \"%.*s\" [size: %zu]\n",
-                    out->buf_size, out->buf, obj_size, self->out->buf, self->out->buf_size);
+            knd_log("== TASK report: SPEC: \"%.*s\"\n"
+		    "== BODY: \"%.*s\" [size: %zu]\n",
+                    out->buf_size, out->buf, obj_size,
+		    self->out->buf, self->out->buf_size);
         }
     }
 
-    err = knd_zmq_sendmore(self->delivery, (const char*)out->buf, out->buf_size);
+    err = knd_zmq_sendmore(self->delivery,
+			   (const char*)out->buf, out->buf_size);
     /* obj body */
     if (self->out->buf_size) {
         msg = self->out->buf;
@@ -284,27 +404,29 @@ static int report(struct kndTask *self)
     /* get confirmation reply from  the manager */
     header = knd_zmq_recv(self->delivery, &header_size);
     obj = knd_zmq_recv(self->delivery, &obj_size);
-    
-    if (DEBUG_TASK_LEVEL_TMP)
-        knd_log("== Delivery reply header: \"%s\" obj: \"%s\"",
-                header, obj);
 
-    if (header)
-        free(header);
-    if (obj)
-        free(obj);
+    if (DEBUG_TASK_LEVEL_2)
+        knd_log("== Delivery reply HEADER: \"%.*s\" [%zu]\n OBJ: \"%.*s\" [%zu]",
+                header_size, header, header_size, obj_size, obj, obj_size);
 
-    if (!self->is_state_changed) return knd_OK;
+    if (header) free(header);
+    if (obj)    free(obj);
 
     /* inform all retrievers about the state change */
-    if (DEBUG_TASK_LEVEL_2)
-        knd_log("\n\n** UPDATE retrievers: \"%.*s\" [%lu]",
-                self->update->buf_size, self->update->buf,
-                (unsigned long)self->update->buf_size);
+    if (self->type == KND_UPDATE_STATE) {
+        if (DEBUG_TASK_LEVEL_TMP) {
+	    chunk_size =  self->update->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ?\
+		KND_MAX_DEBUG_CHUNK_SIZE :  self->update->buf_size;
 
-    err = knd_zmq_sendmore(self->publisher, self->update->buf, self->update->buf_size);
-    err = knd_zmq_send(self->publisher, "None", strlen("None"));
-    
+            knd_log("\n\n** UPDATE retrievers: \"%.*s\" [%zu]",
+                    chunk_size, self->update->buf,
+                    self->update->buf_size);
+        }
+
+        err = knd_zmq_send(self->publisher, self->update->buf, self->update->buf_size);
+        //err = knd_zmq_send(self->publisher, "None", strlen("None"));
+    }
+
     return knd_OK;
 }
 
@@ -332,6 +454,7 @@ extern int kndTask_new(struct kndTask **task)
     self->reset  = reset;
     self->run    = parse_GSL;
     self->report = report;
+    self->parse_iter = parse_iter;
 
     *task = self;
 

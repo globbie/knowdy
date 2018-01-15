@@ -15,7 +15,7 @@ knd_read_UTF8_char(const char *rec,
 
 extern int 
 knd_parse_matching_braces(const char *rec,
-                          size_t brace_count,
+                          char open_brace,
                           size_t *chunk_size);
 
 extern int 

@@ -27,6 +27,16 @@ struct kndElem;
 struct kndElemRef;
 struct kndOutput;
 
+#define KND_SYNT_ROLE_NAME_SIZE 3
+
+typedef enum knd_synt_role_t { KND_SYNT_SUBJ, 
+                               KND_SYNT_OBJ,
+                               KND_SYNT_GEN,
+                               KND_SYNT_DAT,
+                               KND_SYNT_INS,
+                               KND_SYNT_LOC
+} knd_synt_role_t;
+
 struct kndTextSelect
 {
     char css_name[KND_NAME_SIZE];
@@ -40,6 +50,13 @@ struct kndTextSelect
     struct kndTextSelect *next;
 };
 
+struct kndTextChunk
+{
+    char val[KND_TEXT_CHUNK_SIZE];
+    size_t val_size;
+    struct kndTextChunk *next;
+};
+
 struct kndTranslation
 {
     char curr_locale[KND_LOCALE_SIZE];
@@ -47,6 +64,7 @@ struct kndTranslation
 
     const char *locale;
     size_t locale_size;
+    knd_synt_role_t synt_role; 
     
     size_t state;
 
@@ -57,14 +75,20 @@ struct kndTranslation
 
     char val[KND_NAME_SIZE];
     size_t val_size;
-    
-    char *seq;
+
+    const char *seq;
     size_t seq_size;
+
+    struct kndTextChunk *chunks;
+    struct kndTextChunk *chunk_tail;
+    size_t num_chunks;
 
     struct kndTextSelect *selects;
     struct kndTextSelect *tail;
     size_t num_selects;
-    
+
+    struct kndTranslation *synt_roles;
+
     struct kndTranslation *next;
 };
 
@@ -72,8 +96,6 @@ struct kndTextState
 {
     knd_state_phase phase;
     char state[KND_STATE_SIZE];
-
-    /*struct kndConcRef *cg;*/
 
     /* translations of master text: manual or automatic */
     struct kndTranslation *translations;
@@ -92,6 +114,7 @@ struct kndText
     size_t num_states;
     knd_format format;
     size_t depth;
+
     /******** public methods ********/
     void (*str)(struct kndText *self);
     void (*del)(struct kndText *self);

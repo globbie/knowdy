@@ -31,13 +31,10 @@
 
 static void del(struct kndElem *self)
 {
-    struct kndElemState *state;
-
     if (self->aggr)
         self->aggr->del(self->aggr);
     if (self->num)
         self->num->del(self->num);
-
     free(self);
 }
 
@@ -263,14 +260,9 @@ final:
 static int
 kndElem_export_GSP(struct kndElem *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
-    struct kndObject *obj;
     struct kndText *text;
     struct kndRef *ref;
     struct kndOutput *out = self->out;
-    size_t curr_size;
     int err;
 
     if (DEBUG_ELEM_LEVEL_2)
@@ -303,8 +295,7 @@ kndElem_export_GSP(struct kndElem *self)
     /* key:value repr */
     switch (self->attr->type) {
     case KND_ATTR_NUM:
-        knd_log("OUT:%p  free:%zu total:%zu", out, out->free_space, out->buf_size);
-        self->obj->str(self->obj);
+        //self->obj->str(self->obj);
         err = out->write(out, self->num->states->val, self->num->states->val_size);
         if (err) return err;
         break;
@@ -341,7 +332,6 @@ static int
 kndElem_export(struct kndElem *self)
 {
     int err;
-    bool is_concise = 0;
 
     switch(self->format) {
     case KND_FORMAT_JSON:
@@ -368,7 +358,9 @@ kndElem_export(struct kndElem *self)
     return knd_OK;
 }
 
-static int run_empty_val_warning(void *obj, struct kndTaskArg *args, size_t num_args)
+static int run_empty_val_warning(void *obj,
+				 struct kndTaskArg *args __attribute__((unused)),
+				 size_t num_args __attribute__((unused)))
 {
     struct kndElem *self = (struct kndElem*)obj;
     knd_log("-- empty val of \"%.*s\" not accepted :(",
@@ -387,25 +379,26 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
         if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val;
+            val = arg->val_ref;
             val_size = arg->val_size;
         }
     }
 
     if (DEBUG_ELEM_LEVEL_2)
-        knd_log(".. %.*s to set val \"%.*s\"", self->attr->name_size, self->attr->name,
+        knd_log(".. %.*s to set val \"%.*s\"",
+                self->attr->name_size, self->attr->name,
                 val_size, val);
 
     if (!val_size) return knd_FAIL;
     if (val_size >= KND_VAL_SIZE) return knd_LIMIT;
+
     state = malloc(sizeof(struct kndElemState));
     if (!state) return knd_NOMEM;
     memset(state, 0, sizeof(struct kndElemState));
     self->states = state;
     self->num_states = 1;
 
-    memcpy(state->val, val, val_size);
-    state->val[val_size] = '\0';
+    state->val = val;
     state->val_size = val_size;
 
     /* TODO: validate if needed */
@@ -439,6 +432,7 @@ static int parse_GSL(struct kndElem *self,
           .run = run_set_val,
           .obj = self
         },
+
         { .type = KND_CHANGE_STATE,
           .name = "default",
           .name_size = strlen("default"),
@@ -492,9 +486,7 @@ kndElem_init(struct kndElem *self)
     self->del = del;
     self->str = str;
     self->parse = parse_GSL;
-
     self->resolve = kndElem_resolve;
-    //self->index = kndElem_index;
     self->export = kndElem_export;
 }
 

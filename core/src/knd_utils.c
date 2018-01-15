@@ -40,12 +40,10 @@ const char *obj_id_seq = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqr
 extern void 
 knd_log(const char *fmt, ...)
 {
-    va_list args;
+  va_list args;
     va_start(args, fmt);
-
     vprintf(fmt, args);
     printf("\n");
-    
     va_end(args);
 }
 
@@ -58,16 +56,6 @@ knd_compare(const char *a, const char *b)
     }
     
     return knd_EQUALS;
-}
-
-extern void knd_calc_num_id(char *buf, size_t val)
-{
-    const char *c;
-    if (val > KND_RADIX_BASE) {
-        knd_calc_num_id(buf, val / KND_RADIX_BASE);
-    }
-    c = &obj_id_seq[val % KND_RADIX_BASE];
-    printf("%c\n", *c);
 }
 
 extern int knd_next_state(char *s)
@@ -136,6 +124,23 @@ knd_is_valid_id(const char *id, size_t id_size)
     }
 
     return knd_OK;
+}
+
+extern void 
+knd_calc_num_id(const char *id, size_t *numval)
+{
+    const char *c = id;
+    int num = 0;
+    size_t aggr = 0;
+
+    for (size_t i = 0; i < KND_ID_SIZE; i++) {
+        num = obj_id_base[(unsigned int)*c];
+        if (num == -1) return;
+        aggr = aggr * KND_RADIX_BASE + num;
+        c++;
+    }
+    *numval = aggr;
+    //knd_log("%.*s => %zu", KND_ID_SIZE, id, aggr);
 }
 
 extern const char *
