@@ -22,10 +22,13 @@
 #define KND_CONFIG_H
 
 /* return error codes */
-typedef enum { knd_OK, knd_FAIL, knd_NOMEM, knd_LIMIT, knd_RANGE, knd_AUTH,
-        knd_INVALID_DATA, knd_ACCESS, knd_NO_MATCH, knd_MATCH_FOUND, knd_FORMAT,
-        knd_IO_FAIL, knd_EXISTS, knd_EOB, knd_STOP, knd_NEED_WAIT, 
-        knd_EXPIRED } 
+
+typedef enum { knd_OK, knd_FAIL, knd_NOMEM, knd_LIMIT, knd_AUTH_OK, knd_AUTH_FAIL,
+        knd_INVALID_DATA, knd_ACCESS, knd_NO_MATCH, knd_MATCH_FOUND, knd_FORMAT, knd_EXISTS,
+        knd_IO_FAIL, knd_EOB, knd_STOP, knd_NEED_WAIT, 
+        knd_EXPIRED, knd_MAX_LIMIT_REACHED,
+        KND_OPEN_DELIM_MISSING, KND_CLOSE_DELIM_MISSING } 
+
   knd_err_codes;
 
 typedef enum knd_state_phase { KND_SELECTED,
