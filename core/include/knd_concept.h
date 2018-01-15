@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2017 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2018 by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Search Engine, 
@@ -22,6 +22,7 @@
 #include "knd_dict.h"
 #include "knd_facet.h"
 #include "knd_utils.h"
+#include "knd_object.h"
 #include "knd_config.h"
 
 struct kndAttr;
@@ -35,13 +36,14 @@ struct kndRelObj;
 struct kndTask;
 struct kndUser;
 struct kndTaskArg;
+struct kndClassUpdate;
+struct kndClassUpdateRef;
 
 typedef enum knd_conc_type {
     KND_CONC_CLASS,
     KND_CONC_PROC,
     KND_CONC_ATTR
 } knd_conc_type;
-
 
 struct kndObjStateIdx
 {
@@ -53,14 +55,14 @@ struct kndObjStateIdx
 struct kndConcRef
 {
     size_t state;
-    struct kndConcDirt *dir;
+    struct kndConcDir *dir;
     struct kndConcept *conc;
 };
 
 struct kndConcRefSet
 {
     size_t state;
-    struct kndConcDirt *dir;
+    struct kndConcDir *dir;
     struct kndConcept *conc;
 };
 
@@ -69,6 +71,7 @@ struct kndConcItem
     char name[KND_NAME_SIZE];
     size_t name_size;
     char id[KND_ID_SIZE];
+    size_t numid;
 
     char classname[KND_NAME_SIZE];
     size_t classname_size;
@@ -104,27 +107,19 @@ struct kndAttrEntry
     struct kndAttrEntry *next;
 };
 
-struct kndObjEntry
-{
-    size_t offset;
-    size_t block_size;
-    struct kndObject *obj;
-};
-
-struct kndObjDir
-{
-    struct kndObjEntry **objs;
-    size_t num_objs;
-
-    struct kndObjDir **dirs;
-    size_t num_dirs;
-};
 
 struct kndConcDir
 {
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    size_t numid;
+
     char name[KND_NAME_SIZE];
     size_t name_size;
     struct kndConcept *conc;
+    struct kndMemPool *mempool;
+
+    knd_state_phase phase;
 
     size_t global_offset;
     size_t curr_offset;
@@ -136,19 +131,38 @@ struct kndConcDir
 
     struct kndConcDir **children;
     size_t num_children;
+    size_t num_terminals;
+
+    struct kndRelDir **rels;
+    size_t num_rels;
+
+    struct kndProcDir **procs;
+    size_t num_procs;
 
     char next_obj_id[KND_ID_SIZE];
     size_t next_obj_numid;
 
     struct kndObjDir **obj_dirs;
     size_t num_obj_dirs;
+
     struct kndObjEntry **objs;
     size_t num_objs;
+    size_t total_objs;
 
     struct ooDict *obj_idx;
 
+    struct kndTask *task;
+    struct kndOutput *out;
+
     bool is_terminal;
     struct kndConcDir *next;
+};
+
+struct kndClassUpdateRef
+{
+    knd_state_phase phase;
+    struct kndUpdate *update;
+    struct kndClassUpdateRef *next;
 };
 
 struct kndConcept 
@@ -158,19 +172,15 @@ struct kndConcept
     size_t name_size;
 
     char id[KND_ID_SIZE];
-    char next_id[KND_ID_SIZE];
-    char next_obj_id[KND_ID_SIZE];
-    size_t next_obj_numid;
-
+    size_t id_size;
     size_t numid;
+    size_t next_numid;
 
-    char state[KND_STATE_SIZE];
-    char next_state[KND_STATE_SIZE];
-    char diff_state[KND_STATE_SIZE];
-    char next_obj_state[KND_STATE_SIZE];
-    size_t global_state_count;
+    struct kndState *state;
+    size_t num_states;
 
-    knd_state_phase phase;
+    struct kndClassUpdateRef *updates;
+    size_t num_updates;
 
     struct kndTranslation *tr;
     struct kndText *summary;
@@ -181,8 +191,6 @@ struct kndConcept
 
     struct kndTask *task;
 
-    const char *locale;
-    size_t locale_size;
     knd_format format;
     size_t depth;
 
@@ -192,6 +200,7 @@ struct kndConcept
     struct kndAttr *attrs;
     struct kndAttr *tail_attr;
     size_t num_attrs;
+
     /* for traversal */
     struct kndAttr *curr_attr;
     size_t attrs_left;
@@ -210,6 +219,7 @@ struct kndConcept
 
     struct kndConcept *root_class;
     struct kndConcept *curr_class;
+    struct kndConcept *curr_baseclass;
     struct kndObject *curr_obj;
 
     struct kndConcDir *dir;
@@ -238,10 +248,11 @@ struct kndConcept
 
     struct kndConcRef children[KND_MAX_CONC_CHILDREN];
     size_t num_children;
+    size_t num_terminals;
+    bool is_terminal;
 
     struct kndConcRef frozen_dir[KND_MAX_CONC_CHILDREN];
     size_t frozen_dir_size;
-    bool is_terminal;
 
     char dir_buf[KND_MAX_CONC_CHILDREN * KND_DIR_ENTRY_SIZE];
     size_t dir_buf_size;
@@ -252,6 +263,7 @@ struct kndConcept
     const char *frozen_name_idx_path;
     size_t frozen_name_idx_path_size;
 
+    struct kndUpdate *curr_update;
     struct kndConcept *next;
 
     struct kndUser *user;
@@ -288,9 +300,11 @@ struct kndConcept
     int (*build_diff)(struct kndConcept   *self,
                       const char *start_state,
                       size_t global_state_count);
-
     int (*coordinate)(struct kndConcept *self);
-    int (*resolve)(struct kndConcept    *self);
+
+    int (*resolve)(struct kndConcept     *self,
+		   struct kndClassUpdate *update);
+
     int (*update_state)(struct kndConcept *self);
     int (*apply_liquid_updates)(struct kndConcept *self,
                                 const char *rec,

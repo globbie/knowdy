@@ -7,8 +7,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_INSTALL_PREFIX /)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -pedantic")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -g3")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O3 -Wall")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -g3 -pg")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O2 -Wall")
 
 add_definitions(-D_POSIX_SOURCE=200809L)
 add_definitions(-D_GNU_SOURCE)
@@ -20,10 +20,6 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 find_package(PkgConfig)
-
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
-find_package(MySQL REQUIRED)
-include_directories(${MYSQL_INCLUDE_DIR})
 
 pkg_check_modules(ZEROMQ REQUIRED libzmq)
 find_path(ZEROMQ_INCLUDE_DIR NAMES zmq.h PATHS ${ZEROMQ_INCLUDE_DIRS})
@@ -46,7 +42,6 @@ set(COLLECTION "collection")
 set(RETRIEVER "retriever")
 set(LEARNER "learner")
 set(DELIVERY "delivery")
-set(AUTH "auth")
 set(STORAGE "storage")
 
 set(KNOWDY_MODULES
@@ -56,7 +51,6 @@ set(KNOWDY_MODULES
         ${RETRIEVER}
         ${LEARNER}
         ${DELIVERY}
-        ${AUTH}
         ${STORAGE})
 
 include_directories(${CORE}/include)
@@ -78,7 +72,7 @@ endforeach()
 install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)
 install(DIRECTORY etc/systemd/system/ DESTINATION usr/lib/systemd/system)
 
-set(VERSION "0.3.1")
+set(VERSION "0.4.6")
 
 set(CPACK_PACKAGE_VERSION ${VERSION})
 set(CPACK_GENERATOR "RPM")

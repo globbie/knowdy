@@ -22,6 +22,7 @@
 #include "knd_config.h"
 #include "knd_concept.h"
 
+struct kndState;
 struct kndObjRef;
 struct kndSortTag;
 struct kndElemRef;
@@ -47,32 +48,6 @@ struct kndMatchPoint
     size_t orig_pos;
 };
 
-/* inverted rel */
-struct kndRelType
-{
-    char name[KND_SHORT_NAME_SIZE];
-    size_t name_size;
-
-    struct kndAttr *attr;
-    struct kndObjRef *objrefs;
-
-    struct kndRef *refs;
-    struct kndRef *tail;
-    size_t num_refs;
-    
-    struct kndRelType *next;
-};
-
-struct kndRelClass
-{
-    char name[KND_NAME_SIZE];
-    size_t name_size;
-    char id[KND_ID_SIZE];
-    struct kndConcept *conc;
-    struct kndRelType *rel_types;
-    struct kndRelClass *next;
-};
-
 struct kndAggrObject
 {
     knd_state_phase phase;
@@ -87,12 +62,35 @@ struct kndAggrObject
     struct kndAggrObject *next;
 };
 
+struct kndObjEntry
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+    char *block;
+    size_t block_size;
+    size_t offset;
+
+    knd_state_phase phase;
+
+    struct kndObject *obj;
+    struct kndRelRef *rels;
+};
+
+struct kndObjDir
+{
+    struct kndObjEntry **objs;
+    size_t num_objs;
+
+    struct kndObjDir **dirs;
+    size_t num_dirs;
+};
+
 struct kndObject
 {
     knd_obj_type type;
 
     /* unique name */
-    char name[KND_SHORT_NAME_SIZE];
+    const char *name;
     size_t name_size;
 
     char id[KND_ID_SIZE + 1];
@@ -100,21 +98,21 @@ struct kndObject
 
     size_t numid;
     size_t numval;
+    size_t name_hash;
 
-    knd_state_phase phase;
-    char state[KND_STATE_SIZE];
+    //char state[KND_STATE_SIZE];
+    struct kndState *state;
 
     bool is_subord;
     bool is_concise;
 
     struct kndMemPool *mempool;
+    struct kndObjEntry *entry;
     struct kndObject *root;
     struct kndElem *parent;
-    
-    struct kndConcept *conc;
+    struct kndObject *curr_obj;
 
-    struct kndObjEntry *entry;
-    struct kndSortTag *tag;
+    struct kndConcept *conc;
     
     struct kndOutput *out;
     struct kndOutput *log;
@@ -125,9 +123,6 @@ struct kndObject
     struct kndElem *tail;
     size_t num_elems;
 
-    /* reverse rels */
-    struct kndRelClass *reverse_rel_classes;
-
     /* list of hilited contexts */
     struct kndElem *contexts;
     size_t num_contexts;
@@ -135,8 +130,11 @@ struct kndObject
 
     const char *locale;
     size_t locale_size;
+
     knd_format format;
     size_t depth;
+
+    size_t expand_depth;
     bool is_expanded;
 
     size_t frozen_size;
@@ -152,15 +150,19 @@ struct kndObject
     float average_score;
     int match_idx_pos;
     int accented;
-    
+
+
+    /* relations */
+    struct kndRelRef *rels;
+
+    /* rel selection */
+    struct kndRelRef *curr_rel;
+
     /* for lists */
     struct kndObject *next;
 
     /******** public methods ********/
     void (*str)(struct kndObject *self);
-    int (*reset)(struct kndObject *self);
-    void (*cleanup)(struct kndObject *self);
-
     void (*del)(struct kndObject *self);
 
     int (*parse)(struct kndObject *self,
@@ -181,21 +183,22 @@ struct kndObject
                   const char *rec,
                   size_t *total_size);
     
-    int (*flatten)(struct kndObject *self, struct kndFlatTable *table, unsigned long *span);
-
-    int (*match)(struct kndObject *self,
-                 const char *rec,
-                 size_t      rec_size);
-
     int (*contribute)(struct kndObject *self, size_t point_num, size_t orig_pos);
 
     int (*resolve)(struct kndObject *self);
     int (*export)(struct kndObject *self);
 
+    int (*select)(struct kndObject *self,
+		  const char *rec,
+		  size_t *total_size);
+    int (*select_rels)(struct kndObject *self,
+		       const char *rec,
+		       size_t *total_size);
     int (*sync)(struct kndObject *self);
 };
 
 /* constructors */
 extern void kndObject_init(struct kndObject *self);
+extern void kndObjEntry_init(struct kndObjEntry *self);
 extern int kndObject_new(struct kndObject **self);
 

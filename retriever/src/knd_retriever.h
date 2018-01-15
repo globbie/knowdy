@@ -6,6 +6,7 @@ struct kndObject;
 struct kndOutput;
 struct kndUser;
 struct kndTask;
+struct kndMemPool;
 
 struct kndRetriever
 {
@@ -43,6 +44,7 @@ struct kndRetriever
     char inbox_backend_addr[KND_NAME_SIZE];
     size_t inbox_backend_addr_size;
 
+    struct kndMemPool *mempool;
     size_t max_users;
     /*char *update_addr;
     size_t update_addr_size;
@@ -67,14 +69,11 @@ struct kndRetriever
     struct kndUser *admin;
 
     /**********  interface methods  **********/
-    int (*del)(struct kndRetriever *self);
-
+    void (*del)(struct kndRetriever *self);
     int (*str)(struct kndRetriever *self);
 
     int (*init)(struct kndRetriever *self);
-
     int (*start)(struct kndRetriever *self);
-
     void (*reset)(struct kndRetriever *self);
 
 };

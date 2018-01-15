@@ -91,17 +91,19 @@ ooDict_find_item(struct ooDict *self,
 {
     struct ooList *l;
     struct ooListItem *cur;
-    const char *cur_key;
+    struct ooDictItem *item = NULL;
     unsigned int h;
 
     h = oo_hash(key, key_size) % self->hash->size;
     l = (struct ooList*)self->hash->data[h];
-    cur = l->head;
-    while (cur) {
-        cur_key = ((struct ooDictItem*)cur->data)->key;
-        if (!strcmp(key, cur_key))
-            return (struct ooDictItem*)cur->data;
-        cur = cur->next;
+
+    for (cur = l->head; cur; cur = cur->next) {
+        item = cur->data;
+        /*knd_log("++ GOT ITEM \"%.*s\": key:%p data:%p",
+          item->key_size, item->key, item->key, item->data); */
+        if (item->key_size != key_size) continue;
+        if (!memcmp(item->key, key, key_size))
+            return item;
     }
 
     return NULL;
@@ -116,21 +118,23 @@ ooDict_get(struct ooDict *self,
     struct ooList *l;
     struct ooListItem *cur;
     const char *cur_key;
+    size_t cur_key_size;
     unsigned int h;
 
     if (!key_size) return NULL;
 
     h = oo_hash(key, key_size) % self->hash->size;
     l = (struct ooList*)self->hash->data[h];
-    cur = l->head;
-    while (cur) {
+    
+    for (cur = l->head; cur; cur = cur->next) {
         cur_key = ((struct ooDictItem*)cur->data)->key;
+        cur_key_size = ((struct ooDictItem*)cur->data)->key_size;
+        if (cur_key_size != key_size) continue;
         if (!memcmp(key, cur_key, key_size)) {
             item = (struct ooDictItem*)cur->data;
             if (!item) return NULL;
             return item->data;
         }
-        cur = cur->next;
     }
 
     return NULL;
@@ -146,20 +150,22 @@ ooDict_set(struct ooDict *self,
     struct ooListItem *cur;
     struct ooDictItem *item = NULL;
     const char *cur_key;
+    size_t cur_key_size;
     unsigned int h;
 
     if (!key) return oo_FAIL;
 
     h = oo_hash(key, key_size) % self->hash->size;
     l = (struct ooList*)self->hash->data[h];
-    cur = l->head;
-    while (cur) {
+
+    for (cur = l->head; cur; cur = cur->next) {
         cur_key = ((struct ooDictItem*)cur->data)->key;
-        if (!strcmp(key, cur_key)) {
+        cur_key_size = ((struct ooDictItem*)cur->data)->key_size;
+        if (cur_key_size != key_size) continue;
+        if (!memcmp(key, cur_key, cur_key_size)) {
             item = (struct ooDictItem*)cur->data;
             break;
         }
-        cur = cur->next;
     }
 
     if (item) {
@@ -171,13 +177,58 @@ ooDict_set(struct ooDict *self,
     if (!item) return oo_NOMEM;
 
     item->data = data;
-    item->key = strdup(key);
+    item->key = key;
     item->key_size = key_size;
     l->add(l, (void*)item, NULL);
     self->size++;
 
     return oo_OK;
 }
+
+static int
+ooDict_set_by_hash(struct ooDict *self,
+                   const char *key,
+                   size_t key_size,
+                   size_t hash_val,
+                   void *data)
+{
+    struct ooList *l;
+    struct ooListItem *cur;
+    struct ooDictItem *item = NULL;
+    const char *cur_key;
+    size_t cur_key_size;
+    bool got_match = false;
+    size_t h;
+
+    h = hash_val % self->hash->size;
+    l = (struct ooList*)self->hash->data[h];
+
+    for (cur = l->head; cur; cur = cur->next) {
+        item = cur->data;
+        if (item->key_size != key_size) continue;
+        if (!memcmp(item->key, key, key_size)) {
+            got_match = true;
+            break;
+        }
+    }
+
+    if (got_match) {
+        item->data = data;
+        return oo_OK;
+    }
+
+    item = (struct ooDictItem*)malloc(sizeof(struct ooDictItem));
+    if (!item) return oo_NOMEM;
+
+    item->data = data;
+    item->key = key;
+    item->key_size = key_size;
+    l->add(l, (void*)item, NULL);
+    self->size++;
+
+    return oo_OK;
+}
+
 
 static bool 
 ooDict_key_exists(struct ooDict *self,
@@ -194,28 +245,28 @@ ooDict_remove(struct ooDict *self,
               size_t key_size)
 {
     struct ooList *l;
-    char *cur_key;
+    const char *cur_key;
+    size_t cur_key_size;
     void *data;
     struct ooListItem *cur;
     unsigned int h;
     
     h = self->hash_func(key, key_size) % self->hash->size;
     l = (ooList*)self->hash->data[h];
-
-    cur = l->head;
-    while (cur) {
+    
+    for (cur = l->head; cur; cur = cur->next) {
         cur_key = ((struct ooDictItem*)cur->data)->key;
+        cur_key_size = ((struct ooDictItem*)cur->data)->key_size;
 
-        if (!strcmp(key, cur_key)) {
+        if (cur_key_size != key_size) continue;
+        if (!strncmp(key, cur_key, key_size)) {
             data = ((struct ooDictItem*)cur->data)->data;
-            free(cur_key);
 
             cur->data = NULL;
             l->remove(l, cur);
 	    self->size--;
             return oo_OK;
         }
-        cur = cur->next;
     }
 
     return oo_FAIL;
@@ -234,7 +285,6 @@ static void ooDict_del(struct ooDict *self)
             cur = l->head;
             while (cur) {
                 item = (struct ooDictItem*)cur->data;
-                free(item->key);
                 free(item);
                 cur = cur->next;
             }
@@ -260,7 +310,6 @@ static void ooDict_reset(struct ooDict *self)
             cur = l->head;
             while (cur) {
                 item = (struct ooDictItem*)cur->data;
-                free(item->key);
                 free(item);
                 cur = cur->next;
             }
@@ -382,7 +431,8 @@ ooDict_init(struct ooDict *self)
     self->remove        = ooDict_remove;
     self->get           = ooDict_get;
     self->set           = ooDict_set;
-    self->key_exists    = ooDict_key_exists;
+    self->set_by_hash   = ooDict_set_by_hash;
+    self->exists        = ooDict_key_exists;
     self->resize        = ooDict_resize;
     self->rewind        = ooDict_rewind;
     self->next_item     = ooDict_next_item;

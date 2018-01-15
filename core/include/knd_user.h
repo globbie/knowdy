@@ -10,6 +10,7 @@ struct kndUser;
 struct kndOutput;
 struct kndRepo;
 struct kndRepoSet;
+struct kndStateManager;
 
 typedef enum knd_user_role { KND_USER_ROLE_RETRIEVER, 
                              KND_USER_ROLE_LEARNER
@@ -51,6 +52,7 @@ struct kndUser
     size_t frozen_output_file_name_size;
 
     knd_format format;
+    size_t expand_depth;
 
     char default_locale[KND_NAME_SIZE];
     size_t default_locale_size;
@@ -58,6 +60,7 @@ struct kndUser
     const char *locale;
     size_t locale_size;
 
+    struct kndStateControl *state_ctrl;
     struct kndObjEntry **user_idx;
     size_t max_users;
     size_t num_users;
@@ -97,6 +100,7 @@ struct kndUser
     int (*restore)(struct kndUser *self);
     
     int (*import)(struct kndUser *self, char *rec, size_t *total_size);
+    int (*export)(struct kndUser *self);
     
     int (*read)(struct kndUser *self, const char *rec);
 };

@@ -15,7 +15,7 @@
  *
  *   ----------
  *   knd_rel_arg.h
- *   Knowdy Concept RelArg
+ *   Knowdy Concept Rel Arg
  */
 
 #ifndef KND_RELARG_H
@@ -30,7 +30,10 @@ struct kndConcept;
 struct kndOutput;
 struct kndTranslation;
 struct kndRel;
+struct kndRelInstance;
 struct kndRelArg;
+struct kndRelArgInstance;
+struct kndObject;
 
 typedef enum knd_relarg_type {
     KND_RELARG_NONE,
@@ -46,21 +49,27 @@ static const char* const knd_relarg_names[] = {
     "ins",
 };
 
-struct kndRelArgItem
+struct kndRelArgInstRef
+{
+    struct kndRelArgInstance *inst;
+    struct kndRelArgInstRef *next;
+};
+
+struct kndRelArgInstance
 {
     knd_task_spec_type type;
-    char name[KND_NAME_SIZE];
-    size_t name_size;
-
-    char val[KND_NAME_SIZE];
-    size_t val_size;
-
     struct kndRelArg *relarg;
-    struct kndRelArgItem *children;
-    struct kndRelArgItem *tail;
-    size_t num_children;
+    struct kndRelInstance *rel_inst;
+
+    const char *classname;
+    size_t classname_size;
+    struct kndConcDir *conc_dir;
+
+    const char *objname;
+    size_t objname_size;
+    struct kndObjEntry *obj;
     
-    struct kndRelArgItem *next;
+    struct kndRelArgInstance *next;
 };
 
 struct kndRelArg 
@@ -98,7 +107,7 @@ struct kndRelArg
     size_t idx_name_size;
 
     struct kndRefSet *browser;
-
+    struct kndObject *curr_obj;
     struct kndOutput *out;
     
     struct kndTranslation *tr;
@@ -117,11 +126,22 @@ struct kndRelArg
     int (*validate)(struct kndRelArg *self,
                     const char   *val,
                     size_t val_size);
-
+    int (*resolve)(struct kndRelArg   *self);
     int (*export)(struct kndRelArg   *self);
+
+    int (*parse_inst)(struct kndRelArg *self,
+                      struct kndRelArgInstance *inst,
+                      const char *rec,
+                      size_t *total_size);
+    int (*resolve_inst)(struct kndRelArg *self,
+			struct kndRelArgInstance *inst);
+    int (*export_inst)(struct kndRelArg *self,
+		       struct kndRelArgInstance *inst);
 };
 
 
 /* constructor */
+extern void kndRelArgInstance_init(struct kndRelArgInstance *self);
+extern void kndRelArgInstRef_init(struct kndRelArgInstRef *self);
 extern int kndRelArg_new(struct kndRelArg **self);
 #endif

@@ -38,7 +38,6 @@ static void del(struct kndAttr *self)
 static void str(struct kndAttr *self)
 {
     struct kndTranslation *tr;
-
     const char *type_name = knd_attr_names[self->type];
 
     if (self->is_list)
@@ -49,9 +48,9 @@ static void str(struct kndAttr *self)
     if (self->access_type == KND_ATTR_ACCESS_RESTRICTED) {
         knd_log("%*s  ACL:restricted", self->depth * KND_OFFSET_SIZE, "");
     }
-    
-    if (self->quantif_size) {
-        knd_log("\n%*s    [%s]", self->depth * KND_OFFSET_SIZE, "", self->quantif);
+
+    if (self->quant_type == KND_ATTR_SET) {
+        knd_log("%*s  QUANT:SET", self->depth * KND_OFFSET_SIZE, "");
     }
     
     tr = self->tr;
@@ -60,12 +59,17 @@ static void str(struct kndAttr *self)
         tr = tr->next;
     }
 
-    /*if (self->classname_size) {
-        knd_log("%*s  class template: %s", self->depth * KND_OFFSET_SIZE, "", self->classname);
-        }*/
-
     if (self->ref_classname_size) {
-        knd_log("%*s  REF class template: %s", self->depth * KND_OFFSET_SIZE, "", self->ref_classname);
+        knd_log("%*s  REF class template: %.*s", self->depth * KND_OFFSET_SIZE, "",
+		self->ref_classname_size, self->ref_classname);
+    }
+    if (self->uniq_attr_name_size) {
+        knd_log("%*s  UNIQ attr: %.*s", self->depth * KND_OFFSET_SIZE, "",
+		self->uniq_attr_name_size, self->uniq_attr_name);
+    }
+
+    if (self->ref_procname_size) {
+        knd_log("%*s  REF proc template: %s", self->depth * KND_OFFSET_SIZE, "", self->ref_procname);
     }
 
     if (self->calc_oper_size) {
@@ -153,9 +157,9 @@ static int export_JSON(struct kndAttr *self)
     while (tr) {
         if (DEBUG_ATTR_LEVEL_2)
             knd_log("LANG: %s == CURR LOCALE: %s [%lu] => %s",
-                    tr->locale, self->locale, (unsigned long)self->locale_size, tr->val);
+                    tr->locale, self->task->locale, (unsigned long)self->locale_size, tr->val);
 
-        if (strncmp(self->locale, tr->locale, tr->locale_size)) {
+        if (strncmp(self->task->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
         }
         
@@ -295,7 +299,7 @@ static int run_set_name(void *obj,
     return knd_OK;
 }
 
-static int run_set_quantif(void *obj,
+static int run_set_quant(void *obj,
                                struct kndTaskArg *args, size_t num_args)
 {
     struct kndAttr *self = (struct kndAttr*)obj;
@@ -304,7 +308,7 @@ static int run_set_quantif(void *obj,
     size_t name_size = 0;
 
     if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. run set quantif!\n");
+        knd_log(".. run set quant!\n");
     
     for (size_t i = 0; i < num_args; i++) {
         arg = &args[i];
@@ -317,9 +321,10 @@ static int run_set_quantif(void *obj,
     if (!name_size) return knd_FAIL;
     if (name_size >= KND_SHORT_NAME_SIZE) return knd_LIMIT;
 
-    memcpy(self->quantif, name, name_size);
-    self->quantif_size = name_size;
-    self->quantif[name_size] = '\0';
+    if (!memcmp("set", name, name_size)) {
+	self->quant_type = KND_ATTR_SET;
+	self->is_list = true;
+    }
 
     return knd_OK;
 }
@@ -385,40 +390,6 @@ static int parse_gloss_translation(void *obj,
     return knd_OK;
 }
 
-static int parse_gloss_change(void *obj,
-                              const char *rec,
-                              size_t *total_size)
-{
-    struct kndAttr *self = obj;
-    struct kndTranslation *tr;
-    int err;
-
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. parsing the gloss change: \"%s\"", rec);
-
-    tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return knd_NOMEM;
-    memset(tr, 0, sizeof(struct kndTranslation));
-
-    struct kndTaskSpec specs[] = {
-        { .is_validator = true,
-          .buf = tr->curr_locale,
-          .buf_size = &tr->curr_locale_size,
-          .max_buf_size = KND_LOCALE_SIZE,
-          .validate = parse_gloss_translation,
-          .obj = tr
-        }
-    };
-
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-
-    /* assign translation */
-    tr->next = self->tr;
-    self->tr = tr;
-
-    return knd_OK;
-}
 
 static int read_gloss(void *obj,
                       const char *rec,
@@ -484,20 +455,23 @@ static int gloss_alloc(void *obj,
     return knd_OK;
 }
 
-static int parse_quantif(void *obj,
+static int parse_quant(void *obj,
                              const char *rec,
                              size_t *total_size)
 {
-    struct kndAttr *self = (struct kndAttr*)obj;
+    struct kndAttr *self = obj;
     int err;
-
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. parsing the quantif: \"%s\"", rec);
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_set_quantif,
+          .run = run_set_quant,
           .obj = self
+        },
+        { .name = "uniq",
+          .name_size = strlen("uniq"),
+          .buf = self->uniq_attr_name,
+          .buf_size = &self->uniq_attr_name_size,
+          .max_buf_size = KND_SHORT_NAME_SIZE,
         }
     };
 
@@ -603,8 +577,8 @@ static int run_set_validator(void *obj,
 
 
 static int parse_validator(void *obj,
-                             const char *rec,
-                             size_t *total_size)
+                           const char *rec,
+                           size_t *total_size)
 {
     struct kndAttr *self = (struct kndAttr*)obj;
     int err;
@@ -626,7 +600,7 @@ static int parse_GSL(struct kndAttr *self,
                      size_t *total_size)
 {
     if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. attr parsing: \"%s\"..", rec);
+        knd_log(".. attr parsing: \"%.*s\"..", 32, rec);
 
     struct kndTaskSpec specs[] = {
         { .is_implied = true,
@@ -636,6 +610,14 @@ static int parse_GSL(struct kndAttr *self,
         { .is_list = true,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
+          .accu = self,
+          .alloc = gloss_alloc,
+          .append = gloss_append,
+          .parse = read_gloss
+        },
+        { .is_list = true,
+          .name = "_g",
+          .name_size = strlen("_g"),
           .accu = self,
           .alloc = gloss_alloc,
           .append = gloss_append,
@@ -654,10 +636,15 @@ static int parse_GSL(struct kndAttr *self,
           .buf_size = &self->ref_classname_size,
           .max_buf_size = KND_NAME_SIZE,
         },
-        { .type = KND_CHANGE_STATE,
-          .name = "quant",
+        { .name = "proc",
+          .name_size = strlen("proc"),
+          .buf = self->ref_procname,
+          .buf_size = &self->ref_procname_size,
+          .max_buf_size = KND_NAME_SIZE,
+        },
+        { .name = "quant",
           .name_size = strlen("quant"),
-          .parse = parse_quantif,
+          .parse = parse_quant,
           .obj = self
         },
         { .type = KND_CHANGE_STATE,
@@ -693,10 +680,6 @@ static int parse_GSL(struct kndAttr *self,
             return knd_FAIL;
         }
     }
-
-    /*if (!*self->default_val)
-        self->default_val_size = 0;
-    */
 
     return knd_OK;
 }
