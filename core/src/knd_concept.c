@@ -2532,7 +2532,7 @@ static int dir_entry_alloc(void *self,
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. %.*s to add list item: %.*s count: %zu  [total children: %zu]",
                 KND_ID_SIZE, parent_dir->id, name_size, name, count, parent_dir->num_children);
-    
+
     if (name_size > KND_ID_SIZE) return knd_LIMIT;
 
     parent_dir->mempool->new_conc_dir(parent_dir->mempool, &dir);
@@ -2982,7 +2982,7 @@ static int get_proc_name(struct kndProc *self,
     err = read(fd, buf, buf_size);
     if (err == -1) return knd_IO_FAIL;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log("\n  .. PROC BODY: %.*s",
                 buf_size, buf);
     c = buf;
@@ -3017,12 +3017,14 @@ static int get_proc_name(struct kndProc *self,
     name_size = e - b;
     if (!name_size) return knd_FAIL;
 
-    if (DEBUG_CONC_LEVEL_1)
-        knd_log(".. set PROC NAME: \"%.*s\" [%zu]",
-                name_size, b, name_size);
 
     memcpy(dir->name, b, name_size);
     dir->name_size = name_size;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. set PROC NAME: \"%.*s\" %p",
+                dir->name_size, dir->name, self->proc_idx);
+
     err = self->proc_idx->set(self->proc_idx, dir->name, name_size, dir);         RET_ERR();
 
     return knd_OK;
@@ -4078,8 +4080,7 @@ static int get_class(struct kndConcept *self,
 
     dir = self->class_idx->get(self->class_idx, name, name_size);
     if (!dir) {
-        knd_log("-- no such class: \"%.*s\"  task: %p :(",
-		name_size, name, self->task);
+        knd_log("-- no such class: \"%.*s\":(", name_size, name);
         self->log->reset(self->log);
         err = self->log->write(self->log, name, name_size);
         if (err) return err;
