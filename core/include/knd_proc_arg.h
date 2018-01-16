@@ -107,8 +107,8 @@ struct kndProcArg
     int descr_level;
     int browse_level;
 
-    char default_val[KND_NAME_SIZE];
-    size_t default_val_size;
+    char classname[KND_NAME_SIZE];
+    size_t classname_size;
 
     struct kndOutput *out;
     struct kndMemPool *mempool;

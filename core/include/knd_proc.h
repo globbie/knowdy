@@ -58,6 +58,8 @@ struct kndProcCall
     struct kndProcCallArg *args;
     size_t num_args;
 
+    struct kndTranslation *tr;
+
     struct kndProc *proc;
 };
 

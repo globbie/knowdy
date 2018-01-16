@@ -23,7 +23,6 @@ static void del(struct kndProcArg *self)
     free(self);
 }
 
-
 static void proc_call_arg_str(struct kndProcCallArg *self,
 			      size_t depth)
 {
@@ -37,8 +36,8 @@ static void str(struct kndProcArg *self)
     struct kndTranslation *tr;
     struct kndProcCallArg *arg;
 
-    knd_log("%*sarg: \"%.*s\"", self->depth * KND_OFFSET_SIZE, "",
-            self->name_size, self->name);
+    knd_log("%*sarg: \"%.*s\" [type:%.*s]", self->depth * KND_OFFSET_SIZE, "",
+            self->name_size, self->name, self->classname_size, self->classname);
 
     if (self->proc_call.name_size) {
 	knd_log("%*s    {run %.*s", self->depth * KND_OFFSET_SIZE, "",
@@ -118,10 +117,22 @@ static int export_JSON(struct kndProcArg *self)
     }
 
     if (self->proc_call.name_size) {
-	err = out->write(out, ",\"run\":\"", strlen(",\"run\":\""));              RET_ERR();
-	err = out->write(out, self->proc_call.name, self->proc_call.name_size);   RET_ERR();
-        err = out->write(out, "\"", 1);                                           RET_ERR();
-
+	if (self->proc_dir) {
+	    proc = self->proc_dir->proc;
+	    if (proc) {
+		err = out->write(out, ",\"proc\":", strlen(",\"proc\":"));        RET_ERR();
+		proc->out = out;
+		proc->format = KND_FORMAT_JSON;
+		proc->depth = self->parent->depth + 1;
+		err = proc->export(proc);                                         RET_ERR();
+	    }
+	} else {
+	    err = out->write(out, ",\"run\":\"", strlen(",\"run\":\""));          RET_ERR();
+	    err = out->write(out, self->proc_call.name,
+			     self->proc_call.name_size);                          RET_ERR();
+	    err = out->write(out, "\"", 1);                                       RET_ERR();
+	}
+	
 	if (self->proc_call.num_args) {
 	    err = out->write(out, ",\"args\":[", strlen(",\"args\":["));          RET_ERR();
 	    for (arg = self->proc_call.args; arg; arg = arg->next) {
@@ -134,16 +145,6 @@ static int export_JSON(struct kndProcArg *self)
 	    err = out->write(out, "]", 1);                                        RET_ERR();
 	}
 
-	if (self->proc_dir) {
-	    proc = self->proc_dir->proc;
-	    if (proc) {
-		err = out->write(out, ",\"proc\":", strlen(",\"proc\":"));        RET_ERR();
-		proc->out = out;
-		proc->format = KND_FORMAT_JSON;
-		proc->depth = self->parent->depth + 1;
-		err = proc->export(proc);                                         RET_ERR();
-	    }
-	}
     }
 
     err = out->write(out, "}", 1);                                                RET_ERR();
@@ -446,6 +447,22 @@ static int parse_proc_call(void *obj,
           .max_buf_size = KND_NAME_SIZE,
           .buf = self->proc_call.name
         },
+        { .is_list = true,
+          .name = "_gloss",
+          .name_size = strlen("_gloss"),
+          .accu = self,
+          .alloc = gloss_alloc,
+          .append = gloss_append,
+          .parse = read_gloss
+        },
+        { .is_list = true,
+          .name = "_g",
+          .name_size = strlen("_g"),
+          .accu = self,
+          .alloc = gloss_alloc,
+          .append = gloss_append,
+          .parse = read_gloss
+        },
 	{ .name = "call_arg",
           .name_size = strlen("call_arg"),
           .is_validator = true,
@@ -490,6 +507,12 @@ static int parse_GSL(struct kndProcArg *self,
           .alloc = gloss_alloc,
           .append = gloss_append,
           .parse = read_gloss
+        },
+        { .name = "c",
+          .name_size = strlen("c"),
+          .buf = self->classname,
+          .buf_size = &self->classname_size,
+          .max_buf_size = KND_NAME_SIZE,
         },
         { .name = "run",
           .name_size = strlen("run"),
@@ -665,14 +688,23 @@ static int resolve_arg(struct kndProcArg *self)
 {
     struct kndProcDir *dir;
     int err;
-    if (!self->proc_call.name_size) return knd_FAIL;
+
+    if (self->classname_size) {
+	knd_log(".. resolving arg class template: %.*s..", self->classname_size, self->classname);
+	return knd_OK;
+    }
+    
+    if (!self->proc_call.name_size) {
+
+	return knd_FAIL;
+    }
 
     dir = self->parent->proc_idx->get(self->parent->proc_idx,
 					  self->proc_call.name,
 					  self->proc_call.name_size);
     if (!dir) {
-	knd_log("-- no such proc: %.*s :(",
-		self->proc_call.name_size, self->proc_call.name);
+	knd_log("-- Proc Arg resolve: no such proc: \"%.*s\" IDX:%p :(",
+		self->proc_call.name_size, self->proc_call.name, self->parent->proc_idx);
 	return knd_FAIL;
     }
 
