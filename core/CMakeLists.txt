@@ -25,4 +25,5 @@ set(SOURCES
 add_library(${CORE}_obj OBJECT ${SOURCES})
 
 add_library(${CORE}_static STATIC $<TARGET_OBJECTS:${CORE}_obj>)
+target_link_libraries(${CORE}_static ${GSL_PARSER_LIBRARY})
 

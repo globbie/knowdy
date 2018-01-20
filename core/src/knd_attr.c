@@ -10,6 +10,8 @@
 #include "knd_text.h"
 #include "knd_parser.h"
 
+#include <gsl-parser.h>
+
 #define DEBUG_ATTR_LEVEL_1 0
 #define DEBUG_ATTR_LEVEL_2 0
 #define DEBUG_ATTR_LEVEL_3 0
@@ -274,80 +276,31 @@ static int export(struct kndAttr *self)
  * PARSER
  */
 
-static int run_set_name(void *obj,
-                        struct kndTaskArg *args, size_t num_args)
+static int run_set_quant(void *obj, const char *name, size_t name_size)
 {
     struct kndAttr *self = (struct kndAttr*)obj;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
-    
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            name = arg->val;
-            name_size = arg->val_size;
-        }
-    }
-
-    if (!name_size) return knd_FAIL;
-    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
-
-    memcpy(self->name, name, name_size);
-    self->name_size = name_size;
-
-    return knd_OK;
-}
-
-static int run_set_quant(void *obj,
-                               struct kndTaskArg *args, size_t num_args)
-{
-    struct kndAttr *self = (struct kndAttr*)obj;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
 
     if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. run set quant!\n");
     
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            name = arg->val;
-            name_size = arg->val_size;
-        }
-    }
-
-    if (!name_size) return knd_FAIL;
-    if (name_size >= KND_SHORT_NAME_SIZE) return knd_LIMIT;
+    if (!name_size) return gsl_FAIL;
+    if (name_size >= KND_SHORT_NAME_SIZE) return gsl_LIMIT;
 
     if (!memcmp("set", name, name_size)) {
 	self->quant_type = KND_ATTR_SET;
 	self->is_list = true;
     }
 
-    return knd_OK;
+    return gsl_OK;
 }
 
-static int run_set_translation_text(void *obj,
-                                    struct kndTaskArg *args, size_t num_args)
+static int run_set_translation_text(void *obj, const char *val, size_t val_size)
 {
     struct kndTranslation *tr = obj;
-    struct kndTaskArg *arg;
-    const char *val = NULL;
-    size_t val_size = 0;
 
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val;
-            val_size = arg->val_size;
-        }
-    }
-
-    if (!val_size) return knd_FAIL;
-    if (val_size >= KND_NAME_SIZE)
-        return knd_LIMIT;
+    if (!val_size) return gsl_FAIL;
+    if (val_size >= sizeof tr->val)
+        return gsl_LIMIT;
 
     if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. run set translation text: %s\n", val);
@@ -356,39 +309,39 @@ static int run_set_translation_text(void *obj,
     tr->val[val_size] = '\0';
     tr->val_size = val_size;
 
-    return knd_OK;
+    return gsl_OK;
 }
 
-static int parse_gloss_translation(void *obj,
-                                   const char *name, size_t name_size,
-                                   const char *rec, size_t *total_size)
-{
-    struct kndTranslation *tr = obj;
-    int err;
-
-    if (DEBUG_ATTR_LEVEL_2) {
-        knd_log("..  gloss translation in \"%.*s\" REC: \"%s\"\n",
-                name_size, name, rec); }
-
-    struct kndTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_set_translation_text,
-          .obj = tr
-        }
-    };
-
-    memcpy(tr->curr_locale, name, name_size);
-    tr->curr_locale[name_size] = '\0';
-    tr->curr_locale_size = name_size;
-
-    tr->locale = tr->curr_locale;
-    tr->locale_size = tr->curr_locale_size;
-
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-
-    return knd_OK;
-}
+//static int parse_gloss_translation(void *obj,
+//                                   const char *name, size_t name_size,
+//                                   const char *rec, size_t *total_size)
+//{
+//    struct kndTranslation *tr = obj;
+//    int err;
+//
+//    if (DEBUG_ATTR_LEVEL_2) {
+//        knd_log("..  gloss translation in \"%.*s\" REC: \"%s\"\n",
+//                name_size, name, rec); }
+//
+//    struct gslTaskSpec specs[] = {
+//        { .is_implied = true,
+//          .run = run_set_translation_text,
+//          .obj = tr
+//        }
+//    };
+//
+//    memcpy(tr->curr_locale, name, name_size);
+//    tr->curr_locale[name_size] = '\0';
+//    tr->curr_locale_size = name_size;
+//
+//    tr->locale = tr->curr_locale;
+//    tr->locale_size = tr->curr_locale_size;
+//
+//    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+//    if (err) return err;
+//
+//    return gsl_OK;
+//}
 
 
 static int read_gloss(void *obj,
@@ -396,7 +349,7 @@ static int read_gloss(void *obj,
                       size_t *total_size)
 {
     struct kndTranslation *tr = obj;
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_translation_text,
           .obj = tr
@@ -408,10 +361,10 @@ static int read_gloss(void *obj,
         knd_log(".. reading gloss translation: \"%.*s\"",
                 tr->locale_size, tr->locale);
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err) return err;
     
-    return knd_OK;
+    return gsl_OK;
 }
 
 static int gloss_append(void *accu,
@@ -423,7 +376,7 @@ static int gloss_append(void *accu,
     tr->next = self->tr;
     self->tr = tr;
 
-    return knd_OK;
+    return gsl_OK;
 }
 
 static int gloss_alloc(void *obj,
@@ -439,10 +392,10 @@ static int gloss_alloc(void *obj,
         knd_log(".. %.*s: create gloss: %.*s count: %zu",
                 self->name_size, self->name, name_size, name, count);
 
-    if (name_size > KND_LOCALE_SIZE) return knd_LIMIT;
+    if (name_size > KND_LOCALE_SIZE) return gsl_LIMIT;
 
     tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return knd_NOMEM;
+    if (!tr) return gsl_FAIL;  // FIXME(ki.stfu): return knd_NOMEM;
 
     memset(tr, 0, sizeof(struct kndTranslation));
     memcpy(tr->curr_locale, name, name_size);
@@ -452,7 +405,7 @@ static int gloss_alloc(void *obj,
     tr->locale_size = tr->curr_locale_size;
     *item = tr;
 
-    return knd_OK;
+    return gsl_OK;
 }
 
 static int parse_quant(void *obj,
@@ -462,7 +415,7 @@ static int parse_quant(void *obj,
     struct kndAttr *self = obj;
     int err;
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_quant,
           .obj = self
@@ -471,37 +424,25 @@ static int parse_quant(void *obj,
           .name_size = strlen("uniq"),
           .buf = self->uniq_attr_name,
           .buf_size = &self->uniq_attr_name_size,
-          .max_buf_size = KND_SHORT_NAME_SIZE,
+          .max_buf_size = sizeof self->uniq_attr_name
         }
     };
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err) return err;
 
-    return knd_OK;
+    return gsl_OK;
 }
 
-static int run_set_access_control(void *obj,
-                                  struct kndTaskArg *args, size_t num_args)
+static int run_set_access_control(void *obj, const char *name, size_t name_size)
 {
     struct kndAttr *self = (struct kndAttr*)obj;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
 
     if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. run set ACL..");
     
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            name = arg->val;
-            name_size = arg->val_size;
-        }
-    }
-
-    if (!name_size) return knd_FAIL;
-    if (name_size >= KND_SHORT_NAME_SIZE) return knd_LIMIT;
+    if (!name_size) return gsl_FAIL;
+    if (name_size >= KND_SHORT_NAME_SIZE) return gsl_LIMIT;
 
     if (!strncmp(name, "restrict", strlen("restrict"))) {
         self->access_type = KND_ATTR_ACCESS_RESTRICTED;
@@ -510,7 +451,7 @@ static int run_set_access_control(void *obj,
                     self->name_size, self->name);
     }
     
-    return knd_OK;
+    return gsl_OK;
 }
 
 static int parse_access_control(void *obj,
@@ -523,38 +464,26 @@ static int parse_access_control(void *obj,
     if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. parsing ACL: \"%s\"", rec);
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_access_control,
           .obj = self
         }
     };
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err) return err;
 
-    return knd_OK;
+    return gsl_OK;
 }
 
-static int run_set_validator(void *obj,
-                             struct kndTaskArg *args, size_t num_args)
+static int run_set_validator(void *obj, const char *name, size_t name_size)
 {
     struct kndAttr *self = (struct kndAttr*)obj;
-    struct kndTaskArg *arg;
     struct kndAttrValidator *validator;
-    const char *name = NULL;
-    size_t name_size = 0;
     
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            name = arg->val;
-            name_size = arg->val_size;
-        }
-    }
-
-    if (!name_size) return knd_FAIL;
-    if (name_size >= KND_SHORT_NAME_SIZE) return knd_LIMIT;
+    if (!name_size) return gsl_FAIL;
+    if (name_size >= sizeof self->validator_name) return gsl_LIMIT;
             
     memcpy(self->validator_name, name, name_size);
     self->validator_name_size = name_size;
@@ -572,7 +501,7 @@ static int run_set_validator(void *obj,
         */
     }
     
-    return knd_OK;
+    return gsl_OK;
 }
 
 
@@ -582,17 +511,17 @@ static int parse_validator(void *obj,
 {
     struct kndAttr *self = (struct kndAttr*)obj;
     int err;
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_validator,
           .obj = self
         }
     };
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err) return err;
     
-    return knd_OK;
+    return gsl_OK;
 }
 
 static int parse_GSL(struct kndAttr *self,
@@ -602,9 +531,11 @@ static int parse_GSL(struct kndAttr *self,
     if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. attr parsing: \"%.*s\"..", 32, rec);
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_set_name,
+          .buf = self->name,
+          .buf_size = &self->name_size,
+          .max_buf_size = sizeof self->name,
           .obj = self
         },
         { .is_list = true,
@@ -628,19 +559,19 @@ static int parse_GSL(struct kndAttr *self,
           .name_size = strlen("c"),
           .buf = self->ref_classname,
           .buf_size = &self->ref_classname_size,
-          .max_buf_size = KND_NAME_SIZE,
+          .max_buf_size = sizeof self->ref_classname,
         },
         { .name = "c",
           .name_size = strlen("c"),
           .buf = self->ref_classname,
           .buf_size = &self->ref_classname_size,
-          .max_buf_size = KND_NAME_SIZE,
+          .max_buf_size = sizeof self->ref_classname,
         },
         { .name = "proc",
           .name_size = strlen("proc"),
           .buf = self->ref_procname,
           .buf_size = &self->ref_procname_size,
-          .max_buf_size = KND_NAME_SIZE,
+          .max_buf_size = sizeof self->ref_procname,
         },
         { .name = "quant",
           .name_size = strlen("quant"),
@@ -664,14 +595,14 @@ static int parse_GSL(struct kndAttr *self,
           .name_size = strlen("val"),
           .buf = self->default_val,
           .buf_size = &self->default_val_size,
-          .max_buf_size = KND_NAME_SIZE,
+          .max_buf_size = sizeof self->default_val,
           .obj = self
         }
     };
     int err;
     
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (err) return knd_FAIL;  // FIXME(ki.stfu): convert |err| to knd_err_codes
 
     if (self->type == KND_ATTR_AGGR) {
         if (!self->ref_classname_size) {
