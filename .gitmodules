@@ -1,0 +1,3 @@
+[submodule "libs/gsl-parser"]
+	path = libs/gsl-parser
+	url = git@github.com:globbie/gsl-parser.git
