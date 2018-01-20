@@ -286,51 +286,27 @@ static int update_tokens(struct kndAuth *self)
     return err;
 }
 
-static int run_set_tid(void *obj,
-                       struct kndTaskArg *args, size_t num_args)
+static int run_set_tid(void *obj, const char *tid, size_t tid_size)
 {
     struct kndAuth *self;
-    struct kndTaskArg *arg;
-    const char *tid = NULL;
-    size_t tid_size = 0;
 
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "tid", strlen("tid"))) {
-            tid = arg->val;
-            tid_size = arg->val_size;
-        }
-    }
+    if (!tid_size) return gsl_FAIL;
+    self = (struct kndAuth *)obj;
 
-    if (!tid_size) return knd_FAIL;
-    self = (struct kndAuth*)obj;
-
-    if (tid_size >= KND_TID_SIZE) return knd_LIMIT;
     memcpy(self->tid, tid, tid_size);
     self->tid_size = tid_size;
-   
-    return knd_OK;
+
+    return gsl_OK;
 }
 
-static int run_check_sid(void *obj,
-                         struct kndTaskArg *args, size_t num_args)
+static int run_check_sid(void *obj, const char *sid, size_t sid_size)
 {
     struct kndAuth *self;
-    struct kndTaskArg *arg;
     struct kndAuthTokenRec *tok_rec;
     struct kndUserRec *user_rec;
-    const char *sid = NULL;
-    size_t sid_size = 0;
     int err;
     
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "sid", strlen("sid"))) {
-            sid = arg->val;
-            sid_size = arg->val_size;
-        }
-    }
-    if (!sid_size) return knd_FAIL;
+    if (!sid_size) return gsl_FAIL;
 
     self = (struct kndAuth*)obj;
     memcpy(self->sid, sid, sid_size);
@@ -343,11 +319,11 @@ static int run_check_sid(void *obj,
     if (!tok_rec) {
         /* time to update our token cache */
         err = update_tokens(self);
-        if (err) return err;
+        if (err) return gsl_FAIL;  // FIXME(ki.stfu): return err;
 
         /* one more try */
         tok_rec = self->token_idx->get(self->token_idx, sid, sid_size);
-        if (!tok_rec) return knd_NO_MATCH;
+        if (!tok_rec) return gsl_FAIL;  // FIXME(ki.stfu): return knd_NO_MATCH;
     }
 
     user_rec = tok_rec->user;
@@ -361,17 +337,17 @@ static int run_check_sid(void *obj,
     err = self->out->write(self->out,
                                   "{\"http_code\":200",
                            strlen("{\"http_code\":200"));
-    if (err) return err;
+    if (err) return gsl_FAIL;  // FIXME(ki.stfu): return err;
     err = self->out->write(self->out,
                                   ",\"user_id\":",
                            strlen(",\"user_id\":"));
-    if (err) return err;
+    if (err) return gsl_FAIL;  // FIXME(ki.stfu): return err;
     err = self->out->write(self->out, user_rec->name, user_rec->name_size);
-    if (err) return err;
+    if (err) return gsl_FAIL;  // FIXME(ki.stfu): return err;
     err = self->out->write(self->out, "}", 1);
-    if (err) return err;
+    if (err) return gsl_FAIL;  // FIXME(ki.stfu): return err;
     
-    return knd_OK;
+    return gsl_OK;
 }
 
 
@@ -380,7 +356,7 @@ static int parse_auth(void *obj,
                       size_t *total_size)
 {
     struct kndAuth *self = (struct kndAuth*)obj;
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .name = "sid",
           .name_size = strlen("sid"),
           .run = run_check_sid,
@@ -389,13 +365,13 @@ static int parse_auth(void *obj,
     };
     int err;
     
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err) {
         knd_log("-- auth parse error: %d", err);
         return err;
     }
     
-    return knd_OK;
+    return gsl_OK;
 }
 
 static int parse_user(void *obj,
@@ -403,7 +379,7 @@ static int parse_user(void *obj,
                       size_t *total_size)
 {
     struct kndAuth *self = (struct kndAuth*)obj;
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .name = "auth",
           .name_size = strlen("auth"),
           .parse = parse_auth,
@@ -412,13 +388,13 @@ static int parse_user(void *obj,
     };
     int err;
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err) {
         knd_log("-- task parse error: %d", err);
         return err;
     }
     
-    return knd_OK;
+    return gsl_OK;
 }
 
 static int run_task(struct kndAuth *self)
@@ -426,8 +402,8 @@ static int run_task(struct kndAuth *self)
     const char *header_tag = "{task";
     size_t header_tag_size = strlen(header_tag);
     const char *c;
-    
-    struct kndTaskSpec specs[] = {
+
+    struct gslTaskSpec specs[] = {
         { .name = "tid",
           .name_size = strlen("tid"),
           .run = run_set_tid,
@@ -443,20 +419,20 @@ static int run_task(struct kndAuth *self)
 
     const char *rec = self->task;
     size_t total_size;
-    
+
     if (strncmp(rec, header_tag, header_tag_size)) {
         knd_log("-- wrong GSL header");
         return knd_FAIL;
     }
 
     c = rec + header_tag_size;
-    
-    err = knd_parse_task(c, &total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+
+    err = gsl_parse_task(c, &total_size, specs, sizeof specs  / sizeof specs[0]);
     if (err) {
         knd_log("-- task parse error: %d", err);
-        return err;
+        return knd_FAIL;  // FIXME(ki.stfu): convert to knd_err_codes
     }
-    
+
     return knd_OK;
 }
 
@@ -537,32 +513,20 @@ static int kndAuth_start(struct kndAuth *self)
 }
 
 static int
-run_set_service_addr(void *obj,
-                     struct kndTaskArg *args, size_t num_args)
+run_set_service_addr(void *obj, const char *addr, size_t addr_size)
 {
     struct kndAuth *self;
-    struct kndTaskArg *arg;
-    const char *addr = NULL;
-    size_t addr_size = 0;
-    
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "service", strlen("service"))) {
-            addr = arg->val;
-            addr_size = arg->val_size;
-        }
-    }
 
-    if (!addr_size) return knd_FAIL;
+    if (!addr_size) return gsl_FAIL;
+    self = (struct kndAuth *)obj;
 
-    self = (struct kndAuth*)obj;
     if (DEBUG_AUTH_LEVEL_1)
         knd_log(".. set service addr to \"%.*s\"", addr_size, addr);
 
     memcpy(self->addr, addr, addr_size);
     self->addr_size = addr_size;
     
-    return knd_OK;
+    return gsl_OK;
 }
 
 static int
@@ -581,7 +545,7 @@ parse_config_GSL(struct kndAuth *self,
     size_t header_tag_size = strlen(header_tag);
     const char *c;
     
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .name = "service",
           .name_size = strlen("service"),
           .run = run_set_service_addr,
@@ -591,28 +555,28 @@ parse_config_GSL(struct kndAuth *self,
           .name_size = strlen("db_host"),
           .buf = self->db_host,
           .buf_size = &self->db_host_size,
-          .max_buf_size = KND_NAME_SIZE,
+          .max_buf_size = sizeof self->db_host,
           .obj = self
         },
         { .name = "db_user",
           .name_size = strlen("db_user"),
           .buf = self->db_user,
           .buf_size = &self->db_user_size,
-          .max_buf_size = KND_NAME_SIZE,
+          .max_buf_size = sizeof self->db_user,
           .obj = self
         },
         { .name = "db_user_pass",
           .name_size = strlen("db_user_pass"),
           .buf = self->db_user_pass,
           .buf_size = &self->db_user_pass_size,
-          .max_buf_size = KND_NAME_SIZE,
+          .max_buf_size = sizeof self->db_user_pass,
           .obj = self
         },
         { .name = "db_name",
           .name_size = strlen("db_name"),
           .buf = self->db_name,
           .buf_size = &self->db_name_size,
-          .max_buf_size = KND_NAME_SIZE,
+          .max_buf_size = sizeof self->db_name,
           .obj = self
         }
     };
@@ -635,10 +599,10 @@ parse_config_GSL(struct kndAuth *self,
 
     knd_log("..reading config: %", c);
 
-    err = knd_parse_task(c, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    err = gsl_parse_task(c, total_size, specs, sizeof specs  / sizeof specs[0]);
     if (err) {
         knd_log("-- config parse error: %d", err);
-        return err;
+        return knd_FAIL;  // FIXME(ki.stfu): convert to knd_err_codes
     }
 
     if (!self->db_user_size) {
