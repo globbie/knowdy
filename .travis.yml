@@ -17,6 +17,15 @@ dist: trusty
 compiler:
 - gcc
 - clang
+
+# Handle git submodules yourself
+git:
+    submodules: false
+# Use sed to replace the SSH URL with the public URL, then initialize submodules
+before_install:
+    - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
+    - git submodule update --init --recursive
+    
 install:
 - if [ "$CC" = "gcc" ]; then export CC="gcc-4.8"; fi
 before_script:
