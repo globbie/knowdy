@@ -304,12 +304,12 @@ kndColl_check_settings(struct kndColl *self)
 }
 
 
-static int
+static gsl_err_t
 parse_request_service_addr(void *self,
                            const char *rec,
                            size_t *total_size)
 {
-    struct kndColl *coll = (struct kndColl*)self;
+    struct kndColl *coll = (struct kndColl *)self;
     
     struct gslTaskSpec specs[] = {
         { .name = "frontend",
@@ -325,21 +325,17 @@ parse_request_service_addr(void *self,
           .max_buf_size = sizeof coll->request_proxy_backend
         }
     };
-    int err;
-    
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err) return err;
 
-    return gsl_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 
-static int
+static gsl_err_t
 parse_record_service_addr(void *self,
-                           const char *rec,
-                           size_t *total_size)
+                          const char *rec,
+                          size_t *total_size)
 {
-    struct kndColl *coll = (struct kndColl*)self;
+    struct kndColl *coll = (struct kndColl *)self;
     struct gslTaskSpec specs[] = {
         { .name = "frontend",
           .name_size = strlen("frontend"),
@@ -354,19 +350,16 @@ parse_record_service_addr(void *self,
           .max_buf_size = sizeof coll->record_proxy_backend
         }
     };
-    int err;
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err) return err;
-    
-    return gsl_OK;
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int
+static gsl_err_t
 parse_publish_service_addr(void *self,
                            const char *rec,
                            size_t *total_size)
 {
-    struct kndColl *coll = (struct kndColl*)self;
+    struct kndColl *coll = (struct kndColl *)self;
     struct gslTaskSpec specs[] = {
         { .name = "frontend",
           .name_size = strlen("frontend"),
@@ -381,20 +374,17 @@ parse_publish_service_addr(void *self,
           .max_buf_size = sizeof coll->publish_proxy_backend
         }
     };
-    int err;
 
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err) return err;
-    
-    return gsl_OK;
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int
+static gsl_err_t
 parse_select_service_addr(void *self,
                           const char *rec,
                           size_t *total_size)
 {
-    struct kndColl *coll = (struct kndColl*)self;
+    struct kndColl *coll = (struct kndColl *)self;
 
     struct gslTaskSpec specs[] = {
         { .name = "frontend",
@@ -410,12 +400,8 @@ parse_select_service_addr(void *self,
           .max_buf_size = sizeof coll->select_proxy_backend
         }
     };
-    int err;
-    
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err) return err;
-    
-    return gsl_OK;
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static int
@@ -457,6 +443,7 @@ parse_config_GSL(struct kndColl *self,
         }
     };
     int err;
+    gsl_err_t parser_err;
 
     if (!strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
         rec += gsl_format_tag_size;
@@ -475,10 +462,10 @@ parse_config_GSL(struct kndColl *self,
     }
     c = rec + header_tag_size;
     
-    err = gsl_parse_task(c, total_size, specs, sizeof specs  / sizeof specs[0]);
-    if (err) {
-        knd_log("-- config parse error: %d", err);
-        return knd_FAIL;  // FIXME(ki.stfu): convert |err| to knd_err_codes
+    parser_err = gsl_parse_task(c, total_size, specs, sizeof specs  / sizeof specs[0]);
+    if (parser_err.code) {
+        knd_log("-- config parse error: %d", parser_err.code);
+        return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
     }
     
     return knd_OK;
