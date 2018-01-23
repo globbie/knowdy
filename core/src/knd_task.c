@@ -130,9 +130,9 @@ static int parse_iter_batch(void *obj,
 }
 
 
-static int parse_iter(void *obj,
-                      const char *rec,
-                      size_t *total_size)
+static gsl_err_t parse_iter(void *obj,
+                            const char *rec,
+                            size_t *total_size)
 {
     struct kndTaskSpec specs[] = {
         { .name = "batch",
@@ -144,9 +144,9 @@ static int parse_iter(void *obj,
     int err;
 
     err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
+    if (err) return make_gsl_err_external(err);
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 static int parse_user(void *obj,

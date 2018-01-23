@@ -355,7 +355,7 @@ static int parse_class_import(void *obj,
                               size_t *total_size)
 {
     struct kndUser *self = obj;
-    int err;
+    gsl_err_t err;
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class import: \"%.*s\"", 64, rec);
@@ -370,7 +370,7 @@ static int parse_class_import(void *obj,
     self->root_class->dbpath_size = self->dbpath_size;
 
     err = self->root_class->import(self->root_class, rec, total_size);
-    if (err) return err;
+    if (err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
 
     return knd_OK;
 }
@@ -386,6 +386,7 @@ static int parse_sync_task(void *obj,
     char *s, *n;
     size_t path_size;
     int err;
+    gsl_err_t parser_err;
 
     if (DEBUG_USER_LEVEL_1)
         knd_log(".. got sync task..");
@@ -427,8 +428,8 @@ static int parse_sync_task(void *obj,
     self->root_class->frozen_name_idx_path = buf;
     self->root_class->frozen_name_idx_path_size = buf_size;
 
-    err = self->root_class->sync(self->root_class, rec, total_size);
-    if (err) return err;
+    parser_err = self->root_class->sync(self->root_class, rec, total_size);
+    if (parser_err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
 
     /* bump frozen count */
 
