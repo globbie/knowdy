@@ -24,6 +24,8 @@
 #include "knd_config.h"
 #include "knd_http_codes.h"
 
+#include <gsl-parser/gsl_err.h>
+
 struct kndOutput;
 struct kndTask;
 struct kndUser;
@@ -173,9 +175,9 @@ struct kndTask
     int (*parse)(struct kndTask *self,
                  const char     *rec,
                  size_t   *total_size);
-    int (*parse_iter)(void *data,
-                      const char *rec,
-                      size_t *total_size);
+    gsl_err_t (*parse_iter)(void *data,
+                            const char *rec,
+                            size_t *total_size);
     int (*report)(struct kndTask *self);
 };
 
