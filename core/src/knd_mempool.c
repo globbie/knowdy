@@ -467,7 +467,7 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_class_update_refs) self->max_class_update_refs = KND_MIN_UPDATES;
     if (!self->max_users)        self->max_users = KND_MIN_USERS;
     if (!self->max_classes)      self->max_classes = KND_MIN_CLASSES;
-    if (!self->max_conc_dirs)    self->max_conc_dirs = KND_MIN_CLASSES;
+    if (!self->max_conc_dirs)    self->max_conc_dirs = self->max_classes;
     if (!self->max_conc_items)   self->max_conc_items = KND_MIN_CLASSES;
     if (!self->max_objs)         self->max_objs =    KND_MIN_OBJS;
     if (!self->max_obj_dirs)     self->max_obj_dirs = self->max_objs;

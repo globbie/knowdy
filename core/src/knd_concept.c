@@ -841,8 +841,7 @@ static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t n
     }
 
     if (!val_size) return knd_FAIL;
-    if (val_size >= KND_NAME_SIZE)
-        return knd_LIMIT;
+    if (val_size >= KND_NAME_SIZE) return knd_LIMIT;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. run set translation text: %.*s [%lu]\n", val_size, val,
@@ -2528,21 +2527,25 @@ static int dir_entry_alloc(void *self,
 {
     struct kndConcDir *parent_dir = self;
     struct kndConcDir *dir;
+    int err;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. %.*s to add list item: %.*s count: %zu  [total children: %zu]",
-                KND_ID_SIZE, parent_dir->id, name_size, name, count, parent_dir->num_children);
+        knd_log(".. %.*s to add list item: %.*s count: %zu  [total children: %zu] mempool:%p",
+                KND_ID_SIZE, parent_dir->id, name_size, name, count, parent_dir->num_children,
+		 parent_dir->mempool);
 
     if (name_size > KND_ID_SIZE) return knd_LIMIT;
 
-    parent_dir->mempool->new_conc_dir(parent_dir->mempool, &dir);
+    err = parent_dir->mempool->new_conc_dir(parent_dir->mempool, &dir);           RET_ERR();
+
     memcpy(dir->id, name, name_size);
+
     dir->id_size = name_size;
     dir->mempool = parent_dir->mempool;
 
     memset(dir->next_obj_id, '0', KND_ID_SIZE);
     knd_calc_num_id(name, &dir->numid);
-    
+
     *item = dir;
     return knd_OK;
 }
@@ -3150,7 +3153,7 @@ static int parse_dir_trailer(struct kndConcept *self,
 
     parent_dir->curr_offset = parent_dir->global_offset;
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("  .. parsing %.*s  DIR REC: \"%.*s\"  curr offset: %zu   [dir size:%zu]",
+        knd_log("  .. parsing \"%.*s\" DIR REC: \"%.*s\"  curr offset: %zu   [dir size:%zu]",
                 KND_ID_SIZE, parent_dir->id, dir_buf_size, dir_buf,
                 parent_dir->curr_offset, dir_buf_size);
 
@@ -6124,8 +6127,7 @@ static int freeze(struct kndConcept *self)
 
     /* persistent write */
     err = knd_append_file(self->frozen_output_file_name,
-                          self->out->buf, self->out->buf_size);
-    if (err) return err;
+                          self->out->buf, self->out->buf_size);                   RET_ERR();
 
     total_frozen_size = self->out->buf_size;
 

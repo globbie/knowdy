@@ -43,6 +43,7 @@ static void str(struct kndProc *self)
     struct kndTranslation *tr;
     struct kndProcArg *arg;
     struct kndProcCallArg *call_arg;
+    struct kndProcBase *base;
 
     knd_log("PROC: %.*s", self->name_size, self->name);
 
@@ -51,6 +52,11 @@ static void str(struct kndProc *self)
                 tr->locale, tr->val_size, tr->val);
     }
 
+    for (base = self->bases; base; base = base->next) {
+        knd_log("%*sbase => %.*s", (self->depth + 1) * KND_OFFSET_SIZE, "",
+                base->name_size, base->name);
+    }
+    
     for (arg = self->args; arg; arg = arg->next) {
 	arg->depth = self->depth + 1;
 	arg->str(arg);
@@ -661,6 +667,40 @@ static int parse_arg(void *data,
     return knd_OK;
 }
 
+static int parse_base(void *data,
+		     const char *rec,
+		     size_t *total_size)
+{
+    struct kndProc *self = data;
+    struct kndProcBase *base;
+    int err;
+
+    base = malloc(sizeof(struct kndProcBase));
+    memset(base, 0, sizeof(struct kndProcBase));
+
+    struct kndTaskSpec specs[] = {
+        { .is_implied = true,
+          .buf_size = &base->name_size,
+          .max_buf_size = KND_NAME_SIZE,
+          .buf = base->name
+        }
+    };
+   
+    err = knd_parse_task(rec, total_size, specs,
+			 sizeof(specs) / sizeof(struct kndTaskSpec));             RET_ERR();
+
+    /*err = self->mempool->new_proc_base(self->mempool, &base);                       RET_ERR();
+    base->task = self->task;
+    err = base->parse(base, rec, total_size);                                       PARSE_ERR();
+
+    base->proc = self;
+    base->next = self->bases;
+    self->bases = base; */
+
+    self->num_bases++;
+    return knd_OK;
+}
+
 static int parse_proc_call_arg(void *obj,
 			       const char *name, size_t name_size,
 			       const char *rec, size_t *total_size)
@@ -801,6 +841,12 @@ static int import_proc(struct kndProc *self,
           .alloc = gloss_alloc,
           .append = gloss_append,
           .parse = read_gloss
+        },
+        { .type = KND_CHANGE_STATE,
+          .name = "base",
+          .name_size = strlen("base"),
+          .parse = parse_base,
+          .obj = proc
         },
         { .type = KND_CHANGE_STATE,
           .name = "arg",

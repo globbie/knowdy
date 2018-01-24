@@ -29,7 +29,7 @@ extern void  knd_calc_num_id(const char *id, size_t *numval);
 extern const char *max_id(const char *a, const char *b);
 extern const char *min_id(const char *a, const char *b);
 
-extern int knd_mkpath(const char *path, mode_t mode, bool has_filename);
+extern int knd_mkpath(const char *path, size_t path_size, mode_t mode, bool has_filename);
 
 extern int 
 knd_write_file(const char *path, const char *filename, 

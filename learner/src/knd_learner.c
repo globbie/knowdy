@@ -423,7 +423,6 @@ parse_config_GSL(struct kndLearner *self,
         return knd_FAIL;
     }
     c = rec + header_tag_size;
-    
     err = knd_parse_task(c, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
     if (err) {
         knd_log("-- config parse error: %d", err);
@@ -434,7 +433,8 @@ parse_config_GSL(struct kndLearner *self,
         knd_log("-- DB path not set :(");
         return knd_FAIL;
     }
-    
+    err = knd_mkpath(self->path, self->path_size, 0755, false);                   RET_ERR();
+
     if (!self->schema_path_size) {
         knd_log("-- schema path not set :(");
         return knd_FAIL;
@@ -527,6 +527,7 @@ kndLearner_new(struct kndLearner **rec,
     out->reset(out);
     err = out->write(out, self->path, self->path_size);
     if (err) return err;
+
     err = out->write(out, "/frozen.gsp", strlen("/frozen.gsp"));
     if (err) return err;
     memcpy(self->admin->frozen_output_file_name, out->buf, out->buf_size);

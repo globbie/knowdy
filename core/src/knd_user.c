@@ -59,7 +59,7 @@ static int
 kndUser_add_user(struct kndUser *self)
 {
     char buf[KND_TEMP_BUF_SIZE] = {0};
-    //size_t buf_size;
+    size_t buf_size;
     
     char uid[KND_ID_SIZE + 1];
     int err;
@@ -84,8 +84,7 @@ kndUser_add_user(struct kndUser *self)
     if (DEBUG_USER_LEVEL_TMP)
         knd_log("==  USER DIR: \"%s\"\n", buf);
 
-    /* TODO: check if DIR already exists */
-    err = knd_mkpath(buf, 0755, false);
+    err = knd_mkpath(buf, buf_size, 0755, false);
     if (err) return err;
 
     err = export(self);

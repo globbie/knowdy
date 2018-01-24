@@ -92,6 +92,16 @@ struct kndProcDir
     struct kndProcDir *next;
 };
 
+struct kndProcBase
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+
+    struct kndProc *proc;
+
+    struct kndProcBase *next;
+};
+
 struct kndProc
 {
     char name[KND_NAME_SIZE];
@@ -119,6 +129,9 @@ struct kndProc
 
     struct kndProcCall proc_call;
     size_t num_proc_calls;
+
+    struct kndProcBase *bases;
+    size_t num_bases;
 
     struct kndTask *task;
 
