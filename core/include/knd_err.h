@@ -21,6 +21,8 @@
 #ifndef KND_ERR_H
 #define KND_ERR_H
 
+#include <assert.h>
+
 #include <gsl-parser/gsl_err.h>
 
 /* return error codes */
