@@ -12,7 +12,8 @@
 #include "knd_utils.h"
 #include "knd_concept.h"
 #include "knd_attr.h"
-#include "knd_parser.h"
+
+#include <gsl-parser.h>
 
 #define DEBUG_TEXT_LEVEL_0 0
 #define DEBUG_TEXT_LEVEL_1 0
@@ -43,11 +44,11 @@ static void str(struct kndText *self)
                     curr_state->locale, curr_state->text,
                     (unsigned long)curr_state->state);
                     }*/
-        
+
         tr = curr_state->translations;
         while (tr) {
 
-            if (tr->val_size) 
+            if (tr->val_size)
                 knd_log("%*s%s: %s [#%lu]", self->depth * KND_OFFSET_SIZE, "", tr->locale, tr->val,
                         tr->state, (unsigned long)tr->chunk_count);
 
@@ -62,7 +63,7 @@ static void str(struct kndText *self)
                     knd_log("%*sCSS: \"%s\" @%lu+%lu\n", self->depth * KND_OFFSET_SIZE, "",
                             sel->css_name, (unsigned long)sel->pos, (unsigned long)sel->len);
                 }
-                
+
                 if (sel->ref) {
                     knd_log("%*sREF: \"%s\" @%lu+%lu\n", self->depth * KND_OFFSET_SIZE, "",
                             sel->ref->name, (unsigned long)sel->pos, (unsigned long)sel->len);
@@ -89,7 +90,7 @@ static int export_JSON(struct kndText *self)
     struct kndTranslation *tr;
     struct kndTextSelect *sel;
     struct kndOutput *out;
-    
+
     int num_trs = 0;
 
     int err = knd_FAIL;
@@ -103,14 +104,14 @@ static int export_JSON(struct kndText *self)
 
     if (curr_state->translations) {
         tr = curr_state->translations;
-            
+
         while (tr) {
             /* check language */
             /*if (obj->cache->repo->locale_size) {
                 if (DEBUG_TEXT_LEVEL_3)
                     knd_log("  .. text LANG: %s curr user lang: %s\n",
                             tr->locale, obj->cache->repo->locale);
-                
+
                 if (strncmp(tr->locale, obj->cache->repo->locale, tr->locale_size))
                     goto next_tr;
             }
@@ -119,7 +120,7 @@ static int export_JSON(struct kndText *self)
                 err = out->write(out, ",", 1);
                 if (err) return err;
             }
-            
+
             err = out->write(out, "\"", 1);
             if (err) return err;
 
@@ -160,7 +161,7 @@ static int export_JSON(struct kndText *self)
                         buf_size = sprintf(buf, "\"p\":%lu",
                                            (unsigned long)sel->pos);
                     }
-                    
+
                     err = out->write(out,
                                            buf, buf_size);
                     if (err) return err;
@@ -176,7 +177,7 @@ static int export_JSON(struct kndText *self)
                                                          sel->ref->name, sel->ref->name_size,
                                                          buf); */
                         err = knd_FAIL;
-                        
+
                         if (err) {
                             err = out->write(out, "000", KND_ID_SIZE);
                             if (err) return err;
@@ -187,14 +188,14 @@ static int export_JSON(struct kndText *self)
 
                         err = out->write(out, ":", 1);
                         if (err) return err;
-                        
+
                         err = out->write(out, sel->ref->name, sel->ref->name_size);
                         if (err) return err;
-                        
+
                         err = out->write(out,  "\"", 1);
                         if (err) return err;
                     }
-                    
+
                     err = out->write(out,  "}", 1);
                     if (err) return err;
 
@@ -202,7 +203,7 @@ static int export_JSON(struct kndText *self)
                         err = out->write(out,  ",", 1);
                         if (err) return err;
                     }
-                    
+
                     sel = sel->next;
                 }
 
@@ -212,9 +213,9 @@ static int export_JSON(struct kndText *self)
 
             err = out->write(out, "}", 1);
             if (err) return err;
-            
+
             num_trs++;
-            
+
             tr = tr->next;
         }
 
@@ -236,7 +237,7 @@ static int export_HTML(struct kndText *self)
 
     //size_t curr_size;
     //char *c;
-    
+
     int err = knd_FAIL;
 
     obj = self->elem->obj;
@@ -245,7 +246,7 @@ static int export_HTML(struct kndText *self)
 
     if (curr_state->translations) {
         tr = curr_state->translations;
-            
+
         while (tr) {
             /* check language */
             /*if (obj->cache->repo->locale_size) {
@@ -253,7 +254,7 @@ static int export_HTML(struct kndText *self)
                 if (DEBUG_TEXT_LEVEL_3)
                     knd_log("  .. text LANG: %s curr user lang: %s\n",
                             tr->locale, obj->cache->repo->locale);
-                
+
                 if (strcmp(tr->locale, obj->cache->repo->locale))
                     goto next_tr;
                     }*/
@@ -263,20 +264,20 @@ static int export_HTML(struct kndText *self)
             err = self->out->write(self->out,  buf, buf_size);
             if (err) return err;
             */
-            
+
             if (tr->seq) {
                 /*err = self->out->write(self->out,
                                        "<P>", strlen("<P>"));
                 if (err) return err;
                 */
-                
+
                 err = self->out->write(self->out, tr->seq, tr->seq_size);
                 if (err) return err;
 
                 /*err = self->out->write(self->out, "</P>", strlen("</P>"));
                 if (err) return err;
                 */
-                
+
             }
 
             /*if (tr->selects) {
@@ -300,11 +301,11 @@ static int export_HTML(struct kndText *self)
 
                         err = self->out->write(self->out, sel->ref->name, sel->ref->name_size);
                         if (err) return err;
-                        
+
                         err = self->out->write(self->out,  "\"", 1);
                         if (err) return err;
                     }
-                    
+
                     err = self->out->write(self->out,  "</LI>", strlen("</LI>"));
                     if (err) return err;
 
@@ -312,7 +313,7 @@ static int export_HTML(struct kndText *self)
                         err = self->out->write(self->out,  "\n", 1);
                         if (err) return err;
                     }
-                    
+
                     sel = sel->next;
                 }
 
@@ -324,7 +325,7 @@ static int export_HTML(struct kndText *self)
               err = self->out->write(self->out,  ",", 1);
               if (err) goto final;
               }*/
-            
+
             tr = tr->next;
         }
 
@@ -345,12 +346,12 @@ static int export_GSP(struct kndText *self)
 
     struct kndTextState *curr_state;
     struct kndTranslation *tr;
-    
+
     struct kndTextSelect *sel;
     size_t curr_size;
-    
+
     int err = knd_FAIL;
-  
+
     // NB: expects self->states != NULL
     curr_state = self->states;
     if (!curr_state->translations) {
@@ -359,10 +360,10 @@ static int export_GSP(struct kndText *self)
     }
 
     tr = curr_state->translations;
-            
+
     err = self->out->write(self->out,  "[tr ", strlen("[tr "));
     if (err) return err;
-        
+
     while (tr) {
         err = self->out->write(self->out,  "{", 1);
         if (err) return err;
@@ -373,7 +374,7 @@ static int export_GSP(struct kndText *self)
         if (err) return err;
         err = self->out->write(self->out,  "}", 1);
         if (err) return err;
-        
+
         if (tr->seq) {
             err = self->out->write(self->out, "{t ", strlen("{t "));
             if (err) return err;
@@ -391,7 +392,7 @@ static int export_GSP(struct kndText *self)
 
             sel = tr->selects;
             curr_size = 0;
-                
+
             while (sel) {
                 err = self->out->write(self->out,  "{", 1);
                 if (err) return err;
@@ -416,7 +417,7 @@ static int export_GSP(struct kndText *self)
 
                     err = self->out->write(self->out, sel->css_name, sel->css_name_size);
                     if (err) return err;
-                    
+
                     err = self->out->write(self->out,  "}", 1);
                     if (err) return err;
                 }
@@ -428,7 +429,7 @@ static int export_GSP(struct kndText *self)
 
                     err = self->out->write(self->out, sel->ref->name, sel->ref->name_size);
                     if (err) return err;
-                    
+
                     err = self->out->write(self->out,  "}", 1);
                     if (err) return err;
                 }
@@ -441,13 +442,13 @@ static int export_GSP(struct kndText *self)
             err = self->out->write(self->out, "]", 1);
             if (err) return err;
         }
-        
+
         err = self->out->write(self->out,  "}", 1);
         if (err) return err;
-        
+
         tr = tr->next;
     }
-    
+
     err = self->out->write(self->out,  "]", 1);
     if (err) return err;
 
@@ -462,7 +463,7 @@ static int export_GSP(struct kndText *self)
 static int export(struct kndText *self)
 {
     int err;
-    
+
     switch(self->format) {
     case KND_FORMAT_JSON:
         err = export_JSON(self);
@@ -479,31 +480,20 @@ static int export(struct kndText *self)
     default:
         break;
     }
-    
+
     return knd_OK;
 }
 
-static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t num_args)
+static gsl_err_t run_set_translation_text(void *obj, const char *val, size_t val_size)
 {
     struct kndTranslation *tr = (struct kndTranslation*)obj;
-    struct kndTaskArg *arg;
-    const char *val = NULL;
-    size_t val_size = 0;
 
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val;
-            val_size = arg->val_size;
-        }
-    }
-
-    if (!val_size) return knd_FAIL;
+    if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_NAME_SIZE) {
         /* alloc memory */
         if (val_size + 1 >= KND_MAX_TEXT_CHUNK_SIZE) {
             knd_log("-- max text limit reached: %lu :(", (unsigned long)val_size);
-            return knd_LIMIT;
+            return make_gsl_err(gsl_LIMIT);
         }
 
         /*tr->seq = malloc(val_size + 1);
@@ -515,7 +505,7 @@ static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t n
         */
         if (DEBUG_TEXT_LEVEL_2)
             knd_log("== TEXT CHUNK val: \"%s\"", tr->seq);
-        return knd_OK;
+        return make_gsl_err(gsl_OK);
     }
 
     if (DEBUG_TEXT_LEVEL_2)
@@ -525,23 +515,22 @@ static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t n
     tr->val[val_size] = '\0';
     tr->val_size = val_size;
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 
 
-static int parse_translation_GSL(void *obj,
-                                 const char *name, size_t name_size,
-                                 const char *rec, size_t *total_size)
+static gsl_err_t parse_translation_GSL(void *obj,
+                                       const char *name, size_t name_size,
+                                       const char *rec, size_t *total_size)
 {
     struct kndTranslation *tr = (struct kndTranslation*)obj;
-    int err;
 
     if (DEBUG_TEXT_LEVEL_3) {
         knd_log("..  translation in \"%s\" REC: \"%s\"\n",
                 name, rec); }
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_translation_text,
           .obj = tr
@@ -555,10 +544,7 @@ static int parse_translation_GSL(void *obj,
     tr->locale = tr->curr_locale;
     tr->locale_size = tr->curr_locale_size;
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static int parse_GSL(struct kndText *self,
@@ -567,8 +553,8 @@ static int parse_GSL(struct kndText *self,
 {
     struct kndTextState *state;
     struct kndTranslation *tr;
-    int err;
-    
+    gsl_err_t parser_err;
+
     state = self->states;
     if (!state) {
         state = malloc(sizeof(struct kndTextState));
@@ -577,12 +563,12 @@ static int parse_GSL(struct kndText *self,
         self->states = state;
         self->num_states++;
     }
-    
+
     tr = malloc(sizeof(struct kndTranslation));
     if (!tr) return knd_NOMEM;
     memset(tr, 0, sizeof(struct kndTranslation));
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_validator = true,
           .buf = tr->curr_locale,
           .buf_size = &tr->curr_locale_size,
@@ -592,8 +578,8 @@ static int parse_GSL(struct kndText *self,
         }
     };
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
 
     /* assign translation */
     tr->next = state->translations;
@@ -602,11 +588,11 @@ static int parse_GSL(struct kndText *self,
     return knd_OK;
 }
 
-extern int 
+extern int
 kndText_new(struct kndText **text)
 {
     struct kndText *self;
-    
+
     self = malloc(sizeof(struct kndText));
     if (!self) return knd_NOMEM;
 
