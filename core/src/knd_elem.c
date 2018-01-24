@@ -423,7 +423,7 @@ static int parse_GSL(struct kndElem *self,
           .obj = self
         },
 
-        { .type = KND_CHANGE_STATE,
+        { .type = GSL_CHANGE_STATE,
           .name = "default",
           .name_size = strlen("default"),
           .is_default = true,
