@@ -352,7 +352,7 @@ static int parse_GSL(struct kndRelArg *self,
           .append = gloss_append,
           .parse = read_gloss
         },
-        { .type = KND_CHANGE_STATE,
+        { .type = GSL_CHANGE_STATE,
           .name = "c",
           .name_size = strlen("c"),
           .buf = self->classname,
