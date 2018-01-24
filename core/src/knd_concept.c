@@ -2045,7 +2045,7 @@ static int parse_GSL(struct kndConcept *self,
     gsl_err_t parser_err;
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     return knd_OK;
 }
@@ -2991,7 +2991,7 @@ static int parse_dir_trailer(struct kndConcept *self,
                 parent_dir->curr_offset, dir_buf_size);
 
     parser_err = gsl_parse_task(dir_buf, &parsed_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     /* get conc name */
     if (parent_dir->block_size) {
@@ -3257,7 +3257,7 @@ static int parse_obj_dir_trailer(struct kndConcept *self,
                 128, obj_dir_buf, obj_dir_buf_size, encode_base);
 
     parser_err = gsl_parse_task(obj_dir_buf, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     /* build obj name idx */
     if (parent_dir->num_objs) {
@@ -3658,7 +3658,7 @@ static int read_GSP(struct kndConcept *self,
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     return knd_OK;
 }
@@ -4452,7 +4452,7 @@ static int select_delta(struct kndConcept *self,
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. select delta:  gt %zu  lt %zu ..",
@@ -4583,7 +4583,7 @@ static int parse_select_class(void *obj,
                                  strlen("class parse failure"));
             if (err) return err;
         }
-        return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+        return gsl_err_to_knd_err_codes(parser_err);
     }
 
     /* any updates happened? */
@@ -5380,7 +5380,7 @@ static int apply_liquid_updates(struct kndConcept *self,
 
     parser_err = gsl_parse_task(rec, total_size, specs,
                                 sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     if (!self->curr_update) return knd_FAIL;
 

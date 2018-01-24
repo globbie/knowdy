@@ -724,7 +724,7 @@ kndRepo_parse_task(void *self,
     gsl_err_t err;
 
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+    if (err.code) return gsl_err_to_knd_err_codes(err);
 
     return knd_OK;
 }

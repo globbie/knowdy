@@ -340,7 +340,7 @@ static int parse_proc_select(struct kndProc *self,
                                  strlen("proc parse failure"));
             if (e) return e;
         }
-        return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+        return gsl_err_to_knd_err_codes(parser_err);
     }
 
     /* any updates happened? */
@@ -795,7 +795,7 @@ static int import_proc(struct kndProc *self,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        err = knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+        err = gsl_err_to_knd_err_codes(parser_err);
         goto final;
     }
 
@@ -884,7 +884,7 @@ static int parse_GSL(struct kndProc *self,
     gsl_err_t parser_err;
     
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     return knd_OK;
 }

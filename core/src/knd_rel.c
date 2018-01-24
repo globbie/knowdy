@@ -621,7 +621,7 @@ static int import_rel(struct kndRel *self,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        err = knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+        err = gsl_err_to_knd_err_codes(parser_err);
         goto final;
     }
 
@@ -724,7 +724,7 @@ static int read_GSP(struct kndRel *self,
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     return knd_OK;
 }
@@ -981,7 +981,7 @@ static int read_instance(struct kndRel *self,
    };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     if (DEBUG_REL_LEVEL_2)
         inst_str(self, inst);
@@ -1123,7 +1123,7 @@ static int parse_rel_select(struct kndRel *self,
                                  strlen("rel parse failure"));
             if (e) return e;
         }
-        return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+        return gsl_err_to_knd_err_codes(parser_err);
     }
 
     /* any updates happened? */
@@ -1408,7 +1408,7 @@ static int parse_liquid_updates(struct kndRel *self,
     update->rels = rel_updates;
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     return knd_OK;
 }

@@ -327,7 +327,7 @@ parse_config_GSL(struct kndRetriever *self,
     parser_err = gsl_parse_task(c, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         knd_log("-- config parse error: %d", parser_err.code);
-        return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+        return gsl_err_to_knd_err_codes(parser_err);
     }
 
     if (!*self->path) {

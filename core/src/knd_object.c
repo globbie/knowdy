@@ -1016,7 +1016,7 @@ static int parse_GSL(struct kndObject *self,
         knd_log(".. parsing obj REC: %.*s", 64, rec);
  
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     return knd_OK;
 }
@@ -1042,7 +1042,7 @@ static int select_rels(struct kndObject *self,
     gsl_err_t parser_err;
  
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     return knd_OK;
 }
@@ -1150,7 +1150,7 @@ static int parse_select_obj(struct kndObject *self,
                                  strlen("obj select parse failure"));
             if (err) return err;
         }
-        return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+        return gsl_err_to_knd_err_codes(parser_err);
     }
 
     return knd_OK;

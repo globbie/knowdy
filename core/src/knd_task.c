@@ -257,7 +257,7 @@ static int parse_GSL(struct kndTask *self,
                                  strlen("internal server error"));
             if (err) return err;
         }
-        return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+        return gsl_err_to_knd_err_codes(parser_err);
     }
 
     return knd_OK;

@@ -428,9 +428,9 @@ static int run_task(struct kndAuth *self)
     c = rec + header_tag_size;
 
     err = gsl_parse_task(c, &total_size, specs, sizeof specs  / sizeof specs[0]);
-    if (err) {
-        knd_log("-- task parse error: %d", err);
-        return knd_FAIL;  // FIXME(ki.stfu): convert to knd_err_codes
+    if (err.code) {
+        knd_log("-- task parse error: %d", err.code);
+        return gsl_err_to_knd_err_codes(err);
     }
 
     return knd_OK;
@@ -600,9 +600,9 @@ parse_config_GSL(struct kndAuth *self,
     knd_log("..reading config: %", c);
 
     err = gsl_parse_task(c, total_size, specs, sizeof specs  / sizeof specs[0]);
-    if (err) {
-        knd_log("-- config parse error: %d", err);
-        return knd_FAIL;  // FIXME(ki.stfu): convert to knd_err_codes
+    if (err.code) {
+        knd_log("-- config parse error: %d", err.code);
+        return gsl_err_to_knd_err_codes(err);
     }
 
     if (!self->db_user_size) {

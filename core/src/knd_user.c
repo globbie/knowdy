@@ -844,7 +844,7 @@ static int parse_task(struct kndUser *self,
                 goto cleanup;
             }
         }
-        err = knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+        err = gsl_err_to_knd_err_codes(parser_err);
         goto cleanup;
     }
 
