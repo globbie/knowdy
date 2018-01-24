@@ -37,7 +37,6 @@ struct kndRel;
 struct kndRelObj;
 struct kndTask;
 struct kndUser;
-struct kndTaskArg;
 struct kndClassUpdate;
 struct kndClassUpdateRef;
 
