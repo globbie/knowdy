@@ -14,8 +14,9 @@
 #include "knd_output.h"
 #include "knd_msg.h"
 #include "knd_dict.h"
-#include "knd_parser.h"
 #include "knd_concept.h"
+
+#include <gsl-parser.h>
 
 #define DEBUG_REPO_LEVEL_0 0
 #define DEBUG_REPO_LEVEL_1 0
@@ -50,14 +51,14 @@ kndRepo_get_obj(struct kndRepo *self,
     return knd_FAIL;
 }
 
-static int 
+static int
 kndRepo_del(struct kndRepo *self)
 {
     free(self);
     return knd_OK;
 }
 
-static int 
+static int
 kndRepo_str(struct kndRepo *self __attribute__((unused)))
 {
 
@@ -73,16 +74,16 @@ kndRepo_parse_config(struct kndRepo *self,
                      size_t *total_size)
 {
     size_t buf_size;
-    
+
     const char *c, *b;
     bool in_body = false;
     bool in_attr = false;
     //bool in_last_id = false;
     bool in_repo_name = false;
-    
+
     c = rec;
     b = rec;
-    
+
     while (*c) {
         switch (*c) {
         case '\n':
@@ -100,7 +101,7 @@ kndRepo_parse_config(struct kndRepo *self,
                 b = c + 1;
                 break;
             }
-            
+
             break;
         case '{':
             if (!in_body) {
@@ -113,10 +114,10 @@ kndRepo_parse_config(struct kndRepo *self,
                 b = c + 1;
                 break;
             }
-            
+
             break;
         case '}':
-            
+
             if (in_repo_name) {
                 buf_size = c - b;
                 if (!buf_size) return knd_FAIL;
@@ -146,7 +147,7 @@ kndRepo_parse_config(struct kndRepo *self,
         }
         c++;
     }
-    
+
     return knd_OK;
 }
 
@@ -166,7 +167,7 @@ kndRepo_open(struct kndRepo *self)
     out->reset(out);
     err = out->write(out, self->user->dbpath, self->user->dbpath_size);
     if (err) return err;
-    
+
     err = out->write(out, repo_dir, repo_dir_size);
     if (err) return err;
 
@@ -179,19 +180,19 @@ kndRepo_open(struct kndRepo *self)
 
     err = out->write(out, "/", 1);
     if (err) return err;
-    
+
     if (out->buf_size >= KND_TEMP_BUF_SIZE) return knd_LIMIT;
     memcpy(self->path, out->buf, out->buf_size);
     self->path[out->buf_size] = '\0';
     self->path_size = out->buf_size;
-    
+
     if (DEBUG_REPO_LEVEL_2)
         knd_log("..opening repo:  ID:\"%s\" REPO PATH:%s",
                 self->id, self->path);
 
     err = out->write(out, "repo.gsl", strlen("repo.gsl"));
     if (err) return err;
-    
+
     self->out->reset(self->out);
     err = self->out->read_file(self->out,
                                (const char*)out->buf, out->buf_size);
@@ -203,7 +204,7 @@ kndRepo_open(struct kndRepo *self)
     }
 
     self->out->file[self->out->file_size] = '\0';
-    
+
     if (self->restore_mode) {
         err = kndRepo_parse_config(self, self->out->file, &chunk_size);
         if (err) return err;
@@ -218,7 +219,7 @@ kndRepo_open(struct kndRepo *self)
     if (DEBUG_REPO_LEVEL_2)
         knd_log("++ REPO open success: \"%s\" PATH: \"%s\"",
                 self->out->file, self->path);
-    
+
     return knd_OK;
 }
 
@@ -229,7 +230,7 @@ kndRepo_update_state(struct kndRepo *self)
     char new_state_path[KND_TEMP_BUF_SIZE];
     char state_path[KND_TEMP_BUF_SIZE];
     size_t buf_size;
-    
+
     struct kndOutput *out;
     const char *state_header = "{STATE{repo";
     size_t state_header_size = strlen(state_header);
@@ -237,7 +238,7 @@ kndRepo_update_state(struct kndRepo *self)
     const char *state_close = "}}";
     size_t state_close_size = strlen(state_close);
     int err;
-    
+
     out = self->out;
     out->reset(out);
 
@@ -251,7 +252,7 @@ kndRepo_update_state(struct kndRepo *self)
     if (err) return err;
     err = out->write(out, "}", 1);
     if (err) return err;
-    
+
     err = out->write(out, state_close, state_close_size);
     if (err) return err;
 
@@ -272,14 +273,14 @@ kndRepo_update_state(struct kndRepo *self)
     memcpy(new_state_path + buf_size, "/state_new.gsl", strlen("/state_new.gsl"));
     buf_size += strlen("/state_new.gsl");
     new_state_path[buf_size] = '\0';
-    
+
     if (DEBUG_REPO_LEVEL_2)
         knd_log(".. renaming \"%s\" -> \"%s\"..",
                 new_state_path, state_path);
-    
+
     err = rename(new_state_path, state_path);
     if (err) return err;
-    
+
     return knd_OK;
 }
 
@@ -304,13 +305,13 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
     if (err) goto final;
     repo->user = self->user;
     repo->out = self->out;
-    
+
     /* get new repo id */
     /*memcpy(repo->id, self->last_id, KND_ID_SIZE);
     repo->id[KND_ID_SIZE] = '\0';
     knd_inc_id(repo->id);
     */
-    
+
     memcpy(repo->name, name, name_size);
     repo->name_size = name_size;
     repo->name[name_size] = '\0';
@@ -322,12 +323,12 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
             knd_log("-- \"%s\" REPO already exists?", repo->id);
         return knd_FAIL;
     }
-    
+
     sprintf(buf, "%s/repos", self->user->dbpath);
     err = knd_make_id_path(path, buf, repo->id, NULL);
     if (err) goto final;
 
-    
+
     /* TODO: check if DIR already exists */
     err = knd_mkpath(path, 0755, false);
     if (err) goto final;
@@ -354,7 +355,7 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
     sprintf(buf, "%s/migrations", path);
     err = knd_mkpath(buf, 0755, false);
     if (err) goto final;
- 
+
     /*    err = kndRepo_export(repo, KND_FORMAT_GSL);
     if (err) goto final;
     */
@@ -371,151 +372,129 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
 
     /* increment id */
     memcpy(self->last_id, repo->id, KND_ID_SIZE);
-    
+
     err = kndRepo_update_state(self);
     if (err) goto final;
 
     return knd_OK;
-    
+
  final:
     repo->del(repo);
-    
+
     return err;
 }
 
 
-static int
-kndRepo_run_add_repo(void *obj, struct kndTaskArg *args, size_t num_args)
+static gsl_err_t
+kndRepo_run_add_repo(void *obj, const char *name, size_t name_size)
 {
     struct kndRepo *repo;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
     int err;
-    
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "n", strlen("n"))) {
-            name = arg->val;
-            name_size = arg->val_size;
-        }
-    }
 
-    if (!name_size) return knd_FAIL;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
 
     repo = (struct kndRepo*)obj;
-    
-    err = kndRepo_add_repo(repo, name, name_size);
-    if (err) return err;
 
-    return knd_OK;
+    err = kndRepo_add_repo(repo, name, name_size);
+    if (err) return make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
 }
 
 
 
-static int
-kndRepo_run_get_repo(void *obj, struct kndTaskArg *args, size_t num_args)
+static gsl_err_t
+kndRepo_run_get_repo(void *obj, const char *name, size_t name_size)
 {
     struct kndRepo *self, *curr_repo;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
-    
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "n", strlen("n"))) {
-            name = arg->val;
-            name_size = arg->val_size;
-        }
-    }
 
-    if (!name_size) return knd_FAIL;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
 
     self = (struct kndRepo*)obj;
     self->curr_repo = NULL;
-    
+
     curr_repo = self->repo_idx->get(self->repo_idx,
                                     name, name_size);
     if (!curr_repo) {
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("-- no such repo: \"%.*s\" :(", name_size, name);
-        return knd_FAIL;
+        return make_gsl_err(gsl_FAIL);
     }
 
     if (DEBUG_REPO_LEVEL_2) {
         knd_log("++ got repo: \"%s\" PATH: %s",
                 name, curr_repo->path);
     }
-    
+
     /* assign task */
     curr_repo->task = self->task;
     curr_repo->log = self->log;
     self->curr_repo = curr_repo;
-    
-    return knd_OK;
+
+    return make_gsl_err(gsl_OK);
 }
 
 
-static int
-kndRepo_run_get_obj(void *obj, struct kndTaskArg *args, size_t num_args)
-{
-    struct kndRepo *self;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
-    int err;
-    
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "n", strlen("n"))) {
-            name = arg->val;
-            name_size = arg->val_size;
-        }
-    }
-    if (!name_size) return knd_FAIL;
+//static int
+//kndRepo_run_get_obj(void *obj, struct kndTaskArg *args, size_t num_args)
+//{
+//    struct kndRepo *self;
+//    struct kndTaskArg *arg;
+//    const char *name = NULL;
+//    size_t name_size = 0;
+//    int err;
+//
+//    for (size_t i = 0; i < num_args; i++) {
+//        arg = &args[i];
+//        if (!strncmp(arg->name, "n", strlen("n"))) {
+//            name = arg->val;
+//            name_size = arg->val_size;
+//        }
+//    }
+//    if (!name_size) return knd_FAIL;
+//
+//    self = (struct kndRepo*)obj;
+//
+//    if (DEBUG_REPO_LEVEL_1)
+//        knd_log(".. repo %s to get OBJ: \"%s\"", self->name, name);
+//
+//    err = kndRepo_get_obj(self, name, name_size);
+//    if (err) return err;
+//
+//    return knd_OK;
+//}
 
-    self = (struct kndRepo*)obj;
 
-    if (DEBUG_REPO_LEVEL_1)
-        knd_log(".. repo %s to get OBJ: \"%s\"", self->name, name);
-    
-    err = kndRepo_get_obj(self, name, name_size);
-    if (err) return err;
-    
-    return knd_OK;
-}
-
-
-static int
-kndRepo_run_import_obj(void *obj, struct kndTaskArg *args, size_t num_args)
-{
-    struct kndRepo *self;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t chunk_size = 0;
-    size_t name_size = 0;
-    int err;
-    
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "obj", strlen("obj"))) {
-            name = arg->val;
-            name_size = arg->val_size;
-        }
-    }
-    if (!name_size) return knd_FAIL;
-
-    self = (struct kndRepo*)obj;
-
-    /* obj from separate msg */
-    if (!strncmp(name, "_attach", strlen("_attach"))) {
-        err = kndRepo_import_obj(self, self->task->obj, &chunk_size);
-        if (err) return err;
-        return knd_OK;
-    }
-    
-    return knd_FAIL;
-}
+//static int
+//kndRepo_run_import_obj(void *obj, struct kndTaskArg *args, size_t num_args)
+//{
+//    struct kndRepo *self;
+//    struct kndTaskArg *arg;
+//    const char *name = NULL;
+//    size_t chunk_size = 0;
+//    size_t name_size = 0;
+//    int err;
+//
+//    for (size_t i = 0; i < num_args; i++) {
+//        arg = &args[i];
+//        if (!strncmp(arg->name, "obj", strlen("obj"))) {
+//            name = arg->val;
+//            name_size = arg->val_size;
+//        }
+//    }
+//    if (!name_size) return knd_FAIL;
+//
+//    self = (struct kndRepo*)obj;
+//
+//    /* obj from separate msg */
+//    if (!strncmp(name, "_attach", strlen("_attach"))) {
+//        err = kndRepo_import_obj(self, self->task->obj, &chunk_size);
+//        if (err) return err;
+//        return knd_OK;
+//    }
+//
+//    return knd_FAIL;
+//}
 
 
 static int
@@ -527,12 +506,12 @@ kndRepo_import_inbox_data(struct kndRepo *self,
     size_t chunk_size = 0;
     bool in_task = true;
     int err;
-    
+
     err = kndTask_new(&task);
     if (err) return err;
 
     self->task = task;
-    
+
     c = rec;
     while (*c) {
         switch (*c) {
@@ -557,14 +536,14 @@ kndRepo_import_inbox_data(struct kndRepo *self,
             /*err = kndRepo_read_obj(self, c, &chunk_size);
             if (err) return err;
             */
-            
+
             c += chunk_size;
             in_task = true;
             break;
         default:
             break;
         }
-        
+
         c++;
     }
 
@@ -582,7 +561,7 @@ static int kndRepo_restore(struct kndRepo *self)
     size_t buf_size;
     const char *inbox_filename = "inbox/import.data";
     int err;
-    
+
     if (DEBUG_REPO_LEVEL_2)
         knd_log("  .. restoring repo \"%s\".. PATH: %s [%lu]",
                 self->id, self->path, (unsigned long)self->path_size);
@@ -597,7 +576,7 @@ static int kndRepo_restore(struct kndRepo *self)
 
     // fixme: actual restore
     return knd_OK;
-    
+
     self->out->reset(self->out);
     err = self->out->read_file(self->out,
                                (const char*)buf, buf_size);
@@ -607,11 +586,11 @@ static int kndRepo_restore(struct kndRepo *self)
             knd_log("  .. skipping import of \"%s\"..", self->id);
             return knd_OK;
         }
-        
+
         return err;
     }
     self->out->file[self->out->file_size] = '\0';
-    
+
     err = kndRepo_import_inbox_data(self, self->out->file);
     if (err) return err;
 
@@ -632,7 +611,7 @@ kndRepo_update_inbox(struct kndRepo *self)
 
     err = out->write(out, self->path, self->path_size);
     if (err) return err;
-    
+
     err = out->write(out, "inbox/", strlen("inbox/"));
     if (err) return err;
 
@@ -648,7 +627,7 @@ kndRepo_update_inbox(struct kndRepo *self)
                 (unsigned long)self->task->spec_size,
                 (unsigned long)self->task->obj_size);
 
-    
+
     /* TRN body */
     err = knd_append_file((const char*)out->buf,
                           (const void*)self->task->spec,
@@ -664,17 +643,17 @@ kndRepo_update_inbox(struct kndRepo *self)
                           (const void*)self->task->obj,
                           self->task->obj_size);
     if (err) return err;
-    
+
     return knd_OK;
 }
 
-static int
+static gsl_err_t
 kndRepo_parse_class(void *obj,
                     const char *rec,
                     size_t *total_size)
 {
     struct kndRepo *self, *repo;
-    int err;
+    gsl_err_t err;
 
     self = (struct kndRepo*)obj;
 
@@ -683,13 +662,13 @@ kndRepo_parse_class(void *obj,
 
     if (!self->curr_repo) {
         knd_log("-- no repo selected :(");
-        return knd_FAIL;
+        return make_gsl_err(gsl_FAIL);
     }
 
     repo = self->curr_repo;
     repo->out = self->task->out;
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .name = "obj",
           .name_size = strlen("obj")
         }
@@ -698,17 +677,17 @@ kndRepo_parse_class(void *obj,
     if (DEBUG_REPO_LEVEL_1)
         knd_log("   .. parsing the CLASS rec: \"%s\" CURR REPO: %s",
                 rec, repo->name);
-    
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) {
+
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (err.code) {
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("-- failed to parse the CLASS rec: %d", err);
         return err;
     }
 
     /* call default action */
-    
-    return knd_OK;
+
+    return make_gsl_err(gsl_OK);
 }
 
 
@@ -717,17 +696,17 @@ kndRepo_parse_task(void *self,
                    const char *rec,
                    size_t *total_size)
 {
-    struct kndTaskSpec add_specs[] = {
+    struct gslTaskSpec add_specs[] = {
         { .name = "n",
           .name_size = strlen("n")
         }
     };
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .name = "add",
           .name_size = strlen("add"),
           .specs = add_specs,
-          .num_specs = sizeof(add_specs) / sizeof(struct kndTaskSpec),
+          .num_specs = sizeof add_specs / sizeof add_specs[0],
           .run = kndRepo_run_add_repo,
           .obj = self
         },
@@ -742,11 +721,11 @@ kndRepo_parse_task(void *self,
           .obj = self
         }
     };
-    int err;
-    
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-    
+    gsl_err_t err;
+
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+
     return knd_OK;
 }
 
@@ -757,16 +736,16 @@ kndRepo_read_state(struct kndRepo *self,
 {
     const char *b, *c;
     size_t buf_size;
-    
+
     bool in_val = false;
     bool in_last_id = false;
-    
+
     c = rec;
     b = rec;
-    
+
     if (DEBUG_REPO_LEVEL_2)
         knd_log(".. Repo parsing curr state");
-    
+
     while (*c) {
         switch (*c) {
         case ' ':
@@ -777,7 +756,7 @@ kndRepo_read_state(struct kndRepo *self,
                 b = c + 1;
                 break;
             }
-            
+
             if (!strncmp(b, "last", strlen("last"))) {
                 in_val = true;
                 in_last_id = true;
@@ -794,10 +773,10 @@ kndRepo_read_state(struct kndRepo *self,
 
                 buf_size = c - b;
                 if (buf_size != KND_ID_SIZE) return knd_FAIL;
-                
+
                 memcpy(self->last_id, b, buf_size);
                 self->last_id[buf_size] = '\0';
-                
+
                 if (DEBUG_REPO_LEVEL_2)
                     knd_log("== LAST REPO ID: %s", self->last_id);
 
@@ -808,7 +787,7 @@ kndRepo_read_state(struct kndRepo *self,
             }
 
             *total_size = c - rec;
-            
+
             return knd_OK;
         default:
             break;
@@ -816,12 +795,12 @@ kndRepo_read_state(struct kndRepo *self,
 
         c++;
     }
-    
+
     return knd_FAIL;
 }
 
 
-extern int 
+extern int
 kndRepo_init(struct kndRepo *self)
 {
     self->del = kndRepo_del;
@@ -831,11 +810,11 @@ kndRepo_init(struct kndRepo *self)
     self->parse_task = kndRepo_parse_task;
     self->open = kndRepo_open;
     self->restore = kndRepo_restore;
-    
+
     return knd_OK;
 }
 
-extern int 
+extern int
 kndRepo_new(struct kndRepo **repo)
 {
     struct kndRepo *self;
