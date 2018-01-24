@@ -220,49 +220,37 @@ static int get_proc(struct kndProc *self,
     return err;
 }
 
-static int run_get_proc(void *obj,
-                         struct kndTaskArg *args, size_t num_args)
+static gsl_err_t run_get_proc(void *obj, const char *name, size_t name_size)
 {
     struct kndProc *self = obj;
     struct kndProc *proc;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
     int err;
 
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!memcmp(arg->name, "_impl", strlen("_impl"))) {
-            name = arg->val;
-            name_size = arg->val_size;
-        }
-    }
-    
-    if (!name_size) return knd_FAIL;
-    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     self->curr_proc = NULL;
     err = get_proc(self, name, name_size, &proc);
-    if (err) return err;
+    if (err) return make_gsl_err_external(err);
 
     self->curr_proc = proc;
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
-static int confirm_proc(void *obj,
-                        struct kndTaskArg *args __attribute__((unused)),
-                        size_t num_args __attribute__((unused)))
+static gsl_err_t confirm_proc(void *obj,
+                              const char *val __attribute__((unused)),
+                              size_t val_size __attribute__((unused)))
 {
     struct kndProc *self = obj;
     if (DEBUG_PROC_LEVEL_1)
         knd_log(".. confirm proc read: %p", self);
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
-static int present_proc_selection(void *obj,
-                                  struct kndTaskArg *args __attribute__((unused)),
-                                  size_t num_args __attribute__((unused)))
+static gsl_err_t present_proc_selection(void *obj,
+                                        const char *val __attribute__((unused)),
+                                        size_t val_size __attribute__((unused)))
 {
     struct kndProc *self = obj;
     struct kndProc *p;
@@ -273,7 +261,7 @@ static int present_proc_selection(void *obj,
         knd_log(".. presenting proc selection ..");
 
     out->reset(out);
-    if (!self->curr_proc) return knd_FAIL;
+    if (!self->curr_proc) return make_gsl_err(gsl_FAIL);
 
     p = self->curr_proc;
     p->out = out;
@@ -282,46 +270,39 @@ static int present_proc_selection(void *obj,
     p->depth = 0;
     p->max_depth = KND_MAX_DEPTH;
 
-    err = p->export(p);                                                           RET_ERR();
-    return knd_OK;
+    err = p->export(p);
+    if (err) return make_gsl_err_external(err);
+    
+    return make_gsl_err(gsl_OK);
 }
 
-static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t num_args)
-{
-    struct kndTranslation *tr = obj;
-    struct kndTaskArg *arg;
-    const char *val = NULL;
-    size_t val_size = 0;
-
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. run set translation text..");
-
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!memcmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val;
-            val_size = arg->val_size;
-        }
-    }
-    if (!val_size) return knd_FAIL;
-    if (val_size >= KND_NAME_SIZE) return knd_LIMIT;
-
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. run set translation text: %.*s [%lu]\n", val_size, val,
-                (unsigned long)val_size);
-
-    memcpy(tr->val, val, val_size);
-    tr->val_size = val_size;
-
-    return knd_OK;
-}
+//static gsl_err_t run_set_translation_text(void *obj, const char *val, size_t val_size)
+//{
+//    struct kndTranslation *tr = obj;
+//
+//    if (DEBUG_PROC_LEVEL_2)
+//        knd_log(".. run set translation text..");
+//
+//    if (!val_size) return make_gsl_err(gsl_FORMAT);
+//    if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+//
+//    if (DEBUG_PROC_LEVEL_2)
+//        knd_log(".. run set translation text: %.*s [%lu]\n", val_size, val,
+//                (unsigned long)val_size);
+//
+//    memcpy(tr->val, val, val_size);
+//    tr->val_size = val_size;
+//
+//    return make_gsl_err(gsl_OK);
+//}
 
 
 static int parse_proc_select(struct kndProc *self,
-                            const char *rec,
-                            size_t *total_size)
+                             const char *rec,
+                             size_t *total_size)
 {
     int err = knd_FAIL, e;
+    gsl_err_t parser_err;
 
     if (DEBUG_PROC_LEVEL_1)
         knd_log(".. parsing Proc select: \"%.*s\"",
@@ -349,9 +330,9 @@ static int parse_proc_select(struct kndProc *self,
 
     self->curr_proc = NULL;
 
-    err = knd_parse_task(rec, total_size, specs,
+    parser_err = gsl_parse_task(rec, total_size, specs,
                          sizeof specs / sizeof specs[0]);
-    if (err) {
+    if (parser_err.code) {
         knd_log("-- proc parse error: \"%.*s\"",
                 self->log->buf_size, self->log->buf);
         if (!self->log->buf_size) {
@@ -359,7 +340,7 @@ static int parse_proc_select(struct kndProc *self,
                                  strlen("proc parse failure"));
             if (e) return e;
         }
-        return err;
+        return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
     }
 
     /* any updates happened? */
@@ -755,6 +736,7 @@ static int import_proc(struct kndProc *self,
     struct kndProc *proc;
     struct kndProcDir *dir;
     int err;
+    gsl_err_t parser_err;
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log(".. import Proc: \"%.*s\"..", 32, rec);
@@ -811,8 +793,11 @@ static int import_proc(struct kndProc *self,
         }
     };
 
-    err = knd_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err) goto final;
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        err = knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+        goto final;
+    }
 
     if (!proc->name_size) {
         err = knd_FAIL;

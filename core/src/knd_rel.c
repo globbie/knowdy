@@ -95,22 +95,26 @@ static void inst_str(struct kndRel *self, struct kndRelInstance *inst)
     }
 }
 
-static int run_present_rel(void *obj, struct kndTaskArg *args, size_t num_args)
+static gsl_err_t run_present_rel(void *obj,
+                                 const char *val,
+                                 size_t val_size)
 {
     if (DEBUG_REL_LEVEL_TMP)
         knd_log(".. present rel..");
 
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
-static int run_select_rel(void *obj, struct kndTaskArg *args, size_t num_args)
+static gsl_err_t run_select_rel(void *obj,
+                                const char *val,
+                                size_t val_size)
 {
     if (DEBUG_REL_LEVEL_TMP)
         knd_log(".. present rel..");
 
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t run_set_translation_text(void *obj, const char *val, size_t val_size)
@@ -207,29 +211,29 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
-{
-    struct kndRel *self = (struct kndRel*)obj;
-    struct kndRelState *state;
-
-    if (DEBUG_REL_LEVEL_2)
-        knd_log(".. run set rel val..");
-
-    if (!val_size) return make_gsl_err(gsl_FORMAT);
-    if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    state = malloc(sizeof(struct kndRelState));
-    if (!state) return make_gsl_err_external(knd_NOMEM);
-    memset(state, 0, sizeof(struct kndRelState));
-    self->states = state;
-    self->num_states = 1;
-
-    memcpy(state->val, val, val_size);
-    state->val[val_size] = '\0';
-    state->val_size = val_size;
-
-    return make_gsl_err(gsl_OK);
-}
+//static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
+//{
+//    struct kndRel *self = (struct kndRel*)obj;
+//    struct kndRelState *state;
+//
+//    if (DEBUG_REL_LEVEL_2)
+//        knd_log(".. run set rel val..");
+//
+//    if (!val_size) return make_gsl_err(gsl_FORMAT);
+//    if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+//
+//    state = malloc(sizeof(struct kndRelState));
+//    if (!state) return make_gsl_err_external(knd_NOMEM);
+//    memset(state, 0, sizeof(struct kndRelState));
+//    self->states = state;
+//    self->num_states = 1;
+//
+//    memcpy(state->val, val, val_size);
+//    state->val[val_size] = '\0';
+//    state->val_size = val_size;
+//
+//    return make_gsl_err(gsl_OK);
+//}
 
 static int export_JSON(struct kndRel *self)
 {
@@ -502,10 +506,10 @@ static int export_insts(struct kndRel *self,
     return knd_OK;
 }
 
-static int validate_rel_arg(void *obj,
-                            const char *name, size_t name_size,
-                            const char *rec,
-                            size_t *total_size)
+static gsl_err_t validate_rel_arg(void *obj,
+                                  const char *name, size_t name_size,
+                                  const char *rec,
+                                  size_t *total_size)
 {
     struct kndRel *self = obj;
     struct kndRelArg *arg;
@@ -516,7 +520,7 @@ static int validate_rel_arg(void *obj,
 
     /* TODO mempool */
     err = kndRelArg_new(&arg);
-    if (err) return err;
+    if (err) return make_gsl_err_external(err);
     arg->rel = self;
 
     if (!strncmp(name, "subj", strlen("subj"))) {
@@ -531,7 +535,7 @@ static int validate_rel_arg(void *obj,
     if (err) {
         if (DEBUG_REL_LEVEL_TMP)
             knd_log("-- failed to parse rel arg: %d", err);
-        return err;
+        return make_gsl_err_external(err);
     }
 
     if (!self->tail_arg) {
@@ -548,7 +552,7 @@ static int validate_rel_arg(void *obj,
     if (DEBUG_REL_LEVEL_2)
         arg->str(arg);
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 static int import_rel(struct kndRel *self,
@@ -665,9 +669,9 @@ static int import_rel(struct kndRel *self,
     return err;
 }
 
-static int confirm_rel_read(void *obj,
-                            struct kndTaskArg *args __attribute__((unused)),
-                            size_t num_args __attribute__((unused)))
+static gsl_err_t confirm_rel_read(void *obj,
+                                  const char *val __attribute__((unused)),
+                                  size_t val_size __attribute__((unused)))
 {
     struct kndRel *self = obj;
 
@@ -675,7 +679,7 @@ static int confirm_rel_read(void *obj,
         knd_log("== REL %.*s read OK!",
                 self->name_size, self->name);
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 static int read_GSP(struct kndRel *self,
@@ -869,43 +873,31 @@ static int get_rel(struct kndRel *self,
     return err;
 }
 
-static int run_get_rel(void *obj,
-                         struct kndTaskArg *args, size_t num_args)
+static gsl_err_t run_get_rel(void *obj, const char *name, size_t name_size)
 {
     struct kndRel *self = obj;
     struct kndRel *rel;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
     int err;
 
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!memcmp(arg->name, "_impl", strlen("_impl"))) {
-            name = arg->val;
-            name_size = arg->val_size;
-        }
-    }
-
-    if (!name_size) return knd_FAIL;
-    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     self->curr_rel = NULL;
     err = get_rel(self, name, name_size, &rel);
-    if (err) return err;
+    if (err) return make_gsl_err_external(err);
 
     self->curr_rel = rel;
 
     if (DEBUG_REL_LEVEL_2)
         knd_log("++ Rel selected!");
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 
-static int parse_rel_arg_inst(void *obj,
-                              const char *name, size_t name_size,
-                              const char *rec,
-                              size_t *total_size)
+static gsl_err_t parse_rel_arg_inst(void *obj,
+                                    const char *name, size_t name_size,
+                                    const char *rec,
+                                    size_t *total_size)
 {
     struct kndRelInstance *inst = obj;
     struct kndRel *rel = inst->rel;
@@ -926,23 +918,24 @@ static int parse_rel_arg_inst(void *obj,
 
     if (!arg) {
         knd_log("-- no such rel arg: %.*s :(", name_size, name);
-        return knd_FAIL;
+        return make_gsl_err(gsl_FAIL);
     }
 
-    err = mempool->new_rel_arg_inst(mempool, &arg_inst);                          RET_ERR();
+    err = mempool->new_rel_arg_inst(mempool, &arg_inst);
+    if (err) return make_gsl_err_external(err);
     arg_inst->relarg = arg;
     arg_inst->rel_inst = inst;
 
     err = arg->parse_inst(arg, arg_inst, rec, total_size);
     if (err) {
         knd_log("-- failed to parse rel arg instance: %d", err);
-        return err;
+        return make_gsl_err_external(err);
     }
 
     arg_inst->next = inst->args;
     inst->args = arg_inst;
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 static int read_instance(struct kndRel *self,
@@ -1297,28 +1290,18 @@ static int kndRel_update_state(struct kndRel *self,
     return knd_OK;
 }
 
-static int set_liquid_rel_id(void *obj, struct kndTaskArg *args, size_t num_args)
+static gsl_err_t set_liquid_rel_id(void *obj, const char *val, size_t val_size)
 {
     struct kndRel *self = (struct kndRel*)obj;
     struct kndRel *rel;
-    struct kndTaskArg *arg;
-    const char *val = NULL;
-    size_t val_size = 0;
     long numval = 0;
     int err;
 
-    if (!self->curr_rel) return knd_FAIL;
+    if (!self->curr_rel) return make_gsl_err(gsl_FAIL);
     rel = self->curr_rel;
 
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!memcmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val;
-            val_size = arg->val_size;
-        }
-    }
-
-    err = knd_parse_num((const char*)val, &numval);               RET_ERR();
+    err = knd_parse_num((const char*)val, &numval);
+    if (err) return make_gsl_err_external(err);
     rel->id = numval;
     if (rel->dir) {
         rel->dir->numid = numval;
@@ -1330,7 +1313,7 @@ static int set_liquid_rel_id(void *obj, struct kndTaskArg *args, size_t num_args
         knd_log(".. set curr liquid rel id: %zu",
                 rel->id);
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 
