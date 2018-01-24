@@ -722,8 +722,7 @@ kndDelivery_new(struct kndDelivery **deliv,
     if (err) goto error;
 
     if (self->path_size) {
-        err = knd_mkpath(self->path, 0777, false);
-        if (err) return err;
+        err = knd_mkpath(self->path, self->path_size, 0777, false);               RET_ERR();
     }
 
     

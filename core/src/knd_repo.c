@@ -288,6 +288,7 @@ static int
 kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
 {
     char buf[KND_TEMP_BUF_SIZE];
+    size_t buf_size;
     char path[KND_TEMP_BUF_SIZE];
     size_t path_size;
     struct kndRepo *repo;
@@ -329,7 +330,7 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
 
     
     /* TODO: check if DIR already exists */
-    err = knd_mkpath(path, 0755, false);
+    err = knd_mkpath(path, path_size, 0755, false);
     if (err) goto final;
 
     path_size = strlen(path);
@@ -347,12 +348,12 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
           append incoming tasks to the inbox queue */
 
     sprintf(buf, "%s/inbox", path);
-    err = knd_mkpath(buf, 0755, false);
+    err = knd_mkpath(buf, buf_size, 0755, false);
     if (err) goto final;
 
     /* reflecting class scheme changes */
     sprintf(buf, "%s/migrations", path);
-    err = knd_mkpath(buf, 0755, false);
+    err = knd_mkpath(buf, buf_size, 0755, false);
     if (err) goto final;
  
     /*    err = kndRepo_export(repo, KND_FORMAT_GSL);

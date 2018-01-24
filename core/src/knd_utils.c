@@ -192,7 +192,6 @@ knd_mkdir(const char *path, mode_t mode)
     int err = knd_OK;
 
     if (stat(path, &st) != 0) {
-
         /* directory does not exist */
         if (mkdir(path, mode) != 0)
             err = knd_FAIL;
@@ -210,51 +209,57 @@ knd_mkdir(const char *path, mode_t mode)
  * knd_mkpath - ensure all directories in path exist
  */
 extern int 
-knd_mkpath(const char *path, mode_t mode, bool has_filename)
+knd_mkpath(const char *path, size_t path_size, mode_t mode, bool has_filename)
 {
-    char *p;
-    char *sep = NULL;
+    char buf[KND_TEMP_BUF_SIZE];
+    size_t buf_size = 0;
+    size_t tail_size = path_size;
+    const char *p;
+    char *b;
     int  err;
     
-    char *path_buf = strdup(path);
-    if (!path_buf)
-        return knd_NOMEM;
-    
-    err = knd_OK;
-    p = path_buf;
+    if (path_size >= KND_TEMP_BUF_SIZE)
+        return knd_LIMIT;
+    if (!path_size) return knd_LIMIT;
 
-    while (1) {
-        sep = strchr(p, '/');
-        if (!sep) break;
+    p = path;
+    b = buf;
 
-        /*knd_log("CURR PATH: %s\n", path_buf);
-          knd_log("REST: %s\n", p); */
-        
-        *sep = '\0';
-        if (!(*p)) goto next_sep;
-        
-        err = knd_mkdir(path_buf, mode);
-        if (err)
-            goto final;
-        
-    next_sep:
-        *sep = '/';
-        p = sep + 1;
+    while (tail_size) {
+	switch (*p) {
+	case '/':
+	    if (buf_size) {
+		*b = '\0';
+		if (DEBUG_UTILS_LEVEL_TMP)
+		    knd_log("NB: .. mkdir: %s [%zu]", buf, buf_size);
+
+		err = knd_mkdir(buf, mode);                                       RET_ERR();
+	    }
+
+	    *b = '/';
+	    buf_size++;
+	    break;
+	default:
+	    *b = *p;
+	    buf_size++;
+	    break;
+	}
+        tail_size--;
+	p++;
+	b++;
     }
 
-    /*knd_log("LAST DIR: \"%s\"\n", p); */
-    
+
     /* in case no final dir separator is present at the end */
-    if (*p && !has_filename) {
-        err = knd_mkdir(path, mode);
-        if (err)
-            goto final;
+    if (buf_size && !has_filename) {
+	buf[buf_size] = '\0';
+	if (DEBUG_UTILS_LEVEL_TMP)
+	    knd_log("LAST DIR: \"%s\" [%zu]", buf, buf_size);
+
+        err = knd_mkdir(buf, mode);                                               RET_ERR();
     }
 
- final:
-    free(path_buf);
-
-    return err;
+    return knd_OK;
 }
 
 extern int 
@@ -287,7 +292,10 @@ knd_append_file(const char *filename,
     /* write textual content */
     fd = open(filename,  
 	      O_WRONLY | O_CREAT | O_APPEND, 0644);
-    if (fd < 0) return knd_IO_FAIL;
+    if (fd < 0) {
+	knd_log("-- append to file \"%s\" failed :(", filename);
+	return knd_IO_FAIL;
+    }
 
     write(fd, buf, buf_size);
     close(fd);
