@@ -18,6 +18,8 @@
 #include "knd_parser.h"
 #include "knd_mempool.h"
 
+#include <gsl-parser.h>
+
 #include "knd_retriever.h"
 
 #define DEBUG_RETRIEVER_LEVEL_1 0
@@ -51,8 +53,8 @@ kndRetriever_start(struct kndRetriever *self)
     context = zmq_init(1);
     outbox = zmq_socket(context, ZMQ_PULL);
     if (!outbox) {
-	free(task);
-	return knd_FAIL;
+        free(task);
+        return knd_FAIL;
     }
 
     assert((zmq_connect(outbox, self->inbox_backend_addr) == knd_OK));
@@ -60,8 +62,8 @@ kndRetriever_start(struct kndRetriever *self)
     /* delivery service */
     self->delivery = zmq_socket(context, ZMQ_REQ);
     if (!self->delivery) {
-	free(task);
-	return knd_FAIL;
+        free(task);
+        return knd_FAIL;
     }
 
     assert((zmq_connect(self->delivery,  self->delivery_addr) == knd_OK));
@@ -73,29 +75,29 @@ kndRetriever_start(struct kndRetriever *self)
     obj_size = 0;
 
     while (1) {
-	task_size = KND_MED_BUF_SIZE;
-	err = knd_recv_task(outbox, task, &task_size);
-	if (err) {
-	    knd_log("-- failed to recv task :(");
-	    continue;
-	}
+        task_size = KND_MED_BUF_SIZE;
+        err = knd_recv_task(outbox, task, &task_size);
+        if (err) {
+            knd_log("-- failed to recv task :(");
+            continue;
+        }
 
-	if (DEBUG_RETRIEVER_LEVEL_TMP) {
+        if (DEBUG_RETRIEVER_LEVEL_TMP) {
             chunk_size = (task_size > KND_MAX_DEBUG_CHUNK_SIZE) ?\
-		KND_MAX_DEBUG_CHUNK_SIZE : task_size;
+                KND_MAX_DEBUG_CHUNK_SIZE : task_size;
             knd_log("\n++ Retriever got a new task: \"%.*s\".. [size: %zu]",
                     chunk_size, task, task_size);
         }
-	
-	self->task->reset(self->task);
+
+        self->task->reset(self->task);
         err = self->task->run(self->task, task, task_size, obj, obj_size);
         if (err) {
             self->task->error = err;
             knd_log("-- task run failed: %d", err);
         } else {
-	    /* no need to inform delivery about every liquid update success */
-	    if (self->task->type == KND_UPDATE_STATE)
-		continue;
+            /* no need to inform delivery about every liquid update success */
+            if (self->task->type == KND_UPDATE_STATE)
+                continue;
         }
         err = self->task->report(self->task);
         if (err) {
@@ -110,14 +112,14 @@ kndRetriever_start(struct kndRetriever *self)
 }
 
 
-static int
+static gsl_err_t
 parse_inbox_addr(void *obj,
-		 const char *rec,
-		 size_t *total_size)
+                 const char *rec,
+                 size_t *total_size)
 {
     struct kndRetriever *self = (struct kndRetriever*)obj;
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .name = "frontend",
           .name_size = strlen("frontend"),
           .buf = self->inbox_frontend_addr,
@@ -131,118 +133,98 @@ parse_inbox_addr(void *obj,
           .max_buf_size = KND_NAME_SIZE
         }
     };
-    int err;
-    
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-    
-    return knd_OK;
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 
-static int
+static gsl_err_t
 run_set_service_id(void *obj,
-                   struct kndTaskArg *args,
-                   size_t num_args)
+                   const char *name,
+                   size_t name_size)
 {
     struct kndRetriever *self = (struct kndRetriever*)obj;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
 
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (arg->name_size == strlen("_impl") && !memcmp(arg->name, "_impl", arg->name_size)) {
-            name = arg->val;
-            name_size = arg->val_size;
-        }
-    }
-
-    if (!name_size) return knd_FAIL;
-    if (name_size >= KND_NAME_SIZE)
-        return knd_LIMIT;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     memcpy(self->name, name, name_size);
     self->name_size = name_size;
     self->name[name_size] = '\0';
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 
-static int parse_memory_settings(void *obj,
-                                 const char *rec,
-                                 size_t *total_size)
+static gsl_err_t parse_memory_settings(void *obj,
+                                       const char *rec,
+                                       size_t *total_size)
 {
     struct kndMemPool *self = obj;
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .name = "max_users",
           .name_size = strlen("max_users"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_users
         },
         { .name = "max_classes",
           .name_size = strlen("max_classes"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_classes
         },
         { .name = "max_objs",
           .name_size = strlen("max_objs"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_objs
         },
         { .name = "max_elems",
           .name_size = strlen("max_elems"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_elems
         },
         { .name = "max_rels",
           .name_size = strlen("max_rels"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_rels
         },
-	{ .name = "max_rel_args",
+        { .name = "max_rel_args",
           .name_size = strlen("max_rels_args"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_rel_args
         },
         { .name = "max_rel_refs",
           .name_size = strlen("max_rel_refs"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_rel_refs
         },
         { .name = "max_rel_instances",
           .name_size = strlen("max_rel_instances"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_rel_insts
         },
         { .name = "max_rel_arg_instances",
           .name_size = strlen("max_rel_arg_instances"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_rel_arg_insts
         },
         { .name = "max_rel_arg_inst_refs",
           .name_size = strlen("max_rel_arg_inst_refs"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_rel_arg_inst_refs
         },
         { .name = "max_procs",
           .name_size = strlen("max_procs"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_procs
         },
         { .name = "max_proc_instances",
           .name_size = strlen("max_proc_instances"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_proc_insts
         }
     };
-    int err;
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-    
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static int
@@ -253,7 +235,7 @@ parse_config_GSL(struct kndRetriever *self,
     char buf[KND_NAME_SIZE];
     size_t buf_size = KND_NAME_SIZE;
     size_t chunk_size = 0;
-    
+
     const char *gsl_format_tag = "{gsl";
     size_t gsl_format_tag_size = strlen(gsl_format_tag);
 
@@ -261,7 +243,7 @@ parse_config_GSL(struct kndRetriever *self,
     size_t header_tag_size = strlen(header_tag);
     const char *c;
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
          { .is_implied = true,
            .run = run_set_service_id,
            .obj = self
@@ -319,8 +301,9 @@ parse_config_GSL(struct kndRetriever *self,
           .obj = self
         }
     };
-    
+
     int err = knd_FAIL;
+    gsl_err_t parser_err;
 
     if (!strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
         rec += gsl_format_tag_size;
@@ -328,30 +311,30 @@ parse_config_GSL(struct kndRetriever *self,
                                   buf, &buf_size, &chunk_size);
         if (!err) {
             rec += chunk_size;
-            
+
             if (DEBUG_RETRIEVER_LEVEL_2)
                 knd_log("== got schema: \"%.*s\"", buf_size, buf);
         }
     }
-    
+
     if (strncmp(rec, header_tag, header_tag_size)) {
         knd_log("-- wrong GSL class header");
         return knd_FAIL;
     }
-    
+
     c = rec + header_tag_size;
-    
-    err = knd_parse_task(c, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) {
-        knd_log("-- config parse error: %d", err);
-        return err;
+
+    parser_err = gsl_parse_task(c, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        knd_log("-- config parse error: %d", parser_err.code);
+        return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
     }
 
     if (!*self->path) {
         knd_log("-- DB path not set :(");
         return knd_FAIL;
     }
-    
+
     if (!*self->schema_path) {
         knd_log("-- schema path not set :(");
         return knd_FAIL;
@@ -370,7 +353,7 @@ parse_config_GSL(struct kndRetriever *self,
         knd_log("-- administrative SID is not set :(");
         return knd_FAIL;
     }
-    
+
     memcpy(self->admin->id, "000", strlen("000"));
 
     /* users path */
@@ -381,7 +364,7 @@ parse_config_GSL(struct kndRetriever *self,
     memcpy(self->admin->path + self->path_size, "/users", strlen("/users"));
     self->admin->path_size = self->path_size + strlen("/users");
     self->admin->path[self->admin->path_size] = '\0';
-    
+
     return knd_OK;
 }
 
@@ -502,11 +485,11 @@ kndRetriever_new(struct kndRetriever **rec,
 
     /* user idx */
     /*if (self->mempool->max_users) {
-        self->admin->user_idx = calloc(self->mempool->max_users, 
+        self->admin->user_idx = calloc(self->mempool->max_users,
                                        sizeof(struct kndObject*));
         if (!self->admin->user_idx) return knd_NOMEM;
         self->admin->max_users = self->mempool->max_users;
-	} */
+        } */
 
     conc->user = self->admin;
     self->admin->root_class = conc;
@@ -543,7 +526,7 @@ void *kndRetriever_inbox(void *arg)
 
     frontend = zmq_socket(context, ZMQ_PULL);
     assert(frontend);
-    
+
     backend = zmq_socket(context, ZMQ_PUSH);
     assert(backend);
 
@@ -555,7 +538,7 @@ void *kndRetriever_inbox(void *arg)
     err = zmq_bind(backend, retriever->inbox_backend_addr);
     assert(err == knd_OK);
 
-    knd_log("    ++ Retriever \"%s\" Inbox device is ready...\n\n", 
+    knd_log("    ++ Retriever \"%s\" Inbox device is ready...\n\n",
             retriever->name);
 
     zmq_device(ZMQ_QUEUE, frontend, backend);
@@ -580,7 +563,7 @@ void *kndRetriever_selector(void *arg)
 
     frontend = zmq_socket(context, ZMQ_PULL);
     assert(frontend);
-    
+
     backend = zmq_socket(context, ZMQ_PUSH);
     assert(backend);
 
@@ -633,30 +616,30 @@ void *kndRetriever_subscriber(void *arg)
     assert(err == knd_OK);
 
     while (1) {
-	task = NULL;
-	task_size = 0;
-	obj = NULL;
-	obj_size = 0;
-	
-        task = knd_zmq_recv(subscriber, &task_size);
-	//obj = knd_zmq_recv(subscriber, &obj_size);
+        task = NULL;
+        task_size = 0;
+        obj = NULL;
+        obj_size = 0;
 
-	/* sometimes bad messages arrive */
+        task = knd_zmq_recv(subscriber, &task_size);
+        //obj = knd_zmq_recv(subscriber, &obj_size);
+
+        /* sometimes bad messages arrive */
         if (!task || !task_size) continue;
         //if (!obj || !obj_size) continue;
 
         if (DEBUG_RETRIEVER_LEVEL_2) {
             printf("++ %s Retriever has got an update from Learner:"
                    "       %.*s [%lu]", retriever->name,
-		   (unsigned int)task_size, task, (unsigned long)task_size);
+                   (unsigned int)task_size, task, (unsigned long)task_size);
         }
 
-	err = knd_zmq_send(inbox, task, task_size);
-	//err = knd_zmq_send(inbox, obj, obj_size);
+        err = knd_zmq_send(inbox, task, task_size);
+        //err = knd_zmq_send(inbox, obj, obj_size);
 
         if (task)
             free(task);
-        
+
         fflush(stdout);
     }
 
@@ -673,8 +656,8 @@ void *kndRetriever_subscriber(void *arg)
  *  MAIN SERVICE
  */
 
-int main(int const argc, 
-	 const char ** const argv) 
+int main(int const argc,
+         const char ** const argv)
 {
     struct kndRetriever *retriever;
     const char *config = NULL;
@@ -700,25 +683,25 @@ int main(int const argc,
     }
 
     /* add device */
-    err = pthread_create(&inbox, 
-			 NULL,
-			 kndRetriever_inbox, 
+    err = pthread_create(&inbox,
+                         NULL,
+                         kndRetriever_inbox,
                          (void*)retriever);
 
     /* add subscriber */
-    err = pthread_create(&subscriber, 
-			 NULL,
-			 kndRetriever_subscriber, 
+    err = pthread_create(&subscriber,
+                         NULL,
+                         kndRetriever_subscriber,
                          (void*)retriever);
 
     /* add selector */
     /*err = pthread_create(&selector,
-			 NULL,
-			 kndRetriever_selector, 
+                         NULL,
+                         kndRetriever_selector,
                          (void*)retriever); */
 
     retriever->start(retriever);
- 
-    
+
+
     return 0;
 }
