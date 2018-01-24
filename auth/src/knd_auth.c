@@ -319,11 +319,11 @@ static int run_check_sid(void *obj, const char *sid, size_t sid_size)
     if (!tok_rec) {
         /* time to update our token cache */
         err = update_tokens(self);
-        if (err) return gsl_FAIL;  // FIXME(ki.stfu): return err;
+        if (err) return make_gsl_err_external(err);
 
         /* one more try */
         tok_rec = self->token_idx->get(self->token_idx, sid, sid_size);
-        if (!tok_rec) return gsl_FAIL;  // FIXME(ki.stfu): return knd_NO_MATCH;
+        if (!tok_rec) return make_gsl_err_external(knd_NO_MATCH);
     }
 
     user_rec = tok_rec->user;
@@ -337,15 +337,15 @@ static int run_check_sid(void *obj, const char *sid, size_t sid_size)
     err = self->out->write(self->out,
                                   "{\"http_code\":200",
                            strlen("{\"http_code\":200"));
-    if (err) return gsl_FAIL;  // FIXME(ki.stfu): return err;
+    if (err) return make_gsl_err_external(err);
     err = self->out->write(self->out,
                                   ",\"user_id\":",
                            strlen(",\"user_id\":"));
-    if (err) return gsl_FAIL;  // FIXME(ki.stfu): return err;
+    if (err) return make_gsl_err_external(err);
     err = self->out->write(self->out, user_rec->name, user_rec->name_size);
-    if (err) return gsl_FAIL;  // FIXME(ki.stfu): return err;
+    if (err) return make_gsl_err_external(err);
     err = self->out->write(self->out, "}", 1);
-    if (err) return gsl_FAIL;  // FIXME(ki.stfu): return err;
+    if (err) return make_gsl_err_external(err);
     
     return gsl_OK;
 }
