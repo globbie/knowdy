@@ -13,6 +13,8 @@
 #include "knd_attr.h"
 #include "knd_parser.h"
 
+#include <gsl-parser.h>
+
 #define DEBUG_REF_LEVEL_0 0
 #define DEBUG_REF_LEVEL_1 0
 #define DEBUG_REF_LEVEL_2 0
@@ -45,7 +47,7 @@ kndRef_set_reverse_rel(struct kndRef *self,
     conc = self->elem->attr->parent_conc;
     if (DEBUG_REF_LEVEL_2)
         knd_log(".. %.*s OBJ to get REF from %s => %s",
-                obj->name_size, obj->name, 
+                obj->name_size, obj->name,
                 conc->name,
                 obj->conc->name);
 
@@ -75,7 +77,7 @@ kndRef_set_reverse_rel(struct kndRef *self,
         reltype->next = relc->rel_types;
         relc->rel_types = reltype;
     }
-    
+
     if (!reltype->tail) {
         reltype->tail = self;
         reltype->refs = self;
@@ -97,7 +99,7 @@ kndRef_set_reverse_rel(struct kndRef *self,
     struct kndObject *obj;
     const char *obj_name;
     int err, e;
-    
+
     conc = self->elem->attr->conc;
 
     if (DEBUG_REF_LEVEL_2) {
@@ -136,36 +138,24 @@ kndRef_set_reverse_rel(struct kndRef *self,
 
     err = kndRef_set_reverse_rel(self, obj);
     if (err) return err;
-    
+
     return knd_OK;
 }
  */
- 
-static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
+
+static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 {
     struct kndRef *self = (struct kndRef*)obj;
-    struct kndTaskArg *arg;
     struct kndRefState *state;
-    const char *val = NULL;
-    size_t val_size = 0;
 
     if (DEBUG_REF_LEVEL_2)
         knd_log(".. run set ref val..");
 
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val;
-            val_size = arg->val_size;
-        }
-    }
-
-    if (!val_size) return knd_FAIL;
-    if (val_size >= KND_NAME_SIZE)
-        return knd_LIMIT;
+    if (!val_size) return make_gsl_err(gsl_FORMAT);
+    if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     state = malloc(sizeof(struct kndRefState));
-    if (!state) return knd_NOMEM;
+    if (!state) return make_gsl_err_external(knd_NOMEM);
     memset(state, 0, sizeof(struct kndRefState));
     self->states = state;
     self->num_states = 1;
@@ -174,7 +164,7 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
     state->val[val_size] = '\0';
     state->val_size = val_size;
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 static int
@@ -211,7 +201,7 @@ export_reverse_rel_JSON(struct kndRef *self)
     err = out->write(out, "\"", 1);
     if (err) return err;
     */
-    
+
     return knd_OK;
 }
 
@@ -224,8 +214,8 @@ static int export_GSP(struct kndRef *self)
     if (!self->states) return knd_FAIL;
 
     obj = self->elem->root;
-    
-    
+
+
     err = out->write(out, "{", 1);
     if (err) return err;
     err = out->write(out, self->states->val, self->states->val_size);
@@ -242,7 +232,7 @@ static int export_GSP(struct kndRef *self)
     return knd_OK;
 }
 
-static int 
+static int
 export_reverse_rel_GSP(struct kndRef *self)
 {
     struct kndObject *obj;
@@ -274,7 +264,7 @@ export_reverse_rel_GSP(struct kndRef *self)
 
     err = out->write(out, "}", 1);
     if (err) return err;
-    
+
     return knd_OK;
 }
 
@@ -294,7 +284,7 @@ static int export(struct kndRef *self)
     default:
         break;
     }
-    
+
     return knd_OK;
 }
 
@@ -314,7 +304,7 @@ static int export_reverse_rel(struct kndRef *self)
     default:
         break;
     }
-    
+
     return knd_OK;
 }
 
@@ -326,26 +316,26 @@ parse_GSL(struct kndRef *self,
 {
     if (DEBUG_REF_LEVEL_1)
         knd_log(".. parse REF field: \"%s\"..", rec);
-    
-    struct kndTaskSpec specs[] = {
+
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_val,
           .obj = self
         }
     };
-    int err;
-    
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-    
+    gsl_err_t parser_err;
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return knd_FAIL;  // FIXME(ki.stfu): convert gsl_err_t to knd_err_codes
+
     return knd_OK;
 }
 
-extern int 
+extern int
 kndRef_new(struct kndRef **ref)
 {
     struct kndRef *self;
-    
+
     self = malloc(sizeof(struct kndRef));
     if (!self) return knd_NOMEM;
 
