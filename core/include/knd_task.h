@@ -46,50 +46,6 @@ typedef enum knd_iter_type {
     KND_ITER_DEPTH
 } knd_iter_type;
 
-struct kndTaskArg
-{
-    char name[KND_NAME_SIZE + 1];  // null-terminated string
-    size_t name_size;
-    char val[KND_NAME_SIZE + 1];  // null-terminated string
-    const char *val_ref;
-    size_t val_size;
-    size_t hash_val;
-};
-
-struct kndTaskSpec
-{
-    knd_task_spec_type type;
-
-    const char *name;
-    size_t name_size;
-
-    struct kndTaskSpec *specs;
-    size_t num_specs;
-    
-    bool is_completed;
-    bool is_default;
-    bool is_selector;
-    bool is_implied;
-    bool is_validator;
-    bool is_terminal;
-    bool is_list;
-    bool is_atomic;
-
-    char *buf;
-    size_t *buf_size;
-    size_t max_buf_size;
-
-    void *obj;
-    void *accu;
-    
-    int (*parse)(void *obj, const char *rec, size_t *total_size);
-    int (*validate)(void *obj, const char *name, size_t name_size,
-                    const char *rec, size_t *total_size);
-    int (*run)(void *obj, struct kndTaskArg *args, size_t num_args);
-    int (*append)(void *accu, void *item);
-    int (*alloc)(void *accu, const char *name, size_t name_size, size_t count, void **item);
-};
-
 struct kndTask
 {
     knd_task_spec_type type;
