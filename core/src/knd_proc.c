@@ -38,6 +38,22 @@ static void proc_call_arg_str(struct kndProcCallArg *self,
 	     self->val_size, self->val);
 }
 
+static void base_str(struct kndProcBase *base,
+		     size_t depth)
+{
+    struct kndArgItem *arg;
+
+    knd_log("%*sbase => %.*s", depth * KND_OFFSET_SIZE, "",
+                base->name_size, base->name);
+
+    for (arg = base->args; arg; arg = arg->next) {
+	knd_log("%*s%.*s [type:%.*s]", (depth + 1) * KND_OFFSET_SIZE, "",
+                arg->name_size, arg->name,
+                arg->classname_size, arg->classname);
+    }
+    
+}
+
 static void str(struct kndProc *self)
 {
     struct kndTranslation *tr;
@@ -53,8 +69,7 @@ static void str(struct kndProc *self)
     }
 
     for (base = self->bases; base; base = base->next) {
-        knd_log("%*sbase => %.*s", (self->depth + 1) * KND_OFFSET_SIZE, "",
-                base->name_size, base->name);
+	base_str(base, self->depth + 1);
     }
     
     for (arg = self->args; arg; arg = arg->next) {
@@ -213,7 +228,7 @@ static int get_proc(struct kndProc *self,
         err = arg->resolve(arg);                                                  RET_ERR();
     }
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         proc->str(proc);
 
     *result = proc;
@@ -271,7 +286,7 @@ static int present_proc_selection(void *obj,
     struct kndProc *self = obj;
     struct kndProc *p;
     struct kndOutput *out = self->out;
-    int e, err;
+    int err;
 
     if (DEBUG_PROC_LEVEL_1)
         knd_log(".. presenting proc selection ..");
@@ -667,10 +682,54 @@ static int parse_arg(void *data,
     return knd_OK;
 }
 
+static int arg_item_read(void *obj,
+                           const char *name, size_t name_size,
+                           const char *rec, size_t *total_size)
+{
+    struct kndProcBase *base = obj;
+    struct kndArgItem *item;
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+    int err;
+
+    item = malloc(sizeof(struct kndArgItem));
+    memset(item, 0, sizeof(struct kndArgItem));
+    memcpy(item->name, name, name_size);
+    item->name_size = name_size;
+    item->name[name_size] = '\0';
+
+    struct kndTaskSpec specs[] = {
+        { .name = "c",
+          .name_size = strlen("c"),
+          .buf_size = &item->classname_size,
+          .max_buf_size = KND_NAME_SIZE,
+          .buf = item->classname
+        }
+    };
+
+    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
+    if (err) return err;
+    
+    if (!base->tail) {
+        base->tail = item;
+        base->args = item;
+    }
+    else {
+        base->tail->next = item;
+        base->tail = item;
+    }
+
+    base->num_args++;
+
+    return knd_OK;
+}
+
 static int parse_base(void *data,
 		     const char *rec,
 		     size_t *total_size)
 {
+    char buf[KND_SHORT_NAME_SIZE];
+    size_t buf_size;
     struct kndProc *self = data;
     struct kndProcBase *base;
     int err;
@@ -683,6 +742,16 @@ static int parse_base(void *data,
           .buf_size = &base->name_size,
           .max_buf_size = KND_NAME_SIZE,
           .buf = base->name
+        },
+        { .type = KND_CHANGE_STATE,
+	  .name = "arg_item",
+          .name_size = strlen("arg_item"),
+          .is_validator = true,
+          .buf = buf,
+          .buf_size = &buf_size,
+          .max_buf_size = KND_SHORT_NAME_SIZE,
+          .validate = arg_item_read,
+          .obj = base
         }
     };
    
@@ -692,12 +761,13 @@ static int parse_base(void *data,
     /*err = self->mempool->new_proc_base(self->mempool, &base);                       RET_ERR();
     base->task = self->task;
     err = base->parse(base, rec, total_size);                                       PARSE_ERR();
+    */
 
     base->proc = self;
     base->next = self->bases;
-    self->bases = base; */
-
+    self->bases = base;
     self->num_bases++;
+
     return knd_OK;
 }
 
@@ -995,6 +1065,11 @@ static int resolve_procs(struct kndProc *self)
             knd_log("-- couldn't resolve the \"%s\" proc :(", proc->name);
             return err;
         }
+
+	if (DEBUG_PROC_LEVEL_TMP) {
+	    knd_log("--");
+	    proc->str(proc);
+	}
     } while (key);
 
     return knd_OK;

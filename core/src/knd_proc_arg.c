@@ -40,8 +40,9 @@ static void str(struct kndProcArg *self)
             self->name_size, self->name, self->classname_size, self->classname);
 
     if (self->proc_call.name_size) {
-	knd_log("%*s    {run %.*s", self->depth * KND_OFFSET_SIZE, "",
-		self->proc_call.name_size, self->proc_call.name);
+	knd_log("%*s    {run %.*s [type:%d]", self->depth * KND_OFFSET_SIZE, "",
+		self->proc_call.name_size, self->proc_call.name,
+		self->proc_call.type);
 	for (arg = self->proc_call.args; arg; arg = arg->next) {
 	    proc_call_arg_str(arg, self->depth + 1);
 	}
@@ -690,13 +691,20 @@ static int resolve_arg(struct kndProcArg *self)
     int err;
 
     if (self->classname_size) {
-	knd_log(".. resolving arg class template: %.*s..", self->classname_size, self->classname);
+	knd_log(".. resolving arg class template: %.*s..",
+		self->classname_size, self->classname);
 	return knd_OK;
     }
     
     if (!self->proc_call.name_size) {
 
 	return knd_FAIL;
+    }
+
+    /* special name */
+    if (self->proc_call.name[0] == '_') {
+	self->proc_call.type = KND_PROC_SYSTEM;
+	return knd_OK;
     }
 
     dir = self->parent->proc_idx->get(self->parent->proc_idx,
