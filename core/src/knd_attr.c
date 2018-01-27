@@ -419,7 +419,7 @@ static gsl_err_t parse_quant(void *obj,
           .name_size = strlen("uniq"),
           .buf = self->uniq_attr_name,
           .buf_size = &self->uniq_attr_name_size,
-          .max_buf_size = sizeof self->uniq_attr_name
+          .max_buf_size = sizeof(self->uniq_attr_name)
         }
     };
 
@@ -519,8 +519,7 @@ static int parse_GSL(struct kndAttr *self,
         { .is_implied = true,
           .buf = self->name,
           .buf_size = &self->name_size,
-          .max_buf_size = sizeof self->name,
-          .obj = self
+          .max_buf_size = sizeof(self->name)
         },
         { .is_list = true,
           .name = "_gloss",
@@ -543,13 +542,13 @@ static int parse_GSL(struct kndAttr *self,
           .name_size = strlen("c"),
           .buf = self->ref_classname,
           .buf_size = &self->ref_classname_size,
-          .max_buf_size = sizeof self->ref_classname,
+          .max_buf_size = sizeof(self->ref_classname)
         },
         { .name = "c",
           .name_size = strlen("c"),
           .buf = self->ref_classname,
           .buf_size = &self->ref_classname_size,
-          .max_buf_size = sizeof self->ref_classname,
+          .max_buf_size = sizeof(self->ref_classname)
         },
         { .name = "proc",
           .name_size = strlen("proc"),
@@ -579,8 +578,7 @@ static int parse_GSL(struct kndAttr *self,
           .name_size = strlen("val"),
           .buf = self->default_val,
           .buf_size = &self->default_val_size,
-          .max_buf_size = sizeof self->default_val,
-          .obj = self
+          .max_buf_size = sizeof(self->default_val)
         }
     };
     gsl_err_t parser_err;

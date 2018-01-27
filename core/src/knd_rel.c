@@ -608,11 +608,6 @@ static int import_rel(struct kndRel *self,
           .parse = read_gloss
         },
         { .type = GSL_CHANGE_STATE,
-          .name = "arg",
-          .name_size = strlen("arg"),
-          .buf = buf,
-          .buf_size = &buf_size,
-          .max_buf_size = KND_NAME_SIZE,
           .is_validator = true,
           .validate = validate_rel_arg,
           .obj = rel

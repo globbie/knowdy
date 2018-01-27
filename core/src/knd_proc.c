@@ -734,12 +734,7 @@ static gsl_err_t parse_base(void *data,
           .buf = base->name
         },
         { .type = GSL_CHANGE_STATE,
-	  .name = "arg_item",
-          .name_size = strlen("arg_item"),
           .is_validator = true,
-          .buf = buf,
-          .buf_size = &buf_size,
-          .max_buf_size = KND_SHORT_NAME_SIZE,
           .validate = arg_item_read,
           .obj = base
         }
@@ -827,18 +822,11 @@ static gsl_err_t parse_proc_call(void *obj,
           .append = proc_call_gloss_append,
           .parse = read_gloss
         },
-        { .name = "call_arg",
-          .name_size = strlen("call_arg"),
-          .is_validator = true,
-          .buf = buf,
-          .buf_size = &buf_size,
-          .max_buf_size = KND_SHORT_NAME_SIZE,
+        { .is_validator = true,
           .validate = parse_proc_call_arg,
           .obj = self
         },
-        { .name = "default",
-          .name_size = strlen("default"),
-          .is_default = true,
+        { .is_default = true,
           .run = confirm_proc,
           .obj = self
         }
