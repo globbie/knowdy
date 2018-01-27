@@ -2,7 +2,7 @@
  *   Copyright (c) 2011-2018 by Dmitri Dmitriev
  *   All rights reserved.
  *
- *   This file is part of the Knowdy Search Engine, 
+ *   This file is part of the Knowdy Graph DB, 
  *   and as such it is subject to the license stated
  *   in the LICENSE file which you have received 
  *   as part of this distribution.
@@ -25,6 +25,11 @@
 struct kndOutput;
 struct kndProcCallArg;
 struct kndUpdate;
+
+typedef enum knd_proc_type {
+    KND_PROC_USER,
+    KND_PROC_SYSTEM
+} knd_proc_type;
 
 struct kndProcState
 {
@@ -54,6 +59,7 @@ struct kndProcCall
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
+    knd_proc_type type;
 
     struct kndProcCallArg *args;
     size_t num_args;
@@ -92,12 +98,29 @@ struct kndProcDir
     struct kndProcDir *next;
 };
 
+struct kndArgItem
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+
+    struct kndProcArg *arg;
+
+    char classname[KND_NAME_SIZE];
+    size_t classname_size;
+
+    struct kndArgItem *next; 
+};
+
 struct kndProcBase
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
 
     struct kndProc *proc;
+
+    struct kndArgItem *args;
+    struct kndArgItem *tail;
+    size_t num_args;
 
     struct kndProcBase *next;
 };
