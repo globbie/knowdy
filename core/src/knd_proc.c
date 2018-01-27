@@ -18,6 +18,8 @@
 #include "knd_dict.h"
 #include "knd_parser.h"
 
+#include <gsl-parser.h>
+
 #define DEBUG_PROC_LEVEL_0 0
 #define DEBUG_PROC_LEVEL_1 0
 #define DEBUG_PROC_LEVEL_2 0
@@ -31,11 +33,11 @@ del(struct kndProc *self)
 }
 
 static void proc_call_arg_str(struct kndProcCallArg *self,
-			      size_t depth)
+                              size_t depth)
 {
      knd_log("%*s  {%.*s %.*s}", depth * KND_OFFSET_SIZE, "",
-	     self->name_size, self->name,
-	     self->val_size, self->val);
+             self->name_size, self->name,
+             self->val_size, self->val);
 }
 
 static void base_str(struct kndProcBase *base,
@@ -73,22 +75,22 @@ static void str(struct kndProc *self)
     }
     
     for (arg = self->args; arg; arg = arg->next) {
-	arg->depth = self->depth + 1;
-	arg->str(arg);
+        arg->depth = self->depth + 1;
+        arg->str(arg);
     }
 
     if (self->proc_call.name_size) {
-	knd_log("%*s    {run %.*s", self->depth * KND_OFFSET_SIZE, "",
-		self->proc_call.name_size, self->proc_call.name);
-	for (tr = self->proc_call.tr; tr; tr = tr->next) {
-	    knd_log("%*s  ~ %s %.*s", (self->depth + 1) * KND_OFFSET_SIZE, "",
-		    tr->locale, tr->val_size, tr->val);
-	}
+        knd_log("%*s    {run %.*s", self->depth * KND_OFFSET_SIZE, "",
+                self->proc_call.name_size, self->proc_call.name);
+        for (tr = self->proc_call.tr; tr; tr = tr->next) {
+            knd_log("%*s  ~ %s %.*s", (self->depth + 1) * KND_OFFSET_SIZE, "",
+                    tr->locale, tr->val_size, tr->val);
+        }
 
-	for (call_arg = self->proc_call.args; call_arg; call_arg = call_arg->next) {
-	    proc_call_arg_str(call_arg, self->depth + 1);
-	}
-	knd_log("%*s    }", self->depth * KND_OFFSET_SIZE, "");
+        for (call_arg = self->proc_call.args; call_arg; call_arg = call_arg->next) {
+            proc_call_arg_str(call_arg, self->depth + 1);
+        }
+        knd_log("%*s    }", self->depth * KND_OFFSET_SIZE, "");
     }
 
     
@@ -239,49 +241,37 @@ static int get_proc(struct kndProc *self,
     return err;
 }
 
-static int run_get_proc(void *obj,
-                         struct kndTaskArg *args, size_t num_args)
+static gsl_err_t run_get_proc(void *obj, const char *name, size_t name_size)
 {
     struct kndProc *self = obj;
     struct kndProc *proc;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
     int err;
 
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!memcmp(arg->name, "_impl", strlen("_impl"))) {
-            name = arg->val;
-            name_size = arg->val_size;
-        }
-    }
-    
-    if (!name_size) return knd_FAIL;
-    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     self->curr_proc = NULL;
     err = get_proc(self, name, name_size, &proc);
-    if (err) return err;
+    if (err) return make_gsl_err_external(err);
 
     self->curr_proc = proc;
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
-static int confirm_proc(void *obj,
-			struct kndTaskArg *args __attribute__((unused)),
-			size_t num_args __attribute__((unused)))
+static gsl_err_t confirm_proc(void *obj,
+                              const char *val __attribute__((unused)),
+                              size_t val_size __attribute__((unused)))
 {
     struct kndProc *self = obj;
     if (DEBUG_PROC_LEVEL_1)
         knd_log(".. confirm proc read: %p", self);
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
-static int present_proc_selection(void *obj,
-				  struct kndTaskArg *args __attribute__((unused)),
-				  size_t num_args __attribute__((unused)))
+static gsl_err_t present_proc_selection(void *obj,
+                                        const char *val __attribute__((unused)),
+                                        size_t val_size __attribute__((unused)))
 {
     struct kndProc *self = obj;
     struct kndProc *p;
@@ -292,7 +282,7 @@ static int present_proc_selection(void *obj,
         knd_log(".. presenting proc selection ..");
 
     out->reset(out);
-    if (!self->curr_proc) return knd_FAIL;
+    if (!self->curr_proc) return make_gsl_err(gsl_FAIL);
 
     p = self->curr_proc;
     p->out = out;
@@ -301,76 +291,69 @@ static int present_proc_selection(void *obj,
     p->depth = 0;
     p->max_depth = KND_MAX_DEPTH;
 
-    err = p->export(p);                                                           RET_ERR();
-    return knd_OK;
+    err = p->export(p);
+    if (err) return make_gsl_err_external(err);
+    
+    return make_gsl_err(gsl_OK);
 }
 
-static int run_set_translation_text(void *obj, struct kndTaskArg *args, size_t num_args)
-{
-    struct kndTranslation *tr = obj;
-    struct kndTaskArg *arg;
-    const char *val = NULL;
-    size_t val_size = 0;
-
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. run set translation text..");
-
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!memcmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val;
-            val_size = arg->val_size;
-        }
-    }
-    if (!val_size) return knd_FAIL;
-    if (val_size >= KND_NAME_SIZE) return knd_LIMIT;
-
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. run set translation text: %.*s [%lu]\n", val_size, val,
-                (unsigned long)val_size);
-
-    memcpy(tr->val, val, val_size);
-    tr->val_size = val_size;
-
-    return knd_OK;
-}
+//static gsl_err_t run_set_translation_text(void *obj, const char *val, size_t val_size)
+//{
+//    struct kndTranslation *tr = obj;
+//
+//    if (DEBUG_PROC_LEVEL_2)
+//        knd_log(".. run set translation text..");
+//
+//    if (!val_size) return make_gsl_err(gsl_FORMAT);
+//    if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+//
+//    if (DEBUG_PROC_LEVEL_2)
+//        knd_log(".. run set translation text: %.*s [%lu]\n", val_size, val,
+//                (unsigned long)val_size);
+//
+//    memcpy(tr->val, val, val_size);
+//    tr->val_size = val_size;
+//
+//    return make_gsl_err(gsl_OK);
+//}
 
 
 static int parse_proc_select(struct kndProc *self,
-                            const char *rec,
-                            size_t *total_size)
+                             const char *rec,
+                             size_t *total_size)
 {
     int err = knd_FAIL, e;
+    gsl_err_t parser_err;
 
     if (DEBUG_PROC_LEVEL_1)
         knd_log(".. parsing Proc select: \"%.*s\"",
                 16, rec);
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .is_selector = true,
           .run = run_get_proc,
           .obj = self
         }/*,
-        { .type = KND_CHANGE_STATE,
+        { .type = GSL_CHANGE_STATE,
           .name = "inst",
           .name_size = strlen("inst"),
           .parse = parse_import_instance,
           .obj = self
-	  }*/,
+          }*/,
         { .name = "default",
           .name_size = strlen("default"),
           .is_default = true,
           .run = present_proc_selection,
           .obj = self
-	}
+        }
     };
 
     self->curr_proc = NULL;
 
-    err = knd_parse_task(rec, total_size, specs,
-                         sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) {
+    parser_err = gsl_parse_task(rec, total_size, specs,
+                         sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
         knd_log("-- proc parse error: \"%.*s\"",
                 self->log->buf_size, self->log->buf);
         if (!self->log->buf_size) {
@@ -378,22 +361,22 @@ static int parse_proc_select(struct kndProc *self,
                                  strlen("proc parse failure"));
             if (e) return e;
         }
-        return err;
+        return gsl_err_to_knd_err_codes(parser_err);
     }
 
     /* any updates happened? */
     if (self->curr_proc) {
-	if (self->curr_proc->inbox_size || self->curr_proc->inst_inbox_size) {
-	    self->curr_proc->next = self->inbox;
-	    self->inbox = self->curr_proc;
-	    self->inbox_size++;
-	}
+        if (self->curr_proc->inbox_size || self->curr_proc->inst_inbox_size) {
+            self->curr_proc->next = self->inbox;
+            self->inbox = self->curr_proc;
+            self->inbox_size++;
+        }
     }
     return knd_OK;
 }
 
 static int proc_call_arg_export_GSP(struct kndProc *self,
-				    struct kndProcCallArg *call_arg)
+                                    struct kndProcCallArg *call_arg)
 {
     struct kndOutput *out = self->out;
     int err;
@@ -432,39 +415,39 @@ static int export_GSP(struct kndProc *self)
     }
 
     if (self->args) {
-	for (arg = self->args; arg; arg = arg->next) {
-	    arg->format = KND_FORMAT_GSP;
-	    arg->out = self->out;
-	    err = arg->export(arg);                                               RET_ERR();
-	}
+        for (arg = self->args; arg; arg = arg->next) {
+            arg->format = KND_FORMAT_GSP;
+            arg->out = self->out;
+            err = arg->export(arg);                                               RET_ERR();
+        }
     }
 
     if (self->proc_call.name_size) {
-	err = out->write(out, "{run ", strlen("{run "));                          RET_ERR();
-	err = out->write(out, self->proc_call.name, self->proc_call.name_size);   RET_ERR();
+        err = out->write(out, "{run ", strlen("{run "));                          RET_ERR();
+        err = out->write(out, self->proc_call.name, self->proc_call.name_size);   RET_ERR();
 
-	if (self->proc_call.tr) {
-	    err = out->write(out, "[_g", strlen("[_g"));                          RET_ERR();
-	}
-	tr = self->proc_call.tr;
-	while (tr) {
-	    err = out->write(out, "{", 1);                                        RET_ERR();
-	    err = out->write(out, tr->locale, tr->locale_size);                   RET_ERR();
-	    err = out->write(out, " ", 1);                                        RET_ERR();
-	    err = out->write(out, tr->val,  tr->val_size);                        RET_ERR();
-	    err = out->write(out, "}", 1);                                        RET_ERR();
-	    tr = tr->next;
-	}
-	if (self->proc_call.tr) {
-	    err = out->write(out, "]", 1);                                        RET_ERR();
-	}
+        if (self->proc_call.tr) {
+            err = out->write(out, "[_g", strlen("[_g"));                          RET_ERR();
+        }
+        tr = self->proc_call.tr;
+        while (tr) {
+            err = out->write(out, "{", 1);                                        RET_ERR();
+            err = out->write(out, tr->locale, tr->locale_size);                   RET_ERR();
+            err = out->write(out, " ", 1);                                        RET_ERR();
+            err = out->write(out, tr->val,  tr->val_size);                        RET_ERR();
+            err = out->write(out, "}", 1);                                        RET_ERR();
+            tr = tr->next;
+        }
+        if (self->proc_call.tr) {
+            err = out->write(out, "]", 1);                                        RET_ERR();
+        }
 
-	for (call_arg = self->proc_call.args;
-	     call_arg;
-	     call_arg = call_arg->next) {
-	    err = proc_call_arg_export_GSP(self, call_arg);                       RET_ERR();
-	}
-	err = out->write(out, "}", 1);                                            RET_ERR();
+        for (call_arg = self->proc_call.args;
+             call_arg;
+             call_arg = call_arg->next) {
+            err = proc_call_arg_export_GSP(self, call_arg);                       RET_ERR();
+        }
+        err = out->write(out, "}", 1);                                            RET_ERR();
     }
 
     err = out->write(out, "}", 1);                                                RET_ERR();
@@ -500,42 +483,42 @@ static int export_JSON(struct kndProc *self)
 
     if (self->args) {
         err = out->write(out, ",\"args\":[", strlen(",\"args\":["));              RET_ERR();
-	for (arg = self->args; arg; arg = arg->next) {
-	    arg->format = KND_FORMAT_JSON;
-	    arg->out = self->out;
-	    if (in_list) {
-		err = out->write(out, ",", 1);                                    RET_ERR();
-	    }
-	    err = arg->export(arg);                                               RET_ERR();
-	    in_list = true;
-	}
-	err = out->write(out, "]", 1);                                            RET_ERR();
+        for (arg = self->args; arg; arg = arg->next) {
+            arg->format = KND_FORMAT_JSON;
+            arg->out = self->out;
+            if (in_list) {
+                err = out->write(out, ",", 1);                                    RET_ERR();
+            }
+            err = arg->export(arg);                                               RET_ERR();
+            in_list = true;
+        }
+        err = out->write(out, "]", 1);                                            RET_ERR();
     }
 
 
     if (self->proc_call.name_size) {
         err = out->write(out, ",\"run\":{", strlen(",\"run\":{"));                RET_ERR();
-	err = out->write(out, "\"_n\":\"", strlen("\"_n\":\""));                  RET_ERR();
-	err = out->write(out, self->proc_call.name, self->proc_call.name_size);   RET_ERR();
-	err = out->write(out, "\"", 1);                                           RET_ERR();
+        err = out->write(out, "\"_n\":\"", strlen("\"_n\":\""));                  RET_ERR();
+        err = out->write(out, self->proc_call.name, self->proc_call.name_size);   RET_ERR();
+        err = out->write(out, "\"", 1);                                           RET_ERR();
 
-	tr = self->proc_call.tr;
-	while (tr) {
-	    if (memcmp(self->task->locale, tr->locale, tr->locale_size)) {
-		goto next_run_tr;
-	    }
-	    err = out->write(out, ",\"gloss\":\"", strlen(",\"gloss\":\""));      RET_ERR();
-	    err = out->write(out, tr->val,  tr->val_size);                        RET_ERR();
-	    err = out->write(out, "\"", 1);                                       RET_ERR();
-	    break;
-	next_run_tr:
-	    tr = tr->next;
-	}
+        tr = self->proc_call.tr;
+        while (tr) {
+            if (memcmp(self->task->locale, tr->locale, tr->locale_size)) {
+                goto next_run_tr;
+            }
+            err = out->write(out, ",\"gloss\":\"", strlen(",\"gloss\":\""));      RET_ERR();
+            err = out->write(out, tr->val,  tr->val_size);                        RET_ERR();
+            err = out->write(out, "\"", 1);                                       RET_ERR();
+            break;
+        next_run_tr:
+            tr = tr->next;
+        }
 
-	/*for (call_arg = self->proc_call.args; call_arg; call_arg = call_arg->next) {
-	    proc_call_arg_str(call_arg, self->depth + 1);
-	    }*/
-	err = out->write(out, "}", 1);                                            RET_ERR();
+        /*for (call_arg = self->proc_call.args; call_arg; call_arg = call_arg->next) {
+            proc_call_arg_str(call_arg, self->depth + 1);
+            }*/
+        err = out->write(out, "}", 1);                                            RET_ERR();
     }
 
 
@@ -551,7 +534,7 @@ static int export(struct kndProc *self)
     switch (self->format) {
     case KND_FORMAT_JSON:
         err = export_JSON(self);
-	if (err) return err;
+        if (err) return err;
         break;
     case KND_FORMAT_GSP:
         err = export_GSP(self);
@@ -565,27 +548,24 @@ static int export(struct kndProc *self)
 }
 
 
-static int read_gloss(void *obj,
-                      const char *rec,
-                      size_t *total_size)
+static gsl_err_t read_gloss(void *obj,
+                            const char *rec,
+                            size_t *total_size)
 {
     struct kndTranslation *tr = obj;
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .buf = tr->val,
           .buf_size = &tr->val_size,
           .max_buf_size = KND_NAME_SIZE
         }
     };
-    int err;
 
-    err = knd_parse_task(rec, total_size, specs,
-			 sizeof(specs) / sizeof(struct kndTaskSpec));             RET_ERR();
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int gloss_append(void *accu,
-                        void *item)
+static gsl_err_t gloss_append(void *accu,
+                              void *item)
 {
     struct kndProc *self = accu;
     struct kndTranslation *tr = item;
@@ -593,25 +573,25 @@ static int gloss_append(void *accu,
     tr->next = self->tr;
     self->tr = tr;
    
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
-static int gloss_alloc(void *obj,
-                       const char *name,
-                       size_t name_size,
-                       size_t count,
-                       void **item)
+static gsl_err_t gloss_alloc(void *obj,
+                             const char *name,
+                             size_t name_size,
+                             size_t count,
+                             void **item)
 {
     struct kndProc *self = obj;
     struct kndTranslation *tr;
 
-    if (name_size > KND_LOCALE_SIZE) return knd_LIMIT;
+    if (name_size > KND_LOCALE_SIZE) return make_gsl_err(gsl_LIMIT);
 
 
     /* TODO: mempool alloc */
     //self->mempool->new_text_seq();
     tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return knd_NOMEM;
+    if (!tr) return make_gsl_err_external(knd_NOMEM);
 
     memset(tr, 0, sizeof(struct kndTranslation));
     memcpy(tr->curr_locale, name, name_size);
@@ -621,24 +601,24 @@ static int gloss_alloc(void *obj,
     tr->locale_size = tr->curr_locale_size;
     *item = tr;
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
-static int proc_call_gloss_alloc(void *obj,
-				 const char *name,
-				 size_t name_size,
-				 size_t count,
-				 void **item)
+static gsl_err_t proc_call_gloss_alloc(void *obj,
+                                       const char *name,
+                                       size_t name_size,
+                                       size_t count,
+                                       void **item)
 {
     struct kndProcCall *self = obj;
     struct kndTranslation *tr;
 
-    if (name_size > KND_LOCALE_SIZE) return knd_LIMIT;
+    if (name_size > KND_LOCALE_SIZE) return make_gsl_err(gsl_LIMIT);
 
     /* TODO: mempool alloc */
     //self->mempool->new_text_seq();
     tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return knd_NOMEM;
+    if (!tr) return make_gsl_err_external(knd_NOMEM);
 
     memset(tr, 0, sizeof(struct kndTranslation));
     memcpy(tr->curr_locale, name, name_size);
@@ -648,38 +628,42 @@ static int proc_call_gloss_alloc(void *obj,
     tr->locale_size = tr->curr_locale_size;
     *item = tr;
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
-static int proc_call_gloss_append(void *accu,
-				  void *item)
+static gsl_err_t proc_call_gloss_append(void *accu,
+                                        void *item)
 {
     struct kndProcCall *self = accu;
     struct kndTranslation *tr = item;
 
     tr->next = self->tr;
     self->tr = tr;
-   
-    return knd_OK;
+
+    return make_gsl_err(gsl_OK);
 }
 
 
-static int parse_arg(void *data,
-		     const char *rec,
-		     size_t *total_size)
+static gsl_err_t parse_arg(void *data,
+                           const char *rec,
+                           size_t *total_size)
 {
     struct kndProc *self = data;
     struct kndProcArg *arg;
     int err;
-    err = self->mempool->new_proc_arg(self->mempool, &arg);                       RET_ERR();
+
+    err = self->mempool->new_proc_arg(self->mempool, &arg);
+    if (err) return make_gsl_err_external(err);
+
     arg->task = self->task;
-    err = arg->parse(arg, rec, total_size);                                       PARSE_ERR();
+    err = arg->parse(arg, rec, total_size);
+    if (err) return make_gsl_err_external(err);
 
     arg->parent = self;
     arg->next = self->args;
     self->args = arg;
     self->num_args++;
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 static int arg_item_read(void *obj,
@@ -771,9 +755,9 @@ static int parse_base(void *data,
     return knd_OK;
 }
 
-static int parse_proc_call_arg(void *obj,
-			       const char *name, size_t name_size,
-			       const char *rec, size_t *total_size)
+static gsl_err_t parse_proc_call_arg(void *obj,
+				     const char *name, size_t name_size,
+				     const char *rec, size_t *total_size)
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size;
@@ -783,10 +767,10 @@ static int parse_proc_call_arg(void *obj,
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log(".. Proc Call Arg \"%.*s\" to validate: \"%.*s\"..",
-		name_size, name, 32, rec);
+                name_size, name, 32, rec);
 
     call_arg = malloc(sizeof(struct kndProcCallArg));
-    if (!call_arg) return knd_NOMEM;
+    if (!call_arg) return make_gsl_err_external(knd_NOMEM);
 
     memset(call_arg, 0, sizeof(struct kndProcCallArg));
     memcpy(call_arg->name, name, name_size);
@@ -796,7 +780,7 @@ static int parse_proc_call_arg(void *obj,
     self->proc_call.args = call_arg;
     self->proc_call.num_args++;
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .buf_size = &call_arg->val_size,
           .max_buf_size = KND_SHORT_NAME_SIZE,
@@ -804,16 +788,12 @@ static int parse_proc_call_arg(void *obj,
         }
     };
 
-    err = knd_parse_task(rec, total_size, specs,
-			 sizeof(specs) / sizeof(struct kndTaskSpec));             RET_ERR();
-    
-    return knd_OK;
-
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int parse_proc_call(void *obj,
-			   const char *rec,
-			   size_t *total_size)
+static gsl_err_t parse_proc_call(void *obj,
+                                 const char *rec,
+                                 size_t *total_size)
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size;
@@ -823,7 +803,7 @@ static int parse_proc_call(void *obj,
     if (DEBUG_PROC_LEVEL_1)
         knd_log(".. Proc Call parsing: \"%.*s\"..", 32, rec);
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .buf_size = &self->proc_call.name_size,
           .max_buf_size = KND_NAME_SIZE,
@@ -845,7 +825,7 @@ static int parse_proc_call(void *obj,
           .append = proc_call_gloss_append,
           .parse = read_gloss
         },
-	{ .name = "call_arg",
+        { .name = "call_arg",
           .name_size = strlen("call_arg"),
           .is_validator = true,
           .buf = buf,
@@ -856,19 +836,17 @@ static int parse_proc_call(void *obj,
         }
     };
 
-    err = knd_parse_task(rec, total_size, specs,
-			 sizeof(specs) / sizeof(struct kndTaskSpec));             RET_ERR();
-   
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static int import_proc(struct kndProc *self,
-		       const char *rec,
-		       size_t *total_size)
+                       const char *rec,
+                       size_t *total_size)
 {
     struct kndProc *proc;
     struct kndProcDir *dir;
     int err;
+    gsl_err_t parser_err;
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log(".. import Proc: \"%.*s\"..", 32, rec);
@@ -881,13 +859,13 @@ static int import_proc(struct kndProc *self,
     proc->proc_idx = self->proc_idx;
     proc->class_idx = self->class_idx;
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .buf = proc->name,
           .buf_size = &proc->name_size,
           .max_buf_size = KND_NAME_SIZE
         },
-        { .type = KND_CHANGE_STATE,
+        { .type = GSL_CHANGE_STATE,
           .is_list = true,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
@@ -912,13 +890,13 @@ static int import_proc(struct kndProc *self,
           .append = gloss_append,
           .parse = read_gloss
         },
-        { .type = KND_CHANGE_STATE,
+        { .type = GSL_CHANGE_STATE,
           .name = "base",
           .name_size = strlen("base"),
           .parse = parse_base,
           .obj = proc
         },
-        { .type = KND_CHANGE_STATE,
+        { .type = GSL_CHANGE_STATE,
           .name = "arg",
           .name_size = strlen("arg"),
           .parse = parse_arg,
@@ -926,13 +904,16 @@ static int import_proc(struct kndProc *self,
         },
         { .name = "run",
           .name_size = strlen("run"),
-	  .parse = parse_proc_call,
-	  .obj = proc
+          .parse = parse_proc_call,
+          .obj = proc
         }
     };
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) goto final;
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        err = gsl_err_to_knd_err_codes(parser_err);
+        goto final;
+    }
 
     if (!proc->name_size) {
         err = knd_FAIL;
@@ -982,10 +963,10 @@ static int import_proc(struct kndProc *self,
 }
 
 static int parse_GSL(struct kndProc *self,
-		     const char *rec,
-		     size_t *total_size)
+                     const char *rec,
+                     size_t *total_size)
 {
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .buf = self->name,
           .buf_size = &self->name_size,
@@ -1006,20 +987,21 @@ static int parse_GSL(struct kndProc *self,
         },
         { .name = "run",
           .name_size = strlen("run"),
-	  .parse = parse_proc_call,
-	  .obj = self
+          .parse = parse_proc_call,
+          .obj = self
         },
         { .name = "default",
           .name_size = strlen("default"),
           .is_default = true,
           .run = confirm_proc,
           .obj = self
-	}
+        }
     };
-    int err;
+    gsl_err_t parser_err;
     
-    err = knd_parse_task(rec, total_size, specs,
-			 sizeof(specs) / sizeof(struct kndTaskSpec));             RET_ERR();
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+
     return knd_OK;
 }
 
@@ -1123,7 +1105,7 @@ static int kndProc_coordinate(struct kndProc *self)
 
 
 static int update_state(struct kndProc *self,
-			struct kndUpdate *update)
+                        struct kndUpdate *update)
 {
     struct kndProc *proc;
     struct kndProcUpdate *proc_update;
@@ -1142,7 +1124,7 @@ static int update_state(struct kndProc *self,
 
         /*self->next_id++;
         proc->id = self->next_id;
-	*/
+        */
 
         proc_update->proc = proc;
 

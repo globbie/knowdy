@@ -35,6 +35,10 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         set(CHECK_LIBRARY ${CHECK_LIBRARY} rt m pthread subunit)
 endif()
 
+add_subdirectory("${CMAKE_SOURCE_DIR}/libs/gsl-parser")
+include_directories("${CMAKE_SOURCE_DIR}/libs/gsl-parser/include")
+set(GSL_PARSER_LIBRARY gsl-parser_static)
+
 set(KNOWDY_PREFIX "knd")
 set(CORE "core")
 set(PARSER "parser")

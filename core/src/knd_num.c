@@ -12,6 +12,8 @@
 #include "knd_parser.h"
 #include "knd_user.h"
 
+#include <gsl-parser.h>
+
 #define DEBUG_NUM_LEVEL_0 0
 #define DEBUG_NUM_LEVEL_1 0
 #define DEBUG_NUM_LEVEL_2 0
@@ -74,42 +76,32 @@ kndNum_export(struct kndNum *self __attribute__((unused)), knd_format format __a
     return err;
 }
 
-static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
+static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 {
     struct kndNum *self = (struct kndNum*)obj;
-    struct kndTaskArg *arg;
     struct kndNumState *state;
-    const char *val = NULL;
-    size_t val_size = 0;
     int err;
 
     if (DEBUG_NUM_LEVEL_TMP)
         knd_log(".. run set num val..");
 
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val;
-            val_size = arg->val_size;
-        }
-    }
-    if (!val_size) return knd_FAIL;
-    if (val_size >= KND_VAL_SIZE) return knd_LIMIT;
+    if (!val_size) return make_gsl_err(gsl_FORMAT);
+    if (val_size >= KND_VAL_SIZE) return make_gsl_err(gsl_LIMIT);
 
     state = malloc(sizeof(struct kndNumState));
-    if (!state) return knd_NOMEM;
+    if (!state) return make_gsl_err_external(knd_NOMEM);
     memset(state, 0, sizeof(struct kndNumState));
     self->states = state;
     self->num_states = 1;
 
     err = knd_parse_num((const char*)val, &state->numval);
-    if (err) return err;
+    if (err) return make_gsl_err_external(err);
 
     memcpy(state->val, val, val_size);
     state->val[val_size] = '\0';
     state->val_size = val_size;
  
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 
@@ -117,20 +109,20 @@ static int parse_GSL(struct kndNum *self,
                      const char *rec,
                      size_t *total_size)
 {
-   int err;
+   gsl_err_t parser_err;
 
    if (DEBUG_NUM_LEVEL_1)
        knd_log(".. parse NUM field: \"%.*s\"..", 16, rec);
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_val,
           .obj = self
         }
     };
     
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
     
     return knd_OK;
 }

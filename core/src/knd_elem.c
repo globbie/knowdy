@@ -20,7 +20,8 @@
 
 #include "knd_output.h"
 #include "knd_user.h"
-#include "knd_parser.h"
+
+#include <gsl-parser.h>
 
 #define DEBUG_ELEM_LEVEL_1 0
 #define DEBUG_ELEM_LEVEL_2 0
@@ -358,42 +359,31 @@ kndElem_export(struct kndElem *self)
     return knd_OK;
 }
 
-static int run_empty_val_warning(void *obj,
-				 struct kndTaskArg *args __attribute__((unused)),
-				 size_t num_args __attribute__((unused)))
+static gsl_err_t run_empty_val_warning(void *obj,
+                                       const char *val __attribute__((unused)),
+                                       size_t val_size __attribute__((unused)))
 {
     struct kndElem *self = (struct kndElem*)obj;
     knd_log("-- empty val of \"%.*s\" not accepted :(",
             self->attr->name_size, self->attr->name);
-    return knd_FAIL;
+    return make_gsl_err(gsl_FAIL);
 }
 
-static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
+static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 {
     struct kndElem *self = (struct kndElem*)obj;
-    struct kndTaskArg *arg;
     struct kndElemState *state;
-    const char *val = NULL;
-    size_t val_size = 0;
-
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val_ref;
-            val_size = arg->val_size;
-        }
-    }
 
     if (DEBUG_ELEM_LEVEL_2)
         knd_log(".. %.*s to set val \"%.*s\"",
                 self->attr->name_size, self->attr->name,
                 val_size, val);
 
-    if (!val_size) return knd_FAIL;
-    if (val_size >= KND_VAL_SIZE) return knd_LIMIT;
+    if (!val_size) return make_gsl_err(gsl_FORMAT);
+    if (val_size >= KND_VAL_SIZE) return make_gsl_err(gsl_LIMIT);
 
     state = malloc(sizeof(struct kndElemState));
-    if (!state) return knd_NOMEM;
+    if (!state) return make_gsl_err_external(knd_NOMEM);
     memset(state, 0, sizeof(struct kndElemState));
     self->states = state;
     self->num_states = 1;
@@ -418,22 +408,22 @@ static int run_set_val(void *obj, struct kndTaskArg *args, size_t num_args)
     if (DEBUG_ELEM_LEVEL_2)
         knd_log("++ ELEM VAL: \"%.*s\"", state->val_size, state->val);
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 static int parse_GSL(struct kndElem *self,
                      const char *rec,
                      size_t *total_size)
 {
-    int err;
+    gsl_err_t parser_err;
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_val,
           .obj = self
         },
 
-        { .type = KND_CHANGE_STATE,
+        { .type = GSL_CHANGE_STATE,
           .name = "default",
           .name_size = strlen("default"),
           .is_default = true,
@@ -447,9 +437,9 @@ static int parse_GSL(struct kndElem *self,
                 self->attr->name_size, self->attr->name,
                 16, rec);
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-    
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+
     return knd_OK;
 }
 

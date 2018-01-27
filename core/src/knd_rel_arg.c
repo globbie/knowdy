@@ -8,8 +8,9 @@
 #include "knd_concept.h"
 #include "knd_output.h"
 #include "knd_text.h"
-#include "knd_parser.h"
 #include "knd_mempool.h"
+
+#include <gsl-parser.h>
 
 #define DEBUG_RELARG_LEVEL_1 0
 #define DEBUG_RELARG_LEVEL_2 0
@@ -32,13 +33,13 @@ static void str(struct kndRelArg *self)
     knd_log("\n%*s{%s %.*s class:%.*s", self->depth * KND_OFFSET_SIZE, "", type_name,
             self->name_size, self->name,
             self->classname_size, self->classname);
-    
+
     tr = self->tr;
     while (tr) {
         knd_log("%*s   ~ %s %s", self->depth * KND_OFFSET_SIZE, "", tr->locale, tr->val);
         tr = tr->next;
     }
-    
+
 }
 
 /**
@@ -48,7 +49,7 @@ static int export_JSON(struct kndRelArg *self)
 {
     struct kndOutput *out;
     struct kndTranslation *tr;
-    
+
     const char *type_name = knd_relarg_names[self->type];
     size_t type_name_size = strlen(knd_relarg_names[self->type]);
     int err;
@@ -61,13 +62,13 @@ static int export_JSON(struct kndRelArg *self)
     if (err) return err;
     err = out->write(out, "\":{\"type\":\"", strlen("\":{\"type\":\""));
     if (err) return err;
-    
+
     err = out->write(out, type_name, type_name_size);
     if (err) return err;
 
     err = out->write(out, "\"", 1);
     if (err) return err;
-    
+
     /* choose gloss */
     tr = self->tr;
     while (tr) {
@@ -86,7 +87,7 @@ static int export_JSON(struct kndRelArg *self)
     next_tr:
         tr = tr->next;
     }
-    
+
     err = out->write(out, "}", 1);
     if (err) return err;
 
@@ -97,7 +98,7 @@ static int export_GSP(struct kndRelArg *self)
 {
     struct kndOutput *out;
     struct kndTranslation *tr;
-    
+
     const char *type_name = knd_relarg_names[self->type];
     size_t type_name_size = strlen(knd_relarg_names[self->type]);
     int err;
@@ -125,7 +126,7 @@ static int export_GSP(struct kndRelArg *self)
                          "[_g", strlen("[_g"));
         if (err) return err;
     }
-    
+
     for (tr = self->tr; tr; tr = tr->next) {
         err = out->write(out, "{", 1);
         if (err) return err;
@@ -142,7 +143,7 @@ static int export_GSP(struct kndRelArg *self)
         err = out->write(out, "]", 1);
         if (err) return err;
     }
-    
+
     err = out->write(out, "}", 1);
     if (err) return err;
 
@@ -150,7 +151,7 @@ static int export_GSP(struct kndRelArg *self)
 }
 
 static int export_inst_GSP(struct kndRelArg *self,
-			   struct kndRelArgInstance *inst)
+                           struct kndRelArgInstance *inst)
 {
     struct kndOutput *out;
     int err;
@@ -166,7 +167,7 @@ static int export_inst_GSP(struct kndRelArg *self,
 }
 
 static int export_inst_JSON(struct kndRelArg *self,
-			    struct kndRelArgInstance *inst)
+                            struct kndRelArgInstance *inst)
 {
     struct kndOutput *out = self->out;
     /*const char *type_name = knd_relarg_names[self->type];
@@ -181,7 +182,7 @@ static int export_inst_JSON(struct kndRelArg *self,
     err = out->write(out, ",\"obj\":\"", strlen(",\"obj\":\""));                 RET_ERR();
     err = out->write(out, inst->objname, inst->objname_size);                    RET_ERR();
     err = out->write(out, "\"", 1);                                              RET_ERR();
-    
+
     err = out->write(out, "}", 1);                                               RET_ERR();
 
     return knd_OK;
@@ -209,7 +210,7 @@ static int export(struct kndRelArg *self)
 }
 
 static int export_inst(struct kndRelArg *self,
-		       struct kndRelArgInstance *inst)
+                       struct kndRelArgInstance *inst)
 {
     int err = knd_FAIL;
 
@@ -231,49 +232,26 @@ static int export_inst(struct kndRelArg *self,
 }
 
 
-static int run_set_name(void *obj,
-                        struct kndTaskArg *args, size_t num_args)
+static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct kndRelArg *self = (struct kndRelArg*)obj;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
-    
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            name = arg->val;
-            name_size = arg->val_size;
-        }
-    }
 
-    if (!name_size) return knd_FAIL;
-    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     memcpy(self->name, name, name_size);
     self->name_size = name_size;
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 
-static int run_set_translation_text(void *obj,
-                                    struct kndTaskArg *args, size_t num_args)
+static gsl_err_t run_set_translation_text(void *obj, const char *val, size_t val_size)
 {
     struct kndTranslation *tr = obj;
-    struct kndTaskArg *arg;
-    const char *val = NULL;
-    size_t val_size = 0;
 
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            val = arg->val;
-            val_size = arg->val_size;
-        }
-    }
-    if (!val_size) return knd_FAIL;
-    if (val_size >= KND_NAME_SIZE) return knd_LIMIT;
+    if (!val_size) return make_gsl_err(gsl_FORMAT);
+    if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     if (DEBUG_RELARG_LEVEL_2)
         knd_log(".. run set translation text: %s\n", val);
@@ -282,34 +260,30 @@ static int run_set_translation_text(void *obj,
     tr->val[val_size] = '\0';
     tr->val_size = val_size;
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
-static int read_gloss(void *obj,
-                      const char *rec,
-                      size_t *total_size)
+static gsl_err_t read_gloss(void *obj,
+                            const char *rec,
+                            size_t *total_size)
 {
     struct kndTranslation *tr = obj;
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_translation_text,
           .obj = tr
         }
     };
-    int err;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. reading gloss translation: \"%.*s\"",
                 tr->locale_size, tr->locale);
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-   
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int gloss_append(void *accu,
-                        void *item)
+static gsl_err_t gloss_append(void *accu,
+                              void *item)
 {
     struct kndRelArg *self = accu;
     struct kndTranslation *tr = item;
@@ -317,14 +291,14 @@ static int gloss_append(void *accu,
     tr->next = self->tr;
     self->tr = tr;
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
-static int gloss_alloc(void *obj,
-                       const char *name,
-                       size_t name_size,
-                       size_t count,
-                       void **item)
+static gsl_err_t gloss_alloc(void *obj,
+                             const char *name,
+                             size_t name_size,
+                             size_t count,
+                             void **item)
 {
     struct kndRelArg *self = obj;
     struct kndTranslation *tr;
@@ -333,10 +307,10 @@ static int gloss_alloc(void *obj,
         knd_log(".. %.*s: create gloss: %.*s count: %zu",
                 self->name_size, self->name, name_size, name, count);
 
-    if (name_size > KND_LOCALE_SIZE) return knd_LIMIT;
+    if (name_size > KND_LOCALE_SIZE) return make_gsl_err(gsl_LIMIT);
 
     tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return knd_NOMEM;
+    if (!tr) return make_gsl_err_external(knd_NOMEM);
 
     memset(tr, 0, sizeof(struct kndTranslation));
     memcpy(tr->curr_locale, name, name_size);
@@ -346,7 +320,7 @@ static int gloss_alloc(void *obj,
     tr->locale_size = tr->curr_locale_size;
     *item = tr;
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 
@@ -357,7 +331,7 @@ static int parse_GSL(struct kndRelArg *self,
     if (DEBUG_RELARG_LEVEL_2)
         knd_log(".. Rel Arg parsing: \"%.*s\"..", 32, rec);
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_name,
           .obj = self
@@ -378,7 +352,7 @@ static int parse_GSL(struct kndRelArg *self,
           .append = gloss_append,
           .parse = read_gloss
         },
-        { .type = KND_CHANGE_STATE,
+        { .type = GSL_CHANGE_STATE,
           .name = "c",
           .name_size = strlen("c"),
           .buf = self->classname,
@@ -392,30 +366,20 @@ static int parse_GSL(struct kndRelArg *self,
           .max_buf_size = KND_NAME_SIZE
         }
     };
-    int err;
-    
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
+    gsl_err_t parser_err;
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     return knd_OK;
 }
 
-static int set_inst_classname(void *obj, struct kndTaskArg *args, size_t num_args)
+static gsl_err_t set_inst_classname(void *obj, const char *name, size_t name_size)
 {
     struct kndRelArgInstance *self = obj;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
 
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            name = arg->val_ref;
-            name_size = arg->val_size;
-        }
-    }
-    if (!name_size) return knd_FAIL;
-    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     self->classname = name;
     self->classname_size = name_size;
@@ -424,25 +388,15 @@ static int set_inst_classname(void *obj, struct kndTaskArg *args, size_t num_arg
         knd_log("++ INST ARG CLASS NAME: \"%.*s\"",
                 self->classname_size, self->classname);
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
-static int set_inst_objname(void *obj, struct kndTaskArg *args, size_t num_args)
+static gsl_err_t set_inst_objname(void *obj, const char *name, size_t name_size)
 {
     struct kndRelArgInstance *self = obj;
-    struct kndTaskArg *arg;
-    const char *name = NULL;
-    size_t name_size = 0;
 
-    for (size_t i = 0; i < num_args; i++) {
-        arg = &args[i];
-        if (!strncmp(arg->name, "_impl", strlen("_impl"))) {
-            name = arg->val_ref;
-            name_size = arg->val_size;
-        }
-    }
-    if (!name_size) return knd_FAIL;
-    if (name_size >= KND_NAME_SIZE) return knd_LIMIT;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     self->objname = name;
     self->objname_size = name_size;
@@ -451,36 +405,34 @@ static int set_inst_objname(void *obj, struct kndTaskArg *args, size_t num_args)
         knd_log("++ INST ARG OBJ NAME: \"%.*s\"",
                 self->objname_size, self->objname);
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 
-static int parse_inst_obj(void *data,
-                          const char *rec,
-                          size_t *total_size)
+static gsl_err_t parse_inst_obj(void *data,
+                                const char *rec,
+                                size_t *total_size)
 {
     struct kndRelArgInstance *inst = data;
-    int err;
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_inst_objname,
           .obj = inst
         }
     };
-    err = knd_parse_task(rec, total_size, specs,
-                         sizeof(specs) / sizeof(struct kndTaskSpec));             PARSE_ERR();
-    return knd_OK;
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int parse_inst_class(void *data,
-                            const char *rec,
-                            size_t *total_size)
+static gsl_err_t parse_inst_class(void *data,
+                                  const char *rec,
+                                  size_t *total_size)
 {
     struct kndRelArgInstance *self = data;
     int err;
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_inst_classname,
           .obj = self
@@ -491,9 +443,8 @@ static int parse_inst_class(void *data,
           .obj = self
         }
     };
-    err = knd_parse_task(rec, total_size, specs,
-                         sizeof(specs) / sizeof(struct kndTaskSpec));             PARSE_ERR();
-    return knd_OK;
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static int parse_inst_GSL(struct kndRelArg *self,
@@ -505,25 +456,24 @@ static int parse_inst_GSL(struct kndRelArg *self,
         knd_log(".. %.*s Rel Arg instance parsing: \"%.*s\"..",
                 self->name_size, self->name, 32, rec);
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .name = "class",
           .name_size = strlen("class"),
           .parse = parse_inst_class,
           .obj = inst
         }
     };
-    int err;
-    
-    err = knd_parse_task(rec, total_size, specs,
-                         sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-    
+    gsl_err_t parser_err;
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+
     return knd_OK;
 }
 
 static int link_rel(struct kndRelArg *self,
-		    struct kndRelArgInstance *inst,
-		    struct kndObjEntry *obj_entry)
+                    struct kndRelArgInstance *inst,
+                    struct kndObjEntry *obj_entry)
 {
     struct kndRel *rel = self->rel;
     struct kndRelRef *ref = NULL;
@@ -533,14 +483,14 @@ static int link_rel(struct kndRelArg *self,
     if (DEBUG_RELARG_LEVEL_2)
         knd_log(".. %.*s OBJ to link rel %.*s..",
                 obj_entry->name_size, obj_entry->name,
-		rel->name_size, rel->name);
+                rel->name_size, rel->name);
 
     for (ref = obj_entry->rels; ref; ref = ref->next) {
         if (ref->rel == rel) break;
     }
 
     if (!ref) {
-	err = rel->mempool->new_rel_ref(rel->mempool, &ref);                      RET_ERR();
+        err = rel->mempool->new_rel_ref(rel->mempool, &ref);                      RET_ERR();
         ref->rel = rel;
         ref->next = obj_entry->rels;
         obj_entry->rels = ref;
@@ -567,21 +517,21 @@ static int resolve(struct kndRelArg *self)
         return knd_FAIL;
     }
     self->conc_dir = dir;
-    
+
     return knd_OK;
 }
 
 static int resolve_inst(struct kndRelArg *self,
-			struct kndRelArgInstance *inst)
+                        struct kndRelArgInstance *inst)
 {
     struct kndConcDir *role_class_dir;
     struct kndConcDir *dir;
     struct kndObjEntry *obj;
     int err;
 
-    
+
     dir = self->rel->class_idx->get(self->rel->class_idx,
-				    inst->classname, inst->classname_size);
+                                    inst->classname, inst->classname_size);
     if (!dir) {
         knd_log("-- no such class: %.*s :(", inst->classname_size, inst->classname);
         return knd_FAIL;
@@ -593,19 +543,19 @@ static int resolve_inst(struct kndRelArg *self,
 
     /* resolve obj ref */
     if (inst->objname_size) {
-	if (dir->obj_idx) {
-	    obj = dir->obj_idx->get(dir->obj_idx, 
-				    inst->objname, inst->objname_size);
-	    if (!obj) {
-		knd_log("-- no such obj: %.*s :(", inst->objname_size, inst->objname);
-		return knd_FAIL;
-	    }
-	    err = link_rel(self, inst, obj);        RET_ERR();
-	    inst->obj = obj;
+        if (dir->obj_idx) {
+            obj = dir->obj_idx->get(dir->obj_idx,
+                                    inst->objname, inst->objname_size);
+            if (!obj) {
+                knd_log("-- no such obj: %.*s :(", inst->objname_size, inst->objname);
+                return knd_FAIL;
+            }
+            err = link_rel(self, inst, obj);        RET_ERR();
+            inst->obj = obj;
 
-	    if (DEBUG_RELARG_LEVEL_2)
-		knd_log("++ obj resolved: \"%.*s\"!",  inst->objname_size, inst->objname);
-	}
+            if (DEBUG_RELARG_LEVEL_2)
+                knd_log("++ obj resolved: \"%.*s\"!",  inst->objname_size, inst->objname);
+        }
     }
 
     if (DEBUG_RELARG_LEVEL_TMP)

@@ -21,12 +21,7 @@
 #ifndef KND_CONFIG_H
 #define KND_CONFIG_H
 
-/* return error codes */
-typedef enum { knd_OK, knd_FAIL, knd_NOMEM, knd_LIMIT, knd_RANGE, knd_AUTH,
-        knd_INVALID_DATA, knd_ACCESS, knd_NO_MATCH, knd_MATCH_FOUND, knd_FORMAT,
-        knd_IO_FAIL, knd_EXISTS, knd_EOB, knd_STOP, knd_NEED_WAIT, 
-        knd_EXPIRED } 
-  knd_err_codes;
+#include "knd_err.h"
 
 typedef enum knd_state_phase { KND_SELECTED,
                                KND_SUBMITTED,
