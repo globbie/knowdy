@@ -22,6 +22,8 @@
 #include "knd_rel.h"
 #include "knd_proc.h"
 
+#include <gsl-parser.h>
+
 #include "knd_learner.h"
 
 #define DEBUG_LEARNER_LEVEL_1 0
@@ -140,23 +142,23 @@ kndLearner_start(struct kndLearner *self)
     self->task->publisher = self->publisher;
 
     while (1) {
-	task_size = KND_LARGE_BUF_SIZE;
-	err = knd_recv_task(outbox, task, &task_size);
-	if (err) {
-	    knd_log("-- failed to recv task :(");
-	    task_size = 0;
-	    continue;
-	}
-	
+        task_size = KND_LARGE_BUF_SIZE;
+        err = knd_recv_task(outbox, task, &task_size);
+        if (err) {
+            knd_log("-- failed to recv task :(");
+            task_size = 0;
+            continue;
+        }
+
         t0 = time(NULL);
         c0 = clock();
 
         if (DEBUG_LEARNER_LEVEL_TMP) {
             chunk_size = task_size > KND_MAX_DEBUG_CHUNK_SIZE ? KND_MAX_DEBUG_CHUNK_SIZE : task_size;
             knd_log("\n++ Learner got a new task: \"%.*s\".. [size: %lu]",
-		    chunk_size, task, (unsigned long)task_size);
+                    chunk_size, task, (unsigned long)task_size);
         }
-        
+
         self->task->reset(self->task);
         err = self->task->run(self->task,
                               task, task_size,
@@ -184,8 +186,8 @@ kndLearner_start(struct kndLearner *self)
             goto final;
         }
 
-	task += task_size;
-	total_task_size += task_size;
+        task += task_size;
+        total_task_size += task_size;
 
     final:
 
@@ -193,7 +195,7 @@ kndLearner_start(struct kndLearner *self)
             self->task->tid[0] = '0';
             self->task->tid_size = 1;
         }
-            
+
         err = self->task->report(self->task);
         if (err) {
             knd_log("-- task report failed: %d", err);
@@ -204,12 +206,12 @@ kndLearner_start(struct kndLearner *self)
     return knd_OK;
 }
 
-static int parse_publisher_service_addr(void *obj,
-                                        const char *rec,
-                                        size_t *total_size)
+static gsl_err_t parse_publisher_service_addr(void *obj,
+                                              const char *rec,
+                                              size_t *total_size)
 {
     struct kndLearner *self = (struct kndLearner*)obj;
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .name = "frontend",
           .name_size = strlen("frontend"),
           .buf = self->publish_proxy_frontend_addr,
@@ -223,122 +225,110 @@ static int parse_publisher_service_addr(void *obj,
           .max_buf_size = KND_NAME_SIZE
         }
     };
-    int err;
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-    
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int
+static gsl_err_t
 parse_inbox_addr(void *obj,
-		 const char *rec,
-		 size_t *total_size)
+                 const char *rec,
+                 size_t *total_size)
 {
     struct kndLearner *self = (struct kndLearner*)obj;
 
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .name = "frontend",
           .name_size = strlen("frontend"),
           .buf = self->inbox_frontend_addr,
           .buf_size = &self->inbox_frontend_addr_size,
-          .max_buf_size = KND_NAME_SIZE       
+          .max_buf_size = KND_NAME_SIZE
         },
         { .name = "backend",
           .name_size = strlen("backend"),
           .buf = self->inbox_backend_addr,
           .buf_size = &self->inbox_backend_addr_size,
-          .max_buf_size = KND_NAME_SIZE       
+          .max_buf_size = KND_NAME_SIZE
         }
     };
-    int err;
-    
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-    
-    return knd_OK;
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int parse_memory_settings(void *obj,
-                                 const char *rec,
-                                 size_t *total_size)
+static gsl_err_t parse_memory_settings(void *obj,
+                                       const char *rec,
+                                       size_t *total_size)
 {
     struct kndMemPool *self = obj;
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .name = "max_users",
           .name_size = strlen("max_users"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_users
         },
         { .name = "max_classes",
           .name_size = strlen("max_classes"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_classes
         },
         { .name = "max_states",
           .name_size = strlen("max_states"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_states
         },
         { .name = "max_objs",
           .name_size = strlen("max_objs"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_objs
         },
         { .name = "max_elems",
           .name_size = strlen("max_elems"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_elems
         },
         { .name = "max_rels",
           .name_size = strlen("max_rels"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_rels
         },
         { .name = "max_rel_args",
           .name_size = strlen("max_rels_args"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_rel_args
         },
         { .name = "max_rel_refs",
           .name_size = strlen("max_rel_refs"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_rel_refs
         },
         { .name = "max_rel_instances",
           .name_size = strlen("max_rel_instances"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_rel_insts
         },
         { .name = "max_rel_arg_instances",
           .name_size = strlen("max_rel_arg_instances"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_rel_arg_insts
         },
         { .name = "max_rel_arg_inst_refs",
           .name_size = strlen("max_rel_arg_inst_refs"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_rel_arg_inst_refs
         },
         { .name = "max_procs",
           .name_size = strlen("max_procs"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_procs
         },
         { .name = "max_proc_instances",
           .name_size = strlen("max_proc_instances"),
-          .parse = knd_parse_size_t,
+          .parse = gsl_parse_size_t,
           .obj = &self->max_proc_insts
         }
     };
-    int err;
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
-    
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static int
@@ -349,15 +339,15 @@ parse_config_GSL(struct kndLearner *self,
     char buf[KND_NAME_SIZE];
     size_t buf_size = KND_NAME_SIZE;
     size_t chunk_size = 0;
-    
+
     const char *gsl_format_tag = "{gsl";
     size_t gsl_format_tag_size = strlen(gsl_format_tag);
 
     const char *header_tag = "{knd::Knowdy Learner Service Configuration";
     size_t header_tag_size = strlen(header_tag);
     const char *c;
-    
-    struct kndTaskSpec specs[] = {
+
+    struct gslTaskSpec specs[] = {
          { .name = "path",
            .name_size = strlen("path"),
            .buf = self->path,
@@ -406,6 +396,7 @@ parse_config_GSL(struct kndLearner *self,
 
     };
     int err = knd_FAIL;
+    gsl_err_t parser_err;
 
     if (!strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
         rec += gsl_format_tag_size;
@@ -417,16 +408,17 @@ parse_config_GSL(struct kndLearner *self,
                 knd_log("== got schema: \"%.*s\"", buf_size, buf);
         }
     }
-    
+
     if (strncmp(rec, header_tag, header_tag_size)) {
         knd_log("-- wrong GSL class header");
         return knd_FAIL;
     }
     c = rec + header_tag_size;
-    err = knd_parse_task(c, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) {
-        knd_log("-- config parse error: %d", err);
-        return err;
+
+    parser_err = gsl_parse_task(c, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        knd_log("-- config parse error: %d", parser_err.code);
+        return gsl_err_to_knd_err_codes(parser_err);
     }
 
     if (!self->path_size) {
@@ -464,7 +456,7 @@ parse_config_GSL(struct kndLearner *self,
     memcpy(self->admin->path + self->path_size, "/users", strlen("/users"));
     self->admin->path_size = self->path_size + strlen("/users");
     self->admin->path[self->admin->path_size] = '\0';
-    
+
     return knd_OK;
 }
 
@@ -503,7 +495,7 @@ kndLearner_new(struct kndLearner **rec,
 
     err = kndMemPool_new(&self->mempool);
     if (err) return err;
-    
+
     /* read config */
     err = self->out->read_file(self->out, config, strlen(config));
     if (err) goto error;
@@ -579,7 +571,7 @@ kndLearner_new(struct kndLearner **rec,
     if (self->mempool->max_users) {
         knd_log("MAX USERS: %zu", self->mempool->max_users);
         self->max_users = self->mempool->max_users;
-        self->admin->user_idx = calloc(self->max_users, 
+        self->admin->user_idx = calloc(self->max_users,
                                        sizeof(struct kndObject*));
         if (!self->admin->user_idx) return knd_NOMEM;
         self->admin->max_users = self->max_users;

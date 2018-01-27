@@ -25,6 +25,8 @@
 #include "knd_object.h"
 #include "knd_config.h"
 
+#include <gsl-parser/gsl_err.h>
+
 struct kndAttr;
 struct kndAttrItem;
 struct kndConcept;
@@ -35,7 +37,6 @@ struct kndRel;
 struct kndRelObj;
 struct kndTask;
 struct kndUser;
-struct kndTaskArg;
 struct kndClassUpdate;
 struct kndClassUpdateRef;
 
@@ -293,9 +294,9 @@ struct kndConcept
                         const char *rec,
                         size_t *total_size);
     int (*freeze)(struct kndConcept *self);
-    int (*sync)(void *obj,
-                const char *rec,
-                size_t *total_size);
+    gsl_err_t (*sync)(void *obj,
+                      const char *rec,
+                      size_t *total_size);
 
     int (*build_diff)(struct kndConcept   *self,
                       const char *start_state,
@@ -324,9 +325,9 @@ struct kndConcept
     int (*get_attr)(struct kndConcept *self,
                     const char *name, size_t name_size,
                     struct kndAttr **result);
-    int (*import)(void *self,
-                  const char *rec,
-                  size_t *total_size);
+    gsl_err_t (*import)(void *self,
+                        const char *rec,
+                        size_t *total_size);
     int (*export)(struct kndConcept *self);
 
     /* traversal */
