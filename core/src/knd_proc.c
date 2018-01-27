@@ -322,8 +322,8 @@ static int parse_proc_select(struct kndProc *self,
                              const char *rec,
                              size_t *total_size)
 {
-    int err = knd_FAIL, e;
     gsl_err_t parser_err;
+    int e;
 
     if (DEBUG_PROC_LEVEL_1)
         knd_log(".. parsing Proc select: \"%.*s\"",
@@ -666,15 +666,15 @@ static gsl_err_t parse_arg(void *data,
     return make_gsl_err(gsl_OK);
 }
 
-static int arg_item_read(void *obj,
-                           const char *name, size_t name_size,
-                           const char *rec, size_t *total_size)
+static gsl_err_t arg_item_read(void *obj,
+			       const char *name, size_t name_size,
+			       const char *rec, size_t *total_size)
 {
     struct kndProcBase *base = obj;
     struct kndArgItem *item;
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
-    int err;
+    gsl_err_t parser_err;
 
     item = malloc(sizeof(struct kndArgItem));
     memset(item, 0, sizeof(struct kndArgItem));
@@ -682,7 +682,7 @@ static int arg_item_read(void *obj,
     item->name_size = name_size;
     item->name[name_size] = '\0';
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .name = "c",
           .name_size = strlen("c"),
           .buf_size = &item->classname_size,
@@ -691,8 +691,9 @@ static int arg_item_read(void *obj,
         }
     };
 
-    err = knd_parse_task(rec, total_size, specs, sizeof(specs) / sizeof(struct kndTaskSpec));
-    if (err) return err;
+    parser_err = gsl_parse_task(rec, total_size, specs,
+				sizeof(specs) / sizeof(specs[0]));
+    if (parser_err.code) return parser_err;
     
     if (!base->tail) {
         base->tail = item;
@@ -705,29 +706,34 @@ static int arg_item_read(void *obj,
 
     base->num_args++;
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
-static int parse_base(void *data,
-		     const char *rec,
-		     size_t *total_size)
+static gsl_err_t parse_base(void *data,
+			    const char *rec,
+			    size_t *total_size)
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size;
     struct kndProc *self = data;
     struct kndProcBase *base;
-    int err;
+    gsl_err_t parser_err;
+
+        /*err = self->mempool->new_proc_base(self->mempool, &base);                       RET_ERR();
+    base->task = self->task;
+    err = base->parse(base, rec, total_size);                                       PARSE_ERR();
+    */
 
     base = malloc(sizeof(struct kndProcBase));
     memset(base, 0, sizeof(struct kndProcBase));
 
-    struct kndTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .buf_size = &base->name_size,
           .max_buf_size = KND_NAME_SIZE,
           .buf = base->name
         },
-        { .type = KND_CHANGE_STATE,
+        { .type = GSL_CHANGE_STATE,
 	  .name = "arg_item",
           .name_size = strlen("arg_item"),
           .is_validator = true,
@@ -739,20 +745,16 @@ static int parse_base(void *data,
         }
     };
    
-    err = knd_parse_task(rec, total_size, specs,
-			 sizeof(specs) / sizeof(struct kndTaskSpec));             RET_ERR();
-
-    /*err = self->mempool->new_proc_base(self->mempool, &base);                       RET_ERR();
-    base->task = self->task;
-    err = base->parse(base, rec, total_size);                                       PARSE_ERR();
-    */
+    parser_err = gsl_parse_task(rec, total_size, specs,
+				sizeof(specs) / sizeof(specs[0]));
+    if (parser_err.code) return parser_err;
 
     base->proc = self;
     base->next = self->bases;
     self->bases = base;
     self->num_bases++;
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_proc_call_arg(void *obj,
@@ -796,11 +798,11 @@ static gsl_err_t parse_proc_call(void *obj,
                                  size_t *total_size)
 {
     char buf[KND_SHORT_NAME_SIZE];
-    size_t buf_size;
+    size_t buf_size = 0;
     struct kndProc *self = obj;
     int err;
 
-    if (DEBUG_PROC_LEVEL_1)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. Proc Call parsing: \"%.*s\"..", 32, rec);
 
     struct gslTaskSpec specs[] = {
@@ -832,6 +834,12 @@ static gsl_err_t parse_proc_call(void *obj,
           .buf_size = &buf_size,
           .max_buf_size = KND_SHORT_NAME_SIZE,
           .validate = parse_proc_call_arg,
+          .obj = self
+        },
+        { .name = "default",
+          .name_size = strlen("default"),
+          .is_default = true,
+          .run = confirm_proc,
           .obj = self
         }
     };

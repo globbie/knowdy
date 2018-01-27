@@ -1101,7 +1101,7 @@ static gsl_err_t parse_bin(void *obj,
         self->tail_attr = attr;
     }
 
-    return make_gsl_err(knd_OK);
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_num(void *obj,
@@ -1130,7 +1130,7 @@ static gsl_err_t parse_num(void *obj,
         self->tail_attr->next = attr;
         self->tail_attr = attr;
     }
-    return make_gsl_err(knd_OK);
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_ref(void *obj,
@@ -2378,7 +2378,8 @@ static gsl_err_t dir_entry_alloc(void *self,
 
     if (name_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = parent_dir->mempool->new_conc_dir(parent_dir->mempool, &dir);           RET_ERR();
+    err = parent_dir->mempool->new_conc_dir(parent_dir->mempool, &dir);
+    if (err) return make_gsl_err_external(err);
 
     memcpy(dir->id, name, name_size);
 
