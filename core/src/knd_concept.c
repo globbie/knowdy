@@ -1227,9 +1227,6 @@ static gsl_err_t set_attr_item_val(void *obj, const char *val, size_t val_size)
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    if (DEBUG_CONC_LEVEL_TMP)
-        knd_log(".. run set attr item val: %s\n", val);
-
     memcpy(item->val, val, val_size);
     item->val[val_size] = '\0';
     item->val_size = val_size;
@@ -1259,22 +1256,23 @@ static gsl_err_t parse_item_child(void *obj,
     size_t buf_size = 0;
     gsl_err_t err;
 
-    knd_log(".. parse item child..");
-
     item = malloc(sizeof(struct kndAttrItem));
     memset(item, 0, sizeof(struct kndAttrItem));
     memcpy(item->name, name, name_size);
     item->name_size = name_size;
     item->name[name_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("== attr item name set: \"%s\" REC: %.*s",
                 item->name, 16, rec);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_attr_item_val,
-          .obj = item
+          .buf = item->val,
+          .buf_size = &item->val_size,
+          .max_buf_size = KND_NAME_SIZE
+          /*.run = set_attr_item_val,
+	    .obj = item*/
         },
         { .type = GSL_CHANGE_STATE,
           .is_validator = true,
@@ -1306,8 +1304,6 @@ static gsl_err_t parse_conc_item(void *obj,
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
     gsl_err_t err;
-
-    knd_log(".. parse conc item: %.*s", name_size, name);
 
     if (!self->base_items) return make_gsl_err(gsl_FAIL);
     conc_item = self->base_items;

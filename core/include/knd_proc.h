@@ -111,11 +111,26 @@ struct kndArgItem
     struct kndArgItem *next; 
 };
 
+struct kndArgEntry
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+
+    struct kndProcArg *arg;
+
+    char classname[KND_NAME_SIZE];
+    size_t classname_size;
+    struct kndProcDir *parent;
+
+    struct kndArgItem *next; 
+};
+
 struct kndProcBase
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
 
+    struct kndProcDir *dir;
     struct kndProc *proc;
 
     struct kndArgItem *args;
@@ -147,14 +162,23 @@ struct kndProc
     struct kndProcState *states;
     size_t num_states;
 
+    /* immediate args */
     struct kndProcArg *args;
     size_t num_args;
+    /* all inherited args */
+    struct ooDict *arg_idx;
 
     struct kndProcCall proc_call;
     size_t num_proc_calls;
 
     struct kndProcBase *bases;
     size_t num_bases;
+
+    struct kndProcDir *inherited[KND_MAX_INHERITED];
+    size_t num_inherited;
+
+    struct kndProcDir *children[KND_MAX_PROC_CHILDREN];
+    size_t num_children;
 
     struct kndTask *task;
 
