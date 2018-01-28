@@ -117,8 +117,8 @@ static int get_proc(struct kndProc *self,
     int err;
 
     if (DEBUG_PROC_LEVEL_1)
-        knd_log(".. %.*s to get proc: \"%.*s\"  IDX:%p..",
-                self->name_size, self->name, name_size, name, self->proc_idx);
+        knd_log(".. %.*s to get proc: \"%.*s\"..",
+                self->name_size, self->name, name_size, name);
 
     dir = (struct kndProcDir*)self->proc_idx->get(self->proc_idx, name, name_size);
     if (!dir) {
@@ -709,6 +709,95 @@ static gsl_err_t arg_item_read(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
+static int inherit_args(struct kndProc *self, struct kndProc *parent)
+{
+    struct kndProcDir *dir;
+    struct kndProcArg *arg;
+    struct kndProc *proc;
+    struct kndArgEntry *entry;
+    struct kndProcBase *base;
+    int err;
+
+    if (DEBUG_PROC_LEVEL_TMP)
+        knd_log(".. \"%.*s\" proc to inherit args from \"%.*s\"..",
+                self->name_size, self->name, parent->name_size, parent->name);
+
+    if (!parent->is_resolved) {
+	err = parent->resolve(parent);                                            RET_ERR();
+    }
+
+    /* check circled relations */
+    for (size_t i = 0; i < self->num_inherited; i++) {
+        dir = self->inherited[i];
+	proc = dir->proc;
+
+	if (DEBUG_PROC_LEVEL_TMP)
+	    knd_log("== (%zu of %zu)  \"%.*s\" is a parent of \"%.*s\"", 
+		    i, self->num_inherited, proc->name_size, proc->name,
+		    self->name_size, self->name);
+        if (dir->proc == parent) {
+            knd_log("-- circle inheritance detected for \"%.*s\" :(",
+                    parent->name_size, parent->name);
+            return knd_FAIL;
+        }
+    }
+    
+    /* get args from parent */
+    for (arg = parent->args; arg; arg = arg->next) {
+        /* compare with exiting args */
+        entry = self->arg_idx->get(self->arg_idx,
+				   arg->name, arg->name_size);
+        if (entry) {
+            knd_log("-- %.*s arg collision between \"%.*s\" and parent class \"%.*s\"?",
+                    entry->name_size, entry->name,
+                    self->name_size, self->name,
+                    parent->name_size, parent->name);
+            return knd_FAIL;
+        }
+
+        /* register arg entry */
+        entry = malloc(sizeof(struct kndArgEntry));
+        if (!entry) return knd_NOMEM;
+
+        memset(entry, 0, sizeof(struct kndArgEntry));
+        memcpy(entry->name, arg->name, arg->name_size);
+        entry->name_size = arg->name_size;
+        entry->arg = arg;
+
+	if (DEBUG_PROC_LEVEL_TMP)
+	    knd_log(".. inherit arg %.*s",
+		    arg->name_size, arg->name);
+
+        err = self->arg_idx->set(self->arg_idx,
+                                  entry->name, entry->name_size, (void*)entry);
+        if (err) return err;
+    }
+    
+    if (self->num_inherited >= KND_MAX_INHERITED) {
+        knd_log("-- max inherited exceeded for %.*s :(",
+                self->name_size, self->name);
+        return knd_FAIL;
+    }
+
+    if (DEBUG_PROC_LEVEL_TMP)
+        knd_log(" .. add \"%.*s\" parent to \"%.*s\"",
+		parent->dir->proc->name_size,
+                parent->dir->proc->name,
+		self->name_size, self->name);
+
+    self->inherited[self->num_inherited] = parent->dir;
+    self->num_inherited++;
+
+    /* contact the grandparents */
+    for (base = parent->bases; base; base = base->next) {
+        if (base->proc) {
+            err = inherit_args(self, base->proc);                                 RET_ERR();
+        }
+    }
+    
+    return knd_OK;
+}
+
 static gsl_err_t parse_base(void *data,
 			    const char *rec,
 			    size_t *total_size)
@@ -797,7 +886,7 @@ static gsl_err_t parse_proc_call(void *obj,
     struct kndProc *self = obj;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. Proc Call parsing: \"%.*s\"..", 32, rec);
 
     struct gslTaskSpec specs[] = {
@@ -1001,6 +1090,67 @@ static int parse_GSL(struct kndProc *self,
     return knd_OK;
 }
 
+static int resolve_parents(struct kndProc *self)
+{
+    struct kndProcBase *base;
+    struct kndProc *proc;
+    struct kndProcDir *dir;
+    int err;
+
+    if (DEBUG_PROC_LEVEL_TMP)
+	knd_log(".. resolve parent procs of \"%.*s\"..",
+		self->name_size, self->name);
+
+    /* resolve refs  */
+    for (base = self->bases; base; base = base->next) {
+
+        if (DEBUG_PROC_LEVEL_TMP)
+            knd_log("\n.. \"%.*s\" proc to get its parent: \"%.*s\"..",
+                    self->name_size, self->name,
+		    base->name_size, base->name);
+
+        err = get_proc(self, base->name, base->name_size, &proc);                 RET_ERR();
+        if (proc == self) {
+            knd_log("-- self reference detected in \"%.*s\" :(",
+                    base->name_size, base->name);
+            return knd_FAIL;
+        }
+
+        base->proc = proc;
+
+        /* should we keep track of our children? */
+        /*if (c->ignore_children) continue; */
+
+        /* check base doublets */
+        for (size_t i = 0; i < self->num_children; i++) {
+            dir = &self->children[i];
+            if (dir->proc == self) {
+                knd_log("-- doublet proc found in \"%.*s\" :(",
+                        self->name_size, self->name);
+                return knd_FAIL;
+            }
+        }
+
+        /*if (proc->num_children >= KND_MAX_PROC_CHILDREN) {
+            knd_log("-- %s as child to %s - max proc children exceeded :(",
+                    self->name, base->name);
+            return knd_FAIL;
+        }
+
+        dir = &proc->children[proc->num_children];
+        dir->proc = self;
+        proc->num_children++;
+	*/
+	if (DEBUG_PROC_LEVEL_TMP)
+	    knd_log("\n\n.. children of proc \"%.*s\": %zu",
+		    proc->name_size, proc->name, proc->num_children);
+
+        err = inherit_args(self, base->proc);                                     RET_ERR();
+    }
+
+    return knd_OK;
+}
+
 static int kndProc_resolve(struct kndProc *self)
 {
     struct kndProcArg *arg = NULL;
@@ -1010,9 +1160,19 @@ static int kndProc_resolve(struct kndProc *self)
         knd_log(".. resolving PROC: %.*s",
                 self->name_size, self->name);
 
-    for (arg = self->args; arg; arg = arg->next) {
-        err = arg->resolve(arg);                                                  RET_ERR();
+    if (!self->arg_idx) {
+	err = ooDict_new(&self->arg_idx, KND_SMALL_DICT_SIZE);                    RET_ERR();
+
+	for (arg = self->args; arg; arg = arg->next) {
+	    err = arg->resolve(arg);                                              RET_ERR();
+	}
     }
+
+    if (self->bases) {
+        err = resolve_parents(self);                                              RET_ERR();
+    }
+
+    self->is_resolved = true;
 
     return knd_OK;
 }

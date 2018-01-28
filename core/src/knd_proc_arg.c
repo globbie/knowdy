@@ -627,8 +627,13 @@ static int resolve_arg(struct kndProcArg *self)
     int err;
 
     if (self->classname_size) {
-	knd_log(".. resolving arg class template: %.*s..",
-		self->classname_size, self->classname);
+
+
+	/* TODO */
+	if (DEBUG_PROC_ARG_LEVEL_2)
+	    knd_log(".. resolving arg class template: %.*s..",
+		    self->classname_size, self->classname);
+
 	return knd_OK;
     }
 
