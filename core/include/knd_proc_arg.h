@@ -83,6 +83,8 @@ struct kndProcCallArg
     char val[KND_NAME_SIZE];
     size_t val_size;
 
+    struct kndProcArg *arg;
+
     struct kndProcCall proc_call;
 
     struct kndProcCallArg *next;

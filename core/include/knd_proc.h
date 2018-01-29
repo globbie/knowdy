@@ -180,6 +180,10 @@ struct kndProc
     struct kndProcDir *children[KND_MAX_PROC_CHILDREN];
     size_t num_children;
 
+    char result_classname[KND_NAME_SIZE];
+    size_t result_classname_size;
+    struct kndConcept *result;
+
     struct kndTask *task;
 
     /* allocator */
