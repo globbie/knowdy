@@ -1,3 +1,6 @@
 [submodule "libs/gsl-parser"]
 	path = libs/gsl-parser
 	url = git@github.com:globbie/gsl-parser.git
+[submodule "libs/knode"]
+	path = libs/knode
+	url = git@github.com:globbie/knode.git
