@@ -1467,9 +1467,7 @@ static gsl_err_t parse_sync_task(void *obj,
     struct kndConcept *self = (struct kndConcept*)obj;
 
     struct gslTaskSpec specs[] = {
-        { .name = "default",
-          .name_size = strlen("default"),
-          .is_default = true,
+        { .is_default = true,
           .run = run_sync_task,
           .obj = self
         }
@@ -2017,10 +2015,10 @@ static int knd_get_dir_size(struct kndConcept *self,
     bool got_tag = false;
     bool got_size = false;
     long numval;
-    const char *c, *s;
+    const char *c, *s = NULL;
     int i = 0;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. get size of DIR in %.*s", self->name_size, self->name);
 
     for (i = rec_size - 1; i >= 0; i--) { 
@@ -2054,7 +2052,7 @@ static int knd_get_dir_size(struct kndConcept *self,
             break;
         }
         if (got_size) {
-            if (DEBUG_CONC_LEVEL_2)
+            if (DEBUG_CONC_LEVEL_TMP)
                 knd_log("  ++ got size value to parse: %.*s!", buf_size, s);
             break;
         }
@@ -2088,6 +2086,8 @@ static int knd_get_dir_size(struct kndConcept *self,
 
 static gsl_err_t run_set_dir_size(void *obj, const char *val, size_t val_size)
 {
+    char buf[KND_SHORT_NAME_SIZE] = {0};
+    size_t buf_size = 0;
     struct kndConcDir *self = obj;
     char *invalid_num_char = NULL;
     long numval;
@@ -2095,9 +2095,13 @@ static gsl_err_t run_set_dir_size(void *obj, const char *val, size_t val_size)
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    numval = strtol(val, &invalid_num_char, KND_NUM_ENCODE_BASE);
+    /* null terminated string is needed for strtol */
+    memcpy(buf, val, val_size);
+
+    numval = strtol(buf, &invalid_num_char, KND_NUM_ENCODE_BASE);
     if (*invalid_num_char) {
-        knd_log("-- invalid char: %.*s", 1, invalid_num_char);
+        knd_log("-- invalid char: %.*s in \"%.*s\"",
+		1, invalid_num_char, val_size, val);
         return make_gsl_err(gsl_FORMAT);
     }
     
@@ -2119,6 +2123,8 @@ static gsl_err_t run_set_dir_size(void *obj, const char *val, size_t val_size)
 
 static gsl_err_t run_set_reldir_size(void *obj, const char *val, size_t val_size)
 {
+    char buf[KND_SHORT_NAME_SIZE] = {0};
+    size_t buf_size = 0;
     struct kndRelDir *self = obj;
     char *invalid_num_char = NULL;
     long numval;
@@ -2126,7 +2132,8 @@ static gsl_err_t run_set_reldir_size(void *obj, const char *val, size_t val_size
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    numval = strtol(val, &invalid_num_char, KND_NUM_ENCODE_BASE);
+    memcpy(buf, val, val_size);
+    numval = strtol(buf, &invalid_num_char, KND_NUM_ENCODE_BASE);
     if (*invalid_num_char) {
         knd_log("-- invalid char: %.*s", 1, invalid_num_char);
         return make_gsl_err(gsl_FORMAT);
@@ -2151,6 +2158,7 @@ static gsl_err_t run_set_reldir_size(void *obj, const char *val, size_t val_size
 
 static gsl_err_t run_set_procdir_size(void *obj, const char *val, size_t val_size)
 {
+    char buf[KND_SHORT_NAME_SIZE] = {0};
     struct kndProcDir *self = obj;
     char *invalid_num_char = NULL;
     long numval;
@@ -2158,7 +2166,8 @@ static gsl_err_t run_set_procdir_size(void *obj, const char *val, size_t val_siz
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    numval = strtol(val, &invalid_num_char, KND_NUM_ENCODE_BASE);
+    memcpy(buf, val, val_size);
+    numval = strtol(buf, &invalid_num_char, KND_NUM_ENCODE_BASE);
     if (*invalid_num_char) {
         knd_log("-- invalid char: %.*s", 1, invalid_num_char);
         return make_gsl_err(gsl_FORMAT);

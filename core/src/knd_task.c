@@ -167,6 +167,40 @@ static gsl_err_t parse_user(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t set_output_format(void *obj, const char *name, size_t name_size)
+{
+    struct kndTask *self = obj;
+    const char *format_str;
+    size_t format_str_size;
+    int err;
+
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    for (size_t i = 0; i < sizeof(knd_format_names); i++) {
+	format_str = knd_format_names[i];
+	if (!format_str) break;
+
+	format_str_size = strlen(format_str);
+	if (name_size != format_str_size) continue;
+
+	if (!memcmp(knd_format_names[i], name, name_size)) {
+	    self->format = (knd_format)i;
+
+	    knd_log("++ \"%.*s\" format chosen!", name_size, name);
+	    return make_gsl_err(knd_OK);
+	}
+    }
+
+    err = self->log->write(self->log, name, name_size);
+    if (err) return make_gsl_err(err);
+    err = self->log->write(self->log, " format not supported",
+			   strlen(" format not supported"));
+    if (err) return make_gsl_err(err);
+
+    return make_gsl_err(knd_FAIL);
+}
+
 static gsl_err_t parse_task(void *obj,
                             const char *rec,
                             size_t *total_size)
@@ -192,6 +226,11 @@ static gsl_err_t parse_task(void *obj,
           .buf = self->curr_locale,
           .buf_size = &self->curr_locale_size,
           .max_buf_size = KND_NAME_SIZE
+        },
+        { .name = "format",
+          .name_size = strlen("format"),
+          .run = set_output_format,
+	  .obj = self
         },
         { .name = "user",
           .name_size = strlen("user"),
@@ -442,6 +481,9 @@ extern int kndTask_new(struct kndTask **task)
 
     err = kndOutput_new(&self->update, KND_LARGE_BUF_SIZE);
     if (err) return err;
+
+    self->visual.text_line_height = KND_TEXT_LINE_HEIGHT;
+    self->visual.text_hangindent_size = KND_TEXT_HANGINDENT_SIZE;
 
     self->del    = del;
     self->str    = str;

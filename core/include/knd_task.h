@@ -46,6 +46,11 @@ typedef enum knd_iter_type {
     KND_ITER_DEPTH
 } knd_iter_type;
 
+struct kndVisualFormat {
+    size_t text_line_height;
+    size_t text_hangindent_size;
+};
+
 struct kndTask
 {
     knd_task_spec_type type;
@@ -68,6 +73,9 @@ struct kndTask
 
     char curr_locale[KND_NAME_SIZE];
     size_t curr_locale_size;
+
+    knd_format format;
+    struct kndVisualFormat visual;
 
     char timestamp[KND_NAME_SIZE];
     size_t timestamp_size;
