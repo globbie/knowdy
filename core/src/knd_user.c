@@ -250,14 +250,13 @@ kndUser_parse_numid(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t
-kndUser_parse_auth(void *obj,
-                   const char *rec,
-                   size_t *total_size)
+static gsl_err_t kndUser_parse_auth(void *obj,
+				    const char *rec,
+				    size_t *total_size)
 {
     struct kndUser *self = obj;
     char sid[KND_NAME_SIZE];
-    size_t sid_size;
+    size_t sid_size = 0;
     int err;
     gsl_err_t parser_err;
 
@@ -822,9 +821,7 @@ static int parse_task(struct kndUser *self,
           .parse = parse_sync_task,
           .obj = self
         },
-        { .name = "default",
-          .name_size = strlen("default"),
-          .is_default = true,
+        { .is_default = true,
           .run = run_present_user,
           .obj = self
         }

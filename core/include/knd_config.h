@@ -39,6 +39,7 @@ typedef enum knd_format { KND_FORMAT_JSON,
                           KND_FORMAT_XML,
                           KND_FORMAT_HTML,
                           KND_FORMAT_JS,
+                          KND_FORMAT_SVG,
                           KND_FORMAT_GSL,
                           KND_FORMAT_GSP,
                           KND_FORMAT_GSC
@@ -49,9 +50,11 @@ static const char* const knd_format_names[] = {
     "XML",
     "HTML", 
     "JS",
+    "SVG",
     "GSL", 
     "GSP", 
-    "GSC" };
+    "GSC",
+    NULL };
 
 typedef enum knd_logic { KND_LOGIC_AND, 
                           KND_LOGIC_OR,
@@ -489,4 +492,6 @@ typedef enum knd_storage_type {
 #define KND_JSON_SEPAR ","
 #define KND_JSON_SEPAR_SIZE 1
 
+#define KND_TEXT_LINE_HEIGHT 24
+#define KND_TEXT_HANGINDENT_SIZE 40
 #endif

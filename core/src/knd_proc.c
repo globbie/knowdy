@@ -43,8 +43,8 @@ static void proc_call_arg_str(struct kndProcCallArg *self,
 	arg_type_size = self->arg->classname_size;
     }
 
-    knd_log("%*s  {%.*s %.*s [type:%.*s]}", depth * KND_OFFSET_SIZE, "",
-             self->name_size, self->name,
+    knd_log("%*s  {%.*s %.*s [class:%.*s]}", depth * KND_OFFSET_SIZE, "",
+	    self->name_size, self->name,
 	    self->val_size, self->val, arg_type_size, arg_type);
 
      
@@ -59,7 +59,7 @@ static void base_str(struct kndProcBase *base,
                 base->name_size, base->name);
 
     for (arg = base->args; arg; arg = arg->next) {
-	knd_log("%*s%.*s [type:%.*s]", (depth + 1) * KND_OFFSET_SIZE, "",
+	knd_log("%*s%.*s [class:%.*s]", (depth + 1) * KND_OFFSET_SIZE, "",
                 arg->name_size, arg->name,
                 arg->classname_size, arg->classname);
     }
@@ -85,8 +85,17 @@ static void str(struct kndProc *self)
     }
 
     if (self->result_classname_size) {
-	knd_log("%*s    {result %.*s}", self->depth * KND_OFFSET_SIZE, "",
+	knd_log("%*s    {result class:%.*s}", self->depth * KND_OFFSET_SIZE, "",
                 self->result_classname_size, self->result_classname);
+    }
+
+    if (self->estim_cost_total) {
+	knd_log("%*s    {total_cost %zu}", self->depth * KND_OFFSET_SIZE, "",
+                self->estim_cost_total);
+    }
+    if (self->estim_time_total) {
+	knd_log("%*s    {total_time %zu}", self->depth * KND_OFFSET_SIZE, "",
+                self->estim_time_total);
     }
 
     for (arg = self->args; arg; arg = arg->next) {
@@ -107,8 +116,40 @@ static void str(struct kndProc *self)
         }
         knd_log("%*s    }", self->depth * KND_OFFSET_SIZE, "");
     }
+}
 
-    
+static int kndProc_export_SVG_header(struct kndProc *self)
+{
+    struct kndOutput *out = self->out;
+    const char *svg_header = "<svg version=\"1.1\""
+	" width=\"100%\" height=\"100%\""
+	" xmlns=\"http://www.w3.org/2000/svg\""
+	" viewBox=\"0 0 640 480\""
+	" xmlns:xlink=\"http://www.w3.org/1999/xlink\">";
+
+    size_t svg_header_size = strlen(svg_header);
+    int err;
+
+    err = out->write(out, svg_header, svg_header_size);                           RET_ERR();
+
+    err = out->write(out, "<g", strlen("<g"));                                    RET_ERR();
+
+    err = out->write(out, " transform=\"translate(250,250)\"",
+		   strlen(" transform=\"translate(250,250)\""));                  RET_ERR();
+    err = out->write(out, ">", 1);                                                RET_ERR();
+
+    return knd_OK;
+}
+
+static int kndProc_export_SVG_footer(struct kndProc *self)
+{
+    struct kndOutput *out = self->out;
+    const char *svg_footer = "</g></svg>";
+    size_t svg_footer_size = strlen(svg_footer);
+    int err;
+
+    err = out->write(out, svg_footer, svg_footer_size);                           RET_ERR();
+    return knd_OK;
 }
 
 static int get_proc(struct kndProc *self,
@@ -245,7 +286,7 @@ static int get_proc(struct kndProc *self,
         err = arg->resolve(arg);                                                  RET_ERR();
     }
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         proc->str(proc);
 
     *result = proc;
@@ -302,36 +343,45 @@ static gsl_err_t present_proc_selection(void *obj,
     p = self->curr_proc;
     p->out = out;
     p->task = self->task;
-    p->format = KND_FORMAT_JSON;
+    p->visual = &self->task->visual;
+    p->format = self->task->format;
     p->depth = 0;
     p->max_depth = KND_MAX_DEPTH;
 
+    /* export HEADER */
+    switch (p->format) {
+    case KND_FORMAT_SVG:
+	err = kndProc_export_SVG_header(p);
+	if (err) return make_gsl_err_external(err);
+     break;
+    case KND_FORMAT_HTML:
+	err = kndProc_export_SVG_header(p);
+	if (err) return make_gsl_err_external(err);
+     break;
+    default:
+	break;
+    }
+
+    /* export BODY */
     err = p->export(p);
     if (err) return make_gsl_err_external(err);
-    
+
+    /* export FOOTER */
+    switch (p->format) {
+    case KND_FORMAT_SVG:
+	err = kndProc_export_SVG_footer(p);
+	if (err) return make_gsl_err_external(err);
+     break;
+    case KND_FORMAT_HTML:
+	err = kndProc_export_SVG_footer(p);
+	if (err) return make_gsl_err_external(err);
+     break;
+    default:
+	break;
+    }
+
     return make_gsl_err(gsl_OK);
 }
-
-//static gsl_err_t run_set_translation_text(void *obj, const char *val, size_t val_size)
-//{
-//    struct kndTranslation *tr = obj;
-//
-//    if (DEBUG_PROC_LEVEL_2)
-//        knd_log(".. run set translation text..");
-//
-//    if (!val_size) return make_gsl_err(gsl_FORMAT);
-//    if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-//
-//    if (DEBUG_PROC_LEVEL_2)
-//        knd_log(".. run set translation text: %.*s [%lu]\n", val_size, val,
-//                (unsigned long)val_size);
-//
-//    memcpy(tr->val, val, val_size);
-//    tr->val_size = val_size;
-//
-//    return make_gsl_err(gsl_OK);
-//}
-
 
 static int parse_proc_select(struct kndProc *self,
                              const char *rec,
@@ -340,7 +390,7 @@ static int parse_proc_select(struct kndProc *self,
     gsl_err_t parser_err;
     int e;
 
-    if (DEBUG_PROC_LEVEL_1)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. parsing Proc select: \"%.*s\"",
                 16, rec);
 
@@ -356,9 +406,7 @@ static int parse_proc_select(struct kndProc *self,
           .parse = parse_import_instance,
           .obj = self
           }*/,
-        { .name = "default",
-          .name_size = strlen("default"),
-          .is_default = true,
+        { .is_default = true,
           .run = present_proc_selection,
           .obj = self
         }
@@ -542,6 +590,105 @@ static int export_JSON(struct kndProc *self)
     return knd_OK;
 }
 
+
+static int export_SVG(struct kndProc *self)
+{
+    char buf[KND_SHORT_NAME_SIZE];
+    size_t buf_size = 0;
+    struct kndOutput *out = self->out;
+    struct kndProcArg *arg;
+    struct kndTranslation *tr;
+
+    bool in_list = false;
+    size_t x_offset = 0;
+    size_t y_offset = 0;
+    int err;
+
+    err = out->write(out, "<text>", strlen("<text>"));                            RET_ERR();
+    err = out->write(out, self->name, self->name_size);                           RET_ERR();
+    err = out->write(out, "</text>", strlen("</text>"));                          RET_ERR();
+
+    x_offset += self->visual->text_hangindent_size;
+    y_offset += self->visual->text_line_height;
+
+    /* choose gloss */
+    tr = self->tr;
+    while (tr) {
+        if (memcmp(self->task->locale, tr->locale, tr->locale_size)) {
+            goto next_tr;
+        }
+
+        err = out->write(out, "<text", strlen("<text"));          RET_ERR();
+	buf_size = sprintf(buf, " x=\"%zu\"", x_offset);
+        err = out->write(out, buf, buf_size);          RET_ERR();
+	buf_size = sprintf(buf, " y=\"%zu\"", y_offset);
+        err = out->write(out, buf, buf_size);          RET_ERR();
+        err = out->write(out, ">", 1);          RET_ERR();
+
+        err = out->write(out, tr->val,  tr->val_size);                            RET_ERR();
+        err = out->write(out, "</text>", strlen("</text>"));                        RET_ERR();
+        break;
+    next_tr:
+        tr = tr->next;
+    }
+
+    if (self->args) {
+        err = out->write(out,   "<g", strlen("<g"));                              RET_ERR();
+	buf_size = sprintf(buf, " transform=\"translate(%zu,%zu)\"",
+			   x_offset, y_offset);
+        err = out->write(out,   buf, buf_size);                                   RET_ERR();
+        err = out->write(out, ">", 1);                                            RET_ERR();
+
+	x_offset = 0;
+	y_offset = 0;
+        for (arg = self->args; arg; arg = arg->next) {
+            arg->format = self->format;
+            arg->visual = self->visual;
+            arg->out = self->out;
+	    y_offset += self->visual->text_line_height;
+
+	    err = out->write(out,   "<g", strlen("<g"));                          RET_ERR();
+	    buf_size = sprintf(buf, " transform=\"translate(%zu,%zu)\"",
+			       x_offset, y_offset);
+	    err = out->write(out,   buf, buf_size);                               RET_ERR();
+	    err = out->write(out, ">", 1);                                        RET_ERR();
+
+            err = arg->export(arg);                                               RET_ERR();
+	    err = out->write(out, "</g>", strlen("</g>"));                        RET_ERR();
+        }
+        err = out->write(out, "</g>", strlen("</g>"));                            RET_ERR();
+    }
+
+    /*if (self->proc_call.name_size) {
+        err = out->write(out, ",\"run\":{", strlen(",\"run\":{"));                RET_ERR();
+        err = out->write(out, "\"_n\":\"", strlen("\"_n\":\""));                  RET_ERR();
+        err = out->write(out, self->proc_call.name, self->proc_call.name_size);   RET_ERR();
+        err = out->write(out, "\"", 1);                                           RET_ERR();
+
+        tr = self->proc_call.tr;
+        while (tr) {
+            if (memcmp(self->task->locale, tr->locale, tr->locale_size)) {
+                goto next_run_tr;
+            }
+            err = out->write(out, ",\"gloss\":\"", strlen(",\"gloss\":\""));      RET_ERR();
+            err = out->write(out, tr->val,  tr->val_size);                        RET_ERR();
+            err = out->write(out, "\"", 1);                                       RET_ERR();
+            break;
+        next_run_tr:
+            tr = tr->next;
+        }
+
+        for (call_arg = self->proc_call.args; call_arg; call_arg = call_arg->next) {
+            proc_call_arg_str(call_arg, self->depth + 1);
+            }
+        err = out->write(out, "}", 1);                                            RET_ERR();
+    }
+    */
+
+
+    return knd_OK;
+}
+
 static int export(struct kndProc *self)
 {
     int err;
@@ -553,6 +700,10 @@ static int export(struct kndProc *self)
         break;
     case KND_FORMAT_GSP:
         err = export_GSP(self);
+        if (err) return err;
+        break;
+    case KND_FORMAT_SVG:
+        err = export_SVG(self);
         if (err) return err;
         break;
     default:
@@ -756,7 +907,7 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
             return knd_FAIL;
         }
     }
-    
+
     /* get args from parent */
     for (arg = parent->args; arg; arg = arg->next) {
 
@@ -764,11 +915,11 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
         entry = self->arg_idx->get(self->arg_idx,
 				   arg->name, arg->name_size);
         if (entry) {
-            knd_log("-- %.*s arg collision between \"%.*s\" and parent class \"%.*s\"?",
+            knd_log("-- arg \"%.*s\" collision between \"%.*s\" and parent class \"%.*s\"?",
                     entry->name_size, entry->name,
                     self->name_size, self->name,
                     parent->name_size, parent->name);
-            return knd_FAIL;
+            return knd_OK;
         }
 
         /* register arg entry */
@@ -780,14 +931,14 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
         entry->name_size = arg->name_size;
         entry->arg = arg;
 
-	if (DEBUG_PROC_LEVEL_TMP)
-	    knd_log("\nNB: ++ proc \"%.*s\" inherits arg %.*s from \"%.*s\"",
+	if (DEBUG_PROC_LEVEL_2)
+	    knd_log("NB: ++ proc \"%.*s\" inherits arg \"%.*s\" from \"%.*s\"",
                     self->name_size, self->name,
 		    arg->name_size, arg->name,
                     parent->name_size, parent->name);
 
         err = self->arg_idx->set(self->arg_idx,
-                                  entry->name, entry->name_size, (void*)entry);
+                                 entry->name, entry->name_size, (void*)entry);
         if (err) return err;
     }
     
@@ -859,6 +1010,40 @@ static gsl_err_t parse_base(void *data,
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t parse_estim(void *data,
+			     const char *rec,
+			     size_t *total_size)
+{
+    struct kndProc *self = data;
+    gsl_err_t parser_err;
+
+    struct gslTaskSpec specs[] = {
+        {  .type = GSL_CHANGE_STATE,
+	   .name = "cost",
+	  .name_size = strlen("cost"),
+	  .parse = gsl_parse_size_t,
+          .obj = (void*)&self->estim_cost
+	},
+        { .type = GSL_CHANGE_STATE,
+	  .name = "time",
+	  .name_size = strlen("time"),
+	  .parse = gsl_parse_size_t,
+          .obj = (void*)&self->estim_time
+       }
+    };
+   
+    parser_err = gsl_parse_task(rec, total_size, specs,
+				sizeof(specs) / sizeof(specs[0]));
+    if (parser_err.code) return parser_err;
+
+    self->estim_cost_total = self->estim_cost;
+    self->estim_time_total = self->estim_time;
+
+    return make_gsl_err(gsl_OK);
+}
+
+
+    
 static gsl_err_t parse_proc_call_arg(void *obj,
 				     const char *name, size_t name_size,
 				     const char *rec, size_t *total_size)
@@ -962,6 +1147,7 @@ static int import_proc(struct kndProc *self,
     proc->proc_idx = self->proc_idx;
     proc->class_idx = self->class_idx;
 
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .buf = proc->name,
@@ -997,6 +1183,12 @@ static int import_proc(struct kndProc *self,
           .name = "base",
           .name_size = strlen("base"),
           .parse = parse_base,
+          .obj = proc
+        },
+        { .type = GSL_CHANGE_STATE,
+          .name = "estim",
+          .name_size = strlen("estim"),
+          .parse = parse_estim,
           .obj = proc
         },
         { .type = GSL_CHANGE_STATE,
@@ -1076,10 +1268,17 @@ static int parse_GSL(struct kndProc *self,
                      const char *rec,
                      size_t *total_size)
 {
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+   
+    if (DEBUG_PROC_LEVEL_2)
+        knd_log(".. parse proc \"%.*s\" GSL: \"%.*s\"..",
+		self->name_size, self->name, 32, rec);
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .buf = self->name,
-          .buf_size = &self->name_size,
+          .buf = buf,
+          .buf_size = &buf_size,
           .max_buf_size = KND_NAME_SIZE
         },
         { .is_list = true,
@@ -1100,9 +1299,7 @@ static int parse_GSL(struct kndProc *self,
           .parse = parse_proc_call,
           .obj = self
         },
-        { .name = "default",
-          .name_size = strlen("default"),
-          .is_default = true,
+        { .is_default = true,
           .run = confirm_proc,
           .obj = self
         }
@@ -1111,6 +1308,11 @@ static int parse_GSL(struct kndProc *self,
     
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+
+    if (buf_size) {
+	memcpy(self->name, buf, buf_size);
+	self->name_size = buf_size;
+    }
 
     return knd_OK;
 }
@@ -1125,13 +1327,13 @@ static int resolve_parents(struct kndProc *self)
     struct kndArgItem *arg_item;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
 	knd_log(".. resolve parent procs of \"%.*s\"..",
 		self->name_size, self->name);
 
     /* resolve refs  */
     for (base = self->bases; base; base = base->next) {
-        if (DEBUG_PROC_LEVEL_TMP)
+        if (DEBUG_PROC_LEVEL_2)
             knd_log("\n.. \"%.*s\" proc to get its parent: \"%.*s\"..",
                     self->name_size, self->name,
 		    base->name_size, base->name);
@@ -1163,12 +1365,11 @@ static int resolve_parents(struct kndProc *self)
                     self->name, base->name);
             return knd_FAIL;
         }
-
         dir = &proc->children[proc->num_children];
         dir->proc = self;
         proc->num_children++;
 	*/
-	if (DEBUG_PROC_LEVEL_TMP)
+	if (DEBUG_PROC_LEVEL_2)
 	    knd_log("\n\n.. children of proc \"%.*s\": %zu",
 		    proc->name_size, proc->name, proc->num_children);
 
@@ -1189,8 +1390,7 @@ static int resolve_parents(struct kndProc *self)
 
 	    /* TODO: check class inheritance */
 
-
-	    knd_log(".. arg \"%.*s\" [type:%.*s] to replace \"%.*s\" [type:%.*s]",
+	    knd_log(".. arg \"%.*s\" [class:%.*s] to replace \"%.*s\" [class:%.*s]",
 		    arg_item->name_size, arg_item->name,
 		    arg_item->classname_size, arg_item->classname,
 		    entry->arg->name_size, entry->arg->name,
@@ -1199,11 +1399,19 @@ static int resolve_parents(struct kndProc *self)
 	    err = self->mempool->new_proc_arg(self->mempool, &arg);
 	    if (err) return err;
 
+	    memcpy(arg->name,
+		   arg_item->name, arg_item->name_size);
+	    arg->name_size = arg_item->name_size;
 	    memcpy(arg->classname,
 		   arg_item->classname, arg_item->classname_size);
 	    arg->classname_size = arg_item->classname_size;
 
 	    entry->arg = arg;
+
+	    arg->parent = self;
+	    arg->next = self->args;
+	    self->args = arg;
+	    self->num_args++;
 	}
 
     }
@@ -1271,6 +1479,8 @@ static int kndProc_resolve(struct kndProc *self)
 	    err = self->arg_idx->set(self->arg_idx,
 				     entry->name, entry->name_size, (void*)entry);
 	    if (err) return err;
+
+	    
 	}
     }
 
@@ -1295,7 +1505,7 @@ static int resolve_procs(struct kndProc *self)
     void *val;
     int err;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. resolving procs by \"%.*s\"",
                 self->name_size, self->name);
     key = NULL;
@@ -1306,7 +1516,12 @@ static int resolve_procs(struct kndProc *self)
 
         dir = (struct kndProcDir*)val;
         proc = dir->proc;
-        if (proc->is_resolved) continue;
+
+        if (proc->is_resolved) {
+	    knd_log("--");
+	    proc->str(proc);
+	    continue;
+	}
 
         err = proc->resolve(proc);
         if (err) {

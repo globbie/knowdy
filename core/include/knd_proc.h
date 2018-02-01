@@ -184,7 +184,13 @@ struct kndProc
     size_t result_classname_size;
     struct kndConcept *result;
 
+    size_t estim_cost;
+    size_t estim_cost_total;
+    size_t estim_time;
+    size_t estim_time_total;
+
     struct kndTask *task;
+    struct kndVisualFormat *visual;
 
     /* allocator */
     struct kndMemPool *mempool;

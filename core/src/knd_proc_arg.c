@@ -38,7 +38,7 @@ static void str(struct kndProcArg *self)
     struct kndTranslation *tr;
     struct kndProcCallArg *arg;
 
-    knd_log("%*sarg: \"%.*s\" [type:%.*s]", self->depth * KND_OFFSET_SIZE, "",
+    knd_log("%*sarg: \"%.*s\" [class:%.*s]", self->depth * KND_OFFSET_SIZE, "",
             self->name_size, self->name, self->classname_size, self->classname);
 
     if (self->proc_call.name_size) {
@@ -195,6 +195,23 @@ static int export_GSP(struct kndProcArg *self)
     return knd_OK;
 }
 
+static int export_SVG(struct kndProcArg *self)
+{
+    struct kndOutput *out;
+    struct kndTranslation *tr;
+    struct kndProcCallArg *arg;
+    struct kndProc *proc;
+    bool in_list = false;
+    int err;
+
+    out = self->out;
+    err = out->write(out, "<text>", strlen("<text>"));                            RET_ERR();
+    err = out->write(out, self->name, self->name_size);                           RET_ERR();
+    err = out->write(out, "</text>", strlen("</text>"));                          RET_ERR();
+
+    return knd_OK;
+}
+
 static int export_inst_GSP(struct kndProcArg *self,
                            struct kndProcArgInstance *inst)
 {
@@ -243,6 +260,9 @@ static int export(struct kndProcArg *self)
         break;
     case KND_FORMAT_GSP:
         err = export_GSP(self);                                              RET_ERR();
+        break;
+    case KND_FORMAT_SVG:
+        err = export_SVG(self);                                              RET_ERR();
         break;
     default:
         break;
@@ -626,8 +646,11 @@ static int resolve_arg(struct kndProcArg *self)
     struct kndProcDir *dir;
     int err;
 
-    if (self->classname_size) {
+    if (DEBUG_PROC_ARG_LEVEL_2)
+	knd_log(".. resolving arg \"%.*s\"..",
+		self->name_size, self->name);
 
+    if (self->classname_size) {
 
 	/* TODO */
 	if (DEBUG_PROC_ARG_LEVEL_2)
@@ -638,8 +661,7 @@ static int resolve_arg(struct kndProcArg *self)
     }
 
     if (!self->proc_call.name_size) {
-
-        return knd_FAIL;
+        return knd_OK;
     }
 
     /* special name */
@@ -658,6 +680,7 @@ static int resolve_arg(struct kndProcArg *self)
     }
 
     if (!dir->proc) {
+	knd_log("..get proc..");
         err = self->parent->get_proc(self->parent,
                                      dir->name, dir->name_size, &dir->proc);      RET_ERR();
     }
