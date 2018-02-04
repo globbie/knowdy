@@ -46,6 +46,11 @@ typedef enum knd_iter_type {
     KND_ITER_DEPTH
 } knd_iter_type;
 
+typedef enum knd_delivery_type {
+    KND_DELIVERY_CACHE,
+    KND_DELIVERY_HTTP
+} knd_delivery_type;
+
 struct kndVisualFormat {
     size_t text_line_height;
     size_t text_hangindent_size;
@@ -118,6 +123,10 @@ struct kndTask
     struct kndOutput *out;
     struct kndOutput *spec_out;
     struct kndOutput *update;
+
+    knd_delivery_type delivery_type;
+    char delivery_addr[KND_NAME_SIZE];
+    size_t delivery_addr_size;
 
     void *delivery;
     void *publisher;

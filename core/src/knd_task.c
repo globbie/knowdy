@@ -44,6 +44,9 @@ static void reset(struct kndTask *self)
     self->locale_size = self->admin->default_locale_size;
     self->curr_locale_size = 0;
 
+    self->delivery_type = KND_DELIVERY_CACHE;
+    self->delivery_addr_size = 0;
+
     memset(self->state, '0', KND_STATE_SIZE);
     self->is_state_changed = false;
 
@@ -188,7 +191,7 @@ static gsl_err_t set_output_format(void *obj, const char *name, size_t name_size
 	    self->format = (knd_format)i;
 
 	    knd_log("++ \"%.*s\" format chosen!", name_size, name);
-	    return make_gsl_err(knd_OK);
+	    return make_gsl_err(gsl_OK);
 	}
     }
 
@@ -198,9 +201,46 @@ static gsl_err_t set_output_format(void *obj, const char *name, size_t name_size
 			   strlen(" format not supported"));
     if (err) return make_gsl_err(err);
 
-    return make_gsl_err(knd_FAIL);
+    return make_gsl_err(gsl_FAIL);
 }
 
+
+static gsl_err_t check_delivery_type(void *obj, const char *val, size_t val_size)
+{
+    const char *schema_name = "HTTP";
+    size_t schema_name_size = strlen(schema_name);
+    struct kndTask *self = obj;
+
+    if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);
+    if (memcmp(schema_name, val, val_size)) return make_gsl_err(gsl_FAIL);
+
+    self->delivery_type = KND_DELIVERY_HTTP;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_delivery_callback(void *obj,
+					 const char *rec,
+					 size_t *total_size)
+{
+    struct kndTask *self = obj;
+
+    struct gslTaskSpec specs[] = {
+	{ .is_implied = true,
+          .run = check_delivery_type,
+          .obj = self
+	},
+	{ .name = "base_url",
+          .name_size = strlen("base_url"),
+          .buf = self->delivery_addr,
+          .buf_size = &self->delivery_addr_size,
+          .max_buf_size = KND_NAME_SIZE
+        }
+    };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+	
 static gsl_err_t parse_task(void *obj,
                             const char *rec,
                             size_t *total_size)
@@ -232,6 +272,11 @@ static gsl_err_t parse_task(void *obj,
           .run = set_output_format,
 	  .obj = self
         },
+        { .name = "callback",
+          .name_size = strlen("callback"),
+          .parse = parse_delivery_callback,
+	  .obj = self
+        },
         { .name = "user",
           .name_size = strlen("user"),
           .parse = parse_user,
@@ -247,7 +292,6 @@ static gsl_err_t parse_task(void *obj,
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) return err;
 
-
     /* check mandatory fields */
     if (!self->tid_size) {
         switch (self->type) {
@@ -258,6 +302,11 @@ static gsl_err_t parse_task(void *obj,
             knd_log("-- no TID found");
             return make_gsl_err_external(knd_FAIL);
         }
+    }
+
+    if (self->delivery_type) {
+	knd_log("Delivery type: %d", self->delivery_type);
+	knd_log("Delivery addr: %.*s", self->delivery_addr_size, self->delivery_addr);
     }
 
     return make_gsl_err(gsl_OK);
