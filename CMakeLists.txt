@@ -27,7 +27,6 @@ find_library(ZEROMQ_LIBRARY NAMES zmq PATHS ${ZEROMQ_LIBRARY_DIRS})
 include_directories(${ZEROMQ_INCLUDE_DIR})
 
 pkg_check_modules(CURL REQUIRED libcurl)
-
 find_path(CURL_INCLUDE_DIR NAMES curl.h PATHS ${CURL_INCLUDE_DIRS})
 find_library(CURL_LIBRARY NAMES curl PATHS ${CURL_LIBRARY_DIRS})
 include_directories(${CURL_INCLUDE_DIRS})
@@ -39,6 +38,7 @@ include_directories(${CHECK_INCLUDE_DIR})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         set(CHECK_LIBRARY ${CHECK_LIBRARY} rt m pthread subunit)
+        set(CURL_LIBRARY ${CURL_LIBRARY} curl)
 endif()
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/libs/gsl-parser")
@@ -46,10 +46,10 @@ include_directories("${CMAKE_SOURCE_DIR}/libs/gsl-parser/include")
 set(GSL_PARSER_LIBRARY gsl-parser_static)
 
 set(KNOWDY_PREFIX "knd")
-set(CORE "core")
+set(CORE      "core")
 set(RETRIEVER "retriever")
-set(LEARNER "learner")
-set(DELIVERY "delivery")
+set(LEARNER   "learner")
+set(DELIVERY  "delivery")
 
 set(KNOWDY_MODULES
         ${CORE}
