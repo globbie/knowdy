@@ -8,7 +8,6 @@
 #include "knd_concept.h"
 #include "knd_output.h"
 #include "knd_text.h"
-#include "knd_parser.h"
 #include "knd_mempool.h"
 
 #include <gsl-parser.h>
@@ -646,12 +645,11 @@ static int resolve_arg(struct kndProcArg *self)
     struct kndProcDir *dir;
     int err;
 
-    if (DEBUG_PROC_ARG_LEVEL_2)
+    if (DEBUG_PROC_ARG_LEVEL_TMP)
 	knd_log(".. resolving arg \"%.*s\"..",
 		self->name_size, self->name);
 
     if (self->classname_size) {
-
 	/* TODO */
 	if (DEBUG_PROC_ARG_LEVEL_2)
 	    knd_log(".. resolving arg class template: %.*s..",
@@ -680,14 +678,13 @@ static int resolve_arg(struct kndProcArg *self)
     }
 
     if (!dir->proc) {
-	knd_log("..get proc..");
         err = self->parent->get_proc(self->parent,
                                      dir->name, dir->name_size, &dir->proc);      RET_ERR();
     }
 
     self->proc_dir = dir;
 
-    if (DEBUG_PROC_ARG_LEVEL_2)
+    if (DEBUG_PROC_ARG_LEVEL_TMP)
         knd_log("++ Proc Arg %.*s  call:\"%.*s\"  resolved!",
                 self->name_size, self->name,
                 self->proc_call.name_size, self->proc_call.name);

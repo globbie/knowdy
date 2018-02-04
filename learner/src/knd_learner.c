@@ -16,7 +16,6 @@
 #include "knd_task.h"
 #include "knd_attr.h"
 #include "knd_user.h"
-#include "knd_parser.h"
 #include "knd_concept.h"
 #include "knd_object.h"
 #include "knd_rel.h"
@@ -340,12 +339,8 @@ parse_config_GSL(struct kndLearner *self,
     size_t buf_size = KND_NAME_SIZE;
     size_t chunk_size = 0;
 
-    const char *gsl_format_tag = "{gsl";
-    size_t gsl_format_tag_size = strlen(gsl_format_tag);
-
-    const char *header_tag = "{knd::Knowdy Learner Service Configuration";
+    const char *header_tag = "Knowdy Learner Service Configuration";
     size_t header_tag_size = strlen(header_tag);
-    const char *c;
 
     struct gslTaskSpec specs[] = {
          { .name = "path",
@@ -398,24 +393,7 @@ parse_config_GSL(struct kndLearner *self,
     int err = knd_FAIL;
     gsl_err_t parser_err;
 
-    if (!strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
-        rec += gsl_format_tag_size;
-        err = knd_get_schema_name(rec,
-                                  buf, &buf_size, &chunk_size);
-        if (!err) {
-            rec += chunk_size;
-            if (DEBUG_LEARNER_LEVEL_TMP)
-                knd_log("== got schema: \"%.*s\"", buf_size, buf);
-        }
-    }
-
-    if (strncmp(rec, header_tag, header_tag_size)) {
-        knd_log("-- wrong GSL class header");
-        return knd_FAIL;
-    }
-    c = rec + header_tag_size;
-
-    parser_err = gsl_parse_task(c, total_size, specs, sizeof specs / sizeof specs[0]);
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         knd_log("-- config parse error: %d", parser_err.code);
         return gsl_err_to_knd_err_codes(parser_err);

@@ -1,4 +1,3 @@
-{gsl::Knowdy Basic
-    {knd::Delivery Service Configuration
+{schema Delivery Service Configuration
        {path /var/lib/knowdy/delivery}
-       {service ipc:///var/lib/knowdy/delivery/inbox}
+       {service ipc:///var/lib/knowdy/delivery/inbox} }

@@ -9,7 +9,6 @@
 #include "knd_attr.h"
 #include "knd_object.h"
 #include "knd_task.h"
-#include "knd_parser.h"
 #include "knd_user.h"
 
 #include <gsl-parser.h>

@@ -8,7 +8,6 @@
 #include "knd_output.h"
 
 #include "knd_text.h"
-#include "knd_parser.h"
 
 #include <gsl-parser.h>
 

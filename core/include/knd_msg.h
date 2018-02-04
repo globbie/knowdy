@@ -45,5 +45,5 @@ extern int
 knd_zmq_sendmore(void *socket, const char *string, size_t string_size);
 
 extern int knd_recv_task(void *outbox, char *task, size_t *task_size);
-
+extern int knd_http_post(const char *url);
 #endif
