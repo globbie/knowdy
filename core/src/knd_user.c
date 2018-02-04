@@ -12,7 +12,6 @@
 #include "knd_output.h"
 #include "knd_msg.h"
 #include "knd_task.h"
-#include "knd_parser.h"
 #include "knd_concept.h"
 #include "knd_object.h"
 #include "knd_proc.h"

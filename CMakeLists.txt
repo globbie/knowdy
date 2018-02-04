@@ -26,6 +26,12 @@ find_path(ZEROMQ_INCLUDE_DIR NAMES zmq.h PATHS ${ZEROMQ_INCLUDE_DIRS})
 find_library(ZEROMQ_LIBRARY NAMES zmq PATHS ${ZEROMQ_LIBRARY_DIRS})
 include_directories(${ZEROMQ_INCLUDE_DIR})
 
+pkg_check_modules(CURL REQUIRED libcurl)
+
+find_path(CURL_INCLUDE_DIR NAMES curl.h PATHS ${CURL_INCLUDE_DIRS})
+find_library(CURL_LIBRARY NAMES curl PATHS ${CURL_LIBRARY_DIRS})
+include_directories(${CURL_INCLUDE_DIRS})
+
 pkg_check_modules(CHECK REQUIRED check)
 find_path(CHECK_INCLUDE_DIR NAMES check.h PATHS ${CHECK_INCLUDE_DIRS})
 find_library(CHECK_LIBRARY NAMES check PATHS ${CHECK_LIBRARY_DIRS})
@@ -41,24 +47,17 @@ set(GSL_PARSER_LIBRARY gsl-parser_static)
 
 set(KNOWDY_PREFIX "knd")
 set(CORE "core")
-set(PARSER "parser")
-set(COLLECTION "collection")
 set(RETRIEVER "retriever")
 set(LEARNER "learner")
 set(DELIVERY "delivery")
-set(STORAGE "storage")
 
 set(KNOWDY_MODULES
         ${CORE}
-        ${PARSER}
-        ${COLLECTION}
         ${RETRIEVER}
         ${LEARNER}
-        ${DELIVERY}
-        ${STORAGE})
+        ${DELIVERY})
 
 include_directories(${CORE}/include)
-include_directories(${PARSER}/include)
 
 foreach(MODULE ${KNOWDY_MODULES})
     include_directories(${MODULE}/src)

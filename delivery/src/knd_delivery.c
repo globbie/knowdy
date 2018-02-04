@@ -11,8 +11,6 @@
 #include "knd_utils.h"
 #include "knd_msg.h"
 #include "knd_task.h"
-#include "knd_parser.h"
-
 #include "knd_delivery.h"
 
 #include <gsl-parser.h>
@@ -502,24 +500,27 @@ run_set_service_addr(void *obj, const char *addr, size_t addr_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int
-parse_config_GSL(struct kndDelivery *self,
-                 const char *rec,
-                 size_t *total_size)
+static gsl_err_t run_check_schema(void *obj, const char *val, size_t val_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = KND_NAME_SIZE;
-    size_t chunk_size = 0;
+    const char *schema_name = "Delivery Service Configuration";
+    size_t schema_name_size = strlen(schema_name);
 
-    const char *gsl_format_tag = "{gsl";
-    size_t gsl_format_tag_size = strlen(gsl_format_tag);
+    if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);
+    if (memcmp(schema_name, val, val_size)) return make_gsl_err(gsl_FAIL);
+    return make_gsl_err(gsl_OK);
+}
 
-    const char *header_tag = "{knd::Delivery Service Configuration";
-    size_t header_tag_size = strlen(header_tag);
-    const char *c;
-
+static gsl_err_t parse_config(void *obj,
+			      const char *rec,
+			      size_t *total_size)
+{
+    struct kndDelivery *self = obj;
     struct gslTaskSpec specs[] = {
-        { .name = "service",
+	{ .is_implied = true,
+          .run = run_check_schema,
+          .obj = self
+        },
+	{ .name = "service",
           .name_size = strlen("service"),
           .run = run_set_service_addr,
           .obj = self
@@ -530,34 +531,28 @@ parse_config_GSL(struct kndDelivery *self,
           .obj = self
         }
     };
-    int err;
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+static int parse_schema(struct kndDelivery *self,
+			const char *rec,
+			size_t *total_size)
+{
+    struct gslTaskSpec specs[] = {
+        { .name = "schema",
+          .name_size = strlen("schema"),
+          .parse = parse_config,
+          .obj = self
+        }
+    };
     gsl_err_t parser_err;
 
-    if (!strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
-        rec += gsl_format_tag_size;
-
-        err = knd_get_schema_name(rec,
-                                  buf, &buf_size, &chunk_size);
-        if (!err) {
-            rec += chunk_size;
-        }
-    }
-
-    if (strncmp(rec, header_tag, header_tag_size)) {
-        knd_log("-- wrong GSL class header");
-        return err;
-    }
-    c = rec + header_tag_size;
-
-    parser_err = gsl_parse_task(c, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) {
-        knd_log("-- config parse error: %d", parser_err.code);
-        return gsl_err_to_knd_err_codes(parser_err);
-    }
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     return knd_OK;
 }
-
 
 
 static int
@@ -640,7 +635,8 @@ kndDelivery_new(struct kndDelivery **deliv,
     err = self->out->read_file(self->out, config, strlen(config));
     if (err) return err;
 
-    err = parse_config_GSL(self, self->out->file, &chunk_size);
+    knd_log("Delivery CONFIG:\"%s\"", self->out->file);
+    err = parse_schema(self, self->out->file, &chunk_size);
     if (err) goto error;
 
     if (self->path_size) {

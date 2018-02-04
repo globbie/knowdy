@@ -17,7 +17,6 @@
 #include "knd_utils.h"
 #include "knd_concept.h"
 #include "knd_mempool.h"
-#include "knd_parser.h"
 #include "knd_text.h"
 
 #include <gsl-parser.h>

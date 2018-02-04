@@ -23,7 +23,6 @@
 #include "knd_task.h"
 #include "knd_user.h"
 #include "knd_text.h"
-#include "knd_parser.h"
 #include "knd_object.h"
 #include "knd_rel.h"
 #include "knd_proc.h"

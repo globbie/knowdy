@@ -1,5 +1,4 @@
-{gsl::Knowdy Basic
-  {knd::Knowdy Learner Service Configuration
+{schema Knowdy Learner Service Configuration
       {agent 001}
       {path /var/lib/knowdy/db}
       {schemas /etc/knowdy/schemas}
@@ -18,6 +17,7 @@
          {max_procs 1000}
          {max_proc_instances 1000000}
       }
+
       {delivery ipc:///var/lib/knowdy/delivery/inbox}
 
       {inbox
@@ -29,5 +29,4 @@
         {frontend ipc:///var/lib/knowdy/learner_pub}
         {backend ipc:///var/lib/knowdy/learner_pub_backend}
       }
-
-}}
+}

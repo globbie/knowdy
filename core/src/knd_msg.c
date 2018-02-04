@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <curl/curl.h>
+
 #include "knd_msg.h"
 #include "knd_utils.h"
 
@@ -106,7 +108,7 @@ knd_zmq_send(void *socket, const char *string, size_t string_size)
  *  Sends string as 0MQ string, as multipart non-terminal
  */
 extern int
-knd_zmq_sendmore (void *socket, const char *string, size_t string_size)
+knd_zmq_sendmore(void *socket, const char *string, size_t string_size)
 {
     int rc;
     zmq_msg_t message;
@@ -115,4 +117,36 @@ knd_zmq_sendmore (void *socket, const char *string, size_t string_size)
     rc = zmq_msg_send(&message, socket, ZMQ_SNDMORE);
     zmq_msg_close (&message);
     return (rc);
+}
+
+
+/* HTTP-communication via CURL*/
+extern int
+knd_http_post(const char *url)
+{
+    CURL *curl;
+    CURLcode res;
+ 
+    curl_global_init(CURL_GLOBAL_ALL);
+ 
+    /* get a curl handle */ 
+    curl = curl_easy_init();
+    if (!curl) {
+	curl_global_cleanup();
+	return knd_FAIL;
+    }
+    
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    /* POST data */ 
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "msg_type=curl");
+ 
+    res = curl_easy_perform(curl);
+    if (res != CURLE_OK) {
+	fprintf(stderr, "curl_easy_perform() failed: %s\n",
+		curl_easy_strerror(res));
+    }
+
+    curl_easy_cleanup(curl);
+    curl_global_cleanup();
+    return knd_OK;
 }

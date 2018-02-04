@@ -16,7 +16,6 @@
 #include "knd_utils.h"
 #include "knd_text.h"
 #include "knd_dict.h"
-#include "knd_parser.h"
 
 #include <gsl-parser.h>
 
@@ -134,8 +133,8 @@ static int kndProc_export_SVG_header(struct kndProc *self)
 
     err = out->write(out, "<g", strlen("<g"));                                    RET_ERR();
 
-    err = out->write(out, " transform=\"translate(250,250)\"",
-		   strlen(" transform=\"translate(250,250)\""));                  RET_ERR();
+    err = out->write(out, " transform=\"translate(50,50)\"",
+		   strlen(" transform=\"translate(50,50)\""));                  RET_ERR();
     err = out->write(out, ">", 1);                                                RET_ERR();
 
     return knd_OK;
@@ -453,6 +452,8 @@ static int proc_call_arg_export_GSP(struct kndProc *self,
 
 static int export_GSP(struct kndProc *self)
 {
+    char buf[KND_SHORT_NAME_SIZE];
+    size_t buf_size = 0;
     struct kndOutput *out = self->out;
     struct kndProcArg *arg;
     struct kndProcCallArg *call_arg;
@@ -477,6 +478,19 @@ static int export_GSP(struct kndProc *self)
         err = out->write(out, "]", 1);                                            RET_ERR();
     }
 
+    if (self->estim_cost) {
+        err = out->write(out, "{estim", strlen("{estim"));                        RET_ERR();
+
+	buf_size = sprintf(buf, "{cost %zu}", self->estim_cost);
+        err = out->write(out, buf, buf_size);                                     RET_ERR();
+
+	if (self->estim_time_total) {
+	    buf_size = sprintf(buf, "{time %zu}", self->estim_time);
+	    err = out->write(out, buf, buf_size);                                 RET_ERR();
+	}
+        err = out->write(out, "}", 1);                                            RET_ERR();
+    }
+    
     if (self->args) {
         for (arg = self->args; arg; arg = arg->next) {
             arg->format = KND_FORMAT_GSP;
@@ -632,6 +646,22 @@ static int export_SVG(struct kndProc *self)
         tr = tr->next;
     }
 
+    x_offset = 0;
+    if (self->estim_cost_total) {
+        err = out->write(out, "<text text-anchor=\"end\"",
+			 strlen("<text text-anchor=\"end\""));                      RET_ERR();
+	buf_size = sprintf(buf, " x=\"%zu\"", x_offset);
+        err = out->write(out, buf, buf_size);          RET_ERR();
+	buf_size = sprintf(buf, " y=\"%zu\"", y_offset);
+        err = out->write(out, buf, buf_size);          RET_ERR();
+        err = out->write(out, ">", 1);          RET_ERR();
+
+	buf_size = sprintf(buf, "%zu", self->estim_cost_total);
+        err = out->write(out, buf, buf_size);                                     RET_ERR();
+
+        err = out->write(out, "</text>", strlen("</text>"));                      RET_ERR();
+    }
+    
     if (self->args) {
         err = out->write(out,   "<g", strlen("<g"));                              RET_ERR();
 	buf_size = sprintf(buf, " transform=\"translate(%zu,%zu)\"",
@@ -829,6 +859,7 @@ static gsl_err_t parse_arg(void *data,
     arg->next = self->args;
     self->args = arg;
     self->num_args++;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -1018,14 +1049,24 @@ static gsl_err_t parse_estim(void *data,
     gsl_err_t parser_err;
 
     struct gslTaskSpec specs[] = {
-        {  .type = GSL_CHANGE_STATE,
-	   .name = "cost",
+        { .type = GSL_CHANGE_STATE,
+	  .name = "cost",
+	  .name_size = strlen("cost"),
+	  .parse = gsl_parse_size_t,
+          .obj = (void*)&self->estim_cost
+	},
+        { .name = "cost",
 	  .name_size = strlen("cost"),
 	  .parse = gsl_parse_size_t,
           .obj = (void*)&self->estim_cost
 	},
         { .type = GSL_CHANGE_STATE,
 	  .name = "time",
+	  .name_size = strlen("time"),
+	  .parse = gsl_parse_size_t,
+          .obj = (void*)&self->estim_time
+       },
+        { .name = "time",
 	  .name_size = strlen("time"),
 	  .parse = gsl_parse_size_t,
           .obj = (void*)&self->estim_time
@@ -1185,6 +1226,11 @@ static int import_proc(struct kndProc *self,
           .parse = parse_base,
           .obj = proc
         },
+        { .name = "estim",
+          .name_size = strlen("estim"),
+          .parse = parse_estim,
+          .obj = proc
+        },
         { .type = GSL_CHANGE_STATE,
           .name = "estim",
           .name_size = strlen("estim"),
@@ -1288,6 +1334,11 @@ static int parse_GSL(struct kndProc *self,
           .alloc = gloss_alloc,
           .append = gloss_append,
           .parse = read_gloss
+        },
+        { .name = "estim",
+          .name_size = strlen("estim"),
+          .parse = parse_estim,
+          .obj = self
         },
         { .name = "arg",
           .name_size = strlen("arg"),
@@ -1456,9 +1507,10 @@ static int kndProc_resolve(struct kndProc *self)
 {
     struct kndProcArg *arg = NULL;
     struct kndArgEntry *entry;
+    struct kndProcDir *dir;
     int err;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. resolving PROC: %.*s",
                 self->name_size, self->name);
 
@@ -1480,7 +1532,14 @@ static int kndProc_resolve(struct kndProc *self)
 				     entry->name, entry->name_size, (void*)entry);
 	    if (err) return err;
 
-	    
+	    if (arg->proc_dir) {
+		dir = arg->proc_dir;
+		if (dir->proc) {
+		    if (DEBUG_PROC_LEVEL_2)
+			knd_log("== ARG proc estimate: %zu", dir->proc->estim_cost_total);
+		    self->estim_cost_total += dir->proc->estim_cost_total;
+		}
+	    }
 	}
     }
 
