@@ -1,27 +1,38 @@
+#include "learner-service.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <knd_utils.h>
 #include <glb-lib/options.h>
+
+char *tmp;
 
 struct glbOption options[] = {
 
     {
         .name = "config",
-        .name_len = sizeof("config") -1,
-        .shot_name = 'c',
+        .name_len = sizeof("config") - 1,
+        .short_name = 'c',
         .description = "Config file path",
         .required = true,
-        .data = NULL, // todo
-        .type = kndCStringOptType
+        .data = &tmp,
+        .type = &kndCStringOptType
     },
 
     GLB_OPTS_HELP,
-    GLP_OPTS_TERMINATOR
+    GLB_OPTS_TERMINATOR
 };
+
+
+int kndLearnerService_new(struct kndLearnerService **service, void *tmp)
+{
+    return -1;
+}
 
 int main(int argc, const char **argv)
 {
-    struct kndLearnerService *service;
+    struct kndLearnerService *service = NULL;
     int error_code;
     int ret = EXIT_FAILURE;
 
@@ -31,14 +42,16 @@ int main(int argc, const char **argv)
         return EXIT_FAILURE;
     }
 
-    error_code = kndLearnerService_new(struct kndLearnerService &service, NULL); // todo
-    if (error_code != knd_OK) goto exit;
+    glb_options_print(options);
 
-    error_code = serivce->start(service);
-    if (error_code != knd_OK) {
-        knd_log("learner service stopped with failure\n");
-        goto exit;
-    }
+    //error_code = kndLearnerService_new(&service, NULL); // todo
+    //if (error_code != knd_OK) goto exit;
+
+    //error_code = service->start(service);
+    //if (error_code != knd_OK) {
+    //    knd_log("learner service stopped with failure\n");
+    //    goto exit;
+    //}
 
     ret = EXIT_SUCCESS;
 exit:
