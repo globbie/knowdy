@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.2)
 project(knowdy C)
+find_package(PkgConfig)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 set(CMAKE_INSTALL_PREFIX /)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -pedantic")
@@ -11,10 +13,9 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -g3 -pg")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O2 -Wall")
 
 if(NOT CMAKE_BUILD_TYPE)
+    message(STATUS "Using 'Debug' build type as default")
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
 endif()
-
-find_package(PkgConfig)
 
 pkg_check_modules(ZEROMQ REQUIRED libzmq)
 find_path(ZEROMQ_INCLUDE_DIR NAMES zmq.h PATHS ${ZEROMQ_INCLUDE_DIRS})
@@ -30,12 +31,18 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         set(CHECK_LIBRARY ${CHECK_LIBRARY} rt m pthread subunit)
 endif()
 
-add_subdirectory("${CMAKE_SOURCE_DIR}/libs/gsl-parser")
-include_directories("${CMAKE_SOURCE_DIR}/libs/gsl-parser/include")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/gsl-parser")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/gsl-parser/include")
 set(GSL_PARSER_LIBRARY gsl-parser_static)
 
-add_subdirectory("${CMAKE_SOURCE_DIR}/libs/knode")
-include_directories("${CMAKE_SOURCE_DIR}/libs/knode/include")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib/include")
+set(GLB_LIBRARY glb-lib)
+
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/knode")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/knode/include")
+
+
 
 set(KNOWDY_PREFIX "knd")
 set(CORE "core")
@@ -70,6 +77,9 @@ foreach(MODULE ${KNOWDY_MODULES})
     set(BINARY ${${MODULE}_BINARY})
     add_subdirectory(${MODULE})
 endforeach()
+
+
+# packaging
 
 install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)
 install(DIRECTORY etc/systemd/system/ DESTINATION usr/lib/systemd/system)
