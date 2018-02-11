@@ -18,16 +18,16 @@
          {max_procs 1000}
          {max_proc_instances 1000000}
       }
-      {delivery ipc:///var/lib/knowdy/delivery/inbox}
+      {-delivery ipc:///var/lib/knowdy/delivery/inbox-}
 
-      {inbox
+      {-inbox
         {frontend ipc:///var/lib/knowdy/learner_inbox}
         {backend ipc:///var/lib/knowdy/learner_inbox_backend}
-      }
+      -}
 
-      {publish
+      {-publish
         {frontend ipc:///var/lib/knowdy/learner_pub}
         {backend ipc:///var/lib/knowdy/learner_pub_backend}
-      }
+      -}
 
 }}

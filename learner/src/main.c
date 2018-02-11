@@ -9,7 +9,6 @@
 static char *config_file = NULL;
 
 struct glbOption options[] = {
-
     {
         .name = "config",
         .name_len = sizeof("config") - 1,
@@ -19,7 +18,6 @@ struct glbOption options[] = {
         .data = &config_file,
         .type = &kndCStringOptType
     },
-
     GLB_OPTS_HELP,
     GLB_OPTS_TERMINATOR
 };
@@ -32,7 +30,7 @@ int main(int argc, const char **argv)
 
     error_code = glb_parse_options(options, argc, argv);
     if (error_code != 0) {
-        knd_log("glb_parse_options() failed, error: '%s'", glb_get_options_status());
+        knd_log("glb_parse_options() failed, error: '%s'\n", glb_get_options_status());
         return EXIT_FAILURE;
     }
 
