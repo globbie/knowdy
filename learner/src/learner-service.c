@@ -112,6 +112,9 @@ parse_config_gsl(struct kndLearnerService *self, const char *rec, size_t *total_
     size_t header_tag_size = strlen(header_tag);
     const char *c;
 
+    char address_str[256]; // fixme: hardcode
+    size_t address_str_len = 0;
+
     struct gslTaskSpec specs[] = {
         {
             .name = "path",
@@ -146,6 +149,13 @@ parse_config_gsl(struct kndLearnerService *self, const char *rec, size_t *total_
             .buf = self->delivery_addr,
             .buf_size = &self->delivery_addr_size,
             .max_buf_size = KND_NAME_SIZE
+        },
+        {
+            .name = "address",
+            .name_size = strlen("address"),
+            .buf = address_str,
+            .buf_size = &address_str_len,
+            .max_buf_size = sizeof(address_str)
         },
         /*
         {
@@ -199,6 +209,22 @@ parse_config_gsl(struct kndLearnerService *self, const char *rec, size_t *total_
         return gsl_err_to_knd_err_codes(parser_err);
     }
 
+    { // endpoint setup
+        if (self->opts->address) {
+            err = self->entry_point->set_address(self->entry_point, self->opts->address);
+            if (err != 0) return knd_FAIL;
+        } else {
+            struct addrinfo *address;
+            err = addrinfo_new(&address, address_str, address_str_len);
+            if (err != 0) return knd_FAIL;
+
+            err = self->entry_point->set_address(self->entry_point, address);
+            if (err != 0) return knd_FAIL;
+
+            // fixme: free address
+        }
+    }
+
     if (!self->path_size) {
         knd_log("-- DB path not set :(");
         return knd_FAIL;
@@ -250,13 +276,21 @@ delete__(struct kndLearnerService *self)
 }
 
 int
-kndLearnerService_new(struct kndLearnerService **service, const char *config_file)
+kndLearnerService_new(struct kndLearnerService **service, const struct kndLearnerOptions *opts)
 {
     struct kndLearnerService *self;
     int err;
 
     self = calloc(1, sizeof(*self));
     if (!self) return knd_FAIL;
+    self->opts = opts;
+
+    err = kmqKnode_new(&self->knode);
+    if (err != 0) goto error;
+
+    err = kmqEndPoint_new(&self->entry_point);
+    self->entry_point->options.type = KMQ_PULL;
+    self->entry_point->options.role = KMQ_TARGET;
 
     err = kndOutput_new(&self->out, KND_IDX_BUF_SIZE);
     if (err != knd_OK) goto error;
@@ -277,18 +311,12 @@ kndLearnerService_new(struct kndLearnerService **service, const char *config_fil
 
     {
         size_t chunk_size;
-        err = self->out->read_file(self->out, config_file, strlen(config_file));
+        err = self->out->read_file(self->out, opts->config_file, strlen(opts->config_file));
         if (err != knd_OK) goto error;
         err = parse_config_gsl(self, self->out->file, &chunk_size);
         if (err != knd_OK) goto error;
     }
 
-    /**************************************************************************/
-    /*                           SERVICE FACILITIES                           */
-    /**************************************************************************/
-
-    err = kmqKnode_new(&self->knode);
-    if (err != 0) goto error;
 
     self->start = start__;
     self->del = delete__;

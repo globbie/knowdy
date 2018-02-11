@@ -4,6 +4,7 @@
       {path /var/lib/knowdy/db}
       {schemas /etc/knowdy/schemas}
       {sid AUTH_SERVER_SID}
+      {address localhost:10001}
 
       {memory
          {max_states 10000}

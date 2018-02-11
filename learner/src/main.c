@@ -6,17 +6,29 @@
 #include <knd_utils.h>
 #include <glb-lib/options.h>
 
-static char *config_file = NULL;
+static struct kndLearnerOptions learner_options = {
+    .config_file = NULL,
+    .address = NULL
+};
 
 struct glbOption options[] = {
     {
         .name = "config",
         .name_len = sizeof("config") - 1,
         .short_name = 'c',
-        .description = "Config file path",
+        .description = "Config file path.",
         .required = true,
-        .data = &config_file,
+        .data = &learner_options.config_file,
         .type = &kndCStringOptType
+    },
+    {
+        .name = "address",
+        .name_len = sizeof("address") - 1,
+        .short_name = 'a',
+        .description = "Service address. Rewrites the same one option from the config file.",
+        .required = false,
+        .data = &learner_options.address,
+        .type = &kndAddressOptType
     },
     GLB_OPTS_HELP,
     GLB_OPTS_TERMINATOR
@@ -34,9 +46,10 @@ int main(int argc, const char **argv)
         return EXIT_FAILURE;
     }
 
-    glb_options_print(options);
+    // fixme: glb_options_print may crash if any option is not set
+    //glb_options_print(options);
 
-    error_code = kndLearnerService_new(&service, config_file);
+    error_code = kndLearnerService_new(&service, &learner_options);
     if (error_code != knd_OK) goto exit;
 
     error_code = service->start(service);

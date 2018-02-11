@@ -7,6 +7,12 @@
 
 #include <kmq.h>
 
+struct kndLearnerOptions
+{
+    char *config_file;
+    struct addrinfo *address;
+};
+
 struct kndLearnerService
 {
     struct kmqKnode *knode;
@@ -35,11 +41,12 @@ struct kndLearnerService
 
 
 
+    const struct kndLearnerOptions *opts;
 
     /*********************  public interface  *********************************/
     int (*start)(struct kndLearnerService *self);
     int (*del)(struct kndLearnerService *self);
 };
 
-int kndLearnerService_new(struct kndLearnerService **service, const char *config_file);
+int kndLearnerService_new(struct kndLearnerService **service, const struct kndLearnerOptions *opts);
 
