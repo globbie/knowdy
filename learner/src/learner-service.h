@@ -11,5 +11,5 @@ struct kndLearnerService
     int (*del)(struct kndLearnerService *self);
 };
 
-int kndLearnerService_new(struct kndLearnerService **service, void *tmp);
+int kndLearnerService_new(struct kndLearnerService **service, const char *config_file);
 
