@@ -6,7 +6,7 @@
 #include <knd_utils.h>
 #include <glb-lib/options.h>
 
-char *tmp;
+static char *config_file = NULL;
 
 struct glbOption options[] = {
 
@@ -16,19 +16,13 @@ struct glbOption options[] = {
         .short_name = 'c',
         .description = "Config file path",
         .required = true,
-        .data = &tmp,
+        .data = &config_file,
         .type = &kndCStringOptType
     },
 
     GLB_OPTS_HELP,
     GLB_OPTS_TERMINATOR
 };
-
-
-int kndLearnerService_new(struct kndLearnerService **service, void *tmp)
-{
-    return -1;
-}
 
 int main(int argc, const char **argv)
 {
@@ -44,14 +38,14 @@ int main(int argc, const char **argv)
 
     glb_options_print(options);
 
-    //error_code = kndLearnerService_new(&service, NULL); // todo
-    //if (error_code != knd_OK) goto exit;
+    error_code = kndLearnerService_new(&service, config_file);
+    if (error_code != knd_OK) goto exit;
 
-    //error_code = service->start(service);
-    //if (error_code != knd_OK) {
-    //    knd_log("learner service stopped with failure\n");
-    //    goto exit;
-    //}
+    error_code = service->start(service);
+    if (error_code != knd_OK) {
+        knd_log("learner service stopped with failure\n");
+        goto exit;
+    }
 
     ret = EXIT_SUCCESS;
 exit:
