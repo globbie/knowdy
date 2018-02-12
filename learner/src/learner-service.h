@@ -39,6 +39,7 @@ struct kndLearnerService
     char delivery_addr[KND_NAME_SIZE];
     size_t delivery_addr_size;
 
+    size_t max_users;
 
 
     const struct kndLearnerOptions *opts;
