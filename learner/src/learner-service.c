@@ -12,6 +12,25 @@
 
 #include <string.h>
 
+static int
+task_callback(struct kmqEndPoint *endpoint __attribute__((unused)), struct kmqTask *task,
+        void *cb_arg)
+{
+    struct kndLearnerService *self = cb_arg;
+
+    const char *data;
+    size_t size;
+    int err;
+
+    err = task->get_data(task, 0, &data, &size);
+    if (err != 0) { knd_log("-- task read failed"); return -1; }
+
+    printf(">>>\n%.*s\n<<<\n", (int) size, data);
+
+    //self->task->reset(self->task);
+
+    return 0;
+}
 
 static gsl_err_t
 parse_memory_settings(void *obj, const char *rec, size_t *total_size)
@@ -225,6 +244,7 @@ parse_config_gsl(struct kndLearnerService *self, const char *rec, size_t *total_
             if (err != 0) return knd_FAIL;
 
             // fixme: free address
+            // todo: pass string address to knode
         }
     }
 
@@ -263,7 +283,7 @@ static int
 start__(struct kndLearnerService *self __attribute__((unused)))
 {
     knd_log("learner has been started\n");
-    // todo
+    self->knode->dispatch(self->knode);
     knd_log("learner has been stopped\n");
     return knd_FAIL;
 }
@@ -296,6 +316,9 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     err = kmqEndPoint_new(&self->entry_point);
     self->entry_point->options.type = KMQ_PULL;
     self->entry_point->options.role = KMQ_TARGET;
+    self->entry_point->options.callback = task_callback;
+    self->entry_point->options.cb_arg = self;
+    self->knode->add_endpoint(self->knode, self->entry_point);
 
     err = kndOutput_new(&self->out, KND_IDX_BUF_SIZE);
     if (err != knd_OK) goto error;
