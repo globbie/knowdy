@@ -27,7 +27,7 @@ task_callback(struct kmqEndPoint *endpoint __attribute__((unused)), struct kmqTa
 
     printf(">>>\n%.*s\n<<<\n", (int) size, data);
 
-    //self->task->reset(self->task);
+    self->task->reset(self->task);
 
     return 0;
 }
@@ -327,10 +327,11 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
 
     err = kndTask_new(&self->task);
     if (err != knd_OK) goto error;
+    err = kndOutput_new(&self->task->out, KND_IDX_BUF_SIZE);
+    if (err) goto error;
 
     err = kndUser_new(&self->admin);
     if (err != knd_OK) goto error;
-
     self->task->admin = self->admin; // fixme: use public interface to set this fields
     self->admin->out = self->out;
 
