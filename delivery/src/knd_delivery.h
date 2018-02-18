@@ -17,7 +17,6 @@ struct kndAuthRec
     struct ooDict *cache;
 
     /* TODO: billing data */
-
     /* one time passwords */
     
 };
@@ -30,14 +29,12 @@ struct kndTID
     
 struct kndResult
 {
-    knd_proc_state_t proc_state;
+    //knd_proc_state_t proc_state;
     knd_format format;
 
     char sid[KND_SID_SIZE];
     size_t sid_size;
-    
     bool sid_required;
-
     char   *header;
     size_t header_size;
 

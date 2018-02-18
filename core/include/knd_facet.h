@@ -1,14 +1,14 @@
 /**
- *   Copyright (c) 2011-2017 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2018 by Dmitri Dmitriev
  *   All rights reserved.
  *
- *   This file is part of the Knowdy Search Engine, 
+ *   This file is part of the Knowdy Graph DB, 
  *   and as such it is subject to the license stated
  *   in the LICENSE file which you have received 
  *   as part of this distribution.
  *
  *   Project homepage:
- *   <http://www.globbie.net>
+ *   <http://www.knowdy.net>
  *
  *   Initial author and maintainer:
  *         Dmitri Dmitriev aka M0nsteR <dmitri@globbie.net>
@@ -18,11 +18,9 @@
  *   Knowdy Facet
  */
 
-#ifndef KND_FACET_H
-#define KND_FACET_H
+#pragma once
 
 #include "knd_utils.h"
-#include "knd_objref.h"
 
 typedef enum knd_facet_type { KND_FACET_UNREC,
                               KND_FACET_ATOMIC,
@@ -39,63 +37,57 @@ static const char* const knd_facet_names[] = {
     "ATOMIC",
     "CONC_BASE", 
     "CONC_SPEC",
-    "POS", 
+    "POS",
     "ACC",
     "CAT",
     "TOPIC" };
 
-struct kndObjRef;
 struct kndConcept;
-struct kndRefSet;
+struct kndSet;
 struct kndQuery;
 struct kndOutput;
+struct kndSetElem;
 
 struct kndFacet
 {
     knd_facet_type type;
 
+    struct kndAttr *attr;
+
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    char unit_name[KND_NAME_SIZE];
-    size_t unit_name_size;
-
     size_t numval;
     
-    struct kndConcept *baseclass;
-    
-    struct kndObjRef *inbox[KND_MAX_INBOX_SIZE + 1];
+    struct kndSetElem *inbox[KND_SET_INBOX_SIZE];
     size_t inbox_size;
 
     struct kndOutput *out;
     size_t rec_size;
 
     /*size_t num_items;*/
-    struct kndRefSet *parent;
+    struct kndSet *parent;
 
-    struct kndRefSet *refsets[KND_MAX_ATTRS];
-    size_t num_refsets;
+    struct kndSet **sets;
+    size_t num_sets;
 
     size_t export_depth;
     size_t batch_size;
-
-    const char *query;
-    size_t query_size;
     
     /******** public methods ********/
-    int (*init)(struct kndFacet *self);
+    int  (*init)(struct kndFacet *self);
     void (*del)(struct kndFacet *self);
-    int (*str)(struct kndFacet *self,
-               size_t           depth,
-               size_t           max_depth);
+    void (*str)(struct kndFacet *self,
+                size_t           depth,
+                size_t           max_depth);
 
     int (*find)(struct kndFacet   *self,
                 const char        *val,
                 size_t val_size,
-                struct kndRefSet **result);
+                struct kndSet **result);
 
-    int (*add_ref)(struct kndFacet *self,
-                   struct kndObjRef *ref,
+    int (*add_elem)(struct kndFacet *self,
+                   struct kndSetElem *elem,
                    size_t attr_id,
                    knd_facet_type attr_type);
     
@@ -110,16 +102,12 @@ struct kndFacet
     int (*read_tags)(struct kndFacet  *self,
                      const char       *rec,
                      size_t           rec_size,
-                     struct kndRefSet *refset);
+                     struct kndSet *set);
 
     int (*export)(struct kndFacet *self,
                    knd_format format,
                    size_t depth);
-
 };
 
-
-/* constructor */
+extern void kndFacet_init(struct kndFacet *self);
 extern int kndFacet_new(struct kndFacet **self);
-
-#endif /* KND_FACET_H */

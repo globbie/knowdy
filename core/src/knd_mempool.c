@@ -12,6 +12,9 @@
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
 #include "knd_state.h"
+#include "knd_query.h"
+#include "knd_set.h"
+#include "knd_facet.h"
 
 static void del(struct kndMemPool *self)
 {
@@ -59,6 +62,51 @@ static int new_class(struct kndMemPool *self,
     kndConcept_init(c);
     self->num_classes++;
     *result = c;
+    return knd_OK;
+}
+
+static int new_query(struct kndMemPool *self,
+                     struct kndQuery **result)
+{
+    struct kndQuery *q;
+    if (self->num_queries >= self->max_queries) {
+        return knd_NOMEM;
+    }
+    q = &self->queries[self->num_queries];
+    memset(q, 0, sizeof(struct kndQuery));
+    kndQuery_init(q);
+    self->num_queries++;
+    *result = q;
+    return knd_OK;
+}
+
+static int new_set(struct kndMemPool *self,
+                     struct kndSet **result)
+{
+    struct kndSet *q;
+    if (self->num_sets >= self->max_sets) {
+        return knd_NOMEM;
+    }
+    q = &self->sets[self->num_sets];
+    memset(q, 0, sizeof(struct kndSet));
+    kndSet_init(q);
+    self->num_sets++;
+    *result = q;
+    return knd_OK;
+}
+
+static int new_facet(struct kndMemPool *self,
+                     struct kndFacet **result)
+{
+    struct kndFacet *q;
+    if (self->num_facets >= self->max_facets) {
+        return knd_NOMEM;
+    }
+    q = &self->facets[self->num_facets];
+    memset(q, 0, sizeof(struct kndFacet));
+    kndFacet_init(q);
+    self->num_facets++;
+    *result = q;
     return knd_OK;
 }
 
@@ -461,6 +509,9 @@ static int new_proc_update_ref(struct kndMemPool *self,
 
 static int alloc(struct kndMemPool *self)
 {
+    if (!self->max_queries)      self->max_queries = KND_MIN_QUERIES;
+    if (!self->max_sets)         self->max_sets = KND_MIN_SETS;
+    if (!self->max_facets)       self->max_queries = KND_MIN_FACETS;
     if (!self->max_updates)      self->max_updates = KND_MIN_UPDATES;
     if (!self->max_states)       self->max_states = KND_MIN_STATES;
     if (!self->max_class_updates) self->max_class_updates = KND_MIN_UPDATES;
@@ -509,6 +560,22 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
+    self->queries = calloc(self->max_queries, sizeof(struct kndQuery));
+    if (!self->queries) {
+        knd_log("-- queries not allocated :(");
+        return knd_NOMEM;
+    }
+    self->sets = calloc(self->max_sets, sizeof(struct kndSet));
+    if (!self->sets) {
+        knd_log("-- sets not allocated :(");
+        return knd_NOMEM;
+    }
+    self->facets = calloc(self->max_facets, sizeof(struct kndFacet));
+    if (!self->facets) {
+        knd_log("-- facets not allocated :(");
+        return knd_NOMEM;
+    }
+    
     self->updates = calloc(self->max_updates, sizeof(struct kndUpdate));
     if (!self->updates) {
         knd_log("-- updates not allocated :(");
@@ -664,6 +731,9 @@ kndMemPool_init(struct kndMemPool *self)
 {
     self->del = del;
     self->alloc = alloc;
+    self->new_set = new_set;
+    self->new_facet = new_facet;
+    self->new_query = new_query;
     self->new_update = new_update;
     self->new_state = new_state;
     self->new_class_update = new_class_update;

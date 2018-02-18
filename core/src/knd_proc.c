@@ -278,12 +278,8 @@ static int get_proc(struct kndProc *self,
     total_size = &chunk_size;
     err = proc->read(proc, b, total_size);                                        PARSE_ERR();
 
+    err = proc->resolve(proc);                                                    RET_ERR();
     dir->proc = proc;
-
-    /* resolve args */
-    for (arg = proc->args; arg; arg = arg->next) {
-        err = arg->resolve(arg);                                                  RET_ERR();
-    }
 
     if (DEBUG_PROC_LEVEL_2)
         proc->str(proc);
@@ -618,12 +614,9 @@ static int export_SVG(struct kndProc *self)
     size_t y_offset = 0;
     int err;
 
-    err = out->write(out, "<text>", strlen("<text>"));                            RET_ERR();
-    err = out->write(out, self->name, self->name_size);                           RET_ERR();
-    err = out->write(out, "</text>", strlen("</text>"));                          RET_ERR();
-
-    x_offset += self->visual->text_hangindent_size;
+    /*x_offset += self->visual->text_hangindent_size;
     y_offset += self->visual->text_line_height;
+    */
 
     /* choose gloss */
     tr = self->tr;
@@ -631,7 +624,6 @@ static int export_SVG(struct kndProc *self)
         if (memcmp(self->task->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
         }
-
         err = out->write(out, "<text", strlen("<text"));          RET_ERR();
 	buf_size = sprintf(buf, " x=\"%zu\"", x_offset);
         err = out->write(out, buf, buf_size);          RET_ERR();
@@ -646,11 +638,18 @@ static int export_SVG(struct kndProc *self)
         tr = tr->next;
     }
 
-    x_offset = 0;
+    /* no gloss found - print id */
+    if (!tr) {
+	err = out->write(out, "<text>", strlen("<text>"));                            RET_ERR();
+	err = out->write(out, self->name, self->name_size);                           RET_ERR();
+	err = out->write(out, "</text>", strlen("</text>"));                          RET_ERR();
+    }
+
     if (self->estim_cost_total) {
+	x_offset = 20;
         err = out->write(out, "<text text-anchor=\"end\"",
 			 strlen("<text text-anchor=\"end\""));                      RET_ERR();
-	buf_size = sprintf(buf, " x=\"%zu\"", x_offset);
+	buf_size = sprintf(buf, " x=\"-%zu\"", x_offset);
         err = out->write(out, buf, buf_size);          RET_ERR();
 	buf_size = sprintf(buf, " y=\"%zu\"", y_offset);
         err = out->write(out, buf, buf_size);          RET_ERR();
@@ -661,12 +660,13 @@ static int export_SVG(struct kndProc *self)
 
         err = out->write(out, "</text>", strlen("</text>"));                      RET_ERR();
     }
-    
+
     if (self->args) {
+	x_offset = 0;
         err = out->write(out,   "<g", strlen("<g"));                              RET_ERR();
 	buf_size = sprintf(buf, " transform=\"translate(%zu,%zu)\"",
 			   x_offset, y_offset);
-        err = out->write(out,   buf, buf_size);                                   RET_ERR();
+        err = out->write(out,  buf, buf_size);                                   RET_ERR();
         err = out->write(out, ">", 1);                                            RET_ERR();
 
 	x_offset = 0;
@@ -695,26 +695,12 @@ static int export_SVG(struct kndProc *self)
         err = out->write(out, self->proc_call.name, self->proc_call.name_size);   RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
 
-        tr = self->proc_call.tr;
-        while (tr) {
-            if (memcmp(self->task->locale, tr->locale, tr->locale_size)) {
-                goto next_run_tr;
-            }
-            err = out->write(out, ",\"gloss\":\"", strlen(",\"gloss\":\""));      RET_ERR();
-            err = out->write(out, tr->val,  tr->val_size);                        RET_ERR();
-            err = out->write(out, "\"", 1);                                       RET_ERR();
-            break;
-        next_run_tr:
-            tr = tr->next;
-        }
-
         for (call_arg = self->proc_call.args; call_arg; call_arg = call_arg->next) {
             proc_call_arg_str(call_arg, self->depth + 1);
             }
         err = out->write(out, "}", 1);                                            RET_ERR();
     }
     */
-
 
     return knd_OK;
 }
@@ -915,7 +901,7 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
     struct kndProcBase *base;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. \"%.*s\" proc to inherit args from \"%.*s\" (num args:%zu)",
                 self->name_size, self->name, parent->name_size, parent->name, parent->num_args);
 
@@ -928,7 +914,7 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
         dir = self->inherited[i];
 	proc = dir->proc;
 
-	if (DEBUG_PROC_LEVEL_TMP)
+	if (DEBUG_PROC_LEVEL_2)
 	    knd_log("== (%zu of %zu)  \"%.*s\" is a parent of \"%.*s\"", 
 		    i, self->num_inherited, proc->name_size, proc->name,
 		    self->name_size, self->name);
@@ -979,7 +965,7 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
         return knd_FAIL;
     }
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(" .. add \"%.*s\" parent to \"%.*s\"",
 		parent->dir->proc->name_size,
                 parent->dir->proc->name,
@@ -1008,7 +994,7 @@ static gsl_err_t parse_base(void *data,
     struct kndProcBase *base;
     gsl_err_t parser_err;
 
-        /*err = self->mempool->new_proc_base(self->mempool, &base);                       RET_ERR();
+    /*err = self->mempool->new_proc_base(self->mempool, &base);                       RET_ERR();
     base->task = self->task;
     err = base->parse(base, rec, total_size);                                       PARSE_ERR();
     */
@@ -1441,11 +1427,12 @@ static int resolve_parents(struct kndProc *self)
 
 	    /* TODO: check class inheritance */
 
-	    knd_log(".. arg \"%.*s\" [class:%.*s] to replace \"%.*s\" [class:%.*s]",
-		    arg_item->name_size, arg_item->name,
-		    arg_item->classname_size, arg_item->classname,
-		    entry->arg->name_size, entry->arg->name,
-		    entry->arg->classname_size, entry->arg->classname);
+	    if (DEBUG_PROC_LEVEL_2)
+		knd_log(".. arg \"%.*s\" [class:%.*s] to replace \"%.*s\" [class:%.*s]",
+			arg_item->name_size, arg_item->name,
+			arg_item->classname_size, arg_item->classname,
+			entry->arg->name_size, entry->arg->name,
+			entry->arg->classname_size, entry->arg->classname);
 
 	    err = self->mempool->new_proc_arg(self->mempool, &arg);
 	    if (err) return err;
@@ -1510,7 +1497,7 @@ static int kndProc_resolve(struct kndProc *self)
     struct kndProcDir *dir;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. resolving PROC: %.*s",
                 self->name_size, self->name);
 
@@ -1564,7 +1551,7 @@ static int resolve_procs(struct kndProc *self)
     void *val;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. resolving procs by \"%.*s\"",
                 self->name_size, self->name);
     key = NULL;
@@ -1577,8 +1564,8 @@ static int resolve_procs(struct kndProc *self)
         proc = dir->proc;
 
         if (proc->is_resolved) {
-	    knd_log("--");
-	    proc->str(proc);
+	    /*knd_log("--");
+	      proc->str(proc); */
 	    continue;
 	}
 
@@ -1588,7 +1575,7 @@ static int resolve_procs(struct kndProc *self)
             return err;
         }
 
-	if (DEBUG_PROC_LEVEL_TMP) {
+	if (DEBUG_PROC_LEVEL_2) {
 	    knd_log("--");
 	    proc->str(proc);
 	}

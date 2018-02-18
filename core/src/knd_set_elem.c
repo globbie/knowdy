@@ -12,14 +12,14 @@
 #include "knd_parser.h"
 
 
-#define DEBUG_OBJREF_LEVEL_0 0
-#define DEBUG_OBJREF_LEVEL_1 0
-#define DEBUG_OBJREF_LEVEL_2 0
-#define DEBUG_OBJREF_LEVEL_3 0
-#define DEBUG_OBJREF_LEVEL_TMP 1
+#define DEBUG_SETELEM_LEVEL_0 0
+#define DEBUG_SETELEM_LEVEL_1 0
+#define DEBUG_SETELEM_LEVEL_2 0
+#define DEBUG_SETELEM_LEVEL_3 0
+#define DEBUG_SETELEM_LEVEL_TMP 1
 
 static void
-kndObjRef_del(struct kndObjRef *self)
+kndSetElem_del(struct kndSetElem *self)
 {
 
     if (self->sorttag)
@@ -35,7 +35,7 @@ kndObjRef_del(struct kndObjRef *self)
 }
 
 static int 
-kndObjRef_str(struct kndObjRef *self, size_t depth)
+kndSetElem_str(struct kndSetElem *self, size_t depth)
 {
     //char buf[KND_TEMP_BUF_SIZE];
     //size_t buf_size, curr_size;
@@ -104,7 +104,7 @@ kndObjRef_str(struct kndObjRef *self, size_t depth)
 }
 
 static int 
-kndObjRef_export_JSON(struct kndObjRef *self,
+kndSetElem_export_JSON(struct kndSetElem *self,
                        size_t depth __attribute__((unused)))
 {
     char buf[KND_TEMP_BUF_SIZE];
@@ -260,7 +260,7 @@ kndObjRef_export_JSON(struct kndObjRef *self,
 
 
 static int 
-kndObjRef_export_GSC(struct kndObjRef *self)
+kndSetElem_export_GSC(struct kndSetElem *self)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -354,7 +354,7 @@ kndObjRef_export_GSC(struct kndObjRef *self)
 }
 
 static int
-kndObjRef_export_HTML(struct kndObjRef *self)
+kndSetElem_export_HTML(struct kndSetElem *self)
 {
     //char buf[KND_TEMP_BUF_SIZE];
     //size_t buf_size;
@@ -427,7 +427,7 @@ kndObjRef_export_HTML(struct kndObjRef *self)
 
 
 static int 
-kndObjRef_export(struct kndObjRef *self,
+kndSetElem_export(struct kndSetElem *self,
                  knd_format format)
 {
     int err = knd_FAIL;
@@ -435,15 +435,15 @@ kndObjRef_export(struct kndObjRef *self,
     
     switch(format) {
     case KND_FORMAT_JSON:
-        err = kndObjRef_export_JSON(self, depth);
+        err = kndSetElem_export_JSON(self, depth);
         if (err) return err;
         break;
     case KND_FORMAT_GSC:
-        err = kndObjRef_export_GSC(self);
+        err = kndSetElem_export_GSC(self);
         if (err) return err;
         break;
     case KND_FORMAT_HTML:
-        err = kndObjRef_export_HTML(self);
+        err = kndSetElem_export_HTML(self);
         if (err) return err;
         break;
     default:
@@ -456,7 +456,7 @@ kndObjRef_export(struct kndObjRef *self,
 
 
 static int 
-kndObjRef_expand(struct kndObjRef *self)
+kndSetElem_expand(struct kndSetElem *self)
 {
     struct kndObject *obj = NULL;
     if (self->obj)
@@ -468,7 +468,7 @@ kndObjRef_expand(struct kndObjRef *self)
         return knd_OK;
     }
 
-    if (DEBUG_OBJREF_LEVEL_TMP)
+    if (DEBUG_SETELEM_LEVEL_TMP)
         knd_log(".. reading obj \"%s\".. repo: %p",
                 self->obj_id, self->cache->repo);
 
@@ -478,7 +478,7 @@ kndObjRef_expand(struct kndObjRef *self)
                                       &obj);
     if (err) return err;
 
-    if (DEBUG_OBJREF_LEVEL_TMP)
+    if (DEBUG_SETELEM_LEVEL_TMP)
         knd_log(".. expanding obj \"%s\"..",
                 self->obj_id);
 
@@ -494,7 +494,7 @@ kndObjRef_expand(struct kndObjRef *self)
 
 
 static int
-kndObjRef_read_coderefs(struct kndObjRef    *self,
+kndSetElem_read_coderefs(struct kndSetElem    *self,
                         struct kndElemRef *elemref,
                         const char *rec)
 {
@@ -513,8 +513,8 @@ kndObjRef_read_coderefs(struct kndObjRef    *self,
     b = rec;
     c = rec;
 
-    if (DEBUG_OBJREF_LEVEL_3)
-        knd_log("  .. ObjRef parsing coderefs: \"%s\"..\n", rec);
+    if (DEBUG_SETELEM_LEVEL_3)
+        knd_log("  .. SetElem parsing coderefs: \"%s\"..\n", rec);
     
     while (*c) {
         switch (*c) {
@@ -610,7 +610,7 @@ kndObjRef_read_coderefs(struct kndObjRef    *self,
 
 
 static int
-kndObjRef_add_elemref(struct kndObjRef    *self __attribute__((unused)),
+kndSetElem_add_elemref(struct kndSetElem    *self __attribute__((unused)),
                       struct kndElemRef *elemref)
 {
     knd_log("  .. add elemref \"%s\"\n\n", elemref->name);
@@ -620,7 +620,7 @@ kndObjRef_add_elemref(struct kndObjRef    *self __attribute__((unused)),
 
 
 static int 
-kndObjRef_sync_elemref(struct kndObjRef *self,
+kndSetElem_sync_elemref(struct kndSetElem *self,
                        struct kndElemRef *elemref)
 {
     //char buf[KND_TEMP_BUF_SIZE];
@@ -670,7 +670,7 @@ final:
     return err;
 }
 static int 
-kndObjRef_sync(struct kndObjRef *self)
+kndSetElem_sync(struct kndSetElem *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -716,7 +716,7 @@ kndObjRef_sync(struct kndObjRef *self)
         elemref = self->elemrefs;
         
         while (elemref) {
-            err = kndObjRef_sync_elemref(self, elemref);
+            err = kndSetElem_sync_elemref(self, elemref);
             if (err) goto final;
             
             elemref = elemref->next;
@@ -732,20 +732,20 @@ kndObjRef_sync(struct kndObjRef *self)
 }
 
 static int 
-kndObjRef_clone(struct kndObjRef *self,
+kndSetElem_clone(struct kndSetElem *self,
                 size_t attr_id,
                 const char *tail,
                 size_t tail_size,
-                struct kndObjRef **result)
+                struct kndSetElem **result)
 {
     struct kndSortAttr *attr, *sub_attr, *orig_attr;
-    struct kndObjRef *ref = NULL;
+    struct kndSetElem *ref = NULL;
     struct kndSortTag *tag;
    
     int err;
 
     /* make a ref copy */
-    err = kndObjRef_new(&ref);
+    err = kndSetElem_new(&ref);
     if (err) return knd_NOMEM;
 
     if (self->obj_id_size) {
@@ -850,7 +850,7 @@ kndObjRef_clone(struct kndObjRef *self,
 
 
 static int 
-kndObjRef_import(struct kndObjRef     *self __attribute__((unused)),
+kndSetElem_import(struct kndSetElem     *self __attribute__((unused)),
                   struct kndConcept *baseclass __attribute__((unused)),
                   char                *rec)
 {
@@ -869,29 +869,29 @@ kndObjRef_import(struct kndObjRef     *self __attribute__((unused)),
 }
 
 extern int 
-kndObjRef_new(struct kndObjRef **objref)
+kndSetElem_new(struct kndSetElem **setelem)
 {
-    struct kndObjRef *self;
+    struct kndSetElem *self;
     
-    self = malloc(sizeof(struct kndObjRef));
+    self = malloc(sizeof(struct kndSetElem));
     if (!self) return knd_NOMEM;
 
-    memset(self, 0, sizeof(struct kndObjRef));
+    memset(self, 0, sizeof(struct kndSetElem));
 
-    self->del = kndObjRef_del;
-    self->str = kndObjRef_str;
-    self->export = kndObjRef_export;
+    self->del = kndSetElem_del;
+    self->str = kndSetElem_str;
+    self->export = kndSetElem_export;
 
-    self->read_coderefs = kndObjRef_read_coderefs;
-    self->add_elemref = kndObjRef_add_elemref;
+    self->read_coderefs = kndSetElem_read_coderefs;
+    self->add_elemref = kndSetElem_add_elemref;
 
-    self->expand = kndObjRef_expand;
+    self->expand = kndSetElem_expand;
     
-    self->clone = kndObjRef_clone;
-    self->sync = kndObjRef_sync;
-    self->import = kndObjRef_import;
+    self->clone = kndSetElem_clone;
+    self->sync = kndSetElem_sync;
+    self->import = kndSetElem_import;
 
-    *objref = self;
+    *setelem = self;
 
     return knd_OK;
 }

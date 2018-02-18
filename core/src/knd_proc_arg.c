@@ -204,10 +204,19 @@ static int export_SVG(struct kndProcArg *self)
     int err;
 
     out = self->out;
-    err = out->write(out, "<text>", strlen("<text>"));                            RET_ERR();
+    /*err = out->write(out, "<text>", strlen("<text>"));                            RET_ERR();
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
     err = out->write(out, "</text>", strlen("</text>"));                          RET_ERR();
-
+    */
+    if (self->proc_dir) {
+	proc = self->proc_dir->proc;
+	knd_log("PROC: %p", proc);
+	proc->format = self->format;
+	proc->out = self->out;
+	proc->visual = self->visual;
+	err = proc->export(proc);                                                 RET_ERR();
+    }
+    
     return knd_OK;
 }
 
@@ -645,7 +654,7 @@ static int resolve_arg(struct kndProcArg *self)
     struct kndProcDir *dir;
     int err;
 
-    if (DEBUG_PROC_ARG_LEVEL_TMP)
+    if (DEBUG_PROC_ARG_LEVEL_2)
 	knd_log(".. resolving arg \"%.*s\"..",
 		self->name_size, self->name);
 
@@ -659,7 +668,8 @@ static int resolve_arg(struct kndProcArg *self)
     }
 
     if (!self->proc_call.name_size) {
-        return knd_OK;
+
+	return knd_OK;
     }
 
     /* special name */
@@ -673,7 +683,8 @@ static int resolve_arg(struct kndProcArg *self)
                                           self->proc_call.name_size);
     if (!dir) {
         knd_log("-- Proc Arg resolve: no such proc: \"%.*s\" IDX:%p :(",
-                self->proc_call.name_size, self->proc_call.name, self->parent->proc_idx);
+                self->proc_call.name_size,
+		self->proc_call.name, self->parent->proc_idx);
         return knd_FAIL;
     }
 
@@ -681,10 +692,9 @@ static int resolve_arg(struct kndProcArg *self)
         err = self->parent->get_proc(self->parent,
                                      dir->name, dir->name_size, &dir->proc);      RET_ERR();
     }
-
     self->proc_dir = dir;
 
-    if (DEBUG_PROC_ARG_LEVEL_TMP)
+    if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log("++ Proc Arg %.*s  call:\"%.*s\"  resolved!",
                 self->name_size, self->name,
                 self->proc_call.name_size, self->proc_call.name);

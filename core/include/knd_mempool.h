@@ -1,14 +1,14 @@
 /**
- *   Copyright (c) 2011-2017 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2018 by Dmitri Dmitriev
  *   All rights reserved.
  *
- *   This file is part of the Knowdy Search Engine, 
+ *   This file is part of the Knowdy Graph DB, 
  *   and as such it is subject to the license stated
  *   in the LICENSE file which you have received 
  *   as part of this distribution.
  *
  *   Project homepage:
- *   <http://www.globbie.net>
+ *   <http://www.knowdy.net>
  *
  *   Initial author and maintainer:
  *         Dmitri Dmitriev aka M0nsteR <dmitri@globbie.net>
@@ -36,6 +36,7 @@ struct kndProcArg;
 struct kndProcArgInstance;
 struct kndProcInstance;
 
+struct kndQuery;
 struct kndUpdate;
 struct kndState;
 struct kndClassUpdate;
@@ -49,7 +50,19 @@ struct kndMemPool
 {
     char next_class_id[KND_ID_SIZE];
     size_t max_users;
-    
+
+    struct kndQuery *queries;
+    size_t max_queries;
+    size_t num_queries;
+
+    struct kndSet *sets;
+    size_t max_sets;
+    size_t num_sets;
+
+    struct kndFacet *facets;
+    size_t max_facets;
+    size_t num_facets;
+
     struct kndUpdate *updates;
     struct kndUpdate **update_idx;
     size_t max_updates;
@@ -167,6 +180,12 @@ struct kndMemPool
     void (*del)(struct kndMemPool   *self);
     int (*alloc)(struct kndMemPool   *self);
 
+    int (*new_set)(struct kndMemPool   *self,
+		     struct kndSet **result);
+    int (*new_facet)(struct kndMemPool   *self,
+		     struct kndFacet **result);
+    int (*new_query)(struct kndMemPool   *self,
+		     struct kndQuery **result);
     int (*new_update)(struct kndMemPool   *self,
                       struct kndUpdate **result);
     int (*new_state)(struct kndMemPool   *self,

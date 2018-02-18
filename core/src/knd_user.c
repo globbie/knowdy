@@ -449,7 +449,6 @@ static gsl_err_t parse_sync_task(void *obj,
     /* TODO: inform retrievers */
 
     /* release resources */
-    self->root_class->reset(self->root_class);
 
     if (!stat(self->out->buf, &st)) {
         if (DEBUG_USER_LEVEL_TMP)
@@ -495,7 +494,7 @@ static gsl_err_t parse_class_select(void *obj,
 
     c->curr_class = NULL;
     c->curr_baseclass = NULL;
-    c->root_class = self->root_class;
+    c->root_class = c;
 
     err = c->select(c, rec, total_size);
     if (err) return make_gsl_err_external(err);

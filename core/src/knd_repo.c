@@ -6,7 +6,7 @@
 #include "knd_repo.h"
 #include "knd_object.h"
 #include "knd_attr.h"
-#include "knd_refset.h"
+#include "knd_set.h"
 #include "knd_user.h"
 #include "knd_query.h"
 #include "knd_sorttag.h"

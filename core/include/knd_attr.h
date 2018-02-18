@@ -2,13 +2,13 @@
  *   Copyright (c) 2011-2018 by Dmitri Dmitriev
  *   All rights reserved.
  *
- *   This file is part of the Knowdy Search Engine, 
+ *   This file is part of the Knowdy Graph DB, 
  *   and as such it is subject to the license stated
  *   in the LICENSE file which you have received 
  *   as part of this distribution.
  *
  *   Project homepage:
- *   <http://www.globbie.net>
+ *   <http://www.knowdy.net>
  *
  *   Initial author and maintainer:
  *         Dmitri Dmitriev aka M0nsteR <dmitri@globbie.net>
@@ -111,6 +111,7 @@ struct kndAttr
 
     char classname[KND_NAME_SIZE];
     size_t classname_size;
+    struct kndConcept *conc;
 
     char uniq_attr_name[KND_SHORT_NAME_SIZE];
     size_t uniq_attr_name_size;
@@ -123,7 +124,6 @@ struct kndAttr
     bool is_recursive;
 
     struct kndConcept *parent_conc;
-    struct kndConcept *conc;
     struct kndTask *task;
 
     const char *locale;

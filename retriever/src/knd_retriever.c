@@ -33,6 +33,30 @@ kndRetriever_del(struct kndRetriever *self)
     free(self);
 }
 
+static int send_http_reply(struct kndRetriever *self)
+{
+    char *b;
+    size_t buf_size;
+    int err;
+
+    b = self->task->delivery_addr;
+    b += self->task->delivery_addr_size;
+
+    memcpy(b, "/", 1);
+    b++;
+
+    memcpy(b, self->task->tid,  self->task->tid_size);
+    b += self->task->tid_size;
+    *b = '\0';
+
+    knd_log(".. try HTTP callback: \"%s\"", self->task->delivery_addr);
+
+    err = knd_http_post(self->task->delivery_addr, self->task->out->buf, self->task->out->buf_size);
+    if (err) return err;
+
+    return knd_OK;
+}
+
 static int
 kndRetriever_start(struct kndRetriever *self)
 {
@@ -98,6 +122,15 @@ kndRetriever_start(struct kndRetriever *self)
             if (self->task->type == KND_UPDATE_STATE)
                 continue;
         }
+
+	if (self->task->delivery_type == KND_DELIVERY_HTTP) {
+	    err = send_http_reply(self);
+            if (err) {
+		knd_log("-- http callback failed: %d", err);
+	    }
+	    continue;
+	}
+
         err = self->task->report(self->task);
         if (err) {
             knd_log("-- task report failed: %d", err);

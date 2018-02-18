@@ -155,11 +155,6 @@ static void kndConcept_del(struct kndConcept *self)
 {
     struct kndConcRef *ref;
 
-    for (size_t i = 0; i < self->num_children; i++) {
-        ref = &self->children[i];
-        ref->conc->del(ref->conc);
-    }
-
     if (self->attr_idx) self->attr_idx->del(self->attr_idx);
     if (self->summary) self->summary->del(self->summary);
     if (self->dir) del_conc_dir(self->dir);
@@ -195,6 +190,7 @@ static void str(struct kndConcept *self)
     struct kndTranslation *tr, *t;
     struct kndConcRef *ref;
     struct kndConcItem *item;
+    struct kndConcept *c;
     char resolved_state = '-';
     const char *key;
     void *val;
@@ -204,11 +200,13 @@ static void str(struct kndConcept *self)
             self->name_size, self->name, self->numid);
 
     for (tr = self->tr; tr; tr = tr->next) {
-        knd_log("%*s~ %s %.*s", (self->depth + 1) * KND_OFFSET_SIZE, "",
+        knd_log("%*s~ %s %.*s",
+		(self->depth + 1) * KND_OFFSET_SIZE, "",
                 tr->locale, tr->val_size, tr->val);
         if (tr->synt_roles) {
             for (t = tr->synt_roles; t; t = t->next) {
-                knd_log("%*s  %d: %.*s", (self->depth + 2) * KND_OFFSET_SIZE, "",
+                knd_log("%*s  %d: %.*s",
+			(self->depth + 2) * KND_OFFSET_SIZE, "",
                         t->synt_role, t->val_size, t->val);
             }
         }
@@ -252,8 +250,13 @@ static void str(struct kndConcept *self)
     }
 
     for (size_t i = 0; i < self->num_children; i++) {
-	    ref = &self->children[i];
-	    knd_log("%*sbase of --> %s", (self->depth + 1) * KND_OFFSET_SIZE, "", ref->conc->name);
+	ref = &self->children[i];
+	c = ref->dir->conc;
+	if (!c) continue;
+
+	knd_log("%*sbase of --> %.*s [%zu]",
+		(self->depth + 1) * KND_OFFSET_SIZE, "",
+		c->name_size, c->name, c->num_terminals);
     }
 
     knd_log("%*s}", self->depth * KND_OFFSET_SIZE, "");
@@ -433,7 +436,6 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
     /* check circled relations */
     for (size_t i = 0; i < self->num_bases; i++) {
         dir = self->bases[i];
-
 	c = dir->conc;
 
 	if (DEBUG_CONC_LEVEL_2)
@@ -475,7 +477,7 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
                                   entry->name, entry->name_size, (void*)entry);
         if (err) return err;
     }
-    
+
     if (self->num_bases >= KND_MAX_BASES) {
         knd_log("-- max bases exceeded for %.*s :(",
                 self->name_size, self->name);
@@ -502,26 +504,59 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
     return knd_OK;
 }
 
+
+static int index_attr(struct kndConcept *self,
+		      struct kndAttr *attr,
+		      struct kndAttrItem *item)
+{
+    struct kndConcept *base;
+    struct kndConcept *c;
+    int err;
+    if (DEBUG_CONC_LEVEL_TMP) {
+	if (!strncmp("cuisine", item->name, item->name_size)) {
+	    knd_log(".. index attr: \"%.*s\" refclass: \"%.*s\" (val: %.*s)",
+		    attr->name_size, attr->name,
+		    attr->ref_classname_size, attr->ref_classname,
+		    item->val_size, item->val);
+	}
+    }
+    if (!attr->ref_classname_size) return knd_OK;
+
+    err = get_class(self, item->val,
+		    item->val_size, &base);                             /*RET_ERR(); */
+
+    /* TODO */
+    if (err) {
+	if (DEBUG_CONC_LEVEL_2)
+	    knd_log("-- no such class: \"%.*s\" :(",
+		item->val_size, item->val);
+	return knd_OK;
+    }
+
+
+    /* build reverse index */
+
+    
+    return knd_OK;
+}
+
 static int resolve_attr_items(struct kndConcept *self,
 			      struct kndConcItem *item)
 {
     struct kndAttrItem *attr_item;
     struct kndAttrEntry *entry;
+    int err;
 
     for (attr_item = item->attrs; attr_item; attr_item = attr_item->next) {
-	if (DEBUG_CONC_LEVEL_2)
-	    knd_log(".. resolve attr item: \"%.*s\" (val: %.*s)",
-		    attr_item->name_size, attr_item->name,
-		attr_item->val_size, attr_item->val);
-
-        /*if (item->children)
-	  str_attr_items(item->children, depth + 1); */
         entry = self->attr_idx->get(self->attr_idx,
 				    attr_item->name, attr_item->name_size);
         if (!entry) {
 	    knd_log("-- no such attr: %.*s", attr_item->name_size, attr_item->name);
 	    return knd_FAIL;
 	}
+
+	err = index_attr(self, entry->attr, attr_item);
+	if (err) return err;
 
 	attr_item->attr = entry->attr;
     }
@@ -692,7 +727,7 @@ static int resolve_base_classes(struct kndConcept *self)
         /* check item doublets */
         for (size_t i = 0; i < self->num_children; i++) {
             ref = &self->children[i];
-            if (ref->conc == self) {
+            if (ref->dir == self->dir) {
                 knd_log("-- doublet conc item found in \"%.*s\" :(",
                         self->name_size, self->name);
                 return knd_FAIL;
@@ -706,7 +741,7 @@ static int resolve_base_classes(struct kndConcept *self)
         }
 
         ref = &c->children[c->num_children];
-        ref->conc = self;
+        ref->dir = self->dir;
         c->num_children++;
 
 	if (DEBUG_CONC_LEVEL_2)
@@ -733,7 +768,7 @@ static int resolve_name_refs(struct kndConcept *self,
 
     if (self->is_resolved) {
         if (self->obj_inbox_size) {
-            err = resolve_objs(self, update);                                       RET_ERR();
+            err = resolve_objs(self, update);                                     RET_ERR();
         }
         return knd_OK;
     }
@@ -743,7 +778,7 @@ static int resolve_name_refs(struct kndConcept *self,
     if (!self->base_items) {
         root = self->root_class;
         ref = &root->children[root->num_children];
-        ref->conc = self;
+        ref->dir = self->dir;
         root->num_children++;
     }
 
@@ -819,20 +854,13 @@ static int get_attr(struct kndConcept *self,
     return knd_OK;
 }
 
-static gsl_err_t run_set_translation_text(void *obj, const char *val, size_t val_size)
+static gsl_err_t run_set_translation_text(void *obj,
+					  const char *val, size_t val_size)
 {
-    struct kndTranslation *tr = (struct kndTranslation*)obj;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. run set translation text..");
+    struct kndTranslation *tr = obj;
 
     if (!val_size) return make_gsl_err(gsl_FORMAT);
-    if (val_size >= sizeof tr->val)
-        return make_gsl_err(gsl_LIMIT);
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. run set translation text: %.*s [%lu]\n", val_size, val,
-                (unsigned long)val_size);
+    if (val_size >= sizeof tr->val) return make_gsl_err(gsl_LIMIT);
 
     memcpy(tr->val, val, val_size);
     tr->val[val_size] = '\0';
@@ -896,85 +924,35 @@ static gsl_err_t parse_synt_role(void *obj,
     self->synt_roles = tr;
 
     if (DEBUG_CONC_LEVEL_2) {
-        knd_log("== Translation: %.*s (synt role: %d)",
+        knd_log("== gloss: \"%.*s\" (synt role: %d)",
             tr->val_size, tr->val, tr->synt_role);
     }
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_gloss_translation(void *obj,
-                                         const char *name, size_t name_size,
-                                         const char *rec, size_t *total_size)
+static gsl_err_t parse_gloss(void *obj,
+			     const char *rec, size_t *total_size)
 {
-    char buf[KND_SHORT_NAME_SIZE];
-    size_t buf_size;
     struct kndTranslation *tr = obj;
 
     if (DEBUG_CONC_LEVEL_2) {
-        knd_log("..  gloss translation in \"%s\" REC: \"%.*s\"\n",
-                name, 16, rec); }
+        knd_log("..  parse gloss translation in \"%.*s\" OBJ:%p\n",
+                16, rec, obj); }
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_translation_text,
           .obj = tr
         },
-        { .name = "synt_role",
-          .name_size = strlen("synt_role"),
-          .is_validator = true,
-          .buf = buf,
-          .buf_size = &buf_size,
-          .max_buf_size = KND_SHORT_NAME_SIZE,
+        { .is_validator = true,
           .validate = parse_synt_role,
           .obj = tr
         }
     };
 
-    memcpy(tr->curr_locale, name, name_size);
-    tr->curr_locale[name_size] = '\0';
-    tr->curr_locale_size = name_size;
-
-    tr->locale = tr->curr_locale;
-    tr->locale_size = tr->curr_locale_size;
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
-
-static gsl_err_t parse_gloss(void *obj,
-                             const char *rec,
-                             size_t *total_size)
-{
-    struct kndConcept *self = (struct kndConcept*)obj;
-    struct kndTranslation *tr;
-    gsl_err_t err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. parsing the gloss update: \"%.*s\"", 16, rec);
-
-    tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return make_gsl_err_external(knd_NOMEM);
-    memset(tr, 0, sizeof(struct kndTranslation));
-
-    struct gslTaskSpec specs[] = {
-        { .is_validator = true,
-          .buf = tr->curr_locale,
-          .buf_size = &tr->curr_locale_size,
-          .max_buf_size = KND_LOCALE_SIZE,
-          .validate = parse_gloss_translation,
-          .obj = tr
-        }
-    };
-
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
-
-    /* assign translation */
-    tr->next = self->tr;
-    self->tr = tr;
-
-    return make_gsl_err(gsl_OK);
-}
-
 
 static gsl_err_t parse_summary(void *obj,
                                const char *rec,
@@ -1197,14 +1175,13 @@ static gsl_err_t run_set_conc_item(void *obj, const char *name, size_t name_size
 {
     struct kndConcept *self = obj;
     struct kndConcItem *item;
-
+    int err;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    item = malloc(sizeof(struct kndConcItem));
-    if (!item) return make_gsl_err_external(knd_NOMEM);
+    err = self->mempool->new_conc_item(self->mempool, &item);
+    if (err) return make_gsl_err_external(err);
 
-    memset(item, 0, sizeof(struct kndConcItem));
     memcpy(item->classname, name, name_size);
     item->classname_size = name_size;
 
@@ -1323,6 +1300,10 @@ static gsl_err_t parse_conc_item(void *obj,
           .is_validator = true,
           .validate = parse_item_child,
           .obj = item
+        },
+        { .is_validator = true,
+          .validate = parse_item_child,
+          .obj = item
         }
     };
 
@@ -1364,6 +1345,10 @@ static gsl_err_t parse_baseclass(void *obj,
         },
         { .type = GSL_CHANGE_STATE,
           .is_validator = true,
+          .validate = parse_conc_item,
+          .obj = self
+        },
+        { .is_validator = true,
           .validate = parse_conc_item,
           .obj = self
         },
@@ -1499,7 +1484,6 @@ static gsl_err_t parse_import_class(void *obj,
     struct kndConcDir *dir;
     int err;
     gsl_err_t parser_err;
-
     // TODO(ki.stfu): Don't ignore this field
     char time[KND_NAME_SIZE];
     size_t time_size = 0;
@@ -1540,7 +1524,7 @@ static gsl_err_t parse_import_class(void *obj,
           .accu = c,
           .alloc = gloss_alloc,
           .append = gloss_append,
-          .parse = read_gloss
+          .parse = parse_gloss
         },
         { .is_list = true,
           .name = "_gloss",
@@ -1548,7 +1532,7 @@ static gsl_err_t parse_import_class(void *obj,
           .accu = c,
           .alloc = gloss_alloc,
           .append = gloss_append,
-          .parse = read_gloss
+          .parse = parse_gloss
         },
         { .is_list = true,
           .name = "_g",
@@ -1556,7 +1540,7 @@ static gsl_err_t parse_import_class(void *obj,
           .accu = c,
           .alloc = gloss_alloc,
           .append = gloss_append,
-          .parse = read_gloss
+          .parse = parse_gloss
         },
         { .type = GSL_CHANGE_STATE,
           .name = "summary",
@@ -1801,20 +1785,27 @@ static gsl_err_t parse_select_obj(void *data,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t run_select_baseclass(void *obj, const char *name, size_t name_size)
+static gsl_err_t run_select_baseclass(void *obj,
+				      const char *name, size_t name_size)
 {
     struct kndConcept *self = obj;
+    struct kndConcItem *ci;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    /* TODO: get current schema */
-    knd_log("++ got baseclass: %.*s!", name_size, name);
-
-    err = get_class(self, name, name_size, &self->curr_baseclass);
+    err = self->mempool->new_conc_item(self->mempool, &ci);
     if (err) return make_gsl_err_external(err);
 
+    ci->parent = self;
+
+    knd_log("++ got baseclass: %.*s!", name_size, name);
+
+    err = get_class(self, name, name_size, &ci->conc);
+    if (err) return make_gsl_err_external(err);
+
+    
     return make_gsl_err(gsl_OK);
 }
 
@@ -1831,7 +1822,9 @@ static gsl_err_t parse_baseclass_select(void *obj,
         { .is_implied = true,
           .run = run_select_baseclass,
           .obj = self
-        }
+        },
+	/* specify attrs */
+	
     };
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -2331,9 +2324,11 @@ static gsl_err_t dir_entry_alloc(void *self,
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. %.*s to add list item: %.*s count: %zu  [total children: %zu] mempool:%p",
-                KND_ID_SIZE, parent_dir->id, name_size, name, count, parent_dir->num_children,
-		 parent_dir->mempool);
+        knd_log(".. %.*s to add list item: %.*s count: %zu"
+		" [total children: %zu] mempool:%p",
+                KND_ID_SIZE, parent_dir->id, name_size, name,
+		count, parent_dir->num_children,
+		parent_dir->mempool);
 
     if (name_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
@@ -3423,8 +3418,6 @@ static int read_GSL_file(struct kndConcept *self,
     return knd_OK;
 }
 
-
-
 static gsl_err_t conc_item_alloc(void *obj,
                                  const char *name,
                                  size_t name_size,
@@ -3645,6 +3638,7 @@ static int resolve_class_refs(struct kndConcept *self)
         }
 	c->is_resolved = true;
 
+	
     } while (key);
 
     if (DEBUG_CONC_LEVEL_1)
@@ -3698,7 +3692,7 @@ static int coordinate(struct kndConcept *self)
     } while (key);
 */
 
-    /* display all classes */
+    /* display classes */
     if (DEBUG_CONC_LEVEL_2) {
         key = NULL;
         self->class_idx->rewind(self->class_idx);
@@ -3707,8 +3701,20 @@ static int coordinate(struct kndConcept *self)
             if (!key) break;
             dir = (struct kndConcDir*)val;
             c = dir->conc;
+
+	    /* terminal class */
+	    if (!c->num_children) {
+		c->is_terminal = true;
+		self->num_terminals++;
+	    } else {
+		self->num_terminals += c->num_terminals;
+	    }
+
+	    if (!c->num_children) continue;
+
             c->depth = 0;
-            c->str(c);
+	    c->str(c);
+
         } while (key);
     }
 
@@ -4465,7 +4471,7 @@ static int parse_select_class(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
 
     struct gslTaskSpec specs[] = {
@@ -4475,15 +4481,14 @@ static int parse_select_class(void *obj,
           .obj = self
         },
         { .type = GSL_CHANGE_STATE,
-          .name = "set_attr",
-          .name_size = strlen("set_attr"),
           .is_validator = true,
-          .buf = buf,
-          .buf_size = &buf_size,
-          .max_buf_size = KND_NAME_SIZE,
           .validate = parse_set_attr,
           .obj = self
-        },
+        }/*,
+        { .is_validator = true,
+          .validate = parse_attr_select,
+          .obj = self
+	  }*/,
         { .type = GSL_CHANGE_STATE,
           .name = "_rm",
           .name_size = strlen("_rm"),
@@ -4876,13 +4881,13 @@ static int export_JSON(struct kndConcept *self)
                 ref = &self->children[i];
                 
                 if (DEBUG_CONC_LEVEL_2)
-                    knd_log("base of --> %s", ref->conc->name);
+                    knd_log("base of --> %s", ref->dir->name);
 
                 if (i) {
                     err = out->write(out, ",", 1);
                     if (err) return err;
                 }
-                c = ref->conc;
+                c = ref->dir->conc;
                 c->out = self->out;
                 c->task = self->task;
                 c->format =  KND_FORMAT_JSON;
@@ -5345,7 +5350,6 @@ static int apply_liquid_updates(struct kndConcept *self,
     return knd_OK;
 }
 
-
 static void reset_inbox(struct kndConcept *self)
 {
     self->inbox = NULL;
@@ -5665,7 +5669,7 @@ static int freeze_subclasses(struct kndConcept *self,
 
     for (size_t i = 0; i < self->num_children; i++) {
         ref = &self->children[i];
-        c = ref->conc;
+        c = ref->dir->conc;
         c->out = self->out;
         c->dir_out = self->dir_out;
         c->frozen_output_file_name = self->frozen_output_file_name;
@@ -5958,20 +5962,6 @@ static int freeze(struct kndConcept *self)
     return knd_OK;
 }
 
-static void reset(struct kndConcept *self)
-{
-    struct kndConcRef *ref;
-    struct kndConcept *c;
-
-    /* reset children */
-    for (size_t i = 0; i < self->num_children; i++) {
-        ref = &self->children[i];
-        c = ref->conc;
-        c->reset(c);
-    }
-    self->num_children = 0;
-}
-
 /*  Concept initializer */
 extern void kndConcept_init(struct kndConcept *self)
 {
@@ -5982,7 +5972,6 @@ extern void kndConcept_init(struct kndConcept *self)
     self->read = read_GSP;
     self->read_obj_entry = read_obj_entry;
     self->restore = restore;
-    self->reset = reset;
     self->select_delta = select_delta;
     self->coordinate = coordinate;
     self->resolve = resolve_name_refs;
