@@ -57,7 +57,7 @@ struct kndConcRef
 {
     size_t state;
     struct kndConcDir *dir;
-    struct kndConcept *conc;
+    //struct kndConcept *conc;
 };
 
 struct kndConcRefSet
@@ -212,8 +212,8 @@ struct kndConcept
     struct kndConcDir *bases[KND_MAX_BASES];
     size_t num_bases;
 
-    struct kndDataIdx *indices;
-    size_t num_indices;
+    //struct kndDataIdx *indices;
+    //size_t num_indices;
 
     bool ignore_children;
     bool is_resolved;
@@ -221,7 +221,7 @@ struct kndConcept
     struct kndConcept *root_class;
     struct kndConcept *curr_class;
     struct kndConcept *curr_baseclass;
-    struct kndObject *curr_obj;
+    struct kndObject  *curr_obj;
 
     struct kndConcDir *dir;
     struct kndConcFolder *folders;
@@ -275,7 +275,7 @@ struct kndConcept
     /***********  public methods ***********/
     void (*init)(struct kndConcept  *self);
     void (*del)(struct kndConcept   *self);
-    void (*reset)(struct kndConcept   *self);
+    //void (*reset)(struct kndConcept   *self);
     void (*str)(struct kndConcept *self);
     int (*open)(struct kndConcept   *self);
 

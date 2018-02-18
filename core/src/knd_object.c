@@ -14,9 +14,6 @@
 #include "knd_rel.h"
 #include "knd_rel_arg.h"
 
-#include "knd_refset.h"
-#include "knd_sorttag.h"
-
 #include "knd_output.h"
 #include "knd_user.h"
 #include "knd_state.h"

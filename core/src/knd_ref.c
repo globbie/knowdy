@@ -7,7 +7,6 @@
 #include "knd_output.h"
 #include "knd_elem.h"
 #include "knd_object.h"
-#include "knd_objref.h"
 #include "knd_utils.h"
 #include "knd_concept.h"
 #include "knd_attr.h"

@@ -1,4 +1,4 @@
-{schema Knowdy Learner Service Configuration
+{schema Knowdy Learner Service
       {agent 001}
       {path /var/lib/knowdy/db}
       {schemas /etc/knowdy/schemas}

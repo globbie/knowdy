@@ -120,13 +120,38 @@ knd_zmq_sendmore(void *socket, const char *string, size_t string_size)
 }
 
 
-/* HTTP-communication via CURL*/
+/* HTTP-communication via CURL */
+static size_t read_HTTP_body_cb(void *dest, size_t size, size_t nmemb, void *userp)
+{
+    struct knd_HTTP_body *body = userp;
+    size_t buf_size = size * nmemb;
+ 
+    if (body->sizeleft) {
+	size_t copy_this_much = body->sizeleft;
+	
+	if (copy_this_much > buf_size)
+	    copy_this_much = buf_size;
+	
+	memcpy(dest, body->data, copy_this_much);
+	
+	body->data += copy_this_much;
+	body->sizeleft -= copy_this_much;
+	
+	return copy_this_much;
+    }
+    return 0;
+}
+
 extern int
-knd_http_post(const char *url)
+knd_http_post(const char *url, const char *body, size_t body_size)
 {
     CURL *curl;
-    CURLcode res;
- 
+    CURLcode err;
+
+    struct knd_HTTP_body http_body;
+    http_body.data = body;
+    http_body.sizeleft = body_size;
+
     curl_global_init(CURL_GLOBAL_ALL);
  
     /* get a curl handle */ 
@@ -137,13 +162,26 @@ knd_http_post(const char *url)
     }
     
     curl_easy_setopt(curl, CURLOPT_URL, url);
+
     /* POST data */ 
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "msg_type=curl");
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+    //curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "msg_type=curl");
+
+    /* we want to use our own read function */ 
+    curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_HTTP_body_cb);
  
-    res = curl_easy_perform(curl);
-    if (res != CURLE_OK) {
-	fprintf(stderr, "curl_easy_perform() failed: %s\n",
-		curl_easy_strerror(res));
+    /* pointer to pass to our read function */ 
+    curl_easy_setopt(curl, CURLOPT_READDATA, &http_body);
+ 
+    /* get verbose debug output please */ 
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)http_body.sizeleft);
+
+    err = curl_easy_perform(curl);
+    if (err) {
+	knd_log("-- curl_easy_perform() failed: %s",
+		curl_easy_strerror(err));
     }
 
     curl_easy_cleanup(curl);

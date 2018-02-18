@@ -643,7 +643,6 @@ kndDelivery_new(struct kndDelivery **deliv,
         err = knd_mkpath(self->path, self->path_size, 0777, false);               RET_ERR();
     }
 
-
     if (!self->max_tids)
         self->max_tids = KND_MAX_TIDS;
 
