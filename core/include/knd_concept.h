@@ -36,6 +36,7 @@ struct kndConcept;
 struct kndRel;
 struct kndRelObj;
 struct kndTask;
+struct kndSet;
 struct kndUser;
 struct kndClassUpdate;
 struct kndClassUpdateRef;
@@ -108,7 +109,6 @@ struct kndAttrEntry
     struct kndAttrEntry *next;
 };
 
-
 struct kndConcDir
 {
     char id[KND_ID_SIZE];
@@ -119,6 +119,7 @@ struct kndConcDir
     size_t name_size;
     struct kndConcept *conc;
     struct kndMemPool *mempool;
+    struct kndSet *descendants;
 
     knd_state_phase phase;
 

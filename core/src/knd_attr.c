@@ -41,7 +41,7 @@ static void str(struct kndAttr *self)
     struct kndTranslation *tr;
     const char *type_name = knd_attr_names[self->type];
 
-    if (self->is_list)
+    if (self->is_a_set)
         knd_log("\n%*s[%s", self->depth * KND_OFFSET_SIZE, "", self->name);
     else
         knd_log("\n%*s{%s %s", self->depth * KND_OFFSET_SIZE, "", type_name, self->name);
@@ -86,7 +86,7 @@ static void str(struct kndAttr *self)
         knd_log("%*s  default VAL: %s", self->depth * KND_OFFSET_SIZE, "", self->default_val);
     }
     
-    if (self->is_list)
+    if (self->is_a_set)
         knd_log("%*s]", self->depth * KND_OFFSET_SIZE, "");
     else
         knd_log("%*s}",  self->depth * KND_OFFSET_SIZE, "");
@@ -137,8 +137,8 @@ static int export_JSON(struct kndAttr *self)
     if (err) return err;
     
 
-    if (self->is_list) {
-        err = out->write(out, ",\"is_list\":true", strlen(",\"is_list\":true"));
+    if (self->is_a_set) {
+        err = out->write(out, ",\"is_a_set\":true", strlen(",\"is_a_set\":true"));
         if (err) return err;
     }
     
@@ -205,7 +205,7 @@ static int export_GSP(struct kndAttr *self)
     err = out->write(out, self->name, self->name_size);
     if (err) return err;
     
-    if (self->is_list) {
+    if (self->is_a_set) {
         err = out->write(out, "{list 1}", strlen("{list 1}"));
         if (err) return err;
     }
@@ -287,8 +287,20 @@ static gsl_err_t run_set_quant(void *obj, const char *name, size_t name_size)
 
     if (!memcmp("set", name, name_size)) {
 	self->quant_type = KND_ATTR_SET;
-	self->is_list = true;
+	self->is_a_set = true;
     }
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t confirm_idx(void *obj, const char *name, size_t name_size)
+{
+    struct kndAttr *self = obj;
+
+    if (DEBUG_ATTR_LEVEL_TMP)
+        knd_log(".. confirm IDX");
+    
+    self->is_indexed = true;
 
     return make_gsl_err(gsl_OK);
 }
@@ -403,9 +415,9 @@ static gsl_err_t gloss_alloc(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_quant(void *obj,
-                             const char *rec,
-                             size_t *total_size)
+static gsl_err_t parse_quant_type(void *obj,
+				  const char *rec,
+				  size_t *total_size)
 {
     struct kndAttr *self = obj;
 
@@ -555,15 +567,22 @@ static int parse_GSL(struct kndAttr *self,
           .buf_size = &self->ref_procname_size,
           .max_buf_size = sizeof self->ref_procname,
         },
-        { .name = "quant",
-          .name_size = strlen("quant"),
-          .parse = parse_quant,
+        { .type = GSL_CHANGE_STATE,
+	  .name = "t",
+          .name_size = strlen("t"),
+          .parse = parse_quant_type,
           .obj = self
         },
         { .type = GSL_CHANGE_STATE,
           .name = "acl",
           .name_size = strlen("acl"),
           .parse = parse_access_control,
+          .obj = self
+        },
+        { .type = GSL_CHANGE_STATE,
+          .name = "idx",
+          .name_size = strlen("idx"),
+          .run = confirm_idx,
           .obj = self
         },
         { .type = GSL_CHANGE_STATE,

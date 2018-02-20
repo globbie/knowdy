@@ -26,6 +26,7 @@ struct kndConcDir;
 struct kndObjEntry;
 struct kndTask;
 struct kndFacet;
+struct ooDict;
 
 #include "knd_config.h"
 
@@ -53,13 +54,10 @@ struct kndElemIdx
 struct kndSet
 {
     knd_set_type type;
-
-    char name[KND_NAME_SIZE];
-    size_t name_size;
-    struct kndConcept *base;
+    struct kndConcDir *base;
     bool is_terminal;
 
-    struct kndElemIdx **idx;
+    struct ooDict *idx;
     
     struct kndSetElem *inbox[KND_SET_INBOX_SIZE];
     size_t inbox_size;
@@ -73,28 +71,18 @@ struct kndSet
     struct kndSet *next;
     struct kndTask *task;
     struct kndOutput *out;
+    struct kndMemPool *mempool;
     knd_format format;
     
     /******** public methods ********/
-    int (*init)(struct kndSet *self);
-    void (*del)(struct kndSet *self);
     void (*str)(struct kndSet *self,
-		size_t depth,
-		size_t max_depth);
-
-    int (*term_idx)(struct kndSet   *self,
-                    struct kndSetElem *elem);
-
-    int (*add_elem)(struct kndSet *self,
-                   struct kndSetElem *elem);
-
-    /*int (*lookup_name)(struct kndSet *self,
-                       const char *name,
-                       size_t name_size,
-                       const char *remainder,
-                       size_t remainder_size,
-                       char *guid);
-    */
+		size_t depth);
+    int (*add_conc)(struct kndSet *self,
+		    struct kndConcept *conc);
+    int (*add_ref)(struct kndSet *self,
+		   struct kndAttr *attr,
+		   struct kndConcept *topic,
+		   struct kndConcept *spec);
     int (*lookup)(struct kndSet *self,
 		  struct kndSetElem *elem);
 

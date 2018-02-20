@@ -120,8 +120,9 @@ struct kndAttr
     char validator_name[KND_SHORT_NAME_SIZE];
     size_t validator_name_size;
 
-    bool is_list;
+    bool is_a_set;
     bool is_recursive;
+    bool is_indexed;
 
     struct kndConcept *parent_conc;
     struct kndTask *task;

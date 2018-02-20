@@ -160,14 +160,14 @@ kndQuery_execute(struct kndQuery *self)
     if (err) {
         knd_log(" -- NO INTERSECTION result :(\n\n");
 
-        set->del(set);
+        //set->del(set);
         return err;
     }
 
     /* result */
     if (DEBUG_QUERY_LEVEL_TMP) {
-        knd_log("\n    ++ intersected set: \"%s\"", set->name);
-        set->str(set, 1, 5);
+        knd_log("\n    ++ intersected set: \"%s\"", set->base->name);
+        //set->str(set, 1);
     }
 
 
