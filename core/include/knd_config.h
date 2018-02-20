@@ -312,7 +312,6 @@ typedef enum knd_storage_type {
 /* alphanumeric symbols:
    0-9, A-Z, a-z */
 #define KND_RADIX_BASE 62
-#define KND_ID_MAX_COUNT KND_RADIX_BASE * KND_RADIX_BASE * KND_RADIX_BASE
 
 #define UCHAR_NUMVAL_RANGE (unsigned char)-1 + 1
 

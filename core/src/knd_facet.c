@@ -1557,7 +1557,7 @@ extern void kndFacet_init(struct kndFacet *self)
     self->del = kndFacet_del;
     self->str = kndFacet_str;
 
-    self->add_elem = kndFacet_add_elem;
+    self->add_ref = kndFacet_add_ref;
     self->find = kndFacet_find;
     self->extract_objs = kndFacet_extract_objs;
 

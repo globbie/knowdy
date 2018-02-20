@@ -5,7 +5,7 @@
 #include "knd_facet.h"
 #include "knd_output.h"
 #include "knd_repo.h"
-#include "knd_sorttag.h"
+#include "knd_mempool.h"
 #include "knd_set.h"
 #include "knd_object.h"
 #include "knd_attr.h"
@@ -28,19 +28,10 @@ static int
 kndSet_read_term_idx_tags(struct kndSet *self,
 			  const char    *rec,
 			  size_t         rec_size);
-/*static int
-kndSet_export_item(struct kndSetElem *item,
-                       char *output,
-                       size_t *output_size);
-*/
-
 static int
-kndSet_add_elem(struct kndSet     *self,
-                  struct kndSetElem     *elem);
+kndSet_add_conc(struct kndSet     *self,
+		struct kndConcept     *conc);
 
-static int
-kndSet_term_idx(struct kndSet *self,
-                   struct kndSetElem *elem);
 static int 
 knd_compare_set_by_size_ascend(const void *a,
                                    const void *b)
@@ -57,73 +48,6 @@ knd_compare_set_by_size_ascend(const void *a,
     return -1;
 }
 
-/*
-static int 
-knd_compare_set_by_size_descend(const void *a,
-                                   const void *b)
-{
-    struct kndSet **obj1, **obj2;
-
-    obj1 = (struct kndSet**)a;
-    obj2 = (struct kndSet**)b;
-
-    if ((*obj1)->num_elems == (*obj2)->num_elems) return 0;
-
-    if ((*obj1)->num_elems < (*obj2)->num_elems) return 1;
-
-    return -1;
-}
-*/
-
-static void
-kndSet_del(struct kndSet *self)
-{
-    struct kndFacet *f;
-    struct kndSetElem *elem;
-    struct kndElemIdx *idx, *term_idx;
-    size_t i, j, ri;
-
-    for (i = 0; i < self->num_facets; i++) {
-        f = self->facets[i];
-        f->del(f);
-    }
-
-    /* terminal IDX */
-    /*
-    if (self->idx) {
-        for (i = 0; i < KND_ID_BASE; i++) {
-            idx = self->idx[i];
-            if (!idx) continue;
-            for (j = 0; j < KND_ID_BASE; j++) {
-                term_idx = idx->idx[j];
-                if (!term_idx) continue;
-
-                for (ri = 0; ri < KND_ID_BASE; ri++) {
-                    elem = term_idx->elems[ri];
-                    if (!elem) continue;
-
-                    //elem->del(elem);
-                }
-                free(term_idx);
-            }
-            free(idx);
-        }
-        free(self->idx);
-    }
-    */
-    
-    /* clean up the inbox */
-    for (i = 0; i < self->inbox_size; i++) {
-        elem = self->inbox[i];
-        if (!elem) continue;
-        
-        //elem->del(elem);
-        self->inbox[i] = NULL;
-    }
-
-    free(self);
-}
-
 static void
 kndSetElem_str(struct kndSet *self, size_t depth)
 {
@@ -131,70 +55,55 @@ kndSetElem_str(struct kndSet *self, size_t depth)
 }
 
 static void 
-kndSet_str(struct kndSet *self, size_t depth, size_t max_depth)
+kndSet_str(struct kndSet *self, size_t depth)
 {
-    struct kndSetElem *elem;
-    struct kndFacet *f;
+    struct kndFacet *facet;
+    struct ooDict *set_idx;
+    struct kndSet *set;
+    struct kndConcDir *conc_dir;
+    const char *key;
+    void *val;
 
-    char buf[KND_NAME_SIZE];
-    //size_t buf_size;
-    
-    struct kndElemIdx *idx, *term_idx;
-    size_t i, j, ri, offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
+    knd_log("%*s{set %.*s [total:%zu]", depth * KND_OFFSET_SIZE, "",
+	    self->base->name_size, self->base->name, self->idx->size);
 
-    char *offset = malloc(offset_size + 1);
-    memset(offset, ' ', offset_size);
-    offset[offset_size] = '\0';
+    for (size_t i = 0; i < self->num_facets; i++) {
+	facet = self->facets[i];
+	knd_log("%*s[%.*s",
+		(depth + 1) * KND_OFFSET_SIZE, "",
+		facet->attr->name_size, facet->attr->name);
 
-    if (depth > max_depth) return;
-    
-    knd_log("\n%s|__\"%s\" [in:%lu facets:%lu TOTAL: %lu]\n",
-            offset, self->name,
-            (unsigned long)self->inbox_size,
-            (unsigned long)self->num_facets,
-            (unsigned long)self->num_elems);
+	if (facet->set_idx) {
+	    set_idx = facet->set_idx;
+	    key = NULL;
+	    set_idx->rewind(set_idx);
+	    do {
+		set_idx->next_item(set_idx, &key, &val);
+		if (!key) break;
+		set = (struct kndSet*)val;
+		set->str(set, depth + 2);
+	    } while (key);
+	}
 
-    for (i = 0; i < self->inbox_size; i++) {
-        elem = self->inbox[i];
-        kndSetElem_str(elem, depth + 1);
+	knd_log("%*s]",
+		(depth + 1) * KND_OFFSET_SIZE, "");
+	knd_log("%*s}", depth * KND_OFFSET_SIZE, "");
     }
 
-    for (i = 0; i < self->num_facets; i++) {
-        f = self->facets[i];
-        f->str(f, depth, max_depth);
-    }
-
-    
-    /* terminal IDX */
     if (self->idx) {
-        if ((depth + 1) > max_depth) return;
-
-	/*
-        for (i = 0; i < KND_ID_BASE; i++) {
-            idx = self->idx[i];
-            if (!idx) continue;
-
-            knd_log("%s%lu [tot:%lu]\n", offset,
-                    (unsigned long)i, (unsigned long)idx->num_elems);
-
-            for (j = 0; j < KND_ID_BASE; j++) {
-                term_idx = idx->idx[j];
-                if (!term_idx) continue;
-
-                knd_log("%s%s|_%lu [tot:%lu]\n", offset, offset,
-                        (unsigned long)j,
-                        (unsigned long)idx->num_elems);
-
-                for (ri = 0; ri < KND_ID_BASE; ri++) {
-                    elem = term_idx->elems[ri];
-                    if (!elem) continue;
-
-                    kndSetElem_str(elem, depth + 1);
-                }
-            
-            }
-	    }*/
+	key = NULL;
+	self->idx->rewind(self->idx);
+	do {
+	    self->idx->next_item(self->idx, &key, &val);
+	    if (!key) break;
+	    conc_dir = (struct kndSet*)val;
+	    knd_log("%*s => %.*s",
+		    (depth + 1) * KND_OFFSET_SIZE, "",
+		    conc_dir->name_size, conc_dir->name);
+	} while (key);
     }
+    
+    knd_log("%*s}", depth * KND_OFFSET_SIZE, "");
 }
 
 static int 
@@ -212,7 +121,7 @@ kndSet_export_JSON(struct kndSet *self,
     int err;
     
     if (DEBUG_SET_LEVEL_3)
-        knd_log("  .. jsonize set \"%s\" depth: %lu\n", self->name,
+        knd_log("  .. jsonize set \"%s\" depth: %lu\n", self->base->name,
                 (unsigned long)depth);
 
     err = out->write(out,  "{", 1);
@@ -220,7 +129,7 @@ kndSet_export_JSON(struct kndSet *self,
 
     buf_size = sprintf(buf,
                        "\"n\":\"%s\"",
-                       self->name);
+                       self->base->name);
     err = out->write(out,
                      buf, buf_size);
     if (err) return err;
@@ -270,7 +179,7 @@ kndSet_export_JSON(struct kndSet *self,
     /*if ((depth + 1) > self->export_depth) {
         if (DEBUG_SET_LEVEL_3) 
             knd_log("  -- max depth reached in \"%s\": %lu of %lu\n",
-                    self->name,
+                    self->base->name,
                     (unsigned long)depth,
                     (unsigned long)self->export_depth);
 
@@ -340,7 +249,7 @@ kndSet_intersect(struct kndSet   *self,
                     struct kndSet **sets,
                     size_t num_sets)
 {
-    struct kndSet *base, *set;
+    struct kndSet *smallset, *set;
     struct kndSetElem *elem;
     struct kndElemIdx *idx, *term_idx;
     //struct kndFacet *f;
@@ -348,8 +257,8 @@ kndSet_intersect(struct kndSet   *self,
     int i, j, ri, err;
 
     if (DEBUG_SET_LEVEL_2) 
-        knd_log(" .. intersection by Set \"%s\"..\n",
-                self->name);
+        knd_log(" .. intersection by Set \"%.*s\"..\n",
+                smallset->base->name_size, smallset->base->name);
 
     /* sort sets by size */
     qsort(sets,
@@ -358,17 +267,17 @@ kndSet_intersect(struct kndSet   *self,
           knd_compare_set_by_size_ascend);
 
     /* the smallest set */
-    base = sets[0];
+    smallset = sets[0];
     set = sets[1];
     
-    if (!base->idx) {
-        knd_log("  -- no IDX in %s?\n",
-                base->name);
+    if (!smallset->idx) {
+        knd_log("  -- no IDX in %.*s?\n",
+                smallset->base->name_size, smallset->base->name);
         return knd_FAIL;
     }
     
-    knd_log("  .. traverse base Set \"%s\"..\n",
-            base->name);
+    knd_log("  .. traverse the smaller Set \"%s\"..\n",
+            smallset->base->name);
     
     /*    for (i = 0; i < KND_ID_BASE; i++) {
         idx = base->idx[i];
@@ -405,322 +314,150 @@ kndSet_intersect(struct kndSet   *self,
 
 static int
 kndSet_get_facet(struct kndSet  *self,
-                   const char       *facet_name,
-                   size_t            facet_name_size,
-                   struct kndFacet  **result)
+		 struct kndAttr *attr,
+		 struct kndFacet  **result)
 {
     struct kndFacet *f;
     int err;
     
     for (size_t i = 0; i < self->num_facets; i++) {
         f = self->facets[i];
-
-        if (!strcmp(f->name, facet_name)) {
+        if (f->attr == attr) {
             *result = f;
             return knd_OK;
         }
     }
 
-    if (self->num_facets + 1 >= KND_MAX_ATTRS)
-        return knd_NOMEM;
-        
+    if (self->num_facets >= KND_MAX_ATTRS)
+        return knd_LIMIT;
+
     /* facet not found, create one */
-    /* TODO: mempool
-   err = kndFacet_new(&f);
-    if (err) return err;
-    */
-    
-    memcpy(f->name, facet_name, facet_name_size);
-    f->name[facet_name_size] = '\0';
-    f->name_size = facet_name_size;
-    
-    //f->base = self->base;
+    err = self->mempool->new_facet(self->mempool, &f);                            RET_ERR();
+    /* TODO: mempool alloc */
+    err = ooDict_new(&f->set_idx, KND_MEDIUM_DICT_SIZE);                          RET_ERR();
+    f->attr = attr;
     f->parent = self;
-    f->out = self->out;
-    
+    f->mempool = self->mempool;
+
     self->facets[self->num_facets] = f;
     self->num_facets++;
-    
+
     *result = f;
-
-    
     return knd_OK;
 }
 
 static int
-kndSet_term_idx(struct kndSet *self,
-                   struct kndSetElem *elem)
+kndFacet_get_set(struct kndFacet  *self,
+		 struct kndConcept *base,
+		 struct kndSet  **result)
 {
-    struct kndElemIdx *idx, *term_idx, **idxs;
-    struct kndSetElem **elems;
-    
-    int numval = -1;
-    
-    if (DEBUG_SET_LEVEL_2) 
-        knd_log(".. term idx: %p", elem);
+    struct kndSet *set;
+    int err;
 
-    if (!elem->id_size) return knd_FAIL;
-    
-    if (DEBUG_SET_LEVEL_2) 
-        knd_log("   .. add term idx for obj \"%s\" [%lu]",
-                elem->id, (unsigned long)elem->id_size);
-
-    if (!self->idx) {
-        self->idx = malloc(sizeof(struct kndElemIdx*) * (KND_ID_BASE + 1));
-        if (!self->idx)
-            return knd_NOMEM;
-        memset(self->idx, 0, sizeof(struct kndElemIdx*) * (KND_ID_BASE + 1));
-    }
-    
-    /* first numeric position */
-    //numval = id_base[(size_t)elem->id[0]];
-    //if (numval == -1) return knd_FAIL;
-
-    if (DEBUG_SET_LEVEL_3) 
-        knd_log("   == term idx 0 pos: %d\n", numval);
-    
-    idx = self->idx[numval];
-    if (!idx) {
-        idx = malloc(sizeof(struct kndElemIdx));
-        if (!idx) 
-            return knd_NOMEM;
-
-        memset(idx, 0, sizeof(struct kndElemIdx));
-        self->idx[numval] = idx;
+    set = self->set_idx->get(self->set_idx,
+			     base->name, base->name_size);
+    if (set) {
+	*result = set;
+	return knd_OK;
     }
 
-    idx->num_elems++;
-    
-    idxs = idx->idx;
-    if (!idxs) {
-        idxs = malloc(sizeof(struct kndElemIdx*) * (KND_ID_BASE + 1));
-        if (!idxs)
-            return knd_NOMEM;
+    err = self->mempool->new_set(self->mempool, &set);                            RET_ERR();
+    set->type = KND_SET_CLASS;
 
-        memset(idxs, 0, sizeof(struct kndElemIdx*) * (KND_ID_BASE + 1));
-        idx->idx = idxs;
-    }
+    /* TODO: alloc */
+    err = ooDict_new(&set->idx, KND_MEDIUM_DICT_SIZE);                            RET_ERR();
+    set->base = base->dir;
+    set->mempool = self->mempool;
+    set->parent_facet = self;
 
-    /* second numeric position */
-    //numval = id_base[(size_t)elem->id[1]];
-    //if (numval == -1) return knd_FAIL;
+    err = self->set_idx->set(self->set_idx,
+			     base->name, base->name_size, (void*)set);           RET_ERR();
 
-    if (DEBUG_SET_LEVEL_3) 
-        knd_log("== term idx 1 pos: %d\n", numval);
-
-    term_idx = idxs[numval];
-    if (!term_idx) {
-        term_idx = malloc(sizeof(struct kndElemIdx));
-        if (!term_idx) 
-            return knd_NOMEM;
-
-        memset(term_idx, 0, sizeof(struct kndElemIdx));
-        idxs[numval] = term_idx;
-    }
-
-    term_idx->num_elems++;
-    
-    if (!term_idx->elems) {
-        elems = malloc(sizeof(struct kndSetElem*) * (KND_ID_BASE + 1));
-        if (!elems)
-            return knd_NOMEM;
-
-        memset(elems, 0, sizeof(struct kndSetElem*) * (KND_ID_BASE + 1));
-        term_idx->elems = elems;
-    }
-
-    /* LAST numeric position */
-    //numval = id_base[(size_t)elem->id[2]];
-    //if (numval == -1) return knd_FAIL;
-
-    if (DEBUG_SET_LEVEL_3) 
-        knd_log("  == term idx 2 pos: %d\n", numval);
-
-    term_idx->elems[numval] = elem;
-    
-    return knd_OK;
-}
-
-
-
-static int
-kndSet_facetize_elem(struct kndSet *self,
-                       struct kndSetElem *elem)
-{
-    struct kndFacet *f;
-    struct kndSortAttr *attr;
-    int err = knd_FAIL;
-    
-    if (DEBUG_SET_LEVEL_2) {
-        knd_log("\n    .. passing ELEM to facets of set \"%s\"",
-                self->name);
-    }
-
-    /*if (!elem->sorttag->num_attrs) {
-        if (DEBUG_SET_LEVEL_2)
-            knd_log("   -- no more attrs in ELEM: add elem to term IDX!\n");
-
-        err = kndSet_term_idx(self, elem);
-        if (err) {
-            knd_log("   -- term idx failed to add elem \"%s\" :(\n",
-                    elem->id);
-            return err;
-        }
-        
-        return knd_OK;
-    }
-    
-    for (size_t i = 0; i < elem->sorttag->num_attrs; i++) {
-        attr = elem->sorttag->attrs[i];
-
-        if (DEBUG_SET_LEVEL_2) {
-            knd_log("     == add elem attr \"%s\" : %s [numval:%lu]  type: %d\n",
-                    attr->name,
-                    attr->val, (unsigned long)attr->numval,
-                    attr->type);
-        }
-        
-        err = kndSet_get_facet(self,
-                                  (const char*)attr->name, attr->name_size,
-                                  &f);
-        if (err) {
-            if (DEBUG_SET_LEVEL_3)
-                knd_log("   -- couldn't get facet \"%s\" :(\n", attr->name);
-            return err;
-        }
-        
-        f->numval = attr->numval;
-        f->type = attr->type;
-        
-        err = f->add_elem(f, elem, i, f->type);
-        if (err) {
-            knd_log("   -- facet \"%s\" couldn't add elem \"%s\" :(\n", attr->name, elem->id);
-            return err;
-        }
-    }
-
-    */ 
+    *result = set;
     return knd_OK;
 }
 
 static int
 kndSet_facetize(struct kndSet *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-
-    struct kndSetElem *elem, *r;
-    struct kndSortTag *tag;
-    struct kndSortAttr *attr, *a;
-    struct kndElemIdx *idx, *term_idx;
-    size_t i, j, ri, attr_count;
     int err;
     
     if (DEBUG_SET_LEVEL_1) {
         knd_log("\n    .. further facetize the set \"%s\"..\n",
-                self->name);
+                self->base->name);
     }
 
-    /*  atomic IDX */
-    if (self->parent_facet) {
-        if (DEBUG_SET_LEVEL_3)
-            knd_log("\n    .. facet parent: \"%s\"\n",
-                    self->parent_facet->name);
-        
-    }
-    
     return knd_OK;
 }
 
-                   
 static int
-kndSet_find(struct kndSet     *self,
-	    const char *facet_name,
-	    const char *val,
-	    size_t val_size,
-	    struct kndSet **result)
+kndFacet_add_ref(struct kndFacet *self,
+	       struct kndConcept *topic,
+	       struct kndConcept *spec)
 {
-    struct kndFacet *f;
-    struct kndSet *set = NULL;
-    struct kndSetElem *elem;
-    struct kndElemIdx *idx, *term_idx;
-    size_t i, j, ri;
+    struct kndSet *set;
     int err;
 
-    if (DEBUG_SET_LEVEL_TMP)
-        knd_log("  .. finding facet \"%s\" val: %s..\n",
-                facet_name, val);
+    knd_log(".. add spec %.*s to topic %.*s..",
+	    spec->name_size, spec->name,
+	    topic->name_size, topic->name);
 
-    
-    return knd_FAIL;
+    /* get baseclass set */
+    err = kndFacet_get_set(self, spec, &set);                                     RET_ERR();
+
+
+    /* add conc ref to a set */
+    err = set->idx->set(set->idx,
+			topic->name, topic->name_size, (void*)topic->dir);        RET_ERR();
+
+    return knd_OK;
 }
 
 static int
-kndSet_add_elem(struct kndSet *self,
-		struct kndSetElem *elem)
+kndSet_add_ref(struct kndSet *self,
+	       struct kndAttr *attr,
+	       struct kndConcept *topic,
+	       struct kndConcept *spec)
 {
+    struct kndFacet *f;
     int err;
-    
-    if (self->num_facets) {
-        err = kndSet_facetize_elem(self, elem);
-        if (err) {
-            knd_log("  -- couldn't facetize elem %s :(\n", elem->id);
 
-            //if (elem->obj)
-            //    elem->obj->str(elem->obj);
-            
-            kndSetElem_str(elem, 1);
-            return err;
-        }
+    if (DEBUG_SET_LEVEL_TMP)
+        knd_log("  .. \"%.*s\" IDX to add attr ref \"%.*s\" "
+		"(topic \"%.*s\" => spec \"%.*s\")",
+		self->base->name_size, self->base->name,
+		attr->name_size, attr->name,
+		topic->name_size, topic->name,
+		spec->name_size, spec->name);
 
-        self->num_elems++;
-        return knd_OK;
-    }
-    
-    if (DEBUG_SET_LEVEL_2) {
-	knd_log("    ++ \"%s\" set to put elem \"%s\" to INBOX  [total: %lu]\n",
-		self->name, elem->id, (unsigned long)self->inbox_size);
-    }
-    
-    self->inbox[self->inbox_size] = elem;
-    self->inbox_size++;
-    self->num_elems++;
-    
-    if ((self->inbox_size + 1) < self->max_inbox_size) {
-        if (DEBUG_SET_LEVEL_2)
-            knd_log("Inbox size: %lu ELEM: %p",
-                    (unsigned long)self->inbox_size, elem);
-        return knd_OK;
-    }
-    
-    /* inbox overflow?
-       time to split the inbox into subsets */
-    if (DEBUG_SET_LEVEL_1)
-        knd_log("Inbox size: %lu   .. Time to create facets...\n\n",
-                (unsigned long)self->inbox_size);
+    err = kndSet_get_facet(self, attr, &f);                                       RET_ERR();
 
-    for (size_t i = 0; i < self->inbox_size; i++) {
-        elem = self->inbox[i];
-        if (DEBUG_SET_LEVEL_2)
-            knd_log("== %d) elem: %p", i, elem);
-        
-        err = kndSet_facetize_elem(self, elem);
-        if (err) {
-            knd_log("  -- couldn't facetize elem from inbox %s :(\n", elem->id);
-            return err;
-        }
-        self->inbox[i] = NULL;
-    }
- 
-    /* clean up the inbox */
-    for (size_t i = 0; i < self->inbox_size; i++) {
-        elem = self->inbox[i];
-        if (!elem) continue;
-        //elem->del(elem);
+    err = kndFacet_add_ref(f, topic, spec);                                       RET_ERR();
+
+    return knd_OK;
+}
+
+static int
+kndSet_add_conc(struct kndSet *self,
+		struct kndConcept *conc)
+{
+    struct kndConcDir *dir;
+    struct ooDict *idx;
+    int err;
+
+    idx = self->idx;
+
+    if (DEBUG_SET_LEVEL_1) {
+	knd_log("++ \"%.*s\" set to add conc \"%.*s\" TOTAL descendants: %zu",
+		self->base->name_size, self->base->name,
+		conc->name_size, conc->name,
+		idx->size);
     }
 
-    memset(self->inbox, 0, sizeof(struct kndSetElem*) * (self->max_inbox_size + 1));
-    self->inbox_size = 0;
+    dir = idx->get(idx, conc->name, conc->name_size);
+    if (!dir) {
+	err = idx->set(idx, conc->name, conc->name_size, (void*)conc->dir);       RET_ERR();
+    }
 
     return knd_OK;
 }
@@ -736,7 +473,7 @@ kndSet_merge_idx(struct kndSet *self,
 
     if (!src->idx) {
         if (DEBUG_SET_LEVEL_2)
-            knd_log("?? no term idx in set %s?", src->name);
+            knd_log("?? no term idx in set %s?", src->base->name);
         return knd_OK;
     }
     
@@ -767,13 +504,9 @@ kndSet_merge_idx(struct kndSet *self,
 extern int kndSet_init(struct kndSet *self)
 {
     self->max_inbox_size = KND_SET_INBOX_SIZE;
-    self->del = kndSet_del;
     self->str = kndSet_str;
-    //self->term_idx = kndSet_term_idx;
-    self->add_elem = kndSet_add_elem;
-
-    //self->lookup_elem = kndSet_lookup_elem;
-    //self->find = kndSet_find;
+    self->add_conc = kndSet_add_conc;
+    self->add_ref = kndSet_add_ref;
 
     self->intersect = kndSet_intersect;
     self->facetize = kndSet_facetize;
@@ -784,9 +517,9 @@ extern void kndFacet_init(struct kndFacet *self)
 {
     /*self->del = kndFacet_del;
     self->str = kndFacet_str;
+    */
 
-    self->add_elem = kndFacet_add_elem;
-    self->find = kndFacet_find;
+    /*self->find = kndFacet_find;
     self->extract_objs = kndFacet_extract_objs;
 
     self->read = kndFacet_read;
@@ -799,9 +532,7 @@ extern void kndFacet_init(struct kndFacet *self)
 extern int 
 kndSet_new(struct kndSet **set)
 {
-    struct kndSet *self;
-
-    self = malloc(sizeof(struct kndSet));
+    struct kndSet *self = malloc(sizeof(struct kndSet));
     if (!self) return knd_NOMEM;
 
     memset(self, 0, sizeof(struct kndSet));

@@ -98,15 +98,15 @@ static int new_set(struct kndMemPool *self,
 static int new_facet(struct kndMemPool *self,
                      struct kndFacet **result)
 {
-    struct kndFacet *q;
+    struct kndFacet *f;
     if (self->num_facets >= self->max_facets) {
         return knd_NOMEM;
     }
-    q = &self->facets[self->num_facets];
-    memset(q, 0, sizeof(struct kndFacet));
-    kndFacet_init(q);
+    f = &self->facets[self->num_facets];
+    memset(f, 0, sizeof(struct kndFacet));
+    kndFacet_init(f);
     self->num_facets++;
-    *result = q;
+    *result = f;
     return knd_OK;
 }
 
@@ -510,13 +510,13 @@ static int new_proc_update_ref(struct kndMemPool *self,
 static int alloc(struct kndMemPool *self)
 {
     if (!self->max_queries)      self->max_queries = KND_MIN_QUERIES;
-    if (!self->max_sets)         self->max_sets = KND_MIN_SETS;
-    if (!self->max_facets)       self->max_queries = KND_MIN_FACETS;
+    if (!self->max_sets)         self->max_sets =    KND_MIN_SETS;
+    if (!self->max_facets)       self->max_facets =  KND_MIN_FACETS;
     if (!self->max_updates)      self->max_updates = KND_MIN_UPDATES;
-    if (!self->max_states)       self->max_states = KND_MIN_STATES;
+    if (!self->max_states)       self->max_states =  KND_MIN_STATES;
     if (!self->max_class_updates) self->max_class_updates = KND_MIN_UPDATES;
     if (!self->max_class_update_refs) self->max_class_update_refs = KND_MIN_UPDATES;
-    if (!self->max_users)        self->max_users = KND_MIN_USERS;
+    if (!self->max_users)        self->max_users =   KND_MIN_USERS;
     if (!self->max_classes)      self->max_classes = KND_MIN_CLASSES;
     if (!self->max_conc_dirs)    self->max_conc_dirs = self->max_classes;
     if (!self->max_conc_items)   self->max_conc_items = KND_MIN_CLASSES;

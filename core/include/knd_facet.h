@@ -21,6 +21,7 @@
 #pragma once
 
 #include "knd_utils.h"
+struct kndMemPool;
 
 typedef enum knd_facet_type { KND_FACET_UNREC,
                               KND_FACET_ATOMIC,
@@ -51,59 +52,42 @@ struct kndSetElem;
 struct kndFacet
 {
     knd_facet_type type;
-
     struct kndAttr *attr;
 
-    char name[KND_NAME_SIZE];
-    size_t name_size;
+    //char name[KND_NAME_SIZE];
+    //size_t name_size;
 
-    size_t numval;
-    
+    //size_t numval;
+
     struct kndSetElem *inbox[KND_SET_INBOX_SIZE];
     size_t inbox_size;
 
     struct kndOutput *out;
     size_t rec_size;
 
-    /*size_t num_items;*/
     struct kndSet *parent;
+    struct kndMemPool *mempool;
 
-    struct kndSet **sets;
-    size_t num_sets;
+    struct ooDict *set_idx;
 
     size_t export_depth;
     size_t batch_size;
     
     /******** public methods ********/
-    int  (*init)(struct kndFacet *self);
-    void (*del)(struct kndFacet *self);
     void (*str)(struct kndFacet *self,
                 size_t           depth,
                 size_t           max_depth);
 
-    int (*find)(struct kndFacet   *self,
-                const char        *val,
-                size_t val_size,
-                struct kndSet **result);
-
-    int (*add_elem)(struct kndFacet *self,
-                   struct kndSetElem *elem,
-                   size_t attr_id,
-                   knd_facet_type attr_type);
+    int (*add_ref)(struct kndFacet *self,
+		   struct kndConcept *topic,
+		   struct kndConcept *spec);
     
     int (*sync)(struct kndFacet *self);
-
-    int (*extract_objs)(struct kndFacet *self);
 
     int (*read)(struct kndFacet   *self,
                 const char        *rec,
                 size_t            rec_size);
     
-    int (*read_tags)(struct kndFacet  *self,
-                     const char       *rec,
-                     size_t           rec_size,
-                     struct kndSet *set);
-
     int (*export)(struct kndFacet *self,
                    knd_format format,
                    size_t depth);

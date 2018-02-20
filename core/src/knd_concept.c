@@ -26,6 +26,7 @@
 #include "knd_object.h"
 #include "knd_rel.h"
 #include "knd_proc.h"
+#include "knd_set.h"
 #include "knd_utils.h"
 #include "knd_http_codes.h"
 
@@ -191,6 +192,8 @@ static void str(struct kndConcept *self)
     struct kndConcRef *ref;
     struct kndConcItem *item;
     struct kndConcept *c;
+    struct kndSet *set;
+    struct kndFacet *facet;
     char resolved_state = '-';
     const char *key;
     void *val;
@@ -254,11 +257,17 @@ static void str(struct kndConcept *self)
 	c = ref->dir->conc;
 	if (!c) continue;
 
-	knd_log("%*sbase of --> %.*s [%zu]",
+	/*knd_log("%*sbase of --> %.*s [%zu]",
 		(self->depth + 1) * KND_OFFSET_SIZE, "",
 		c->name_size, c->name, c->num_terminals);
+	*/
     }
 
+    if (self->dir->descendants) {
+	set = self->dir->descendants;
+	set->str(set, self->depth + 1);
+    }
+    
     knd_log("%*s}", self->depth * KND_OFFSET_SIZE, "");
 }
 
@@ -504,6 +513,25 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
     return knd_OK;
 }
 
+static int is_base(struct kndConcept *self,
+		   struct kndConcept *child)
+{
+    if (DEBUG_CONC_LEVEL_TMP)
+	knd_log(".. check inheritance: %.*s [resolved: %d] => %.*s [resolved:%d]?",
+		child->name_size, child->name, child->is_resolved,
+		self->name_size, self->name, self->is_resolved);
+
+    /* make sure that specific class (c) inherits from the base */
+    for (size_t i = 0; i < child->num_bases; i++) {
+	if (child->bases[i]->conc == self) {
+	    return knd_OK;
+	}
+    }
+    knd_log("-- no inheritance: %.*s => %.*s :(",
+	    child->name_size, child->name,
+	    self->name_size, self->name);
+    return knd_FAIL;
+}
 
 static int index_attr(struct kndConcept *self,
 		      struct kndAttr *attr,
@@ -511,32 +539,41 @@ static int index_attr(struct kndConcept *self,
 {
     struct kndConcept *base;
     struct kndConcept *c;
+    struct kndConcDir *dir;
+    struct kndSet *descendants;
     int err;
+
     if (DEBUG_CONC_LEVEL_TMP) {
-	if (!strncmp("cuisine", item->name, item->name_size)) {
-	    knd_log(".. index attr: \"%.*s\" refclass: \"%.*s\" (val: %.*s)",
-		    attr->name_size, attr->name,
-		    attr->ref_classname_size, attr->ref_classname,
-		    item->val_size, item->val);
-	}
+	knd_log("\n.. indexing CURR CLASS: \"%.*s\" .. index attr: \"%.*s\" [type:%d]"
+		" refclass: \"%.*s\" (val: %.*s)",
+		self->name_size, self->name,
+		attr->name_size, attr->name, attr->type,
+		attr->ref_classname_size, attr->ref_classname,
+		item->val_size, item->val);
     }
     if (!attr->ref_classname_size) return knd_OK;
 
-    err = get_class(self, item->val,
-		    item->val_size, &base);                             /*RET_ERR(); */
-
-    /* TODO */
-    if (err) {
-	if (DEBUG_CONC_LEVEL_2)
-	    knd_log("-- no such class: \"%.*s\" :(",
-		item->val_size, item->val);
-	return knd_OK;
+    /* template base class */
+    err = get_class(self, attr->ref_classname,
+		    attr->ref_classname_size, &base);                             RET_ERR();
+    if (!base->is_resolved) {
+	err = base->resolve(base, NULL);                                          RET_ERR();
     }
 
+    /* specific class */
+    err = get_class(self, item->val,
+		    item->val_size, &c);                                          RET_ERR();
 
-    /* build reverse index */
+    if (!c->is_resolved) {
+	err = c->resolve(c, NULL);                                                RET_ERR();
+    }
+    err = is_base(base, c);                                                       RET_ERR();
 
-    
+    descendants = attr->parent_conc->dir->descendants;
+
+    /* add curr class to the reverse index */
+    err = descendants->add_ref(descendants, attr, self, c);
+
     return knd_OK;
 }
 
@@ -555,8 +592,10 @@ static int resolve_attr_items(struct kndConcept *self,
 	    return knd_FAIL;
 	}
 
-	err = index_attr(self, entry->attr, attr_item);
-	if (err) return err;
+	if (entry->attr->is_indexed) {
+	    err = index_attr(self, entry->attr, attr_item);
+	    if (err) return err;
+	}
 
 	attr_item->attr = entry->attr;
     }
@@ -686,6 +725,7 @@ static int resolve_base_classes(struct kndConcept *self)
     struct kndConcItem *item;
     struct kndConcept *c;
     struct kndConcRef *ref;
+    struct kndSet *descendants;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -711,7 +751,7 @@ static int resolve_base_classes(struct kndConcept *self)
         err = get_class(self, item->classname, item->classname_size, &c);         RET_ERR();
         if (c == self) {
             knd_log("-- self reference detected in \"%.*s\" :(",
-                    item->name_size, item->name);
+                    item->classname_size, item->classname);
             return knd_FAIL;
         }
 
@@ -744,9 +784,20 @@ static int resolve_base_classes(struct kndConcept *self)
         ref->dir = self->dir;
         c->num_children++;
 
-	if (DEBUG_CONC_LEVEL_2)
-	    knd_log("\n\n.. children of class \"%.*s\": %zu",
-		    c->name_size, c->name, c->num_children);
+	/* register as a descendant */
+	descendants = c->dir->descendants;
+	if (!descendants) {
+	    err = self->mempool->new_set(self->mempool, &descendants);            RET_ERR();
+	    descendants->type = KND_SET_CLASS;
+
+	    /* TODO: alloc */
+            err = ooDict_new(&descendants->idx, KND_MEDIUM_DICT_SIZE);            RET_ERR();
+	    descendants->base = c->dir;
+	    descendants->mempool = self->mempool;
+	    c->dir->descendants = descendants;
+	}
+
+	err = descendants->add_conc(descendants, self);                           RET_ERR();
 
         err = inherit_attrs(self, item->conc);                                    RET_ERR();
     }
@@ -1645,6 +1696,8 @@ static gsl_err_t parse_import_class(void *obj,
 
     err = self->mempool->new_conc_dir(self->mempool, &dir);
     if (err) { parser_err = make_gsl_err_external(err); goto final; }
+    memcpy(dir->name, c->name, c->name_size);
+    dir->name_size = c->name_size;
     dir->conc = c;
     c->dir = dir;
     dir->mempool = self->mempool;
@@ -3693,7 +3746,7 @@ static int coordinate(struct kndConcept *self)
 */
 
     /* display classes */
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         key = NULL;
         self->class_idx->rewind(self->class_idx);
         do {
@@ -3711,6 +3764,8 @@ static int coordinate(struct kndConcept *self)
 	    }
 
 	    if (!c->num_children) continue;
+	    if (!c->dir->descendants) continue;
+	    if (!c->dir->descendants->num_facets) continue;
 
             c->depth = 0;
 	    c->str(c);
