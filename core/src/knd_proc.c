@@ -245,7 +245,7 @@ static int get_proc(struct kndProc *self,
     proc->task = self->task;
     proc->mempool = self->mempool;
     proc->proc_idx = self->proc_idx;
-    proc->class_idx = self->class_idx;
+    proc->class_name_idx = self->class_name_idx;
     proc->dir = dir;
 
     memcpy(proc->name, dir->name, dir->name_size);
@@ -1172,8 +1172,7 @@ static int import_proc(struct kndProc *self,
     proc->task = self->task;
     proc->mempool = self->mempool;
     proc->proc_idx = self->proc_idx;
-    proc->class_idx = self->class_idx;
-
+    proc->class_name_idx = self->class_name_idx;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,

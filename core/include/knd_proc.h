@@ -206,7 +206,7 @@ struct kndProc
 
     struct ooDict *proc_idx;
     struct ooDict *rel_idx;
-    struct ooDict *class_idx;
+    struct ooDict *class_name_idx;
 
     const char *frozen_output_file_name;
     size_t frozen_output_file_name_size;

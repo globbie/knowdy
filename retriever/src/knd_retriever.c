@@ -503,16 +503,19 @@ kndRetriever_new(struct kndRetriever **rec,
     conc->rel->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
 
     /* specific allocations of the root concs */
-    err = ooDict_new(&conc->class_idx, KND_MEDIUM_DICT_SIZE);
+    err = ooDict_new(&conc->class_idx, KND_LARGE_DICT_SIZE);
+    if (err) goto error;
+
+    err = ooDict_new(&conc->class_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
 
     err = ooDict_new(&conc->proc->proc_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
-    conc->proc->class_idx = conc->class_idx;
+    conc->proc->class_name_idx = conc->class_name_idx;
 
     err = ooDict_new(&conc->rel->rel_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
-    conc->rel->class_idx = conc->class_idx;
+    conc->rel->class_name_idx = conc->class_name_idx;
 
     /* user idx */
     /*if (self->mempool->max_users) {
