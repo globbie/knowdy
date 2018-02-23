@@ -143,6 +143,33 @@ knd_calc_num_id(const char *id, size_t *numval)
     //knd_log("%.*s => %zu", KND_ID_SIZE, id, aggr);
 }
 
+extern void
+knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base)
+{
+    size_t curr_val = numval;
+    size_t curr_size = 0;
+    ldiv_t result;
+
+    if (curr_val == 0) {
+	*buf = '0';
+	*buf_size = 1;
+	return;
+    }
+
+    while (curr_val) {
+	result = ldiv(curr_val, base);
+
+	//knd_log("Q:%lu R:%lu CURR:%zu buf_size:%zu",
+	//	result.quot, result.rem, curr_base, *buf_size);
+
+	curr_val = result.quot;
+	*buf++ = obj_id_seq[result.rem];
+	curr_size++;
+    }
+
+    *buf_size = curr_size;
+}
+
 extern const char *
 knd_max_id(const char *a, const char *b)
 {

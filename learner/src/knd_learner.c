@@ -36,7 +36,7 @@ kndLearner_del(struct kndLearner *self)
     struct kndConcept *conc;
 
     conc = self->admin->root_class;
-    conc->class_idx->del(conc->class_idx);
+    conc->class_name_idx->del(conc->class_name_idx);
     conc->rel->rel_idx->del(conc->rel->rel_idx);
     conc->rel->del(conc->rel);
 
@@ -564,13 +564,16 @@ kndLearner_new(struct kndLearner **rec,
     err = ooDict_new(&conc->class_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
+    err = ooDict_new(&conc->class_name_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+
     err = ooDict_new(&conc->proc->proc_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
-    conc->proc->class_idx = conc->class_idx;
+    conc->proc->class_name_idx = conc->class_name_idx;
 
     err = ooDict_new(&conc->rel->rel_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
-    conc->rel->class_idx = conc->class_idx;
+    conc->rel->class_name_idx = conc->class_name_idx;
 
     /* user idx */
     if (self->mempool->max_users) {

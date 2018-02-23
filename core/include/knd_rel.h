@@ -1,14 +1,14 @@
 /**
- *   Copyright (c) 2011-2017 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2018 by Dmitri Dmitriev
  *   All rights reserved.
  *
- *   This file is part of the Knowdy Search Engine, 
+ *   This file is part of the Knowdy Graph DB, 
  *   and as such it is subject to the license stated
  *   in the LICENSE file which you have received 
  *   as part of this distribution.
  *
  *   Project homepage:
- *   <http://www.globbie.net>
+ *   <http://www.knowdy.net>
  *
  *   Initial author and maintainer:
  *         Dmitri Dmitriev aka M0nsteR <dmitri@globbie.net>
@@ -155,7 +155,7 @@ struct kndRel
 
     struct kndRelDir *dir;
     struct ooDict *rel_idx;
-    struct ooDict *class_idx;
+    struct ooDict *class_name_idx;
     const char *frozen_output_file_name;
     size_t frozen_output_file_name_size;
     size_t frozen_size;

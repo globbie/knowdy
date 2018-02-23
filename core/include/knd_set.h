@@ -73,7 +73,7 @@ struct kndSet
     struct kndOutput *out;
     struct kndMemPool *mempool;
     knd_format format;
-    
+
     /******** public methods ********/
     void (*str)(struct kndSet *self,
 		size_t depth);
@@ -107,9 +107,7 @@ struct kndSet
                 const char    *rec,
                 size_t         rec_size);
 
-    int (*export)(struct kndSet *self,
-		  knd_format format,
-		  size_t depth);
+    int (*export)(struct kndSet *self);
 };
 
 extern int kndSet_init(struct kndSet *self);

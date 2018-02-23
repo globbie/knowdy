@@ -206,7 +206,7 @@ static int export_GSP(struct kndAttr *self)
     if (err) return err;
     
     if (self->is_a_set) {
-        err = out->write(out, "{list 1}", strlen("{list 1}"));
+        err = out->write(out, "{t set}", strlen("{t set}"));
         if (err) return err;
     }
     
@@ -523,7 +523,7 @@ static int parse_GSL(struct kndAttr *self,
                      const char *rec,
                      size_t *total_size)
 {
-    if (DEBUG_ATTR_LEVEL_2)
+    if (DEBUG_ATTR_LEVEL_1)
         knd_log(".. attr parsing: \"%.*s\"..", 32, rec);
 
     struct gslTaskSpec specs[] = {
@@ -569,6 +569,11 @@ static int parse_GSL(struct kndAttr *self,
         },
         { .type = GSL_CHANGE_STATE,
 	  .name = "t",
+          .name_size = strlen("t"),
+          .parse = parse_quant_type,
+          .obj = self
+        },
+        { .name = "t",
           .name_size = strlen("t"),
           .parse = parse_quant_type,
           .obj = self

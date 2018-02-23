@@ -510,7 +510,7 @@ static int resolve(struct kndRelArg *self)
 {
     struct kndConcDir *dir;
 
-    dir = self->rel->class_idx->get(self->rel->class_idx,
+    dir = self->rel->class_name_idx->get(self->rel->class_name_idx,
                                   self->classname, self->classname_size);
     if (!dir) {
         knd_log("-- Rel Arg resolve failed: no such class: %.*s :(", self->classname_size, self->classname);
@@ -530,7 +530,7 @@ static int resolve_inst(struct kndRelArg *self,
     int err;
 
 
-    dir = self->rel->class_idx->get(self->rel->class_idx,
+    dir = self->rel->class_name_idx->get(self->rel->class_name_idx,
                                     inst->classname, inst->classname_size);
     if (!dir) {
         knd_log("-- no such class: %.*s :(", inst->classname_size, inst->classname);

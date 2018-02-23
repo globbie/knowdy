@@ -25,6 +25,7 @@ extern int knd_is_valid_id(const char *id, size_t id_size);
 extern int knd_state_is_valid(const char *id, size_t id_size);
 extern int knd_next_state(char *s);
 extern void  knd_calc_num_id(const char *id, size_t *numval);
+extern void knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base);
 
 extern const char *max_id(const char *a, const char *b);
 extern const char *min_id(const char *a, const char *b);

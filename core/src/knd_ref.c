@@ -312,7 +312,7 @@ parse_GSL(struct kndRef *self,
           const char *rec,
           size_t *total_size)
 {
-    if (DEBUG_REF_LEVEL_1)
+    if (DEBUG_REF_LEVEL_TMP)
         knd_log(".. parse REF field: \"%s\"..", rec);
 
     struct gslTaskSpec specs[] = {

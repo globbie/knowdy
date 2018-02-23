@@ -96,7 +96,7 @@ kndSet_str(struct kndSet *self, size_t depth)
 	do {
 	    self->idx->next_item(self->idx, &key, &val);
 	    if (!key) break;
-	    conc_dir = (struct kndSet*)val;
+	    conc_dir = val;
 	    knd_log("%*s => %.*s",
 		    (depth + 1) * KND_OFFSET_SIZE, "",
 		    conc_dir->name_size, conc_dir->name);
@@ -107,8 +107,7 @@ kndSet_str(struct kndSet *self, size_t depth)
 }
 
 static int 
-kndSet_export_JSON(struct kndSet *self,
-                       size_t depth)
+kndSet_export_JSON(struct kndSet *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -120,10 +119,6 @@ kndSet_export_JSON(struct kndSet *self,
     size_t curr_batch_size = 0;
     int err;
     
-    if (DEBUG_SET_LEVEL_3)
-        knd_log("  .. jsonize set \"%s\" depth: %lu\n", self->base->name,
-                (unsigned long)depth);
-
     err = out->write(out,  "{", 1);
     if (err) return err;
 
@@ -173,8 +168,8 @@ kndSet_export_JSON(struct kndSet *self,
         curr_batch_size = self->inbox_size;
     }
     
-    if ((depth + 1) > KND_SET_MAX_DEPTH) 
-        goto final;
+    //if ((depth + 1) > KND_SET_MAX_DEPTH) 
+    //    goto final;
 
     /*if ((depth + 1) > self->export_depth) {
         if (DEBUG_SET_LEVEL_3) 
@@ -197,7 +192,7 @@ kndSet_export_JSON(struct kndSet *self,
                           ",\"facets\":[", strlen(",\"facets\":["));
         if (err) return err;
 
-        for (size_t i = 0; i < self->num_facets; i++) {
+        /*for (size_t i = 0; i < self->num_facets; i++) {
             f = self->facets[i];
 
             if (i) {
@@ -206,10 +201,9 @@ kndSet_export_JSON(struct kndSet *self,
             }
             
             f->out = out;
-            //f->export_depth = self->export_depth;
             err = f->export(f, KND_FORMAT_JSON, depth + 1);
             if (err) return err;
-        }
+	    }*/
 
         err = out->write(out,  "]", 1);
         if (err) return err;
@@ -225,15 +219,77 @@ kndSet_export_JSON(struct kndSet *self,
 
 
 static int 
-kndSet_export(struct kndSet *self,
-                  knd_format         format,
-                  size_t depth)
+kndSet_export_GSP(struct kndSet *self)
+{
+    struct kndOutput *out = self->out;
+    struct kndSet *set;
+    struct kndFacet *facet;
+    struct kndConcDir *conc_dir;
+    struct ooDict *set_idx;
+    const char *key;
+    void *val;
+    int err;
+
+    err = out->write(out,  "{_set ", strlen("{_set "));                           RET_ERR();
+    err = out->write(out, self->base->name, self->base->name_size);               RET_ERR();
+
+    for (size_t i = 0; i < self->num_facets; i++) {
+	facet = self->facets[i];
+
+	err = out->write(out,  "[fc", strlen("[fc"));                             RET_ERR();
+
+	err = out->write(out,  "{", 1);                                           RET_ERR();
+	err = out->write(out, facet->attr->name, facet->attr->name_size);
+
+	if (facet->set_idx) {
+	    err = out->write(out,  "[set", strlen("[set"));                       RET_ERR();
+	
+	    set_idx = facet->set_idx;
+	    key = NULL;
+	    set_idx->rewind(set_idx);
+	    do {
+		set_idx->next_item(set_idx, &key, &val);
+		if (!key) break;
+		set = (struct kndSet*)val;
+		set->out = self->out;
+		set->format = self->format;
+		err = set->export(set);                                           RET_ERR();
+	    } while (key);
+	    err = out->write(out,  "]", 1);                                       RET_ERR();
+	}
+	err = out->write(out,  "}", 1);                                           RET_ERR();
+    }
+
+    if (self->idx) {
+	key = NULL;
+	self->idx->rewind(self->idx);
+	err = out->write(out,  "[_elem", strlen("[_elem"));                       RET_ERR();
+	do {
+	    self->idx->next_item(self->idx, &key, &val);
+	    if (!key) break;
+	    conc_dir = val;
+	    err = out->write(out, " ", 1);                                        RET_ERR();
+	    err = out->write(out, conc_dir->id, conc_dir->id_size);               RET_ERR();
+	} while (key);
+	err = out->write(out,  "]", 1);                                           RET_ERR();
+    }
+    err = out->write(out,  "}", 1);                                               RET_ERR();
+
+    return knd_OK;
+}
+
+static int 
+kndSet_export(struct kndSet *self)
 {
     int err;
     
-    switch(format) {
+    switch(self->format) {
     case KND_FORMAT_JSON:
-        err = kndSet_export_JSON(self, depth);
+        err = kndSet_export_JSON(self);
+        if (err) return err;
+        break;
+    case KND_FORMAT_GSP:
+        err = kndSet_export_GSP(self);
         if (err) return err;
         break;
     default:
@@ -405,11 +461,9 @@ kndFacet_add_ref(struct kndFacet *self,
     /* get baseclass set */
     err = kndFacet_get_set(self, spec, &set);                                     RET_ERR();
 
-
     /* add conc ref to a set */
     err = set->idx->set(set->idx,
 			topic->name, topic->name_size, (void*)topic->dir);        RET_ERR();
-
     return knd_OK;
 }
 

@@ -710,7 +710,7 @@ static int resolve_inst(struct kndProcArg *self,
     struct kndProcDir *dir;
     struct kndObjEntry *obj;
 
-    dir = self->parent->class_idx->get(self->parent->class_idx,
+    dir = self->parent->class_name_idx->get(self->parent->class_name_idx,
                                        inst->procname, inst->procname_size);
     if (!dir) {
         knd_log("-- no such class: %.*s :(", inst->procname_size, inst->procname);

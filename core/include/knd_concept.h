@@ -173,8 +173,8 @@ struct kndConcept
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    char id[KND_ID_SIZE];
-    size_t id_size;
+    //char id[KND_ID_SIZE];
+    //size_t id_size;
     size_t numid;
     size_t next_numid;
 
@@ -243,6 +243,7 @@ struct kndConcept
 
     /* indices */
     struct ooDict *class_idx;
+    struct ooDict *class_name_idx;
     struct ooDict *attr_idx;
 
     /* state idx */
