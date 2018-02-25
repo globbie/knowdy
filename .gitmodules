@@ -4,3 +4,6 @@
 [submodule "libs/knode"]
 	path = libs/knode
 	url = git@github.com:globbie/knode.git
+[submodule "libs/glb-lib"]
+	path = libs/glb-lib
+	url = https://github.com/globbie/glb-lib.git
