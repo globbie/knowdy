@@ -4,6 +4,7 @@
 
 #include "knd_facet.h"
 #include "knd_output.h"
+#include "knd_utils.h"
 #include "knd_repo.h"
 #include "knd_mempool.h"
 #include "knd_set.h"
@@ -54,7 +55,7 @@ knd_compare_set_by_size_ascend(const void *a,
 static void
 kndSetElem_str(struct kndSet *self, size_t depth)
 {
-    
+   
 }
 
 static void 
@@ -64,11 +65,12 @@ kndSet_str(struct kndSet *self, size_t depth)
     struct ooDict *set_name_idx;
     struct kndSet *set;
     struct kndConcDir *conc_dir;
+    struct kndSetElem *elem;
     const char *key;
     void *val;
 
     knd_log("%*s{set %.*s [total:%zu]", depth * KND_OFFSET_SIZE, "",
-	    self->base->name_size, self->base->name, self->name_idx->size);
+	    self->base->name_size, self->base->name, self->num_elems);
 
     for (size_t i = 0; i < self->num_facets; i++) {
 	facet = self->facets[i];
@@ -108,6 +110,16 @@ kndSet_str(struct kndSet *self, size_t depth)
     }
 
     /* ID idx */
+    if (self->idx) {
+	for (size_t i = 0; i < KND_RADIX_BASE; i++) {
+	    elem = self->idx->elems[i];
+	    if (!elem) continue;
+
+	    knd_log("%*s => ELEM %.*s",
+		    (depth + 1) * KND_OFFSET_SIZE, "",
+		    elem->conc_dir->name_size, elem->conc_dir->name);
+	}
+    }
 
     knd_log("%*s}", depth * KND_OFFSET_SIZE, "");
 }
@@ -211,7 +223,6 @@ kndSet_export_facets_GSP(struct kndSet *self)
     int err;
 
     err = out->write(out,  "[fc ", strlen("[fc "));                             RET_ERR();
-
     for (size_t i = 0; i < self->num_facets; i++) {
 	facet = self->facets[i];
 	err = out->write(out,  "{", 1);                                       RET_ERR();
@@ -614,7 +625,7 @@ static gsl_err_t set_alloc(void *obj,
 
     conc = self->parent->base->conc;
 
-    base = conc->class_name_idx->get(conc->class_name_idx, name, name_size);
+    base = conc->class_idx->get(conc->class_idx, name, name_size);
     if (!base) {
         knd_log("-- no such class: \"%.*s\":(", name_size, name);
         return make_gsl_err_external(knd_NO_MATCH);
@@ -633,8 +644,35 @@ static gsl_err_t set_alloc(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
+static int add_elem(struct kndSet *self,
+		    struct kndSetElemIdx *parent_idx,
+		    struct kndSetElem *elem,
+		    const char *id,
+		    size_t id_size)
+{
+    struct kndSetElemIdx *idx;
+    int idx_pos;
+    int err;
 
+    if (DEBUG_SET_LEVEL_2)
+	knd_log("== ID remainder: \"%.*s\"", id_size, id);
 
+    idx_pos = obj_id_base[(unsigned int)*id];
+
+    if (id_size > 1) {
+	err = self->mempool->new_set_elem_idx(self->mempool, &idx);
+	if (err) return err;
+	parent_idx->idxs[idx_pos] = idx;
+	
+	err = add_elem(self, idx, elem, id + 1, id_size - 1);
+	if (err) return err;
+    }
+
+    /* assign elem */
+    parent_idx->elems[idx_pos] = elem;
+
+    return knd_OK;
+}
 
 static gsl_err_t atomic_elem_alloc(void *obj,
 				   const char *val,
@@ -644,21 +682,45 @@ static gsl_err_t atomic_elem_alloc(void *obj,
 {
     struct kndSet *self = obj;
     struct kndSetElem *elem;
+    struct kndSetElemIdx *idx;
+    struct ooDict *class_idx;
+    struct kndConcDir *conc_dir;
+    int idx_pos;
     int err;
 
-    knd_log(".. atomic set elem alloc: \"%.*s\"", val_size, val);
+    if (DEBUG_SET_LEVEL_2)
+	knd_log(".. atomic set elem alloc: \"%.*s\"",
+		val_size, val);
+
+    class_idx = self->base->class_idx;
+    conc_dir = class_idx->get(class_idx, val, val_size);
+    if (!conc_dir) return make_gsl_err_external(knd_NO_MATCH);
+
+    if (!self->idx) {
+	err = self->mempool->new_set_elem_idx(self->mempool, &self->idx);
+	if (err) return make_gsl_err_external(err);
+    }
+
+    idx_pos = obj_id_base[(unsigned int)*val];
+
+    /* add elem to a terminal row of elems */
+    err = self->mempool->new_set_elem(self->mempool, &elem);
+    if (err) return make_gsl_err_external(err);
+    elem->conc_dir = conc_dir;
 
     if (val_size == 1) {
-	/* add elem to a terminal row of elems */
-	err = self->mempool->new_set_elem(self->mempool, &elem);
-	if (err) return make_gsl_err_external(err);
-
-	return make_gsl_err_external(knd_OK);
+	self->idx->elems[idx_pos] = elem;
+	return make_gsl_err(gsl_OK);
     }
 
     /* add to dirs */
+    err = self->mempool->new_set_elem_idx(self->mempool, &idx);
+    if (err) return make_gsl_err_external(err);
+    self->idx->idxs[idx_pos] = idx;
 
-    
+    err = add_elem(self, idx, elem, val + 1, val_size - 1);
+    if (err) return make_gsl_err_external(err);
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -702,8 +764,6 @@ static gsl_err_t set_read(void *obj,
         }
     };
 
-    knd_log(".. reading set \"%.*s\"", 128, rec);
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
@@ -741,8 +801,6 @@ static gsl_err_t read_facet(void *obj,
         }
     };
 
-    knd_log(".. read facet \"%.*s\"", 128, rec);
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
@@ -770,7 +828,7 @@ static gsl_err_t facet_alloc(void *obj,
     struct kndFacet *f;
     int err;
 
-    if (DEBUG_SET_LEVEL_TMP)
+    if (DEBUG_SET_LEVEL_1)
         knd_log(".. set %.*s to create facet: %.*s count: %zu",
                 self->base->name_size, self->base->name, name_size, name, count);
 
@@ -810,7 +868,7 @@ static int read_GSP(struct kndSet *self,
 {
     gsl_err_t parser_err;
 
-    if (DEBUG_SET_LEVEL_TMP)
+    if (DEBUG_SET_LEVEL_1)
         knd_log(".. set reading GSP: \"%.*s\"..", 256, rec);
 
     struct gslTaskSpec specs[] = {

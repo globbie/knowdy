@@ -505,6 +505,7 @@ kndRetriever_new(struct kndRetriever **rec,
     /* specific allocations of the root concs */
     err = ooDict_new(&conc->class_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
+    conc->dir->class_idx = conc->class_idx;
 
     err = ooDict_new(&conc->class_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
