@@ -138,24 +138,44 @@ parse_memory_settings(void *obj, const char *rec, size_t *total_size)
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int
-parse_config_gsl(struct kndLearnerService *self, const char *rec, size_t *total_size)
+static gsl_err_t
+run_check_schema(void *obj __attribute__((unused)), const char *val, size_t val_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = KND_NAME_SIZE;
-    size_t chunk_size = 0;
+    const char *schema_name = "Knowdy Learner Service";
+    size_t schema_name_size = strlen(schema_name);
 
-    const char *gsl_format_tag = "{gsl";
-    size_t gsl_format_tag_size = strlen(gsl_format_tag);
+    if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);
+    if (memcmp(schema_name, val, val_size)) return make_gsl_err(gsl_FAIL);
+    return make_gsl_err(gsl_OK);
+}
 
-    const char *header_tag = "{knd::Knowdy Learner Service Configuration";
-    size_t header_tag_size = strlen(header_tag);
-    const char *c;
+static gsl_err_t
+run_set_address(void *obj, const char *val, size_t val_size)
+{
+    struct kndLearnerService *self = obj;
+    struct addrinfo *address;
+    int err;
 
-    char address_str[256]; // fixme: hardcode
-    size_t address_str_len = 0;
+    err = addrinfo_new(&address, val, val_size);
+    if (err != 0) return make_gsl_err(gsl_FAIL);
+
+    err = self->entry_point->set_address(self->entry_point, address);
+    if (err != 0) return make_gsl_err(gsl_FAIL);
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t
+parse_config(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndLearnerService *self = obj;
 
     struct gslTaskSpec specs[] = {
+        {
+            .is_implied = true,
+            .run = run_check_schema,
+            .obj = self
+        },
         {
             .name = "path",
             .name_size = strlen("path"),
@@ -193,26 +213,9 @@ parse_config_gsl(struct kndLearnerService *self, const char *rec, size_t *total_
         {
             .name = "address",
             .name_size = strlen("address"),
-            .buf = address_str,
-            .buf_size = &address_str_len,
-            .max_buf_size = sizeof(address_str)
-        },
-        /*
-        {
-            .name = "inbox",
-            .name_size = strlen("inbox"),
-            .parse = parse_inbox_addr,
+            .run = run_set_address,
             .obj = self
         },
-        */
-        /*
-        {
-            .name = "publish",
-            .name_size = strlen("publish"),
-            .parse = parse_publisher_service_addr,
-            .obj = self
-        },
-        */
         {
             .name = "agent",
             .name_size = strlen("agent"),
@@ -225,44 +228,27 @@ parse_config_gsl(struct kndLearnerService *self, const char *rec, size_t *total_
     int err = knd_FAIL;
     gsl_err_t parser_err;
 
-    parser_err = gsl_parse_task(c, total_size, specs, sizeof specs / sizeof specs[0]);
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         knd_log("-- config parse error: %d", parser_err.code);
-        return gsl_err_to_knd_err_codes(parser_err);
-    }
-
-    { // endpoint setup
-        if (self->opts->address) {
-            err = self->entry_point->set_address(self->entry_point, self->opts->address);
-            if (err != 0) return knd_FAIL;
-        } else {
-            struct addrinfo *address;
-            err = addrinfo_new(&address, address_str, address_str_len);
-            if (err != 0) return knd_FAIL;
-
-            err = self->entry_point->set_address(self->entry_point, address);
-            if (err != 0) return knd_FAIL;
-
-            // fixme: free address
-            // todo: pass string address to knode
-        }
+        return parser_err;
     }
 
     if (!self->path_size) {
         knd_log("-- DB path not set :(");
-        return knd_FAIL;
+        return make_gsl_err(gsl_FAIL);
     }
     err = knd_mkpath(self->path, self->path_size, 0755, false);
-    if (err != knd_OK) return err;
+    if (err != knd_OK) return make_gsl_err_external(err);
 
     if (!self->schema_path_size) {
         knd_log("-- schema path not set :(");
-        return knd_FAIL;
+        return make_gsl_err(gsl_FAIL);
     }
 
     if (!self->admin->sid_size) {
         knd_log("-- administrative SID is not set :(");
-        return knd_FAIL;
+        return make_gsl_err(gsl_FAIL);
     }
     memcpy(self->admin->id, "000", strlen("000"));
 
@@ -275,6 +261,26 @@ parse_config_gsl(struct kndLearnerService *self, const char *rec, size_t *total_
     memcpy(self->admin->path + self->path_size, "/users", strlen("/users"));
     self->admin->path_size = self->path_size + strlen("/users");
     self->admin->path[self->admin->path_size] = '\0';
+
+    return make_gsl_err(gsl_OK);
+}
+
+static int
+parse_schema(struct kndLearnerService *self, const char *rec, size_t *total_size)
+{
+    struct gslTaskSpec specs[] = {
+        {
+            .name = "schema",
+            .name_size = sizeof("schema") - 1,
+            .parse = parse_config,
+            .obj = self
+        }
+    };
+
+    gsl_err_t parser_err;
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code != gsl_OK) return gsl_err_to_knd_err_codes(parser_err);
 
     return knd_OK;
 }
@@ -325,11 +331,13 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     err = kndOutput_new(&self->log, KND_MED_BUF_SIZE);
     if (err != knd_OK) goto error;
 
+    // task specification
     err = kndTask_new(&self->task);
     if (err != knd_OK) goto error;
     err = kndOutput_new(&self->task->out, KND_IDX_BUF_SIZE);
     if (err) goto error;
 
+    // special user
     err = kndUser_new(&self->admin);
     if (err != knd_OK) goto error;
     self->task->admin = self->admin; // fixme: use public interface to set this fields
@@ -338,11 +346,12 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     err = kndMemPool_new(&self->mempool);
     if (err != knd_OK) return err;
 
-    {
+    { // read config
         size_t chunk_size;
         err = self->out->read_file(self->out, opts->config_file, strlen(opts->config_file));
         if (err != knd_OK) goto error;
-        err = parse_config_gsl(self, self->out->file, &chunk_size);
+
+        err = parse_schema(self, self->out->file, &chunk_size);
         if (err != knd_OK) goto error;
     }
 
