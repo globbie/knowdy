@@ -95,6 +95,34 @@ static int new_set(struct kndMemPool *self,
     return knd_OK;
 }
 
+static int new_set_elem(struct kndMemPool *self,
+			struct kndSetElem **result)
+{
+    struct kndSetElem *q;
+    if (self->num_set_elems >= self->max_set_elems) {
+        return knd_NOMEM;
+    }
+    q = &self->set_elems[self->num_set_elems];
+    memset(q, 0, sizeof(struct kndSetElem));
+    self->num_set_elems++;
+    *result = q;
+    return knd_OK;
+}
+
+static int new_set_elem_idx(struct kndMemPool *self,
+			    struct kndSetElemIdx **result)
+{
+    struct kndSetElemIdx *q;
+    if (self->num_set_elem_idxs >= self->max_set_elem_idxs) {
+        return knd_NOMEM;
+    }
+    q = &self->set_elem_idxs[self->num_set_elem_idxs];
+    memset(q, 0, sizeof(struct kndSetElemIdx));
+    self->num_set_elem_idxs++;
+    *result = q;
+    return knd_OK;
+}
+
 static int new_facet(struct kndMemPool *self,
                      struct kndFacet **result)
 {
@@ -511,6 +539,8 @@ static int alloc(struct kndMemPool *self)
 {
     if (!self->max_queries)      self->max_queries = KND_MIN_QUERIES;
     if (!self->max_sets)         self->max_sets =    KND_MIN_SETS;
+    if (!self->max_set_elems)    self->max_set_elems =         KND_MIN_SETS;
+    if (!self->max_set_elem_idxs) self->max_set_elem_idxs =    KND_MIN_SETS;
     if (!self->max_facets)       self->max_facets =  KND_MIN_FACETS;
     if (!self->max_updates)      self->max_updates = KND_MIN_UPDATES;
     if (!self->max_states)       self->max_states =  KND_MIN_STATES;
@@ -570,6 +600,17 @@ static int alloc(struct kndMemPool *self)
         knd_log("-- sets not allocated :(");
         return knd_NOMEM;
     }
+    self->set_elems = calloc(self->max_set_elems, sizeof(struct kndSetElem));
+    if (!self->set_elems) {
+        knd_log("-- set elems not allocated :(");
+        return knd_NOMEM;
+    }
+    self->set_elem_idxs = calloc(self->max_set_elem_idxs, sizeof(struct kndSetElemIdx));
+    if (!self->set_elem_idxs) {
+        knd_log("-- set elem idxs not allocated :(");
+        return knd_NOMEM;
+    }
+
     self->facets = calloc(self->max_facets, sizeof(struct kndFacet));
     if (!self->facets) {
         knd_log("-- facets not allocated :(");

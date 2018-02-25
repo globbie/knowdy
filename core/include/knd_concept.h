@@ -152,6 +152,7 @@ struct kndConcDir
     size_t total_objs;
 
     struct ooDict *obj_idx;
+    struct ooDict *reverse_attr_name_idx;
 
     struct kndTask *task;
     struct kndOutput *out;
@@ -173,8 +174,6 @@ struct kndConcept
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    //char id[KND_ID_SIZE];
-    //size_t id_size;
     size_t numid;
     size_t next_numid;
 

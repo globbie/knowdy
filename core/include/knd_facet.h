@@ -47,28 +47,17 @@ struct kndConcept;
 struct kndSet;
 struct kndQuery;
 struct kndOutput;
-struct kndSetElem;
 
 struct kndFacet
 {
     knd_facet_type type;
     struct kndAttr *attr;
 
-    //char name[KND_NAME_SIZE];
-    //size_t name_size;
-
-    //size_t numval;
-
-    struct kndSetElem *inbox[KND_SET_INBOX_SIZE];
-    size_t inbox_size;
-
     struct kndOutput *out;
-    size_t rec_size;
-
     struct kndSet *parent;
     struct kndMemPool *mempool;
 
-    struct ooDict *set_idx;
+    struct ooDict *set_name_idx;
 
     size_t export_depth;
     size_t batch_size;
