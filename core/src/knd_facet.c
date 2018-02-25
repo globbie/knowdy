@@ -2,12 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "knd_facet.h"
+#include "knd_set.h"
 #include "knd_output.h"
-#include "knd_objref.h"
-#include "knd_repo.h"
-#include "knd_sorttag.h"
-#include "knd_refset.h"
-#include "knd_parser.h"
 
 #define DEBUG_FACET_LEVEL_0 0
 #define DEBUG_FACET_LEVEL_1 0
@@ -20,19 +17,19 @@ static int
 kndFacet_sync(struct kndFacet *self);
 
 /*static int
-kndFacet_export_item(struct kndObjRef *item,
+kndFacet_export_item(struct kndSetElem *item,
                        char *output,
                        size_t *output_size);
 */
 
 static int 
-knd_compare_refset_by_alph_ascend(const void *a,
+knd_compare_elemset_by_alph_ascend(const void *a,
                                   const void *b)
 {
-    struct kndRefSet **obj1, **obj2;
+    struct kndElemSet **obj1, **obj2;
 
-    obj1 = (struct kndRefSet**)a;
-    obj2 = (struct kndRefSet**)b;
+    obj1 = (struct kndElemSet**)a;
+    obj2 = (struct kndElemSet**)b;
 
     if ((*obj1)->numval == (*obj2)->numval) return 0;
 
@@ -45,10 +42,10 @@ knd_compare_refset_by_alph_ascend(const void *a,
 static void
 kndFacet_del(struct kndFacet *self)
 {
-    struct kndRefSet *rs;
+    struct kndElemSet *rs;
 
-    for (size_t i = 0; i < self->num_refsets; i++) {
-        rs = self->refsets[i];
+    for (size_t i = 0; i < self->num_elemsets; i++) {
+        rs = self->elemsets[i];
         rs->del(rs);
     }
 
@@ -60,8 +57,8 @@ kndFacet_str(struct kndFacet *self,
              size_t depth,
              size_t max_depth)
 {
-    //struct kndObjRef *ref;
-    struct kndRefSet *rs;
+    //struct kndSetElem *elem;
+    struct kndElemSet *rs;
     
     size_t i, offset_size = sizeof(char) * KND_OFFSET_SIZE * depth;
     char *offset = malloc(offset_size + 1);
@@ -70,9 +67,9 @@ kndFacet_str(struct kndFacet *self,
 
     if (depth > max_depth) return knd_OK;
     
-    knd_log("\n%s|__Facet \"%s\" type: %d [num refsets: %lu]",
+    knd_log("\n%s|__Facet \"%s\" type: %d [num elemsets: %lu]",
             offset, self->name, self->type,
-            (unsigned long)self->num_refsets);
+            (unsigned long)self->num_elemsets);
 
     if (self->unit_name_size) {
         knd_log(" (unit: %s)", self->unit_name);
@@ -80,12 +77,12 @@ kndFacet_str(struct kndFacet *self,
 
     knd_log("\n");
     
-    qsort(self->refsets,
-          self->num_refsets,
-          sizeof(struct kndRefSet*), knd_compare_refset_by_alph_ascend);
+    qsort(self->elemsets,
+          self->num_elemsets,
+          sizeof(struct kndElemSet*), knd_compare_elemset_by_alph_ascend);
     
-    for (i = 0; i < self->num_refsets; i++) {
-        rs = self->refsets[i];
+    for (i = 0; i < self->num_elemsets; i++) {
+        rs = self->elemsets[i];
         rs->str(rs, depth + 1, max_depth);
     }
 
@@ -105,7 +102,7 @@ kndFacet_export_JSON(struct kndFacet *self, size_t depth)
 
     struct kndOutput *out = self->out;
 
-    struct kndRefSet *rs;
+    struct kndElemSet *rs;
     size_t curr_batch_size = 0;
     int err;
 
@@ -119,8 +116,8 @@ kndFacet_export_JSON(struct kndFacet *self, size_t depth)
                       ",\"sets\":[", strlen(",\"sets\":["));
     if (err) return err;
 
-    for (size_t i = 0; i < self->num_refsets; i++) {
-        rs = self->refsets[i];
+    for (size_t i = 0; i < self->num_elemsets; i++) {
+        rs = self->elemsets[i];
 
         if (i) {
             err = out->write(out,  ",", 1);
@@ -156,7 +153,7 @@ kndFacet_export_HTML(struct kndFacet *self, size_t depth)
 
     struct kndOutput *out = self->out;
 
-    struct kndRefSet *rs;
+    struct kndElemSet *rs;
     size_t curr_batch_size = 0;
     int err;
 
@@ -170,8 +167,8 @@ kndFacet_export_HTML(struct kndFacet *self, size_t depth)
                       ",\"sets\":[", strlen(",\"sets\":["));
     if (err) return err;
 
-    for (size_t i = 0; i < self->num_refsets; i++) {
-        rs = self->refsets[i];
+    for (size_t i = 0; i < self->num_elemsets; i++) {
+        rs = self->elemsets[i];
 
         if (i) {
             err = out->write(out,  ",", 1);
@@ -262,58 +259,58 @@ kndFacet_check_facet_name(struct kndFacet *self __attribute__((unused)),
 
 
 static int
-kndFacet_get_refset(struct kndFacet  *self,
-                    const char       *refset_name,
-                    size_t           refset_name_size,
+kndFacet_get_elemset(struct kndFacet  *self,
+                    const char       *elemset_name,
+                    size_t           elemset_name_size,
                     size_t           numval,
-                    struct kndRefSet **result)
+                    struct kndElemSet **result)
 {
-    struct kndRefSet *rs;
+    struct kndElemSet *rs;
     int err;
     
-    for (size_t i = 0; i < self->num_refsets; i++) {
-        rs = self->refsets[i];
+    for (size_t i = 0; i < self->num_elemsets; i++) {
+        rs = self->elemsets[i];
 
-	if (!strcmp(rs->name, refset_name)) {
+	if (!strcmp(rs->name, elemset_name)) {
             *result = rs;
             
             return knd_OK;
         }
     }
 
-    /*knd_log("   .. create new refset..\n"); */
+    /*knd_log("   .. create new elemset..\n"); */
 
-    if (self->num_refsets + 1 >= KND_MAX_ATTRS) {
+    if (self->num_elemsets + 1 >= KND_MAX_ATTRS) {
 
         if (DEBUG_FACET_LEVEL_TMP)
-            knd_log("   -- Facet \"%s\": MAX limit of refsets reached. Couldn't add refset \"%s\" :(\n",
-                    self->name, refset_name);
+            knd_log("   -- Facet \"%s\": MAX limit of elemsets reached. Couldn't add elemset \"%s\" :(\n",
+                    self->name, elemset_name);
 
         return knd_NOMEM;
     }
 
 
     
-    /*knd_log("  .. creating refset %s [%lu]..\n",
-            refset_name,  (unsigned long)refset_name_size);
+    /*knd_log("  .. creating elemset %s [%lu]..\n",
+            elemset_name,  (unsigned long)elemset_name_size);
     */
-    /* refset not found, create one */
-    err = kndRefSet_new(&rs);
+    /* elemset not found, create one */
+    err = kndElemSet_new(&rs);
     if (err) return err;
 
     
-    memcpy(rs->name, refset_name, refset_name_size);
-    rs->name[refset_name_size] = '\0';
+    memcpy(rs->name, elemset_name, elemset_name_size);
+    rs->name[elemset_name_size] = '\0';
     
-    rs->name_size = refset_name_size;
+    rs->name_size = elemset_name_size;
     rs->numval = numval;
 
     rs->baseclass = self->baseclass;
     rs->parent = self;
     rs->out = self->out;
     
-    self->refsets[self->num_refsets] = rs;
-    self->num_refsets++;
+    self->elemsets[self->num_elemsets] = rs;
+    self->num_elemsets++;
 
     *result = rs;
     
@@ -324,7 +321,7 @@ kndFacet_get_refset(struct kndFacet  *self,
 
 static int
 kndFacet_add_conc_base(struct kndFacet  *self,
-                       struct kndObjRef *orig_ref,
+                       struct kndSetElem *orig_elem,
                        size_t attr_id)
 {
     //char unit_name[KND_LABEL_SIZE];
@@ -333,8 +330,8 @@ kndFacet_add_conc_base(struct kndFacet  *self,
     //char val_name[KND_LABEL_SIZE];
     //size_t val_name_size;
     
-    struct kndRefSet *refset = NULL;
-    struct kndObjRef *ref = NULL;
+    struct kndElemSet *elemset = NULL;
+    struct kndSetElem *elem = NULL;
     struct kndSortAttr *attr;
     
     char *b;
@@ -346,7 +343,7 @@ kndFacet_add_conc_base(struct kndFacet  *self,
     //long numval = 0;
     int err;
 
-    attr = orig_ref->sorttag->attrs[attr_id];
+    attr = orig_elem->sorttag->attrs[attr_id];
     
     /* extract curr facet value,
        save the remainder */
@@ -368,34 +365,34 @@ kndFacet_add_conc_base(struct kndFacet  *self,
                 (unsigned long)sort_elem_size,
                 tail, (unsigned long)tail_size);
     
-    err = kndFacet_get_refset(self,
+    err = kndFacet_get_elemset(self,
                               (const char*)attr->val,
-                              strlen(attr->val), 0, &refset);
+                              strlen(attr->val), 0, &elemset);
     if (err) return err;
 
     if (DEBUG_FACET_LEVEL_TMP)
-        knd_log("  + got refset: %s [inbox: %lu]\n",
-                refset->name, (unsigned long)refset->inbox_size);
+        knd_log("  + got elemset: %s [inbox: %lu]\n",
+                elemset->name, (unsigned long)elemset->inbox_size);
     
-    /* add ref */
-    err = orig_ref->clone(orig_ref, attr_id, tail, tail_size, &ref); 
+    /* add elem */
+    err = orig_elem->clone(orig_elem, attr_id, tail, tail_size, &elem); 
     if (err) return err;
 
     if (DEBUG_FACET_LEVEL_TMP) {
-        ref->str(ref, 0);
-        knd_log("   == input refset: %s [inbox: %lu]\n",
-            refset->name, (unsigned long)refset->inbox_size);
+        elem->str(elem, 0);
+        knd_log("   == input elemset: %s [inbox: %lu]\n",
+            elemset->name, (unsigned long)elemset->inbox_size);
     }
     
-    err = refset->add_ref(refset, ref);
+    err = elemset->add_elem(elemset, elem);
     if (err) goto cleanup;
 
     return knd_OK;
     
  cleanup:
     
-    if (ref)
-        ref->del(ref);
+    if (elem)
+        elem->del(elem);
 
     
     return err;
@@ -403,7 +400,7 @@ kndFacet_add_conc_base(struct kndFacet  *self,
 
 static int
 kndFacet_add_conc_spec(struct kndFacet  *self,
-                       struct kndObjRef *orig_ref,
+                       struct kndSetElem *orig_elem,
                        size_t attr_id)
 {
     //char unit_name[KND_LABEL_SIZE];
@@ -412,8 +409,8 @@ kndFacet_add_conc_spec(struct kndFacet  *self,
     //char val_name[KND_LABEL_SIZE];
     //size_t val_name_size;
 
-    struct kndRefSet *refset = NULL;
-    struct kndObjRef *ref = NULL;
+    struct kndElemSet *elemset = NULL;
+    struct kndSetElem *elem = NULL;
     struct kndSortAttr *attr;
 
     char *b;
@@ -425,7 +422,7 @@ kndFacet_add_conc_spec(struct kndFacet  *self,
     //long numval = 0;
     int err;
 
-    attr = orig_ref->sorttag->attrs[attr_id];
+    attr = orig_elem->sorttag->attrs[attr_id];
 
     /* extract curr facet value,
        save the remainder */
@@ -447,34 +444,34 @@ kndFacet_add_conc_spec(struct kndFacet  *self,
                 (unsigned long)sort_elem_size,
                 tail, (unsigned long)tail_size);
     
-    err = kndFacet_get_refset(self,
+    err = kndFacet_get_elemset(self,
                               (const char*)attr->val,
-                              strlen(attr->val), 0, &refset);
+                              strlen(attr->val), 0, &elemset);
     if (err) return err;
 
     if (DEBUG_FACET_LEVEL_TMP)
-        knd_log("  + got refset: %s [inbox: %lu]\n",
-                refset->name, (unsigned long)refset->inbox_size);
+        knd_log("  + got elemset: %s [inbox: %lu]\n",
+                elemset->name, (unsigned long)elemset->inbox_size);
     
-    /* add ref */
-    err = orig_ref->clone(orig_ref, attr_id, tail, tail_size, &ref); 
+    /* add elem */
+    err = orig_elem->clone(orig_elem, attr_id, tail, tail_size, &elem); 
     if (err) return err;
 
     if (DEBUG_FACET_LEVEL_TMP) {
-        ref->str(ref, 0);
-        knd_log("   == input refset: %s [inbox: %lu]\n",
-            refset->name, (unsigned long)refset->inbox_size);
+        elem->str(elem, 0);
+        knd_log("   == input elemset: %s [inbox: %lu]\n",
+            elemset->name, (unsigned long)elemset->inbox_size);
     }
     
-    err = refset->add_ref(refset, ref);
+    err = elemset->add_elem(elemset, elem);
     if (err) goto cleanup;
 
     return knd_OK;
     
  cleanup:
     
-    if (ref)
-        ref->del(ref);
+    if (elem)
+        elem->del(elem);
 
     
     return err;
@@ -483,7 +480,7 @@ kndFacet_add_conc_spec(struct kndFacet  *self,
 
 static int
 kndFacet_add_categorical(struct kndFacet  *self,
-                         struct kndObjRef *orig_ref,
+                         struct kndSetElem *orig_elem,
                          size_t attr_id)
 {
     //char unit_name[KND_LABEL_SIZE];
@@ -492,8 +489,8 @@ kndFacet_add_categorical(struct kndFacet  *self,
     //char val_name[KND_LABEL_SIZE];
     //size_t val_name_size;
     
-    struct kndRefSet *refset = NULL;
-    struct kndObjRef *ref = NULL;
+    struct kndElemSet *elemset = NULL;
+    struct kndSetElem *elem = NULL;
     struct kndSortAttr *attr;
     
     char *b;
@@ -505,7 +502,7 @@ kndFacet_add_categorical(struct kndFacet  *self,
     //long numval = 0;
     int err;
 
-    attr = orig_ref->sorttag->attrs[attr_id];
+    attr = orig_elem->sorttag->attrs[attr_id];
     
     /* extract curr facet value,
        save the remainder */
@@ -522,45 +519,44 @@ kndFacet_add_categorical(struct kndFacet  *self,
     }
     
     if (DEBUG_FACET_LEVEL_3)
-        knd_log("     adding CATEGORY REF:   current VAL: \"%s\" [%lu] Tail: \"%s\" [%lu]\n",
+        knd_log("     adding CATEGORY ELEM:   current VAL: \"%s\" [%lu] Tail: \"%s\" [%lu]\n",
                 attr->val,  (unsigned long)sort_elem_size,
                 tail, (unsigned long)tail_size);
 
 
-    err = kndFacet_get_refset(self,
+    err = kndFacet_get_elemset(self,
                               (const char*)attr->val,
-                              strlen(attr->val), 0, &refset);
+                              strlen(attr->val), 0, &elemset);
     if (err) return err;
     
-    refset->numval = attr->numval;
+    elemset->numval = attr->numval;
     
     if (DEBUG_FACET_LEVEL_3)
-        knd_log("  + got refset: %s [inbox: %lu]\n",
-                refset->name, (unsigned long)refset->inbox_size);
+        knd_log("  + got elemset: %s [inbox: %lu]\n",
+                elemset->name, (unsigned long)elemset->inbox_size);
     
-    /* add ref */
+    /* add elem */
     
-    err = orig_ref->clone(orig_ref, attr_id, tail, tail_size, &ref); 
+    err = orig_elem->clone(orig_elem, attr_id, tail, tail_size, &elem); 
     if (err) return err;
 
     if (DEBUG_FACET_LEVEL_3) {
-        ref->str(ref, 0);
-        knd_log("    input refset: %s [inbox: %lu]\n",
-            refset->name, (unsigned long)refset->inbox_size);
+        elem->str(elem, 0);
+        knd_log("    input elemset: %s [inbox: %lu]\n",
+            elemset->name, (unsigned long)elemset->inbox_size);
     }
 
 
     
-    err = refset->add_ref(refset, ref);
+    err = elemset->add_elem(elemset, elem);
     if (err) goto cleanup;
 
     return knd_OK;
     
  cleanup:
     
-    if (ref)
-        ref->del(ref);
-
+    if (elem)
+        elem->del(elem);
     
     return err;
 }
@@ -569,7 +565,7 @@ kndFacet_add_categorical(struct kndFacet  *self,
 
 static int
 kndFacet_add_atomic(struct kndFacet  *self,
-                    struct kndObjRef *orig_ref,
+                    struct kndSetElem *orig_elem,
                     size_t attr_id)
 {
     //char unit_name[KND_LABEL_SIZE];
@@ -578,8 +574,8 @@ kndFacet_add_atomic(struct kndFacet  *self,
     //char val_name[KND_LABEL_SIZE];
     //size_t val_name_size;
 
-    struct kndRefSet *refset = NULL;
-    struct kndObjRef *ref = NULL;
+    struct kndElemSet *elemset = NULL;
+    struct kndSetElem *elem = NULL;
     struct kndSortAttr *attr;
 
     //char *b;
@@ -591,7 +587,7 @@ kndFacet_add_atomic(struct kndFacet  *self,
     //long numval = 0;
     int err;
 
-    attr = orig_ref->sorttag->attrs[attr_id];
+    attr = orig_elem->sorttag->attrs[attr_id];
 
     /* extract curr facet value,
        save the remainder */
@@ -603,36 +599,36 @@ kndFacet_add_atomic(struct kndFacet  *self,
                 attr->val,  (unsigned long)sort_elem_size,
                 tail, (unsigned long)tail_size);
 
-    err = kndFacet_get_refset(self,
+    err = kndFacet_get_elemset(self,
                               (const char*)attr->val,
-                              attr->val_size, 0, &refset);
+                              attr->val_size, 0, &elemset);
     if (err) return err;
 
-    refset->numval = attr->numval;
+    elemset->numval = attr->numval;
 
     if (DEBUG_FACET_LEVEL_3)
-        knd_log("  + got refset: %s [inbox: %lu]\n",
-                refset->name, (unsigned long)refset->inbox_size);
+        knd_log("  + got elemset: %s [inbox: %lu]\n",
+                elemset->name, (unsigned long)elemset->inbox_size);
 
-    /* add ref */
-    err = orig_ref->clone(orig_ref, attr_id, tail, tail_size, &ref); 
+    /* add elem */
+    err = orig_elem->clone(orig_elem, attr_id, tail, tail_size, &elem); 
     if (err) return err;
 
     if (DEBUG_FACET_LEVEL_3) {
-        ref->str(ref, 0);
-        knd_log("   input refset: %s [inbox: %lu]\n",
-            refset->name, (unsigned long)refset->inbox_size);
+        elem->str(elem, 0);
+        knd_log("   input elemset: %s [inbox: %lu]\n",
+            elemset->name, (unsigned long)elemset->inbox_size);
     }
 
-    err = refset->add_ref(refset, ref);
+    err = elemset->add_elem(elemset, elem);
     if (err) goto cleanup;
 
     return knd_OK;
 
 cleanup:
 
-    if (ref)
-        ref->del(ref);
+    if (elem)
+        elem->del(elem);
 
 
     return err;
@@ -643,7 +639,7 @@ cleanup:
 
 static int
 kndFacet_add_accumulated(struct kndFacet *self,
-                         struct kndObjRef *orig_ref,
+                         struct kndSetElem *orig_elem,
                          size_t attr_id)
 {
     char unit_name[KND_LABEL_SIZE];
@@ -652,9 +648,9 @@ kndFacet_add_accumulated(struct kndFacet *self,
     //char val_name[KND_LABEL_SIZE];
     //size_t val_name_size;
 
-    struct kndRefSet *refset = NULL;
+    struct kndElemSet *elemset = NULL;
     struct kndSortAttr *attr;
-    struct kndObjRef *ref = NULL;
+    struct kndSetElem *elem = NULL;
     //struct kndSortTag *tag;
     
     char *b;
@@ -668,7 +664,7 @@ kndFacet_add_accumulated(struct kndFacet *self,
     int err;
 
     
-    attr = orig_ref->sorttag->attrs[attr_id];
+    attr = orig_elem->sorttag->attrs[attr_id];
     
     /* extract curr facet value,
        save the remainder */
@@ -685,7 +681,7 @@ kndFacet_add_accumulated(struct kndFacet *self,
     }
     
     if (DEBUG_FACET_LEVEL_3)
-        knd_log("     .. ACCUMULATED IDX:   Prefix: \"%s\" [%lu] Tail: \"%s\" [%lu]\n",
+        knd_log("     .. ACCUMULATED IDX:   Pelemix: \"%s\" [%lu] Tail: \"%s\" [%lu]\n",
                 attr->val,  (unsigned long)sort_elem_size,
                 tail, (unsigned long)tail_size);
 
@@ -722,22 +718,22 @@ kndFacet_add_accumulated(struct kndFacet *self,
 
     /* TODO: check valid range of numval */
     
-    err = kndFacet_get_refset(self, (const char*)c, strlen(c), (size_t)numval, &refset);
+    err = kndFacet_get_elemset(self, (const char*)c, strlen(c), (size_t)numval, &elemset);
     if (err) return err;
 
-    /* add ref */
-    err = orig_ref->clone(orig_ref, attr_id, tail, tail_size, &ref); 
+    /* add elem */
+    err = orig_elem->clone(orig_elem, attr_id, tail, tail_size, &elem); 
     if (err) return err;
 
-    err = refset->add_ref(refset, ref);
+    err = elemset->add_elem(elemset, elem);
     if (err) goto cleanup;
     
     return knd_OK;
     
  cleanup:
     
-    if (ref)
-        ref->del(ref);
+    if (elem)
+        elem->del(elem);
 
     
     return err;
@@ -748,15 +744,15 @@ kndFacet_add_accumulated(struct kndFacet *self,
 
 static int
 kndFacet_add_positional(struct kndFacet *self,
-                        struct kndObjRef *orig_ref,
+                        struct kndSetElem *orig_elem,
                         size_t attr_id)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
 
-    struct kndRefSet *refset = NULL;
+    struct kndElemSet *elemset = NULL;
     struct kndSortAttr *attr;
-    struct kndObjRef *ref = NULL;
+    struct kndSetElem *elem = NULL;
     //struct kndSortTag *tag;
 
     //char *b;
@@ -772,7 +768,7 @@ kndFacet_add_positional(struct kndFacet *self,
     //long numval = 0;
     int err;
 
-    attr = orig_ref->sorttag->attrs[attr_id];
+    attr = orig_elem->sorttag->attrs[attr_id];
 
     /* extract curr facet value,
        save the remainder */
@@ -831,88 +827,88 @@ kndFacet_add_positional(struct kndFacet *self,
     tail = val + buf_size;
 
     if (DEBUG_FACET_LEVEL_3)
-        knd_log("\n\n     POSITIONAL FACET UNIT:   Prefix: \"%s\" [%lu] Tail: \"%s\" [%lu]\n",
+        knd_log("\n\n     POSITIONAL FACET UNIT:   Pelemix: \"%s\" [%lu] Tail: \"%s\" [%lu]\n",
                 buf,  (unsigned long)buf_size,
                 tail, (unsigned long)tail_size);
 
 
-    /* TODO: check validity of refset name,
+    /* TODO: check validity of elemset name,
        eg. UTF-8 value within range */
 
 
 
-    err = kndFacet_get_refset(self,
+    err = kndFacet_get_elemset(self,
                               (const char*)buf,
-                              buf_size, attr->numval, &refset);
+                              buf_size, attr->numval, &elemset);
     if (err) return err;
 
-    refset->numval = UTF_val;
+    elemset->numval = UTF_val;
 
-    /* add ref */
-    err = orig_ref->clone(orig_ref, attr_id, tail, tail_size, &ref); 
+    /* add elem */
+    err = orig_elem->clone(orig_elem, attr_id, tail, tail_size, &elem); 
     if (err) return err;
 
-    /*ref->str(ref, 0);*/
+    /*elem->str(elem, 0);*/
 
-    /*knd_log("   input refset: %s [inbox: %lu]\n",
+    /*knd_log("   input elemset: %s [inbox: %lu]\n",
       f->name, (unsigned long)f->inbox_size); */
 
-    err = refset->add_ref(refset, ref);
+    err = elemset->add_elem(elemset, elem);
     if (err) goto cleanup;
 
     return knd_OK;
 
 cleanup:
 
-    if (ref)
-        ref->del(ref);
+    if (elem)
+        elem->del(elem);
 
     return err;
 }
 
 
 static int
-kndFacet_add_ref(struct kndFacet  *self,
-                 struct kndObjRef *orig_ref,
+kndFacet_add_elem(struct kndFacet  *self,
+                 struct kndSetElem *orig_elem,
                  size_t attr_id,
                  knd_facet_type attr_type)
 {
     int err;
 
     if (DEBUG_FACET_LEVEL_3) {
-        knd_log("   .. add objref \"%s\" to facet \"%s\" (type: %d)\n",
-                orig_ref->obj_id, self->name, attr_type);
+        knd_log("   .. add objelem \"%s\" to facet \"%s\" (type: %d)\n",
+                orig_elem->obj_id, self->name, attr_type);
     }
     
     switch (attr_type) {
     case KND_FACET_ACCUMULATED:
-        err = kndFacet_add_accumulated(self, orig_ref, attr_id);
+        err = kndFacet_add_accumulated(self, orig_elem, attr_id);
         if (err) goto final;
         break;
     case KND_FACET_ATOMIC:
-        err = kndFacet_add_atomic(self, orig_ref, attr_id);
+        err = kndFacet_add_atomic(self, orig_elem, attr_id);
         if (err) goto final;
         break;
     case KND_FACET_CATEGORICAL:
-        err = kndFacet_add_categorical(self, orig_ref, attr_id);
+        err = kndFacet_add_categorical(self, orig_elem, attr_id);
         if (err) goto final;
         break;
     case KND_FACET_POSITIONAL:
-        err = kndFacet_add_positional(self, orig_ref, attr_id);
+        err = kndFacet_add_positional(self, orig_elem, attr_id);
         if (err) goto final;
         break;
     case KND_FACET_CONC_BASE:
-        err = kndFacet_add_conc_base(self, orig_ref, attr_id);
+        err = kndFacet_add_conc_base(self, orig_elem, attr_id);
         if (err) goto final;
         break;
     case KND_FACET_CONC_SPEC:
-        err = kndFacet_add_conc_spec(self, orig_ref, attr_id);
+        err = kndFacet_add_conc_spec(self, orig_elem, attr_id);
         if (err) goto final;
         break;
     default:
-        knd_log("  -- unrec attr %s type %d :(\n", orig_ref->obj_id, attr_type);
+        knd_log("  -- unrec attr %s type %d :(\n", orig_elem->obj_id, attr_type);
 
-        orig_ref->str(orig_ref, 1);
+        orig_elem->str(orig_elem, 1);
 
         err = knd_FAIL;
         goto final;
@@ -927,7 +923,7 @@ kndFacet_add_ref(struct kndFacet  *self,
 
 
 /*static int
-kndFacet_export_item(struct kndObjRef *item,
+kndFacet_export_item(struct kndSetElem *item,
                        char   *output,
                        size_t *output_size)
 {
@@ -969,11 +965,11 @@ kndFacet_read(struct kndFacet  *self,
     char name[KND_NAME_SIZE];
     size_t name_size = 0;
 
-    //struct kndObjRef *ref;
-    struct kndRefSet *rs;
+    //struct kndSetElem *elem;
+    struct kndElemSet *rs;
     
-    const char *refset_rec;
-    size_t refset_rec_size;
+    const char *elemset_rec;
+    size_t elemset_rec_size;
     
     char *val;
     char *c;
@@ -982,7 +978,7 @@ kndFacet_read(struct kndFacet  *self,
     
     size_t offset = 0;
     size_t total_items = 0;
-    size_t num_refs = 0;
+    size_t num_elems = 0;
     
     const char *delim = KND_FIELD_SEPAR;
     char *last = NULL;
@@ -1041,8 +1037,8 @@ kndFacet_read(struct kndFacet  *self,
         err = knd_parse_num((const char*)val, &numval);
         if (err) return err;
         
-        refset_rec_size = (size_t)numval;
-        refset_rec = rec + offset;
+        elemset_rec_size = (size_t)numval;
+        elemset_rec = rec + offset;
 
         /* default num items */
         numval = 1;
@@ -1055,31 +1051,31 @@ kndFacet_read(struct kndFacet  *self,
             if (err) return err;
         }
         
-        num_refs = (size_t)numval;
+        num_elems = (size_t)numval;
 
         if (DEBUG_FACET_LEVEL_2)
-            knd_log("   == RefSet: \"%s\" num_refs: %lu  size: %lu\n",
-                    c, (unsigned long)num_refs, (unsigned long)refset_rec_size);
+            knd_log("   == ElemSet: \"%s\" num_elems: %lu  size: %lu\n",
+                    c, (unsigned long)num_elems, (unsigned long)elemset_rec_size);
 
         name_size = strlen(c);
         if (!name_size) return knd_FAIL;
         
-        err = kndFacet_get_refset(self, (const char*)c, name_size, 0, &rs);
+        err = kndFacet_get_elemset(self, (const char*)c, name_size, 0, &rs);
         if (err) goto final;
 
-        rs->num_refs = num_refs;
+        rs->num_elems = num_elems;
         rs->export_depth = self->export_depth + 1;
         rs->parent = self;
 
         if (DEBUG_FACET_LEVEL_2)
-            knd_log(".. refset reading: \"%s\"..", refset_rec);
+            knd_log(".. elemset reading: \"%s\"..", elemset_rec);
 
-        err = rs->read(rs, refset_rec, refset_rec_size);
+        err = rs->read(rs, elemset_rec, elemset_rec_size);
         if (err) {
             goto final;
         }
         
-        offset += refset_rec_size;
+        offset += elemset_rec_size;
     }
 
     err = knd_OK;
@@ -1093,7 +1089,7 @@ static int
 kndFacet_read_tags(struct kndFacet  *self,
                    const char       *rec,
                    size_t           rec_size,
-                   struct kndRefSet *refset)
+                   struct kndElemSet *elemset)
 {
     char buf[KND_LARGE_BUF_SIZE + 1];
     size_t buf_size = 0;
@@ -1101,8 +1097,8 @@ kndFacet_read_tags(struct kndFacet  *self,
     char name[KND_NAME_SIZE];
     size_t name_size = 0;
 
-    const char *refset_rec;
-    size_t refset_rec_size;
+    const char *elemset_rec;
+    size_t elemset_rec_size;
     
     char *val;
     char *c;
@@ -1111,7 +1107,7 @@ kndFacet_read_tags(struct kndFacet  *self,
     
     size_t offset = 0;
     size_t total_items = 0;
-    size_t num_refs = 0;
+    size_t num_elems = 0;
     //size_t curr_size;
     
     const char *delim = KND_FIELD_SEPAR;
@@ -1152,8 +1148,8 @@ kndFacet_read_tags(struct kndFacet  *self,
         err = knd_parse_num((const char*)val, &numval);
         if (err) return err;
         
-        refset_rec_size = (size_t)numval;
-        refset_rec = rec + offset;
+        elemset_rec_size = (size_t)numval;
+        elemset_rec = rec + offset;
 
         /* default num items */
         numval = 1;
@@ -1166,22 +1162,22 @@ kndFacet_read_tags(struct kndFacet  *self,
             if (err) return err;
         }
         
-        num_refs = (size_t)numval;
+        num_elems = (size_t)numval;
 
 
         name_size = strlen(c);
         if (!name_size) return knd_FAIL;
 
-        if (strncmp(c, refset->name, refset->name_size)) {
-            offset += refset_rec_size;
+        if (strncmp(c, elemset->name, elemset->name_size)) {
+            offset += elemset_rec_size;
             continue;
         }
 
         if (DEBUG_FACET_LEVEL_TMP)
-            knd_log("   == got RefSet: \"%s\" num_refs: %lu  size: %lu\n",
-                    c, (unsigned long)num_refs, (unsigned long)refset_rec_size);
+            knd_log("   == got ElemSet: \"%s\" num_elems: %lu  size: %lu\n",
+                    c, (unsigned long)num_elems, (unsigned long)elemset_rec_size);
 
-        err = refset->read_tags(refset, refset_rec, refset_rec_size);
+        err = elemset->read_tags(elemset, elemset_rec, elemset_rec_size);
         if (err) goto final;
 
         break;
@@ -1199,13 +1195,13 @@ static int
 kndFacet_find_accumulated(struct kndFacet    *self,
                          const char         *val,
                          size_t val_size,
-                         struct kndRefSet  **result)
+                         struct kndElemSet  **result)
 {
     char unit_name[KND_NAME_SIZE];
     size_t unit_name_size = 0;
 
-    char refset_name[KND_NAME_SIZE];
-    size_t refset_name_size = 0;
+    char elemset_name[KND_NAME_SIZE];
+    size_t elemset_name_size = 0;
 
     char tail[KND_NAME_SIZE];
     size_t tail_size = 0;
@@ -1213,7 +1209,7 @@ kndFacet_find_accumulated(struct kndFacet    *self,
     char buf[KND_NAME_SIZE];
     size_t buf_size = val_size;
 
-    struct kndRefSet *rs;
+    struct kndElemSet *rs;
     //struct kndFacet *f;
     char *c;
     long numval = 0;
@@ -1236,7 +1232,7 @@ kndFacet_find_accumulated(struct kndFacet    *self,
     memcpy(buf, val, buf_size);
     buf[buf_size] = '\0';
     
-    knd_log("     Prefix: \"%s\" [%lu] Tail: \"%s\" [%lu]\n",
+    knd_log("     Pelemix: \"%s\" [%lu] Tail: \"%s\" [%lu]\n",
             buf,  (unsigned long)buf_size,
             tail, (unsigned long)tail_size); 
 
@@ -1259,23 +1255,23 @@ kndFacet_find_accumulated(struct kndFacet    *self,
     err = knd_parse_num((const char*)c, &numval);
     if (err) return err;
 
-    refset_name_size =  buf_size - unit_name_size;
-    memcpy(refset_name, c, refset_name_size);
-    refset_name[refset_name_size] = '\0';
+    elemset_name_size =  buf_size - unit_name_size;
+    memcpy(elemset_name, c, elemset_name_size);
+    elemset_name[elemset_name_size] = '\0';
     
-    knd_log("       REFSET: %s  UNIT: \"%s\" [%lu] NUM: \"%lu\"\n\n",
-            refset_name,
+    knd_log("       ELEMSET: %s  UNIT: \"%s\" [%lu] NUM: \"%lu\"\n\n",
+            elemset_name,
             unit_name,
             (unsigned long)unit_name_size, (unsigned long)numval);
 
     err = knd_FAIL;
 
-    for (size_t i = 0; i < self->num_refsets; i++) {
-        rs = self->refsets[i];
+    for (size_t i = 0; i < self->num_elemsets; i++) {
+        rs = self->elemsets[i];
 
-        knd_log("    ?? refset: %s\n", rs->name);
+        knd_log("    ?? elemset: %s\n", rs->name);
 
-        if (!strcmp(rs->name, refset_name)) {
+        if (!strcmp(rs->name, elemset_name)) {
             /* nested search needed */
             if (tail_size) {
 
@@ -1295,12 +1291,12 @@ static int
 kndFacet_find_positional(struct kndFacet    *self,
                          const char         *val,
                          size_t val_size,
-                         struct kndRefSet  **result)
+                         struct kndElemSet  **result)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = val_size;
 
-    struct kndRefSet *rs;
+    struct kndElemSet *rs;
 
     const char *tail;
     size_t tail_size = 0;
@@ -1349,12 +1345,12 @@ kndFacet_find_positional(struct kndFacet    *self,
     tail = val + buf_size;
     
     if (DEBUG_FACET_LEVEL_3)
-        knd_log("\n\n     POSITIONAL FACET UNIT:   Prefix: \"%s\" [%lu] Tail: \"%s\" [%lu]\n",
+        knd_log("\n\n     POSITIONAL FACET UNIT:   Pelemix: \"%s\" [%lu] Tail: \"%s\" [%lu]\n",
                 buf,  (unsigned long)buf_size,
                 tail, (unsigned long)tail_size);
 
-    for (size_t i = 0; i < self->num_refsets; i++) {
-        rs = self->refsets[i];
+    for (size_t i = 0; i < self->num_elemsets; i++) {
+        rs = self->elemsets[i];
 
         if (!strcmp(rs->name, buf)) {
 
@@ -1380,7 +1376,7 @@ kndFacet_find_positional(struct kndFacet    *self,
 static int
 kndFacet_extract_objs(struct kndFacet    *self)
 {
-    struct kndRefSet *rs;
+    struct kndElemSet *rs;
     int err = knd_FAIL;
 
     if (DEBUG_FACET_LEVEL_3)
@@ -1388,8 +1384,8 @@ kndFacet_extract_objs(struct kndFacet    *self)
                 self->name,
                 (unsigned long)self->batch_size);
 
-    for (size_t i = 0; i < self->num_refsets; i++) {
-        rs = self->refsets[i];
+    for (size_t i = 0; i < self->num_elemsets; i++) {
+        rs = self->elemsets[i];
 
         rs->batch_size = self->batch_size;
 
@@ -1408,11 +1404,11 @@ static int
 kndFacet_find(struct kndFacet    *self,
               const char         *val,
               size_t              val_size,
-              struct kndRefSet  **result)
+              struct kndElemSet  **result)
 {
 
     //struct kndFacet *f;
-    struct kndRefSet *rs;
+    struct kndElemSet *rs;
     //const char *b;
 
     int err = knd_FAIL;
@@ -1433,8 +1429,8 @@ kndFacet_find(struct kndFacet    *self,
         break;
     }
     
-    for (size_t i = 0; i < self->num_refsets; i++) {
-        rs = self->refsets[i];
+    for (size_t i = 0; i < self->num_elemsets; i++) {
+        rs = self->elemsets[i];
 
         if (!strcmp(rs->name, val)) {
             *result = rs;
@@ -1455,8 +1451,8 @@ kndFacet_sync(struct kndFacet *self)
     char rec_buf[KND_LARGE_BUF_SIZE];
     size_t rec_size = 0;
 
-    //struct kndObjRef *ref;
-    struct kndRefSet *rs;
+    //struct kndSetElem *elem;
+    struct kndElemSet *rs;
     struct kndOutput *out;
     
     char *rec;
@@ -1477,9 +1473,9 @@ kndFacet_sync(struct kndFacet *self)
 
     start_pos = out->free_space;
 
-    /* linearize refsets  */
-    for (size_t i = 0; i < self->num_refsets; i++) {
-        rs = self->refsets[i];
+    /* linearize elemsets  */
+    for (size_t i = 0; i < self->num_elemsets; i++) {
+        rs = self->elemsets[i];
 
         rs->out = out;
         err = rs->sync(rs);
@@ -1497,9 +1493,9 @@ kndFacet_sync(struct kndFacet *self)
         rec += rs->name_size;
         rec_size += rs->name_size;
 
-        if (rs->num_refs > 1) {
+        if (rs->num_elems > 1) {
             curr_size = sprintf(rec, "=%lu",
-                                (unsigned long)rs->num_refs);
+                                (unsigned long)rs->num_elems);
             rec += curr_size;
             rec_size += curr_size;
         }
@@ -1556,18 +1552,8 @@ kndFacet_sync(struct kndFacet *self)
     return err;
 }
 
-
-
-extern int 
-kndFacet_new(struct kndFacet **facet)
+extern void kndFacet_init(struct kndFacet *self)
 {
-    struct kndFacet *self;
-
-    self = malloc(sizeof(struct kndFacet));
-    if (!self) return knd_NOMEM;
-
-    memset(self, 0, sizeof(struct kndFacet));
-
     self->del = kndFacet_del;
     self->str = kndFacet_str;
 
@@ -1580,6 +1566,18 @@ kndFacet_new(struct kndFacet **facet)
 
     self->export = kndFacet_export;
     self->sync = kndFacet_sync;
+}
+
+
+extern int 
+kndFacet_new(struct kndFacet **facet)
+{
+    struct kndFacet *self;
+
+    self = malloc(sizeof(struct kndFacet));
+    if (!self) return knd_NOMEM;
+
+    memset(self, 0, sizeof(struct kndFacet));
 
     *facet = self;
 

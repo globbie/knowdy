@@ -25,6 +25,7 @@ extern int knd_is_valid_id(const char *id, size_t id_size);
 extern int knd_state_is_valid(const char *id, size_t id_size);
 extern int knd_next_state(char *s);
 extern void  knd_calc_num_id(const char *id, size_t *numval);
+extern void knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base);
 
 extern const char *max_id(const char *a, const char *b);
 extern const char *min_id(const char *a, const char *b);
@@ -67,3 +68,27 @@ knd_log(const char *fmt, ...);
 extern int obj_id_base[256];
 extern const char *obj_id_seq;
 
+extern int
+knd_read_UTF8_char(const char *rec,
+                   size_t rec_size,
+                   size_t *val,
+                   size_t *len);
+
+extern int
+knd_parse_num(const char *val,
+              long *result);
+
+extern int
+knd_read_name(char *output,
+              size_t *output_size,
+              const char *rec,
+              size_t rec_size);
+
+extern int
+knd_parse_IPV4(char *ip, unsigned long *ip_val);
+
+extern int
+knd_get_schema_name(const char *rec,
+                    char *buf,
+                    size_t *buf_size,
+                    size_t *total_size);

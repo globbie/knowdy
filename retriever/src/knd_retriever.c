@@ -15,7 +15,6 @@
 #include "knd_task.h"
 #include "knd_utils.h"
 #include "knd_msg.h"
-#include "knd_parser.h"
 #include "knd_mempool.h"
 
 #include <gsl-parser.h>
@@ -32,6 +31,30 @@ kndRetriever_del(struct kndRetriever *self)
 {
     /* TODO: free aggrs  */
     free(self);
+}
+
+static int send_http_reply(struct kndRetriever *self)
+{
+    char *b;
+    size_t buf_size;
+    int err;
+
+    b = self->task->delivery_addr;
+    b += self->task->delivery_addr_size;
+
+    memcpy(b, "/", 1);
+    b++;
+
+    memcpy(b, self->task->tid,  self->task->tid_size);
+    b += self->task->tid_size;
+    *b = '\0';
+
+    knd_log(".. try HTTP callback: \"%s\"", self->task->delivery_addr);
+
+    err = knd_http_post(self->task->delivery_addr, self->task->out->buf, self->task->out->buf_size);
+    if (err) return err;
+
+    return knd_OK;
 }
 
 static int
@@ -99,6 +122,15 @@ kndRetriever_start(struct kndRetriever *self)
             if (self->task->type == KND_UPDATE_STATE)
                 continue;
         }
+
+	if (self->task->delivery_type == KND_DELIVERY_HTTP) {
+	    err = send_http_reply(self);
+            if (err) {
+		knd_log("-- http callback failed: %d", err);
+	    }
+	    continue;
+	}
+
         err = self->task->report(self->task);
         if (err) {
             knd_log("-- task report failed: %d", err);
@@ -227,25 +259,25 @@ static gsl_err_t parse_memory_settings(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int
-parse_config_GSL(struct kndRetriever *self,
-                 const char *rec,
-                 size_t *total_size)
+
+static gsl_err_t run_check_schema(void *obj, const char *val, size_t val_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = KND_NAME_SIZE;
-    size_t chunk_size = 0;
+    const char *schema_name = "Knowdy Retriever Service";
+    size_t schema_name_size = strlen(schema_name);
 
-    const char *gsl_format_tag = "{gsl";
-    size_t gsl_format_tag_size = strlen(gsl_format_tag);
+    if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);
+    if (memcmp(schema_name, val, val_size)) return make_gsl_err(gsl_FAIL);
+    return make_gsl_err(gsl_OK);
+}
 
-    const char *header_tag = "{knd::Knowdy Retriever Service Configuration";
-    size_t header_tag_size = strlen(header_tag);
-    const char *c;
-
+static gsl_err_t parse_config(void *obj,
+			      const char *rec,
+			      size_t *total_size)
+{
+    struct kndRetriever *self = obj;
     struct gslTaskSpec specs[] = {
          { .is_implied = true,
-           .run = run_set_service_id,
+           .run = run_check_schema,
            .obj = self
          },
          { .name = "path",
@@ -301,57 +333,36 @@ parse_config_GSL(struct kndRetriever *self,
           .obj = self
         }
     };
-
-    int err = knd_FAIL;
     gsl_err_t parser_err;
 
-    if (!strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
-        rec += gsl_format_tag_size;
-        err = knd_get_schema_name(rec,
-                                  buf, &buf_size, &chunk_size);
-        if (!err) {
-            rec += chunk_size;
-
-            if (DEBUG_RETRIEVER_LEVEL_2)
-                knd_log("== got schema: \"%.*s\"", buf_size, buf);
-        }
-    }
-
-    if (strncmp(rec, header_tag, header_tag_size)) {
-        knd_log("-- wrong GSL class header");
-        return knd_FAIL;
-    }
-
-    c = rec + header_tag_size;
-
-    parser_err = gsl_parse_task(c, total_size, specs, sizeof specs / sizeof specs[0]);
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         knd_log("-- config parse error: %d", parser_err.code);
-        return gsl_err_to_knd_err_codes(parser_err);
+	return parser_err;
     }
 
     if (!*self->path) {
         knd_log("-- DB path not set :(");
-        return knd_FAIL;
+	return make_gsl_err(gsl_FAIL);
     }
 
     if (!*self->schema_path) {
         knd_log("-- schema path not set :(");
-        return knd_FAIL;
+	return make_gsl_err(gsl_FAIL);
     }
 
     if (!*self->inbox_frontend_addr) {
         knd_log("-- inbox frontend addr not set :(");
-        return knd_FAIL;
+	return make_gsl_err(gsl_FAIL);
     }
     if (!*self->inbox_backend_addr) {
         knd_log("-- inbox backend addr not set :(");
-        return knd_FAIL;
+	return make_gsl_err(gsl_FAIL);
     }
 
     if (!*self->admin->sid) {
         knd_log("-- administrative SID is not set :(");
-        return knd_FAIL;
+	return make_gsl_err(gsl_FAIL);
     }
 
     memcpy(self->admin->id, "000", strlen("000"));
@@ -364,6 +375,26 @@ parse_config_GSL(struct kndRetriever *self,
     memcpy(self->admin->path + self->path_size, "/users", strlen("/users"));
     self->admin->path_size = self->path_size + strlen("/users");
     self->admin->path[self->admin->path_size] = '\0';
+
+    return make_gsl_err(gsl_OK);
+}
+
+
+static int parse_schema(struct kndRetriever *self,
+			const char *rec,
+			size_t *total_size)
+{
+    struct gslTaskSpec specs[] = {
+        { .name = "schema",
+          .name_size = strlen("schema"),
+          .parse = parse_config,
+          .obj = self
+        }
+    };
+    gsl_err_t parser_err;
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     return knd_OK;
 }
@@ -409,7 +440,7 @@ kndRetriever_new(struct kndRetriever **rec,
     err = kndMemPool_new(&self->mempool);
     if (err) return err;
 
-    err = parse_config_GSL(self, self->out->file, &chunk_size);
+    err = parse_schema(self, self->out->file, &chunk_size);
     if (err) {
         knd_log("  -- config parsing error :(");
         goto error;
@@ -472,16 +503,19 @@ kndRetriever_new(struct kndRetriever **rec,
     conc->rel->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
 
     /* specific allocations of the root concs */
-    err = ooDict_new(&conc->class_idx, KND_MEDIUM_DICT_SIZE);
+    err = ooDict_new(&conc->class_idx, KND_LARGE_DICT_SIZE);
+    if (err) goto error;
+
+    err = ooDict_new(&conc->class_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
 
     err = ooDict_new(&conc->proc->proc_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
-    conc->proc->class_idx = conc->class_idx;
+    conc->proc->class_name_idx = conc->class_name_idx;
 
     err = ooDict_new(&conc->rel->rel_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
-    conc->rel->class_idx = conc->class_idx;
+    conc->rel->class_name_idx = conc->class_name_idx;
 
     /* user idx */
     /*if (self->mempool->max_users) {

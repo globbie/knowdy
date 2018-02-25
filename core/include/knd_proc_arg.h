@@ -116,6 +116,7 @@ struct kndProcArg
     struct kndOutput *out;
     struct kndMemPool *mempool;
     struct kndTask *task;
+    struct kndVisualFormat *visual;
 
     struct kndTranslation *tr;
     size_t depth;

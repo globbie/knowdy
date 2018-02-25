@@ -1,14 +1,14 @@
 /**
- *   Copyright (c) 2011-2017 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2018 by Dmitri Dmitriev
  *   All rights reserved.
  *
- *   This file is part of the Knowdy Search Engine, 
+ *   This file is part of the Knowdy Graph DB, 
  *   and as such it is subject to the license stated
  *   in the LICENSE file which you have received 
  *   as part of this distribution.
  *
  *   Project homepage:
- *   <http://www.globbie.net>
+ *   <http://www.knowdy.net>
  *
  *   Initial author and maintainer:
  *         Dmitri Dmitriev aka M0nsteR <dmitri@globbie.net>
@@ -46,6 +46,16 @@ typedef enum knd_iter_type {
     KND_ITER_DEPTH
 } knd_iter_type;
 
+typedef enum knd_delivery_type {
+    KND_DELIVERY_CACHE,
+    KND_DELIVERY_HTTP
+} knd_delivery_type;
+
+struct kndVisualFormat {
+    size_t text_line_height;
+    size_t text_hangindent_size;
+};
+
 struct kndTask
 {
     knd_task_spec_type type;
@@ -68,6 +78,9 @@ struct kndTask
 
     char curr_locale[KND_NAME_SIZE];
     size_t curr_locale_size;
+
+    knd_format format;
+    struct kndVisualFormat visual;
 
     char timestamp[KND_NAME_SIZE];
     size_t timestamp_size;
@@ -110,6 +123,10 @@ struct kndTask
     struct kndOutput *out;
     struct kndOutput *spec_out;
     struct kndOutput *update;
+
+    knd_delivery_type delivery_type;
+    char delivery_addr[KND_NAME_SIZE];
+    size_t delivery_addr_size;
 
     void *delivery;
     void *publisher;

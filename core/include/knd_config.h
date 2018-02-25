@@ -2,13 +2,13 @@
  *   Copyright (c) 2011-2018 by Dmitri Dmitriev
  *   All rights reserved.
  *
- *   This file is part of the Knowdy Search Engine, 
+ *   This file is part of the Knowdy Graph DB, 
  *   and as such it is subject to the license stated
  *   in the LICENSE file which you have received 
  *   as part of this distribution.
  *
  *   Project homepage:
- *   <http://www.globbie.net>
+ *   <http://www.knowdy.net>
  *
  *   Initial author and maintainer:
  *         Dmitri Dmitriev aka M0nsteR <dmitri@globbie.net>
@@ -18,10 +18,11 @@
  *   Knowdy configuration settings
  */
 
-#ifndef KND_CONFIG_H
-#define KND_CONFIG_H
+#pragma once
 
 #include "knd_err.h"
+
+#include <stdlib.h>
 
 typedef enum knd_state_phase { KND_SELECTED,
                                KND_SUBMITTED,
@@ -39,6 +40,7 @@ typedef enum knd_format { KND_FORMAT_JSON,
                           KND_FORMAT_XML,
                           KND_FORMAT_HTML,
                           KND_FORMAT_JS,
+                          KND_FORMAT_SVG,
                           KND_FORMAT_GSL,
                           KND_FORMAT_GSP,
                           KND_FORMAT_GSC
@@ -49,9 +51,11 @@ static const char* const knd_format_names[] = {
     "XML",
     "HTML", 
     "JS",
+    "SVG",
     "GSL", 
     "GSP", 
-    "GSC" };
+    "GSC",
+    NULL };
 
 typedef enum knd_logic { KND_LOGIC_AND, 
                           KND_LOGIC_OR,
@@ -120,7 +124,7 @@ typedef enum knd_storage_type {
 
 #define KND_MAX_DEBUG_CONTEXT_SIZE 100
 
-#define KND_ID_SIZE  (4 * sizeof(char))
+#define KND_ID_SIZE  (8 * sizeof(char))
 #define KND_ID_BATCH_SIZE 10
 #define KND_LOCALE_SIZE 8
 
@@ -203,26 +207,26 @@ typedef enum knd_storage_type {
 
 #define KND_NUMFIELD_MAX_SIZE 8
 
-#define KND_REFSET_TAG "F"
-#define KND_REFSET_TAG_SIZE strlen(KND_REFSET_TAG)
+#define KND_SET_TAG "F"
+#define KND_SET_TAG_SIZE strlen(KND_SET_TAG)
 
-#define KND_REFSET_DIR_TAG "D"
-#define KND_REFSET_DIR_TAG_SIZE strlen(KND_REFSET_DIR_TAG)
+#define KND_SET_DIR_TAG "D"
+#define KND_SET_DIR_TAG_SIZE strlen(KND_SET_DIR_TAG)
 
-#define KND_REFSET_FEAT_TAG "fe"
-#define KND_REFSET_FEAT_TAG_SIZE strlen(KND_REFSET_FEAT_TAG)
+#define KND_SET_FEAT_TAG "fe"
+#define KND_SET_FEAT_TAG_SIZE strlen(KND_SET_FEAT_TAG)
 
-#define KND_REFSET_INBOX_TAG "^"
-#define KND_REFSET_INBOX_TAG_SIZE strlen(KND_REFSET_INBOX_TAG)
+#define KND_SET_INBOX_TAG "^"
+#define KND_SET_INBOX_TAG_SIZE strlen(KND_SET_INBOX_TAG)
 
-#define KND_REFSET_TERM_TAG "_"
-#define KND_REFSET_TERM_TAG_SIZE strlen(KND_REFSET_TERM_TAG)
+#define KND_SET_TERM_TAG "_"
+#define KND_SET_TERM_TAG_SIZE strlen(KND_SET_TERM_TAG)
 
-#define KND_REFSET_REF_TAG "R"
-#define KND_REFSET_REF_TAG_SIZE strlen(KND_REFSET_REF_TAG)
+#define KND_SET_REF_TAG "R"
+#define KND_SET_REF_TAG_SIZE strlen(KND_SET_REF_TAG)
 
-#define KND_REFSET_HEADWORD_TAG "H"
-#define KND_REFSET_HEADWORD_TAG_SIZE strlen(KND_REFSET_HEADWORD_TAG)
+#define KND_SET_HEADWORD_TAG "H"
+#define KND_SET_HEADWORD_TAG_SIZE strlen(KND_SET_HEADWORD_TAG)
 
 #define KND_DATABAND_TAG "B"
 #define KND_DATABAND_TAG_SIZE strlen(KND_DATABAND_TAG)
@@ -310,7 +314,6 @@ typedef enum knd_storage_type {
 /* alphanumeric symbols:
    0-9, A-Z, a-z */
 #define KND_RADIX_BASE 62
-#define KND_ID_MAX_COUNT KND_RADIX_BASE * KND_RADIX_BASE * KND_RADIX_BASE
 
 #define UCHAR_NUMVAL_RANGE (unsigned char)-1 + 1
 
@@ -341,7 +344,7 @@ typedef enum knd_storage_type {
 #define KND_MAZE_NUM_AGENTS 100
 #define KND_MAZE_NUM_CACHE_SETS 1024
 
-#define KND_REFSET_MAX_DEPTH 10
+#define KND_SET_MAX_DEPTH 10
 #define KND_TEMP_BUF_SIZE 1024
 #define KND_MED_BUF_SIZE 1024 * 10
 
@@ -376,6 +379,9 @@ typedef enum knd_storage_type {
 #define KND_MAX_ERR_MSG_BUF_SIZE 1024 * 10 * sizeof(char)
 #define KND_MAX_UPDATE_BUF_SIZE 1024 * 100 * sizeof(char)
 
+#define KND_MIN_QUERIES 1024
+#define KND_MIN_SETS 1024
+#define KND_MIN_FACETS 1024
 #define KND_MIN_UPDATES 1024
 #define KND_MIN_STATES 1024 * 10
 #define KND_MIN_USERS 1024
@@ -391,15 +397,15 @@ typedef enum knd_storage_type {
 
 #define KND_TEXT_CHUNK_SIZE 128
 #define KND_MAX_TEXT_CHUNK_SIZE 1024 * 10
-#define KND_MAX_DEBUG_CHUNK_SIZE 256
+#define KND_MAX_DEBUG_CHUNK_SIZE 512
 
 #define KND_MAX_CONTEXTS 4
 
-#define KND_REFSETS_BATCH_SIZE 32
-#define KND_MAX_REFSETS 128
+#define KND_SETS_BATCH_SIZE 32
+#define KND_MAX_SETS 128
 
-#define KND_MAX_INBOX_SIZE 8
-#define KND_REFSET_MIN_SIZE KND_MAX_INBOX_SIZE / 10
+#define KND_SET_INBOX_SIZE 8
+#define KND_SET_MIN_SIZE KND_MAX_INBOX_SIZE / 10
 #define KND_INBOX_RESERVE_RATIO 1.4
 
 #define KND_THRESHOLD_RATIO 0.85
@@ -489,4 +495,6 @@ typedef enum knd_storage_type {
 #define KND_JSON_SEPAR ","
 #define KND_JSON_SEPAR_SIZE 1
 
-#endif
+#define KND_TEXT_LINE_HEIGHT 24
+#define KND_TEXT_HANGINDENT_SIZE 40
+

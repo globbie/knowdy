@@ -7,11 +7,9 @@
 #include "knd_output.h"
 #include "knd_elem.h"
 #include "knd_object.h"
-#include "knd_objref.h"
 #include "knd_utils.h"
 #include "knd_concept.h"
 #include "knd_attr.h"
-#include "knd_parser.h"
 
 #include <gsl-parser.h>
 
@@ -314,7 +312,7 @@ parse_GSL(struct kndRef *self,
           const char *rec,
           size_t *total_size)
 {
-    if (DEBUG_REF_LEVEL_1)
+    if (DEBUG_REF_LEVEL_TMP)
         knd_log(".. parse REF field: \"%s\"..", rec);
 
     struct gslTaskSpec specs[] = {

@@ -36,6 +36,7 @@ struct kndConcept;
 struct kndRel;
 struct kndRelObj;
 struct kndTask;
+struct kndSet;
 struct kndUser;
 struct kndClassUpdate;
 struct kndClassUpdateRef;
@@ -57,7 +58,7 @@ struct kndConcRef
 {
     size_t state;
     struct kndConcDir *dir;
-    struct kndConcept *conc;
+    //struct kndConcept *conc;
 };
 
 struct kndConcRefSet
@@ -108,7 +109,6 @@ struct kndAttrEntry
     struct kndAttrEntry *next;
 };
 
-
 struct kndConcDir
 {
     char id[KND_ID_SIZE];
@@ -119,6 +119,7 @@ struct kndConcDir
     size_t name_size;
     struct kndConcept *conc;
     struct kndMemPool *mempool;
+    struct kndSet *descendants;
 
     knd_state_phase phase;
 
@@ -172,8 +173,8 @@ struct kndConcept
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    char id[KND_ID_SIZE];
-    size_t id_size;
+    //char id[KND_ID_SIZE];
+    //size_t id_size;
     size_t numid;
     size_t next_numid;
 
@@ -212,8 +213,8 @@ struct kndConcept
     struct kndConcDir *bases[KND_MAX_BASES];
     size_t num_bases;
 
-    struct kndDataIdx *indices;
-    size_t num_indices;
+    //struct kndDataIdx *indices;
+    //size_t num_indices;
 
     bool ignore_children;
     bool is_resolved;
@@ -221,7 +222,7 @@ struct kndConcept
     struct kndConcept *root_class;
     struct kndConcept *curr_class;
     struct kndConcept *curr_baseclass;
-    struct kndObject *curr_obj;
+    struct kndObject  *curr_obj;
 
     struct kndConcDir *dir;
     struct kndConcFolder *folders;
@@ -242,6 +243,7 @@ struct kndConcept
 
     /* indices */
     struct ooDict *class_idx;
+    struct ooDict *class_name_idx;
     struct ooDict *attr_idx;
 
     /* state idx */
@@ -275,7 +277,7 @@ struct kndConcept
     /***********  public methods ***********/
     void (*init)(struct kndConcept  *self);
     void (*del)(struct kndConcept   *self);
-    void (*reset)(struct kndConcept   *self);
+    //void (*reset)(struct kndConcept   *self);
     void (*str)(struct kndConcept *self);
     int (*open)(struct kndConcept   *self);
 

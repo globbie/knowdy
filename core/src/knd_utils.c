@@ -143,6 +143,33 @@ knd_calc_num_id(const char *id, size_t *numval)
     //knd_log("%.*s => %zu", KND_ID_SIZE, id, aggr);
 }
 
+extern void
+knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base)
+{
+    size_t curr_val = numval;
+    size_t curr_size = 0;
+    ldiv_t result;
+
+    if (curr_val == 0) {
+	*buf = '0';
+	*buf_size = 1;
+	return;
+    }
+
+    while (curr_val) {
+	result = ldiv(curr_val, base);
+
+	//knd_log("Q:%lu R:%lu CURR:%zu buf_size:%zu",
+	//	result.quot, result.rem, curr_base, *buf_size);
+
+	curr_val = result.quot;
+	*buf++ = obj_id_seq[result.rem];
+	curr_size++;
+    }
+
+    *buf_size = curr_size;
+}
+
 extern const char *
 knd_max_id(const char *a, const char *b)
 {
@@ -354,4 +381,167 @@ knd_remove_nonprintables(char *data)
 
     return knd_OK;
 }
+
+/*extern int knd_graphic_rounded_rect(struct kndOutput *out,
+				    size_t x, size_t y,
+				    size_t w, size_t h,
+				    size_t r,
+				    bool tl, bool tr, bool bl, bool br)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size;
+    int err;
+
+    buf_size = sprintf(buf, "M%zu,%zu", (x + r), y);
+
+        retval += "h" + (w - 2*r);
+
+        if (tr) {
+	    retval += "a" + r + "," + r + " 0 0 1 " + r + "," + r;
+	} else {
+	    retval += "h" + r; retval += "v" + r;
+	}
+
+        retval += "v" + (h - 2*r);
+
+        if (br) {
+	    retval += "a" + r + "," + r + " 0 0 1 " + -r + "," + r;
+	} else { retval += "v" + r; retval += "h" + -r; }
+        retval += "h" + (2*r - w);
+        if (bl) { retval += "a" + r + "," + r + " 0 0 1 " + -r + "," + -r; }
+        else { retval += "h" + -r; retval += "v" + -r; }
+        retval += "v" + (2*r - h);
+        if (tl) { retval += "a" + r + "," + r + " 0 0 1 " + r + "," + -r; }
+        else { retval += "v" + -r; retval += "h" + r; }
+        retval += "z";
+        return retval;
+}
+*/
+
+
+int knd_read_UTF8_char(const char *rec,
+                   size_t rec_size,
+                   size_t *val,
+                   size_t *len)
+{
+    size_t num_bytes = 0;
+    long numval = 0;
+
+    /* single byte ASCII-code */
+    if ((unsigned char)*rec < 128) {
+        if (DEBUG_UTILS_LEVEL_3)
+            knd_log("    == ASCII code: %u\n",
+                    (unsigned char)*rec);
+        num_bytes++;
+
+        *val = (size_t)*rec;
+        *len = num_bytes;
+        return knd_OK;
+    }
+
+    /* 2-byte indicator */
+    if ((*rec & 0xE0) == 0xC0) {
+        if (rec_size < 2) {
+            if (DEBUG_UTILS_LEVEL_TMP)
+                knd_log("    -- No payload byte left :(\n");
+            return knd_LIMIT;
+        }
+
+        if ((rec[1] & 0xC0) != 0x80) {
+            if (DEBUG_UTILS_LEVEL_4)
+                knd_log("    -- Invalid UTF-8 payload byte: %2.2x\n",
+                        rec[1]);
+            return knd_FAIL;
+        }
+
+        numval = ((rec[0] & 0x1F) << 6) |
+            (rec[1] & 0x3F);
+
+        if (DEBUG_UTILS_LEVEL_3)
+            knd_log("    == UTF-8 2-byte code: %lu\n",
+                    (unsigned long)numval);
+
+        *val = (size_t)numval;
+        *len = 2;
+        return knd_OK;
+    }
+
+    /* 3-byte indicator */
+    if ((*rec & 0xF0) == 0xE0) {
+        if (rec_size < 3) {
+            if (DEBUG_UTILS_LEVEL_3)
+                knd_log("    -- Not enough payload bytes left :(\n");
+            return knd_LIMIT;
+        }
+
+        if ((rec[1] & 0xC0) != 0x80) {
+            if (DEBUG_UTILS_LEVEL_3)
+                knd_log("    -- Invalid UTF-8 payload byte: %2.2x\n",
+                        rec[1]);
+            return knd_FAIL;
+        }
+
+        if ((rec[2] & 0xC0) != 0x80) {
+            if (DEBUG_UTILS_LEVEL_3)
+                knd_log("   -- Invalid UTF-8 payload byte: %2.2x\n",
+                        rec[2]);
+            return knd_FAIL;
+        }
+
+        numval = ((rec[0] & 0x0F) << 12)  |
+            ((rec[1] & 0x3F) << 6) |
+            (rec[2] & 0x3F);
+
+        if (DEBUG_UTILS_LEVEL_3)
+            knd_log("    == UTF-8 3-byte code: %lu\n",
+                    (unsigned long)numval);
+
+        *val = (size_t)numval;
+        *len = 3;
+
+        return knd_OK;
+    }
+
+    if (DEBUG_UTILS_LEVEL_3)
+        knd_log("    -- Invalid UTF-8 code: %2.2x\n",
+                *rec);
+    return knd_FAIL;
+}
+
+int knd_parse_num(const char *val,
+                  long *result)
+/*int *warning)*/
+{
+    long numval;
+    char *invalid_num_char = NULL;
+    int err = knd_OK;
+
+    assert(val != NULL);
+    errno = 0;
+
+    numval = strtol(val, &invalid_num_char, KND_NUM_ENCODE_BASE);
+
+    /* check for various numeric decoding errors */
+    if ((errno == ERANGE && (numval == LONG_MAX || numval == LONG_MIN)) ||
+            (errno != 0 && numval == 0))
+    {
+        perror("strtol");
+        err = knd_FAIL;
+        goto final;
+    }
+
+    if (invalid_num_char == val) {
+        fprintf(stderr, "  -- No digits were found in \"%s\"\n", val);
+        err = knd_FAIL;
+        goto final;
+    }
+
+    *result = numval;
+
+final:
+
+    return err;
+}
+
+
 

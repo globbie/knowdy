@@ -1,5 +1,4 @@
-{gsl::Knowdy Basic
-  {knd::Knowdy Retriever Service Configuration
+{schema Knowdy Retriever Service
       {path /var/lib/knowdy/db}
       {n Alpha Tester}
       {schemas /etc/knowdy/schemas}
@@ -19,11 +18,10 @@
          {max_proc_instances 1000000}
       }
 
-      {coll_request tcp://127.0.0.1:6913}
       {delivery ipc:///var/lib/knowdy/delivery/inbox}
 
       {inbox
        {frontend ipc:///var/lib/knowdy/retriever}
        {backend ipc:///var/lib/knowdy/retriever_backend}
       }
-}}
+}

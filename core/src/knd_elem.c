@@ -15,9 +15,6 @@
 #include "knd_ref.h"
 #include "knd_num.h"
 
-#include "knd_refset.h"
-#include "knd_sorttag.h"
-
 #include "knd_output.h"
 #include "knd_user.h"
 

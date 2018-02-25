@@ -17,7 +17,6 @@
 #include "knd_utils.h"
 #include "knd_concept.h"
 #include "knd_mempool.h"
-#include "knd_parser.h"
 #include "knd_text.h"
 
 #include <gsl-parser.h>
@@ -577,7 +576,7 @@ static int import_rel(struct kndRel *self,
     rel->task = self->task;
     rel->mempool = self->mempool;
     rel->rel_idx = self->rel_idx;
-    rel->class_idx = self->class_idx;
+    rel->class_name_idx = self->class_name_idx;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -818,7 +817,7 @@ static int get_rel(struct kndRel *self,
     rel->task = self->task;
     rel->mempool = self->mempool;
     rel->rel_idx = self->rel_idx;
-    rel->class_idx = self->class_idx;
+    rel->class_name_idx = self->class_name_idx;
     rel->dir = dir;
 
     memcpy(rel->name, dir->name, dir->name_size);

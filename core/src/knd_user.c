@@ -12,7 +12,6 @@
 #include "knd_output.h"
 #include "knd_msg.h"
 #include "knd_task.h"
-#include "knd_parser.h"
 #include "knd_concept.h"
 #include "knd_object.h"
 #include "knd_proc.h"
@@ -250,14 +249,13 @@ kndUser_parse_numid(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t
-kndUser_parse_auth(void *obj,
-                   const char *rec,
-                   size_t *total_size)
+static gsl_err_t kndUser_parse_auth(void *obj,
+				    const char *rec,
+				    size_t *total_size)
 {
     struct kndUser *self = obj;
     char sid[KND_NAME_SIZE];
-    size_t sid_size;
+    size_t sid_size = 0;
     int err;
     gsl_err_t parser_err;
 
@@ -451,7 +449,6 @@ static gsl_err_t parse_sync_task(void *obj,
     /* TODO: inform retrievers */
 
     /* release resources */
-    self->root_class->reset(self->root_class);
 
     if (!stat(self->out->buf, &st)) {
         if (DEBUG_USER_LEVEL_TMP)
@@ -497,7 +494,7 @@ static gsl_err_t parse_class_select(void *obj,
 
     c->curr_class = NULL;
     c->curr_baseclass = NULL;
-    c->root_class = self->root_class;
+    c->root_class = c;
 
     err = c->select(c, rec, total_size);
     if (err) return make_gsl_err_external(err);
@@ -822,9 +819,7 @@ static int parse_task(struct kndUser *self,
           .parse = parse_sync_task,
           .obj = self
         },
-        { .name = "default",
-          .name_size = strlen("default"),
-          .is_default = true,
+        { .is_default = true,
           .run = run_present_user,
           .obj = self
         }

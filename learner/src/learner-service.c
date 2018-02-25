@@ -2,7 +2,6 @@
 
 #include <knd_dict.h>
 #include <knd_err.h>
-#include <knd_parser.h>
 #include <knd_proc.h>
 #include <knd_rel.h>
 #include <knd_state.h>
@@ -226,24 +225,6 @@ parse_config_gsl(struct kndLearnerService *self, const char *rec, size_t *total_
     int err = knd_FAIL;
     gsl_err_t parser_err;
 
-    if (!strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
-        rec += gsl_format_tag_size;
-
-        err = knd_get_schema_name(rec, buf, &buf_size, &chunk_size);
-        if (!err) {
-            rec += chunk_size;
-            //if (DEBUG_LEARNER_LEVEL_TMP)
-            //    knd_log("== got schema: \"%.*s\"", buf_size, buf);
-        }
-    }
-
-    if (strncmp(rec, header_tag, header_tag_size)) {
-        knd_log("-- wrong GSL class header");
-        return knd_FAIL;
-    }
-
-    c = rec + header_tag_size;
-
     parser_err = gsl_parse_task(c, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         knd_log("-- config parse error: %d", parser_err.code);
@@ -421,17 +402,16 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     err = ooDict_new(&conc->class_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
+    err = ooDict_new(&conc->class_name_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+
     err = ooDict_new(&conc->proc->proc_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
-    conc->proc->class_idx = conc->class_idx;
+    conc->proc->class_name_idx = conc->class_name_idx;
 
     err = ooDict_new(&conc->rel->rel_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
-    conc->rel->class_idx = conc->class_idx;
-
-    err = ooDict_new(&conc->rel->rel_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) goto error;
-    conc->rel->class_idx = conc->class_idx;
+    conc->rel->class_name_idx = conc->class_name_idx;
 
     /* user idx */
     if (self->mempool->max_users) {

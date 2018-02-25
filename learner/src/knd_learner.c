@@ -16,7 +16,6 @@
 #include "knd_task.h"
 #include "knd_attr.h"
 #include "knd_user.h"
-#include "knd_parser.h"
 #include "knd_concept.h"
 #include "knd_object.h"
 #include "knd_rel.h"
@@ -37,7 +36,7 @@ kndLearner_del(struct kndLearner *self)
     struct kndConcept *conc;
 
     conc = self->admin->root_class;
-    conc->class_idx->del(conc->class_idx);
+    conc->class_name_idx->del(conc->class_name_idx);
     conc->rel->rel_idx->del(conc->rel->rel_idx);
     conc->rel->del(conc->rel);
 
@@ -331,23 +330,27 @@ static gsl_err_t parse_memory_settings(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int
-parse_config_GSL(struct kndLearner *self,
-                 const char *rec,
-                 size_t *total_size)
+static gsl_err_t run_check_schema(void *obj, const char *val, size_t val_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = KND_NAME_SIZE;
-    size_t chunk_size = 0;
+    const char *schema_name = "Knowdy Learner Service";
+    size_t schema_name_size = strlen(schema_name);
 
-    const char *gsl_format_tag = "{gsl";
-    size_t gsl_format_tag_size = strlen(gsl_format_tag);
+    if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);
+    if (memcmp(schema_name, val, val_size)) return make_gsl_err(gsl_FAIL);
+    return make_gsl_err(gsl_OK);
+}
 
-    const char *header_tag = "{knd::Knowdy Learner Service Configuration";
-    size_t header_tag_size = strlen(header_tag);
-    const char *c;
+static gsl_err_t parse_config(void *obj,
+			      const char *rec,
+			      size_t *total_size)
+{
+    struct kndLearner *self = obj;
 
     struct gslTaskSpec specs[] = {
+         { .is_implied = true,
+           .run = run_check_schema,
+           .obj = self
+         },
          { .name = "path",
            .name_size = strlen("path"),
            .buf = self->path,
@@ -398,52 +401,36 @@ parse_config_GSL(struct kndLearner *self,
     int err = knd_FAIL;
     gsl_err_t parser_err;
 
-    if (!strncmp(rec, gsl_format_tag, gsl_format_tag_size)) {
-        rec += gsl_format_tag_size;
-        err = knd_get_schema_name(rec,
-                                  buf, &buf_size, &chunk_size);
-        if (!err) {
-            rec += chunk_size;
-            if (DEBUG_LEARNER_LEVEL_TMP)
-                knd_log("== got schema: \"%.*s\"", buf_size, buf);
-        }
-    }
-
-    if (strncmp(rec, header_tag, header_tag_size)) {
-        knd_log("-- wrong GSL class header");
-        return knd_FAIL;
-    }
-    c = rec + header_tag_size;
-
-    parser_err = gsl_parse_task(c, total_size, specs, sizeof specs / sizeof specs[0]);
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         knd_log("-- config parse error: %d", parser_err.code);
-        return gsl_err_to_knd_err_codes(parser_err);
+        return parser_err;
     }
 
     if (!self->path_size) {
         knd_log("-- DB path not set :(");
-        return knd_FAIL;
+	return make_gsl_err(gsl_FAIL);
     }
-    err = knd_mkpath(self->path, self->path_size, 0755, false);                   RET_ERR();
+    err = knd_mkpath(self->path, self->path_size, 0755, false);
+    if (err) return make_gsl_err_external(err);
 
     if (!self->schema_path_size) {
         knd_log("-- schema path not set :(");
-        return knd_FAIL;
+	return make_gsl_err(gsl_FAIL);
     }
 
     if (!self->inbox_frontend_addr_size) {
         knd_log("-- inbox frontend addr not set :(");
-        return knd_FAIL;
+	return make_gsl_err(gsl_FAIL);
     }
     if (!self->inbox_backend_addr_size) {
         knd_log("-- inbox backend addr not set :(");
-        return knd_FAIL;
+	return make_gsl_err(gsl_FAIL);
     }
 
     if (!self->admin->sid_size) {
         knd_log("-- administrative SID is not set :(");
-        return knd_FAIL;
+        return make_gsl_err(gsl_FAIL);
     }
     memcpy(self->admin->id, "000", strlen("000"));
 
@@ -456,6 +443,25 @@ parse_config_GSL(struct kndLearner *self,
     memcpy(self->admin->path + self->path_size, "/users", strlen("/users"));
     self->admin->path_size = self->path_size + strlen("/users");
     self->admin->path[self->admin->path_size] = '\0';
+
+    return make_gsl_err(gsl_OK);
+}
+
+static int parse_schema(struct kndLearner *self,
+			const char *rec,
+			size_t *total_size)
+{
+    struct gslTaskSpec specs[] = {
+        { .name = "schema",
+          .name_size = strlen("schema"),
+          .parse = parse_config,
+          .obj = self
+        }
+    };
+    gsl_err_t parser_err;
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     return knd_OK;
 }
@@ -492,7 +498,6 @@ kndLearner_new(struct kndLearner **rec,
     self->task->admin = self->admin;
     self->admin->out = self->out;
 
-
     err = kndMemPool_new(&self->mempool);
     if (err) return err;
 
@@ -500,7 +505,7 @@ kndLearner_new(struct kndLearner **rec,
     err = self->out->read_file(self->out, config, strlen(config));
     if (err) goto error;
 
-    err = parse_config_GSL(self, self->out->file, &chunk_size);
+    err = parse_schema(self, self->out->file, &chunk_size);
     if (err) goto error;
 
     err = self->mempool->alloc(self->mempool);                                    RET_ERR();
@@ -559,13 +564,16 @@ kndLearner_new(struct kndLearner **rec,
     err = ooDict_new(&conc->class_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
+    err = ooDict_new(&conc->class_name_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+
     err = ooDict_new(&conc->proc->proc_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
-    conc->proc->class_idx = conc->class_idx;
+    conc->proc->class_name_idx = conc->class_name_idx;
 
     err = ooDict_new(&conc->rel->rel_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
-    conc->rel->class_idx = conc->class_idx;
+    conc->rel->class_name_idx = conc->class_name_idx;
 
     /* user idx */
     if (self->mempool->max_users) {
