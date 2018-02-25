@@ -35,19 +35,14 @@ typedef enum knd_set_type { KND_SET_OBJ,
 
 struct kndSetElem
 {
-    char id[KND_ID_SIZE + 1];
-    size_t id_size;
-
-    struct kndConcDir *conc_dir;
+    struct kndConcDir  *conc_dir;
     struct kndObjEntry *obj_entry;
-
-    struct kndSetElem *next;
 };
 
-struct kndElemIdx
+struct kndSetElemIdx
 {
-    struct kndElemIdx **idx;
-    struct kndSetElem **elems;
+    struct kndSetElemIdx *idx[KND_RADIX_BASE];
+    struct kndSetElem *elems[KND_RADIX_BASE];
     size_t num_elems;
 };
 
@@ -57,12 +52,13 @@ struct kndSet
     struct kndConcDir *base;
     bool is_terminal;
 
-    struct ooDict *idx;
-    
-    struct kndSetElem *inbox[KND_SET_INBOX_SIZE];
-    size_t inbox_size;
-    size_t max_inbox_size;
+    struct ooDict *name_idx;
+    struct kndSetElemIdx *idx;
     size_t num_elems;
+
+    /*struct kndSetElem *inbox[KND_SET_INBOX_SIZE];
+    size_t inbox_size;
+    size_t max_inbox_size;*/
 
     struct kndFacet *parent_facet;
     struct kndFacet *facets[KND_MAX_ATTRS];
@@ -105,7 +101,7 @@ struct kndSet
 
     int (*read)(struct kndSet *self,
                 const char    *rec,
-                size_t         rec_size);
+                size_t         *rec_size);
 
     int (*export)(struct kndSet *self);
 };
