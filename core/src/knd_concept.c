@@ -1003,7 +1003,7 @@ static gsl_err_t parse_descendants(void *obj,
     struct kndSet *descendants;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log(".. parsing a set of descendants: \"%.*s\"", 64, rec);
 
     err = self->mempool->new_set(self->mempool, &descendants);
@@ -1755,6 +1755,7 @@ static gsl_err_t parse_import_class(void *obj,
     dir->conc = c;
     c->dir = dir;
     dir->mempool = self->mempool;
+    dir->class_idx = self->class_idx;
 
     err = self->class_name_idx->set(self->class_name_idx,
                                c->name, c->name_size, (void*)dir);
@@ -2444,6 +2445,7 @@ static gsl_err_t dir_entry_alloc(void *self,
     memcpy(dir->id, name, name_size);
     dir->id_size = name_size;
     dir->mempool = parent_dir->mempool;
+    dir->class_idx = parent_dir->class_idx;
 
     memset(dir->next_obj_id, '0', KND_ID_SIZE);
     knd_calc_num_id(name, &dir->numid);
@@ -3901,7 +3903,7 @@ static int unfreeze_class(struct kndConcept *self,
     }
     buf[buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("\n== frozen Conc REC: \"%.*s\"",
 		buf_size, buf);
 

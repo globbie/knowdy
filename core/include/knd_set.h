@@ -41,7 +41,7 @@ struct kndSetElem
 
 struct kndSetElemIdx
 {
-    struct kndSetElemIdx *idx[KND_RADIX_BASE];
+    struct kndSetElemIdx *idxs[KND_RADIX_BASE];
     struct kndSetElem *elems[KND_RADIX_BASE];
     size_t num_elems;
 };
@@ -55,10 +55,6 @@ struct kndSet
     struct ooDict *name_idx;
     struct kndSetElemIdx *idx;
     size_t num_elems;
-
-    /*struct kndSetElem *inbox[KND_SET_INBOX_SIZE];
-    size_t inbox_size;
-    size_t max_inbox_size;*/
 
     struct kndFacet *parent_facet;
     struct kndFacet *facets[KND_MAX_ATTRS];

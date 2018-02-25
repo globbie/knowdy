@@ -773,6 +773,8 @@ kndMemPool_init(struct kndMemPool *self)
     self->del = del;
     self->alloc = alloc;
     self->new_set = new_set;
+    self->new_set_elem = new_set_elem;
+    self->new_set_elem_idx = new_set_elem_idx;
     self->new_facet = new_facet;
     self->new_query = new_query;
     self->new_update = new_update;

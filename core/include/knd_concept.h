@@ -151,6 +151,7 @@ struct kndConcDir
     size_t num_objs;
     size_t total_objs;
 
+    struct ooDict *class_idx;
     struct ooDict *obj_idx;
     struct ooDict *reverse_attr_name_idx;
 
