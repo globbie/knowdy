@@ -23,11 +23,30 @@ task_callback(struct kmqEndPoint *endpoint __attribute__((unused)), struct kmqTa
     int err;
 
     err = task->get_data(task, 0, &data, &size);
-    if (err != 0) { knd_log("-- task read failed"); return -1; }
+    if (err != knd_OK) { knd_log("-- task read failed"); return -1; }
 
     printf(">>>\n%.*s\n<<<\n", (int) size, data);
 
     self->task->reset(self->task);
+    err = self->task->run(self->task, data, size, "None", sizeof("None"));
+
+    if (err != knd_OK) {
+        self->task->error = err;
+        knd_log("-- task running failure: %d", err);
+        goto final;
+    }
+
+final:
+
+    if (!self->task->tid_size) {
+        self->task->tid[0] = '0';
+        self->task->tid_size = 1;
+    }
+
+    err = self->task->report(self->task);
+    if (err != knd_OK) {
+        knd_log("-- task report failed: %d", err);
+    }
 
     return 0;
 }
