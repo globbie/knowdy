@@ -8,7 +8,6 @@
 #include "knd_output.h"
 #include "knd_elem.h"
 #include "knd_object.h"
-#include "knd_objref.h"
 #include "knd_utils.h"
 #include "knd_concept.h"
 #include "knd_attr.h"
@@ -62,11 +61,6 @@ static void str(struct kndText *self)
                 if (sel->css_name_size) {
                     knd_log("%*sCSS: \"%s\" @%lu+%lu\n", self->depth * KND_OFFSET_SIZE, "",
                             sel->css_name, (unsigned long)sel->pos, (unsigned long)sel->len);
-                }
-
-                if (sel->ref) {
-                    knd_log("%*sREF: \"%s\" @%lu+%lu\n", self->depth * KND_OFFSET_SIZE, "",
-                            sel->ref->name, (unsigned long)sel->pos, (unsigned long)sel->len);
                 }
 
                 sel = sel->next;
@@ -166,35 +160,6 @@ static int export_JSON(struct kndText *self)
                                            buf, buf_size);
                     if (err) return err;
 
-                    if (sel->ref) {
-                        err = out->write(out,  ",\"ref\":\"", strlen(",\"ref\":\""));
-                        if (err) return err;
-
-                        /* TODO: expand */
-                        /* get GUID */
-                        /*err = obj->cache->repo->get_guid(obj->cache->repo,
-                                                         obj->cache->baseclass,
-                                                         sel->ref->name, sel->ref->name_size,
-                                                         buf); */
-                        err = knd_FAIL;
-
-                        if (err) {
-                            err = out->write(out, "000", KND_ID_SIZE);
-                            if (err) return err;
-                        } else {
-                            err = out->write(out, buf, KND_ID_SIZE);
-                            if (err) return err;
-                        }
-
-                        err = out->write(out, ":", 1);
-                        if (err) return err;
-
-                        err = out->write(out, sel->ref->name, sel->ref->name_size);
-                        if (err) return err;
-
-                        err = out->write(out,  "\"", 1);
-                        if (err) return err;
-                    }
 
                     err = out->write(out,  "}", 1);
                     if (err) return err;
@@ -422,17 +387,6 @@ static int export_GSP(struct kndText *self)
                     if (err) return err;
                 }
 
-                /* REF */
-                if (sel->ref) {
-                    err = self->out->write(self->out,
-                                           "{ref ", strlen("{ref "));
-
-                    err = self->out->write(self->out, sel->ref->name, sel->ref->name_size);
-                    if (err) return err;
-
-                    err = self->out->write(self->out,  "}", 1);
-                    if (err) return err;
-                }
 
                 err = self->out->write(self->out,  "}", 1);
                 if (err) return err;
@@ -524,7 +478,7 @@ static gsl_err_t parse_translation_GSL(void *obj,
                                        const char *name, size_t name_size,
                                        const char *rec, size_t *total_size)
 {
-    struct kndTranslation *tr = (struct kndTranslation*)obj;
+    struct kndTranslation *tr = obj;
 
     if (DEBUG_TEXT_LEVEL_3) {
         knd_log("..  translation in \"%s\" REC: \"%s\"\n",
@@ -570,9 +524,6 @@ static int parse_GSL(struct kndText *self,
 
     struct gslTaskSpec specs[] = {
         { .is_validator = true,
-          .buf = tr->curr_locale,
-          .buf_size = &tr->curr_locale_size,
-          .max_buf_size = KND_LOCALE_SIZE,
           .validate = parse_translation_GSL,
           .obj = tr
         }

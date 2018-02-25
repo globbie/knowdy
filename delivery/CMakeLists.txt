@@ -4,6 +4,5 @@ set(SOURCES
 
 add_executable(${BINARY} ${SOURCES})
 
-target_link_libraries(${BINARY} pthread ${ZEROMQ_LIBRARY} ${CORE}_static ${PARSER}_static)
-
+target_link_libraries(${BINARY} pthread ${CURL_LIBRARY} ${ZEROMQ_LIBRARY} ${CORE}_static)
 install(TARGETS ${BINARY} DESTINATION usr/bin)

@@ -35,6 +35,11 @@
 #endif
 
 
+struct knd_HTTP_body {
+  const char *data;
+  size_t sizeleft;
+};
+
 extern char *
 knd_zmq_recv(void *socket, size_t *msg_size);
 
@@ -45,5 +50,5 @@ extern int
 knd_zmq_sendmore(void *socket, const char *string, size_t string_size);
 
 extern int knd_recv_task(void *outbox, char *task, size_t *task_size);
-
+extern int knd_http_post(const char *url, const char *body, size_t body_size);
 #endif

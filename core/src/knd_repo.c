@@ -6,7 +6,7 @@
 #include "knd_repo.h"
 #include "knd_object.h"
 #include "knd_attr.h"
-#include "knd_refset.h"
+#include "knd_set.h"
 #include "knd_user.h"
 #include "knd_query.h"
 #include "knd_sorttag.h"
@@ -697,17 +697,9 @@ kndRepo_parse_task(void *self,
                    const char *rec,
                    size_t *total_size)
 {
-    struct gslTaskSpec add_specs[] = {
-        { .name = "n",
-          .name_size = strlen("n")
-        }
-    };
-
     struct gslTaskSpec specs[] = {
         { .name = "add",
           .name_size = strlen("add"),
-          .specs = add_specs,
-          .num_specs = sizeof add_specs / sizeof add_specs[0],
           .run = kndRepo_run_add_repo,
           .obj = self
         },

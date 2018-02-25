@@ -1,5 +1,4 @@
-{gsl::Knowdy Basic
-  {knd::Knowdy Learner Service Configuration
+{schema Knowdy Learner Service
       {agent 001}
       {path /var/lib/knowdy/db}
       {schemas /etc/knowdy/schemas}
@@ -30,5 +29,4 @@
         {frontend ipc:///var/lib/knowdy/learner_pub}
         {backend ipc:///var/lib/knowdy/learner_pub_backend}
       -}
-
-}}
+}

@@ -8,7 +8,6 @@
 #include "knd_concept.h"
 #include "knd_output.h"
 #include "knd_text.h"
-#include "knd_parser.h"
 #include "knd_mempool.h"
 
 #include <gsl-parser.h>
@@ -38,7 +37,7 @@ static void str(struct kndProcArg *self)
     struct kndTranslation *tr;
     struct kndProcCallArg *arg;
 
-    knd_log("%*sarg: \"%.*s\" [type:%.*s]", self->depth * KND_OFFSET_SIZE, "",
+    knd_log("%*sarg: \"%.*s\" [class:%.*s]", self->depth * KND_OFFSET_SIZE, "",
             self->name_size, self->name, self->classname_size, self->classname);
 
     if (self->proc_call.name_size) {
@@ -195,6 +194,32 @@ static int export_GSP(struct kndProcArg *self)
     return knd_OK;
 }
 
+static int export_SVG(struct kndProcArg *self)
+{
+    struct kndOutput *out;
+    struct kndTranslation *tr;
+    struct kndProcCallArg *arg;
+    struct kndProc *proc;
+    bool in_list = false;
+    int err;
+
+    out = self->out;
+    /*err = out->write(out, "<text>", strlen("<text>"));                            RET_ERR();
+    err = out->write(out, self->name, self->name_size);                           RET_ERR();
+    err = out->write(out, "</text>", strlen("</text>"));                          RET_ERR();
+    */
+    if (self->proc_dir) {
+	proc = self->proc_dir->proc;
+	knd_log("PROC: %p", proc);
+	proc->format = self->format;
+	proc->out = self->out;
+	proc->visual = self->visual;
+	err = proc->export(proc);                                                 RET_ERR();
+    }
+    
+    return knd_OK;
+}
+
 static int export_inst_GSP(struct kndProcArg *self,
                            struct kndProcArgInstance *inst)
 {
@@ -243,6 +268,9 @@ static int export(struct kndProcArg *self)
         break;
     case KND_FORMAT_GSP:
         err = export_GSP(self);                                              RET_ERR();
+        break;
+    case KND_FORMAT_SVG:
+        err = export_SVG(self);                                              RET_ERR();
         break;
     default:
         break;
@@ -626,9 +654,11 @@ static int resolve_arg(struct kndProcArg *self)
     struct kndProcDir *dir;
     int err;
 
+    if (DEBUG_PROC_ARG_LEVEL_2)
+	knd_log(".. resolving arg \"%.*s\"..",
+		self->name_size, self->name);
+
     if (self->classname_size) {
-
-
 	/* TODO */
 	if (DEBUG_PROC_ARG_LEVEL_2)
 	    knd_log(".. resolving arg class template: %.*s..",
@@ -639,7 +669,7 @@ static int resolve_arg(struct kndProcArg *self)
 
     if (!self->proc_call.name_size) {
 
-        return knd_FAIL;
+	return knd_OK;
     }
 
     /* special name */
@@ -653,7 +683,8 @@ static int resolve_arg(struct kndProcArg *self)
                                           self->proc_call.name_size);
     if (!dir) {
         knd_log("-- Proc Arg resolve: no such proc: \"%.*s\" IDX:%p :(",
-                self->proc_call.name_size, self->proc_call.name, self->parent->proc_idx);
+                self->proc_call.name_size,
+		self->proc_call.name, self->parent->proc_idx);
         return knd_FAIL;
     }
 
@@ -661,7 +692,6 @@ static int resolve_arg(struct kndProcArg *self)
         err = self->parent->get_proc(self->parent,
                                      dir->name, dir->name_size, &dir->proc);      RET_ERR();
     }
-
     self->proc_dir = dir;
 
     if (DEBUG_PROC_ARG_LEVEL_2)
@@ -680,7 +710,7 @@ static int resolve_inst(struct kndProcArg *self,
     struct kndProcDir *dir;
     struct kndObjEntry *obj;
 
-    dir = self->parent->class_idx->get(self->parent->class_idx,
+    dir = self->parent->class_name_idx->get(self->parent->class_name_idx,
                                        inst->procname, inst->procname_size);
     if (!dir) {
         knd_log("-- no such class: %.*s :(", inst->procname_size, inst->procname);
