@@ -7,6 +7,6 @@ set(SOURCES
 
 add_executable(${BINARY} ${SOURCES})
 
-target_link_libraries(${BINARY} pthread ${ZEROMQ_LIBRARY} ${CORE}_static kmq)
+target_link_libraries(${BINARY} pthread ${CORE}_static kmq)
 
 install(TARGETS ${BINARY} DESTINATION usr/bin)
