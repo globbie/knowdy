@@ -13,6 +13,7 @@ addons:
     - libmysqlclient-dev
     - check
     - libsubunit-dev
+    - libevent-dev
 dist: trusty
 compiler:
 - gcc
