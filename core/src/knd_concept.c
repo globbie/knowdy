@@ -27,6 +27,7 @@
 #include "knd_rel.h"
 #include "knd_proc.h"
 #include "knd_set.h"
+#include "knd_query.h"
 #include "knd_utils.h"
 #include "knd_http_codes.h"
 
@@ -1539,6 +1540,8 @@ static gsl_err_t run_sync_task(void *obj, const char *val __attribute__((unused)
     err = assign_ids(self);
     if (err) return make_gsl_err_external(err);
 
+    knd_log("..freezing..");
+
     /* merge earlier frozen DB with liquid updates */
     err = freeze(self);
     if (err) {
@@ -1561,7 +1564,7 @@ static gsl_err_t parse_sync_task(void *obj,
         }
     };
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. freezing DB to GSP files..");
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -1893,28 +1896,101 @@ static gsl_err_t parse_select_obj(void *data,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t run_select_baseclass(void *obj,
-				      const char *name, size_t name_size)
+static gsl_err_t select_by_baseclass(void *obj,
+				     const char *name, size_t name_size)
 {
     struct kndConcept *self = obj;
-    struct kndConcItem *ci;
+    struct kndQuery *q;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = self->mempool->new_conc_item(self->mempool, &ci);
+    err = get_class(self, name, name_size, &self->curr_baseclass);
     if (err) return make_gsl_err_external(err);
 
-    ci->parent = self;
-
-    knd_log("++ got baseclass: %.*s!", name_size, name);
-
-    err = get_class(self, name, name_size, &ci->conc);
+    err = self->mempool->new_query(self->mempool, &q);
     if (err) return make_gsl_err_external(err);
 
-    
+    q->set = self->curr_baseclass->dir->descendants;
+
+    q->next = self->task->query;
+    self->task->query = q;
+
     return make_gsl_err(gsl_OK);
+}
+
+
+static gsl_err_t select_by_attr(void *obj,
+				const char *name, size_t name_size)
+{
+    struct kndConcept *self = obj;
+    struct kndQuery *q;
+    struct kndSet *set;
+    struct kndFacet *facet;
+    int err;
+
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log("== attr val: \"%.*s\"", name_size, name);
+
+    if (!self->curr_baseclass->dir->descendants)
+	return make_gsl_err(gsl_FAIL);
+
+    set = self->curr_baseclass->dir->descendants;
+    err = set->get_facet(set, self->curr_attr, &facet);
+    if (err) return make_gsl_err_external(err);
+    
+    
+    set = facet->set_name_idx->get(facet->set_name_idx,
+				   name, name_size);
+    if (!set) return make_gsl_err(gsl_FAIL); 
+
+    if (DEBUG_CONC_LEVEL_TMP)
+	set->str(set, 1);
+
+    err = self->mempool->new_query(self->mempool, &q);
+    if (err) return make_gsl_err_external(err);
+
+    q->set = set;
+    q->next = self->task->query;
+    self->task->query = q;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_attr_select(void *obj,
+				   const char *name, size_t name_size,
+				   const char *rec, size_t *total_size)
+{
+    struct kndConcept *self = obj;
+    struct kndAttr *attr;
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = select_by_attr,
+          .obj = self
+        }
+    };
+    int err;
+
+    if (!self->curr_baseclass) return make_gsl_err_external(knd_FAIL);
+
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. select by attr \"%.*s\"..", name_size, name);
+
+    err = get_attr(self->curr_baseclass, name, name_size, &attr);
+    if (err) {
+        knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
+		name_size, name,
+		self->curr_baseclass->name_size,
+		self->curr_baseclass->name);
+    }
+
+    self->curr_attr = attr;
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static gsl_err_t parse_baseclass_select(void *obj,
@@ -1928,11 +2004,13 @@ static gsl_err_t parse_baseclass_select(void *obj,
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_select_baseclass,
+          .run = select_by_baseclass,
           .obj = self
         },
-	/* specify attrs */
-	
+        { .is_validator = true,
+          .validate = parse_attr_select,
+          .obj = self
+        }
     };
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -4249,6 +4327,12 @@ static gsl_err_t present_class_selection(void *obj,
                 self->task->num_class_selects);
     out->reset(out);
 
+    if (self->task->query) {
+	knd_log(".. select QUERY..");
+	err = knd_OK;
+	return make_gsl_err(gsl_OK);
+    }
+
     if (self->curr_class) {
         c = self->curr_class;
         c->out = out;
@@ -4657,7 +4741,8 @@ static int parse_select_class(void *obj,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("-- class parse error: \"%.*s\"", self->log->buf_size, self->log->buf);
+        knd_log("-- class parse error %d: \"%.*s\"",
+		parser_err.code, self->log->buf_size, self->log->buf);
         if (!self->log->buf_size) {
             err = self->log->write(self->log, "class parse failure",
                                  strlen("class parse failure"));

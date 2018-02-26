@@ -75,16 +75,17 @@ struct kndSet
 		   struct kndAttr *attr,
 		   struct kndConcept *topic,
 		   struct kndConcept *spec);
-    int (*lookup)(struct kndSet *self,
-		  struct kndSetElem *elem);
+    int (*get_facet)(struct kndSet *self,
+		     struct kndAttr *attr,
+		     struct kndFacet **facet);
 
     int (*intersect)(struct kndSet *self,
                      struct kndSet **sets,
                      size_t num_sets);
 
-    int (*contribute)(struct kndSet *self,
+    /*int (*contribute)(struct kndSet *self,
 		      size_t seqnum);
-
+    */
     int (*facetize)(struct kndSet *self);
 
     int (*find)(struct kndSet *self,

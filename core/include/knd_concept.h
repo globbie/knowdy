@@ -203,18 +203,11 @@ struct kndConcept
     struct kndAttr *tail_attr;
     size_t num_attrs;
 
-    /* for traversal */
-    struct kndAttr *curr_attr;
-    size_t attrs_left;
-
     struct kndConcItem *base_items;
     size_t num_base_items;
 
     struct kndConcDir *bases[KND_MAX_BASES];
     size_t num_bases;
-
-    //struct kndDataIdx *indices;
-    //size_t num_indices;
 
     bool ignore_children;
     bool is_resolved;
@@ -222,6 +215,8 @@ struct kndConcept
     struct kndConcept *root_class;
     struct kndConcept *curr_class;
     struct kndConcept *curr_baseclass;
+    struct kndAttr *curr_attr;
+    size_t attrs_left;
     struct kndObject  *curr_obj;
 
     struct kndConcDir *dir;

@@ -4,6 +4,7 @@
 
 #include "knd_task.h"
 #include "knd_user.h"
+#include "knd_mempool.h"
 #include "knd_output.h"
 #include "knd_utils.h"
 #include "knd_concept.h"
@@ -53,6 +54,9 @@ static void reset(struct kndTask *self)
     self->type = KND_GET_STATE;
     /*self->admin->locale = self->admin->default_locale;
       self->admin->locale_size = self->admin->default_locale_size; */
+
+    self->mempool->num_queries = 0;
+    self->query = NULL;
 
     self->batch_max = 0;
     self->batch_size = 0;

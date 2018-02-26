@@ -385,7 +385,7 @@ static gsl_err_t parse_sync_task(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_USER_LEVEL_1)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. got sync task..");
 
     s = self->path;

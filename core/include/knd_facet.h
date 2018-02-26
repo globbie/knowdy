@@ -63,7 +63,7 @@ struct kndFacet
     size_t batch_size;
     
     /******** public methods ********/
-    void (*str)(struct kndFacet *self,
+    /* void (*str)(struct kndFacet *self,
                 size_t           depth,
                 size_t           max_depth);
 
@@ -80,6 +80,7 @@ struct kndFacet
     int (*export)(struct kndFacet *self,
                    knd_format format,
                    size_t depth);
+    */
 };
 
 extern void kndFacet_init(struct kndFacet *self);
