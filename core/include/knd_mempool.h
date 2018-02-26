@@ -198,8 +198,10 @@ struct kndMemPool
 			    struct kndSetElemIdx **result);
     int (*new_facet)(struct kndMemPool   *self,
 		     struct kndFacet **result);
+
     int (*new_query)(struct kndMemPool   *self,
 		     struct kndQuery **result);
+    
     int (*new_update)(struct kndMemPool   *self,
                       struct kndUpdate **result);
     int (*new_state)(struct kndMemPool   *self,

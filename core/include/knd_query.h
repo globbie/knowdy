@@ -18,14 +18,13 @@
  *   Knowdy Query
  */
 
-#ifndef KND_QUERY_H
-#define KND_QUERY_H
+#pragma once
 
 #include "knd_utils.h"
 #include "knd_config.h"
 #include "knd_coderef.h"
 
-struct kndRefSet;
+struct kndSet;
 struct kndRepoCache;
 struct kndOutput;
 
@@ -34,13 +33,14 @@ typedef enum knd_query_type { KND_QUERY_OBJ,
                               KND_QUERY_CONC } knd_query_type;
 /**
  *  Query:
- * a nested set of clauses
+ *  a nested set of clauses
  */
 
 struct kndQuery 
 {
     knd_query_type type;
-    
+
+    struct kndSet *set;
     char facet_name[KND_NAME_SIZE];
     size_t facet_name_size;
     
@@ -53,9 +53,11 @@ struct kndQuery
     struct kndQuery *children[KND_MAX_ATTRS];
     size_t num_children;
     
-    struct kndCodeRef *coderefs;
-    struct kndRefSet *refset;
+    //struct kndCodeRef *coderefs;
+    struct kndSet *result_set;
     struct kndOutput *out;
+    struct kndMemPool *mempool;
+
     struct kndQuery *next;
     
     /***********  public methods ***********/
@@ -75,5 +77,3 @@ extern int kndQuery_init(struct kndQuery *self);
 
 /* constructor */
 extern int kndQuery_new(struct kndQuery **self);
-
-#endif

@@ -439,14 +439,16 @@ kndRetriever_new(struct kndRetriever **rec,
 
     err = kndMemPool_new(&self->mempool);
     if (err) return err;
-
+    
     err = parse_schema(self, self->out->file, &chunk_size);
     if (err) {
         knd_log("  -- config parsing error :(");
         goto error;
     }
 
-    self->mempool->alloc(self->mempool);
+    err = self->mempool->alloc(self->mempool);
+    if (err) return err;
+    self->task->mempool = self->mempool;
 
     err = kndStateControl_new(&self->task->state_ctrl);
     if (err) return err;

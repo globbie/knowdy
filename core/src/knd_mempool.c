@@ -80,6 +80,7 @@ static int new_query(struct kndMemPool *self,
     return knd_OK;
 }
 
+
 static int new_set(struct kndMemPool *self,
                      struct kndSet **result)
 {
@@ -776,6 +777,7 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_set_elem = new_set_elem;
     self->new_set_elem_idx = new_set_elem_idx;
     self->new_facet = new_facet;
+
     self->new_query = new_query;
     self->new_update = new_update;
     self->new_state = new_state;

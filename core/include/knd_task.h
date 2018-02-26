@@ -18,8 +18,7 @@
  *   Knowdy Task
  */
 
-#ifndef KND_TASK_H
-#define KND_TASK_H
+#pragma once
 
 #include "knd_config.h"
 #include "knd_http_codes.h"
@@ -31,6 +30,7 @@ struct kndTask;
 struct kndUser;
 struct kndStateControl;
 struct kndConcept;
+struct kndQuery;
 
 typedef enum knd_task_spec_type { KND_GET_STATE, 
                                   KND_CHANGE_STATE,
@@ -116,6 +116,7 @@ struct kndTask
     struct kndConcept *class_selects[KND_MAX_CLASS_BATCH];
     size_t num_class_selects;
 
+    struct kndQuery *query;
     struct kndUser *admin;
     struct kndStateControl *state_ctrl;
 
@@ -123,6 +124,7 @@ struct kndTask
     struct kndOutput *out;
     struct kndOutput *spec_out;
     struct kndOutput *update;
+    struct kndMemPool *mempool;
 
     knd_delivery_type delivery_type;
     char delivery_addr[KND_NAME_SIZE];
@@ -157,4 +159,3 @@ struct kndTask
 /* constructor */
 extern int kndTask_new(struct kndTask **self);
 
-#endif /* KND_TASK_H */

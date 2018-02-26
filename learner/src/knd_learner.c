@@ -500,6 +500,7 @@ kndLearner_new(struct kndLearner **rec,
 
     err = kndMemPool_new(&self->mempool);
     if (err) return err;
+    self->task->mempool = self->mempool;
 
     /* read config */
     err = self->out->read_file(self->out, config, strlen(config));
