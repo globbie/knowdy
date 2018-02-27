@@ -36,7 +36,7 @@ struct kndProcArg;
 struct kndProcArgInstance;
 struct kndProcInstance;
 
-struct kndQuery;
+struct kndAttr;
 struct kndUpdate;
 struct kndState;
 struct kndClassUpdate;
@@ -55,9 +55,6 @@ struct kndMemPool
     char next_class_id[KND_ID_SIZE];
     size_t max_users;
 
-    struct kndQuery *queries;
-    size_t max_queries;
-    size_t num_queries;
 
     struct kndSet *sets;
     size_t max_sets;
@@ -102,6 +99,10 @@ struct kndMemPool
     struct kndConcItem *conc_items;
     size_t max_conc_items;
     size_t num_conc_items;
+
+    struct kndAttr *attrs;
+    size_t max_attrs;
+    size_t num_attrs;
 
     struct kndObject *objs;
     size_t max_objs;
@@ -199,8 +200,8 @@ struct kndMemPool
     int (*new_facet)(struct kndMemPool   *self,
 		     struct kndFacet **result);
 
-    int (*new_query)(struct kndMemPool   *self,
-		     struct kndQuery **result);
+    int (*new_attr)(struct kndMemPool   *self,
+		     struct kndAttr **result);
     
     int (*new_update)(struct kndMemPool   *self,
                       struct kndUpdate **result);

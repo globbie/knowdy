@@ -621,12 +621,9 @@ static int parse_GSL(struct kndAttr *self,
 }
 
 
-/*  Attr Initializer */
-static void init(struct kndAttr *self)
+extern void kndAttr_init(struct kndAttr *self)
 {
     /* binding our methods */
-    self->init = init;
-    self->del = del;
     self->str = str;
     self->parse = parse_GSL;
     self->export = export;
@@ -643,7 +640,7 @@ kndAttr_new(struct kndAttr **c)
 
     memset(self, 0, sizeof(struct kndAttr));
 
-    init(self);
+    kndAttr_init(self);
 
     *c = self;
 

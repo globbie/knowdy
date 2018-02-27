@@ -60,11 +60,12 @@ struct kndSet
     struct kndFacet *facets[KND_MAX_ATTRS];
     size_t num_facets;
     
-    struct kndSet *next;
+    knd_format format;
     struct kndTask *task;
     struct kndOutput *out;
     struct kndMemPool *mempool;
-    knd_format format;
+
+    struct kndSet *next;
 
     /******** public methods ********/
     void (*str)(struct kndSet *self,
@@ -83,18 +84,7 @@ struct kndSet
                      struct kndSet **sets,
                      size_t num_sets);
 
-    /*int (*contribute)(struct kndSet *self,
-		      size_t seqnum);
-    */
     int (*facetize)(struct kndSet *self);
-
-    int (*find)(struct kndSet *self,
-                const char *facet_name,
-                const char *value,
-                size_t val_size,
-                struct kndSet **result);
-
-    int (*sync)(struct kndSet *self);
 
     int (*read)(struct kndSet *self,
                 const char    *rec,

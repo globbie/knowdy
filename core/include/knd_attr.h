@@ -163,8 +163,6 @@ struct kndAttr
     struct kndAttr *next;
     
     /***********  public methods ***********/
-    void (*init)(struct kndAttr  *self);
-    void (*del)(struct kndAttr   *self);
     void (*str)(struct kndAttr *self);
 
     int (*parse)(struct kndAttr *self,
@@ -180,5 +178,6 @@ struct kndAttr
 
 
 /* constructor */
+extern void kndAttr_init(struct kndAttr *self);
 extern int kndAttr_new(struct kndAttr **self);
 #endif
