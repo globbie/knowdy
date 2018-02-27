@@ -65,26 +65,21 @@ kndSet_elem_idx_str(struct kndSet *self,
     struct kndSetElem *elem;
     struct kndSetElemIdx *idx;
 
-    if (parent_idx->elems) {
-	for (size_t i = 0; i < KND_RADIX_BASE; i++) {
-	    elem = parent_idx->elems[i];
-	    if (!elem) continue;
+    for (size_t i = 0; i < KND_RADIX_BASE; i++) {
+	elem = parent_idx->elems[i];
+	if (!elem) continue;
 	
-	    knd_log("%*s => ELEM %.*s",
-		    (depth + 1) * KND_OFFSET_SIZE, "",
-		    elem->conc_dir->name_size, elem->conc_dir->name);
-	}
+	knd_log("%*s => %.*s",
+		(depth + 1) * KND_OFFSET_SIZE, "",
+		elem->conc_dir->name_size, elem->conc_dir->name);
     }
 
-    if (parent_idx->idxs) {
-	for (size_t i = 0; i < KND_RADIX_BASE; i++) {
-	    idx = parent_idx->idxs[i];
-	    if (!idx) continue;
-
-	    kndSet_elem_idx_str(self, idx, depth);
-	}
+    for (size_t i = 0; i < KND_RADIX_BASE; i++) {
+	idx = parent_idx->idxs[i];
+	if (!idx) continue;
+	
+	kndSet_elem_idx_str(self, idx, depth);
     }
-
 }
 
 static void 
@@ -146,67 +141,89 @@ kndSet_str(struct kndSet *self, size_t depth)
 }
 
 static int 
+kndSet_elem_idx_JSON(struct kndSet *self,
+		     struct kndSetElemIdx *parent_idx)
+{
+    struct kndSetElem *elem;
+    struct kndSetElemIdx *idx;
+    struct kndConcept *parent_conc, *c;
+    int err;
+
+    parent_conc = self->base->conc;
+
+    for (size_t i = 0; i < KND_RADIX_BASE; i++) {
+	elem = parent_idx->elems[i];
+	if (!elem) continue;
+	
+	/* match count */
+	
+	/* separator needed? */
+	if (self->task->batch_size) {
+	    err = self->out->write(self->out, ",", 1);
+	    if (err) return err;
+	}
+	
+	err = parent_conc->get(parent_conc,
+			       elem->conc_dir->name,
+			       elem->conc_dir->name_size,
+			       &c);                                           RET_ERR();
+	
+	c->format = self->format;
+	c->out = self->out;
+	c->task = self->task;
+	
+	err = c->export(c);
+	if (err) return err;
+	
+	self->task->batch_size++;
+	
+    }
+
+    for (size_t i = 0; i < KND_RADIX_BASE; i++) {
+	idx = parent_idx->idxs[i];
+	if (!idx) continue;
+
+	err = kndSet_elem_idx_JSON(self, idx);                                RET_ERR();
+    }
+
+    return knd_OK;
+}
+
+static int 
 kndSet_export_JSON(struct kndSet *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
-
     struct kndOutput *out = self->out;
-
     struct kndFacet *f;
     struct kndSetElem *elem;
     size_t curr_batch_size = 0;
     int err;
-    
-    err = out->write(out,  "{", 1);
-    if (err) return err;
 
-    buf_size = sprintf(buf,
-                       "\"n\":\"%s\"",
-                       self->base->name);
-    err = out->write(out,
-                     buf, buf_size);
-    if (err) return err;
+    if (DEBUG_SET_LEVEL_1)
+        knd_log(".. export set to JSON: "
+		" batch size:%zu  batch from:%zu  total elems:%zu",
+                self->task->batch_max, self->task->batch_from,
+                self->num_elems);
 
-    buf_size = sprintf(buf,
-                       ",\"tot\":%lu",
+    err = out->write(out,  "{", 1);                                               RET_ERR();
+    err = out->write(out, "\"n\":\"", strlen("\"n\":\""));                        RET_ERR();
+    err = out->write(out, self->base->name,  self->base->name_size);              RET_ERR();
+    err = out->write(out, "\"", 1);                                               RET_ERR();
+
+    buf_size = sprintf(buf, ",\"total\":%lu",
                        (unsigned long)self->num_elems);
-    err = out->write(out, buf, buf_size);
-    if (err) return err;
+    err = out->write(out, buf, buf_size);                             RET_ERR();
 
-    /*if (self->summaries_size) {
-        err = out->write(out,  ",", 1);
-        if (err) return err;
-        err = out->write(out,  
-                         self->summaries, self->summaries_size);
-        if (err) return err;
-    }*/
-  
-    
-    //if ((depth + 1) > KND_SET_MAX_DEPTH) 
-    //    goto final;
-
-    /*if ((depth + 1) > self->export_depth) {
-        if (DEBUG_SET_LEVEL_3) 
-            knd_log("  -- max depth reached in \"%s\": %lu of %lu\n",
-                    self->base->name,
-                    (unsigned long)depth,
-                    (unsigned long)self->export_depth);
-
-        goto final;
-	}*/
-    
     if (self->num_facets) {
         /* apply proper sorting */
         /*qsort(self->set_elems,
               self->num_sets,
               sizeof(struct kndSet*),
               knd_compare_set_by_alph_ascend); */
-
         err = out->write(out,  
                           ",\"facets\":[", strlen(",\"facets\":["));
         if (err) return err;
-
         /*for (size_t i = 0; i < self->num_facets; i++) {
             f = self->facets[i];
 
@@ -218,14 +235,35 @@ kndSet_export_JSON(struct kndSet *self)
             f->out = out;
             err = f->export(f, KND_FORMAT_JSON, depth + 1);
             if (err) return err;
-	    }*/
-
+	}*/
         err = out->write(out,  "]", 1);
         if (err) return err;
     }
 
- final:
-    
+    if (self->idx) {
+        err = out->write(out,
+			 ",\"batch\":[", strlen(",\"batch\":["));                 RET_ERR();
+	err = kndSet_elem_idx_JSON(self, self->idx);                              RET_ERR();
+        err = out->write(out,  "]", 1);                                           RET_ERR();
+
+	buf_size = sprintf(buf, ",\"batch_size\":%lu",
+			   (unsigned long)self->task->batch_size);
+	err = out->write(out, buf, buf_size);                                     RET_ERR();
+        err = out->write(out,
+			 ",\"batch_from\":", strlen(",\"batch_from\":"));         RET_ERR();
+	buf_size = sprintf(buf, "%lu",
+			   (unsigned long)self->task->batch_from);
+	err = out->write(out, buf, buf_size);                                     RET_ERR();
+
+        /*err = out->write(out,
+			 ",\"batch_max_size\":",
+			 strlen(",\"batch_max_size\":"));                         RET_ERR();
+	buf_size = sprintf(buf, "%lu",
+			   (unsigned long)self->task->batch_max);
+	err = out->write(out, buf, buf_size);                                     RET_ERR();
+	*/
+    }
+
     err = out->write(out,  "}", 1);
     if (err) return err;
     
@@ -495,13 +533,13 @@ kndFacet_alloc_set(struct kndFacet  *self,
     set->type = KND_SET_CLASS;
 
     /* TODO: alloc */
-    err = ooDict_new(&set->name_idx, KND_MEDIUM_DICT_SIZE);                            RET_ERR();
+    err = ooDict_new(&set->name_idx, KND_MEDIUM_DICT_SIZE);                       RET_ERR();
     set->base = base->dir;
     set->mempool = self->mempool;
     set->parent_facet = self;
 
     err = self->set_name_idx->set(self->set_name_idx,
-			     base->name, base->name_size, (void*)set);            RET_ERR();
+				  base->name, base->name_size, (void*)set);       RET_ERR();
 
     err = kndFacet_add_reverse_link(self, base, set);                             RET_ERR();
 
@@ -703,10 +741,12 @@ static int add_elem(struct kndSet *self,
 	
 	err = add_elem(self, idx, elem, id + 1, id_size - 1);
 	if (err) return err;
+	parent_idx->num_elems++;
     }
 
     /* assign elem */
     parent_idx->elems[idx_pos] = elem;
+    parent_idx->num_elems++;
     self->num_elems++;
 
     return knd_OK;
@@ -748,6 +788,7 @@ static gsl_err_t atomic_elem_alloc(void *obj,
 
     if (val_size == 1) {
 	self->idx->elems[idx_pos] = elem;
+	self->idx->num_elems++;
 	self->num_elems++;
 	return make_gsl_err(gsl_OK);
     }
@@ -759,6 +800,7 @@ static gsl_err_t atomic_elem_alloc(void *obj,
 
     err = add_elem(self, idx, elem, val + 1, val_size - 1);
     if (err) return make_gsl_err_external(err);
+    self->idx->num_elems++;
 
     return make_gsl_err(gsl_OK);
 }

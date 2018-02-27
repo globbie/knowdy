@@ -12,7 +12,7 @@
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
 #include "knd_state.h"
-#include "knd_query.h"
+#include "knd_attr.h"
 #include "knd_set.h"
 #include "knd_facet.h"
 
@@ -65,17 +65,17 @@ static int new_class(struct kndMemPool *self,
     return knd_OK;
 }
 
-static int new_query(struct kndMemPool *self,
-                     struct kndQuery **result)
+static int new_attr(struct kndMemPool *self,
+                     struct kndAttr **result)
 {
-    struct kndQuery *q;
-    if (self->num_queries >= self->max_queries) {
+    struct kndAttr *q;
+    if (self->num_attrs >= self->max_attrs) {
         return knd_NOMEM;
     }
-    q = &self->queries[self->num_queries];
-    memset(q, 0, sizeof(struct kndQuery));
-    kndQuery_init(q);
-    self->num_queries++;
+    q = &self->attrs[self->num_attrs];
+    memset(q, 0, sizeof(struct kndAttr));
+    kndAttr_init(q);
+    self->num_attrs++;
     *result = q;
     return knd_OK;
 }
@@ -538,7 +538,7 @@ static int new_proc_update_ref(struct kndMemPool *self,
 
 static int alloc(struct kndMemPool *self)
 {
-    if (!self->max_queries)      self->max_queries = KND_MIN_QUERIES;
+    if (!self->max_attrs)      self->max_attrs = KND_MIN_ATTRS;
     if (!self->max_sets)         self->max_sets =    KND_MIN_SETS;
     if (!self->max_set_elems)    self->max_set_elems =         KND_MIN_SETS;
     if (!self->max_set_elem_idxs) self->max_set_elem_idxs =    KND_MIN_SETS;
@@ -591,9 +591,9 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    self->queries = calloc(self->max_queries, sizeof(struct kndQuery));
-    if (!self->queries) {
-        knd_log("-- queries not allocated :(");
+    self->attrs = calloc(self->max_attrs, sizeof(struct kndAttr));
+    if (!self->attrs) {
+        knd_log("-- attrs not allocated :(");
         return knd_NOMEM;
     }
     self->sets = calloc(self->max_sets, sizeof(struct kndSet));
@@ -778,7 +778,7 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_set_elem_idx = new_set_elem_idx;
     self->new_facet = new_facet;
 
-    self->new_query = new_query;
+    self->new_attr = new_attr;
     self->new_update = new_update;
     self->new_state = new_state;
     self->new_class_update = new_class_update;

@@ -116,7 +116,9 @@ struct kndTask
     struct kndConcept *class_selects[KND_MAX_CLASS_BATCH];
     size_t num_class_selects;
 
-    struct kndQuery *query;
+    struct kndSet *sets;
+    size_t num_sets;
+
     struct kndUser *admin;
     struct kndStateControl *state_ctrl;
 

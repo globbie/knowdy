@@ -8,6 +8,7 @@
       {memory
          {max_users 500000}
          {max_classes 100000}
+         {max_attrs 100000}
          {max_objs 1000000}
          {max_elems 2500000}
          {max_rel_instances 1000000}

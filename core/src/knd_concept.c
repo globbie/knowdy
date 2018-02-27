@@ -1900,7 +1900,7 @@ static gsl_err_t select_by_baseclass(void *obj,
 				     const char *name, size_t name_size)
 {
     struct kndConcept *self = obj;
-    struct kndQuery *q;
+    struct kndSet *set;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -1909,13 +1909,11 @@ static gsl_err_t select_by_baseclass(void *obj,
     err = get_class(self, name, name_size, &self->curr_baseclass);
     if (err) return make_gsl_err_external(err);
 
-    err = self->mempool->new_query(self->mempool, &q);
-    if (err) return make_gsl_err_external(err);
+    self->curr_baseclass->dir->conc = self->curr_baseclass;
+    set = self->curr_baseclass->dir->descendants;
 
-    q->set = self->curr_baseclass->dir->descendants;
-
-    q->next = self->task->query;
-    self->task->query = q;
+    set->next = self->task->sets;
+    self->task->sets = set;
 
     return make_gsl_err(gsl_OK);
 }
@@ -1925,6 +1923,7 @@ static gsl_err_t select_by_attr(void *obj,
 				const char *name, size_t name_size)
 {
     struct kndConcept *self = obj;
+    struct kndConcept *c;
     struct kndQuery *q;
     struct kndSet *set;
     struct kndFacet *facet;
@@ -1933,30 +1932,31 @@ static gsl_err_t select_by_attr(void *obj,
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("== attr val: \"%.*s\"", name_size, name);
 
     if (!self->curr_baseclass->dir->descendants)
 	return make_gsl_err(gsl_FAIL);
 
     set = self->curr_baseclass->dir->descendants;
+
     err = set->get_facet(set, self->curr_attr, &facet);
     if (err) return make_gsl_err_external(err);
-    
     
     set = facet->set_name_idx->get(facet->set_name_idx,
 				   name, name_size);
     if (!set) return make_gsl_err(gsl_FAIL); 
 
+    err = get_class(self, name, name_size, &c);
+    if (err) return make_gsl_err_external(err);
+    set->base->conc = c;
+
     if (DEBUG_CONC_LEVEL_TMP)
 	set->str(set, 1);
 
-    err = self->mempool->new_query(self->mempool, &q);
-    if (err) return make_gsl_err_external(err);
-
-    q->set = set;
-    q->next = self->task->query;
-    self->task->query = q;
+    set->next = self->task->sets;
+    self->task->sets = set;
+    self->task->num_sets++;
 
     return make_gsl_err(gsl_OK);
 }
@@ -1977,7 +1977,7 @@ static gsl_err_t parse_attr_select(void *obj,
 
     if (!self->curr_baseclass) return make_gsl_err_external(knd_FAIL);
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. select by attr \"%.*s\"..", name_size, name);
 
     err = get_attr(self->curr_baseclass, name, name_size, &attr);
@@ -1999,7 +1999,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
 {
     struct kndConcept *self = obj;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. select by baseclass \"%.*s\"..", 16, rec);
 
     struct gslTaskSpec specs[] = {
@@ -3731,7 +3731,7 @@ static int read_GSP(struct kndConcept *self,
 {
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log(".. reading GSP: \"%.*s\"..", 256, rec);
 
     struct gslTaskSpec specs[] = {
@@ -4317,6 +4317,7 @@ static gsl_err_t present_class_selection(void *obj,
 {
     struct kndConcept *self = obj;
     struct kndConcept *c;
+    struct kndSet *set;
     struct kndOutput *out = self->out;
     int e, err;
 
@@ -4327,9 +4328,18 @@ static gsl_err_t present_class_selection(void *obj,
                 self->task->num_class_selects);
     out->reset(out);
 
-    if (self->task->query) {
-	knd_log(".. select QUERY..");
-	err = knd_OK;
+    if (self->task->sets) {
+	/* TODO: execute query */
+
+	set = self->task->sets;
+
+	/* present final set */
+	set->out = self->out;
+	set->task = self->task;
+	set->format = self->task->format;
+
+	err = set->export(set);
+
 	return make_gsl_err(gsl_OK);
     }
 
@@ -4680,7 +4690,7 @@ static int parse_select_class(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
 
     struct gslTaskSpec specs[] = {
@@ -4852,7 +4862,7 @@ static int iter_export_JSON(struct kndConcept *self, struct kndConcDir *parent_d
                 err = c->out->write(c->out, ",", 1);
                 if (err) return err;
             }
-            
+
             err = c->export(c);
             if (err) return err;
 

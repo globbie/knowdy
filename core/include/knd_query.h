@@ -53,7 +53,6 @@ struct kndQuery
     struct kndQuery *children[KND_MAX_ATTRS];
     size_t num_children;
     
-    //struct kndCodeRef *coderefs;
     struct kndSet *result_set;
     struct kndOutput *out;
     struct kndMemPool *mempool;

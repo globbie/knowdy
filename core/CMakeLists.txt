@@ -9,7 +9,6 @@ set(SOURCES
         src/knd_output.c
         src/knd_proc.c
         src/knd_proc_arg.c
-        src/knd_query.c
         src/knd_ref.c
         src/knd_rel.c
         src/knd_rel_arg.c

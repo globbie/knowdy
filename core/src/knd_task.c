@@ -52,13 +52,11 @@ static void reset(struct kndTask *self)
     self->is_state_changed = false;
 
     self->type = KND_GET_STATE;
-    /*self->admin->locale = self->admin->default_locale;
-      self->admin->locale_size = self->admin->default_locale_size; */
 
-    self->mempool->num_queries = 0;
-    self->query = NULL;
+    self->sets = NULL;
+    self->num_sets = 0;
 
-    self->batch_max = 0;
+    self->batch_max = KND_RESULT_BATCH_SIZE;
     self->batch_size = 0;
     self->batch_from = 0;
     self->start_from = 0;

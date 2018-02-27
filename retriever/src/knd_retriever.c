@@ -204,6 +204,11 @@ static gsl_err_t parse_memory_settings(void *obj,
           .parse = gsl_parse_size_t,
           .obj = &self->max_classes
         },
+        { .name = "max_attrs",
+          .name_size = strlen("max_attrs"),
+          .parse = gsl_parse_size_t,
+          .obj = &self->max_attrs
+        },
         { .name = "max_objs",
           .name_size = strlen("max_objs"),
           .parse = gsl_parse_size_t,
