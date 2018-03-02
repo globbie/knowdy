@@ -842,7 +842,7 @@ static int parse_task(struct kndUser *self,
         goto cleanup;
     }
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log("task type: %d   ++ user parse task OK: total chars: %lu",
                 self->task->type, (unsigned long)*total_size);
 

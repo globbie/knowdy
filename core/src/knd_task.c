@@ -165,7 +165,7 @@ static gsl_err_t parse_user(void *obj,
 
     err = self->admin->parse_task(self->admin, rec, total_size);
     if (err) {
-        knd_log("-- User area parse failed");
+        //knd_log("-- User area parse failed");
         return make_gsl_err_external(knd_FAIL);
     }
 
@@ -367,6 +367,7 @@ static int report(struct kndTask *self)
     char *obj;
     size_t obj_size;
     size_t chunk_size;
+    const char *task_status = "++";
     int err;
 
     if (DEBUG_TASK_LEVEL_2)
@@ -445,26 +446,20 @@ static int report(struct kndTask *self)
         err = self->out->write(self->out, "}", strlen("}"));
         if (err) return err;
 
+	task_status = "--";
     } else {
-        err = out->write(out, "{save _obj}", strlen("{save _obj}"));
-        if (err) return err;
+        err = out->write(out, "{save _obj}", strlen("{save _obj}"));              RET_ERR();
+	
     }
 
-    if (DEBUG_TASK_LEVEL_2) {
+    if (DEBUG_TASK_LEVEL_TMP) {
         obj_size = self->out->buf_size;
-        if (obj_size > KND_MAX_DEBUG_CONTEXT_SIZE) {
+        if (obj_size > KND_MAX_DEBUG_CONTEXT_SIZE)
             obj_size = KND_MAX_DEBUG_CONTEXT_SIZE;
-            knd_log("== TASK report: SPEC: \"%.*s\"\n"
-                    "== BODY: \"%.*s..\" [total size: %zu]\n",
-                    out->buf_size, out->buf, obj_size,
-                    self->out->buf, self->out->buf_size);
-        }
-        else {
-            knd_log("== TASK report: SPEC: \"%.*s\"\n"
-                    "== BODY: \"%.*s\" [size: %zu]\n",
-                    out->buf_size, out->buf, obj_size,
-                    self->out->buf, self->out->buf_size);
-        }
+	
+	knd_log("%s %.*s [size: %zu]\n",
+		task_status, obj_size,
+		self->out->buf, self->out->buf_size);
     }
 
     err = knd_zmq_sendmore(self->delivery,

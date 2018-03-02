@@ -551,6 +551,7 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_classes)      self->max_classes = KND_MIN_CLASSES;
     if (!self->max_conc_dirs)    self->max_conc_dirs = self->max_classes;
     if (!self->max_conc_items)   self->max_conc_items = KND_MIN_CLASSES;
+
     if (!self->max_objs)         self->max_objs =    KND_MIN_OBJS;
     if (!self->max_obj_dirs)     self->max_obj_dirs = self->max_objs;
     if (!self->max_obj_entries)  self->max_obj_entries = self->max_objs;
@@ -760,9 +761,9 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    knd_log("TOTAL allocations: classes:%zu  objs:%zu  "
+    knd_log("TOTAL allocations: classes:%zu conc_items:%zu objs:%zu  "
             "elems:%zu  rels:%zu  procs:%zu",
-            self->max_classes, self->max_objs, self->max_elems,
+            self->max_classes, self->max_conc_items, self->max_objs, self->max_elems,
             self->max_rels, self->max_procs);
 
     return knd_OK;

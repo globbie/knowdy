@@ -1277,11 +1277,15 @@ static gsl_err_t run_set_conc_item(void *obj, const char *name, size_t name_size
     struct kndConcept *self = obj;
     struct kndConcItem *item;
     int err;
+
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     err = self->mempool->new_conc_item(self->mempool, &item);
-    if (err) return make_gsl_err_external(err);
+    if (err) {
+	knd_log("-- conc item alloc failed :(");
+	return make_gsl_err_external(err);
+    }
 
     memcpy(item->classname, name, name_size);
     item->classname_size = name_size;
@@ -1841,7 +1845,7 @@ static gsl_err_t parse_import_obj(void *data,
                                (void*)entry);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         knd_log("\n..register OBJ in %.*s IDX:  [total:%zu valid:%zu]",
                 c->name_size, c->name, c->dir->obj_idx->size, c->dir->num_objs);
         obj->depth = self->depth + 1;
@@ -1886,7 +1890,7 @@ static gsl_err_t parse_select_obj(void *data,
     err = obj->select(obj, rec, total_size);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
 	if (obj->curr_obj) 
 	    obj->curr_obj->str(obj->curr_obj);
     }
@@ -1951,7 +1955,7 @@ static gsl_err_t select_by_attr(void *obj,
     if (err) return make_gsl_err_external(err);
     set->base->conc = c;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
 	set->str(set, 1);
 
     set->next = self->task->sets;
@@ -2035,6 +2039,9 @@ static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct kndConcept *self = (struct kndConcept*)obj;
+
+    if (DEBUG_CONC_LEVEL_2)
+	knd_log(".. set conc name: %.*s", name_size, name);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= sizeof self->name) return make_gsl_err(gsl_LIMIT);
@@ -3887,7 +3894,7 @@ static int coordinate(struct kndConcept *self)
 */
 
     /* display classes */
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         key = NULL;
         self->class_name_idx->rewind(self->class_name_idx);
         do {
@@ -4300,7 +4307,7 @@ static int read_obj_entry(struct kndConcept *self,
         return err;
     }
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         obj->str(obj);
 
     *result = obj;
@@ -4321,7 +4328,7 @@ static gsl_err_t present_class_selection(void *obj,
     struct kndOutput *out = self->out;
     int e, err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. presenting class selection: "
 		" batch size:%zu  batch from:%zu  total selects:%zu",
                 self->task->batch_max, self->task->batch_from,
@@ -4471,7 +4478,7 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 
     self->curr_class = c;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         c->str(c);
     }
 
@@ -4751,8 +4758,9 @@ static int parse_select_class(void *obj,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("-- class parse error %d: \"%.*s\"",
-		parser_err.code, self->log->buf_size, self->log->buf);
+	if (DEBUG_CONC_LEVEL_2)
+	    knd_log("-- class parse error %d: \"%.*s\"",
+		    parser_err.code, self->log->buf_size, self->log->buf);
         if (!self->log->buf_size) {
             err = self->log->write(self->log, "class parse failure",
                                  strlen("class parse failure"));
