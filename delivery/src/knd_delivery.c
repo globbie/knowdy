@@ -137,13 +137,11 @@ static gsl_err_t run_set_result(void *obj, const char *name, size_t name_size)
     struct kndDelivery *self = obj;
     struct kndTID *tid;
     struct kndResult *res = NULL;
+    size_t result_size;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
 
-    if (DEBUG_DELIV_LEVEL_TMP)
-        knd_log(".. set result of \"%.*s\"",
-                self->obj_size, self->obj);
 
     if (self->num_tids >= self->max_tids)
         self->num_tids = 0;
@@ -181,25 +179,31 @@ static gsl_err_t run_set_result(void *obj, const char *name, size_t name_size)
     err = self->idx->set(self->idx, tid->tid, tid->size, (void*)res);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_DELIV_LEVEL_TMP)
-        knd_log("== saved result for TID \"%.*s\" => %s [%lu]",
-                tid->size, tid->tid, res->obj, (unsigned long)res->obj_size);
+    if (DEBUG_DELIV_LEVEL_TMP) {
+        result_size = res->obj_size;
+        if (result_size > KND_MAX_DEBUG_CONTEXT_SIZE)
+            result_size = KND_MAX_DEBUG_CONTEXT_SIZE;
+
+        knd_log("++ cache updated for \"%.*s\" => %.*s [%zu]",
+                tid->size, tid->tid, result_size, res->obj, res->obj_size);
+    }
 
     self->num_tids++;
     return make_gsl_err(gsl_OK);
 }
 
-
 static gsl_err_t run_retrieve(void *obj, const char *tid, size_t tid_size)
 {
     struct kndDelivery *self;
     struct kndResult *res = NULL;
+    size_t result_size;
     int err;
 
     if (!tid_size) return make_gsl_err(gsl_FORMAT);
 
     self = (struct kndDelivery*)obj;
-    if (DEBUG_DELIV_LEVEL_TMP)
+
+    if (DEBUG_DELIV_LEVEL_2)
         knd_log(".. retrieving obj, tid \"%.*s\"", tid_size, tid);
 
     res = self->idx->get(self->idx, tid, tid_size);
@@ -237,9 +241,15 @@ static gsl_err_t run_retrieve(void *obj, const char *tid, size_t tid_size)
             return make_gsl_err(gsl_OK);
         }
     }
-    if (DEBUG_DELIV_LEVEL_TMP)
-        knd_log("== Result: \"%.*s\" [%lu]", res->obj_size, res->obj,
-                (unsigned long)res->obj_size);
+
+    if (DEBUG_DELIV_LEVEL_TMP) {
+        result_size = res->obj_size;
+        if (result_size > KND_MAX_DEBUG_CONTEXT_SIZE)
+            result_size = KND_MAX_DEBUG_CONTEXT_SIZE;
+        knd_log("== cached result \"%.*s\" => %.*s [%zu]",
+                tid_size, tid, result_size, res->obj, res->obj_size);
+    }
+
     self->reply_obj = res->obj;
     self->reply_obj_size = res->obj_size;
 
@@ -420,8 +430,8 @@ kndDelivery_start(struct kndDelivery *self)
             continue;
         }
 
-        knd_log("++ DELIVERY service has got a task:   \"%s\"",
-                self->task);
+        knd_log("\n.. \"%.*s\"",
+                self->task_size, self->task);
 
         self->out->reset(self->out);
         self->reply_obj = NULL;

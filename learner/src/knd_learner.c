@@ -270,6 +270,11 @@ static gsl_err_t parse_memory_settings(void *obj,
           .parse = gsl_parse_size_t,
           .obj = &self->max_classes
         },
+        { .name = "max_conc_items",
+          .name_size = strlen("max_conc_items"),
+          .parse = gsl_parse_size_t,
+          .obj = &self->max_conc_items
+        },
         { .name = "max_states",
           .name_size = strlen("max_states"),
           .parse = gsl_parse_size_t,

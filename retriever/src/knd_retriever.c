@@ -108,7 +108,7 @@ kndRetriever_start(struct kndRetriever *self)
         if (DEBUG_RETRIEVER_LEVEL_TMP) {
             chunk_size = (task_size > KND_MAX_DEBUG_CHUNK_SIZE) ?\
                 KND_MAX_DEBUG_CHUNK_SIZE : task_size;
-            knd_log("\n++ Retriever got a new task: \"%.*s\".. [size: %zu]",
+            knd_log("\nTASK: %.*s.. [size: %zu]",
                     chunk_size, task, task_size);
         }
 
@@ -116,7 +116,8 @@ kndRetriever_start(struct kndRetriever *self)
         err = self->task->run(self->task, task, task_size, obj, obj_size);
         if (err) {
             self->task->error = err;
-            knd_log("-- task run failed: %d", err);
+	    if (DEBUG_RETRIEVER_LEVEL_2)
+		knd_log("-- task run failed: %d", err);
         } else {
             /* no need to inform delivery about every liquid update success */
             if (self->task->type == KND_UPDATE_STATE)
