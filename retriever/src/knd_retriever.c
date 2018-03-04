@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <assert.h>
+#include <time.h>
 
 #include "knd_user.h"
 #include "knd_output.h"
@@ -60,6 +61,8 @@ static int send_http_reply(struct kndRetriever *self)
 static int
 kndRetriever_start(struct kndRetriever *self)
 {
+    char buf[KND_TEMP_BUF_SIZE];
+    size_t buf_size;
     void *context;
     void *outbox;
 
@@ -68,6 +71,8 @@ kndRetriever_start(struct kndRetriever *self)
     size_t task_size;
     const char *obj = NULL;
     size_t obj_size = 0;
+    time_t timestamp;
+    struct tm tm_info;
     int err;
 
     task = malloc(KND_MED_BUF_SIZE + 1);
@@ -108,8 +113,12 @@ kndRetriever_start(struct kndRetriever *self)
         if (DEBUG_RETRIEVER_LEVEL_TMP) {
             chunk_size = (task_size > KND_MAX_DEBUG_CHUNK_SIZE) ?\
                 KND_MAX_DEBUG_CHUNK_SIZE : task_size;
-            knd_log("\nTASK: %.*s.. [size: %zu]",
-                    chunk_size, task, task_size);
+	    time(&timestamp);
+	    localtime_r(&timestamp, &tm_info);
+	    buf_size = strftime(buf, KND_NAME_SIZE,
+                            "%Y-%m-%d %H:%M:%S", &tm_info);
+            knd_log("\n%s: %.*s.. [size: %zu]",
+                    buf, chunk_size, task, task_size);
         }
 
         self->task->reset(self->task);

@@ -62,8 +62,6 @@ static void reset(struct kndTask *self)
     self->start_from = 0;
     self->match_count = 0;
 
-    self->num_class_selects = 0;
-
     self->error = 0;
     self->http_code = HTTP_OK;
     self->log->reset(self->log);
@@ -448,7 +446,7 @@ static int report(struct kndTask *self)
 
 	task_status = "--";
     } else {
-        err = out->write(out, "{save _obj}", strlen("{save _obj}"));              RET_ERR();
+        err = out->write(out, "{save _obj}}}", strlen("{save _obj}}}"));            RET_ERR();
 	
     }
 

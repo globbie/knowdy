@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <assert.h>
+#include <time.h>
 
 #include "knd_config.h"
 #include "knd_output.h"
@@ -334,7 +335,7 @@ static gsl_err_t parse_user(void *obj,
 
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) {
-        knd_log("-- task parse error: %d", err.code);
+        knd_log("-- delivery task parse error: %d", err.code);
         return err;
     }
 
@@ -373,7 +374,7 @@ static int run_task(struct kndDelivery *self)
 
     parser_err = gsl_parse_task(c, &total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("-- task parse error: %d", parser_err.code);
+        //knd_log("-- task parse error: %d", parser_err.code);
         return gsl_err_to_knd_err_codes(parser_err);
     }
 
@@ -386,15 +387,19 @@ static int run_task(struct kndDelivery *self)
 static int
 kndDelivery_start(struct kndDelivery *self)
 {
+    char buf[KND_TEMP_BUF_SIZE];
+    size_t buf_size;
     void *context;
     void *service;
-    int err;
+    time_t timestamp;
+    struct tm tm_info;
 
     const char *header = "DELIVERY";
     size_t header_size = strlen(header);
 
     const char *reply = "{\"error\":\"delivery error\"}";
     size_t reply_size = strlen(reply);
+    int err;
 
     context = zmq_init(1);
 
@@ -430,8 +435,13 @@ kndDelivery_start(struct kndDelivery *self)
             continue;
         }
 
-        knd_log("\n.. \"%.*s\"",
-                self->task_size, self->task);
+	time(&timestamp);
+	localtime_r(&timestamp, &tm_info);
+	buf_size = strftime(buf, KND_NAME_SIZE,
+                            "%Y-%m-%d %H:%M:%S", &tm_info);
+
+        knd_log("%s: \"%.*s\"",
+                buf, self->task_size, self->task);
 
         self->out->reset(self->out);
         self->reply_obj = NULL;
@@ -460,6 +470,8 @@ kndDelivery_start(struct kndDelivery *self)
             self->obj_size = 0;
         }
 
+	reply = "{\"error\":\"delivery error\"}";
+	reply_size = strlen(reply);
     }
 
     /* we never get here */

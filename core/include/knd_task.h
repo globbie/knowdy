@@ -33,6 +33,7 @@ struct kndConcept;
 struct kndQuery;
 
 typedef enum knd_task_spec_type { KND_GET_STATE, 
+				  KND_SELECT_STATE, 
                                   KND_CHANGE_STATE,
                                   KND_UPDATE_STATE,
                                   KND_LIQUID_STATE,
@@ -113,8 +114,8 @@ struct kndTask
     size_t batch_gt;
     size_t batch_lt;
 
-    struct kndConcept *class_selects[KND_MAX_CLASS_BATCH];
-    size_t num_class_selects;
+    //struct kndConcept *class_selects[KND_MAX_CLASS_BATCH];
+    //size_t num_class_selects;
 
     struct kndSet *sets;
     size_t num_sets;
