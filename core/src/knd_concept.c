@@ -1544,8 +1544,6 @@ static gsl_err_t run_sync_task(void *obj, const char *val __attribute__((unused)
     err = assign_ids(self);
     if (err) return make_gsl_err_external(err);
 
-    knd_log("..freezing..");
-
     /* merge earlier frozen DB with liquid updates */
     err = freeze(self);
     if (err) {
@@ -1568,7 +1566,7 @@ static gsl_err_t parse_sync_task(void *obj,
         }
     };
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log(".. freezing DB to GSP files..");
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -1914,10 +1912,15 @@ static gsl_err_t select_by_baseclass(void *obj,
     if (err) return make_gsl_err_external(err);
 
     self->curr_baseclass->dir->conc = self->curr_baseclass;
-    set = self->curr_baseclass->dir->descendants;
 
+    if (!self->curr_baseclass->dir->descendants) {
+	return make_gsl_err(gsl_OK);
+    }
+
+    set = self->curr_baseclass->dir->descendants;
     set->next = self->task->sets;
     self->task->sets = set;
+    self->task->num_sets++;
 
     return make_gsl_err(gsl_OK);
 }
@@ -2016,6 +2019,8 @@ static gsl_err_t parse_baseclass_select(void *obj,
           .obj = self
         }
     };
+
+    self->task->type = KND_SELECT_STATE;
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
@@ -2532,8 +2537,8 @@ static gsl_err_t dir_entry_alloc(void *self,
     dir->mempool = parent_dir->mempool;
     dir->class_idx = parent_dir->class_idx;
 
-    memset(dir->next_obj_id, '0', KND_ID_SIZE);
-    knd_calc_num_id(name, &dir->numid);
+    //memset(dir->next_obj_id, '0', KND_ID_SIZE);
+    knd_calc_num_id(name, name_size, &dir->numid);
 
     *item = dir;
     return make_gsl_err(gsl_OK);
@@ -3630,7 +3635,8 @@ static gsl_err_t conc_item_alloc(void *obj,
     if (err) return make_gsl_err_external(err);
     
     memcpy(ci->id, name, name_size);
-    knd_calc_num_id(name, &ci->numid);
+    knd_calc_num_id(name, name_size, &ci->numid);
+
     *item = ci;
     return make_gsl_err(gsl_OK);
 }
@@ -4328,137 +4334,50 @@ static gsl_err_t present_class_selection(void *obj,
     struct kndOutput *out = self->out;
     int e, err;
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. presenting class selection: "
-		" batch size:%zu  batch from:%zu  total selects:%zu",
-                self->task->batch_max, self->task->batch_from,
-                self->task->num_class_selects);
+    if (DEBUG_CONC_LEVEL_1)
+        knd_log(".. presenting \"%.*s\" selection: "
+		" curr_class:%p    sets:%p",
+                self->name_size, self->name,
+		self->curr_class,
+                self->task->sets);
+
     out->reset(out);
 
-    if (self->task->sets) {
+    if (self->task->type == KND_SELECT_STATE) {
+
+	if (!self->task->sets) {
+	    /* TODO: return empty set */
+	    err = out->write(out, "{}", strlen("{}"));
+	    if (err) return make_gsl_err_external(err);
+	    return make_gsl_err(gsl_OK);
+	}
+
 	/* TODO: execute query */
-
 	set = self->task->sets;
-
+	
 	/* present final set */
 	set->out = self->out;
 	set->task = self->task;
 	set->format = self->task->format;
-
 	err = set->export(set);
-
+	if (err) return make_gsl_err_external(err);
 	return make_gsl_err(gsl_OK);
     }
 
-    if (self->curr_class) {
-        c = self->curr_class;
-        c->out = out;
-        c->task = self->task;
-        c->format = KND_FORMAT_JSON;
-        c->depth = 0;
-
-        /* export iterator */
-        if (self->task->batch_max) {
-            if (!c->dir) return make_gsl_err(gsl_FAIL);
-            if (self->task->start_from > c->dir->num_terminals) {
-                e = self->log->write(self->log,
-                            "requested offset exceeds the total number of matches",
-                     strlen("requested offset exceeds the total number of matches"));
-                if (e) return make_gsl_err_external(e);
-                
-                self->task->http_code = HTTP_REQUESTED_RANGE_NOT_SATISFIABLE;
-                return make_gsl_err(gsl_LIMIT);
-            }
-            c->dir->out = out;
-            c->dir->task = self->task;
-            out->reset(out);
-            err = out->write(out, "{\"_term_class_iter\":[", strlen("{\"_term_class_iter\":["));
-            if (err) return make_gsl_err_external(err);
-
-            err = iter_export_JSON(c, c->dir);
-            if (err) return make_gsl_err_external(err);
-
-            err = out->write(out, "]", 1);
-            if (err) return make_gsl_err_external(err);
-
-            /* TODO: total batch? any updates? */
-            
-            err = out->write(out, "}", 1);
-            if (err) return make_gsl_err_external(err);
-            return make_gsl_err(gsl_OK);
-        }
-	
-        err = c->export(c);
-        if (err) return make_gsl_err_external(err);
-        return make_gsl_err(gsl_OK);
+    if (!self->curr_class) {
+	knd_log("-- no class to present :(");
+	return make_gsl_err(gsl_FAIL);
     }
 
-    if (!self->task->num_class_selects) return make_gsl_err(gsl_FAIL);
-
-    err = out->write(out, "[", 1);
+    c = self->curr_class;
+    c->out = out;
+    c->task = self->task;
+    c->format = KND_FORMAT_JSON;
+    c->depth = 0;
+    err = c->export(c);
     if (err) return make_gsl_err_external(err);
-
-    for (size_t i = 0; i < self->task->num_class_selects; i++) {
-        c = self->task->class_selects[i];
-        c->out = out;
-        c->task = self->task;
-        c->format = KND_FORMAT_JSON;
-        c->depth = 0;
-
-        /* export iterator */
-        if (self->task->batch_max) {
-            if (!c->dir) return make_gsl_err(gsl_FAIL);
-
-            if (self->task->start_from > c->dir->num_terminals) {
-                e = self->log->write(self->log,
-                            "requested offset exceeds the total number of matches",
-                     strlen("requested offset exceeds the total number of matches"));
-                if (e) return make_gsl_err_external(e);
-                
-                self->task->http_code = HTTP_REQUESTED_RANGE_NOT_SATISFIABLE;
-                return make_gsl_err(gsl_LIMIT);
-            }
-            
-            c->dir->out = out;
-            c->dir->task = self->task;
-
-            out->reset(out);
-            err = out->write(out, "{\"_term_class_iter\":[", strlen("{\"_term_class_iter\":["));
-            if (err) return make_gsl_err_external(err);
-
-            err = iter_export_JSON(c, c->dir);
-            if (err) return make_gsl_err_external(err);
-
-            err = out->write(out, "]", 1);
-            if (err) return make_gsl_err_external(err);
-
-            /* TODO: total batch? any updates? */
-            
-            err = out->write(out, "}", 1);
-            if (err) return make_gsl_err_external(err);
-        
-            return make_gsl_err(gsl_OK);
-        }
-
-        if (i) {
-            err = out->write(out, ",", 1);
-            if (err) return make_gsl_err_external(err);
-        }
-        err = c->export(c);
-        if (err) return make_gsl_err_external(err);
-    }
-
-    err = out->write(out, "]", 1);
-    if (err) return make_gsl_err_external(err);
-
-    if (DEBUG_CONC_LEVEL_TMP) {
-        knd_log("JSON: \"%.*s\"",  out->buf_size, out->buf);
-    }
-    
     return make_gsl_err(gsl_OK);
 }
-
-
 
 static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 {
@@ -4468,6 +4387,30 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    self->curr_class = NULL;
+    err = get_class(self, name, name_size, &c);
+    if (err) return make_gsl_err_external(err);
+
+    c->frozen_output_file_name = self->frozen_output_file_name;
+    c->frozen_output_file_name_size = self->frozen_output_file_name_size;
+
+    self->curr_class = c;
+
+    if (DEBUG_CONC_LEVEL_2) {
+        c->str(c);
+    }
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_size)
+{
+    struct kndConcept *self = obj;
+    struct kndConcept *c;
+    const char *name;
+    size_t name_size;
+    int err;
 
     self->curr_class = NULL;
     err = get_class(self, name, name_size, &c);
@@ -4655,11 +4598,11 @@ static int select_delta(struct kndConcept *self,
             //c->str(c);
             if (!c) return knd_FAIL;
 
-            if (!self->curr_baseclass) {
+            /*if (!self->curr_baseclass) {
                 self->task->class_selects[self->task->num_class_selects] = c;
                 self->task->num_class_selects++;
                 continue;
-            }
+		}*/
 
             /* filter by baseclass */
             /*for (size_t j = 0; j < c->num_bases; j++) {
@@ -4758,7 +4701,7 @@ static int parse_select_class(void *obj,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-	if (DEBUG_CONC_LEVEL_2)
+	if (DEBUG_CONC_LEVEL_TMP)
 	    knd_log("-- class parse error %d: \"%.*s\"",
 		    parser_err.code, self->log->buf_size, self->log->buf);
         if (!self->log->buf_size) {
@@ -4985,7 +4928,7 @@ static int export_JSON(struct kndConcept *self)
             }
 
             err = out->write(out, "{\"_n\":\"", strlen("{\"_n\":\""));              RET_ERR();
-            err = out->write(out, item->name, item->name_size);
+            err = out->write(out, item->classname, item->classname_size);
             if (err) return err;
             err = out->write(out, "\"", 1);
             if (err) return err;
@@ -5461,7 +5404,6 @@ static gsl_err_t parse_liquid_class_update(void *obj,
           .obj = self
         }
     };
-
 
     /* create index of class updates */
     class_updates = realloc(self->curr_update->classes,

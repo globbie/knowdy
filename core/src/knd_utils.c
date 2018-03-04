@@ -127,20 +127,20 @@ knd_is_valid_id(const char *id, size_t id_size)
 }
 
 extern void 
-knd_calc_num_id(const char *id, size_t *numval)
+knd_calc_num_id(const char *id, size_t id_size, size_t *numval)
 {
     const char *c = id;
     int num = 0;
     size_t aggr = 0;
 
-    for (size_t i = 0; i < KND_ID_SIZE; i++) {
+    for (size_t i = 0; i < id_size; i++) {
         num = obj_id_base[(unsigned int)*c];
         if (num == -1) return;
         aggr = aggr * KND_RADIX_BASE + num;
         c++;
     }
     *numval = aggr;
-    //knd_log("%.*s => %zu", KND_ID_SIZE, id, aggr);
+    //knd_log("%.*s => %zu", id_size, id, aggr);
 }
 
 extern void
