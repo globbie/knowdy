@@ -94,9 +94,9 @@ static void inst_str(struct kndRel *self, struct kndRelInstance *inst)
     }
 }
 
-static gsl_err_t run_present_rel(void *obj,
-                                 const char *val,
-                                 size_t val_size)
+static gsl_err_t run_present_rel(void *obj __attribute__((unused)),
+                                 const char *val __attribute__((unused)),
+                                 size_t val_size __attribute__((unused)))
 {
     if (DEBUG_REL_LEVEL_TMP)
         knd_log(".. present rel..");
@@ -105,9 +105,9 @@ static gsl_err_t run_present_rel(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t run_select_rel(void *obj,
-                                const char *val,
-                                size_t val_size)
+static gsl_err_t run_select_rel(void *obj __attribute__((unused)),
+                                const char *val __attribute__((unused)),
+                                size_t val_size __attribute__((unused)))
 {
     if (DEBUG_REL_LEVEL_TMP)
         knd_log(".. present rel..");
@@ -236,7 +236,6 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 
 static int export_JSON(struct kndRel *self)
 {
-    struct kndObject *obj;
     struct kndOutput *out = self->out;
     struct kndRelArg *arg;
     struct kndTranslation *tr;
@@ -286,7 +285,6 @@ static int export_JSON(struct kndRel *self)
 
 static int export_GSP(struct kndRel *self)
 {
-    struct kndObject *obj;
     struct kndOutput *out = self->out;
     struct kndRelArg *arg;
     struct kndTranslation *tr;
@@ -457,12 +455,10 @@ static int export_inst(struct kndRel *self,
 static int export_insts_JSON(struct kndRel *self,
                              struct kndRelArgInstRef *insts)
 {
-    struct kndRelArg *relarg;
     struct kndRelArgInstance *rel_arg_inst;
     struct kndRelArgInstRef *rel_arg_inst_ref = NULL;
     struct kndRelInstance *rel_inst;
     struct kndOutput *out = self->out;
-    struct kndObjEntry *entry = NULL;
     bool in_list = false;
     int err;
 
@@ -558,8 +554,6 @@ static int import_rel(struct kndRel *self,
                       const char *rec,
                       size_t *total_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
     struct kndRel *rel;
     struct kndRelDir *dir;
     int err;
@@ -1079,7 +1073,7 @@ static int parse_rel_select(struct kndRel *self,
                             const char *rec,
                             size_t *total_size)
 {
-    int err = knd_FAIL, e;
+    int e;
     gsl_err_t parser_err;
 
     if (DEBUG_REL_LEVEL_TMP)
@@ -1284,7 +1278,7 @@ static int kndRel_update_state(struct kndRel *self,
     return knd_OK;
 }
 
-static gsl_err_t set_liquid_rel_id(void *obj, const char *val, size_t val_size)
+static gsl_err_t set_liquid_rel_id(void *obj, const char *val, size_t val_size __attribute__((unused)))
 {
     struct kndRel *self = (struct kndRel*)obj;
     struct kndRel *rel;
@@ -1314,8 +1308,6 @@ static gsl_err_t set_liquid_rel_id(void *obj, const char *val, size_t val_size)
 static gsl_err_t run_get_liquid_rel(void *obj, const char *name, size_t name_size)
 {
     struct kndRel *self = obj;
-    struct kndRel *rel;
-    struct kndObjEntry *entry;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -1389,7 +1381,6 @@ static int parse_liquid_updates(struct kndRel *self,
           .obj = self
         }
     };
-    int err;
     gsl_err_t parser_err;
 
     if (DEBUG_REL_LEVEL_2)

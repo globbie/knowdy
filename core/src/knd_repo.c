@@ -23,32 +23,35 @@
 #define DEBUG_REPO_LEVEL_3 0
 #define DEBUG_REPO_LEVEL_TMP 1
 
-static int
-kndRepo_linearize_objs(struct kndRepo *self);
+//static int
+//kndRepo_linearize_objs(struct kndRepo *self);
 
-static int
-kndRepo_get_guid(struct kndRepo *self,
-                 struct kndConcept *conc,
-                 const char *obj_name,
-                 size_t      obj_name_size,
-                 char *result);
-static int
-kndRepo_import_obj(struct kndRepo *self,
-                   const char *rec,
-                   size_t *total_size)
-{
-    // Not implemented yet
-    return knd_FAIL;
-}
+//static int
+//kndRepo_get_guid(struct kndRepo *self,
+//                 struct kndConcept *conc,
+//                 const char *obj_name,
+//                 size_t      obj_name_size,
+//                 char *result);
 
-static int
-kndRepo_get_obj(struct kndRepo *self,
-                const char *name,
-                size_t name_size)
-{
+//static int
+//kndRepo_import_obj(struct kndRepo *self,
+//                   const char *rec,
+//                   size_t *total_size)
+//{
+//    (void) self; (void) rec; (void) total_size;
     // Not implemented yet
-    return knd_FAIL;
-}
+//    return knd_FAIL;
+//}
+
+//static int
+//kndRepo_get_obj(struct kndRepo *self,
+//                const char *name,
+//                size_t name_size)
+//{
+//    (void) self; (void) name; (void) name_size;
+    // Not implemented yet
+//    return knd_FAIL;
+//}
 
 static int
 kndRepo_del(struct kndRepo *self)
@@ -288,9 +291,9 @@ static int
 kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
 {
     char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
+    size_t buf_size = 0;
     char path[KND_TEMP_BUF_SIZE];
-    size_t path_size;
+    size_t path_size = 0;
     struct kndRepo *repo;
     int err;
 
@@ -597,6 +600,7 @@ static int kndRepo_restore(struct kndRepo *self)
     return knd_OK;
 }
 
+/*
 static int
 kndRepo_update_inbox(struct kndRepo *self)
 {
@@ -628,7 +632,7 @@ kndRepo_update_inbox(struct kndRepo *self)
                 (unsigned long)self->task->obj_size);
 
 
-    /* TRN body */
+    // TRN body
     err = knd_append_file((const char*)out->buf,
                           (const void*)self->task->spec,
                           self->task->spec_size);
@@ -646,6 +650,7 @@ kndRepo_update_inbox(struct kndRepo *self)
 
     return knd_OK;
 }
+*/
 
 static gsl_err_t
 kndRepo_parse_class(void *obj,
@@ -810,7 +815,6 @@ extern int
 kndRepo_new(struct kndRepo **repo)
 {
     struct kndRepo *self;
-    int err = knd_OK;
 
     self = malloc(sizeof(struct kndRepo));
     if (!self) return knd_NOMEM;

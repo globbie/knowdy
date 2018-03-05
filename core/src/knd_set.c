@@ -21,13 +21,14 @@
 #define DEBUG_SET_LEVEL_4 0
 #define DEBUG_SET_LEVEL_TMP 1
 
-static int
-kndSet_sync(struct kndSet *self);
+//static int
+//kndSet_sync(struct kndSet *self);
 
-static int
-kndSet_read_term_idx_tags(struct kndSet *self,
-			  const char    *rec,
-			  size_t         rec_size);
+//static int
+//kndSet_read_term_idx_tags(struct kndSet *self,
+//  const char    *rec,
+//  size_t         rec_size);
+
 static int
 kndSet_add_conc(struct kndSet     *self,
 		struct kndConcept     *conc);
@@ -48,11 +49,13 @@ knd_compare_set_by_size_ascend(const void *a,
     return -1;
 }
 
+/*
 static void
 kndSetElem_str(struct kndSet *self, size_t depth)
 {
-    
+    (void) self, (void) depth;
 }
+*/
 
 static void 
 kndSet_str(struct kndSet *self, size_t depth)
@@ -114,11 +117,10 @@ kndSet_export_JSON(struct kndSet *self)
 
     struct kndOutput *out = self->out;
 
-    struct kndFacet *f;
     struct kndSetElem *elem;
     size_t curr_batch_size = 0;
     int err;
-    
+
     err = out->write(out,  "{", 1);
     if (err) return err;
 
@@ -209,7 +211,6 @@ kndSet_export_JSON(struct kndSet *self)
         if (err) return err;
     }
 
- final:
     
     err = out->write(out,  "}", 1);
     if (err) return err;
@@ -301,16 +302,12 @@ kndSet_export(struct kndSet *self)
 
 
 static int
-kndSet_intersect(struct kndSet   *self,
+kndSet_intersect(struct kndSet   *self __attribute__((unused)),
                     struct kndSet **sets,
                     size_t num_sets)
 {
     struct kndSet *smallset, *set;
-    struct kndSetElem *elem;
-    struct kndElemIdx *idx, *term_idx;
     //struct kndFacet *f;
-
-    int i, j, ri, err;
 
     if (DEBUG_SET_LEVEL_2) 
         knd_log(" .. intersection by Set \"%.*s\"..\n",
@@ -436,8 +433,7 @@ kndFacet_get_set(struct kndFacet  *self,
 static int
 kndSet_facetize(struct kndSet *self)
 {
-    int err;
-    
+
     if (DEBUG_SET_LEVEL_1) {
         knd_log("\n    .. further facetize the set \"%s\"..\n",
                 self->base->name);
@@ -516,22 +512,18 @@ kndSet_add_conc(struct kndSet *self,
     return knd_OK;
 }
 
+/*
 static int
-kndSet_merge_idx(struct kndSet *self,
+kndSet_merge_idx(struct kndSet *self __attribute__((unused)),
 		 struct kndSet *src)
 {
-    struct kndElemIdx *idx, *term_idx;
-    struct kndSetElem *elem;
-    size_t i, j, ri;
-    int err;
-
     if (!src->idx) {
         if (DEBUG_SET_LEVEL_2)
             knd_log("?? no term idx in set %s?", src->base->name);
         return knd_OK;
     }
     
-    /*for (i = 0; i < KND_ID_BASE; i++) {
+    for (i = 0; i < KND_ID_BASE; i++) {
         idx = src->idx[i];
 
         if (!idx) continue;
@@ -549,11 +541,12 @@ kndSet_merge_idx(struct kndSet *self,
             }
             
         }
-	}*/
+	}
 
     
     return knd_OK;
 }
+*/
 
 extern int kndSet_init(struct kndSet *self)
 {
@@ -565,9 +558,11 @@ extern int kndSet_init(struct kndSet *self)
     self->intersect = kndSet_intersect;
     self->facetize = kndSet_facetize;
     self->export = kndSet_export;
+
+    return knd_OK;
 }
 
-extern void kndFacet_init(struct kndFacet *self)
+extern void kndFacet_init(struct kndFacet *self __attribute__((unused)))
 {
     /*self->del = kndFacet_del;
     self->str = kndFacet_str;

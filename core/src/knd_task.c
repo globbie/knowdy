@@ -359,9 +359,9 @@ static int report(struct kndTask *self)
     const char *msg = "None";
     size_t msg_size = strlen(msg);
     struct kndOutput *out = self->spec_out;
-    char *header;
+    char *header = NULL;
     size_t header_size;
-    char *obj;
+    char *obj = NULL;
     size_t obj_size;
     size_t chunk_size;
     int err;

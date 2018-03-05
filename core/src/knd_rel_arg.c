@@ -430,7 +430,6 @@ static gsl_err_t parse_inst_class(void *data,
                                   size_t *total_size)
 {
     struct kndRelArgInstance *self = data;
-    int err;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -524,7 +523,6 @@ static int resolve(struct kndRelArg *self)
 static int resolve_inst(struct kndRelArg *self,
                         struct kndRelArgInstance *inst)
 {
-    struct kndConcDir *role_class_dir;
     struct kndConcDir *dir;
     struct kndObjEntry *obj;
     int err;
