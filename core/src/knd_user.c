@@ -10,8 +10,6 @@
 #include "knd_user.h"
 #include "knd_repo.h"
 #include "knd_output.h"
-#include "knd_msg.h"
-#include "knd_task.h"
 #include "knd_concept.h"
 #include "knd_object.h"
 #include "knd_proc.h"

@@ -12,7 +12,6 @@
 #include "knd_sorttag.h"
 #include "knd_task.h"
 #include "knd_output.h"
-#include "knd_msg.h"
 #include "knd_dict.h"
 #include "knd_concept.h"
 
