@@ -911,7 +911,7 @@ static gsl_err_t select_rel(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t remove_obj(void *data, const char *name, size_t name_size)
+static gsl_err_t remove_obj(void *data, const char *name __attribute__((unused)), size_t name_size __attribute__((unused)))
 {
     struct kndObject *self = data;
     struct kndConcept *conc = self->conc;

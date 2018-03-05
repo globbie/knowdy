@@ -58,7 +58,7 @@ static int
 kndUser_add_user(struct kndUser *self)
 {
     char buf[KND_TEMP_BUF_SIZE] = {0};
-    size_t buf_size;
+    size_t buf_size = 0;
     
     char uid[KND_ID_SIZE + 1];
     int err;

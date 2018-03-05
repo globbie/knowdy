@@ -293,7 +293,7 @@ static gsl_err_t run_set_quant(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t confirm_idx(void *obj, const char *name, size_t name_size)
+static gsl_err_t confirm_idx(void *obj, const char *name __attribute__((unused)), size_t name_size __attribute__((unused)))
 {
     struct kndAttr *self = obj;
 

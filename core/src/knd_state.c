@@ -37,8 +37,6 @@ static int knd_confirm(struct kndStateControl *self,
 		       struct kndUpdate *update)
 {
     struct kndOutput *out;
-    struct kndClassUpdate *class_update;
-    struct kndConcDir *dir;
     int err;
 
     if (self->task->type == KND_LIQUID_STATE) {
