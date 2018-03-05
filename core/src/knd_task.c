@@ -7,7 +7,6 @@
 #include "knd_output.h"
 #include "knd_utils.h"
 #include "knd_concept.h"
-#include "knd_msg.h"
 #include "knd_http_codes.h"
 
 #include <gsl-parser.h>
@@ -465,8 +464,10 @@ static int report(struct kndTask *self)
         }
     }
 
-    err = knd_zmq_sendmore(self->delivery,
-                           (const char*)out->buf, out->buf_size);
+#pragma message("TODO: knd_zmq_sendmore()")
+    //err = knd_zmq_sendmore(self->delivery,
+    //                       (const char*)out->buf, out->buf_size);
+
     /* obj body */
     if (self->out->buf_size) {
         msg = self->out->buf;
@@ -481,11 +482,13 @@ static int report(struct kndTask *self)
         }
     }
 
-    err = knd_zmq_send(self->delivery, msg, msg_size);
+#pragma message("TODO: knd_zmq_send()")
+    //err = knd_zmq_send(self->delivery, msg, msg_size);
 
     /* get confirmation reply from  the manager */
-    header = knd_zmq_recv(self->delivery, &header_size);
-    obj = knd_zmq_recv(self->delivery, &obj_size);
+#pragma message("TODO: knd_zmq_recv()")
+    //header = knd_zmq_recv(self->delivery, &header_size);
+    //obj = knd_zmq_recv(self->delivery, &obj_size);
 
     if (DEBUG_TASK_LEVEL_2)
         knd_log("== Delivery reply HEADER: \"%.*s\" [%zu]\n OBJ: \"%.*s\" [%zu]",
@@ -505,7 +508,9 @@ static int report(struct kndTask *self)
                     self->update->buf_size);
         }
 
-        err = knd_zmq_send(self->publisher, self->update->buf, self->update->buf_size);
+#pragma message("TODO: knd_zmq_send()")
+        //err = knd_zmq_send(self->publisher, self->update->buf, self->update->buf_size);
+        //
         //err = knd_zmq_send(self->publisher, "None", strlen("None"));
     }
 

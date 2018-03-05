@@ -7,7 +7,6 @@
 #include "knd_user.h"
 #include "knd_output.h"
 #include "knd_utils.h"
-#include "knd_msg.h"
 
 #define DEBUG_STATE_LEVEL_0 0
 #define DEBUG_STATE_LEVEL_1 0
