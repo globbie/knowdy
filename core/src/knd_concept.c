@@ -1652,9 +1652,14 @@ static gsl_err_t parse_import_class(void *obj,
           .append = gloss_append,
           .parse = parse_gloss
         },
+        { .name = "_summary",
+          .name_size = strlen("_summary"),
+          .parse = parse_summary,
+          .obj = c
+        },
         { .type = GSL_CHANGE_STATE,
-          .name = "summary",
-          .name_size = strlen("summary"),
+          .name = "_summary",
+          .name_size = strlen("_summary"),
           .parse = parse_summary,
           .obj = c
         },
@@ -3598,7 +3603,6 @@ static int read_GSL_file(struct kndConcept *self,
         knd_log("-- couldn't read GSL class file \"%s\" :(", out->buf);
         return err;
     }
-
     out->file[out->file_size] = '\0';
     
     err = parse_GSL(self, (const char*)out->file, &chunk_size);

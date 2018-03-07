@@ -301,9 +301,6 @@ static int export_HTML(struct kndText *self)
     return knd_OK;
 }
 
-
-
-
 static int export_GSP(struct kndText *self)
 {
     char buf[KND_NAME_SIZE];
@@ -412,8 +409,6 @@ static int export_GSP(struct kndText *self)
     return knd_OK;
 }
 
-
-
 static int export(struct kndText *self)
 {
     int err;
@@ -440,7 +435,7 @@ static int export(struct kndText *self)
 
 static gsl_err_t run_set_translation_text(void *obj, const char *val, size_t val_size)
 {
-    struct kndTranslation *tr = (struct kndTranslation*)obj;
+    struct kndTranslation *tr = obj;
 
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_NAME_SIZE) {
