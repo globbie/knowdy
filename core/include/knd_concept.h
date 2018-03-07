@@ -154,6 +154,7 @@ struct kndConcDir
     struct ooDict *class_idx;
     struct ooDict *obj_idx;
     struct ooDict *reverse_attr_name_idx;
+    struct kndProcDir *proc_dir;
 
     struct kndTask *task;
     struct kndOutput *out;
