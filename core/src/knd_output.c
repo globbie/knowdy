@@ -95,6 +95,7 @@ kndOutput_read_file(struct kndOutput *self,
     struct stat file_info;
     int fd;
     int err;
+    ssize_t bytes_read;
 
     if (DEBUG_OUTPUT_LEVEL_2)
         knd_log(".. IO [%p] reading the \"%s\" file..", self, filename);
@@ -135,19 +136,19 @@ kndOutput_read_file(struct kndOutput *self,
 
     if (self->file) free(self->file);
     
-    self->file = malloc(sizeof(char) * self->file_size);
+    self->file = malloc(sizeof(char) * (self->file_size + 1));
     if (!self->file) {
         err = knd_NOMEM;
         goto final;
     }
 
-    err = read(fd, self->file, self->file_size);
-    if (err == -1) {
+    bytes_read = read(fd, self->file, self->file_size);
+    if (bytes_read != (ssize_t)self->file_size) {
         err = knd_IO_FAIL;
         goto final;
     }
 
-    /*self->file[self->file_size] = '\0';*/
+    self->file[self->file_size] = '\0';  // FIXME(ki.stfu): required for libs/gsl-parser
 
     if (DEBUG_OUTPUT_LEVEL_3)
         knd_log("   ++ FILE \"%s\" read OK [size: %lu]\n",
