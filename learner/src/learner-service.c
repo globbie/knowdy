@@ -68,6 +68,18 @@ parse_memory_settings(void *obj, const char *rec, size_t *total_size)
             .obj = &self->max_classes
         },
         {
+            .name = "max_conc_items",
+            .name_size = strlen("max_conc_items"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_conc_items
+        },
+        {
+            .name = "max_attrs",
+            .name_size = strlen("max_attrs"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_attrs
+        },
+        {
             .name = "max_states",
             .name_size = strlen("max_states"),
             .parse = gsl_parse_size_t,
