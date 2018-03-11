@@ -17,11 +17,6 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
 endif()
 
-pkg_check_modules(ZEROMQ REQUIRED libzmq)
-find_path(ZEROMQ_INCLUDE_DIR NAMES zmq.h PATHS ${ZEROMQ_INCLUDE_DIRS})
-find_library(ZEROMQ_LIBRARY NAMES zmq PATHS ${ZEROMQ_LIBRARY_DIRS})
-include_directories(${ZEROMQ_INCLUDE_DIR})
-
 pkg_check_modules(CURL REQUIRED libcurl)
 find_path(CURL_INCLUDE_DIR NAMES curl.h PATHS ${CURL_INCLUDE_DIRS})
 find_library(CURL_LIBRARY NAMES curl PATHS ${CURL_LIBRARY_DIRS})
@@ -48,19 +43,15 @@ set(GLB_LIBRARY glb-lib)
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/knode")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/knode/include")
 
-
-
 set(KNOWDY_PREFIX "knd")
 set(CORE      "core")
 set(RETRIEVER "retriever")
 set(LEARNER   "learner")
-set(DELIVERY  "delivery")
 
 set(KNOWDY_MODULES
         ${CORE}
         ${RETRIEVER}
-        ${LEARNER}
-        ${DELIVERY})
+        ${LEARNER})
 
 include_directories(${CORE}/include)
 
