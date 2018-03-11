@@ -16,7 +16,6 @@ task_callback(struct kmqEndPoint *endpoint __attribute__((unused)), struct kmqTa
         void *cb_arg)
 {
     struct kndLearnerService *self = cb_arg;
-
     const char *data;
     size_t size;
     int err;
@@ -286,7 +285,7 @@ parse_schema(struct kndLearnerService *self, const char *rec, size_t *total_size
 }
 
 static int
-start__(struct kndLearnerService *self __attribute__((unused)))
+start__(struct kndLearnerService *self)
 {
     knd_log("learner has been started\n");
     self->knode->dispatch(self->knode);

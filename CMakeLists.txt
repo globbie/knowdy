@@ -54,7 +54,7 @@ set(KNOWDY_PREFIX "knd")
 set(CORE      "core")
 #set(RETRIEVER "retriever")
 set(LEARNER   "learner")
-#set(DELIVERY  "delivery")
+set(DELIVERY  "delivery")
 
 set(KNOWDY_MODULES
         ${CORE}
