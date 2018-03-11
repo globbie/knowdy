@@ -574,7 +574,7 @@ void *kndRetriever_inbox(void *arg)
     struct kndRetriever *retriever;
     int err;
 
-    context = zmq_init(1);
+    //context = zmq_init(1);
     retriever = (struct kndRetriever*)arg;
 
     /*frontend = zmq_socket(context, ZMQ_PULL);
