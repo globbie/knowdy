@@ -15,7 +15,6 @@
 #include "knd_state.h"
 #include "knd_task.h"
 #include "knd_utils.h"
-#include "knd_msg.h"
 #include "knd_mempool.h"
 
 #include <gsl-parser.h>
@@ -52,9 +51,9 @@ static int send_http_reply(struct kndRetriever *self)
 
     knd_log(".. try HTTP callback: \"%s\"", self->task->delivery_addr);
 
-    err = knd_http_post(self->task->delivery_addr, self->task->out->buf, self->task->out->buf_size);
+    /*err = knd_http_post(self->task->delivery_addr, self->task->out->buf, self->task->out->buf_size);
     if (err) return err;
-
+    */
     return knd_OK;
 }
 
@@ -78,7 +77,7 @@ kndRetriever_start(struct kndRetriever *self)
     task = malloc(KND_MED_BUF_SIZE + 1);
     if (!task) return knd_NOMEM;
 
-    context = zmq_init(1);
+    /*context = zmq_init(1);
     outbox = zmq_socket(context, ZMQ_PULL);
     if (!outbox) {
         free(task);
@@ -86,9 +85,10 @@ kndRetriever_start(struct kndRetriever *self)
     }
 
     assert((zmq_connect(outbox, self->inbox_backend_addr) == knd_OK));
-
+    */
+    
     /* delivery service */
-    self->delivery = zmq_socket(context, ZMQ_REQ);
+    /*self->delivery = zmq_socket(context, ZMQ_REQ);
     if (!self->delivery) {
         free(task);
         return knd_FAIL;
@@ -101,7 +101,9 @@ kndRetriever_start(struct kndRetriever *self)
 
     task_size = 0;
     obj_size = 0;
+    */
 
+    /*  
     while (1) {
         task_size = KND_MED_BUF_SIZE;
         err = knd_recv_task(outbox, task, &task_size);
@@ -128,7 +130,6 @@ kndRetriever_start(struct kndRetriever *self)
 	    if (DEBUG_RETRIEVER_LEVEL_2)
 		knd_log("-- task run failed: %d", err);
         } else {
-            /* no need to inform delivery about every liquid update success */
             if (self->task->type == KND_UPDATE_STATE)
                 continue;
         }
@@ -149,7 +150,7 @@ kndRetriever_start(struct kndRetriever *self)
 
     zmq_close(outbox);
     zmq_close(self->delivery);
-
+*/
     return knd_OK;
 }
 
@@ -576,13 +577,12 @@ void *kndRetriever_inbox(void *arg)
     context = zmq_init(1);
     retriever = (struct kndRetriever*)arg;
 
-    frontend = zmq_socket(context, ZMQ_PULL);
+    /*frontend = zmq_socket(context, ZMQ_PULL);
     assert(frontend);
 
     backend = zmq_socket(context, ZMQ_PUSH);
     assert(backend);
 
-    /* knd_log("%s <-> %s\n", retriever->inbox_frontend_addr, retriever->inbox_backend_addr); */
 
     err = zmq_bind(frontend, retriever->inbox_frontend_addr);
     assert(err == knd_OK);
@@ -594,11 +594,13 @@ void *kndRetriever_inbox(void *arg)
             retriever->name);
 
     zmq_device(ZMQ_QUEUE, frontend, backend);
+    */
 
     /* we never get here */
-    zmq_close(frontend);
+    /*zmq_close(frontend);
     zmq_close(backend);
     zmq_term(context);
+    */
     return NULL;
 }
 
@@ -610,7 +612,7 @@ void *kndRetriever_selector(void *arg)
     struct kndRetriever *retriever;
     int err;
 
-    context = zmq_init(1);
+    /*    context = zmq_init(1);
     retriever = (struct kndRetriever*)arg;
 
     frontend = zmq_socket(context, ZMQ_PULL);
@@ -630,12 +632,12 @@ void *kndRetriever_selector(void *arg)
             retriever->inbox_frontend_addr);
 
     zmq_device(ZMQ_QUEUE, frontend, backend);
-
+    */
     /* we never get here */
-    zmq_close(frontend);
+    /*zmq_close(frontend);
     zmq_close(backend);
     zmq_term(context);
-
+    */
     return NULL;
 }
 
@@ -654,7 +656,7 @@ void *kndRetriever_subscriber(void *arg)
 
     retriever = (struct kndRetriever*)arg;
 
-    context = zmq_init(1);
+    /*    context = zmq_init(1);
 
     subscriber = zmq_socket(context, ZMQ_SUB);
     assert(subscriber);
@@ -666,7 +668,10 @@ void *kndRetriever_subscriber(void *arg)
     assert(inbox);
     err = zmq_connect(inbox, retriever->inbox_frontend_addr);
     assert(err == knd_OK);
+    */
 
+
+    /*
     while (1) {
         task = NULL;
         task_size = 0;
@@ -676,7 +681,6 @@ void *kndRetriever_subscriber(void *arg)
         task = knd_zmq_recv(subscriber, &task_size);
         //obj = knd_zmq_recv(subscriber, &obj_size);
 
-        /* sometimes bad messages arrive */
         if (!task || !task_size) continue;
         //if (!obj || !obj_size) continue;
 
@@ -687,18 +691,18 @@ void *kndRetriever_subscriber(void *arg)
         }
 
         err = knd_zmq_send(inbox, task, task_size);
-        //err = knd_zmq_send(inbox, obj, obj_size);
 
         if (task)
             free(task);
 
         fflush(stdout);
     }
+*/
 
     /* we never get here */
-    zmq_close(subscriber);
+    /* zmq_close(subscriber);
     zmq_term(context);
-
+    */
     return NULL;
 }
 

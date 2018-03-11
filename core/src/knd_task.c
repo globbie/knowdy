@@ -8,7 +8,6 @@
 #include "knd_output.h"
 #include "knd_utils.h"
 #include "knd_concept.h"
-#include "knd_msg.h"
 #include "knd_http_codes.h"
 
 #include <gsl-parser.h>
@@ -460,8 +459,10 @@ static int report(struct kndTask *self)
 		self->out->buf, self->out->buf_size);
     }
 
-    err = knd_zmq_sendmore(self->delivery,
+    /*err = knd_zmq_sendmore(self->delivery,
                            (const char*)out->buf, out->buf_size);
+    */
+    
     /* obj body */
     if (self->out->buf_size) {
         msg = self->out->buf;
@@ -476,18 +477,12 @@ static int report(struct kndTask *self)
         }
     }
 
-    err = knd_zmq_send(self->delivery, msg, msg_size);
-
+    /*err = knd_zmq_send(self->delivery, msg, msg_size);
+     */
     /* get confirmation reply from  the manager */
-    header = knd_zmq_recv(self->delivery, &header_size);
+    /*header = knd_zmq_recv(self->delivery, &header_size);
     obj = knd_zmq_recv(self->delivery, &obj_size);
-
-    if (DEBUG_TASK_LEVEL_2)
-        knd_log("== Delivery reply HEADER: \"%.*s\" [%zu]\n OBJ: \"%.*s\" [%zu]",
-                header_size, header, header_size, obj_size, obj, obj_size);
-
-    if (header) free(header);
-    if (obj)    free(obj);
+    */
 
     /* inform all retrievers about the state change */
     if (self->type == KND_UPDATE_STATE) {
@@ -500,7 +495,7 @@ static int report(struct kndTask *self)
                     self->update->buf_size);
         }
 
-        err = knd_zmq_send(self->publisher, self->update->buf, self->update->buf_size);
+	//        err = knd_zmq_send(self->publisher, self->update->buf, self->update->buf_size);
         //err = knd_zmq_send(self->publisher, "None", strlen("None"));
     }
 
