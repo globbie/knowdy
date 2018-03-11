@@ -4,15 +4,17 @@ addons:
     sources:
     - george-edison55-precise-backports
     - ubuntu-toolchain-r-test
+    - llvm-toolchain-precise-3.6
     packages:
     - cmake
     - cmake-data
-    - gcc-4.8
+    - gcc-5
     - clang
     - libzmq3-dev
     - libmysqlclient-dev
     - check
     - libsubunit-dev
+    - libevent-dev
 dist: trusty
 compiler:
 - gcc
@@ -25,9 +27,9 @@ git:
 before_install:
     - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
     - git submodule update --init --recursive
-    
+
 install:
-- if [ "$CC" = "gcc" ]; then export CC="gcc-4.8"; fi
+- if [ "$CC" = "gcc" ]; then export CC="gcc-5"; fi
 before_script:
 - mkdir build
 - cd build
