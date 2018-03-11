@@ -420,9 +420,9 @@ static int parse_GSL(struct kndElem *self,
           .obj = self
         },
 
-        { .type = GSL_CHANGE_STATE,
-          .name = "default",
-          .name_size = strlen("default"),
+        { //.type = GSL_CHANGE_STATE,
+          //.name = "default",
+          //.name_size = strlen("default"),
           .is_default = true,
           .run = run_empty_val_warning,
           .obj = self
