@@ -22,6 +22,8 @@
 
 #include "knd_err.h"
 
+#include <stdlib.h>
+
 typedef enum knd_state_phase { KND_SELECTED,
                                KND_SUBMITTED,
                                KND_CREATED,

@@ -235,7 +235,7 @@ knd_mkdir(const char *path, mode_t mode)
 /**
  * knd_mkpath - ensure all directories in path exist
  */
-extern int 
+extern int
 knd_mkpath(const char *path, size_t path_size, mode_t mode, bool has_filename)
 {
     char buf[KND_TEMP_BUF_SIZE];
@@ -244,7 +244,7 @@ knd_mkpath(const char *path, size_t path_size, mode_t mode, bool has_filename)
     const char *p;
     char *b;
     int  err;
-    
+
     if (path_size >= KND_TEMP_BUF_SIZE)
         return knd_LIMIT;
     if (!path_size) return knd_LIMIT;
@@ -253,36 +253,35 @@ knd_mkpath(const char *path, size_t path_size, mode_t mode, bool has_filename)
     b = buf;
 
     while (tail_size) {
-	switch (*p) {
-	case '/':
-	    if (buf_size) {
-		*b = '\0';
-		if (DEBUG_UTILS_LEVEL_TMP)
-		    knd_log("NB: .. mkdir: %s [%zu]", buf, buf_size);
+        switch (*p) {
+        case '/':
 
-		err = knd_mkdir(buf, mode);                                       RET_ERR();
-	    }
+            if (buf_size) {
+                *b = '\0';
+                if (DEBUG_UTILS_LEVEL_TMP)
+                    knd_log("NB: .. mkdir: %s [%zu]", buf, buf_size);
 
-	    *b = '/';
-	    buf_size++;
-	    break;
-	default:
-	    *b = *p;
-	    buf_size++;
-	    break;
-	}
+                err = knd_mkdir(buf, mode);                                       RET_ERR();
+            }
+
+            *b = '/';
+            buf_size++;
+            break;
+        default:
+            *b = *p;
+            buf_size++;
+            break;
+        }
         tail_size--;
-	p++;
-	b++;
+        p++;
+        b++;
     }
-
 
     /* in case no final dir separator is present at the end */
     if (buf_size && !has_filename) {
-	buf[buf_size] = '\0';
-	if (DEBUG_UTILS_LEVEL_TMP)
-	    knd_log("LAST DIR: \"%s\" [%zu]", buf, buf_size);
-
+        buf[buf_size] = '\0';
+        if (DEBUG_UTILS_LEVEL_TMP)
+            knd_log("LAST DIR: \"%s\" [%zu]", buf, buf_size);
         err = knd_mkdir(buf, mode);                                               RET_ERR();
     }
 

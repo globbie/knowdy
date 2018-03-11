@@ -20,6 +20,7 @@
 #pragma once
 
 #include "knd_config.h"
+#include <stddef.h>
 
 struct kndConcept;
 struct kndObject;
@@ -79,7 +80,7 @@ struct kndMemPool
     struct kndState *states;
     size_t max_states;
     size_t num_states;
-    
+
     struct kndClassUpdate *class_updates;
     size_t max_class_updates;
     size_t num_class_updates;
@@ -216,7 +217,7 @@ struct kndMemPool
     int (*new_conc_dir)(struct kndMemPool   *self,
                         struct kndConcDir **result);
     int (*new_conc_item)(struct kndMemPool   *self,
-			 struct kndConcItem **result);
+                         struct kndConcItem **result);
     int (*new_obj)(struct kndMemPool   *self,
                    struct kndObject **result);
     int (*new_obj_dir)(struct kndMemPool   *self,
@@ -224,7 +225,7 @@ struct kndMemPool
     int (*new_obj_entry)(struct kndMemPool   *self,
                          struct kndObjEntry **result);
     int (*new_obj_elem)(struct kndMemPool   *self,
-			struct kndElem     **result);
+                        struct kndElem     **result);
     int (*new_rel)(struct kndMemPool   *self,
                    struct kndRel **result);
     int (*new_rel_dir)(struct kndMemPool   *self,
@@ -240,17 +241,17 @@ struct kndMemPool
     int (*new_rel_arg_inst)(struct kndMemPool   *self,
                             struct kndRelArgInstance **result);
     int (*new_rel_arg_inst_ref)(struct kndMemPool   *self,
-				struct kndRelArgInstRef **result);
+                                struct kndRelArgInstRef **result);
     int (*new_proc)(struct kndMemPool   *self,
                     struct kndProc **result);
     int (*new_proc_inst)(struct kndMemPool   *self,
                          struct kndProcInstance **result);
     int (*new_proc_dir)(struct kndMemPool   *self,
-			struct kndProcDir **result);
+                        struct kndProcDir **result);
     int (*new_proc_arg)(struct kndMemPool   *self,
-			struct kndProcArg **result);
+                        struct kndProcArg **result);
     int (*new_proc_arg_inst)(struct kndMemPool   *self,
-			     struct kndProcArgInstance **result);
+                             struct kndProcArgInstance **result);
     int (*new_proc_update)(struct kndMemPool   *self,
                           struct kndProcUpdate **result);
     int (*new_proc_update_ref)(struct kndMemPool   *self,
@@ -259,3 +260,4 @@ struct kndMemPool
 
 /* constructor */
 extern int kndMemPool_new(struct kndMemPool **self);
+
