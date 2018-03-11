@@ -958,8 +958,6 @@ static int parse_GSL(struct kndObject *self,
                      const char *rec,
                      size_t *total_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_name,
