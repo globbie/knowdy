@@ -18,7 +18,6 @@ struct kndAuthRec
 
     /* TODO: billing data */
     /* one time passwords */
-    
 };
 
 struct kndTID
