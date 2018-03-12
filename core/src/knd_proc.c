@@ -160,7 +160,6 @@ static int get_proc(struct kndProc *self,
     size_t chunk_size = 0;
     size_t *total_size;
     struct kndProcDir *dir;
-    struct kndProcArg *arg;
     struct kndProc *proc;
     const char *filename;
     size_t filename_size;
@@ -609,7 +608,6 @@ static int export_SVG(struct kndProc *self)
     struct kndProcArg *arg;
     struct kndTranslation *tr;
 
-    bool in_list = false;
     size_t x_offset = 0;
     size_t y_offset = 0;
     int err;
@@ -758,13 +756,12 @@ static gsl_err_t gloss_append(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t gloss_alloc(void *obj,
+static gsl_err_t gloss_alloc(void *obj __attribute__((unused)),
                              const char *name,
                              size_t name_size,
-                             size_t count,
+                             size_t count __attribute__((unused)),
                              void **item)
 {
-    struct kndProc *self = obj;
     struct kndTranslation *tr;
 
     if (name_size > KND_LOCALE_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -786,13 +783,12 @@ static gsl_err_t gloss_alloc(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t proc_call_gloss_alloc(void *obj,
+static gsl_err_t proc_call_gloss_alloc(void *obj __attribute__((unused)),
                                        const char *name,
                                        size_t name_size,
-                                       size_t count,
+                                       size_t count __attribute__((unused)),
                                        void **item)
 {
-    struct kndProcCall *self = obj;
     struct kndTranslation *tr;
 
     if (name_size > KND_LOCALE_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -855,8 +851,6 @@ static gsl_err_t arg_item_read(void *obj,
 {
     struct kndProcBase *base = obj;
     struct kndArgItem *item;
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
     gsl_err_t parser_err;
 
     item = malloc(sizeof(struct kndArgItem));
@@ -988,8 +982,6 @@ static gsl_err_t parse_base(void *data,
 			    const char *rec,
 			    size_t *total_size)
 {
-    char buf[KND_SHORT_NAME_SIZE];
-    size_t buf_size;
     struct kndProc *self = data;
     struct kndProcBase *base;
     gsl_err_t parser_err;
@@ -1075,11 +1067,8 @@ static gsl_err_t parse_proc_call_arg(void *obj,
 				     const char *name, size_t name_size,
 				     const char *rec, size_t *total_size)
 {
-    char buf[KND_SHORT_NAME_SIZE];
-    size_t buf_size;
     struct kndProc *self = obj;
     struct kndProcCallArg *call_arg;
-    int err;
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log(".. Proc Call Arg \"%.*s\" to validate: \"%.*s\"..",
@@ -1111,10 +1100,7 @@ static gsl_err_t parse_proc_call(void *obj,
                                  const char *rec,
                                  size_t *total_size)
 {
-    char buf[KND_SHORT_NAME_SIZE];
-    size_t buf_size = 0;
     struct kndProc *self = obj;
-    int err;
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log(".. Proc Call parsing: \"%.*s\"..", 32, rec);

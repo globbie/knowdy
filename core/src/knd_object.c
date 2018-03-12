@@ -911,7 +911,7 @@ static gsl_err_t select_rel(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t remove_obj(void *data, const char *name, size_t name_size)
+static gsl_err_t remove_obj(void *data, const char *name __attribute__((unused)), size_t name_size __attribute__((unused)))
 {
     struct kndObject *self = data;
     struct kndConcept *conc = self->conc;
@@ -958,29 +958,27 @@ static int parse_GSL(struct kndObject *self,
                      const char *rec,
                      size_t *total_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_name,
           .obj = self
         },
         { .type = GSL_CHANGE_STATE,
-          .name = "elem",
-          .name_size = strlen("elem"),
+          //.name = "elem",
+          //.name_size = strlen("elem"),
           .is_validator = true,
-          .buf = buf,
-          .buf_size = &buf_size,
-          .max_buf_size = KND_NAME_SIZE,
+          //.buf = buf,
+          //.buf_size = &buf_size,
+          //.max_buf_size = KND_NAME_SIZE,
           .validate = parse_elem,
           .obj = self
         },
-        { .name = "elem",
-          .name_size = strlen("elem"),
+        { //.name = "elem",
+          //.name_size = strlen("elem"),
           .is_validator = true,
-          .buf = buf,
-          .buf_size = &buf_size,
-          .max_buf_size = KND_NAME_SIZE,
+          //.buf = buf,
+          //.buf_size = &buf_size,
+          //.max_buf_size = KND_NAME_SIZE,
           .validate = parse_elem,
           .obj = self
         },
@@ -992,15 +990,9 @@ static int parse_GSL(struct kndObject *self,
           .append = rel_append,
           .parse = rel_read
         },
-        { .name = "default",
-          .name_size = strlen("default"),
-          .is_default = true,
-          .run = present_obj,
-          .obj = self
-        },
-        { .type = GSL_CHANGE_STATE,
-          .name = "default",
-          .name_size = strlen("default"),
+        { //.type = GSL_CHANGE_STATE,
+          //.name = "default",
+          //.name_size = strlen("default"),
           .is_default = true,
           .run = confirm_obj_import,
           .obj = self

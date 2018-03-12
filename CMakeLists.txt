@@ -45,7 +45,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/knode/include")
 
 set(KNOWDY_PREFIX "knd")
 set(CORE      "core")
-set(RETRIEVER "retriever")
+#set(RETRIEVER "retriever")
 set(LEARNER   "learner")
 
 set(KNOWDY_MODULES

@@ -7,7 +7,6 @@
 #include "knd_user.h"
 #include "knd_output.h"
 #include "knd_utils.h"
-#include "knd_msg.h"
 
 #define DEBUG_STATE_LEVEL_0 0
 #define DEBUG_STATE_LEVEL_1 0
@@ -38,8 +37,6 @@ static int knd_confirm(struct kndStateControl *self,
 		       struct kndUpdate *update)
 {
     struct kndOutput *out;
-    struct kndClassUpdate *class_update;
-    struct kndConcDir *dir;
     int err;
 
     if (self->task->type == KND_LIQUID_STATE) {

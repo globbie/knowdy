@@ -10,8 +10,6 @@
 #include "knd_user.h"
 #include "knd_repo.h"
 #include "knd_output.h"
-#include "knd_msg.h"
-#include "knd_task.h"
 #include "knd_concept.h"
 #include "knd_object.h"
 #include "knd_proc.h"
@@ -60,7 +58,7 @@ static int
 kndUser_add_user(struct kndUser *self)
 {
     char buf[KND_TEMP_BUF_SIZE] = {0};
-    size_t buf_size;
+    size_t buf_size = 0;
     
     char uid[KND_ID_SIZE + 1];
     int err;

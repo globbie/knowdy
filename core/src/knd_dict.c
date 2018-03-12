@@ -195,8 +195,6 @@ ooDict_set_by_hash(struct ooDict *self,
     struct ooList *l;
     struct ooListItem *cur;
     struct ooDictItem *item = NULL;
-    const char *cur_key;
-    size_t cur_key_size;
     bool got_match = false;
     size_t h;
 

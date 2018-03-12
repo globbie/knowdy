@@ -197,10 +197,7 @@ static int export_GSP(struct kndProcArg *self)
 static int export_SVG(struct kndProcArg *self)
 {
     struct kndOutput *out;
-    struct kndTranslation *tr;
-    struct kndProcCallArg *arg;
     struct kndProc *proc;
-    bool in_list = false;
     int err;
 
     out = self->out;
@@ -397,8 +394,6 @@ static gsl_err_t parse_proc_call_arg(void *obj,
                                      const char *name, size_t name_size,
                                      const char *rec, size_t *total_size)
 {
-    char buf[KND_SHORT_NAME_SIZE];
-    size_t buf_size;
     struct kndProcArg *self = obj;
     struct kndProcCallArg *call_arg;
 
@@ -432,8 +427,6 @@ static gsl_err_t parse_proc_call(void *obj,
                                  const char *rec,
                                  size_t *total_size)
 {
-    char buf[KND_SHORT_NAME_SIZE];
-    size_t buf_size;
     struct kndProcArg *self = obj;
 
     if (DEBUG_PROC_ARG_LEVEL_2)
@@ -518,9 +511,9 @@ static int parse_GSL(struct kndProcArg *self,
     return knd_OK;
 }
 
-static gsl_err_t set_inst_procname(void *obj, const char *name, size_t name_size)
+static gsl_err_t set_inst_procname(void *obj __attribute__((unused)), const char *name __attribute__((unused)), size_t name_size)
 {
-    struct kndProcArgInstance *self = obj;
+    //struct kndProcArgInstance *self = obj;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);

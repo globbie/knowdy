@@ -359,9 +359,9 @@ static int report(struct kndTask *self)
     const char *msg = "None";
     size_t msg_size = strlen(msg);
     struct kndOutput *out = self->spec_out;
-    char *header;
+    char *header = NULL;
     size_t header_size;
-    char *obj;
+    char *obj = NULL;
     size_t obj_size;
     size_t chunk_size;
     const char *task_status = "++";
@@ -459,10 +459,10 @@ static int report(struct kndTask *self)
 		self->out->buf, self->out->buf_size);
     }
 
-    /*err = knd_zmq_sendmore(self->delivery,
-                           (const char*)out->buf, out->buf_size);
-    */
-    
+#pragma message("TODO: knd_zmq_sendmore()")
+    //err = knd_zmq_sendmore(self->delivery,
+    //                       (const char*)out->buf, out->buf_size);
+
     /* obj body */
     if (self->out->buf_size) {
         msg = self->out->buf;
@@ -477,12 +477,29 @@ static int report(struct kndTask *self)
         }
     }
 
+<<<<<<< HEAD
     /*err = knd_zmq_send(self->delivery, msg, msg_size);
      */
     /* get confirmation reply from  the manager */
     /*header = knd_zmq_recv(self->delivery, &header_size);
     obj = knd_zmq_recv(self->delivery, &obj_size);
     */
+=======
+#pragma message("TODO: knd_zmq_send()")
+    //err = knd_zmq_send(self->delivery, msg, msg_size);
+
+    /* get confirmation reply from  the manager */
+#pragma message("TODO: knd_zmq_recv()")
+    //header = knd_zmq_recv(self->delivery, &header_size);
+    //obj = knd_zmq_recv(self->delivery, &obj_size);
+
+    if (DEBUG_TASK_LEVEL_2)
+        knd_log("== Delivery reply HEADER: \"%.*s\" [%zu]\n OBJ: \"%.*s\" [%zu]",
+                header_size, header, header_size, obj_size, obj, obj_size);
+
+    if (header) free(header);
+    if (obj)    free(obj);
+>>>>>>> knode-integration
 
     /* inform all retrievers about the state change */
     if (self->type == KND_UPDATE_STATE) {
@@ -495,7 +512,13 @@ static int report(struct kndTask *self)
                     self->update->buf_size);
         }
 
+<<<<<<< HEAD
 	//        err = knd_zmq_send(self->publisher, self->update->buf, self->update->buf_size);
+=======
+#pragma message("TODO: knd_zmq_send()")
+        //err = knd_zmq_send(self->publisher, self->update->buf, self->update->buf_size);
+        //
+>>>>>>> knode-integration
         //err = knd_zmq_send(self->publisher, "None", strlen("None"));
     }
 
