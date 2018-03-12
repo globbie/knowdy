@@ -155,8 +155,6 @@ static void del_conc_dir(struct kndConcDir *dir)
 /*  class destructor */
 static void kndConcept_del(struct kndConcept *self)
 {
-    struct kndConcRef *ref;
-
     if (self->attr_idx) self->attr_idx->del(self->attr_idx);
     if (self->summary) self->summary->del(self->summary);
     if (self->dir) del_conc_dir(self->dir);
@@ -553,7 +551,6 @@ static int index_attr(struct kndConcept *self,
 {
     struct kndConcept *base;
     struct kndConcept *c;
-    struct kndConcDir *dir;
     struct kndSet *descendants;
     int err;
 
@@ -621,7 +618,6 @@ static int resolve_attrs(struct kndConcept *self)
     struct kndAttr *attr;
     struct kndAttrEntry *entry;
     struct kndConcDir *dir;
-    struct kndConcItem *item;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -1333,8 +1329,6 @@ static gsl_err_t parse_item_child(void *obj,
 {
     struct kndAttrItem *self = obj;
     struct kndAttrItem *item;
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
     gsl_err_t err;
 
     item = malloc(sizeof(struct kndAttrItem));
@@ -1382,8 +1376,6 @@ static gsl_err_t parse_conc_item(void *obj,
     struct kndConcept *self = obj;
     struct kndConcItem *conc_item;
     struct kndAttrItem *item;
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
     gsl_err_t err;
 
     if (!self->base_items) return make_gsl_err(gsl_FAIL);
@@ -1437,8 +1429,6 @@ static gsl_err_t parse_baseclass(void *obj,
                                  size_t *total_size)
 {
     struct kndConcept *self = obj;
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parsing the base class: \"%.*s\"", 32, rec);
@@ -1502,7 +1492,6 @@ static gsl_err_t parse_children_settings(void *obj,
 
 static int assign_ids(struct kndConcept *self)
 {
-    struct kndConcept *c;
     struct kndConcDir *dir;
     const char *key;
     void *val;
@@ -2281,7 +2270,6 @@ static int knd_get_dir_size(struct kndConcept *self,
 static gsl_err_t run_set_dir_size(void *obj, const char *val, size_t val_size)
 {
     char buf[KND_SHORT_NAME_SIZE] = {0};
-    size_t buf_size = 0;
     struct kndConcDir *self = obj;
     char *invalid_num_char = NULL;
     long numval;
@@ -2318,7 +2306,6 @@ static gsl_err_t run_set_dir_size(void *obj, const char *val, size_t val_size)
 static gsl_err_t run_set_reldir_size(void *obj, const char *val, size_t val_size)
 {
     char buf[KND_SHORT_NAME_SIZE] = {0};
-    size_t buf_size = 0;
     struct kndRelDir *self = obj;
     char *invalid_num_char = NULL;
     long numval;
@@ -3679,8 +3666,6 @@ static gsl_err_t conc_item_read(void *obj,
 {
     struct kndConcItem *conc_item = obj;
     struct kndAttrItem *item;
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
     gsl_err_t err;
 
     item = malloc(sizeof(struct kndAttrItem));
@@ -3724,8 +3709,6 @@ static gsl_err_t base_conc_item_read(void *obj,
                                      const char *rec,
                                      size_t *total_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
     struct kndConcItem *ci = obj;
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -4639,8 +4622,6 @@ static int parse_select_class(void *obj,
                               size_t *total_size)
 {
     struct kndConcept *self = obj;
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
     int err;
     gsl_err_t parser_err;
 

@@ -22,16 +22,12 @@
 #define DEBUG_SET_LEVEL_4 0
 #define DEBUG_SET_LEVEL_TMP 1
 
-static int
-kndSet_sync(struct kndSet *self);
+//static int
+//kndSet_sync(struct kndSet *self);
 static gsl_err_t confirm_read(void *obj,
 			      const char *val __attribute__((unused)),
 			      size_t val_size __attribute__((unused)));
 
-static int
-kndSet_read_term_idx_tags(struct kndSet *self,
-			  const char    *rec,
-			  size_t         rec_size);
 static int
 kndSet_add_conc(struct kndSet     *self,
 		struct kndConcept     *conc);
@@ -52,35 +48,13 @@ knd_compare_set_by_size_ascend(const void *a,
     return -1;
 }
 
+/*
 static void
 kndSetElem_str(struct kndSet *self, size_t depth)
 {
-   
+    (void) self, (void) depth;
 }
-
-static void 
-kndSet_elem_idx_str(struct kndSet *self,
-		    struct kndSetElemIdx *parent_idx, size_t depth)
-{
-    struct kndSetElem *elem;
-    struct kndSetElemIdx *idx;
-
-    for (size_t i = 0; i < KND_RADIX_BASE; i++) {
-	elem = parent_idx->elems[i];
-	if (!elem) continue;
-	
-	knd_log("%*s => %.*s",
-		(depth + 1) * KND_OFFSET_SIZE, "",
-		elem->conc_dir->name_size, elem->conc_dir->name);
-    }
-
-    for (size_t i = 0; i < KND_RADIX_BASE; i++) {
-	idx = parent_idx->idxs[i];
-	if (!idx) continue;
-	
-	kndSet_elem_idx_str(self, idx, depth);
-    }
-}
+*/
 
 static void 
 kndSet_str(struct kndSet *self, size_t depth)
@@ -377,7 +351,7 @@ kndSet_export(struct kndSet *self)
 
 
 static int
-kndSet_intersect(struct kndSet   *self,
+kndSet_intersect(struct kndSet   *self __attribute__((unused)),
                     struct kndSet **sets,
                     size_t num_sets)
 {
@@ -385,8 +359,6 @@ kndSet_intersect(struct kndSet   *self,
     struct kndSetElem *elem;
     struct kndElemName_Idx *name_idx, *term_name_idx;
     //struct kndFacet *f;
-
-    int i, j, ri, err;
 
     if (DEBUG_SET_LEVEL_2) 
         knd_log(" .. intersection by Set \"%.*s\"..\n",
@@ -550,8 +522,7 @@ kndFacet_alloc_set(struct kndFacet  *self,
 static int
 kndSet_facetize(struct kndSet *self)
 {
-    int err;
-    
+
     if (DEBUG_SET_LEVEL_1) {
         knd_log("\n    .. further facetize the set \"%s\"..\n",
                 self->base->name);
@@ -632,6 +603,7 @@ kndSet_add_conc(struct kndSet *self,
     return knd_OK;
 }
 
+/*
 static int
 kndSet_merge_name_idx(struct kndSet *self,
 		 struct kndSet *src)
@@ -665,11 +637,12 @@ kndSet_merge_name_idx(struct kndSet *self,
             }
             
         }
-	}*/
+	}
 
     
     return knd_OK;
 }
+*/
 
 static gsl_err_t set_append(void *accu,
 			    void *item)
@@ -995,9 +968,11 @@ extern int kndSet_init(struct kndSet *self)
     self->get_facet = kndSet_get_facet;
     self->facetize = kndSet_facetize;
     self->export = kndSet_export;
+
+    return knd_OK;
 }
 
-extern void kndFacet_init(struct kndFacet *self)
+extern void kndFacet_init(struct kndFacet *self __attribute__((unused)))
 {
     /*self->del = kndFacet_del;
     self->str = kndFacet_str;

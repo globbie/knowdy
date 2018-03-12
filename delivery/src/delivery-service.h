@@ -1,9 +1,6 @@
-#ifndef KND_DELIVERY_H
-#define KND_DELIVERY_H
+#pragma once
 
-#define KND_NUM_AGENTS 4
-
-#include <time.h>
+#include <kmq.h>
 
 #include "knd_dict.h"
 #include "knd_utils.h"
@@ -16,8 +13,8 @@ struct kndAuthRec
 
     struct ooDict *cache;
 
-    /* TODO: billing data */
-    /* one time passwords */
+    // TODO: billing data
+    // one time passwords
 };
 
 struct kndTID
@@ -25,7 +22,7 @@ struct kndTID
     char tid[KND_TID_SIZE];
     size_t size;
 };
-    
+
 struct kndResult
 {
     //knd_proc_state_t proc_state;
@@ -34,7 +31,7 @@ struct kndResult
     char sid[KND_SID_SIZE];
     size_t sid_size;
     bool sid_required;
-    char   *header;
+    char *header;
     size_t header_size;
 
     char *obj;
@@ -43,16 +40,15 @@ struct kndResult
     time_t start;
     time_t finish;
 
-    /* file */
+    // file
     char *filename;
     size_t filename_size;
     size_t filesize;
     char *mimetype;
     size_t mimetype_size;
-    
+
     struct kndResult *next;
 };
-
 
 struct kndRepoRec
 {
@@ -65,18 +61,28 @@ struct kndRepoRec
     size_t summaries_size;
 
     struct ooDict *matches;
-    
+
     struct kndRepoRec *next;
 };
 
-struct kndDelivery
+struct kndDeliveryOptions
 {
+    char *config_file;
+};
+
+struct kndDeliveryService
+{
+    struct kmqKnode *knode;
+    struct kmqEndPoint *entry_point;
+
+    const struct kndDeliveryOptions *opts;
+
     char name[KND_NAME_SIZE];
     size_t name_size;
-    
+
     char path[KND_TEMP_BUF_SIZE];
     size_t path_size;
-    
+
     char addr[KND_TEMP_BUF_SIZE];
     size_t addr_size;
 
@@ -95,13 +101,13 @@ struct kndDelivery
 
     struct kndAuthRec *default_rec;
     struct kndAuthRec *spec_rec;
-    
+
     struct ooDict *idx;
 
     struct kndTID *tids;
     size_t max_tids;
     size_t num_tids;
-    
+
     char *task;
     size_t task_size;
     char *obj;
@@ -113,15 +119,10 @@ struct kndDelivery
     struct kndUser *admin;
     struct kndOutput *out;
 
-    //struct kndMonitor *monitor;
-    
-    /**********  interface methods  **********/
-    int (*del)(struct kndDelivery *self);
-    void (*str)(struct kndDelivery *self);
-
-    int (*start)(struct kndDelivery *self);
+    /*********************  public interface  *********************************/
+    int (*start)(struct kndDeliveryService *self);
+    int (*del)(struct kndDeliveryService *self);
 };
 
-extern int kndDelivery_new(struct kndDelivery **self, 
-			  const char *config);
-#endif
+int kndDeliveryService_new(struct kndDeliveryService **service, const struct kndDeliveryOptions *opts);
+
