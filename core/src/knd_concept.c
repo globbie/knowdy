@@ -27,7 +27,6 @@
 #include "knd_rel.h"
 #include "knd_proc.h"
 #include "knd_set.h"
-#include "knd_query.h"
 #include "knd_utils.h"
 #include "knd_http_codes.h"
 
@@ -45,8 +44,6 @@ static gsl_err_t run_set_translation_text(void *obj, const char *val, size_t val
 static int read_obj_entry(struct kndConcept *self,
                           struct kndObjEntry *entry,
                           struct kndObject **result);
-
-static int iter_export_JSON(struct kndConcept *self, struct kndConcDir *parent_dir);
 
 static int get_class(struct kndConcept *self,
                      const char *name, size_t name_size,
@@ -192,7 +189,6 @@ static void str(struct kndConcept *self)
     struct kndConcItem *item;
     struct kndConcept *c;
     struct kndSet *set;
-    struct kndFacet *facet;
     struct ooDict *idx;
     char resolved_state = '-';
     const char *key;
@@ -662,8 +658,8 @@ static int resolve_attrs(struct kndConcept *self)
             }
 
             dir = self->class_name_idx->get(self->class_name_idx,
-                                       attr->ref_classname,
-                                       attr->ref_classname_size);
+					    attr->ref_classname,
+					    attr->ref_classname_size);
             if (!dir) {
                 knd_log("-- no such class: \"%.*s\" .."
 			"couldn't resolve the \"%.*s\" attr of %.*s :(",
@@ -1925,7 +1921,6 @@ static gsl_err_t select_by_attr(void *obj,
 {
     struct kndConcept *self = obj;
     struct kndConcept *c;
-    struct kndQuery *q;
     struct kndSet *set;
     struct kndFacet *facet;
     int err;
@@ -2080,7 +2075,7 @@ static gsl_err_t parse_proc_import(void *obj,
 
 static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
 {
-    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndConcept *self = obj;
     struct kndConcFolder *folder;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -2088,8 +2083,6 @@ static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
                 (int)name_size, name, name_size);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("== got include file name: \"%s\"..", name);
 
     folder = malloc(sizeof(struct kndConcFolder));
     if (!folder) return make_gsl_err_external(knd_NOMEM);
@@ -4319,7 +4312,7 @@ static gsl_err_t present_class_selection(void *obj,
     struct kndConcept *c;
     struct kndSet *set;
     struct kndOutput *out = self->out;
-    int e, err;
+    int err;
 
     if (DEBUG_CONC_LEVEL_1)
         knd_log(".. presenting \"%.*s\" selection: "
@@ -4393,19 +4386,41 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_size)
 {
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
     struct kndConcept *self = obj;
     struct kndConcept *c;
-    const char *name;
-    size_t name_size;
+    struct kndConcDir *dir;
+    long numval;
     int err;
 
+    if (id_size >= KND_NAME_SIZE)
+	return make_gsl_err(gsl_FAIL);
+
+    memcpy(buf, id, id_size);
+    buf[id_size] = '0';
+
+    err = knd_parse_num((const char*)buf, &numval);
+    if (err) return make_gsl_err_external(err);
+
+    if (numval <= 0) return make_gsl_err(gsl_FAIL);
+    
+    buf_size = 0;
+    knd_num_to_str((size_t)numval, buf, &buf_size, KND_RADIX_BASE);
+
+    if (DEBUG_CONC_LEVEL_TMP)
+	knd_log("ID: %zu => \"%.*s\" [size: %zu]",
+		numval, buf_size, buf, buf_size);
+
+    dir = self->class_idx->get(self->class_idx, buf, buf_size);
+    if (!dir) return make_gsl_err(gsl_FAIL);
+
     self->curr_class = NULL;
-    err = get_class(self, name, name_size, &c);
+    err = get_class(self, dir->name, dir->name_size, &c);
     if (err) return make_gsl_err_external(err);
 
     c->frozen_output_file_name = self->frozen_output_file_name;
     c->frozen_output_file_name_size = self->frozen_output_file_name_size;
-
     self->curr_class = c;
 
     if (DEBUG_CONC_LEVEL_2) {
@@ -4634,16 +4649,18 @@ static int parse_select_class(void *obj,
           .run = run_get_class,
           .obj = self
         },
+        { .name = "_id",
+          .name_size = strlen("_id"),
+          .is_selector = true,
+          .run = run_get_class_by_numid,
+          .obj = self
+        },
         { .type = GSL_CHANGE_STATE,
           .is_validator = true,
           .validate = parse_set_attr,
           .obj = self
-        }/*,
-        { .is_validator = true,
-          .validate = parse_attr_select,
-          .obj = self
-	  }*/,
-        { .type = GSL_CHANGE_STATE,
+        },
+	{ .type = GSL_CHANGE_STATE,
           .name = "_rm",
           .name_size = strlen("_rm"),
           .run = run_remove_class,
@@ -4754,87 +4771,6 @@ static int attr_items_export_JSON(struct kndConcept *self,
     return knd_OK;
 }
 
-static int iter_export_JSON(struct kndConcept *self, struct kndConcDir *parent_dir)
-{
-    struct kndConcDir *dir;
-    struct kndConcept *c;
-    size_t start_from = parent_dir->task->start_from;
-    size_t match_count = parent_dir->task->match_count;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. iterate terminal classes of\"%.*s\".. start_from:%zu  match_count:%zu",
-                parent_dir->name_size, parent_dir->name, start_from, match_count);
-
-    for (size_t i = 0; i < parent_dir->num_children; i++) {
-        dir = parent_dir->children[i];
-        if (!dir) continue;
-
-        /* a terminal class to export? */
-        if (dir->is_terminal) {
-            if (match_count < start_from) {
-                match_count++;
-                continue;
-            }
-
-            if (parent_dir->task->batch_size >= parent_dir->task->batch_max)
-                return knd_OK;
-
-            c = dir->conc;
-            if (!c) {
-                err = unfreeze_class(self, dir, &c);
-                if (err) return err;
-            }
-            c->out = parent_dir->out;
-
-            if (DEBUG_CONC_LEVEL_2) {
-                knd_log("    :: export term Conc: \"%.*s\"  match_count:%zu  start_from:%zu",
-                        dir->name_size, dir->name, match_count, start_from);
-                c->str(c);
-            }
-
-            /* separator needed? */
-            if (parent_dir->task->batch_size) {
-                err = c->out->write(c->out, ",", 1);
-                if (err) return err;
-            }
-
-            err = c->export(c);
-            if (err) return err;
-
-            parent_dir->task->batch_size++;
-            match_count++;
-            continue;
-        }
-        
-        match_count += dir->num_terminals;
-
-        if (match_count < start_from) {
-            knd_log("-- class to skip over: \"%.*s\" num terminals:%zu",
-                    dir->name_size, dir->name, dir->num_terminals);
-            continue;
-        }
-
-        if (DEBUG_CONC_LEVEL_2)
-            knd_log("++ class to explore: \"%.*s\" num terminals:%zu",
-                    dir->name_size, dir->name, dir->num_terminals);
-
-        dir->task = parent_dir->task;
-        dir->task->match_count = match_count;
-        dir->out = parent_dir->out;
-
-        err = iter_export_JSON(self, dir);
-        if (err) return err;
-
-        if (parent_dir->task->batch_size >= parent_dir->task->batch_max) {
-            if (DEBUG_CONC_LEVEL_3)
-                knd_log("== pagination batch is full!");
-            return knd_OK;
-        }
-    }
-
-    return knd_OK;
-}
 
 static int export_JSON(struct kndConcept *self)
 {
