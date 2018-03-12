@@ -477,14 +477,6 @@ static int report(struct kndTask *self)
         }
     }
 
-<<<<<<< HEAD
-    /*err = knd_zmq_send(self->delivery, msg, msg_size);
-     */
-    /* get confirmation reply from  the manager */
-    /*header = knd_zmq_recv(self->delivery, &header_size);
-    obj = knd_zmq_recv(self->delivery, &obj_size);
-    */
-=======
 #pragma message("TODO: knd_zmq_send()")
     //err = knd_zmq_send(self->delivery, msg, msg_size);
 
@@ -499,7 +491,6 @@ static int report(struct kndTask *self)
 
     if (header) free(header);
     if (obj)    free(obj);
->>>>>>> knode-integration
 
     /* inform all retrievers about the state change */
     if (self->type == KND_UPDATE_STATE) {
@@ -512,13 +503,9 @@ static int report(struct kndTask *self)
                     self->update->buf_size);
         }
 
-<<<<<<< HEAD
-	//        err = knd_zmq_send(self->publisher, self->update->buf, self->update->buf_size);
-=======
 #pragma message("TODO: knd_zmq_send()")
         //err = knd_zmq_send(self->publisher, self->update->buf, self->update->buf_size);
         //
->>>>>>> knode-integration
         //err = knd_zmq_send(self->publisher, "None", strlen("None"));
     }
 
