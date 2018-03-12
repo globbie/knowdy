@@ -107,10 +107,10 @@ kndSet_str(struct kndSet *self, size_t depth)
     }
 
     /* ID idx */
-    if (self->idx) {
+    /*if (self->idx) {
 	kndSet_elem_idx_str(self, self->idx, depth + 1);
     }
-
+    */
     knd_log("%*s}", depth * KND_OFFSET_SIZE, "");
 }
 
