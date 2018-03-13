@@ -1847,7 +1847,9 @@ static gsl_err_t parse_import_obj(void *data,
                                (void*)entry);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_CONC_LEVEL_2) {
+    c->dir->num_objs++;
+
+    if (DEBUG_CONC_LEVEL_TMP) {
         knd_log("\n..register OBJ in %.*s IDX:  [total:%zu valid:%zu]",
                 c->name_size, c->name, c->dir->obj_idx->size, c->dir->num_objs);
         obj->depth = self->depth + 1;
@@ -2434,6 +2436,7 @@ static gsl_err_t parse_parent_dir_size(void *obj,
 
 static gsl_err_t run_set_obj_dir_size(void *obj, const char *val, size_t val_size)
 {
+    char buf[KND_SHORT_NAME_SIZE] = {0};
     struct kndConcDir *self = obj;
     char *invalid_num_char = NULL;
     long numval;
@@ -2441,9 +2444,11 @@ static gsl_err_t run_set_obj_dir_size(void *obj, const char *val, size_t val_siz
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
     
-    numval = strtol(val, &invalid_num_char, KND_NUM_ENCODE_BASE);
+    memcpy(buf, val, val_size);
+
+    numval = strtol(buf, &invalid_num_char, KND_NUM_ENCODE_BASE);
     if (*invalid_num_char) {
-        knd_log("-- invalid char: %.*s", 1, invalid_num_char);
+        knd_log("-- invalid char in obj dir size: %.*s", 1, invalid_num_char);
         return make_gsl_err(gsl_FORMAT);
     }
     
@@ -2459,7 +2464,7 @@ static gsl_err_t run_set_obj_dir_size(void *obj, const char *val, size_t val_siz
         knd_log("== OBJ DIR size: %lu", (unsigned long)numval);
 
     self->obj_block_size = numval;
-    
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -3988,7 +3993,7 @@ static int unfreeze_class(struct kndConcept *self,
     struct stat file_info;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. unfreezing class: \"%.*s\"..",
                 dir->name_size, dir->name);
 
@@ -4104,7 +4109,7 @@ static int get_class(struct kndConcept *self,
     struct kndConcept *c;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. %.*s to get class: \"%.*s\"..",
                 self->name_size, self->name, name_size, name);
 
@@ -4123,11 +4128,11 @@ static int get_class(struct kndConcept *self,
         return knd_NO_MATCH;
     }
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("++ got Conc Dir: %.*s from \"%.*s\" block size: %zu",
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log("++ got Conc Dir: %.*s from \"%.*s\" block size: %zu conc:%p",
 		name_size, name,
                 self->frozen_output_file_name_size,
-                self->frozen_output_file_name, dir->block_size);
+                self->frozen_output_file_name, dir->block_size, dir->conc);
 
     if (dir->phase == KND_REMOVED) {
         knd_log("-- \"%s\" class was removed", name);
@@ -5691,7 +5696,7 @@ static int freeze_objs(struct kndConcept *self,
     size_t num_size;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. freezing objs of class \"%.*s\", total:%zu  valid:%zu",
                 self->name_size, self->name,
                 self->dir->obj_idx->size, self->dir->num_objs);
@@ -5783,7 +5788,7 @@ static int freeze_objs(struct kndConcept *self,
     err = knd_append_file(self->frozen_output_file_name,
                           self->dir_out->buf, self->dir_out->buf_size);
     if (err) return err;
-    
+
     *total_frozen_size += self->dir_out->buf_size;
     obj_block_size += self->dir_out->buf_size;
 
@@ -5965,7 +5970,7 @@ static int freeze_procs(struct kndProc *self,
     size_t chunk_size;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log(".. freezing procs..");
 
     key = NULL;
