@@ -551,7 +551,7 @@ static int index_attr(struct kndConcept *self,
     struct kndSet *descendants;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
 	knd_log("\n.. indexing CURR CLASS: \"%.*s\" .. index attr: \"%.*s\" [type:%d]"
 		" refclass: \"%.*s\" (val: %.*s)",
 		self->name_size, self->name,
@@ -997,7 +997,7 @@ static gsl_err_t parse_descendants(void *obj,
     struct kndSet *descendants;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parsing a set of descendants: \"%.*s\"", 64, rec);
 
     err = self->mempool->new_set(self->mempool, &descendants);
@@ -1824,6 +1824,7 @@ static gsl_err_t parse_import_obj(void *data,
     /* automatic name assignment if no explicit name given */
     if (!obj->name_size) {
 	knd_num_to_str(obj->numid, obj->id, &obj->id_size, KND_RADIX_BASE);
+
 	if (DEBUG_CONC_LEVEL_TMP)
 	    knd_log("== obj ID: %zu => \"%.*s\"",
 		    obj->numid, obj->id_size, obj->id);
@@ -3783,7 +3784,7 @@ static int read_GSP(struct kndConcept *self,
 {
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. reading GSP: \"%.*s\"..", 256, rec);
 
     struct gslTaskSpec specs[] = {
@@ -4052,6 +4053,7 @@ static int unfreeze_class(struct kndConcept *self,
     c->dir = dir;
     c->mempool = self->mempool;
     dir->conc = c;
+    dir->class_idx = self->class_idx;
 
     c->frozen_output_file_name = self->frozen_output_file_name;
     c->frozen_output_file_name_size = self->frozen_output_file_name_size;
@@ -4086,7 +4088,7 @@ static int unfreeze_class(struct kndConcept *self,
         goto final;
     }
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         c->str(c);
 
     /* TODO: read base classes */

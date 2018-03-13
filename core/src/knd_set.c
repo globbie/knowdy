@@ -739,11 +739,14 @@ static gsl_err_t atomic_elem_alloc(void *obj,
     int idx_pos;
     int err;
 
-    if (DEBUG_SET_LEVEL_2)
+    if (DEBUG_SET_LEVEL_1) {
 	knd_log(".. atomic set elem alloc: \"%.*s\"",
-		val_size, val);
-
+		val_size, val, self->base);
+	knd_log(".. base conc dir: \"%.*s\"",
+		self->base->name_size, self->base->name);
+    }
     class_idx = self->base->class_idx;
+
     conc_dir = class_idx->get(class_idx, val, val_size);
     if (!conc_dir) return make_gsl_err_external(knd_NO_MATCH);
 
