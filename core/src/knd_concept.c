@@ -1792,6 +1792,7 @@ static gsl_err_t parse_import_obj(void *data,
     err = self->mempool->new_state(self->mempool, &obj->state);
     if (err) return make_gsl_err_external(err);
 
+
     obj->state->phase = KND_SUBMITTED;
     obj->conc = self->curr_class;
     obj->out = self->out;
@@ -1809,7 +1810,9 @@ static gsl_err_t parse_import_obj(void *data,
     obj->next = c->obj_inbox;
     c->obj_inbox = obj;
     c->obj_inbox_size++;
-
+    c->num_objs++;
+    obj->numid = c->num_objs;
+    
     if (!c->dir) {
         if (c->root_class) {
             knd_log("-- no dir in %.*s :(", c->name_size, c->name);
@@ -1817,7 +1820,17 @@ static gsl_err_t parse_import_obj(void *data,
         }
         return make_gsl_err(gsl_OK);
     }
-    
+
+    /* automatic name assignment if no explicit name given */
+    if (!obj->name_size) {
+	knd_num_to_str(obj->numid, obj->id, &obj->id_size, KND_RADIX_BASE);
+	if (DEBUG_CONC_LEVEL_TMP)
+	    knd_log("== obj ID: %zu => \"%.*s\"",
+		    obj->numid, obj->id_size, obj->id);
+	obj->name = obj->id;
+	obj->name_size = obj->id_size;
+    }
+
     if (!c->dir->obj_idx) {
         err = ooDict_new(&c->dir->obj_idx, KND_HUGE_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
@@ -3432,7 +3445,6 @@ static int parse_obj_dir_trailer(struct kndConcept *self,
             }
         }
     }
-
     return knd_OK;
 }
 
@@ -3448,11 +3460,11 @@ static int get_obj_dir_trailer(struct kndConcept *self,
     struct kndOutput *out = self->out;
     int err;
 
-    offset = parent_dir->global_offset + block_size + parent_dir->obj_block_size - KND_DIR_ENTRY_SIZE;
+    offset = parent_dir->global_offset + block_size +\
+	parent_dir->obj_block_size - KND_DIR_ENTRY_SIZE;
     if (lseek(fd, offset, SEEK_SET) == -1) {
         return knd_IO_FAIL;
     }
-
     out->reset(out);
     out->buf_size = KND_DIR_ENTRY_SIZE;
     err = read(fd, out->buf, out->buf_size);
@@ -3467,12 +3479,13 @@ static int get_obj_dir_trailer(struct kndConcept *self,
         knd_log("-- failed to read dir size :(");
         return err;
     }
-    
+
     if (DEBUG_CONC_LEVEL_2)
         knd_log("\n  .. OBJ DIR REC SIZE: %lu [size field size: %lu]",
                 dir_size, (unsigned long)chunk_size);
 
-    offset = (parent_dir->global_offset + block_size + parent_dir->obj_block_size) - chunk_size - dir_size;
+    offset = (parent_dir->global_offset + block_size +\
+	      parent_dir->obj_block_size) - chunk_size - dir_size;
     if (lseek(fd, offset, SEEK_SET) == -1) {
         return knd_IO_FAIL;
     }
@@ -3580,9 +3593,10 @@ static int read_GSL_file(struct kndConcept *self,
     struct kndConcFolder *folder, *folders;
     const char *c;
     size_t folder_name_size;
-
     const char *index_folder_name = "index";
     size_t index_folder_name_size = strlen("index");
+    const char *file_ext = ".gsl";
+    size_t file_ext_size = strlen(".gsl");
     size_t chunk_size = 0;
     int err;
 
@@ -3599,7 +3613,7 @@ static int read_GSL_file(struct kndConcept *self,
 
     err = out->write(out, filename, filename_size);
     if (err) return err;
-    err = out->write(out, ".gsl", strlen(".gsl"));
+    err = out->write(out, file_ext, file_ext_size);
     if (err) return err;
     out->buf[out->buf_size] = '\0';
 
@@ -5507,7 +5521,7 @@ static int knd_update_state(struct kndConcept *self)
     struct kndClassUpdate *class_update;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
 	knd_log("\n..update state of \"%.*s\"..", self->name_size, self->name);
 
     /* new update obj */
