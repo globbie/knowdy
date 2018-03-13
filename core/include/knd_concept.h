@@ -92,8 +92,8 @@ struct kndConcFolder
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
-
     size_t num_concepts;
+    struct kndConcFolder *parent;
     struct kndConcFolder *next;
 };
 
@@ -278,6 +278,7 @@ struct kndConcept
     int (*open)(struct kndConcept   *self);
 
     int (*load)(struct kndConcept   *self,
+		struct kndConcFolder *parent_folder,
                 const char *filename,
                 size_t filename_size);
     int (*read)(struct kndConcept   *self,

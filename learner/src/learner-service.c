@@ -455,7 +455,7 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
         conc->dbpath = self->schema_path;
         conc->dbpath_size = self->schema_path_size;
         conc->batch_mode = true;
-        err = conc->load(conc, "index", strlen("index"));
+        err = conc->load(conc, NULL, "index", strlen("index"));
         if (err) {
             knd_log("-- couldn't read any schema definitions :(");
             goto error;
