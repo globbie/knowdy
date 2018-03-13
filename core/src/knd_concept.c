@@ -73,6 +73,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size);
 static int freeze(struct kndConcept *self);
 
 static int read_GSL_file(struct kndConcept *self,
+			 struct kndConcFolder *parent_folder,
                          const char *filename,
                          size_t filename_size);
 
@@ -3553,29 +3554,53 @@ static int open_frozen_DB(struct kndConcept *self)
     return err;
 }
 
+static int 
+kndConcept_write_filepath(struct kndOutput *out,
+			  struct kndConcFolder *folder)
+{
+    int err;
+    
+    if (folder->parent) {
+	err = kndConcept_write_filepath(out, folder->parent);
+	if (err) return err;
+    }
+
+    err = out->write(out, folder->name, folder->name_size);
+    if (err) return err;
+
+    return knd_OK;
+}
 
 static int read_GSL_file(struct kndConcept *self,
+			 struct kndConcFolder *parent_folder,
                          const char *filename,
                          size_t filename_size)
 {
     struct kndOutput *out = self->out;
     struct kndConcFolder *folder, *folders;
+    const char *c;
+    size_t folder_name_size;
+
+    const char *index_folder_name = "index";
+    size_t index_folder_name_size = strlen("index");
     size_t chunk_size = 0;
     int err;
-
-    if (DEBUG_CONC_LEVEL_TMP)
-        knd_log("..reading \"%.*s\"..", filename_size, filename);
 
     out->reset(out);
     err = out->write(out, self->dbpath, self->dbpath_size);
     if (err) return err;
     err = out->write(out, "/", 1);
     if (err) return err;
+
+    if (parent_folder) {
+	err = kndConcept_write_filepath(out, parent_folder);
+	if (err) return err;
+    }
+
     err = out->write(out, filename, filename_size);
     if (err) return err;
     err = out->write(out, ".gsl", strlen(".gsl"));
     if (err) return err;
-
     out->buf[out->buf_size] = '\0';
 
     err = out->read_file(out, (const char*)out->buf, out->buf_size);
@@ -3592,13 +3617,28 @@ static int read_GSL_file(struct kndConcept *self,
     folders = self->folders;
     self->folders = NULL;
     self->num_folders = 0;
-    
+
     for (folder = folders; folder; folder = folder->next) {
-        /*knd_log(".. should now read the \"%s\" folder..",
-                folder->name);
-        */
-        err = read_GSL_file(self, folder->name, folder->name_size);
+	folder->parent = parent_folder;
+
+	/* reading a subfolder */
+	if (folder->name_size > index_folder_name_size) {
+	    folder_name_size = folder->name_size - index_folder_name_size;
+	    c = folder->name + folder_name_size;
+	    if (!memcmp(c, index_folder_name, index_folder_name_size)) {
+		/* right trim the folder's name */
+		folder->name_size = folder_name_size;
+
+		err = read_GSL_file(self, folder,
+				    index_folder_name, index_folder_name_size);
+		if (err) return err;
+		continue;
+	    }
+	}
+
+        err = read_GSL_file(self, parent_folder, folder->name, folder->name_size);
         if (err) return err;
+	
     }
     return knd_OK;
 }
