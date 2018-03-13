@@ -93,11 +93,13 @@ struct kndObject
     const char *name;
     size_t name_size;
 
-    char id[KND_ID_SIZE + 1];
-    char batch_id[KND_ID_SIZE + 1];
+    char id[KND_ID_SIZE];
+    size_t id_size;
+
+    char batch_id[KND_ID_SIZE];
 
     size_t numid;
-    size_t numval;
+    //size_t numval;
     size_t name_hash;
 
     //char state[KND_STATE_SIZE];

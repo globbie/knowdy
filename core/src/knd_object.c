@@ -439,22 +439,6 @@ static gsl_err_t find_obj_rel(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_NO_MATCH);
 }
 
-static gsl_err_t present_obj(void *data,
-                             const char *val __attribute__((unused)),
-                             size_t val_size __attribute__((unused)))
-{
-    struct kndObject *self = data;
-    int err;
-
-    if (DEBUG_OBJ_LEVEL_2)
-        knd_log(".. present obj..");
-
-    err = kndObject_export(self);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t present_rels(void *data,
                               const char *val __attribute__((unused)),
                               size_t val_size __attribute__((unused)))
@@ -484,7 +468,7 @@ static gsl_err_t present_rel(void *data,
     struct kndOutput *out;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. present obj rel..");
 
     if (!self->curr_rel) return make_gsl_err(gsl_NO_MATCH);
@@ -543,14 +527,14 @@ kndObject_validate_attr(struct kndObject *self,
     struct kndElem *elem = NULL;
     int err, e;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. \"%.*s\" to validate elem: \"%.*s\"",
                 self->name_size, self->name, name_size, name);
 
     /* check existing elems */
     for (elem = self->elems; elem; elem = elem->next) {
         if (!memcmp(elem->attr->name, name, name_size)) {
-            if (DEBUG_OBJ_LEVEL_TMP)
+            if (DEBUG_OBJ_LEVEL_2)
                 knd_log("++ ELEM \"%.*s\" is already set!", name_size, name);
             *result_elem = elem;
             return knd_OK;
@@ -560,17 +544,17 @@ kndObject_validate_attr(struct kndObject *self,
     conc = self->conc;
     err = conc->get_attr(conc, name, name_size, &attr);
     if (err) {
-        knd_log("  -- ELEM \"%.*s\" not approved :(\n", name_size, name);
+        knd_log("  -- \"%.*s\" attr is not approved :(", name_size, name);
         self->log->reset(self->log);
         e = self->log->write(self->log, name, name_size);
         if (e) return e;
-        e = self->log->write(self->log, " elem not confirmed",
-                               strlen(" elem not confirmed"));
+        e = self->log->write(self->log, " attr not confirmed",
+                               strlen(" attr not confirmed"));
         if (e) return e;
         return err;
     }
 
-    if (DEBUG_OBJ_LEVEL_TMP) {
+    if (DEBUG_OBJ_LEVEL_2) {
         const char *type_name = knd_attr_names[attr->type];
         knd_log("++ \"%.*s\" ELEM \"%s\" attr type: \"%s\"",
                 name_size, name, attr->name, type_name);
@@ -964,21 +948,11 @@ static int parse_GSL(struct kndObject *self,
           .obj = self
         },
         { .type = GSL_CHANGE_STATE,
-          //.name = "elem",
-          //.name_size = strlen("elem"),
           .is_validator = true,
-          //.buf = buf,
-          //.buf_size = &buf_size,
-          //.max_buf_size = KND_NAME_SIZE,
           .validate = parse_elem,
           .obj = self
         },
-        { //.name = "elem",
-          //.name_size = strlen("elem"),
-          .is_validator = true,
-          //.buf = buf,
-          //.buf_size = &buf_size,
-          //.max_buf_size = KND_NAME_SIZE,
+        { .is_validator = true,
           .validate = parse_elem,
           .obj = self
         },
@@ -990,17 +964,14 @@ static int parse_GSL(struct kndObject *self,
           .append = rel_append,
           .parse = rel_read
         },
-        { //.type = GSL_CHANGE_STATE,
-          //.name = "default",
-          //.name_size = strlen("default"),
-          .is_default = true,
+        { .is_default = true,
           .run = confirm_obj_import,
           .obj = self
         }
     };
     gsl_err_t parser_err;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. parsing obj REC: %.*s", 64, rec);
  
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -1151,7 +1122,7 @@ kndObject_resolve(struct kndObject *self)
     struct kndElem *elem;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP) {
+    if (DEBUG_OBJ_LEVEL_2) {
         if (self->type == KND_OBJ_ADDR) {
             knd_log(".. resolve OBJ %.*s::%.*s [%.*s]",
                     self->conc->name_size, self->conc->name,
@@ -1166,7 +1137,7 @@ kndObject_resolve(struct kndObject *self)
 
     for (elem = self->elems; elem; elem = elem->next) {
         elem->log = self->log;
-        err = elem->resolve(elem);              RET_ERR();
+        err = elem->resolve(elem);                                                RET_ERR();
     }
     
     return knd_OK;
