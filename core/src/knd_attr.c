@@ -231,11 +231,11 @@ static int export_GSP(struct kndAttr *self)
         if (err) return err;
         err = out->write(out, tr->locale,  tr->locale_size);
         if (err) return err;
-        err = out->write(out, " ", 1);
+        err = out->write(out, "{t ", 3);
         if (err) return err;
         err = out->write(out, tr->val,  tr->val_size);
         if (err) return err;
-        err = out->write(out, "}", 1);
+        err = out->write(out, "}}", 2);
         if (err) return err;
     }
     if (self->tr) {
