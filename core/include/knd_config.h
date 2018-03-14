@@ -72,7 +72,7 @@ typedef enum knd_storage_type {
 } knd_storage_type;
 
 
-#define RET_ERR(S) if (err) { printf("" #S);                               \
+#define RET_ERR(S) if (err) { printf("%s", "" #S);                               \
                               printf ("-- <%s> failed at line %d of file \"%s\"\n",\
                                       __func__, __LINE__, __FILE__); return err; } 
 #define ALLOC_ERR(V) if (!(V)) { return knd_NOMEM; }
