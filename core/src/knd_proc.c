@@ -464,9 +464,9 @@ static int export_GSP(struct kndProc *self)
     while (tr) {
         err = out->write(out, "{", 1);                                            RET_ERR();
         err = out->write(out, tr->locale, tr->locale_size);                       RET_ERR();
-        err = out->write(out, " ", 1);                                            RET_ERR();
+        err = out->write(out, "{t ", 3);                                          RET_ERR();
         err = out->write(out, tr->val,  tr->val_size);                            RET_ERR();
-        err = out->write(out, "}", 1);                                            RET_ERR();
+        err = out->write(out, "}}", 2);                                           RET_ERR();
         tr = tr->next;
     }
     if (self->tr) {
@@ -505,9 +505,9 @@ static int export_GSP(struct kndProc *self)
         while (tr) {
             err = out->write(out, "{", 1);                                        RET_ERR();
             err = out->write(out, tr->locale, tr->locale_size);                   RET_ERR();
-            err = out->write(out, " ", 1);                                        RET_ERR();
+            err = out->write(out, "{t ", 3);                                      RET_ERR();
             err = out->write(out, tr->val,  tr->val_size);                        RET_ERR();
-            err = out->write(out, "}", 1);                                        RET_ERR();
+            err = out->write(out, "}}", 2);                                       RET_ERR();
             tr = tr->next;
         }
         if (self->proc_call.tr) {
@@ -727,100 +727,91 @@ static int export(struct kndProc *self)
     return knd_OK;
 }
 
-
-static gsl_err_t read_gloss(void *obj,
-                            const char *rec,
-                            size_t *total_size)
+static gsl_err_t alloc_gloss_item(void *obj __attribute__((unused)),
+                                  const char *name,
+                                  size_t name_size,
+                                  size_t count __attribute__((unused)),
+                                  void **item)
 {
-    struct kndTranslation *tr = obj;
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .buf = tr->val,
-          .buf_size = &tr->val_size,
-          .max_buf_size = KND_NAME_SIZE
-        }
-    };
+    struct kndTranslation *tr;
 
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    assert(name == NULL && name_size == 0);
+
+    /* TODO: mempool alloc */
+    //self->mempool->new_text_seq();
+    tr = malloc(sizeof(struct kndTranslation));
+    if (!tr) return make_gsl_err_external(knd_NOMEM);
+
+    memset(tr, 0, sizeof(struct kndTranslation));
+
+    *item = tr;
+
+    return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t gloss_append(void *accu,
-                              void *item)
+static gsl_err_t append_gloss_item(void *accu,
+                                   void *item)
 {
     struct kndProc *self = accu;
     struct kndTranslation *tr = item;
 
     tr->next = self->tr;
     self->tr = tr;
-   
+
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t gloss_alloc(void *obj __attribute__((unused)),
-                             const char *name,
-                             size_t name_size,
-                             size_t count __attribute__((unused)),
-                             void **item)
+static gsl_err_t parse_gloss_item(void *obj,
+                                  const char *rec,
+                                  size_t *total_size)
 {
-    struct kndTranslation *tr;
+    struct kndTranslation *tr = obj;
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .buf = tr->curr_locale,
+          .buf_size = &tr->curr_locale_size,
+          .max_buf_size = sizeof tr->curr_locale
+        },
+        { .name = "t",
+          .name_size = strlen("t"),
+          .buf = tr->val,
+          .buf_size = &tr->val_size,
+          .max_buf_size = sizeof tr->val
+        }
+    };
+    gsl_err_t err;
 
-    if (name_size > KND_LOCALE_SIZE) return make_gsl_err(gsl_LIMIT);
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (err.code) return err;
 
-
-    /* TODO: mempool alloc */
-    //self->mempool->new_text_seq();
-    tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return make_gsl_err_external(knd_NOMEM);
-
-    memset(tr, 0, sizeof(struct kndTranslation));
-    memcpy(tr->curr_locale, name, name_size);
-    tr->curr_locale_size = name_size;
+    if (tr->curr_locale_size == 0 || tr->val_size == 0)
+        return make_gsl_err(gsl_FORMAT);  // error: both of them are required
 
     tr->locale = tr->curr_locale;
     tr->locale_size = tr->curr_locale_size;
-    *item = tr;
+
+    if (DEBUG_PROC_LEVEL_2)
+        knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
+                tr->locale_size, tr->locale, tr->val_size, tr->val);
 
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t proc_call_gloss_alloc(void *obj __attribute__((unused)),
-                                       const char *name,
-                                       size_t name_size,
-                                       size_t count __attribute__((unused)),
-                                       void **item)
+static gsl_err_t parse_gloss(void *obj,
+                             const char *rec,
+                             size_t *total_size)
 {
-    struct kndTranslation *tr;
+    struct kndProc *self = obj;
+    struct gslTaskSpec item_spec = {
+        .is_list_item = true,
+        .alloc = alloc_gloss_item,
+        .append = append_gloss_item,
+        .accu = self,
+        .parse = parse_gloss_item
+    };
 
-    if (name_size > KND_LOCALE_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    /* TODO: mempool alloc */
-    //self->mempool->new_text_seq();
-    tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return make_gsl_err_external(knd_NOMEM);
-
-    memset(tr, 0, sizeof(struct kndTranslation));
-    memcpy(tr->curr_locale, name, name_size);
-    tr->curr_locale_size = name_size;
-
-    tr->locale = tr->curr_locale;
-    tr->locale_size = tr->curr_locale_size;
-    *item = tr;
-
-    return make_gsl_err(gsl_OK);
+    return gsl_parse_array(&item_spec, rec, total_size);
 }
-
-static gsl_err_t proc_call_gloss_append(void *accu,
-                                        void *item)
-{
-    struct kndProcCall *self = accu;
-    struct kndTranslation *tr = item;
-
-    tr->next = self->tr;
-    self->tr = tr;
-
-    return make_gsl_err(gsl_OK);
-}
-
 
 static gsl_err_t parse_arg(void *data,
                            const char *rec,
@@ -1114,18 +1105,14 @@ static gsl_err_t parse_proc_call(void *obj,
         { .is_list = true,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
-          .accu = &self->proc_call,
-          .alloc = proc_call_gloss_alloc,
-          .append = proc_call_gloss_append,
-          .parse = read_gloss
+          .parse = parse_gloss,
+          .obj = &self->proc_call
         },
         { .is_list = true,
           .name = "_g",
           .name_size = strlen("_g"),
-          .accu = &self->proc_call,
-          .alloc = proc_call_gloss_alloc,
-          .append = proc_call_gloss_append,
-          .parse = read_gloss
+          .parse = parse_gloss,
+          .obj = &self->proc_call
         },
         { .is_validator = true,
           .validate = parse_proc_call_arg,
@@ -1166,30 +1153,17 @@ static int import_proc(struct kndProc *self,
           .buf_size = &proc->name_size,
           .max_buf_size = KND_NAME_SIZE
         },
-        { .type = GSL_CHANGE_STATE,
-          .is_list = true,
-          .name = "_gloss",
-          .name_size = strlen("_gloss"),
-          .accu = proc,
-          .alloc = gloss_alloc,
-          .append = gloss_append,
-          .parse = read_gloss
-        },
         { .is_list = true,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
-          .accu = proc,
-          .alloc = gloss_alloc,
-          .append = gloss_append,
-          .parse = read_gloss
+          .parse = parse_gloss,
+          .obj = proc
         },
         { .is_list = true,
           .name = "_g",
           .name_size = strlen("_g"),
-          .accu = self,
-          .alloc = gloss_alloc,
-          .append = gloss_append,
-          .parse = read_gloss
+          .parse = parse_gloss,
+          .obj = proc
         },
         { .type = GSL_CHANGE_STATE,
           .name = "base",
@@ -1301,10 +1275,8 @@ static int parse_GSL(struct kndProc *self,
         { .is_list = true,
           .name = "_g",
           .name_size = strlen("_g"),
-          .accu = self,
-          .alloc = gloss_alloc,
-          .append = gloss_append,
-          .parse = read_gloss
+          .parse = parse_gloss,
+          .obj = self
         },
         { .name = "estim",
           .name_size = strlen("estim"),
