@@ -670,6 +670,7 @@ static gsl_err_t set_alloc(void *obj,
     struct kndConcept *conc;
     struct kndConcDir *base;
     int err;
+    return make_gsl_err(gsl_FAIL);  // stub
 
     conc = self->parent->base->conc;
 
@@ -790,31 +791,24 @@ static gsl_err_t atomic_elem_append(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t atomic_elem_parse(void *obj,
-				   const char *rec,
-				   size_t *total_size)
-{
-    if (DEBUG_SET_LEVEL_2)
-	knd_log(".. parse atomic obj entry: %s [size: %zu]", rec, *total_size);
-
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t set_read(void *obj,
 			  const char *rec,
 			  size_t *total_size)
 {
     struct kndSet *set = obj;
+    struct gslTaskSpec c_item_spec = {
+        .is_list_item = true,
+        .alloc = atomic_elem_alloc,
+        .append = atomic_elem_append,
+        .accu = set
+    };
     struct gslTaskSpec specs[] = {
         { .is_list = true,
-	  .is_atomic = true,
           .name = "c",
           .name_size = strlen("c"),
-          .accu = set,
-          .alloc =  atomic_elem_alloc,
-          .append = atomic_elem_append,
-          .parse =  atomic_elem_parse
-	},
+          .parse = gsl_parse_array,
+          .obj = &c_item_spec
+	    },
         { .is_default = true,
           .run = confirm_read,
           .obj = set
@@ -884,6 +878,7 @@ static gsl_err_t facet_alloc(void *obj,
     struct kndAttr *attr;
     struct kndFacet *f;
     int err;
+    return make_gsl_err(gsl_FAIL);  // stub
 
     if (DEBUG_SET_LEVEL_1)
         knd_log(".. set %.*s to create facet: %.*s count: %zu",
@@ -928,6 +923,12 @@ static int read_GSP(struct kndSet *self,
     if (DEBUG_SET_LEVEL_1)
         knd_log(".. set reading GSP: \"%.*s\"..", 256, rec);
 
+    struct gslTaskSpec c_item_spec = {
+        .is_list_item = true,
+        .alloc = atomic_elem_alloc,
+        .append = atomic_elem_append,
+        .accu = self
+    };
     struct gslTaskSpec specs[] = {
         { .is_list = true,
           .name = "fc",
@@ -938,14 +939,11 @@ static int read_GSP(struct kndSet *self,
           .parse = read_facet
         },
         { .is_list = true,
-	  .is_atomic = true,
           .name = "c",
           .name_size = strlen("c"),
-          .accu =   self,
-          .alloc =  atomic_elem_alloc,
-          .append = atomic_elem_append,
-          .parse =  atomic_elem_parse
-	},
+          .parse = gsl_parse_array,
+          .obj = &c_item_spec
+	    },
         { .is_default = true,
           .run = confirm_read,
           .obj = self
