@@ -2543,6 +2543,7 @@ static gsl_err_t dir_entry_alloc(void *self,
     struct kndConcDir *parent_dir = self;
     struct kndConcDir *dir;
     int err;
+    return make_gsl_err(gsl_FAIL);  // stub
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. %.*s to add list item: %.*s count: %zu"
@@ -2577,6 +2578,7 @@ static gsl_err_t reldir_entry_alloc(void *self,
     struct kndConcDir *parent_dir = self;
     struct kndRelDir *dir;
     int err;
+    return make_gsl_err(gsl_FAIL);  // stub
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. create REL DIR ENTRY: %.*s count: %zu",
@@ -2650,6 +2652,7 @@ static gsl_err_t procdir_entry_alloc(void *self,
     struct kndConcDir *parent_dir = self;
     struct kndProcDir *dir;
     int err;
+    return make_gsl_err(gsl_FAIL);  // stub
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. create PROC DIR ENTRY: %.*s count: %zu",
@@ -3314,6 +3317,7 @@ static gsl_err_t obj_atomic_entry_alloc(void *obj,
     long numval;
     size_t i, depth;
     int err;
+    return make_gsl_err(gsl_FAIL);  // stub
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. create OBJ ENTRY: %.*s  count: %zu  parent_dir:%p",
@@ -3691,6 +3695,7 @@ static gsl_err_t conc_item_alloc(void *obj,
     struct kndConcept *self = obj;
     struct kndConcItem *ci;
     int err;
+    return make_gsl_err(gsl_FAIL);  // stub
 
     if (name_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
