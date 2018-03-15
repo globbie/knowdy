@@ -14,11 +14,11 @@
 #include "knd_rel.h"
 #include "knd_rel_arg.h"
 
-#include "knd_output.h"
 #include "knd_user.h"
 #include "knd_state.h"
 
 #include <gsl-parser.h>
+#include <glb-lib/output.h>
 
 #define DEBUG_OBJ_LEVEL_1 0
 #define DEBUG_OBJ_LEVEL_2 0
@@ -47,10 +47,10 @@ static void str(struct kndObject *self)
 {
     struct kndElem *elem;
     if (self->type == KND_OBJ_ADDR) {
-        knd_log("\n%*sOBJ %.*s::%.*s  id:%.*s  numid:%zu num_elems:%zu",
+        knd_log("\n%*sOBJ %.*s::%.*s  id:%zu  numid:%zu num_elems:%zu",
                 self->depth * KND_OFFSET_SIZE, "", self->conc->name_size, self->conc->name,
                 self->name_size, self->name,
-                KND_ID_SIZE, self->id, self->numid, self->num_elems);
+                self->numid, self->numid, self->num_elems);
     }
 
     for (elem = self->elems; elem; elem = elem->next) {
@@ -98,7 +98,7 @@ export_rel_dir_JSON(struct kndObject *self)
     size_t buf_size;
     struct kndRel *rel;
     struct kndRelRef *relref;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     int err;
 
     /* sort refs by class */
@@ -142,7 +142,7 @@ kndObject_export_JSON(struct kndObject *self)
 {
     struct kndElem *elem;
     struct kndObject *obj;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     bool is_concise = true;
     bool need_separ;
     int err;
@@ -251,7 +251,7 @@ export_rels_GSP(struct kndObject *self)
     struct kndRelArgInstance *rel_arg_inst;
     struct kndRelArgInstRef *rel_arg_inst_ref;
 
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     int err;
 
     /* sort refs by class */
@@ -465,7 +465,7 @@ static gsl_err_t present_rel(void *data,
     struct kndObject *self = data;
     struct kndRelRef *relref;
     struct kndRel *rel;
-    struct kndOutput *out;
+    struct glbOutput *out;
     int err;
 
     if (DEBUG_OBJ_LEVEL_2)

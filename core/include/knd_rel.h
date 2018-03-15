@@ -22,7 +22,7 @@
 
 #include "knd_config.h"
 
-struct kndOutput;
+struct glbOutput;
 struct kndTask;
 struct kndRelArg;
 struct kndRelArgInstance;
@@ -122,8 +122,8 @@ struct kndRel
 
     struct kndTranslation *tr;
 
-    struct kndOutput *out;
-    struct kndOutput *log;
+    struct glbOutput *out;
+    struct glbOutput *log;
 
     const char *dbpath;
     size_t dbpath_size;

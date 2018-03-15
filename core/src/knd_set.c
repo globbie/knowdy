@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "knd_facet.h"
-#include "knd_output.h"
 #include "knd_utils.h"
 #include "knd_repo.h"
 #include "knd_mempool.h"
@@ -14,6 +13,7 @@
 #include "knd_task.h"
 
 #include <gsl-parser.h>
+#include <glb-lib/output.h>
 
 #define DEBUG_SET_LEVEL_0 0
 #define DEBUG_SET_LEVEL_1 0
@@ -168,10 +168,7 @@ kndSet_export_JSON(struct kndSet *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
-    struct kndOutput *out = self->out;
-    struct kndFacet *f;
-    struct kndSetElem *elem;
-    size_t curr_batch_size = 0;
+    struct glbOutput *out = self->out;
     int err;
 
     if (DEBUG_SET_LEVEL_1)
@@ -247,7 +244,7 @@ kndSet_export_JSON(struct kndSet *self)
 static int 
 kndSet_export_facets_GSP(struct kndSet *self)
 {
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     struct kndSet *set;
     struct kndFacet *facet;
     struct ooDict *set_name_idx;
@@ -288,9 +285,8 @@ kndSet_export_facets_GSP(struct kndSet *self)
 static int 
 kndSet_export_GSP(struct kndSet *self)
 {
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     struct kndSet *set;
-    struct kndFacet *facet;
     struct kndConcDir *conc_dir;
     const char *key;
     void *val;

@@ -15,10 +15,10 @@
 #include "knd_ref.h"
 #include "knd_num.h"
 
-#include "knd_output.h"
 #include "knd_user.h"
 
 #include <gsl-parser.h>
+#include <glb-lib/output.h>
 
 #define DEBUG_ELEM_LEVEL_1 0
 #define DEBUG_ELEM_LEVEL_2 0
@@ -78,8 +78,8 @@ static void str(struct kndElem *self)
         break;
     }
 
-    knd_log("%*s%s => %s", self->depth * KND_OFFSET_SIZE, "",
-            self->attr->name, self->states->val);
+    knd_log("%*s%s => %.*s", self->depth * KND_OFFSET_SIZE, "",
+            self->attr->name, self->states->val_size, self->states->val);
 }
 
 
@@ -93,7 +93,7 @@ kndElem_export_JSON(struct kndElem *self)
     struct kndText *text;
     struct kndRef *ref;
 
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     size_t curr_size;
     //unsigned long numval;
     int err;
@@ -260,7 +260,7 @@ kndElem_export_GSP(struct kndElem *self)
 {
     struct kndText *text;
     struct kndRef *ref;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     int err;
 
     if (DEBUG_ELEM_LEVEL_2)

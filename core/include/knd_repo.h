@@ -11,7 +11,7 @@ struct kndRepoMigration;
 struct kndRefSet;
 struct kndUser;
 struct kndQuery;
-struct kndOutput;
+struct glbOutput;
 
 struct kndSpecInstruction;
 struct kndSpecArg;
@@ -101,9 +101,9 @@ struct kndRepo
 
     struct kndSpecInstruction *instruct;
     
-    struct kndOutput *out;
-    struct kndOutput *path_out;
-    struct kndOutput *log;
+    struct glbOutput *out;
+    struct glbOutput *path_out;
+    struct glbOutput *log;
     
     /* local repo index */
     struct ooDict *repo_idx;

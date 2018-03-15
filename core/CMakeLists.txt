@@ -5,7 +5,6 @@ set(SOURCES
         src/knd_mempool.c
         src/knd_num.c
         src/knd_object.c
-        src/knd_output.c
         src/knd_proc.c
         src/knd_proc_arg.c
         src/knd_ref.c

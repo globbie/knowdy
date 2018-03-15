@@ -1,8 +1,8 @@
 /**
- *   Copyright (c) 2011-2017 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2018 by Dmitri Dmitriev
  *   All rights reserved.
  *
- *   This file is part of the Knowdy Search Engine, 
+ *   This file is part of the Knowdy Graph DB, 
  *   and as such it is subject to the license stated
  *   in the LICENSE file which you have received 
  *   as part of this distribution.
@@ -23,7 +23,7 @@
 #include <time.h>
 #include "knd_config.h"
 
-struct kndOutput;
+struct glbOutput;
 struct kndState;
 struct kndConcept;
 
@@ -106,10 +106,10 @@ struct kndStateControl
 
     size_t total_objs;
 
-    struct kndOutput *log;
-    struct kndOutput *out;
-    struct kndOutput *spec_out;
-    struct kndOutput *update;
+    struct glbOutput *log;
+    struct glbOutput *out;
+    struct glbOutput *spec_out;
+    struct glbOutput *update;
 
     /******** public methods ********/
     void (*str)(struct kndStateControl *self);

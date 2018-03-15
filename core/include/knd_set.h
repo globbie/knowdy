@@ -20,7 +20,7 @@
 
 #pragma once
 
-struct kndOutput;
+struct glbOutput;
 struct kndConcept;
 struct kndConcDir;
 struct kndObjEntry;
@@ -62,7 +62,7 @@ struct kndSet
     
     knd_format format;
     struct kndTask *task;
-    struct kndOutput *out;
+    struct glbOutput *out;
     struct kndMemPool *mempool;
 
     struct kndSet *next;

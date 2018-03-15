@@ -2,15 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <gsl-parser.h>
+
 #include "knd_rel_arg.h"
 #include "knd_rel.h"
 #include "knd_task.h"
 #include "knd_concept.h"
-#include "knd_output.h"
 #include "knd_text.h"
 #include "knd_mempool.h"
-
-#include <gsl-parser.h>
 
 #define DEBUG_RELARG_LEVEL_1 0
 #define DEBUG_RELARG_LEVEL_2 0
@@ -47,7 +46,7 @@ static void str(struct kndRelArg *self)
  */
 static int export_JSON(struct kndRelArg *self)
 {
-    struct kndOutput *out;
+    struct glbOutput *out;
     struct kndTranslation *tr;
 
     const char *type_name = knd_relarg_names[self->type];
@@ -96,7 +95,7 @@ static int export_JSON(struct kndRelArg *self)
 
 static int export_GSP(struct kndRelArg *self)
 {
-    struct kndOutput *out;
+    struct glbOutput *out;
     struct kndTranslation *tr;
 
     const char *type_name = knd_relarg_names[self->type];
@@ -153,7 +152,7 @@ static int export_GSP(struct kndRelArg *self)
 static int export_inst_GSP(struct kndRelArg *self,
                            struct kndRelArgInstance *inst)
 {
-    struct kndOutput *out;
+    struct glbOutput *out;
     int err;
 
     out = self->out;
@@ -169,7 +168,7 @@ static int export_inst_GSP(struct kndRelArg *self,
 static int export_inst_JSON(struct kndRelArg *self,
                             struct kndRelArgInstance *inst)
 {
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     /*const char *type_name = knd_relarg_names[self->type];
       size_t type_name_size = strlen(knd_relarg_names[self->type]); */
     int err;

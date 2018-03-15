@@ -2,17 +2,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <gsl-parser.h>
+#include <glb-lib/output.h>
+
 #include "knd_text.h"
 #include "knd_task.h"
 #include "knd_repo.h"
-#include "knd_output.h"
 #include "knd_elem.h"
 #include "knd_object.h"
 #include "knd_utils.h"
 #include "knd_concept.h"
 #include "knd_attr.h"
-
-#include <gsl-parser.h>
 
 #define DEBUG_TEXT_LEVEL_0 0
 #define DEBUG_TEXT_LEVEL_1 0
@@ -83,7 +83,7 @@ static int export_JSON(struct kndText *self)
     struct kndTextState *curr_state;
     struct kndTranslation *tr;
     struct kndTextSelect *sel;
-    struct kndOutput *out;
+    struct glbOutput *out;
 
     int num_trs = 0;
 

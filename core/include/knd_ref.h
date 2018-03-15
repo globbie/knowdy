@@ -18,14 +18,15 @@
  *   Knowdy Ref Element
  */
 
-#ifndef KND_REF_H
-#define KND_REF_H
+#pragma once
+
+#include <glb-lib/output.h>
 
 #include "knd_config.h"
 
 struct kndElem;
 struct kndElemRef;
-struct kndOutput;
+struct glbOutput;
 
 typedef enum knd_ref_t { knd_LOCAL, knd_FILESYSTEM, knd_URI } knd_ref_t;
 
@@ -51,8 +52,8 @@ struct kndRef
     size_t name_size;
     char id[KND_ID_SIZE];
 
-    struct kndOutput *out;
-    struct kndOutput *log;
+    struct glbOutput *out;
+    struct glbOutput *log;
 
     knd_ref_t reftype;
 
@@ -86,5 +87,3 @@ struct kndRef
 /* constructors */
 extern int kndRef_init(struct kndRef *self);
 extern int kndRef_new(struct kndRef **self);
-
-#endif /* KND_REF_H */

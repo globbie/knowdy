@@ -18,8 +18,7 @@
  *   Knowdy Concept Attr
  */
 
-#ifndef KND_ATTR_H
-#define KND_ATTR_H
+#pragma once
 
 #include "knd_dict.h"
 #include "knd_utils.h"
@@ -27,7 +26,7 @@
 #include "knd_config.h"
 
 struct kndConcept;
-struct kndOutput;
+struct glbOutput;
 struct kndTranslation;
 struct kndAttr;
 struct kndProc;
@@ -156,7 +155,7 @@ struct kndAttr
     size_t idx_name_size;
 
     struct kndRefSet *browser;
-    struct kndOutput *out;
+    struct glbOutput *out;
     
     struct kndTranslation *tr;
     size_t depth;
@@ -180,4 +179,3 @@ struct kndAttr
 /* constructor */
 extern void kndAttr_init(struct kndAttr *self);
 extern int kndAttr_new(struct kndAttr **self);
-#endif

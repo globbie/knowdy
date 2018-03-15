@@ -116,8 +116,8 @@ struct kndObject
 
     struct kndConcept *conc;
     
-    struct kndOutput *out;
-    struct kndOutput *log;
+    struct glbOutput *out;
+    struct glbOutput *log;
     struct kndTask *task;
     
     /* full structure */

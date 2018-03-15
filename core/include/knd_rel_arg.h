@@ -18,8 +18,9 @@
  *   Knowdy Concept Rel Arg
  */
 
-#ifndef KND_RELARG_H
-#define KND_RELARG_H
+#pragma once
+
+#include <glb-lib/output.h>
 
 #include "knd_dict.h"
 #include "knd_utils.h"
@@ -27,7 +28,6 @@
 #include "knd_config.h"
 
 struct kndConcept;
-struct kndOutput;
 struct kndTranslation;
 struct kndRel;
 struct kndRelInstance;
@@ -108,7 +108,7 @@ struct kndRelArg
 
     struct kndRefSet *browser;
     struct kndObject *curr_obj;
-    struct kndOutput *out;
+    struct glbOutput *out;
     
     struct kndTranslation *tr;
     size_t depth;
@@ -144,4 +144,3 @@ struct kndRelArg
 extern void kndRelArgInstance_init(struct kndRelArgInstance *self);
 extern void kndRelArgInstRef_init(struct kndRelArgInstRef *self);
 extern int kndRelArg_new(struct kndRelArg **self);
-#endif

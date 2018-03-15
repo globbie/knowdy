@@ -8,14 +8,16 @@
 #include <knd_utils.h>
 
 #include <gsl-parser.h>
+#include <glb-lib/output.h>
 
 #include <string.h>
 
 static int
 task_callback(struct kmqEndPoint *endpoint __attribute__((unused)), struct kmqTask *task,
-        void *cb_arg)
+	      void *cb_arg)
 {
     struct kndLearnerService *self = cb_arg;
+    const char *b;
     const char *data;
     size_t size;
     int err;
@@ -23,10 +25,15 @@ task_callback(struct kmqEndPoint *endpoint __attribute__((unused)), struct kmqTa
     err = task->get_data(task, 0, &data, &size);
     if (err != knd_OK) { knd_log("-- task read failed"); return -1; }
 
-    printf(">>>\n%.*s\n<<<\n", (int) size, data);
+    b = self->task_storage->buf + self->task_storage->buf_size;
+
+    err = self->task_storage->write(self->task_storage, data, size);
+    if (err) return err;
 
     self->task->reset(self->task);
-    err = self->task->run(self->task, data, size, "None", sizeof("None"));
+    err = self->task->run(self->task,
+			  b, size,
+			  "None", sizeof("None"));
 
     if (err != knd_OK) {
         self->task->error = err;
@@ -36,6 +43,16 @@ task_callback(struct kmqEndPoint *endpoint __attribute__((unused)), struct kmqTa
 
 final:
 
+    /* save only the successful write transaction */
+    switch (self->task->type) {
+    case KND_UPDATE_STATE:
+	if (!self->task->error)
+	    break;
+    default:
+	/* retract last write to task_storage */
+	self->task_storage->rtrim(self->task_storage, size);
+    }
+    
     if (!self->task->tid_size) {
         self->task->tid[0] = '0';
         self->task->tid_size = 1;
@@ -319,7 +336,7 @@ int
 kndLearnerService_new(struct kndLearnerService **service, const struct kndLearnerOptions *opts)
 {
     struct kndLearnerService *self;
-    struct kndOutput *out;
+    struct glbOutput *out;
     struct kndConcept *conc;
     int err;
 
@@ -337,15 +354,18 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     self->entry_point->options.cb_arg = self;
     self->knode->add_endpoint(self->knode, self->entry_point);
 
-    err = kndOutput_new(&self->out, KND_IDX_BUF_SIZE);
+    err = glbOutput_new(&self->task_storage, KND_TASK_STORAGE_SIZE);
     if (err != knd_OK) goto error;
-    err = kndOutput_new(&self->log, KND_MED_BUF_SIZE);
+
+    err = glbOutput_new(&self->out, KND_IDX_BUF_SIZE);
+    if (err != knd_OK) goto error;
+    err = glbOutput_new(&self->log, KND_MED_BUF_SIZE);
     if (err != knd_OK) goto error;
 
     // task specification
     err = kndTask_new(&self->task);
     if (err != knd_OK) goto error;
-    err = kndOutput_new(&self->task->out, KND_IDX_BUF_SIZE);
+    err = glbOutput_new(&self->task->out, KND_IDX_BUF_SIZE);
     if (err) goto error;
 
     // special user
@@ -359,10 +379,11 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
 
     { // read config
         size_t chunk_size;
-        err = self->out->read_file(self->out, opts->config_file, strlen(opts->config_file));
+        err = self->out->write_file_content(self->out,
+					    opts->config_file);
         if (err != knd_OK) goto error;
 
-        err = parse_schema(self, self->out->file, &chunk_size);
+        err = parse_schema(self, self->out->buf, &chunk_size);
         if (err != knd_OK) goto error;
     }
 

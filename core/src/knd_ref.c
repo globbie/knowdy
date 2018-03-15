@@ -1,17 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <gsl-parser.h>
+
 #include "knd_ref.h"
 #include "knd_task.h"
 #include "knd_repo.h"
-#include "knd_output.h"
 #include "knd_elem.h"
 #include "knd_object.h"
 #include "knd_utils.h"
 #include "knd_concept.h"
 #include "knd_attr.h"
 
-#include <gsl-parser.h>
 
 #define DEBUG_REF_LEVEL_0 0
 #define DEBUG_REF_LEVEL_1 0
@@ -169,7 +170,7 @@ static int
 export_reverse_rel_JSON(struct kndRef *self)
 {
     struct kndObject *obj;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     int err = knd_FAIL;
 
     if (!self->elem) {
@@ -206,7 +207,7 @@ export_reverse_rel_JSON(struct kndRef *self)
 static int export_GSP(struct kndRef *self)
 {
     struct kndObject *obj;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     int err;
 
     if (!self->states) return knd_FAIL;
@@ -234,7 +235,7 @@ static int
 export_reverse_rel_GSP(struct kndRef *self)
 {
     struct kndObject *obj;
-    struct kndOutput *out;
+    struct glbOutput *out;
     int err = knd_FAIL;
 
     obj = self->elem->root;

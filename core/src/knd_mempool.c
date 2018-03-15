@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "knd_mempool.h"
-#include "knd_output.h"
 #include "knd_concept.h"
 #include "knd_object.h"
 #include "knd_elem.h"
@@ -15,6 +14,7 @@
 #include "knd_attr.h"
 #include "knd_set.h"
 #include "knd_facet.h"
+
 
 static void del(struct kndMemPool *self)
 {

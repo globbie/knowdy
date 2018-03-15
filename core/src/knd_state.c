@@ -3,9 +3,10 @@
 #include <string.h>
 #include <time.h>
 
+#include <glb-lib/output.h>
+
 #include "knd_state.h"
 #include "knd_user.h"
-#include "knd_output.h"
 #include "knd_utils.h"
 
 #define DEBUG_STATE_LEVEL_0 0
@@ -36,7 +37,7 @@ static void reset(struct kndStateControl *self)
 static int knd_confirm(struct kndStateControl *self,
 		       struct kndUpdate *update)
 {
-    struct kndOutput *out;
+    struct glbOutput *out;
     int err;
 
     if (self->task->type == KND_LIQUID_STATE) {
@@ -129,13 +130,13 @@ extern int kndStateControl_new(struct kndStateControl **state)
 
     memset(self->state, '0', KND_STATE_SIZE);
 
-    err = kndOutput_new(&self->log, KND_TEMP_BUF_SIZE);
+    err = glbOutput_new(&self->log, KND_TEMP_BUF_SIZE);
     if (err) return err;
 
-    err = kndOutput_new(&self->spec_out, KND_MED_BUF_SIZE);
+    err = glbOutput_new(&self->spec_out, KND_MED_BUF_SIZE);
     if (err) return err;
 
-    err = kndOutput_new(&self->update, KND_LARGE_BUF_SIZE);
+    err = glbOutput_new(&self->update, KND_LARGE_BUF_SIZE);
     if (err) return err;
 
     self->del    = del;

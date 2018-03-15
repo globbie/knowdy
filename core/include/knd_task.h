@@ -25,7 +25,7 @@
 
 #include <gsl-parser/gsl_err.h>
 
-struct kndOutput;
+struct glbOutput;
 struct kndTask;
 struct kndUser;
 struct kndStateControl;
@@ -114,19 +114,17 @@ struct kndTask
     size_t batch_gt;
     size_t batch_lt;
 
-    //struct kndConcept *class_selects[KND_MAX_CLASS_BATCH];
-    //size_t num_class_selects;
-
     struct kndSet *sets;
     size_t num_sets;
 
     struct kndUser *admin;
     struct kndStateControl *state_ctrl;
 
-    struct kndOutput *log;
-    struct kndOutput *out;
-    struct kndOutput *spec_out;
-    struct kndOutput *update;
+    struct glbOutput *log;
+    struct glbOutput *out;
+    struct glbOutput *file;
+    struct glbOutput *spec_out;
+    struct glbOutput *update;
     struct kndMemPool *mempool;
 
     knd_delivery_type delivery_type;
