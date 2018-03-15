@@ -644,55 +644,6 @@ kndSet_merge_name_idx(struct kndSet *self,
 }
 */
 
-static gsl_err_t set_append(void *accu,
-			    void *item)
-{
-    struct kndFacet *self = accu;
-    struct kndSet *set = item;
-    int err;
-
-    err = self->set_name_idx->set(self->set_name_idx,
-    			     set->base->name, set->base->name_size,
-			     (void*)set);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t set_alloc(void *obj,
-			   const char *name,
-			   size_t name_size,
-			   size_t count,
-			   void **item)
-{
-    struct kndFacet *self = obj;
-    struct kndSet *set;
-    struct kndConcept *conc;
-    struct kndConcDir *base;
-    int err;
-    return make_gsl_err(gsl_FAIL);  // stub
-
-    conc = self->parent->base->conc;
-
-    base = conc->class_idx->get(conc->class_idx, name, name_size);
-    if (!base) {
-        knd_log("-- no such class: \"%.*s\":(", name_size, name);
-        return make_gsl_err_external(knd_NO_MATCH);
-    }
-
-    err = self->mempool->new_set(self->mempool, &set);
-    if (err) return make_gsl_err_external(err);
-
-    set->type = KND_SET_CLASS;
-    set->mempool = self->mempool;
-    set->parent_facet = self;
-    set->base = base;
-
-    *item = (void*)set;
-
-    return make_gsl_err(gsl_OK);
-}
-
 static int add_elem(struct kndSet *self,
 		    struct kndSetElemIdx *parent_idx,
 		    struct kndSetElem *elem,
@@ -791,9 +742,78 @@ static gsl_err_t atomic_elem_append(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t confirm_read(void *obj,
+			      const char *val __attribute__((unused)),
+			      size_t val_size __attribute__((unused)))
+{
+    struct kndFacet *self = obj;
+    if (DEBUG_SET_LEVEL_2)
+        knd_log(".. confirm read!");
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_alloc(void *obj,
+                           const char *name,
+                           size_t name_size,
+                           size_t count __attribute__((unused)),
+                           void **item)
+{
+    struct kndFacet *self = obj;
+    struct kndSet *set;
+    int err;
+
+    assert(name == NULL && name_size == 0);
+
+    err = self->mempool->new_set(self->mempool, &set);
+    if (err) return make_gsl_err_external(err);
+
+    set->type = KND_SET_CLASS;
+    set->mempool = self->mempool;
+    set->parent_facet = self;
+
+    *item = (void*)set;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_append(void *accu,
+                            void *item)
+{
+    struct kndFacet *self = accu;
+    struct kndSet *set = item;
+    int err;
+
+    err = self->set_name_idx->set(self->set_name_idx,
+                                  set->base->name, set->base->name_size,
+			     (void*)set);
+    if (err) return make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t run_set_set_name(void *obj, const char *name, size_t name_size)
+{
+    struct kndSet *set = (struct kndSet*)obj;
+    struct kndFacet *parent_facet = set->parent_facet;
+    struct kndConcept *conc;
+    struct kndConcDir *base;
+
+    conc = parent_facet->parent->base->conc;
+
+    base = conc->class_idx->get(conc->class_idx, name, name_size);
+    if (!base) {
+        knd_log("-- no such class: \"%.*s\":(", name_size, name);
+        return make_gsl_err_external(knd_NO_MATCH);
+    }
+
+    set->base = base;
+
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t set_read(void *obj,
-			  const char *rec,
-			  size_t *total_size)
+                          const char *rec,
+                          size_t *total_size)
 {
     struct kndSet *set = obj;
     struct gslTaskSpec c_item_spec = {
@@ -803,56 +823,57 @@ static gsl_err_t set_read(void *obj,
         .accu = set
     };
     struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_set_name,
+          .obj = set
+        },
         { .is_list = true,
           .name = "c",
           .name_size = strlen("c"),
           .parse = gsl_parse_array,
           .obj = &c_item_spec
-	    },
-        { .is_default = true,
-          .run = confirm_read,
-          .obj = set
         }
     };
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
-static gsl_err_t read_facet_name(void *obj,
-				 const char *name, size_t name_size,
-				 const char *rec, size_t *total_size)
-{
-    struct kndFacet *self = obj;
     gsl_err_t err;
 
-    if (DEBUG_SET_LEVEL_TMP)
-        knd_log(".. read facet name: \"%.*s\"", 16, rec);
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (err.code) return err;
+
+    if (set->base == NULL)
+        return make_gsl_err(gsl_FORMAT);
 
     return make_gsl_err(gsl_OK);
-
 }
 
-static gsl_err_t read_facet(void *obj,
-                            const char *rec,
-                            size_t *total_size)
+static gsl_err_t facet_alloc(void *obj,
+                             const char *name,
+                             size_t name_size,
+                             size_t count,
+                             void **item)
 {
-    struct kndFacet *f = obj;
-    struct gslTaskSpec specs[] = {
-        { .is_list = true,
-          .name = "set",
-          .name_size = strlen("set"),
-          .accu = f,
-          .alloc = set_alloc,
-          .append = set_append,
-          .parse = set_read
-	},
-        { .is_default = true,
-          .run = confirm_read,
-          .obj = f
-        }
-    };
+    struct kndSet *self = obj;
+    struct kndFacet *f;
+    int err;
 
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    assert(name == NULL && name_size == 0);
+
+    if (DEBUG_SET_LEVEL_1)
+        knd_log(".. set %.*s to allocate facet,  count: %zu",
+                self->base->name_size, self->base->name, count);
+
+    err = self->mempool->new_facet(self->mempool, &f);
+    if (err) return make_gsl_err_external(err);
+
+    /* TODO: mempool alloc */
+    err = ooDict_new(&f->set_name_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) return make_gsl_err_external(err);
+
+    f->parent = self;
+    f->mempool = self->mempool;
+
+    *item = (void*)f;
+
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t facet_append(void *accu,
@@ -867,50 +888,59 @@ static gsl_err_t facet_append(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t facet_alloc(void *obj,
-                             const char *name,
-                             size_t name_size,
-                             size_t count,
-                             void **item)
+static gsl_err_t run_set_facet_name(void *obj, const char *name, size_t name_size)
 {
-    struct kndSet *self = obj;
+    struct kndFacet *f = (struct kndFacet*)obj;
+    struct kndSet *parent = f->parent;
     struct kndConcept *conc;
     struct kndAttr *attr;
-    struct kndFacet *f;
     int err;
-    return make_gsl_err(gsl_FAIL);  // stub
 
     if (DEBUG_SET_LEVEL_1)
-        knd_log(".. set %.*s to create facet: %.*s count: %zu",
-                self->base->name_size, self->base->name, name_size, name, count);
+        knd_log(".. set %.*s to create facet: %.*s",
+                parent->base->name_size, parent->base->name, name_size, name);
 
-    conc = self->base->conc;
+    conc = parent->base->conc;
     err = conc->get_attr(conc, name, name_size, &attr);
     if (err) return make_gsl_err_external(err);
 
-    err = self->mempool->new_facet(self->mempool, &f);
-    if (err) return make_gsl_err_external(err);
-
-    /* TODO: mempool alloc */
-    err = ooDict_new(&f->set_name_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) return make_gsl_err_external(err);
-
     f->attr = attr;
-    f->parent = self;
-    f->mempool = self->mempool;
-
-    *item = (void*)f;
 
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t confirm_read(void *obj,
-			      const char *val __attribute__((unused)),
-			      size_t val_size __attribute__((unused)))
+static gsl_err_t read_facet(void *obj,
+                            const char *rec,
+                            size_t *total_size)
 {
-    struct kndFacet *self = obj;
-    if (DEBUG_SET_LEVEL_2)
-        knd_log(".. confirm read!");
+    struct kndFacet *f = obj;
+    struct gslTaskSpec set_item_spec = {
+        .is_list_item = true,
+        .alloc = set_alloc,
+        .append = set_append,
+        .accu = f,
+        .parse = set_read
+    };
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_facet_name,
+          .obj = f
+        },
+        { .is_list = true,
+          .name = "set",
+          .name_size = strlen("set"),
+          .parse = gsl_parse_array,
+          .obj = &set_item_spec
+        }
+    };
+    gsl_err_t err;
+
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (err.code) return err;
+
+    if (f->attr == NULL)
+        return make_gsl_err(gsl_FORMAT);  // facet name is required
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -929,14 +959,19 @@ static int read_GSP(struct kndSet *self,
         .append = atomic_elem_append,
         .accu = self
     };
+    struct gslTaskSpec fc_item_spec = {
+        .is_list_item = true,
+        .alloc = facet_alloc,
+        .append = facet_append,
+        .parse = read_facet,
+        .accu = self
+    };
     struct gslTaskSpec specs[] = {
         { .is_list = true,
           .name = "fc",
           .name_size = strlen("fc"),
-          .accu = self,
-          .alloc = facet_alloc,
-          .append = facet_append,
-          .parse = read_facet
+          .parse = gsl_parse_array,
+          .obj = &fc_item_spec
         },
         { .is_list = true,
           .name = "c",
