@@ -7,17 +7,17 @@
 #include <unistd.h>
 #include <sys/types.h>
 
+#include <gsl-parser.h>
+#include <glb-lib/output.h>
+
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
 #include "knd_task.h"
 #include "knd_state.h"
 #include "knd_mempool.h"
-#include "knd_output.h"
 #include "knd_utils.h"
 #include "knd_text.h"
 #include "knd_dict.h"
-
-#include <gsl-parser.h>
 
 #define DEBUG_PROC_LEVEL_0 0
 #define DEBUG_PROC_LEVEL_1 0
@@ -119,7 +119,7 @@ static void str(struct kndProc *self)
 
 static int kndProc_export_SVG_header(struct kndProc *self)
 {
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     const char *svg_header = "<svg version=\"1.1\""
 	" width=\"100%\" height=\"100%\""
 	" xmlns=\"http://www.w3.org/2000/svg\""
@@ -142,7 +142,7 @@ static int kndProc_export_SVG_header(struct kndProc *self)
 
 static int kndProc_export_SVG_footer(struct kndProc *self)
 {
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     const char *svg_footer = "</g></svg>";
     size_t svg_footer_size = strlen(svg_footer);
     int err;
@@ -325,7 +325,7 @@ static gsl_err_t present_proc_selection(void *obj,
 {
     struct kndProc *self = obj;
     struct kndProc *p;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     int err;
 
     if (DEBUG_PROC_LEVEL_1)
@@ -435,7 +435,7 @@ static int parse_proc_select(struct kndProc *self,
 static int proc_call_arg_export_GSP(struct kndProc *self,
                                     struct kndProcCallArg *call_arg)
 {
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     int err;
     err = out->write(out, "{", 1);                                                RET_ERR();
     err = out->write(out, call_arg->name, call_arg->name_size);                   RET_ERR();
@@ -449,7 +449,7 @@ static int export_GSP(struct kndProc *self)
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size = 0;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     struct kndProcArg *arg;
     struct kndProcCallArg *call_arg;
     struct kndTranslation *tr;
@@ -528,7 +528,7 @@ static int export_GSP(struct kndProc *self)
 
 static int export_JSON(struct kndProc *self)
 {
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     struct kndProcArg *arg;
     struct kndTranslation *tr;
     bool in_list = false;
@@ -604,7 +604,7 @@ static int export_SVG(struct kndProc *self)
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size = 0;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     struct kndProcArg *arg;
     struct kndTranslation *tr;
 
@@ -1651,7 +1651,7 @@ static int freeze(struct kndProc *self,
                   char *output,
                   size_t *total_size)
 {
-    struct kndOutput *out;
+    struct glbOutput *out;
     char *curr_dir = output;
     size_t chunk_size;
     size_t curr_dir_size = 0;

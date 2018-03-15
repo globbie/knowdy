@@ -2,15 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <gsl-parser.h>
+#include <glb-lib/output.h>
+
 #include "knd_proc_arg.h"
 #include "knd_proc.h"
 #include "knd_task.h"
 #include "knd_concept.h"
-#include "knd_output.h"
 #include "knd_text.h"
 #include "knd_mempool.h"
-
-#include <gsl-parser.h>
 
 #define DEBUG_PROC_ARG_LEVEL_1 0
 #define DEBUG_PROC_ARG_LEVEL_2 0
@@ -60,7 +60,7 @@ static void str(struct kndProcArg *self)
 static int proc_call_arg_export_JSON(struct kndProcArg *self,
                                      struct kndProcCallArg *call_arg)
 {
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     int err;
     err = out->write(out, "{\"", strlen("{\""));                                  RET_ERR();
     err = out->write(out, call_arg->name, call_arg->name_size);                   RET_ERR();
@@ -73,7 +73,7 @@ static int proc_call_arg_export_JSON(struct kndProcArg *self,
 static int proc_call_arg_export_GSP(struct kndProcArg *self,
                                     struct kndProcCallArg *call_arg)
 {
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     int err;
     err = out->write(out, "{", 1);                                                RET_ERR();
     err = out->write(out, call_arg->name, call_arg->name_size);                   RET_ERR();
@@ -88,7 +88,7 @@ static int proc_call_arg_export_GSP(struct kndProcArg *self,
  */
 static int export_JSON(struct kndProcArg *self)
 {
-    struct kndOutput *out;
+    struct glbOutput *out;
     struct kndTranslation *tr;
     struct kndProcCallArg *arg;
     struct kndProc *proc;
@@ -157,7 +157,7 @@ static int export_JSON(struct kndProcArg *self)
 
 static int export_GSP(struct kndProcArg *self)
 {
-    struct kndOutput *out;
+    struct glbOutput *out;
     struct kndTranslation *tr;
     struct kndProcCallArg *arg;
     int err;
@@ -196,7 +196,7 @@ static int export_GSP(struct kndProcArg *self)
 
 static int export_SVG(struct kndProcArg *self)
 {
-    struct kndOutput *out;
+    struct glbOutput *out;
     struct kndProc *proc;
     int err;
 
@@ -220,7 +220,7 @@ static int export_SVG(struct kndProcArg *self)
 static int export_inst_GSP(struct kndProcArg *self,
                            struct kndProcArgInstance *inst)
 {
-    struct kndOutput *out;
+    struct glbOutput *out;
     int err;
 
     out = self->out;
@@ -236,7 +236,7 @@ static int export_inst_GSP(struct kndProcArg *self,
 static int export_inst_JSON(struct kndProcArg *self,
                             struct kndProcArgInstance *inst)
 {
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     /*const char *type_name = knd_proc_arg_names[self->type];
       size_t type_name_size = strlen(knd_proc_arg_names[self->type]); */
     int err;

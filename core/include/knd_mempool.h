@@ -19,8 +19,10 @@
  */
 #pragma once
 
-#include "knd_config.h"
 #include <stddef.h>
+#include <glb-lib/output.h>
+
+#include "knd_config.h"
 
 struct kndConcept;
 struct kndObject;
@@ -55,7 +57,6 @@ struct kndMemPool
 {
     char next_class_id[KND_ID_SIZE];
     size_t max_users;
-
 
     struct kndSet *sets;
     size_t max_sets;
@@ -187,7 +188,7 @@ struct kndMemPool
     size_t max_proc_update_refs;
     size_t num_proc_update_refs;
 
-    struct kndOutput *log;
+    struct glbOutput *log;
 
     void (*del)(struct kndMemPool   *self);
     int (*alloc)(struct kndMemPool   *self);

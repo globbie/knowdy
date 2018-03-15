@@ -2,16 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <gsl-parser.h>
+#include <glb-lib/output.h>
+
 #include "knd_num.h"
 #include "knd_repo.h"
-#include "knd_output.h"
 #include "knd_elem.h"
 #include "knd_attr.h"
 #include "knd_object.h"
 #include "knd_task.h"
 #include "knd_user.h"
-
-#include <gsl-parser.h>
 
 #define DEBUG_NUM_LEVEL_0 0
 #define DEBUG_NUM_LEVEL_1 0
@@ -81,7 +81,7 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
     struct kndNumState *state;
     int err;
 
-    if (DEBUG_NUM_LEVEL_TMP)
+    if (DEBUG_NUM_LEVEL_1)
         knd_log(".. run set num val..");
 
     if (!val_size) return make_gsl_err(gsl_FORMAT);

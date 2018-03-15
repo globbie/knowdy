@@ -30,7 +30,7 @@
 struct kndAttr;
 struct kndAttrItem;
 struct kndConcept;
-struct kndOutput;
+struct glbOutput;
 struct kndTranslation;
 struct kndConcept;
 struct kndRel;
@@ -157,7 +157,7 @@ struct kndConcDir
     struct kndProcDir *proc_dir;
 
     struct kndTask *task;
-    struct kndOutput *out;
+    struct glbOutput *out;
 
     bool is_terminal;
     struct kndConcDir *next;
@@ -266,9 +266,9 @@ struct kndConcept
     struct kndConcept *next;
 
     struct kndUser *user;
-    struct kndOutput *out;
-    struct kndOutput *dir_out;
-    struct kndOutput *log;
+    struct glbOutput *out;
+    struct glbOutput *dir_out;
+    struct glbOutput *log;
     
     /***********  public methods ***********/
     void (*init)(struct kndConcept  *self);

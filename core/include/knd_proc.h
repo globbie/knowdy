@@ -22,7 +22,7 @@
 
 #include "knd_config.h"
 
-struct kndOutput;
+struct glbOutput;
 struct kndProcCallArg;
 struct kndUpdate;
 
@@ -148,8 +148,8 @@ struct kndProc
     size_t id;
     size_t next_id;
 
-    struct kndOutput *out;
-    struct kndOutput *log;
+    struct glbOutput *out;
+    struct glbOutput *log;
 
     knd_state_phase phase;
 

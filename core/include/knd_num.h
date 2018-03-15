@@ -1,8 +1,8 @@
 /**
- *   Copyright (c) 2011-2017 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2018 by Dmitri Dmitriev
  *   All rights reserved.
  *
- *   This file is part of the Knowdy Search Engine, 
+ *   This file is part of the Knowdy Graph DB, 
  *   and as such it is subject to the license stated
  *   in the LICENSE file which you have received 
  *   as part of this distribution.
@@ -18,14 +18,13 @@
  *   Knowdy Num Element
  */
 
-#ifndef KND_NUM_H
-#define KND_NUM_H
+#pragma once
 
+#include <glb-lib/output.h>
 #include "knd_config.h"
 
 struct kndElem;
 struct kndElemRef;
-struct kndOutput;
 
 typedef enum knd_num_base_type { KND_NUM_DIGIT,
                                  KND_NUM_TEN,
@@ -73,7 +72,7 @@ struct kndNumState
 struct kndNum
 {
     struct kndElem *elem;
-    struct kndOutput *out;
+    struct glbOutput *out;
 
     struct kndNumState *states;
     size_t num_states;
@@ -101,5 +100,3 @@ void (*str)(struct kndNum *self);
 /* constructors */
 extern int kndNum_init(struct kndNum *self);
 extern int kndNum_new(struct kndNum **self);
-
-#endif /* KND_NUM_H */

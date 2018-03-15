@@ -5,12 +5,12 @@
 #include "knd_task.h"
 #include "knd_user.h"
 #include "knd_mempool.h"
-#include "knd_output.h"
 #include "knd_utils.h"
 #include "knd_concept.h"
 #include "knd_http_codes.h"
 
 #include <gsl-parser.h>
+#include <glb-lib/output.h>
 
 #define DEBUG_TASK_LEVEL_0 0
 #define DEBUG_TASK_LEVEL_1 0
@@ -65,6 +65,7 @@ static void reset(struct kndTask *self)
     self->http_code = HTTP_OK;
     self->log->reset(self->log);
     self->out->reset(self->out);
+    self->file->reset(self->file);
     self->update->reset(self->update);
     self->spec_out->reset(self->spec_out);
 }
@@ -327,7 +328,7 @@ static int parse_GSL(struct kndTask *self,
           .obj = self
         }
     };
-    size_t total_size = 0;
+    size_t total_size = rec_size;
     int err;
     gsl_err_t parser_err;
 
@@ -358,7 +359,7 @@ static int report(struct kndTask *self)
     const char *gsl_header = "{task";
     const char *msg = "None";
     size_t msg_size = strlen(msg);
-    struct kndOutput *out = self->spec_out;
+    struct glbOutput *out = self->spec_out;
     char *header = NULL;
     size_t header_size;
     char *obj = NULL;
@@ -522,13 +523,16 @@ extern int kndTask_new(struct kndTask **task)
 
     memset(self, 0, sizeof(struct kndTask));
 
-    err = kndOutput_new(&self->log, KND_TEMP_BUF_SIZE);
+    err = glbOutput_new(&self->log, KND_TEMP_BUF_SIZE);
     if (err) return err;
 
-    err = kndOutput_new(&self->spec_out, KND_MED_BUF_SIZE);
+    err = glbOutput_new(&self->spec_out, KND_MED_BUF_SIZE);
     if (err) return err;
 
-    err = kndOutput_new(&self->update, KND_LARGE_BUF_SIZE);
+    err = glbOutput_new(&self->update, KND_LARGE_BUF_SIZE);
+    if (err) return err;
+
+    err = glbOutput_new(&self->file, KND_LARGE_BUF_SIZE);
     if (err) return err;
 
     self->visual.text_line_height = KND_TEXT_LINE_HEIGHT;

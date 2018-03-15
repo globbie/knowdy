@@ -5,11 +5,11 @@
 #include "knd_attr.h"
 #include "knd_task.h"
 #include "knd_concept.h"
-#include "knd_output.h"
 
 #include "knd_text.h"
 
 #include <gsl-parser.h>
+#include <glb-lib/output.h>
 
 #define DEBUG_ATTR_LEVEL_1 0
 #define DEBUG_ATTR_LEVEL_2 0
@@ -28,13 +28,6 @@ static struct kndAttrValidator knd_attr_validators[] = {
       .proc = kndAttr_validate_email,
     }
 };
-
-
-/*  Attr Destructor */
-static void del(struct kndAttr *self)
-{
-    free(self);
-}
 
 static void str(struct kndAttr *self)
 {
@@ -114,7 +107,7 @@ static int kndAttr_validate_email(struct kndAttr *self,
  */
 static int export_JSON(struct kndAttr *self)
 {
-    struct kndOutput *out;
+    struct glbOutput *out;
     struct kndTranslation *tr;
     
     const char *type_name = knd_attr_names[self->type];
@@ -187,7 +180,7 @@ static int export_JSON(struct kndAttr *self)
 
 static int export_GSP(struct kndAttr *self)
 {
-    struct kndOutput *out;
+    struct glbOutput *out;
     struct kndTranslation *tr;
     
     const char *type_name = knd_attr_names[self->type];
@@ -426,7 +419,8 @@ static gsl_err_t parse_quant_type(void *obj,
           .run = run_set_quant,
           .obj = self
         },
-        { .name = "uniq",
+        { .type = GSL_CHANGE_STATE,
+	  .name = "uniq",
           .name_size = strlen("uniq"),
           .buf = self->uniq_attr_name,
           .buf_size = &self->uniq_attr_name_size,

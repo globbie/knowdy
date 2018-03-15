@@ -1,5 +1,4 @@
-#ifndef KND_USER_H
-#define KND_USER_H
+#pragma once
 
 #include "knd_utils.h"
 #include "knd_task.h"
@@ -7,7 +6,7 @@
 
 struct kndObjEntry;
 struct kndUser;
-struct kndOutput;
+struct glbOutput;
 struct kndRepo;
 struct kndRepoSet;
 struct kndStateManager;
@@ -68,8 +67,8 @@ struct kndUser
     struct kndObject *curr_user;
     struct kndConcept *root_class;
     struct kndTask *task;
-    struct kndOutput *out;
-    struct kndOutput *log;
+    struct glbOutput *out;
+    struct glbOutput *log;
 
     void *update_service;
     
@@ -108,4 +107,4 @@ struct kndUser
 
 extern int kndUser_init(struct kndUser *self);
 extern int kndUser_new(struct kndUser **self);
-#endif
+

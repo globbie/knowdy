@@ -1,8 +1,8 @@
 /**
- *   Copyright (c) 2011-2017 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2018 by Dmitri Dmitriev
  *   All rights reserved.
  *
- *   This file is part of the Knowdy Search Engine, 
+ *   This file is part of the Knowdy Graph DB, 
  *   and as such it is subject to the license stated
  *   in the LICENSE file which you have received 
  *   as part of this distribution.
@@ -15,21 +15,19 @@
  *
  *   ----------
  *   knd_elem.h
- *   Knowdy Object Element
+ *   Knowdy Object Element (Attr Instance)
  */
 
-#ifndef KND_ELEM_H
-#define KND_ELEM_H
+#pragma once
 
 #include "knd_config.h"
 #include "knd_ref.h"
 #include "knd_text.h"
 
 struct kndObject;
-struct kndOutput;
+struct glbOutput;
 struct kndObjRef;
 struct kndRelType;
-struct kndSortAttr;
 
 struct kndUser;
 struct kndRepo;
@@ -71,8 +69,8 @@ struct kndElem
 
     bool is_list;
     
-    struct kndOutput *out;
-    struct kndOutput *log;
+    struct glbOutput *out;
+    struct glbOutput *log;
 
     struct kndText *text;
     struct kndNum *num;
@@ -102,5 +100,3 @@ struct kndElem
 /* constructors */
 extern void kndElem_init(struct kndElem *self);
 extern int kndElem_new(struct kndElem **self);
-
-#endif /* KND_ELEM_H */

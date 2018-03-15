@@ -6,17 +6,18 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <gsl-parser.h>
+#include <glb-lib/output.h>
+
 #include "knd_policy.h"
 #include "knd_user.h"
 #include "knd_repo.h"
-#include "knd_output.h"
 #include "knd_concept.h"
 #include "knd_object.h"
 #include "knd_proc.h"
 #include "knd_rel.h"
 #include "knd_state.h"
 
-#include <gsl-parser.h>
 
 #define DEBUG_USER_LEVEL_0 0
 #define DEBUG_USER_LEVEL_1 0
@@ -106,7 +107,7 @@ kndUser_export_GSL(struct kndUser *self)
 {
     char buf[KND_TEMP_BUF_SIZE] = {0};
     size_t buf_size = 0;
-    struct kndOutput *out;
+    struct glbOutput *out;
     int err;
 
     out = self->out;
@@ -128,7 +129,7 @@ static int export_JSON(struct kndUser *self)
     //size_t buf_size = 0;
 
     struct kndConcept *c;
-    struct kndOutput *out;
+    struct glbOutput *out;
 
     const char *key = NULL;
     void *val = NULL;

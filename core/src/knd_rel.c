@@ -7,19 +7,20 @@
 #include <unistd.h>
 #include <sys/types.h>
 
+#include <gsl-parser.h>
+#include <glb-lib/output.h>
+
+
 #include "knd_rel.h"
 #include "knd_rel_arg.h"
 #include "knd_task.h"
 #include "knd_state.h"
 #include "knd_repo.h"
-#include "knd_output.h"
 #include "knd_object.h"
 #include "knd_utils.h"
 #include "knd_concept.h"
 #include "knd_mempool.h"
 #include "knd_text.h"
-
-#include <gsl-parser.h>
 
 #define DEBUG_REL_LEVEL_0 0
 #define DEBUG_REL_LEVEL_1 0
@@ -236,7 +237,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 
 static int export_JSON(struct kndRel *self)
 {
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     struct kndRelArg *arg;
     struct kndTranslation *tr;
     int err;
@@ -285,7 +286,7 @@ static int export_JSON(struct kndRel *self)
 
 static int export_GSP(struct kndRel *self)
 {
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     struct kndRelArg *arg;
     struct kndTranslation *tr;
     int err;
@@ -336,7 +337,7 @@ static int export_inst_GSP(struct kndRel *self,
 {
     struct kndRelArg *relarg;
     struct kndRelArgInstance *relarg_inst;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     struct kndObjEntry *entry = NULL;
     int err;
 
@@ -372,7 +373,7 @@ static int export_inst_JSON(struct kndRel *self,
 {
     struct kndRelArg *relarg;
     struct kndRelArgInstance *relarg_inst;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     struct kndObjEntry *entry = NULL;
     bool in_list = false;
     int err;
@@ -458,7 +459,7 @@ static int export_insts_JSON(struct kndRel *self,
     struct kndRelArgInstance *rel_arg_inst;
     struct kndRelArgInstRef *rel_arg_inst_ref = NULL;
     struct kndRelInstance *rel_inst;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     bool in_list = false;
     int err;
 
@@ -1404,7 +1405,7 @@ static int export_updates(struct kndRel *self)
     size_t buf_size;
     struct kndRel *rel;
     struct kndRelInstance *inst;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     int err;
 
     for (rel = self->inbox; rel; rel = rel->next) {
@@ -1433,7 +1434,7 @@ static int freeze(struct kndRel *self,
                   char *output,
                   size_t *total_size)
 {
-    struct kndOutput *out;
+    struct glbOutput *out;
     char *curr_dir = output;
     size_t chunk_size;
     size_t curr_dir_size = 0;

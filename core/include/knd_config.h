@@ -348,7 +348,7 @@ typedef enum knd_storage_type {
 #define KND_TEMP_BUF_SIZE 1024
 #define KND_MED_BUF_SIZE 1024 * 10
 
-#define KND_LARGE_BUF_SIZE 1024 * 1024 * 100
+#define KND_LARGE_BUF_SIZE 1024 * 1024
 #define KND_SMALL_BUF_SIZE 64
 #define KND_LABEL_SIZE 8
 #define KND_PATH_SIZE 1024
@@ -359,6 +359,8 @@ typedef enum knd_storage_type {
 #define KND_UID_SIZE 7
 
 #define KND_CONC_NAME_BUF_SIZE 1024
+
+#define KND_TASK_STORAGE_SIZE 100 * 1024 * 1024 * sizeof(char)
 
 #define KND_SEARCH_BUF_SIZE 1024 * 100 * sizeof(char)
 #define KND_IDX_BUF_SIZE 10 * 1024 * 1024 * sizeof(char)
@@ -408,8 +410,6 @@ typedef enum knd_storage_type {
 #define KND_SET_INBOX_SIZE 8
 #define KND_SET_MIN_SIZE KND_MAX_INBOX_SIZE / 10
 #define KND_INBOX_RESERVE_RATIO 1.4
-
-#define KND_THRESHOLD_RATIO 0.85
 
 #define KND_FEATURED_SIZE 5
 #define KND_FEATURED_MAX_SIZE 10

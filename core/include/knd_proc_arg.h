@@ -17,9 +17,9 @@
  *   knd_proc_arg.h
  *   Knowdy Concept Proc Arg
  */
+#pragma once
 
-#ifndef KND_PROCARG_H
-#define KND_PROCARG_H
+#include <glb-lib/output.h>
 
 #include "knd_dict.h"
 #include "knd_utils.h"
@@ -28,7 +28,6 @@
 #include "knd_config.h"
 
 struct kndConcept;
-struct kndOutput;
 struct kndMemPool;
 struct kndTranslation;
 struct kndProc;
@@ -113,7 +112,7 @@ struct kndProcArg
     size_t classname_size;
     struct kndConcept *conc;
 
-    struct kndOutput *out;
+    struct glbOutput *out;
     struct kndMemPool *mempool;
     struct kndTask *task;
     struct kndVisualFormat *visual;
@@ -154,4 +153,4 @@ extern void kndProcArgInstRef_init(struct kndProcArgInstRef *self);
 
 extern void kndProcArg_init(struct kndProcArg *self);
 extern int kndProcArg_new(struct kndProcArg **self);
-#endif
+

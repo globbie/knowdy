@@ -1,8 +1,8 @@
 /**
- *   Copyright (c) 2011-2017 by Dmitri Dmitriev
+ *   Copyright (c) 2011-2018 by Dmitri Dmitriev
  *   All rights reserved.
  *
- *   This file is part of the Knowdy Search Engine, 
+ *   This file is part of the Knowdy Graph DB, 
  *   and as such it is subject to the license stated
  *   in the LICENSE file which you have received 
  *   as part of this distribution.
@@ -17,15 +17,14 @@
  *   knd_text.h
  *   Knowdy Text Element
  */
+#pragma once
 
-#ifndef KND_TEXT_H
-#define KND_TEXT_H
+#include <glb-lib/output.h>
 
 #include "knd_config.h"
 
 struct kndElem;
 struct kndElemRef;
-struct kndOutput;
 
 #define KND_SYNT_ROLE_NAME_SIZE 3
 
@@ -108,7 +107,7 @@ struct kndTextState
 struct kndText
 {
     struct kndElem *elem;
-    struct kndOutput *out;
+    struct glbOutput *out;
 
     struct kndTextState *states;
     size_t num_states;
@@ -122,7 +121,7 @@ struct kndText
     int (*hilite)(struct kndText *self,
                   struct kndElemRef *elemref,
                   knd_format format);
-    
+
     int (*parse)(struct kndText *self,
                  const char     *rec,
                  size_t          *total_size);
@@ -138,5 +137,3 @@ struct kndText
 /* constructors */
 extern int kndText_init(struct kndText *self);
 extern int kndText_new(struct kndText **self);
-
-#endif /* KND_TEXT_H */

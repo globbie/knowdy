@@ -1,7 +1,8 @@
 #pragma once
 
+#include <glb-lib/output.h>
+
 #include <knd_mempool.h>
-#include <knd_output.h>
 #include <knd_task.h>
 #include <knd_user.h>
 
@@ -18,8 +19,9 @@ struct kndLearnerService
     struct kmqKnode *knode;
     struct kmqEndPoint *entry_point;
 
-    struct kndOutput *out;
-    struct kndOutput *log;
+    struct glbOutput *task_storage;
+    struct glbOutput *out;
+    struct glbOutput *log;
 
     struct kndTask *task;
     struct kndUser *admin;

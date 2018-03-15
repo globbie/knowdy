@@ -11,11 +11,11 @@
 #include "knd_query.h"
 #include "knd_sorttag.h"
 #include "knd_task.h"
-#include "knd_output.h"
 #include "knd_dict.h"
 #include "knd_concept.h"
 
 #include <gsl-parser.h>
+#include <glb-lib/output.h>
 
 #define DEBUG_REPO_LEVEL_0 0
 #define DEBUG_REPO_LEVEL_1 0
@@ -164,7 +164,7 @@ kndRepo_open(struct kndRepo *self)
     size_t repo_dir_size = strlen(repo_dir);
     int err;
 
-    struct kndOutput *out = self->path_out;
+    struct glbOutput *out = self->path_out;
 
     out->reset(out);
     err = out->write(out, self->user->dbpath, self->user->dbpath_size);
@@ -196,8 +196,8 @@ kndRepo_open(struct kndRepo *self)
     if (err) return err;
 
     self->out->reset(self->out);
-    err = self->out->read_file(self->out,
-                               (const char*)out->buf, out->buf_size);
+    err = self->out->write_file_content(self->out,
+                               (const char*)out->buf);
     if (err) {
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("-- failed to open repo: \"%s\" :(",
@@ -205,10 +205,10 @@ kndRepo_open(struct kndRepo *self)
         return err;
     }
 
-    self->out->file[self->out->file_size] = '\0';
+    self->out->buf[self->out->buf_size] = '\0';
 
     if (self->restore_mode) {
-        err = kndRepo_parse_config(self, self->out->file, &chunk_size);
+        err = kndRepo_parse_config(self, self->out->buf, &chunk_size);
         if (err) return err;
 
         if (!self->name_size) {
@@ -220,7 +220,7 @@ kndRepo_open(struct kndRepo *self)
 
     if (DEBUG_REPO_LEVEL_2)
         knd_log("++ REPO open success: \"%s\" PATH: \"%s\"",
-                self->out->file, self->path);
+                self->out->buf, self->path);
 
     return knd_OK;
 }
@@ -233,7 +233,7 @@ kndRepo_update_state(struct kndRepo *self)
     char state_path[KND_TEMP_BUF_SIZE];
     size_t buf_size;
 
-    struct kndOutput *out;
+    struct glbOutput *out;
     const char *state_header = "{STATE{repo";
     size_t state_header_size = strlen(state_header);
 
@@ -581,8 +581,8 @@ static int kndRepo_restore(struct kndRepo *self)
     return knd_OK;
 
     self->out->reset(self->out);
-    err = self->out->read_file(self->out,
-                               (const char*)buf, buf_size);
+    err = self->out->write_file_content(self->out,
+                               (const char*)buf);
     if (err) {
         knd_log("   -- failed to open the inbox \"%s\" :(", buf);
         if (err == knd_IO_FAIL) {
@@ -592,9 +592,9 @@ static int kndRepo_restore(struct kndRepo *self)
 
         return err;
     }
-    self->out->file[self->out->file_size] = '\0';
+    self->out->buf[self->out->buf_size] = '\0';
 
-    err = kndRepo_import_inbox_data(self, self->out->file);
+    err = kndRepo_import_inbox_data(self, self->out->buf);
     if (err) return err;
 
     return knd_OK;
@@ -604,7 +604,7 @@ static int kndRepo_restore(struct kndRepo *self)
 static int
 kndRepo_update_inbox(struct kndRepo *self)
 {
-    struct kndOutput *out = self->path_out;
+    struct glbOutput *out = self->path_out;
     int err;
 
     out->reset(out);
@@ -831,7 +831,7 @@ kndRepo_new(struct kndRepo **repo)
     /*err = ooDict_new(&self->repo_idx, KND_SMALL_DICT_SIZE);
     if (err) return knd_NOMEM;
 
-    err = kndOutput_new(&self->path_out, KND_MED_BUF_SIZE);
+    err = glbOutput_new(&self->path_out, KND_MED_BUF_SIZE);
     if (err) return err;
     */
     kndRepo_init(self);

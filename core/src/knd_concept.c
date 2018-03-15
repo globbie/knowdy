@@ -18,7 +18,6 @@
 #include "knd_mempool.h"
 #include "knd_state.h"
 #include "knd_concept.h"
-#include "knd_output.h"
 #include "knd_attr.h"
 #include "knd_task.h"
 #include "knd_user.h"
@@ -31,6 +30,7 @@
 #include "knd_http_codes.h"
 
 #include <gsl-parser.h>
+#include <glb-lib/output.h>
 
 #define DEBUG_CONC_LEVEL_1 0
 #define DEBUG_CONC_LEVEL_2 0
@@ -1742,6 +1742,7 @@ static gsl_err_t parse_import_class(void *obj,
         c->next = self->inbox;
         self->inbox = c;
         self->inbox_size++;
+	knd_log("class INBOX size: %zu", self->inbox_size);
     }
 
     err = self->mempool->new_conc_dir(self->mempool, &dir);
@@ -1773,7 +1774,6 @@ static gsl_err_t parse_import_obj(void *data,
 {
     struct kndConcept *self = data;
     struct kndConcept *c;
-    struct kndConcept *root_class;
     struct kndObject *obj;
     struct kndObjEntry *entry;
     int err;
@@ -1851,18 +1851,13 @@ static gsl_err_t parse_import_obj(void *data,
     c->dir->num_objs++;
 
     if (DEBUG_CONC_LEVEL_TMP) {
-        knd_log("\n..register OBJ in %.*s IDX:  [total:%zu valid:%zu]",
+        knd_log("++ OBJ registered in \"%.*s\" IDX:  [total:%zu valid:%zu]",
                 c->name_size, c->name, c->dir->obj_idx->size, c->dir->num_objs);
         obj->depth = self->depth + 1;
         obj->str(obj);
     }
 
     self->task->type = KND_UPDATE_STATE;
-
-    root_class = self->root_class;
-    c->next = root_class->inbox;
-    root_class->inbox = c;
-    root_class->inbox_size++;
   
     return make_gsl_err(gsl_OK);
 }
@@ -3036,7 +3031,7 @@ static int get_dir_trailer(struct kndConcept *self,
                            int encode_base)
 {
     size_t block_size = parent_dir->block_size;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     off_t offset = 0;
     size_t dir_size = 0;
     size_t chunk_size = 0;
@@ -3076,7 +3071,7 @@ static int get_dir_trailer(struct kndConcept *self,
         return knd_IO_FAIL;
     }
 
-    if (dir_size >= out->max_size) return knd_LIMIT;
+    if (dir_size >= out->capacity) return knd_LIMIT;
 
     out->reset(out);
     out->buf_size = dir_size;
@@ -3463,7 +3458,7 @@ static int get_obj_dir_trailer(struct kndConcept *self,
     size_t dir_size = 0;
     size_t chunk_size = 0;
     size_t block_size = parent_dir->block_size;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     int err;
 
     offset = parent_dir->global_offset + block_size +\
@@ -3497,7 +3492,7 @@ static int get_obj_dir_trailer(struct kndConcept *self,
     }
 
     out->reset(out);
-    if (dir_size >= out->max_size) {
+    if (dir_size >= out->capacity) {
         return knd_LIMIT;
     }
     out->buf_size = dir_size;
@@ -3574,7 +3569,7 @@ static int open_frozen_DB(struct kndConcept *self)
 }
 
 static int 
-kndConcept_write_filepath(struct kndOutput *out,
+kndConcept_write_filepath(struct glbOutput *out,
 			  struct kndConcFolder *folder)
 {
     int err;
@@ -3595,7 +3590,8 @@ static int read_GSL_file(struct kndConcept *self,
                          const char *filename,
                          size_t filename_size)
 {
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
+    struct glbOutput *file_out = self->task->file;
     struct kndConcFolder *folder, *folders;
     const char *c;
     size_t folder_name_size;
@@ -3621,16 +3617,15 @@ static int read_GSL_file(struct kndConcept *self,
     if (err) return err;
     err = out->write(out, file_ext, file_ext_size);
     if (err) return err;
-    out->buf[out->buf_size] = '\0';
 
-    err = out->read_file(out, (const char*)out->buf, out->buf_size);
+    file_out->reset(file_out);
+    err = file_out->write_file_content(file_out, (const char*)out->buf);
     if (err) {
         knd_log("-- couldn't read GSL class file \"%s\" :(", out->buf);
         return err;
     }
-    out->file[out->file_size] = '\0';
-    
-    err = parse_GSL(self, (const char*)out->file, &chunk_size);
+
+    err = parse_GSL(self, (const char*)file_out->buf, &chunk_size);
     if (err) return err;
 
     /* high time to read our folders */
@@ -4111,7 +4106,7 @@ static int get_class(struct kndConcept *self,
     struct kndConcept *c;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. %.*s to get class: \"%.*s\"..",
                 self->name_size, self->name, name_size, name);
 
@@ -4130,7 +4125,7 @@ static int get_class(struct kndConcept *self,
         return knd_NO_MATCH;
     }
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("++ got Conc Dir: %.*s from \"%.*s\" block size: %zu conc:%p",
 		name_size, name,
                 self->frozen_output_file_name_size,
@@ -4372,7 +4367,7 @@ static gsl_err_t present_class_selection(void *obj,
     struct kndConcept *self = obj;
     struct kndConcept *c;
     struct kndSet *set;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     int err;
 
     if (DEBUG_CONC_LEVEL_1)
@@ -4793,7 +4788,7 @@ static int attr_items_export_JSON(struct kndConcept *self,
                                   size_t depth __attribute__((unused)))
 {
     struct kndAttrItem *item;
-    struct kndOutput *out;
+    struct glbOutput *out;
     int err;
 
     out = self->out;
@@ -4847,7 +4842,7 @@ static int export_JSON(struct kndConcept *self)
     struct kndUpdate *update;
 
     struct tm tm_info;
-    struct kndOutput *out;
+    struct glbOutput *out;
     size_t item_count;
     int i, err;
 
@@ -5062,7 +5057,7 @@ static int attr_items_export_GSP(struct kndConcept *self,
                                  size_t depth  __attribute__((unused)))
 {
     struct kndAttrItem *item;
-    struct kndOutput *out;
+    struct glbOutput *out;
     int err;
 
     out = self->out;
@@ -5097,7 +5092,7 @@ static int export_GSP(struct kndConcept *self)
     struct kndConcItem *item;
     struct kndTranslation *tr;
     struct kndSet *set;
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
     int err;
 
     if (DEBUG_CONC_LEVEL_1)
@@ -5186,7 +5181,7 @@ static int build_class_updates(struct kndConcept *self,
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size;
-    struct kndOutput *out = self->task->update;
+    struct glbOutput *out = self->task->update;
     struct kndConcept *c;
     struct kndObject *obj;
     struct kndClassUpdate *class_update;
@@ -5235,11 +5230,10 @@ static int export_updates(struct kndConcept *self,
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size;
     struct tm tm_info;
-
-    struct kndOutput *out = self->task->update;
+    struct glbOutput *out = self->task->update;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_2)
 	knd_log(".. export updates in \"%.*s\"..", self->name_size, self->name);
 
     out->reset(out);
@@ -5528,8 +5522,9 @@ static int knd_update_state(struct kndConcept *self)
     struct kndClassUpdate *class_update;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
-	knd_log("\n..update state of \"%.*s\"..", self->name_size, self->name);
+    if (DEBUG_CONC_LEVEL_TMP)
+	knd_log("\n..update state of \"%.*s\". INBOX size:%zu",
+		self->name_size, self->name, self->inbox_size);
 
     /* new update obj */
     err = self->mempool->new_update(self->mempool, &update);                      RET_ERR();
@@ -5551,7 +5546,10 @@ static int knd_update_state(struct kndConcept *self)
 	c->class_name_idx = self->class_name_idx;
 	c->class_idx = self->class_idx;
 
+	knd_log("..resolving %.*s..", c->name_size, c->name);
+
 	err = c->resolve(c, class_update);
+	knd_log("resolve: %d", err);
 	if (err) {
 	    knd_log("-- %.*s class not resolved :(", c->name_size, c->name);
 	    return err;
@@ -5561,14 +5559,17 @@ static int knd_update_state(struct kndConcept *self)
         c->numid = self->next_numid;
 	class_update->conc = c;
 
+	if (update->num_classes >= self->inbox_size) {
+	    knd_log("-- max class updates reached :(");
+	    return knd_FAIL;
+	}
+
 	update->classes[update->num_classes] = class_update;
         update->num_classes++;
 
 	/* stats */
 	update->total_objs += class_update->num_objs;
     }
-
-    
     if (self->rel->inbox_size) {
         err = self->rel->update(self->rel, update);                               RET_ERR();
     }
@@ -5576,13 +5577,10 @@ static int knd_update_state(struct kndConcept *self)
     if (self->proc->inbox_size) {
 	err = self->proc->update(self->proc, update);                             RET_ERR();
     }
-
-
     err = state_ctrl->confirm(state_ctrl, update);                                RET_ERR();
     err = export_updates(self, update);                                           RET_ERR();
 
     reset_inbox(self);
-
     return knd_OK;
 }
 
@@ -5590,7 +5588,7 @@ static int restore(struct kndConcept *self)
 {
     char state_buf[KND_STATE_SIZE];
     char last_state_buf[KND_STATE_SIZE];
-    struct kndOutput *out = self->out;
+    struct glbOutput *out = self->out;
 
     const char *inbox_dir = "/schema/inbox";
     size_t inbox_dir_size = strlen(inbox_dir);
@@ -5607,25 +5605,25 @@ static int restore(struct kndConcept *self)
     err = out->write(out, "/schema/class_state.id", strlen("/schema/class_state.id"));
     if (err) return err;
 
-    err = out->read_file(out,
-                         (const char*)out->buf, out->buf_size);
+    err = out->write_file_content(out,
+                         (const char*)out->buf);
     if (err) {
         knd_log("-- no class_state.id file found, assuming initial state ..");
         return knd_OK;
     }
 
     /* check if state content is a valid state id */
-    err = knd_state_is_valid(out->file, out->file_size);
+    err = knd_state_is_valid(out->buf, out->buf_size);
     if (err) {
         knd_log("-- state id is not valid: \"%.*s\"",
-                out->file_size, out->file);
+                out->buf_size, out->buf);
         return err;
     }
 
-    memcpy(last_state_buf, out->file, KND_STATE_SIZE);
+    memcpy(last_state_buf, out->buf, KND_STATE_SIZE);
     if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. last DB state: \"%.*s\"",
-                out->file_size, out->file);
+                out->buf_size, out->buf);
 
     out->rtrim(out, strlen("/schema/class_state.id"));
     err = out->write(out, inbox_dir, inbox_dir_size);
@@ -5634,14 +5632,14 @@ static int restore(struct kndConcept *self)
     while (1) {
         knd_next_state(state_buf);
 
-        err = out->write_state_path(out, state_buf);
-        if (err) return err;
+        //err = out->write_state_path(out, state_buf);
+        //if (err) return err;
 
         err = out->write(out, "/spec.gsl", strlen("/spec.gsl"));
         if (err) return err;
 
         
-        err = out->read_file(out, (const char*)out->buf, out->buf_size);
+        err = out->write_file_content(out, (const char*)out->buf);
         if (err) {
             knd_log("-- couldn't read GSL spec \"%s\" :(", out->buf);
             return err;
@@ -5649,7 +5647,7 @@ static int restore(struct kndConcept *self)
 
         if (DEBUG_CONC_LEVEL_TMP)
             knd_log(".. state update spec file: \"%.*s\" SPEC: %.*s\n\n",
-                    out->buf_size, out->buf, out->file_size, out->file);
+                    out->buf_size, out->buf, out->buf_size, out->buf);
 
 
         /* last update */
@@ -5690,7 +5688,7 @@ static int freeze_objs(struct kndConcept *self,
     size_t curr_dir_size = 0;
     struct kndObject *obj;
     struct kndObjEntry *entry;
-    struct kndOutput *out;
+    struct glbOutput *out;
     const char *key;
     void *val;
     size_t chunk_size;
@@ -5746,7 +5744,7 @@ static int freeze_objs(struct kndConcept *self,
         if (err) return err;
 
         /* OBJ persistent write */
-        if (out->buf_size > out->threshold_size) {
+        if (out->buf_size > out->threshold) {
             err = knd_append_file(self->frozen_output_file_name,
                                   out->buf, out->buf_size);
             if (err) return err;
