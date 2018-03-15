@@ -286,7 +286,6 @@ static int
 kndSet_export_GSP(struct kndSet *self)
 {
     struct glbOutput *out = self->out;
-    struct kndSet *set;
     struct kndConcDir *conc_dir;
     const char *key;
     void *val;
@@ -352,9 +351,6 @@ kndSet_intersect(struct kndSet   *self __attribute__((unused)),
                     size_t num_sets)
 {
     struct kndSet *smallset, *set;
-    struct kndSetElem *elem;
-    struct kndElemName_Idx *name_idx, *term_name_idx;
-    //struct kndFacet *f;
 
     if (DEBUG_SET_LEVEL_2) 
         knd_log(" .. intersection by Set \"%.*s\"..\n",
@@ -599,47 +595,6 @@ kndSet_add_conc(struct kndSet *self,
     return knd_OK;
 }
 
-/*
-static int
-kndSet_merge_name_idx(struct kndSet *self,
-		 struct kndSet *src)
-{
-    struct kndElemName_Idx *name_idx, *term_name_idx;
-    struct kndSetElem *elem;
-    size_t i, j, ri;
-    int err;
-
-    if (!src->name_idx) {
-        if (DEBUG_SET_LEVEL_2)
-            knd_log("?? no term name_idx in set %s?", src->base->name);
-        return knd_OK;
-    }
-    
-    /*for (i = 0; i < KND_ID_BASE; i++) {
-        name_idx = src->name_idx[i];
-
-        if (!name_idx) continue;
-
-        for (j = 0; j < KND_ID_BASE; j++) {
-            term_name_idx = name_idx->name_idx[j];
-            if (!term_name_idx) continue;
-
-            for (ri = 0; ri < KND_ID_BASE; ri++) {
-                elem = term_name_idx->elems[ri];
-                if (!elem) continue;
-
-                err = kndSet_term_name_idx(self, elem);
-                if (err) return err;
-            }
-            
-        }
-	}
-
-    
-    return knd_OK;
-}
-*/
-
 static gsl_err_t set_append(void *accu,
 			    void *item)
 {
@@ -658,7 +613,7 @@ static gsl_err_t set_append(void *accu,
 static gsl_err_t set_alloc(void *obj,
 			   const char *name,
 			   size_t name_size,
-			   size_t count,
+			   size_t count  __attribute__((unused)),
 			   void **item)
 {
     struct kndFacet *self = obj;
@@ -724,8 +679,8 @@ static int add_elem(struct kndSet *self,
 static gsl_err_t atomic_elem_alloc(void *obj,
 				   const char *val,
 				   size_t val_size,
-				   size_t count,
-				   void **item)
+				   size_t count  __attribute__((unused)),
+				   void **item __attribute__((unused)))
 {
     struct kndSet *self = obj;
     struct kndSetElem *elem;
@@ -777,16 +732,14 @@ static gsl_err_t atomic_elem_alloc(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t atomic_elem_append(void *accu,
-					 void *item)
+static gsl_err_t atomic_elem_append(void *accu  __attribute__((unused)),
+				    void *item __attribute__((unused)))
 {
-    struct kndFacet *self = accu;
-    struct kndSet *set = item;
 
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t atomic_elem_parse(void *obj,
+static gsl_err_t atomic_elem_parse(void *obj  __attribute__((unused)),
 				   const char *rec,
 				   size_t *total_size)
 {
@@ -818,20 +771,6 @@ static gsl_err_t set_read(void *obj,
     };
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
-static gsl_err_t read_facet_name(void *obj,
-				 const char *name, size_t name_size,
-				 const char *rec, size_t *total_size)
-{
-    struct kndFacet *self = obj;
-    gsl_err_t err;
-
-    if (DEBUG_SET_LEVEL_TMP)
-        knd_log(".. read facet name: \"%.*s\"", 16, rec);
-
-    return make_gsl_err(gsl_OK);
-
 }
 
 static gsl_err_t read_facet(void *obj,
@@ -905,11 +844,10 @@ static gsl_err_t facet_alloc(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t confirm_read(void *obj,
+static gsl_err_t confirm_read(void *obj __attribute__((unused)),
 			      const char *val __attribute__((unused)),
 			      size_t val_size __attribute__((unused)))
 {
-    struct kndFacet *self = obj;
     if (DEBUG_SET_LEVEL_2)
         knd_log(".. confirm read!");
     return make_gsl_err(gsl_OK);
