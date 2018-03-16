@@ -1,5 +1,10 @@
-#include "learner-service.h"
+#include <pthread.h>
+#include <string.h>
 
+#include <gsl-parser.h>
+#include <glb-lib/output.h>
+
+#include "learner-service.h"
 #include <knd_dict.h>
 #include <knd_err.h>
 #include <knd_proc.h>
@@ -7,10 +12,6 @@
 #include <knd_state.h>
 #include <knd_utils.h>
 
-#include <gsl-parser.h>
-#include <glb-lib/output.h>
-
-#include <string.h>
 
 static int
 task_callback(struct kmqEndPoint *endpoint __attribute__((unused)), struct kmqTask *task,
@@ -58,11 +59,11 @@ final:
         self->task->tid_size = 1;
     }
 
-    err = self->task->report(self->task);
+    /*    err = self->task->report(self->task);
     if (err != knd_OK) {
         knd_log("-- task report failed: %d", err);
     }
-
+    */
     return 0;
 }
 
@@ -219,6 +220,12 @@ parse_config(void *obj, const char *rec, size_t *total_size)
             .max_buf_size = KND_NAME_SIZE
         },
         {
+            .name = "owners",
+            .name_size = strlen("owners"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->num_owners
+        },
+        {
             .name = "sid",
             .name_size = strlen("sid"),
             .buf = self->admin->sid,
@@ -278,6 +285,18 @@ parse_config(void *obj, const char *rec, size_t *total_size)
         knd_log("-- administrative SID is not set :(");
         return make_gsl_err(gsl_FAIL);
     }
+
+    if (self->num_owners > KND_MAX_OWNERS) {
+	knd_log("-- too many owners requested, limiting to %zu",
+		KND_MAX_OWNERS);
+	self->num_owners = KND_MAX_OWNERS;
+    }
+    if (!self->num_owners)
+	self->num_owners = 1;
+
+    knd_log("== Learner's settings:");
+    knd_log("   total owners: %zu", self->num_owners);
+
     memcpy(self->admin->id, "000", strlen("000"));
 
     /* users path */
@@ -332,12 +351,20 @@ delete__(struct kndLearnerService *self)
     return knd_OK;
 }
 
+void *start_owner(void *arg)
+{
+    struct kndLearnerOwner *owner = arg;
+    knd_log(".. owner %zu started!", owner->id);
+    return NULL;
+}
+
 int
 kndLearnerService_new(struct kndLearnerService **service, const struct kndLearnerOptions *opts)
 {
     struct kndLearnerService *self;
     struct glbOutput *out;
     struct kndConcept *conc;
+    struct kndLearnerOwner *owner;
     int err;
 
     self = calloc(1, sizeof(*self));
@@ -371,7 +398,7 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     // special user
     err = kndUser_new(&self->admin);
     if (err != knd_OK) goto error;
-    self->task->admin = self->admin; // fixme: use public interface to set this fields
+    self->task->admin = self->admin; // fixme: use public interface to set this field
     self->admin->out = self->out;
 
     err = kndMemPool_new(&self->mempool);
@@ -385,6 +412,19 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
 
         err = parse_schema(self, self->out->buf, &chunk_size);
         if (err != knd_OK) goto error;
+    }
+
+    self->owners = calloc(self->num_owners, sizeof(struct kndLearnerOwner));
+    if (err) goto error;
+
+    /* start owners */
+    for (size_t i = 0; i < self->num_owners; i++) {
+	owner = &self->owners[i];
+	owner->id = i;
+        err = pthread_create(&owner->thread, 
+                             NULL,
+                             start_owner,
+                             (void*)owner);
     }
 
     err = self->mempool->alloc(self->mempool);
@@ -455,14 +495,14 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     conc->rel->class_name_idx = conc->class_name_idx;
 
     /* user idx */
-    if (self->mempool->max_users) {
+    /*if (self->mempool->max_users) {
         knd_log("MAX USERS: %zu", self->mempool->max_users);
         self->max_users = self->mempool->max_users;
         self->admin->user_idx = calloc(self->max_users,
                                        sizeof(struct kndObject*));
         if (!self->admin->user_idx) return knd_NOMEM;
         self->admin->max_users = self->max_users;
-    }
+	}*/
 
     /* try opening the frozen DB */
     conc->user = self->admin;
@@ -495,10 +535,6 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
 
     /* read any existing updates to the frozen DB (failure recovery) */
     /*err = conc->restore(conc);
-    if (err) return err;
-    */
-    /* test
-    err = dc->build_diff(dc, "0001");
     if (err) return err;
     */
 

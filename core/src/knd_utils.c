@@ -258,7 +258,7 @@ knd_mkpath(const char *path, size_t path_size, mode_t mode, bool has_filename)
 
             if (buf_size) {
                 *b = '\0';
-                if (DEBUG_UTILS_LEVEL_TMP)
+                if (DEBUG_UTILS_LEVEL_2)
                     knd_log("NB: .. mkdir: %s [%zu]", buf, buf_size);
 
                 err = knd_mkdir(buf, mode);                                       RET_ERR();
@@ -280,7 +280,7 @@ knd_mkpath(const char *path, size_t path_size, mode_t mode, bool has_filename)
     /* in case no final dir separator is present at the end */
     if (buf_size && !has_filename) {
         buf[buf_size] = '\0';
-        if (DEBUG_UTILS_LEVEL_TMP)
+        if (DEBUG_UTILS_LEVEL_2)
             knd_log("LAST DIR: \"%s\" [%zu]", buf, buf_size);
         err = knd_mkdir(buf, mode);                                               RET_ERR();
     }

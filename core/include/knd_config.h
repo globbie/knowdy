@@ -133,6 +133,8 @@ typedef enum knd_storage_type {
 #define KND_MAX_MIGRATIONS 256
 #define KND_MAX_SPECS 64
 
+#define KND_MAX_OWNERS 256
+
 #define KND_MAX_BASES 256
 #define KND_MAX_INHERITED 256
 #define KND_MAX_RELS 1024
