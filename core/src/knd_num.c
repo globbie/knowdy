@@ -19,18 +19,15 @@
 #define DEBUG_NUM_LEVEL_3 0
 #define DEBUG_NUM_LEVEL_TMP 1
 
-static int 
+static void
 kndNum_del(struct kndNum *self)
 {
-
     free(self);
-
-    return knd_OK;
 }
 
 static void str(struct kndNum *self)
 {
-    knd_log("%*s%.*s = %.*s",
+    knd_log("%*s%.*s => %.*s",
                 self->depth * KND_OFFSET_SIZE, "",
             self->elem->attr->name_size, self->elem->attr->name,
             self->states->val_size, self->states->val);

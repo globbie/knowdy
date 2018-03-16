@@ -390,6 +390,14 @@ static gsl_err_t set_inst_classname(void *obj, const char *name, size_t name_siz
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t set_inst_val(void *obj, const char *name, size_t name_size)
+{
+    struct kndRelArgInstance *self = obj;
+    self->val = name;
+    self->val_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t set_inst_objname(void *obj, const char *name, size_t name_size)
 {
     struct kndRelArgInstance *self = obj;
@@ -438,6 +446,11 @@ static gsl_err_t parse_inst_class(void *data,
         { .name = "obj",
           .name_size = strlen("obj"),
           .parse = parse_inst_obj,
+          .obj = self
+        },
+        { .name = "val",
+          .name_size = strlen("val"),
+          .run = set_inst_val,
           .obj = self
         }
     };

@@ -318,8 +318,8 @@ static int parse_GSL(struct kndTask *self,
                      const char *obj,
                      size_t obj_size)
 {
-    if (DEBUG_TASK_LEVEL_2)
-        knd_log(".. parsing task: \"%.*s\"..", 64, rec);
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log(".. parsing task: \"%.*s\"..", 256, rec);
 
     struct gslTaskSpec specs[] = {
         { .name = "task",

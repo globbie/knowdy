@@ -509,14 +509,14 @@ static gsl_err_t parse_rel_select(void *obj,
     struct kndRel *rel;
     int err;
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default Rel select: \"%s\"", rec);
 
     rel = self->root_class->rel;
-
     rel->out = self->out;
     rel->log = self->log;
     rel->task = self->task;
+    rel->mempool = self->task->mempool;
 
     rel->dbpath = self->dbpath;
     rel->dbpath_size = self->dbpath_size;

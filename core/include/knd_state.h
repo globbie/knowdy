@@ -57,6 +57,7 @@ struct kndProcUpdate
 struct kndUpdate
 {
     size_t id;
+    size_t owner_id;
     knd_state_type phase;
     time_t timestamp;
     size_t orig_state;
@@ -85,7 +86,6 @@ struct kndState
     void *val;
     struct kndState *next;
 };
-
 
 struct kndStateControl
 {

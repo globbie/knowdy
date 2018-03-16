@@ -77,10 +77,15 @@ static void inst_arg_str(struct kndRelArgInstance *inst)
 {
     struct kndRelArg *relarg = inst->relarg;
 
-    knd_log("ARG:%.*s    CLASS:%.*s   OBJ:%.*s",
+    knd_log("ARG:%.*s    CLASS: \"%.*s\"",
             relarg->name_size, relarg->name,
-            inst->classname_size, inst->classname,
-            inst->objname_size, inst->objname);
+            inst->classname_size, inst->classname);
+    if (inst->objname_size)
+	knd_log("            OBJ: \"%.*s\"",
+		inst->objname_size, inst->objname);
+    if (inst->val_size)
+	knd_log("            VAL: \"%.*s\"",
+		inst->val_size, inst->val);
 }
 
 static void inst_str(struct kndRel *self, struct kndRelInstance *inst)
@@ -511,7 +516,7 @@ static gsl_err_t validate_rel_arg(void *obj,
     struct kndRelArg *arg;
     int err;
 
-    if (DEBUG_REL_LEVEL_2)
+    if (DEBUG_REL_LEVEL_TMP)
         knd_log(".. parsing the \"%.*s\" rel arg, rec:\"%.*s\"", name_size, name, 32, rec);
 
     /* TODO mempool */
@@ -695,18 +700,11 @@ static int read_GSP(struct kndRel *self,
           .append = gloss_append,
           .parse = read_gloss
         },
-        { .name = "arg",
-          .name_size = strlen("arg"),
-          .buf = buf,
-          .buf_size = &buf_size,
-          .max_buf_size = KND_NAME_SIZE,
-          .is_validator = true,
+        { .is_validator = true,
           .validate = validate_rel_arg,
           .obj = self
         },
-        { .name = "default",
-          .name_size = strlen("default"),
-          .is_default = true,
+        { .is_default = true,
           .run = confirm_rel_read,
           .obj = self
         }
@@ -895,7 +893,7 @@ static gsl_err_t parse_rel_arg_inst(void *obj,
     struct kndRelArgInstance *arg_inst = NULL;
     int err;
 
-    if (DEBUG_REL_LEVEL_1)
+    if (DEBUG_REL_LEVEL_TMP)
         knd_log(".. parsing the \"%.*s\" rel arg instance, rec:\"%.*s\"\n",
                 name_size, name, 128, rec);
 
@@ -936,33 +934,21 @@ static int read_instance(struct kndRel *self,
     size_t buf_size;
     gsl_err_t parser_err;
 
-    if (DEBUG_REL_LEVEL_2) {
+    if (DEBUG_REL_LEVEL_TMP) {
         knd_log(".. reading \"%.*s\" rel instance..", 128, rec);
     }
 
     struct gslTaskSpec specs[] = {
-         { .name = "relarg",
-           .name_size = strlen("relarg"),
-           .buf = buf,
-           .buf_size = &buf_size,
-           .max_buf_size = KND_NAME_SIZE,
+         { .is_validator = true,
+           .validate = parse_rel_arg_inst,
+           .obj = inst
+         },
+         { .type = GSL_CHANGE_STATE,
            .is_validator = true,
            .validate = parse_rel_arg_inst,
            .obj = inst
          },
          { .type = GSL_CHANGE_STATE,
-           .name = "relarg",
-           .name_size = strlen("relarg"),
-           .buf = buf,
-           .buf_size = &buf_size,
-           .max_buf_size = KND_NAME_SIZE,
-           .is_validator = true,
-           .validate = parse_rel_arg_inst,
-           .obj = inst
-         },
-         { .type = GSL_CHANGE_STATE,
-           .name = "default",
-           .name_size = strlen("default"),
            .is_default = true,
            .run = run_select_rel,
            .obj = inst
@@ -992,7 +978,7 @@ static gsl_err_t parse_import_instance(void *data,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_REL_LEVEL_2) {
+    if (DEBUG_REL_LEVEL_TMP) {
         knd_log(".. import \"%.*s\" rel instance..", 128, rec);
     }
 
@@ -1012,19 +998,11 @@ static gsl_err_t parse_import_instance(void *data,
 
     struct gslTaskSpec specs[] = {
          { .type = GSL_CHANGE_STATE,
-           .name = "relarg",
-           .name_size = strlen("relarg"),
-           .buf = buf,
-           .buf_size = &buf_size,
-           .max_buf_size = KND_NAME_SIZE,
            .is_validator = true,
            .validate = parse_rel_arg_inst,
            .obj = inst
          },
-         { .type = GSL_CHANGE_STATE,
-           .name = "default",
-           .name_size = strlen("default"),
-           .is_default = true,
+         { .is_default = true,
            .run = run_select_rel,
            .obj = inst
          }
@@ -1034,7 +1012,7 @@ static gsl_err_t parse_import_instance(void *data,
     if (parser_err.code) return parser_err;
     rel = inst->rel;
 
-    if (DEBUG_REL_LEVEL_2)
+    if (DEBUG_REL_LEVEL_TMP)
         inst_str(rel, inst);
 
     /* save in inbox */
@@ -1093,9 +1071,7 @@ static int parse_rel_select(struct kndRel *self,
           .parse = parse_import_instance,
           .obj = self
         },
-        { .name = "default",
-          .name_size = strlen("default"),
-          .is_default = true,
+        { .is_default = true,
           .run = run_present_rel,
           .obj = self
         }
