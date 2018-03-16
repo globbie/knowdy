@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pthread.h>
 #include <glb-lib/output.h>
 
 #include <knd_mempool.h>
@@ -8,16 +9,35 @@
 
 #include <kmq.h>
 
+struct kndLearnerService;
+
 struct kndLearnerOptions
 {
     char *config_file;
     struct addrinfo *address;
 };
 
+struct kndLearnerOwner
+{
+    size_t id;
+    pthread_t thread;
+    struct kndLearnerService *service;
+
+    struct kndMemPool *mempool;
+    struct kndUser *user;
+    struct kndTask *task;
+    struct glbOutput *task_storage;
+    struct glbOutput *out;
+    struct glbOutput *log;
+};
+
 struct kndLearnerService
 {
     struct kmqKnode *knode;
     struct kmqEndPoint *entry_point;
+
+    struct kndLearnerOwner *owners;
+    size_t num_owners;
 
     struct glbOutput *task_storage;
     struct glbOutput *out;
@@ -27,7 +47,6 @@ struct kndLearnerService
     struct kndUser *admin;
 
     struct kndMemPool *mempool;
-
 
     char name[KND_NAME_SIZE];
     size_t name_size;
@@ -42,7 +61,6 @@ struct kndLearnerService
     size_t delivery_addr_size;
 
     size_t max_users;
-
 
     const struct kndLearnerOptions *opts;
 

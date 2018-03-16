@@ -710,6 +710,7 @@ static int resolve_objs(struct kndConcept     *self,
         }
 	obj->state->phase = KND_CREATED;
 
+	knd_log("++ %.*s obj resolved!", obj->name_size, obj->name);
     update:
 	if (class_update) {
 	    class_update->objs[class_update->num_objs] = obj;
@@ -820,7 +821,7 @@ static int resolve_name_refs(struct kndConcept *self,
     struct kndConcItem *item;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. resolving class \"%.*s\".. is_resolved:%d",
 		self->name_size, self->name, self->is_resolved);
 
@@ -1850,7 +1851,7 @@ static gsl_err_t parse_import_obj(void *data,
 
     c->dir->num_objs++;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         knd_log("++ OBJ registered in \"%.*s\" IDX:  [total:%zu valid:%zu]",
                 c->name_size, c->name, c->dir->obj_idx->size, c->dir->num_objs);
         obj->depth = self->depth + 1;
@@ -2752,7 +2753,6 @@ static int get_conc_name(struct kndConcept *self,
 
     name_size = e - b;
     if (!name_size) return knd_FAIL;
-
 
     memcpy(dir->name, b, name_size);
     dir->name_size = name_size;
@@ -4147,6 +4147,8 @@ static int get_class(struct kndConcept *self,
     if (dir->conc) {
         c = dir->conc;
         c->task = self->task;
+	c->next = NULL;
+
         *result = c;
         return knd_OK;
     }
@@ -4693,6 +4695,7 @@ static int parse_select_class(void *obj,
                               size_t *total_size)
 {
     struct kndConcept *self = obj;
+    struct kndConcept *c;
     int err;
     gsl_err_t parser_err;
 
@@ -4771,14 +4774,14 @@ static int parse_select_class(void *obj,
     }
 
     /* any updates happened? */
-    /*if (self->curr_class) {
-	if (self->curr_class->inbox_size || self->curr_class->obj_inbox_size) {
-	    self->curr_class->next = self->inbox;
-	    self->inbox = self->curr_class;
+    if (self->curr_class) {
+	c = self->curr_class;
+	if (c->inbox_size || c->obj_inbox_size) {
+	    c->next = self->inbox;
+	    self->inbox = c;
 	    self->inbox_size++;
 	}
     }
-    */
 
     return knd_OK;
 }
@@ -5546,10 +5549,7 @@ static int knd_update_state(struct kndConcept *self)
 	c->class_name_idx = self->class_name_idx;
 	c->class_idx = self->class_idx;
 
-	knd_log("..resolving %.*s..", c->name_size, c->name);
-
 	err = c->resolve(c, class_update);
-	knd_log("resolve: %d", err);
 	if (err) {
 	    knd_log("-- %.*s class not resolved :(", c->name_size, c->name);
 	    return err;

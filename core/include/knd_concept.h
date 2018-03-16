@@ -114,6 +114,7 @@ struct kndConcDir
     char id[KND_ID_SIZE];
     size_t id_size;
     size_t numid;
+    size_t owner_id;
 
     char name[KND_NAME_SIZE];
     size_t name_size;
@@ -177,6 +178,7 @@ struct kndConcept
     size_t name_size;
 
     size_t numid;
+    size_t owner_id;
     size_t next_numid;
 
     struct kndState *state;

@@ -79,6 +79,7 @@ struct kndUpdate
 
 struct kndState
 {
+    size_t owner_id;
     knd_state_phase phase;
     struct kndUpdate *update;
     void *val;
