@@ -47,10 +47,11 @@ static void str(struct kndObject *self)
 {
     struct kndElem *elem;
     if (self->type == KND_OBJ_ADDR) {
-        knd_log("\n%*sOBJ %.*s::%.*s  id:%zu  numid:%zu num_elems:%zu",
-                self->depth * KND_OFFSET_SIZE, "", self->conc->name_size, self->conc->name,
+        knd_log("\n%*sOBJ %.*s::%.*s  numid:%zu",
+                self->depth * KND_OFFSET_SIZE, "",
+		self->conc->name_size, self->conc->name,
                 self->name_size, self->name,
-                self->numid, self->numid, self->num_elems);
+		self->numid);
     }
 
     for (elem = self->elems; elem; elem = elem->next) {

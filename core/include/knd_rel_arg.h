@@ -68,7 +68,10 @@ struct kndRelArgInstance
     const char *objname;
     size_t objname_size;
     struct kndObjEntry *obj;
-    
+
+    const char *val;
+    size_t val_size;
+
     struct kndRelArgInstance *next;
 };
 

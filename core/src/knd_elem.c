@@ -5,6 +5,9 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#include <gsl-parser.h>
+#include <glb-lib/output.h>
+
 #include "knd_concept.h"
 #include "knd_repo.h"
 #include "knd_elem.h"
@@ -17,15 +20,11 @@
 
 #include "knd_user.h"
 
-#include <gsl-parser.h>
-#include <glb-lib/output.h>
-
 #define DEBUG_ELEM_LEVEL_1 0
 #define DEBUG_ELEM_LEVEL_2 0
 #define DEBUG_ELEM_LEVEL_3 0
 #define DEBUG_ELEM_LEVEL_4 0
 #define DEBUG_ELEM_LEVEL_TMP 1
-
 
 static void del(struct kndElem *self)
 {
@@ -63,15 +62,15 @@ static void str(struct kndElem *self)
 
     switch (self->attr->type) {
     case KND_ATTR_REF:
-        self->ref->depth = self->depth + 1;
+        self->ref->depth = self->depth;
         self->ref->str(self->ref);
         return;
     case KND_ATTR_NUM:
-        self->num->depth = self->depth + 1;
+        self->num->depth = self->depth;
         self->num->str(self->num);
         return;
     case KND_ATTR_TEXT:
-        self->text->depth = self->depth + 1;
+        self->text->depth = self->depth;
         self->text->str(self->text);
         return;
     default:

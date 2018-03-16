@@ -79,9 +79,8 @@ struct kndNum
     size_t depth;
     
     /******** public methods ********/
-void (*str)(struct kndNum *self);
-
-    int (*del)(struct kndNum *self);
+    void (*str)(struct kndNum *self);
+    void (*del)(struct kndNum *self);
     
     int (*parse)(struct kndNum *self,
                  const char     *rec,

@@ -362,7 +362,7 @@ typedef enum knd_storage_type {
 
 #define KND_CONC_NAME_BUF_SIZE 1024
 
-#define KND_TASK_STORAGE_SIZE 100 * 1024 * 1024 * sizeof(char)
+#define KND_TASK_STORAGE_SIZE 10 * 1024 * 1024 * sizeof(char)
 
 #define KND_SEARCH_BUF_SIZE 1024 * 100 * sizeof(char)
 #define KND_IDX_BUF_SIZE 10 * 1024 * 1024 * sizeof(char)

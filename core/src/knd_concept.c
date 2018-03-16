@@ -687,7 +687,8 @@ static int resolve_objs(struct kndConcept     *self,
     int err;
 
     if (class_update) {
-	class_update->objs = calloc(class_update->num_objs, sizeof(struct kndObject *));
+	class_update->objs = calloc(class_update->num_objs,
+				    sizeof(struct kndObject *));
 	if (!class_update->objs) {
 	    err = knd_NOMEM;
 	    goto final;
@@ -829,6 +830,7 @@ static int resolve_name_refs(struct kndConcept *self,
         if (self->obj_inbox_size) {
             err = resolve_objs(self, update);                                     RET_ERR();
         }
+	knd_log("++ resolving done!");
         return knd_OK;
     }
 
@@ -1827,7 +1829,7 @@ static gsl_err_t parse_import_obj(void *data,
 	knd_num_to_str(obj->numid, obj->id, &obj->id_size, KND_RADIX_BASE);
 
 	if (DEBUG_CONC_LEVEL_TMP)
-	    knd_log("== obj ID: %zu => \"%.*s\"",
+	    knd_log("== assign obj ID: %zu => \"%.*s\"",
 		    obj->numid, obj->id_size, obj->id);
 	obj->name = obj->id;
 	obj->name_size = obj->id_size;
@@ -1851,7 +1853,7 @@ static gsl_err_t parse_import_obj(void *data,
 
     c->dir->num_objs++;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_1) {
         knd_log("++ OBJ registered in \"%.*s\" IDX:  [total:%zu valid:%zu]",
                 c->name_size, c->name, c->dir->obj_idx->size, c->dir->num_objs);
         obj->depth = self->depth + 1;
@@ -3989,7 +3991,7 @@ static int unfreeze_class(struct kndConcept *self,
     struct stat file_info;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. unfreezing class: \"%.*s\"..",
                 dir->name_size, dir->name);
 
@@ -5578,7 +5580,7 @@ static int knd_update_state(struct kndConcept *self)
 	err = self->proc->update(self->proc, update);                             RET_ERR();
     }
     err = state_ctrl->confirm(state_ctrl, update);                                RET_ERR();
-    err = export_updates(self, update);                                           RET_ERR();
+    //err = export_updates(self, update);                                           RET_ERR();
 
     reset_inbox(self);
     return knd_OK;

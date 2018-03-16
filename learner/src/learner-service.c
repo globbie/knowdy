@@ -23,6 +23,9 @@ task_callback(struct kmqEndPoint *endpoint __attribute__((unused)), struct kmqTa
     size_t size;
     int err;
 
+    knd_log("\n\ngot NEW TASK..  storage size:%zu  capacity:%zu",
+	    self->task_storage->buf_size, self->task_storage->capacity);
+
     err = task->get_data(task, 0, &data, &size);
     if (err != knd_OK) { knd_log("-- task read failed"); return -1; }
 
@@ -35,7 +38,7 @@ task_callback(struct kmqEndPoint *endpoint __attribute__((unused)), struct kmqTa
     err = self->task->run(self->task,
 			  b, size,
 			  "None", sizeof("None"));
-
+    knd_log("TASK status: %d", err);
     if (err != knd_OK) {
         self->task->error = err;
         knd_log("-- task running failure: %d", err);
@@ -335,7 +338,7 @@ parse_schema(struct kndLearnerService *self, const char *rec, size_t *total_size
 static int
 start__(struct kndLearnerService *self)
 {
-    knd_log("learner has been started\n");
+    knd_log("learner has been started..\n");
     self->knode->dispatch(self->knode);
     knd_log("learner has been stopped\n");
     return knd_FAIL;
@@ -418,14 +421,15 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     if (err) goto error;
 
     /* start owners */
-    for (size_t i = 0; i < self->num_owners; i++) {
+    /*for (size_t i = 0; i < self->num_owners; i++) {
 	owner = &self->owners[i];
 	owner->id = i;
+	owner->service = self;
         err = pthread_create(&owner->thread, 
                              NULL,
                              start_owner,
                              (void*)owner);
-    }
+			     }*/
 
     err = self->mempool->alloc(self->mempool);
 
