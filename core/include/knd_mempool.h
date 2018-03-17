@@ -21,6 +21,7 @@
 
 #include <stddef.h>
 #include <glb-lib/output.h>
+#include <gsl-parser.h>
 
 #include "knd_config.h"
 
@@ -192,6 +193,8 @@ struct kndMemPool
 
     void (*del)(struct kndMemPool   *self);
     int (*alloc)(struct kndMemPool   *self);
+    gsl_err_t (*parse)(struct kndMemPool *self,
+		       const char *rec, size_t *total_size);
 
     int (*new_set)(struct kndMemPool   *self,
 		     struct kndSet **result);

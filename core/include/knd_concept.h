@@ -275,10 +275,10 @@ struct kndConcept
     /***********  public methods ***********/
     void (*init)(struct kndConcept  *self);
     void (*del)(struct kndConcept   *self);
-    //void (*reset)(struct kndConcept   *self);
+    void (*reset_inbox)(struct kndConcept   *self);
     void (*str)(struct kndConcept *self);
-    int (*open)(struct kndConcept   *self);
 
+    int (*open)(struct kndConcept   *self);
     int (*load)(struct kndConcept   *self,
 		struct kndConcFolder *parent_folder,
                 const char *filename,

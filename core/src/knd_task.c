@@ -163,7 +163,6 @@ static gsl_err_t parse_user(void *obj,
 
     err = self->admin->parse_task(self->admin, rec, total_size);
     if (err) {
-        //knd_log("-- User area parse failed");
         return make_gsl_err_external(knd_FAIL);
     }
 
@@ -293,7 +292,7 @@ static gsl_err_t parse_task(void *obj,
     if (err.code) return err;
 
     /* check mandatory fields */
-    if (!self->tid_size) {
+    /*if (!self->tid_size) {
         switch (self->type) {
         case KND_UPDATE_STATE:
         case KND_LIQUID_STATE:
@@ -303,12 +302,7 @@ static gsl_err_t parse_task(void *obj,
             return make_gsl_err_external(knd_FAIL);
         }
     }
-
-    if (self->delivery_type) {
-	knd_log("Delivery type: %d", self->delivery_type);
-	knd_log("Delivery addr: %.*s", self->delivery_addr_size, self->delivery_addr);
-    }
-
+    */
     return make_gsl_err(gsl_OK);
 }
 
@@ -339,7 +333,7 @@ static int parse_GSL(struct kndTask *self,
 
     parser_err = gsl_parse_task(rec, &total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("-- task parse failure: \"%.*s\" :(", self->log->buf_size, self->log->buf);
+	knd_log("-- task failure :(");
         if (!self->log->buf_size) {
             err = self->log->write(self->log, "internal server error",
                                  strlen("internal server error"));
