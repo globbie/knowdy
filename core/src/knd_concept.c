@@ -81,6 +81,32 @@ static int get_attr(struct kndConcept *self,
                     const char *name, size_t name_size,
                     struct kndAttr **result);
 
+static void reset_inbox(struct kndConcept *self)
+{
+    struct kndConcept *c, *next_c;
+    struct kndObject *obj, *next_obj;
+
+    c = self->inbox;
+    while (c) {
+        c->reset_inbox(c);
+        next_c = c->next;
+        c->next = NULL;
+        c = next_c;
+    }
+
+    obj = self->obj_inbox;
+    while (obj) {
+        next_obj = obj->next;
+        obj->next = NULL;
+        obj = next_obj;
+    }
+
+    self->obj_inbox = NULL;
+    self->obj_inbox_size = 0;
+    self->inbox = NULL;
+    self->inbox_size = 0;
+}
+
 
 
 static void del_obj_dir(struct kndObjDir *dir)
@@ -686,9 +712,13 @@ static int resolve_objs(struct kndConcept     *self,
     struct kndObject *obj;
     int err;
 
+    if (DEBUG_CONC_LEVEL_2)
+	knd_log("..resolving objs, num objs: %zu",
+		self->obj_inbox_size);
+
     if (class_update) {
-	class_update->objs = calloc(class_update->num_objs,
-				    sizeof(struct kndObject *));
+	class_update->objs = calloc(self->obj_inbox_size,
+				    sizeof(struct kndObject*));
 	if (!class_update->objs) {
 	    err = knd_NOMEM;
 	    goto final;
@@ -700,32 +730,35 @@ static int resolve_objs(struct kndConcept     *self,
 	    knd_log("NB: \"%.*s\" obj to be removed", obj->name_size, obj->name);
 	    goto update;
 	}
-
         obj->task = self->task;
         obj->log = self->log;
 
         err = obj->resolve(obj);
         if (err) {
-            knd_log("-- %.*s obj not resolved :(", obj->name_size, obj->name);
+            knd_log("-- %.*s obj not resolved :(",
+		    obj->name_size, obj->name);
             goto final;
-        }
+	}
 	obj->state->phase = KND_CREATED;
 
-	knd_log("++ %.*s obj resolved!", obj->name_size, obj->name);
     update:
+
 	if (class_update) {
+	    /* NB: should never happen: mismatch of num objs */
+	    if (class_update->num_objs >= self->obj_inbox_size) {
+		knd_log("-- num objs mismatch in %.*s:  %zu vs %zu:(",
+			self->name_size, self->name,
+			class_update->num_objs, self->obj_inbox_size);
+		return knd_FAIL;
+	    }
 	    class_update->objs[class_update->num_objs] = obj;
 	    class_update->num_objs++;
 	}
     }
-
     err =  knd_OK;
 
  final:
-    /* TODO: free objs if err? */
-
-    self->obj_inbox = NULL;
-    self->obj_inbox_size = 0;
+ 
     return err;
 }
 
@@ -814,23 +847,22 @@ static int resolve_base_classes(struct kndConcept *self)
     return knd_OK;
 }
 
-static int resolve_name_refs(struct kndConcept *self,
-			     struct kndClassUpdate *update)
+static int resolve_refs(struct kndConcept *self,
+			struct kndClassUpdate *update)
 {
     struct kndConcept *root;
     struct kndConcRef *ref;
     struct kndConcItem *item;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log(".. resolving class \"%.*s\".. is_resolved:%d",
 		self->name_size, self->name, self->is_resolved);
 
     if (self->is_resolved) {
         if (self->obj_inbox_size) {
             err = resolve_objs(self, update);                                     RET_ERR();
-        }
-	knd_log("++ resolving done!");
+	}
         return knd_OK;
     }
 
@@ -862,8 +894,6 @@ static int resolve_name_refs(struct kndConcept *self,
 
     if (self->obj_inbox_size) {
         err = resolve_objs(self, update);                                         RET_ERR();
-	self->obj_inbox = NULL;
-	self->obj_inbox_size = 0;
     }
 
     self->is_resolved = true;
@@ -1791,10 +1821,13 @@ static gsl_err_t parse_import_obj(void *data,
     }
 
     err = self->mempool->new_obj(self->mempool, &obj);
-    if (err) return make_gsl_err_external(err);
+    if (err) {
+	return make_gsl_err_external(err);
+    }
     err = self->mempool->new_state(self->mempool, &obj->state);
-    if (err) return make_gsl_err_external(err);
-
+    if (err) {
+	return make_gsl_err_external(err);
+    }
 
     obj->state->phase = KND_SUBMITTED;
     obj->conc = self->curr_class;
@@ -1806,14 +1839,18 @@ static gsl_err_t parse_import_obj(void *data,
     err = obj->parse(obj, rec, total_size);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("++ %.*s obj parse OK!", obj->name_size, obj->name);
 
     c = obj->conc;
     obj->next = c->obj_inbox;
     c->obj_inbox = obj;
     c->obj_inbox_size++;
     c->num_objs++;
+
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log("++ %.*s obj parse OK! total objs in %.*s: %zu",
+		obj->name_size, obj->name,
+		c->name_size, c->name, c->obj_inbox_size);
+
     obj->numid = c->num_objs;
     
     if (!c->dir) {
@@ -4150,7 +4187,11 @@ static int get_class(struct kndConcept *self,
         c = dir->conc;
         c->task = self->task;
 	c->next = NULL;
-
+	/*c->inbox = NULL;
+	c->inbox_size = 0;
+	c->obj_inbox = NULL;
+	c->obj_inbox_size = 0;
+	*/
         *result = c;
         return knd_OK;
     }
@@ -4764,7 +4805,7 @@ static int parse_select_class(void *obj,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-	if (DEBUG_CONC_LEVEL_TMP)
+	if (DEBUG_CONC_LEVEL_2)
 	    knd_log("-- class parse error %d: \"%.*s\"",
 		    parser_err.code, self->log->buf_size, self->log->buf);
         if (!self->log->buf_size) {
@@ -4772,6 +4813,12 @@ static int parse_select_class(void *obj,
                                  strlen("class parse failure"));
             if (err) return err;
         }
+
+	/* TODO: release resources */
+	if (self->curr_class) {
+	    c = self->curr_class;
+	    c->reset_inbox(c);
+	}
         return gsl_err_to_knd_err_codes(parser_err);
     }
 
@@ -5483,8 +5530,6 @@ static int apply_liquid_updates(struct kndConcept *self,
                                        c->name, c->name_size, (void*)dir);
             if (err) return err;
         }
-        self->inbox = NULL;
-        self->inbox_size = 0;
     }
 
     if (self->rel->inbox_size) {
@@ -5503,20 +5548,7 @@ static int apply_liquid_updates(struct kndConcept *self,
     err = state_ctrl->confirm(state_ctrl, self->curr_update);
     if (err) return err;
 
-    if (self->rel->inbox_size)
-	self->rel->reset_inbox(self->rel);
-
     return knd_OK;
-}
-
-static void reset_inbox(struct kndConcept *self)
-{
-    self->inbox = NULL;
-    self->inbox_size = 0;
-    self->obj_inbox = NULL;
-    self->obj_inbox_size = 0;
-    if (self->rel)
-	self->rel->reset_inbox(self->rel);
 }
 
 static int knd_update_state(struct kndConcept *self)
@@ -5527,9 +5559,9 @@ static int knd_update_state(struct kndConcept *self)
     struct kndClassUpdate *class_update;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
-	knd_log("\n..update state of \"%.*s\". INBOX size:%zu",
-		self->name_size, self->name, self->inbox_size);
+    if (DEBUG_CONC_LEVEL_1)
+	knd_log("..update state of \"%.*s\"",
+		self->name_size, self->name);
 
     /* new update obj */
     err = self->mempool->new_update(self->mempool, &update);                      RET_ERR();
@@ -5543,7 +5575,6 @@ static int knd_update_state(struct kndConcept *self)
     /* resolve all refs */
     for (c = self->inbox; c; c = c->next) {
 	err = self->mempool->new_class_update(self->mempool, &class_update);      RET_ERR();
-
 	c->task = self->task;
 	c->log = self->log;
 	c->frozen_output_file_name = self->frozen_output_file_name;
@@ -5556,7 +5587,6 @@ static int knd_update_state(struct kndConcept *self)
 	    knd_log("-- %.*s class not resolved :(", c->name_size, c->name);
 	    return err;
 	}
-
         self->next_numid++;
         c->numid = self->next_numid;
 	class_update->conc = c;
@@ -5568,10 +5598,10 @@ static int knd_update_state(struct kndConcept *self)
 
 	update->classes[update->num_classes] = class_update;
         update->num_classes++;
-
 	/* stats */
 	update->total_objs += class_update->num_objs;
     }
+
     if (self->rel->inbox_size) {
         err = self->rel->update(self->rel, update);                               RET_ERR();
     }
@@ -5579,10 +5609,10 @@ static int knd_update_state(struct kndConcept *self)
     if (self->proc->inbox_size) {
 	err = self->proc->update(self->proc, update);                             RET_ERR();
     }
+
     err = state_ctrl->confirm(state_ctrl, update);                                RET_ERR();
     //err = export_updates(self, update);                                           RET_ERR();
 
-    reset_inbox(self);
     return knd_OK;
 }
 
@@ -6132,10 +6162,11 @@ extern void kndConcept_init(struct kndConcept *self)
     self->load = read_GSL_file;
     self->read = read_GSP;
     self->read_obj_entry = read_obj_entry;
+    self->reset_inbox = reset_inbox;
     self->restore = restore;
     self->select_delta = select_delta;
     self->coordinate = coordinate;
-    self->resolve = resolve_name_refs;
+    self->resolve = resolve_refs;
 
     self->import = parse_import_class;
     self->sync = parse_sync_task;

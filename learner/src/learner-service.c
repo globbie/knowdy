@@ -14,7 +14,8 @@
 
 
 static int
-task_callback(struct kmqEndPoint *endpoint __attribute__((unused)), struct kmqTask *task,
+task_callback(struct kmqEndPoint *endpoint __attribute__((unused)),
+	      struct kmqTask *task,
 	      void *cb_arg)
 {
     struct kndLearnerService *self = cb_arg;
@@ -23,22 +24,23 @@ task_callback(struct kmqEndPoint *endpoint __attribute__((unused)), struct kmqTa
     size_t size;
     int err;
 
-    knd_log("\n\ngot NEW TASK..  storage size:%zu  capacity:%zu",
+    knd_log("++ new task! curr storage size:%zu  capacity:%zu",
 	    self->task_storage->buf_size, self->task_storage->capacity);
 
     err = task->get_data(task, 0, &data, &size);
     if (err != knd_OK) { knd_log("-- task read failed"); return -1; }
 
     b = self->task_storage->buf + self->task_storage->buf_size;
-
     err = self->task_storage->write(self->task_storage, data, size);
-    if (err) return err;
+    if (err) {
+	knd_log("-- task storage limit reached!");
+	return err;
+    }
 
     self->task->reset(self->task);
     err = self->task->run(self->task,
 			  b, size,
 			  "None", sizeof("None"));
-    knd_log("TASK status: %d", err);
     if (err != knd_OK) {
         self->task->error = err;
         knd_log("-- task running failure: %d", err);
@@ -55,13 +57,9 @@ final:
     default:
 	/* retract last write to task_storage */
 	self->task_storage->rtrim(self->task_storage, size);
+	break;
     }
     
-    if (!self->task->tid_size) {
-        self->task->tid[0] = '0';
-        self->task->tid_size = 1;
-    }
-
     /*    err = self->task->report(self->task);
     if (err != knd_OK) {
         knd_log("-- task report failed: %d", err);
@@ -70,105 +68,6 @@ final:
     return 0;
 }
 
-static gsl_err_t
-parse_memory_settings(void *obj, const char *rec, size_t *total_size)
-{
-    struct kndMemPool *self = obj;
-    struct gslTaskSpec specs[] = {
-        {
-            .name = "max_users",
-            .name_size = strlen("max_users"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_users
-        },
-        {
-            .name = "max_classes",
-            .name_size = strlen("max_classes"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_classes
-        },
-        {
-            .name = "max_conc_items",
-            .name_size = strlen("max_conc_items"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_conc_items
-        },
-        {
-            .name = "max_attrs",
-            .name_size = strlen("max_attrs"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_attrs
-        },
-        {
-            .name = "max_states",
-            .name_size = strlen("max_states"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_states
-        },
-        {
-            .name = "max_objs",
-            .name_size = strlen("max_objs"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_objs
-        },
-        {
-            .name = "max_elems",
-            .name_size = strlen("max_elems"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_elems
-        },
-        {
-            .name = "max_rels",
-            .name_size = strlen("max_rels"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_rels
-        },
-        {
-            .name = "max_rel_args",
-            .name_size = strlen("max_rels_args"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_rel_args
-        },
-        {
-            .name = "max_rel_refs",
-            .name_size = strlen("max_rel_refs"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_rel_refs
-        },
-        {
-            .name = "max_rel_instances",
-            .name_size = strlen("max_rel_instances"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_rel_insts
-        },
-        {
-            .name = "max_rel_arg_instances",
-            .name_size = strlen("max_rel_arg_instances"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_rel_arg_insts
-        },
-        {
-            .name = "max_rel_arg_inst_refs",
-            .name_size = strlen("max_rel_arg_inst_refs"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_rel_arg_inst_refs
-        },
-        {
-            .name = "max_procs",
-            .name_size = strlen("max_procs"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_procs
-        },
-        {
-            .name = "max_proc_instances",
-            .name_size = strlen("max_proc_instances"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_proc_insts
-        }
-    };
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
 
 static gsl_err_t
 run_check_schema(void *obj __attribute__((unused)), const char *val, size_t val_size)
@@ -195,6 +94,13 @@ run_set_address(void *obj, const char *val, size_t val_size)
     if (err != 0) return make_gsl_err(gsl_FAIL);
 
     return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t
+parse_memory_settings(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndMemPool *mempool = obj;
+    return mempool->parse(mempool, rec, total_size);
 }
 
 static gsl_err_t
@@ -415,6 +321,7 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
 
         err = parse_schema(self, self->out->buf, &chunk_size);
         if (err != knd_OK) goto error;
+	self->out->reset(self->out);
     }
 
     self->owners = calloc(self->num_owners, sizeof(struct kndLearnerOwner));

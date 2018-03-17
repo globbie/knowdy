@@ -1643,6 +1643,10 @@ static int update_state(struct kndProc *self,
         update->procs[update->num_procs] = proc_update;
         update->num_procs++;
     }
+
+    self->inbox = NULL;
+    self->inbox_size = 0;
+
     return knd_OK;
 }
 

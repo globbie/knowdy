@@ -355,20 +355,23 @@ static gsl_err_t parse_class_import(void *obj,
                                     size_t *total_size)
 {
     struct kndUser *self = obj;
+    struct kndConcept *c;
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class import: \"%.*s\"", 64, rec);
-
     self->task->type = KND_CHANGE_STATE;
+    c = self->root_class;
+    c->out = self->out;
+    c->log = self->log;
+    c->task = self->task;
+    c->dbpath = self->dbpath;
+    c->dbpath_size = self->dbpath_size;
+    c->inbox = NULL;
+    c->inbox_size = 0;
+    c->obj_inbox = NULL;
+    c->obj_inbox_size = 0;
 
-    self->root_class->out = self->out;
-    self->root_class->log = self->log;
-    self->root_class->task = self->task;
-
-    self->root_class->dbpath = self->dbpath;
-    self->root_class->dbpath_size = self->dbpath_size;
-
-    return self->root_class->import(self->root_class, rec, total_size);
+    return c->import(c, rec, total_size);
 }
 
 static gsl_err_t parse_sync_task(void *obj,
@@ -494,9 +497,14 @@ static gsl_err_t parse_class_select(void *obj,
     c->curr_class = NULL;
     c->curr_baseclass = NULL;
     c->root_class = c;
+    c->reset_inbox(c);
 
     err = c->select(c, rec, total_size);
-    if (err) return make_gsl_err_external(err);
+    if (err) {
+	/* TODO: release resources */
+	c->reset_inbox(c);
+	return make_gsl_err_external(err);
+    }
 
     return make_gsl_err(gsl_OK);
 }
@@ -516,7 +524,10 @@ static gsl_err_t parse_rel_select(void *obj,
     rel->out = self->out;
     rel->log = self->log;
     rel->task = self->task;
-    rel->mempool = self->task->mempool;
+    rel->inbox = NULL;
+    rel->inbox_size = 0;
+    rel->inst_inbox = NULL;
+    rel->inst_inbox_size = 0;
 
     rel->dbpath = self->dbpath;
     rel->dbpath_size = self->dbpath_size;
@@ -724,6 +735,7 @@ static int parse_task(struct kndUser *self,
                       const char *rec,
                       size_t *total_size)
 {
+    struct kndConcept *c;
     struct kndObject *obj, *next_obj;
     struct ooDict *idx;
 
@@ -851,55 +863,28 @@ static int parse_task(struct kndUser *self,
             knd_log("++ liquid updates applied!");
         return knd_OK;
     case KND_GET_STATE:
-        if (DEBUG_USER_LEVEL_2)
-            knd_log("++ select task complete!");
         return knd_OK;
     case KND_UPDATE_STATE:
         self->task->update_spec = rec;
         self->task->update_spec_size = *total_size;
-        self->root_class->task = self->task;
-        err = self->root_class->update_state(self->root_class);
+	c = self->root_class;
+        c->task = self->task;
+        err = c->update_state(c);
         if (err) {
             knd_log("-- failed to update state :(");
             goto cleanup;
         }
+	break;
     default:
         break;
     }
 
-    return knd_OK;
+    err = knd_OK;
 
  cleanup:
 
-    /* TODO : deallocate resources */
-    if (self->root_class->obj_inbox_size) {
-        if (DEBUG_USER_LEVEL_1)
-            knd_log("\n.. obj inbox cleanup..");
-        obj = self->root_class->obj_inbox;
-        while (obj) {
-            if (obj->conc && obj->conc->dir) {
-                idx = obj->conc->dir->obj_idx;
-                e = idx->remove(idx, obj->name, obj->name_size);
-
-                if (DEBUG_USER_LEVEL_2)
-                    knd_log("!! removed \"%.*s\" from obj idx: %d",
-                            obj->name_size, obj->name, e);
-            }
-            next_obj = obj->next;
-            obj->del(obj);
-            obj = next_obj;
-        }
-
-        self->root_class->obj_inbox = NULL;
-        self->root_class->obj_inbox_size = 0;
-    }
-
-    if (self->root_class->inbox_size) {
-        if (DEBUG_USER_LEVEL_2)
-            knd_log(".. class inbox cleanup..");
-        self->root_class->inbox = NULL;
-        self->root_class->inbox_size = 0;
-    }
+    /* TODO: release resources */
+    self->root_class->reset_inbox(self->root_class);
 
     return err;
 }

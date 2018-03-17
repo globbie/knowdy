@@ -144,8 +144,8 @@ static int new_update(struct kndMemPool *self,
 {
     struct kndUpdate *upd;
     int e;
-
     if (self->num_updates >= self->max_updates) {
+	knd_log("-- updates memory limit exceeded, max: %zu", self->max_updates);
         self->log->reset(self->log);
         e = self->log->write(self->log, "memory limit reached",
                              strlen("memory limit reached"));
@@ -170,11 +170,12 @@ static int new_class_update(struct kndMemPool *self,
 
     if (self->num_class_updates >= self->max_class_updates) {
         self->log->reset(self->log);
-        e = self->log->write(self->log, "memory limit reached",
-                             strlen("memory limit reached"));
+        e = self->log->write(self->log, "class update mempool exhausted",
+                             strlen("class update mempool exhausted"));
         if (e) return e;
 
-        knd_log("-- memory limit reached :(");
+        knd_log("-- class update mempool exhausted, max: %zu",
+		self->max_class_updates);
         return knd_LIMIT;
     }
     upd = &self->class_updates[self->num_class_updates];
@@ -221,6 +222,7 @@ static int new_state(struct kndMemPool *self,
 {
     struct kndState *state;
     if (self->num_states >= self->max_states) {
+	knd_log("-- state mempool exhausted, max: %zu", self->max_states);
         return knd_NOMEM;
     }
     state = &self->states[self->num_states];
@@ -408,18 +410,17 @@ static int new_rel_arg_inst_ref(struct kndMemPool *self,
 
 
 static int new_rel_update(struct kndMemPool *self,
-                            struct kndRelUpdate **result)
+			  struct kndRelUpdate **result)
 {
     struct kndRelUpdate *upd;
     int e;
 
     if (self->num_rel_updates >= self->max_rel_updates) {
+	knd_log("-- rel update mempool exhausted, max: %zu", self->max_rel_updates);
         self->log->reset(self->log);
-        e = self->log->write(self->log, "memory limit reached",
-                             strlen("memory limit reached"));
+        e = self->log->write(self->log, "rel updates memory limit reached",
+                             strlen("rel updates memory limit reached"));
         if (e) return e;
-
-        knd_log("-- memory limit reached :(");
         return knd_LIMIT;
     }
     upd = &self->rel_updates[self->num_rel_updates];
@@ -769,10 +770,128 @@ static int alloc(struct kndMemPool *self)
     return knd_OK;
 }
 
+static gsl_err_t
+parse_memory_settings(struct kndMemPool *self, const char *rec, size_t *total_size)
+{
+    struct gslTaskSpec specs[] = {
+        {
+            .name = "max_users",
+            .name_size = strlen("max_users"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_users
+        },
+        {
+            .name = "max_classes",
+            .name_size = strlen("max_classes"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_classes
+        },
+        {
+            .name = "max_conc_items",
+            .name_size = strlen("max_conc_items"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_conc_items
+        },
+        {
+            .name = "max_attrs",
+            .name_size = strlen("max_attrs"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_attrs
+        },
+        {
+            .name = "max_states",
+            .name_size = strlen("max_states"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_states
+        },
+        {
+            .name = "max_updates",
+            .name_size = strlen("max_updates"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_updates
+        },
+        {
+            .name = "max_class_updates",
+            .name_size = strlen("max_class_updates"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_class_updates
+        },
+        {
+            .name = "max_rel_updates",
+            .name_size = strlen("max_rel_updates"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_rel_updates
+        },
+        {
+            .name = "max_objs",
+            .name_size = strlen("max_objs"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_objs
+        },
+        {
+            .name = "max_elems",
+            .name_size = strlen("max_elems"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_elems
+        },
+        {
+            .name = "max_rels",
+            .name_size = strlen("max_rels"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_rels
+        },
+        {
+            .name = "max_rel_args",
+            .name_size = strlen("max_rels_args"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_rel_args
+        },
+        {
+            .name = "max_rel_refs",
+            .name_size = strlen("max_rel_refs"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_rel_refs
+        },
+        {
+            .name = "max_rel_instances",
+            .name_size = strlen("max_rel_instances"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_rel_insts
+        },
+        {
+            .name = "max_rel_arg_instances",
+            .name_size = strlen("max_rel_arg_instances"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_rel_arg_insts
+        },
+        {
+            .name = "max_rel_arg_inst_refs",
+            .name_size = strlen("max_rel_arg_inst_refs"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_rel_arg_inst_refs
+        },
+        {
+            .name = "max_procs",
+            .name_size = strlen("max_procs"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_procs
+        },
+        {
+            .name = "max_proc_instances",
+            .name_size = strlen("max_proc_instances"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_proc_insts
+        }
+    };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 extern void
 kndMemPool_init(struct kndMemPool *self)
 {
     self->del = del;
+    self->parse = parse_memory_settings;
     self->alloc = alloc;
     self->new_set = new_set;
     self->new_set_elem = new_set_elem;
@@ -810,7 +929,7 @@ extern int
 kndMemPool_new(struct kndMemPool **obj)
 {
     struct kndMemPool *self;
-
+    int err;
     self = malloc(sizeof(struct kndMemPool));
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndMemPool));
@@ -819,7 +938,13 @@ kndMemPool_new(struct kndMemPool **obj)
     memset(self->next_proc_id, '0', KND_ID_SIZE);
     memset(self->next_rel_id, '0', KND_ID_SIZE);
 
+    err = glbOutput_new(&self->log, KND_MED_BUF_SIZE);
+    if (err != knd_OK) goto error;
+
     kndMemPool_init(self);
     *obj = self;
     return knd_OK;
+ error:
+    del(self);
+    return err;
 }

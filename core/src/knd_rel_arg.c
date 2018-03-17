@@ -539,9 +539,8 @@ static int resolve_inst(struct kndRelArg *self,
     struct kndObjEntry *obj;
     int err;
 
-
     dir = self->rel->class_name_idx->get(self->rel->class_name_idx,
-                                    inst->classname, inst->classname_size);
+					 inst->classname, inst->classname_size);
     if (!dir) {
         knd_log("-- no such class: %.*s :(", inst->classname_size, inst->classname);
         return knd_FAIL;
@@ -553,22 +552,35 @@ static int resolve_inst(struct kndRelArg *self,
 
     /* resolve obj ref */
     if (inst->objname_size) {
-        if (dir->obj_idx) {
-            obj = dir->obj_idx->get(dir->obj_idx,
-                                    inst->objname, inst->objname_size);
-            if (!obj) {
-                knd_log("-- no such obj: %.*s :(", inst->objname_size, inst->objname);
-                return knd_FAIL;
-            }
-            err = link_rel(self, inst, obj);        RET_ERR();
-            inst->obj = obj;
+	knd_log(".. resolving rel arg inst OBJ ref: \"%.*s\""
+		" CONC DIR: %.*s OBJ IDX:%p",
+		inst->objname_size, inst->objname,
+		dir->name_size, dir->name, dir->obj_idx);
 
-            if (DEBUG_RELARG_LEVEL_2)
-                knd_log("++ obj resolved: \"%.*s\"!",  inst->objname_size, inst->objname);
+        if (!dir->obj_idx) {
+	    knd_log("-- empty obj IDX in class \"%.*s\" :(",
+		    	dir->name_size, dir->name);
+	    return knd_FAIL;
+	}
+
+	obj = dir->obj_idx->get(dir->obj_idx,
+				inst->objname, inst->objname_size);
+	if (!obj) {
+	    knd_log("-- no such obj: %.*s :(",
+		    inst->objname_size, inst->objname);
+	    return knd_FAIL;
+	}
+
+	err = link_rel(self, inst, obj);        RET_ERR();
+	inst->obj = obj;
+
+	if (DEBUG_RELARG_LEVEL_2) {
+	    knd_log("++ obj resolved: \"%.*s\"!",
+		    inst->objname_size, inst->objname);
         }
     }
 
-    if (DEBUG_RELARG_LEVEL_TMP)
+    if (DEBUG_RELARG_LEVEL_2)
         knd_log("++ Rel Arg instance resolved: \"%.*s\"!",
                 inst->classname_size, inst->classname);
 
