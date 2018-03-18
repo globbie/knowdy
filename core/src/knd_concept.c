@@ -2331,41 +2331,6 @@ static int knd_get_dir_size(struct kndConcept *self,
     return knd_OK;
 }
 
-static gsl_err_t run_set_dir_size(void *obj, const char *val, size_t val_size)
-{
-    char buf[KND_SHORT_NAME_SIZE] = {0};
-    struct kndConcDir *self = obj;
-    char *invalid_num_char = NULL;
-    long numval;
-
-    if (!val_size) return make_gsl_err(gsl_FORMAT);
-    if (val_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    /* null terminated string is needed for strtol */
-    memcpy(buf, val, val_size);
-
-    numval = strtol(buf, &invalid_num_char, KND_NUM_ENCODE_BASE);
-    if (*invalid_num_char) {
-        knd_log("-- invalid char: %.*s in \"%.*s\"",
-		1, invalid_num_char, val_size, val);
-        return make_gsl_err(gsl_FORMAT);
-    }
-    
-    /* check for various numeric decoding errors */
-    if ((errno == ERANGE && (numval == LONG_MAX || numval == LONG_MIN)) ||
-            (errno != 0 && numval == 0))
-    {
-        return make_gsl_err(gsl_LIMIT);
-    }
-
-    if (numval <= 0) return make_gsl_err(gsl_LIMIT);
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("== DIR size: %lu", (unsigned long)numval);
-
-    self->block_size = numval;
-    
-    return make_gsl_err(gsl_OK);
-}
 
 static gsl_err_t run_set_reldir_size(void *obj, const char *val, size_t val_size)
 {
@@ -2434,35 +2399,43 @@ static gsl_err_t run_set_procdir_size(void *obj, const char *val, size_t val_siz
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_dir_entry(void *obj,
-                                 const char *rec,
-                                 size_t *total_size)
+
+static gsl_err_t run_set_dir_size(void *obj, const char *val, size_t val_size)
 {
+    char buf[KND_SHORT_NAME_SIZE] = {0};
     struct kndConcDir *self = obj;
+    char *invalid_num_char = NULL;
+    long numval;
 
+    if (!val_size) return make_gsl_err(gsl_FORMAT);
+    if (val_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    /* null terminated string is needed for strtol */
+    memcpy(buf, val, val_size);
+
+    numval = strtol(buf, &invalid_num_char, KND_NUM_ENCODE_BASE);
+    if (*invalid_num_char) {
+        knd_log("-- invalid char: %.*s in \"%.*s\"",
+		1, invalid_num_char, val_size, val);
+        return make_gsl_err(gsl_FORMAT);
+    }
+    
+    /* check for various numeric decoding errors */
+    if ((errno == ERANGE && (numval == LONG_MAX || numval == LONG_MIN)) ||
+            (errno != 0 && numval == 0))
+    {
+        return make_gsl_err(gsl_LIMIT);
+    }
+
+    if (numval <= 0) return make_gsl_err(gsl_LIMIT);
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. parsing dir entry %.*s: \"%.*s\"",
-                self->name_size, self->name, 32, rec);
+        knd_log("== DIR size: %lu", (unsigned long)numval);
 
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_set_dir_size,
-          .obj = self
-        },
-        { .name = "t",
-          .name_size = strlen("t"),
-          .parse = gsl_parse_size_t,
-          .obj = &self->num_terminals
-        },
-        { .name = "o",
-          .name_size = strlen("o"),
-          .parse = gsl_parse_size_t,
-          .obj = &self->total_objs
-        }
-    };
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    self->block_size = numval;
+    
+    return make_gsl_err(gsl_OK);
 }
+
 
 static gsl_err_t parse_parent_dir_size(void *obj,
                                        const char *rec,
@@ -2578,27 +2551,21 @@ static gsl_err_t dir_entry_alloc(void *self,
     struct kndConcDir *parent_dir = self;
     struct kndConcDir *dir;
     int err;
-    return make_gsl_err(gsl_FAIL);  // stub
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. %.*s to add list item: %.*s count: %zu"
-		" [total children: %zu] mempool:%p",
+		" [total children: %zu]",
                 KND_ID_SIZE, parent_dir->id, name_size, name,
-		count, parent_dir->num_children,
-		parent_dir->mempool);
+		count, parent_dir->num_children);
 
     if (name_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
     err = parent_dir->mempool->new_conc_dir(parent_dir->mempool, &dir);
     if (err) return make_gsl_err_external(err);
 
-    memcpy(dir->id, name, name_size);
-    dir->id_size = name_size;
     dir->mempool = parent_dir->mempool;
     dir->class_idx = parent_dir->class_idx;
-
-    //memset(dir->next_obj_id, '0', KND_ID_SIZE);
-    knd_calc_num_id(name, name_size, &dir->numid);
+    knd_calc_num_id(name, name_size, &dir->block_size);
 
     *item = dir;
     return make_gsl_err(gsl_OK);
@@ -2613,7 +2580,6 @@ static gsl_err_t reldir_entry_alloc(void *self,
     struct kndConcDir *parent_dir = self;
     struct kndRelDir *dir;
     int err;
-    return make_gsl_err(gsl_FAIL);  // stub
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. create REL DIR ENTRY: %.*s count: %zu",
@@ -2623,10 +2589,8 @@ static gsl_err_t reldir_entry_alloc(void *self,
 
     err = parent_dir->mempool->new_rel_dir(parent_dir->mempool, &dir);
     if (err) return make_gsl_err_external(err);
-
-    memcpy(dir->id, name, KND_ID_SIZE);
-    memset(dir->next_inst_id, '0', KND_ID_SIZE);
-
+    knd_calc_num_id(name, name_size, &dir->block_size);
+    
     *item = dir;
     return make_gsl_err(gsl_OK);
 }
@@ -2658,25 +2622,6 @@ static gsl_err_t reldir_entry_append(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_reldir_entry(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
-{
-    struct kndRelDir *self = obj;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. parsing REL DIR entry %.*s: \"%.*s\"",
-                self->name_size, self->name, 32, rec);
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_set_reldir_size,
-          .obj = self
-        }
-    };
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
 
 static gsl_err_t procdir_entry_alloc(void *self,
                                      const char *name,
@@ -3168,6 +3113,20 @@ static int parse_dir_trailer(struct kndConcept *self,
     int err;
     gsl_err_t parser_err;
 
+    struct gslTaskSpec class_dir_spec = {
+        .is_list_item = true,
+	.accu = parent_dir,
+	.alloc = dir_entry_alloc,
+	.append = dir_entry_append,
+    };
+
+    struct gslTaskSpec rel_dir_spec = {
+        .is_list_item = true,
+	.accu = parent_dir,
+	.alloc = reldir_entry_alloc,
+	.append = reldir_entry_append,
+    };
+    
     struct gslTaskSpec specs[] = {
         { .name = "C",
           .name_size = strlen("C"),
@@ -3182,19 +3141,15 @@ static int parse_dir_trailer(struct kndConcept *self,
         { .is_list = true,
           .name = "c",
           .name_size = strlen("c"),
-          .accu = parent_dir,
-          .alloc = dir_entry_alloc,
-          .append = dir_entry_append,
-          .parse = parse_dir_entry
-        },
+          .parse = gsl_parse_array,
+          .obj = &class_dir_spec
+	},
         { .is_list = true,
           .name = "R",
           .name_size = strlen("R"),
-          .accu = parent_dir,
-          .alloc = reldir_entry_alloc,
-          .append = reldir_entry_append,
-          .parse = parse_reldir_entry
-        },
+          .parse = gsl_parse_array,
+          .obj = &rel_dir_spec
+        }/*,
         { .is_list = true,
           .name = "P",
           .name_size = strlen("P"),
@@ -3202,7 +3157,7 @@ static int parse_dir_trailer(struct kndConcept *self,
           .alloc = procdir_entry_alloc,
           .append = procdir_entry_append,
           .parse = parse_procdir_entry
-        }
+	  }*/
     };
 
     parent_dir->curr_offset = parent_dir->global_offset;
@@ -5867,6 +5822,8 @@ static int freeze_subclasses(struct kndConcept *self,
                              char *output,
                              size_t *total_size)
 {
+    char buf[KND_SHORT_NAME_SIZE] = {0};
+    size_t buf_size;
     struct kndConcept *c;
     struct kndConcRef *ref;
     char *curr_dir = output;
@@ -5902,60 +5859,22 @@ static int freeze_subclasses(struct kndConcept *self,
         }
 
         if (DEBUG_CONC_LEVEL_2)
-            knd_log("     OUT: \"%.*s\" [%zu]\nclass \"%.*s\" id:%.*s [frozen size: %lu]\n",
+            knd_log("     OUT: \"%.*s\" [%zu]\nclass \"%.*s\""
+		    " id:%.*s [frozen size: %lu]\n",
                     c->out->buf_size, c->out->buf, c->out->buf_size,
                     c->name_size, c->name, c->dir->id_size, c->dir->id,
                     (unsigned long)c->frozen_size);
-
-        memcpy(curr_dir, "{", 1); 
+        memcpy(curr_dir, " ", 1);
         curr_dir++;
         curr_dir_size++;
-
-        memcpy(curr_dir, c->dir->id, c->dir->id_size);
-        curr_dir      += c->dir->id_size;
-        curr_dir_size += c->dir->id_size;
-
-        num_size = sprintf(curr_dir, " %lu",
-                           (unsigned long)c->frozen_size);
-        curr_dir +=      num_size;
-        curr_dir_size += num_size;
+	
+	buf_size = 0;
+	knd_num_to_str(c->frozen_size, buf, &buf_size, KND_RADIX_BASE);
+        memcpy(curr_dir, buf, buf_size);
+        curr_dir      += buf_size;
+        curr_dir_size += buf_size;
+	
         *total_frozen_size += c->frozen_size;
-
-        if (c->num_terminals) {
-            chunk_size = strlen("{t ");
-            memcpy(curr_dir, "{t ", chunk_size); 
-            curr_dir += chunk_size;
-            curr_dir_size += chunk_size;
-
-            num_size = sprintf(curr_dir, "%lu",
-                               (unsigned long)c->num_terminals);
-            curr_dir +=      num_size;
-            curr_dir_size += num_size;
-
-            memcpy(curr_dir, "}", 1);
-            curr_dir++;
-            curr_dir_size++;
-        }
-
-        if (c->dir && c->dir->num_objs) {
-            chunk_size = strlen("{o ");
-            memcpy(curr_dir, "{o ", chunk_size); 
-            curr_dir += chunk_size;
-            curr_dir_size += chunk_size;
-
-            num_size = sprintf(curr_dir, "%lu",
-                               (unsigned long)c->dir->num_objs);
-            curr_dir +=      num_size;
-            curr_dir_size += num_size;
-
-            memcpy(curr_dir, "}", 1);
-            curr_dir++;
-            curr_dir_size++;
-        }
-
-        memcpy(curr_dir, "}", 1);
-        curr_dir++;
-        curr_dir_size++;
     }
 
     /* close the list of children */
@@ -6107,15 +6026,16 @@ static int freeze(struct kndConcept *self)
     }
 
     if (self->num_children) {
-        err = freeze_subclasses(self, &total_frozen_size, curr_dir, &chunk_size); RET_ERR();
+        err = freeze_subclasses(self, &total_frozen_size,
+				curr_dir, &chunk_size);                           RET_ERR();
         curr_dir +=      chunk_size;
         curr_dir_size += chunk_size;
     }
 
     /* rels */
     if (self->rel && self->rel->rel_idx->size) {
-        chunk_size = strlen("[R ");
-        memcpy(curr_dir, "[R ", chunk_size); 
+        chunk_size = strlen("[R");
+        memcpy(curr_dir, "[R", chunk_size); 
         curr_dir += chunk_size;
         curr_dir_size += chunk_size;
 
@@ -6123,7 +6043,8 @@ static int freeze(struct kndConcept *self)
         self->rel->out = self->out;
         self->rel->frozen_output_file_name = self->frozen_output_file_name;
 
-        err = freeze_rels(self->rel, &total_frozen_size, curr_dir, &chunk_size);  RET_ERR();
+        err = freeze_rels(self->rel, &total_frozen_size,
+			  curr_dir, &chunk_size);                                  RET_ERR();
         curr_dir +=      chunk_size;
         curr_dir_size += chunk_size;
 
@@ -6134,8 +6055,8 @@ static int freeze(struct kndConcept *self)
 
     /* procs */
     if (self->proc && self->proc->proc_idx->size) {
-        chunk_size = strlen("[P ");
-        memcpy(curr_dir, "[P ", chunk_size); 
+        chunk_size = strlen("[P");
+        memcpy(curr_dir, "[P", chunk_size); 
         curr_dir += chunk_size;
         curr_dir_size += chunk_size;
 

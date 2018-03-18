@@ -110,33 +110,20 @@ knd_state_compare(const char *a, const char *b)
     return knd_EQUALS;
 }
 
-
-extern int 
-knd_is_valid_id(const char *id, size_t id_size)
-{
-    if (id_size > KND_ID_SIZE) return knd_FAIL;
-    
-    for (size_t i = 0; i < KND_ID_SIZE; i++) {
-        if (id[i] >= '0' && id[i] <= '9') continue;
-        if (id[i] >= 'A' && id[i] <= 'Z') continue;
-        if (id[i] >= 'a' && id[i] <= 'z') continue;
-        return knd_FAIL;
-    }
-
-    return knd_OK;
-}
-
-extern void 
+/* big-endian order: Y1 (62 alphanum base) => 96 (decimal) */
+extern void
 knd_calc_num_id(const char *id, size_t id_size, size_t *numval)
 {
     const char *c = id;
     int num = 0;
     size_t aggr = 0;
+    size_t base = 1;
 
     for (size_t i = 0; i < id_size; i++) {
         num = obj_id_base[(unsigned int)*c];
         if (num == -1) return;
-        aggr = aggr * KND_RADIX_BASE + num;
+        aggr = aggr + (num * base);
+	base = base * KND_RADIX_BASE;
         c++;
     }
     *numval = aggr;

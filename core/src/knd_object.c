@@ -956,7 +956,7 @@ static int parse_GSL(struct kndObject *self,
         { .is_validator = true,
           .validate = parse_elem,
           .obj = self
-        },
+        }/*,
         { .is_list = true,
           .name = "_rel",
           .name_size = strlen("_rel"),
@@ -964,7 +964,7 @@ static int parse_GSL(struct kndObject *self,
           .alloc = rel_alloc,
           .append = rel_append,
           .parse = rel_read
-        },
+	  }*/,
         { .is_default = true,
           .run = confirm_obj_import,
           .obj = self
