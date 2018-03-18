@@ -1419,6 +1419,8 @@ static int freeze(struct kndRel *self,
                   char *output,
                   size_t *total_size)
 {
+    char buf[KND_SHORT_NAME_SIZE];
+    size_t buf_size;
     struct glbOutput *out;
     char *curr_dir = output;
     size_t chunk_size;
@@ -1444,23 +1446,16 @@ static int freeze(struct kndRel *self,
                           out->buf, out->buf_size);
     if (err) return err;
 
-    /* add dir entry */
-    memcpy(curr_dir, "{", 1);
-    curr_dir++;
-    curr_dir_size++;
-
-    chunk_size = sprintf(curr_dir, "%lu", (unsigned long)self->id);
-    curr_dir += chunk_size;
-    curr_dir_size += chunk_size;
-
     memcpy(curr_dir, " ", 1);
     curr_dir++;
     curr_dir_size++;
 
-    chunk_size = sprintf(curr_dir, "%lu}",
-                         (unsigned long)out->buf_size);
-    curr_dir_size += chunk_size;
-
+    buf_size = 0;
+    knd_num_to_str(out->buf_size, buf, &buf_size, KND_RADIX_BASE);
+    memcpy(curr_dir, buf, buf_size);
+    curr_dir      += buf_size;
+    curr_dir_size += buf_size;
+    
     *total_frozen_size += out->buf_size;
     *total_size = curr_dir_size;
 
