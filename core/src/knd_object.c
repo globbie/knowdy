@@ -308,12 +308,12 @@ kndObject_export_GSP(struct kndObject *self)
                     self->depth *  KND_OFFSET_SIZE, "",
                     self->name_size, self->name, KND_ID_SIZE, self->id);
 
-	err = out->putc(out, '{');
+	err = out->writec(out, '{');
 	if (err) return err;
 	err = out->write(out, self->id, self->id_size);
 	if (err) return err;
 
-	err = out->putc(out, ' ');
+	err = out->writec(out, ' ');
 	if (err) return err;
 
         err = out->write(out, self->name, self->name_size);
@@ -339,7 +339,7 @@ kndObject_export_GSP(struct kndObject *self)
             err = export_rels_GSP(self);                                          RET_ERR();
         }
 
-        err = self->out->putc(self->out, '}');
+        err = self->out->writec(self->out, '}');
         if (err) return err;
 
         self->frozen_size = self->out->buf_size - start_size;
