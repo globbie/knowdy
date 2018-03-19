@@ -2553,10 +2553,10 @@ static gsl_err_t dir_entry_alloc(void *self,
     struct kndConcDir *dir;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. %.*s to add list item: %.*s count: %zu"
 		" [total children: %zu]",
-                KND_ID_SIZE, parent_dir->id, name_size, name,
+                parent_dir->id_size, parent_dir->id, name_size, name,
 		count, parent_dir->num_children);
 
     if (name_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -3099,7 +3099,7 @@ static int get_dir_trailer(struct kndConcept *self,
     if (err == -1) return knd_IO_FAIL;
     out->buf[out->buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parsing DIR: \"%.*s\"",
                 out->buf_size, out->buf);
 
@@ -3198,7 +3198,7 @@ static int parse_dir_trailer(struct kndConcept *self,
         }
     }
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("\nDIR: %.*s   num_children: %zu obj block:%zu",
                 parent_dir->id_size, parent_dir->id, parent_dir->num_children,
                 parent_dir->obj_block_size);
@@ -3207,10 +3207,9 @@ static int parse_dir_trailer(struct kndConcept *self,
     for (size_t i = 0; i < parent_dir->num_children; i++) {
         dir = parent_dir->children[i];
         if (!dir) continue;
-
         dir->mempool = parent_dir->mempool;
 
-        if (DEBUG_CONC_LEVEL_TMP)
+        if (DEBUG_CONC_LEVEL_2)
             knd_log("== child DIR %.*s block size: %zu",
                     KND_ID_SIZE, dir->id, dir->block_size);
 
@@ -5142,13 +5141,13 @@ static int export_GSP(struct kndConcept *self)
         knd_log(".. GSP export of \"%.*s\" [%.*s]",
                 self->name_size, self->name, self->dir->id_size, self->dir->id);
 
-    err = out->putc(out, '{');
+    err = out->writec(out, '{');
     if (err) return err;
 
     err = out->write(out, self->dir->id, self->dir->id_size);
     if (err) return err;
 
-    err = out->putc(out, ' ');
+    err = out->writec(out, ' ');
     if (err) return err;
 
     err = out->write(out, self->name, self->name_size);
