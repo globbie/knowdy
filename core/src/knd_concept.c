@@ -1871,6 +1871,10 @@ static gsl_err_t parse_import_obj(void *data,
 		c->name_size, c->name, c->obj_inbox_size);
 
     obj->numid = c->num_objs;
+    knd_num_to_str(obj->numid, obj->id, &obj->id_size, KND_RADIX_BASE);
+    if (DEBUG_CONC_LEVEL_2)
+	knd_log("== obj ID: %zu => \"%.*s\"",
+		obj->numid, obj->id_size, obj->id);
     
     if (!c->dir) {
         if (c->root_class) {
@@ -1884,9 +1888,6 @@ static gsl_err_t parse_import_obj(void *data,
     if (!obj->name_size) {
 	knd_num_to_str(obj->numid, obj->id, &obj->id_size, KND_RADIX_BASE);
 
-	if (DEBUG_CONC_LEVEL_TMP)
-	    knd_log("== assign obj ID: %zu => \"%.*s\"",
-		    obj->numid, obj->id_size, obj->id);
 	obj->name = obj->id;
 	obj->name_size = obj->id_size;
     }
@@ -2552,7 +2553,7 @@ static gsl_err_t dir_entry_alloc(void *self,
     struct kndConcDir *dir;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. %.*s to add list item: %.*s count: %zu"
 		" [total children: %zu]",
                 KND_ID_SIZE, parent_dir->id, name_size, name,
@@ -2705,6 +2706,7 @@ static int get_conc_name(struct kndConcept *self,
     size_t buf_size;
     char *c, *b, *e;
     off_t offset = 0;
+    bool in_tag = false;
     bool in_name = false;
     bool got_name = false;
     size_t name_size;
@@ -2738,15 +2740,27 @@ static int get_conc_name(struct kndConcept *self,
         case '\n':
         case '\r':
         case '\t':
+	    if (in_name) break;
+	    
+	    if (in_tag) {
+		dir->id_size = c - b;
+		memcpy(dir->id, b, dir->id_size);
+                b = c + 1;
+                e = b;
+                in_name = true;
+                break;
+            }
+
             break;
         case '[':
         case '{':
-            if (!in_name) {
-                in_name = true;
+            if (!in_tag) {
+                in_tag = true;
                 b = c + 1;
                 e = b;
                 break;
-            }
+	    }
+
             got_name = true;
             e = c;
             break;
@@ -2764,7 +2778,7 @@ static int get_conc_name(struct kndConcept *self,
     dir->name_size = name_size;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. CONC DIR NAME: \"%.*s\" [id:%.*s]",
+        knd_log("== CONC NAME:\"%.*s\" ID:%.*s",
                 dir->name_size, dir->name, dir->id_size, dir->id);
 
     err = self->class_name_idx->set(self->class_name_idx,
@@ -3085,7 +3099,7 @@ static int get_dir_trailer(struct kndConcept *self,
     if (err == -1) return knd_IO_FAIL;
     out->buf[out->buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. parsing DIR: \"%.*s\"",
                 out->buf_size, out->buf);
 
@@ -3184,9 +3198,9 @@ static int parse_dir_trailer(struct kndConcept *self,
         }
     }
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("\nDIR: %.*s   num_children: %zu obj block:%zu",
-                KND_ID_SIZE, parent_dir->id, parent_dir->num_children,
+                parent_dir->id_size, parent_dir->id, parent_dir->num_children,
                 parent_dir->obj_block_size);
 
     /* try reading each dir */
@@ -3196,7 +3210,7 @@ static int parse_dir_trailer(struct kndConcept *self,
 
         dir->mempool = parent_dir->mempool;
 
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_CONC_LEVEL_TMP)
             knd_log("== child DIR %.*s block size: %zu",
                     KND_ID_SIZE, dir->id, dir->block_size);
 
@@ -5128,8 +5142,15 @@ static int export_GSP(struct kndConcept *self)
         knd_log(".. GSP export of \"%.*s\" [%.*s]",
                 self->name_size, self->name, self->dir->id_size, self->dir->id);
 
-    err = out->write(out, "{", 1);
+    err = out->putc(out, '{');
     if (err) return err;
+
+    err = out->write(out, self->dir->id, self->dir->id_size);
+    if (err) return err;
+
+    err = out->putc(out, ' ');
+    if (err) return err;
+
     err = out->write(out, self->name, self->name_size);
     if (err) return err;
 
