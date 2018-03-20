@@ -165,9 +165,9 @@ static void del_conc_dir(struct kndConcDir *dir)
         dir->objs = NULL;
     }
 
-    if (dir->obj_idx) {
-        dir->obj_idx->del(dir->obj_idx);
-        dir->obj_idx = NULL;
+    if (dir->obj_name_idx) {
+        dir->obj_name_idx->del(dir->obj_name_idx);
+        dir->obj_name_idx = NULL;
     }
 
     if (dir->rels) {
@@ -1892,8 +1892,8 @@ static gsl_err_t parse_import_obj(void *data,
 	obj->name_size = obj->id_size;
     }
 
-    if (!c->dir->obj_idx) {
-        err = ooDict_new(&c->dir->obj_idx, KND_HUGE_DICT_SIZE);
+    if (!c->dir->obj_name_idx) {
+        err = ooDict_new(&c->dir->obj_name_idx, KND_HUGE_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
     }
 
@@ -1903,16 +1903,16 @@ static gsl_err_t parse_import_obj(void *data,
     entry->obj = obj;
     obj->entry = entry;
 
-    err = c->dir->obj_idx->set(c->dir->obj_idx,
+    err = c->dir->obj_name_idx->set(c->dir->obj_name_idx,
                                obj->name, obj->name_size,
                                (void*)entry);
     if (err) return make_gsl_err_external(err);
 
     c->dir->num_objs++;
 
-    if (DEBUG_CONC_LEVEL_1) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         knd_log("++ OBJ registered in \"%.*s\" IDX:  [total:%zu valid:%zu]",
-                c->name_size, c->name, c->dir->obj_idx->size, c->dir->num_objs);
+                c->name_size, c->name, c->dir->obj_name_idx->size, c->dir->num_objs);
         obj->depth = self->depth + 1;
         obj->str(obj);
     }
@@ -1932,18 +1932,19 @@ static gsl_err_t parse_select_obj(void *data,
     int err;
 
     if (!self->curr_class) {
-        knd_log("-- obj class not set :(");
+        knd_log("-- base class not set :(");
         /* TODO: log*/
         return make_gsl_err(gsl_FAIL);
     }
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. select \"%.*s\" obj.. task type: %d", 16, rec,
                 self->curr_class->task->type);
 
     self->curr_class->task->type = KND_GET_STATE;
     obj->conc = self->curr_class;
     obj->task = self->task;
+    obj->out = self->out;
     obj->log = self->log;
     obj->mempool = self->mempool;
 
@@ -2324,7 +2325,8 @@ static int knd_get_dir_size(struct kndConcept *self,
     if (numval <= 0) return knd_FAIL;
     if (numval >= KND_DIR_TRAILER_MAX_SIZE) return knd_LIMIT;
     if (DEBUG_CONC_LEVEL_3)
-        knd_log("  == DIR size: %lu    CHUNK SIZE: %lu", (unsigned long)numval, (unsigned long)rec_size - i);
+        knd_log("  == DIR size: %lu    CHUNK SIZE: %lu",
+		(unsigned long)numval, (unsigned long)rec_size - i);
 
     *dir_size = numval;
     *chunk_size = rec_size - i;
@@ -2698,18 +2700,14 @@ static gsl_err_t parse_procdir_entry(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int get_conc_name(struct kndConcept *self,
-                         struct kndConcDir *dir,
-                         int fd)
+static int idx_class_name(struct kndConcept *self,
+			  struct kndConcDir *dir,
+			  int fd)
 {
     char buf[KND_NAME_SIZE + 1];
     size_t buf_size;
-    char *c, *b, *e;
     off_t offset = 0;
-    bool in_tag = false;
-    bool in_name = false;
-    bool got_name = false;
-    size_t name_size;
+    gsl_err_t parser_err;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -2730,59 +2728,21 @@ static int get_conc_name(struct kndConcept *self,
     if (DEBUG_CONC_LEVEL_2)
         knd_log("\n  .. CONC BODY: %.*s",
                 buf_size, buf);
-    c = buf;
-    b = buf;
-    e = buf;
-    for (size_t i = 0; i < buf_size; i++) {
-        c = buf + i;
-        switch (*c) {
-        case ' ':
-        case '\n':
-        case '\r':
-        case '\t':
-	    if (in_name) break;
-	    
-	    if (in_tag) {
-		dir->id_size = c - b;
-		memcpy(dir->id, b, dir->id_size);
-                b = c + 1;
-                e = b;
-                in_name = true;
-                break;
-            }
+    buf[buf_size] = '\0';
 
-            break;
-        case '[':
-        case '{':
-            if (!in_tag) {
-                in_tag = true;
-                b = c + 1;
-                e = b;
-                break;
-	    }
+    dir->id_size = KND_ID_SIZE;
+    dir->name_size = KND_NAME_SIZE;
+    parser_err = gsl_parse_incipit(buf, buf_size,
+				   dir->id, &dir->id_size,
+				   dir->name, &dir->name_size);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
-            got_name = true;
-            e = c;
-            break;
-        default:
-            e = c;
-            break;
-        }
-        if (got_name) break;
-    }
-
-    name_size = e - b;
-    if (!name_size) return knd_FAIL;
-
-    memcpy(dir->name, b, name_size);
-    dir->name_size = name_size;
-
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("== CONC NAME:\"%.*s\" ID:%.*s",
                 dir->name_size, dir->name, dir->id_size, dir->id);
 
     err = self->class_name_idx->set(self->class_name_idx,
-				    dir->name, name_size, dir);                   RET_ERR();
+				    dir->name, dir->name_size, dir);              RET_ERR();
 
     err = self->class_idx->set(self->class_idx,
 			       dir->id, dir->id_size, dir);                       RET_ERR();
@@ -2790,7 +2750,7 @@ static int get_conc_name(struct kndConcept *self,
     return knd_OK;
 }
 
-static int index_obj_name(struct kndConcept *self __attribute__((unused)),
+static int idx_obj_name(struct kndConcept *self __attribute__((unused)),
                           struct kndConcDir *conc_dir,
                           struct kndObjEntry *entry,
                           int fd)
@@ -2802,6 +2762,7 @@ static int index_obj_name(struct kndConcept *self __attribute__((unused)),
     bool in_name = false;
     bool got_name = false;
     size_t name_size;
+    gsl_err_t parser_err;
     int err;
 
     if (entry->block_size > KND_NAME_SIZE)
@@ -2814,51 +2775,26 @@ static int index_obj_name(struct kndConcept *self __attribute__((unused)),
     err = read(fd, buf, buf_size);
     if (err == -1) return knd_IO_FAIL;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. OBJ BODY INCIPIT: \"%.*s\"",
                 buf_size, buf);
-    c = buf;
-    b = buf;
-    e = buf;
-    for (size_t i = 0; i < buf_size; i++) {
-        c = buf + i;
-        switch (*c) {
-        case ' ':
-        case '\n':
-        case '\r':
-        case '\t':
-            break;
-        case '[':
-        case '{':
-            if (!in_name) {
-                in_name = true;
-                b = c + 1;
-                break;
-            }
-            got_name = true;
-            e = c;
-            c++;
-            break;
-        default:
-            e = c;
-            break;
-        }
-        if (got_name) break;
-    }
-
-    name_size = e - b;
-    if (!name_size) {
-        return knd_FAIL;
-    }
-    if (name_size > KND_NAME_SIZE)
-	return knd_LIMIT;
+    entry->id_size = KND_ID_SIZE;
+    entry->name_size = KND_NAME_SIZE;
+    parser_err = gsl_parse_incipit(buf, buf_size,
+				   entry->id, &entry->id_size,
+				   entry->name, &entry->name_size);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     memcpy(entry->name, b, name_size);
     entry->name_size = name_size;
 
-    err = conc_dir->obj_idx->set(conc_dir->obj_idx,
+    err = conc_dir->obj_name_idx->set(conc_dir->obj_name_idx,
 				 entry->name, name_size,
 				 entry);                                          RET_ERR();
+
+    /*err = conc_dir->obj_name_idx->set(conc_dir->obj_name_idx,
+				 entry->name, name_size,
+				 entry); */                                         RET_ERR();
     return knd_OK;
 }
 
@@ -2876,7 +2812,7 @@ static int populate_obj_name_idx(struct kndConcept *self,
         for (size_t i = 0; i < KND_RADIX_BASE; i++) {
             entry = dir->objs[i];
             if (!entry) continue;
-            err = index_obj_name(self, conc_dir, entry, fd);
+            err = idx_obj_name(self, conc_dir, entry, fd);
             if (err) return err;
         }
     }
@@ -3057,6 +2993,9 @@ static int get_dir_trailer(struct kndConcept *self,
     size_t chunk_size = 0;
     int err;
 
+    if (block_size <= KND_DIR_ENTRY_SIZE)
+	return knd_NO_MATCH;
+
     offset = (parent_dir->global_offset + block_size) - KND_DIR_ENTRY_SIZE;
     if (lseek(fd, offset, SEEK_SET) == -1) {
         return knd_IO_FAIL;
@@ -3072,8 +3011,10 @@ static int get_dir_trailer(struct kndConcept *self,
 
     err =  knd_get_dir_size(self, &dir_size, &chunk_size, encode_base);
     if (err) {
-        knd_log("-- couldn't get dir size in \"%.*s\" :(", out->buf_size, out->buf);
-        return err;
+	if (DEBUG_CONC_LEVEL_2)
+	    knd_log("-- couldn't find the ConcDir size field in \"%.*s\" :(",
+		    out->buf_size, out->buf);
+        return knd_NO_MATCH;
     }
 
     parent_dir->body_size = block_size - dir_size - chunk_size;
@@ -3185,7 +3126,7 @@ static int parse_dir_trailer(struct kndConcept *self,
 
     /* get conc name */
     if (parent_dir->block_size) {
-        err = get_conc_name(self, parent_dir, fd);
+        err = idx_class_name(self, parent_dir, fd);
         if (err) return err;
     }
 
@@ -3199,7 +3140,7 @@ static int parse_dir_trailer(struct kndConcept *self,
     }
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("\nDIR: %.*s   num_children: %zu obj block:%zu",
+        knd_log("DIR: %.*s   num_children: %zu obj block:%zu",
                 parent_dir->id_size, parent_dir->id, parent_dir->num_children,
                 parent_dir->obj_block_size);
 
@@ -3209,31 +3150,29 @@ static int parse_dir_trailer(struct kndConcept *self,
         if (!dir) continue;
         dir->mempool = parent_dir->mempool;
 
-        if (DEBUG_CONC_LEVEL_2)
-            knd_log("== child DIR %.*s block size: %zu",
-                    KND_ID_SIZE, dir->id, dir->block_size);
-
-        if (!dir->num_terminals) {
-            dir->is_terminal = true;
-            if (!dir->total_objs) {
-                err = get_conc_name(self, dir, fd);
-                if (err) return err;
-                continue;
-            }
-        }
+	err = idx_class_name(self, dir, fd);
+	if (err) return err;
 
         if (DEBUG_CONC_LEVEL_2)
-            knd_log("\n\n.. read DIR: %.*s   global offset: %zu    block size: %zu  num terminals:%zu",
+            knd_log(".. read DIR  ID:%.*s NAME:%.*s"
+		    " block size: %zu  num terminals:%zu",
+                    dir->id_size, dir->id,
                     dir->name_size, dir->name,
-                    dir->global_offset, dir->block_size, dir->num_terminals);
+                    dir->block_size, dir->num_terminals);
 
         err = get_dir_trailer(self, dir, fd, encode_base);
         if (err) {
-            knd_log("-- error reading trailer of \"%.*s\" DIR: %d",
-                    dir->name_size, dir->name, err);
-            return err;
+	    if (err != knd_NO_MATCH) {
+		knd_log("-- error reading trailer of \"%.*s\" DIR: %d",
+			dir->name_size, dir->name, err);
+		return err;
+	    }/* else {
+		knd_log("NB: no nested blocks in %.*s",
+			dir->name_size, dir->name);
+			}*/
         }
     }
+
 
     /* register rel names in rel_idx */
     if (self->rel) {
@@ -3319,72 +3258,18 @@ static gsl_err_t obj_atomic_entry_alloc(void *obj,
     long numval;
     size_t i, depth;
     int err;
-    return make_gsl_err(gsl_FAIL);  // stub
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. create OBJ ENTRY: %.*s  count: %zu  parent_dir:%p",
-                val_size, val, count, parent_dir);
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. create OBJ ENTRY: %.*s  count: %zu",
+                val_size, val, count);
 
     err = parent_dir->mempool->new_obj_entry(parent_dir->mempool, &entry);
     if (err) return make_gsl_err_external(err);
 
-    if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-    memcpy(buf, val, val_size);
-    buf[val_size] = '\0';
+    knd_calc_num_id(val, val_size, &entry->block_size);
 
-    /* TODO: remove magic number 16, set custom base  */
-    numval = strtol(buf, &invalid_num_char, 16);
-    if (*invalid_num_char) {
-        knd_log("-- invalid char: %.*s", 1, invalid_num_char);
-        return make_gsl_err(gsl_FORMAT);
-    }
-
-    /* check for various numeric decoding errors */
-    if ((errno == ERANGE && (numval == LONG_MAX || numval == LONG_MIN)) ||
-            (errno != 0 && numval == 0))
-    {
-        return make_gsl_err(gsl_LIMIT);
-    }
-    if (numval <= 0) return make_gsl_err(gsl_LIMIT);
-
-    entry->block_size = (size_t)numval;
     entry->offset = parent_dir->curr_offset;
     parent_dir->curr_offset += entry->block_size;
-
-    err = knd_next_state(parent_dir->next_obj_id);
-    if (err) return make_gsl_err_external(err);
-
-    /* assign entry to the terminal idx */
-    if (count < KND_RADIX_BASE) {
-        if (!parent_dir->objs) {
-            parent_dir->objs = calloc(KND_RADIX_BASE, sizeof(struct kndObjEntry*));
-            if (!parent_dir->objs) return make_gsl_err_external(knd_NOMEM);
-        }
-        parent_dir->objs[count] = entry;
-        parent_dir->num_objs++;
-        *item = entry;
-        return make_gsl_err(gsl_OK);
-    }
-
-    /* calculate base depth */
-    i = 0;
-    c = parent_dir->next_obj_id;
-    for (i = 0; i < KND_ID_SIZE; i++) {
-        if (*c != '0') break;
-        c++;
-    }
-    depth = KND_ID_SIZE - i;
-
-    if (!parent_dir->obj_dirs) {
-        parent_dir->obj_dirs = calloc(KND_RADIX_BASE, sizeof(struct kndObjDir*));
-        if (!parent_dir->obj_dirs) return make_gsl_err_external(knd_NOMEM);
-    }
-
-    /* assign entry to a subordinate dir */
-    err = register_obj_entry(parent_dir->mempool,
-                             parent_dir->obj_dirs, entry,
-                             parent_dir->next_obj_id, 1, depth);
-    if (err) return make_gsl_err_external(err);
 
     *item = entry;
 
@@ -3402,18 +3287,12 @@ static gsl_err_t obj_atomic_append(void *accu,
                 parent_dir->name_size, parent_dir->name,
                 entry->name_size, entry->name);
 
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t obj_atomic_parse(void *obj,
-                                  const char *rec,
-                                  size_t *total_size)
-{
-    struct kndObjEntry *entry = obj;
-
-    if (DEBUG_CONC_LEVEL_2)
-	knd_log(".. parse atomic obj entry: %s [size: %zu] %p", rec, *total_size, entry);
-
+    /*err = register_obj_entry(parent_dir->mempool,
+                             parent_dir->obj_dirs, entry,
+                             parent_dir->next_obj_id, 1, depth);
+    if (err) return make_gsl_err_external(err);
+    */
+    
     return make_gsl_err(gsl_OK);
 }
 
@@ -3422,16 +3301,20 @@ static int parse_obj_dir_trailer(struct kndConcept *self,
                                  int fd,
                                  int encode_base)
 {
+    struct gslTaskSpec obj_dir_spec = {
+        .is_list_item = true,
+	.accu = parent_dir,
+	.alloc = obj_atomic_entry_alloc,
+	.append = obj_atomic_append
+    };
+
     struct gslTaskSpec specs[] = {
         { .is_list = true,
-          .is_atomic = true,
           .name = "o",
           .name_size = strlen("o"),
-          .accu = parent_dir,
-          .alloc = obj_atomic_entry_alloc,
-          .append = obj_atomic_append,
-          .parse = obj_atomic_parse
-        }
+          .parse = gsl_parse_array,
+          .obj = &obj_dir_spec
+	}
     };
     size_t parsed_size = 0;
     size_t *total_size = &parsed_size;
@@ -3453,16 +3336,15 @@ static int parse_obj_dir_trailer(struct kndConcept *self,
     if (parent_dir->num_objs) {
         /* TODO: calc dict size */
 
-        if (!parent_dir->obj_idx) {
-            err = ooDict_new(&parent_dir->obj_idx, KND_MEDIUM_DICT_SIZE);
+        if (!parent_dir->obj_name_idx) {
+            err = ooDict_new(&parent_dir->obj_name_idx, KND_MEDIUM_DICT_SIZE);
             if (err) return err;
         }
 
         for (size_t i = 0; i < KND_RADIX_BASE; i++) {
             entry = parent_dir->objs[i];
             if (!entry) continue;
-
-            err = index_obj_name(self, parent_dir, entry, fd);
+            err = idx_obj_name(self, parent_dir, entry, fd);
             if (err) return err;
         }
 
@@ -4214,7 +4096,7 @@ static int get_obj(struct kndConcept *self,
                 self->name_size, self->name);
     }
     
-    if (!self->dir->obj_idx) {
+    if (!self->dir->obj_name_idx) {
         knd_log("-- no obj idx in \"%.*s\" :(", self->name_size, self->name);
 
         self->log->reset(self->log);
@@ -4227,7 +4109,7 @@ static int get_obj(struct kndConcept *self,
         return knd_FAIL;
     }
 
-    entry = self->dir->obj_idx->get(self->dir->obj_idx, name, name_size);
+    entry = self->dir->obj_name_idx->get(self->dir->obj_name_idx, name, name_size);
     if (!entry) {
         knd_log("-- no such obj: \"%.*s\" :(", name_size, name);
         self->log->reset(self->log);
@@ -5728,7 +5610,7 @@ static int freeze_objs(struct kndConcept *self,
     if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. freezing objs of class \"%.*s\", total:%zu  valid:%zu",
                 self->name_size, self->name,
-                self->dir->obj_idx->size, self->dir->num_objs);
+                self->dir->obj_name_idx->size, self->dir->num_objs);
 
     out = self->out;
     out->reset(out);
@@ -5738,9 +5620,9 @@ static int freeze_objs(struct kndConcept *self,
     init_dir_size = self->dir_out->buf_size;
 
     key = NULL;
-    self->dir->obj_idx->rewind(self->dir->obj_idx);
+    self->dir->obj_name_idx->rewind(self->dir->obj_name_idx);
     do {
-        self->dir->obj_idx->next_item(self->dir->obj_idx, &key, &val);
+        self->dir->obj_name_idx->next_item(self->dir->obj_name_idx, &key, &val);
         if (!key) break;
         entry = (struct kndObjEntry*)val;
         obj = entry->obj;
@@ -6022,7 +5904,7 @@ static int freeze(struct kndConcept *self)
             self->frozen_size = total_frozen_size;
             return knd_OK;
         }
-        if (!self->dir->obj_idx) {
+        if (!self->dir->obj_name_idx) {
             self->frozen_size = total_frozen_size;
             return knd_OK;
         }

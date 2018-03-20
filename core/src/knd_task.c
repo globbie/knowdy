@@ -449,7 +449,7 @@ static int report(struct kndTask *self)
         if (obj_size > KND_MAX_DEBUG_CONTEXT_SIZE)
             obj_size = KND_MAX_DEBUG_CONTEXT_SIZE;
 	
-	knd_log("%s %.*s [size: %zu]\n",
+	knd_log("RESULT: \"%s\" %.*s [size: %zu]\n",
 		task_status, obj_size,
 		self->out->buf, self->out->buf_size);
     }
@@ -484,8 +484,9 @@ static int report(struct kndTask *self)
         knd_log("== Delivery reply HEADER: \"%.*s\" [%zu]\n OBJ: \"%.*s\" [%zu]",
                 header_size, header, header_size, obj_size, obj, obj_size);
 
-    if (header) free(header);
+    /*if (header) free(header);
     if (obj)    free(obj);
+    */
 
     /* inform all retrievers about the state change */
     if (self->type == KND_UPDATE_STATE) {

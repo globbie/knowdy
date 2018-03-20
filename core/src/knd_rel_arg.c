@@ -158,10 +158,20 @@ static int export_inst_GSP(struct kndRelArg *self,
     out = self->out;
     err = out->write(out, "{class ", strlen("{class "));                          RET_ERR();
     err = out->write(out, inst->classname, inst->classname_size);                 RET_ERR();
-    err = out->write(out, "{obj ", strlen("{obj "));                              RET_ERR();
-    err = out->write(out, inst->objname, inst->objname_size);                     RET_ERR();
-    err = out->write(out, "}}", strlen("}}"));                                    RET_ERR();
 
+    if (inst->objname_size) {
+	err = out->write(out, "{obj ", strlen("{obj "));                          RET_ERR();
+	err = out->write(out, inst->objname, inst->objname_size);                 RET_ERR();
+	err = out->writec(out, '}');                                              RET_ERR();
+    }
+    
+    if (inst->val_size) {
+	err = out->write(out, "{obj ", strlen("{obj "));                          RET_ERR();
+	err = out->write(out, inst->objname, inst->objname_size);                 RET_ERR();
+	err = out->writec(out, '}');                                              RET_ERR();
+    }
+
+    err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
 }
 
@@ -173,16 +183,23 @@ static int export_inst_JSON(struct kndRelArg *self,
       size_t type_name_size = strlen(knd_relarg_names[self->type]); */
     int err;
 
-    err = out->write(out, "{", 1);                                               RET_ERR();
+    err = out->writec(out, '{');                                                 RET_ERR();
     err = out->write(out, "\"class\":\"", strlen("\"class\":\""));               RET_ERR();
     err = out->write(out, inst->classname, inst->classname_size);                RET_ERR();
-    err = out->write(out, "\"", 1);                                              RET_ERR();
+    err = out->writec(out, '"');                                                 RET_ERR();
 
-    err = out->write(out, ",\"obj\":\"", strlen(",\"obj\":\""));                 RET_ERR();
-    err = out->write(out, inst->objname, inst->objname_size);                    RET_ERR();
-    err = out->write(out, "\"", 1);                                              RET_ERR();
+    if (inst->objname_size) {
+	err = out->write(out, ",\"obj\":\"", strlen(",\"obj\":\""));             RET_ERR();
+	err = out->write(out, inst->objname, inst->objname_size);                RET_ERR();
+	err = out->writec(out, '"');                                             RET_ERR();
+    }
+    if (inst->val_size) {
+	err = out->write(out, ",\"val\":\"", strlen(",\"val\":\""));             RET_ERR();
+	err = out->write(out, inst->val, inst->val_size);                        RET_ERR();
+	err = out->writec(out, '"');                                             RET_ERR();
+    }
 
-    err = out->write(out, "}", 1);                                               RET_ERR();
+    err = out->writec(out, '}');                                                 RET_ERR();
 
     return knd_OK;
 }
@@ -501,7 +518,7 @@ static int link_rel(struct kndRelArg *self,
     struct kndRelArgInstRef *rel_arg_inst_ref = NULL;
     int err;
 
-    if (DEBUG_RELARG_LEVEL_2)
+    if (DEBUG_RELARG_LEVEL_TMP)
         knd_log(".. %.*s OBJ to link rel %.*s..",
                 obj_entry->name_size, obj_entry->name,
                 rel->name_size, rel->name);
@@ -565,15 +582,15 @@ static int resolve_inst(struct kndRelArg *self,
 	knd_log(".. resolving rel arg inst OBJ ref: \"%.*s\""
 		" CONC DIR: %.*s OBJ IDX:%p",
 		inst->objname_size, inst->objname,
-		dir->name_size, dir->name, dir->obj_idx);
+		dir->name_size, dir->name, dir->obj_name_idx);
 
-        if (!dir->obj_idx) {
+        if (!dir->obj_name_idx) {
 	    knd_log("-- empty obj IDX in class \"%.*s\" :(",
 		    	dir->name_size, dir->name);
 	    return knd_FAIL;
 	}
 
-	obj = dir->obj_idx->get(dir->obj_idx,
+	obj = dir->obj_name_idx->get(dir->obj_name_idx,
 				inst->objname, inst->objname_size);
 	if (!obj) {
 	    knd_log("-- no such obj: %.*s :(",
