@@ -60,11 +60,10 @@ final:
 	break;
     }
     
-    /*    err = self->task->report(self->task);
+    err = self->task->report(self->task);
     if (err != knd_OK) {
         knd_log("-- task report failed: %d", err);
     }
-    */
     return 0;
 }
 

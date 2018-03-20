@@ -64,8 +64,12 @@ struct kndAggrObject
 
 struct kndObjEntry
 {
+    char id[KND_ID_SIZE];
+    size_t id_size;
+
     char name[KND_NAME_SIZE];
     size_t name_size;
+
     char *block;
     size_t block_size;
     size_t offset;
