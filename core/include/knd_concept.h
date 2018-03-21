@@ -40,6 +40,7 @@ struct kndSet;
 struct kndUser;
 struct kndClassUpdate;
 struct kndClassUpdateRef;
+struct kndObjEntry;
 
 typedef enum knd_conc_type {
     KND_CONC_CLASS,
@@ -73,6 +74,8 @@ struct kndConcItem
     char name[KND_NAME_SIZE];
     size_t name_size;
     char id[KND_ID_SIZE];
+    size_t id_size;
+
     size_t numid;
 
     char classname[KND_NAME_SIZE];
@@ -142,15 +145,11 @@ struct kndConcDir
     struct kndProcDir **procs;
     size_t num_procs;
 
-    char next_obj_id[KND_ID_SIZE];
+    /*char next_obj_id[KND_ID_SIZE];*/
     size_t next_obj_numid;
 
-    struct kndObjDir **obj_dirs;
-    size_t num_obj_dirs;
-
-    struct kndObjEntry **objs;
+    struct kndObjDir *obj_dir;
     size_t num_objs;
-    size_t total_objs;
 
     struct ooDict *class_idx;
     struct ooDict *obj_name_idx;

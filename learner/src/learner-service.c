@@ -272,7 +272,7 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     struct kndLearnerService *self;
     struct glbOutput *out;
     struct kndConcept *conc;
-    struct kndLearnerOwner *owner;
+    //struct kndLearnerOwner *owner;
     int err;
 
     self = calloc(1, sizeof(*self));

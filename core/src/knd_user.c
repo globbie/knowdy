@@ -736,8 +736,6 @@ static int parse_task(struct kndUser *self,
                       size_t *total_size)
 {
     struct kndConcept *c;
-    struct kndObject *obj, *next_obj;
-    struct ooDict *idx;
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing user task: \"%s\" size: %lu..\n\n",

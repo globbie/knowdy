@@ -1346,7 +1346,7 @@ static int resolve_parents(struct kndProc *self)
 
         /* check base doublets */
         for (size_t i = 0; i < self->num_children; i++) {
-            dir = &self->children[i];
+            dir = self->children[i];
             if (dir->proc == self) {
                 knd_log("-- doublet proc found in \"%.*s\" :(",
                         self->name_size, self->name);
