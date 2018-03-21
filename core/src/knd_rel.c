@@ -1154,7 +1154,7 @@ static int resolve_rels(struct kndRel *self)
     void *val;
     int err;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_2)
         knd_log(".. resolving rels by \"%.*s\"",
                 self->name_size, self->name);
     key = NULL;
@@ -1423,7 +1423,6 @@ static int freeze(struct kndRel *self,
     size_t buf_size;
     struct glbOutput *out;
     char *curr_dir = output;
-    size_t chunk_size;
     size_t curr_dir_size = 0;
     int err;
 

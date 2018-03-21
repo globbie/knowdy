@@ -82,10 +82,10 @@ struct kndObjEntry
 
 struct kndObjDir
 {
-    struct kndObjEntry **objs;
+    struct kndObjEntry *objs[KND_RADIX_BASE];
     size_t num_objs;
 
-    struct kndObjDir **dirs;
+    struct kndObjDir *dirs[KND_RADIX_BASE];
     size_t num_dirs;
 };
 

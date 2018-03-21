@@ -22,12 +22,6 @@
 #define DEBUG_SET_LEVEL_4 0
 #define DEBUG_SET_LEVEL_TMP 1
 
-//static int
-//kndSet_sync(struct kndSet *self);
-static gsl_err_t confirm_read(void *obj,
-			      const char *val __attribute__((unused)),
-			      size_t val_size __attribute__((unused)));
-
 static int
 kndSet_add_conc(struct kndSet     *self,
 		struct kndConcept     *conc);
@@ -595,47 +589,6 @@ kndSet_add_conc(struct kndSet *self,
     return knd_OK;
 }
 
-/*
-static int
-kndSet_merge_name_idx(struct kndSet *self,
-		 struct kndSet *src)
-{
-    struct kndElemName_Idx *name_idx, *term_name_idx;
-    struct kndSetElem *elem;
-    size_t i, j, ri;
-    int err;
-
-    if (!src->name_idx) {
-        if (DEBUG_SET_LEVEL_2)
-            knd_log("?? no term name_idx in set %s?", src->base->name);
-        return knd_OK;
-    }
-    
-    /*for (i = 0; i < KND_ID_BASE; i++) {
-        name_idx = src->name_idx[i];
-
-        if (!name_idx) continue;
-
-        for (j = 0; j < KND_ID_BASE; j++) {
-            term_name_idx = name_idx->name_idx[j];
-            if (!term_name_idx) continue;
-
-            for (ri = 0; ri < KND_ID_BASE; ri++) {
-                elem = term_name_idx->elems[ri];
-                if (!elem) continue;
-
-                err = kndSet_term_name_idx(self, elem);
-                if (err) return err;
-            }
-            
-        }
-	}
-
-    
-    return knd_OK;
-}
-*/
-
 static int add_elem(struct kndSet *self,
 		    struct kndSetElemIdx *parent_idx,
 		    struct kndSetElem *elem,
@@ -729,16 +682,6 @@ static gsl_err_t atomic_elem_append(void *accu  __attribute__((unused)),
 				    void *item __attribute__((unused)))
 {
 
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t confirm_read(void *obj,
-			      const char *val __attribute__((unused)),
-			      size_t val_size __attribute__((unused)))
-{
-    struct kndFacet *self = obj;
-    if (DEBUG_SET_LEVEL_2)
-        knd_log(".. confirm read!");
     return make_gsl_err(gsl_OK);
 }
 
@@ -968,11 +911,7 @@ static int read_GSP(struct kndSet *self,
           .name_size = strlen("c"),
           .parse = gsl_parse_array,
           .obj = &c_item_spec
-	    },
-        { .is_default = true,
-          .run = confirm_read,
-          .obj = self
-        }
+	}
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);

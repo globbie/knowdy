@@ -819,7 +819,6 @@ static gsl_err_t rel_inst_read(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-
 static gsl_err_t rel_read(void *obj,
                           const char *rec,
                           size_t *total_size)
@@ -1082,8 +1081,6 @@ static int parse_select_obj(struct kndObject *self,
                             const char *rec,
                             size_t *total_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
     int err;
     gsl_err_t parser_err;
 
