@@ -38,8 +38,8 @@ static void str(struct kndRel *self)
 {
     struct kndRelArg *arg;
 
-    knd_log("\n%*sREL: %.*s [%zu]", self->depth * KND_OFFSET_SIZE, "",
-            self->name_size, self->name, self->id);
+    knd_log("\n%*sREL: %.*s [%.*s]", self->depth * KND_OFFSET_SIZE, "",
+            self->name_size, self->name, self->id_size, self->id);
 
     for (arg = self->args; arg; arg = arg->next) {
         arg->depth = self->depth + 1;
@@ -739,7 +739,7 @@ static int get_rel(struct kndRel *self,
 
     dir = (struct kndRelDir*)self->rel_idx->get(self->rel_idx, name, name_size);
     if (!dir) {
-        knd_log("-- no such rel: \"%.*s\" :(", name_size, name);
+        knd_log("-- no such rel: \"%.*s\" %p :(", name_size, name, self->log);
         self->log->reset(self->log);
         err = self->log->write(self->log, name, name_size);
         if (err) return err;
@@ -989,7 +989,6 @@ static gsl_err_t parse_import_instance(void *data,
     inst->phase = KND_SUBMITTED;
     inst->rel = self->curr_rel;
 
-
     struct gslTaskSpec specs[] = {
          { .type = GSL_CHANGE_STATE,
            .is_validator = true,
@@ -1210,9 +1209,8 @@ static int kndRel_coordinate(struct kndRel *self)
         dir = (struct kndRelDir*)val;
         rel = dir->rel;
 
-        /* assign id */
-        self->next_id++;
-        rel->id = self->next_id;
+        /* TODO: assign id */
+	
         rel->phase = KND_CREATED;
     } while (key);
 
@@ -1253,8 +1251,7 @@ static int kndRel_update_state(struct kndRel *self,
         err = rel->resolve(rel);                                                  RET_ERR();
         err = self->mempool->new_rel_update(self->mempool, &rel_update);          RET_ERR();
 
-        self->next_id++;
-        rel->id = self->next_id;
+        /* TODO: assign id */
         rel_update->rel = rel;
         update->rels[update->num_rels] = rel_update;
         update->num_rels++;
@@ -1277,7 +1274,7 @@ static gsl_err_t set_liquid_rel_id(void *obj, const char *val, size_t val_size _
 
     err = knd_parse_num((const char*)val, &numval);
     if (err) return make_gsl_err_external(err);
-    rel->id = numval;
+    //rel->id = numval;
     if (rel->dir) {
         rel->dir->numid = numval;
     }
@@ -1401,8 +1398,7 @@ static int export_updates(struct kndRel *self)
         if (rel->inst_inbox_size) {
             for (inst = self->inst_inbox; inst; inst = inst->next) {
                 err = out->write(out, "(id ", strlen("(id "));         RET_ERR();
-                buf_size = sprintf(buf, "%zu", inst->id);
-                err = out->write(out, buf, buf_size);                  RET_ERR();
+                err = out->write(out,inst->id, inst->id_size);         RET_ERR();
                 err = out->write(out, ")", 1);                         RET_ERR();
             }
         }

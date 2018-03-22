@@ -47,7 +47,10 @@ struct kndRelInstEntry
 
 struct kndRelInstance
 {
-    size_t id;
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    size_t numid;
+
     char name[KND_NAME_SIZE];
     size_t name_size;
     knd_state_phase phase;
@@ -61,6 +64,7 @@ struct kndRelInstance
 struct kndRelDir
 {
     char id[KND_ID_SIZE];
+    size_t id_size;
     size_t numid;
 
     char name[KND_NAME_SIZE];
@@ -113,8 +117,10 @@ struct kndRel
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    size_t id;
-    size_t next_id;
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    size_t numid;
+
     knd_state_phase phase;
 
     struct kndRelUpdateRef *updates;
