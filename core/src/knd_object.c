@@ -31,15 +31,6 @@ export_rel_dir_JSON(struct kndObject *self);
 
 static void del(struct kndObject *self)
 {
-    struct kndElem *elem, *next_elem;
-
-    elem = self->elems;
-    while (elem) {
-        next_elem = elem->next;
-        elem->del(elem);
-        elem = next_elem;
-    }
-
     self->state->phase = KND_FREED;
 }
 
@@ -264,29 +255,32 @@ export_rels_GSP(struct kndObject *self)
     /* class conc */
     for (relref = self->entry->rels; relref; relref = relref->next) {
         rel = relref->rel;
-
-        err = out->write(out, "{r ", strlen("{r "));                              RET_ERR();
+        err = out->writec(out, '{');                                              RET_ERR();
         err = out->write(out, rel->name, rel->name_size);                         RET_ERR();
-        err = out->write(out, "[inst ", strlen("[inst "));                        RET_ERR();
 
-        for (rel_arg_inst_ref = relref->insts;
+        //err = out->write(out, "[inst", strlen("[inst"));                          RET_ERR();
+        /*for (rel_arg_inst_ref = relref->insts;
              rel_arg_inst_ref;
              rel_arg_inst_ref = rel_arg_inst_ref->next) {
 
             rel_arg_inst = rel_arg_inst_ref->inst;
             rel_inst = rel_arg_inst->rel_inst;
-
+	*/
+	
             /* NB: exclude self object from the output */
-            rel_arg_inst->relarg->curr_obj = self;
-
-            rel->out = out;
+            /*rel_arg_inst->relarg->curr_obj = self;*/
+            /*rel->out = out;
             rel->format = KND_FORMAT_GSP;
             err = rel->export_inst(rel, rel_inst);                                RET_ERR();
-        }
-        err = out->write(out, "]", 1);                                            RET_ERR();
-        err = out->write(out, "}", 1);                                            RET_ERR();
+	    */
+	/*	    err = out->writec(out, ' ');                                          RET_ERR();
+	    err = out->write(out, rel_inst->id, rel_inst->id_size);               RET_ERR();
+
+	    }*/
+        //err = out->writec(out, ']');                                              RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
     }
-    err = out->write(out, "]", 1);                                                RET_ERR();
+    err = out->writec(out, ']');                                                  RET_ERR();
 
     return knd_OK;
 }
@@ -330,7 +324,6 @@ kndObject_export_GSP(struct kndObject *self)
             return err;
         }
     }
-
 
     if (self->type == KND_OBJ_ADDR) {
         /* rels */
@@ -578,9 +571,9 @@ static gsl_err_t parse_elem(void *data,
                             const char *rec, size_t *total_size)
 {
     struct kndObject *self = data;
-    if (self->curr_obj)
+    if (self->curr_obj) {
         self = self->curr_obj;
-
+    }
     struct kndConcept *root_class;
     struct kndConcept *c;
     struct kndObject *obj;
@@ -592,12 +585,15 @@ static gsl_err_t parse_elem(void *data,
     int err;
 
     if (DEBUG_OBJ_LEVEL_2) {
-        knd_log("..  validating \"%.*s\" elem,   REC: \"%.*s\"",
-                name_size, name, 32, rec);
+        knd_log("..  obj: id:%.*s name:%.*s to validate \"%.*s\" elem,   REC: \"%.*s\"",
+		self->id_size, self->id,
+		self->name_size, self->name,
+               name_size, name, 32, rec);
     }
 
     err = kndObject_validate_attr(self, name, name_size, &attr, &elem);
     if (err) return make_gsl_err_external(err);
+
 
     if (elem) {
         switch (elem->attr->type) {
@@ -624,7 +620,7 @@ static gsl_err_t parse_elem(void *data,
     elem->root = self->root ? self->root : self;
     elem->attr = attr;
     elem->out = self->out;
-    
+ 
     if (DEBUG_OBJ_LEVEL_2)
         knd_log("   == basic elem type: %s",
                 knd_attr_names[attr->type]);
@@ -633,7 +629,10 @@ static gsl_err_t parse_elem(void *data,
     case KND_ATTR_AGGR:
         err = self->mempool->new_obj(self->mempool, &obj);
         if (err) return make_gsl_err_external(err);
-        
+	err = self->mempool->new_state(self->mempool, &obj->state);
+	if (err) return make_gsl_err_external(err);
+	obj->state->phase = self->state->phase;
+
         obj->type = KND_OBJ_AGGR;
         if (!attr->conc) {
             if (self->state->phase == KND_FROZEN || self->state->phase == KND_SUBMITTED) {
@@ -811,13 +810,33 @@ static gsl_err_t rel_inst_read(void *obj,
     struct kndRelInstance *inst = obj;
     struct kndRel *rel;
     int err;
-
     rel = inst->rel;
     err = rel->read_inst(rel, inst, rec, total_size);
     if (err) return make_gsl_err_external(err);
  
     return make_gsl_err(gsl_OK);
 }
+
+static gsl_err_t read_rel_insts(void *obj,
+				const char *rec,
+				size_t *total_size)
+{
+    struct kndRelRef *self = obj;
+    struct gslTaskSpec rel_inst_spec = {
+        .is_list_item = true,
+	.accu = self,
+	.alloc = rel_inst_alloc,
+	.append = rel_inst_append,
+	.parse = rel_inst_read
+    };
+
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log(".. reading insts of rel %.*s..",
+                self->rel->name_size, self->rel->name);
+
+    return gsl_parse_array(&rel_inst_spec, rec, total_size);
+}
+
 
 static gsl_err_t rel_read(void *obj,
                           const char *rec,
@@ -832,10 +851,8 @@ static gsl_err_t rel_read(void *obj,
         { .is_list = true,
           .name = "inst",
           .name_size = strlen("inst"),
-          .accu = relref,
-          .alloc = rel_inst_alloc,
-          .append = rel_inst_append,
-          .parse = rel_inst_read
+	  .parse = read_rel_insts,
+	  .obj = relref
         }
     };
 
@@ -952,6 +969,30 @@ static gsl_err_t remove_obj(void *data, const char *name __attribute__((unused))
     return make_gsl_err(gsl_OK);
 }
 
+
+ 
+static gsl_err_t parse_rels(void *obj,
+			    const char *rec,
+			    size_t *total_size)
+{
+    struct kndObject *self = obj;
+    struct gslTaskSpec rel_spec = {
+        .is_list_item = true,
+	.accu = self,
+	.alloc = rel_alloc,
+	.append = rel_append,
+	.parse = rel_read
+    };
+
+    
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log(".. reading rels of obj %.*s..",
+                self->name_size, self->name);
+
+    return gsl_parse_array(&rel_spec, rec, total_size);
+}
+
+ 
 /* parse object */
 static int parse_GSL(struct kndObject *self,
                      const char *rec,
@@ -970,15 +1011,13 @@ static int parse_GSL(struct kndObject *self,
         { .is_validator = true,
           .validate = parse_elem,
           .obj = self
-        }/*,
+        },
         { .is_list = true,
           .name = "_rel",
           .name_size = strlen("_rel"),
-          .accu = self,
-          .alloc = rel_alloc,
-          .append = rel_append,
-          .parse = rel_read
-	  }*/,
+          .parse = parse_rels,
+          .obj = self
+        },
         { .is_default = true,
           .run = confirm_obj_import,
           .obj = self
@@ -987,14 +1026,13 @@ static int parse_GSL(struct kndObject *self,
     gsl_err_t parser_err;
 
     if (DEBUG_OBJ_LEVEL_2)
-        knd_log(".. parsing obj REC: %.*s", 64, rec);
+        knd_log(".. parsing obj REC: %.*s", 128, rec);
  
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     return knd_OK;
 }
-
 
 static int select_rels(struct kndObject *self,
                        const char *rec,

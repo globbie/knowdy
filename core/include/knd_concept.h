@@ -71,8 +71,8 @@ struct kndConcRefSet
 
 struct kndConcItem
 {
-    char name[KND_NAME_SIZE];
-    size_t name_size;
+    //char name[KND_NAME_SIZE];
+    //size_t name_size;
     char id[KND_ID_SIZE];
     size_t id_size;
 
@@ -131,6 +131,7 @@ struct kndConcDir
     size_t curr_offset;
     size_t block_size;
 
+    int fd;
     size_t body_size;
     size_t obj_block_size;
     size_t dir_size;
