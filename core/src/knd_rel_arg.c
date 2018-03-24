@@ -156,18 +156,18 @@ static int export_inst_GSP(struct kndRelArg *self,
     int err;
 
     out = self->out;
-    err = out->write(out, "{class ", strlen("{class "));                          RET_ERR();
-    err = out->write(out, inst->classname, inst->classname_size);                 RET_ERR();
+    err = out->write(out, "{c ", strlen("{c "));                                  RET_ERR();
+    err = out->write(out, inst->conc_dir->id, inst->conc_dir->id_size);           RET_ERR();
 
     if (inst->objname_size) {
-	err = out->write(out, "{obj ", strlen("{obj "));                          RET_ERR();
-	err = out->write(out, inst->objname, inst->objname_size);                 RET_ERR();
+	err = out->write(out, "{o ", strlen("{o "));                              RET_ERR();
+	err = out->write(out, inst->obj->id, inst->obj->id_size);                 RET_ERR();
 	err = out->writec(out, '}');                                              RET_ERR();
     }
     
     if (inst->val_size) {
-	err = out->write(out, "{obj ", strlen("{obj "));                          RET_ERR();
-	err = out->write(out, inst->objname, inst->objname_size);                 RET_ERR();
+	err = out->write(out, "{v ", strlen("{v "));                              RET_ERR();
+	err = out->write(out, inst->val, inst->val_size);                         RET_ERR();
 	err = out->writec(out, '}');                                              RET_ERR();
     }
 
@@ -518,7 +518,7 @@ static int link_rel(struct kndRelArg *self,
     struct kndRelArgInstRef *rel_arg_inst_ref = NULL;
     int err;
 
-    if (DEBUG_RELARG_LEVEL_TMP)
+    if (DEBUG_RELARG_LEVEL_2)
         knd_log(".. %.*s OBJ to link rel %.*s..",
                 obj_entry->name_size, obj_entry->name,
                 rel->name_size, rel->name);
@@ -579,10 +579,12 @@ static int resolve_inst(struct kndRelArg *self,
 
     /* resolve obj ref */
     if (inst->objname_size) {
-	knd_log(".. resolving rel arg inst OBJ ref: \"%.*s\""
-		" CONC DIR: %.*s OBJ IDX:%p",
-		inst->objname_size, inst->objname,
-		dir->name_size, dir->name, dir->obj_name_idx);
+
+	if (DEBUG_RELARG_LEVEL_2)
+	    knd_log(".. resolving rel arg inst OBJ ref: \"%.*s\""
+		    " CONC DIR: %.*s OBJ IDX:%p",
+		    inst->objname_size, inst->objname,
+		    dir->name_size, dir->name, dir->obj_name_idx);
 
         if (!dir->obj_name_idx) {
 	    knd_log("-- empty obj IDX in class \"%.*s\" :(",

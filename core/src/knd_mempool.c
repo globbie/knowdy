@@ -96,7 +96,7 @@ static int new_set(struct kndMemPool *self,
     return knd_OK;
 }
 
-static int new_set_elem(struct kndMemPool *self,
+/*static int new_set_elem(struct kndMemPool *self,
 			struct kndSetElem **result)
 {
     struct kndSetElem *q;
@@ -108,7 +108,7 @@ static int new_set_elem(struct kndMemPool *self,
     self->num_set_elems++;
     *result = q;
     return knd_OK;
-}
+    }*/
 
 static int new_set_elem_idx(struct kndMemPool *self,
 			    struct kndSetElemIdx **result)
@@ -541,7 +541,6 @@ static int alloc(struct kndMemPool *self)
 {
     if (!self->max_attrs)      self->max_attrs = KND_MIN_ATTRS;
     if (!self->max_sets)         self->max_sets =    KND_MIN_SETS;
-    if (!self->max_set_elems)    self->max_set_elems =         KND_MIN_SETS;
     if (!self->max_set_elem_idxs) self->max_set_elem_idxs =    KND_MIN_SETS;
     if (!self->max_facets)       self->max_facets =  KND_MIN_FACETS;
     if (!self->max_updates)      self->max_updates = KND_MIN_UPDATES;
@@ -603,11 +602,11 @@ static int alloc(struct kndMemPool *self)
         knd_log("-- sets not allocated :(");
         return knd_NOMEM;
     }
-    self->set_elems = calloc(self->max_set_elems, sizeof(struct kndSetElem));
+    /*self->set_elems = calloc(self->max_set_elems, sizeof(struct kndSetElem));
     if (!self->set_elems) {
         knd_log("-- set elems not allocated :(");
         return knd_NOMEM;
-    }
+	}*/
     self->set_elem_idxs = calloc(self->max_set_elem_idxs, sizeof(struct kndSetElemIdx));
     if (!self->set_elem_idxs) {
         knd_log("-- set elem idxs not allocated :(");
@@ -894,7 +893,6 @@ kndMemPool_init(struct kndMemPool *self)
     self->parse = parse_memory_settings;
     self->alloc = alloc;
     self->new_set = new_set;
-    self->new_set_elem = new_set_elem;
     self->new_set_elem_idx = new_set_elem_idx;
     self->new_facet = new_facet;
 

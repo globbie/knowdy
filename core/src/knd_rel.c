@@ -17,6 +17,7 @@
 #include "knd_state.h"
 #include "knd_repo.h"
 #include "knd_object.h"
+#include "knd_set.h"
 #include "knd_utils.h"
 #include "knd_concept.h"
 #include "knd_mempool.h"
@@ -38,7 +39,7 @@ static void str(struct kndRel *self)
 {
     struct kndRelArg *arg;
 
-    knd_log("\n%*sREL: %.*s [%.*s]", self->depth * KND_OFFSET_SIZE, "",
+    knd_log("\n%*sREL: %.*s [id:%.*s]", self->depth * KND_OFFSET_SIZE, "",
             self->name_size, self->name, self->id_size, self->id);
 
     for (arg = self->args; arg; arg = arg->next) {
@@ -92,8 +93,10 @@ static void inst_str(struct kndRel *self, struct kndRelInstance *inst)
 {
     struct kndRelArgInstance *arg;
 
-    knd_log("\n%*sRel Instance: %.*s [%zu]", self->depth * KND_OFFSET_SIZE, "",
-            self->name_size, self->name, inst->id);
+    knd_log("\n%*sRel Instance: %.*s NAME:%.*s ID:%.*s", self->depth * KND_OFFSET_SIZE, "",
+            self->name_size, self->name,
+            inst->name_size, inst->name,
+	    inst->id_size, inst->id);
 
     for (arg = inst->args; arg; arg = arg->next) {
         inst_arg_str(arg);
@@ -222,35 +225,11 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    memcpy(self->name, name, name_size);
+    self->name = name;
     self->name_size = name_size;
 
     return make_gsl_err(gsl_OK);
 }
-
-//static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
-//{
-//    struct kndRel *self = (struct kndRel*)obj;
-//    struct kndRelState *state;
-//
-//    if (DEBUG_REL_LEVEL_2)
-//        knd_log(".. run set rel val..");
-//
-//    if (!val_size) return make_gsl_err(gsl_FORMAT);
-//    if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-//
-//    state = malloc(sizeof(struct kndRelState));
-//    if (!state) return make_gsl_err_external(knd_NOMEM);
-//    memset(state, 0, sizeof(struct kndRelState));
-//    self->states = state;
-//    self->num_states = 1;
-//
-//    memcpy(state->val, val, val_size);
-//    state->val[val_size] = '\0';
-//    state->val_size = val_size;
-//
-//    return make_gsl_err(gsl_OK);
-//}
 
 static int export_JSON(struct kndRel *self)
 {
@@ -308,7 +287,12 @@ static int export_GSP(struct kndRel *self)
     struct kndTranslation *tr;
     int err;
 
-    err = out->write(out, "{", 1);
+    err = out->writec(out, '{');
+    if (err) return err;
+    err = out->write(out, self->id, self->id_size);
+    if (err) return err;
+
+    err = out->writec(out, ' ');
     if (err) return err;
 
     err = out->write(out, self->name, self->name_size);
@@ -335,7 +319,6 @@ static int export_GSP(struct kndRel *self)
         if (err) return err;
     }
 
-
     for (arg = self->args; arg; arg = arg->next) {
         arg->format = KND_FORMAT_GSP;
         arg->out = self->out;
@@ -358,7 +341,10 @@ static int export_inst_GSP(struct kndRel *self,
     struct kndObjEntry *entry = NULL;
     int err;
 
-    err = out->write(out, "{inst", strlen("{inst"));                                   RET_ERR();
+    knd_log(".. export rel inst %.*s..", inst->id_size, inst->id);
+
+    err = out->writec(out, '{');                                             RET_ERR();
+    err = out->write(out, inst->id, inst->id_size);                          RET_ERR();
 
     for (relarg_inst = inst->args;
          relarg_inst;
@@ -366,22 +352,21 @@ static int export_inst_GSP(struct kndRel *self,
 
         relarg = relarg_inst->relarg;
         /* skip over the selected obj */
-        if (relarg_inst->obj) {
+        /*if (relarg_inst->obj) {
             entry = relarg_inst->obj;
             if (relarg->curr_obj == entry->obj) continue;
-        }
+	    }*/
 
         relarg->out = out;
         relarg->format = KND_FORMAT_GSP;
 
-        err = out->write(out, " {", 2);                                            RET_ERR();
+        err = out->writec(out, '{');                                              RET_ERR();
         err = out->write(out, relarg->name, relarg->name_size);                   RET_ERR();
-        err = out->write(out, " ", 1);                                            RET_ERR();
         err = relarg->export_inst(relarg, relarg_inst);                           RET_ERR();
-        err = out->write(out, "}", 1);                                            RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
     }
 
-    err = out->write(out, "}", 1);                                                RET_ERR();
+    err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
 }
 
@@ -587,7 +572,7 @@ static int import_rel(struct kndRel *self,
     rel->log = self->log;
     rel->task = self->task;
     rel->mempool = self->mempool;
-    rel->rel_idx = self->rel_idx;
+    rel->rel_name_idx = self->rel_name_idx;
     rel->class_name_idx = self->class_name_idx;
 
     struct gslTaskSpec specs[] = {
@@ -625,8 +610,8 @@ static int import_rel(struct kndRel *self,
         goto final;
     }
 
-    dir = (struct kndRelDir*)self->rel_idx->get(self->rel_idx,
-                                                rel->name, rel->name_size);
+    dir = (struct kndRelDir*)self->rel_name_idx->get(self->rel_name_idx,
+						     rel->name, rel->name_size);
     if (dir) {
         knd_log("-- %s relation name doublet found :(", rel->name);
         self->log->reset(self->log);
@@ -651,11 +636,33 @@ static int import_rel(struct kndRel *self,
     err = self->mempool->new_rel_dir(self->mempool, &dir);                        RET_ERR();
     dir->rel = rel;
     rel->dir = dir;
-    err = self->rel_idx->set(self->rel_idx,
-                             rel->name, rel->name_size, (void*)dir);
+    self->num_rels++;
+    dir->numid = self->num_rels;
+
+    knd_num_to_str(dir->numid, dir->id, &dir->id_size, KND_RADIX_BASE);
+    /* automatic name assignment if no explicit name given */
+
+    memcpy(rel->dir->name, rel->name, rel->name_size);
+    rel->dir->name_size = rel->name_size;
+
+    if (!rel->name_size) {
+	memcpy(dir->name, dir->id, dir->id_size);
+	dir->name_size = dir->id_size;
+    }
+    rel->name = dir->name;
+    rel->name_size = dir->name_size;
+    rel->id = dir->id;
+    rel->id_size = dir->id_size;
+
+    knd_log(".. name idx: \"%.*s\".. IDX:%p",
+	    dir->name_size, dir->name,
+	    self->rel_name_idx);
+
+    err = self->rel_name_idx->set(self->rel_name_idx,
+				  dir->name, dir->name_size, (void*)dir);
     if (err) goto final;
 
-    if (DEBUG_REL_LEVEL_2)
+    if (DEBUG_REL_LEVEL_TMP)
         rel->str(rel);
 
     return knd_OK;
@@ -734,12 +741,13 @@ static int get_rel(struct kndRel *self,
     int err;
 
     if (DEBUG_REL_LEVEL_2)
-        knd_log(".. %.*s to get rel: \"%.*s\"  IDX:%p..",
-                self->name_size, self->name, name_size, name, self->rel_idx);
+        knd_log(".. get rel: \"%.*s\"",
+                name_size, name);
 
-    dir = (struct kndRelDir*)self->rel_idx->get(self->rel_idx, name, name_size);
+    dir = self->rel_name_idx->get(self->rel_name_idx,
+				  name, name_size);
     if (!dir) {
-        knd_log("-- no such rel: \"%.*s\" %p :(", name_size, name, self->log);
+        knd_log("-- no such rel: \"%.*s\" :(", name_size, name);
         self->log->reset(self->log);
         err = self->log->write(self->log, name, name_size);
         if (err) return err;
@@ -807,11 +815,11 @@ static int get_rel(struct kndRel *self,
     rel->log = self->log;
     rel->task = self->task;
     rel->mempool = self->mempool;
-    rel->rel_idx = self->rel_idx;
+    rel->rel_name_idx = self->rel_name_idx;
     rel->class_name_idx = self->class_name_idx;
     rel->dir = dir;
 
-    memcpy(rel->name, dir->name, dir->name_size);
+    rel->name = dir->name;
     rel->name_size = dir->name_size;
 
     rel->frozen_output_file_name = self->frozen_output_file_name;
@@ -961,6 +969,19 @@ static int read_instance(struct kndRel *self,
 }
 
 
+static gsl_err_t set_inst_name(void *obj, const char *name, size_t name_size)
+{
+    struct kndRelInstance *self = obj;
+
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    /* TODO: check doublets */
+    self->name = name;
+    self->name_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t parse_import_instance(void *data,
                                        const char *rec,
                                        size_t *total_size)
@@ -990,53 +1011,72 @@ static gsl_err_t parse_import_instance(void *data,
     inst->rel = self->curr_rel;
 
     struct gslTaskSpec specs[] = {
-         { .type = GSL_CHANGE_STATE,
-           .is_validator = true,
-           .validate = parse_rel_arg_inst,
-           .obj = inst
-         },
-         { .is_default = true,
-           .run = run_select_rel,
-           .obj = inst
-         }
+        { .is_implied = true,
+          .run = set_inst_name,
+          .obj = inst
+        },
+	{ .type = GSL_CHANGE_STATE,
+	  .is_validator = true,
+	  .validate = parse_rel_arg_inst,
+	  .obj = inst
+	},
+	{ .is_default = true,
+	  .run = run_select_rel,
+	  .obj = inst
+	}
    };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
     rel = inst->rel;
 
-    if (DEBUG_REL_LEVEL_TMP)
-        inst_str(rel, inst);
-
     /* save in inbox */
     inst->next = rel->inst_inbox;
     rel->inst_inbox = inst;
     rel->inst_inbox_size++;
-    if (!rel->dir) {
-        return make_gsl_err(gsl_OK);
+    /*if (!rel->dir) {
+        return make_gsl_err(gsl_FAIL);
+	}*/
+    rel->dir->num_insts++;
+
+    /* assign id/name */
+    inst->numid = rel->dir->num_insts;
+    knd_num_to_str(inst->numid, inst->id, &inst->id_size, KND_RADIX_BASE);
+
+    /* automatic name assignment if no explicit name given */
+    if (!inst->name_size) {
+	inst->name = inst->id;
+	inst->name_size = inst->id_size;
     }
 
+    if (DEBUG_REL_LEVEL_TMP)
+        inst_str(rel, inst);
+    
     if (!rel->dir->inst_idx) {
-        err = ooDict_new(&rel->dir->inst_idx, KND_MEDIUM_DICT_SIZE);
+	err = self->mempool->new_set(self->mempool, &rel->dir->inst_idx);
+	if (err) return make_gsl_err_external(err);
+	rel->dir->inst_idx->type = KND_SET_REL_INST;
+    }
+
+    if (!rel->dir->inst_name_idx) {
+        err = ooDict_new(&rel->dir->inst_name_idx, KND_MEDIUM_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
     }
-
+    
     entry = malloc(sizeof(struct kndRelInstEntry));
     if (!entry) return make_gsl_err_external(knd_NOMEM);
     memset(entry, 0, sizeof(struct kndRelInstEntry));
     entry->inst = inst;
 
-    err = rel->dir->inst_idx->set(rel->dir->inst_idx,
-                                  inst->name, inst->name_size, (void*)entry);
+    err = rel->dir->inst_name_idx->set(rel->dir->inst_name_idx,
+				       inst->name, inst->name_size, (void*)entry);
     if (err) return make_gsl_err_external(err);
 
-    /*if (DEBUG_REL_LEVEL_2) {
+    if (DEBUG_REL_LEVEL_TMP) {
         knd_log("\n\nREGISTER INST in %.*s IDX:  [total:%zu valid:%zu]",
-                c->name_size, c->name, c->dir->inst_idx->size, c->dir->num_insts);
-        inst->depth = self->depth + 1;
-        inst->str(inst);
+                rel->name_size, rel->name, rel->dir->inst_name_idx->size, rel->dir->num_insts);
+        inst_str(rel, inst);
     }
-    */
 
     return make_gsl_err(gsl_OK);
 }
@@ -1157,9 +1197,9 @@ static int resolve_rels(struct kndRel *self)
         knd_log(".. resolving rels by \"%.*s\"",
                 self->name_size, self->name);
     key = NULL;
-    self->rel_idx->rewind(self->rel_idx);
+    self->rel_name_idx->rewind(self->rel_name_idx);
     do {
-        self->rel_idx->next_item(self->rel_idx, &key, &val);
+        self->rel_name_idx->next_item(self->rel_name_idx, &key, &val);
         if (!key) break;
 
         dir = (struct kndRelDir*)val;
@@ -1201,25 +1241,22 @@ static int kndRel_coordinate(struct kndRel *self)
 
     /* assign ids */
     key = NULL;
-    self->rel_idx->rewind(self->rel_idx);
+    self->rel_name_idx->rewind(self->rel_name_idx);
     do {
-        self->rel_idx->next_item(self->rel_idx, &key, &val);
+        self->rel_name_idx->next_item(self->rel_name_idx, &key, &val);
         if (!key) break;
 
         dir = (struct kndRelDir*)val;
         rel = dir->rel;
-
-        /* TODO: assign id */
-	
         rel->phase = KND_CREATED;
     } while (key);
 
     /* display all rels */
-    if (DEBUG_REL_LEVEL_1) {
+    if (DEBUG_REL_LEVEL_TMP) {
         key = NULL;
-        self->rel_idx->rewind(self->rel_idx);
+        self->rel_name_idx->rewind(self->rel_name_idx);
         do {
-            self->rel_idx->next_item(self->rel_idx, &key, &val);
+            self->rel_name_idx->next_item(self->rel_name_idx, &key, &val);
             if (!key) break;
             dir = (struct kndRelDir*)val;
             rel = dir->rel;
@@ -1239,7 +1276,8 @@ static int kndRel_update_state(struct kndRel *self,
     struct kndRelUpdate **rel_updates;
     int err;
 
-    knd_log(".. update Rel state..");
+    if (DEBUG_REL_LEVEL_1)
+	knd_log(".. updating Rel state..");
 
     /* create index of REL updates */
     rel_updates = realloc(update->rels,
@@ -1251,7 +1289,6 @@ static int kndRel_update_state(struct kndRel *self,
         err = rel->resolve(rel);                                                  RET_ERR();
         err = self->mempool->new_rel_update(self->mempool, &rel_update);          RET_ERR();
 
-        /* TODO: assign id */
         rel_update->rel = rel;
         update->rels[update->num_rels] = rel_update;
         update->num_rels++;
@@ -1384,8 +1421,6 @@ static int parse_liquid_updates(struct kndRel *self,
 
 static int export_updates(struct kndRel *self)
 {
-    char buf[KND_SHORT_NAME_SIZE];
-    size_t buf_size;
     struct kndRel *rel;
     struct kndRelInstance *inst;
     struct glbOutput *out = self->out;
@@ -1410,6 +1445,93 @@ static int export_updates(struct kndRel *self)
 }
 
 
+static int freeze_insts(struct kndRel *self,
+                       size_t *total_size)
+{
+    char buf[KND_SHORT_NAME_SIZE];
+    size_t buf_size;
+    struct kndRelInstance *inst;
+    struct kndRelInstEntry *entry;
+    struct glbOutput *out = self->out;
+    struct glbOutput *trailer = self->dir_out;
+    const char *key;
+    void *val;
+    size_t chunk_size;
+    size_t start_offset = 0;
+    size_t inst_block_offset = 0;
+    size_t block_size = out->buf_size;
+    int err;
+
+    if (DEBUG_REL_LEVEL_TMP)
+        knd_log(".. freezing insts of Rel \"%.*s\", total:%zu",
+                self->name_size, self->name,
+                self->dir->num_insts);
+
+    start_offset = out->buf_size;
+    inst_block_offset = out->buf_size;
+
+    err = trailer->write(trailer, "[i", strlen("[i"));
+    if (err) return err;
+
+    key = NULL;
+    self->dir->inst_name_idx->rewind(self->dir->inst_name_idx);
+    do {
+        self->dir->inst_name_idx->next_item(self->dir->inst_name_idx, &key, &val);
+        if (!key) break;
+        entry = val;
+        inst = entry->inst;
+
+        /*if (obj->state->phase != KND_CREATED) {
+            knd_log("NB: skip freezing \"%.*s\"   phase: %d",
+                    obj->name_size, obj->name, obj->state->phase);
+            continue;
+	    }*/
+
+        err = export_inst_GSP(self, inst);
+        if (err) {
+            knd_log("-- couldn't export GSP of the \"%.*s\" inst :(",
+                    inst->name_size, inst->name);
+            return err;
+        }
+
+        entry->block_size = out->buf_size - inst_block_offset;
+	block_size += entry->block_size;
+
+	inst_block_offset = out->buf_size;
+ 	buf_size = 0;
+	knd_num_to_str(entry->block_size, buf, &buf_size, KND_RADIX_BASE);
+
+	err = trailer->writec(trailer, ' ');
+        if (err) return err;
+
+	err = trailer->write(trailer, buf, buf_size);
+        if (err) return err;
+
+        if (DEBUG_REL_LEVEL_TMP)
+	    knd_log("Rel body size: %zu [%.*s]",
+		    entry->block_size, buf_size, buf);
+
+    } while (key);
+
+    err = trailer->writec(trailer, ']');
+    if (err) return err;
+    
+    if (out->buf_size) {
+	err = knd_append_file(self->frozen_output_file_name,
+			      out->buf, out->buf_size);
+	if (err) return err;
+    }
+
+    err = knd_append_file(self->frozen_output_file_name,
+			  trailer->buf, trailer->buf_size);
+    if (err) return err;
+    block_size += trailer->buf_size;
+
+    *total_size = block_size;
+
+    return knd_OK;
+}
+
 static int freeze(struct kndRel *self,
                   size_t *total_frozen_size,
                   char *output,
@@ -1417,13 +1539,15 @@ static int freeze(struct kndRel *self,
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size;
-    struct glbOutput *out;
-    char *curr_dir = output;
-    size_t curr_dir_size = 0;
+    size_t chunk_size;
+    size_t block_size = 0;
+    size_t output_size = 0;
+    struct glbOutput *out = self->out;
+    struct glbOutput *trailer = self->dir_out;
     int err;
 
-    out = self->out;
     out->reset(out);
+    trailer->reset(trailer);
 
     err = export_GSP(self);
     if (err) {
@@ -1431,28 +1555,56 @@ static int freeze(struct kndRel *self,
                 self->name_size, self->name);
         return err;
     }
+    
+    /* any instances to freeze? */
+    if (self->dir->num_insts) {
+	/* mark the size of the Rel body rec */
+	err = trailer->write(trailer, "{R ", strlen("{R "));
+	if (err) return err;
+	buf_size = 0;
+	knd_num_to_str(out->buf_size, buf, &buf_size, KND_RADIX_BASE);
+	err = trailer->write(trailer, buf, buf_size);
+	if (err) return err;
+	err = trailer->writec(trailer, '}');
+	if (err) return err;
 
-    if (DEBUG_REL_LEVEL_2)
-        knd_log("GSP: %.*s  FILE: %s",
-                out->buf_size, out->buf, self->frozen_output_file_name);
+	err = freeze_insts(self, &block_size);       RET_ERR();
+
+	/* print total block size  */
+	out->reset(out);
+	err = out->write(out, "{L ", strlen("{L "));
+	if (err) return err;
+	buf_size = 0;
+	knd_num_to_str(block_size, buf, &buf_size, KND_RADIX_BASE);
+	err = out->write(out, buf, buf_size);
+	if (err) return err;
+	err = out->writec(out, '}');
+	if (err) return err;
+    }
+
+    if (DEBUG_REL_LEVEL_TMP)
+        knd_log("== Rel frozen GSP: %.*s",
+                out->buf_size, out->buf);
 
     /* persistent write */
-    err = knd_append_file(self->frozen_output_file_name,
-                          out->buf, out->buf_size);
-    if (err) return err;
+    if (out->buf_size) {
+	err = knd_append_file(self->frozen_output_file_name,
+			      out->buf, out->buf_size);
+	if (err) return err;
+    }
 
-    memcpy(curr_dir, " ", 1);
-    curr_dir++;
-    curr_dir_size++;
+    memcpy(output, " ", 1);
+    output++;
+    output_size++;
 
     buf_size = 0;
     knd_num_to_str(out->buf_size, buf, &buf_size, KND_RADIX_BASE);
-    memcpy(curr_dir, buf, buf_size);
-    curr_dir      += buf_size;
-    curr_dir_size += buf_size;
-    
+    memcpy(output, buf, buf_size);
+    output      += buf_size;
+    output_size += buf_size;
+
     *total_frozen_size += out->buf_size;
-    *total_size = curr_dir_size;
+    *total_size = output_size;
 
     return knd_OK;
 }

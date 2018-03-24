@@ -238,7 +238,7 @@ export_rels_GSP(struct kndObject *self)
 {
     struct kndRel *rel;
     struct kndRelRef *relref;
-    struct kndRelInstance *rel_inst;
+    //struct kndRelInstance *rel_inst;
     struct kndRelArgInstance *rel_arg_inst;
     struct kndRelArgInstRef *rel_arg_inst_ref;
 
@@ -370,13 +370,9 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndObject *self = (struct kndObject*)obj;
     struct kndConcept *conc;
     struct kndObjEntry *entry;
-    size_t name_hash = 0;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    for (size_t i = 0; i < name_size; i++)
-        name_hash = (name_hash << 1) ^ name[i];
 
     /* check name doublets */
     conc = self->conc;
@@ -398,7 +394,6 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
  assign_name:
     self->name = name;
     self->name_size = name_size;
-    self->name_hash = name_hash;
 
     if (DEBUG_OBJ_LEVEL_2)
         knd_log("++ OBJ NAME: \"%.*s\"",
