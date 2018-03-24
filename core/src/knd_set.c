@@ -112,7 +112,8 @@ static int
 kndSet_elem_idx_JSON(struct kndSet *self,
 		     struct kndSetElemIdx *parent_idx)
 {
-    struct kndSetElem *elem;
+    void *elem;
+    struct kndConcDir *conc_dir;
     struct kndSetElemIdx *idx;
     struct kndConcept *parent_conc, *c;
     int err;
@@ -122,7 +123,9 @@ kndSet_elem_idx_JSON(struct kndSet *self,
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
 	elem = parent_idx->elems[i];
 	if (!elem) continue;
-	
+
+	conc_dir = (struct kndConcDir*)elem;
+
 	/* match count */
 	
 	/* separator needed? */
@@ -132,8 +135,8 @@ kndSet_elem_idx_JSON(struct kndSet *self,
 	}
 	
 	err = parent_conc->get(parent_conc,
-			       elem->conc_dir->name,
-			       elem->conc_dir->name_size,
+			       conc_dir->name,
+			       conc_dir->name_size,
 			       &c);                                           RET_ERR();
 	
 	c->format = self->format;
@@ -591,7 +594,7 @@ kndSet_add_conc(struct kndSet *self,
 
 static int add_elem(struct kndSet *self,
 		    struct kndSetElemIdx *parent_idx,
-		    struct kndSetElem *elem,
+		    void *elem,
 		    const char *id,
 		    size_t id_size)
 {
@@ -629,7 +632,7 @@ static gsl_err_t atomic_elem_alloc(void *obj,
 				   void **item __attribute__((unused)))
 {
     struct kndSet *self = obj;
-    struct kndSetElem *elem;
+    void *elem;
     struct kndSetElemIdx *idx;
     struct ooDict *class_idx;
     struct kndConcDir *conc_dir;
@@ -654,10 +657,7 @@ static gsl_err_t atomic_elem_alloc(void *obj,
 
     idx_pos = obj_id_base[(unsigned int)*val];
 
-    /* add elem to a terminal row of elems */
-    err = self->mempool->new_set_elem(self->mempool, &elem);
-    if (err) return make_gsl_err_external(err);
-    elem->conc_dir = conc_dir;
+    elem = (void*)conc_dir;
 
     if (val_size == 1) {
 	self->idx->elems[idx_pos] = elem;

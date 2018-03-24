@@ -441,14 +441,13 @@ static int report(struct kndTask *self)
 	task_status = "--";
     } else {
         err = out->write(out, "{save _obj}}}", strlen("{save _obj}}}"));            RET_ERR();
-	
     }
 
     if (DEBUG_TASK_LEVEL_TMP) {
         obj_size = self->out->buf_size;
         if (obj_size > KND_MAX_DEBUG_CONTEXT_SIZE)
             obj_size = KND_MAX_DEBUG_CONTEXT_SIZE;
-	
+
 	knd_log("RESULT: \"%s\" %.*s [size: %zu]\n",
 		task_status, obj_size,
 		self->out->buf, self->out->buf_size);
