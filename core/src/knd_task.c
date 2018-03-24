@@ -180,24 +180,23 @@ static gsl_err_t set_output_format(void *obj, const char *name, size_t name_size
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     for (size_t i = 0; i < sizeof(knd_format_names); i++) {
-	format_str = knd_format_names[i];
-	if (!format_str) break;
+        format_str = knd_format_names[i];
+        if (!format_str) break;
 
-	format_str_size = strlen(format_str);
-	if (name_size != format_str_size) continue;
+        format_str_size = strlen(format_str);
+        if (name_size != format_str_size) continue;
 
-	if (!memcmp(knd_format_names[i], name, name_size)) {
-	    self->format = (knd_format)i;
+        if (!memcmp(knd_format_names[i], name, name_size)) {
+            self->format = (knd_format)i;
 
-	    knd_log("++ \"%.*s\" format chosen!", name_size, name);
-	    return make_gsl_err(gsl_OK);
-	}
+            knd_log("++ \"%.*s\" format chosen!", name_size, name);
+            return make_gsl_err(gsl_OK);
+        }
     }
 
     err = self->log->write(self->log, name, name_size);
     if (err) return make_gsl_err(err);
-    err = self->log->write(self->log, " format not supported",
-			   strlen(" format not supported"));
+    err = self->log->write(self->log, " format not supported", strlen(" format not supported"));
     if (err) return make_gsl_err(err);
 
     return make_gsl_err(gsl_FAIL);
@@ -217,18 +216,16 @@ static gsl_err_t check_delivery_type(void *obj, const char *val, size_t val_size
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_delivery_callback(void *obj,
-					 const char *rec,
-					 size_t *total_size)
+static gsl_err_t parse_delivery_callback(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *self = obj;
 
     struct gslTaskSpec specs[] = {
-	{ .is_implied = true,
+    { .is_implied = true,
           .run = check_delivery_type,
           .obj = self
-	},
-	{ .name = "base_url",
+    },
+    { .name = "base_url",
           .name_size = strlen("base_url"),
           .buf = self->delivery_addr,
           .buf_size = &self->delivery_addr_size,
@@ -239,7 +236,7 @@ static gsl_err_t parse_delivery_callback(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-	
+
 static gsl_err_t parse_task(void *obj,
                             const char *rec,
                             size_t *total_size)
@@ -269,12 +266,12 @@ static gsl_err_t parse_task(void *obj,
         { .name = "format",
           .name_size = strlen("format"),
           .run = set_output_format,
-	  .obj = self
+          .obj = self
         },
         { .name = "callback",
           .name_size = strlen("callback"),
           .parse = parse_delivery_callback,
-	  .obj = self
+          .obj = self
         },
         { .name = "user",
           .name_size = strlen("user"),
