@@ -14,9 +14,7 @@
 
 
 static int
-task_callback(struct kmqEndPoint *endpoint __attribute__((unused)),
-	      struct kmqTask *task,
-	      void *cb_arg)
+task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
 {
     struct kndLearnerService *self = cb_arg;
     const char *b;
@@ -25,7 +23,7 @@ task_callback(struct kmqEndPoint *endpoint __attribute__((unused)),
     int err;
 
     knd_log("++ new task! curr storage size:%zu  capacity:%zu",
-	    self->task_storage->buf_size, self->task_storage->capacity);
+        self->task_storage->buf_size, self->task_storage->capacity);
 
     err = task->get_data(task, 0, &data, &size);
     if (err != knd_OK) { knd_log("-- task read failed"); return -1; }
@@ -33,14 +31,12 @@ task_callback(struct kmqEndPoint *endpoint __attribute__((unused)),
     b = self->task_storage->buf + self->task_storage->buf_size;
     err = self->task_storage->write(self->task_storage, data, size);
     if (err) {
-	knd_log("-- task storage limit reached!");
-	return err;
+        knd_log("-- task storage limit reached!");
+        return err;
     }
 
     self->task->reset(self->task);
-    err = self->task->run(self->task,
-			  b, size,
-			  "None", sizeof("None"));
+    err = self->task->run(self->task, b, size, "None", sizeof("None"));
     if (err != knd_OK) {
         self->task->error = err;
         knd_log("-- task running failure: %d", err);
@@ -52,18 +48,44 @@ final:
     /* save only the successful write transaction */
     switch (self->task->type) {
     case KND_UPDATE_STATE:
-	if (!self->task->error)
-	    break;
+        if (!self->task->error)
+        break;
     default:
-	/* retract last write to task_storage */
-	self->task_storage->rtrim(self->task_storage, size);
-	break;
+        /* retract last write to task_storage */
+        self->task_storage->rtrim(self->task_storage, size);
+        break;
     }
-    
+
     err = self->task->report(self->task);
     if (err != knd_OK) {
         knd_log("-- task report failed: %d", err);
+        return -1;
     }
+
+    {
+        struct kmqTask *reply;
+        err = kmqTask_new(&reply);
+        if (err != 0) {
+            knd_log("-- task report failed, allocation failed");
+            return -1;
+        }
+
+        err = reply->copy_data(reply, self->task->out->buf, self->task->out->buf_size);
+        if (err != 0) {
+            knd_log("-- task report failed, reply data copy failed");
+            goto free_reply;
+        }
+
+        err = endpoint->schedule_task(endpoint, reply);
+        if (err != 0) {
+            knd_log("-- task report failed, schedule reply failed");
+            goto free_reply;
+        }
+
+    free_reply:
+        reply->del(reply);
+    }
+
     return 0;
 }
 
