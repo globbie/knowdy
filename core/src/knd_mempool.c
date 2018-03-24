@@ -97,7 +97,7 @@ static int new_set(struct kndMemPool *self,
 }
 
 /*static int new_set_elem(struct kndMemPool *self,
-			struct kndSetElem **result)
+                        struct kndSetElem **result)
 {
     struct kndSetElem *q;
     if (self->num_set_elems >= self->max_set_elems) {
@@ -111,7 +111,7 @@ static int new_set(struct kndMemPool *self,
     }*/
 
 static int new_set_elem_idx(struct kndMemPool *self,
-			    struct kndSetElemIdx **result)
+                            struct kndSetElemIdx **result)
 {
     struct kndSetElemIdx *q;
     if (self->num_set_elem_idxs >= self->max_set_elem_idxs) {
@@ -145,7 +145,7 @@ static int new_update(struct kndMemPool *self,
     struct kndUpdate *upd;
     int e;
     if (self->num_updates >= self->max_updates) {
-	knd_log("-- updates memory limit exceeded, max: %zu", self->max_updates);
+        knd_log("-- updates memory limit exceeded, max: %zu", self->max_updates);
         self->log->reset(self->log);
         e = self->log->write(self->log, "memory limit reached",
                              strlen("memory limit reached"));
@@ -175,7 +175,7 @@ static int new_class_update(struct kndMemPool *self,
         if (e) return e;
 
         knd_log("-- class update mempool exhausted, max: %zu",
-		self->max_class_updates);
+                self->max_class_updates);
         return knd_LIMIT;
     }
     upd = &self->class_updates[self->num_class_updates];
@@ -218,11 +218,11 @@ static int new_obj(struct kndMemPool *self,
 }
 
 static int new_state(struct kndMemPool *self,
-		     struct kndState **result)
+                     struct kndState **result)
 {
     struct kndState *state;
     if (self->num_states >= self->max_states) {
-	knd_log("-- state mempool exhausted, max: %zu", self->max_states);
+        knd_log("-- state mempool exhausted, max: %zu", self->max_states);
         return knd_NOMEM;
     }
     state = &self->states[self->num_states];
@@ -276,7 +276,7 @@ static int new_conc_dir(struct kndMemPool *self,
 }
 
 static int new_conc_item(struct kndMemPool *self,
-			 struct kndConcItem **result)
+                         struct kndConcItem **result)
 {
     struct kndConcItem *item;
 
@@ -382,8 +382,8 @@ static int new_rel_arg_inst(struct kndMemPool *self,
     
 
     if (self->num_rel_arg_insts >= self->max_rel_arg_insts) {
-	knd_log("-- rel arg inst limit reached :(");
-	return knd_LIMIT;
+        knd_log("-- rel arg inst limit reached :(");
+        return knd_LIMIT;
     }
     rel_arg_inst = &self->rel_arg_insts[self->num_rel_arg_insts];
     memset(rel_arg_inst, 0, sizeof(struct kndRelArgInstance));
@@ -410,13 +410,13 @@ static int new_rel_arg_inst_ref(struct kndMemPool *self,
 
 
 static int new_rel_update(struct kndMemPool *self,
-			  struct kndRelUpdate **result)
+                          struct kndRelUpdate **result)
 {
     struct kndRelUpdate *upd;
     int e;
 
     if (self->num_rel_updates >= self->max_rel_updates) {
-	knd_log("-- rel update mempool exhausted, max: %zu", self->max_rel_updates);
+        knd_log("-- rel update mempool exhausted, max: %zu", self->max_rel_updates);
         self->log->reset(self->log);
         e = self->log->write(self->log, "rel updates memory limit reached",
                              strlen("rel updates memory limit reached"));
@@ -484,7 +484,7 @@ static int new_proc_dir(struct kndMemPool *self,
 }
 
 static int new_proc_arg(struct kndMemPool *self,
-			struct kndProcArg **result)
+                        struct kndProcArg **result)
 {
     struct kndProcArg *arg;
     if (self->num_proc_args >= self->max_proc_args) {
@@ -606,7 +606,7 @@ static int alloc(struct kndMemPool *self)
     if (!self->set_elems) {
         knd_log("-- set elems not allocated :(");
         return knd_NOMEM;
-	}*/
+        }*/
     self->set_elem_idxs = calloc(self->max_set_elem_idxs, sizeof(struct kndSetElemIdx));
     if (!self->set_elem_idxs) {
         knd_log("-- set elem idxs not allocated :(");
