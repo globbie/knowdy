@@ -15,8 +15,8 @@
 
 static int
 task_callback(struct kmqEndPoint *endpoint __attribute__((unused)),
-	      struct kmqTask *task,
-	      void *cb_arg)
+              struct kmqTask *task,
+              void *cb_arg)
 {
     struct kndLearnerService *self = cb_arg;
     const char *b;
@@ -25,7 +25,7 @@ task_callback(struct kmqEndPoint *endpoint __attribute__((unused)),
     int err;
 
     knd_log("++ new task! curr storage size:%zu  capacity:%zu",
-	    self->task_storage->buf_size, self->task_storage->capacity);
+            self->task_storage->buf_size, self->task_storage->capacity);
 
     err = task->get_data(task, 0, &data, &size);
     if (err != knd_OK) { knd_log("-- task read failed"); return -1; }
@@ -33,14 +33,14 @@ task_callback(struct kmqEndPoint *endpoint __attribute__((unused)),
     b = self->task_storage->buf + self->task_storage->buf_size;
     err = self->task_storage->write(self->task_storage, data, size);
     if (err) {
-	knd_log("-- task storage limit reached!");
-	return err;
+        knd_log("-- task storage limit reached!");
+        return err;
     }
 
     self->task->reset(self->task);
     err = self->task->run(self->task,
-			  b, size,
-			  "None", sizeof("None"));
+                          b, size,
+                          "None", sizeof("None"));
     if (err != knd_OK) {
         self->task->error = err;
         knd_log("-- task running failure: %d", err);
@@ -52,12 +52,12 @@ final:
     /* save only the successful write transaction */
     switch (self->task->type) {
     case KND_UPDATE_STATE:
-	if (!self->task->error)
-	    break;
+        if (!self->task->error)
+            break;
     default:
-	/* retract last write to task_storage */
-	self->task_storage->rtrim(self->task_storage, size);
-	break;
+        /* retract last write to task_storage */
+        self->task_storage->rtrim(self->task_storage, size);
+        break;
     }
     
     err = self->task->report(self->task);
@@ -195,12 +195,12 @@ parse_config(void *obj, const char *rec, size_t *total_size)
     }
 
     if (self->num_owners > KND_MAX_OWNERS) {
-	knd_log("-- too many owners requested, limiting to %zu",
-		KND_MAX_OWNERS);
-	self->num_owners = KND_MAX_OWNERS;
+        knd_log("-- too many owners requested, limiting to %zu",
+                KND_MAX_OWNERS);
+        self->num_owners = KND_MAX_OWNERS;
     }
     if (!self->num_owners)
-	self->num_owners = 1;
+        self->num_owners = 1;
 
     knd_log("== Learner's settings:");
     knd_log("   total owners: %zu", self->num_owners);
@@ -315,12 +315,12 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     { // read config
         size_t chunk_size;
         err = self->out->write_file_content(self->out,
-					    opts->config_file);
+                                            opts->config_file);
         if (err != knd_OK) goto error;
 
         err = parse_schema(self, self->out->buf, &chunk_size);
         if (err != knd_OK) goto error;
-	self->out->reset(self->out);
+        self->out->reset(self->out);
     }
 
     self->owners = calloc(self->num_owners, sizeof(struct kndLearnerOwner));
@@ -328,14 +328,14 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
 
     /* start owners */
     /*for (size_t i = 0; i < self->num_owners; i++) {
-	owner = &self->owners[i];
-	owner->id = i;
-	owner->service = self;
+        owner = &self->owners[i];
+        owner->id = i;
+        owner->service = self;
         err = pthread_create(&owner->thread, 
                              NULL,
                              start_owner,
                              (void*)owner);
-			     }*/
+                             }*/
 
     err = self->mempool->alloc(self->mempool);
 
@@ -418,7 +418,7 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
                                        sizeof(struct kndObject*));
         if (!self->admin->user_idx) return knd_NOMEM;
         self->admin->max_users = self->max_users;
-	}*/
+        }*/
 
     /* try opening the frozen DB */
     conc->user = self->admin;
