@@ -254,9 +254,9 @@ export_rels_GSP(struct kndObject *self)
     for (relref = self->entry->rels; relref; relref = relref->next) {
         rel = relref->rel;
         err = out->writec(out, '{');                                              RET_ERR();
-        err = out->write(out, rel->id, rel->id_size);                         RET_ERR();
+        err = out->write(out, rel->id, rel->id_size);                             RET_ERR();
 
-        err = out->write(out, "[i", strlen("[i"));                          RET_ERR();
+        err = out->write(out, "[i", strlen("[i"));                                RET_ERR();
         for (rel_arg_inst_ref = relref->insts;
              rel_arg_inst_ref;
              rel_arg_inst_ref = rel_arg_inst_ref->next) {

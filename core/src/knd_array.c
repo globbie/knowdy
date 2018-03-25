@@ -52,8 +52,8 @@ ooArray_del(struct ooArray *self)
 
 static int
 ooArray_set_item(struct ooArray *self,
-		 void    *data,
-		 size_t pos)
+                 void    *data,
+                 size_t pos)
 {
     if (pos >= self->size)
         return oo_FAIL;
@@ -84,8 +84,8 @@ ooArray_clear(struct ooArray *self)
 
 static int
 ooArray_add(struct ooArray *self,
-	    void    *val,
-	    size_t pos)
+            void    *val,
+            size_t pos)
 {
     unsigned int i;
     void **data;
@@ -95,7 +95,7 @@ ooArray_add(struct ooArray *self,
         return oo_FAIL;
 
     data = (void**)realloc(self->data, 
-			   sizeof(void*) * (self->size + 1));
+                           sizeof(void*) * (self->size + 1));
 
     if (!data) return oo_NOMEM;
 
@@ -119,8 +119,8 @@ ooArray_push(struct ooArray *self,
 
 static struct ooArray* 
 ooArray_get_subsequence(struct ooArray *self,
-			size_t start,
-			size_t length)
+                        size_t start,
+                        size_t length)
 {
     int ret;
 
@@ -172,7 +172,7 @@ ooArray_pop(struct ooArray *self)
 
 static int
 ooArray_resize(struct ooArray *self,
-	       size_t new_size)
+               size_t new_size)
 {
     void **data;
     unsigned int size = self->size;
@@ -190,7 +190,7 @@ ooArray_resize(struct ooArray *self,
 
 static void 
 ooArray_sort(struct ooArray *self,
-	     oo_compar_func function)
+             oo_compar_func function)
 {
     local_function = function;
     qsort(self->data, self->size, sizeof(void*), compare_array_items);
@@ -198,8 +198,8 @@ ooArray_sort(struct ooArray *self,
 
 static void* 
 ooArray_find(struct ooArray *self,
-	     void *data,
-	     oo_compar_func function)
+             void *data,
+             oo_compar_func function)
 {
     size_t i;
 
