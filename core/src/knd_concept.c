@@ -49,9 +49,6 @@ static int get_class(struct kndConcept *self,
                      const char *name, size_t name_size,
                      struct kndConcept **result);
 
-static int get_rel_name(struct kndRel *self,
-                        struct kndRelDir *dir,
-                        int fd);
 static int get_proc_name(struct kndProc *self,
                         struct kndProcDir *dir,
                         int fd);
@@ -2086,7 +2083,6 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-
 static gsl_err_t parse_rel_import(void *obj,
                                   const char *rec,
                                   size_t *total_size)
@@ -2653,82 +2649,6 @@ static int idx_class_name(struct kndConcept *self,
     return knd_OK;
 }
 
-static int get_rel_name(struct kndRel *self,
-                        struct kndRelDir *dir,
-                        int fd)
-{
-    char buf[KND_NAME_SIZE + 1];
-    size_t buf_size;
-    char *c, *b, *e;
-    off_t offset = 0;
-    bool in_name = false;
-    bool got_name = false;
-    size_t name_size;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("  .. get rel name in DIR: \"%.*s\"   global off:%zu  block size:%zu",
-                dir->name_size, dir->name, dir->global_offset, dir->block_size);
-
-    buf_size = dir->block_size;
-    if (dir->block_size > KND_NAME_SIZE)
-        buf_size = KND_NAME_SIZE;
-
-    offset = dir->global_offset;
-    if (lseek(fd, offset, SEEK_SET) == -1) {
-        return knd_IO_FAIL;
-    }
-    err = read(fd, buf, buf_size);
-    if (err == -1) return knd_IO_FAIL;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("\n  .. REL BODY: %.*s",
-                buf_size, buf);
-    c = buf;
-    b = buf;
-    e = buf;
-    for (size_t i = 0; i < buf_size; i++) {
-        c = buf + i;
-        switch (*c) {
-        case ' ':
-        case '\n':
-        case '\r':
-        case '\t':
-            break;
-        case '[':
-        case '{':
-            if (!in_name) {
-                in_name = true;
-                b = c + 1;
-                e = b;
-                break;
-            }
-            got_name = true;
-            e = c;
-            break;
-        default:
-            e = c;
-            break;
-        }
-        if (got_name) break;
-    }
-
-    name_size = e - b;
-    if (!name_size) return knd_FAIL;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. set REL NAME: \"%.*s\" [%zu]",
-                name_size, b, name_size);
-
-    memcpy(dir->name, b, name_size);
-    dir->name_size = name_size;
-
-    err = self->rel_name_idx->set(self->rel_name_idx,
-                                  dir->name, name_size, dir);
-    if (err) return err;
-
-    return knd_OK;
-}
 
 static int get_proc_name(struct kndProc *self,
                         struct kndProcDir *dir,
@@ -2998,14 +2918,11 @@ static int parse_dir_trailer(struct kndConcept *self,
         }
     }
 
-    /* register rel names in rel_name_idx */
+    /* read rels */
     for (size_t i = 0; i < parent_dir->num_rels; i++) {
         reldir = parent_dir->rels[i];
-
-        knd_log("..open Rel trailer..");
-        /*if (reldir->block_size) {
-            err = get_rel_name(self->rel, reldir, fd);                        RET_ERR();
-            }*/
+        self->rel->fd = fd;
+        err = self->rel->read_rel(self->rel, reldir);
     }
 
     /* register proc names in proc_idx */
@@ -5853,14 +5770,19 @@ extern void kndConcept_init(struct kndConcept *self)
 }
 
 extern int
-kndConcept_new(struct kndConcept **c)
+kndConcept_new(struct kndConcept **c, struct kndMemPool *mempool)
 {
     struct kndConcept *self;
 
-    self = malloc(sizeof(struct kndConcept));
-    if (!self) return knd_NOMEM;
+    if (mempool) {
+        self = malloc(sizeof(struct kndConcept));
+        self->mempool = mempool;
+    } else {
+        self = malloc(sizeof(struct kndConcept));
+        if (!self) return knd_NOMEM;
+        memset(self, 0, sizeof(struct kndConcept));
+    }
 
-    memset(self, 0, sizeof(struct kndConcept));
     kndConcept_init(self);
     *c = self;
     return knd_OK;
