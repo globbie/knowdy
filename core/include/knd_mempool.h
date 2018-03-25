@@ -51,7 +51,6 @@ struct kndProcUpdate;
 struct kndProcUpdateRef;
 
 struct kndSet;
-struct kndSetElem;
 struct kndSetElemIdx;
 
 struct kndMemPool
@@ -62,9 +61,9 @@ struct kndMemPool
     struct kndSet *sets;
     size_t max_sets;
     size_t num_sets;
-    struct kndSetElem *set_elems;
-    size_t max_set_elems;
-    size_t num_set_elems;
+    //struct kndSetElem *set_elems;
+    //size_t max_set_elems;
+    //size_t num_set_elems;
     struct kndSetElemIdx *set_elem_idxs;
     size_t max_set_elem_idxs;
     size_t num_set_elem_idxs;
@@ -198,8 +197,6 @@ struct kndMemPool
 
     int (*new_set)(struct kndMemPool   *self,
 		     struct kndSet **result);
-    int (*new_set_elem)(struct kndMemPool   *self,
-			struct kndSetElem **result);
     int (*new_set_elem_idx)(struct kndMemPool   *self,
 			    struct kndSetElemIdx **result);
     int (*new_facet)(struct kndMemPool   *self,

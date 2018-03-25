@@ -249,8 +249,8 @@ kndUser_parse_numid(void *obj,
 }
 
 static gsl_err_t kndUser_parse_auth(void *obj,
-				    const char *rec,
-				    size_t *total_size)
+                                    const char *rec,
+                                    size_t *total_size)
 {
     struct kndUser *self = obj;
     char sid[KND_NAME_SIZE];
@@ -501,9 +501,9 @@ static gsl_err_t parse_class_select(void *obj,
 
     err = c->select(c, rec, total_size);
     if (err) {
-	/* TODO: release resources */
-	c->reset_inbox(c);
-	return make_gsl_err_external(err);
+        /* TODO: release resources */
+        c->reset_inbox(c);
+        return make_gsl_err_external(err);
     }
 
     return make_gsl_err(gsl_OK);
@@ -865,14 +865,14 @@ static int parse_task(struct kndUser *self,
     case KND_UPDATE_STATE:
         self->task->update_spec = rec;
         self->task->update_spec_size = *total_size;
-	c = self->root_class;
+        c = self->root_class;
         c->task = self->task;
         err = c->update_state(c);
         if (err) {
             knd_log("-- failed to update state :(");
             goto cleanup;
         }
-	break;
+        break;
     default:
         break;
     }

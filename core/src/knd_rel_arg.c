@@ -156,19 +156,19 @@ static int export_inst_GSP(struct kndRelArg *self,
     int err;
 
     out = self->out;
-    err = out->write(out, "{class ", strlen("{class "));                          RET_ERR();
-    err = out->write(out, inst->classname, inst->classname_size);                 RET_ERR();
+    err = out->write(out, "{c ", strlen("{c "));                                  RET_ERR();
+    err = out->write(out, inst->conc_dir->id, inst->conc_dir->id_size);           RET_ERR();
 
     if (inst->objname_size) {
-	err = out->write(out, "{obj ", strlen("{obj "));                          RET_ERR();
-	err = out->write(out, inst->objname, inst->objname_size);                 RET_ERR();
-	err = out->writec(out, '}');                                              RET_ERR();
+        err = out->write(out, "{o ", strlen("{o "));                              RET_ERR();
+        err = out->write(out, inst->obj->id, inst->obj->id_size);                 RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
     }
     
     if (inst->val_size) {
-	err = out->write(out, "{obj ", strlen("{obj "));                          RET_ERR();
-	err = out->write(out, inst->objname, inst->objname_size);                 RET_ERR();
-	err = out->writec(out, '}');                                              RET_ERR();
+        err = out->write(out, "{v ", strlen("{v "));                              RET_ERR();
+        err = out->write(out, inst->val, inst->val_size);                         RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
     }
 
     err = out->writec(out, '}');                                                  RET_ERR();
@@ -189,14 +189,14 @@ static int export_inst_JSON(struct kndRelArg *self,
     err = out->writec(out, '"');                                                 RET_ERR();
 
     if (inst->objname_size) {
-	err = out->write(out, ",\"obj\":\"", strlen(",\"obj\":\""));             RET_ERR();
-	err = out->write(out, inst->objname, inst->objname_size);                RET_ERR();
-	err = out->writec(out, '"');                                             RET_ERR();
+        err = out->write(out, ",\"obj\":\"", strlen(",\"obj\":\""));             RET_ERR();
+        err = out->write(out, inst->objname, inst->objname_size);                RET_ERR();
+        err = out->writec(out, '"');                                             RET_ERR();
     }
     if (inst->val_size) {
-	err = out->write(out, ",\"val\":\"", strlen(",\"val\":\""));             RET_ERR();
-	err = out->write(out, inst->val, inst->val_size);                        RET_ERR();
-	err = out->writec(out, '"');                                             RET_ERR();
+        err = out->write(out, ",\"val\":\"", strlen(",\"val\":\""));             RET_ERR();
+        err = out->write(out, inst->val, inst->val_size);                        RET_ERR();
+        err = out->writec(out, '"');                                             RET_ERR();
     }
 
     err = out->writec(out, '}');                                                 RET_ERR();
@@ -518,7 +518,7 @@ static int link_rel(struct kndRelArg *self,
     struct kndRelArgInstRef *rel_arg_inst_ref = NULL;
     int err;
 
-    if (DEBUG_RELARG_LEVEL_TMP)
+    if (DEBUG_RELARG_LEVEL_2)
         knd_log(".. %.*s OBJ to link rel %.*s..",
                 obj_entry->name_size, obj_entry->name,
                 rel->name_size, rel->name);
@@ -567,7 +567,7 @@ static int resolve_inst(struct kndRelArg *self,
     int err;
 
     dir = self->rel->class_name_idx->get(self->rel->class_name_idx,
-					 inst->classname, inst->classname_size);
+                                         inst->classname, inst->classname_size);
     if (!dir) {
         knd_log("-- no such class: %.*s :(", inst->classname_size, inst->classname);
         return knd_FAIL;
@@ -579,31 +579,33 @@ static int resolve_inst(struct kndRelArg *self,
 
     /* resolve obj ref */
     if (inst->objname_size) {
-	knd_log(".. resolving rel arg inst OBJ ref: \"%.*s\""
-		" CONC DIR: %.*s OBJ IDX:%p",
-		inst->objname_size, inst->objname,
-		dir->name_size, dir->name, dir->obj_name_idx);
+
+        if (DEBUG_RELARG_LEVEL_2)
+            knd_log(".. resolving rel arg inst OBJ ref: \"%.*s\""
+                    " CONC DIR: %.*s OBJ IDX:%p",
+                    inst->objname_size, inst->objname,
+                    dir->name_size, dir->name, dir->obj_name_idx);
 
         if (!dir->obj_name_idx) {
-	    knd_log("-- empty obj IDX in class \"%.*s\" :(",
-		    	dir->name_size, dir->name);
-	    return knd_FAIL;
-	}
+            knd_log("-- empty obj IDX in class \"%.*s\" :(",
+                        dir->name_size, dir->name);
+            return knd_FAIL;
+        }
 
-	obj = dir->obj_name_idx->get(dir->obj_name_idx,
-				inst->objname, inst->objname_size);
-	if (!obj) {
-	    knd_log("-- no such obj: %.*s :(",
-		    inst->objname_size, inst->objname);
-	    return knd_FAIL;
-	}
+        obj = dir->obj_name_idx->get(dir->obj_name_idx,
+                                inst->objname, inst->objname_size);
+        if (!obj) {
+            knd_log("-- no such obj: %.*s :(",
+                    inst->objname_size, inst->objname);
+            return knd_FAIL;
+        }
 
-	err = link_rel(self, inst, obj);        RET_ERR();
-	inst->obj = obj;
+        err = link_rel(self, inst, obj);        RET_ERR();
+        inst->obj = obj;
 
-	if (DEBUG_RELARG_LEVEL_2) {
-	    knd_log("++ obj resolved: \"%.*s\"!",
-		    inst->objname_size, inst->objname);
+        if (DEBUG_RELARG_LEVEL_2) {
+            knd_log("++ obj resolved: \"%.*s\"!",
+                    inst->objname_size, inst->objname);
         }
     }
 

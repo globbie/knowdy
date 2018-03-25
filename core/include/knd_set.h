@@ -30,19 +30,15 @@ struct ooDict;
 
 #include "knd_config.h"
 
-typedef enum knd_set_type { KND_SET_OBJ,
-			    KND_SET_CLASS } knd_set_type;
-
-struct kndSetElem
-{
-    struct kndConcDir  *conc_dir;
-    struct kndObjEntry *obj_entry;
-};
+typedef enum knd_set_type { KND_SET_CLASS,
+			    KND_SET_OBJ,
+			    KND_SET_REL,
+			    KND_SET_REL_INST } knd_set_type;
 
 struct kndSetElemIdx
 {
     struct kndSetElemIdx *idxs[KND_RADIX_BASE];
-    struct kndSetElem *elems[KND_RADIX_BASE];
+    void *elems[KND_RADIX_BASE];
     size_t num_elems;
 };
 

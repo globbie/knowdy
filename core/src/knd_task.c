@@ -221,11 +221,11 @@ static gsl_err_t parse_delivery_callback(void *obj, const char *rec, size_t *tot
     struct kndTask *self = obj;
 
     struct gslTaskSpec specs[] = {
-    { .is_implied = true,
+        { .is_implied = true,
           .run = check_delivery_type,
           .obj = self
-    },
-    { .name = "base_url",
+        },
+        { .name = "base_url",
           .name_size = strlen("base_url"),
           .buf = self->delivery_addr,
           .buf_size = &self->delivery_addr_size,
@@ -235,7 +235,6 @@ static gsl_err_t parse_delivery_callback(void *obj, const char *rec, size_t *tot
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
-
 
 static gsl_err_t parse_task(void *obj,
                             const char *rec,
@@ -330,7 +329,7 @@ static int parse_GSL(struct kndTask *self,
 
     parser_err = gsl_parse_task(rec, &total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-	knd_log("-- task failure :(");
+        knd_log("-- task failure :(");
         if (!self->log->buf_size) {
             err = self->log->write(self->log, "internal server error",
                                  strlen("internal server error"));
@@ -435,20 +434,19 @@ static int report(struct kndTask *self)
         err = self->out->write(self->out, "}", strlen("}"));
         if (err) return err;
 
-	task_status = "--";
+        task_status = "--";
     } else {
         err = out->write(out, "{save _obj}}}", strlen("{save _obj}}}"));            RET_ERR();
-	
     }
 
     if (DEBUG_TASK_LEVEL_TMP) {
         obj_size = self->out->buf_size;
         if (obj_size > KND_MAX_DEBUG_CONTEXT_SIZE)
             obj_size = KND_MAX_DEBUG_CONTEXT_SIZE;
-	
-	knd_log("RESULT: \"%s\" %.*s [size: %zu]\n",
-		task_status, obj_size,
-		self->out->buf, self->out->buf_size);
+
+        knd_log("RESULT: \"%s\" %.*s [size: %zu]\n",
+                task_status, obj_size,
+                self->out->buf, self->out->buf_size);
     }
 
 #pragma message("TODO: knd_zmq_sendmore()")

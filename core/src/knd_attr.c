@@ -55,11 +55,11 @@ static void str(struct kndAttr *self)
 
     if (self->ref_classname_size) {
         knd_log("%*s  REF class template: %.*s", self->depth * KND_OFFSET_SIZE, "",
-		self->ref_classname_size, self->ref_classname);
+                self->ref_classname_size, self->ref_classname);
     }
     if (self->uniq_attr_name_size) {
         knd_log("%*s  UNIQ attr: %.*s", self->depth * KND_OFFSET_SIZE, "",
-		self->uniq_attr_name_size, self->uniq_attr_name);
+                self->uniq_attr_name_size, self->uniq_attr_name);
     }
 
     if (self->ref_procname_size) {
@@ -279,8 +279,8 @@ static gsl_err_t run_set_quant(void *obj, const char *name, size_t name_size)
     if (name_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     if (!memcmp("set", name, name_size)) {
-	self->quant_type = KND_ATTR_SET;
-	self->is_a_set = true;
+        self->quant_type = KND_ATTR_SET;
+        self->is_a_set = true;
     }
 
     return make_gsl_err(gsl_OK);
@@ -424,8 +424,8 @@ static gsl_err_t parse_gloss(void *obj,
 }
 
 static gsl_err_t parse_quant_type(void *obj,
-				  const char *rec,
-				  size_t *total_size)
+                                  const char *rec,
+                                  size_t *total_size)
 {
     struct kndAttr *self = obj;
 
@@ -435,7 +435,7 @@ static gsl_err_t parse_quant_type(void *obj,
           .obj = self
         },
         { .type = GSL_CHANGE_STATE,
-	  .name = "uniq",
+          .name = "uniq",
           .name_size = strlen("uniq"),
           .buf = self->uniq_attr_name,
           .buf_size = &self->uniq_attr_name_size,
@@ -573,7 +573,7 @@ static int parse_GSL(struct kndAttr *self,
           .max_buf_size = sizeof self->ref_procname,
         },
         { .type = GSL_CHANGE_STATE,
-	  .name = "t",
+          .name = "t",
           .name_size = strlen("t"),
           .parse = parse_quant_type,
           .obj = self

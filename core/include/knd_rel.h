@@ -42,7 +42,14 @@ struct kndRelState
 
 struct kndRelInstEntry
 {
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    char name[KND_NAME_SIZE];
+    size_t name_size;
     struct kndRelInstance *inst;
+    char *block;
+    size_t block_size;
+    size_t offset;
 };
 
 struct kndRelInstance
@@ -50,9 +57,9 @@ struct kndRelInstance
     char id[KND_ID_SIZE];
     size_t id_size;
     size_t numid;
-
-    char name[KND_NAME_SIZE];
+    const char *name;
     size_t name_size;
+
     knd_state_phase phase;
 
     struct kndRel *rel;
@@ -82,15 +89,9 @@ struct kndRelDir
     struct kndRelDir **children;
     size_t num_children;
 
-    char next_inst_id[KND_ID_SIZE];
-    size_t next_inst_numid;
-
-    /*struct kndRelInstDir **obj_dirs;
-    size_t num_obj_dirs;
-    struct kndRelInstanceEntry **objs;
-    size_t num_objs;
-    */
-    struct ooDict *inst_idx;
+    struct kndSet *inst_idx;
+    struct ooDict *inst_name_idx;
+    size_t num_insts;
 
     bool is_terminal;
     struct kndRelDir *next;
@@ -114,21 +115,22 @@ struct kndRelRef
 
 struct kndRel
 {
-    char name[KND_NAME_SIZE];
+    const char *name;
     size_t name_size;
 
-    char id[KND_ID_SIZE];
+    char *id;
     size_t id_size;
-    size_t numid;
 
     knd_state_phase phase;
 
     struct kndRelUpdateRef *updates;
     size_t num_updates;
+    int fd;
 
     struct kndTranslation *tr;
 
     struct glbOutput *out;
+    struct glbOutput *dir_out;
     struct glbOutput *log;
 
     const char *dbpath;
@@ -155,17 +157,26 @@ struct kndRel
     /* incoming */
     struct kndRel *inbox;
     size_t inbox_size;
+    size_t num_rels;
 
     struct kndRelInstance *inst_inbox;
     size_t inst_inbox_size;
 
     struct kndRelDir *dir;
+
+    struct ooDict *rel_name_idx;
     struct ooDict *rel_idx;
+
     struct ooDict *class_name_idx;
+
     const char *frozen_output_file_name;
     size_t frozen_output_file_name_size;
     size_t frozen_size;
-    
+
+    char *trailer_buf;
+    size_t trailer_buf_size;
+    size_t trailer_max_buf_size;
+
     bool is_resolved;
     size_t depth;
 
@@ -200,6 +211,8 @@ struct kndRel
     int (*read)(struct kndRel *self,
                 const char    *rec,
                 size_t        *total_size);
+    int (*read_rel)(struct kndRel *self,
+                    struct kndRelDir *dir);
     int (*select)(struct kndRel  *self,
                   const char *rec,
                   size_t *total_size);

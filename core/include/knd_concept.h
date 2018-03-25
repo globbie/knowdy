@@ -153,7 +153,9 @@ struct kndConcDir
     size_t num_objs;
 
     struct ooDict *class_idx;
+    struct kndSet *obj_idx;
     struct ooDict *obj_name_idx;
+
     struct ooDict *reverse_attr_name_idx;
     struct kndProcDir *proc_dir;
 
@@ -255,6 +257,7 @@ struct kndConcept
     struct kndConcRef frozen_dir[KND_MAX_CONC_CHILDREN];
     size_t frozen_dir_size;
 
+    /* TODO: move to mempool */
     char dir_buf[KND_MAX_CONC_CHILDREN * KND_DIR_ENTRY_SIZE];
     size_t dir_buf_size;
     const char *frozen_output_file_name;
@@ -339,5 +342,6 @@ struct kndConcept
 
 /* constructor */
 extern void kndConcept_init(struct kndConcept *self);
-extern int kndConcept_new(struct kndConcept **self);
+extern int kndConcept_new(struct kndConcept **self,
+                          struct kndMemPool *mempool);
 
