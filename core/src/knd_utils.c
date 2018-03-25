@@ -61,7 +61,6 @@ knd_compare(const char *a, const char *b)
 extern int knd_next_state(char *s)
 {
     char *c;
-
     for (int i = KND_STATE_SIZE - 1; i > -1; i--) {
         c = &s[i];
         switch (*c) {
@@ -123,7 +122,7 @@ knd_calc_num_id(const char *id, size_t id_size, size_t *numval)
         num = obj_id_base[(unsigned int)*c];
         if (num == -1) return;
         aggr = aggr + (num * base);
-	base = base * KND_RADIX_BASE;
+        base = base * KND_RADIX_BASE;
         c++;
     }
     *numval = aggr;
@@ -138,20 +137,20 @@ knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base)
     ldiv_t result;
 
     if (curr_val == 0) {
-	*buf = '0';
-	*buf_size = 1;
-	return;
+        *buf = '0';
+        *buf_size = 1;
+        return;
     }
 
     while (curr_val) {
-	result = ldiv(curr_val, base);
+        result = ldiv(curr_val, base);
 
-	//knd_log("Q:%lu R:%lu CURR:%zu buf_size:%zu",
-	//	result.quot, result.rem, curr_base, *buf_size);
+        //knd_log("Q:%lu R:%lu CURR:%zu buf_size:%zu",
+        //      result.quot, result.rem, curr_base, *buf_size);
 
-	curr_val = result.quot;
-	*buf++ = obj_id_seq[result.rem];
-	curr_size++;
+        curr_val = result.quot;
+        *buf++ = obj_id_seq[result.rem];
+        curr_size++;
     }
 
     *buf_size = curr_size;
@@ -287,7 +286,7 @@ knd_write_file(const char *path,
 
     /* write textual content */
     fd = open((const char*)name_buf,  
-	      O_WRONLY | O_TRUNC | O_CREAT, 0644);
+              O_WRONLY | O_TRUNC | O_CREAT, 0644);
     if (fd < 0) return knd_IO_FAIL;
 
     write(fd, buf, buf_size);
@@ -304,10 +303,10 @@ knd_append_file(const char *filename,
 
     /* write textual content */
     fd = open(filename,  
-	      O_WRONLY | O_CREAT | O_APPEND, 0644);
+              O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (fd < 0) {
-	knd_log("-- append to file \"%s\" failed :(", filename);
-	return knd_IO_FAIL;
+        knd_log("-- append to file \"%s\" failed :(", filename);
+        return knd_IO_FAIL;
     }
 
     write(fd, buf, buf_size);
@@ -334,16 +333,16 @@ knd_make_id_path(char *buf,
     
     /* treat each digit in the id as a folder */
     for (i = 0; i < KND_ID_SIZE; i++) {
-	*curr_buf =  '/';
-	curr_buf++;
-	*curr_buf = id[i];
-	curr_buf++;
+        *curr_buf =  '/';
+        curr_buf++;
+        *curr_buf = id[i];
+        curr_buf++;
     }
     
     *curr_buf = '\0';
         
     if (filename)
-	sprintf(curr_buf, "/%s", filename);
+        sprintf(curr_buf, "/%s", filename);
 
     return knd_OK;
 }
@@ -356,24 +355,24 @@ knd_remove_nonprintables(char *data)
     c = (unsigned char*)data;
 
     while (*c) {
-	if (*c < 32) {
-	    *c = ' ';
-	}
-	if (*c == '\"') *c = ' ';
-	if (*c == '\'') *c = ' ';
-	if (*c == '&') *c = ' ';
-	if (*c == '\\') *c = ' '; 
-	c++;
+        if (*c < 32) {
+            *c = ' ';
+        }
+        if (*c == '\"') *c = ' ';
+        if (*c == '\'') *c = ' ';
+        if (*c == '&') *c = ' ';
+        if (*c == '\\') *c = ' '; 
+        c++;
     }
 
     return knd_OK;
 }
 
 /*extern int knd_graphic_rounded_rect(struct kndOutput *out,
-				    size_t x, size_t y,
-				    size_t w, size_t h,
-				    size_t r,
-				    bool tl, bool tr, bool bl, bool br)
+                                    size_t x, size_t y,
+                                    size_t w, size_t h,
+                                    size_t r,
+                                    bool tl, bool tr, bool bl, bool br)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -384,16 +383,16 @@ knd_remove_nonprintables(char *data)
         retval += "h" + (w - 2*r);
 
         if (tr) {
-	    retval += "a" + r + "," + r + " 0 0 1 " + r + "," + r;
-	} else {
-	    retval += "h" + r; retval += "v" + r;
-	}
+            retval += "a" + r + "," + r + " 0 0 1 " + r + "," + r;
+        } else {
+            retval += "h" + r; retval += "v" + r;
+        }
 
         retval += "v" + (h - 2*r);
 
         if (br) {
-	    retval += "a" + r + "," + r + " 0 0 1 " + -r + "," + r;
-	} else { retval += "v" + r; retval += "h" + -r; }
+            retval += "a" + r + "," + r + " 0 0 1 " + -r + "," + r;
+        } else { retval += "v" + r; retval += "h" + -r; }
         retval += "h" + (2*r - w);
         if (bl) { retval += "a" + r + "," + r + " 0 0 1 " + -r + "," + -r; }
         else { retval += "h" + -r; retval += "v" + -r; }

@@ -149,6 +149,7 @@ struct kndProc
     size_t next_id;
 
     struct glbOutput *out;
+    struct glbOutput *dir_out;
     struct glbOutput *log;
 
     knd_state_phase phase;

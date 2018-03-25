@@ -41,13 +41,13 @@ static void str(struct kndProcArg *self)
             self->name_size, self->name, self->classname_size, self->classname);
 
     if (self->proc_call.name_size) {
-	knd_log("%*s    {run %.*s [type:%d]", self->depth * KND_OFFSET_SIZE, "",
-		self->proc_call.name_size, self->proc_call.name,
-		self->proc_call.type);
-	for (arg = self->proc_call.args; arg; arg = arg->next) {
-	    proc_call_arg_str(arg, self->depth + 1);
-	}
-	knd_log("%*s    }", self->depth * KND_OFFSET_SIZE, "");
+        knd_log("%*s    {run %.*s [type:%d]", self->depth * KND_OFFSET_SIZE, "",
+                self->proc_call.name_size, self->proc_call.name,
+                self->proc_call.type);
+        for (arg = self->proc_call.args; arg; arg = arg->next) {
+            proc_call_arg_str(arg, self->depth + 1);
+        }
+        knd_log("%*s    }", self->depth * KND_OFFSET_SIZE, "");
     }
 
     tr = self->tr;
@@ -206,12 +206,12 @@ static int export_SVG(struct kndProcArg *self)
     err = out->write(out, "</text>", strlen("</text>"));                          RET_ERR();
     */
     if (self->proc_dir) {
-	proc = self->proc_dir->proc;
-	knd_log("PROC: %p", proc);
-	proc->format = self->format;
-	proc->out = self->out;
-	proc->visual = self->visual;
-	err = proc->export(proc);                                                 RET_ERR();
+        proc = self->proc_dir->proc;
+        knd_log("PROC: %p", proc);
+        proc->format = self->format;
+        proc->out = self->out;
+        proc->visual = self->visual;
+        err = proc->export(proc);                                                 RET_ERR();
     }
     
     return knd_OK;
@@ -656,27 +656,27 @@ static int resolve_arg(struct kndProcArg *self)
     int err;
 
     if (DEBUG_PROC_ARG_LEVEL_2)
-	knd_log(".. resolving arg \"%.*s\"..",
-		self->name_size, self->name);
+        knd_log(".. resolving arg \"%.*s\"..",
+                self->name_size, self->name);
 
     if (self->classname_size) {
-	/* TODO */
-	if (DEBUG_PROC_ARG_LEVEL_2)
-	    knd_log(".. resolving arg class template: %.*s..",
-		    self->classname_size, self->classname);
+        /* TODO */
+        if (DEBUG_PROC_ARG_LEVEL_2)
+            knd_log(".. resolving arg class template: %.*s..",
+                    self->classname_size, self->classname);
 
-	return knd_OK;
+        return knd_OK;
     }
 
     if (!self->proc_call.name_size) {
 
-	return knd_OK;
+        return knd_OK;
     }
 
     /* special name */
     if (self->proc_call.name[0] == '_') {
-	self->proc_call.type = KND_PROC_SYSTEM;
-	return knd_OK;
+        self->proc_call.type = KND_PROC_SYSTEM;
+        return knd_OK;
     }
 
     dir = self->parent->proc_idx->get(self->parent->proc_idx,
@@ -685,7 +685,7 @@ static int resolve_arg(struct kndProcArg *self)
     if (!dir) {
         knd_log("-- Proc Arg resolve: no such proc: \"%.*s\" IDX:%p :(",
                 self->proc_call.name_size,
-		self->proc_call.name, self->parent->proc_idx);
+                self->proc_call.name, self->parent->proc_idx);
         return knd_FAIL;
     }
 

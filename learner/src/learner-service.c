@@ -217,12 +217,12 @@ parse_config(void *obj, const char *rec, size_t *total_size)
     }
 
     if (self->num_owners > KND_MAX_OWNERS) {
-	knd_log("-- too many owners requested, limiting to %zu",
-		KND_MAX_OWNERS);
-	self->num_owners = KND_MAX_OWNERS;
+        knd_log("-- too many owners requested, limiting to %zu",
+                KND_MAX_OWNERS);
+        self->num_owners = KND_MAX_OWNERS;
     }
     if (!self->num_owners)
-	self->num_owners = 1;
+        self->num_owners = 1;
 
     knd_log("== Learner's settings:");
     knd_log("   total owners: %zu", self->num_owners);
@@ -337,12 +337,12 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     { // read config
         size_t chunk_size;
         err = self->out->write_file_content(self->out,
-					    opts->config_file);
+                                            opts->config_file);
         if (err != knd_OK) goto error;
 
         err = parse_schema(self, self->out->buf, &chunk_size);
         if (err != knd_OK) goto error;
-	self->out->reset(self->out);
+        self->out->reset(self->out);
     }
 
     self->owners = calloc(self->num_owners, sizeof(struct kndLearnerOwner));
@@ -350,14 +350,14 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
 
     /* start owners */
     /*for (size_t i = 0; i < self->num_owners; i++) {
-	owner = &self->owners[i];
-	owner->id = i;
-	owner->service = self;
+        owner = &self->owners[i];
+        owner->id = i;
+        owner->service = self;
         err = pthread_create(&owner->thread, 
                              NULL,
                              start_owner,
                              (void*)owner);
-			     }*/
+                             }*/
 
     err = self->mempool->alloc(self->mempool);
 
@@ -428,10 +428,13 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     if (err) goto error;
     conc->proc->class_name_idx = conc->class_name_idx;
 
+
     err = ooDict_new(&conc->rel->rel_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
+    err = ooDict_new(&conc->rel->rel_name_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
     conc->rel->class_name_idx = conc->class_name_idx;
-
+    
     /* user idx */
     /*if (self->mempool->max_users) {
         knd_log("MAX USERS: %zu", self->mempool->max_users);
@@ -440,7 +443,7 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
                                        sizeof(struct kndObject*));
         if (!self->admin->user_idx) return knd_NOMEM;
         self->admin->max_users = self->max_users;
-	}*/
+        }*/
 
     /* try opening the frozen DB */
     conc->user = self->admin;

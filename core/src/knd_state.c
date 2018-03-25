@@ -35,22 +35,22 @@ static void reset(struct kndStateControl *self)
 }
 
 static int knd_confirm(struct kndStateControl *self,
-		       struct kndUpdate *update)
+                       struct kndUpdate *update)
 {
     struct glbOutput *out;
     int err;
 
     if (DEBUG_STATE_LEVEL_1)
-	knd_log("State Controller: .. confirming update %zu..", update->id);
+        knd_log("State Controller: .. confirming update %zu..", update->id);
 
     if (self->task->type == KND_LIQUID_STATE) {
-	self->updates[self->num_updates] = update;
-	self->num_updates++;
-	if (DEBUG_STATE_LEVEL_TMP)
-	    knd_log("++  \"%zu\" liquid update confirmed!   global STATE: %zu",
-		    update->id, self->num_updates);
+        self->updates[self->num_updates] = update;
+        self->num_updates++;
+        if (DEBUG_STATE_LEVEL_TMP)
+            knd_log("++  \"%zu\" liquid update confirmed!   global STATE: %zu",
+                    update->id, self->num_updates);
 
-	return knd_OK;
+        return knd_OK;
     }
 
     /* TODO: check conflicts with previous updates */

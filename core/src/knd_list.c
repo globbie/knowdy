@@ -37,8 +37,8 @@ int ooList_del(struct ooList *self)
 
 static int 
 ooList_add(struct ooList *self,
-	   void *data,
-	   struct ooListItem *prev)
+           void *data,
+           struct ooListItem *prev)
 {
     struct ooListItem *item;
     
@@ -80,7 +80,7 @@ ooList_add(struct ooList *self,
 static
 struct ooListItem* 
 ooList_get_item(struct ooList *self,
-		size_t pos)
+                size_t pos)
 {
     size_t tail_len;
     size_t cur_len;
@@ -98,7 +98,7 @@ ooList_get_item(struct ooList *self,
 
     if (self->cur) {
 
-	    if (self->cur_pos == pos)
+            if (self->cur_pos == pos)
             return self->cur;
 
         // fixme: pos >= self->cur_pos == true?
@@ -146,7 +146,7 @@ ooList_get_item(struct ooList *self,
 
 static void* 
 ooList_remove(struct ooList *self,
-	      struct ooListItem *item)
+              struct ooListItem *item)
 {
     void *data = item->data;
 
@@ -242,7 +242,7 @@ ooList_get_subsequence(struct ooList      *self,
 
 static int
 ooList_copy(struct ooList *self,
-	    struct ooList **copy)
+            struct ooList **copy)
 {
     struct ooList *new_list;
     struct ooListItem *curr, *new_curr;
@@ -255,7 +255,7 @@ ooList_copy(struct ooList *self,
 
     while (curr) {
         new_curr = malloc(sizeof(struct ooListItem));
-	    if (!new_curr) return oo_NOMEM;
+            if (!new_curr) return oo_NOMEM;
  
         new_curr->data = curr->data;
         new_list->add(new_list, new_curr, new_list->tail);
@@ -268,8 +268,8 @@ ooList_copy(struct ooList *self,
 
 static struct ooListItem* 
 ooList_find(struct ooList *self,
-	    void          *data,
-	    oo_compar_func func)
+            void          *data,
+            oo_compar_func func)
 {
     struct ooListItem *cur = self->head;
 
