@@ -76,7 +76,7 @@ ooDict_str(struct ooDict *self)
 
 static int
 ooDict_set_hash(struct ooDict *self,
-		oo_hash_func new_hash)
+                oo_hash_func new_hash)
 {
     if (!new_hash) return oo_FAIL;
     self->hash_func = new_hash;
@@ -86,7 +86,7 @@ ooDict_set_hash(struct ooDict *self,
 
 static struct ooDictItem* 
 ooDict_find_item(struct ooDict *self,
-		 const char *key,
+                 const char *key,
                  size_t key_size)
 {
     struct ooList *l;
@@ -142,9 +142,9 @@ ooDict_get(struct ooDict *self,
 
 static int
 ooDict_set(struct ooDict *self,
-	   const char *key,
+           const char *key,
            size_t key_size,
-	   void *data)
+           void *data)
 {
     struct ooList *l;
     struct ooListItem *cur;
@@ -230,7 +230,7 @@ ooDict_set_by_hash(struct ooDict *self,
 
 static bool 
 ooDict_key_exists(struct ooDict *self,
-		  const char *key,
+                  const char *key,
                   size_t key_size)
 {
     struct ooDictItem *item = ooDict_find_item(self, key, key_size);
@@ -239,7 +239,7 @@ ooDict_key_exists(struct ooDict *self,
 
 static int
 ooDict_remove(struct ooDict *self,
-	      const char *key,
+              const char *key,
               size_t key_size)
 {
     struct ooList *l;
@@ -262,7 +262,7 @@ ooDict_remove(struct ooDict *self,
 
             cur->data = NULL;
             l->remove(l, cur);
-	    self->size--;
+            self->size--;
             return oo_OK;
         }
     }
@@ -319,7 +319,7 @@ static void ooDict_reset(struct ooDict *self)
 
 static int
 ooDict_resize(struct ooDict *self,
-	      unsigned int new_size)
+              unsigned int new_size)
 {
     unsigned int i;
     struct ooList *l;
@@ -331,12 +331,12 @@ ooDict_resize(struct ooDict *self,
     int ret;
 
     tmp = self->hash->get_subsequence(self->hash, 0, 
-				      self->hash->size);
+                                      self->hash->size);
     ret = self->hash->resize(self->hash, new_size);
 
     for (i = 0; i < new_size; ++i) {
         ret = ooList_new(&l);
-	if (ret != oo_OK) return ret;
+        if (ret != oo_OK) return ret;
 
         self->hash->data[i] = (void*)l;
     }
@@ -345,13 +345,13 @@ ooDict_resize(struct ooDict *self,
     for (i = 0; i < tmp->size; ++i) {
         l = (ooList*)tmp->data[i];
         if (l->size == 0) continue; 
-	cur = l->head;
-	while (cur) {
-	    item = (struct ooDictItem*)cur->data;
-	    h = self->hash_func(item->key, item->key_size) % self->hash->size;
-	    new_list = (struct ooList*)self->hash->data[h];
-	    new_list->add(new_list, (void*)item, NULL);
-	    cur = cur->next;
+        cur = l->head;
+        while (cur) {
+            item = (struct ooDictItem*)cur->data;
+            h = self->hash_func(item->key, item->key_size) % self->hash->size;
+            new_list = (struct ooList*)self->hash->data[h];
+            new_list->add(new_list, (void*)item, NULL);
+            cur = cur->next;
         }
         l->del(l);
     }
@@ -369,8 +369,8 @@ ooDict_rewind(struct ooDict *self)
 
 static int 
 ooDict_next_item(struct ooDict *self,
-		 const char **key,
-		 void **data)
+                 const char **key,
+                 void **data)
 {
     struct ooList *l;
     struct ooListItem *item = self->curr_item;
@@ -380,28 +380,28 @@ ooDict_next_item(struct ooDict *self,
     /* if curr_item is not NULL, continue listing */
 
     if (item) {
-	item_data = (struct ooDictItem*)item->data;
-	*key = item_data->key;
-	*data = item_data->data;
+        item_data = (struct ooDictItem*)item->data;
+        *key = item_data->key;
+        *data = item_data->data;
 
-	self->curr_item = item->next;
-	return oo_OK;
+        self->curr_item = item->next;
+        return oo_OK;
     }
 
     /* jump to the next position in hash */
 
     if (self->curr_pos >= self->hash->size)
-	goto no_results;
+        goto no_results;
     
     for (i = self->curr_pos; i <  self->hash->size; i++) {
-	l = (struct ooList*)self->hash->data[i];
-	if (l->size == 0) continue;
-	item = l->head;
-	break;
+        l = (struct ooList*)self->hash->data[i];
+        if (l->size == 0) continue;
+        item = l->head;
+        break;
     }
 
     if (!item)
-	goto no_results;
+        goto no_results;
     
     item_data = (struct ooDictItem*)item->data;
     *key = item_data->key;
@@ -446,7 +446,7 @@ ooDict_init(struct ooDict *self)
 /* constructor */
 extern int
 ooDict_new(struct ooDict **dict, 
-	   size_t init_size)
+           size_t init_size)
 {
     size_t i;
     struct ooList *l;
@@ -461,22 +461,22 @@ ooDict_new(struct ooDict **dict,
 
     ooArray_new(&self->hash);
     if (!self->hash) {
-	self->del(self);
-	return oo_NOMEM;
+        self->del(self);
+        return oo_NOMEM;
     }
 
     ret = self->hash->resize(self->hash, init_size);
     if (ret != oo_OK) {
-	self->del(self);
-	return ret;
+        self->del(self);
+        return ret;
     }
 
     for (i = 0; i < init_size; ++i) {
         ret = ooList_new(&l);
-	if (ret != oo_OK) {
-	    self->del(self);
-	    return ret;
-	}
+        if (ret != oo_OK) {
+            self->del(self);
+            return ret;
+        }
 
         self->hash->data[i] = l;
     }
