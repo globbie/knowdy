@@ -125,6 +125,7 @@ struct kndRel
 
     struct kndRelUpdateRef *updates;
     size_t num_updates;
+    int fd;
 
     struct kndTranslation *tr;
 
@@ -164,7 +165,10 @@ struct kndRel
     struct kndRelDir *dir;
 
     struct ooDict *rel_name_idx;
+    struct ooDict *rel_idx;
+
     struct ooDict *class_name_idx;
+
     const char *frozen_output_file_name;
     size_t frozen_output_file_name_size;
     size_t frozen_size;
@@ -207,6 +211,8 @@ struct kndRel
     int (*read)(struct kndRel *self,
                 const char    *rec,
                 size_t        *total_size);
+    int (*read_rel)(struct kndRel *self,
+                    struct kndRelDir *dir);
     int (*select)(struct kndRel  *self,
                   const char *rec,
                   size_t *total_size);

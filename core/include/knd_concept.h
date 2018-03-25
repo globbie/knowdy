@@ -342,5 +342,6 @@ struct kndConcept
 
 /* constructor */
 extern void kndConcept_init(struct kndConcept *self);
-extern int kndConcept_new(struct kndConcept **self);
+extern int kndConcept_new(struct kndConcept **self,
+                          struct kndMemPool *mempool);
 
