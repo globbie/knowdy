@@ -91,6 +91,7 @@ static int new_set(struct kndMemPool *self,
     q = &self->sets[self->num_sets];
     memset(q, 0, sizeof(struct kndSet));
     kndSet_init(q);
+    q->mempool = self;
     self->num_sets++;
     *result = q;
     return knd_OK;
@@ -133,7 +134,6 @@ static int new_facet(struct kndMemPool *self,
     }
     f = &self->facets[self->num_facets];
     memset(f, 0, sizeof(struct kndFacet));
-    kndFacet_init(f);
     self->num_facets++;
     *result = f;
     return knd_OK;

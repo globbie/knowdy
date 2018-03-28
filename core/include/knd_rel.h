@@ -47,6 +47,7 @@ struct kndRelInstEntry
     char name[KND_NAME_SIZE];
     size_t name_size;
     struct kndRelInstance *inst;
+
     char *block;
     size_t block_size;
     size_t offset;
@@ -60,7 +61,9 @@ struct kndRelInstance
     const char *name;
     size_t name_size;
 
-    knd_state_phase phase;
+    struct kndRelInstEntry *entry;
+    struct kndTask *task;
+    struct kndState *state;
 
     struct kndRel *rel;
     struct kndRelArgInstance *args;
@@ -78,6 +81,7 @@ struct kndRelDir
     size_t name_size;
     struct kndRel *rel;
 
+    int fd;
     size_t global_offset;
     size_t curr_offset;
     size_t block_size;
@@ -90,8 +94,10 @@ struct kndRelDir
     size_t num_children;
 
     struct kndSet *inst_idx;
-    struct ooDict *inst_name_idx;
     size_t num_insts;
+    struct ooDict *inst_name_idx;
+
+    struct kndMemPool *mempool;
 
     bool is_terminal;
     struct kndRelDir *next;
@@ -107,8 +113,10 @@ struct kndRelUpdateRef
 struct kndRelRef
 {
     struct kndRel *rel;
-    struct kndRelArgInstRef *insts;
-    size_t num_insts;
+
+    struct kndSet *idx;
+    //struct kndRelArgInstRef *insts;
+    //size_t num_insts;
 
     struct kndRelRef *next;
 };
@@ -167,6 +175,7 @@ struct kndRel
     struct ooDict *rel_name_idx;
     struct ooDict *rel_idx;
 
+    struct ooDict *class_idx;
     struct ooDict *class_name_idx;
 
     const char *frozen_output_file_name;
@@ -202,6 +211,9 @@ struct kndRel
 		     const char *rec,
 		     size_t *total_size);
 
+    int (*unfreeze_inst)(struct kndRel *self,
+                         struct kndRelInstEntry *entry);
+
     int (*parse_liquid_updates)(struct kndRel *self,
 				const char    *rec,
 				size_t        *total_size);
@@ -227,8 +239,6 @@ struct kndRel
     int (*export_updates)(struct kndRel *self);
     int (*export_inst)(struct kndRel *self,
 		       struct kndRelInstance *inst);
-    int (*export_insts)(struct kndRel *self,
-		       struct kndRelArgInstRef *insts);
 };
 
 extern void kndRel_init(struct kndRel *self);
