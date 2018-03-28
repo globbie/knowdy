@@ -25,6 +25,7 @@ struct kndConcept;
 struct kndConcDir;
 struct kndObjEntry;
 struct kndTask;
+struct kndAttr;
 struct kndFacet;
 struct ooDict;
 
@@ -34,6 +35,11 @@ typedef enum knd_set_type { KND_SET_CLASS,
 			    KND_SET_OBJ,
 			    KND_SET_REL,
 			    KND_SET_REL_INST } knd_set_type;
+
+struct kndSet;
+
+typedef int (*map_cb_func)(void *obj, const char *elem_id, size_t elem_id_size,
+                           size_t count, void *elem);
 
 struct kndSetElemIdx
 {
@@ -66,6 +72,18 @@ struct kndSet
     /******** public methods ********/
     void (*str)(struct kndSet *self,
 		size_t depth);
+    int (*add)(struct kndSet *self,
+               const char *key,
+               size_t key_size,
+               void *elem);
+    int (*get)(struct kndSet *self,
+               const char *key,
+               size_t key_size,
+               void **elem);
+    int (*map)(struct kndSet *self,
+               map_cb_func cb,
+               void *obj);
+
     int (*add_conc)(struct kndSet *self,
 		    struct kndConcept *conc);
     int (*add_ref)(struct kndSet *self,
@@ -84,7 +102,7 @@ struct kndSet
 
     int (*read)(struct kndSet *self,
                 const char    *rec,
-                size_t         *rec_size);
+                size_t        *rec_size);
 
     int (*export)(struct kndSet *self);
 };

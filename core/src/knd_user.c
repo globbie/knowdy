@@ -494,8 +494,6 @@ static gsl_err_t parse_class_select(void *obj,
     c->frozen_output_file_name = self->frozen_output_file_name;
     c->frozen_output_file_name_size = self->frozen_output_file_name_size;
 
-    c->curr_class = NULL;
-    c->curr_baseclass = NULL;
     c->root_class = c;
     c->reset_inbox(c);
 

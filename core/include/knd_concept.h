@@ -71,8 +71,6 @@ struct kndConcRefSet
 
 struct kndConcItem
 {
-    //char name[KND_NAME_SIZE];
-    //size_t name_size;
     char id[KND_ID_SIZE];
     size_t id_size;
 
@@ -344,4 +342,3 @@ struct kndConcept
 extern void kndConcept_init(struct kndConcept *self);
 extern int kndConcept_new(struct kndConcept **self,
                           struct kndMemPool *mempool);
-

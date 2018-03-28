@@ -591,11 +591,11 @@ kndSet_add_conc(struct kndSet *self,
     return knd_OK;
 }
 
-static int add_elem(struct kndSet *self,
-                    struct kndSetElemIdx *parent_idx,
-                    void *elem,
-                    const char *id,
-                    size_t id_size)
+static int save_elem(struct kndSet *self,
+                     struct kndSetElemIdx *parent_idx,
+                     void *elem,
+                     const char *id,
+                     size_t id_size)
 {
     struct kndSetElemIdx *idx;
     int idx_pos;
@@ -611,7 +611,7 @@ static int add_elem(struct kndSet *self,
         if (err) return err;
         parent_idx->idxs[idx_pos] = idx;
         
-        err = add_elem(self, idx, elem, id + 1, id_size - 1);
+        err = save_elem(self, idx, elem, id + 1, id_size - 1);
         if (err) return err;
         parent_idx->num_elems++;
     }
@@ -621,6 +621,103 @@ static int add_elem(struct kndSet *self,
     parent_idx->num_elems++;
     self->num_elems++;
 
+    return knd_OK;
+}
+
+static int get_elem(struct kndSet *self,
+                    struct kndSetElemIdx *parent_idx,
+                    void **result,
+                    const char *id,
+                    size_t id_size)
+{
+    struct kndSetElemIdx *idx;
+    void *elem;
+    int idx_pos;
+    int err;
+
+    if (DEBUG_SET_LEVEL_1)
+        knd_log(".. get elem by ID, remainder \"%.*s\"", id_size, id);
+
+    idx_pos = obj_id_base[(unsigned int)*id];
+
+    if (id_size > 1) {
+        idx = parent_idx->idxs[idx_pos];
+        if (!idx) return knd_NO_MATCH;
+
+        err = get_elem(self, idx, result, id + 1, id_size - 1);
+        if (err) return err;
+    }
+
+    elem = parent_idx->elems[idx_pos];
+    if (!elem) {
+        return knd_NO_MATCH;
+    }
+
+    *result = elem;
+
+    return knd_OK;
+}
+
+static int kndSet_add_elem(struct kndSet *self,
+                           const char *key,
+                           size_t key_size,
+                           void *elem)
+{
+    int err;
+    if (!self->idx) {
+        err = self->mempool->new_set_elem_idx(self->mempool, &self->idx);
+        if (err) return err;
+    }
+    err = save_elem(self, self->idx, elem, key, key_size);
+    if (err) return err;
+
+    return knd_OK;
+}
+
+static int kndSet_get_elem(struct kndSet *self,
+                           const char *key,
+                           size_t key_size,
+                           void **elem)
+{
+    int err;
+
+    err = get_elem(self, self->idx, elem, key, key_size);
+    if (err) return err;
+
+    return knd_OK;
+}
+
+static int kndSet_map(struct kndSet *self,
+                      map_cb_func cb,
+                      void *obj)
+{
+    char buf[KND_ID_SIZE];
+    size_t buf_size = 0;
+    void *elem;
+    size_t count = 0;
+    int err;
+
+    struct kndSetElemIdx *idx = self->idx;
+
+    for (size_t i = 0; i < KND_RADIX_BASE; i++) {
+        elem = idx->elems[i];
+        if (!elem) continue;
+
+        buf_size = 0;
+
+        buf[buf_size] = obj_id_seq[i];
+        buf_size = 1;
+
+        //knd_log("elem id:%.*s", buf_size, buf);
+
+        err = cb(obj, buf, buf_size, count, (void*)elem);
+        if (err) return err;
+
+        count++;
+    }
+
+
+    
     return knd_OK;
 }
 
@@ -670,7 +767,7 @@ static gsl_err_t atomic_elem_alloc(void *obj,
     if (err) return make_gsl_err_external(err);
     self->idx->idxs[idx_pos] = idx;
 
-    err = add_elem(self, idx, elem, val + 1, val_size - 1);
+    err = save_elem(self, idx, elem, val + 1, val_size - 1);
     if (err) return make_gsl_err_external(err);
     self->idx->num_elems++;
 
@@ -923,6 +1020,9 @@ static int read_GSP(struct kndSet *self,
 extern int kndSet_init(struct kndSet *self)
 {
     self->str = kndSet_str;
+    self->add = kndSet_add_elem;
+    self->get = kndSet_get_elem;
+    self->map = kndSet_map;
     self->add_conc = kndSet_add_conc;
     self->add_ref = kndSet_add_ref;
 
@@ -934,22 +1034,6 @@ extern int kndSet_init(struct kndSet *self)
     self->export = kndSet_export;
 
     return knd_OK;
-}
-
-extern void kndFacet_init(struct kndFacet *self __attribute__((unused)))
-{
-    /*self->del = kndFacet_del;
-    self->str = kndFacet_str;
-    */
-
-    /*self->find = kndFacet_find;
-    self->extract_objs = kndFacet_extract_objs;
-
-    self->read = kndFacet_read;
-    self->read_tags = kndFacet_read_tags;
-
-    self->export = kndFacet_export;
-    self->sync = kndFacet_sync; */
 }
 
 extern int 

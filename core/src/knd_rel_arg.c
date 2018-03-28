@@ -7,6 +7,7 @@
 #include "knd_rel_arg.h"
 #include "knd_rel.h"
 #include "knd_task.h"
+#include "knd_set.h"
 #include "knd_concept.h"
 #include "knd_text.h"
 #include "knd_mempool.h"
@@ -365,7 +366,7 @@ static int parse_GSL(struct kndRelArg *self,
         { .is_implied = true,
           .run = run_set_name,
           .obj = self
-        },
+        }/*,
         { .is_list = true,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
@@ -377,7 +378,7 @@ static int parse_GSL(struct kndRelArg *self,
           .name_size = strlen("_g"),
           .parse = parse_gloss,
           .obj = self
-        },
+          }*/,
         { .type = GSL_CHANGE_STATE,
           .name = "c",
           .name_size = strlen("c"),
@@ -417,6 +418,55 @@ static gsl_err_t set_inst_classname(void *obj, const char *name, size_t name_siz
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t get_inst_classname(void *obj, const char *name, size_t name_size)
+{
+    struct kndRelArgInstance *self = obj;
+    struct ooDict *class_idx = self->relarg->rel->class_idx;
+    struct kndConcDir *dir;
+
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    dir = class_idx->get(class_idx, name, name_size);
+    if (!dir) {
+        knd_log("-- no such class: %.*s :(",
+                name_size, name);
+        return make_gsl_err(gsl_FAIL);
+    }
+    self->classname = dir->name;
+    self->classname_size = dir->name_size;
+    self->conc_dir = dir;
+
+    if (DEBUG_RELARG_LEVEL_2)
+        knd_log("++ INST ARG CLASS NAME: \"%.*s\"",
+                self->classname_size, self->classname);
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t get_inst_obj(void *obj, const char *name, size_t name_size)
+{
+    struct kndRelArgInstance *self = obj;
+    void *elem;
+    struct kndConcDir *dir = self->conc_dir;
+    int err;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    err = dir->obj_idx->get(dir->obj_idx, name, name_size, &elem);
+    if (err) {
+        knd_log("-- no such obj: %.*s :(", name_size, name);
+        return make_gsl_err(gsl_FAIL);
+    }
+    self->obj = elem;
+    
+    if (DEBUG_RELARG_LEVEL_2)
+        knd_log("++ INST ARG OBJ NAME: \"%.*s\"",
+                self->obj->name_size, self->obj->name);
+
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t set_inst_val(void *obj, const char *name, size_t name_size)
 {
     struct kndRelArgInstance *self = obj;
@@ -442,20 +492,17 @@ static gsl_err_t set_inst_objname(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-
 static gsl_err_t parse_inst_obj(void *data,
                                 const char *rec,
                                 size_t *total_size)
 {
     struct kndRelArgInstance *inst = data;
-
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_inst_objname,
           .obj = inst
         }
     };
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
@@ -485,6 +532,31 @@ static gsl_err_t parse_inst_class(void *data,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static gsl_err_t parse_inst_class_id(void *data,
+                                     const char *rec,
+                                     size_t *total_size)
+{
+    struct kndRelArgInstance *self = data;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = get_inst_classname,
+          .obj = self
+        },
+        { .name = "o",
+          .name_size = strlen("o"),
+          .run = get_inst_obj,
+          .obj = self
+        },
+        { .name = "v",
+          .name_size = strlen("v"),
+          .run = set_inst_val,
+          .obj = self
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 static int parse_inst_GSL(struct kndRelArg *self,
                           struct kndRelArgInstance *inst,
                           const char *rec,
@@ -499,6 +571,11 @@ static int parse_inst_GSL(struct kndRelArg *self,
           .name_size = strlen("class"),
           .parse = parse_inst_class,
           .obj = inst
+        },
+        { .name = "c",
+          .name_size = strlen("c"),
+          .parse = parse_inst_class_id,
+          .obj = inst
         }
     };
     gsl_err_t parser_err;
@@ -510,18 +587,18 @@ static int parse_inst_GSL(struct kndRelArg *self,
 }
 
 static int link_rel(struct kndRelArg *self,
-                    struct kndRelArgInstance *inst,
+                    struct kndRelArgInstance *arg_inst,
                     struct kndObjEntry *obj_entry)
 {
     struct kndRel *rel = self->rel;
     struct kndRelRef *ref = NULL;
-    struct kndRelArgInstRef *rel_arg_inst_ref = NULL;
+    struct kndRelInstance *inst = arg_inst->rel_inst;
     int err;
 
-    if (DEBUG_RELARG_LEVEL_2)
-        knd_log(".. %.*s OBJ to link rel %.*s..",
+    if (DEBUG_RELARG_LEVEL_TMP)
+        knd_log(".. %.*s OBJ to link rel %.*s.. rel inst:%.*s",
                 obj_entry->name_size, obj_entry->name,
-                rel->name_size, rel->name);
+                rel->name_size, rel->name, inst->id_size, inst->id);
 
     for (ref = obj_entry->rels; ref; ref = ref->next) {
         if (ref->rel == rel) break;
@@ -529,17 +606,16 @@ static int link_rel(struct kndRelArg *self,
 
     if (!ref) {
         err = rel->mempool->new_rel_ref(rel->mempool, &ref);                      RET_ERR();
+
+        err = rel->mempool->new_set(rel->mempool, &ref->idx);                     RET_ERR();
+        ref->idx->type = KND_SET_REL_INST;
+
         ref->rel = rel;
         ref->next = obj_entry->rels;
         obj_entry->rels = ref;
     }
 
-    err = rel->mempool->new_rel_arg_inst_ref(rel->mempool, &rel_arg_inst_ref);    RET_ERR();
-    rel_arg_inst_ref->inst = inst;
-    rel_arg_inst_ref->next = ref->insts;
-    ref->insts = rel_arg_inst_ref;
-    ref->num_insts++;
-
+    err = ref->idx->add(ref->idx, inst->id, inst->id_size, (void*)inst);          RET_ERR();
     return knd_OK;
 }
 
@@ -579,7 +655,6 @@ static int resolve_inst(struct kndRelArg *self,
 
     /* resolve obj ref */
     if (inst->objname_size) {
-
         if (DEBUG_RELARG_LEVEL_2)
             knd_log(".. resolving rel arg inst OBJ ref: \"%.*s\""
                     " CONC DIR: %.*s OBJ IDX:%p",
@@ -593,7 +668,7 @@ static int resolve_inst(struct kndRelArg *self,
         }
 
         obj = dir->obj_name_idx->get(dir->obj_name_idx,
-                                inst->objname, inst->objname_size);
+                                     inst->objname, inst->objname_size);
         if (!obj) {
             knd_log("-- no such obj: %.*s :(",
                     inst->objname_size, inst->objname);
