@@ -12,6 +12,7 @@
 #include "knd_text.h"
 #include "knd_num.h"
 #include "knd_rel.h"
+#include "knd_set.h"
 #include "knd_rel_arg.h"
 
 #include "knd_user.h"
@@ -28,6 +29,10 @@
 
 static int
 export_rel_dir_JSON(struct kndObject *self);
+static int export_rel_inst_JSON(void *obj,
+                                const char *elem_id, size_t elem_id_size,
+                                size_t count,
+                                void *elem __attribute__((unused)));
 
 static void del(struct kndObject *self)
 {
@@ -38,11 +43,11 @@ static void str(struct kndObject *self)
 {
     struct kndElem *elem;
     if (self->type == KND_OBJ_ADDR) {
-        knd_log("\n%*sOBJ %.*s::%.*s  numid:%zu  entry:%p",
+        knd_log("\n%*sOBJ %.*s::%.*s  numid:%zu",
                 self->depth * KND_OFFSET_SIZE, "",
                 self->conc->name_size, self->conc->name,
                 self->name_size, self->name,
-                self->numid, self->entry);
+                self->numid);
     }
 
     for (elem = self->elems; elem; elem = elem->next) {
@@ -81,45 +86,49 @@ kndObject_export_aggr_JSON(struct kndObject *self)
     return knd_OK;
 }
 
-
-
 static int
 export_rel_dir_JSON(struct kndObject *self)
 {
     char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    size_t buf_size = 0;
     struct kndRel *rel;
     struct kndRelRef *relref;
+    struct kndSet *set;
     struct glbOutput *out = self->out;
     int err;
 
     /* sort refs by class */
-    if (DEBUG_OBJ_LEVEL_2)
-        knd_log("..export rel dir of %.*s.. entry:%p",
-                self->name_size, self->name, self->entry);
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log("..export rel dir of %.*s..",
+                self->name_size, self->name);
 
     err = out->writec(out, '[');                                                 RET_ERR();
-
     /* class conc */
     for (relref = self->entry->rels; relref; relref = relref->next) {
         rel = relref->rel;
+        if (!relref->idx) continue;
 
         err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));                  RET_ERR();
         err = out->write(out, rel->name, rel->name_size);                         RET_ERR();
         err = out->writec(out, '"');                                              RET_ERR();
 
+        set = relref->idx;
         err = out->write(out, ",\"num_instances\":",
-                       strlen(",\"num_instances\":"));                            RET_ERR();
-        buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", relref->num_insts);
+                         strlen(",\"num_instances\":"));                          RET_ERR();
+        buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", set->num_elems);
         err = out->write(out, buf, buf_size);                                     RET_ERR();
+
 
         if (self->expand_depth) {
             err = out->write(out, ",\"instances\":",
                              strlen(",\"instances\":"));                          RET_ERR();
-            rel->out = self->out;
-            err = rel->export_insts(rel, relref->insts);                          RET_ERR();
+            err = out->writec(out, '[');                                          RET_ERR();
+            err = set->map(set, export_rel_inst_JSON, (void*)out);
+            if (err) return err;
+            err = out->writec(out, ']');                                          RET_ERR();
         }
 
+        
         err = out->writec(out, '}');                                              RET_ERR();
     }
 
@@ -233,15 +242,47 @@ kndObject_export_JSON(struct kndObject *self)
     return err;
 }
 
+static int export_rel_inst_id(void *obj,
+                              const char *elem_id, size_t elem_id_size,
+                              size_t count,
+                              void *elem __attribute__((unused)))
+{
+    struct glbOutput *out = obj;
+    int err;
+    err = out->writec(out, ' ');                                              RET_ERR();
+    err = out->write(out, elem_id, elem_id_size);                             RET_ERR();
+    if (err) return err;
+    return knd_OK;
+}
+
+static int export_rel_inst_JSON(void *obj,
+                                const char *elem_id, size_t elem_id_size,
+                                size_t count,
+                                void *elem)
+{
+    struct glbOutput *out = obj;
+    struct kndRelInstEntry *entry = elem;
+    struct kndRel *rel = entry->inst->rel;
+    int err;
+
+    /* separator */
+    if (count) {
+        err = out->writec(out, ',');                                          RET_ERR();
+    }
+
+    rel->out = out;
+    rel->format = KND_FORMAT_JSON;
+    err = rel->export_inst(rel, entry->inst);
+    if (err) return err;
+
+    return knd_OK;
+}
+
 static int
 export_rels_GSP(struct kndObject *self)
 {
     struct kndRel *rel;
     struct kndRelRef *relref;
-    struct kndRelInstance *rel_inst;
-    struct kndRelArgInstance *rel_arg_inst;
-    struct kndRelArgInstRef *rel_arg_inst_ref;
-
     struct glbOutput *out = self->out;
     int err;
 
@@ -257,15 +298,10 @@ export_rels_GSP(struct kndObject *self)
         err = out->write(out, rel->id, rel->id_size);                             RET_ERR();
 
         err = out->write(out, "[i", strlen("[i"));                                RET_ERR();
-        for (rel_arg_inst_ref = relref->insts;
-             rel_arg_inst_ref;
-             rel_arg_inst_ref = rel_arg_inst_ref->next) {
 
-            rel_inst = rel_arg_inst_ref->inst->rel_inst;
-        
-            err = out->writec(out, ' ');                                          RET_ERR();
-            err = out->write(out, rel_inst->id, rel_inst->id_size);               RET_ERR();
-        }
+        err = relref->idx->map(relref->idx, export_rel_inst_id, (void*)out);
+        if (err) return err;
+
         err = out->writec(out, ']');                                              RET_ERR();
         err = out->writec(out, '}');                                              RET_ERR();
     }
@@ -284,7 +320,6 @@ kndObject_export_GSP(struct kndObject *self)
 
     if (self->type == KND_OBJ_ADDR) {
         start_size = self->out->buf_size;
-
         if (DEBUG_OBJ_LEVEL_2)
             knd_log("%*s.. export GSP obj \"%.*s\" [id: %.*s]..",
                     self->depth *  KND_OFFSET_SIZE, "",
@@ -404,14 +439,15 @@ static gsl_err_t find_obj_rel(void *obj, const char *name, size_t name_size)
     for (size_t i = 0; i < name_size; i++)
         name_hash = (name_hash << 1) ^ name[i];
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log("++ find Rel Ref: \"%.*s\"", name_size, name);
 
     for (relref = self->entry->rels; relref; relref = relref->next) {
         rel = relref->rel;
 
         if (!memcmp(rel->name, name, name_size)) {
-            knd_log("++ got REL: %.*s", rel->name_size, rel->name);
+            if (DEBUG_OBJ_LEVEL_2)
+                knd_log("++ got REL: %.*s", rel->name_size, rel->name);
             self->curr_rel = relref;
             return make_gsl_err(gsl_OK);
         }
@@ -446,6 +482,7 @@ static gsl_err_t present_rel(void *data,
     struct kndObject *self = data;
     struct kndRelRef *relref;
     struct kndRel *rel;
+    struct kndSet *set;
     struct glbOutput *out;
     int err;
 
@@ -470,19 +507,22 @@ static gsl_err_t present_rel(void *data,
     err = out->write(out, "\"", 1);
     if (err) return make_gsl_err_external(err);
 
+    set = relref->idx;
     err = out->write(out, ",\"num_instances\":", strlen(",\"num_instances\":"));
     if (err) return make_gsl_err_external(err);
-    buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", relref->num_insts);
+    buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", set->num_elems);
     err = out->write(out, buf, buf_size);
     if (err) return make_gsl_err_external(err);
 
-    err = out->write(out, ",\"instances\":", strlen(",\"instances\":"));
+    /*err = out->write(out, ",\"instances\":", strlen(",\"instances\":"));
     if (err) return make_gsl_err_external(err);
 
     rel->out = self->out;
     err = rel->export_insts(rel, relref->insts);
     if (err) return make_gsl_err_external(err);
+    */
 
+    
     err = out->write(out, "}", 1);
     if (err) return make_gsl_err_external(err);
 
@@ -719,6 +759,7 @@ static gsl_err_t resolve_relref(void *obj, const char *name, size_t name_size)
 {
     struct kndRelRef *self = obj;
     struct kndRel *root_rel;
+    struct kndRelDir *dir;
     struct kndRel *rel;
     int err;
 
@@ -727,77 +768,87 @@ static gsl_err_t resolve_relref(void *obj, const char *name, size_t name_size)
 
     root_rel = self->rel;
 
-    if (DEBUG_OBJ_LEVEL_2)
-        knd_log(".. resolving Rel Ref: \"%.*s\"   root rel: %p",
-                name_size, name, root_rel);
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log(".. resolving Rel Ref by id \"%.*s\"",
+                name_size, name);
 
-    err = root_rel->get_rel(root_rel, name, name_size, &rel);
-    if (err) return make_gsl_err_external(err);
-    self->rel = rel;
+    dir = root_rel->rel_idx->get(root_rel->rel_idx, name, name_size);
+    if (!dir) {
+        knd_log("-- no such Rel: \"%.*s\"",
+                name_size, name);
+        return make_gsl_err(gsl_NO_MATCH);
+    }
+
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log("== Rel name: \"%.*s\" id:%.*s rel:%p",
+                dir->name_size, dir->name,
+                dir->id_size, dir->id, dir->rel);
+
+    if (!dir->rel) {
+        err = root_rel->get_rel(root_rel, dir->name, dir->name_size, &dir->rel);
+        if (err) {
+            knd_log("-- no such Rel..");
+            return make_gsl_err(gsl_NO_MATCH);
+        }
+    }
+
+    self->rel = dir->rel;
 
     return make_gsl_err(gsl_OK);
 }
 
-
-
-static gsl_err_t rel_inst_append(void *accu,
+static gsl_err_t rel_entry_append(void *accu,
                                  void *item)
 {
     struct kndRelRef *self = accu;
-    struct kndRelInstance *inst = item;
-    struct kndRelArgInstance *rel_arg_inst = NULL;
-    struct kndRelArgInstRef *rel_arg_inst_ref = NULL;
+    struct kndRel *rel;
+    struct kndRelInstEntry *entry = item;
+    struct kndSet *set;
     int err;
-    err = self->rel->mempool->new_rel_arg_inst_ref(self->rel->mempool,
-                                                   &rel_arg_inst_ref);
+
+    set = self->idx;
+    if (!set) {
+        err = self->rel->mempool->new_set(self->rel->mempool, &set);
+        if (err) return make_gsl_err_external(err);
+        set->mempool = self->rel->mempool;
+        set->type = KND_SET_REL_INST;
+        self->idx = set;
+    }
+
+    err = set->add(set, entry->id, entry->id_size, (void*)entry);
     if (err) return make_gsl_err_external(err);
 
-    rel_arg_inst = inst->args;
-
-    rel_arg_inst_ref->inst = rel_arg_inst;
-    rel_arg_inst_ref->next = self->insts;
-    self->insts = rel_arg_inst_ref;
-    self->num_insts++;
-
+    rel = self->rel;
+    err = rel->unfreeze_inst(rel, entry);
+    if (err) return make_gsl_err_external(err);
+    
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t rel_inst_alloc(void *obj,
-                                const char *name,
-                                size_t name_size,
-                                size_t count,
-                                void **item)
+static gsl_err_t rel_entry_alloc(void *obj,
+                                 const char *name,
+                                 size_t name_size,
+                                 size_t count __attribute__((unused)),
+                                 void **item)
 {
     struct kndRelRef *self = obj;
-    struct kndRelInstance *rel_inst = NULL;
+    struct kndSet *set;
+    void *elem;
     int err;
 
     if (DEBUG_OBJ_LEVEL_2)
-        knd_log(".. %.*s Rel Ref to alloc rel inst \"%.*s\" count:%zu..",
+        knd_log(".. %.*s Rel Ref to find rel inst \"%.*s\"",
                 self->rel->name_size, self->rel->name,
-                name_size, name, count);
+                name_size, name);
 
-    err = self->rel->mempool->new_rel_inst(self->rel->mempool, &rel_inst);
-    if (err) return make_gsl_err_external(err);
+    set = self->rel->dir->inst_idx;
+    if (!set) return make_gsl_err(gsl_FAIL);
 
-    rel_inst->rel = self->rel;
+    err = set->get(set, name, name_size, &elem);
+    if (err) return make_gsl_err(gsl_FAIL);
 
-    *item = (void*)rel_inst;
+    *item = elem;
 
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t rel_inst_read(void *obj,
-                               const char *rec,
-                               size_t *total_size)
-{
-    struct kndRelInstance *inst = obj;
-    struct kndRel *rel;
-    int err;
-    rel = inst->rel;
-    err = rel->read_inst(rel, inst, rec, total_size);
-    if (err) return make_gsl_err_external(err);
- 
     return make_gsl_err(gsl_OK);
 }
 
@@ -809,12 +860,11 @@ static gsl_err_t read_rel_insts(void *obj,
     struct gslTaskSpec rel_inst_spec = {
         .is_list_item = true,
         .accu = self,
-        .alloc = rel_inst_alloc,
-        .append = rel_inst_append,
-        .parse = rel_inst_read
+        .alloc = rel_entry_alloc,
+        .append = rel_entry_append,
     };
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. reading insts of rel %.*s..",
                 self->rel->name_size, self->rel->name);
 
@@ -833,8 +883,8 @@ static gsl_err_t rel_read(void *obj,
           .obj = relref
         },
         { .is_list = true,
-          .name = "inst",
-          .name_size = strlen("inst"),
+          .name = "i",
+          .name_size = strlen("i"),
           .parse = read_rel_insts,
           .obj = relref
         }
@@ -953,8 +1003,6 @@ static gsl_err_t remove_obj(void *data, const char *name __attribute__((unused))
     return make_gsl_err(gsl_OK);
 }
 
-
- 
 static gsl_err_t parse_rels(void *obj,
                             const char *rec,
                             size_t *total_size)
@@ -967,7 +1015,6 @@ static gsl_err_t parse_rels(void *obj,
         .append = rel_append,
         .parse = rel_read
     };
-
     
     if (DEBUG_OBJ_LEVEL_TMP)
         knd_log(".. reading rels of obj %.*s..",
