@@ -433,6 +433,7 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     if (err) goto error;
     err = ooDict_new(&conc->rel->rel_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
+    conc->rel->class_idx = conc->class_idx;
     conc->rel->class_name_idx = conc->class_name_idx;
     
     /* user idx */

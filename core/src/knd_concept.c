@@ -1758,7 +1758,6 @@ static gsl_err_t parse_import_class(void *obj,
         c->next = self->inbox;
         self->inbox = c;
         self->inbox_size++;
-        knd_log("class INBOX size: %zu", self->inbox_size);
     }
 
     err = self->mempool->new_conc_dir(self->mempool, &dir);
@@ -1876,7 +1875,7 @@ static gsl_err_t parse_import_obj(void *data,
 
     c->dir->num_objs++;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_1) {
         knd_log("++ OBJ registered in \"%.*s\" IDX:  [total:%zu valid:%zu]",
                 c->name_size, c->name, c->dir->obj_name_idx->size, c->dir->num_objs);
         obj->depth = self->depth + 1;
@@ -2524,7 +2523,6 @@ static gsl_err_t reldir_entry_append(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
-
 static gsl_err_t procdir_entry_alloc(void *self,
                                      const char *name,
                                      size_t name_size,
@@ -2921,6 +2919,7 @@ static int parse_dir_trailer(struct kndConcept *self,
     /* read rels */
     for (size_t i = 0; i < parent_dir->num_rels; i++) {
         reldir = parent_dir->rels[i];
+        reldir->mempool = self->mempool;
         self->rel->fd = fd;
         err = self->rel->read_rel(self->rel, reldir);
     }
@@ -2937,7 +2936,6 @@ static int parse_dir_trailer(struct kndConcept *self,
 
     return knd_OK;
 }
-
 
 static gsl_err_t obj_entry_alloc(void *obj,
                                  const char *val,
@@ -2957,7 +2955,6 @@ static gsl_err_t obj_entry_alloc(void *obj,
     if (err) return make_gsl_err_external(err);
 
     knd_calc_num_id(val, val_size, &entry->block_size);
-
 
     *item = entry;
 
@@ -3003,6 +3000,7 @@ static gsl_err_t obj_entry_append(void *accu,
     size_t buf_size;
     struct kndConcDir *parent_dir = accu;
     struct kndObjEntry *entry = item;
+    struct kndSet *set;
     off_t offset = 0;
     int fd = parent_dir->fd;
     gsl_err_t parser_err;
@@ -3046,8 +3044,8 @@ static gsl_err_t obj_entry_append(void *accu,
                 entry->id_size, entry->id,
                 entry->name_size, entry->name);
 
-    err = add_obj_entry(parent_dir, parent_dir->obj_dir,
-                        entry, entry->id, entry->id_size);
+    set = parent_dir->obj_idx;
+    err = set->add(set, entry->id, entry->id_size, (void*)entry);
     if (err) return make_gsl_err_external(err);
 
     /* update name idx */
@@ -3096,8 +3094,11 @@ static int parse_obj_dir_trailer(struct kndConcept *self,
     parent_dir->fd = fd;
 
     if (!parent_dir->obj_name_idx) {
-        err = ooDict_new(&parent_dir->obj_name_idx, parent_dir->num_objs);
-        if (err) return err;
+        err = ooDict_new(&parent_dir->obj_name_idx, parent_dir->num_objs);            RET_ERR();
+
+        err = self->mempool->new_set(self->mempool, &parent_dir->obj_idx);            RET_ERR();
+        parent_dir->obj_idx->mempool = self->mempool;
+        parent_dir->obj_idx->type = KND_SET_CLASS;
     }
 
     parser_err = gsl_parse_task(obj_dir_buf, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -3937,7 +3938,7 @@ static int read_obj_entry(struct kndConcept *self,
     /* NB: current parser expects a null terminated string */
     entry->block[entry->block_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("   == OBJ REC: \"%.*s\"", entry->block_size, entry->block);
 
     /* done reading */
@@ -4055,7 +4056,7 @@ static gsl_err_t present_class_selection(void *obj,
     c->out = out;
     c->task = self->task;
     c->format = KND_FORMAT_JSON;
-    c->depth = 0;
+    c->depth = self->depth;
     err = c->export(c);
     if (err) return make_gsl_err_external(err);
     return make_gsl_err(gsl_OK);
@@ -4344,6 +4345,10 @@ static int parse_select_class(void *obj,
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
 
+    self->depth = 0;
+    self->curr_class = NULL;
+    self->curr_baseclass = NULL;
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .is_selector = true,
@@ -4389,6 +4394,11 @@ static int parse_select_class(void *obj,
           .is_selector = true,
           .parse = self->task->parse_iter,
           .obj = self->task
+        },
+        {  .name = "_depth",
+           .name_size = strlen("_depth"),
+           .parse = gsl_parse_size_t,
+           .obj = &self->depth
         },
         { .name = "_delta",
           .name_size = strlen("_delta"),
@@ -4652,6 +4662,25 @@ static int export_JSON(struct kndConcept *self)
                 buf_size = sprintf(buf, "%zu", dir->numid);
                 err = out->write(out, buf, buf_size);
                 if (err) return err;
+
+                /* localized glosses */
+                if (dir->conc) {
+                    tr = dir->conc->tr;
+                    while (tr) {
+                        if (memcmp(self->task->locale,
+                                   tr->locale, tr->locale_size)) {
+                            goto next_child_tr;
+                        }
+                        err = out->write(out, ",\"gloss\":\"",
+                                         strlen(",\"gloss\":\""));                RET_ERR();
+                        err = out->write(out, tr->val,
+                                         tr->val_size);                           RET_ERR();
+                        err = out->writec(out, '"');                              RET_ERR();
+                        break;
+                    next_child_tr:
+                        tr = tr->next;
+                    }
+                }
                 err = out->write(out, "}", 1);
                 if (err) return err;
             }
