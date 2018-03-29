@@ -392,24 +392,29 @@ static int export_inst_JSON(struct kndRel *self,
     bool in_list = false;
     int err;
 
-    err = out->write(out, "{", 1);
+    err = out->writec(out, '{');
     if (err) return err;
 
+    err = out->write(out, "\"_n\":\"", strlen("\"_n\":\""));                       RET_ERR();
+                     err = out->write(out, inst->name, inst->name_size);           RET_ERR();
+                     err = out->writec(out, '"');
+                     in_list = true;
     for (relarg_inst = inst->args;
          relarg_inst;
          relarg_inst = relarg_inst->next) {
 
         relarg = relarg_inst->relarg;
+
         /* skip over the selected obj */
-        if (relarg_inst->obj) {
+        /*if (relarg_inst->obj) {
             entry = relarg_inst->obj;
 
             if (relarg->curr_obj == entry->obj) continue;
-        }
+            }*/
 
         relarg->out = out;
         if (in_list) {
-            err = out->write(out, ",", 1);                                       RET_ERR();
+            err = out->writec(out, ',');                                         RET_ERR();
         }
         err = out->write(out, "\"", strlen("\""));                               RET_ERR();
         err = out->write(out, relarg->name, relarg->name_size);                  RET_ERR();
@@ -606,8 +611,8 @@ static int import_rel(struct kndRel *self,
     dir->numid = self->num_rels;
 
     knd_num_to_str(dir->numid, dir->id, &dir->id_size, KND_RADIX_BASE);
-    /* automatic name assignment if no explicit name given */
 
+    /* automatic name assignment if no explicit name given */
     memcpy(rel->dir->name, rel->name, rel->name_size);
     rel->dir->name_size = rel->name_size;
 
@@ -620,15 +625,11 @@ static int import_rel(struct kndRel *self,
     rel->id = dir->id;
     rel->id_size = dir->id_size;
 
-    knd_log(".. name idx: \"%.*s\".. IDX:%p",
-            dir->name_size, dir->name,
-            self->rel_name_idx);
-
     err = self->rel_name_idx->set(self->rel_name_idx,
                                   dir->name, dir->name_size, (void*)dir);
     if (err) goto final;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_1)
         rel->str(rel);
 
     return knd_OK;
@@ -1248,7 +1249,7 @@ static int get_rel(struct kndRel *self,
     struct stat file_info;
     int err;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_1)
         knd_log(".. get rel: \"%.*s\"",
                 name_size, name);
 
@@ -1270,6 +1271,11 @@ static int get_rel(struct kndRel *self,
         rel->phase = KND_SELECTED;
         rel->task = self->task;
         rel->next = NULL;
+        if (!rel->is_resolved) {
+            knd_log("-- Rel %.*s is not resolved yet..",
+                    name_size, name);
+        }
+
         *result = rel;
         return knd_OK;
     }
@@ -1355,18 +1361,21 @@ static int get_rel(struct kndRel *self,
     }
 
     if (!got_separ) {
-        knd_log("-- rel name not found in %.*s :(", buf_size, buf);
+        knd_log("-- rel name not found in %.*s :(",
+                buf_size, buf);
         return knd_FAIL;
     }
     total_size = &chunk_size;
-    err = rel->read(rel, b, total_size);                                         PARSE_ERR();
+    err = rel->read(rel, b, total_size);                                          PARSE_ERR();
 
-    /* resolve args */
-    for (arg = self->args; arg; arg = arg->next) {
+    /* resolve args of a Rel */
+    for (arg = rel->args; arg; arg = arg->next) {
         err = arg->resolve(arg);                                                  RET_ERR();
     }
 
     dir->rel = rel;
+    rel->dir = dir;
+
     if (DEBUG_REL_LEVEL_2)
         rel->str(rel);
 
@@ -1662,7 +1671,7 @@ static int resolve_inst(struct kndRel *self,
     struct kndRelArgInstance *arg_inst;
     int err;
 
-    if (DEBUG_REL_LEVEL_2)
+    if (DEBUG_REL_LEVEL_TMP)
         knd_log("\n%*s.. resolving Rel Instance: %.*s [%zu]",
                 self->depth * KND_OFFSET_SIZE, "",
                 self->name_size, self->name, inst->id);
@@ -1771,7 +1780,7 @@ static int kndRel_coordinate(struct kndRel *self)
     } while (key);
 
     /* display all rels */
-    if (DEBUG_REL_LEVEL_TMP) {
+    if (DEBUG_REL_LEVEL_2) {
         key = NULL;
         self->rel_name_idx->rewind(self->rel_name_idx);
         do {
@@ -1783,7 +1792,6 @@ static int kndRel_coordinate(struct kndRel *self)
             rel->str(rel);
         } while (key);
     }
-
     return knd_OK;
 }
 

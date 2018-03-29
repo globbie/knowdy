@@ -539,8 +539,8 @@ static int new_proc_update_ref(struct kndMemPool *self,
 
 static int alloc(struct kndMemPool *self)
 {
-    if (!self->max_attrs)      self->max_attrs = KND_MIN_ATTRS;
-    if (!self->max_sets)         self->max_sets =    KND_MIN_SETS;
+    if (!self->max_attrs)      self->max_attrs =               KND_MIN_ATTRS;
+    if (!self->max_sets)         self->max_sets =              KND_MIN_SETS;
     if (!self->max_set_elem_idxs) self->max_set_elem_idxs =    KND_MIN_SETS;
     if (!self->max_facets)       self->max_facets =  KND_MIN_FACETS;
     if (!self->max_updates)      self->max_updates = KND_MIN_UPDATES;
@@ -880,6 +880,18 @@ parse_memory_settings(struct kndMemPool *self, const char *rec, size_t *total_si
             .name_size = strlen("max_proc_instances"),
             .parse = gsl_parse_size_t,
             .obj = &self->max_proc_insts
+        },
+        {
+            .name = "max_sets",
+            .name_size = strlen("max_sets"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_sets
+        },
+        {
+            .name = "max_set_elem_idxs",
+            .name_size = strlen("max_set_elem_idxs"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_set_elem_idxs
         }
     };
 

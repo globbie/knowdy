@@ -107,6 +107,7 @@ kndElem_export_JSON(struct kndElem *self)
             obj = self->aggr;
             while (obj) {
                 obj->out = out;
+                obj->format = KND_FORMAT_JSON;
                 err = obj->export(obj);
 
                 if (obj->next) {
@@ -175,6 +176,7 @@ kndElem_export_JSON(struct kndElem *self)
         case  KND_ATTR_TEXT:
             text = self->text;
             text->out = out;
+            text->format = self->format;
             err = text->export(text);
             if (err) goto final;
             break;
@@ -224,6 +226,7 @@ kndElem_export_JSON(struct kndElem *self)
         case KND_ATTR_REF:
             ref = self->ref;
             ref->out = out;
+            ref->format = self->format;
             err = ref->export(ref);
             if (err) goto final;
             break;

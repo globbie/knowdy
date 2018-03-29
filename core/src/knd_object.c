@@ -98,7 +98,7 @@ export_rel_dir_JSON(struct kndObject *self)
     int err;
 
     /* sort refs by class */
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log("..export rel dir of %.*s..",
                 self->name_size, self->name);
 
@@ -768,7 +768,7 @@ static gsl_err_t resolve_relref(void *obj, const char *name, size_t name_size)
 
     root_rel = self->rel;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_1)
         knd_log(".. resolving Rel Ref by id \"%.*s\"",
                 name_size, name);
 
@@ -779,7 +779,7 @@ static gsl_err_t resolve_relref(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_NO_MATCH);
     }
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log("== Rel name: \"%.*s\" id:%.*s rel:%p",
                 dir->name_size, dir->name,
                 dir->id_size, dir->id, dir->rel);
@@ -1016,7 +1016,7 @@ static gsl_err_t parse_rels(void *obj,
         .parse = rel_read
     };
     
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. reading rels of obj %.*s..",
                 self->name_size, self->name);
 

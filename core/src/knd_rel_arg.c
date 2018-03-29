@@ -27,7 +27,6 @@ static void del(struct kndRelArg *self)
 static void str(struct kndRelArg *self)
 {
     struct kndTranslation *tr;
-
     const char *type_name = knd_relarg_names[self->type];
 
     knd_log("\n%*s{%s %.*s class:%.*s", self->depth * KND_OFFSET_SIZE, "", type_name,
@@ -182,20 +181,33 @@ static int export_inst_JSON(struct kndRelArg *self,
     struct glbOutput *out = self->out;
     /*const char *type_name = knd_relarg_names[self->type];
       size_t type_name_size = strlen(knd_relarg_names[self->type]); */
+    bool in_list = false;
     int err;
 
     err = out->writec(out, '{');                                                 RET_ERR();
-    err = out->write(out, "\"class\":\"", strlen("\"class\":\""));               RET_ERR();
-    err = out->write(out, inst->classname, inst->classname_size);                RET_ERR();
-    err = out->writec(out, '"');                                                 RET_ERR();
+
+    /* output class name only if it's 
+       different from the default one */
+    if (self->conc_dir != inst->conc_dir) {
+        err = out->write(out, "\"class\":\"", strlen("\"class\":\""));           RET_ERR();
+        err = out->write(out, inst->classname, inst->classname_size);            RET_ERR();
+        err = out->writec(out, '"');                                             RET_ERR();
+        in_list = true;
+    }
 
     if (inst->objname_size) {
-        err = out->write(out, ",\"obj\":\"", strlen(",\"obj\":\""));             RET_ERR();
+        if (in_list) {
+            err = out->writec(out, ',');                                         RET_ERR();
+        }
+        err = out->write(out, "\"obj\":\"", strlen("\"obj\":\""));             RET_ERR();
         err = out->write(out, inst->objname, inst->objname_size);                RET_ERR();
         err = out->writec(out, '"');                                             RET_ERR();
     }
     if (inst->val_size) {
-        err = out->write(out, ",\"val\":\"", strlen(",\"val\":\""));             RET_ERR();
+        if (in_list) {
+            err = out->writec(out, ',');                                         RET_ERR();
+        }
+        err = out->write(out, "\"val\":\"", strlen("\"val\":\""));               RET_ERR();
         err = out->write(out, inst->val, inst->val_size);                        RET_ERR();
         err = out->writec(out, '"');                                             RET_ERR();
     }
@@ -463,6 +475,8 @@ static gsl_err_t get_inst_obj(void *obj, const char *name, size_t name_size)
     if (DEBUG_RELARG_LEVEL_2)
         knd_log("++ INST ARG OBJ NAME: \"%.*s\"",
                 self->obj->name_size, self->obj->name);
+    self->objname = self->obj->name;
+    self->objname_size = self->obj->name_size;
 
     return make_gsl_err(gsl_OK);
 }
@@ -595,7 +609,7 @@ static int link_rel(struct kndRelArg *self,
     struct kndRelInstance *inst = arg_inst->rel_inst;
     int err;
 
-    if (DEBUG_RELARG_LEVEL_TMP)
+    if (DEBUG_RELARG_LEVEL_2)
         knd_log(".. %.*s OBJ to link rel %.*s.. rel inst:%.*s",
                 obj_entry->name_size, obj_entry->name,
                 rel->name_size, rel->name, inst->id_size, inst->id);
@@ -624,10 +638,15 @@ static int resolve(struct kndRelArg *self)
 {
     struct kndConcDir *dir;
 
+    if (DEBUG_RELARG_LEVEL_2)
+        knd_log(".. resolving Rel Arg %.*s..",
+                self->classname_size, self->classname);
+
     dir = self->rel->class_name_idx->get(self->rel->class_name_idx,
-                                  self->classname, self->classname_size);
+                                         self->classname, self->classname_size);
     if (!dir) {
-        knd_log("-- Rel Arg resolve failed: no such class: %.*s :(", self->classname_size, self->classname);
+        knd_log("-- Rel Arg resolve failed: no such class: %.*s :(",
+                self->classname_size, self->classname);
         return knd_FAIL;
     }
     self->conc_dir = dir;
