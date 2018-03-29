@@ -1827,7 +1827,7 @@ static gsl_err_t parse_import_obj(void *data,
     c->obj_inbox_size++;
     c->num_objs++;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log("++ %.*s obj parse OK! total objs in %.*s: %zu",
                 obj->name_size, obj->name,
                 c->name_size, c->name, c->obj_inbox_size);
@@ -2783,13 +2783,20 @@ static int get_dir_trailer(struct kndConcept *self,
     if (err == -1) return knd_IO_FAIL;
     out->buf[out->buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. parsing DIR: \"%.*s\"",
-                out->buf_size, out->buf);
+    if (DEBUG_CONC_LEVEL_1) {
+        chunk_size = out->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ?\
+            KND_MAX_DEBUG_CHUNK_SIZE :  out->buf_size;
+        knd_log(".. parsing DIR: \"%.*s\" [size:%zu]",
+                chunk_size, out->buf, out->buf_size);
+    }
 
     err = parse_dir_trailer(self, parent_dir, fd, encode_base);
     if (err) {
-        knd_log("-- failed to parse dir trailer: \"%.*s\"", out->buf_size, out->buf);
+        chunk_size =  out->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ?\
+                KND_MAX_DEBUG_CHUNK_SIZE :  out->buf_size;
+
+        knd_log("-- failed to parse dir trailer: \"%.*s\" [size:%zu]",
+                chunk_size, out->buf, out->buf_size);
         return err;
     }
 
@@ -2906,6 +2913,7 @@ static int parse_dir_trailer(struct kndConcept *self,
         err = get_dir_trailer(self, dir, fd, encode_base);
         if (err) {
             if (err != knd_NO_MATCH) {
+                
                 knd_log("-- error reading trailer of \"%.*s\" DIR: %d",
                         dir->name_size, dir->name, err);
                 return err;
@@ -2961,38 +2969,6 @@ static gsl_err_t obj_entry_alloc(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static int add_obj_entry(struct kndConcDir *self,
-                         struct kndObjDir *parent_dir,
-                         struct kndObjEntry *entry,
-                         const char *id,
-                         size_t id_size)
-{
-    struct kndObjDir *dir;
-    int idx_pos;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("== ID remainder: \"%.*s\"", id_size, id);
-
-    idx_pos = obj_id_base[(unsigned int)*id];
-
-    if (id_size > 1) {
-        err = self->mempool->new_obj_dir(self->mempool, &dir);
-        if (err) return err;
-        parent_dir->dirs[idx_pos] = dir;
-        
-        err = add_obj_entry(self, dir, entry, id + 1, id_size - 1);
-        if (err) return err;
-        parent_dir->num_objs++;
-    }
-
-    parent_dir->objs[idx_pos] = entry;
-    parent_dir->num_objs++;
-    self->num_objs++;
-
-    return knd_OK;
-}
-
 static gsl_err_t obj_entry_append(void *accu,
                                   void *item)
 {
@@ -3008,7 +2984,7 @@ static gsl_err_t obj_entry_append(void *accu,
 
     entry->offset = parent_dir->curr_offset;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log("\n.. ConcDir: %.*s to append atomic obj entry"
                 " (block size: %zu) offset:%zu",
                 parent_dir->name_size, parent_dir->name,
@@ -3046,13 +3022,18 @@ static gsl_err_t obj_entry_append(void *accu,
 
     set = parent_dir->obj_idx;
     err = set->add(set, entry->id, entry->id_size, (void*)entry);
-    if (err) return make_gsl_err_external(err);
-
+    if (err) {
+        knd_log("-- failed to update the obj idx :(");
+        return make_gsl_err_external(err);
+    }
     /* update name idx */
     err = parent_dir->obj_name_idx->set(parent_dir->obj_name_idx,
                                         entry->name, entry->name_size,
                                         entry);
-    if (err) return make_gsl_err_external(err);
+    if (err) {
+        knd_log("-- failed to update the obj name idx entry :(");
+        return make_gsl_err_external(err);
+    }
 
     return make_gsl_err(gsl_OK);
 }
@@ -3134,9 +3115,10 @@ static int get_obj_dir_trailer(struct kndConcept *self,
     err = read(fd, out->buf, out->buf_size);
     if (err == -1) return knd_IO_FAIL;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2) {
         knd_log("\n  .. OBJ DIR ENTRY SIZE REC: \"%.*s\"",
                 out->buf_size, out->buf);
+    }
 
     err =  knd_get_dir_size(self, &dir_size, &chunk_size, encode_base);
     if (err) {
@@ -3156,6 +3138,8 @@ static int get_obj_dir_trailer(struct kndConcept *self,
 
     out->reset(out);
     if (dir_size >= out->capacity) {
+        knd_log("-- DIR size %zu exceeds current capacity: %zu",
+                dir_size, out->capacity);
         return knd_LIMIT;
     }
     out->buf_size = dir_size;
@@ -3163,8 +3147,13 @@ static int get_obj_dir_trailer(struct kndConcept *self,
     if (err == -1) return knd_IO_FAIL;
     out->buf[out->buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("  .. OBJ DIR REC: %.*s", out->buf_size, out->buf);
+    if (DEBUG_CONC_LEVEL_2) {
+        chunk_size = out->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ? \
+            KND_MAX_DEBUG_CHUNK_SIZE :  out->buf_size;
+
+        knd_log("== OBJ DIR REC: %.*s [size:%zu]",
+                chunk_size, out->buf, out->buf_size);
+    }
 
     err = parse_obj_dir_trailer(self, parent_dir, fd);
     if (err) return err;
@@ -3996,7 +3985,7 @@ static int read_obj_entry(struct kndConcept *self,
         return err;
     }
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         obj->str(obj);
 
     *result = obj;

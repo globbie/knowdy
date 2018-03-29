@@ -5,7 +5,6 @@
 #include "knd_attr.h"
 #include "knd_task.h"
 #include "knd_concept.h"
-
 #include "knd_text.h"
 
 #include <gsl-parser.h>
@@ -19,7 +18,7 @@
 #define DEBUG_ATTR_LEVEL_TMP 1
 
 static int kndAttr_validate_email(struct kndAttr *self,
-                                  const char   *val,
+                                  const char *val,
                                   size_t val_size);
 
 static struct kndAttrValidator knd_attr_validators[] = {
@@ -40,43 +39,52 @@ static void str(struct kndAttr *self)
         knd_log("\n%*s{%s %s", self->depth * KND_OFFSET_SIZE, "", type_name, self->name);
 
     if (self->access_type == KND_ATTR_ACCESS_RESTRICTED) {
-        knd_log("%*s  ACL:restricted", self->depth * KND_OFFSET_SIZE, "");
+        knd_log("%*s  ACL:restricted",
+                self->depth * KND_OFFSET_SIZE, "");
     }
 
     if (self->quant_type == KND_ATTR_SET) {
-        knd_log("%*s  QUANT:SET", self->depth * KND_OFFSET_SIZE, "");
+        knd_log("%*s  QUANT:SET",
+                self->depth * KND_OFFSET_SIZE, "");
     }
     
     tr = self->tr;
     while (tr) {
-        knd_log("%*s   ~ %s %s", self->depth * KND_OFFSET_SIZE, "", tr->locale, tr->val);
+        knd_log("%*s   ~ %s %s",
+                self->depth * KND_OFFSET_SIZE, "", tr->locale, tr->val);
         tr = tr->next;
     }
 
     if (self->ref_classname_size) {
-        knd_log("%*s  REF class template: %.*s", self->depth * KND_OFFSET_SIZE, "",
+        knd_log("%*s  REF class template: %.*s",
+                self->depth * KND_OFFSET_SIZE, "",
                 self->ref_classname_size, self->ref_classname);
     }
     if (self->uniq_attr_name_size) {
-        knd_log("%*s  UNIQ attr: %.*s", self->depth * KND_OFFSET_SIZE, "",
+        knd_log("%*s  UNIQ attr: %.*s",
+                self->depth * KND_OFFSET_SIZE, "",
                 self->uniq_attr_name_size, self->uniq_attr_name);
     }
 
     if (self->ref_procname_size) {
-        knd_log("%*s  REF proc template: %s", self->depth * KND_OFFSET_SIZE, "", self->ref_procname);
+        knd_log("%*s  REF proc template: %s",
+                self->depth * KND_OFFSET_SIZE, "", self->ref_procname);
     }
 
     if (self->calc_oper_size) {
-        knd_log("%*s  oper: %s attr: %s", self->depth * KND_OFFSET_SIZE, "",
+        knd_log("%*s  oper: %s attr: %s",
+                self->depth * KND_OFFSET_SIZE, "",
                 self->calc_oper, self->calc_attr);
     }
 
     if (self->idx_name_size) {
-        knd_log("%*s  idx: %s", self->depth * KND_OFFSET_SIZE, "", self->idx_name);
+        knd_log("%*s  idx: %s",
+                self->depth * KND_OFFSET_SIZE, "", self->idx_name);
     }
 
     if (self->default_val_size) {
-        knd_log("%*s  default VAL: %s", self->depth * KND_OFFSET_SIZE, "", self->default_val);
+        knd_log("%*s  default VAL: %s",
+                self->depth * KND_OFFSET_SIZE, "", self->default_val);
     }
     
     if (self->is_a_set)
@@ -286,13 +294,14 @@ static gsl_err_t run_set_quant(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t confirm_idx(void *obj, const char *name __attribute__((unused)), size_t name_size __attribute__((unused)))
+static gsl_err_t confirm_idx(void *obj,
+                             const char *name __attribute__((unused)),
+                             size_t name_size __attribute__((unused)))
 {
     struct kndAttr *self = obj;
 
-    if (DEBUG_ATTR_LEVEL_TMP)
+    if (DEBUG_ATTR_LEVEL_1)
         knd_log(".. confirm IDX");
-    
     self->is_indexed = true;
 
     return make_gsl_err(gsl_OK);
