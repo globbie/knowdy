@@ -424,7 +424,7 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     err = ooDict_new(&conc->class_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
-    err = ooDict_new(&conc->proc->proc_idx, KND_MEDIUM_DICT_SIZE);
+    err = ooDict_new(&conc->proc->proc_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
     conc->proc->class_name_idx = conc->class_name_idx;
 
