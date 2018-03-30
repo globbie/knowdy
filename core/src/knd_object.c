@@ -244,7 +244,7 @@ kndObject_export_JSON(struct kndObject *self)
 
 static int export_rel_inst_id(void *obj,
                               const char *elem_id, size_t elem_id_size,
-                              size_t count,
+                              size_t count __attribute__((unused)),
                               void *elem __attribute__((unused)))
 {
     struct glbOutput *out = obj;
@@ -256,8 +256,9 @@ static int export_rel_inst_id(void *obj,
 }
 
 static int export_rel_inst_JSON(void *obj,
-                                const char *elem_id, size_t elem_id_size,
-                                size_t count,
+                                const char *elem_id __attribute__((unused)),
+                                size_t elem_id_size __attribute__((unused)),
+                                size_t count __attribute__((unused)),
                                 void *elem)
 {
     struct glbOutput *out = obj;
@@ -760,7 +761,6 @@ static gsl_err_t resolve_relref(void *obj, const char *name, size_t name_size)
     struct kndRelRef *self = obj;
     struct kndRel *root_rel;
     struct kndRelDir *dir;
-    struct kndRel *rel;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);

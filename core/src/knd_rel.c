@@ -388,7 +388,6 @@ static int export_inst_JSON(struct kndRel *self,
     struct kndRelArg *relarg;
     struct kndRelArgInstance *relarg_inst;
     struct glbOutput *out = self->out;
-    struct kndObjEntry *entry = NULL;
     bool in_list = false;
     int err;
 
@@ -687,7 +686,7 @@ static int read_rel_incipit(struct kndRel *self,
                                    dir->name, &dir->name_size);
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_1)
         knd_log("== REL NAME:\"%.*s\" ID:%.*s",
                 dir->name_size, dir->name, dir->id_size, dir->id);
 
@@ -1031,82 +1030,6 @@ static int read_GSP(struct kndRel *self,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
-
-    return knd_OK;
-}
-
-static int get_inst(struct kndRel *self,
-                    const char *name, size_t name_size,
-                    struct kndRelInstance **result)
-{
-    struct kndRelInstEntry *entry;
-    struct kndRelInstance *inst;
-    int err, e;
-
-    if (DEBUG_REL_LEVEL_2)
-        knd_log("\n\n.. \"%.*s\" Rel to get inst: \"%.*s\"..",
-                self->name_size, self->name,
-                name_size, name);
-
-    if (!self->dir) {
-        knd_log("-- no frozen dir rec in \"%.*s\" :(",
-                self->name_size, self->name);
-    }
-    
-    if (!self->dir->inst_name_idx) {
-        knd_log("-- no inst name idx in \"%.*s\" :(", self->name_size, self->name);
-        self->log->reset(self->log);
-        e = self->log->write(self->log, self->name, self->name_size);
-        if (e) return e;
-        e = self->log->write(self->log, " Rel has no instances",
-                             strlen(" Rel has no instances"));
-        if (e) return e;
-
-        return knd_FAIL;
-    }
-
-    entry = self->dir->inst_name_idx->get(self->dir->inst_name_idx, name, name_size);
-    if (!entry) {
-        knd_log("-- no such inst: \"%.*s\" :(", name_size, name);
-        self->log->reset(self->log);
-        err = self->log->write(self->log, name, name_size);
-        if (err) return err;
-        err = self->log->write(self->log, " inst name not found",
-                               strlen(" inst name not found"));
-        if (err) return err;
-        self->task->http_code = HTTP_NOT_FOUND;
-        return knd_NO_MATCH;
-    }
-
-    if (DEBUG_REL_LEVEL_2)
-        knd_log("++ got inst entry %.*s  size: %zu",
-                name_size, name, entry->block_size);
-
-    if (!entry->inst) goto read_entry;
-
-    if (entry->inst->state->phase == KND_REMOVED) {
-        knd_log("-- \"%s\" inst was removed", name);
-        self->log->reset(self->log);
-        err = self->log->write(self->log, name, name_size);
-        if (err) return err;
-        err = self->log->write(self->log, " inst was removed",
-                               strlen(" inst was removed"));
-        if (err) return err;
-        return knd_NO_MATCH;
-    }
-
-    inst = entry->inst;
-    inst->state->phase = KND_SELECTED;
-    inst->task = self->task;
-    *result = inst;
-    return knd_OK;
-
- read_entry:
-    err = unfreeze_inst(self, entry);
-    if (err) return err;
-
-    
-    *result = entry->inst;
 
     return knd_OK;
 }
@@ -2154,7 +2077,6 @@ kndRel_init(struct kndRel *self)
     self->select = parse_rel_select;
     self->read_inst = read_instance;
     self->export_inst = export_inst;
-    //self->export_insts = export_insts;
 }
 
 extern void

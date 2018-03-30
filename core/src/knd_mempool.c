@@ -761,11 +761,12 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    knd_log("TOTAL allocations: classes:%zu conc_items:%zu objs:%zu  "
+    /* TODO:
+      knd_log("TOTAL allocations: classes:%zu conc_items:%zu objs:%zu  "
             "elems:%zu  rels:%zu  procs:%zu",
             self->max_classes, self->max_conc_items, self->max_objs, self->max_elems,
             self->max_rels, self->max_procs);
-
+    */
     return knd_OK;
 }
 

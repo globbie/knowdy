@@ -72,6 +72,7 @@ struct kndProcCall
 struct kndProcDir
 {
     char id[KND_ID_SIZE];
+    size_t id_size;
     size_t numid;
 
     char name[KND_NAME_SIZE];
@@ -89,11 +90,11 @@ struct kndProcDir
     struct kndProcDir **children;
     size_t num_children;
 
-    char next_inst_id[KND_ID_SIZE];
-    size_t next_inst_numid;
-
     struct ooDict *inst_idx;
+    struct kndMemPool *mempool;
+    int fd;
 
+    size_t num_procs;
     bool is_terminal;
     struct kndProcDir *next;
 };
@@ -195,6 +196,7 @@ struct kndProc
 
     /* allocator */
     struct kndMemPool *mempool;
+    int fd;
 
     /* incoming */
     struct kndProc *inbox;
@@ -204,10 +206,14 @@ struct kndProc
     size_t inst_inbox_size;
 
     struct kndProcDir *dir;
+    size_t num_procs;
 
     struct ooDict *proc_idx;
     struct ooDict *rel_idx;
+
+    struct kndSet *class_idx;
     struct ooDict *class_name_idx;
+    struct ooDict *proc_name_idx;
 
     const char *frozen_output_file_name;
     size_t frozen_output_file_name_size;
@@ -235,6 +241,8 @@ struct kndProc
     int (*select)(struct kndProc *self,
 		  const char    *rec,
 		  size_t        *total_size);
+    int (*read_proc)(struct kndProc *self,
+                     struct kndProcDir *procdir);
     int (*get_proc)(struct kndProc *self,
 		    const char *name, size_t name_size,
 		    struct kndProc **result);
@@ -245,6 +253,10 @@ struct kndProc
                   size_t *total_frozen_size,
                   char *output,
 		  size_t *total_size);
+    int (*freeze_procs)(struct kndProc *self,
+                        size_t *total_frozen_size,
+                        char *output,
+                        size_t *total_size);
     int (*update)(struct kndProc *self, struct kndUpdate *update);
 };
 
