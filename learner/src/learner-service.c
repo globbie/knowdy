@@ -6,12 +6,12 @@
 
 #include "learner-service.h"
 #include <knd_dict.h>
+#include <knd_set.h>
 #include <knd_err.h>
 #include <knd_proc.h>
 #include <knd_rel.h>
 #include <knd_state.h>
 #include <knd_utils.h>
-
 
 static int
 task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
@@ -418,8 +418,8 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     conc->rel->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
 
     /* specific allocations of the root concs */
-    err = ooDict_new(&conc->class_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) goto error;
+    err = self->mempool->new_set(self->mempool, &conc->class_idx);            RET_ERR();
+    conc->class_idx->type = KND_SET_CLASS;
 
     err = ooDict_new(&conc->class_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
@@ -427,7 +427,6 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     err = ooDict_new(&conc->proc->proc_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
     conc->proc->class_name_idx = conc->class_name_idx;
-
 
     err = ooDict_new(&conc->rel->rel_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;

@@ -157,7 +157,7 @@ static int new_update(struct kndMemPool *self,
     upd = &self->updates[self->num_updates];
     memset(upd, 0, sizeof(struct kndUpdate));
     self->num_updates++;
-    upd->id = self->num_updates;
+    upd->numid = self->num_updates;
     *result = upd;
     return knd_OK;
 }

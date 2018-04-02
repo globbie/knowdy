@@ -41,14 +41,14 @@ static int knd_confirm(struct kndStateControl *self,
     int err;
 
     if (DEBUG_STATE_LEVEL_1)
-        knd_log("State Controller: .. confirming update %zu..", update->id);
+        knd_log("State Controller: .. confirming update %zu..", update->numid);
 
     if (self->task->type == KND_LIQUID_STATE) {
         self->updates[self->num_updates] = update;
         self->num_updates++;
         if (DEBUG_STATE_LEVEL_TMP)
             knd_log("++  \"%zu\" liquid update confirmed!   global STATE: %zu",
-                    update->id, self->num_updates);
+                    update->numid, self->num_updates);
 
         return knd_OK;
     }
@@ -61,7 +61,7 @@ static int knd_confirm(struct kndStateControl *self,
     }
 
     update->timestamp = time(NULL);
-    update->id = self->num_updates + 1;
+    update->numid = self->num_updates + 1;
 
     /* TODO: send request to sync the update */
     
@@ -70,7 +70,7 @@ static int knd_confirm(struct kndStateControl *self,
 
     if (DEBUG_STATE_LEVEL_TMP)
         knd_log("++  \"%zu\" update confirmed! total updates: %zu",
-                update->id, self->num_updates);
+                update->numid, self->num_updates);
     
     out = self->task->out;
     err = out->write(out, "{", 1);  RET_ERR();

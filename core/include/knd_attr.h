@@ -96,6 +96,8 @@ struct kndAttrItem
     struct kndAttrItem *tail;
     size_t num_children;
 
+    struct kndConcept *conc;
+
     struct kndAttrItem *next;
 };
 

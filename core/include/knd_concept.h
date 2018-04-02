@@ -85,6 +85,7 @@ struct kndConcItem
 
     struct kndConcept *parent;
     struct kndConcept *conc;
+    struct kndConcDir *conc_dir;
 
     struct kndConcItem *next;
 };
@@ -133,6 +134,7 @@ struct kndConcDir
     size_t body_size;
     size_t obj_block_size;
     size_t dir_size;
+    bool is_indexed;
 
     struct kndConcDir **children;
     size_t num_children;
@@ -150,7 +152,8 @@ struct kndConcDir
     struct kndObjDir *obj_dir;
     size_t num_objs;
 
-    struct ooDict *class_idx;
+    struct kndSet *class_idx;
+    struct ooDict *class_name_idx;
     struct kndSet *obj_idx;
     struct ooDict *obj_name_idx;
 
@@ -240,7 +243,7 @@ struct kndConcept
     bool batch_mode;
 
     /* indices */
-    struct ooDict *class_idx;
+    struct kndSet *class_idx;
     struct ooDict *class_name_idx;
     struct ooDict *attr_idx;
 

@@ -56,7 +56,9 @@ struct kndProcUpdate
 
 struct kndUpdate
 {
-    size_t id;
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    size_t numid;
     size_t owner_id;
     knd_state_type phase;
     time_t timestamp;

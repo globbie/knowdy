@@ -433,18 +433,20 @@ static gsl_err_t set_inst_classname(void *obj, const char *name, size_t name_siz
 static gsl_err_t get_inst_classname(void *obj, const char *name, size_t name_size)
 {
     struct kndRelArgInstance *self = obj;
-    struct ooDict *class_idx = self->relarg->rel->class_idx;
+    struct kndSet *class_idx = self->relarg->rel->class_idx;
     struct kndConcDir *dir;
-
+    void *result;
+    int err;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    dir = class_idx->get(class_idx, name, name_size);
-    if (!dir) {
+    err = class_idx->get(class_idx, name, name_size, &result);
+    if (err) {
         knd_log("-- no such class: %.*s :(",
                 name_size, name);
         return make_gsl_err(gsl_FAIL);
     }
+    dir = result;
     self->classname = dir->name;
     self->classname_size = dir->name_size;
     self->conc_dir = dir;
