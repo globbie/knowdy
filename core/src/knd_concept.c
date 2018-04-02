@@ -100,31 +100,6 @@ static void reset_inbox(struct kndConcept *self)
     self->inbox_size = 0;
 }
 
-
-/*
-static void del_obj_dir(struct kndObjDir *dir)
-{
-    struct kndObjDir *subdir;
-
-    if (dir->num_dirs) {
-        for (size_t i = 0; i < KND_RADIX_BASE; i++) {
-            subdir = dir->dirs[i];
-            if (!subdir) continue;
-            del_obj_dir(subdir);
-            dir->dirs[i] = NULL;
-        }
-        free(dir->dirs);
-        dir->dirs = 0;
-        dir->num_dirs = 0;
-    }
-    if (dir->num_objs) {
-        free(dir->objs);
-        dir->objs = NULL;
-        dir->num_objs = 0;
-    }
-}
-*/
-
 static void del_conc_dir(struct kndConcDir *dir)
 {
     struct kndConcDir *subdir;
@@ -828,7 +803,7 @@ static int resolve_refs(struct kndConcept *self,
     struct kndConcItem *item;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. resolving class \"%.*s\".. is_resolved:%d  num conc items:%zu %p",
                 self->name_size, self->name, self->is_resolved,
                 self->num_base_items, self->base_items);
@@ -3310,8 +3285,8 @@ static int unfreeze_class(struct kndConcept *self,
                           struct kndConcDir *dir,
                           struct kndConcept **result)
 {
-    char *buf = NULL;
-    size_t buf_size;
+    char buf[KND_MED_BUF_SIZE];
+    size_t buf_size = 0;
     struct glbOutput *out = self->task->out;
     struct kndConcept *c;
     size_t chunk_size;
@@ -3324,7 +3299,7 @@ static int unfreeze_class(struct kndConcept *self,
     struct stat file_info;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log(".. unfreezing class: \"%.*s\".. global offset:%zu",
                 dir->name_size, dir->name, dir->global_offset);
 
@@ -3355,23 +3330,16 @@ static int unfreeze_class(struct kndConcept *self,
     }
 
     buf_size = dir->block_size;
-    //out->reset(out);
-    buf = malloc(buf_size);
-    if (!buf) return knd_NOMEM;
-    
-    if (buf_size >= out->capacity) {
+    if (buf_size >= KND_MED_BUF_SIZE) {
         knd_log("-- memory limit exceeded :( buf size:%zu", buf_size);
-        return knd_NOMEM;
+        return knd_LIMIT;
     }
     err = read(fd, buf, buf_size);
     if (err == -1) {
         err = knd_IO_FAIL;
         goto final;
     }
-    //out->buf_size = buf_size;
-    //out->buf[buf_size] = '\0';
     buf[buf_size] = '\0';
-
     if (DEBUG_CONC_LEVEL_2)
         knd_log("\n== frozen Conc REC: \"%.*s\"",
                 buf_size, out->buf);
@@ -3415,7 +3383,7 @@ static int unfreeze_class(struct kndConcept *self,
 
     if (!got_separ) {
         knd_log("-- conc name not found in %.*s :(",
-                buf_size, out->buf);
+                buf_size, buf);
         //c->del(c);
         err = knd_FAIL;
         goto final;
@@ -3439,7 +3407,6 @@ static int unfreeze_class(struct kndConcept *self,
     return knd_OK;
 
  final:
-    if (buf) free(buf);
     close(fd);
     return err;
 }
