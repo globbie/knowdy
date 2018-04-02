@@ -176,9 +176,11 @@ static int get_proc(struct kndProc *self,
         knd_log(".. %.*s to get proc: \"%.*s\"..",
                 self->name_size, self->name, name_size, name);
 
-    dir = (struct kndProcDir*)self->proc_idx->get(self->proc_idx, name, name_size);
+    dir = (struct kndProcDir*)self->proc_name_idx->get(self->proc_name_idx,
+                                                       name, name_size);
     if (!dir) {
-        knd_log("-- no such proc: \"%.*s\" IDX:%p :(", name_size, name, self->proc_idx);
+        knd_log("-- no such proc: \"%.*s\" IDX:%p :(",
+                name_size, name, self->proc_name_idx);
         self->log->reset(self->log);
         err = self->log->write(self->log, name, name_size);
         if (err) return err;
@@ -245,6 +247,7 @@ static int get_proc(struct kndProc *self,
     proc->log = self->log;
     proc->task = self->task;
     proc->mempool = self->mempool;
+    proc->proc_name_idx = self->proc_name_idx;
     proc->proc_idx = self->proc_idx;
     proc->class_name_idx = self->class_name_idx;
     proc->dir = dir;
@@ -553,7 +556,7 @@ static int export_JSON(struct kndProc *self)
         if (memcmp(self->task->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
         }
-        err = out->write(out, ",\"gloss\":\"", strlen(",\"gloss\":\""));          RET_ERR();
+        err = out->write(out, ",\"_gloss\":\"", strlen(",\"_gloss\":\""));        RET_ERR();
         err = out->write(out, tr->val,  tr->val_size);                            RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
         break;
@@ -798,7 +801,7 @@ static gsl_err_t parse_gloss_item(void *obj,
     tr->locale = tr->curr_locale;
     tr->locale_size = tr->curr_locale_size;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_1)
         knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
                 tr->locale_size, tr->locale, tr->val_size, tr->val);
 
@@ -1146,13 +1149,14 @@ static int import_proc(struct kndProc *self,
     gsl_err_t parser_err;
 
     if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. import Proc: \"%.*s\"..", 32, rec);
+        knd_log(".. import Proc: \"%.*s\".. mempool:%p", 32, rec, self->mempool);
 
     err  = self->mempool->new_proc(self->mempool, &proc);                         RET_ERR();
     proc->out = self->out;
     proc->log = self->log;
     proc->task = self->task;
     proc->mempool = self->mempool;
+    proc->proc_name_idx = self->proc_name_idx;
     proc->proc_idx = self->proc_idx;
     proc->class_name_idx = self->class_name_idx;
     proc->class_idx = self->class_idx;
@@ -1223,8 +1227,8 @@ static int import_proc(struct kndProc *self,
         goto final;
     }
 
-    dir = (struct kndProcDir*)self->proc_idx->get(self->proc_idx,
-                                                  proc->name, proc->name_size);
+    dir = self->proc_name_idx->get(self->proc_name_idx,
+                                   proc->name, proc->name_size);
     if (dir) {
         knd_log("-- %s proc name doublet found :(", proc->name);
         self->log->reset(self->log);
@@ -1255,13 +1259,13 @@ static int import_proc(struct kndProc *self,
     dir->id_size = KND_ID_SIZE;
     knd_num_to_str(dir->numid, dir->id, &dir->id_size, KND_RADIX_BASE);
 
-    err = self->proc_idx->set(self->proc_idx,
-                              proc->name, proc->name_size, (void*)dir);
+    err = self->proc_name_idx->set(self->proc_name_idx,
+                                   proc->name, proc->name_size, (void*)dir);
     if (err) goto final;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_1)
         proc->str(proc);
-    
+
     return knd_OK;
 
  final:
@@ -1527,9 +1531,9 @@ static int resolve_procs(struct kndProc *self)
         knd_log(".. resolving procs by \"%.*s\"",
                 self->name_size, self->name);
     key = NULL;
-    self->proc_idx->rewind(self->proc_idx);
+    self->proc_name_idx->rewind(self->proc_name_idx);
     do {
-        self->proc_idx->next_item(self->proc_idx, &key, &val);
+        self->proc_name_idx->next_item(self->proc_name_idx, &key, &val);
         if (!key) break;
 
         dir = (struct kndProcDir*)val;
@@ -1571,9 +1575,9 @@ static int kndProc_coordinate(struct kndProc *self)
 
     /* assign ids */
     key = NULL;
-    self->proc_idx->rewind(self->proc_idx);
+    self->proc_name_idx->rewind(self->proc_name_idx);
     do {
-        self->proc_idx->next_item(self->proc_idx, &key, &val);
+        self->proc_name_idx->next_item(self->proc_name_idx, &key, &val);
         if (!key) break;
 
         dir = (struct kndProcDir*)val;
@@ -1588,9 +1592,9 @@ static int kndProc_coordinate(struct kndProc *self)
     /* display all procs */
     if (DEBUG_PROC_LEVEL_2) {
         key = NULL;
-        self->proc_idx->rewind(self->proc_idx);
+        self->proc_name_idx->rewind(self->proc_name_idx);
         do {
-            self->proc_idx->next_item(self->proc_idx, &key, &val);
+            self->proc_name_idx->next_item(self->proc_name_idx, &key, &val);
             if (!key) break;
             dir = (struct kndProcDir*)val;
             proc = dir->proc;
@@ -1773,7 +1777,7 @@ static int freeze_procs(struct kndProc *self,
     size_t chunk_size;
     int err;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. freezing procs..");
 
     chunk_size = strlen("[P");
@@ -1783,9 +1787,9 @@ static int freeze_procs(struct kndProc *self,
     chunk_size = 0;
 
     key = NULL;
-    self->proc_idx->rewind(self->proc_idx);
+    self->proc_name_idx->rewind(self->proc_name_idx);
     do {
-        self->proc_idx->next_item(self->proc_idx, &key, &val);
+        self->proc_name_idx->next_item(self->proc_name_idx, &key, &val);
         if (!key) break;
 
         dir = (struct kndProcDir*)val;
@@ -1823,7 +1827,6 @@ extern void kndProc_init(struct kndProc *self)
     self->read_proc = read_proc;
     self->select = parse_proc_select;
     self->get_proc = get_proc;
-    self->import = import_proc;
     self->update = update_state;
     self->freeze = freeze;
     self->freeze_procs = freeze_procs;

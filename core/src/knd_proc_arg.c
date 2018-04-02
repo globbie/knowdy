@@ -413,7 +413,7 @@ static gsl_err_t parse_proc_call_arg(void *obj,
     struct kndProcArg *self = obj;
     struct kndProcCallArg *call_arg;
 
-    if (DEBUG_PROC_ARG_LEVEL_2)
+    if (DEBUG_PROC_ARG_LEVEL_1)
         knd_log(".. Proc Call Arg \"%.*s\" to validate: \"%.*s\"..",
                 name_size, name, 32, rec);
 
@@ -679,13 +679,13 @@ static int resolve_arg(struct kndProcArg *self)
         return knd_OK;
     }
 
-    dir = self->parent->proc_idx->get(self->parent->proc_idx,
-                                          self->proc_call.name,
-                                          self->proc_call.name_size);
+    dir = self->parent->proc_name_idx->get(self->parent->proc_name_idx,
+                                           self->proc_call.name,
+                                           self->proc_call.name_size);
     if (!dir) {
         knd_log("-- Proc Arg resolve: no such proc: \"%.*s\" IDX:%p :(",
                 self->proc_call.name_size,
-                self->proc_call.name, self->parent->proc_idx);
+                self->proc_call.name, self->parent->proc_name_idx);
         return knd_FAIL;
     }
 

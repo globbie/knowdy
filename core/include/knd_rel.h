@@ -175,7 +175,7 @@ struct kndRel
     struct ooDict *rel_name_idx;
     struct ooDict *rel_idx;
 
-    struct ooDict *class_idx;
+    struct kndSet *class_idx;
     struct ooDict *class_name_idx;
 
     const char *frozen_output_file_name;
