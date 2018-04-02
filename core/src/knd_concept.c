@@ -595,7 +595,6 @@ static int resolve_attrs(struct kndConcept *self)
     err = ooDict_new(&self->attr_idx, KND_SMALL_DICT_SIZE);                       RET_ERR();
 
     for (attr = self->attrs; attr; attr = attr->next) {
-
         entry = self->attr_idx->get(self->attr_idx, attr->name, attr->name_size);
         if (entry) {
             knd_log("-- %.*s attr already exists?", attr->name_size, attr->name);
@@ -715,7 +714,7 @@ static int resolve_base_classes(struct kndConcept *self)
     struct kndConcDir *dir;
     struct kndConcept *c;
     struct kndConcRef *ref;
-    struct kndSet *descendants;
+    struct kndSet *set;
     const char *classname;
     size_t classname_size;
     int err;
@@ -801,19 +800,19 @@ static int resolve_base_classes(struct kndConcept *self)
         c->num_children++;
 
         /* register as a descendant */
-        descendants = c->dir->descendants;
-        if (!descendants) {
-            err = self->mempool->new_set(self->mempool, &descendants);            RET_ERR();
-            descendants->type = KND_SET_CLASS;
+        set = c->dir->descendants;
+        if (!set) {
+            err = self->mempool->new_set(self->mempool, &set);                     RET_ERR();
+            set->type = KND_SET_CLASS;
 
             /* TODO: alloc */
             //err = ooDict_new(&descendants->name_idx, KND_MEDIUM_DICT_SIZE);       RET_ERR();
-            descendants->base = c->dir;
-            descendants->mempool = self->mempool;
-            c->dir->descendants = descendants;
+            set->base = c->dir;
+            set->mempool = self->mempool;
+            c->dir->descendants = set;
         }
 
-        err = descendants->add_conc(descendants, self);                           RET_ERR();
+        //err = descendants->add_conc(descendants, self);                           RET_ERR();
 
         err = inherit_attrs(self, item->conc);                                    RET_ERR();
     }
@@ -829,7 +828,7 @@ static int resolve_refs(struct kndConcept *self,
     struct kndConcItem *item;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. resolving class \"%.*s\".. is_resolved:%d  num conc items:%zu %p",
                 self->name_size, self->name, self->is_resolved,
                 self->num_base_items, self->base_items);
@@ -1000,26 +999,26 @@ static gsl_err_t parse_descendants(void *obj,
                                    size_t *total_size)
 {
     struct kndConcept *self = obj;
-    struct kndSet *descendants;
+    struct kndSet *set;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parsing a set of descendants: \"%.*s\"", 64, rec);
 
-    err = self->mempool->new_set(self->mempool, &descendants);
+    err = self->mempool->new_set(self->mempool, &set);
     if (err) return make_gsl_err_external(err);
 
-    descendants->type = KND_SET_CLASS;
+    set->type = KND_SET_CLASS;
 
     /* TODO: alloc */
-    err = ooDict_new(&descendants->name_idx, KND_MEDIUM_DICT_SIZE);
+    /*err = ooDict_new(&set->name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) return make_gsl_err_external(err);
+    */
+    set->base = self->dir;
+    set->mempool = self->mempool;
+    self->dir->descendants = set;
 
-    descendants->base = self->dir;
-    descendants->mempool = self->mempool;
-    self->dir->descendants = descendants;
-
-    err = descendants->read(descendants, rec, total_size);
+    err = set->read(set, rec, total_size);
     if (err) {
         if (DEBUG_CONC_LEVEL_TMP)
             knd_log("-- failed to parse a set of descendants of %.*s: %d",
@@ -3311,7 +3310,7 @@ static int unfreeze_class(struct kndConcept *self,
                           struct kndConcDir *dir,
                           struct kndConcept **result)
 {
-    char *buf;
+    char *buf = NULL;
     size_t buf_size;
     struct glbOutput *out = self->task->out;
     struct kndConcept *c;
@@ -3356,8 +3355,6 @@ static int unfreeze_class(struct kndConcept *self,
     }
 
     buf_size = dir->block_size;
-    knd_log(".. malloc: %zu", buf_size);
-
     //out->reset(out);
     buf = malloc(buf_size);
     if (!buf) return knd_NOMEM;
