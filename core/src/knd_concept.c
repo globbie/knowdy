@@ -807,7 +807,7 @@ static int resolve_base_classes(struct kndConcept *self)
             descendants->type = KND_SET_CLASS;
 
             /* TODO: alloc */
-            err = ooDict_new(&descendants->name_idx, KND_MEDIUM_DICT_SIZE);       RET_ERR();
+            //err = ooDict_new(&descendants->name_idx, KND_MEDIUM_DICT_SIZE);       RET_ERR();
             descendants->base = c->dir;
             descendants->mempool = self->mempool;
             c->dir->descendants = descendants;
@@ -3311,7 +3311,7 @@ static int unfreeze_class(struct kndConcept *self,
                           struct kndConcDir *dir,
                           struct kndConcept **result)
 {
-    char *buf = NULL;
+    char *buf;
     size_t buf_size;
     struct glbOutput *out = self->task->out;
     struct kndConcept *c;
@@ -3325,7 +3325,7 @@ static int unfreeze_class(struct kndConcept *self,
     struct stat file_info;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. unfreezing class: \"%.*s\".. global offset:%zu",
                 dir->name_size, dir->name, dir->global_offset);
 
@@ -3356,6 +3356,8 @@ static int unfreeze_class(struct kndConcept *self,
     }
 
     buf_size = dir->block_size;
+    knd_log(".. malloc: %zu", buf_size);
+
     //out->reset(out);
     buf = malloc(buf_size);
     if (!buf) return knd_NOMEM;
@@ -3379,7 +3381,8 @@ static int unfreeze_class(struct kndConcept *self,
     /* done reading */
     close(fd);
 
-    err = self->mempool->new_class(self->mempool, &c);                                  RET_ERR();
+    err = self->mempool->new_class(self->mempool, &c);
+    if (err) goto final;
     memcpy(c->name, dir->name, dir->name_size);
     c->name_size = dir->name_size;
     c->out = self->out;
