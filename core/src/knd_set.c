@@ -447,6 +447,7 @@ kndSet_alloc_facet(struct kndSet  *self,
 
     /* facet not found, create one */
     err = self->mempool->new_facet(self->mempool, &f);                                 RET_ERR();
+
     /* TODO: mempool alloc */
     err = ooDict_new(&f->set_name_idx, KND_MEDIUM_DICT_SIZE);                          RET_ERR();
     f->attr = attr;
@@ -842,6 +843,8 @@ static gsl_err_t set_append(void *accu,
     struct kndSet *set = item;
     int err;
 
+    if (!self->set_name_idx) return make_gsl_err(gsl_OK);
+
     err = self->set_name_idx->set(self->set_name_idx,
                                   set->base->name, set->base->name_size,
                              (void*)set);
@@ -924,9 +927,9 @@ static gsl_err_t facet_alloc(void *obj,
     if (err) return make_gsl_err_external(err);
 
     /* TODO: mempool alloc */
-    /*err = ooDict_new(&f->set_name_idx, KND_MEDIUM_DICT_SIZE);
+    err = ooDict_new(&f->set_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) return make_gsl_err_external(err);
-    */
+
     f->parent = self;
     f->mempool = self->mempool;
 
