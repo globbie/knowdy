@@ -916,7 +916,7 @@ static gsl_err_t facet_alloc(void *obj,
 
     assert(name == NULL && name_size == 0);
 
-    if (DEBUG_SET_LEVEL_2)
+    if (DEBUG_SET_LEVEL_TMP)
         knd_log(".. set %.*s to alloc facet..",
                 self->base->name_size, self->base->name);
 
@@ -924,9 +924,9 @@ static gsl_err_t facet_alloc(void *obj,
     if (err) return make_gsl_err_external(err);
 
     /* TODO: mempool alloc */
-    err = ooDict_new(&f->set_name_idx, KND_MEDIUM_DICT_SIZE);
+    /*err = ooDict_new(&f->set_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) return make_gsl_err_external(err);
-
+    */
     f->parent = self;
     f->mempool = self->mempool;
 
