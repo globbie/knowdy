@@ -54,19 +54,14 @@ struct kndSet
     struct kndConcDir *base;
     bool is_terminal;
 
-    struct ooDict *name_idx;
-    struct kndSetElemIdx *idx;
+    struct kndSetElemIdx idx;
     size_t num_elems;
 
     struct kndFacet *parent_facet;
     struct kndFacet *facets[KND_MAX_ATTRS];
     size_t num_facets;
     
-    knd_format format;
-    struct kndTask *task;
-    struct glbOutput *out;
     struct kndMemPool *mempool;
-
     struct kndSet *next;
 
     /******** public methods ********/
@@ -83,13 +78,10 @@ struct kndSet
     int (*map)(struct kndSet *self,
                map_cb_func cb,
                void *obj);
-
-    int (*add_conc)(struct kndSet *self,
-		    struct kndConcept *conc);
     int (*add_ref)(struct kndSet *self,
 		   struct kndAttr *attr,
-		   struct kndConcept *topic,
-		   struct kndConcept *spec);
+		   struct kndConcDir *topic,
+		   struct kndConcDir *spec);
     int (*get_facet)(struct kndSet *self,
 		     struct kndAttr *attr,
 		     struct kndFacet **facet);
@@ -99,10 +91,6 @@ struct kndSet
                      size_t num_sets);
 
     int (*facetize)(struct kndSet *self);
-
-    int (*read)(struct kndSet *self,
-                const char    *rec,
-                size_t        *rec_size);
 
     int (*export)(struct kndSet *self);
 };

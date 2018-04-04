@@ -124,19 +124,22 @@ static int export_JSON(struct kndAttr *self)
 
     out = self->out;
 
-    err = out->write(out, "\"", 1);
+    err = out->writec(out, '{');
+    if (err) return err;
+
+    err = out->write(out, "\"_n\":\"", strlen("\"_n\":\""));
     if (err) return err;
     err = out->write(out, self->name, self->name_size);
     if (err) return err;
-    err = out->write(out, "\":{\"type\":\"", strlen("\":{\"type\":\""));
+    err = out->writec(out, '"');
     if (err) return err;
     
+    err = out->write(out, ",\"type\":\"", strlen(",\"type\":\""));
+    if (err) return err;
     err = out->write(out, type_name, type_name_size);
     if (err) return err;
-
-    err = out->write(out, "\"", 1);
+    err = out->writec(out, '"');
     if (err) return err;
-    
 
     if (self->is_a_set) {
         err = out->write(out, ",\"is_a_set\":true", strlen(",\"is_a_set\":true"));
@@ -166,7 +169,7 @@ static int export_JSON(struct kndAttr *self)
         }
         
         err = out->write(out,
-                         ",\"gloss\":\"", strlen(",\"gloss\":\""));
+                         ",\"_gloss\":\"", strlen(",\"_gloss\":\""));
         if (err) return err;
 
         err = out->write(out, tr->val,  tr->val_size);
@@ -180,7 +183,7 @@ static int export_JSON(struct kndAttr *self)
         tr = tr->next;
     }
     
-    err = out->write(out, "}", 1);
+    err = out->writec(out, '}');
     if (err) return err;
 
     return knd_OK;
