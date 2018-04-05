@@ -188,8 +188,6 @@ static gsl_err_t set_output_format(void *obj, const char *name, size_t name_size
 
         if (!memcmp(knd_format_names[i], name, name_size)) {
             self->format = (knd_format)i;
-
-            knd_log("++ \"%.*s\" format chosen!", name_size, name);
             return make_gsl_err(gsl_OK);
         }
     }
