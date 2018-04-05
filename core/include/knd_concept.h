@@ -122,7 +122,6 @@ struct kndConcDir
     size_t name_size;
     struct kndConcept *conc;
     struct kndMemPool *mempool;
-    struct kndSet *descendants;
 
     knd_state_phase phase;
 
@@ -136,6 +135,8 @@ struct kndConcDir
     size_t dir_size;
     bool is_indexed;
 
+    struct kndSet *descendants;
+    struct kndSet *child_idx;
     struct kndConcDir **children;
     size_t num_children;
     size_t num_terminals;
@@ -146,7 +147,6 @@ struct kndConcDir
     struct kndProcDir **procs;
     size_t num_procs;
 
-    /*char next_obj_id[KND_ID_SIZE];*/
     size_t next_obj_numid;
 
     struct kndObjDir *obj_dir;

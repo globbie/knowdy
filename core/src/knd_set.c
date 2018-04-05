@@ -235,7 +235,7 @@ kndFacet_add_ref(struct kndFacet *self,
     /* get baseclass set */
     err = kndFacet_alloc_set(self, spec, &set);                                   RET_ERR();
 
-    set->num_elems++;
+    //set->num_elems++;
 
     return knd_OK;
 }
@@ -261,7 +261,7 @@ kndSet_add_ref(struct kndSet *self,
 
     err = kndFacet_add_ref(f, topic, spec);                                       RET_ERR();
 
-    self->num_elems++;
+    //self->num_elems++;
     return knd_OK;
 }
 
@@ -294,13 +294,12 @@ static int save_elem(struct kndSet *self,
 
         err = save_elem(self, idx, elem, id + 1, id_size - 1);
         if (err) return err;
-        parent_idx->num_elems++;
+
         return knd_OK;
     }
 
     /* assign elem */
     parent_idx->elems[idx_pos] = elem;
-    parent_idx->num_elems++;
     self->num_elems++;
 
     return knd_OK;

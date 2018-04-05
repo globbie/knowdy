@@ -1066,8 +1066,8 @@ static gsl_err_t parse_descendants(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
-        knd_log(".. parsing a set of descendants: \"%.*s\"", 64, rec);
+    if (DEBUG_CONC_LEVEL_1)
+        knd_log(".. parsing a set of descendants: \"%.*s\"", 300, rec);
 
     err = self->mempool->new_set(self->mempool, &set);
     if (err) return make_gsl_err_external(err);
@@ -2327,14 +2327,24 @@ static gsl_err_t dir_entry_append(void *accu,
 {
     struct kndConcDir *parent_dir = accu;
     struct kndConcDir *dir = item;
+    int err;
+
+    if (!parent_dir->child_idx) {
+        err = parent_dir->mempool->new_set(parent_dir->mempool,
+                                           &parent_dir->child_idx);
+        if (err) return make_gsl_err_external(err);
+    }
 
     if (!parent_dir->children) {
         parent_dir->children = calloc(KND_MAX_CONC_CHILDREN,
                                       sizeof(struct kndConcDir*));
-        if (!parent_dir->children) return make_gsl_err_external(knd_NOMEM);
+        if (!parent_dir->children) {
+            knd_log("-- no memory :(");
+            return make_gsl_err_external(knd_NOMEM);
+        }
     }
 
-    if (parent_dir->num_children + 1 > KND_MAX_CONC_CHILDREN) {
+    if (parent_dir->num_children >= KND_MAX_CONC_CHILDREN) {
         knd_log("-- warning: num of subclasses of \"%.*s\" exceeded :(",
                 parent_dir->name_size, parent_dir->name);
         return make_gsl_err(gsl_OK);
@@ -3828,14 +3838,17 @@ static int kndConcept_export_set_JSON(struct kndConcept *self,
 }
 
 static int export_conc_id_GSP(void *obj,
-                              const char *elem_id __attribute__((unused)),
-                              size_t elem_id_size __attribute__((unused)),
+                              const char *elem_id  __attribute__((unused)),
+                              size_t elem_id_size  __attribute__((unused)),
                               size_t count,
                               void *elem)
 {
     struct glbOutput *out = obj;
     struct kndConcDir *dir = elem;
     int err;
+
+    knd_log("%zu) %.*s", count, dir->id_size, dir->id);
+
     err = out->write(out, " ", 1);                                                RET_ERR();
     err = out->write(out, dir->id, dir->id_size);                                 RET_ERR();
     return knd_OK;
@@ -3847,13 +3860,18 @@ static int kndConcept_export_descendants_GSP(struct kndConcept *self)
     size_t buf_size;
     struct glbOutput *out = self->out;
     struct kndSet *set;
+    size_t start_offset;
+    size_t chunk_size;
+    const char *b;
     int err;
 
+    /*knd_log("== GSP descendants of %.*s [total: %zu]:",
+            self->name_size, self->name, self->dir->descendants->num_elems);
+    */
     set = self->dir->descendants;
 
     err = out->write(out, "{_desc", strlen("{_desc"));                            RET_ERR();
-    buf_size = sprintf(buf, "{tot %lu}",
-                       (unsigned long)set->num_elems);
+    buf_size = sprintf(buf, "{tot %zu}", set->num_elems);
     err = out->write(out, buf, buf_size);                                         RET_ERR();
 
     err = out->write(out, "[c", strlen("[c"));                                    RET_ERR();
@@ -3862,6 +3880,14 @@ static int kndConcept_export_descendants_GSP(struct kndConcept *self)
     err = out->writec(out, ']');                                                  RET_ERR();
 
     err = out->writec(out, '}');                                                  RET_ERR();
+
+    /*    if (self->dir->descendants &&
+        self->dir->descendants->num_elems > 50) {
+        chunk_size = out->buf_size - start_offset;
+        b = out->buf + chunk_size;
+        knd_log("OUT: \"%.*s\"", b, chunk_size);
+        }  */ 
+    
     return knd_OK;
 }
 
@@ -4380,11 +4406,11 @@ static int export_JSON(struct kndConcept *self)
     size_t item_count;
     int i, err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log(".. JSON export concept: \"%s\"  "
-                "locale: %s depth: %lu num_terminals:%zu\n",
+                "locale: %s depth: %lu",
                 self->name, self->task->locale,
-                (unsigned long)self->depth, self->dir->num_terminals);
+                (unsigned long)self->depth);
 
     out = self->out;
     err = out->write(out, "{", 1);                                                RET_ERR();
@@ -4450,7 +4476,8 @@ static int export_JSON(struct kndConcept *self)
         err = out->write(out, "]", 1);
         if (err) return err;
     }
-    
+
+
     if (self->attrs) {
         err = out->write(out, ",\"_attrs\": [",
                          strlen(",\"_attrs\": ["));
@@ -4489,14 +4516,6 @@ static int export_JSON(struct kndConcept *self)
         err = out->write(out, buf, buf_size);
         if (err) return err;
 
-        if (self->dir->num_terminals) {
-            err = out->write(out, ",\"_num_term_classes\":", strlen(",\"_num_term_classes\":"));
-            if (err) return err;
-            buf_size = sprintf(buf, "%zu", self->dir->num_terminals);
-            err = out->write(out, buf, buf_size);
-            if (err) return err;
-        }
-        
         if (self->dir->num_children) {
             err = out->write(out, ",\"_subclasses\":[", strlen(",\"_subclasses\":["));
             if (err) return err;
@@ -4534,11 +4553,12 @@ static int export_JSON(struct kndConcept *self)
             if (err) return err;
 
         }
+
         err = out->write(out, "}", 1);
         if (err) return err;
         return knd_OK;
     }
-    
+
     if (self->num_children) {
         err = out->write(out, ",\"_num_subclasses\":", strlen(",\"_num_subclasses\":"));
         if (err) return err;
@@ -4552,8 +4572,8 @@ static int export_JSON(struct kndConcept *self)
             for (size_t i = 0; i < self->num_children; i++) {
                 ref = &self->children[i];
                 
-                if (DEBUG_CONC_LEVEL_2)
-                    knd_log("base of --> %s", ref->dir->name);
+                if (DEBUG_CONC_LEVEL_TMP)
+                    knd_log(".. export base of --> %s", ref->dir->name);
 
                 if (i) {
                     err = out->write(out, ",", 1);
@@ -4621,7 +4641,7 @@ static int export_GSP(struct kndConcept *self)
     struct glbOutput *out = self->out;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. GSP export of \"%.*s\" [%.*s]",
                 self->name_size, self->name,
                 self->dir->id_size, self->dir->id);
