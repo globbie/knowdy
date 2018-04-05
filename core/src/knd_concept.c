@@ -486,7 +486,7 @@ static int index_attr(struct kndConcept *self,
     struct kndSet *set;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         knd_log("\n.. indexing CURR CLASS: \"%.*s\" .. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" (val: %.*s)",
                 self->name_size, self->name,
@@ -3708,7 +3708,8 @@ static int read_obj_entry(struct kndConcept *self,
     entry->block[entry->block_size] = '\0';
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("   == OBJ REC: \"%.*s\"", entry->block_size, entry->block);
+        knd_log("   == OBJ REC: \"%.*s\"",
+                entry->block_size, entry->block);
 
     /* done reading */
     close(fd);
@@ -3847,8 +3848,6 @@ static int export_conc_id_GSP(void *obj,
     struct kndConcDir *dir = elem;
     int err;
 
-    knd_log("%zu) %.*s", count, dir->id_size, dir->id);
-
     err = out->write(out, " ", 1);                                                RET_ERR();
     err = out->write(out, dir->id, dir->id_size);                                 RET_ERR();
     return knd_OK;
@@ -3958,7 +3957,7 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 
     self->curr_class = c;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_1) {
         c->str(c);
     }
 
@@ -3990,7 +3989,7 @@ static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_siz
     buf_size = 0;
     knd_num_to_str((size_t)numval, buf, &buf_size, KND_RADIX_BASE);
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("ID: %zu => \"%.*s\" [size: %zu]",
                 numval, buf_size, buf, buf_size);
 
@@ -4036,7 +4035,7 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
 
     c = self->curr_class;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log("== class to remove: \"%.*s\"\n", c->name_size, c->name);
 
     c->dir->phase = KND_REMOVED;
@@ -4070,7 +4069,7 @@ static gsl_err_t parse_set_attr(void *obj,
     struct kndAttrItem *item;
     gsl_err_t err;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         knd_log("\n.. attr to set: \"%.*s\"\n", name_size, name);
     }
 
@@ -4330,16 +4329,24 @@ static int attr_items_export_JSON(struct kndConcept *self,
 {
     struct kndAttrItem *item;
     struct glbOutput *out;
+    bool in_list = false;
     int err;
 
     out = self->out;
 
+    err = out->write(out, ",\"_attrs\":{", strlen(",\"_attrs\":{"));
+    if (err) return err;
+
     for (item = items; item; item = item->next) {
-        err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));
+        if (in_list) {
+            err = out->writec(out, ',');
+            if (err) return err;
+        }
+        err = out->writec(out, '"');
         if (err) return err;
         err = out->write(out, item->name, item->name_size);
         if (err) return err;
-        err = out->write(out, "\",\"val\":\"", strlen("\",\"val\":\""));
+        err = out->write(out, "\":\"", strlen("\":\""));
         if (err) return err;
         err = out->write(out, item->val, item->val_size);
         if (err) return err;
@@ -4348,23 +4355,15 @@ static int attr_items_export_JSON(struct kndConcept *self,
 
         /* TODO: control nesting depth (if depth) */
         if (item->children) {
-            err = out->write(out, ",\"items\":[", strlen(",\"items\":["));
-            if (err) return err;
             err = attr_items_export_JSON(self, item->children, 0);
-            if (err) return err;
-            err = out->write(out, "]", 1);
             if (err) return err;
         }
         
-        err = out->write(out, "}", 1);
-        if (err) return err;
-
-        if (item->next) {
-            err = out->write(out, ",", 1);
-            if (err) return err;
-        }
+        in_list = true;
     }
-    
+    err = out->writec(out, '}');
+    if (err) return err;
+  
     return knd_OK;
 }
 
@@ -4373,18 +4372,15 @@ static int export_gloss_JSON(struct kndConcept *self)
     struct kndTranslation *tr;
     struct glbOutput *out = self->out;
     int err;
-
-    tr = self->tr;
-    while (tr) {
+    
+    for (tr = self->tr; tr; tr = tr->next) { 
         if (memcmp(self->task->locale, tr->locale, tr->locale_size)) {
-            goto next_tr;
+            continue;
         }
-        err = out->write(out, ",\"_gloss\":\"", strlen(",\"_gloss\":\""));          RET_ERR();
+        err = out->write(out, ",\"_gloss\":\"", strlen(",\"_gloss\":\""));        RET_ERR();
         err = out->write(out, tr->val,  tr->val_size);                            RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
         break;
-    next_tr:
-        tr = tr->next;
     }
     return knd_OK;
 }
@@ -4461,11 +4457,7 @@ static int export_JSON(struct kndConcept *self)
             if (err) return err;
 
             if (item->attrs) {
-                err = out->write(out, ",\"_attrs\":[", strlen(",\"_attrs\":["));
-                if (err) return err;
                 err = attr_items_export_JSON(self, item->attrs, 0);
-                if (err) return err;
-                err = out->write(out, "]", 1);
                 if (err) return err;
             }
             
@@ -4479,8 +4471,8 @@ static int export_JSON(struct kndConcept *self)
 
 
     if (self->attrs) {
-        err = out->write(out, ",\"_attrs\": [",
-                         strlen(",\"_attrs\": ["));
+        err = out->write(out, ",\"_attrs\":{",
+                         strlen(",\"_attrs\":{"));
         if (err) return err;
 
         i = 0;
@@ -4504,7 +4496,7 @@ static int export_JSON(struct kndConcept *self)
             i++;
             attr = attr->next;
         }
-        err = out->writec(out, ']');
+        err = out->writec(out, '}');
         if (err) return err;
     }
 
@@ -4572,7 +4564,7 @@ static int export_JSON(struct kndConcept *self)
             for (size_t i = 0; i < self->num_children; i++) {
                 ref = &self->children[i];
                 
-                if (DEBUG_CONC_LEVEL_TMP)
+                if (DEBUG_CONC_LEVEL_2)
                     knd_log(".. export base of --> %s", ref->dir->name);
 
                 if (i) {
@@ -5004,7 +4996,7 @@ static int apply_liquid_updates(struct kndConcept *self,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log("..apply liquid updates..");
 
     if (self->inbox_size) {
@@ -5225,7 +5217,7 @@ static int freeze_objs(struct kndConcept *self,
     size_t obj_block_size = 0;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. freezing objs of class \"%.*s\", total:%zu  valid:%zu",
                 self->name_size, self->name,
                 self->dir->obj_name_idx->size, self->dir->num_objs);

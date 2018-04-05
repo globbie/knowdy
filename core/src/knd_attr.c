@@ -124,17 +124,20 @@ static int export_JSON(struct kndAttr *self)
 
     out = self->out;
 
-    err = out->writec(out, '{');
-    if (err) return err;
+    //err = out->writec(out, '{');
+    //if (err) return err;
 
-    err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));
+    //err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));
+    //if (err) return err;
+
+    err = out->writec(out, '"');
     if (err) return err;
     err = out->write(out, self->name, self->name_size);
     if (err) return err;
-    err = out->writec(out, '"');
+    err = out->write(out, "\":{", strlen("\":{"));
     if (err) return err;
     
-    err = out->write(out, ",\"type\":\"", strlen(",\"type\":\""));
+    err = out->write(out, "\"type\":\"", strlen("\"type\":\""));
     if (err) return err;
     err = out->write(out, type_name, type_name_size);
     if (err) return err;
@@ -149,10 +152,8 @@ static int export_JSON(struct kndAttr *self)
     if (self->ref_classname_size) {
         err = out->write(out, ",\"refclass\":\"", strlen(",\"refclass\":\""));
         if (err) return err;
-
         err = out->write(out, self->ref_classname, self->ref_classname_size);
         if (err) return err;
-
         err = out->write(out, "\"", 1);
         if (err) return err;
    }
@@ -183,6 +184,9 @@ static int export_JSON(struct kndAttr *self)
         tr = tr->next;
     }
     
+    err = out->writec(out, '}');
+    if (err) return err;
+
     err = out->writec(out, '}');
     if (err) return err;
 
