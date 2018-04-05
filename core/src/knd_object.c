@@ -108,7 +108,7 @@ export_rel_dir_JSON(struct kndObject *self)
         rel = relref->rel;
         if (!relref->idx) continue;
 
-        err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));                  RET_ERR();
+        err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));          RET_ERR();
         err = out->write(out, rel->name, rel->name_size);                         RET_ERR();
         err = out->writec(out, '"');                                              RET_ERR();
 
@@ -155,7 +155,7 @@ kndObject_export_JSON(struct kndObject *self)
         err = kndObject_export_aggr_JSON(self);
         return err;
     }
-    err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));                      RET_ERR();
+    err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
     err = out->write(out, self->name, self->name_size);
     if (err) return err;
     err = out->write(out, "\"", 1);
@@ -501,7 +501,7 @@ static gsl_err_t present_rel(void *data,
     relref = self->curr_rel;
     rel = relref->rel;
 
-    err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));
+    err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));
     if (err) return make_gsl_err_external(err);
     err = out->write(out, rel->name, rel->name_size);
     if (err) return make_gsl_err_external(err);
@@ -509,7 +509,7 @@ static gsl_err_t present_rel(void *data,
     if (err) return make_gsl_err_external(err);
 
     set = relref->idx;
-    err = out->write(out, ",\"num_instances\":", strlen(",\"num_instances\":"));
+    err = out->write(out, ",\"_num_instances\":", strlen(",\"_num_instances\":"));
     if (err) return make_gsl_err_external(err);
     buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", set->num_elems);
     err = out->write(out, buf, buf_size);
