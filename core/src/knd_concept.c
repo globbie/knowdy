@@ -4335,7 +4335,7 @@ static int attr_items_export_JSON(struct kndConcept *self,
     out = self->out;
 
     for (item = items; item; item = item->next) {
-        err = out->write(out, "{\"n\":\"", strlen("{\"n\":\""));
+        err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));
         if (err) return err;
         err = out->write(out, item->name, item->name_size);
         if (err) return err;
@@ -4414,7 +4414,7 @@ static int export_JSON(struct kndConcept *self)
 
     out = self->out;
     err = out->write(out, "{", 1);                                                RET_ERR();
-    err = out->write(out, "\"_n\":\"", strlen("\"_n\":\""));                      RET_ERR();
+    err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                      RET_ERR();
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
     err = out->write(out, "\"", 1);                                               RET_ERR();
 
@@ -4448,7 +4448,7 @@ static int export_JSON(struct kndConcept *self)
                 err = out->write(out, ",", 1);                                    RET_ERR();
             }
 
-            err = out->write(out, "{\"_n\":\"", strlen("{\"_n\":\""));              RET_ERR();
+            err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
             err = out->write(out, item->classname, item->classname_size);
             if (err) return err;
             err = out->write(out, "\"", 1);
@@ -4526,7 +4526,7 @@ static int export_JSON(struct kndConcept *self)
                     err = out->write(out, ",", 1);
                     if (err) return err;
                 }
-                err = out->write(out, "{\"_n\":\"", strlen("{\"_n\":\""));
+                err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));
                 if (err) return err;
                 err = out->write(out, dir->name, dir->name_size);
                 if (err) return err;

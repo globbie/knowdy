@@ -127,7 +127,7 @@ static int export_JSON(struct kndAttr *self)
     err = out->writec(out, '{');
     if (err) return err;
 
-    err = out->write(out, "\"_n\":\"", strlen("\"_n\":\""));
+    err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));
     if (err) return err;
     err = out->write(out, self->name, self->name_size);
     if (err) return err;
