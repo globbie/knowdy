@@ -1142,7 +1142,7 @@ static int unfreeze_inst(struct kndRel *self,
         return err;
     }
 
-    if (DEBUG_REL_LEVEL_1)
+    if (DEBUG_REL_LEVEL_TMP)
         inst_str(self, inst);
 
     return knd_OK;

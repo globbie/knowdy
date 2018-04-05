@@ -118,7 +118,6 @@ export_rel_dir_JSON(struct kndObject *self)
         buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", set->num_elems);
         err = out->write(out, buf, buf_size);                                     RET_ERR();
 
-
         if (self->expand_depth) {
             err = out->write(out, ",\"instances\":",
                              strlen(",\"instances\":"));                          RET_ERR();
@@ -243,14 +242,16 @@ kndObject_export_JSON(struct kndObject *self)
 }
 
 static int export_rel_inst_id(void *obj,
-                              const char *elem_id, size_t elem_id_size,
+                              const char *elem_id __attribute__((unused)),
+                              size_t elem_id_size __attribute__((unused)),
                               size_t count __attribute__((unused)),
-                              void *elem __attribute__((unused)))
+                              void *elem)
 {
     struct glbOutput *out = obj;
+    struct kndRelInstEntry *entry = elem;
     int err;
-    err = out->writec(out, ' ');                                              RET_ERR();
-    err = out->write(out, elem_id, elem_id_size);                             RET_ERR();
+    err = out->writec(out, ' ');                                                  RET_ERR();
+    err = out->write(out, entry->id, entry->id_size);                             RET_ERR();
     if (err) return err;
     return knd_OK;
 }
@@ -450,6 +451,8 @@ static gsl_err_t find_obj_rel(void *obj, const char *name, size_t name_size)
             if (DEBUG_OBJ_LEVEL_2)
                 knd_log("++ got REL: %.*s", rel->name_size, rel->name);
             self->curr_rel = relref;
+            self->expand_depth = 1;
+
             return make_gsl_err(gsl_OK);
         }
     }
@@ -490,7 +493,6 @@ static gsl_err_t present_rel(void *data,
     if (!self->curr_rel) {
         if (DEBUG_OBJ_LEVEL_1)
             knd_log(".. presenting all obj rels.. %p", self->out);
-
         self->expand_depth = 1;
         err = export_rel_dir_JSON(self);
         if (err) return make_gsl_err_external(err);
@@ -515,15 +517,19 @@ static gsl_err_t present_rel(void *data,
     err = out->write(out, buf, buf_size);
     if (err) return make_gsl_err_external(err);
 
-    /*err = out->write(out, ",\"instances\":", strlen(",\"instances\":"));
-    if (err) return make_gsl_err_external(err);
+    if (self->expand_depth) {
+        err = out->write(out, ",\"instances\":",
+                         strlen(",\"instances\":"));
+        if (err) return make_gsl_err_external(err);
+        err = out->writec(out, '[');
+        if (err) return make_gsl_err_external(err);
 
-    rel->out = self->out;
-    err = rel->export_insts(rel, relref->insts);
-    if (err) return make_gsl_err_external(err);
-    */
+        err = set->map(set, export_rel_inst_JSON, (void*)out);
+        if (err) return make_gsl_err_external(err);
+        err = out->writec(out, ']');
+        if (err) return make_gsl_err_external(err);
+    }
 
-    
     err = out->write(out, "}", 1);
     if (err) return make_gsl_err_external(err);
 
@@ -615,10 +621,8 @@ static gsl_err_t parse_elem(void *data,
                 self->name_size, self->name,
                name_size, name, 32, rec);
     }
-
     err = kndObject_validate_attr(self, name, name_size, &attr, &elem);
     if (err) return make_gsl_err_external(err);
-
 
     if (elem) {
         switch (elem->attr->type) {
@@ -627,7 +631,6 @@ static gsl_err_t parse_elem(void *data,
             if (err) return make_gsl_err_external(err);
             break;
         case KND_ATTR_NUM:
-            knd_log(".. set numeric elem");
             num = elem->num;
             err = num->parse(num, rec, total_size);
             if (err) return make_gsl_err_external(err);
@@ -806,6 +809,10 @@ static gsl_err_t rel_entry_append(void *accu,
     struct kndSet *set;
     int err;
 
+    if (DEBUG_OBJ_LEVEL_TMP)
+        knd_log("== Rel Instance entry:\"%.*s\"",
+                entry->id_size, entry->id);
+
     set = self->idx;
     if (!set) {
         err = self->rel->mempool->new_set(self->rel->mempool, &set);
@@ -814,7 +821,6 @@ static gsl_err_t rel_entry_append(void *accu,
         set->type = KND_SET_REL_INST;
         self->idx = set;
     }
-
     err = set->add(set, entry->id, entry->id_size, (void*)entry);
     if (err) return make_gsl_err_external(err);
 
@@ -836,7 +842,7 @@ static gsl_err_t rel_entry_alloc(void *obj,
     void *elem;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_OBJ_LEVEL_TMP)
         knd_log(".. %.*s Rel Ref to find rel inst \"%.*s\"",
                 self->rel->name_size, self->rel->name,
                 name_size, name);
