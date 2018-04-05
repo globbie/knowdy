@@ -183,9 +183,6 @@ static int export_JSON(struct kndAttr *self)
     next_tr:
         tr = tr->next;
     }
-    
-    err = out->writec(out, '}');
-    if (err) return err;
 
     err = out->writec(out, '}');
     if (err) return err;
