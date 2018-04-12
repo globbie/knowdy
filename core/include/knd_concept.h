@@ -73,7 +73,6 @@ struct kndConcItem
 {
     char id[KND_ID_SIZE];
     size_t id_size;
-
     size_t numid;
 
     char classname[KND_NAME_SIZE];
@@ -84,9 +83,11 @@ struct kndConcItem
     size_t num_attrs;
 
     struct kndConcept *parent;
+
     struct kndConcept *conc;
     struct kndConcDir *conc_dir;
 
+    struct kndMemPool *mempool;
     struct kndConcItem *next;
 };
 
@@ -201,6 +202,7 @@ struct kndConcept
 
     knd_format format;
     size_t depth;
+    size_t max_depth;
 
     struct kndProc *proc;
     struct kndRel *rel;
@@ -245,7 +247,9 @@ struct kndConcept
     /* indices */
     struct kndSet *class_idx;
     struct ooDict *class_name_idx;
-    struct ooDict *attr_idx;
+
+    struct kndSet *attr_idx;
+    struct ooDict *attr_name_idx;
 
     /* state idx */
     struct kndObjStateIdx **obj_states;
