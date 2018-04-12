@@ -600,20 +600,18 @@ static int resolve_aggr_item(struct kndConcept *self,
                              struct kndAttr *attr)
 {
     struct kndConcDir *dir;
-    const char *classname = attr->ref_classname;
-    size_t classname_size = attr->ref_classname_size;
 
     if (DEBUG_CONC_LEVEL_2) {
         knd_log(".. resolve aggr item: %p \"%.*s\": class:%.*s",
                 item, item->name_size, item->name,
-                attr->ref_classname_size, attr->ref_classname);
+                item->val_size, item->val);
     }
 
     dir = self->class_name_idx->get(self->class_name_idx,
-                                    classname, classname_size);
+                                    item->val, item->val_size);
     if (!dir) {
         if (DEBUG_CONC_LEVEL_TMP) {
-            knd_log("-- no such class: \"%.*s\" :(",
+            knd_log("-- agr item not resolved: no such class: \"%.*s\" :(",
                     item->val_size, item->val);
         }
         // TODO
@@ -696,11 +694,10 @@ static int resolve_attr_items(struct kndConcept *self,
     int err;
 
     if (DEBUG_CONC_LEVEL_TMP){
-        if (!memcmp(parent_item->conc->name, "Party", strlen("Party"))) {
-            knd_log(".. resolving attr items of class %.*s",
-                    self->name_size, self->name);
-        }
+        knd_log(".. resolving attr items of class %.*s",
+                self->name_size, self->name);
     }
+
     for (item = parent_item->attrs; item; item = item->next) {
         entry = self->attr_name_idx->get(self->attr_name_idx,
                                     item->name, item->name_size);
@@ -708,6 +705,7 @@ static int resolve_attr_items(struct kndConcept *self,
             knd_log("-- no such attr: %.*s", item->name_size, item->name);
             return knd_FAIL;
         }
+
         if (entry->attr->is_a_set) {
             err = resolve_attr_item_list(self, item, entry->attr);
             if (err) return err;
@@ -1060,7 +1058,7 @@ static int build_attr_name_idx(struct kndConcept *self)
     }
     
     for (item = self->base_items; item; item = item->next) {
-        if (DEBUG_CONC_LEVEL_TMP)
+        if (DEBUG_CONC_LEVEL_2)
             knd_log(".. class \"%.*s\" to inherit attrs from baseclass \"%.*s\"..",
                     self->name_size, self->name,
                     item->conc->name_size,
@@ -1655,9 +1653,9 @@ static gsl_err_t attr_item_alloc(void *obj,
     void *elem;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
-        knd_log(".. attr item conc id: %.*s",
-                name_size, name);
+    if (DEBUG_CONC_LEVEL_2) {
+        knd_log(".. alloc attr item conc id: \"%.*s\" attr:%p",
+                name_size, name, self->attr);
     }
 
     class_idx = self->attr->parent_conc->class_idx;
@@ -1675,6 +1673,7 @@ static gsl_err_t attr_item_alloc(void *obj,
     if (err) return make_gsl_err_external(err);
 
     item->conc_dir = dir;
+    item->attr = self->attr;
 
     *result = item;
     return make_gsl_err(gsl_OK);
@@ -1699,6 +1698,106 @@ static gsl_err_t attr_item_append(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t aggr_item_set_baseclass(void *obj,
+                                         const char *id, size_t id_size)
+{
+    struct kndAttrItem *item = obj;
+    struct kndSet *class_idx;
+    struct kndConcDir *dir;
+    struct kndConcept *conc  = item->attr->parent_conc;
+    void *result;
+    int err;
+
+    if (!id_size) return make_gsl_err(gsl_FORMAT);
+    if (id_size > KND_ID_SIZE) {
+        /* TODO */
+        return make_gsl_err(gsl_OK);
+        //return make_gsl_err(gsl_LIMIT);
+    }
+
+    memcpy(item->id, id, id_size);
+    item->id_size = id_size;
+
+    class_idx = conc->class_idx;
+
+    err = class_idx->get(class_idx, id, id_size, &result);
+    if (err) {
+        /* TODO */
+        return make_gsl_err(gsl_OK);
+        //return make_gsl_err(gsl_FAIL);
+    }
+    dir = result;
+
+    if (!dir->conc) {
+        err = unfreeze_class(conc, dir, &dir->conc);
+        if (err) return make_gsl_err_external(err);
+    }
+
+    item->conc = dir->conc;
+    item->conc_dir = dir;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log("== AGGR item baseclass: %.*s (id:%.*s) CONC:%p",
+                dir->name_size, dir->name, id_size, id, dir->conc);
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t aggr_item_parse(void *obj,
+                                 const char *rec,
+                                 size_t *total_size)
+{
+    struct kndAttrItem *item = obj;
+    gsl_err_t parser_err;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = aggr_item_set_baseclass,
+          .obj = item
+        },
+        { .is_validator = true,
+          .validate = read_nested_attr_item,
+          .obj = item
+        }
+    };
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. parsing the attr item: \"%.*s\"", 32, rec);
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t aggr_item_alloc(void *obj,
+                                 const char *name,
+                                 size_t name_size,
+                                 size_t count  __attribute__((unused)),
+                                 void **result)
+{
+    struct kndAttrItem *self = obj;
+    struct kndAttrItem *item;
+    struct kndSet *class_idx;
+    struct kndConcDir *dir;
+    void *elem;
+    int err;
+
+    if (DEBUG_CONC_LEVEL_1) {
+        knd_log(".. alloc AGGR attr item..  conc id: \"%.*s\" attr:%p  parent:%p",
+                name_size, name, self->attr,  self->attr->parent_conc);
+    }
+    
+    err = self->mempool->new_attr_item(self->mempool, &item);
+    if (err) return make_gsl_err_external(err);
+
+    item->attr = self->attr;
+
+    *result = item;
+    return make_gsl_err(gsl_OK);
+}
+
+
 static gsl_err_t validate_attr_item(void *obj,
                                     const char *name, size_t name_size,
                                     const char *rec, size_t *total_size)
@@ -1709,7 +1808,7 @@ static gsl_err_t validate_attr_item(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. conc item \"%.*s\" to validate attr item: %.*s..",
                 ci->conc->name_size, ci->conc->name,
                 name_size, name);
@@ -1755,6 +1854,11 @@ static gsl_err_t validate_attr_item(void *obj,
 
     append_attr_item(ci, attr_item);
 
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log("++ conc item \"%.*s\" confirms attr item: %.*s  type:%d!",
+                ci->conc->name_size, ci->conc->name,
+                name_size, name, attr_item->attr->type);
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -1766,7 +1870,7 @@ static gsl_err_t parse_baseclass(void *obj,
     struct kndConcItem *item;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parsing the base class: \"%.*s\"", 32, rec);
 
     err = self->mempool->new_conc_item(self->mempool, &item);
@@ -3538,6 +3642,48 @@ static gsl_err_t set_conc_item_baseclass(void *obj,
 }
 
 
+static gsl_err_t validate_attr_item_list(void *obj,
+                                         const char *name, size_t name_size,
+                                         const char *rec, size_t *total_size)
+{
+    struct kndConcItem *ci = obj;
+    struct kndAttrItem *attr_item;
+    struct kndAttr *attr;
+    int err;
+
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log("\n.. ARRAY: conc item \"%.*s\" to validate list item: %.*s..",
+                ci->conc->name_size, ci->conc->name,
+                name_size, name);
+
+    err = ci->mempool->new_attr_item(ci->mempool, &attr_item);
+    if (err) return make_gsl_err_external(err);
+
+    err = get_attr(ci->conc, name, name_size, &attr);
+    if (err) {
+        knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
+                name_size, name,
+                ci->conc->name_size, ci->conc->name);
+        return make_gsl_err_external(err);
+    }
+
+    attr_item->attr = attr;
+    memcpy(attr_item->name, name, name_size);
+    attr_item->name_size = name_size;
+
+    struct gslTaskSpec aggr_item_spec = {
+        .is_list_item = true,
+        .accu = attr_item,
+        .alloc = aggr_item_alloc,
+        .append = attr_item_append,
+        .parse = aggr_item_parse
+    };
+
+    append_attr_item(ci, attr_item);
+
+    return gsl_parse_array(&aggr_item_spec, rec, total_size);
+}
+
 static gsl_err_t conc_item_read(void *obj,
                                 const char *rec, size_t *total_size)
 {
@@ -3546,6 +3692,11 @@ static gsl_err_t conc_item_read(void *obj,
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_conc_item_baseclass,
+          .obj = ci
+        },
+        { .is_validator = true,
+          .is_list = true,
+          .validate = validate_attr_item_list,
           .obj = ci
         },
         { .is_validator = true,
@@ -3806,7 +3957,7 @@ static int unfreeze_class(struct kndConcept *self,
     struct stat file_info;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. unfreezing class: \"%.*s\".. global offset:%zu",
                 dir->name_size, dir->name, dir->global_offset);
 
@@ -3848,7 +3999,7 @@ static int unfreeze_class(struct kndConcept *self,
     }
     buf[buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("\n== frozen Conc REC: \"%.*s\"",
                 buf_size, buf);
     /* done reading */
@@ -3899,18 +4050,28 @@ static int unfreeze_class(struct kndConcept *self,
 
     err = c->read(c, b, &chunk_size);
     if (err) {
+        knd_log("-- failed to parse a rec for \"%.*s\" :(",
+                c->name_size, c->name);
         c->del(c);
         goto final;
     }
 
     /* inherit attrs */
     err = build_attr_name_idx(c);
-    if (err) goto final;
+    if (err) {
+        knd_log("-- failed to build attr idx for %.*s :(",
+                c->name_size, c->name);
+        goto final;
+    }
 
     err = expand_refs(c);
-    if (err) goto final;
+    if (err) {
+        knd_log("-- failed to expand refs of %.*s :(",
+                c->name_size, c->name);
+        goto final;
+    }
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         c->depth = 1;
         c->str(c);
     }
@@ -3932,7 +4093,7 @@ static int get_class(struct kndConcept *self,
     struct kndConcept *c;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. %.*s to get class: \"%.*s\"..",
                 self->name_size, self->name, name_size, name);
 
@@ -3982,7 +4143,12 @@ static int get_class(struct kndConcept *self,
         return knd_OK;
     }
 
-    err = unfreeze_class(self, dir, &c);                                          RET_ERR();
+    err = unfreeze_class(self, dir, &c);
+    if (err) {
+        knd_log("-- failed to unfreeze class: %.*s",
+                dir->name_size, dir->name);
+        return err;
+    }
 
     c->task = self->task;
     c->class_idx = self->class_idx;
@@ -4666,29 +4832,35 @@ static int aggr_item_export_JSON(struct kndConcept *self,
 {
     struct glbOutput *out = self->out;
     struct kndAttrItem *item;
-    bool in_list = false;
+    struct kndConcept *c;
     int err;
+
+    if (!parent_item->conc) {
+        err = out->writec(out, '{');
+        if (err) return err;
+        err = out->writec(out, '}');
+        if (err) return err;
+        return knd_OK;
+    }
 
     err = out->writec(out, '{');
     if (err) return err;
 
-    if (parent_item->val_size) {
-        err = out->write(out, "\"_class\":", strlen("\"_class\":"));
-        if (err) return err;
-        err = out->writec(out, '"');
-        if (err) return err;
-        err = out->write(out, parent_item->val, parent_item->val_size);
-        if (err) return err;
-        err = out->writec(out, '"');
-        if (err) return err;
-        in_list = true;
-    }
-
+    err = out->write(out, "\"product\":", strlen("\"product\":"));
+    if (err) return err;
+    c = parent_item->conc;
+    c->out = self->out;
+    c->task = self->task;
+    c->format =  KND_FORMAT_JSON;
+    c->depth = self->depth + 1;
+    c->max_depth = self->max_depth;
+    err = c->export(c);
+    if (err) return err;
+    
     for (item = parent_item->children; item; item = item->next) {
-        if (in_list) {
-            err = out->writec(out, ',');
-            if (err) return err;
-        }
+        err = out->writec(out, ',');
+        if (err) return err;
+
         err = out->writec(out, '"');
         if (err) return err;
         err = out->write(out, item->name, item->name_size);
@@ -4701,7 +4873,7 @@ static int aggr_item_export_JSON(struct kndConcept *self,
         err = out->write(out, item->val, item->val_size);
         if (err) return err;
         err = out->writec(out, '"');
-        in_list = true;
+        if (err) return err;
     }
 
     err = out->writec(out, '}');
@@ -4718,6 +4890,7 @@ static int ref_item_export_JSON(struct kndConcept *self,
     int err;
 
     assert(item->conc != NULL);
+
     c = item->conc;
     c->out = self->out;
     c->task = self->task;
@@ -4746,7 +4919,7 @@ static int attr_item_list_export_JSON(struct kndConcept *self,
     if (err) return err;
 
     /* first elem: TODO */
-    if (parent_item->name_size) {
+    if (parent_item->conc) {
         switch (parent_item->attr->type) {
         case KND_ATTR_AGGR:
             err = aggr_item_export_JSON(self, parent_item);
@@ -5137,6 +5310,94 @@ static int ref_list_export_GSP(struct kndConcept *self,
     return knd_OK;
 }
 
+static int aggr_item_export_GSP(struct kndConcept *self,
+                                struct kndAttrItem *parent_item)
+{
+    struct glbOutput *out = self->out;
+    struct kndConcept *c = parent_item->conc;
+    struct kndAttrItem *item;
+    int err;
+    
+    if (c) {
+        err = out->writec(out, '{');
+        if (err) return err;
+        err = out->write(out, c->dir->id, c->dir->id_size);
+        if (err) return err;
+    }
+
+    for (item = parent_item->children; item; item = item->next) {
+        err = out->writec(out, '{');
+        if (err) return err;
+        err = out->write(out, item->name, item->name_size);
+        if (err) return err;
+        err = out->writec(out, ' ');
+        if (err) return err;
+        err = out->write(out, item->val, item->val_size);
+        if (err) return err;
+
+        if (item->children) {
+            err = aggr_item_export_GSP(self, item->children);
+            if (err) return err;
+        }
+        err = out->writec(out, '}');
+        if (err) return err;
+    }
+
+    if (c) {
+        err = out->writec(out, '}');
+        if (err) return err;
+    }
+
+    return knd_OK;
+}
+
+static int aggr_list_export_GSP(struct kndConcept *self,
+                                struct kndAttrItem *parent_item)
+{
+    struct kndAttrItem *item;
+    struct glbOutput *out = self->out;
+    struct kndConcept *c;
+    int err;
+
+    err = out->writec(out, '[');
+    if (err) return err;
+    err = out->write(out, parent_item->name, parent_item->name_size);
+    if (err) return err;
+
+    //err = out->write(out, "[a", strlen("[a"));
+    //if (err) return err;
+
+    /* first elem */
+    if (parent_item->conc) {
+        c = parent_item->conc;
+        if (c) {
+            err = aggr_item_export_GSP(self, parent_item);
+            if (err) return err;
+        }
+    }
+
+    for (item = parent_item->list; item; item = item->next) {
+        c = item->conc;
+        // TODO
+        if (!c) {
+            err = out->writec(out, '{');
+            if (err) return err;
+            err = out->write(out, item->val, item->val_size);
+            if (err) return err;
+            err = out->writec(out, '}');
+            if (err) return err;
+            continue;
+        }
+        err = aggr_item_export_GSP(self, item);
+        if (err) return err;
+    }
+
+    err = out->writec(out, ']');
+    if (err) return err;
+
+    return knd_OK;
+}
+
 static int attr_items_export_GSP(struct kndConcept *self,
                                  struct kndAttrItem *items,
                                  size_t depth  __attribute__((unused)))
@@ -5150,6 +5411,10 @@ static int attr_items_export_GSP(struct kndConcept *self,
     for (item = items; item; item = item->next) {
         if (item->attr && item->attr->is_a_set) {
             switch (item->attr->type) {
+            case KND_ATTR_AGGR:
+                err = aggr_list_export_GSP(self, item);
+                if (err) return err;
+                break;
             case KND_ATTR_REF:
                 err = ref_list_export_GSP(self, item);
                 if (err) return err;

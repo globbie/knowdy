@@ -88,6 +88,9 @@ struct kndAttrItem
     char name[KND_NAME_SIZE];
     size_t name_size;
 
+    char id[KND_ID_SIZE];
+    size_t id_size;
+
     char val[KND_NAME_SIZE];
     size_t val_size;
 
