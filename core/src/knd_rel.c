@@ -394,7 +394,7 @@ static int export_inst_JSON(struct kndRel *self,
     err = out->writec(out, '{');
     if (err) return err;
 
-    err = out->write(out, "\"_n\":\"", strlen("\"_n\":\""));                       RET_ERR();
+    err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                       RET_ERR();
                      err = out->write(out, inst->name, inst->name_size);           RET_ERR();
                      err = out->writec(out, '"');
                      in_list = true;

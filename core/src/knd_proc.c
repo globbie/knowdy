@@ -546,7 +546,7 @@ static int export_JSON(struct kndProc *self)
     int err;
 
     err = out->write(out, "{", 1);                                                RET_ERR();
-    err = out->write(out, "\"_n\":\"", strlen("\"_n\":\""));                      RET_ERR();
+    err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                      RET_ERR();
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
     err = out->write(out, "\"", 1);                                               RET_ERR();
 
@@ -581,7 +581,7 @@ static int export_JSON(struct kndProc *self)
 
     if (self->proc_call.name_size) {
         err = out->write(out, ",\"run\":{", strlen(",\"run\":{"));                RET_ERR();
-        err = out->write(out, "\"_n\":\"", strlen("\"_n\":\""));                  RET_ERR();
+        err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                  RET_ERR();
         err = out->write(out, self->proc_call.name, self->proc_call.name_size);   RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
 
@@ -1777,7 +1777,7 @@ static int freeze_procs(struct kndProc *self,
     size_t chunk_size;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. freezing procs..");
 
     chunk_size = strlen("[P");

@@ -92,11 +92,19 @@ struct kndAttrItem
     size_t val_size;
 
     struct kndAttr *attr;
+    
     struct kndAttrItem *children;
     struct kndAttrItem *tail;
     size_t num_children;
 
+    /* siblings */
+    struct kndAttrItem *list;
+    struct kndAttrItem *list_tail;
+    size_t num_list_elems;
+
     struct kndConcept *conc;
+    struct kndConcDir *conc_dir;
+    struct kndMemPool *mempool;
 
     struct kndAttrItem *next;
 };
