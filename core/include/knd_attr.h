@@ -151,7 +151,9 @@ struct kndAttr
     size_t ref_procname_size;
     struct kndProc *proc;
 
-    int concise_level;
+    /* concise representation */
+    size_t concise_level;
+
     int descr_level;
     int browse_level;
 
