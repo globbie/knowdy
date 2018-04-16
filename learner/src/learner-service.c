@@ -56,11 +56,13 @@ final:
         break;
     }
 
-    err = self->task->report(self->task);
+    err = self->task->build_report(self->task);
     if (err != knd_OK) {
         knd_log("-- task report failed: %d", err);
         return -1;
     }
+    
+    knd_log("== task report: %.*s", self->task->report_size, self->task->report);
 
     {
         struct kmqTask *reply;
@@ -70,7 +72,7 @@ final:
             return -1;
         }
 
-        err = reply->copy_data(reply, self->task->out->buf, self->task->out->buf_size);
+        err = reply->copy_data(reply, self->task->report, self->task->report_size);
         if (err != 0) {
             knd_log("-- task report failed, reply data copy failed");
             goto free_reply;

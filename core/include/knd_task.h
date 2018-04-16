@@ -98,6 +98,9 @@ struct kndTask
     const char *obj;
     size_t obj_size;
 
+    const char *report;
+    size_t report_size;
+
     char state[KND_STATE_SIZE];
     bool is_state_changed;
 
@@ -154,7 +157,7 @@ struct kndTask
     gsl_err_t (*parse_iter)(void *data,
                             const char *rec,
                             size_t *total_size);
-    int (*report)(struct kndTask *self);
+    int (*build_report)(struct kndTask *self);
 };
 
 /* constructor */

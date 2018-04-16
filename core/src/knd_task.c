@@ -340,7 +340,7 @@ static int parse_GSL(struct kndTask *self,
 }
 
 
-static int report(struct kndTask *self)
+static int build_report(struct kndTask *self)
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size;
@@ -359,40 +359,8 @@ static int report(struct kndTask *self)
     if (DEBUG_TASK_LEVEL_2)
         knd_log("..TASK (type: %d) reporting..", self->type);
 
-    out->reset(out);
-    err = out->write(out, gsl_header, strlen(gsl_header));
-    if (err) return err;
-
-    /*err = out->write(out, "{agent ", strlen("{agent "));
-    if (err) return err;
-    err = out->write(out, self->agent_name, self->agent_name_size);
-    if (err) return err;
-    err = out->write(out, "}", 1);
-    if (err) return err;*/
-
-    err = out->write(out, "{tid ", strlen("{tid "));
-    if (err) return err;
-
-    if (self->tid_size) {
-        err = out->write(out, self->tid, self->tid_size);
-        if (err) return err;
-    } else {
-        err = out->write(out, "0", 1);
-        if (err) return err;
-    }
-
-    err = out->write(out, "}", 1);
-    if (err) return err;
-
-    err = out->write(out, "{user{auth", strlen("{user{auth"));
-    if (err) return err;
-
-    err = out->write(out, "{sid ", strlen("{sid "));
-    if (err) return err;
-    err = out->write(out, self->admin->sid, self->admin->sid_size);
-    if (err) return err;
-    err = out->write(out, "}}", strlen("}}"));
-    if (err) return err;
+    self->report = NULL;
+    self->report_size = 0;
 
     if (self->error) {
         switch (self->error) {
@@ -432,9 +400,16 @@ static int report(struct kndTask *self)
         err = self->out->write(self->out, "}", strlen("}"));
         if (err) return err;
 
-        task_status = "--";
-    } else {
-        err = out->write(out, "{save _obj}}}", strlen("{save _obj}}}"));            RET_ERR();
+        self->report = self->out->buf;
+        self->report_size = self->out->buf_size;
+        return knd_OK;
+    }
+
+    if (!self->out->buf_size) {
+        err = self->out->write(self->out,
+                               "{\"update\":\"OK\"}",
+                               strlen("{\"update\":\"OK\"}"));
+        if (err) return err;
     }
 
     if (DEBUG_TASK_LEVEL_TMP) {
@@ -447,55 +422,35 @@ static int report(struct kndTask *self)
                 self->out->buf, self->out->buf_size);
     }
 
-#pragma message("TODO: knd_zmq_sendmore()")
-    //err = knd_zmq_sendmore(self->delivery,
-    //                       (const char*)out->buf, out->buf_size);
-
-    /* obj body */
-    if (self->out->buf_size) {
-        msg = self->out->buf;
-        msg_size = self->out->buf_size;
-    }
+    /* report body */
+    self->report = self->out->buf;
+    self->report_size = self->out->buf_size;
 
     /* send delta */
     if (self->type == KND_DELTA_STATE) {
         if (self->update->buf_size) {
-            msg = self->update->buf;
-            msg_size = self->update->buf_size;
+            self->report = self->update->buf;
+            self->report_size = self->update->buf_size;
         }
     }
 
-#pragma message("TODO: knd_zmq_send()")
-    //err = knd_zmq_send(self->delivery, msg, msg_size);
-
-    /* get confirmation reply from  the manager */
-#pragma message("TODO: knd_zmq_recv()")
-    //header = knd_zmq_recv(self->delivery, &header_size);
-    //obj = knd_zmq_recv(self->delivery, &obj_size);
-
-    if (DEBUG_TASK_LEVEL_2)
-        knd_log("== Delivery reply HEADER: \"%.*s\" [%zu]\n OBJ: \"%.*s\" [%zu]",
-                header_size, header, header_size, obj_size, obj, obj_size);
-
-    /*if (header) free(header);
-    if (obj)    free(obj);
-    */
-
-    /* inform all retrievers about the state change */
+    /* TODO: inform all retrievers about the state change */
     if (self->type == KND_UPDATE_STATE) {
-        if (DEBUG_TASK_LEVEL_TMP) {
+        err = self->out->write(self->out,
+                               "{\"update\":\"OK\"}",
+                               strlen("{\"update\":\"OK\"}"));
+        if (err) return err;
+
+        self->report = self->out->buf;
+        self->report_size = self->out->buf_size;
+        
+        if (DEBUG_TASK_LEVEL_2) {
             chunk_size =  self->update->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ?\
                 KND_MAX_DEBUG_CHUNK_SIZE :  self->update->buf_size;
-
             knd_log("\n\n** UPDATE retrievers: \"%.*s\" [%zu]",
-                    chunk_size, self->update->buf,
-                    self->update->buf_size);
+                    chunk_size, self->report,
+                    self->report_size);
         }
-
-#pragma message("TODO: knd_zmq_send()")
-        //err = knd_zmq_send(self->publisher, self->update->buf, self->update->buf_size);
-        //
-        //err = knd_zmq_send(self->publisher, "None", strlen("None"));
     }
 
     return knd_OK;
@@ -530,7 +485,7 @@ extern int kndTask_new(struct kndTask **task)
     self->str    = str;
     self->reset  = reset;
     self->run    = parse_GSL;
-    self->report = report;
+    self->build_report = build_report;
     self->parse_iter = parse_iter;
 
     *task = self;

@@ -4454,13 +4454,6 @@ static int kndConcept_export_descendants_GSP(struct kndConcept *self)
     err = out->writec(out, ']');                                                  RET_ERR();
 
     err = out->writec(out, '}');                                                  RET_ERR();
-
-    /*    if (self->dir->descendants &&
-        self->dir->descendants->num_elems > 50) {
-        chunk_size = out->buf_size - start_offset;
-        b = out->buf + chunk_size;
-        knd_log("OUT: \"%.*s\"", b, chunk_size);
-        }  */ 
     
     return knd_OK;
 }
@@ -4942,16 +4935,16 @@ static int attr_item_list_export_JSON(struct kndConcept *self,
     }
 
     for (item = parent_item->list; item; item = item->next) {
-        if (in_list) {
-            err = out->writec(out, ',');
-            if (err) return err;
-        }
-
         /* TODO */
         if (!item->attr) {
             knd_log("-- no attr: %.*s (%p)",
                     item->name_size, item->name, item);
             continue;
+        }
+
+        if (in_list) {
+            err = out->writec(out, ',');
+            if (err) return err;
         }
 
         switch (item->attr->type) {
@@ -5002,6 +4995,7 @@ static int attr_items_export_JSON(struct kndConcept *self,
         if (item->attr && item->attr->is_a_set) {
             err = attr_item_list_export_JSON(self, item);
             if (err) return err;
+            in_list = true;
             continue;
         }
 
@@ -5028,7 +5022,6 @@ static int attr_items_export_JSON(struct kndConcept *self,
             err = out->write(out, "\"", strlen("\""));
             if (err) return err;
         }
-        
         in_list = true;
     }
     err = out->writec(out, '}');
@@ -5052,6 +5045,54 @@ static int export_gloss_JSON(struct kndConcept *self)
         err = out->write(out, "\"", 1);                                           RET_ERR();
         break;
     }
+    return knd_OK;
+}
+
+static int export_concise_JSON(struct kndConcept *self)
+{
+    struct kndConcItem *item;
+    struct kndAttrItem *attr_item;
+    struct kndAttr *attr;
+    struct glbOutput *out = self->out;
+    int err;
+
+    for (item = self->base_items; item; item = item->next) {
+        for (attr_item = item->attrs; attr_item; attr_item = attr_item->next) {
+            /* TODO assert */
+            if (!attr_item->attr) continue;
+            attr = attr_item->attr;
+
+            if (attr->is_a_set) continue;
+            if (!attr->concise_level) continue;
+
+            /* concise representation */
+            err = out->writec(out, ',');                                          RET_ERR();
+            err = out->writec(out, '"');                                          RET_ERR();
+
+            err = out->write(out, attr_item->name, attr_item->name_size);
+            if (err) return err;
+            err = out->write(out, "\":", strlen("\":"));
+            if (err) return err;
+
+            switch (attr->type) {
+            case KND_ATTR_NUM:
+                err = out->write(out, attr_item->val, attr_item->val_size);
+                if (err) return err;
+                break;
+            case KND_ATTR_AGGR:
+                //knd_log(".. aggr attr..");
+                break;
+            default:
+                err = out->write(out, "\"", strlen("\""));
+                if (err) return err;
+                err = out->write(out, attr_item->val, attr_item->val_size);
+                if (err) return err;
+                err = out->write(out, "\"", strlen("\""));
+                if (err) return err;
+            }
+        }
+    }
+
     return knd_OK;
 }
 
@@ -5090,7 +5131,11 @@ static int export_JSON(struct kndConcept *self)
 
     err = export_gloss_JSON(self);                                                RET_ERR();
 
-    if (self->depth >= self->max_depth) goto final;
+    if (self->depth >= self->max_depth) {
+        /* any concise fields? */
+        err = export_concise_JSON(self);                                          RET_ERR();
+        goto final;
+    }
 
     if (self->num_updates) {
         /* latest update */
@@ -5656,7 +5701,6 @@ static gsl_err_t set_liquid_class_id(void *obj, const char *val, size_t val_size
 
     return make_gsl_err(gsl_OK);
 }
-
 
 static gsl_err_t run_get_liquid_class(void *obj, const char *name, size_t name_size)
 {

@@ -47,6 +47,11 @@ static void str(struct kndAttr *self)
         knd_log("%*s  QUANT:SET",
                 self->depth * KND_OFFSET_SIZE, "");
     }
+
+    if (self->concise_level) {
+        knd_log("%*s  CONCISE:%zu",
+                self->depth * KND_OFFSET_SIZE, "", self->concise_level);
+    }
     
     tr = self->tr;
     while (tr) {
@@ -123,12 +128,6 @@ static int export_JSON(struct kndAttr *self)
     int err;
 
     out = self->out;
-
-    //err = out->writec(out, '{');
-    //if (err) return err;
-
-    //err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));
-    //if (err) return err;
 
     err = out->writec(out, '"');
     if (err) return err;
@@ -607,6 +606,12 @@ static int parse_GSL(struct kndAttr *self,
           .name_size = strlen("idx"),
           .run = confirm_idx,
           .obj = self
+        },
+        { .type = GSL_CHANGE_STATE,
+          .name = "concise",
+          .name_size = strlen("concise"),
+          .parse = gsl_parse_size_t,
+          .obj = &self->concise_level
         },
         { .type = GSL_CHANGE_STATE,
           .name = "validate",
