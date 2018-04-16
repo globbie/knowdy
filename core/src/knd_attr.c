@@ -191,9 +191,11 @@ static int export_JSON(struct kndAttr *self)
 
 static int export_GSP(struct kndAttr *self)
 {
+    char buf[KND_NAME_SIZE] = {0};
+    size_t buf_size = 0;
     struct glbOutput *out;
     struct kndTranslation *tr;
-    
+
     const char *type_name = knd_attr_names[self->type];
     size_t type_name_size = strlen(knd_attr_names[self->type]);
     int err;
@@ -211,6 +213,16 @@ static int export_GSP(struct kndAttr *self)
     
     if (self->is_a_set) {
         err = out->write(out, "{t set}", strlen("{t set}"));
+        if (err) return err;
+    }
+
+    if (self->concise_level) {
+        buf_size = sprintf(buf, "%zu", self->concise_level);
+        err = out->write(out, "{concise ", strlen("{concise "));
+        if (err) return err;
+        err = out->write(out, buf, buf_size);
+        if (err) return err;
+        err = out->writec(out, '}');
         if (err) return err;
     }
     
@@ -609,6 +621,11 @@ static int parse_GSL(struct kndAttr *self,
         },
         { .type = GSL_CHANGE_STATE,
           .name = "concise",
+          .name_size = strlen("concise"),
+          .parse = gsl_parse_size_t,
+          .obj = &self->concise_level
+        },
+        { .name = "concise",
           .name_size = strlen("concise"),
           .parse = gsl_parse_size_t,
           .obj = &self->concise_level
