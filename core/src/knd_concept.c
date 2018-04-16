@@ -4983,6 +4983,7 @@ static int attr_items_export_JSON(struct kndConcept *self,
 {
     struct kndAttrItem *item;
     struct glbOutput *out;
+    struct kndConcept *c;
     bool in_list = false;
     int err;
 
@@ -5016,7 +5017,19 @@ static int attr_items_export_JSON(struct kndConcept *self,
             if (err) return err;
             break;
         case KND_ATTR_AGGR:
-            knd_log(".. aggr attr..");
+            if (!item->conc) {
+                err = out->write(out, "{}", strlen("{}"));
+                if (err) return err;
+            } else {
+                c = item->conc;
+                c->out = self->out;
+                c->task = self->task;
+                c->format =  KND_FORMAT_JSON;
+                c->depth = self->depth;
+                err = c->export(c);
+                if (err) return err;
+            }
+            
             break;
         default:
             err = out->write(out, "\"", strlen("\""));
@@ -5258,6 +5271,8 @@ static int export_JSON(struct kndConcept *self)
                     err = unfreeze_class(self, dir, &c);                          RET_ERR();
                 }
                 err = export_gloss_JSON(c);                                       RET_ERR();
+
+                err = export_concise_JSON(c);                                     RET_ERR();
 
                 err = out->write(out, "}", 1);
                 if (err) return err;
