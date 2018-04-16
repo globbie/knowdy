@@ -1761,7 +1761,7 @@ static gsl_err_t aggr_item_parse(void *obj,
         }
     };
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. parsing the attr item: \"%.*s\"", 32, rec);
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -1841,6 +1841,10 @@ static gsl_err_t validate_attr_item(void *obj,
           .buf_size = &attr_item->val_size,
           .max_buf_size = KND_NAME_SIZE
         },
+        { .is_validator = true,
+          .validate = read_nested_attr_item,
+          .obj = attr_item
+        },
         { .is_list = true,
           .name = "r",
           .name_size = strlen("r"),
@@ -1854,7 +1858,7 @@ static gsl_err_t validate_attr_item(void *obj,
 
     append_attr_item(ci, attr_item);
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("++ conc item \"%.*s\" confirms attr item: %.*s  type:%d!",
                 ci->conc->name_size, ci->conc->name,
                 name_size, name, attr_item->attr->type);
