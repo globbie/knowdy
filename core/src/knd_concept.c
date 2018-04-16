@@ -611,8 +611,8 @@ static int resolve_aggr_item(struct kndConcept *self,
                                     item->val, item->val_size);
     if (!dir) {
         if (DEBUG_CONC_LEVEL_TMP) {
-            knd_log("-- agr item not resolved: no such class: \"%.*s\" :(",
-                    item->val_size, item->val);
+            knd_log("-- %.*s: aggr item not resolved: no such class: \"%.*s\" :(",
+                    self->name_size, self->name, item->val_size, item->val);
         }
         // TODO
         return knd_OK;
@@ -693,7 +693,7 @@ static int resolve_attr_items(struct kndConcept *self,
     struct kndConcept *c;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP){
+    if (DEBUG_CONC_LEVEL_1){
         knd_log(".. resolving attr items of class %.*s",
                 self->name_size, self->name);
     }
@@ -4093,7 +4093,7 @@ static int get_class(struct kndConcept *self,
     struct kndConcept *c;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. %.*s to get class: \"%.*s\"..",
                 self->name_size, self->name, name_size, name);
 
