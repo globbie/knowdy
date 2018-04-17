@@ -581,8 +581,7 @@ static int resolve_class_ref(struct kndConcept *self,
     
     dir = self->class_name_idx->get(self->class_name_idx, name, name_size);
     if (!dir) {
-        if (DEBUG_CONC_LEVEL_1)
-            knd_log("-- no such class: \"%.*s\"", name_size, name);
+        knd_log("-- no such class: \"%.*s\"", name_size, name);
         return knd_FAIL;
     }
     c = dir->conc;
@@ -615,6 +614,7 @@ static int resolve_aggr_item(struct kndConcept *self,
                     self->name_size, self->name, item->val_size, item->val);
         }
         // TODO
+        item->conc = self;
         return knd_OK;
     }
 
@@ -879,7 +879,7 @@ static int resolve_base_classes(struct kndConcept *self)
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. resolve base classes of \"%.*s\"..",
+        knd_log(".. resolving base classes of \"%.*s\"..",
                 self->name_size, self->name);
 
     /* resolve refs to base classes */
@@ -934,9 +934,6 @@ static int resolve_base_classes(struct kndConcept *self)
                     item->classname_size, item->classname, self->name_size, self->name);
 
         item->conc = c;
-
-        /* should we keep track of our children? */
-        /*if (c->ignore_children) continue; */
 
         /* check item doublets */
         for (size_t i = 0; i < self->num_children; i++) {
@@ -1858,7 +1855,7 @@ static gsl_err_t validate_attr_item(void *obj,
 
     append_attr_item(ci, attr_item);
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("++ conc item \"%.*s\" confirms attr item: %.*s  type:%d!",
                 ci->conc->name_size, ci->conc->name,
                 name_size, name, attr_item->attr->type);
@@ -2938,9 +2935,9 @@ static int idx_class_name(struct kndConcept *self,
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("  .. get conc name in DIR: \"%.*s\" (idx:%d)"
+        knd_log("  .. get conc name in DIR: \"%.*s\""
                 " global off:%zu  block size:%zu",
-                dir->name_size, dir->name, dir->is_indexed,
+                dir->name_size, dir->name,
                 dir->global_offset, dir->block_size);
 
     buf_size = dir->block_size;
@@ -3012,7 +3009,7 @@ static int get_dir_trailer(struct kndConcept *self,
 
     err =  knd_get_dir_size(self, &dir_size, &chunk_size, encode_base);
     if (err) {
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_CONC_LEVEL_1)
             knd_log("-- couldn't find the ConcDir size field in \"%.*s\" :(",
                     out->buf_size, out->buf);
         return knd_NO_MATCH;
@@ -3181,11 +3178,21 @@ static int parse_dir_trailer(struct kndConcept *self,
         err = get_dir_trailer(self, dir, fd, encode_base);
         if (err) {
             if (err != knd_NO_MATCH) {
-                
                 knd_log("-- error reading trailer of \"%.*s\" DIR: %d",
                         dir->name_size, dir->name, err);
                 return err;
+            } else {
+                if (DEBUG_CONC_LEVEL_2)
+                    knd_log(".. terminal class:%.*s", dir->name_size, dir->name);
+                parent_dir->num_terminals++;
             }
+        } else {
+            parent_dir->num_terminals += dir->num_terminals;
+
+            if (DEBUG_CONC_LEVEL_2)
+                knd_log(".. class:%.*s num_terminals:%zu",
+                        parent_dir->name_size, parent_dir->name, parent_dir->num_terminals);
+            
         }
     }
 
@@ -4003,7 +4010,7 @@ static int unfreeze_class(struct kndConcept *self,
     }
     buf[buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log("\n== frozen Conc REC: \"%.*s\"",
                 buf_size, buf);
     /* done reading */
@@ -4047,7 +4054,6 @@ static int unfreeze_class(struct kndConcept *self,
     if (!got_separ) {
         knd_log("-- conc name not found in %.*s :(",
                 buf_size, buf);
-        //c->del(c);
         err = knd_FAIL;
         goto final;
     }
@@ -4056,7 +4062,6 @@ static int unfreeze_class(struct kndConcept *self,
     if (err) {
         knd_log("-- failed to parse a rec for \"%.*s\" :(",
                 c->name_size, c->name);
-        c->del(c);
         goto final;
     }
 
@@ -5029,7 +5034,6 @@ static int attr_items_export_JSON(struct kndConcept *self,
                 err = c->export(c);
                 if (err) return err;
             }
-            
             break;
         default:
             err = out->write(out, "\"", strlen("\""));
@@ -5235,13 +5239,21 @@ static int export_JSON(struct kndConcept *self)
     }
 
     /* non-terminal classes */
-    if (self->dir && self->dir->num_children) {
+    if (self->dir->num_children) {
         err = out->write(out, ",\"_num_subclasses\":", strlen(",\"_num_subclasses\":"));
         if (err) return err;
         buf_size = sprintf(buf, "%zu", self->dir->num_children);
         err = out->write(out, buf, buf_size);
         if (err) return err;
 
+        if (self->dir->num_terminals) {
+            err = out->write(out, ",\"_num_terminals\":", strlen(",\"_num_terminals\":"));
+            if (err) return err;
+            buf_size = sprintf(buf, "%zu", self->dir->num_terminals);
+            err = out->write(out, buf, buf_size);
+            if (err) return err;
+        }
+        
         if (self->dir->num_children) {
             err = out->write(out, ",\"_subclasses\":[", strlen(",\"_subclasses\":["));
             if (err) return err;
@@ -5264,6 +5276,15 @@ static int export_JSON(struct kndConcept *self)
                 buf_size = sprintf(buf, "%zu", dir->numid);
                 err = out->write(out, buf, buf_size);
                 if (err) return err;
+
+                if (dir->num_terminals) {
+                    err = out->write(out, ",\"_num_terminals\":",
+                                     strlen(",\"_num_terminals\":"));
+                    if (err) return err;
+                    buf_size = sprintf(buf, "%zu", dir->num_terminals);
+                    err = out->write(out, buf, buf_size);
+                    if (err) return err;
+                }
 
                 /* localized glosses */
                 c = dir->conc;
@@ -5428,9 +5449,6 @@ static int aggr_list_export_GSP(struct kndConcept *self,
     err = out->write(out, parent_item->name, parent_item->name_size);
     if (err) return err;
 
-    //err = out->write(out, "[a", strlen("[a"));
-    //if (err) return err;
-
     /* first elem */
     if (parent_item->conc) {
         c = parent_item->conc;
@@ -5443,15 +5461,17 @@ static int aggr_list_export_GSP(struct kndConcept *self,
     for (item = parent_item->list; item; item = item->next) {
         c = item->conc;
         // TODO
-        if (!c) {
-            err = out->writec(out, '{');
+        if (!c) continue;
+
+        /*err = out->writec(out, '{');
             if (err) return err;
             err = out->write(out, item->val, item->val_size);
             if (err) return err;
             err = out->writec(out, '}');
             if (err) return err;
             continue;
-        }
+        */
+
         err = aggr_item_export_GSP(self, item);
         if (err) return err;
     }
