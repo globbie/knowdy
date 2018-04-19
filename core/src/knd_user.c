@@ -359,7 +359,7 @@ static gsl_err_t parse_class_import(void *obj,
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class import: \"%.*s\"", 64, rec);
-    self->task->type = KND_CHANGE_STATE;
+    self->task->type = KND_UPDATE_STATE;
     c = self->root_class;
     c->out = self->out;
     c->log = self->log;

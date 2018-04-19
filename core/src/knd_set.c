@@ -226,7 +226,7 @@ kndFacet_add_ref(struct kndFacet *self,
     struct kndSet *set;
     int err;
 
-    if (DEBUG_SET_LEVEL_1) {
+    if (DEBUG_SET_LEVEL_TMP) {
         knd_log(".. add attr spec %.*s to topic %.*s..",
                 spec->name_size, spec->name,
                 topic->name_size, topic->name);
@@ -235,6 +235,7 @@ kndFacet_add_ref(struct kndFacet *self,
     /* get baseclass set */
     err = kndFacet_alloc_set(self, spec, &set);                                   RET_ERR();
 
+    
     //set->num_elems++;
 
     return knd_OK;
@@ -249,7 +250,7 @@ kndSet_add_ref(struct kndSet *self,
     struct kndFacet *f;
     int err;
 
-    if (DEBUG_SET_LEVEL_2)
+    if (DEBUG_SET_LEVEL_TMP)
         knd_log("  .. \"%.*s\" NAME_IDX to add attr ref \"%.*s\" "
                 "(topic \"%.*s\" => spec \"%.*s\")",
                 self->base->name_size, self->base->name,
@@ -257,7 +258,7 @@ kndSet_add_ref(struct kndSet *self,
                 topic->name_size, topic->name,
                 spec->name_size, spec->name);
 
-    err = kndSet_alloc_facet(self, attr, &f);                                       RET_ERR();
+    err = kndSet_alloc_facet(self, attr, &f);                                     RET_ERR();
 
     err = kndFacet_add_ref(f, topic, spec);                                       RET_ERR();
 

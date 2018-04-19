@@ -436,11 +436,11 @@ static int build_report(struct kndTask *self)
 
     /* TODO: inform all retrievers about the state change */
     if (self->type == KND_UPDATE_STATE) {
-        err = self->out->write(self->out,
+        /*err = self->out->write(self->out,
                                "{\"update\":\"OK\"}",
                                strlen("{\"update\":\"OK\"}"));
         if (err) return err;
-
+        */
         self->report = self->out->buf;
         self->report_size = self->out->buf_size;
         
