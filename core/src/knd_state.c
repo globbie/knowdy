@@ -72,11 +72,11 @@ static int knd_confirm(struct kndStateControl *self,
         knd_log("++  \"%zu\" update confirmed! total updates: %zu",
                 update->numid, self->num_updates);
     
-    out = self->task->out;
+    /*out = self->task->out;
     err = out->write(out, "{", 1);  RET_ERR();
     err = out->write(out, "\"tid\":\"OK\"", strlen("\"tid\":\"OK\""));  RET_ERR();
     err = out->write(out, "}", 1);  RET_ERR();
-
+    */
     return knd_OK;
 }
 
