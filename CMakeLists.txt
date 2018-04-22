@@ -32,7 +32,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         set(CURL_LIBRARY ${CURL_LIBRARY} curl)
 endif()
 
-if(NOT TARGET gsl-parser)
+if(NOT TARGET gsl-parser_obj)
     add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/gsl-parser")
     include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/gsl-parser/include")
     set(GSL_PARSER_LIBRARY gsl-parser_static)
