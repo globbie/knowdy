@@ -192,6 +192,7 @@ static void str_attr_items(struct kndAttrItem *items, size_t depth)
                  list_item;
                  list_item = list_item->next) {
                 count++;
+
                 knd_log("%*s%zu)  %.*s",
                         depth * KND_OFFSET_SIZE, "",
                         count,
@@ -226,11 +227,11 @@ static void str(struct kndConcept *self)
     const char *key;
     void *val;
 
-    knd_log("\n%*s{class %.*s    id:%.*s numid:%zu",
+    knd_log("\n%*s{class %.*s    id:%.*s numid:%zu  resolved:%d",
             self->depth * KND_OFFSET_SIZE, "",
             self->name_size, self->name,
             self->dir->id_size, self->dir->id,
-            self->dir->numid);
+            self->dir->numid, self->is_resolved);
 
     for (tr = self->tr; tr; tr = tr->next) {
         knd_log("%*s~ %s %.*s",
@@ -273,6 +274,12 @@ static void str(struct kndConcept *self)
         }
     }
 
+    if (self->implied_attr) {
+        knd_log("%*simplied attr: %.*s",
+                (self->depth + 1) * KND_OFFSET_SIZE, "",
+                self->implied_attr->name_size, self->implied_attr->name);
+    }
+    
     if (self->depth) {
         if (self->attr_name_idx) {
             key = NULL;
@@ -601,66 +608,131 @@ static int resolve_class_ref(struct kndConcept *self,
 }
 
 static int resolve_aggr_item(struct kndConcept *self,
-                             struct kndAttrItem *item,
-                             struct kndAttr *attr)
+                             struct kndAttrItem *parent_item)
 {
     struct kndConcDir *dir;
+    struct kndConcept *c;
+    struct kndAttrItem *item;
+    struct kndAttr *attr;
+    const char *classname;
+    size_t classname_size;
+    int err;
+
+    c = parent_item->attr->conc;
 
     if (DEBUG_CONC_LEVEL_2) {
-        knd_log(".. resolve aggr item: %p \"%.*s\": class:%.*s",
-                item, item->name_size, item->name,
-                item->val_size, item->val);
+        knd_log(".. resolving aggr item \"%.*s\" (count:%zu) class:%.*s  is_list_item:%d",
+                parent_item->name_size,  parent_item->name,
+                parent_item->list_count,
+                c->name_size, c->name, parent_item->is_list_item);
     }
 
-    dir = self->class_name_idx->get(self->class_name_idx,
-                                    item->val, item->val_size);
-    if (!dir) {
-        if (DEBUG_CONC_LEVEL_TMP) {
-            knd_log("-- %.*s: aggr item not resolved: no such class: \"%.*s\" :(",
-                    self->name_size, self->name, item->val_size, item->val);
+    classname = parent_item->val;
+    classname_size = parent_item->val_size;
+    if (parent_item->is_list_item) {
+        classname = parent_item->name;
+        classname_size = parent_item->name_size;
+    }
+
+    if (c->implied_attr) {
+        attr = c->implied_attr;
+
+        if (DEBUG_CONC_LEVEL_2)
+            knd_log("== implied attr: %.*s", attr->name_size, attr->name);
+
+        parent_item->attr = attr;
+        switch (attr->type) {
+        case KND_ATTR_AGGR:
+            
+            break;
+        case KND_ATTR_REF:
+            err = resolve_class_ref(self,
+                                    classname, classname_size,
+                                    attr->conc, &parent_item->conc);
+            if (err) return err;
+            break;
+        default:
+            break;
         }
-        // TODO
-        item->conc = self;
-        return knd_OK;
     }
 
-    item->conc = dir->conc;
-    item->attr = attr;
+    //knd_log(".. resolving attr class: %.*s ..", classname_size, classname);
 
-    /* TODO: resolve nested elems */
+    /* resolve nested children */
+    for (item = parent_item->children; item; item = item->next) {
+        if (DEBUG_CONC_LEVEL_2) {
+            knd_log(".. check attr \"%.*s\" in class \"%.*s\" "
+                    " is_resolved:%d",
+                    item->name_size, item->name,
+                    c->name_size, c->name, c->is_resolved);
+            //c->str(c);
+        }
+        
+        err = get_attr(c, item->name, item->name_size, &attr);
+        if (err) {
+            knd_log("-- no attr \"%.*s\" in class \"%.*s\" :(",
+                    item->name_size, item->name,
+                    c->name_size, c->name);
+            return err;
+        }
+        item->attr = attr;
 
+        switch (attr->type) {
+        case KND_ATTR_AGGR:
+            if (DEBUG_CONC_LEVEL_2) 
+                knd_log("== nested aggr item found: %.*s conc:%p",
+                        item->name_size, item->name, attr->conc);
+            err = resolve_aggr_item(self, item);
+            if (err) return err;
+            break;
+        case KND_ATTR_REF:
+            break;
+        default:
+            break;
+        }
+    }
     
     return knd_OK;
 }
 
 static int resolve_attr_item_list(struct kndConcept *self,
-                                  struct kndAttrItem *parent_item,
-                                  struct kndAttr *attr)
+                                  struct kndAttrItem *parent_item)
 {
+    struct kndAttr *parent_attr = parent_item->attr;
+    struct kndAttr *attr;
     struct kndAttrItem *item;
     struct kndConcept *c;
     int err;
 
-    assert(attr->conc != NULL);
+    assert(parent_attr->conc != NULL);
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. class %.*s to resolve attr item list: %.*s REF CLASS:%.*s attr type:%d",
+    if (DEBUG_CONC_LEVEL_1) {
+        const char *attr_type_name = knd_attr_names[parent_attr->type];
+        size_t attr_type_name_size = strlen(attr_type_name);
+        knd_log(".. class %.*s to resolve attr item list \"%.*s\" "
+                " of CLASS:%.*s   attr type:%.*s",
                 self->name_size, self->name,
                 parent_item->name_size, parent_item->name,
-                attr->ref_classname_size, attr->ref_classname, attr->type);
+                parent_attr->ref_classname_size,
+                parent_attr->ref_classname,
+                attr_type_name_size, attr_type_name);
+    }
 
     /* base template class */
-    c = attr->conc;
+    c = parent_attr->conc;
     if (!c->is_resolved) {
         err = c->resolve(c, NULL);                                                RET_ERR();
     }
 
     /* first item */
     if (parent_item->val_size) {
-        switch (attr->type) {
+        switch (parent_attr->type) {
         case KND_ATTR_AGGR:
-            err = resolve_aggr_item(self, parent_item, attr);
-            if (err) return err;
+            err = resolve_aggr_item(self, parent_item);
+            if (err) {
+                knd_log("-- first aggr item not resolved :(");
+                return err;
+            }
             break;
         case KND_ATTR_REF:
             err = resolve_class_ref(self,
@@ -674,9 +746,10 @@ static int resolve_attr_item_list(struct kndConcept *self,
     }
 
     for (item = parent_item->list; item; item = item->next) {
-        switch (attr->type) {
+        item->attr = parent_attr;
+        switch (parent_attr->type) {
         case KND_ATTR_AGGR:
-            err = resolve_aggr_item(self, item, attr);
+            err = resolve_aggr_item(self, item);
             if (err) return err;
             break;
         case KND_ATTR_REF:
@@ -713,7 +786,8 @@ static int resolve_attr_items(struct kndConcept *self,
         }
 
         if (entry->attr->is_a_set) {
-            err = resolve_attr_item_list(self, item, entry->attr);
+            item->attr = entry->attr;
+            err = resolve_attr_item_list(self, item);
             if (err) return err;
             if (item->val_size) 
                 item->num_list_elems++;
@@ -812,6 +886,9 @@ static int resolve_attrs(struct kndConcept *self)
         default:
             break;
         }
+
+        if (attr->is_implied)
+            self->implied_attr = attr;
     }
 
     return knd_OK;
@@ -1471,7 +1548,7 @@ static gsl_err_t parse_ref(void *obj,
                            const char *rec,
                            size_t *total_size)
 {
-    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndConcept *self = obj;
     struct kndAttr *attr;
     int err;
 
@@ -1580,13 +1657,10 @@ static gsl_err_t import_attr_item_alloc(void *obj,
     void *elem;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) {
-        knd_log(".. import alloc attr item: \"%.*s\"",
-                name_size, name);
-    }
-
     err = self->mempool->new_attr_item(self->mempool, &item);
     if (err) return make_gsl_err_external(err);
+
+    item->is_list_item = true;
 
     *result = item;
     return make_gsl_err(gsl_OK);
@@ -1599,7 +1673,8 @@ static gsl_err_t import_nested_attr_item(void *obj,
 {
     struct kndAttrItem *item = obj;
 
-    knd_log(".. parse import attr item..");
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. parse import attr item..");
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -1627,7 +1702,7 @@ static gsl_err_t import_attr_item_list(void *obj,
     struct kndAttrItem *item;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log("== import attr item list: \"%.*s\" REC: %.*s",
                 name_size, name, 16, rec);
 
@@ -1690,6 +1765,10 @@ static gsl_err_t read_nested_attr_item(void *obj,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log("== attr item: \"%.*s\" val:%.*s",
+                item->name_size, item->name, item->val_size, item->val);
 
     item->next = self->children;
     self->children = item;
@@ -1775,8 +1854,6 @@ static gsl_err_t attr_item_append(void *accu,
     struct kndAttrItem *self = accu;
     struct kndAttrItem *attr_item = item;
 
-    knd_log(".. appending attr item..");
-
     if (!self->list_tail) {
         self->list_tail = attr_item;
         self->list = attr_item;
@@ -1786,6 +1863,7 @@ static gsl_err_t attr_item_append(void *accu,
         self->list_tail = attr_item;
     }
     self->num_list_elems++;
+    attr_item->list_count = self->num_list_elems;
 
     return make_gsl_err(gsl_OK);
 }
@@ -3941,10 +4019,12 @@ static int resolve_classes(struct kndConcept *self)
             return err;
         }
         c->is_resolved = true;
+
+        if (DEBUG_CONC_LEVEL_2)
+            c->str(c);
+
     } while (key);
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("++ classes resolved!\n\n");
 
     return knd_OK;
 }
@@ -4929,39 +5009,73 @@ static int parse_select_class(void *obj,
     return knd_OK;
 }
 
+
 static int aggr_item_export_JSON(struct kndConcept *self,
                                  struct kndAttrItem *parent_item)
 {
     struct glbOutput *out = self->out;
     struct kndAttrItem *item;
+    struct kndAttr *attr;
     struct kndConcept *c;
+    bool in_list = false;
     int err;
-
-    if (!parent_item->conc) {
-        err = out->writec(out, '{');
-        if (err) return err;
-        err = out->writec(out, '}');
-        if (err) return err;
-        return knd_OK;
-    }
 
     err = out->writec(out, '{');
     if (err) return err;
 
-    err = out->write(out, "\"product\":", strlen("\"product\":"));
-    if (err) return err;
-    c = parent_item->conc;
-    c->out = self->out;
-    c->task = self->task;
-    c->format =  KND_FORMAT_JSON;
-    c->depth = self->depth + 1;
-    c->max_depth = self->max_depth;
-    err = c->export(c);
-    if (err) return err;
+    if (parent_item->conc) {
+        attr = parent_item->attr;
+        c = parent_item->conc;
+
+        err = out->writec(out, '"');
+        if (err) return err;
+        err = out->write(out, attr->name, attr->name_size);
+        if (err) return err;
+        err = out->writec(out, '"');
+        if (err) return err;
+        err = out->writec(out, ':');
+        if (err) return err;
+        
+        c->out = out;
+        c->task = self->task;
+        c->format =  KND_FORMAT_JSON;
+        c->depth = self->depth + 1;
+        c->max_depth = self->max_depth;
+        err = c->export(c);
+        if (err) return err;
+        in_list = true;
+    } else {
+
+        c = parent_item->attr->conc;
+        if (c && c->implied_attr) {
+            attr = c->implied_attr;
+            err = out->writec(out, '"');
+            if (err) return err;
+            err = out->write(out, attr->name, attr->name_size);
+            if (err) return err;
+            err = out->writec(out, '"');
+            if (err) return err;
+            err = out->writec(out, ':');
+            if (err) return err;
+        } else {
+            err = out->write(out, "\"_val\":", strlen("\"_val\":"));
+            if (err) return err;
+        }
+
+        err = out->writec(out, '"');
+        if (err) return err;
+        err = out->write(out, parent_item->val, parent_item->val_size);
+        if (err) return err;
+        err = out->writec(out, '"');
+        if (err) return err;
+        in_list = true;
+    }
     
     for (item = parent_item->children; item; item = item->next) {
-        err = out->writec(out, ',');
-        if (err) return err;
+        if (in_list) {
+            err = out->writec(out, ',');
+            if (err) return err;
+        }
 
         err = out->writec(out, '"');
         if (err) return err;
@@ -4971,11 +5085,32 @@ static int aggr_item_export_JSON(struct kndConcept *self,
         if (err) return err;
         err = out->writec(out, ':');
         if (err) return err;
-        err = out->writec(out, '"');
-        err = out->write(out, item->val, item->val_size);
-        if (err) return err;
-        err = out->writec(out, '"');
-        if (err) return err;
+
+        switch (item->attr->type) {
+        case KND_ATTR_REF:
+            c = item->conc;
+            c->out = out;
+            c->task = self->task;
+            c->format =  KND_FORMAT_JSON;
+            c->depth = self->depth;
+            c->max_depth = self->max_depth;
+            err = c->export(c);
+            if (err) return err;
+        case KND_ATTR_AGGR:
+            err = aggr_item_export_JSON(self, item);
+            if (err) return err;
+            break;
+        default:
+            err = out->writec(out, '"');
+            if (err) return err;
+            err = out->write(out, item->val, item->val_size);
+            if (err) return err;
+            err = out->writec(out, '"');
+            if (err) return err;
+            break;
+        }
+        
+        in_list = true;
     }
 
     err = out->writec(out, '}');
@@ -5056,7 +5191,7 @@ static int attr_item_list_export_JSON(struct kndConcept *self,
             if (err) return err;
         }
 
-        switch (item->attr->type) {
+        switch (parent_item->attr->type) {
         case KND_ATTR_AGGR:
              err = aggr_item_export_JSON(self, item);
              if (err) return err;
@@ -5089,23 +5224,21 @@ static int attr_items_export_JSON(struct kndConcept *self,
     struct kndAttrItem *item;
     struct glbOutput *out;
     struct kndConcept *c;
-    bool in_list = false;
+    //bool in_list = false;
     int err;
 
     out = self->out;
-    err = out->write(out, ",\"_attrs\":{", strlen(",\"_attrs\":{"));
-    if (err) return err;
+    //err = out->write(out, ",\"_attrs\":{", strlen(",\"_attrs\":{"));
+    //if (err) return err;
 
     for (item = items; item; item = item->next) {
-        if (in_list) {
-            err = out->writec(out, ',');
-            if (err) return err;
-        }
+        err = out->writec(out, ',');
+        if (err) return err;
 
         if (item->attr && item->attr->is_a_set) {
             err = attr_item_list_export_JSON(self, item);
             if (err) return err;
-            in_list = true;
+            //in_list = true;
             continue;
         }
 
@@ -5143,10 +5276,10 @@ static int attr_items_export_JSON(struct kndConcept *self,
             err = out->write(out, "\"", strlen("\""));
             if (err) return err;
         }
-        in_list = true;
+        //in_list = true;
     }
-    err = out->writec(out, '}');
-    if (err) return err;
+    //err = out->writec(out, '}');
+    //if (err) return err;
   
     return knd_OK;
 }

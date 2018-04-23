@@ -322,37 +322,14 @@ static gsl_err_t confirm_idx(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-//static int parse_gloss_translation(void *obj,
-//                                   const char *name, size_t name_size,
-//                                   const char *rec, size_t *total_size)
-//{
-//    struct kndTranslation *tr = obj;
-//    int err;
-//
-//    if (DEBUG_ATTR_LEVEL_2) {
-//        knd_log("..  gloss translation in \"%.*s\" REC: \"%s\"\n",
-//                name_size, name, rec); }
-//
-//    struct gslTaskSpec specs[] = {
-//        { .is_implied = true,
-//          .run = run_set_translation_text,
-//          .obj = tr
-//        }
-//    };
-//
-//    memcpy(tr->curr_locale, name, name_size);
-//    tr->curr_locale[name_size] = '\0';
-//    tr->curr_locale_size = name_size;
-//
-//    tr->locale = tr->curr_locale;
-//    tr->locale_size = tr->curr_locale_size;
-//
-//    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-//    if (err) return err;
-//
-//    return gsl_OK;
-//}
-
+static gsl_err_t confirm_implied(void *obj,
+                                 const char *name __attribute__((unused)),
+                                 size_t name_size __attribute__((unused)))
+{
+    struct kndAttr *self = obj;
+    self->is_implied = true;
+    return make_gsl_err(gsl_OK);
+}
 
 static gsl_err_t alloc_gloss_item(void *obj,
                                   const char *name,
@@ -617,6 +594,12 @@ static int parse_GSL(struct kndAttr *self,
           .name = "idx",
           .name_size = strlen("idx"),
           .run = confirm_idx,
+          .obj = self
+        },
+        { .type = GSL_CHANGE_STATE,
+          .name = "impl",
+          .name_size = strlen("impl"),
+          .run = confirm_implied,
           .obj = self
         },
         { .type = GSL_CHANGE_STATE,
