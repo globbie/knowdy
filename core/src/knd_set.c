@@ -226,7 +226,7 @@ kndFacet_add_ref(struct kndFacet *self,
     struct kndSet *set;
     int err;
 
-    if (DEBUG_SET_LEVEL_TMP) {
+    if (DEBUG_SET_LEVEL_2) {
         knd_log(".. add attr spec %.*s to topic %.*s..",
                 spec->name_size, spec->name,
                 topic->name_size, topic->name);
@@ -250,7 +250,7 @@ kndSet_add_ref(struct kndSet *self,
     struct kndFacet *f;
     int err;
 
-    if (DEBUG_SET_LEVEL_TMP)
+    if (DEBUG_SET_LEVEL_1)
         knd_log("  .. \"%.*s\" NAME_IDX to add attr ref \"%.*s\" "
                 "(topic \"%.*s\" => spec \"%.*s\")",
                 self->base->name_size, self->base->name,

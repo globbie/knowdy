@@ -210,6 +210,7 @@ struct kndConcept
     struct kndAttr *attrs;
     struct kndAttr *tail_attr;
     size_t num_attrs;
+    struct kndAttr *implied_attr;
 
     struct kndConcItem *base_items;
     size_t num_base_items;

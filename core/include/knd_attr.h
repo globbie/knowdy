@@ -100,6 +100,9 @@ struct kndAttrItem
     struct kndAttrItem *tail;
     size_t num_children;
 
+    bool is_list_item;
+    size_t list_count;
+
     /* siblings */
     struct kndAttrItem *list;
     struct kndAttrItem *list_tail;
@@ -134,7 +137,12 @@ struct kndAttr
 
     bool is_a_set;
     bool is_recursive;
+
+    /* build reverse indices */
     bool is_indexed;
+
+    /* attr name may not be specified */
+    bool is_implied;
 
     struct kndConcept *parent_conc;
     struct kndTask *task;
