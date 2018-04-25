@@ -95,7 +95,9 @@ struct kndAttrItem
     size_t val_size;
 
     struct kndAttr *attr;
-    
+
+    struct kndAttrItem *parent;
+
     struct kndAttrItem *children;
     struct kndAttrItem *tail;
     size_t num_children;
