@@ -653,9 +653,6 @@ int knd_parse_dir_size(const char *rec,
             break;
         }
         if (got_size) {
-            if (DEBUG_UTILS_LEVEL_2)
-                gsl_log("  ++ got size value to parse: \"%.*s\"!",
-                        chunk_size, b);
             *val = b;
             *val_size = chunk_size;
             *total_trailer_size = rec_size - i;

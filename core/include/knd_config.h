@@ -348,7 +348,7 @@ typedef enum knd_storage_type {
 
 #define KND_SET_MAX_DEPTH 10
 #define KND_TEMP_BUF_SIZE 1024
-#define KND_MED_BUF_SIZE 1024 * 10
+#define KND_MED_BUF_SIZE 1024 * 5
 
 #define KND_LARGE_BUF_SIZE 1024 * 1024
 #define KND_SMALL_BUF_SIZE 64
