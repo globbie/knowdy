@@ -22,6 +22,7 @@
 #include "knd_concept.h"
 #include "knd_mempool.h"
 #include "knd_text.h"
+#include "knd_utils.h"
 
 #define DEBUG_REL_LEVEL_0 0
 #define DEBUG_REL_LEVEL_1 0
@@ -549,19 +550,19 @@ static int import_rel(struct kndRel *self,
           .run = run_set_name,
           .obj = rel
         }/*,
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "base",
           .name_size = strlen("base"),
           .parse = parse_baseclass,
           .obj = rel
           }*/,
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
           .parse = parse_gloss,
           .obj = rel
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .is_validator = true,
           .validate = validate_rel_arg,
           .obj = rel
@@ -681,10 +682,10 @@ static int read_rel_incipit(struct kndRel *self,
                 buf_size, buf);
     dir->id_size = KND_ID_SIZE;
     dir->name_size = KND_NAME_SIZE;
-    parser_err = gsl_parse_incipit(buf, buf_size,
-                                   dir->id, &dir->id_size,
-                                   dir->name, &dir->name_size);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+    err = knd_parse_incipit(buf, buf_size,
+                            dir->id, &dir->id_size,
+                            dir->name, &dir->name_size);
+    if (err) return err;
 
     if (DEBUG_REL_LEVEL_1)
         knd_log("== REL NAME:\"%.*s\" ID:%.*s",
@@ -757,10 +758,10 @@ static gsl_err_t inst_entry_append(void *accu,
 
     entry->id_size = KND_ID_SIZE;
     entry->name_size = KND_NAME_SIZE;
-    parser_err = gsl_parse_incipit(buf, buf_size,
-                                   entry->id, &entry->id_size,
-                                   entry->name, &entry->name_size);
-    if (parser_err.code) return parser_err;
+    err = knd_parse_incipit(buf, buf_size,
+                            entry->id, &entry->id_size,
+                            entry->name, &entry->name_size);
+    if (err) return make_gsl_err_external(err);
 
     parent_dir->curr_offset += entry->block_size;
     
@@ -865,7 +866,7 @@ static int parse_dir_trailer(struct kndRel *self,
           .parse = parse_rel_body_size,
           .obj = parent_dir
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "i",
           .name_size = strlen("i"),
           .parse = gsl_parse_array,
@@ -916,9 +917,9 @@ static int read_dir_trailer(struct kndRel *self,
         knd_log("  .. DIR size field read: \"%.*s\" [%zu]",
                 out->buf_size, out->buf, out->buf_size);
 
-    parser_err =  gsl_get_dir_size(out->buf, out->buf_size,
-                                   &val, &val_size, &chunk_size);
-    if (parser_err.code) {
+    err =  knd_parse_dir_size(out->buf, out->buf_size,
+                              &val, &val_size, &chunk_size);
+    if (err) {
         if (DEBUG_REL_LEVEL_2)
             knd_log("NB: no RelDir size field in \"%.*s\"",
                     out->buf_size, out->buf);
@@ -1012,7 +1013,7 @@ static int read_GSP(struct kndRel *self,
           .run = run_set_name,
           .obj = self
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "_g",
           .name_size = strlen("_g"),
           .parse = parse_gloss,
@@ -1409,7 +1410,7 @@ static int read_instance(struct kndRel *self,
           .validate = parse_rel_arg_inst,
           .obj = inst
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .is_validator = true,
           .validate = parse_rel_arg_inst,
           .obj = inst
@@ -1466,7 +1467,7 @@ static gsl_err_t parse_import_instance(void *data,
           .run = set_inst_name,
           .obj = inst
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .is_validator = true,
           .validate = parse_rel_arg_inst,
           .obj = inst
@@ -1549,7 +1550,7 @@ static int parse_rel_select(struct kndRel *self,
           .run = run_get_rel,
           .obj = self
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "inst",
           .name_size = strlen("inst"),
           .parse = parse_import_instance,
@@ -1845,7 +1846,7 @@ static int parse_liquid_updates(struct kndRel *self,
           .run = run_get_liquid_rel,
           .obj = self
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "id",
           .name_size = strlen("id"),
           .parse = parse_liquid_rel_id,

@@ -399,7 +399,7 @@ static int parse_proc_select(struct kndProc *self,
           .run = run_get_proc,
           .obj = self
         }/*,
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "inst",
           .name_size = strlen("inst"),
           .parse = parse_import_instance,
@@ -1003,7 +1003,7 @@ static gsl_err_t parse_base(void *data,
           .max_buf_size = KND_NAME_SIZE,
           .buf = base->name
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .is_validator = true,
           .validate = arg_item_read,
           .obj = base
@@ -1030,7 +1030,7 @@ static gsl_err_t parse_estim(void *data,
     gsl_err_t parser_err;
 
     struct gslTaskSpec specs[] = {
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "cost",
           .name_size = strlen("cost"),
           .parse = gsl_parse_size_t,
@@ -1041,7 +1041,7 @@ static gsl_err_t parse_estim(void *data,
           .parse = gsl_parse_size_t,
           .obj = (void*)&self->estim_cost
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "time",
           .name_size = strlen("time"),
           .parse = gsl_parse_size_t,
@@ -1114,13 +1114,13 @@ static gsl_err_t parse_proc_call(void *obj,
           .max_buf_size = KND_NAME_SIZE,
           .buf = self->proc_call.name
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
           .parse = parse_gloss,
           .obj = &self->proc_call
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "_g",
           .name_size = strlen("_g"),
           .parse = parse_gloss,
@@ -1167,19 +1167,19 @@ static int import_proc(struct kndProc *self,
           .buf_size = &proc->name_size,
           .max_buf_size = KND_NAME_SIZE
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
           .parse = parse_gloss,
           .obj = proc
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "_g",
           .name_size = strlen("_g"),
           .parse = parse_gloss,
           .obj = proc
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "base",
           .name_size = strlen("base"),
           .parse = parse_base,
@@ -1190,20 +1190,20 @@ static int import_proc(struct kndProc *self,
           .parse = parse_estim,
           .obj = proc
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "estim",
           .name_size = strlen("estim"),
           .parse = parse_estim,
           .obj = proc
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "result",
           .name_size = strlen("result"),
           .buf = proc->result_classname,
           .buf_size = &proc->result_classname_size,
           .max_buf_size = KND_NAME_SIZE
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "arg",
           .name_size = strlen("arg"),
           .parse = parse_arg,
@@ -1291,7 +1291,7 @@ static int parse_GSL(struct kndProc *self,
           .buf_size = &buf_size,
           .max_buf_size = KND_NAME_SIZE
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "_g",
           .name_size = strlen("_g"),
           .parse = parse_gloss,
@@ -1672,10 +1672,10 @@ static int read_proc_incipit(struct kndProc *self,
 
     dir->id_size = KND_ID_SIZE;
     dir->name_size = KND_NAME_SIZE;
-    parser_err = gsl_parse_incipit(buf, buf_size,
-                                   dir->id, &dir->id_size,
-                                   dir->name, &dir->name_size);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+    err = knd_parse_incipit(buf, buf_size,
+                            dir->id, &dir->id_size,
+                            dir->name, &dir->name_size);
+    if (err) return err;
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log("== PROC NAME:\"%.*s\" ID:%.*s",

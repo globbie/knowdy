@@ -93,3 +93,18 @@ knd_get_schema_name(const char *rec,
                     char *buf,
                     size_t *buf_size,
                     size_t *total_size);
+
+extern int
+knd_parse_incipit(const char *rec,
+                  size_t rec_size,
+                  char *result_tag_name,
+                  size_t *result_tag_name_size,
+                  char *result_name,
+                  size_t *result_name_size);
+
+int knd_parse_dir_size(const char *rec,
+                       size_t rec_size,
+                       const char **val,
+                       size_t *val_size,
+                       size_t *total_trailer_size);
+

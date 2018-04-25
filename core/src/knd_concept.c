@@ -341,12 +341,12 @@ static gsl_err_t alloc_gloss_item(void *obj,
                                   size_t count,
                                   void **item)
 {
-    struct kndAttr *self = obj;
+    struct kndConcept *self = obj;
     struct kndTranslation *tr;
 
     assert(name == NULL && name_size == 0);
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. %.*s: allocate gloss translation,  count: %zu",
                 self->name_size, self->name, count);
 
@@ -1335,7 +1335,7 @@ static gsl_err_t parse_descendants(void *obj,
            .parse = gsl_parse_size_t,
            .obj = &total_elems
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "c",
           .name_size = strlen("c"),
           .parse = gsl_parse_array,
@@ -1422,7 +1422,7 @@ static gsl_err_t parse_aggr(void *obj,
     struct kndAttr *attr;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. parsing the AGGR attr: \"%.*s\"", 32, rec);
 
     err = kndAttr_new(&attr);
@@ -1445,10 +1445,9 @@ static gsl_err_t parse_aggr(void *obj,
         self->tail_attr->next = attr;
         self->tail_attr = attr;
     }
-
     self->num_attrs++;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         attr->str(attr);
 
     /* TODO: resolve attr if read from GSP */
@@ -1630,7 +1629,7 @@ static gsl_err_t import_attr_item(void *obj,
           .buf_size = &item->val_size,
           .max_buf_size = KND_NAME_SIZE
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .is_validator = true,
           .validate = import_nested_attr_item,
           .obj = item
@@ -1857,7 +1856,7 @@ static gsl_err_t import_nested_attr_item(void *obj,
           .buf_size = &item->val_size,
           .max_buf_size = KND_NAME_SIZE
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .is_validator = true,
           .validate = import_nested_attr_item,
           .obj = item
@@ -2113,7 +2112,7 @@ static gsl_err_t validate_attr_item(void *obj,
           .validate = read_nested_attr_item,
           .obj = attr_item
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "r",
           .name_size = strlen("r"),
           .parse = gsl_parse_array,
@@ -2136,7 +2135,7 @@ static gsl_err_t parse_baseclass(void *obj,
     struct kndConcItem *item;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. parsing the base class: \"%.*s\"", 32, rec);
 
     err = self->mempool->new_conc_item(self->mempool, &item);
@@ -2151,13 +2150,13 @@ static gsl_err_t parse_baseclass(void *obj,
           .buf_size = &item->classname_size,
           .max_buf_size = KND_NAME_SIZE
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .is_validator = true,
           .validate = import_attr_item,
           .obj = item
         },
         { .is_validator = true,
-          .is_list = true,
+          .type = GSL_SET_ARRAY_STATE,
           .validate = import_attr_item_list,
           .obj = item
         },
@@ -2253,11 +2252,8 @@ static gsl_err_t parse_import_class(void *obj,
     struct kndConcDir *dir;
     int err;
     gsl_err_t parser_err;
-    // TODO(ki.stfu): Don't ignore this field
-    char time[KND_NAME_SIZE];
-    size_t time_size = 0;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. import \"%.*s\" class..", 128, rec);
 
     err  = self->mempool->new_class(self->mempool, &c);
@@ -2275,19 +2271,19 @@ static gsl_err_t parse_import_class(void *obj,
           .run = run_set_name,
           .obj = c
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "base",
           .name_size = strlen("base"),
           .parse = parse_baseclass,
           .obj = c
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
           .parse = parse_gloss_array,
           .obj = c
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "_g",
           .name_size = strlen("_g"),
           .parse = parse_gloss_array,
@@ -2298,51 +2294,43 @@ static gsl_err_t parse_import_class(void *obj,
           .parse = parse_summary,
           .obj = c
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "_summary",
           .name_size = strlen("_summary"),
           .parse = parse_summary,
           .obj = c
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "aggr",
           .name_size = strlen("aggr"),
           .parse = parse_aggr,
           .obj = c
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "str",
           .name_size = strlen("str"),
           .parse = parse_str,
           .obj = c
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "bin",
           .name_size = strlen("bin"),
           .parse = parse_bin,
           .obj = c
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "num",
           .name_size = strlen("num"),
           .parse = parse_num,
           .obj = c
         },
-        // FIXME(ki.stfu): Temporary spec to ignore the time tag
-        { .type = GSL_CHANGE_STATE,
-          .name = "time",
-          .name_size = strlen("time"),
-          .buf = time,
-          .buf_size = &time_size,
-          .max_buf_size = KND_NAME_SIZE
-        },
-        {  .type = GSL_CHANGE_STATE,
+        {  .type = GSL_SET_STATE,
            .name = "ref",
           .name_size = strlen("ref"),
           .parse = parse_ref,
           .obj = c
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "text",
           .name_size = strlen("text"),
           .parse = parse_text,
@@ -2405,7 +2393,7 @@ static gsl_err_t parse_import_class(void *obj,
                                     c->name, c->name_size, (void*)dir);
     if (err) { parser_err = make_gsl_err_external(err); goto final; }
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         c->str(c);
      
     return make_gsl_err(gsl_OK);
@@ -2789,19 +2777,19 @@ static gsl_err_t parse_schema(void *self,
           .run = run_get_schema,
           .obj = self
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "class",
           .name_size = strlen("class"),
           .parse = parse_import_class,
           .obj = self
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "rel",
           .name_size = strlen("rel"),
           .parse = parse_rel_import,
           .obj = self
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "proc",
           .name_size = strlen("proc"),
           .parse = parse_proc_import,
@@ -3031,6 +3019,8 @@ static gsl_err_t dir_entry_append(void *accu,
     struct kndConcDir *dir = item;
     int err;
 
+    knd_log(".. appending..");
+
     if (!parent_dir->child_idx) {
         err = parent_dir->mempool->new_set(parent_dir->mempool,
                                            &parent_dir->child_idx);
@@ -3071,7 +3061,7 @@ static gsl_err_t dir_entry_alloc(void *self,
     struct kndConcDir *dir;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. %.*s to add list item: %.*s count: %zu"
                 " [total children: %zu]",
                 parent_dir->id_size, parent_dir->id, name_size, name,
@@ -3086,6 +3076,9 @@ static gsl_err_t dir_entry_alloc(void *self,
     dir->class_idx = parent_dir->class_idx;
     dir->class_name_idx = parent_dir->class_name_idx;
     knd_calc_num_id(name, name_size, &dir->block_size);
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log("== block size: %zu", dir->block_size);
 
     *item = dir;
     return make_gsl_err(gsl_OK);
@@ -3205,7 +3198,7 @@ static int idx_class_name(struct kndConcept *self,
     void *result;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("  .. get conc name in DIR: \"%.*s\""
                 " global off:%zu  block size:%zu",
                 dir->name_size, dir->name,
@@ -3222,17 +3215,17 @@ static int idx_class_name(struct kndConcept *self,
     err = read(fd, buf, buf_size);
     if (err == -1) return knd_IO_FAIL;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("\n  .. CONC BODY: %.*s",
                 buf_size, buf);
     buf[buf_size] = '\0';
 
     dir->id_size = KND_ID_SIZE;
     dir->name_size = KND_NAME_SIZE;
-    parser_err = gsl_parse_incipit(buf, buf_size,
-                                   dir->id, &dir->id_size,
-                                   dir->name, &dir->name_size);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+    err = knd_parse_incipit(buf, buf_size,
+                            dir->id, &dir->id_size,
+                            dir->name, &dir->name_size);
+    if (err) return err;
 
     knd_calc_num_id(dir->id, dir->id_size, &dir->numid);
 
@@ -3246,6 +3239,8 @@ static int idx_class_name(struct kndConcept *self,
     err = self->class_idx->get(self->class_idx,
                                dir->id, dir->id_size, &result);                   RET_ERR();
     dir = result;
+
+    knd_log("++ name idx OK!");
 
     return knd_OK;
 }
@@ -3274,13 +3269,13 @@ static int get_dir_trailer(struct kndConcept *self,
     err = read(fd, out->buf, out->buf_size);
     if (err == -1) return knd_IO_FAIL;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("  .. DIR size field read: \"%.*s\" [%zu]",
                 out->buf_size, out->buf, out->buf_size);
 
     err =  knd_get_dir_size(self, &dir_size, &chunk_size, encode_base);
     if (err) {
-        if (DEBUG_CONC_LEVEL_1)
+        if (DEBUG_CONC_LEVEL_TMP)
             knd_log("-- couldn't find the ConcDir size field in \"%.*s\" :(",
                     out->buf_size, out->buf);
         return knd_NO_MATCH;
@@ -3289,7 +3284,7 @@ static int get_dir_trailer(struct kndConcept *self,
     parent_dir->body_size = block_size - dir_size - chunk_size;
     parent_dir->dir_size = dir_size;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("  .. DIR: offset: %lu  block: %lu  body: %lu  dir: %lu",
                 (unsigned long)parent_dir->global_offset,
                 (unsigned long)parent_dir->block_size,
@@ -3309,7 +3304,7 @@ static int get_dir_trailer(struct kndConcept *self,
     if (err == -1) return knd_IO_FAIL;
     out->buf[out->buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_1) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         chunk_size = out->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ?\
             KND_MAX_DEBUG_CHUNK_SIZE :  out->buf_size;
         knd_log(".. parsing DIR: \"%.*s\" [size:%zu]",
@@ -3376,19 +3371,19 @@ static int parse_dir_trailer(struct kndConcept *self,
           .parse = parse_obj_dir_size,
           .obj = parent_dir
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "c",
           .name_size = strlen("c"),
           .parse = gsl_parse_array,
           .obj = &class_dir_spec
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "R",
           .name_size = strlen("R"),
           .parse = gsl_parse_array,
           .obj = &rel_dir_spec
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "P",
           .name_size = strlen("P"),
           .parse = gsl_parse_array,
@@ -3397,7 +3392,8 @@ static int parse_dir_trailer(struct kndConcept *self,
     };
 
     parent_dir->curr_offset = parent_dir->global_offset;
-    if (DEBUG_CONC_LEVEL_2)
+
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("  .. parsing \"%.*s\" DIR REC: \"%.*s\"  curr offset: %zu   [dir size:%zu]",
                 KND_ID_SIZE, parent_dir->id, dir_buf_size, dir_buf,
                 parent_dir->curr_offset, dir_buf_size);
@@ -3423,8 +3419,8 @@ static int parse_dir_trailer(struct kndConcept *self,
         }
     }
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("DIR: %.*s   num_children: %zu obj block:%zu",
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log("DIR: %.*s   num children: %zu obj block:%zu",
                 parent_dir->id_size, parent_dir->id, parent_dir->num_children,
                 parent_dir->obj_block_size);
 
@@ -3549,10 +3545,10 @@ static gsl_err_t obj_entry_append(void *accu,
 
     entry->id_size = KND_ID_SIZE;
     entry->name_size = KND_NAME_SIZE;
-    parser_err = gsl_parse_incipit(buf, buf_size,
+    err = knd_parse_incipit(buf, buf_size,
                                    entry->id, &entry->id_size,
                                    entry->name, &entry->name_size);
-    if (parser_err.code) return parser_err;
+    if (err)  return make_gsl_err_external(err);
 
     parent_dir->curr_offset += entry->block_size;
 
@@ -3591,7 +3587,7 @@ static int parse_obj_dir_trailer(struct kndConcept *self,
     };
 
     struct gslTaskSpec specs[] = {
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "o",
           .name_size = strlen("o"),
           .parse = gsl_parse_array,
@@ -4004,7 +4000,7 @@ static gsl_err_t conc_item_read(void *obj,
           .obj = ci
         },
         { .is_validator = true,
-          .is_list = true,
+          .type = GSL_SET_ARRAY_STATE,
           .validate = validate_attr_item_list,
           .obj = ci
         },
@@ -4056,13 +4052,13 @@ static int read_GSP(struct kndConcept *self,
           .run = run_set_name,
           .obj = self
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "_g",
           .name_size = strlen("_g"),
           .parse = parse_gloss_array,
           .obj = self
         },
-        { .is_list = true,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "_ci",
           .name_size = strlen("_ci"),
           .parse = parse_conc_item_array,
@@ -5046,18 +5042,18 @@ static int parse_select_class(void *obj,
           .run = run_get_class_by_numid,
           .obj = self
         }/*,
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .is_validator = true,
           .validate = parse_set_attr,
           .obj = self
           }*/,
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "_rm",
           .name_size = strlen("_rm"),
           .run = run_remove_class,
           .obj = self
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "obj",
           .name_size = strlen("obj"),
           .parse = parse_import_obj,
@@ -5491,7 +5487,9 @@ static int export_JSON(struct kndConcept *self)
     out = self->out;
     err = out->write(out, "{", 1);                                                RET_ERR();
     err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                RET_ERR();
+
     err = out->write(out, self->dir->name, self->dir->name_size);                 RET_ERR();
+
     err = out->write(out, "\"", 1);                                               RET_ERR();
 
     err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
@@ -6189,7 +6187,7 @@ static gsl_err_t parse_liquid_class_update(void *obj,
           .run = run_get_liquid_class,
           .obj = self
         },
-        { .type = GSL_CHANGE_STATE,
+        { .type = GSL_SET_STATE,
           .name = "id",
           .name_size = strlen("id"),
           .parse = parse_liquid_class_id,
