@@ -8,6 +8,7 @@
 
 #include <stdarg.h>
 #include <syslog.h>
+#include <ctype.h>
 
 /* numeric conversion by strtol */
 #include <errno.h>
@@ -531,3 +532,136 @@ final:
 
 
 
+
+/**
+ * read out the tag and the implied field value (name)
+ */
+int knd_parse_incipit(const char *rec,
+                      size_t rec_size,
+                      char *result_tag_name,
+                      size_t *result_tag_name_size,
+                      char *result_name,
+                      size_t *result_name_size)
+{
+    const char *c, *b, *e;
+    bool in_tag = false;
+    bool in_name = false;
+    bool got_name = false;
+    size_t tag_size;
+    size_t name_size;
+    
+    c = rec;
+    b = rec;
+    e = rec;
+
+    for (size_t i = 0; i < rec_size; i++) {
+        c = rec + i;
+        switch (*c) {
+        case ' ':
+        case '\n':
+        case '\r':
+        case '\t':
+	    if (in_name) break;
+	    if (in_tag) {
+		tag_size = c - b;
+		if (!tag_size)
+		    return knd_FAIL;
+		if (tag_size >= *result_tag_name_size)
+		    return knd_FAIL;
+
+		memcpy(result_tag_name, b, tag_size);
+		*result_tag_name_size = tag_size;
+                b = c + 1;
+                e = b;
+                in_name = true;
+                break;
+            }
+
+            break;
+        case '[':
+        case '{':
+            if (!in_tag) {
+                in_tag = true;
+                b = c + 1;
+                e = b;
+                break;
+	    }
+
+            got_name = true;
+            e = c;
+            break;
+        default:
+            e = c;
+            break;
+        }
+        if (got_name) break;
+    }
+
+    name_size = e - b;
+    if (!name_size)
+	return knd_FAIL;
+    if (name_size >= *result_name_size)
+	return knd_FAIL;
+
+    memcpy(result_name, b, name_size);
+    *result_name_size = name_size;
+
+    return knd_OK;
+}
+
+int knd_parse_dir_size(const char *rec,
+                       size_t rec_size,
+                       const char **val,
+                       size_t *val_size,
+                       size_t *total_trailer_size)
+{
+    bool in_field = false;
+    bool got_separ = false;
+    bool got_tag = false;
+    bool got_size = false;
+    size_t chunk_size = 0;
+    const char *c, *b;
+    int i = 0;
+
+    b = rec;
+    for (i = rec_size - 1; i >= 0; i--) { 
+        c = rec + i;
+        switch (*c) {
+        case '\n':
+        case '\r':
+            break;
+        case '}':
+            if (in_field) return knd_FAIL;
+            in_field = true;
+            break;
+        case '{':
+            if (!in_field) return knd_FAIL;
+            if (got_tag) got_size = true;
+            break;
+        case ' ':
+            got_separ = true;
+            break;
+        case 'L':
+            got_tag = true;
+            break;
+        default:
+            if (!in_field) return knd_FAIL;
+            if (got_tag) return knd_FAIL;
+            if (!isalnum(*c))  return knd_FAIL;
+            b = c;
+            chunk_size++;
+            break;
+        }
+        if (got_size) {
+            if (DEBUG_UTILS_LEVEL_2)
+                gsl_log("  ++ got size value to parse: \"%.*s\"!",
+                        chunk_size, b);
+            *val = b;
+            *val_size = chunk_size;
+            *total_trailer_size = rec_size - i;
+             return knd_OK;
+        }
+    }
+
+    return knd_FAIL;
+}
