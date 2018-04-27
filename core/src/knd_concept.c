@@ -2378,26 +2378,32 @@ static gsl_err_t parse_import_class(void *obj,
     dir = self->class_name_idx->get(self->class_name_idx,
                                c->name, c->name_size);
     if (dir) {
-        knd_log("-- %s class name doublet found :(", c->name);
-        self->log->reset(self->log);
-        err = self->log->write(self->log,
-                               c->name,
-                               c->name_size);
-        if (err) {
-            parser_err = make_gsl_err_external(err);
+        if (dir->phase == KND_REMOVED) {
+
+            knd_log("== class was removed recently");
+            // TODO: release resource
+        } else {
+            knd_log("-- %s class name doublet found :(", c->name);
+            self->log->reset(self->log);
+            err = self->log->write(self->log,
+                                   c->name,
+                                   c->name_size);
+            if (err) {
+                parser_err = make_gsl_err_external(err);
+                goto final;
+            }
+            
+            err = self->log->write(self->log,
+                                   " class name already exists",
+                                   strlen(" class name already exists"));
+            if (err) {
+                parser_err = make_gsl_err_external(err);
+                goto final;
+            }
+            
+            parser_err = make_gsl_err(gsl_FAIL);
             goto final;
         }
-        
-        err = self->log->write(self->log,
-                               " class name already exists",
-                               strlen(" class name already exists"));
-        if (err) {
-            parser_err = make_gsl_err_external(err);
-            goto final;
-        }
-        
-        parser_err = make_gsl_err(gsl_FAIL);
-        goto final;
     }
 
     if (!self->batch_mode) {
@@ -4918,15 +4924,16 @@ static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_siz
 
 static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
 {
-    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndConcept *self = obj;
     struct kndConcept *c;
     int err;
 
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. remove class..");
 
     if (!self->curr_class) {
         knd_log("-- remove operation: class name not specified:(");
+
         self->log->reset(self->log);
         err = self->log->write(self->log, name, name_size);
         if (err) return make_gsl_err_external(err);
@@ -4938,7 +4945,7 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
 
     c = self->curr_class;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("== class to remove: \"%.*s\"\n", c->name_size, c->name);
 
     c->dir->phase = KND_REMOVED;
@@ -5160,6 +5167,10 @@ static int aggr_item_export_JSON(struct kndConcept *self,
     struct kndConcept *c;
     bool in_list = false;
     int err;
+    
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. JSON export aggr item: %.*s",
+                parent_item->name_size, parent_item->name);
 
     err = out->writec(out, '{');
     if (err) return err;
@@ -5176,7 +5187,7 @@ static int aggr_item_export_JSON(struct kndConcept *self,
         if (err) return err;
         err = out->writec(out, ':');
         if (err) return err;
-        
+
         c->out = out;
         c->task = self->task;
         c->format =  KND_FORMAT_JSON;
