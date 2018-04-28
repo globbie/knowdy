@@ -1070,6 +1070,29 @@ static int resolve_base_classes(struct kndConcept *self)
         ref->dir = self->dir;
         c->num_children++;
 
+        if (DEBUG_CONC_LEVEL_TMP)
+            knd_log(".. add class \"%.*s\" as a child of "
+                    " \"%.*s\" (total children:%zu)",
+                    self->dir->name_size, self->dir->name,
+                    c->name_size, c->name, c->dir->num_children);
+
+        if (!c->dir->children) {
+            c->dir->children = calloc(KND_MAX_CONC_CHILDREN,
+                                      sizeof(struct kndConcDir*));
+            if (!c->dir->children) {
+                knd_log("-- no memory :(");
+                return knd_NOMEM;
+            }
+        }
+
+        if (c->dir->num_children >= KND_MAX_CONC_CHILDREN) {
+            knd_log("-- warning: num of subclasses of \"%.*s\" exceeded :(",
+                    c->dir->name_size, c->dir->name);
+            return knd_OK;
+        }
+        c->dir->children[c->dir->num_children] = self->dir;
+        c->dir->num_children++;
+
         /* register as a descendant */
         set = c->dir->descendants;
         if (!set) {
@@ -1078,8 +1101,12 @@ static int resolve_base_classes(struct kndConcept *self)
             set->base = c->dir;
             c->dir->descendants = set;
         }
-
         dir = self->dir;
+
+        if (DEBUG_CONC_LEVEL_2)
+            knd_log(".. add class \"%.*s\" as a descendant of \"%.*s\"!",
+                    dir->name_size, dir->name, c->name_size, c->name);
+
         err = set->add(set, dir->id, dir->id_size, (void*)dir);                   RET_ERR();
 
         err = inherit_attrs(self, item->conc);                                    RET_ERR();
@@ -2430,10 +2457,10 @@ static gsl_err_t parse_import_class(void *obj,
 
     if (DEBUG_CONC_LEVEL_2)
         c->str(c);
-     
+
     return make_gsl_err(gsl_OK);
+
  final:
-    
     c->del(c);
     return parser_err;
 }
@@ -2504,7 +2531,6 @@ static gsl_err_t parse_import_obj(void *data,
     /* automatic name assignment if no explicit name given */
     if (!obj->name_size) {
         knd_num_to_str(obj->numid, obj->id, &obj->id_size, KND_RADIX_BASE);
-
         obj->name = obj->id;
         obj->name_size = obj->id_size;
     }
@@ -5167,7 +5193,7 @@ static int aggr_item_export_JSON(struct kndConcept *self,
     struct kndConcept *c;
     bool in_list = false;
     int err;
-    
+
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. JSON export aggr item: %.*s",
                 parent_item->name_size, parent_item->name);
