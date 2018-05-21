@@ -78,8 +78,8 @@ kndSet_str(struct kndSet *self, size_t depth)
 
 static int
 kndSet_intersect(struct kndSet   *self __attribute__((unused)),
-                    struct kndSet **sets,
-                    size_t num_sets)
+                 struct kndSet **sets,
+                 size_t num_sets)
 {
     struct kndSet *smallset, *set;
 
@@ -99,6 +99,8 @@ kndSet_intersect(struct kndSet   *self __attribute__((unused)),
         
     knd_log("  .. traverse the smaller Set \"%s\"..\n",
             smallset->base->name);
+
+
     
     return knd_OK;
 }
@@ -220,14 +222,14 @@ kndSet_facetize(struct kndSet *self)
 
 static int
 kndFacet_add_ref(struct kndFacet *self,
-               struct kndConcDir *topic,
-               struct kndConcDir *spec)
+                 struct kndConcDir *topic,
+                 struct kndConcDir *spec)
 {
     struct kndSet *set;
     int err;
 
-    if (DEBUG_SET_LEVEL_2) {
-        knd_log(".. add attr spec %.*s to topic %.*s..",
+    if (DEBUG_SET_LEVEL_TMP) {
+        knd_log(".. add attr spec \"%.*s\" to topic \"%.*s\"..",
                 spec->name_size, spec->name,
                 topic->name_size, topic->name);
     }
@@ -235,8 +237,8 @@ kndFacet_add_ref(struct kndFacet *self,
     /* get baseclass set */
     err = kndFacet_alloc_set(self, spec, &set);                                   RET_ERR();
 
-    
-    //set->num_elems++;
+
+    err = set->add(set, topic->id, topic->id_size, (void*)topic);                 RET_ERR();
 
     return knd_OK;
 }
@@ -250,7 +252,7 @@ kndSet_add_ref(struct kndSet *self,
     struct kndFacet *f;
     int err;
 
-    if (DEBUG_SET_LEVEL_1)
+    if (DEBUG_SET_LEVEL_TMP)
         knd_log("  .. \"%.*s\" NAME_IDX to add attr ref \"%.*s\" "
                 "(topic \"%.*s\" => spec \"%.*s\")",
                 self->base->name_size, self->base->name,
@@ -262,7 +264,6 @@ kndSet_add_ref(struct kndSet *self,
 
     err = kndFacet_add_ref(f, topic, spec);                                       RET_ERR();
 
-    //self->num_elems++;
     return knd_OK;
 }
 
@@ -414,174 +415,6 @@ static int kndSet_map(struct kndSet *self,
     if (err) return err;
 
     return knd_OK;
-}
-
-
-static gsl_err_t set_alloc(void *obj,
-                           const char *name,
-                           size_t name_size,
-                           size_t count __attribute__((unused)),
-                           void **item)
-{
-    struct kndFacet *self = obj;
-    struct kndSet *set;
-    int err;
-
-    assert(name == NULL && name_size == 0);
-
-    err = self->mempool->new_set(self->mempool, &set);
-    if (err) return make_gsl_err_external(err);
-
-    set->type = KND_SET_CLASS;
-    set->mempool = self->mempool;
-    set->parent_facet = self;
-
-    *item = (void*)set;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t set_append(void *accu,
-                            void *item)
-{
-    struct kndFacet *self = accu;
-    struct kndSet *set = item;
-    int err;
-
-    if (!self->set_name_idx) return make_gsl_err(gsl_OK);
-
-    err = self->set_name_idx->set(self->set_name_idx,
-                                  set->base->name, set->base->name_size,
-                             (void*)set);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t run_set_set_name(void *obj,
-                                  const char *name, size_t name_size)
-{
-    struct kndSet *set = (struct kndSet*)obj;
-    struct kndFacet *parent_facet = set->parent_facet;
-    struct kndConcept *conc;
-    void *result;
-    int err;
-    conc = parent_facet->parent->base->conc;
-    err = conc->class_idx->get(conc->class_idx,
-                               name, name_size, &result);
-    if (err) {
-        knd_log("-- no such class: \"%.*s\":(", name_size, name);
-        return make_gsl_err_external(err);
-    }
-    set->base = result;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t facet_alloc(void *obj,
-                             const char *name,
-                             size_t name_size,
-                             size_t count __attribute__((unused)),
-                             void **item)
-{
-    struct kndSet *self = obj;
-    struct kndFacet *f;
-    int err;
-
-    assert(name == NULL && name_size == 0);
-
-    if (DEBUG_SET_LEVEL_TMP)
-        knd_log(".. set %.*s to alloc facet..",
-                self->base->name_size, self->base->name);
-
-    err = self->mempool->new_facet(self->mempool, &f);
-    if (err) return make_gsl_err_external(err);
-
-    /* TODO: mempool alloc */
-    err = ooDict_new(&f->set_name_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) return make_gsl_err_external(err);
-
-    f->parent = self;
-    f->mempool = self->mempool;
-
-    *item = (void*)f;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t facet_append(void *accu,
-                              void *item)
-{
-    struct kndSet *self = accu;
-    struct kndFacet *f = item;
-
-    if (self->num_facets >= KND_MAX_ATTRS)
-        return make_gsl_err_external(knd_LIMIT);
-
-    self->facets[self->num_facets] = f;
-    self->num_facets++;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t run_set_facet_name(void *obj, const char *name, size_t name_size)
-{
-    struct kndFacet *f = (struct kndFacet*)obj;
-    struct kndSet *parent = f->parent;
-    struct kndConcept *conc;
-    struct kndAttr *attr;
-    int err;
-
-    if (DEBUG_SET_LEVEL_2)
-        knd_log(".. set %.*s to create facet: %.*s",
-                parent->base->name_size, parent->base->name, name_size, name);
-
-    conc = parent->base->conc;
-    err = conc->get_attr(conc, name, name_size, &attr);
-    if (err) return make_gsl_err_external(err);
-
-    f->attr = attr;
-
-    if (DEBUG_SET_LEVEL_2)
-        knd_log("== facet attr: %.*s", attr->name_size, attr->name);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t read_facet(void *obj,
-                            const char *rec,
-                            size_t *total_size)
-{
-    struct kndFacet *f = obj;
-    /*    struct gslTaskSpec set_item_spec = {
-        .is_list_item = true,
-        .alloc = set_alloc,
-        .append = set_append,
-        .accu = f,
-        .parse = set_read
-        };*/
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_set_facet_name,
-          .obj = f
-        }/*,
-        { .is_list = true,
-          .name = "set",
-          .name_size = strlen("set"),
-          .parse = gsl_parse_array,
-          .obj = &set_item_spec
-          }*/
-    };
-    gsl_err_t err;
-
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
-
-    if (f->attr == NULL) {
-        knd_log("-- no facet name provided :(");
-        return make_gsl_err(gsl_FORMAT);  // facet name is required
-    }
-    return make_gsl_err(gsl_OK);
 }
 
 extern int kndSet_init(struct kndSet *self)
