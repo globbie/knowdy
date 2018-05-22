@@ -117,7 +117,7 @@ struct kndTask
     size_t batch_gt;
     size_t batch_lt;
 
-    struct kndSet *sets;
+    struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;
 
     struct kndUser *admin;

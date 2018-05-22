@@ -75,17 +75,92 @@ kndSet_str(struct kndSet *self, size_t depth)
     knd_log("%*s}", depth * KND_OFFSET_SIZE, "");
 }
 
+static int kndSet_traverse(struct kndSet *self,
+                           struct kndSetElemIdx *base_idx,
+                           struct kndSetElemIdx **idxs,
+                           size_t num_idxs,
+                           struct kndSetElemIdx *result_idx)
+{
+    struct kndSetElemIdx *nested_idxs[KND_MAX_CLAUSES];
+    struct kndSetElemIdx *idx, *sub_idx, *nested_idx;
+    void *elem;
+    bool gotcha = false;
+    int err;
 
-static int
-kndSet_intersect(struct kndSet   *self __attribute__((unused)),
-                 struct kndSet **sets,
-                 size_t num_sets)
+    /* iterate over terminal elems */
+    for (size_t i = 0; i < KND_RADIX_BASE; i++) {
+        elem = base_idx->elems[i];
+        if (!elem) continue;
+
+        gotcha = true;
+        for (size_t j = 0; j < num_idxs; j++) {
+            idx = idxs[j];
+            if (!idx->elems[i]) {
+                gotcha = false;
+                break;
+            }
+        }
+        if (!gotcha) continue;
+
+        /* the elem is present in _all_ sets,
+           save the result */
+        result_idx->elems[i] = elem;
+        self->num_elems++;
+    }
+
+    /* iterate over subfolders */
+    for (size_t i = 0; i < KND_RADIX_BASE; i++) {
+        idx = base_idx->idxs[i];
+        if (!idx) continue;
+
+        gotcha = true;
+        for (size_t j = 0; j < num_idxs; j++) {
+            nested_idx = idxs[j];
+
+            if (!nested_idx->idxs[i]) {
+                gotcha = false;
+                break;
+            }
+            nested_idxs[j] = nested_idx->idxs[i];
+        }
+        if (!gotcha) continue;
+
+        err = self->mempool->new_set_elem_idx(self->mempool, &sub_idx);
+        if (err) {
+            knd_log("-- set elem idx mempool limit reached :(");
+            return err;
+        }
+
+        result_idx->idxs[i] = sub_idx;
+
+        err = kndSet_traverse(self,
+                              idx,
+                              nested_idxs, num_idxs,
+                              sub_idx);
+        if (err) return err;
+
+    }
+    
+    return knd_OK;
+}
+
+static int kndSet_intersect(struct kndSet *self,
+                            struct kndSet **sets,
+                            size_t num_sets)
 {
     struct kndSet *smallset, *set;
+    struct kndSetElemIdx *base_idx;
+    struct kndSetElemIdx *idxs[KND_MAX_CLAUSES];
+    size_t num_idxs = num_sets - 1;
+    int err;
 
-    if (DEBUG_SET_LEVEL_2) 
-        knd_log(" .. intersection by Set \"%.*s\"..\n",
-                smallset->base->name_size, smallset->base->name);
+    if (num_sets == 1) {
+        return knd_FAIL;
+    }
+
+    if (DEBUG_SET_LEVEL_TMP)
+        knd_log(" .. intersection by Set \"%.*s\".. total sets:%zu",
+                self->base->name_size, self->base->name, num_sets);
 
     /* sort sets by size */
     qsort(sets,
@@ -93,15 +168,19 @@ kndSet_intersect(struct kndSet   *self __attribute__((unused)),
           sizeof(struct kndSet*),
           knd_compare_set_by_size_ascend);
 
-    /* the smallest set */
-    smallset = sets[0];
-    set = sets[1];
-        
-    knd_log("  .. traverse the smaller Set \"%s\"..\n",
-            smallset->base->name);
+    /* the smallest set is taken as a base */
+    base_idx = &sets[0]->idx;
+    sets++;
 
+    for (size_t i = 0; i < num_idxs; i++)
+        idxs[i] = &sets[i]->idx;
 
-    
+    err = kndSet_traverse(self,
+                          base_idx,
+                          idxs, num_idxs,
+                          &self->idx);
+    if (err) return err;
+
     return knd_OK;
 }
 

@@ -52,7 +52,6 @@ static void reset(struct kndTask *self)
 
     self->type = KND_GET_STATE;
 
-    self->sets = NULL;
     self->num_sets = 0;
 
     self->batch_max = KND_RESULT_BATCH_SIZE;
@@ -344,13 +343,7 @@ static int build_report(struct kndTask *self)
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size;
-    const char *gsl_header = "{task";
-    const char *msg = "None";
-    size_t msg_size = strlen(msg);
     struct glbOutput *out = self->spec_out;
-    char *header = NULL;
-    size_t header_size;
-    char *obj = NULL;
     size_t obj_size;
     size_t chunk_size;
     const char *task_status = "++";
