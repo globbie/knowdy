@@ -1312,7 +1312,7 @@ static gsl_err_t facet_alloc(void *obj,
 
     assert(name == NULL && name_size == 0);
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log(".. \"%.*s\" set to alloc a facet..",
                 set->base->name_size, set->base->name);
 
@@ -1354,7 +1354,7 @@ static gsl_err_t set_facet_name(void *obj, const char *name, size_t name_size)
     struct kndAttr *attr;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log(".. set %.*s to add facet \"%.*s\"..",
                 parent->base->name_size, parent->base->name, name_size, name);
 
@@ -1364,7 +1364,7 @@ static gsl_err_t set_facet_name(void *obj, const char *name, size_t name_size)
 
     f->attr = attr;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("++ facet attr confirmed: \"%.*s\"!",
                 attr->name_size, attr->name);
 
@@ -1430,7 +1430,7 @@ static gsl_err_t resolve_set_base(void *obj,
     }
     set->base = result;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("++ base class: %.*s \"%.*s\"",
                 id_size, id, set->base->name_size, set->base->name);
 
@@ -1469,7 +1469,7 @@ static gsl_err_t atomic_classref_alloc(void *obj,
     }
     dir = elem;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("++ classref resolved: %.*s \"%.*s\"",
                 val_size, val, dir->name_size, dir->name);
 
@@ -2775,18 +2775,17 @@ static gsl_err_t select_by_baseclass(void *obj,
     if (err) return make_gsl_err_external(err);
 
     self->curr_baseclass->dir->conc = self->curr_baseclass;
-
     if (!self->curr_baseclass->dir->descendants) {
         knd_log("-- no set of descendants found :(");
         return make_gsl_err(gsl_OK);
     }
 
-    set = self->curr_baseclass->dir->descendants;
-    
-    set->next = self->task->sets;
-    self->task->sets = set;
+    /*set = self->curr_baseclass->dir->descendants;
+    if (self->task->num_sets + 1 > KND_MAX_CLAUSES)
+        return make_gsl_err(gsl_LIMIT);
+    self->task->sets[self->task->num_sets] = set;
     self->task->num_sets++;
-
+    */
     return make_gsl_err(gsl_OK);
 }
 
@@ -2833,8 +2832,10 @@ static gsl_err_t select_by_attr(void *obj,
     if (DEBUG_CONC_LEVEL_2)
         set->str(set, 1);
 
-    set->next = self->task->sets;
-    self->task->sets = set;
+    if (self->task->num_sets + 1 > KND_MAX_CLAUSES)
+        return make_gsl_err(gsl_LIMIT);
+
+    self->task->sets[self->task->num_sets] = set;
     self->task->num_sets++;
 
     return make_gsl_err(gsl_OK);
@@ -4893,34 +4894,44 @@ static int export_conc_elem_JSON(void *obj,
                 elem_id_size, elem_id, c);
 
     if (!c) {
-        err = unfreeze_class(self, dir, &c);                          RET_ERR();
+        err = unfreeze_class(self, dir, &c);                                      RET_ERR();
     }
 
     /* separator */
     if (count) {
-        err = out->writec(out, ',');                                          RET_ERR();
+        err = out->writec(out, ',');                                              RET_ERR();
     }
 
     c->out = out;
     c->format = KND_FORMAT_JSON;
+
+    /* TODO: set depth */
+
     err = c->export(c);
     if (err) return err;
 
     return knd_OK;
 }
 
-static int kndConcept_export_set_JSON(struct kndConcept *self,
-                                      struct kndSet *set)
+static int export_set_JSON(struct kndConcept *self,
+                           struct kndSet *set)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
     struct glbOutput *out = self->out;
     int err;
 
-    err = out->write(out, "{\"_set\":{\"_base\":\"",
-                     strlen("{\"_set\":{\"_base\":\""));                          RET_ERR();
-    err = out->write(out, set->base->name,  set->base->name_size);                RET_ERR();
-    err = out->write(out, "\"}", strlen("\"}"));                                  RET_ERR();
+    err = out->write(out, "{\"_set\":{", strlen("{\"_set\":{"));                  RET_ERR();
+
+    /* TODO: present child clauses */
+
+    if (set->base) {
+        err = out->write(out, "\"_base\":\"",
+                         strlen("\"_base\":\""));                                 RET_ERR();
+        err = out->write(out, set->base->name,  set->base->name_size);            RET_ERR();
+        err = out->writec(out, '"');                                              RET_ERR();
+    }
+    err = out->writec(out, '}');                                                  RET_ERR();
 
     buf_size = sprintf(buf, ",\"total\":%lu",
                        (unsigned long)set->num_elems);
@@ -5045,16 +5056,42 @@ static gsl_err_t present_class_selection(void *obj,
     out->reset(out);
 
     if (self->task->type == KND_SELECT_STATE) {
-        /* TODO: execute query / intersect sets */
-        set = self->task->sets;
 
-        if (!set) {
+        /* no sets found? */
+        if (!self->task->num_sets) {
             err = out->write(out, "{}", strlen("{}"));
             if (err) return make_gsl_err_external(err);
             return make_gsl_err(gsl_OK);
         }
 
-        err = kndConcept_export_set_JSON(self, set);
+        /* TODO: intersection cache lookup  */
+
+        set = self->task->sets[0];
+
+        /* intersection required */
+        if (self->task->num_sets > 1) {
+            err = self->mempool->new_set(self->mempool, &set);
+            if (err) return make_gsl_err_external(err);
+
+            set->type = KND_SET_CLASS;
+            set->mempool = self->mempool;
+
+            // TODO: compound class
+            set->base = self->task->sets[0]->base;
+
+            err = set->intersect(set, self->task->sets, self->task->num_sets);
+            if (err) return make_gsl_err_external(err);
+        }
+
+        if (!set->num_elems) {
+            err = out->write(out, "{}", strlen("{}"));
+            if (err) return make_gsl_err_external(err);
+            return make_gsl_err(gsl_OK);
+        }
+
+        /* final presentation in JSON 
+           TODO: choose output format */
+        err = export_set_JSON(self, set);
         if (err) return make_gsl_err_external(err);
 
         return make_gsl_err(gsl_OK);
