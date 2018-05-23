@@ -631,7 +631,7 @@ static int resolve_aggr_item(struct kndConcept *self,
     size_t classname_size;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) 
+    if (DEBUG_CONC_LEVEL_TMP) 
         knd_log(".. resolve aggr item %.*s  attr:%p",
                 parent_item->name_size, parent_item->name,
                 parent_item->attr);
@@ -646,7 +646,7 @@ static int resolve_aggr_item(struct kndConcept *self,
 
     c = parent_item->attr->conc;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         knd_log(".. resolving aggr item \"%.*s\" (count:%zu) class:%.*s  is_list_item:%d",
                 parent_item->name_size,  parent_item->name,
                 parent_item->list_count,
@@ -660,13 +660,19 @@ static int resolve_aggr_item(struct kndConcept *self,
         classname_size = parent_item->name_size;
     }
 
+    if (DEBUG_CONC_LEVEL_TMP)
+        c->str(c);    
+    
     if (c->implied_attr) {
         attr = c->implied_attr;
 
-        if (DEBUG_CONC_LEVEL_2)
-            knd_log("== implied attr: %.*s", attr->name_size, attr->name);
+        if (DEBUG_CONC_LEVEL_TMP)
+            knd_log("== class: \"%.*s\" implied attr: %.*s",
+                    classname_size, classname,
+                    attr->name_size, attr->name);
 
-        parent_item->attr = attr;
+        parent_item->implied_attr = attr;
+
         switch (attr->type) {
         case KND_ATTR_AGGR:
             break;
@@ -683,7 +689,6 @@ static int resolve_aggr_item(struct kndConcept *self,
 
     /* resolve nested children */
     for (item = parent_item->children; item; item = item->next) {
-
         if (DEBUG_CONC_LEVEL_2) {
             knd_log(".. check attr \"%.*s\" in class \"%.*s\" "
                     " is_resolved:%d",
@@ -726,7 +731,7 @@ static int resolve_attr_item_list(struct kndConcept *self,
     struct kndConcept *c;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         const char *attr_type_name = knd_attr_names[parent_attr->type];
         size_t attr_type_name_size = strlen(attr_type_name);
         knd_log(".. class %.*s to resolve attr item list \"%.*s\" "
@@ -752,11 +757,14 @@ static int resolve_attr_item_list(struct kndConcept *self,
         err = c->resolve(c, NULL);                                                RET_ERR();
     }
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         c->str(c);
 
     /* first item */
     if (parent_item->val_size) {
+
+        parent_item->attr = parent_attr;
+
         switch (parent_attr->type) {
         case KND_ATTR_AGGR:
             err = resolve_aggr_item(self, parent_item);
@@ -1685,7 +1693,10 @@ static gsl_err_t parse_aggr(void *obj,
         attr->str(attr);
 
     /* TODO: resolve attr if read from GSP */
-    
+
+    if (attr->is_implied)
+        self->implied_attr = attr;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -1716,6 +1727,9 @@ static gsl_err_t parse_str(void *obj,
         self->tail_attr->next = attr;
         self->tail_attr = attr;
     }
+
+    if (attr->is_implied)
+        self->implied_attr = attr;
 
     return make_gsl_err(gsl_OK);
 }
@@ -1776,6 +1790,10 @@ static gsl_err_t parse_num(void *obj,
         self->tail_attr->next = attr;
         self->tail_attr = attr;
     }
+
+    if (attr->is_implied)
+        self->implied_attr = attr;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -1805,6 +1823,9 @@ static gsl_err_t parse_ref(void *obj,
         self->tail_attr->next = attr;
         self->tail_attr = attr;
     }
+
+    if (attr->is_implied)
+        self->implied_attr = attr;
 
     return make_gsl_err(gsl_OK);
 }
@@ -5111,6 +5132,9 @@ static gsl_err_t present_class_selection(void *obj,
     if (self->max_depth) {
         c->max_depth = self->max_depth;
     }
+
+
+
     err = c->export(c);
     if (err) return make_gsl_err_external(err);
 
@@ -5135,7 +5159,7 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 
     self->curr_class = c;
 
-    if (DEBUG_CONC_LEVEL_1) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         c->str(c);
     }
 
@@ -5437,15 +5461,30 @@ static int aggr_item_export_JSON(struct kndConcept *self,
     bool in_list = false;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. JSON export aggr item: %.*s",
-                parent_item->name_size, parent_item->name);
+    if (DEBUG_CONC_LEVEL_TMP) {
+        knd_log(".. JSON export aggr item: %.*s  attr:%p",
+                parent_item->name_size, parent_item->name, parent_item->attr);
+        c = parent_item->attr->conc;
+        c->str(c);
+
+        knd_log("..aggr item val: \"%.*s\"  implied attr:%p item implied:%p",
+                parent_item->val_size, parent_item->val,
+                c->implied_attr, parent_item->implied_attr);
+    }
 
     err = out->writec(out, '{');
     if (err) return err;
 
+    /* export a class ref */
     if (parent_item->conc) {
         attr = parent_item->attr;
+
+        /* TODO: check assignment */
+        if (parent_item->implied_attr)
+            attr = parent_item->implied_attr;
+        if (c->implied_attr)
+            attr = c->implied_attr;
+
         c = parent_item->conc;
 
         err = out->writec(out, '"');
@@ -5465,10 +5504,14 @@ static int aggr_item_export_JSON(struct kndConcept *self,
         err = c->export(c);
         if (err) return err;
         in_list = true;
-    } else {
+    }
 
+    /* terminal string value */
+    if (!parent_item->conc && parent_item->val_size) {
         c = parent_item->attr->conc;
-        if (c && c->implied_attr) {
+        attr = parent_item->attr;
+
+        if (c->implied_attr) {
             attr = c->implied_attr;
             err = out->writec(out, '"');
             if (err) return err;
@@ -5483,12 +5526,20 @@ static int aggr_item_export_JSON(struct kndConcept *self,
             if (err) return err;
         }
 
-        err = out->writec(out, '"');
-        if (err) return err;
-        err = out->write(out, parent_item->val, parent_item->val_size);
-        if (err) return err;
-        err = out->writec(out, '"');
-        if (err) return err;
+        /* string or numeric value? */
+        switch (attr->type) {
+        case KND_ATTR_NUM:
+            err = out->write(out, parent_item->val, parent_item->val_size);
+            if (err) return err;
+            break;
+        default:
+            err = out->writec(out, '"');
+            if (err) return err;
+            err = out->write(out, parent_item->val, parent_item->val_size);
+            if (err) return err;
+            err = out->writec(out, '"');
+            if (err) return err;
+        }
         in_list = true;
     }
     
@@ -5580,7 +5631,11 @@ static int attr_item_list_export_JSON(struct kndConcept *self,
     if (parent_item->conc) {
         switch (parent_item->attr->type) {
         case KND_ATTR_AGGR:
-            err = aggr_item_export_JSON(self, parent_item);
+
+            //knd_log(".. export first item \"%.*s\" ..",
+            //        parent_item->name_size, parent_item->name);
+
+        err = aggr_item_export_JSON(self, parent_item);
             if (err) return err;
             break;
         case KND_ATTR_REF:
@@ -5600,6 +5655,7 @@ static int attr_item_list_export_JSON(struct kndConcept *self,
     }
 
     for (item = parent_item->list; item; item = item->next) {
+
         /* TODO */
         if (!item->attr) {
             knd_log("-- no attr: %.*s (%p)",
@@ -5611,6 +5667,10 @@ static int attr_item_list_export_JSON(struct kndConcept *self,
             err = out->writec(out, ',');
             if (err) return err;
         }
+
+        knd_log(".. export item \"%.*s\" ..",
+                item->name_size, item->name);
+        item->attr->str(item->attr);
 
         switch (parent_item->attr->type) {
         case KND_ATTR_AGGR:

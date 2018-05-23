@@ -52,6 +52,10 @@ static void str(struct kndAttr *self)
         knd_log("%*s  CONCISE:%zu",
                 self->depth * KND_OFFSET_SIZE, "", self->concise_level);
     }
+    if (self->is_implied) {
+        knd_log("%*s  (implied)",
+                self->depth * KND_OFFSET_SIZE, "");
+    }
     
     tr = self->tr;
     while (tr) {
@@ -213,6 +217,10 @@ static int export_GSP(struct kndAttr *self)
     
     if (self->is_a_set) {
         err = out->write(out, "{t set}", strlen("{t set}"));
+        if (err) return err;
+    }
+    if (self->is_implied) {
+        err = out->write(out, "{impl}", strlen("{impl}"));
         if (err) return err;
     }
 
@@ -598,6 +606,11 @@ static int parse_GSL(struct kndAttr *self,
         },
         { .type = GSL_SET_STATE,
           .name = "impl",
+          .name_size = strlen("impl"),
+          .run = confirm_implied,
+          .obj = self
+        },
+        { .name = "impl",
           .name_size = strlen("impl"),
           .run = confirm_implied,
           .obj = self
