@@ -1194,6 +1194,7 @@ static int resolve_refs(struct kndConcept *self,
         err = resolve_objs(self, update);                                         RET_ERR();
     }
 
+
     self->is_resolved = true;
     return knd_OK;
 }
@@ -5128,7 +5129,6 @@ static gsl_err_t present_class_selection(void *obj,
     out->reset(out);
 
     if (self->task->type == KND_SELECT_STATE) {
-
         /* no sets found? */
         if (!self->task->num_sets) {
             err = out->write(out, "{}", strlen("{}"));
@@ -5183,8 +5183,6 @@ static gsl_err_t present_class_selection(void *obj,
     if (self->max_depth) {
         c->max_depth = self->max_depth;
     }
-
-
 
     err = c->export(c);
     if (err) return make_gsl_err_external(err);
@@ -5517,6 +5515,7 @@ static int aggr_item_export_JSON(struct kndConcept *self,
                 parent_item->name_size, parent_item->name, parent_item->attr);
         c = parent_item->attr->conc;
         c->str(c);
+
         knd_log("..aggr item val: \"%.*s\"  implied attr:%p item implied:%p concref:%p",
                 parent_item->val_size, parent_item->val,
                 c->implied_attr, parent_item->implied_attr, parent_item->conc);
@@ -5528,10 +5527,13 @@ static int aggr_item_export_JSON(struct kndConcept *self,
     /* export a class ref */
     if (parent_item->conc) {
         attr = parent_item->attr;
+        c = parent_item->attr->conc;
 
         /* TODO: check assignment */
-        if (parent_item->implied_attr)
+        if (parent_item->implied_attr) {
             attr = parent_item->implied_attr;
+        }
+
         if (c->implied_attr)
             attr = c->implied_attr;
 
@@ -5551,8 +5553,6 @@ static int aggr_item_export_JSON(struct kndConcept *self,
         c->format =  KND_FORMAT_JSON;
         c->depth = self->depth + 1;
         c->max_depth = self->max_depth;
-
-        c->str(c);
 
         err = c->export(c);
         if (err) return err;
@@ -5686,8 +5686,8 @@ static int attr_item_list_export_JSON(struct kndConcept *self,
         switch (parent_item->attr->type) {
         case KND_ATTR_AGGR:
 
-            //knd_log(".. export first item \"%.*s\" ..",
-            //        parent_item->name_size, parent_item->name);
+            knd_log(".. export first item \"%.*s\" ..",
+                    parent_item->name_size, parent_item->name);
 
         err = aggr_item_export_JSON(self, parent_item);
             if (err) return err;
@@ -5722,19 +5722,15 @@ static int attr_item_list_export_JSON(struct kndConcept *self,
             if (err) return err;
         }
 
-        /*knd_log(".. export item \"%.*s\" ..",
-                item->name_size, item->name);
-                item->attr->str(item->attr); */
-
         switch (parent_item->attr->type) {
         case KND_ATTR_AGGR:
-             err = aggr_item_export_JSON(self, item);
-             if (err) return err;
-             break;
+            err = aggr_item_export_JSON(self, item);
+            if (err) return err;
+            break;
         case KND_ATTR_REF:
-             err = ref_item_export_JSON(self, item);
-             if (err) return err;
-             break;
+            err = ref_item_export_JSON(self, item);
+            if (err) return err;
+            break;
         default:
             err = out->writec(out, '"');
             if (err) return err;
@@ -5900,7 +5896,7 @@ static int export_JSON(struct kndConcept *self)
     size_t item_count;
     int i, err;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. JSON export concept: \"%s\"  "
                 "locale: %s depth: %lu",
                 self->name, self->task->locale,
@@ -6712,7 +6708,8 @@ static int apply_liquid_updates(struct kndConcept *self,
             dir->mempool = self->mempool;
 
             err = self->class_name_idx->set(self->class_name_idx,
-                                       c->name, c->name_size, (void*)dir);
+                                            c->name, c->name_size,
+                                            (void*)dir);
             if (err) return err;
         }
     }
