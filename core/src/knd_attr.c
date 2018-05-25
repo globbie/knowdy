@@ -219,8 +219,14 @@ static int export_GSP(struct kndAttr *self)
         err = out->write(out, "{t set}", strlen("{t set}"));
         if (err) return err;
     }
+
     if (self->is_implied) {
         err = out->write(out, "{impl}", strlen("{impl}"));
+        if (err) return err;
+    }
+
+    if (self->is_indexed) {
+        err = out->write(out, "{idx}", strlen("{idx}"));
         if (err) return err;
     }
 
@@ -600,6 +606,11 @@ static int parse_GSL(struct kndAttr *self,
         },
         { .type = GSL_SET_STATE,
           .name = "idx",
+          .name_size = strlen("idx"),
+          .run = confirm_idx,
+          .obj = self
+        },
+        { .name = "idx",
           .name_size = strlen("idx"),
           .run = confirm_idx,
           .obj = self
