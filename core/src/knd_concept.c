@@ -541,18 +541,19 @@ static int index_attr(struct kndConcept *self,
                       struct kndAttrItem *item)
 {
     struct kndConcept *base;
-    struct kndConcept *c;
     struct kndSet *set;
+    struct kndConcept *c = NULL;
     int err;
 
     if (DEBUG_CONC_LEVEL_TMP) {
         knd_log("\n.. indexing CURR CLASS: \"%.*s\" .. index attr: \"%.*s\" [type:%d]"
-                " refclass: \"%.*s\" (val: %.*s)",
+                " refclass: \"%.*s\" (name:%.*s val:%.*s)",
                 self->name_size, self->name,
                 attr->name_size, attr->name, attr->type,
                 attr->ref_classname_size, attr->ref_classname,
-                item->val_size, item->val);
+                item->name_size, item->name, item->val_size, item->val);
     }
+
     if (!attr->ref_classname_size) return knd_OK;
 
     /* template base class */
@@ -565,8 +566,10 @@ static int index_attr(struct kndConcept *self,
     }
 
     /* specific class */
-    err = get_class(self, item->val,
+    err = get_class(self,
+                    item->val,
                     item->val_size, &c);                                          RET_ERR();
+
     item->conc = c;
 
     if (!c->is_resolved) {
@@ -732,7 +735,7 @@ static int resolve_attr_item_list(struct kndConcept *self,
     struct kndConcept *c;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_1) {
         const char *attr_type_name = knd_attr_names[parent_attr->type];
         size_t attr_type_name_size = strlen(attr_type_name);
         knd_log(".. class %.*s to resolve attr item list \"%.*s\" "
@@ -758,7 +761,7 @@ static int resolve_attr_item_list(struct kndConcept *self,
         err = c->resolve(c, NULL);                                                RET_ERR();
     }
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_2)
         c->str(c);
 
     /* first item */
@@ -792,9 +795,17 @@ static int resolve_attr_item_list(struct kndConcept *self,
             if (err) return err;
             break;
         case KND_ATTR_REF:
-            err = resolve_class_ref(self, item->val, item->val_size,
-                                    c, &item->conc);
-            if (err) return err;
+
+            if (item->val_size) {
+                err = resolve_class_ref(self, item->val, item->val_size,
+                                        c, &item->conc);
+                if (err) return err;
+            } else {
+                err = resolve_class_ref(self, item->name, item->name_size,
+                                        c, &item->conc);
+                if (err) return err;
+            }
+            
             break;
         default:
             break;
@@ -812,7 +823,7 @@ static int resolve_attr_items(struct kndConcept *self,
     struct kndConcept *c;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_1) {
         knd_log(".. resolving attr items of class %.*s",
                 self->name_size, self->name);
     }
@@ -825,8 +836,10 @@ static int resolve_attr_items(struct kndConcept *self,
             return knd_FAIL;
         }
 
-        knd_log("== entry attr: %.*s %d", item->name_size, item->name,
-                entry->attr->is_indexed);
+        if (DEBUG_CONC_LEVEL_2) {
+            knd_log("== entry attr: %.*s %d", item->name_size, item->name,
+                    entry->attr->is_indexed);
+        }
 
         if (entry->attr->is_a_set) {
             item->attr = entry->attr;
@@ -835,7 +848,8 @@ static int resolve_attr_items(struct kndConcept *self,
             if (err) return err;
             if (item->val_size) 
                 item->num_list_elems++;
-            goto final;
+
+            continue;
         }
 
         /* single attr */
@@ -864,8 +878,6 @@ static int resolve_attr_items(struct kndConcept *self,
             /* atomic value, call a validation function? */
             break;
         }
-
-    final:
 
         if (entry->attr->is_indexed) {
             err = index_attr(self, entry->attr, item);
@@ -1160,7 +1172,7 @@ static int resolve_refs(struct kndConcept *self,
         knd_num_to_str(dir->numid, dir->id, &dir->id_size, KND_RADIX_BASE);
     }
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_1) {
         knd_log(".. resolving class \"%.*s\" id:%.*s dir numid:%zu",
                 self->name_size, self->name,
                 dir->id_size, dir->id, self->dir->numid);
@@ -5498,7 +5510,6 @@ static int parse_select_class(void *obj,
 
     return knd_OK;
 }
-
 
 static int aggr_item_export_JSON(struct kndConcept *self,
                                  struct kndAttrItem *parent_item)
