@@ -113,9 +113,27 @@ struct kndAttrItem
 
     struct kndConcept *conc;
     struct kndConcDir *conc_dir;
+    struct kndProc *proc;
+    struct kndProcDir *proc_dir;
+
     struct kndMemPool *mempool;
 
     struct kndAttrItem *next;
+};
+
+struct kndAttrEntry
+{
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+
+    struct kndAttr *attr;
+    struct kndAttrItem *attr_item;
+
+    struct kndConcDir *dir;
+
+    /* TODO: facets */
+
+    struct kndAttrEntry *next;
 };
 
 struct kndAttr 

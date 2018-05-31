@@ -191,8 +191,12 @@ kndSet_get_facet(struct kndSet  *self,
                  struct kndFacet  **result)
 {
     struct kndFacet *f;    
+
     for (size_t i = 0; i < self->num_facets; i++) {
         f = self->facets[i];
+
+        //knd_log(".. get facet: %.*s", f->attr->name_size, f->attr->name);
+
         if (f->attr == attr) {
             *result = f;
             return knd_OK;

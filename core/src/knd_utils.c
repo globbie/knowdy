@@ -15,6 +15,8 @@
 #include <limits.h>
 #include <unistd.h>
 
+#include <openssl/sha.h>
+
 #include "knd_config.h"
 #include "knd_utils.h"
 
@@ -661,4 +663,63 @@ int knd_parse_dir_size(const char *rec,
     }
 
     return knd_FAIL;
+}
+
+
+
+static const char knd_base_64[] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+void knd_base64_encode(char *encoded, const char *string, int len)
+{
+    char *p;
+    p = encoded;
+    size_t i;
+
+    for (i = 0; i < len - 2; i += 3) {
+        *p++ = knd_base_64[(string[i] >> 2) & 0x3F];
+        *p++ = knd_base_64[((string[i] & 0x3) << 4) |
+                           ((int) (string[i + 1] & 0xF0) >> 4)];
+        *p++ = knd_base_64[((string[i + 1] & 0xF) << 2) |
+                           ((int) (string[i + 2] & 0xC0) >> 6)];
+        *p++ = knd_base_64[string[i + 2] & 0x3F];
+    }
+
+    if (i < len) {
+        *p++ = knd_base_64[(string[i] >> 2) & 0x3F];
+        if (i == (len - 1)) {
+            *p++ = knd_base_64[((string[i] & 0x3) << 4)];
+            *p++ = '=';
+        }
+        else {
+            *p++ = knd_base_64[((string[i] & 0x3) << 4) |
+                               ((int) (string[i + 1] & 0xF0) >> 4)];
+            *p++ = knd_base_64[((string[i + 1] & 0xF) << 2)];
+        }
+        *p++ = '=';
+    }
+    *p++ = '\0';
+}
+
+
+int validate_secret_SHA512(const char *token,
+                           size_t token_size,
+                           const char *correct_hash,
+                           size_t correct_hash_size)
+{
+    char hash[SHA512_DIGEST_LENGTH];
+    char result[SHA512_DIGEST_LENGTH];
+
+    SHA512(token, token_size, hash); //the first iteration computation hash
+
+    // 4999 iterations
+    for (int i = 1; i < 5000; i++){
+        SHA512(hash, sizeof(hash) + token_size - 1, hash);
+    }
+ 
+    knd_base64_encode(result, hash,  sizeof(hash)); // the hash computation in base64
+
+    knd_log("RESULT:%.*s", SHA512_DIGEST_LENGTH, result);
+
+    return knd_OK;
 }

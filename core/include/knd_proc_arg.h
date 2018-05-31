@@ -112,6 +112,10 @@ struct kndProcArg
     size_t classname_size;
     struct kndConcept *conc;
 
+    size_t numval;
+    char val[KND_NAME_SIZE];
+    size_t val_size;
+
     struct glbOutput *out;
     struct kndMemPool *mempool;
     struct kndTask *task;
