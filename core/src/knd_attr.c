@@ -76,7 +76,7 @@ static void str(struct kndAttr *self)
     }
 
     if (self->ref_procname_size) {
-        knd_log("%*s  REF proc template: %s",
+        knd_log("%*s  PROC template: %s",
                 self->depth * KND_OFFSET_SIZE, "", self->ref_procname);
     }
 
@@ -244,6 +244,15 @@ static int export_GSP(struct kndAttr *self)
         err = out->write(out, "{c ", strlen("{c "));
         if (err) return err;
         err = out->write(out, self->ref_classname, self->ref_classname_size);
+        if (err) return err;
+        err = out->write(out, "}", 1);
+        if (err) return err;
+    }
+
+    if (self->ref_procname_size) {
+        err = out->write(out, "{p ", strlen("{p "));
+        if (err) return err;
+        err = out->write(out, self->ref_procname, self->ref_procname_size);
         if (err) return err;
         err = out->write(out, "}", 1);
         if (err) return err;
@@ -581,8 +590,15 @@ static int parse_GSL(struct kndAttr *self,
           .buf_size = &self->ref_classname_size,
           .max_buf_size = sizeof(self->ref_classname)
         },
-        { .name = "proc",
-          .name_size = strlen("proc"),
+        { .type = GSL_SET_STATE,
+          .name = "p",
+          .name_size = strlen("p"),
+          .buf = self->ref_procname,
+          .buf_size = &self->ref_procname_size,
+          .max_buf_size = sizeof self->ref_procname,
+        },
+        { .name = "p",
+          .name_size = strlen("p"),
           .buf = self->ref_procname,
           .buf_size = &self->ref_procname_size,
           .max_buf_size = sizeof self->ref_procname,

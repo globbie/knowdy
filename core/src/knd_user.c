@@ -248,9 +248,9 @@ kndUser_parse_numid(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t kndUser_parse_auth(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
+static gsl_err_t parse_auth(void *obj,
+                            const char *rec,
+                            size_t *total_size)
 {
     struct kndUser *self = obj;
     char sid[KND_NAME_SIZE];
@@ -267,7 +267,7 @@ static gsl_err_t kndUser_parse_auth(void *obj,
         }
     };
 
-    if (DEBUG_USER_LEVEL_2)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log("   .. parsing the AUTH rec: \"%.*s\"", 32, rec);
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -280,8 +280,8 @@ static gsl_err_t kndUser_parse_auth(void *obj,
         return parser_err;
     }
 
-    if (DEBUG_USER_LEVEL_2)
-        knd_log("++ got SID: \"%s\"", sid);
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log("++ got SID token (JWT): \"%s\"", sid);
 
     if (!sid_size) {
         knd_log("-- no SID provided :(");
@@ -306,10 +306,18 @@ static gsl_err_t parse_proc_import(void *obj,
                                    size_t *total_size)
 {
     struct kndUser *self = obj;
+    struct kndProc *proc = self->root_class->proc;
     int err;
 
+    proc->log = self->log;
+    proc->task = self->task;
+    proc->out = self->out;
+
+    proc->frozen_output_file_name = self->frozen_output_file_name;
+    proc->frozen_output_file_name_size = self->frozen_output_file_name_size;
+
     self->task->type = KND_UPDATE_STATE;
-    err = self->root_class->proc->import(self->root_class->proc, rec, total_size);
+    err = proc->import(proc, rec, total_size);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -763,7 +771,7 @@ static int parse_task(struct kndUser *self,
         },
         { .name = "auth",
           .name_size = strlen("auth"),
-          .parse = kndUser_parse_auth,
+          .parse = parse_auth,
           .obj = self
         },
         { .type = GSL_SET_STATE,

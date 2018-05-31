@@ -79,6 +79,8 @@ struct kndProcDir
     size_t name_size;
     struct kndProc *proc;
 
+    knd_state_phase phase;
+
     size_t global_offset;
     size_t curr_offset;
     size_t block_size;
@@ -153,9 +155,10 @@ struct kndProc
     struct glbOutput *dir_out;
     struct glbOutput *log;
 
-    knd_state_phase phase;
+    //knd_state_phase phase;
 
     struct kndTranslation *tr;
+    struct kndTranslation *summary;
 
     const char *locale;
     size_t locale_size;
@@ -221,6 +224,7 @@ struct kndProc
 
     bool batch_mode;
     bool is_resolved;
+
     size_t depth;
     size_t max_depth;
 

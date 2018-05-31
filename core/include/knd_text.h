@@ -72,7 +72,7 @@ struct kndTranslation
     /* TODO: quality rating, spelling.. etc  */
     int verif_level;
 
-    char val[KND_NAME_SIZE];
+    char val[KND_VAL_SIZE];
     size_t val_size;
 
     const char *seq;

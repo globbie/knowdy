@@ -88,6 +88,8 @@ static int proc_call_arg_export_GSP(struct kndProcArg *self,
  */
 static int export_JSON(struct kndProcArg *self)
 {
+    char buf[KND_NAME_SIZE];
+    size_t buf_size;
     struct glbOutput *out;
     struct kndTranslation *tr;
     struct kndProcCallArg *arg;
@@ -97,7 +99,7 @@ static int export_JSON(struct kndProcArg *self)
 
     out = self->out;
 
-    err = out->write(out, "{\"_n\":\"", strlen("{\"_n\":\""));                    RET_ERR();
+    err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
     err = out->write(out, "\"", 1);                                               RET_ERR();
 
@@ -118,6 +120,27 @@ static int export_JSON(struct kndProcArg *self)
         tr = tr->next;
     }
 
+    if (self->classname_size) {
+        err = out->write(out, ",\"class\":", strlen(",\"class\":"));        RET_ERR();
+        err = out->writec(out, '"');                                        RET_ERR();
+        err = out->write(out, self->classname, self->classname_size);       RET_ERR();
+        err = out->writec(out, '"');                                        RET_ERR();
+    }
+
+    if (self->val_size) {
+        err = out->write(out, ",\"val\":", strlen(",\"val\":"));            RET_ERR();
+        err = out->writec(out, '"');                                        RET_ERR();
+        err = out->write(out, self->val, self->val_size);                   RET_ERR();
+        err = out->writec(out, '"');                                        RET_ERR();
+    }
+
+    if (self->numval) {
+        err = out->write(out, ",\"num\":", strlen(",\"num\":"));                  RET_ERR();
+        buf_size = sprintf(buf, "%lu",
+                       (unsigned long)self->numval);
+        err = out->write(out, buf, buf_size);                                     RET_ERR();
+    }
+    
     if (self->proc_call.name_size) {
         if (self->proc_dir) {
             proc = self->proc_dir->proc;
@@ -126,6 +149,7 @@ static int export_JSON(struct kndProcArg *self)
                 proc->out = out;
                 proc->format = KND_FORMAT_JSON;
                 proc->depth = self->parent->depth + 1;
+                proc->task = self->task;
                 err = proc->export(proc);                                         RET_ERR();
             }
         } else {
@@ -157,6 +181,8 @@ static int export_JSON(struct kndProcArg *self)
 
 static int export_GSP(struct kndProcArg *self)
 {
+    char buf[KND_NAME_SIZE];
+    size_t buf_size;
     struct glbOutput *out;
     struct kndTranslation *tr;
     struct kndProcCallArg *arg;
@@ -181,6 +207,26 @@ static int export_GSP(struct kndProcArg *self)
         err = out->write(out, "]", 1);                                            RET_ERR();
     }
 
+    if (self->classname_size) {
+        err = out->write(out, "{c ", strlen("{c "));                              RET_ERR();
+        err = out->write(out, self->classname, self->classname_size);             RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
+    }
+
+    if (self->val_size) {
+        err = out->write(out, "{val ", strlen("{val "));                          RET_ERR();
+        err = out->write(out, self->val, self->val_size);                         RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
+    }
+
+    if (self->numval) {
+        err = out->write(out, "{num ", strlen("{num "));                          RET_ERR();
+        buf_size = sprintf(buf, "%lu",
+                       (unsigned long)self->numval);
+        err = out->write(out, buf, buf_size);                                     RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
+    }
+    
     if (self->proc_call.name_size) {
         err = out->write(out, "{run ", strlen("{run "));                          RET_ERR();
         err = out->write(out, self->proc_call.name, self->proc_call.name_size);   RET_ERR();
@@ -207,7 +253,6 @@ static int export_SVG(struct kndProcArg *self)
     */
     if (self->proc_dir) {
         proc = self->proc_dir->proc;
-        knd_log("PROC: %p", proc);
         proc->format = self->format;
         proc->out = self->out;
         proc->visual = self->visual;
@@ -504,6 +549,17 @@ static int parse_GSL(struct kndProcArg *self,
           .buf = self->classname,
           .buf_size = &self->classname_size,
           .max_buf_size = KND_NAME_SIZE,
+        },
+        { .name = "val",
+          .name_size = strlen("val"),
+          .buf = self->val,
+          .buf_size = &self->val_size,
+          .max_buf_size = KND_NAME_SIZE,
+        },
+        {  .name = "num",
+           .name_size = strlen("num"),
+           .parse = gsl_parse_size_t,
+           .obj = &self->numval
         },
         { .name = "run",
           .name_size = strlen("run"),

@@ -100,18 +100,6 @@ struct kndConcFolder
     struct kndConcFolder *next;
 };
 
-struct kndAttrEntry
-{
-    char name[KND_NAME_SIZE];
-    size_t name_size;
-    struct kndAttr *attr;
-    struct kndConcDir *dir;
-
-    /* TODO: facets */
-
-    struct kndAttrEntry *next;
-};
-
 struct kndConcDir
 {
     char id[KND_ID_SIZE];
@@ -192,7 +180,7 @@ struct kndConcept
     size_t num_updates;
 
     struct kndTranslation *tr;
-    struct kndText *summary;
+    struct kndTranslation *summary;
 
     /* initial scheme location */
     const char *dbpath;

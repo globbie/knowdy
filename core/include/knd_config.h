@@ -356,7 +356,7 @@ typedef enum knd_storage_type {
 #define KND_PATH_SIZE 1024
 #define KND_NAME_SIZE 512
 #define KND_SHORT_NAME_SIZE 64
-#define KND_VAL_SIZE 1024
+#define KND_VAL_SIZE 1024 * 4
 
 #define KND_UID_SIZE 7
 

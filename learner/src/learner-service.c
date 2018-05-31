@@ -410,6 +410,11 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     err = kndProc_new(&conc->proc);
     if (err) goto error;
     conc->proc->mempool = self->mempool;
+    conc->proc->log = self->task->log;
+    conc->proc->out = self->task->out;
+    conc->proc->mempool = self->mempool;
+    conc->proc->frozen_output_file_name = self->admin->frozen_output_file_name;
+    conc->proc->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
 
     err = kndRel_new(&conc->rel);
     if (err) goto error;
