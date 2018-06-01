@@ -4921,7 +4921,7 @@ static int unfreeze_class(struct kndConcept *self,
     }
     buf[buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log("\n== frozen Conc REC: \"%.*s\"",
                 buf_size, buf);
     /* done reading */
@@ -5298,8 +5298,8 @@ static int export_conc_elem_JSON(void *obj,
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("..export elem: %.*s  conc:%p",
-                elem_id_size, elem_id, c);
+        knd_log("..export elem: %.*s  conc:%p dir:%p",
+                elem_id_size, elem_id, c, dir);
 
     if (!c) {
         err = unfreeze_class(self, dir, &c);                                      RET_ERR();
@@ -5335,7 +5335,8 @@ static int export_set_JSON(struct kndConcept *self,
     struct glbOutput *out = self->out;
     int err;
 
-    err = out->write(out, "{\"_set\":{", strlen("{\"_set\":{"));                  RET_ERR();
+    err = out->write(out, "{\"_set\":{",
+                     strlen("{\"_set\":{"));                                      RET_ERR();
 
     /* TODO: present child clauses */
 
@@ -5359,7 +5360,6 @@ static int export_set_JSON(struct kndConcept *self,
     if (err && err != knd_RANGE) return err;
 
     err = out->writec(out, ']');                                                  RET_ERR();
-
 
     buf_size = sprintf(buf, ",\"batch_max\":%lu",
                        (unsigned long)self->task->batch_max);
@@ -5476,17 +5476,15 @@ static gsl_err_t present_class_selection(void *obj,
     struct glbOutput *out = self->out;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
-        knd_log(".. presenting \"%.*s\" selection: "
-                " curr_class:%p",
-                self->name_size, self->name,
-                self->curr_class);
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. presenting %.*s..",
+                self->name_size, self->name);
 
     out->reset(out);
 
     if (self->task->type == KND_SELECT_STATE) {
 
-        if (DEBUG_CONC_LEVEL_TMP)
+        if (DEBUG_CONC_LEVEL_2)
             knd_log(".. batch selection: batch size: %zu   start from: %zu",
                     self->task->batch_max, self->task->batch_from);
         
@@ -5508,7 +5506,6 @@ static gsl_err_t present_class_selection(void *obj,
         }
 
         /* TODO: intersection cache lookup  */
-
         set = self->task->sets[0];
 
         /* intersection required */
@@ -5531,7 +5528,6 @@ static gsl_err_t present_class_selection(void *obj,
             if (err) return make_gsl_err_external(err);
             return make_gsl_err(gsl_OK);
         }
-
         /* final presentation in JSON 
            TODO: choose output format */
         err = export_set_JSON(self, set);
@@ -6257,6 +6253,9 @@ static int export_concise_JSON(struct kndConcept *self)
     struct glbOutput *out = self->out;
     int err;
 
+    if (DEBUG_CONC_LEVEL_1)
+        knd_log(".. export concise JSON..");
+
     for (item = self->base_items; item; item = item->next) {
         for (attr_item = item->attrs; attr_item; attr_item = attr_item->next) {
             /* TODO assert */
@@ -6282,13 +6281,22 @@ static int export_concise_JSON(struct kndConcept *self)
                 break;
             case KND_ATTR_REF:
                 c = attr_item->conc;
-                c->out = out;
-                c->task = self->task;
-                c->format =  KND_FORMAT_JSON;
-                c->depth = self->depth;
-                c->max_depth = self->max_depth;
-                err = c->export(c);
-                if (err) return err;
+                if (c) {
+                    c->out = out;
+                    c->task = self->task;
+                    c->format =  KND_FORMAT_JSON;
+                    c->depth = self->depth;
+                    c->max_depth = self->max_depth;
+                    err = c->export(c);
+                    if (err) return err;
+                } else {
+                    err = out->write(out, "\"", strlen("\""));
+                    if (err) return err;
+                    err = out->write(out, attr_item->val, attr_item->val_size);
+                    if (err) return err;
+                    err = out->write(out, "\"", strlen("\""));
+                    if (err) return err;
+                }
                 break;
             case KND_ATTR_AGGR:
                 err = aggr_item_export_JSON(self, attr_item);
