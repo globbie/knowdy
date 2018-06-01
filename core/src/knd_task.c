@@ -94,56 +94,6 @@ static gsl_err_t parse_update(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-
-static gsl_err_t parse_iter_batch(void *obj,
-                                  const char *rec,
-                                  size_t *total_size)
-{
-    struct kndTask *self = obj;
-    struct gslTaskSpec specs[] = {
-        { .name = "size",
-          .name_size = strlen("size"),
-          .parse = gsl_parse_size_t,
-          .obj = &self->batch_max
-        },
-        { .name = "from",
-          .name_size = strlen("from"),
-          .parse = gsl_parse_size_t,
-          .obj = &self->batch_from
-        }
-    };
-    gsl_err_t err;
-
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
-
-    if (self->batch_max > KND_RESULT_MAX_BATCH_SIZE) {
-        knd_log("-- batch size exceeded: %zu (max limit: %d) :(",
-                self->batch_max, KND_RESULT_MAX_BATCH_SIZE);
-        return make_gsl_err(gsl_LIMIT);
-    }
-
-    self->start_from = self->batch_max * self->batch_from;
-
-    return make_gsl_err(gsl_OK);
-}
-
-
-static gsl_err_t parse_iter(void *obj,
-                            const char *rec,
-                            size_t *total_size)
-{
-    struct gslTaskSpec specs[] = {
-        { .name = "batch",
-          .name_size = strlen("batch"),
-          .parse = parse_iter_batch,
-          .obj = obj
-        }
-    };
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
 static gsl_err_t parse_user(void *obj,
                             const char *rec,
                             size_t *total_size)
@@ -479,7 +429,6 @@ extern int kndTask_new(struct kndTask **task)
     self->reset  = reset;
     self->run    = parse_GSL;
     self->build_report = build_report;
-    self->parse_iter = parse_iter;
 
     *task = self;
 
