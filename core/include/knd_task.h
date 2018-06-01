@@ -154,9 +154,6 @@ struct kndTask
     int (*parse)(struct kndTask *self,
                  const char     *rec,
                  size_t   *total_size);
-    gsl_err_t (*parse_iter)(void *data,
-                            const char *rec,
-                            size_t *total_size);
     int (*build_report)(struct kndTask *self);
 };
 

@@ -87,6 +87,10 @@ static int kndSet_traverse(struct kndSet *self,
     bool gotcha = false;
     int err;
 
+    if (DEBUG_SET_LEVEL_TMP)
+        knd_log(".. traverse %.*s, total elems: %zu",
+                self->base->name_size, self->base->name, self->num_elems);
+
     /* iterate over terminal elems */
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
         elem = base_idx->elems[i];

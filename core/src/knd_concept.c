@@ -1243,7 +1243,7 @@ static int resolve_base_classes(struct kndConcept *self)
     size_t classname_size;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log(".. resolving base classes of \"%.*s\"..",
                 self->name_size, self->name);
 
@@ -3237,6 +3237,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
                                         size_t *total_size)
 {
     struct kndConcept *self = obj;
+    gsl_err_t err;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. select by baseclass \"%.*s\"..", 16, rec);
@@ -3246,6 +3247,21 @@ static gsl_err_t parse_baseclass_select(void *obj,
           .run = select_by_baseclass,
           .obj = self
         },
+        { .name = "_batch",
+          .name_size = strlen("_batch"),
+          .parse = gsl_parse_size_t,
+          .obj = &self->task->batch_max
+        },
+        { .name = "_from",
+          .name_size = strlen("_from"),
+          .parse = gsl_parse_size_t,
+          .obj = &self->task->batch_from
+        },
+        {  .name = "_depth",
+           .name_size = strlen("_depth"),
+           .parse = gsl_parse_size_t,
+           .obj = &self->max_depth
+        },
         { .is_validator = true,
           .validate = parse_attr_select,
           .obj = self
@@ -3254,7 +3270,18 @@ static gsl_err_t parse_baseclass_select(void *obj,
 
     self->task->type = KND_SELECT_STATE;
 
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (err.code) return err;
+
+    if (self->task->batch_max > KND_RESULT_MAX_BATCH_SIZE) {
+        knd_log("-- batch size exceeded: %zu (max limit: %d) :(",
+                self->task->batch_max, KND_RESULT_MAX_BATCH_SIZE);
+        return make_gsl_err(gsl_LIMIT);
+    }
+
+    self->task->start_from = self->task->batch_max * self->task->batch_from;
+
+    return make_gsl_err(gsl_OK);
 }
 
 
@@ -5261,6 +5288,10 @@ static int export_conc_elem_JSON(void *obj,
                                  void *elem)
 {
     struct kndConcept *self = obj;
+
+    if (count < self->task->start_from) return knd_OK;
+    if (self->task->batch_size >= self->task->batch_max) return knd_RANGE;
+
     struct glbOutput *out = self->out;
     struct kndConcDir *dir = elem;
     struct kndConcept *c = dir->conc;
@@ -5275,16 +5306,23 @@ static int export_conc_elem_JSON(void *obj,
     }
 
     /* separator */
-    if (count) {
+    if (self->task->batch_size) {
         err = out->writec(out, ',');                                              RET_ERR();
     }
 
     c->out = out;
     c->format = KND_FORMAT_JSON;
 
-    /* TODO: set depth */
+    c->depth = 0;
+    c->max_depth = 0;
+    if (self->max_depth) {
+        c->max_depth = self->max_depth;
+    }
+
     err = c->export(c);
     if (err) return err;
+
+    self->task->batch_size++;
 
     return knd_OK;
 }
@@ -5313,13 +5351,28 @@ static int export_set_JSON(struct kndConcept *self,
                        (unsigned long)set->num_elems);
     err = out->write(out, buf, buf_size);                                         RET_ERR();
 
+
     err = out->write(out, ",\"batch\":[",
                      strlen(",\"batch\":["));                                     RET_ERR();
 
     err = set->map(set, export_conc_elem_JSON, (void*)self);
-    if (err) return err;
+    if (err && err != knd_RANGE) return err;
 
     err = out->writec(out, ']');                                                  RET_ERR();
+
+
+    buf_size = sprintf(buf, ",\"batch_max\":%lu",
+                       (unsigned long)self->task->batch_max);
+    err = out->write(out, buf, buf_size);                                        RET_ERR();
+    buf_size = sprintf(buf, ",\"batch_size\":%lu",
+                       (unsigned long)self->task->batch_size);
+    err = out->write(out, buf, buf_size);                                     RET_ERR();
+    err = out->write(out,
+                     ",\"batch_from\":", strlen(",\"batch_from\":"));         RET_ERR();
+    buf_size = sprintf(buf, "%lu",
+                       (unsigned long)self->task->batch_from);
+    err = out->write(out, buf, buf_size);                                     RET_ERR();
+
     err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
 }
@@ -5423,7 +5476,7 @@ static gsl_err_t present_class_selection(void *obj,
     struct glbOutput *out = self->out;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. presenting \"%.*s\" selection: "
                 " curr_class:%p",
                 self->name_size, self->name,
@@ -5432,6 +5485,11 @@ static gsl_err_t present_class_selection(void *obj,
     out->reset(out);
 
     if (self->task->type == KND_SELECT_STATE) {
+
+        if (DEBUG_CONC_LEVEL_TMP)
+            knd_log(".. batch selection: batch size: %zu   start from: %zu",
+                    self->task->batch_max, self->task->batch_from);
+        
         /* no sets found? */
         if (!self->task->num_sets) {
 
@@ -5756,12 +5814,6 @@ static int parse_select_class(void *obj,
           .is_selector = true,
           .parse = parse_baseclass_select,
           .obj = self
-        },
-        { .name = "_term_iterator",
-          .name_size = strlen("_term_iterator"),
-          .is_selector = true,
-          .parse = self->task->parse_iter,
-          .obj = self->task
         },
         {  .name = "_depth",
            .name_size = strlen("_depth"),
@@ -6201,6 +6253,7 @@ static int export_concise_JSON(struct kndConcept *self)
     struct kndConcItem *item;
     struct kndAttrItem *attr_item;
     struct kndAttr *attr;
+    struct kndConcept *c;
     struct glbOutput *out = self->out;
     int err;
 
@@ -6225,6 +6278,16 @@ static int export_concise_JSON(struct kndConcept *self)
             switch (attr->type) {
             case KND_ATTR_NUM:
                 err = out->write(out, attr_item->val, attr_item->val_size);
+                if (err) return err;
+                break;
+            case KND_ATTR_REF:
+                c = attr_item->conc;
+                c->out = out;
+                c->task = self->task;
+                c->format =  KND_FORMAT_JSON;
+                c->depth = self->depth;
+                c->max_depth = self->max_depth;
+                err = c->export(c);
                 if (err) return err;
                 break;
             case KND_ATTR_AGGR:
@@ -6421,6 +6484,7 @@ static int export_JSON(struct kndConcept *self)
                 if (!c) {
                     err = unfreeze_class(self, dir, &c);                          RET_ERR();
                 }
+
                 err = export_gloss_JSON(c);                                       RET_ERR();
 
                 err = export_concise_JSON(c);                                     RET_ERR();
@@ -6785,7 +6849,7 @@ static int export_GSP(struct kndConcept *self)
     }
 
     if (self->dir->descendants) {
-        err =  export_descendants_GSP(self);                                      RET_ERR();
+        err = export_descendants_GSP(self);                                      RET_ERR();
     }
 
     err = out->writec(out, '}');
