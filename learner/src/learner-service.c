@@ -469,6 +469,7 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
             knd_log("-- couldn't read any schema definitions :(");
             goto error;
         }
+        knd_log(".. conc DB coordination in progress ..");
         err = conc->coordinate(conc);
         if (err) goto error;
         conc->batch_mode = false;

@@ -189,7 +189,7 @@ static int export_GSP(struct kndProcArg *self)
     int err;
 
     out = self->out;
-    err = out->write(out, "{arg ", strlen("{arg "));                              RET_ERR();
+    err = out->writec(out, '{');                                                  RET_ERR();
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
 
     if (self->tr) {
@@ -524,7 +524,7 @@ static int parse_GSL(struct kndProcArg *self,
                      const char *rec,
                      size_t *total_size)
 {
-    if (DEBUG_PROC_ARG_LEVEL_2)
+    if (DEBUG_PROC_ARG_LEVEL_1)
         knd_log(".. Proc Arg parsing: \"%.*s\"..", 32, rec);
 
     struct gslTaskSpec specs[] = {
@@ -548,13 +548,13 @@ static int parse_GSL(struct kndProcArg *self,
           .name_size = strlen("c"),
           .buf = self->classname,
           .buf_size = &self->classname_size,
-          .max_buf_size = KND_NAME_SIZE,
+          .max_buf_size = sizeof self->classname,
         },
         { .name = "val",
           .name_size = strlen("val"),
           .buf = self->val,
           .buf_size = &self->val_size,
-          .max_buf_size = KND_NAME_SIZE,
+          .max_buf_size = sizeof self->val,
         },
         {  .name = "num",
            .name_size = strlen("num"),
@@ -795,7 +795,7 @@ static int resolve_inst(struct kndProcArg *self,
         }
     }
 
-    if (DEBUG_PROC_ARG_LEVEL_TMP)
+    if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log("++ Proc Arg instance resolved: \"%.*s\"!",
                 inst->procname_size, inst->procname);
 

@@ -206,8 +206,6 @@ static int get_proc(struct kndProc *self,
     if (dir->proc) {
         proc = dir->proc;
 
-        proc->str(proc);
-
         dir->phase = KND_SELECTED;
         proc->task = self->task;
         *result = proc;
@@ -406,7 +404,7 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
     struct kndProc *proc;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. removing proc..");
 
     if (!self->curr_proc) {
@@ -423,7 +421,7 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
 
     proc = self->curr_proc;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log("== proc to remove: \"%.*s\"\n", proc->name_size, proc->name);
 
     proc->dir->phase = KND_REMOVED;
@@ -584,11 +582,13 @@ static int export_GSP(struct kndProc *self)
     }
     
     if (self->args) {
+        err = out->write(out, "[arg ", strlen("[arg "));                          RET_ERR();
         for (arg = self->args; arg; arg = arg->next) {
             arg->format = KND_FORMAT_GSP;
             arg->out = self->out;
             err = arg->export(arg);                                               RET_ERR();
         }
+        err = out->writec(out, ']');                                              RET_ERR();
     }
 
     if (self->proc_call.name_size) {
@@ -1013,11 +1013,13 @@ static gsl_err_t parse_summary(void *obj,
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
-static gsl_err_t parse_arg(void *data,
-                           const char *rec,
-                           size_t *total_size)
+static gsl_err_t alloc_proc_arg(void *obj,
+                                const char *name __attribute__((unused)),
+                                size_t name_size __attribute__((unused)),
+                                size_t count __attribute__((unused)),
+                                void **item)
 {
-    struct kndProc *self = data;
+    struct kndProc *self = obj;
     struct kndProcArg *arg;
     int err;
 
@@ -1025,16 +1027,41 @@ static gsl_err_t parse_arg(void *data,
     if (err) return make_gsl_err_external(err);
 
     arg->task = self->task;
-    err = arg->parse(arg, rec, total_size);
-    if (err) return make_gsl_err_external(err);
-
     arg->parent = self;
+
+    *item = arg;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t append_proc_arg(void *accu,
+                                 void *item)
+{
+    struct kndProc *self = accu;
+    struct kndProcArg *arg = item;
+
     arg->next = self->args;
     self->args = arg;
     self->num_args++;
 
     return make_gsl_err(gsl_OK);
 }
+
+static gsl_err_t parse_proc_arg(void *obj,
+                                const char *rec,
+                                size_t *total_size)
+{
+    struct kndProcArg *arg = obj;
+    int err;
+
+    err = arg->parse(arg, rec, total_size);
+    if (err) return make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
+}
+
+
+
 
 static gsl_err_t arg_item_read(void *obj,
                                const char *name, size_t name_size,
@@ -1343,8 +1370,8 @@ static int import_proc(struct kndProc *self,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. import Proc: \"%.*s\".. mempool:%p", 32, rec, self->mempool);
+    if (DEBUG_PROC_LEVEL_1)
+        knd_log(".. import Proc: \"%.*s\"..", 32, rec);
 
     err  = self->mempool->new_proc(self->mempool, &proc);                         RET_ERR();
 
@@ -1356,6 +1383,14 @@ static int import_proc(struct kndProc *self,
     proc->proc_idx = self->proc_idx;
     proc->class_name_idx = self->class_name_idx;
     proc->class_idx = self->class_idx;
+
+    struct gslTaskSpec proc_arg_spec = {
+        .is_list_item = true,
+        .alloc = alloc_proc_arg,
+        .append = append_proc_arg,
+        .parse = parse_proc_arg,
+        .accu = proc
+    };
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -1405,11 +1440,11 @@ static int import_proc(struct kndProc *self,
           .buf_size = &proc->result_classname_size,
           .max_buf_size = KND_NAME_SIZE
         },
-        { .type = GSL_SET_STATE,
+        { .type = GSL_SET_ARRAY_STATE,
           .name = "arg",
           .name_size = strlen("arg"),
-          .parse = parse_arg,
-          .obj = proc
+          .parse = gsl_parse_array,
+          .obj = &proc_arg_spec
         },
         { .name = "run",
           .name_size = strlen("run"),
@@ -1423,6 +1458,10 @@ static int import_proc(struct kndProc *self,
         err = gsl_err_to_knd_err_codes(parser_err);
         goto final;
     }
+
+    if (DEBUG_PROC_LEVEL_2)
+        knd_log("++ import Proc: \"%.*s\"!",
+                proc->name_size, proc->name);
 
     if (!proc->name_size) {
         err = knd_FAIL;
@@ -1492,6 +1531,14 @@ static int parse_GSL(struct kndProc *self,
         knd_log(".. parse proc \"%.*s\" GSL: \"%.*s\"..",
                 self->name_size, self->name, 128, rec);
 
+    struct gslTaskSpec proc_arg_spec = {
+        .is_list_item = true,
+        .alloc = alloc_proc_arg,
+        .append = append_proc_arg,
+        .parse = parse_proc_arg,
+        .accu = self
+    };
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .buf = buf,
@@ -1515,10 +1562,11 @@ static int parse_GSL(struct kndProc *self,
           .parse = parse_estim,
           .obj = self
         },
-        { .name = "arg",
+        { .type = GSL_SET_ARRAY_STATE,
+          .name = "arg",
           .name_size = strlen("arg"),
-          .parse = parse_arg,
-          .obj = self
+          .parse = gsl_parse_array,
+          .obj = &proc_arg_spec
         },
         { .name = "run",
           .name_size = strlen("run"),
