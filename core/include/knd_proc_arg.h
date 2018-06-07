@@ -113,7 +113,7 @@ struct kndProcArg
     struct kndConcept *conc;
 
     size_t numval;
-    char val[KND_NAME_SIZE];
+    char val[KND_VAL_SIZE];
     size_t val_size;
 
     struct glbOutput *out;
