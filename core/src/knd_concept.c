@@ -893,6 +893,18 @@ static int resolve_aggr_item(struct kndConcept *self,
             if (err) return err;
             break;
         case KND_ATTR_REF:
+
+            knd_log(".. ref attr item to be resolved: %.*s ?",
+                    item->name_size, item->name);
+
+            classname = item->val;
+            classname_size = item->val_size;
+
+            err = resolve_class_ref(self,
+                                    classname, classname_size,
+                                    attr->conc, &item->conc);
+            if (err) return err;
+
             break;
         default:
             break;
@@ -1323,7 +1335,7 @@ static int resolve_base_classes(struct kndConcept *self)
         ref->dir = self->dir;
         c->num_children++;
 
-        if (self->task->type == KND_UPDATE_STATE) {
+        //if (self->task->type == KND_UPDATE_STATE) {
             if (DEBUG_CONC_LEVEL_2)
                 knd_log(".. update task to add class \"%.*s\" as a child of "
                         " \"%.*s\" (total children:%zu)",
@@ -1346,7 +1358,8 @@ static int resolve_base_classes(struct kndConcept *self)
             }
             c->dir->children[c->dir->num_children] = self->dir;
             c->dir->num_children++;
-        }
+            //}
+
 
         /* register as a descendant */
         set = c->dir->descendants;
@@ -1404,6 +1417,23 @@ static int resolve_refs(struct kndConcept *self,
         ref = &root->children[root->num_children];
         ref->dir = self->dir;
         root->num_children++;
+
+        dir = root->dir;
+        if (!dir->children) {
+            dir->children = calloc(KND_MAX_CONC_CHILDREN,
+                                   sizeof(struct kndConcDir*));
+            if (!dir->children) {
+                knd_log("-- no memory :(");
+                return knd_NOMEM;
+            }
+        }
+        if (dir->num_children >= KND_MAX_CONC_CHILDREN) {
+            knd_log("-- warning: num of subclasses of \"%.*s\" exceeded :(",
+                    dir->name_size, dir->name);
+            return knd_OK;
+        }
+        dir->children[dir->num_children] = self->dir;
+        dir->num_children++;
     }
 
     /* resolve and index the attrs */
@@ -4085,7 +4115,7 @@ static int parse_dir_trailer(struct kndConcept *self,
                 return err;
             } else {
                 if (DEBUG_CONC_LEVEL_2)
-                    knd_log(".. terminal class:%.*s", dir->name_size, dir->name);
+                    knd_log(".. terminal class: %.*s", dir->name_size, dir->name);
                 parent_dir->num_terminals++;
             }
         } else {
@@ -4093,7 +4123,8 @@ static int parse_dir_trailer(struct kndConcept *self,
 
             if (DEBUG_CONC_LEVEL_2)
                 knd_log(".. class:%.*s num_terminals:%zu",
-                        parent_dir->name_size, parent_dir->name, parent_dir->num_terminals);
+                        parent_dir->name_size,
+                        parent_dir->name, parent_dir->num_terminals);
             
         }
     }
@@ -4795,6 +4826,67 @@ static int resolve_classes(struct kndConcept *self)
     return knd_OK;
 }
 
+
+static void calculate_descendants(struct kndConcept *self)
+{
+    struct kndConcDir *parent_dir = NULL;
+    struct kndConcDir *dir = self->dir;
+    struct kndConcDir *subdir = NULL;
+    size_t i = 0;
+    size_t depth = 0;
+
+    dir->child_count = 0;
+    dir->prev = NULL;
+
+    while (1) {
+
+        /*knd_log(".. entry: %.*s",
+          dir->name_size, dir->name); */
+
+        if (!dir->num_children) {
+            dir->is_terminal = true;
+
+            //knd_log("== terminal class!");
+
+            parent_dir = dir->prev;
+            if (!parent_dir) break;
+
+            parent_dir->num_terminals++;
+
+            dir = parent_dir;
+            parent_dir = parent_dir->prev;
+            continue;
+        }
+
+        i = dir->child_count;
+
+        /* all children explored */
+        if (i >= dir->num_children) {
+
+            /* accumulate terminals */
+            parent_dir->num_terminals += dir->num_terminals;
+
+            dir = parent_dir;
+            parent_dir = dir->prev;
+
+            if (!parent_dir) {
+                //knd_log("++ top reached!");
+                break;
+            }
+            continue;
+        }
+
+        /* explore current child */
+        subdir = dir->children[i];
+        dir->child_count++;
+
+        subdir->prev = dir;
+        parent_dir = dir;
+        dir = subdir;
+    }
+}
+
+
 static int coordinate(struct kndConcept *self)
 {
     struct kndConcept *c;
@@ -4810,37 +4902,9 @@ static int coordinate(struct kndConcept *self)
     err = resolve_classes(self);
     if (err) return err;
 
-    /* display classes */
-    if (DEBUG_CONC_LEVEL_2) {
-        key = NULL;
-        self->class_name_idx->rewind(self->class_name_idx);
-        do {
-            self->class_name_idx->next_item(self->class_name_idx, &key, &val);
-            if (!key) break;
-            dir = (struct kndConcDir*)val;
-            c = dir->conc;
+    calculate_descendants(self);
 
-            /* terminal class */
-            if (!c->num_children) {
-                c->is_terminal = true;
-                self->num_terminals++;
-            } else {
-                self->num_terminals += c->num_terminals;
-            }
-
-            if (c->dir->reverse_attr_name_idx) {
-                c->str(c);
-                continue;
-            }
-            if (!c->num_children) continue;
-            if (!c->dir->descendants) continue;
-            if (!c->dir->descendants->num_facets) continue;
-
-            c->depth = 0;
-            //c->str(c);
-
-        } while (key);
-    }
+    knd_log("== TOTAL classes: %zu", self->dir->num_terminals);
 
     err = self->proc->coordinate(self->proc);                                     RET_ERR();
     err = self->rel->coordinate(self->rel);                                       RET_ERR();
@@ -5906,7 +5970,7 @@ static int aggr_item_export_JSON(struct kndConcept *self,
     bool in_list = false;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         knd_log(".. JSON export aggr item: %.*s  attr:%p",
                 parent_item->name_size, parent_item->name, parent_item->attr);
         c = parent_item->attr->conc;
@@ -6017,6 +6081,8 @@ static int aggr_item_export_JSON(struct kndConcept *self,
             if (err) return err;
         }
 
+        knd_log(".. item: %.*s", item->name_size, item->name);
+
         err = out->writec(out, '"');
         if (err) return err;
         err = out->write(out, item->name, item->name_size);
@@ -6029,6 +6095,9 @@ static int aggr_item_export_JSON(struct kndConcept *self,
         switch (item->attr->type) {
         case KND_ATTR_REF:
             c = item->conc;
+
+            knd_log("== item conc ref: %p", c);
+            
             c->out = out;
             c->task = self->task;
             c->format =  KND_FORMAT_JSON;
@@ -6120,9 +6189,6 @@ static int attr_item_list_export_JSON(struct kndConcept *self,
     if (parent_item->conc) {
         switch (parent_item->attr->type) {
         case KND_ATTR_AGGR:
-
-            knd_log(".. export first item \"%.*s\" ..",
-                    parent_item->name_size, parent_item->name);
 
             parent_item->id_size = sprintf(parent_item->id, "%lu",
                                            (unsigned long)count);
@@ -6512,14 +6578,17 @@ static int export_JSON(struct kndConcept *self)
 
     /* non-terminal classes */
     if (self->dir->num_children) {
-        err = out->write(out, ",\"_num_subclasses\":", strlen(",\"_num_subclasses\":"));
+        err = out->write(out, ",\"_num_subclasses\":",
+                         strlen(",\"_num_subclasses\":"));
         if (err) return err;
+
         buf_size = sprintf(buf, "%zu", self->dir->num_children);
         err = out->write(out, buf, buf_size);
         if (err) return err;
 
         if (self->dir->num_terminals) {
-            err = out->write(out, ",\"_num_terminals\":", strlen(",\"_num_terminals\":"));
+            err = out->write(out, ",\"_num_terminals\":",
+                             strlen(",\"_num_terminals\":"));
             if (err) return err;
             buf_size = sprintf(buf, "%zu", self->dir->num_terminals);
             err = out->write(out, buf, buf_size);
@@ -6527,7 +6596,8 @@ static int export_JSON(struct kndConcept *self)
         }
         
         if (self->dir->num_children) {
-            err = out->write(out, ",\"_subclasses\":[", strlen(",\"_subclasses\":["));
+            err = out->write(out, ",\"_subclasses\":[",
+                             strlen(",\"_subclasses\":["));
             if (err) return err;
 
             for (size_t i = 0; i < self->dir->num_children; i++) {
@@ -7465,7 +7535,7 @@ static int freeze_objs(struct kndConcept *self,
     out->reset(out);
     self->dir_out->reset(self->dir_out);
 
-    err = self->dir_out->write(self->dir_out, "[o", 2);                                    RET_ERR();
+    err = self->dir_out->write(self->dir_out, "[o", 2);                           RET_ERR();
     init_dir_size = self->dir_out->buf_size;
 
     key = NULL;

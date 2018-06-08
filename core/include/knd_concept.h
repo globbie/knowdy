@@ -153,6 +153,9 @@ struct kndConcDir
     struct glbOutput *out;
 
     bool is_terminal;
+
+    size_t child_count;
+    struct kndConcDir *prev;
     struct kndConcDir *next;
 };
 
