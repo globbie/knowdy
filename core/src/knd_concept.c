@@ -5970,7 +5970,7 @@ static int aggr_item_export_JSON(struct kndConcept *self,
     bool in_list = false;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         knd_log(".. JSON export aggr item: %.*s  attr:%p",
                 parent_item->name_size, parent_item->name, parent_item->attr);
         c = parent_item->attr->conc;
@@ -6080,8 +6080,6 @@ static int aggr_item_export_JSON(struct kndConcept *self,
             err = out->writec(out, ',');
             if (err) return err;
         }
-
-        knd_log(".. item: %.*s", item->name_size, item->name);
 
         err = out->writec(out, '"');
         if (err) return err;
