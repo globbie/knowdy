@@ -20,7 +20,7 @@
 #pragma once
 
 #include "knd_config.h"
-#include "knd_concept.h"
+#include "knd_class.h"
 
 struct kndState;
 struct kndObjRef;

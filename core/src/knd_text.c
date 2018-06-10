@@ -11,7 +11,7 @@
 #include "knd_elem.h"
 #include "knd_object.h"
 #include "knd_utils.h"
-#include "knd_concept.h"
+#include "knd_class.h"
 #include "knd_attr.h"
 
 #define DEBUG_TEXT_LEVEL_0 0

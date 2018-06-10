@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "knd_concept.h"
+#include "knd_class.h"
 #include "knd_object.h"
 #include "knd_sorttag.h"
 #include "knd_output.h"

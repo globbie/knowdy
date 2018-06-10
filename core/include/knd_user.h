@@ -2,7 +2,7 @@
 
 #include "knd_utils.h"
 #include "knd_task.h"
-#include "knd_concept.h"
+#include "knd_class.h"
 
 struct kndObjEntry;
 struct kndUser;

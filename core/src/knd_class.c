@@ -17,7 +17,7 @@
 #include "knd_config.h"
 #include "knd_mempool.h"
 #include "knd_state.h"
-#include "knd_concept.h"
+#include "knd_class.h"
 #include "knd_attr.h"
 #include "knd_task.h"
 #include "knd_user.h"

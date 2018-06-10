@@ -12,7 +12,7 @@
 //#include "knd_policy.h"
 #include "knd_user.h"
 #include "knd_repo.h"
-#include "knd_concept.h"
+#include "knd_class.h"
 #include "knd_object.h"
 #include "knd_proc.h"
 #include "knd_rel.h"
