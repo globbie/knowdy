@@ -9,7 +9,6 @@
 #include "knd_set.h"
 #include "knd_user.h"
 #include "knd_query.h"
-//#include "knd_sorttag.h"
 #include "knd_task.h"
 #include "knd_dict.h"
 #include "knd_class.h"
