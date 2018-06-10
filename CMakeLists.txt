@@ -61,7 +61,7 @@ set(LEARNER   "learner")
 
 set(KNOWDY_MODULES
         ${CORE}
-        ${RETRIEVER}
+#        ${RETRIEVER}
         ${LEARNER})
 
 include_directories(${CORE}/include)
