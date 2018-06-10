@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "knd_concept.h"
+#include "knd_class.h"
 #include "knd_mempool.h"
 #include "knd_attr.h"
 #include "knd_elem.h"

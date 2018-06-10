@@ -8,7 +8,7 @@
 #include "knd_rel.h"
 #include "knd_task.h"
 #include "knd_set.h"
-#include "knd_concept.h"
+#include "knd_class.h"
 #include "knd_text.h"
 #include "knd_mempool.h"
 

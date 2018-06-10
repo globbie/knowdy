@@ -5,7 +5,7 @@
 #include "knd_repo.h"
 #include "knd_user.h"
 #include "knd_output.h"
-#include "knd_concept.h"
+#include "knd_class.h"
 #include "knd_object.h"
 #include "knd_coderef.h"
 #include "knd_sorttag.h"
