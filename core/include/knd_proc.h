@@ -187,7 +187,7 @@ struct kndProc
 
     char result_classname[KND_NAME_SIZE];
     size_t result_classname_size;
-    struct kndConcept *result;
+    struct kndClass *result;
 
     size_t estim_cost;
     size_t estim_cost_total;

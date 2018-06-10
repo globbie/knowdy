@@ -27,7 +27,7 @@
 #include "knd_proc.h"
 #include "knd_config.h"
 
-struct kndConcept;
+struct kndClass;
 struct kndMemPool;
 struct kndTranslation;
 struct kndProc;
@@ -110,7 +110,7 @@ struct kndProcArg
 
     char classname[KND_NAME_SIZE];
     size_t classname_size;
-    struct kndConcept *conc;
+    struct kndClass *conc;
 
     size_t numval;
     char val[KND_VAL_SIZE];

@@ -51,15 +51,15 @@ static void del(struct kndMemPool *self)
 }
 
 static int new_class(struct kndMemPool *self,
-                     struct kndConcept **result)
+                     struct kndClass **result)
 {
-    struct kndConcept *c;
+    struct kndClass *c;
     if (self->num_classes >= self->max_classes) {
         return knd_NOMEM;
     }
     c = &self->classes[self->num_classes];
-    memset(c, 0, sizeof(struct kndConcept));
-    kndConcept_init(c);
+    memset(c, 0, sizeof(struct kndClass));
+    kndClass_init(c);
     self->num_classes++;
     *result = c;
     return knd_OK;
@@ -592,7 +592,7 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_proc_updates) self->max_proc_updates = KND_MIN_UPDATES;
     if (!self->max_proc_update_refs) self->max_proc_update_refs = KND_MIN_UPDATES;
 
-    self->classes = calloc(self->max_classes, sizeof(struct kndConcept));
+    self->classes = calloc(self->max_classes, sizeof(struct kndClass));
     if (!self->classes) {
         knd_log("-- classes not allocated :(");
         return knd_NOMEM;

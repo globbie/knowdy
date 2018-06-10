@@ -54,7 +54,7 @@ struct kndAggrObject
     char state[KND_STATE_SIZE];
 
     struct kndElem *parent;
-    struct kndConcept *conc;
+    struct kndClass *conc;
     struct kndElem *elems;
     struct kndElem *tail;
     size_t num_elems;
@@ -118,7 +118,7 @@ struct kndObject
     struct kndElem *parent;
     struct kndObject *curr_obj;
 
-    struct kndConcept *conc;
+    struct kndClass *conc;
     
     struct glbOutput *out;
     struct glbOutput *log;

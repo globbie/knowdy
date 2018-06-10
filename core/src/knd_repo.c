@@ -28,7 +28,7 @@
 
 //static int
 //kndRepo_get_guid(struct kndRepo *self,
-//                 struct kndConcept *conc,
+//                 struct kndClass *conc,
 //                 const char *obj_name,
 //                 size_t      obj_name_size,
 //                 char *result);

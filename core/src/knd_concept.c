@@ -39,7 +39,7 @@
 #define DEBUG_CONC_LEVEL_5 0
 #define DEBUG_CONC_LEVEL_TMP 1
 
-static int build_attr_name_idx(struct kndConcept *self);
+static int build_attr_name_idx(struct kndClass *self);
 
 static gsl_err_t validate_attr_item_list(void *obj,
                                          const char *name, size_t name_size,
@@ -47,44 +47,44 @@ static gsl_err_t validate_attr_item_list(void *obj,
 static gsl_err_t attr_item_append(void *accu,
                                   void *item);
 
-static int unfreeze_class(struct kndConcept *self,
+static int unfreeze_class(struct kndClass *self,
                           struct kndConcDir *dir,
-                          struct kndConcept **result);
+                          struct kndClass **result);
 
-static int read_obj_entry(struct kndConcept *self,
+static int read_obj_entry(struct kndClass *self,
                           struct kndObjEntry *entry,
                           struct kndObject **result);
 
-static int get_class(struct kndConcept *self,
+static int get_class(struct kndClass *self,
                      const char *name, size_t name_size,
-                     struct kndConcept **result);
+                     struct kndClass **result);
 
-static int get_dir_trailer(struct kndConcept *self,
+static int get_dir_trailer(struct kndClass *self,
                            struct kndConcDir *parent_dir,
                            int fd,
                            int encode_base);
-static int parse_dir_trailer(struct kndConcept *self,
+static int parse_dir_trailer(struct kndClass *self,
                              struct kndConcDir *parent_dir,
                              int fd,
                              int encode_base);
-static int get_obj_dir_trailer(struct kndConcept *self,
+static int get_obj_dir_trailer(struct kndClass *self,
                                struct kndConcDir *parent_dir,
                                int fd,
                                int encode_base);
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size);
 
-static int freeze(struct kndConcept *self);
+static int freeze(struct kndClass *self);
 
-static int read_GSL_file(struct kndConcept *self,
+static int read_GSL_file(struct kndClass *self,
                          struct kndConcFolder *parent_folder,
                          const char *filename,
                          size_t filename_size);
 
-static int get_attr(struct kndConcept *self,
+static int get_attr(struct kndClass *self,
                     const char *name, size_t name_size,
                     struct kndAttr **result);
 
-static int attr_items_export_GSP(struct kndConcept *self,
+static int attr_items_export_GSP(struct kndClass *self,
                                  struct kndAttrItem *items,
                                  size_t depth);
 static gsl_err_t read_nested_attr_item(void *obj,
@@ -96,9 +96,9 @@ static gsl_err_t import_nested_attr_item(void *obj,
 static void append_attr_item(struct kndConcItem *ci,
                              struct kndAttrItem *attr_item);
 
-static void reset_inbox(struct kndConcept *self)
+static void reset_inbox(struct kndClass *self)
 {
-    struct kndConcept *c, *next_c;
+    struct kndClass *c, *next_c;
     struct kndObject *obj, *next_obj;
 
     c = self->inbox;
@@ -151,7 +151,7 @@ static void del_conc_dir(struct kndConcDir *dir)
 }
 
 /*  class destructor */
-static void kndConcept_del(struct kndConcept *self)
+static void kndClass_del(struct kndClass *self)
 {
     if (self->attr_name_idx) self->attr_name_idx->del(self->attr_name_idx);
     if (self->dir) del_conc_dir(self->dir);
@@ -163,7 +163,7 @@ static void str_attr_items(struct kndAttrItem *items, size_t depth)
     struct kndAttrItem *list_item;
     const char *classname = "None";
     size_t classname_size = strlen("None");
-    struct kndConcept *conc;
+    struct kndClass *conc;
     size_t count = 0;
 
     for (item = items; item; item = item->next) {
@@ -213,14 +213,14 @@ static void str_attr_items(struct kndAttrItem *items, size_t depth)
     }
 }
 
-static void str(struct kndConcept *self)
+static void str(struct kndClass *self)
 {
     struct kndAttr *attr;
     struct kndAttrEntry *attr_entry;
     struct kndTranslation *tr, *t;
     struct kndConcRef *ref;
     struct kndConcItem *item;
-    struct kndConcept *c;
+    struct kndClass *c;
     struct ooDict *idx;
     struct kndSet *set;
     const char *name;
@@ -336,7 +336,7 @@ static gsl_err_t alloc_gloss_item(void *obj,
                                   size_t count,
                                   void **item)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     struct kndTranslation *tr;
 
     assert(name == NULL && name_size == 0);
@@ -357,7 +357,7 @@ static gsl_err_t alloc_gloss_item(void *obj,
 static gsl_err_t append_gloss_item(void *accu,
                                    void *item)
 {
-    struct kndConcept *self =   accu;
+    struct kndClass *self =   accu;
     struct kndTranslation *tr = item;
 
     tr->next = self->tr;
@@ -406,7 +406,7 @@ static gsl_err_t parse_gloss_array(void *obj,
                                    const char *rec,
                                    size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
 
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
@@ -430,7 +430,7 @@ static gsl_err_t alloc_summary_item(void *obj,
                                     size_t count,
                                     void **item)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     struct kndTranslation *tr;
 
     assert(name == NULL && name_size == 0);
@@ -451,7 +451,7 @@ static gsl_err_t alloc_summary_item(void *obj,
 static gsl_err_t append_summary_item(void *accu,
                                    void *item)
 {
-    struct kndConcept *self =   accu;
+    struct kndClass *self =   accu;
     struct kndTranslation *tr = item;
 
     tr->next = self->summary;
@@ -500,7 +500,7 @@ static gsl_err_t parse_summary_array(void *obj,
                                      const char *rec,
                                      size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
 
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
@@ -517,11 +517,11 @@ static gsl_err_t parse_summary_array(void *obj,
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
-static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
+static int inherit_attrs(struct kndClass *self, struct kndClass *base)
 {
     struct kndConcDir *dir;
     struct kndAttr *attr;
-    struct kndConcept *c;
+    struct kndClass *c;
     struct kndAttrEntry *entry;
     struct kndConcItem *item;
     int err;
@@ -601,8 +601,8 @@ static int inherit_attrs(struct kndConcept *self, struct kndConcept *base)
     return knd_OK;
 }
 
-static int is_base(struct kndConcept *self,
-                   struct kndConcept *child)
+static int is_base(struct kndClass *self,
+                   struct kndClass *child)
 {
     if (DEBUG_CONC_LEVEL_2) {
         knd_log(".. check inheritance: %.*s [resolved: %d] => %.*s [resolved:%d]?",
@@ -624,13 +624,13 @@ static int is_base(struct kndConcept *self,
     return knd_FAIL;
 }
 
-static int index_attr(struct kndConcept *self,
+static int index_attr(struct kndClass *self,
                       struct kndAttr *attr,
                       struct kndAttrItem *item)
 {
-    struct kndConcept *base;
+    struct kndClass *base;
     struct kndSet *set;
-    struct kndConcept *c = NULL;
+    struct kndClass *c = NULL;
     int err;
 
     if (DEBUG_CONC_LEVEL_2) {
@@ -675,13 +675,13 @@ static int index_attr(struct kndConcept *self,
 }
 
 
-static int index_attr_item_list(struct kndConcept *self,
+static int index_attr_item_list(struct kndClass *self,
                                 struct kndAttr *attr,
                                 struct kndAttrItem *parent_item)
 {
-    struct kndConcept *base;
+    struct kndClass *base;
     struct kndSet *set;
-    struct kndConcept *c = NULL;
+    struct kndClass *c = NULL;
     struct kndAttrItem *item = parent_item;
     int err;
 
@@ -728,13 +728,13 @@ static int index_attr_item_list(struct kndConcept *self,
     return knd_OK;
 }
 
-static int resolve_class_ref(struct kndConcept *self,
+static int resolve_class_ref(struct kndClass *self,
                              const char *name, size_t name_size,
-                             struct kndConcept *base,
-                             struct kndConcept **result)
+                             struct kndClass *base,
+                             struct kndClass **result)
 {
     struct kndConcDir *dir;
-    struct kndConcept *c;
+    struct kndClass *c;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -767,13 +767,13 @@ static int resolve_class_ref(struct kndConcept *self,
     return knd_OK;
 }
 
-static int resolve_proc_ref(struct kndConcept *self,
+static int resolve_proc_ref(struct kndClass *self,
                              const char *name, size_t name_size,
                              struct kndProc *base,
                              struct kndProc **result)
 {
     struct kndProcDir *procdir;
-    struct kndConcept *c;
+    struct kndClass *c;
     struct kndProc *root_proc, *proc;
     int err;
 
@@ -799,10 +799,10 @@ static int resolve_proc_ref(struct kndConcept *self,
     return knd_OK;
 }
 
-static int resolve_aggr_item(struct kndConcept *self,
+static int resolve_aggr_item(struct kndClass *self,
                              struct kndAttrItem *parent_item)
 {
-    struct kndConcept *c;
+    struct kndClass *c;
     struct kndAttrItem *item;
     struct kndAttr *attr;
     const char *classname;
@@ -914,12 +914,12 @@ static int resolve_aggr_item(struct kndConcept *self,
     return knd_OK;
 }
 
-static int resolve_attr_item_list(struct kndConcept *self,
+static int resolve_attr_item_list(struct kndClass *self,
                                   struct kndAttrItem *parent_item)
 {
     struct kndAttr *parent_attr = parent_item->attr;
     struct kndAttrItem *item;
-    struct kndConcept *c;
+    struct kndClass *c;
     int err;
 
     if (DEBUG_CONC_LEVEL_1) {
@@ -1004,12 +1004,12 @@ static int resolve_attr_item_list(struct kndConcept *self,
     return knd_OK;
 }
 
-static int resolve_attr_items(struct kndConcept *self,
+static int resolve_attr_items(struct kndClass *self,
                               struct kndConcItem *parent_item)
 {
     struct kndAttrItem *item;
     struct kndAttrEntry *entry;
-    struct kndConcept *c;
+    struct kndClass *c;
     struct kndProc *proc;
     int err;
 
@@ -1094,7 +1094,7 @@ static int resolve_attr_items(struct kndConcept *self,
     return knd_OK;
 }
 
-static int resolve_attrs(struct kndConcept *self)
+static int resolve_attrs(struct kndClass *self)
 {
     struct kndAttr *attr;
     struct kndAttrEntry *entry;
@@ -1190,7 +1190,7 @@ static int resolve_attrs(struct kndConcept *self)
     return knd_OK;
 }
 
-static int resolve_objs(struct kndConcept     *self,
+static int resolve_objs(struct kndClass     *self,
                         struct kndClassUpdate *class_update)
 {
     struct kndObject *obj;
@@ -1246,12 +1246,12 @@ static int resolve_objs(struct kndConcept     *self,
     return err;
 }
 
-static int resolve_base_classes(struct kndConcept *self)
+static int resolve_base_classes(struct kndClass *self)
 {
     struct kndConcItem *item;
     void *result;
     struct kndConcDir *dir;
-    struct kndConcept *c;
+    struct kndClass *c;
     struct kndConcRef *ref;
     struct kndSet *set;
     const char *classname;
@@ -1383,10 +1383,10 @@ static int resolve_base_classes(struct kndConcept *self)
     return knd_OK;
 }
 
-static int resolve_refs(struct kndConcept *self,
+static int resolve_refs(struct kndClass *self,
                         struct kndClassUpdate *update)
 {
-    struct kndConcept *root;
+    struct kndClass *root;
     struct kndConcRef *ref;
     struct kndConcItem *item;
     struct kndConcDir *dir;
@@ -1460,7 +1460,7 @@ static int resolve_refs(struct kndConcept *self,
     return knd_OK;
 }
 
-static int build_attr_name_idx(struct kndConcept *self)
+static int build_attr_name_idx(struct kndClass *self)
 {
     struct kndConcItem *item;
     struct kndAttr *attr;
@@ -1536,7 +1536,7 @@ static int build_attr_name_idx(struct kndConcept *self)
     return knd_OK;
 }
 
-static int get_attr(struct kndConcept *self,
+static int get_attr(struct kndClass *self,
                     const char *name, size_t name_size,
                     struct kndAttr **result)
 {
@@ -1587,7 +1587,7 @@ static gsl_err_t atomic_elem_alloc(void *obj,
                                    size_t count  __attribute__((unused)),
                                    void **item __attribute__((unused)))
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     struct kndSet *class_idx, *set;
     struct kndConcDir *dir;
     void *elem;
@@ -1674,7 +1674,7 @@ static gsl_err_t set_facet_name(void *obj, const char *name, size_t name_size)
 {
     struct kndFacet *f = obj;
     struct kndSet *parent = f->parent;
-    struct kndConcept *conc;
+    struct kndClass *conc;
     struct kndAttr *attr;
     int err;
 
@@ -1740,7 +1740,7 @@ static gsl_err_t resolve_set_base(void *obj,
 {
     struct kndSet *set = obj;
     struct kndFacet *parent_facet = set->parent_facet;
-    struct kndConcept *conc;
+    struct kndClass *conc;
     void *result;
     int err;
 
@@ -1883,7 +1883,7 @@ static gsl_err_t parse_descendants(void *obj,
                                    const char *rec,
                                    size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     struct kndSet *set;
     size_t total_elems = 0;
     gsl_err_t parser_err;
@@ -1950,7 +1950,7 @@ static gsl_err_t parse_aggr(void *obj,
                             const char *rec,
                             size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     struct kndAttr *attr;
     int err;
 
@@ -1992,7 +1992,7 @@ static gsl_err_t parse_str(void *obj,
                            const char *rec,
                            size_t *total_size)
 {
-    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndClass *self = (struct kndClass*)obj;
     struct kndAttr *attr;
     int err;
 
@@ -2026,7 +2026,7 @@ static gsl_err_t parse_bin(void *obj,
                            const char *rec,
                            size_t *total_size)
 {
-    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndClass *self = (struct kndClass*)obj;
     struct kndAttr *attr;
     int err;
 
@@ -2056,7 +2056,7 @@ static gsl_err_t parse_num(void *obj,
                            const char *rec,
                            size_t *total_size)
 {
-    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndClass *self = (struct kndClass*)obj;
     struct kndAttr *attr;
     int err;
 
@@ -2089,7 +2089,7 @@ static gsl_err_t parse_ref(void *obj,
                            const char *rec,
                            size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     struct kndAttr *attr;
     int err;
 
@@ -2122,7 +2122,7 @@ static gsl_err_t parse_proc(void *obj,
                            const char *rec,
                            size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     struct kndAttr *attr;
     int err;
 
@@ -2155,7 +2155,7 @@ static gsl_err_t parse_text(void *obj,
                             const char *rec,
                             size_t *total_size)
 {
-    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndClass *self = (struct kndClass*)obj;
     struct kndAttr *attr;
     int err;
 
@@ -2321,7 +2321,7 @@ static gsl_err_t read_nested_attr_item(void *obj,
     struct kndAttrItem *self = obj;
     struct kndAttrItem *item;
     struct kndAttr *attr;
-    struct kndConcept *conc = NULL;
+    struct kndClass *conc = NULL;
     struct ooDict *class_name_idx;
     struct kndConcDir *dir;
     gsl_err_t parser_err;
@@ -2555,7 +2555,7 @@ static gsl_err_t aggr_item_set_baseclass(void *obj,
     struct kndAttrItem *item = obj;
     struct kndSet *class_idx;
     struct kndConcDir *dir;
-    struct kndConcept *conc = item->attr->parent_conc;
+    struct kndClass *conc = item->attr->parent_conc;
     void *result;
     int err;
 
@@ -2726,7 +2726,7 @@ static gsl_err_t parse_baseclass(void *obj,
                                  const char *rec,
                                  size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     struct kndConcItem *item;
     int err;
 
@@ -2768,7 +2768,7 @@ static gsl_err_t parse_baseclass(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int assign_ids(struct kndConcept *self)
+static int assign_ids(struct kndClass *self)
 {
     struct kndConcDir *dir;
     const char *key;
@@ -2803,7 +2803,7 @@ static int assign_ids(struct kndConcept *self)
 static gsl_err_t run_sync_task(void *obj, const char *val __attribute__((unused)),
                                size_t val_size __attribute__((unused)))
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     int err;
 
     /* assign numeric ids as defined by a sorting function */
@@ -2823,7 +2823,7 @@ static gsl_err_t parse_sync_task(void *obj,
                                  const char *rec,
                                  size_t *total_size)
 {
-    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndClass *self = (struct kndClass*)obj;
 
     struct gslTaskSpec specs[] = {
         { .is_default = true,
@@ -2842,8 +2842,8 @@ static gsl_err_t parse_import_class(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct kndConcept *self = obj;
-    struct kndConcept *c;
+    struct kndClass *self = obj;
+    struct kndClass *c;
     struct kndConcDir *dir;
     int err;
     gsl_err_t parser_err;
@@ -3017,8 +3017,8 @@ static gsl_err_t parse_import_obj(void *data,
                                   const char *rec,
                                   size_t *total_size)
 {
-    struct kndConcept *self = data;
-    struct kndConcept *c;
+    struct kndClass *self = data;
+    struct kndClass *c;
     struct kndObject *obj;
     struct kndObjEntry *entry;
     int err;
@@ -3121,7 +3121,7 @@ static gsl_err_t parse_select_obj(void *data,
                                   const char *rec,
                                   size_t *total_size)
 {
-    struct kndConcept *self = data;
+    struct kndClass *self = data;
     struct kndObject *obj = self->curr_obj;
     int err;
 
@@ -3156,7 +3156,7 @@ static gsl_err_t parse_select_obj(void *data,
 static gsl_err_t select_by_baseclass(void *obj,
                                      const char *name, size_t name_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     struct kndSet *set;
     int err;
 
@@ -3185,8 +3185,8 @@ static gsl_err_t select_by_baseclass(void *obj,
 static gsl_err_t select_by_attr(void *obj,
                                 const char *name, size_t name_size)
 {
-    struct kndConcept *self = obj;
-    struct kndConcept *c;
+    struct kndClass *self = obj;
+    struct kndClass *c;
     struct kndSet *set;
     struct kndFacet *facet;
     int err, e;
@@ -3250,7 +3250,7 @@ static gsl_err_t parse_attr_select(void *obj,
                                    const char *name, size_t name_size,
                                    const char *rec, size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     struct kndAttr *attr;
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -3298,7 +3298,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
                                         const char *rec,
                                         size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     gsl_err_t err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -3349,7 +3349,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
 
 static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -3364,7 +3364,7 @@ static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
-    struct kndConcept *self = (struct kndConcept*)obj;
+    struct kndClass *self = (struct kndClass*)obj;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. set conc name: %.*s", name_size, name);
@@ -3382,7 +3382,7 @@ static gsl_err_t parse_rel_import(void *obj,
                                   const char *rec,
                                   size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     int err;
 
     err = self->rel->import(self->rel, rec, total_size);
@@ -3395,7 +3395,7 @@ static gsl_err_t parse_proc_import(void *obj,
                                    const char *rec,
                                    size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     int err;
 
     err = self->proc->import(self->proc, rec, total_size);
@@ -3406,7 +3406,7 @@ static gsl_err_t parse_proc_import(void *obj,
 
 static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     struct kndConcFolder *folder;
 
     if (DEBUG_CONC_LEVEL_1)
@@ -3483,7 +3483,7 @@ static gsl_err_t parse_include(void *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int parse_GSL(struct kndConcept *self,
+static int parse_GSL(struct kndClass *self,
                      const char *rec,
                      size_t *total_size)
 {
@@ -3507,7 +3507,7 @@ static int parse_GSL(struct kndConcept *self,
     return knd_OK;
 }
 
-static int knd_get_dir_size(struct kndConcept *self,
+static int knd_get_dir_size(struct kndClass *self,
                             size_t *dir_size,
                             size_t *chunk_size,
                             unsigned int encode_base)
@@ -3851,7 +3851,7 @@ static gsl_err_t procdir_entry_append(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
-static int idx_class_name(struct kndConcept *self,
+static int idx_class_name(struct kndClass *self,
                           struct kndConcDir *dir,
                           int fd)
 {
@@ -3906,7 +3906,7 @@ static int idx_class_name(struct kndConcept *self,
     return knd_OK;
 }
 
-static int get_dir_trailer(struct kndConcept *self,
+static int get_dir_trailer(struct kndClass *self,
                            struct kndConcDir *parent_dir,
                            int fd,
                            int encode_base)
@@ -3985,7 +3985,7 @@ static int get_dir_trailer(struct kndConcept *self,
     return knd_OK;
 }
 
-static int parse_dir_trailer(struct kndConcept *self,
+static int parse_dir_trailer(struct kndClass *self,
                              struct kndConcDir *parent_dir,
                              int fd,
                              int encode_base)
@@ -4240,7 +4240,7 @@ static gsl_err_t obj_entry_append(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
-static int parse_obj_dir_trailer(struct kndConcept *self,
+static int parse_obj_dir_trailer(struct kndClass *self,
                                  struct kndConcDir *parent_dir,
                                  int fd)
 {
@@ -4294,7 +4294,7 @@ static int parse_obj_dir_trailer(struct kndConcept *self,
     return knd_OK;
 }
 
-static int get_obj_dir_trailer(struct kndConcept *self,
+static int get_obj_dir_trailer(struct kndClass *self,
                                 struct kndConcDir *parent_dir,
                                 int fd,
                                 int encode_base)
@@ -4363,7 +4363,7 @@ static int get_obj_dir_trailer(struct kndConcept *self,
 }
 
 
-static int open_frozen_DB(struct kndConcept *self)
+static int open_frozen_DB(struct kndClass *self)
 {
     const char *filename;
     size_t filename_size;
@@ -4423,13 +4423,13 @@ static int open_frozen_DB(struct kndConcept *self)
 }
 
 static int 
-kndConcept_write_filepath(struct glbOutput *out,
-                          struct kndConcFolder *folder)
+kndClass_write_filepath(struct glbOutput *out,
+                        struct kndConcFolder *folder)
 {
     int err;
     
     if (folder->parent) {
-        err = kndConcept_write_filepath(out, folder->parent);
+        err = kndClass_write_filepath(out, folder->parent);
         if (err) return err;
     }
 
@@ -4439,7 +4439,7 @@ kndConcept_write_filepath(struct glbOutput *out,
     return knd_OK;
 }
 
-static int read_GSL_file(struct kndConcept *self,
+static int read_GSL_file(struct kndClass *self,
                          struct kndConcFolder *parent_folder,
                          const char *filename,
                          size_t filename_size)
@@ -4463,7 +4463,7 @@ static int read_GSL_file(struct kndConcept *self,
     if (err) return err;
 
     if (parent_folder) {
-        err = kndConcept_write_filepath(out, parent_folder);
+        err = kndClass_write_filepath(out, parent_folder);
         if (err) return err;
     }
 
@@ -4529,7 +4529,7 @@ static gsl_err_t conc_item_alloc(void *obj,
                                  size_t count  __attribute__((unused)),
                                  void **item)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     struct kndConcItem *ci;
     int err;
 
@@ -4545,7 +4545,7 @@ static gsl_err_t conc_item_alloc(void *obj,
 static gsl_err_t conc_item_append(void *accu,
                                   void *item)
 {
-    struct kndConcept *self = accu;
+    struct kndClass *self = accu;
     struct kndConcItem *ci = item;
 
     ci->next = self->base_items;
@@ -4695,7 +4695,7 @@ static gsl_err_t parse_conc_item_array(void *obj,
                                        const char *rec,
                                        size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
 
     struct gslTaskSpec ci_spec = {
         .is_list_item = true,
@@ -4708,7 +4708,7 @@ static gsl_err_t parse_conc_item_array(void *obj,
     return gsl_parse_array(&ci_spec, rec, total_size);
 }
 
-static int read_GSP(struct kndConcept *self,
+static int read_GSP(struct kndClass *self,
                     const char *rec,
                     size_t *total_size)
 {
@@ -4789,9 +4789,9 @@ static int read_GSP(struct kndConcept *self,
 }
 
 
-static int resolve_classes(struct kndConcept *self)
+static int resolve_classes(struct kndClass *self)
 {
-    struct kndConcept *c;
+    struct kndClass *c;
     struct kndConcDir *dir;
     const char *key;
     void *val;
@@ -4827,7 +4827,7 @@ static int resolve_classes(struct kndConcept *self)
 }
 
 
-static void calculate_descendants(struct kndConcept *self)
+static void calculate_descendants(struct kndClass *self)
 {
     struct kndConcDir *parent_dir = NULL;
     struct kndConcDir *dir = self->dir;
@@ -4885,9 +4885,9 @@ static void calculate_descendants(struct kndConcept *self)
     }
 }
 
-static int coordinate(struct kndConcept *self)
+static int coordinate(struct kndClass *self)
 {
-    struct kndConcept *c;
+    struct kndClass *c;
     struct kndConcDir *dir;
     const char *key;
     void *val;
@@ -4910,7 +4910,7 @@ static int coordinate(struct kndConcept *self)
     return knd_OK;
 }
 
-static int expand_attr_ref_list(struct kndConcept *self,
+static int expand_attr_ref_list(struct kndClass *self,
                                 struct kndAttrItem *parent_item)
 {
     struct kndAttrItem *item;
@@ -4926,7 +4926,7 @@ static int expand_attr_ref_list(struct kndConcept *self,
     return knd_OK;
 }
 
-static int expand_attrs(struct kndConcept *self,
+static int expand_attrs(struct kndClass *self,
                         struct kndAttrItem *parent_item)
 {
     struct kndAttrItem *item;
@@ -4947,7 +4947,7 @@ static int expand_attrs(struct kndConcept *self,
     return knd_OK;
 }
 
-static int expand_refs(struct kndConcept *self)
+static int expand_refs(struct kndClass *self)
 {
     struct kndConcItem *item;
     int err;
@@ -4960,13 +4960,13 @@ static int expand_refs(struct kndConcept *self)
     return knd_OK;
 }
 
-static int unfreeze_class(struct kndConcept *self,
+static int unfreeze_class(struct kndClass *self,
                           struct kndConcDir *dir,
-                          struct kndConcept **result)
+                          struct kndClass **result)
 {
     char buf[KND_MED_BUF_SIZE];
     size_t buf_size = 0;
-    struct kndConcept *c;
+    struct kndClass *c;
     size_t chunk_size;
     const char *filename;
     size_t filename_size;
@@ -5104,12 +5104,12 @@ static int unfreeze_class(struct kndConcept *self,
     return err;
 }
 
-static int get_class(struct kndConcept *self,
+static int get_class(struct kndClass *self,
                      const char *name, size_t name_size,
-                     struct kndConcept **result)
+                     struct kndClass **result)
 {
     struct kndConcDir *dir;
-    struct kndConcept *c;
+    struct kndClass *c;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -5177,7 +5177,7 @@ static int get_class(struct kndConcept *self,
     return knd_OK;
 }
 
-static int get_obj(struct kndConcept *self,
+static int get_obj(struct kndClass *self,
                    const char *name, size_t name_size,
                    struct kndObject **result)
 {
@@ -5251,7 +5251,7 @@ static int get_obj(struct kndConcept *self,
     return knd_OK;
 }
 
-static int read_obj_entry(struct kndConcept *self,
+static int read_obj_entry(struct kndClass *self,
                           struct kndObjEntry *entry,
                           struct kndObject **result)
 {
@@ -5385,14 +5385,14 @@ static int export_conc_elem_JSON(void *obj,
                                  size_t count,
                                  void *elem)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
 
     if (count < self->task->start_from) return knd_OK;
     if (self->task->batch_size >= self->task->batch_max) return knd_RANGE;
 
     struct glbOutput *out = self->out;
     struct kndConcDir *dir = elem;
-    struct kndConcept *c = dir->conc;
+    struct kndClass *c = dir->conc;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -5425,7 +5425,7 @@ static int export_conc_elem_JSON(void *obj,
     return knd_OK;
 }
 
-static int export_set_JSON(struct kndConcept *self,
+static int export_set_JSON(struct kndClass *self,
                            struct kndSet *set)
 {
     char buf[KND_NAME_SIZE];
@@ -5490,7 +5490,7 @@ static int export_conc_id_GSP(void *obj,
 }
 
 
-static int export_facets_GSP(struct kndConcept *self, struct kndSet *set)
+static int export_facets_GSP(struct kndClass *self, struct kndSet *set)
 {
     struct glbOutput *out = self->out;
     struct kndSet *subset;
@@ -5536,7 +5536,7 @@ static int export_facets_GSP(struct kndConcept *self, struct kndSet *set)
     return knd_OK;
 }
 
-static int export_descendants_GSP(struct kndConcept *self)
+static int export_descendants_GSP(struct kndClass *self)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -5568,8 +5568,8 @@ static gsl_err_t present_class_selection(void *obj,
                                          const char *val __attribute__((unused)),
                                          size_t val_size __attribute__((unused)))
 {
-    struct kndConcept *self = obj;
-    struct kndConcept *c;
+    struct kndClass *self = obj;
+    struct kndClass *c;
     struct kndSet *set;
     struct glbOutput *out = self->out;
     int err;
@@ -5657,8 +5657,8 @@ static gsl_err_t present_class_selection(void *obj,
 
 static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 {
-    struct kndConcept *self = obj;
-    struct kndConcept *c;
+    struct kndClass *self = obj;
+    struct kndClass *c;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -5684,8 +5684,8 @@ static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_siz
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
-    struct kndConcept *self = obj;
-    struct kndConcept *c;
+    struct kndClass *self = obj;
+    struct kndClass *c;
     struct kndConcDir *dir;
     void *result;
     long numval;
@@ -5731,8 +5731,8 @@ static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_siz
 
 static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
 {
-    struct kndConcept *self = obj;
-    struct kndConcept *c;
+    struct kndClass *self = obj;
+    struct kndClass *c;
     int err;
 
     if (DEBUG_CONC_LEVEL_1)
@@ -5772,14 +5772,14 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
 }
 
 
-static int select_delta(struct kndConcept *self,
+static int select_delta(struct kndClass *self,
                         const char *rec,
                         size_t *total_size)
 {
     struct kndStateControl *state_ctrl = self->task->state_ctrl;
     struct kndUpdate *update;
     struct kndClassUpdate *class_update;
-    struct kndConcept *c;
+    struct kndClass *c;
     int err;
     gsl_err_t parser_err;
 
@@ -5844,7 +5844,7 @@ static gsl_err_t parse_select_class_delta(void *data,
                                           const char *rec,
                                           size_t *total_size)
 {
-    struct kndConcept *self = data;
+    struct kndClass *self = data;
     int err;
 
     err = select_delta(self, rec, total_size);
@@ -5857,8 +5857,8 @@ static int parse_select_class(void *obj,
                               const char *rec,
                               size_t *total_size)
 {
-    struct kndConcept *self = obj;
-    struct kndConcept *c;
+    struct kndClass *self = obj;
+    struct kndClass *c;
     int err;
     gsl_err_t parser_err;
 
@@ -5958,13 +5958,13 @@ static int parse_select_class(void *obj,
     return knd_OK;
 }
 
-static int aggr_item_export_JSON(struct kndConcept *self,
+static int aggr_item_export_JSON(struct kndClass *self,
                                  struct kndAttrItem *parent_item)
 {
     struct glbOutput *out = self->out;
     struct kndAttrItem *item;
     struct kndAttr *attr;
-    struct kndConcept *c;
+    struct kndClass *c;
     bool in_list = false;
     int err;
 
@@ -6125,10 +6125,10 @@ static int aggr_item_export_JSON(struct kndConcept *self,
     return knd_OK;
 }
 
-static int ref_item_export_JSON(struct kndConcept *self,
+static int ref_item_export_JSON(struct kndClass *self,
                                 struct kndAttrItem *item)
 {
-    struct kndConcept *c;
+    struct kndClass *c;
     int err;
 
     assert(item->conc != NULL);
@@ -6145,7 +6145,7 @@ static int ref_item_export_JSON(struct kndConcept *self,
     return knd_OK;
 }
 
-static int proc_item_export_JSON(struct kndConcept *self,
+static int proc_item_export_JSON(struct kndClass *self,
                                  struct kndAttrItem *item)
 {
     struct kndProc *proc;
@@ -6165,7 +6165,7 @@ static int proc_item_export_JSON(struct kndConcept *self,
     return knd_OK;
 }
 
-static int attr_item_list_export_JSON(struct kndConcept *self,
+static int attr_item_list_export_JSON(struct kndClass *self,
                                       struct kndAttrItem *parent_item)
 {
     struct glbOutput *out = self->out;
@@ -6271,13 +6271,13 @@ static int attr_item_list_export_JSON(struct kndConcept *self,
     return knd_OK;
 }
 
-static int attr_items_export_JSON(struct kndConcept *self,
+static int attr_items_export_JSON(struct kndClass *self,
                                   struct kndAttrItem *items,
                                   size_t depth __attribute__((unused)))
 {
     struct kndAttrItem *item;
     struct glbOutput *out;
-    struct kndConcept *c;
+    struct kndClass *c;
     int err;
 
     out = self->out;
@@ -6346,7 +6346,7 @@ static int attr_items_export_JSON(struct kndConcept *self,
     return knd_OK;
 }
 
-static int export_gloss_JSON(struct kndConcept *self)
+static int export_gloss_JSON(struct kndClass *self)
 {
     struct kndTranslation *tr;
     struct glbOutput *out = self->out;
@@ -6375,12 +6375,12 @@ static int export_gloss_JSON(struct kndConcept *self)
     return knd_OK;
 }
 
-static int export_concise_JSON(struct kndConcept *self)
+static int export_concise_JSON(struct kndClass *self)
 {
     struct kndConcItem *item;
     struct kndAttrItem *attr_item;
     struct kndAttr *attr;
-    struct kndConcept *c;
+    struct kndClass *c;
     struct glbOutput *out = self->out;
     int err;
 
@@ -6456,13 +6456,13 @@ static int export_concise_JSON(struct kndConcept *self)
     return knd_OK;
 }
 
-static int export_JSON(struct kndConcept *self)
+static int export_JSON(struct kndClass *self)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
     struct kndAttr *attr;
 
-    struct kndConcept *c;
+    struct kndClass *c;
     struct kndConcItem *item;
     struct kndConcRef *ref;
     struct kndConcDir *dir;
@@ -6704,12 +6704,12 @@ static int export_JSON(struct kndConcept *self)
     return knd_OK;
 }
 
-static int ref_list_export_GSP(struct kndConcept *self,
+static int ref_list_export_GSP(struct kndClass *self,
                                struct kndAttrItem *parent_item)
 {
     struct kndAttrItem *item;
     struct glbOutput *out;
-    struct kndConcept *c;
+    struct kndClass *c;
     int err;
 
     out = self->out;
@@ -6751,11 +6751,11 @@ static int ref_list_export_GSP(struct kndConcept *self,
     return knd_OK;
 }
 
-static int aggr_item_export_GSP(struct kndConcept *self,
+static int aggr_item_export_GSP(struct kndClass *self,
                                 struct kndAttrItem *parent_item)
 {
     struct glbOutput *out = self->out;
-    struct kndConcept *c = parent_item->conc;
+    struct kndClass *c = parent_item->conc;
     struct kndAttrItem *item;
     struct kndAttr *attr;
     int err;
@@ -6836,12 +6836,12 @@ static int aggr_item_export_GSP(struct kndConcept *self,
     return knd_OK;
 }
 
-static int aggr_list_export_GSP(struct kndConcept *self,
+static int aggr_list_export_GSP(struct kndClass *self,
                                 struct kndAttrItem *parent_item)
 {
     struct kndAttrItem *item;
     struct glbOutput *out = self->out;
-    struct kndConcept *c;
+    struct kndClass *c;
     int err;
 
     if (DEBUG_CONC_LEVEL_1) {
@@ -6877,7 +6877,7 @@ static int aggr_list_export_GSP(struct kndConcept *self,
     return knd_OK;
 }
 
-static int attr_items_export_GSP(struct kndConcept *self,
+static int attr_items_export_GSP(struct kndClass *self,
                                  struct kndAttrItem *items,
                                  size_t depth  __attribute__((unused)))
 {
@@ -6928,7 +6928,7 @@ static int attr_items_export_GSP(struct kndConcept *self,
     return knd_OK;
 }
 
-static int export_GSP(struct kndConcept *self)
+static int export_GSP(struct kndClass *self)
 {
     struct kndAttr *attr;
     struct kndConcItem *item;
@@ -7034,13 +7034,13 @@ static int export_GSP(struct kndConcept *self)
     return knd_OK;
 }
 
-static int build_class_updates(struct kndConcept *self,
+static int build_class_updates(struct kndClass *self,
                                struct kndUpdate *update)
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size;
     struct glbOutput *out = self->task->update;
-    struct kndConcept *c;
+    struct kndClass *c;
     struct kndObject *obj;
     struct kndClassUpdate *class_update;
     int err;
@@ -7082,7 +7082,7 @@ static int build_class_updates(struct kndConcept *self,
     return knd_OK;
 }
 
-static int export_updates(struct kndConcept *self,
+static int export_updates(struct kndClass *self,
                           struct kndUpdate *update)
 {
     char buf[KND_SHORT_NAME_SIZE];
@@ -7130,8 +7130,8 @@ static int export_updates(struct kndConcept *self,
 
 static gsl_err_t set_liquid_class_id(void *obj, const char *val, size_t val_size)
 {
-    struct kndConcept *self = (struct kndConcept*)obj;
-    struct kndConcept *c;
+    struct kndClass *self = (struct kndClass*)obj;
+    struct kndClass *c;
     long numval = 0;
     int err;
 
@@ -7159,7 +7159,7 @@ static gsl_err_t set_liquid_class_id(void *obj, const char *val, size_t val_size
 
 static gsl_err_t run_get_liquid_class(void *obj, const char *name, size_t name_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -7174,9 +7174,9 @@ static gsl_err_t run_get_liquid_class(void *obj, const char *name, size_t name_s
 static gsl_err_t parse_liquid_class_id(void *obj,
                                        const char *rec, size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     struct kndUpdate *update = self->curr_update;
-    struct kndConcept *c;
+    struct kndClass *c;
     struct kndClassUpdate *class_update;
     struct kndClassUpdateRef *class_update_ref;
     int err;
@@ -7218,7 +7218,7 @@ static gsl_err_t parse_liquid_class_id(void *obj,
 static gsl_err_t parse_liquid_class_update(void *obj,
                                            const char *rec, size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     struct kndClassUpdate **class_updates;
 
     if (DEBUG_CONC_LEVEL_2) {
@@ -7251,7 +7251,7 @@ static gsl_err_t parse_liquid_class_update(void *obj,
 static gsl_err_t parse_liquid_rel_update(void *obj,
                                          const char *rec, size_t *total_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     int err;
 
     if (!self->curr_update) return make_gsl_err_external(knd_FAIL);
@@ -7265,7 +7265,7 @@ static gsl_err_t parse_liquid_rel_update(void *obj,
 
 static gsl_err_t new_liquid_update(void *obj, const char *val, size_t val_size)
 {
-    struct kndConcept *self = obj;
+    struct kndClass *self = obj;
     struct kndUpdate *update;
     long numval = 0;
     int err;
@@ -7286,11 +7286,11 @@ static gsl_err_t new_liquid_update(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int apply_liquid_updates(struct kndConcept *self,
+static int apply_liquid_updates(struct kndClass *self,
                                 const char *rec,
                                 size_t *total_size)
 {
-    struct kndConcept *c;
+    struct kndClass *c;
     struct kndConcDir *dir;
     struct kndRel *rel;
     struct kndStateControl *state_ctrl = self->task->state_ctrl;
@@ -7359,9 +7359,9 @@ static int apply_liquid_updates(struct kndConcept *self,
     return knd_OK;
 }
 
-static int knd_update_state(struct kndConcept *self)
+static int knd_update_state(struct kndClass *self)
 {
-    struct kndConcept *c;
+    struct kndClass *c;
     struct kndStateControl *state_ctrl = self->task->state_ctrl;
     struct kndUpdate *update;
     struct kndClassUpdate *class_update;
@@ -7428,7 +7428,7 @@ static int knd_update_state(struct kndConcept *self)
     return knd_OK;
 }
 
-static int restore(struct kndConcept *self)
+static int restore(struct kndClass *self)
 {
     char state_buf[KND_STATE_SIZE];
     char last_state_buf[KND_STATE_SIZE];
@@ -7502,15 +7502,15 @@ static int restore(struct kndConcept *self)
     return knd_OK;
 }
 
-static int export(struct kndConcept *self)
+static int export(struct kndClass *self)
 {
     switch(self->format) {
     case KND_FORMAT_JSON:
         return export_JSON(self);
         /*case KND_FORMAT_HTML:
-        return kndConcept_export_HTML(self);
+        return kndClass_export_HTML(self);
     case KND_FORMAT_GSL:
-    return kndConcept_export_GSL(self); */
+    return kndClass_export_GSL(self); */
     default:
         break;
     }
@@ -7519,7 +7519,7 @@ static int export(struct kndConcept *self)
     return knd_FAIL;
 }
  
-static int freeze_objs(struct kndConcept *self,
+static int freeze_objs(struct kndClass *self,
                        size_t *total_frozen_size,
                        char *output,
                        size_t *total_size)
@@ -7666,14 +7666,14 @@ static int freeze_objs(struct kndConcept *self,
     return knd_OK;
 }
 
-static int freeze_subclasses(struct kndConcept *self,
+static int freeze_subclasses(struct kndClass *self,
                              size_t *total_frozen_size,
                              char *output,
                              size_t *total_size)
 {
     char buf[KND_SHORT_NAME_SIZE] = {0};
     size_t buf_size;
-    struct kndConcept *c;
+    struct kndClass *c;
     struct kndConcRef *ref;
     char *curr_dir = output;
     size_t curr_dir_size = 0;
@@ -7778,7 +7778,7 @@ static int freeze_rels(struct kndRel *self,
     return knd_OK;
 }
 
-static int freeze(struct kndConcept *self)
+static int freeze(struct kndClass *self)
 {
     char *curr_dir = self->dir_buf;
     size_t curr_dir_size = 0;
@@ -7901,9 +7901,9 @@ static int freeze(struct kndConcept *self)
 }
 
 /*  Concept initializer */
-extern void kndConcept_init(struct kndConcept *self)
+extern void kndClass_init(struct kndClass *self)
 {
-    self->del = kndConcept_del;
+    self->del = kndClass_del;
     self->str = str;
     self->open = open_frozen_DB;
     self->load = read_GSL_file;
@@ -7929,20 +7929,20 @@ extern void kndConcept_init(struct kndConcept *self)
 }
 
 extern int
-kndConcept_new(struct kndConcept **c, struct kndMemPool *mempool)
+kndClass_new(struct kndClass **c, struct kndMemPool *mempool)
 {
-    struct kndConcept *self;
+    struct kndClass *self;
 
     if (mempool) {
-        self = malloc(sizeof(struct kndConcept));
+        self = malloc(sizeof(struct kndClass));
         self->mempool = mempool;
     } else {
-        self = malloc(sizeof(struct kndConcept));
+        self = malloc(sizeof(struct kndClass));
         if (!self) return knd_NOMEM;
-        memset(self, 0, sizeof(struct kndConcept));
+        memset(self, 0, sizeof(struct kndClass));
     }
 
-    kndConcept_init(self);
+    kndClass_init(self);
     *c = self;
     return knd_OK;
 }

@@ -394,7 +394,7 @@ kndObject_export(struct kndObject *self)
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct kndObject *self = (struct kndObject*)obj;
-    struct kndConcept *conc;
+    struct kndClass *conc;
     struct kndObjEntry *entry;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -555,7 +555,7 @@ kndObject_validate_attr(struct kndObject *self,
                         struct kndAttr **result,
                         struct kndElem **result_elem)
 {
-    struct kndConcept *conc;
+    struct kndClass *conc;
     struct kndAttr *attr = NULL;
     struct kndElem *elem = NULL;
     int err, e;
@@ -605,8 +605,8 @@ static gsl_err_t parse_elem(void *data,
     if (self->curr_obj) {
         self = self->curr_obj;
     }
-    struct kndConcept *root_class;
-    struct kndConcept *c;
+    struct kndClass *root_class;
+    struct kndClass *c;
     struct kndObject *obj;
     struct kndElem *elem = NULL;
     struct kndAttr *attr = NULL;
@@ -970,8 +970,8 @@ static gsl_err_t select_rel(void *obj,
 static gsl_err_t remove_obj(void *data, const char *name __attribute__((unused)), size_t name_size __attribute__((unused)))
 {
     struct kndObject *self = data;
-    struct kndConcept *conc = self->conc;
-    struct kndConcept *root_class = conc->root_class;
+    struct kndClass *conc = self->conc;
+    struct kndClass *root_class = conc->root_class;
     struct kndObject *obj;
     struct kndState *state;
     int err;
@@ -1098,7 +1098,7 @@ static gsl_err_t run_present_obj(void *data, const char *val __attribute__((unus
                                  size_t val_size __attribute__((unused)))
 {
     struct kndObject *self = data;
-    struct kndConcept *conc = self->conc;
+    struct kndClass *conc = self->conc;
     struct kndObject *obj;
     int err;
 
@@ -1128,7 +1128,7 @@ static gsl_err_t run_present_obj(void *data, const char *val __attribute__((unus
 static gsl_err_t run_get_obj(void *obj, const char *name, size_t name_size)
 {
     struct kndObject *self = obj;
-    struct kndConcept *conc = self->conc;
+    struct kndClass *conc = self->conc;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);

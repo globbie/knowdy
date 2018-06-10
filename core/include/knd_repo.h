@@ -4,7 +4,7 @@
 #include "knd_facet.h"
 #include "knd_dict.h"
 
-struct kndConcept;
+struct kndClass;
 struct kndObject;
 struct kndRepo;
 struct kndRepoMigration;
@@ -121,7 +121,7 @@ struct kndRepo
     
     size_t intersect_matrix_size;
     
-    struct kndConcept *curr_class;
+    struct kndClass *curr_class;
     
     /**********  interface methods  **********/
     int (*del)(struct kndRepo *self);
@@ -150,10 +150,10 @@ struct kndRepo
 
     int (*get_obj)(struct kndRepo *self,  struct kndSpecArg *args, size_t num_args);
 
-    int (*get_cache)(struct kndRepo *self, struct kndConcept *c,
+    int (*get_cache)(struct kndRepo *self, struct kndClass *c,
                      struct kndRepoCache **cache);
 
-    int (*get_guid)(struct kndRepo *self, struct kndConcept *c,
+    int (*get_guid)(struct kndRepo *self, struct kndClass *c,
                     const char *obj_name,
                     size_t      obj_name_size,
                     char *result);
