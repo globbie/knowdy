@@ -248,8 +248,8 @@ struct kndClass
 
     //struct kndConcRef children[KND_MAX_CONC_CHILDREN];
     //size_t num_children;
-    size_t num_terminals;
-    bool is_terminal;
+    //size_t num_terminals;
+    //bool is_terminal;
 
     //struct kndConcRef frozen_dir[KND_MAX_CONC_CHILDREN];
     //size_t frozen_dir_size;
