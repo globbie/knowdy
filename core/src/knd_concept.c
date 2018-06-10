@@ -4831,8 +4831,6 @@ static void calculate_descendants(struct kndClass *self)
           dir->name_size, dir->name); */
 
         if (!dir->num_children) {
-            dir->is_terminal = true;
-
             //knd_log("== terminal class!");
 
             parent_dir = dir->prev;

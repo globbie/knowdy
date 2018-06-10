@@ -152,8 +152,6 @@ struct kndClassRef
     struct kndTask *task;
     struct glbOutput *out;
 
-    bool is_terminal;
-
     size_t child_count;
     struct kndClassRef *prev;
     struct kndClassRef *next;
