@@ -318,6 +318,7 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
 
     err = glbOutput_new(&self->out, KND_IDX_BUF_SIZE);
     if (err != knd_OK) goto error;
+
     err = glbOutput_new(&self->log, KND_MED_BUF_SIZE);
     if (err != knd_OK) goto error;
 
