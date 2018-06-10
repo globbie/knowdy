@@ -65,7 +65,9 @@ struct kndUser
     size_t num_users;
 
     struct kndObject *curr_user;
+
     struct kndConcept *root_class;
+
     struct kndTask *task;
     struct glbOutput *out;
     struct glbOutput *log;

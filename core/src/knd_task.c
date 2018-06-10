@@ -82,7 +82,7 @@ static gsl_err_t parse_update(void *obj,
           .name_size = strlen("_ts"),
           .buf = self->timestamp,
           .buf_size = &self->timestamp_size,
-          .max_buf_size = KND_NAME_SIZE
+          .max_buf_size = sizeof self->timestamp
         },
         { .name = "user",
           .name_size = strlen("user"),

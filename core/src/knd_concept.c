@@ -4839,7 +4839,6 @@ static void calculate_descendants(struct kndConcept *self)
     dir->prev = NULL;
 
     while (1) {
-
         /*knd_log(".. entry: %.*s",
           dir->name_size, dir->name); */
 
@@ -4885,7 +4884,6 @@ static void calculate_descendants(struct kndConcept *self)
         dir = subdir;
     }
 }
-
 
 static int coordinate(struct kndConcept *self)
 {
@@ -6176,6 +6174,12 @@ static int attr_item_list_export_JSON(struct kndConcept *self,
     size_t count = 0;
     int err;
 
+    if (DEBUG_CONC_LEVEL_2) {
+        knd_log(".. export JSON list: %.*s OUTPUT: %.*s\n\n",
+                parent_item->name_size, parent_item->name,
+                out->buf_size, out->buf);
+    }
+
     err = out->writec(out, '"');
     if (err) return err;
     err = out->write(out, parent_item->name, parent_item->name_size);
@@ -6380,15 +6384,16 @@ static int export_concise_JSON(struct kndConcept *self)
     struct glbOutput *out = self->out;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. export concise JSON for %.*s..",
-                self->name_size, self->name);
+                self->name_size, self->name, self->out);
 
     for (item = self->base_items; item; item = item->next) {
         for (attr_item = item->attrs; attr_item; attr_item = attr_item->next) {
 
             /* TODO assert */
             if (!attr_item->attr) continue;
+
             attr = attr_item->attr;
 
             if (!attr->concise_level) continue;
@@ -6469,11 +6474,11 @@ static int export_JSON(struct kndConcept *self)
     size_t item_count;
     int i, err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. JSON export concept: \"%s\"  "
-                "locale: %s depth: %lu",
+                "locale: %s depth: %lu  OUTPUT:%p",
                 self->name, self->task->locale,
-                (unsigned long)self->depth);
+                (unsigned long)self->depth, self->out);
 
     out = self->out;
     err = out->write(out, "{", 1);                                                RET_ERR();
@@ -6487,9 +6492,19 @@ static int export_JSON(struct kndConcept *self)
     buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", self->dir->numid);
     err = out->write(out, buf, buf_size);                                         RET_ERR();
 
+    //knd_log(".. init JSON OUTPUT: %.*\n\n",
+    //        self->out, self->out->buf_size, self->out->buf);
+
     err = export_gloss_JSON(self);                                                RET_ERR();
 
+    //knd_log(".. after gloss: %.*\n\n",
+    //        self->out, self->out->buf_size, self->out->buf);
+
     if (self->depth >= self->max_depth) {
+        
+        //knd_log(".. export concise fields: %p   CURR OUTPUT: %.*\n\n",
+        //        self->out, self->out->buf_size, self->out->buf);
+
         /* any concise fields? */
         err = export_concise_JSON(self);                                          RET_ERR();
         goto final;
