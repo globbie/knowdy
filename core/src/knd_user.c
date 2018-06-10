@@ -9,7 +9,7 @@
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
 
-#include "knd_policy.h"
+//#include "knd_policy.h"
 #include "knd_user.h"
 #include "knd_repo.h"
 #include "knd_concept.h"
