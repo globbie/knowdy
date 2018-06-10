@@ -55,12 +55,12 @@ struct kndObjEntry;
 //    struct kndStateIdx **children;
 //};
 
-struct kndConcRef
-{
-    size_t state;
-    struct kndConcDir *dir;
-    //struct kndClass *conc;
-};
+//struct kndConcRef
+//{
+//    size_t state;
+//    struct kndConcDir *dir;
+//    //struct kndClass *conc;
+//};
 
 //struct kndConcRefSet
 //{
@@ -246,8 +246,8 @@ struct kndClass
     /* state idx */
     //struct kndObjStateIdx **obj_states;
 
-    struct kndConcRef children[KND_MAX_CONC_CHILDREN];
-    size_t num_children;
+    //struct kndConcRef children[KND_MAX_CONC_CHILDREN];
+    //size_t num_children;
     size_t num_terminals;
     bool is_terminal;
 

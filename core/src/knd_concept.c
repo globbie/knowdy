@@ -218,7 +218,6 @@ static void str(struct kndClass *self)
     struct kndAttr *attr;
     struct kndAttrEntry *attr_entry;
     struct kndTranslation *tr, *t;
-    struct kndConcRef *ref;
     struct kndConcItem *item;
     struct kndClass *c;
     struct ooDict *idx;
@@ -297,9 +296,8 @@ static void str(struct kndClass *self)
         }
     }
 
-    for (size_t i = 0; i < self->num_children; i++) {
-        ref = &self->children[i];
-        c = ref->dir->conc;
+    for (size_t i = 0; i < self->dir->num_children; i++) {
+        c = self->dir->children[i]->conc;
         if (!c) continue;
 
         knd_log("%*sbase of --> %.*s [%zu]",
@@ -1252,7 +1250,6 @@ static int resolve_base_classes(struct kndClass *self)
     void *result;
     struct kndConcDir *dir;
     struct kndClass *c;
-    struct kndConcRef *ref;
     struct kndSet *set;
     const char *classname;
     size_t classname_size;
@@ -1316,24 +1313,19 @@ static int resolve_base_classes(struct kndClass *self)
         item->conc = c;
 
         /* check item doublets */
-        for (size_t i = 0; i < self->num_children; i++) {
-            ref = &self->children[i];
-            if (ref->dir == self->dir) {
+        for (size_t i = 0; i < self->dir->num_children; i++) {
+            if (self->dir->children[i] == self->dir) {
                 knd_log("-- doublet conc item found in \"%.*s\" :(",
                         self->name_size, self->name);
                 return knd_FAIL;
             }
         }
 
-        if (c->num_children >= KND_MAX_CONC_CHILDREN) {
+        if (c->dir->num_children >= KND_MAX_CONC_CHILDREN) {
             knd_log("-- %.*s as child to %.*s - max conc children exceeded :(",
                     self->name_size, self->name, item->classname_size, item->classname);
             return knd_FAIL;
         }
-
-        ref = &c->children[c->num_children];
-        ref->dir = self->dir;
-        c->num_children++;
 
         //if (self->task->type == KND_UPDATE_STATE) {
             if (DEBUG_CONC_LEVEL_2)
@@ -1387,7 +1379,6 @@ static int resolve_refs(struct kndClass *self,
                         struct kndClassUpdate *update)
 {
     struct kndClass *root;
-    struct kndConcRef *ref;
     struct kndConcItem *item;
     struct kndConcDir *dir;
     int err;
@@ -1414,9 +1405,6 @@ static int resolve_refs(struct kndClass *self,
      * TODO: refset */
     if (!self->base_items) {
         root = self->root_class;
-        ref = &root->children[root->num_children];
-        ref->dir = self->dir;
-        root->num_children++;
 
         dir = root->dir;
         if (!dir->children) {
@@ -6464,7 +6452,7 @@ static int export_JSON(struct kndClass *self)
 
     struct kndClass *c;
     struct kndConcItem *item;
-    struct kndConcRef *ref;
+    struct kndConcDir *ref;
     struct kndConcDir *dir;
 
     //struct kndUpdate *update;
@@ -6664,27 +6652,28 @@ static int export_JSON(struct kndClass *self)
         return knd_OK;
     }
 
-    if (self->num_children) {
+    // FIXME(k15tfu): duplicates the code above
+    if (self->dir->num_children) {
         err = out->write(out, ",\"_num_subclasses\":", strlen(",\"_num_subclasses\":"));
         if (err) return err;
-        buf_size = sprintf(buf, "%zu", self->num_children);
+        buf_size = sprintf(buf, "%zu", self->dir->num_children);
         err = out->write(out, buf, buf_size);
         if (err) return err;
 
         if (self->depth + 1 < KND_MAX_CLASS_DEPTH) {
             err = out->write(out, ",\"_subclasses\":[", strlen(",\"_subclasses\":["));
             if (err) return err;
-            for (size_t i = 0; i < self->num_children; i++) {
-                ref = &self->children[i];
+            for (size_t i = 0; i < self->dir->num_children; i++) {
+                ref = self->dir->children[i];
                 
                 if (DEBUG_CONC_LEVEL_2)
-                    knd_log(".. export base of --> %s", ref->dir->name);
+                    knd_log(".. export base of --> %s", ref->name);
 
                 if (i) {
                     err = out->write(out, ",", 1);
                     if (err) return err;
                 }
-                c = ref->dir->conc;
+                c = ref->conc;
                 c->out = self->out;
                 c->task = self->task;
                 c->format =  KND_FORMAT_JSON;
@@ -7674,7 +7663,6 @@ static int freeze_subclasses(struct kndClass *self,
     char buf[KND_SHORT_NAME_SIZE] = {0};
     size_t buf_size;
     struct kndClass *c;
-    struct kndConcRef *ref;
     char *curr_dir = output;
     size_t curr_dir_size = 0;
     size_t chunk_size;
@@ -7685,9 +7673,8 @@ static int freeze_subclasses(struct kndClass *self,
     curr_dir += chunk_size;
     curr_dir_size += chunk_size;
 
-    for (size_t i = 0; i < self->num_children; i++) {
-        ref = &self->children[i];
-        c = ref->dir->conc;
+    for (size_t i = 0; i < self->dir->num_children; i++) {
+        c = self->dir->children[i]->conc;
         c->out = self->out;
         c->dir_out = self->dir_out;
         c->frozen_output_file_name = self->frozen_output_file_name;
@@ -7803,7 +7790,7 @@ static int freeze(struct kndClass *self)
     total_frozen_size = self->out->buf_size;
 
     /* no dir entry necessary */
-    if (!self->num_children) {
+    if (!self->dir->num_children) {
         self->is_terminal = true;
         if (!self->dir) {
             self->frozen_size = total_frozen_size;
@@ -7838,7 +7825,7 @@ static int freeze(struct kndClass *self)
         curr_dir_size += chunk_size;
     }
 
-    if (self->num_children) {
+    if (self->dir->num_children) {
         err = freeze_subclasses(self, &total_frozen_size,
                                 curr_dir, &chunk_size);                           RET_ERR();
         curr_dir +=      chunk_size;
