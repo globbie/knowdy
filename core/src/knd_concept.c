@@ -302,7 +302,7 @@ static void str(struct kndClass *self)
 
         knd_log("%*sbase of --> %.*s [%zu]",
                 (self->depth + 1) * KND_OFFSET_SIZE, "",
-                c->name_size, c->name, c->num_terminals);
+                c->name_size, c->name, c->dir->num_terminals);
         c->str(c);
     }
 
@@ -7687,11 +7687,11 @@ static int freeze_subclasses(struct kndClass *self,
         }
         
         /* terminal class */
-        if (c->is_terminal) {
-            self->num_terminals++;
-        } else {
-            self->num_terminals += c->num_terminals;
-        }
+//        if (c->is_terminal) {
+//            self->num_terminals++;
+//        } else {
+//            self->num_terminals += c->num_terminals;
+//        }
 
         if (DEBUG_CONC_LEVEL_2)
             knd_log("     OUT: \"%.*s\" [%zu]\nclass \"%.*s\""
@@ -7791,7 +7791,7 @@ static int freeze(struct kndClass *self)
 
     /* no dir entry necessary */
     if (!self->dir->num_children) {
-        self->is_terminal = true;
+        //self->is_terminal = true;
         if (!self->dir) {
             self->frozen_size = total_frozen_size;
             return knd_OK;
