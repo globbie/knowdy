@@ -21,7 +21,7 @@
 #pragma once
 
 struct glbOutput;
-struct kndConcept;
+struct kndClass;
 struct kndConcDir;
 struct kndObjEntry;
 struct kndTask;
