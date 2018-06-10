@@ -58,14 +58,14 @@ struct kndObjEntry;
 //struct kndConcRef
 //{
 //    size_t state;
-//    struct kndConcDir *dir;
+//    struct kndClassRef *dir;
 //    //struct kndClass *conc;
 //};
 
 //struct kndConcRefSet
 //{
 //    size_t state;
-//    struct kndConcDir *dir;
+//    struct kndClassRef *dir;
 //    struct kndClass *conc;
 //};
 
@@ -85,7 +85,7 @@ struct kndConcItem
     struct kndClass *parent;
 
     struct kndClass *conc;
-    //struct kndConcDir *conc_dir;
+    //struct kndClassRef *conc_dir;
 
     struct kndMemPool *mempool;
     struct kndConcItem *next;
@@ -100,7 +100,7 @@ struct kndConcFolder
     struct kndConcFolder *next;
 };
 
-struct kndConcDir
+struct kndClassRef
 {
     char id[KND_ID_SIZE];
     size_t id_size;
@@ -126,7 +126,7 @@ struct kndConcDir
 
     struct kndSet *descendants;
     struct kndSet *child_idx;
-    struct kndConcDir **children;
+    struct kndClassRef **children;
     size_t num_children;
     size_t num_terminals;
 
@@ -155,8 +155,8 @@ struct kndConcDir
     bool is_terminal;
 
     size_t child_count;
-    struct kndConcDir *prev;
-    struct kndConcDir *next;
+    struct kndClassRef *prev;
+    struct kndClassRef *next;
 };
 
 struct kndClassUpdateRef
@@ -206,7 +206,7 @@ struct kndClass
     struct kndConcItem *base_items;
     size_t num_base_items;
 
-    struct kndConcDir *bases[KND_MAX_BASES];
+    struct kndClassRef *bases[KND_MAX_BASES];
     size_t num_bases;
 
     //bool ignore_children;
@@ -219,7 +219,7 @@ struct kndClass
     //size_t attrs_left;
     struct kndObject  *curr_obj;
 
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     struct kndConcFolder *folders;
     size_t num_folders;
 

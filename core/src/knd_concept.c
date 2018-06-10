@@ -48,7 +48,7 @@ static gsl_err_t attr_item_append(void *accu,
                                   void *item);
 
 static int unfreeze_class(struct kndClass *self,
-                          struct kndConcDir *dir,
+                          struct kndClassRef *dir,
                           struct kndClass **result);
 
 static int read_obj_entry(struct kndClass *self,
@@ -60,15 +60,15 @@ static int get_class(struct kndClass *self,
                      struct kndClass **result);
 
 static int get_dir_trailer(struct kndClass *self,
-                           struct kndConcDir *parent_dir,
+                           struct kndClassRef *parent_dir,
                            int fd,
                            int encode_base);
 static int parse_dir_trailer(struct kndClass *self,
-                             struct kndConcDir *parent_dir,
+                             struct kndClassRef *parent_dir,
                              int fd,
                              int encode_base);
 static int get_obj_dir_trailer(struct kndClass *self,
-                               struct kndConcDir *parent_dir,
+                               struct kndClassRef *parent_dir,
                                int fd,
                                int encode_base);
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size);
@@ -122,9 +122,9 @@ static void reset_inbox(struct kndClass *self)
     self->inbox_size = 0;
 }
 
-static void del_conc_dir(struct kndConcDir *dir)
+static void del_conc_dir(struct kndClassRef *dir)
 {
-    struct kndConcDir *subdir;
+    struct kndClassRef *subdir;
     size_t i;
 
     for (i = 0; i < dir->num_children; i++) {
@@ -517,7 +517,7 @@ static gsl_err_t parse_summary_array(void *obj,
 
 static int inherit_attrs(struct kndClass *self, struct kndClass *base)
 {
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     struct kndAttr *attr;
     struct kndClass *c;
     struct kndAttrEntry *entry;
@@ -731,7 +731,7 @@ static int resolve_class_ref(struct kndClass *self,
                              struct kndClass *base,
                              struct kndClass **result)
 {
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     struct kndClass *c;
     int err;
 
@@ -1096,7 +1096,7 @@ static int resolve_attrs(struct kndClass *self)
 {
     struct kndAttr *attr;
     struct kndAttrEntry *entry;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     struct kndProc *proc;
     struct kndProcDir *procdir;
     int err;
@@ -1248,7 +1248,7 @@ static int resolve_base_classes(struct kndClass *self)
 {
     struct kndConcItem *item;
     void *result;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     struct kndClass *c;
     struct kndSet *set;
     const char *classname;
@@ -1336,7 +1336,7 @@ static int resolve_base_classes(struct kndClass *self)
             
             if (!c->dir->children) {
                 c->dir->children = calloc(KND_MAX_CONC_CHILDREN,
-                                          sizeof(struct kndConcDir*));
+                                          sizeof(struct kndClassRef*));
                 if (!c->dir->children) {
                     knd_log("-- no memory :(");
                     return knd_NOMEM;
@@ -1380,7 +1380,7 @@ static int resolve_refs(struct kndClass *self,
 {
     struct kndClass *root;
     struct kndConcItem *item;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     int err;
 
     if (self->is_resolved) {
@@ -1409,7 +1409,7 @@ static int resolve_refs(struct kndClass *self,
         dir = root->dir;
         if (!dir->children) {
             dir->children = calloc(KND_MAX_CONC_CHILDREN,
-                                   sizeof(struct kndConcDir*));
+                                   sizeof(struct kndClassRef*));
             if (!dir->children) {
                 knd_log("-- no memory :(");
                 return knd_NOMEM;
@@ -1453,7 +1453,7 @@ static int build_attr_name_idx(struct kndClass *self)
     struct kndConcItem *item;
     struct kndAttr *attr;
     struct kndAttrEntry *entry;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     int err;
 
     if (!self->attr_name_idx) {
@@ -1577,7 +1577,7 @@ static gsl_err_t atomic_elem_alloc(void *obj,
 {
     struct kndClass *self = obj;
     struct kndSet *class_idx, *set;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     void *elem;
     int err;
 
@@ -1758,7 +1758,7 @@ static gsl_err_t atomic_classref_alloc(void *obj,
 {
     struct kndSet *self = obj;
     struct kndSet *class_idx;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     void *elem;
     int err;
 
@@ -2311,7 +2311,7 @@ static gsl_err_t read_nested_attr_item(void *obj,
     struct kndAttr *attr;
     struct kndClass *conc = NULL;
     struct ooDict *class_name_idx;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     gsl_err_t parser_err;
     int err;
 
@@ -2486,7 +2486,7 @@ static gsl_err_t attr_item_alloc(void *obj,
     struct kndAttrItem *self = obj;
     struct kndAttrItem *item;
     struct kndSet *class_idx;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     void *elem;
     int err;
 
@@ -2542,7 +2542,7 @@ static gsl_err_t aggr_item_set_baseclass(void *obj,
 {
     struct kndAttrItem *item = obj;
     struct kndSet *class_idx;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     struct kndClass *conc = item->attr->parent_conc;
     void *result;
     int err;
@@ -2758,7 +2758,7 @@ static gsl_err_t parse_baseclass(void *obj,
 
 static int assign_ids(struct kndClass *self)
 {
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     const char *key;
     void *val;
     size_t count = 0;
@@ -2772,7 +2772,7 @@ static int assign_ids(struct kndClass *self)
     do {
         self->class_name_idx->next_item(self->class_name_idx, &key, &val);
         if (!key) break;
-        dir = (struct kndConcDir*)val;
+        dir = (struct kndClassRef*)val;
         count++;
 
         dir->id_size = 0;
@@ -2832,7 +2832,7 @@ static gsl_err_t parse_import_class(void *obj,
 {
     struct kndClass *self = obj;
     struct kndClass *c;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     int err;
     gsl_err_t parser_err;
 
@@ -3583,7 +3583,7 @@ static int knd_get_dir_size(struct kndClass *self,
 static gsl_err_t run_set_dir_size(void *obj, const char *val, size_t val_size)
 {
     char buf[KND_SHORT_NAME_SIZE] = {0};
-    struct kndConcDir *self = obj;
+    struct kndClassRef *self = obj;
     char *invalid_num_char = NULL;
     long numval;
 
@@ -3621,7 +3621,7 @@ static gsl_err_t parse_parent_dir_size(void *obj,
                                        const char *rec,
                                        size_t *total_size)
 {
-    struct kndConcDir *self = obj;
+    struct kndClassRef *self = obj;
     gsl_err_t err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -3646,7 +3646,7 @@ static gsl_err_t parse_obj_dir_size(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct kndConcDir *self = obj;
+    struct kndClassRef *self = obj;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parsing obj dir size: \"%.*s\"", 16, rec);
@@ -3669,8 +3669,8 @@ static gsl_err_t parse_obj_dir_size(void *obj,
 static gsl_err_t dir_entry_append(void *accu,
                                   void *item)
 {
-    struct kndConcDir *parent_dir = accu;
-    struct kndConcDir *dir = item;
+    struct kndClassRef *parent_dir = accu;
+    struct kndClassRef *dir = item;
     int err;
 
     if (!parent_dir->child_idx) {
@@ -3681,7 +3681,7 @@ static gsl_err_t dir_entry_append(void *accu,
 
     if (!parent_dir->children) {
         parent_dir->children = calloc(KND_MAX_CONC_CHILDREN,
-                                      sizeof(struct kndConcDir*));
+                                      sizeof(struct kndClassRef*));
         if (!parent_dir->children) {
             knd_log("-- no memory :(");
             return make_gsl_err_external(knd_NOMEM);
@@ -3709,8 +3709,8 @@ static gsl_err_t dir_entry_alloc(void *self,
                                  size_t count,
                                  void **item)
 {
-    struct kndConcDir *parent_dir = self;
-    struct kndConcDir *dir;
+    struct kndClassRef *parent_dir = self;
+    struct kndClassRef *dir;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -3742,7 +3742,7 @@ static gsl_err_t reldir_entry_alloc(void *self,
                                     size_t count,
                                     void **item)
 {
-    struct kndConcDir *parent_dir = self;
+    struct kndClassRef *parent_dir = self;
     struct kndRelDir *dir;
     int err;
 
@@ -3763,7 +3763,7 @@ static gsl_err_t reldir_entry_alloc(void *self,
 static gsl_err_t reldir_entry_append(void *accu,
                                      void *item)
 {
-    struct kndConcDir *parent_dir = accu;
+    struct kndClassRef *parent_dir = accu;
     struct kndRelDir *dir = item;
 
     if (!parent_dir->rels) {
@@ -3793,7 +3793,7 @@ static gsl_err_t procdir_entry_alloc(void *self,
                                      size_t count,
                                      void **item)
 {
-    struct kndConcDir *parent_dir = self;
+    struct kndClassRef *parent_dir = self;
     struct kndProcDir *dir;
     int err;
 
@@ -3815,7 +3815,7 @@ static gsl_err_t procdir_entry_alloc(void *self,
 static gsl_err_t procdir_entry_append(void *accu,
                                       void *item)
 {
-    struct kndConcDir *parent_dir = accu;
+    struct kndClassRef *parent_dir = accu;
     struct kndProcDir *dir = item;
 
     if (!parent_dir->procs) {
@@ -3840,7 +3840,7 @@ static gsl_err_t procdir_entry_append(void *accu,
 }
 
 static int idx_class_name(struct kndClass *self,
-                          struct kndConcDir *dir,
+                          struct kndClassRef *dir,
                           int fd)
 {
     char buf[KND_NAME_SIZE + 1];
@@ -3895,7 +3895,7 @@ static int idx_class_name(struct kndClass *self,
 }
 
 static int get_dir_trailer(struct kndClass *self,
-                           struct kndConcDir *parent_dir,
+                           struct kndClassRef *parent_dir,
                            int fd,
                            int encode_base)
 {
@@ -3974,13 +3974,13 @@ static int get_dir_trailer(struct kndClass *self,
 }
 
 static int parse_dir_trailer(struct kndClass *self,
-                             struct kndConcDir *parent_dir,
+                             struct kndClassRef *parent_dir,
                              int fd,
                              int encode_base)
 {
     char *dir_buf = self->out->buf;
     size_t dir_buf_size = self->out->buf_size;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     struct kndRelDir *reldir;
     struct kndProcDir *procdir;
     size_t parsed_size = 0;
@@ -4142,7 +4142,7 @@ static gsl_err_t obj_entry_alloc(void *obj,
                                  size_t count,
                                  void **item)
 {
-    struct kndConcDir *parent_dir = obj;
+    struct kndClassRef *parent_dir = obj;
     struct kndObjEntry *entry = NULL;
     int err;
 
@@ -4165,7 +4165,7 @@ static gsl_err_t obj_entry_append(void *accu,
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
-    struct kndConcDir *parent_dir = accu;
+    struct kndClassRef *parent_dir = accu;
     struct kndObjEntry *entry = item;
     struct kndSet *set;
     off_t offset = 0;
@@ -4229,7 +4229,7 @@ static gsl_err_t obj_entry_append(void *accu,
 }
 
 static int parse_obj_dir_trailer(struct kndClass *self,
-                                 struct kndConcDir *parent_dir,
+                                 struct kndClassRef *parent_dir,
                                  int fd)
 {
     struct gslTaskSpec obj_dir_spec = {
@@ -4283,7 +4283,7 @@ static int parse_obj_dir_trailer(struct kndClass *self,
 }
 
 static int get_obj_dir_trailer(struct kndClass *self,
-                                struct kndConcDir *parent_dir,
+                                struct kndClassRef *parent_dir,
                                 int fd,
                                 int encode_base)
 {
@@ -4549,7 +4549,7 @@ static gsl_err_t set_conc_item_baseclass(void *obj,
 {
     struct kndConcItem *ci = obj;
     struct kndSet *class_idx;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     void *result;
     int err;
 
@@ -4586,7 +4586,7 @@ static gsl_err_t validate_attr_item_list(void *obj,
     struct kndAttrItem *attr_item;
     struct kndAttr *attr;
     struct ooDict *class_name_idx;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     int err;
 
     if (DEBUG_CONC_LEVEL_1)
@@ -4780,7 +4780,7 @@ static int read_GSP(struct kndClass *self,
 static int resolve_classes(struct kndClass *self)
 {
     struct kndClass *c;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     const char *key;
     void *val;
     int err;
@@ -4795,7 +4795,7 @@ static int resolve_classes(struct kndClass *self)
         self->class_name_idx->next_item(self->class_name_idx, &key, &val);
         if (!key) break;
 
-        dir = (struct kndConcDir*)val;
+        dir = (struct kndClassRef*)val;
         c = dir->conc;
         if (c->is_resolved) continue;
         err = c->resolve(c, NULL);
@@ -4817,9 +4817,9 @@ static int resolve_classes(struct kndClass *self)
 
 static void calculate_descendants(struct kndClass *self)
 {
-    struct kndConcDir *parent_dir = NULL;
-    struct kndConcDir *dir = self->dir;
-    struct kndConcDir *subdir = NULL;
+    struct kndClassRef *parent_dir = NULL;
+    struct kndClassRef *dir = self->dir;
+    struct kndClassRef *subdir = NULL;
     size_t i = 0;
     size_t depth = 0;
 
@@ -4876,7 +4876,7 @@ static void calculate_descendants(struct kndClass *self)
 static int coordinate(struct kndClass *self)
 {
     struct kndClass *c;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     const char *key;
     void *val;
     int err;
@@ -4949,7 +4949,7 @@ static int expand_refs(struct kndClass *self)
 }
 
 static int unfreeze_class(struct kndClass *self,
-                          struct kndConcDir *dir,
+                          struct kndClassRef *dir,
                           struct kndClass **result)
 {
     char buf[KND_MED_BUF_SIZE];
@@ -5096,7 +5096,7 @@ static int get_class(struct kndClass *self,
                      const char *name, size_t name_size,
                      struct kndClass **result)
 {
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     struct kndClass *c;
     int err;
 
@@ -5379,7 +5379,7 @@ static int export_conc_elem_JSON(void *obj,
     if (self->task->batch_size >= self->task->batch_max) return knd_RANGE;
 
     struct glbOutput *out = self->out;
-    struct kndConcDir *dir = elem;
+    struct kndClassRef *dir = elem;
     struct kndClass *c = dir->conc;
     int err;
 
@@ -5470,7 +5470,7 @@ static int export_conc_id_GSP(void *obj,
                               void *elem)
 {
     struct glbOutput *out = obj;
-    struct kndConcDir *dir = elem;
+    struct kndClassRef *dir = elem;
     int err;
     err = out->writec(out, ' ');                                                  RET_ERR();
     err = out->write(out, dir->id, dir->id_size);                                 RET_ERR();
@@ -5674,7 +5674,7 @@ static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_siz
     size_t buf_size = 0;
     struct kndClass *self = obj;
     struct kndClass *c;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     void *result;
     long numval;
     int err;
@@ -6452,8 +6452,8 @@ static int export_JSON(struct kndClass *self)
 
     struct kndClass *c;
     struct kndConcItem *item;
-    struct kndConcDir *ref;
-    struct kndConcDir *dir;
+    struct kndClassRef *ref;
+    struct kndClassRef *dir;
 
     //struct kndUpdate *update;
     //struct tm tm_info;
@@ -7280,7 +7280,7 @@ static int apply_liquid_updates(struct kndClass *self,
                                 size_t *total_size)
 {
     struct kndClass *c;
-    struct kndConcDir *dir;
+    struct kndClassRef *dir;
     struct kndRel *rel;
     struct kndStateControl *state_ctrl = self->task->state_ctrl;
     struct gslTaskSpec specs[] = {
