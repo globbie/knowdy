@@ -69,7 +69,7 @@ struct kndObjEntry;
 //    struct kndClass *conc;
 //};
 
-struct kndConcItem
+struct kndClassVar
 {
     char id[KND_ID_SIZE];
     size_t id_size;
@@ -88,7 +88,7 @@ struct kndConcItem
     //struct kndClassRef *conc_dir;
 
     struct kndMemPool *mempool;
-    struct kndConcItem *next;
+    struct kndClassVar *next;
 };
 
 struct kndConcFolder
@@ -201,7 +201,7 @@ struct kndClass
     size_t num_attrs;
     struct kndAttr *implied_attr;
 
-    struct kndConcItem *base_items;
+    struct kndClassVar *base_items;
     size_t num_base_items;
 
     struct kndClassRef *bases[KND_MAX_BASES];

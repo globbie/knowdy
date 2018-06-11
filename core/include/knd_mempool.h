@@ -26,6 +26,7 @@
 #include "knd_config.h"
 
 struct kndClass;
+struct kndClassVar;
 struct kndClassRef;
 struct kndObject;
 struct kndElem;
@@ -99,7 +100,7 @@ struct kndMemPool
     size_t max_conc_dirs;
     size_t num_conc_dirs;
 
-    struct kndConcItem *conc_items;
+    struct kndClassVar *conc_items;
     size_t max_conc_items;
     size_t num_conc_items;
     
@@ -223,7 +224,7 @@ struct kndMemPool
     int (*new_conc_dir)(struct kndMemPool   *self,
                         struct kndClassRef **result);
     int (*new_conc_item)(struct kndMemPool   *self,
-                         struct kndConcItem **result);
+                         struct kndClassVar **result);
     int (*new_attr_item)(struct kndMemPool   *self,
                          struct kndAttrItem **result);
     int (*new_obj)(struct kndMemPool   *self,

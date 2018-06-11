@@ -93,7 +93,7 @@ static gsl_err_t read_nested_attr_item(void *obj,
 static gsl_err_t import_nested_attr_item(void *obj,
                                          const char *name, size_t name_size,
                                          const char *rec, size_t *total_size);
-static void append_attr_item(struct kndConcItem *ci,
+static void append_attr_item(struct kndClassVar *ci,
                              struct kndAttrItem *attr_item);
 
 static void reset_inbox(struct kndClass *self)
@@ -218,7 +218,7 @@ static void str(struct kndClass *self)
     struct kndAttr *attr;
     struct kndAttrEntry *attr_entry;
     struct kndTranslation *tr, *t;
-    struct kndConcItem *item;
+    struct kndClassVar *item;
     struct kndClass *c;
     struct ooDict *idx;
     struct kndSet *set;
@@ -521,7 +521,7 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
     struct kndAttr *attr;
     struct kndClass *c;
     struct kndAttrEntry *entry;
-    struct kndConcItem *item;
+    struct kndClassVar *item;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -1003,7 +1003,7 @@ static int resolve_attr_item_list(struct kndClass *self,
 }
 
 static int resolve_attr_items(struct kndClass *self,
-                              struct kndConcItem *parent_item)
+                              struct kndClassVar *parent_item)
 {
     struct kndAttrItem *item;
     struct kndAttrEntry *entry;
@@ -1246,7 +1246,7 @@ static int resolve_objs(struct kndClass     *self,
 
 static int resolve_base_classes(struct kndClass *self)
 {
-    struct kndConcItem *item;
+    struct kndClassVar *item;
     void *result;
     struct kndClassRef *dir;
     struct kndClass *c;
@@ -1379,7 +1379,7 @@ static int resolve_refs(struct kndClass *self,
                         struct kndClassUpdate *update)
 {
     struct kndClass *root;
-    struct kndConcItem *item;
+    struct kndClassVar *item;
     struct kndClassRef *dir;
     int err;
 
@@ -1450,7 +1450,7 @@ static int resolve_refs(struct kndClass *self,
 
 static int build_attr_name_idx(struct kndClass *self)
 {
-    struct kndConcItem *item;
+    struct kndClassVar *item;
     struct kndAttr *attr;
     struct kndAttrEntry *entry;
     struct kndClassRef *dir;
@@ -2173,7 +2173,7 @@ static gsl_err_t import_attr_item(void *obj,
                                   const char *name, size_t name_size,
                                   const char *rec, size_t *total_size)
 {
-    struct kndConcItem *self = obj;
+    struct kndClassVar *self = obj;
     struct kndAttrItem *item;
     gsl_err_t parser_err;
     int err;
@@ -2268,7 +2268,7 @@ static gsl_err_t import_attr_item_list(void *obj,
                                        const char *name, size_t name_size,
                                        const char *rec, size_t *total_size)
 {
-    struct kndConcItem *ci = obj;
+    struct kndClassVar *ci = obj;
     struct kndAttrItem *item;
     gsl_err_t parser_err;
     int err;
@@ -2444,7 +2444,7 @@ static gsl_err_t import_nested_attr_item(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static void append_attr_item(struct kndConcItem *ci,
+static void append_attr_item(struct kndClassVar *ci,
                              struct kndAttrItem *attr_item)
 {
     struct kndAttrItem *item;
@@ -2633,7 +2633,7 @@ static gsl_err_t validate_attr_item(void *obj,
                                     const char *name, size_t name_size,
                                     const char *rec, size_t *total_size)
 {
-    struct kndConcItem *ci = obj;
+    struct kndClassVar *ci = obj;
     struct kndAttrItem *attr_item;
     struct kndAttr *attr;
     struct kndProc *root_proc;
@@ -2715,7 +2715,7 @@ static gsl_err_t parse_baseclass(void *obj,
                                  size_t *total_size)
 {
     struct kndClass *self = obj;
-    struct kndConcItem *item;
+    struct kndClassVar *item;
     int err;
 
     if (DEBUG_CONC_LEVEL_1)
@@ -4518,7 +4518,7 @@ static gsl_err_t conc_item_alloc(void *obj,
                                  void **item)
 {
     struct kndClass *self = obj;
-    struct kndConcItem *ci;
+    struct kndClassVar *ci;
     int err;
 
     err = self->mempool->new_conc_item(self->mempool, &ci);
@@ -4534,7 +4534,7 @@ static gsl_err_t conc_item_append(void *accu,
                                   void *item)
 {
     struct kndClass *self = accu;
-    struct kndConcItem *ci = item;
+    struct kndClassVar *ci = item;
 
     ci->next = self->base_items;
     self->base_items = ci;
@@ -4547,7 +4547,7 @@ static gsl_err_t conc_item_append(void *accu,
 static gsl_err_t set_conc_item_baseclass(void *obj,
                                          const char *id, size_t id_size)
 {
-    struct kndConcItem *ci = obj;
+    struct kndClassVar *ci = obj;
     struct kndSet *class_idx;
     struct kndClassRef *dir;
     void *result;
@@ -4582,7 +4582,7 @@ static gsl_err_t validate_attr_item_list(void *obj,
                                          const char *name, size_t name_size,
                                          const char *rec, size_t *total_size)
 {
-    struct kndConcItem *ci = obj;
+    struct kndClassVar *ci = obj;
     struct kndAttrItem *attr_item;
     struct kndAttr *attr;
     struct ooDict *class_name_idx;
@@ -4650,7 +4650,7 @@ static gsl_err_t validate_attr_item_list(void *obj,
 static gsl_err_t conc_item_read(void *obj,
                                 const char *rec, size_t *total_size)
 {
-    struct kndConcItem *ci = obj;
+    struct kndClassVar *ci = obj;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -4935,7 +4935,7 @@ static int expand_attrs(struct kndClass *self,
 
 static int expand_refs(struct kndClass *self)
 {
-    struct kndConcItem *item;
+    struct kndClassVar *item;
     int err;
 
     for (item = self->base_items; item; item = item->next) {
@@ -6363,7 +6363,7 @@ static int export_gloss_JSON(struct kndClass *self)
 
 static int export_concise_JSON(struct kndClass *self)
 {
-    struct kndConcItem *item;
+    struct kndClassVar *item;
     struct kndAttrItem *attr_item;
     struct kndAttr *attr;
     struct kndClass *c;
@@ -6449,7 +6449,7 @@ static int export_JSON(struct kndClass *self)
     struct kndAttr *attr;
 
     struct kndClass *c;
-    struct kndConcItem *item;
+    struct kndClassVar *item;
     struct kndClassRef *ref;
     struct kndClassRef *dir;
 
@@ -6918,7 +6918,7 @@ static int attr_items_export_GSP(struct kndClass *self,
 static int export_GSP(struct kndClass *self)
 {
     struct kndAttr *attr;
-    struct kndConcItem *item;
+    struct kndClassVar *item;
     struct kndTranslation *tr;
     struct glbOutput *out = self->out;
     int err;
