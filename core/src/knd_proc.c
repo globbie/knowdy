@@ -1109,7 +1109,7 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
     struct kndProcRef *dir;
     struct kndProcArg *arg;
     struct kndProc *proc;
-    struct kndArgEntry *entry;
+    struct kndProcArgRef *entry;
     struct kndProcVar *base;
     int err;
 
@@ -1153,10 +1153,10 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
         }
 
         /* register arg entry */
-        entry = malloc(sizeof(struct kndArgEntry));
+        entry = malloc(sizeof(struct kndProcArgRef));
         if (!entry) return knd_NOMEM;
 
-        memset(entry, 0, sizeof(struct kndArgEntry));
+        memset(entry, 0, sizeof(struct kndProcArgRef));
         memcpy(entry->name, arg->name, arg->name_size);
         entry->name_size = arg->name_size;
         entry->arg = arg;
@@ -1597,7 +1597,7 @@ static int resolve_parents(struct kndProc *self)
     struct kndProc *proc;
     struct kndProcRef *dir;
     struct kndProcArg *arg;
-    struct kndArgEntry *entry;
+    struct kndProcArgRef *entry;
     struct kndArgItem *arg_item;
     int err;
 
@@ -1697,7 +1697,7 @@ static int resolve_parents(struct kndProc *self)
 static int resolve_proc_call(struct kndProc *self)
 {
     struct kndProcCallArg *call_arg;
-    struct kndArgEntry *entry;
+    struct kndProcArgRef *entry;
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log(".. resolving proc call %.*s ..",
@@ -1730,7 +1730,7 @@ static int resolve_proc_call(struct kndProc *self)
 static int kndProc_resolve(struct kndProc *self)
 {
     struct kndProcArg *arg = NULL;
-    struct kndArgEntry *entry;
+    struct kndProcArgRef *entry;
     struct kndProcRef *dir;
     int err;
 
@@ -1745,10 +1745,10 @@ static int kndProc_resolve(struct kndProc *self)
             err = arg->resolve(arg);                                              RET_ERR();
 
             /* register arg entry */
-            entry = malloc(sizeof(struct kndArgEntry));
+            entry = malloc(sizeof(struct kndProcArgRef));
             if (!entry) return knd_NOMEM;
 
-            memset(entry, 0, sizeof(struct kndArgEntry));
+            memset(entry, 0, sizeof(struct kndProcArgRef));
             memcpy(entry->name, arg->name, arg->name_size);
             entry->name_size = arg->name_size;
             entry->arg = arg;
