@@ -806,10 +806,10 @@ extern void kndProcArgInstance_init(struct kndProcArgInstance *self)
 {
     memset(self, 0, sizeof(struct kndProcArgInstance));
 }
-extern void kndProcArgInstRef_init(struct kndProcArgInstRef *self)
-{
-    memset(self, 0, sizeof(struct kndProcArgInstRef));
-}
+//extern void kndProcArgInstRef_init(struct kndProcArgInstRef *self)
+//{
+//    memset(self, 0, sizeof(struct kndProcArgInstRef));
+//}
 
 extern void kndProcArg_init(struct kndProcArg *self)
 {

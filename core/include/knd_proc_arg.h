@@ -51,11 +51,11 @@ static const char* const knd_proc_arg_names[] = {
     "ins",
 };
 
-struct kndProcArgInstRef
-{
-    struct kndProcArgInstance *inst;
-    struct kndProcArgInstRef *next;
-};
+//struct kndProcArgInstRef
+//{
+//    struct kndProcArgInstance *inst;
+//    struct kndProcArgInstRef *next;
+//};
 
 struct kndProcArgInstance
 {
@@ -153,7 +153,7 @@ struct kndProcArg
 
 /* constructor */
 extern void kndProcArgInstance_init(struct kndProcArgInstance *self);
-extern void kndProcArgInstRef_init(struct kndProcArgInstRef *self);
+//extern void kndProcArgInstRef_init(struct kndProcArgInstRef *self);
 
 extern void kndProcArg_init(struct kndProcArg *self);
 extern int kndProcArg_new(struct kndProcArg **self);
