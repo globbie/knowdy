@@ -708,7 +708,7 @@ static int parse_inst_GSL(struct kndProcArg *self,
 
 static int resolve_arg(struct kndProcArg *self)
 {
-    struct kndProcDir *dir;
+    struct kndProcRef *dir;
     int err;
 
     if (DEBUG_PROC_ARG_LEVEL_2)
@@ -763,8 +763,8 @@ static int resolve_arg(struct kndProcArg *self)
 static int resolve_inst(struct kndProcArg *self,
                         struct kndProcArgInstance *inst)
 {
-    //struct kndProcDir *proc_dir;
-    struct kndProcDir *dir;
+    //struct kndProcRef *proc_dir;
+    struct kndProcRef *dir;
     struct kndObjEntry *obj;
 
     dir = self->parent->class_name_idx->get(self->parent->class_name_idx,
