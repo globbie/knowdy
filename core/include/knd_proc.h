@@ -101,7 +101,7 @@ struct kndProcRef
     struct kndProcRef *next;
 };
 
-struct kndArgItem
+struct kndProcArgVar
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
@@ -111,7 +111,7 @@ struct kndArgItem
     char classname[KND_NAME_SIZE];
     size_t classname_size;
 
-    struct kndArgItem *next; 
+    struct kndProcArgVar *next;
 };
 
 struct kndProcArgRef
@@ -125,7 +125,7 @@ struct kndProcArgRef
     size_t classname_size;
     struct kndProcRef *parent;
 
-    struct kndArgItem *next; 
+    struct kndProcArgVar *next;
 };
 
 struct kndProcVar
@@ -136,8 +136,8 @@ struct kndProcVar
     struct kndProcRef *dir;
     struct kndProc *proc;
 
-    struct kndArgItem *args;
-    struct kndArgItem *tail;
+    struct kndProcArgVar *args;
+    struct kndProcArgVar *tail;
     size_t num_args;
 
     struct kndProcVar *next;
