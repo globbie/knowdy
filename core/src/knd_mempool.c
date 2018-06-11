@@ -276,15 +276,15 @@ static int new_conc_dir(struct kndMemPool *self,
 }
 
 static int new_conc_item(struct kndMemPool *self,
-                         struct kndConcItem **result)
+                         struct kndClassVar **result)
 {
-    struct kndConcItem *item;
+    struct kndClassVar *item;
 
     if (self->num_conc_items >= self->max_conc_items) {
         return knd_LIMIT;
     }
     item = &self->conc_items[self->num_conc_items];
-    memset(item, 0, sizeof(struct kndConcItem));
+    memset(item, 0, sizeof(struct kndClassVar));
     item->mempool = self;
     self->num_conc_items++;
     *result = item;
@@ -604,7 +604,7 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    self->conc_items = calloc(self->max_conc_items, sizeof(struct kndConcItem));
+    self->conc_items = calloc(self->max_conc_items, sizeof(struct kndClassVar));
     if (!self->conc_items) {
         knd_log("-- conc items not allocated :(");
         return knd_NOMEM;
