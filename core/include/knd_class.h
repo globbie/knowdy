@@ -58,14 +58,14 @@ struct kndObjEntry;
 //struct kndConcRef
 //{
 //    size_t state;
-//    struct kndClassRef *dir;
+//    struct kndClassEntry *dir;
 //    //struct kndClass *conc;
 //};
 
 //struct kndConcRefSet
 //{
 //    size_t state;
-//    struct kndClassRef *dir;
+//    struct kndClassEntry *dir;
 //    struct kndClass *conc;
 //};
 
@@ -85,7 +85,7 @@ struct kndClassVar
     struct kndClass *parent;
 
     struct kndClass *conc;
-    //struct kndClassRef *conc_dir;
+    //struct kndClassEntry *conc_dir;
 
     struct kndMemPool *mempool;
     struct kndClassVar *next;
@@ -100,7 +100,7 @@ struct kndConcFolder
     struct kndConcFolder *next;
 };
 
-struct kndClassRef
+struct kndClassEntry
 {
     char id[KND_ID_SIZE];
     size_t id_size;
@@ -126,7 +126,7 @@ struct kndClassRef
 
     struct kndSet *descendants;
     struct kndSet *child_idx;
-    struct kndClassRef **children;
+    struct kndClassEntry **children;
     size_t num_children;
     size_t num_terminals;
 
@@ -153,8 +153,8 @@ struct kndClassRef
     struct glbOutput *out;
 
     size_t child_count;
-    struct kndClassRef *prev;
-    struct kndClassRef *next;
+    struct kndClassEntry *prev;
+    struct kndClassEntry *next;
 };
 
 struct kndClassUpdateRef
@@ -204,7 +204,7 @@ struct kndClass
     struct kndClassVar *base_items;
     size_t num_base_items;
 
-    struct kndClassRef *bases[KND_MAX_BASES];
+    struct kndClassEntry *bases[KND_MAX_BASES];
     size_t num_bases;
 
     //bool ignore_children;
@@ -217,7 +217,7 @@ struct kndClass
     //size_t attrs_left;
     struct kndObject  *curr_obj;
 
-    struct kndClassRef *dir;
+    struct kndClassEntry *dir;
     struct kndConcFolder *folders;
     size_t num_folders;
 

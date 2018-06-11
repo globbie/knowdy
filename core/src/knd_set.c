@@ -247,10 +247,10 @@ kndSet_alloc_facet(struct kndSet  *self,
 
 static int
 kndFacet_add_reverse_link(struct kndFacet  *self,
-                          struct kndClassRef *base,
+                          struct kndClassEntry *base,
                           struct kndSet  *set)
 {
-    struct kndClassRef *topic = self->attr->parent_conc->dir;
+    struct kndClassEntry *topic = self->attr->parent_conc->dir;
     struct ooDict *name_idx;
     int err;
 
@@ -266,7 +266,7 @@ kndFacet_add_reverse_link(struct kndFacet  *self,
 
 static int
 kndFacet_alloc_set(struct kndFacet  *self,
-                   struct kndClassRef *base,
+                   struct kndClassEntry *base,
                    struct kndSet  **result)
 {
     struct kndSet *set;
@@ -309,8 +309,8 @@ kndSet_facetize(struct kndSet *self)
 
 static int
 kndFacet_add_ref(struct kndFacet *self,
-                 struct kndClassRef *topic,
-                 struct kndClassRef *spec)
+                 struct kndClassEntry *topic,
+                 struct kndClassEntry *spec)
 {
     struct kndSet *set;
     int err;
@@ -333,8 +333,8 @@ kndFacet_add_ref(struct kndFacet *self,
 static int
 kndSet_add_ref(struct kndSet *self,
                struct kndAttr *attr,
-               struct kndClassRef *topic,
-               struct kndClassRef *spec)
+               struct kndClassEntry *topic,
+               struct kndClassEntry *spec)
 {
     struct kndFacet *f;
     int err;
