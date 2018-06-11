@@ -52,7 +52,7 @@ static void proc_call_arg_str(struct kndProcCallArg *self,
 static void base_str(struct kndProcVar *base,
                      size_t depth)
 {
-    struct kndArgItem *arg;
+    struct kndProcArgVar *arg;
 
     knd_log("%*sbase => %.*s", depth * KND_OFFSET_SIZE, "",
                 base->name_size, base->name);
@@ -1068,11 +1068,11 @@ static gsl_err_t arg_item_read(void *obj,
                                const char *rec, size_t *total_size)
 {
     struct kndProcVar *base = obj;
-    struct kndArgItem *item;
+    struct kndProcArgVar *item;
     gsl_err_t parser_err;
 
-    item = malloc(sizeof(struct kndArgItem));
-    memset(item, 0, sizeof(struct kndArgItem));
+    item = malloc(sizeof(struct kndProcArgVar));
+    memset(item, 0, sizeof(struct kndProcArgVar));
     memcpy(item->name, name, name_size);
     item->name_size = name_size;
     item->name[name_size] = '\0';
@@ -1598,7 +1598,7 @@ static int resolve_parents(struct kndProc *self)
     struct kndProcRef *dir;
     struct kndProcArg *arg;
     struct kndProcArgRef *entry;
-    struct kndArgItem *arg_item;
+    struct kndProcArgVar *arg_item;
     int err;
 
     if (DEBUG_PROC_LEVEL_2)
