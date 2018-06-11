@@ -62,13 +62,6 @@ struct kndConcRef
     //struct kndConcept *conc;
 };
 
-struct kndConcRefSet
-{
-    size_t state;
-    struct kndConcDir *dir;
-    struct kndConcept *conc;
-};
-
 struct kndConcItem
 {
     char id[KND_ID_SIZE];

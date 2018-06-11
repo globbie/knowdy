@@ -60,7 +60,7 @@ struct kndRef
     const char *locale;
     size_t locale_size;
     knd_format format;
-    
+
     struct kndRefState *states;
     size_t num_states;
 
