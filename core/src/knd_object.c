@@ -763,7 +763,7 @@ static gsl_err_t resolve_relref(void *obj, const char *name, size_t name_size)
 {
     struct kndRelRef *self = obj;
     struct kndRel *root_rel;
-    struct kndRelDir *dir;
+    struct kndRelEntry *dir;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);

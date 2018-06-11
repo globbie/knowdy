@@ -71,7 +71,7 @@ struct kndRelInstance
     struct kndRelInstance *next;
 };
 
-struct kndRelDir
+struct kndRelEntry
 {
     char id[KND_ID_SIZE];
     size_t id_size;
@@ -90,7 +90,7 @@ struct kndRelDir
     size_t obj_block_size;
     size_t dir_size;
 
-    struct kndRelDir **children;
+    struct kndRelEntry **children;
     size_t num_children;
 
     struct kndSet *inst_idx;
@@ -100,7 +100,7 @@ struct kndRelDir
     struct kndMemPool *mempool;
 
     bool is_terminal;
-    struct kndRelDir *next;
+    struct kndRelEntry *next;
 };
 
 struct kndRelUpdateRef
@@ -170,7 +170,7 @@ struct kndRel
     struct kndRelInstance *inst_inbox;
     size_t inst_inbox_size;
 
-    struct kndRelDir *dir;
+    struct kndRelEntry *dir;
 
     struct ooDict *rel_name_idx;
     struct ooDict *rel_idx;
@@ -224,7 +224,7 @@ struct kndRel
                 const char    *rec,
                 size_t        *total_size);
     int (*read_rel)(struct kndRel *self,
-                    struct kndRelDir *dir);
+                    struct kndRelEntry *dir);
     int (*select)(struct kndRel  *self,
                   const char *rec,
                   size_t *total_size);

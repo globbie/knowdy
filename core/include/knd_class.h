@@ -130,7 +130,7 @@ struct kndClassEntry
     size_t num_children;
     size_t num_terminals;
 
-    struct kndRelDir **rels;
+    struct kndRelEntry **rels;
     size_t num_rels;
 
     struct kndProcEntry **procs;
