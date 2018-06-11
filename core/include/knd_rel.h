@@ -182,9 +182,9 @@ struct kndRel
     size_t frozen_output_file_name_size;
     size_t frozen_size;
 
-    char *trailer_buf;
-    size_t trailer_buf_size;
-    size_t trailer_max_buf_size;
+//    char *trailer_buf;
+//    size_t trailer_buf_size;
+//    size_t trailer_max_buf_size;
 
     bool is_resolved;
     size_t depth;
