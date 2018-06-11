@@ -69,7 +69,7 @@ struct kndProcCall
     struct kndProc *proc;
 };
 
-struct kndProcRef
+struct kndProcEntry
 {
     char id[KND_ID_SIZE];
     size_t id_size;
@@ -89,7 +89,7 @@ struct kndProcRef
     size_t obj_block_size;
     size_t dir_size;
 
-    struct kndProcRef **children;
+    struct kndProcEntry **children;
     size_t num_children;
 
     struct ooDict *inst_idx;
@@ -98,7 +98,7 @@ struct kndProcRef
 
     size_t num_procs;
     bool is_terminal;
-    struct kndProcRef *next;
+    struct kndProcEntry *next;
 };
 
 struct kndProcArgVar
@@ -123,7 +123,7 @@ struct kndProcArgRef
 
     char classname[KND_NAME_SIZE];
     size_t classname_size;
-    struct kndProcRef *parent;
+    struct kndProcEntry *parent;
 
     struct kndProcArgVar *next;
 };
@@ -133,7 +133,7 @@ struct kndProcVar
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    struct kndProcRef *dir;
+    struct kndProcEntry *dir;
     struct kndProc *proc;
 
     struct kndProcArgVar *args;
@@ -179,10 +179,10 @@ struct kndProc
     struct kndProcVar *bases;
     size_t num_bases;
 
-    struct kndProcRef *inherited[KND_MAX_INHERITED];
+    struct kndProcEntry *inherited[KND_MAX_INHERITED];
     size_t num_inherited;
 
-    struct kndProcRef *children[KND_MAX_PROC_CHILDREN];
+    struct kndProcEntry *children[KND_MAX_PROC_CHILDREN];
     size_t num_children;
 
     char result_classname[KND_NAME_SIZE];
@@ -208,7 +208,7 @@ struct kndProc
     struct kndProcInstance *inst_inbox;
     size_t inst_inbox_size;
 
-    struct kndProcRef *dir;
+    struct kndProcEntry *dir;
     size_t num_procs;
 
     struct ooDict *proc_idx;
@@ -246,7 +246,7 @@ struct kndProc
 		  const char    *rec,
 		  size_t        *total_size);
     int (*read_proc)(struct kndProc *self,
-                     struct kndProcRef *procdir);
+                     struct kndProcEntry *procdir);
     int (*get_proc)(struct kndProc *self,
 		    const char *name, size_t name_size,
 		    struct kndProc **result);

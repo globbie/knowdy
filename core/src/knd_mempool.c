@@ -487,14 +487,14 @@ static int new_proc(struct kndMemPool *self,
 }
 
 static int new_proc_dir(struct kndMemPool *self,
-                       struct kndProcRef **result)
+                       struct kndProcEntry **result)
 {
-    struct kndProcRef *dir;
+    struct kndProcEntry *dir;
     if (self->num_proc_dirs >= self->max_proc_dirs) {
         return knd_LIMIT;
     }
     dir = &self->proc_dirs[self->num_proc_dirs];
-    memset(dir, 0, sizeof(struct kndProcRef));
+    memset(dir, 0, sizeof(struct kndProcEntry));
     self->num_proc_dirs++;
     *result = dir;
     return knd_OK;
@@ -754,7 +754,7 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    self->proc_dirs = calloc(self->max_proc_dirs, sizeof(struct kndProcRef));
+    self->proc_dirs = calloc(self->max_proc_dirs, sizeof(struct kndProcEntry));
     if (!self->proc_dirs) {
         knd_log("-- proc dirs not allocated :(");
         return knd_NOMEM;
