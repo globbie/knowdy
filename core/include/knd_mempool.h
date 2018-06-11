@@ -32,6 +32,7 @@ struct kndObject;
 struct kndElem;
 
 struct kndRel;
+struct kndRelEntry;
 struct kndRelInstance;
 struct kndRelArg;
 struct kndRelArgInstance;
@@ -141,7 +142,7 @@ struct kndMemPool
     size_t max_rel_update_refs;
     size_t num_rel_update_refs;
 
-    struct kndRelDir *rel_dirs;
+    struct kndRelEntry *rel_dirs;
     size_t max_rel_dirs;
     size_t num_rel_dirs;
 
@@ -238,7 +239,7 @@ struct kndMemPool
     int (*new_rel)(struct kndMemPool   *self,
                    struct kndRel **result);
     int (*new_rel_dir)(struct kndMemPool   *self,
-                       struct kndRelDir **result);
+                       struct kndRelEntry **result);
     int (*new_rel_ref)(struct kndMemPool   *self,
                        struct kndRelRef **result);
     int (*new_rel_update)(struct kndMemPool   *self,

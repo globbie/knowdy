@@ -324,15 +324,15 @@ static int new_obj_dir(struct kndMemPool *self,
 }
 
 static int new_rel_dir(struct kndMemPool *self,
-                       struct kndRelDir **result)
+                       struct kndRelEntry **result)
 {
-    struct kndRelDir *dir;
+    struct kndRelEntry *dir;
 
     if (self->num_rel_dirs >= self->max_rel_dirs) {
         return knd_LIMIT;
     }
     dir = &self->rel_dirs[self->num_rel_dirs];
-    memset(dir, 0, sizeof(struct kndRelDir));
+    memset(dir, 0, sizeof(struct kndRelEntry));
     self->num_rel_dirs++;
     *result = dir;
     return knd_OK;
@@ -704,7 +704,7 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    self->rel_dirs = calloc(self->max_rel_dirs, sizeof(struct kndRelDir));
+    self->rel_dirs = calloc(self->max_rel_dirs, sizeof(struct kndRelEntry));
     if (!self->rel_dirs) {
         knd_log("-- rel dirs not allocated :(");
         return knd_NOMEM;

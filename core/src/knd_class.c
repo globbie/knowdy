@@ -3743,7 +3743,7 @@ static gsl_err_t reldir_entry_alloc(void *self,
                                     void **item)
 {
     struct kndClassEntry *parent_dir = self;
-    struct kndRelDir *dir;
+    struct kndRelEntry *dir;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -3764,11 +3764,11 @@ static gsl_err_t reldir_entry_append(void *accu,
                                      void *item)
 {
     struct kndClassEntry *parent_dir = accu;
-    struct kndRelDir *dir = item;
+    struct kndRelEntry *dir = item;
 
     if (!parent_dir->rels) {
         parent_dir->rels = calloc(KND_MAX_RELS,
-                                  sizeof(struct kndRelDir*));
+                                  sizeof(struct kndRelEntry*));
         if (!parent_dir->rels) return make_gsl_err_external(knd_NOMEM);
     }
 
@@ -3981,7 +3981,7 @@ static int parse_dir_trailer(struct kndClass *self,
     char *dir_buf = self->out->buf;
     size_t dir_buf_size = self->out->buf_size;
     struct kndClassEntry *dir;
-    struct kndRelDir *reldir;
+    struct kndRelEntry *reldir;
     struct kndProcEntry *procdir;
     size_t parsed_size = 0;
     int err;
@@ -7725,7 +7725,7 @@ static int freeze_rels(struct kndRel *self,
                        size_t *total_size)
 {
     struct kndRel *rel;
-    struct kndRelDir *dir;
+    struct kndRelEntry *dir;
     const char *key;
     void *val;
     char *curr_dir = output;
@@ -7742,7 +7742,7 @@ static int freeze_rels(struct kndRel *self,
         self->rel_name_idx->next_item(self->rel_name_idx, &key, &val);
         if (!key) break;
 
-        dir = (struct kndRelDir*)val;
+        dir = (struct kndRelEntry*)val;
         rel = dir->rel;
 
         rel->out = self->out;
