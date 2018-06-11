@@ -37,7 +37,7 @@ struct kndRelArg;
 struct kndRelArgInstance;
 
 struct kndProc;
-struct kndProcDir;
+struct kndProcRef;
 struct kndProcArg;
 struct kndProcArgInstance;
 struct kndProcInstance;
@@ -170,7 +170,7 @@ struct kndMemPool
     size_t max_procs;
     size_t num_procs;
 
-    struct kndProcDir *proc_dirs;
+    struct kndProcRef *proc_dirs;
     size_t max_proc_dirs;
     size_t num_proc_dirs;
 
@@ -256,7 +256,7 @@ struct kndMemPool
     //int (*new_proc_inst)(struct kndMemPool   *self,
     //                     struct kndProcInstance **result);
     int (*new_proc_dir)(struct kndMemPool   *self,
-                        struct kndProcDir **result);
+                        struct kndProcRef **result);
     int (*new_proc_arg)(struct kndMemPool   *self,
                         struct kndProcArg **result);
     //int (*new_proc_arg_inst)(struct kndMemPool   *self,

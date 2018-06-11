@@ -65,7 +65,7 @@ struct kndProcArgInstance
 
     const char *procname;
     size_t procname_size;
-    struct kndProcDir *proc_dir;
+    struct kndProcRef *proc_dir;
 
     const char *objname;
     size_t objname_size;
@@ -98,7 +98,7 @@ struct kndProcArg
     struct kndProcCall proc_call;
 
     struct kndProc *parent;
-    struct kndProcDir *proc_dir;
+    struct kndProcRef *proc_dir;
 
     const char *locale;
     size_t locale_size;

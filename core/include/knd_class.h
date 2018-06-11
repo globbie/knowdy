@@ -133,7 +133,7 @@ struct kndClassRef
     struct kndRelDir **rels;
     size_t num_rels;
 
-    struct kndProcDir **procs;
+    struct kndProcRef **procs;
     size_t num_procs;
 
     //size_t next_obj_numid;
@@ -147,7 +147,7 @@ struct kndClassRef
     struct ooDict *obj_name_idx;
 
     struct ooDict *reverse_attr_name_idx;
-    //struct kndProcDir *proc_dir;
+    //struct kndProcRef *proc_dir;
 
     struct kndTask *task;
     struct glbOutput *out;

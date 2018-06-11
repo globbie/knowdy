@@ -161,7 +161,7 @@ static int get_proc(struct kndProc *self,
     size_t buf_size;
     size_t chunk_size = 0;
     size_t *total_size;
-    struct kndProcDir *dir;
+    struct kndProcRef *dir;
     struct kndProc *proc;
     const char *filename;
     size_t filename_size;
@@ -176,7 +176,7 @@ static int get_proc(struct kndProc *self,
         knd_log(".. %.*s to get proc: \"%.*s\"..",
                 self->name_size, self->name, name_size, name);
 
-    dir = (struct kndProcDir*)self->proc_name_idx->get(self->proc_name_idx,
+    dir = (struct kndProcRef*)self->proc_name_idx->get(self->proc_name_idx,
                                                        name, name_size);
     if (!dir) {
         knd_log("-- no such proc: \"%.*s\" IDX:%p :(",
@@ -1106,7 +1106,7 @@ static gsl_err_t arg_item_read(void *obj,
 
 static int inherit_args(struct kndProc *self, struct kndProc *parent)
 {
-    struct kndProcDir *dir;
+    struct kndProcRef *dir;
     struct kndProcArg *arg;
     struct kndProc *proc;
     struct kndArgEntry *entry;
@@ -1366,7 +1366,7 @@ static int import_proc(struct kndProc *self,
                        size_t *total_size)
 {
     struct kndProc *proc;
-    struct kndProcDir *dir;
+    struct kndProcRef *dir;
     int err;
     gsl_err_t parser_err;
 
@@ -1595,7 +1595,7 @@ static int resolve_parents(struct kndProc *self)
 {
     struct kndProcBase *base;
     struct kndProc *proc;
-    struct kndProcDir *dir;
+    struct kndProcRef *dir;
     struct kndProcArg *arg;
     struct kndArgEntry *entry;
     struct kndArgItem *arg_item;
@@ -1731,7 +1731,7 @@ static int kndProc_resolve(struct kndProc *self)
 {
     struct kndProcArg *arg = NULL;
     struct kndArgEntry *entry;
-    struct kndProcDir *dir;
+    struct kndProcRef *dir;
     int err;
 
     if (DEBUG_PROC_LEVEL_2)
@@ -1783,7 +1783,7 @@ static int kndProc_resolve(struct kndProc *self)
 static int resolve_procs(struct kndProc *self)
 {
     struct kndProc *proc;
-    struct kndProcDir *dir;
+    struct kndProcRef *dir;
     const char *key;
     void *val;
     int err;
@@ -1797,7 +1797,7 @@ static int resolve_procs(struct kndProc *self)
         self->proc_name_idx->next_item(self->proc_name_idx, &key, &val);
         if (!key) break;
 
-        dir = (struct kndProcDir*)val;
+        dir = (struct kndProcRef*)val;
         proc = dir->proc;
 
         if (proc->is_resolved) {
@@ -1824,7 +1824,7 @@ static int resolve_procs(struct kndProc *self)
 static int kndProc_coordinate(struct kndProc *self)
 {
     struct kndProc *proc;
-    struct kndProcDir *dir;
+    struct kndProcRef *dir;
     const char *key;
     void *val;
     int err;
@@ -1841,7 +1841,7 @@ static int kndProc_coordinate(struct kndProc *self)
         self->proc_name_idx->next_item(self->proc_name_idx, &key, &val);
         if (!key) break;
 
-        dir = (struct kndProcDir*)val;
+        dir = (struct kndProcRef*)val;
         proc = dir->proc;
 
         /* assign id */
@@ -1857,7 +1857,7 @@ static int kndProc_coordinate(struct kndProc *self)
         do {
             self->proc_name_idx->next_item(self->proc_name_idx, &key, &val);
             if (!key) break;
-            dir = (struct kndProcDir*)val;
+            dir = (struct kndProcRef*)val;
             proc = dir->proc;
             proc->depth = self->depth + 1;
             proc->str(proc);
@@ -1903,7 +1903,7 @@ static int update_state(struct kndProc *self,
 }
 
 static int read_proc_incipit(struct kndProc *self,
-                            struct kndProcDir *dir)
+                            struct kndProcRef *dir)
 {
     char buf[KND_NAME_SIZE + 1];
     size_t buf_size;
@@ -1946,7 +1946,7 @@ static int read_proc_incipit(struct kndProc *self,
 }
 
 static int read_proc(struct kndProc *self,
-                    struct kndProcDir *dir)
+                    struct kndProcRef *dir)
 {
     int err;
 
@@ -2030,7 +2030,7 @@ static int freeze_procs(struct kndProc *self,
                         size_t *total_size)
 {
     struct kndProc *proc;
-    struct kndProcDir *dir;
+    struct kndProcRef *dir;
     const char *key;
     void *val;
     char *curr_dir = output;
@@ -2053,7 +2053,7 @@ static int freeze_procs(struct kndProc *self,
         self->proc_name_idx->next_item(self->proc_name_idx, &key, &val);
         if (!key) break;
 
-        dir = (struct kndProcDir*)val;
+        dir = (struct kndProcRef*)val;
         proc = dir->proc;
 
         proc->out = self->out;

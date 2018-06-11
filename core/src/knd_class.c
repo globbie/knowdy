@@ -770,7 +770,7 @@ static int resolve_proc_ref(struct kndClass *self,
                              struct kndProc *base,
                              struct kndProc **result)
 {
-    struct kndProcDir *procdir;
+    struct kndProcRef *procdir;
     struct kndClass *c;
     struct kndProc *root_proc, *proc;
     int err;
@@ -1098,7 +1098,7 @@ static int resolve_attrs(struct kndClass *self)
     struct kndAttrEntry *entry;
     struct kndClassRef *dir;
     struct kndProc *proc;
-    struct kndProcDir *procdir;
+    struct kndProcRef *procdir;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -3794,7 +3794,7 @@ static gsl_err_t procdir_entry_alloc(void *self,
                                      void **item)
 {
     struct kndClassRef *parent_dir = self;
-    struct kndProcDir *dir;
+    struct kndProcRef *dir;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -3816,11 +3816,11 @@ static gsl_err_t procdir_entry_append(void *accu,
                                       void *item)
 {
     struct kndClassRef *parent_dir = accu;
-    struct kndProcDir *dir = item;
+    struct kndProcRef *dir = item;
 
     if (!parent_dir->procs) {
         parent_dir->procs = calloc(KND_MAX_PROCS,
-                                   sizeof(struct kndProcDir*));
+                                   sizeof(struct kndProcRef*));
         if (!parent_dir->procs) return make_gsl_err_external(knd_NOMEM);
     }
 
@@ -3982,7 +3982,7 @@ static int parse_dir_trailer(struct kndClass *self,
     size_t dir_buf_size = self->out->buf_size;
     struct kndClassRef *dir;
     struct kndRelDir *reldir;
-    struct kndProcDir *procdir;
+    struct kndProcRef *procdir;
     size_t parsed_size = 0;
     int err;
     gsl_err_t parser_err;
