@@ -28,7 +28,7 @@
 #include "knd_config.h"
 
 struct kndClass;
-struct kndClassRef;
+struct kndClassEntry;
 struct kndTranslation;
 struct kndRel;
 struct kndRelInstance;
@@ -64,7 +64,7 @@ struct kndRelArgInstance
 
     const char *classname;
     size_t classname_size;
-    struct kndClassRef *conc_dir;
+    struct kndClassEntry *conc_dir;
 
     const char *objname;
     size_t objname_size;
@@ -87,7 +87,7 @@ struct kndRelArg
     size_t classname_size;
 
     struct kndClass *conc;
-    struct kndClassRef *conc_dir;
+    struct kndClassEntry *conc_dir;
     struct kndRel *rel;
 
     const char *locale;

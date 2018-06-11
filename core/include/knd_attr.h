@@ -26,7 +26,7 @@
 #include "knd_config.h"
 
 struct kndClass;
-struct kndClassRef;
+struct kndClassEntry;
 struct glbOutput;
 struct kndTranslation;
 struct kndAttr;
@@ -113,7 +113,7 @@ struct kndAttrItem
     size_t num_list_elems;
 
     struct kndClass *conc;
-    struct kndClassRef *conc_dir;
+    struct kndClassEntry *conc_dir;
     struct kndProc *proc;
     struct kndProcDir *proc_dir;
 
@@ -130,7 +130,7 @@ struct kndAttrEntry
     struct kndAttr *attr;
     struct kndAttrItem *attr_item;
 
-    struct kndClassRef *dir;
+    struct kndClassEntry *dir;
 
     /* TODO: facets */
 

@@ -262,14 +262,14 @@ static int new_obj_elem(struct kndMemPool *self,
 }
 
 static int new_conc_dir(struct kndMemPool *self,
-                       struct kndClassRef **result)
+                       struct kndClassEntry **result)
 {
-    struct kndClassRef *dir;
+    struct kndClassEntry *dir;
     if (self->num_conc_dirs >= self->max_conc_dirs) {
         return knd_LIMIT;
     }
     dir = &self->conc_dirs[self->num_conc_dirs];
-    memset(dir, 0, sizeof(struct kndClassRef));
+    memset(dir, 0, sizeof(struct kndClassEntry));
     self->num_conc_dirs++;
     *result = dir;
     return knd_OK;
@@ -598,7 +598,7 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    self->conc_dirs = calloc(self->max_conc_dirs, sizeof(struct kndClassRef));
+    self->conc_dirs = calloc(self->max_conc_dirs, sizeof(struct kndClassEntry));
     if (!self->conc_dirs) {
         knd_log("-- conc dirs not allocated :(");
         return knd_NOMEM;
