@@ -114,7 +114,7 @@ struct kndProcArgVar
     struct kndProcArgVar *next;
 };
 
-struct kndProcArgRef
+struct kndProcArgEntry
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
