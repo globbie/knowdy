@@ -182,9 +182,9 @@ struct kndMemPool
     size_t max_proc_args;
     size_t num_proc_args;
 
-    struct kndProcArgInstance *proc_arg_insts;
-    size_t max_proc_arg_insts;
-    size_t num_proc_arg_insts;
+    //struct kndProcArgInstance *proc_arg_insts;
+    //size_t max_proc_arg_insts;
+    //size_t num_proc_arg_insts;
 
     struct kndProcUpdate *proc_updates;
     size_t max_proc_updates;
@@ -253,14 +253,14 @@ struct kndMemPool
                                 struct kndRelArgInstRef **result);
     int (*new_proc)(struct kndMemPool   *self,
                     struct kndProc **result);
-    int (*new_proc_inst)(struct kndMemPool   *self,
-                         struct kndProcInstance **result);
+    //int (*new_proc_inst)(struct kndMemPool   *self,
+    //                     struct kndProcInstance **result);
     int (*new_proc_dir)(struct kndMemPool   *self,
                         struct kndProcDir **result);
     int (*new_proc_arg)(struct kndMemPool   *self,
                         struct kndProcArg **result);
-    int (*new_proc_arg_inst)(struct kndMemPool   *self,
-                             struct kndProcArgInstance **result);
+    //int (*new_proc_arg_inst)(struct kndMemPool   *self,
+    //                         struct kndProcArgInstance **result);
     int (*new_proc_update)(struct kndMemPool   *self,
                           struct kndProcUpdate **result);
     int (*new_proc_update_ref)(struct kndMemPool   *self,
