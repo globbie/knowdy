@@ -128,7 +128,7 @@ struct kndArgEntry
     struct kndArgItem *next; 
 };
 
-struct kndProcBase
+struct kndProcVar
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
@@ -140,7 +140,7 @@ struct kndProcBase
     struct kndArgItem *tail;
     size_t num_args;
 
-    struct kndProcBase *next;
+    struct kndProcVar *next;
 };
 
 struct kndProc
@@ -176,7 +176,7 @@ struct kndProc
     struct kndProcCall proc_call;
     size_t num_proc_calls;
 
-    struct kndProcBase *bases;
+    struct kndProcVar *bases;
     size_t num_bases;
 
     struct kndProcRef *inherited[KND_MAX_INHERITED];

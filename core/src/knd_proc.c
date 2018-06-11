@@ -49,7 +49,7 @@ static void proc_call_arg_str(struct kndProcCallArg *self,
      
 }
 
-static void base_str(struct kndProcBase *base,
+static void base_str(struct kndProcVar *base,
                      size_t depth)
 {
     struct kndArgItem *arg;
@@ -70,7 +70,7 @@ static void str(struct kndProc *self)
     struct kndTranslation *tr;
     struct kndProcArg *arg;
     struct kndProcCallArg *call_arg;
-    struct kndProcBase *base;
+    struct kndProcVar *base;
 
     knd_log("PROC %p: %.*s id:%.*s",
             self, self->name_size, self->name,
@@ -1067,7 +1067,7 @@ static gsl_err_t arg_item_read(void *obj,
                                const char *name, size_t name_size,
                                const char *rec, size_t *total_size)
 {
-    struct kndProcBase *base = obj;
+    struct kndProcVar *base = obj;
     struct kndArgItem *item;
     gsl_err_t parser_err;
 
@@ -1110,7 +1110,7 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
     struct kndProcArg *arg;
     struct kndProc *proc;
     struct kndArgEntry *entry;
-    struct kndProcBase *base;
+    struct kndProcVar *base;
     int err;
 
     if (DEBUG_PROC_LEVEL_2)
@@ -1202,7 +1202,7 @@ static gsl_err_t parse_base(void *data,
                             size_t *total_size)
 {
     struct kndProc *self = data;
-    struct kndProcBase *base;
+    struct kndProcVar *base;
     gsl_err_t parser_err;
 
     /*err = self->mempool->new_proc_base(self->mempool, &base);                       RET_ERR();
@@ -1210,8 +1210,8 @@ static gsl_err_t parse_base(void *data,
     err = base->parse(base, rec, total_size);                                       PARSE_ERR();
     */
 
-    base = malloc(sizeof(struct kndProcBase));
-    memset(base, 0, sizeof(struct kndProcBase));
+    base = malloc(sizeof(struct kndProcVar));
+    memset(base, 0, sizeof(struct kndProcVar));
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -1593,7 +1593,7 @@ static int parse_GSL(struct kndProc *self,
 
 static int resolve_parents(struct kndProc *self)
 {
-    struct kndProcBase *base;
+    struct kndProcVar *base;
     struct kndProc *proc;
     struct kndProcRef *dir;
     struct kndProcArg *arg;
