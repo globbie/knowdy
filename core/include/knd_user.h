@@ -2,7 +2,7 @@
 
 #include "knd_utils.h"
 #include "knd_task.h"
-#include "knd_concept.h"
+#include "knd_class.h"
 
 struct kndObjEntry;
 struct kndUser;
@@ -66,7 +66,7 @@ struct kndUser
 
     struct kndObject *curr_user;
 
-    struct kndConcept *root_class;
+    struct kndClass *root_class;
 
     struct kndTask *task;
     struct glbOutput *out;

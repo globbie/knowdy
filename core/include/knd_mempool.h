@@ -25,17 +25,20 @@
 
 #include "knd_config.h"
 
-struct kndConcept;
+struct kndClass;
+struct kndClassVar;
+struct kndClassEntry;
 struct kndObject;
 struct kndElem;
 
 struct kndRel;
+struct kndRelEntry;
 struct kndRelInstance;
 struct kndRelArg;
 struct kndRelArgInstance;
 
 struct kndProc;
-struct kndProcDir;
+struct kndProcEntry;
 struct kndProcArg;
 struct kndProcArgInstance;
 struct kndProcInstance;
@@ -90,15 +93,15 @@ struct kndMemPool
     size_t max_class_update_refs;
     size_t num_class_update_refs;
 
-    struct kndConcept *classes;
+    struct kndClass *classes;
     size_t max_classes;
     size_t num_classes;
 
-    struct kndConcDir *conc_dirs;
+    struct kndClassEntry *conc_dirs;
     size_t max_conc_dirs;
     size_t num_conc_dirs;
 
-    struct kndConcItem *conc_items;
+    struct kndClassVar *conc_items;
     size_t max_conc_items;
     size_t num_conc_items;
     
@@ -139,7 +142,7 @@ struct kndMemPool
     size_t max_rel_update_refs;
     size_t num_rel_update_refs;
 
-    struct kndRelDir *rel_dirs;
+    struct kndRelEntry *rel_dirs;
     size_t max_rel_dirs;
     size_t num_rel_dirs;
 
@@ -168,7 +171,7 @@ struct kndMemPool
     size_t max_procs;
     size_t num_procs;
 
-    struct kndProcDir *proc_dirs;
+    struct kndProcEntry *proc_dirs;
     size_t max_proc_dirs;
     size_t num_proc_dirs;
 
@@ -180,9 +183,9 @@ struct kndMemPool
     size_t max_proc_args;
     size_t num_proc_args;
 
-    struct kndProcArgInstance *proc_arg_insts;
-    size_t max_proc_arg_insts;
-    size_t num_proc_arg_insts;
+    //struct kndProcArgInstance *proc_arg_insts;
+    //size_t max_proc_arg_insts;
+    //size_t num_proc_arg_insts;
 
     struct kndProcUpdate *proc_updates;
     size_t max_proc_updates;
@@ -218,11 +221,11 @@ struct kndMemPool
     int (*new_class_update_ref)(struct kndMemPool   *self,
                                 struct kndClassUpdateRef **result);
     int (*new_class)(struct kndMemPool   *self,
-                     struct kndConcept **result);
+                     struct kndClass **result);
     int (*new_conc_dir)(struct kndMemPool   *self,
-                        struct kndConcDir **result);
+                        struct kndClassEntry **result);
     int (*new_conc_item)(struct kndMemPool   *self,
-                         struct kndConcItem **result);
+                         struct kndClassVar **result);
     int (*new_attr_item)(struct kndMemPool   *self,
                          struct kndAttrItem **result);
     int (*new_obj)(struct kndMemPool   *self,
@@ -236,7 +239,7 @@ struct kndMemPool
     int (*new_rel)(struct kndMemPool   *self,
                    struct kndRel **result);
     int (*new_rel_dir)(struct kndMemPool   *self,
-                       struct kndRelDir **result);
+                       struct kndRelEntry **result);
     int (*new_rel_ref)(struct kndMemPool   *self,
                        struct kndRelRef **result);
     int (*new_rel_update)(struct kndMemPool   *self,
@@ -251,14 +254,14 @@ struct kndMemPool
                                 struct kndRelArgInstRef **result);
     int (*new_proc)(struct kndMemPool   *self,
                     struct kndProc **result);
-    int (*new_proc_inst)(struct kndMemPool   *self,
-                         struct kndProcInstance **result);
+    //int (*new_proc_inst)(struct kndMemPool   *self,
+    //                     struct kndProcInstance **result);
     int (*new_proc_dir)(struct kndMemPool   *self,
-                        struct kndProcDir **result);
+                        struct kndProcEntry **result);
     int (*new_proc_arg)(struct kndMemPool   *self,
                         struct kndProcArg **result);
-    int (*new_proc_arg_inst)(struct kndMemPool   *self,
-                             struct kndProcArgInstance **result);
+    //int (*new_proc_arg_inst)(struct kndMemPool   *self,
+    //                         struct kndProcArgInstance **result);
     int (*new_proc_update)(struct kndMemPool   *self,
                           struct kndProcUpdate **result);
     int (*new_proc_update_ref)(struct kndMemPool   *self,

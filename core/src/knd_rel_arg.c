@@ -8,7 +8,7 @@
 #include "knd_rel.h"
 #include "knd_task.h"
 #include "knd_set.h"
-#include "knd_concept.h"
+#include "knd_class.h"
 #include "knd_text.h"
 #include "knd_mempool.h"
 
@@ -434,7 +434,7 @@ static gsl_err_t get_inst_classname(void *obj, const char *name, size_t name_siz
 {
     struct kndRelArgInstance *self = obj;
     struct kndSet *class_idx = self->relarg->rel->class_idx;
-    struct kndConcDir *dir;
+    struct kndClassEntry *dir;
     void *result;
     int err;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -462,7 +462,7 @@ static gsl_err_t get_inst_obj(void *obj, const char *name, size_t name_size)
 {
     struct kndRelArgInstance *self = obj;
     void *elem;
-    struct kndConcDir *dir = self->conc_dir;
+    struct kndClassEntry *dir = self->conc_dir;
     int err;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -638,7 +638,7 @@ static int link_rel(struct kndRelArg *self,
 
 static int resolve(struct kndRelArg *self)
 {
-    struct kndConcDir *dir;
+    struct kndClassEntry *dir;
 
     if (DEBUG_RELARG_LEVEL_2)
         knd_log(".. resolving Rel Arg %.*s..",
@@ -659,7 +659,7 @@ static int resolve(struct kndRelArg *self)
 static int resolve_inst(struct kndRelArg *self,
                         struct kndRelArgInstance *inst)
 {
-    struct kndConcDir *dir;
+    struct kndClassEntry *dir;
     struct kndObjEntry *obj;
     int err;
 

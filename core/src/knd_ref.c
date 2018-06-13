@@ -10,7 +10,7 @@
 #include "knd_elem.h"
 #include "knd_object.h"
 #include "knd_utils.h"
-#include "knd_concept.h"
+#include "knd_class.h"
 #include "knd_attr.h"
 
 
@@ -41,7 +41,7 @@ kndRef_set_reverse_rel(struct kndRef *self,
 {
     struct kndRelClass *relc;
     struct kndRelType *reltype;
-    struct kndConcept *conc;
+    struct kndClass *conc;
 
     conc = self->elem->attr->parent_conc;
     if (DEBUG_REF_LEVEL_2)
@@ -93,7 +93,7 @@ kndRef_set_reverse_rel(struct kndRef *self,
 
  /*static int kndRef_resolve(struct kndRef *self)
 {
-    struct kndConcept *conc;
+    struct kndClass *conc;
     struct kndObjEntry *entry;
     struct kndObject *obj;
     const char *obj_name;

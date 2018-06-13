@@ -25,7 +25,8 @@
 #include "knd_task.h"
 #include "knd_config.h"
 
-struct kndConcept;
+struct kndClass;
+struct kndClassEntry;
 struct glbOutput;
 struct kndTranslation;
 struct kndAttr;
@@ -111,8 +112,8 @@ struct kndAttrItem
     struct kndAttrItem *list_tail;
     size_t num_list_elems;
 
-    struct kndConcept *conc;
-    struct kndConcDir *conc_dir;
+    struct kndClass *conc;
+    struct kndClassEntry *conc_dir;
     struct kndProc *proc;
     struct kndProcDir *proc_dir;
 
@@ -129,7 +130,7 @@ struct kndAttrEntry
     struct kndAttr *attr;
     struct kndAttrItem *attr_item;
 
-    struct kndConcDir *dir;
+    struct kndClassEntry *dir;
 
     /* TODO: facets */
 
@@ -147,7 +148,7 @@ struct kndAttr
 
     char classname[KND_NAME_SIZE];
     size_t classname_size;
-    struct kndConcept *conc;
+    struct kndClass *conc;
 
     char uniq_attr_name[KND_SHORT_NAME_SIZE];
     size_t uniq_attr_name_size;
@@ -165,7 +166,7 @@ struct kndAttr
     /* attr name may not be specified */
     bool is_implied;
 
-    struct kndConcept *parent_conc;
+    struct kndClass *parent_conc;
     struct kndTask *task;
 
     const char *locale;

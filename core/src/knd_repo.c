@@ -9,10 +9,9 @@
 #include "knd_set.h"
 #include "knd_user.h"
 #include "knd_query.h"
-#include "knd_sorttag.h"
 #include "knd_task.h"
 #include "knd_dict.h"
-#include "knd_concept.h"
+#include "knd_class.h"
 
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
@@ -28,7 +27,7 @@
 
 //static int
 //kndRepo_get_guid(struct kndRepo *self,
-//                 struct kndConcept *conc,
+//                 struct kndClass *conc,
 //                 const char *obj_name,
 //                 size_t      obj_name_size,
 //                 char *result);

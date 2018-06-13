@@ -1,7 +1,7 @@
-
 set(SOURCES
         src/main.c
         src/learner-service.c
+        src/learner-service.h
         $<TARGET_OBJECTS:glb-lib-options>
 )
 

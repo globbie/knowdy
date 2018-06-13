@@ -27,10 +27,10 @@ find_path(CHECK_INCLUDE_DIR NAMES check.h PATHS ${CHECK_INCLUDE_DIRS})
 find_library(CHECK_LIBRARY NAMES check PATHS ${CHECK_LIBRARY_DIRS})
 include_directories(${CHECK_INCLUDE_DIR})
 
-pkg_check_modules(OPENSSL REQUIRED openssl)
-find_path(OPENSSL_INCLUDE_DIR NAMES openssl.h PATHS ${OPENSSL_INCLUDE_DIRS})
-find_library(CRYPTO_LIBRARY NAMES crypto PATHS ${CRYPTO_LIBRARY_DIRS})
-include_directories(${OPENSSL_INCLUDE_DIRS})
+#pkg_check_modules(OPENSSL REQUIRED openssl)
+#find_path(OPENSSL_INCLUDE_DIR NAMES openssl.h PATHS ${OPENSSL_INCLUDE_DIRS})
+#find_library(CRYPTO_LIBRARY NAMES crypto PATHS ${CRYPTO_LIBRARY_DIRS})
+#include_directories(${OPENSSL_INCLUDE_DIRS})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         set(CHECK_LIBRARY ${CHECK_LIBRARY} rt m pthread subunit)
@@ -61,7 +61,7 @@ set(LEARNER   "learner")
 
 set(KNOWDY_MODULES
         ${CORE}
-        ${RETRIEVER}
+#        ${RETRIEVER}
         ${LEARNER})
 
 include_directories(${CORE}/include)

@@ -22,7 +22,7 @@
 #define OO_CONFIG_H
 
 /* converting enum names to strings */
-#define OO_STR(s) #s
+//#define OO_STR(s) #s
 
 /* return error codes */
 enum { oo_OK, oo_FAIL, oo_NOMEM, oo_MATCH, oo_NO_RESULTS } oo_err_codes;
@@ -46,6 +46,9 @@ enum { oo_OK, oo_FAIL, oo_NOMEM, oo_MATCH, oo_NO_RESULTS } oo_err_codes;
 #endif
 */
 
+#include <stdbool.h>
+
+#if 0  // unused
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 
 #include <stdbool.h>
@@ -234,6 +237,8 @@ typedef enum output_type {  OO_FORMAT_GSL,
 			    OO_FORMAT_JSON, 
 			    OO_FORMAT_XML
 } output_type;
+
+#endif  // unused
 
 
 typedef int (*oo_compar_func)(const void *item, 

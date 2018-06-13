@@ -31,7 +31,7 @@ struct kndRelType;
 
 struct kndUser;
 struct kndRepo;
-struct kndConcept;
+struct kndClass;
 
 struct kndElemState
 {
@@ -47,7 +47,7 @@ struct kndElemState
     size_t seq_size;
     */
     struct kndObject *refobj;
-    struct kndConcept *conc;
+    struct kndClass *conc;
     
     struct kndElemState *next;
 };

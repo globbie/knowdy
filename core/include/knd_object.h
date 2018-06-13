@@ -20,7 +20,7 @@
 #pragma once
 
 #include "knd_config.h"
-#include "knd_concept.h"
+#include "knd_class.h"
 
 struct kndState;
 struct kndObjRef;
@@ -54,7 +54,7 @@ struct kndAggrObject
     char state[KND_STATE_SIZE];
 
     struct kndElem *parent;
-    struct kndConcept *conc;
+    struct kndClass *conc;
     struct kndElem *elems;
     struct kndElem *tail;
     size_t num_elems;
@@ -118,7 +118,7 @@ struct kndObject
     struct kndElem *parent;
     struct kndObject *curr_obj;
 
-    struct kndConcept *conc;
+    struct kndClass *conc;
     
     struct glbOutput *out;
     struct glbOutput *log;
