@@ -29,12 +29,12 @@
 
 struct kndAttr;
 struct kndAttrItem;
-struct kndConcept;
+struct kndClass;
 struct glbOutput;
 struct kndTranslation;
-struct kndConcept;
+struct kndClass;
 struct kndRel;
-struct kndRelObj;
+//struct kndRelObj;
 struct kndTask;
 struct kndSet;
 struct kndUser;
@@ -42,27 +42,34 @@ struct kndClassUpdate;
 struct kndClassUpdateRef;
 struct kndObjEntry;
 
-typedef enum knd_conc_type {
-    KND_CONC_CLASS,
-    KND_CONC_PROC,
-    KND_CONC_ATTR
-} knd_conc_type;
+//typedef enum knd_conc_type {
+//    KND_CONC_CLASS,
+//    KND_CONC_PROC,
+//    KND_CONC_ATTR
+//} knd_conc_type;
 
-struct kndObjStateIdx
-{
-    struct kndObject **objs;
-    size_t num_objs;
-    struct kndStateIdx **children;
-};
+//struct kndObjStateIdx
+//{
+//    struct kndObject **objs;
+//    size_t num_objs;
+//    struct kndStateIdx **children;
+//};
 
-struct kndConcRef
-{
-    size_t state;
-    struct kndConcDir *dir;
-    //struct kndConcept *conc;
-};
+//struct kndConcRef
+//{
+//    size_t state;
+//    struct kndClassEntry *dir;
+//    //struct kndClass *conc;
+//};
 
-struct kndConcItem
+//struct kndConcRefSet
+//{
+//    size_t state;
+//    struct kndClassEntry *dir;
+//    struct kndClass *conc;
+//};
+
+struct kndClassVar
 {
     char id[KND_ID_SIZE];
     size_t id_size;
@@ -75,34 +82,34 @@ struct kndConcItem
     struct kndAttrItem *tail;
     size_t num_attrs;
 
-    struct kndConcept *parent;
+    struct kndClass *parent;
 
-    struct kndConcept *conc;
-    struct kndConcDir *conc_dir;
+    struct kndClass *conc;
+    //struct kndClassEntry *conc_dir;
 
     struct kndMemPool *mempool;
-    struct kndConcItem *next;
+    struct kndClassVar *next;
 };
 
 struct kndConcFolder
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
-    size_t num_concepts;
+    //size_t num_concepts;
     struct kndConcFolder *parent;
     struct kndConcFolder *next;
 };
 
-struct kndConcDir
+struct kndClassEntry
 {
     char id[KND_ID_SIZE];
     size_t id_size;
     size_t numid;
-    size_t owner_id;
+    //size_t owner_id;
 
     char name[KND_NAME_SIZE];
     size_t name_size;
-    struct kndConcept *conc;
+    struct kndClass *conc;
     struct kndMemPool *mempool;
 
     knd_state_phase phase;
@@ -119,17 +126,17 @@ struct kndConcDir
 
     struct kndSet *descendants;
     struct kndSet *child_idx;
-    struct kndConcDir **children;
+    struct kndClassEntry **children;
     size_t num_children;
     size_t num_terminals;
 
-    struct kndRelDir **rels;
+    struct kndRelEntry **rels;
     size_t num_rels;
 
-    struct kndProcDir **procs;
+    struct kndProcEntry **procs;
     size_t num_procs;
 
-    size_t next_obj_numid;
+    //size_t next_obj_numid;
 
     struct kndObjDir *obj_dir;
     size_t num_objs;
@@ -140,16 +147,14 @@ struct kndConcDir
     struct ooDict *obj_name_idx;
 
     struct ooDict *reverse_attr_name_idx;
-    struct kndProcDir *proc_dir;
+    //struct kndProcEntry *proc_dir;
 
     struct kndTask *task;
     struct glbOutput *out;
 
-    bool is_terminal;
-
     size_t child_count;
-    struct kndConcDir *prev;
-    struct kndConcDir *next;
+    struct kndClassEntry *prev;
+    struct kndClassEntry *next;
 };
 
 struct kndClassUpdateRef
@@ -159,14 +164,14 @@ struct kndClassUpdateRef
     struct kndClassUpdateRef *next;
 };
 
-struct kndConcept 
+struct kndClass
 {
-    knd_conc_type type;
+    //knd_conc_type type;
     char name[KND_NAME_SIZE];
     size_t name_size;
 
     size_t numid;
-    size_t owner_id;
+    //size_t owner_id;
     size_t next_numid;
 
     struct kndState *state;
@@ -196,23 +201,23 @@ struct kndConcept
     size_t num_attrs;
     struct kndAttr *implied_attr;
 
-    struct kndConcItem *base_items;
+    struct kndClassVar *base_items;
     size_t num_base_items;
 
-    struct kndConcDir *bases[KND_MAX_BASES];
+    struct kndClassEntry *bases[KND_MAX_BASES];
     size_t num_bases;
 
-    bool ignore_children;
+    //bool ignore_children;
     bool is_resolved;
 
-    struct kndConcept *root_class;
-    struct kndConcept *curr_class;
-    struct kndConcept *curr_baseclass;
+    struct kndClass *root_class;
+    struct kndClass *curr_class;
+    struct kndClass *curr_baseclass;
     struct kndAttr *curr_attr;
-    size_t attrs_left;
+    //size_t attrs_left;
     struct kndObject  *curr_obj;
 
-    struct kndConcDir *dir;
+    struct kndClassEntry *dir;
     struct kndConcFolder *folders;
     size_t num_folders;
 
@@ -220,7 +225,7 @@ struct kndConcept
     struct kndMemPool *mempool;
 
     /* incoming */
-    struct kndConcept *inbox;
+    struct kndClass *inbox;
     size_t inbox_size;
 
     struct kndObject *obj_inbox;
@@ -233,23 +238,23 @@ struct kndConcept
     struct kndSet *class_idx;
     struct ooDict *class_name_idx;
 
-    struct kndSet *attr_idx;
+    //struct kndSet *attr_idx;
     struct ooDict *attr_name_idx;
 
     /* state idx */
-    struct kndObjStateIdx **obj_states;
+    //struct kndObjStateIdx **obj_states;
 
-    struct kndConcRef children[KND_MAX_CONC_CHILDREN];
-    size_t num_children;
-    size_t num_terminals;
-    bool is_terminal;
+    //struct kndConcRef children[KND_MAX_CONC_CHILDREN];
+    //size_t num_children;
+    //size_t num_terminals;
+    //bool is_terminal;
 
-    struct kndConcRef frozen_dir[KND_MAX_CONC_CHILDREN];
-    size_t frozen_dir_size;
+    //struct kndConcRef frozen_dir[KND_MAX_CONC_CHILDREN];
+    //size_t frozen_dir_size;
 
     /* TODO: move to mempool */
     char dir_buf[KND_MAX_CONC_CHILDREN * KND_DIR_ENTRY_SIZE];
-    size_t dir_buf_size;
+    //size_t dir_buf_size;
     const char *frozen_output_file_name;
     size_t frozen_output_file_name_size;
     size_t frozen_size;
@@ -258,7 +263,7 @@ struct kndConcept
     size_t frozen_name_idx_path_size;
 
     struct kndUpdate *curr_update;
-    struct kndConcept *next;
+    struct kndClass *next;
 
     struct kndUser *user;
     struct glbOutput *out;
@@ -266,71 +271,71 @@ struct kndConcept
     struct glbOutput *log;
     
     /***********  public methods ***********/
-    void (*init)(struct kndConcept  *self);
-    void (*del)(struct kndConcept   *self);
-    void (*reset_inbox)(struct kndConcept   *self);
-    void (*str)(struct kndConcept *self);
+    void (*init)(struct kndClass  *self);
+    void (*del)(struct kndClass   *self);
+    void (*reset_inbox)(struct kndClass   *self);
+    void (*str)(struct kndClass *self);
 
-    int (*open)(struct kndConcept   *self);
-    int (*load)(struct kndConcept   *self,
+    int (*open)(struct kndClass   *self);
+    int (*load)(struct kndClass   *self,
 		struct kndConcFolder *parent_folder,
                 const char *filename,
                 size_t filename_size);
-    int (*read)(struct kndConcept   *self,
+    int (*read)(struct kndClass   *self,
                 const char *rec,
                 size_t *total_size);
-    int (*read_obj_entry)(struct kndConcept   *self,
+    int (*read_obj_entry)(struct kndClass   *self,
                           struct kndObjEntry *entry,
                           struct kndObject **result);
-    int (*restore)(struct kndConcept   *self);
+    int (*restore)(struct kndClass   *self);
 
-    int (*select_delta)(struct kndConcept *self,
+    int (*select_delta)(struct kndClass *self,
                         const char *rec,
                         size_t *total_size);
-    int (*freeze)(struct kndConcept *self);
+    int (*freeze)(struct kndClass *self);
     gsl_err_t (*sync)(void *obj,
                       const char *rec,
                       size_t *total_size);
 
-    int (*build_diff)(struct kndConcept   *self,
-                      const char *start_state,
-                      size_t global_state_count);
-    int (*coordinate)(struct kndConcept *self);
+    //int (*build_diff)(struct kndClass   *self,
+    //                  const char *start_state,
+    //                  size_t global_state_count);
+    int (*coordinate)(struct kndClass *self);
 
-    int (*resolve)(struct kndConcept     *self,
+    int (*resolve)(struct kndClass     *self,
 		   struct kndClassUpdate *update);
 
-    int (*update_state)(struct kndConcept *self);
-    int (*apply_liquid_updates)(struct kndConcept *self,
+    int (*update_state)(struct kndClass *self);
+    int (*apply_liquid_updates)(struct kndClass *self,
                                 const char *rec,
                                 size_t *total_size);
     int (*select)(void  *self,
                   const char *rec,
                   size_t *total_size);
 
-    int (*get)(struct kndConcept  *self,
+    int (*get)(struct kndClass  *self,
                const char *name, size_t name_size,
-               struct kndConcept  **result);
+               struct kndClass  **result);
 
-    int (*get_obj)(struct kndConcept *self,
+    int (*get_obj)(struct kndClass *self,
                    const char *name, size_t name_size,
                    struct kndObject **result);
 
-    int (*get_attr)(struct kndConcept *self,
+    int (*get_attr)(struct kndClass *self,
                     const char *name, size_t name_size,
                     struct kndAttr **result);
     gsl_err_t (*import)(void *self,
                         const char *rec,
                         size_t *total_size);
-    int (*export)(struct kndConcept *self);
+    int (*export)(struct kndClass *self);
 
     /* traversal */
-    void (*rewind)(struct kndConcept   *self);
-    int (*next_attr)(struct kndConcept   *self,
-                     struct kndAttr **result);
+    //void (*rewind)(struct kndClass   *self);
+    //int (*next_attr)(struct kndClass   *self,
+    //                 struct kndAttr **result);
 };
 
 /* constructor */
-extern void kndConcept_init(struct kndConcept *self);
-extern int kndConcept_new(struct kndConcept **self,
-                          struct kndMemPool *mempool);
+extern void kndClass_init(struct kndClass *self);
+extern int kndClass_new(struct kndClass **self,
+                        struct kndMemPool *mempool);

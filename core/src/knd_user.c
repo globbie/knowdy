@@ -9,10 +9,10 @@
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
 
-#include "knd_policy.h"
+//#include "knd_policy.h"
 #include "knd_user.h"
 #include "knd_repo.h"
-#include "knd_concept.h"
+#include "knd_class.h"
 #include "knd_object.h"
 #include "knd_proc.h"
 #include "knd_rel.h"
@@ -37,7 +37,7 @@ static void del(struct kndUser *self)
 
 static void str(struct kndUser *self)
 {
-    struct kndConcept *dc;
+    struct kndClass *dc;
     const char *key = NULL;
     void *val = NULL;
 
@@ -48,7 +48,7 @@ static void str(struct kndUser *self)
         self->class_idx->next_item(self->class_idx, &key, &val);
         if (!key) break;
 
-        dc = (struct kndConcept*)val;
+        dc = (struct kndClass*)val;
 
         knd_log("CLASS: %s\n", dc->name);
 
@@ -128,7 +128,7 @@ static int export_JSON(struct kndUser *self)
     //char buf[KND_MED_BUF_SIZE] = {0};
     //size_t buf_size = 0;
 
-    struct kndConcept *c;
+    struct kndClass *c;
     struct glbOutput *out;
 
     const char *key = NULL;
@@ -174,7 +174,7 @@ static int export_JSON(struct kndUser *self)
             if (err) return err;
         }
 
-        c = (struct kndConcept*)val;
+        c = (struct kndClass*)val;
         err = c->export(c);
         if (err) return err;
         i++;
@@ -363,7 +363,7 @@ static gsl_err_t parse_class_import(void *obj,
                                     size_t *total_size)
 {
     struct kndUser *self = obj;
-    struct kndConcept *c;
+    struct kndClass *c;
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class import: \"%.*s\"", 64, rec);
@@ -487,7 +487,7 @@ static gsl_err_t parse_class_select(void *obj,
                                     size_t *total_size)
 {
     struct kndUser *self = obj;
-    struct kndConcept *c = self->root_class;
+    struct kndClass *c = self->root_class;
     int err;
 
     if (DEBUG_USER_LEVEL_2)
@@ -568,7 +568,7 @@ static gsl_err_t parse_liquid_updates(void *obj,
 static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 {
     struct kndUser *self = obj;
-    struct kndConcept *conc;
+    struct kndClass *conc;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -619,7 +619,7 @@ static gsl_err_t select_user_rels(void *obj,
 static gsl_err_t get_user_by_id(void *data, const char *numid, size_t numid_size)
 {
     struct kndUser *self = data;
-    struct kndConcept *conc;
+    struct kndClass *conc;
     struct kndObjEntry *entry;
     struct kndObject *obj;
     long numval = 0;
@@ -697,8 +697,8 @@ static gsl_err_t remove_user(void *data,
                              size_t val_size __attribute__((unused)))
 {
     struct kndUser *self = data;
-    struct kndConcept *conc;
-    struct kndConcept *root_class;
+    struct kndClass *conc;
+    struct kndClass *root_class;
     struct kndObject *obj;
     int err;
 
@@ -741,7 +741,7 @@ static int parse_task(struct kndUser *self,
                       const char *rec,
                       size_t *total_size)
 {
-    struct kndConcept *c;
+    struct kndClass *c;
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing user task: \"%s\" size: %lu..\n\n",

@@ -295,7 +295,7 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
 {
     struct kndLearnerService *self;
     struct glbOutput *out;
-    struct kndConcept *conc;
+    struct kndClass *conc;
     //struct kndLearnerOwner *owner;
     int err;
 

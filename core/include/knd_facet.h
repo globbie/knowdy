@@ -43,7 +43,7 @@ static const char* const knd_facet_names[] = {
     "CAT",
     "TOPIC" };
 
-struct kndConcept;
+struct kndClass;
 struct kndSet;
 struct kndQuery;
 struct kndOutput;
@@ -68,8 +68,8 @@ struct kndFacet
                 size_t           max_depth);
 
     int (*add_ref)(struct kndFacet *self,
-		   struct kndConcept *topic,
-		   struct kndConcept *spec);
+		   struct kndClass *topic,
+		   struct kndClass *spec);
     
     int (*sync)(struct kndFacet *self);
 

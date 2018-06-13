@@ -29,7 +29,7 @@ struct glbOutput;
 struct kndTask;
 struct kndUser;
 struct kndStateControl;
-struct kndConcept;
+struct kndClass;
 struct kndQuery;
 
 typedef enum knd_task_spec_type { KND_GET_STATE, 

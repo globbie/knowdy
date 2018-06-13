@@ -8,7 +8,7 @@
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
 
-#include "knd_concept.h"
+#include "knd_class.h"
 #include "knd_repo.h"
 #include "knd_elem.h"
 #include "knd_attr.h"

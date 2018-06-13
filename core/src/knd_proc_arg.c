@@ -8,7 +8,7 @@
 #include "knd_proc_arg.h"
 #include "knd_proc.h"
 #include "knd_task.h"
-#include "knd_concept.h"
+#include "knd_class.h"
 #include "knd_text.h"
 #include "knd_mempool.h"
 
@@ -676,7 +676,7 @@ static int parse_inst_GSL(struct kndProcArg *self,
                     struct kndObjEntry *obj_entry)
 {
     struct kndProc *proc = self->proc;
-    struct kndProcRef *ref = NULL;
+    struct kndProcEntry *ref = NULL;
     struct kndProcArgInstRef *proc_arg_inst_ref = NULL;
     int err;
 
@@ -708,7 +708,7 @@ static int parse_inst_GSL(struct kndProcArg *self,
 
 static int resolve_arg(struct kndProcArg *self)
 {
-    struct kndProcDir *dir;
+    struct kndProcEntry *dir;
     int err;
 
     if (DEBUG_PROC_ARG_LEVEL_2)
@@ -763,8 +763,8 @@ static int resolve_arg(struct kndProcArg *self)
 static int resolve_inst(struct kndProcArg *self,
                         struct kndProcArgInstance *inst)
 {
-    //struct kndProcDir *proc_dir;
-    struct kndProcDir *dir;
+    //struct kndProcEntry *proc_dir;
+    struct kndProcEntry *dir;
     struct kndObjEntry *obj;
 
     dir = self->parent->class_name_idx->get(self->parent->class_name_idx,
@@ -806,10 +806,10 @@ extern void kndProcArgInstance_init(struct kndProcArgInstance *self)
 {
     memset(self, 0, sizeof(struct kndProcArgInstance));
 }
-extern void kndProcArgInstRef_init(struct kndProcArgInstRef *self)
-{
-    memset(self, 0, sizeof(struct kndProcArgInstRef));
-}
+//extern void kndProcArgInstRef_init(struct kndProcArgInstRef *self)
+//{
+//    memset(self, 0, sizeof(struct kndProcArgInstRef));
+//}
 
 extern void kndProcArg_init(struct kndProcArg *self)
 {

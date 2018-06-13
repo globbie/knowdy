@@ -22,7 +22,7 @@
 
 #include "knd_utils.h"
 #include "knd_config.h"
-#include "knd_coderef.h"
+//#include "knd_coderef.h"
 
 struct kndSet;
 struct kndRepoCache;

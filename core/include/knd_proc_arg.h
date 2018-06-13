@@ -27,7 +27,7 @@
 #include "knd_proc.h"
 #include "knd_config.h"
 
-struct kndConcept;
+struct kndClass;
 struct kndMemPool;
 struct kndTranslation;
 struct kndProc;
@@ -51,11 +51,11 @@ static const char* const knd_proc_arg_names[] = {
     "ins",
 };
 
-struct kndProcArgInstRef
-{
-    struct kndProcArgInstance *inst;
-    struct kndProcArgInstRef *next;
-};
+//struct kndProcArgInstRef
+//{
+//    struct kndProcArgInstance *inst;
+//    struct kndProcArgInstRef *next;
+//};
 
 struct kndProcArgInstance
 {
@@ -65,7 +65,7 @@ struct kndProcArgInstance
 
     const char *procname;
     size_t procname_size;
-    struct kndProcDir *proc_dir;
+    struct kndProcEntry *proc_dir;
 
     const char *objname;
     size_t objname_size;
@@ -98,7 +98,7 @@ struct kndProcArg
     struct kndProcCall proc_call;
 
     struct kndProc *parent;
-    struct kndProcDir *proc_dir;
+    struct kndProcEntry *proc_dir;
 
     const char *locale;
     size_t locale_size;
@@ -110,7 +110,7 @@ struct kndProcArg
 
     char classname[KND_NAME_SIZE];
     size_t classname_size;
-    struct kndConcept *conc;
+    struct kndClass *conc;
 
     size_t numval;
     char val[KND_VAL_SIZE];
@@ -153,7 +153,7 @@ struct kndProcArg
 
 /* constructor */
 extern void kndProcArgInstance_init(struct kndProcArgInstance *self);
-extern void kndProcArgInstRef_init(struct kndProcArgInstRef *self);
+//extern void kndProcArgInstRef_init(struct kndProcArgInstRef *self);
 
 extern void kndProcArg_init(struct kndProcArg *self);
 extern int kndProcArg_new(struct kndProcArg **self);

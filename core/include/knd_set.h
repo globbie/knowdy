@@ -21,8 +21,8 @@
 #pragma once
 
 struct glbOutput;
-struct kndConcept;
-struct kndConcDir;
+struct kndClass;
+struct kndClassEntry;
 struct kndObjEntry;
 struct kndTask;
 struct kndAttr;
@@ -51,7 +51,7 @@ struct kndSetElemIdx
 struct kndSet
 {
     knd_set_type type;
-    struct kndConcDir *base;
+    struct kndClassEntry *base;
     bool is_terminal;
 
     struct kndSetElemIdx idx;
@@ -80,8 +80,8 @@ struct kndSet
                void *obj);
     int (*add_ref)(struct kndSet *self,
 		   struct kndAttr *attr,
-		   struct kndConcDir *topic,
-		   struct kndConcDir *spec);
+		   struct kndClassEntry *topic,
+		   struct kndClassEntry *spec);
     int (*get_facet)(struct kndSet *self,
 		     struct kndAttr *attr,
 		     struct kndFacet **facet);
