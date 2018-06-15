@@ -763,7 +763,7 @@ static gsl_err_t resolve_relref(void *obj, const char *name, size_t name_size)
 {
     struct kndRelRef *self = obj;
     struct kndRel *root_rel;
-    struct kndRelEntry *dir;
+    struct kndRelEntry *entry;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -775,8 +775,8 @@ static gsl_err_t resolve_relref(void *obj, const char *name, size_t name_size)
         knd_log(".. resolving Rel Ref by id \"%.*s\"",
                 name_size, name);
 
-    dir = root_rel->rel_idx->get(root_rel->rel_idx, name, name_size);
-    if (!dir) {
+    entry = root_rel->rel_idx->get(root_rel->rel_idx, name, name_size);
+    if (!entry) {
         knd_log("-- no such Rel: \"%.*s\"",
                 name_size, name);
         return make_gsl_err(gsl_NO_MATCH);
@@ -784,18 +784,18 @@ static gsl_err_t resolve_relref(void *obj, const char *name, size_t name_size)
 
     if (DEBUG_OBJ_LEVEL_2)
         knd_log("== Rel name: \"%.*s\" id:%.*s rel:%p",
-                dir->name_size, dir->name,
-                dir->id_size, dir->id, dir->rel);
+                entry->name_size, entry->name,
+                entry->id_size, entry->id, entry->rel);
 
-    if (!dir->rel) {
-        err = root_rel->get_rel(root_rel, dir->name, dir->name_size, &dir->rel);
+    if (!entry->rel) {
+        err = root_rel->get_rel(root_rel, entry->name, entry->name_size, &entry->rel);
         if (err) {
             knd_log("-- no such Rel..");
             return make_gsl_err(gsl_NO_MATCH);
         }
     }
 
-    self->rel = dir->rel;
+    self->rel = entry->rel;
 
     return make_gsl_err(gsl_OK);
 }
