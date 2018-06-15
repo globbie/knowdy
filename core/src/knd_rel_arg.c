@@ -434,7 +434,7 @@ static gsl_err_t get_inst_classname(void *obj, const char *name, size_t name_siz
 {
     struct kndRelArgInstance *self = obj;
     struct kndSet *class_idx = self->relarg->rel->class_idx;
-    struct kndClassEntry *dir;
+    struct kndClassEntry *entry;
     void *result;
     int err;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -446,10 +446,10 @@ static gsl_err_t get_inst_classname(void *obj, const char *name, size_t name_siz
                 name_size, name);
         return make_gsl_err(gsl_FAIL);
     }
-    dir = result;
-    self->classname = dir->name;
-    self->classname_size = dir->name_size;
-    self->conc_dir = dir;
+    entry = result;
+    self->classname = entry->name;
+    self->classname_size = entry->name_size;
+    self->conc_dir = entry;
 
     if (DEBUG_RELARG_LEVEL_2)
         knd_log("++ INST ARG CLASS NAME: \"%.*s\"",
@@ -462,12 +462,12 @@ static gsl_err_t get_inst_obj(void *obj, const char *name, size_t name_size)
 {
     struct kndRelArgInstance *self = obj;
     void *elem;
-    struct kndClassEntry *dir = self->conc_dir;
+    struct kndClassEntry *entry = self->conc_dir;
     int err;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = dir->obj_idx->get(dir->obj_idx, name, name_size, &elem);
+    err = entry->obj_idx->get(entry->obj_idx, name, name_size, &elem);
     if (err) {
         knd_log("-- no such obj: %.*s :(", name_size, name);
         return make_gsl_err(gsl_FAIL);
@@ -638,20 +638,20 @@ static int link_rel(struct kndRelArg *self,
 
 static int resolve(struct kndRelArg *self)
 {
-    struct kndClassEntry *dir;
+    struct kndClassEntry *entry;
 
     if (DEBUG_RELARG_LEVEL_2)
         knd_log(".. resolving Rel Arg %.*s..",
                 self->classname_size, self->classname);
 
-    dir = self->rel->class_name_idx->get(self->rel->class_name_idx,
+    entry = self->rel->class_name_idx->get(self->rel->class_name_idx,
                                          self->classname, self->classname_size);
-    if (!dir) {
+    if (!entry) {
         knd_log("-- Rel Arg resolve failed: no such class: %.*s :(",
                 self->classname_size, self->classname);
         return knd_FAIL;
     }
-    self->conc_dir = dir;
+    self->conc_dir = entry;
 
     return knd_OK;
 }
@@ -659,20 +659,20 @@ static int resolve(struct kndRelArg *self)
 static int resolve_inst(struct kndRelArg *self,
                         struct kndRelArgInstance *inst)
 {
-    struct kndClassEntry *dir;
+    struct kndClassEntry *entry;
     struct kndObjEntry *obj;
     int err;
 
-    dir = self->rel->class_name_idx->get(self->rel->class_name_idx,
+    entry = self->rel->class_name_idx->get(self->rel->class_name_idx,
                                          inst->classname, inst->classname_size);
-    if (!dir) {
+    if (!entry) {
         knd_log("-- no such class: %.*s :(", inst->classname_size, inst->classname);
         return knd_FAIL;
     }
 
     /* TODO: check inheritance or role */
 
-    inst->conc_dir = dir;
+    inst->conc_dir = entry;
 
     /* resolve obj ref */
     if (inst->objname_size) {
@@ -680,15 +680,15 @@ static int resolve_inst(struct kndRelArg *self,
             knd_log(".. resolving rel arg inst OBJ ref: \"%.*s\""
                     " CONC DIR: %.*s OBJ IDX:%p",
                     inst->objname_size, inst->objname,
-                    dir->name_size, dir->name, dir->obj_name_idx);
+                    entry->name_size, entry->name, entry->obj_name_idx);
 
-        if (!dir->obj_name_idx) {
+        if (!entry->obj_name_idx) {
             knd_log("-- empty obj IDX in class \"%.*s\" :(",
-                        dir->name_size, dir->name);
+                        entry->name_size, entry->name);
             return knd_FAIL;
         }
 
-        obj = dir->obj_name_idx->get(dir->obj_name_idx,
+        obj = entry->obj_name_idx->get(entry->obj_name_idx,
                                      inst->objname, inst->objname_size);
         if (!obj) {
             knd_log("-- no such obj: %.*s :(",
