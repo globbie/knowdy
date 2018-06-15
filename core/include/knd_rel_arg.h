@@ -64,7 +64,7 @@ struct kndRelArgInstance
 
     const char *classname;
     size_t classname_size;
-    struct kndClassEntry *conc_dir;
+    struct kndClassEntry *class_entry;
 
     const char *objname;
     size_t objname_size;

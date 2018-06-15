@@ -157,7 +157,7 @@ static int export_inst_GSP(struct kndRelArg *self,
 
     out = self->out;
     err = out->write(out, "{c ", strlen("{c "));                                  RET_ERR();
-    err = out->write(out, inst->conc_dir->id, inst->conc_dir->id_size);           RET_ERR();
+    err = out->write(out, inst->class_entry->id, inst->class_entry->id_size);           RET_ERR();
 
     if (inst->objname_size) {
         err = out->write(out, "{o ", strlen("{o "));                              RET_ERR();
@@ -188,7 +188,7 @@ static int export_inst_JSON(struct kndRelArg *self,
 
     /* output class name only if it's 
        different from the default one */
-    if (self->conc_dir != inst->conc_dir) {
+    if (self->conc_dir != inst->class_entry) {
         err = out->write(out, "\"class\":\"", strlen("\"class\":\""));           RET_ERR();
         err = out->write(out, inst->classname, inst->classname_size);            RET_ERR();
         err = out->writec(out, '"');                                             RET_ERR();
@@ -449,7 +449,7 @@ static gsl_err_t get_inst_classname(void *obj, const char *name, size_t name_siz
     entry = result;
     self->classname = entry->name;
     self->classname_size = entry->name_size;
-    self->conc_dir = entry;
+    self->class_entry = entry;
 
     if (DEBUG_RELARG_LEVEL_2)
         knd_log("++ INST ARG CLASS NAME: \"%.*s\"",
@@ -462,7 +462,7 @@ static gsl_err_t get_inst_obj(void *obj, const char *name, size_t name_size)
 {
     struct kndRelArgInstance *self = obj;
     void *elem;
-    struct kndClassEntry *entry = self->conc_dir;
+    struct kndClassEntry *entry = self->class_entry;
     int err;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -672,7 +672,7 @@ static int resolve_inst(struct kndRelArg *self,
 
     /* TODO: check inheritance or role */
 
-    inst->conc_dir = entry;
+    inst->class_entry = entry;
 
     /* resolve obj ref */
     if (inst->objname_size) {
