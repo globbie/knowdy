@@ -188,7 +188,7 @@ static int export_inst_JSON(struct kndRelArg *self,
 
     /* output class name only if it's 
        different from the default one */
-    if (self->conc_dir != inst->class_entry) {
+    if (self->conc_entry != inst->class_entry) {
         err = out->write(out, "\"class\":\"", strlen("\"class\":\""));           RET_ERR();
         err = out->write(out, inst->classname, inst->classname_size);            RET_ERR();
         err = out->writec(out, '"');                                             RET_ERR();
@@ -651,7 +651,7 @@ static int resolve(struct kndRelArg *self)
                 self->classname_size, self->classname);
         return knd_FAIL;
     }
-    self->conc_dir = entry;
+    self->conc_entry = entry;
 
     return knd_OK;
 }

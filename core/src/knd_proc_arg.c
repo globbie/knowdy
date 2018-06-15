@@ -142,8 +142,8 @@ static int export_JSON(struct kndProcArg *self)
     }
     
     if (self->proc_call.name_size) {
-        if (self->proc_dir) {
-            proc = self->proc_dir->proc;
+        if (self->proc_entry) {
+            proc = self->proc_entry->proc;
             if (proc) {
                 err = out->write(out, ",\"proc\":", strlen(",\"proc\":"));        RET_ERR();
                 proc->out = out;
@@ -251,8 +251,8 @@ static int export_SVG(struct kndProcArg *self)
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
     err = out->write(out, "</text>", strlen("</text>"));                          RET_ERR();
     */
-    if (self->proc_dir) {
-        proc = self->proc_dir->proc;
+    if (self->proc_entry) {
+        proc = self->proc_entry->proc;
         proc->format = self->format;
         proc->out = self->out;
         proc->visual = self->visual;
@@ -749,7 +749,7 @@ static int resolve_arg(struct kndProcArg *self)
         err = self->parent->get_proc(self->parent,
                                      entry->name, entry->name_size, &entry->proc);      RET_ERR();
     }
-    self->proc_dir = entry;
+    self->proc_entry = entry;
 
     if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log("++ Proc Arg %.*s  call:\"%.*s\"  resolved!",
@@ -776,7 +776,7 @@ static int resolve_inst(struct kndProcArg *self,
 
     /* TODO: check inheritance or role */
 
-    inst->proc_dir = entry;
+    inst->proc_entry = entry;
 
     /* resolve obj ref */
     if (inst->objname_size) {

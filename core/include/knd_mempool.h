@@ -97,9 +97,9 @@ struct kndMemPool
     size_t max_classes;
     size_t num_classes;
 
-    struct kndClassEntry *conc_dirs;
-    size_t max_conc_dirs;
-    size_t num_conc_dirs;
+    struct kndClassEntry *class_entries;
+    size_t max_class_entries;
+    size_t num_class_entries;
 
     struct kndClassVar *conc_items;
     size_t max_conc_items;
@@ -142,9 +142,9 @@ struct kndMemPool
     size_t max_rel_update_refs;
     size_t num_rel_update_refs;
 
-    struct kndRelEntry *rel_dirs;
-    size_t max_rel_dirs;
-    size_t num_rel_dirs;
+    struct kndRelEntry *rel_entries;
+    size_t max_rel_entries;
+    size_t num_rel_entries;
 
     struct kndRelRef *rel_refs;
     size_t max_rel_refs;
@@ -171,9 +171,9 @@ struct kndMemPool
     size_t max_procs;
     size_t num_procs;
 
-    struct kndProcEntry *proc_dirs;
-    size_t max_proc_dirs;
-    size_t num_proc_dirs;
+    struct kndProcEntry *proc_entries;
+    size_t max_proc_entries;
+    size_t num_proc_entries;
 
     struct kndProcInstance *proc_insts;
     size_t max_proc_insts;

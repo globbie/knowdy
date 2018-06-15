@@ -74,7 +74,7 @@ static void str(struct kndProc *self)
 
     knd_log("PROC %p: %.*s id:%.*s",
             self, self->name_size, self->name,
-            self->dir->id_size, self->dir->id);
+            self->entry->id_size, self->entry->id);
 
     for (tr = self->tr; tr; tr = tr->next) {
         knd_log("%*s~ %s %.*s", (self->depth + 1) * KND_OFFSET_SIZE, "",
@@ -266,7 +266,7 @@ static int get_proc(struct kndProc *self,
     proc->proc_name_idx = self->proc_name_idx;
     proc->proc_idx = self->proc_idx;
     proc->class_name_idx = self->class_name_idx;
-    proc->dir = entry;
+    proc->entry = entry;
 
     memcpy(proc->name, entry->name, entry->name_size);
     proc->name_size = entry->name_size;
@@ -424,7 +424,7 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
     if (DEBUG_PROC_LEVEL_2)
         knd_log("== proc to remove: \"%.*s\"\n", proc->name_size, proc->name);
 
-    proc->dir->phase = KND_REMOVED;
+    proc->entry->phase = KND_REMOVED;
 
     self->log->reset(self->log);
     err = self->log->write(self->log, proc->name, proc->name_size);
@@ -526,7 +526,7 @@ static int export_GSP(struct kndProc *self)
 
     err = out->writec(out, '{');
     if (err) return err;
-    err = out->write(out, self->dir->id, self->dir->id_size);
+    err = out->write(out, self->entry->id, self->entry->id_size);
     if (err) return err;
     err = out->writec(out, ' ');
     if (err) return err;
@@ -1180,11 +1180,11 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log(" .. add \"%.*s\" parent to \"%.*s\"",
-                parent->dir->proc->name_size,
-                parent->dir->proc->name,
+                parent->entry->proc->name_size,
+                parent->entry->proc->name,
                 self->name_size, self->name);
 
-    self->inherited[self->num_inherited] = parent->dir;
+    self->inherited[self->num_inherited] = parent->entry;
     self->num_inherited++;
 
     /* contact the grandparents */
@@ -1498,7 +1498,7 @@ static int import_proc(struct kndProc *self,
 
     err = self->mempool->new_proc_dir(self->mempool, &entry);                       RET_ERR();
     entry->proc = proc;
-    proc->dir = entry;
+    proc->entry = entry;
 
     self->num_procs++;
     entry->numid = self->num_procs;
@@ -1756,8 +1756,8 @@ static int kndProc_resolve(struct kndProc *self)
                                      arg_entry->name, arg_entry->name_size, (void*)arg_entry);
             if (err) return err;
 
-            if (arg->proc_dir) {
-                entry = arg->proc_dir;
+            if (arg->proc_entry) {
+                entry = arg->proc_entry;
                 if (entry->proc) {
                     if (DEBUG_PROC_LEVEL_2)
                         knd_log("== ARG proc estimate: %zu", entry->proc->estim_cost_total);
@@ -1847,7 +1847,7 @@ static int kndProc_coordinate(struct kndProc *self)
         /* assign id */
         self->next_id++;
         proc->id = self->next_id;
-        proc->dir->phase = KND_CREATED;
+        proc->entry->phase = KND_CREATED;
     } while (key);
 
     /* display all procs */
