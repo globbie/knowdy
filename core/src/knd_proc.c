@@ -161,7 +161,7 @@ static int get_proc(struct kndProc *self,
     size_t buf_size;
     size_t chunk_size = 0;
     size_t *total_size;
-    struct kndProcEntry *dir;
+    struct kndProcEntry *entry;
     struct kndProc *proc;
     const char *filename;
     size_t filename_size;
@@ -176,9 +176,9 @@ static int get_proc(struct kndProc *self,
         knd_log(".. %.*s to get proc: \"%.*s\"..",
                 self->name_size, self->name, name_size, name);
 
-    dir = (struct kndProcEntry*)self->proc_name_idx->get(self->proc_name_idx,
+    entry = (struct kndProcEntry*)self->proc_name_idx->get(self->proc_name_idx,
                                                        name, name_size);
-    if (!dir) {
+    if (!entry) {
         knd_log("-- no such proc: \"%.*s\" IDX:%p :(",
                 name_size, name, self->proc_name_idx);
         self->log->reset(self->log);
@@ -190,7 +190,7 @@ static int get_proc(struct kndProc *self,
         return knd_NO_MATCH;
     }
 
-    if (dir->phase == KND_REMOVED) {
+    if (entry->phase == KND_REMOVED) {
         knd_log("-- \"%s\" proc was removed", name);
         self->log->reset(self->log);
         err = self->log->write(self->log, name, name_size);
@@ -203,10 +203,10 @@ static int get_proc(struct kndProc *self,
         return knd_NO_MATCH;
     }
     
-    if (dir->proc) {
-        proc = dir->proc;
+    if (entry->proc) {
+        proc = entry->proc;
 
-        dir->phase = KND_SELECTED;
+        entry->phase = KND_SELECTED;
         proc->task = self->task;
         *result = proc;
         return knd_OK;
@@ -234,13 +234,13 @@ static int get_proc(struct kndProc *self,
         goto final;
     }
 
-    if (lseek(fd, dir->global_offset, SEEK_SET) == -1) {
+    if (lseek(fd, entry->global_offset, SEEK_SET) == -1) {
         err = knd_IO_FAIL;
         goto final;
     }
 
 
-    buf_size = dir->block_size;
+    buf_size = entry->block_size;
     if (buf_size >= sizeof buf) return knd_NOMEM;
 
     err = read(fd, buf, buf_size);
@@ -266,10 +266,10 @@ static int get_proc(struct kndProc *self,
     proc->proc_name_idx = self->proc_name_idx;
     proc->proc_idx = self->proc_idx;
     proc->class_name_idx = self->class_name_idx;
-    proc->dir = dir;
+    proc->dir = entry;
 
-    memcpy(proc->name, dir->name, dir->name_size);
-    proc->name_size = dir->name_size;
+    memcpy(proc->name, entry->name, entry->name_size);
+    proc->name_size = entry->name_size;
 
     proc->frozen_output_file_name = self->frozen_output_file_name;
     proc->frozen_output_file_name_size = self->frozen_output_file_name_size;
@@ -299,7 +299,7 @@ static int get_proc(struct kndProc *self,
     err = proc->read(proc, b, total_size);                                        PARSE_ERR();
 
     err = proc->resolve(proc);                                                    RET_ERR();
-    dir->proc = proc;
+    entry->proc = proc;
 
     if (DEBUG_PROC_LEVEL_2)
         proc->str(proc);
@@ -1106,10 +1106,10 @@ static gsl_err_t arg_item_read(void *obj,
 
 static int inherit_args(struct kndProc *self, struct kndProc *parent)
 {
-    struct kndProcEntry *dir;
+    struct kndProcEntry *entry;
     struct kndProcArg *arg;
     struct kndProc *proc;
-    struct kndProcArgEntry *entry;
+    struct kndProcArgEntry *arg_entry;
     struct kndProcVar *base;
     int err;
 
@@ -1123,14 +1123,14 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
 
     /* check circled relations */
     for (size_t i = 0; i < self->num_inherited; i++) {
-        dir = self->inherited[i];
-        proc = dir->proc;
+        entry = self->inherited[i];
+        proc = entry->proc;
 
         if (DEBUG_PROC_LEVEL_2)
             knd_log("== (%zu of %zu)  \"%.*s\" is a parent of \"%.*s\"", 
                     i, self->num_inherited, proc->name_size, proc->name,
                     self->name_size, self->name);
-        if (dir->proc == parent) {
+        if (entry->proc == parent) {
             knd_log("-- circle inheritance detected for \"%.*s\" :(",
                     parent->name_size, parent->name);
             return knd_FAIL;
@@ -1141,25 +1141,25 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
     for (arg = parent->args; arg; arg = arg->next) {
 
         /* compare with exiting args */
-        entry = self->arg_idx->get(self->arg_idx,
+        arg_entry = self->arg_idx->get(self->arg_idx,
                                    arg->name, arg->name_size);
-        if (entry) {
+        if (arg_entry) {
             knd_log("-- arg \"%.*s\" collision between \"%.*s\""
                     " and parent proc \"%.*s\"?",
-                    entry->name_size, entry->name,
+                    arg_entry->name_size, arg_entry->name,
                     self->name_size, self->name,
                     parent->name_size, parent->name);
             return knd_OK;
         }
 
         /* register arg entry */
-        entry = malloc(sizeof(struct kndProcArgEntry));
-        if (!entry) return knd_NOMEM;
+        arg_entry = malloc(sizeof(struct kndProcArgEntry));
+        if (!arg_entry) return knd_NOMEM;
 
-        memset(entry, 0, sizeof(struct kndProcArgEntry));
-        memcpy(entry->name, arg->name, arg->name_size);
-        entry->name_size = arg->name_size;
-        entry->arg = arg;
+        memset(arg_entry, 0, sizeof(struct kndProcArgEntry));
+        memcpy(arg_entry->name, arg->name, arg->name_size);
+        arg_entry->name_size = arg->name_size;
+        arg_entry->arg = arg;
 
         if (DEBUG_PROC_LEVEL_2)
             knd_log("NB: ++ proc \"%.*s\" inherits arg \"%.*s\" from \"%.*s\"",
@@ -1168,7 +1168,7 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
                     parent->name_size, parent->name);
 
         err = self->arg_idx->set(self->arg_idx,
-                                 entry->name, entry->name_size, (void*)entry);
+                                 arg_entry->name, arg_entry->name_size, (void*)arg_entry);
         if (err) return err;
     }
     
@@ -1366,7 +1366,7 @@ static int import_proc(struct kndProc *self,
                        size_t *total_size)
 {
     struct kndProc *proc;
-    struct kndProcEntry *dir;
+    struct kndProcEntry *entry;
     int err;
     gsl_err_t parser_err;
 
@@ -1468,10 +1468,10 @@ static int import_proc(struct kndProc *self,
         goto final;
     }
 
-    dir = self->proc_name_idx->get(self->proc_name_idx,
+    entry = self->proc_name_idx->get(self->proc_name_idx,
                                    proc->name, proc->name_size);
-    if (dir) {
-        if (dir->phase == KND_REMOVED) {
+    if (entry) {
+        if (entry->phase == KND_REMOVED) {
             knd_log("== proc was removed recently");
         } else {
 
@@ -1496,17 +1496,17 @@ static int import_proc(struct kndProc *self,
         self->inbox_size++;
     }
 
-    err = self->mempool->new_proc_dir(self->mempool, &dir);                       RET_ERR();
-    dir->proc = proc;
-    proc->dir = dir;
+    err = self->mempool->new_proc_dir(self->mempool, &entry);                       RET_ERR();
+    entry->proc = proc;
+    proc->dir = entry;
 
     self->num_procs++;
-    dir->numid = self->num_procs;
-    dir->id_size = KND_ID_SIZE;
-    knd_num_to_str(dir->numid, dir->id, &dir->id_size, KND_RADIX_BASE);
+    entry->numid = self->num_procs;
+    entry->id_size = KND_ID_SIZE;
+    knd_num_to_str(entry->numid, entry->id, &entry->id_size, KND_RADIX_BASE);
 
     err = self->proc_name_idx->set(self->proc_name_idx,
-                                   proc->name, proc->name_size, (void*)dir);
+                                   proc->name, proc->name_size, (void*)entry);
     if (err) goto final;
 
     if (DEBUG_PROC_LEVEL_2)
@@ -1595,9 +1595,9 @@ static int resolve_parents(struct kndProc *self)
 {
     struct kndProcVar *base;
     struct kndProc *proc;
-    struct kndProcEntry *dir;
+    struct kndProcEntry *entry;
     struct kndProcArg *arg;
-    struct kndProcArgEntry *entry;
+    struct kndProcArgEntry *arg_entry;
     struct kndProcArgVar *arg_item;
     int err;
 
@@ -1626,8 +1626,8 @@ static int resolve_parents(struct kndProc *self)
 
         /* check base doublets */
         for (size_t i = 0; i < self->num_children; i++) {
-            dir = self->children[i];
-            if (dir->proc == self) {
+            entry = self->children[i];
+            if (entry->proc == self) {
                 knd_log("-- doublet proc found in \"%.*s\" :(",
                         self->name_size, self->name);
                 return knd_FAIL;
@@ -1639,8 +1639,8 @@ static int resolve_parents(struct kndProc *self)
                     self->name, base->name);
             return knd_FAIL;
         }
-        dir = &proc->children[proc->num_children];
-        dir->proc = self;
+        entry = &proc->children[proc->num_children];
+        entry->proc = self;
         proc->num_children++;
         */
         if (DEBUG_PROC_LEVEL_2)
@@ -1653,9 +1653,9 @@ static int resolve_parents(struct kndProc *self)
         /* redefine inherited args if needed */
 
         for (arg_item = base->args; arg_item; arg_item = arg_item->next) {
-            entry = self->arg_idx->get(self->arg_idx,
+            arg_entry = self->arg_idx->get(self->arg_idx,
                                        arg_item->name, arg_item->name_size);
-            if (!entry) {
+            if (!arg_entry) {
                 knd_log("-- no arg \"%.*s\" in proc \"%.*s\' :(",
                         arg_item->name_size, arg_item->name,
                         proc->name_size, proc->name);
@@ -1668,8 +1668,8 @@ static int resolve_parents(struct kndProc *self)
                 knd_log(".. arg \"%.*s\" [class:%.*s] to replace \"%.*s\" [class:%.*s]",
                         arg_item->name_size, arg_item->name,
                         arg_item->classname_size, arg_item->classname,
-                        entry->arg->name_size, entry->arg->name,
-                        entry->arg->classname_size, entry->arg->classname);
+                        arg_entry->arg->name_size, arg_entry->arg->name,
+                        arg_entry->arg->classname_size, arg_entry->arg->classname);
 
             err = self->mempool->new_proc_arg(self->mempool, &arg);
             if (err) return err;
@@ -1681,7 +1681,7 @@ static int resolve_parents(struct kndProc *self)
                    arg_item->classname, arg_item->classname_size);
             arg->classname_size = arg_item->classname_size;
 
-            entry->arg = arg;
+            arg_entry->arg = arg;
 
             arg->parent = self;
             arg->next = self->args;
@@ -1730,8 +1730,8 @@ static int resolve_proc_call(struct kndProc *self)
 static int kndProc_resolve(struct kndProc *self)
 {
     struct kndProcArg *arg = NULL;
-    struct kndProcArgEntry *entry;
-    struct kndProcEntry *dir;
+    struct kndProcArgEntry *arg_entry;
+    struct kndProcEntry *entry;
     int err;
 
     if (DEBUG_PROC_LEVEL_2)
@@ -1745,23 +1745,23 @@ static int kndProc_resolve(struct kndProc *self)
             err = arg->resolve(arg);                                              RET_ERR();
 
             /* register arg entry */
-            entry = malloc(sizeof(struct kndProcArgEntry));
-            if (!entry) return knd_NOMEM;
+            arg_entry = malloc(sizeof(struct kndProcArgEntry));
+            if (!arg_entry) return knd_NOMEM;
 
-            memset(entry, 0, sizeof(struct kndProcArgEntry));
-            memcpy(entry->name, arg->name, arg->name_size);
-            entry->name_size = arg->name_size;
-            entry->arg = arg;
+            memset(arg_entry, 0, sizeof(struct kndProcArgEntry));
+            memcpy(arg_entry->name, arg->name, arg->name_size);
+            arg_entry->name_size = arg->name_size;
+            arg_entry->arg = arg;
             err = self->arg_idx->set(self->arg_idx,
-                                     entry->name, entry->name_size, (void*)entry);
+                                     arg_entry->name, arg_entry->name_size, (void*)arg_entry);
             if (err) return err;
 
             if (arg->proc_dir) {
-                dir = arg->proc_dir;
-                if (dir->proc) {
+                entry = arg->proc_dir;
+                if (entry->proc) {
                     if (DEBUG_PROC_LEVEL_2)
-                        knd_log("== ARG proc estimate: %zu", dir->proc->estim_cost_total);
-                    self->estim_cost_total += dir->proc->estim_cost_total;
+                        knd_log("== ARG proc estimate: %zu", entry->proc->estim_cost_total);
+                    self->estim_cost_total += entry->proc->estim_cost_total;
                 }
             }
         }
@@ -1783,7 +1783,7 @@ static int kndProc_resolve(struct kndProc *self)
 static int resolve_procs(struct kndProc *self)
 {
     struct kndProc *proc;
-    struct kndProcEntry *dir;
+    struct kndProcEntry *entry;
     const char *key;
     void *val;
     int err;
@@ -1797,8 +1797,8 @@ static int resolve_procs(struct kndProc *self)
         self->proc_name_idx->next_item(self->proc_name_idx, &key, &val);
         if (!key) break;
 
-        dir = (struct kndProcEntry*)val;
-        proc = dir->proc;
+        entry = (struct kndProcEntry*)val;
+        proc = entry->proc;
 
         if (proc->is_resolved) {
             /*knd_log("--");
@@ -1824,7 +1824,7 @@ static int resolve_procs(struct kndProc *self)
 static int kndProc_coordinate(struct kndProc *self)
 {
     struct kndProc *proc;
-    struct kndProcEntry *dir;
+    struct kndProcEntry *entry;
     const char *key;
     void *val;
     int err;
@@ -1841,8 +1841,8 @@ static int kndProc_coordinate(struct kndProc *self)
         self->proc_name_idx->next_item(self->proc_name_idx, &key, &val);
         if (!key) break;
 
-        dir = (struct kndProcEntry*)val;
-        proc = dir->proc;
+        entry = (struct kndProcEntry*)val;
+        proc = entry->proc;
 
         /* assign id */
         self->next_id++;
@@ -1857,8 +1857,8 @@ static int kndProc_coordinate(struct kndProc *self)
         do {
             self->proc_name_idx->next_item(self->proc_name_idx, &key, &val);
             if (!key) break;
-            dir = (struct kndProcEntry*)val;
-            proc = dir->proc;
+            entry = (struct kndProcEntry*)val;
+            proc = entry->proc;
             proc->depth = self->depth + 1;
             proc->str(proc);
         } while (key);
@@ -1903,7 +1903,7 @@ static int update_state(struct kndProc *self,
 }
 
 static int read_proc_incipit(struct kndProc *self,
-                            struct kndProcEntry *dir)
+                            struct kndProcEntry *entry)
 {
     char buf[KND_NAME_SIZE + 1];
     size_t buf_size;
@@ -1914,13 +1914,13 @@ static int read_proc_incipit(struct kndProc *self,
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log("\n.. get proc name, global offset:%zu  block size:%zu",
-                dir->global_offset, dir->block_size);
+                entry->global_offset, entry->block_size);
 
-    buf_size = dir->block_size;
-    if (dir->block_size > KND_NAME_SIZE)
+    buf_size = entry->block_size;
+    if (entry->block_size > KND_NAME_SIZE)
         buf_size = KND_NAME_SIZE;
 
-    offset = dir->global_offset;
+    offset = entry->global_offset;
     if (lseek(fd, offset, SEEK_SET) == -1) {
         return knd_IO_FAIL;
     }
@@ -1931,30 +1931,30 @@ static int read_proc_incipit(struct kndProc *self,
         knd_log("== PROC BODY incipit: %.*s",
                 buf_size, buf);
 
-    dir->id_size = KND_ID_SIZE;
-    dir->name_size = KND_NAME_SIZE;
+    entry->id_size = KND_ID_SIZE;
+    entry->name_size = KND_NAME_SIZE;
     err = knd_parse_incipit(buf, buf_size,
-                            dir->id, &dir->id_size,
-                            dir->name, &dir->name_size);
+                            entry->id, &entry->id_size,
+                            entry->name, &entry->name_size);
     if (err) return err;
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log("== PROC NAME:\"%.*s\" ID:%.*s",
-                dir->name_size, dir->name, dir->id_size, dir->id);
+                entry->name_size, entry->name, entry->id_size, entry->id);
 
     return knd_OK;
 }
 
 static int read_proc(struct kndProc *self,
-                    struct kndProcEntry *dir)
+                    struct kndProcEntry *entry)
 {
     int err;
 
-    err = read_proc_incipit(self, dir);
+    err = read_proc_incipit(self, entry);
     if (err) return err;
 
     err = self->proc_name_idx->set(self->proc_name_idx,
-                                   dir->name, dir->name_size, (void*)dir);
+                                   entry->name, entry->name_size, (void*)entry);
     if (err) return err;
 
     /*err = self->proc_idx->set(self->proc_idx,
@@ -2030,7 +2030,7 @@ static int freeze_procs(struct kndProc *self,
                         size_t *total_size)
 {
     struct kndProc *proc;
-    struct kndProcEntry *dir;
+    struct kndProcEntry *entry;
     const char *key;
     void *val;
     char *curr_dir = output;
@@ -2053,8 +2053,8 @@ static int freeze_procs(struct kndProc *self,
         self->proc_name_idx->next_item(self->proc_name_idx, &key, &val);
         if (!key) break;
 
-        dir = (struct kndProcEntry*)val;
-        proc = dir->proc;
+        entry = (struct kndProcEntry*)val;
+        proc = entry->proc;
 
         proc->out = self->out;
         proc->frozen_output_file_name = self->frozen_output_file_name;
