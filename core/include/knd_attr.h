@@ -115,7 +115,7 @@ struct kndAttrItem
     struct kndClass *conc;
     struct kndClassEntry *conc_dir;
     struct kndProc *proc;
-    struct kndProcDir *proc_dir;
+    //struct kndProcDir *proc_dir;
 
     struct kndMemPool *mempool;
 
@@ -146,19 +146,19 @@ struct kndAttr
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    char classname[KND_NAME_SIZE];
-    size_t classname_size;
+    //char classname[KND_NAME_SIZE];
+    //size_t classname_size;
     struct kndClass *conc;
 
     char uniq_attr_name[KND_SHORT_NAME_SIZE];
     size_t uniq_attr_name_size;
-    struct kndAttr *uniq_attr;
+    //struct kndAttr *uniq_attr;
 
     char validator_name[KND_SHORT_NAME_SIZE];
     size_t validator_name_size;
 
     bool is_a_set;
-    bool is_recursive;
+    //bool is_recursive;
 
     /* build reverse indices */
     bool is_indexed;
@@ -184,14 +184,14 @@ struct kndAttr
     /* concise representation */
     size_t concise_level;
 
-    int descr_level;
-    int browse_level;
+    //int descr_level;
+    //int browse_level;
 
     char calc_oper[KND_NAME_SIZE];
     size_t calc_oper_size;
 
     char calc_attr[KND_NAME_SIZE];
-    size_t calc_attr_size;
+    //size_t calc_attr_size;
 
     char default_val[KND_NAME_SIZE];
     size_t default_val_size;
