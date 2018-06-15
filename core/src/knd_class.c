@@ -96,6 +96,12 @@ static gsl_err_t import_nested_attr_item(void *obj,
 static void append_attr_item(struct kndClassVar *ci,
                              struct kndAttrItem *attr_item);
 
+static int str_conc_elem(void *obj,
+                         const char *elem_id,
+                         size_t elem_id_size,
+                         size_t count,
+                         void *elem);
+
 static void reset_inbox(struct kndClass *self)
 {
     struct kndClass *c, *next_c;
@@ -227,6 +233,7 @@ static void str(struct kndClass *self)
     char resolved_state = '-';
     const char *key;
     void *val;
+    int err;
 
     knd_log("\n%*s{class %.*s    id:%.*s numid:%zu  resolved:%d",
             self->depth * KND_OFFSET_SIZE, "",
@@ -306,11 +313,24 @@ static void str(struct kndClass *self)
         c->str(c);
     }
 
-    /*if (self->dir->descendants) {
+    if (self->dir->descendants) {
+        struct kndFacet *f;
+
         set = self->dir->descendants;
-        err = set->map(set, str_conc_elem, NULL);
-        if (err) return;
-        }*/
+        knd_log("%*sdescendants [total: %zu]:",
+                (self->depth + 1) * KND_OFFSET_SIZE, "",
+                set->num_elems);
+
+        for (size_t i = 0; i < set->num_facets; i++) {
+            f = set->facets[i];
+            knd_log("%*s  facet: %.*s",
+                    (self->depth + 1) * KND_OFFSET_SIZE, "",
+                    f->attr->name_size, f->attr->name);
+        }
+
+        //err = set->map(set, str_conc_elem, NULL);
+        //if (err) return;
+    }
 
     if (self->dir->reverse_attr_name_idx) {
         idx = self->dir->reverse_attr_name_idx;
@@ -631,7 +651,7 @@ static int index_attr(struct kndClass *self,
     struct kndClass *c = NULL;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         knd_log("\n.. indexing CURR CLASS: \"%.*s\" .. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" (name:%.*s val:%.*s)",
                 self->name_size, self->name,
@@ -663,8 +683,8 @@ static int index_attr(struct kndClass *self,
     }
     err = is_base(base, c);                                                       RET_ERR();
 
-
     set = attr->parent_conc->dir->descendants;
+
     /* add curr class to the reverse index */
     err = set->add_ref(set, attr, self->dir, c->dir);
     if (err) return err;
@@ -683,7 +703,7 @@ static int index_attr_item_list(struct kndClass *self,
     struct kndAttrItem *item = parent_item;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         knd_log("\n.. attr item list indexing.. (class:%.*s) .. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" (name:%.*s val:%.*s)",
                 self->name_size, self->name,
@@ -1594,6 +1614,7 @@ static gsl_err_t atomic_elem_alloc(void *obj,
                 class_idx, val_size, val, val_size);
         return make_gsl_err_external(knd_NO_MATCH);
     }
+
     dir = elem;
 
     set = self->dir->descendants;
@@ -3145,26 +3166,32 @@ static gsl_err_t select_by_baseclass(void *obj,
                                      const char *name, size_t name_size)
 {
     struct kndClass *self = obj;
+    struct kndClass *c;
     struct kndSet *set;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = get_class(self, name, name_size, &self->curr_baseclass);
+    err = get_class(self, name, name_size, &c);
     if (err) return make_gsl_err_external(err);
 
-    self->curr_baseclass->dir->conc = self->curr_baseclass;
-    if (!self->curr_baseclass->dir->descendants) {
+    if (DEBUG_CONC_LEVEL_TMP)
+        c->str(c);
+
+    c->dir->conc = c;
+    if (!c->dir->descendants) {
         knd_log("-- no set of descendants found :(");
         return make_gsl_err(gsl_OK);
     }
 
-    set = self->curr_baseclass->dir->descendants;
+    set = c->dir->descendants;
     if (self->task->num_sets + 1 > KND_MAX_CLAUSES)
         return make_gsl_err(gsl_LIMIT);
     self->task->sets[self->task->num_sets] = set;
     self->task->num_sets++;
+
+    self->curr_baseclass = c;
 
     return make_gsl_err(gsl_OK);
 }
@@ -5364,6 +5391,25 @@ static int read_obj_entry(struct kndClass *self,
     return err;
 }
 
+static int str_conc_elem(void *obj,
+                         const char *elem_id,
+                         size_t elem_id_size,
+                         size_t count,
+                         void *elem)
+{
+    struct kndClass *self = obj;
+    struct kndClassEntry *entry = elem;
+    struct kndClass *c = entry->conc;
+    int err;
+
+    if (!c) {
+        err = unfreeze_class(self, entry, &c);                                    RET_ERR();
+    }
+
+    c->str(c);
+
+    return knd_OK;
+}
 
 static int export_conc_elem_JSON(void *obj,
                                  const char *elem_id,
@@ -5612,6 +5658,7 @@ static gsl_err_t present_class_selection(void *obj,
             if (err) return make_gsl_err_external(err);
             return make_gsl_err(gsl_OK);
         }
+
         /* final presentation in JSON 
            TODO: choose output format */
         err = export_set_JSON(self, set);
@@ -6077,9 +6124,6 @@ static int aggr_item_export_JSON(struct kndClass *self,
         switch (item->attr->type) {
         case KND_ATTR_REF:
             c = item->conc;
-
-            knd_log("== item conc ref: %p", c);
-            
             c->out = out;
             c->task = self->task;
             c->format =  KND_FORMAT_JSON;
@@ -6337,11 +6381,12 @@ static int export_gloss_JSON(struct kndClass *self)
     struct kndTranslation *tr;
     struct glbOutput *out = self->out;
     int err;
-    
+
     for (tr = self->tr; tr; tr = tr->next) { 
         if (memcmp(self->task->locale, tr->locale, tr->locale_size)) {
             continue;
         }
+
         err = out->write(out, ",\"_gloss\":\"", strlen(",\"_gloss\":\""));        RET_ERR();
         err = out->write_escaped(out, tr->val,  tr->val_size);                    RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
@@ -6370,7 +6415,7 @@ static int export_concise_JSON(struct kndClass *self)
     struct glbOutput *out = self->out;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. export concise JSON for %.*s..",
                 self->name_size, self->name, self->out);
 
@@ -6460,13 +6505,15 @@ static int export_JSON(struct kndClass *self)
     size_t item_count;
     int i, err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
-        knd_log(".. JSON export concept: \"%s\"  "
-                "locale: %s depth: %lu  OUTPUT:%p",
-                self->name, self->task->locale,
-                (unsigned long)self->depth, self->out);
 
     out = self->out;
+
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. JSON export concept: \"%s\"  "
+                "locale: %s depth: %lu  OUT:%p",
+                self->name, self->task->locale,
+                (unsigned long)self->depth, out);
+
     err = out->write(out, "{", 1);                                                RET_ERR();
     err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                RET_ERR();
 
@@ -6475,16 +6522,11 @@ static int export_JSON(struct kndClass *self)
     err = out->write(out, "\"", 1);                                               RET_ERR();
 
     err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
+
     buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", self->dir->numid);
     err = out->write(out, buf, buf_size);                                         RET_ERR();
 
-    //knd_log(".. init JSON OUTPUT: %.*\n\n",
-    //        self->out, self->out->buf_size, self->out->buf);
-
     err = export_gloss_JSON(self);                                                RET_ERR();
-
-    //knd_log(".. after gloss: %.*\n\n",
-    //        self->out, self->out->buf_size, self->out->buf);
 
     if (self->depth >= self->max_depth) {
         
@@ -6633,6 +6675,7 @@ static int export_JSON(struct kndClass *self)
                     err = unfreeze_class(self, dir, &c);                          RET_ERR();
                 }
 
+                c->out = out;
                 err = export_gloss_JSON(c);                                       RET_ERR();
 
                 err = export_concise_JSON(c);                                     RET_ERR();
@@ -6642,46 +6685,11 @@ static int export_JSON(struct kndClass *self)
             }
             err = out->write(out, "]", 1);
             if (err) return err;
-
         }
 
         err = out->write(out, "}", 1);
         if (err) return err;
         return knd_OK;
-    }
-
-    // FIXME(k15tfu): duplicates the code above
-    if (self->dir->num_children) {
-        err = out->write(out, ",\"_num_subclasses\":", strlen(",\"_num_subclasses\":"));
-        if (err) return err;
-        buf_size = sprintf(buf, "%zu", self->dir->num_children);
-        err = out->write(out, buf, buf_size);
-        if (err) return err;
-
-        if (self->depth + 1 < KND_MAX_CLASS_DEPTH) {
-            err = out->write(out, ",\"_subclasses\":[", strlen(",\"_subclasses\":["));
-            if (err) return err;
-            for (size_t i = 0; i < self->dir->num_children; i++) {
-                ref = self->dir->children[i];
-                
-                if (DEBUG_CONC_LEVEL_2)
-                    knd_log(".. export base of --> %s", ref->name);
-
-                if (i) {
-                    err = out->write(out, ",", 1);
-                    if (err) return err;
-                }
-                c = ref->conc;
-                c->out = self->out;
-                c->task = self->task;
-                c->format =  KND_FORMAT_JSON;
-                c->depth = self->depth + 1;
-                err = c->export(c);
-                if (err) return err;
-            }
-            err = out->write(out, "]", 1);
-            if (err) return err;
-        }
     }
 
  final:
