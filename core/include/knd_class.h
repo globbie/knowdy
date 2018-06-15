@@ -14,8 +14,8 @@
  *         Dmitri Dmitriev aka M0nsteR <dmitri@globbie.net>
  *
  *   ----------
- *   knd_concept.h
- *   Knowdy Concept
+ *   knd_class.h
+ *   Knowdy Concept Class
  */
 #pragma once
 
@@ -34,40 +34,12 @@ struct glbOutput;
 struct kndTranslation;
 struct kndClass;
 struct kndRel;
-//struct kndRelObj;
 struct kndTask;
 struct kndSet;
 struct kndUser;
 struct kndClassUpdate;
 struct kndClassUpdateRef;
 struct kndObjEntry;
-
-//typedef enum knd_conc_type {
-//    KND_CONC_CLASS,
-//    KND_CONC_PROC,
-//    KND_CONC_ATTR
-//} knd_conc_type;
-
-//struct kndObjStateIdx
-//{
-//    struct kndObject **objs;
-//    size_t num_objs;
-//    struct kndStateIdx **children;
-//};
-
-//struct kndConcRef
-//{
-//    size_t state;
-//    struct kndClassEntry *dir;
-//    //struct kndClass *conc;
-//};
-
-//struct kndConcRefSet
-//{
-//    size_t state;
-//    struct kndClassEntry *dir;
-//    struct kndClass *conc;
-//};
 
 struct kndClassVar
 {
@@ -85,7 +57,6 @@ struct kndClassVar
     struct kndClass *parent;
 
     struct kndClass *conc;
-    //struct kndClassEntry *conc_dir;
 
     struct kndMemPool *mempool;
     struct kndClassVar *next;
@@ -95,7 +66,6 @@ struct kndConcFolder
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
-    //size_t num_concepts;
     struct kndConcFolder *parent;
     struct kndConcFolder *next;
 };
@@ -136,8 +106,6 @@ struct kndClassEntry
     struct kndProcEntry **procs;
     size_t num_procs;
 
-    //size_t next_obj_numid;
-
     struct kndObjDir *obj_dir;
     size_t num_objs;
 
@@ -166,7 +134,6 @@ struct kndClassUpdateRef
 
 struct kndClass
 {
-    //knd_conc_type type;
     char name[KND_NAME_SIZE];
     size_t name_size;
 
@@ -240,17 +207,6 @@ struct kndClass
 
     //struct kndSet *attr_idx;
     struct ooDict *attr_name_idx;
-
-    /* state idx */
-    //struct kndObjStateIdx **obj_states;
-
-    //struct kndConcRef children[KND_MAX_CONC_CHILDREN];
-    //size_t num_children;
-    //size_t num_terminals;
-    //bool is_terminal;
-
-    //struct kndConcRef frozen_dir[KND_MAX_CONC_CHILDREN];
-    //size_t frozen_dir_size;
 
     /* TODO: move to mempool */
     char dir_buf[KND_MAX_CONC_CHILDREN * KND_DIR_ENTRY_SIZE];
@@ -328,11 +284,6 @@ struct kndClass
                         const char *rec,
                         size_t *total_size);
     int (*export)(struct kndClass *self);
-
-    /* traversal */
-    //void (*rewind)(struct kndClass   *self);
-    //int (*next_attr)(struct kndClass   *self,
-    //                 struct kndAttr **result);
 };
 
 /* constructor */
