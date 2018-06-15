@@ -264,14 +264,14 @@ static int new_obj_elem(struct kndMemPool *self,
 static int new_conc_dir(struct kndMemPool *self,
                        struct kndClassEntry **result)
 {
-    struct kndClassEntry *dir;
+    struct kndClassEntry *entry;
     if (self->num_conc_dirs >= self->max_conc_dirs) {
         return knd_LIMIT;
     }
-    dir = &self->conc_dirs[self->num_conc_dirs];
-    memset(dir, 0, sizeof(struct kndClassEntry));
+    entry = &self->conc_dirs[self->num_conc_dirs];
+    memset(entry, 0, sizeof(struct kndClassEntry));
     self->num_conc_dirs++;
-    *result = dir;
+    *result = entry;
     return knd_OK;
 }
 
@@ -326,15 +326,15 @@ static int new_obj_dir(struct kndMemPool *self,
 static int new_rel_dir(struct kndMemPool *self,
                        struct kndRelEntry **result)
 {
-    struct kndRelEntry *dir;
+    struct kndRelEntry *entry;
 
     if (self->num_rel_dirs >= self->max_rel_dirs) {
         return knd_LIMIT;
     }
-    dir = &self->rel_dirs[self->num_rel_dirs];
-    memset(dir, 0, sizeof(struct kndRelEntry));
+    entry = &self->rel_dirs[self->num_rel_dirs];
+    memset(entry, 0, sizeof(struct kndRelEntry));
     self->num_rel_dirs++;
-    *result = dir;
+    *result = entry;
     return knd_OK;
 }
 
@@ -489,14 +489,14 @@ static int new_proc(struct kndMemPool *self,
 static int new_proc_dir(struct kndMemPool *self,
                        struct kndProcEntry **result)
 {
-    struct kndProcEntry *dir;
+    struct kndProcEntry *entry;
     if (self->num_proc_dirs >= self->max_proc_dirs) {
         return knd_LIMIT;
     }
-    dir = &self->proc_dirs[self->num_proc_dirs];
-    memset(dir, 0, sizeof(struct kndProcEntry));
+    entry = &self->proc_dirs[self->num_proc_dirs];
+    memset(entry, 0, sizeof(struct kndProcEntry));
     self->num_proc_dirs++;
-    *result = dir;
+    *result = entry;
     return knd_OK;
 }
 
