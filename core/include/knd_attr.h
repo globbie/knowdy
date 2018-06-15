@@ -130,7 +130,7 @@ struct kndAttrEntry
     struct kndAttr *attr;
     struct kndAttrItem *attr_item;
 
-    struct kndClassEntry *dir;
+    //struct kndClassEntry *entry;
 
     /* TODO: facets */
 
