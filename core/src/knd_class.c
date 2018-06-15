@@ -2509,7 +2509,7 @@ static gsl_err_t attr_item_alloc(void *obj,
     err = self->mempool->new_attr_item(self->mempool, &item);
     if (err) return make_gsl_err_external(err);
 
-    item->conc_dir = entry;
+    item->conc_entry = entry;
     item->attr = self->attr;
 
     *result = item;
@@ -2568,7 +2568,7 @@ static gsl_err_t aggr_item_set_baseclass(void *obj,
     }
 
     item->conc = entry->conc;
-    item->conc_dir = entry;
+    item->conc_entry = entry;
 
     return make_gsl_err(gsl_OK);
 }
@@ -4904,7 +4904,7 @@ static int expand_attr_ref_list(struct kndClass *self,
 
     for (item = parent_item->list; item; item = item->next) {
         if (!item->conc) {
-            err = unfreeze_class(self, item->conc_dir, &item->conc);
+            err = unfreeze_class(self, item->conc_entry, &item->conc);
             if (err) return err;
         }
     }

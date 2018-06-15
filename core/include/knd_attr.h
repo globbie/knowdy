@@ -113,7 +113,7 @@ struct kndAttrItem
     size_t num_list_elems;
 
     struct kndClass *conc;
-    struct kndClassEntry *conc_dir;
+    struct kndClassEntry *conc_entry;
     struct kndProc *proc;
     //struct kndProcDir *proc_dir;
 

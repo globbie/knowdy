@@ -26,7 +26,7 @@ static void del(struct kndMemPool *self)
     if (self->class_update_refs)   free(self->class_update_refs);
 
     if (self->classes)         free(self->classes);
-    if (self->conc_dirs)       free(self->conc_dirs);
+    if (self->class_entries)       free(self->class_entries);
     if (self->conc_items)       free(self->conc_items);
     if (self->objs)            free(self->objs);
     if (self->obj_dirs)        free(self->obj_dirs);
@@ -34,7 +34,7 @@ static void del(struct kndMemPool *self)
     if (self->elems)           free(self->elems);
 
     if (self->rels)            free(self->rels);
-    if (self->rel_dirs)        free(self->rel_dirs);
+    if (self->rel_entries)        free(self->rel_entries);
     if (self->rel_insts)       free(self->rel_insts);
     if (self->rel_refs)        free(self->rel_refs);
     if (self->rel_arg_insts)   free(self->rel_arg_insts);
@@ -43,7 +43,7 @@ static void del(struct kndMemPool *self)
     if (self->rel_update_refs) free(self->rel_update_refs);
 
     if (self->procs)           free(self->procs);
-    if (self->proc_dirs)       free(self->proc_dirs);
+    if (self->proc_entries)       free(self->proc_entries);
     if (self->proc_args)       free(self->proc_args);
     if (self->proc_insts)      free(self->proc_insts);
 
@@ -265,12 +265,12 @@ static int new_conc_dir(struct kndMemPool *self,
                        struct kndClassEntry **result)
 {
     struct kndClassEntry *entry;
-    if (self->num_conc_dirs >= self->max_conc_dirs) {
+    if (self->num_class_entries >= self->max_class_entries) {
         return knd_LIMIT;
     }
-    entry = &self->conc_dirs[self->num_conc_dirs];
+    entry = &self->class_entries[self->num_class_entries];
     memset(entry, 0, sizeof(struct kndClassEntry));
-    self->num_conc_dirs++;
+    self->num_class_entries++;
     *result = entry;
     return knd_OK;
 }
@@ -328,12 +328,12 @@ static int new_rel_dir(struct kndMemPool *self,
 {
     struct kndRelEntry *entry;
 
-    if (self->num_rel_dirs >= self->max_rel_dirs) {
+    if (self->num_rel_entries >= self->max_rel_entries) {
         return knd_LIMIT;
     }
-    entry = &self->rel_dirs[self->num_rel_dirs];
+    entry = &self->rel_entries[self->num_rel_entries];
     memset(entry, 0, sizeof(struct kndRelEntry));
-    self->num_rel_dirs++;
+    self->num_rel_entries++;
     *result = entry;
     return knd_OK;
 }
@@ -490,12 +490,12 @@ static int new_proc_dir(struct kndMemPool *self,
                        struct kndProcEntry **result)
 {
     struct kndProcEntry *entry;
-    if (self->num_proc_dirs >= self->max_proc_dirs) {
+    if (self->num_proc_entries >= self->max_proc_entries) {
         return knd_LIMIT;
     }
-    entry = &self->proc_dirs[self->num_proc_dirs];
+    entry = &self->proc_entries[self->num_proc_entries];
     memset(entry, 0, sizeof(struct kndProcEntry));
-    self->num_proc_dirs++;
+    self->num_proc_entries++;
     *result = entry;
     return knd_OK;
 }
@@ -566,7 +566,7 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_class_update_refs) self->max_class_update_refs = KND_MIN_UPDATES;
     if (!self->max_users)        self->max_users =   KND_MIN_USERS;
     if (!self->max_classes)      self->max_classes = KND_MIN_CLASSES;
-    if (!self->max_conc_dirs)    self->max_conc_dirs = self->max_classes;
+    if (!self->max_class_entries)    self->max_class_entries = self->max_classes;
     if (!self->max_conc_items)   self->max_conc_items = KND_MIN_CLASSES;
     if (!self->max_attr_items)   self->max_attr_items = KND_MIN_CLASSES;
 
@@ -575,7 +575,7 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_obj_entries)  self->max_obj_entries = self->max_objs;
     if (!self->max_elems)        self->max_elems = self->max_objs;
     if (!self->max_rels)         self->max_rels =    KND_MIN_RELS;
-    if (!self->max_rel_dirs)     self->max_rel_dirs = KND_MIN_REL_INSTANCES;
+    if (!self->max_rel_entries)     self->max_rel_entries = KND_MIN_REL_INSTANCES;
 
     if (!self->max_rel_refs)     self->max_rel_refs = self->max_rels;
     if (!self->max_rel_insts)    self->max_rel_insts = KND_MIN_REL_INSTANCES;
@@ -586,7 +586,7 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_rel_update_refs) self->max_rel_update_refs = KND_MIN_UPDATES;
 
     if (!self->max_procs)         self->max_procs =  KND_MIN_PROCS;
-    if (!self->max_proc_dirs)     self->max_proc_dirs = self->max_procs;
+    if (!self->max_proc_entries)     self->max_proc_entries = self->max_procs;
     if (!self->max_proc_args)     self->max_proc_args =  self->max_procs;
     if (!self->max_proc_insts)    self->max_proc_insts = KND_MIN_PROC_INSTANCES;
     if (!self->max_proc_updates) self->max_proc_updates = KND_MIN_UPDATES;
@@ -598,8 +598,8 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    self->conc_dirs = calloc(self->max_conc_dirs, sizeof(struct kndClassEntry));
-    if (!self->conc_dirs) {
+    self->class_entries = calloc(self->max_class_entries, sizeof(struct kndClassEntry));
+    if (!self->class_entries) {
         knd_log("-- conc dirs not allocated :(");
         return knd_NOMEM;
     }
@@ -704,8 +704,8 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    self->rel_dirs = calloc(self->max_rel_dirs, sizeof(struct kndRelEntry));
-    if (!self->rel_dirs) {
+    self->rel_entries = calloc(self->max_rel_entries, sizeof(struct kndRelEntry));
+    if (!self->rel_entries) {
         knd_log("-- rel dirs not allocated :(");
         return knd_NOMEM;
     }
@@ -754,8 +754,8 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    self->proc_dirs = calloc(self->max_proc_dirs, sizeof(struct kndProcEntry));
-    if (!self->proc_dirs) {
+    self->proc_entries = calloc(self->max_proc_entries, sizeof(struct kndProcEntry));
+    if (!self->proc_entries) {
         knd_log("-- proc dirs not allocated :(");
         return knd_NOMEM;
     }
