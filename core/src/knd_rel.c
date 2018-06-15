@@ -606,15 +606,15 @@ static int import_rel(struct kndRel *self,
     err = self->mempool->new_rel_dir(self->mempool, &entry);                        RET_ERR();
     entry->rel = rel;
     entry->mempool = rel->mempool;
-    rel->dir = entry;
+    rel->entry = entry;
     self->num_rels++;
     entry->numid = self->num_rels;
 
     knd_num_to_str(entry->numid, entry->id, &entry->id_size, KND_RADIX_BASE);
 
     /* automatic name assignment if no explicit name given */
-    memcpy(rel->dir->name, rel->name, rel->name_size);
-    rel->dir->name_size = rel->name_size;
+    memcpy(rel->entry->name, rel->name, rel->name_size);
+    rel->entry->name_size = rel->name_size;
 
     if (!rel->name_size) {
         memcpy(entry->name, entry->id, entry->id_size);
@@ -1259,7 +1259,7 @@ static int get_rel(struct kndRel *self,
     rel->rel_name_idx = self->rel_name_idx;
     rel->class_idx = self->class_idx;
     rel->class_name_idx = self->class_name_idx;
-    rel->dir = entry;
+    rel->entry = entry;
 
     rel->name = entry->name;
     rel->name_size = entry->name_size;
@@ -1298,7 +1298,7 @@ static int get_rel(struct kndRel *self,
     }
 
     entry->rel = rel;
-    rel->dir = entry;
+    rel->entry = entry;
 
     if (DEBUG_REL_LEVEL_2)
         rel->str(rel);
@@ -1489,10 +1489,10 @@ static gsl_err_t parse_import_instance(void *data,
     /*if (!rel->dir) {
         return make_gsl_err(gsl_FAIL);
         }*/
-    rel->dir->num_insts++;
+    rel->entry->num_insts++;
 
     /* assign id/name */
-    inst->numid = rel->dir->num_insts;
+    inst->numid = rel->entry->num_insts;
     knd_num_to_str(inst->numid, inst->id, &inst->id_size, KND_RADIX_BASE);
 
     /* automatic name assignment if no explicit name given */
@@ -1504,14 +1504,14 @@ static gsl_err_t parse_import_instance(void *data,
     if (DEBUG_REL_LEVEL_TMP)
         inst_str(rel, inst);
     
-    if (!rel->dir->inst_idx) {
-        err = self->mempool->new_set(self->mempool, &rel->dir->inst_idx);
+    if (!rel->entry->inst_idx) {
+        err = self->mempool->new_set(self->mempool, &rel->entry->inst_idx);
         if (err) return make_gsl_err_external(err);
-        rel->dir->inst_idx->type = KND_SET_REL_INST;
+        rel->entry->inst_idx->type = KND_SET_REL_INST;
     }
 
-    if (!rel->dir->inst_name_idx) {
-        err = ooDict_new(&rel->dir->inst_name_idx, KND_MEDIUM_DICT_SIZE);
+    if (!rel->entry->inst_name_idx) {
+        err = ooDict_new(&rel->entry->inst_name_idx, KND_MEDIUM_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
     }
     
@@ -1520,13 +1520,13 @@ static gsl_err_t parse_import_instance(void *data,
     memset(entry, 0, sizeof(struct kndRelInstEntry));
     entry->inst = inst;
 
-    err = rel->dir->inst_name_idx->set(rel->dir->inst_name_idx,
+    err = rel->entry->inst_name_idx->set(rel->entry->inst_name_idx,
                                        inst->name, inst->name_size, (void*)entry);
     if (err) return make_gsl_err_external(err);
 
     if (DEBUG_REL_LEVEL_TMP) {
         knd_log("\n\nREGISTER INST in %.*s IDX:  [total:%zu valid:%zu]",
-                rel->name_size, rel->name, rel->dir->inst_name_idx->size, rel->dir->num_insts);
+                rel->name_size, rel->name, rel->entry->inst_name_idx->size, rel->entry->num_insts);
         inst_str(rel, inst);
     }
 
@@ -1763,8 +1763,8 @@ static gsl_err_t set_liquid_rel_id(void *obj, const char *val, size_t val_size _
     err = knd_parse_num((const char*)val, &numval);
     if (err) return make_gsl_err_external(err);
     //rel->id = numval;
-    if (rel->dir) {
-        rel->dir->numid = numval;
+    if (rel->entry) {
+        rel->entry->numid = numval;
     }
 
     //self->curr_rel->update_id = self->curr_update->id;
@@ -1915,7 +1915,7 @@ static int freeze_insts(struct kndRel *self,
     if (DEBUG_REL_LEVEL_1)
         knd_log(".. freezing insts of Rel \"%.*s\", total:%zu",
                 self->name_size, self->name,
-                self->dir->num_insts);
+                self->entry->num_insts);
 
     start_offset = out->buf_size;
     inst_block_offset = out->buf_size;
@@ -1924,9 +1924,9 @@ static int freeze_insts(struct kndRel *self,
     if (err) return err;
 
     key = NULL;
-    self->dir->inst_name_idx->rewind(self->dir->inst_name_idx);
+    self->entry->inst_name_idx->rewind(self->entry->inst_name_idx);
     do {
-        self->dir->inst_name_idx->next_item(self->dir->inst_name_idx, &key, &val);
+        self->entry->inst_name_idx->next_item(self->entry->inst_name_idx, &key, &val);
         if (!key) break;
         entry = val;
         inst = entry->inst;
@@ -2026,7 +2026,7 @@ static int freeze(struct kndRel *self,
     block_size = out->buf_size;
 
     /* any instances to freeze? */
-    if (self->dir->num_insts) {
+    if (self->entry->num_insts) {
         /* mark the size of the Rel body rec */
         err = trailer->write(trailer, "{R ", strlen("{R "));
         if (err) return err;

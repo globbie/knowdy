@@ -847,7 +847,7 @@ static gsl_err_t rel_entry_alloc(void *obj,
                 self->rel->name_size, self->rel->name,
                 name_size, name);
 
-    set = self->rel->dir->inst_idx;
+    set = self->rel->entry->inst_idx;
     if (!set) return make_gsl_err(gsl_FAIL);
 
     err = set->get(set, name, name_size, &elem);

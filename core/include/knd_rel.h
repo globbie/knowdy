@@ -170,7 +170,7 @@ struct kndRel
     struct kndRelInstance *inst_inbox;
     size_t inst_inbox_size;
 
-    struct kndRelEntry *dir;
+    struct kndRelEntry *entry;
 
     struct ooDict *rel_name_idx;
     struct ooDict *rel_idx;
@@ -224,7 +224,7 @@ struct kndRel
                 const char    *rec,
                 size_t        *total_size);
     int (*read_rel)(struct kndRel *self,
-                    struct kndRelEntry *dir);
+                    struct kndRelEntry *entry);
     int (*select)(struct kndRel  *self,
                   const char *rec,
                   size_t *total_size);
