@@ -261,8 +261,8 @@ static int new_obj_elem(struct kndMemPool *self,
     return knd_OK;
 }
 
-static int new_conc_dir(struct kndMemPool *self,
-                       struct kndClassEntry **result)
+static int new_class_entry(struct kndMemPool *self,
+                           struct kndClassEntry **result)
 {
     struct kndClassEntry *entry;
     if (self->num_class_entries >= self->max_class_entries) {
@@ -323,8 +323,8 @@ static int new_obj_dir(struct kndMemPool *self,
     return knd_OK;
 }
 
-static int new_rel_dir(struct kndMemPool *self,
-                       struct kndRelEntry **result)
+static int new_rel_entry(struct kndMemPool *self,
+                         struct kndRelEntry **result)
 {
     struct kndRelEntry *entry;
 
@@ -486,8 +486,8 @@ static int new_proc(struct kndMemPool *self,
     return knd_OK;
 }
 
-static int new_proc_dir(struct kndMemPool *self,
-                       struct kndProcEntry **result)
+static int new_proc_entry(struct kndMemPool *self,
+                          struct kndProcEntry **result)
 {
     struct kndProcEntry *entry;
     if (self->num_proc_entries >= self->max_proc_entries) {
@@ -944,7 +944,7 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_class_update = new_class_update;
     self->new_class_update_ref = new_class_update_ref;
     self->new_class = new_class;
-    self->new_conc_dir = new_conc_dir;
+    self->new_class_entry = new_class_entry;
     self->new_conc_item = new_conc_item;
     self->new_attr_item = new_attr_item;
     self->new_obj = new_obj;
@@ -952,7 +952,7 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_obj_entry = new_obj_entry;
     self->new_obj_elem = new_obj_elem;
     self->new_rel = new_rel;
-    self->new_rel_dir = new_rel_dir;
+    self->new_rel_entry = new_rel_entry;
     self->new_rel_ref = new_rel_ref;
     self->new_rel_inst = new_rel_inst;
     self->new_rel_arg_inst = new_rel_arg_inst;
@@ -960,7 +960,7 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_rel_update = new_rel_update;
     self->new_rel_update_ref = new_rel_update_ref;
     self->new_proc = new_proc;
-    self->new_proc_dir = new_proc_dir;
+    self->new_proc_entry = new_proc_entry;
     self->new_proc_arg = new_proc_arg;
     self->new_proc_update = new_proc_update;
     self->new_proc_update_ref = new_proc_update_ref;

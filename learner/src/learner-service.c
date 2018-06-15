@@ -399,7 +399,7 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     conc->frozen_output_file_name = self->admin->frozen_output_file_name;
     conc->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
 
-    err = self->mempool->new_conc_dir(self->mempool, &conc->entry);                 RET_ERR();
+    err = self->mempool->new_class_entry(self->mempool, &conc->entry);                 RET_ERR();
     memset(conc->entry->name, '0', KND_ID_SIZE);
     conc->entry->name_size = KND_ID_SIZE;
     memset(conc->entry->id, '0', KND_ID_SIZE);

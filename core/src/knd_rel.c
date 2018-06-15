@@ -603,7 +603,7 @@ static int import_rel(struct kndRel *self,
         self->inbox_size++;
     }
 
-    err = self->mempool->new_rel_dir(self->mempool, &entry);                        RET_ERR();
+    err = self->mempool->new_rel_entry(self->mempool, &entry);                        RET_ERR();
     entry->rel = rel;
     entry->mempool = rel->mempool;
     rel->entry = entry;
