@@ -705,7 +705,7 @@ static gsl_err_t inst_entry_alloc(void *obj,
     struct kndRelInstEntry *entry = NULL;
 
     if (DEBUG_REL_LEVEL_1)
-        knd_log(".. create Rel inst entry: %.*s  dir: %p",
+        knd_log(".. create Rel inst entry: %.*s  entry: %p",
                 val_size, val, parent_dir);
 
     entry = malloc(sizeof(struct kndRelInstEntry));

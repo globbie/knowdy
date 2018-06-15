@@ -250,7 +250,7 @@ kndFacet_add_reverse_link(struct kndFacet  *self,
                           struct kndClassEntry *base,
                           struct kndSet  *set)
 {
-    struct kndClassEntry *topic = self->attr->parent_conc->dir;
+    struct kndClassEntry *topic = self->attr->parent_conc->entry;
     struct ooDict *name_idx;
     int err;
 
