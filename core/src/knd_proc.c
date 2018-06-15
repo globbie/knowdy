@@ -1496,7 +1496,7 @@ static int import_proc(struct kndProc *self,
         self->inbox_size++;
     }
 
-    err = self->mempool->new_proc_dir(self->mempool, &entry);                       RET_ERR();
+    err = self->mempool->new_proc_entry(self->mempool, &entry);                       RET_ERR();
     entry->proc = proc;
     proc->entry = entry;
 

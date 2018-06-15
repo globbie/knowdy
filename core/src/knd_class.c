@@ -128,7 +128,7 @@ static void reset_inbox(struct kndClass *self)
     self->inbox_size = 0;
 }
 
-static void del_conc_dir(struct kndClassEntry *entry)
+static void del_class_entry(struct kndClassEntry *entry)
 {
     struct kndClassEntry *subentry;
     size_t i;
@@ -136,7 +136,7 @@ static void del_conc_dir(struct kndClassEntry *entry)
     for (i = 0; i < entry->num_children; i++) {
         subentry = entry->children[i];
         if (!subentry) continue;
-        del_conc_dir(subentry);
+        del_class_entry(subentry);
         entry->children[i] = NULL;
     }
 
@@ -160,7 +160,7 @@ static void del_conc_dir(struct kndClassEntry *entry)
 static void kndClass_del(struct kndClass *self)
 {
     if (self->attr_name_idx) self->attr_name_idx->del(self->attr_name_idx);
-    if (self->entry) del_conc_dir(self->entry);
+    if (self->entry) del_class_entry(self->entry);
 }
 
 static void str_attr_items(struct kndAttrItem *items, size_t depth)
@@ -2996,7 +2996,7 @@ static gsl_err_t parse_import_class(void *obj,
         self->inbox_size++;
     }
 
-    err = self->mempool->new_conc_dir(self->mempool, &entry);
+    err = self->mempool->new_class_entry(self->mempool, &entry);
     if (err) { parser_err = make_gsl_err_external(err); goto final; }
 
     memcpy(entry->name, c->name, c->name_size);
@@ -3748,7 +3748,7 @@ static gsl_err_t dir_entry_alloc(void *self,
 
     if (name_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = parent_entry->mempool->new_conc_dir(parent_entry->mempool, &entry);
+    err = parent_entry->mempool->new_class_entry(parent_entry->mempool, &entry);
     if (err) return make_gsl_err_external(err);
 
     entry->mempool = parent_entry->mempool;
@@ -3779,7 +3779,7 @@ static gsl_err_t reldir_entry_alloc(void *self,
 
     if (name_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = parent_entry->mempool->new_rel_dir(parent_entry->mempool, &entry);
+    err = parent_entry->mempool->new_rel_entry(parent_entry->mempool, &entry);
     if (err) return make_gsl_err_external(err);
     knd_calc_num_id(name, name_size, &entry->block_size);
     
@@ -3830,7 +3830,7 @@ static gsl_err_t procdir_entry_alloc(void *self,
 
     if (name_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = parent_entry->mempool->new_proc_dir(parent_entry->mempool, &entry);
+    err = parent_entry->mempool->new_proc_entry(parent_entry->mempool, &entry);
     if (err) return make_gsl_err_external(err);
 
     knd_calc_num_id(name, name_size, &entry->block_size);
@@ -7322,7 +7322,7 @@ static int apply_liquid_updates(struct kndClass *self,
             err = c->resolve(c, NULL);
             if (err) return err;
 
-            err = self->mempool->new_conc_dir(self->mempool, &entry);
+            err = self->mempool->new_class_entry(self->mempool, &entry);
             if (err) return err;
 
             entry->conc = c;

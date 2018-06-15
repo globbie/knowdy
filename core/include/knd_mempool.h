@@ -222,8 +222,8 @@ struct kndMemPool
                                 struct kndClassUpdateRef **result);
     int (*new_class)(struct kndMemPool   *self,
                      struct kndClass **result);
-    int (*new_conc_dir)(struct kndMemPool   *self,
-                        struct kndClassEntry **result);
+    int (*new_class_entry)(struct kndMemPool   *self,
+                           struct kndClassEntry **result);
     int (*new_conc_item)(struct kndMemPool   *self,
                          struct kndClassVar **result);
     int (*new_attr_item)(struct kndMemPool   *self,
@@ -238,8 +238,8 @@ struct kndMemPool
                         struct kndElem     **result);
     int (*new_rel)(struct kndMemPool   *self,
                    struct kndRel **result);
-    int (*new_rel_dir)(struct kndMemPool   *self,
-                       struct kndRelEntry **result);
+    int (*new_rel_entry)(struct kndMemPool   *self,
+                         struct kndRelEntry **result);
     int (*new_rel_ref)(struct kndMemPool   *self,
                        struct kndRelRef **result);
     int (*new_rel_update)(struct kndMemPool   *self,
@@ -256,7 +256,7 @@ struct kndMemPool
                     struct kndProc **result);
     //int (*new_proc_inst)(struct kndMemPool   *self,
     //                     struct kndProcInstance **result);
-    int (*new_proc_dir)(struct kndMemPool   *self,
+    int (*new_proc_entry)(struct kndMemPool   *self,
                         struct kndProcEntry **result);
     int (*new_proc_arg)(struct kndMemPool   *self,
                         struct kndProcArg **result);
