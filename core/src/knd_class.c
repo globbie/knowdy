@@ -154,7 +154,7 @@ static void del_conc_dir(struct kndClassEntry *dir)
 static void kndClass_del(struct kndClass *self)
 {
     if (self->attr_name_idx) self->attr_name_idx->del(self->attr_name_idx);
-    if (self->dir) del_conc_dir(self->dir);
+    if (self->entry) del_conc_dir(self->entry);
 }
 
 static void str_attr_items(struct kndAttrItem *items, size_t depth)
@@ -231,8 +231,8 @@ static void str(struct kndClass *self)
     knd_log("\n%*s{class %.*s    id:%.*s numid:%zu  resolved:%d",
             self->depth * KND_OFFSET_SIZE, "",
             self->name_size, self->name,
-            self->dir->id_size, self->dir->id,
-            self->dir->numid, self->is_resolved);
+            self->entry->id_size, self->entry->id,
+            self->entry->numid, self->is_resolved);
 
     for (tr = self->tr; tr; tr = tr->next) {
         knd_log("%*s~ %s %.*s",
@@ -296,13 +296,13 @@ static void str(struct kndClass *self)
         }
     }
 
-    for (size_t i = 0; i < self->dir->num_children; i++) {
-        c = self->dir->children[i]->conc;
+    for (size_t i = 0; i < self->entry->num_children; i++) {
+        c = self->entry->children[i]->conc;
         if (!c) continue;
 
         knd_log("%*sbase of --> %.*s [%zu]",
                 (self->depth + 1) * KND_OFFSET_SIZE, "",
-                c->name_size, c->name, c->dir->num_terminals);
+                c->name_size, c->name, c->entry->num_terminals);
         c->str(c);
     }
 
@@ -312,8 +312,8 @@ static void str(struct kndClass *self)
         if (err) return;
         }*/
 
-    if (self->dir->reverse_attr_name_idx) {
-        idx = self->dir->reverse_attr_name_idx;
+    if (self->entry->reverse_attr_name_idx) {
+        idx = self->entry->reverse_attr_name_idx;
         key = NULL;
         idx->rewind(idx);
         do {
@@ -580,13 +580,13 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
 
         return knd_FAIL;
     }
-    self->bases[self->num_bases] = base->dir;
+    self->bases[self->num_bases] = base->entry;
     self->num_bases++;
 
     if (DEBUG_CONC_LEVEL_1)
         knd_log(" .. add %.*s parent to %.*s", 
-                base->dir->conc->name_size,
-                base->dir->conc->name,
+                base->entry->conc->name_size,
+                base->entry->conc->name,
                 self->name_size, self->name);
 
     /* contact the grandparents */
@@ -664,9 +664,9 @@ static int index_attr(struct kndClass *self,
     err = is_base(base, c);                                                       RET_ERR();
 
 
-    set = attr->parent_conc->dir->descendants;
+    set = attr->parent_conc->entry->descendants;
     /* add curr class to the reverse index */
-    err = set->add_ref(set, attr, self->dir, c->dir);
+    err = set->add_ref(set, attr, self->entry, c->entry);
     if (err) return err;
 
     return knd_OK;
@@ -717,10 +717,10 @@ static int index_attr_item_list(struct kndClass *self,
     }
     err = is_base(base, c);                                                       RET_ERR();
 
-    set = attr->parent_conc->dir->descendants;
+    set = attr->parent_conc->entry->descendants;
 
     /* add curr class to the reverse index */
-    err = set->add_ref(set, attr, self->dir, c->dir);
+    err = set->add_ref(set, attr, self->entry, c->entry);
     if (err) return err;
 
     return knd_OK;
@@ -1313,15 +1313,15 @@ static int resolve_base_classes(struct kndClass *self)
         item->conc = c;
 
         /* check item doublets */
-        for (size_t i = 0; i < self->dir->num_children; i++) {
-            if (self->dir->children[i] == self->dir) {
+        for (size_t i = 0; i < self->entry->num_children; i++) {
+            if (self->entry->children[i] == self->entry) {
                 knd_log("-- doublet conc item found in \"%.*s\" :(",
                         self->name_size, self->name);
                 return knd_FAIL;
             }
         }
 
-        if (c->dir->num_children >= KND_MAX_CONC_CHILDREN) {
+        if (c->entry->num_children >= KND_MAX_CONC_CHILDREN) {
             knd_log("-- %.*s as child to %.*s - max conc children exceeded :(",
                     self->name_size, self->name, item->classname_size, item->classname);
             return knd_FAIL;
@@ -1331,37 +1331,37 @@ static int resolve_base_classes(struct kndClass *self)
             if (DEBUG_CONC_LEVEL_2)
                 knd_log(".. update task to add class \"%.*s\" as a child of "
                         " \"%.*s\" (total children:%zu)",
-                        self->dir->name_size, self->dir->name,
-                        c->name_size, c->name, c->dir->num_children);
+                        self->entry->name_size, self->entry->name,
+                        c->name_size, c->name, c->entry->num_children);
             
-            if (!c->dir->children) {
-                c->dir->children = calloc(KND_MAX_CONC_CHILDREN,
+            if (!c->entry->children) {
+                c->entry->children = calloc(KND_MAX_CONC_CHILDREN,
                                           sizeof(struct kndClassEntry*));
-                if (!c->dir->children) {
+                if (!c->entry->children) {
                     knd_log("-- no memory :(");
                     return knd_NOMEM;
                 }
             }
             
-            if (c->dir->num_children >= KND_MAX_CONC_CHILDREN) {
+            if (c->entry->num_children >= KND_MAX_CONC_CHILDREN) {
                 knd_log("-- warning: num of subclasses of \"%.*s\" exceeded :(",
-                        c->dir->name_size, c->dir->name);
+                        c->entry->name_size, c->entry->name);
                 return knd_OK;
             }
-            c->dir->children[c->dir->num_children] = self->dir;
-            c->dir->num_children++;
+            c->entry->children[c->entry->num_children] = self->entry;
+            c->entry->num_children++;
             //}
 
 
         /* register as a descendant */
-        set = c->dir->descendants;
+        set = c->entry->descendants;
         if (!set) {
             err = self->mempool->new_set(self->mempool, &set);                     RET_ERR();
             set->type = KND_SET_CLASS;
-            set->base = c->dir;
-            c->dir->descendants = set;
+            set->base = c->entry;
+            c->entry->descendants = set;
         }
-        dir = self->dir;
+        dir = self->entry;
 
         if (DEBUG_CONC_LEVEL_2)
             knd_log(".. add class \"%.*s\" as a descendant of \"%.*s\"!",
@@ -1390,15 +1390,15 @@ static int resolve_refs(struct kndClass *self,
         return knd_OK;
     } else {
         self->root_class->next_numid++;
-        dir = self->dir;
+        dir = self->entry;
         dir->numid = self->root_class->next_numid;
         knd_num_to_str(dir->numid, dir->id, &dir->id_size, KND_RADIX_BASE);
     }
 
     if (DEBUG_CONC_LEVEL_1) {
-        knd_log(".. resolving class \"%.*s\" id:%.*s dir numid:%zu",
+        knd_log(".. resolving class \"%.*s\" id:%.*s entry numid:%zu",
                 self->name_size, self->name,
-                dir->id_size, dir->id, self->dir->numid);
+                dir->id_size, dir->id, self->entry->numid);
     }
 
     /* a child of the root class
@@ -1406,7 +1406,7 @@ static int resolve_refs(struct kndClass *self,
     if (!self->base_items) {
         root = self->root_class;
 
-        dir = root->dir;
+        dir = root->entry;
         if (!dir->children) {
             dir->children = calloc(KND_MAX_CONC_CHILDREN,
                                    sizeof(struct kndClassEntry*));
@@ -1420,7 +1420,7 @@ static int resolve_refs(struct kndClass *self,
                     dir->name_size, dir->name);
             return knd_OK;
         }
-        dir->children[dir->num_children] = self->dir;
+        dir->children[dir->num_children] = self->entry;
         dir->num_children++;
     }
 
@@ -1596,7 +1596,7 @@ static gsl_err_t atomic_elem_alloc(void *obj,
     }
     dir = elem;
 
-    set = self->dir->descendants;
+    set = self->entry->descendants;
     err = set->add(set, dir->id, dir->id_size, (void*)dir);
     if (err) return make_gsl_err_external(err);
 
@@ -1883,9 +1883,9 @@ static gsl_err_t parse_descendants(void *obj,
     err = self->mempool->new_set(self->mempool, &set);
     if (err) return make_gsl_err_external(err);
     set->type = KND_SET_CLASS;
-    set->base = self->dir;
+    set->base = self->entry;
     set->mempool = self->mempool;
-    self->dir->descendants = set;
+    self->entry->descendants = set;
 
     struct gslTaskSpec c_item_spec = {
         .is_list_item = true,
@@ -2339,7 +2339,7 @@ static gsl_err_t read_nested_attr_item(void *obj,
     if (err) {
         knd_log("-- no attr \"%.*s\" in class \"%.*s\" :(",
                 name_size, name,
-                conc->dir->name_size, conc->dir->name);
+                conc->entry->name_size, conc->entry->name);
         if (err) return make_gsl_err_external(err);
     }
 
@@ -2982,7 +2982,7 @@ static gsl_err_t parse_import_class(void *obj,
     dir->name_size = c->name_size;
 
     dir->conc = c;
-    c->dir = dir;
+    c->entry = dir;
     dir->mempool = self->mempool;
     dir->class_idx = self->class_idx;
     dir->class_name_idx = self->class_name_idx;
@@ -3056,9 +3056,9 @@ static gsl_err_t parse_import_obj(void *data,
         knd_log("== obj ID: %zu => \"%.*s\"",
                 obj->numid, obj->id_size, obj->id);
     
-    if (!c->dir) {
+    if (!c->entry) {
         if (c->root_class) {
-            knd_log("-- no dir in %.*s :(", c->name_size, c->name);
+            knd_log("-- no entry in %.*s :(", c->name_size, c->name);
             return make_gsl_err(gsl_FAIL);
         }
         return make_gsl_err(gsl_OK);
@@ -3071,8 +3071,8 @@ static gsl_err_t parse_import_obj(void *data,
         obj->name_size = obj->id_size;
     }
 
-    if (!c->dir->obj_name_idx) {
-        err = ooDict_new(&c->dir->obj_name_idx, KND_HUGE_DICT_SIZE);
+    if (!c->entry->obj_name_idx) {
+        err = ooDict_new(&c->entry->obj_name_idx, KND_HUGE_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
     }
 
@@ -3085,16 +3085,16 @@ static gsl_err_t parse_import_obj(void *data,
     entry->obj = obj;
     obj->entry = entry;
 
-    err = c->dir->obj_name_idx->set(c->dir->obj_name_idx,
+    err = c->entry->obj_name_idx->set(c->entry->obj_name_idx,
                                obj->name, obj->name_size,
                                (void*)entry);
     if (err) return make_gsl_err_external(err);
 
-    c->dir->num_objs++;
+    c->entry->num_objs++;
 
     if (DEBUG_CONC_LEVEL_1) {
         knd_log("++ OBJ registered in \"%.*s\" IDX:  [total:%zu valid:%zu]",
-                c->name_size, c->name, c->dir->obj_name_idx->size, c->dir->num_objs);
+                c->name_size, c->name, c->entry->obj_name_idx->size, c->entry->num_objs);
         obj->depth = self->depth + 1;
         obj->str(obj);
     }
@@ -3154,13 +3154,13 @@ static gsl_err_t select_by_baseclass(void *obj,
     err = get_class(self, name, name_size, &self->curr_baseclass);
     if (err) return make_gsl_err_external(err);
 
-    self->curr_baseclass->dir->conc = self->curr_baseclass;
-    if (!self->curr_baseclass->dir->descendants) {
+    self->curr_baseclass->entry->conc = self->curr_baseclass;
+    if (!self->curr_baseclass->entry->descendants) {
         knd_log("-- no set of descendants found :(");
         return make_gsl_err(gsl_OK);
     }
 
-    set = self->curr_baseclass->dir->descendants;
+    set = self->curr_baseclass->entry->descendants;
     if (self->task->num_sets + 1 > KND_MAX_CLAUSES)
         return make_gsl_err(gsl_LIMIT);
     self->task->sets[self->task->num_sets] = set;
@@ -3189,13 +3189,13 @@ static gsl_err_t select_by_attr(void *obj,
                 name_size, name, c->name_size, c->name, c->is_resolved);
     }
 
-    if (!c->dir->descendants) {
+    if (!c->entry->descendants) {
         knd_log("-- no descendants idx in \"%.*s\" :(",
                 c->name_size, c->name);
         return make_gsl_err(gsl_FAIL);
     }
 
-    set = c->dir->descendants;
+    set = c->entry->descendants;
 
     err = set->get_facet(set, self->curr_attr, &facet);
     if (err) {
@@ -4385,14 +4385,14 @@ static int open_frozen_DB(struct kndClass *self)
         goto final;
     }
 
-    self->dir->block_size = file_size;
-    self->dir->id[0] = '/';
-    self->dir->mempool = self->mempool;
-    self->dir->class_idx = self->class_idx;
-    self->dir->class_name_idx = self->class_name_idx;
+    self->entry->block_size = file_size;
+    self->entry->id[0] = '/';
+    self->entry->mempool = self->mempool;
+    self->entry->class_idx = self->class_idx;
+    self->entry->class_name_idx = self->class_name_idx;
 
     /* TODO: get encode base from config */
-    err = get_dir_trailer(self, self->dir, fd, KND_DIR_SIZE_ENCODE_BASE);
+    err = get_dir_trailer(self, self->entry, fd, KND_DIR_SIZE_ENCODE_BASE);
     if (err) {
         knd_log("-- error reading dir trailer in \"%.*s\"", filename_size, filename);
         goto final;
@@ -4818,7 +4818,7 @@ static int resolve_classes(struct kndClass *self)
 static void calculate_descendants(struct kndClass *self)
 {
     struct kndClassEntry *parent_dir = NULL;
-    struct kndClassEntry *dir = self->dir;
+    struct kndClassEntry *dir = self->entry;
     struct kndClassEntry *subdir = NULL;
     size_t i = 0;
     size_t depth = 0;
@@ -4888,7 +4888,7 @@ static int coordinate(struct kndClass *self)
 
     calculate_descendants(self);
 
-    knd_log("== TOTAL classes: %zu", self->dir->num_terminals);
+    knd_log("== TOTAL classes: %zu", self->entry->num_terminals);
 
     err = self->proc->coordinate(self->proc);                                     RET_ERR();
     err = self->rel->coordinate(self->rel);                                       RET_ERR();
@@ -5021,7 +5021,7 @@ static int unfreeze_class(struct kndClass *self,
     c->root_class = self->root_class ? self->root_class : self;
     c->class_idx = self->class_idx;
     c->class_name_idx = self->class_name_idx;
-    c->dir = dir;
+    c->entry = dir;
     c->mempool = self->mempool;
     dir->conc = c;
 
@@ -5176,12 +5176,12 @@ static int get_obj(struct kndClass *self,
                 self->name_size, self->name,
                 name_size, name);
 
-    if (!self->dir) {
-        knd_log("-- no frozen dir rec in \"%.*s\" :(",
+    if (!self->entry) {
+        knd_log("-- no frozen entry rec in \"%.*s\" :(",
                 self->name_size, self->name);
     }
     
-    if (!self->dir->obj_name_idx) {
+    if (!self->entry->obj_name_idx) {
         knd_log("-- no obj name idx in \"%.*s\" :(", self->name_size, self->name);
 
         self->log->reset(self->log);
@@ -5194,7 +5194,7 @@ static int get_obj(struct kndClass *self,
         return knd_FAIL;
     }
 
-    entry = self->dir->obj_name_idx->get(self->dir->obj_name_idx, name, name_size);
+    entry = self->entry->obj_name_idx->get(self->entry->obj_name_idx, name, name_size);
     if (!entry) {
         knd_log("-- no such obj: \"%.*s\" :(", name_size, name);
         self->log->reset(self->log);
@@ -5382,7 +5382,7 @@ static int export_conc_elem_JSON(void *obj,
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("..export elem: %.*s  conc:%p dir:%p",
+        knd_log("..export elem: %.*s  conc:%p entry:%p",
                 elem_id_size, elem_id, c, dir);
 
     if (!c) {
@@ -5530,7 +5530,7 @@ static int export_descendants_GSP(struct kndClass *self)
     struct kndSet *set;
     int err;
 
-    set = self->dir->descendants;
+    set = self->entry->descendants;
 
     err = out->write(out, "{_desc", strlen("{_desc"));                            RET_ERR();
     buf_size = sprintf(buf, "{tot %zu}", set->num_elems);
@@ -5575,8 +5575,8 @@ static gsl_err_t present_class_selection(void *obj,
         /* no sets found? */
         if (!self->task->num_sets) {
 
-            if (self->curr_baseclass && self->curr_baseclass->dir->descendants) {
-                set = self->curr_baseclass->dir->descendants;
+            if (self->curr_baseclass && self->curr_baseclass->entry->descendants) {
+                set = self->curr_baseclass->entry->descendants;
 
                 err = export_set_JSON(self, set);
                 if (err) return make_gsl_err_external(err);
@@ -5741,7 +5741,7 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
     if (DEBUG_CONC_LEVEL_2)
         knd_log("== class to remove: \"%.*s\"\n", c->name_size, c->name);
 
-    c->dir->phase = KND_REMOVED;
+    c->entry->phase = KND_REMOVED;
 
     self->log->reset(self->log);
     err = self->log->write(self->log, name, name_size);
@@ -6470,12 +6470,12 @@ static int export_JSON(struct kndClass *self)
     err = out->write(out, "{", 1);                                                RET_ERR();
     err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                RET_ERR();
 
-    err = out->write_escaped(out, self->dir->name, self->dir->name_size);         RET_ERR();
+    err = out->write_escaped(out, self->entry->name, self->entry->name_size);         RET_ERR();
 
     err = out->write(out, "\"", 1);                                               RET_ERR();
 
     err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
-    buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", self->dir->numid);
+    buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", self->entry->numid);
     err = out->write(out, buf, buf_size);                                         RET_ERR();
 
     //knd_log(".. init JSON OUTPUT: %.*\n\n",
@@ -6576,31 +6576,31 @@ static int export_JSON(struct kndClass *self)
     }
 
     /* non-terminal classes */
-    if (self->dir->num_children) {
+    if (self->entry->num_children) {
         err = out->write(out, ",\"_num_subclasses\":",
                          strlen(",\"_num_subclasses\":"));
         if (err) return err;
 
-        buf_size = sprintf(buf, "%zu", self->dir->num_children);
+        buf_size = sprintf(buf, "%zu", self->entry->num_children);
         err = out->write(out, buf, buf_size);
         if (err) return err;
 
-        if (self->dir->num_terminals) {
+        if (self->entry->num_terminals) {
             err = out->write(out, ",\"_num_terminals\":",
                              strlen(",\"_num_terminals\":"));
             if (err) return err;
-            buf_size = sprintf(buf, "%zu", self->dir->num_terminals);
+            buf_size = sprintf(buf, "%zu", self->entry->num_terminals);
             err = out->write(out, buf, buf_size);
             if (err) return err;
         }
         
-        if (self->dir->num_children) {
+        if (self->entry->num_children) {
             err = out->write(out, ",\"_subclasses\":[",
                              strlen(",\"_subclasses\":["));
             if (err) return err;
 
-            for (size_t i = 0; i < self->dir->num_children; i++) {
-                dir = self->dir->children[i];
+            for (size_t i = 0; i < self->entry->num_children; i++) {
+                dir = self->entry->children[i];
                 if (i) {
                     err = out->write(out, ",", 1);
                     if (err) return err;
@@ -6651,18 +6651,18 @@ static int export_JSON(struct kndClass *self)
     }
 
     // FIXME(k15tfu): duplicates the code above
-    if (self->dir->num_children) {
+    if (self->entry->num_children) {
         err = out->write(out, ",\"_num_subclasses\":", strlen(",\"_num_subclasses\":"));
         if (err) return err;
-        buf_size = sprintf(buf, "%zu", self->dir->num_children);
+        buf_size = sprintf(buf, "%zu", self->entry->num_children);
         err = out->write(out, buf, buf_size);
         if (err) return err;
 
         if (self->depth + 1 < KND_MAX_CLASS_DEPTH) {
             err = out->write(out, ",\"_subclasses\":[", strlen(",\"_subclasses\":["));
             if (err) return err;
-            for (size_t i = 0; i < self->dir->num_children; i++) {
-                ref = self->dir->children[i];
+            for (size_t i = 0; i < self->entry->num_children; i++) {
+                ref = self->entry->children[i];
                 
                 if (DEBUG_CONC_LEVEL_2)
                     knd_log(".. export base of --> %s", ref->name);
@@ -6715,7 +6715,7 @@ static int ref_list_export_GSP(struct kndClass *self,
         if (c) {
             err = out->writec(out, ' ');
             if (err) return err;
-            err = out->write(out, c->dir->id, c->dir->id_size);
+            err = out->write(out, c->entry->id, c->entry->id_size);
             if (err) return err;
         }
     }
@@ -6726,7 +6726,7 @@ static int ref_list_export_GSP(struct kndClass *self,
 
         err = out->writec(out, ' ');
         if (err) return err;
-        err = out->write(out, c->dir->id, c->dir->id_size);
+        err = out->write(out, c->entry->id, c->entry->id_size);
         if (err) return err;
     }
     err = out->writec(out, ']');
@@ -6756,7 +6756,7 @@ static int aggr_item_export_GSP(struct kndClass *self,
     if (err) return err;
 
     if (c) {
-        err = out->write(out, c->dir->id, c->dir->id_size);
+        err = out->write(out, c->entry->id, c->entry->id_size);
         if (err) return err;
     } else {
 
@@ -6926,12 +6926,12 @@ static int export_GSP(struct kndClass *self)
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. GSP export of \"%.*s\" [%.*s]",
                 self->name_size, self->name,
-                self->dir->id_size, self->dir->id);
+                self->entry->id_size, self->entry->id);
 
     err = out->writec(out, '{');
     if (err) return err;
 
-    err = out->write(out, self->dir->id, self->dir->id_size);
+    err = out->write(out, self->entry->id, self->entry->id_size);
     if (err) return err;
 
     err = out->writec(out, ' ');
@@ -6987,7 +6987,7 @@ static int export_GSP(struct kndClass *self)
         for (item = self->base_items; item; item = item->next) {
             err = out->writec(out, '{');
             if (err) return err;
-            err = out->write(out, item->conc->dir->id, item->conc->dir->id_size);
+            err = out->write(out, item->conc->entry->id, item->conc->entry->id_size);
             if (err) return err;
  
             if (item->attrs) {
@@ -7011,7 +7011,7 @@ static int export_GSP(struct kndClass *self)
         }
     }
 
-    if (self->dir->descendants) {
+    if (self->entry->descendants) {
         err = export_descendants_GSP(self);                                      RET_ERR();
     }
 
@@ -7131,8 +7131,8 @@ static gsl_err_t set_liquid_class_id(void *obj, const char *val, size_t val_size
     if (err) return make_gsl_err_external(err);
 
     c->numid = numval;
-    if (c->dir) {
-        c->dir->numid = numval;
+    if (c->entry) {
+        c->entry->numid = numval;
     }
 
     //self->curr_class->update_id = self->curr_update->id;
@@ -7529,7 +7529,7 @@ static int freeze_objs(struct kndClass *self,
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. freezing objs of class \"%.*s\", total:%zu  valid:%zu",
                 self->name_size, self->name,
-                self->dir->obj_name_idx->size, self->dir->num_objs);
+                self->entry->obj_name_idx->size, self->entry->num_objs);
 
     out = self->out;
     out->reset(out);
@@ -7539,9 +7539,9 @@ static int freeze_objs(struct kndClass *self,
     init_dir_size = self->dir_out->buf_size;
 
     key = NULL;
-    self->dir->obj_name_idx->rewind(self->dir->obj_name_idx);
+    self->entry->obj_name_idx->rewind(self->entry->obj_name_idx);
     do {
-        self->dir->obj_name_idx->next_item(self->dir->obj_name_idx, &key, &val);
+        self->entry->obj_name_idx->next_item(self->entry->obj_name_idx, &key, &val);
         if (!key) break;
         entry = (struct kndObjEntry*)val;
         obj = entry->obj;
@@ -7639,7 +7639,7 @@ static int freeze_objs(struct kndClass *self,
     curr_dir_size += num_size;
 
     num_size = sprintf(curr_dir, "{tot %lu}",
-                       (unsigned long)self->dir->num_objs);
+                       (unsigned long)self->entry->num_objs);
     curr_dir +=      num_size;
     curr_dir_size += num_size;
 
@@ -7671,8 +7671,8 @@ static int freeze_subclasses(struct kndClass *self,
     curr_dir += chunk_size;
     curr_dir_size += chunk_size;
 
-    for (size_t i = 0; i < self->dir->num_children; i++) {
-        c = self->dir->children[i]->conc;
+    for (size_t i = 0; i < self->entry->num_children; i++) {
+        c = self->entry->children[i]->conc;
         c->out = self->out;
         c->dir_out = self->dir_out;
         c->frozen_output_file_name = self->frozen_output_file_name;
@@ -7695,7 +7695,7 @@ static int freeze_subclasses(struct kndClass *self,
             knd_log("     OUT: \"%.*s\" [%zu]\nclass \"%.*s\""
                     " id:%.*s [frozen size: %lu]\n",
                     c->out->buf_size, c->out->buf, c->out->buf_size,
-                    c->name_size, c->name, c->dir->id_size, c->dir->id,
+                    c->name_size, c->name, c->entry->id_size, c->entry->id,
                     (unsigned long)c->frozen_size);
         memcpy(curr_dir, " ", 1);
         curr_dir++;
@@ -7788,13 +7788,13 @@ static int freeze(struct kndClass *self)
     total_frozen_size = self->out->buf_size;
 
     /* no dir entry necessary */
-    if (!self->dir->num_children) {
+    if (!self->entry->num_children) {
         //self->is_terminal = true;
-        if (!self->dir) {
+        if (!self->entry) {
             self->frozen_size = total_frozen_size;
             return knd_OK;
         }
-        if (!self->dir->obj_name_idx) {
+        if (!self->entry->obj_name_idx) {
             self->frozen_size = total_frozen_size;
             return knd_OK;
         }
@@ -7817,13 +7817,13 @@ static int freeze(struct kndClass *self)
     }
     
     /* any instances to freeze? */
-    if (self->dir && self->dir->num_objs) {
+    if (self->entry && self->entry->num_objs) {
         err = freeze_objs(self, &total_frozen_size, curr_dir, &chunk_size);       RET_ERR();
         curr_dir +=      chunk_size;
         curr_dir_size += chunk_size;
     }
 
-    if (self->dir->num_children) {
+    if (self->entry->num_children) {
         err = freeze_subclasses(self, &total_frozen_size,
                                 curr_dir, &chunk_size);                           RET_ERR();
         curr_dir +=      chunk_size;
@@ -7867,7 +7867,7 @@ static int freeze(struct kndClass *self)
     
     if (DEBUG_CONC_LEVEL_2)
         knd_log("== %.*s (%.*s)   DIR: \"%.*s\"   [%lu]",
-                self->name_size, self->name, self->dir->id_size, self->dir->id,
+                self->name_size, self->name, self->entry->id_size, self->entry->id,
                 curr_dir_size,
                 self->dir_buf, (unsigned long)curr_dir_size);
 

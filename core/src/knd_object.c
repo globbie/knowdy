@@ -99,7 +99,7 @@ export_rel_dir_JSON(struct kndObject *self)
 
     /* sort refs by class */
     if (DEBUG_OBJ_LEVEL_2)
-        knd_log("..export rel dir of %.*s..",
+        knd_log("..export rel entry of %.*s..",
                 self->name_size, self->name);
 
     err = out->writec(out, '[');                                                 RET_ERR();
@@ -402,8 +402,8 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 
     /* check name doublets */
     conc = self->conc;
-    if (conc->dir && conc->dir->obj_name_idx) {
-        entry = conc->dir->obj_name_idx->get(conc->dir->obj_name_idx,
+    if (conc->entry && conc->entry->obj_name_idx) {
+        entry = conc->entry->obj_name_idx->get(conc->entry->obj_name_idx,
                                              name, name_size);
         if (entry) {
             if (entry->obj && entry->obj->state->phase == KND_REMOVED) {
