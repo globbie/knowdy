@@ -708,7 +708,7 @@ static int parse_inst_GSL(struct kndProcArg *self,
 
 static int resolve_arg(struct kndProcArg *self)
 {
-    struct kndProcEntry *dir;
+    struct kndProcEntry *entry;
     int err;
 
     if (DEBUG_PROC_ARG_LEVEL_2)
@@ -735,21 +735,21 @@ static int resolve_arg(struct kndProcArg *self)
         return knd_OK;
     }
 
-    dir = self->parent->proc_name_idx->get(self->parent->proc_name_idx,
+    entry = self->parent->proc_name_idx->get(self->parent->proc_name_idx,
                                            self->proc_call.name,
                                            self->proc_call.name_size);
-    if (!dir) {
+    if (!entry) {
         knd_log("-- Proc Arg resolve: no such proc: \"%.*s\" IDX:%p :(",
                 self->proc_call.name_size,
                 self->proc_call.name, self->parent->proc_name_idx);
         return knd_FAIL;
     }
 
-    if (!dir->proc) {
+    if (!entry->proc) {
         err = self->parent->get_proc(self->parent,
-                                     dir->name, dir->name_size, &dir->proc);      RET_ERR();
+                                     entry->name, entry->name_size, &entry->proc);      RET_ERR();
     }
-    self->proc_dir = dir;
+    self->proc_dir = entry;
 
     if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log("++ Proc Arg %.*s  call:\"%.*s\"  resolved!",
@@ -763,25 +763,25 @@ static int resolve_arg(struct kndProcArg *self)
 static int resolve_inst(struct kndProcArg *self,
                         struct kndProcArgInstance *inst)
 {
-    //struct kndProcEntry *proc_dir;
-    struct kndProcEntry *dir;
+    //struct kndProcEntry *proc_entry;
+    struct kndProcEntry *entry;
     struct kndObjEntry *obj;
 
-    dir = self->parent->class_name_idx->get(self->parent->class_name_idx,
+    entry = self->parent->class_name_idx->get(self->parent->class_name_idx,
                                        inst->procname, inst->procname_size);
-    if (!dir) {
+    if (!entry) {
         knd_log("-- no such class: %.*s :(", inst->procname_size, inst->procname);
         return knd_FAIL;
     }
 
     /* TODO: check inheritance or role */
 
-    inst->proc_dir = dir;
+    inst->proc_dir = entry;
 
     /* resolve obj ref */
     if (inst->objname_size) {
-        if (dir->inst_idx) {
-            obj = dir->inst_idx->get(dir->inst_idx,
+        if (entry->inst_idx) {
+            obj = entry->inst_idx->get(entry->inst_idx,
                                     inst->objname, inst->objname_size);
             if (!obj) {
                 knd_log("-- no such obj: %.*s :(", inst->objname_size, inst->objname);
