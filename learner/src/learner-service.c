@@ -397,16 +397,16 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     conc->frozen_output_file_name = self->admin->frozen_output_file_name;
     conc->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
 
-    err = self->mempool->new_conc_dir(self->mempool, &conc->dir);                 RET_ERR();
-    memset(conc->dir->name, '0', KND_ID_SIZE);
-    conc->dir->name_size = KND_ID_SIZE;
-    memset(conc->dir->id, '0', KND_ID_SIZE);
-    conc->dir->id_size = 1;
-    conc->dir->numid = 0;
+    err = self->mempool->new_conc_dir(self->mempool, &conc->entry);                 RET_ERR();
+    memset(conc->entry->name, '0', KND_ID_SIZE);
+    conc->entry->name_size = KND_ID_SIZE;
+    memset(conc->entry->id, '0', KND_ID_SIZE);
+    conc->entry->id_size = 1;
+    conc->entry->numid = 0;
 
-    conc->dir->conc = conc;
+    conc->entry->conc = conc;
     conc->mempool = self->mempool;
-    conc->dir->mempool = self->mempool;
+    conc->entry->mempool = self->mempool;
 
     err = kndProc_new(&conc->proc);
     if (err) goto error;
