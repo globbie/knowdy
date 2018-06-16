@@ -133,7 +133,7 @@ struct kndProcVar
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    struct kndProcEntry *dir;
+    //struct kndProcEntry *entry;
     struct kndProc *proc;
 
     struct kndProcArgVar *args;
@@ -208,7 +208,7 @@ struct kndProc
     struct kndProcInstance *inst_inbox;
     size_t inst_inbox_size;
 
-    struct kndProcEntry *dir;
+    struct kndProcEntry *entry;
     size_t num_procs;
 
     struct ooDict *proc_idx;
@@ -246,7 +246,7 @@ struct kndProc
 		  const char    *rec,
 		  size_t        *total_size);
     int (*read_proc)(struct kndProc *self,
-                     struct kndProcEntry *procdir);
+                     struct kndProcEntry *proc_entry);
     int (*get_proc)(struct kndProc *self,
 		    const char *name, size_t name_size,
 		    struct kndProc **result);

@@ -184,7 +184,7 @@ struct kndClass
     //size_t attrs_left;
     struct kndObject  *curr_obj;
 
-    struct kndClassEntry *dir;
+    struct kndClassEntry *entry;
     struct kndConcFolder *folders;
     size_t num_folders;
 
