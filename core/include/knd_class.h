@@ -88,10 +88,13 @@ struct kndClassEntry
     size_t curr_offset;
     size_t block_size;
 
+    // TODO: is local fd absolutely necessary?
     int fd;
     size_t body_size;
     size_t obj_block_size;
     size_t dir_size;
+
+    // TODO: what's the meaning of this?
     bool is_indexed;
 
     struct kndSet *descendants;
@@ -109,6 +112,7 @@ struct kndClassEntry
     struct kndObjDir *obj_dir;
     size_t num_objs;
 
+    // TODO: all indices must be found in kndRepo
     struct kndSet *class_idx;
     struct ooDict *class_name_idx;
     struct kndSet *obj_idx;
@@ -208,13 +212,15 @@ struct kndClass
     //struct kndSet *attr_idx;
     struct ooDict *attr_name_idx;
 
-    /* TODO: move to mempool */
+    // TODO: need to find an alternative solution to this!
     char dir_buf[KND_MAX_CONC_CHILDREN * KND_DIR_ENTRY_SIZE];
     //size_t dir_buf_size;
+
+
+    // TODO: all paths should go to kndRepo
     const char *frozen_output_file_name;
     size_t frozen_output_file_name_size;
     size_t frozen_size;
-
     const char *frozen_name_idx_path;
     size_t frozen_name_idx_path_size;
 
@@ -222,6 +228,7 @@ struct kndClass
     struct kndClass *next;
 
     struct kndUser *user;
+
     struct glbOutput *out;
     struct glbOutput *dir_out;
     struct glbOutput *log;
