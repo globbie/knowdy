@@ -362,6 +362,8 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
                              (void*)owner);
                              }*/
 
+    // TODO: move all allocations and root objects to kndRepo_new
+
     err = self->mempool->alloc(self->mempool);
 
     err = kndStateControl_new(&self->task->state_ctrl);
