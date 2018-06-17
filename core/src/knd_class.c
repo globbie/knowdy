@@ -703,7 +703,7 @@ static int index_attr_item_list(struct kndClass *self,
     struct kndAttrItem *item = parent_item;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         knd_log("\n.. attr item list indexing.. (class:%.*s) .. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" (name:%.*s val:%.*s)",
                 self->name_size, self->name,
@@ -757,12 +757,12 @@ static int resolve_class_ref(struct kndClass *self,
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. checking class ref:  %.*s", name_size, name);
-    
+
     entry = self->class_name_idx->get(self->class_name_idx, name, name_size);
     if (!entry) {
         knd_log("-- no such class: \"%.*s\"", name_size, name);
-        return knd_OK; // TODO
-        //return knd_FAIL;
+        //return knd_OK; // TODO
+        return knd_FAIL;
     }
 
     /* class could be frozen */
@@ -6505,10 +6505,9 @@ static int export_JSON(struct kndClass *self)
     size_t item_count;
     int i, err;
 
-
     out = self->out;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. JSON export concept: \"%s\"  "
                 "locale: %s depth: %lu  OUT:%p",
                 self->name, self->task->locale,
