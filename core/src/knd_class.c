@@ -651,7 +651,7 @@ static int index_attr(struct kndClass *self,
     struct kndClass *c = NULL;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         knd_log("\n.. indexing CURR CLASS: \"%.*s\" .. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" (name:%.*s val:%.*s)",
                 self->name_size, self->name,
@@ -912,8 +912,8 @@ static int resolve_aggr_item(struct kndClass *self,
             break;
         case KND_ATTR_REF:
 
-            knd_log(".. ref attr item to be resolved: %.*s ?",
-                    item->name_size, item->name);
+            /*knd_log(".. ref attr item to be resolved: %.*s ?",
+              item->name_size, item->name); */
 
             classname = item->val;
             classname_size = item->val_size;
@@ -1264,6 +1264,35 @@ static int resolve_objs(struct kndClass     *self,
     return err;
 }
 
+
+static int register_descendants(struct kndClass *self)
+{
+    struct kndClassEntry *entry;
+    struct kndSet *set;
+    int err;
+
+    for (size_t i = 0; i < self->num_bases; i++) {
+        entry = self->bases[i];
+
+        set = entry->descendants;
+        if (!set) {
+            err = self->mempool->new_set(self->mempool, &set);                    RET_ERR();
+            set->type = KND_SET_CLASS;
+            set->base = entry;
+            entry->descendants = set;
+        }
+
+        if (DEBUG_CONC_LEVEL_2)
+            knd_log(".. add \"%.*s\" as a descendant of \"%.*s\"..",
+                    self->entry->name_size, self->entry->name,
+                    entry->name_size, entry->name);
+
+        err = set->add(set, self->entry->id, self->entry->id_size,
+                       (void*)self->entry);                                       RET_ERR();
+    }
+    return knd_OK;
+}
+
 static int resolve_base_classes(struct kndClass *self)
 {
     struct kndClassVar *item;
@@ -1373,25 +1402,16 @@ static int resolve_base_classes(struct kndClass *self)
             //}
 
 
-        /* register as a descendant */
-        set = c->entry->descendants;
-        if (!set) {
-            err = self->mempool->new_set(self->mempool, &set);                     RET_ERR();
-            set->type = KND_SET_CLASS;
-            set->base = c->entry;
-            c->entry->descendants = set;
-        }
-        entry = self->entry;
-
-        if (DEBUG_CONC_LEVEL_2)
-            knd_log(".. add class \"%.*s\" as a descendant of \"%.*s\"!",
-                    entry->name_size, entry->name, c->name_size, c->name);
-
-        err = set->add(set, entry->id, entry->id_size, (void*)entry);                   RET_ERR();
 
         err = inherit_attrs(self, item->conc);                                    RET_ERR();
     }
 
+
+    /* now that we know all our base classes
+       let's add a descendant to each of these */
+    err = register_descendants(self);                                             RET_ERR();
+
+    
     return knd_OK;
 }
 
@@ -1557,6 +1577,7 @@ static int get_attr(struct kndClass *self,
                 self->name_size, self->name, name_size, name);
     }
 
+    // TODO: no allocation in select tasks
     if (!self->attr_name_idx) {
         err = ooDict_new(&self->attr_name_idx, KND_SMALL_DICT_SIZE);
         if (err) return err;
@@ -2825,9 +2846,9 @@ static gsl_err_t run_sync_task(void *obj, const char *val __attribute__((unused)
         knd_log("-- freezing failed :(");
         return make_gsl_err_external(err);
     }
-
     return make_gsl_err(gsl_OK);
 }
+
 static gsl_err_t parse_sync_task(void *obj,
                                  const char *rec,
                                  size_t *total_size)
@@ -2857,8 +2878,8 @@ static gsl_err_t parse_import_class(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_1)
-        knd_log(".. import \"%.*s\" class..", 128, rec);
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. import \"%.*s\" class..", 64, rec);
 
     err  = self->mempool->new_class(self->mempool, &c);
     if (err) return make_gsl_err_external(err);
@@ -3176,7 +3197,7 @@ static gsl_err_t select_by_baseclass(void *obj,
     err = get_class(self, name, name_size, &c);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         c->str(c);
 
     c->entry->conc = c;
