@@ -349,7 +349,7 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     }
 
     self->owners = calloc(self->num_owners, sizeof(struct kndLearnerOwner));
-    if (err) goto error;
+    if (!self->owners) goto error;
 
     /* start owners */
     /*for (size_t i = 0; i < self->num_owners; i++) {
@@ -367,7 +367,7 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     err = self->mempool->alloc(self->mempool);
 
     err = kndStateControl_new(&self->task->state_ctrl);
-    if (err) return err;
+    if (err != knd_OK) return err;
     self->task->state_ctrl->max_updates = self->mempool->max_updates;
     self->task->state_ctrl->updates = self->mempool->update_idx;
     self->task->state_ctrl->task = self->task;
@@ -415,7 +415,6 @@ kndLearnerService_new(struct kndLearnerService **service, const struct kndLearne
     conc->proc->mempool = self->mempool;
     conc->proc->log = self->task->log;
     conc->proc->out = self->task->out;
-    conc->proc->mempool = self->mempool;
     conc->proc->frozen_output_file_name = self->admin->frozen_output_file_name;
     conc->proc->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
 
