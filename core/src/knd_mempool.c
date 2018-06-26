@@ -291,18 +291,18 @@ static int new_conc_item(struct kndMemPool *self,
     return knd_OK;
 }
 
-static int new_attr_item(struct kndMemPool *self,
+static int new_attr_var(struct kndMemPool *self,
                          struct kndAttrItem **result)
 {
     struct kndAttrItem *item;
 
-    if (self->num_attr_items >= self->max_attr_items) {
+    if (self->num_attr_vars >= self->max_attr_vars) {
         return knd_LIMIT;
     }
-    item = &self->attr_items[self->num_attr_items];
+    item = &self->attr_vars[self->num_attr_vars];
     memset(item, 0, sizeof(struct kndAttrItem));
     item->mempool = self;
-    self->num_attr_items++;
+    self->num_attr_vars++;
     *result = item;
     return knd_OK;
 }
@@ -568,7 +568,7 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_classes)      self->max_classes = KND_MIN_CLASSES;
     if (!self->max_class_entries)    self->max_class_entries = self->max_classes;
     if (!self->max_conc_items)   self->max_conc_items = KND_MIN_CLASSES;
-    if (!self->max_attr_items)   self->max_attr_items = KND_MIN_CLASSES;
+    if (!self->max_attr_vars)   self->max_attr_vars = KND_MIN_CLASSES;
 
     if (!self->max_objs)         self->max_objs =    KND_MIN_OBJS;
     if (!self->max_obj_dirs)     self->max_obj_dirs = self->max_objs;
@@ -609,8 +609,8 @@ static int alloc(struct kndMemPool *self)
         knd_log("-- conc items not allocated :(");
         return knd_NOMEM;
     }
-    self->attr_items = calloc(self->max_attr_items, sizeof(struct kndAttrItem));
-    if (!self->attr_items) {
+    self->attr_vars = calloc(self->max_attr_vars, sizeof(struct kndAttrItem));
+    if (!self->attr_vars) {
         knd_log("-- attr items not allocated :(");
         return knd_NOMEM;
     }
@@ -816,10 +816,10 @@ parse_memory_settings(struct kndMemPool *self, const char *rec, size_t *total_si
             .obj = &self->max_conc_items
         },
         {
-            .name = "max_attr_items",
-            .name_size = strlen("max_attr_items"),
+            .name = "max_attr_vars",
+            .name_size = strlen("max_attr_vars"),
             .parse = gsl_parse_size_t,
-            .obj = &self->max_attr_items
+            .obj = &self->max_attr_vars
         },
         {
             .name = "max_attrs",
@@ -946,7 +946,7 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_class = new_class;
     self->new_class_entry = new_class_entry;
     self->new_conc_item = new_conc_item;
-    self->new_attr_item = new_attr_item;
+    self->new_attr_var = new_attr_var;
     self->new_obj = new_obj;
     self->new_obj_dir = new_obj_dir;
     self->new_obj_entry = new_obj_entry;

@@ -59,14 +59,13 @@ struct kndProcCall
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
+    struct kndTranslation *tr;
     knd_proc_type type;
 
+    struct kndProc *proc;
     struct kndProcCallArg *args;
     size_t num_args;
-
-    struct kndTranslation *tr;
-
-    struct kndProc *proc;
+    struct kndMemPool *mempool;
 };
 
 struct kndProcEntry

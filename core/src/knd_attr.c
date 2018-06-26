@@ -3,9 +3,11 @@
 #include <string.h>
 
 #include "knd_attr.h"
+#include "knd_proc.h"
 #include "knd_task.h"
 #include "knd_class.h"
 #include "knd_text.h"
+#include "knd_mempool.h"
 
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
@@ -31,6 +33,7 @@ static struct kndAttrValidator knd_attr_validators[] = {
 static void str(struct kndAttr *self)
 {
     struct kndTranslation *tr;
+    struct kndProc *proc;
     const char *type_name = knd_attr_names[self->type];
 
     if (self->is_a_set)
@@ -80,6 +83,14 @@ static void str(struct kndAttr *self)
                 self->depth * KND_OFFSET_SIZE, "", self->ref_procname);
     }
 
+    if (self->proc) {
+        proc = self->proc;
+        knd_log("%*s  PROC: %.*s",
+                self->depth * KND_OFFSET_SIZE, "", proc->name_size, proc->name);
+        proc->depth = self->depth + 1;
+        proc->str(proc);
+    }
+    
     if (self->calc_oper_size) {
         knd_log("%*s  oper: %s attr: %s",
                 self->depth * KND_OFFSET_SIZE, "",
@@ -126,7 +137,7 @@ static int export_JSON(struct kndAttr *self)
 {
     struct glbOutput *out;
     struct kndTranslation *tr;
-    
+    struct kndProc *p;
     const char *type_name = knd_attr_names[self->type];
     size_t type_name_size = strlen(knd_attr_names[self->type]);
     int err;
@@ -187,6 +198,22 @@ static int export_JSON(struct kndAttr *self)
         tr = tr->next;
     }
 
+    if (self->proc) {
+
+        knd_log("NB: ...running proc to calculate an attr!");
+
+        err = out->write(out, ",\"proc\":", strlen(",\"proc\":"));
+        if (err) return err;
+        p = self->proc;
+        p->out = out;
+        p->task = self->task;
+        p->format = KND_FORMAT_JSON;
+        p->depth = 0;
+        p->max_depth = KND_MAX_DEPTH;
+        err = p->export(p);
+        if (err) return err;
+    }
+    
     err = out->writec(out, '}');
     if (err) return err;
 
@@ -434,10 +461,10 @@ static gsl_err_t parse_gloss(void *obj,
     struct kndAttr *self = obj;
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
-        .alloc = alloc_gloss_item,
-        .append = append_gloss_item,
-        .accu = self,
-        .parse = parse_gloss_item
+        .alloc =        alloc_gloss_item,
+        .append =       append_gloss_item,
+        .accu =         self,
+        .parse =        parse_gloss_item
     };
 
     if (DEBUG_ATTR_LEVEL_2)
@@ -468,6 +495,29 @@ static gsl_err_t parse_quant_type(void *obj,
     };
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+static gsl_err_t parse_proc(void *obj,
+                            const char *rec,
+                            size_t *total_size)
+{
+    struct kndAttr *self = obj;
+    struct kndProc *proc;
+    int err;
+
+    err = self->parent_conc->mempool->new_proc(self->parent_conc->mempool,
+                                               &proc);
+    if (err) return make_gsl_err_external(err);
+
+    proc->mempool = self->parent_conc->mempool;
+    proc->proc_call.mempool = self->parent_conc->mempool;
+    
+    err = proc->read(proc, rec, total_size);
+    if (err) return make_gsl_err_external(err);
+
+    self->proc = proc;
+
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t run_set_access_control(void *obj, const char *name, size_t name_size)
@@ -541,7 +591,7 @@ static gsl_err_t parse_validator(void *obj,
                                  const char *rec,
                                  size_t *total_size)
 {
-    struct kndAttr *self = (struct kndAttr*)obj;
+    struct kndAttr *self = obj;
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_validator,
@@ -602,6 +652,12 @@ static int parse_GSL(struct kndAttr *self,
           .buf = self->ref_procname,
           .buf_size = &self->ref_procname_size,
           .max_buf_size = sizeof self->ref_procname,
+        },
+        { .type = GSL_SET_STATE,
+          .name = "proc",
+          .name_size = strlen("proc"),
+          .parse = parse_proc,
+          .obj = self
         },
         { .type = GSL_SET_STATE,
           .name = "t",

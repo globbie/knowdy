@@ -55,7 +55,6 @@ struct kndClassVar
     size_t num_attrs;
 
     struct kndClass *parent;
-
     struct kndClass *conc;
 
     struct kndMemPool *mempool;
@@ -297,3 +296,8 @@ struct kndClass
 extern void kndClass_init(struct kndClass *self);
 extern int kndClass_new(struct kndClass **self,
                         struct kndMemPool *mempool);
+
+/* exported functions */
+extern gsl_err_t import_class_var(struct kndClassVar *self,
+                                  const char *rec,
+                                  size_t *total_size);

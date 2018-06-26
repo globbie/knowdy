@@ -128,11 +128,7 @@ struct kndAttrEntry
     size_t name_size;
 
     struct kndAttr *attr;
-    struct kndAttrItem *attr_item;
-
-    //struct kndClassEntry *entry;
-
-    /* TODO: facets */
+    struct kndAttrItem *attr_var;
 
     struct kndAttrEntry *next;
 };
@@ -146,8 +142,7 @@ struct kndAttr
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    //char classname[KND_NAME_SIZE];
-    //size_t classname_size;
+    struct kndClass *parent_conc;
     struct kndClass *conc;
 
     char uniq_attr_name[KND_SHORT_NAME_SIZE];
@@ -166,7 +161,6 @@ struct kndAttr
     /* attr name may not be specified */
     bool is_implied;
 
-    struct kndClass *parent_conc;
     struct kndTask *task;
 
     const char *locale;
