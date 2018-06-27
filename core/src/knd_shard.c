@@ -1,0 +1,234 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+
+#include "knd_repo.h"
+#include "knd_user.h"
+#include "knd_task.h"
+#include "knd_dict.h"
+
+#include <gsl-parser.h>
+#include <glb-lib/output.h>
+
+#define DEBUG_SHARD_LEVEL_0 0
+#define DEBUG_SHARD_LEVEL_1 0
+#define DEBUG_SHARD_LEVEL_2 0
+#define DEBUG_SHARD_LEVEL_3 0
+#define DEBUG_SHARD_LEVEL_TMP 1
+
+static gsl_err_t
+parse_memory_settings(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndMemPool *mempool = obj;
+    return mempool->parse(mempool, rec, total_size);
+}
+
+static int kndShard_run_task(struct kndShard *self,
+                             const char *rec,
+                             size_t rec_size)
+{
+    const char *rec_start;
+
+    knd_log("++ kndShard got new task! curr storage size:%zu  capacity:%zu",
+            self->task_storage->buf_size, self->task_storage->capacity);
+
+    rec_start = self->task_storage->buf + self->task_storage->buf_size;
+    err = self->task_storage->write(self->task_storage, rec, rec_size);
+    if (err) {
+        knd_log("-- task storage limit reached!");
+        return err;
+    }
+
+    err = self->task->run_task(self->shard,
+                               rec_start, rec_size,
+                               "None", sizeof("None"));
+    if (err != knd_OK) {
+        self->task->error = err;
+        knd_log("-- task running failure: %d", err);
+        goto final;
+    }
+
+final:
+
+    /* save only the successful write transaction */
+    switch (self->task->type) {
+    case KND_UPDATE_STATE:
+        if (!self->task->error)
+        break;
+    default:
+        /* retract last write to task_storage */
+        self->task_storage->rtrim(self->task_storage, size);
+        break;
+    }
+
+    err = self->task->build_report(self->task);
+    if (err != knd_OK) {
+        knd_log("-- task report failed: %d", err);
+        return -1;
+    }
+    
+    knd_log("== Task report: %.*s",
+            self->task->report_size, self->task->report);
+
+    self->report = self->task->report;
+    self->report_size = self->task->report_size;
+    
+    return knd_OK;
+}
+
+
+static gsl_err_t
+kndShard_parse_config(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndShard *self = obj;
+    struct gslTaskSpec specs[] = {
+        {
+            .is_implied = true,
+            .run = run_check_schema,
+            .obj = self
+        },
+        {
+            .name = "path",
+            .name_size = strlen("path"),
+            .buf = self->path,
+            .buf_size = &self->path_size,
+            .max_buf_size = KND_NAME_SIZE
+        },
+        {
+            .name = "schemas",
+            .name_size = strlen("schemas"),
+            .buf = self->schema_path,
+            .buf_size = &self->schema_path_size,
+            .max_buf_size = KND_NAME_SIZE
+        },
+        {
+            .name = "sid",
+            .name_size = strlen("sid"),
+            .buf = self->admin->sid,
+            .buf_size = &self->admin->sid_size,
+            .max_buf_size = KND_NAME_SIZE
+        },
+        {
+            .name = "memory",
+            .name_size = strlen("memory"),
+            .parse = parse_memory_settings,
+            .obj = self->mempool,
+        },
+        {
+            .name = "agent",
+            .name_size = strlen("agent"),
+            .buf = self->name,
+            .buf_size = &self->name_size,
+            .max_buf_size = KND_NAME_SIZE
+        }
+    };
+
+    int err = knd_FAIL;
+    gsl_err_t parser_err;
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        knd_log("-- config parse error: %d", parser_err.code);
+        return parser_err;
+    }
+
+    if (!self->path_size) {
+        knd_log("-- DB path not set :(");
+        return make_gsl_err(gsl_FAIL);
+    }
+    err = knd_mkpath(self->path, self->path_size, 0755, false);
+    if (err != knd_OK) return make_gsl_err_external(err);
+
+    if (!self->schema_path_size) {
+        knd_log("-- schema path not set :(");
+        return make_gsl_err(gsl_FAIL);
+    }
+
+    if (!self->admin->sid_size) {
+        knd_log("-- administrative SID is not set :(");
+        return make_gsl_err(gsl_FAIL);
+    }
+
+    /* users path */
+    self->path[self->path_size] = '\0';
+    self->admin->dbpath = self->path;
+    self->admin->dbpath_size = self->path_size;
+
+    memcpy(self->admin->path, self->path, self->path_size);
+    memcpy(self->admin->path + self->path_size, "/users", strlen("/users"));
+    self->admin->path_size = self->path_size + strlen("/users");
+    self->admin->path[self->admin->path_size] = '\0';
+
+    return make_gsl_err(gsl_OK);
+}
+
+static int
+parse_schema(struct kndLearnerService *self, const char *rec, size_t *total_size)
+{
+    struct gslTaskSpec specs[] = {
+        {
+            .name = "schema",
+            .name_size = sizeof("schema") - 1,
+            .parse = parse_config,
+            .obj = self
+        }
+    };
+
+    gsl_err_t parser_err;
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code != gsl_OK) return gsl_err_to_knd_err_codes(parser_err);
+
+    return knd_OK;
+}
+
+extern void kndShard_init(struct kndShard *self)
+{
+    self->del = kndShard_del;
+    self->str = kndShard_str;
+    self->run_task = kndShard_run_task;
+}
+
+extern int
+kndShard_new(struct kndShard **shard,
+             const char *config_filename)
+{
+    struct kndShard *self;
+    int err;
+
+    err = glbOutput_new(&self->task_storage, KND_TASK_STORAGE_SIZE);
+    if (err != knd_OK) goto error;
+
+    err = glbOutput_new(&self->out, KND_IDX_BUF_SIZE);
+    if (err != knd_OK) goto error;
+
+    err = glbOutput_new(&self->log, KND_MED_BUF_SIZE);
+    if (err != knd_OK) goto error;
+
+    err = kndTask_new(&self->task);
+    if (err != knd_OK) goto error;
+
+    err = kndUser_new(&self->admin);
+    if (err != knd_OK) goto error;
+
+    err = kndMemPool_new(&self->mempool);
+    if (err != knd_OK) return err;
+
+    { // read config
+        size_t chunk_size;
+        err = self->out->write_file_content(self->out,
+                                            config_filename);
+        if (err != knd_OK) goto error;
+
+        err = parse_schema(self, self->out->buf, &chunk_size);
+        if (err != knd_OK) goto error;
+        self->out->reset(self->out);
+    }
+
+    err = self->mempool->alloc(self->mempool);
+
+    kndShard_init(self);
+    *shard = self;
+    return knd_OK;
+}

@@ -80,9 +80,9 @@ static void str(struct kndProc *self)
                 tr->locale, tr->val_size, tr->val);
     }
 
-    for (base = self->bases; base; base = base->next) {
+    /*for (base = self->bases; base; base = base->next) {
         base_str(base, self->depth + 1);
-    }
+        }*/
 
     if (self->result_classname_size) {
         knd_log("%*s    {result class:%.*s}", self->depth * KND_OFFSET_SIZE, "",

@@ -45,7 +45,7 @@ static void str(struct kndObject *self)
     if (self->type == KND_OBJ_ADDR) {
         knd_log("\n%*sOBJ %.*s::%.*s  numid:%zu",
                 self->depth * KND_OFFSET_SIZE, "",
-                self->conc->name_size, self->conc->name,
+                self->base->name_size, self->base->name,
                 self->name_size, self->name,
                 self->numid);
     }
@@ -148,7 +148,7 @@ kndObject_export_JSON(struct kndObject *self)
 
     if (DEBUG_OBJ_LEVEL_2)
         knd_log("   .. export OBJ \"%s\"  (class: %.*s)  is_concise: %d\n",
-                self->name, self->conc->name_size, self->conc->name, is_concise);
+                self->name, self->base->name_size, self->base->name, is_concise);
 
     if (self->type == KND_OBJ_AGGR) {
         err = kndObject_export_aggr_JSON(self);
@@ -164,7 +164,7 @@ kndObject_export_JSON(struct kndObject *self)
 
     err = out->write(out, ",\"c\":\"", strlen(",\"c\":\""));
     if (err) return err;
-    err = out->write(out, self->conc->name, self->conc->name_size);
+    err = out->write(out, self->base->name, self->base->name_size);
     if (err) return err;
     err = out->write(out, "\"", 1);
     if (err) return err;
@@ -401,7 +401,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     /* check name doublets */
-    conc = self->conc;
+    conc = self->base;
     if (conc->entry && conc->entry->obj_name_idx) {
         entry = conc->entry->obj_name_idx->get(conc->entry->obj_name_idx,
                                              name, name_size);
@@ -574,7 +574,7 @@ kndObject_validate_attr(struct kndObject *self,
         }
     }
     
-    conc = self->conc;
+    conc = self->base;
     err = conc->get_attr(conc, name, name_size, &attr);
     if (err) {
         knd_log("  -- \"%.*s\" attr is not approved :(", name_size, name);
@@ -669,7 +669,7 @@ static gsl_err_t parse_elem(void *data,
                             attr->name_size, attr->name,
                             attr->ref_classname_size, attr->ref_classname);
                 }
-                root_class = self->conc->root_class;
+                root_class = self->base->root_class;
                 err = root_class->get(root_class,
                                       attr->ref_classname, attr->ref_classname_size,
                                       &c);
@@ -931,7 +931,7 @@ static gsl_err_t rel_alloc(void *obj,
     err = self->mempool->new_rel_ref(self->mempool, &relref);
     if (err) return make_gsl_err_external(err);
 
-    root_rel = self->conc->root_class->rel;
+    root_rel = self->base->root_class->rel;
     relref->rel = root_rel;
     *item = (void*)relref;
 
@@ -970,7 +970,7 @@ static gsl_err_t select_rel(void *obj,
 static gsl_err_t remove_obj(void *data, const char *name __attribute__((unused)), size_t name_size __attribute__((unused)))
 {
     struct kndObject *self = data;
-    struct kndClass *conc = self->conc;
+    struct kndClass *conc = self->base;
     struct kndClass *root_class = conc->root_class;
     struct kndObject *obj;
     struct kndState *state;
@@ -1098,7 +1098,7 @@ static gsl_err_t run_present_obj(void *data, const char *val __attribute__((unus
                                  size_t val_size __attribute__((unused)))
 {
     struct kndObject *self = data;
-    struct kndClass *conc = self->conc;
+    struct kndClass *conc = self->base;
     struct kndObject *obj;
     int err;
 
@@ -1128,7 +1128,7 @@ static gsl_err_t run_present_obj(void *data, const char *val __attribute__((unus
 static gsl_err_t run_get_obj(void *obj, const char *name, size_t name_size)
 {
     struct kndObject *self = obj;
-    struct kndClass *conc = self->conc;
+    struct kndClass *conc = self->base;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -1216,13 +1216,13 @@ kndObject_resolve(struct kndObject *self)
     if (DEBUG_OBJ_LEVEL_2) {
         if (self->type == KND_OBJ_ADDR) {
             knd_log(".. resolve OBJ %.*s::%.*s [%.*s]",
-                    self->conc->name_size, self->conc->name,
+                    self->base->name_size, self->base->name,
                     self->name_size, self->name,
                     KND_ID_SIZE, self->id);
         } else {
             knd_log(".. resolve aggr elem \"%.*s\" %.*s..",
                     self->parent->attr->name_size, self->parent->attr->name,
-                    self->conc->name_size, self->conc->name);
+                    self->base->name_size, self->base->name);
         }
     }
 

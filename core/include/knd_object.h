@@ -100,6 +100,8 @@ struct kndObject
     char id[KND_ID_SIZE];
     size_t id_size;
 
+    struct kndClass *base;
+
     char batch_id[KND_ID_SIZE];
 
     size_t numid;
@@ -118,12 +120,11 @@ struct kndObject
     struct kndElem *parent;
     struct kndObject *curr_obj;
 
-    struct kndClass *conc;
     
-    struct glbOutput *out;
+    /*struct glbOutput *out;
     struct glbOutput *log;
     struct kndTask *task;
-    
+    */
     /* full structure */
     struct kndElem *elems;
     struct kndElem *tail;

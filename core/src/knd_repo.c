@@ -12,6 +12,7 @@
 #include "knd_task.h"
 #include "knd_dict.h"
 #include "knd_class.h"
+#include "knd_mempool.h"
 
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
@@ -22,36 +23,6 @@
 #define DEBUG_REPO_LEVEL_3 0
 #define DEBUG_REPO_LEVEL_TMP 1
 
-//static int
-//kndRepo_linearize_objs(struct kndRepo *self);
-
-//static int
-//kndRepo_get_guid(struct kndRepo *self,
-//                 struct kndClass *conc,
-//                 const char *obj_name,
-//                 size_t      obj_name_size,
-//                 char *result);
-
-//static int
-//kndRepo_import_obj(struct kndRepo *self,
-//                   const char *rec,
-//                   size_t *total_size)
-//{
-//    (void) self; (void) rec; (void) total_size;
-    // Not implemented yet
-//    return knd_FAIL;
-//}
-
-//static int
-//kndRepo_get_obj(struct kndRepo *self,
-//                const char *name,
-//                size_t name_size)
-//{
-//    (void) self; (void) name; (void) name_size;
-    // Not implemented yet
-//    return knd_FAIL;
-//}
-
 static int
 kndRepo_del(struct kndRepo *self)
 {
@@ -59,98 +30,12 @@ kndRepo_del(struct kndRepo *self)
     return knd_OK;
 }
 
-static int
+static void
 kndRepo_str(struct kndRepo *self __attribute__((unused)))
 {
-
     knd_log("REPO");
-
-    return knd_OK;
 }
 
-
-static int
-kndRepo_parse_config(struct kndRepo *self,
-                     const char *rec,
-                     size_t *total_size)
-{
-    size_t buf_size;
-
-    const char *c, *b;
-    bool in_body = false;
-    bool in_attr = false;
-    //bool in_last_id = false;
-    bool in_repo_name = false;
-
-    c = rec;
-    b = rec;
-
-    while (*c) {
-        switch (*c) {
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            if (!in_attr) break;
-
-            buf_size = c - b;
-            if (!buf_size) return knd_FAIL;
-            if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
-
-            if (!strncmp(b, "N", 1)) {
-                in_repo_name = true;
-                b = c + 1;
-                break;
-            }
-
-            break;
-        case '{':
-            if (!in_body) {
-                in_body = true;
-                b = c + 1;
-                break;
-            }
-            if (!in_attr) {
-                in_attr = true;
-                b = c + 1;
-                break;
-            }
-
-            break;
-        case '}':
-
-            if (in_repo_name) {
-                buf_size = c - b;
-                if (!buf_size) return knd_FAIL;
-                if (buf_size >= KND_NAME_SIZE) return knd_LIMIT;
-
-                memcpy(self->name, b, buf_size);
-                self->name_size = buf_size;
-                self->name[buf_size] = '\0';
-
-                if (DEBUG_REPO_LEVEL_2)
-                    knd_log("== REPO NAME: \"%s\"", self->name);
-
-                in_repo_name = false;
-                break;
-            }
-
-            if (in_attr) {
-                b = c + 1;
-                in_attr = false;
-                break;
-            }
-
-            *total_size = c - rec;
-            return knd_OK;
-        default:
-            break;
-        }
-        c++;
-    }
-
-    return knd_OK;
-}
 
 
 static int
@@ -499,64 +384,6 @@ kndRepo_run_get_repo(void *obj, const char *name, size_t name_size)
 //}
 
 
-static int
-kndRepo_import_inbox_data(struct kndRepo *self,
-                          const char *rec)
-{
-    struct kndTask *task;
-    const char *c;
-    size_t chunk_size = 0;
-    bool in_task = true;
-    int err;
-
-    err = kndTask_new(&task);
-    if (err) return err;
-
-    self->task = task;
-
-    c = rec;
-    while (*c) {
-        switch (*c) {
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            break;
-        case '{':
-            if (in_task) {
-                task->reset(task);
-                err = task->parse(task, c, &chunk_size);
-                if (err) {
-                    knd_log("  -- TASK parse failed: %d", err);
-                    goto final;
-                }
-                in_task = false;
-                c += chunk_size;
-                break;
-            }
-
-            /*err = kndRepo_read_obj(self, c, &chunk_size);
-            if (err) return err;
-            */
-
-            c += chunk_size;
-            in_task = true;
-            break;
-        default:
-            break;
-        }
-
-        c++;
-    }
-
-    return knd_OK;
-
- final:
-    task->del(task);
-    return err;
-}
-
-
 static int kndRepo_restore(struct kndRepo *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
@@ -598,58 +425,6 @@ static int kndRepo_restore(struct kndRepo *self)
 
     return knd_OK;
 }
-
-/*
-static int
-kndRepo_update_inbox(struct kndRepo *self)
-{
-    struct glbOutput *out = self->path_out;
-    int err;
-
-    out->reset(out);
-
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log("== repo DB PATH: \"%.*s\"",
-                self->path_size, self->path);
-
-    err = out->write(out, self->path, self->path_size);
-    if (err) return err;
-
-    err = out->write(out, "inbox/", strlen("inbox/"));
-    if (err) return err;
-
-    err = out->write(out, self->db_state, KND_ID_SIZE);
-    if (err) return err;
-
-    err = out->write(out, ".spec", strlen(".spec"));
-    if (err) return err;
-
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log(".. update INBOX \"%.*s\"..  SPEC: %lu OBJ: %lu\n",
-                out->buf_size, out->buf,
-                (unsigned long)self->task->spec_size,
-                (unsigned long)self->task->obj_size);
-
-
-    // TRN body
-    err = knd_append_file((const char*)out->buf,
-                          (const void*)self->task->spec,
-                          self->task->spec_size);
-    if (err) return err;
-
-    err = out->rtrim(out, strlen(".spec"));
-    if (err) return err;
-    err = out->write(out, ".obj", strlen(".obj"));
-    if (err) return err;
-
-    err = knd_append_file((const char*)out->buf,
-                          (const void*)self->task->obj,
-                          self->task->obj_size);
-    if (err) return err;
-
-    return knd_OK;
-}
-*/
 
 static gsl_err_t
 kndRepo_parse_class(void *obj,
@@ -726,75 +501,6 @@ kndRepo_parse_task(void *self,
 }
 
 
-static int
-kndRepo_read_state(struct kndRepo *self,
-                   const char *rec, size_t *total_size)
-{
-    const char *b, *c;
-    size_t buf_size;
-
-    bool in_val = false;
-    bool in_last_id = false;
-
-    c = rec;
-    b = rec;
-
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log(".. Repo parsing curr state");
-
-    while (*c) {
-        switch (*c) {
-        case ' ':
-        case '\n':
-        case '\r':
-        case '\t':
-            if (in_val) {
-                b = c + 1;
-                break;
-            }
-
-            if (!strncmp(b, "last", strlen("last"))) {
-                in_val = true;
-                in_last_id = true;
-                b = c + 1;
-                break;
-            }
-
-            b = c + 1;
-            break;
-        case '}':
-
-            if (in_last_id) {
-                /**c = '\0';*/
-
-                buf_size = c - b;
-                if (buf_size != KND_ID_SIZE) return knd_FAIL;
-
-                memcpy(self->last_id, b, buf_size);
-                self->last_id[buf_size] = '\0';
-
-                if (DEBUG_REPO_LEVEL_2)
-                    knd_log("== LAST REPO ID: %s", self->last_id);
-
-                in_last_id = false;
-                in_val = false;
-                b = c + 1;
-                break;
-            }
-
-            *total_size = c - rec;
-
-            return knd_OK;
-        default:
-            break;
-        }
-
-        c++;
-    }
-
-    return knd_FAIL;
-}
-
 
 extern int
 kndRepo_init(struct kndRepo *self)
@@ -811,9 +517,11 @@ kndRepo_init(struct kndRepo *self)
 }
 
 extern int
-kndRepo_new(struct kndRepo **repo)
+kndRepo_new(struct kndRepo **repo,
+            struct kndMemPool *mempool)
 {
     struct kndRepo *self;
+    int err;
 
     self = malloc(sizeof(struct kndRepo));
     if (!self) return knd_NOMEM;
@@ -824,6 +532,119 @@ kndRepo_new(struct kndRepo **repo)
     memset(self->last_id, '0', KND_ID_SIZE);
     memset(self->last_db_state, '0', KND_ID_SIZE);
     memset(self->db_state, '0', KND_ID_SIZE);
+
+    err = kndStateControl_new(&self->state_ctrl);
+    if (err) return err;
+    
+    state_ctrl->max_updates = self->mempool->max_updates;
+    state_ctrl->updates = self->mempool->update_idx;
+
+    out = self->out;
+    out->reset(out);
+    err = out->write(out, self->path, self->path_size);
+    if (err) return err;
+
+    err = out->write(out, "/frozen.gsp", strlen("/frozen.gsp"));
+    if (err) return err;
+    memcpy(self->admin->frozen_output_file_name, out->buf, out->buf_size);
+    self->admin->frozen_output_file_name_size = out->buf_size;
+    self->admin->frozen_output_file_name[out->buf_size] = '\0';
+
+    err = self->mempool->new_class(self->mempool, &conc);                         RET_ERR();
+    conc->out = self->out;
+    conc->task = self->task;
+    conc->log = self->task->log;
+
+    conc->name[0] = '/';
+    conc->name_size = 1;
+
+    conc->dbpath = self->schema_path;
+    conc->dbpath_size = self->schema_path_size;
+    conc->frozen_output_file_name = self->admin->frozen_output_file_name;
+    conc->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
+
+    err = self->mempool->new_class_entry(self->mempool, &conc->entry);                 RET_ERR();
+    memset(conc->entry->name, '0', KND_ID_SIZE);
+    conc->entry->name_size = KND_ID_SIZE;
+    memset(conc->entry->id, '0', KND_ID_SIZE);
+    conc->entry->id_size = 1;
+    conc->entry->numid = 0;
+
+    conc->entry->conc = conc;
+    conc->mempool = self->mempool;
+    conc->entry->mempool = self->mempool;
+
+    err = kndProc_new(&conc->proc);
+    if (err) goto error;
+
+    err = kndRel_new(&conc->rel);
+    if (err) goto error;
+
+    /* specific allocations of the root concs */
+    err = self->mempool->new_set(self->mempool, &conc->class_idx);            RET_ERR();
+    conc->class_idx->type = KND_SET_CLASS;
+
+    err = ooDict_new(&conc->class_name_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+
+    err = ooDict_new(&conc->proc->proc_name_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+    conc->proc->class_name_idx = conc->class_name_idx;
+
+    err = ooDict_new(&conc->rel->rel_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+    err = ooDict_new(&conc->rel->rel_name_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+    conc->rel->class_idx = conc->class_idx;
+    conc->rel->class_name_idx = conc->class_name_idx;
+    
+    /* user idx */
+    /*if (self->mempool->max_users) {
+        knd_log("MAX USERS: %zu", self->mempool->max_users);
+        self->max_users = self->mempool->max_users;
+        self->admin->user_idx = calloc(self->max_users,
+                                       sizeof(struct kndObject*));
+        if (!self->admin->user_idx) return knd_NOMEM;
+        self->admin->max_users = self->max_users;
+        }*/
+
+    /* try opening the frozen DB */
+    conc->user = self->admin;
+    self->admin->root_class = conc;
+
+    err = conc->open(conc);
+    if (err) {
+        if (err != knd_NO_MATCH) goto error;
+        /* read class definitions */
+        knd_log("-- no frozen DB found, reading schemas..");
+        conc->dbpath = self->schema_path;
+        conc->dbpath_size = self->schema_path_size;
+        conc->batch_mode = true;
+        err = conc->load(conc, NULL, "index", strlen("index"));
+        if (err) {
+            knd_log("-- couldn't read any schema definitions :(");
+            goto error;
+        }
+        knd_log(".. conc DB coordination in progress ..");
+        err = conc->coordinate(conc);
+        if (err) goto error;
+        conc->batch_mode = false;
+    }
+
+    conc->dbpath = self->path;
+    conc->dbpath_size = self->path_size;
+
+    /* obj manager */
+    err = self->mempool->new_obj(self->mempool, &conc->curr_obj);                 RET_ERR();
+    conc->curr_obj->mempool = self->mempool;
+
+        self->admin->root_class = conc;
+
+    /* read any existing updates to the frozen DB (failure recovery) */
+    /*err = conc->restore(conc);
+    if (err) return err;
+    */
+
 
     //self->intersect_matrix_size = sizeof(struct kndObject*) * (KND_ID_BASE * KND_ID_BASE * KND_ID_BASE);
 

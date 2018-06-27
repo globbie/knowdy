@@ -412,6 +412,9 @@ extern int kndTask_new(struct kndTask **task)
     err = glbOutput_new(&self->log, KND_TEMP_BUF_SIZE);
     if (err) return err;
 
+    err = glbOutput_new(&self->out, KND_IDX_BUF_SIZE);
+    if (err) return err;
+
     err = glbOutput_new(&self->spec_out, KND_MED_BUF_SIZE);
     if (err) return err;
 

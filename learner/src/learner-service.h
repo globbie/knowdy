@@ -3,11 +3,8 @@
 #include <pthread.h>
 #include <glb-lib/output.h>
 
-#include <knd_mempool.h>
-#include <knd_task.h>
-#include <knd_user.h>
-
 #include <kmq.h>
+#include <knd_shard.h>
 
 struct kndLearnerService;
 
@@ -17,36 +14,12 @@ struct kndLearnerOptions
     struct addrinfo *address;
 };
 
-struct kndLearnerOwner
-{
-    size_t id;
-    pthread_t thread;
-    struct kndLearnerService *service;
-
-    struct kndMemPool *mempool;
-    struct kndUser *user;
-    struct kndTask *task;
-    struct glbOutput *task_storage;
-    struct glbOutput *out;
-    struct glbOutput *log;
-};
-
 struct kndLearnerService
 {
     struct kmqKnode *knode;
     struct kmqEndPoint *entry_point;
 
-    struct kndLearnerOwner *owners;
-    size_t num_owners;
-
-    struct glbOutput *task_storage;
-    struct glbOutput *out;
-    struct glbOutput *log;
-
-    struct kndTask *task;
-    struct kndUser *admin;
-
-    struct kndMemPool *mempool;
+    struct kndShard *shard;
 
     char name[KND_NAME_SIZE];
     size_t name_size;
