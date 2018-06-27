@@ -53,16 +53,6 @@ task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
     return 0;
 }
 
-static gsl_err_t
-run_check_schema(void *obj __attribute__((unused)), const char *val, size_t val_size)
-{
-    const char *schema_name = "Knowdy Learner Service";
-    size_t schema_name_size = strlen(schema_name);
-
-    if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);
-    if (memcmp(schema_name, val, val_size)) return make_gsl_err(gsl_FAIL);
-    return make_gsl_err(gsl_OK);
-}
 
 static gsl_err_t
 run_set_address(void *obj, const char *val, size_t val_size)

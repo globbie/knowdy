@@ -3,10 +3,12 @@
 #include <string.h>
 #include <fcntl.h>
 
+#include "knd_shard.h"
 #include "knd_repo.h"
 #include "knd_user.h"
 #include "knd_task.h"
 #include "knd_dict.h"
+#include "knd_mempool.h"
 
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
@@ -29,6 +31,7 @@ static int kndShard_run_task(struct kndShard *self,
                              size_t rec_size)
 {
     const char *rec_start;
+    int err;
 
     knd_log("++ kndShard got new task! curr storage size:%zu  capacity:%zu",
             self->task_storage->buf_size, self->task_storage->capacity);
@@ -40,9 +43,9 @@ static int kndShard_run_task(struct kndShard *self,
         return err;
     }
 
-    err = self->task->run_task(self->shard,
-                               rec_start, rec_size,
-                               "None", sizeof("None"));
+    err = self->task->run(self->task,
+                          rec_start, rec_size,
+                          "None", sizeof("None"));
     if (err != knd_OK) {
         self->task->error = err;
         knd_log("-- task running failure: %d", err);
@@ -58,7 +61,7 @@ final:
         break;
     default:
         /* retract last write to task_storage */
-        self->task_storage->rtrim(self->task_storage, size);
+        self->task_storage->rtrim(self->task_storage, rec_size);
         break;
     }
 
@@ -75,6 +78,17 @@ final:
     self->report_size = self->task->report_size;
     
     return knd_OK;
+}
+
+static gsl_err_t
+run_check_schema(void *obj __attribute__((unused)), const char *val, size_t val_size)
+{
+    const char *schema_name = "Knowdy Learner Service";
+    size_t schema_name_size = strlen(schema_name);
+
+    if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);
+    if (memcmp(schema_name, val, val_size)) return make_gsl_err(gsl_FAIL);
+    return make_gsl_err(gsl_OK);
 }
 
 
@@ -164,13 +178,13 @@ kndShard_parse_config(void *obj, const char *rec, size_t *total_size)
 }
 
 static int
-parse_schema(struct kndLearnerService *self, const char *rec, size_t *total_size)
+parse_schema(struct kndShard *self, const char *rec, size_t *total_size)
 {
     struct gslTaskSpec specs[] = {
         {
             .name = "schema",
             .name_size = sizeof("schema") - 1,
-            .parse = parse_config,
+            .parse = kndShard_parse_config,
             .obj = self
         }
     };
@@ -185,18 +199,21 @@ parse_schema(struct kndLearnerService *self, const char *rec, size_t *total_size
 
 extern void kndShard_init(struct kndShard *self)
 {
-    self->del = kndShard_del;
-    self->str = kndShard_str;
+    //self->del = kndShard_del;
+    //self->str = kndShard_str;
     self->run_task = kndShard_run_task;
 }
 
-extern int
-kndShard_new(struct kndShard **shard,
-             const char *config_filename)
+extern int kndShard_new(struct kndShard **shard,
+                        const char *config_filename)
 {
     struct kndShard *self;
     int err;
 
+    self = malloc(sizeof(struct kndShard));
+    if (!self) return knd_NOMEM;
+    memset(self, 0, sizeof(struct kndShard));
+   
     err = glbOutput_new(&self->task_storage, KND_TASK_STORAGE_SIZE);
     if (err != knd_OK) goto error;
 
@@ -231,4 +248,7 @@ kndShard_new(struct kndShard **shard,
     kndShard_init(self);
     *shard = self;
     return knd_OK;
+ error:
+    // TODO: release resources
+    return err;
 }

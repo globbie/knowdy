@@ -78,7 +78,7 @@ struct kndClassEntry
 
     char name[KND_NAME_SIZE];
     size_t name_size;
-    struct kndClass *conc;
+    struct kndClass *class;
     struct kndMemPool *mempool;
 
     knd_state_phase phase;
@@ -86,6 +86,7 @@ struct kndClassEntry
     size_t global_offset;
     size_t curr_offset;
     size_t block_size;
+    size_t frozen_size;
 
     // TODO: is local fd absolutely necessary?
     int fd;

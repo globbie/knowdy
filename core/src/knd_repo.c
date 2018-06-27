@@ -12,7 +12,10 @@
 #include "knd_task.h"
 #include "knd_dict.h"
 #include "knd_class.h"
+#include "knd_proc.h"
+#include "knd_rel.h"
 #include "knd_mempool.h"
+#include "knd_state.h"
 
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
@@ -23,11 +26,10 @@
 #define DEBUG_REPO_LEVEL_3 0
 #define DEBUG_REPO_LEVEL_TMP 1
 
-static int
+static void
 kndRepo_del(struct kndRepo *self)
 {
     free(self);
-    return knd_OK;
 }
 
 static void
@@ -43,7 +45,6 @@ kndRepo_open(struct kndRepo *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
-    size_t chunk_size;
     const char *repo_dir = "/repos";
     size_t repo_dir_size = strlen(repo_dir);
     int err;
@@ -91,7 +92,7 @@ kndRepo_open(struct kndRepo *self)
 
     self->out->buf[self->out->buf_size] = '\0';
 
-    if (self->restore_mode) {
+    /*if (self->restore_mode) {
         err = kndRepo_parse_config(self, self->out->buf, &chunk_size);
         if (err) return err;
 
@@ -100,7 +101,7 @@ kndRepo_open(struct kndRepo *self)
                     self->id);
             return knd_FAIL;
         }
-    }
+        }*/
 
     if (DEBUG_REPO_LEVEL_2)
         knd_log("++ REPO open success: \"%s\" PATH: \"%s\"",
@@ -132,13 +133,13 @@ kndRepo_update_state(struct kndRepo *self)
     if (err) return err;
 
     /* last repo id */
-    err = out->write(out, "{last ", strlen("{last "));
+    /*err = out->write(out, "{last ", strlen("{last "));
     if (err) return err;
     err = out->write(out, self->last_id, KND_ID_SIZE);
     if (err) return err;
     err = out->write(out, "}", 1);
     if (err) return err;
-
+    */
     err = out->write(out, state_close, state_close_size);
     if (err) return err;
 
@@ -148,14 +149,14 @@ kndRepo_update_state(struct kndRepo *self)
                          out->buf, out->buf_size);
     if (err) return err;
 
-    buf_size = self->user->dbpath_size;
-    memcpy(state_path, (const char*)self->user->dbpath, buf_size);
+    buf_size = self->dbpath_size;
+    memcpy(state_path, (const char*)self->dbpath, buf_size);
     memcpy(state_path + buf_size, "/state.gsl", strlen("/state.gsl"));
     buf_size += strlen("/state.gsl");
     state_path[buf_size] = '\0';
 
-    buf_size = self->user->dbpath_size;
-    memcpy(new_state_path, (const char*)self->user->dbpath, buf_size);
+    buf_size = self->dbpath_size;
+    memcpy(new_state_path, (const char*)self->dbpath, buf_size);
     memcpy(new_state_path + buf_size, "/state_new.gsl", strlen("/state_new.gsl"));
     buf_size += strlen("/state_new.gsl");
     new_state_path[buf_size] = '\0';
@@ -188,8 +189,9 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
         return knd_FAIL;
     }
 
-    err = kndRepo_new(&repo);
+    err = kndRepo_new(&repo, self->mempool);
     if (err) goto final;
+
     repo->user = self->user;
     repo->out = self->out;
 
@@ -258,7 +260,7 @@ kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
     if (err) goto final;
 
     /* increment id */
-    memcpy(self->last_id, repo->id, KND_ID_SIZE);
+    //memcpy(self->last_id, repo->id, KND_ID_SIZE);
 
     err = kndRepo_update_state(self);
     if (err) goto final;
@@ -420,8 +422,8 @@ static int kndRepo_restore(struct kndRepo *self)
     }
     self->out->buf[self->out->buf_size] = '\0';
 
-    err = kndRepo_import_inbox_data(self, self->out->buf);
-    if (err) return err;
+    //err = kndRepo_import_inbox_data(self, self->out->buf);
+    //if (err) return err;
 
     return knd_OK;
 }
@@ -502,18 +504,13 @@ kndRepo_parse_task(void *self,
 
 
 
-extern int
-kndRepo_init(struct kndRepo *self)
+extern void kndRepo_init(struct kndRepo *self)
 {
     self->del = kndRepo_del;
     self->str = kndRepo_str;
-
-    self->read_state = kndRepo_read_state;
     self->parse_task = kndRepo_parse_task;
     self->open = kndRepo_open;
     self->restore = kndRepo_restore;
-
-    return knd_OK;
 }
 
 extern int
@@ -521,6 +518,11 @@ kndRepo_new(struct kndRepo **repo,
             struct kndMemPool *mempool)
 {
     struct kndRepo *self;
+    struct kndStateControl *state_ctrl;
+    struct glbOutput *out;
+    struct kndClass *c;
+    struct kndProc *proc;
+    struct kndRel *rel;
     int err;
 
     self = malloc(sizeof(struct kndRepo));
@@ -529,15 +531,17 @@ kndRepo_new(struct kndRepo **repo,
     memset(self, 0, sizeof(struct kndRepo));
     memset(self->id, '0', KND_ID_SIZE);
 
-    memset(self->last_id, '0', KND_ID_SIZE);
-    memset(self->last_db_state, '0', KND_ID_SIZE);
-    memset(self->db_state, '0', KND_ID_SIZE);
+    err = glbOutput_new(&self->out, KND_IDX_BUF_SIZE);
+    if (err != knd_OK) goto error;
 
-    err = kndStateControl_new(&self->state_ctrl);
+    err = glbOutput_new(&self->log, KND_MED_BUF_SIZE);
+    if (err != knd_OK) goto error;
+
+    err = kndStateControl_new(&state_ctrl);
     if (err) return err;
     
-    state_ctrl->max_updates = self->mempool->max_updates;
-    state_ctrl->updates = self->mempool->update_idx;
+    state_ctrl->max_updates = mempool->max_updates;
+    state_ctrl->updates =     mempool->update_idx;
 
     out = self->out;
     out->reset(out);
@@ -546,57 +550,53 @@ kndRepo_new(struct kndRepo **repo,
 
     err = out->write(out, "/frozen.gsp", strlen("/frozen.gsp"));
     if (err) return err;
-    memcpy(self->admin->frozen_output_file_name, out->buf, out->buf_size);
+
+    /*memcpy(self->admin->frozen_output_file_name, out->buf, out->buf_size);
     self->admin->frozen_output_file_name_size = out->buf_size;
     self->admin->frozen_output_file_name[out->buf_size] = '\0';
+    */
 
-    err = self->mempool->new_class(self->mempool, &conc);                         RET_ERR();
-    conc->out = self->out;
-    conc->task = self->task;
-    conc->log = self->task->log;
+    err = mempool->new_class(mempool, &c);                         RET_ERR();
+    c->name[0] = '/';
+    c->name_size = 1;
 
-    conc->name[0] = '/';
-    conc->name_size = 1;
+    err = self->mempool->new_class_entry(self->mempool, &c->entry);                 RET_ERR();
+    memset(c->entry->name, '0', KND_ID_SIZE);
+    c->entry->name_size = KND_ID_SIZE;
+    memset(c->entry->id, '0', KND_ID_SIZE);
+    c->entry->id_size = 1;
+    c->entry->numid = 0;
+    c->entry->class = c;
 
-    conc->dbpath = self->schema_path;
-    conc->dbpath_size = self->schema_path_size;
-    conc->frozen_output_file_name = self->admin->frozen_output_file_name;
-    conc->frozen_output_file_name_size = self->admin->frozen_output_file_name_size;
+    c->repo = self;
+    self->root_class = c;
 
-    err = self->mempool->new_class_entry(self->mempool, &conc->entry);                 RET_ERR();
-    memset(conc->entry->name, '0', KND_ID_SIZE);
-    conc->entry->name_size = KND_ID_SIZE;
-    memset(conc->entry->id, '0', KND_ID_SIZE);
-    conc->entry->id_size = 1;
-    conc->entry->numid = 0;
+    /* specific allocations for the root class */
+    err = mempool->new_set(mempool, &c->class_idx);            RET_ERR();
+    c->class_idx->type = KND_SET_CLASS;
 
-    conc->entry->conc = conc;
-    conc->mempool = self->mempool;
-    conc->entry->mempool = self->mempool;
-
-    err = kndProc_new(&conc->proc);
+    err = ooDict_new(&c->class_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
-    err = kndRel_new(&conc->rel);
+    err = kndProc_new(&proc);
     if (err) goto error;
+    proc->repo = self;
+    self->root_proc = proc;
+    
+    err = kndRel_new(&rel);
+    if (err) goto error;
+    self->root_rel = rel;
 
-    /* specific allocations of the root concs */
-    err = self->mempool->new_set(self->mempool, &conc->class_idx);            RET_ERR();
-    conc->class_idx->type = KND_SET_CLASS;
+    err = ooDict_new(&proc->proc_name_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+    proc->class_name_idx = c->class_name_idx;
 
-    err = ooDict_new(&conc->class_name_idx, KND_MEDIUM_DICT_SIZE);
+    err = ooDict_new(&c->rel->rel_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
-
-    err = ooDict_new(&conc->proc->proc_name_idx, KND_MEDIUM_DICT_SIZE);
+    err = ooDict_new(&c->rel->rel_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
-    conc->proc->class_name_idx = conc->class_name_idx;
-
-    err = ooDict_new(&conc->rel->rel_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) goto error;
-    err = ooDict_new(&conc->rel->rel_name_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) goto error;
-    conc->rel->class_idx = conc->class_idx;
-    conc->rel->class_name_idx = conc->class_name_idx;
+    rel->class_idx = c->class_idx;
+    rel->class_name_idx = c->class_name_idx;
     
     /* user idx */
     /*if (self->mempool->max_users) {
@@ -609,54 +609,40 @@ kndRepo_new(struct kndRepo **repo,
         }*/
 
     /* try opening the frozen DB */
-    conc->user = self->admin;
-    self->admin->root_class = conc;
 
-    err = conc->open(conc);
+    err = c->open(c);
     if (err) {
         if (err != knd_NO_MATCH) goto error;
         /* read class definitions */
         knd_log("-- no frozen DB found, reading schemas..");
-        conc->dbpath = self->schema_path;
-        conc->dbpath_size = self->schema_path_size;
-        conc->batch_mode = true;
-        err = conc->load(conc, NULL, "index", strlen("index"));
+        c->batch_mode = true;
+        err = c->load(c, NULL, "index", strlen("index"));
         if (err) {
             knd_log("-- couldn't read any schema definitions :(");
             goto error;
         }
-        knd_log(".. conc DB coordination in progress ..");
-        err = conc->coordinate(conc);
+        knd_log(".. coordination in progress ..");
+        err = c->coordinate(c);
         if (err) goto error;
-        conc->batch_mode = false;
+        c->batch_mode = false;
     }
 
-    conc->dbpath = self->path;
-    conc->dbpath_size = self->path_size;
-
     /* obj manager */
-    err = self->mempool->new_obj(self->mempool, &conc->curr_obj);                 RET_ERR();
-    conc->curr_obj->mempool = self->mempool;
-
-        self->admin->root_class = conc;
+    err = self->mempool->new_obj(self->mempool, &c->curr_obj);                 RET_ERR();
+    c->curr_obj->mempool = self->mempool;
 
     /* read any existing updates to the frozen DB (failure recovery) */
     /*err = conc->restore(conc);
     if (err) return err;
     */
 
-
-    //self->intersect_matrix_size = sizeof(struct kndObject*) * (KND_ID_BASE * KND_ID_BASE * KND_ID_BASE);
-
-    /*err = ooDict_new(&self->repo_idx, KND_SMALL_DICT_SIZE);
-    if (err) return knd_NOMEM;
-
-    err = glbOutput_new(&self->path_out, KND_MED_BUF_SIZE);
-    if (err) return err;
-    */
+    self->mempool = mempool;
     kndRepo_init(self);
 
     *repo = self;
 
     return knd_OK;
+ error:
+    // TODO: release resources
+    return err;
 }

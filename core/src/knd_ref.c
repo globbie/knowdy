@@ -187,7 +187,6 @@ export_reverse_rel_JSON(struct kndRef *self)
     if (DEBUG_REF_LEVEL_2)
         knd_log(".. export reverse_rel to JSON..");
 
-    obj->out = out;
     obj->depth = 0;
     err = obj->export(obj);
     if (err) return err;
@@ -222,7 +221,7 @@ static int export_GSP(struct kndRef *self)
     err = out->write(out, "{c ", strlen("{c "));
     if (err) return err;
 
-    err = out->write(out, obj->conc->name, obj->conc->name_size);
+    err = out->write(out, obj->base->name, obj->base->name_size);
     if (err) return err;
 
     err = out->write(out, "}}", strlen("}}"));
@@ -239,12 +238,11 @@ export_reverse_rel_GSP(struct kndRef *self)
     int err = knd_FAIL;
 
     obj = self->elem->root;
-    out = self->out;
+    out = obj->base->repo->out;
 
     if (DEBUG_REF_LEVEL_2)
         knd_log(".. export reverse_rel to JSON..");
 
-    obj->out = out;
     obj->depth = 0;
     /*err = obj->export(obj);
     if (err) return err;

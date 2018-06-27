@@ -18,7 +18,6 @@
 #include "knd_rel.h"
 #include "knd_state.h"
 
-
 #define DEBUG_USER_LEVEL_0 0
 #define DEBUG_USER_LEVEL_1 0
 #define DEBUG_USER_LEVEL_2 0
@@ -369,15 +368,6 @@ static gsl_err_t parse_class_import(void *obj,
         knd_log(".. parsing the default class import: \"%.*s\"", 64, rec);
     self->task->type = KND_UPDATE_STATE;
     c = self->root_class;
-    c->out = self->out;
-    c->log = self->log;
-    c->task = self->task;
-    c->dbpath = self->dbpath;
-    c->dbpath_size = self->dbpath_size;
-    c->inbox = NULL;
-    c->inbox_size = 0;
-    c->obj_inbox = NULL;
-    c->obj_inbox_size = 0;
 
     return c->import(c, rec, total_size);
 }
@@ -427,16 +417,8 @@ static gsl_err_t parse_sync_task(void *obj,
     buf[buf_size] = '\0';
 
     self->task->type = KND_SYNC_STATE;
-    self->root_class->out = self->out;
-    self->root_class->dir_out = self->task->update;
-    self->root_class->log = self->log;
-    self->root_class->task = self->task;
-    self->root_class->frozen_output_file_name = (const char*)self->path;
-    self->root_class->frozen_name_idx_path = buf;
-    self->root_class->frozen_name_idx_path_size = buf_size;
-
-    parser_err = self->root_class->sync(self->root_class, rec, total_size);
-    if (parser_err.code) return parser_err;
+    //parser_err = self->root_class->sync(self->root_class, rec, total_size);
+    //if (parser_err.code) return parser_err;
 
     /* bump frozen count */
 
@@ -466,18 +448,17 @@ static gsl_err_t parse_sync_task(void *obj,
                     (unsigned long)st.st_size);
     }
 
-    self->out->reset(self->out);
+    /*self->out->reset(self->out);
     err = self->out->write(self->out,
                            "{\"file_size\":",
                            strlen("{\"file_size\":"));
     if (err) return make_gsl_err_external(err);
-
     buf_size = sprintf(buf, "%lu", (unsigned long)st.st_size);
     err = self->out->write(self->out, buf, buf_size);
     if (err) return make_gsl_err_external(err);
     err = self->out->write(self->out, "}", 1);
     if (err) return make_gsl_err_external(err);
-
+    */
     return make_gsl_err(gsl_OK);
 }
 
@@ -493,16 +474,6 @@ static gsl_err_t parse_class_select(void *obj,
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class select: \"%s\"", rec);
 
-    c->out = self->out;
-    c->log = self->log;
-    c->task = self->task;
-
-    c->dbpath = self->dbpath;
-    c->dbpath_size = self->dbpath_size;
-    c->frozen_output_file_name = self->frozen_output_file_name;
-    c->frozen_output_file_name_size = self->frozen_output_file_name_size;
-
-    c->root_class = c;
     c->reset_inbox(c);
 
     err = c->select(c, rec, total_size);
@@ -526,20 +497,6 @@ static gsl_err_t parse_rel_select(void *obj,
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default Rel select: \"%s\"", rec);
 
-    rel = self->root_class->rel;
-    rel->out = self->out;
-    rel->log = self->log;
-    rel->task = self->task;
-    rel->inbox = NULL;
-    rel->inbox_size = 0;
-    rel->inst_inbox = NULL;
-    rel->inst_inbox_size = 0;
-
-    rel->dbpath = self->dbpath;
-    rel->dbpath_size = self->dbpath_size;
-    rel->frozen_output_file_name = self->frozen_output_file_name;
-    rel->frozen_output_file_name_size = self->frozen_output_file_name_size;
-
     err = rel->select(rel, rec, total_size);
     if (err) return make_gsl_err_external(err);
 
@@ -557,7 +514,6 @@ static gsl_err_t parse_liquid_updates(void *obj,
         knd_log(".. parse and apply liquid updates..");
 
     self->task->type = KND_LIQUID_STATE;
-    self->root_class->task = self->task;
 
     err = self->root_class->apply_liquid_updates(self->root_class, rec, total_size);
     if (err) return make_gsl_err_external(err);
@@ -575,8 +531,8 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     if (DEBUG_USER_LEVEL_2)
-        knd_log(".. get user: \"%.*s\".. log:%p",
-                name_size, name, self->root_class->log);
+        knd_log(".. get user: \"%.*s\"..",
+                name_size, name);
 
     err = self->root_class->get(self->root_class,
                                 "User", strlen("User"), &conc);
@@ -607,8 +563,6 @@ static gsl_err_t select_user_rels(void *obj,
 
     self->out->reset(self->out);
     user = self->curr_user;
-    user->out = self->out;
-    user->log = self->log;
     err = user->select_rels(user, rec, total_size);
     if (err) return make_gsl_err_external(err);
 
@@ -642,14 +596,6 @@ static gsl_err_t get_user_by_id(void *data, const char *numid, size_t numid_size
         return make_gsl_err(gsl_NO_MATCH);
     }
 
-    self->root_class->out = self->out;
-    self->root_class->log = self->log;
-    self->root_class->task = self->task;
-    self->root_class->dbpath = self->dbpath;
-    self->root_class->dbpath_size = self->dbpath_size;
-    self->root_class->frozen_output_file_name = self->frozen_output_file_name;
-    self->root_class->frozen_output_file_name_size = self->frozen_output_file_name_size;
-
     err = self->root_class->get(self->root_class, "User", strlen("User"), &conc);
     if (err) return make_gsl_err_external(err);
 
@@ -682,8 +628,6 @@ static gsl_err_t run_present_user(void *data,
     }
     self->out->reset(self->out);
     user = self->curr_user;
-    user->out = self->out;
-    user->log = self->log;
     user->expand_depth = self->expand_depth;
 
     err = user->export(user);
@@ -720,7 +664,7 @@ static gsl_err_t remove_user(void *data,
     if (err) return make_gsl_err_external(err);
     err = self->log->write(self->log, " obj removed", strlen(" obj removed"));
     if (err) return make_gsl_err_external(err);
-    conc = obj->conc;
+    conc = obj->base;
 
     self->task->type = KND_UPDATE_STATE;
 
@@ -930,11 +874,12 @@ kndUser_new(struct kndUser **user)
     memset(self->last_uid, '0', KND_ID_SIZE);
     memset(self->db_state, '0', KND_ID_SIZE);
 
-    err = kndRepo_new(&self->repo);                                              RET_ERR();
+    /*  err = kndRepo_new(&self->repo);                                              RET_ERR();
     self->repo->user = self;
     self->repo->name[0] = '~';
     self->repo->name_size = 1;
-
+    */
+    
     kndUser_init(self);
 
     *user = self;

@@ -37,9 +37,6 @@ static void reset(struct kndStateControl *self)
 static int knd_confirm(struct kndStateControl *self,
                        struct kndUpdate *update)
 {
-    struct glbOutput *out;
-    int err;
-
     if (DEBUG_STATE_LEVEL_1)
         knd_log("State Controller: .. confirming update %zu..", update->numid);
 
