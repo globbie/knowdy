@@ -1225,6 +1225,7 @@ static gsl_err_t parse_base(void *data,
     */
 
     base = malloc(sizeof(struct kndProcVar));
+    assert(base);
     memset(base, 0, sizeof(struct kndProcVar));
 
     struct gslTaskSpec specs[] = {
@@ -1393,7 +1394,8 @@ static int import_proc(struct kndProc *self,
     if (DEBUG_PROC_LEVEL_2)
         knd_log(".. import Proc: \"%.*s\"..", 32, rec);
 
-    err  = mempool->new_proc(mempool, &proc);                         RET_ERR();
+    err  = mempool->new_proc(mempool, &proc);
+    if (err) *total_size = 0; RET_ERR();
 
     proc->proc_name_idx = self->proc_name_idx;
     proc->proc_idx = self->proc_idx;

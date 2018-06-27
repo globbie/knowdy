@@ -445,7 +445,7 @@ kndRepo_parse_class(void *obj,
 
     if (!self->curr_repo) {
         knd_log("-- no repo selected :(");
-        return make_gsl_err(gsl_FAIL);
+        return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
 
     repo = self->curr_repo;

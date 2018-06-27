@@ -1930,7 +1930,7 @@ static gsl_err_t parse_descendants(void *obj,
         knd_log(".. parsing a set of descendants: \"%.*s\"", 300, rec);
 
     err = mempool->new_set(mempool, &set);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     set->type = KND_SET_CLASS;
     set->base = self->entry;
     self->entry->descendants = set;
@@ -1994,7 +1994,7 @@ static gsl_err_t parse_aggr(void *obj,
         knd_log(".. parsing the AGGR attr: \"%.*s\"", 32, rec);
 
     err = kndAttr_new(&attr);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     attr->parent_class = self;
     attr->type = KND_ATTR_AGGR;
 
@@ -2033,7 +2033,7 @@ static gsl_err_t parse_str(void *obj,
     int err;
 
     err = kndAttr_new(&attr);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     attr->parent_class = self;
     attr->type = KND_ATTR_STR;
 
@@ -2067,7 +2067,7 @@ static gsl_err_t parse_bin(void *obj,
     int err;
 
     err = kndAttr_new(&attr);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     attr->parent_class = self;
     attr->type = KND_ATTR_BIN;
 
@@ -2097,7 +2097,7 @@ static gsl_err_t parse_num(void *obj,
     int err;
 
     err = kndAttr_new(&attr);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     attr->parent_class = self;
     attr->type = KND_ATTR_NUM;
 
@@ -2130,7 +2130,7 @@ static gsl_err_t parse_ref(void *obj,
     int err;
 
     err = kndAttr_new(&attr);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     attr->parent_class = self;
     attr->type = KND_ATTR_REF;
 
@@ -2163,7 +2163,7 @@ static gsl_err_t parse_proc(void *obj,
     int err;
 
     err = kndAttr_new(&attr);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     attr->parent_class = self;
     attr->type = KND_ATTR_PROC;
 
@@ -2196,7 +2196,7 @@ static gsl_err_t parse_text(void *obj,
     int err;
 
     err = kndAttr_new(&attr);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     attr->parent_class = self;
     attr->type = KND_ATTR_TEXT;
     attr->is_a_set = true;
@@ -2889,7 +2889,7 @@ static gsl_err_t parse_baseclass(void *obj,
     err = mempool->new_class_var(mempool, &classvar);
     if (err) {
         knd_log("-- conc item alloc failed :(");
-        return make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(err);
     }
     classvar->root_class = self->root_class;
 
@@ -2987,7 +2987,7 @@ static gsl_err_t parse_import_class(void *obj,
         knd_log(".. import \"%.*s\" class..", 64, rec);
 
     err = mempool->new_class(mempool, &c);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     c->root_class = self;
 
     struct gslTaskSpec specs[] = {
@@ -3110,16 +3110,16 @@ static gsl_err_t parse_import_obj(void *data,
 
     if (!self->curr_class) {
         knd_log("-- class not set :(");
-        return make_gsl_err(gsl_FAIL);
+        return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
 
     err = self->entry->repo->mempool->new_obj(self->entry->repo->mempool, &obj);
     if (err) {
-        return make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(err);
     }
     err = self->entry->repo->mempool->new_state(self->entry->repo->mempool, &obj->state);
     if (err) {
-        return make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(err);
     }
 
     obj->state->phase = KND_SUBMITTED;
@@ -3204,7 +3204,7 @@ static gsl_err_t parse_select_obj(void *data,
     if (!self->curr_class) {
         knd_log("-- base class not set :(");
         /* TODO: log*/
-        return make_gsl_err(gsl_FAIL);
+        return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
 
     if (DEBUG_CONC_LEVEL_2)
@@ -7309,7 +7309,7 @@ static gsl_err_t parse_liquid_class_id(void *obj,
         }
     };
 
-    if (!self->curr_class) return make_gsl_err(gsl_FAIL);
+    if (!self->curr_class) return *total_size = 0, make_gsl_err(gsl_FAIL);
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
@@ -7344,7 +7344,7 @@ static gsl_err_t parse_liquid_class_update(void *obj,
     if (DEBUG_CONC_LEVEL_2) {
         knd_log("..  liquid class update REC: \"%.*s\"..", 32, rec); }
 
-    if (!self->curr_update) return make_gsl_err(gsl_FAIL);
+    if (!self->curr_update) return *total_size = 0, make_gsl_err(gsl_FAIL);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -7362,7 +7362,7 @@ static gsl_err_t parse_liquid_class_update(void *obj,
     /* create index of class updates */
     class_updates = realloc(self->curr_update->classes,
                             (self->inbox_size * sizeof(struct kndClassUpdate*)));
-    if (!class_updates) return make_gsl_err_external(knd_NOMEM);
+    if (!class_updates) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
     self->curr_update->classes = class_updates;
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -7374,7 +7374,7 @@ static gsl_err_t parse_liquid_rel_update(void *obj,
     struct kndClass *self = obj;
     int err;
 
-    if (!self->curr_update) return make_gsl_err_external(knd_FAIL);
+    if (!self->curr_update) return *total_size = 0, make_gsl_err_external(knd_FAIL);
 
     self->rel->curr_update = self->curr_update;
     err = self->rel->parse_liquid_updates(self->rel, rec, total_size);
@@ -7442,23 +7442,23 @@ static int apply_liquid_updates(struct kndClass *self,
         for (c = self->inbox; c; c = c->next) {
 
             err = c->resolve(c, NULL);
-            if (err) return err;
+            if (err) return *total_size = 0, err;
 
             err = mempool->new_class_entry(mempool, &entry);
-            if (err) return err;
+            if (err) return *total_size = 0, err;
             entry->class = c;
 
             err = self->class_name_idx->set(self->class_name_idx,
                                             c->entry->name, c->name_size,
                                             (void*)entry);
-            if (err) return err;
+            if (err) return *total_size = 0, err;
         }
     }
 
     if (self->rel->inbox_size) {
         for (rel = self->rel->inbox; rel; rel = rel->next) {
             err = rel->resolve(rel);
-            if (err) return err;
+            if (err) return *total_size = 0, err;
         }
     }
 
