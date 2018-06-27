@@ -935,7 +935,7 @@ static gsl_err_t select_rel(void *obj,
 
     if (!self->curr_obj) {
         knd_log("-- no obj selected :(");
-        return make_gsl_err(gsl_FAIL);
+        return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
 
     /* reset rel selection */

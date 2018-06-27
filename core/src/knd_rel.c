@@ -535,7 +535,7 @@ static int import_rel(struct kndRel *self,
         knd_log(".. import Rel: \"%.*s\"..", 32, rec);
 
     err  = self->mempool->new_rel(self->mempool, &rel);
-    if (err) return err;
+    if (err) return *total_size = 0, err;
 
     rel->out = self->out;
     rel->log = self->log;
@@ -1445,16 +1445,16 @@ static gsl_err_t parse_import_instance(void *data,
 
     if (!self->curr_rel) {
         knd_log("-- curr rel not set :(");
-        return make_gsl_err(gsl_FAIL);
+        return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
 
     if (self->task->type != KND_LIQUID_STATE)
         self->task->type = KND_UPDATE_STATE;
 
     err = self->mempool->new_rel_inst(self->mempool, &inst);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     err = self->mempool->new_state(self->mempool, &inst->state);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
 
     inst->state->phase = KND_SUBMITTED;
     inst->rel = self->curr_rel;
@@ -1806,7 +1806,7 @@ static gsl_err_t parse_liquid_rel_id(void *obj,
         }
     };
 
-    if (!self->curr_rel) return make_gsl_err(gsl_FAIL);
+    if (!self->curr_rel) return *total_size = 0, make_gsl_err(gsl_FAIL);
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
@@ -1858,7 +1858,7 @@ static int parse_liquid_updates(struct kndRel *self,
     /* create index of rel updates */
     rel_updates = realloc(update->rels,
                           (self->inbox_size * sizeof(struct kndRelUpdate*)));
-    if (!rel_updates) return knd_NOMEM;
+    if (!rel_updates) return *total_size = 0, knd_NOMEM;
     update->rels = rel_updates;
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);

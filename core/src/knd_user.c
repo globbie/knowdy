@@ -344,7 +344,7 @@ static gsl_err_t parse_class_import(void *obj,
 
 static gsl_err_t parse_sync_task(void *obj,
                                  const char *rec __attribute__((unused)),
-                                 size_t *total_size __attribute__((unused)))
+                                 size_t *total_size)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -370,7 +370,7 @@ static gsl_err_t parse_sync_task(void *obj,
     /* file exists, remove it */
     if (!stat(self->path, &st)) {
         err = remove(self->path);
-        if (err) return make_gsl_err_external(err);
+        if (err) return *total_size = 0, make_gsl_err_external(err);
         knd_log("-- existing frozen DB file removed..");
     }
 
@@ -394,9 +394,9 @@ static gsl_err_t parse_sync_task(void *obj,
     /* temp: simply rename the GSP file */
     self->out->reset(self->out);
     err = self->out->write(self->out, self->path, self->path_size);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     err = self->out->write(self->out, "/frozen.gsp", strlen("/frozen.gsp"));
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
 
     /* null-termination is needed to call rename */
     self->out->buf[self->out->buf_size] = '\0';
@@ -404,7 +404,7 @@ static gsl_err_t parse_sync_task(void *obj,
     err = rename(self->path, self->out->buf);
     if (err) {
         knd_log("-- failed to rename GSP output file: \"%s\" :(", self->out->buf);
-        return make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(err);
     }
 
     /* TODO: inform retrievers */
@@ -427,7 +427,7 @@ static gsl_err_t parse_sync_task(void *obj,
     err = self->out->write(self->out, "}", 1);
     if (err) return make_gsl_err_external(err);
     */
-    return make_gsl_err(gsl_OK);
+    return *total_size = 0, make_gsl_err(gsl_OK);
 }
 
 
@@ -523,7 +523,7 @@ static gsl_err_t select_user_rels(void *obj,
 
     if (!self->curr_user) {
         knd_log("-- no user selected :(");
-        return make_gsl_err(gsl_FAIL);
+        return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
 
     if (DEBUG_USER_LEVEL_2)

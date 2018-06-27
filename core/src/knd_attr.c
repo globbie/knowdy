@@ -504,13 +504,13 @@ static gsl_err_t parse_proc(void *obj,
 
     mempool = self->parent_class->entry->repo->mempool;
     err = mempool->new_proc(mempool, &proc);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
 
     //proc->mempool = mempool;
     //proc->proc_call.mempool = mempool;
 
     err = mempool->new_proc_entry(mempool, &entry); 
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     entry->proc = proc;
     proc->entry = entry;
 
