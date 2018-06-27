@@ -487,7 +487,7 @@ static gsl_err_t validate_rel_arg(void *obj,
 
     /* TODO mempool */
     err = kndRelArg_new(&arg);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     arg->rel = self;
 
     if (!strncmp(name, "subj", strlen("subj"))) {
@@ -1353,11 +1353,11 @@ static gsl_err_t parse_rel_arg_inst(void *obj,
 
     if (!arg) {
         knd_log("-- no such rel arg: %.*s :(", name_size, name);
-        return make_gsl_err(gsl_FAIL);
+        return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
 
     err = mempool->new_rel_arg_inst(mempool, &arg_inst);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     arg_inst->relarg = arg;
     arg_inst->rel_inst = inst;
 

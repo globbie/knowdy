@@ -507,14 +507,14 @@ static int parse_GSL(struct kndText *self,
     state = self->states;
     if (!state) {
         state = malloc(sizeof(struct kndTextState));
-        if (!state) return knd_NOMEM;
+        if (!state) return *total_size = 0, knd_NOMEM;
         memset(state, 0, sizeof(struct kndTextState));
         self->states = state;
         self->num_states++;
     }
 
     tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return knd_NOMEM;
+    if (!tr) return *total_size = 0, knd_NOMEM;
     memset(tr, 0, sizeof(struct kndTranslation));
 
     struct gslTaskSpec specs[] = {
