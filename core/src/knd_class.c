@@ -172,14 +172,14 @@ static void str_attr_vars(struct kndAttrItem *items, size_t depth)
     struct kndAttrItem *list_item;
     const char *classname = "None";
     size_t classname_size = strlen("None");
-    struct kndClass *conc;
+    struct kndClass *c;
     size_t count = 0;
 
     for (item = items; item; item = item->next) {
-        if (item->attr && item->attr->parent_conc) {
-            conc = item->attr->parent_conc;
-            classname = conc->name;
-            classname_size = conc->name_size;
+        if (item->attr && item->attr->parent_class) {
+            c = item->attr->parent_class;
+            classname = c->entry->name;
+            classname_size = c->entry->name_size;
         }
 
         if (item->attr && item->attr->is_a_set) {
@@ -240,7 +240,7 @@ static void str(struct kndClass *self)
 
     knd_log("\n%*s{class %.*s    id:%.*s numid:%zu  resolved:%d",
             self->depth * KND_OFFSET_SIZE, "",
-            self->name_size, self->name,
+            self->entry->name_size, self->entry->name,
             self->entry->id_size, self->entry->id,
             self->entry->numid, self->is_resolved);
 
@@ -262,9 +262,9 @@ static void str(struct kndClass *self)
             resolved_state = '-';
             name = item->classname;
             name_size = item->classname_size;
-            if (item->conc) {
-                name = item->conc->name;
-                name_size = item->conc->name_size,
+            if (item->class) {
+                name = item->class->name;
+                name_size = item->class->name_size,
                 resolved_state = '+';
             }
 
@@ -364,7 +364,7 @@ static gsl_err_t alloc_gloss_item(void *obj,
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. %.*s: allocate gloss translation,  count: %zu",
-                self->name_size, self->name, count);
+                self->entry->name_size, self->entry->name, count);
 
     tr = malloc(sizeof(struct kndTranslation));
     if (!tr) return make_gsl_err_external(knd_NOMEM);
@@ -416,7 +416,7 @@ static gsl_err_t parse_gloss_item(void *obj,
     tr->locale = tr->curr_locale;
     tr->locale_size = tr->curr_locale_size;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
                 tr->locale_size, tr->locale, tr->val_size, tr->val);
 
@@ -437,9 +437,9 @@ static gsl_err_t parse_gloss_array(void *obj,
         .parse = parse_gloss_item
     };
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. %.*s: reading gloss",
-                self->name_size, self->name);
+                self->entry->name_size, self->entry->name);
 
     return gsl_parse_array(&item_spec, rec, total_size);
 }
@@ -458,7 +458,7 @@ static gsl_err_t alloc_summary_item(void *obj,
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. %.*s: allocate summary translation,  count: %zu",
-                self->name_size, self->name, count);
+                self->entry->name_size, self->entry->name, count);
 
     tr = malloc(sizeof(struct kndTranslation));
     if (!tr) return make_gsl_err_external(knd_NOMEM);
@@ -533,7 +533,7 @@ static gsl_err_t parse_summary_array(void *obj,
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. %.*s: reading summary",
-                self->name_size, self->name);
+                self->entry->name_size, self->entry->name);
 
     return gsl_parse_array(&item_spec, rec, total_size);
 }
@@ -549,7 +549,7 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. \"%.*s\" class to inherit attrs from \"%.*s\"..",
-                self->name_size, self->name, base->name_size, base->name);
+                self->entry->name_size, self->entry->name, base->name_size, base->name);
 
     if (!base->is_resolved) {
         err = base->resolve(base, NULL);                                          RET_ERR();
@@ -562,7 +562,7 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
         if (DEBUG_CONC_LEVEL_2)
             knd_log("== (%zu of %zu)  \"%.*s\" is a base of \"%.*s\"", 
                     i, self->num_bases, c->name_size, c->name,
-                    self->name_size, self->name);
+                    self->entry->name_size, self->entry->name);
         if (entry->class == base) {
             knd_log("-- circle inheritance detected for \"%.*s\" :(",
                     base->name_size, base->name);
@@ -578,7 +578,7 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
         if (attr_entry) {
             knd_log("-- %.*s attr collision between \"%.*s\" and base class \"%.*s\"?",
                     attr_entry->name_size, attr_entry->name,
-                    self->name_size, self->name,
+                    self->entry->name_size, self->entry->name,
                     base->name_size, base->name);
             return knd_FAIL;
         }
@@ -599,7 +599,7 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
 
     if (self->num_bases >= KND_MAX_BASES) {
         knd_log("-- max bases exceeded for %.*s :(",
-                self->name_size, self->name);
+                self->entry->name_size, self->entry->name);
 
         return knd_FAIL;
     }
@@ -610,12 +610,12 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
         knd_log(" .. add %.*s parent to %.*s", 
                 base->entry->class->name_size,
                 base->entry->class->name,
-                self->name_size, self->name);
+                self->entry->name_size, self->entry->name);
 
     /* contact the grandparents */
     for (item = base->base_items; item; item = item->next) {
-        if (item->conc) {
-            err = inherit_attrs(self, item->conc);                                RET_ERR();
+        if (item->class) {
+            err = inherit_attrs(self, item->class);                                RET_ERR();
         }
     }
     
@@ -628,7 +628,7 @@ static int is_base(struct kndClass *self,
     if (DEBUG_CONC_LEVEL_2) {
         knd_log(".. check inheritance: %.*s [resolved: %d] => %.*s [resolved:%d]?",
                 child->name_size, child->name, child->is_resolved,
-                self->name_size, self->name, self->is_resolved);
+                self->entry->name_size, self->entry->name, self->is_resolved);
     }
 
     /* make sure that a child inherits from the base */
@@ -640,7 +640,7 @@ static int is_base(struct kndClass *self,
 
     if (DEBUG_CONC_LEVEL_TMP)
         knd_log("-- no inheritance from  \"%.*s\" to \"%.*s\" :(",
-                self->name_size, self->name,
+                self->entry->name_size, self->entry->name,
                 child->name_size, child->name);
     return knd_FAIL;
 }
@@ -657,7 +657,7 @@ static int index_attr(struct kndClass *self,
     if (DEBUG_CONC_LEVEL_2) {
         knd_log("\n.. indexing CURR CLASS: \"%.*s\" .. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" (name:%.*s val:%.*s)",
-                self->name_size, self->name,
+                self->entry->name_size, self->entry->name,
                 attr->name_size, attr->name, attr->type,
                 attr->ref_classname_size, attr->ref_classname,
                 item->name_size, item->name, item->val_size, item->val);
@@ -679,14 +679,14 @@ static int index_attr(struct kndClass *self,
                     item->val,
                     item->val_size, &c);                                          RET_ERR();
 
-    item->conc = c;
+    item->class = c;
 
     if (!c->is_resolved) {
         err = c->resolve(c, NULL);                                                RET_ERR();
     }
     err = is_base(base, c);                                                       RET_ERR();
 
-    set = attr->parent_conc->entry->descendants;
+    set = attr->parent_class->entry->descendants;
 
     /* add curr class to the reverse index */
     err = set->add_ref(set, attr, self->entry, c->entry);
@@ -709,7 +709,7 @@ static int index_attr_var_list(struct kndClass *self,
     if (DEBUG_CONC_LEVEL_2) {
         knd_log("\n.. attr item list indexing.. (class:%.*s) .. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" (name:%.*s val:%.*s)",
-                self->name_size, self->name,
+                self->entry->name_size, self->entry->name,
                 attr->name_size, attr->name, attr->type,
                 attr->ref_classname_size, attr->ref_classname,
                 item->name_size, item->name, item->val_size, item->val);
@@ -732,14 +732,14 @@ static int index_attr_var_list(struct kndClass *self,
                     item->val,
                     item->val_size, &c);                                          RET_ERR();
 
-    item->conc = c;
+    item->class = c;
 
     if (!c->is_resolved) {
         err = c->resolve(c, NULL);                                                RET_ERR();
     }
     err = is_base(base, c);                                                       RET_ERR();
 
-    set = attr->parent_conc->entry->descendants;
+    set = attr->parent_class->entry->descendants;
 
     /* add curr class to the reverse index */
     err = set->add_ref(set, attr, self->entry, c->entry);
@@ -876,7 +876,7 @@ static int resolve_aggr_item(struct kndClass *self,
         case KND_ATTR_REF:
             err = resolve_class_ref(self,
                                     classname, classname_size,
-                                    attr->conc, &parent_item->conc);
+                                    attr->conc, &parent_item->class);
             if (err) return err;
             break;
         default:
@@ -920,7 +920,7 @@ static int resolve_aggr_item(struct kndClass *self,
 
             err = resolve_class_ref(self,
                                     classname, classname_size,
-                                    attr->conc, &item->conc);
+                                    attr->conc, &item->class);
             if (err) return err;
 
             break;
@@ -945,7 +945,7 @@ static int resolve_attr_var_list(struct kndClass *self,
         size_t attr_type_name_size = strlen(attr_type_name);
         knd_log(".. class %.*s to resolve attr item list \"%.*s\" "
                 " of CLASS:%.*s   attr type:%.*s",
-                self->name_size, self->name,
+                self->entry->name_size, self->entry->name,
                 parent_item->name_size, parent_item->name,
                 parent_attr->ref_classname_size,
                 parent_attr->ref_classname,
@@ -984,7 +984,7 @@ static int resolve_attr_var_list(struct kndClass *self,
         case KND_ATTR_REF:
             err = resolve_class_ref(self,
                                     parent_item->val, parent_item->val_size,
-                                    c, &parent_item->conc);
+                                    c, &parent_item->class);
             if (err) return err;
             break;
         default:
@@ -1005,11 +1005,11 @@ static int resolve_attr_var_list(struct kndClass *self,
 
             if (item->val_size) {
                 err = resolve_class_ref(self, item->val, item->val_size,
-                                        c, &item->conc);
+                                        c, &item->class);
                 if (err) return err;
             } else {
                 err = resolve_class_ref(self, item->name, item->name_size,
-                                        c, &item->conc);
+                                        c, &item->class);
                 if (err) return err;
             }
             
@@ -1033,7 +1033,7 @@ static int resolve_attr_vars(struct kndClass *self,
 
     if (DEBUG_CONC_LEVEL_1) {
         knd_log(".. resolving attr items of class %.*s",
-                self->name_size, self->name);
+                self->entry->name_size, self->entry->name);
     }
 
     for (item = parent_item->attrs; item; item = item->next) {
@@ -1086,7 +1086,7 @@ static int resolve_attr_vars(struct kndClass *self,
                 err = c->resolve(c, NULL);                                        RET_ERR();
             }
             err = resolve_class_ref(self, item->val, item->val_size,
-                                    c, &item->conc);
+                                    c, &item->class);
             if (err) return err;
             break;
         case KND_ATTR_PROC:
@@ -1165,7 +1165,7 @@ static int resolve_attrs(struct kndClass *self)
                         attr->ref_classname_size,
                         attr->ref_classname,
                         attr->name_size, attr->name,
-                        self->name_size, self->name);
+                        self->entry->name_size, self->entry->name);
                 return knd_FAIL;
             }
             attr->conc = entry->class;
@@ -1188,7 +1188,7 @@ static int resolve_attrs(struct kndClass *self)
                         attr->ref_procname_size,
                         attr->ref_procname,
                         attr->name_size, attr->name,
-                        self->name_size, self->name);
+                        self->entry->name_size, self->entry->name);
                 return knd_FAIL;
             }
             attr->proc = proc_entry->proc;
@@ -1247,7 +1247,7 @@ static int resolve_objs(struct kndClass     *self,
             /* NB: should never happen: mismatch of num objs */
             if (class_update->num_objs >= self->obj_inbox_size) {
                 knd_log("-- num objs mismatch in %.*s:  %zu vs %zu:(",
-                        self->name_size, self->name,
+                        self->entry->name_size, self->entry->name,
                         class_update->num_objs, self->obj_inbox_size);
                 return knd_FAIL;
             }
@@ -1303,7 +1303,7 @@ static int resolve_base_classes(struct kndClass *self)
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. resolving base classes of \"%.*s\"..",
-                self->name_size, self->name);
+                self->entry->name_size, self->entry->name);
 
     /* resolve refs to base classes */
     for (item = self->base_items; item; item = item->next) {
@@ -1311,7 +1311,7 @@ static int resolve_base_classes(struct kndClass *self)
             /* TODO */
             if (DEBUG_CONC_LEVEL_2)
                 knd_log(".. \"%.*s\" class to check the update request: \"%s\"..",
-                        self->name_size, self->name,
+                        self->entry->name_size, self->entry->name,
                         item->classname_size, item->classname);
             continue;
         }
@@ -1336,13 +1336,13 @@ static int resolve_base_classes(struct kndClass *self)
 
         if (!classname_size) {
             knd_log("-- no base class specified in class item \"%.*s\" :(",
-                    self->name_size, self->name);
+                    self->entry->name_size, self->entry->name);
             return knd_FAIL;
         }
 
         if (DEBUG_CONC_LEVEL_2)
             knd_log("\n.. \"%.*s\" class to get its base class: \"%.*s\"..",
-                    self->name_size, self->name,
+                    self->entry->name_size, self->entry->name,
                     classname_size, classname);
 
         err = get_class(self, classname, classname_size, &c);         RET_ERR();
@@ -1354,26 +1354,26 @@ static int resolve_base_classes(struct kndClass *self)
 
         if (DEBUG_CONC_LEVEL_2)
             knd_log("++ \"%.*s\" ref established as a base class for \"%.*s\"!",
-                    item->classname_size, item->classname, self->name_size, self->name);
+                    item->classname_size, item->classname, self->entry->name_size, self->entry->name);
 
-        item->conc = c;
+        item->class = c;
 
         /* check item doublets */
         for (size_t i = 0; i < self->entry->num_children; i++) {
             if (self->entry->children[i] == self->entry) {
                 knd_log("-- doublet conc item found in \"%.*s\" :(",
-                        self->name_size, self->name);
+                        self->entry->name_size, self->entry->name);
                 return knd_FAIL;
             }
         }
 
         if (c->entry->num_children >= KND_MAX_CONC_CHILDREN) {
             knd_log("-- %.*s as child to %.*s - max conc children exceeded :(",
-                    self->name_size, self->name, item->classname_size, item->classname);
+                    self->entry->name_size, self->entry->name, item->classname_size, item->classname);
             return knd_FAIL;
         }
 
-        //if (self->task->type == KND_UPDATE_STATE) {
+        //if (self->repo->task->type == KND_UPDATE_STATE) {
             if (DEBUG_CONC_LEVEL_2)
                 knd_log(".. update task to add class \"%.*s\" as a child of "
                         " \"%.*s\" (total children:%zu)",
@@ -1400,7 +1400,7 @@ static int resolve_base_classes(struct kndClass *self)
 
 
 
-        err = inherit_attrs(self, item->conc);                                    RET_ERR();
+        err = inherit_attrs(self, item->class);                                    RET_ERR();
     }
 
 
@@ -1426,15 +1426,15 @@ static int resolve_refs(struct kndClass *self,
         }
         return knd_OK;
     } else {
-        self->root_class->next_numid++;
+        self->repo->next_class_numid++;
         entry = self->entry;
-        entry->numid = self->root_class->next_numid;
+        entry->numid = self->repo->next_class_numid;
         knd_num_to_str(entry->numid, entry->id, &entry->id_size, KND_RADIX_BASE);
     }
 
     if (DEBUG_CONC_LEVEL_1) {
         knd_log(".. resolving class \"%.*s\" id:%.*s entry numid:%zu",
-                self->name_size, self->name,
+                self->entry->name_size, self->entry->name,
                 entry->id_size, entry->id, self->entry->numid);
     }
 
@@ -1528,7 +1528,7 @@ static int build_attr_name_idx(struct kndClass *self)
                         attr->ref_classname_size,
                         attr->ref_classname,
                         attr->name_size, attr->name,
-                        self->name_size, self->name);
+                        self->entry->name_size, self->entry->name);
                 return knd_FAIL;
             }
 
@@ -1552,10 +1552,10 @@ static int build_attr_name_idx(struct kndClass *self)
     for (item = self->base_items; item; item = item->next) {
         if (DEBUG_CONC_LEVEL_2)
             knd_log(".. class \"%.*s\" to inherit attrs from baseclass \"%.*s\"..",
-                    self->name_size, self->name,
-                    item->conc->name_size,
-                    item->conc->name);
-        err = inherit_attrs(self, item->conc);
+                    self->entry->name_size, self->entry->name,
+                    item->class->name_size,
+                    item->class->name);
+        err = inherit_attrs(self, item->class);
     }
 
     return knd_OK;
@@ -1571,7 +1571,7 @@ static int get_attr(struct kndClass *self,
 
     if (DEBUG_CONC_LEVEL_1) {
         knd_log(".. \"%.*s\" class to check attr \"%.*s\"",
-                self->name_size, self->name, name_size, name);
+                self->entry->name_size, self->entry->name, name_size, name);
     }
 
     // TODO: no allocation in select tasks
@@ -1621,7 +1621,7 @@ static gsl_err_t atomic_elem_alloc(void *obj,
 
     if (DEBUG_CONC_LEVEL_2) {
         knd_log("Conc %.*s: atomic elem alloc: \"%.*s\"",
-                self->name_size, self->name,
+                self->entry->name_size, self->entry->name,
                 val_size, val);
     }
     class_idx = self->class_idx;
@@ -1986,7 +1986,7 @@ static gsl_err_t parse_aggr(void *obj,
 
     err = kndAttr_new(&attr);
     if (err) return make_gsl_err_external(err);
-    attr->parent_conc = self;
+    attr->parent_class = self;
     attr->type = KND_ATTR_AGGR;
 
     err = attr->parse(attr, rec, total_size);
@@ -2025,13 +2025,13 @@ static gsl_err_t parse_str(void *obj,
 
     err = kndAttr_new(&attr);
     if (err) return make_gsl_err_external(err);
-    attr->parent_conc = self;
+    attr->parent_class = self;
     attr->type = KND_ATTR_STR;
 
     err = attr->parse(attr, rec, total_size);
     if (err) {
         knd_log("-- failed to parse the STR attr of \"%.*s\" :(",
-                self->name_size, self->name);
+                self->entry->name_size, self->entry->name);
         return make_gsl_err_external(err);
     }
     if (!self->tail_attr) {
@@ -2059,7 +2059,7 @@ static gsl_err_t parse_bin(void *obj,
 
     err = kndAttr_new(&attr);
     if (err) return make_gsl_err_external(err);
-    attr->parent_conc = self;
+    attr->parent_class = self;
     attr->type = KND_ATTR_BIN;
 
     err = attr->parse(attr, rec, total_size);
@@ -2089,7 +2089,7 @@ static gsl_err_t parse_num(void *obj,
 
     err = kndAttr_new(&attr);
     if (err) return make_gsl_err_external(err);
-    attr->parent_conc = self;
+    attr->parent_class = self;
     attr->type = KND_ATTR_NUM;
 
     err = attr->parse(attr, rec, total_size);
@@ -2122,7 +2122,7 @@ static gsl_err_t parse_ref(void *obj,
 
     err = kndAttr_new(&attr);
     if (err) return make_gsl_err_external(err);
-    attr->parent_conc = self;
+    attr->parent_class = self;
     attr->type = KND_ATTR_REF;
 
     err = attr->parse(attr, rec, total_size);
@@ -2155,7 +2155,7 @@ static gsl_err_t parse_proc(void *obj,
 
     err = kndAttr_new(&attr);
     if (err) return make_gsl_err_external(err);
-    attr->parent_conc = self;
+    attr->parent_class = self;
     attr->type = KND_ATTR_PROC;
 
     err = attr->parse(attr, rec, total_size);
@@ -2188,7 +2188,7 @@ static gsl_err_t parse_text(void *obj,
 
     err = kndAttr_new(&attr);
     if (err) return make_gsl_err_external(err);
-    attr->parent_conc = self;
+    attr->parent_class = self;
     attr->type = KND_ATTR_TEXT;
     attr->is_a_set = true;
 
@@ -2546,7 +2546,7 @@ static gsl_err_t attr_var_alloc(void *obj,
                 name_size, name, self->attr);
     }
 
-    class_idx = self->attr->parent_conc->class_idx;
+    class_idx = self->attr->parent_class->class_idx;
 
     err = class_idx->get(class_idx, name, name_size, &elem);
     if (err) {
@@ -2560,7 +2560,7 @@ static gsl_err_t attr_var_alloc(void *obj,
     err = self->mempool->new_attr_var(self->mempool, &item);
     if (err) return make_gsl_err_external(err);
 
-    item->conc_entry = entry;
+    item->class_entry = entry;
     item->attr = self->attr;
 
     *result = item;
@@ -2594,7 +2594,7 @@ static gsl_err_t aggr_item_set_baseclass(void *obj,
     struct kndAttrItem *item = obj;
     struct kndSet *class_idx;
     struct kndClassEntry *entry;
-    struct kndClass *conc = item->attr->parent_conc;
+    struct kndClass *conc = item->attr->parent_class;
     void *result;
     int err;
 
@@ -2618,8 +2618,8 @@ static gsl_err_t aggr_item_set_baseclass(void *obj,
         if (err) return make_gsl_err_external(err);
     }
 
-    item->conc = entry->class;
-    item->conc_entry = entry;
+    item->class = entry->class;
+    item->class_entry = entry;
 
     return make_gsl_err(gsl_OK);
 }
@@ -2663,7 +2663,7 @@ static gsl_err_t aggr_item_alloc(void *obj,
 
     if (DEBUG_CONC_LEVEL_1) {
         knd_log(".. alloc AGGR attr item..  conc id: \"%.*s\" attr:%p  parent:%p",
-                name_size, name, self->attr,  self->attr->parent_conc);
+                name_size, name, self->attr,  self->attr->parent_class);
     }
     
     err = self->mempool->new_attr_var(self->mempool, &item);
@@ -2693,17 +2693,17 @@ static gsl_err_t validate_attr_var(void *obj,
 
     if (DEBUG_CONC_LEVEL_1)
         knd_log(".. conc item \"%.*s\" to validate attr item: %.*s..",
-                ci->conc->name_size, ci->conc->name,
+                ci->class->name_size, ci->class->name,
                 name_size, name);
 
     err = ci->mempool->new_attr_var(ci->mempool, &attr_var);
     if (err) return make_gsl_err_external(err);
 
-    err = get_attr(ci->conc, name, name_size, &attr);
+    err = get_attr(ci->class, name, name_size, &attr);
     if (err) {
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                 name_size, name,
-                ci->conc->name_size, ci->conc->name);
+                ci->class->name_size, ci->class->name);
         return make_gsl_err_external(err);
     }
 
@@ -2747,7 +2747,7 @@ static gsl_err_t validate_attr_var(void *obj,
                     attr_var->name_size, attr_var->name,
                     attr_var->val_size, attr_var->val);
 
-        root_proc = ci->conc->root_class->proc;
+        root_proc = ci->class->root_class->proc;
         err = root_proc->get_proc(root_proc,
                                   attr_var->val,
                                   attr_var->val_size, &attr_var->proc);
@@ -2806,16 +2806,10 @@ static gsl_err_t confirm_class_var(void *obj, const char *name, size_t name_size
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t confirm_attr_var(void *obj,
+static gsl_err_t confirm_attr_var(void *obj __attribute__((unused)),
                                   const char *name __attribute__((unused)),
                                   size_t name_size __attribute__((unused)))
 {
-    struct kndAttrItem *self = obj;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. confirm attr var: \"%.*s\"..",
-                self->name_size, self->name);
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -2866,7 +2860,7 @@ static gsl_err_t parse_baseclass(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. parsing the base class: \"%.*s\"", 32, rec);
 
     err = self->mempool->new_conc_item(self->mempool, &classvar);
@@ -2967,22 +2961,18 @@ static gsl_err_t parse_import_class(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. import \"%.*s\" class..", 64, rec);
 
     err = mempool->new_class(mempool, &c);
     if (err) return make_gsl_err_external(err);
 
-    c->repo = self->repo;
+    err = mempool->new_class_entry(mempool, &entry);
+    if (err) return make_gsl_err_external(err);
+    entry->repo = self->repo;
+    entry->class = c;
+    c->entry = entry;
 
-    /*out = self->repo->out;
-    c->log = self->log;
-    c->task = self->task;
-    c->mempool = self->mempool;
-    c->class_idx = self->class_idx;
-    c->class_name_idx = self->class_name_idx;
-    c->root_class = self;
-    */
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_name,
@@ -3067,7 +3057,7 @@ static gsl_err_t parse_import_class(void *obj,
         goto final;
     }
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("++  \"%.*s\" class import completed!",
                 c->name_size, c->name);
         
@@ -3075,23 +3065,22 @@ static gsl_err_t parse_import_class(void *obj,
                                c->name, c->name_size);
     if (entry) {
         if (entry->phase == KND_REMOVED) {
-
             knd_log("== class was removed recently");
             // TODO: release resource
         } else {
             knd_log("-- %s class name doublet found :(", c->name);
             log->reset(log);
             err = log->write(log,
-                                   c->name,
-                                   c->name_size);
+                             c->name,
+                             c->name_size);
             if (err) {
                 parser_err = make_gsl_err_external(err);
                 goto final;
             }
             
             err = log->write(log,
-                                   " class name already exists",
-                                   strlen(" class name already exists"));
+                             " class name already exists",
+                             strlen(" class name already exists"));
             if (err) {
                 parser_err = make_gsl_err_external(err);
                 goto final;
@@ -3108,23 +3097,12 @@ static gsl_err_t parse_import_class(void *obj,
         self->inbox_size++;
     }
 
-    err = self->mempool->new_class_entry(self->mempool, &entry);
-    if (err) { parser_err = make_gsl_err_external(err); goto final; }
-
-    memcpy(entry->name, c->name, c->name_size);
-    entry->name_size = c->name_size;
-
-    entry->class = c;
-    c->entry = entry;
-    entry->mempool = self->mempool;
-    entry->class_idx = self->class_idx;
-    entry->class_name_idx = self->class_name_idx;
-
     err = self->class_name_idx->set(self->class_name_idx,
-                                    c->name, c->name_size, (void*)entry);
+                                    c->name, c->name_size,
+                                    (void*)c->entry);
     if (err) { parser_err = make_gsl_err_external(err); goto final; }
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         c->str(c);
 
     return make_gsl_err(gsl_OK);
@@ -3164,12 +3142,6 @@ static gsl_err_t parse_import_obj(void *data,
 
     obj->state->phase = KND_SUBMITTED;
     obj->base = self->curr_class;
-
-    /*obj->out = self->repo->out;
-    obj->log = self->log;
-    obj->task = self->task;
-    obj->mempool = self->mempool;
-    */
 
     err = obj->parse(obj, rec, total_size);
     if (err) return make_gsl_err_external(err);
@@ -3224,7 +3196,6 @@ static gsl_err_t parse_import_obj(void *data,
                                obj->name, obj->name_size,
                                (void*)entry);
     if (err) return make_gsl_err_external(err);
-
     c->entry->num_objs++;
 
     if (DEBUG_CONC_LEVEL_1) {
@@ -3234,7 +3205,7 @@ static gsl_err_t parse_import_obj(void *data,
         obj->str(obj);
     }
 
-    self->task->type = KND_UPDATE_STATE;
+    self->repo->task->type = KND_UPDATE_STATE;
   
     return make_gsl_err(gsl_OK);
 }
@@ -3256,15 +3227,10 @@ static gsl_err_t parse_select_obj(void *data,
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. select \"%.*s\" obj.. task type: %d", 16, rec,
-                self->curr_class->task->type);
+                self->curr_class->repo->task->type);
 
-    self->curr_class->task->type = KND_GET_STATE;
+    self->curr_class->repo->task->type = KND_GET_STATE;
     obj->base = self->curr_class;
-
-    /*obj->task = self->task;
-    obj->out = self->repo->out;
-    obj->log = self->log;
-    obj->mempool = self->mempool; */
 
     err = obj->select(obj, rec, total_size);
     if (err) return make_gsl_err_external(err);
@@ -3301,10 +3267,10 @@ static gsl_err_t select_by_baseclass(void *obj,
     }
 
     set = c->entry->descendants;
-    if (self->task->num_sets + 1 > KND_MAX_CLAUSES)
+    if (self->repo->task->num_sets + 1 > KND_MAX_CLAUSES)
         return make_gsl_err(gsl_LIMIT);
-    self->task->sets[self->task->num_sets] = set;
-    self->task->num_sets++;
+    self->repo->task->sets[self->repo->task->num_sets] = set;
+    self->repo->task->num_sets++;
 
     self->curr_baseclass = c;
 
@@ -3325,7 +3291,7 @@ static gsl_err_t select_by_attr(void *obj,
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    c = self->curr_attr->parent_conc;
+    c = self->curr_attr->parent_class;
 
     if (DEBUG_CONC_LEVEL_2) {
         knd_log("== select by attr value: \"%.*s\" of \"%.*s\" resolved:%d",
@@ -3351,7 +3317,7 @@ static gsl_err_t select_by_attr(void *obj,
         e = log->write(log, " no such facet: ",
                                strlen(" no such facet: "));
         if (e) return make_gsl_err_external(e);
-        self->task->http_code = HTTP_NOT_FOUND;
+        self->repo->task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err_external(knd_NO_MATCH);
     }
 
@@ -3368,11 +3334,11 @@ static gsl_err_t select_by_attr(void *obj,
     if (DEBUG_CONC_LEVEL_2)
         set->str(set, 1);
 
-    if (self->task->num_sets + 1 > KND_MAX_CLAUSES)
+    if (self->repo->task->num_sets + 1 > KND_MAX_CLAUSES)
         return make_gsl_err(gsl_LIMIT);
 
-    self->task->sets[self->task->num_sets] = set;
-    self->task->num_sets++;
+    self->repo->task->sets[self->repo->task->num_sets] = set;
+    self->repo->task->num_sets++;
 
     return make_gsl_err(gsl_OK);
 }
@@ -3408,7 +3374,7 @@ static gsl_err_t parse_attr_select(void *obj,
         e = log->write(log, ": no such attribute",
                                strlen(": no such attribute"));
         if (e) return make_gsl_err_external(e);
-        self->task->http_code = HTTP_NOT_FOUND;
+        self->repo->task->http_code = HTTP_NOT_FOUND;
 
         return make_gsl_err_external(err);
     }
@@ -3416,8 +3382,8 @@ static gsl_err_t parse_attr_select(void *obj,
     if (DEBUG_CONC_LEVEL_2) {
         knd_log(".. select by attr \"%.*s\"..", name_size, name);
         knd_log(".. attr parent: %.*s conc: %.*s",
-                attr->parent_conc->name_size,
-                attr->parent_conc->name,
+                attr->parent_class->name_size,
+                attr->parent_class->name,
                 attr->conc->name_size,
                 attr->conc->name);
     }
@@ -3445,12 +3411,12 @@ static gsl_err_t parse_baseclass_select(void *obj,
         { .name = "_batch",
           .name_size = strlen("_batch"),
           .parse = gsl_parse_size_t,
-          .obj = &self->task->batch_max
+          .obj = &self->repo->task->batch_max
         },
         { .name = "_from",
           .name_size = strlen("_from"),
           .parse = gsl_parse_size_t,
-          .obj = &self->task->batch_from
+          .obj = &self->repo->task->batch_from
         },
         {  .name = "_depth",
            .name_size = strlen("_depth"),
@@ -3463,18 +3429,18 @@ static gsl_err_t parse_baseclass_select(void *obj,
         }
     };
 
-    self->task->type = KND_SELECT_STATE;
+    self->repo->task->type = KND_SELECT_STATE;
 
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) return err;
 
-    if (self->task->batch_max > KND_RESULT_MAX_BATCH_SIZE) {
+    if (self->repo->task->batch_max > KND_RESULT_MAX_BATCH_SIZE) {
         knd_log("-- batch size exceeded: %zu (max limit: %d) :(",
-                self->task->batch_max, KND_RESULT_MAX_BATCH_SIZE);
+                self->repo->task->batch_max, KND_RESULT_MAX_BATCH_SIZE);
         return make_gsl_err(gsl_LIMIT);
     }
 
-    self->task->start_from = self->task->batch_max * self->task->batch_from;
+    self->repo->task->start_from = self->repo->task->batch_max * self->repo->task->batch_from;
 
     return make_gsl_err(gsl_OK);
 }
@@ -3490,7 +3456,7 @@ static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
     /* TODO: get current schema */
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. select schema %.*s from: \"%.*s\"..",
-                name_size, name, self->name_size, self->name);
+                name_size, name, self->entry->name_size, self->entry->name);
 
     return make_gsl_err(gsl_OK);
 }
@@ -3499,13 +3465,16 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct kndClass *self = (struct kndClass*)obj;
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. set conc name: %.*s", name_size, name);
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. set class name: %.*s", name_size, name);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= sizeof self->name) return make_gsl_err(gsl_LIMIT);
+    if (name_size >= sizeof self->entry->name) return make_gsl_err(gsl_LIMIT);
 
-    memcpy(self->name, name, name_size);
+    memcpy(self->entry->name, name, name_size);
+    self->entry->name_size = name_size;
+
+    self->name = self->entry->name;
     self->name_size = name_size;
 
     return make_gsl_err(gsl_OK);
@@ -3660,7 +3629,7 @@ static int knd_get_dir_size(struct kndClass *self,
     int i = 0;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. get size of DIR in %.*s", self->name_size, self->name);
+        knd_log(".. get size of DIR in %.*s", self->entry->name_size, self->entry->name);
 
     for (i = rec_size - 1; i >= 0; i--) { 
         c = rec + i;
@@ -4162,7 +4131,7 @@ static int parse_dir_trailer(struct kndClass *self,
         {  .name = "tot",
            .name_size = strlen("tot"),
            .parse = gsl_parse_size_t,
-           .obj = &self->next_numid
+           .obj = &self->repo->next_class_numid
         },
         { .name = "O",
           .name_size = strlen("O"),
@@ -4509,7 +4478,7 @@ static int open_frozen_DB(struct kndClass *self)
     filename = self->repo->frozen_output_file_name;
     filename_size = self->repo->frozen_output_file_name_size;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. open \"%.*s\" ..", filename_size, filename);
 
     if (stat(filename, &st)) {
@@ -4532,9 +4501,6 @@ static int open_frozen_DB(struct kndClass *self)
 
     self->entry->block_size = file_size;
     self->entry->id[0] = '/';
-    self->entry->mempool = self->mempool;
-    self->entry->class_idx = self->class_idx;
-    self->entry->class_name_idx = self->class_name_idx;
 
     /* TODO: get encode base from config */
     err = get_dir_trailer(self, self->entry, fd, KND_DIR_SIZE_ENCODE_BASE);
@@ -4545,7 +4511,7 @@ static int open_frozen_DB(struct kndClass *self)
 
     err = knd_OK;
 
-    knd_log("++ frozen DB opened! total classes: %zu", self->next_numid);
+    knd_log("++ frozen DB opened! total classes: %zu", self->repo->next_class_numid);
 
  final:
     if (err) {
@@ -4578,7 +4544,7 @@ static int read_GSL_file(struct kndClass *self,
                          size_t filename_size)
 {
     struct glbOutput *out = self->repo->out;
-    struct glbOutput *file_out = self->task->file;
+    struct glbOutput *file_out = self->repo->file_out;
     struct kndConcFolder *folder, *folders;
     const char *c;
     size_t folder_name_size;
@@ -4590,7 +4556,7 @@ static int read_GSL_file(struct kndClass *self,
     int err;
 
     out->reset(out);
-    err = out->write(out, self->repo->dbpath, self->repo->dbpath_size);
+    err = out->write(out, self->repo->schema_path, self->repo->schema_path_size);
     if (err) return err;
     err = out->write(out, "/", 1);
     if (err) return err;
@@ -4604,6 +4570,8 @@ static int read_GSL_file(struct kndClass *self,
     if (err) return err;
     err = out->write(out, file_ext, file_ext_size);
     if (err) return err;
+
+    knd_log(".. reading GSL file: %.*s", out->buf_size, out->buf);
 
     file_out->reset(file_out);
     err = file_out->write_file_content(file_out, (const char*)out->buf);
@@ -4714,7 +4682,7 @@ static gsl_err_t set_conc_item_baseclass(void *obj,
         if (err) return make_gsl_err_external(err);
     }
 
-    ci->conc = entry->class;
+    ci->class = entry->class;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log("== conc item baseclass: %.*s (id:%.*s) CONC:%p",
@@ -4736,17 +4704,17 @@ static gsl_err_t validate_attr_var_list(void *obj,
 
     if (DEBUG_CONC_LEVEL_1)
         knd_log("\n.. ARRAY: conc item \"%.*s\" to validate list item: %.*s..",
-                ci->conc->name_size, ci->conc->name,
+                ci->class->name_size, ci->class->name,
                 name_size, name);
 
     err = ci->mempool->new_attr_var(ci->mempool, &attr_var);
     if (err) return make_gsl_err_external(err);
 
-    err = get_attr(ci->conc, name, name_size, &attr);
+    err = get_attr(ci->class, name, name_size, &attr);
     if (err) {
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                 name_size, name,
-                ci->conc->name_size, ci->conc->name);
+                ci->class->name_size, ci->class->name);
         return make_gsl_err_external(err);
     }
 
@@ -4758,7 +4726,7 @@ static gsl_err_t validate_attr_var_list(void *obj,
     case KND_ATTR_AGGR:
         if (attr->conc) break;
         
-        class_name_idx = ci->conc->class_name_idx;
+        class_name_idx = ci->class->class_name_idx;
         entry = class_name_idx->get(class_name_idx,
                                   attr->ref_classname,
                                   attr->ref_classname_size);
@@ -4770,7 +4738,7 @@ static gsl_err_t validate_attr_var_list(void *obj,
         }
 
         if (!entry->class) {
-            err = unfreeze_class(ci->conc, entry, &entry->class);
+            err = unfreeze_class(ci->class, entry, &entry->class);
             if (err) return make_gsl_err_external(err);
         }
         attr->conc = entry->class;
@@ -4932,7 +4900,7 @@ static int resolve_classes(struct kndClass *self)
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. resolving class refs in \"%.*s\"",
-                self->name_size, self->name);
+                self->entry->name_size, self->entry->name);
 
     key = NULL;
     self->class_name_idx->rewind(self->class_name_idx);
@@ -5043,8 +5011,8 @@ static int expand_attr_ref_list(struct kndClass *self,
     int err;
 
     for (item = parent_item->list; item; item = item->next) {
-        if (!item->conc) {
-            err = unfreeze_class(self, item->conc_entry, &item->conc);
+        if (!item->class) {
+            err = unfreeze_class(self, item->class_entry, &item->class);
             if (err) return err;
         }
     }
@@ -5154,15 +5122,10 @@ static int unfreeze_class(struct kndClass *self,
 
     err = mempool->new_class(mempool, &c);
     if (err) goto final;
-    memcpy(c->name, entry->name, entry->name_size);
+    c->name = entry->name;
     c->name_size = entry->name_size;
-
     c->entry = entry;
     entry->class = c;
-
-    /*c->frozen_output_file_name = self->repo->frozen_output_file_name;
-    c->frozen_output_file_name_size = self->repo->frozen_output_file_name_size;
-    */
 
     b = buf + 1;
     bool got_separ = false;
@@ -5237,7 +5200,7 @@ static int get_class(struct kndClass *self,
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. %.*s to get class: \"%.*s\"..",
-                self->name_size, self->name, name_size, name);
+                self->entry->name_size, self->entry->name, name_size, name);
 
     entry = self->class_name_idx->get(self->class_name_idx, name, name_size);
     if (!entry) {
@@ -5248,8 +5211,8 @@ static int get_class(struct kndClass *self,
         err = log->write(log, " class name not found",
                                strlen(" class name not found"));
         if (err) return err;
-        if (self->task)
-            self->task->http_code = HTTP_NOT_FOUND;
+        if (self->repo->task)
+            self->repo->task->http_code = HTTP_NOT_FOUND;
 
         return knd_NO_MATCH;
     }
@@ -5269,13 +5232,13 @@ static int get_class(struct kndClass *self,
                                strlen(" class was removed"));
         if (err) return err;
         
-        self->task->http_code = HTTP_GONE;
+        self->repo->task->http_code = HTTP_GONE;
         return knd_NO_MATCH;
     }
 
     if (entry->class) {
         c = entry->class;
-        c->task = self->task;
+        c->repo->task = self->repo->task;
         c->next = NULL;
 
         if (DEBUG_CONC_LEVEL_2)
@@ -5292,7 +5255,7 @@ static int get_class(struct kndClass *self,
         return err;
     }
 
-    c->task = self->task;
+    c->repo->task = self->repo->task;
     c->class_idx = self->class_idx;
     c->class_name_idx = self->class_name_idx;
     
@@ -5311,19 +5274,19 @@ static int get_obj(struct kndClass *self,
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log("\n\n.. \"%.*s\" class to get obj: \"%.*s\"..",
-                self->name_size, self->name,
+                self->entry->name_size, self->entry->name,
                 name_size, name);
 
     if (!self->entry) {
         knd_log("-- no frozen entry rec in \"%.*s\" :(",
-                self->name_size, self->name);
+                self->entry->name_size, self->entry->name);
     }
     
     if (!self->entry->obj_name_idx) {
-        knd_log("-- no obj name idx in \"%.*s\" :(", self->name_size, self->name);
+        knd_log("-- no obj name idx in \"%.*s\" :(", self->entry->name_size, self->entry->name);
 
         log->reset(log);
-        e = log->write(log, self->name, self->name_size);
+        e = log->write(log, self->entry->name, self->entry->name_size);
         if (e) return e;
         e = log->write(log, " class has no instances",
                              strlen(" class has no instances"));
@@ -5341,7 +5304,7 @@ static int get_obj(struct kndClass *self,
         err = log->write(log, " obj name not found",
                                strlen(" obj name not found"));
         if (err) return err;
-        self->task->http_code = HTTP_NOT_FOUND;
+        self->repo->task->http_code = HTTP_NOT_FOUND;
         return knd_NO_MATCH;
     }
 
@@ -5394,7 +5357,7 @@ static int read_obj_entry(struct kndClass *self,
     filename_size = self->repo->frozen_output_file_name_size;
     if (!filename_size) {
         knd_log("-- no file name to read in conc %.*s :(",
-                self->name_size, self->name);
+                self->entry->name_size, self->entry->name);
         return knd_FAIL;
     }
 
@@ -5525,8 +5488,8 @@ static int export_conc_elem_JSON(void *obj,
 {
     struct kndClass *self = obj;
 
-    if (count < self->task->start_from) return knd_OK;
-    if (self->task->batch_size >= self->task->batch_max) return knd_RANGE;
+    if (count < self->repo->task->start_from) return knd_OK;
+    if (self->repo->task->batch_size >= self->repo->task->batch_max) return knd_RANGE;
 
     struct glbOutput *out = self->repo->out;
     struct kndClassEntry *entry = elem;
@@ -5542,7 +5505,7 @@ static int export_conc_elem_JSON(void *obj,
     }
 
     /* separator */
-    if (self->task->batch_size) {
+    if (self->repo->task->batch_size) {
         err = out->writec(out, ',');                                              RET_ERR();
     }
 
@@ -5555,7 +5518,7 @@ static int export_conc_elem_JSON(void *obj,
     err = c->export(c);
     if (err) return err;
 
-    self->task->batch_size++;
+    self->repo->task->batch_size++;
 
     return knd_OK;
 }
@@ -5595,15 +5558,15 @@ static int export_set_JSON(struct kndClass *self,
     err = out->writec(out, ']');                                                  RET_ERR();
 
     buf_size = sprintf(buf, ",\"batch_max\":%lu",
-                       (unsigned long)self->task->batch_max);
+                       (unsigned long)self->repo->task->batch_max);
     err = out->write(out, buf, buf_size);                                        RET_ERR();
     buf_size = sprintf(buf, ",\"batch_size\":%lu",
-                       (unsigned long)self->task->batch_size);
+                       (unsigned long)self->repo->task->batch_size);
     err = out->write(out, buf, buf_size);                                     RET_ERR();
     err = out->write(out,
                      ",\"batch_from\":", strlen(",\"batch_from\":"));         RET_ERR();
     buf_size = sprintf(buf, "%lu",
-                       (unsigned long)self->task->batch_from);
+                       (unsigned long)self->repo->task->batch_from);
     err = out->write(out, buf, buf_size);                                     RET_ERR();
 
     err = out->writec(out, '}');                                                  RET_ERR();
@@ -5711,18 +5674,18 @@ static gsl_err_t present_class_selection(void *obj,
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. presenting %.*s..",
-                self->name_size, self->name);
+                self->entry->name_size, self->entry->name);
 
     out->reset(out);
 
-    if (self->task->type == KND_SELECT_STATE) {
+    if (self->repo->task->type == KND_SELECT_STATE) {
 
         if (DEBUG_CONC_LEVEL_2)
             knd_log(".. batch selection: batch size: %zu   start from: %zu",
-                    self->task->batch_max, self->task->batch_from);
+                    self->repo->task->batch_max, self->repo->task->batch_from);
         
         /* no sets found? */
-        if (!self->task->num_sets) {
+        if (!self->repo->task->num_sets) {
 
             if (self->curr_baseclass && self->curr_baseclass->entry->descendants) {
                 set = self->curr_baseclass->entry->descendants;
@@ -5739,10 +5702,10 @@ static gsl_err_t present_class_selection(void *obj,
         }
 
         /* TODO: intersection cache lookup  */
-        set = self->task->sets[0];
+        set = self->repo->task->sets[0];
 
         /* intersection required */
-        if (self->task->num_sets > 1) {
+        if (self->repo->task->num_sets > 1) {
             err = self->mempool->new_set(self->mempool, &set);
             if (err) return make_gsl_err_external(err);
 
@@ -5750,9 +5713,9 @@ static gsl_err_t present_class_selection(void *obj,
             set->mempool = self->mempool;
 
             // TODO: compound class
-            set->base = self->task->sets[0]->base;
+            set->base = self->repo->task->sets[0]->base;
 
-            err = set->intersect(set, self->task->sets, self->task->num_sets);
+            err = set->intersect(set, self->repo->task->sets, self->repo->task->num_sets);
             if (err) return make_gsl_err_external(err);
         }
 
@@ -5905,7 +5868,7 @@ static int select_delta(struct kndClass *self,
                         const char *rec,
                         size_t *total_size)
 {
-    struct kndStateControl *state_ctrl = self->task->state_ctrl;
+    struct kndStateControl *state_ctrl = self->repo->task->state_ctrl;
     struct kndUpdate *update;
     struct kndClassUpdate *class_update;
     struct kndClass *c;
@@ -5916,17 +5879,17 @@ static int select_delta(struct kndClass *self,
         { .name = "eq",
           .name_size = strlen("eq"),
           .parse = gsl_parse_size_t,
-          .obj = &self->task->batch_eq
+          .obj = &self->repo->task->batch_eq
         },
         { .name = "gt",
           .name_size = strlen("gt"),
           .parse = gsl_parse_size_t,
-          .obj = &self->task->batch_gt
+          .obj = &self->repo->task->batch_gt
         },
         { .name = "lt",
           .name_size = strlen("lt"),
           .parse = gsl_parse_size_t,
-          .obj = &self->task->batch_lt
+          .obj = &self->repo->task->batch_lt
         }
     };
 
@@ -5935,8 +5898,8 @@ static int select_delta(struct kndClass *self,
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. select delta:  gt %zu  lt %zu ..",
-                self->task->batch_gt,
-                self->task->batch_lt);
+                self->repo->task->batch_gt,
+                self->repo->task->batch_lt);
 
     err = state_ctrl->select(state_ctrl);                                         RET_ERR();
 
@@ -5951,8 +5914,8 @@ static int select_delta(struct kndClass *self,
             if (!c) return knd_FAIL;
 
             /*if (!self->curr_baseclass) {
-                self->task->class_selects[self->task->num_class_selects] = c;
-                self->task->num_class_selects++;
+                self->repo->task->class_selects[self->repo->task->num_class_selects] = c;
+                self->repo->task->num_class_selects++;
                 continue;
                 }*/
 
@@ -6101,7 +6064,7 @@ static int aggr_item_export_JSON(struct kndClass *self,
     if (DEBUG_CONC_LEVEL_TMP) {
         knd_log(".. JSON export aggr item: %.*s",
                 parent_item->name_size, parent_item->name);
-        c = parent_item->attr->parent_conc;
+        c = parent_item->attr->parent_class;
         c->str(c);
     }
 
@@ -6121,7 +6084,7 @@ static int aggr_item_export_JSON(struct kndClass *self,
     }
 
     /* export a class ref */
-    if (parent_item->conc) {
+    if (parent_item->class) {
         attr = parent_item->attr;
         c = parent_item->attr->conc;
 
@@ -6133,7 +6096,7 @@ static int aggr_item_export_JSON(struct kndClass *self,
         if (c->implied_attr)
             attr = c->implied_attr;
 
-        c = parent_item->conc;
+        c = parent_item->class;
 
         if (in_list) {
             err = out->writec(out, ',');
@@ -6157,7 +6120,7 @@ static int aggr_item_export_JSON(struct kndClass *self,
         in_list = true;
     }
 
-    if (!parent_item->conc) {
+    if (!parent_item->class) {
 
         /* terminal string value */
         if (parent_item->val_size) {
@@ -6214,7 +6177,7 @@ static int aggr_item_export_JSON(struct kndClass *self,
 
         switch (item->attr->type) {
         case KND_ATTR_REF:
-            c = item->conc;
+            c = item->class;
             c->depth = self->depth;
             c->max_depth = self->max_depth;
             err = c->export(c);
@@ -6249,9 +6212,9 @@ static int ref_item_export_JSON(struct kndClass *self,
     struct kndClass *c;
     int err;
 
-    assert(item->conc != NULL);
+    assert(item->class != NULL);
 
-    c = item->conc;
+    c = item->class;
     c->depth = self->depth + 1;
     c->max_depth = self->max_depth;
     err = c->export(c);
@@ -6300,7 +6263,7 @@ static int attr_var_list_export_JSON(struct kndClass *self,
     if (err) return err;
 
     /* first elem: TODO */
-    if (parent_item->conc) {
+    if (parent_item->class) {
         switch (parent_item->attr->type) {
         case KND_ATTR_AGGR:
 
@@ -6433,11 +6396,11 @@ static int attr_vars_export_JSON(struct kndClass *self,
             break;
         case KND_ATTR_AGGR:
 
-            if (!item->conc) {
+            if (!item->class) {
                 err = aggr_item_export_JSON(self, item);
                 if (err) return err;
             } else {
-                c = item->conc;
+                c = item->class;
                 c->depth = self->depth;
                 err = c->export(c);
                 if (err) return err;
@@ -6464,7 +6427,7 @@ static int export_gloss_JSON(struct kndClass *self)
     int err;
 
     for (tr = self->tr; tr; tr = tr->next) { 
-        if (memcmp(self->task->locale, tr->locale, tr->locale_size)) {
+        if (memcmp(self->repo->task->locale, tr->locale, tr->locale_size)) {
             continue;
         }
 
@@ -6475,7 +6438,7 @@ static int export_gloss_JSON(struct kndClass *self)
     }
 
     for (tr = self->summary; tr; tr = tr->next) { 
-        if (memcmp(self->task->locale, tr->locale, tr->locale_size)) {
+        if (memcmp(self->repo->task->locale, tr->locale, tr->locale_size)) {
             continue;
         }
         err = out->write(out, ",\"_summary\":\"", strlen(",\"_summary\":\""));    RET_ERR();
@@ -6498,7 +6461,7 @@ static int export_concise_JSON(struct kndClass *self)
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. export concise JSON for %.*s..",
-                self->name_size, self->name, self->repo->out);
+                self->entry->name_size, self->entry->name, self->repo->out);
 
     for (item = self->base_items; item; item = item->next) {
         for (attr_var = item->attrs; attr_var; attr_var = attr_var->next) {
@@ -6532,7 +6495,7 @@ static int export_concise_JSON(struct kndClass *self)
                 if (err) return err;
                 break;
             case KND_ATTR_REF:
-                c = attr_var->conc;
+                c = attr_var->class;
                 if (c) {
                     c->depth = self->depth;
                     c->max_depth = self->max_depth;
@@ -6587,7 +6550,7 @@ static int export_JSON(struct kndClass *self)
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. JSON export concept: \"%s\"  "
                 "locale: %s depth: %lu  OUT:%p",
-                self->name, self->task->locale,
+                self->entry->name, self->repo->task->locale,
                 (unsigned long)self->depth, out);
 
     err = out->write(out, "{", 1);                                                RET_ERR();
@@ -6633,13 +6596,13 @@ static int export_JSON(struct kndClass *self)
 
         item_count = 0;
         for (item = self->base_items; item; item = item->next) {
-            //if (item->conc && item->conc->ignore_children) continue;
+            //if (item->class && item->class->ignore_children) continue;
             if (item_count) {
                 err = out->write(out, ",", 1);                                    RET_ERR();
             }
 
             err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
-            err = out->write(out, item->conc->name, item->conc->name_size);
+            err = out->write(out, item->class->name, item->class->name_size);
             if (err) return err;
             err = out->write(out, "\"", 1);
             if (err) return err;
@@ -6675,10 +6638,6 @@ static int export_JSON(struct kndClass *self)
                 err = out->write(out, ",", 1);
                 if (err) return err;
             }
-            attr->out = out;
-            attr->task = self->task;
-            attr->format = KND_FORMAT_JSON;
-
             err = attr->export(attr);
             if (err) {
                 if (DEBUG_CONC_LEVEL_TMP)
@@ -6794,7 +6753,7 @@ static int ref_list_export_GSP(struct kndClass *self,
 
     /* first elem */
     if (parent_item->val_size) {
-        c = parent_item->conc;
+        c = parent_item->class;
         if (c) {
             err = out->writec(out, ' ');
             if (err) return err;
@@ -6804,7 +6763,7 @@ static int ref_list_export_GSP(struct kndClass *self,
     }
 
     for (item = parent_item->list; item; item = item->next) {
-        c = item->conc;
+        c = item->class;
         if (!c) continue;
 
         err = out->writec(out, ' ');
@@ -6825,7 +6784,7 @@ static int aggr_item_export_GSP(struct kndClass *self,
                                 struct kndAttrItem *parent_item)
 {
     struct glbOutput *out = self->repo->out;
-    struct kndClass *c = parent_item->conc;
+    struct kndClass *c = parent_item->class;
     struct kndAttrItem *item;
     struct kndAttr *attr;
     int err;
@@ -6899,7 +6858,7 @@ static int aggr_item_export_GSP(struct kndClass *self,
         if (err) return err;
     }
 
-    //if (parent_item->conc) {
+    //if (parent_item->class) {
     err = out->writec(out, '}');
     if (err) return err;
 
@@ -6926,16 +6885,16 @@ static int aggr_list_export_GSP(struct kndClass *self,
     if (err) return err;
 
     /* first elem */
-    /*if (parent_item->conc) {
-        c = parent_item->conc;
+    /*if (parent_item->class) {
+        c = parent_item->class;
         if (c) { */
-    if (parent_item->conc) {
+    if (parent_item->class) {
         err = aggr_item_export_GSP(self, parent_item);
         if (err) return err;
     }
 
     for (item = parent_item->list; item; item = item->next) {
-        c = item->conc;
+        c = item->class;
 
         err = aggr_item_export_GSP(self, item);
         if (err) return err;
@@ -7008,7 +6967,7 @@ static int export_GSP(struct kndClass *self)
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. GSP export of \"%.*s\" [%.*s]",
-                self->name_size, self->name,
+                self->entry->name_size, self->entry->name,
                 self->entry->id_size, self->entry->id);
 
     err = out->writec(out, '{');
@@ -7020,7 +6979,7 @@ static int export_GSP(struct kndClass *self)
     err = out->writec(out, ' ');
     if (err) return err;
 
-    err = out->write(out, self->name, self->name_size);
+    err = out->write(out, self->entry->name, self->entry->name_size);
     if (err) return err;
 
     if (self->tr) {
@@ -7070,7 +7029,7 @@ static int export_GSP(struct kndClass *self)
         for (item = self->base_items; item; item = item->next) {
             err = out->writec(out, '{');
             if (err) return err;
-            err = out->write(out, item->conc->entry->id, item->conc->entry->id_size);
+            err = out->write(out, item->class->entry->id, item->class->entry->id_size);
             if (err) return err;
  
             if (item->attrs) {
@@ -7109,7 +7068,7 @@ static int build_class_updates(struct kndClass *self,
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size;
-    struct glbOutput *out = self->task->update;
+    struct glbOutput *out = self->repo->task->update;
     struct kndClass *c;
     struct kndObject *obj;
     struct kndClassUpdate *class_update;
@@ -7118,13 +7077,13 @@ static int build_class_updates(struct kndClass *self,
     for (size_t i = 0; i < update->num_classes; i++) {
         class_update = update->classes[i];
         c = class_update->conc;
-        c->task = self->task;
+        c->repo->task = self->repo->task;
 
         err = out->write(out, "{class ", strlen("{class "));   RET_ERR();
         err = out->write(out, c->name, c->name_size);
 
         err = out->write(out, "(id ", strlen("(id "));         RET_ERR();
-        buf_size = sprintf(buf, "%zu", c->numid);
+        buf_size = sprintf(buf, "%zu", c->entry->numid);
         err = out->write(out, buf, buf_size);                  RET_ERR();
         
         /* export obj updates */
@@ -7158,12 +7117,12 @@ static int export_updates(struct kndClass *self,
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size;
     struct tm tm_info;
-    struct glbOutput *out = self->task->update;
+    struct glbOutput *out = self->repo->task->update;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. export updates in \"%.*s\"..",
-                self->name_size, self->name);
+                self->entry->name_size, self->entry->name);
 
     out->reset(out);
     err = out->write(out, "{task{update", strlen("{task{update"));               RET_ERR();
@@ -7177,8 +7136,8 @@ static int export_updates(struct kndClass *self,
 
     /* spec body */
     err = out->write(out,
-                     self->task->update_spec,
-                     self->task->update_spec_size);                              RET_ERR();
+                     self->repo->task->update_spec,
+                     self->repo->task->update_spec_size);                              RET_ERR();
 
     /* state information */
     err = out->write(out, "(state ", strlen("(state "));                         RET_ERR();
@@ -7213,16 +7172,11 @@ static gsl_err_t set_liquid_class_id(void *obj, const char *val, size_t val_size
     err = knd_parse_num((const char*)val, &numval);
     if (err) return make_gsl_err_external(err);
 
-    c->numid = numval;
-    if (c->entry) {
-        c->entry->numid = numval;
-    }
-
-    //self->curr_class->update_id = self->curr_update->id;
+    c->entry->numid = numval;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. set curr liquid class id: %zu  update id: %zu",
-                c->numid, c->numid);
+                c->entry->numid, c->entry->numid);
 
     return make_gsl_err(gsl_OK);
 }
@@ -7363,7 +7317,7 @@ static int apply_liquid_updates(struct kndClass *self,
     struct kndClass *c;
     struct kndClassEntry *entry;
     struct kndRel *rel;
-    struct kndStateControl *state_ctrl = self->task->state_ctrl;
+    struct kndStateControl *state_ctrl = self->repo->task->state_ctrl;
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = new_liquid_update,
@@ -7427,19 +7381,19 @@ static int apply_liquid_updates(struct kndClass *self,
 static int knd_update_state(struct kndClass *self)
 {
     struct kndClass *c;
-    struct kndStateControl *state_ctrl = self->task->state_ctrl;
+    struct kndStateControl *state_ctrl = self->repo->task->state_ctrl;
     struct kndUpdate *update;
     struct kndClassUpdate *class_update;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log("..update state of \"%.*s\"",
-                self->name_size, self->name);
+                self->entry->name_size, self->entry->name);
 
     /* new update obj */
     err = self->mempool->new_update(self->mempool, &update);                      RET_ERR();
-    update->spec = self->task->spec;
-    update->spec_size = self->task->spec_size;
+    update->spec = self->repo->task->spec;
+    update->spec_size = self->repo->task->spec_size;
 
     /* create index of class updates */
     update->classes = calloc(self->inbox_size, sizeof(struct kndClassUpdate*));
@@ -7449,8 +7403,8 @@ static int knd_update_state(struct kndClass *self)
     for (c = self->inbox; c; c = c->next) {
         err = self->mempool->new_class_update(self->mempool, &class_update);      RET_ERR();
 
-        self->next_numid++;
-        c->numid = self->next_numid;
+        self->repo->next_class_numid++;
+        c->entry->numid = self->repo->next_class_numid;
 
         err = c->resolve(c, class_update);
         if (err) {
@@ -7501,10 +7455,10 @@ static int restore(struct kndClass *self)
     memset(state_buf, '0', KND_STATE_SIZE);
     if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. conc \"%s\" restoring DB state in: %s",
-                self->name, self->repo->dbpath, KND_STATE_SIZE);
+                self->entry->name, self->repo->path, KND_STATE_SIZE);
 
     out->reset(out);
-    err = out->write(out, self->repo->dbpath, self->repo->dbpath_size);
+    err = out->write(out, self->repo->path, self->repo->path_size);
     if (err) return err;
     err = out->write(out, "/schema/class_state.id", strlen("/schema/class_state.id"));
     if (err) return err;
@@ -7564,7 +7518,7 @@ static int restore(struct kndClass *self)
 
 static int export(struct kndClass *self)
 {
-    switch(self->format) {
+    switch(self->repo->task->format) {
     case KND_FORMAT_JSON:
         return export_JSON(self);
         /*case KND_FORMAT_HTML:
@@ -7575,7 +7529,7 @@ static int export(struct kndClass *self)
         break;
     }
 
-    knd_log("-- format %d not supported :(", self->format);
+    knd_log("-- format %d not supported :(", self->repo->task->format);
     return knd_FAIL;
 }
  
@@ -7602,7 +7556,7 @@ static int freeze_objs(struct kndClass *self,
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. freezing objs of class \"%.*s\", total:%zu  valid:%zu",
-                self->name_size, self->name,
+                self->entry->name_size, self->entry->name,
                 self->entry->obj_name_idx->size, self->entry->num_objs);
 
     out = self->repo->out;
@@ -7870,8 +7824,8 @@ static int freeze(struct kndClass *self)
     curr_dir +=      num_size;
     curr_dir_size += num_size;
 
-    if (self->next_numid) {
-        num_size = sprintf(curr_dir, "{tot %zu}", self->next_numid);
+    if (self->repo->next_class_numid) {
+        num_size = sprintf(curr_dir, "{tot %zu}", self->repo->next_class_numid);
         curr_dir +=      num_size;
         curr_dir_size += num_size;
     }
@@ -7924,7 +7878,7 @@ static int freeze(struct kndClass *self)
     
     if (DEBUG_CONC_LEVEL_2)
         knd_log("== %.*s (%.*s)   DIR: \"%.*s\"   [%lu]",
-                self->name_size, self->name, self->entry->id_size, self->entry->id,
+                self->entry->name_size, self->entry->name, self->entry->id_size, self->entry->id,
                 curr_dir_size,
                 self->dir_buf, (unsigned long)curr_dir_size);
 

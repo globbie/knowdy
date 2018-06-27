@@ -504,7 +504,7 @@ static gsl_err_t parse_proc(void *obj,
     struct kndMemPool *mempool;
     int err;
 
-    mempool = self->parent_conc->mempool;
+    mempool = self->parent_class->mempool;
     err = mempool->new_proc(mempool, &proc);
     if (err) return make_gsl_err_external(err);
 

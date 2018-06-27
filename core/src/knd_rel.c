@@ -2087,13 +2087,21 @@ extern int
 kndRel_new(struct kndRel **rel)
 {
     struct kndRel *self;
+    int err;
 
     self = malloc(sizeof(struct kndRel));
     if (!self) return knd_NOMEM;
 
     memset(self, 0, sizeof(struct kndRel));
 
+    err = ooDict_new(&self->rel_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+    err = ooDict_new(&self->rel_name_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+
     kndRel_init(self);
     *rel = self;
     return knd_OK;
+ error:
+    return err;
 }

@@ -6,14 +6,16 @@
 
 #include "learner-service.h"
 #include <knd_shard.h>
+#include <knd_utils.h>
 
 static int
 task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
 {
     struct kndLearnerService *self = cb_arg;
-    const char *b;
     const char *data;
     size_t size;
+    char *result = NULL;
+    size_t result_size = 0;
     int err;
 
     err = task->get_data(task, 0, &data, &size);
@@ -22,7 +24,8 @@ task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
         return -1;
     }
 
-    err = self->shard->run_task(self->shard, data, size);
+    err = self->shard->run_task(self->shard, data, size,
+                                result, &result_size);
     if (err != knd_OK) {
         knd_log("-- task execution failed");
         return -1;
@@ -53,8 +56,7 @@ task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
     return 0;
 }
 
-
-static gsl_err_t
+/*static gsl_err_t
 run_set_address(void *obj, const char *val, size_t val_size)
 {
     struct kndLearnerService *self = obj;
@@ -69,7 +71,7 @@ run_set_address(void *obj, const char *val, size_t val_size)
 
     return make_gsl_err(gsl_OK);
 }
-
+*/
 
 static int
 start__(struct kndLearnerService *self)
@@ -92,9 +94,6 @@ int kndLearnerService_new(struct kndLearnerService **service,
                           const struct kndLearnerOptions *opts)
 {
     struct kndLearnerService *self;
-    struct glbOutput *out;
-    struct kndClass *conc;
-    struct kndShard *shard;
     int err;
 
     self = calloc(1, sizeof(*self));

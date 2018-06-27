@@ -243,18 +243,16 @@ kndSet_alloc_facet(struct kndSet  *self,
     return knd_OK;
 }
 
-
 static int
 kndFacet_add_reverse_link(struct kndFacet  *self,
                           struct kndClassEntry *base,
                           struct kndSet  *set)
 {
-    struct kndClassEntry *topic = self->attr->parent_conc->entry;
+    struct kndClassEntry *topic = self->attr->parent_class->entry;
     struct ooDict *name_idx;
     int err;
 
     err = ooDict_new(&name_idx, KND_SMALL_DICT_SIZE);                                  RET_ERR();
-
     err = name_idx->set(name_idx,
                         topic->name, topic->name_size, (void*)set);                    RET_ERR();
 

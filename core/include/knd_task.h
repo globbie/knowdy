@@ -125,7 +125,7 @@ struct kndTask
 
     struct glbOutput *log;
     struct glbOutput *out;
-    struct glbOutput *file;
+    //struct glbOutput *file;
     struct glbOutput *spec_out;
     struct glbOutput *update;
     struct kndMemPool *mempool;

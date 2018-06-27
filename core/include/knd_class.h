@@ -55,7 +55,7 @@ struct kndClassVar
     size_t num_attrs;
 
     struct kndClass *parent;
-    struct kndClass *conc;
+    struct kndClass *class;
 
     struct kndMemPool *mempool;
     struct kndClassVar *next;
@@ -80,9 +80,9 @@ struct kndClassEntry
     size_t name_size;
     struct kndClass *class;
     struct kndMemPool *mempool;
+    struct kndRepo *repo;
 
     knd_state_phase phase;
-
     size_t global_offset;
     size_t curr_offset;
     size_t block_size;
@@ -121,8 +121,8 @@ struct kndClassEntry
     struct ooDict *reverse_attr_name_idx;
     //struct kndProcEntry *proc_dir;
 
-    struct kndTask *task;
-    struct glbOutput *out;
+    //struct kndTask *task;
+    //struct glbOutput *out;
 
     size_t child_count;
     struct kndClassEntry *prev;
@@ -138,13 +138,12 @@ struct kndClassUpdateRef
 
 struct kndClass
 {
-    char name[KND_NAME_SIZE];
+    const char *name;
     size_t name_size;
 
-    size_t numid;
-    size_t next_numid;
-
+    struct kndClassEntry *entry;
     struct kndRepo *repo;
+
     struct kndState *state;
     size_t num_states;
 
@@ -154,8 +153,8 @@ struct kndClass
     struct kndTranslation *tr;
     struct kndTranslation *summary;
 
-    struct kndTask *task;
-    knd_format format;
+    //struct kndTask *task;
+    //knd_format format;
     size_t depth;
     size_t max_depth;
 
@@ -180,7 +179,6 @@ struct kndClass
     struct kndAttr *curr_attr;
     struct kndObject  *curr_obj;
 
-    struct kndClassEntry *entry;
     struct kndConcFolder *folders;
     size_t num_folders;
 
@@ -207,7 +205,6 @@ struct kndClass
     // TODO: need to find an alternative solution to this!
     char dir_buf[KND_MAX_CONC_CHILDREN * KND_DIR_ENTRY_SIZE];
     //size_t dir_buf_size;
-
 
     struct kndUpdate *curr_update;
 
