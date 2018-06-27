@@ -64,7 +64,6 @@ static void reset(struct kndTask *self)
     self->http_code = HTTP_OK;
     self->log->reset(self->log);
     self->out->reset(self->out);
-    self->file->reset(self->file);
     self->update->reset(self->update);
     self->spec_out->reset(self->spec_out);
 }
@@ -421,8 +420,6 @@ extern int kndTask_new(struct kndTask **task)
     err = glbOutput_new(&self->update, KND_LARGE_BUF_SIZE);
     if (err) return err;
 
-    err = glbOutput_new(&self->file, KND_FILE_BUF_SIZE);
-    if (err) return err;
 
     self->visual.text_line_height = KND_TEXT_LINE_HEIGHT;
     self->visual.text_hangindent_size = KND_TEXT_HANGINDENT_SIZE;

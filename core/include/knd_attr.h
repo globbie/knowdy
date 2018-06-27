@@ -112,8 +112,8 @@ struct kndAttrItem
     struct kndAttrItem *list_tail;
     size_t num_list_elems;
 
-    struct kndClass *conc;
-    struct kndClassEntry *conc_entry;
+    struct kndClass *class;
+    struct kndClassEntry *class_entry;
     struct kndProc *proc;
     //struct kndProcDir *proc_dir;
 
@@ -142,7 +142,7 @@ struct kndAttr
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    struct kndClass *parent_conc;
+    struct kndClass *parent_class;
     struct kndClass *conc;
 
     char uniq_attr_name[KND_SHORT_NAME_SIZE];

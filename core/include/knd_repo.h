@@ -19,18 +19,18 @@ struct kndRepo
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    size_t state;
- 
-    char path[KND_TEMP_BUF_SIZE];
-    size_t path_size;
-
-    char sid[KND_TID_SIZE + 1];
+    char sid[KND_TID_SIZE];
     size_t sid_size;
 
-    const char *dbpath;
-    size_t dbpath_size;
+    size_t state;
+ 
+    char path[KND_PATH_SIZE];
+    size_t path_size;
 
-    const char *frozen_output_file_name;
+    char schema_path[KND_PATH_SIZE];
+    size_t schema_path_size;
+
+    char frozen_output_file_name[KND_PATH_SIZE];
     size_t frozen_output_file_name_size;
 
     const char *frozen_name_idx_path;
@@ -41,6 +41,7 @@ struct kndRepo
 
     struct glbOutput *out;
     struct glbOutput *dir_out;
+    struct glbOutput *file_out;
     struct glbOutput *path_out;
     struct glbOutput *log;
     
@@ -66,6 +67,8 @@ struct kndRepo
     size_t intersect_matrix_size;
 
     struct kndClass *root_class;
+    size_t next_class_numid;
+
     struct kndProc *root_proc;
     struct kndRel *root_rel;
     
@@ -74,7 +77,7 @@ struct kndRepo
     /**********  interface methods  **********/
     void (*del)(struct kndRepo *self);
     void (*str)(struct kndRepo *self);
-    void (*init)(struct kndRepo *self);
+    int (*init)(struct kndRepo *self);
 
     int (*read_state)(struct kndRepo *self, const char *rec, size_t *chunk_size);
     int (*parse_task)(void *self, const char *rec, size_t *chunk_size);
@@ -93,5 +96,5 @@ struct kndRepo
     int (*export)(struct kndRepo *self, knd_format format);
 };
 
-extern void kndRepo_init(struct kndRepo *self);
+extern int kndRepo_init(struct kndRepo *self);
 extern int kndRepo_new(struct kndRepo **self, struct kndMemPool *mempool);

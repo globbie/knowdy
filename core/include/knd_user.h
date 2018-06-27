@@ -10,6 +10,7 @@ struct glbOutput;
 struct kndRepo;
 struct kndRepoSet;
 struct kndStateManager;
+struct kndMemPool;
 
 typedef enum knd_user_role { KND_USER_ROLE_RETRIEVER, 
                              KND_USER_ROLE_LEARNER
@@ -28,27 +29,21 @@ struct kndRepoAccess
     
 struct kndUser
 {
-    char id[KND_ID_SIZE + 1];
-    char last_uid[KND_ID_SIZE + 1];
+    char id[KND_ID_SIZE];
+    char last_uid[KND_ID_SIZE];
 
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    char db_state[KND_ID_SIZE + 1];
-    
+    char db_state[KND_ID_SIZE];
+
     knd_user_role role;
 
-    const char *dbpath;
-    size_t dbpath_size;
-    
-    char path[KND_TEMP_BUF_SIZE];
+    char path[KND_PATH_SIZE];
     size_t path_size;
 
-    char sid[KND_NAME_SIZE];
+    char sid[KND_TID_SIZE];
     size_t sid_size;
-
-    char frozen_output_file_name[KND_PATH_SIZE];
-    size_t frozen_output_file_name_size;
 
     knd_format format;
     size_t expand_depth;
@@ -66,8 +61,7 @@ struct kndUser
 
     struct kndObject *curr_user;
 
-    struct kndClass *root_class;
-
+    struct kndShard *shard;
     struct kndTask *task;
     struct glbOutput *out;
     struct glbOutput *log;
@@ -75,9 +69,7 @@ struct kndUser
     void *update_service;
     
     struct kndRepo *repo;
-    
-    struct ooDict *class_idx;
-    struct ooDict *browse_class_idx;
+    struct kndMemPool *mempool;
    
     /**********  interface methods  **********/
     void (*del)(struct kndUser *self);
@@ -106,7 +98,5 @@ struct kndUser
     int (*read)(struct kndUser *self, const char *rec);
 };
 
-
-extern int kndUser_init(struct kndUser *self);
-extern int kndUser_new(struct kndUser **self);
+extern int kndUser_new(struct kndUser **self, struct kndMemPool *mempool);
 

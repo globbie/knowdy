@@ -2120,14 +2120,19 @@ extern int
 kndProc_new(struct kndProc **proc)
 {
     struct kndProc *self;
-
+    int err;
     self = malloc(sizeof(struct kndProc));
     if (!self) return knd_NOMEM;
 
     memset(self, 0, sizeof(struct kndProc));
 
+    err = ooDict_new(&self->proc_name_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+
     kndProc_init(self);
 
     *proc = self;
     return knd_OK;
+ error:
+    return err;
 }
