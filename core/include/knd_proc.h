@@ -150,6 +150,8 @@ struct kndProc
     size_t id;
     size_t next_id;
 
+    struct kndRepo *repo;
+
     struct glbOutput *out;
     struct glbOutput *dir_out;
     struct glbOutput *log;

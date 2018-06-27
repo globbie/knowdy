@@ -134,9 +134,6 @@ struct kndTask
     char delivery_addr[KND_NAME_SIZE];
     size_t delivery_addr_size;
 
-    void *delivery;
-    void *publisher;
-
     /******** public methods ********/
     void (*str)(struct kndTask *self,
                size_t depth);

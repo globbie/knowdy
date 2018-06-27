@@ -141,9 +141,9 @@ struct kndClass
     size_t name_size;
 
     size_t numid;
-    //size_t owner_id;
     size_t next_numid;
 
+    struct kndRepo *repo;
     struct kndState *state;
     size_t num_states;
 
@@ -153,12 +153,7 @@ struct kndClass
     struct kndTranslation *tr;
     struct kndTranslation *summary;
 
-    /* initial scheme location */
-    const char *dbpath;
-    size_t dbpath_size;
-
     struct kndTask *task;
-
     knd_format format;
     size_t depth;
     size_t max_depth;
@@ -176,15 +171,12 @@ struct kndClass
 
     struct kndClassEntry *bases[KND_MAX_BASES];
     size_t num_bases;
-
-    //bool ignore_children;
     bool is_resolved;
 
     struct kndClass *root_class;
     struct kndClass *curr_class;
     struct kndClass *curr_baseclass;
     struct kndAttr *curr_attr;
-    //size_t attrs_left;
     struct kndObject  *curr_obj;
 
     struct kndClassEntry *entry;
@@ -216,22 +208,10 @@ struct kndClass
     //size_t dir_buf_size;
 
 
-    // TODO: all paths should go to kndRepo
-    const char *frozen_output_file_name;
-    size_t frozen_output_file_name_size;
-    size_t frozen_size;
-    const char *frozen_name_idx_path;
-    size_t frozen_name_idx_path_size;
-
     struct kndUpdate *curr_update;
+
     struct kndClass *next;
 
-    struct kndUser *user;
-
-    struct glbOutput *out;
-    struct glbOutput *dir_out;
-    struct glbOutput *log;
-    
     /***********  public methods ***********/
     void (*init)(struct kndClass  *self);
     void (*del)(struct kndClass   *self);
@@ -259,9 +239,6 @@ struct kndClass
                       const char *rec,
                       size_t *total_size);
 
-    //int (*build_diff)(struct kndClass   *self,
-    //                  const char *start_state,
-    //                  size_t global_state_count);
     int (*coordinate)(struct kndClass *self);
 
     int (*resolve)(struct kndClass     *self,

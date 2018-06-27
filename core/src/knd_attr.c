@@ -199,9 +199,6 @@ static int export_JSON(struct kndAttr *self)
     }
 
     if (self->proc) {
-
-        knd_log("NB: ...running proc to calculate an attr!");
-
         err = out->write(out, ",\"proc\":", strlen(",\"proc\":"));
         if (err) return err;
         p = self->proc;
@@ -503,15 +500,22 @@ static gsl_err_t parse_proc(void *obj,
 {
     struct kndAttr *self = obj;
     struct kndProc *proc;
+    struct kndProcEntry *entry;
+    struct kndMemPool *mempool;
     int err;
 
-    err = self->parent_conc->mempool->new_proc(self->parent_conc->mempool,
-                                               &proc);
+    mempool = self->parent_conc->mempool;
+    err = mempool->new_proc(mempool, &proc);
     if (err) return make_gsl_err_external(err);
 
-    proc->mempool = self->parent_conc->mempool;
-    proc->proc_call.mempool = self->parent_conc->mempool;
-    
+    proc->mempool = mempool;
+    proc->proc_call.mempool = mempool;
+
+    err = mempool->new_proc_entry(mempool, &entry); 
+    if (err) return make_gsl_err_external(err);
+    entry->proc = proc;
+    proc->entry = entry;
+
     err = proc->read(proc, rec, total_size);
     if (err) return make_gsl_err_external(err);
 
