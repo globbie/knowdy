@@ -2228,7 +2228,7 @@ extern gsl_err_t import_attr_var(void *obj,
     int err;
 
     /* class var not resolved */
-    if (!self->entry) return make_gsl_err_external(knd_FAIL);
+    if (!self->entry) return *total_size = 0, make_gsl_err_external(knd_FAIL);
 
     mempool = self->entry->repo->mempool;
 
@@ -2239,7 +2239,7 @@ extern gsl_err_t import_attr_var(void *obj,
     err = mempool->new_attr_var(mempool, &attr_var);
     if (err) {
         knd_log("-- attr item mempool exhausted");
-        return make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(err);
     }
     attr_var->class_var = self;
 
@@ -2344,7 +2344,7 @@ static gsl_err_t import_attr_var_list(void *obj,
                 name_size, name, 32, rec);
 
     err = mempool->new_attr_var(mempool, &attr_var);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = self;
 
     memcpy(attr_var->name, name, name_size);
@@ -2381,7 +2381,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
     int err;
 
     err = mempool->new_attr_var(mempool, &attr_var);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->parent = self;
     attr_var->class_var = self->class_var;
 
@@ -2396,7 +2396,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
     if (!self->attr->conc) {
         knd_log("-- no conc in attr: \"%.*s\"",
                 self->attr->name_size, self->attr->name);
-        return make_gsl_err_external(knd_FAIL);
+        return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
     conc = self->attr->conc;
@@ -2406,7 +2406,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
         knd_log("-- no attr \"%.*s\" in class \"%.*s\" :(",
                 name_size, name,
                 conc->entry->name_size, conc->entry->name);
-        if (err) return make_gsl_err_external(err);
+        if (err) return *total_size = 0, make_gsl_err_external(err);
     }
 
     switch (attr->type) {
@@ -2421,12 +2421,12 @@ static gsl_err_t read_nested_attr_var(void *obj,
             knd_log("-- aggr ref not resolved :( no such class: %.*s",
                     attr->ref_classname_size,
                     attr->ref_classname);
-            return make_gsl_err(gsl_FAIL);
+            return *total_size = 0, make_gsl_err(gsl_FAIL);
         }
 
         if (!entry->class) {
             err = unfreeze_class(conc, entry, &entry->class);
-            if (err) return make_gsl_err_external(err);
+            if (err) return *total_size = 0, make_gsl_err_external(err);
         }
         attr->conc = entry->class;
         break;
@@ -2470,7 +2470,7 @@ static gsl_err_t import_nested_attr_var(void *obj,
     err = mempool->new_attr_var(mempool, &attr_var);
     if (err) {
         knd_log("-- mempool exhausted: attr item");
-        return make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(err);
     }
     attr_var->class_var = self->class_var;
 
@@ -2720,7 +2720,7 @@ static gsl_err_t validate_attr_var(void *obj,
                 name_size, name, mempool);
 
     err = mempool->new_attr_var(mempool, &attr_var);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = class_var;
 
     err = get_attr(class_var->entry->class, name, name_size, &attr);
@@ -2728,7 +2728,7 @@ static gsl_err_t validate_attr_var(void *obj,
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                 name_size, name,
                 class_var->entry->name_size, class_var->entry->name);
-        return make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(err);
     }
 
     attr_var->attr = attr;
@@ -3341,7 +3341,7 @@ static gsl_err_t parse_attr_select(void *obj,
     };
     int err, e;
 
-    if (!self->curr_baseclass) return make_gsl_err_external(knd_FAIL);
+    if (!self->curr_baseclass) return *total_size = 0, make_gsl_err_external(knd_FAIL);
 
     err = get_attr(self->curr_baseclass, name, name_size, &attr);
     if (err) {
@@ -3351,14 +3351,14 @@ static gsl_err_t parse_attr_select(void *obj,
                 self->curr_baseclass->name);
         log->reset(log);
         e = log->write(log, name, name_size);
-        if (e) return make_gsl_err_external(e);
+        if (e) return *total_size = 0, make_gsl_err_external(e);
 
         e = log->write(log, ": no such attribute",
                                strlen(": no such attribute"));
-        if (e) return make_gsl_err_external(e);
+        if (e) return *total_size = 0, make_gsl_err_external(e);
         self->entry->repo->task->http_code = HTTP_NOT_FOUND;
 
-        return make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(err);
     }
 
     if (DEBUG_CONC_LEVEL_2) {
@@ -4794,14 +4794,14 @@ static gsl_err_t validate_attr_var_list(void *obj,
                 name_size, name);
 
     err = mempool->new_attr_var(mempool, &attr_var);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
 
     err = get_attr(class_var->root_class, name, name_size, &attr);
     if (err) {
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                 name_size, name,
                 class_var->entry->name_size, class_var->entry->name);
-        return make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(err);
     }
 
     attr_var->attr = attr;
@@ -4822,12 +4822,12 @@ static gsl_err_t validate_attr_var_list(void *obj,
             knd_log("-- aggr ref not resolved :( no such class: %.*s",
                     attr->ref_classname_size,
                     attr->ref_classname);
-            return make_gsl_err(gsl_FAIL);
+            return *total_size = 0, make_gsl_err(gsl_FAIL);
         }
 
         if (!entry->class) {
             err = unfreeze_class(class_var->root_class, entry, &entry->class);
-            if (err) return make_gsl_err_external(err);
+            if (err) return *total_size = 0, make_gsl_err_external(err);
         }
         attr->conc = entry->class;
         break;

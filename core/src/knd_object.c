@@ -619,7 +619,7 @@ static gsl_err_t parse_elem(void *data,
                name_size, name, 32, rec);
     }
     err = kndObject_validate_attr(self, name, name_size, &attr, &elem);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
 
     if (elem) {
         switch (elem->attr->type) {
@@ -636,11 +636,11 @@ static gsl_err_t parse_elem(void *data,
             break;
         }
 
-        return make_gsl_err(gsl_OK);
+        return *total_size = 0, make_gsl_err(gsl_OK);
     }        
 
     err = self->mempool->new_obj_elem(self->mempool, &elem);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     elem->obj = self;
     elem->root = self->root ? self->root : self;
     elem->attr = attr;
@@ -652,9 +652,9 @@ static gsl_err_t parse_elem(void *data,
     switch (attr->type) {
     case KND_ATTR_AGGR:
         err = self->mempool->new_obj(self->mempool, &obj);
-        if (err) return make_gsl_err_external(err);
+        if (err) return *total_size = 0, make_gsl_err_external(err);
         err = self->mempool->new_state(self->mempool, &obj->state);
-        if (err) return make_gsl_err_external(err);
+        if (err) return *total_size = 0, make_gsl_err_external(err);
         obj->state->phase = self->state->phase;
 
         obj->type = KND_OBJ_AGGR;
@@ -669,13 +669,13 @@ static gsl_err_t parse_elem(void *data,
                 err = root_class->get(root_class,
                                       attr->ref_classname, attr->ref_classname_size,
                                       &c);
-                if (err) return make_gsl_err_external(err);
+                if (err) return *total_size = 0, make_gsl_err_external(err);
                 attr->conc = c;
             }
             else {
                 knd_log("-- couldn't resolve the %.*s attr :(",
                         attr->name_size, attr->name);
-                return make_gsl_err(gsl_FAIL);
+                return *total_size = 0, make_gsl_err(gsl_FAIL);
             }
         }
 
@@ -690,7 +690,7 @@ static gsl_err_t parse_elem(void *data,
         goto append_elem;
     case KND_ATTR_NUM:
         err = kndNum_new(&num);
-        if (err) return make_gsl_err_external(err);
+        if (err) return *total_size = 0, make_gsl_err_external(err);
         num->elem = elem;
         err = num->parse(num, rec, total_size);
         if (err) goto final;
@@ -699,7 +699,7 @@ static gsl_err_t parse_elem(void *data,
         goto append_elem;
     case KND_ATTR_REF:
         err = kndRef_new(&ref);
-        if (err) return make_gsl_err_external(err);
+        if (err) return *total_size = 0, make_gsl_err_external(err);
         ref->elem = elem;
         err = ref->parse(ref, rec, total_size);
         if (err) goto final;
@@ -708,7 +708,7 @@ static gsl_err_t parse_elem(void *data,
         goto append_elem;
     case KND_ATTR_TEXT:
         err = kndText_new(&text);
-        if (err) return make_gsl_err_external(err);
+        if (err) return *total_size = 0, make_gsl_err_external(err);
 
         text->elem = elem;
         err = text->parse(text, rec, total_size);
