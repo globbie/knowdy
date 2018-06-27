@@ -152,7 +152,6 @@ static int kndSet_intersect(struct kndSet *self,
                             struct kndSet **sets,
                             size_t num_sets)
 {
-    struct kndSet *smallset, *set;
     struct kndSetElemIdx *base_idx;
     struct kndSetElemIdx *idxs[KND_MAX_CLAUSES];
     size_t num_idxs = num_sets - 1;

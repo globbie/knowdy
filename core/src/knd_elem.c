@@ -106,10 +106,7 @@ kndElem_export_JSON(struct kndElem *self)
 
             obj = self->aggr;
             while (obj) {
-                obj->out = out;
-                obj->format = KND_FORMAT_JSON;
                 err = obj->export(obj);
-
                 if (obj->next) {
                     err = out->write(out, ",", 1);
                     if (err) return err;
@@ -132,7 +129,6 @@ kndElem_export_JSON(struct kndElem *self)
         err = out->write(out, "\":", strlen("\":"));
         if (err) goto final;
         
-        self->aggr->out = out;
         err = self->aggr->export(self->aggr);
         
         return err;
@@ -276,8 +272,6 @@ kndElem_export_GSP(struct kndElem *self)
         err = out->write(out, self->attr->name, self->attr->name_size);
         if (err) return err;
         
-        self->aggr->out = out;
-        self->aggr->format = KND_FORMAT_GSP;
         err = self->aggr->export(self->aggr);
 
         err = out->write(out, "}", 1);
@@ -450,7 +444,6 @@ kndElem_resolve(struct kndElem *self)
     
     if (self->aggr) {
         for (obj = self->aggr; obj; obj = obj->next) {
-            obj->log = self->log;
             err = obj->resolve(obj);
             if (err) return err;
         }

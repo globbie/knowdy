@@ -659,7 +659,6 @@ static int read_rel_incipit(struct kndRel *self,
     size_t buf_size;
     off_t offset = 0;
     int fd = self->fd;
-    gsl_err_t parser_err;
     int err;
 
     if (DEBUG_REL_LEVEL_2)
@@ -729,7 +728,6 @@ static gsl_err_t inst_entry_append(void *accu,
     struct kndSet *set;
     off_t offset = 0;
     int fd = parent_entry->fd;
-    gsl_err_t parser_err;
     int err;
 
     entry->offset = parent_entry->curr_offset;
@@ -898,7 +896,6 @@ static int read_dir_trailer(struct kndRel *self,
     int fd = self->fd;
     const char *val = NULL;
     size_t val_size = 0;
-    gsl_err_t parser_err;
     int err;
 
     if (block_size <= KND_DIR_ENTRY_SIZE)

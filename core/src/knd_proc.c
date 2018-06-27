@@ -48,7 +48,7 @@ static void proc_call_arg_str(struct kndProcCallArg *self,
             self->val_size, self->val, arg_type_size, arg_type);
 }
 
-static void base_str(struct kndProcVar *base,
+/*static void base_str(struct kndProcVar *base,
                      size_t depth)
 {
     struct kndProcArgVar *arg;
@@ -63,13 +63,13 @@ static void base_str(struct kndProcVar *base,
     }
     
 }
+*/
 
 static void str(struct kndProc *self)
 {
     struct kndTranslation *tr;
     struct kndProcArg *arg;
     struct kndProcCallArg *call_arg;
-    struct kndProcVar *base;
 
     knd_log("PROC %p: %.*s id:%.*s",
             self, self->name_size, self->name,
@@ -326,16 +326,6 @@ static gsl_err_t run_get_proc(void *obj, const char *name, size_t name_size)
 
     self->curr_proc = proc;
 
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t confirm_proc(void *obj,
-                              const char *val __attribute__((unused)),
-                              size_t val_size __attribute__((unused)))
-{
-    struct kndProc *self = obj;
-    if (DEBUG_PROC_LEVEL_1)
-        knd_log(".. confirm proc read: %p", self);
     return make_gsl_err(gsl_OK);
 }
 
@@ -1943,7 +1933,6 @@ static int read_proc_incipit(struct kndProc *self,
     size_t buf_size;
     off_t offset = 0;
     int fd = self->fd;
-    gsl_err_t parser_err;
     int err;
 
     if (DEBUG_PROC_LEVEL_2)

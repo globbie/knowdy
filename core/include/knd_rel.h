@@ -137,6 +137,8 @@ struct kndRel
 
     struct kndTranslation *tr;
 
+    struct kndRepo *repo;
+
     struct glbOutput *out;
     struct glbOutput *dir_out;
     struct glbOutput *log;
