@@ -7,6 +7,7 @@
 #include "knd_task.h"
 #include "knd_class.h"
 #include "knd_text.h"
+#include "knd_repo.h"
 #include "knd_mempool.h"
 
 #include <gsl-parser.h>
@@ -504,7 +505,7 @@ static gsl_err_t parse_proc(void *obj,
     struct kndMemPool *mempool;
     int err;
 
-    mempool = self->parent_class->mempool;
+    mempool = self->parent_class->entry->repo->mempool;
     err = mempool->new_proc(mempool, &proc);
     if (err) return make_gsl_err_external(err);
 

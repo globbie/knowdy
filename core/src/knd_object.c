@@ -61,7 +61,7 @@ static int
 kndObject_export_aggr_JSON(struct kndObject *self)
 {
     struct kndElem *elem;
-    struct glbOutput *out = self->base->repo->out;
+    struct glbOutput *out = self->base->entry->repo->out;
     int err;
 
     /* anonymous obj */
@@ -96,7 +96,7 @@ export_rel_dir_JSON(struct kndObject *self)
     struct kndRel *rel;
     struct kndRelRef *relref;
     struct kndSet *set;
-    struct glbOutput *out = self->base->repo->out;
+    struct glbOutput *out = self->base->entry->repo->out;
     int err;
 
     /* sort refs by class */
@@ -143,7 +143,7 @@ kndObject_export_JSON(struct kndObject *self)
 {
     struct kndElem *elem;
     struct kndObject *obj;
-    struct glbOutput *out = self->base->repo->out;
+    struct glbOutput *out = self->base->entry->repo->out;
     bool is_concise = true;
     bool need_separ;
     int err;
@@ -286,7 +286,7 @@ export_rels_GSP(struct kndObject *self)
 {
     struct kndRel *rel;
     struct kndRelRef *relref;
-    struct glbOutput *out = self->base->repo->out;
+    struct glbOutput *out = self->base->entry->repo->out;
     int err;
 
     /* sort refs by class */
@@ -317,7 +317,7 @@ static int
 kndObject_export_GSP(struct kndObject *self)
 {
     struct kndElem *elem;
-    struct glbOutput *out = self->base->repo->out;
+    struct glbOutput *out = self->base->entry->repo->out;
     size_t start_size = 0;
     int err;
 
@@ -486,7 +486,7 @@ static gsl_err_t present_rel(void *data,
     struct kndRelRef *relref;
     struct kndRel *rel;
     struct kndSet *set;
-    struct glbOutput *out = self->base->repo->out;
+    struct glbOutput *out = self->base->entry->repo->out;
     int err;
 
     if (!self->curr_rel) {
@@ -554,7 +554,7 @@ kndObject_validate_attr(struct kndObject *self,
     struct kndClass *conc;
     struct kndAttr *attr = NULL;
     struct kndElem *elem = NULL;
-    struct glbOutput *log = self->base->repo->log;
+    struct glbOutput *log = self->base->entry->repo->log;
     int err, e;
 
     if (DEBUG_OBJ_LEVEL_2)
@@ -963,7 +963,7 @@ static gsl_err_t remove_obj(void *data, const char *name __attribute__((unused))
     struct kndClass *root_class = conc->root_class;
     struct kndObject *obj;
     struct kndState *state;
-    struct glbOutput *log = self->base->repo->log;
+    struct glbOutput *log = self->base->entry->repo->log;
     int err;
 
     if (!self->curr_obj) {
@@ -989,7 +989,7 @@ static gsl_err_t remove_obj(void *data, const char *name __attribute__((unused))
     err = log->write(log, " obj removed", strlen(" obj removed"));
     if (err) return make_gsl_err_external(err);
 
-    self->base->repo->task->type = KND_UPDATE_STATE;
+    self->base->entry->repo->task->type = KND_UPDATE_STATE;
 
     obj->next = conc->obj_inbox;
     conc->obj_inbox = obj;
@@ -1133,7 +1133,7 @@ static int parse_select_obj(struct kndObject *self,
                             const char *rec,
                             size_t *total_size)
 {
-    struct glbOutput *log = self->base->repo->log;
+    struct glbOutput *log = self->base->entry->repo->log;
     int err;
     gsl_err_t parser_err;
 

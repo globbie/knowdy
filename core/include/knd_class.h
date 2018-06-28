@@ -28,7 +28,7 @@
 #include <gsl-parser/gsl_err.h>
 
 struct kndAttr;
-struct kndAttrItem;
+struct kndAttrVar;
 struct kndClass;
 struct glbOutput;
 struct kndTranslation;
@@ -50,14 +50,14 @@ struct kndClassVar
     char classname[KND_NAME_SIZE];
     size_t classname_size;
 
-    struct kndAttrItem *attrs;
-    struct kndAttrItem *tail;
+    struct kndAttrVar *attrs;
+    struct kndAttrVar *tail;
     size_t num_attrs;
 
     struct kndClass *parent;
     struct kndClass *class;
 
-    struct kndMemPool *mempool;
+    //struct kndMemPool *mempool;
     struct kndClassVar *next;
 };
 
@@ -79,8 +79,8 @@ struct kndClassEntry
     char name[KND_NAME_SIZE];
     size_t name_size;
     struct kndClass *class;
-    struct kndMemPool *mempool;
     struct kndRepo *repo;
+    //struct kndMemPool *mempool;
 
     knd_state_phase phase;
     size_t global_offset;
@@ -142,7 +142,7 @@ struct kndClass
     size_t name_size;
 
     struct kndClassEntry *entry;
-    struct kndRepo *repo;
+    //struct kndRepo *repo;
 
     struct kndState *state;
     size_t num_states;
@@ -183,7 +183,7 @@ struct kndClass
     size_t num_folders;
 
     /* allocator */
-    struct kndMemPool *mempool;
+    //struct kndMemPool *mempool;
 
     /* incoming */
     struct kndClass *inbox;
@@ -269,8 +269,7 @@ struct kndClass
 
 /* constructor */
 extern void kndClass_init(struct kndClass *self);
-extern int kndClass_new(struct kndClass **self,
-                        struct kndMemPool *mempool);
+extern int kndClass_new(struct kndClass **self);
 
 /* exported functions */
 extern gsl_err_t import_class_var(struct kndClassVar *self,

@@ -53,9 +53,9 @@ struct kndFacet
     knd_facet_type type;
     struct kndAttr *attr;
 
-    struct kndOutput *out;
+    //struct kndOutput *out;
     struct kndSet *parent;
-    struct kndMemPool *mempool;
+    //struct kndMemPool *mempool;
 
     struct ooDict *set_name_idx;
 

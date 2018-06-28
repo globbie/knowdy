@@ -27,7 +27,7 @@ static void del(struct kndMemPool *self)
 
     if (self->classes)         free(self->classes);
     if (self->class_entries)       free(self->class_entries);
-    if (self->conc_items)       free(self->conc_items);
+    if (self->class_vars)       free(self->class_vars);
     if (self->objs)            free(self->objs);
     if (self->obj_dirs)        free(self->obj_dirs);
     if (self->obj_entries)     free(self->obj_entries);
@@ -275,33 +275,31 @@ static int new_class_entry(struct kndMemPool *self,
     return knd_OK;
 }
 
-static int new_conc_item(struct kndMemPool *self,
+static int new_class_var(struct kndMemPool *self,
                          struct kndClassVar **result)
 {
     struct kndClassVar *item;
 
-    if (self->num_conc_items >= self->max_conc_items) {
+    if (self->num_class_vars >= self->max_class_vars) {
         return knd_LIMIT;
     }
-    item = &self->conc_items[self->num_conc_items];
+    item = &self->class_vars[self->num_class_vars];
     memset(item, 0, sizeof(struct kndClassVar));
-    item->mempool = self;
-    self->num_conc_items++;
+    self->num_class_vars++;
     *result = item;
     return knd_OK;
 }
 
 static int new_attr_var(struct kndMemPool *self,
-                         struct kndAttrItem **result)
+                         struct kndAttrVar **result)
 {
-    struct kndAttrItem *item;
+    struct kndAttrVar *item;
 
     if (self->num_attr_vars >= self->max_attr_vars) {
         return knd_LIMIT;
     }
     item = &self->attr_vars[self->num_attr_vars];
-    memset(item, 0, sizeof(struct kndAttrItem));
-    item->mempool = self;
+    memset(item, 0, sizeof(struct kndAttrVar));
     self->num_attr_vars++;
     *result = item;
     return knd_OK;
@@ -567,7 +565,7 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_users)        self->max_users =   KND_MIN_USERS;
     if (!self->max_classes)      self->max_classes = KND_MIN_CLASSES;
     if (!self->max_class_entries)    self->max_class_entries = self->max_classes;
-    if (!self->max_conc_items)   self->max_conc_items = KND_MIN_CLASSES;
+    if (!self->max_class_vars)   self->max_class_vars = KND_MIN_CLASSES;
     if (!self->max_attr_vars)   self->max_attr_vars = KND_MIN_CLASSES;
 
     if (!self->max_objs)         self->max_objs =    KND_MIN_OBJS;
@@ -604,12 +602,12 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    self->conc_items = calloc(self->max_conc_items, sizeof(struct kndClassVar));
-    if (!self->conc_items) {
+    self->class_vars = calloc(self->max_class_vars, sizeof(struct kndClassVar));
+    if (!self->class_vars) {
         knd_log("-- conc items not allocated :(");
         return knd_NOMEM;
     }
-    self->attr_vars = calloc(self->max_attr_vars, sizeof(struct kndAttrItem));
+    self->attr_vars = calloc(self->max_attr_vars, sizeof(struct kndAttrVar));
     if (!self->attr_vars) {
         knd_log("-- attr items not allocated :(");
         return knd_NOMEM;
@@ -785,9 +783,9 @@ static int alloc(struct kndMemPool *self)
     }
 
     /* TODO:
-      knd_log("TOTAL allocations: classes:%zu conc_items:%zu objs:%zu  "
+      knd_log("TOTAL allocations: classes:%zu class_vars:%zu objs:%zu  "
             "elems:%zu  rels:%zu  procs:%zu",
-            self->max_classes, self->max_conc_items, self->max_objs, self->max_elems,
+            self->max_classes, self->max_class_vars, self->max_objs, self->max_elems,
             self->max_rels, self->max_procs);
     */
     return knd_OK;
@@ -810,10 +808,10 @@ parse_memory_settings(struct kndMemPool *self, const char *rec, size_t *total_si
             .obj = &self->max_classes
         },
         {
-            .name = "max_conc_items",
-            .name_size = strlen("max_conc_items"),
+            .name = "max_class_vars",
+            .name_size = strlen("max_class_vars"),
             .parse = gsl_parse_size_t,
-            .obj = &self->max_conc_items
+            .obj = &self->max_class_vars
         },
         {
             .name = "max_attr_vars",
@@ -945,7 +943,7 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_class_update_ref = new_class_update_ref;
     self->new_class = new_class;
     self->new_class_entry = new_class_entry;
-    self->new_conc_item = new_conc_item;
+    self->new_class_var = new_class_var;
     self->new_attr_var = new_attr_var;
     self->new_obj = new_obj;
     self->new_obj_dir = new_obj_dir;

@@ -234,7 +234,6 @@ kndSet_alloc_facet(struct kndSet  *self,
     err = ooDict_new(&f->set_name_idx, KND_MEDIUM_DICT_SIZE);                          RET_ERR();
     f->attr = attr;
     f->parent = self;
-    f->mempool = self->mempool;
 
     self->facets[self->num_facets] = f;
     self->num_facets++;
@@ -267,6 +266,7 @@ kndFacet_alloc_set(struct kndFacet  *self,
                    struct kndSet  **result)
 {
     struct kndSet *set;
+    struct kndMemPool *mempool = self->attr->parent_class->entry->repo->mempool;
     int err;
 
     set = self->set_name_idx->get(self->set_name_idx,
@@ -276,11 +276,9 @@ kndFacet_alloc_set(struct kndFacet  *self,
         return knd_OK;
     }
 
-    err = self->mempool->new_set(self->mempool, &set);                            RET_ERR();
+    err = mempool->new_set(mempool, &set);                            RET_ERR();
     set->type = KND_SET_CLASS;
-
     set->base = base;
-    set->mempool = self->mempool;
     set->parent_facet = self;
 
     err = self->set_name_idx->set(self->set_name_idx,

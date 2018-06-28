@@ -565,6 +565,7 @@ kndRepo_new(struct kndRepo **repo,
     struct kndRepo *self;
     struct kndStateControl *state_ctrl;
     struct kndClass *c;
+    struct kndClassEntry *class_entry;
     struct kndProc *proc;
     struct kndRel *rel;
     int err;
@@ -592,11 +593,13 @@ kndRepo_new(struct kndRepo **repo,
     self->state_ctrl = state_ctrl;
    
     err = mempool->new_class(mempool, &c);                                        RET_ERR();
-    err = mempool->new_class_entry(mempool, &c->entry);                           RET_ERR();
-    c->entry->name[0] = '/';
-    c->entry->name_size = 1;
-    c->entry->class = c;
-    c->repo = self;
+    err = mempool->new_class_entry(mempool, &class_entry);                        RET_ERR();
+    class_entry->name[0] = '/';
+    class_entry->name_size = 1;
+    class_entry->repo = self;
+    class_entry->class = c;
+    c->entry = class_entry;
+
     self->root_class = c;
 
     /* specific allocations for the root class */

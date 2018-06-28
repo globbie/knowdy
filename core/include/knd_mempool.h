@@ -101,11 +101,11 @@ struct kndMemPool
     size_t max_class_entries;
     size_t num_class_entries;
 
-    struct kndClassVar *conc_items;
-    size_t max_conc_items;
-    size_t num_conc_items;
+    struct kndClassVar *class_vars;
+    size_t max_class_vars;
+    size_t num_class_vars;
     
-    struct kndAttrItem *attr_vars;
+    struct kndAttrVar *attr_vars;
     size_t max_attr_vars;
     size_t num_attr_vars;
 
@@ -224,10 +224,10 @@ struct kndMemPool
                      struct kndClass **result);
     int (*new_class_entry)(struct kndMemPool   *self,
                            struct kndClassEntry **result);
-    int (*new_conc_item)(struct kndMemPool   *self,
+    int (*new_class_var)(struct kndMemPool   *self,
                          struct kndClassVar **result);
     int (*new_attr_var)(struct kndMemPool   *self,
-                         struct kndAttrItem **result);
+                         struct kndAttrVar **result);
     int (*new_obj)(struct kndMemPool   *self,
                    struct kndObject **result);
     int (*new_obj_dir)(struct kndMemPool   *self,

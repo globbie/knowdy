@@ -1329,7 +1329,7 @@ static gsl_err_t parse_proc_call_arg(void *obj,
     self->args = call_arg;
     self->num_args++;
 
-    err = self->mempool->new_conc_item(self->mempool, &class_var);
+    err = self->mempool->new_class_var(self->mempool, &class_var);
     if (err) {
         knd_log("-- class var alloc failed :(");
         return make_gsl_err_external(err);
