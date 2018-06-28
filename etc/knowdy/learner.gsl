@@ -3,12 +3,12 @@
       {path /var/lib/knowdy/db}
       {schemas /etc/knowdy/schemas}
       {sid AUTH_SERVER_SID}
-      {address localhost:10001}
+      {-address localhost:10001-}
 
       {memory
          {max_states 10000}
          {max_classes 100000}
-         {max_conc_items 100000}
+         {-max_conc_items 100000-}
          {max_attrs 100000}
          {max_objs 1500000}
          {max_elems 1500000}
