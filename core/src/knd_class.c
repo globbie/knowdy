@@ -5456,6 +5456,7 @@ static int read_obj_entry(struct kndClass *self,
     size_t file_size = 0;
     struct stat file_info;
     int err;
+    gsl_err_t parser_err;
 
     /* parse DB rec */
     filename = self->entry->repo->frozen_output_file_name;
@@ -5546,12 +5547,12 @@ static int read_obj_entry(struct kndClass *self,
     obj->name = entry->name;
     obj->name_size = entry->name_size;
 
-    err = obj->read(obj, c, &chunk_size);
-    if (err) {
+    parser_err = obj->read(obj, c, &chunk_size);
+    if (parser_err.code) {
         knd_log("-- failed to parse obj %.*s :(",
                 obj->name_size, obj->name);
         obj->del(obj);
-        return err;
+        return gsl_err_to_knd_err_codes(parser_err);
     }
 
     if (DEBUG_CONC_LEVEL_2)
