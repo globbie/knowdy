@@ -186,9 +186,9 @@ struct kndObject
                   size_t *total_size,
                   knd_format format);
 
-    int (*update)(struct kndObject *self,
-                  const char *rec,
-                  size_t *total_size);
+//    int (*update)(struct kndObject *self,
+//                  const char *rec,
+//                  size_t *total_size);
     
     int (*contribute)(struct kndObject *self, size_t point_num, size_t orig_pos);
 
