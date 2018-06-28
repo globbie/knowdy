@@ -56,22 +56,14 @@ task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
     return 0;
 }
 
-/*static gsl_err_t
+static gsl_err_t
 run_set_address(void *obj, const char *val, size_t val_size)
 {
     struct kndLearnerService *self = obj;
-    struct addrinfo *address;
-    int err;
-
-    err = addrinfo_new(&address, val, val_size);
-    if (err != 0) return make_gsl_err(gsl_FAIL);
-
-    err = self->entry_point->set_address(self->entry_point, address);
-    if (err != 0) return make_gsl_err(gsl_FAIL);
 
     return make_gsl_err(gsl_OK);
 }
-*/
+
 
 static int
 start__(struct kndLearnerService *self)
@@ -94,6 +86,7 @@ int kndLearnerService_new(struct kndLearnerService **service,
                           const struct kndLearnerOptions *opts)
 {
     struct kndLearnerService *self;
+    struct addrinfo *address;
     int err;
 
     self = calloc(1, sizeof(*self));
@@ -108,8 +101,17 @@ int kndLearnerService_new(struct kndLearnerService **service,
     self->entry_point->options.role = KMQ_TARGET;
     self->entry_point->options.callback = task_callback;
     self->entry_point->options.cb_arg = self;
-    self->knode->add_endpoint(self->knode, self->entry_point);
 
+    err = addrinfo_new(&address,
+                       "localhost:10001",
+                       strlen("localhost:10001"));
+    if (err != 0) goto error;
+
+    err = self->entry_point->set_address(self->entry_point, address);
+    if (err != 0) goto error;
+
+    self->knode->add_endpoint(self->knode, self->entry_point);
+    
     err = kndShard_new(&self->shard,
                        opts->config_file);
     if (err != 0) goto error;

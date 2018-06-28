@@ -146,10 +146,7 @@ static int export_JSON(struct kndProcArg *self)
             proc = self->proc_entry->proc;
             if (proc) {
                 err = out->write(out, ",\"proc\":", strlen(",\"proc\":"));        RET_ERR();
-                proc->out = out;
-                proc->format = KND_FORMAT_JSON;
                 proc->depth = self->parent->depth + 1;
-                proc->task = self->task;
                 err = proc->export(proc);                                         RET_ERR();
             }
         } else {
@@ -253,9 +250,6 @@ static int export_SVG(struct kndProcArg *self)
     */
     if (self->proc_entry) {
         proc = self->proc_entry->proc;
-        proc->format = self->format;
-        proc->out = self->out;
-        proc->visual = self->visual;
         err = proc->export(proc);                                                 RET_ERR();
     }
     

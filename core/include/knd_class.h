@@ -77,7 +77,6 @@ struct kndClassEntry
     size_t name_size;
     struct kndClass *class;
     struct kndRepo *repo;
-    //struct kndMemPool *mempool;
 
     knd_state_phase phase;
     size_t global_offset;
@@ -109,17 +108,13 @@ struct kndClassEntry
     struct kndObjDir *obj_dir;
     size_t num_objs;
 
-    // TODO: all indices must be found in kndRepo
+    // TODO: all indices must be kept in kndRepo
     struct kndSet *class_idx;
     struct ooDict *class_name_idx;
     struct kndSet *obj_idx;
     struct ooDict *obj_name_idx;
 
     struct ooDict *reverse_attr_name_idx;
-    //struct kndProcEntry *proc_dir;
-
-    //struct kndTask *task;
-    //struct glbOutput *out;
 
     size_t child_count;
     struct kndClassEntry *prev;
@@ -163,8 +158,8 @@ struct kndClass
     size_t num_attrs;
     struct kndAttr *implied_attr;
 
-    struct kndClassVar *base_items;
-    size_t num_base_items;
+    struct kndClassVar *baseclass_vars;
+    size_t num_baseclass_vars;
 
     struct kndClassEntry *bases[KND_MAX_BASES];
     size_t num_bases;
@@ -178,9 +173,6 @@ struct kndClass
 
     struct kndConcFolder *folders;
     size_t num_folders;
-
-    /* allocator */
-    //struct kndMemPool *mempool;
 
     /* incoming */
     struct kndClass *inbox;

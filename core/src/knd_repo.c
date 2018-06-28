@@ -599,7 +599,9 @@ kndRepo_new(struct kndRepo **repo,
     class_entry->repo = self;
     class_entry->class = c;
     c->entry = class_entry;
-
+    /* obj manager */
+    err = mempool->new_obj(mempool, &c->curr_obj);                 RET_ERR();
+    c->curr_obj->base = c;
     self->root_class = c;
 
     /* specific allocations for the root class */
@@ -609,30 +611,15 @@ kndRepo_new(struct kndRepo **repo,
     err = ooDict_new(&c->class_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
-    err = kndProc_new(&proc);
+    err = kndProc_new(&proc, mempool);
     if (err) goto error;
-    proc->repo = self;
+    proc->entry->repo = self;
     self->root_proc = proc;
     
     err = kndRel_new(&rel);
     if (err) goto error;
     rel->repo = self;
     self->root_rel = rel;
-    
-    /* user idx */
-    /*if (self->mempool->max_users) {
-        knd_log("MAX USERS: %zu", self->mempool->max_users);
-        self->max_users = self->mempool->max_users;
-        self->admin->user_idx = calloc(self->max_users,
-                                       sizeof(struct kndObject*));
-        if (!self->admin->user_idx) return knd_NOMEM;
-        self->admin->max_users = self->max_users;
-     }*/
-
-
-    /* obj manager */
-    err = mempool->new_obj(mempool, &c->curr_obj);                 RET_ERR();
-    c->curr_obj->base = c;
 
     /* read any existing updates to the frozen DB (failure recovery) */
     /*err = conc->restore(conc);

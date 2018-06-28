@@ -203,9 +203,6 @@ static int export_JSON(struct kndAttr *self)
         err = out->write(out, ",\"proc\":", strlen(",\"proc\":"));
         if (err) return err;
         p = self->proc;
-        p->out = out;
-        p->task = self->task;
-        p->format = KND_FORMAT_JSON;
         p->depth = 0;
         p->max_depth = KND_MAX_DEPTH;
         err = p->export(p);
@@ -509,13 +506,15 @@ static gsl_err_t parse_proc(void *obj,
     err = mempool->new_proc(mempool, &proc);
     if (err) return make_gsl_err_external(err);
 
-    proc->mempool = mempool;
-    proc->proc_call.mempool = mempool;
+    //proc->mempool = mempool;
+    //proc->proc_call.mempool = mempool;
 
     err = mempool->new_proc_entry(mempool, &entry); 
     if (err) return make_gsl_err_external(err);
     entry->proc = proc;
     proc->entry = entry;
+
+    entry->repo = self->parent_class->entry->repo;
 
     err = proc->read(proc, rec, total_size);
     if (err) return make_gsl_err_external(err);
