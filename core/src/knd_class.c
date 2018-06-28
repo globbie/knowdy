@@ -3207,7 +3207,7 @@ static gsl_err_t parse_select_obj(void *data,
 {
     struct kndClass *self = data;
     struct kndObject *obj = self->curr_obj;
-    int err;
+    gsl_err_t err;
 
     if (!self->curr_class) {
         knd_log("-- base class not set :(");
@@ -3223,7 +3223,7 @@ static gsl_err_t parse_select_obj(void *data,
     obj->base = self->curr_class;
 
     err = obj->select(obj, rec, total_size);
-    if (err) return make_gsl_err_external(err);
+    if (err.code) return err;
 
     if (DEBUG_CONC_LEVEL_2) {
         if (obj->curr_obj)

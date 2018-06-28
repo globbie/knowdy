@@ -195,7 +195,7 @@ struct kndObject
     int (*resolve)(struct kndObject *self);
     int (*export)(struct kndObject *self);
 
-    int (*select)(struct kndObject *self,
+    gsl_err_t (*select)(struct kndObject *self,
 		  const char *rec,
 		  size_t *total_size);
     int (*select_rels)(struct kndObject *self,
