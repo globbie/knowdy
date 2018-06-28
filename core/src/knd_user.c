@@ -437,7 +437,7 @@ static gsl_err_t parse_class_select(void *obj,
 {
     struct kndUser *self = obj;
     struct kndClass *c = self->repo->root_class;
-    int err;
+    gsl_err_t err;
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class select: \"%s\"", rec);
@@ -445,10 +445,10 @@ static gsl_err_t parse_class_select(void *obj,
     c->reset_inbox(c);
 
     err = c->select(c, rec, total_size);
-    if (err) {
+    if (err.code) {
         /* TODO: release resources */
         c->reset_inbox(c);
-        return make_gsl_err_external(err);
+        return err;
     }
 
     return make_gsl_err(gsl_OK);

@@ -6049,9 +6049,9 @@ static gsl_err_t parse_select_class_delta(void *data,
     return make_gsl_err(gsl_OK);
 }
 
-static int parse_select_class(void *obj,
-                              const char *rec,
-                              size_t *total_size)
+static gsl_err_t parse_select_class(void *obj,
+                                    const char *rec,
+                                    size_t *total_size)
 {
     struct kndClass *self = obj;
     struct kndClass *c;
@@ -6131,7 +6131,7 @@ static int parse_select_class(void *obj,
         if (!log->buf_size) {
             err = log->write(log, "class parse failure",
                                  strlen("class parse failure"));
-            if (err) return err;
+            if (err) return make_gsl_err_external(err);
         }
 
         /* TODO: release resources */
@@ -6139,7 +6139,7 @@ static int parse_select_class(void *obj,
             c = self->curr_class;
             c->reset_inbox(c);
         }
-        return gsl_err_to_knd_err_codes(parser_err);
+        return parser_err;
     }
 
     /* any updates happened? */
@@ -6152,7 +6152,7 @@ static int parse_select_class(void *obj,
         }
     }
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 static int aggr_item_export_JSON(struct kndClass *self,
