@@ -7413,9 +7413,9 @@ static gsl_err_t new_liquid_update(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int apply_liquid_updates(struct kndClass *self,
-                                const char *rec,
-                                size_t *total_size)
+static gsl_err_t apply_liquid_updates(struct kndClass *self,
+                                      const char *rec,
+                                      size_t *total_size)
 {
     struct kndClass *c;
     struct kndClassEntry *entry;
@@ -7449,36 +7449,36 @@ static int apply_liquid_updates(struct kndClass *self,
         for (c = self->inbox; c; c = c->next) {
 
             err = c->resolve(c, NULL);
-            if (err) return *total_size = 0, err;
+            if (err) return *total_size = 0, make_gsl_err_external(err);
 
             err = mempool->new_class_entry(mempool, &entry);
-            if (err) return *total_size = 0, err;
+            if (err) return *total_size = 0, make_gsl_err_external(err);
             entry->class = c;
 
             err = self->class_name_idx->set(self->class_name_idx,
                                             c->entry->name, c->name_size,
                                             (void*)entry);
-            if (err) return *total_size = 0, err;
+            if (err) return *total_size = 0, make_gsl_err_external(err);
         }
     }
 
     if (self->rel->inbox_size) {
         for (rel = self->rel->inbox; rel; rel = rel->next) {
             err = rel->resolve(rel);
-            if (err) return *total_size = 0, err;
+            if (err) return *total_size = 0, make_gsl_err_external(err);
         }
     }
 
     parser_err = gsl_parse_task(rec, total_size, specs,
                                 sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+    if (parser_err.code) return parser_err;
 
-    if (!self->curr_update) return knd_FAIL;
+    if (!self->curr_update) return make_gsl_err_external(knd_FAIL);
 
     err = state_ctrl->confirm(state_ctrl, self->curr_update);
-    if (err) return err;
+    if (err) return make_gsl_err_external(err);
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 static int knd_update_state(struct kndClass *self)

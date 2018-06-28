@@ -477,17 +477,13 @@ static gsl_err_t parse_liquid_updates(void *obj,
                                       size_t *total_size)
 {
     struct kndUser *self = (struct kndUser*)obj;
-    int err;
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parse and apply liquid updates..");
 
     self->task->type = KND_LIQUID_STATE;
 
-    err = self->repo->root_class->apply_liquid_updates(self->repo->root_class, rec, total_size);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
+    return self->repo->root_class->apply_liquid_updates(self->repo->root_class, rec, total_size);
 }
 
 static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
