@@ -175,7 +175,7 @@ struct kndObject
     gsl_err_t (*parse)(struct kndObject *self,
                  const char       *rec,
                  size_t           *total_size);
-    int (*read)(struct kndObject *self,
+    gsl_err_t (*read)(struct kndObject *self,
                 const char *rec,
                 size_t *total_size);
 
