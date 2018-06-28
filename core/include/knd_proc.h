@@ -77,6 +77,7 @@ struct kndProcEntry
     char name[KND_NAME_SIZE];
     size_t name_size;
     struct kndProc *proc;
+    struct kndRepo *repo;
 
     knd_state_phase phase;
 
@@ -150,12 +151,14 @@ struct kndProc
     size_t id;
     size_t next_id;
 
-    struct kndRepo *repo;
+    struct kndProcEntry *entry;
 
-    struct glbOutput *out;
+    //struct kndRepo *repo;
+
+    /*struct glbOutput *out;
     struct glbOutput *dir_out;
     struct glbOutput *log;
-
+    */
     //knd_state_phase phase;
 
     struct kndTranslation *tr;
@@ -199,8 +202,8 @@ struct kndProc
     struct kndVisualFormat *visual;
 
     /* allocator */
-    struct kndMemPool *mempool;
-    int fd;
+    //struct kndMemPool *mempool;
+    //int fd;
 
     /* incoming */
     struct kndProc *inbox;
@@ -209,7 +212,6 @@ struct kndProc
     struct kndProcInstance *inst_inbox;
     size_t inst_inbox_size;
 
-    struct kndProcEntry *entry;
     size_t num_procs;
 
     struct ooDict *proc_idx;
@@ -247,7 +249,8 @@ struct kndProc
 		  const char    *rec,
 		  size_t        *total_size);
     int (*read_proc)(struct kndProc *self,
-                     struct kndProcEntry *proc_entry);
+                     struct kndProcEntry *proc_entry,
+                     int fd);
     int (*get_proc)(struct kndProc *self,
 		    const char *name, size_t name_size,
 		    struct kndProc **result);
@@ -267,4 +270,4 @@ struct kndProc
 
 /* constructors */
 extern void kndProc_init(struct kndProc *self);
-extern int kndProc_new(struct kndProc **self);
+extern int kndProc_new(struct kndProc **self, struct kndMemPool *mempool);
