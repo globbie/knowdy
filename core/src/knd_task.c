@@ -12,6 +12,7 @@
 
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
+#include <gsl-parser/gsl_err.h>
 
 #define DEBUG_TASK_LEVEL_0 0
 #define DEBUG_TASK_LEVEL_1 0
@@ -246,6 +247,47 @@ static gsl_err_t parse_task(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
+static const char * gsl_err_to_str(gsl_err_t err)
+{
+  switch (err.code) {
+  case gsl_FAIL:     return "Unclassified error";
+  case gsl_LIMIT:    return "LIMIT error";
+  case gsl_NO_MATCH: return "NO_MATCH error";
+  case gsl_FORMAT:   return "FORMAT error";
+  case gsl_EXISTS:   return "EXISTS error";
+  default:           return "Unknown error";
+  }
+}
+
+static int log_parser_error(struct kndTask *self,
+                           gsl_err_t parser_err,
+                           size_t pos,
+                           const char *rec)
+{
+  int err;
+
+  size_t line = 0, column;
+  for (;;) {
+      const char *next_line = strchr(rec, '\n');
+      if (next_line == NULL) break;
+
+      size_t len = next_line + 1 - rec;
+      if (len > pos) break;
+
+      line++;
+      rec = next_line + 1;
+      pos -= len;
+  }
+  column = pos;
+
+  char buf[256];
+  err = snprintf(buf, sizeof buf,  "parser error at line %zu:%zu: %d %s",
+                 line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
+  if (err < 0) return knd_IO_FAIL;
+
+  return self->log->write(self->log, buf, strlen(buf));
+}
+
 static int parse_GSL(struct kndTask *self,
                      const char *rec,
                      size_t rec_size,
@@ -274,11 +316,18 @@ static int parse_GSL(struct kndTask *self,
     parser_err = gsl_parse_task(rec, &total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         knd_log("-- task failure :(");
+        if (!is_gsl_err_external(parser_err)) {
+            assert(!self->log->buf_size);
+            err = log_parser_error(self, parser_err, total_size, rec);
+            if (err) return err;
+        }
+
         if (!self->log->buf_size) {
             err = self->log->write(self->log, "internal server error",
                                  strlen("internal server error"));
             if (err) return err;
         }
+
         return gsl_err_to_knd_err_codes(parser_err);
     }
 
