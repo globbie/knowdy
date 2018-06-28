@@ -238,7 +238,7 @@ export_reverse_rel_GSP(struct kndRef *self)
     int err = knd_FAIL;
 
     obj = self->elem->root;
-    out = obj->base->repo->out;
+    out = obj->base->entry->repo->out;
 
     if (DEBUG_REF_LEVEL_2)
         knd_log(".. export reverse_rel to JSON..");

@@ -83,7 +83,7 @@ struct kndAttrValidator
                 size_t val_size);
 };
 
-struct kndAttrItem
+struct kndAttrVar
 {
     knd_task_spec_type type;
     char name[KND_NAME_SIZE];
@@ -98,28 +98,25 @@ struct kndAttrItem
     struct kndAttr *attr;
     struct kndAttr *implied_attr;
 
-    struct kndAttrItem *parent;
+    struct kndAttrVar *parent;
 
-    struct kndAttrItem *children;
-    struct kndAttrItem *tail;
+    struct kndAttrVar *children;
+    struct kndAttrVar *tail;
     size_t num_children;
 
     bool is_list_item;
     size_t list_count;
 
     /* siblings */
-    struct kndAttrItem *list;
-    struct kndAttrItem *list_tail;
+    struct kndAttrVar *list;
+    struct kndAttrVar *list_tail;
     size_t num_list_elems;
 
     struct kndClass *class;
     struct kndClassEntry *class_entry;
     struct kndProc *proc;
-    //struct kndProcDir *proc_dir;
 
-    struct kndMemPool *mempool;
-
-    struct kndAttrItem *next;
+    struct kndAttrVar *next;
 };
 
 struct kndAttrEntry
@@ -128,7 +125,7 @@ struct kndAttrEntry
     size_t name_size;
 
     struct kndAttr *attr;
-    struct kndAttrItem *attr_var;
+    struct kndAttrVar *attr_var;
 
     struct kndAttrEntry *next;
 };
@@ -147,7 +144,6 @@ struct kndAttr
 
     char uniq_attr_name[KND_SHORT_NAME_SIZE];
     size_t uniq_attr_name_size;
-    //struct kndAttr *uniq_attr;
 
     char validator_name[KND_SHORT_NAME_SIZE];
     size_t validator_name_size;

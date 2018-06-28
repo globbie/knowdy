@@ -564,10 +564,9 @@ static gsl_err_t get_user_by_id(void *data, const char *numid, size_t numid_size
         return make_gsl_err(gsl_NO_MATCH);
     }
 
-    err = self->repo->root_class->get(self->repo->root_class, "User", strlen("User"), &c);
+    err = self->repo->root_class->get(self->repo->root_class,
+                                      "User", strlen("User"), &c);
     if (err) return make_gsl_err_external(err);
-
-    c->mempool = self->repo->root_class->mempool;
 
     err = c->read_obj_entry(c, entry, &obj);
     if (err) return make_gsl_err_external(err);
