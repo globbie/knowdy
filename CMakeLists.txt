@@ -17,11 +17,6 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
 endif()
 
-pkg_check_modules(CURL REQUIRED libcurl)
-find_path(CURL_INCLUDE_DIR NAMES curl.h PATHS ${CURL_INCLUDE_DIRS})
-find_library(CURL_LIBRARY NAMES curl PATHS ${CURL_LIBRARY_DIRS})
-include_directories(${CURL_INCLUDE_DIRS})
-
 pkg_check_modules(CHECK REQUIRED check)
 find_path(CHECK_INCLUDE_DIR NAMES check.h PATHS ${CHECK_INCLUDE_DIRS})
 find_library(CHECK_LIBRARY NAMES check PATHS ${CHECK_LIBRARY_DIRS})
