@@ -232,9 +232,9 @@ struct kndClass
 		   struct kndClassUpdate *update);
 
     int (*update_state)(struct kndClass *self);
-    int (*apply_liquid_updates)(struct kndClass *self,
-                                const char *rec,
-                                size_t *total_size);
+    gsl_err_t (*apply_liquid_updates)(struct kndClass *self,
+                                      const char *rec,
+                                      size_t *total_size);
     int (*select)(void  *self,
                   const char *rec,
                   size_t *total_size);
