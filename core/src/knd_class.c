@@ -76,7 +76,7 @@ static int get_obj_dir_trailer(struct kndClass *self,
                                struct kndClassEntry *parent_entry,
                                int fd,
                                int encode_base);
-static gsl_err_t run_set_class_name(void *obj, const char *name, size_t name_size);
+static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size);
 
 static int freeze(struct kndClass *self);
 
@@ -2992,7 +2992,7 @@ static gsl_err_t parse_import_class(void *obj,
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_set_class_name,
+          .run = set_class_name,
           .obj = c
         },
         { .type = GSL_SET_STATE,
@@ -3380,6 +3380,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
                                         size_t *total_size)
 {
     struct kndClass *self = obj;
+    struct kndTask *task = self->entry->repo->task;
     gsl_err_t err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -3393,7 +3394,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
         { .name = "_batch",
           .name_size = strlen("_batch"),
           .parse = gsl_parse_size_t,
-          .obj = &self->entry->repo->task->batch_max
+          .obj = &task->batch_max
         },
         { .name = "_from",
           .name_size = strlen("_from"),
@@ -3411,18 +3412,18 @@ static gsl_err_t parse_baseclass_select(void *obj,
         }
     };
 
-    self->entry->repo->task->type = KND_SELECT_STATE;
+   task->type = KND_SELECT_STATE;
 
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) return err;
 
-    if (self->entry->repo->task->batch_max > KND_RESULT_MAX_BATCH_SIZE) {
+    if (task->batch_max > KND_RESULT_MAX_BATCH_SIZE) {
         knd_log("-- batch size exceeded: %zu (max limit: %d) :(",
-                self->entry->repo->task->batch_max, KND_RESULT_MAX_BATCH_SIZE);
+                task->batch_max, KND_RESULT_MAX_BATCH_SIZE);
         return make_gsl_err(gsl_LIMIT);
     }
 
-    self->entry->repo->task->start_from = self->entry->repo->task->batch_max * self->entry->repo->task->batch_from;
+   task->start_from = task->batch_max *task->batch_from;
 
     return make_gsl_err(gsl_OK);
 }
@@ -3443,7 +3444,7 @@ static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t run_set_class_name(void *obj, const char *name, size_t name_size)
+static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 {
     struct kndClass *self = obj;
     struct kndRepo *repo = self->root_class->entry->repo;
@@ -4907,7 +4908,7 @@ static int read_GSP(struct kndClass *self,
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_set_class_name,
+          .run = set_class_name,
           .obj = self
         },
         { .type = GSL_SET_ARRAY_STATE,
