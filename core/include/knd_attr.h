@@ -98,6 +98,8 @@ struct kndAttrVar
     struct kndAttr *attr;
     struct kndAttr *implied_attr;
 
+    struct kndClassVar *class_var;
+
     struct kndAttrVar *parent;
 
     struct kndAttrVar *children;
