@@ -522,7 +522,6 @@ static gsl_err_t select_user_rels(void *obj,
 {
     struct kndUser *self = obj;
     struct kndObject *user;
-    int err;
 
     if (!self->curr_user) {
         knd_log("-- no user selected :(");
@@ -534,10 +533,7 @@ static gsl_err_t select_user_rels(void *obj,
 
     self->out->reset(self->out);
     user = self->curr_user;
-    err = user->select_rels(user, rec, total_size);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
+    return user->select_rels(user, rec, total_size);
 }
 
 

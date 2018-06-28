@@ -198,7 +198,7 @@ struct kndObject
     gsl_err_t (*select)(struct kndObject *self,
 		  const char *rec,
 		  size_t *total_size);
-    int (*select_rels)(struct kndObject *self,
+    gsl_err_t (*select_rels)(struct kndObject *self,
 		       const char *rec,
 		       size_t *total_size);
     int (*sync)(struct kndObject *self);

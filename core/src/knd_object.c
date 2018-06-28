@@ -1060,7 +1060,7 @@ static gsl_err_t parse_GSL(struct kndObject *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int select_rels(struct kndObject *self,
+static gsl_err_t select_rels(struct kndObject *self,
                        const char *rec,
                        size_t *total_size)
 {
@@ -1075,12 +1075,8 @@ static int select_rels(struct kndObject *self,
           .obj = self
         }
     };
-    gsl_err_t parser_err;
- 
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static gsl_err_t run_present_obj(void *data, const char *val __attribute__((unused)),
