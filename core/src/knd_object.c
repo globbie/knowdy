@@ -1126,7 +1126,7 @@ static gsl_err_t run_get_obj(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int parse_select_obj(struct kndObject *self,
+static gsl_err_t parse_select_obj(struct kndObject *self,
                             const char *rec,
                             size_t *total_size)
 {
@@ -1173,12 +1173,12 @@ static int parse_select_obj(struct kndObject *self,
         if (!log->buf_size) {
             err = log->write(log, "obj select parse failure",
                                  strlen("obj select parse failure"));
-            if (err) return err;
+            if (err) return make_gsl_err_external(err);
         }
-        return gsl_err_to_knd_err_codes(parser_err);
+        return parser_err;
     }
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 
