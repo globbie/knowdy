@@ -19,6 +19,7 @@
 #include "knd_utils.h"
 #include "knd_text.h"
 #include "knd_dict.h"
+#include "knd_repo.h"
 
 #define DEBUG_PROC_LEVEL_0 0
 #define DEBUG_PROC_LEVEL_1 0
@@ -1334,6 +1335,7 @@ static gsl_err_t parse_proc_call_arg(void *obj,
         knd_log("-- class var alloc failed :(");
         return make_gsl_err_external(err);
     }
+    class_var->root_class = self->proc->repo->root_class;
 
     parser_err = import_class_var(class_var, rec, total_size);
     if (parser_err.code) return parser_err;

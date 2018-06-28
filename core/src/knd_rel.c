@@ -531,7 +531,7 @@ static int import_rel(struct kndRel *self,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_REL_LEVEL_2)
+    if (DEBUG_REL_LEVEL_TMP)
         knd_log(".. import Rel: \"%.*s\"..", 32, rec);
 
     err  = self->mempool->new_rel(self->mempool, &rel);

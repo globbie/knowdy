@@ -47,17 +47,14 @@ struct kndClassVar
     size_t id_size;
     size_t numid;
 
-    char classname[KND_NAME_SIZE];
-    size_t classname_size;
+    struct kndClassEntry *entry;
 
     struct kndAttrVar *attrs;
     struct kndAttrVar *tail;
     size_t num_attrs;
 
-    struct kndClass *parent;
-    struct kndClass *class;
+    struct kndClass *root_class;
 
-    //struct kndMemPool *mempool;
     struct kndClassVar *next;
 };
 
