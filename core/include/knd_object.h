@@ -172,7 +172,7 @@ struct kndObject
     void (*str)(struct kndObject *self);
     void (*del)(struct kndObject *self);
 
-    int (*parse)(struct kndObject *self,
+    gsl_err_t (*parse)(struct kndObject *self,
                  const char       *rec,
                  size_t           *total_size);
     int (*read)(struct kndObject *self,

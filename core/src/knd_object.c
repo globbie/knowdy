@@ -611,6 +611,7 @@ static gsl_err_t parse_elem(void *data,
     struct kndNum *num = NULL;
     struct kndText *text = NULL;
     int err;
+    gsl_err_t parser_err;
 
     if (DEBUG_OBJ_LEVEL_2) {
         knd_log("..  obj: id:%.*s name:%.*s to validate \"%.*s\" elem,   REC: \"%.*s\"",
@@ -624,8 +625,8 @@ static gsl_err_t parse_elem(void *data,
     if (elem) {
         switch (elem->attr->type) {
         case KND_ATTR_AGGR:
-            err = elem->aggr->parse(elem->aggr, rec, total_size);
-            if (err) return make_gsl_err_external(err);
+            parser_err = elem->aggr->parse(elem->aggr, rec, total_size);
+            if (parser_err.code) return parser_err;
             break;
         case KND_ATTR_NUM:
             num = elem->num;
@@ -682,8 +683,8 @@ static gsl_err_t parse_elem(void *data,
         obj->base = attr->conc;
         obj->root = self->root ? self->root : self;
 
-        err = obj->parse(obj, rec, total_size);
-        if (err) return make_gsl_err_external(err);
+        parser_err = obj->parse(obj, rec, total_size);
+        if (parser_err.code) return parser_err;
 
         elem->aggr = obj;
         obj->parent = elem;
@@ -1023,9 +1024,9 @@ static gsl_err_t parse_rels(void *obj,
 
  
 /* parse object */
-static int parse_GSL(struct kndObject *self,
-                     const char *rec,
-                     size_t *total_size)
+static gsl_err_t parse_GSL(struct kndObject *self,
+                           const char *rec,
+                           size_t *total_size)
 {
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -1052,15 +1053,11 @@ static int parse_GSL(struct kndObject *self,
           .obj = self
         }
     };
-    gsl_err_t parser_err;
 
     if (DEBUG_OBJ_LEVEL_2)
         knd_log(".. parsing obj REC: %.*s", 128, rec);
  
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
-
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static int select_rels(struct kndObject *self,

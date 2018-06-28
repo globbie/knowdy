@@ -3110,6 +3110,7 @@ static gsl_err_t parse_import_obj(void *data,
     struct kndObject *obj;
     struct kndObjEntry *entry;
     int err;
+    gsl_err_t parser_err;
 
     if (DEBUG_CONC_LEVEL_2) {
         knd_log(".. import \"%.*s\" obj.. conc: %p", 128, rec, self->curr_class);
@@ -3132,8 +3133,8 @@ static gsl_err_t parse_import_obj(void *data,
     obj->state->phase = KND_SUBMITTED;
     obj->base = self->curr_class;
 
-    err = obj->parse(obj, rec, total_size);
-    if (err) return make_gsl_err_external(err);
+    parser_err = obj->parse(obj, rec, total_size);
+    if (parser_err.code) return parser_err;
 
     c = obj->base;
     obj->next = c->obj_inbox;
