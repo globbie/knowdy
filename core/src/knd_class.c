@@ -3115,6 +3115,7 @@ static gsl_err_t parse_import_obj(void *data,
     struct kndObject *obj;
     struct kndObjEntry *entry;
     int err;
+    gsl_err_t parser_err;
 
     if (DEBUG_CONC_LEVEL_2) {
         knd_log(".. import \"%.*s\" obj.. conc: %p", 128, rec, self->curr_class);
@@ -3137,8 +3138,8 @@ static gsl_err_t parse_import_obj(void *data,
     obj->state->phase = KND_SUBMITTED;
     obj->base = self->curr_class;
 
-    err = obj->parse(obj, rec, total_size);
-    if (err) return make_gsl_err_external(err);
+    parser_err = obj->parse(obj, rec, total_size);
+    if (parser_err.code) return parser_err;
 
     c = obj->base;
     obj->next = c->obj_inbox;
@@ -3211,7 +3212,7 @@ static gsl_err_t parse_select_obj(void *data,
 {
     struct kndClass *self = data;
     struct kndObject *obj = self->curr_obj;
-    int err;
+    gsl_err_t err;
 
     if (!self->curr_class) {
         knd_log("-- base class not set :(");
@@ -3227,7 +3228,7 @@ static gsl_err_t parse_select_obj(void *data,
     obj->base = self->curr_class;
 
     err = obj->select(obj, rec, total_size);
-    if (err) return make_gsl_err_external(err);
+    if (err.code) return err;
 
     if (DEBUG_CONC_LEVEL_2) {
         if (obj->curr_obj)
@@ -5458,6 +5459,7 @@ static int read_obj_entry(struct kndClass *self,
     size_t file_size = 0;
     struct stat file_info;
     int err;
+    gsl_err_t parser_err;
 
     /* parse DB rec */
     filename = self->entry->repo->frozen_output_file_name;
@@ -5548,12 +5550,12 @@ static int read_obj_entry(struct kndClass *self,
     obj->name = entry->name;
     obj->name_size = entry->name_size;
 
-    err = obj->read(obj, c, &chunk_size);
-    if (err) {
+    parser_err = obj->read(obj, c, &chunk_size);
+    if (parser_err.code) {
         knd_log("-- failed to parse obj %.*s :(",
                 obj->name_size, obj->name);
         obj->del(obj);
-        return err;
+        return gsl_err_to_knd_err_codes(parser_err);
     }
 
     if (DEBUG_CONC_LEVEL_2)
