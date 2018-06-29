@@ -1086,6 +1086,7 @@ static gsl_err_t arg_item_read(void *obj,
     gsl_err_t parser_err;
 
     item = malloc(sizeof(struct kndProcArgVar));
+    assert(item);
     memset(item, 0, sizeof(struct kndProcArgVar));
     memcpy(item->name, name, name_size);
     item->name_size = name_size;
@@ -1225,6 +1226,7 @@ static gsl_err_t parse_base(void *data,
     */
 
     base = malloc(sizeof(struct kndProcVar));
+    assert(base);
     memset(base, 0, sizeof(struct kndProcVar));
 
     struct gslTaskSpec specs[] = {
@@ -1311,7 +1313,7 @@ static gsl_err_t parse_proc_call_arg(void *obj,
 
     // TODO: use mempool
     call_arg = malloc(sizeof(struct kndProcCallArg));
-    if (!call_arg) return make_gsl_err_external(knd_NOMEM);
+    if (!call_arg) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
 
     memset(call_arg, 0, sizeof(struct kndProcCallArg));
     memcpy(call_arg->name, name, name_size);
@@ -1324,7 +1326,7 @@ static gsl_err_t parse_proc_call_arg(void *obj,
     err = mempool->new_class_var(mempool, &class_var);
     if (err) {
         knd_log("-- class var alloc failed :(");
-        return make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(err);
     }
     class_var->root_class = self->proc->entry->repo->root_class;
 
@@ -1393,7 +1395,8 @@ static int import_proc(struct kndProc *self,
     if (DEBUG_PROC_LEVEL_2)
         knd_log(".. import Proc: \"%.*s\"..", 32, rec);
 
-    err  = mempool->new_proc(mempool, &proc);                         RET_ERR();
+    err  = mempool->new_proc(mempool, &proc);
+    if (err) *total_size = 0; RET_ERR();
 
     proc->proc_name_idx = self->proc_name_idx;
     proc->proc_idx = self->proc_idx;
