@@ -504,13 +504,13 @@ static gsl_err_t parse_proc(void *obj,
 
     mempool = self->parent_class->entry->repo->mempool;
     err = mempool->new_proc(mempool, &proc);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
 
     //proc->mempool = mempool;
     //proc->proc_call.mempool = mempool;
 
     err = mempool->new_proc_entry(mempool, &entry); 
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     entry->proc = proc;
     proc->entry = entry;
 
@@ -606,7 +606,7 @@ static gsl_err_t parse_validator(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int parse_GSL(struct kndAttr *self,
+static gsl_err_t parse_GSL(struct kndAttr *self,
                      const char *rec,
                      size_t *total_size)
 {
@@ -727,20 +727,20 @@ static int parse_GSL(struct kndAttr *self,
           .max_buf_size = sizeof(self->default_val)
         }
     };
-    gsl_err_t parser_err;
+    gsl_err_t err;
 
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (err.code) return err;
 
     if (self->type == KND_ATTR_AGGR) {
         if (!self->ref_classname_size) {
             knd_log("-- ref class not specified in %.*s",
                     self->name_size, self->name);
-            return knd_FAIL;
+            return make_gsl_err_external(knd_FAIL);
         }
     }
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 

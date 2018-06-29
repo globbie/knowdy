@@ -201,9 +201,9 @@ struct kndAttr
     /***********  public methods ***********/
     void (*str)(struct kndAttr *self);
 
-    int (*parse)(struct kndAttr *self,
-                 const char   *rec,
-                 size_t *chunk_size);
+    gsl_err_t (*parse)(struct kndAttr *self,
+                       const char *rec,
+                       size_t *chunk_size);
 
     int (*validate)(struct kndAttr *self,
                     const char   *val,

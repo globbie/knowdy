@@ -457,7 +457,7 @@ static gsl_err_t parse_proc_call_arg(void *obj,
                 name_size, name, 32, rec);
 
     call_arg = malloc(sizeof(struct kndProcCallArg));
-    if (!call_arg) return make_gsl_err_external(knd_NOMEM);
+    if (!call_arg) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
 
     memset(call_arg, 0, sizeof(struct kndProcCallArg));
     memcpy(call_arg->name, name, name_size);
