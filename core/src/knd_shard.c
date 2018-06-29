@@ -44,10 +44,8 @@ static int kndShard_run_task(struct kndShard *self,
     const char *rec_start;
     int err;
 
-    knd_log("++ kndShard got new task! curr storage size:%zu  capacity:%zu"
-            "result:%p result max size:%zu",
-            self->task_storage->buf_size, self->task_storage->capacity,
-            result, *result_size);
+    knd_log("++ kndShard got new task! curr storage size:%zu  capacity:%zu",
+            self->task_storage->buf_size, self->task_storage->capacity);
 
     rec_start = self->task_storage->buf + self->task_storage->buf_size;
     err = self->task_storage->write(self->task_storage, rec, rec_size);
@@ -67,6 +65,7 @@ static int kndShard_run_task(struct kndShard *self,
 
 final:
 
+    knd_log(".. task finished..");
     /* save only the successful write transaction */
     switch (self->task->type) {
     case KND_UPDATE_STATE:
@@ -233,6 +232,7 @@ extern int kndShard_new(struct kndShard **shard,
 
     err = kndTask_new(&self->task);
     if (err != knd_OK) goto error;
+    self->task->shard = self;
 
     err = kndMemPool_new(&mempool);
     if (err != knd_OK) return err;

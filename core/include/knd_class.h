@@ -30,7 +30,6 @@
 struct kndAttr;
 struct kndAttrVar;
 struct kndClass;
-struct glbOutput;
 struct kndTranslation;
 struct kndClass;
 struct kndRel;
@@ -145,8 +144,6 @@ struct kndClass
     struct kndTranslation *tr;
     struct kndTranslation *summary;
 
-    //struct kndTask *task;
-    //knd_format format;
     size_t depth;
     size_t max_depth;
 

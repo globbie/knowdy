@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "knd_task.h"
+#include "knd_shard.h"
 #include "knd_user.h"
 #include "knd_mempool.h"
 #include "knd_utils.h"
@@ -40,8 +41,8 @@ static void reset(struct kndTask *self)
     self->sid_size = 0;
     self->uid_size = 0;
     self->tid_size = 0;
-    self->locale = self->admin->default_locale;
-    self->locale_size = self->admin->default_locale_size;
+    self->locale = self->shard->user->default_locale;
+    self->locale_size = self->shard->user->default_locale_size;
     self->curr_locale_size = 0;
 
     self->delivery_type = KND_DELIVERY_CACHE;
@@ -98,22 +99,19 @@ static gsl_err_t parse_user(void *obj,
                             size_t *total_size)
 {
     struct kndTask *self = obj;
+    struct kndUser *user = self->shard->user;
     int err;
-
-    self->admin->task = self;
-    self->admin->out = self->out;
-    self->admin->log = self->log;
 
     if (self->curr_locale_size) {
         self->locale = self->curr_locale;
         self->locale_size = self->curr_locale_size;
     }
 
-    err = self->admin->parse_task(self->admin, rec, total_size);
+    err = user->parse_task(user, rec, total_size);
     if (err) {
         return make_gsl_err_external(knd_FAIL);
     }
-
+    
     return make_gsl_err(gsl_OK);
 }
 
@@ -212,12 +210,12 @@ static gsl_err_t parse_task(void *obj,
           .name_size = strlen("format"),
           .run = set_output_format,
           .obj = self
-        },
+        }/*,
         { .name = "callback",
           .name_size = strlen("callback"),
           .parse = parse_delivery_callback,
           .obj = self
-        },
+          }*/,
         { .name = "user",
           .name_size = strlen("user"),
           .parse = parse_user,
@@ -232,6 +230,8 @@ static gsl_err_t parse_task(void *obj,
 
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) return err;
+
+    knd_log("++ task completed!");
 
     /* check mandatory fields */
     /*if (!self->tid_size) {
@@ -420,6 +420,8 @@ extern int kndTask_new(struct kndTask **task)
     err = glbOutput_new(&self->update, KND_LARGE_BUF_SIZE);
     if (err) return err;
 
+    err = glbOutput_new(&self->file_out, KND_FILE_BUF_SIZE);
+    if (err) return err;
 
     self->visual.text_line_height = KND_TEXT_LINE_HEIGHT;
     self->visual.text_hangindent_size = KND_TEXT_HANGINDENT_SIZE;

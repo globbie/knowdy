@@ -506,11 +506,17 @@ kndRepo_parse_task(void *self,
 
 extern int kndRepo_init(struct kndRepo *self)
 {
-    struct glbOutput *out = self->out;
+    struct glbOutput *out;
     struct kndClass *c;
     int err;
 
     knd_log(".. init Repo..");
+
+    self->task =     self->user->task;
+    self->out =      self->task->out;
+    self->file_out = self->task->file_out;
+    self->log =      self->task->log;
+    out = self->out;
 
     memcpy(self->schema_path,
            self->user->shard->schema_path,
@@ -576,14 +582,12 @@ kndRepo_new(struct kndRepo **repo,
     memset(self, 0, sizeof(struct kndRepo));
     memset(self->id, '0', KND_ID_SIZE);
 
-    err = glbOutput_new(&self->out, KND_IDX_BUF_SIZE);
-    if (err != knd_OK) goto error;
+    //err = glbOutput_new(&self->out, KND_IDX_BUF_SIZE);
+    //if (err != knd_OK) goto error;
 
-    err = glbOutput_new(&self->log, KND_MED_BUF_SIZE);
-    if (err != knd_OK) goto error;
+    //err = glbOutput_new(&self->log, KND_MED_BUF_SIZE);
+    //if (err != knd_OK) goto error;
 
-    err = glbOutput_new(&self->file_out, KND_FILE_BUF_SIZE);
-    if (err) return err;
 
     err = kndStateControl_new(&state_ctrl);
     if (err) return err;
