@@ -462,7 +462,7 @@ static int new_rel_update_ref(struct kndMemPool *self,
 }
 
 static int new_proc(struct kndMemPool *self,
-                   struct kndProc **result)
+                    struct kndProc **result)
 {
     struct kndProc *proc;
     int e;
@@ -480,7 +480,6 @@ static int new_proc(struct kndMemPool *self,
     kndProc_init(proc);
     self->num_procs++;
     *result = proc;
-
     return knd_OK;
 }
 
