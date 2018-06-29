@@ -238,6 +238,8 @@ static gsl_err_t parse_auth(void *obj,
     struct kndUser *self = obj;
     char sid[KND_NAME_SIZE];
     size_t sid_size = 0;
+    const char *default_sid = self->shard->sid;
+    size_t default_sid_size = self->shard->sid_size;
     int err;
     gsl_err_t parser_err;
 
@@ -263,8 +265,9 @@ static gsl_err_t parse_auth(void *obj,
         return parser_err;
     }
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_TMP) {
         knd_log("++ got SID token (JWT): \"%s\"", sid);
+    }
 
     if (!sid_size) {
         knd_log("-- no SID provided :(");
@@ -272,8 +275,7 @@ static gsl_err_t parse_auth(void *obj,
     }
 
     /* TODO: DB check auth token */
-
-    if (strncmp(self->sid, sid, sid_size)) {
+    if (strncmp(default_sid, sid, sid_size)) {
         knd_log("-- wrong SID: \"%.*s\"", sid_size, sid);
         err = self->log->write(self->log, "SID authentication failure",
                                strlen("SID authentication failure"));
@@ -281,6 +283,8 @@ static gsl_err_t parse_auth(void *obj,
 
         return make_gsl_err(gsl_FAIL);
     }
+
+    knd_log("++ auth OK!");
     return make_gsl_err(gsl_OK);
 }
 
@@ -439,8 +443,8 @@ static gsl_err_t parse_class_select(void *obj,
     struct kndClass *c = self->repo->root_class;
     int err;
 
-    if (DEBUG_USER_LEVEL_2)
-        knd_log(".. parsing the default class select: \"%s\"", rec);
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log(".. parsing the default class select: \"%s\" task:%p", rec, self->task);
 
     c->reset_inbox(c);
 
@@ -450,6 +454,9 @@ static gsl_err_t parse_class_select(void *obj,
         c->reset_inbox(c);
         return make_gsl_err_external(err);
     }
+
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log("++ selection of \"%s\" completed!", rec);
 
     return make_gsl_err(gsl_OK);
 }
@@ -654,8 +661,8 @@ static int parse_task(struct kndUser *self,
 {
     struct kndClass *c;
 
-    if (DEBUG_USER_LEVEL_2)
-        knd_log(".. parsing user task: \"%s\" size: %lu..\n\n",
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log(".. user got task: \"%s\" size: %lu..\n\n",
                 rec, (unsigned long)strlen(rec));
 
     /* reset defaults */
@@ -768,7 +775,7 @@ static int parse_task(struct kndUser *self,
         goto cleanup;
     }
 
-    if (DEBUG_USER_LEVEL_2)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log("task type: %d   ++ user parse task OK: total chars: %lu",
                 self->task->type, (unsigned long)*total_size);
 
@@ -782,6 +789,7 @@ static int parse_task(struct kndUser *self,
     case KND_UPDATE_STATE:
         self->task->update_spec = rec;
         self->task->update_spec_size = *total_size;
+
         c = self->repo->root_class;
         err = c->update_state(c);
         if (err) {
@@ -820,14 +828,15 @@ static int export(struct kndUser *self)
 static int kndUser_init(struct kndUser *self)
 {
 
-    knd_log(".. init User.. ");
+    knd_log(".. init User: %p", self->shard->task);
 
     memcpy(self->path, self->shard->path, self->shard->path_size);
     self->path_size = self->shard->path_size;
 
+    self->task = self->shard->task;
+
     self->repo->name[0] = '~';
     self->repo->name_size = 1;
-
     self->repo->init(self->repo);
 
     return knd_OK;

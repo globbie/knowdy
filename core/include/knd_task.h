@@ -120,13 +120,12 @@ struct kndTask
     struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;
 
-    struct kndUser *admin;
-    struct kndStateControl *state_ctrl;
+    struct kndShard *shard;
 
     struct glbOutput *log;
     struct glbOutput *out;
-    //struct glbOutput *file;
     struct glbOutput *spec_out;
+    struct glbOutput *file_out;
     struct glbOutput *update;
     struct kndMemPool *mempool;
 

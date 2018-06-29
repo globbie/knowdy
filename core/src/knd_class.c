@@ -5769,9 +5769,10 @@ static gsl_err_t present_class_selection(void *obj,
     struct glbOutput *out = self->entry->repo->out;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. presenting %.*s..",
-                self->entry->name_size, self->entry->name);
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. presenting %.*s.. task:%p",
+                self->entry->name_size, self->entry->name,
+                self->entry->repo->task);
 
     out->reset(out);
 
@@ -5845,6 +5846,9 @@ static gsl_err_t present_class_selection(void *obj,
     err = c->export(c);
     if (err) return make_gsl_err_external(err);
 
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log("++ class presentation OK!");
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -5863,7 +5867,7 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 
     self->curr_class = c;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CONC_LEVEL_TMP) {
         c->str(c);
     }
 
@@ -5965,7 +5969,7 @@ static int select_delta(struct kndClass *self,
                         const char *rec,
                         size_t *total_size)
 {
-    struct kndStateControl *state_ctrl = self->entry->repo->task->state_ctrl;
+    struct kndStateControl *state_ctrl = self->entry->repo->state_ctrl;
     struct kndUpdate *update;
     struct kndClassUpdate *class_update;
     struct kndClass *c;
@@ -6052,7 +6056,7 @@ static int parse_select_class(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
 
     self->depth = 0;
@@ -6644,11 +6648,9 @@ static int export_JSON(struct kndClass *self)
 
     out = self->entry->repo->out;
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. JSON export concept: \"%s\"  "
-                "locale: %s depth: %lu  OUT:%p",
-                self->entry->name, self->entry->repo->task->locale,
-                (unsigned long)self->depth, out);
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. JSON export concept: \"%.*s\"  ",
+                self->entry->name_size, self->entry->name);
 
     err = out->write(out, "{", 1);                                                RET_ERR();
     err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                RET_ERR();
@@ -7413,7 +7415,7 @@ static int apply_liquid_updates(struct kndClass *self,
     struct kndClass *c;
     struct kndClassEntry *entry;
     struct kndRel *rel;
-    struct kndStateControl *state_ctrl = self->entry->repo->task->state_ctrl;
+    struct kndStateControl *state_ctrl = self->entry->repo->state_ctrl;
     struct kndMemPool *mempool = self->entry->repo->mempool;
 
     struct gslTaskSpec specs[] = {
@@ -7477,7 +7479,7 @@ static int apply_liquid_updates(struct kndClass *self,
 static int knd_update_state(struct kndClass *self)
 {
     struct kndClass *c;
-    struct kndStateControl *state_ctrl = self->entry->repo->task->state_ctrl;
+    struct kndStateControl *state_ctrl = self->entry->repo->state_ctrl;
     struct kndUpdate *update;
     struct kndClassUpdate *class_update;
     struct kndMemPool *mempool = self->entry->repo->mempool;
