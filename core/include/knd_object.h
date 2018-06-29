@@ -172,10 +172,10 @@ struct kndObject
     void (*str)(struct kndObject *self);
     void (*del)(struct kndObject *self);
 
-    int (*parse)(struct kndObject *self,
+    gsl_err_t (*parse)(struct kndObject *self,
                  const char       *rec,
                  size_t           *total_size);
-    int (*read)(struct kndObject *self,
+    gsl_err_t (*read)(struct kndObject *self,
                 const char *rec,
                 size_t *total_size);
 
@@ -186,19 +186,19 @@ struct kndObject
                   size_t *total_size,
                   knd_format format);
 
-    int (*update)(struct kndObject *self,
-                  const char *rec,
-                  size_t *total_size);
+//    int (*update)(struct kndObject *self,
+//                  const char *rec,
+//                  size_t *total_size);
     
     int (*contribute)(struct kndObject *self, size_t point_num, size_t orig_pos);
 
     int (*resolve)(struct kndObject *self);
     int (*export)(struct kndObject *self);
 
-    int (*select)(struct kndObject *self,
+    gsl_err_t (*select)(struct kndObject *self,
 		  const char *rec,
 		  size_t *total_size);
-    int (*select_rels)(struct kndObject *self,
+    gsl_err_t (*select_rels)(struct kndObject *self,
 		       const char *rec,
 		       size_t *total_size);
     int (*sync)(struct kndObject *self);
