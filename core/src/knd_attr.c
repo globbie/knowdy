@@ -143,7 +143,9 @@ static int export_JSON(struct kndAttr *self)
     size_t type_name_size = strlen(knd_attr_names[self->type]);
     int err;
 
-    out = self->out;
+    knd_log(".. JSON export attr: \"%.*s\"..", self->name_size, self->name);
+
+    out = self->parent_class->entry->repo->out;
 
     err = out->writec(out, '"');
     if (err) return err;
@@ -200,6 +202,8 @@ static int export_JSON(struct kndAttr *self)
     }
 
     if (self->proc) {
+        knd_log(".. attr:%p proc: %p  entry:%p", self, self->proc, self->proc->entry);
+
         err = out->write(out, ",\"proc\":", strlen(",\"proc\":"));
         if (err) return err;
         p = self->proc;
@@ -506,20 +510,19 @@ static gsl_err_t parse_proc(void *obj,
     err = mempool->new_proc(mempool, &proc);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
-    //proc->mempool = mempool;
-    //proc->proc_call.mempool = mempool;
-
     err = mempool->new_proc_entry(mempool, &entry); 
     if (err) return *total_size = 0, make_gsl_err_external(err);
+    entry->repo = self->parent_class->entry->repo;
     entry->proc = proc;
     proc->entry = entry;
 
-    entry->repo = self->parent_class->entry->repo;
 
     err = proc->read(proc, rec, total_size);
     if (err) return make_gsl_err_external(err);
 
     self->proc = proc;
+
+    knd_log("\n== attr:%p inner PROC: %p entry:%p", self, proc, proc->entry);
 
     return make_gsl_err(gsl_OK);
 }

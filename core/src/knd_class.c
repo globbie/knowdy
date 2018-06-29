@@ -311,7 +311,7 @@ static void str(struct kndClass *self)
         knd_log("%*sbase of --> %.*s [%zu]",
                 (self->depth + 1) * KND_OFFSET_SIZE, "",
                 c->name_size, c->name, c->entry->num_terminals);
-        c->str(c);
+        //c->str(c);
     }
 
     if (self->entry->descendants) {
@@ -1190,7 +1190,8 @@ static int resolve_attrs(struct kndClass *self)
                         self->entry->name_size, self->entry->name);
                 return knd_FAIL;
             }
-            attr->proc = proc_entry->proc;
+            // TODO
+            //attr->proc = proc_entry->proc;
 
             if (DEBUG_CONC_LEVEL_2)
                 knd_log("++ proc ref resolved: %.*s!",
@@ -2235,9 +2236,12 @@ extern gsl_err_t import_attr_var(void *obj,
     int err;
 
     /* class var not resolved */
-    if (!self->entry) return *total_size = 0, make_gsl_err_external(knd_FAIL);
+    if (!self->entry) {
+        knd_log("-- class var not resolved?");
+        //return *total_size = 0, make_gsl_err_external(knd_FAIL);
+    }
 
-    mempool = self->entry->repo->mempool;
+    mempool = self->root_class->entry->repo->mempool;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log("== import attr var: \"%.*s\" REC: %.*s",
@@ -2470,7 +2474,7 @@ static gsl_err_t import_nested_attr_var(void *obj,
 {
     struct kndAttrVar *self = obj;
     struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = self->class_var->entry->repo->mempool;
+    struct kndMemPool *mempool = self->class_var->root_class->entry->repo->mempool;
     gsl_err_t parser_err;
     int err;
 
@@ -2485,7 +2489,7 @@ static gsl_err_t import_nested_attr_var(void *obj,
     attr_var->name_size = name_size;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("== import nested attr item: \"%.*s\" REC: %.*s",
+        knd_log(".. import nested attr: \"%.*s\" REC: %.*s",
                 attr_var->name_size, attr_var->name, 16, rec);
 
     struct gslTaskSpec specs[] = {
@@ -2513,8 +2517,9 @@ static gsl_err_t import_nested_attr_var(void *obj,
     if (parser_err.code) return parser_err;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("++ import attr item: \"%.*s\" val:%.*s",
-                attr_var->name_size, attr_var->name, attr_var->val_size, attr_var->val);
+        knd_log("++ attr var: \"%.*s\" val:%.*s",
+                attr_var->name_size, attr_var->name,
+                attr_var->val_size, attr_var->val);
 
     attr_var->next = self->children;
     self->children = attr_var;
@@ -3525,10 +3530,10 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
 {
-    struct kndClassVar *self = obj;
-    struct kndClass *root_class = self->root_class;
+    struct kndClassVar *self      = obj;
+    struct kndClass *root_class   = self->root_class;
     struct ooDict *class_name_idx = root_class->class_name_idx;
-    struct kndMemPool *mempool;
+    struct kndMemPool *mempool    = root_class->entry->repo->mempool;
     struct kndClassEntry *entry;
     void *result;
     int err;
@@ -3547,8 +3552,6 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
         self->entry = result;
         return make_gsl_err(gsl_OK);
     }
-
-    mempool = root_class->entry->repo->mempool;
 
     /* register new class entry */
     err = mempool->new_class_entry(mempool, &entry);
@@ -5874,7 +5877,7 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 
     self->curr_class = c;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         c->str(c);
     }
 
@@ -6063,7 +6066,7 @@ static gsl_err_t parse_select_class(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
 
     self->depth = 0;
@@ -6656,7 +6659,7 @@ static int export_JSON(struct kndClass *self)
     out = self->entry->repo->out;
 
     if (DEBUG_CONC_LEVEL_TMP)
-        knd_log(".. JSON export concept: \"%.*s\"  ",
+        knd_log(".. JSON export: \"%.*s\"  ",
                 self->entry->name_size, self->entry->name);
 
     err = out->write(out, "{", 1);                                                RET_ERR();
