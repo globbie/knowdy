@@ -126,11 +126,11 @@ struct kndText
                  const char     *rec,
                  size_t          *total_size);
 
-    int (*update)(struct kndText *self,
-                 const char     *rec,
-                 size_t          *total_size);
+//    int (*update)(struct kndText *self,
+//                 const char     *rec,
+//                 size_t          *total_size);
 
-    int (*index)(struct kndText *self);
+//    int (*index)(struct kndText *self);
     int (*export)(struct kndText *self);
 };
 
