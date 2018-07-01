@@ -712,8 +712,8 @@ static gsl_err_t parse_elem(void *data,
         if (err) return *total_size = 0, make_gsl_err_external(err);
 
         text->elem = elem;
-        err = text->parse(text, rec, total_size);
-        if (err) return make_gsl_err_external(err);
+        parser_err = text->parse(text, rec, total_size);
+        if (parser_err.code) goto final;
         
         elem->text = text;
         goto append_elem;
