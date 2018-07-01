@@ -85,17 +85,17 @@ struct kndUser
 
     int (*add_user)(struct kndUser *self);
 
-    int (*get_user)(struct kndUser *self, const char *uid, struct kndUser **user);
-    int (*get_repo)(struct kndUser *self,
-                    const char *name, size_t name_size,
-                    struct kndRepo **result);
+//    int (*get_user)(struct kndUser *self, const char *uid, struct kndUser **user);
+//    int (*get_repo)(struct kndUser *self,
+//                    const char *name, size_t name_size,
+//                    struct kndRepo **result);
 
-    int (*restore)(struct kndUser *self);
+//    int (*restore)(struct kndUser *self);
     
-    int (*import)(struct kndUser *self, char *rec, size_t *total_size);
-    int (*export)(struct kndUser *self);
+//    int (*import)(struct kndUser *self, char *rec, size_t *total_size);
+//    int (*export)(struct kndUser *self);
     
-    int (*read)(struct kndUser *self, const char *rec);
+//    int (*read)(struct kndUser *self, const char *rec);
 };
 
 extern int kndUser_new(struct kndUser **self, struct kndMemPool *mempool);
