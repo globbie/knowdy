@@ -474,7 +474,7 @@ kndRepo_parse_class(void *obj,
 }
 
 
-static int
+static gsl_err_t
 kndRepo_parse_task(void *self,
                    const char *rec,
                    size_t *total_size)
@@ -496,12 +496,8 @@ kndRepo_parse_task(void *self,
           .obj = self
         }
     };
-    gsl_err_t err;
 
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return gsl_err_to_knd_err_codes(err);
-
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 extern int kndRepo_init(struct kndRepo *self)

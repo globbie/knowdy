@@ -80,7 +80,7 @@ struct kndRepo
     int (*init)(struct kndRepo *self);
 
     int (*read_state)(struct kndRepo *self, const char *rec, size_t *chunk_size);
-    int (*parse_task)(void *self, const char *rec, size_t *chunk_size);
+    gsl_err_t (*parse_task)(void *self, const char *rec, size_t *chunk_size);
 
     int (*get_repo)(struct kndRepo *self, const char *uid, struct kndRepo **repo);
 
