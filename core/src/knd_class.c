@@ -4956,12 +4956,10 @@ static gsl_err_t parse_class_var_array(void *obj,
     return gsl_parse_array(&ci_spec, rec, total_size);
 }
 
-static int read_GSP(struct kndClass *self,
+static gsl_err_t read_GSP(struct kndClass *self,
                     const char *rec,
                     size_t *total_size)
 {
-    gsl_err_t parser_err;
-
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. reading GSP: \"%.*s\"..", 256, rec);
 
@@ -5030,10 +5028,7 @@ static int read_GSP(struct kndClass *self,
         }
     };
 
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
-
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 
@@ -5231,6 +5226,7 @@ static int unfreeze_class(struct kndClass *self,
     size_t file_size = 0;
     struct stat file_info;
     int err;
+    gsl_err_t parser_err;
 
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. unfreezing class: \"%.*s\".. global offset:%zu  block size:%zu",
@@ -5312,10 +5308,11 @@ static int unfreeze_class(struct kndClass *self,
         goto final;
     }
 
-    err = c->read(c, b, &chunk_size);
-    if (err) {
+    parser_err = c->read(c, b, &chunk_size);
+    if (parser_err.code) {
         knd_log("-- failed to parse a rec for \"%.*s\" :(",
                 c->name_size, c->name);
+        err = gsl_err_to_knd_err_codes(parser_err);
         goto final;
     }
 
