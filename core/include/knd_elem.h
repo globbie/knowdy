@@ -91,9 +91,9 @@ struct kndElem
     gsl_err_t (*parse)(struct kndElem *self,
                  const char *rec,
                  size_t *total_size);
-    int (*match)(struct kndElem *self,
-                 const char *rec,
-                 size_t rec_size);
+//    int (*match)(struct kndElem *self,
+//                 const char *rec,
+//                 size_t rec_size);
     int (*export)(struct kndElem *self);
 };
 
