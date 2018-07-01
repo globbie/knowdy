@@ -187,7 +187,6 @@ static gsl_err_t kndUser_parse_repo(void *obj,
                                     size_t *total_size)
 {
     struct kndUser *self = (struct kndUser*)obj;
-    int err;
 
     if (DEBUG_USER_LEVEL_TMP)
         knd_log("   .. parsing the REPO rec: \"%s\"", rec);
@@ -196,10 +195,7 @@ static gsl_err_t kndUser_parse_repo(void *obj,
     self->repo->out = self->out;
     self->repo->log = self->log;
 
-    err = self->repo->parse_task(self->repo, rec, total_size);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
+    return self->repo->parse_task(self->repo, rec, total_size);
 }
 
 static gsl_err_t
