@@ -1016,16 +1016,9 @@ static gsl_err_t parse_proc_arg(void *obj,
                                 size_t *total_size)
 {
     struct kndProcArg *arg = obj;
-    int err;
 
-    err = arg->parse(arg, rec, total_size);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
+    return arg->parse(arg, rec, total_size);
 }
-
-
-
 
 static gsl_err_t arg_item_read(void *obj,
                                const char *name, size_t name_size,

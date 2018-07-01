@@ -514,7 +514,7 @@ static gsl_err_t parse_proc_call(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int parse_GSL(struct kndProcArg *self,
+static gsl_err_t parse_GSL(struct kndProcArg *self,
                      const char *rec,
                      size_t *total_size)
 {
@@ -561,12 +561,8 @@ static int parse_GSL(struct kndProcArg *self,
           .obj = self
         }
     };
-    gsl_err_t parser_err;
 
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
-
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static gsl_err_t set_inst_procname(void *obj __attribute__((unused)), const char *name __attribute__((unused)), size_t name_size)
