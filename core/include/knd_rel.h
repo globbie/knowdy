@@ -222,7 +222,7 @@ struct kndRel
     gsl_err_t (*import)(struct kndRel *self,
                   const char    *rec,
                   size_t        *total_size);
-    int (*read)(struct kndRel *self,
+    gsl_err_t (*read)(struct kndRel *self,
                 const char    *rec,
                 size_t        *total_size);
     int (*read_rel)(struct kndRel *self,
