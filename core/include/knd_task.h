@@ -147,9 +147,9 @@ struct kndTask
                const char *obj,
                size_t obj_size);
 
-    int (*parse)(struct kndTask *self,
-                 const char     *rec,
-                 size_t   *total_size);
+//    int (*parse)(struct kndTask *self,
+//                 const char     *rec,
+//                 size_t   *total_size);
     int (*build_report)(struct kndTask *self);
 };
 
