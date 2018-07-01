@@ -227,7 +227,7 @@ struct kndRel
                 size_t        *total_size);
     int (*read_rel)(struct kndRel *self,
                     struct kndRelEntry *entry);
-    int (*select)(struct kndRel  *self,
+    gsl_err_t (*select)(struct kndRel  *self,
                   const char *rec,
                   size_t *total_size);
     int (*coordinate)(struct kndRel *self);

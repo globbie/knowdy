@@ -1529,7 +1529,7 @@ static gsl_err_t parse_import_instance(void *data,
     return make_gsl_err(gsl_OK);
 }
 
-static int parse_rel_select(struct kndRel *self,
+static gsl_err_t parse_rel_select(struct kndRel *self,
                             const char *rec,
                             size_t *total_size)
 {
@@ -1567,9 +1567,9 @@ static int parse_rel_select(struct kndRel *self,
         if (!self->log->buf_size) {
             e = self->log->write(self->log, "rel parse failure",
                                  strlen("rel parse failure"));
-            if (e) return e;
+            if (e) return make_gsl_err_external(e);
         }
-        return gsl_err_to_knd_err_codes(parser_err);
+        return parser_err;
     }
 
     /* any updates happened? */
@@ -1581,7 +1581,7 @@ static int parse_rel_select(struct kndRel *self,
         }
     }
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 static int resolve_inst(struct kndRel *self,
