@@ -1440,9 +1440,6 @@ static gsl_err_t parse_GSL(struct kndProc *self,
                      const char *rec,
                      size_t *total_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
-   
     if (DEBUG_PROC_LEVEL_2)
         knd_log(".. parse proc \"%.*s\" GSL: \"%.*s\"..",
                 self->name_size, self->name, 128, rec);
@@ -1457,8 +1454,8 @@ static gsl_err_t parse_GSL(struct kndProc *self,
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .buf = buf,
-          .buf_size = &buf_size,
+          .buf = self->name,
+          .buf_size = &self->name_size,
           .max_buf_size = KND_NAME_SIZE
         },
         { .type = GSL_SET_ARRAY_STATE,
@@ -1485,17 +1482,8 @@ static gsl_err_t parse_GSL(struct kndProc *self,
           .obj = self
         }
     };
-    gsl_err_t parser_err;
-    
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
 
-    if (buf_size) {
-        memcpy(self->name, buf, buf_size);
-        self->name_size = buf_size;
-    }
-
-    return make_gsl_err(gsl_OK);
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static int resolve_parents(struct kndProc *self)
