@@ -702,8 +702,8 @@ static gsl_err_t parse_elem(void *data,
         err = kndRef_new(&ref);
         if (err) return *total_size = 0, make_gsl_err_external(err);
         ref->elem = elem;
-        err = ref->parse(ref, rec, total_size);
-        if (err) { parser_err = make_gsl_err_external(err); goto final; }
+        parser_err = ref->parse(ref, rec, total_size);
+        if (parser_err.code) goto final;
 
         elem->ref = ref;
         goto append_elem;
