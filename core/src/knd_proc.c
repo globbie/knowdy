@@ -1370,16 +1370,14 @@ static gsl_err_t import_proc(struct kndProc *self,
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) goto final;
+    if (parser_err.code) return parser_err;
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log("++ import Proc: \"%.*s\"!",
                 proc->name_size, proc->name);
 
-    if (!proc->name_size) {
-        parser_err = make_gsl_err_external(knd_FAIL);
-        goto final;
-    }
+    if (!proc->name_size)
+        return make_gsl_err_external(knd_FAIL);
 
     entry = self->proc_name_idx->get(self->proc_name_idx,
                                    proc->name, proc->name_size);
@@ -1393,13 +1391,12 @@ static gsl_err_t import_proc(struct kndProc *self,
             err = self->entry->repo->log->write(self->entry->repo->log,
                                    proc->name,
                                    proc->name_size);
-            if (err) { parser_err = make_gsl_err_external(err); goto final; }
+            if (err) return make_gsl_err_external(err);
             err = self->entry->repo->log->write(self->entry->repo->log,
                                    " proc name already exists",
                                    strlen(" proc name already exists"));
-            if (err) { parser_err = make_gsl_err_external(err); goto final; }
-            parser_err = make_gsl_err_external(knd_FAIL);
-            goto final;
+            if (err) return make_gsl_err_external(err);
+            return make_gsl_err_external(knd_FAIL);
         }
     }
 
@@ -1422,17 +1419,12 @@ static gsl_err_t import_proc(struct kndProc *self,
 
     err = self->proc_name_idx->set(self->proc_name_idx,
                                    proc->name, proc->name_size, (void*)entry);
-    if (err) { parser_err = make_gsl_err_external(err); goto final; }
+    if (err) return make_gsl_err_external(err);
 
     if (DEBUG_PROC_LEVEL_2)
         proc->str(proc);
 
     return make_gsl_err(gsl_OK);
-
- final:
-    
-    //proc->del(proc);
-    return parser_err;
 }
 
 static gsl_err_t parse_GSL(struct kndProc *self,
