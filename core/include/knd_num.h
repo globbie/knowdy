@@ -86,9 +86,9 @@ struct kndNum
                  const char     *rec,
                  size_t          *total_size);
 
-    int (*update)(struct kndNum *self,
-                 const char     *rec,
-                 size_t          *total_size);
+//    int (*update)(struct kndNum *self,
+//                 const char     *rec,
+//                 size_t          *total_size);
 
     int (*index)(struct kndNum *self);
     
