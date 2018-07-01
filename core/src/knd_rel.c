@@ -995,12 +995,10 @@ static int read_rel(struct kndRel *self,
     return knd_OK;
 }
 
-static int read_GSP(struct kndRel *self,
+static gsl_err_t read_GSP(struct kndRel *self,
                     const char *rec,
                     size_t *total_size)
 {
-    gsl_err_t parser_err;
-
     if (DEBUG_REL_LEVEL_2)
         knd_log(".. reading rel GSP: \"%.*s\"..", 64, rec);
 
@@ -1025,10 +1023,7 @@ static int read_GSP(struct kndRel *self,
         }
     };
 
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
-
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static int unfreeze_inst(struct kndRel *self,
@@ -1168,6 +1163,7 @@ static int get_rel(struct kndRel *self,
     size_t file_size = 0;
     struct stat file_info;
     int err;
+    gsl_err_t parser_err;
 
     if (DEBUG_REL_LEVEL_1)
         knd_log(".. get rel: \"%.*s\"",
@@ -1286,7 +1282,9 @@ static int get_rel(struct kndRel *self,
         return knd_FAIL;
     }
     total_size = &chunk_size;
-    err = rel->read(rel, b, total_size);                                          PARSE_ERR();
+    parser_err = rel->read(rel, b, total_size);
+    if (parser_err.code) err = gsl_err_to_knd_err_codes(parser_err);
+    PARSE_ERR();
 
     /* resolve args of a Rel */
     for (arg = rel->args; arg; arg = arg->next) {
