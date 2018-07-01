@@ -397,7 +397,7 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int parse_proc_select(struct kndProc *self,
+static gsl_err_t parse_proc_select(struct kndProc *self,
                              const char *rec,
                              size_t *total_size)
 {
@@ -442,9 +442,9 @@ static int parse_proc_select(struct kndProc *self,
         if (!self->entry->repo->log->buf_size) {
             e = self->entry->repo->log->write(self->entry->repo->log, "proc parse failure",
                                  strlen("proc parse failure"));
-            if (e) return e;
+            if (e) return make_gsl_err_external(e);
         }
-        return gsl_err_to_knd_err_codes(parser_err);
+        return parser_err;
     }
 
     /* any updates happened? */
@@ -455,7 +455,7 @@ static int parse_proc_select(struct kndProc *self,
             self->inbox_size++;
         }
     }
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 static int proc_call_arg_export_GSP(struct kndProc *self,

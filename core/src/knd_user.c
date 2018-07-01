@@ -305,12 +305,8 @@ static gsl_err_t parse_proc_select(void *obj,
 {
     struct kndUser *self = obj;
     struct kndProc *proc = self->repo->root_class->proc;
-    int err;
 
-    err = proc->select(proc, rec, total_size);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
+    return proc->select(proc, rec, total_size);
 }
 
 
