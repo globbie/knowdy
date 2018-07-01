@@ -219,7 +219,7 @@ struct kndRel
     gsl_err_t (*parse_liquid_updates)(struct kndRel *self,
 				const char    *rec,
 				size_t        *total_size);
-    int (*import)(struct kndRel *self,
+    gsl_err_t (*import)(struct kndRel *self,
                   const char    *rec,
                   size_t        *total_size);
     int (*read)(struct kndRel *self,

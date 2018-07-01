@@ -522,7 +522,7 @@ static gsl_err_t validate_rel_arg(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static int import_rel(struct kndRel *self,
+static gsl_err_t import_rel(struct kndRel *self,
                       const char *rec,
                       size_t *total_size)
 {
@@ -535,7 +535,7 @@ static int import_rel(struct kndRel *self,
         knd_log(".. import Rel: \"%.*s\"..", 32, rec);
 
     err  = self->mempool->new_rel(self->mempool, &rel);
-    if (err) return *total_size = 0, err;
+    if (err) return *total_size = 0, make_gsl_err_external(err);
 
     rel->out = self->out;
     rel->log = self->log;
@@ -570,13 +570,10 @@ static int import_rel(struct kndRel *self,
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) {
-        err = gsl_err_to_knd_err_codes(parser_err);
-        goto final;
-    }
+    if (parser_err.code) goto final;
 
     if (!rel->name_size) {
-        err = knd_FAIL;
+        parser_err = make_gsl_err_external(knd_FAIL);
         goto final;
     }
 
@@ -588,12 +585,12 @@ static int import_rel(struct kndRel *self,
         err = self->log->write(self->log,
                                rel->name,
                                rel->name_size);
-        if (err) goto final;
+        if (err) { parser_err = make_gsl_err_external(err); goto final; }
         err = self->log->write(self->log,
                                " relation name already exists",
                                strlen(" relation name already exists"));
-        if (err) goto final;
-        err = knd_FAIL;
+        if (err) { parser_err = make_gsl_err_external(err); goto final; }
+        parser_err = make_gsl_err_external(knd_FAIL);
         goto final;
     }
 
@@ -603,7 +600,8 @@ static int import_rel(struct kndRel *self,
         self->inbox_size++;
     }
 
-    err = self->mempool->new_rel_entry(self->mempool, &entry);                        RET_ERR();
+    err = self->mempool->new_rel_entry(self->mempool, &entry);
+    if (err) { return make_gsl_err_external(err); }
     entry->rel = rel;
     entry->mempool = rel->mempool;
     rel->entry = entry;
@@ -627,15 +625,16 @@ static int import_rel(struct kndRel *self,
 
     err = self->rel_name_idx->set(self->rel_name_idx,
                                   entry->name, entry->name_size, (void*)entry);
-    if (err) goto final;
+    if (err) { parser_err = make_gsl_err_external(err); goto final; }
 
     if (DEBUG_REL_LEVEL_1)
         rel->str(rel);
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
  final:
+    // FIXME(k15tfu): free rel & entry
 
-    return err;
+    return parser_err;
 }
 
 static gsl_err_t confirm_rel_read(void *obj,
