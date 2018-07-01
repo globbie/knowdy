@@ -123,7 +123,7 @@ struct kndRelArg
     void (*del)(struct kndRelArg   *self);
     void (*str)(struct kndRelArg *self);
 
-    int (*parse)(struct kndRelArg *self,
+    gsl_err_t (*parse)(struct kndRelArg *self,
                  const char   *rec,
                  size_t *chunk_size);
 
