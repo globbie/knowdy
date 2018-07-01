@@ -1832,7 +1832,7 @@ static gsl_err_t parse_liquid_rel_id(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static int parse_liquid_updates(struct kndRel *self,
+static gsl_err_t parse_liquid_updates(struct kndRel *self,
                                 const char *rec,
                                 size_t *total_size)
 {
@@ -1850,7 +1850,6 @@ static int parse_liquid_updates(struct kndRel *self,
           .obj = self
         }
     };
-    gsl_err_t parser_err;
 
     if (DEBUG_REL_LEVEL_2)
         knd_log("..parsing liquid REL updates..");
@@ -1858,13 +1857,10 @@ static int parse_liquid_updates(struct kndRel *self,
     /* create index of rel updates */
     rel_updates = realloc(update->rels,
                           (self->inbox_size * sizeof(struct kndRelUpdate*)));
-    if (!rel_updates) return *total_size = 0, knd_NOMEM;
+    if (!rel_updates) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
     update->rels = rel_updates;
 
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
-
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static int export_updates(struct kndRel *self)
