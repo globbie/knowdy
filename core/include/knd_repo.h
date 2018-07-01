@@ -79,20 +79,20 @@ struct kndRepo
     void (*str)(struct kndRepo *self);
     int (*init)(struct kndRepo *self);
 
-    int (*read_state)(struct kndRepo *self, const char *rec, size_t *chunk_size);
+    //int (*read_state)(struct kndRepo *self, const char *rec, size_t *chunk_size);
     gsl_err_t (*parse_task)(void *self, const char *rec, size_t *chunk_size);
 
-    int (*get_repo)(struct kndRepo *self, const char *uid, struct kndRepo **repo);
+    //int (*get_repo)(struct kndRepo *self, const char *uid, struct kndRepo **repo);
 
     int (*open)(struct kndRepo *self);
     int (*restore)(struct kndRepo *self);
 
-    int (*read)(struct kndRepo *self, const char *id);
+    //int (*read)(struct kndRepo *self, const char *id);
 
-    int (*sync)(struct kndRepo *self);
+    //int (*sync)(struct kndRepo *self);
 
-    int (*import)(struct kndRepo *self, const char *rec, size_t *total_size);
-    int (*update)(struct kndRepo *self, const char *rec);
+    //int (*import)(struct kndRepo *self, const char *rec, size_t *total_size);
+    //int (*update)(struct kndRepo *self, const char *rec);
     int (*export)(struct kndRepo *self, knd_format format);
 };
 
