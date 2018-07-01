@@ -102,20 +102,13 @@ static gsl_err_t parse_user(void *obj,
 {
     struct kndTask *self = obj;
     struct kndUser *user = self->shard->user;
-    int err;
 
-    
     if (self->curr_locale_size) {
         self->locale = self->curr_locale;
         self->locale_size = self->curr_locale_size;
     }
 
-    err = user->parse_task(user, rec, total_size);
-    if (err) {
-        return make_gsl_err_external(knd_FAIL);
-    }
-    
-    return make_gsl_err(gsl_OK);
+    return user->parse_task(user, rec, total_size);
 }
 
 static gsl_err_t set_output_format(void *obj, const char *name, size_t name_size)
