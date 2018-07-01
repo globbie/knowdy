@@ -630,8 +630,8 @@ static gsl_err_t parse_elem(void *data,
             break;
         case KND_ATTR_NUM:
             num = elem->num;
-            err = num->parse(num, rec, total_size);
-            if (err) return make_gsl_err_external(err);
+            parser_err = num->parse(num, rec, total_size);
+            if (parser_err.code) return parser_err;
             break;
         default:
             break;
@@ -693,8 +693,8 @@ static gsl_err_t parse_elem(void *data,
         err = kndNum_new(&num);
         if (err) return *total_size = 0, make_gsl_err_external(err);
         num->elem = elem;
-        err = num->parse(num, rec, total_size);
-        if (err) { parser_err = make_gsl_err_external(err); goto final; }
+        parser_err = num->parse(num, rec, total_size);
+        if (parser_err.code) goto final;
 
         elem->num = num;
         goto append_elem;
