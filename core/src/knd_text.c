@@ -496,7 +496,7 @@ static gsl_err_t parse_translation_GSL(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int parse_GSL(struct kndText *self,
+static gsl_err_t parse_GSL(struct kndText *self,
                      const char *rec,
                      size_t *total_size)
 {
@@ -507,14 +507,14 @@ static int parse_GSL(struct kndText *self,
     state = self->states;
     if (!state) {
         state = malloc(sizeof(struct kndTextState));
-        if (!state) return *total_size = 0, knd_NOMEM;
+        if (!state) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
         memset(state, 0, sizeof(struct kndTextState));
         self->states = state;
         self->num_states++;
     }
 
     tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return *total_size = 0, knd_NOMEM;
+    if (!tr) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
     memset(tr, 0, sizeof(struct kndTranslation));
 
     struct gslTaskSpec specs[] = {
@@ -525,13 +525,13 @@ static int parse_GSL(struct kndText *self,
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+    if (parser_err.code) return parser_err;
 
     /* assign translation */
     tr->next = state->translations;
     state->translations = tr;
 
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
 extern int

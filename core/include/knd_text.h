@@ -122,7 +122,7 @@ struct kndText
                   struct kndElemRef *elemref,
                   knd_format format);
 
-    int (*parse)(struct kndText *self,
+    gsl_err_t (*parse)(struct kndText *self,
                  const char     *rec,
                  size_t          *total_size);
 
