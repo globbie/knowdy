@@ -88,7 +88,7 @@ struct kndElem
     int (*read)(struct kndElem *self);
     int (*resolve)(struct kndElem *self);
     int (*index)(struct kndElem *self);
-    int (*parse)(struct kndElem *self,
+    gsl_err_t (*parse)(struct kndElem *self,
                  const char *rec,
                  size_t *total_size);
     int (*match)(struct kndElem *self,

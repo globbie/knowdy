@@ -694,7 +694,7 @@ static gsl_err_t parse_elem(void *data,
         if (err) return *total_size = 0, make_gsl_err_external(err);
         num->elem = elem;
         err = num->parse(num, rec, total_size);
-        if (err) goto final;
+        if (err) { parser_err = make_gsl_err_external(err); goto final; }
 
         elem->num = num;
         goto append_elem;
@@ -703,7 +703,7 @@ static gsl_err_t parse_elem(void *data,
         if (err) return *total_size = 0, make_gsl_err_external(err);
         ref->elem = elem;
         err = ref->parse(ref, rec, total_size);
-        if (err) goto final;
+        if (err) { parser_err = make_gsl_err_external(err); goto final; }
 
         elem->ref = ref;
         goto append_elem;
@@ -721,8 +721,8 @@ static gsl_err_t parse_elem(void *data,
         break;
     }
 
-    err = elem->parse(elem, rec, total_size);
-    if (err) goto final;
+    parser_err = elem->parse(elem, rec, total_size);
+    if (parser_err.code) goto final;
 
  append_elem:
     if (!self->tail) {
@@ -746,7 +746,7 @@ static gsl_err_t parse_elem(void *data,
     knd_log("-- validation of \"%s\" elem failed :(", name);
 
     elem->del(elem);
-    return make_gsl_err_external(err);
+    return parser_err;
 }
 
 static gsl_err_t resolve_relref(void *obj, const char *name, size_t name_size)
