@@ -3592,12 +3592,8 @@ static gsl_err_t parse_proc_import(void *obj,
 {
     struct kndClass *self = obj;
     struct kndProc *proc = self->entry->repo->root_proc;
-    int err;
 
-    err = proc->import(proc, rec, total_size);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
+    return proc->import(proc, rec, total_size);
 }
 
 static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
