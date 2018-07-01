@@ -7667,15 +7667,11 @@ static gsl_err_t parse_liquid_rel_update(void *obj,
                                          const char *rec, size_t *total_size)
 {
     struct kndClass *self = obj;
-    int err;
 
     if (!self->curr_update) return *total_size = 0, make_gsl_err_external(knd_FAIL);
 
     self->rel->curr_update = self->curr_update;
-    err = self->rel->parse_liquid_updates(self->rel, rec, total_size);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
+    return self->rel->parse_liquid_updates(self->rel, rec, total_size);
 }
 
 static gsl_err_t new_liquid_update(void *obj, const char *val, size_t val_size)
