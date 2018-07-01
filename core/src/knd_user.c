@@ -631,7 +631,7 @@ static gsl_err_t remove_user(void *data,
     return make_gsl_err(gsl_OK);
 }
 
-static int parse_task(struct kndUser *self,
+static gsl_err_t parse_task(struct kndUser *self,
                       const char *rec,
                       size_t *total_size)
 {
@@ -733,21 +733,20 @@ static int parse_task(struct kndUser *self,
           .obj = self
         }
     };
-    int err, e;
+    int err;
     gsl_err_t parser_err;
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         knd_log("-- user task parse failure: \"%.*s\" :(", self->log->buf_size, self->log->buf);
         if (!self->log->buf_size) {
-            e = self->log->write(self->log, "internal server error",
+            err = self->log->write(self->log, "internal server error",
                                  strlen("internal server error"));
-            if (e) {
-                err = e;
+            if (err) {
+                parser_err = make_gsl_err_external(err);
                 goto cleanup;
             }
         }
-        err = gsl_err_to_knd_err_codes(parser_err);
         goto cleanup;
     }
 
@@ -759,9 +758,9 @@ static int parse_task(struct kndUser *self,
     case KND_LIQUID_STATE:
         if (DEBUG_USER_LEVEL_2)
             knd_log("++ liquid updates applied!");
-        return knd_OK;
+        return make_gsl_err(gsl_OK);
     case KND_GET_STATE:
-        return knd_OK;
+        return make_gsl_err(gsl_OK);
     case KND_UPDATE_STATE:
         self->task->update_spec = rec;
         self->task->update_spec_size = *total_size;
@@ -770,6 +769,7 @@ static int parse_task(struct kndUser *self,
         err = c->update_state(c);
         if (err) {
             knd_log("-- failed to update state :(");
+            parser_err = make_gsl_err_external(err);
             goto cleanup;
         }
         break;
@@ -777,14 +777,14 @@ static int parse_task(struct kndUser *self,
         break;
     }
 
-    err = knd_OK;
+    parser_err = make_gsl_err(gsl_OK);
 
  cleanup:
 
     /* TODO: release resources */
     self->repo->root_class->reset_inbox(self->repo->root_class);
 
-    return err;
+    return parser_err;
 }
 
 static int export(struct kndUser *self)

@@ -79,7 +79,7 @@ struct kndUser
 
     int (*run)(struct kndUser *self);
 
-    int (*parse_task)(struct kndUser *self,
+    gsl_err_t (*parse_task)(struct kndUser *self,
                       const char *rec,
                       size_t *total_size);
 
