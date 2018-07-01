@@ -481,6 +481,7 @@ static gsl_err_t validate_rel_arg(void *obj,
     struct kndRel *self = obj;
     struct kndRelArg *arg;
     int err;
+    gsl_err_t parser_err;
 
     if (DEBUG_REL_LEVEL_2)
         knd_log(".. parsing the \"%.*s\" rel arg, rec:\"%.*s\"", name_size, name, 32, rec);
@@ -498,11 +499,11 @@ static gsl_err_t validate_rel_arg(void *obj,
         arg->type = KND_RELARG_INS;
     }
 
-    err = arg->parse(arg, rec, total_size);
-    if (err) {
+    parser_err = arg->parse(arg, rec, total_size);
+    if (parser_err.code) {
         if (DEBUG_REL_LEVEL_TMP)
-            knd_log("-- failed to parse rel arg: %d", err);
-        return make_gsl_err_external(err);
+            knd_log("-- failed to parse rel arg: %d", gsl_err_to_knd_err_codes(parser_err));
+        return parser_err;
     }
 
     if (!self->tail_arg) {

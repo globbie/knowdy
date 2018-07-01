@@ -367,7 +367,7 @@ static gsl_err_t parse_gloss(void *obj,
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
-static int parse_GSL(struct kndRelArg *self,
+static gsl_err_t parse_GSL(struct kndRelArg *self,
                      const char *rec,
                      size_t *total_size)
 {
@@ -405,12 +405,8 @@ static int parse_GSL(struct kndRelArg *self,
           .max_buf_size = KND_NAME_SIZE
         }
     };
-    gsl_err_t parser_err;
 
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
-
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static gsl_err_t set_inst_classname(void *obj, const char *name, size_t name_size)
