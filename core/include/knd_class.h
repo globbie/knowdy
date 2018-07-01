@@ -211,7 +211,7 @@ struct kndClass
 		struct kndConcFolder *parent_folder,
                 const char *filename,
                 size_t filename_size);
-    int (*read)(struct kndClass   *self,
+    gsl_err_t (*read)(struct kndClass   *self,
                 const char *rec,
                 size_t *total_size);
     int (*read_obj_entry)(struct kndClass   *self,
