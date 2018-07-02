@@ -82,13 +82,13 @@ struct kndNum
     void (*str)(struct kndNum *self);
     void (*del)(struct kndNum *self);
     
-    int (*parse)(struct kndNum *self,
+    gsl_err_t (*parse)(struct kndNum *self,
                  const char     *rec,
                  size_t          *total_size);
 
-    int (*update)(struct kndNum *self,
-                 const char     *rec,
-                 size_t          *total_size);
+//    int (*update)(struct kndNum *self,
+//                 const char     *rec,
+//                 size_t          *total_size);
 
     int (*index)(struct kndNum *self);
     

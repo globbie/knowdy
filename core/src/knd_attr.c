@@ -505,6 +505,7 @@ static gsl_err_t parse_proc(void *obj,
     struct kndProcEntry *entry;
     struct kndMemPool *mempool;
     int err;
+    gsl_err_t parser_err;
 
     mempool = self->parent_class->entry->repo->mempool;
     err = mempool->new_proc(mempool, &proc);
@@ -516,8 +517,9 @@ static gsl_err_t parse_proc(void *obj,
     entry->proc = proc;
     proc->entry = entry;
 
-    err = proc->read(proc, rec, total_size);
-    if (err) return make_gsl_err_external(err);
+    parser_err = proc->read(proc, rec, total_size);
+    if (parser_err.code) return parser_err;
+
     self->proc = proc;
 
     return make_gsl_err(gsl_OK);

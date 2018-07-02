@@ -72,7 +72,7 @@ struct kndRef
 
     void (*del)(struct kndRef *self);
     
-    int (*parse)(struct kndRef *self,
+    gsl_err_t (*parse)(struct kndRef *self,
                  const char     *rec,
                  size_t          *total_size);
 
