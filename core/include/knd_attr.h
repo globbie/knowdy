@@ -163,8 +163,8 @@ struct kndAttr
 
     struct kndTask *task;
 
-    const char *locale;
-    size_t locale_size;
+//    const char *locale;
+//    size_t locale_size;
 //    knd_format format;
 
     /* if refclass is empty: assume self reference by default */
