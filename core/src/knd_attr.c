@@ -180,7 +180,7 @@ static int export_JSON(struct kndAttr *self)
     while (tr) {
         if (DEBUG_ATTR_LEVEL_2)
             knd_log("LANG: %s == CURR LOCALE: %s [%lu] => %s",
-                    tr->locale, self->task->locale, (unsigned long)self->locale_size, tr->val);
+                    tr->locale, self->task->locale, (unsigned long)self->task->locale_size, tr->val);
 
         if (strncmp(self->task->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
