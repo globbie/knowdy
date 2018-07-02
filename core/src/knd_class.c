@@ -5889,7 +5889,7 @@ static gsl_err_t present_class_selection(void *obj,
 
     if (!self->curr_class) {
         knd_log("-- no class to present :(");
-        return make_gsl_err(gsl_FAIL);
+        return make_gsl_err_external(knd_FAIL);
     }
 
     c = self->curr_class;
