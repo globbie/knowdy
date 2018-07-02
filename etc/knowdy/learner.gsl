@@ -1,7 +1,7 @@
 {schema knd
       {agent 007}
       {path /var/lib/knowdy/db}
-      {schemas /Users/admin/schemas}
+      {schemas /etc/knowdy/schemas}
       {--user Custom User--}
       {sid AUTH_SERVER_SID}
       {-- address localhost:10001 --}
