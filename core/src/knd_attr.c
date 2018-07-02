@@ -219,18 +219,15 @@ static int export_JSON(struct kndAttr *self)
     return knd_OK;
 }
 
-static int export_GSP(struct kndAttr *self)
+static int export_GSP(struct kndAttr *self, struct glbOutput *out)
 {
     char buf[KND_NAME_SIZE] = {0};
     size_t buf_size = 0;
-    struct glbOutput *out;
     struct kndTranslation *tr;
 
     const char *type_name = knd_attr_names[self->type];
     size_t type_name_size = strlen(knd_attr_names[self->type]);
     int err;
-
-    out = self->out;
 
     err = out->write(out, "{", 1);
     if (err) return err;
@@ -314,7 +311,7 @@ static int export_GSP(struct kndAttr *self)
     return knd_OK;
 }
 
-static int export(struct kndAttr *self)
+static int export(struct kndAttr *self, struct glbOutput *out)
 {
     int err = knd_FAIL;
 
@@ -324,7 +321,7 @@ static int export(struct kndAttr *self)
         if (err) goto final;
         break;
     case KND_FORMAT_GSP:
-        err = export_GSP(self);
+        err = export_GSP(self, out);
         if (err) goto final;
         break;
     default:
