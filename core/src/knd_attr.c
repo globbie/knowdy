@@ -311,25 +311,13 @@ static int export_GSP(struct kndAttr *self, struct glbOutput *out)
     return knd_OK;
 }
 
-static int export(struct kndAttr *self, struct glbOutput *out)
+static int export(struct kndAttr *self, knd_format format, struct glbOutput *out)
 {
-    int err = knd_FAIL;
-
-    switch (self->format) {
-    case KND_FORMAT_JSON:
-        err = export_JSON(self);
-        if (err) goto final;
-        break;
-    case KND_FORMAT_GSP:
-        err = export_GSP(self, out);
-        if (err) goto final;
-        break;
-    default:
-        break;
+    switch (format) {
+    case KND_FORMAT_JSON: return export_JSON(self);
+    case KND_FORMAT_GSP:  return export_GSP(self, out);
+    default:              return knd_NO_MATCH;
     }
-
- final:
-    return err;
 }
 
 

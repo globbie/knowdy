@@ -165,7 +165,7 @@ struct kndAttr
 
     const char *locale;
     size_t locale_size;
-    knd_format format;
+//    knd_format format;
 
     /* if refclass is empty: assume self reference by default */
     char ref_classname[KND_NAME_SIZE];
@@ -211,7 +211,9 @@ struct kndAttr
                     const char   *val,
                     size_t val_size);
 
-    int (*export)(struct kndAttr *self, struct glbOutput *out);
+    int (*export)(struct kndAttr *self,
+                  knd_format format,
+                  struct glbOutput *out);
 };
 
 
