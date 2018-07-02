@@ -7162,7 +7162,7 @@ static int export_JSON(struct kndClass *self)
                 err = out->write(out, ",", 1);
                 if (err) return err;
             }
-            err = attr->export(attr);
+            err = attr->export(attr, out);
             if (err) {
                 if (DEBUG_CONC_LEVEL_TMP)
                     knd_log("-- failed to export %s attr to JSON: %s\n", attr->name);
@@ -7568,9 +7568,8 @@ static int export_GSP(struct kndClass *self)
 
     if (self->attrs) {
         for (attr = self->attrs; attr; attr = attr->next) {
-            attr->out = self->entry->repo->out;
             attr->format = KND_FORMAT_GSP;
-            err = attr->export(attr);
+            err = attr->export(attr, self->entry->repo->out);
             if (err) return err;
         }
     }
