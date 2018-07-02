@@ -30,7 +30,7 @@ task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
         knd_log("-- task execution failed");
         return -1;
     }
-    
+
     {
         struct kmqTask *reply;
         err = kmqTask_new(&reply);
@@ -102,18 +102,15 @@ int kndLearnerService_new(struct kndLearnerService **service,
     self->entry_point->options.callback = task_callback;
     self->entry_point->options.cb_arg = self;
 
-    err = addrinfo_new(&address,
-                       "localhost:10001",
-                       strlen("localhost:10001"));
+    err = addrinfo_new(&address, "localhost:10001", strlen("localhost:10001"));
     if (err != 0) goto error;
 
     err = self->entry_point->set_address(self->entry_point, address);
     if (err != 0) goto error;
 
     self->knode->add_endpoint(self->knode, self->entry_point);
-    
-    err = kndShard_new(&self->shard,
-                       opts->config_file);
+
+    err = kndShard_new(&self->shard, opts->config_file);
     if (err != 0) goto error;
 
     self->start = start__;
