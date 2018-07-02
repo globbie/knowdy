@@ -181,10 +181,10 @@ struct kndObject
 
     int (*expand)(struct kndObject *self, size_t depth);
 
-    int (*import)(struct kndObject *self,
-                  const char *rec,
-                  size_t *total_size,
-                  knd_format format);
+//    int (*import)(struct kndObject *self,
+//                  const char *rec,
+//                  size_t *total_size,
+//                  knd_format format);
 
 //    int (*update)(struct kndObject *self,
 //                  const char *rec,

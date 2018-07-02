@@ -204,9 +204,9 @@ struct kndRel
                    const char *name, size_t name_size,
                    struct kndRel **result);
 
-    int (*parse)(struct kndRel *self,
-                 const char    *rec,
-                 size_t        *total_size);
+//    int (*parse)(struct kndRel *self,
+//                 const char    *rec,
+//                 size_t        *total_size);
 
     int (*read_inst)(struct kndRel *self,
 		     struct kndRelInstance *inst,

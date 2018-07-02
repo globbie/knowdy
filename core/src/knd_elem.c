@@ -404,12 +404,10 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int parse_GSL(struct kndElem *self,
+static gsl_err_t parse_GSL(struct kndElem *self,
                      const char *rec,
                      size_t *total_size)
 {
-    gsl_err_t parser_err;
-
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_val,
@@ -430,10 +428,7 @@ static int parse_GSL(struct kndElem *self,
                 self->attr->name_size, self->attr->name,
                 16, rec);
 
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
-
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static int

@@ -242,13 +242,13 @@ struct kndProc
 
     void (*del)(struct kndProc *self);
     
-    int (*read)(struct kndProc *self,
+    gsl_err_t (*read)(struct kndProc *self,
                 const char    *rec,
                 size_t        *total_size);
-    int (*import)(struct kndProc *self,
+    gsl_err_t (*import)(struct kndProc *self,
                   const char    *rec,
                   size_t        *total_size);
-    int (*select)(struct kndProc *self,
+    gsl_err_t (*select)(struct kndProc *self,
 		  const char    *rec,
 		  size_t        *total_size);
     int (*read_proc)(struct kndProc *self,

@@ -134,7 +134,7 @@ struct kndProcArg
     void (*del)(struct kndProcArg   *self);
     void (*str)(struct kndProcArg *self);
 
-    int (*parse)(struct kndProcArg *self,
+    gsl_err_t (*parse)(struct kndProcArg *self,
                  const char   *rec,
                  size_t *chunk_size);
 
