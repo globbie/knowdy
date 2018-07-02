@@ -65,7 +65,6 @@ static int kndShard_run_task(struct kndShard *self,
 
 final:
 
-    knd_log(".. task finished..");
     /* save only the successful write transaction */
     switch (self->task->type) {
     case KND_UPDATE_STATE:
@@ -95,7 +94,7 @@ final:
 static gsl_err_t
 run_check_schema(void *obj __attribute__((unused)), const char *val, size_t val_size)
 {
-    const char *schema_name = "Knowdy Learner Service";
+    const char *schema_name = "knd";
     size_t schema_name_size = strlen(schema_name);
 
     if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);

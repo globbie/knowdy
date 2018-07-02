@@ -514,6 +514,7 @@ int knd_parse_num(const char *val,
     if ((errno == ERANGE && (numval == LONG_MAX || numval == LONG_MIN)) ||
             (errno != 0 && numval == 0))
     {
+        knd_log("input str: \"%s\"", val);
         perror("strtol");
         err = knd_FAIL;
         goto final;

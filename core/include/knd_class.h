@@ -147,6 +147,7 @@ struct kndClass
     size_t depth;
     size_t max_depth;
 
+    // TODO: remove
     struct kndProc *proc;
     struct kndRel *rel;
 
@@ -155,6 +156,7 @@ struct kndClass
     size_t num_attrs;
     struct kndAttr *implied_attr;
 
+    
     struct kndClassVar *baseclass_vars;
     size_t num_baseclass_vars;
 
@@ -162,10 +164,10 @@ struct kndClass
     size_t num_bases;
     bool is_resolved;
 
-    struct kndClass *root_class;
-    struct kndClass *curr_class;
-    struct kndClass *curr_baseclass;
-    struct kndAttr *curr_attr;
+    struct kndClass   *root_class;
+    struct kndClass   *curr_class;
+    struct kndClass   *curr_baseclass;
+    struct kndAttr    *curr_attr;
     struct kndObject  *curr_obj;
 
     struct kndConcFolder *folders;
@@ -182,14 +184,16 @@ struct kndClass
     bool batch_mode;
 
     /* indices */
+    // TODO: move to repo
     struct kndSet *class_idx;
     struct ooDict *class_name_idx;
 
-    //struct kndSet *attr_idx;
     struct ooDict *attr_name_idx;
+    struct kndAttr *computed_attrs[KND_MAX_ATTRS];
+    size_t num_computed_attrs;
 
     // TODO: need to find an alternative solution to this!
-    char dir_buf[KND_MAX_CONC_CHILDREN * KND_DIR_ENTRY_SIZE];
+    //char dir_buf[KND_MAX_CONC_CHILDREN * KND_DIR_ENTRY_SIZE];
     //size_t dir_buf_size;
 
     struct kndUpdate *curr_update;

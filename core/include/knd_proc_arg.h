@@ -36,6 +36,7 @@ struct kndProcArg;
 struct kndProcArgInstance;
 struct kndObject;
 struct kndTask;
+struct kndClassVar;
 
 typedef enum knd_proc_arg_type {
     KND_PROCARG_NONE,
@@ -82,7 +83,10 @@ struct kndProcCallArg
     char val[KND_NAME_SIZE];
     size_t val_size;
 
+    long numval;
+    
     struct kndProcArg *arg;
+    struct kndClassVar *class_var;
 
     struct kndProcCall proc_call;
 

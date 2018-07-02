@@ -1241,6 +1241,8 @@ static gsl_err_t parse_proc_call_arg(void *obj,
     parser_err = import_class_var(class_var, rec, total_size);
     if (parser_err.code) return parser_err;
 
+    call_arg->class_var = class_var;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -1250,6 +1252,7 @@ static gsl_err_t parse_proc_call(void *obj,
 {
     struct kndProc *proc = obj;
     struct kndProcCall *proc_call = &proc->proc_call;
+    gsl_err_t parser_err;
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log(".. Proc Call parsing: \"%.*s\"..", 32, rec);
@@ -1284,7 +1287,16 @@ static gsl_err_t parse_proc_call(void *obj,
         }
     };
 
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err;
+
+    if (!strncmp("_mult", proc_call->name, proc_call->name_size))
+        proc_call->type = KND_PROC_MULT;
+
+    if (!strncmp("_mult_percent", proc_call->name, proc_call->name_size))
+        proc_call->type = KND_PROC_MULT_PERCENT;
+
+    return make_gsl_err(gsl_OK);
 }
 
 static int import_proc(struct kndProc *self,

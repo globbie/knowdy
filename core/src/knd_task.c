@@ -41,6 +41,7 @@ static void reset(struct kndTask *self)
     self->sid_size = 0;
     self->uid_size = 0;
     self->tid_size = 0;
+
     self->locale = self->shard->user->default_locale;
     self->locale_size = self->shard->user->default_locale_size;
     self->curr_locale_size = 0;
@@ -63,6 +64,7 @@ static void reset(struct kndTask *self)
 
     self->error = 0;
     self->http_code = HTTP_OK;
+
     self->log->reset(self->log);
     self->out->reset(self->out);
     self->update->reset(self->update);
@@ -102,6 +104,7 @@ static gsl_err_t parse_user(void *obj,
     struct kndUser *user = self->shard->user;
     int err;
 
+    
     if (self->curr_locale_size) {
         self->locale = self->curr_locale;
         self->locale_size = self->curr_locale_size;
@@ -186,6 +189,8 @@ static gsl_err_t parse_task(void *obj,
 {
     struct kndTask *self = obj;
     gsl_err_t err;
+
+    reset(self);
 
     struct gslTaskSpec specs[] = {
         { .name = "schema",

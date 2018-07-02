@@ -95,6 +95,8 @@ struct kndAttrVar
     char val[KND_VAL_SIZE];
     size_t val_size;
 
+    long numval;
+
     struct kndAttr *attr;
     struct kndAttr *implied_attr;
 
