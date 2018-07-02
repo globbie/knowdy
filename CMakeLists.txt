@@ -51,13 +51,14 @@ endif()
 
 set(KNOWDY_PREFIX "knd")
 set(CORE      "core")
-#set(RETRIEVER "retriever")
 set(LEARNER   "learner")
+set(LINT      "lint")
 
 set(KNOWDY_MODULES
         ${CORE}
-#        ${RETRIEVER}
-        ${LEARNER})
+        ${LEARNER}
+        ${LINT}
+)
 
 include_directories(${CORE}/include)
 
