@@ -39,9 +39,9 @@ static void str(struct kndTask *self __attribute__((unused)), size_t depth __att
 
 static void reset(struct kndTask *self)
 {
-    self->sid_size = 0;
-    self->uid_size = 0;
-    self->tid_size = 0;
+//    self->sid_size = 0;
+//    self->uid_size = 0;
+//    self->tid_size = 0;
 
     self->locale = self->shard->user->default_locale;
     self->locale_size = self->shard->user->default_locale_size;
