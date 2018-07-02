@@ -26,6 +26,7 @@
 #include "knd_object.h"
 #include "knd_rel.h"
 #include "knd_proc.h"
+#include "knd_proc_arg.h"
 #include "knd_set.h"
 #include "knd_utils.h"
 #include "knd_http_codes.h"
@@ -39,6 +40,10 @@
 #define DEBUG_CONC_LEVEL_4 0
 #define DEBUG_CONC_LEVEL_5 0
 #define DEBUG_CONC_LEVEL_TMP 1
+
+static int get_arg_value(struct kndAttrVar *src,
+                         struct kndAttrVar *query,
+                         struct kndProcCallArg *arg);
 
 static int build_attr_name_idx(struct kndClass *self);
 static gsl_err_t confirm_class_var(void *obj, const char *name, size_t name_size);
@@ -193,7 +198,7 @@ static void str_attr_vars(struct kndAttrVar *items, size_t depth)
             count = 0;
             if (item->val_size) {
                 count = 1;
-                knd_log("%*s%zu)  %.*s",
+                knd_log("%*s%zu)  val:%.*s",
                         depth * KND_OFFSET_SIZE, "",
                         count,
                         item->val_size, item->val);
@@ -208,6 +213,11 @@ static void str_attr_vars(struct kndAttrVar *items, size_t depth)
                         depth * KND_OFFSET_SIZE, "",
                         count,
                         list_item->val_size, list_item->val);
+
+                if (list_item->children) {
+                    str_attr_vars(list_item->children, depth + 1);
+                }
+                
             }
             knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
             continue;
@@ -219,8 +229,9 @@ static void str_attr_vars(struct kndAttrVar *items, size_t depth)
                 classname_size, classname,
                 item->val_size, item->val);
 
-        if (item->children)
+        if (item->children) {
             str_attr_vars(item->children, depth + 1);
+        }
     }
 }
 
@@ -593,6 +604,12 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
                                        attr_entry->name, attr_entry->name_size,
                                        (void*)attr_entry);
         if (err) return err;
+
+        /* computed attrs */
+        if (attr->proc) {
+            self->computed_attrs[self->num_computed_attrs] = attr;
+            self->num_computed_attrs++;
+        }
     }
 
     if (self->num_bases >= KND_MAX_BASES) {
@@ -817,6 +834,8 @@ static int resolve_proc_ref(struct kndClass *self,
 static int resolve_aggr_item(struct kndClass *self,
                              struct kndAttrVar *parent_item)
 {
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
     struct kndClass *c;
     struct kndAttrVar *item;
     struct kndAttr *attr;
@@ -867,6 +886,22 @@ static int resolve_aggr_item(struct kndClass *self,
         parent_item->implied_attr = attr;
 
         switch (attr->type) {
+        case KND_ATTR_NUM:
+
+            if (DEBUG_CONC_LEVEL_2)
+                knd_log(".. resolving implied num attr: %.*s val:%.*s",
+                        parent_item->name_size, parent_item->name,
+                        parent_item->val_size, parent_item->val);
+
+            if (parent_item->val_size) {
+                memcpy(buf, parent_item->val, parent_item->val_size);
+                buf_size = parent_item->val_size;
+                buf[buf_size] = '\0';
+
+                err = knd_parse_num(buf, &parent_item->numval);
+                // TODO: float parsing
+            }
+            break;
         case KND_ATTR_AGGR:
             break;
         case KND_ATTR_REF:
@@ -899,6 +934,19 @@ static int resolve_aggr_item(struct kndClass *self,
         item->attr = attr;
 
         switch (attr->type) {
+        case KND_ATTR_NUM:
+            
+            if (DEBUG_CONC_LEVEL_2)
+                knd_log(".. resolving default num attr: %.*s val:%.*s",
+                        item->name_size, item->name,
+                        item->val_size, item->val);
+
+            memcpy(buf, item->val, item->val_size);
+            buf_size = item->val_size;
+            buf[buf_size] = '\0';
+            err = knd_parse_num(buf, &item->numval);
+
+            break;
         case KND_ATTR_AGGR:
             if (DEBUG_CONC_LEVEL_2)
                 knd_log("== nested aggr item found: %.*s conc:%p",
@@ -1120,8 +1168,9 @@ static int resolve_attrs(struct kndClass *self)
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. resolvong attrs..");
+        knd_log(".. resolving attrs..");
 
+    // TODO: mempool
     err = ooDict_new(&self->attr_name_idx, KND_SMALL_DICT_SIZE);                       RET_ERR();
 
     for (attr = self->attrs; attr; attr = attr->next) {
@@ -1143,6 +1192,13 @@ static int resolve_attrs(struct kndClass *self)
         err = self->attr_name_idx->set(self->attr_name_idx,
                                        attr_entry->name, attr_entry->name_size,
                                        (void*)attr_entry);                        RET_ERR();
+
+        /* computed attr idx */
+        if (attr->proc) {
+            self->computed_attrs[self->num_computed_attrs] = attr;
+            self->num_computed_attrs++;
+        }
+
         if (DEBUG_CONC_LEVEL_2)
             knd_log("++ register primary attr: \"%.*s\"",
                     attr->name_size, attr->name);
@@ -2995,7 +3051,7 @@ static gsl_err_t parse_import_class(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_1)
         knd_log(".. import \"%.*s\" class..", 64, rec);
 
     err = mempool->new_class(mempool, &c);
@@ -6164,6 +6220,219 @@ static gsl_err_t parse_select_class(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
+static int get_class_attr_value(struct kndClass *src,
+                                struct kndAttrVar *query,
+                                struct kndProcCallArg *arg)
+{
+    struct kndAttrEntry *entry;
+    struct kndAttrVar *child_var;
+    struct ooDict *attr_name_idx = src->attr_name_idx;
+    int err;
+
+    //src->str(src);
+
+    entry = attr_name_idx->get(attr_name_idx,
+                               query->name, query->name_size);
+    if (!entry) {
+        knd_log("-- no such attr: %.*s", query->name_size, query->name);
+        return knd_FAIL;
+    }
+
+    if (DEBUG_CONC_LEVEL_TMP) {
+        knd_log("++ got attr: %.*s  attr var:%p",
+                query->name_size, query->name, entry->attr_var);
+    }
+
+    if (!entry->attr_var) return knd_FAIL;
+
+    str_attr_vars(entry->attr_var, 2);
+
+    /* no more query specs */
+    if (!query->num_children) return knd_OK;
+
+    /* check nested attrs */
+
+    // TODO: list item selection
+    for (child_var = entry->attr_var->list; child_var; child_var = child_var->next) {
+        err = get_arg_value(child_var, query->children, arg);
+        if (err) return err;
+    }
+
+    return knd_OK;
+}
+
+static int get_arg_value(struct kndAttrVar *src,
+                         struct kndAttrVar *query,
+                         struct kndProcCallArg *arg)
+{
+    struct kndAttrVar *curr_var;
+    struct kndAttr *attr;
+
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. from \"%.*s\" extract field: \"%.*s\"",
+                src->name_size, src->name,
+                query->name_size, query->name);
+
+    str_attr_vars(src, 2);
+
+    /* check implied attr */
+    if (src->implied_attr) {
+        attr = src->implied_attr;
+        //attr->str(attr);
+        if (!memcmp(attr->name, query->name, query->name_size)) {
+            switch (attr->type) {
+            case KND_ATTR_REF:
+                //knd_log("++ match ref: %.*s",
+                //        src->class->name_size, src->class->name);
+
+                return get_class_attr_value(src->class, query->children, arg);
+                break;
+            default:
+                break;
+            }
+        }
+    }
+
+    /* iterate children */
+    for (curr_var = src->children; curr_var; curr_var = curr_var->next) {
+
+        knd_log("== child:%.*s val: %.*s",
+                curr_var->name_size, curr_var->name,
+                curr_var->val_size, curr_var->val);
+        
+        if (curr_var->implied_attr) {
+            attr = curr_var->implied_attr;
+            attr->str(attr);
+        }
+
+        if (curr_var->name_size != query->name_size) continue;
+
+        if (!strncmp(curr_var->name, query->name, query->name_size)) {
+
+            knd_log("++ match: %.*s numval:%zu",
+                    curr_var->val_size, curr_var->val, curr_var->numval);
+
+            arg->numval = curr_var->numval;
+
+            if (!query->num_children) return knd_OK;
+            knd_log(".. checking nested attrs..\n\n");
+            
+        }
+    }
+                
+    return knd_OK;
+}
+
+static int compute_num_value(struct kndClass *self,
+                             struct kndAttr *attr,
+                             struct kndAttrVar *attr_var,
+                             long *result)
+{
+    struct kndProcCall *proc_call;
+    struct kndProcCallArg *arg;
+    struct kndClassVar *class_var;
+    long numval = 0;
+    long times = 0;
+    long quant = 0;
+    int err;
+
+    proc_call = &attr->proc->proc_call;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log("\nPROC CALL: \"%.*s\"",
+                proc_call->name_size, proc_call->name);
+
+    for (arg = proc_call->args; arg; arg = arg->next) {
+        class_var = arg->class_var;
+
+        if (DEBUG_CONC_LEVEL_TMP)
+            knd_log("ARG: %.*s",
+                    arg->name_size, arg->name);
+
+        err = get_arg_value(attr_var, class_var->attrs, arg);
+        if (err) return err;
+
+        if (!strncmp("times", arg->name, arg->name_size)) {
+            times = arg->numval;
+            knd_log("TIMES:%lu", arg->numval);
+        }
+
+        if (!strncmp("quant", arg->name, arg->name_size)) {
+            quant = arg->numval;
+            knd_log("QUANT:%lu", arg->numval);
+        }
+    }
+
+    /* run main proc */
+    switch (proc_call->type) {
+        /* multiplication */
+    case KND_PROC_MULT:
+        numval = (times * quant);
+        break;
+    case KND_PROC_MULT_PERCENT:
+        numval = (times * quant) / 100;
+        break;
+    default:
+        break;
+    }
+    
+    *result = numval;
+
+    return knd_OK;
+}
+
+static int present_computed_attrs(struct kndClass *self,
+                                  struct kndAttrVar *attr_var)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+    struct glbOutput *out = self->entry->repo->out;
+    struct kndClass *c = attr_var->attr->conc;
+    struct kndAttr *attr;
+    struct kndAttrVar *item;
+    long numval;
+    int err;
+
+    for (item = attr_var->children; item; item = item->next) {
+        knd_log("~~ child: \"%.*s\" VAL:%.*s",
+                item->name_size, item->name,
+                item->val_size, item->val);
+    }
+
+    for (size_t i = 0; i < c->num_computed_attrs; i++) {
+        attr = c->computed_attrs[i];
+
+        switch (attr->type) {
+        case KND_ATTR_NUM:
+
+            err = compute_num_value(self, attr, attr_var, &numval);
+            // TODO: signal failure
+            if (err) continue;
+
+            // TODO: memoization
+            
+            err = out->writec(out, ',');
+            if (err) return err;
+            err = out->writec(out, '"');
+            if (err) return err;
+            err = out->write(out, attr->name, attr->name_size);
+            if (err) return err;
+            err = out->writec(out, '"');
+            if (err) return err;
+            err = out->writec(out, ':');
+            if (err) return err;
+            
+            buf_size = snprintf(buf, KND_NAME_SIZE, "%lu", numval);
+            err = out->write(out, buf, buf_size);                                     RET_ERR();
+            break;
+        default:
+            break;
+        }
+    }
+
+    return knd_OK;
+}
+
 static int aggr_item_export_JSON(struct kndClass *self,
                                  struct kndAttrVar *parent_item)
 {
@@ -6174,11 +6443,16 @@ static int aggr_item_export_JSON(struct kndClass *self,
     bool in_list = false;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    c = parent_item->attr->parent_class;
+
+    if (DEBUG_CONC_LEVEL_2) {
         knd_log(".. JSON export aggr item: %.*s",
                 parent_item->name_size, parent_item->name);
-        c = parent_item->attr->parent_class;
+        //c = parent_item->attr->parent_class;
+        //c->str(c);
         c->str(c);
+        knd_log("== comp attrs:%zu",
+                c->num_computed_attrs);
     }
 
     err = out->writec(out, '{');
@@ -6194,8 +6468,20 @@ static int aggr_item_export_JSON(struct kndClass *self,
         err = out->writec(out, '"');
         if (err) return err;
         in_list = true;
-    }
 
+        c = parent_item->attr->conc;
+        if (c->num_computed_attrs) {
+
+            knd_log("\n..present computed attrs in %.*s (val:%.*s)",
+                    parent_item->name_size, parent_item->name,
+                    parent_item->val_size, parent_item->val);
+
+            err = present_computed_attrs(self, parent_item);
+            if (err) return err;
+        }
+   }
+
+    
     /* export a class ref */
     if (parent_item->class) {
         attr = parent_item->attr;
@@ -6354,7 +6640,7 @@ static int proc_item_export_JSON(struct kndClass *self,
 }
 
 static int attr_var_list_export_JSON(struct kndClass *self,
-                                      struct kndAttrVar *parent_item)
+                                     struct kndAttrVar *parent_item)
 {
     struct glbOutput *out = self->entry->repo->out;
     struct kndAttrVar *item;
@@ -6362,10 +6648,9 @@ static int attr_var_list_export_JSON(struct kndClass *self,
     size_t count = 0;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) {
-        knd_log(".. export JSON list: %.*s OUTPUT: %.*s\n\n",
-                parent_item->name_size, parent_item->name,
-                out->buf_size, out->buf);
+    if (DEBUG_CONC_LEVEL_TMP) {
+        knd_log(".. export JSON list: %.*s\n\n",
+                parent_item->name_size, parent_item->name);
     }
 
     err = out->writec(out, '"');
@@ -7891,7 +8176,10 @@ static int freeze_rels(struct kndRel *self,
 
 static int freeze(struct kndClass *self)
 {
-    char *curr_dir = self->dir_buf;
+    // TODO
+    char dir_buf[KND_MAX_CONC_CHILDREN * KND_DIR_ENTRY_SIZE];// = self->dir_buf;
+    char *curr_dir = dir_buf;
+
     size_t curr_dir_size = 0;
     size_t total_frozen_size = 0;
     size_t num_size;
@@ -7991,14 +8279,14 @@ static int freeze(struct kndClass *self)
         knd_log("== %.*s (%.*s)   DIR: \"%.*s\"   [%lu]",
                 self->entry->name_size, self->entry->name, self->entry->id_size, self->entry->id,
                 curr_dir_size,
-                self->dir_buf, (unsigned long)curr_dir_size);
+                dir_buf, (unsigned long)curr_dir_size);
 
     num_size = sprintf(curr_dir, "{L %lu}",
                        (unsigned long)curr_dir_size);
     curr_dir_size += num_size;
 
     err = knd_append_file(self->entry->repo->frozen_output_file_name,
-                          self->dir_buf, curr_dir_size);
+                          dir_buf, curr_dir_size);
     if (err) return err;
 
     total_frozen_size += curr_dir_size;

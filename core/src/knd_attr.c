@@ -516,13 +516,9 @@ static gsl_err_t parse_proc(void *obj,
     entry->proc = proc;
     proc->entry = entry;
 
-
     err = proc->read(proc, rec, total_size);
     if (err) return make_gsl_err_external(err);
-
     self->proc = proc;
-
-    knd_log("\n== attr:%p inner PROC: %p entry:%p", self, proc, proc->entry);
 
     return make_gsl_err(gsl_OK);
 }
