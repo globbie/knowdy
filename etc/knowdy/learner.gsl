@@ -1,34 +1,34 @@
-{schema Knowdy Learner Service
-      {agent 001}
+{schema knd
+      {agent 007}
       {path /var/lib/knowdy/db}
-      {schemas /etc/knowdy/schemas}
+      {schemas /Users/admin/schemas}
+      {--user Custom User--}
       {sid AUTH_SERVER_SID}
-      {-address localhost:10001-}
+      {-- address localhost:10001 --}
 
-      {memory
-         {max_states 10000}
+    {-- TODO: block allocation  --}
+    {memory
+         {max_states 100000}
+         {max_updates 100000}
+
+         {max_sets 100000}
+         {max_set_elem_idxs 1000000}
+
          {max_classes 100000}
-         {-max_conc_items 100000-}
+         {max_class_updates 100000}
          {max_attrs 100000}
+         {max_class_vars 100000}
+         {max_attr_vars 200000}
          {max_objs 1500000}
          {max_elems 1500000}
+
          {max_rels 1000}
+         {max_rel_updates 100000}
          {max_rel_instances 1000000}
          {max_rel_refs 1000000}
-         {max_rel_arg_instances 2500000}
-         {max_rel_arg_inst_refs 2500000}
+         {max_rel_arg_instances 1500000}
+         {max_rel_arg_inst_refs 100000}
          {max_procs 1000}
          {max_proc_instances 1000000}
       }
-      {-delivery ipc:///var/lib/knowdy/delivery/inbox-}
-
-      {-inbox
-        {frontend ipc:///var/lib/knowdy/learner_inbox}
-        {backend ipc:///var/lib/knowdy/learner_inbox_backend}
-      -}
-
-      {-publish
-        {frontend ipc:///var/lib/knowdy/learner_pub}
-        {backend ipc:///var/lib/knowdy/learner_pub_backend}
-      -}
 }
