@@ -248,7 +248,7 @@ static gsl_err_t parse_auth(void *obj,
         }
     };
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log("   .. parsing the AUTH rec: \"%.*s\"", 32, rec);
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -261,7 +261,7 @@ static gsl_err_t parse_auth(void *obj,
         return parser_err;
     }
 
-    if (DEBUG_USER_LEVEL_TMP) {
+    if (DEBUG_USER_LEVEL_1) {
         knd_log("++ got SID token (JWT): \"%s\"", sid);
     }
 
@@ -280,7 +280,6 @@ static gsl_err_t parse_auth(void *obj,
         return make_gsl_err(gsl_FAIL);
     }
 
-    knd_log("++ auth OK!");
     return make_gsl_err(gsl_OK);
 }
 
@@ -427,8 +426,8 @@ static gsl_err_t parse_class_select(void *obj,
     struct kndClass *c = self->repo->root_class;
     gsl_err_t err;
 
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log(".. parsing the default class select: \"%s\" task:%p", rec, self->task);
+    if (DEBUG_USER_LEVEL_1)
+        knd_log(".. parsing the default class select: \"%.*s\"", 64, rec);
 
     c->reset_inbox(c);
 

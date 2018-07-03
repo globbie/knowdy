@@ -42,7 +42,6 @@ typedef enum knd_attr_type {
     KND_ATTR_CG,
     KND_ATTR_NUM,
     KND_ATTR_REF,
-    KND_ATTR_CALC,
     KND_ATTR_FILE,
     KND_ATTR_PROC
 } knd_attr_type;
@@ -96,6 +95,7 @@ struct kndAttrVar
     size_t val_size;
 
     long numval;
+    bool is_cached; // for computed fields
 
     struct kndAttr *attr;
     struct kndAttr *implied_attr;
