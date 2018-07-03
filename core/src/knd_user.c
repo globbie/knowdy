@@ -435,10 +435,11 @@ static gsl_err_t parse_class_select(void *obj,
     if (err.code) {
         /* TODO: release resources */
         c->reset_inbox(c);
+        knd_log("-- class select failed :(");
         return err;
     }
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log("++ selection of \"%s\" completed!", rec);
 
     return make_gsl_err(gsl_OK);
@@ -737,7 +738,8 @@ static gsl_err_t parse_task(struct kndUser *self,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("-- user task parse failure: \"%.*s\" :(", self->log->buf_size, self->log->buf);
+        knd_log("-- user task parse failure: \"%.*s\" :(",
+                self->log->buf_size, self->log->buf);
         if (!self->log->buf_size) {
             err = self->log->write(self->log, "internal server error",
                                  strlen("internal server error"));
@@ -809,6 +811,8 @@ static int kndUser_init(struct kndUser *self)
     self->path_size = self->shard->path_size;
 
     self->task = self->shard->task;
+    self->out = self->shard->out;
+    self->log = self->shard->log;
 
     self->repo->name[0] = '~';
     self->repo->name_size = 1;

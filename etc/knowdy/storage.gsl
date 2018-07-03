@@ -1,7 +1,0 @@
-{gsl::Knowdy Basic
-  {knd::Storage Service Configuration
-      {request
-       {frontend ipc:///var/lib/knowdy/coll_req}
-       {backend ipc:///var/lib/knowdy/coll_req_backend}
-      }
-}}
