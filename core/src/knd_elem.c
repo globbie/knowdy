@@ -226,15 +226,6 @@ kndElem_export_JSON(struct kndElem *self)
             err = ref->export(ref);
             if (err) goto final;
             break;
-        case KND_ATTR_CALC:
-            if (DEBUG_ELEM_LEVEL_TMP)
-                knd_log("  .. CALC elem!\n");
-
-            buf_size = sprintf(buf, "\"val\":\"%s\"",
-                               self->states->val);
-            err = out->write(out, buf, buf_size);
-            if (err) goto final;
-            break;
         default:
             break;
         }

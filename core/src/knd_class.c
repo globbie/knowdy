@@ -708,7 +708,6 @@ static int index_attr(struct kndClass *self,
     return knd_OK;
 }
 
-
 static int index_attr_var_list(struct kndClass *self,
                                 struct kndAttr *attr,
                                 struct kndAttrVar *parent_item)
@@ -5903,9 +5902,6 @@ static gsl_err_t present_class_selection(void *obj,
     err = c->export(c);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_CONC_LEVEL_TMP)
-        knd_log("++ class presentation OK!");
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -6370,8 +6366,73 @@ static int compute_num_value(struct kndClass *self,
     return knd_OK;
 }
 
-static int present_computed_attrs(struct kndClass *self,
-                                  struct kndAttrVar *attr_var)
+static int compute_class_attr_num_value(struct kndClass *self,
+                                        struct kndClassVar *cvar,
+                                        struct kndAttrVar *attr_var,
+                                        long *result)
+{
+    struct kndAttr *attr = attr_var->attr;
+    struct kndProcCall *proc_call;
+    struct kndProcCallArg *arg;
+    struct kndClassVar *class_var;
+    long numval = 0;
+    long times = 0;
+    long quant = 0;
+    int err;
+
+    proc_call = &attr->proc->proc_call;
+
+    if (DEBUG_CONC_LEVEL_TMP) {
+        knd_log("\nPROC CALL: \"%.*s\"",
+                proc_call->name_size, proc_call->name);
+        knd_log("== attr var: \"%.*s\"",
+                attr_var->name_size, attr_var->name);
+    }
+    
+    for (arg = proc_call->args; arg; arg = arg->next) {
+        class_var = arg->class_var;
+
+        if (DEBUG_CONC_LEVEL_TMP)
+            knd_log("ARG: %.*s",
+                    arg->name_size, arg->name);
+
+        //err = get_arg_value(attr_var, class_var->attrs, arg);
+        //if (err) return err;
+
+        if (!strncmp("times", arg->name, arg->name_size)) {
+            times = arg->numval;
+            knd_log("TIMES:%lu", arg->numval);
+        }
+
+        if (!strncmp("quant", arg->name, arg->name_size)) {
+            quant = arg->numval;
+            knd_log("QUANT:%lu", arg->numval);
+        }
+    }
+
+    /* run main proc */
+    switch (proc_call->type) {
+        /* multiplication */
+    case KND_PROC_MULT:
+        numval = (times * quant);
+        break;
+    case KND_PROC_MULT_PERCENT:
+        numval = (times * quant) / 100;
+        break;
+    case KND_PROC_DIV_PERCENT:
+        numval = (times / quant) * 100;
+        break;
+    default:
+        break;
+    }
+    
+    *result = numval;
+
+    return knd_OK;
+}
+
+static int present_computed_aggr_attrs(struct kndClass *self,
+                                       struct kndAttrVar *attr_var)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
@@ -6382,23 +6443,21 @@ static int present_computed_attrs(struct kndClass *self,
     long numval;
     int err;
 
-    for (item = attr_var->children; item; item = item->next) {
-        knd_log("~~ child: \"%.*s\" VAL:%.*s",
-                item->name_size, item->name,
-                item->val_size, item->val);
-    }
-
     for (size_t i = 0; i < c->num_computed_attrs; i++) {
         attr = c->computed_attrs[i];
 
         switch (attr->type) {
         case KND_ATTR_NUM:
+            numval = attr_var->numval;
+            if (!attr_var->is_cached) {
+                err = compute_num_value(self, attr, attr_var, &numval);
+                // TODO: signal failure
+                if (err) continue;
 
-            err = compute_num_value(self, attr, attr_var, &numval);
-            // TODO: signal failure
-            if (err) continue;
-
-            // TODO: memoization
+                // memoization
+                attr_var->numval = numval;
+                attr_var->is_cached = true;
+            }
             
             err = out->writec(out, ',');
             if (err) return err;
@@ -6460,16 +6519,15 @@ static int aggr_item_export_JSON(struct kndClass *self,
 
         c = parent_item->attr->conc;
         if (c->num_computed_attrs) {
+            if (DEBUG_CONC_LEVEL_2)
+                knd_log("\n..present computed attrs in %.*s (val:%.*s)",
+                        parent_item->name_size, parent_item->name,
+                        parent_item->val_size, parent_item->val);
 
-            knd_log("\n..present computed attrs in %.*s (val:%.*s)",
-                    parent_item->name_size, parent_item->name,
-                    parent_item->val_size, parent_item->val);
-
-            err = present_computed_attrs(self, parent_item);
+            err = present_computed_aggr_attrs(self, parent_item);
             if (err) return err;
         }
    }
-
     
     /* export a class ref */
     if (parent_item->class) {
@@ -6637,7 +6695,7 @@ static int attr_var_list_export_JSON(struct kndClass *self,
     size_t count = 0;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         knd_log(".. export JSON list: %.*s\n\n",
                 parent_item->name_size, parent_item->name);
     }
@@ -6807,6 +6865,77 @@ static int attr_vars_export_JSON(struct kndClass *self,
     return knd_OK;
 }
 
+static int present_computed_class_attrs(struct kndClass *self,
+                                        struct kndClassVar *cvar)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+    struct glbOutput *out = self->entry->repo->out;
+    struct ooDict *attr_name_idx = self->attr_name_idx;
+    struct kndAttr *attr;
+    struct kndAttrVar *attr_var;
+    struct kndAttrEntry *entry;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    long numval;
+    int err;
+
+    for (size_t i = 0; i < self->num_computed_attrs; i++) {
+        attr = self->computed_attrs[i];
+        entry = attr_name_idx->get(attr_name_idx,
+                                   attr->name, attr->name_size);
+        if (!entry) {
+            knd_log("-- attr %.*s not indexed?",
+                    attr->name_size, attr->name);
+            return knd_FAIL;
+        }
+
+        attr_var = entry->attr_var;
+        if (!attr_var) {
+            err = mempool->new_attr_var(mempool, &attr_var);
+            if (err) {
+                knd_log("-- attr item mempool exhausted");
+                return knd_NOMEM;
+            }
+            attr_var->attr = attr;
+            attr_var->class_var = cvar;
+            memcpy(attr_var->name, attr->name, attr->name_size);
+            attr_var->name_size = attr->name_size;
+            entry->attr_var = attr_var;
+        }
+
+        switch (attr->type) {
+        case KND_ATTR_NUM:
+            numval = attr_var->numval;
+            if (!attr_var->is_cached) {
+                err = compute_class_attr_num_value(self, cvar, attr_var, &numval);
+                if (err) continue;
+
+                attr_var->numval = numval;
+                attr_var->is_cached = true;
+            }
+            
+            err = out->writec(out, ',');
+            if (err) return err;
+            err = out->writec(out, '"');
+            if (err) return err;
+            err = out->write(out, attr->name, attr->name_size);
+            if (err) return err;
+            err = out->writec(out, '"');
+            if (err) return err;
+            err = out->writec(out, ':');
+            if (err) return err;
+            
+            buf_size = snprintf(buf, KND_NAME_SIZE, "%lu", numval);
+            err = out->write(out, buf, buf_size);                                     RET_ERR();
+            break;
+        default:
+            break;
+        }
+    }
+
+    return knd_OK;
+}
+
 static int export_gloss_JSON(struct kndClass *self)
 {
     struct kndTranslation *tr;
@@ -6934,7 +7063,7 @@ static int export_JSON(struct kndClass *self)
 
     out = self->entry->repo->out;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. JSON export: \"%.*s\"  ",
                 self->entry->name_size, self->entry->name);
 
@@ -6998,11 +7127,21 @@ static int export_JSON(struct kndClass *self)
             err = out->write(out, buf, buf_size);
             if (err) return err;
 
+
+            
             if (item->attrs) {
                 err = attr_vars_export_JSON(self, item->attrs, 0);
                 if (err) return err;
             }
 
+            if (self->num_computed_attrs) {
+                if (DEBUG_CONC_LEVEL_TMP)
+                    knd_log("\n.. export computed attrs of class %.*s",
+                            self->name_size, self->name);
+                err = present_computed_class_attrs(self, item);
+                if (err) return err;
+            }
+            
             err = out->write(out, "}", 1);
             if (err) return err;
             item_count++;
@@ -7017,8 +7156,7 @@ static int export_JSON(struct kndClass *self)
         if (err) return err;
 
         i = 0;
-        attr = self->attrs;
-        while (attr) {
+        for (attr = self->attrs; attr; attr = attr->next) {
             if (i) {
                 err = out->write(out, ",", 1);
                 if (err) return err;
@@ -7029,9 +7167,7 @@ static int export_JSON(struct kndClass *self)
                     knd_log("-- failed to export %s attr to JSON: %s\n", attr->name);
                 return err;
             }
-
             i++;
-            attr = attr->next;
         }
         err = out->writec(out, '}');
         if (err) return err;
