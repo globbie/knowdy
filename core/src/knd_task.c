@@ -317,9 +317,11 @@ static int parse_GSL(struct kndTask *self,
     if (parser_err.code) {
         knd_log("-- task failure :(");
         if (!is_gsl_err_external(parser_err)) {
-            assert(!self->log->buf_size);
-            err = log_parser_error(self, parser_err, total_size, rec);
-            if (err) return err;
+            // assert(!self->log->buf_size)
+            if (!self->log->buf_size) {
+                err = log_parser_error(self, parser_err, total_size, rec);
+                if (err) return err;
+            }
         }
 
         if (!self->log->buf_size) {
