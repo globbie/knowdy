@@ -60,16 +60,16 @@ struct kndVisualFormat {
 struct kndTask
 {
     knd_task_spec_type type;
-    knd_iter_type iter_type;
+//    knd_iter_type iter_type;
 
-    char sid[KND_NAME_SIZE];
-    size_t sid_size;
-
-    char uid[KND_NAME_SIZE];
-    size_t uid_size;
-
-    char agent_name[KND_NAME_SIZE];
-    size_t agent_name_size;
+//    char sid[KND_NAME_SIZE];
+//    size_t sid_size;
+//
+//    char uid[KND_NAME_SIZE];
+//    size_t uid_size;
+//
+//    char agent_name[KND_NAME_SIZE];
+//    size_t agent_name_size;
 
     char schema_name[KND_NAME_SIZE];
     size_t schema_name_size;
