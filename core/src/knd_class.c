@@ -5160,8 +5160,6 @@ static int coordinate(struct kndClass *self)
     //err = self->proc->coordinate(self->proc);                                     RET_ERR();
     //err = self->rel->coordinate(self->rel);                                       RET_ERR();
 
-    knd_log("++ coordination OK!");
-
     return knd_OK;
 }
 
@@ -6115,7 +6113,7 @@ static gsl_err_t parse_select_class(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
 
     self->depth = 0;
@@ -6273,7 +6271,7 @@ static int get_arg_value(struct kndAttrVar *src,
             switch (attr->type) {
             case KND_ATTR_NUM:
 
-                if (DEBUG_CONC_LEVEL_TMP) {
+                if (DEBUG_CONC_LEVEL_2) {
                     knd_log("== implied NUM attr: %.*s value: %.*s numval:%lu",
                             src->name_size, src->name,
                             src->val_size, src->val, src->numval);
@@ -6371,7 +6369,7 @@ static int compute_num_value(struct kndClass *self,
         break;
     case KND_PROC_MULT_PERCENT:
         div_result = (float)(times * quant) / (float)100;
-        knd_log("== result: %.2f", div_result);
+        //knd_log("== result: %.2f", div_result);
         numval = (long)div_result;
         break;
     default:
@@ -6538,10 +6536,10 @@ static int compute_class_attr_num_value(struct kndClass *self,
             break;
         }
 
-        knd_log("\n.. divide %.2f by %.2f", dividend, divisor);
+        //knd_log("\n.. divide %.2f by %.2f", dividend, divisor);
         result = (dividend / divisor) * (float)100;
 
-        knd_log("== result: %.2f", result);
+        //knd_log("== result: %.2f", result);
 
         numval = (long)result;
         break;

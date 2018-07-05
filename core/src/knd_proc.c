@@ -863,7 +863,7 @@ static gsl_err_t parse_gloss_item(void *obj,
     tr->locale = tr->curr_locale;
     tr->locale_size = tr->curr_locale_size;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
                 tr->locale_size, tr->locale, tr->val_size, tr->val);
 
@@ -984,8 +984,6 @@ static gsl_err_t alloc_proc_arg(void *obj,
     struct kndProcArg *arg;
     struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
-
-    knd_log(".. alloc proc arg.. mem:%p", self->entry);
 
     err = mempool->new_proc_arg(mempool, &arg);
     if (err) return make_gsl_err_external(err);
@@ -1204,9 +1202,6 @@ static gsl_err_t parse_proc_call_arg(void *obj,
                                      const char *rec, size_t *total_size)
 {
     struct kndProc *proc = obj;
-
-    knd_log(".. proc call arg..: %p", proc->entry);
-
     struct kndProcCall *proc_call = &proc->proc_call;
     struct kndProcCallArg *call_arg;
     struct kndClassVar *class_var;
@@ -1214,7 +1209,7 @@ static gsl_err_t parse_proc_call_arg(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. Proc Call Arg \"%.*s\" to validate: \"%.*s\"..",
                 name_size, name, 32, rec);
 
@@ -1253,7 +1248,7 @@ static gsl_err_t parse_proc_call(void *obj,
     struct kndProcCall *proc_call = &proc->proc_call;
     gsl_err_t parser_err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. Proc Call parsing: \"%.*s\".. entry:%p",
                 32, rec, proc->entry);
 
@@ -1306,8 +1301,6 @@ static gsl_err_t parse_proc_call(void *obj,
     if (!strncmp("_div_percent", proc_call->name, proc_call->name_size))
         proc_call->type = KND_PROC_DIV_PERCENT;
 
-    knd_log("++ proc call OK!");
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -1321,7 +1314,7 @@ static gsl_err_t import_proc(struct kndProc *self,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. import Proc: \"%.*s\"..", 32, rec);
 
     err = mempool->new_proc(mempool, &proc);
@@ -1399,10 +1392,6 @@ static gsl_err_t import_proc(struct kndProc *self,
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
-        knd_log("++ import Proc: \"%.*s\" OK! idx:%p",
-                proc->name_size, proc->name, self->proc_name_idx);
-
     if (!proc->entry->name_size)
         return make_gsl_err_external(knd_FAIL);
 
@@ -1447,7 +1436,7 @@ static gsl_err_t import_proc(struct kndProc *self,
                                    (void*)entry);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         proc->str(proc);
 
     return make_gsl_err(gsl_OK);
