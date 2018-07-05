@@ -69,7 +69,7 @@ final:
     switch (self->task->type) {
     case KND_UPDATE_STATE:
         if (!self->task->error)
-        break;
+            break;
     default:
         /* retract last write to task_storage */
         self->task_storage->rtrim(self->task_storage, rec_size);
