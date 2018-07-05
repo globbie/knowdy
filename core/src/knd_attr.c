@@ -143,7 +143,7 @@ static int export_JSON(struct kndAttr *self)
     size_t type_name_size = strlen(knd_attr_names[self->type]);
     int err;
 
-    knd_log(".. JSON export attr: \"%.*s\"..", self->name_size, self->name);
+    //knd_log(".. JSON export attr: \"%.*s\"..", self->name_size, self->name);
 
     out = self->parent_class->entry->repo->out;
 
@@ -202,8 +202,6 @@ static int export_JSON(struct kndAttr *self)
     }
 
     if (self->proc) {
-        knd_log(".. attr:%p proc: %p  entry:%p", self, self->proc, self->proc->entry);
-
         err = out->write(out, ",\"proc\":", strlen(",\"proc\":"));
         if (err) return err;
         p = self->proc;
@@ -657,6 +655,11 @@ static gsl_err_t parse_GSL(struct kndAttr *self,
           .buf = self->ref_procname,
           .buf_size = &self->ref_procname_size,
           .max_buf_size = sizeof self->ref_procname,
+        },
+        { .name = "proc",
+          .name_size = strlen("proc"),
+          .parse = parse_proc,
+          .obj = self
         },
         { .type = GSL_SET_STATE,
           .name = "proc",

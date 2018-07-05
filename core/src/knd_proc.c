@@ -56,7 +56,7 @@ static void str(struct kndProc *self)
     struct kndProcCallArg *call_arg;
 
     knd_log("PROC %p: %.*s id:%.*s",
-            self, self->name_size, self->name,
+            self, self->entry->name_size, self->entry->name,
             self->entry->id_size, self->entry->id);
 
     for (tr = self->tr; tr; tr = tr->next) {
@@ -583,9 +583,6 @@ static int proc_call_arg_export_JSON(struct kndProc *self,
 
 static int export_JSON(struct kndProc *self)
 {
-
-    knd_log("..proc JSON: entry:%p %p", self->entry, self->entry->repo);
-
     struct glbOutput  *out = self->entry->repo->out;
     struct kndProcArg *arg;
     struct kndProcCallArg *carg;
@@ -593,7 +590,7 @@ static int export_JSON(struct kndProc *self)
     bool in_list = false;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. proc \"%.*s\" export JSON..",
                 self->name_size, self->name);
 
@@ -866,7 +863,7 @@ static gsl_err_t parse_gloss_item(void *obj,
     tr->locale = tr->curr_locale;
     tr->locale_size = tr->curr_locale_size;
 
-    if (DEBUG_PROC_LEVEL_1)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
                 tr->locale_size, tr->locale, tr->val_size, tr->val);
 
@@ -985,9 +982,12 @@ static gsl_err_t alloc_proc_arg(void *obj,
 {
     struct kndProc *self = obj;
     struct kndProcArg *arg;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
 
-    err = self->entry->repo->mempool->new_proc_arg(self->entry->repo->mempool, &arg);
+    knd_log(".. alloc proc arg.. mem:%p", self->entry);
+
+    err = mempool->new_proc_arg(mempool, &arg);
     if (err) return make_gsl_err_external(err);
 
     arg->task = self->task;
@@ -1204,6 +1204,9 @@ static gsl_err_t parse_proc_call_arg(void *obj,
                                      const char *rec, size_t *total_size)
 {
     struct kndProc *proc = obj;
+
+    knd_log(".. proc call arg..: %p", proc->entry);
+
     struct kndProcCall *proc_call = &proc->proc_call;
     struct kndProcCallArg *call_arg;
     struct kndClassVar *class_var;
@@ -1250,14 +1253,21 @@ static gsl_err_t parse_proc_call(void *obj,
     struct kndProcCall *proc_call = &proc->proc_call;
     gsl_err_t parser_err;
 
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. Proc Call parsing: \"%.*s\"..", 32, rec);
+    if (DEBUG_PROC_LEVEL_TMP)
+        knd_log(".. Proc Call parsing: \"%.*s\".. entry:%p",
+                32, rec, proc->entry);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .buf_size = &proc_call->name_size,
           .max_buf_size = KND_NAME_SIZE,
           .buf = proc_call->name
+        },
+        { .type = GSL_GET_ARRAY_STATE,
+          .name = "_gloss",
+          .name_size = strlen("_gloss"),
+          .parse = parse_gloss,
+          .obj = proc_call
         },
         { .type = GSL_SET_ARRAY_STATE,
           .name = "_gloss",
@@ -1286,11 +1296,17 @@ static gsl_err_t parse_proc_call(void *obj,
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
+    // TODO: lookup table
     if (!strncmp("_mult", proc_call->name, proc_call->name_size))
         proc_call->type = KND_PROC_MULT;
 
     if (!strncmp("_mult_percent", proc_call->name, proc_call->name_size))
         proc_call->type = KND_PROC_MULT_PERCENT;
+
+    if (!strncmp("_div_percent", proc_call->name, proc_call->name_size))
+        proc_call->type = KND_PROC_DIV_PERCENT;
+
+    knd_log("++ proc call OK!");
 
     return make_gsl_err(gsl_OK);
 }
@@ -1305,16 +1321,22 @@ static gsl_err_t import_proc(struct kndProc *self,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. import Proc: \"%.*s\"..", 32, rec);
 
-    err  = mempool->new_proc(mempool, &proc);
+    err = mempool->new_proc(mempool, &proc);
     if (err) { *total_size = 0; return make_gsl_err_external(err); }
 
     proc->proc_name_idx = self->proc_name_idx;
     proc->proc_idx = self->proc_idx;
     proc->class_name_idx = self->class_name_idx;
     proc->class_idx = self->class_idx;
+
+    err = mempool->new_proc_entry(mempool, &entry);
+    if (err) return make_gsl_err_external(err);
+    entry->repo = self->entry->repo;
+    entry->proc = proc;
+    proc->entry = entry;
 
     struct gslTaskSpec proc_arg_spec = {
         .is_list_item = true,
@@ -1326,8 +1348,8 @@ static gsl_err_t import_proc(struct kndProc *self,
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .buf = proc->name,
-          .buf_size = &proc->name_size,
+          .buf = proc->entry->name,
+          .buf_size = &proc->entry->name_size,
           .max_buf_size = KND_NAME_SIZE
         },
         { .type = GSL_SET_ARRAY_STATE,
@@ -1370,28 +1392,30 @@ static gsl_err_t import_proc(struct kndProc *self,
         { .name = "run",
           .name_size = strlen("run"),
           .parse = parse_proc_call,
-          .obj = &proc->proc_call
+          .obj = proc //&proc->proc_call
         }
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log("++ import Proc: \"%.*s\"!",
-                proc->name_size, proc->name);
+    if (DEBUG_PROC_LEVEL_TMP)
+        knd_log("++ import Proc: \"%.*s\" OK! idx:%p",
+                proc->name_size, proc->name, self->proc_name_idx);
 
-    if (!proc->name_size)
+    if (!proc->entry->name_size)
         return make_gsl_err_external(knd_FAIL);
 
     entry = self->proc_name_idx->get(self->proc_name_idx,
-                                   proc->name, proc->name_size);
+                                     proc->entry->name, proc->entry->name_size);
     if (entry) {
         if (entry->phase == KND_REMOVED) {
             knd_log("== proc was removed recently");
         } else {
-
-            knd_log("-- %s proc name doublet found :( log:%p", proc->name, self->entry->repo->log);
+            knd_log(".. doublet?");
+            knd_log("-- %.*s proc name doublet found :( log:%p",
+                    proc->entry->name_size, proc->entry->name,
+                    self->entry->repo->log);
             self->entry->repo->log->reset(self->entry->repo->log);
             err = self->entry->repo->log->write(self->entry->repo->log,
                                    proc->name,
@@ -1411,22 +1435,19 @@ static gsl_err_t import_proc(struct kndProc *self,
         self->inbox_size++;
     }
 
-    err = self->entry->repo->mempool->new_proc_entry(self->entry->repo->mempool, &entry);
-    if (err) return make_gsl_err_external(err);
-
-    entry->proc = proc;
-    proc->entry = entry;
-
     self->num_procs++;
-    entry->numid = self->num_procs;
-    entry->id_size = KND_ID_SIZE;
-    knd_num_to_str(entry->numid, entry->id, &entry->id_size, KND_RADIX_BASE);
+    proc->entry->numid = self->num_procs;
+    proc->entry->id_size = KND_ID_SIZE;
+
+    knd_num_to_str(proc->entry->numid,
+                   proc->entry->id, &proc->entry->id_size, KND_RADIX_BASE);
 
     err = self->proc_name_idx->set(self->proc_name_idx,
-                                   proc->name, proc->name_size, (void*)entry);
+                                   proc->entry->name, proc->entry->name_size,
+                                   (void*)entry);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         proc->str(proc);
 
     return make_gsl_err(gsl_OK);
@@ -1720,7 +1741,7 @@ static int kndProc_coordinate(struct kndProc *self)
     void *val;
     int err;
 
-    if (DEBUG_PROC_LEVEL_1)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. proc coordination in progress ..");
 
     err = resolve_procs(self);                                                    RET_ERR();

@@ -2292,7 +2292,7 @@ extern gsl_err_t import_attr_var(void *obj,
 
     /* class var not resolved */
     if (!self->entry) {
-        knd_log("-- class var not resolved?");
+        knd_log("-- anonymous class var?  REC:%.*s", 64, rec);
         //return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
@@ -2781,10 +2781,16 @@ static gsl_err_t validate_attr_var(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. class var \"%.*s\" to validate attr var: %.*s.. mem:%p",
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. class var \"%.*s\" to validate attr var: %.*s..",
                 class_var->entry->name_size, class_var->entry->name,
-                name_size, name, mempool);
+                name_size, name);
+
+    if (!class_var->entry->class) {
+        knd_log("-- class var not yet resolved: %.*s",
+                class_var->entry->name_size, class_var->entry->name);
+        return make_gsl_err(gsl_FAIL);
+    }
 
     err = mempool->new_attr_var(mempool, &attr_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
@@ -2792,6 +2798,7 @@ static gsl_err_t validate_attr_var(void *obj,
 
     err = get_attr(class_var->entry->class, name, name_size, &attr);
     if (err) {
+        knd_log("-- no attr");
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                 name_size, name,
                 class_var->entry->name_size, class_var->entry->name);
@@ -3050,7 +3057,7 @@ static gsl_err_t parse_import_class(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. import \"%.*s\" class..", 64, rec);
 
     err = mempool->new_class(mempool, &c);
@@ -5138,7 +5145,7 @@ static int coordinate(struct kndClass *self)
 {
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. class coordination in progress ..");
 
     /* resolve names to addresses */
@@ -5825,10 +5832,9 @@ static gsl_err_t present_class_selection(void *obj,
     struct glbOutput *out = self->entry->repo->out;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
-        knd_log(".. presenting %.*s.. task:%p",
-                self->entry->name_size, self->entry->name,
-                self->entry->repo->task);
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. presenting %.*s..",
+                self->entry->name_size, self->entry->name);
 
     out->reset(out);
 
@@ -6215,8 +6221,6 @@ static int get_class_attr_value(struct kndClass *src,
     struct ooDict *attr_name_idx = src->attr_name_idx;
     int err;
 
-    //src->str(src);
-
     entry = attr_name_idx->get(attr_name_idx,
                                query->name, query->name_size);
     if (!entry) {
@@ -6224,14 +6228,14 @@ static int get_class_attr_value(struct kndClass *src,
         return knd_FAIL;
     }
 
-    if (DEBUG_CONC_LEVEL_TMP) {
-        knd_log("++ got attr: %.*s  attr var:%p",
-                query->name_size, query->name, entry->attr_var);
+    if (DEBUG_CONC_LEVEL_2) {
+        knd_log("++ got attr: %.*s",
+                query->name_size, query->name);
     }
 
     if (!entry->attr_var) return knd_FAIL;
 
-    str_attr_vars(entry->attr_var, 2);
+    //str_attr_vars(entry->attr_var, 2);
 
     /* no more query specs */
     if (!query->num_children) return knd_OK;
@@ -6254,19 +6258,28 @@ static int get_arg_value(struct kndAttrVar *src,
     struct kndAttrVar *curr_var;
     struct kndAttr *attr;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2) {
         knd_log(".. from \"%.*s\" extract field: \"%.*s\"",
                 src->name_size, src->name,
                 query->name_size, query->name);
-
-    str_attr_vars(src, 2);
+        str_attr_vars(src, 2);
+    }
 
     /* check implied attr */
     if (src->implied_attr) {
         attr = src->implied_attr;
-        //attr->str(attr);
+
         if (!memcmp(attr->name, query->name, query->name_size)) {
             switch (attr->type) {
+            case KND_ATTR_NUM:
+
+                if (DEBUG_CONC_LEVEL_TMP) {
+                    knd_log("== implied NUM attr: %.*s value: %.*s numval:%lu",
+                            src->name_size, src->name,
+                            src->val_size, src->val, src->numval);
+                }
+                arg->numval = src->numval;
+                return knd_OK;
             case KND_ATTR_REF:
                 //knd_log("++ match ref: %.*s",
                 //        src->class->name_size, src->class->name);
@@ -6282,27 +6295,27 @@ static int get_arg_value(struct kndAttrVar *src,
     /* iterate children */
     for (curr_var = src->children; curr_var; curr_var = curr_var->next) {
 
-        knd_log("== child:%.*s val: %.*s",
-                curr_var->name_size, curr_var->name,
-                curr_var->val_size, curr_var->val);
+        if (DEBUG_CONC_LEVEL_2)
+            knd_log("== child:%.*s val: %.*s",
+                    curr_var->name_size, curr_var->name,
+                    curr_var->val_size, curr_var->val);
         
         if (curr_var->implied_attr) {
             attr = curr_var->implied_attr;
-            attr->str(attr);
         }
 
         if (curr_var->name_size != query->name_size) continue;
 
         if (!strncmp(curr_var->name, query->name, query->name_size)) {
 
-            knd_log("++ match: %.*s numval:%zu",
-                    curr_var->val_size, curr_var->val, curr_var->numval);
+            if (DEBUG_CONC_LEVEL_2)
+                knd_log("++ match: %.*s numval:%zu",
+                        curr_var->val_size, curr_var->val, curr_var->numval);
 
             arg->numval = curr_var->numval;
 
             if (!query->num_children) return knd_OK;
-            knd_log(".. checking nested attrs..\n\n");
-            
+            // TODO check children
         }
     }
                 
@@ -6320,6 +6333,7 @@ static int compute_num_value(struct kndClass *self,
     long numval = 0;
     long times = 0;
     long quant = 0;
+    float div_result = 0;
     int err;
 
     proc_call = &attr->proc->proc_call;
@@ -6331,7 +6345,7 @@ static int compute_num_value(struct kndClass *self,
     for (arg = proc_call->args; arg; arg = arg->next) {
         class_var = arg->class_var;
 
-        if (DEBUG_CONC_LEVEL_TMP)
+        if (DEBUG_CONC_LEVEL_2)
             knd_log("ARG: %.*s",
                     arg->name_size, arg->name);
 
@@ -6340,12 +6354,12 @@ static int compute_num_value(struct kndClass *self,
 
         if (!strncmp("times", arg->name, arg->name_size)) {
             times = arg->numval;
-            knd_log("TIMES:%lu", arg->numval);
+            //knd_log("TIMES:%lu", arg->numval);
         }
 
         if (!strncmp("quant", arg->name, arg->name_size)) {
             quant = arg->numval;
-            knd_log("QUANT:%lu", arg->numval);
+            //knd_log("QUANT:%lu", arg->numval);
         }
     }
 
@@ -6356,7 +6370,9 @@ static int compute_num_value(struct kndClass *self,
         numval = (times * quant);
         break;
     case KND_PROC_MULT_PERCENT:
-        numval = (times * quant) / 100;
+        div_result = (float)(times * quant) / (float)100;
+        knd_log("== result: %.2f", div_result);
+        numval = (long)div_result;
         break;
     default:
         break;
@@ -6367,10 +6383,92 @@ static int compute_num_value(struct kndClass *self,
     return knd_OK;
 }
 
+static int compute_list_sum(struct kndAttrVar *parent_var,
+                            struct kndAttrVar *query,
+                            struct kndAttr *attr,
+                            struct kndProcCallArg *arg,
+                            long *result)
+{
+    struct kndAttrVar *curr_var;
+    struct kndAttrVar *field_var;
+    struct kndClass *c;
+    struct ooDict *attr_name_idx;
+    struct kndAttrEntry *entry;
+    long total_numval = 0;
+    int err;
+
+    for (curr_var = parent_var->list; curr_var; curr_var = curr_var->next) {
+
+        if (DEBUG_CONC_LEVEL_2) {
+            knd_log("\n.. list elem: %.*s numval:%lu",
+                    curr_var->id_size, curr_var->id, curr_var->numval);
+            str_attr_vars(curr_var->children, 1);
+            knd_log("QUERY:");
+            str_attr_vars(query, 1);
+        }
+
+        if (query->children) {
+            if (!curr_var->children) continue;
+
+            err = get_arg_value(curr_var->children, query->children, arg);
+            if (err) return err;
+            total_numval += arg->numval;
+            continue;
+        }
+
+        if (curr_var->numval) {
+            total_numval += curr_var->numval;
+        }
+    }
+
+    //knd_log("++ list SUM OK!");
+
+    *result = total_numval;
+    return knd_OK;
+}
+
+static int compute_attr_var_value(struct kndClass *self,
+                                  struct kndClassVar *src,
+                                  struct kndAttrVar *query,
+                                  struct kndAttr *attr,
+                                  struct kndProcCallArg *arg)
+{
+    struct kndAttrVar *select_var;
+    struct kndAttrVar *curr_var;
+    struct kndAttrVar *field_var;
+    long numval = 0;
+    int err;
+
+    if (DEBUG_CONC_LEVEL_1) {
+        knd_log(".. query the \"%.*s\" class var..",
+                src->entry->name_size, src->entry->name);
+    }
+    
+    // TODO: compute sum of a list
+    if (!memcmp("_sum", query->name, query->name_size)) {
+        select_var = query->children;
+        if (!select_var) return knd_FAIL;
+        field_var = select_var->children;
+        if (!field_var) return knd_FAIL;
+
+        // find selected attr var
+        for (curr_var = src->attrs; curr_var; curr_var = curr_var->next) {
+            if (curr_var->name_size != select_var->name_size) continue;
+
+            if (memcmp(curr_var->name,
+                       select_var->name,
+                       select_var->name_size)) continue; 
+
+            err = compute_list_sum(curr_var, field_var, attr, arg, &arg->numval);
+            if (err) return err;
+        }
+    }
+    return knd_OK;
+}
+
 static int compute_class_attr_num_value(struct kndClass *self,
-                                        struct kndClassVar *cvar,
-                                        struct kndAttrVar *attr_var,
-                                        long *result)
+                                        struct kndClassVar *src_class_var,
+                                        struct kndAttrVar *attr_var)
 {
     struct kndAttr *attr = attr_var->attr;
     struct kndProcCall *proc_call;
@@ -6379,35 +6477,49 @@ static int compute_class_attr_num_value(struct kndClass *self,
     long numval = 0;
     long times = 0;
     long quant = 0;
+    float dividend = 0;
+    float divisor = 0;
+    float result = 0;
     int err;
 
     proc_call = &attr->proc->proc_call;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         knd_log("\nPROC CALL: \"%.*s\"",
                 proc_call->name_size, proc_call->name);
         knd_log("== attr var: \"%.*s\"",
                 attr_var->name_size, attr_var->name);
     }
-    
+
     for (arg = proc_call->args; arg; arg = arg->next) {
         class_var = arg->class_var;
+        if (DEBUG_CONC_LEVEL_2)
+            knd_log("ARG: %.*s", arg->name_size, arg->name);
 
-        if (DEBUG_CONC_LEVEL_TMP)
-            knd_log("ARG: %.*s",
-                    arg->name_size, arg->name);
-
-        //err = get_arg_value(attr_var, class_var->attrs, arg);
-        //if (err) return err;
+        err = compute_attr_var_value(self,
+                                     src_class_var,
+                                     class_var->attrs, attr, arg);
+        if (err) return err;
 
         if (!strncmp("times", arg->name, arg->name_size)) {
             times = arg->numval;
-            knd_log("TIMES:%lu", arg->numval);
+            //knd_log("TIMES:%lu", arg->numval);
         }
 
         if (!strncmp("quant", arg->name, arg->name_size)) {
             quant = arg->numval;
-            knd_log("QUANT:%lu", arg->numval);
+            //knd_log("QUANT:%lu", arg->numval);
+        }
+
+        if (!strncmp("dividend", arg->name, arg->name_size)) {
+            dividend = (float)arg->numval;
+            //knd_log("DIVIDEND:%lu", arg->numval);
+        }
+
+        if (!strncmp("divisor", arg->name, arg->name_size)) {
+            divisor = (float)arg->numval;
+            //knd_log("DIVISOR:%lu (arg:%.*s)", arg->numval,
+            //        arg->name_size, arg->name);
         }
     }
 
@@ -6421,13 +6533,23 @@ static int compute_class_attr_num_value(struct kndClass *self,
         numval = (times * quant) / 100;
         break;
     case KND_PROC_DIV_PERCENT:
-        numval = (times / quant) * 100;
+        if (!divisor) {
+            numval = (long)dividend;
+            break;
+        }
+
+        knd_log("\n.. divide %.2f by %.2f", dividend, divisor);
+        result = (dividend / divisor) * (float)100;
+
+        knd_log("== result: %.2f", result);
+
+        numval = (long)result;
         break;
     default:
         break;
     }
     
-    *result = numval;
+    attr_var->numval = numval;
 
     return knd_OK;
 }
@@ -6520,6 +6642,7 @@ static int aggr_item_export_JSON(struct kndClass *self,
 
         c = parent_item->attr->conc;
         if (c->num_computed_attrs) {
+
             if (DEBUG_CONC_LEVEL_2)
                 knd_log("\n..present computed attrs in %.*s (val:%.*s)",
                         parent_item->name_size, parent_item->name,
@@ -6568,7 +6691,6 @@ static int aggr_item_export_JSON(struct kndClass *self,
     }
 
     if (!parent_item->class) {
-
         /* terminal string value */
         if (parent_item->val_size) {
             c = parent_item->attr->conc;
@@ -6908,13 +7030,14 @@ static int present_computed_class_attrs(struct kndClass *self,
         case KND_ATTR_NUM:
             numval = attr_var->numval;
             if (!attr_var->is_cached) {
-                err = compute_class_attr_num_value(self, cvar, attr_var, &numval);
+                err = compute_class_attr_num_value(self, cvar, attr_var);
                 if (err) continue;
 
-                attr_var->numval = numval;
-                attr_var->is_cached = true;
+                numval = attr_var->numval;
+                //attr_var->numval = numval;
+                //attr_var->is_cached = true;
             }
-            
+
             err = out->writec(out, ',');
             if (err) return err;
             err = out->writec(out, '"');
@@ -7136,7 +7259,7 @@ static int export_JSON(struct kndClass *self)
             }
 
             if (self->num_computed_attrs) {
-                if (DEBUG_CONC_LEVEL_TMP)
+                if (DEBUG_CONC_LEVEL_2)
                     knd_log("\n.. export computed attrs of class %.*s",
                             self->name_size, self->name);
                 err = present_computed_class_attrs(self, item);

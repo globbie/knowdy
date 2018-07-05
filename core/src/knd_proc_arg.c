@@ -518,7 +518,7 @@ static gsl_err_t parse_GSL(struct kndProcArg *self,
                      const char *rec,
                      size_t *total_size)
 {
-    if (DEBUG_PROC_ARG_LEVEL_1)
+    if (DEBUG_PROC_ARG_LEVEL_TMP)
         knd_log(".. Proc Arg parsing: \"%.*s\"..", 32, rec);
 
     struct gslTaskSpec specs[] = {
