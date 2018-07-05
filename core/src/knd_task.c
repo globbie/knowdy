@@ -187,12 +187,12 @@ static gsl_err_t parse_task(void *obj,
     reset(self);
 
     struct gslTaskSpec specs[] = {
-        { .name = "schema",
+        /*{ .name = "schema",
           .name_size = strlen("schema"),
           .buf = self->schema_name,
           .buf_size = &self->schema_name_size,
           .max_buf_size = KND_NAME_SIZE
-        },
+          },*/
         { .name = "tid",
           .name_size = strlen("tid"),
           .buf = self->tid,
@@ -294,7 +294,7 @@ static int parse_GSL(struct kndTask *self,
                      const char *obj,
                      size_t obj_size)
 {
-    if (DEBUG_TASK_LEVEL_2)
+    if (DEBUG_TASK_LEVEL_TMP)
         knd_log(".. parsing task: \"%.*s\"..", 256, rec);
 
     reset(self);
