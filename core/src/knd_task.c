@@ -39,9 +39,9 @@ static void str(struct kndTask *self __attribute__((unused)), size_t depth __att
 
 static void reset(struct kndTask *self)
 {
-//    self->sid_size = 0;
-//    self->uid_size = 0;
-//    self->tid_size = 0;
+    self->sid_size = 0;
+    self->uid_size = 0;
+    self->tid_size = 0;
 
     self->locale = self->shard->user->default_locale;
     self->locale_size = self->shard->user->default_locale_size;
@@ -183,8 +183,6 @@ static gsl_err_t parse_task(void *obj,
 {
     struct kndTask *self = obj;
     gsl_err_t err;
-
-    reset(self);
 
     struct gslTaskSpec specs[] = {
         /*{ .name = "schema",
