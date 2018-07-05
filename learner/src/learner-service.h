@@ -24,16 +24,16 @@ struct kndLearnerService
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    char path[KND_NAME_SIZE];
-    size_t path_size;
+//    char path[KND_NAME_SIZE];
+//    size_t path_size;
+//
+//    char schema_path[KND_NAME_SIZE];
+//    size_t schema_path_size;
+//
+//    char delivery_addr[KND_NAME_SIZE];
+//    size_t delivery_addr_size;
 
-    char schema_path[KND_NAME_SIZE];
-    size_t schema_path_size;
-
-    char delivery_addr[KND_NAME_SIZE];
-    size_t delivery_addr_size;
-
-    size_t max_users;
+//    size_t max_users;
 
     const struct kndLearnerOptions *opts;
 

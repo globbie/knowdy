@@ -60,7 +60,7 @@ static void str(struct kndAttr *self)
         knd_log("%*s  (implied)",
                 self->depth * KND_OFFSET_SIZE, "");
     }
-    
+
     tr = self->tr;
     while (tr) {
         knd_log("%*s   ~ %s %s",
@@ -91,7 +91,7 @@ static void str(struct kndAttr *self)
         proc->depth = self->depth + 1;
         proc->str(proc);
     }
-    
+
     if (self->calc_oper_size) {
         knd_log("%*s  oper: %s attr: %s",
                 self->depth * KND_OFFSET_SIZE, "",
@@ -107,7 +107,7 @@ static void str(struct kndAttr *self)
         knd_log("%*s  default VAL: %s",
                 self->depth * KND_OFFSET_SIZE, "", self->default_val);
     }
-    
+
     if (self->is_a_set)
         knd_log("%*s]", self->depth * KND_OFFSET_SIZE, "");
     else
@@ -123,7 +123,7 @@ static int kndAttr_validate_email(struct kndAttr *self,
                                   const char   *val,
                                   size_t val_size)
 {
-    
+
     if (DEBUG_ATTR_LEVEL_TMP)
         knd_log(".. %s attr validating email: \"%.*s\"", self->name, val_size, val);
 
@@ -153,7 +153,7 @@ static int export_JSON(struct kndAttr *self)
     if (err) return err;
     err = out->write(out, "\":{", strlen("\":{"));
     if (err) return err;
-    
+
     err = out->write(out, "\"type\":\"", strlen("\"type\":\""));
     if (err) return err;
     err = out->write(out, type_name, type_name_size);
@@ -165,7 +165,7 @@ static int export_JSON(struct kndAttr *self)
         err = out->write(out, ",\"is_a_set\":true", strlen(",\"is_a_set\":true"));
         if (err) return err;
     }
-    
+
     if (self->ref_classname_size) {
         err = out->write(out, ",\"refclass\":\"", strlen(",\"refclass\":\""));
         if (err) return err;
@@ -174,18 +174,18 @@ static int export_JSON(struct kndAttr *self)
         err = out->write(out, "\"", 1);
         if (err) return err;
    }
-    
+
     /* choose gloss */
     tr = self->tr;
     while (tr) {
         if (DEBUG_ATTR_LEVEL_2)
             knd_log("LANG: %s == CURR LOCALE: %s [%lu] => %s",
-                    tr->locale, self->task->locale, (unsigned long)self->locale_size, tr->val);
+                    tr->locale, self->task->locale, (unsigned long)self->task->locale_size, tr->val);
 
         if (strncmp(self->task->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
         }
-        
+
         err = out->write(out,
                          ",\"_gloss\":\"", strlen(",\"_gloss\":\""));
         if (err) return err;
@@ -210,25 +210,22 @@ static int export_JSON(struct kndAttr *self)
         err = p->export(p);
         if (err) return err;
     }
-    
+
     err = out->writec(out, '}');
     if (err) return err;
 
     return knd_OK;
 }
 
-static int export_GSP(struct kndAttr *self)
+static int export_GSP(struct kndAttr *self, struct glbOutput *out)
 {
     char buf[KND_NAME_SIZE] = {0};
     size_t buf_size = 0;
-    struct glbOutput *out;
     struct kndTranslation *tr;
 
     const char *type_name = knd_attr_names[self->type];
     size_t type_name_size = strlen(knd_attr_names[self->type]);
     int err;
-
-    out = self->out;
 
     err = out->write(out, "{", 1);
     if (err) return err;
@@ -238,7 +235,7 @@ static int export_GSP(struct kndAttr *self)
     if (err) return err;
     err = out->write(out, self->name, self->name_size);
     if (err) return err;
-    
+
     if (self->is_a_set) {
         err = out->write(out, "{t set}", strlen("{t set}"));
         if (err) return err;
@@ -263,7 +260,7 @@ static int export_GSP(struct kndAttr *self)
         err = out->writec(out, '}');
         if (err) return err;
     }
-    
+
     if (self->ref_classname_size) {
         err = out->write(out, "{c ", strlen("{c "));
         if (err) return err;
@@ -281,14 +278,14 @@ static int export_GSP(struct kndAttr *self)
         err = out->write(out, "}", 1);
         if (err) return err;
     }
-    
+
     /* choose gloss */
     if (self->tr) {
         err = out->write(out,
                          "[_g", strlen("[_g"));
         if (err) return err;
     }
-    
+
     for (tr = self->tr; tr; tr = tr->next) {
         err = out->write(out, "{", 1);
         if (err) return err;
@@ -305,34 +302,21 @@ static int export_GSP(struct kndAttr *self)
         err = out->write(out, "]", 1);
         if (err) return err;
     }
-    
+
     err = out->write(out, "}", 1);
     if (err) return err;
 
     return knd_OK;
 }
 
-static int export(struct kndAttr *self)
+static int export(struct kndAttr *self, knd_format format, struct glbOutput *out)
 {
-    int err = knd_FAIL;
-
-    switch (self->format) {
-    case KND_FORMAT_JSON:
-        err = export_JSON(self);
-        if (err) goto final;
-        break;
-    case KND_FORMAT_GSP:
-        err = export_GSP(self);
-        if (err) goto final;
-        break;
-    default:
-        break;
+    switch (format) {
+    case KND_FORMAT_JSON: return export_JSON(self);
+    case KND_FORMAT_GSP:  return export_GSP(self, out);
+    default:              return knd_NO_MATCH;
     }
-
- final:
-    return err;
 }
-
 
 /**
  * PARSER
@@ -344,7 +328,7 @@ static gsl_err_t run_set_quant(void *obj, const char *name, size_t name_size)
 
     if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. run set quant!\n");
-    
+
     if (!name_size) return make_gsl_err(gsl_FAIL);
     if (name_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
@@ -509,7 +493,7 @@ static gsl_err_t parse_proc(void *obj,
     err = mempool->new_proc(mempool, &proc);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
-    err = mempool->new_proc_entry(mempool, &entry); 
+    err = mempool->new_proc_entry(mempool, &entry);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     entry->repo = self->parent_class->entry->repo;
     entry->proc = proc;
@@ -566,10 +550,10 @@ static gsl_err_t run_set_validator(void *obj, const char *name, size_t name_size
 {
     struct kndAttr *self = (struct kndAttr*)obj;
     struct kndAttrValidator *validator;
-    
+
     if (!name_size) return make_gsl_err(gsl_FAIL);
     if (name_size >= sizeof self->validator_name) return make_gsl_err(gsl_LIMIT);
-            
+
     memcpy(self->validator_name, name, name_size);
     self->validator_name_size = name_size;
     self->validator_name[name_size] = '\0';
@@ -585,7 +569,7 @@ static gsl_err_t run_set_validator(void *obj, const char *name, size_t name_size
            knd_log("existing validator: \"%s\"", validator->name);
         */
     }
-    
+
     return make_gsl_err(gsl_OK);
 }
 

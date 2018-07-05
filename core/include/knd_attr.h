@@ -38,7 +38,7 @@ typedef enum knd_attr_type {
     KND_ATTR_STR,
     KND_ATTR_BIN,
     KND_ATTR_AGGR,
-    KND_ATTR_TEXT, 
+    KND_ATTR_TEXT,
     KND_ATTR_CG,
     KND_ATTR_NUM,
     KND_ATTR_REF,
@@ -51,8 +51,8 @@ static const char* const knd_attr_names[] = {
     "atom",
     "str",
     "bin",
-    "aggr", 
-    "text", 
+    "aggr",
+    "text",
     "CG",
     "num",
     "ref",
@@ -134,7 +134,7 @@ struct kndAttrEntry
     struct kndAttrEntry *next;
 };
 
-struct kndAttr 
+struct kndAttr
 {
     knd_attr_type type;
     knd_attr_access_type access_type;
@@ -163,9 +163,9 @@ struct kndAttr
 
     struct kndTask *task;
 
-    const char *locale;
-    size_t locale_size;
-    knd_format format;
+//    const char *locale;
+//    size_t locale_size;
+//    knd_format format;
 
     /* if refclass is empty: assume self reference by default */
     char ref_classname[KND_NAME_SIZE];
@@ -193,13 +193,13 @@ struct kndAttr
     char idx_name[KND_NAME_SIZE];
     size_t idx_name_size;
 
-    struct kndRefSet *browser;
-    struct glbOutput *out;
-    
+    //struct kndRefSet *browser;
+    //struct glbOutput *out;
+
     struct kndTranslation *tr;
     size_t depth;
     struct kndAttr *next;
-    
+
     /***********  public methods ***********/
     void (*str)(struct kndAttr *self);
 
@@ -211,7 +211,9 @@ struct kndAttr
                     const char   *val,
                     size_t val_size);
 
-    int (*export)(struct kndAttr   *self);
+    int (*export)(struct kndAttr *self,
+                  knd_format format,
+                  struct glbOutput *out);
 };
 
 
