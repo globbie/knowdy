@@ -551,7 +551,11 @@ extern int kndRepo_init(struct kndRepo *self)
         }
 
         err = c->coordinate(c);
-        if (err) return err;
+        if (err) {
+            knd_log("-- concept coordination failed");
+            return err;
+        }
+
         c->batch_mode = false;
     }
 
