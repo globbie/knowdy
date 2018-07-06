@@ -10,7 +10,6 @@
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
 
-
 #include "knd_rel.h"
 #include "knd_rel_arg.h"
 #include "knd_task.h"

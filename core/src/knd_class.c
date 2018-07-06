@@ -5440,7 +5440,8 @@ static int get_obj(struct kndClass *self,
     }
 
     if (!self->entry->obj_name_idx) {
-        knd_log("-- no obj name idx in \"%.*s\" :(", self->entry->name_size, self->entry->name);
+        knd_log("-- no obj name idx in \"%.*s\" :(",
+                self->entry->name_size, self->entry->name);
 
         log->reset(log);
         e = log->write(log, self->entry->name, self->entry->name_size);
@@ -5499,6 +5500,7 @@ static int read_obj_entry(struct kndClass *self,
                           struct kndObject **result)
 {
     struct kndObject *obj;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
     const char *filename;
     size_t filename_size;
     const char *c, *b, *e;
@@ -5559,8 +5561,8 @@ static int read_obj_entry(struct kndClass *self,
     /* done reading */
     close(fd);
 
-    err = self->entry->repo->mempool->new_obj(self->entry->repo->mempool, &obj);                           RET_ERR();
-    err = self->entry->repo->mempool->new_state(self->entry->repo->mempool, &obj->state);                  RET_ERR();
+    err = mempool->new_obj(mempool, &obj);                           RET_ERR();
+    err = mempool->new_state(mempool, &obj->state);                  RET_ERR();
 
     obj->state->phase = KND_FROZEN;
 
@@ -5828,10 +5830,11 @@ static gsl_err_t present_class_selection(void *obj,
     struct kndClass *c;
     struct kndSet *set;
     struct glbOutput *out = self->entry->repo->out;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. presenting %.*s..",
+        knd_log(".. presenting class %.*s..",
                 self->entry->name_size, self->entry->name);
 
     out->reset(out);
@@ -5864,11 +5867,11 @@ static gsl_err_t present_class_selection(void *obj,
 
         /* intersection required */
         if (self->entry->repo->task->num_sets > 1) {
-            err = self->entry->repo->mempool->new_set(self->entry->repo->mempool, &set);
+            err = mempool->new_set(mempool, &set);
             if (err) return make_gsl_err_external(err);
 
             set->type = KND_SET_CLASS;
-            set->mempool = self->entry->repo->mempool;
+            set->mempool = mempool;
 
             // TODO: compound class
             set->base = self->entry->repo->task->sets[0]->base;

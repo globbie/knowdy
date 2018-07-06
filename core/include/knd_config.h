@@ -94,9 +94,9 @@ typedef enum knd_storage_type {
 
 #endif
 
-#define LOGIC_NOT 0
-#define LOGIC_AND 1 
-#define LOGIC_OR  2
+//#define LOGIC_NOT 0
+//#define LOGIC_AND 1 
+//#define LOGIC_OR  2
 
 #define KND_OFFSET_SIZE 4
 
