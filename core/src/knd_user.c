@@ -804,6 +804,7 @@ static int export(struct kndUser *self)
 
 static int kndUser_init(struct kndUser *self)
 {
+    int err;
     memcpy(self->path, self->shard->path, self->shard->path_size);
     self->path_size = self->shard->path_size;
 
