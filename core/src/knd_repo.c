@@ -506,8 +506,6 @@ extern int kndRepo_init(struct kndRepo *self)
     struct kndClass *c;
     int err;
 
-    knd_log(".. init Repo..");
-
     self->task =     self->user->task;
     self->out =      self->task->out;
     self->file_out = self->task->file_out;
@@ -543,12 +541,12 @@ extern int kndRepo_init(struct kndRepo *self)
         if (err != knd_NO_MATCH) return err;
 
         /* read class definitions */
-        knd_log("-- no frozen DB found, reading schemas..");
+        knd_log("-- no frozen DB found, reading original schemas..");
         
         c->batch_mode = true;
         err = c->load(c, NULL, "index", strlen("index"));
         if (err) {
-            knd_log("-- couldn't read any schema definitions :(");
+            knd_log("-- couldn't read any schemas :(");
             return err;
         }
 
