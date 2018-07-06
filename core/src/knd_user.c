@@ -813,7 +813,9 @@ static int kndUser_init(struct kndUser *self)
 
     self->repo->name[0] = '~';
     self->repo->name_size = 1;
-    self->repo->init(self->repo);
+
+    err = self->repo->init(self->repo);
+    if (err) return err;
 
     return knd_OK;
 }

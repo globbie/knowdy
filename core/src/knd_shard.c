@@ -199,13 +199,6 @@ parse_schema(struct kndShard *self, const char *rec, size_t *total_size)
     return knd_OK;
 }
 
-extern void kndShard_init(struct kndShard *self)
-{
-    self->del = kndShard_del;
-    //self->str = kndShard_str;
-    self->run_task = kndShard_run_task;
-}
-
 extern int kndShard_new(struct kndShard **shard,
                         const char *config_filename)
 {
@@ -255,7 +248,9 @@ extern int kndShard_new(struct kndShard **shard,
     err = user->init(user);
     if (err != knd_OK) goto error;
 
-    kndShard_init(self);
+    self->del = kndShard_del;
+    self->run_task = kndShard_run_task;
+
     *shard = self;
     return knd_OK;
  error:
