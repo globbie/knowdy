@@ -2781,7 +2781,7 @@ static gsl_err_t validate_attr_var(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. class var \"%.*s\" to validate attr var: %.*s..",
                 class_var->entry->name_size, class_var->entry->name,
                 name_size, name);
@@ -2798,7 +2798,6 @@ static gsl_err_t validate_attr_var(void *obj,
 
     err = get_attr(class_var->entry->class, name, name_size, &attr);
     if (err) {
-        knd_log("-- no attr");
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                 name_size, name,
                 class_var->entry->name_size, class_var->entry->name);
@@ -2876,12 +2875,12 @@ extern gsl_err_t parse_class_var(struct kndClassVar *self,
           .obj = self
         },
         { .is_validator = true,
-          .type = GSL_SET_ARRAY_STATE,
-          .validate = import_attr_var_list,
+          .validate = import_attr_var,
           .obj = self
         },
         { .is_validator = true,
-          .validate = validate_attr_var,
+          .type = GSL_SET_ARRAY_STATE,
+          .validate = import_attr_var_list,
           .obj = self
         }
     };
@@ -5170,7 +5169,7 @@ static int coordinate(struct kndClass *self)
 {
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. class coordination in progress ..");
 
     /* resolve names to addresses */
