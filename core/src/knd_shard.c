@@ -243,9 +243,6 @@ extern int kndShard_new(struct kndShard **shard,
                                             config_filename);
         if (err != knd_OK) goto error;
 
-        knd_log(".. reading config: %.*s",
-                self->out->buf_size, self->out->buf);
-
         err = parse_schema(self, self->out->buf, &chunk_size);
         if (err != knd_OK) goto error;
     }
