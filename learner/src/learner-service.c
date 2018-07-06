@@ -6,7 +6,6 @@
 
 #include "learner-service.h"
 #include <knd_shard.h>
-#include <knd_utils.h>
 
 static int
 task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
