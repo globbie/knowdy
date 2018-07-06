@@ -3075,6 +3075,11 @@ static gsl_err_t parse_import_class(void *obj,
           .parse = parse_baseclass,
           .obj = c
         },
+        { .name = "base",
+          .name_size = strlen("base"),
+          .parse = parse_baseclass,
+          .obj = c
+        },
         { .type = GSL_SET_ARRAY_STATE,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
@@ -3099,8 +3104,18 @@ static gsl_err_t parse_import_class(void *obj,
           .parse = parse_aggr,
           .obj = c
         },
+        { .name = "aggr",
+          .name_size = strlen("aggr"),
+          .parse = parse_aggr,
+          .obj = c
+        },
         { .type = GSL_SET_STATE,
           .name = "str",
+          .name_size = strlen("str"),
+          .parse = parse_str,
+          .obj = c
+        },
+        { .name = "str",
           .name_size = strlen("str"),
           .parse = parse_str,
           .obj = c
@@ -3117,8 +3132,18 @@ static gsl_err_t parse_import_class(void *obj,
           .parse = parse_num,
           .obj = c
         },
+        { .name = "num",
+          .name_size = strlen("num"),
+          .parse = parse_num,
+          .obj = c
+        },
         { .type = GSL_SET_STATE,
           .name = "ref",
+          .name_size = strlen("ref"),
+          .parse = parse_ref,
+          .obj = c
+        },
+        { .name = "ref",
           .name_size = strlen("ref"),
           .parse = parse_ref,
           .obj = c

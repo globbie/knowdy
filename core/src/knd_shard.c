@@ -163,8 +163,6 @@ kndShard_parse_config(void *obj, const char *rec, size_t *total_size)
         return make_gsl_err(gsl_FAIL);
     }
 
-    knd_log("++ config parsing OK: %.*s", self->path_size, self->path);
-
     err = knd_mkpath(self->path, self->path_size, 0755, false);
     if (err != knd_OK) return make_gsl_err_external(err);
 
