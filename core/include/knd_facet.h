@@ -52,35 +52,11 @@ struct kndFacet
 {
     knd_facet_type type;
     struct kndAttr *attr;
-
-    //struct kndOutput *out;
     struct kndSet *parent;
-    //struct kndMemPool *mempool;
 
     struct ooDict *set_name_idx;
-
     size_t export_depth;
     size_t batch_size;
-    
-    /******** public methods ********/
-    /* void (*str)(struct kndFacet *self,
-                size_t           depth,
-                size_t           max_depth);
-
-    int (*add_ref)(struct kndFacet *self,
-		   struct kndClass *topic,
-		   struct kndClass *spec);
-    
-    int (*sync)(struct kndFacet *self);
-
-    int (*read)(struct kndFacet   *self,
-                const char        *rec,
-                size_t            rec_size);
-    
-    int (*export)(struct kndFacet *self,
-                   knd_format format,
-                   size_t depth);
-    */
 };
 
 extern void kndFacet_init(struct kndFacet *self);

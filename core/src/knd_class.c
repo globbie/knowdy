@@ -3367,6 +3367,7 @@ static gsl_err_t select_by_attr(void *obj,
     struct kndSet *set;
     struct kndFacet *facet;
     struct glbOutput *log = self->entry->repo->log;
+    struct kndTask *task = self->entry->repo->task;
     int err, e;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -3398,7 +3399,7 @@ static gsl_err_t select_by_attr(void *obj,
         e = log->write(log, " no such facet: ",
                                strlen(" no such facet: "));
         if (e) return make_gsl_err_external(e);
-        self->entry->repo->task->http_code = HTTP_NOT_FOUND;
+        task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err_external(knd_NO_MATCH);
     }
 
@@ -3415,11 +3416,11 @@ static gsl_err_t select_by_attr(void *obj,
     if (DEBUG_CONC_LEVEL_2)
         set->str(set, 1);
 
-    if (self->entry->repo->task->num_sets + 1 > KND_MAX_CLAUSES)
+    if (task->num_sets + 1 > KND_MAX_CLAUSES)
         return make_gsl_err(gsl_LIMIT);
 
-    self->entry->repo->task->sets[self->entry->repo->task->num_sets] = set;
-    self->entry->repo->task->num_sets++;
+    task->sets[task->num_sets] = set;
+    task->num_sets++;
 
     return make_gsl_err(gsl_OK);
 }
@@ -3431,7 +3432,7 @@ static gsl_err_t parse_attr_select(void *obj,
     struct kndClass *self = obj;
     struct kndAttr *attr;
     struct glbOutput *log = self->entry->repo->log;
-
+    struct kndTask *task = self->entry->repo->task;
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = select_by_attr,
@@ -3455,7 +3456,7 @@ static gsl_err_t parse_attr_select(void *obj,
         e = log->write(log, ": no such attribute",
                                strlen(": no such attribute"));
         if (e) return *total_size = 0, make_gsl_err_external(e);
-        self->entry->repo->task->http_code = HTTP_NOT_FOUND;
+        task->http_code = HTTP_NOT_FOUND;
 
         return *total_size = 0, make_gsl_err_external(err);
     }

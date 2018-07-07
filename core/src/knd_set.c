@@ -251,7 +251,7 @@ kndFacet_add_reverse_link(struct kndFacet  *self,
     struct ooDict *name_idx;
     int err;
 
-    err = ooDict_new(&name_idx, KND_SMALL_DICT_SIZE);                                  RET_ERR();
+    err = ooDict_new(&name_idx, KND_SMALL_DICT_SIZE);                             RET_ERR();
     err = name_idx->set(name_idx,
                         topic->name, topic->name_size, (void*)set);                    RET_ERR();
 
