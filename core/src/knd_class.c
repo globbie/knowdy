@@ -556,9 +556,11 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
     struct kndClassVar *item;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_2) {
         knd_log(".. \"%.*s\" class to inherit attrs from \"%.*s\"..",
-                self->entry->name_size, self->entry->name, base->name_size, base->name);
+                self->entry->name_size, self->entry->name,
+                base->name_size, base->name);
+    }
 
     if (!base->is_resolved) {
         err = base->resolve(base, NULL);                                          RET_ERR();
@@ -568,14 +570,18 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
     for (size_t i = 0; i < self->num_bases; i++) {
         entry = self->bases[i];
         c = entry->class;
+
         if (DEBUG_CONC_LEVEL_2)
             knd_log("== (%zu of %zu)  \"%.*s\" is a base of \"%.*s\"",
                     i, self->num_bases, c->name_size, c->name,
                     self->entry->name_size, self->entry->name);
+
         if (entry->class == base) {
-            knd_log("-- circle inheritance detected for \"%.*s\" :(",
-                    base->name_size, base->name);
-            return knd_FAIL;
+            knd_log("NB: class \"%.*s\" is already inherited "
+                    "by \"%.*s\"",
+                    base->name_size, base->name,
+                    self->entry->name_size, self->entry->name);
+            return knd_OK;
         }
     }
 
