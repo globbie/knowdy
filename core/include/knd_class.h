@@ -197,7 +197,6 @@ struct kndClass
     //size_t dir_buf_size;
 
     struct kndUpdate *curr_update;
-
     struct kndClass *next;
 
     /***********  public methods ***********/
@@ -212,8 +211,8 @@ struct kndClass
                 const char *filename,
                 size_t filename_size);
     gsl_err_t (*read)(struct kndClass   *self,
-                const char *rec,
-                size_t *total_size);
+                      const char *rec,
+                      size_t *total_size);
     int (*read_obj_entry)(struct kndClass   *self,
                           struct kndObjEntry *entry,
                           struct kndObject **result);
