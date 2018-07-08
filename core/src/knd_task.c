@@ -329,8 +329,6 @@ static int parse_GSL(struct kndTask *self,
 
 static int build_report(struct kndTask *self)
 {
-    char buf[KND_SHORT_NAME_SIZE];
-    size_t buf_size;
     struct glbOutput *out = self->spec_out;
     size_t obj_size;
     size_t chunk_size;
@@ -373,8 +371,7 @@ static int build_report(struct kndTask *self)
             err = self->out->write(self->out,
                                    ",\"http_code\":", strlen(",\"http_code\":"));
             if (err) return err;
-            buf_size = sprintf(buf, "%d", self->http_code);
-            err = self->out->write(self->out, buf, buf_size);
+            err = self->out->writef(self->out, "%d", self->http_code);
             if (err) return err;
         }
 
