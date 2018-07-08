@@ -577,10 +577,11 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
                     self->entry->name_size, self->entry->name);
 
         if (entry->class == base) {
-            knd_log("NB: class \"%.*s\" is already inherited "
-                    "by \"%.*s\"",
-                    base->name_size, base->name,
-                    self->entry->name_size, self->entry->name);
+            if (DEBUG_CONC_LEVEL_2)
+                knd_log("NB: class \"%.*s\" is already inherited "
+                        "by \"%.*s\"",
+                        base->name_size, base->name,
+                        self->entry->name_size, self->entry->name);
             return knd_OK;
         }
     }
