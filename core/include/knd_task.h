@@ -71,8 +71,8 @@ struct kndTask
 //    char agent_name[KND_NAME_SIZE];
 //    size_t agent_name_size;
 
-    char schema_name[KND_NAME_SIZE];
-    size_t schema_name_size;
+//    char schema_name[KND_NAME_SIZE];
+//    size_t schema_name_size;
 
     char tid[KND_NAME_SIZE];
     size_t tid_size;
@@ -129,9 +129,9 @@ struct kndTask
     struct glbOutput *update;
     struct kndMemPool *mempool;
 
-    knd_delivery_type delivery_type;
-    char delivery_addr[KND_NAME_SIZE];
-    size_t delivery_addr_size;
+//    knd_delivery_type delivery_type;
+//    char delivery_addr[KND_NAME_SIZE];
+//    size_t delivery_addr_size;
 
     /******** public methods ********/
     void (*str)(struct kndTask *self,
