@@ -115,32 +115,29 @@ static gsl_err_t parse_user(void *obj,
 static gsl_err_t set_output_format(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *self = obj;
-    const char *format_str;
-    size_t format_str_size;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    for (size_t i = 0; i < sizeof(knd_format_names); i++) {
-        format_str = knd_format_names[i];
-        if (!format_str) break;
+    for (size_t i = 0; i < sizeof knd_format_names / sizeof knd_format_names[0]; i++) {
+        const char *format_str = knd_format_names[i];
+        assert(format_str != NULL);
 
-        format_str_size = strlen(format_str);
+        size_t format_str_size = strlen(format_str);
         if (name_size != format_str_size) continue;
 
-        if (!memcmp(knd_format_names[i], name, name_size)) {
+        if (!memcmp(format_str, name, name_size)) {
             self->format = (knd_format)i;
             return make_gsl_err(gsl_OK);
         }
     }
 
     err = self->log->write(self->log, name, name_size);
-    if (err) return make_gsl_err(err);
+    if (err) return make_gsl_err_external(err);
     err = self->log->write(self->log, " format not supported", strlen(" format not supported"));
-    if (err) return make_gsl_err(err);
+    if (err) return make_gsl_err_external(err);
 
-    return make_gsl_err(gsl_FAIL);
+    return make_gsl_err_external(knd_NO_MATCH);
 }
 
 
