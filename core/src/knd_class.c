@@ -3085,6 +3085,17 @@ static gsl_err_t parse_import_class(void *obj,
           .parse = parse_baseclass,
           .obj = c
         },
+        { .type = GSL_SET_STATE,
+          .name = "is",
+          .name_size = strlen("is"),
+          .parse = parse_baseclass,
+          .obj = c
+        },
+        { .name = "is",
+          .name_size = strlen("is"),
+          .parse = parse_baseclass,
+          .obj = c
+        },
         { .type = GSL_SET_ARRAY_STATE,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
