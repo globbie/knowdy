@@ -47,8 +47,8 @@ static void reset(struct kndTask *self)
     self->locale_size = self->shard->user->default_locale_size;
     self->curr_locale_size = 0;
 
-    self->delivery_type = KND_DELIVERY_CACHE;
-    self->delivery_addr_size = 0;
+//    self->delivery_type = KND_DELIVERY_CACHE;
+//    self->delivery_addr_size = 0;
 
     memset(self->state, '0', KND_STATE_SIZE);
     self->is_state_changed = false;
@@ -140,39 +140,38 @@ static gsl_err_t set_output_format(void *obj, const char *name, size_t name_size
     return make_gsl_err_external(knd_NO_MATCH);
 }
 
+//static gsl_err_t check_delivery_type(void *obj, const char *val, size_t val_size)
+//{
+//    const char *schema_name = "HTTP";
+//    size_t schema_name_size = strlen(schema_name);
+//    struct kndTask *self = obj;
+//
+//    if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);
+//    if (memcmp(schema_name, val, val_size)) return make_gsl_err(gsl_FAIL);
+//
+//    self->delivery_type = KND_DELIVERY_HTTP;
+//    return make_gsl_err(gsl_OK);
+//}
 
-static gsl_err_t check_delivery_type(void *obj, const char *val, size_t val_size)
-{
-    const char *schema_name = "HTTP";
-    size_t schema_name_size = strlen(schema_name);
-    struct kndTask *self = obj;
-
-    if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);
-    if (memcmp(schema_name, val, val_size)) return make_gsl_err(gsl_FAIL);
-
-    self->delivery_type = KND_DELIVERY_HTTP;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_delivery_callback(void *obj, const char *rec, size_t *total_size)
-{
-    struct kndTask *self = obj;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = check_delivery_type,
-          .obj = self
-        },
-        { .name = "base_url",
-          .name_size = strlen("base_url"),
-          .buf = self->delivery_addr,
-          .buf_size = &self->delivery_addr_size,
-          .max_buf_size = KND_NAME_SIZE
-        }
-    };
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
+//static gsl_err_t parse_delivery_callback(void *obj, const char *rec, size_t *total_size)
+//{
+//    struct kndTask *self = obj;
+//
+//    struct gslTaskSpec specs[] = {
+//        { .is_implied = true,
+//          .run = check_delivery_type,
+//          .obj = self
+//        },
+//        { .name = "base_url",
+//          .name_size = strlen("base_url"),
+//          .buf = self->delivery_addr,
+//          .buf_size = &self->delivery_addr_size,
+//          .max_buf_size = KND_NAME_SIZE
+//        }
+//    };
+//
+//    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+//}
 
 static gsl_err_t parse_task(void *obj,
                             const char *rec,
@@ -186,19 +185,19 @@ static gsl_err_t parse_task(void *obj,
           .name_size = strlen("schema"),
           .buf = self->schema_name,
           .buf_size = &self->schema_name_size,
-          .max_buf_size = KND_NAME_SIZE
+          .max_buf_size = sizeof self->schema_name
           },*/
         { .name = "tid",
           .name_size = strlen("tid"),
           .buf = self->tid,
           .buf_size = &self->tid_size,
-          .max_buf_size = KND_NAME_SIZE
+          .max_buf_size = sizeof self->tid
         },
         { .name = "locale",
           .name_size = strlen("locale"),
           .buf = self->curr_locale,
           .buf_size = &self->curr_locale_size,
-          .max_buf_size = KND_NAME_SIZE
+          .max_buf_size = sizeof self->curr_locale
         },
         { .name = "format",
           .name_size = strlen("format"),
@@ -307,7 +306,7 @@ static int parse_GSL(struct kndTask *self,
 
     self->spec = rec;
     self->spec_size = rec_size;
-    self->obj = obj;
+    self->obj = obj;  // FIXME(k15tfu): obj & obj_size are not used
     self->obj_size = obj_size;
 
     parser_err = gsl_parse_task(rec, &total_size, specs, sizeof specs / sizeof specs[0]);
