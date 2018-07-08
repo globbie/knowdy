@@ -258,8 +258,6 @@ static int log_parser_error(struct kndTask *self,
                            size_t pos,
                            const char *rec)
 {
-  int err;
-
   size_t line = 0, column;
   for (;;) {
       const char *next_line = strchr(rec, '\n');
@@ -274,12 +272,8 @@ static int log_parser_error(struct kndTask *self,
   }
   column = pos;
 
-  char buf[256];
-  err = snprintf(buf, sizeof buf,  "parser error at line %zu:%zu: %d %s",
-                 line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
-  if (err < 0) return knd_IO_FAIL;
-
-  return self->log->write(self->log, buf, strlen(buf));
+  return self->log->writef(self->log, "parser error at line %zu:%zu: %d %s",
+                           line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
 }
 
 static int parse_GSL(struct kndTask *self,
