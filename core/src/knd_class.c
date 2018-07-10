@@ -6441,8 +6441,12 @@ static int compute_list_sum(struct kndAttrVar *parent_var,
     long total_numval = 0;
     int err;
 
-    for (curr_var = parent_var->list; curr_var; curr_var = curr_var->next) {
+    if (DEBUG_CONC_LEVEL_TMP) {
+        knd_log(".. computing SUM of list: %.*s..",
+                parent_var->name_size, parent_var->name);
+    }
 
+    for (curr_var = parent_var->list; curr_var; curr_var = curr_var->next) {
         if (DEBUG_CONC_LEVEL_2) {
             knd_log("\n.. list elem: %.*s numval:%lu",
                     curr_var->id_size, curr_var->id, curr_var->numval);
@@ -6520,6 +6524,7 @@ static int compute_class_attr_num_value(struct kndClass *self,
     struct kndClassVar *class_var;
     long numval = 0;
     long times = 0;
+    long total = 0;
     long quant = 0;
     float dividend = 0;
     float divisor = 0;
@@ -6544,6 +6549,11 @@ static int compute_class_attr_num_value(struct kndClass *self,
                                      src_class_var,
                                      class_var->attrs, attr, arg);
         if (err) return err;
+
+        if (!strncmp("total", arg->name, arg->name_size)) {
+            total = arg->numval;
+            //knd_log("TIMES:%lu", arg->numval);
+        }
 
         if (!strncmp("times", arg->name, arg->name_size)) {
             times = arg->numval;
@@ -6570,6 +6580,10 @@ static int compute_class_attr_num_value(struct kndClass *self,
     /* run main proc */
     switch (proc_call->type) {
         /* multiplication */
+    case KND_PROC_SUM:
+        if (total)
+            numval = total;
+        break;
     case KND_PROC_MULT:
         numval = (times * quant);
         break;
