@@ -30,6 +30,7 @@ typedef enum knd_proc_type {
     KND_PROC_USER,
     KND_PROC_SYSTEM,
     KND_PROC_ADD,
+    KND_PROC_SUM,
     KND_PROC_MULT,
     KND_PROC_MULT_PERCENT,
     KND_PROC_DIV_PERCENT

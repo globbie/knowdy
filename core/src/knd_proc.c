@@ -1295,6 +1295,9 @@ static gsl_err_t parse_proc_call(void *obj,
     if (!strncmp("_mult", proc_call->name, proc_call->name_size))
         proc_call->type = KND_PROC_MULT;
 
+    if (!strncmp("_sum", proc_call->name, proc_call->name_size))
+        proc_call->type = KND_PROC_SUM;
+
     if (!strncmp("_mult_percent", proc_call->name, proc_call->name_size))
         proc_call->type = KND_PROC_MULT_PERCENT;
 
