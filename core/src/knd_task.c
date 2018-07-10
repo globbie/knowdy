@@ -47,8 +47,8 @@ static void reset(struct kndTask *self)
     self->locale_size = self->shard->user->default_locale_size;
     self->curr_locale_size = 0;
 
-    self->delivery_type = KND_DELIVERY_CACHE;
-    self->delivery_addr_size = 0;
+//    self->delivery_type = KND_DELIVERY_CACHE;
+//    self->delivery_addr_size = 0;
 
     memset(self->state, '0', KND_STATE_SIZE);
     self->is_state_changed = false;
@@ -115,67 +115,63 @@ static gsl_err_t parse_user(void *obj,
 static gsl_err_t set_output_format(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *self = obj;
-    const char *format_str;
-    size_t format_str_size;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    for (size_t i = 0; i < sizeof(knd_format_names); i++) {
-        format_str = knd_format_names[i];
-        if (!format_str) break;
+    for (size_t i = 0; i < sizeof knd_format_names / sizeof knd_format_names[0]; i++) {
+        const char *format_str = knd_format_names[i];
+        assert(format_str != NULL);
 
-        format_str_size = strlen(format_str);
+        size_t format_str_size = strlen(format_str);
         if (name_size != format_str_size) continue;
 
-        if (!memcmp(knd_format_names[i], name, name_size)) {
+        if (!memcmp(format_str, name, name_size)) {
             self->format = (knd_format)i;
             return make_gsl_err(gsl_OK);
         }
     }
 
     err = self->log->write(self->log, name, name_size);
-    if (err) return make_gsl_err(err);
+    if (err) return make_gsl_err_external(err);
     err = self->log->write(self->log, " format not supported", strlen(" format not supported"));
-    if (err) return make_gsl_err(err);
+    if (err) return make_gsl_err_external(err);
 
-    return make_gsl_err(gsl_FAIL);
+    return make_gsl_err_external(knd_NO_MATCH);
 }
 
+//static gsl_err_t check_delivery_type(void *obj, const char *val, size_t val_size)
+//{
+//    const char *schema_name = "HTTP";
+//    size_t schema_name_size = strlen(schema_name);
+//    struct kndTask *self = obj;
+//
+//    if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);
+//    if (memcmp(schema_name, val, val_size)) return make_gsl_err(gsl_FAIL);
+//
+//    self->delivery_type = KND_DELIVERY_HTTP;
+//    return make_gsl_err(gsl_OK);
+//}
 
-static gsl_err_t check_delivery_type(void *obj, const char *val, size_t val_size)
-{
-    const char *schema_name = "HTTP";
-    size_t schema_name_size = strlen(schema_name);
-    struct kndTask *self = obj;
-
-    if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);
-    if (memcmp(schema_name, val, val_size)) return make_gsl_err(gsl_FAIL);
-
-    self->delivery_type = KND_DELIVERY_HTTP;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_delivery_callback(void *obj, const char *rec, size_t *total_size)
-{
-    struct kndTask *self = obj;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = check_delivery_type,
-          .obj = self
-        },
-        { .name = "base_url",
-          .name_size = strlen("base_url"),
-          .buf = self->delivery_addr,
-          .buf_size = &self->delivery_addr_size,
-          .max_buf_size = KND_NAME_SIZE
-        }
-    };
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
+//static gsl_err_t parse_delivery_callback(void *obj, const char *rec, size_t *total_size)
+//{
+//    struct kndTask *self = obj;
+//
+//    struct gslTaskSpec specs[] = {
+//        { .is_implied = true,
+//          .run = check_delivery_type,
+//          .obj = self
+//        },
+//        { .name = "base_url",
+//          .name_size = strlen("base_url"),
+//          .buf = self->delivery_addr,
+//          .buf_size = &self->delivery_addr_size,
+//          .max_buf_size = KND_NAME_SIZE
+//        }
+//    };
+//
+//    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+//}
 
 static gsl_err_t parse_task(void *obj,
                             const char *rec,
@@ -189,19 +185,19 @@ static gsl_err_t parse_task(void *obj,
           .name_size = strlen("schema"),
           .buf = self->schema_name,
           .buf_size = &self->schema_name_size,
-          .max_buf_size = KND_NAME_SIZE
+          .max_buf_size = sizeof self->schema_name
           },*/
         { .name = "tid",
           .name_size = strlen("tid"),
           .buf = self->tid,
           .buf_size = &self->tid_size,
-          .max_buf_size = KND_NAME_SIZE
+          .max_buf_size = sizeof self->tid
         },
         { .name = "locale",
           .name_size = strlen("locale"),
           .buf = self->curr_locale,
           .buf_size = &self->curr_locale_size,
-          .max_buf_size = KND_NAME_SIZE
+          .max_buf_size = sizeof self->curr_locale
         },
         { .name = "format",
           .name_size = strlen("format"),
@@ -262,8 +258,6 @@ static int log_parser_error(struct kndTask *self,
                            size_t pos,
                            const char *rec)
 {
-  int err;
-
   size_t line = 0, column;
   for (;;) {
       const char *next_line = strchr(rec, '\n');
@@ -278,12 +272,8 @@ static int log_parser_error(struct kndTask *self,
   }
   column = pos;
 
-  char buf[256];
-  err = snprintf(buf, sizeof buf,  "parser error at line %zu:%zu: %d %s",
-                 line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
-  if (err < 0) return knd_IO_FAIL;
-
-  return self->log->write(self->log, buf, strlen(buf));
+  return self->log->writef(self->log, "parser error at line %zu:%zu: %d %s",
+                           line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
 }
 
 static int parse_GSL(struct kndTask *self,
@@ -310,7 +300,7 @@ static int parse_GSL(struct kndTask *self,
 
     self->spec = rec;
     self->spec_size = rec_size;
-    self->obj = obj;
+    self->obj = obj;  // FIXME(k15tfu): obj & obj_size are not used
     self->obj_size = obj_size;
 
     parser_err = gsl_parse_task(rec, &total_size, specs, sizeof specs / sizeof specs[0]);
@@ -339,8 +329,6 @@ static int parse_GSL(struct kndTask *self,
 
 static int build_report(struct kndTask *self)
 {
-    char buf[KND_SHORT_NAME_SIZE];
-    size_t buf_size;
     struct glbOutput *out = self->spec_out;
     size_t obj_size;
     size_t chunk_size;
@@ -383,8 +371,7 @@ static int build_report(struct kndTask *self)
             err = self->out->write(self->out,
                                    ",\"http_code\":", strlen(",\"http_code\":"));
             if (err) return err;
-            buf_size = sprintf(buf, "%d", self->http_code);
-            err = self->out->write(self->out, buf, buf_size);
+            err = self->out->writef(self->out, "%d", self->http_code);
             if (err) return err;
         }
 

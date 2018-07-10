@@ -36,26 +36,26 @@ typedef enum knd_state_phase { KND_SELECTED,
 /* comparison codes */
 typedef enum { knd_EQUALS, knd_LESS, knd_MORE, knd_NOT_COMPARABLE } knd_comparison_codes;
 
-typedef enum knd_format { KND_FORMAT_JSON, 
-                          KND_FORMAT_XML,
+typedef enum knd_format { KND_FORMAT_JSON,
+                          //KND_FORMAT_XML,
                           KND_FORMAT_HTML,
-                          KND_FORMAT_JS,
+                          //KND_FORMAT_JS,
                           KND_FORMAT_SVG,
-                          KND_FORMAT_GSL,
+                          //KND_FORMAT_GSL,
                           KND_FORMAT_GSP,
-                          KND_FORMAT_GSC
+                          //KND_FORMAT_GSC
                          } knd_format;
 
-static const char* const knd_format_names[] = {
-    "JSON",
-    "XML",
-    "HTML", 
-    "JS",
-    "SVG",
-    "GSL", 
-    "GSP", 
-    "GSC",
-    NULL };
+static const char *const knd_format_names[] = {
+    [KND_FORMAT_JSON] = "JSON",
+//    [KND_FORMAT_XML] = "XML",
+    [KND_FORMAT_HTML] = "HTML",
+//    [KND_FORMAT_JS] = "JS",
+    [KND_FORMAT_SVG] = "SVG",
+//    [KND_FORMAT_GSL] = "GSL",
+    [KND_FORMAT_GSP] = "GSP",
+//    [KND_FORMAT_GSC] = "GSC"
+};
 
 typedef enum knd_logic { KND_LOGIC_AND, 
                           KND_LOGIC_OR,
