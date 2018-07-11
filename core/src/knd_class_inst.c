@@ -2,13 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "knd_class_inst.h"
 #include "knd_class.h"
 #include "knd_mempool.h"
 #include "knd_attr.h"
 #include "knd_elem.h"
 
 #include "knd_repo.h"
-#include "knd_object.h"
 
 #include "knd_text.h"
 #include "knd_num.h"
@@ -1061,8 +1061,8 @@ static gsl_err_t parse_GSL(struct kndObject *self,
 }
 
 static gsl_err_t select_rels(struct kndObject *self,
-                       const char *rec,
-                       size_t *total_size)
+                             const char *rec,
+                             size_t *total_size)
 {
     struct gslTaskSpec specs[] = {
         { .name = "rel",

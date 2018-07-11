@@ -5,7 +5,6 @@
 
 #include "knd_repo.h"
 #include "knd_shard.h"
-#include "knd_object.h"
 #include "knd_attr.h"
 #include "knd_set.h"
 #include "knd_user.h"
@@ -13,6 +12,7 @@
 #include "knd_task.h"
 #include "knd_dict.h"
 #include "knd_class.h"
+#include "knd_class_inst.h"
 #include "knd_proc.h"
 #include "knd_rel.h"
 #include "knd_mempool.h"
@@ -504,6 +504,8 @@ extern int kndRepo_init(struct kndRepo *self)
 {
     struct glbOutput *out;
     struct kndClass *c;
+    struct kndProc *proc;
+    struct kndRel *rel;
     int err;
 
     self->task =     self->user->task;
@@ -556,6 +558,12 @@ extern int kndRepo_init(struct kndRepo *self)
             return err;
         }
 
+        proc = self->root_proc;
+        //err = proc->coordinate(proc);                                     RET_ERR();
+
+        rel = self->root_rel;
+        err = rel->coordinate(rel);                                       RET_ERR();
+
         c->batch_mode = false;
     }
 
@@ -569,7 +577,6 @@ kndRepo_new(struct kndRepo **repo,
     struct kndRepo *self;
     struct kndStateControl *state_ctrl;
     struct kndClass *c;
-    struct kndClassEntry *class_entry;
     struct kndProc *proc;
     struct kndRel *rel;
     int err;
@@ -578,49 +585,27 @@ kndRepo_new(struct kndRepo **repo,
     if (!self) return knd_NOMEM;
 
     memset(self, 0, sizeof(struct kndRepo));
-    memset(self->id, '0', KND_ID_SIZE);
-
-    //err = glbOutput_new(&self->out, KND_IDX_BUF_SIZE);
-    //if (err != knd_OK) goto error;
-
-    //err = glbOutput_new(&self->log, KND_MED_BUF_SIZE);
-    //if (err != knd_OK) goto error;
-
+    //memset(self->id, '0', KND_ID_SIZE);
 
     err = kndStateControl_new(&state_ctrl);
     if (err) return err;
-    
     state_ctrl->max_updates = mempool->max_updates;
     state_ctrl->updates =     mempool->update_idx;
     self->state_ctrl = state_ctrl;
    
-    err = mempool->new_class(mempool, &c);                                        RET_ERR();
-    err = mempool->new_class_entry(mempool, &class_entry);                        RET_ERR();
-    class_entry->name[0] = '/';
-    class_entry->name_size = 1;
-    class_entry->repo = self;
-    class_entry->class = c;
-    c->entry = class_entry;
-    /* obj manager */
-    err = mempool->new_obj(mempool, &c->curr_obj);                 RET_ERR();
-    c->curr_obj->base = c;
-    self->root_class = c;
-
-    /* specific allocations for the root class */
-    err = mempool->new_set(mempool, &c->class_idx);                               RET_ERR();
-    c->class_idx->type = KND_SET_CLASS;
-
-    err = ooDict_new(&c->class_name_idx, KND_MEDIUM_DICT_SIZE);
+    err = kndClass_new(&c, mempool);
     if (err) goto error;
+    c->entry->repo = self;
+    self->root_class = c;
 
     err = kndProc_new(&proc, mempool);
     if (err) goto error;
     proc->entry->repo = self;
     self->root_proc = proc;
     
-    err = kndRel_new(&rel);
+    err = kndRel_new(&rel, mempool);
     if (err) goto error;
-    rel->repo = self;
+    rel->entry->repo = self;
     self->root_rel = rel;
 
     /* read any existing updates to the frozen DB (failure recovery) */

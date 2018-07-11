@@ -14,9 +14,11 @@
 #include "knd_shard.h"
 #include "knd_repo.h"
 #include "knd_class.h"
-#include "knd_object.h"
+#include "knd_class_inst.h"
 #include "knd_proc.h"
 #include "knd_rel.h"
+#include "knd_set.h"
+#include "knd_mempool.h"
 #include "knd_state.h"
 
 #define DEBUG_USER_LEVEL_0 0
@@ -26,7 +28,6 @@
 #define DEBUG_USER_LEVEL_TMP 1
 
 static int export(struct kndUser *self);
-static gsl_err_t get_user_by_id(void *obj, const char *numid, size_t numid_size);
 
 static void del(struct kndUser *self)
 {
@@ -198,34 +199,6 @@ static gsl_err_t kndUser_parse_repo(void *obj,
     return self->repo->parse_task(self->repo, rec, total_size);
 }
 
-static gsl_err_t
-kndUser_parse_numid(void *obj,
-                    const char *rec,
-                    size_t *total_size)
-{
-    struct kndUser *self = obj;
-    int err;
-    gsl_err_t parser_err;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = get_user_by_id,
-          .obj = self
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) {
-        if (!self->log->buf_size) {
-            err = self->log->write(self->log, "user identification failure",
-                                   strlen("user identification failure"));
-            if (err) return make_gsl_err_external(err);
-        }
-        return parser_err;
-    }
-
-    return make_gsl_err(gsl_OK);
-}
 
 static gsl_err_t parse_auth(void *obj,
                             const char *rec,
@@ -310,8 +283,10 @@ static gsl_err_t parse_rel_import(void *obj,
                                   size_t *total_size)
 {
     struct kndUser *self = obj;
+    struct kndRel *rel = self->repo->root_class->rel;
 
-    return self->repo->root_class->rel->import(self->repo->root_class->rel, rec, total_size);
+    self->task->type = KND_UPDATE_STATE;
+    return rel->import(rel, rec, total_size);
 }
 
 static gsl_err_t parse_class_import(void *obj,
@@ -319,13 +294,11 @@ static gsl_err_t parse_class_import(void *obj,
                                     size_t *total_size)
 {
     struct kndUser *self = obj;
-    struct kndClass *c;
+    struct kndClass *c = self->repo->root_class;
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class import: \"%.*s\"", 64, rec);
     self->task->type = KND_UPDATE_STATE;
-    c = self->repo->root_class;
-
     return c->import(c, rec, total_size);
 }
 
@@ -445,23 +418,20 @@ static gsl_err_t parse_class_select(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-/*static gsl_err_t parse_rel_select(void *obj,
+static gsl_err_t parse_rel_select(void *obj,
                                   const char *rec,
                                   size_t *total_size)
 {
     struct kndUser *self = obj;
-    struct kndRel *rel;
-    int err;
+    struct kndRel *rel = self->repo->root_rel;
 
-    if (DEBUG_USER_LEVEL_2)
-        knd_log(".. User %p:  parsing default Rel select: \"%s\"", self, rec);
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log(".. User %.*s:  parsing default Rel select: \"%.*s\"",
+                self->name_size, self->name, 64, rec);
 
-    err = rel->select(rel, rec, total_size);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
+    return rel->select(rel, rec, total_size);
 }
-*/
+
 
 static gsl_err_t parse_liquid_updates(void *obj,
                                       const char *rec,
@@ -518,50 +488,6 @@ static gsl_err_t select_user_rels(void *obj,
     self->out->reset(self->out);
     user = self->curr_user;
     return user->select_rels(user, rec, total_size);
-}
-
-
-static gsl_err_t get_user_by_id(void *data, const char *numid, size_t numid_size)
-{
-    struct kndUser *self = data;
-    struct kndClass *c;
-    struct kndObjEntry *entry;
-    struct kndObject *obj;
-    long numval = 0;
-    int err;
-
-    if (!numid_size) return make_gsl_err(gsl_FORMAT);
-    if (numid_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    err = knd_parse_num((const char*)numid, &numval);
-    if (err) return make_gsl_err_external(err);
-
-    if (numval < 0 || (size_t)numval >= self->max_users) {
-        knd_log("-- max user limit exceeded");
-        return make_gsl_err(gsl_LIMIT);
-    }
-
-    entry = self->user_idx[numval];
-    if (!entry) {
-        knd_log("-- no such user id: %lu", numval);
-        return make_gsl_err(gsl_NO_MATCH);
-    }
-
-    err = self->repo->root_class->get(self->repo->root_class,
-                                      "User", strlen("User"), &c);
-    if (err) return make_gsl_err_external(err);
-
-    err = c->read_obj_entry(c, entry, &obj);
-    if (err) return make_gsl_err_external(err);
-
-    self->curr_user = obj;
-
-    if (DEBUG_USER_LEVEL_TMP) {
-        knd_log("++ got user by num id: %.*s", numid_size, numid);
-        self->curr_user->str(self->curr_user);
-    }
-
-    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t run_present_user(void *data,
@@ -650,13 +576,13 @@ static gsl_err_t parse_task(struct kndUser *self,
           .is_selector = true,
           .run = run_get_user,
           .obj = self
-        },
+        }/*,
         { .name = "id",
           .name_size = strlen("id"),
           .is_selector = true,
           .parse = kndUser_parse_numid,
           .obj = self
-        },
+          }*/,
         { .name = "_depth",
           .name_size = strlen("_depth"),
           .is_selector = true,
@@ -706,12 +632,12 @@ static gsl_err_t parse_task(struct kndUser *self,
           .name_size = strlen("rel"),
           .parse = parse_rel_import,
           .obj = self
-        }/*,
+        },
         { .name = "rel",
           .name_size = strlen("rel"),
           .parse = parse_rel_select,
           .obj = self
-          }*/,
+        },
         { .name = "_rels",
           .name_size = strlen("_rels"),
           .parse = select_user_rels,
@@ -838,7 +764,7 @@ kndUser_new(struct kndUser **user, struct kndMemPool *mempool)
     repo->user = self;
     self->repo = repo;
 
-
+    err = mempool->new_set(mempool, &self->user_idx);                             RET_ERR();
     self->mempool = mempool;
 
     self->del = del;

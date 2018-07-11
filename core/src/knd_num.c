@@ -9,7 +9,6 @@
 #include "knd_repo.h"
 #include "knd_elem.h"
 #include "knd_attr.h"
-#include "knd_object.h"
 #include "knd_task.h"
 #include "knd_user.h"
 

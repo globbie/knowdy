@@ -9,9 +9,9 @@
 #include "knd_task.h"
 #include "knd_repo.h"
 #include "knd_elem.h"
-#include "knd_object.h"
 #include "knd_utils.h"
 #include "knd_class.h"
+#include "knd_class_inst.h"
 #include "knd_attr.h"
 
 #define DEBUG_TEXT_LEVEL_0 0

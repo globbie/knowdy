@@ -7,6 +7,7 @@
 #include "knd_rel_arg.h"
 #include "knd_rel.h"
 #include "knd_task.h"
+#include "knd_repo.h"
 #include "knd_set.h"
 #include "knd_class.h"
 #include "knd_text.h"
@@ -38,6 +39,7 @@ static void str(struct kndRelArg *self)
         knd_log("%*s   ~ %s %s", self->depth * KND_OFFSET_SIZE, "", tr->locale, tr->val);
         tr = tr->next;
     }
+    knd_log("}");
 
 }
 
@@ -46,14 +48,12 @@ static void str(struct kndRelArg *self)
  */
 static int export_JSON(struct kndRelArg *self)
 {
-    struct glbOutput *out;
+    struct glbOutput *out = self->rel->entry->repo->out;
     struct kndTranslation *tr;
 
     const char *type_name = knd_relarg_names[self->type];
     size_t type_name_size = strlen(knd_relarg_names[self->type]);
     int err;
-
-    out = self->out;
 
     err = out->write(out, "\"", 1);
     if (err) return err;
@@ -71,7 +71,6 @@ static int export_JSON(struct kndRelArg *self)
     /* choose gloss */
     tr = self->tr;
     while (tr) {
-
         if (DEBUG_RELARG_LEVEL_2)
             knd_log("LANG: %s == CURR LOCALE: %s [%zu] => %s",
                     tr->locale, self->locale, self->locale_size, tr->val);
@@ -86,7 +85,6 @@ static int export_JSON(struct kndRelArg *self)
     next_tr:
         tr = tr->next;
     }
-
     err = out->write(out, "}", 1);
     if (err) return err;
 
@@ -368,10 +366,10 @@ static gsl_err_t parse_gloss(void *obj,
 }
 
 static gsl_err_t parse_GSL(struct kndRelArg *self,
-                     const char *rec,
-                     size_t *total_size)
+                           const char *rec,
+                           size_t *total_size)
 {
-    if (DEBUG_RELARG_LEVEL_2)
+    if (DEBUG_RELARG_LEVEL_TMP)
         knd_log(".. Rel Arg parsing: \"%.*s\"..", 32, rec);
 
     struct gslTaskSpec specs[] = {
@@ -518,7 +516,7 @@ static gsl_err_t parse_inst_obj(void *data,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t parse_inst_class(void *data,
+static gsl_err_t parse_class_inst(void *data,
                                   const char *rec,
                                   size_t *total_size)
 {
@@ -529,9 +527,9 @@ static gsl_err_t parse_inst_class(void *data,
           .run = set_inst_classname,
           .obj = self
         },
-        { .name = "obj",
-          .name_size = strlen("obj"),
-          .parse = parse_inst_obj,
+        { .name = "inst",
+          .name_size = strlen("inst"),
+          .parse = parse_class_inst,
           .obj = self
         },
         { .name = "val",
@@ -574,14 +572,14 @@ static int parse_inst_GSL(struct kndRelArg *self,
                           const char *rec,
                           size_t *total_size)
 {
-    if (DEBUG_RELARG_LEVEL_2)
+    if (DEBUG_RELARG_LEVEL_TMP)
         knd_log(".. %.*s Rel Arg instance parsing: \"%.*s\"..",
                 self->name_size, self->name, 32, rec);
 
     struct gslTaskSpec specs[] = {
         { .name = "class",
           .name_size = strlen("class"),
-          .parse = parse_inst_class,
+          .parse = parse_class_inst,
           .obj = inst
         },
         { .name = "c",
@@ -635,13 +633,14 @@ static int link_rel(struct kndRelArg *self,
 static int resolve(struct kndRelArg *self)
 {
     struct kndClassEntry *entry;
+    struct ooDict *name_idx = self->rel->entry->repo->root_class->class_name_idx;
 
-    if (DEBUG_RELARG_LEVEL_2)
+    if (DEBUG_RELARG_LEVEL_TMP)
         knd_log(".. resolving Rel Arg %.*s..",
                 self->classname_size, self->classname);
 
-    entry = self->rel->class_name_idx->get(self->rel->class_name_idx,
-                                         self->classname, self->classname_size);
+    entry = name_idx->get(name_idx,
+                          self->classname, self->classname_size);
     if (!entry) {
         knd_log("-- Rel Arg resolve failed: no such class: %.*s :(",
                 self->classname_size, self->classname);
@@ -657,12 +656,14 @@ static int resolve_inst(struct kndRelArg *self,
 {
     struct kndClassEntry *entry;
     struct kndObjEntry *obj;
+    struct ooDict *name_idx = self->rel->entry->repo->root_class->class_name_idx;
     int err;
 
-    entry = self->rel->class_name_idx->get(self->rel->class_name_idx,
-                                         inst->classname, inst->classname_size);
+    entry = name_idx->get(name_idx,
+                          inst->classname, inst->classname_size);
     if (!entry) {
-        knd_log("-- no such class: %.*s :(", inst->classname_size, inst->classname);
+        knd_log("-- no such class: %.*s :(",
+                inst->classname_size, inst->classname);
         return knd_FAIL;
     }
 
@@ -701,7 +702,7 @@ static int resolve_inst(struct kndRelArg *self,
         }
     }
 
-    if (DEBUG_RELARG_LEVEL_2)
+    if (DEBUG_RELARG_LEVEL_TMP)
         knd_log("++ Rel Arg instance resolved: \"%.*s\"!",
                 inst->classname_size, inst->classname);
 

@@ -19,11 +19,11 @@
 #include "knd_repo.h"
 #include "knd_state.h"
 #include "knd_class.h"
+#include "knd_class_inst.h"
 #include "knd_attr.h"
 #include "knd_task.h"
 #include "knd_user.h"
 #include "knd_text.h"
-#include "knd_object.h"
 #include "knd_rel.h"
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
@@ -3210,31 +3210,33 @@ static gsl_err_t parse_import_class(void *obj,
     return parser_err;
 }
 
-static gsl_err_t parse_import_obj(void *data,
-                                  const char *rec,
-                                  size_t *total_size)
+static gsl_err_t parse_import_class_inst(void *data,
+                                         const char *rec,
+                                         size_t *total_size)
 {
     struct kndClass *self = data;
     struct kndClass *c;
     struct kndObject *obj;
     struct kndObjEntry *entry;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_2) {
-        knd_log(".. import \"%.*s\" obj.. conc: %p", 128, rec, self->curr_class);
+    if (DEBUG_CONC_LEVEL_TMP) {
+        knd_log(".. import \"%.*s\" inst.. conc: %p",
+                128, rec, self->curr_class);
     }
 
     if (!self->curr_class) {
-        knd_log("-- class not set :(");
+        knd_log("-- class not specified :(");
         return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
 
-    err = self->entry->repo->mempool->new_obj(self->entry->repo->mempool, &obj);
+    err = mempool->new_obj(mempool, &obj);
     if (err) {
         return *total_size = 0, make_gsl_err_external(err);
     }
-    err = self->entry->repo->mempool->new_state(self->entry->repo->mempool, &obj->state);
+    err = mempool->new_state(mempool, &obj->state);
     if (err) {
         return *total_size = 0, make_gsl_err_external(err);
     }
@@ -3251,7 +3253,7 @@ static gsl_err_t parse_import_obj(void *data,
     c->obj_inbox_size++;
     c->num_objs++;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("++ %.*s obj parse OK! total objs in %.*s: %zu",
                 obj->name_size, obj->name,
                 c->name_size, c->name, c->obj_inbox_size);
@@ -3683,8 +3685,9 @@ static gsl_err_t parse_rel_import(void *obj,
                                   size_t *total_size)
 {
     struct kndClass *self = obj;
-
-    return self->rel->import(self->rel, rec, total_size);
+    struct kndRel *rel = self->entry->repo->root_rel;
+    
+    return rel->import(rel, rec, total_size);
 }
 
 static gsl_err_t parse_proc_import(void *obj,
@@ -4423,16 +4426,14 @@ static int parse_dir_trailer(struct kndClass *self,
     /* read rels */
     for (size_t i = 0; i < parent_entry->num_rels; i++) {
         rel_entry = parent_entry->rels[i];
-        rel_entry->mempool = self->entry->repo->mempool;
-        self->rel->fd = fd;
-        err = self->rel->read_rel(self->rel, rel_entry);
+        rel_entry->repo = self->entry->repo;
+        err = self->rel->read_rel(self->rel, rel_entry, fd);
     }
 
     /* read procs */
     for (size_t i = 0; i < parent_entry->num_procs; i++) {
         proc_entry = parent_entry->procs[i];
-        //proc_entry->mempool = self->entry->repo->mempool;
-        //self->proc->fd = fd;
+        proc_entry->repo = self->entry->repo;
         err = self->proc->read_proc(self->proc, proc_entry, fd);
     }
 
@@ -5199,9 +5200,6 @@ static int coordinate(struct kndClass *self)
 
     if (DEBUG_CONC_LEVEL_TMP)
         knd_log("\n  == TOTAL classes: %zu", self->entry->num_terminals);
-
-    //err = self->proc->coordinate(self->proc);                                     RET_ERR();
-    //err = self->rel->coordinate(self->rel);                                       RET_ERR();
 
     return knd_OK;
 }
@@ -6159,7 +6157,7 @@ static gsl_err_t parse_select_class(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
 
     self->depth = 0;
@@ -6190,9 +6188,9 @@ static gsl_err_t parse_select_class(void *obj,
           .obj = self
         },
         { .type = GSL_SET_STATE,
-          .name = "obj",
-          .name_size = strlen("obj"),
-          .parse = parse_import_obj,
+          .name = "inst",
+          .name_size = strlen("inst"),
+          .parse = parse_import_class_inst,
           .obj = self
         },
         { .name = "obj",
@@ -8626,15 +8624,39 @@ extern void kndClass_init(struct kndClass *self)
 }
 
 extern int
-kndClass_new(struct kndClass **c)
+kndClass_new(struct kndClass **result,
+             struct kndMemPool *mempool)
 {
-    struct kndClass *self;
+    struct kndClass *self = NULL;
+    struct kndClassEntry *entry;
+    int err;
 
     self = malloc(sizeof(struct kndClass));
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndClass));
 
+    err = mempool->new_class_entry(mempool, &entry);                              RET_ERR();
+    entry->name[0] = '/';
+    entry->name_size = 1;
+    entry->class = self;
+    self->entry = entry;
+
+    /* obj manager */
+    err = mempool->new_obj(mempool, &self->curr_obj);                             RET_ERR();
+    self->curr_obj->base = self;
+
+    /* specific allocations for the root class */
+    err = mempool->new_set(mempool, &self->class_idx);                            RET_ERR();
+    self->class_idx->type = KND_SET_CLASS;
+
+    err = ooDict_new(&self->class_name_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+
     kndClass_init(self);
-    *c = self;
+    *result = self;
+
     return knd_OK;
+ error:
+    if (self) kndClass_del(self);
+    return err;
 }
