@@ -98,6 +98,7 @@ struct kndStateControl
     size_t global_state_count;
 
     struct kndTask *task;
+    struct kndRepo *repo;
 
     /** transaction ledger:
      * index of confirmed updates */

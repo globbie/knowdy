@@ -197,7 +197,7 @@ static int export_inst_JSON(struct kndRelArg *self,
         if (in_list) {
             err = out->writec(out, ',');                                         RET_ERR();
         }
-        err = out->write(out, "\"obj\":\"", strlen("\"obj\":\""));             RET_ERR();
+        err = out->write(out, "\"inst\":\"", strlen("\"inst\":\""));             RET_ERR();
         err = out->write(out, inst->objname, inst->objname_size);                RET_ERR();
         err = out->writec(out, '"');                                             RET_ERR();
     }
@@ -369,7 +369,7 @@ static gsl_err_t parse_GSL(struct kndRelArg *self,
                            const char *rec,
                            size_t *total_size)
 {
-    if (DEBUG_RELARG_LEVEL_TMP)
+    if (DEBUG_RELARG_LEVEL_2)
         knd_log(".. Rel Arg parsing: \"%.*s\"..", 32, rec);
 
     struct gslTaskSpec specs[] = {
@@ -529,7 +529,7 @@ static gsl_err_t parse_class_inst(void *data,
         },
         { .name = "inst",
           .name_size = strlen("inst"),
-          .parse = parse_class_inst,
+          .parse = parse_inst_obj,
           .obj = self
         },
         { .name = "val",
@@ -573,7 +573,7 @@ static int parse_inst_GSL(struct kndRelArg *self,
                           size_t *total_size)
 {
     if (DEBUG_RELARG_LEVEL_TMP)
-        knd_log(".. %.*s Rel Arg instance parsing: \"%.*s\"..",
+        knd_log(".. \"%.*s\" rel arg inst parsing: \"%.*s\"..",
                 self->name_size, self->name, 32, rec);
 
     struct gslTaskSpec specs[] = {
@@ -603,21 +603,23 @@ static int link_rel(struct kndRelArg *self,
     struct kndRel *rel = self->rel;
     struct kndRelRef *ref = NULL;
     struct kndRelInstance *inst = arg_inst->rel_inst;
+    struct kndMemPool *mempool = rel->entry->repo->mempool;
     int err;
 
-    if (DEBUG_RELARG_LEVEL_2)
+    if (DEBUG_RELARG_LEVEL_TMP)
         knd_log(".. %.*s OBJ to link rel %.*s.. rel inst:%.*s",
                 obj_entry->name_size, obj_entry->name,
-                rel->name_size, rel->name, inst->id_size, inst->id);
+                rel->entry->name_size, rel->entry->name,
+                inst->id_size, inst->id);
 
     for (ref = obj_entry->rels; ref; ref = ref->next) {
         if (ref->rel == rel) break;
     }
 
     if (!ref) {
-        err = rel->mempool->new_rel_ref(rel->mempool, &ref);                      RET_ERR();
+        err = mempool->new_rel_ref(mempool, &ref);                      RET_ERR();
 
-        err = rel->mempool->new_set(rel->mempool, &ref->idx);                     RET_ERR();
+        err = mempool->new_set(mempool, &ref->idx);                     RET_ERR();
         ref->idx->type = KND_SET_REL_INST;
 
         ref->rel = rel;
@@ -629,13 +631,12 @@ static int link_rel(struct kndRelArg *self,
     return knd_OK;
 }
 
-
 static int resolve(struct kndRelArg *self)
 {
     struct kndClassEntry *entry;
     struct ooDict *name_idx = self->rel->entry->repo->root_class->class_name_idx;
 
-    if (DEBUG_RELARG_LEVEL_TMP)
+    if (DEBUG_RELARG_LEVEL_2)
         knd_log(".. resolving Rel Arg %.*s..",
                 self->classname_size, self->classname);
 
@@ -686,7 +687,7 @@ static int resolve_inst(struct kndRelArg *self,
         }
 
         obj = entry->obj_name_idx->get(entry->obj_name_idx,
-                                     inst->objname, inst->objname_size);
+                                       inst->objname, inst->objname_size);
         if (!obj) {
             knd_log("-- no such obj: %.*s :(",
                     inst->objname_size, inst->objname);
@@ -696,13 +697,9 @@ static int resolve_inst(struct kndRelArg *self,
         err = link_rel(self, inst, obj);        RET_ERR();
         inst->obj = obj;
 
-        if (DEBUG_RELARG_LEVEL_2) {
-            knd_log("++ obj resolved: \"%.*s\"!",
-                    inst->objname_size, inst->objname);
-        }
     }
 
-    if (DEBUG_RELARG_LEVEL_TMP)
+    if (DEBUG_RELARG_LEVEL_2)
         knd_log("++ Rel Arg instance resolved: \"%.*s\"!",
                 inst->classname_size, inst->classname);
 

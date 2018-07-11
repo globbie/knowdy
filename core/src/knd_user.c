@@ -557,11 +557,63 @@ static gsl_err_t remove_user(void *data,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_task(struct kndUser *self,
-                      const char *rec,
-                      size_t *total_size)
+static gsl_err_t alloc_class_item(void *obj,
+                                  const char *name,
+                                  size_t name_size,
+                                  size_t count  __attribute__((unused)),
+                                  void **item)
 {
-    struct kndClass *c;
+    struct kndClass *self = obj;
+
+    assert(name == NULL && name_size == 0);
+
+    *item = self;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t append_class_item(void *accu,
+                                   void *item  __attribute__((unused)))
+{
+    struct kndClass *self = accu;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_class_item(void *obj,
+                                  const char *rec,
+                                  size_t *total_size)
+{
+    struct kndClass *c = obj;
+    return c->import(c, rec, total_size);
+}
+
+static gsl_err_t parse_class_array(void *obj,
+                                   const char *rec,
+                                   size_t *total_size)
+{
+    struct kndUser *self = obj;
+    self->task->type = KND_UPDATE_STATE;
+
+    struct gslTaskSpec item_spec = {
+        .is_list_item = true,
+        .alloc = alloc_class_item,
+        .append = append_class_item,
+        .accu = self->repo->root_class,
+        .parse = parse_class_item
+    };
+
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log(".. import class array..");
+
+    return gsl_parse_array(&item_spec, rec, total_size);
+}
+
+static gsl_err_t parse_task(struct kndUser *self,
+                            const char *rec,
+                            size_t *total_size)
+{
+    struct kndClass *root_class = self->repo->root_class;
 
     if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. user got task: \"%s\" size: %lu..\n\n",
@@ -576,13 +628,7 @@ static gsl_err_t parse_task(struct kndUser *self,
           .is_selector = true,
           .run = run_get_user,
           .obj = self
-        }/*,
-        { .name = "id",
-          .name_size = strlen("id"),
-          .is_selector = true,
-          .parse = kndUser_parse_numid,
-          .obj = self
-          }*/,
+        },
         { .name = "_depth",
           .name_size = strlen("_depth"),
           .is_selector = true,
@@ -611,10 +657,16 @@ static gsl_err_t parse_task(struct kndUser *self,
           .parse = parse_class_import,
           .obj = self
         },
+        { .type = GSL_SET_ARRAY_STATE,
+          .name = "class",
+          .name_size = strlen("class"),
+          .parse = parse_class_array,
+          .obj = self
+        },
         { .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_select,
-          .obj = self
+          .obj = self->repo->root_class
         },
         { .type = GSL_SET_STATE,
           .name = "proc",
@@ -692,8 +744,7 @@ static gsl_err_t parse_task(struct kndUser *self,
         self->task->update_spec = rec;
         self->task->update_spec_size = *total_size;
 
-        c = self->repo->root_class;
-        err = c->update_state(c);
+        err = root_class->update_state(root_class);
         if (err) {
             knd_log("-- failed to update state :(");
             parser_err = make_gsl_err_external(err);
@@ -709,7 +760,7 @@ static gsl_err_t parse_task(struct kndUser *self,
  cleanup:
 
     /* TODO: release resources */
-    self->repo->root_class->reset_inbox(self->repo->root_class);
+    root_class->reset_inbox(root_class);
 
     return parser_err;
 }

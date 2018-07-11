@@ -7,6 +7,7 @@
 
 #include "knd_state.h"
 #include "knd_user.h"
+#include "knd_repo.h"
 #include "knd_utils.h"
 
 #define DEBUG_STATE_LEVEL_0 0
@@ -37,10 +38,13 @@ static void reset(struct kndStateControl *self)
 static int knd_confirm(struct kndStateControl *self,
                        struct kndUpdate *update)
 {
-    if (DEBUG_STATE_LEVEL_1)
-        knd_log("State Controller: .. confirming update %zu..", update->numid);
+    struct kndTask *task = self->repo->task;
 
-    if (self->task->type == KND_LIQUID_STATE) {
+    if (DEBUG_STATE_LEVEL_TMP)
+        knd_log("State Controller: .. "
+                " confirming update %zu..", update->numid);
+
+    if (task->type == KND_LIQUID_STATE) {
         self->updates[self->num_updates] = update;
         self->num_updates++;
         if (DEBUG_STATE_LEVEL_TMP)
@@ -69,7 +73,7 @@ static int knd_confirm(struct kndStateControl *self,
         knd_log("++  \"%zu\" update confirmed! total updates: %zu",
                 update->numid, self->num_updates);
     
-    /*out = self->task->out;
+    /*out = task->out;
     err = out->write(out, "{", 1);  RET_ERR();
     err = out->write(out, "\"tid\":\"OK\"", strlen("\"tid\":\"OK\""));  RET_ERR();
     err = out->write(out, "}", 1);  RET_ERR();
@@ -80,17 +84,18 @@ static int knd_confirm(struct kndStateControl *self,
 static int make_selection(struct kndStateControl *self)
 {
     struct kndUpdate *update;
+    struct kndTask *task = self->repo->task;
     size_t start_pos;
     size_t end_pos;
 
     self->num_selected = 0;
 
-    start_pos = self->task->batch_gt;
-    end_pos = self->task->batch_lt;
+    start_pos = task->batch_gt;
+    end_pos = task->batch_lt;
 
-    if (self->task->batch_eq) {
-        start_pos = self->task->batch_eq;
-        end_pos = self->task->batch_eq + 1;
+    if (task->batch_eq) {
+        start_pos = task->batch_eq;
+        end_pos = task->batch_eq + 1;
     }
 
     if (!end_pos)

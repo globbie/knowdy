@@ -422,8 +422,7 @@ static gsl_err_t parse_GSL(struct kndElem *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int
-kndElem_resolve(struct kndElem *self)
+static int kndElem_resolve(struct kndElem *self)
 {
     struct kndObject *obj;
     int err;
@@ -437,7 +436,6 @@ kndElem_resolve(struct kndElem *self)
 
     switch (self->attr->type) {
     case KND_ATTR_REF:
-        self->ref->log = self->log;
         err = self->ref->resolve(self->ref);
         if (err) return err;
     default:

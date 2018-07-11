@@ -1085,7 +1085,6 @@ static int resolve_attr_vars(struct kndClass *self,
     }
 
     for (cvar = parent_item->attrs; cvar; cvar = cvar->next) {
-
         entry = attr_name_idx->get(attr_name_idx,
                                    cvar->name, cvar->name_size);
         if (!entry) {
@@ -1276,7 +1275,7 @@ static int resolve_objs(struct kndClass     *self,
     struct kndObject *obj;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("..resolving objs, num objs: %zu",
                 self->obj_inbox_size);
 
@@ -1318,6 +1317,8 @@ static int resolve_objs(struct kndClass     *self,
         }
     }
     err =  knd_OK;
+
+    knd_log("++ objs resolved!");
 
  final:
 
@@ -1489,8 +1490,9 @@ static int resolve_refs(struct kndClass *self,
     struct kndClassEntry *entry;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. resolving class: \"%.*s\"", self->name_size, self->name);
+    if (DEBUG_CONC_LEVEL_1)
+        knd_log(".. resolving class: \"%.*s\"",
+                self->name_size, self->name);
 
     if (self->is_resolved) {
         if (self->obj_inbox_size) {
@@ -3057,13 +3059,14 @@ static gsl_err_t parse_import_class(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
+    knd_log("..parse import..");
     struct kndClass *self = obj;
     struct kndClass *c;
     struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. import \"%.*s\" class..", 64, rec);
 
     err = mempool->new_class(mempool, &c);
@@ -3223,8 +3226,8 @@ static gsl_err_t parse_import_class_inst(void *data,
     gsl_err_t parser_err;
 
     if (DEBUG_CONC_LEVEL_TMP) {
-        knd_log(".. import \"%.*s\" inst.. conc: %p",
-                128, rec, self->curr_class);
+        knd_log(".. import \"%.*s\" inst..",
+                128, rec);
     }
 
     if (!self->curr_class) {
@@ -3574,7 +3577,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClassEntry *entry;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. set class name: %.*s", name_size, name);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -6193,8 +6196,8 @@ static gsl_err_t parse_select_class(void *obj,
           .parse = parse_import_class_inst,
           .obj = self
         },
-        { .name = "obj",
-          .name_size = strlen("obj"),
+        { .name = "inst",
+          .name_size = strlen("inst"),
           .parse = parse_select_obj,
           .obj = self
         },
@@ -8075,13 +8078,15 @@ static gsl_err_t apply_liquid_updates(struct kndClass *self,
 static int knd_update_state(struct kndClass *self)
 {
     struct kndClass *c;
-    struct kndStateControl *state_ctrl = self->entry->repo->state_ctrl;
+    struct kndRel *rel = self->entry->repo->root_rel;
+    struct kndProc *proc = self->entry->repo->root_proc;
     struct kndUpdate *update;
     struct kndClassUpdate *class_update;
     struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndStateControl *state_ctrl = self->entry->repo->state_ctrl;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log("..update state of \"%.*s\"",
                 self->entry->name_size, self->entry->name);
 
@@ -8107,7 +8112,7 @@ static int knd_update_state(struct kndClass *self)
             return err;
         }
 
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_CONC_LEVEL_TMP)
             c->str(c);
 
         class_update->conc = c;
@@ -8123,15 +8128,20 @@ static int knd_update_state(struct kndClass *self)
         update->total_objs += class_update->num_objs;
     }
 
-    if (self->rel->inbox_size) {
-        err = self->rel->update(self->rel, update);                               RET_ERR();
+    if (rel->inbox_size) {
+        err = rel->update(rel, update);                                           RET_ERR();
     }
 
-    if (self->proc->inbox_size) {
-        err = self->proc->update(self->proc, update);                             RET_ERR();
+    if (proc->inbox_size) {
+        //err = proc->update(proc, update);                                         RET_ERR();
     }
+
+    knd_log(".. confirm state..");
 
     err = state_ctrl->confirm(state_ctrl, update);                                RET_ERR();
+
+    knd_log(".. export updates..");
+
     err = export_updates(self, update);                                           RET_ERR();
 
     return knd_OK;

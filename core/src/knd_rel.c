@@ -89,12 +89,14 @@ static void inst_arg_str(struct kndRelArgInstance *inst)
     knd_log("ARG:%.*s    CLASS: \"%.*s\"",
             relarg->name_size, relarg->name,
             inst->classname_size, inst->classname);
+
     if (inst->objname_size)
         knd_log("            OBJ name: \"%.*s\"",
                 inst->objname_size, inst->objname);
     if (inst->obj)
         knd_log("            OBJ: \"%.*s\"",
                 inst->obj->name_size, inst->obj->name);
+
     if (inst->val_size)
         knd_log("            VAL: \"%.*s\"",
                 inst->val_size, inst->val);
@@ -104,8 +106,9 @@ static void inst_str(struct kndRel *self, struct kndRelInstance *inst)
 {
     struct kndRelArgInstance *arg;
 
-    knd_log("\n%*sRel Instance: %.*s NAME:%.*s ID:%.*s", self->depth * KND_OFFSET_SIZE, "",
-            inst->rel->name_size, inst->rel->name,
+    knd_log("\n%*sRel Instance: \"%.*s\" NAME:%.*s ID:%.*s",
+            self->depth * KND_OFFSET_SIZE, "",
+            inst->rel->entry->name_size, inst->rel->entry->name,
             inst->name_size, inst->name,
             inst->id_size, inst->id);
 
@@ -490,7 +493,8 @@ static int export_inst(struct kndRel *self,
 
 
 static gsl_err_t validate_rel_arg(void *obj,
-                                  const char *name, size_t name_size,
+                                  const char *name,
+                                  size_t name_size,
                                   const char *rec,
                                   size_t *total_size)
 {
@@ -499,8 +503,9 @@ static gsl_err_t validate_rel_arg(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_REL_LEVEL_TMP)
-        knd_log(".. parsing the \"%.*s\" rel arg, rec:\"%.*s\"", name_size, name, 32, rec);
+    if (DEBUG_REL_LEVEL_2)
+        knd_log(".. parsing the \"%.*s\" rel arg, rec:\"%.*s\"",
+                name_size, name, 32, rec);
 
     /* TODO mempool */
     err = kndRelArg_new(&arg);
@@ -533,7 +538,7 @@ static gsl_err_t validate_rel_arg(void *obj,
 
     self->num_args++;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_1)
         arg->str(arg);
 
     return make_gsl_err(gsl_OK);
@@ -550,7 +555,7 @@ static gsl_err_t import_rel(struct kndRel *self,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_2)
         knd_log(".. import Rel: \"%.*s\"..", 32, rec);
 
     err  = mempool->new_rel(mempool, &rel);
@@ -1504,9 +1509,6 @@ static gsl_err_t parse_import_instance(void *data,
     inst->next = rel->inst_inbox;
     rel->inst_inbox = inst;
     rel->inst_inbox_size++;
-    /*if (!rel->dir) {
-        return make_gsl_err(gsl_FAIL);
-        }*/
     rel->entry->num_insts++;
 
     /* assign id/name */
@@ -1539,12 +1541,15 @@ static gsl_err_t parse_import_instance(void *data,
     entry->inst = inst;
 
     err = rel->entry->inst_name_idx->set(rel->entry->inst_name_idx,
-                                       inst->name, inst->name_size, (void*)entry);
+                                         inst->name, inst->name_size, (void*)entry);
     if (err) return make_gsl_err_external(err);
 
     if (DEBUG_REL_LEVEL_TMP) {
-        knd_log("\n\nREGISTER INST in %.*s IDX:  [total:%zu valid:%zu]",
-                rel->name_size, rel->name, rel->entry->inst_name_idx->size, rel->entry->num_insts);
+        knd_log("\n\nREGISTER INST in %.*s [IDX total:%zu valid:%zu]",
+                rel->entry->name_size, rel->entry->name,
+                rel->entry->inst_name_idx->size,
+                rel->entry->num_insts);
+
         inst_str(rel, inst);
     }
 
@@ -1614,10 +1619,10 @@ static int resolve_inst(struct kndRel *self,
     struct kndRelArgInstance *arg_inst;
     int err;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_2)
         knd_log("\n%*s.. resolving Rel Instance: %.*s [%zu]",
                 self->depth * KND_OFFSET_SIZE, "",
-                self->name_size, self->name, inst->id);
+                self->entry->name_size, self->entry->name, inst->id);
 
     for (arg_inst = inst->args; arg_inst; arg_inst = arg_inst->next) {
         arg = arg_inst->relarg;
@@ -1633,7 +1638,7 @@ static int kndRel_resolve(struct kndRel *self)
     struct kndRelInstance *inst;
     int err;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_2)
         knd_log("\n.. resolving REL: \"%.*s\" "
                 " is_resolved:%d   inst inbox size: %zu",
                 self->entry->name_size, self->entry->name,
@@ -1645,6 +1650,9 @@ static int kndRel_resolve(struct kndRel *self)
             err = resolve_inst(self, inst);                                RET_ERR();
         }
         self->is_resolved = true;
+
+        knd_log("++ rel resolved: %.*s!",
+                self->entry->name_size, self->entry->name);
         return knd_OK;
     }
 
@@ -1654,6 +1662,8 @@ static int kndRel_resolve(struct kndRel *self)
     }
     self->is_resolved = true;
 
+    knd_log("++ rel resolved: %.*s!",
+            self->entry->name_size, self->entry->name);
     return knd_OK;
 }
 
@@ -1666,7 +1676,7 @@ static int resolve_rels(struct kndRel *self)
     void *val;
     int err;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_2)
         knd_log(".. resolving rels by \"%.*s\"",
                 self->name_size, self->name);
 
@@ -1750,7 +1760,7 @@ static int kndRel_update_state(struct kndRel *self,
     struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
 
-    if (DEBUG_REL_LEVEL_1)
+    if (DEBUG_REL_LEVEL_TMP)
         knd_log(".. updating Rel state..");
 
     /* create index of REL updates */
@@ -1761,7 +1771,7 @@ static int kndRel_update_state(struct kndRel *self,
 
     for (rel = self->inbox; rel; rel = rel->next) {
         err = rel->resolve(rel);                                                  RET_ERR();
-        err = mempool->new_rel_update(mempool, &rel_update);          RET_ERR();
+        err = mempool->new_rel_update(mempool, &rel_update);                      RET_ERR();
 
         rel_update->rel = rel;
         update->rels[update->num_rels] = rel_update;

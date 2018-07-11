@@ -22,11 +22,11 @@
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
 
-#define DEBUG_OBJ_LEVEL_1 0
-#define DEBUG_OBJ_LEVEL_2 0
-#define DEBUG_OBJ_LEVEL_3 0
-#define DEBUG_OBJ_LEVEL_4 0
-#define DEBUG_OBJ_LEVEL_TMP 1
+#define DEBUG_INST_LEVEL_1 0
+#define DEBUG_INST_LEVEL_2 0
+#define DEBUG_INST_LEVEL_3 0
+#define DEBUG_INST_LEVEL_4 0
+#define DEBUG_INST_LEVEL_TMP 1
 
 static int
 export_rel_dir_JSON(struct kndObject *self);
@@ -100,7 +100,7 @@ export_rel_dir_JSON(struct kndObject *self)
     int err;
 
     /* sort refs by class */
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_INST_LEVEL_2)
         knd_log("..export rel entry of %.*s..",
                 self->name_size, self->name);
 
@@ -111,7 +111,8 @@ export_rel_dir_JSON(struct kndObject *self)
         if (!relref->idx) continue;
 
         err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));          RET_ERR();
-        err = out->write(out, rel->name, rel->name_size);                         RET_ERR();
+        err = out->write(out, rel->entry->name,
+                         rel->entry->name_size);                                  RET_ERR();
         err = out->writec(out, '"');                                              RET_ERR();
 
         set = relref->idx;
@@ -148,7 +149,7 @@ kndObject_export_JSON(struct kndObject *self)
     bool need_separ;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_INST_LEVEL_2)
         knd_log("   .. export OBJ \"%s\"  (class: %.*s)  is_concise: %d\n",
                 self->name, self->base->name_size, self->base->name, is_concise);
 
@@ -156,6 +157,7 @@ kndObject_export_JSON(struct kndObject *self)
         err = kndObject_export_aggr_JSON(self);
         return err;
     }
+
     err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
     err = out->write(out, self->name, self->name_size);
     if (err) return err;
@@ -164,10 +166,12 @@ kndObject_export_JSON(struct kndObject *self)
 
     /* TODO: conditional conc name  output */
 
-    err = out->write(out, ",\"c\":\"", strlen(",\"c\":\""));
+    err = out->write(out, ",\"_base\":\"", strlen(",\"_base\":\""));
     if (err) return err;
+
     err = out->write(out, self->base->name, self->base->name_size);
     if (err) return err;
+
     err = out->write(out, "\"", 1);
     if (err) return err;
 
@@ -192,7 +196,9 @@ kndObject_export_JSON(struct kndObject *self)
 
                 err = out->write(out, "\"", 1);
                 if (err) return err;
-                err = out->write(out, elem->attr->name, elem->attr->name_size);
+                err = out->write(out,
+                                 elem->attr->name,
+                                 elem->attr->name_size);
                 if (err) return err;
                 err = out->write(out, "\":", 2);
                 if (err) return err;
@@ -208,7 +214,7 @@ kndObject_export_JSON(struct kndObject *self)
                 if (elem->attr->concise_level)
                     goto export_elem;
 
-            if (DEBUG_OBJ_LEVEL_2)
+            if (DEBUG_INST_LEVEL_2)
                 knd_log("  .. skip JSON elem: %s..\n", elem->attr->name);
 
             continue;
@@ -290,7 +296,7 @@ export_rels_GSP(struct kndObject *self)
     int err;
 
     /* sort refs by class */
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. GSP export rels of %.*s..",
                 self->name_size, self->name);
 
@@ -323,7 +329,7 @@ kndObject_export_GSP(struct kndObject *self)
 
     if (self->type == KND_OBJ_ADDR) {
         start_size = out->buf_size;
-        if (DEBUG_OBJ_LEVEL_2)
+        if (DEBUG_INST_LEVEL_2)
             knd_log("%*s.. export GSP obj \"%.*s\" [id: %.*s]..",
                     self->depth *  KND_OFFSET_SIZE, "",
                     self->name_size, self->name, KND_ID_SIZE, self->id);
@@ -392,24 +398,25 @@ kndObject_export(struct kndObject *self)
 
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
-    struct kndObject *self = (struct kndObject*)obj;
-    struct kndClass *conc;
+    struct kndObject *self = obj;
+    struct kndClass *c = self->base;
     struct kndObjEntry *entry;
+    struct ooDict *name_idx = c->entry->obj_name_idx;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     /* check name doublets */
-    conc = self->base;
-    if (conc->entry && conc->entry->obj_name_idx) {
-        entry = conc->entry->obj_name_idx->get(conc->entry->obj_name_idx,
-                                             name, name_size);
+    if (name_idx) {
+        entry = name_idx->get(name_idx,
+                              name, name_size);
         if (entry) {
             if (entry->obj && entry->obj->state->phase == KND_REMOVED) {
                 knd_log("-- this obj has been removed lately: %.*s :(",
                     name_size, name);
                 goto assign_name;
             }
+
             knd_log("-- obj name doublet found: %.*s:(",
                     name_size, name);
             return make_gsl_err(gsl_EXISTS);
@@ -420,8 +427,8 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     self->name = name;
     self->name_size = name_size;
 
-    if (DEBUG_OBJ_LEVEL_2)
-        knd_log("++ OBJ NAME: \"%.*s\"",
+    if (DEBUG_INST_LEVEL_2)
+        knd_log("++ class inst name: \"%.*s\"",
                 self->name_size, self->name);
 
     return make_gsl_err(gsl_OK);
@@ -440,14 +447,14 @@ static gsl_err_t find_obj_rel(void *obj, const char *name, size_t name_size)
     for (size_t i = 0; i < name_size; i++)
         name_hash = (name_hash << 1) ^ name[i];
 
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_INST_LEVEL_2)
         knd_log("++ find Rel Ref: \"%.*s\"", name_size, name);
 
     for (relref = self->entry->rels; relref; relref = relref->next) {
         rel = relref->rel;
 
         if (!memcmp(rel->name, name, name_size)) {
-            if (DEBUG_OBJ_LEVEL_2)
+            if (DEBUG_INST_LEVEL_2)
                 knd_log("++ got REL: %.*s", rel->name_size, rel->name);
             self->curr_rel = relref;
             self->expand_depth = 1;
@@ -466,7 +473,7 @@ static gsl_err_t present_rels(void *data,
     struct kndObject *self = data;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. present obj rels..");
 
     self->expand_depth = 1;
@@ -538,7 +545,7 @@ static gsl_err_t confirm_obj_import(void *data,
 {
     struct kndObject *self = data;
 
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. confirm obj import.. %p", self);
 
     return make_gsl_err(gsl_OK);
@@ -557,14 +564,14 @@ kndObject_validate_attr(struct kndObject *self,
     struct glbOutput *log = self->base->entry->repo->log;
     int err, e;
 
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. \"%.*s\" to validate elem: \"%.*s\"",
                 self->name_size, self->name, name_size, name);
 
     /* check existing elems */
     for (elem = self->elems; elem; elem = elem->next) {
         if (!memcmp(elem->attr->name, name, name_size)) {
-            if (DEBUG_OBJ_LEVEL_2)
+            if (DEBUG_INST_LEVEL_2)
                 knd_log("++ ELEM \"%.*s\" is already set!", name_size, name);
             *result_elem = elem;
             return knd_OK;
@@ -584,7 +591,7 @@ kndObject_validate_attr(struct kndObject *self,
         return err;
     }
 
-    if (DEBUG_OBJ_LEVEL_2) {
+    if (DEBUG_INST_LEVEL_2) {
         const char *type_name = knd_attr_names[attr->type];
         knd_log("++ \"%.*s\" ELEM \"%s\" attr type: \"%s\"",
                 name_size, name, attr->name, type_name);
@@ -603,6 +610,7 @@ static gsl_err_t parse_elem(void *data,
         self = self->curr_obj;
     }
     struct kndClass *root_class;
+    struct kndMemPool *mempool = self->base->entry->repo->mempool;
     struct kndClass *c;
     struct kndObject *obj;
     struct kndElem *elem = NULL;
@@ -613,12 +621,14 @@ static gsl_err_t parse_elem(void *data,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_OBJ_LEVEL_2) {
-        knd_log("..  obj: id:%.*s name:%.*s to validate \"%.*s\" elem,   REC: \"%.*s\"",
+    if (DEBUG_INST_LEVEL_2) {
+        knd_log("..  obj: id:%.*s name:%.*s to validate \"%.*s\" elem,"
+                " REC: \"%.*s\"",
                 self->id_size, self->id,
                 self->name_size, self->name,
-               name_size, name, 32, rec);
+                name_size, name, 32, rec);
     }
+
     err = kndObject_validate_attr(self, name, name_size, &attr, &elem);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
@@ -636,32 +646,31 @@ static gsl_err_t parse_elem(void *data,
         default:
             break;
         }
-
         return *total_size = 0, make_gsl_err(gsl_OK);
     }        
 
-    err = self->mempool->new_obj_elem(self->mempool, &elem);
+    err = mempool->new_obj_elem(mempool, &elem);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     elem->obj = self;
     elem->root = self->root ? self->root : self;
     elem->attr = attr;
  
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_INST_LEVEL_2)
         knd_log("   == basic elem type: %s",
                 knd_attr_names[attr->type]);
 
     switch (attr->type) {
     case KND_ATTR_AGGR:
-        err = self->mempool->new_obj(self->mempool, &obj);
+        err = mempool->new_obj(mempool, &obj);
         if (err) return *total_size = 0, make_gsl_err_external(err);
-        err = self->mempool->new_state(self->mempool, &obj->state);
+        err = mempool->new_state(mempool, &obj->state);
         if (err) return *total_size = 0, make_gsl_err_external(err);
         obj->state->phase = self->state->phase;
 
         obj->type = KND_OBJ_AGGR;
         if (!attr->conc) {
             if (self->state->phase == KND_FROZEN || self->state->phase == KND_SUBMITTED) {
-                if (DEBUG_OBJ_LEVEL_2) {
+                if (DEBUG_INST_LEVEL_2) {
                     knd_log(".. resolve attr \"%.*s\": \"%.*s\"..",
                             attr->name_size, attr->name,
                             attr->ref_classname_size, attr->ref_classname);
@@ -735,7 +744,7 @@ static gsl_err_t parse_elem(void *data,
     }
     self->num_elems++;
 
-    if (DEBUG_OBJ_LEVEL_3)
+    if (DEBUG_INST_LEVEL_3)
         knd_log("++ elem %.*s parsing OK!",
                 elem->attr->name_size, elem->attr->name);
 
@@ -761,7 +770,7 @@ static gsl_err_t resolve_relref(void *obj, const char *name, size_t name_size)
 
     root_rel = self->rel;
 
-    if (DEBUG_OBJ_LEVEL_1)
+    if (DEBUG_INST_LEVEL_1)
         knd_log(".. resolving Rel Ref by id \"%.*s\"",
                 name_size, name);
 
@@ -772,7 +781,7 @@ static gsl_err_t resolve_relref(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_NO_MATCH);
     }
 
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_INST_LEVEL_2)
         knd_log("== Rel name: \"%.*s\" id:%.*s rel:%p",
                 entry->name_size, entry->name,
                 entry->id_size, entry->id, entry->rel);
@@ -796,21 +805,23 @@ static gsl_err_t rel_entry_append(void *accu,
     struct kndRelRef *self = accu;
     struct kndRel *rel;
     struct kndRelInstEntry *entry = item;
+    struct kndMemPool *mempool = self->rel->entry->repo->mempool;
     struct kndSet *set;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_TMP)
         knd_log("== Rel Instance entry:\"%.*s\"",
                 entry->id_size, entry->id);
 
     set = self->idx;
     if (!set) {
-        err = self->rel->mempool->new_set(self->rel->mempool, &set);
+        err = mempool->new_set(mempool, &set);
         if (err) return make_gsl_err_external(err);
-        set->mempool = self->rel->mempool;
+        set->mempool = mempool;
         set->type = KND_SET_REL_INST;
         self->idx = set;
     }
+
     err = set->add(set, entry->id, entry->id_size, (void*)entry);
     if (err) return make_gsl_err_external(err);
 
@@ -832,7 +843,7 @@ static gsl_err_t rel_entry_alloc(void *obj,
     void *elem;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_TMP)
         knd_log(".. %.*s Rel Ref to find rel inst \"%.*s\"",
                 self->rel->name_size, self->rel->name,
                 name_size, name);
@@ -860,7 +871,7 @@ static gsl_err_t read_rel_insts(void *obj,
         .append = rel_entry_append,
     };
 
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. reading insts of rel %.*s..",
                 self->rel->name_size, self->rel->name);
 
@@ -911,14 +922,15 @@ static gsl_err_t rel_alloc(void *obj,
     struct kndObject *self = obj;
     struct kndRelRef *relref = NULL;
     struct kndRel *root_rel;
+    struct kndMemPool *mempool = self->base->entry->repo->mempool;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. %.*s OBJ to alloc rel ref %.*s count:%zu..",
                 self->name_size, self->name,
                 name_size, name, count);
 
-    err = self->mempool->new_rel_ref(self->mempool, &relref);
+    err = mempool->new_rel_ref(mempool, &relref);
     if (err) return make_gsl_err_external(err);
 
     root_rel = self->base->root_class->rel;
@@ -957,14 +969,17 @@ static gsl_err_t select_rel(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t remove_obj(void *data, const char *name __attribute__((unused)), size_t name_size __attribute__((unused)))
+static gsl_err_t remove_obj(void *data,
+                            const char *name __attribute__((unused)),
+                            size_t name_size __attribute__((unused)))
 {
-    struct kndObject *self = data;
-    struct kndClass *conc = self->base;
+    struct kndObject *self      = data;
+    struct kndClass *conc       = self->base;
     struct kndClass *root_class = conc->root_class;
     struct kndObject *obj;
     struct kndState *state;
-    struct glbOutput *log = self->base->entry->repo->log;
+    struct glbOutput *log      = self->base->entry->repo->log;
+    struct kndMemPool *mempool = self->base->entry->repo->mempool;
     int err;
 
     if (!self->curr_obj) {
@@ -974,10 +989,10 @@ static gsl_err_t remove_obj(void *data, const char *name __attribute__((unused))
 
     obj = self->curr_obj;
 
-    if (DEBUG_OBJ_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_TMP)
         knd_log("== obj to remove: \"%.*s\"", obj->name_size, obj->name);
 
-    err = self->mempool->new_state(self->mempool, &state);
+    err = mempool->new_state(mempool, &state);
     if (err) return make_gsl_err_external(err);
 
     state->phase = KND_REMOVED;
@@ -1015,7 +1030,7 @@ static gsl_err_t parse_rels(void *obj,
         .parse = rel_read
     };
     
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. reading rels of obj %.*s..",
                 self->name_size, self->name);
 
@@ -1054,7 +1069,7 @@ static gsl_err_t parse_GSL(struct kndObject *self,
         }
     };
 
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. parsing obj REC: %.*s", 128, rec);
  
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -1114,7 +1129,7 @@ static gsl_err_t run_get_obj(void *obj, const char *name, size_t name_size)
         return make_gsl_err_external(err);
     }
 
-    if (DEBUG_OBJ_LEVEL_2) {
+    if (DEBUG_INST_LEVEL_2) {
         knd_log("++ got obj: \"%.*s\" %p!", name_size, name, self->curr_obj);
         self->curr_obj->str(self->curr_obj);
     }
@@ -1123,14 +1138,14 @@ static gsl_err_t run_get_obj(void *obj, const char *name, size_t name_size)
 }
 
 static gsl_err_t parse_select_obj(struct kndObject *self,
-                            const char *rec,
-                            size_t *total_size)
+                                  const char *rec,
+                                  size_t *total_size)
 {
     struct glbOutput *log = self->base->entry->repo->log;
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_OBJ_LEVEL_2)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. parsing OBJ select rec: \"%.*s\"", 32, rec);
     self->curr_obj = NULL;
 
@@ -1184,10 +1199,10 @@ kndObject_resolve(struct kndObject *self)
     struct kndElem *elem;
     int err;
 
-    if (DEBUG_OBJ_LEVEL_2) {
+    if (DEBUG_INST_LEVEL_2) {
         if (self->type == KND_OBJ_ADDR) {
             knd_log(".. resolve OBJ %.*s::%.*s [%.*s]",
-                    self->base->name_size, self->base->name,
+                    self->base->entry->name_size, self->base->entry->name,
                     self->name_size, self->name,
                     KND_ID_SIZE, self->id);
         } else {
@@ -1198,9 +1213,17 @@ kndObject_resolve(struct kndObject *self)
     }
 
     for (elem = self->elems; elem; elem = elem->next) {
+
+        if (DEBUG_INST_LEVEL_2)
+            knd_log(".. resolving elem: \"%.*s\"",
+                    elem->attr->name_size, elem->attr->name);
         err = elem->resolve(elem);                                                RET_ERR();
+
+        if (DEBUG_INST_LEVEL_2)
+            knd_log("++ elem resolved: %.*s!",
+                    elem->attr->name_size, elem->attr->name);
     }
-    
+
     return knd_OK;
 }
 
