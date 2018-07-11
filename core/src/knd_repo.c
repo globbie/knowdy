@@ -585,12 +585,12 @@ kndRepo_new(struct kndRepo **repo,
     if (!self) return knd_NOMEM;
 
     memset(self, 0, sizeof(struct kndRepo));
-    //memset(self->id, '0', KND_ID_SIZE);
 
     err = kndStateControl_new(&state_ctrl);
     if (err) return err;
     state_ctrl->max_updates = mempool->max_updates;
     state_ctrl->updates =     mempool->update_idx;
+    state_ctrl->repo = self;
     self->state_ctrl = state_ctrl;
    
     err = kndClass_new(&c, mempool);

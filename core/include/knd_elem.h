@@ -75,7 +75,7 @@ struct kndElem
     struct kndText *text;
     struct kndNum *num;
     struct kndRef *ref;
-    
+
     struct kndElem *next;
 
     struct kndElemState *states;

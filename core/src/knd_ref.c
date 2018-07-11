@@ -91,29 +91,28 @@ kndRef_set_reverse_rel(struct kndRef *self,
 }
 */
 
- /*static int kndRef_resolve(struct kndRef *self)
+static int kndRef_resolve(struct kndRef *self)
 {
-    struct kndClass *conc;
+    struct kndClass *c;
     struct kndObjEntry *entry;
     struct kndObject *obj;
     const char *obj_name;
     int err, e;
 
-    conc = self->elem->attr->conc;
+    c = self->elem->attr->conc;
 
-    if (DEBUG_REF_LEVEL_2) {
+    if (DEBUG_REF_LEVEL_TMP) {
         knd_log(".. resolve REF: %.*s  state:%p",
-                conc->name_size, conc->name,
+                c->name_size, c->name,
                 self->states);
 
-        knd_log(".. resolve REF: %.*s::%.*s => \"%.*s\" dir: %p",
-                conc->name_size, conc->name,
+        knd_log(".. resolve REF: %.*s::%.*s => \"%.*s\"",
+                c->name_size, c->name,
                 self->elem->attr->name_size, self->elem->attr->name,
-                self->states->val_size, self->states->val,
-                conc->dir);
+                self->states->val_size, self->states->val);
     }
 
-    if (!conc->dir || !conc->dir->obj_idx) {
+    /*if (!conc->dir || !conc->dir->obj_idx) {
         knd_log("-- \"%.*s\" class has no obj idx, unable to resolve ref: \"%.*s\" :(",
                 conc->name_size, conc->name,
                 self->elem->attr->name_size, self->elem->attr->name);
@@ -137,10 +136,9 @@ kndRef_set_reverse_rel(struct kndRef *self,
 
     err = kndRef_set_reverse_rel(self, obj);
     if (err) return err;
-
+    */
     return knd_OK;
 }
- */
 
 static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 {
@@ -339,6 +337,7 @@ kndRef_new(struct kndRef **ref)
     self->export = export;
     self->export_reverse_rel = export_reverse_rel;
     self->parse = parse_GSL;
+    self->resolve = kndRef_resolve;
 
     *ref = self;
     return knd_OK;

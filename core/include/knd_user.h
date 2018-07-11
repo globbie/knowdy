@@ -27,7 +27,15 @@ struct kndRepoAccess
     bool may_select;
     bool may_get;
 };
-    
+
+struct kndUserContext
+{
+    struct kndObjEntry *entry;
+
+    // inbox
+    //ACL
+};
+
 struct kndUser
 {
     char id[KND_ID_SIZE];
@@ -56,7 +64,6 @@ struct kndUser
     size_t locale_size;
 
     struct kndStateControl *state_ctrl;
-    //struct kndObjEntry **user_idx;
     size_t max_users;
     size_t num_users;
 
@@ -69,7 +76,9 @@ struct kndUser
 
     void *update_service;
 
+    /* user context storage */
     struct kndSet *user_idx;
+
     struct kndRepo *repo;
     struct kndMemPool *mempool;
    
