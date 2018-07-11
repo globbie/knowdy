@@ -11,6 +11,7 @@ struct kndRepo;
 struct kndRepoSet;
 struct kndStateManager;
 struct kndMemPool;
+struct kndSet;
 
 typedef enum knd_user_role { KND_USER_ROLE_RETRIEVER, 
                              KND_USER_ROLE_LEARNER
@@ -55,7 +56,7 @@ struct kndUser
     size_t locale_size;
 
     struct kndStateControl *state_ctrl;
-    struct kndObjEntry **user_idx;
+    //struct kndObjEntry **user_idx;
     size_t max_users;
     size_t num_users;
 
@@ -67,7 +68,8 @@ struct kndUser
     struct glbOutput *log;
 
     void *update_service;
-    
+
+    struct kndSet *user_idx;
     struct kndRepo *repo;
     struct kndMemPool *mempool;
    

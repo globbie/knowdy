@@ -4,7 +4,7 @@
 
 #include "knd_mempool.h"
 #include "knd_class.h"
-#include "knd_object.h"
+#include "knd_class_inst.h"
 #include "knd_elem.h"
 #include "knd_rel.h"
 #include "knd_rel_arg.h"

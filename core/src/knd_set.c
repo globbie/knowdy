@@ -3,11 +3,11 @@
 #include <string.h>
 
 #include "knd_facet.h"
+#include "knd_class.h"
 #include "knd_utils.h"
 #include "knd_repo.h"
 #include "knd_mempool.h"
 #include "knd_set.h"
-#include "knd_object.h"
 #include "knd_attr.h"
 #include "knd_elem.h"
 #include "knd_task.h"

@@ -22,7 +22,7 @@
 #include "knd_dict.h"
 #include "knd_facet.h"
 #include "knd_utils.h"
-#include "knd_object.h"
+#include "knd_class_inst.h"
 #include "knd_config.h"
 
 #include <gsl-parser/gsl_err.h>
@@ -258,7 +258,8 @@ struct kndClass
 
 /* constructor */
 extern void kndClass_init(struct kndClass *self);
-extern int kndClass_new(struct kndClass **self);
+extern int kndClass_new(struct kndClass **self,
+                        struct kndMemPool *mempool);
 
 /* exported functions */
 extern gsl_err_t import_class_var(struct kndClassVar *self,

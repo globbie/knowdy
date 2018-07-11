@@ -28,6 +28,7 @@ struct kndRelArg;
 struct kndRelArgInstance;
 struct kndRelInstance;
 struct kndUpdate;
+struct kndRepo;
 
 struct kndRelState
 {
@@ -80,6 +81,7 @@ struct kndRelEntry
     char name[KND_NAME_SIZE];
     size_t name_size;
     struct kndRel *rel;
+    struct kndRepo *repo;
 
     int fd;
     size_t global_offset;
@@ -96,8 +98,6 @@ struct kndRelEntry
     struct kndSet *inst_idx;
     size_t num_insts;
     struct ooDict *inst_name_idx;
-
-    struct kndMemPool *mempool;
 
     bool is_terminal;
     struct kndRelEntry *next;
@@ -226,7 +226,8 @@ struct kndRel
                 const char    *rec,
                 size_t        *total_size);
     int (*read_rel)(struct kndRel *self,
-                    struct kndRelEntry *entry);
+                    struct kndRelEntry *entry,
+                    int fd);
     gsl_err_t (*select)(struct kndRel  *self,
                   const char *rec,
                   size_t *total_size);
@@ -245,4 +246,4 @@ struct kndRel
 
 extern void kndRel_init(struct kndRel *self);
 extern void kndRelInstance_init(struct kndRelInstance *inst);
-extern int kndRel_new(struct kndRel **self);
+extern int kndRel_new(struct kndRel **self, struct kndMemPool *mempool);
