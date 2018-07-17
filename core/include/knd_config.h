@@ -75,6 +75,9 @@ typedef enum knd_storage_type {
 #define RET_ERR(S) if (err) { printf("%s", "" #S);                               \
                               printf ("-- <%s> failed at line %d of file \"%s\"\n",\
                                       __func__, __LINE__, __FILE__); return err; } 
+#define MEMPOOL_ERR(S) if (err) { printf("-- mempool failed to alloc \"%s\"\n", "" #S);                               \
+        printf ("-- <%s> failed at line %d of file \"%s\"\n",           \
+                __func__, __LINE__, __FILE__); return err; } 
 #define ALLOC_ERR(V) if (!(V)) { return knd_NOMEM; }
 #define PARSE_ERR(V) if (err) { printf("LINEAR POS:%zu", *total_size); return err; } 
 
@@ -363,7 +366,7 @@ typedef enum knd_storage_type {
 
 #define KND_CONC_NAME_BUF_SIZE 1024
 
-#define KND_TASK_STORAGE_SIZE 10 * 1024 * 1024 * sizeof(char)
+#define KND_TASK_STORAGE_SIZE 100 * 1024 * 1024 * sizeof(char)
 
 #define KND_SEARCH_BUF_SIZE 1024 * 100 * sizeof(char)
 #define KND_IDX_BUF_SIZE 10 * 1024 * 1024 * sizeof(char)

@@ -395,14 +395,11 @@ static gsl_err_t parse_class_select(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct kndUser *self = obj;
-    struct kndClass *c = self->repo->root_class;
+    struct kndClass *c = obj;
     gsl_err_t err;
 
-    if (DEBUG_USER_LEVEL_1)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class select: \"%.*s\"", 64, rec);
-
-    c->reset_inbox(c);
 
     err = c->select(c, rec, total_size);
     if (err.code) {
@@ -411,9 +408,6 @@ static gsl_err_t parse_class_select(void *obj,
         knd_log("-- class select failed :(");
         return err;
     }
-
-    if (DEBUG_USER_LEVEL_2)
-        knd_log("++ selection of \"%s\" completed!", rec);
 
     return make_gsl_err(gsl_OK);
 }
@@ -424,12 +418,21 @@ static gsl_err_t parse_rel_select(void *obj,
 {
     struct kndUser *self = obj;
     struct kndRel *rel = self->repo->root_rel;
+    gsl_err_t err;
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. User %.*s:  parsing default Rel select: \"%.*s\"",
                 self->name_size, self->name, 64, rec);
 
-    return rel->select(rel, rec, total_size);
+    err = rel->select(rel, rec, total_size);
+    if (err.code) {
+        /* TODO: release resources */
+        rel->reset_inbox(rel);
+        knd_log("-- rel select failed :(");
+        return err;
+    }
+
+    return make_gsl_err(gsl_OK);
 }
 
 
@@ -461,7 +464,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
                 name_size, name);
 
     err = self->repo->root_class->get(self->repo->root_class,
-                                "User", strlen("User"), &c);
+                                      "User", strlen("User"), &c);
     if (err) return make_gsl_err_external(err);
 
     err = c->get_obj(c, name, name_size, &self->curr_user);
@@ -496,15 +499,17 @@ static gsl_err_t run_present_user(void *data,
 {
     struct kndUser *self = data;
     struct kndObject *user;
+    struct glbOutput *out = self->task->out;
     int err;
 
     if (!self->curr_user) {
         knd_log("-- no user selected :(");
         return make_gsl_err(gsl_FAIL);
     }
-    self->out->reset(self->out);
+
+    out->reset(out);
     user = self->curr_user;
-    user->expand_depth = self->expand_depth;
+    user->max_depth = self->max_depth;
 
     err = user->export(user);
     if (err) return make_gsl_err_external(err);
@@ -614,14 +619,21 @@ static gsl_err_t parse_task(struct kndUser *self,
                             size_t *total_size)
 {
     struct kndClass *root_class = self->repo->root_class;
+    struct kndRel *root_rel = self->repo->root_rel;
+    //struct kndProc *root_proc = self->repo->root_proc;
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_1)
         knd_log(".. user got task: \"%s\" size: %lu..\n\n",
                 rec, (unsigned long)strlen(rec));
 
     /* reset defaults */
-    self->expand_depth = 0;
+    self->max_depth = 0;
     self->curr_user = NULL;
+    self->task->type = KND_GET_STATE;
+
+    root_class->reset_inbox(root_class);
+    root_rel->reset_inbox(root_rel);
+    //root_proc->reset_inbox(root_proc);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -633,7 +645,7 @@ static gsl_err_t parse_task(struct kndUser *self,
           .name_size = strlen("_depth"),
           .is_selector = true,
           .parse = gsl_parse_size_t,
-          .obj = &self->expand_depth
+          .obj = &self->max_depth
         },
         { .name = "auth",
           .name_size = strlen("auth"),
@@ -666,7 +678,7 @@ static gsl_err_t parse_task(struct kndUser *self,
         { .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_select,
-          .obj = self->repo->root_class
+          .obj = root_class
         },
         { .type = GSL_SET_STATE,
           .name = "proc",
@@ -729,9 +741,12 @@ static gsl_err_t parse_task(struct kndUser *self,
         goto cleanup;
     }
 
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log("task type: %d   ++ user parse task OK: total chars: %lu",
-                self->task->type, (unsigned long)*total_size);
+    if (DEBUG_USER_LEVEL_2) {
+        knd_log("++ user parse task OK!");
+        knd_log("Task output: %.*s [%zu]",
+                self->task->out->buf_size, self->task->out->buf,
+                self->task->out->buf_size);
+    }
 
     switch (self->task->type) {
     case KND_LIQUID_STATE:

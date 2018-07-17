@@ -40,7 +40,7 @@ static int knd_confirm(struct kndStateControl *self,
 {
     struct kndTask *task = self->repo->task;
 
-    if (DEBUG_STATE_LEVEL_TMP)
+    if (DEBUG_STATE_LEVEL_2)
         knd_log("State Controller: .. "
                 " confirming update %zu..", update->numid);
 
@@ -70,9 +70,10 @@ static int knd_confirm(struct kndStateControl *self,
     self->num_updates++;
 
     if (DEBUG_STATE_LEVEL_TMP)
-        knd_log("++  \"%zu\" update confirmed! total updates: %zu",
+        knd_log("++ State Controller: "
+                "\"%zu\" update confirmed! total updates: %zu",
                 update->numid, self->num_updates);
-    
+
     /*out = task->out;
     err = out->write(out, "{", 1);  RET_ERR();
     err = out->write(out, "\"tid\":\"OK\"", strlen("\"tid\":\"OK\""));  RET_ERR();

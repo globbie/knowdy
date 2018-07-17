@@ -113,8 +113,8 @@ struct kndRelUpdateRef
 struct kndRelRef
 {
     struct kndRel *rel;
-
     struct kndSet *idx;
+
     //struct kndRelArgInstRef *insts;
     //size_t num_insts;
 
