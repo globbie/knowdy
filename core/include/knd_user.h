@@ -55,7 +55,8 @@ struct kndUser
     size_t sid_size;
 
     knd_format format;
-    size_t expand_depth;
+    size_t depth;
+    size_t max_depth;
 
     char default_locale[KND_NAME_SIZE];
     size_t default_locale_size;

@@ -140,9 +140,8 @@ struct kndObject
 
     knd_format format;
     size_t depth;
-
-    size_t expand_depth;
-    bool is_expanded;
+    size_t max_depth;
+    //bool is_expanded;
 
     size_t frozen_size;
     const char *file;

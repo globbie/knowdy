@@ -30,7 +30,8 @@ static void str(struct kndRelArg *self)
     struct kndTranslation *tr;
     const char *type_name = knd_relarg_names[self->type];
 
-    knd_log("\n%*s{%s %.*s class:%.*s", self->depth * KND_OFFSET_SIZE, "", type_name,
+    knd_log("\n%*s{%s %.*s class:%.*s", self->depth * KND_OFFSET_SIZE, "",
+            type_name,
             self->name_size, self->name,
             self->classname_size, self->classname);
 
@@ -182,6 +183,7 @@ static int export_inst_JSON(struct kndRelArg *self,
     bool in_list = false;
     int err;
 
+    
     err = out->writec(out, '{');                                                 RET_ERR();
 
     /* output class name only if it's 
@@ -572,7 +574,7 @@ static int parse_inst_GSL(struct kndRelArg *self,
                           const char *rec,
                           size_t *total_size)
 {
-    if (DEBUG_RELARG_LEVEL_TMP)
+    if (DEBUG_RELARG_LEVEL_2)
         knd_log(".. \"%.*s\" rel arg inst parsing: \"%.*s\"..",
                 self->name_size, self->name, 32, rec);
 
@@ -606,9 +608,10 @@ static int link_rel(struct kndRelArg *self,
     struct kndMemPool *mempool = rel->entry->repo->mempool;
     int err;
 
-    if (DEBUG_RELARG_LEVEL_TMP)
-        knd_log(".. %.*s OBJ to link rel %.*s.. rel inst:%.*s",
+    if (DEBUG_RELARG_LEVEL_2)
+        knd_log(".. %.*s (base: %.*s) OBJ to link rel %.*s.. rel inst:%.*s",
                 obj_entry->name_size, obj_entry->name,
+                obj_entry->obj->base->name_size, obj_entry->obj->base->name,
                 rel->entry->name_size, rel->entry->name,
                 inst->id_size, inst->id);
 
@@ -617,11 +620,9 @@ static int link_rel(struct kndRelArg *self,
     }
 
     if (!ref) {
-        err = mempool->new_rel_ref(mempool, &ref);                      RET_ERR();
-
-        err = mempool->new_set(mempool, &ref->idx);                     RET_ERR();
+        err = mempool->new_rel_ref(mempool, &ref);                                MEMPOOL_ERR(kndRelRef);
+        err = mempool->new_set(mempool, &ref->idx);                               MEMPOOL_ERR(kndSet);
         ref->idx->type = KND_SET_REL_INST;
-
         ref->rel = rel;
         ref->next = obj_entry->rels;
         obj_entry->rels = ref;
@@ -660,10 +661,18 @@ static int resolve_inst(struct kndRelArg *self,
     struct ooDict *name_idx = self->rel->entry->repo->root_class->class_name_idx;
     int err;
 
+    if (DEBUG_RELARG_LEVEL_2)
+        knd_log(".. resolving rel arg inst \"%.*s\".. classname: %.*s (size:%zu)",
+                inst->relarg->name_size,
+                inst->relarg->name,
+                inst->classname_size,
+                inst->classname,
+                inst->classname_size);
+
     entry = name_idx->get(name_idx,
                           inst->classname, inst->classname_size);
     if (!entry) {
-        knd_log("-- no such class: %.*s :(",
+        knd_log("-- resolve rel arg inst: no such class: %.*s :(",
                 inst->classname_size, inst->classname);
         return knd_FAIL;
     }
@@ -696,7 +705,6 @@ static int resolve_inst(struct kndRelArg *self,
 
         err = link_rel(self, inst, obj);        RET_ERR();
         inst->obj = obj;
-
     }
 
     if (DEBUG_RELARG_LEVEL_2)

@@ -136,16 +136,17 @@ static int kndAttr_validate_email(struct kndAttr *self,
  */
 static int export_JSON(struct kndAttr *self)
 {
-    struct glbOutput *out;
+    struct kndTask *task = self->parent_class->entry->repo->task;
+    struct glbOutput *out = self->parent_class->entry->repo->out;
     struct kndTranslation *tr;
     struct kndProc *p;
     const char *type_name = knd_attr_names[self->type];
     size_t type_name_size = strlen(knd_attr_names[self->type]);
     int err;
 
-    //knd_log(".. JSON export attr: \"%.*s\"..", self->name_size, self->name);
-
-    out = self->parent_class->entry->repo->out;
+    if (DEBUG_ATTR_LEVEL_2)
+        knd_log(".. JSON export attr: \"%.*s\"..",
+                self->name_size, self->name);
 
     err = out->writec(out, '"');
     if (err) return err;
@@ -180,9 +181,10 @@ static int export_JSON(struct kndAttr *self)
     while (tr) {
         if (DEBUG_ATTR_LEVEL_2)
             knd_log("LANG: %s == CURR LOCALE: %s [%lu] => %s",
-                    tr->locale, self->task->locale, (unsigned long)self->task->locale_size, tr->val);
+                    tr->locale, task->locale,
+                    (unsigned long)task->locale_size, tr->val);
 
-        if (strncmp(self->task->locale, tr->locale, tr->locale_size)) {
+        if (strncmp(task->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
         }
 

@@ -224,8 +224,6 @@ static gsl_err_t parse_task(void *obj,
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) return err;
 
-    knd_log("++ task completed!");
-
     /* check mandatory fields */
     /*if (!self->tid_size) {
         switch (self->type) {
