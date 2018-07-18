@@ -437,7 +437,13 @@ static int export_inst_JSON(struct kndRel *self,
         err = out->write(out, relarg->name, relarg->name_size);                  RET_ERR();
         err = out->write(out, "\":", strlen("\":"));                             RET_ERR();
 
-        err = relarg->export_inst(relarg, relarg_inst);                          RET_ERR();
+        if (relarg_inst->val_size) {
+            err = out->writec(out, '"');                                         RET_ERR();
+            err = out->write(out, relarg_inst->val, relarg_inst->val_size);      RET_ERR();
+            err = out->writec(out, '"');                                         RET_ERR();
+        } else {
+            err = relarg->export_inst(relarg, relarg_inst);                      RET_ERR();
+        }
 
         in_list = true;
     }
@@ -1626,11 +1632,13 @@ static int resolve_inst(struct kndRel *self,
     struct kndRelArgInstance *arg_inst;
     int err;
 
-    if (DEBUG_REL_LEVEL_2)
+    if (DEBUG_REL_LEVEL_2) {
         knd_log("\n%*s.. resolving Rel Instance: %.*s [id: %.*s]",
                 self->depth * KND_OFFSET_SIZE, "",
                 self->entry->name_size, self->entry->name,
                 inst->id_size, inst->id);
+        inst_str(self, inst);
+    }
 
     for (arg_inst = inst->args; arg_inst; arg_inst = arg_inst->next) {
         arg = arg_inst->relarg;

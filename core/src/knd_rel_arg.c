@@ -182,7 +182,6 @@ static int export_inst_JSON(struct kndRelArg *self,
       size_t type_name_size = strlen(knd_relarg_names[self->type]); */
     bool in_list = false;
     int err;
-
     
     err = out->writec(out, '{');                                                 RET_ERR();
 
@@ -203,6 +202,7 @@ static int export_inst_JSON(struct kndRelArg *self,
         err = out->write(out, inst->objname, inst->objname_size);                RET_ERR();
         err = out->writec(out, '"');                                             RET_ERR();
     }
+
     if (inst->val_size) {
         if (in_list) {
             err = out->writec(out, ',');                                         RET_ERR();
