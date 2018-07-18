@@ -479,6 +479,7 @@ static gsl_err_t select_user_rels(void *obj,
 {
     struct kndUser *self = obj;
     struct kndObject *user;
+    struct glbOutput *out = self->task->out;
 
     if (!self->curr_user) {
         knd_log("-- no user selected :(");
@@ -488,8 +489,10 @@ static gsl_err_t select_user_rels(void *obj,
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. selecting User rels: \"%.*s\"", 32, rec);
 
-    self->out->reset(self->out);
+    out->reset(out);
     user = self->curr_user;
+    user->curr_rel = NULL;
+
     return user->select_rels(user, rec, total_size);
 }
 
@@ -622,9 +625,9 @@ static gsl_err_t parse_task(struct kndUser *self,
     struct kndRel *root_rel = self->repo->root_rel;
     //struct kndProc *root_proc = self->repo->root_proc;
 
-    if (DEBUG_USER_LEVEL_1)
-        knd_log(".. user got task: \"%s\" size: %lu..\n\n",
-                rec, (unsigned long)strlen(rec));
+    if (DEBUG_USER_LEVEL_2)
+        knd_log(".. user got task: \"%.*s\" size: %lu..\n\n",
+                128, rec, (unsigned long)strlen(rec));
 
     /* reset defaults */
     self->max_depth = 0;
@@ -650,6 +653,7 @@ static gsl_err_t parse_task(struct kndUser *self,
         { .name = "auth",
           .name_size = strlen("auth"),
           .parse = parse_auth,
+          .is_selector = true,
           .obj = self
         },
         { .type = GSL_SET_STATE,
@@ -702,8 +706,8 @@ static gsl_err_t parse_task(struct kndUser *self,
           .parse = parse_rel_select,
           .obj = self
         },
-        { .name = "_rels",
-          .name_size = strlen("_rels"),
+        { .name = "_rel",
+          .name_size = strlen("_rel"),
           .parse = select_user_rels,
           .obj = self
         },

@@ -454,7 +454,6 @@ static gsl_err_t find_obj_rel(void *obj, const char *name, size_t name_size)
         if (rel->entry->name_size != name_size) continue;
 
         if (!memcmp(rel->entry->name, name, name_size)) {
-
             if (DEBUG_INST_LEVEL_TMP)
                 knd_log("++ got REL: %.*s",
                         rel->entry->name_size, rel->entry->name);
@@ -467,23 +466,6 @@ static gsl_err_t find_obj_rel(void *obj, const char *name, size_t name_size)
     }
 
     return make_gsl_err(gsl_NO_MATCH);
-}
-
-static gsl_err_t present_rels(void *data,
-                              const char *val __attribute__((unused)),
-                              size_t val_size __attribute__((unused)))
-{
-    struct kndObject *self = data;
-    int err;
-
-    if (DEBUG_INST_LEVEL_TMP)
-        knd_log(".. present obj rels..");
-
-    self->max_depth = 1;
-    err = export_rel_dir_JSON(self);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t present_rel(void *data,
@@ -1099,13 +1081,13 @@ static gsl_err_t select_rels(struct kndObject *self,
                              size_t *total_size)
 {
     struct gslTaskSpec specs[] = {
-        { .name = "rel",
-          .name_size = strlen("rel"),
-          .parse = select_rel,
+        { .is_implied = true,
+          .is_selector = true,
+          .run = find_obj_rel,
           .obj = self
         },
         { .is_default = true,
-          .run = present_rels,
+          .run = present_rel,
           .obj = self
         }
     };
