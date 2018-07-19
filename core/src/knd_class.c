@@ -309,8 +309,9 @@ static void str(struct kndClass *self)
                 attr->str(attr);
 
                 if (attr_entry->attr_var) {
-                    knd_log("== attr var:");
-                    str_attr_vars(attr_entry->attr_var, depth + 1);
+                    knd_log("%*s  == attr var:",
+                            (self->depth + 1) * KND_OFFSET_SIZE, "");
+                    str_attr_vars(attr_entry->attr_var, self->depth + 1);
                 }
 
             } while (key);
