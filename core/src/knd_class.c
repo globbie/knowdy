@@ -302,10 +302,17 @@ static void str(struct kndClass *self)
             do {
                 self->attr_name_idx->next_item(self->attr_name_idx, &key, &val);
                 if (!key) break;
-            attr_entry = val;
-            attr = attr_entry->attr;
-            attr->depth = self->depth + 1;
-            attr->str(attr);
+
+                attr_entry = val;
+                attr = attr_entry->attr;
+                attr->depth = self->depth + 1;
+                attr->str(attr);
+
+                if (attr_entry->attr_var) {
+                    knd_log("== attr var:");
+                    str_attr_vars(attr_entry->attr_var, depth + 1);
+                }
+
             } while (key);
         }
     } else {
@@ -588,7 +595,8 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
 
     /* get attrs from base */
     for (attr = base->attrs; attr; attr = attr->next) {
-        /* compare with exiting attrs */
+
+        /* compare with local set of attrs */
         attr_entry = self->attr_name_idx->get(self->attr_name_idx,
                                               attr->name, attr->name_size);
         if (attr_entry) {
