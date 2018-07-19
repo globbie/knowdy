@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2018 by Dmitri Dmitriev
+ *   Copyright (c) 2011-present by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Graph DB, 
@@ -133,8 +133,6 @@ struct kndClass
     size_t name_size;
 
     struct kndClassEntry *entry;
-    //struct kndRepo *repo;
-
     struct kndState *state;
     size_t num_states;
 
@@ -156,7 +154,6 @@ struct kndClass
     size_t num_attrs;
     struct kndAttr *implied_attr;
 
-    
     struct kndClassVar *baseclass_vars;
     size_t num_baseclass_vars;
 
@@ -265,3 +262,7 @@ extern int kndClass_new(struct kndClass **self,
 extern gsl_err_t import_class_var(struct kndClassVar *self,
                                   const char *rec,
                                   size_t *total_size);
+extern int knd_get_attr_var(struct kndClass *self,
+                            const char *name,
+                            size_t name_size,
+                            struct kndAttrVar **result);

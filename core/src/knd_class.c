@@ -1078,9 +1078,9 @@ static int resolve_attr_var_list(struct kndClass *self,
 }
 
 static int resolve_attr_vars(struct kndClass *self,
-                              struct kndClassVar *parent_item)
+                             struct kndClassVar *parent_item)
 {
-    struct kndAttrVar *cvar;
+    struct kndAttrVar *attr_var;
     struct kndAttrEntry *entry;
     struct kndClass *c;
     struct kndProc *proc;
@@ -1092,33 +1092,33 @@ static int resolve_attr_vars(struct kndClass *self,
                 self->entry->name_size, self->entry->name);
     }
 
-    for (cvar = parent_item->attrs; cvar; cvar = cvar->next) {
+    for (attr_var = parent_item->attrs; attr_var; attr_var = attr_var->next) {
         entry = attr_name_idx->get(attr_name_idx,
-                                   cvar->name, cvar->name_size);
+                                   attr_var->name, attr_var->name_size);
         if (!entry) {
-            knd_log("-- no such attr: %.*s", cvar->name_size, cvar->name);
+            knd_log("-- no such attr: %.*s", attr_var->name_size, attr_var->name);
             return knd_FAIL;
         }
 
         /* save attr assignment */
-        entry->attr_var = cvar;
+        entry->attr_var = attr_var;
 
         if (DEBUG_CONC_LEVEL_2) {
             knd_log("== entry attr: %.*s %d",
-                    cvar->name_size, cvar->name,
+                    attr_var->name_size, attr_var->name,
                     entry->attr->is_indexed);
         }
 
         if (entry->attr->is_a_set) {
-            cvar->attr = entry->attr;
+            attr_var->attr = entry->attr;
 
-            err = resolve_attr_var_list(self, cvar);
+            err = resolve_attr_var_list(self, attr_var);
             if (err) return err;
-            if (cvar->val_size)
-                cvar->num_list_elems++;
+            if (attr_var->val_size)
+                attr_var->num_list_elems++;
 
             if (entry->attr->is_indexed) {
-                err = index_attr_var_list(self, entry->attr, cvar);
+                err = index_attr_var_list(self, entry->attr, attr_var);
                 if (err) return err;
             }
             continue;
@@ -1127,12 +1127,11 @@ static int resolve_attr_vars(struct kndClass *self,
         /* single attr */
         switch (entry->attr->type) {
         case KND_ATTR_AGGR:
-
             /* TODO */
-            cvar->attr = entry->attr;
-            err = resolve_aggr_item(self, cvar);
+            attr_var->attr = entry->attr;
+            err = resolve_aggr_item(self, attr_var);
             if (err) {
-                knd_log("-- aggr cvar not resolved :(");
+                knd_log("-- aggr attr_var not resolved :(");
                 return err;
             }
 
@@ -1142,8 +1141,8 @@ static int resolve_attr_vars(struct kndClass *self,
             if (!c->is_resolved) {
                 err = c->resolve(c, NULL);                                        RET_ERR();
             }
-            err = resolve_class_ref(self, cvar->val, cvar->val_size,
-                                    c, &cvar->class);
+            err = resolve_class_ref(self, attr_var->val, attr_var->val_size,
+                                    c, &attr_var->class);
             if (err) return err;
             break;
         case KND_ATTR_PROC:
@@ -1151,8 +1150,8 @@ static int resolve_attr_vars(struct kndClass *self,
             /*if (!c->is_resolved) {
                 err = c->resolve(c, NULL);                                        RET_ERR();
                 }*/
-            err = resolve_proc_ref(self, cvar->val, cvar->val_size,
-                                   proc, &cvar->proc);
+            err = resolve_proc_ref(self, attr_var->val, attr_var->val_size,
+                                   proc, &attr_var->proc);
             if (err) return err;
             break;
         default:
@@ -1161,10 +1160,10 @@ static int resolve_attr_vars(struct kndClass *self,
         }
 
         if (entry->attr->is_indexed) {
-            err = index_attr(self, entry->attr, cvar);
+            err = index_attr(self, entry->attr, attr_var);
             if (err) return err;
         }
-        cvar->attr = entry->attr;
+        attr_var->attr = entry->attr;
     }
 
     return knd_OK;
@@ -1638,6 +1637,54 @@ static int build_attr_name_idx(struct kndClass *self)
     }
 
     return knd_OK;
+}
+
+extern int knd_get_attr_var(struct kndClass *self,
+                            const char *name, size_t name_size,
+                            struct kndAttrVar **result)
+{
+    struct kndAttrEntry *entry;
+    struct kndAttrVar *attr_var;
+    struct kndClassVar *cvar;
+    struct kndClass *root_class = self->entry->repo->root_class;
+    struct kndClass *c;
+    int err;
+
+    if (DEBUG_CONC_LEVEL_TMP) {
+        knd_log(".. \"%.*s\" class to retrieve attr var \"%.*s\"..",
+                self->entry->name_size, self->entry->name,
+                name_size, name);
+    }
+
+    attr_entry = self->attr_name_idx->get(self->attr_name_idx,
+                                          name, name_size);
+    if (!attr_entry) return knd_NO_MATCH;
+
+    if (attr_entry->attr_var) {
+        *result = attr_entry->attr_var;
+        return knd_OK;
+    }
+
+    /* ask your parents */
+    for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
+        err = get_class(root_class,
+                        cvar->entry->name,
+                        cvar->entry->name_size,
+                        &c);
+        if (err) {
+            if (err == knd_NO_MATCH) continue;
+            return err;
+        }
+
+        err = knd_get_attr_var(c, name, name_size, &attr_var);
+        if (!err) {
+            attr_entry->attr_var = attr_var;
+            *result = attr_entry->attr_var;
+            return knd_OK;
+        }
+    }
+    
+    return knd_FAIL;
 }
 
 static int get_attr(struct kndClass *self,
