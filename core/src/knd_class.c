@@ -1656,12 +1656,12 @@ extern int knd_get_attr_var(struct kndClass *self,
                 name_size, name);
     }
 
-    attr_entry = self->attr_name_idx->get(self->attr_name_idx,
+    entry = self->attr_name_idx->get(self->attr_name_idx,
                                           name, name_size);
-    if (!attr_entry) return knd_NO_MATCH;
+    if (!entry) return knd_NO_MATCH;
 
-    if (attr_entry->attr_var) {
-        *result = attr_entry->attr_var;
+    if (entry->attr_var) {
+        *result = entry->attr_var;
         return knd_OK;
     }
 
@@ -1678,8 +1678,8 @@ extern int knd_get_attr_var(struct kndClass *self,
 
         err = knd_get_attr_var(c, name, name_size, &attr_var);
         if (!err) {
-            attr_entry->attr_var = attr_var;
-            *result = attr_entry->attr_var;
+            entry->attr_var = attr_var;
+            *result = entry->attr_var;
             return knd_OK;
         }
     }
