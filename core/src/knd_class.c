@@ -651,8 +651,8 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
     return knd_OK;
 }
 
-static int is_base(struct kndClass *self,
-                   struct kndClass *child)
+extern int knd_is_base(struct kndClass *self,
+                       struct kndClass *child)
 {
     if (DEBUG_CONC_LEVEL_2) {
         knd_log(".. check inheritance: %.*s [resolved: %d] => %.*s [resolved:%d]?",
@@ -713,7 +713,7 @@ static int index_attr(struct kndClass *self,
     if (!c->is_resolved) {
         err = c->resolve(c, NULL);                                                RET_ERR();
     }
-    err = is_base(base, c);                                                       RET_ERR();
+    err = knd_is_base(base, c);                                                       RET_ERR();
 
     set = attr->parent_class->entry->descendants;
 
@@ -765,7 +765,7 @@ static int index_attr_var_list(struct kndClass *self,
     if (!c->is_resolved) {
         err = c->resolve(c, NULL);                                                RET_ERR();
     }
-    err = is_base(base, c);                                                       RET_ERR();
+    err = knd_is_base(base, c);                                                       RET_ERR();
 
     set = attr->parent_class->entry->descendants;
 
@@ -809,7 +809,7 @@ static int resolve_class_ref(struct kndClass *self,
     }
 
     if (base) {
-        err = is_base(base, c);                                                   RET_ERR();
+        err = knd_is_base(base, c);                                                   RET_ERR();
     }
 
     *result = c;
@@ -1650,14 +1650,14 @@ extern int knd_get_attr_var(struct kndClass *self,
     struct kndClass *c;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP) {
+    if (DEBUG_CONC_LEVEL_2) {
         knd_log(".. \"%.*s\" class to retrieve attr var \"%.*s\"..",
                 self->entry->name_size, self->entry->name,
                 name_size, name);
     }
 
     entry = self->attr_name_idx->get(self->attr_name_idx,
-                                          name, name_size);
+                                     name, name_size);
     if (!entry) return knd_NO_MATCH;
 
     if (entry->attr_var) {
@@ -3118,8 +3118,8 @@ static gsl_err_t parse_import_class(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. import \"%.*s\" class..", 64, rec);
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. import \"%.*s\" class..", 128, rec);
 
     err = mempool->new_class(mempool, &c);
     if (err) return *total_size = 0, make_gsl_err_external(err);
@@ -6134,7 +6134,6 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-
 static int select_delta(struct kndClass *self,
                         const char *rec,
                         size_t *total_size)
@@ -7305,8 +7304,8 @@ static int export_JSON(struct kndClass *self)
     struct kndClassVar *item;
     struct kndClassEntry *entry;
 
-    //struct kndUpdate *update;
-    //struct tm tm_info;
+    struct kndUpdate *update;
+    struct tm tm_info;
 
     struct glbOutput *out;
     size_t item_count;
@@ -7320,23 +7319,16 @@ static int export_JSON(struct kndClass *self)
 
     err = out->write(out, "{", 1);                                                RET_ERR();
     err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                RET_ERR();
-
-    err = out->write_escaped(out, self->entry->name, self->entry->name_size);         RET_ERR();
-
+    err = out->write_escaped(out, self->entry->name, self->entry->name_size);     RET_ERR();
     err = out->write(out, "\"", 1);                                               RET_ERR();
 
     err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
-
     buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", self->entry->numid);
     err = out->write(out, buf, buf_size);                                         RET_ERR();
 
     err = export_gloss_JSON(self);                                                RET_ERR();
 
     if (self->depth >= self->max_depth) {
-
-        //knd_log(".. export concise fields: %p   CURR OUTPUT: %.*\n\n",
-        //        self->entry->repo->out, self->entry->repo->out->buf_size, self->entry->repo->out->buf);
-
         /* any concise fields? */
         err = export_concise_JSON(self);                                          RET_ERR();
         goto final;
@@ -7344,29 +7336,27 @@ static int export_JSON(struct kndClass *self)
 
     if (self->num_updates) {
         /* latest update */
-        //update = self->updates->update;
-        //err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));            RET_ERR();
-        //err = out->write(out, update->numid, update->id_size);                       RET_ERR();
+        update = self->updates->update;
+        err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));            RET_ERR();
+        err = out->writef(out, "%zu", update->numid);                             RET_ERR();
 
-        //time(&update->timestamp);
-        //localtime_r(&update->timestamp, &tm_info);
-        //buf_size = strftime(buf, KND_NAME_SIZE,
-        //                    ",\"_timestamp\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
-        //err = out->write(out, buf, buf_size);                                     RET_ERR();
+        time(&update->timestamp);
+        localtime_r(&update->timestamp, &tm_info);
+        buf_size = strftime(buf, KND_NAME_SIZE,
+                            ",\"_timestamp\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
+        err = out->write(out, buf, buf_size);                                     RET_ERR();
     }
 
     /* display base classes only once */
     if (self->num_baseclass_vars) {
         err = out->write(out, ",\"_base\":[", strlen(",\"_base\":["));            RET_ERR();
-
         item_count = 0;
         for (item = self->baseclass_vars; item; item = item->next) {
-            //if (item->class && item->class->ignore_children) continue;
             if (item_count) {
                 err = out->write(out, ",", 1);                                    RET_ERR();
             }
 
-            err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
+            err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));      RET_ERR();
             err = out->write(out, item->entry->name, item->entry->name_size);
             if (err) return err;
             err = out->write(out, "\"", 1);

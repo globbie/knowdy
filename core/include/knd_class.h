@@ -262,6 +262,8 @@ extern int kndClass_new(struct kndClass **self,
 extern gsl_err_t import_class_var(struct kndClassVar *self,
                                   const char *rec,
                                   size_t *total_size);
+extern int knd_is_base(struct kndClass *self,
+                       struct kndClass *base);
 extern int knd_get_attr_var(struct kndClass *self,
                             const char *name,
                             size_t name_size,
