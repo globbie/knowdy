@@ -251,12 +251,18 @@ static void str(struct kndClass *self)
     void *val;
     int err;
 
-    knd_log("\n%*s{class %.*s    id:%.*s numid:%zu  resolved:%d",
+    knd_log("\n%*s{class %.*s    id:%.*s numid:%zu",
             self->depth * KND_OFFSET_SIZE, "",
             self->entry->name_size, self->entry->name,
             self->entry->id_size, self->entry->id,
-            self->entry->numid, self->is_resolved);
+            self->entry->numid);
 
+    if (self->num_states) {
+        knd_log("\n%*s_state:%zu",
+            self->depth * KND_OFFSET_SIZE, "",
+            self->states->update->numid);
+    }
+    
     for (tr = self->tr; tr; tr = tr->next) {
         knd_log("%*s~ %s %.*s",
                 (self->depth + 1) * KND_OFFSET_SIZE, "",
@@ -1088,7 +1094,7 @@ static int resolve_attr_vars(struct kndClass *self,
     int err;
 
     if (DEBUG_CONC_LEVEL_2) {
-        knd_log("\n.. resolving attr vars of class %.*s",
+        knd_log(".. resolving attr vars of class %.*s",
                 self->entry->name_size, self->entry->name);
     }
 
@@ -1279,7 +1285,9 @@ static int resolve_attrs(struct kndClass *self)
 static int resolve_objs(struct kndClass     *self,
                         struct kndClassUpdate *class_update)
 {
+    struct kndMemPool *mempool = self->entry->repo->mempool;
     struct kndObject *obj;
+    struct kndState *state;
     int err;
 
     if (DEBUG_CONC_LEVEL_1)
@@ -1287,40 +1295,46 @@ static int resolve_objs(struct kndClass     *self,
                 self->obj_inbox_size);
 
     if (class_update) {
-        class_update->objs = calloc(self->obj_inbox_size,
+        class_update->insts = calloc(self->obj_inbox_size,
                                     sizeof(struct kndObject*));
-        if (!class_update->objs) {
-            err = knd_NOMEM;
-            goto final;
+        if (!class_update->insts) {
+            return knd_NOMEM;
         }
+
+        err = mempool->new_state(mempool, &state);   MEMPOOL_ERR(ClassInstState);
+        state->update = class_update->update;
+        state->val = (void*)class_update;
+        state->next = self->inst_states;
+        self->inst_states = state;
+        self->num_inst_states++;
     }
 
     for (obj = self->obj_inbox; obj; obj = obj->next) {
-        if (obj->state->phase == KND_REMOVED) {
+        if (obj->states->phase == KND_REMOVED) {
             knd_log("NB: \"%.*s\" obj to be removed", obj->name_size, obj->name);
             goto update;
         }
-
         err = obj->resolve(obj);
         if (err) {
             knd_log("-- %.*s obj not resolved :(",
                     obj->name_size, obj->name);
             goto final;
         }
-        obj->state->phase = KND_CREATED;
-
+        obj->states->phase = KND_CREATED;
     update:
-
         if (class_update) {
             /* NB: should never happen: mismatch of num objs */
-            if (class_update->num_objs >= self->obj_inbox_size) {
+            if (class_update->num_insts >= self->obj_inbox_size) {
                 knd_log("-- num objs mismatch in %.*s:  %zu vs %zu:(",
                         self->entry->name_size, self->entry->name,
-                        class_update->num_objs, self->obj_inbox_size);
+                        class_update->num_insts, self->obj_inbox_size);
                 return knd_FAIL;
             }
-            class_update->objs[class_update->num_objs] = obj;
-            class_update->num_objs++;
+            class_update->insts[class_update->num_insts] = obj;
+            class_update->num_insts++;
+
+            obj->states->update = class_update->update;
+            obj->states->val = (void*)class_update;
         }
     }
     err =  knd_OK;
@@ -3279,27 +3293,28 @@ static gsl_err_t parse_import_class_inst(void *data,
     gsl_err_t parser_err;
 
     if (DEBUG_CONC_LEVEL_2) {
-        knd_log(".. import \"%.*s\" inst..",
-                128, rec);
+        knd_log(".. import \"%.*s\" inst..", 128, rec);
     }
-
     if (!self->curr_class) {
         knd_log("-- class not specified :(");
         return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
-
     err = mempool->new_obj(mempool, &obj);
     if (err) {
         knd_log("-- class inst alloc failed :(");
         return *total_size = 0, make_gsl_err_external(err);
     }
-    err = mempool->new_state(mempool, &obj->state);
+    err = mempool->new_state(mempool, &obj->states);
     if (err) {
         knd_log("-- state alloc failed :(");
         return *total_size = 0, make_gsl_err_external(err);
     }
+    err = mempool->new_obj_entry(mempool, &entry);
+    if (err) return make_gsl_err_external(err);
 
-    obj->state->phase = KND_SUBMITTED;
+    obj->entry = entry;
+    entry->obj = obj;
+    obj->states->phase = KND_SUBMITTED;
     obj->base = self->curr_class;
 
     parser_err = obj->parse(obj, rec, total_size);
@@ -3307,6 +3322,7 @@ static gsl_err_t parse_import_class_inst(void *data,
 
     c = obj->base;
     obj->next = c->obj_inbox;
+
     c->obj_inbox = obj;
     c->obj_inbox_size++;
     c->num_objs++;
@@ -3316,11 +3332,8 @@ static gsl_err_t parse_import_class_inst(void *data,
                 obj->name_size, obj->name,
                 c->name_size, c->name, c->obj_inbox_size);
 
-    obj->numid = c->num_objs;
-    knd_num_to_str(obj->numid, obj->id, &obj->id_size, KND_RADIX_BASE);
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("== obj ID: %zu => \"%.*s\"",
-                obj->numid, obj->id_size, obj->id);
+    obj->entry->numid = c->num_objs;
+    knd_num_to_str(obj->entry->numid, obj->entry->id, &obj->entry->id_size, KND_RADIX_BASE);
 
     if (!c->entry) {
         if (c->root_class) {
@@ -3332,24 +3345,14 @@ static gsl_err_t parse_import_class_inst(void *data,
 
     /* automatic name assignment if no explicit name given */
     if (!obj->name_size) {
-        knd_num_to_str(obj->numid, obj->id, &obj->id_size, KND_RADIX_BASE);
-        obj->name = obj->id;
-        obj->name_size = obj->id_size;
+        obj->name = obj->entry->id;
+        obj->name_size = obj->entry->id_size;
     }
 
     if (!c->entry->obj_name_idx) {
         err = ooDict_new(&c->entry->obj_name_idx, KND_HUGE_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
     }
-
-    err = mempool->new_obj_entry(mempool, &entry);
-    if (err) return make_gsl_err_external(err);
-
-    memcpy(entry->id, obj->id, obj->id_size);
-    entry->id_size = obj->id_size;
-
-    entry->obj = obj;
-    obj->entry = entry;
 
     err = c->entry->obj_name_idx->set(c->entry->obj_name_idx,
                                       obj->name, obj->name_size,
@@ -3363,14 +3366,13 @@ static gsl_err_t parse_import_class_inst(void *data,
         obj->depth = self->depth + 1;
         obj->str(obj);
     }
-
     task->type = KND_UPDATE_STATE;
 
     return make_gsl_err(gsl_OK);
 }
 
 
-static gsl_err_t parse_select_obj(void *data,
+static gsl_err_t parse_select_inst(void *data,
                                   const char *rec,
                                   size_t *total_size)
 {
@@ -3386,8 +3388,8 @@ static gsl_err_t parse_select_obj(void *data,
     }
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. select \"%.*s\" obj.. task type: %d", 16, rec,
-                task->type);
+        knd_log(".. select \"%.*s\" obj.. task type: %d",
+                16, rec, task->type);
 
     task->type = KND_GET_STATE;
     obj->base = self->curr_class;
@@ -5574,7 +5576,7 @@ static int get_obj(struct kndClass *self,
 
     if (!entry->obj) goto read_entry;
 
-    if (entry->obj->state->phase == KND_REMOVED) {
+    if (entry->obj->states->phase == KND_REMOVED) {
         knd_log("-- \"%s\" obj was removed", name);
         log->reset(log);
         err = log->write(log, name, name_size);
@@ -5586,7 +5588,7 @@ static int get_obj(struct kndClass *self,
     }
 
     obj = entry->obj;
-    obj->state->phase = KND_SELECTED;
+    obj->states->phase = KND_SELECTED;
     *result = obj;
     return knd_OK;
 
@@ -5664,9 +5666,9 @@ static int read_obj_entry(struct kndClass *self,
     close(fd);
 
     err = mempool->new_obj(mempool, &obj);                           RET_ERR();
-    err = mempool->new_state(mempool, &obj->state);                  RET_ERR();
+    err = mempool->new_state(mempool, &obj->states);                  RET_ERR();
 
-    obj->state->phase = KND_FROZEN;
+    obj->states->phase = KND_FROZEN;
 
     obj->base = self;
     entry->obj = obj;
@@ -5944,14 +5946,12 @@ static gsl_err_t present_class_selection(void *obj,
     out->reset(out);
 
     if (task->type == KND_SELECT_STATE) {
-
         if (DEBUG_CONC_LEVEL_2)
             knd_log(".. batch selection: batch size: %zu   start from: %zu",
                     task->batch_max, task->batch_from);
 
         /* no sets found? */
         if (!task->num_sets) {
-
             if (self->curr_baseclass && self->curr_baseclass->entry->descendants) {
                 set = self->curr_baseclass->entry->descendants;
 
@@ -6016,8 +6016,6 @@ static gsl_err_t present_class_selection(void *obj,
         knd_log("-- class export failed");
         return make_gsl_err_external(err);
     }
-
-    knd_log("++ class selection OK!");
 
     return make_gsl_err(gsl_OK);
 }
@@ -6134,6 +6132,110 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
+static int export_class_state_JSON(struct kndClass *self)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+    struct glbOutput *out = self->entry->repo->out;
+    struct kndUpdate *update;
+    struct tm tm_info;
+    size_t latest_state = self->init_state + self->num_states;
+    int err;
+
+    update = self->states->update;
+    err = out->write(out, "\"_state\":", strlen("\"_state\":"));                  RET_ERR();
+    err = out->writef(out, "%zu", latest_state);                                  RET_ERR();
+
+    //err = out->write(out, ",\"_num_updates\":", strlen(",\"_num_updates\":"));    RET_ERR();
+    //err = out->writef(out, "%zu", self->num_states);                              RET_ERR();
+
+    time(&update->timestamp);
+    localtime_r(&update->timestamp, &tm_info);
+    buf_size = strftime(buf, KND_NAME_SIZE,
+                        ",\"_modif\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
+    err = out->write(out, buf, buf_size);                                     RET_ERR();
+
+    return knd_OK;
+}
+
+static int export_class_inst_state_JSON(struct kndClass *self)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+    struct glbOutput *out = self->entry->repo->out;
+    struct kndUpdate *update;
+    struct tm tm_info;
+    size_t latest_state = self->init_inst_state + self->num_inst_states;
+    int err;
+
+    /* latest inst update */
+    update = self->inst_states->update;
+    err = out->write(out, "\"_state\":", strlen("\"_state\":"));                  RET_ERR();
+    err = out->writef(out, "%zu", latest_state);                                  RET_ERR();
+
+    time(&update->timestamp);
+    localtime_r(&update->timestamp, &tm_info);
+    buf_size = strftime(buf, KND_NAME_SIZE,
+                        ",\"_modif\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
+    err = out->write(out, buf, buf_size);                                     RET_ERR();
+    return knd_OK;
+}
+
+static gsl_err_t run_select_class_state(void *obj, const char *name, size_t name_size)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+    struct kndClass *root_class = obj;
+    struct kndClass *self = root_class->curr_class;
+    struct glbOutput *out = self->entry->repo->out;
+    bool in_list = false;
+    int err;
+
+    if (!self) return make_gsl_err_external(knd_FAIL);
+
+    if (DEBUG_CONC_LEVEL_TMP)
+        knd_log(".. present state of class \"%.*s\"..",
+                self->name_size, self->name);
+
+    err = out->writec(out, '{');
+    if (err) return make_gsl_err_external(err);
+
+    if (self->num_states) {
+        err = export_class_state_JSON(self);
+        if (err) return make_gsl_err_external(err);
+        in_list = true;
+    }
+
+    if (self->num_inst_states) {
+        if (in_list) {
+            err = out->writec(out, ',');
+            if (err) return make_gsl_err_external(err);
+        }
+        err = out->write(out, "\"instances\":{", strlen("\"instances\":{"));
+
+        err = out->write(out, "\"_total\":",
+                         strlen("\"_total\":"));
+        if (err) return make_gsl_err_external(err);
+
+        err = out->writef(out, "%zu", self->num_objs);
+        if (err) return make_gsl_err_external(err);
+
+        err = out->writec(out, ',');
+        if (err) return make_gsl_err_external(err);
+        
+        err = export_class_inst_state_JSON(self);
+        if (err) return make_gsl_err_external(err);
+
+        err = out->writec(out, '}');
+        if (err) return make_gsl_err_external(err);
+    }
+
+    err = out->writec(out, '}');
+    if (err) return make_gsl_err_external(err);
+    
+    return make_gsl_err(gsl_OK);
+}
+
 static int select_delta(struct kndClass *self,
                         const char *rec,
                         size_t *total_size)
@@ -6167,7 +6269,7 @@ static int select_delta(struct kndClass *self,
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. select delta:  gt %zu  lt %zu ..",
                 task->batch_gt,
                 task->batch_lt);
@@ -6244,12 +6346,7 @@ static gsl_err_t parse_select_class(void *obj,
           .is_selector = true,
           .run = run_get_class_by_numid,
           .obj = self
-        }/*,
-        { .type = GSL_SET_STATE,
-          .is_validator = true,
-          .validate = parse_set_attr,
-          .obj = self
-          }*/,
+        },
         { .type = GSL_SET_STATE,
           .name = "_rm",
           .name_size = strlen("_rm"),
@@ -6264,7 +6361,7 @@ static gsl_err_t parse_select_class(void *obj,
         },
         { .name = "inst",
           .name_size = strlen("inst"),
-          .parse = parse_select_obj,
+          .parse = parse_select_inst,
           .obj = self
         },
         { .name = "_base",
@@ -6277,6 +6374,11 @@ static gsl_err_t parse_select_class(void *obj,
            .name_size = strlen("_depth"),
            .parse = gsl_parse_size_t,
            .obj = &self->max_depth
+        },
+        { .name = "_state",
+          .name_size = strlen("_state"),
+          .run = run_select_class_state,
+          .obj = self
         },
         { .name = "_delta",
           .name_size = strlen("_delta"),
@@ -7040,8 +7142,8 @@ static int attr_var_list_export_JSON(struct kndClass *self,
 }
 
 static int attr_vars_export_JSON(struct kndClass *self,
-                                  struct kndAttrVar *items,
-                                  size_t depth __attribute__((unused)))
+                                 struct kndAttrVar *items,
+                                 size_t depth __attribute__((unused)))
 {
     struct kndAttrVar *item;
     struct glbOutput *out;
@@ -7304,8 +7406,6 @@ static int export_JSON(struct kndClass *self)
     struct kndClassVar *item;
     struct kndClassEntry *entry;
 
-    struct kndUpdate *update;
-    struct tm tm_info;
 
     struct glbOutput *out;
     size_t item_count;
@@ -7323,8 +7423,7 @@ static int export_JSON(struct kndClass *self)
     err = out->write(out, "\"", 1);                                               RET_ERR();
 
     err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
-    buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", self->entry->numid);
-    err = out->write(out, buf, buf_size);                                         RET_ERR();
+    err = out->writef(out, "%zu", self->entry->numid);                            RET_ERR();
 
     err = export_gloss_JSON(self);                                                RET_ERR();
 
@@ -7334,17 +7433,11 @@ static int export_JSON(struct kndClass *self)
         goto final;
     }
 
-    if (self->num_updates) {
-        /* latest update */
-        update = self->updates->update;
-        err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));            RET_ERR();
-        err = out->writef(out, "%zu", update->numid);                             RET_ERR();
-
-        time(&update->timestamp);
-        localtime_r(&update->timestamp, &tm_info);
-        buf_size = strftime(buf, KND_NAME_SIZE,
-                            ",\"_timestamp\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
-        err = out->write(out, buf, buf_size);                                     RET_ERR();
+    /* state info */
+    if (self->num_states || self->num_inst_states) {
+        err = out->writec(out, ',');
+        if (err) return err;
+        err = export_class_state_JSON(self);                                      RET_ERR();
     }
 
     /* display base classes only once */
@@ -7489,11 +7582,18 @@ static int export_JSON(struct kndClass *self)
 
     /* instances */
     if (self->entry->num_objs) {
-        err = out->write(out, ",\"_num_instances\":",
-                         strlen(",\"_num_instances\":"));
+        err = out->write(out, ",\"_instances\":{",
+                         strlen(",\"_instances\":{"));
         if (err) return err;
+
+        err = out->write(out, "\"_tot\":", strlen("\"_tot\":"));
         buf_size = sprintf(buf, "%zu", self->entry->num_objs);
         err = out->write(out, buf, buf_size);
+        if (err) return err;
+
+        // TODO navigation facets?
+
+        err = out->writec(out, '}');
         if (err) return err;
     }
 
@@ -7856,8 +7956,8 @@ static int build_class_updates(struct kndClass *self,
         err = out->write(out, buf, buf_size);                  RET_ERR();
 
         /* export obj updates */
-        for (size_t j = 0; j < class_update->num_objs; j++) {
-            obj = class_update->objs[j];
+        for (size_t j = 0; j < class_update->num_insts; j++) {
+            obj = class_update->insts[j];
 
             if (DEBUG_CONC_LEVEL_2)
                 knd_log(".. export update of OBJ %.*s", obj->name_size, obj->name);
@@ -7865,7 +7965,7 @@ static int build_class_updates(struct kndClass *self,
             err = out->write(out, "{obj ", strlen("{obj "));   RET_ERR();
             err = out->write(out, obj->name, obj->name_size);  RET_ERR();
 
-            if (obj->state->phase == KND_REMOVED) {
+            if (obj->states->phase == KND_REMOVED) {
                 err = out->write(out, "(rm)", strlen("(rm)"));
                 if (err) return err;
             }
@@ -7969,7 +8069,8 @@ static gsl_err_t run_get_liquid_class(void *obj, const char *name, size_t name_s
 }
 
 static gsl_err_t parse_liquid_class_id(void *obj,
-                                       const char *rec, size_t *total_size)
+                                       const char *rec,
+                                       size_t *total_size)
 {
     struct kndClass *self = obj;
     struct kndUpdate *update = self->curr_update;
@@ -8001,14 +8102,14 @@ static gsl_err_t parse_liquid_class_id(void *obj,
     update->classes[update->num_classes] = class_update;
     update->num_classes++;
 
-    err = self->entry->repo->mempool->new_class_update_ref(self->entry->repo->mempool, &class_update_ref);
+    /*    err = self->entry->repo->mempool->new_class_update_ref(self->entry->repo->mempool, &class_update_ref);
     if (err) return make_gsl_err_external(err);
     class_update_ref->update = update;
 
-    class_update_ref->next = c->updates;
-    c->updates =  class_update_ref;
+    class_update_ref->next = c->states;
+    c->states =  class_update_ref;
     c->num_updates++;
-
+    */
     return make_gsl_err(gsl_OK);
 }
 
@@ -8128,12 +8229,12 @@ static gsl_err_t apply_liquid_updates(struct kndClass *self,
         }
     }
 
-    if (self->rel->inbox_size) {
+    /*if (self->rel->inbox_size) {
         for (rel = self->rel->inbox; rel; rel = rel->next) {
-            err = rel->resolve(rel);
+            err = rel->reso<lve(rel);
             if (err) return *total_size = 0, make_gsl_err_external(err);
         }
-    }
+        }*/
 
     parser_err = gsl_parse_task(rec, total_size, specs,
                                 sizeof specs / sizeof specs[0]);
@@ -8178,6 +8279,8 @@ static int knd_update_state(struct kndClass *self)
 
         self->entry->repo->next_class_numid++;
         c->entry->numid = self->entry->repo->next_class_numid;
+        class_update->conc = c;
+        class_update->update = update;
 
         err = c->resolve(c, class_update);
         if (err) {
@@ -8188,7 +8291,6 @@ static int knd_update_state(struct kndClass *self)
         if (DEBUG_CONC_LEVEL_1)
             c->str(c);
 
-        class_update->conc = c;
 
         if (update->num_classes >= self->inbox_size) {
             knd_log("-- max class updates reached :(");
@@ -8198,7 +8300,7 @@ static int knd_update_state(struct kndClass *self)
         update->classes[update->num_classes] = class_update;
         update->num_classes++;
         /* stats */
-        update->total_objs += class_update->num_objs;
+        update->total_objs += class_update->num_insts;
     }
 
     if (rel->inbox_size) {
@@ -8210,7 +8312,6 @@ static int knd_update_state(struct kndClass *self)
     }
 
     err = state_ctrl->confirm(state_ctrl, update);                                RET_ERR();
-
     err = export_updates(self, update);                                           RET_ERR();
 
     return knd_OK;
@@ -8352,9 +8453,9 @@ static int freeze_objs(struct kndClass *self,
         entry = (struct kndObjEntry*)val;
         obj = entry->obj;
 
-        if (obj->state->phase != KND_CREATED) {
+        if (obj->states->phase != KND_CREATED) {
             knd_log("NB: skip freezing \"%.*s\"   phase: %d",
-                    obj->name_size, obj->name, obj->state->phase);
+                    obj->name_size, obj->name, obj->states->phase);
             continue;
         }
         obj->depth = self->depth + 1;

@@ -50,7 +50,6 @@ static int knd_confirm(struct kndStateControl *self,
         if (DEBUG_STATE_LEVEL_TMP)
             knd_log("++  \"%zu\" liquid update confirmed!   global STATE: %zu",
                     update->numid, self->num_updates);
-
         return knd_OK;
     }
 

@@ -70,7 +70,6 @@ struct kndClassEntry
     char id[KND_ID_SIZE];
     size_t id_size;
     size_t numid;
-    //size_t owner_id;
 
     char name[KND_NAME_SIZE];
     size_t name_size;
@@ -120,24 +119,19 @@ struct kndClassEntry
     struct kndClassEntry *next;
 };
 
-struct kndClassUpdateRef
-{
-    knd_state_phase phase;
-    struct kndUpdate *update;
-    struct kndClassUpdateRef *next;
-};
-
 struct kndClass
 {
     const char *name;
     size_t name_size;
 
     struct kndClassEntry *entry;
-    struct kndState *state;
+    struct kndState *states;
+    size_t init_state;
     size_t num_states;
 
-    struct kndClassUpdateRef *updates;
-    size_t num_updates;
+    struct kndState *inst_states;
+    size_t init_inst_state;
+    size_t num_inst_states;
 
     struct kndTranslation *tr;
     struct kndTranslation *summary;
@@ -177,6 +171,7 @@ struct kndClass
     struct kndObject *obj_inbox;
     size_t obj_inbox_size;
     size_t num_objs;
+
 
     bool batch_mode;
 

@@ -403,9 +403,13 @@ static int export_inst_GSP(struct kndRel *self,
 static int export_inst_JSON(struct kndRel *self,
                             struct kndRelInstance *inst)
 {
+    char buf[KND_NAME_SIZE];
+    size_t buf_size;
     struct kndRelArg *relarg;
     struct kndRelArgInstance *relarg_inst;
     struct glbOutput *out = self->entry->repo->out;
+    struct kndUpdate *update;
+    struct tm tm_info;
     bool in_list = false;
     int err;
 
@@ -413,9 +417,28 @@ static int export_inst_JSON(struct kndRel *self,
     if (err) return err;
 
     err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                       RET_ERR();
-                     err = out->write(out, inst->name, inst->name_size);           RET_ERR();
-                     err = out->writec(out, '"');
-                     in_list = true;
+    err = out->write(out, inst->name, inst->name_size);                                  RET_ERR();
+    err = out->writec(out, '"');
+    in_list = true;
+
+    /* show the latest state */
+    if (inst->num_states) {
+        update = inst->states->update;
+        err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));
+        if (err) return err;
+
+        err = out->writef(out, "%zu", update->numid);
+        if (err) return err;
+
+        time(&update->timestamp);
+        localtime_r(&update->timestamp, &tm_info);
+
+        buf_size = strftime(buf, KND_NAME_SIZE,
+                            ",\"_timestamp\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
+        err = out->write(out, buf, buf_size);
+        if (err) return err;
+    }
+
     for (relarg_inst = inst->args;
          relarg_inst;
          relarg_inst = relarg_inst->next) {
@@ -1121,8 +1144,8 @@ static int unfreeze_inst(struct kndRel *self,
     close(fd);
 
     err = mempool->new_rel_inst(mempool, &inst);                      RET_ERR();
-    err = mempool->new_state(mempool, &inst->state);                  RET_ERR();
-    inst->state->phase = KND_FROZEN;
+    err = mempool->new_state(mempool, &inst->states);                  RET_ERR();
+    inst->states->phase = KND_FROZEN;
     inst->entry = entry;
     entry->inst = inst;
     inst->rel = self;
@@ -1217,13 +1240,12 @@ static int get_rel(struct kndRel *self,
 
     if (entry->rel) {
         rel = entry->rel;
-        rel->phase = KND_SELECTED;
+        //rel->states->phase = KND_SELECTED;
         rel->next = NULL;
         if (!rel->is_resolved) {
             knd_log("-- Rel %.*s is not resolved yet..",
                     name_size, name);
         }
-
         *result = rel;
         return knd_OK;
     }
@@ -1318,7 +1340,7 @@ static int get_rel(struct kndRel *self,
 
     /* resolve args of a Rel */
     for (arg = rel->args; arg; arg = arg->next) {
-        err = arg->resolve(arg);                                                  RET_ERR();
+        err = arg->resolve(arg, NULL);                                            RET_ERR();
     }
 
     entry->rel = rel;
@@ -1484,10 +1506,11 @@ static gsl_err_t parse_import_instance(void *data,
 
     err = mempool->new_rel_inst(mempool, &inst);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    err = mempool->new_state(mempool, &inst->state);
+
+    err = mempool->new_state(mempool, &inst->states);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
-    inst->state->phase = KND_SUBMITTED;
+    inst->states->phase = KND_SUBMITTED;
     inst->rel = self->curr_rel;
 
     struct gslTaskSpec specs[] = {
@@ -1570,8 +1593,8 @@ static gsl_err_t parse_import_instance(void *data,
 }
 
 static gsl_err_t parse_rel_select(struct kndRel *self,
-                            const char *rec,
-                            size_t *total_size)
+                                  const char *rec,
+                                  size_t *total_size)
 {
     struct glbOutput *log = self->entry->repo->log;
     int e;
@@ -1626,7 +1649,8 @@ static gsl_err_t parse_rel_select(struct kndRel *self,
 }
 
 static int resolve_inst(struct kndRel *self,
-                        struct kndRelInstance *inst)
+                        struct kndRelInstance *inst,
+                        struct kndRelUpdate *rel_update)
 {
     struct kndRelArg *arg;
     struct kndRelArgInstance *arg_inst;
@@ -1640,15 +1664,18 @@ static int resolve_inst(struct kndRel *self,
         inst_str(self, inst);
     }
 
+    inst->states->update = rel_update->update;
+
     for (arg_inst = inst->args; arg_inst; arg_inst = arg_inst->next) {
         arg = arg_inst->relarg;
-        err = arg->resolve_inst(arg, arg_inst);                            RET_ERR();
+        err = arg->resolve_inst(arg, arg_inst, rel_update);                       RET_ERR();
     }
 
     return knd_OK;
 }
 
-static int kndRel_resolve(struct kndRel *self)
+static int kndRel_resolve(struct kndRel *self,
+                          struct kndRelUpdate *update)
 {
     struct kndRelArg *arg;
     struct kndRelInstance *inst;
@@ -1662,12 +1689,19 @@ static int kndRel_resolve(struct kndRel *self)
 
     /* resolve instances */
     if (self->inst_inbox_size) {
+        if (update) {
+            update->insts = calloc(self->inst_inbox_size,
+                                   sizeof(struct kndRelInstance*));
+            if (!update->insts) {
+                return knd_NOMEM;
+            }
+        }
 
         for (inst = self->inst_inbox; inst; inst = inst->next) {
-            err = resolve_inst(self, inst);                                RET_ERR();
+            err = resolve_inst(self, inst, update);                               RET_ERR();
         }
-        self->is_resolved = true;
 
+        self->is_resolved = true;
         if (DEBUG_REL_LEVEL_2)
             knd_log("++ rel resolved: %.*s!",
                     self->entry->name_size, self->entry->name);
@@ -1675,7 +1709,7 @@ static int kndRel_resolve(struct kndRel *self)
     }
 
     for (arg = self->args; arg; arg = arg->next) {
-        err = arg->resolve(arg);
+        err = arg->resolve(arg, NULL);
         if (err) return err;
     }
     self->is_resolved = true;
@@ -1709,13 +1743,13 @@ static int resolve_rels(struct kndRel *self)
             /* check any new instances */
             if (rel->inst_inbox_size) {
                 for (inst = rel->inst_inbox; inst; inst = inst->next) {
-                    err = resolve_inst(rel, inst);                                RET_ERR();
+                    err = resolve_inst(rel, inst, NULL);                                RET_ERR();
                 }
             }
             continue;
         }
 
-        err = rel->resolve(rel);
+        err = rel->resolve(rel, NULL);
         if (err) {
             knd_log("-- couldn't resolve the \"%s\" rel :(", rel->name);
             return err;
@@ -1748,7 +1782,7 @@ static int kndRel_coordinate(struct kndRel *self)
 
         entry = (struct kndRelEntry*)val;
         rel = entry->rel;
-        rel->phase = KND_CREATED;
+        //rel->phase = KND_CREATED;
     } while (key);
 
     /* display all rels */
@@ -1786,10 +1820,11 @@ static int kndRel_update_state(struct kndRel *self,
     update->rels = rel_updates;
 
     for (rel = self->inbox; rel; rel = rel->next) {
-        err = rel->resolve(rel);                                                  RET_ERR();
         err = mempool->new_rel_update(mempool, &rel_update);                      RET_ERR();
-
         rel_update->rel = rel;
+        rel_update->update = update;
+
+        err = rel->resolve(rel, rel_update);                                      RET_ERR();
         update->rels[update->num_rels] = rel_update;
         update->num_rels++;
     }
@@ -1799,7 +1834,9 @@ static int kndRel_update_state(struct kndRel *self,
     return knd_OK;
 }
 
-static gsl_err_t set_liquid_rel_id(void *obj, const char *val, size_t val_size __attribute__((unused)))
+static gsl_err_t set_liquid_rel_id(void *obj,
+                                   const char *val,
+                                   size_t val_size __attribute__((unused)))
 {
     struct kndRel *self = (struct kndRel*)obj;
     struct kndRel *rel;
@@ -1840,81 +1877,6 @@ static gsl_err_t run_get_liquid_rel(void *obj, const char *name, size_t name_siz
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_liquid_rel_id(void *obj,
-                                     const char *rec, size_t *total_size)
-{
-    struct kndRel *self = obj;
-    struct kndUpdate *update = self->curr_update;
-    struct kndRel *rel;
-    struct kndRelUpdate *rel_update;
-    struct kndRelUpdateRef *rel_update_ref;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    int err;
-    gsl_err_t parser_err;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = set_liquid_rel_id,
-          .obj = self
-        }
-    };
-
-    if (!self->curr_rel) return *total_size = 0, make_gsl_err(gsl_FAIL);
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    rel = self->curr_rel;
-
-    /* register rel update */
-    err = mempool->new_rel_update(mempool, &rel_update);
-    if (err) return make_gsl_err_external(err);
-    rel_update->rel = rel;
-
-    update->rels[update->num_rels] = rel_update;
-    update->num_rels++;
-
-    err = mempool->new_rel_update_ref(mempool, &rel_update_ref);
-    if (err) return make_gsl_err_external(err);
-    rel_update_ref->update = update;
-
-    rel_update_ref->next = rel->updates;
-    rel->updates =  rel_update_ref;
-    rel->num_updates++;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_liquid_updates(struct kndRel *self,
-                                const char *rec,
-                                size_t *total_size)
-{
-    struct kndUpdate *update = self->curr_update;
-    struct kndRelUpdate **rel_updates;
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_get_liquid_rel,
-          .obj = self
-        },
-        { .type = GSL_SET_STATE,
-          .name = "id",
-          .name_size = strlen("id"),
-          .parse = parse_liquid_rel_id,
-          .obj = self
-        }
-    };
-
-    if (DEBUG_REL_LEVEL_2)
-        knd_log("..parsing liquid REL updates..");
-
-    /* create index of rel updates */
-    rel_updates = realloc(update->rels,
-                          (self->inbox_size * sizeof(struct kndRelUpdate*)));
-    if (!rel_updates) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
-    update->rels = rel_updates;
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
 
 static int export_updates(struct kndRel *self)
 {
@@ -2120,7 +2082,6 @@ kndRel_init(struct kndRel *self)
     self->read_rel = read_rel;
     self->reset_inbox = reset_inbox;
     self->update = kndRel_update_state;
-    self->parse_liquid_updates = parse_liquid_updates;
     self->select = parse_rel_select;
     self->read_inst = read_instance;
     self->export_inst = export_inst;

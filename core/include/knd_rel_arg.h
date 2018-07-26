@@ -32,6 +32,7 @@ struct kndClassEntry;
 struct kndTranslation;
 struct kndRel;
 struct kndRelInstance;
+struct kndRelUpdate;
 struct kndRelArg;
 struct kndRelArgInstance;
 struct kndObject;
@@ -130,15 +131,16 @@ struct kndRelArg
     int (*validate)(struct kndRelArg *self,
                     const char   *val,
                     size_t val_size);
-    int (*resolve)(struct kndRelArg   *self);
-    int (*export)(struct kndRelArg   *self);
+    int (*resolve)(struct kndRelArg *self, struct kndRelUpdate *update);
+    int (*export)(struct kndRelArg  *self);
 
     int (*parse_inst)(struct kndRelArg *self,
                       struct kndRelArgInstance *inst,
                       const char *rec,
                       size_t *total_size);
     int (*resolve_inst)(struct kndRelArg *self,
-			struct kndRelArgInstance *inst);
+			struct kndRelArgInstance *inst,
+                        struct kndRelUpdate *update);
     int (*export_inst)(struct kndRelArg *self,
 		       struct kndRelArgInstance *inst);
 };

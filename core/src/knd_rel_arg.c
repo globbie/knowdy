@@ -12,6 +12,7 @@
 #include "knd_class.h"
 #include "knd_text.h"
 #include "knd_mempool.h"
+#include "knd_state.h"
 
 #define DEBUG_RELARG_LEVEL_1 0
 #define DEBUG_RELARG_LEVEL_2 0
@@ -600,21 +601,24 @@ static int parse_inst_GSL(struct kndRelArg *self,
 
 static int link_rel(struct kndRelArg *self,
                     struct kndRelArgInstance *arg_inst,
-                    struct kndObjEntry *obj_entry)
+                    struct kndObjEntry *obj_entry,
+                    struct kndRelUpdate *rel_update)
 {
     struct kndRel *rel = self->rel;
     struct kndRelRef *ref = NULL;
     struct kndRelInstance *inst = arg_inst->rel_inst;
     struct kndMemPool *mempool = rel->entry->repo->mempool;
+    struct kndState *state;
     int err;
 
-    if (DEBUG_RELARG_LEVEL_2)
-        knd_log(".. %.*s (base: %.*s) OBJ to link rel %.*s.. rel inst:%.*s",
+    if (DEBUG_RELARG_LEVEL_TMP)
+        knd_log(".. %.*s (base: %.*s) OBJ to link rel %.*s.. rel inst:%.*s update:%zu",
                 obj_entry->name_size, obj_entry->name,
                 obj_entry->obj->base->name_size, obj_entry->obj->base->name,
                 rel->entry->name_size, rel->entry->name,
-                inst->id_size, inst->id);
+                inst->id_size, inst->id, rel_update->update->numid);
 
+    err = mempool->new_state(mempool, &state);                                    MEMPOOL_ERR(kndRelRef);
     for (ref = obj_entry->rels; ref; ref = ref->next) {
         if (ref->rel == rel) break;
     }
@@ -628,11 +632,17 @@ static int link_rel(struct kndRelArg *self,
         obj_entry->rels = ref;
     }
 
+    state->update = rel_update->update;
+    state->val = (void*)rel_update;
+    state->next = ref->states;
+    ref->states = state;
+    ref->num_states++;
+
     err = ref->idx->add(ref->idx, inst->id, inst->id_size, (void*)inst);          RET_ERR();
     return knd_OK;
 }
 
-static int resolve(struct kndRelArg *self)
+static int resolve(struct kndRelArg *self, struct kndRelUpdate *update)
 {
     struct kndClassEntry *entry;
     struct ooDict *name_idx = self->rel->entry->repo->root_class->class_name_idx;
@@ -654,7 +664,8 @@ static int resolve(struct kndRelArg *self)
 }
 
 static int resolve_inst(struct kndRelArg *self,
-                        struct kndRelArgInstance *inst)
+                        struct kndRelArgInstance *inst,
+                        struct kndRelUpdate *rel_update)
 {
     struct kndClassEntry *entry;
     struct kndObjEntry *obj;
@@ -678,7 +689,6 @@ static int resolve_inst(struct kndRelArg *self,
     }
 
     /* TODO: check inheritance or role */
-
     inst->class_entry = entry;
 
     /* resolve obj ref */
@@ -703,7 +713,7 @@ static int resolve_inst(struct kndRelArg *self,
             return knd_FAIL;
         }
 
-        err = link_rel(self, inst, obj);        RET_ERR();
+        err = link_rel(self, inst, obj, rel_update);                              RET_ERR();
         inst->obj = obj;
     }
 

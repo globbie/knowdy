@@ -248,7 +248,7 @@ export_reverse_rel_GSP(struct kndRef *self)
 
     err = out->write(out, "{", 1);
     if (err) return err;
-    err = out->write(out, obj->id, KND_ID_SIZE);
+    err = out->write(out, obj->entry->id, obj->entry->id_size);
     if (err) return err;
 
     err = out->write(out, " ", 1);
