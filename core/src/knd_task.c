@@ -47,12 +47,6 @@ static void reset(struct kndTask *self)
     self->locale_size = self->shard->user->default_locale_size;
     self->curr_locale_size = 0;
 
-//    self->delivery_type = KND_DELIVERY_CACHE;
-//    self->delivery_addr_size = 0;
-
-    memset(self->state, '0', KND_STATE_SIZE);
-    self->is_state_changed = false;
-
     self->type = KND_GET_STATE;
 
     self->num_sets = 0;
@@ -419,16 +413,15 @@ static int build_report(struct kndTask *self)
         */
         self->report = self->out->buf;
         self->report_size = self->out->buf_size;
-        
+
         if (DEBUG_TASK_LEVEL_2) {
             chunk_size =  self->update->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ?\
-                KND_MAX_DEBUG_CHUNK_SIZE :  self->update->buf_size;
+            KND_MAX_DEBUG_CHUNK_SIZE :  self->update->buf_size;
             knd_log("\n\n** UPDATE retrievers: \"%.*s\" [%zu]",
                     chunk_size, self->report,
                     self->report_size);
         }
     }
-
     return knd_OK;
 }
 

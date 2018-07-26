@@ -23,7 +23,7 @@ static void del(struct kndMemPool *self)
     if (self->update_selected_idx) free(self->update_selected_idx);
     if (self->states)              free(self->states);
     if (self->class_updates)       free(self->class_updates);
-    if (self->class_update_refs)   free(self->class_update_refs);
+    //if (self->class_update_refs)   free(self->class_update_refs);
 
     if (self->classes)         free(self->classes);
     if (self->class_entries)       free(self->class_entries);
@@ -186,7 +186,7 @@ static int new_class_update(struct kndMemPool *self,
     return knd_OK;
 }
 
-static int new_class_update_ref(struct kndMemPool *self,
+/*static int new_class_update_ref(struct kndMemPool *self,
                                 struct kndClassUpdateRef **result)
 {
     struct kndClassUpdateRef *upd;
@@ -199,7 +199,7 @@ static int new_class_update_ref(struct kndMemPool *self,
     *result = upd;
     return knd_OK;
 }
-
+*/
 static int new_obj(struct kndMemPool *self,
                    struct kndObject **result)
 {
@@ -446,7 +446,7 @@ static int new_rel_update(struct kndMemPool *self,
     return knd_OK;
 }
 
-static int new_rel_update_ref(struct kndMemPool *self,
+/*static int new_rel_update_ref(struct kndMemPool *self,
                                 struct kndRelUpdateRef **result)
 {
     struct kndRelUpdateRef *upd;
@@ -460,6 +460,7 @@ static int new_rel_update_ref(struct kndMemPool *self,
     *result = upd;
     return knd_OK;
 }
+*/
 
 static int new_proc(struct kndMemPool *self,
                     struct kndProc **result)
@@ -560,7 +561,7 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_updates)      self->max_updates = KND_MIN_UPDATES;
     if (!self->max_states)       self->max_states =  KND_MIN_STATES;
     if (!self->max_class_updates) self->max_class_updates = KND_MIN_UPDATES;
-    if (!self->max_class_update_refs) self->max_class_update_refs = KND_MIN_UPDATES;
+    //if (!self->max_class_update_refs) self->max_class_update_refs = KND_MIN_UPDATES;
     if (!self->max_users)        self->max_users =   KND_MIN_USERS;
     if (!self->max_classes)      self->max_classes = KND_MIN_CLASSES;
     if (!self->max_class_entries)    self->max_class_entries = self->max_classes;
@@ -666,12 +667,12 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    self->class_update_refs = calloc(self->max_updates, sizeof(struct kndClassUpdateRef));
+    /*self->class_update_refs = calloc(self->max_updates, sizeof(struct kndClassUpdateRef));
     if (!self->class_update_refs) {
         knd_log("-- class updates not allocated :(");
         return knd_NOMEM;
     }
-
+    */
     self->objs = calloc(self->max_objs, sizeof(struct kndObject));
     if (!self->objs) {
         knd_log("-- objs not allocated :(");
@@ -738,12 +739,12 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    self->rel_update_refs = calloc(self->max_updates, sizeof(struct kndRelUpdateRef));
+    /*self->rel_update_refs = calloc(self->max_updates, sizeof(struct kndRelUpdateRef));
     if (!self->rel_update_refs) {
         knd_log("-- rel updates not allocated :(");
         return knd_NOMEM;
     }
-
+    */
 
     self->procs = calloc(self->max_procs, sizeof(struct kndProc));
     if (!self->procs) {
@@ -939,7 +940,7 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_update = new_update;
     self->new_state = new_state;
     self->new_class_update = new_class_update;
-    self->new_class_update_ref = new_class_update_ref;
+    //self->new_class_update_ref = new_class_update_ref;
     self->new_class = new_class;
     self->new_class_entry = new_class_entry;
     self->new_class_var = new_class_var;
@@ -955,7 +956,7 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_rel_arg_inst = new_rel_arg_inst;
     self->new_rel_arg_inst_ref = new_rel_arg_inst_ref;
     self->new_rel_update = new_rel_update;
-    self->new_rel_update_ref = new_rel_update_ref;
+    //self->new_rel_update_ref = new_rel_update_ref;
     self->new_proc = new_proc;
     self->new_proc_entry = new_proc_entry;
     self->new_proc_arg = new_proc_arg;

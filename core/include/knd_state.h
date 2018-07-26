@@ -26,6 +26,7 @@
 struct glbOutput;
 struct kndState;
 struct kndClass;
+struct kndUpdate;
 
 typedef enum knd_state_type { KND_INIT_STATE, 
                               KND_FAILED_STATE,
@@ -36,13 +37,15 @@ typedef enum knd_state_type { KND_INIT_STATE,
 struct kndClassUpdate
 {
     struct kndClass *conc;
-    struct kndObject **objs;
-    size_t num_objs;
+    struct kndUpdate *update;
+    struct kndObject **insts;
+    size_t num_insts;
 };
 
 struct kndRelUpdate
 {
     struct kndRel *rel;
+    struct kndUpdate *update;
     struct kndRelInstance **insts;
     size_t num_insts;
 };
@@ -50,6 +53,7 @@ struct kndRelUpdate
 struct kndProcUpdate
 {
     struct kndProc *proc;
+    struct kndUpdate *update;
     struct kndProcInstance **insts;
     size_t num_insts;
 };

@@ -60,19 +60,6 @@ struct kndVisualFormat {
 struct kndTask
 {
     knd_task_spec_type type;
-//    knd_iter_type iter_type;
-
-//    char sid[KND_NAME_SIZE];
-//    size_t sid_size;
-//
-//    char uid[KND_NAME_SIZE];
-//    size_t uid_size;
-//
-//    char agent_name[KND_NAME_SIZE];
-//    size_t agent_name_size;
-
-//    char schema_name[KND_NAME_SIZE];
-//    size_t schema_name_size;
 
     char tid[KND_NAME_SIZE];
     size_t tid_size;
@@ -101,8 +88,8 @@ struct kndTask
     const char *report;
     size_t report_size;
 
-    char state[KND_STATE_SIZE];
-    bool is_state_changed;
+    //char state[KND_STATE_SIZE];
+    //bool show_state;
 
     int error;
     knd_http_code_t http_code;
@@ -128,10 +115,6 @@ struct kndTask
     struct glbOutput *file_out;
     struct glbOutput *update;
     struct kndMemPool *mempool;
-
-//    knd_delivery_type delivery_type;
-//    char delivery_addr[KND_NAME_SIZE];
-//    size_t delivery_addr_size;
 
     /******** public methods ********/
     void (*str)(struct kndTask *self,

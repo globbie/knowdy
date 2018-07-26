@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2018 by Dmitri Dmitriev
+ *   Copyright (c) 2011-present by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Graph DB, 
@@ -66,6 +66,7 @@ struct kndObjEntry
 {
     char id[KND_ID_SIZE];
     size_t id_size;
+    size_t numid;
 
     char name[KND_NAME_SIZE];
     size_t name_size;
@@ -73,7 +74,6 @@ struct kndObjEntry
     char *block;
     size_t block_size;
     size_t offset;
-
     knd_state_phase phase;
 
     struct kndObject *obj;
@@ -97,19 +97,14 @@ struct kndObject
     const char *name;
     size_t name_size;
 
-    char id[KND_ID_SIZE];
-    size_t id_size;
-
     struct kndClass *base;
 
     char batch_id[KND_ID_SIZE];
-
-    size_t numid;
-    //size_t numval;
     size_t name_hash;
 
-    //char state[KND_STATE_SIZE];
-    struct kndState *state;
+    struct kndState *states;
+    size_t init_state;
+    size_t num_states;
 
     bool is_subord;
     bool is_concise;
@@ -120,12 +115,6 @@ struct kndObject
     struct kndElem *parent;
     struct kndObject *curr_obj;
 
-    
-    /*struct glbOutput *out;
-    struct glbOutput *log;
-    struct kndTask *task;
-    */
-    /* full structure */
     struct kndElem *elems;
     struct kndElem *tail;
     size_t num_elems;
@@ -141,7 +130,6 @@ struct kndObject
     knd_format format;
     size_t depth;
     size_t max_depth;
-    //bool is_expanded;
 
     size_t frozen_size;
     const char *file;
@@ -160,6 +148,7 @@ struct kndObject
 
     /* relations */
     struct kndRelRef *rels;
+    struct kndState *rel_state;
 
     /* rel selection */
     struct kndRelRef *curr_rel;

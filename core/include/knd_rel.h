@@ -28,18 +28,8 @@ struct kndRelArg;
 struct kndRelArgInstance;
 struct kndRelInstance;
 struct kndUpdate;
+struct kndRelUpdate;
 struct kndRepo;
-
-struct kndRelState
-{
-    knd_state_phase phase;
-    char state[KND_STATE_SIZE];
-
-    char val[KND_NAME_SIZE + 1];
-    size_t val_size;
-
-    struct kndRelState *next;
-};
 
 struct kndRelInstEntry
 {
@@ -64,7 +54,9 @@ struct kndRelInstance
 
     struct kndRelInstEntry *entry;
     struct kndTask *task;
-    struct kndState *state;
+
+    struct kndState *states;
+    size_t num_states;
 
     struct kndRel *rel;
     struct kndRelArgInstance *args;
@@ -103,20 +95,14 @@ struct kndRelEntry
     struct kndRelEntry *next;
 };
 
-struct kndRelUpdateRef
-{
-    knd_state_phase phase;
-    struct kndUpdate *update;
-    struct kndRelUpdateRef *next;
-};
-
 struct kndRelRef
 {
     struct kndRel *rel;
     struct kndSet *idx;
 
-    //struct kndRelArgInstRef *insts;
-    //size_t num_insts;
+    struct kndState *states;
+    size_t init_state;
+    size_t num_states;
 
     struct kndRelRef *next;
 };
@@ -129,10 +115,8 @@ struct kndRel
     char *id;
     size_t id_size;
 
-    knd_state_phase phase;
-
-    struct kndRelUpdateRef *updates;
-    size_t num_updates;
+    struct kndState *states;
+    size_t num_states;
     int fd;
 
     struct kndTranslation *tr;
@@ -151,8 +135,6 @@ struct kndRel
     size_t locale_size;
     knd_format format;
 
-    struct kndRelState *states;
-    size_t num_states;
     bool batch_mode;
 
     struct kndRelArg *args;
@@ -232,7 +214,7 @@ struct kndRel
                   const char *rec,
                   size_t *total_size);
     int (*coordinate)(struct kndRel *self);
-    int (*resolve)(struct kndRel *self);
+    int (*resolve)(struct kndRel *self, struct kndRelUpdate *update);
     int (*update)(struct kndRel *self, struct kndUpdate *update);
     int (*freeze)(struct kndRel *self,
                   size_t *total_frozen_size,

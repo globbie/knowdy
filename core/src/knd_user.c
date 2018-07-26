@@ -537,11 +537,12 @@ static gsl_err_t remove_user(void *data,
 
     obj = self->curr_user;
     if (DEBUG_USER_LEVEL_2)
-        knd_log("== obj to remove: \"%.*s\"", obj->name_size, obj->name);
+        knd_log("== obj to remove: \"%.*s\"",
+                obj->name_size, obj->name);
 
     /* TODO: add state */
 
-    obj->state->phase = KND_REMOVED;
+    obj->states->phase = KND_REMOVED;
 
     self->log->reset(self->log);
     err = self->log->write(self->log, obj->name, obj->name_size);
