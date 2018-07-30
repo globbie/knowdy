@@ -57,9 +57,18 @@ static void reset(struct kndTask *self)
     self->start_from = 0;
     self->match_count = 0;
 
+    self->batch_eq = 0;
+    self->batch_gt = 0;
+    self->batch_lt = 0;
+
+    self->state_eq = 0;
+    self->state_gt = 0;
+    self->state_lt = 0;
+
     self->error = 0;
     self->http_code = HTTP_OK;
 
+    self->curr_obj = NULL;
     self->log->reset(self->log);
     self->out->reset(self->out);
     self->update->reset(self->update);
@@ -134,39 +143,6 @@ static gsl_err_t set_output_format(void *obj, const char *name, size_t name_size
     return make_gsl_err_external(knd_NO_MATCH);
 }
 
-//static gsl_err_t check_delivery_type(void *obj, const char *val, size_t val_size)
-//{
-//    const char *schema_name = "HTTP";
-//    size_t schema_name_size = strlen(schema_name);
-//    struct kndTask *self = obj;
-//
-//    if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);
-//    if (memcmp(schema_name, val, val_size)) return make_gsl_err(gsl_FAIL);
-//
-//    self->delivery_type = KND_DELIVERY_HTTP;
-//    return make_gsl_err(gsl_OK);
-//}
-
-//static gsl_err_t parse_delivery_callback(void *obj, const char *rec, size_t *total_size)
-//{
-//    struct kndTask *self = obj;
-//
-//    struct gslTaskSpec specs[] = {
-//        { .is_implied = true,
-//          .run = check_delivery_type,
-//          .obj = self
-//        },
-//        { .name = "base_url",
-//          .name_size = strlen("base_url"),
-//          .buf = self->delivery_addr,
-//          .buf_size = &self->delivery_addr_size,
-//          .max_buf_size = KND_NAME_SIZE
-//        }
-//    };
-//
-//    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-//}
-
 static gsl_err_t parse_task(void *obj,
                             const char *rec,
                             size_t *total_size)
@@ -235,14 +211,14 @@ static gsl_err_t parse_task(void *obj,
 
 static const char * gsl_err_to_str(gsl_err_t err)
 {
-  switch (err.code) {
-  case gsl_FAIL:     return "Unclassified error";
-  case gsl_LIMIT:    return "LIMIT error";
-  case gsl_NO_MATCH: return "NO_MATCH error";
-  case gsl_FORMAT:   return "FORMAT error";
-  case gsl_EXISTS:   return "EXISTS error";
-  default:           return "Unknown error";
-  }
+    switch (err.code) {
+    case gsl_FAIL:     return "Unclassified error";
+    case gsl_LIMIT:    return "LIMIT error";
+    case gsl_NO_MATCH: return "NO_MATCH error";
+    case gsl_FORMAT:   return "FORMAT error";
+    case gsl_EXISTS:   return "EXISTS error";
+    default:           return "Unknown error";
+    }
 }
 
 static int log_parser_error(struct kndTask *self,
@@ -250,22 +226,22 @@ static int log_parser_error(struct kndTask *self,
                            size_t pos,
                            const char *rec)
 {
-  size_t line = 0, column;
-  for (;;) {
-      const char *next_line = strchr(rec, '\n');
-      if (next_line == NULL) break;
+    size_t line = 0, column;
+    for (;;) {
+        const char *next_line = strchr(rec, '\n');
+        if (next_line == NULL) break;
+        
+        size_t len = next_line + 1 - rec;
+        if (len > pos) break;
 
-      size_t len = next_line + 1 - rec;
-      if (len > pos) break;
-
-      line++;
-      rec = next_line + 1;
-      pos -= len;
-  }
-  column = pos;
-
-  return self->log->writef(self->log, "parser error at line %zu:%zu: %d %s",
-                           line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
+        line++;
+        rec = next_line + 1;
+        pos -= len;
+    }
+    column = pos;
+    
+    return self->log->writef(self->log, "parser error at line %zu:%zu: %d %s",
+                             line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
 }
 
 static int parse_GSL(struct kndTask *self,
@@ -354,8 +330,17 @@ static int build_report(struct kndTask *self)
         self->out->reset(self->out);
         err = self->out->write(self->out, "{\"err\":\"", strlen("{\"err\":\""));
         if (err) return err;
-        err = self->out->write(self->out, self->log->buf, self->log->buf_size);
-        if (err) return err;
+
+        if (self->log->buf_size) {
+            err = self->out->write(self->out,
+                                   self->log->buf, self->log->buf_size);
+            if (err) return err;
+        } else {
+            err = self->out->write(self->out,
+                                   "internal error",
+                                   strlen("internal error"));
+            if (err) return err;
+        }
         err = self->out->write(self->out, "\"", strlen("\""));
         if (err) return err;
 
@@ -375,12 +360,11 @@ static int build_report(struct kndTask *self)
         return knd_OK;
     }
 
-    if (!self->out->buf_size) {
+    /*if (!self->out->buf_size) {
         err = self->out->write(self->out,
-                               "{\"update\":\"OK\"}",
-                               strlen("{\"update\":\"OK\"}"));
+                               "{}", strlen("{}"));
         if (err) return err;
-    }
+        }*/
 
     if (DEBUG_TASK_LEVEL_TMP) {
         obj_size = self->out->buf_size;

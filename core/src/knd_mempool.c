@@ -431,13 +431,17 @@ static int new_rel_update(struct kndMemPool *self,
     int e;
 
     if (self->num_rel_updates >= self->max_rel_updates) {
-        knd_log("-- rel update mempool exhausted, max: %zu", self->max_rel_updates);
+        knd_log("-- rel update mempool exhausted, num:%zu max: %zu",
+                self->num_rel_updates,
+                self->max_rel_updates);
+
         self->log->reset(self->log);
         e = self->log->write(self->log, "rel updates memory limit reached",
                              strlen("rel updates memory limit reached"));
         if (e) return e;
         return knd_LIMIT;
     }
+
     upd = &self->rel_updates[self->num_rel_updates];
     memset(upd, 0, sizeof(struct kndRelUpdate));
 

@@ -31,6 +31,7 @@ struct kndUser;
 struct kndStateControl;
 struct kndClass;
 struct kndQuery;
+struct kndObject;
 
 typedef enum knd_task_spec_type { KND_GET_STATE, 
 				  KND_SELECT_STATE, 
@@ -88,9 +89,6 @@ struct kndTask
     const char *report;
     size_t report_size;
 
-    //char state[KND_STATE_SIZE];
-    //bool show_state;
-
     int error;
     knd_http_code_t http_code;
 
@@ -103,6 +101,12 @@ struct kndTask
     size_t batch_eq;
     size_t batch_gt;
     size_t batch_lt;
+
+    size_t state_eq;
+    size_t state_gt;
+    size_t state_lt;
+
+    struct kndObject *curr_obj;
 
     struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;

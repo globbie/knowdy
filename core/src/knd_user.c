@@ -486,7 +486,7 @@ static gsl_err_t select_user_rels(void *obj,
         return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
 
-    if (DEBUG_USER_LEVEL_2)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. selecting User rels: \"%.*s\"", 32, rec);
 
     out->reset(out);
@@ -735,6 +735,7 @@ static gsl_err_t parse_task(struct kndUser *self,
     if (parser_err.code) {
         knd_log("-- user task parse failure: \"%.*s\" :(",
                 self->log->buf_size, self->log->buf);
+
         if (!self->log->buf_size) {
             err = self->log->write(self->log, "internal server error",
                                  strlen("internal server error"));
