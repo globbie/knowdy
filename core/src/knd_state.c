@@ -39,6 +39,8 @@ static int knd_confirm(struct kndStateControl *self,
                        struct kndUpdate *update)
 {
     struct kndTask *task = self->repo->task;
+    struct glbOutput *out = self->out;
+    int err;
 
     if (DEBUG_STATE_LEVEL_2)
         knd_log("State Controller: .. "
@@ -73,11 +75,10 @@ static int knd_confirm(struct kndStateControl *self,
                 "\"%zu\" update confirmed! total updates: %zu",
                 update->numid, self->num_updates);
 
-    /*out = task->out;
-    err = out->write(out, "{", 1);  RET_ERR();
-    err = out->write(out, "\"tid\":\"OK\"", strlen("\"tid\":\"OK\""));  RET_ERR();
-    err = out->write(out, "}", 1);  RET_ERR();
-    */
+    out = task->out;
+    err = out->writec(out, '{');                                                  RET_ERR();
+    err = out->writef(out, "\"update\":%zu", update->numid);                      RET_ERR();
+    err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
 }
 

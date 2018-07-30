@@ -3132,7 +3132,7 @@ static gsl_err_t parse_import_class(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. import \"%.*s\" class..", 128, rec);
 
     err = mempool->new_class(mempool, &c);
@@ -6145,15 +6145,11 @@ static int export_class_state_JSON(struct kndClass *self)
     update = self->states->update;
     err = out->write(out, "\"_state\":", strlen("\"_state\":"));                  RET_ERR();
     err = out->writef(out, "%zu", latest_state);                                  RET_ERR();
-
-    //err = out->write(out, ",\"_num_updates\":", strlen(",\"_num_updates\":"));    RET_ERR();
-    //err = out->writef(out, "%zu", self->num_states);                              RET_ERR();
-
     time(&update->timestamp);
     localtime_r(&update->timestamp, &tm_info);
     buf_size = strftime(buf, KND_NAME_SIZE,
                         ",\"_modif\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
-    err = out->write(out, buf, buf_size);                                     RET_ERR();
+    err = out->write(out, buf, buf_size);                                         RET_ERR();
 
     return knd_OK;
 }

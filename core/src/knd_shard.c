@@ -238,7 +238,8 @@ extern int kndShard_new(struct kndShard **shard,
         if (err != knd_OK) goto error;
     }
 
-    err = mempool->alloc(mempool);
+    err = mempool->alloc(mempool);                           RET_ERR();
+    mempool->log = self->task->log;
 
     err = kndUser_new(&user, mempool);
     if (err != knd_OK) goto error;

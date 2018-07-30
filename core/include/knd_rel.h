@@ -30,6 +30,7 @@ struct kndRelInstance;
 struct kndUpdate;
 struct kndRelUpdate;
 struct kndRepo;
+struct kndSet;
 
 struct kndRelInstEntry
 {
@@ -57,6 +58,9 @@ struct kndRelInstance
 
     struct kndState *states;
     size_t num_states;
+
+    size_t depth;
+    size_t max_depth;
 
     struct kndRel *rel;
     struct kndRelArgInstance *args;
@@ -99,6 +103,7 @@ struct kndRelRef
 {
     struct kndRel *rel;
     struct kndSet *idx;
+    size_t num_insts;
 
     struct kndState *states;
     size_t init_state;
@@ -172,8 +177,9 @@ struct kndRel
 
     bool is_resolved;
     size_t depth;
-
+    size_t max_depth;
     struct kndRel *curr_rel;
+    struct kndRelInstance *curr_inst;
     struct kndRel *next;
 
     /******** public methods ********/
@@ -224,6 +230,8 @@ struct kndRel
     int (*export_updates)(struct kndRel *self);
     int (*export_inst)(struct kndRel *self,
 		       struct kndRelInstance *inst);
+    int (*export_inst_set)(struct kndRel *self,
+                           struct kndSet *set);
 };
 
 extern void kndRel_init(struct kndRel *self);

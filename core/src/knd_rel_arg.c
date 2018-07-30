@@ -188,6 +188,7 @@ static int export_inst_JSON(struct kndRelArg *self,
 
     /* output class name only if it's 
        different from the default one */
+
     if (self->conc_entry != inst->class_entry) {
         err = out->write(out, "\"class\":\"", strlen("\"class\":\""));           RET_ERR();
         err = out->write(out, inst->classname, inst->classname_size);            RET_ERR();
@@ -611,14 +612,15 @@ static int link_rel(struct kndRelArg *self,
     struct kndState *state;
     int err;
 
-    if (DEBUG_RELARG_LEVEL_TMP)
-        knd_log(".. %.*s (base: %.*s) OBJ to link rel %.*s.. rel inst:%.*s update:%zu",
+    if (DEBUG_RELARG_LEVEL_2) {
+        knd_log(".. %.*s (base: %.*s) OBJ to link rel %.*s..",
                 obj_entry->name_size, obj_entry->name,
                 obj_entry->obj->base->name_size, obj_entry->obj->base->name,
-                rel->entry->name_size, rel->entry->name,
-                inst->id_size, inst->id, rel_update->update->numid);
-
-    err = mempool->new_state(mempool, &state);                                    MEMPOOL_ERR(kndRelRef);
+                rel->entry->name_size, rel->entry->name);
+        knd_log("..rel inst:%.*s state:%zu phase:%d",
+                inst->id_size, inst->id, inst->states, inst->states->phase);
+    }
+    
     for (ref = obj_entry->rels; ref; ref = ref->next) {
         if (ref->rel == rel) break;
     }
@@ -632,13 +634,22 @@ static int link_rel(struct kndRelArg *self,
         obj_entry->rels = ref;
     }
 
+    err = mempool->new_state(mempool, &state);                                    MEMPOOL_ERR(kndRelRef);
     state->update = rel_update->update;
-    state->val = (void*)rel_update;
+    state->val = (void*)inst;
     state->next = ref->states;
     ref->states = state;
     ref->num_states++;
+    state->numid = ref->init_state + ref->num_states;
+
+    if (inst->states->phase == KND_REMOVED) {
+        if (ref->num_insts) ref->num_insts--;
+        return knd_OK;
+    }
 
     err = ref->idx->add(ref->idx, inst->id, inst->id_size, (void*)inst);          RET_ERR();
+    ref->num_insts++;
+
     return knd_OK;
 }
 
