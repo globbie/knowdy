@@ -3605,7 +3605,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
         return make_gsl_err(gsl_LIMIT);
     }
 
-   task->start_from = task->batch_max *task->batch_from;
+   task->start_from = task->batch_max * task->batch_from;
 
     return make_gsl_err(gsl_OK);
 }
@@ -6634,8 +6634,6 @@ static int compute_list_sum(struct kndAttrVar *parent_var,
         }
     }
 
-    //knd_log("++ list SUM OK!");
-
     *result = total_numval;
     return knd_OK;
 }
@@ -7430,10 +7428,15 @@ static int export_JSON(struct kndClass *self)
     }
 
     /* state info */
-    if (self->num_states || self->num_inst_states) {
+    if (self->num_states) {
         err = out->writec(out, ',');
         if (err) return err;
         err = export_class_state_JSON(self);                                      RET_ERR();
+    }
+    if (self->num_inst_states) {
+        err = out->writec(out, ',');
+        if (err) return err;
+        err = export_class_inst_state_JSON(self);                                      RET_ERR();
     }
 
     /* display base classes only once */
