@@ -72,8 +72,12 @@ kndObject_export_aggr_JSON(struct kndObject *self)
         elem->out = out;
         elem->format = KND_FORMAT_JSON;
         err = elem->export(elem);
-        if (err) return err;
-        
+        if (err) {
+            knd_log("-- inst elem export failed: %.*s",
+                    elem->attr->name_size, elem->attr->name);
+            return err;
+        }
+
         if (elem->next) {
             err = out->write(out, ",", 1);
             if (err) return err;
@@ -98,6 +102,8 @@ static int export_inst_relref_JSON(struct kndObject *self,
     struct kndSet *set;
     struct tm tm_info;
     int err;
+
+    knd_log(".. JSON export inst rel refs..");
 
     err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
     err = out->write(out, rel->entry->name, rel->entry->name_size);               RET_ERR();
@@ -146,6 +152,77 @@ static int export_inst_relrefs_JSON(struct kndObject *self)
     return knd_OK;
 }
 
+static int export_concise_JSON(struct kndObject *self)
+{
+    struct kndObject *obj;
+    struct glbOutput *out = self->base->entry->repo->out;
+    struct kndElem *elem;
+    bool is_concise = true;
+    bool need_separ = false;
+    int err;
+
+    for (elem = self->elems; elem; elem = elem->next) {
+        /* NB: restricted attr */
+        if (elem->attr->access_type == KND_ATTR_ACCESS_RESTRICTED)
+            continue;
+
+        if (DEBUG_INST_LEVEL_3)
+            knd_log(".. export elem: %.*s",
+                    elem->attr->name_size, elem->attr->name);
+
+        /* filter out detailed presentation */
+        if (is_concise) {
+            /* aggr obj? */
+            if (elem->aggr) {
+                obj = elem->aggr;
+
+                /*if (need_separ) {*/
+                err = out->write(out, ",", 1);
+                if (err) return err;
+
+                err = out->write(out, "\"", 1);
+                if (err) return err;
+                err = out->write(out,
+                                 elem->attr->name,
+                                 elem->attr->name_size);
+                if (err) return err;
+                err = out->write(out, "\":", 2);
+                if (err) return err;
+                
+                err = obj->export(obj);
+                if (err) return err;
+
+                need_separ = true;
+                continue;
+            }
+            
+            if (elem->attr) 
+                if (elem->attr->concise_level)
+                    goto export_elem;
+
+            if (DEBUG_INST_LEVEL_2)
+                knd_log("  .. skip JSON elem: %s..\n", elem->attr->name);
+            continue;
+        }
+
+    export_elem:
+        /*if (need_separ) {*/
+        err = out->write(out, ",", 1);
+        if (err) return err;
+
+        /* default export */
+        elem->out = out;
+        elem->format =  KND_FORMAT_JSON;
+        err = elem->export(elem);
+        if (err) {
+            knd_log("-- elem not exported: %s", elem->attr->name);
+            return err;
+        }
+        need_separ = true;
+    }
+        return knd_OK;
+}
+
 static int kndObject_export_JSON(struct kndObject *self)
 {
     struct kndElem *elem;
@@ -163,7 +240,11 @@ static int kndObject_export_JSON(struct kndObject *self)
 
     if (self->type == KND_OBJ_AGGR) {
         err = kndObject_export_aggr_JSON(self);
-        return err;
+        if (err) {
+            knd_log("-- aggr obj JSON export failed");
+            return err;
+        }
+        return knd_OK;
     }
 
     err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
@@ -175,6 +256,12 @@ static int kndObject_export_JSON(struct kndObject *self)
     err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
     err = out->writef(out, "%zu", self->entry->numid);                            RET_ERR();
 
+    if (self->depth >= self->max_depth) {
+        /* any concise fields? */
+        err = export_concise_JSON(self);                                          RET_ERR();
+        goto final;
+    }
+    
     if (state) {
         err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));            RET_ERR();
         err = out->writef(out, "%zu", state->update->numid);                      RET_ERR();
@@ -217,7 +304,11 @@ static int kndObject_export_JSON(struct kndObject *self)
         /* NB: restricted attr */
         if (elem->attr->access_type == KND_ATTR_ACCESS_RESTRICTED)
             continue;
-        
+
+        if (DEBUG_INST_LEVEL_3)
+            knd_log(".. export elem: %.*s",
+                    elem->attr->name_size, elem->attr->name);
+
         /* filter out detailed presentation */
         if (is_concise) {
             /* aggr obj? */
@@ -250,7 +341,6 @@ static int kndObject_export_JSON(struct kndObject *self)
 
             if (DEBUG_INST_LEVEL_2)
                 knd_log("  .. skip JSON elem: %s..\n", elem->attr->name);
-
             continue;
         }
 
@@ -277,9 +367,10 @@ static int kndObject_export_JSON(struct kndObject *self)
         err = out->writec(out, ']');                                              RET_ERR();
     }
 
+ final:
     err = out->write(out, "}", 1);
     if (err) return err;
-    
+
     return err;
 }
 
@@ -438,6 +529,9 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndClass *c = self->base;
     struct kndObjEntry *entry;
     struct ooDict *name_idx = c->entry->obj_name_idx;
+    struct glbOutput *log = c->entry->repo->log;
+    struct kndTask *task = c->entry->repo->task;
+    int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -452,9 +546,15 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
                     name_size, name);
                 goto assign_name;
             }
-
             knd_log("-- obj name doublet found: %.*s:(",
                     name_size, name);
+            log->reset(log);
+            err = log->write(log, name, name_size);
+            if (err) return make_gsl_err_external(err);
+            err = log->write(log,   " class name already exists",
+                             strlen(" class name already exists"));
+            if (err) return make_gsl_err_external(err);
+            task->http_code = HTTP_CONFLICT;
             return make_gsl_err(gsl_EXISTS);
         }
     }
@@ -1003,7 +1103,6 @@ static gsl_err_t remove_obj(void *data,
 {
     struct kndObject *self       = data;
     struct kndClass  *base       = self->base;
-    struct kndClass  *root_class = base->root_class;
     struct kndObject *obj;
     struct kndState  *state;
     struct glbOutput *log        = base->entry->repo->log;
@@ -1027,6 +1126,8 @@ static gsl_err_t remove_obj(void *data,
     state->phase = KND_REMOVED;
     state->next = obj->states;
     obj->states = state;
+    obj->num_states++;
+    state->numid = obj->num_states;
 
     log->reset(log);
     err = log->write(log, self->name, self->name_size);
@@ -1039,9 +1140,6 @@ static gsl_err_t remove_obj(void *data,
     base->obj_inbox = obj;
     base->obj_inbox_size++;
 
-    /*base->next = root_class->inbox;
-    root_class->inbox = base;
-    root_class->inbox_size++; */
     return make_gsl_err(gsl_OK);
 }
 
@@ -1401,7 +1499,6 @@ static gsl_err_t present_inst_selection(void *data, const char *val __attribute_
     struct kndClass *base = self->base;
     struct kndTask *task = base->entry->repo->task;
     struct glbOutput *out = base->entry->repo->out;
-    //struct kndMemPool *mempool = base->entry->repo->mempool;
     struct kndSet *set;
     int err;
 

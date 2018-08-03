@@ -111,6 +111,10 @@ struct kndAttrVar
     bool is_list_item;
     size_t list_count;
 
+    struct kndState *states;
+    size_t init_state;
+    size_t num_states;
+
     /* siblings */
     struct kndAttrVar *list;
     struct kndAttrVar *list_tail;
@@ -193,8 +197,9 @@ struct kndAttr
     char idx_name[KND_NAME_SIZE];
     size_t idx_name_size;
 
-    //struct kndRefSet *browser;
-    //struct glbOutput *out;
+    struct kndState *states;
+    size_t init_state;
+    size_t num_states;
 
     struct kndTranslation *tr;
     size_t depth;

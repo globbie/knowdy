@@ -33,31 +33,10 @@ struct kndUser;
 struct kndRepo;
 struct kndClass;
 
-struct kndElemState
-{
-    knd_state_phase phase;
-    char state[KND_STATE_SIZE];
-
-    char ref[KND_ID_SIZE + 1];
-    size_t ref_size;
-
-    const char *val;
-    size_t val_size;
-    /*char *seq;
-    size_t seq_size;
-    */
-    struct kndObject *refobj;
-    struct kndClass *conc;
-    
-    struct kndElemState *next;
-};
-
-
 struct kndElem
 {
-    knd_state_phase phase;
-    char state[KND_STATE_SIZE];
-
+    //knd_state_phase phase;
+    //char state[KND_STATE_SIZE];
     struct kndAttr *attr;
 
     struct kndObject *obj;
@@ -68,6 +47,9 @@ struct kndElem
     struct kndObject *aggr_tail;
 
     bool is_list;
+
+    const char *val;
+    size_t val_size;
     
     struct glbOutput *out;
     struct glbOutput *log;
@@ -78,8 +60,10 @@ struct kndElem
 
     struct kndElem *next;
 
-    struct kndElemState *states;
+    struct kndState *states;
+    size_t init_state;
     size_t num_states;
+
     knd_format format;
     size_t depth;
     /******** public methods ********/

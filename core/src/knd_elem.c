@@ -13,6 +13,8 @@
 #include "knd_repo.h"
 #include "knd_elem.h"
 #include "knd_attr.h"
+#include "knd_state.h"
+#include "knd_mempool.h"
 
 #include "knd_text.h"
 #include "knd_ref.h"
@@ -77,28 +79,23 @@ static void str(struct kndElem *self)
         break;
     }
 
-    knd_log("%*s%s => %.*s", self->depth * KND_OFFSET_SIZE, "",
-            self->attr->name, self->states->val_size, self->states->val);
+    //knd_log("%*s%s => %.*s", self->depth * KND_OFFSET_SIZE, "",
+    //        self->attr->name, self->states->val_size, self->states->val);
 }
 
 
-static int
-kndElem_export_JSON(struct kndElem *self)
+static int kndElem_export_JSON(struct kndElem *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
-
-    struct kndObject *obj;
     struct kndText *text;
     struct kndRef *ref;
-
     struct glbOutput *out = self->out;
     size_t curr_size;
-    //unsigned long numval;
     int err;
 
     if (self->aggr) {
-        if (self->is_list) {
+        /*if (self->is_list) {
             buf_size = sprintf(buf, "\"%s_l\":[",
                                self->states->val);
             err = out->write(out, buf, buf_size);
@@ -120,7 +117,8 @@ kndElem_export_JSON(struct kndElem *self)
 
             return knd_OK;
         }
-
+        */
+        
         /* single anonymous aggr obj */
         err = out->write(out, "\"", 1);
         if (err) goto final;
@@ -150,11 +148,11 @@ kndElem_export_JSON(struct kndElem *self)
         return knd_OK;
     case KND_ATTR_STR:
     case KND_ATTR_BIN:
-        err = out->write(out, "\"", 1);
+        err = out->writec(out, '"');
         if (err) goto final;
         err = out->write(out, self->states->val, self->states->val_size);
         if (err) goto final;
-        err = out->write(out, "\"", 1);
+        err = out->writec(out, '"');
         if (err) goto final;
         return knd_OK;
     default:
@@ -176,49 +174,6 @@ kndElem_export_JSON(struct kndElem *self)
             err = text->export(text);
             if (err) goto final;
             break;
-            /*case KND_ATTR_FILE:
-            err = out->write(out, "\"file\":\"", strlen("\"file\":\""));
-            if (err) goto final;
-            err = out->write(out,
-                                   self->states->val, self->states->val_size);
-            if (err) goto final;
-            err = out->write(out, "\"", 1);
-            if (err) goto final;
-            */
-            /* soft link the actual file */
-            /* TODO: remove reader
-                               buf_size = sprintf(buf, "%s/%s",
-                               self->obj->cache->repo->user->reader->webpath,
-                               self->states->val); */
-
-            /*dirname_size = sprintf(dirname,
-                                   "%s/%s", self->obj->cache->repo->path,
-                                   self->obj->cache->baseclass->name);
-            knd_make_id_path(pathbuf,
-                             dirname,
-                             self->obj->id, self->states->val);
-            
-            if (DEBUG_ELEM_LEVEL_2)
-                knd_log("SOFT LINK: %s -> %s\n", buf, pathbuf);
-
-            err = lstat(buf, &linkstat);
-            if (err) {
-                err = symlink((const char*)pathbuf, (const char*)buf);
-                if (err) {
-                    if (DEBUG_ELEM_LEVEL_TMP)
-                        knd_log("  -- soft link failed: %d :(\n", err);
-                    return err;
-                }
-            }
-            
-            if (self->states) {
-                buf_size = sprintf(buf, ",\"_st\":%lu",
-                                   (unsigned long)self->states->state);
-                err = out->write(out, buf, buf_size);
-                if (err) goto final;
-            }
-            
-            break; */
         case KND_ATTR_REF:
             ref = self->ref;
             ref->out = out;
@@ -355,8 +310,10 @@ static gsl_err_t run_empty_val_warning(void *obj,
 
 static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 {
-    struct kndElem *self = (struct kndElem*)obj;
-    struct kndElemState *state;
+    struct kndElem *self = obj;
+    struct kndState *state;
+    struct kndMemPool *mempool = self->obj->base->entry->repo->mempool;
+    int err;
 
     if (DEBUG_ELEM_LEVEL_2)
         knd_log(".. %.*s to set val \"%.*s\"",
@@ -366,14 +323,18 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_VAL_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    state = malloc(sizeof(struct kndElemState));
-    if (!state) return make_gsl_err_external(knd_NOMEM);
-    memset(state, 0, sizeof(struct kndElemState));
-    self->states = state;
-    self->num_states = 1;
+    err = mempool->new_state(mempool, &state);
+    if (err) {
+        knd_log("-- state alloc failed :(");
+        return make_gsl_err_external(err);
+    }
 
-    state->val = val;
+    state->val = (void*)val;
     state->val_size = val_size;
+
+    self->states = state;
+    self->num_states++;
+    state->numid = self->num_states;
 
     /* TODO: validate if needed */
     /*switch (self->attr->type) {
@@ -396,8 +357,8 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 }
 
 static gsl_err_t parse_GSL(struct kndElem *self,
-                     const char *rec,
-                     size_t *total_size)
+                           const char *rec,
+                           size_t *total_size)
 {
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -444,7 +405,6 @@ static int kndElem_resolve(struct kndElem *self)
     
     return knd_OK;
 }
-
 
 extern void
 kndElem_init(struct kndElem *self)

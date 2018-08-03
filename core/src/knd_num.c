@@ -73,7 +73,7 @@ kndNum_export(struct kndNum *self __attribute__((unused)), knd_format format __a
 
 static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 {
-    struct kndNum *self = (struct kndNum*)obj;
+    struct kndNum *self = obj;
     struct kndNumState *state;
     int err;
 
@@ -101,8 +101,8 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 
 
 static gsl_err_t parse_GSL(struct kndNum *self,
-                     const char *rec,
-                     size_t *total_size)
+                           const char *rec,
+                           size_t *total_size)
 {
    if (DEBUG_NUM_LEVEL_1)
        knd_log(".. parse NUM field: \"%.*s\"..", 16, rec);

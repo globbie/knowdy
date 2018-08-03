@@ -179,6 +179,7 @@ static int export_inst_JSON(struct kndRelArg *self,
                             struct kndRelArgInstance *inst)
 {
     struct glbOutput *out = self->out;
+    struct kndObject *class_inst;
     /*const char *type_name = knd_relarg_names[self->type];
       size_t type_name_size = strlen(knd_relarg_names[self->type]); */
     bool in_list = false;
@@ -196,14 +197,16 @@ static int export_inst_JSON(struct kndRelArg *self,
         in_list = true;
     }
 
-    if (inst->objname_size) {
-        if (in_list) {
-            err = out->writec(out, ',');                                         RET_ERR();
+        if (inst->objname_size) {
+            if (in_list) {
+                err = out->writec(out, ',');                                         RET_ERR();
+            }
+            err = out->write(out, "\"inst\":\"", strlen("\"inst\":\""));             RET_ERR();
+            err = out->write(out, inst->objname, inst->objname_size);                RET_ERR();
+            err = out->writec(out, '"');                                             RET_ERR();
         }
-        err = out->write(out, "\"inst\":\"", strlen("\"inst\":\""));             RET_ERR();
-        err = out->write(out, inst->objname, inst->objname_size);                RET_ERR();
-        err = out->writec(out, '"');                                             RET_ERR();
-    }
+
+
 
     if (inst->val_size) {
         if (in_list) {
@@ -603,13 +606,15 @@ static int parse_inst_GSL(struct kndRelArg *self,
 static int link_rel(struct kndRelArg *self,
                     struct kndRelArgInstance *arg_inst,
                     struct kndObjEntry *obj_entry,
-                    struct kndRelUpdate *rel_update)
+                    struct kndRelUpdate *orig_rel_update)
 {
     struct kndRel *rel = self->rel;
-    struct kndRelRef *ref = NULL;
     struct kndRelInstance *inst = arg_inst->rel_inst;
+    struct kndRelRef *ref = NULL;
+    struct kndRelUpdate *rel_update;
     struct kndMemPool *mempool = rel->entry->repo->mempool;
     struct kndState *state;
+    bool is_new_state = false;
     int err;
 
     if (DEBUG_RELARG_LEVEL_2) {
@@ -620,7 +625,7 @@ static int link_rel(struct kndRelArg *self,
         knd_log("..rel inst:%.*s state:%zu phase:%d",
                 inst->id_size, inst->id, inst->states, inst->states->phase);
     }
-    
+
     for (ref = obj_entry->rels; ref; ref = ref->next) {
         if (ref->rel == rel) break;
     }
@@ -634,14 +639,24 @@ static int link_rel(struct kndRelArg *self,
         obj_entry->rels = ref;
     }
 
-    err = mempool->new_state(mempool, &state);                                    MEMPOOL_ERR(kndRelRef);
-    state->update = rel_update->update;
-    state->val = (void*)inst;
-    state->next = ref->states;
-    ref->states = state;
-    ref->num_states++;
-    state->numid = ref->init_state + ref->num_states;
+    state = ref->states;
+    if (!state) is_new_state = true;
 
+    /*err = mempool->new_rel_update(mempool, &rel_update);                      RET_ERR();
+    rel_update->rel = rel;
+    rel_update->update = update;
+    */
+
+    if (is_new_state) {
+        err = mempool->new_state(mempool, &state);                                MEMPOOL_ERR(kndRelRef);
+        state->update = orig_rel_update->update;
+        state->val = (void*)inst;
+        state->next = ref->states;
+        ref->states = state;
+        ref->num_states++;
+        state->numid = ref->init_state + ref->num_states;
+    }
+    
     if (inst->states->phase == KND_REMOVED) {
         if (ref->num_insts) ref->num_insts--;
         return knd_OK;
@@ -662,8 +677,7 @@ static int resolve(struct kndRelArg *self, struct kndRelUpdate *update)
         knd_log(".. resolving Rel Arg %.*s..",
                 self->classname_size, self->classname);
 
-    entry = name_idx->get(name_idx,
-                          self->classname, self->classname_size);
+    entry = name_idx->get(name_idx, self->classname, self->classname_size);
     if (!entry) {
         knd_log("-- Rel Arg resolve failed: no such class: %.*s :(",
                 self->classname_size, self->classname);
@@ -759,16 +773,13 @@ static void init(struct kndRelArg *self)
     self->export_inst = export_inst;
 }
 
-extern int
-kndRelArg_new(struct kndRelArg **c)
+extern int kndRelArg_new(struct kndRelArg **c)
 {
     struct kndRelArg *self;
-
     self = malloc(sizeof(struct kndRelArg));
     if (!self) return knd_NOMEM;
 
     memset(self, 0, sizeof(struct kndRelArg));
-
     init(self);
     *c = self;
 
