@@ -52,6 +52,10 @@ struct kndClassVar
     struct kndAttrVar *tail;
     size_t num_attrs;
 
+    struct kndState *states;
+    size_t init_state;
+    size_t num_states;
+
     struct kndClass *root_class;
 
     struct kndClassVar *next;
@@ -133,6 +137,10 @@ struct kndClass
     size_t init_inst_state;
     size_t num_inst_states;
 
+    struct kndState *child_states;
+    size_t init_child_state;
+    size_t num_child_states;
+
     struct kndTranslation *tr;
     struct kndTranslation *summary;
 
@@ -183,10 +191,6 @@ struct kndClass
     struct ooDict *attr_name_idx;
     struct kndAttr *computed_attrs[KND_MAX_ATTRS];
     size_t num_computed_attrs;
-
-    // TODO: need to find an alternative solution to this!
-    //char dir_buf[KND_MAX_CONC_CHILDREN * KND_DIR_ENTRY_SIZE];
-    //size_t dir_buf_size;
 
     struct kndUpdate *curr_update;
     struct kndClass *next;

@@ -33,6 +33,7 @@ struct ooDict;
 
 typedef enum knd_set_type { KND_SET_CLASS,
 			    KND_SET_OBJ,
+			    KND_SET_STATE_UPDATE,
 			    KND_SET_REL,
 			    KND_SET_REL_INST } knd_set_type;
 

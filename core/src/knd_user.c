@@ -283,7 +283,7 @@ static gsl_err_t parse_rel_import(void *obj,
                                   size_t *total_size)
 {
     struct kndUser *self = obj;
-    struct kndRel *rel = self->repo->root_class->rel;
+    struct kndRel *rel = self->repo->root_rel;
 
     self->task->type = KND_UPDATE_STATE;
     return rel->import(rel, rec, total_size);
@@ -738,7 +738,7 @@ static gsl_err_t parse_task(struct kndUser *self,
 
         if (!self->log->buf_size) {
             err = self->log->write(self->log, "internal server error",
-                                 strlen("internal server error"));
+                                   strlen("internal server error"));
             if (err) {
                 parser_err = make_gsl_err_external(err);
                 goto cleanup;
@@ -782,6 +782,7 @@ static gsl_err_t parse_task(struct kndUser *self,
 
     /* TODO: release resources */
     root_class->reset_inbox(root_class);
+    root_rel->reset_inbox(root_rel);
 
     return parser_err;
 }

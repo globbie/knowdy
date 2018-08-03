@@ -1296,17 +1296,18 @@ static int resolve_objs(struct kndClass     *self,
 
     if (class_update) {
         class_update->insts = calloc(self->obj_inbox_size,
-                                    sizeof(struct kndObject*));
+                                     sizeof(struct kndObject*));
         if (!class_update->insts) {
             return knd_NOMEM;
         }
 
-        err = mempool->new_state(mempool, &state);   MEMPOOL_ERR(ClassInstState);
+        err = mempool->new_state(mempool, &state);                                MEMPOOL_ERR(ClassInstState);
         state->update = class_update->update;
         state->val = (void*)class_update;
         state->next = self->inst_states;
         self->inst_states = state;
         self->num_inst_states++;
+        state->numid = self->num_inst_states;
     }
 
     for (obj = self->obj_inbox; obj; obj = obj->next) {
@@ -1332,7 +1333,6 @@ static int resolve_objs(struct kndClass     *self,
             }
             class_update->insts[class_update->num_insts] = obj;
             class_update->num_insts++;
-
             obj->states->update = class_update->update;
             obj->states->val = (void*)class_update;
         }
@@ -1497,16 +1497,17 @@ static int resolve_baseclasses(struct kndClass *self)
        let's add a descendant to each of these */
     err = register_descendants(self);                                             RET_ERR();
 
-
     return knd_OK;
 }
 
 static int resolve_refs(struct kndClass *self,
-                        struct kndClassUpdate *update)
+                        struct kndClassUpdate *class_update)
 {
     struct kndClass *root;
     struct kndClassVar *item;
     struct kndClassEntry *entry;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndState *state;
     int err;
 
     if (DEBUG_CONC_LEVEL_1)
@@ -1515,7 +1516,7 @@ static int resolve_refs(struct kndClass *self,
 
     if (self->is_resolved) {
         if (self->obj_inbox_size) {
-            err = resolve_objs(self, update);                                     RET_ERR();
+            err = resolve_objs(self, class_update);                                     RET_ERR();
         }
         return knd_OK;
     } else {
@@ -1525,10 +1526,10 @@ static int resolve_refs(struct kndClass *self,
         knd_num_to_str(entry->numid, entry->id, &entry->id_size, KND_RADIX_BASE);
     }
 
-    if (DEBUG_CONC_LEVEL_2) {
-        knd_log(".. resolving class \"%.*s\" id:%.*s entry numid:%zu",
+    if (DEBUG_CONC_LEVEL_1) {
+        knd_log(".. resolving class \"%.*s\" id:%.*s entry numid:%zu  batch mode:%d",
                 self->entry->name_size, self->entry->name,
-                entry->id_size, entry->id, self->entry->numid);
+                entry->id_size, entry->id, self->entry->numid, self->batch_mode);
     }
 
     /* a child of the root class
@@ -1560,17 +1561,29 @@ static int resolve_refs(struct kndClass *self,
     }
 
     if (self->baseclass_vars) {
-        err = resolve_baseclasses(self);                                         RET_ERR();
+        err = resolve_baseclasses(self);                                          RET_ERR();
     }
 
     for (item = self->baseclass_vars; item; item = item->next) {
         if (item->attrs) {
-            err = resolve_attr_vars(self, item);                                 RET_ERR();
+            err = resolve_attr_vars(self, item);                                  RET_ERR();
         }
     }
 
     if (self->obj_inbox_size) {
-        err = resolve_objs(self, update);                                         RET_ERR();
+        err = resolve_objs(self, class_update);                                   RET_ERR();
+    }
+
+    if (class_update) {
+        err = mempool->new_state(mempool, &state);                                MEMPOOL_ERR(ClassState);
+        state->update = class_update->update;
+        state->val = (void*)class_update;
+        state->next = self->states;
+        self->states = state;
+        self->num_states++;
+        state->numid = self->num_states;
+        state->id_size = 0;
+        knd_num_to_str(state->numid, state->id, &state->id_size, KND_RADIX_BASE);
     }
 
     self->is_resolved = true;
@@ -3137,8 +3150,10 @@ static gsl_err_t parse_import_class(void *obj,
 
     err = mempool->new_class(mempool, &c);
     if (err) return *total_size = 0, make_gsl_err_external(err);
+
     c->root_class = self;
 
+    
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_class_name,
@@ -3633,7 +3648,9 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct glbOutput *log = repo->log;
     struct ooDict *class_name_idx = self->root_class->class_name_idx;
     struct kndMemPool *mempool = repo->mempool;
+    struct kndTask *task = repo->task;
     struct kndClassEntry *entry;
+    struct kndState *state;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -3673,16 +3690,19 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_OK);
     }
 
-    if (entry->phase == KND_REMOVED) {
-        entry->class = self;
-        self->entry =  entry;
+    if (entry->class->states) {
+        state = entry->class->states;
+        if (state->phase == KND_REMOVED) {
+            entry->class = self;
+            self->entry =  entry;
 
-        if (DEBUG_CONC_LEVEL_2)
-            knd_log("== class was removed recently");
+            if (DEBUG_CONC_LEVEL_2)
+                knd_log("== class was removed recently");
 
-        self->name =      entry->name;
-        self->name_size = name_size;
-        return make_gsl_err(gsl_OK);
+            self->name =      entry->name;
+            self->name_size = name_size;
+            return make_gsl_err(gsl_OK);
+        }
     }
 
     knd_log("-- \"%.*s\" class doublet found :(", name_size, name);
@@ -3695,6 +3715,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
                      strlen(" class name already exists"));
     if (err) return make_gsl_err_external(err);
 
+    task->http_code = HTTP_CONFLICT;
+    
     return make_gsl_err(gsl_FAIL);
 }
 
@@ -5161,21 +5183,19 @@ static int resolve_classes(struct kndClass *self)
     do {
         self->class_name_idx->next_item(self->class_name_idx, &key, &val);
         if (!key) break;
-
         entry = (struct kndClassEntry*)val;
-
         if (!entry->class) {
             knd_log("-- unresolved class entry: %.*s",
                     entry->name_size, entry->name);
             return knd_FAIL;
         }
-
         c = entry->class;
         if (c->is_resolved) continue;
 
         err = c->resolve(c, NULL);
         if (err) {
-            knd_log("-- couldn't resolve the \"%s\" class :(", c->name);
+            knd_log("-- couldn't resolve the \"%.*s\" class :(",
+                    c->entry->name_size, c->entry->name);
             return err;
         }
         c->is_resolved = true;
@@ -5184,9 +5204,6 @@ static int resolve_classes(struct kndClass *self)
             c->str(c);
 
     } while (key);
-
-    if (DEBUG_CONC_LEVEL_1)
-        knd_log("++ all classes resolved!");
 
     return knd_OK;
 }
@@ -5251,7 +5268,7 @@ static int coordinate(struct kndClass *self)
 {
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CONC_LEVEL_TMP)
         knd_log(".. class coordination in progress ..");
 
     /* resolve names to addresses */
@@ -5261,7 +5278,7 @@ static int coordinate(struct kndClass *self)
     calculate_descendants(self);
 
     if (DEBUG_CONC_LEVEL_TMP)
-        knd_log("\n  == TOTAL classes: %zu", self->entry->num_terminals);
+        knd_log("== TOTAL classes: %zu", self->entry->num_terminals);
 
     return knd_OK;
 }
@@ -5462,6 +5479,7 @@ static int get_class(struct kndClass *self,
     struct glbOutput *log = self->entry->repo->log;
     struct ooDict *class_name_idx = self->entry->repo->root_class->class_name_idx;
     struct kndTask *task = self->entry->repo->task;
+    struct kndState *state;
     int err;
 
     if (DEBUG_CONC_LEVEL_2)
@@ -5490,21 +5508,25 @@ static int get_class(struct kndClass *self,
                 self->entry->repo->frozen_output_file_name_size,
                 self->entry->repo->frozen_output_file_name, entry->block_size, entry->class);
 
-    if (entry->phase == KND_REMOVED) {
-        knd_log("-- \"%s\" class was removed", name);
-        log->reset(log);
-        err = log->write(log, name, name_size);
-        if (err) return err;
-        err = log->write(log, " class was removed",
-                               strlen(" class was removed"));
-        if (err) return err;
-
-        task->http_code = HTTP_GONE;
-        return knd_NO_MATCH;
-    }
-
     if (entry->class) {
         c = entry->class;
+
+        if (c->num_states) {
+            state = c->states;
+            if (state->phase == KND_REMOVED) {
+                knd_log("-- \"%s\" class was removed", name);
+                log->reset(log);
+                err = log->write(log, name, name_size);
+                if (err) return err;
+                err = log->write(log, " class was removed",
+                                 strlen(" class was removed"));
+                if (err) return err;
+
+                task->http_code = HTTP_GONE;
+                return knd_NO_MATCH;
+            }
+        }
+        
         c->next = NULL;
         if (DEBUG_CONC_LEVEL_2)
             c->str(c);
@@ -5665,9 +5687,8 @@ static int read_obj_entry(struct kndClass *self,
     /* done reading */
     close(fd);
 
-    err = mempool->new_obj(mempool, &obj);                           RET_ERR();
-    err = mempool->new_state(mempool, &obj->states);                  RET_ERR();
-
+    err = mempool->new_obj(mempool, &obj);                                        RET_ERR();
+    err = mempool->new_state(mempool, &obj->states);                              RET_ERR();
     obj->states->phase = KND_FROZEN;
 
     obj->base = self;
@@ -5945,6 +5966,8 @@ static gsl_err_t present_class_selection(void *obj,
 
     out->reset(out);
 
+
+    
     if (task->type == KND_SELECT_STATE) {
         if (DEBUG_CONC_LEVEL_2)
             knd_log(".. batch selection: batch size: %zu   start from: %zu",
@@ -5992,8 +6015,17 @@ static gsl_err_t present_class_selection(void *obj,
 
         /* final presentation in JSON 
            TODO: choose output format */
-        err = export_set_JSON(self, set);
-        if (err) return make_gsl_err_external(err);
+
+        switch (set->type) {
+        case KND_SET_STATE_UPDATE:
+            knd_log(".. export state set..");
+            err = out->write(out, "{}", strlen("{}"));
+            if (err) return make_gsl_err_external(err);
+            break;
+        default:
+            err = export_set_JSON(self, set);
+            if (err) return make_gsl_err_external(err);
+        }
 
         return make_gsl_err(gsl_OK);
     }
@@ -6094,35 +6126,47 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
     struct kndClass *self = obj;
     struct kndClass *c;
     struct glbOutput *log = self->entry->repo->log;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndTask *task = self->entry->repo->task;
+    struct kndState *state;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1)
-        knd_log(".. remove class..");
-
     if (!self->curr_class) {
-        knd_log("-- remove operation: class name not specified:(");
+        knd_log("-- remove operation: class name not specified");
 
         log->reset(log);
         err = log->write(log, name, name_size);
         if (err) return make_gsl_err_external(err);
         err = log->write(log, " class name not specified",
-                               strlen(" class name not specified"));
+                         strlen(" class name not specified"));
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_NO_MATCH);
     }
-
+    
     c = self->curr_class;
 
     if (DEBUG_CONC_LEVEL_2)
-        knd_log("== class to remove: \"%.*s\"\n", c->name_size, c->name);
+        knd_log(".. removing class: \"%.*s\"\n",
+                c->name_size, c->name);
 
-    c->entry->phase = KND_REMOVED;
+    err = mempool->new_state(mempool, &state);
+    if (err) return make_gsl_err_external(err);
+
+    state->next = c->states;
+    c->states = state;
+    c->num_states++;
+    state->numid = c->num_states;
+    state->phase = KND_REMOVED;
+
+    // TODO: inform parents and dependants
+
+    task->type = KND_UPDATE_STATE;
 
     log->reset(log);
     err = log->write(log, name, name_size);
     if (err) return make_gsl_err_external(err);
     err = log->write(log, " class removed",
-                           strlen(" class removed"));
+                     strlen(" class removed"));
     if (err) return make_gsl_err_external(err);
 
     c->next = self->inbox;
@@ -6236,12 +6280,14 @@ static int select_delta(struct kndClass *self,
                         const char *rec,
                         size_t *total_size)
 {
-    struct kndStateControl *state_ctrl = self->entry->repo->state_ctrl;
     struct kndTask *task = self->entry->repo->task;
-    struct kndUpdate *update;
+    struct glbOutput *log = self->entry->repo->log;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndState *state;
+    struct kndSet *set;
     struct kndClassUpdate *class_update;
     struct kndClass *c;
-    int err;
+    int e, err;
     gsl_err_t parser_err;
 
     struct gslTaskSpec specs[] = {
@@ -6266,38 +6312,58 @@ static int select_delta(struct kndClass *self,
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     if (DEBUG_CONC_LEVEL_TMP)
-        knd_log(".. select delta:  gt %zu  lt %zu ..",
-                task->batch_gt,
-                task->batch_lt);
+        knd_log(".. select %.*s class delta:  gt %zu  lt %zu ..",
+                self->name_size, self->name,
+                task->batch_gt, task->batch_lt);
 
-    err = state_ctrl->select(state_ctrl);                                         RET_ERR();
-
-    for (size_t i = 0; i < state_ctrl->num_selected; i++) {
-        update = state_ctrl->selected[i];
-
-        for (size_t j = 0; j < update->num_classes; j++) {
-            class_update = update->classes[j];
-            c = class_update->conc;
-
-            //c->str(c);
-            if (!c) return knd_FAIL;
-
-            /*if (!self->curr_baseclass) {
-                task->class_selects[task->num_class_selects] = c;
-                task->num_class_selects++;
-                continue;
-                }*/
-
-            /* filter by baseclass */
-            /*for (size_t j = 0; j < c->num_bases; j++) {
-                dir = c->bases[j];
-                knd_log("== base class: %.*s", dir->name_size, dir->name);
-                }*/
-        }
+    task->type = KND_SELECT_STATE;
+    if (!self->num_states) {
+        log->reset(log);
+        e = log->write(log, "no states available",
+                       strlen("no states available"));
+        if (e) return e;
+        task->http_code = HTTP_BAD_REQUEST;
+        return knd_FAIL;
     }
 
-    /* TODO: JSON export */
+    if (task->state_lt && task->state_lt < task->state_gt) {
+        log->reset(log);
+        e = log->write(log, "invalid state range given",
+                       strlen("invalid state range given"));
+        if (e) return e;
+        task->http_code = HTTP_BAD_REQUEST;
+        return knd_FAIL;
+    }
 
+    if (task->state_gt >= self->num_states) {
+        log->reset(log);
+        e = log->write(log, "invalid state range given",
+                       strlen("invalid state range given"));
+        if (e) return e;
+        task->http_code = HTTP_BAD_REQUEST;
+        return knd_FAIL;
+    }
+
+    err = mempool->new_set(mempool, &set);                                        MEMPOOL_ERR(kndSet);
+    set->mempool = mempool;
+    set->type = KND_SET_STATE_UPDATE;
+
+    if (!task->state_lt)
+        task->state_lt = self->init_state + self->states->update->numid + 1;
+    
+    for (state = self->states; state; state = state->next) {
+        if (task->state_lt <= state->numid) continue;
+        if (task->state_gt >= state->numid) continue;
+        
+        err = set->add(set, state->id, state->id_size,
+                       (void*)state);                                          RET_ERR();
+    }
+
+    task->sets[0] = set;
+    task->num_sets = 1;
+    task->curr_obj = self;
+
+    
     return knd_OK;
 }
 
@@ -6308,7 +6374,11 @@ static gsl_err_t parse_select_class_delta(void *data,
     struct kndClass *self = data;
     int err;
 
-    err = select_delta(self, rec, total_size);
+    if (!self->curr_class) return make_gsl_err(gsl_FAIL);
+
+    knd_log("== curr class entry: %p", self->curr_class->entry);
+
+    err = select_delta(self->curr_class, rec, total_size);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -7965,17 +8035,14 @@ static int build_class_updates(struct kndClass *self,
             err = out->write(out, obj->name, obj->name_size);  RET_ERR();
 
             if (obj->states->phase == KND_REMOVED) {
-                err = out->write(out, "(rm)", strlen("(rm)"));
+                err = out->write(out, "{!rm}", strlen("{!rm}"));
                 if (err) return err;
             }
             err = out->write(out, "}", 1);                     RET_ERR();
         }
-
         /* close class out */
         err = out->write(out, ")}", 2);                        RET_ERR();
     }
-
-
     return knd_OK;
 }
 
@@ -7989,7 +8056,7 @@ static int export_updates(struct kndClass *self,
     struct glbOutput *out = task->update;
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CONC_LEVEL_2)
         knd_log(".. export updates in \"%.*s\"..",
                 self->entry->name_size, self->entry->name);
 
@@ -8289,7 +8356,6 @@ static int knd_update_state(struct kndClass *self)
 
         if (DEBUG_CONC_LEVEL_1)
             c->str(c);
-
 
         if (update->num_classes >= self->inbox_size) {
             knd_log("-- max class updates reached :(");
@@ -8677,7 +8743,8 @@ static int freeze(struct kndClass *self)
 
     /* persistent write */
     err = knd_append_file(self->entry->repo->frozen_output_file_name,
-                          self->entry->repo->out->buf, self->entry->repo->out->buf_size);                   RET_ERR();
+                          self->entry->repo->out->buf,
+                          self->entry->repo->out->buf_size);                      RET_ERR();
 
     total_frozen_size = self->entry->repo->out->buf_size;
 

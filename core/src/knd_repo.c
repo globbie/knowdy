@@ -570,9 +570,8 @@ extern int kndRepo_init(struct kndRepo *self)
     return knd_OK;
 }
 
-extern int
-kndRepo_new(struct kndRepo **repo,
-            struct kndMemPool *mempool)
+extern int kndRepo_new(struct kndRepo **repo,
+                       struct kndMemPool *mempool)
 {
     struct kndRepo *self;
     struct kndStateControl *state_ctrl;

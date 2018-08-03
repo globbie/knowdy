@@ -478,6 +478,7 @@ static int export_inst_JSON(struct kndRel *self,
     struct kndUpdate *update;
     struct kndState *state;
     struct kndObjEntry *obj_entry;
+    struct kndObject *class_inst;
     struct tm tm_info;
     bool in_list = false;
     int err;
@@ -543,12 +544,21 @@ static int export_inst_JSON(struct kndRel *self,
         err = out->write(out, relarg->name, relarg->name_size);                  RET_ERR();
         err = out->write(out, "\":", strlen("\":"));                             RET_ERR();
 
-        if (relarg_inst->val_size) {
-            err = out->writec(out, '"');                                         RET_ERR();
-            err = out->write(out, relarg_inst->val, relarg_inst->val_size);      RET_ERR();
-            err = out->writec(out, '"');                                         RET_ERR();
+        // expand ref
+        if (relarg_inst->obj) {
+            class_inst = relarg_inst->obj->obj;
+            // TODO max_depth
+            class_inst->depth = 1;
+            err = class_inst->export(class_inst);
+            if (err) return err;
         } else {
-            err = relarg->export_inst(relarg, relarg_inst);                      RET_ERR();
+            if (relarg_inst->val_size) {
+                err = out->writec(out, '"');                                         RET_ERR();
+                err = out->write(out, relarg_inst->val, relarg_inst->val_size);      RET_ERR();
+                err = out->writec(out, '"');                                         RET_ERR();
+            } else {
+                err = relarg->export_inst(relarg, relarg_inst);                      RET_ERR();
+            }
         }
 
         in_list = true;
@@ -1662,7 +1672,7 @@ static gsl_err_t parse_import_instance(void *data,
     err = rel->entry->inst_name_idx->set(rel->entry->inst_name_idx,
                                          inst->name, inst->name_size, (void*)entry);
     if (err) return make_gsl_err_external(err);
-    
+
     if (DEBUG_REL_LEVEL_2) {
         knd_log("\n\nREGISTER INST in %.*s [IDX total:%zu valid:%zu]",
                 rel->entry->name_size, rel->entry->name,
@@ -2036,7 +2046,7 @@ static int kndRel_resolve(struct kndRel *self,
     struct kndRelInstance *inst;
     int err;
 
-    if (DEBUG_REL_LEVEL_2)
+    if (DEBUG_REL_LEVEL_TMP)
         knd_log(".. resolving REL: \"%.*s\" "
                 " is_resolved:%d   inst inbox size: %zu",
                 self->entry->name_size, self->entry->name,
@@ -2062,6 +2072,7 @@ static int kndRel_resolve(struct kndRel *self,
         if (DEBUG_REL_LEVEL_2)
             knd_log("++ rel resolved: %.*s!",
                     self->entry->name_size, self->entry->name);
+
         return knd_OK;
     }
 
@@ -2177,7 +2188,6 @@ static int kndRel_update_state(struct kndRel *self,
     update->rels = rel_updates;
 
     for (rel = self->inbox; rel; rel = rel->next) {
-
         err = mempool->new_rel_update(mempool, &rel_update);                      RET_ERR();
         rel_update->rel = rel;
         rel_update->update = update;
@@ -2206,12 +2216,9 @@ static gsl_err_t set_liquid_rel_id(void *obj,
 
     err = knd_parse_num((const char*)val, &numval);
     if (err) return make_gsl_err_external(err);
-    //rel->id = numval;
     if (rel->entry) {
         rel->entry->numid = numval;
     }
-
-    //self->curr_rel->update_id = self->curr_update->id;
 
     if (DEBUG_REL_LEVEL_TMP)
         knd_log(".. set curr liquid rel id: %zu",

@@ -86,11 +86,13 @@ struct kndUpdate
 
 struct kndState
 {
-    size_t owner_id;
     knd_state_phase phase;
+    char id[KND_ID_SIZE];
+    size_t id_size;
     size_t numid;
     struct kndUpdate *update;
     void *val;
+    size_t val_size;
     struct kndState *next;
 };
 
