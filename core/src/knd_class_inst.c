@@ -161,6 +161,15 @@ static int export_concise_JSON(struct kndObject *self)
     bool need_separ = false;
     int err;
 
+    err = out->write(out, ",\"_class\":\"", strlen(",\"_class\":\""));
+    if (err) return err;
+
+    err = out->write(out, self->base->name, self->base->name_size);
+    if (err) return err;
+
+    err = out->write(out, "\"", 1);
+    if (err) return err;
+
     for (elem = self->elems; elem; elem = elem->next) {
         /* NB: restricted attr */
         if (elem->attr->access_type == KND_ATTR_ACCESS_RESTRICTED)
