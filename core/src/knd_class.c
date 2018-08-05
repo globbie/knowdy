@@ -6976,6 +6976,9 @@ static int aggr_item_export_JSON(struct kndClass *self,
         c->depth = self->depth + 1;
         c->max_depth = self->max_depth;
 
+        //knd_log(".. export %.*s class, depth:%zu max depth:%zu\n\n",
+        //        c->name_size, c->name, c->depth, c->max_depth);
+
         err = c->export(c);
         if (err) return err;
         in_list = true;
@@ -7038,8 +7041,12 @@ static int aggr_item_export_JSON(struct kndClass *self,
         switch (item->attr->type) {
         case KND_ATTR_REF:
             c = item->class;
-            c->depth = self->depth;
+            c->depth = self->depth + 1;
             c->max_depth = self->max_depth;
+
+            //knd_log(".. export %.*s class, depth:%zu max depth:%zu\n\n",
+            //    c->name_size, c->name, c->depth, c->max_depth);
+            
             err = c->export(c);
             if (err) return err;
             break;

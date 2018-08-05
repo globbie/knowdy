@@ -179,7 +179,6 @@ static int export_inst_JSON(struct kndRelArg *self,
                             struct kndRelArgInstance *inst)
 {
     struct glbOutput *out = self->out;
-    struct kndObject *class_inst;
     /*const char *type_name = knd_relarg_names[self->type];
       size_t type_name_size = strlen(knd_relarg_names[self->type]); */
     bool in_list = false;
@@ -612,9 +611,9 @@ static int link_rel(struct kndRelArg *self,
     struct kndRelInstance *inst = arg_inst->rel_inst;
     struct kndRelRef *ref = NULL;
     struct kndRelUpdate *rel_update;
+    struct kndRelInstanceUpdate *rel_inst_update;
     struct kndMemPool *mempool = rel->entry->repo->mempool;
-    struct kndState *state;
-    bool is_new_state = false;
+    struct kndState *state = NULL;
     int err;
 
     if (DEBUG_RELARG_LEVEL_2) {
@@ -639,28 +638,39 @@ static int link_rel(struct kndRelArg *self,
         obj_entry->rels = ref;
     }
 
-    state = ref->states;
-    if (!state) is_new_state = true;
+    // lookup current state
+    if (ref->states) {
+        for (state = ref->states; state; state = state->next) {
+            rel_update = state->val;
+            if (rel_update == orig_rel_update) break;
+        }
+    }
+    
+    if (!state) {
+        err = mempool->new_rel_update(mempool, &rel_update);                      MEMPOOL_ERR(kndRelUpdate);
+        rel_update->rel = orig_rel_update->rel;
+        rel_update->update = orig_rel_update->update;
 
-    /*err = mempool->new_rel_update(mempool, &rel_update);                      RET_ERR();
-    rel_update->rel = rel;
-    rel_update->update = update;
-    */
-
-    if (is_new_state) {
         err = mempool->new_state(mempool, &state);                                MEMPOOL_ERR(kndRelRef);
         state->update = orig_rel_update->update;
-        state->val = (void*)inst;
         state->next = ref->states;
         ref->states = state;
         ref->num_states++;
         state->numid = ref->init_state + ref->num_states;
     }
-    
-    if (inst->states->phase == KND_REMOVED) {
+
+    if (inst->states && inst->states->phase == KND_REMOVED) {
         if (ref->num_insts) ref->num_insts--;
         return knd_OK;
     }
+
+    /* save ref to rel inst */
+    err = mempool->new_rel_inst_update(mempool, &rel_inst_update);                MEMPOOL_ERR(kndRelInstUpdate);
+
+    rel_inst_update->inst = inst;
+    rel_inst_update->next = state->val;
+    state->val = (void*)rel_inst_update;
+    state->val_size++;
 
     err = ref->idx->add(ref->idx, inst->id, inst->id_size, (void*)inst);          RET_ERR();
     ref->num_insts++;
@@ -668,7 +678,8 @@ static int link_rel(struct kndRelArg *self,
     return knd_OK;
 }
 
-static int resolve(struct kndRelArg *self, struct kndRelUpdate *update)
+static int resolve(struct kndRelArg *self,
+                   struct kndRelUpdate *update  __attribute__((unused)))
 {
     struct kndClassEntry *entry;
     struct ooDict *name_idx = self->rel->entry->repo->root_class->class_name_idx;
