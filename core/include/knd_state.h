@@ -46,8 +46,15 @@ struct kndRelUpdate
 {
     struct kndRel *rel;
     struct kndUpdate *update;
+    struct kndSet *idx;
     struct kndRelInstance **insts;
     size_t num_insts;
+};
+
+struct kndRelInstanceUpdate
+{
+    struct kndRelInstance *inst;
+    struct kndRelInstanceUpdate *next;
 };
 
 struct kndProcUpdate

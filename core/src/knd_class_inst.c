@@ -678,12 +678,11 @@ static gsl_err_t confirm_obj_import(void *data,
     return make_gsl_err(gsl_OK);
 }
 
-static int
-kndObject_validate_attr(struct kndObject *self,
-                        const char *name,
-                        size_t name_size,
-                        struct kndAttr **result,
-                        struct kndElem **result_elem)
+static int kndObject_validate_attr(struct kndObject *self,
+                                   const char *name,
+                                   size_t name_size,
+                                   struct kndAttr **result,
+                                   struct kndElem **result_elem)
 {
     struct kndClass *conc;
     struct kndAttr *attr = NULL;
@@ -1209,10 +1208,11 @@ static gsl_err_t parse_import_inst(struct kndObject *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t present_inst_rels_state(void *obj, const char *name, size_t name_size)
+static gsl_err_t present_inst_rels_state(void *obj,
+                                         const char *name  __attribute__((unused)),
+                                         size_t name_size  __attribute__((unused)))
 {
     struct kndObject *self = obj;
-    struct glbOutput *out = self->base->entry->repo->out;
     struct glbOutput *log = self->base->entry->repo->log;
     struct kndTask *task = self->base->entry->repo->task;
     struct kndRelRef *relref = self->curr_rel;
@@ -1242,31 +1242,6 @@ static gsl_err_t present_inst_rels_state(void *obj, const char *name, size_t nam
 }
 
 
-static int select_rel_inst(void *obj,
-                           const char *elem_id,
-                           size_t elem_id_size,
-                           size_t count,
-                           void *elem)
-{
-    struct kndTask *task = obj;
-    struct kndSet *set = task->sets[0];
-    struct kndRelInstance *inst = elem; 
-    struct kndState *state = inst->states;
-    int err;
-    
-    if (DEBUG_INST_LEVEL_TMP)
-        knd_log("* rel inst id:%.*s numid: %zu update:%zu   gt:%zu  lt:%zu",
-                inst->id_size, inst->id, state->numid, state->update->numid,
-                task->state_gt, task->state_lt);
-
-    if (task->state_lt <= state->numid) return knd_OK;
-    if (task->state_gt >= state->numid) return knd_OK;
-
-    err = set->add(set, inst->id, inst->id_size,
-                   (void*)inst);                                          RET_ERR();
-
-    return knd_OK;
-}
 
 static int select_inst_rel_delta(struct kndObject *self,
                                  const char *rec,
@@ -1278,10 +1253,9 @@ static int select_inst_rel_delta(struct kndObject *self,
     struct glbOutput *log = base->entry->repo->log;
     struct kndState *state;
     struct kndSet *set;
-    struct kndRelUpdate *rel_update;
     struct kndRelInstance *inst;
+    struct kndRelInstanceUpdate *rel_inst_upd;
     struct kndRelRef *relref = self->curr_rel;
-    size_t curr_count = 0;
     int e, err;
     gsl_err_t parser_err;
 
@@ -1352,16 +1326,19 @@ static int select_inst_rel_delta(struct kndObject *self,
         task->state_lt = relref->init_state + relref->states->update->numid + 1;
     
     for (state = relref->states; state; state = state->next) {
-        inst = state->val;
-        if (DEBUG_INST_LEVEL_2)
-            knd_log("* rel inst id:%.*s numid: %zu update:%zu",
-                    inst->id_size, inst->id, state->numid, state->update->numid);
-
         if (task->state_lt <= state->numid) continue;
         if (task->state_gt >= state->numid) continue;
-        
-        err = set->add(set, inst->id, inst->id_size,
-                       (void*)inst);                                          RET_ERR();
+
+        // iterate over rel insts
+        for (rel_inst_upd = state->val; rel_inst_upd; rel_inst_upd = rel_inst_upd->next) {
+            inst = rel_inst_upd->inst;
+            if (DEBUG_INST_LEVEL_TMP)
+                knd_log("* rel inst id:%.*s",
+                        inst->id_size, inst->id);
+
+            err = set->add(set, inst->id, inst->id_size,
+                           (void*)inst);                                          RET_ERR();
+        }
     }
 
     task->sets[0] = set;

@@ -49,7 +49,7 @@ struct kndState;
 struct kndClassUpdate;
 struct kndClassUpdateRef;
 struct kndRelUpdate;
-struct kndRelUpdateRef;
+struct kndRelInstanceUpdate;
 struct kndProcUpdate;
 struct kndProcUpdateRef;
 
@@ -138,9 +138,9 @@ struct kndMemPool
     size_t max_rel_updates;
     size_t num_rel_updates;
 
-    struct kndRelUpdateRef *rel_update_refs;
-    size_t max_rel_update_refs;
-    size_t num_rel_update_refs;
+    struct kndRelInstanceUpdate *rel_inst_updates;
+    size_t max_rel_inst_updates;
+    size_t num_rel_inst_updates;
 
     struct kndRelEntry *rel_entries;
     size_t max_rel_entries;
@@ -244,8 +244,8 @@ struct kndMemPool
                        struct kndRelRef **result);
     int (*new_rel_update)(struct kndMemPool   *self,
                           struct kndRelUpdate **result);
-    int (*new_rel_update_ref)(struct kndMemPool   *self,
-                              struct kndRelUpdateRef **result);
+    int (*new_rel_inst_update)(struct kndMemPool   *self,
+                               struct kndRelInstanceUpdate **result);
     int (*new_rel_inst)(struct kndMemPool   *self,
                         struct kndRelInstance **result);
     int (*new_rel_arg_inst)(struct kndMemPool   *self,

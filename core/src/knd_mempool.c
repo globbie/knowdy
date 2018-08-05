@@ -40,7 +40,7 @@ static void del(struct kndMemPool *self)
     if (self->rel_arg_insts)   free(self->rel_arg_insts);
     if (self->rel_arg_inst_refs)   free(self->rel_arg_inst_refs);
     if (self->rel_updates)   free(self->rel_updates);
-    if (self->rel_update_refs) free(self->rel_update_refs);
+    if (self->rel_inst_updates) free(self->rel_inst_updates);
 
     if (self->procs)           free(self->procs);
     if (self->proc_entries)       free(self->proc_entries);
@@ -450,21 +450,19 @@ static int new_rel_update(struct kndMemPool *self,
     return knd_OK;
 }
 
-/*static int new_rel_update_ref(struct kndMemPool *self,
-                                struct kndRelUpdateRef **result)
+static int new_rel_inst_update(struct kndMemPool *self,
+                               struct kndRelInstanceUpdate **result)
 {
-    struct kndRelUpdateRef *upd;
-    
+    struct kndRelInstanceUpdate *upd;
 
-    if (self->num_rel_update_refs >= self->max_rel_update_refs) return knd_NOMEM;
-    upd = &self->rel_update_refs[self->num_rel_update_refs];
-    memset(upd, 0, sizeof(struct kndRelUpdateRef));
+    if (self->num_rel_inst_updates >= self->max_rel_inst_updates) return knd_NOMEM;
+    upd = &self->rel_inst_updates[self->num_rel_inst_updates];
+    memset(upd, 0, sizeof(struct kndRelInstanceUpdate));
 
-    self->num_rel_update_refs++;
+    self->num_rel_inst_updates++;
     *result = upd;
     return knd_OK;
 }
-*/
 
 static int new_proc(struct kndMemPool *self,
                     struct kndProc **result)
@@ -585,7 +583,7 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_rel_arg_inst_refs) self->max_rel_arg_inst_refs = self->max_rel_arg_insts;
 
     if (!self->max_rel_updates) self->max_rel_updates = KND_MIN_UPDATES;
-    if (!self->max_rel_update_refs) self->max_rel_update_refs = KND_MIN_UPDATES;
+    if (!self->max_rel_inst_updates) self->max_rel_inst_updates = self->max_rel_insts;
 
     if (!self->max_procs)         self->max_procs =  KND_MIN_PROCS;
     if (!self->max_proc_entries)     self->max_proc_entries = self->max_procs;
@@ -731,7 +729,7 @@ static int alloc(struct kndMemPool *self)
     }
 
     self->rel_arg_inst_refs = calloc(self->max_rel_arg_inst_refs,
-                                 sizeof(struct kndRelArgInstRef));
+                                     sizeof(struct kndRelArgInstRef));
     if (!self->rel_arg_inst_refs) {
         knd_log("-- rel arg insts not allocated :(");
         return knd_NOMEM;
@@ -743,12 +741,12 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
 
-    /*self->rel_update_refs = calloc(self->max_updates, sizeof(struct kndRelUpdateRef));
-    if (!self->rel_update_refs) {
-        knd_log("-- rel updates not allocated :(");
+    // TODO: set max
+    self->rel_inst_updates = calloc(self->max_rel_insts, sizeof(struct kndRelInstanceUpdate));
+    if (!self->rel_inst_updates) {
+        knd_log("-- rel inst updates not allocated :(");
         return knd_NOMEM;
     }
-    */
 
     self->procs = calloc(self->max_procs, sizeof(struct kndProc));
     if (!self->procs) {
@@ -960,7 +958,7 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_rel_arg_inst = new_rel_arg_inst;
     self->new_rel_arg_inst_ref = new_rel_arg_inst_ref;
     self->new_rel_update = new_rel_update;
-    //self->new_rel_update_ref = new_rel_update_ref;
+    self->new_rel_inst_update = new_rel_inst_update;
     self->new_proc = new_proc;
     self->new_proc_entry = new_proc_entry;
     self->new_proc_arg = new_proc_arg;
