@@ -135,6 +135,8 @@ struct kndAttrEntry
     struct kndAttr *attr;
     struct kndAttrVar *attr_var;
 
+    struct kndAttrEntry *parent;
+
     struct kndAttrEntry *next;
 };
 
