@@ -7488,10 +7488,12 @@ static int export_concise_JSON(struct kndClass *self)
             /* display only concise fields */
             if (!attr->concise_level) continue;
 
-            if (!attr_entry->attr_var) continue;
-
             attr_var = attr_entry->attr_var;
-
+            if (!attr_var) {
+                err = knd_get_attr_var(self, attr->name, attr->name_size, &attr_var);
+                if (err) continue;
+            }
+            
             /* NB: only plain text fields */
             switch (attr->type) {
             case KND_ATTR_STR:
@@ -7509,6 +7511,59 @@ static int export_concise_JSON(struct kndClass *self)
             
         } while (key);
     }
+
+    return knd_OK;
+}
+
+
+static int export_inherited_attrs_JSON(struct kndClass *self)
+{
+    struct kndAttrVar *attr_var;
+    struct kndAttr *attr;
+    struct kndAttrEntry *attr_entry;
+    struct kndClass *c;
+    const char *key = NULL;
+    void *val;
+    struct glbOutput *out = self->entry->repo->out;
+    int err;
+
+    self->attr_name_idx->rewind(self->attr_name_idx);
+    do {
+        self->attr_name_idx->next_item(self->attr_name_idx, &key, &val);
+        if (!key) break;
+        
+        attr_entry = val;
+        attr = attr_entry->attr;
+
+        /* skip over immediate attrs */
+        if (attr->parent_class == self) continue;
+
+        if (DEBUG_CONC_LEVEL_2)
+            knd_log(".. %.*s class to export inherited attr: %.*s",
+                    self->name_size, self->name,
+                    attr->name_size, attr->name);
+
+        attr_var = attr_entry->attr_var;
+        if (!attr_var) {
+            err = knd_get_attr_var(self, attr->name, attr->name_size, &attr_var);
+            if (err) continue;
+        }
+        
+        /* NB: only plain text fields */
+        switch (attr->type) {
+        case KND_ATTR_STR:
+            err = out->writec(out, ',');                                          RET_ERR();
+            err = out->writec(out, '"');                                          RET_ERR();
+            err = out->write(out, attr_var->name, attr_var->name_size);           RET_ERR();
+            err = out->write(out, "\":", strlen("\":"));                          RET_ERR();
+            err = out->write(out, "\"", strlen("\""));                            RET_ERR();
+            err = out->write(out, attr_var->val, attr_var->val_size);             RET_ERR();
+            err = out->write(out, "\"", strlen("\""));                            RET_ERR();
+            break;
+        default:
+            break;
+        }
+    } while (key);
 
     return knd_OK;
 }
@@ -7565,6 +7620,7 @@ static int export_JSON(struct kndClass *self)
     /* display base classes only once */
     if (self->num_baseclass_vars) {
         err = out->write(out, ",\"_base\":[", strlen(",\"_base\":["));            RET_ERR();
+
         item_count = 0;
         for (item = self->baseclass_vars; item; item = item->next) {
             if (item_count) {
@@ -7595,7 +7651,11 @@ static int export_JSON(struct kndClass *self)
                 err = present_computed_class_attrs(self, item);
                 if (err) return err;
             }
-            
+
+            if (self->attr_name_idx) {
+                err = export_inherited_attrs_JSON(self);                          RET_ERR();
+            }
+
             err = out->write(out, "}", 1);
             if (err) return err;
             item_count++;
@@ -7628,6 +7688,7 @@ static int export_JSON(struct kndClass *self)
         if (err) return err;
     }
 
+    
     /* non-terminal classes */
     if (self->entry->num_children) {
         err = out->write(out, ",\"_num_subclasses\":",
