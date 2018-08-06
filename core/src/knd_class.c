@@ -750,7 +750,6 @@ static int index_attr_var_list(struct kndClass *self,
     }
 
     if (!attr->ref_classname_size) return knd_OK;
-    if (!parent_item->val_size) return knd_OK;
 
     /* template base class */
     err = get_class(self,
@@ -761,23 +760,28 @@ static int index_attr_var_list(struct kndClass *self,
         err = base->resolve(base, NULL);                                          RET_ERR();
     }
 
-    /* specific class */
-    err = get_class(self,
-                    item->val,
-                    item->val_size, &c);                                          RET_ERR();
+    for (item = parent_item->list; item; item = item->next) {
 
-    item->class = c;
+        if (DEBUG_CONC_LEVEL_3)
+            knd_log("== list item name:%.*s", item->name_size, item->name);
 
-    if (!c->is_resolved) {
-        err = c->resolve(c, NULL);                                                RET_ERR();
+        /* specific class */
+        err = get_class(self,
+                        item->name,
+                        item->name_size, &c);                                          RET_ERR();
+        item->class = c;
+
+        if (!c->is_resolved) {
+            err = c->resolve(c, NULL);                                                RET_ERR();
+        }
+        err = knd_is_base(base, c);                                                       RET_ERR();
+
+        set = attr->parent_class->entry->descendants;
+
+        /* add curr class to the reverse index */
+        err = set->add_ref(set, attr, self->entry, c->entry);
+        if (err) return err;
     }
-    err = knd_is_base(base, c);                                                       RET_ERR();
-
-    set = attr->parent_class->entry->descendants;
-
-    /* add curr class to the reverse index */
-    err = set->add_ref(set, attr, self->entry, c->entry);
-    if (err) return err;
 
     return knd_OK;
 }
