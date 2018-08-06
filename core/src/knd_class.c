@@ -7398,7 +7398,10 @@ static int export_concise_JSON(struct kndClass *self)
     struct kndClassVar *item;
     struct kndAttrVar *attr_var;
     struct kndAttr *attr;
+    struct kndAttrEntry *attr_entry;
     struct kndClass *c;
+    const char *key;
+    void *val;
     struct glbOutput *out = self->entry->repo->out;
     int err;
 
@@ -7466,6 +7469,45 @@ static int export_concise_JSON(struct kndClass *self)
                 if (err) return err;
             }
         }
+    }
+
+    /* inherited attrs */
+    if (self->attr_name_idx) {
+        key = NULL;
+        self->attr_name_idx->rewind(self->attr_name_idx);
+        do {
+            self->attr_name_idx->next_item(self->attr_name_idx, &key, &val);
+            if (!key) break;
+
+            attr_entry = val;
+            attr = attr_entry->attr;
+
+            /* skip over immediate attrs */
+            if (attr->parent_class == self) continue;
+
+            /* display only concise fields */
+            if (!attr->concise_level) continue;
+
+            if (!attr_entry->attr_var) continue;
+
+            attr_var = attr_entry->attr_var;
+
+            /* NB: only plain text fields */
+            switch (attr->type) {
+            case KND_ATTR_STR:
+                err = out->writec(out, ',');                                          RET_ERR();
+                err = out->writec(out, '"');                                          RET_ERR();
+                err = out->write(out, attr_var->name, attr_var->name_size);           RET_ERR();
+                err = out->write(out, "\":", strlen("\":"));                          RET_ERR();
+                err = out->write(out, "\"", strlen("\""));                            RET_ERR();
+                err = out->write(out, attr_var->val, attr_var->val_size);             RET_ERR();
+                err = out->write(out, "\"", strlen("\""));                            RET_ERR();
+                break;
+            default:
+                break;
+            }
+            
+        } while (key);
     }
 
     return knd_OK;
