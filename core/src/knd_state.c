@@ -26,7 +26,7 @@ static void del(struct kndStateControl *self)
 
 static void str(struct kndStateControl *self)
 {
-    knd_log("curr state: %.*s", KND_STATE_SIZE, self->state);
+    //knd_log("curr state: %.*s", KND_STATE_SIZE, self->state);
 }
 
 static void reset(struct kndStateControl *self)
@@ -130,7 +130,7 @@ extern int kndStateControl_new(struct kndStateControl **state)
 
     memset(self, 0, sizeof(struct kndStateControl));
 
-    memset(self->state, '0', KND_STATE_SIZE);
+    //memset(self->state, '0', KND_STATE_SIZE);
 
     err = glbOutput_new(&self->log, KND_TEMP_BUF_SIZE);
     if (err) return err;

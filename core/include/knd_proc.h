@@ -39,7 +39,6 @@ typedef enum knd_proc_type {
 struct kndProcState
 {
     knd_state_phase phase;
-    char state[KND_STATE_SIZE];
 
     char val[KND_NAME_SIZE + 1];
     size_t val_size;

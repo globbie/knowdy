@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2018 by Dmitri Dmitriev
+ *   Copyright (c) 2011-present by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Graph DB, 
@@ -39,7 +39,6 @@ typedef enum { knd_EQUALS, knd_LESS, knd_MORE, knd_NOT_COMPARABLE } knd_comparis
 typedef enum knd_format { KND_FORMAT_JSON,
                           //KND_FORMAT_XML,
                           KND_FORMAT_HTML,
-                          //KND_FORMAT_JS,
                           KND_FORMAT_SVG,
                           //KND_FORMAT_GSL,
                           KND_FORMAT_GSP,
@@ -97,16 +96,9 @@ typedef enum knd_storage_type {
 
 #endif
 
-//#define LOGIC_NOT 0
-//#define LOGIC_AND 1 
-//#define LOGIC_OR  2
-
 #define KND_OFFSET_SIZE 4
 
 #define KND_IDLE_TIMEOUT 10 /* in seconds */
-
-#define GENERIC_TOPIC_NAME_RU "Общее"
-#define KND_NUM_RATINGS 8
 
 #define KND_TMP_DIR "/tmp"
 
@@ -120,18 +112,13 @@ typedef enum knd_storage_type {
 #define KND_RESULT_BATCH_SIZE 10
 #define KND_RESULT_MAX_BATCH_SIZE 100
 
-#define KND_ID_MATRIX_DEPTH 3
-#define KND_ID_BASE 64
-
-#define KND_MAX_INT_SIZE 4
-
 #define KND_MAX_DEBUG_CONTEXT_SIZE 100
 
 #define KND_ID_SIZE  (8 * sizeof(char))
 #define KND_ID_BATCH_SIZE 10
 #define KND_LOCALE_SIZE 8
 
-#define KND_STATE_SIZE  (4 * sizeof(char))
+//#define KND_STATE_SIZE  (4 * sizeof(char))
 
 #define KND_MAX_MIGRATIONS 256
 #define KND_MAX_SPECS 64
@@ -181,108 +168,12 @@ typedef enum knd_storage_type {
 #define KND_MAX_FLAT_ROWS 256
 #define KND_MAX_FLAT_COLS 64
 
-/* tags */
-#define KND_OBJ_MAIN_REC_TAG "M"
-#define KND_OBJ_MAIN_REC_TAG_SIZE strlen(KND_OBJ_MAIN_REC_TAG)
-
-#define KND_OBJ_NAME_TAG "N"
-#define KND_OBJ_NAME_TAG_SIZE strlen(KND_OBJ_NAME_TAG)
-
-/* access policy */
-#define KND_OBJ_POLICY_TAG "A"
-#define KND_OBJ_POLICY_TAG_SIZE strlen(KND_OBJ_POLICY_TAG)
-
-#define KND_OBJ_MIMETYPE_TAG "MI"
-#define KND_OBJ_MIMETYPE_TAG_SIZE strlen(KND_OBJ_MIMETYPE_TAG)
-
-#define KND_OBJ_FILENAME_TAG "FN"
-#define KND_OBJ_FILENAME_TAG_SIZE strlen(KND_OBJ_FILENAME_TAG)
-
-#define KND_OBJ_FILESIZE_TAG "FS"
-#define KND_OBJ_FILESIZE_TAG_SIZE strlen(KND_OBJ_FILESIZE_TAG)
-
-#define KND_OBJ_ROOT_TAG "R"
-#define KND_OBJ_ROOT_TAG_SIZE strlen(KND_OBJ_ROOT_TAG)
-
-#define KND_OBJ_LIST_TAG "L"
-#define KND_OBJ_LIST_TAG_SIZE strlen(KND_OBJ_LIST_TAG)
-
-#define KND_OBJ_ELEM_TAG "E"
-#define KND_OBJ_ELEM_TAG_SIZE strlen(KND_OBJ_ELEM_TAG)
 
 #define KND_NUMFIELD_MAX_SIZE 8
-
-#define KND_SET_TAG "F"
-#define KND_SET_TAG_SIZE strlen(KND_SET_TAG)
-
-#define KND_SET_DIR_TAG "D"
-#define KND_SET_DIR_TAG_SIZE strlen(KND_SET_DIR_TAG)
-
-#define KND_SET_FEAT_TAG "fe"
-#define KND_SET_FEAT_TAG_SIZE strlen(KND_SET_FEAT_TAG)
-
-#define KND_SET_INBOX_TAG "^"
-#define KND_SET_INBOX_TAG_SIZE strlen(KND_SET_INBOX_TAG)
-
-#define KND_SET_TERM_TAG "_"
-#define KND_SET_TERM_TAG_SIZE strlen(KND_SET_TERM_TAG)
-
-#define KND_SET_REF_TAG "R"
-#define KND_SET_REF_TAG_SIZE strlen(KND_SET_REF_TAG)
-
-#define KND_SET_HEADWORD_TAG "H"
-#define KND_SET_HEADWORD_TAG_SIZE strlen(KND_SET_HEADWORD_TAG)
-
-#define KND_DATABAND_TAG "B"
-#define KND_DATABAND_TAG_SIZE strlen(KND_DATABAND_TAG)
-
-#define KND_TIMEPERIOD_TAG "P"
-#define KND_TIMEPERIOD_TAG_SIZE strlen(KND_TIMEPERIOD_TAG)
-
 
 #define KND_LOC_SEPAR "/"
 #define KND_FACET_SEPAR "#"
 #define KND_TEXT_CHUNK_SEPAR " "
-
-/* index */
-#define KND_IDX_MAIN_REC_TAG "0"
-#define KND_IDX_MAIN_REC_TAG_SIZE strlen(KND_IDX_MAIN_REC_TAG)
-
-#define GSL_SPEC_TAG "S"
-#define GSL_SPEC_TAG_SIZE strlen(GSL_SPEC_TAG)
-
-#define GSL_LOC_TAG "L"
-#define GSL_LOC_TAG_SIZE strlen(GSL_LOC_TAG)
-
-#define GSL_TRANSLIT_TAG "TR"
-#define GSL_TRANSLIT_TAG_SIZE strlen(GSL_TRANSLIT_TAG)
-
-#define GSL_OPEN_DELIM "("
-#define GSL_OPEN_DELIM_SIZE strlen(GSL_OPEN_DELIM)
-
-#define GSL_CLOSE_DELIM ")"
-#define GSL_CLOSE_DELIM_SIZE strlen(GSL_CLOSE_DELIM)
-
-#define GSL_OPEN_FACET_DELIM "["
-#define GSL_OPEN_FACET_DELIM_SIZE strlen(GSL_OPEN_FACET_DELIM)
-
-#define GSL_CLOSE_FACET_DELIM "]"
-#define GSL_CLOSE_FACET_DELIM_SIZE strlen(GSL_CLOSE_FACET_DELIM)
-
-#define GSL_TERM_SEPAR ":"
-#define GSL_TERM_SEPAR_SIZE strlen(GSL_TERM_SEPAR)
-
-#define GSL_OFFSET "@"
-#define GSL_OFFSET_SIZE strlen(GSL_OFFSET)
-
-#define GSL_TOTAL "="
-#define GSL_TOTAL_SIZE strlen(GSL_OFFSET)
-
-#define GSL_CONC_SEPAR "|"
-#define GSL_CONC_SEPAR_SIZE strlen(GSL_CONC_SEPAR)
-
-#define KND_FIELD_SEPAR ";"
-#define KND_FIELD_SEPAR_SIZE strlen(KND_FIELD_SEPAR)
 
 
 #define KND_GROW_FACTOR 2
@@ -434,73 +325,6 @@ typedef enum knd_storage_type {
 #define KND_LOCREC_FIELD_SIZE sizeof(unsigned long)
 #define KND_LOCREC_SIZE (KND_LOCREC_FIELD_SIZE * KND_LOCREC_NUM_FIELDS)
 
-
-
-#define KND_DELIVERY_OK "OK"
-#define KND_DELIVERY_OK_SIZE strlen(KND_DELIVERY_OK)
-
-#define KND_DELIVERY_NO_RESULTS "NULL"
-#define KND_DELIVERY_NO_RESULTS_SIZE strlen(KND_DELIVERY_NO_RESULTS)
-
-#define KND_JSON_RESULTS_BEGIN "{\"results\":["
-#define KND_JSON_RESULTS_BEGIN_SIZE strlen(KND_JSON_RESULTS_BEGIN)
-
-#define KND_JSON_RESULTS_END "]}"
-#define KND_JSON_RESULTS_END_SIZE 2
-
-#define KND_JSON_FIRST_RESULT_ITEM "{\"text\":\""
-#define KND_JSON_NEXT_RESULT_ITEM ",{\"text\":\""
-
-#define KND_JSON_TITLE ",\"title\": \""
-#define KND_JSON_TITLE_SIZE strlen(KND_JSON_TITLE)
-
-#define KND_JSON_GUID ",\"guid\": \"%s\""
-
-#define KND_JSON_TOTAL_MATCHES ",\"total\": \"%lu\""
-
-#define KND_JSON_AUTH ",\"auth\": \""
-#define KND_JSON_AUTH_SIZE strlen(KND_JSON_AUTH)
-
-#define KND_JSON_EXACT ",\"exact\": ["
-#define KND_JSON_EXACT_SIZE strlen(KND_JSON_EXACT)
-
-#define KND_JSON_EXACT_NAME ",\"exact_name\": \"%s\""
-
-#define KND_JSON_TEXT ",\"text\": \""
-#define KND_JSON_TEXT_SIZE strlen(KND_JSON_TEXT)
-
-#define KND_JSON_SIMILAR ",\"similar\": ["
-#define KND_JSON_SIMILAR_SIZE strlen(KND_JSON_SIMILAR)
-
-#define KND_JSON_ROLES ",\"roles\": \""
-#define KND_JSON_ROLES_SIZE strlen(KND_JSON_ROLES)
-
-#define KND_JSON_SPECS ",\"specs\": \""
-#define KND_JSON_SPECS_SIZE strlen(KND_JSON_SPECS)
-
-#define KND_JSON_GUIDS ",\"guids\": ["
-#define KND_JSON_GUIDS_SIZE strlen(KND_JSON_SPECS)
-
-#define KND_JSON_MORE_SIMILAR "],\"more_similar\": ["
-#define KND_JSON_MORE_SIMILAR_SIZE strlen(KND_JSON_MORE_SIMILAR)
-
-#define KND_JSON_MORE_SPECS ",\"more_specs\": \""
-#define KND_JSON_MORE_SPECS_SIZE strlen(KND_JSON_MORE_SPECS)
-
-#define KND_JSON_STR_END "\""
-#define KND_JSON_STR_END_SIZE 1
-
-#define KND_JSON_ARRAY_BEGIN "["
-#define KND_JSON_ARRAY_BEGIN_SIZE 1
-
-#define KND_JSON_ARRAY_END "]"
-#define KND_JSON_ARRAY_END_SIZE 1
-
-#define KND_JSON_DICT_END "}"
-#define KND_JSON_DICT_END_SIZE 1
-
-#define KND_JSON_SEPAR ","
-#define KND_JSON_SEPAR_SIZE 1
 
 #define KND_TEXT_LINE_HEIGHT 24
 #define KND_TEXT_HANGINDENT_SIZE 40

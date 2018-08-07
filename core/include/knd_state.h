@@ -107,9 +107,9 @@ struct kndStateControl
 {
     struct kndUser *admin;
 
-    char state[KND_STATE_SIZE];
-    char next_state[KND_STATE_SIZE];
-    size_t global_state_count;
+    //char state[KND_STATE_SIZE];
+    //char next_state[KND_STATE_SIZE];
+    //size_t global_state_count;
 
     struct kndTask *task;
     struct kndRepo *repo;

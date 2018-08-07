@@ -94,7 +94,6 @@ struct kndTranslation
 struct kndTextState
 {
     knd_state_phase phase;
-    char state[KND_STATE_SIZE];
 
     /* translations of master text: manual or automatic */
     struct kndTranslation *translations;

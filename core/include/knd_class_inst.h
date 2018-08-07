@@ -48,10 +48,9 @@ struct kndMatchPoint
     size_t orig_pos;
 };
 
-struct kndAggrObject
+/*struct kndAggrObject
 {
     knd_state_phase phase;
-    char state[KND_STATE_SIZE];
 
     struct kndElem *parent;
     struct kndClass *conc;
@@ -60,7 +59,7 @@ struct kndAggrObject
     size_t num_elems;
    
     struct kndAggrObject *next;
-};
+    }; */
 
 struct kndObjEntry
 {

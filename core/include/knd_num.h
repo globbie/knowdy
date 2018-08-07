@@ -57,7 +57,7 @@ struct kndQuant
 struct kndNumState
 {
     knd_state_phase phase;
-    char state[KND_STATE_SIZE];
+    //char state[KND_STATE_SIZE];
     
     char val[KND_VAL_SIZE];
     size_t val_size;
