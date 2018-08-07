@@ -33,7 +33,7 @@ typedef enum knd_ref_t { knd_LOCAL, knd_FILESYSTEM, knd_URI } knd_ref_t;
 struct kndRefState
 {
     knd_state_phase phase;
-    char state[KND_STATE_SIZE];
+    //char state[KND_STATE_SIZE];
 
     char val[KND_NAME_SIZE + 1];
     size_t val_size;

@@ -61,7 +61,7 @@ knd_compare(const char *a, const char *b)
     return knd_EQUALS;
 }
 
-extern int knd_next_state(char *s)
+/*extern int knd_next_state(char *s)
 {
     char *c;
     for (int i = KND_STATE_SIZE - 1; i > -1; i--) {
@@ -74,7 +74,7 @@ extern int knd_next_state(char *s)
             *c = 'a';
             return knd_OK;
         case 'z':
-            /* last position overflow */
+            // last position overflow
             if (i == 0) return knd_LIMIT; 
             *c = '0';
             continue;
@@ -111,6 +111,7 @@ knd_state_compare(const char *a, const char *b)
     }
     return knd_EQUALS;
 }
+*/
 
 /* big-endian order: Y1 (62 alphanum base) => 96 (decimal) */
 extern void
