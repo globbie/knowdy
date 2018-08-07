@@ -1,3 +1,7 @@
+static int attr_vars_export_GSP(struct kndClass *self,
+                                 struct kndAttrVar *items,
+                                 size_t depth);
+
 static gsl_err_t read_GSP(struct kndClass *self,
                     const char *rec,
                     size_t *total_size)

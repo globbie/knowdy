@@ -260,6 +260,10 @@ extern int kndClass_new(struct kndClass **self,
                         struct kndMemPool *mempool);
 
 /* exported functions */
+extern int knd_get_class(struct kndClass *self,
+                         const char *name, size_t name_size,
+                         struct kndClass **result);
+
 extern gsl_err_t import_class_var(struct kndClassVar *self,
                                   const char *rec,
                                   size_t *total_size);
@@ -271,9 +275,29 @@ extern int knd_get_attr_var(struct kndClass *self,
                             size_t name_size,
                             struct kndAttrVar **result);
 
+extern int knd_class_get_attr(struct kndClass *self,
+                              const char *name, size_t name_size,
+                              struct kndAttr **result);
+
 extern int knd_class_export_set_JSON(struct kndClass *self,
                                      struct glbOutput *out,
                                      struct kndSet *set);
 
 extern int knd_class_export_JSON(struct kndClass *self,
                                  struct glbOutput *out);
+
+extern gsl_err_t knd_parse_import_class_inst(void *data,
+                                             const char *rec,
+                                             size_t *total_size);
+
+extern gsl_err_t knd_import_class(void *obj,
+                                  const char *rec,
+                                  size_t *total_size);
+
+extern gsl_err_t knd_select_class_delta(void *data,
+                                        const char *rec,
+                                        size_t *total_size);
+
+extern gsl_err_t knd_select_class(void *obj,
+                                  const char *rec,
+                                  size_t *total_size);
