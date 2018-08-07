@@ -39,6 +39,7 @@ struct kndUser;
 struct kndClassUpdate;
 struct kndClassUpdateRef;
 struct kndObjEntry;
+struct glbOutput;
 
 struct kndClassVar
 {
@@ -179,9 +180,10 @@ struct kndClass
     struct kndObject *obj_inbox;
     size_t obj_inbox_size;
     size_t num_objs;
-
-
     bool batch_mode;
+
+    /* submodules */
+    struct kndClassFormatter *formatter;
 
     /* indices */
     // TODO: move to repo
@@ -263,7 +265,15 @@ extern gsl_err_t import_class_var(struct kndClassVar *self,
                                   size_t *total_size);
 extern int knd_is_base(struct kndClass *self,
                        struct kndClass *base);
+
 extern int knd_get_attr_var(struct kndClass *self,
                             const char *name,
                             size_t name_size,
                             struct kndAttrVar **result);
+
+extern int knd_class_export_set_JSON(struct kndClass *self,
+                                     struct glbOutput *out,
+                                     struct kndSet *set);
+
+extern int knd_class_export_JSON(struct kndClass *self,
+                                 struct glbOutput *out);

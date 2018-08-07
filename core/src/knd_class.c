@@ -4532,8 +4532,6 @@ static int str_conc_elem(void *obj,
     return knd_OK;
 }
 
-
-
 static gsl_err_t present_class_selection(void *obj,
                                          const char *val __attribute__((unused)),
                                          size_t val_size __attribute__((unused)))
@@ -5222,8 +5220,8 @@ static int export(struct kndClass *self)
 
     switch(task->format) {
     case KND_FORMAT_JSON:
-        // TODO return export_JSON(self);
-        break;
+        return knd_class_export_JSON(self,
+                                     self->entry->repo->out);
         /*    case KND_FORMAT_GSL:
     return kndClass_export_GSL(self); */
     default:
@@ -5234,13 +5232,18 @@ static int export(struct kndClass *self)
     return knd_FAIL;
 }
 
+static int open_DB(struct kndClass *self)
+{
+    // TODO use kndClassStorage to open a frozen DB
+    return knd_NO_MATCH;
+}
 
 /*  Concept initializer */
 extern void kndClass_init(struct kndClass *self)
 {
     self->del = kndClass_del;
     self->str = str;
-    //self->open = open_frozen_DB;
+    self->open = open_DB;
     self->load = read_GSL_file;
     //self->read = read_GSP;
     //self->read_obj_entry = read_obj_entry;

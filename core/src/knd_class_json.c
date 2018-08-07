@@ -1,3 +1,45 @@
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <time.h>
+
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
+
+/* numeric conversion by strtol */
+#include <errno.h>
+#include <limits.h>
+
+#include "knd_config.h"
+#include "knd_class.h"
+#include "knd_class_inst.h"
+#include "knd_attr.h"
+#include "knd_task.h"
+#include "knd_state.h"
+#include "knd_user.h"
+#include "knd_repo.h"
+#include "knd_mempool.h"
+#include "knd_text.h"
+#include "knd_rel.h"
+#include "knd_proc.h"
+#include "knd_proc_arg.h"
+#include "knd_set.h"
+#include "knd_utils.h"
+#include "knd_http_codes.h"
+
+#include <glb-lib/output.h>
+
+#define DEBUG_JSON_LEVEL_1 0
+#define DEBUG_JSON_LEVEL_2 0
+#define DEBUG_JSON_LEVEL_3 0
+#define DEBUG_JSON_LEVEL_4 0
+#define DEBUG_JSON_LEVEL_5 0
+#define DEBUG_JSON_LEVEL_TMP 1
+
 static int export_class_state_JSON(struct kndClass *self)
 {
     char buf[KND_NAME_SIZE];
@@ -60,7 +102,7 @@ static int export_conc_elem_JSON(void *obj,
     struct kndClass *c = entry->class;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_JSON_LEVEL_2)
         knd_log("..export elem: %.*s  conc:%p entry:%p",
                 elem_id_size, elem_id, c, entry);
 
@@ -87,57 +129,6 @@ static int export_conc_elem_JSON(void *obj,
     return knd_OK;
 }
 
-static int export_set_JSON(struct kndClass *self,
-                           struct kndSet *set)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
-    struct glbOutput *out = self->entry->repo->out;
-    struct kndTask *task = self->entry->repo->task;
-    int err;
-
-    err = out->write(out, "{\"_set\":{",
-                     strlen("{\"_set\":{"));                                      RET_ERR();
-
-    /* TODO: present child clauses */
-
-    if (set->base) {
-        err = out->write(out, "\"_base\":\"",
-                         strlen("\"_base\":\""));                                 RET_ERR();
-        err = out->write(out, set->base->name,  set->base->name_size);            RET_ERR();
-        err = out->writec(out, '"');                                              RET_ERR();
-    }
-    err = out->writec(out, '}');                                                  RET_ERR();
-
-    buf_size = sprintf(buf, ",\"total\":%lu",
-                       (unsigned long)set->num_elems);
-    err = out->write(out, buf, buf_size);                                         RET_ERR();
-
-
-    err = out->write(out, ",\"batch\":[",
-                     strlen(",\"batch\":["));                                     RET_ERR();
-
-    err = set->map(set, export_conc_elem_JSON, (void*)self);
-    if (err && err != knd_RANGE) return err;
-
-    err = out->writec(out, ']');                                                  RET_ERR();
-
-    buf_size = sprintf(buf, ",\"batch_max\":%lu",
-                       (unsigned long)task->batch_max);
-    err = out->write(out, buf, buf_size);                                        RET_ERR();
-    buf_size = sprintf(buf, ",\"batch_size\":%lu",
-                       (unsigned long)task->batch_size);
-    err = out->write(out, buf, buf_size);                                     RET_ERR();
-    err = out->write(out,
-                     ",\"batch_from\":", strlen(",\"batch_from\":"));         RET_ERR();
-    buf_size = sprintf(buf, "%lu",
-                       (unsigned long)task->batch_from);
-    err = out->write(out, buf, buf_size);                                     RET_ERR();
-
-    err = out->writec(out, '}');                                                  RET_ERR();
-    return knd_OK;
-}
-
 
 static int aggr_item_export_JSON(struct kndClass *self,
                                  struct kndAttrVar *parent_item)
@@ -151,7 +142,7 @@ static int aggr_item_export_JSON(struct kndClass *self,
 
     c = parent_item->attr->parent_class;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_JSON_LEVEL_2) {
         knd_log(".. JSON export aggr item: %.*s",
                 parent_item->name_size, parent_item->name);
         //c = parent_item->attr->parent_class;
@@ -178,13 +169,14 @@ static int aggr_item_export_JSON(struct kndClass *self,
         c = parent_item->attr->conc;
         if (c->num_computed_attrs) {
 
-            if (DEBUG_CONC_LEVEL_2)
+            if (DEBUG_JSON_LEVEL_2)
                 knd_log("\n..present computed attrs in %.*s (val:%.*s)",
                         parent_item->name_size, parent_item->name,
                         parent_item->val_size, parent_item->val);
 
-            err = present_computed_aggr_attrs(self, parent_item);
-            if (err) return err;
+            // TODO
+            //err = present_computed_aggr_attrs(self, parent_item);
+            //if (err) return err;
         }
    }
     
@@ -360,7 +352,7 @@ static int attr_var_list_export_JSON(struct kndClass *self,
     size_t count = 0;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_JSON_LEVEL_2) {
         knd_log(".. export JSON list: %.*s\n\n",
                 parent_item->name_size, parent_item->name);
     }
@@ -530,7 +522,6 @@ static int attr_vars_export_JSON(struct kndClass *self,
     return knd_OK;
 }
 
-
 static int present_computed_class_attrs(struct kndClass *self,
                                         struct kndClassVar *cvar)
 {
@@ -573,8 +564,10 @@ static int present_computed_class_attrs(struct kndClass *self,
         case KND_ATTR_NUM:
             numval = attr_var->numval;
             if (!attr_var->is_cached) {
-                err = compute_class_attr_num_value(self, cvar, attr_var);
-                if (err) continue;
+
+                // TODO
+                //err = compute_class_attr_num_value(self, cvar, attr_var);
+                //if (err) continue;
 
                 numval = attr_var->numval;
                 //attr_var->numval = numval;
@@ -646,7 +639,7 @@ static int export_concise_JSON(struct kndClass *self)
     struct glbOutput *out = self->entry->repo->out;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_JSON_LEVEL_2)
         knd_log(".. export concise JSON for %.*s..",
                 self->entry->name_size, self->entry->name, self->entry->repo->out);
 
@@ -779,7 +772,7 @@ static int export_inherited_attrs_JSON(struct kndClass *self)
         /* skip over immediate attrs */
         if (attr->parent_class == self) continue;
 
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_JSON_LEVEL_2)
             knd_log(".. %.*s class to export inherited attr: %.*s",
                     self->name_size, self->name,
                     attr->name_size, attr->name);
@@ -809,7 +802,59 @@ static int export_inherited_attrs_JSON(struct kndClass *self)
     return knd_OK;
 }
 
-static int export_JSON(struct kndClass *self)
+extern int knd_class_export_set_JSON(struct kndClass *self,
+                                     struct glbOutput *out,
+                                     struct kndSet *set)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size;
+    struct kndTask *task = self->entry->repo->task;
+    int err;
+
+    err = out->write(out, "{\"_set\":{",
+                     strlen("{\"_set\":{"));                                      RET_ERR();
+
+    /* TODO: present child clauses */
+
+    if (set->base) {
+        err = out->write(out, "\"_base\":\"",
+                         strlen("\"_base\":\""));                                 RET_ERR();
+        err = out->write(out, set->base->name,  set->base->name_size);            RET_ERR();
+        err = out->writec(out, '"');                                              RET_ERR();
+    }
+    err = out->writec(out, '}');                                                  RET_ERR();
+
+    buf_size = sprintf(buf, ",\"total\":%lu",
+                       (unsigned long)set->num_elems);
+    err = out->write(out, buf, buf_size);                                         RET_ERR();
+
+
+    err = out->write(out, ",\"batch\":[",
+                     strlen(",\"batch\":["));                                     RET_ERR();
+
+    err = set->map(set, export_conc_elem_JSON, (void*)self);
+    if (err && err != knd_RANGE) return err;
+
+    err = out->writec(out, ']');                                                  RET_ERR();
+
+    buf_size = sprintf(buf, ",\"batch_max\":%lu",
+                       (unsigned long)task->batch_max);
+    err = out->write(out, buf, buf_size);                                        RET_ERR();
+    buf_size = sprintf(buf, ",\"batch_size\":%lu",
+                       (unsigned long)task->batch_size);
+    err = out->write(out, buf, buf_size);                                     RET_ERR();
+    err = out->write(out,
+                     ",\"batch_from\":", strlen(",\"batch_from\":"));         RET_ERR();
+    buf_size = sprintf(buf, "%lu",
+                       (unsigned long)task->batch_from);
+    err = out->write(out, buf, buf_size);                                     RET_ERR();
+
+    err = out->writec(out, '}');                                                  RET_ERR();
+    return knd_OK;
+}
+
+extern int knd_class_export_JSON(struct kndClass *self,
+                                 struct glbOutput *out)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -819,16 +864,12 @@ static int export_JSON(struct kndClass *self)
     struct kndClassVar *item;
     struct kndClassEntry *entry;
 
-
-    struct glbOutput *out;
     size_t item_count;
     int i, err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_JSON_LEVEL_TMP)
         knd_log(".. JSON export: \"%.*s\"  ",
                 self->entry->name_size, self->entry->name);
-
-    out = self->entry->repo->out;
 
     err = out->write(out, "{", 1);                                                RET_ERR();
     err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                RET_ERR();
@@ -886,7 +927,7 @@ static int export_JSON(struct kndClass *self)
             }
 
             if (self->num_computed_attrs) {
-                if (DEBUG_CONC_LEVEL_2)
+                if (DEBUG_JSON_LEVEL_2)
                     knd_log("\n.. export computed attrs of class %.*s",
                             self->name_size, self->name);
                 err = present_computed_class_attrs(self, item);
@@ -918,7 +959,7 @@ static int export_JSON(struct kndClass *self)
             }
             err = attr->export(attr, KND_FORMAT_JSON, out);
             if (err) {
-                if (DEBUG_CONC_LEVEL_TMP)
+                if (DEBUG_JSON_LEVEL_TMP)
                     knd_log("-- failed to export %.*s attr",
                             attr->name_size, attr->name);
                 return err;
@@ -1027,3 +1068,4 @@ static int export_JSON(struct kndClass *self)
 
     return knd_OK;
 }
+
