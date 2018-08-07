@@ -34,12 +34,12 @@
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
 
-#define DEBUG_CONC_LEVEL_1 0
-#define DEBUG_CONC_LEVEL_2 0
-#define DEBUG_CONC_LEVEL_3 0
-#define DEBUG_CONC_LEVEL_4 0
-#define DEBUG_CONC_LEVEL_5 0
-#define DEBUG_CONC_LEVEL_TMP 1
+#define DEBUG_CLASS_LEVEL_1 0
+#define DEBUG_CLASS_LEVEL_2 0
+#define DEBUG_CLASS_LEVEL_3 0
+#define DEBUG_CLASS_LEVEL_4 0
+#define DEBUG_CLASS_LEVEL_5 0
+#define DEBUG_CLASS_LEVEL_TMP 1
 
 static int get_arg_value(struct kndAttrVar *src,
                          struct kndAttrVar *query,
@@ -48,8 +48,6 @@ static int get_arg_value(struct kndAttrVar *src,
 static int build_attr_name_idx(struct kndClass *self);
 static gsl_err_t confirm_class_var(void *obj, const char *name, size_t name_size);
 static gsl_err_t confirm_attr_var(void *obj, const char *name, size_t name_size);
-
-static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size);
 
 static gsl_err_t validate_attr_var_list(void *obj,
                                          const char *name, size_t name_size,
@@ -65,9 +63,6 @@ static int read_obj_entry(struct kndClass *self,
                           struct kndObjEntry *entry,
                           struct kndObject **result);
 
-static int get_class(struct kndClass *self,
-                     const char *name, size_t name_size,
-                     struct kndClass **result);
 
 static int get_dir_trailer(struct kndClass *self,
                            struct kndClassEntry *parent_entry,
@@ -81,36 +76,38 @@ static int get_obj_dir_trailer(struct kndClass *self,
                                struct kndClassEntry *parent_entry,
                                int fd,
                                int encode_base);
-static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size);
-
-static int freeze(struct kndClass *self);
 
 static int read_GSL_file(struct kndClass *self,
                          struct kndConcFolder *parent_folder,
                          const char *filename,
                          size_t filename_size);
 
-static int get_attr(struct kndClass *self,
-                    const char *name, size_t name_size,
-                    struct kndAttr **result);
-
-static int attr_vars_export_GSP(struct kndClass *self,
-                                 struct kndAttrVar *items,
-                                 size_t depth);
-static gsl_err_t read_nested_attr_var(void *obj,
-                                       const char *name, size_t name_size,
-                                       const char *rec, size_t *total_size);
-static gsl_err_t import_nested_attr_var(void *obj,
-                                         const char *name, size_t name_size,
-                                         const char *rec, size_t *total_size);
-static void append_attr_var(struct kndClassVar *ci,
-                             struct kndAttrVar *attr_var);
-
 static int str_conc_elem(void *obj,
                          const char *elem_id,
                          size_t elem_id_size,
                          size_t count,
                          void *elem);
+
+
+static int str_conc_elem(void *obj,
+                         const char *elem_id __attribute__((unused)),
+                         size_t elem_id_size __attribute__((unused)),
+                         size_t count __attribute__((unused)),
+                         void *elem)
+{
+    struct kndClass *self = obj;
+    struct kndClassEntry *entry = elem;
+    struct kndClass *c = entry->class;
+    int err;
+
+    if (!c) {
+        //err = unfreeze_class(self, entry, &c);                                    RET_ERR();
+    }
+
+    c->str(c);
+
+    return knd_OK;
+}
 
 static void reset_inbox(struct kndClass *self)
 {
@@ -352,7 +349,7 @@ static void str(struct kndClass *self)
                     f->attr->name_size, f->attr->name);
                     } */
 
-        if (DEBUG_CONC_LEVEL_2) {
+        if (DEBUG_CLASS_LEVEL_2) {
             err = set->map(set, str_conc_elem, NULL);
             if (err) return;
         }
@@ -374,192 +371,6 @@ static void str(struct kndClass *self)
     knd_log("%*s}", self->depth * KND_OFFSET_SIZE, "");
 }
 
-static gsl_err_t alloc_gloss_item(void *obj,
-                                  const char *name,
-                                  size_t name_size,
-                                  size_t count,
-                                  void **item)
-{
-    struct kndClass *self = obj;
-    struct kndTranslation *tr;
-
-    assert(name == NULL && name_size == 0);
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. %.*s: allocate gloss translation,  count: %zu",
-                self->entry->name_size, self->entry->name, count);
-
-    tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return make_gsl_err_external(knd_NOMEM);
-
-    memset(tr, 0, sizeof(struct kndTranslation));
-    *item = tr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t append_gloss_item(void *accu,
-                                   void *item)
-{
-    struct kndClass *self =   accu;
-    struct kndTranslation *tr = item;
-
-    tr->next = self->tr;
-    self->tr = tr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_gloss_item(void *obj,
-                                  const char *rec,
-                                  size_t *total_size)
-{
-    struct kndTranslation *tr = obj;
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .buf = tr->curr_locale,
-          .buf_size = &tr->curr_locale_size,
-          .max_buf_size = sizeof tr->curr_locale
-        },
-        { .name = "t",
-          .name_size = strlen("t"),
-          .buf = tr->val,
-          .buf_size = &tr->val_size,
-          .max_buf_size = sizeof tr->val
-        }
-    };
-    gsl_err_t err;
-
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
-
-    if (tr->curr_locale_size == 0 || tr->val_size == 0)
-        return make_gsl_err(gsl_FORMAT);  // error: both of them are required
-
-    tr->locale = tr->curr_locale;
-    tr->locale_size = tr->curr_locale_size;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
-                tr->locale_size, tr->locale, tr->val_size, tr->val);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_gloss_array(void *obj,
-                                   const char *rec,
-                                   size_t *total_size)
-{
-    struct kndClass *self = obj;
-
-    struct gslTaskSpec item_spec = {
-        .is_list_item = true,
-        .alloc = alloc_gloss_item,
-        .append = append_gloss_item,
-        .accu = self,
-        .parse = parse_gloss_item
-    };
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. %.*s: reading gloss",
-                self->entry->name_size, self->entry->name);
-
-    return gsl_parse_array(&item_spec, rec, total_size);
-}
-
-
-static gsl_err_t alloc_summary_item(void *obj,
-                                    const char *name,
-                                    size_t name_size,
-                                    size_t count,
-                                    void **item)
-{
-    struct kndClass *self = obj;
-    struct kndTranslation *tr;
-
-    assert(name == NULL && name_size == 0);
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. %.*s: allocate summary translation,  count: %zu",
-                self->entry->name_size, self->entry->name, count);
-
-    tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return make_gsl_err_external(knd_NOMEM);
-
-    memset(tr, 0, sizeof(struct kndTranslation));
-    *item = tr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t append_summary_item(void *accu,
-                                   void *item)
-{
-    struct kndClass *self =   accu;
-    struct kndTranslation *tr = item;
-
-    tr->next = self->summary;
-    self->summary = tr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_summary_item(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
-{
-    struct kndTranslation *tr = obj;
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .buf = tr->curr_locale,
-          .buf_size = &tr->curr_locale_size,
-          .max_buf_size = sizeof tr->curr_locale
-        },
-        { .name = "t",
-          .name_size = strlen("t"),
-          .buf = tr->val,
-          .buf_size = &tr->val_size,
-          .max_buf_size = sizeof tr->val
-        }
-    };
-    gsl_err_t err;
-
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
-
-    if (tr->curr_locale_size == 0 || tr->val_size == 0)
-        return make_gsl_err(gsl_FORMAT);  // error: both of them are required
-
-    tr->locale = tr->curr_locale;
-    tr->locale_size = tr->curr_locale_size;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. read summary translation: \"%.*s\",  text: \"%.*s\"",
-                tr->locale_size, tr->locale, tr->val_size, tr->val);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_summary_array(void *obj,
-                                     const char *rec,
-                                     size_t *total_size)
-{
-    struct kndClass *self = obj;
-
-    struct gslTaskSpec item_spec = {
-        .is_list_item = true,
-        .alloc = alloc_summary_item,
-        .append = append_summary_item,
-        .accu = self,
-        .parse = parse_summary_item
-    };
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. %.*s: reading summary",
-                self->entry->name_size, self->entry->name);
-
-    return gsl_parse_array(&item_spec, rec, total_size);
-}
 
 static int inherit_attrs(struct kndClass *self, struct kndClass *base)
 {
@@ -570,7 +381,7 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
     struct kndClassVar *item;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. \"%.*s\" class to inherit attrs from \"%.*s\"..",
                 self->entry->name_size, self->entry->name,
                 base->name_size, base->name);
@@ -585,13 +396,13 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
         entry = self->bases[i];
         c = entry->class;
 
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_CLASS_LEVEL_2)
             knd_log("== (%zu of %zu)  \"%.*s\" is a base of \"%.*s\"",
                     i, self->num_bases, c->name_size, c->name,
                     self->entry->name_size, self->entry->name);
 
         if (entry->class == base) {
-            if (DEBUG_CONC_LEVEL_2)
+            if (DEBUG_CLASS_LEVEL_2)
                 knd_log("NB: class \"%.*s\" is already inherited "
                         "by \"%.*s\"",
                         base->name_size, base->name,
@@ -643,7 +454,7 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
     self->bases[self->num_bases] = base->entry;
     self->num_bases++;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CLASS_LEVEL_1)
         knd_log(" .. add %.*s parent to %.*s",
                 base->entry->class->name_size,
                 base->entry->class->name,
@@ -657,29 +468,6 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
     return knd_OK;
 }
 
-extern int knd_is_base(struct kndClass *self,
-                       struct kndClass *child)
-{
-    if (DEBUG_CONC_LEVEL_2) {
-        knd_log(".. check inheritance: %.*s [resolved: %d] => %.*s [resolved:%d]?",
-                child->name_size, child->name, child->is_resolved,
-                self->entry->name_size, self->entry->name, self->is_resolved);
-    }
-
-    /* make sure that a child inherits from the base */
-    for (size_t i = 0; i < child->num_bases; i++) {
-        if (child->bases[i]->class == self) {
-            return knd_OK;
-        }
-    }
-
-    if (DEBUG_CONC_LEVEL_TMP)
-        knd_log("-- no inheritance from  \"%.*s\" to \"%.*s\" :(",
-                self->entry->name_size, self->entry->name,
-                child->name_size, child->name);
-    return knd_FAIL;
-}
-
 static int index_attr(struct kndClass *self,
                       struct kndAttr *attr,
                       struct kndAttrVar *item)
@@ -689,7 +477,7 @@ static int index_attr(struct kndClass *self,
     struct kndClass *c = NULL;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log("\n.. indexing CURR CLASS: \"%.*s\" .. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" (name:%.*s val:%.*s)",
                 self->entry->name_size, self->entry->name,
@@ -701,18 +489,18 @@ static int index_attr(struct kndClass *self,
     if (!attr->ref_classname_size) return knd_OK;
 
     /* template base class */
-    err = get_class(self,
-                    attr->ref_classname,
-                    attr->ref_classname_size,
-                    &base);                                                       RET_ERR();
+    err = knd_get_class(self,
+                        attr->ref_classname,
+                        attr->ref_classname_size,
+                        &base);                                                       RET_ERR();
     if (!base->is_resolved) {
         err = base->resolve(base, NULL);                                          RET_ERR();
     }
 
     /* specific class */
-    err = get_class(self,
-                    item->val,
-                    item->val_size, &c);                                          RET_ERR();
+    err = knd_get_class(self,
+                        item->val,
+                        item->val_size, &c);                                          RET_ERR();
 
     item->class = c;
 
@@ -740,7 +528,7 @@ static int index_attr_var_list(struct kndClass *self,
     struct kndAttrVar *item = parent_item;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log("\n.. attr item list indexing.. (class:%.*s) .. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" (name:%.*s val:%.*s)",
                 self->entry->name_size, self->entry->name,
@@ -752,7 +540,7 @@ static int index_attr_var_list(struct kndClass *self,
     if (!attr->ref_classname_size) return knd_OK;
 
     /* template base class */
-    err = get_class(self,
+    err = knd_get_class(self,
                     attr->ref_classname,
                     attr->ref_classname_size,
                     &base);                                                       RET_ERR();
@@ -762,11 +550,11 @@ static int index_attr_var_list(struct kndClass *self,
 
     for (item = parent_item->list; item; item = item->next) {
 
-        if (DEBUG_CONC_LEVEL_3)
+        if (DEBUG_CLASS_LEVEL_3)
             knd_log("== list item name:%.*s", item->name_size, item->name);
 
         /* specific class */
-        err = get_class(self,
+        err = knd_get_class(self,
                         item->name,
                         item->name_size, &c);                                          RET_ERR();
         item->class = c;
@@ -796,7 +584,7 @@ static int resolve_class_ref(struct kndClass *self,
     struct ooDict *class_name_idx = self->entry->repo->root_class->class_name_idx;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. checking class ref:  %.*s", name_size, name);
 
     entry = class_name_idx->get(class_name_idx, name, name_size);
@@ -834,7 +622,7 @@ static int resolve_proc_ref(struct kndClass *self,
     struct kndProc *root_proc, *proc;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. resolving proc ref:  %.*s", name_size, name);
 
     root_proc = self->root_class->proc;
@@ -868,7 +656,7 @@ static int resolve_aggr_item(struct kndClass *self,
     size_t classname_size;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. resolve aggr item %.*s  attr:%p",
                 parent_item->name_size, parent_item->name,
                 parent_item->attr);
@@ -882,7 +670,7 @@ static int resolve_aggr_item(struct kndClass *self,
     }
     c = parent_item->attr->conc;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. resolving aggr item \"%.*s\" (count:%zu)"
                 " class:%.*s  is_list_item:%d",
                 parent_item->name_size,  parent_item->name,
@@ -897,13 +685,13 @@ static int resolve_aggr_item(struct kndClass *self,
         classname_size = parent_item->name_size;
     }
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_2)
         c->str(c);
 
     if (c->implied_attr) {
         attr = c->implied_attr;
 
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_CLASS_LEVEL_2)
             knd_log("== class: \"%.*s\" implied attr: %.*s",
                     classname_size, classname,
                     attr->name_size, attr->name);
@@ -913,7 +701,7 @@ static int resolve_aggr_item(struct kndClass *self,
         switch (attr->type) {
         case KND_ATTR_NUM:
 
-            if (DEBUG_CONC_LEVEL_2)
+            if (DEBUG_CLASS_LEVEL_2)
                 knd_log(".. resolving implied num attr: %.*s val:%.*s",
                         parent_item->name_size, parent_item->name,
                         parent_item->val_size, parent_item->val);
@@ -942,14 +730,14 @@ static int resolve_aggr_item(struct kndClass *self,
 
     /* resolve nested children */
     for (item = parent_item->children; item; item = item->next) {
-        if (DEBUG_CONC_LEVEL_2) {
+        if (DEBUG_CLASS_LEVEL_2) {
             knd_log(".. check attr \"%.*s\" in class \"%.*s\" "
                     " is_resolved:%d",
                     item->name_size, item->name,
                     c->name_size, c->name, c->is_resolved);
         }
 
-        err = get_attr(c, item->name, item->name_size, &attr);
+        err = knd_class_get_attr(c, item->name, item->name_size, &attr);
         if (err) {
             knd_log("-- no attr \"%.*s\" in class \"%.*s\" :(",
                     item->name_size, item->name,
@@ -960,7 +748,7 @@ static int resolve_aggr_item(struct kndClass *self,
 
         switch (attr->type) {
         case KND_ATTR_NUM:
-            if (DEBUG_CONC_LEVEL_2)
+            if (DEBUG_CLASS_LEVEL_2)
                 knd_log(".. resolving default num attr: %.*s val:%.*s",
                         item->name_size, item->name,
                         item->val_size, item->val);
@@ -972,7 +760,7 @@ static int resolve_aggr_item(struct kndClass *self,
 
             break;
         case KND_ATTR_AGGR:
-            if (DEBUG_CONC_LEVEL_2)
+            if (DEBUG_CLASS_LEVEL_2)
                 knd_log("== nested aggr item found: %.*s conc:%p",
                         item->name_size, item->name, attr->conc);
             err = resolve_aggr_item(self, item);
@@ -1005,7 +793,7 @@ static int resolve_attr_var_list(struct kndClass *self,
     struct kndClass *c;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_2) {
         const char *attr_type_name = knd_attr_names[parent_attr->type];
         size_t attr_type_name_size = strlen(attr_type_name);
         knd_log(".. class %.*s to resolve attr item list \"%.*s\" "
@@ -1031,7 +819,7 @@ static int resolve_attr_var_list(struct kndClass *self,
         err = c->resolve(c, NULL);                                                RET_ERR();
     }
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_2)
         c->str(c);
 
     /* first item */
@@ -1097,7 +885,7 @@ static int resolve_attr_vars(struct kndClass *self,
     struct ooDict *attr_name_idx = self->attr_name_idx;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. resolving attr vars of class %.*s",
                 self->entry->name_size, self->entry->name);
     }
@@ -1113,7 +901,7 @@ static int resolve_attr_vars(struct kndClass *self,
         /* save attr assignment */
         entry->attr_var = attr_var;
 
-        if (DEBUG_CONC_LEVEL_2) {
+        if (DEBUG_CLASS_LEVEL_2) {
             knd_log("== entry attr: %.*s %d",
                     attr_var->name_size, attr_var->name,
                     entry->attr->is_indexed);
@@ -1189,7 +977,7 @@ static int resolve_attrs(struct kndClass *self)
     struct ooDict *class_name_idx = self->entry->repo->root_class->class_name_idx;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. resolving attrs..");
 
     // TODO: mempool
@@ -1221,7 +1009,7 @@ static int resolve_attrs(struct kndClass *self)
             self->num_computed_attrs++;
         }
 
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_CLASS_LEVEL_2)
             knd_log("++ register primary attr: \"%.*s\"",
                     attr->name_size, attr->name);
 
@@ -1271,7 +1059,7 @@ static int resolve_attrs(struct kndClass *self)
             // TODO
             //attr->proc = proc_entry->proc;
 
-            if (DEBUG_CONC_LEVEL_2)
+            if (DEBUG_CLASS_LEVEL_2)
                 knd_log("++ proc ref resolved: %.*s!",
                         proc_entry->name_size, proc_entry->name);
             break;
@@ -1294,7 +1082,7 @@ static int resolve_objs(struct kndClass     *self,
     struct kndState *state;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CLASS_LEVEL_1)
         knd_log("..resolving objs, num objs: %zu",
                 self->obj_inbox_size);
 
@@ -1348,7 +1136,6 @@ static int resolve_objs(struct kndClass     *self,
     return err;
 }
 
-
 static int register_descendants(struct kndClass *self)
 {
     struct kndClassEntry *entry;
@@ -1367,7 +1154,7 @@ static int register_descendants(struct kndClass *self)
             entry->descendants = set;
         }
 
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_CLASS_LEVEL_2)
             knd_log(".. add \"%.*s\" as a descendant of \"%.*s\"..",
                     self->entry->name_size, self->entry->name,
                     entry->name_size, entry->name);
@@ -1388,7 +1175,7 @@ static int resolve_baseclasses(struct kndClass *self)
     size_t classname_size;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. resolving baseclasses of \"%.*s\"..",
                 self->entry->name_size, self->entry->name);
 
@@ -1397,7 +1184,7 @@ static int resolve_baseclasses(struct kndClass *self)
 
         if (cvar->entry->class == self) {
             /* TODO */
-            if (DEBUG_CONC_LEVEL_2)
+            if (DEBUG_CLASS_LEVEL_2)
                 knd_log(".. \"%.*s\" class to check the update request: \"%s\"..",
                         self->entry->name_size, self->entry->name,
                         cvar->entry->name_size, cvar->entry->name);
@@ -1431,13 +1218,13 @@ static int resolve_baseclasses(struct kndClass *self)
             return knd_FAIL;
         }
 
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_CLASS_LEVEL_2)
             knd_log("\n.. \"%.*s\" class to get its base class: \"%.*s\"..",
                     self->entry->name_size, self->entry->name,
                     classname_size, classname);
 
         //c = cvar->entry->class;
-        err = get_class(self, classname, classname_size, &c);         RET_ERR();
+        err = knd_get_class(self, classname, classname_size, &c);         RET_ERR();
 
         if (c == self) {
             knd_log("-- self reference detected in \"%.*s\" :(",
@@ -1445,7 +1232,7 @@ static int resolve_baseclasses(struct kndClass *self)
             return knd_FAIL;
         }
 
-        if (DEBUG_CONC_LEVEL_2) {
+        if (DEBUG_CLASS_LEVEL_2) {
             knd_log("++ \"%.*s\" ref established as a base class for \"%.*s\"!",
                     cvar->entry->name_size, cvar->entry->name,
                     self->entry->name_size, self->entry->name);
@@ -1469,7 +1256,7 @@ static int resolve_baseclasses(struct kndClass *self)
         }
 
         //if (task->type == KND_UPDATE_STATE) {
-        /*if (DEBUG_CONC_LEVEL_2)
+        /*if (DEBUG_CLASS_LEVEL_2)
             knd_log(".. update task to add class \"%.*s\" as a child of "
                     " \"%.*s\" (total children:%zu)",
                     self->entry->name_size, self->entry->name,
@@ -1514,7 +1301,7 @@ static int resolve_refs(struct kndClass *self,
     struct kndState *state;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CLASS_LEVEL_1)
         knd_log(".. resolving class: \"%.*s\"",
                 self->name_size, self->name);
 
@@ -1530,7 +1317,7 @@ static int resolve_refs(struct kndClass *self,
         knd_num_to_str(entry->numid, entry->id, &entry->id_size, KND_RADIX_BASE);
     }
 
-    if (DEBUG_CONC_LEVEL_1) {
+    if (DEBUG_CLASS_LEVEL_1) {
         knd_log(".. resolving class \"%.*s\" id:%.*s entry numid:%zu  batch mode:%d",
                 self->entry->name_size, self->entry->name,
                 entry->id_size, entry->id, self->entry->numid, self->batch_mode);
@@ -1659,7 +1446,7 @@ static int build_attr_name_idx(struct kndClass *self)
     }
 
     for (item = self->baseclass_vars; item; item = item->next) {
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_CLASS_LEVEL_2)
             knd_log(".. class \"%.*s\" to inherit attrs from baseclass \"%.*s\"..",
                     self->entry->name_size, self->entry->name,
                     item->entry->class->name_size,
@@ -1681,7 +1468,7 @@ extern int knd_get_attr_var(struct kndClass *self,
     struct kndClass *c;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. \"%.*s\" class to retrieve attr var \"%.*s\"..",
                 self->entry->name_size, self->entry->name,
                 name_size, name);
@@ -1698,7 +1485,7 @@ extern int knd_get_attr_var(struct kndClass *self,
 
     /* ask your parents */
     for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
-        err = get_class(root_class,
+        err = knd_get_class(root_class,
                         cvar->entry->name,
                         cvar->entry->name_size,
                         &c);
@@ -1718,1388 +1505,6 @@ extern int knd_get_attr_var(struct kndClass *self,
     return knd_FAIL;
 }
 
-static int get_attr(struct kndClass *self,
-                    const char *name, size_t name_size,
-                    struct kndAttr **result)
-{
-    struct kndAttr *attr;
-    struct kndAttrEntry *entry;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_1) {
-        knd_log(".. \"%.*s\" class to check attr \"%.*s\"",
-                self->entry->name_size, self->entry->name, name_size, name);
-    }
-
-    // TODO: no allocation in select tasks
-    if (!self->attr_name_idx) {
-        err = ooDict_new(&self->attr_name_idx, KND_SMALL_DICT_SIZE);
-        if (err) return err;
-
-        for (attr = self->attrs; attr; attr = attr->next) {
-            entry = malloc(sizeof(struct kndAttrEntry));
-            if (!entry) return knd_NOMEM;
-            memset(entry, 0, sizeof(struct kndAttrEntry));
-            memcpy(entry->name, attr->name, attr->name_size);
-            entry->name_size = attr->name_size;
-            entry->name[entry->name_size] = '\0';
-            entry->attr = attr;
-
-            err = self->attr_name_idx->set(self->attr_name_idx,
-                                      entry->name, entry->name_size, (void*)entry);
-            if (err) return err;
-            if (DEBUG_CONC_LEVEL_2)
-                knd_log("++ register primary attr: \"%.*s\"",
-                        attr->name_size, attr->name);
-        }
-    }
-
-    entry = self->attr_name_idx->get(self->attr_name_idx, name, name_size);
-    if (!entry) {
-        knd_log("-- attr idx has no entry: %.*s :(", name_size, name);
-        return knd_NO_MATCH;
-    }
-
-    *result = entry->attr;
-    return knd_OK;
-}
-
-static gsl_err_t atomic_elem_alloc(void *obj,
-                                   const char *val,
-                                   size_t val_size,
-                                   size_t count  __attribute__((unused)),
-                                   void **item __attribute__((unused)))
-{
-    struct kndClass *self = obj;
-    struct kndSet *class_idx, *set;
-    struct kndClassEntry *entry;
-    void *elem;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_2) {
-        knd_log("Conc %.*s: atomic elem alloc: \"%.*s\"",
-                self->entry->name_size, self->entry->name,
-                val_size, val);
-    }
-    class_idx = self->class_idx;
-
-    err = class_idx->get(class_idx, val, val_size, &elem);
-    if (err) {
-        knd_log("-- IDX:%p couldn't resolve class id: \"%.*s\" [size:%zu] :(",
-                class_idx, val_size, val, val_size);
-        return make_gsl_err_external(knd_NO_MATCH);
-    }
-
-    entry = elem;
-
-    set = self->entry->descendants;
-    err = set->add(set, entry->id, entry->id_size, (void*)entry);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t atomic_elem_append(void *accu  __attribute__((unused)),
-                                    void *item __attribute__((unused)))
-{
-
-    return make_gsl_err(gsl_OK);
-}
-
-/* facet parsing */
-
-static gsl_err_t facet_alloc(void *obj,
-                             const char *name,
-                             size_t name_size,
-                             size_t count __attribute__((unused)),
-                             void **item)
-{
-    struct kndSet *set = obj;
-    struct kndFacet *f;
-    struct kndMemPool *mempool = set->base->repo->mempool;
-    int err;
-
-    assert(name == NULL && name_size == 0);
-
-    if (DEBUG_CONC_LEVEL_1)
-        knd_log(".. \"%.*s\" set to alloc a facet..",
-                set->base->name_size, set->base->name);
-
-    err = mempool->new_facet(mempool, &f);
-    if (err) return make_gsl_err_external(err);
-
-    /* TODO: mempool alloc */
-    err = ooDict_new(&f->set_name_idx, KND_SMALL_DICT_SIZE);
-    if (err) return make_gsl_err_external(err);
-
-    f->parent = set;
-
-    *item = (void*)f;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t facet_append(void *accu,
-                              void *item)
-{
-    struct kndSet *set = accu;
-    struct kndFacet *f = item;
-
-    if (set->num_facets >= KND_MAX_ATTRS)
-        return make_gsl_err_external(knd_LIMIT);
-
-    set->facets[set->num_facets] = f;
-    set->num_facets++;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t set_facet_name(void *obj, const char *name, size_t name_size)
-{
-    struct kndFacet *f = obj;
-    struct kndSet *parent = f->parent;
-    struct kndClass *c;
-    struct kndAttr *attr;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. set %.*s to add facet \"%.*s\"..",
-                parent->base->name_size, parent->base->name, name_size, name);
-
-    c = parent->base->class;
-    err = c->get_attr(c, name, name_size, &attr);
-    if (err) {
-        knd_log("-- no such facet attr: \"%.*s\"",
-                name_size, name);
-        return make_gsl_err_external(err);
-    }
-
-    f->attr = attr;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t set_alloc(void *obj,
-                           const char *name,
-                           size_t name_size,
-                           size_t count __attribute__((unused)),
-                           void **item)
-{
-    struct kndFacet *self = obj;
-    struct kndSet *set;
-    struct kndMemPool *mempool = self->attr->parent_class->entry->repo->mempool;
-    int err;
-
-    assert(name == NULL && name_size == 0);
-
-    err = mempool->new_set(mempool, &set);
-    if (err) return make_gsl_err_external(err);
-
-    set->type = KND_SET_CLASS;
-    //set->mempool = self->entry->repo->mempool;
-    set->parent_facet = self;
-
-    *item = (void*)set;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t set_append(void *accu,
-                            void *item)
-{
-    struct kndFacet *self = accu;
-    struct kndSet *set = item;
-    int err;
-
-    if (!self->set_name_idx) return make_gsl_err(gsl_OK);
-
-    err = self->set_name_idx->set(self->set_name_idx,
-                                  set->base->name, set->base->name_size,
-                                  (void*)set);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t resolve_set_base(void *obj,
-                                  const char *id, size_t id_size)
-{
-    struct kndSet *set = obj;
-    struct kndFacet *parent_facet = set->parent_facet;
-    struct kndClass *c;
-    void *result;
-    int err;
-
-    c = parent_facet->parent->base->class;
-    err = c->class_idx->get(c->class_idx,
-                            id, id_size, &result);
-    if (err) {
-        knd_log("-- no such class: \"%.*s\":(", id_size, id);
-        return make_gsl_err_external(err);
-    }
-    set->base = result;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("++ base class: %.*s \"%.*s\"",
-                id_size, id, set->base->name_size, set->base->name);
-
-    return make_gsl_err(gsl_OK);
-}
-
-
-
-static gsl_err_t atomic_classref_alloc(void *obj,
-                                       const char *val,
-                                       size_t val_size,
-                                       size_t count  __attribute__((unused)),
-                                       void **item __attribute__((unused)))
-{
-    struct kndSet *self = obj;
-    struct kndSet *class_idx;
-    struct kndClassEntry *entry;
-    void *elem;
-    int err;
-
-    entry = self->base;
-
-    if (DEBUG_CONC_LEVEL_2) {
-        knd_log(".. base class \"%.*s\": atomic classref alloc: \"%.*s\"",
-                entry->name_size, entry->name,
-                val_size, val);
-    }
-
-    class_idx = entry->class_idx;
-
-    err = class_idx->get(class_idx, val, val_size, &elem);
-    if (err) {
-        knd_log("-- IDX:%p couldn't resolve class id: \"%.*s\" [size:%zu] :(",
-                class_idx, val_size, val, val_size);
-        return make_gsl_err_external(knd_NO_MATCH);
-    }
-    entry = elem;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("++ classref resolved: %.*s \"%.*s\"",
-                val_size, val, entry->name_size, entry->name);
-
-    err = self->add(self, val, val_size, (void*)entry);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t set_read(void *obj,
-                          const char *rec,
-                          size_t *total_size)
-{
-    struct kndSet *set = obj;
-
-    struct gslTaskSpec classref_spec = {
-        .is_list_item = true,
-        .alloc = atomic_classref_alloc,
-        .append = atomic_elem_append,
-        .accu = set
-    };
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = resolve_set_base,
-          .obj = set
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "c",
-          .name_size = strlen("c"),
-          .parse = gsl_parse_array,
-          .obj = &classref_spec
-        }
-    };
-    gsl_err_t err;
-
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
-
-    if (!set->base) {
-        knd_log("-- no base class provided :(");
-        return make_gsl_err(gsl_FORMAT);
-    }
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t facet_read(void *obj,
-                            const char *rec,
-                            size_t *total_size)
-{
-    struct kndFacet *f = obj;
-
-    struct gslTaskSpec set_item_spec = {
-        .is_list_item = true,
-        .alloc = set_alloc,
-        .append = set_append,
-        .accu = f,
-        .parse = set_read
-    };
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = set_facet_name,
-          .obj = f
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "set",
-          .name_size = strlen("set"),
-          .parse = gsl_parse_array,
-          .obj = &set_item_spec
-        }
-    };
-    gsl_err_t err;
-
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
-
-    if (f->attr == NULL) {
-        knd_log("-- no facet name provided :(");
-        return make_gsl_err(gsl_FORMAT);
-    }
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_descendants(void *obj,
-                                   const char *rec,
-                                   size_t *total_size)
-{
-    struct kndClass *self = obj;
-    struct kndSet *set;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    size_t total_elems = 0;
-    int err;
-    gsl_err_t parser_err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. parsing a set of descendants: \"%.*s\"", 300, rec);
-
-    err = mempool->new_set(mempool, &set);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    set->type = KND_SET_CLASS;
-    set->base = self->entry;
-    self->entry->descendants = set;
-
-    struct gslTaskSpec c_item_spec = {
-        .is_list_item = true,
-        .alloc = atomic_elem_alloc,
-        .append = atomic_elem_append,
-        .accu = self
-    };
-
-    struct gslTaskSpec facet_spec = {
-        .is_list_item = true,
-        .alloc = facet_alloc,
-        .append = facet_append,
-        .parse = facet_read,
-        .accu = set
-    };
-
-    struct gslTaskSpec specs[] = {
-        {  .name = "tot",
-           .name_size = strlen("tot"),
-           .parse = gsl_parse_size_t,
-           .obj = &total_elems
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "c",
-          .name_size = strlen("c"),
-          .parse = gsl_parse_array,
-          .obj = &c_item_spec
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "fc",
-          .name_size = strlen("fc"),
-          .parse = gsl_parse_array,
-          .obj = &facet_spec
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    if (total_elems != set->num_elems) {
-        knd_log("-- set total elems mismatch: %zu vs actual %zu",
-                total_elems, set->num_elems);
-        return make_gsl_err(gsl_FAIL);
-    }
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_aggr(void *obj,
-                            const char *rec,
-                            size_t *total_size)
-{
-    struct kndClass *self = obj;
-    struct kndAttr *attr;
-    int err;
-    gsl_err_t parser_err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. parsing the AGGR attr: \"%.*s\"", 32, rec);
-
-    err = kndAttr_new(&attr);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent_class = self;
-    attr->type = KND_ATTR_AGGR;
-
-    parser_err = attr->parse(attr, rec, total_size);
-    if (parser_err.code) {
-        if (DEBUG_CONC_LEVEL_TMP)
-            knd_log("-- failed to parse the AGGR attr: %d", parser_err.code);
-        return parser_err;
-    }
-
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
-        self->attrs = attr;
-    }
-    else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
-    }
-    self->num_attrs++;
-
-    if (DEBUG_CONC_LEVEL_2)
-        attr->str(attr);
-
-    if (attr->is_implied)
-        self->implied_attr = attr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_str(void *obj,
-                           const char *rec,
-                           size_t *total_size)
-{
-    struct kndClass *self = (struct kndClass*)obj;
-    struct kndAttr *attr;
-    int err;
-    gsl_err_t parser_err;
-
-    err = kndAttr_new(&attr);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent_class = self;
-    attr->type = KND_ATTR_STR;
-
-    parser_err = attr->parse(attr, rec, total_size);
-    if (parser_err.code) {
-        knd_log("-- failed to parse the STR attr of \"%.*s\" :(",
-                self->entry->name_size, self->entry->name);
-        return parser_err;
-    }
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
-        self->attrs = attr;
-    }
-    else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
-    }
-
-    if (attr->is_implied)
-        self->implied_attr = attr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_bin(void *obj,
-                           const char *rec,
-                           size_t *total_size)
-{
-    struct kndClass *self = (struct kndClass*)obj;
-    struct kndAttr *attr;
-    gsl_err_t parser_err;
-    int  err;
-
-    err = kndAttr_new(&attr);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent_class = self;
-    attr->type = KND_ATTR_BIN;
-
-    parser_err = attr->parse(attr, rec, total_size);
-    if (parser_err.code) {
-        knd_log("-- failed to parse the BIN attr: %d", parser_err.code);
-        return parser_err;
-    }
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
-        self->attrs = attr;
-    }
-    else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
-    }
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_num(void *obj,
-                           const char *rec,
-                           size_t *total_size)
-{
-    struct kndClass *self = (struct kndClass*)obj;
-    struct kndAttr *attr;
-    int err;
-    gsl_err_t parser_err;
-
-    err = kndAttr_new(&attr);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent_class = self;
-    attr->type = KND_ATTR_NUM;
-
-    parser_err = attr->parse(attr, rec, total_size);
-    if (parser_err.code) {
-        knd_log("-- failed to parse the NUM attr: %d", parser_err.code);
-        return parser_err;
-    }
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
-        self->attrs = attr;
-    }
-    else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
-    }
-
-    if (attr->is_implied)
-        self->implied_attr = attr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_ref(void *obj,
-                           const char *rec,
-                           size_t *total_size)
-{
-    struct kndClass *self = obj;
-    struct kndAttr *attr;
-    int err;
-    gsl_err_t parser_err;
-
-    err = kndAttr_new(&attr);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent_class = self;
-    attr->type = KND_ATTR_REF;
-
-    parser_err = attr->parse(attr, rec, total_size);
-    if (parser_err.code) {
-        knd_log("-- failed to parse the REF attr: %d", parser_err.code);
-        return parser_err;
-    }
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
-        self->attrs = attr;
-    }
-    else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
-    }
-
-    if (attr->is_implied)
-        self->implied_attr = attr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_proc(void *obj,
-                           const char *rec,
-                           size_t *total_size)
-{
-    struct kndClass *self = obj;
-    struct kndAttr *attr;
-    int err;
-    gsl_err_t parser_err;
-
-    err = kndAttr_new(&attr);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent_class = self;
-    attr->type = KND_ATTR_PROC;
-
-    parser_err = attr->parse(attr, rec, total_size);
-    if (parser_err.code) {
-        knd_log("-- failed to parse the PROC attr: %d", parser_err.code);
-        return parser_err;
-    }
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
-        self->attrs = attr;
-    }
-    else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
-    }
-
-    if (attr->is_implied)
-        self->implied_attr = attr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_text(void *obj,
-                            const char *rec,
-                            size_t *total_size)
-{
-    struct kndClass *self = (struct kndClass*)obj;
-    struct kndAttr *attr;
-    int err;
-    gsl_err_t parser_err;
-
-    err = kndAttr_new(&attr);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent_class = self;
-    attr->type = KND_ATTR_TEXT;
-    attr->is_a_set = true;
-
-    parser_err = attr->parse(attr, rec, total_size);
-    if (parser_err.code) {
-        knd_log("-- failed to parse the TEXT attr: %d", parser_err.code);
-        return parser_err;
-    }
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
-        self->attrs = attr;
-    }
-    else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
-    }
-    return make_gsl_err(gsl_OK);
-}
-
-extern gsl_err_t import_attr_var(void *obj,
-                                  const char *name, size_t name_size,
-                                  const char *rec, size_t *total_size)
-{
-    struct kndClassVar *self = obj;
-    struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool;
-    gsl_err_t parser_err;
-    int err;
-
-    /* class var not resolved */
-    if (!self->entry) {
-        knd_log("-- anonymous class var?  REC:%.*s", 64, rec);
-        //return *total_size = 0, make_gsl_err_external(knd_FAIL);
-    }
-
-    mempool = self->root_class->entry->repo->mempool;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("== import attr var: \"%.*s\" REC: %.*s",
-                name_size, name, 64, rec);
-
-    err = mempool->new_attr_var(mempool, &attr_var);
-    if (err) {
-        knd_log("-- attr item mempool exhausted");
-        return *total_size = 0, make_gsl_err_external(err);
-    }
-    attr_var->class_var = self;
-
-    memcpy(attr_var->name, name, name_size);
-    attr_var->name_size = name_size;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .buf = attr_var->val,
-          .buf_size = &attr_var->val_size,
-          .max_buf_size = sizeof attr_var->val
-        },
-        { .type = GSL_SET_STATE,
-          .is_validator = true,
-          .validate = import_nested_attr_var,
-          .obj = attr_var
-        },
-        { .is_validator = true,
-          .validate = import_nested_attr_var,
-          .obj = attr_var
-        },
-        { .is_default = true,
-          .run = confirm_class_var,
-          .obj = self
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    append_attr_var(self, attr_var);
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("++ attr var import OK!");
-
-    return make_gsl_err(gsl_OK);
-}
-
-
-static gsl_err_t import_attr_var_alloc(void *obj,
-                                        const char *name __attribute__((unused)),
-                                        size_t name_size __attribute__((unused)),
-                                        size_t count  __attribute__((unused)),
-                                        void **result)
-{
-    struct kndAttrVar *self = obj;
-    struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = self->class_var->entry->repo->mempool;
-    int err;
-
-    err = mempool->new_attr_var(mempool, &attr_var);
-    if (err) return make_gsl_err_external(err);
-    attr_var->class_var = self->class_var;
-
-    attr_var->is_list_item = true;
-
-    *result = attr_var;
-    return make_gsl_err(gsl_OK);
-}
-
-
-static gsl_err_t parse_nested_attr_var(void *obj,
-                                        const char *rec,
-                                        size_t *total_size)
-{
-    struct kndAttrVar *item = obj;
-
-    if (DEBUG_CONC_LEVEL_1)
-        knd_log(".. parse import attr item..");
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .buf = item->name,
-          .buf_size = &item->name_size,
-          .max_buf_size = sizeof item->name
-        },
-        { .is_validator = true,
-          .validate = import_nested_attr_var,
-          .obj = item
-        }
-    };
-    gsl_err_t err;
-
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t import_attr_var_list(void *obj,
-                                       const char *name, size_t name_size,
-                                       const char *rec, size_t *total_size)
-{
-    struct kndClassVar *self = obj;
-    struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    gsl_err_t parser_err;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_1)
-        knd_log("== import attr attr_var list: \"%.*s\" REC: %.*s",
-                name_size, name, 32, rec);
-
-    err = mempool->new_attr_var(mempool, &attr_var);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr_var->class_var = self;
-
-    memcpy(attr_var->name, name, name_size);
-    attr_var->name_size = name_size;
-
-    append_attr_var(self, attr_var);
-
-    struct gslTaskSpec import_attr_var_spec = {
-        .is_list_item = true,
-        .accu =   attr_var,
-        .alloc =  import_attr_var_alloc,
-        .append = attr_var_append,
-        .parse =  parse_nested_attr_var
-    };
-
-    parser_err = gsl_parse_array(&import_attr_var_spec, rec, total_size);
-    if (parser_err.code) return parser_err;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t read_nested_attr_var(void *obj,
-                                      const char *name, size_t name_size,
-                                      const char *rec, size_t *total_size)
-{
-    struct kndAttrVar *self = obj;
-    struct kndAttrVar *attr_var;
-    struct kndAttr *attr;
-    struct kndClass *conc = NULL;
-    struct ooDict *class_name_idx;
-    struct kndClassEntry *entry;
-    struct kndMemPool *mempool = self->attr->parent_class->entry->repo->mempool;
-    gsl_err_t parser_err;
-    int err;
-
-    err = mempool->new_attr_var(mempool, &attr_var);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr_var->parent = self;
-    attr_var->class_var = self->class_var;
-
-    memcpy(attr_var->name, name, name_size);
-    attr_var->name_size = name_size;
-
-    if (DEBUG_CONC_LEVEL_2) {
-        knd_log("== reading nested attr item: \"%.*s\" REC: %.*s attr:%p",
-                name_size, name, 16, rec, self->attr);
-    }
-
-    if (!self->attr->conc) {
-        knd_log("-- no conc in attr: \"%.*s\"",
-                self->attr->name_size, self->attr->name);
-        return *total_size = 0, make_gsl_err_external(knd_FAIL);
-    }
-
-    conc = self->attr->conc;
-
-    err = get_attr(conc, name, name_size, &attr);
-    if (err) {
-        knd_log("-- no attr \"%.*s\" in class \"%.*s\" :(",
-                name_size, name,
-                conc->entry->name_size, conc->entry->name);
-        if (err) return *total_size = 0, make_gsl_err_external(err);
-    }
-
-    switch (attr->type) {
-    case KND_ATTR_AGGR:
-        if (attr->conc) break;
-
-        class_name_idx = conc->class_name_idx;
-        entry = class_name_idx->get(class_name_idx,
-                                  attr->ref_classname,
-                                  attr->ref_classname_size);
-        if (!entry) {
-            knd_log("-- aggr ref not resolved :( no such class: %.*s",
-                    attr->ref_classname_size,
-                    attr->ref_classname);
-            return *total_size = 0, make_gsl_err(gsl_FAIL);
-        }
-
-        if (!entry->class) {
-            //err = unfreeze_class(conc, entry, &entry->class);
-            //if (err) return *total_size = 0, make_gsl_err_external(err);
-        }
-        attr->conc = entry->class;
-        break;
-    default:
-        break;
-    }
-
-    attr_var->attr = attr;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .buf = attr_var->val,
-          .buf_size = &attr_var->val_size,
-          .max_buf_size = sizeof attr_var->val
-        },
-        { .is_validator = true,
-          .validate = read_nested_attr_var,
-          .obj = attr_var
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    attr_var->next = self->children;
-    self->children = attr_var;
-    self->num_children++;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t import_nested_attr_var(void *obj,
-                                         const char *name, size_t name_size,
-                                         const char *rec, size_t *total_size)
-{
-    struct kndAttrVar *self = obj;
-    struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = self->class_var->root_class->entry->repo->mempool;
-    gsl_err_t parser_err;
-    int err;
-
-    err = mempool->new_attr_var(mempool, &attr_var);
-    if (err) {
-        knd_log("-- mempool exhausted: attr item");
-        return *total_size = 0, make_gsl_err_external(err);
-    }
-    attr_var->class_var = self->class_var;
-
-    memcpy(attr_var->name, name, name_size);
-    attr_var->name_size = name_size;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. import nested attr: \"%.*s\" REC: %.*s",
-                attr_var->name_size, attr_var->name, 16, rec);
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .buf = attr_var->val,
-          .buf_size = &attr_var->val_size,
-          .max_buf_size = sizeof attr_var->val
-        },
-        { .type = GSL_SET_STATE,
-          .is_validator = true,
-          .validate = import_nested_attr_var,
-          .obj = attr_var
-        },
-        { .is_validator = true,
-          .validate = import_nested_attr_var,
-          .obj = attr_var
-        },
-        { .is_default = true,
-          .run = confirm_attr_var,
-          .obj = attr_var
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("++ attr var: \"%.*s\" val:%.*s",
-                attr_var->name_size, attr_var->name,
-                attr_var->val_size, attr_var->val);
-
-    attr_var->next = self->children;
-    self->children = attr_var;
-    self->num_children++;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static void append_attr_var(struct kndClassVar *ci,
-                             struct kndAttrVar *attr_var)
-{
-    struct kndAttrVar *curr_var;
-
-    for (curr_var = ci->attrs; curr_var; curr_var = curr_var->next) {
-        if (curr_var->name_size != attr_var->name_size) continue;
-        if (!memcmp(curr_var->name, attr_var->name, attr_var->name_size)) {
-            if (!curr_var->list_tail) {
-                curr_var->list_tail = attr_var;
-                curr_var->list = attr_var;
-            }
-            else {
-                curr_var->list_tail->next = attr_var;
-                curr_var->list_tail = attr_var;
-            }
-            curr_var->num_list_elems++;
-            return;
-        }
-    }
-
-    if (!ci->tail) {
-        ci->tail  = attr_var;
-        ci->attrs = attr_var;
-    }
-    else {
-        ci->tail->next = attr_var;
-        ci->tail = attr_var;
-    }
-    ci->num_attrs++;
-}
-
-
-static gsl_err_t attr_var_alloc(void *obj,
-                                 const char *name,
-                                 size_t name_size,
-                                 size_t count  __attribute__((unused)),
-                                 void **result)
-{
-    struct kndAttrVar *self = obj;
-    struct kndAttrVar *attr_var;
-    struct kndSet *class_idx;
-    struct kndClassEntry *entry;
-    struct kndMemPool *mempool = self->attr->parent_class->entry->repo->mempool;
-    void *elem;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_2) {
-        knd_log(".. alloc attr item conc id: \"%.*s\" attr:%p",
-                name_size, name, self->attr);
-    }
-
-    class_idx = self->attr->parent_class->class_idx;
-
-    err = class_idx->get(class_idx, name, name_size, &elem);
-    if (err) {
-        knd_log("-- couldn't resolve class id: \"%.*s\" [size:%zu] :(",
-                name_size, name, name_size);
-        return make_gsl_err_external(knd_NO_MATCH);
-    }
-
-    entry = elem;
-
-    err = mempool->new_attr_var(mempool, &attr_var);
-    if (err) return make_gsl_err_external(err);
-
-    attr_var->class_entry = entry;
-    attr_var->attr = self->attr;
-
-    *result = attr_var;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t attr_var_append(void *accu,
-                                 void *obj)
-{
-    struct kndAttrVar *self = accu;
-    struct kndAttrVar *attr_var = obj;
-
-    if (!self->list_tail) {
-        self->list_tail = attr_var;
-        self->list = attr_var;
-    }
-    else {
-        self->list_tail->next = attr_var;
-        self->list_tail = attr_var;
-    }
-    self->num_list_elems++;
-    attr_var->list_count = self->num_list_elems;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t aggr_item_set_baseclass(void *obj,
-                                         const char *id, size_t id_size)
-{
-    struct kndAttrVar *item = obj;
-    struct kndSet *class_idx;
-    struct kndClassEntry *entry;
-    struct kndClass *conc = item->attr->parent_class;
-    void *result;
-    int err;
-
-    if (!id_size) return make_gsl_err(gsl_FORMAT);
-    if (id_size > KND_ID_SIZE)
-        return make_gsl_err(gsl_LIMIT);
-
-    memcpy(item->id, id, id_size);
-    item->id_size = id_size;
-
-    class_idx = conc->class_idx;
-
-    err = class_idx->get(class_idx, id, id_size, &result);
-    if (err) {
-        return make_gsl_err(gsl_FAIL);
-    }
-    entry = result;
-
-    if (!entry->class) {
-        //err = unfreeze_class(conc, entry, &entry->class);
-        //if (err) return make_gsl_err_external(err);
-    }
-
-    item->class = entry->class;
-    item->class_entry = entry;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t aggr_item_parse(void *obj,
-                                 const char *rec,
-                                 size_t *total_size)
-{
-    struct kndAttrVar *item = obj;
-    gsl_err_t parser_err;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = aggr_item_set_baseclass,
-          .obj = item
-        },
-        { .is_validator = true,
-          .validate = read_nested_attr_var,
-          .obj = item
-        }
-    };
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. parsing the aggr item: \"%.*s\"", 64, rec);
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t aggr_item_alloc(void *obj,
-                                 const char *name,
-                                 size_t name_size,
-                                 size_t count,
-                                 void **result)
-{
-    struct kndAttrVar *self = obj;
-    struct kndAttrVar *item;
-    struct kndMemPool *mempool = self->attr->parent_class->entry->repo->mempool;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_1) {
-        knd_log(".. alloc AGGR attr item..  conc id: \"%.*s\" attr:%p  parent:%p",
-                name_size, name, self->attr,  self->attr->parent_class);
-    }
-
-    err = mempool->new_attr_var(mempool, &item);
-    if (err) return make_gsl_err_external(err);
-
-    item->name_size = sprintf(item->name, "%lu",
-                              (unsigned long)count);
-
-    item->attr = self->attr;
-    item->parent = self;
-
-    *result = item;
-    return make_gsl_err(gsl_OK);
-}
-
-
-static gsl_err_t validate_attr_var(void *obj,
-                                    const char *name, size_t name_size,
-                                    const char *rec, size_t *total_size)
-{
-    struct kndClassVar *class_var = obj;
-    struct kndAttrVar *attr_var;
-    struct kndAttr *attr;
-    struct kndProc *root_proc;
-    struct kndMemPool *mempool = class_var->entry->repo->mempool;
-    gsl_err_t parser_err;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. class var \"%.*s\" to validate attr var: %.*s..",
-                class_var->entry->name_size, class_var->entry->name,
-                name_size, name);
-
-    if (!class_var->entry->class) {
-        knd_log("-- class var not yet resolved: %.*s",
-                class_var->entry->name_size, class_var->entry->name);
-        return make_gsl_err(gsl_FAIL);
-    }
-
-    err = mempool->new_attr_var(mempool, &attr_var);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr_var->class_var = class_var;
-
-    err = get_attr(class_var->entry->class, name, name_size, &attr);
-    if (err) {
-        knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
-                name_size, name,
-                class_var->entry->name_size, class_var->entry->name);
-        return *total_size = 0, make_gsl_err_external(err);
-    }
-
-    attr_var->attr = attr;
-    memcpy(attr_var->name, name, name_size);
-    attr_var->name_size = name_size;
-
-    struct gslTaskSpec attr_var_spec = {
-        .is_list_item = true,
-        .accu = attr_var,
-        .alloc = attr_var_alloc,
-        .append = attr_var_append
-    };
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .buf = attr_var->val,
-          .buf_size = &attr_var->val_size,
-          .max_buf_size = sizeof attr_var->val
-        },
-        { .is_validator = true,
-          .validate = read_nested_attr_var,
-          .obj = attr_var
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "r",
-          .name_size = strlen("r"),
-          .parse = gsl_parse_array,
-          .obj = &attr_var_spec
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    switch (attr->type) {
-    case KND_ATTR_PROC:
-
-        if (DEBUG_CONC_LEVEL_2)
-            knd_log("== proc attr: %.*s => %.*s",
-                    attr_var->name_size, attr_var->name,
-                    attr_var->val_size, attr_var->val);
-
-        root_proc = class_var->root_class->proc;
-        err = root_proc->get_proc(root_proc,
-                                  attr_var->val,
-                                  attr_var->val_size, &attr_var->proc);
-        if (err) return make_gsl_err_external(err);
-        break;
-    default:
-        break;
-    }
-
-    append_attr_var(class_var, attr_var);
-    return make_gsl_err(gsl_OK);
-}
-
-extern gsl_err_t parse_class_var(struct kndClassVar *self,
-                                 const char *rec,
-                                 size_t *total_size)
-{
-    gsl_err_t parser_err;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = set_class_var,
-          .obj = self
-        },
-        { .type = GSL_SET_STATE,
-          .is_validator = true,
-          .validate = import_attr_var,
-          .obj = self
-        },
-        { .is_validator = true,
-          .validate = import_attr_var,
-          .obj = self
-        },
-        { .is_validator = true,
-          .type = GSL_SET_ARRAY_STATE,
-          .validate = import_attr_var_list,
-          .obj = self
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t confirm_class_var(void *obj, const char *name, size_t name_size)
-{
-    struct kndClassVar *self = obj;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. confirm class var: \"%.*s\".. %p",
-                name_size, name, self);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t confirm_attr_var(void *obj __attribute__((unused)),
-                                  const char *name __attribute__((unused)),
-                                  size_t name_size __attribute__((unused)))
-{
-    return make_gsl_err(gsl_OK);
-}
-
-extern gsl_err_t import_class_var(struct kndClassVar *self,
-                                  const char *rec,
-                                  size_t *total_size)
-{
-    gsl_err_t parser_err;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = set_class_var,
-          .obj = self
-        },
-        { .type = GSL_SET_STATE,
-          .is_validator = true,
-          .validate = import_attr_var,
-          .obj = self
-        },
-        { .is_validator = true,
-          .validate = import_attr_var,
-          .obj = self
-        },
-        { .is_validator = true,
-          .type = GSL_SET_ARRAY_STATE,
-          .validate = import_attr_var_list,
-          .obj = self
-        },
-        { .is_default = true,
-          .run = confirm_class_var,
-          .obj = self
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_baseclass(void *obj,
-                                 const char *rec,
-                                 size_t *total_size)
-{
-    struct kndClass *self = obj;
-    struct kndClassVar *classvar;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    gsl_err_t parser_err;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_1)
-        knd_log(".. parsing the base class: \"%.*s\"", 32, rec);
-
-    err = mempool->new_class_var(mempool, &classvar);
-    if (err) {
-        knd_log("-- conc item alloc failed :(");
-        return *total_size = 0, make_gsl_err_external(err);
-    }
-    classvar->root_class = self->root_class;
-
-    parser_err = parse_class_var(classvar, rec, total_size);
-    if (parser_err.code) return parser_err;
-
-    classvar->next = self->baseclass_vars;
-    self->baseclass_vars = classvar;
-    self->num_baseclass_vars++;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static int assign_ids(struct kndClass *self)
-{
-    struct kndClassEntry *entry;
-    const char *key;
-    void *val;
-    size_t count = 0;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. assign class ids..");
-
-    /* TODO: get statistics on usage from retrievers? */
-    key = NULL;
-    self->class_name_idx->rewind(self->class_name_idx);
-    do {
-        self->class_name_idx->next_item(self->class_name_idx, &key, &val);
-        if (!key) break;
-        entry = (struct kndClassEntry*)val;
-        count++;
-
-        entry->id_size = 0;
-        knd_num_to_str(count, entry->id, &entry->id_size, KND_RADIX_BASE);
-
-        if (DEBUG_CONC_LEVEL_2)
-            knd_log("ID: %zu => \"%.*s\" [size: %zu]",
-                    count, entry->id_size, entry->id, entry->id_size);
-
-        /* TODO: assign obj ids */
-    } while (key);
-
-    return knd_OK;
-}
 
 static gsl_err_t run_sync_task(void *obj, const char *val __attribute__((unused)),
                                size_t val_size __attribute__((unused)))
@@ -3108,8 +1513,8 @@ static gsl_err_t run_sync_task(void *obj, const char *val __attribute__((unused)
     int err;
 
     /* assign numeric ids as defined by a sorting function */
-    err = assign_ids(self);
-    if (err) return make_gsl_err_external(err);
+    //err = assign_ids(self);
+    //if (err) return make_gsl_err_external(err);
 
     /* merge earlier frozen DB with liquid updates */
 
@@ -3136,500 +1541,10 @@ static gsl_err_t parse_sync_task(void *obj,
         }
     };
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CLASS_LEVEL_1)
         knd_log(".. freezing DB to GSP files..");
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
-static gsl_err_t parse_import_class(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
-{
-    struct kndClass *self = obj;
-    struct kndClass *c;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    int err;
-    gsl_err_t parser_err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. import \"%.*s\" class..", 128, rec);
-
-    err = mempool->new_class(mempool, &c);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-
-    c->root_class = self;
-
-    
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = set_class_name,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "base",
-          .name_size = strlen("base"),
-          .parse = parse_baseclass,
-          .obj = c
-        },
-        { .name = "base",
-          .name_size = strlen("base"),
-          .parse = parse_baseclass,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "is",
-          .name_size = strlen("is"),
-          .parse = parse_baseclass,
-          .obj = c
-        },
-        { .name = "is",
-          .name_size = strlen("is"),
-          .parse = parse_baseclass,
-          .obj = c
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "_gloss",
-          .name_size = strlen("_gloss"),
-          .parse = parse_gloss_array,
-          .obj = c
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "_g",
-          .name_size = strlen("_g"),
-          .parse = parse_gloss_array,
-          .obj = c
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "_summary",
-          .name_size = strlen("_summary"),
-          .parse = parse_summary_array,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "aggr",
-          .name_size = strlen("aggr"),
-          .parse = parse_aggr,
-          .obj = c
-        },
-        { .name = "aggr",
-          .name_size = strlen("aggr"),
-          .parse = parse_aggr,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "str",
-          .name_size = strlen("str"),
-          .parse = parse_str,
-          .obj = c
-        },
-        { .name = "str",
-          .name_size = strlen("str"),
-          .parse = parse_str,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "bin",
-          .name_size = strlen("bin"),
-          .parse = parse_bin,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "num",
-          .name_size = strlen("num"),
-          .parse = parse_num,
-          .obj = c
-        },
-        { .name = "num",
-          .name_size = strlen("num"),
-          .parse = parse_num,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "ref",
-          .name_size = strlen("ref"),
-          .parse = parse_ref,
-          .obj = c
-        },
-        { .name = "ref",
-          .name_size = strlen("ref"),
-          .parse = parse_ref,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "proc",
-          .name_size = strlen("proc"),
-          .parse = parse_proc,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "text",
-          .name_size = strlen("text"),
-          .parse = parse_text,
-          .obj = c
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) {
-        knd_log("-- class parse failed: %d", parser_err.code);
-        goto final;
-    }
-
-    if (!c->name_size) {
-        parser_err = make_gsl_err(gsl_FAIL);
-        goto final;
-    }
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("++  \"%.*s\" class import completed!",
-                c->name_size, c->name);
-
-    if (!self->batch_mode) {
-        c->next = self->inbox;
-        self->inbox = c;
-        self->inbox_size++;
-    }
-
-    if (DEBUG_CONC_LEVEL_2)
-        c->str(c);
-
-    return make_gsl_err(gsl_OK);
-
- final:
-    c->del(c);
-    return parser_err;
-}
-
-static gsl_err_t parse_import_class_inst(void *data,
-                                         const char *rec,
-                                         size_t *total_size)
-{
-    struct kndClass *self = data;
-    struct kndClass *c;
-    struct kndObject *obj;
-    struct kndObjEntry *entry;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndTask *task = self->entry->repo->task;
-    int err;
-    gsl_err_t parser_err;
-
-    if (DEBUG_CONC_LEVEL_2) {
-        knd_log(".. import \"%.*s\" inst..", 128, rec);
-    }
-    if (!self->curr_class) {
-        knd_log("-- class not specified :(");
-        return *total_size = 0, make_gsl_err(gsl_FAIL);
-    }
-    err = mempool->new_obj(mempool, &obj);
-    if (err) {
-        knd_log("-- class inst alloc failed :(");
-        return *total_size = 0, make_gsl_err_external(err);
-    }
-    err = mempool->new_state(mempool, &obj->states);
-    if (err) {
-        knd_log("-- state alloc failed :(");
-        return *total_size = 0, make_gsl_err_external(err);
-    }
-    err = mempool->new_obj_entry(mempool, &entry);
-    if (err) return make_gsl_err_external(err);
-
-    obj->entry = entry;
-    entry->obj = obj;
-    obj->states->phase = KND_SUBMITTED;
-    obj->base = self->curr_class;
-
-    parser_err = obj->parse(obj, rec, total_size);
-    if (parser_err.code) return parser_err;
-
-    c = obj->base;
-    obj->next = c->obj_inbox;
-
-    c->obj_inbox = obj;
-    c->obj_inbox_size++;
-    c->num_objs++;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("++ %.*s obj parse OK! total objs in %.*s: %zu",
-                obj->name_size, obj->name,
-                c->name_size, c->name, c->obj_inbox_size);
-
-    obj->entry->numid = c->num_objs;
-    knd_num_to_str(obj->entry->numid, obj->entry->id, &obj->entry->id_size, KND_RADIX_BASE);
-
-    if (!c->entry) {
-        if (c->root_class) {
-            knd_log("-- no entry in %.*s :(", c->name_size, c->name);
-            return make_gsl_err(gsl_FAIL);
-        }
-        return make_gsl_err(gsl_OK);
-    }
-
-    /* automatic name assignment if no explicit name given */
-    if (!obj->name_size) {
-        obj->name = obj->entry->id;
-        obj->name_size = obj->entry->id_size;
-    }
-
-    if (!c->entry->obj_name_idx) {
-        err = ooDict_new(&c->entry->obj_name_idx, KND_HUGE_DICT_SIZE);
-        if (err) return make_gsl_err_external(err);
-    }
-
-    err = c->entry->obj_name_idx->set(c->entry->obj_name_idx,
-                                      obj->name, obj->name_size,
-                                      (void*)entry);
-    if (err) return make_gsl_err_external(err);
-    c->entry->num_objs++;
-
-    if (DEBUG_CONC_LEVEL_1) {
-        knd_log("++ OBJ registered in \"%.*s\" IDX:  [total:%zu valid:%zu]",
-                c->name_size, c->name, c->entry->obj_name_idx->size, c->entry->num_objs);
-        obj->depth = self->depth + 1;
-        obj->str(obj);
-    }
-    task->type = KND_UPDATE_STATE;
-
-    return make_gsl_err(gsl_OK);
-}
-
-
-static gsl_err_t parse_select_inst(void *data,
-                                  const char *rec,
-                                  size_t *total_size)
-{
-    struct kndClass *self = data;
-    struct kndObject *obj = self->curr_obj;
-    struct kndTask *task = self->curr_class->entry->repo->task;
-    gsl_err_t err;
-
-    if (!self->curr_class) {
-        knd_log("-- base class not set :(");
-        /* TODO: log*/
-        return *total_size = 0, make_gsl_err(gsl_FAIL);
-    }
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. select \"%.*s\" obj.. task type: %d",
-                16, rec, task->type);
-
-    task->type = KND_GET_STATE;
-    obj->base = self->curr_class;
-
-    err = obj->select(obj, rec, total_size);
-    if (err.code) return err;
-
-    if (DEBUG_CONC_LEVEL_2) {
-        if (obj->curr_obj)
-            obj->curr_obj->str(obj->curr_obj);
-    }
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t select_by_baseclass(void *obj,
-                                     const char *name, size_t name_size)
-{
-    struct kndClass *self = obj;
-    struct kndTask *task = self->entry->repo->task;
-    struct kndClass *c;
-    struct kndSet *set;
-    int err;
-
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    err = get_class(self, name, name_size, &c);
-    if (err) return make_gsl_err_external(err);
-
-    if (DEBUG_CONC_LEVEL_2)
-        c->str(c);
-
-    c->entry->class = c;
-    if (!c->entry->descendants) {
-        knd_log("-- no set of descendants found :(");
-        return make_gsl_err(gsl_OK);
-    }
-
-    set = c->entry->descendants;
-    if (task->num_sets + 1 > KND_MAX_CLAUSES)
-        return make_gsl_err(gsl_LIMIT);
-    task->sets[task->num_sets] = set;
-    task->num_sets++;
-
-    self->curr_baseclass = c;
-
-    return make_gsl_err(gsl_OK);
-}
-
-
-static gsl_err_t select_by_attr(void *obj,
-                                const char *name, size_t name_size)
-{
-    struct kndClass *self = obj;
-    struct kndClass *c;
-    struct kndSet *set;
-    struct kndFacet *facet;
-    struct glbOutput *log = self->entry->repo->log;
-    struct kndTask *task = self->entry->repo->task;
-    int err, e;
-
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    c = self->curr_attr->parent_class;
-
-    if (DEBUG_CONC_LEVEL_2) {
-        knd_log("== select by attr value: \"%.*s\" of \"%.*s\" resolved:%d",
-                name_size, name, c->name_size, c->name, c->is_resolved);
-    }
-
-    if (!c->entry->descendants) {
-        knd_log("-- no descendants idx in \"%.*s\" :(",
-                c->name_size, c->name);
-        return make_gsl_err(gsl_FAIL);
-    }
-
-    set = c->entry->descendants;
-
-    err = set->get_facet(set, self->curr_attr, &facet);
-    if (err) {
-        knd_log("-- no such facet: \"%.*s\" :(",
-                self->curr_attr->name_size, self->curr_attr->name);
-        log->reset(log);
-        e = log->write(log, name, name_size);
-        if (e) return make_gsl_err_external(e);
-
-        e = log->write(log, " no such facet: ",
-                               strlen(" no such facet: "));
-        if (e) return make_gsl_err_external(e);
-        task->http_code = HTTP_NOT_FOUND;
-        return make_gsl_err_external(knd_NO_MATCH);
-    }
-
-    set = facet->set_name_idx->get(facet->set_name_idx,
-                                   name, name_size);
-    if (!set) return make_gsl_err(gsl_FAIL);
-
-    err = get_class(self, name, name_size, &set->base->class);
-    if (err) {
-        knd_log("-- no such class: %.*s", name_size, name);
-        return make_gsl_err_external(err);
-    }
-
-    if (DEBUG_CONC_LEVEL_2)
-        set->str(set, 1);
-
-    if (task->num_sets + 1 > KND_MAX_CLAUSES)
-        return make_gsl_err(gsl_LIMIT);
-
-    task->sets[task->num_sets] = set;
-    task->num_sets++;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_attr_select(void *obj,
-                                   const char *name, size_t name_size,
-                                   const char *rec, size_t *total_size)
-{
-    struct kndClass *self = obj;
-    struct kndAttr *attr;
-    struct glbOutput *log = self->entry->repo->log;
-    struct kndTask *task = self->entry->repo->task;
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = select_by_attr,
-          .obj = self
-        }
-    };
-    int err, e;
-
-    if (!self->curr_baseclass) return *total_size = 0, make_gsl_err_external(knd_FAIL);
-
-    err = get_attr(self->curr_baseclass, name, name_size, &attr);
-    if (err) {
-        knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
-                name_size, name,
-                self->curr_baseclass->name_size,
-                self->curr_baseclass->name);
-        log->reset(log);
-        e = log->write(log, name, name_size);
-        if (e) return *total_size = 0, make_gsl_err_external(e);
-
-        e = log->write(log, ": no such attribute",
-                               strlen(": no such attribute"));
-        if (e) return *total_size = 0, make_gsl_err_external(e);
-        task->http_code = HTTP_NOT_FOUND;
-
-        return *total_size = 0, make_gsl_err_external(err);
-    }
-
-    if (DEBUG_CONC_LEVEL_2) {
-        knd_log(".. select by attr \"%.*s\"..", name_size, name);
-        knd_log(".. attr parent: %.*s conc: %.*s",
-                attr->parent_class->name_size,
-                attr->parent_class->name,
-                attr->conc->name_size,
-                attr->conc->name);
-    }
-
-    self->curr_attr = attr;
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
-static gsl_err_t parse_baseclass_select(void *obj,
-                                        const char *rec,
-                                        size_t *total_size)
-{
-    struct kndClass *self = obj;
-    struct kndTask *task = self->entry->repo->task;
-    gsl_err_t err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. select by baseclass \"%.*s\"..", 16, rec);
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = select_by_baseclass,
-          .obj = self
-        },
-        { .name = "_batch",
-          .name_size = strlen("_batch"),
-          .parse = gsl_parse_size_t,
-          .obj = &task->batch_max
-        },
-        { .name = "_from",
-          .name_size = strlen("_from"),
-          .parse = gsl_parse_size_t,
-          .obj = &task->batch_from
-        },
-        {  .name = "_depth",
-           .name_size = strlen("_depth"),
-           .parse = gsl_parse_size_t,
-           .obj = &self->max_depth
-        },
-        { .is_validator = true,
-          .validate = parse_attr_select,
-          .obj = self
-        }
-    };
-
-   task->type = KND_SELECT_STATE;
-
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
-
-    if (task->batch_max > KND_RESULT_MAX_BATCH_SIZE) {
-        knd_log("-- batch size exceeded: %zu (max limit: %d) :(",
-                task->batch_max, KND_RESULT_MAX_BATCH_SIZE);
-        return make_gsl_err(gsl_LIMIT);
-    }
-
-   task->start_from = task->batch_max * task->batch_from;
-
-    return make_gsl_err(gsl_OK);
 }
 
 
@@ -3641,131 +1556,9 @@ static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     /* TODO: get current schema */
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. select schema %.*s from: \"%.*s\"..",
                 name_size, name, self->entry->name_size, self->entry->name);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
-{
-    struct kndClass *self = obj;
-    struct kndRepo *repo = self->root_class->entry->repo;
-    struct glbOutput *log = repo->log;
-    struct ooDict *class_name_idx = self->root_class->class_name_idx;
-    struct kndMemPool *mempool = repo->mempool;
-    struct kndTask *task = repo->task;
-    struct kndClassEntry *entry;
-    struct kndState *state;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. set class name: %.*s", name_size, name);
-
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= sizeof self->entry->name) return make_gsl_err(gsl_LIMIT);
-
-    entry = class_name_idx->get(class_name_idx, name, name_size);
-    if (!entry) {
-        err = mempool->new_class_entry(mempool, &entry);
-        if (err) return make_gsl_err_external(err);
-        entry->repo = repo;
-        entry->class = self;
-        self->entry = entry;
-
-        memcpy(entry->name, name, name_size);
-        entry->name_size = name_size;
-        self->name = self->entry->name;
-        self->name_size = name_size;
-
-        err = class_name_idx->set(class_name_idx,
-                                  entry->name, name_size,
-                                  (void*)entry);
-        if (err) return make_gsl_err_external(err);
-
-        return make_gsl_err(gsl_OK);
-    }
-
-    /* class entry already exists */
-
-    if (!entry->class) {
-        entry->class =    self;
-        self->entry =     entry;
-        self->name =      entry->name;
-        self->name_size = name_size;
-        return make_gsl_err(gsl_OK);
-    }
-
-    if (entry->class->states) {
-        state = entry->class->states;
-        if (state->phase == KND_REMOVED) {
-            entry->class = self;
-            self->entry =  entry;
-
-            if (DEBUG_CONC_LEVEL_2)
-                knd_log("== class was removed recently");
-
-            self->name =      entry->name;
-            self->name_size = name_size;
-            return make_gsl_err(gsl_OK);
-        }
-    }
-
-    knd_log("-- \"%.*s\" class doublet found :(", name_size, name);
-
-    log->reset(log);
-    err = log->write(log, name, name_size);
-    if (err) return make_gsl_err_external(err);
-
-    err = log->write(log,   " class name already exists",
-                     strlen(" class name already exists"));
-    if (err) return make_gsl_err_external(err);
-
-    task->http_code = HTTP_CONFLICT;
-    
-    return make_gsl_err(gsl_FAIL);
-}
-
-static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
-{
-    struct kndClassVar *self      = obj;
-    struct kndClass *root_class   = self->root_class;
-    struct ooDict *class_name_idx = root_class->class_name_idx;
-    struct kndMemPool *mempool    = root_class->entry->repo->mempool;
-    struct kndClassEntry *entry;
-    void *result;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. root class:\"%.*s\" to check class var name: %.*s",
-                root_class->entry->name_size,
-                root_class->entry->name,
-                name_size, name);
-
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    result = class_name_idx->get(class_name_idx, name, name_size);
-    if (result) {
-        self->entry = result;
-        return make_gsl_err(gsl_OK);
-    }
-
-    /* register new class entry */
-    err = mempool->new_class_entry(mempool, &entry);
-    if (err) return make_gsl_err_external(err);
-
-    memcpy(entry->name, name, name_size);
-    entry->name_size = name_size;
-
-    err = class_name_idx->set(class_name_idx,
-                              entry->name, name_size,
-                              (void*)entry);
-    if (err) return make_gsl_err_external(err);
-
-    entry->repo = root_class->entry->repo;
-    self->entry = entry;
 
     return make_gsl_err(gsl_OK);
 }
@@ -3796,7 +1589,7 @@ static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
     struct kndClass *self = obj;
     struct kndConcFolder *folder;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_CLASS_LEVEL_1)
         knd_log(".. running include file func.. name: \"%.*s\" [%zu]",
                 (int)name_size, name, name_size);
 
@@ -3822,7 +1615,7 @@ static gsl_err_t parse_schema(void *self,
                               const char *rec,
                               size_t *total_size)
 {
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. parse schema REC: \"%.*s\"..", 32, rec);
 
     struct gslTaskSpec specs[] = {
@@ -3833,7 +1626,7 @@ static gsl_err_t parse_schema(void *self,
         { .type = GSL_SET_STATE,
           .name = "class",
           .name_size = strlen("class"),
-          .parse = parse_import_class,
+          .parse = knd_import_class,
           .obj = self
         },
         { .type = GSL_SET_STATE,
@@ -3857,7 +1650,7 @@ static gsl_err_t parse_include(void *self,
                                const char *rec,
                                size_t *total_size)
 {
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. parse include REC: \"%s\"..", rec);
 
     struct gslTaskSpec specs[] = {
@@ -3945,7 +1738,7 @@ static int read_GSL_file(struct kndClass *self,
     err = out->write(out, file_ext, file_ext_size);
     if (err) return err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. reading GSL file: %.*s", out->buf_size, out->buf);
 
     file_out->reset(file_out);
@@ -3999,198 +1792,6 @@ static int read_GSL_file(struct kndClass *self,
     return knd_OK;
 }
 
-static gsl_err_t class_var_alloc(void *obj,
-                                 const char *name __attribute__((unused)),
-                                 size_t name_size __attribute__((unused)),
-                                 size_t count  __attribute__((unused)),
-                                 void **item)
-{
-    struct kndClass *self = obj;
-    struct kndClassVar *class_var;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    int err;
-
-    err = mempool->new_class_var(mempool, &class_var);
-    if (err) return make_gsl_err_external(err);
-
-    class_var->root_class = self;
-
-    *item = class_var;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t class_var_append(void *accu,
-                                  void *item)
-{
-    struct kndClass *self = accu;
-    struct kndClassVar *ci = item;
-
-    ci->next = self->baseclass_vars;
-    self->baseclass_vars = ci;
-    self->num_baseclass_vars++;
-
-    return make_gsl_err(gsl_OK);
-}
-
-
-static gsl_err_t set_class_var_baseclass(void *obj,
-                                         const char *id, size_t id_size)
-{
-    struct kndClassVar *class_var = obj;
-    struct kndSet *class_idx;
-    struct kndClassEntry *entry;
-    void *result;
-    int err;
-
-    if (!id_size) return make_gsl_err(gsl_FORMAT);
-    if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    memcpy(class_var->id, id, id_size);
-    class_var->id_size = id_size;
-
-    class_idx = class_var->root_class->class_idx;
-    err = class_idx->get(class_idx, id, id_size, &result);
-    if (err) return make_gsl_err(gsl_FAIL);
-    entry = result;
-
-    if (!entry->class) {
-        //err = unfreeze_class(class_var->root_class, entry, &entry->class);
-        //if (err) return make_gsl_err_external(err);
-    }
-
-    class_var->entry = entry;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("== conc item baseclass: %.*s (id:%.*s) CONC:%p",
-                entry->name_size, entry->name, id_size, id, entry->class);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t validate_attr_var_list(void *obj,
-                                         const char *name, size_t name_size,
-                                         const char *rec, size_t *total_size)
-{
-    struct kndClassVar *class_var = obj;
-    struct kndAttrVar *attr_var;
-    struct kndAttr *attr;
-    struct ooDict *class_name_idx;
-    struct kndClassEntry *entry;
-    struct kndMemPool *mempool = class_var->entry->repo->mempool;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_1)
-        knd_log("\n.. ARRAY: conc item \"%.*s\" to validate list item: %.*s..",
-                class_var->entry->name_size, class_var->entry->name,
-                name_size, name);
-
-    err = mempool->new_attr_var(mempool, &attr_var);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-
-    err = get_attr(class_var->root_class, name, name_size, &attr);
-    if (err) {
-        knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
-                name_size, name,
-                class_var->entry->name_size, class_var->entry->name);
-        return *total_size = 0, make_gsl_err_external(err);
-    }
-
-    attr_var->attr = attr;
-    attr_var->class_var = class_var;
-
-    memcpy(attr_var->name, name, name_size);
-    attr_var->name_size = name_size;
-
-    switch (attr->type) {
-    case KND_ATTR_AGGR:
-        if (attr->conc) break;
-
-        class_name_idx = class_var->root_class->class_name_idx;
-        entry = class_name_idx->get(class_name_idx,
-                                    attr->ref_classname,
-                                    attr->ref_classname_size);
-        if (!entry) {
-            knd_log("-- aggr ref not resolved :( no such class: %.*s",
-                    attr->ref_classname_size,
-                    attr->ref_classname);
-            return *total_size = 0, make_gsl_err(gsl_FAIL);
-        }
-
-        if (!entry->class) {
-            //err = unfreeze_class(class_var->root_class, entry, &entry->class);
-            //if (err) return *total_size = 0, make_gsl_err_external(err);
-        }
-        attr->conc = entry->class;
-        break;
-    default:
-        break;
-    }
-
-    struct gslTaskSpec aggr_item_spec = {
-        .is_list_item = true,
-        .accu = attr_var,
-        .alloc = aggr_item_alloc,
-        .append = attr_var_append,
-        .parse = aggr_item_parse
-    };
-
-    append_attr_var(class_var, attr_var);
-
-    return gsl_parse_array(&aggr_item_spec, rec, total_size);
-}
-
-static gsl_err_t class_var_read(void *obj,
-                                const char *rec, size_t *total_size)
-{
-    struct kndClassVar *ci = obj;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = set_class_var_baseclass,
-          .obj = ci
-        },
-        { .is_validator = true,
-          .type = GSL_SET_ARRAY_STATE,
-          .validate = validate_attr_var_list,
-          .obj = ci
-        },
-        { .is_validator = true,
-          .validate = validate_attr_var,
-          .obj = ci
-        }
-    };
-
-    gsl_err_t parser_err;
-
-    parser_err = gsl_parse_task(rec, total_size,
-                                specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    knd_calc_num_id(ci->id, ci->id_size, &ci->numid);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_class_var_array(void *obj,
-                                       const char *rec,
-                                       size_t *total_size)
-{
-    struct kndClass *self = obj;
-
-    struct gslTaskSpec ci_spec = {
-        .is_list_item = true,
-        .accu = self,
-        .alloc = class_var_alloc,
-        .append = class_var_append,
-        .parse = class_var_read
-    };
-
-    return gsl_parse_array(&ci_spec, rec, total_size);
-}
-
-
-
 static int resolve_classes(struct kndClass *self)
 {
     struct kndClass *c;
@@ -4199,7 +1800,7 @@ static int resolve_classes(struct kndClass *self)
     void *val;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. resolving class refs in \"%.*s\"",
                 self->entry->name_size, self->entry->name);
 
@@ -4225,7 +1826,7 @@ static int resolve_classes(struct kndClass *self)
         }
         c->is_resolved = true;
 
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_CLASS_LEVEL_2)
             c->str(c);
 
     } while (key);
@@ -4293,7 +1894,7 @@ static int coordinate(struct kndClass *self)
 {
     int err;
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CLASS_LEVEL_TMP)
         knd_log(".. class coordination in progress ..");
 
     /* resolve names to addresses */
@@ -4302,7 +1903,7 @@ static int coordinate(struct kndClass *self)
 
     calculate_descendants(self);
 
-    if (DEBUG_CONC_LEVEL_TMP)
+    if (DEBUG_CLASS_LEVEL_TMP)
         knd_log("== TOTAL classes: %zu", self->entry->num_terminals);
 
     return knd_OK;
@@ -4359,82 +1960,6 @@ static int expand_refs(struct kndClass *self)
 }
 
 
-static int get_class(struct kndClass *self,
-                     const char *name, size_t name_size,
-                     struct kndClass **result)
-{
-    struct kndClassEntry *entry;
-    struct kndClass *c;
-    struct glbOutput *log = self->entry->repo->log;
-    struct ooDict *class_name_idx = self->entry->repo->root_class->class_name_idx;
-    struct kndTask *task = self->entry->repo->task;
-    struct kndState *state;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. %.*s to get class: \"%.*s\".. idx:%p",
-                self->entry->name_size, self->entry->name,
-                name_size, name,  class_name_idx);
-
-    entry = class_name_idx->get(class_name_idx, name, name_size);
-    if (!entry) {
-        knd_log("-- no such class: \"%.*s\":(", name_size, name);
-        log->reset(log);
-        err = log->write(log, name, name_size);
-        if (err) return err;
-        err = log->write(log, " class name not found",
-                               strlen(" class name not found"));
-        if (err) return err;
-        if (task)
-            task->http_code = HTTP_NOT_FOUND;
-
-        return knd_NO_MATCH;
-    }
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("++ got Conc Dir: %.*s from \"%.*s\" block size: %zu conc:%p",
-                name_size, name,
-                self->entry->repo->frozen_output_file_name_size,
-                self->entry->repo->frozen_output_file_name, entry->block_size, entry->class);
-
-    if (entry->class) {
-        c = entry->class;
-
-        if (c->num_states) {
-            state = c->states;
-            if (state->phase == KND_REMOVED) {
-                knd_log("-- \"%s\" class was removed", name);
-                log->reset(log);
-                err = log->write(log, name, name_size);
-                if (err) return err;
-                err = log->write(log, " class was removed",
-                                 strlen(" class was removed"));
-                if (err) return err;
-
-                task->http_code = HTTP_GONE;
-                return knd_NO_MATCH;
-            }
-        }
-        
-        c->next = NULL;
-        if (DEBUG_CONC_LEVEL_2)
-            c->str(c);
-
-        *result = c;
-        return knd_OK;
-    }
-
-    /*err = unfreeze_class(self, entry, &c);
-    if (err) {
-        knd_log("-- failed to unfreeze class: %.*s",
-                entry->name_size, entry->name);
-        return err;
-        }*/
-
-    *result = c;
-    return knd_OK;
-}
-
 static int get_obj(struct kndClass *self,
                    const char *name, size_t name_size,
                    struct kndObject **result)
@@ -4445,7 +1970,7 @@ static int get_obj(struct kndClass *self,
     struct kndTask *task = self->entry->repo->task;
     int err, e;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log("\n\n.. \"%.*s\" class to get obj: \"%.*s\"..",
                 self->entry->name_size, self->entry->name,
                 name_size, name);
@@ -4481,7 +2006,7 @@ static int get_obj(struct kndClass *self,
         return knd_NO_MATCH;
     }
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log("++ got obj entry %.*s  size: %zu OBJ: %p",
                 name_size, name, entry->block_size, entry->obj);
 
@@ -4512,526 +2037,6 @@ static int get_obj(struct kndClass *self,
 }
 
 
-static int str_conc_elem(void *obj,
-                         const char *elem_id __attribute__((unused)),
-                         size_t elem_id_size __attribute__((unused)),
-                         size_t count __attribute__((unused)),
-                         void *elem)
-{
-    struct kndClass *self = obj;
-    struct kndClassEntry *entry = elem;
-    struct kndClass *c = entry->class;
-    int err;
-
-    if (!c) {
-        //err = unfreeze_class(self, entry, &c);                                    RET_ERR();
-    }
-
-    c->str(c);
-
-    return knd_OK;
-}
-
-static gsl_err_t present_class_selection(void *obj,
-                                         const char *val __attribute__((unused)),
-                                         size_t val_size __attribute__((unused)))
-{
-    struct kndClass *self = obj;
-    struct kndClass *c;
-    struct kndSet *set;
-    struct glbOutput *out = self->entry->repo->out;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndTask *task = self->entry->repo->task;
-    int err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. presenting class \"%.*s\"..",
-                self->entry->name_size, self->entry->name);
-
-    out->reset(out);
-
-
-    
-    if (task->type == KND_SELECT_STATE) {
-        if (DEBUG_CONC_LEVEL_2)
-            knd_log(".. batch selection: batch size: %zu   start from: %zu",
-                    task->batch_max, task->batch_from);
-
-        /* no sets found? */
-        if (!task->num_sets) {
-            if (self->curr_baseclass && self->curr_baseclass->entry->descendants) {
-                set = self->curr_baseclass->entry->descendants;
-
-                // TODO
-                //err = export_set_JSON(self, set);
-                //if (err) return make_gsl_err_external(err);
-
-                return make_gsl_err(gsl_OK);
-            }
-
-            err = out->write(out, "{}", strlen("{}"));
-            if (err) return make_gsl_err_external(err);
-            return make_gsl_err(gsl_OK);
-        }
-
-        /* TODO: intersection cache lookup  */
-        set = task->sets[0];
-
-        /* intersection required */
-        if (task->num_sets > 1) {
-            err = mempool->new_set(mempool, &set);
-            if (err) return make_gsl_err_external(err);
-
-            set->type = KND_SET_CLASS;
-            set->mempool = mempool;
-
-            // TODO: compound class
-            set->base = task->sets[0]->base;
-
-            err = set->intersect(set, task->sets, task->num_sets);
-            if (err) return make_gsl_err_external(err);
-        }
-
-        if (!set->num_elems) {
-            err = out->write(out, "{}", strlen("{}"));
-            if (err) return make_gsl_err_external(err);
-            return make_gsl_err(gsl_OK);
-        }
-
-        /* final presentation in JSON 
-           TODO: choose output format */
-
-        switch (set->type) {
-        case KND_SET_STATE_UPDATE:
-            knd_log(".. export state set..");
-            err = out->write(out, "{}", strlen("{}"));
-            if (err) return make_gsl_err_external(err);
-            break;
-        default:
-            break;
-            //err = export_set_JSON(self, set);
-            //if (err) return make_gsl_err_external(err);
-        }
-
-        return make_gsl_err(gsl_OK);
-    }
-
-    if (!self->curr_class) {
-        knd_log("-- no class to present :(");
-        return make_gsl_err_external(knd_FAIL);
-    }
-
-    c = self->curr_class;
-
-    c->depth = 0;
-    c->max_depth = 1;
-    if (self->max_depth) {
-        c->max_depth = self->max_depth;
-    }
-
-    err = c->export(c);
-    if (err) {
-        knd_log("-- class export failed");
-        return make_gsl_err_external(err);
-    }
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
-{
-    struct kndClass *self = obj;
-    struct kndClass *c;
-    int err;
-
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    self->curr_class = NULL;
-    err = get_class(self, name, name_size, &c);
-    if (err) return make_gsl_err_external(err);
-
-    self->curr_class = c;
-
-    if (DEBUG_CONC_LEVEL_2) {
-        c->str(c);
-    }
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_size)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
-    struct kndClass *self = obj;
-    struct kndClass *c;
-    struct kndClassEntry *entry;
-    void *result;
-    long numval;
-    int err;
-
-    if (id_size >= KND_NAME_SIZE)
-        return make_gsl_err(gsl_FAIL);
-
-    memcpy(buf, id, id_size);
-    buf[id_size] = '0';
-
-    err = knd_parse_num((const char*)buf, &numval);
-    if (err) return make_gsl_err_external(err);
-
-    if (numval <= 0) return make_gsl_err(gsl_FAIL);
-
-    buf_size = 0;
-    knd_num_to_str((size_t)numval, buf, &buf_size, KND_RADIX_BASE);
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("ID: %zu => \"%.*s\" [size: %zu]",
-                numval, buf_size, buf, buf_size);
-
-    err = self->class_idx->get(self->class_idx, buf, buf_size, &result);
-    if (err) return make_gsl_err(gsl_FAIL);
-    entry = result;
-
-    self->curr_class = NULL;
-    err = get_class(self, entry->name, entry->name_size, &c);
-    if (err) return make_gsl_err_external(err);
-
-    self->curr_class = c;
-
-    if (DEBUG_CONC_LEVEL_2) {
-        c->str(c);
-    }
-
-    return make_gsl_err(gsl_OK);
-}
-
-
-static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
-{
-    struct kndClass *self = obj;
-    struct kndClass *c;
-    struct glbOutput *log = self->entry->repo->log;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndTask *task = self->entry->repo->task;
-    struct kndState *state;
-    int err;
-
-    if (!self->curr_class) {
-        knd_log("-- remove operation: class name not specified");
-
-        log->reset(log);
-        err = log->write(log, name, name_size);
-        if (err) return make_gsl_err_external(err);
-        err = log->write(log, " class name not specified",
-                         strlen(" class name not specified"));
-        if (err) return make_gsl_err_external(err);
-        return make_gsl_err(gsl_NO_MATCH);
-    }
-    
-    c = self->curr_class;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. removing class: \"%.*s\"\n",
-                c->name_size, c->name);
-
-    err = mempool->new_state(mempool, &state);
-    if (err) return make_gsl_err_external(err);
-
-    state->next = c->states;
-    c->states = state;
-    c->num_states++;
-    state->numid = c->num_states;
-    state->phase = KND_REMOVED;
-
-    // TODO: inform parents and dependants
-
-    task->type = KND_UPDATE_STATE;
-
-    log->reset(log);
-    err = log->write(log, name, name_size);
-    if (err) return make_gsl_err_external(err);
-    err = log->write(log, " class removed",
-                     strlen(" class removed"));
-    if (err) return make_gsl_err_external(err);
-
-    c->next = self->inbox;
-    self->inbox = c;
-    self->inbox_size++;
-
-    return make_gsl_err(gsl_OK);
-}
-
-
-static gsl_err_t run_select_class_state(void *obj, const char *name, size_t name_size)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
-    struct kndClass *root_class = obj;
-    struct kndClass *self = root_class->curr_class;
-    struct glbOutput *out = self->entry->repo->out;
-    bool in_list = false;
-    int err;
-
-    if (!self) return make_gsl_err_external(knd_FAIL);
-
-    if (DEBUG_CONC_LEVEL_TMP)
-        knd_log(".. present state of class \"%.*s\"..",
-                self->name_size, self->name);
-
-    err = out->writec(out, '{');
-    if (err) return make_gsl_err_external(err);
-
-    if (self->num_states) {
-        //err = export_class_state_JSON(self);
-        //if (err) return make_gsl_err_external(err);
-        in_list = true;
-    }
-
-    if (self->num_inst_states) {
-        if (in_list) {
-            err = out->writec(out, ',');
-            if (err) return make_gsl_err_external(err);
-        }
-        err = out->write(out, "\"instances\":{", strlen("\"instances\":{"));
-
-        err = out->write(out, "\"_total\":",
-                         strlen("\"_total\":"));
-        if (err) return make_gsl_err_external(err);
-
-        err = out->writef(out, "%zu", self->num_objs);
-        if (err) return make_gsl_err_external(err);
-
-        err = out->writec(out, ',');
-        if (err) return make_gsl_err_external(err);
-        
-        //err = export_class_inst_state_JSON(self);
-        //if (err) return make_gsl_err_external(err);
-
-        err = out->writec(out, '}');
-        if (err) return make_gsl_err_external(err);
-    }
-
-    err = out->writec(out, '}');
-    if (err) return make_gsl_err_external(err);
-    
-    return make_gsl_err(gsl_OK);
-}
-
-static int select_delta(struct kndClass *self,
-                        const char *rec,
-                        size_t *total_size)
-{
-    struct kndTask *task = self->entry->repo->task;
-    struct glbOutput *log = self->entry->repo->log;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndState *state;
-    struct kndSet *set;
-    struct kndClassUpdate *class_update;
-    struct kndClass *c;
-    int e, err;
-    gsl_err_t parser_err;
-
-    struct gslTaskSpec specs[] = {
-        { .name = "eq",
-          .name_size = strlen("eq"),
-          .parse = gsl_parse_size_t,
-          .obj = &task->batch_eq
-        },
-        { .name = "gt",
-          .name_size = strlen("gt"),
-          .parse = gsl_parse_size_t,
-          .obj = &task->batch_gt
-        },
-        { .name = "lt",
-          .name_size = strlen("lt"),
-          .parse = gsl_parse_size_t,
-          .obj = &task->batch_lt
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
-
-    if (DEBUG_CONC_LEVEL_TMP)
-        knd_log(".. select %.*s class delta:  gt %zu  lt %zu ..",
-                self->name_size, self->name,
-                task->batch_gt, task->batch_lt);
-
-    task->type = KND_SELECT_STATE;
-    if (!self->num_states) {
-        log->reset(log);
-        e = log->write(log, "no states available",
-                       strlen("no states available"));
-        if (e) return e;
-        task->http_code = HTTP_BAD_REQUEST;
-        return knd_FAIL;
-    }
-
-    if (task->state_lt && task->state_lt < task->state_gt) {
-        log->reset(log);
-        e = log->write(log, "invalid state range given",
-                       strlen("invalid state range given"));
-        if (e) return e;
-        task->http_code = HTTP_BAD_REQUEST;
-        return knd_FAIL;
-    }
-
-    if (task->state_gt >= self->num_states) {
-        log->reset(log);
-        e = log->write(log, "invalid state range given",
-                       strlen("invalid state range given"));
-        if (e) return e;
-        task->http_code = HTTP_BAD_REQUEST;
-        return knd_FAIL;
-    }
-
-    err = mempool->new_set(mempool, &set);                                        MEMPOOL_ERR(kndSet);
-    set->mempool = mempool;
-    set->type = KND_SET_STATE_UPDATE;
-
-    if (!task->state_lt)
-        task->state_lt = self->init_state + self->states->update->numid + 1;
-    
-    for (state = self->states; state; state = state->next) {
-        if (task->state_lt <= state->numid) continue;
-        if (task->state_gt >= state->numid) continue;
-        
-        err = set->add(set, state->id, state->id_size,
-                       (void*)state);                                          RET_ERR();
-    }
-
-    task->sets[0] = set;
-    task->num_sets = 1;
-    task->curr_obj = self;
-
-    
-    return knd_OK;
-}
-
-static gsl_err_t parse_select_class_delta(void *data,
-                                          const char *rec,
-                                          size_t *total_size)
-{
-    struct kndClass *self = data;
-    int err;
-
-    if (!self->curr_class) return make_gsl_err(gsl_FAIL);
-
-    knd_log("== curr class entry: %p", self->curr_class->entry);
-
-    err = select_delta(self->curr_class, rec, total_size);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_select_class(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
-{
-    struct kndClass *self = obj;
-    struct kndClass *c;
-    struct glbOutput *log = self->entry->repo->log;
-    int err;
-    gsl_err_t parser_err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
-
-    self->depth = 0;
-    self->curr_class = NULL;
-    self->curr_baseclass = NULL;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .is_selector = true,
-          .run = run_get_class,
-          .obj = self
-        },
-        { .name = "_id",
-          .name_size = strlen("_id"),
-          .is_selector = true,
-          .run = run_get_class_by_numid,
-          .obj = self
-        },
-        { .type = GSL_SET_STATE,
-          .name = "_rm",
-          .name_size = strlen("_rm"),
-          .run = run_remove_class,
-          .obj = self
-        },
-        { .type = GSL_SET_STATE,
-          .name = "inst",
-          .name_size = strlen("inst"),
-          .parse = parse_import_class_inst,
-          .obj = self
-        },
-        { .name = "inst",
-          .name_size = strlen("inst"),
-          .parse = parse_select_inst,
-          .obj = self
-        },
-        { .name = "_base",
-          .name_size = strlen("_base"),
-          .is_selector = true,
-          .parse = parse_baseclass_select,
-          .obj = self
-        },
-        {  .name = "_depth",
-           .name_size = strlen("_depth"),
-           .parse = gsl_parse_size_t,
-           .obj = &self->max_depth
-        },
-        { .name = "_state",
-          .name_size = strlen("_state"),
-          .run = run_select_class_state,
-          .obj = self
-        },
-        { .name = "_delta",
-          .name_size = strlen("_delta"),
-          .is_selector = true,
-          .parse = parse_select_class_delta,
-          .obj = self
-        },
-        { .is_default = true,
-          .run = present_class_selection,
-          .obj = self
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) {
-        if (DEBUG_CONC_LEVEL_TMP) {
-            knd_log("-- class select error %d: \"%.*s\"",
-                    parser_err.code, log->buf_size, log->buf);
-        }
-        if (!log->buf_size) {
-            err = log->write(log, "class parse failure",
-                                 strlen("class parse failure"));
-            if (err) return make_gsl_err_external(err);
-        }
-
-        /* TODO: release resources */
-        if (self->curr_class) {
-            c = self->curr_class;
-            c->reset_inbox(c);
-        }
-        return parser_err;
-    }
-
-    /* any updates happened? */
-    if (self->curr_class) {
-        c = self->curr_class;
-        if (c->inbox_size || c->obj_inbox_size) {
-            c->next = self->inbox;
-            self->inbox = c;
-            self->inbox_size++;
-        }
-    }
-
-    return make_gsl_err(gsl_OK);
-}
 
 static int get_class_attr_value(struct kndClass *src,
                                 struct kndAttrVar *query,
@@ -5049,7 +2054,7 @@ static int get_class_attr_value(struct kndClass *src,
         return knd_FAIL;
     }
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log("++ got attr: %.*s",
                 query->name_size, query->name);
     }
@@ -5079,7 +2084,7 @@ static int get_arg_value(struct kndAttrVar *src,
     struct kndAttrVar *curr_var;
     struct kndAttr *attr;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. from \"%.*s\" extract field: \"%.*s\"",
                 src->name_size, src->name,
                 query->name_size, query->name);
@@ -5094,7 +2099,7 @@ static int get_arg_value(struct kndAttrVar *src,
             switch (attr->type) {
             case KND_ATTR_NUM:
 
-                if (DEBUG_CONC_LEVEL_2) {
+                if (DEBUG_CLASS_LEVEL_2) {
                     knd_log("== implied NUM attr: %.*s value: %.*s numval:%lu",
                             src->name_size, src->name,
                             src->val_size, src->val, src->numval);
@@ -5116,7 +2121,7 @@ static int get_arg_value(struct kndAttrVar *src,
     /* iterate children */
     for (curr_var = src->children; curr_var; curr_var = curr_var->next) {
 
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_CLASS_LEVEL_2)
             knd_log("== child:%.*s val: %.*s",
                     curr_var->name_size, curr_var->name,
                     curr_var->val_size, curr_var->val);
@@ -5129,7 +2134,7 @@ static int get_arg_value(struct kndAttrVar *src,
 
         if (!strncmp(curr_var->name, query->name, query->name_size)) {
 
-            if (DEBUG_CONC_LEVEL_2)
+            if (DEBUG_CLASS_LEVEL_2)
                 knd_log("++ match: %.*s numval:%zu",
                         curr_var->val_size, curr_var->val, curr_var->numval);
 
@@ -5156,7 +2161,7 @@ static int knd_update_state(struct kndClass *self)
     struct kndTask *task = self->entry->repo->task;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log("..update state of \"%.*s\"",
                 self->entry->name_size, self->entry->name);
 
@@ -5184,7 +2189,7 @@ static int knd_update_state(struct kndClass *self)
             return err;
         }
 
-        if (DEBUG_CONC_LEVEL_1)
+        if (DEBUG_CLASS_LEVEL_1)
             c->str(c);
 
         if (update->num_classes >= self->inbox_size) {
@@ -5238,6 +2243,151 @@ static int open_DB(struct kndClass *self)
     return knd_NO_MATCH;
 }
 
+extern int knd_is_base(struct kndClass *self,
+                       struct kndClass *child)
+{
+    if (DEBUG_CLASS_LEVEL_2) {
+        knd_log(".. check inheritance: %.*s [resolved: %d] => %.*s [resolved:%d]?",
+                child->name_size, child->name, child->is_resolved,
+                self->entry->name_size, self->entry->name, self->is_resolved);
+    }
+
+    /* make sure that a child inherits from the base */
+    for (size_t i = 0; i < child->num_bases; i++) {
+        if (child->bases[i]->class == self) {
+            return knd_OK;
+        }
+    }
+
+    if (DEBUG_CLASS_LEVEL_TMP)
+        knd_log("-- no inheritance from  \"%.*s\" to \"%.*s\" :(",
+                self->entry->name_size, self->entry->name,
+                child->name_size, child->name);
+    return knd_FAIL;
+}
+
+extern int knd_class_get_attr(struct kndClass *self,
+                              const char *name, size_t name_size,
+                              struct kndAttr **result)
+{
+    struct kndAttr *attr;
+    struct kndAttrEntry *entry;
+    int err;
+
+    if (DEBUG_CLASS_LEVEL_1) {
+        knd_log(".. \"%.*s\" class to check attr \"%.*s\"",
+                self->entry->name_size, self->entry->name, name_size, name);
+    }
+
+    // TODO: no allocation in select tasks
+    if (!self->attr_name_idx) {
+        err = ooDict_new(&self->attr_name_idx, KND_SMALL_DICT_SIZE);
+        if (err) return err;
+
+        for (attr = self->attrs; attr; attr = attr->next) {
+            entry = malloc(sizeof(struct kndAttrEntry));
+            if (!entry) return knd_NOMEM;
+            memset(entry, 0, sizeof(struct kndAttrEntry));
+            memcpy(entry->name, attr->name, attr->name_size);
+            entry->name_size = attr->name_size;
+            entry->name[entry->name_size] = '\0';
+            entry->attr = attr;
+
+            err = self->attr_name_idx->set(self->attr_name_idx,
+                                      entry->name, entry->name_size, (void*)entry);
+            if (err) return err;
+            if (DEBUG_CLASS_LEVEL_2)
+                knd_log("++ register primary attr: \"%.*s\"",
+                        attr->name_size, attr->name);
+        }
+    }
+
+    entry = self->attr_name_idx->get(self->attr_name_idx, name, name_size);
+    if (!entry) {
+        knd_log("-- attr idx has no entry: %.*s :(", name_size, name);
+        return knd_NO_MATCH;
+    }
+
+    *result = entry->attr;
+    return knd_OK;
+}
+
+extern int knd_get_class(struct kndClass *self,
+                         const char *name, size_t name_size,
+                         struct kndClass **result)
+{
+    struct kndClassEntry *entry;
+    struct kndClass *c;
+    struct glbOutput *log = self->entry->repo->log;
+    struct ooDict *class_name_idx = self->entry->repo->root_class->class_name_idx;
+    struct kndTask *task = self->entry->repo->task;
+    struct kndState *state;
+    int err;
+
+    if (DEBUG_CLASS_LEVEL_2)
+        knd_log(".. %.*s to get class: \"%.*s\".. idx:%p",
+                self->entry->name_size, self->entry->name,
+                name_size, name,  class_name_idx);
+
+    entry = class_name_idx->get(class_name_idx, name, name_size);
+    if (!entry) {
+        knd_log("-- no such class: \"%.*s\":(", name_size, name);
+        log->reset(log);
+        err = log->write(log, name, name_size);
+        if (err) return err;
+        err = log->write(log, " class name not found",
+                               strlen(" class name not found"));
+        if (err) return err;
+        if (task)
+            task->http_code = HTTP_NOT_FOUND;
+
+        return knd_NO_MATCH;
+    }
+
+    if (DEBUG_CLASS_LEVEL_2)
+        knd_log("++ got Conc Dir: %.*s from \"%.*s\" block size: %zu conc:%p",
+                name_size, name,
+                self->entry->repo->frozen_output_file_name_size,
+                self->entry->repo->frozen_output_file_name, entry->block_size, entry->class);
+
+    if (entry->class) {
+        c = entry->class;
+
+        if (c->num_states) {
+            state = c->states;
+            if (state->phase == KND_REMOVED) {
+                knd_log("-- \"%s\" class was removed", name);
+                log->reset(log);
+                err = log->write(log, name, name_size);
+                if (err) return err;
+                err = log->write(log, " class was removed",
+                                 strlen(" class was removed"));
+                if (err) return err;
+
+                task->http_code = HTTP_GONE;
+                return knd_NO_MATCH;
+            }
+        }
+        
+        c->next = NULL;
+        if (DEBUG_CLASS_LEVEL_2)
+            c->str(c);
+
+        *result = c;
+        return knd_OK;
+    }
+
+    /*err = unfreeze_class(self, entry, &c);
+    if (err) {
+        knd_log("-- failed to unfreeze class: %.*s",
+                entry->name_size, entry->name);
+        return err;
+        }*/
+
+    *result = c;
+    return knd_OK;
+}
+
 /*  Concept initializer */
 extern void kndClass_init(struct kndClass *self)
 {
@@ -5249,21 +2399,22 @@ extern void kndClass_init(struct kndClass *self)
     //self->read_obj_entry = read_obj_entry;
     self->reset_inbox = reset_inbox;
     //self->restore = restore;
-    self->select_delta = select_delta;
+    self->select_delta = knd_select_class_delta;
     self->coordinate = coordinate;
     self->resolve = resolve_refs;
 
-    self->import = parse_import_class;
+    self->import = knd_import_class;
+    self->select = knd_select_class;
+
     //self->sync = parse_sync_task;
     //self->freeze = freeze;
-    self->select = parse_select_class;
 
     self->update_state = knd_update_state;
     //self->apply_liquid_updates = apply_liquid_updates;
     self->export = export;
-    self->get = get_class;
+    self->get = knd_get_class;
     self->get_obj = get_obj;
-    self->get_attr = get_attr;
+    self->get_attr = knd_class_get_attr;
 }
 
 extern int

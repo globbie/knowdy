@@ -1622,3 +1622,35 @@ static gsl_err_t procdir_entry_append(void *accu,
 
     return make_gsl_err(gsl_OK);
 }
+
+static int assign_ids(struct kndClass *self)
+{
+    struct kndClassEntry *entry;
+    const char *key;
+    void *val;
+    size_t count = 0;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. assign class ids..");
+
+    /* TODO: get statistics on usage from retrievers? */
+    key = NULL;
+    self->class_name_idx->rewind(self->class_name_idx);
+    do {
+        self->class_name_idx->next_item(self->class_name_idx, &key, &val);
+        if (!key) break;
+        entry = (struct kndClassEntry*)val;
+        count++;
+
+        entry->id_size = 0;
+        knd_num_to_str(count, entry->id, &entry->id_size, KND_RADIX_BASE);
+
+        if (DEBUG_CONC_LEVEL_2)
+            knd_log("ID: %zu => \"%.*s\" [size: %zu]",
+                    count, entry->id_size, entry->id, entry->id_size);
+
+        /* TODO: assign obj ids */
+    } while (key);
+
+    return knd_OK;
+}
