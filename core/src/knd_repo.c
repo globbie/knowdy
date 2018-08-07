@@ -540,10 +540,13 @@ extern int kndRepo_init(struct kndRepo *self)
     /* try opening the frozen DB */
     err = c->open(c);
     if (err) {
-        if (err != knd_NO_MATCH) return err;
+        if (err != knd_NO_MATCH) {
+            knd_log("-- failed to open a frozen DB");
+            return err;
+        }
 
         /* read class definitions */
-        knd_log("-- no frozen DB found, reading original schemas..");
+        knd_log("-- no existing frozen DB was found, reading original schemas..");
         
         c->batch_mode = true;
         err = c->load(c, NULL, "index", strlen("index"));
