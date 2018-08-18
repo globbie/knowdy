@@ -38,7 +38,7 @@ struct kndClassUpdate
 {
     struct kndClass *conc;
     struct kndUpdate *update;
-    struct kndObject **insts;
+    struct kndClassInst **insts;
     size_t num_insts;
 };
 

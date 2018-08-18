@@ -41,7 +41,7 @@
 #define DEBUG_CLASS_RESOLVE_LEVEL_5 0
 #define DEBUG_CLASS_RESOLVE_LEVEL_TMP 1
 
-static int inherit_attrs(struct kndClass *self, struct kndClass *base)
+extern int knd_inherit_attrs(struct kndClass *self, struct kndClass *base)
 {
     struct kndClassEntry *entry;
     struct kndAttr *attr;
@@ -131,7 +131,7 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base)
 
     /* contact the grandparents */
     for (item = base->baseclass_vars; item; item = item->next) {
-        err = inherit_attrs(self, item->entry->class);                            RET_ERR();
+        err = knd_inherit_attrs(self, item->entry->class);                            RET_ERR();
     }
 
     return knd_OK;
@@ -952,7 +952,7 @@ static int resolve_baseclasses(struct kndClass *self)
         c->entry->num_children++;
         //}
 
-        err = inherit_attrs(self, cvar->entry->class);                            RET_ERR();
+        err = knd_inherit_attrs(self, cvar->entry->class);                            RET_ERR();
     }
 
     /* now that we know all our base classes

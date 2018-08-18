@@ -435,7 +435,7 @@ static int build_attr_name_idx(struct kndClass *self)
                     self->entry->name_size, self->entry->name,
                     item->entry->class->name_size,
                     item->entry->class->name);
-        err = inherit_attrs(self, item->entry->class);
+        err = knd_inherit_attrs(self, item->entry->class);                        RET_ERR();
     }
 
     return knd_OK;
