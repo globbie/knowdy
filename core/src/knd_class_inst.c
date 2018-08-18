@@ -33,12 +33,12 @@ static int export_rel_inst_JSON(void *obj,
                                 size_t count,
                                 void *elem __attribute__((unused)));
 
-static void del(struct kndObject *self)
+static void del(struct kndClassInst *self)
 {
     self->states->phase = KND_FREED;
 }
 
-static void str(struct kndObject *self)
+static void str(struct kndClassInst *self)
 {
     struct kndElem *elem;
 
@@ -57,7 +57,7 @@ static void str(struct kndObject *self)
 }
 
 static int 
-kndObject_export_aggr_JSON(struct kndObject *self)
+kndClassInst_export_aggr_JSON(struct kndClassInst *self)
 {
     struct kndElem *elem;
     struct glbOutput *out = self->base->entry->repo->out;
@@ -91,7 +91,7 @@ kndObject_export_aggr_JSON(struct kndObject *self)
     return knd_OK;
 }
 
-static int export_inst_relref_JSON(struct kndObject *self,
+static int export_inst_relref_JSON(struct kndClassInst *self,
                                    struct kndRelRef *relref)
 {
     char buf[KND_NAME_SIZE];
@@ -139,7 +139,7 @@ static int export_inst_relref_JSON(struct kndObject *self,
     return knd_OK;
 }
 
-static int export_inst_relrefs_JSON(struct kndObject *self)
+static int export_inst_relrefs_JSON(struct kndClassInst *self)
 {
     struct kndRelRef *relref;
     int err;
@@ -152,9 +152,9 @@ static int export_inst_relrefs_JSON(struct kndObject *self)
     return knd_OK;
 }
 
-static int export_concise_JSON(struct kndObject *self)
+static int export_concise_JSON(struct kndClassInst *self)
 {
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     struct glbOutput *out = self->base->entry->repo->out;
     struct kndElem *elem;
     bool is_concise = true;
@@ -232,10 +232,10 @@ static int export_concise_JSON(struct kndObject *self)
         return knd_OK;
 }
 
-static int kndObject_export_JSON(struct kndObject *self)
+static int kndClassInst_export_JSON(struct kndClassInst *self)
 {
     struct kndElem *elem;
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     struct glbOutput *out = self->base->entry->repo->out;
     struct kndState *state = self->states;
     bool is_concise = true;
@@ -248,7 +248,7 @@ static int kndObject_export_JSON(struct kndObject *self)
                 self->base->name_size, self->base->name);
 
     if (self->type == KND_OBJ_AGGR) {
-        err = kndObject_export_aggr_JSON(self);
+        err = kndClassInst_export_aggr_JSON(self);
         if (err) {
             knd_log("-- aggr obj JSON export failed");
             return err;
@@ -424,7 +424,7 @@ static int export_rel_inst_JSON(void *obj,
 }
 
 static int
-export_rels_GSP(struct kndObject *self)
+export_rels_GSP(struct kndClassInst *self)
 {
     struct kndRel *rel;
     struct kndRelRef *relref;
@@ -456,7 +456,7 @@ export_rels_GSP(struct kndObject *self)
 }
 
 static int 
-kndObject_export_GSP(struct kndObject *self)
+kndClassInst_export_GSP(struct kndClassInst *self)
 {
     struct kndElem *elem;
     struct glbOutput *out = self->base->entry->repo->out;
@@ -510,20 +510,20 @@ kndObject_export_GSP(struct kndObject *self)
 
 
 /* export object */
-static int kndObject_export(struct kndObject *self)
+static int kndClassInst_export(struct kndClassInst *self)
 {
     int err;
     switch(self->format) {
     case KND_FORMAT_JSON:
-        err = kndObject_export_JSON(self);
+        err = kndClassInst_export_JSON(self);
         if (err) return err;
         break;
         /*case KND_FORMAT_HTML:
-        err = kndObject_export_HTML(self, is_concise);
+        err = kndClassInst_export_HTML(self, is_concise);
         if (err) return err;
         break;*/
     case KND_FORMAT_GSP:
-        err = kndObject_export_GSP(self);
+        err = kndClassInst_export_GSP(self);
         if (err) return err;
         break;
     default:
@@ -534,7 +534,7 @@ static int kndObject_export(struct kndObject *self)
 
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
-    struct kndObject *self = obj;
+    struct kndClassInst *self = obj;
     struct kndClass *c = self->base;
     struct kndObjEntry *entry;
     struct ooDict *name_idx = c->entry->obj_name_idx;
@@ -581,7 +581,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t find_obj_rel(void *obj, const char *name, size_t name_size)
 {
-    struct kndObject *self = obj;
+    struct kndClassInst *self = obj;
     struct kndRelRef *relref = NULL;
     struct kndRel *rel;
 
@@ -616,7 +616,7 @@ static gsl_err_t present_rel(void *data,
                              const char *val __attribute__((unused)),
                              size_t val_size __attribute__((unused)))
 {
-    struct kndObject *self = data;
+    struct kndClassInst *self = data;
     struct glbOutput *out = self->base->entry->repo->out;
     struct kndTask *task = self->base->entry->repo->task;
     struct kndSet *set;
@@ -670,7 +670,7 @@ static gsl_err_t confirm_obj_import(void *data,
                                     const char *val __attribute__((unused)),
                                     size_t val_size __attribute__((unused)))
 {
-    struct kndObject *self = data;
+    struct kndClassInst *self = data;
 
     if (DEBUG_INST_LEVEL_2)
         knd_log(".. confirm obj import.. %p", self);
@@ -678,7 +678,7 @@ static gsl_err_t confirm_obj_import(void *data,
     return make_gsl_err(gsl_OK);
 }
 
-static int kndObject_validate_attr(struct kndObject *self,
+static int kndClassInst_validate_attr(struct kndClassInst *self,
                                    const char *name,
                                    size_t name_size,
                                    struct kndAttr **result,
@@ -731,14 +731,14 @@ static gsl_err_t parse_elem(void *data,
                             const char *name, size_t name_size,
                             const char *rec, size_t *total_size)
 {
-    struct kndObject *self = data;
-    if (self->curr_obj) {
-        self = self->curr_obj;
+    struct kndClassInst *self = data;
+    if (self->curr_inst) {
+        self = self->curr_inst;
     }
     struct kndClass *root_class;
     struct kndMemPool *mempool = self->base->entry->repo->mempool;
     struct kndClass *c;
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     struct kndElem *elem = NULL;
     struct kndAttr *attr = NULL;
     struct kndRef *ref = NULL;
@@ -756,7 +756,7 @@ static gsl_err_t parse_elem(void *data,
                 name_size, name, 32, rec);
     }
 
-    err = kndObject_validate_attr(self, name, name_size, &attr, &elem);
+    err = kndClassInst_validate_attr(self, name, name_size, &attr, &elem);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     if (elem) {
@@ -1039,7 +1039,7 @@ static gsl_err_t rel_read(void *obj,
 static gsl_err_t rel_append(void *accu,
                             void *item)
 {
-    struct kndObject *self = accu;
+    struct kndClassInst *self = accu;
     struct kndRelRef *ref = item;
 
     ref->next = self->entry->rels;
@@ -1055,7 +1055,7 @@ static gsl_err_t rel_alloc(void *obj,
                            size_t count,
                            void **item)
 {
-    struct kndObject *self = obj;
+    struct kndClassInst *self = obj;
     struct kndRelRef *relref = NULL;
     struct kndRel *root_rel;
     struct kndMemPool *mempool = self->base->entry->repo->mempool;
@@ -1080,25 +1080,25 @@ static gsl_err_t select_rel(void *obj,
                             const char *rec,
                             size_t *total_size)
 {
-    struct kndObject *self = obj;
+    struct kndClassInst *self = obj;
 
-    if (!self->curr_obj) {
+    if (!self->curr_inst) {
         knd_log("-- no obj selected :(");
         return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
 
     /* reset rel selection */
-    self->curr_obj->curr_rel = NULL;
+    self->curr_inst->curr_rel = NULL;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .is_selector = true,
           .run = find_obj_rel,
-          .obj = self->curr_obj
+          .obj = self->curr_inst
         },
         { .is_default = true,
           .run = present_rel,
-          .obj = self->curr_obj
+          .obj = self->curr_inst
         }
     };
 
@@ -1109,21 +1109,21 @@ static gsl_err_t remove_obj(void *data,
                             const char *name __attribute__((unused)),
                             size_t name_size __attribute__((unused)))
 {
-    struct kndObject *self       = data;
+    struct kndClassInst *self       = data;
     struct kndClass  *base       = self->base;
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     struct kndState  *state;
     struct glbOutput *log        = base->entry->repo->log;
     struct kndMemPool *mempool   = base->entry->repo->mempool;
     struct kndTask *task         = base->entry->repo->task;
     int err;
 
-    if (!self->curr_obj) {
+    if (!self->curr_inst) {
         knd_log("-- remove operation: no obj selected :(");
         return make_gsl_err(gsl_FAIL);
     }
 
-    obj = self->curr_obj;
+    obj = self->curr_inst;
 
     if (DEBUG_INST_LEVEL_2)
         knd_log("== obj to remove: \"%.*s\"", obj->name_size, obj->name);
@@ -1155,7 +1155,7 @@ static gsl_err_t parse_rels(void *obj,
                             const char *rec,
                             size_t *total_size)
 {
-    struct kndObject *self = obj;
+    struct kndClassInst *self = obj;
     struct gslTaskSpec rel_spec = {
         .is_list_item = true,
         .accu = self,
@@ -1172,7 +1172,7 @@ static gsl_err_t parse_rels(void *obj,
 }
  
 /* parse object */
-static gsl_err_t parse_import_inst(struct kndObject *self,
+static gsl_err_t parse_import_inst(struct kndClassInst *self,
                                    const char *rec,
                                    size_t *total_size)
 {
@@ -1212,7 +1212,7 @@ static gsl_err_t present_inst_rels_state(void *obj,
                                          const char *name  __attribute__((unused)),
                                          size_t name_size  __attribute__((unused)))
 {
-    struct kndObject *self = obj;
+    struct kndClassInst *self = obj;
     struct glbOutput *log = self->base->entry->repo->log;
     struct kndTask *task = self->base->entry->repo->task;
     struct kndRelRef *relref = self->curr_rel;
@@ -1243,7 +1243,7 @@ static gsl_err_t present_inst_rels_state(void *obj,
 
 
 
-static int select_inst_rel_delta(struct kndObject *self,
+static int select_inst_rel_delta(struct kndClassInst *self,
                                  const char *rec,
                                  size_t *total_size)
 {
@@ -1343,7 +1343,7 @@ static int select_inst_rel_delta(struct kndObject *self,
 
     task->sets[0] = set;
     task->num_sets = 1;
-    task->curr_obj = self;
+    task->curr_inst = self;
 
     return knd_OK;
 }
@@ -1352,7 +1352,7 @@ static gsl_err_t parse_select_inst_rel_delta(void *data,
                                              const char *rec,
                                              size_t *total_size)
 {
-    struct kndObject *self = data;
+    struct kndClassInst *self = data;
     struct glbOutput *log = self->base->entry->repo->log;
     struct kndTask *task = self->base->entry->repo->task;
     int e, err;
@@ -1373,7 +1373,7 @@ static gsl_err_t parse_select_inst_rel_delta(void *data,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t select_rels(struct kndObject *self,
+static gsl_err_t select_rels(struct kndClassInst *self,
                              const char *rec,
                              size_t *total_size)
 {
@@ -1409,13 +1409,13 @@ static int export_inst_JSON(void *obj,
                             size_t count,
                             void *elem)
 {
-    struct kndObject *self = obj;
+    struct kndClassInst *self = obj;
     struct kndClass *base = self->base;
     struct kndTask *task = base->entry->repo->task;
     if (count < task->start_from) return knd_OK;
     if (task->batch_size >= task->batch_max) return knd_RANGE;
     struct glbOutput *out = base->entry->repo->out;
-    struct kndObject *inst = elem;
+    struct kndClassInst *inst = elem;
     int err;
 
     if (DEBUG_INST_LEVEL_2)
@@ -1434,14 +1434,14 @@ static int export_inst_JSON(void *obj,
         inst->max_depth = self->max_depth;
     }
 
-    err = kndObject_export(inst);                                                 RET_ERR();
+    err = kndClassInst_export(inst);                                                 RET_ERR();
 
     task->batch_size++;
 
     return knd_OK;
 }
 
-static int export_inst_set_JSON(struct kndObject *self,
+static int export_inst_set_JSON(struct kndClassInst *self,
                                 struct kndSet *set)
 {
     struct glbOutput *out = self->base->entry->repo->out;
@@ -1480,8 +1480,8 @@ static int export_inst_set_JSON(struct kndObject *self,
 static gsl_err_t present_inst_selection(void *data, const char *val __attribute__((unused)),
                                         size_t val_size __attribute__((unused)))
 {
-    struct kndObject *self = data;
-    struct kndObject *obj;
+    struct kndClassInst *self = data;
+    struct kndClassInst *obj;
     struct kndClass *base = self->base;
     struct kndTask *task = base->entry->repo->task;
     struct glbOutput *out = base->entry->repo->out;
@@ -1537,12 +1537,12 @@ static gsl_err_t present_inst_selection(void *data, const char *val __attribute_
     }
 
     
-    if (!self->curr_obj) {
+    if (!self->curr_inst) {
         knd_log("-- no obj selected :(");
         return make_gsl_err(gsl_FAIL);
     }
 
-    obj = self->curr_obj;
+    obj = self->curr_inst;
     obj->max_depth = self->max_depth;
 
     err = obj->export(obj);
@@ -1553,30 +1553,30 @@ static gsl_err_t present_inst_selection(void *data, const char *val __attribute_
 
 static gsl_err_t run_get_obj(void *obj, const char *name, size_t name_size)
 {
-    struct kndObject *self = obj;
-    struct kndClass *conc = self->base;
+    struct kndClassInst *self = obj;
+    struct kndClass *c = self->base;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    self->curr_obj = NULL;
-    err = conc->get_obj(conc, name, name_size, &self->curr_obj);
+    self->curr_inst = NULL;
+    err = c->get_inst(c, name, name_size, &self->curr_inst);
     if (err) {
         knd_log("-- failed to get obj: %.*s :(", name_size, name);
         return make_gsl_err_external(err);
     }
 
-    self->curr_obj->max_depth = 0;
+    self->curr_inst->max_depth = 0;
     if (DEBUG_INST_LEVEL_2) {
-        knd_log("++ got obj: \"%.*s\" %p!", name_size, name, self->curr_obj);
-        self->curr_obj->str(self->curr_obj);
+        knd_log("++ got obj: \"%.*s\" %p!", name_size, name, self->curr_inst);
+        self->curr_inst->str(self->curr_inst);
     }
     
     return make_gsl_err(gsl_OK);
 }
 
-static int select_delta(struct kndObject *self,
+static int select_delta(struct kndClassInst *self,
                         const char *rec,
                         size_t *total_size)
 {
@@ -1586,7 +1586,7 @@ static int select_delta(struct kndObject *self,
     struct kndState *state;
     struct kndSet *set;
     struct kndClassUpdate *class_update;
-    struct kndObject *inst;
+    struct kndClassInst *inst;
     size_t gt = 0;
     size_t lt = 0;
     size_t eq = 0;
@@ -1661,7 +1661,7 @@ static gsl_err_t parse_select_inst_delta(void *data,
                                          const char *rec,
                                          size_t *total_size)
 {
-    struct kndObject *self = data;
+    struct kndClassInst *self = data;
     int err;
 
     err = select_delta(self, rec, total_size);
@@ -1670,7 +1670,7 @@ static gsl_err_t parse_select_inst_delta(void *data,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_select_inst(struct kndObject *self,
+static gsl_err_t parse_select_inst(struct kndClassInst *self,
                                   const char *rec,
                                   size_t *total_size)
 {
@@ -1682,7 +1682,7 @@ static gsl_err_t parse_select_inst(struct kndObject *self,
         knd_log(".. parsing class instance select: \"%.*s\"", 32, rec);
 
     self->max_depth = 0;
-    self->curr_obj = NULL;
+    self->curr_inst = NULL;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -1739,7 +1739,7 @@ static gsl_err_t parse_select_inst(struct kndObject *self,
     return make_gsl_err(gsl_OK);
 }
 
-static int kndObject_resolve(struct kndObject *self)
+static int kndClassInst_resolve(struct kndClassInst *self)
 {
     struct kndElem *elem;
     int err;
@@ -1776,27 +1776,27 @@ extern void kndObjEntry_init(struct kndObjEntry *self)
     memset(self, 0, sizeof(struct kndObjEntry));
 }
 
-extern void kndObject_init(struct kndObject *self)
+extern void kndClassInst_init(struct kndClassInst *self)
 {
     self->name_size = 0;
     self->del = del;
     self->str = str;
     self->parse = parse_import_inst;
     self->read = parse_import_inst;
-    self->resolve = kndObject_resolve;
-    self->export = kndObject_export;
+    self->resolve = kndClassInst_resolve;
+    self->export = kndClassInst_export;
     self->select = parse_select_inst;
     self->select_rels = select_rels;
 }
 
-extern int kndObject_new(struct kndObject **obj)
+extern int kndClassInst_new(struct kndClassInst **obj)
 {
-    struct kndObject *self;
+    struct kndClassInst *self;
 
-    self = malloc(sizeof(struct kndObject));
+    self = malloc(sizeof(struct kndClassInst));
     if (!self) return knd_NOMEM;
-    memset(self, 0, sizeof(struct kndObject));
-    kndObject_init(self);
+    memset(self, 0, sizeof(struct kndClassInst));
+    kndClassInst_init(self);
     *obj = self;
 
     return knd_OK;

@@ -41,8 +41,7 @@ static void str(struct kndUser *self)
     knd_log("USER: %s", self->name);
 }
 
-static int
-kndUser_add_user(struct kndUser *self)
+static int kndUser_add_user(struct kndUser *self)
 {
     char buf[KND_TEMP_BUF_SIZE] = {0};
     size_t buf_size = 0;
@@ -182,12 +181,11 @@ static int export_JSON(struct kndUser *self)
     return err;
 }
 
-
 static gsl_err_t kndUser_parse_repo(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct kndUser *self = (struct kndUser*)obj;
+    struct kndUser *self = obj;
 
     if (DEBUG_USER_LEVEL_TMP)
         knd_log("   .. parsing the REPO rec: \"%s\"", rec);
@@ -454,21 +452,43 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 {
     struct kndUser *self = obj;
     struct kndClass *c;
+    struct kndUserContext *ctx;
+    struct kndClassInst *inst;
+    struct kndMemPool *mempool = self->mempool;
+    void *result;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     if (DEBUG_USER_LEVEL_2)
-        knd_log(".. get user: \"%.*s\"..",
-                name_size, name);
+        knd_log(".. get user: \"%.*s\"..", name_size, name);
 
+    // TODO: read the user class name from config
     err = self->repo->root_class->get(self->repo->root_class,
                                       "User", strlen("User"), &c);
     if (err) return make_gsl_err_external(err);
 
-    err = c->get_obj(c, name, name_size, &self->curr_user);
+    err = c->get_inst(c, name, name_size, &inst);
     if (err) return make_gsl_err_external(err);
+
+    err = self->user_idx->get(self->user_idx,
+                              inst->entry->id, inst->entry->id_size,
+                              &ctx);
+    if (err) {
+        err = mempool->new_user_ctx(mempool, &ctx);
+        if (err) return make_gsl_err_external(err);
+
+        ctx->user_inst = inst;
+
+        err = self->user_idx->add(self->user_idx,
+                                  inst->entry->id, inst->entry->id_size,
+                                  (void*)ctx);
+        if (err) return make_gsl_err_external(err);
+    }
+
+    self->curr_user = inst;
+    self->curr_ctx = ctx;
 
     return make_gsl_err(gsl_OK);
 }
@@ -478,7 +498,7 @@ static gsl_err_t select_user_rels(void *obj,
                                   size_t *total_size)
 {
     struct kndUser *self = obj;
-    struct kndObject *user;
+    struct kndClassInst *user;
     struct glbOutput *out = self->task->out;
 
     if (!self->curr_user) {
@@ -501,7 +521,7 @@ static gsl_err_t run_present_user(void *data,
                                   size_t val_size __attribute__((unused)))
 {
     struct kndUser *self = data;
-    struct kndObject *user;
+    struct kndClassInst *user;
     struct glbOutput *out = self->task->out;
     int err;
 
@@ -527,7 +547,7 @@ static gsl_err_t remove_user(void *data,
     struct kndUser *self = data;
     struct kndClass *c;
     struct kndClass *root_class;
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     int err;
 
     if (!self->curr_user) {

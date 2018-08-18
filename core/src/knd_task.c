@@ -39,8 +39,6 @@ static void str(struct kndTask *self __attribute__((unused)), size_t depth __att
 
 static void reset(struct kndTask *self)
 {
-    //self->sid_size = 0;
-    //self->uid_size = 0;
     self->tid_size = 0;
 
     self->locale = self->shard->user->default_locale;
@@ -68,7 +66,7 @@ static void reset(struct kndTask *self)
     self->error = 0;
     self->http_code = HTTP_OK;
 
-    self->curr_obj = NULL;
+    self->curr_inst = NULL;
     self->log->reset(self->log);
     self->out->reset(self->out);
     self->update->reset(self->update);

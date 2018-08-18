@@ -5,6 +5,7 @@
 #include "knd_class.h"
 
 struct kndObjEntry;
+struct kndClassInst;
 struct kndUser;
 struct glbOutput;
 struct kndRepo;
@@ -30,10 +31,22 @@ struct kndRepoAccess
 
 struct kndUserContext
 {
-    struct kndObjEntry *entry;
+    struct kndClassInst *user_inst;
 
-    // inbox
-    //ACL
+    struct kndClass *class_inbox;
+    size_t class_inbox_size;
+    struct kndClass *inbox;
+    size_t inbox_size;
+
+    struct kndObject *obj_inbox;
+    size_t obj_inbox_size;
+    size_t num_objs;
+
+    struct kndSet *class_idx;
+    struct ooDict *class_name_idx;
+    struct ooDict *attr_name_idx;
+
+    //TODO: ACL
 };
 
 struct kndUser
@@ -68,7 +81,8 @@ struct kndUser
     size_t max_users;
     size_t num_users;
 
-    struct kndObject *curr_user;
+    struct kndClassInst   *curr_user;
+    struct kndUserContext *curr_ctx;
 
     struct kndShard *shard;
     struct kndTask *task;

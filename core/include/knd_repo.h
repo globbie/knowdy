@@ -6,6 +6,7 @@ struct kndRel;
 struct kndObject;
 struct kndRepo;
 struct kndUser;
+struct kndUserContext;
 struct kndQuery;
 struct glbOutput;
 
@@ -32,6 +33,8 @@ struct kndRepo
 
     char frozen_output_file_name[KND_PATH_SIZE];
     size_t frozen_output_file_name_size;
+
+    struct kndUserContext *ctx;
 
     const char *frozen_name_idx_path;
     size_t frozen_name_idx_path_size;

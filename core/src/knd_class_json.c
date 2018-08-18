@@ -169,14 +169,13 @@ static int aggr_item_export_JSON(struct kndClass *self,
         c = parent_item->attr->conc;
         if (c->num_computed_attrs) {
 
-            if (DEBUG_JSON_LEVEL_2)
+            if (DEBUG_JSON_LEVEL_TMP)
                 knd_log("\n..present computed attrs in %.*s (val:%.*s)",
                         parent_item->name_size, parent_item->name,
                         parent_item->val_size, parent_item->val);
 
-            // TODO
-            //err = present_computed_aggr_attrs(self, parent_item);
-            //if (err) return err;
+            err = knd_present_computed_aggr_attrs(self, parent_item);
+            if (err) return err;
         }
    }
     

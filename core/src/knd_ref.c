@@ -37,7 +37,7 @@ static void str(struct kndRef *self)
 
 /*static int
 kndRef_set_reverse_rel(struct kndRef *self,
-                   struct kndObject *obj)
+                   struct kndClassInst *obj)
 {
     struct kndRelClass *relc;
     struct kndRelType *reltype;
@@ -95,7 +95,7 @@ static int kndRef_resolve(struct kndRef *self)
 {
     struct kndClass *c;
     struct kndObjEntry *entry;
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     const char *obj_name;
     int err, e;
 
@@ -167,7 +167,7 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 static int
 export_reverse_rel_JSON(struct kndRef *self)
 {
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     struct glbOutput *out = self->out;
     int err = knd_FAIL;
 
@@ -203,7 +203,7 @@ export_reverse_rel_JSON(struct kndRef *self)
 
 static int export_GSP(struct kndRef *self)
 {
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     struct glbOutput *out = self->out;
     int err;
 
@@ -231,7 +231,7 @@ static int export_GSP(struct kndRef *self)
 static int
 export_reverse_rel_GSP(struct kndRef *self)
 {
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     struct glbOutput *out;
     int err = knd_FAIL;
 

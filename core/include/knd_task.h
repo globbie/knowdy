@@ -106,7 +106,7 @@ struct kndTask
     size_t state_gt;
     size_t state_lt;
 
-    struct kndObject *curr_obj;
+    struct kndClassInst *curr_inst;
 
     struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;

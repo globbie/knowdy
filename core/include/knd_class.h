@@ -29,6 +29,7 @@
 
 struct kndAttr;
 struct kndAttrVar;
+struct kndProcCallArg;
 struct kndClass;
 struct kndTranslation;
 struct kndClass;
@@ -164,11 +165,11 @@ struct kndClass
     size_t num_bases;
     bool is_resolved;
 
-    struct kndClass   *root_class;
-    struct kndClass   *curr_class;
-    struct kndClass   *curr_baseclass;
-    struct kndAttr    *curr_attr;
-    struct kndObject  *curr_obj;
+    struct kndClass      *root_class;
+    struct kndClass      *curr_class;
+    struct kndClass      *curr_baseclass;
+    struct kndAttr       *curr_attr;
+    struct kndClassInst  *curr_inst;
 
     struct kndConcFolder *folders;
     size_t num_folders;
@@ -177,7 +178,7 @@ struct kndClass
     struct kndClass *inbox;
     size_t inbox_size;
 
-    struct kndObject *obj_inbox;
+    struct kndClassInst *obj_inbox;
     size_t obj_inbox_size;
     size_t num_objs;
     bool batch_mode;
@@ -213,12 +214,9 @@ struct kndClass
                       size_t *total_size);
     int (*read_obj_entry)(struct kndClass   *self,
                           struct kndObjEntry *entry,
-                          struct kndObject **result);
+                          struct kndClassInst **result);
     int (*restore)(struct kndClass   *self);
 
-    int (*select_delta)(struct kndClass *self,
-                        const char *rec,
-                        size_t *total_size);
     int (*freeze)(struct kndClass *self);
     gsl_err_t (*sync)(void *obj,
                       const char *rec,
@@ -241,9 +239,9 @@ struct kndClass
                const char *name, size_t name_size,
                struct kndClass  **result);
 
-    int (*get_obj)(struct kndClass *self,
-                   const char *name, size_t name_size,
-                   struct kndObject **result);
+    int (*get_inst)(struct kndClass *self,
+                    const char *name, size_t name_size,
+                    struct kndClassInst **result);
 
     int (*get_attr)(struct kndClass *self,
                     const char *name, size_t name_size,
@@ -294,9 +292,16 @@ extern gsl_err_t knd_import_class(void *obj,
                                   const char *rec,
                                   size_t *total_size);
 
-extern gsl_err_t knd_select_class_delta(void *data,
-                                        const char *rec,
-                                        size_t *total_size);
+extern int knd_resolve_classes(struct kndClass *self);
+extern int knd_resolve_class(struct kndClass *self,
+                             struct kndClassUpdate *class_update);
+
+extern int knd_present_computed_aggr_attrs(struct kndClass *self,
+                                           struct kndAttrVar *attr_var);
+
+extern int get_arg_value(struct kndAttrVar *src,
+                         struct kndAttrVar *query,
+                         struct kndProcCallArg *arg);
 
 extern gsl_err_t knd_select_class(void *obj,
                                   const char *rec,

@@ -108,40 +108,34 @@ kndShard_parse_config(void *obj, const char *rec, size_t *total_size)
 {
     struct kndShard *self = obj;
     struct gslTaskSpec specs[] = {
-        {
-            .is_implied = true,
+        {   .is_implied = true,
             .run = run_check_schema,
             .obj = self
         },
-        {
-            .name = "path",
+        {   .name = "path",
             .name_size = strlen("path"),
             .buf = self->path,
             .buf_size = &self->path_size,
             .max_buf_size = KND_NAME_SIZE
         },
-        {
-            .name = "schemas",
+        {   .name = "schemas",
             .name_size = strlen("schemas"),
             .buf = self->schema_path,
             .buf_size = &self->schema_path_size,
             .max_buf_size = KND_NAME_SIZE
         },
-        {
-            .name = "sid",
+        {   .name = "sid",
             .name_size = strlen("sid"),
             .buf = self->sid,
             .buf_size = &self->sid_size,
             .max_buf_size = KND_NAME_SIZE
         },
-        {
-            .name = "memory",
+        {  .name = "memory",
             .name_size = strlen("memory"),
             .parse = parse_memory_settings,
             .obj = self->mempool,
         },
-        {
-            .name = "agent",
+        {   .name = "agent",
             .name_size = strlen("agent"),
             .buf = self->name,
             .buf_size = &self->name_size,

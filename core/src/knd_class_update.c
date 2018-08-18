@@ -7,7 +7,7 @@ static int build_class_updates(struct kndClass *self,
     struct kndTask *task = self->entry->repo->task;
     struct glbOutput *out = task->update;
     struct kndClass *c;
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     struct kndClassUpdate *class_update;
     int err;
 

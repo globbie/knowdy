@@ -38,7 +38,7 @@ kndNum_index(struct kndNum *self __attribute__((unused)))
     //char buf[KND_LARGE_BUF_SIZE];
     //size_t buf_size;
 
-    //struct kndObject *obj;
+    //struct kndClassInst *obj;
     //struct kndNumState *curr_state;
     
     //int err = knd_FAIL;
@@ -59,7 +59,7 @@ kndNum_export(struct kndNum *self __attribute__((unused)), knd_format format __a
 
     //struct kndNumState *curr_state;
 
-    //struct kndObject *obj;
+    //struct kndClassInst *obj;
     int err = knd_FAIL;
 
     //obj = self->elem->obj;

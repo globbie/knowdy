@@ -47,7 +47,7 @@ static gsl_err_t parse_select_inst(void *data,
                                   size_t *total_size)
 {
     struct kndClass *self = data;
-    struct kndObject *obj = self->curr_obj;
+    struct kndClassInst *obj = self->curr_inst;
     struct kndTask *task = self->curr_class->entry->repo->task;
     gsl_err_t err;
 
@@ -68,8 +68,8 @@ static gsl_err_t parse_select_inst(void *data,
     if (err.code) return err;
 
     if (DEBUG_CLASS_SELECT_LEVEL_2) {
-        if (obj->curr_obj)
-            obj->curr_obj->str(obj->curr_obj);
+        if (obj->curr_inst)
+            obj->curr_inst->str(obj->curr_inst);
     }
 
     return make_gsl_err(gsl_OK);
@@ -442,97 +442,6 @@ static gsl_err_t run_select_class_state(void *obj, const char *name, size_t name
     return make_gsl_err(gsl_OK);
 }
 
-static int select_delta(struct kndClass *self,
-                        const char *rec,
-                        size_t *total_size)
-{
-    struct kndTask *task = self->entry->repo->task;
-    struct glbOutput *log = self->entry->repo->log;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndState *state;
-    struct kndSet *set;
-    struct kndClassUpdate *class_update;
-    struct kndClass *c;
-    int e, err;
-    gsl_err_t parser_err;
-
-    struct gslTaskSpec specs[] = {
-        { .name = "eq",
-          .name_size = strlen("eq"),
-          .parse = gsl_parse_size_t,
-          .obj = &task->batch_eq
-        },
-        { .name = "gt",
-          .name_size = strlen("gt"),
-          .parse = gsl_parse_size_t,
-          .obj = &task->batch_gt
-        },
-        { .name = "lt",
-          .name_size = strlen("lt"),
-          .parse = gsl_parse_size_t,
-          .obj = &task->batch_lt
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
-
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-        knd_log(".. select %.*s class delta:  gt %zu  lt %zu ..",
-                self->name_size, self->name,
-                task->batch_gt, task->batch_lt);
-
-    task->type = KND_SELECT_STATE;
-    if (!self->num_states) {
-        log->reset(log);
-        e = log->write(log, "no states available",
-                       strlen("no states available"));
-        if (e) return e;
-        task->http_code = HTTP_BAD_REQUEST;
-        return knd_FAIL;
-    }
-
-    if (task->state_lt && task->state_lt < task->state_gt) {
-        log->reset(log);
-        e = log->write(log, "invalid state range given",
-                       strlen("invalid state range given"));
-        if (e) return e;
-        task->http_code = HTTP_BAD_REQUEST;
-        return knd_FAIL;
-    }
-
-    if (task->state_gt >= self->num_states) {
-        log->reset(log);
-        e = log->write(log, "invalid state range given",
-                       strlen("invalid state range given"));
-        if (e) return e;
-        task->http_code = HTTP_BAD_REQUEST;
-        return knd_FAIL;
-    }
-
-    err = mempool->new_set(mempool, &set);                                        MEMPOOL_ERR(kndSet);
-    set->mempool = mempool;
-    set->type = KND_SET_STATE_UPDATE;
-
-    if (!task->state_lt)
-        task->state_lt = self->init_state + self->states->update->numid + 1;
-    
-    for (state = self->states; state; state = state->next) {
-        if (task->state_lt <= state->numid) continue;
-        if (task->state_gt >= state->numid) continue;
-        
-        err = set->add(set, state->id, state->id_size,
-                       (void*)state);                                          RET_ERR();
-    }
-
-    task->sets[0] = set;
-    task->num_sets = 1;
-    task->curr_obj = self;
-
-    
-    return knd_OK;
-}
-
 
 static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 {
@@ -658,16 +567,107 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
 }
 
 
-extern gsl_err_t knd_select_class_delta(void *data,
-                                        const char *rec,
-                                        size_t *total_size)
+static int knd_select_class_delta(struct kndClass *self,
+                                  const char *rec,
+                                  size_t *total_size)
+{
+    struct kndTask *task = self->entry->repo->task;
+    struct glbOutput *log = self->entry->repo->log;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndState *state;
+    struct kndSet *set;
+    struct kndClassUpdate *class_update;
+    struct kndClass *c;
+    int e, err;
+    gsl_err_t parser_err;
+
+    struct gslTaskSpec specs[] = {
+        { .name = "eq",
+          .name_size = strlen("eq"),
+          .parse = gsl_parse_size_t,
+          .obj = &task->batch_eq
+        },
+        { .name = "gt",
+          .name_size = strlen("gt"),
+          .parse = gsl_parse_size_t,
+          .obj = &task->batch_gt
+        },
+        { .name = "lt",
+          .name_size = strlen("lt"),
+          .parse = gsl_parse_size_t,
+          .obj = &task->batch_lt
+        }
+    };
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+        knd_log(".. select %.*s class delta:  gt %zu  lt %zu ..",
+                self->name_size, self->name,
+                task->batch_gt, task->batch_lt);
+
+    task->type = KND_SELECT_STATE;
+    if (!self->num_states) {
+        log->reset(log);
+        e = log->write(log, "no states available",
+                       strlen("no states available"));
+        if (e) return e;
+        task->http_code = HTTP_BAD_REQUEST;
+        return knd_FAIL;
+    }
+
+    if (task->state_lt && task->state_lt < task->state_gt) {
+        log->reset(log);
+        e = log->write(log, "invalid state range given",
+                       strlen("invalid state range given"));
+        if (e) return e;
+        task->http_code = HTTP_BAD_REQUEST;
+        return knd_FAIL;
+    }
+
+    if (task->state_gt >= self->num_states) {
+        log->reset(log);
+        e = log->write(log, "invalid state range given",
+                       strlen("invalid state range given"));
+        if (e) return e;
+        task->http_code = HTTP_BAD_REQUEST;
+        return knd_FAIL;
+    }
+
+    err = mempool->new_set(mempool, &set);                                        MEMPOOL_ERR(kndSet);
+    set->mempool = mempool;
+    set->type = KND_SET_STATE_UPDATE;
+
+    if (!task->state_lt)
+        task->state_lt = self->init_state + self->states->update->numid + 1;
+    
+    for (state = self->states; state; state = state->next) {
+        if (task->state_lt <= state->numid) continue;
+        if (task->state_gt >= state->numid) continue;
+        
+        err = set->add(set, state->id, state->id_size,
+                       (void*)state);                                          RET_ERR();
+    }
+
+    task->sets[0] = set;
+    task->num_sets = 1;
+    task->curr_inst = self;
+
+    
+    return knd_OK;
+}
+
+extern gsl_err_t parse_class_delta(void *data,
+                                   const char *rec,
+                                   size_t *total_size)
 {
     struct kndClass *self = data;
     int err;
 
     if (!self->curr_class) return make_gsl_err(gsl_FAIL);
 
-    err = select_delta(self->curr_class, rec, total_size);
+    err = knd_select_class_delta(self->curr_class, rec, total_size);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -738,7 +738,7 @@ extern gsl_err_t knd_select_class(void *obj,
         { .name = "_delta",
           .name_size = strlen("_delta"),
           .is_selector = true,
-          .parse = knd_select_class_delta,
+          .parse = parse_class_delta,
           .obj = self
         },
         { .is_default = true,

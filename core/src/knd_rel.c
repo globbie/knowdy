@@ -478,7 +478,7 @@ static int export_inst_JSON(struct kndRel *self,
     struct kndUpdate *update;
     struct kndState *state;
     struct kndObjEntry *obj_entry;
-    struct kndObject *class_inst;
+    struct kndClassInst *class_inst;
     struct tm tm_info;
     bool in_list = false;
     int err;
@@ -531,9 +531,9 @@ static int export_inst_JSON(struct kndRel *self,
         relarg = relarg_inst->relarg;
 
         /* skip over the selected obj */
-        if (task->curr_obj && relarg_inst->obj) {
+        if (task->curr_inst && relarg_inst->obj) {
             obj_entry = relarg_inst->obj;
-            if (task->curr_obj == obj_entry->obj) continue;
+            if (task->curr_inst == obj_entry->obj) continue;
         }
 
         relarg->out = out;

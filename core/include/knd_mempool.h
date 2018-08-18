@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2018 by Dmitri Dmitriev
+ *   Copyright (c) 2011-present by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Graph DB, 
@@ -28,7 +28,7 @@
 struct kndClass;
 struct kndClassVar;
 struct kndClassEntry;
-struct kndObject;
+struct kndClassInst;
 struct kndElem;
 
 struct kndRel;
@@ -52,7 +52,7 @@ struct kndRelUpdate;
 struct kndRelInstanceUpdate;
 struct kndProcUpdate;
 struct kndProcUpdateRef;
-
+struct kndUserContext;
 struct kndSet;
 struct kndSetElemIdx;
 
@@ -74,6 +74,10 @@ struct kndMemPool
     struct kndFacet *facets;
     size_t max_facets;
     size_t num_facets;
+
+    struct kndUserContext *user_ctxs;
+    size_t max_user_ctxs;
+    size_t num_user_ctxs;
 
     struct kndUpdate *updates;
     struct kndUpdate **update_idx;
@@ -113,7 +117,7 @@ struct kndMemPool
     size_t max_attrs;
     size_t num_attrs;
 
-    struct kndObject *objs;
+    struct kndClassInst *objs;
     size_t max_objs;
     size_t num_objs;
 
@@ -212,6 +216,8 @@ struct kndMemPool
     int (*new_attr)(struct kndMemPool   *self,
 		     struct kndAttr **result);
     
+    int (*new_user_ctx)(struct kndMemPool   *self,
+                        struct kndUserContext **result);
     int (*new_update)(struct kndMemPool   *self,
                       struct kndUpdate **result);
     int (*new_state)(struct kndMemPool   *self,
@@ -229,7 +235,7 @@ struct kndMemPool
     int (*new_attr_var)(struct kndMemPool   *self,
                          struct kndAttrVar **result);
     int (*new_obj)(struct kndMemPool   *self,
-                   struct kndObject **result);
+                   struct kndClassInst **result);
     int (*new_obj_dir)(struct kndMemPool   *self,
                        struct kndObjDir **result);
     int (*new_obj_entry)(struct kndMemPool   *self,

@@ -1248,7 +1248,7 @@ static gsl_err_t parse_proc_call(void *obj,
     struct kndProcCall *proc_call = &proc->proc_call;
     gsl_err_t parser_err;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. Proc Call parsing: \"%.*s\".. entry:%p",
                 32, rec, proc->entry);
 
@@ -1308,8 +1308,8 @@ static gsl_err_t parse_proc_call(void *obj,
 }
 
 static gsl_err_t import_proc(struct kndProc *self,
-                       const char *rec,
-                       size_t *total_size)
+                             const char *rec,
+                             size_t *total_size)
 {
     struct kndProc *proc;
     struct kndProcEntry *entry;

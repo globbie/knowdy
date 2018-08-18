@@ -44,7 +44,7 @@ static void str(struct kndElem *self)
         if (self->is_list) {
             knd_log("%*s[%.*s\n",
                     self->depth * KND_OFFSET_SIZE, "", self->attr->name_size, self->attr->name);
-            struct kndObject *obj = self->aggr;
+            struct kndClassInst *obj = self->aggr;
             while (obj) {
                 obj->depth = self->depth + 1;
                 obj->str(obj);
@@ -385,7 +385,7 @@ static gsl_err_t parse_GSL(struct kndElem *self,
 
 static int kndElem_resolve(struct kndElem *self)
 {
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     int err;
     
     if (self->aggr) {
