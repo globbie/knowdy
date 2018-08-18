@@ -57,7 +57,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
 {
     struct kndClass *self = data;
     struct kndClass *c;
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     struct kndObjEntry *entry;
     struct kndMemPool *mempool = self->entry->repo->mempool;
     struct kndTask *task = self->entry->repo->task;
@@ -1496,13 +1496,9 @@ static gsl_err_t parse_class_var_array(void *obj,
     return gsl_parse_array(&ci_spec, rec, total_size);
 }
 
-
-
-
-
-extern gsl_err_t import_attr_var(void *obj,
-                                  const char *name, size_t name_size,
-                                  const char *rec, size_t *total_size)
+static gsl_err_t import_attr_var(void *obj,
+                                 const char *name, size_t name_size,
+                                 const char *rec, size_t *total_size)
 {
     struct kndClassVar *self = obj;
     struct kndAttrVar *attr_var;
@@ -1519,7 +1515,7 @@ extern gsl_err_t import_attr_var(void *obj,
     mempool = self->root_class->entry->repo->mempool;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("== import attr var: \"%.*s\" REC: %.*s",
+        knd_log(".. import attr var: \"%.*s\" REC: %.*s",
                 name_size, name, 64, rec);
 
     err = mempool->new_attr_var(mempool, &attr_var);
@@ -1739,6 +1735,13 @@ static gsl_err_t read_nested_attr_var(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t confirm_attr_var(void *obj __attribute__((unused)),
+                                  const char *name __attribute__((unused)),
+                                  size_t name_size __attribute__((unused)))
+{
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t import_nested_attr_var(void *obj,
                                          const char *name, size_t name_size,
                                          const char *rec, size_t *total_size)
@@ -1777,6 +1780,10 @@ static gsl_err_t import_nested_attr_var(void *obj,
         { .is_validator = true,
           .validate = import_nested_attr_var,
           .obj = attr_var
+        },
+        { .is_default = true,
+          .run = confirm_attr_var,
+          .obj = self
         }
     };
 
@@ -1936,7 +1943,7 @@ extern gsl_err_t knd_import_class(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. import \"%.*s\" class..", 128, rec);
 
     err = mempool->new_class(mempool, &c);

@@ -1,3 +1,46 @@
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <time.h>
+
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
+
+/* numeric conversion by strtol */
+#include <errno.h>
+#include <limits.h>
+
+#include "knd_config.h"
+#include "knd_mempool.h"
+#include "knd_repo.h"
+#include "knd_state.h"
+#include "knd_class.h"
+#include "knd_class_inst.h"
+#include "knd_attr.h"
+#include "knd_task.h"
+#include "knd_user.h"
+#include "knd_text.h"
+#include "knd_rel.h"
+#include "knd_proc.h"
+#include "knd_proc_arg.h"
+#include "knd_set.h"
+#include "knd_utils.h"
+#include "knd_http_codes.h"
+
+#include <gsl-parser.h>
+#include <glb-lib/output.h>
+
+#define DEBUG_CLASS_COMP_LEVEL_1 0
+#define DEBUG_CLASS_COMP_LEVEL_2 0
+#define DEBUG_CLASS_COMP_LEVEL_3 0
+#define DEBUG_CLASS_COMP_LEVEL_4 0
+#define DEBUG_CLASS_COMP_LEVEL_5 0
+#define DEBUG_CLASS_COMP_LEVEL_TMP 1
+
 static int compute_num_value(struct kndClass *self,
                              struct kndAttr *attr,
                              struct kndAttrVar *attr_var,
@@ -14,14 +57,14 @@ static int compute_num_value(struct kndClass *self,
 
     proc_call = &attr->proc->proc_call;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_COMP_LEVEL_TMP)
         knd_log("\nPROC CALL: \"%.*s\"",
                 proc_call->name_size, proc_call->name);
 
     for (arg = proc_call->args; arg; arg = arg->next) {
         class_var = arg->class_var;
 
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_CLASS_COMP_LEVEL_TMP)
             knd_log("ARG: %.*s",
                     arg->name_size, arg->name);
 
@@ -30,12 +73,12 @@ static int compute_num_value(struct kndClass *self,
 
         if (!strncmp("times", arg->name, arg->name_size)) {
             times = arg->numval;
-            //knd_log("TIMES:%lu", arg->numval);
+            knd_log("TIMES:%lu", arg->numval);
         }
 
         if (!strncmp("quant", arg->name, arg->name_size)) {
             quant = arg->numval;
-            //knd_log("QUANT:%lu", arg->numval);
+            knd_log("QUANT:%lu", arg->numval);
         }
     }
 
@@ -47,7 +90,7 @@ static int compute_num_value(struct kndClass *self,
         break;
     case KND_PROC_MULT_PERCENT:
         div_result = (float)(times * quant) / (float)100;
-        //knd_log("== result: %.2f", div_result);
+        knd_log("== result: %.2f", div_result);
         numval = (long)div_result;
         break;
     default:
@@ -73,13 +116,13 @@ static int compute_list_sum(struct kndAttrVar *parent_var,
     long total_numval = 0;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CLASS_COMP_LEVEL_2) {
         knd_log(".. computing SUM of list: %.*s..",
                 parent_var->name_size, parent_var->name);
     }
 
     for (curr_var = parent_var->list; curr_var; curr_var = curr_var->next) {
-        if (DEBUG_CONC_LEVEL_2) {
+        if (DEBUG_CLASS_COMP_LEVEL_2) {
             knd_log("\n.. list elem: %.*s numval:%lu",
                     curr_var->id_size, curr_var->id, curr_var->numval);
             str_attr_vars(curr_var->children, 1);
@@ -117,7 +160,7 @@ static int compute_attr_var_value(struct kndClass *self,
     long numval = 0;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1) {
+    if (DEBUG_CLASS_COMP_LEVEL_1) {
         knd_log(".. query the \"%.*s\" class var..",
                 src->entry->name_size, src->entry->name);
     }
@@ -163,7 +206,7 @@ static int compute_class_attr_num_value(struct kndClass *self,
 
     proc_call = &attr->proc->proc_call;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_CLASS_COMP_LEVEL_2) {
         knd_log("\nPROC CALL: \"%.*s\"",
                 proc_call->name_size, proc_call->name);
         knd_log("== attr var: \"%.*s\"",
@@ -172,7 +215,7 @@ static int compute_class_attr_num_value(struct kndClass *self,
 
     for (arg = proc_call->args; arg; arg = arg->next) {
         class_var = arg->class_var;
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_CLASS_COMP_LEVEL_2)
             knd_log("ARG: %.*s", arg->name_size, arg->name);
 
         err = compute_attr_var_value(self,
@@ -242,8 +285,8 @@ static int compute_class_attr_num_value(struct kndClass *self,
     return knd_OK;
 }
 
-static int present_computed_aggr_attrs(struct kndClass *self,
-                                       struct kndAttrVar *attr_var)
+extern int knd_present_computed_aggr_attrs(struct kndClass *self,
+                                           struct kndAttrVar *attr_var)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;

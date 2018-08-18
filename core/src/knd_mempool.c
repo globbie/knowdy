@@ -13,11 +13,12 @@
 #include "knd_state.h"
 #include "knd_attr.h"
 #include "knd_set.h"
+#include "knd_user.h"
 #include "knd_facet.h"
-
 
 static void del(struct kndMemPool *self)
 {
+    if (self->user_ctxs)           free(self->user_ctxs);
     if (self->updates)             free(self->updates);
     if (self->update_idx)          free(self->update_idx);
     if (self->update_selected_idx) free(self->update_selected_idx);
@@ -139,6 +140,20 @@ static int new_facet(struct kndMemPool *self,
     return knd_OK;
 }
 
+static int new_user_ctx(struct kndMemPool *self,
+                        struct kndUserContext **result)
+{
+    struct kndUserContext *ctx;
+    if (self->num_user_ctxs >= self->max_user_ctxs) {
+        return knd_NOMEM;
+    }
+    ctx = &self->user_ctxs[self->num_user_ctxs];
+    memset(ctx, 0, sizeof(struct kndUserContext));
+    self->num_user_ctxs++;
+    *result = ctx;
+    return knd_OK;
+}
+
 static int new_update(struct kndMemPool *self,
                       struct kndUpdate **result)
 {
@@ -201,17 +216,17 @@ static int new_class_update(struct kndMemPool *self,
 }
 */
 static int new_obj(struct kndMemPool *self,
-                   struct kndObject **result)
+                   struct kndClassInst **result)
 {
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     
 
     if (self->num_objs >= self->max_objs) {
         return knd_NOMEM;
     }
     obj = &self->objs[self->num_objs];
-    memset(obj, 0, sizeof(struct kndObject));
-    kndObject_init(obj);
+    memset(obj, 0, sizeof(struct kndClassInst));
+    kndClassInst_init(obj);
     self->num_objs++;
     *result = obj;
     return knd_OK;
@@ -559,6 +574,7 @@ static int alloc(struct kndMemPool *self)
     if (!self->max_attrs)      self->max_attrs =               KND_MIN_ATTRS;
     if (!self->max_sets)         self->max_sets =              KND_MIN_SETS;
     if (!self->max_set_elem_idxs) self->max_set_elem_idxs =    KND_MIN_SETS;
+    if (!self->max_user_ctxs)       self->max_user_ctxs =  KND_MIN_USER_CONTEXTS;
     if (!self->max_facets)       self->max_facets =  KND_MIN_FACETS;
     if (!self->max_updates)      self->max_updates = KND_MIN_UPDATES;
     if (!self->max_states)       self->max_states =  KND_MIN_STATES;
@@ -641,6 +657,12 @@ static int alloc(struct kndMemPool *self)
         knd_log("-- facets not allocated :(");
         return knd_NOMEM;
     }
+
+    self->user_ctxs = calloc(self->max_user_ctxs, sizeof(struct kndUserContext));
+    if (!self->user_ctxs) {
+        knd_log("-- user contexts not allocated :(");
+        return knd_NOMEM;
+    }
     
     self->updates = calloc(self->max_updates, sizeof(struct kndUpdate));
     if (!self->updates) {
@@ -675,7 +697,7 @@ static int alloc(struct kndMemPool *self)
         return knd_NOMEM;
     }
     */
-    self->objs = calloc(self->max_objs, sizeof(struct kndObject));
+    self->objs = calloc(self->max_objs, sizeof(struct kndClassInst));
     if (!self->objs) {
         knd_log("-- objs not allocated :(");
         return knd_NOMEM;
@@ -798,10 +820,10 @@ parse_memory_settings(struct kndMemPool *self, const char *rec, size_t *total_si
 {
     struct gslTaskSpec specs[] = {
         {
-            .name = "max_users",
-            .name_size = strlen("max_users"),
+            .name = "max_user_ctxs",
+            .name_size = strlen("max_use_ctxs"),
             .parse = gsl_parse_size_t,
-            .obj = &self->max_users
+            .obj = &self->max_user_ctxs
         },
         {
             .name = "max_classes",
@@ -937,6 +959,7 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_set = new_set;
     self->new_set_elem_idx = new_set_elem_idx;
     self->new_facet = new_facet;
+    self->new_user_ctx = new_user_ctx;
 
     self->new_attr = new_attr;
     self->new_update = new_update;

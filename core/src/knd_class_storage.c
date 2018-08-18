@@ -1,4 +1,8 @@
 
+static int unfreeze_class(struct kndClass *self,
+                          struct kndClassEntry *entry,
+                          struct kndClass **result);
+
 
 static int restore(struct kndClass *self)
 {
@@ -85,7 +89,7 @@ static int freeze_objs(struct kndClass *self,
     char *curr_dir = output;
     size_t init_dir_size = 0;
     size_t curr_dir_size = 0;
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     struct kndObjEntry *entry;
     struct glbOutput *out;
     struct glbOutput *dir_out;
@@ -444,142 +448,6 @@ static int freeze(struct kndClass *self)
 }
 
 
-static int unfreeze_class(struct kndClass *self,
-                          struct kndClassEntry *entry,
-                          struct kndClass **result)
-{
-    char buf[KND_MED_BUF_SIZE];
-    size_t buf_size = 0;
-    struct kndClass *c;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    size_t chunk_size;
-    const char *filename;
-    size_t filename_size;
-    const char *b;
-    struct stat st;
-    int fd;
-    size_t file_size = 0;
-    struct stat file_info;
-    int err;
-    gsl_err_t parser_err;
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log(".. unfreezing class: \"%.*s\".. global offset:%zu  block size:%zu",
-                entry->name_size, entry->name, entry->global_offset, entry->block_size);
-
-    /* parse DB rec */
-    filename = self->entry->repo->frozen_output_file_name;
-    filename_size = self->entry->repo->frozen_output_file_name_size;
-    if (stat(filename, &st)) {
-        knd_log("-- no such file: %.*s", filename_size, filename);
-        return knd_NO_MATCH;
-    }
-
-    fd = open(filename, O_RDONLY);
-    if (fd < 0) {
-        knd_log("-- error reading FILE \"%.*s\": %d", filename_size, filename, fd);
-        return knd_IO_FAIL;
-    }
-
-    fstat(fd, &file_info);
-    file_size = file_info.st_size;
-    if (file_size <= KND_DIR_ENTRY_SIZE) {
-        err = knd_LIMIT;
-        goto final;
-    }
-
-    if (lseek(fd, entry->global_offset, SEEK_SET) == -1) {
-        err = knd_IO_FAIL;
-        goto final;
-    }
-
-    buf_size = entry->block_size;
-    if (buf_size >= KND_MED_BUF_SIZE) {
-        knd_log("-- memory limit exceeded :( buf size:%zu", buf_size);
-        return knd_LIMIT;
-    }
-    err = read(fd, buf, buf_size);
-    if (err == -1) {
-        err = knd_IO_FAIL;
-        goto final;
-    }
-    buf[buf_size] = '\0';
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("\n== frozen Conc REC: \"%.*s\"",
-                buf_size, buf);
-    /* done reading */
-    close(fd);
-
-    err = mempool->new_class(mempool, &c);
-    if (err) goto final;
-    c->name = entry->name;
-    c->name_size = entry->name_size;
-    c->entry = entry;
-    entry->class = c;
-
-    b = buf + 1;
-    bool got_separ = false;
-    /* ff the name */
-    while (*b) {
-        switch (*b) {
-        case '{':
-        case '}':
-        case '[':
-        case ']':
-            got_separ = true;
-            break;
-        default:
-            break;
-        }
-        if (got_separ) break;
-        b++;
-    }
-
-    if (!got_separ) {
-        knd_log("-- conc name not found in %.*s :(",
-                buf_size, buf);
-        err = knd_FAIL;
-        goto final;
-    }
-
-    parser_err = c->read(c, b, &chunk_size);
-    if (parser_err.code) {
-        knd_log("-- failed to parse a rec for \"%.*s\" :(",
-                c->name_size, c->name);
-        err = gsl_err_to_knd_err_codes(parser_err);
-        goto final;
-    }
-
-    /* inherit attrs */
-    err = build_attr_name_idx(c);
-    if (err) {
-        knd_log("-- failed to build attr idx for %.*s :(",
-                c->name_size, c->name);
-        goto final;
-    }
-
-
-    err = expand_refs(c);
-    if (err) {
-        knd_log("-- failed to expand refs of %.*s :(",
-                c->name_size, c->name);
-        goto final;
-    }
-
-    if (DEBUG_CONC_LEVEL_2) {
-        c->depth = 1;
-        c->str(c);
-    }
-    c->is_resolved = true;
-
-    *result = c;
-    return knd_OK;
-
- final:
-    close(fd);
-    return err;
-}
 
 static int knd_get_dir_size(struct kndClass *self,
                             size_t *dir_size,
@@ -1048,12 +916,11 @@ static int open_frozen_DB(struct kndClass *self)
     return err;
 }
 
-
 static int read_obj_entry(struct kndClass *self,
                           struct kndObjEntry *entry,
-                          struct kndObject **result)
+                          struct kndClassInst **result)
 {
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     struct kndMemPool *mempool = self->entry->repo->mempool;
     const char *filename;
     size_t filename_size;
@@ -1173,8 +1040,6 @@ static int read_obj_entry(struct kndClass *self,
     return err;
 }
 
-
-
 static int parse_obj_dir_trailer(struct kndClass *self,
                                  struct kndClassEntry *parent_entry,
                                  int fd)
@@ -1206,15 +1071,17 @@ static int parse_obj_dir_trailer(struct kndClass *self,
                 128, obj_dir_buf, obj_dir_buf_size);
 
     if (!parent_entry->obj_dir) {
-        err = self->entry->repo->mempool->new_obj_dir(self->entry->repo->mempool, &parent_entry->obj_dir);
+        err = self->entry->repo->mempool->new_obj_dir(self->entry->repo->mempool,
+                                                      &parent_entry->obj_dir);
         if (err) return err;
     }
     parent_entry->fd = fd;
 
     if (!parent_entry->obj_name_idx) {
-        err = ooDict_new(&parent_entry->obj_name_idx, parent_entry->num_objs);            RET_ERR();
+        err = ooDict_new(&parent_entry->obj_name_idx, parent_entry->num_objs);    RET_ERR();
 
-        err = self->entry->repo->mempool->new_set(self->entry->repo->mempool, &parent_entry->obj_idx);            RET_ERR();
+        err = self->entry->repo->mempool->new_set(self->entry->repo->mempool,
+                                                  &parent_entry->obj_idx);        RET_ERR();
         parent_entry->obj_idx->type = KND_SET_CLASS;
     }
 
@@ -1653,4 +1520,141 @@ static int assign_ids(struct kndClass *self)
     } while (key);
 
     return knd_OK;
+}
+
+extern int knd_unfreeze_class(struct kndClass *self,
+                              struct kndClassEntry *entry,
+                              struct kndClass **result)
+{
+    char buf[KND_MED_BUF_SIZE];
+    size_t buf_size = 0;
+    struct kndClass *c;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    size_t chunk_size;
+    const char *filename;
+    size_t filename_size;
+    const char *b;
+    struct stat st;
+    int fd;
+    size_t file_size = 0;
+    struct stat file_info;
+    int err;
+    gsl_err_t parser_err;
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log(".. unfreezing class: \"%.*s\".. global offset:%zu  block size:%zu",
+                entry->name_size, entry->name, entry->global_offset, entry->block_size);
+
+    /* parse DB rec */
+    filename = self->entry->repo->frozen_output_file_name;
+    filename_size = self->entry->repo->frozen_output_file_name_size;
+    if (stat(filename, &st)) {
+        knd_log("-- no such file: %.*s", filename_size, filename);
+        return knd_NO_MATCH;
+    }
+
+    fd = open(filename, O_RDONLY);
+    if (fd < 0) {
+        knd_log("-- error reading FILE \"%.*s\": %d", filename_size, filename, fd);
+        return knd_IO_FAIL;
+    }
+
+    fstat(fd, &file_info);
+    file_size = file_info.st_size;
+    if (file_size <= KND_DIR_ENTRY_SIZE) {
+        err = knd_LIMIT;
+        goto final;
+    }
+
+    if (lseek(fd, entry->global_offset, SEEK_SET) == -1) {
+        err = knd_IO_FAIL;
+        goto final;
+    }
+
+    buf_size = entry->block_size;
+    if (buf_size >= KND_MED_BUF_SIZE) {
+        knd_log("-- memory limit exceeded :( buf size:%zu", buf_size);
+        return knd_LIMIT;
+    }
+    err = read(fd, buf, buf_size);
+    if (err == -1) {
+        err = knd_IO_FAIL;
+        goto final;
+    }
+    buf[buf_size] = '\0';
+
+    if (DEBUG_CONC_LEVEL_2)
+        knd_log("\n== frozen Conc REC: \"%.*s\"",
+                buf_size, buf);
+    /* done reading */
+    close(fd);
+
+    err = mempool->new_class(mempool, &c);
+    if (err) goto final;
+    c->name = entry->name;
+    c->name_size = entry->name_size;
+    c->entry = entry;
+    entry->class = c;
+
+    b = buf + 1;
+    bool got_separ = false;
+    /* ff the name */
+    while (*b) {
+        switch (*b) {
+        case '{':
+        case '}':
+        case '[':
+        case ']':
+            got_separ = true;
+            break;
+        default:
+            break;
+        }
+        if (got_separ) break;
+        b++;
+    }
+
+    if (!got_separ) {
+        knd_log("-- conc name not found in %.*s :(",
+                buf_size, buf);
+        err = knd_FAIL;
+        goto final;
+    }
+
+    parser_err = c->read(c, b, &chunk_size);
+    if (parser_err.code) {
+        knd_log("-- failed to parse a rec for \"%.*s\" :(",
+                c->name_size, c->name);
+        err = gsl_err_to_knd_err_codes(parser_err);
+        goto final;
+    }
+
+    /* inherit attrs */
+    err = build_attr_name_idx(c);
+    if (err) {
+        knd_log("-- failed to build attr idx for %.*s :(",
+                c->name_size, c->name);
+        goto final;
+    }
+
+
+    err = expand_refs(c);
+    if (err) {
+        knd_log("-- failed to expand refs of %.*s :(",
+                c->name_size, c->name);
+        goto final;
+    }
+
+    if (DEBUG_CONC_LEVEL_2) {
+        c->depth = 1;
+        c->str(c);
+    }
+    c->is_resolved = true;
+
+    *result = c;
+    return knd_OK;
+
+ final:
+    close(fd);
+    return err;
 }

@@ -75,7 +75,7 @@ struct kndObjEntry
     size_t offset;
     knd_state_phase phase;
 
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     struct kndRelRef *rels;
 };
 
@@ -88,7 +88,7 @@ struct kndObjDir
     size_t num_dirs;
 };
 
-struct kndObject
+struct kndClassInst
 {
     knd_obj_type type;
 
@@ -110,9 +110,9 @@ struct kndObject
 
     struct kndMemPool *mempool;
     struct kndObjEntry *entry;
-    struct kndObject *root;
+    struct kndClassInst *root;
     struct kndElem *parent;
-    struct kndObject *curr_obj;
+    struct kndClassInst *curr_inst;
 
     struct kndElem *elems;
     struct kndElem *tail;
@@ -153,46 +153,46 @@ struct kndObject
     struct kndRelRef *curr_rel;
 
     /* for lists */
-    struct kndObject *next;
+    struct kndClassInst *next;
 
     /******** public methods ********/
-    void (*str)(struct kndObject *self);
-    void (*del)(struct kndObject *self);
+    void (*str)(struct kndClassInst *self);
+    void (*del)(struct kndClassInst *self);
 
-    gsl_err_t (*parse)(struct kndObject *self,
+    gsl_err_t (*parse)(struct kndClassInst *self,
                  const char       *rec,
                  size_t           *total_size);
-    gsl_err_t (*read)(struct kndObject *self,
+    gsl_err_t (*read)(struct kndClassInst *self,
                 const char *rec,
                 size_t *total_size);
 
-    int (*expand)(struct kndObject *self, size_t depth);
+    int (*expand)(struct kndClassInst *self, size_t depth);
 
-//    int (*import)(struct kndObject *self,
+//    int (*import)(struct kndClassInst *self,
 //                  const char *rec,
 //                  size_t *total_size,
 //                  knd_format format);
 
-//    int (*update)(struct kndObject *self,
+//    int (*update)(struct kndClassInst *self,
 //                  const char *rec,
 //                  size_t *total_size);
     
-    int (*contribute)(struct kndObject *self, size_t point_num, size_t orig_pos);
+    int (*contribute)(struct kndClassInst *self, size_t point_num, size_t orig_pos);
 
-    int (*resolve)(struct kndObject *self);
-    int (*export)(struct kndObject *self);
+    int (*resolve)(struct kndClassInst *self);
+    int (*export)(struct kndClassInst *self);
 
-    gsl_err_t (*select)(struct kndObject *self,
+    gsl_err_t (*select)(struct kndClassInst *self,
 		  const char *rec,
 		  size_t *total_size);
-    gsl_err_t (*select_rels)(struct kndObject *self,
+    gsl_err_t (*select_rels)(struct kndClassInst *self,
 		       const char *rec,
 		       size_t *total_size);
-    int (*sync)(struct kndObject *self);
+    int (*sync)(struct kndClassInst *self);
 };
 
 /* constructors */
-extern void kndObject_init(struct kndObject *self);
+extern void kndClassInst_init(struct kndClassInst *self);
 extern void kndObjEntry_init(struct kndObjEntry *self);
-extern int kndObject_new(struct kndObject **self);
+extern int kndClassInst_new(struct kndClassInst **self);
 

@@ -281,6 +281,7 @@ typedef enum knd_storage_type {
 #define KND_MIN_QUERIES 1024
 #define KND_MIN_SETS 1024
 #define KND_MIN_FACETS 1024
+#define KND_MIN_USER_CONTEXTS 1024
 #define KND_MIN_UPDATES 1024
 #define KND_MIN_STATES 1024 * 10
 #define KND_MIN_USERS 1024

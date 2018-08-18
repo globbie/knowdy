@@ -24,7 +24,7 @@
 #include "knd_ref.h"
 #include "knd_text.h"
 
-struct kndObject;
+struct kndClassInst;
 struct glbOutput;
 struct kndObjRef;
 struct kndRelType;
@@ -35,16 +35,14 @@ struct kndClass;
 
 struct kndElem
 {
-    //knd_state_phase phase;
-    //char state[KND_STATE_SIZE];
     struct kndAttr *attr;
 
-    struct kndObject *obj;
-    struct kndObject *root;
+    struct kndClassInst *obj;
+    struct kndClassInst *root;
     struct kndSortTag *tag;
 
-    struct kndObject *aggr;
-    struct kndObject *aggr_tail;
+    struct kndClassInst *aggr;
+    struct kndClassInst *aggr_tail;
 
     bool is_list;
 
