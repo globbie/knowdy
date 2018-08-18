@@ -195,7 +195,7 @@ static int export_HTML(struct kndText *self)
     //char buf[KND_NAME_SIZE];
     //size_t buf_size;
 
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     struct kndTextState *curr_state;
     struct kndTranslation *tr;
     //struct kndTextSelect *sel;

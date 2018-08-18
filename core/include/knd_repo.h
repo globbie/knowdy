@@ -1,9 +1,9 @@
 #pragma once
 
 struct kndClass;
+struct kndClassInst;
 struct kndProc;
 struct kndRel;
-struct kndObject;
 struct kndRepo;
 struct kndUser;
 struct kndUserContext;

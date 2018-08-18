@@ -43,7 +43,7 @@ struct kndProcState
     char val[KND_NAME_SIZE + 1];
     size_t val_size;
 
-    struct kndObject *obj;
+    struct kndClassInst *obj;
     struct kndProcState *next;
 };
 

@@ -31,7 +31,7 @@ struct kndUser;
 struct kndStateControl;
 struct kndClass;
 struct kndQuery;
-struct kndObject;
+struct kndClassInst;
 
 typedef enum knd_task_spec_type { KND_GET_STATE, 
 				  KND_SELECT_STATE, 

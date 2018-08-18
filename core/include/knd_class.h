@@ -295,6 +295,7 @@ extern gsl_err_t knd_import_class(void *obj,
 extern int knd_resolve_classes(struct kndClass *self);
 extern int knd_resolve_class(struct kndClass *self,
                              struct kndClassUpdate *class_update);
+extern int knd_inherit_attrs(struct kndClass *self, struct kndClass *base);
 
 extern int knd_present_computed_aggr_attrs(struct kndClass *self,
                                            struct kndAttrVar *attr_var);

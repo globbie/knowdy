@@ -34,7 +34,7 @@ struct kndProc;
 struct kndProcInstance;
 struct kndProcArg;
 struct kndProcArgInstance;
-struct kndObject;
+struct kndClassInst;
 struct kndTask;
 struct kndClassVar;
 

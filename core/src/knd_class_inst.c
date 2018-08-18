@@ -513,7 +513,7 @@ kndClassInst_export_GSP(struct kndClassInst *self)
 static int kndClassInst_export(struct kndClassInst *self)
 {
     int err;
-    switch(self->format) {
+    switch (self->format) {
     case KND_FORMAT_JSON:
         err = kndClassInst_export_JSON(self);
         if (err) return err;
@@ -529,6 +529,7 @@ static int kndClassInst_export(struct kndClassInst *self)
     default:
         break;
     }
+
     return knd_OK;
 }
 

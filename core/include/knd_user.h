@@ -38,7 +38,7 @@ struct kndUserContext
     struct kndClass *inbox;
     size_t inbox_size;
 
-    struct kndObject *obj_inbox;
+    struct kndClassInst *obj_inbox;
     size_t obj_inbox_size;
     size_t num_objs;
 

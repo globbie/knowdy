@@ -35,7 +35,7 @@ struct kndRelInstance;
 struct kndRelUpdate;
 struct kndRelArg;
 struct kndRelArgInstance;
-struct kndObject;
+struct kndClassInst;
 
 typedef enum knd_relarg_type {
     KND_RELARG_NONE,
@@ -112,7 +112,7 @@ struct kndRelArg
     size_t idx_name_size;
 
     struct kndRefSet *browser;
-    struct kndObject *curr_obj;
+    struct kndClassInst *curr_obj;
     struct glbOutput *out;
     
     struct kndTranslation *tr;
