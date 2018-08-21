@@ -14,6 +14,9 @@ struct kndShard
     char path[KND_PATH_SIZE];
     size_t path_size;
 
+    char user_classname[KND_NAME_SIZE];
+    size_t user_classname_size;
+
     char schema_path[KND_PATH_SIZE];
     size_t schema_path_size;
 

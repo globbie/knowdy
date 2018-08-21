@@ -467,8 +467,6 @@ static gsl_err_t run_set_translation_text(void *obj, const char *val, size_t val
     return make_gsl_err(gsl_OK);
 }
 
-
-
 static gsl_err_t parse_translation_GSL(void *obj,
                                        const char *name, size_t name_size,
                                        const char *rec, size_t *total_size)

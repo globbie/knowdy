@@ -129,7 +129,6 @@ static int export_conc_elem_JSON(void *obj,
     return knd_OK;
 }
 
-
 static int aggr_item_export_JSON(struct kndClass *self,
                                  struct kndAttrVar *parent_item)
 {
@@ -852,6 +851,54 @@ extern int knd_class_export_set_JSON(struct kndClass *self,
     return knd_OK;
 }
 
+
+static int export_facets_JSON(struct kndClass *self, struct kndSet *set)
+{
+    struct glbOutput *out = self->entry->repo->out;
+    struct kndSet *subset;
+    struct kndFacet *facet;
+    struct ooDict *set_name_idx;
+    const char *key;
+    void *val;
+    int err;
+
+    err = out->write(out,  "\"_rels\":[", strlen("\"_rels\":["));                 RET_ERR();
+    for (size_t i = 0; i < set->num_facets; i++) {
+        facet = set->facets[i];
+        err = out->write(out,  "{\"_name\":\"", 1);                               RET_ERR();
+        err = out->write(out, facet->attr->name, facet->attr->name_size);
+        err = out->write(out,  "\"", 1);                                          RET_ERR();
+
+        if (facet->set_name_idx) {
+            err = out->write(out,  "\"_refs\":[", strlen("\"_refs\":["));         RET_ERR();
+            set_name_idx = facet->set_name_idx;
+            key = NULL;
+            set_name_idx->rewind(set_name_idx);
+            do {
+                set_name_idx->next_item(set_name_idx, &key, &val);
+                if (!key) break;
+                subset = (struct kndSet*)val;
+
+                //err = out->writec(out, '{');                                      RET_ERR();
+                //err = out->write(out, subset->base->id,
+                //                 subset->base->id_size);                          RET_ERR();
+
+                //err = out->write(out, "[c", strlen("[c"));                        RET_ERR();
+
+                //err = subset->map(subset, export_conc_id_GSP, (void*)out);
+                //if (err) return err;
+                //err = out->writec(out, ']');                                      RET_ERR();
+                //err = out->writec(out, '}');                                      RET_ERR();
+            } while (key);
+            err = out->writec(out,  ']');                                       RET_ERR();
+        }
+        err = out->writec(out,  '}');                                           RET_ERR();
+    }
+    err = out->writec(out,  ']');                                               RET_ERR();
+
+    return knd_OK;
+}
+
 extern int knd_class_export_JSON(struct kndClass *self,
                                  struct glbOutput *out)
 {
@@ -862,7 +909,10 @@ extern int knd_class_export_JSON(struct kndClass *self,
     struct kndClass *c;
     struct kndClassVar *item;
     struct kndClassEntry *entry;
-
+    const char *key;
+    void *val;
+    struct ooDict *idx;
+    struct kndSet *set;
     size_t item_count;
     int i, err;
 
@@ -969,7 +1019,27 @@ extern int knd_class_export_JSON(struct kndClass *self,
         if (err) return err;
     }
 
-    
+    /* facets */
+    if (self->entry->descendants) {
+        knd_log("++ desc facets: %zu", self->entry->descendants->num_facets);
+        //self->entry->descendants->num_facets) {
+        //err = export_facets_JSON(self, self->entry->descendants);
+        //if (err) return err;
+    }
+
+    if (self->entry->reverse_attr_name_idx) {
+        idx = self->entry->reverse_attr_name_idx;
+        key = NULL;
+        idx->rewind(idx);
+        do {
+            idx->next_item(idx, &key, &val);
+            if (!key) break;
+            set = val;
+            knd_log("%s total:%zu", key, set->num_elems);
+            //set->str(set, self->depth + 1);
+        } while (key);
+    }
+
     /* non-terminal classes */
     if (self->entry->num_children) {
         err = out->write(out, ",\"_num_subclasses\":",
@@ -1044,6 +1114,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
         return knd_OK;
     }
 
+    
     /* instances */
     if (self->entry->num_objs) {
         err = out->write(out, ",\"_instances\":{",

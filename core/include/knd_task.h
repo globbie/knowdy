@@ -121,9 +121,6 @@ struct kndTask
     struct kndMemPool *mempool;
 
     /******** public methods ********/
-    void (*str)(struct kndTask *self,
-               size_t depth);
-
     void (*del)(struct kndTask *self);
 
     void (*reset)(struct kndTask *self);

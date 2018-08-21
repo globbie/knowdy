@@ -242,28 +242,36 @@ kndSet_alloc_facet(struct kndSet  *self,
     return knd_OK;
 }
 
-static int
-kndFacet_add_reverse_link(struct kndFacet  *self,
-                          struct kndClassEntry *base,
-                          struct kndSet  *set)
+static int kndFacet_add_reverse_link(struct kndFacet  *self,
+                                     struct kndClassEntry *base,
+                                     struct kndSet  *set)
 {
     struct kndClassEntry *topic = self->attr->parent_class->entry;
     struct ooDict *name_idx;
     int err;
 
-    err = ooDict_new(&name_idx, KND_SMALL_DICT_SIZE);                             RET_ERR();
-    err = name_idx->set(name_idx,
-                        topic->name, topic->name_size, (void*)set);                    RET_ERR();
+    name_idx = base->reverse_attr_name_idx;
 
-    base->reverse_attr_name_idx = name_idx;
+    if (!name_idx) {
+        err = ooDict_new(&name_idx, KND_SMALL_DICT_SIZE);                         RET_ERR();
+        base->reverse_attr_name_idx = name_idx;
+    }
+
+    err = name_idx->set(name_idx,
+                        topic->name, topic->name_size, (void*)set);               RET_ERR();
+
+    if (DEBUG_SET_LEVEL_1) {
+        knd_log(".. add  %.*s to reverse idx of %.*s..",
+                topic->name_size, topic->name,
+                base->name_size, base->name);
+    }
 
     return knd_OK;
 }
 
-static int
-kndFacet_alloc_set(struct kndFacet  *self,
-                   struct kndClassEntry *base,
-                   struct kndSet  **result)
+static int kndFacet_alloc_set(struct kndFacet  *self,
+                              struct kndClassEntry *base,
+                              struct kndSet  **result)
 {
     struct kndSet *set;
     struct kndMemPool *mempool = self->attr->parent_class->entry->repo->mempool;
@@ -298,7 +306,6 @@ kndSet_facetize(struct kndSet *self)
         knd_log("\n    .. further facetize the set \"%s\"..\n",
                 self->base->name);
     }
-
     return knd_OK;
 }
 
@@ -310,7 +317,7 @@ kndFacet_add_ref(struct kndFacet *self,
     struct kndSet *set;
     int err;
 
-    if (DEBUG_SET_LEVEL_2) {
+    if (DEBUG_SET_LEVEL_1) {
         knd_log(".. add attr spec \"%.*s\" to topic \"%.*s\"..",
                 spec->name_size, spec->name,
                 topic->name_size, topic->name);
@@ -324,17 +331,16 @@ kndFacet_add_ref(struct kndFacet *self,
     return knd_OK;
 }
 
-static int
-kndSet_add_ref(struct kndSet *self,
-               struct kndAttr *attr,
-               struct kndClassEntry *topic,
-               struct kndClassEntry *spec)
+static int kndSet_add_ref(struct kndSet *self,
+                          struct kndAttr *attr,
+                          struct kndClassEntry *topic,
+                          struct kndClassEntry *spec)
 {
     struct kndFacet *f;
     int err;
 
     if (DEBUG_SET_LEVEL_2)
-        knd_log("  .. \"%.*s\" NAME_IDX to add attr ref \"%.*s\" "
+        knd_log("  .. \"%.*s\" idx to add attr ref \"%.*s\" "
                 "(topic \"%.*s\" => spec \"%.*s\")",
                 self->base->name_size, self->base->name,
                 attr->name_size, attr->name,

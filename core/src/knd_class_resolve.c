@@ -137,7 +137,6 @@ extern int knd_inherit_attrs(struct kndClass *self, struct kndClass *base)
     return knd_OK;
 }
 
-
 static int index_attr(struct kndClass *self,
                       struct kndAttr *attr,
                       struct kndAttrVar *item)
@@ -240,10 +239,8 @@ static int index_attr_var_list(struct kndClass *self,
         err = set->add_ref(set, attr, self->entry, c->entry);
         if (err) return err;
     }
-
     return knd_OK;
 }
-
 
 static int resolve_class_ref(struct kndClass *self,
                              const char *name, size_t name_size,
@@ -296,7 +293,7 @@ static int resolve_proc_ref(struct kndClass *self,
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. resolving proc ref:  %.*s", name_size, name);
 
-    root_proc = self->root_class->proc;
+    root_proc = self->entry->repo->root_proc;
     err = root_proc->get_proc(root_proc,
                               name, name_size, &proc);                            RET_ERR();
 
@@ -841,14 +838,14 @@ static int resolve_baseclasses(struct kndClass *self)
     struct kndClassVar *cvar;
     void *result;
     struct kndClassEntry *entry;
-    struct kndClass *c;
+    struct kndClass *c = NULL;
     const char *classname;
     size_t classname_size;
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-        knd_log(".. resolving baseclasses of \"%.*s\"..",
-                self->entry->name_size, self->entry->name);
+        knd_log(".. \"%.*s\" to resolve its baseclasses..",
+                self->name_size, self->name);
 
     /* resolve refs to base classes */
     for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
@@ -890,12 +887,14 @@ static int resolve_baseclasses(struct kndClass *self)
         }
 
         if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-            knd_log("\n.. \"%.*s\" class to get its base class: \"%.*s\"..",
+            knd_log(".. \"%.*s\" class to get its base class: \"%.*s\"..",
                     self->entry->name_size, self->entry->name,
                     classname_size, classname);
 
-        //c = cvar->entry->class;
         err = knd_get_class(self, classname, classname_size, &c);         RET_ERR();
+
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+            c->str(c);
 
         if (c == self) {
             knd_log("-- self reference detected in \"%.*s\" :(",
@@ -950,7 +949,6 @@ static int resolve_baseclasses(struct kndClass *self)
         }
         c->entry->children[c->entry->num_children] = self->entry;
         c->entry->num_children++;
-        //}
 
         err = knd_inherit_attrs(self, cvar->entry->class);                            RET_ERR();
     }
@@ -1088,9 +1086,7 @@ extern int knd_resolve_classes(struct kndClass *self)
 
         if (DEBUG_CLASS_RESOLVE_LEVEL_2)
             c->str(c);
-
     } while (key);
 
     return knd_OK;
 }
-

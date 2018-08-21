@@ -27,8 +27,6 @@
 #define DEBUG_USER_LEVEL_3 0
 #define DEBUG_USER_LEVEL_TMP 1
 
-static int export(struct kndUser *self);
-
 static void del(struct kndUser *self)
 {
     if (self->repo)
@@ -38,157 +36,40 @@ static void del(struct kndUser *self)
 
 static void str(struct kndUser *self)
 {
-    knd_log("USER: %s", self->name);
+    knd_log("USER: %.*s", self->name_size, self->name);
 }
 
-static int kndUser_add_user(struct kndUser *self)
+static gsl_err_t run_create_user(void *obj, const char *name, size_t name_size)
 {
-    char buf[KND_TEMP_BUF_SIZE] = {0};
-    size_t buf_size = 0;
-    
-    char uid[KND_ID_SIZE + 1];
-    int err;
+    struct kndUser *self = obj;
 
-    /* check a human readable name */
+    knd_log(".. create user: %.*s", name_size, name);
 
-    /*memcpy(uid, self->last_uid, KND_ID_SIZE);
-    uid[KND_ID_SIZE] = '\0';
-    knd_inc_id(uid);
-    */
-
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log(".. create new user: ID \"%s\"", uid);
-
-    memcpy(self->id, uid, KND_ID_SIZE);
-
-    self->name_size = KND_NAME_SIZE;
-
-    err = knd_make_id_path(buf, self->path, uid, NULL);
-    if (err) return err;
-
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log("==  USER DIR: \"%s\"\n", buf);
-
-    err = knd_mkpath(buf, buf_size, 0755, false);
-    if (err) return err;
-
-    err = export(self);
-    if (err) return err;
-
-    err = knd_write_file((const char*)buf, "user.gsl",
-                         self->out->buf, self->out->buf_size);
-    if (err) return err;
-
-    /* change last id */
-    memcpy(self->last_uid, uid, KND_ID_SIZE);
-
-    return knd_OK;
+    return make_gsl_err(gsl_OK);
 }
 
-
-/*
-static int
-kndUser_export_GSL(struct kndUser *self)
+static gsl_err_t parse_create_user(struct kndUser *self,
+                                   const char *rec,
+                                   size_t *total_size)
 {
-    char buf[KND_TEMP_BUF_SIZE] = {0};
-    size_t buf_size = 0;
-    struct glbOutput *out;
-    int err;
-
-    out = self->out;
-
-    buf_size = sprintf(buf, "{ID %s}{N %s}",
-                       self->id,
-                       self->name);
-    out->reset(out);
-
-    err = out->write(out, buf, buf_size);
-
-    return err;
-}
-*/
-
-static int export_JSON(struct kndUser *self)
-{
-    //char buf[KND_MED_BUF_SIZE] = {0};
-    //size_t buf_size = 0;
-
-    struct glbOutput *out = self->out;
-
-    //const char *key = NULL;
-    //void *val = NULL;
-    int err;
-
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log("JSON USER: %s [%s]\n",
-                self->name, self->id);
-
-    out->reset(out);
-
-    err = out->write(out,
-                     "{", 1);
-    if (err) return err;
-
-    err = out->write(out,
-                     "\"n\":\"", strlen("\"n\":\""));
-    if (err) return err;
-
-    err = out->write(out,
-                     self->name, self->name_size);
-    if (err) return err;
-
-    err = out->write(out,
-                     "\"", 1);
-    if (err) return err;
-
-    err = out->write(out,
-                     ",\"c_l\":[", strlen(",\"c_l\":["));
-    if (err) return err;
-
-    /*i = 0;
-    self->browse_class_idx->rewind(self->browse_class_idx);
-    do {
-        self->class_idx->next_item(self->browse_class_idx, &key, &val);
-        if (!key) break;
-
-        if (i) {
-            err = out->write(out, ",", 1);
-            if (err) return err;
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_create_user,
+          .obj = self
         }
+    };
 
-        c = (struct kndClass*)val;
-        err = c->export(c);
-        if (err) return err;
-        i++;
-    } while (key);
-    */
-    
-    err = out->write(out, "]", 1);
-    if (err) return err;
-
-    /* home repo export */
-    err = out->write(out,
-                     ",\"home\":", strlen(",\"home\":"));
-    if (err) return err;
-
-    self->repo->out = out;
-    err = self->repo->export(self->repo, KND_FORMAT_JSON);
-    if (err) return err;
-
-    err = out->write(out, "}", 1);
-    if (err) return err;
-
-    return err;
+    return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t kndUser_parse_repo(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
+static gsl_err_t parse_repo(void *obj,
+                            const char *rec,
+                            size_t *total_size)
 {
     struct kndUser *self = obj;
 
     if (DEBUG_USER_LEVEL_TMP)
-        knd_log("   .. parsing the REPO rec: \"%s\"", rec);
+        knd_log(".. parsing the REPO rec: \"%s\"", rec);
 
     self->repo->task = self->task;
     self->repo->out = self->out;
@@ -196,7 +77,6 @@ static gsl_err_t kndUser_parse_repo(void *obj,
 
     return self->repo->parse_task(self->repo, rec, total_size);
 }
-
 
 static gsl_err_t parse_auth(void *obj,
                             const char *rec,
@@ -244,10 +124,10 @@ static gsl_err_t parse_auth(void *obj,
     /* TODO: DB check auth token */
     if (strncmp(default_sid, sid, sid_size)) {
         knd_log("-- wrong SID: \"%.*s\"", sid_size, sid);
-        err = self->log->write(self->log, "SID authentication failure",
+        err = self->log->write(self->log,
+                               "SID authentication failure",
                                strlen("SID authentication failure"));
         if (err) return make_gsl_err_external(err);
-
         return make_gsl_err(gsl_FAIL);
     }
 
@@ -293,10 +173,15 @@ static gsl_err_t parse_class_import(void *obj,
 {
     struct kndUser *self = obj;
     struct kndClass *c = self->repo->root_class;
+    struct kndUserContext *ctx = self->curr_ctx;
+
+    if (ctx) c = ctx->repo->root_class;
 
     if (DEBUG_USER_LEVEL_2)
-        knd_log(".. parsing the default class import: \"%.*s\"", 64, rec);
+        knd_log(".. parsing the default class import: \"%.*s\" task:%p",
+                64, rec, c->entry->repo->task);
     self->task->type = KND_UPDATE_STATE;
+
     return c->import(c, rec, total_size);
 }
 
@@ -388,16 +273,24 @@ static gsl_err_t parse_sync_task(void *obj,
     return *total_size = 0, make_gsl_err(gsl_OK);
 }
 
-
 static gsl_err_t parse_class_select(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct kndClass *c = obj;
+    struct kndUser *self = obj;
+    struct kndUserContext *ctx = self->curr_ctx;
+    struct kndClass *c;
     gsl_err_t err;
+
+    c = self->repo->root_class;
+    if (ctx) {
+        c = ctx->repo->root_class;
+    }
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class select: \"%.*s\"", 64, rec);
+
+    c->reset_inbox(c);
 
     err = c->select(c, rec, total_size);
     if (err.code) {
@@ -451,22 +344,24 @@ static gsl_err_t parse_liquid_updates(void *obj,
 static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 {
     struct kndUser *self = obj;
+    struct kndRepo *repo;
     struct kndClass *c;
     struct kndUserContext *ctx;
     struct kndClassInst *inst;
     struct kndMemPool *mempool = self->mempool;
-    void *result;
+    void *result = NULL;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    if (DEBUG_USER_LEVEL_2)
-        knd_log(".. get user: \"%.*s\"..", name_size, name);
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log(".. select user: \"%.*s\"..", name_size, name);
 
-    // TODO: read the user class name from config
     err = self->repo->root_class->get(self->repo->root_class,
-                                      "User", strlen("User"), &c);
+                                      self->shard->user_classname,
+                                      self->shard->user_classname_size,
+                                      &c);
     if (err) return make_gsl_err_external(err);
 
     err = c->get_inst(c, name, name_size, &inst);
@@ -474,12 +369,21 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 
     err = self->user_idx->get(self->user_idx,
                               inst->entry->id, inst->entry->id_size,
-                              &ctx);
+                              &result);
+    ctx = result;
     if (err) {
         err = mempool->new_user_ctx(mempool, &ctx);
         if (err) return make_gsl_err_external(err);
 
         ctx->user_inst = inst;
+
+        err = kndRepo_new(&repo, self->mempool);
+        if (err) return make_gsl_err_external(err);
+        repo->task = self->task;
+        repo->user_ctx = ctx;
+        repo->base = self->repo;
+
+        ctx->repo = repo;
 
         err = self->user_idx->add(self->user_idx,
                                   inst->entry->id, inst->entry->id_size,
@@ -487,9 +391,11 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
         if (err) return make_gsl_err_external(err);
     }
 
-    self->curr_user = inst;
     self->curr_ctx = ctx;
-
+    if (DEBUG_USER_LEVEL_TMP) {
+        knd_log("== curr user context: \"%.*s\" (id: %.*s)..",
+                name_size, name, inst->entry->id_size, inst->entry->id);
+    }
     return make_gsl_err(gsl_OK);
 }
 
@@ -498,10 +404,10 @@ static gsl_err_t select_user_rels(void *obj,
                                   size_t *total_size)
 {
     struct kndUser *self = obj;
-    struct kndClassInst *user;
+    struct kndClassInst *user_inst;
     struct glbOutput *out = self->task->out;
 
-    if (!self->curr_user) {
+    if (!self->curr_ctx) {
         knd_log("-- no user selected :(");
         return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
@@ -510,10 +416,10 @@ static gsl_err_t select_user_rels(void *obj,
         knd_log(".. selecting User rels: \"%.*s\"", 32, rec);
 
     out->reset(out);
-    user = self->curr_user;
-    user->curr_rel = NULL;
+    user_inst = self->curr_ctx->user_inst;
+    user_inst->curr_rel = NULL;
 
-    return user->select_rels(user, rec, total_size);
+    return user_inst->select_rels(user_inst, rec, total_size);
 }
 
 static gsl_err_t run_present_user(void *data,
@@ -525,13 +431,12 @@ static gsl_err_t run_present_user(void *data,
     struct glbOutput *out = self->task->out;
     int err;
 
-    if (!self->curr_user) {
+    if (!self->curr_ctx) {
         knd_log("-- no user selected :(");
         return make_gsl_err(gsl_FAIL);
     }
-
     out->reset(out);
-    user = self->curr_user;
+    user = self->curr_ctx->user_inst;
     user->max_depth = self->max_depth;
 
     err = user->export(user);
@@ -547,34 +452,33 @@ static gsl_err_t remove_user(void *data,
     struct kndUser *self = data;
     struct kndClass *c;
     struct kndClass *root_class;
-    struct kndClassInst *obj;
+    struct kndClassInst *user_inst;
     int err;
 
-    if (!self->curr_user) {
+    if (!self->curr_ctx) {
         knd_log("-- remove operation: no user selected :(");
         return make_gsl_err(gsl_FAIL);
     }
 
-    obj = self->curr_user;
+    user_inst = self->curr_ctx->user_inst;
     if (DEBUG_USER_LEVEL_2)
-        knd_log("== obj to remove: \"%.*s\"",
-                obj->name_size, obj->name);
+        knd_log("== user inst to be removed: \"%.*s\"",
+                user_inst->name_size, user_inst->name);
 
     /* TODO: add state */
-
-    obj->states->phase = KND_REMOVED;
+    user_inst->states->phase = KND_REMOVED;
 
     self->log->reset(self->log);
-    err = self->log->write(self->log, obj->name, obj->name_size);
+    err = self->log->write(self->log, user_inst->name, user_inst->name_size);
     if (err) return make_gsl_err_external(err);
-    err = self->log->write(self->log, " obj removed", strlen(" obj removed"));
+    err = self->log->write(self->log, " user instance removed", strlen(" user instance removed"));
     if (err) return make_gsl_err_external(err);
-    c = obj->base;
+    c = user_inst->base;
 
     self->task->type = KND_UPDATE_STATE;
 
-    obj->next = c->obj_inbox;
-    c->obj_inbox = obj;
+    user_inst->next = c->obj_inbox;
+    c->obj_inbox = user_inst;
     c->obj_inbox_size++;
 
     root_class = c->root_class;
@@ -638,26 +542,16 @@ static gsl_err_t parse_class_array(void *obj,
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
-static gsl_err_t parse_task(struct kndUser *self,
-                            const char *rec,
-                            size_t *total_size)
+static gsl_err_t parse_select_user(struct kndUser *self,
+                                   const char *rec,
+                                   size_t *total_size)
 {
-    struct kndClass *root_class = self->repo->root_class;
-    struct kndRel *root_rel = self->repo->root_rel;
-    //struct kndProc *root_proc = self->repo->root_proc;
-
-    if (DEBUG_USER_LEVEL_2)
-        knd_log(".. user got task: \"%.*s\" size: %lu..\n\n",
-                128, rec, (unsigned long)strlen(rec));
+    struct kndClass *root_class;
 
     /* reset defaults */
-    self->max_depth = 0;
-    self->curr_user = NULL;
+    self->max_depth  = 0;
+    self->curr_ctx   = NULL;
     self->task->type = KND_GET_STATE;
-
-    root_class->reset_inbox(root_class);
-    root_rel->reset_inbox(root_rel);
-    //root_proc->reset_inbox(root_proc);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -685,7 +579,7 @@ static gsl_err_t parse_task(struct kndUser *self,
         },
         { .name = "repo",
           .name_size = strlen("repo"),
-          .parse = kndUser_parse_repo,
+          .parse = parse_repo,
           .obj = self
         },
         { .type = GSL_SET_STATE,
@@ -703,7 +597,7 @@ static gsl_err_t parse_task(struct kndUser *self,
         { .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_select,
-          .obj = root_class
+          .obj = self
         },
         { .type = GSL_SET_STATE,
           .name = "proc",
@@ -767,11 +661,9 @@ static gsl_err_t parse_task(struct kndUser *self,
         goto cleanup;
     }
 
-    if (DEBUG_USER_LEVEL_2) {
-        knd_log("++ user parse task OK!");
-        knd_log("Task output: %.*s [%zu]",
-                self->task->out->buf_size, self->task->out->buf,
-                self->task->out->buf_size);
+    root_class = self->repo->root_class;
+    if (self->curr_ctx) {
+        root_class = self->curr_ctx->repo->root_class;
     }
 
     switch (self->task->type) {
@@ -785,6 +677,7 @@ static gsl_err_t parse_task(struct kndUser *self,
         self->task->update_spec = rec;
         self->task->update_spec_size = *total_size;
 
+        // TODO: rel proc
         err = root_class->update_state(root_class);
         if (err) {
             knd_log("-- failed to update state :(");
@@ -801,24 +694,10 @@ static gsl_err_t parse_task(struct kndUser *self,
  cleanup:
 
     /* TODO: release resources */
-    root_class->reset_inbox(root_class);
-    root_rel->reset_inbox(root_rel);
+    //root_class->reset_inbox(root_class);
+    //root_rel->reset_inbox(root_rel);
 
     return parser_err;
-}
-
-static int export(struct kndUser *self)
-{
-    switch(self->format) {
-    case KND_FORMAT_JSON:
-        return export_JSON(self);
-        /*case KND_FORMAT_GSL:
-          return kndUser_export_GSL(self); */
-    default:
-        break;
-    }
-
-    return knd_FAIL;
 }
 
 static int kndUser_init(struct kndUser *self)
@@ -837,11 +716,12 @@ static int kndUser_init(struct kndUser *self)
     err = self->repo->init(self->repo);
     if (err) return err;
 
+    self->repo->task = self->task;
+
     return knd_OK;
 }
 
-extern int
-kndUser_new(struct kndUser **user, struct kndMemPool *mempool)
+extern int kndUser_new(struct kndUser **user, struct kndMemPool *mempool)
 {
     struct kndUser *self;
     struct kndRepo *repo;
@@ -863,8 +743,8 @@ kndUser_new(struct kndUser **user, struct kndMemPool *mempool)
     self->del = del;
     self->str = str;
     self->init = kndUser_init;
-    self->parse_task = parse_task;
-    self->add_user = kndUser_add_user;
+    self->create = parse_create_user;
+    self->select = parse_select_user;
 
     *user = self;
 

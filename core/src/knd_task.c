@@ -20,21 +20,12 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
-static gsl_err_t parse_user(void *obj,
-                            const char *rec,
-                            size_t *total_size);
-
 static void del(struct kndTask *self)
 {
     self->log->del(self->log);
     self->spec_out->del(self->spec_out);
     self->update->del(self->update);
     free(self);
-}
-
-static void str(struct kndTask *self __attribute__((unused)), size_t depth __attribute__((unused)))
-{
-
 }
 
 static void reset(struct kndTask *self)
@@ -73,34 +64,10 @@ static void reset(struct kndTask *self)
     self->spec_out->reset(self->spec_out);
 }
 
-static gsl_err_t parse_update(void *obj,
-                              const char *rec,
-                              size_t *total_size)
-{
-    struct kndTask *self = obj;
 
-    self->type = KND_LIQUID_STATE;
-
-    struct gslTaskSpec specs[] = {
-        { .name = "_ts",
-          .name_size = strlen("_ts"),
-          .buf = self->timestamp,
-          .buf_size = &self->timestamp_size,
-          .max_buf_size = sizeof self->timestamp
-        },
-        { .name = "user",
-          .name_size = strlen("user"),
-          .parse = parse_user,
-          .obj = self
-        }
-    };
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
-static gsl_err_t parse_user(void *obj,
-                            const char *rec,
-                            size_t *total_size)
+static gsl_err_t create_user(void *obj,
+                             const char *rec,
+                             size_t *total_size)
 {
     struct kndTask *self = obj;
     struct kndUser *user = self->shard->user;
@@ -110,7 +77,22 @@ static gsl_err_t parse_user(void *obj,
         self->locale_size = self->curr_locale_size;
     }
 
-    return user->parse_task(user, rec, total_size);
+    return user->create(user, rec, total_size);
+}
+
+static gsl_err_t select_user(void *obj,
+                             const char *rec,
+                             size_t *total_size)
+{
+    struct kndTask *self = obj;
+    struct kndUser *user = self->shard->user;
+
+    if (self->curr_locale_size) {
+        self->locale = self->curr_locale;
+        self->locale_size = self->curr_locale_size;
+    }
+
+    return user->select(user, rec, total_size);
 }
 
 static gsl_err_t set_output_format(void *obj, const char *name, size_t name_size)
@@ -139,6 +121,31 @@ static gsl_err_t set_output_format(void *obj, const char *name, size_t name_size
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err_external(knd_NO_MATCH);
+}
+
+static gsl_err_t parse_update(void *obj,
+                              const char *rec,
+                              size_t *total_size)
+{
+    struct kndTask *self = obj;
+
+    self->type = KND_LIQUID_STATE;
+
+    struct gslTaskSpec specs[] = {
+        { .name = "_ts",
+          .name_size = strlen("_ts"),
+          .buf = self->timestamp,
+          .buf_size = &self->timestamp_size,
+          .max_buf_size = sizeof self->timestamp
+        },
+        { .name = "user",
+          .name_size = strlen("user"),
+          .parse = select_user,
+          .obj = self
+        }
+    };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static gsl_err_t parse_task(void *obj,
@@ -177,9 +184,15 @@ static gsl_err_t parse_task(void *obj,
           .parse = parse_delivery_callback,
           .obj = self
           }*/,
+        { .type = GSL_SET_STATE,
+          .name = "user",
+          .name_size = strlen("user"),
+          .parse = create_user,
+          .obj = self
+        },
         { .name = "user",
           .name_size = strlen("user"),
-          .parse = parse_user,
+          .parse = select_user,
           .obj = self
         },
         { .name = "update",
@@ -431,7 +444,6 @@ extern int kndTask_new(struct kndTask **task)
     self->visual.text_hangindent_size = KND_TEXT_HANGINDENT_SIZE;
 
     self->del    = del;
-    self->str    = str;
     self->reset  = reset;
     self->run    = parse_GSL;
     self->build_report = build_report;

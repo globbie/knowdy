@@ -683,7 +683,7 @@ extern gsl_err_t knd_select_class(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
         knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
 
     self->depth = 0;
