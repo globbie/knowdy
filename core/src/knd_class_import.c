@@ -1934,8 +1934,8 @@ static gsl_err_t parse_baseclass(void *obj,
 
 
 extern gsl_err_t knd_import_class(void *obj,
-                                        const char *rec,
-                                        size_t *total_size)
+                                  const char *rec,
+                                  size_t *total_size)
 {
     struct kndClass *self = obj;
     struct kndClass *c;
@@ -1950,7 +1950,6 @@ extern gsl_err_t knd_import_class(void *obj,
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     c->root_class = self;
-
     
     struct gslTaskSpec specs[] = {
         { .is_implied = true,

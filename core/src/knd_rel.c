@@ -2046,7 +2046,7 @@ static int kndRel_resolve(struct kndRel *self,
     struct kndRelInstance *inst;
     int err;
 
-    if (DEBUG_REL_LEVEL_TMP)
+    if (DEBUG_REL_LEVEL_2)
         knd_log(".. resolving REL: \"%.*s\" "
                 " is_resolved:%d   inst inbox size: %zu",
                 self->entry->name_size, self->entry->name,

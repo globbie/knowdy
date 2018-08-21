@@ -34,7 +34,8 @@ struct kndRepo
     char frozen_output_file_name[KND_PATH_SIZE];
     size_t frozen_output_file_name_size;
 
-    struct kndUserContext *ctx;
+    struct kndUserContext *user_ctx;
+    struct kndRepo *base;
 
     const char *frozen_name_idx_path;
     size_t frozen_name_idx_path_size;

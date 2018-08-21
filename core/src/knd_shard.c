@@ -118,6 +118,12 @@ kndShard_parse_config(void *obj, const char *rec, size_t *total_size)
             .buf_size = &self->path_size,
             .max_buf_size = KND_NAME_SIZE
         },
+        {   .name = "user",
+            .name_size = strlen("user"),
+            .buf = self->user_classname,
+            .buf_size = &self->user_classname_size,
+            .max_buf_size = KND_NAME_SIZE
+        },
         {   .name = "schemas",
             .name_size = strlen("schemas"),
             .buf = self->schema_path,
@@ -234,6 +240,12 @@ extern int kndShard_new(struct kndShard **shard,
 
     err = mempool->alloc(mempool);                           RET_ERR();
     mempool->log = self->task->log;
+
+    /* set default user class name */
+    if (!self->user_classname_size) {
+        self->user_classname_size = strlen("User");
+        memcpy(self->user_classname, "User", self->user_classname_size);
+    }
 
     err = kndUser_new(&user, mempool);
     if (err != knd_OK) goto error;

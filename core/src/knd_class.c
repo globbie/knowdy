@@ -341,10 +341,10 @@ static void str(struct kndClass *self)
                     f->attr->name_size, f->attr->name);
                     } */
 
-        if (DEBUG_CLASS_LEVEL_2) {
+        /*if (DEBUG_CLASS_LEVEL_2) {
             err = set->map(set, str_conc_elem, NULL);
             if (err) return;
-        }
+            }*/
     }
 
     if (self->entry->reverse_attr_name_idx) {
@@ -362,8 +362,6 @@ static void str(struct kndClass *self)
 
     knd_log("%*s}", self->depth * KND_OFFSET_SIZE, "");
 }
-
-
 
 static int build_attr_name_idx(struct kndClass *self)
 {
@@ -546,7 +544,6 @@ static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
 
     return make_gsl_err(gsl_OK);
 }
-
 
 static gsl_err_t parse_rel_import(void *obj,
                                   const char *rec,
@@ -1086,7 +1083,6 @@ extern int get_arg_value(struct kndAttrVar *src,
     return knd_OK;
 }
 
-
 static int knd_update_state(struct kndClass *self)
 {
     struct kndClass *c;
@@ -1100,8 +1096,8 @@ static int knd_update_state(struct kndClass *self)
     int err;
 
     if (DEBUG_CLASS_LEVEL_2)
-        knd_log("..update state of \"%.*s\"",
-                self->entry->name_size, self->entry->name);
+        knd_log("..update state of \"%.*s\" task:%p",
+                self->entry->name_size, self->entry->name, task);
 
     /* new update obj */
     err = mempool->new_update(mempool, &update);                      RET_ERR();
@@ -1127,7 +1123,7 @@ static int knd_update_state(struct kndClass *self)
             return err;
         }
 
-        if (DEBUG_CLASS_LEVEL_1)
+        if (DEBUG_CLASS_LEVEL_2)
             c->str(c);
 
         if (update->num_classes >= self->inbox_size) {
@@ -1153,7 +1149,6 @@ static int knd_update_state(struct kndClass *self)
 
     // TODO: replicas
     //err = export_updates(self, update);                                           RET_ERR();
-
     return knd_OK;
 }
 
@@ -1255,17 +1250,18 @@ extern int knd_get_class(struct kndClass *self,
                          struct kndClass **result)
 {
     struct kndClassEntry *entry;
-    struct kndClass *c;
+    struct kndClass *c = NULL;
     struct glbOutput *log = self->entry->repo->log;
     struct ooDict *class_name_idx = self->entry->repo->root_class->class_name_idx;
     struct kndTask *task = self->entry->repo->task;
     struct kndState *state;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_2)
-        knd_log(".. %.*s to get class: \"%.*s\".. idx:%p",
+    if (DEBUG_CLASS_LEVEL_2) {
+        knd_log(".. %.*s to get class: \"%.*s\".. self:%p idx:%p",
                 self->entry->name_size, self->entry->name,
-                name_size, name,  class_name_idx);
+                name_size, name, self, class_name_idx);
+    }
 
     entry = class_name_idx->get(class_name_idx, name, name_size);
     if (!entry) {
@@ -1282,15 +1278,9 @@ extern int knd_get_class(struct kndClass *self,
         return knd_NO_MATCH;
     }
 
-    if (DEBUG_CLASS_LEVEL_2)
-        knd_log("++ got Conc Dir: %.*s from \"%.*s\" block size: %zu conc:%p",
-                name_size, name,
-                self->entry->repo->frozen_output_file_name_size,
-                self->entry->repo->frozen_output_file_name, entry->block_size, entry->class);
-
     if (entry->class) {
         c = entry->class;
-
+        
         if (c->num_states) {
             state = c->states;
             if (state->phase == KND_REMOVED) {
@@ -1306,7 +1296,6 @@ extern int knd_get_class(struct kndClass *self,
                 return knd_NO_MATCH;
             }
         }
-        
         c->next = NULL;
         if (DEBUG_CLASS_LEVEL_2)
             c->str(c);
@@ -1323,7 +1312,8 @@ extern int knd_get_class(struct kndClass *self,
         }*/
 
     *result = c;
-    return knd_OK;
+
+    return knd_FAIL;
 }
 
 /*  Concept initializer */

@@ -32,19 +32,7 @@ struct kndRepoAccess
 struct kndUserContext
 {
     struct kndClassInst *user_inst;
-
-    struct kndClass *class_inbox;
-    size_t class_inbox_size;
-    struct kndClass *inbox;
-    size_t inbox_size;
-
-    struct kndClassInst *obj_inbox;
-    size_t obj_inbox_size;
-    size_t num_objs;
-
-    struct kndSet *class_idx;
-    struct ooDict *class_name_idx;
-    struct ooDict *attr_name_idx;
+    struct kndRepo *repo;
 
     //TODO: ACL
 };
@@ -81,18 +69,17 @@ struct kndUser
     size_t max_users;
     size_t num_users;
 
-    struct kndClassInst   *curr_user;
-    struct kndUserContext *curr_ctx;
 
     struct kndShard *shard;
     struct kndTask *task;
     struct glbOutput *out;
     struct glbOutput *log;
 
-    void *update_service;
+    //void *update_service;
 
     /* user context storage */
     struct kndSet *user_idx;
+    struct kndUserContext *curr_ctx;
 
     struct kndRepo *repo;
     struct kndMemPool *mempool;
@@ -100,16 +87,14 @@ struct kndUser
     /**********  interface methods  **********/
     void (*del)(struct kndUser *self);
     void (*str)(struct kndUser *self);
-
     int (*init)(struct kndUser *self);
 
-    int (*run)(struct kndUser *self);
-
-    gsl_err_t (*parse_task)(struct kndUser *self,
-                      const char *rec,
-                      size_t *total_size);
-
-    int (*add_user)(struct kndUser *self);
+    gsl_err_t (*create)(struct kndUser *self,
+                        const char *rec,
+                        size_t *total_size);
+    gsl_err_t (*select)(struct kndUser *self,
+                        const char *rec,
+                        size_t *total_size);
 
 //    int (*get_user)(struct kndUser *self, const char *uid, struct kndUser **user);
 //    int (*get_repo)(struct kndUser *self,
@@ -117,10 +102,7 @@ struct kndUser
 //                    struct kndRepo **result);
 
 //    int (*restore)(struct kndUser *self);
-    
-//    int (*import)(struct kndUser *self, char *rec, size_t *total_size);
 //    int (*export)(struct kndUser *self);
-    
 //    int (*read)(struct kndUser *self, const char *rec);
 };
 
