@@ -39,79 +39,135 @@ kndRepo_str(struct kndRepo *self __attribute__((unused)))
     knd_log("REPO");
 }
 
-
-
-static int
-kndRepo_open(struct kndRepo *self)
+static int kndRepo_restore(struct kndRepo *self,
+                           const char *filename)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-    const char *repo_dir = "/repos";
-    size_t repo_dir_size = strlen(repo_dir);
+    struct glbOutput *out = self->task->file_out;
     int err;
 
-    struct glbOutput *out = self->path_out;
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("  .. restoring repo \"%.*s\" in \"%s\"",
+                self->name_size, self->name,
+                filename);
 
     out->reset(out);
-    //err = out->write(out, self->user->path, self->user->path_size);
-    //if (err) return err;
-    
-    
-    err = out->write(out, repo_dir, repo_dir_size);
-    if (err) return err;
-
-    err = knd_make_id_path(buf, NULL, self->id, NULL);
-    if (err) return err;
-    buf_size = strlen(buf);
-
-    err = out->write(out, buf, buf_size);
-    if (err) return err;
-
-    err = out->write(out, "/", 1);
-    if (err) return err;
-
-    if (out->buf_size >= KND_TEMP_BUF_SIZE) return knd_LIMIT;
-    memcpy(self->path, out->buf, out->buf_size);
-    self->path[out->buf_size] = '\0';
-    self->path_size = out->buf_size;
-
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log("..opening repo:  ID:\"%s\" REPO PATH:%s",
-                self->id, self->path);
-
-    err = out->write(out, "repo.gsl", strlen("repo.gsl"));
-    if (err) return err;
-
-    self->out->reset(self->out);
-    err = self->out->write_file_content(self->out,
-                               (const char*)out->buf);
+    err = out->write_file_content(out, filename);
     if (err) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("-- failed to open repo: \"%s\" :(",
-                    out->buf);
+        knd_log("-- failed to open journal: \"%s\"", filename);
         return err;
     }
 
-    self->out->buf[self->out->buf_size] = '\0';
+    knd_log(".. restore the journal file: %.*s", out->buf_size, out->buf);
 
-    /*if (self->restore_mode) {
-        err = kndRepo_parse_config(self, self->out->buf, &chunk_size);
-        if (err) return err;
-
-        if (!self->name_size) {
-            knd_log("-- repo %s full name is not set :(",
-                    self->id);
-            return knd_FAIL;
-        }
-        }*/
-
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log("++ REPO open success: \"%s\" PATH: \"%s\"",
-                self->out->buf, self->path);
+    //err = kndRepo_import_inbox_data(self, self->out->buf);
+    //if (err) return err;
 
     return knd_OK;
 }
 
+static int kndRepo_open(struct kndRepo *self)
+{
+    struct glbOutput *out;
+    struct kndClass *c;
+    struct kndProc *proc;
+    struct kndRel *rel;
+    struct kndClassInst *inst;
+    struct stat st;
+    int err;
+
+    out = self->out;
+
+    memcpy(self->schema_path,
+           self->user->shard->schema_path,
+           self->user->shard->schema_path_size);
+    self->schema_path_size = self->user->shard->schema_path_size;
+
+    memcpy(self->path, self->user->shard->path, self->user->shard->path_size);
+    self->path_size = self->user->shard->path_size;
+
+    /* extend user DB path */
+    if (self->user_ctx) {
+        memcpy(self->path, self->user->path, self->user->path_size);
+        self->path_size = self->user->path_size;
+
+        inst = self->user_ctx->user_inst;
+        
+        char *p = self->path + self->path_size;
+        memcpy(p, "/", 1);
+        p++;
+        self->path_size++;
+
+        memcpy(p, inst->entry->id, inst->entry->id_size);
+        self->path_size += inst->entry->id_size;
+        self->path[self->path_size] = '\0';
+
+        err = knd_mkpath((const char*)self->path, self->path_size, 0755, false);
+        if (err) return err;
+    }
+
+    out->reset(out);
+    err = out->write(out, self->path, self->path_size);
+    if (err) return err;
+    err = out->write(out, "/frozen.gsp", strlen("/frozen.gsp"));
+    if (err) return err;
+    out->buf[out->buf_size] = '\0';
+
+    c = self->root_class;
+
+    /* frozen DB exists? */
+    if (!stat(out->buf, &st)) {
+        /* try opening the frozen DB */
+        err = c->open(c, (const char*)out->buf);
+        if (err) {
+            knd_log("-- failed to open a frozen DB");
+            return err;
+        }
+    } else {
+        if (!self->user_ctx) {
+            /* read a system-wide schema */
+            knd_log("-- no existing frozen DB was found, reading the original schema..");
+        
+            c->batch_mode = true;
+            err = c->load(c, NULL, "index", strlen("index"));
+            if (err) {
+                knd_log("-- couldn't read any schemas :(");
+                return err;
+            }
+            err = c->coordinate(c);
+            if (err) {
+                knd_log("-- concept coordination failed");
+                return err;
+            }
+            
+            proc = self->root_proc;
+            //err = proc->coordinate(proc);                                     RET_ERR();
+            rel = self->root_rel;
+            err = rel->coordinate(rel);                                       RET_ERR();
+            c->batch_mode = false;
+        }
+    }
+
+    /* restore the journal? */
+    out->reset(out);
+    err = out->write(out, self->path, self->path_size);
+    if (err) return err;
+    err = out->write(out, "/journal.log", strlen("/journal.log"));
+    if (err) return err;
+     out->buf[out->buf_size] = '\0';
+
+    /* read any existing updates to the frozen DB (failure recovery) */
+    if (!stat(out->buf, &st)) {
+        err = kndRepo_restore(self, out->buf);
+        if (err) return err;
+    }
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("++ \"%.*s\" repo opened in \"%.*s\"!",
+                self->name_size, self->name,
+                self->path_size, self->path);
+
+    return knd_OK;
+}
 
 static int
 kndRepo_update_state(struct kndRepo *self)
@@ -174,262 +230,6 @@ kndRepo_update_state(struct kndRepo *self)
 }
 
 
-static int
-kndRepo_add_repo(struct kndRepo *self, const char *name, size_t name_size)
-{
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size = 0;
-    char path[KND_TEMP_BUF_SIZE];
-    size_t path_size = 0;
-    struct kndRepo *repo;
-    int err;
-
-    /* check if repo's name is unique */
-    repo = self->repo_idx->get(self->repo_idx, name, name_size);
-    if (repo) {
-        knd_log("-- \"%.*s\" REPO name already taken?", name_size, name);
-        return knd_FAIL;
-    }
-
-    err = kndRepo_new(&repo, self->mempool);
-    if (err) goto final;
-
-    repo->user = self->user;
-    repo->out = self->out;
-
-    /* get new repo id */
-    /*memcpy(repo->id, self->last_id, KND_ID_SIZE);
-    repo->id[KND_ID_SIZE] = '\0';
-    knd_inc_id(repo->id);
-    */
-
-    memcpy(repo->name, name, name_size);
-    repo->name_size = name_size;
-    repo->name[name_size] = '\0';
-
-    /* check repo's existence: must be an error */
-    err = kndRepo_open(repo);
-    if (!err) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("-- \"%s\" REPO already exists?", repo->id);
-        return knd_FAIL;
-    }
-
-    /*  sprintf(buf, "%s/repos", self->user->dbpath);
-    err = knd_make_id_path(path, buf, repo->id, NULL);
-    if (err) goto final;
-    */
-
-    /* TODO: check if DIR already exists */
-    err = knd_mkpath(path, path_size, 0755, false);
-    if (err) goto final;
-
-    path_size = strlen(path);
-    memcpy(self->path, path, path_size);
-    self->path_size = path_size;
-    self->path[path_size] = '\0';
-
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("  .. create new repo:  ID:\"%s\"  N:%.*s  PATH:%s",
-                repo->id, repo->name_size, repo->name, path);
-
-    /* in batch mode:
-          ignore incoming tasks
-       in non-batch mode (default):
-          append incoming tasks to the inbox queue */
-
-    sprintf(buf, "%s/inbox", path);
-    err = knd_mkpath(buf, buf_size, 0755, false);
-    if (err) goto final;
-
-    /* reflecting class scheme changes */
-    sprintf(buf, "%s/migrations", path);
-    err = knd_mkpath(buf, buf_size, 0755, false);
-    if (err) goto final;
-
-    /*    err = kndRepo_export(repo, KND_FORMAT_GSL);
-    if (err) goto final;
-    */
-
-    err = knd_write_file((const char*)path,
-                         "repo.gsl",
-                         repo->out->buf, repo->out->buf_size);
-    if (err) goto final;
-
-    err = self->repo_idx->set(self->repo_idx,
-                              repo->name, repo->name_size,
-                              repo);
-    if (err) goto final;
-
-    /* increment id */
-    //memcpy(self->last_id, repo->id, KND_ID_SIZE);
-
-    err = kndRepo_update_state(self);
-    if (err) goto final;
-
-    return knd_OK;
-
- final:
-    repo->del(repo);
-
-    return err;
-}
-
-
-static gsl_err_t
-kndRepo_run_add_repo(void *obj, const char *name, size_t name_size)
-{
-    struct kndRepo *repo;
-    int err;
-
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-
-    repo = (struct kndRepo*)obj;
-
-    err = kndRepo_add_repo(repo, name, name_size);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-}
-
-
-
-static gsl_err_t
-kndRepo_run_get_repo(void *obj, const char *name, size_t name_size)
-{
-    struct kndRepo *self, *curr_repo;
-
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-
-    self = (struct kndRepo*)obj;
-    self->curr_repo = NULL;
-
-    curr_repo = self->repo_idx->get(self->repo_idx,
-                                    name, name_size);
-    if (!curr_repo) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("-- no such repo: \"%.*s\" :(", name_size, name);
-        return make_gsl_err(gsl_FAIL);
-    }
-
-    if (DEBUG_REPO_LEVEL_2) {
-        knd_log("++ got repo: \"%s\" PATH: %s",
-                name, curr_repo->path);
-    }
-
-    /* assign task */
-    curr_repo->task = self->task;
-    curr_repo->log = self->log;
-    self->curr_repo = curr_repo;
-
-    return make_gsl_err(gsl_OK);
-}
-
-
-//static int
-//kndRepo_run_get_obj(void *obj, struct kndTaskArg *args, size_t num_args)
-//{
-//    struct kndRepo *self;
-//    struct kndTaskArg *arg;
-//    const char *name = NULL;
-//    size_t name_size = 0;
-//    int err;
-//
-//    for (size_t i = 0; i < num_args; i++) {
-//        arg = &args[i];
-//        if (!strncmp(arg->name, "n", strlen("n"))) {
-//            name = arg->val;
-//            name_size = arg->val_size;
-//        }
-//    }
-//    if (!name_size) return knd_FAIL;
-//
-//    self = (struct kndRepo*)obj;
-//
-//    if (DEBUG_REPO_LEVEL_1)
-//        knd_log(".. repo %s to get OBJ: \"%s\"", self->name, name);
-//
-//    err = kndRepo_get_obj(self, name, name_size);
-//    if (err) return err;
-//
-//    return knd_OK;
-//}
-
-
-//static int
-//kndRepo_run_import_obj(void *obj, struct kndTaskArg *args, size_t num_args)
-//{
-//    struct kndRepo *self;
-//    struct kndTaskArg *arg;
-//    const char *name = NULL;
-//    size_t chunk_size = 0;
-//    size_t name_size = 0;
-//    int err;
-//
-//    for (size_t i = 0; i < num_args; i++) {
-//        arg = &args[i];
-//        if (!strncmp(arg->name, "obj", strlen("obj"))) {
-//            name = arg->val;
-//            name_size = arg->val_size;
-//        }
-//    }
-//    if (!name_size) return knd_FAIL;
-//
-//    self = (struct kndRepo*)obj;
-//
-//    /* obj from separate msg */
-//    if (!strncmp(name, "_attach", strlen("_attach"))) {
-//        err = kndRepo_import_obj(self, self->task->obj, &chunk_size);
-//        if (err) return err;
-//        return knd_OK;
-//    }
-//
-//    return knd_FAIL;
-//}
-
-
-static int kndRepo_restore(struct kndRepo *self)
-{
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-    const char *inbox_filename = "inbox/import.data";
-    int err;
-
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log("  .. restoring repo \"%s\".. PATH: %s [%lu]",
-                self->id, self->path, (unsigned long)self->path_size);
-
-    memcpy(buf, self->path, self->path_size);
-    memcpy(buf + self->path_size, inbox_filename, strlen(inbox_filename));
-    buf_size = self->path_size + strlen(inbox_filename);
-    buf[buf_size] = '\0';
-
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log(".. importing recs from \"%s\"..", buf);
-
-    // fixme: actual restore
-    return knd_OK;
-
-    self->out->reset(self->out);
-    err = self->out->write_file_content(self->out,
-                               (const char*)buf);
-    if (err) {
-        knd_log("   -- failed to open the inbox \"%s\" :(", buf);
-        if (err == knd_IO_FAIL) {
-            knd_log("  .. skipping import of \"%s\"..", self->id);
-            return knd_OK;
-        }
-
-        return err;
-    }
-    self->out->buf[self->out->buf_size] = '\0';
-
-    //err = kndRepo_import_inbox_data(self, self->out->buf);
-    //if (err) return err;
-
-    return knd_OK;
-}
-
 static gsl_err_t
 kndRepo_parse_class(void *obj,
                     const char *rec,
@@ -474,102 +274,18 @@ kndRepo_parse_class(void *obj,
 }
 
 
-static gsl_err_t
-kndRepo_parse_task(void *self,
-                   const char *rec,
-                   size_t *total_size)
-{
-    struct gslTaskSpec specs[] = {
-        { .name = "add",
-          .name_size = strlen("add"),
-          .run = kndRepo_run_add_repo,
-          .obj = self
-        },
-        { .name = "n",
-          .name_size = strlen("n"),
-          .run = kndRepo_run_get_repo,
-          .obj = self
-        },
-        { .name = "class",
-          .name_size = strlen("class"),
-          .parse = kndRepo_parse_class,
-          .obj = self
-        }
-    };
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
 extern int kndRepo_init(struct kndRepo *self)
 {
-    struct glbOutput *out;
-    struct kndClass *c;
-    struct kndProc *proc;
-    struct kndRel *rel;
     int err;
 
-    self->task =     self->user->task;
-    self->out =      self->task->out;
+    self->task     = self->user->task;
+    self->out      = self->task->out;
     self->file_out = self->task->file_out;
-    self->log =      self->task->log;
-    out = self->out;
+    self->log      = self->task->log;
 
-    memcpy(self->schema_path,
-           self->user->shard->schema_path,
-           self->user->shard->schema_path_size);
-    self->schema_path_size = self->user->shard->schema_path_size;
-
-    memcpy(self->path, self->user->path, self->user->path_size);
-    self->path_size = self->user->path_size;
-
-    out->reset(out);
-    err = out->write(out, self->path, self->path_size);
+    err = kndRepo_open(self);
     if (err) return err;
-    err = out->write(out, "/frozen.gsp", strlen("/frozen.gsp"));
-    if (err) return err;
-
-    if (out->buf_size >= sizeof(self->frozen_output_file_name))
-        return knd_LIMIT;
-
-    memcpy(self->frozen_output_file_name, out->buf, out->buf_size);
-    self->frozen_output_file_name_size = out->buf_size;
-    self->frozen_output_file_name[out->buf_size] = '\0';
     
-    c = self->root_class;
-
-    /* try opening the frozen DB */
-    err = c->open(c);
-    if (err) {
-        if (err != knd_NO_MATCH) {
-            knd_log("-- failed to open a frozen DB");
-            return err;
-        }
-
-        /* read class definitions */
-        knd_log("-- no existing frozen DB was found, reading original schemas..");
-        
-        c->batch_mode = true;
-        err = c->load(c, NULL, "index", strlen("index"));
-        if (err) {
-            knd_log("-- couldn't read any schemas :(");
-            return err;
-        }
-
-        err = c->coordinate(c);
-        if (err) {
-            knd_log("-- concept coordination failed");
-            return err;
-        }
-
-        proc = self->root_proc;
-        //err = proc->coordinate(proc);                                     RET_ERR();
-
-        rel = self->root_rel;
-        err = rel->coordinate(rel);                                       RET_ERR();
-
-        c->batch_mode = false;
-    }
-
     return knd_OK;
 }
 
@@ -610,19 +326,11 @@ extern int kndRepo_new(struct kndRepo **repo,
     rel->entry->repo = self;
     self->root_rel = rel;
 
-    /* read any existing updates to the frozen DB (failure recovery) */
-    /*err = conc->restore(conc);
-    if (err) return err;
-    */
-
     self->mempool = mempool;
 
     self->del = kndRepo_del;
     self->str = kndRepo_str;
     self->init = kndRepo_init;
-    self->parse_task = kndRepo_parse_task;
-    self->open = kndRepo_open;
-    self->restore = kndRepo_restore;
 
     *repo = self;
 

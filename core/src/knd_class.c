@@ -468,9 +468,9 @@ extern int knd_get_attr_var(struct kndClass *self,
     /* ask your parents */
     for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
         err = knd_get_class(root_class,
-                        cvar->entry->name,
-                        cvar->entry->name_size,
-                        &c);
+                            cvar->entry->name,
+                            cvar->entry->name_size,
+                            &c);
         if (err) {
             if (err == knd_NO_MATCH) continue;
             return err;
@@ -1170,9 +1170,13 @@ static int export(struct kndClass *self)
     return knd_FAIL;
 }
 
-static int open_DB(struct kndClass *self)
+static int open_DB(struct kndClass *self,
+                   const char *filename)
 {
     // TODO use kndClassStorage to open a frozen DB
+
+    knd_log(".. opening frozen DB: %s", filename);
+
     return knd_NO_MATCH;
 }
 
@@ -1251,20 +1255,29 @@ extern int knd_get_class(struct kndClass *self,
 {
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
-    struct glbOutput *log = self->entry->repo->log;
-    struct ooDict *class_name_idx = self->entry->repo->root_class->class_name_idx;
-    struct kndTask *task = self->entry->repo->task;
+    struct kndRepo *repo = self->entry->repo;
+    struct glbOutput *log = repo->log;
+    struct ooDict *class_name_idx = repo->root_class->class_name_idx;
+    struct kndTask *task = repo->task;
     struct kndState *state;
     int err;
 
     if (DEBUG_CLASS_LEVEL_2) {
-        knd_log(".. %.*s to get class: \"%.*s\".. self:%p idx:%p",
+        knd_log(".. %.*s to get class: \"%.*s\"..",
                 self->entry->name_size, self->entry->name,
-                name_size, name, self, class_name_idx);
+                name_size, name);
     }
-
+    
     entry = class_name_idx->get(class_name_idx, name, name_size);
     if (!entry) {
+
+        /* check parent schema */
+        if (repo->base) {
+            err = knd_get_class(repo->base->root_class, name, name_size, result);
+            if (err) return err;
+            return knd_OK;
+        }
+        
         knd_log("-- no such class: \"%.*s\":(", name_size, name);
         log->reset(log);
         err = log->write(log, name, name_size);
@@ -1274,7 +1287,6 @@ extern int knd_get_class(struct kndClass *self,
         if (err) return err;
         if (task)
             task->http_code = HTTP_NOT_FOUND;
-
         return knd_NO_MATCH;
     }
 
@@ -1304,19 +1316,23 @@ extern int knd_get_class(struct kndClass *self,
         return knd_OK;
     }
 
+    if (repo->base) {
+        err = knd_get_class(repo->base->root_class, name, name_size, result);
+        if (err) return err;
+        return knd_OK;
+    }
+    
     /*err = unfreeze_class(self, entry, &c);
     if (err) {
         knd_log("-- failed to unfreeze class: %.*s",
                 entry->name_size, entry->name);
         return err;
         }*/
-
-    *result = c;
+    //*result = c;
 
     return knd_FAIL;
 }
 
-/*  Concept initializer */
 extern void kndClass_init(struct kndClass *self)
 {
     self->del = kndClass_del;
@@ -1363,7 +1379,7 @@ extern int kndClass_new(struct kndClass **result,
     self->entry = entry;
 
     /* obj manager */
-    err = mempool->new_obj(mempool, &self->curr_inst);                             RET_ERR();
+    err = mempool->new_obj(mempool, &self->curr_inst);                            RET_ERR();
     self->curr_inst->base = self;
 
     /* specific allocations for the root class */

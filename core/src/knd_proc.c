@@ -1366,14 +1366,19 @@ static gsl_err_t import_proc(struct kndProc *self,
           .parse = parse_gloss,
           .obj = proc
         },
-        { .type = GSL_SET_STATE,
-          .name = "base",
-          .name_size = strlen("base"),
+        { .name = "is",
+          .name_size = strlen("is"),
           .parse = parse_base,
           .obj = proc
         },
         { .type = GSL_SET_STATE,
           .name = "result",
+          .name_size = strlen("result"),
+          .buf = proc->result_classname,
+          .buf_size = &proc->result_classname_size,
+          .max_buf_size = KND_NAME_SIZE
+        },
+        { .name = "result",
           .name_size = strlen("result"),
           .buf = proc->result_classname,
           .buf_size = &proc->result_classname_size,
@@ -1385,8 +1390,8 @@ static gsl_err_t import_proc(struct kndProc *self,
           .parse = gsl_parse_array,
           .obj = &proc_arg_spec
         },
-        { .name = "run",
-          .name_size = strlen("run"),
+        { .name = "do",
+          .name_size = strlen("do"),
           .parse = parse_proc_call,
           .obj = proc //&proc->proc_call
         }

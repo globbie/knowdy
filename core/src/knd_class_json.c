@@ -129,397 +129,6 @@ static int export_conc_elem_JSON(void *obj,
     return knd_OK;
 }
 
-static int aggr_item_export_JSON(struct kndClass *self,
-                                 struct kndAttrVar *parent_item)
-{
-    struct glbOutput *out = self->entry->repo->out;
-    struct kndAttrVar *item;
-    struct kndAttr *attr;
-    struct kndClass *c;
-    bool in_list = false;
-    int err;
-
-    c = parent_item->attr->parent_class;
-
-    if (DEBUG_JSON_LEVEL_2) {
-        knd_log(".. JSON export aggr item: %.*s",
-                parent_item->name_size, parent_item->name);
-        //c = parent_item->attr->parent_class;
-        //c->str(c);
-        c->str(c);
-        knd_log("== comp attrs:%zu",
-                c->num_computed_attrs);
-    }
-
-    err = out->writec(out, '{');
-    if (err) return err;
-
-    if (parent_item->id_size) {
-        err = out->write(out, "\"_id\":", strlen("\"_id\":"));
-        if (err) return err;
-        err = out->writec(out, '"');
-        if (err) return err;
-        err = out->write(out, parent_item->id, parent_item->id_size);
-        if (err) return err;
-        err = out->writec(out, '"');
-        if (err) return err;
-        in_list = true;
-
-        c = parent_item->attr->conc;
-        if (c->num_computed_attrs) {
-
-            if (DEBUG_JSON_LEVEL_TMP)
-                knd_log("\n..present computed attrs in %.*s (val:%.*s)",
-                        parent_item->name_size, parent_item->name,
-                        parent_item->val_size, parent_item->val);
-
-            err = knd_present_computed_aggr_attrs(self, parent_item);
-            if (err) return err;
-        }
-   }
-    
-    /* export a class ref */
-    if (parent_item->class) {
-        attr = parent_item->attr;
-        c = parent_item->attr->conc;
-
-        /* TODO: check assignment */
-        if (parent_item->implied_attr) {
-            attr = parent_item->implied_attr;
-        }
-
-        if (c->implied_attr)
-            attr = c->implied_attr;
-
-        c = parent_item->class;
-
-        if (in_list) {
-            err = out->writec(out, ',');
-            if (err) return err;
-        }
-
-        err = out->writec(out, '"');
-        if (err) return err;
-        err = out->write(out, attr->name, attr->name_size);
-        if (err) return err;
-        err = out->writec(out, '"');
-        if (err) return err;
-        err = out->writec(out, ':');
-        if (err) return err;
-
-        c->depth = self->depth + 1;
-        c->max_depth = self->max_depth;
-
-        //knd_log(".. export %.*s class, depth:%zu max depth:%zu\n\n",
-        //        c->name_size, c->name, c->depth, c->max_depth);
-
-        err = c->export(c);
-        if (err) return err;
-        in_list = true;
-    }
-
-    if (!parent_item->class) {
-        /* terminal string value */
-        if (parent_item->val_size) {
-            c = parent_item->attr->conc;
-            attr = parent_item->attr;
-
-            if (c->implied_attr) {
-                attr = c->implied_attr;
-                err = out->writec(out, '"');
-                if (err) return err;
-                err = out->write(out, attr->name, attr->name_size);
-                if (err) return err;
-                err = out->writec(out, '"');
-                if (err) return err;
-                err = out->writec(out, ':');
-                if (err) return err;
-            } else {
-                err = out->write(out, "\"_val\":", strlen("\"_val\":"));
-                if (err) return err;
-            }
-
-            /* string or numeric value? */
-            switch (attr->type) {
-            case KND_ATTR_NUM:
-                err = out->write(out, parent_item->val, parent_item->val_size);
-                if (err) return err;
-                break;
-            default:
-                err = out->writec(out, '"');
-                if (err) return err;
-                err = out->write(out, parent_item->val, parent_item->val_size);
-                if (err) return err;
-                err = out->writec(out, '"');
-                if (err) return err;
-            }
-            in_list = true;
-        }
-    }
-
-    for (item = parent_item->children; item; item = item->next) {
-        if (in_list) {
-            err = out->writec(out, ',');
-            if (err) return err;
-        }
-
-        err = out->writec(out, '"');
-        if (err) return err;
-        err = out->write(out, item->name, item->name_size);
-        if (err) return err;
-        err = out->writec(out, '"');
-        if (err) return err;
-        err = out->writec(out, ':');
-        if (err) return err;
-
-        switch (item->attr->type) {
-        case KND_ATTR_REF:
-            c = item->class;
-            c->depth = self->depth + 1;
-            c->max_depth = self->max_depth;
-
-            //knd_log(".. export %.*s class, depth:%zu max depth:%zu\n\n",
-            //    c->name_size, c->name, c->depth, c->max_depth);
-            
-            err = c->export(c);
-            if (err) return err;
-            break;
-        case KND_ATTR_AGGR:
-            err = aggr_item_export_JSON(self, item);
-            if (err) return err;
-            break;
-        default:
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->write(out, item->val, item->val_size);
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
-            break;
-        }
-
-        in_list = true;
-    }
-
-    err = out->writec(out, '}');
-    if (err) return err;
-
-    return knd_OK;
-}
-
-static int ref_item_export_JSON(struct kndClass *self,
-                                struct kndAttrVar *item)
-{
-    struct kndClass *c;
-    int err;
-
-    assert(item->class != NULL);
-
-    c = item->class;
-    c->depth = self->depth + 1;
-    c->max_depth = self->max_depth;
-    err = c->export(c);
-    if (err) return err;
-
-    return knd_OK;
-}
-
-static int proc_item_export_JSON(struct kndClass *self,
-                                 struct kndAttrVar *item)
-{
-    struct kndProc *proc;
-    int err;
-
-    assert(item->proc != NULL);
-
-    proc = item->proc;
-    proc->depth = self->depth + 1;
-    proc->max_depth = self->max_depth;
-    err = proc->export(proc);
-    if (err) return err;
-
-    return knd_OK;
-}
-
-static int attr_var_list_export_JSON(struct kndClass *self,
-                                     struct kndAttrVar *parent_item)
-{
-    struct glbOutput *out = self->entry->repo->out;
-    struct kndAttrVar *item;
-    bool in_list = false;
-    size_t count = 0;
-    int err;
-
-    if (DEBUG_JSON_LEVEL_2) {
-        knd_log(".. export JSON list: %.*s\n\n",
-                parent_item->name_size, parent_item->name);
-    }
-
-    err = out->writec(out, '"');
-    if (err) return err;
-    err = out->write(out, parent_item->name, parent_item->name_size);
-    if (err) return err;
-    err = out->write(out, "\":[", strlen("\":["));
-    if (err) return err;
-
-    /* first elem: TODO */
-    if (parent_item->class) {
-        switch (parent_item->attr->type) {
-        case KND_ATTR_AGGR:
-
-            parent_item->id_size = sprintf(parent_item->id, "%lu",
-                                           (unsigned long)count);
-            count++;
-
-            err = aggr_item_export_JSON(self, parent_item);
-            if (err) return err;
-            break;
-        case KND_ATTR_REF:
-            err = ref_item_export_JSON(self, parent_item);
-            if (err) return err;
-            break;
-        case KND_ATTR_PROC:
-            if (parent_item->proc) {
-                err = proc_item_export_JSON(self, parent_item);
-                if (err) return err;
-            }
-            break;
-        default:
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->write(out, parent_item->val, parent_item->val_size);
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
-            break;
-        }
-        in_list = true;
-    }
-
-    for (item = parent_item->list; item; item = item->next) {
-
-        /* TODO */
-        if (!item->attr) {
-            knd_log("-- no attr: %.*s (%p)",
-                    item->name_size, item->name, item);
-            continue;
-        }
-
-        if (in_list) {
-            err = out->writec(out, ',');
-            if (err) return err;
-        }
-
-        switch (parent_item->attr->type) {
-        case KND_ATTR_AGGR:
-            item->id_size = sprintf(item->id, "%lu",
-                                    (unsigned long)count);
-            count++;
-
-            err = aggr_item_export_JSON(self, item);
-            if (err) return err;
-            break;
-        case KND_ATTR_REF:
-            err = ref_item_export_JSON(self, item);
-            if (err) return err;
-            break;
-        case KND_ATTR_PROC:
-            if (item->proc) {
-                err = proc_item_export_JSON(self, item);
-                if (err) return err;
-            }
-            break;
-        default:
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->write(out, item->val, item->val_size);
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
-            break;
-        }
-        in_list = true;
-    }
-    err = out->writec(out, ']');
-    if (err) return err;
-
-    return knd_OK;
-}
-
-static int attr_vars_export_JSON(struct kndClass *self,
-                                 struct kndAttrVar *items,
-                                 size_t depth __attribute__((unused)))
-{
-    struct kndAttrVar *item;
-    struct glbOutput *out;
-    struct kndClass *c;
-    int err;
-
-    out = self->entry->repo->out;
-
-    for (item = items; item; item = item->next) {
-        err = out->writec(out, ',');
-        if (err) return err;
-
-        if (item->attr && item->attr->is_a_set) {
-            err = attr_var_list_export_JSON(self, item);
-            if (err) return err;
-            continue;
-        }
-
-        err = out->writec(out, '"');
-        if (err) return err;
-        err = out->write(out, item->name, item->name_size);
-        if (err) return err;
-        err = out->write(out, "\":", strlen("\":"));
-        if (err) return err;
-
-        switch (item->attr->type) {
-        case KND_ATTR_NUM:
-
-            err = out->write(out, item->val, item->val_size);
-            if (err) return err;
-
-            break;
-        case KND_ATTR_PROC:
-            if (item->proc) {
-                err = proc_item_export_JSON(self, item);
-                if (err) return err;
-            } else {
-                err = out->write(out, "\"", strlen("\""));
-                if (err) return err;
-                err = out->write(out, item->val, item->val_size);
-                if (err) return err;
-                err = out->write(out, "\"", strlen("\""));
-                if (err) return err;
-            }
-            break;
-        case KND_ATTR_AGGR:
-
-            if (!item->class) {
-                err = aggr_item_export_JSON(self, item);
-                if (err) return err;
-            } else {
-                c = item->class;
-                c->depth = self->depth;
-                err = c->export(c);
-                if (err) return err;
-            }
-            break;
-        default:
-            err = out->write(out, "\"", strlen("\""));
-            if (err) return err;
-            err = out->write(out, item->val, item->val_size);
-            if (err) return err;
-            err = out->write(out, "\"", strlen("\""));
-            if (err) return err;
-        }
-    }
-
-
-    return knd_OK;
-}
-
 static int present_computed_class_attrs(struct kndClass *self,
                                         struct kndClassVar *cvar)
 {
@@ -642,65 +251,10 @@ static int export_concise_JSON(struct kndClass *self)
                 self->entry->name_size, self->entry->name, self->entry->repo->out);
 
     for (item = self->baseclass_vars; item; item = item->next) {
-        for (attr_var = item->attrs; attr_var; attr_var = attr_var->next) {
+        if (!item->attrs) continue;
 
-            /* TODO assert */
-            if (!attr_var->attr) continue;
-
-            attr = attr_var->attr;
-
-            if (!attr->concise_level) continue;
-
-            if (attr->is_a_set) {
-                err = out->writec(out, ',');                                      RET_ERR();
-                err = attr_var_list_export_JSON(self, attr_var);
-                if (err) return err;
-                continue;
-            }
-
-            /* single elem concise representation */
-            err = out->writec(out, ',');                                          RET_ERR();
-            err = out->writec(out, '"');                                          RET_ERR();
-
-            err = out->write(out, attr_var->name, attr_var->name_size);
-            if (err) return err;
-            err = out->write(out, "\":", strlen("\":"));
-            if (err) return err;
-
-            switch (attr->type) {
-            case KND_ATTR_NUM:
-                err = out->write(out, attr_var->val, attr_var->val_size);
-                if (err) return err;
-                break;
-            case KND_ATTR_REF:
-                c = attr_var->class;
-                if (c) {
-                    c->depth = self->depth;
-                    c->max_depth = self->max_depth;
-                    err = c->export(c);
-                    if (err) return err;
-                } else {
-                    err = out->write(out, "\"", strlen("\""));
-                    if (err) return err;
-                    err = out->write(out, attr_var->val, attr_var->val_size);
-                    if (err) return err;
-                    err = out->write(out, "\"", strlen("\""));
-                    if (err) return err;
-                }
-                break;
-            case KND_ATTR_AGGR:
-                err = aggr_item_export_JSON(self, attr_var);
-                if (err) return err;
-                break;
-            default:
-                err = out->write(out, "\"", strlen("\""));
-                if (err) return err;
-                err = out->write(out, attr_var->val, attr_var->val_size);
-                if (err) return err;
-                err = out->write(out, "\"", strlen("\""));
-                if (err) return err;
-            }
-        }
+        err = knd_attr_vars_export_JSON(item->attrs, out, 0, true);
+        if (err) return err;
     }
 
     /* inherited attrs */
@@ -746,7 +300,6 @@ static int export_concise_JSON(struct kndClass *self)
 
     return knd_OK;
 }
-
 
 static int export_inherited_attrs_JSON(struct kndClass *self)
 {
@@ -916,7 +469,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
     size_t item_count;
     int i, err;
 
-    if (DEBUG_JSON_LEVEL_TMP)
+    if (DEBUG_JSON_LEVEL_1)
         knd_log(".. JSON export: \"%.*s\"  ",
                 self->entry->name_size, self->entry->name);
 
@@ -971,7 +524,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
             if (err) return err;
 
             if (item->attrs) {
-                err = attr_vars_export_JSON(self, item->attrs, 0);
+                err = knd_attr_vars_export_JSON(item->attrs, out, 0, false);
                 if (err) return err;
             }
 
@@ -1021,12 +574,13 @@ extern int knd_class_export_JSON(struct kndClass *self,
 
     /* facets */
     if (self->entry->descendants) {
-        knd_log("++ desc facets: %zu", self->entry->descendants->num_facets);
+        //knd_log("++ desc facets: %zu", self->entry->descendants->num_facets);
         //self->entry->descendants->num_facets) {
         //err = export_facets_JSON(self, self->entry->descendants);
         //if (err) return err;
     }
 
+    // TODO
     if (self->entry->reverse_attr_name_idx) {
         idx = self->entry->reverse_attr_name_idx;
         key = NULL;
@@ -1035,6 +589,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
             idx->next_item(idx, &key, &val);
             if (!key) break;
             set = val;
+
             knd_log("%s total:%zu", key, set->num_elems);
             //set->str(set, self->depth + 1);
         } while (key);

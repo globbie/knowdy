@@ -156,7 +156,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     int err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. set class name: %.*s", name_size, name);
+        knd_log(".. set class name: %.*s",
+                name_size, name);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= sizeof self->entry->name) return make_gsl_err(gsl_LIMIT);
@@ -208,7 +209,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     }
 
     knd_log("-- \"%.*s\" class doublet found :(", name_size, name);
-
     log->reset(log);
     err = log->write(log, name, name_size);
     if (err) return make_gsl_err_external(err);
@@ -218,7 +218,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     if (err) return make_gsl_err_external(err);
 
     task->http_code = HTTP_CONFLICT;
-    
+
     return make_gsl_err(gsl_FAIL);
 }
 
@@ -237,7 +237,6 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
                 root_class->entry->name_size,
                 root_class->entry->name,
                 name_size, name);
-
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
@@ -264,7 +263,6 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
 
     return make_gsl_err(gsl_OK);
 }
-
 
 static gsl_err_t alloc_gloss_item(void *obj,
                                   const char *name,
@@ -358,7 +356,6 @@ static gsl_err_t parse_gloss_array(void *obj,
 
     return gsl_parse_array(&item_spec, rec, total_size);
 }
-
 
 static gsl_err_t alloc_summary_item(void *obj,
                                     const char *name,

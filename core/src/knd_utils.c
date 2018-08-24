@@ -114,8 +114,7 @@ knd_state_compare(const char *a, const char *b)
 */
 
 /* big-endian order: Y1 (62 alphanum base) => 96 (decimal) */
-extern void
-knd_calc_num_id(const char *id, size_t id_size, size_t *numval)
+extern void knd_calc_num_id(const char *id, size_t id_size, size_t *numval)
 {
     const char *c = id;
     int num = 0;
@@ -278,21 +277,14 @@ knd_mkpath(const char *path, size_t path_size, mode_t mode, bool has_filename)
     return knd_OK;
 }
 
-extern int 
-knd_write_file(const char *path,
-               const char *filename, 
-               void *buf, size_t buf_size)
+extern int knd_write_file(const char *filename, 
+                          void *buf, size_t buf_size)
 {
-    char name_buf[KND_TEMP_BUF_SIZE];
     int fd;
 
-    sprintf(name_buf, "%s/%s", path, filename);
-
-    /* write textual content */
-    fd = open((const char*)name_buf,  
+    fd = open(filename,  
               O_WRONLY | O_TRUNC | O_CREAT, 0644);
     if (fd < 0) return knd_IO_FAIL;
-
     write(fd, buf, buf_size);
     close(fd);
 

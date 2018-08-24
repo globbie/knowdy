@@ -142,7 +142,7 @@ struct kndStateControl
     int (*confirm)(struct kndStateControl *self,
                    struct kndUpdate *update);
 
-    int (*select)(struct kndStateControl *self);
+    //int (*select)(struct kndStateControl *self);
 };
 
 /* constructors */

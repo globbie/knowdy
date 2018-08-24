@@ -103,8 +103,6 @@ static int export_inst_relref_JSON(struct kndClassInst *self,
     struct tm tm_info;
     int err;
 
-    knd_log(".. JSON export inst rel refs..");
-
     err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
     err = out->write(out, rel->entry->name, rel->entry->name_size);               RET_ERR();
     err = out->write(out, "\"", 1);                                               RET_ERR();
@@ -423,8 +421,7 @@ static int export_rel_inst_JSON(void *obj,
     return knd_OK;
 }
 
-static int
-export_rels_GSP(struct kndClassInst *self)
+static int export_rels_GSP(struct kndClassInst *self)
 {
     struct kndRel *rel;
     struct kndRelRef *relref;
@@ -455,8 +452,7 @@ export_rels_GSP(struct kndClassInst *self)
     return knd_OK;
 }
 
-static int 
-kndClassInst_export_GSP(struct kndClassInst *self)
+static int kndClassInst_export_GSP(struct kndClassInst *self)
 {
     struct kndElem *elem;
     struct glbOutput *out = self->base->entry->repo->out;
@@ -1221,7 +1217,7 @@ static gsl_err_t present_inst_rels_state(void *obj,
 
     if (!self) return make_gsl_err_external(knd_FAIL);
     
-    if (DEBUG_INST_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. get state of inst rels \"%.*s\"..",
                 self->name_size, self->name);
 
