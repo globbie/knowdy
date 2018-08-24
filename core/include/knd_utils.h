@@ -33,9 +33,8 @@ extern const char *min_id(const char *a, const char *b);
 
 extern int knd_mkpath(const char *path, size_t path_size, mode_t mode, bool has_filename);
 
-extern int 
-knd_write_file(const char *path, const char *filename, 
-               void *buf, size_t buf_size);
+extern int knd_write_file(const char *filename, 
+                          void *buf, size_t buf_size);
 
 extern int 
 knd_append_file(const char *filename, 

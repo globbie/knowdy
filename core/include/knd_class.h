@@ -99,6 +99,7 @@ struct kndClassEntry
 
     struct kndSet *descendants;
     struct kndSet *child_idx;
+
     struct kndClassEntry **children;
     size_t num_children;
     size_t num_terminals;
@@ -112,7 +113,7 @@ struct kndClassEntry
     struct kndObjDir *obj_dir;
     size_t num_objs;
 
-    // TODO: all indices must be kept in kndRepo
+    // TODO: move to kndRepo?
     struct kndSet *class_idx;
     struct ooDict *class_name_idx;
     struct kndSet *obj_idx;
@@ -149,15 +150,6 @@ struct kndClass
     size_t depth;
     size_t max_depth;
 
-    // TODO: remove
-    struct kndProc *proc;
-    struct kndRel *rel;
-
-    struct kndAttr *attrs;
-    struct kndAttr *tail_attr;
-    size_t num_attrs;
-    struct kndAttr *implied_attr;
-
     struct kndClassVar *baseclass_vars;
     size_t num_baseclass_vars;
 
@@ -165,11 +157,21 @@ struct kndClass
     size_t num_bases;
     bool is_resolved;
 
+    struct kndAttr *attrs;
+    struct kndAttr *tail_attr;
+    size_t num_attrs;
+    struct kndAttr *implied_attr;
+
+    struct kndProc *proc;
+    struct kndRel *rel;
+
     struct kndClass      *root_class;
     struct kndClass      *curr_class;
     struct kndClass      *curr_baseclass;
     struct kndAttr       *curr_attr;
+    struct kndAttrVar    *curr_attr_var;
     struct kndClassInst  *curr_inst;
+    struct kndUpdate     *curr_update;
 
     struct kndConcFolder *folders;
     size_t num_folders;
@@ -195,7 +197,6 @@ struct kndClass
     struct kndAttr *computed_attrs[KND_MAX_ATTRS];
     size_t num_computed_attrs;
 
-    struct kndUpdate *curr_update;
     struct kndClass *next;
 
     /***********  public methods ***********/
@@ -204,7 +205,8 @@ struct kndClass
     void (*reset_inbox)(struct kndClass   *self);
     void (*str)(struct kndClass *self);
 
-    int (*open)(struct kndClass   *self);
+    int (*open)(struct kndClass   *self,
+                const char *filename);
     int (*load)(struct kndClass   *self,
 		struct kndConcFolder *parent_folder,
                 const char *filename,
@@ -296,9 +298,6 @@ extern int knd_resolve_classes(struct kndClass *self);
 extern int knd_resolve_class(struct kndClass *self,
                              struct kndClassUpdate *class_update);
 extern int knd_inherit_attrs(struct kndClass *self, struct kndClass *base);
-
-extern int knd_present_computed_aggr_attrs(struct kndClass *self,
-                                           struct kndAttrVar *attr_var);
 
 extern int get_arg_value(struct kndAttrVar *src,
                          struct kndAttrVar *query,

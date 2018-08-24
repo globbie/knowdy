@@ -131,6 +131,7 @@ static int kndAttr_validate_email(struct kndAttr *self,
 }
 
 
+
 /**
  *  EXPORT
  */
@@ -732,7 +733,6 @@ static gsl_err_t parse_GSL(struct kndAttr *self,
 
     return make_gsl_err(gsl_OK);
 }
-
 
 extern void kndAttr_init(struct kndAttr *self)
 {

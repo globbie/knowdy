@@ -227,3 +227,16 @@ struct kndAttr
 /* constructor */
 extern void kndAttr_init(struct kndAttr *self);
 extern int kndAttr_new(struct kndAttr **self);
+
+extern int knd_attr_var_export_JSON(struct kndAttrVar *self,
+                                    struct glbOutput *out);
+extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
+                                     struct glbOutput *out,
+                                     size_t depth __attribute__((unused)),
+                                     bool is_concise);
+extern int knd_present_computed_aggr_attrs(struct kndAttrVar *attr_var,
+                                           struct glbOutput *out);
+extern int knd_compute_num_value(struct kndAttr *attr,
+                                 struct kndAttrVar *attr_var,
+                                 long *result);
+

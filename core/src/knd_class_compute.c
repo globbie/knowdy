@@ -41,10 +41,9 @@
 #define DEBUG_CLASS_COMP_LEVEL_5 0
 #define DEBUG_CLASS_COMP_LEVEL_TMP 1
 
-static int compute_num_value(struct kndClass *self,
-                             struct kndAttr *attr,
-                             struct kndAttrVar *attr_var,
-                             long *result)
+extern int knd_compute_num_value(struct kndAttr *attr,
+                                 struct kndAttrVar *attr_var,
+                                 long *result)
 {
     struct kndProcCall *proc_call;
     struct kndProcCallArg *arg;
@@ -285,54 +284,5 @@ static int compute_class_attr_num_value(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_present_computed_aggr_attrs(struct kndClass *self,
-                                           struct kndAttrVar *attr_var)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
-    struct glbOutput *out = self->entry->repo->out;
-    struct kndClass *c = attr_var->attr->conc;
-    struct kndAttr *attr;
-    struct kndAttrVar *item;
-    long numval;
-    int err;
-
-    for (size_t i = 0; i < c->num_computed_attrs; i++) {
-        attr = c->computed_attrs[i];
-
-        switch (attr->type) {
-        case KND_ATTR_NUM:
-            numval = attr_var->numval;
-            if (!attr_var->is_cached) {
-                err = compute_num_value(self, attr, attr_var, &numval);
-                // TODO: signal failure
-                if (err) continue;
-
-                // memoization
-                attr_var->numval = numval;
-                attr_var->is_cached = true;
-            }
-            
-            err = out->writec(out, ',');
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->write(out, attr->name, attr->name_size);
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->writec(out, ':');
-            if (err) return err;
-            
-            buf_size = snprintf(buf, KND_NAME_SIZE, "%lu", numval);
-            err = out->write(out, buf, buf_size);                                     RET_ERR();
-            break;
-        default:
-            break;
-        }
-    }
-
-    return knd_OK;
-}
 
 

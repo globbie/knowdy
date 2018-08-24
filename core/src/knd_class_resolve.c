@@ -921,7 +921,8 @@ static int resolve_baseclasses(struct kndClass *self)
 
         if (c->entry->num_children >= KND_MAX_CONC_CHILDREN) {
             knd_log("-- %.*s as child to %.*s - max conc children exceeded :(",
-                    self->entry->name_size, self->entry->name, cvar->entry->name_size, cvar->entry->name);
+                    self->entry->name_size, self->entry->name,
+                    cvar->entry->name_size, cvar->entry->name);
             return knd_FAIL;
         }
 

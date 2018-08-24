@@ -35,16 +35,62 @@ static void reset(struct kndStateControl *self)
     self->out->reset(self->out);
 }
 
+static int knd_export_update_GSP(struct kndUpdate *update,
+                                 struct glbOutput *out)
+{
+    int err;
+    err = out->writec(out, '{');                                                  RET_ERR();
+    err = out->writef(out, "\"update\":%zu", update->numid);                      RET_ERR();
+
+    err = out->writec(out, '}');                                                  RET_ERR();
+    err = out->writec(out, '\n');                                                 RET_ERR();
+    return knd_OK;
+}
+
+static int knd_sync_update(struct kndStateControl *self,
+                           struct kndUpdate *update)
+{
+    struct glbOutput *out = self->repo->task->out;
+    struct glbOutput *file_out = self->repo->task->file_out;
+    int err;
+    
+    /* linearize an update */
+    file_out->reset(file_out);
+    err = knd_export_update_GSP(update, file_out);
+    if (err) return err;
+
+    out->reset(out);
+    err = out->write(out, self->repo->path, self->repo->path_size);
+    if (err) return err;
+    err = out->write(out, "/journal.log", strlen("/journal.log"));
+    if (err) return err;
+    out->buf[out->buf_size] = '\0';
+
+    // TODO: call a goroutine
+    err = knd_append_file((const char*)out->buf,
+                          file_out->buf, file_out->buf_size);
+    if (err) {
+        knd_log("-- update write failure");
+        return err;
+    }
+    return knd_OK;
+}
+
 static int knd_confirm(struct kndStateControl *self,
                        struct kndUpdate *update)
 {
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+    struct kndRepo *repo = self->repo;
     struct kndTask *task = self->repo->task;
     struct glbOutput *out = self->out;
+    struct glbOutput *file_out = task->file_out;
     int err;
 
-    if (DEBUG_STATE_LEVEL_2)
+    if (DEBUG_STATE_LEVEL_TMP)
         knd_log("State Controller: .. "
-                " confirming update %zu..", update->numid);
+                " confirming update %zu..  Repo:%.*s",
+                update->numid, repo->name_size, repo->name);
 
     if (task->type == KND_LIQUID_STATE) {
         self->updates[self->num_updates] = update;
@@ -66,7 +112,11 @@ static int knd_confirm(struct kndStateControl *self,
     update->numid = self->num_updates + 1;
 
     /* TODO: send request to sync the update */
-    
+    err = knd_sync_update(self, update);
+    if (err) {
+        // TODO: release resources
+        return err;
+    }
     self->updates[self->num_updates] = update;
     self->num_updates++;
 
@@ -75,47 +125,35 @@ static int knd_confirm(struct kndStateControl *self,
                 "\"%zu\" update confirmed! total updates: %zu",
                 update->numid, self->num_updates);
 
-    out = task->out;
+    // TODO: add format switch
+    out = task->out; 
+    out->reset(out);
     err = out->writec(out, '{');                                                  RET_ERR();
     err = out->writef(out, "\"update\":%zu", update->numid);                      RET_ERR();
     err = out->writec(out, '}');                                                  RET_ERR();
-    return knd_OK;
-}
 
-static int make_selection(struct kndStateControl *self)
-{
-    struct kndUpdate *update;
-    struct kndTask *task = self->repo->task;
-    size_t start_pos;
-    size_t end_pos;
+    /* sync latest state id */
+    knd_num_to_str(update->numid, buf, &buf_size, KND_RADIX_BASE);
 
-    self->num_selected = 0;
+    file_out->reset(file_out);
+    err = file_out->writec(file_out, '{');                                        RET_ERR();
+    err = file_out->write(file_out, "state ", strlen("state "));                  RET_ERR();
+    err = file_out->write(file_out, buf, buf_size);                               RET_ERR();
+    err = file_out->writec(file_out, '}');                                        RET_ERR();
 
-    start_pos = task->batch_gt;
-    end_pos = task->batch_lt;
+    out->reset(out);
+    err = out->write(out, self->repo->path, self->repo->path_size);               RET_ERR();
+    err = out->write(out, "/state.gsl", strlen("/state.gsl"));                    RET_ERR();
 
-    if (task->batch_eq) {
-        start_pos = task->batch_eq;
-        end_pos = task->batch_eq + 1;
-    }
+    err = knd_write_file(out->buf,
+                         file_out->buf, file_out->buf_size);                      RET_ERR();
 
-    if (!end_pos)
-        end_pos = self->num_updates;
-    else
-        end_pos = end_pos - 1;
-
-    if (end_pos > self->num_updates) {
-        knd_log("-- requested range of updates exceeded :(");
-        return knd_RANGE;
-    }
-
-    if (start_pos > end_pos) return knd_RANGE;
-
-    for (size_t i = start_pos; i < end_pos; i++) {
-        update = self->updates[i];
-        self->selected[self->num_selected] = update;
-        self->num_selected++;
-    }
+    /*if (DEBUG_STATE_LEVEL_2)
+        knd_log(".. renaming \"%s\" -> \"%s\"..",
+                new_state_path, state_path);
+    err = rename(new_state_path, state_path);
+    if (err) return err;
+    */
 
     return knd_OK;
 }
@@ -130,8 +168,6 @@ extern int kndStateControl_new(struct kndStateControl **state)
 
     memset(self, 0, sizeof(struct kndStateControl));
 
-    //memset(self->state, '0', KND_STATE_SIZE);
-
     err = glbOutput_new(&self->log, KND_TEMP_BUF_SIZE);
     if (err) return err;
 
@@ -145,7 +181,6 @@ extern int kndStateControl_new(struct kndStateControl **state)
     self->str    = str;
     self->reset  = reset;
     self->confirm  = knd_confirm;
-    self->select  = make_selection;
 
     *state = self;
 

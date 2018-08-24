@@ -227,6 +227,149 @@ static gsl_err_t parse_attr_select(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static gsl_err_t run_set_attr_var(void *obj,
+                                  const char *name, size_t name_size)
+{
+    struct kndClass *self = obj;
+    struct kndAttrVar *attr_var;
+    struct glbOutput *log = self->entry->repo->log;
+    struct kndTask *task = self->entry->repo->task;
+    int err, e;
+
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    attr_var = self->curr_attr_var;
+
+    if (!attr_var) {
+        knd_log("-- couldn't update the value of %.*s", name_size, name);
+        log->reset(log);
+        e = log->write(log, name, name_size);
+        if (e) return make_gsl_err_external(e);
+        e = log->write(log, ": value update failure",
+                               strlen(": value update failure"));
+        if (e) return make_gsl_err_external(e);
+        task->http_code = HTTP_CONFLICT;
+        return make_gsl_err_external(err);
+    }
+    
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+        knd_log(".. update attr var %.*s with value: \"%.*s\"",
+                attr_var->name_size, attr_var->name, name_size, name);
+    }
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t present_attr_var_selection(void *obj,
+                                            const char *val __attribute__((unused)),
+                                            size_t val_size __attribute__((unused)))
+{
+    struct kndClass *self = obj;
+    struct kndAttr *attr;
+    struct kndAttrVar *attr_var;
+    struct glbOutput *out = self->entry->repo->out;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndTask *task = self->entry->repo->task;
+    int err;
+
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+        knd_log(".. presenting attrs of class \"%.*s\".. curr_attr:%p",
+                self->curr_class->name_size, self->curr_class->name, self->curr_attr);
+
+    out->reset(out);
+
+    if (!self->curr_attr) {
+        knd_log("-- no attr to present");
+        return make_gsl_err_external(knd_FAIL);
+    }
+    attr = self->curr_attr;
+
+    if (self->curr_attr_var) {
+        attr_var = self->curr_attr_var;
+
+        err = out->writec(out, '{');
+        if (err) return make_gsl_err_external(err);
+
+        err = knd_attr_var_export_JSON(attr_var, out);
+        if (err) return make_gsl_err_external(err);
+        
+        err = out->writec(out, '}');
+        if (err) return make_gsl_err_external(err);
+        
+        return make_gsl_err(gsl_OK);
+    }
+
+    // TODO
+    err = out->writec(out, '{');
+    if (err) return make_gsl_err_external(err);
+    
+    err = attr->export(attr, task->format, out);
+    if (err) {
+        knd_log("-- attr export failed");
+        return make_gsl_err_external(err);
+    }
+
+    err = out->writec(out, '}');
+    if (err) return make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_attr_var_select(void *obj,
+                                       const char *name, size_t name_size,
+                                       const char *rec, size_t *total_size)
+{
+    struct kndClass *self = obj;
+    struct kndAttr *attr;
+    struct kndAttrVar *attr_var;
+    struct glbOutput *log = self->entry->repo->log;
+    struct kndTask *task = self->entry->repo->task;
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_attr_var,
+          .obj = self
+        },
+        { .is_default = true,
+          .run = present_attr_var_selection,
+          .obj = self
+        }
+    };
+    int err, e;
+
+    if (!self->curr_class) return *total_size = 0, make_gsl_err_external(knd_FAIL);
+
+    err = knd_class_get_attr(self->curr_class, name, name_size, &attr);
+    if (err) {
+        knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
+                name_size, name,
+                self->curr_class->name_size,
+                self->curr_class->name);
+        log->reset(log);
+        e = log->write(log, name, name_size);
+        if (e) return *total_size = 0, make_gsl_err_external(e);
+        e = log->write(log, ": no such attribute",
+                               strlen(": no such attribute"));
+        if (e) return *total_size = 0, make_gsl_err_external(e);
+        task->http_code = HTTP_NOT_FOUND;
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+
+    self->curr_attr = attr;
+
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+        knd_log("++ attr selected: \"%.*s\".. curr attr:%p", name_size, name, attr);
+    }
+
+    err = knd_get_attr_var(self->curr_class, name, name_size, &attr_var);
+    if (!err) {
+        knd_log(".. \"%.*s\" attr var exists!", name_size, name);
+        self->curr_attr_var = attr_var;
+    }
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 static gsl_err_t parse_baseclass_select(void *obj,
                                         const char *rec,
                                         size_t *total_size)
@@ -279,7 +422,6 @@ static gsl_err_t parse_baseclass_select(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
-
 
 static gsl_err_t present_class_selection(void *obj,
                                          const char *val __attribute__((unused)),
@@ -652,9 +794,7 @@ static int knd_select_class_delta(struct kndClass *self,
 
     task->sets[0] = set;
     task->num_sets = 1;
-    task->curr_inst = self;
-
-    
+    //task->curr_inst = self;
     return knd_OK;
 }
 
@@ -739,6 +879,10 @@ extern gsl_err_t knd_select_class(void *obj,
           .name_size = strlen("_delta"),
           .is_selector = true,
           .parse = parse_class_delta,
+          .obj = self
+        },
+        { .is_validator = true,
+          .validate = parse_attr_var_select,
           .obj = self
         },
         { .is_default = true,
