@@ -3,82 +3,6 @@ static int unfreeze_class(struct kndClass *self,
                           struct kndClassEntry *entry,
                           struct kndClass **result);
 
-
-static int restore(struct kndClass *self)
-{
-    char state_buf[KND_STATE_SIZE];
-    char last_state_buf[KND_STATE_SIZE];
-    struct glbOutput *out = self->entry->repo->out;
-
-    const char *inbox_dir = "/schema/inbox";
-    size_t inbox_dir_size = strlen(inbox_dir);
-    int err;
-
-    memset(state_buf, '0', KND_STATE_SIZE);
-    if (DEBUG_CONC_LEVEL_TMP)
-        knd_log(".. conc \"%s\" restoring DB state in: %s",
-                self->entry->name, self->entry->repo->path, KND_STATE_SIZE);
-
-    out->reset(out);
-    err = out->write(out, self->entry->repo->path, self->entry->repo->path_size);
-    if (err) return err;
-    err = out->write(out, "/schema/class_state.id", strlen("/schema/class_state.id"));
-    if (err) return err;
-
-    err = out->write_file_content(out,
-                         (const char*)out->buf);
-    if (err) {
-        knd_log("-- no class_state.id file found, assuming initial state ..");
-        return knd_OK;
-    }
-
-    /* check if state content is a valid state id */
-    err = knd_state_is_valid(out->buf, out->buf_size);
-    if (err) {
-        knd_log("-- state id is not valid: \"%.*s\"",
-                out->buf_size, out->buf);
-        return err;
-    }
-
-    memcpy(last_state_buf, out->buf, KND_STATE_SIZE);
-    if (DEBUG_CONC_LEVEL_TMP)
-        knd_log(".. last DB state: \"%.*s\"",
-                out->buf_size, out->buf);
-
-    out->rtrim(out, strlen("/schema/class_state.id"));
-    err = out->write(out, inbox_dir, inbox_dir_size);
-    if (err) return err;
-
-    while (1) {
-        knd_next_state(state_buf);
-
-        //err = out->write_state_path(out, state_buf);
-        //if (err) return err;
-
-        err = out->write(out, "/spec.gsl", strlen("/spec.gsl"));
-        if (err) return err;
-
-
-        err = out->write_file_content(out, (const char*)out->buf);
-        if (err) {
-            knd_log("-- couldn't read GSL spec \"%s\" :(", out->buf);
-            return err;
-        }
-
-        if (DEBUG_CONC_LEVEL_TMP)
-            knd_log(".. state update spec file: \"%.*s\" SPEC: %.*s\n\n",
-                    out->buf_size, out->buf, out->buf_size, out->buf);
-
-        /* last update */
-        if (!memcmp(state_buf, last_state_buf, KND_STATE_SIZE)) break;
-
-        /* cut the tail */
-        out->rtrim(out, strlen("/spec.gsl") + (KND_STATE_SIZE * 2));
-    }
-    return knd_OK;
-}
-
-
 static int freeze_objs(struct kndClass *self,
                        size_t *total_frozen_size,
                        char *output,
@@ -858,7 +782,6 @@ static int get_dir_trailer(struct kndClass *self,
 
     return knd_OK;
 }
-
 
 static int open_frozen_DB(struct kndClass *self)
 {

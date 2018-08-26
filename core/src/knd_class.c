@@ -1079,25 +1079,25 @@ extern int get_arg_value(struct kndAttrVar *src,
             // TODO check children
         }
     }
-                
     return knd_OK;
 }
 
 static int knd_update_state(struct kndClass *self)
 {
     struct kndClass *c;
-    struct kndRel *rel = self->entry->repo->root_rel;
-    struct kndProc *proc = self->entry->repo->root_proc;
+    struct kndRepo *repo = self->entry->repo;
+    struct kndRel *rel = repo->root_rel;
+    struct kndProc *proc = repo->root_proc;
     struct kndUpdate *update;
     struct kndClassUpdate *class_update;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndStateControl *state_ctrl = self->entry->repo->state_ctrl;
-    struct kndTask *task = self->entry->repo->task;
+    struct kndMemPool *mempool = repo->mempool;
+    struct kndStateControl *state_ctrl = repo->state_ctrl;
+    struct kndTask *task = repo->task;
     int err;
 
     if (DEBUG_CLASS_LEVEL_2)
-        knd_log("..update state of \"%.*s\" task:%p",
-                self->entry->name_size, self->entry->name, task);
+        knd_log("..update state of \"%.*s\"",
+                self->entry->name_size, self->entry->name);
 
     /* new update obj */
     err = mempool->new_update(mempool, &update);                      RET_ERR();
@@ -1114,7 +1114,7 @@ static int knd_update_state(struct kndClass *self)
 
         self->entry->repo->next_class_numid++;
         c->entry->numid = self->entry->repo->next_class_numid;
-        class_update->conc = c;
+        class_update->class = c;
         class_update->update = update;
 
         err = c->resolve(c, class_update);
@@ -1154,19 +1154,32 @@ static int knd_update_state(struct kndClass *self)
 
 static int export(struct kndClass *self)
 {
-    struct kndTask *task = self->entry->repo->task;
+    struct kndRepo *repo = self->entry->repo;
 
-    switch(task->format) {
+    switch (repo->task->format) {
     case KND_FORMAT_JSON:
-        return knd_class_export_JSON(self,
-                                     self->entry->repo->out);
-        /*    case KND_FORMAT_GSL:
-    return kndClass_export_GSL(self); */
+        return knd_class_export_JSON(self, repo->out);
+    case KND_FORMAT_GSP:
+        return knd_class_export_GSP(self, repo->out);
+        break;
     default:
         break;
     }
+    knd_log("-- format %d not supported :(", repo->task->format);
+    return knd_FAIL;
+}
 
-    knd_log("-- format %d not supported :(", task->format);
+static int export_updates(struct kndClass *self,
+                          struct kndUpdate *update,
+                          knd_format format,
+                          struct glbOutput *out)
+{
+    switch (format) {
+    case KND_FORMAT_GSP:
+        return knd_class_export_updates_GSP(self, update, out);
+    default:
+        break;
+    }
     return knd_FAIL;
 }
 
@@ -1356,6 +1369,7 @@ extern void kndClass_init(struct kndClass *self)
     self->update_state = knd_update_state;
     //self->apply_liquid_updates = apply_liquid_updates;
     self->export = export;
+    self->export_updates = export_updates;
     self->get = knd_get_class;
     self->get_inst = get_inst;
     self->get_attr = knd_class_get_attr;

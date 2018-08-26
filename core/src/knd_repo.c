@@ -39,16 +39,110 @@ kndRepo_str(struct kndRepo *self __attribute__((unused)))
     knd_log("REPO");
 }
 
+static gsl_err_t alloc_update(void *obj,
+                              const char *name,
+                              size_t name_size,
+                              size_t count,
+                              void **item)
+{
+    struct kndRepo *self = obj;
+    struct kndMemPool *mempool = self->mempool;
+    struct kndUpdate *update;
+    int err;
+
+    assert(name == NULL && name_size == 0);
+
+    err = mempool->new_update(mempool, &update);
+    if (err) return make_gsl_err_external(err);
+
+    *item = update;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t append_update(void *accu,
+                               void *item)
+{
+    struct kndRepo *self =   accu;
+    struct kndUpdate *update = item;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_update(void *obj,
+                              const char *rec,
+                              size_t *total_size)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+
+    struct kndUpdate *update = obj;
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .buf = update->id,
+          .buf_size = &update->id_size,
+          .max_buf_size = sizeof update->id
+        },
+        { .name = "ts",
+          .name_size = strlen("ts"),
+          .buf = buf,
+          .buf_size = &buf_size,
+          .max_buf_size = sizeof buf
+        }
+    };
+    gsl_err_t err;
+
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (err.code) return err;
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("UPD id:%.*s  time:%.*s",
+                update->id_size, update->id, buf_size, buf);
+    
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t kndRepo_read_updates(void *obj,
+                                      const char *rec,
+                                      size_t *total_size)
+{
+    struct kndRepo *repo = obj;
+
+    struct gslTaskSpec update_spec = {
+        .is_list_item = true,
+        .alloc  = alloc_update,
+        .append = append_update,
+        .parse  = parse_update,
+        .accu = repo
+    };
+
+    struct gslTaskSpec specs[] = {
+        { .type = GSL_SET_ARRAY_STATE,
+          .name = "update",
+          .name_size = strlen("update"),
+          .parse = gsl_parse_array,
+          .obj = &update_spec
+        }
+    };
+    gsl_err_t err;
+
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (err.code) return err;
+
+    return make_gsl_err(gsl_OK);
+}
+
 static int kndRepo_restore(struct kndRepo *self,
                            const char *filename)
 {
     struct glbOutput *out = self->task->file_out;
+    size_t total_size = 0;
+    gsl_err_t parser_err;
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP)
         knd_log("  .. restoring repo \"%.*s\" in \"%s\"",
-                self->name_size, self->name,
-                filename);
+                self->name_size, self->name, filename);
 
     out->reset(out);
     err = out->write_file_content(out, filename);
@@ -57,10 +151,14 @@ static int kndRepo_restore(struct kndRepo *self,
         return err;
     }
 
-    knd_log(".. restore the journal file: %.*s", out->buf_size, out->buf);
+    /* add a closing bracket */
+    err = out->writec(out, ']');                                RET_ERR();
 
-    //err = kndRepo_import_inbox_data(self, self->out->buf);
-    //if (err) return err;
+    knd_log(".. restoring the journal file: %.*s",
+            out->buf_size, out->buf);
+
+    parser_err = kndRepo_read_updates(self, out->buf, &total_size);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     return knd_OK;
 }
@@ -126,7 +224,6 @@ static int kndRepo_open(struct kndRepo *self)
         if (!self->user_ctx) {
             /* read a system-wide schema */
             knd_log("-- no existing frozen DB was found, reading the original schema..");
-        
             c->batch_mode = true;
             err = c->load(c, NULL, "index", strlen("index"));
             if (err) {
@@ -168,111 +265,6 @@ static int kndRepo_open(struct kndRepo *self)
 
     return knd_OK;
 }
-
-static int
-kndRepo_update_state(struct kndRepo *self)
-{
-    char new_state_path[KND_TEMP_BUF_SIZE];
-    char state_path[KND_TEMP_BUF_SIZE];
-
-    struct glbOutput *out;
-    const char *state_header = "{STATE{repo";
-    size_t state_header_size = strlen(state_header);
-
-    const char *state_close = "}}";
-    size_t state_close_size = strlen(state_close);
-    int err;
-
-    out = self->out;
-    out->reset(out);
-
-    err = out->write(out, state_header, state_header_size);
-    if (err) return err;
-
-    /* last repo id */
-    /*err = out->write(out, "{last ", strlen("{last "));
-    if (err) return err;
-    err = out->write(out, self->last_id, KND_ID_SIZE);
-    if (err) return err;
-    err = out->write(out, "}", 1);
-    if (err) return err;
-    */
-    err = out->write(out, state_close, state_close_size);
-    if (err) return err;
-
-
-    /*err = knd_write_file((const char*)self->path,
-                         "state_new.gsl",
-                         out->buf, out->buf_size);
-    if (err) return err;
-
-    buf_size = self->dbpath_size;
-    memcpy(state_path, (const char*)self->dbpath, buf_size);
-    memcpy(state_path + buf_size, "/state.gsl", strlen("/state.gsl"));
-    buf_size += strlen("/state.gsl");
-    state_path[buf_size] = '\0';
-
-    buf_size = self->dbpath_size;
-    memcpy(new_state_path, (const char*)self->dbpath, buf_size);
-    memcpy(new_state_path + buf_size, "/state_new.gsl", strlen("/state_new.gsl"));
-    buf_size += strlen("/state_new.gsl");
-    new_state_path[buf_size] = '\0';
-    */
-    
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log(".. renaming \"%s\" -> \"%s\"..",
-                new_state_path, state_path);
-
-    err = rename(new_state_path, state_path);
-    if (err) return err;
-
-    return knd_OK;
-}
-
-
-static gsl_err_t
-kndRepo_parse_class(void *obj,
-                    const char *rec,
-                    size_t *total_size)
-{
-    struct kndRepo *self, *repo;
-    gsl_err_t err;
-
-    self = (struct kndRepo*)obj;
-
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("   .. parsing the CLASS rec: \"%s\" REPO: %s\n\n", rec, self->name);
-
-    if (!self->curr_repo) {
-        knd_log("-- no repo selected :(");
-        return *total_size = 0, make_gsl_err(gsl_FAIL);
-    }
-
-    repo = self->curr_repo;
-    repo->out = self->task->out;
-
-    struct gslTaskSpec specs[] = {
-        { .name = "obj",
-          .name_size = strlen("obj")
-        }
-    };
-
-    if (DEBUG_REPO_LEVEL_1)
-        knd_log("   .. parsing the CLASS rec: \"%s\" CURR REPO: %s",
-                rec, repo->name);
-
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log("-- failed to parse the CLASS rec: %d", err);
-        return err;
-    }
-
-    /* call default action */
-
-    return make_gsl_err(gsl_OK);
-}
-
 
 extern int kndRepo_init(struct kndRepo *self)
 {
