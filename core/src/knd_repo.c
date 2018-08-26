@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <time.h>
 
 #include "knd_repo.h"
 #include "knd_shard.h"
@@ -75,8 +76,9 @@ static gsl_err_t parse_update(void *obj,
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
-
+    struct tm tm_info = {0};
     struct kndUpdate *update = obj;
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .buf = update->id,
@@ -96,9 +98,18 @@ static gsl_err_t parse_update(void *obj,
     if (err.code) return err;
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("UPD id:%.*s  time:%.*s",
-                update->id_size, update->id, buf_size, buf);
+        knd_log("UPD id:%.*s  time:\"%s\"",
+                update->id_size, update->id, buf);
+
+    /* parse date/time */
+    if (!strptime(buf, "%Y-%m-%d %H:%M:%S", &tm_info)) {
+        knd_log("-- incorrect date/time: %.*s?", buf_size, buf);
+        return make_gsl_err_external(knd_FAIL);
+    }
+    tm_info.tm_isdst = -1;
+    update->timestamp = mktime(&tm_info);
     
+
     return make_gsl_err(gsl_OK);
 }
 
