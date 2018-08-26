@@ -38,7 +38,7 @@ static void reset(struct kndStateControl *self)
 static int knd_export_update_GSP(struct kndUpdate *update,
                                  struct glbOutput *out)
 {
-    char buf[KND_NAME_SIZE];
+    char buf[KND_NAME_SIZE] = {0};
     size_t buf_size = 0;
     struct tm tm_info;
     struct kndClassUpdate *class_upd;
@@ -55,7 +55,7 @@ static int knd_export_update_GSP(struct kndUpdate *update,
                         "{ts %Y-%m-%d %H:%M:%S}", &tm_info);
     err = out->write(out, buf, buf_size);                                         RET_ERR();
 
-    /*    if (update->num_classes) {
+    /*    if  (update->num_classes) {
         err = out->write(out, "[c", strlen("[c"));                                RET_ERR();
         for (size_t i = 0; i < update->num_classes; i++) {
             class_upd = update->classes[i];
