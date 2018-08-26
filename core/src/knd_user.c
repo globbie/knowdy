@@ -174,12 +174,11 @@ static gsl_err_t parse_class_import(void *obj,
     struct kndUser *self = obj;
     struct kndClass *c = self->repo->root_class;
     struct kndUserContext *ctx = self->curr_ctx;   
-    if (ctx) 
+    if (ctx)
         c = ctx->repo->root_class;
 
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log(".. parsing the default class import: \"%.*s\" system root:%p root:%p",
-                64, rec, self->repo->root_class, c);
+    if (DEBUG_USER_LEVEL_2)
+        knd_log(".. parsing the default class import: \"%.*s\"..", 64, rec);
 
     self->task->type = KND_UPDATE_STATE;
     c->reset_inbox(c);

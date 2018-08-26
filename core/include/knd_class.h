@@ -252,6 +252,10 @@ struct kndClass
                         const char *rec,
                         size_t *total_size);
     int (*export)(struct kndClass *self);
+    int (*export_updates)(struct kndClass *self,
+                          struct kndUpdate *update,
+                          knd_format format,
+                          struct glbOutput *out);
 };
 
 /* constructor */
@@ -285,6 +289,12 @@ extern int knd_class_export_set_JSON(struct kndClass *self,
 
 extern int knd_class_export_JSON(struct kndClass *self,
                                  struct glbOutput *out);
+
+extern int knd_class_export_GSP(struct kndClass *self,
+                                struct glbOutput *out);
+extern int knd_class_export_updates_GSP(struct kndClass *self,
+                                        struct kndUpdate *update,
+                                        struct glbOutput *out);
 
 extern gsl_err_t knd_parse_import_class_inst(void *data,
                                              const char *rec,

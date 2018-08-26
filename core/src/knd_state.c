@@ -38,9 +38,36 @@ static void reset(struct kndStateControl *self)
 static int knd_export_update_GSP(struct kndUpdate *update,
                                  struct glbOutput *out)
 {
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+    struct tm tm_info;
+    struct kndClassUpdate *class_upd;
+    struct kndClass *c;
+    struct kndState *state;
     int err;
+
     err = out->writec(out, '{');                                                  RET_ERR();
-    err = out->writef(out, "\"update\":%zu", update->numid);                      RET_ERR();
+    err = out->write(out, update->id, update->id_size);                           RET_ERR();
+
+    time(&update->timestamp);
+    localtime_r(&update->timestamp, &tm_info);
+    buf_size = strftime(buf, KND_NAME_SIZE,
+                        "{ts %Y-%m-%d %H:%M:%S}", &tm_info);
+    err = out->write(out, buf, buf_size);                                         RET_ERR();
+
+    /*    if (update->num_classes) {
+        err = out->write(out, "[c", strlen("[c"));                                RET_ERR();
+        for (size_t i = 0; i < update->num_classes; i++) {
+            class_upd = update->classes[i];
+            c = class_upd->class;
+            err = c->export_updates(c, update,
+                                    KND_FORMAT_GSP,
+                                    out);                                         RET_ERR();
+        }
+        err = out->writec(out, ']');                                              RET_ERR();
+    }
+    */
+    // TODO: Rel Proc
 
     err = out->writec(out, '}');                                                  RET_ERR();
     err = out->writec(out, '\n');                                                 RET_ERR();
@@ -52,8 +79,9 @@ static int knd_sync_update(struct kndStateControl *self,
 {
     struct glbOutput *out = self->repo->task->out;
     struct glbOutput *file_out = self->repo->task->file_out;
+    struct stat st;
     int err;
-    
+
     /* linearize an update */
     file_out->reset(file_out);
     err = knd_export_update_GSP(update, file_out);
@@ -65,6 +93,13 @@ static int knd_sync_update(struct kndStateControl *self,
     err = out->write(out, "/journal.log", strlen("/journal.log"));
     if (err) return err;
     out->buf[out->buf_size] = '\0';
+
+    if (stat(out->buf, &st)) {
+        knd_log("-- initializing the journal: %.*s", out->buf_size, out->buf);
+        err = knd_write_file((const char*)out->buf,
+                             "[!update\n", strlen("[!update\n"));
+        if (err) return err;
+    }
 
     // TODO: call a goroutine
     err = knd_append_file((const char*)out->buf,
@@ -83,14 +118,14 @@ static int knd_confirm(struct kndStateControl *self,
     size_t buf_size = 0;
     struct kndRepo *repo = self->repo;
     struct kndTask *task = self->repo->task;
-    struct glbOutput *out = self->out;
+    struct glbOutput *out = task->out;
     struct glbOutput *file_out = task->file_out;
     int err;
 
     if (DEBUG_STATE_LEVEL_TMP)
         knd_log("State Controller: .. "
                 " confirming update %zu..  Repo:%.*s",
-                update->numid, repo->name_size, repo->name);
+                self->num_updates + 1, repo->name_size, repo->name);
 
     if (task->type == KND_LIQUID_STATE) {
         self->updates[self->num_updates] = update;
@@ -101,8 +136,10 @@ static int knd_confirm(struct kndStateControl *self,
         return knd_OK;
     }
 
-    /* TODO: check conflicts with previous updates */
+    // TODO: check conflicts with previous updates
 
+    // TODO: check the journal file size limit
+    
     if (self->num_updates >= self->max_updates) {
         knd_log("-- max update limit exceeded, time to freeze?");
         return knd_FAIL;
@@ -110,6 +147,7 @@ static int knd_confirm(struct kndStateControl *self,
 
     update->timestamp = time(NULL);
     update->numid = self->num_updates + 1;
+    knd_num_to_str(update->numid, update->id, &update->id_size, KND_RADIX_BASE);
 
     /* TODO: send request to sync the update */
     err = knd_sync_update(self, update);
@@ -125,36 +163,37 @@ static int knd_confirm(struct kndStateControl *self,
                 "\"%zu\" update confirmed! total updates: %zu",
                 update->numid, self->num_updates);
 
-    // TODO: add format switch
-    out = task->out; 
-    out->reset(out);
-    err = out->writec(out, '{');                                                  RET_ERR();
-    err = out->writef(out, "\"update\":%zu", update->numid);                      RET_ERR();
-    err = out->writec(out, '}');                                                  RET_ERR();
-
     /* sync latest state id */
-    knd_num_to_str(update->numid, buf, &buf_size, KND_RADIX_BASE);
-
     file_out->reset(file_out);
     err = file_out->writec(file_out, '{');                                        RET_ERR();
     err = file_out->write(file_out, "state ", strlen("state "));                  RET_ERR();
-    err = file_out->write(file_out, buf, buf_size);                               RET_ERR();
+    err = file_out->write(file_out, update->id, update->id_size);                 RET_ERR();
     err = file_out->writec(file_out, '}');                                        RET_ERR();
 
     out->reset(out);
     err = out->write(out, self->repo->path, self->repo->path_size);               RET_ERR();
-    err = out->write(out, "/state.gsl", strlen("/state.gsl"));                    RET_ERR();
-
+    err = out->write(out, "/new_state.gsl", strlen("/new_state.gsl"));            RET_ERR();
     err = knd_write_file(out->buf,
                          file_out->buf, file_out->buf_size);                      RET_ERR();
 
-    /*if (DEBUG_STATE_LEVEL_2)
-        knd_log(".. renaming \"%s\" -> \"%s\"..",
-                new_state_path, state_path);
-    err = rename(new_state_path, state_path);
-    if (err) return err;
-    */
+    /* main state filename */
+    file_out->reset(file_out);
+    err = file_out->write(file_out, self->repo->path, self->repo->path_size);     RET_ERR();
+    err = file_out->write(file_out, "/state.gsl", strlen("/state.gsl"));          RET_ERR();
 
+    if (DEBUG_STATE_LEVEL_2)
+        knd_log(".. activate new state: \"%s\" -> \"%s\"..",
+                out->buf, file_out->buf);
+
+    err = rename(out->buf, file_out->buf);
+    if (err) return err;
+
+    /* build report */
+    // TODO: add format switch
+    out->reset(out);
+    err = out->writec(out, '{');                                                  RET_ERR();
+    err = out->writef(out, "\"update\":%zu", update->numid);                      RET_ERR();
+    err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
 }
 

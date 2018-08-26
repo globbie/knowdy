@@ -493,7 +493,6 @@ static gsl_err_t atomic_elem_append(void *accu  __attribute__((unused)),
 }
 
 /* facet parsing */
-
 static gsl_err_t facet_alloc(void *obj,
                              const char *name,
                              size_t name_size,
@@ -1057,8 +1056,6 @@ static gsl_err_t parse_text(void *obj,
     }
     return make_gsl_err(gsl_OK);
 }
-
-
 
 static gsl_err_t class_var_alloc(void *obj,
                                  const char *name __attribute__((unused)),
@@ -1831,7 +1828,6 @@ static void append_attr_var(struct kndClassVar *ci,
     ci->num_attrs++;
 }
 
-
 extern gsl_err_t parse_class_var(struct kndClassVar *self,
                                  const char *rec,
                                  size_t *total_size)
@@ -1927,8 +1923,6 @@ static gsl_err_t parse_baseclass(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
-
-
 
 extern gsl_err_t knd_import_class(void *obj,
                                   const char *rec,

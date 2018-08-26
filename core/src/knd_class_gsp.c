@@ -1,12 +1,55 @@
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <time.h>
+
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
+
+/* numeric conversion by strtol */
+#include <errno.h>
+#include <limits.h>
+
+#include "knd_config.h"
+#include "knd_mempool.h"
+#include "knd_repo.h"
+#include "knd_state.h"
+#include "knd_class.h"
+#include "knd_class_inst.h"
+#include "knd_attr.h"
+#include "knd_task.h"
+#include "knd_user.h"
+#include "knd_text.h"
+#include "knd_rel.h"
+#include "knd_proc.h"
+#include "knd_proc_arg.h"
+#include "knd_set.h"
+#include "knd_utils.h"
+#include "knd_http_codes.h"
+
+#include <gsl-parser.h>
+#include <glb-lib/output.h>
+
+#define DEBUG_CLASS_GSP_LEVEL_1 0
+#define DEBUG_CLASS_GSP_LEVEL_2 0
+#define DEBUG_CLASS_GSP_LEVEL_3 0
+#define DEBUG_CLASS_GSP_LEVEL_4 0
+#define DEBUG_CLASS_GSP_LEVEL_5 0
+#define DEBUG_CLASS_GSP_LEVEL_TMP 1
+
 static int attr_vars_export_GSP(struct kndClass *self,
                                  struct kndAttrVar *items,
                                  size_t depth);
 
-static gsl_err_t read_GSP(struct kndClass *self,
-                    const char *rec,
-                    size_t *total_size)
+/*static gsl_err_t read_GSP(struct kndClass *self,
+                          const char *rec,
+                          size_t *total_size)
 {
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log(".. reading GSP: \"%.*s\"..", 256, rec);
 
     struct gslTaskSpec specs[] = {
@@ -77,6 +120,7 @@ static gsl_err_t read_GSP(struct kndClass *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+*/
 
 static int export_conc_id_GSP(void *obj,
                               const char *elem_id  __attribute__((unused)),
@@ -91,7 +135,6 @@ static int export_conc_id_GSP(void *obj,
     err = out->write(out, entry->id, entry->id_size);                                 RET_ERR();
     return knd_OK;
 }
-
 
 static int export_facets_GSP(struct kndClass *self, struct kndSet *set)
 {
@@ -167,9 +210,6 @@ static int export_descendants_GSP(struct kndClass *self)
     return knd_OK;
 }
 
-
-
-
 static int ref_list_export_GSP(struct kndClass *self,
                                struct kndAttrVar *parent_item)
 {
@@ -226,7 +266,7 @@ static int aggr_item_export_GSP(struct kndClass *self,
     struct kndAttr *attr;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log("== GSP export of aggr item: %.*s val:%.*s",
                 parent_item->name_size, parent_item->name,
                 parent_item->val_size, parent_item->val);
@@ -310,7 +350,7 @@ static int aggr_list_export_GSP(struct kndClass *self,
     struct kndClass *c;
     int err;
 
-    if (DEBUG_CONC_LEVEL_1) {
+    if (DEBUG_CLASS_GSP_LEVEL_1) {
         knd_log(".. export aggr list: %.*s  val:%.*s",
                 parent_item->name_size, parent_item->name,
                 parent_item->val_size, parent_item->val);
@@ -390,33 +430,80 @@ static int attr_vars_export_GSP(struct kndClass *self,
         err = out->write(out, "}", 1);
         if (err) return err;
     }
-
     return knd_OK;
 }
 
-static int export_GSP(struct kndClass *self)
+static int export_class_body_updates(struct kndClass *self,
+                                     struct kndUpdate *update,
+                                     struct glbOutput *out)
+{
+    int err;
+    return knd_OK;
+}
+
+static int export_class_inst_updates(struct kndClass *self,
+                                     struct kndUpdate *update,
+                                     struct glbOutput *out)
+{
+    int err;
+    return knd_OK;
+}
+
+extern int knd_class_export_updates_GSP(struct kndClass *self,
+                                        struct kndUpdate *update,
+                                        struct glbOutput *out)
+{
+    struct kndState *state;
+    int err;
+
+    err = out->writec(out, '{');                                                  RET_ERR();
+    err = out->write(out, self->entry->id, self->entry->id_size);                 RET_ERR();
+    err = out->write(out, "{_n ", strlen("{_n "));                                RET_ERR();
+    err = out->write(out, self->name, self->name_size);                           RET_ERR();
+    err = out->writec(out, '}');                                                  RET_ERR();
+
+    if (self->states) {
+        state = self->states;
+        /* any updates of the class body? */
+        if (state->update == update) {
+            err = export_class_body_updates(self, update, out);                   RET_ERR();
+        }
+    }
+
+    if (self->inst_states) {
+        state = self->inst_states;
+        /* any updates of the class insts? */
+        if (state->update == update) {
+            err = export_class_inst_updates(self, update, out);                   RET_ERR();
+        }
+    }
+    err = out->writec(out, '}');                                                  RET_ERR();
+    return knd_OK;
+}
+
+extern int knd_class_export_GSP(struct kndClass *self,
+                                struct glbOutput *out)
 {
     struct kndAttr *attr;
     struct kndClassVar *item;
     struct kndTranslation *tr;
-    struct glbOutput *out = self->entry->repo->out;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log(".. GSP export of \"%.*s\" [%.*s]",
                 self->entry->name_size, self->entry->name,
                 self->entry->id_size, self->entry->id);
 
     err = out->writec(out, '{');
     if (err) return err;
+    err = out->write(out, self->entry->name, self->entry->name_size);
+    if (err) return err;
 
+    err = out->write(out, "{id ", strlen("{id "));
+    if (err) return err;
     err = out->write(out, self->entry->id, self->entry->id_size);
     if (err) return err;
-
-    err = out->writec(out, ' ');
-    if (err) return err;
-
-    err = out->write(out, self->entry->name, self->entry->name_size);
+    err = out->writec(out, '}');
     if (err) return err;
 
     if (self->tr) {
