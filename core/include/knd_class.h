@@ -289,11 +289,17 @@ extern int knd_class_export_set_JSON(struct kndClass *self,
 
 extern int knd_class_export_JSON(struct kndClass *self,
                                  struct glbOutput *out);
+extern gsl_err_t knd_parse_gloss_array(void *obj,
+                                       const char *rec,
+                                       size_t *total_size);
+extern gsl_err_t knd_parse_summary_array(void *obj,
+                                         const char *rec,
+                                         size_t *total_size);
 
 extern int knd_class_export_GSP(struct kndClass *self,
                                 struct glbOutput *out);
 extern int knd_class_export_updates_GSP(struct kndClass *self,
-                                        struct kndUpdate *update,
+                                        struct kndClassUpdate *update,
                                         struct glbOutput *out);
 
 extern gsl_err_t knd_parse_import_class_inst(void *data,
@@ -316,3 +322,17 @@ extern int get_arg_value(struct kndAttrVar *src,
 extern gsl_err_t knd_select_class(void *obj,
                                   const char *rec,
                                   size_t *total_size);
+
+extern int knd_compute_class_attr_num_value(struct kndClass *self,
+                                            struct kndClassVar *src_class_var,
+                                            struct kndAttrVar *attr_var);
+
+extern gsl_err_t knd_read_class_inst_state(struct kndClass *self,
+                                           struct kndClassUpdate *update,
+                                           const char *rec,
+                                           size_t *total_size);
+extern gsl_err_t knd_read_class_state(struct kndClass *self,
+                                          struct kndClassUpdate *update,
+                                          const char *rec,
+                                          size_t *total_size);
+

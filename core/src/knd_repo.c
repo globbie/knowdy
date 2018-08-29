@@ -28,16 +28,177 @@
 #define DEBUG_REPO_LEVEL_3 0
 #define DEBUG_REPO_LEVEL_TMP 1
 
-static void
-kndRepo_del(struct kndRepo *self)
+static void kndRepo_del(struct kndRepo *self)
 {
     free(self);
 }
 
-static void
-kndRepo_str(struct kndRepo *self __attribute__((unused)))
+static void kndRepo_str(struct kndRepo *self)
 {
-    knd_log("REPO");
+    knd_log("Repo: %p", self);
+}
+
+static gsl_err_t alloc_class_update(void *obj,
+                                    const char *name,
+                                    size_t name_size,
+                                    size_t count __attribute__((unused)),
+                                    void **item)
+{
+    struct kndUpdate    *self = obj;
+    struct kndMemPool *mempool = self->repo->mempool;
+    struct kndClassUpdate *class_update;
+    int err;
+    assert(name == NULL && name_size == 0);
+    err = mempool->new_class_update(mempool, &class_update);
+    if (err) return make_gsl_err_external(err);
+    class_update->update = self;
+    *item = class_update;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t append_class_update(void *accu,
+                                     void *item)
+{
+    struct kndUpdate *self = accu;
+    struct kndClassUpdate *class_update = item;
+    // TODO
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t get_class_by_id(void *obj, const char *name, size_t name_size)
+{
+    struct kndClassUpdate *self = obj;
+    struct kndRepo *repo = self->update->repo;
+    struct kndMemPool *mempool = repo->mempool;
+    struct kndSet *class_idx = repo->root_class->class_idx;
+    struct ooDict *class_name_idx = repo->root_class->class_name_idx;
+    void *result;
+    struct kndClassEntry *entry;
+    struct kndClass *c;
+    int err;
+
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log(".. get class by id:%.*s", name_size, name);
+
+    err = class_idx->get(class_idx, name, name_size, &result);
+    if (err) {
+        err = mempool->new_class_entry(mempool, &entry);
+        if (err) return make_gsl_err_external(err);
+        memcpy(entry->id, name, name_size);
+        entry->id_size = name_size;
+        entry->repo = repo;
+
+        knd_log("\n\n!! new class entry:%.*s  %p", name_size, name, entry);
+
+        err = mempool->new_class(mempool, &c);
+        if (err) return make_gsl_err_external(err);
+
+        c->entry = entry;
+        entry->class = c;
+        err = class_idx->add(class_idx,
+                             entry->id, entry->id_size, (void*)entry);
+        if (err) return make_gsl_err_external(err);
+        self->class = c;
+        return make_gsl_err(gsl_OK);
+    }
+
+    entry = result;
+    self->class = entry->class;
+    
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
+{
+    struct kndClassUpdate *self = obj;
+    struct kndClass *c = self->class;
+    struct kndRepo *repo = self->update->repo;
+    struct ooDict *class_name_idx = repo->root_class->class_name_idx;
+    struct kndMemPool *mempool = repo->mempool;
+    struct kndClassEntry *entry = c->entry;
+    int err;
+
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log(".. check or set class name: %.*s ..",
+                name_size, name);
+
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= sizeof c->entry->name) return make_gsl_err(gsl_LIMIT);
+
+    if (entry->name_size) {
+        if (entry->name_size != name_size) {
+            knd_log("-- class name mismatch: %.*s", name_size, name);
+            return make_gsl_err(gsl_FAIL);
+        }
+        if (memcmp(entry->name, name, name_size)) {
+            knd_log("-- class name mismatch: %.*s", name_size, name);
+            return make_gsl_err(gsl_FAIL);
+        }
+
+        if (DEBUG_REPO_LEVEL_2)
+            knd_log("++ class already exists: %.*s!", name_size, name);
+
+        return make_gsl_err(gsl_OK);
+    }
+
+    memcpy(entry->name, name, name_size);
+    entry->name_size = name_size;
+    entry->class = c;
+    c->entry = entry;
+    c->name = c->entry->name;
+    c->name_size = name_size;
+
+    err = class_name_idx->set(class_name_idx,
+                              entry->name, name_size,
+                              (void*)entry);
+    if (err) return make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_class_state(void *obj,
+                                   const char *rec,
+                                   size_t *total_size)
+{
+    struct kndClassUpdate *self = obj;
+    struct kndClass *c = self->class;
+    gsl_err_t err;
+
+    return knd_read_class_state(c, self->update, rec, total_size);
+}
+
+static gsl_err_t parse_class_update(void *obj,
+                                    const char *rec,
+                                    size_t *total_size)
+{
+    struct kndClassUpdate *class_update = obj;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = get_class_by_id,
+          .obj = class_update
+        },
+        { .name = "_n",
+          .name_size = strlen("_n"),
+          .run = set_class_name,
+          .obj = class_update
+        },
+        { .name = "_st",
+          .name_size = strlen("_st"),
+          .parse = parse_class_state,
+          .obj = class_update
+        }
+    };
+    gsl_err_t err;
+
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (err.code) return err;
+
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t alloc_update(void *obj,
@@ -56,6 +217,7 @@ static gsl_err_t alloc_update(void *obj,
     err = mempool->new_update(mempool, &update);
     if (err) return make_gsl_err_external(err);
 
+    update->repo = self;
     *item = update;
 
     return make_gsl_err(gsl_OK);
@@ -70,14 +232,43 @@ static gsl_err_t append_update(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t get_timestamp(void *obj, const char *name, size_t name_size)
+{
+    struct kndUpdate *update = obj;
+    char buf[KND_NAME_SIZE] = {0};
+    size_t buf_size = 0;
+    struct tm tm_info = {0};
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("UPD: id:%.*s  time:\"%.*s\"",
+                update->id_size, update->id, name_size, name);
+
+    memcpy(buf, name, name_size);
+    buf_size = name_size;
+
+    /* parse date/time */
+    if (!strptime(buf, "%Y-%m-%d %H:%M:%S", &tm_info)) {
+        knd_log("-- incorrect date/time: %.*s?", buf_size, buf);
+        return make_gsl_err_external(knd_FAIL);
+    }
+    tm_info.tm_isdst = -1;
+    update->timestamp = mktime(&tm_info);
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t parse_update(void *obj,
                               const char *rec,
                               size_t *total_size)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
-    struct tm tm_info = {0};
     struct kndUpdate *update = obj;
+
+    struct gslTaskSpec class_update_spec = {
+        .is_list_item = true,
+        .alloc  = alloc_class_update,
+        .append = append_class_update,
+        .parse  = parse_class_update,
+        .accu = update
+    };
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -87,28 +278,20 @@ static gsl_err_t parse_update(void *obj,
         },
         { .name = "ts",
           .name_size = strlen("ts"),
-          .buf = buf,
-          .buf_size = &buf_size,
-          .max_buf_size = sizeof buf
+          .run = get_timestamp,
+          .obj = update
+        },
+        { .type = GSL_SET_ARRAY_STATE,
+          .name = "c",
+          .name_size = strlen("c"),
+          .parse = gsl_parse_array,
+          .obj = &class_update_spec
         }
     };
     gsl_err_t err;
 
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) return err;
-
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("UPD id:%.*s  time:\"%s\"",
-                update->id_size, update->id, buf);
-
-    /* parse date/time */
-    if (!strptime(buf, "%Y-%m-%d %H:%M:%S", &tm_info)) {
-        knd_log("-- incorrect date/time: %.*s?", buf_size, buf);
-        return make_gsl_err_external(knd_FAIL);
-    }
-    tm_info.tm_isdst = -1;
-    update->timestamp = mktime(&tm_info);
-    
 
     return make_gsl_err(gsl_OK);
 }
@@ -118,7 +301,6 @@ static gsl_err_t kndRepo_read_updates(void *obj,
                                       size_t *total_size)
 {
     struct kndRepo *repo = obj;
-
     struct gslTaskSpec update_spec = {
         .is_list_item = true,
         .alloc  = alloc_update,
@@ -161,12 +343,11 @@ static int kndRepo_restore(struct kndRepo *self,
         knd_log("-- failed to open journal: \"%s\"", filename);
         return err;
     }
+    /* a closing bracket is needed */
+    err = out->writec(out, ']');                                                  RET_ERR();
 
-    /* add a closing bracket */
-    err = out->writec(out, ']');                                RET_ERR();
-
-    knd_log(".. restoring the journal file: %.*s",
-            out->buf_size, out->buf);
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log(".. restoring the journal file: %.*s", out->buf_size, out->buf);
 
     parser_err = kndRepo_read_updates(self, out->buf, &total_size);
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);

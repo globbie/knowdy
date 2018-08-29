@@ -663,18 +663,6 @@ static gsl_err_t present_rel(void *data,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t confirm_obj_import(void *data,
-                                    const char *val __attribute__((unused)),
-                                    size_t val_size __attribute__((unused)))
-{
-    struct kndClassInst *self = data;
-
-    if (DEBUG_INST_LEVEL_2)
-        knd_log(".. confirm obj import.. %p", self);
-
-    return make_gsl_err(gsl_OK);
-}
-
 static int kndClassInst_validate_attr(struct kndClassInst *self,
                                    const char *name,
                                    size_t name_size,
@@ -771,7 +759,7 @@ static gsl_err_t parse_elem(void *data,
             break;
         }
         return *total_size = 0, make_gsl_err(gsl_OK);
-    }        
+    }
 
     err = mempool->new_obj_elem(mempool, &elem);
     if (err) {
@@ -1192,10 +1180,6 @@ static gsl_err_t parse_import_inst(struct kndClassInst *self,
           .name_size = strlen("_rel"),
           .parse = parse_rels,
           .obj = self
-        },
-        { .is_default = true,
-          .run = confirm_obj_import,
-          .obj = self
         }
     };
 
@@ -1237,8 +1221,6 @@ static gsl_err_t present_inst_rels_state(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
-
-
 
 static int select_inst_rel_delta(struct kndClassInst *self,
                                  const char *rec,
@@ -1637,11 +1619,8 @@ static int select_delta(struct kndClassInst *self,
 
         for (size_t i = 0; i < class_update->num_insts; i++) {
             inst = class_update->insts[i];
-
             if (DEBUG_INST_LEVEL_3)
-                knd_log("* inst id:%.*s",
-                        inst->entry->id_size, inst->entry->id);
-
+                knd_log("* inst id:%.*s", inst->entry->id_size, inst->entry->id);
             err = set->add(set, inst->entry->id,
                            inst->entry->id_size,
                            (void*)inst);                                          RET_ERR();

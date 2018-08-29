@@ -79,7 +79,7 @@ static void str(struct kndProc *self)
     }
 
     if (self->proc_call.name_size) {
-        knd_log("%*s    {run %.*s", self->depth * KND_OFFSET_SIZE, "",
+        knd_log("%*s    {do %.*s", self->depth * KND_OFFSET_SIZE, "",
                 self->proc_call.name_size, self->proc_call.name);
         for (tr = self->proc_call.tr; tr; tr = tr->next) {
             knd_log("%*s  ~ %s %.*s", (self->depth + 1) * KND_OFFSET_SIZE, "",
@@ -656,7 +656,7 @@ static int export_JSON(struct kndProc *self)
         if (in_list) {
             err = out->write(out, ",", 1);                                        RET_ERR();
         }
-        err = out->write(out, "\"run\":{", strlen("\"run\":{"));                  RET_ERR();
+        err = out->write(out, "\"do\":{", strlen("\"do\":{"));                  RET_ERR();
         err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));            RET_ERR();
         err = out->write(out, self->proc_call.name, self->proc_call.name_size);   RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
@@ -1490,8 +1490,8 @@ static gsl_err_t parse_GSL(struct kndProc *self,
           .parse = gsl_parse_array,
           .obj = &proc_arg_spec
         },
-        { .name = "run",
-          .name_size = strlen("run"),
+        { .name = "do",
+          .name_size = strlen("do"),
           .parse = parse_proc_call,
           .obj = self
         }

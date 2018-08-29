@@ -35,13 +35,13 @@ static void reset(struct kndStateControl *self)
     self->out->reset(self->out);
 }
 
-static int knd_export_update_GSP(struct kndUpdate *update,
-                                 struct glbOutput *out)
+static int export_update_GSP(struct kndUpdate *update,
+                             struct glbOutput *out)
 {
     char buf[KND_NAME_SIZE] = {0};
     size_t buf_size = 0;
     struct tm tm_info;
-    struct kndClassUpdate *class_upd;
+    struct kndClassUpdate *class_update;
     struct kndClass *c;
     struct kndState *state;
     int err;
@@ -55,20 +55,17 @@ static int knd_export_update_GSP(struct kndUpdate *update,
                         "{ts %Y-%m-%d %H:%M:%S}", &tm_info);
     err = out->write(out, buf, buf_size);                                         RET_ERR();
 
-    /*    if  (update->num_classes) {
-        err = out->write(out, "[c", strlen("[c"));                                RET_ERR();
+    if  (update->num_classes) {
+        err = out->write(out, "[!c", strlen("[!c"));                              RET_ERR();
         for (size_t i = 0; i < update->num_classes; i++) {
-            class_upd = update->classes[i];
-            c = class_upd->class;
-            err = c->export_updates(c, update,
-                                    KND_FORMAT_GSP,
-                                    out);                                         RET_ERR();
+            class_update = update->classes[i];
+            c = class_update->class;
+            err = c->export_updates(c, class_update, KND_FORMAT_GSP, out);        RET_ERR();
         }
         err = out->writec(out, ']');                                              RET_ERR();
     }
-    */
-    // TODO: Rel Proc
 
+    // TODO: Rel Proc
     err = out->writec(out, '}');                                                  RET_ERR();
     err = out->writec(out, '\n');                                                 RET_ERR();
     return knd_OK;
@@ -84,7 +81,7 @@ static int knd_sync_update(struct kndStateControl *self,
 
     /* linearize an update */
     file_out->reset(file_out);
-    err = knd_export_update_GSP(update, file_out);
+    err = export_update_GSP(update, file_out);
     if (err) return err;
 
     out->reset(out);
