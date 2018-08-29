@@ -40,7 +40,6 @@
 #define DEBUG_ATTR_JSON_LEVEL_5 0
 #define DEBUG_ATTR_JSON_LEVEL_TMP 1
 
-
 static int aggr_item_export_JSON(struct kndAttrVar *parent_item,
                                  struct glbOutput *out)
 {
@@ -55,10 +54,6 @@ static int aggr_item_export_JSON(struct kndAttrVar *parent_item,
     if (DEBUG_ATTR_JSON_LEVEL_2) {
         knd_log(".. JSON export aggr item: %.*s",
                 parent_item->name_size, parent_item->name);
-        //c = parent_item->attr->parent_class;
-        //c->str(c);
-        c->str(c);
-        knd_log("== comp attrs:%zu", c->num_computed_attrs);
     }
 
     err = out->writec(out, '{');
@@ -77,9 +72,8 @@ static int aggr_item_export_JSON(struct kndAttrVar *parent_item,
 
         c = parent_item->attr->conc;
         if (c->num_computed_attrs) {
-
-            if (DEBUG_ATTR_JSON_LEVEL_TMP)
-                knd_log("\n..present computed attrs in %.*s (val:%.*s)",
+            if (DEBUG_ATTR_JSON_LEVEL_2)
+                knd_log(".. present computed attrs in %.*s (val:%.*s)",
                         parent_item->name_size, parent_item->name,
                         parent_item->val_size, parent_item->val);
 
@@ -270,7 +264,6 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
     if (parent_item->class) {
         switch (parent_item->attr->type) {
         case KND_ATTR_AGGR:
-
             parent_item->id_size = sprintf(parent_item->id, "%lu",
                                            (unsigned long)count);
             count++;
@@ -383,10 +376,8 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
 
         switch (item->attr->type) {
         case KND_ATTR_NUM:
-
             err = out->write(out, item->val, item->val_size);
             if (err) return err;
-
             break;
         case KND_ATTR_PROC:
             if (item->proc) {
@@ -487,7 +478,6 @@ extern int knd_present_computed_aggr_attrs(struct kndAttrVar *attr_var,
     size_t buf_size = 0;
     struct kndClass *c = attr_var->attr->conc;
     struct kndAttr *attr;
-    struct kndAttrVar *item;
     long numval;
     int err;
 

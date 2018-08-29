@@ -172,13 +172,12 @@ static int present_computed_class_attrs(struct kndClass *self,
             numval = attr_var->numval;
             if (!attr_var->is_cached) {
 
-                // TODO
-                //err = compute_class_attr_num_value(self, cvar, attr_var);
-                //if (err) continue;
+                err = knd_compute_class_attr_num_value(self, cvar, attr_var);
+                if (err) continue;
 
                 numval = attr_var->numval;
-                //attr_var->numval = numval;
-                //attr_var->is_cached = true;
+                attr_var->numval = numval;
+                attr_var->is_cached = true;
             }
 
             err = out->writec(out, ',');

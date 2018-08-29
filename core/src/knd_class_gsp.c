@@ -41,6 +41,57 @@
 #define DEBUG_CLASS_GSP_LEVEL_5 0
 #define DEBUG_CLASS_GSP_LEVEL_TMP 1
 
+static int export_glosses(struct kndClass *self,
+                          struct glbOutput *out)
+{
+    struct kndTranslation *tr;
+    int err;
+    err = out->write(out, "[!_g", strlen("[!_g"));
+    if (err) return err;
+
+    for (tr = self->tr; tr; tr = tr->next) {
+        err = out->write(out, "{", 1);
+        if (err) return err;
+        err = out->write(out, tr->locale, tr->locale_size);
+        if (err) return err;
+        err = out->write(out, "{t ", 3);
+        if (err) return err;
+        err = out->write(out, tr->val, tr->val_size);
+        if (err) return err;
+        err = out->write(out, "}}", 2);
+        if (err) return err;
+    }
+    err = out->write(out, "]", 1);
+    if (err) return err;
+    return knd_OK;
+}
+
+static int export_summary(struct kndClass *self,
+                          struct glbOutput *out)
+{
+    struct kndTranslation *tr;
+    int err;
+
+    err = out->write(out, "[!_summary", strlen("[!_summary"));
+    if (err) return err;
+
+    for (tr = self->tr; tr; tr = tr->next) {
+        err = out->write(out, "{", 1);
+        if (err) return err;
+        err = out->write(out, tr->locale, tr->locale_size);
+        if (err) return err;
+        err = out->write(out, "{t ", 3);
+        if (err) return err;
+        err = out->write(out, tr->val, tr->val_size);
+        if (err) return err;
+        err = out->write(out, "}}", 2);
+        if (err) return err;
+    }
+    err = out->write(out, "]", 1);
+    if (err) return err;
+    return knd_OK;
+}
+
 static int attr_vars_export_GSP(struct kndClass *self,
                                  struct kndAttrVar *items,
                                  size_t depth);
@@ -116,10 +167,8 @@ static int attr_vars_export_GSP(struct kndClass *self,
           .obj = self
         }
     };
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
-
 */
 
 static int export_conc_id_GSP(void *obj,
@@ -434,59 +483,100 @@ static int attr_vars_export_GSP(struct kndClass *self,
 }
 
 static int export_class_body_updates(struct kndClass *self,
-                                     struct kndUpdate *update,
+                                     struct kndClassUpdate *class_update  __attribute__((unused)),
                                      struct glbOutput *out)
 {
+    struct kndState *state = self->states;
     int err;
+
+    switch (state->phase) {
+    case KND_CREATED:
+        err = out->write(out, "{_new}", strlen("{_new}"));                        RET_ERR();
+        break;
+    case KND_REMOVED:
+        err = out->write(out, "{_rm}", strlen("{_rm}"));                          RET_ERR();
+        break;
+    default:
+        break;
+    }
+
+    // TODO
+
+    if (self->tr) {
+        err = export_glosses(self, out);                                          RET_ERR();
+    }
+    
     return knd_OK;
 }
 
-static int export_class_inst_updates(struct kndClass *self,
-                                     struct kndUpdate *update,
+static int export_class_inst_updates(struct kndClass *self  __attribute__((unused)),
+                                     struct kndClassUpdate *class_update,
                                      struct glbOutput *out)
 {
+    struct kndClassInst *inst;
     int err;
+
+    err = out->write(out, "[!inst", strlen("[!inst"));                            RET_ERR();
+    for (size_t i = 0; i < class_update->num_insts; i++) {
+        inst = class_update->insts[i];
+
+        // export inst
+        err = out->writec(out, '{');                                              RET_ERR();
+        err = out->write(out, inst->entry->id, inst->entry->id_size);             RET_ERR();
+
+        err = out->write(out, "{_n ", strlen("{_n "));                            RET_ERR();
+        err = out->write(out, inst->name, inst->name_size);                       RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
+    }
+    err = out->writec(out, ']');                                                  RET_ERR();
+
     return knd_OK;
 }
 
 extern int knd_class_export_updates_GSP(struct kndClass *self,
-                                        struct kndUpdate *update,
+                                        struct kndClassUpdate *class_update,
                                         struct glbOutput *out)
 {
-    struct kndState *state;
+    struct kndUpdate *update = class_update->update;
+    struct kndState *state = self->states;
     int err;
-
+    
     err = out->writec(out, '{');                                                  RET_ERR();
     err = out->write(out, self->entry->id, self->entry->id_size);                 RET_ERR();
     err = out->write(out, "{_n ", strlen("{_n "));                                RET_ERR();
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
     err = out->writec(out, '}');                                                  RET_ERR();
 
-    if (self->states) {
-        state = self->states;
+    err = out->write(out, "{_st", strlen("{_st"));                                RET_ERR();
+
+    if (state && state->update == update) {
+        err = out->writec(out, ' ');                                              RET_ERR();
+        err = out->write(out, state->id, state->id_size);                         RET_ERR();
+
         /* any updates of the class body? */
-        if (state->update == update) {
-            err = export_class_body_updates(self, update, out);                   RET_ERR();
-        }
+        err = export_class_body_updates(self, class_update, out);                 RET_ERR();
     }
 
     if (self->inst_states) {
         state = self->inst_states;
         /* any updates of the class insts? */
         if (state->update == update) {
-            err = export_class_inst_updates(self, update, out);                   RET_ERR();
+            err = export_class_inst_updates(self, class_update, out);             RET_ERR();
         }
     }
+
+    err = out->writec(out, '}');                                                  RET_ERR();
     err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
 }
+
 
 extern int knd_class_export_GSP(struct kndClass *self,
                                 struct glbOutput *out)
 {
     struct kndAttr *attr;
     struct kndClassVar *item;
-    struct kndTranslation *tr;
     int err;
 
     if (DEBUG_CLASS_GSP_LEVEL_2)
@@ -496,54 +586,21 @@ extern int knd_class_export_GSP(struct kndClass *self,
 
     err = out->writec(out, '{');
     if (err) return err;
-    err = out->write(out, self->entry->name, self->entry->name_size);
-    if (err) return err;
-
-    err = out->write(out, "{id ", strlen("{id "));
-    if (err) return err;
     err = out->write(out, self->entry->id, self->entry->id_size);
+    if (err) return err;
+    err = out->write(out, "{_n ", strlen("{_n "));
+    if (err) return err;
+    err = out->write(out, self->entry->name, self->entry->name_size);
     if (err) return err;
     err = out->writec(out, '}');
     if (err) return err;
 
     if (self->tr) {
-        err = out->write(out, "[_g", strlen("[_g"));
-        if (err) return err;
-
-        for (tr = self->tr; tr; tr = tr->next) {
-            err = out->write(out, "{", 1);
-            if (err) return err;
-            err = out->write(out, tr->locale, tr->locale_size);
-            if (err) return err;
-            err = out->write(out, "{t ", 3);
-            if (err) return err;
-            err = out->write(out, tr->val, tr->val_size);
-            if (err) return err;
-            err = out->write(out, "}}", 2);
-            if (err) return err;
-        }
-        err = out->write(out, "]", 1);
-        if (err) return err;
+        err = export_glosses(self, out);                                          RET_ERR();
     }
 
     if (self->summary) {
-        err = out->write(out, "[_summary", strlen("[_summary"));
-        if (err) return err;
-
-        for (tr = self->tr; tr; tr = tr->next) {
-            err = out->write(out, "{", 1);
-            if (err) return err;
-            err = out->write(out, tr->locale, tr->locale_size);
-            if (err) return err;
-            err = out->write(out, "{t ", 3);
-            if (err) return err;
-            err = out->write(out, tr->val, tr->val_size);
-            if (err) return err;
-            err = out->write(out, "}}", 2);
-            if (err) return err;
-        }
-        err = out->write(out, "]", 1);
-        if (err) return err;
+        err = export_summary(self, out);                                          RET_ERR();
     }
 
     if (self->baseclass_vars) {
@@ -585,3 +642,211 @@ extern int knd_class_export_GSP(struct kndClass *self,
     return knd_OK;
 }
 
+static gsl_err_t alloc_class_inst(void *obj,
+                                  const char *val,
+                                  size_t val_size,
+                                  size_t count  __attribute__((unused)),
+                                  void **item)
+{
+    struct kndClass *self = obj;
+    struct kndClassInst *inst;
+    struct kndObjEntry *entry;
+    struct kndState *state;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    int err;
+
+    err = mempool->new_obj(mempool, &inst);
+    if (err) {
+        knd_log("-- class inst alloc failed :(");
+        return make_gsl_err_external(err);
+    }
+
+    err = mempool->new_state(mempool, &state);
+    if (err) {
+        knd_log("-- state alloc failed :(");
+        return make_gsl_err_external(err);
+    }
+    state->phase == KND_CREATED;
+    state->next = inst->states;
+    inst->states = state;
+
+    err = mempool->new_obj_entry(mempool, &entry);
+    if (err) return make_gsl_err_external(err);
+
+    inst->entry = entry;
+    entry->obj = inst;
+    inst->base = self;
+    *item = inst;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t append_class_inst(void *accu,
+                                   void *item)
+{
+    struct kndClass *self =   accu;
+    struct kndClassInst *inst = item;
+    struct ooDict *name_idx = self->entry->obj_name_idx;
+    struct kndSet *set = self->entry->obj_idx;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    int err;
+
+    if (DEBUG_CLASS_GSP_LEVEL_2)
+        knd_log(".. append inst: %.*s %.*s",
+                inst->entry->id_size, inst->entry->id,
+                inst->entry->name_size, inst->entry->name);
+
+    if (!name_idx) {
+        err = ooDict_new(&self->entry->obj_name_idx, KND_HUGE_DICT_SIZE);
+        if (err) return make_gsl_err_external(err);
+        name_idx = self->entry->obj_name_idx;
+    }
+
+    err = name_idx->set(name_idx,
+                        inst->name, inst->name_size,
+                        (void*)inst->entry);
+    if (err) return make_gsl_err_external(err);
+
+    self->entry->num_objs++;
+
+    /* index by id */
+    if (!set) {
+        err = mempool->new_set(mempool, &set);
+        if (err) return make_gsl_err_external(err);
+        set->type = KND_SET_CLASS_INST;
+        self->entry->obj_idx = set;
+    }
+    err = set->add(set, inst->entry->id, inst->entry->id_size, (void*)inst->entry);
+    if (err) {
+        knd_log("-- failed to update the class inst idx");
+        return make_gsl_err_external(err);
+    }
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_class_inst_id(void *obj, const char *name, size_t name_size)
+{
+    struct kndClassInst *self = obj;
+
+    memcpy(self->entry->id, name, name_size);
+    self->entry->id_size = name_size;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_class_inst_name(void *obj, const char *name, size_t name_size)
+{
+    struct kndClassInst *self = obj;
+    struct ooDict *class_name_idx = self->base->entry->repo->root_class->class_name_idx;
+    int err;
+
+    if (DEBUG_CLASS_GSP_LEVEL_2)
+        knd_log(".. class inst name: %.*s ..", name_size, name);
+
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= sizeof self->entry->name) return make_gsl_err(gsl_LIMIT);
+
+    memcpy(self->entry->name, name, name_size);
+    self->entry->name_size = name_size;
+
+    self->name = self->entry->name;
+    self->name_size = self->entry->name_size;
+    
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_class_inst(void *obj,
+                                  const char *rec,
+                                  size_t *total_size)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+    struct kndClassInst *inst = obj;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_class_inst_id,
+          .obj = inst
+        },
+        { .name = "_n",
+          .name_size = strlen("_n"),
+          .run = set_class_inst_name,
+          .obj = inst
+        }
+    };
+    gsl_err_t err;
+
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (err.code) return err;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_class_state(void *obj, const char *name, size_t name_size)
+{
+    struct kndClass *self = obj;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndState *state;
+    int err;
+
+    err = mempool->new_state(mempool, &state);
+    if (err) {
+        knd_log("-- state alloc failed :(");
+        return make_gsl_err_external(err);
+    }
+
+    state->next = self->states;
+    self->states = state;
+
+    return make_gsl_err(gsl_OK);
+}
+
+extern gsl_err_t knd_read_class_state(struct kndClass *self,
+                                      struct kndClassUpdate *class_update,
+                                      const char *rec,
+                                      size_t *total_size)
+{
+    struct kndState *state;
+
+    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+        knd_log(".. reading %.*s class state GSP: \"%.*s\"..",
+                self->name_size, self->name, 256, rec);
+
+    struct gslTaskSpec inst_update_spec = {
+        .is_list_item = true,
+        .alloc  = alloc_class_inst,
+        .append = append_class_inst,
+        .parse  = parse_class_inst,
+        .accu = self
+    };
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_class_state,
+          .obj = self
+        },
+        { .type = GSL_SET_ARRAY_STATE,
+          .name = "_g",
+          .name_size = strlen("_g"),
+          .parse = knd_parse_gloss_array,
+          .obj = self
+        },
+        { .type = GSL_SET_ARRAY_STATE,
+          .name = "inst",
+          .name_size = strlen("inst"),
+          .parse = gsl_parse_array,
+          .obj = &inst_update_spec
+        }
+    };
+    gsl_err_t err;
+
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (err.code) return err;
+
+    self->str(self);
+    /*state = self->states;
+    state->val = (void*)class_update;
+    state->update = class_update->update;
+    */
+    return make_gsl_err(gsl_OK);
+}

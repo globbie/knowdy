@@ -56,28 +56,27 @@ extern int knd_compute_num_value(struct kndAttr *attr,
 
     proc_call = &attr->proc->proc_call;
 
-    if (DEBUG_CLASS_COMP_LEVEL_TMP)
-        knd_log("\nPROC CALL: \"%.*s\"",
+    if (DEBUG_CLASS_COMP_LEVEL_2)
+        knd_log("PROC CALL: \"%.*s\"",
                 proc_call->name_size, proc_call->name);
 
     for (arg = proc_call->args; arg; arg = arg->next) {
         class_var = arg->class_var;
 
-        if (DEBUG_CLASS_COMP_LEVEL_TMP)
-            knd_log("ARG: %.*s",
-                    arg->name_size, arg->name);
+        if (DEBUG_CLASS_COMP_LEVEL_2)
+            knd_log("ARG: %.*s", arg->name_size, arg->name);
 
         err = get_arg_value(attr_var, class_var->attrs, arg);
         if (err) return err;
 
         if (!strncmp("times", arg->name, arg->name_size)) {
             times = arg->numval;
-            knd_log("TIMES:%lu", arg->numval);
+            //knd_log("TIMES:%lu", arg->numval);
         }
 
         if (!strncmp("quant", arg->name, arg->name_size)) {
             quant = arg->numval;
-            knd_log("QUANT:%lu", arg->numval);
+            //knd_log("QUANT:%lu", arg->numval);
         }
     }
 
@@ -89,7 +88,7 @@ extern int knd_compute_num_value(struct kndAttr *attr,
         break;
     case KND_PROC_MULT_PERCENT:
         div_result = (float)(times * quant) / (float)100;
-        knd_log("== result: %.2f", div_result);
+        //knd_log("== result: %.2f", div_result);
         numval = (long)div_result;
         break;
     default:
@@ -186,9 +185,9 @@ static int compute_attr_var_value(struct kndClass *self,
     return knd_OK;
 }
 
-static int compute_class_attr_num_value(struct kndClass *self,
-                                        struct kndClassVar *src_class_var,
-                                        struct kndAttrVar *attr_var)
+extern int knd_compute_class_attr_num_value(struct kndClass *self,
+                                            struct kndClassVar *src_class_var,
+                                            struct kndAttrVar *attr_var)
 {
     struct kndAttr *attr = attr_var->attr;
     struct kndProcCall *proc_call;

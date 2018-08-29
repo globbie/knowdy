@@ -78,6 +78,8 @@ struct kndUpdate
     const char *spec;
     size_t spec_size;
 
+    struct kndRepo *repo;
+
     struct kndClassUpdate **classes;
     size_t num_classes;
     size_t total_objs;

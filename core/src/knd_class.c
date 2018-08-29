@@ -907,8 +907,8 @@ static int get_inst(struct kndClass *self,
     struct kndTask *task = self->entry->repo->task;
     int err, e;
 
-    if (DEBUG_CLASS_LEVEL_2)
-        knd_log("\n\n.. \"%.*s\" class to get obj: \"%.*s\"..",
+    if (DEBUG_CLASS_LEVEL_TMP)
+        knd_log("\n\n.. \"%.*s\" class to get instance: \"%.*s\"..",
                 self->entry->name_size, self->entry->name,
                 name_size, name);
 
@@ -943,7 +943,7 @@ static int get_inst(struct kndClass *self,
         return knd_NO_MATCH;
     }
 
-    if (DEBUG_CLASS_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_TMP)
         knd_log("++ got obj entry %.*s  size: %zu OBJ: %p",
                 name_size, name, entry->block_size, entry->obj);
 
@@ -1283,14 +1283,12 @@ extern int knd_get_class(struct kndClass *self,
     
     entry = class_name_idx->get(class_name_idx, name, name_size);
     if (!entry) {
-
         /* check parent schema */
         if (repo->base) {
             err = knd_get_class(repo->base->root_class, name, name_size, result);
             if (err) return err;
             return knd_OK;
         }
-        
         knd_log("-- no such class: \"%.*s\":(", name_size, name);
         log->reset(log);
         err = log->write(log, name, name_size);
@@ -1334,7 +1332,11 @@ extern int knd_get_class(struct kndClass *self,
         if (err) return err;
         return knd_OK;
     }
-    
+
+    if (DEBUG_CLASS_LEVEL_TMP)
+        knd_log(".. unfreezing the \"%.*s\" class ..", name_size, name);
+
+    // TODO
     /*err = unfreeze_class(self, entry, &c);
     if (err) {
         knd_log("-- failed to unfreeze class: %.*s",

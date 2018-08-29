@@ -247,35 +247,21 @@ static int resolve_class_ref(struct kndClass *self,
                              struct kndClass *base,
                              struct kndClass **result)
 {
-    struct kndClassEntry *entry;
     struct kndClass *c;
-    struct ooDict *class_name_idx = self->entry->repo->root_class->class_name_idx;
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. checking class ref:  %.*s", name_size, name);
 
-    entry = class_name_idx->get(class_name_idx, name, name_size);
-    if (!entry) {
-        knd_log("-- no such class: \"%.*s\"", name_size, name);
-        //return knd_OK;
-        return knd_FAIL;
-    }
-
-    /* class could be frozen */
-    if (!entry->class) {
-        if (!entry->block_size) return knd_FAIL;
-        //err = unfreeze_class(self, entry, &entry->class);
-        //if (err) return err;
-    }
-    c = entry->class;
+    err = knd_get_class(self, name, name_size, &c);
+    if (err) return err;
 
     if (!c->is_resolved) {
         err = c->resolve(c, NULL);                                                RET_ERR();
     }
 
     if (base) {
-        err = knd_is_base(base, c);                                                   RET_ERR();
+        err = knd_is_base(base, c);                                               RET_ERR();
     }
 
     *result = c;
@@ -1055,6 +1041,7 @@ extern int knd_resolve_classes(struct kndClass *self)
 {
     struct kndClass *c;
     struct kndClassEntry *entry;
+    struct kndSet *class_idx = self->class_idx;
     const char *key;
     void *val;
     int err;
@@ -1084,6 +1071,11 @@ extern int knd_resolve_classes(struct kndClass *self)
             return err;
         }
         c->is_resolved = true;
+
+        err = class_idx->add(class_idx,
+                             c->entry->id, c->entry->id_size,
+                             (void*)c->entry);
+        if (err) return err;
 
         if (DEBUG_CLASS_RESOLVE_LEVEL_2)
             c->str(c);

@@ -350,27 +350,56 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     struct kndUserContext *ctx;
     struct kndClassInst *inst;
     struct kndMemPool *mempool = self->mempool;
+    struct glbOutput *log = self->task->log;
+    struct kndTask *task = self->task;
     void *result = NULL;
-    int err;
+    int e, err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     if (DEBUG_USER_LEVEL_TMP)
-        knd_log(".. select user: \"%.*s\"..", name_size, name);
+        knd_log(".. select user: \"%.*s\" repo:%.*s..",
+                name_size, name, self->repo->name_size, self->repo->name);
 
-    err = self->repo->root_class->get(self->repo->root_class,
-                                      self->shard->user_classname,
-                                      self->shard->user_classname_size,
-                                      &c);
-    if (err) return make_gsl_err_external(err);
+    err = knd_get_class(self->repo->root_class,
+                        self->shard->user_classname,
+                        self->shard->user_classname_size,
+                        &c);
+    if (err) {
+        knd_log("-- no such class: %.*s",
+                self->shard->user_classname_size,
+                self->shard->user_classname);
+        log->reset(log);
+        e = log->write(log,   "no such class: ",
+                       strlen("no such class: "));
+        if (e) return make_gsl_err_external(e);
+        e = log->write(log, name, name_size);
+        if (e) return make_gsl_err_external(e);
+
+        task->http_code = HTTP_NOT_FOUND;
+        return make_gsl_err_external(err);
+    }
 
     err = c->get_inst(c, name, name_size, &inst);
-    if (err) return make_gsl_err_external(err);
+    if (err) {
+        knd_log("-- no such user: %.*s:(",
+                name_size, name);
+        log->reset(log);
+        e = log->write(log,   "no such user: ",
+                       strlen("no such user:"));
+        if (e) return make_gsl_err_external(e);
+        e = log->write(log, name, name_size);
+        if (e) return make_gsl_err_external(e);
+
+        task->http_code = HTTP_NOT_FOUND;
+        return make_gsl_err_external(err);
+    }
 
     err = self->user_idx->get(self->user_idx,
                               inst->entry->id, inst->entry->id_size,
                               &result);
+    knd_log("err:%d user ctx:%p", err, result);
     ctx = result;
     if (err) {
         err = mempool->new_user_ctx(mempool, &ctx);
