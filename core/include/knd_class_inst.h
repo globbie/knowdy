@@ -23,7 +23,7 @@
 #include "knd_class.h"
 
 struct kndState;
-struct kndObjRef;
+struct glbOutput;
 struct kndSortTag;
 struct kndElemRef;
 struct kndTask;
@@ -163,8 +163,12 @@ struct kndClassInst
                  const char       *rec,
                  size_t           *total_size);
     gsl_err_t (*read)(struct kndClassInst *self,
-                const char *rec,
-                size_t *total_size);
+                      const char *rec,
+                      size_t *total_size);
+
+    gsl_err_t (*read_state)(struct kndClassInst *self,
+                            const char *rec,
+                            size_t *total_size);
 
     int (*expand)(struct kndClassInst *self, size_t depth);
 
@@ -180,8 +184,14 @@ struct kndClassInst
     int (*contribute)(struct kndClassInst *self, size_t point_num, size_t orig_pos);
 
     int (*resolve)(struct kndClassInst *self);
-    int (*export)(struct kndClassInst *self);
 
+    int (*export)(struct kndClassInst *self,
+                  knd_format format,
+                  struct glbOutput *out);
+
+    int (*export_state)(struct kndClassInst *self,
+                        knd_format format,
+                        struct glbOutput *out);
     gsl_err_t (*select)(struct kndClassInst *self,
 		  const char *rec,
 		  size_t *total_size);

@@ -473,8 +473,6 @@ static int proc_call_arg_export_GSP(struct kndProc *self,
 
 static int export_GSP(struct kndProc *self)
 {
-    char buf[KND_SHORT_NAME_SIZE];
-    size_t buf_size = 0;
     struct glbOutput *out = self->entry->repo->out;
     struct kndProcArg *arg;
     struct kndProcCallArg *call_arg;

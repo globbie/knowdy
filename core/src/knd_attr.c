@@ -130,11 +130,6 @@ static int kndAttr_validate_email(struct kndAttr *self,
     return knd_OK;
 }
 
-
-
-/**
- *  EXPORT
- */
 static int export_JSON(struct kndAttr *self)
 {
     struct kndTask *task = self->parent_class->entry->repo->task;
@@ -593,8 +588,8 @@ static gsl_err_t parse_validator(void *obj,
 }
 
 static gsl_err_t parse_GSL(struct kndAttr *self,
-                     const char *rec,
-                     size_t *total_size)
+                           const char *rec,
+                           size_t *total_size)
 {
     if (DEBUG_ATTR_LEVEL_1)
         knd_log(".. attr parsing: \"%.*s\"..", 32, rec);
@@ -730,6 +725,8 @@ static gsl_err_t parse_GSL(struct kndAttr *self,
             return make_gsl_err_external(knd_FAIL);
         }
     }
+
+    // TODO: reject attr names starting with an underscore _
 
     return make_gsl_err(gsl_OK);
 }

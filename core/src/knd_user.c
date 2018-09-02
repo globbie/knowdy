@@ -399,7 +399,6 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     err = self->user_idx->get(self->user_idx,
                               inst->entry->id, inst->entry->id_size,
                               &result);
-    knd_log("err:%d user ctx:%p", err, result);
     ctx = result;
     if (err) {
         err = mempool->new_user_ctx(mempool, &ctx);
@@ -472,7 +471,7 @@ static gsl_err_t run_present_user(void *data,
     user = self->curr_ctx->user_inst;
     user->max_depth = self->max_depth;
 
-    err = user->export(user);
+    err = user->export(user, KND_FORMAT_JSON, out);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);

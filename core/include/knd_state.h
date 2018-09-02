@@ -37,6 +37,7 @@ typedef enum knd_state_type { KND_INIT_STATE,
 struct kndClassUpdate
 {
     struct kndClass *class;
+    struct kndClassEntry *entry;
     struct kndUpdate *update;
     struct kndClassInst **insts;
     size_t num_insts;

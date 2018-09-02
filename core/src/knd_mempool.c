@@ -215,7 +215,7 @@ static int new_class_update(struct kndMemPool *self,
     return knd_OK;
 }
 */
-static int new_obj(struct kndMemPool *self,
+static int new_class_inst(struct kndMemPool *self,
                    struct kndClassInst **result)
 {
     struct kndClassInst *obj;
@@ -247,7 +247,7 @@ static int new_state(struct kndMemPool *self,
     return knd_OK;
 }
 
-static int new_obj_entry(struct kndMemPool *self,
+static int new_class_inst_entry(struct kndMemPool *self,
                          struct kndObjEntry **result)
 {
     struct kndObjEntry *entry;
@@ -261,7 +261,7 @@ static int new_obj_entry(struct kndMemPool *self,
     return knd_OK;
 }
 
-static int new_obj_elem(struct kndMemPool *self,
+static int new_class_inst_elem(struct kndMemPool *self,
                          struct kndElem **result)
 {
     struct kndElem *elem;
@@ -320,7 +320,7 @@ static int new_attr_var(struct kndMemPool *self,
     return knd_OK;
 }
 
-static int new_obj_dir(struct kndMemPool *self,
+static int new_class_inst_dir(struct kndMemPool *self,
                        struct kndObjDir **result)
 {
     struct kndObjDir *dir;
@@ -970,10 +970,10 @@ kndMemPool_init(struct kndMemPool *self)
     self->new_class_entry = new_class_entry;
     self->new_class_var = new_class_var;
     self->new_attr_var = new_attr_var;
-    self->new_obj = new_obj;
-    self->new_obj_dir = new_obj_dir;
-    self->new_obj_entry = new_obj_entry;
-    self->new_obj_elem = new_obj_elem;
+    self->new_class_inst = new_class_inst;
+    self->new_class_inst_dir = new_class_inst_dir;
+    self->new_class_inst_entry = new_class_inst_entry;
+    self->new_class_inst_elem = new_class_inst_elem;
     self->new_rel = new_rel;
     self->new_rel_entry = new_rel_entry;
     self->new_rel_ref = new_rel_ref;

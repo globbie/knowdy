@@ -467,7 +467,7 @@ static gsl_err_t get_inst_obj(void *obj, const char *name, size_t name_size)
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = entry->obj_idx->get(entry->obj_idx, name, name_size, &elem);
+    err = entry->inst_idx->get(entry->inst_idx, name, name_size, &elem);
     if (err) {
         knd_log("-- no such obj: %.*s :(", name_size, name);
         return make_gsl_err(gsl_FAIL);
@@ -733,15 +733,15 @@ static int resolve_inst(struct kndRelArg *self,
             knd_log(".. resolving rel arg inst OBJ ref: \"%.*s\""
                     " CONC DIR: %.*s OBJ IDX:%p",
                     inst->objname_size, inst->objname,
-                    entry->name_size, entry->name, entry->obj_name_idx);
+                    entry->name_size, entry->name, entry->inst_name_idx);
 
-        if (!entry->obj_name_idx) {
+        if (!entry->inst_name_idx) {
             knd_log("-- empty obj IDX in class \"%.*s\" :(",
                         entry->name_size, entry->name);
             return knd_FAIL;
         }
 
-        obj = entry->obj_name_idx->get(entry->obj_name_idx,
+        obj = entry->inst_name_idx->get(entry->inst_name_idx,
                                        inst->objname, inst->objname_size);
         if (!obj) {
             knd_log("-- no such obj: %.*s :(",

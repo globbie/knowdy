@@ -234,13 +234,13 @@ struct kndMemPool
                          struct kndClassVar **result);
     int (*new_attr_var)(struct kndMemPool   *self,
                          struct kndAttrVar **result);
-    int (*new_obj)(struct kndMemPool   *self,
-                   struct kndClassInst **result);
-    int (*new_obj_dir)(struct kndMemPool   *self,
+    int (*new_class_inst)(struct kndMemPool   *self,
+                          struct kndClassInst **result);
+    int (*new_class_inst_dir)(struct kndMemPool   *self,
                        struct kndObjDir **result);
-    int (*new_obj_entry)(struct kndMemPool   *self,
+    int (*new_class_inst_entry)(struct kndMemPool   *self,
                          struct kndObjEntry **result);
-    int (*new_obj_elem)(struct kndMemPool   *self,
+    int (*new_class_inst_elem)(struct kndMemPool   *self,
                         struct kndElem     **result);
     int (*new_rel)(struct kndMemPool   *self,
                    struct kndRel **result);

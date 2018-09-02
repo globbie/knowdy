@@ -76,7 +76,10 @@ struct kndElem
 //    int (*match)(struct kndElem *self,
 //                 const char *rec,
 //                 size_t rec_size);
-    int (*export)(struct kndElem *self);
+
+    int (*export)(struct kndElem *self,
+                  knd_format format,
+                  struct glbOutput *out);
 };
 
 /* constructors */

@@ -111,13 +111,14 @@ struct kndClassEntry
     size_t num_procs;
 
     struct kndObjDir *obj_dir;
-    size_t num_objs;
+
+    size_t num_insts;
 
     // TODO: move to kndRepo?
     struct kndSet *class_idx;
     struct ooDict *class_name_idx;
-    struct kndSet *obj_idx;
-    struct ooDict *obj_name_idx;
+    struct kndSet *inst_idx;
+    struct ooDict *inst_name_idx;
 
     struct ooDict *reverse_attr_name_idx;
 
@@ -143,6 +144,8 @@ struct kndClass
     struct kndState *child_states;
     size_t init_child_state;
     size_t num_child_states;
+
+    struct kndText *gloss;
 
     struct kndTranslation *tr;
     struct kndTranslation *summary;
@@ -251,9 +254,11 @@ struct kndClass
     gsl_err_t (*import)(void *self,
                         const char *rec,
                         size_t *total_size);
-    int (*export)(struct kndClass *self);
+    int (*export)(struct kndClass *self,
+                  knd_format format,
+                  struct glbOutput *out);
     int (*export_updates)(struct kndClass *self,
-                          struct kndUpdate *update,
+                          struct kndClassUpdate *update,
                           knd_format format,
                           struct glbOutput *out);
 };
@@ -267,6 +272,9 @@ extern int kndClass_new(struct kndClass **self,
 extern int knd_get_class(struct kndClass *self,
                          const char *name, size_t name_size,
                          struct kndClass **result);
+extern int knd_get_class_by_id(struct kndClass *self,
+                               const char *id, size_t id_size,
+                               struct kndClass **result);
 
 extern gsl_err_t import_class_var(struct kndClassVar *self,
                                   const char *rec,

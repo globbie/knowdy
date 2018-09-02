@@ -79,12 +79,12 @@ static void str(struct kndElem *self)
         break;
     }
 
-    //knd_log("%*s%s => %.*s", self->depth * KND_OFFSET_SIZE, "",
-    //        self->attr->name, self->states->val_size, self->states->val);
+    knd_log("%*s%.*s => %.*s", self->depth * KND_OFFSET_SIZE, "",
+            self->attr->name_size, self->attr->name,
+            self->states->val_size, self->states->val);
 }
 
-
-static int kndElem_export_JSON(struct kndElem *self)
+static int export_JSON(struct kndElem *self)
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -127,7 +127,7 @@ static int kndElem_export_JSON(struct kndElem *self)
         err = out->write(out, "\":", strlen("\":"));
         if (err) goto final;
         
-        err = self->aggr->export(self->aggr);
+        err = self->aggr->export(self->aggr, KND_FORMAT_JSON, out);
         
         return err;
     }
@@ -169,9 +169,7 @@ static int kndElem_export_JSON(struct kndElem *self)
         switch (self->attr->type) {
         case  KND_ATTR_TEXT:
             text = self->text;
-            text->out = out;
-            text->format = self->format;
-            err = text->export(text);
+            err = text->export(text, KND_FORMAT_JSON, out);
             if (err) goto final;
             break;
         case KND_ATTR_REF:
@@ -199,26 +197,25 @@ final:
     return err;
 }
 
-static int
-kndElem_export_GSP(struct kndElem *self)
+static int export_GSP(struct kndElem *self,
+                      struct glbOutput *out)
 {
     struct kndText *text;
     struct kndRef *ref;
-    struct glbOutput *out = self->out;
     int err;
 
     if (DEBUG_ELEM_LEVEL_2)
-        knd_log("  .. GSP export of %.*s elem.. ",
+        knd_log("\n  .. GSP export of \"%.*s\" elem.. ",
                 self->attr->name_size, self->attr->name);
-
+    
+    /* single anonymous aggr obj */
     if (self->aggr) {
-        /* single anonymous aggr obj */
         err = out->write(out, "{", 1);
         if (err) return err;
         err = out->write(out, self->attr->name, self->attr->name_size);
         if (err) return err;
         
-        err = self->aggr->export(self->aggr);
+        err = self->aggr->export(self->aggr, KND_FORMAT_GSP, out);
 
         err = out->write(out, "}", 1);
         if (err) return err;
@@ -246,9 +243,7 @@ kndElem_export_GSP(struct kndElem *self)
         break;
     case  KND_ATTR_TEXT:
         text = self->text;
-        text->out = out;
-        text->format = KND_FORMAT_GSP;
-        err = text->export(text);
+        err = text->export(text, KND_FORMAT_GSP, out);
         if (err) return err;
         break;
     case KND_ATTR_REF:
@@ -268,27 +263,19 @@ kndElem_export_GSP(struct kndElem *self)
     return knd_OK;
 }
 
-static int 
-kndElem_export(struct kndElem *self)
+static int kndElem_export(struct kndElem *self,
+                          knd_format format,
+                          struct glbOutput *out)
 {
     int err;
 
-    switch(self->format) {
+    switch (format) {
     case KND_FORMAT_JSON:
-        err = kndElem_export_JSON(self);
+        err = export_JSON(self);
         if (err) return err;
         break;
-        /*case KND_FORMAT_HTML:
-        err = kndElem_export_HTML(self, is_concise);
-        if (err) return err;
-        break;*/
-        /*case KND_FORMAT_GSL:
-        err = kndElem_export_GSL(self);
-        if (err) return err;
-        break;
-        */
     case KND_FORMAT_GSP:
-        err = kndElem_export_GSP(self);
+        err = export_GSP(self, out);
         if (err) return err;
         break;
     default:

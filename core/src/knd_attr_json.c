@@ -116,7 +116,7 @@ static int aggr_item_export_JSON(struct kndAttrVar *parent_item,
         //knd_log(".. export %.*s class, depth:%zu max depth:%zu\n\n",
         //        c->name_size, c->name, c->depth, c->max_depth);
 
-        err = c->export(c);
+        err = c->export(c, KND_FORMAT_JSON, out);
         if (err) return err;
         in_list = true;
     }
@@ -183,7 +183,7 @@ static int aggr_item_export_JSON(struct kndAttrVar *parent_item,
             //knd_log(".. export %.*s class, depth:%zu max depth:%zu\n\n",
             //    c->name_size, c->name, c->depth, c->max_depth);
             
-            err = c->export(c);
+            err = c->export(c, KND_FORMAT_JSON, out);
             if (err) return err;
             break;
         case KND_ATTR_AGGR:
@@ -219,8 +219,7 @@ static int ref_item_export_JSON(struct kndAttrVar *item)
     c = item->class;
     //c->depth = self->depth + 1;
     //c->max_depth = self->max_depth;
-    err = c->export(c);
-    if (err) return err;
+    err = c->export(c, KND_FORMAT_JSON, c->entry->repo->out);  RET_ERR();
     return knd_OK;
 }
 
@@ -400,7 +399,7 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
             } else {
                 c = item->class;
                 //c->depth = self->depth;
-                err = c->export(c);
+                err = c->export(c, KND_FORMAT_JSON, out);
                 if (err) return err;
             }
             break;
@@ -456,7 +455,7 @@ extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
         } else {
             c = item->class;
             //c->depth = self->depth;
-            err = c->export(c);
+            err = c->export(c, KND_FORMAT_JSON, out);
             if (err) return err;
         }
         break;

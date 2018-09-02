@@ -47,7 +47,7 @@ static gsl_err_t parse_select_inst(void *data,
                                   size_t *total_size)
 {
     struct kndClass *self = data;
-    struct kndClassInst *obj = self->curr_inst;
+    struct kndClassInst *inst = self->curr_inst;
     struct kndTask *task = self->curr_class->entry->repo->task;
     gsl_err_t err;
 
@@ -58,19 +58,14 @@ static gsl_err_t parse_select_inst(void *data,
     }
 
     if (DEBUG_CLASS_SELECT_LEVEL_2)
-        knd_log(".. select \"%.*s\" obj.. task type: %d",
+        knd_log(".. select \"%.*s\" inst.. task type: %d",
                 16, rec, task->type);
 
-    task->type = KND_GET_STATE;
-    obj->base = self->curr_class;
+    task->type = KND_SELECT_STATE;
+    inst->base = self->curr_class;
 
-    err = obj->select(obj, rec, total_size);
+    err = inst->select(inst, rec, total_size);
     if (err.code) return err;
-
-    if (DEBUG_CLASS_SELECT_LEVEL_2) {
-        if (obj->curr_inst)
-            obj->curr_inst->str(obj->curr_inst);
-    }
 
     return make_gsl_err(gsl_OK);
 }
@@ -435,13 +430,11 @@ static gsl_err_t present_class_selection(void *obj,
     struct kndTask *task = self->entry->repo->task;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
         knd_log(".. presenting class \"%.*s\"..",
                 self->entry->name_size, self->entry->name);
 
     out->reset(out);
-
-
     
     if (task->type == KND_SELECT_STATE) {
         if (DEBUG_CLASS_SELECT_LEVEL_2)
@@ -520,7 +513,10 @@ static gsl_err_t present_class_selection(void *obj,
         c->max_depth = self->max_depth;
     }
 
-    err = c->export(c);
+    knd_log(".. export JSON.. ");
+    c->str(c);
+
+    err = c->export(c, KND_FORMAT_JSON, out);
     if (err) {
         knd_log("-- class export failed");
         return make_gsl_err_external(err);
@@ -823,7 +819,7 @@ extern gsl_err_t knd_select_class(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
 
     self->depth = 0;
@@ -859,8 +855,8 @@ extern gsl_err_t knd_select_class(void *obj,
           .parse = parse_select_inst,
           .obj = self
         },
-        { .name = "_base",
-          .name_size = strlen("_base"),
+        { .name = "_is",
+          .name_size = strlen("_is"),
           .is_selector = true,
           .parse = parse_baseclass_select,
           .obj = self
