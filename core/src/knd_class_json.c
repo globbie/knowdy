@@ -121,7 +121,7 @@ static int export_conc_elem_JSON(void *obj,
         c->max_depth = self->max_depth;
     }
 
-    err = c->export(c);
+    err = c->export(c, KND_FORMAT_JSON, out);
     if (err) return err;
 
     task->batch_size++;
@@ -670,13 +670,13 @@ extern int knd_class_export_JSON(struct kndClass *self,
 
     
     /* instances */
-    if (self->entry->num_objs) {
+    if (self->entry->num_insts) {
         err = out->write(out, ",\"_instances\":{",
                          strlen(",\"_instances\":{"));
         if (err) return err;
 
         err = out->write(out, "\"_tot\":", strlen("\"_tot\":"));
-        buf_size = sprintf(buf, "%zu", self->entry->num_objs);
+        buf_size = sprintf(buf, "%zu", self->entry->num_insts);
         err = out->write(out, buf, buf_size);
         if (err) return err;
 

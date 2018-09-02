@@ -90,7 +90,6 @@ static int str_conc_elem(void *obj,
     struct kndClass *self = obj;
     struct kndClassEntry *entry = elem;
     struct kndClass *c = entry->class;
-    int err;
 
     if (!c) {
         //err = unfreeze_class(self, entry, &c);                                    RET_ERR();
@@ -144,9 +143,9 @@ static void del_class_entry(struct kndClassEntry *entry)
         entry->children = NULL;
     }
 
-    if (entry->obj_name_idx) {
-        entry->obj_name_idx->del(entry->obj_name_idx);
-        entry->obj_name_idx = NULL;
+    if (entry->inst_name_idx) {
+        entry->inst_name_idx->del(entry->inst_name_idx);
+        entry->inst_name_idx = NULL;
     }
 
     if (entry->rels) {
@@ -275,7 +274,7 @@ static void str(struct kndClass *self)
             knd_log("%*s_base \"%.*s\" id:%.*s numid:%zu [%c]",
                     (self->depth + 1) * KND_OFFSET_SIZE, "",
                     name_size, name,
-                    item->id_size, item->id, item->numid,
+                    item->entry->id_size, item->entry->id, item->numid,
                     resolved_state);
 
             if (item->attrs) {
@@ -896,7 +895,6 @@ static int expand_refs(struct kndClass *self)
     return knd_OK;
 }
 
-
 static int get_inst(struct kndClass *self,
                     const char *name, size_t name_size,
                     struct kndClassInst **result)
@@ -907,8 +905,8 @@ static int get_inst(struct kndClass *self,
     struct kndTask *task = self->entry->repo->task;
     int err, e;
 
-    if (DEBUG_CLASS_LEVEL_TMP)
-        knd_log("\n\n.. \"%.*s\" class to get instance: \"%.*s\"..",
+    if (DEBUG_CLASS_LEVEL_2)
+        knd_log(".. \"%.*s\" class to get instance: \"%.*s\"..",
                 self->entry->name_size, self->entry->name,
                 name_size, name);
 
@@ -917,7 +915,7 @@ static int get_inst(struct kndClass *self,
                 self->entry->name_size, self->entry->name);
     }
 
-    if (!self->entry->obj_name_idx) {
+    if (!self->entry->inst_name_idx) {
         knd_log("-- no obj name idx in \"%.*s\" :(",
                 self->entry->name_size, self->entry->name);
         log->reset(log);
@@ -930,7 +928,7 @@ static int get_inst(struct kndClass *self,
         return knd_FAIL;
     }
 
-    entry = self->entry->obj_name_idx->get(self->entry->obj_name_idx, name, name_size);
+    entry = self->entry->inst_name_idx->get(self->entry->inst_name_idx, name, name_size);
     if (!entry) {
         knd_log("-- no such obj: \"%.*s\" :(", name_size, name);
         log->reset(log);
@@ -943,9 +941,9 @@ static int get_inst(struct kndClass *self,
         return knd_NO_MATCH;
     }
 
-    if (DEBUG_CLASS_LEVEL_TMP)
-        knd_log("++ got obj entry %.*s  size: %zu OBJ: %p",
-                name_size, name, entry->block_size, entry->obj);
+    if (DEBUG_CLASS_LEVEL_2)
+        knd_log("++ got obj entry %.*s  size: %zu",
+                name_size, name, entry->block_size);
 
     if (!entry->obj) goto read_entry;
 
@@ -967,7 +965,7 @@ static int get_inst(struct kndClass *self,
 
  read_entry:
     // TODO
-    //err = read_obj_entry(self, entry, result);
+    //err = unfreeze_obj_entry(self, entry, result);
     //if (err) return err;
 
     return knd_OK;
@@ -1152,25 +1150,25 @@ static int knd_update_state(struct kndClass *self)
     return knd_OK;
 }
 
-static int export(struct kndClass *self)
+static int export(struct kndClass *self,
+                  knd_format format,
+                  struct glbOutput *out)
 {
-    struct kndRepo *repo = self->entry->repo;
-
-    switch (repo->task->format) {
+    switch (format) {
     case KND_FORMAT_JSON:
-        return knd_class_export_JSON(self, repo->out);
+        return knd_class_export_JSON(self, out);
     case KND_FORMAT_GSP:
-        return knd_class_export_GSP(self, repo->out);
+        return knd_class_export_GSP(self, out);
         break;
     default:
         break;
     }
-    knd_log("-- format %d not supported :(", repo->task->format);
+    knd_log("-- format %d not supported", format);
     return knd_FAIL;
 }
 
 static int export_updates(struct kndClass *self,
-                          struct kndUpdate *update,
+                          struct kndClassUpdate *update,
                           knd_format format,
                           struct glbOutput *out)
 {
@@ -1224,13 +1222,16 @@ extern int knd_class_get_attr(struct kndClass *self,
     struct kndAttrEntry *entry;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_1) {
-        knd_log(".. \"%.*s\" class to check attr \"%.*s\"",
-                self->entry->name_size, self->entry->name, name_size, name);
+    if (DEBUG_CLASS_LEVEL_TMP) {
+        knd_log(".. \"%.*s\" class (repo: %.*s) to check attr \"%.*s\"",
+                self->entry->name_size, self->entry->name,
+                self->entry->repo->name_size, self->entry->repo->name,
+                name_size, name);
     }
 
     // TODO: no allocation in select tasks
     if (!self->attr_name_idx) {
+        knd_log(".. create attr name idx..");
         err = ooDict_new(&self->attr_name_idx, KND_SMALL_DICT_SIZE);
         if (err) return err;
 
@@ -1246,7 +1247,7 @@ extern int knd_class_get_attr(struct kndClass *self,
             err = self->attr_name_idx->set(self->attr_name_idx,
                                       entry->name, entry->name_size, (void*)entry);
             if (err) return err;
-            if (DEBUG_CLASS_LEVEL_2)
+            if (DEBUG_CLASS_LEVEL_TMP)
                 knd_log("++ register primary attr: \"%.*s\"",
                         attr->name_size, attr->name);
         }
@@ -1348,6 +1349,94 @@ extern int knd_get_class(struct kndClass *self,
     return knd_FAIL;
 }
 
+extern int knd_get_class_by_id(struct kndClass *self,
+                               const char *id, size_t id_size,
+                               struct kndClass **result)
+{
+    struct kndClassEntry *entry;
+    struct kndClass *c = NULL;
+    struct kndRepo *repo = self->entry->repo;
+    struct glbOutput *log = repo->log;
+    struct kndSet *class_idx = repo->root_class->class_idx;
+    struct kndTask *task = repo->task;
+    void *elem;
+    struct kndState *state;
+    int err;
+
+    if (DEBUG_CLASS_LEVEL_TMP) {
+        knd_log(".. repo \"%.*s\" to get class by id: \"%.*s\"..",
+                repo->name_size, repo->name, id_size, id);
+    }
+
+    err = class_idx->get(class_idx, id, id_size, &elem);
+    if (err) {
+        /* check parent schema */
+        if (repo->base) {
+            err = knd_get_class_by_id(repo->base->root_class, id, id_size, result);
+            if (err) return err;
+            return knd_OK;
+        }
+        knd_log("-- no such class: \"%.*s\":(", id_size, id);
+        log->reset(log);
+        err = log->write(log, id, id_size);
+        if (err) return err;
+        err = log->write(log, " class not found",
+                               strlen(" class not found"));
+        if (err) return err;
+        if (task)
+            task->http_code = HTTP_NOT_FOUND;
+        return knd_NO_MATCH;
+    }
+
+    entry = elem;
+
+    if (entry->class) {
+        c = entry->class;
+        
+        if (c->num_states) {
+            state = c->states;
+            if (state->phase == KND_REMOVED) {
+                knd_log("-- \"%s\" class was removed", id);
+                log->reset(log);
+                err = log->write(log, id, id_size);
+                if (err) return err;
+                err = log->write(log, " class was removed",
+                                 strlen(" class was removed"));
+                if (err) return err;
+
+                task->http_code = HTTP_GONE;
+                return knd_NO_MATCH;
+            }
+        }
+        c->next = NULL;
+        if (DEBUG_CLASS_LEVEL_2)
+            c->str(c);
+
+        *result = c;
+        return knd_OK;
+    }
+
+    if (repo->base) {
+        err = knd_get_class_by_id(repo->base->root_class, id, id_size, result);
+        if (err) return err;
+        return knd_OK;
+    }
+
+    if (DEBUG_CLASS_LEVEL_TMP)
+        knd_log(".. unfreezing the \"%.*s\" class ..", id_size, id);
+
+    // TODO
+    /*err = unfreeze_class(self, entry, &c);
+    if (err) {
+        knd_log("-- failed to unfreeze class: %.*s",
+                entry->name_size, entry->name);
+        return err;
+        }*/
+    //*result = c;
+
+    return knd_FAIL;
+}
+
 extern void kndClass_init(struct kndClass *self)
 {
     self->del = kndClass_del;
@@ -1395,7 +1484,7 @@ extern int kndClass_new(struct kndClass **result,
     self->entry = entry;
 
     /* obj manager */
-    err = mempool->new_obj(mempool, &self->curr_inst);                            RET_ERR();
+    err = mempool->new_class_inst(mempool, &self->curr_inst);                     RET_ERR();
     self->curr_inst->base = self;
 
     /* specific allocations for the root class */

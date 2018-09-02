@@ -23,8 +23,7 @@
 
 #include "knd_config.h"
 
-struct kndElem;
-struct kndElemRef;
+struct kndContent;
 
 #define KND_SYNT_ROLE_NAME_SIZE 3
 
@@ -64,8 +63,9 @@ struct kndTranslation
     const char *locale;
     size_t locale_size;
     knd_synt_role_t synt_role; 
-    
-    size_t state;
+
+    struct kndState *states;
+    size_t num_states;
 
     size_t chunk_count;
     
@@ -95,20 +95,22 @@ struct kndTextState
 {
     knd_state_phase phase;
 
-    /* translations of master text: manual or automatic */
-    struct kndTranslation *translations;
-    size_t num_translations;
 
     struct kndTextState *next;
 };
 
-
 struct kndText
 {
-    struct kndElem *elem;
-    struct glbOutput *out;
+    //struct kndElem *elem;
+    //struct glbOutput *out;
 
-    struct kndTextState *states;
+    struct kndContent *content;
+
+    /* translations of master text: manual or automatic */
+    struct kndTranslation *tr;
+    size_t num_trs;
+
+    struct kndState *states;
     size_t num_states;
     knd_format format;
     size_t depth;
@@ -117,20 +119,18 @@ struct kndText
     void (*str)(struct kndText *self);
     void (*del)(struct kndText *self);
 
-    int (*hilite)(struct kndText *self,
+    /*int (*hilite)(struct kndText *self,
                   struct kndElemRef *elemref,
                   knd_format format);
+    */
 
     gsl_err_t (*parse)(struct kndText *self,
                  const char     *rec,
                  size_t          *total_size);
 
-//    int (*update)(struct kndText *self,
-//                 const char     *rec,
-//                 size_t          *total_size);
-
-//    int (*index)(struct kndText *self);
-    int (*export)(struct kndText *self);
+    int (*export)(struct kndText *self,
+                  knd_format format,
+                  struct glbOutput *out);
 };
 
 /* constructors */

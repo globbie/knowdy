@@ -849,6 +849,7 @@ static int resolve_baseclasses(struct kndClass *self)
         classname_size = cvar->entry->name_size;
 
         if (cvar->id_size) {
+            // TODO: knd_get..
             err = self->class_idx->get(self->class_idx,
                                        cvar->id, cvar->id_size, &result);
             if (err) {
@@ -973,7 +974,7 @@ extern int knd_resolve_class(struct kndClass *self,
         knd_num_to_str(entry->numid, entry->id, &entry->id_size, KND_RADIX_BASE);
     }
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_1) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. resolving class \"%.*s\" id:%.*s entry numid:%zu  batch mode:%d",
                 self->entry->name_size, self->entry->name,
                 entry->id_size, entry->id, self->entry->numid, self->batch_mode);
@@ -1041,7 +1042,7 @@ extern int knd_resolve_classes(struct kndClass *self)
 {
     struct kndClass *c;
     struct kndClassEntry *entry;
-    struct kndSet *class_idx = self->class_idx;
+    struct kndSet *class_idx = self->entry->repo->root_class->class_idx;
     const char *key;
     void *val;
     int err;
@@ -1062,15 +1063,16 @@ extern int knd_resolve_classes(struct kndClass *self)
             return knd_FAIL;
         }
         c = entry->class;
-        if (c->is_resolved) continue;
 
-        err = c->resolve(c, NULL);
-        if (err) {
-            knd_log("-- couldn't resolve the \"%.*s\" class :(",
-                    c->entry->name_size, c->entry->name);
-            return err;
+        if (!c->is_resolved) {
+            err = c->resolve(c, NULL);
+            if (err) {
+                knd_log("-- couldn't resolve the \"%.*s\" class :(",
+                        c->entry->name_size, c->entry->name);
+                return err;
+            }
+            c->is_resolved = true;
         }
-        c->is_resolved = true;
 
         err = class_idx->add(class_idx,
                              c->entry->id, c->entry->id_size,

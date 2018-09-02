@@ -92,22 +92,15 @@ static gsl_err_t get_class_by_id(void *obj, const char *name, size_t name_size)
         entry->id_size = name_size;
         entry->repo = repo;
 
-        knd_log("\n\n!! new class entry:%.*s  %p", name_size, name, entry);
+        if (DEBUG_REPO_LEVEL_2)
+            knd_log("!! new entry:%.*s", name_size, name);
+        self->entry = entry;
 
-        err = mempool->new_class(mempool, &c);
-        if (err) return make_gsl_err_external(err);
-
-        c->entry = entry;
-        entry->class = c;
-        err = class_idx->add(class_idx,
-                             entry->id, entry->id_size, (void*)entry);
-        if (err) return make_gsl_err_external(err);
-        self->class = c;
         return make_gsl_err(gsl_OK);
     }
 
     entry = result;
-    self->class = entry->class;
+    self->entry = entry;
     
     return make_gsl_err(gsl_OK);
 }
@@ -115,19 +108,20 @@ static gsl_err_t get_class_by_id(void *obj, const char *name, size_t name_size)
 static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 {
     struct kndClassUpdate *self = obj;
-    struct kndClass *c = self->class;
+    struct kndClass *c;
     struct kndRepo *repo = self->update->repo;
     struct ooDict *class_name_idx = repo->root_class->class_name_idx;
+    struct kndSet *class_idx = repo->root_class->class_idx;
     struct kndMemPool *mempool = repo->mempool;
-    struct kndClassEntry *entry = c->entry;
+    struct kndClassEntry *entry = self->entry;
     int err;
 
     if (DEBUG_REPO_LEVEL_2)
-        knd_log(".. check or set class name: %.*s ..",
-                name_size, name);
+        knd_log(".. check or set class name: %.*s .. entry:%p",
+                name_size, name, entry);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= sizeof c->entry->name) return make_gsl_err(gsl_LIMIT);
+    if (name_size >= sizeof entry->name) return make_gsl_err(gsl_LIMIT);
 
     if (entry->name_size) {
         if (entry->name_size != name_size) {
@@ -139,23 +133,46 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
             return make_gsl_err(gsl_FAIL);
         }
 
-        if (DEBUG_REPO_LEVEL_2)
+        if (DEBUG_REPO_LEVEL_TMP)
             knd_log("++ class already exists: %.*s!", name_size, name);
+
+        self->class = entry->class;
+        self->entry = entry;
 
         return make_gsl_err(gsl_OK);
     }
 
     memcpy(entry->name, name, name_size);
     entry->name_size = name_size;
+
+    /* get class */
+    err = knd_get_class(repo->root_class, name, name_size, &c);
+    if (err) {
+        err = mempool->new_class(mempool, &c);
+        if (err) return make_gsl_err_external(err);
+
+        c->entry = entry;
+        entry->class = c;
+        c->name = c->entry->name;
+        c->name_size = name_size;
+    }
+
+    //c->str(c);
+
     entry->class = c;
-    c->entry = entry;
-    c->name = c->entry->name;
-    c->name_size = name_size;
+
+    /* register class entry */
+    err = class_idx->add(class_idx,
+                         entry->id, entry->id_size, (void*)entry);
+    if (err) return make_gsl_err_external(err);
 
     err = class_name_idx->set(class_name_idx,
                               entry->name, name_size,
                               (void*)entry);
     if (err) return make_gsl_err_external(err);
+
+    self->class = c;
+    self->entry = entry;
 
     return make_gsl_err(gsl_OK);
 }
@@ -168,7 +185,7 @@ static gsl_err_t parse_class_state(void *obj,
     struct kndClass *c = self->class;
     gsl_err_t err;
 
-    return knd_read_class_state(c, self->update, rec, total_size);
+    return knd_read_class_state(c, self, rec, total_size);
 }
 
 static gsl_err_t parse_class_update(void *obj,
@@ -334,8 +351,8 @@ static int kndRepo_restore(struct kndRepo *self,
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("  .. restoring repo \"%.*s\" in \"%s\"",
-                self->name_size, self->name, filename);
+        knd_log("  .. restoring repo \"%.*s\" in \"%s\" repo:%p",
+                self->name_size, self->name, filename, self);
 
     out->reset(out);
     err = out->write_file_content(out, filename);
@@ -427,7 +444,8 @@ static int kndRepo_open(struct kndRepo *self)
                 knd_log("-- concept coordination failed");
                 return err;
             }
-            
+
+
             proc = self->root_proc;
             //err = proc->coordinate(proc);                                     RET_ERR();
             rel = self->root_rel;

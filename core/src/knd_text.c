@@ -27,22 +27,11 @@ static void del(struct kndText *self)
 
 static void str(struct kndText *self)
 {
-    struct kndTextState *curr_state;
+    struct kndState *state;
     struct kndTranslation *tr;
-    struct kndTextSelect *sel;
 
-    if (self->elem) {
-        knd_log("%*s%s:", self->depth * KND_OFFSET_SIZE, "",
-                self->elem->attr->name);
-    }
-
-    curr_state = self->states;
-    while (curr_state) {
-        /*if (curr_state->text_size) {
-            knd_log("%*s%s: %s [#%lu]\n", offset,
-                    curr_state->locale, curr_state->text,
-                    (unsigned long)curr_state->state);
-                    }*/
+    state = self->states;
+    /*while (curr_state) {
 
         tr = curr_state->translations;
         while (tr) {
@@ -70,46 +59,35 @@ static void str(struct kndText *self)
         }
         curr_state = curr_state->next;
     }
-
+    */
 }
 
 
 
-static int export_JSON(struct kndText *self)
+static int export_JSON(struct kndText *self,
+                       struct glbOutput *out)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
 
-    struct kndTextState *curr_state;
+    struct kndState *state;
     struct kndTranslation *tr;
     struct kndTextSelect *sel;
-    struct glbOutput *out;
 
     int num_trs = 0;
 
     int err = knd_FAIL;
 
-    out = self->out;
 
     if (DEBUG_TEXT_LEVEL_2)
         knd_log(".. export text to JSON..");
 
-    curr_state = self->states;
+    /*curr_state = self->states;
 
     if (curr_state->translations) {
         tr = curr_state->translations;
 
         while (tr) {
-            /* check language */
-            /*if (obj->cache->repo->locale_size) {
-                if (DEBUG_TEXT_LEVEL_3)
-                    knd_log("  .. text LANG: %s curr user lang: %s\n",
-                            tr->locale, obj->cache->repo->locale);
-
-                if (strncmp(tr->locale, obj->cache->repo->locale, tr->locale_size))
-                    goto next_tr;
-            }
-            */
             if (num_trs) {
                 err = out->write(out, ",", 1);
                 if (err) return err;
@@ -145,7 +123,6 @@ static int export_JSON(struct kndText *self)
                     err = out->write(out,  "{", 1);
                     if (err) return err;
 
-                    /* selection POS */
                     if (sel->len > 1) {
                         buf_size = sprintf(buf, "\"p\":%lu,\"len\":%lu",
                                            (unsigned long)sel->pos,
@@ -185,128 +162,19 @@ static int export_JSON(struct kndText *self)
         }
 
     }
-
+*/
     return knd_OK;
 }
 
 
-static int export_HTML(struct kndText *self)
-{
-    //char buf[KND_NAME_SIZE];
-    //size_t buf_size;
 
-    struct kndClassInst *obj;
-    struct kndTextState *curr_state;
-    struct kndTranslation *tr;
-    //struct kndTextSelect *sel;
-
-    //size_t curr_size;
-    //char *c;
-
-    int err = knd_FAIL;
-
-    obj = self->elem->obj;
-
-    curr_state = self->states;
-
-    if (curr_state->translations) {
-        tr = curr_state->translations;
-
-        while (tr) {
-            /* check language */
-            /*if (obj->cache->repo->locale_size) {
-
-                if (DEBUG_TEXT_LEVEL_3)
-                    knd_log("  .. text LANG: %s curr user lang: %s\n",
-                            tr->locale, obj->cache->repo->locale);
-
-                if (strcmp(tr->locale, obj->cache->repo->locale))
-                    goto next_tr;
-                    }*/
-
-            /*buf_size = sprintf(buf, "\"l\":\"%s\"",
-                               tr->locale);
-            err = self->out->write(self->out,  buf, buf_size);
-            if (err) return err;
-            */
-
-            if (tr->seq) {
-                /*err = self->out->write(self->out,
-                                       "<P>", strlen("<P>"));
-                if (err) return err;
-                */
-
-                err = self->out->write(self->out, tr->seq, tr->seq_size);
-                if (err) return err;
-
-                /*err = self->out->write(self->out, "</P>", strlen("</P>"));
-                if (err) return err;
-                */
-
-            }
-
-            /*if (tr->selects) {
-                err = self->out->write(self->out, "<UL>\n", strlen("<UL>\n"));
-                if (err) return err;
-
-                sel = tr->selects;
-                while (sel) {
-                    err = self->out->write(self->out,  "<LI>", strlen("<LI>"));
-                    if (err) return err;
-
-                    buf_size = sprintf(buf, "\"p\":%lu",
-                                       (unsigned long)sel->pos);
-                    err = self->out->write(self->out,
-                                           buf, buf_size);
-                    if (err) return err;
-
-                    if (sel->ref) {
-                        err = self->out->write(self->out,  ",\"ref\":\"", strlen(",\"ref\":\""));
-                        if (err) return err;
-
-                        err = self->out->write(self->out, sel->ref->name, sel->ref->name_size);
-                        if (err) return err;
-
-                        err = self->out->write(self->out,  "\"", 1);
-                        if (err) return err;
-                    }
-
-                    err = self->out->write(self->out,  "</LI>", strlen("</LI>"));
-                    if (err) return err;
-
-                    if (sel->next) {
-                        err = self->out->write(self->out,  "\n", 1);
-                        if (err) return err;
-                    }
-
-                    sel = sel->next;
-                }
-
-                err = self->out->write(self->out,  "</UL>\n", strlen("</UL>\n"));
-                if (err) return err;
-                }*/
-
-            /*if (tr->next) {
-              err = self->out->write(self->out,  ",", 1);
-              if (err) goto final;
-              }*/
-
-            tr = tr->next;
-        }
-
-
-        return knd_OK;
-    }
-
-    return knd_OK;
-}
-
-static int export_GSP(struct kndText *self)
+static int export_GSP(struct kndText *self,
+                      struct glbOutput *out)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
 
-    struct kndTextState *curr_state;
+    struct kndState *state;
     struct kndTranslation *tr;
 
     struct kndTextSelect *sel;
@@ -315,7 +183,7 @@ static int export_GSP(struct kndText *self)
     int err = knd_FAIL;
 
     // NB: expects self->states != NULL
-    curr_state = self->states;
+    /*curr_state = self->states;
     if (!curr_state->translations) {
         knd_log("-- no translations found :(\n");
         return knd_FAIL;
@@ -323,43 +191,42 @@ static int export_GSP(struct kndText *self)
 
     tr = curr_state->translations;
 
-    err = self->out->write(self->out,  "[tr ", strlen("[tr "));
+    err = out->write(out,  "[tr ", strlen("[tr "));
     if (err) return err;
 
     while (tr) {
-        err = self->out->write(self->out,  "{", 1);
+        err = out->write(out,  "{", 1);
         if (err) return err;
 
-        err = self->out->write(self->out, "{l ", strlen("{l "));
+        err = out->write(out, "{l ", strlen("{l "));
         if (err) return err;
-        err = self->out->write(self->out,  tr->locale, tr->locale_size);
+        err = out->write(out,  tr->locale, tr->locale_size);
         if (err) return err;
-        err = self->out->write(self->out,  "}", 1);
+        err = out->write(out,  "}", 1);
         if (err) return err;
 
         if (tr->seq) {
-            err = self->out->write(self->out, "{t ", strlen("{t "));
+            err = out->write(out, "{t ", strlen("{t "));
             if (err) return err;
 
-            err = self->out->write(self->out,  tr->seq, tr->seq_size);
+            err = out->write(out,  tr->seq, tr->seq_size);
             if (err) return err;
 
-            err = self->out->write(self->out,  "}", 1);
+            err = out->write(out,  "}", 1);
             if (err) return err;
         }
 
         if (tr->selects) {
-            err = self->out->write(self->out, "[", 1);
+            err = out->write(out, "[", 1);
             if (err) return err;
 
             sel = tr->selects;
             curr_size = 0;
 
             while (sel) {
-                err = self->out->write(self->out,  "{", 1);
+                err = out->write(out,  "{", 1);
                 if (err) return err;
 
-                /* selection POS */
                 if (sel->len > 1) {
                     buf_size = sprintf(buf, "{p %lu+%lu}",
                                        (unsigned long)sel->pos,
@@ -369,61 +236,59 @@ static int export_GSP(struct kndText *self)
                     buf_size = sprintf(buf, "{p %lu}",
                                        (unsigned long)sel->pos);
 
-                err = self->out->write(self->out, buf, buf_size);
+                err = out->write(out, buf, buf_size);
                 if (err) return err;
 
-                /* HILITE */
+
                 if (sel->css_name_size) {
-                    err = self->out->write(self->out,
+                    err = out->write(out,
                                            "{hi ", strlen("{hi "));
 
-                    err = self->out->write(self->out, sel->css_name, sel->css_name_size);
+                    err = out->write(out, sel->css_name, sel->css_name_size);
                     if (err) return err;
 
-                    err = self->out->write(self->out,  "}", 1);
+                    err = out->write(out,  "}", 1);
                     if (err) return err;
                 }
 
 
-                err = self->out->write(self->out,  "}", 1);
+                err = out->write(out,  "}", 1);
                 if (err) return err;
 
                 sel = sel->next;
             }
-            err = self->out->write(self->out, "]", 1);
+            err = out->write(out, "]", 1);
             if (err) return err;
         }
 
-        err = self->out->write(self->out,  "}", 1);
+        err = out->write(out,  "}", 1);
         if (err) return err;
 
         tr = tr->next;
     }
 
-    err = self->out->write(self->out,  "]", 1);
+    err = out->write(out,  "]", 1);
     if (err) return err;
-
+*/
     if (DEBUG_TEXT_LEVEL_2)
         knd_log("++ text export OK!");
 
     return knd_OK;
 }
 
-static int export(struct kndText *self)
+static int kndText_export(struct kndText *self,
+                          knd_format format,
+                          struct glbOutput *out)
 {
     int err;
 
-    switch(self->format) {
+    switch (format) {
     case KND_FORMAT_JSON:
-        err = export_JSON(self);
-        if (err) return err;
-        break;
-    case KND_FORMAT_HTML:
-        err = export_HTML(self);
+        err = export_JSON(self, out);
         if (err) return err;
         break;
     case KND_FORMAT_GSP:
-        err = export_GSP(self);
+        err = export_GSP(self, out);
         if (err) return err;
         break;
     default:
@@ -498,18 +363,18 @@ static gsl_err_t parse_GSL(struct kndText *self,
                      const char *rec,
                      size_t *total_size)
 {
-    struct kndTextState *state;
+    struct kndState *state;
     struct kndTranslation *tr;
     gsl_err_t parser_err;
 
     state = self->states;
-    if (!state) {
+    /*if (!state) {
         state = malloc(sizeof(struct kndTextState));
         if (!state) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
         memset(state, 0, sizeof(struct kndTextState));
         self->states = state;
         self->num_states++;
-    }
+        }*/
 
     tr = malloc(sizeof(struct kndTranslation));
     if (!tr) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
@@ -526,8 +391,8 @@ static gsl_err_t parse_GSL(struct kndText *self,
     if (parser_err.code) return parser_err;
 
     /* assign translation */
-    tr->next = state->translations;
-    state->translations = tr;
+    //tr->next = state->translations;
+    //state->translations = tr;
 
     return make_gsl_err(gsl_OK);
 }
@@ -544,7 +409,7 @@ kndText_new(struct kndText **text)
 
     self->del = del;
     self->str = str;
-    self->export = export;
+    self->export = kndText_export;
     self->parse = parse_GSL;
 
     *text = self;

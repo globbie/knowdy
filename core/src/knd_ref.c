@@ -164,8 +164,7 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int
-export_reverse_rel_JSON(struct kndRef *self)
+static int export_reverse_rel_JSON(struct kndRef *self)
 {
     struct kndClassInst *obj;
     struct glbOutput *out = self->out;
@@ -186,7 +185,7 @@ export_reverse_rel_JSON(struct kndRef *self)
         knd_log(".. export reverse_rel to JSON..");
 
     obj->depth = 0;
-    err = obj->export(obj);
+    err = obj->export(obj, KND_FORMAT_JSON, out);
     if (err) return err;
 
     /*err = out->write(out, "\"", 1);

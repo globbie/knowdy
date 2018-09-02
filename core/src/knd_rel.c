@@ -549,7 +549,7 @@ static int export_inst_JSON(struct kndRel *self,
             class_inst = relarg_inst->obj->obj;
             // TODO max_depth
             class_inst->depth = 1;
-            err = class_inst->export(class_inst);
+            err = class_inst->export(class_inst, KND_FORMAT_JSON, out);
             if (err) return err;
         } else {
             if (relarg_inst->val_size) {
