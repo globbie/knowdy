@@ -373,7 +373,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
     struct kndTask *task = self->entry->repo->task;
     gsl_err_t err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
         knd_log(".. select by baseclass \"%.*s\"..", 16, rec);
 
     struct gslTaskSpec specs[] = {
@@ -430,14 +430,14 @@ static gsl_err_t present_class_selection(void *obj,
     struct kndTask *task = self->entry->repo->task;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
         knd_log(".. presenting class \"%.*s\"..",
                 self->entry->name_size, self->entry->name);
 
     out->reset(out);
     
     if (task->type == KND_SELECT_STATE) {
-        if (DEBUG_CLASS_SELECT_LEVEL_2)
+        if (DEBUG_CLASS_SELECT_LEVEL_TMP)
             knd_log(".. batch selection: batch size: %zu   start from: %zu",
                     task->batch_max, task->batch_from);
 
@@ -447,8 +447,8 @@ static gsl_err_t present_class_selection(void *obj,
                 set = self->curr_baseclass->entry->descendants;
 
                 // TODO
-                //err = export_set_JSON(self, set);
-                //if (err) return make_gsl_err_external(err);
+                err = knd_class_export_set_JSON(self, out, set);
+                if (err) return make_gsl_err_external(err);
 
                 return make_gsl_err(gsl_OK);
             }
@@ -492,9 +492,8 @@ static gsl_err_t present_class_selection(void *obj,
             if (err) return make_gsl_err_external(err);
             break;
         default:
-            break;
-            //err = export_set_JSON(self, set);
-            //if (err) return make_gsl_err_external(err);
+            err = knd_class_export_set_JSON(self, out, set);
+            if (err) return make_gsl_err_external(err);
         }
 
         return make_gsl_err(gsl_OK);
