@@ -396,7 +396,7 @@ static gsl_err_t parse_cdata(void *obj,
     struct kndClass *self = obj;
     struct kndAttr *attr;
     gsl_err_t parser_err;
-    int  err;
+    int err;
 
     err = kndAttr_new(&attr);
     if (err) return *total_size = 0, make_gsl_err_external(err);
@@ -553,7 +553,6 @@ static gsl_err_t parse_text(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-
 static gsl_err_t import_attr_var(void *obj,
                                  const char *name, size_t name_size,
                                  const char *rec, size_t *total_size)
@@ -577,7 +576,7 @@ static gsl_err_t import_attr_var(void *obj,
 
     mempool = self->root_class->entry->repo->mempool;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
         knd_log(".. import attr var: \"%.*s\" REC: %.*s",
                 name_size, name, 64, rec);
 
@@ -591,6 +590,13 @@ static gsl_err_t import_attr_var(void *obj,
     memcpy(attr_var->name, name, name_size);
     attr_var->name_size = name_size;
 
+    struct gslTaskSpec cdata_spec = {
+        .is_implied = true,
+        .buf = attr_var->val,
+        .buf_size = &attr_var->val_size,
+        .max_buf_size = sizeof attr_var->val
+    };
+    
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .buf = attr_var->val,
@@ -605,6 +611,11 @@ static gsl_err_t import_attr_var(void *obj,
         { .is_validator = true,
           .validate = import_nested_attr_var,
           .obj = attr_var
+        },
+        { .name = "_cdata",
+          .name_size = strlen("_cdata"),
+          .parse = gsl_parse_cdata,
+          .obj = &cdata_spec
         }
     };
 
@@ -613,8 +624,8 @@ static gsl_err_t import_attr_var(void *obj,
 
     append_attr_var(self, attr_var);
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("++ attr var import OK!");
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+        knd_log("++ attr var value: %.*s", attr_var->val_size, attr_var->val);
 
     return make_gsl_err(gsl_OK);
 }
@@ -732,6 +743,7 @@ static gsl_err_t confirm_attr_var(void *obj __attribute__((unused)),
     return make_gsl_err(gsl_OK);
 }
 
+
 static gsl_err_t import_nested_attr_var(void *obj,
                                          const char *name, size_t name_size,
                                          const char *rec, size_t *total_size)
@@ -770,7 +782,12 @@ static gsl_err_t import_nested_attr_var(void *obj,
         { .is_validator = true,
           .validate = import_nested_attr_var,
           .obj = attr_var
-        },
+        }/*,
+        { .name = "_cdata",
+          .name_size = strlen("_cdata"),
+          .parse = parse_attr_var_cdata,
+          .obj = attr_var
+          }*/,
         { .is_default = true,
           .run = confirm_attr_var,
           .obj = self

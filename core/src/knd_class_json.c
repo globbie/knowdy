@@ -367,8 +367,8 @@ extern int knd_class_export_set_JSON(struct kndClass *self,
     /* TODO: present child clauses */
 
     if (set->base) {
-        err = out->write(out, "\"_base\":\"",
-                         strlen("\"_base\":\""));                                 RET_ERR();
+        err = out->write(out, "\"_is\":\"",
+                         strlen("\"_is\":\""));                                 RET_ERR();
         err = out->write(out, set->base->name,  set->base->name_size);            RET_ERR();
         err = out->writec(out, '"');                                              RET_ERR();
     }
@@ -502,7 +502,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
 
     /* display base classes only once */
     if (self->num_baseclass_vars) {
-        err = out->write(out, ",\"_base\":[", strlen(",\"_base\":["));            RET_ERR();
+        err = out->write(out, ",\"_is\":[", strlen(",\"_is\":["));            RET_ERR();
 
         item_count = 0;
         for (item = self->baseclass_vars; item; item = item->next) {
