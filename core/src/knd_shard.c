@@ -81,9 +81,10 @@ final:
         knd_log("-- task report failed: %d", err);
         return -1;
     }
-    
-    knd_log("== Task report: %.*s",
-            self->task->report_size, self->task->report);
+
+    if (DEBUG_SHARD_LEVEL_2)
+        knd_log("== task report: %.*s",
+                self->task->report_size, self->task->report);
 
     self->report = self->task->report;
     self->report_size = self->task->report_size;

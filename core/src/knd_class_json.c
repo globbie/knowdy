@@ -468,7 +468,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
     size_t item_count;
     int i, err;
 
-    if (DEBUG_JSON_LEVEL_1)
+    if (DEBUG_JSON_LEVEL_2)
         knd_log(".. JSON export: \"%.*s\"  ",
                 self->entry->name_size, self->entry->name);
 

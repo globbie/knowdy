@@ -133,7 +133,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
             return make_gsl_err(gsl_FAIL);
         }
 
-        if (DEBUG_REPO_LEVEL_TMP)
+        if (DEBUG_REPO_LEVEL_2)
             knd_log("++ class already exists: %.*s!", name_size, name);
 
         self->class = entry->class;

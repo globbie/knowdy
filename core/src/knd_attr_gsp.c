@@ -65,7 +65,7 @@ static int aggr_item_export_GSP(struct kndAttrVar *parent_item,
 
     c = parent_item->attr->parent_class;
 
-    if (DEBUG_ATTR_GSP_LEVEL_TMP) {
+    if (DEBUG_ATTR_GSP_LEVEL_2) {
         knd_log(".. GSP export aggr item: %.*s (id:%.*s)",
                 parent_item->name_size, parent_item->name,
                 parent_item->id_size, parent_item->id);
@@ -74,7 +74,7 @@ static int aggr_item_export_GSP(struct kndAttrVar *parent_item,
     /*if (parent_item->id_size) {
         err = out->write(out, parent_item->id, parent_item->id_size);
         if (err) return err;
-        }*/
+    }*/
 
     if (parent_item->val_size) {
         err = out->write(out, parent_item->val, parent_item->val_size);
