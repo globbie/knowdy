@@ -1439,7 +1439,7 @@ static gsl_err_t import_proc(struct kndProc *self,
 
     err = self->proc_name_idx->set(self->proc_name_idx,
                                    proc->entry->name, proc->entry->name_size,
-                                   (void*)entry);
+                                   (void*)proc->entry);
     if (err) return make_gsl_err_external(err);
 
     if (DEBUG_PROC_LEVEL_2)
