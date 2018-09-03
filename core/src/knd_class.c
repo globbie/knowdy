@@ -1222,7 +1222,7 @@ extern int knd_class_get_attr(struct kndClass *self,
     struct kndAttrEntry *entry;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. \"%.*s\" class (repo: %.*s) to check attr \"%.*s\"",
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
@@ -1231,7 +1231,6 @@ extern int knd_class_get_attr(struct kndClass *self,
 
     // TODO: no allocation in select tasks
     if (!self->attr_name_idx) {
-        knd_log(".. create attr name idx..");
         err = ooDict_new(&self->attr_name_idx, KND_SMALL_DICT_SIZE);
         if (err) return err;
 
@@ -1247,7 +1246,7 @@ extern int knd_class_get_attr(struct kndClass *self,
             err = self->attr_name_idx->set(self->attr_name_idx,
                                       entry->name, entry->name_size, (void*)entry);
             if (err) return err;
-            if (DEBUG_CLASS_LEVEL_TMP)
+            if (DEBUG_CLASS_LEVEL_2)
                 knd_log("++ register primary attr: \"%.*s\"",
                         attr->name_size, attr->name);
         }
@@ -1363,7 +1362,7 @@ extern int knd_get_class_by_id(struct kndClass *self,
     struct kndState *state;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. repo \"%.*s\" to get class by id: \"%.*s\"..",
                 repo->name_size, repo->name, id_size, id);
     }

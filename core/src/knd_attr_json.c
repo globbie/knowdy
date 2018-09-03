@@ -177,11 +177,10 @@ static int aggr_item_export_JSON(struct kndAttrVar *parent_item,
 
         switch (item->attr->type) {
         case KND_ATTR_REF:
+            assert(item->class != NULL);
             c = item->class;
             //c->depth = self->depth + 1;
             //c->max_depth = self->max_depth;
-            //knd_log(".. export %.*s class, depth:%zu max depth:%zu\n\n",
-            //    c->name_size, c->name, c->depth, c->max_depth);
             
             err = c->export(c, KND_FORMAT_JSON, out);
             if (err) return err;
@@ -412,6 +411,7 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
             if (err) return err;
         }
     }
+
     return knd_OK;
 }
 

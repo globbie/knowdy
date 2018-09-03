@@ -430,7 +430,7 @@ static gsl_err_t present_class_selection(void *obj,
     struct kndTask *task = self->entry->repo->task;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log(".. presenting class \"%.*s\"..",
                 self->entry->name_size, self->entry->name);
 
@@ -513,8 +513,7 @@ static gsl_err_t present_class_selection(void *obj,
         c->max_depth = self->max_depth;
     }
 
-    knd_log(".. export JSON.. ");
-    c->str(c);
+    //c->str(c);
 
     err = c->export(c, KND_FORMAT_JSON, out);
     if (err) {

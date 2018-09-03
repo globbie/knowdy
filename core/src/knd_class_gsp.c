@@ -102,10 +102,7 @@ static int export_baseclass_vars(struct kndClass *self,
     err = out->write(out, "[!_is", strlen("[!_is"));                              RET_ERR();
     for (item = self->baseclass_vars; item; item = item->next) {
         err = out->writec(out, '{');                                              RET_ERR();
-
-        knd_log("== baseclass:");
         c = item->entry->class;
-
         err = out->write(out, c->entry->id, c->entry->id_size);             RET_ERR();
         if (item->attrs) {
             err = knd_attr_vars_export_GSP(item->attrs, out, 0, false);
@@ -116,7 +113,6 @@ static int export_baseclass_vars(struct kndClass *self,
     err = out->writec(out, ']');                                                  RET_ERR();
     return knd_OK;
 }
-
 
 /*static gsl_err_t read_GSP(struct kndClass *self,
                           const char *rec,
@@ -249,7 +245,6 @@ static int export_facets_GSP(struct kndClass *self, struct kndSet *set)
         err = out->write(out,  "}", 1);                                           RET_ERR();
     }
     err = out->write(out,  "]", 1);                                               RET_ERR();
-
     return knd_OK;
 }
 
@@ -969,15 +964,28 @@ static gsl_err_t check_list_item_id(void *obj,
             return make_gsl_err(gsl_FAIL);
         }
 
-        if (DEBUG_CLASS_GSP_LEVEL_TMP)
+        if (DEBUG_CLASS_GSP_LEVEL_2)
             c->str(c);
 
         attr_var->class = c;
         attr_var->class_entry = c->entry;
         break;
     case KND_ATTR_AGGR:
-        knd_log(".. checking aggr item id: %.*s", id_size, id);
+        // TODO
+        //knd_log(".. checking aggr item id: %.*s", id_size, id);
 
+        err = knd_get_class_by_id(parent_class, id, id_size, &c);
+        if (err) {
+            knd_log("-- no such class: %.*s", id_size, id);
+            return make_gsl_err(gsl_FAIL);
+        }
+
+        if (DEBUG_CLASS_GSP_LEVEL_2)
+            c->str(c);
+
+        attr_var->class = c;
+        attr_var->class_entry = c->entry;
+        
     default:
         break;
     }
@@ -992,7 +1000,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
     struct kndAttrVar *self = obj;
     struct kndAttrVar *attr_var;
     struct kndAttr *attr;
-    struct kndClass *conc = NULL;
+    struct kndClass *c = NULL;
     struct ooDict *class_name_idx;
     struct kndClassEntry *entry;
     struct kndMemPool *mempool = self->attr->parent_class->entry->repo->mempool;
@@ -1007,7 +1015,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
     memcpy(attr_var->name, name, name_size);
     attr_var->name_size = name_size;
 
-    if (DEBUG_CLASS_GSP_LEVEL_TMP) {
+    if (DEBUG_CLASS_GSP_LEVEL_2) {
         knd_log("== reading nested attr item: \"%.*s\" REC: %.*s VAL:%.*s",
                 name_size, name, 16, rec, attr_var->val_size, attr_var->val);
     }
@@ -1018,13 +1026,13 @@ static gsl_err_t read_nested_attr_var(void *obj,
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    conc = self->attr->conc;
+    c = self->attr->conc;
 
-    err = knd_class_get_attr(conc, name, name_size, &attr);
+    err = knd_class_get_attr(c, name, name_size, &attr);
     if (err) {
         knd_log("-- no attr \"%.*s\" in class \"%.*s\" :(",
                 name_size, name,
-                conc->entry->name_size, conc->entry->name);
+                c->entry->name_size, c->entry->name);
         if (err) return *total_size = 0, make_gsl_err_external(err);
     }
 
@@ -1032,10 +1040,10 @@ static gsl_err_t read_nested_attr_var(void *obj,
     case KND_ATTR_AGGR:
         if (attr->conc) break;
 
-        class_name_idx = conc->class_name_idx;
+        class_name_idx = c->class_name_idx;
         entry = class_name_idx->get(class_name_idx,
-                                  attr->ref_classname,
-                                  attr->ref_classname_size);
+                                    attr->ref_classname,
+                                    attr->ref_classname_size);
         if (!entry) {
             knd_log("-- aggr ref not resolved :( no such class: %.*s",
                     attr->ref_classname_size,
@@ -1070,6 +1078,31 @@ static gsl_err_t read_nested_attr_var(void *obj,
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
+    if (DEBUG_CLASS_GSP_LEVEL_2)
+        knd_log("== got attr var value: %.*s => %.*s",
+                attr_var->name_size, attr_var->name,
+                attr_var->val_size, attr_var->val);
+
+    /* resolve refs */
+    switch (attr->type) {
+    case KND_ATTR_REF:
+        err = knd_get_class_by_id(self->attr->parent_class,
+                                  attr_var->val, attr_var->val_size, &c);
+        if (err) {
+            knd_log("-- no such class: %.*s", attr_var->val_size, attr_var->val);
+            return make_gsl_err(gsl_FAIL);
+        }
+
+        if (DEBUG_CLASS_GSP_LEVEL_2)
+            c->str(c);
+
+        attr_var->class = c;
+        attr_var->class_entry = c->entry;
+        break;
+    default:
+        break;
+    }
+
     attr_var->next = self->children;
     self->children = attr_var;
     self->num_children++;
@@ -1094,7 +1127,7 @@ static gsl_err_t attr_var_parse(void *obj,
         }
     };
 
-    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+    if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log(".. parsing nested item: \"%.*s\"", 64, rec);
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -1450,7 +1483,7 @@ static gsl_err_t validate_attr_var_list(void *obj,
     struct kndMemPool *mempool = class_var->entry->repo->mempool;
     int err;
 
-    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+    if (DEBUG_CLASS_GSP_LEVEL_1)
         knd_log("\n.. \"%.*s\" class to validate list attr: %.*s..",
                 class_var->entry->name_size, class_var->entry->name,
                 name_size, name);
@@ -1475,14 +1508,13 @@ static gsl_err_t validate_attr_var_list(void *obj,
 
     switch (attr->type) {
     case KND_ATTR_REF:
-        knd_log("== array of refs: %.*s", name_size, name);
+        //knd_log("== array of refs: %.*s", name_size, name);
         break;
     case KND_ATTR_AGGR:
         if (attr->conc) break;
 
         // TODO
         class_name_idx = class_var->root_class->class_name_idx;
-
         entry = class_name_idx->get(class_name_idx,
                                     attr->ref_classname,
                                     attr->ref_classname_size);
@@ -1671,7 +1703,6 @@ static gsl_err_t class_var_read(void *obj,
 
     parser_err = gsl_parse_task(rec, total_size,
                                 specs, sizeof specs / sizeof specs[0]);
-    knd_log("== baseclass parsing:%d", parser_err.code);
     if (parser_err.code) return parser_err;
 
     knd_calc_num_id(cvar->id, cvar->id_size, &cvar->numid);
@@ -1701,7 +1732,7 @@ extern gsl_err_t knd_read_class_state(struct kndClass *self,
                                       const char *rec,
                                       size_t *total_size)
 {
-    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+    if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log(".. reading %.*s class state GSP: \"%.*s\"..",
                 self->name_size, self->name, 256, rec);
 
@@ -1743,7 +1774,7 @@ extern gsl_err_t knd_read_class_state(struct kndClass *self,
     if (err.code) return err;
 
     // TODO
-    self->str(self);
+    //self->str(self);
     /*state = self->states;
     state->val = (void*)class_update;
     state->update = class_update->update;
