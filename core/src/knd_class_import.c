@@ -591,7 +591,6 @@ static gsl_err_t import_attr_var(void *obj,
     attr_var->name_size = name_size;
 
     struct gslTaskSpec cdata_spec = {
-        .is_implied = true,
         .buf = attr_var->val,
         .buf_size = &attr_var->val_size,
         .max_buf_size = sizeof attr_var->val
