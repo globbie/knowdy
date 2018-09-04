@@ -900,7 +900,7 @@ extern gsl_err_t knd_select_class(void *obj,
         /* TODO: release resources */
         if (self->curr_class) {
             c = self->curr_class;
-            c->reset_inbox(c);
+            c->reset_inbox(c, true);
         }
         return parser_err;
     }

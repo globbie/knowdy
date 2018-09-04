@@ -181,7 +181,7 @@ static gsl_err_t parse_class_import(void *obj,
         knd_log(".. parsing the default class import: \"%.*s\"..", 64, rec);
 
     self->task->type = KND_UPDATE_STATE;
-    c->reset_inbox(c);
+    c->reset_inbox(c, false);
 
     return c->import(c, rec, total_size);
 }
@@ -291,12 +291,11 @@ static gsl_err_t parse_class_select(void *obj,
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class select: \"%.*s\"", 64, rec);
 
-    c->reset_inbox(c);
+    c->reset_inbox(c, false);
 
     err = c->select(c, rec, total_size);
     if (err.code) {
-        /* TODO: release resources */
-        c->reset_inbox(c);
+        c->reset_inbox(c, true);
         knd_log("-- class select failed :(");
         return err;
     }
@@ -721,12 +720,11 @@ static gsl_err_t parse_select_user(struct kndUser *self,
         break;
     }
 
-    parser_err = make_gsl_err(gsl_OK);
+    return make_gsl_err(gsl_OK);
 
  cleanup:
 
-    /* TODO: release resources */
-    //root_class->reset_inbox(root_class);
+    root_class->reset_inbox(root_class, true);
     //root_rel->reset_inbox(root_rel);
 
     return parser_err;

@@ -206,7 +206,8 @@ struct kndClass
     /***********  public methods ***********/
     void (*init)(struct kndClass  *self);
     void (*del)(struct kndClass   *self);
-    void (*reset_inbox)(struct kndClass   *self);
+    void (*reset_inbox)(struct kndClass   *self,
+                        bool rollback);
     void (*str)(struct kndClass *self);
 
     int (*open)(struct kndClass   *self,

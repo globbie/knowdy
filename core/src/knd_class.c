@@ -100,15 +100,27 @@ static int str_conc_elem(void *obj,
     return knd_OK;
 }
 
-static void reset_inbox(struct kndClass *self)
+static void reset_inbox(struct kndClass *self,
+                        bool rollback)
 {
     struct kndClass *c, *next_c;
     struct kndClassInst *obj, *next_obj;
+    struct ooDict *class_name_idx = self->entry->repo->root_class->class_name_idx;
+    struct kndSet *class_idx = self->entry->repo->root_class->class_idx;
+    int err;
 
     c = self->inbox;
     while (c) {
-        c->reset_inbox(c);
+        c->reset_inbox(c, rollback);
         next_c = c->next;
+
+        if (rollback) {
+            // TODO: remove from class_idx
+
+            err = class_name_idx->remove(class_name_idx, c->name, c->name_size);
+            // signal error?
+        }
+
         c->next = NULL;
         c = next_c;
     }
