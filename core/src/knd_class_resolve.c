@@ -537,7 +537,9 @@ static int resolve_attr_vars(struct kndClass *self,
     struct kndClass *c;
     struct kndProc *proc;
     struct ooDict *attr_name_idx = self->attr_name_idx;
-    int err;
+    struct glbOutput *log = self->entry->repo->log;
+    struct kndTask *task = self->entry->repo->task;
+    int e, err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. resolving attr vars of class %.*s",
@@ -549,6 +551,13 @@ static int resolve_attr_vars(struct kndClass *self,
                                    attr_var->name, attr_var->name_size);
         if (!entry) {
             knd_log("-- no such attr: %.*s", attr_var->name_size, attr_var->name);
+            log->reset(log);
+            e = log->write(log, attr_var->name, attr_var->name_size);
+            if (e) return e;
+            e = log->write(log, ": no such attribute",
+                           strlen(": no such attribute"));
+            if (e) return e;
+            task->http_code = HTTP_NOT_FOUND;
             return knd_FAIL;
         }
 
