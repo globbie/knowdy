@@ -126,9 +126,9 @@ extern gsl_err_t knd_parse_gloss_array(void *obj,
         .parse = parse_gloss_item
     };
 
-    if (DEBUG_GSL_LEVEL_2)
-        knd_log(".. %.*s: reading gloss",
-                self->entry->name_size, self->entry->name);
+    if (DEBUG_GSL_LEVEL_2) {
+        knd_log(".. %.*s: reading gloss", self->entry->name_size, self->entry->name);
+    }
 
     return gsl_parse_array(&item_spec, rec, total_size);
 }

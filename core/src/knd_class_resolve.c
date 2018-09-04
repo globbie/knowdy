@@ -629,6 +629,7 @@ static int resolve_attrs(struct kndClass *self)
     struct kndProc *root_proc;
     struct kndProcEntry *proc_entry;
     struct ooDict *class_name_idx = self->entry->repo->root_class->class_name_idx;
+    //struct kndSet *attr_idx = self->entry->repo->root_class->attr_idx;
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
@@ -657,6 +658,10 @@ static int resolve_attrs(struct kndClass *self)
                                        attr_entry->name, attr_entry->name_size,
                                        (void*)attr_entry);                        RET_ERR();
 
+
+        // TODO: assign unique attr_id and register
+
+        
         /* computed attr idx */
         if (attr->proc) {
             self->computed_attrs[self->num_computed_attrs] = attr;

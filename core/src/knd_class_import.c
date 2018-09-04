@@ -170,19 +170,21 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     int err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. set class name: %.*s",
-                name_size, name);
+        knd_log(".. set class name: %.*s", name_size, name);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= sizeof self->entry->name) return make_gsl_err(gsl_LIMIT);
 
     entry = class_name_idx->get(class_name_idx, name, name_size);
     if (!entry) {
-        err = mempool->new_class_entry(mempool, &entry);
+
+        entry = self->entry;
+        /*err = mempool->new_class_entry(mempool, &entry);
         if (err) return make_gsl_err_external(err);
         entry->repo = repo;
         entry->class = self;
         self->entry = entry;
+        */
 
         memcpy(entry->name, name, name_size);
         entry->name_size = name_size;
@@ -204,6 +206,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         self->entry =     entry;
         self->name =      entry->name;
         self->name_size = name_size;
+
+        // TODO release curr entry
         return make_gsl_err(gsl_OK);
     }
 
@@ -576,7 +580,7 @@ static gsl_err_t import_attr_var(void *obj,
 
     mempool = self->root_class->entry->repo->mempool;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. import attr var: \"%.*s\" REC: %.*s",
                 name_size, name, 64, rec);
 
@@ -623,7 +627,7 @@ static gsl_err_t import_attr_var(void *obj,
 
     append_attr_var(self, attr_var);
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log("++ attr var value: %.*s", attr_var->val_size, attr_var->val);
 
     return make_gsl_err(gsl_OK);
@@ -917,7 +921,7 @@ static gsl_err_t parse_baseclass(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_1)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. parsing the base class: \"%.*s\"", 32, rec);
 
     err = mempool->new_class_var(mempool, &classvar);
@@ -943,8 +947,11 @@ extern gsl_err_t knd_import_class(void *obj,
 {
     struct kndClass *self = obj;
     struct kndClass *c;
+    struct kndClassEntry *entry;
     struct kndMemPool *mempool = self->entry->repo->mempool;
-    int err;
+    struct glbOutput *log = self->entry->repo->log;
+    struct kndTask *task = self->entry->repo->task;
+    int e, err;
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
@@ -952,6 +959,12 @@ extern gsl_err_t knd_import_class(void *obj,
 
     err = mempool->new_class(mempool, &c);
     if (err) return *total_size = 0, make_gsl_err_external(err);
+
+    err = mempool->new_class_entry(mempool, &entry);
+    if (err) return make_gsl_err_external(err);
+    entry->repo = self->entry->repo;
+    entry->class = c;
+    c->entry = entry;
 
     c->root_class = self;
     
@@ -1077,6 +1090,12 @@ extern gsl_err_t knd_import_class(void *obj,
     }
 
     if (!c->name_size) {
+        knd_log("-- no class name specified?");
+        log->reset(log);
+        e = log->write(log, "class name not specified",
+                       strlen("class name not specified"));
+        if (e) return make_gsl_err_external(e);
+        task->http_code = HTTP_BAD_REQUEST;
         parser_err = make_gsl_err(gsl_FAIL);
         goto final;
     }
