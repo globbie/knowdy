@@ -86,7 +86,7 @@ struct kndAttrValidator
 
 struct kndAttrVar
 {
-    knd_task_spec_type type;
+    //knd_task_spec_type type;
     char name[KND_NAME_SIZE];
     size_t name_size;
 
@@ -150,6 +150,7 @@ struct kndAttr
 
     char name[KND_NAME_SIZE];
     size_t name_size;
+    size_t numid;
 
     struct kndClass *parent_class;
     struct kndClass *conc;
@@ -170,10 +171,6 @@ struct kndAttr
     bool is_implied;
 
     struct kndTask *task;
-
-//    const char *locale;
-//    size_t locale_size;
-//    knd_format format;
 
     /* if refclass is empty: assume self reference by default */
     char ref_classname[KND_NAME_SIZE];

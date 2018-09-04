@@ -119,6 +119,7 @@ struct kndClassEntry
     struct ooDict *class_name_idx;
     struct kndSet *inst_idx;
     struct ooDict *inst_name_idx;
+    struct kndSet *attr_idx;
 
     struct ooDict *reverse_attr_name_idx;
 

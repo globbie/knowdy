@@ -64,9 +64,6 @@ struct kndMemPool
     struct kndSet *sets;
     size_t max_sets;
     size_t num_sets;
-    //struct kndSetElem *set_elems;
-    //size_t max_set_elems;
-    //size_t num_set_elems;
     struct kndSetElemIdx *set_elem_idxs;
     size_t max_set_elem_idxs;
     size_t num_set_elem_idxs;

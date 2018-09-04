@@ -30,14 +30,8 @@ struct kndRepo
     char schema_path[KND_PATH_SIZE];
     size_t schema_path_size;
 
-    //char frozen_output_file_name[KND_PATH_SIZE];
-    //size_t frozen_output_file_name_size;
-
     struct kndUserContext *user_ctx;
     struct kndRepo *base;
-
-    //const char *frozen_name_idx_path;
-    //size_t frozen_name_idx_path_size;
 
     const char *locale;
     size_t locale_size;
@@ -57,14 +51,6 @@ struct kndRepo
 
     struct kndMemPool *mempool;
 
-    /*struct kndRepoMigration *migrations[KND_MAX_MIGRATIONS];
-    size_t num_migrations;
-    struct kndRepoMigration *migration;
-    
-    struct kndRepoCache *cache;
-    struct kndRepoCache *curr_cache;
-    */
-
     struct kndStateControl *state_ctrl;
 
     bool restore_mode;
@@ -72,9 +58,11 @@ struct kndRepo
 
     struct kndClass *root_class;
     size_t next_class_numid;
-
+    // TODO idxs
+    
     struct kndProc *root_proc;
     struct kndRel *root_rel;
+
     
     struct kndClass *curr_class;
     
@@ -82,9 +70,6 @@ struct kndRepo
     void (*del)(struct kndRepo *self);
     void (*str)(struct kndRepo *self);
     int (*init)(struct kndRepo *self);
-
-    //int (*read_state)(struct kndRepo *self, const char *rec, size_t *chunk_size);
-    //gsl_err_t (*parse_task)(void *self, const char *rec, size_t *chunk_size);
 };
 
 extern int kndRepo_init(struct kndRepo *self);
