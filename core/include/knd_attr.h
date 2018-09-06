@@ -31,6 +31,7 @@ struct glbOutput;
 struct kndTranslation;
 struct kndAttr;
 struct kndProc;
+struct kndClassUpdate;
 
 typedef enum knd_attr_type {
     KND_ATTR_NONE,
@@ -84,6 +85,12 @@ struct kndAttrValidator
                 size_t val_size);
 };
 
+struct kndAttrUpdate
+{
+    struct kndAttr *attr;
+    struct kndAttrVar *attr_var;
+};
+
 struct kndAttrVar
 {
     char name[KND_NAME_SIZE];
@@ -92,7 +99,8 @@ struct kndAttrVar
     char id[KND_ID_SIZE];
     size_t id_size;
 
-    char val[KND_VAL_SIZE];
+    char valbuf[KND_VAL_SIZE];
+    char *val;
     size_t val_size;
 
     long numval;
@@ -132,6 +140,9 @@ struct kndAttrEntry
 {
     char name[KND_NAME_SIZE];
     size_t name_size;
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    size_t numid;
 
     struct kndAttr *attr;
     struct kndAttrVar *attr_var;
@@ -151,6 +162,7 @@ struct kndAttr
     size_t name_size;
     size_t numid;
 
+    struct kndAttrEntry *entry;
     struct kndClass *parent_class;
     struct kndClass *conc;
 
@@ -245,3 +257,5 @@ extern int knd_compute_num_value(struct kndAttr *attr,
                                  struct kndAttrVar *attr_var,
                                  long *result);
 
+extern int knd_apply_attr_var_updates(struct kndClass *self,
+                                      struct kndClassUpdate *update);

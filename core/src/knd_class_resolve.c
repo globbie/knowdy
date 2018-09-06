@@ -403,9 +403,9 @@ static int resolve_aggr_item(struct kndClass *self,
         switch (attr->type) {
         case KND_ATTR_NUM:
             if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-                knd_log(".. resolving default num attr: %.*s val:%.*s",
+                knd_log(".. resolving default num attr: %.*s val:\"%.*s\" val size:%zu",
                         item->name_size, item->name,
-                        item->val_size, item->val);
+                        item->val_size, item->val, item->val_size);
 
             memcpy(buf, item->val, item->val_size);
             buf_size = item->val_size;
@@ -637,8 +637,9 @@ static int resolve_attrs(struct kndClass *self)
     struct kndClassEntry *entry;
     struct kndProc *root_proc;
     struct kndProcEntry *proc_entry;
-    struct ooDict *class_name_idx = self->entry->repo->root_class->class_name_idx;
-    //struct kndSet *attr_idx = self->entry->repo->root_class->attr_idx;
+    struct kndRepo *repo = self->entry->repo;
+    struct ooDict *class_name_idx = repo->root_class->class_name_idx;
+    struct kndSet *attr_idx = repo->attr_idx;
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
@@ -648,7 +649,8 @@ static int resolve_attrs(struct kndClass *self)
     err = ooDict_new(&self->attr_name_idx, KND_SMALL_DICT_SIZE);                       RET_ERR();
 
     for (attr = self->attrs; attr; attr = attr->next) {
-        attr_entry = self->attr_name_idx->get(self->attr_name_idx, attr->name, attr->name_size);
+        attr_entry = self->attr_name_idx->get(self->attr_name_idx,
+                                              attr->name, attr->name_size);
         if (attr_entry) {
             knd_log("-- %.*s attr already exists?", attr->name_size, attr->name);
             return knd_FAIL;
@@ -662,14 +664,15 @@ static int resolve_attrs(struct kndClass *self)
         memcpy(attr_entry->name, attr->name, attr->name_size);
         attr_entry->name_size = attr->name_size;
         attr_entry->attr = attr;
+        attr->entry = attr_entry;
+
 
         err = self->attr_name_idx->set(self->attr_name_idx,
                                        attr_entry->name, attr_entry->name_size,
                                        (void*)attr_entry);                        RET_ERR();
-
-
-        // TODO: assign unique attr_id and register
-
+        err = attr_idx->add(attr_idx,
+                            attr_entry->id, attr_entry->id_size,
+                            (void*)attr_entry);                                   RET_ERR();
         
         /* computed attr idx */
         if (attr->proc) {
@@ -752,10 +755,10 @@ static int resolve_objs(struct kndClass     *self,
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_1)
         knd_log("..resolving objs, num objs: %zu",
-                self->obj_inbox_size);
+                self->inst_inbox_size);
 
     if (class_update) {
-        class_update->insts = calloc(self->obj_inbox_size,
+        class_update->insts = calloc(self->inst_inbox_size,
                                      sizeof(struct kndClassInst*));
         if (!class_update->insts) {
             return knd_NOMEM;
@@ -770,7 +773,7 @@ static int resolve_objs(struct kndClass     *self,
         state->numid = self->num_inst_states;
     }
 
-    for (obj = self->obj_inbox; obj; obj = obj->next) {
+    for (obj = self->inst_inbox; obj; obj = obj->next) {
         if (obj->states->phase == KND_REMOVED) {
             knd_log("NB: \"%.*s\" obj to be removed", obj->name_size, obj->name);
             goto update;
@@ -785,10 +788,10 @@ static int resolve_objs(struct kndClass     *self,
     update:
         if (class_update) {
             /* NB: should never happen: mismatch of num objs */
-            if (class_update->num_insts >= self->obj_inbox_size) {
+            if (class_update->num_insts >= self->inst_inbox_size) {
                 knd_log("-- num objs mismatch in %.*s:  %zu vs %zu:(",
                         self->entry->name_size, self->entry->name,
-                        class_update->num_insts, self->obj_inbox_size);
+                        class_update->num_insts, self->inst_inbox_size);
                 return knd_FAIL;
             }
             class_update->insts[class_update->num_insts] = obj;
@@ -972,13 +975,18 @@ extern int knd_resolve_class(struct kndClass *self,
     struct kndState *state;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_1)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. resolving class: \"%.*s\"",
                 self->name_size, self->name);
 
     if (self->is_resolved) {
-        if (self->obj_inbox_size) {
-            err = resolve_objs(self, class_update);                                     RET_ERR();
+
+        if (self->inst_inbox_size) {
+            err = resolve_objs(self, class_update);                               RET_ERR();
+        }
+
+        if (self->attr_var_inbox_size) {
+            err = knd_apply_attr_var_updates(self, class_update);                 RET_ERR();
         }
         return knd_OK;
     } else {
@@ -1032,7 +1040,7 @@ extern int knd_resolve_class(struct kndClass *self,
         }
     }
 
-    if (self->obj_inbox_size) {
+    if (self->inst_inbox_size) {
         err = resolve_objs(self, class_update);                                   RET_ERR();
     }
 

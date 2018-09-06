@@ -27,7 +27,7 @@ static int freeze_objs(struct kndClass *self,
     if (DEBUG_CONC_LEVEL_2)
         knd_log(".. freezing objs of class \"%.*s\", total:%zu  valid:%zu",
                 self->entry->name_size, self->entry->name,
-                self->entry->obj_name_idx->size, self->entry->num_objs);
+                self->entry->obj_name_idx->size, self->entry->num_insts);
 
     out = self->entry->repo->out;
     out->reset(out);
@@ -136,7 +136,7 @@ static int freeze_objs(struct kndClass *self,
     curr_dir_size += num_size;
 
     num_size = sprintf(curr_dir, "{tot %lu}",
-                       (unsigned long)self->entry->num_objs);
+                       (unsigned long)self->entry->num_insts);
     curr_dir +=      num_size;
     curr_dir_size += num_size;
 
@@ -305,7 +305,7 @@ static int freeze(struct kndClass *self)
     }
 
     /* any instances to freeze? */
-    if (self->entry && self->entry->num_objs) {
+    if (self->entry && self->entry->num_insts) {
         err = freeze_objs(self, &total_frozen_size, curr_dir, &chunk_size);       RET_ERR();
         curr_dir +=      chunk_size;
         curr_dir_size += chunk_size;
@@ -538,7 +538,7 @@ static gsl_err_t parse_obj_dir_size(void *obj,
         {  .name = "tot",
            .name_size = strlen("tot"),
            .parse = gsl_parse_size_t,
-           .obj = &self->num_objs
+           .obj = &self->num_insts
         }
     };
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -1001,7 +1001,7 @@ static int parse_obj_dir_trailer(struct kndClass *self,
     parent_entry->fd = fd;
 
     if (!parent_entry->obj_name_idx) {
-        err = ooDict_new(&parent_entry->obj_name_idx, parent_entry->num_objs);    RET_ERR();
+        err = ooDict_new(&parent_entry->obj_name_idx, parent_entry->num_insts);    RET_ERR();
 
         err = self->entry->repo->mempool->new_set(self->entry->repo->mempool,
                                                   &parent_entry->obj_idx);        RET_ERR();
@@ -1014,7 +1014,7 @@ static int parse_obj_dir_trailer(struct kndClass *self,
     if (DEBUG_CONC_LEVEL_2)
         knd_log("== \"%.*s\" total objs: %zu",
                 parent_entry->name_size, parent_entry->name,
-                parent_entry->num_objs);
+                parent_entry->num_insts);
 
     return knd_OK;
 }

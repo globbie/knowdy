@@ -77,6 +77,7 @@ static int knd_sync_update(struct kndStateControl *self,
     struct glbOutput *out = self->repo->task->out;
     struct glbOutput *file_out = self->repo->task->file_out;
     struct stat st;
+    size_t planned_journal_size = 0;
     int err;
 
     /* linearize an update */
@@ -87,15 +88,35 @@ static int knd_sync_update(struct kndStateControl *self,
     out->reset(out);
     err = out->write(out, self->repo->path, self->repo->path_size);
     if (err) return err;
-    err = out->write(out, "/journal.log", strlen("/journal.log"));
+    err = out->writef(out, "/journal%zu.log", self->repo->num_journals);
     if (err) return err;
     out->buf[out->buf_size] = '\0';
 
     if (stat(out->buf, &st)) {
-        knd_log("-- initializing the journal: %.*s", out->buf_size, out->buf);
+        knd_log(".. initializing the journal: %.*s", out->buf_size, out->buf);
         err = knd_write_file((const char*)out->buf,
                              "[!update\n", strlen("[!update\n"));
         if (err) return err;
+    } else {
+        planned_journal_size = st.st_size + file_out->buf_size;
+        if (planned_journal_size >= self->repo->max_journal_size) {
+
+            knd_log("!NB: journal size limit reached!");
+
+            self->repo->num_journals++;
+
+            out->reset(out);
+            err = out->write(out, self->repo->path, self->repo->path_size);
+            if (err) return err;
+            err = out->writef(out, "/journal%zu.log", self->repo->num_journals);
+            if (err) return err;
+            out->buf[out->buf_size] = '\0';
+
+            knd_log(".. switch journal: %.*s", out->buf_size, out->buf);
+            err = knd_write_file((const char*)out->buf,
+                                 "[!update\n", strlen("[!update\n"));
+            if (err) return err;
+        }
     }
 
     // TODO: call a goroutine
@@ -136,6 +157,7 @@ static int knd_confirm(struct kndStateControl *self,
     // TODO: check conflicts with previous updates
 
     // TODO: check the journal file size limit
+
     
     if (self->num_updates >= self->max_updates) {
         knd_log("-- max update limit exceeded, time to freeze?");
@@ -165,6 +187,12 @@ static int knd_confirm(struct kndStateControl *self,
     err = file_out->writec(file_out, '{');                                        RET_ERR();
     err = file_out->write(file_out, "state ", strlen("state "));                  RET_ERR();
     err = file_out->write(file_out, update->id, update->id_size);                 RET_ERR();
+
+    err = file_out->writec(file_out, '{');                                        RET_ERR();
+    err = file_out->write(file_out, "log ", strlen("log "));                      RET_ERR();
+    err = file_out->writef(file_out, "%zu", self->repo->num_journals);            RET_ERR();
+    err = file_out->writec(file_out, '}');                                        RET_ERR();
+
     err = file_out->writec(file_out, '}');                                        RET_ERR();
 
     out->reset(out);
@@ -191,6 +219,9 @@ static int knd_confirm(struct kndStateControl *self,
     err = out->writec(out, '{');                                                  RET_ERR();
     err = out->writef(out, "\"update\":%zu", update->numid);                      RET_ERR();
     err = out->writec(out, '}');                                                  RET_ERR();
+
+    // TODO: trigger pushes to subscription channels
+
     return knd_OK;
 }
 

@@ -34,15 +34,6 @@ typedef enum knd_state_type { KND_INIT_STATE,
                               KND_VALID_STATE
 } knd_state_type;
 
-struct kndClassUpdate
-{
-    struct kndClass *class;
-    struct kndClassEntry *entry;
-    struct kndUpdate *update;
-    struct kndClassInst **insts;
-    size_t num_insts;
-};
-
 struct kndRelUpdate
 {
     struct kndRel *rel;
@@ -99,6 +90,7 @@ struct kndState
     size_t id_size;
     size_t numid;
     struct kndUpdate *update;
+    void *obj;
     void *val;
     size_t val_size;
     struct kndState *next;
@@ -107,15 +99,10 @@ struct kndState
 struct kndStateControl
 {
     struct kndUser *admin;
-
-    //char state[KND_STATE_SIZE];
-    //char next_state[KND_STATE_SIZE];
-    //size_t global_state_count;
-
     struct kndTask *task;
     struct kndRepo *repo;
 
-    /** transaction ledger:
+    /** transaction log:
      * index of confirmed updates */
     struct kndUpdate **updates;
     size_t max_updates;

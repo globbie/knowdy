@@ -518,6 +518,9 @@ extern int kndRepo_new(struct kndRepo **repo,
     c->entry->repo = self;
     self->root_class = c;
 
+    err = mempool->new_set(mempool, &self->attr_idx);
+    if (err) goto error;
+    
     err = kndProc_new(&proc, mempool);
     if (err) goto error;
     proc->entry->repo = self;
@@ -529,6 +532,7 @@ extern int kndRepo_new(struct kndRepo **repo,
     self->root_rel = rel;
 
     self->mempool = mempool;
+    self->max_journal_size = KND_FILE_BUF_SIZE;
 
     self->del = kndRepo_del;
     self->str = kndRepo_str;

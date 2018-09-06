@@ -119,10 +119,11 @@ static gsl_err_t select_by_attr(void *obj,
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+    log->reset(log);
 
     c = self->curr_attr->parent_class;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2) {
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
         knd_log("== select by attr value: \"%.*s\" of \"%.*s\" resolved:%d",
                 name_size, name, c->name_size, c->name, c->is_resolved);
     }
@@ -137,26 +138,23 @@ static gsl_err_t select_by_attr(void *obj,
 
     err = set->get_facet(set, self->curr_attr, &facet);
     if (err) {
-        knd_log("-- no such facet: \"%.*s\" :(",
-                self->curr_attr->name_size, self->curr_attr->name);
-        log->reset(log);
-        e = log->write(log, name, name_size);
-        if (e) return make_gsl_err_external(e);
-
-        e = log->write(log, " no such facet: ",
-                               strlen(" no such facet: "));
-        if (e) return make_gsl_err_external(e);
+        log->writef(log, "no such facet: \"%.*s\"", name_size, name);
         task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err_external(knd_NO_MATCH);
     }
 
     set = facet->set_name_idx->get(facet->set_name_idx,
                                    name, name_size);
-    if (!set) return make_gsl_err(gsl_FAIL);
+    if (!set) {
+        log->writef(log, "no relation to class: %.*s", name_size, name);
+        task->http_code = HTTP_NOT_FOUND;
+        return make_gsl_err(gsl_FAIL);
+    }
 
     err = knd_get_class(self, name, name_size, &set->base->class);
     if (err) {
-        knd_log("-- no such class: %.*s", name_size, name);
+        log->writef(log, "no relation to class: %.*s", name_size, name);
+        task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err_external(err);
     }
 
@@ -196,15 +194,8 @@ static gsl_err_t parse_attr_select(void *obj,
                 name_size, name,
                 self->curr_baseclass->name_size,
                 self->curr_baseclass->name);
-        log->reset(log);
-        e = log->write(log, name, name_size);
-        if (e) return *total_size = 0, make_gsl_err_external(e);
-
-        e = log->write(log, ": no such attribute",
-                               strlen(": no such attribute"));
-        if (e) return *total_size = 0, make_gsl_err_external(e);
+        log->writef(log, ": no such attribute: %.*s", name_size, name);
         task->http_code = HTTP_NOT_FOUND;
-
         return *total_size = 0, make_gsl_err_external(err);
     }
 
@@ -223,35 +214,57 @@ static gsl_err_t parse_attr_select(void *obj,
 }
 
 static gsl_err_t run_set_attr_var(void *obj,
-                                  const char *name, size_t name_size)
+                                  const char *val, size_t val_size)
 {
     struct kndClass *self = obj;
+    struct kndClass *c = self->curr_class;
+    struct kndAttr *attr;
     struct kndAttrVar *attr_var;
     struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->entry->repo->task;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndState *state;
     int err, e;
 
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+    if (!val_size) return make_gsl_err(gsl_FORMAT);
+    if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    attr = self->curr_attr;
+    if (!attr) {
+        log->reset(log);
+        e = log->write(log, "-- no attr selected",
+                               strlen("-- no attr selected"));
+        if (e) return make_gsl_err_external(e);
+        task->http_code = HTTP_BAD_REQUEST;
+        return make_gsl_err_external(err);
+    }
 
     attr_var = self->curr_attr_var;
 
     if (!attr_var) {
-        knd_log("-- couldn't update the value of %.*s", name_size, name);
-        log->reset(log);
-        e = log->write(log, name, name_size);
-        if (e) return make_gsl_err_external(e);
-        e = log->write(log, ": value update failure",
-                               strlen(": value update failure"));
-        if (e) return make_gsl_err_external(e);
-        task->http_code = HTTP_CONFLICT;
-        return make_gsl_err_external(err);
+        knd_log(".. set attr \"%.*s\" with value %.*s",
+                attr->name_size, attr->name, val_size, val);
+        return make_gsl_err(gsl_OK);
     }
-    
+
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
-        knd_log(".. update attr var %.*s with value: \"%.*s\"",
-                attr_var->name_size, attr_var->name, name_size, name);
+        knd_log(".. updating attr var %.*s with value: \"%.*s\" class:%p",
+                attr_var->name_size, attr_var->name, val_size, val, c);
     }
+
+    err = mempool->new_state(mempool, &state);
+    if (err) return make_gsl_err_external(err);
+
+    state->phase = KND_UPDATED;
+    state->obj = (void*)attr_var;
+    state->val = (void*)val;
+    state->val_size = val_size;
+    state->next = self->attr_var_inbox;
+
+    c->attr_var_inbox = state;
+    c->attr_var_inbox_size++;
+
+    task->type = KND_UPDATE_STATE;
 
     return make_gsl_err(gsl_OK);
 }
@@ -370,11 +383,12 @@ static gsl_err_t parse_baseclass_select(void *obj,
                                         size_t *total_size)
 {
     struct kndClass *self = obj;
+    struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->entry->repo->task;
     gsl_err_t err;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-        knd_log(".. select by baseclass \"%.*s\"..", 16, rec);
+        knd_log(".. select by baseclass \"%.*s\"..", 64, rec);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -402,7 +416,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
         }
     };
 
-   task->type = KND_SELECT_STATE;
+    task->type = KND_SELECT_STATE;
 
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) return err;
@@ -559,7 +573,7 @@ static gsl_err_t run_select_class_state(void *obj, const char *name, size_t name
                          strlen("\"_total\":"));
         if (err) return make_gsl_err_external(err);
 
-        err = out->writef(out, "%zu", self->num_objs);
+        err = out->writef(out, "%zu", self->num_insts);
         if (err) return make_gsl_err_external(err);
 
         err = out->writec(out, ',');
@@ -814,6 +828,7 @@ extern gsl_err_t knd_select_class(void *obj,
     struct kndClass *self = obj;
     struct kndClass *c;
     struct glbOutput *log = self->entry->repo->log;
+    struct kndTask *task = self->entry->repo->task;
     int err;
     gsl_err_t parser_err;
 
@@ -821,6 +836,7 @@ extern gsl_err_t knd_select_class(void *obj,
         knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
 
     self->depth = 0;
+    self->selected_state_numid = 0;
     self->curr_class = NULL;
     self->curr_baseclass = NULL;
 
@@ -835,6 +851,11 @@ extern gsl_err_t knd_select_class(void *obj,
           .is_selector = true,
           .run = run_get_class_by_numid,
           .obj = self
+        },
+        { .name = "_state",
+          .name_size = strlen("_state"),
+          .parse = gsl_parse_size_t,
+          .obj = &self->selected_state_numid
         },
         { .type = GSL_SET_STATE,
           .name = "_rm",
@@ -908,7 +929,10 @@ extern gsl_err_t knd_select_class(void *obj,
     /* any updates happened? */
     if (self->curr_class) {
         c = self->curr_class;
-        if (c->inbox_size || c->obj_inbox_size) {
+        if (task->type == KND_UPDATE_STATE) {
+            if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+                knd_log("NB: update state of class %.*s %p",
+                        c->name_size, c->name, c);
             c->next = self->inbox;
             self->inbox = c;
             self->inbox_size++;

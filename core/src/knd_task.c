@@ -371,11 +371,12 @@ static int build_report(struct kndTask *self)
         return knd_OK;
     }
 
-    /*if (!self->out->buf_size) {
+    if (!self->out->buf_size) {
         err = self->out->write(self->out,
-                               "{}", strlen("{}"));
+                               "{\"result\":\"OK\"}",
+                               strlen("{\"result\":\"OK\"}"));
         if (err) return err;
-        }*/
+    }
 
     if (DEBUG_TASK_LEVEL_TMP) {
         obj_size = self->out->buf_size;

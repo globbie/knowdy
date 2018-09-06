@@ -45,65 +45,48 @@ extern int knd_make_id_path(char *buf,
 		     const char *id, 
 		     const char *filename);
 
-extern int 
-knd_get_elem_suffix(const char *name,
-                    char *buf);
+extern int  knd_get_elem_suffix(const char *name,
+                                char *buf);
+extern unsigned char * knd_pack_int(unsigned char *buf,
+                                    unsigned int val);
+extern unsigned long knd_unpack_int(const unsigned char *buf);
 
+extern void knd_remove_nonprintables(char *data);
 
-extern unsigned char *
-knd_pack_int(unsigned char *buf,
-             unsigned int val);
-
-extern unsigned long
-knd_unpack_int(const unsigned char *buf);
-
-
-extern int 
-knd_remove_nonprintables(char *data);
-
-
-extern void 
-knd_log(const char *fmt, ...);
+extern void knd_log(const char *fmt, ...);
 
 extern int obj_id_base[256];
 extern const char *obj_id_seq;
 
-extern int
-knd_read_UTF8_char(const char *rec,
-                   size_t rec_size,
-                   size_t *val,
-                   size_t *len);
+extern int knd_read_UTF8_char(const char *rec,
+                              size_t rec_size,
+                              size_t *val,
+                              size_t *len);
 
-extern int
-knd_parse_num(const char *val,
-              long *result);
+extern int knd_parse_num(const char *val,
+                         long *result);
 
-extern int
-knd_read_name(char *output,
-              size_t *output_size,
-              const char *rec,
-              size_t rec_size);
+extern int knd_read_name(char *output,
+                         size_t *output_size,
+                         const char *rec,
+                         size_t rec_size);
 
-extern int
-knd_parse_IPV4(char *ip, unsigned long *ip_val);
+extern int knd_parse_IPV4(char *ip, unsigned long *ip_val);
 
-extern int
-knd_get_schema_name(const char *rec,
-                    char *buf,
-                    size_t *buf_size,
-                    size_t *total_size);
+extern int knd_get_schema_name(const char *rec,
+                               char *buf,
+                               size_t *buf_size,
+                               size_t *total_size);
+extern int knd_parse_incipit(const char *rec,
+                             size_t rec_size,
+                             char *result_tag_name,
+                             size_t *result_tag_name_size,
+                             char *result_name,
+                             size_t *result_name_size);
 
-extern int
-knd_parse_incipit(const char *rec,
-                  size_t rec_size,
-                  char *result_tag_name,
-                  size_t *result_tag_name_size,
-                  char *result_name,
-                  size_t *result_name_size);
-
-int knd_parse_dir_size(const char *rec,
-                       size_t rec_size,
-                       const char **val,
-                       size_t *val_size,
-                       size_t *total_trailer_size);
+extern int knd_parse_dir_size(const char *rec,
+                              size_t rec_size,
+                              const char **val,
+                              size_t *val_size,
+                              size_t *total_trailer_size);
 

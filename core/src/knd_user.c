@@ -283,6 +283,8 @@ static gsl_err_t parse_class_select(void *obj,
     struct kndClass *c;
     gsl_err_t err;
 
+    self->task->out->reset(self->task->out);
+
     c = self->repo->root_class;
     if (ctx) {
         c = ctx->repo->root_class;
@@ -386,7 +388,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
                 name_size, name);
         log->reset(log);
         e = log->write(log,   "no such user: ",
-                       strlen("no such user:"));
+                       strlen("no such user: "));
         if (e) return make_gsl_err_external(e);
         e = log->write(log, name, name_size);
         if (e) return make_gsl_err_external(e);
@@ -508,9 +510,9 @@ static gsl_err_t remove_user(void *data,
 
     self->task->type = KND_UPDATE_STATE;
 
-    user_inst->next = c->obj_inbox;
-    c->obj_inbox = user_inst;
-    c->obj_inbox_size++;
+    user_inst->next = c->inst_inbox;
+    c->inst_inbox = user_inst;
+    c->inst_inbox_size++;
 
     root_class = c->root_class;
 
@@ -577,7 +579,7 @@ static gsl_err_t parse_select_user(struct kndUser *self,
                                    const char *rec,
                                    size_t *total_size)
 {
-    struct kndClass *root_class;
+    struct kndClass *root_class = NULL;
 
     /* reset defaults */
     self->max_depth  = 0;
@@ -724,7 +726,10 @@ static gsl_err_t parse_select_user(struct kndUser *self,
 
  cleanup:
 
-    root_class->reset_inbox(root_class, true);
+    if (root_class) {
+        root_class->reset_inbox(root_class, true);
+    }
+
     //root_rel->reset_inbox(root_rel);
 
     return parser_err;
