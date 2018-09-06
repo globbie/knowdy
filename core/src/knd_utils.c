@@ -17,6 +17,8 @@
 
 // #include <openssl/sha.h>
 
+#include <glb-lib/output.h>
+
 #include "knd_config.h"
 #include "knd_utils.h"
 
@@ -40,8 +42,7 @@ int obj_id_base[256] = {
 
 const char *obj_id_seq = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-extern void 
-knd_log(const char *fmt, ...)
+extern void knd_log(const char *fmt, ...)
 {
   va_list args;
     va_start(args, fmt);
@@ -344,8 +345,7 @@ knd_make_id_path(char *buf,
 }
 
 
-extern int 
-knd_remove_nonprintables(char *data)
+extern void knd_remove_nonprintables(char *data)
 {
     unsigned char *c;
     c = (unsigned char*)data;
@@ -360,8 +360,6 @@ knd_remove_nonprintables(char *data)
         if (*c == '\\') *c = ' '; 
         c++;
     }
-
-    return knd_OK;
 }
 
 /*extern int knd_graphic_rounded_rect(struct kndOutput *out,

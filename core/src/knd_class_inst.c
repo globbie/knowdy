@@ -583,7 +583,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
         entry = name_idx->get(name_idx,
                               name, name_size);
         if (entry) {
-            if (entry->obj && entry->obj->states->phase == KND_REMOVED) {
+            if (entry->inst && entry->inst->states->phase == KND_REMOVED) {
                 knd_log("-- this obj has been removed lately: %.*s :(",
                     name_size, name);
                 goto assign_name;
@@ -1166,9 +1166,9 @@ static gsl_err_t remove_inst(void *data,
     if (err) return make_gsl_err_external(err);
 
     task->type = KND_UPDATE_STATE;
-    obj->next = base->obj_inbox;
-    base->obj_inbox = obj;
-    base->obj_inbox_size++;
+    obj->next = base->inst_inbox;
+    base->inst_inbox = obj;
+    base->inst_inbox_size++;
 
     return make_gsl_err(gsl_OK);
 }
@@ -1473,7 +1473,7 @@ static int export_inst_JSON(void *obj,
     if (task->batch_size >= task->batch_max) return knd_RANGE;
     struct glbOutput *out = base->entry->repo->out;
     struct kndObjEntry *entry = elem;
-    struct kndClassInst *inst = entry->obj;
+    struct kndClassInst *inst = entry->inst;
     int err;
 
     if (DEBUG_INST_LEVEL_2) {

@@ -125,15 +125,15 @@ static void reset_inbox(struct kndClass *self,
         c = next_c;
     }
 
-    obj = self->obj_inbox;
+    obj = self->inst_inbox;
     while (obj) {
         next_obj = obj->next;
         obj->next = NULL;
         obj = next_obj;
     }
 
-    self->obj_inbox = NULL;
-    self->obj_inbox_size = 0;
+    self->inst_inbox = NULL;
+    self->inst_inbox_size = 0;
     self->inbox = NULL;
     self->inbox_size = 0;
 }
@@ -957,20 +957,20 @@ static int get_inst(struct kndClass *self,
         knd_log("++ got obj entry %.*s  size: %zu",
                 name_size, name, entry->block_size);
 
-    if (!entry->obj) goto read_entry;
+    if (!entry->inst) goto read_entry;
 
-    if (entry->obj->states->phase == KND_REMOVED) {
-        knd_log("-- \"%s\" obj was removed", name);
+    if (entry->inst->states->phase == KND_REMOVED) {
+        knd_log("-- \"%s\" instance was removed", name);
         log->reset(log);
         err = log->write(log, name, name_size);
         if (err) return err;
-        err = log->write(log, " obj was removed",
-                               strlen(" obj was removed"));
+        err = log->write(log, " instance was removed",
+                               strlen(" instance was removed"));
         if (err) return err;
         return knd_NO_MATCH;
     }
 
-    obj = entry->obj;
+    obj = entry->inst;
     obj->states->phase = KND_SELECTED;
     *result = obj;
     return knd_OK;
@@ -1092,7 +1092,7 @@ extern int get_arg_value(struct kndAttrVar *src,
     return knd_OK;
 }
 
-static int knd_update_state(struct kndClass *self)
+static int update_state(struct kndClass *self)
 {
     struct kndClass *c;
     struct kndRepo *repo = self->entry->repo;
@@ -1105,12 +1105,12 @@ static int knd_update_state(struct kndClass *self)
     struct kndTask *task = repo->task;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_2)
-        knd_log("..update state of \"%.*s\"",
+    if (DEBUG_CLASS_LEVEL_TMP)
+        knd_log(".. update state of \"%.*s\"",
                 self->entry->name_size, self->entry->name);
 
     /* new update obj */
-    err = mempool->new_update(mempool, &update);                      RET_ERR();
+    err = mempool->new_update(mempool, &update);                                  RET_ERR();
     update->spec = task->spec;
     update->spec_size = task->spec_size;
 
@@ -1120,7 +1120,7 @@ static int knd_update_state(struct kndClass *self)
 
     /* resolve all refs */
     for (c = self->inbox; c; c = c->next) {
-        err = mempool->new_class_update(mempool, &class_update);      RET_ERR();
+        err = mempool->new_class_update(mempool, &class_update);                  RET_ERR();
 
         self->entry->repo->next_class_numid++;
         c->entry->numid = self->entry->repo->next_class_numid;
@@ -1454,10 +1454,7 @@ extern void kndClass_init(struct kndClass *self)
     self->str = str;
     self->open = open_DB;
     self->load = read_GSL_file;
-    //self->read = read_GSP;
-    //self->read_obj_entry = read_obj_entry;
     self->reset_inbox = reset_inbox;
-    //self->restore = restore;
 
     self->coordinate = coordinate;
     self->resolve = knd_resolve_class;
@@ -1468,7 +1465,7 @@ extern void kndClass_init(struct kndClass *self)
     //self->sync = parse_sync_task;
     //self->freeze = freeze;
 
-    self->update_state = knd_update_state;
+    self->update_state = update_state;
     //self->apply_liquid_updates = apply_liquid_updates;
     self->export = export;
     self->export_updates = export_updates;
@@ -1494,7 +1491,7 @@ extern int kndClass_new(struct kndClass **result,
     entry->class = self;
     self->entry = entry;
 
-    /* obj manager */
+    /* class instance manager */
     err = mempool->new_class_inst(mempool, &self->curr_inst);                     RET_ERR();
     self->curr_inst->base = self;
 

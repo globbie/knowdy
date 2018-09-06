@@ -533,7 +533,7 @@ static int export_inst_JSON(struct kndRel *self,
         /* skip over the selected obj */
         if (task->curr_inst && relarg_inst->obj) {
             obj_entry = relarg_inst->obj;
-            if (task->curr_inst == obj_entry->obj) continue;
+            if (task->curr_inst == obj_entry->inst) continue;
         }
 
         relarg->out = out;
@@ -546,7 +546,7 @@ static int export_inst_JSON(struct kndRel *self,
 
         // expand ref
         if (relarg_inst->obj) {
-            class_inst = relarg_inst->obj->obj;
+            class_inst = relarg_inst->obj->inst;
             // TODO max_depth
             class_inst->depth = 1;
             err = class_inst->export(class_inst, KND_FORMAT_JSON, out);

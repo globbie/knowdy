@@ -42,6 +42,16 @@ struct kndClassUpdateRef;
 struct kndObjEntry;
 struct glbOutput;
 
+struct kndClassUpdate
+{
+    struct kndClass *class;
+    struct kndClassEntry *entry;
+    struct kndUpdate *update;
+    struct kndClassInst **insts;
+    size_t num_insts;
+};
+
+
 struct kndClassVar
 {
     char id[KND_ID_SIZE];
@@ -134,9 +144,11 @@ struct kndClass
     size_t name_size;
 
     struct kndClassEntry *entry;
+
     struct kndState *states;
     size_t init_state;
     size_t num_states;
+    size_t selected_state_numid;
 
     struct kndState *inst_states;
     size_t init_inst_state;
@@ -184,9 +196,13 @@ struct kndClass
     struct kndClass *inbox;
     size_t inbox_size;
 
-    struct kndClassInst *obj_inbox;
-    size_t obj_inbox_size;
-    size_t num_objs;
+    struct kndClassInst *inst_inbox;
+    size_t inst_inbox_size;
+    size_t num_insts;
+
+    struct kndState *attr_var_inbox;
+    size_t attr_var_inbox_size;
+
     bool batch_mode;
 
     /* submodules */

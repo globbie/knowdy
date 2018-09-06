@@ -619,7 +619,7 @@ static int link_rel(struct kndRelArg *self,
     if (DEBUG_RELARG_LEVEL_2) {
         knd_log(".. %.*s (base: %.*s) OBJ to link rel %.*s..",
                 obj_entry->name_size, obj_entry->name,
-                obj_entry->obj->base->name_size, obj_entry->obj->base->name,
+                obj_entry->inst->base->name_size, obj_entry->inst->base->name,
                 rel->entry->name_size, rel->entry->name);
         knd_log("..rel inst:%.*s state:%zu phase:%d",
                 inst->id_size, inst->id, inst->states, inst->states->phase);

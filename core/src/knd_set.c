@@ -301,7 +301,6 @@ static int kndFacet_alloc_set(struct kndFacet  *self,
 static int
 kndSet_facetize(struct kndSet *self)
 {
-
     if (DEBUG_SET_LEVEL_1) {
         knd_log("\n    .. further facetize the set \"%s\"..\n",
                 self->base->name);
@@ -309,15 +308,14 @@ kndSet_facetize(struct kndSet *self)
     return knd_OK;
 }
 
-static int
-kndFacet_add_ref(struct kndFacet *self,
-                 struct kndClassEntry *topic,
-                 struct kndClassEntry *spec)
+static int kndFacet_add_ref(struct kndFacet *self,
+                            struct kndClassEntry *topic,
+                            struct kndClassEntry *spec)
 {
     struct kndSet *set;
     int err;
 
-    if (DEBUG_SET_LEVEL_1) {
+    if (DEBUG_SET_LEVEL_2) {
         knd_log(".. add attr spec \"%.*s\" to topic \"%.*s\"..",
                 spec->name_size, spec->name,
                 topic->name_size, topic->name);

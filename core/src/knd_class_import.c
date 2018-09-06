@@ -53,7 +53,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
 {
     struct kndClass *self = data;
     struct kndClass *c;
-    struct kndClassInst *obj;
+    struct kndClassInst *inst;
     struct kndObjEntry *entry;
     struct kndSet *set;
     struct kndMemPool *mempool = self->entry->repo->mempool;
@@ -71,12 +71,12 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
 
     // TODO class copy?
 
-    err = mempool->new_class_inst(mempool, &obj);
+    err = mempool->new_class_inst(mempool, &inst);
     if (err) {
         knd_log("-- class inst alloc failed :(");
         return *total_size = 0, make_gsl_err_external(err);
     }
-    err = mempool->new_state(mempool, &obj->states);
+    err = mempool->new_state(mempool, &inst->states);
     if (err) {
         knd_log("-- state alloc failed :(");
         return *total_size = 0, make_gsl_err_external(err);
@@ -84,28 +84,28 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     err = mempool->new_class_inst_entry(mempool, &entry);
     if (err) return make_gsl_err_external(err);
 
-    obj->entry = entry;
-    entry->obj = obj;
-    obj->states->phase = KND_SUBMITTED;
-    obj->base = self->curr_class;
+    inst->entry = entry;
+    entry->inst = inst;
+    inst->states->phase = KND_SUBMITTED;
+    inst->base = self->curr_class;
 
-    parser_err = obj->parse(obj, rec, total_size);
+    parser_err = inst->parse(inst, rec, total_size);
     if (parser_err.code) return parser_err;
 
-    c = obj->base;
-    obj->next = c->obj_inbox;
+    c = inst->base;
+    inst->next = c->inst_inbox;
 
-    c->obj_inbox = obj;
-    c->obj_inbox_size++;
-    c->num_objs++;
+    c->inst_inbox = inst;
+    c->inst_inbox_size++;
+    c->num_insts++;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("++ %.*s obj parse OK! total objs in %.*s: %zu",
-                obj->name_size, obj->name,
-                c->name_size, c->name, c->obj_inbox_size);
+        knd_log("++ %.*s class inst parse OK! total insts in %.*s: %zu",
+                inst->name_size, inst->name,
+                c->name_size, c->name, c->inst_inbox_size);
 
-    obj->entry->numid = c->num_objs;
-    knd_num_to_str(obj->entry->numid, obj->entry->id, &obj->entry->id_size, KND_RADIX_BASE);
+    inst->entry->numid = c->num_insts;
+    knd_num_to_str(inst->entry->numid, inst->entry->id, &inst->entry->id_size, KND_RADIX_BASE);
 
     if (!c->entry) {
         if (c->root_class) {
@@ -116,9 +116,9 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     }
 
     /* automatic name assignment if no explicit name given */
-    if (!obj->name_size) {
-        obj->name = obj->entry->id;
-        obj->name_size = obj->entry->id_size;
+    if (!inst->name_size) {
+        inst->name = inst->entry->id;
+        inst->name_size = inst->entry->id_size;
     }
 
     if (!c->entry->inst_name_idx) {
@@ -127,7 +127,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     }
 
     err = c->entry->inst_name_idx->set(c->entry->inst_name_idx,
-                                      obj->name, obj->name_size,
+                                      inst->name, inst->name_size,
                                       (void*)entry);
     if (err) return make_gsl_err_external(err);
     c->entry->num_insts++;
@@ -147,12 +147,40 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     }
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2) {
-        knd_log("++ OBJ registered in \"%.*s\" IDX:  [total:%zu valid:%zu]",
+        knd_log("++ INST registered in \"%.*s\" IDX:  [total:%zu valid:%zu]",
                 c->name_size, c->name, c->entry->inst_name_idx->size, c->entry->num_insts);
-        obj->depth = self->depth + 1;
-        obj->str(obj);
+        inst->depth = self->depth + 1;
+        inst->str(inst);
     }
     task->type = KND_UPDATE_STATE;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
+{
+    struct kndAttrVar *self = obj;
+    struct kndClass *root_class = self->class_var->root_class;
+
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+        knd_log(".. set attr var value: %.*s batch:%d",
+                val_size, val, root_class->batch_mode);
+
+    if (!val_size) return make_gsl_err(gsl_FORMAT);
+
+    /* initial set of classes */
+    if (root_class->batch_mode) {
+        if (val_size >= sizeof self->valbuf) return make_gsl_err(gsl_LIMIT);
+
+        memcpy(self->valbuf, val, val_size);
+        self->val = self->valbuf;
+        self->val_size = val_size;
+
+        return make_gsl_err(gsl_OK);
+    }
+
+    self->val = val;
+    self->val_size = val_size;
 
     return make_gsl_err(gsl_OK);
 }
@@ -595,16 +623,15 @@ static gsl_err_t import_attr_var(void *obj,
     attr_var->name_size = name_size;
 
     struct gslTaskSpec cdata_spec = {
-        .buf = attr_var->val,
+        .buf = attr_var->valbuf,
         .buf_size = &attr_var->val_size,
-        .max_buf_size = sizeof attr_var->val
+        .max_buf_size = sizeof attr_var->valbuf
     };
     
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .buf = attr_var->val,
-          .buf_size = &attr_var->val_size,
-          .max_buf_size = sizeof attr_var->val
+          .run = set_attr_var_value,
+          .obj = attr_var
         },
         { .type = GSL_SET_STATE,
           .is_validator = true,
@@ -773,9 +800,8 @@ static gsl_err_t import_nested_attr_var(void *obj,
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .buf = attr_var->val,
-          .buf_size = &attr_var->val_size,
-          .max_buf_size = sizeof attr_var->val
+          .run = set_attr_var_value,
+          .obj = attr_var
         },
         { .type = GSL_SET_STATE,
           .is_validator = true,
@@ -1116,6 +1142,6 @@ extern gsl_err_t knd_import_class(void *obj,
     return make_gsl_err(gsl_OK);
 
  final:
-    c->del(c);
+    //c->del(c);
     return parser_err;
 }

@@ -89,6 +89,9 @@ struct kndTask
     const char *report;
     size_t report_size;
 
+    // TODO: subscription channel
+    // to push any updates
+
     int error;
     knd_http_code_t http_code;
 

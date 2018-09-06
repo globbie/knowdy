@@ -1210,7 +1210,7 @@ static gsl_err_t alloc_class_inst(void *obj,
     if (err) return make_gsl_err_external(err);
 
     inst->entry = entry;
-    entry->obj = inst;
+    entry->inst = inst;
     inst->base = self;
     *item = inst;
 

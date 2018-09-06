@@ -27,6 +27,8 @@ struct kndRepo
     char path[KND_PATH_SIZE];
     size_t path_size;
 
+    size_t num_journals;
+
     char schema_path[KND_PATH_SIZE];
     size_t schema_path_size;
 
@@ -50,6 +52,7 @@ struct kndRepo
     struct kndTask *task;
 
     struct kndMemPool *mempool;
+    size_t max_journal_size;
 
     struct kndStateControl *state_ctrl;
 
@@ -58,7 +61,9 @@ struct kndRepo
 
     struct kndClass *root_class;
     size_t next_class_numid;
-    // TODO idxs
+
+    struct kndSet *attr_idx;
+    size_t num_attrs;
     
     struct kndProc *root_proc;
     struct kndRel *root_rel;

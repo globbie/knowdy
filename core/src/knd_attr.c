@@ -8,6 +8,7 @@
 #include "knd_class.h"
 #include "knd_text.h"
 #include "knd_repo.h"
+#include "knd_state.h"
 #include "knd_mempool.h"
 
 #include <gsl-parser.h>
@@ -731,6 +732,48 @@ static gsl_err_t parse_GSL(struct kndAttr *self,
     return make_gsl_err(gsl_OK);
 }
 
+extern int knd_apply_attr_var_updates(struct kndClass *self,
+                                      struct kndClassUpdate *class_update)
+{
+    struct kndState *state, *s, *next_state = NULL;
+    struct kndAttrVar *attr_var;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    int err;
+
+    if (DEBUG_ATTR_LEVEL_TMP)
+        knd_log(".. applying attr var updates..");
+
+    err = mempool->new_state(mempool, &state);
+    if (err) return err;
+
+    state->update = class_update->update;
+    
+    for (s = self->attr_var_inbox; s; s = next_state) {
+        attr_var = s->obj;
+
+        knd_log("== attr var %.*s => %.*s",
+                attr_var->name_size, attr_var->name,
+                s->val_size, s->val);
+
+        attr_var->val = s->val;
+        attr_var->val_size = s->val_size;
+
+        next_state = s->next;
+
+        s->next = attr_var->states;
+        attr_var->states = s;
+        attr_var->num_states++;
+    }
+
+    state->next = self->states;
+    self->states = state;
+    self->num_states++;
+    state->numid = self->num_states;
+    state->phase = KND_UPDATED;
+
+    return knd_OK;
+}
+
 extern void kndAttr_init(struct kndAttr *self)
 {
     /* binding our methods */
@@ -738,7 +781,6 @@ extern void kndAttr_init(struct kndAttr *self)
     self->parse = parse_GSL;
     self->export = export;
 }
-
 
 extern int
 kndAttr_new(struct kndAttr **c)
