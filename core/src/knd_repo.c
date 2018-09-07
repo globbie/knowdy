@@ -86,8 +86,10 @@ static gsl_err_t get_class_by_id(void *obj, const char *name, size_t name_size)
 
     err = class_idx->get(class_idx, name, name_size, &result);
     if (err) {
-        err = mempool->new_class_entry(mempool, &entry);
+        err = knd_class_entry_new(mempool, &entry);
         if (err) return make_gsl_err_external(err);
+        //err = mempool->new_class_entry(mempool, &entry);
+        //if (err) return make_gsl_err_external(err);
         memcpy(entry->id, name, name_size);
         entry->id_size = name_size;
         entry->repo = repo;
@@ -114,6 +116,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndSet *class_idx = repo->root_class->class_idx;
     struct kndMemPool *mempool = repo->mempool;
     struct kndClassEntry *entry = self->entry;
+    void *page;
     int err;
 
     if (DEBUG_REPO_LEVEL_2)
@@ -148,8 +151,10 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     /* get class */
     err = knd_get_class(repo->root_class, name, name_size, &c);
     if (err) {
-        err = mempool->new_class(mempool, &c);
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL, sizeof(*c), &page);
         if (err) return make_gsl_err_external(err);
+        c = page;
+        kndClass_init(c);
 
         c->entry = entry;
         entry->class = c;

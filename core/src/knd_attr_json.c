@@ -214,11 +214,10 @@ static int ref_item_export_JSON(struct kndAttrVar *item)
     int err;
 
     assert(item->class != NULL);
-
     c = item->class;
     //c->depth = self->depth + 1;
     //c->max_depth = self->max_depth;
-    err = c->export(c, KND_FORMAT_JSON, c->entry->repo->out);  RET_ERR();
+    err = c->export(c, KND_FORMAT_JSON, c->entry->repo->out);                     RET_ERR();
     return knd_OK;
 }
 
@@ -292,7 +291,6 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
     }
 
     for (item = parent_item->list; item; item = item->next) {
-
         /* TODO */
         if (!item->attr) {
             knd_log("-- no attr: %.*s (%p)",

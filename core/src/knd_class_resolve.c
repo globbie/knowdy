@@ -649,13 +649,13 @@ static int resolve_attrs(struct kndClass *self)
     err = ooDict_new(&self->attr_name_idx, KND_SMALL_DICT_SIZE);                       RET_ERR();
 
     for (attr = self->attrs; attr; attr = attr->next) {
+
         attr_entry = self->attr_name_idx->get(self->attr_name_idx,
                                               attr->name, attr->name_size);
         if (attr_entry) {
-            knd_log("-- %.*s attr already exists?", attr->name_size, attr->name);
+            knd_log("-- \"%.*s\" attr already exists?", attr->name_size, attr->name);
             return knd_FAIL;
         }
-
         /* TODO: mempool */
         attr_entry = malloc(sizeof(struct kndAttrEntry));
         if (!attr_entry) return knd_NOMEM;
@@ -665,7 +665,6 @@ static int resolve_attrs(struct kndClass *self)
         attr_entry->name_size = attr->name_size;
         attr_entry->attr = attr;
         attr->entry = attr_entry;
-
 
         err = self->attr_name_idx->set(self->attr_name_idx,
                                        attr_entry->name, attr_entry->name_size,
@@ -679,11 +678,6 @@ static int resolve_attrs(struct kndClass *self)
             self->computed_attrs[self->num_computed_attrs] = attr;
             self->num_computed_attrs++;
         }
-
-        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-            knd_log("++ register primary attr: \"%.*s\"",
-                    attr->name_size, attr->name);
-
         switch (attr->type) {
         case KND_ATTR_AGGR:
         case KND_ATTR_REF:
@@ -740,6 +734,13 @@ static int resolve_attrs(struct kndClass *self)
 
         if (attr->is_implied)
             self->implied_attr = attr;
+
+        self->entry->repo->num_attrs++;
+        attr->numid = self->entry->repo->num_attrs;
+
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+            knd_log("++ register primary attr: \"%.*s\" numid:%zu",
+                    attr->name_size, attr->name, attr->numid);
     }
 
     return knd_OK;

@@ -904,18 +904,18 @@ static gsl_err_t attr_var_alloc(void *obj,
                                 void **result)
 {
     struct kndAttrVar *self = obj;
-    struct kndAttrVar *item;
+    struct kndAttrVar *attr_var;
     struct kndMemPool *mempool = self->attr->parent_class->entry->repo->mempool;
     int err;
 
-    err = mempool->new_attr_var(mempool, &item);
+    err = knd_attr_var_new(mempool, &attr_var);
     if (err) return make_gsl_err_external(err);
 
-    item->name_size = sprintf(item->name, "%lu", (unsigned long)count);
-    item->attr = self->attr;
-    item->parent = self;
+    attr_var->name_size = sprintf(attr_var->name, "%lu", (unsigned long)count);
+    attr_var->attr = self->attr;
+    attr_var->parent = self;
 
-    *result = item;
+    *result = attr_var;
     return make_gsl_err(gsl_OK);
 }
 
@@ -1007,7 +1007,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    err = mempool->new_attr_var(mempool, &attr_var);
+    err = knd_attr_var_new(mempool, &attr_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->parent = self;
     attr_var->class_var = self->class_var;
@@ -1405,7 +1405,7 @@ static gsl_err_t validate_attr_var(void *obj,
         return make_gsl_err(gsl_FAIL);
     }
 
-    err = mempool->new_attr_var(mempool, &attr_var);
+    err = knd_attr_var_new(mempool, &attr_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = class_var;
 
@@ -1488,7 +1488,7 @@ static gsl_err_t validate_attr_var_list(void *obj,
                 class_var->entry->name_size, class_var->entry->name,
                 name_size, name);
 
-    err = mempool->new_attr_var(mempool, &attr_var);
+    err = knd_attr_var_new(mempool, &attr_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     err = knd_class_get_attr(class_var->entry->class,
@@ -1655,9 +1655,8 @@ static gsl_err_t class_var_alloc(void *obj,
     struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
 
-    err = mempool->new_class_var(mempool, &class_var);
+    err = knd_class_var_new(mempool, &class_var);
     if (err) return make_gsl_err_external(err);
-
     class_var->root_class = self;
 
     *item = class_var;

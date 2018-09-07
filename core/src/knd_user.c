@@ -478,6 +478,26 @@ static gsl_err_t run_present_user(void *data,
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t run_present_status(void *data,
+                                    const char *val __attribute__((unused)),
+                                    size_t val_size __attribute__((unused)))
+{
+    struct kndUser *self = data;
+    struct glbOutput *out = self->task->out;
+    struct kndMemPool *mempool = self->mempool;
+    int err;
+
+    out->reset(out);
+
+    err = mempool->present(mempool, out);
+    if (err) return make_gsl_err_external(err);
+
+    //err = out->write(out, "{\"_status\":0}", strlen("{\"_status\":0}"));
+    //if (err) return make_gsl_err_external(err);
+    
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t remove_user(void *data,
                              const char *val __attribute__((unused)),
                              size_t val_size __attribute__((unused)))
@@ -668,6 +688,11 @@ static gsl_err_t parse_select_user(struct kndUser *self,
         { .name = "sync",
           .name_size = strlen("sync"),
           .parse = parse_sync_task,
+          .obj = self
+        },
+        { .name = "_status",
+          .name_size = strlen("_status"),
+          .run = run_present_status,
           .obj = self
         },
         { .is_default = true,

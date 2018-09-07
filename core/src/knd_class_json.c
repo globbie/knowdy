@@ -155,11 +155,7 @@ static int present_computed_class_attrs(struct kndClass *self,
 
         attr_var = entry->attr_var;
         if (!attr_var) {
-            err = mempool->new_attr_var(mempool, &attr_var);
-            if (err) {
-                knd_log("-- attr item mempool exhausted");
-                return knd_NOMEM;
-            }
+            err = knd_attr_var_new(mempool, &attr_var);                  RET_ERR();
             attr_var->attr = attr;
             attr_var->class_var = cvar;
             memcpy(attr_var->name, attr->name, attr->name_size);
