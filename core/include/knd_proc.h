@@ -319,3 +319,23 @@ static inline void kndProc_declare_base(struct kndProc *self, struct kndProcVar 
     self->bases = base;
     self->num_bases++;
 }
+
+static inline void kndProcCallArg_init(struct kndProcCallArg *self,
+                                       const char *name, size_t name_size,
+                                       struct kndClassVar *class_var)
+{
+    memset(self, 0, sizeof *self);
+
+    memcpy(self->name, name, name_size);
+    self->name_size = name_size;
+    self->name[name_size] = '\0';
+
+    self->class_var = class_var;
+}
+
+static inline void kndProcCall_declare_arg(struct kndProcCall *proc_call, struct kndProcCallArg *call_arg)
+{
+    call_arg->next = proc_call->args;
+    proc_call->args = call_arg;
+    proc_call->num_args++;
+}
