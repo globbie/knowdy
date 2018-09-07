@@ -441,19 +441,11 @@ gsl_err_t kndProc_import(struct kndProc *root_proc,
             .obj = proc
         },
         {
-            .type = GSL_SET_STATE,
             .name = "result",
             .name_size = strlen("result"),
             .buf = proc->result_classname,
             .buf_size = &proc->result_classname_size,
-            .max_buf_size = KND_NAME_SIZE
-        },
-        {
-            .name = "result",
-            .name_size = strlen("result"),
-            .buf = proc->result_classname,
-            .buf_size = &proc->result_classname_size,
-            .max_buf_size = KND_NAME_SIZE
+            .max_buf_size = sizeof proc->result_classname
         },
         {
             .name = "do",
