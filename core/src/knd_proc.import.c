@@ -312,12 +312,6 @@ static gsl_err_t parse_proc_call(void *obj,
                     .obj = proc_call
             },
             { .type = GSL_SET_ARRAY_STATE,
-                    .name = "_summary",
-                    .name_size = strlen("_summary"),
-                    .parse = NULL,//parse_summary,
-                    .obj = proc_call
-            },
-            { .type = GSL_SET_ARRAY_STATE,
                     .name = "_g",
                     .name_size = strlen("_g"),
                     .parse = NULL,//parse_gloss,
