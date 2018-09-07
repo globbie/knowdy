@@ -734,8 +734,10 @@ extern int knd_attr_var_new(struct kndMemPool *mempool,
     struct kndAttrVar *self = NULL;
     void *page;
     int err;
+
     //knd_log(".. new attr var [size:%zu]",  sizeof(struct kndAttrVar));
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndAttrVar), &page);
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                            sizeof(struct kndAttrVar), &page);
     if (err) return err;
     self = page;
     *result = self;

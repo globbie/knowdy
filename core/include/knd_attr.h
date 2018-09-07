@@ -93,26 +93,26 @@ struct kndAttrUpdate
 
 struct kndAttrVar
 {
-    char name[KND_NAME_SIZE];
+    struct kndAttr *attr;
+
+    char name[KND_SHORT_NAME_SIZE];
     size_t name_size;
 
     char id[KND_ID_SIZE];
     size_t id_size;
 
-    char valbuf[KND_VAL_SIZE];
+    char *valbuf;
     char *val;
     size_t val_size;
 
     long numval;
     bool is_cached; // for computed fields
 
-    struct kndAttr *attr;
     struct kndAttr *implied_attr;
 
     struct kndClassVar *class_var;
 
     struct kndAttrVar *parent;
-
     struct kndAttrVar *children;
     struct kndAttrVar *tail;
     size_t num_children;
@@ -181,29 +181,23 @@ struct kndAttr
     struct kndTask *task;
 
     /* if refclass is empty: assume self reference by default */
-    char ref_classname[KND_NAME_SIZE];
+    char ref_classname[KND_SHORT_NAME_SIZE];
     size_t ref_classname_size;
 
-    char ref_procname[KND_NAME_SIZE];
+    char ref_procname[KND_SHORT_NAME_SIZE];
     size_t ref_procname_size;
     struct kndProc *proc;
 
     /* concise representation */
     size_t concise_level;
 
-    //int descr_level;
-    //int browse_level;
-
-    //char calc_oper[KND_NAME_SIZE];
-    //size_t calc_oper_size;
-
     char calc_attr[KND_NAME_SIZE];
     //size_t calc_attr_size;
 
-    char default_val[KND_NAME_SIZE];
+    char default_val[KND_SHORT_NAME_SIZE];
     size_t default_val_size;
 
-    char idx_name[KND_NAME_SIZE];
+    char idx_name[KND_SHORT_NAME_SIZE];
     size_t idx_name_size;
 
     struct kndState *states;
