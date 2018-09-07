@@ -305,18 +305,6 @@ static gsl_err_t parse_proc_call(void *obj,
           .parse = parse_gloss,
           .obj = proc_call
           }*/,
-            { .type = GSL_SET_ARRAY_STATE,
-                    .name = "_gloss",
-                    .name_size = strlen("_gloss"),
-                    .parse = NULL,//parse_gloss,
-                    .obj = proc_call
-            },
-            { .type = GSL_SET_ARRAY_STATE,
-                    .name = "_g",
-                    .name_size = strlen("_g"),
-                    .parse = NULL,//parse_gloss,
-                    .obj = proc_call
-            },
             { .is_validator = true,
                     .validate = parse_proc_call_arg,
                     .obj = proc
