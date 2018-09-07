@@ -171,8 +171,9 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
 
     /* initial set of classes */
     if (root_class->batch_mode) {
-        if (val_size >= sizeof self->valbuf) return make_gsl_err(gsl_LIMIT);
-
+        // TODO:
+        self->valbuf = malloc(val_size);
+        
         memcpy(self->valbuf, val, val_size);
         self->val = self->valbuf;
         self->val_size = val_size;

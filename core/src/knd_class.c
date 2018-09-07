@@ -1538,7 +1538,7 @@ extern int knd_class_entry_new(struct kndMemPool *mempool,
     struct kndClassEntry *self = NULL;
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL, sizeof(struct kndClassEntry), &page);
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_MED, sizeof(struct kndClassEntry), &page);
     if (err) return err;
     self = page;
     *result = self;
