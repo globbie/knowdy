@@ -277,3 +277,15 @@ extern void kndProc_init(struct kndProc *self);
 extern int kndProc_new(struct kndProc **self, struct kndMemPool *mempool);
 
 extern gsl_err_t kndProc_import(struct kndProc *self, const char *rec, size_t *total_size);
+
+//
+// TODO(k15tfu): ?? Move to knd_proc_impl.h
+//
+#include <knd_proc_arg.h>
+
+static inline void kndProc_declare_arg(struct kndProc *self, struct kndProcArg *arg)
+{
+    arg->next = self->args;
+    self->args = arg;
+    self->num_args++;
+}
