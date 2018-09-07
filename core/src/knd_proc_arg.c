@@ -5,8 +5,8 @@
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
 
-#include "knd_proc_arg.h"
 #include "knd_proc.h"
+#include "knd_proc_arg.h"
 #include "knd_task.h"
 #include "knd_class.h"
 #include "knd_text.h"
@@ -801,8 +801,13 @@ extern void kndProcArgInstance_init(struct kndProcArgInstance *self)
 //    memset(self, 0, sizeof(struct kndProcArgInstRef));
 //}
 
-extern void kndProcArg_init(struct kndProcArg *self)
+void kndProcArg_init(struct kndProcArg *self, struct kndProc *proc)
 {
+    memset(self, 0, sizeof *self);
+
+    self->task = proc->task;
+    self->parent = proc;
+
     self->del = del;
     self->str = str;
     self->parse = parse_GSL;
@@ -813,18 +818,13 @@ extern void kndProcArg_init(struct kndProcArg *self)
     self->export_inst = export_inst;
 }
 
-extern int
-kndProcArg_new(struct kndProcArg **c)
+int kndProcArg_new(struct kndProcArg **self,
+                   struct kndProc *proc,
+                   struct kndMemPool *mempool)
 {
-    struct kndProcArg *self;
+    int err = mempool->new_proc_arg(mempool, self);
+    if (!err) return err;
 
-    self = malloc(sizeof(struct kndProcArg));
-    if (!self) return knd_NOMEM;
-
-    memset(self, 0, sizeof(struct kndProcArg));
-
-    kndProcArg_init(self);
-    *c = self;
-
+    kndProcArg_init(self, proc);
     return knd_OK;
 }

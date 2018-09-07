@@ -426,7 +426,7 @@ static int new_proc_arg(struct kndMemPool *self,
     }
     arg = &self->proc_args[self->num_proc_args];
     memset(arg, 0, sizeof(struct kndProcArg));
-    kndProcArg_init(arg);
+    kndProcArg_init(arg, NULL);
     self->num_proc_args++;
     *result = arg;
     return knd_OK;

@@ -159,6 +159,5 @@ struct kndProcArg
 extern void kndProcArgInstance_init(struct kndProcArgInstance *self);
 //extern void kndProcArgInstRef_init(struct kndProcArgInstRef *self);
 
-extern void kndProcArg_init(struct kndProcArg *self);
-extern int kndProcArg_new(struct kndProcArg **self);
-
+extern void kndProcArg_init(struct kndProcArg *self, struct kndProc *proc);
+extern int kndProcArg_new(struct kndProcArg **self, struct kndProc *proc, struct kndMemPool *mempool);

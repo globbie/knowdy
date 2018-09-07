@@ -19,47 +19,34 @@
 #define DEBUG_PROC_LEVEL_3 0
 #define DEBUG_PROC_LEVEL_TMP 1
 
-static gsl_err_t alloc_proc_arg(void *obj,
-                                const char *name __attribute__((unused)),
-                                size_t name_size __attribute__((unused)),
-                                size_t count __attribute__((unused)),
-                                void **item)
+static gsl_err_t kndProc_alloc_proc_arg(void *obj,
+                                        const char *name __attribute__((unused)),
+                                        size_t name_size __attribute__((unused)),
+                                        size_t count __attribute__((unused)),
+                                        void **item)
 {
-    struct kndProc *self = obj;
-    struct kndProcArg *arg;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
+    struct kndProc *self = obj;
 
-    err = mempool->new_proc_arg(mempool, &arg);
+    err = kndProcArg_new((struct kndProcArg **)item, self, self->entry->repo->mempool);
     if (err) return make_gsl_err_external(err);
 
-    arg->task = self->task;
-    arg->parent = self;
-
-    *item = arg;
-
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t append_proc_arg(void *accu,
-                                 void *item)
+static gsl_err_t kndProc_append_proc_arg(void *accu,
+                                         void *item)
 {
     struct kndProc *self = accu;
-    struct kndProcArg *arg = item;
-
-    arg->next = self->args;
-    self->args = arg;
-    self->num_args++;
-
+    kndProc_declare_arg(self, (struct kndProcArg *)item);
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_proc_arg(void *obj,
-                                const char *rec,
-                                size_t *total_size)
+static gsl_err_t kndProc_parse_proc_arg(void *obj,
+                                        const char *rec,
+                                        size_t *total_size)
 {
     struct kndProcArg *arg = obj;
-
     return arg->parse(arg, rec, total_size);
 }
 
@@ -456,9 +443,9 @@ gsl_err_t kndProc_import(struct kndProc *self,
 
     struct gslTaskSpec proc_arg_spec = {
             .is_list_item = true,
-            .alloc = alloc_proc_arg,
-            .append = append_proc_arg,
-            .parse = parse_proc_arg,
+            .alloc = kndProc_alloc_proc_arg,
+            .append = kndProc_append_proc_arg,
+            .parse = kndProc_parse_proc_arg,
             .accu = proc
     };
 
