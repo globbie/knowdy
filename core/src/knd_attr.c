@@ -21,17 +21,6 @@
 #define DEBUG_ATTR_LEVEL_5 0
 #define DEBUG_ATTR_LEVEL_TMP 1
 
-static int kndAttr_validate_email(struct kndAttr *self,
-                                  const char *val,
-                                  size_t val_size);
-
-static struct kndAttrValidator knd_attr_validators[] = {
-    { .name = "email_address",
-      .name_size = strlen("email_address"),
-      .proc = kndAttr_validate_email,
-    }
-};
-
 static void str(struct kndAttr *self)
 {
     struct kndTranslation *tr;
@@ -93,12 +82,12 @@ static void str(struct kndAttr *self)
         proc->str(proc);
     }
 
-    if (self->calc_oper_size) {
+    /*if (self->calc_oper_size) {
         knd_log("%*s  oper: %s attr: %s",
                 self->depth * KND_OFFSET_SIZE, "",
                 self->calc_oper, self->calc_attr);
     }
-
+    */
     if (self->idx_name_size) {
         knd_log("%*s  idx: %s",
                 self->depth * KND_OFFSET_SIZE, "", self->idx_name);
@@ -113,22 +102,6 @@ static void str(struct kndAttr *self)
         knd_log("%*s]", self->depth * KND_OFFSET_SIZE, "");
     else
         knd_log("%*s}",  self->depth * KND_OFFSET_SIZE, "");
-}
-
-
-
-/**
- *  VALIDATORS
- */
-static int kndAttr_validate_email(struct kndAttr *self,
-                                  const char   *val,
-                                  size_t val_size)
-{
-
-    if (DEBUG_ATTR_LEVEL_TMP)
-        knd_log(".. %s attr validating email: \"%.*s\"", self->name, val_size, val);
-
-    return knd_OK;
 }
 
 static int export_JSON(struct kndAttr *self)
@@ -545,54 +518,11 @@ static gsl_err_t parse_access_control(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t run_set_validator(void *obj, const char *name, size_t name_size)
-{
-    struct kndAttr *self = (struct kndAttr*)obj;
-    struct kndAttrValidator *validator;
-
-    if (!name_size) return make_gsl_err(gsl_FAIL);
-    if (name_size >= sizeof self->validator_name) return make_gsl_err(gsl_LIMIT);
-
-    memcpy(self->validator_name, name, name_size);
-    self->validator_name_size = name_size;
-    self->validator_name[name_size] = '\0';
-
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log("== validator name set: %.*s", name_size, name);
-
-    size_t knd_num_attr_validators = sizeof(knd_attr_validators) / sizeof(struct kndAttrValidator);
-
-    for (size_t i = 0; i < knd_num_attr_validators; i++) {
-        validator = &knd_attr_validators[i];
-        /* TODO: assign validator
-           knd_log("existing validator: \"%s\"", validator->name);
-        */
-    }
-
-    return make_gsl_err(gsl_OK);
-}
-
-
-static gsl_err_t parse_validator(void *obj,
-                                 const char *rec,
-                                 size_t *total_size)
-{
-    struct kndAttr *self = obj;
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_set_validator,
-          .obj = self
-        }
-    };
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
 static gsl_err_t parse_GSL(struct kndAttr *self,
                            const char *rec,
                            size_t *total_size)
 {
-    if (DEBUG_ATTR_LEVEL_1)
+    if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. attr parsing: \"%.*s\"..", 32, rec);
 
     struct gslTaskSpec specs[] = {
@@ -699,13 +629,13 @@ static gsl_err_t parse_GSL(struct kndAttr *self,
           .name_size = strlen("concise"),
           .parse = gsl_parse_size_t,
           .obj = &self->concise_level
-        },
+        }/*,
         { .type = GSL_SET_STATE,
           .name = "validate",
           .name_size = strlen("validate"),
           .parse = parse_validator,
           .obj = self
-        },
+          }*/,
         { .type = GSL_SET_STATE,
           .name = "val",
           .name_size = strlen("val"),
@@ -776,14 +706,13 @@ extern int knd_apply_attr_var_updates(struct kndClass *self,
 
 extern void kndAttr_init(struct kndAttr *self)
 {
-    /* binding our methods */
+    memset(self, 0, sizeof(struct kndAttr));
     self->str = str;
     self->parse = parse_GSL;
     self->export = export;
 }
 
-extern int
-kndAttr_new(struct kndAttr **c)
+extern int kndAttr_new(struct kndAttr **c)
 {
     struct kndAttr *self;
 
@@ -796,5 +725,34 @@ kndAttr_new(struct kndAttr **c)
 
     *c = self;
 
+    return knd_OK;
+}
+
+extern int knd_attr_var_new(struct kndMemPool *mempool,
+                            struct kndAttrVar **result)
+{
+    struct kndAttrVar *self = NULL;
+    void *page;
+    int err;
+    //knd_log(".. new attr var [size:%zu]",  sizeof(struct kndAttrVar));
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndAttrVar), &page);
+    if (err) return err;
+    self = page;
+    *result = self;
+    return knd_OK;
+}
+
+extern int knd_attr_new(struct kndMemPool *mempool,
+                        struct kndAttr **result)
+{
+    struct kndAttr *self = NULL;
+    void *page;
+    int err;
+    //knd_log(".. new attr [size:%zu]",  sizeof(struct kndAttr));
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL, sizeof(struct kndAttr), &page);
+    if (err) return err;
+    self = page;
+    kndAttr_init(self);
+    *result = self;
     return knd_OK;
 }

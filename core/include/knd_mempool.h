@@ -25,9 +25,8 @@
 
 #include "knd_config.h"
 
-struct kndClass;
+struct glbOutput;
 struct kndClassVar;
-struct kndClassEntry;
 struct kndClassInst;
 struct kndElem;
 
@@ -56,14 +55,46 @@ struct kndUserContext;
 struct kndSet;
 struct kndSetElemIdx;
 
+typedef enum knd_mempage_t { KND_MEMPAGE_NORMAL,
+                             KND_MEMPAGE_SMALL,
+                             KND_MEMPAGE_LARGE
+} knd_mempage_t;
+
+struct kndMemPage
+{
+    struct kndMemPage *prev;
+    struct kndMemPage *next;
+    void *data;
+};
+
 struct kndMemPool
 {
-    char next_class_id[KND_ID_SIZE];
     size_t max_users;
 
+    char *pages;
+    size_t page_size;
+    size_t page_payload_size;
+    size_t num_pages;
+    size_t pages_used;
+    struct kndMemPage *head_page;
+    struct kndMemPage *tail_page;
+
+    char *small_pages;
+    size_t small_page_size;
+    size_t small_page_payload_size;
+    size_t num_small_pages;
+    size_t small_pages_used;
+
+    char *large_pages;
+    size_t large_page_size;
+    size_t large_page_payload_size;
+    size_t num_large_pages;
+    size_t large_pages_used;
+    
     struct kndSet *sets;
     size_t max_sets;
     size_t num_sets;
+
     struct kndSetElemIdx *set_elem_idxs;
     size_t max_set_elem_idxs;
     size_t num_set_elem_idxs;
@@ -94,26 +125,6 @@ struct kndMemPool
     size_t max_class_update_refs;
     size_t num_class_update_refs;
 
-    struct kndClass *classes;
-    size_t max_classes;
-    size_t num_classes;
-
-    struct kndClassEntry *class_entries;
-    size_t max_class_entries;
-    size_t num_class_entries;
-
-    struct kndClassVar *class_vars;
-    size_t max_class_vars;
-    size_t num_class_vars;
-    
-    struct kndAttrVar *attr_vars;
-    size_t max_attr_vars;
-    size_t num_attr_vars;
-
-    struct kndAttr *attrs;
-    size_t max_attrs;
-    size_t num_attrs;
-
     struct kndClassInst *objs;
     size_t max_objs;
     size_t num_objs;
@@ -130,7 +141,6 @@ struct kndMemPool
     size_t max_elems;
     size_t num_elems;
 
-    char next_rel_id[KND_ID_SIZE];
     struct kndRel *rels;
     size_t max_rels;
     size_t num_rels;
@@ -167,7 +177,6 @@ struct kndMemPool
     size_t max_rel_arg_inst_refs;
     size_t num_rel_arg_inst_refs;
 
-    char next_proc_id[KND_ID_SIZE];
     struct kndProc *procs;
     size_t max_procs;
     size_t num_procs;
@@ -200,6 +209,8 @@ struct kndMemPool
 
     void (*del)(struct kndMemPool   *self);
     int (*alloc)(struct kndMemPool   *self);
+    int (*present)(struct kndMemPool *self,
+                   struct glbOutput  *out);
     gsl_err_t (*parse)(struct kndMemPool *self,
 		       const char *rec, size_t *total_size);
 
@@ -210,8 +221,6 @@ struct kndMemPool
     int (*new_facet)(struct kndMemPool   *self,
 		     struct kndFacet **result);
 
-    int (*new_attr)(struct kndMemPool   *self,
-		     struct kndAttr **result);
     
     int (*new_user_ctx)(struct kndMemPool   *self,
                         struct kndUserContext **result);
@@ -223,14 +232,7 @@ struct kndMemPool
                             struct kndClassUpdate **result);
     int (*new_class_update_ref)(struct kndMemPool   *self,
                                 struct kndClassUpdateRef **result);
-    int (*new_class)(struct kndMemPool   *self,
-                     struct kndClass **result);
-    int (*new_class_entry)(struct kndMemPool   *self,
-                           struct kndClassEntry **result);
-    int (*new_class_var)(struct kndMemPool   *self,
-                         struct kndClassVar **result);
-    int (*new_attr_var)(struct kndMemPool   *self,
-                         struct kndAttrVar **result);
+
     int (*new_class_inst)(struct kndMemPool   *self,
                           struct kndClassInst **result);
     int (*new_class_inst_dir)(struct kndMemPool   *self,
@@ -257,20 +259,21 @@ struct kndMemPool
                                 struct kndRelArgInstRef **result);
     int (*new_proc)(struct kndMemPool   *self,
                     struct kndProc **result);
-    //int (*new_proc_inst)(struct kndMemPool   *self,
-    //                     struct kndProcInstance **result);
     int (*new_proc_entry)(struct kndMemPool   *self,
                         struct kndProcEntry **result);
     int (*new_proc_arg)(struct kndMemPool   *self,
                         struct kndProcArg **result);
-    //int (*new_proc_arg_inst)(struct kndMemPool   *self,
-    //                         struct kndProcArgInstance **result);
     int (*new_proc_update)(struct kndMemPool   *self,
                           struct kndProcUpdate **result);
     int (*new_proc_update_ref)(struct kndMemPool   *self,
                               struct kndProcUpdateRef **result);
 };
 
-/* constructor */
 extern int kndMemPool_new(struct kndMemPool **self);
 
+extern int knd_mempool_alloc(struct kndMemPool *self,
+                             knd_mempage_t page_size,
+                             size_t obj_size, void **result);
+extern void knd_mempool_free(struct kndMemPool *self,
+                             knd_mempage_t page_size,
+                             void *page_data);

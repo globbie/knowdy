@@ -133,6 +133,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     c->entry->num_insts++;
 
     set = c->entry->inst_idx;
+
     /* index by id */
     if (!set) {
         err = mempool->new_set(mempool, &set);
@@ -293,7 +294,7 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     }
 
     /* register new class entry */
-    err = mempool->new_class_entry(mempool, &entry);
+    err = knd_class_entry_new(mempool, &entry);
     if (err) return make_gsl_err_external(err);
 
     memcpy(entry->name, name, name_size);
@@ -310,37 +311,43 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-
-
-static gsl_err_t parse_aggr(void *obj,
-                            const char *rec,
-                            size_t *total_size)
+static gsl_err_t parse_attr(void *obj,
+                            const char *name, size_t name_size,
+                            const char *rec, size_t *total_size)
 {
     struct kndClass *self = obj;
     struct kndAttr *attr;
+    void *page;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    const char *c;
     int err;
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. parsing the AGGR attr: \"%.*s\"", 32, rec);
+        knd_log(".. parsing attr: \"%.*s\" rec:\"%.*s\"",
+                name_size, name, 32, rec);
 
-    err = kndAttr_new(&attr);
+    err = knd_attr_new(mempool, &attr);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr->parent_class = self;
-    attr->type = KND_ATTR_AGGR;
+
+    for (size_t i = 0; i < sizeof(knd_attr_names) / sizeof(knd_attr_names[0]); i++) {
+        c = knd_attr_names[i];
+        if (!memcmp(c, name, name_size)) 
+            attr->type = (knd_attr_type)i;
+    }
 
     parser_err = attr->parse(attr, rec, total_size);
     if (parser_err.code) {
         if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
-            knd_log("-- failed to parse the AGGR attr: %d", parser_err.code);
+            knd_log("-- failed to parse the attr field: %d", parser_err.code);
         return parser_err;
     }
 
     if (!self->tail_attr) {
         self->tail_attr = attr;
         self->attrs = attr;
-    }
-    else {
+    } else {
         self->tail_attr->next = attr;
         self->tail_attr = attr;
     }
@@ -351,237 +358,7 @@ static gsl_err_t parse_aggr(void *obj,
 
     if (attr->is_implied)
         self->implied_attr = attr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_str(void *obj,
-                           const char *rec,
-                           size_t *total_size)
-{
-    struct kndClass *self = (struct kndClass*)obj;
-    struct kndAttr *attr;
-    int err;
-    gsl_err_t parser_err;
-
-    err = kndAttr_new(&attr);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent_class = self;
-    attr->type = KND_ATTR_STR;
-
-    parser_err = attr->parse(attr, rec, total_size);
-    if (parser_err.code) {
-        knd_log("-- failed to parse the STR attr of \"%.*s\" :(",
-                self->entry->name_size, self->entry->name);
-        return parser_err;
-    }
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
-        self->attrs = attr;
-    }
-    else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
-    }
-
-    if (attr->is_implied)
-        self->implied_attr = attr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_bin(void *obj,
-                           const char *rec,
-                           size_t *total_size)
-{
-    struct kndClass *self = (struct kndClass*)obj;
-    struct kndAttr *attr;
-    gsl_err_t parser_err;
-    int  err;
-
-    err = kndAttr_new(&attr);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent_class = self;
-    attr->type = KND_ATTR_BIN;
-
-    parser_err = attr->parse(attr, rec, total_size);
-    if (parser_err.code) {
-        knd_log("-- failed to parse the BIN attr: %d", parser_err.code);
-        return parser_err;
-    }
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
-        self->attrs = attr;
-    }
-    else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
-    }
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_cdata(void *obj,
-                             const char *rec,
-                             size_t *total_size)
-{
-    struct kndClass *self = obj;
-    struct kndAttr *attr;
-    gsl_err_t parser_err;
-    int err;
-
-    err = kndAttr_new(&attr);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent_class = self;
-    attr->type = KND_ATTR_CDATA;
-
-    parser_err = attr->parse(attr, rec, total_size);
-    if (parser_err.code) {
-        knd_log("-- failed to parse the BIN attr: %d", parser_err.code);
-        return parser_err;
-    }
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
-        self->attrs = attr;
-    }
-    else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
-    }
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_num(void *obj,
-                           const char *rec,
-                           size_t *total_size)
-{
-    struct kndClass *self = (struct kndClass*)obj;
-    struct kndAttr *attr;
-    int err;
-    gsl_err_t parser_err;
-
-    err = kndAttr_new(&attr);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent_class = self;
-    attr->type = KND_ATTR_NUM;
-
-    parser_err = attr->parse(attr, rec, total_size);
-    if (parser_err.code) {
-        knd_log("-- failed to parse the NUM attr: %d", parser_err.code);
-        return parser_err;
-    }
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
-        self->attrs = attr;
-    }
-    else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
-    }
-
-    if (attr->is_implied)
-        self->implied_attr = attr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_ref(void *obj,
-                           const char *rec,
-                           size_t *total_size)
-{
-    struct kndClass *self = obj;
-    struct kndAttr *attr;
-    int err;
-    gsl_err_t parser_err;
-
-    err = kndAttr_new(&attr);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent_class = self;
-    attr->type = KND_ATTR_REF;
-
-    parser_err = attr->parse(attr, rec, total_size);
-    if (parser_err.code) {
-        knd_log("-- failed to parse the REF attr: %d", parser_err.code);
-        return parser_err;
-    }
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
-        self->attrs = attr;
-    }
-    else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
-    }
-
-    if (attr->is_implied)
-        self->implied_attr = attr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_proc(void *obj,
-                           const char *rec,
-                           size_t *total_size)
-{
-    struct kndClass *self = obj;
-    struct kndAttr *attr;
-    int err;
-    gsl_err_t parser_err;
-
-    err = kndAttr_new(&attr);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent_class = self;
-    attr->type = KND_ATTR_PROC;
-
-    parser_err = attr->parse(attr, rec, total_size);
-    if (parser_err.code) {
-        knd_log("-- failed to parse the PROC attr: %d", parser_err.code);
-        return parser_err;
-    }
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
-        self->attrs = attr;
-    }
-    else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
-    }
-
-    if (attr->is_implied)
-        self->implied_attr = attr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_text(void *obj,
-                            const char *rec,
-                            size_t *total_size)
-{
-    struct kndClass *self = (struct kndClass*)obj;
-    struct kndAttr *attr;
-    int err;
-    gsl_err_t parser_err;
-
-    err = kndAttr_new(&attr);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent_class = self;
-    attr->type = KND_ATTR_TEXT;
-    attr->is_a_set = true;
-
-    parser_err = attr->parse(attr, rec, total_size);
-    if (parser_err.code) {
-        knd_log("-- failed to parse the TEXT attr: %d", parser_err.code);
-        return parser_err;
-    }
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
-        self->attrs = attr;
-    }
-    else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
-    }
+   
     return make_gsl_err(gsl_OK);
 }
 
@@ -612,11 +389,8 @@ static gsl_err_t import_attr_var(void *obj,
         knd_log(".. import attr var: \"%.*s\" REC: %.*s",
                 name_size, name, 64, rec);
 
-    err = mempool->new_attr_var(mempool, &attr_var);
-    if (err) {
-        knd_log("-- attr item mempool exhausted");
-        return *total_size = 0, make_gsl_err_external(err);
-    }
+    err = knd_attr_var_new(mempool, &attr_var);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = self;
 
     memcpy(attr_var->name, name, name_size);
@@ -671,7 +445,7 @@ static gsl_err_t import_attr_var_alloc(void *obj,
     struct kndMemPool *mempool = self->class_var->entry->repo->mempool;
     int err;
 
-    err = mempool->new_attr_var(mempool, &attr_var);
+    err = knd_attr_var_new(mempool, &attr_var);
     if (err) return make_gsl_err_external(err);
     attr_var->class_var = self->class_var;
 
@@ -743,7 +517,7 @@ static gsl_err_t import_attr_var_list(void *obj,
         knd_log("== import attr attr_var list: \"%.*s\" REC: %.*s",
                 name_size, name, 32, rec);
 
-    err = mempool->new_attr_var(mempool, &attr_var);
+    err = knd_attr_var_new(mempool, &attr_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = self;
 
@@ -784,11 +558,8 @@ static gsl_err_t import_nested_attr_var(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    err = mempool->new_attr_var(mempool, &attr_var);
-    if (err) {
-        knd_log("-- mempool exhausted: attr item");
-        return *total_size = 0, make_gsl_err_external(err);
-    }
+    err = knd_attr_var_new(mempool, &attr_var);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = self->class_var;
 
     memcpy(attr_var->name, name, name_size);
@@ -950,11 +721,8 @@ static gsl_err_t parse_baseclass(void *obj,
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. parsing the base class: \"%.*s\"", 32, rec);
 
-    err = mempool->new_class_var(mempool, &classvar);
-    if (err) {
-        knd_log("-- conc item alloc failed :(");
-        return *total_size = 0, make_gsl_err_external(err);
-    }
+    err = knd_class_var_new(mempool, &classvar);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     classvar->root_class = self->root_class;
 
     parser_err = parse_class_var(classvar, rec, total_size);
@@ -977,17 +745,19 @@ extern gsl_err_t knd_import_class(void *obj,
     struct kndMemPool *mempool = self->entry->repo->mempool;
     struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->entry->repo->task;
+    void *page;
     int e, err;
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. import \"%.*s\" class..", 128, rec);
 
-    err = mempool->new_class(mempool, &c);
+    err = knd_class_new(mempool, &c);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
-    err = mempool->new_class_entry(mempool, &entry);
-    if (err) return make_gsl_err_external(err);
+    err = knd_class_entry_new(mempool, &entry);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+
     entry->repo = self->entry->repo;
     entry->class = c;
     c->entry = entry;
@@ -1040,71 +810,12 @@ extern gsl_err_t knd_import_class(void *obj,
           .obj = c
         },
         { .type = GSL_SET_STATE,
-          .name = "aggr",
-          .name_size = strlen("aggr"),
-          .parse = parse_aggr,
+          .is_validator = true,
+          .validate = parse_attr,
           .obj = c
         },
-        { .name = "aggr",
-          .name_size = strlen("aggr"),
-          .parse = parse_aggr,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "str",
-          .name_size = strlen("str"),
-          .parse = parse_str,
-          .obj = c
-        },
-        { .name = "str",
-          .name_size = strlen("str"),
-          .parse = parse_str,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "bin",
-          .name_size = strlen("bin"),
-          .parse = parse_bin,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "cdata",
-          .name_size = strlen("cdata"),
-          .parse = parse_cdata,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "num",
-          .name_size = strlen("num"),
-          .parse = parse_num,
-          .obj = c
-        },
-        { .name = "num",
-          .name_size = strlen("num"),
-          .parse = parse_num,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "ref",
-          .name_size = strlen("ref"),
-          .parse = parse_ref,
-          .obj = c
-        },
-        { .name = "ref",
-          .name_size = strlen("ref"),
-          .parse = parse_ref,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "proc",
-          .name_size = strlen("proc"),
-          .parse = parse_proc,
-          .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .name = "text",
-          .name_size = strlen("text"),
-          .parse = parse_text,
+        { .is_validator = true,
+          .validate = parse_attr,
           .obj = c
         }
     };
@@ -1127,7 +838,7 @@ extern gsl_err_t knd_import_class(void *obj,
     }
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("++  \"%.*s\" class import completed!",
+        knd_log("++  \"%.*s\" class import completed!\n",
                 c->name_size, c->name);
 
     if (!self->batch_mode) {

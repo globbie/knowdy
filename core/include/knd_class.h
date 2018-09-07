@@ -51,7 +51,6 @@ struct kndClassUpdate
     size_t num_insts;
 };
 
-
 struct kndClassVar
 {
     char id[KND_ID_SIZE];
@@ -214,7 +213,7 @@ struct kndClass
     struct ooDict *class_name_idx;
 
     struct ooDict *attr_name_idx;
-    struct kndAttr *computed_attrs[KND_MAX_ATTRS];
+    struct kndAttr *computed_attrs[KND_MAX_COMPUTED_ATTRS];
     size_t num_computed_attrs;
 
     struct kndClass *next;
@@ -357,8 +356,16 @@ extern gsl_err_t knd_read_class_inst_state(struct kndClass *self,
                                            struct kndClassUpdate *update,
                                            const char *rec,
                                            size_t *total_size);
+
 extern gsl_err_t knd_read_class_state(struct kndClass *self,
                                           struct kndClassUpdate *update,
                                           const char *rec,
                                           size_t *total_size);
+
+extern int knd_class_var_new(struct kndMemPool *mempool,
+                             struct kndClassVar **result);
+extern int knd_class_entry_new(struct kndMemPool *mempool,
+                               struct kndClassEntry **result);
+extern int knd_class_new(struct kndMemPool *mempool,
+                         struct kndClass **result);
 

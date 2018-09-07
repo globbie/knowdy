@@ -115,10 +115,9 @@ static void reset_inbox(struct kndClass *self,
         next_c = c->next;
 
         if (rollback) {
-            // TODO: remove from class_idx
-
-            err = class_name_idx->remove(class_name_idx, c->name, c->name_size);
-            // signal error?
+            c->del(c);
+            c = next_c;
+            continue;
         }
 
         c->next = NULL;
@@ -169,8 +168,13 @@ static void del_class_entry(struct kndClassEntry *entry)
 /*  class destructor */
 static void kndClass_del(struct kndClass *self)
 {
+
+    knd_log(".. remove class: %.*s..", self->entry->name_size, self->entry->name);
+
     if (self->attr_name_idx) self->attr_name_idx->del(self->attr_name_idx);
     if (self->entry) del_class_entry(self->entry);
+
+    // dealloc
 }
 
 static void str_attr_vars(struct kndAttrVar *items, size_t depth)
@@ -1485,7 +1489,10 @@ extern int kndClass_new(struct kndClass **result,
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndClass));
 
-    err = mempool->new_class_entry(mempool, &entry);                              RET_ERR();
+    err = knd_class_entry_new(mempool, &entry);  RET_ERR();
+
+    //err = mempool->new_class_entry(mempool, &entry);                              RET_ERR();
+
     entry->name[0] = '/';
     entry->name_size = 1;
     entry->class = self;
@@ -1509,4 +1516,51 @@ extern int kndClass_new(struct kndClass **result,
  error:
     if (self) kndClass_del(self);
     return err;
+}
+
+extern int knd_class_var_new(struct kndMemPool *mempool,
+                             struct kndClassVar **result)
+{
+    struct kndClassVar *self = NULL;
+    void *page;
+    int err;
+    //knd_log(".. new class var [size:%zu]",  sizeof(struct kndClassVar));
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassVar), &page);
+    if (err) return err;
+    self = page;
+    *result = self;
+    return knd_OK;
+}
+
+extern int knd_class_entry_new(struct kndMemPool *mempool,
+                               struct kndClassEntry **result)
+{
+    struct kndClassEntry *self = NULL;
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL, sizeof(struct kndClassEntry), &page);
+    if (err) return err;
+    self = page;
+    *result = self;
+    return knd_OK;
+}
+
+extern void knd_class_free(struct kndMemPool *mempool,
+                           struct kndClass *self)
+{
+    knd_mempool_free(mempool, KND_MEMPAGE_NORMAL, (void*)self);
+}
+
+extern int knd_class_new(struct kndMemPool *mempool,
+                         struct kndClass **result)
+{
+    struct kndClass *self = NULL;
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL, sizeof(struct kndClass), &page);
+    if (err) return err;
+    self = page;
+    kndClass_init(self);
+    *result = self;
+    return knd_OK;
 }

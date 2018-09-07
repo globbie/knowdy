@@ -169,9 +169,6 @@ struct kndAttr
     char uniq_attr_name[KND_SHORT_NAME_SIZE];
     size_t uniq_attr_name_size;
 
-    char validator_name[KND_SHORT_NAME_SIZE];
-    size_t validator_name_size;
-
     bool is_a_set;
     //bool is_recursive;
 
@@ -197,8 +194,8 @@ struct kndAttr
     //int descr_level;
     //int browse_level;
 
-    char calc_oper[KND_NAME_SIZE];
-    size_t calc_oper_size;
+    //char calc_oper[KND_NAME_SIZE];
+    //size_t calc_oper_size;
 
     char calc_attr[KND_NAME_SIZE];
     //size_t calc_attr_size;
@@ -215,7 +212,10 @@ struct kndAttr
 
     struct kndTranslation *tr;
     size_t depth;
+
     struct kndAttr *next;
+    struct kndAttr *mem_next;
+    struct kndAttr *mem_prev;
 
     /***********  public methods ***********/
     void (*str)(struct kndAttr *self);
@@ -259,3 +259,8 @@ extern int knd_compute_num_value(struct kndAttr *attr,
 
 extern int knd_apply_attr_var_updates(struct kndClass *self,
                                       struct kndClassUpdate *update);
+
+extern int knd_attr_var_new(struct kndMemPool *mempool,
+                            struct kndAttrVar **result);
+extern int knd_attr_new(struct kndMemPool *mempool,
+                        struct kndAttr **result);

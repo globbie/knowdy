@@ -196,9 +196,9 @@ typedef enum knd_storage_type {
 #define KND_LOCSET_MAX_ENUM_VALUE 64
 
 #define KND_MAX_ATTRS 264
+#define KND_MAX_COMPUTED_ATTRS 16
 #define KND_MAX_CLAUSES 32
 #define KND_MAX_ELEMLOCS 128
-
 
 #define KND_LEAF_SIZE 10
 
@@ -251,7 +251,7 @@ typedef enum knd_storage_type {
 #define KND_PATH_SIZE 1024
 #define KND_NAME_SIZE 512
 #define KND_SHORT_NAME_SIZE 64
-#define KND_VAL_SIZE 1024 * 4
+#define KND_VAL_SIZE 1024 * 2
 
 #define KND_UID_SIZE 7
 
@@ -271,6 +271,15 @@ typedef enum knd_storage_type {
 #define KND_MAX_HILITE_CONCUNITS 256
 
 #define KND_LOCSET_BUF_SIZE KND_MAX_CONC_UNITS * KND_LOC_REC_SIZE
+
+#define KND_MEMPAGE_SIZE 4096
+#define KND_NUM_MEMPAGES 10000
+
+#define KND_SMALL_MEMPAGE_SIZE 1024
+#define KND_NUM_SMALL_MEMPAGES 1000
+
+#define KND_LARGE_MEMPAGE_SIZE 4096 * 4
+#define KND_NUM_LARGE_MEMPAGES 1000
 
 #define KND_MAX_TEXT_BUF_SIZE 1024 * 1024 * sizeof(char)
 #define KND_MAX_METADATA_BUF_SIZE 1024 * 10 * sizeof(char)
