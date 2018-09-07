@@ -168,12 +168,12 @@ struct kndProc
     struct kndTranslation *tr;
     struct kndTranslation *summary;
 
-    const char *locale;
-    size_t locale_size;
+//    const char *locale;
+//    size_t locale_size;
     knd_format format;
     
-    struct kndProcState *states;
-    size_t num_states;
+//    struct kndProcState *states;
+//    size_t num_states;
 
     /* immediate args */
     struct kndProcArg *args;
@@ -182,7 +182,7 @@ struct kndProc
     struct ooDict *arg_idx;
 
     struct kndProcCall proc_call;
-    size_t num_proc_calls;
+    //size_t num_proc_calls;
 
     struct kndProcVar *bases;
     size_t num_bases;
@@ -275,3 +275,5 @@ struct kndProc
 /* constructors */
 extern void kndProc_init(struct kndProc *self);
 extern int kndProc_new(struct kndProc **self, struct kndMemPool *mempool);
+
+extern gsl_err_t kndProc_import(struct kndProc *self, const char *rec, size_t *total_size);
