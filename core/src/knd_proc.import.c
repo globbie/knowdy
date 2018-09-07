@@ -348,11 +348,8 @@ static gsl_err_t parse_proc_call_arg(void *obj,
     proc_call->args = call_arg;
     proc_call->num_args++;
 
-    err = mempool->new_class_var(mempool, &class_var);
-    if (err) {
-        knd_log("-- class var alloc failed :(");
-        return *total_size = 0, make_gsl_err_external(err);
-    }
+    err = knd_class_var_new(mempool, &class_var);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     class_var->root_class = proc->entry->repo->root_class;
 
     parser_err = import_class_var(class_var, rec, total_size);
