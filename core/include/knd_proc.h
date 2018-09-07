@@ -276,16 +276,47 @@ struct kndProc
 extern void kndProc_init(struct kndProc *self);
 extern int kndProc_new(struct kndProc **self, struct kndMemPool *mempool);
 
-extern gsl_err_t kndProc_import(struct kndProc *self, const char *rec, size_t *total_size);
+extern gsl_err_t kndProc_import(struct kndProc *root_proc, const char *rec, size_t *total_size);
 
 //
 // TODO(k15tfu): ?? Move to knd_proc_impl.h
 //
 #include <knd_proc_arg.h>
+#include <knd_text.h>
+
+static inline void kndProcVar_declare_arg(struct kndProcVar *base, struct kndProcArgVar *base_arg)
+{
+    if (base->tail) {
+        base->tail->next = base_arg;
+        base->tail = base_arg;
+    }
+    else
+        base->args = base->tail = base_arg;
+    base->num_args++;
+}
 
 static inline void kndProc_declare_arg(struct kndProc *self, struct kndProcArg *arg)
 {
     arg->next = self->args;
     self->args = arg;
     self->num_args++;
+}
+
+static inline void kndProc_declare_tr(struct kndProc *self, struct kndTranslation *tr)
+{
+    tr->next = self->tr;
+    self->tr = tr;
+}
+
+static inline void kndProc_declare_summary(struct kndProc *self, struct kndTranslation *summary)
+{
+    summary->next = self->summary;
+    self->summary = summary;
+}
+
+static inline void kndProc_declare_base(struct kndProc *self, struct kndProcVar *base)
+{
+    base->next = self->bases;
+    self->bases = base;
+    self->num_bases++;
 }
