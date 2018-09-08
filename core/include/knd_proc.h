@@ -36,27 +36,27 @@ typedef enum knd_proc_type {
     KND_PROC_DIV_PERCENT
 } knd_proc_type;
 
-struct kndProcState
-{
-    knd_state_phase phase;
-
-    char val[KND_NAME_SIZE + 1];
-    size_t val_size;
-
-    struct kndClassInst *obj;
-    struct kndProcState *next;
-};
+//struct kndProcState
+//{
+//    knd_state_phase phase;
+//
+//    char val[KND_NAME_SIZE + 1];
+//    size_t val_size;
+//
+//    struct kndClassInst *obj;
+//    struct kndProcState *next;
+//};
 
 struct kndProcUpdateRef
 {
-    knd_state_phase phase;
-    struct kndUpdate *update;
-    struct kndProcUpdateRef *next;
+//    knd_state_phase phase;
+//    struct kndUpdate *update;
+//    struct kndProcUpdateRef *next;
 };
 
 struct kndProcInstance
 {
-    struct kndProc *proc;
+//    struct kndProc *proc;
 };
 
 struct kndProcCall
@@ -85,23 +85,23 @@ struct kndProcEntry
     knd_state_phase phase;
 
     size_t global_offset;
-    size_t curr_offset;
+//    size_t curr_offset;
     size_t block_size;
 
-    size_t body_size;
-    size_t obj_block_size;
-    size_t dir_size;
+//    size_t body_size;
+//    size_t obj_block_size;
+//    size_t dir_size;
 
-    struct kndProcEntry **children;
-    size_t num_children;
+//    struct kndProcEntry **children;
+//    size_t num_children;
 
     struct ooDict *inst_idx;
-    struct kndMemPool *mempool;
-    int fd;
+    //struct kndMemPool *mempool;
+    //int fd;
 
-    size_t num_procs;
-    bool is_terminal;
-    struct kndProcEntry *next;
+//    size_t num_procs;
+//    bool is_terminal;
+    //struct kndProcEntry *next;
 };
 
 struct kndProcArgVar
@@ -124,9 +124,9 @@ struct kndProcArgEntry
 
     struct kndProcArg *arg;
 
-    char classname[KND_NAME_SIZE];
-    size_t classname_size;
-    struct kndProcEntry *parent;
+//    char classname[KND_NAME_SIZE];
+//    size_t classname_size;
+//    struct kndProcEntry *parent;
 
     struct kndProcArgVar *next;
 };
@@ -194,12 +194,12 @@ struct kndProc
 
     char result_classname[KND_NAME_SIZE];
     size_t result_classname_size;
-    struct kndClass *result;
+//    struct kndClass *result;
 
-    size_t estim_cost;
+//    size_t estim_cost;
     size_t estim_cost_total;
-    size_t estim_time;
-    size_t estim_time_total;
+//    size_t estim_time;
+//    size_t estim_time_total;
 
     struct kndTask *task;
     struct kndVisualFormat *visual;
@@ -212,13 +212,13 @@ struct kndProc
     struct kndProc *inbox;
     size_t inbox_size;
 
-    struct kndProcInstance *inst_inbox;
+//    struct kndProcInstance *inst_inbox;
     size_t inst_inbox_size;
 
     size_t num_procs;
 
     struct ooDict *proc_idx;
-    struct ooDict *rel_idx;
+//    struct ooDict *rel_idx;
 
     struct kndSet *class_idx;
     struct ooDict *class_name_idx;
@@ -226,7 +226,7 @@ struct kndProc
 
     const char *frozen_output_file_name;
     size_t frozen_output_file_name_size;
-    size_t frozen_size;
+//    size_t frozen_size;
 
     bool batch_mode;
     bool is_resolved;
