@@ -24,8 +24,9 @@
 #include "knd_dict.h"
 #include "knd_utils.h"
 #include "knd_task.h"
-#include "knd_proc.h"
 #include "knd_config.h"
+
+#include "knd_proc_call.h"
 
 struct kndClass;
 struct kndMemPool;
@@ -73,24 +74,6 @@ struct kndProcArgInstance
     struct kndObjEntry *obj;
     
 //    struct kndProcArgInstance *next;
-};
-
-struct kndProcCallArg
-{
-    char name[KND_SHORT_NAME_SIZE];
-    size_t name_size;
-
-    char val[KND_NAME_SIZE];
-    size_t val_size;
-
-    long numval;
-    
-    struct kndProcArg *arg;
-    struct kndClassVar *class_var;
-
-//    struct kndProcCall proc_call;
-
-    struct kndProcCallArg *next;
 };
 
 struct kndProcArg 

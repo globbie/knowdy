@@ -22,19 +22,12 @@
 
 #include "knd_config.h"
 
+#include "knd_proc_arg.h"
+#include "knd_proc_call.h"
+
 struct glbOutput;
 struct kndProcCallArg;
 struct kndUpdate;
-
-typedef enum knd_proc_type {
-    KND_PROC_USER,
-    KND_PROC_SYSTEM,
-    KND_PROC_ADD,
-    KND_PROC_SUM,
-    KND_PROC_MULT,
-    KND_PROC_MULT_PERCENT,
-    KND_PROC_DIV_PERCENT
-} knd_proc_type;
 
 //struct kndProcState
 //{
@@ -57,18 +50,6 @@ struct kndProcUpdateRef
 struct kndProcInstance
 {
 //    struct kndProc *proc;
-};
-
-struct kndProcCall
-{
-    char name[KND_NAME_SIZE];
-    size_t name_size;
-    knd_proc_type type;
-
-    struct kndProc *proc;
-    struct kndProcCallArg *args;
-    size_t num_args;
-    struct kndMemPool *mempool;
 };
 
 struct kndProcEntry
@@ -318,24 +299,4 @@ static inline void kndProc_declare_base(struct kndProc *self, struct kndProcVar 
     base->next = self->bases;
     self->bases = base;
     self->num_bases++;
-}
-
-static inline void kndProcCallArg_init(struct kndProcCallArg *self,
-                                       const char *name, size_t name_size,
-                                       struct kndClassVar *class_var)
-{
-    memset(self, 0, sizeof *self);
-
-    memcpy(self->name, name, name_size);
-    self->name_size = name_size;
-    self->name[name_size] = '\0';
-
-    self->class_var = class_var;
-}
-
-static inline void kndProcCall_declare_arg(struct kndProcCall *proc_call, struct kndProcCallArg *call_arg)
-{
-    call_arg->next = proc_call->args;
-    proc_call->args = call_arg;
-    proc_call->num_args++;
 }
