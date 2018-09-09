@@ -947,7 +947,7 @@ static gsl_err_t alloc_proc_arg(void *obj,
     struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
 
-    err = mempool->new_proc_arg(mempool, &arg);
+    err = kndProcArg_new(&arg, self, mempool);
     if (err) return make_gsl_err_external(err);
 
     arg->task = self->task;
@@ -1312,7 +1312,7 @@ static int resolve_parents(struct kndProc *self)
                         arg_entry->arg->name_size, arg_entry->arg->name,
                         arg_entry->arg->classname_size, arg_entry->arg->classname);
 
-            err = self->entry->repo->mempool->new_proc_arg(self->entry->repo->mempool, &arg);
+            err = kndProcArg_new(&arg, self, self->entry->repo->mempool);
             if (err) return err;
 
             memcpy(arg->name,
@@ -1748,8 +1748,6 @@ kndProc_new(struct kndProc **proc,
     memset(self, 0, sizeof(struct kndProc));
 
     err = mempool->new_proc_entry(mempool, &entry);                               RET_ERR();
-    entry->name[0] = '/';
-    entry->name_size = 1;
     entry->repo = repo;
     entry->proc = self;
     self->entry = entry;
