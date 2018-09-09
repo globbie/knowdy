@@ -823,8 +823,8 @@ int kndProcArg_new(struct kndProcArg **self,
                    struct kndMemPool *mempool)
 {
     int err = mempool->new_proc_arg(mempool, self);
-    if (!err) return err;
+    if (err) return err;
 
-    kndProcArg_init(self, proc);
+    kndProcArg_init(*self, proc);
     return knd_OK;
 }

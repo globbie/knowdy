@@ -537,6 +537,8 @@ extern int kndRepo_new(struct kndRepo **repo,
     
     err = kndProc_new(&proc, self, mempool);
     if (err) goto error;
+    proc->entry->name[0] = '/';
+    proc->entry->name_size = 1;
     self->root_proc = proc;
     
     err = kndRel_new(&rel, mempool);
