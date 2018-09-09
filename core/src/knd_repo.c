@@ -535,9 +535,8 @@ extern int kndRepo_new(struct kndRepo **repo,
     err = ooDict_new(&self->attr_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
     
-    err = kndProc_new(&proc, mempool);
+    err = kndProc_new(&proc, self, mempool);
     if (err) goto error;
-    proc->entry->repo = self;
     self->root_proc = proc;
     
     err = kndRel_new(&rel, mempool);

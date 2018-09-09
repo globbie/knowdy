@@ -321,26 +321,15 @@ gsl_err_t kndProc_import(struct kndProc *root_proc,
 {
     struct kndProc *proc;
     struct kndProcEntry *entry;
-    struct kndMemPool *mempool = root_proc->entry->repo->mempool;
     int err;
-    gsl_err_t parser_err;
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log(".. import Proc: \"%.*s\"..", 32, rec);
 
-    err = mempool->new_proc(mempool, &proc);
-    if (err) { *total_size = 0; return make_gsl_err_external(err); }
+    err = kndProc_new(&proc, root_proc->entry->repo, root_proc->entry->repo->mempool);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
 
-    proc->proc_name_idx = root_proc->proc_name_idx;
-    proc->proc_idx = root_proc->proc_idx;
-    proc->class_name_idx = root_proc->class_name_idx;
-    proc->class_idx = root_proc->class_idx;
-
-    err = mempool->new_proc_entry(mempool, &entry);
-    if (err) return make_gsl_err_external(err);
-    entry->repo = root_proc->entry->repo;
-    entry->proc = proc;
-    proc->entry = entry;
+    kndProc_inherit_idx(proc, root_proc);
 
     struct gslTaskSpec proc_arg_spec = {
         .is_list_item = true,
@@ -421,15 +410,16 @@ gsl_err_t kndProc_import(struct kndProc *root_proc,
             .obj = proc
         }
     };
+    gsl_err_t parser_err;
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
     if (!proc->entry->name_size)
-        return make_gsl_err_external(knd_FAIL);
+        return make_gsl_err(gsl_FORMAT);
 
     entry = root_proc->proc_name_idx->get(root_proc->proc_name_idx,
-                                     proc->entry->name, proc->entry->name_size);
+                                          proc->entry->name, proc->entry->name_size);
     if (entry) {
         if (entry->phase == KND_REMOVED) {
             knd_log("== proc was removed recently");
@@ -438,25 +428,24 @@ gsl_err_t kndProc_import(struct kndProc *root_proc,
             knd_log("-- %.*s proc name doublet found :( log:%p",
                     proc->entry->name_size, proc->entry->name,
                     root_proc->entry->repo->log);
+
             root_proc->entry->repo->log->reset(root_proc->entry->repo->log);
-            err = root_proc->entry->repo->log->write(root_proc->entry->repo->log,
-                                                proc->name,
-                                                proc->name_size);
+            err = root_proc->entry->repo->log->writef(root_proc->entry->repo->log,
+                                                      "%*s proc name already exists",
+                                                      proc->name_size, proc->name);
             if (err) return make_gsl_err_external(err);
-            err = root_proc->entry->repo->log->write(root_proc->entry->repo->log,
-                                                " proc name already exists",
-                                                strlen(" proc name already exists"));
-            if (err) return make_gsl_err_external(err);
-            return make_gsl_err_external(knd_FAIL);
+            return make_gsl_err_external(knd_EXISTS);
         }
     }
 
     if (!root_proc->batch_mode) {
+        //kndProc_push_to_inbox(root_proc, proc);
         proc->next = root_proc->inbox;
         root_proc->inbox = proc;
         root_proc->inbox_size++;
     }
 
+    // Genearte ID and Add to proc index
     root_proc->num_procs++;
     proc->entry->numid = root_proc->num_procs;
     proc->entry->id_size = KND_ID_SIZE;

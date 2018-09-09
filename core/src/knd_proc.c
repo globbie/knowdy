@@ -231,9 +231,7 @@ static int get_proc(struct kndProc *self,
 
     proc->entry = entry;
 
-    proc->proc_name_idx = self->proc_name_idx;
-    proc->proc_idx = self->proc_idx;
-    proc->class_name_idx = self->class_name_idx;
+    kndProc_inherit_idx(proc, self);
 
     memcpy(proc->name, entry->name, entry->name_size);
     proc->name_size = entry->name_size;
@@ -1738,6 +1736,7 @@ extern void kndProc_init(struct kndProc *self)
 
 extern int 
 kndProc_new(struct kndProc **proc,
+            struct kndRepo *repo,
             struct kndMemPool *mempool)
 {
     struct kndProc *self;
@@ -1751,6 +1750,7 @@ kndProc_new(struct kndProc **proc,
     err = mempool->new_proc_entry(mempool, &entry);                               RET_ERR();
     entry->name[0] = '/';
     entry->name_size = 1;
+    entry->repo = repo;
     entry->proc = self;
     self->entry = entry;
 

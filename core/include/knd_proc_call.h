@@ -64,10 +64,10 @@ struct kndProcCall
     size_t name_size;
     knd_proc_type type;
 
-    struct kndProc *proc;
+//    struct kndProc *proc;
     struct kndProcCallArg *args;
     size_t num_args;
-    struct kndMemPool *mempool;
+//    struct kndMemPool *mempool;
 };
 
 //
