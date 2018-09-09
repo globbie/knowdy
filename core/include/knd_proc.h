@@ -198,10 +198,10 @@ struct kndProc
 
     size_t num_procs;
 
-    struct ooDict *proc_idx;
+//    struct ooDict *proc_idx;
 //    struct ooDict *rel_idx;
 
-    struct kndSet *class_idx;
+//    struct kndSet *class_idx;
     struct ooDict *class_name_idx;
     struct ooDict *proc_name_idx;
 
@@ -254,7 +254,7 @@ struct kndProc
 
 /* constructors */
 extern void kndProc_init(struct kndProc *self);
-extern int kndProc_new(struct kndProc **self, struct kndMemPool *mempool);
+extern int kndProc_new(struct kndProc **self, struct kndRepo *repo, struct kndMemPool *mempool);
 
 extern gsl_err_t kndProc_import(struct kndProc *root_proc, const char *rec, size_t *total_size);
 
@@ -273,6 +273,15 @@ static inline void kndProcVar_declare_arg(struct kndProcVar *base, struct kndPro
     else
         base->args = base->tail = base_arg;
     base->num_args++;
+}
+
+// TODO(k15tfu): remove this
+static inline void kndProc_inherit_idx(struct kndProc *self, struct kndProc *parent)
+{
+    self->proc_name_idx = parent->proc_name_idx;
+    //self->proc_idx = parent->proc_idx;
+    self->class_name_idx = parent->class_name_idx;
+    //self->class_idx = parent->class_idx;
 }
 
 static inline void kndProc_declare_arg(struct kndProc *self, struct kndProcArg *arg)
