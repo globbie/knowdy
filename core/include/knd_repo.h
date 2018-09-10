@@ -60,8 +60,12 @@ struct kndRepo
     size_t intersect_matrix_size;
 
     struct kndClass *root_class;
-    size_t next_class_numid;
 
+    struct ooDict *class_name_idx;
+    struct kndSet *class_idx;
+    size_t num_classes;
+
+    struct ooDict *attr_name_idx;
     struct kndSet *attr_idx;
     size_t num_attrs;
     

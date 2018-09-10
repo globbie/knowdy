@@ -70,7 +70,7 @@ static int aggr_item_export_JSON(struct kndAttrVar *parent_item,
         if (err) return err;
         in_list = true;
 
-        c = parent_item->attr->conc;
+        c = parent_item->attr->ref_class;
         if (c->num_computed_attrs) {
             if (DEBUG_ATTR_JSON_LEVEL_2)
                 knd_log(".. present computed attrs in %.*s (val:%.*s)",
@@ -85,7 +85,7 @@ static int aggr_item_export_JSON(struct kndAttrVar *parent_item,
     /* export a class ref */
     if (parent_item->class) {
         attr = parent_item->attr;
-        c = parent_item->attr->conc;
+        c = parent_item->attr->ref_class;
 
         /* TODO: check assignment */
         if (parent_item->implied_attr) {
@@ -124,7 +124,7 @@ static int aggr_item_export_JSON(struct kndAttrVar *parent_item,
     if (!parent_item->class) {
         /* terminal string value */
         if (parent_item->val_size) {
-            c = parent_item->attr->conc;
+            c = parent_item->attr->ref_class;
             attr = parent_item->attr;
 
             if (c->implied_attr) {
@@ -473,7 +473,7 @@ extern int knd_present_computed_aggr_attrs(struct kndAttrVar *attr_var,
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
-    struct kndClass *c = attr_var->attr->conc;
+    struct kndClass *c = attr_var->attr->ref_class;
     struct kndAttr *attr;
     long numval;
     int err;

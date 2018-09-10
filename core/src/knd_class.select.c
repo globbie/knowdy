@@ -204,8 +204,8 @@ static gsl_err_t parse_attr_select(void *obj,
         knd_log(".. attr parent: %.*s conc: %.*s",
                 attr->parent_class->name_size,
                 attr->parent_class->name,
-                attr->conc->name_size,
-                attr->conc->name);
+                attr->ref_class->name_size,
+                attr->ref_class->name);
     }
 
     self->curr_attr = attr;

@@ -162,6 +162,7 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
 {
     struct kndAttrVar *self = obj;
     struct kndClass *root_class = self->class_var->root_class;
+    struct kndMemPool *mempool = root_class->entry->repo->mempool;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. set attr var value: %.*s batch:%d",
@@ -171,6 +172,9 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
 
     /* initial set of classes */
     if (root_class->batch_mode) {
+
+        if (val_size < KND_MEMPAGE_SIZE) {
+        }
         // TODO:
         self->valbuf = malloc(val_size);
         

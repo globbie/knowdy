@@ -26,7 +26,7 @@
 #include <gsl-parser/gsl_err.h>
 
 /* return error codes */
-typedef enum { knd_OK, knd_FAIL, knd_NOMEM, knd_LIMIT, knd_RANGE, knd_AUTH,
+typedef enum { knd_OK, knd_FAIL, knd_NOMEM, knd_CONFLICT, knd_LIMIT, knd_RANGE, knd_AUTH,
         knd_INVALID_DATA, knd_ACCESS, knd_NO_MATCH, knd_MATCH_FOUND, knd_FORMAT,
         knd_IO_FAIL, knd_EXISTS, knd_EOB, knd_STOP, knd_NEED_WAIT, 
         knd_EXPIRED } 

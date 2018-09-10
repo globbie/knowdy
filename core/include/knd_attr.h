@@ -136,20 +136,12 @@ struct kndAttrVar
     struct kndAttrVar *next;
 };
 
-struct kndAttrEntry
+struct kndAttrRef
 {
-    char name[KND_NAME_SIZE];
-    size_t name_size;
-    char id[KND_ID_SIZE];
-    size_t id_size;
-    size_t numid;
-
     struct kndAttr *attr;
     struct kndAttrVar *attr_var;
-
-    struct kndAttrEntry *parent;
-
-    struct kndAttrEntry *next;
+    struct kndClassEntry *class;
+    struct kndAttrRef *next;
 };
 
 struct kndAttr
@@ -160,11 +152,11 @@ struct kndAttr
 
     char name[KND_NAME_SIZE];
     size_t name_size;
+    char id[KND_ID_SIZE];
+    size_t id_size;
     size_t numid;
 
-    struct kndAttrEntry *entry;
     struct kndClass *parent_class;
-    struct kndClass *conc;
 
     char uniq_attr_name[KND_SHORT_NAME_SIZE];
     size_t uniq_attr_name_size;
@@ -183,6 +175,7 @@ struct kndAttr
     /* if refclass is empty: assume self reference by default */
     char ref_classname[KND_SHORT_NAME_SIZE];
     size_t ref_classname_size;
+    struct kndClass *ref_class;
 
     char ref_procname[KND_SHORT_NAME_SIZE];
     size_t ref_procname_size;
@@ -194,8 +187,8 @@ struct kndAttr
     char calc_attr[KND_NAME_SIZE];
     //size_t calc_attr_size;
 
-    char default_val[KND_SHORT_NAME_SIZE];
-    size_t default_val_size;
+    //char default_val[KND_SHORT_NAME_SIZE];
+    //size_t default_val_size;
 
     char idx_name[KND_SHORT_NAME_SIZE];
     size_t idx_name_size;
@@ -208,8 +201,6 @@ struct kndAttr
     size_t depth;
 
     struct kndAttr *next;
-    struct kndAttr *mem_next;
-    struct kndAttr *mem_prev;
 
     /***********  public methods ***********/
     void (*str)(struct kndAttr *self);
@@ -218,10 +209,10 @@ struct kndAttr
                        const char *rec,
                        size_t *chunk_size);
 
-    int (*validate)(struct kndAttr *self,
+    /*int (*validate)(struct kndAttr *self,
                     const char   *val,
                     size_t val_size);
-
+    */
     int (*export)(struct kndAttr *self,
                   knd_format format,
                   struct glbOutput *out);
@@ -256,5 +247,7 @@ extern int knd_apply_attr_var_updates(struct kndClass *self,
 
 extern int knd_attr_var_new(struct kndMemPool *mempool,
                             struct kndAttrVar **result);
+extern int knd_attr_ref_new(struct kndMemPool *mempool,
+                            struct kndAttrRef **result);
 extern int knd_attr_new(struct kndMemPool *mempool,
                         struct kndAttr **result);

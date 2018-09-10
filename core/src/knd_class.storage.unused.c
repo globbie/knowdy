@@ -1,3 +1,45 @@
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <time.h>
+
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
+
+/* numeric conversion by strtol */
+#include <errno.h>
+#include <limits.h>
+
+#include "knd_config.h"
+#include "knd_mempool.h"
+#include "knd_repo.h"
+#include "knd_state.h"
+#include "knd_class.h"
+#include "knd_class_inst.h"
+#include "knd_attr.h"
+#include "knd_task.h"
+#include "knd_user.h"
+#include "knd_text.h"
+#include "knd_rel.h"
+#include "knd_proc.h"
+#include "knd_proc_arg.h"
+#include "knd_set.h"
+#include "knd_utils.h"
+#include "knd_http_codes.h"
+
+#include <gsl-parser.h>
+#include <glb-lib/output.h>
+
+#define DEBUG_STORAGE_LEVEL_1 0
+#define DEBUG_STORAGE_LEVEL_2 0
+#define DEBUG_STORAGE_LEVEL_3 0
+#define DEBUG_STORAGE_LEVEL_4 0
+#define DEBUG_STORAGE_LEVEL_5 0
+#define DEBUG_STORAGE_LEVEL_TMP 1
 
 static int unfreeze_class(struct kndClass *self,
                           struct kndClassEntry *entry,
@@ -24,7 +66,7 @@ static int freeze_objs(struct kndClass *self,
     size_t obj_block_size = 0;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log(".. freezing objs of class \"%.*s\", total:%zu  valid:%zu",
                 self->entry->name_size, self->entry->name,
                 self->entry->obj_name_idx->size, self->entry->num_insts);
@@ -52,7 +94,7 @@ static int freeze_objs(struct kndClass *self,
             continue;
         }
         obj->depth = self->depth + 1;
-        if (DEBUG_CONC_LEVEL_2) {
+        if (DEBUG_STORAGE_LEVEL_2) {
             obj->str(obj);
         }
 
@@ -71,7 +113,7 @@ static int freeze_objs(struct kndClass *self,
         err = dir_out->write(dir_out, buf, buf_size);
         if (err) return err;
 
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_STORAGE_LEVEL_2)
             knd_log("OBJ body size: %zu [%.*s]",
                     obj->frozen_size, buf_size, buf);
 
@@ -150,10 +192,7 @@ static int freeze_objs(struct kndClass *self,
     return knd_OK;
 }
 
-static int freeze_subclasses(struct kndClass *self,
-                             size_t *total_frozen_size,
-                             char *output,
-                             size_t *total_size)
+static int freeze_subclasses(struct kndClass *self)
 {
     char buf[KND_SHORT_NAME_SIZE] = {0};
     size_t buf_size;
@@ -163,10 +202,6 @@ static int freeze_subclasses(struct kndClass *self,
     size_t chunk_size;
     int err;
 
-    chunk_size = strlen("[c");
-    memcpy(curr_dir, "[c", chunk_size);
-    curr_dir += chunk_size;
-    curr_dir_size += chunk_size;
 
     for (size_t i = 0; i < self->entry->num_children; i++) {
         c = self->entry->children[i]->class;
@@ -177,25 +212,6 @@ static int freeze_subclasses(struct kndClass *self,
             knd_log("-- empty GSP in %.*s?", c->name_size, c->name);
             continue;
         }
-
-        /* terminal class */
-//        if (c->is_terminal) {
-//            self->num_terminals++;
-//        } else {
-//            self->num_terminals += c->num_terminals;
-//        }
-
-        memcpy(curr_dir, " ", 1);
-        curr_dir++;
-        curr_dir_size++;
-
-        buf_size = 0;
-        knd_num_to_str(c->entry->frozen_size, buf, &buf_size, KND_RADIX_BASE);
-        memcpy(curr_dir, buf, buf_size);
-        curr_dir      += buf_size;
-        curr_dir_size += buf_size;
-
-        *total_frozen_size += c->entry->frozen_size;
     }
 
     /* close the list of children */
@@ -221,7 +237,7 @@ static int freeze_rels(struct kndRel *self,
     size_t chunk_size;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log(".. freezing rels..");
 
     key = NULL;
@@ -248,131 +264,6 @@ static int freeze_rels(struct kndRel *self,
     return knd_OK;
 }
 
-static int freeze(struct kndClass *self)
-{
-    // TODO
-    char dir_buf[KND_MAX_CONC_CHILDREN * KND_DIR_ENTRY_SIZE];// = self->dir_buf;
-    char *curr_dir = dir_buf;
-
-    size_t curr_dir_size = 0;
-    size_t total_frozen_size = 0;
-    size_t num_size;
-    size_t chunk_size;
-    int err;
-
-    self->entry->repo->out->reset(self->entry->repo->out);
-
-    /* class self presentation */
-    err = export_GSP(self);
-    if (err) {
-        knd_log("-- GSP export failed :(");
-        return err;
-    }
-
-    /* persistent write */
-    err = knd_append_file(self->entry->repo->frozen_output_file_name,
-                          self->entry->repo->out->buf,
-                          self->entry->repo->out->buf_size);                      RET_ERR();
-
-    total_frozen_size = self->entry->repo->out->buf_size;
-
-    /* TODO: no dir entry necessary */
-    /*if (!self->entry->num_children) {
-        if (!self->entry) {
-            self->frozen_size = total_frozen_size;
-            return knd_OK;
-        }
-        if (!self->entry->obj_name_idx) {
-            self->frozen_size = total_frozen_size;
-            return knd_OK;
-        }
-        }*/
-
-    /* class dir entry */
-    chunk_size = strlen("{C ");
-    memcpy(curr_dir, "{C ", chunk_size);
-    curr_dir += chunk_size;
-    curr_dir_size += chunk_size;
-
-    num_size = sprintf(curr_dir, "%zu}", total_frozen_size);
-    curr_dir +=      num_size;
-    curr_dir_size += num_size;
-
-    if (self->entry->repo->next_class_numid) {
-        num_size = sprintf(curr_dir, "{tot %zu}", self->entry->repo->next_class_numid);
-        curr_dir +=      num_size;
-        curr_dir_size += num_size;
-    }
-
-    /* any instances to freeze? */
-    if (self->entry && self->entry->num_insts) {
-        err = freeze_objs(self, &total_frozen_size, curr_dir, &chunk_size);       RET_ERR();
-        curr_dir +=      chunk_size;
-        curr_dir_size += chunk_size;
-    }
-
-    if (self->entry->num_children) {
-        err = freeze_subclasses(self, &total_frozen_size,
-                                curr_dir, &chunk_size);                           RET_ERR();
-        curr_dir +=      chunk_size;
-        curr_dir_size += chunk_size;
-    }
-
-    /* rels */
-    if (self->rel && self->rel->rel_name_idx->size) {
-        chunk_size = strlen("[R");
-        memcpy(curr_dir, "[R", chunk_size);
-        curr_dir += chunk_size;
-        curr_dir_size += chunk_size;
-
-        chunk_size = 0;
-
-        err = freeze_rels(self->rel, &total_frozen_size,
-                          curr_dir, &chunk_size);                                  RET_ERR();
-        curr_dir +=      chunk_size;
-        curr_dir_size += chunk_size;
-
-        memcpy(curr_dir, "]", 1);
-        curr_dir++;
-        curr_dir_size++;
-    }
-
-    /* procs */
-    if (self->proc && self->proc->proc_name_idx->size) {
-        //self->proc->out = self->entry->repo->out;
-        //self->proc->dir_out = dir_out;
-        //self->proc->frozen_output_file_name = self->entry->repo->frozen_output_file_name;
-
-        err = self->proc->freeze_procs(self->proc,
-                                       &total_frozen_size,
-                                       curr_dir, &chunk_size);                    RET_ERR();
-        curr_dir +=      chunk_size;
-        curr_dir_size += chunk_size;
-    }
-
-    if (DEBUG_CONC_LEVEL_2)
-        knd_log("== %.*s (%.*s)   DIR: \"%.*s\"   [%lu]",
-                self->entry->name_size, self->entry->name, self->entry->id_size, self->entry->id,
-                curr_dir_size,
-                dir_buf, (unsigned long)curr_dir_size);
-
-    num_size = sprintf(curr_dir, "{L %lu}",
-                       (unsigned long)curr_dir_size);
-    curr_dir_size += num_size;
-
-    err = knd_append_file(self->entry->repo->frozen_output_file_name,
-                          dir_buf, curr_dir_size);
-    if (err) return err;
-
-    total_frozen_size += curr_dir_size;
-
-    self->entry->frozen_size = total_frozen_size;
-
-    return knd_OK;
-}
-
-
-
 static int knd_get_dir_size(struct kndClass *self,
                             size_t *dir_size,
                             size_t *chunk_size,
@@ -392,7 +283,7 @@ static int knd_get_dir_size(struct kndClass *self,
     const char *c, *s = NULL;
     int i = 0;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log(".. get size of DIR in %.*s", self->entry->name_size, self->entry->name);
 
     for (i = rec_size - 1; i >= 0; i--) {
@@ -426,7 +317,7 @@ static int knd_get_dir_size(struct kndClass *self,
             break;
         }
         if (got_size) {
-            if (DEBUG_CONC_LEVEL_2)
+            if (DEBUG_STORAGE_LEVEL_2)
                 knd_log("  ++ got size value to parse: %.*s!", buf_size, s);
             break;
         }
@@ -448,7 +339,7 @@ static int knd_get_dir_size(struct kndClass *self,
 
     if (numval <= 0) return knd_FAIL;
     if (numval >= KND_DIR_TRAILER_MAX_SIZE) return knd_LIMIT;
-    if (DEBUG_CONC_LEVEL_3)
+    if (DEBUG_STORAGE_LEVEL_3)
         knd_log("  == DIR size: %lu    CHUNK SIZE: %lu",
                 (unsigned long)numval, (unsigned long)rec_size - i);
 
@@ -486,7 +377,7 @@ static gsl_err_t run_set_dir_size(void *obj, const char *val, size_t val_size)
     }
 
     if (numval <= 0) return make_gsl_err(gsl_LIMIT);
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log("== DIR size: %lu", (unsigned long)numval);
 
     self->block_size = numval;
@@ -502,7 +393,7 @@ static gsl_err_t parse_parent_dir_size(void *obj,
     struct kndClassEntry *self = obj;
     gsl_err_t err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log(".. parsing parent dir size: \"%.*s\"", 16, rec);
 
     struct gslTaskSpec specs[] = {
@@ -526,7 +417,7 @@ static gsl_err_t parse_obj_dir_size(void *obj,
 {
     struct kndClassEntry *self = obj;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log(".. parsing obj dir size: \"%.*s\"", 16, rec);
 
     struct gslTaskSpec specs[] = {
@@ -617,7 +508,7 @@ static int parse_dir_trailer(struct kndClass *self,
 
     parent_entry->curr_offset = parent_entry->global_offset;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log("  .. parsing \"%.*s\" DIR REC: \"%.*s\"  curr offset: %zu   [dir size:%zu]",
                 KND_ID_SIZE, parent_entry->id, dir_buf_size, dir_buf,
                 parent_entry->curr_offset, dir_buf_size);
@@ -643,7 +534,7 @@ static int parse_dir_trailer(struct kndClass *self,
         }
     }
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log("DIR: %.*s   num children: %zu obj block:%zu",
                 parent_entry->id_size, parent_entry->id, parent_entry->num_children,
                 parent_entry->obj_block_size);
@@ -656,7 +547,7 @@ static int parse_dir_trailer(struct kndClass *self,
         err = idx_class_name(self, entry, fd);
         if (err) return err;
 
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_STORAGE_LEVEL_2)
             knd_log(".. read DIR  ID:%.*s NAME:%.*s"
                     " block size: %zu  num terminals:%zu",
                     entry->id_size, entry->id,
@@ -670,14 +561,14 @@ static int parse_dir_trailer(struct kndClass *self,
                         entry->name_size, entry->name, err);
                 return err;
             } else {
-                if (DEBUG_CONC_LEVEL_2)
+                if (DEBUG_STORAGE_LEVEL_2)
                     knd_log(".. terminal class: %.*s", entry->name_size, entry->name);
                 parent_entry->num_terminals++;
             }
         } else {
             parent_entry->num_terminals += entry->num_terminals;
 
-            if (DEBUG_CONC_LEVEL_2)
+            if (DEBUG_STORAGE_LEVEL_2)
                 knd_log(".. class:%.*s num_terminals:%zu",
                         parent_entry->name_size,
                         parent_entry->name, parent_entry->num_terminals);
@@ -728,13 +619,13 @@ static int get_dir_trailer(struct kndClass *self,
     err = read(fd, out->buf, out->buf_size);
     if (err == -1) return knd_IO_FAIL;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log("  .. DIR size field read: \"%.*s\" [%zu]",
                 out->buf_size, out->buf, out->buf_size);
 
     err =  knd_get_dir_size(self, &dir_size, &chunk_size, encode_base);
     if (err) {
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_STORAGE_LEVEL_2)
             knd_log("-- couldn't find the ConcDir size field in \"%.*s\" :(",
                     out->buf_size, out->buf);
         return knd_NO_MATCH;
@@ -743,7 +634,7 @@ static int get_dir_trailer(struct kndClass *self,
     parent_entry->body_size = block_size - dir_size - chunk_size;
     parent_entry->dir_size = dir_size;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log("  .. DIR: offset: %lu  block: %lu  body: %lu  dir: %lu",
                 (unsigned long)parent_entry->global_offset,
                 (unsigned long)parent_entry->block_size,
@@ -763,7 +654,7 @@ static int get_dir_trailer(struct kndClass *self,
     if (err == -1) return knd_IO_FAIL;
     out->buf[out->buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_STORAGE_LEVEL_2) {
         chunk_size = out->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ?\
             KND_MAX_DEBUG_CHUNK_SIZE :  out->buf_size;
         knd_log(".. parsing DIR: \"%.*s\" [size:%zu]",
@@ -796,7 +687,7 @@ static int open_frozen_DB(struct kndClass *self)
     filename = self->entry->repo->frozen_output_file_name;
     filename_size = self->entry->repo->frozen_output_file_name_size;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log(".. open \"%.*s\" ..", filename_size, filename);
 
     if (stat(filename, &st)) {
@@ -898,7 +789,7 @@ static int read_obj_entry(struct kndClass *self,
     /* NB: current parser expects a null terminated string */
     entry->block[entry->block_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log("   == OBJ REC: \"%.*s\"",
                 entry->block_size, entry->block);
 
@@ -952,7 +843,7 @@ static int read_obj_entry(struct kndClass *self,
         return gsl_err_to_knd_err_codes(parser_err);
     }
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         obj->str(obj);
 
     *result = obj;
@@ -989,7 +880,7 @@ static int parse_obj_dir_trailer(struct kndClass *self,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_STORAGE_LEVEL_1)
         knd_log(".. parsing OBJ DIR REC: %.*s [size %zu]",
                 128, obj_dir_buf, obj_dir_buf_size);
 
@@ -1011,7 +902,7 @@ static int parse_obj_dir_trailer(struct kndClass *self,
     parser_err = gsl_parse_task(obj_dir_buf, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log("== \"%.*s\" total objs: %zu",
                 parent_entry->name_size, parent_entry->name,
                 parent_entry->num_insts);
@@ -1041,7 +932,7 @@ static int get_obj_dir_trailer(struct kndClass *self,
     err = read(fd, out->buf, out->buf_size);
     if (err == -1) return knd_IO_FAIL;
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_STORAGE_LEVEL_2) {
         knd_log("\n  .. OBJ DIR ENTRY SIZE REC: \"%.*s\"",
                 out->buf_size, out->buf);
     }
@@ -1052,7 +943,7 @@ static int get_obj_dir_trailer(struct kndClass *self,
         return err;
     }
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log("\n  .. OBJ DIR REC SIZE: %lu [size field size: %lu]",
                 dir_size, (unsigned long)chunk_size);
 
@@ -1073,7 +964,7 @@ static int get_obj_dir_trailer(struct kndClass *self,
     if (err == -1) return knd_IO_FAIL;
     out->buf[out->buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_STORAGE_LEVEL_2) {
         chunk_size = out->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ? \
             KND_MAX_DEBUG_CHUNK_SIZE :  out->buf_size;
 
@@ -1101,7 +992,7 @@ static gsl_err_t obj_entry_append(void *accu,
 
     entry->offset = parent_entry->curr_offset;
 
-    if (DEBUG_CONC_LEVEL_1)
+    if (DEBUG_STORAGE_LEVEL_1)
         knd_log("\n.. ConcDir: %.*s to append atomic obj entry"
                 " (block size: %zu) offset:%zu",
                 parent_entry->name_size, parent_entry->name,
@@ -1119,7 +1010,7 @@ static gsl_err_t obj_entry_append(void *accu,
     err = read(fd, buf, buf_size);
     if (err == -1) return make_gsl_err_external(knd_IO_FAIL);
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log(".. OBJ BODY INCIPIT: \"%.*s\"",
                 buf_size, buf);
 
@@ -1132,7 +1023,7 @@ static gsl_err_t obj_entry_append(void *accu,
 
     parent_entry->curr_offset += entry->block_size;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log("== OBJ id:%.*s name:%.*s",
                 entry->id_size, entry->id,
                 entry->name_size, entry->name);
@@ -1155,8 +1046,6 @@ static gsl_err_t obj_entry_append(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
-
-
 static int idx_class_name(struct kndClass *self,
                           struct kndClassEntry *entry,
                           int fd)
@@ -1167,7 +1056,7 @@ static int idx_class_name(struct kndClass *self,
     void *result;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log("  .. get conc name in DIR: \"%.*s\""
                 " global off:%zu  block size:%zu",
                 entry->name_size, entry->name,
@@ -1184,7 +1073,7 @@ static int idx_class_name(struct kndClass *self,
     err = read(fd, buf, buf_size);
     if (err == -1) return knd_IO_FAIL;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log("\n  .. CONC BODY: %.*s",
                 buf_size, buf);
     buf[buf_size] = '\0';
@@ -1223,7 +1112,7 @@ static gsl_err_t obj_entry_alloc(void *obj,
     struct kndMemPool *mempool = parent_entry->repo->mempool;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log(".. create OBJ ENTRY: %.*s  count: %zu",
                 val_size, val, count);
 
@@ -1288,7 +1177,7 @@ static gsl_err_t dir_entry_alloc(void *self,
     struct kndMemPool *mempool = parent_entry->repo->mempool;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log(".. %.*s to add list item: %.*s count: %zu"
                 " [total children: %zu]",
                 parent_entry->id_size, parent_entry->id, name_size, name,
@@ -1301,7 +1190,7 @@ static gsl_err_t dir_entry_alloc(void *self,
 
     knd_calc_num_id(name, name_size, &entry->block_size);
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log("== block size: %zu", entry->block_size);
 
     *item = entry;
@@ -1319,7 +1208,7 @@ static gsl_err_t reldir_entry_alloc(void *self,
     struct kndMemPool *mempool = parent_entry->repo->mempool;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log(".. create REL DIR ENTRY: %.*s count: %zu",
                 name_size, name, count);
 
@@ -1371,7 +1260,7 @@ static gsl_err_t procdir_entry_alloc(void *self,
     struct kndMemPool *mempool = parent_entry->repo->mempool;
     int err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log(".. create PROC DIR ENTRY: %.*s count: %zu",
                 name_size, name, count);
 
@@ -1420,7 +1309,7 @@ static int assign_ids(struct kndClass *self)
     void *val;
     size_t count = 0;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log(".. assign class ids..");
 
     /* TODO: get statistics on usage from retrievers? */
@@ -1435,7 +1324,7 @@ static int assign_ids(struct kndClass *self)
         entry->id_size = 0;
         knd_num_to_str(count, entry->id, &entry->id_size, KND_RADIX_BASE);
 
-        if (DEBUG_CONC_LEVEL_2)
+        if (DEBUG_STORAGE_LEVEL_2)
             knd_log("ID: %zu => \"%.*s\" [size: %zu]",
                     count, entry->id_size, entry->id, entry->id_size);
 
@@ -1464,7 +1353,7 @@ extern int knd_unfreeze_class(struct kndClass *self,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log(".. unfreezing class: \"%.*s\".. global offset:%zu  block size:%zu",
                 entry->name_size, entry->name, entry->global_offset, entry->block_size);
 
@@ -1506,7 +1395,7 @@ extern int knd_unfreeze_class(struct kndClass *self,
     }
     buf[buf_size] = '\0';
 
-    if (DEBUG_CONC_LEVEL_2)
+    if (DEBUG_STORAGE_LEVEL_2)
         knd_log("\n== frozen Conc REC: \"%.*s\"",
                 buf_size, buf);
     /* done reading */
@@ -1568,7 +1457,7 @@ extern int knd_unfreeze_class(struct kndClass *self,
         goto final;
     }
 
-    if (DEBUG_CONC_LEVEL_2) {
+    if (DEBUG_STORAGE_LEVEL_2) {
         c->depth = 1;
         c->str(c);
     }
@@ -1580,4 +1469,80 @@ extern int knd_unfreeze_class(struct kndClass *self,
  final:
     close(fd);
     return err;
+}
+
+extern int knd_class_freeze(struct kndClass *self)
+{
+    struct glbOutput *out = self->entry->repo->out;
+    size_t total_frozen_size = 0;
+    size_t num_size;
+    int err;
+
+    out->reset(out);
+
+    err = export_GSP(self);
+    if (err) {
+        knd_log("-- GSP export failed :(");
+        return err;
+    }
+
+    /* persistent write */
+    err = knd_append_file(self->entry->repo->frozen_output_file_name,
+                          out->buf,
+                          out->buf_size);                                         RET_ERR();
+
+    total_frozen_size = self->entry->repo->out->buf_size;
+
+    /* TODO: no dir entry necessary */
+    /*if (!self->entry->num_children) {
+        if (!self->entry) {
+            self->frozen_size = total_frozen_size;
+            return knd_OK;
+        }
+        if (!self->entry->obj_name_idx) {
+            self->frozen_size = total_frozen_size;
+            return knd_OK;
+        }
+        }*/
+
+    /* class dir entry */
+    chunk_size = strlen("{C ");
+    memcpy(curr_dir, "{C ", chunk_size);
+    curr_dir += chunk_size;
+    curr_dir_size += chunk_size;
+
+    num_size = sprintf(curr_dir, "%zu}", total_frozen_size);
+    curr_dir +=      num_size;
+    curr_dir_size += num_size;
+
+    /*if (self->entry->repo->next_class_numid) {
+        num_size = sprintf(curr_dir, "{tot %zu}", self->entry->repo->next_class_numid);
+        curr_dir +=      num_size;
+        curr_dir_size += num_size;
+        }*/
+
+    /* any instances to freeze? */
+    if (self->entry && self->entry->num_insts) {
+        err = freeze_objs(self);                    RET_ERR();
+    }
+
+    if (self->entry->num_children) {
+        err = freeze_subclasses(self);                           RET_ERR();
+    }
+
+    
+    num_size = sprintf(curr_dir, "{L %lu}",
+                       (unsigned long)curr_dir_size);
+
+
+    err = knd_append_file(self->entry->repo->frozen_output_file_name,
+                          dir_buf, curr_dir_size);
+    if (err) return err;
+
+    
+    total_frozen_size += curr_dir_size;
+
+    self->entry->frozen_size = total_frozen_size;
+
+    return knd_OK;
 }

@@ -99,7 +99,7 @@ static int kndRef_resolve(struct kndRef *self)
     const char *obj_name;
     int err, e;
 
-    c = self->elem->attr->conc;
+    c = self->elem->attr->ref_class;
 
     if (DEBUG_REF_LEVEL_TMP) {
         knd_log(".. resolve REF: %.*s  state:%p",

@@ -93,10 +93,11 @@ static void str(struct kndAttr *self)
                 self->depth * KND_OFFSET_SIZE, "", self->idx_name);
     }
 
-    if (self->default_val_size) {
+    /*if (self->default_val_size) {
         knd_log("%*s  default VAL: %s",
                 self->depth * KND_OFFSET_SIZE, "", self->default_val);
     }
+    */
 
     if (self->is_a_set)
         knd_log("%*s]", self->depth * KND_OFFSET_SIZE, "");
@@ -635,14 +636,14 @@ static gsl_err_t parse_GSL(struct kndAttr *self,
           .name_size = strlen("validate"),
           .parse = parse_validator,
           .obj = self
-          }*/,
+        },
         { .type = GSL_SET_STATE,
           .name = "val",
           .name_size = strlen("val"),
           .buf = self->default_val,
           .buf_size = &self->default_val_size,
           .max_buf_size = sizeof(self->default_val)
-        }
+          }*/
     };
     gsl_err_t err;
 
@@ -731,30 +732,35 @@ extern int kndAttr_new(struct kndAttr **c)
 extern int knd_attr_var_new(struct kndMemPool *mempool,
                             struct kndAttrVar **result)
 {
-    struct kndAttrVar *self = NULL;
     void *page;
     int err;
-
-    //knd_log(".. new attr var [size:%zu]",  sizeof(struct kndAttrVar));
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
                             sizeof(struct kndAttrVar), &page);
     if (err) return err;
-    self = page;
-    *result = self;
+    *result = page;
+    return knd_OK;
+}
+
+extern int knd_attr_ref_new(struct kndMemPool *mempool,
+                            struct kndAttrRef **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                            sizeof(struct kndAttrRef), &page);
+    if (err) return err;
+    *result = page;
     return knd_OK;
 }
 
 extern int knd_attr_new(struct kndMemPool *mempool,
                         struct kndAttr **result)
 {
-    struct kndAttr *self = NULL;
     void *page;
     int err;
-    //knd_log(".. new attr [size:%zu]",  sizeof(struct kndAttr));
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL, sizeof(struct kndAttr), &page);
     if (err) return err;
-    self = page;
-    kndAttr_init(self);
-    *result = self;
+    *result = page;
+    kndAttr_init(*result);
     return knd_OK;
 }

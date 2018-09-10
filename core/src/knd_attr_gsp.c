@@ -85,11 +85,8 @@ static int aggr_item_export_GSP(struct kndAttrVar *parent_item,
         err = out->writec(out, '{');                                              RET_ERR();
         attr = item->attr;
 
-        knd_log("attr entry:%p", attr->entry);
-        if (attr->entry) {
-            err = out->write(out, attr->entry->id, attr->entry->id_size);             RET_ERR();
-            err = out->writec(out, ' ');                                              RET_ERR();
-        }
+        err = out->write(out, attr->id, attr->id_size);                           RET_ERR();
+        err = out->writec(out, ' ');                                              RET_ERR();
 
         switch (attr->type) {
         case KND_ATTR_REF:
@@ -127,9 +124,7 @@ static int attr_var_list_export_GSP(struct kndAttrVar *parent_item,
                                     struct glbOutput *out)
 {
     struct kndAttrVar *item;
-    struct kndAttr *attr;
     struct kndClass *c;
-    size_t count = 0;
     int err;
 
     if (DEBUG_ATTR_GSP_LEVEL_2) {
@@ -186,7 +181,6 @@ extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
 {
     struct kndAttrVar *item;
     struct kndAttr *attr;
-    struct kndClass *c;
     int err;
 
     for (item = items; item; item = item->next) {
@@ -212,7 +206,6 @@ extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
 extern int knd_attr_var_export_GSP(struct kndAttrVar *item,
                                     struct glbOutput *out)
 {
-    struct kndClass *c;
     int err;
     
     switch (item->attr->type) {
