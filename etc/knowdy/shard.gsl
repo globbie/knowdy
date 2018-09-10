@@ -1,0 +1,33 @@
+{schema knd
+      {agent 007}
+      {path /var/lib/knowdy/db}
+      {user User}
+      {schemas /Users/admin/schemas}
+      {--user Custom User--}
+      {sid AUTH_SERVER_SID}
+      {-- address localhost:10001 --}
+
+    {memory
+         {max_normal_pages 5000}
+         {max_med_pages    5000}
+         {max_small_pages  90000}
+
+         {max_states  4000000}
+         {max_updates 3000000}
+
+         {max_sets 200000}
+         {max_set_elem_idxs 1000000}
+
+         {max_class_updates 100000}
+         {max_objs 1500000}
+         {max_elems 3000000}
+         {max_rels 1000}
+         {max_rel_updates 300000}
+         {max_rel_instances 1000000}
+         {max_rel_refs 1000000}
+         {max_rel_arg_instances 1500000}
+         {max_rel_arg_inst_refs 100000}
+         {max_procs 1000}
+         {max_proc_instances 1000000}
+      }
+}
