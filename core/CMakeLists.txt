@@ -4,7 +4,7 @@ set(HEADERS include/knd_array.h include/knd_attr.h
         include/knd_elem.h include/knd_err.h
         include/knd_facet.h include/knd_http_codes.h include/knd_list.h
         include/knd_mempool.h include/knd_num.h 
-        include/knd_proc.h include/knd_proc_arg.h
+        include/knd_proc.h include/knd_proc_arg.h include/knd_proc_call.h
         include/knd_query.h
         include/knd_ref.h include/knd_rel.h include/knd_rel_arg.h include/knd_repo.h
         include/knd_set.h include/knd_shard.h include/knd_state.h
