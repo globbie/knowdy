@@ -24,8 +24,9 @@
 #include "knd_dict.h"
 #include "knd_utils.h"
 #include "knd_task.h"
-#include "knd_proc.h"
 #include "knd_config.h"
+
+#include "knd_proc_call.h"
 
 struct kndClass;
 struct kndMemPool;
@@ -38,19 +39,19 @@ struct kndClassInst;
 struct kndTask;
 struct kndClassVar;
 
-typedef enum knd_proc_arg_type {
-    KND_PROCARG_NONE,
-    KND_PROCARG_SUBJ,
-    KND_PROCARG_OBJ,
-    KND_PROCARG_INS
-} knd_proc_arg_type;
+//typedef enum knd_proc_arg_type {
+//    KND_PROCARG_NONE,
+//    KND_PROCARG_SUBJ,
+//    KND_PROCARG_OBJ,
+//    KND_PROCARG_INS
+//} knd_proc_arg_type;
 
-static const char* const knd_proc_arg_names[] = {
-    "none",
-    "subj",
-    "obj",
-    "ins",
-};
+//static const char* const knd_proc_arg_names[] = {
+//    "none",
+//    "subj",
+//    "obj",
+//    "ins",
+//};
 
 //struct kndProcArgInstRef
 //{
@@ -60,9 +61,9 @@ static const char* const knd_proc_arg_names[] = {
 
 struct kndProcArgInstance
 {
-    knd_task_spec_type type;
-    struct kndProcArg *proc_arg;
-    struct kndProcInstance *proc_inst;
+//    knd_task_spec_type type;
+//    struct kndProcArg *proc_arg;
+//    struct kndProcInstance *proc_inst;
 
     const char *procname;
     size_t procname_size;
@@ -72,30 +73,12 @@ struct kndProcArgInstance
     size_t objname_size;
     struct kndObjEntry *obj;
     
-    struct kndProcArgInstance *next;
-};
-
-struct kndProcCallArg
-{
-    char name[KND_SHORT_NAME_SIZE];
-    size_t name_size;
-
-    char val[KND_NAME_SIZE];
-    size_t val_size;
-
-    long numval;
-    
-    struct kndProcArg *arg;
-    struct kndClassVar *class_var;
-
-    struct kndProcCall proc_call;
-
-    struct kndProcCallArg *next;
+//    struct kndProcArgInstance *next;
 };
 
 struct kndProcArg 
 {
-    knd_proc_arg_type type;
+//    knd_proc_arg_type type;
     char name[KND_NAME_SIZE];
     size_t name_size;
 
@@ -108,20 +91,20 @@ struct kndProcArg
     size_t locale_size;
     knd_format format;
 
-    int concise_level;
-    int descr_level;
-    int browse_level;
+//    int concise_level;
+//    int descr_level;
+//    int browse_level;
 
     char classname[KND_NAME_SIZE];
     size_t classname_size;
-    struct kndClass *conc;
+//    struct kndClass *conc;
 
     size_t numval;
     char val[KND_VAL_SIZE];
     size_t val_size;
 
     struct glbOutput *out;
-    struct kndMemPool *mempool;
+//    struct kndMemPool *mempool;
     struct kndTask *task;
     struct kndVisualFormat *visual;
 
@@ -159,6 +142,5 @@ struct kndProcArg
 extern void kndProcArgInstance_init(struct kndProcArgInstance *self);
 //extern void kndProcArgInstRef_init(struct kndProcArgInstRef *self);
 
-extern void kndProcArg_init(struct kndProcArg *self);
-extern int kndProcArg_new(struct kndProcArg **self);
-
+extern void kndProcArg_init(struct kndProcArg *self, struct kndProc *proc);
+extern int kndProcArg_new(struct kndProcArg **self, struct kndProc *proc, struct kndMemPool *mempool);

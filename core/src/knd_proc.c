@@ -81,11 +81,6 @@ static void str(struct kndProc *self)
     if (self->proc_call.name_size) {
         knd_log("%*s    {do %.*s", self->depth * KND_OFFSET_SIZE, "",
                 self->proc_call.name_size, self->proc_call.name);
-        for (tr = self->proc_call.tr; tr; tr = tr->next) {
-            knd_log("%*s  ~ %s %.*s", (self->depth + 1) * KND_OFFSET_SIZE, "",
-                    tr->locale, tr->val_size, tr->val);
-        }
-
         for (call_arg = self->proc_call.args; call_arg; call_arg = call_arg->next) {
             proc_call_arg_str(call_arg, self->depth + 1);
         }
@@ -536,22 +531,6 @@ static int export_GSP(struct kndProc *self)
         err = out->write(out, "{run ", strlen("{run "));                          RET_ERR();
         err = out->write(out, self->proc_call.name, self->proc_call.name_size);   RET_ERR();
 
-        if (self->proc_call.tr) {
-            err = out->write(out, "[_g", strlen("[_g"));                          RET_ERR();
-        }
-        tr = self->proc_call.tr;
-        while (tr) {
-            err = out->write(out, "{", 1);                                        RET_ERR();
-            err = out->write(out, tr->locale, tr->locale_size);                   RET_ERR();
-            err = out->write(out, "{t ", 3);                                      RET_ERR();
-            err = out->write(out, tr->val,  tr->val_size);                        RET_ERR();
-            err = out->write(out, "}}", 2);                                       RET_ERR();
-            tr = tr->next;
-        }
-        if (self->proc_call.tr) {
-            err = out->write(out, "]", 1);                                        RET_ERR();
-        }
-
         for (call_arg = self->proc_call.args;
              call_arg;
              call_arg = call_arg->next) {
@@ -658,19 +637,6 @@ static int export_JSON(struct kndProc *self)
         err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));            RET_ERR();
         err = out->write(out, self->proc_call.name, self->proc_call.name_size);   RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
-
-        tr = self->proc_call.tr;
-        while (tr) {
-            if (memcmp(self->task->locale, tr->locale, tr->locale_size)) {
-                goto next_run_tr;
-            }
-            err = out->write(out, ",\"gloss\":\"", strlen(",\"gloss\":\""));      RET_ERR();
-            err = out->write(out, tr->val,  tr->val_size);                        RET_ERR();
-            err = out->write(out, "\"", 1);                                       RET_ERR();
-            break;
-        next_run_tr:
-            tr = tr->next;
-        }
 
         for (carg = self->proc_call.args; carg; carg = carg->next) {
             err = out->writec(out, ',');                                          RET_ERR();
