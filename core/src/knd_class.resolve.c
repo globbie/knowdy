@@ -149,13 +149,14 @@ static int index_attr(struct kndClass *self,
 }
 
 static int index_attr_var_list(struct kndClass *self,
-                                struct kndAttr *attr,
-                                struct kndAttrVar *parent_item)
+                               struct kndAttr *attr,
+                               struct kndAttrVar *parent_item)
 {
     struct kndClass *base;
     struct kndSet *set;
     struct kndClass *c = NULL;
     struct kndAttrVar *item = parent_item;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
@@ -195,6 +196,12 @@ static int index_attr_var_list(struct kndClass *self,
         err = knd_is_base(base, c);                                                       RET_ERR();
 
         set = attr->parent_class->entry->descendants;
+        if (!set) {
+            err = mempool->new_set(mempool, &set);                                RET_ERR();
+            set->type = KND_SET_CLASS;
+            set->base =  attr->parent_class->entry;
+            attr->parent_class->entry->descendants = set;
+        }
 
         /* add curr class to the reverse index */
         err = set->add_ref(set, attr, self->entry, c->entry);
@@ -1018,16 +1025,13 @@ extern int knd_resolve_class(struct kndClass *self,
     /* a child of the root class */
     if (!self->baseclass_vars) {
         err = link_baseclass(self, self->root_class);                             RET_ERR();
+    } else {
+        err = resolve_baseclasses(self);                                              RET_ERR();
 
-        self->is_resolved = true;
-        return knd_OK;
-    }
-
-    err = resolve_baseclasses(self);                                              RET_ERR();
-
-    for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
-        if (cvar->attrs) {
-            err = resolve_attr_vars(self, cvar);                                  RET_ERR();
+        for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
+            if (cvar->attrs) {
+                err = resolve_attr_vars(self, cvar);                                  RET_ERR();
+            }
         }
     }
 
