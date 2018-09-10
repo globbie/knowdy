@@ -746,7 +746,7 @@ extern int knd_attr_ref_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
                             sizeof(struct kndAttrRef), &page);
     if (err) return err;
     *result = page;
