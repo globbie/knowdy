@@ -523,7 +523,16 @@ extern int kndRepo_new(struct kndRepo **repo,
     c->entry->repo = self;
     self->root_class = c;
 
+    /* global class idx */
+    err = mempool->new_set(mempool, &self->class_idx);
+    if (err) goto error;
+    err = ooDict_new(&self->class_name_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+
+    /* global attr idx */
     err = mempool->new_set(mempool, &self->attr_idx);
+    if (err) goto error;
+    err = ooDict_new(&self->attr_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
     
     err = kndProc_new(&proc, mempool);

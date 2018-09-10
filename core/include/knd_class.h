@@ -51,6 +51,13 @@ struct kndClassUpdate
     size_t num_insts;
 };
 
+struct kndClassRef
+{
+    struct kndClass *class;
+    struct kndClassEntry *entry;
+    struct kndClassRef *next;
+};
+
 struct kndClassVar
 {
     char id[KND_ID_SIZE];
@@ -103,15 +110,15 @@ struct kndClassEntry
     size_t obj_block_size;
     size_t dir_size;
 
-    // TODO: what's the meaning of this?
-    bool is_indexed;
-
-    struct kndSet *descendants;
-    struct kndSet *child_idx;
-
-    struct kndClassEntry **children;
+    /* immediate children */
+    struct kndClassRef *children;
     size_t num_children;
     size_t num_terminals;
+
+    struct kndClassRef *ancestors;
+    size_t num_ancestors;
+
+    struct kndSet *descendants;
 
     struct kndRelEntry **rels;
     size_t num_rels;
@@ -128,7 +135,7 @@ struct kndClassEntry
     struct ooDict *class_name_idx;
     struct kndSet *inst_idx;
     struct ooDict *inst_name_idx;
-    struct kndSet *attr_idx;
+    //struct kndSet *attr_idx;
 
     struct ooDict *reverse_attr_name_idx;
 
@@ -168,13 +175,13 @@ struct kndClass
     struct kndClassVar *baseclass_vars;
     size_t num_baseclass_vars;
 
-    struct kndClassEntry *bases[KND_MAX_BASES];
-    size_t num_bases;
+
     bool is_resolved;
 
     struct kndAttr *attrs;
     struct kndAttr *tail_attr;
     size_t num_attrs;
+    struct kndSet *attr_idx;
     struct kndAttr *implied_attr;
 
     struct kndProc *proc;
@@ -212,7 +219,6 @@ struct kndClass
     struct kndSet *class_idx;
     struct ooDict *class_name_idx;
 
-    struct ooDict *attr_name_idx;
     struct kndAttr *computed_attrs[KND_MAX_COMPUTED_ATTRS];
     size_t num_computed_attrs;
 
@@ -364,6 +370,8 @@ extern gsl_err_t knd_read_class_state(struct kndClass *self,
 
 extern int knd_class_var_new(struct kndMemPool *mempool,
                              struct kndClassVar **result);
+extern int knd_class_ref_new(struct kndMemPool *mempool,
+                             struct kndClassRef **result);
 extern int knd_class_entry_new(struct kndMemPool *mempool,
                                struct kndClassEntry **result);
 extern int knd_class_new(struct kndMemPool *mempool,

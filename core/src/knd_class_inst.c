@@ -826,7 +826,7 @@ static gsl_err_t parse_elem(void *data,
         obj->states->phase = self->states->phase;
 
         obj->type = KND_OBJ_AGGR;
-        if (!attr->conc) {
+        if (!attr->ref_class) {
             if (self->states->phase == KND_FROZEN || self->states->phase == KND_SUBMITTED) {
                 if (DEBUG_INST_LEVEL_2) {
                     knd_log(".. resolve attr \"%.*s\": \"%.*s\"..",
@@ -838,7 +838,7 @@ static gsl_err_t parse_elem(void *data,
                                       attr->ref_classname, attr->ref_classname_size,
                                       &c);
                 if (err) return *total_size = 0, make_gsl_err_external(err);
-                attr->conc = c;
+                attr->ref_class = c;
             }
             else {
                 knd_log("-- couldn't resolve the %.*s attr :(",
@@ -847,7 +847,7 @@ static gsl_err_t parse_elem(void *data,
             }
         }
 
-        obj->base = attr->conc;
+        obj->base = attr->ref_class;
         obj->root = self->root ? self->root : self;
 
         parser_err = obj->parse(obj, rec, total_size);

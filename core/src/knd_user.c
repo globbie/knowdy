@@ -193,6 +193,7 @@ static gsl_err_t parse_sync_task(void *obj,
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
     struct kndUser *self = obj;
+    struct glbOutput *out = self->out;
     struct stat st;
     char *s, *n;
     size_t path_size;
@@ -230,8 +231,12 @@ static gsl_err_t parse_sync_task(void *obj,
     buf[buf_size] = '\0';
 
     self->task->type = KND_SYNC_STATE;
-    //parser_err = self->repo->root_class->sync(self->repo->root_class, rec, total_size);
-    //if (parser_err.code) return parser_err;
+
+    //err = knd_class_freeze(self->repo->root_class);
+    /*if (err) {
+        knd_log("-- failed to freeze class: \"%s\" :(", self->out->buf);
+        return *total_size = 0, make_gsl_err_external(err);
+        }*/
 
     /* bump frozen count */
 
@@ -685,8 +690,8 @@ static gsl_err_t parse_select_user(struct kndUser *self,
           .parse = parse_liquid_updates,
           .obj = self
         },
-        { .name = "sync",
-          .name_size = strlen("sync"),
+        { .name = "_sync",
+          .name_size = strlen("_sync"),
           .parse = parse_sync_task,
           .obj = self
         },

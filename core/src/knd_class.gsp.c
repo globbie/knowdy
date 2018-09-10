@@ -347,7 +347,7 @@ static int aggr_item_export_GSP(struct kndClass *self,
 
         /* terminal value */
         if (parent_item->val_size) {
-            c = parent_item->attr->conc;
+            c = parent_item->attr->ref_class;
             if (c && c->implied_attr) {
                 attr = c->implied_attr;
                 err = out->writec(out, ' ');
@@ -372,7 +372,7 @@ static int aggr_item_export_GSP(struct kndClass *self,
         }
     }
 
-    c = parent_item->attr->conc;
+    c = parent_item->attr->ref_class;
 
     for (item = parent_item->children; item; item = item->next) {
         err = out->writec(out, '{');
@@ -1020,13 +1020,13 @@ static gsl_err_t read_nested_attr_var(void *obj,
                 name_size, name, 16, rec, attr_var->val_size, attr_var->val);
     }
 
-    if (!self->attr->conc) {
-        knd_log("-- no conc in attr: \"%.*s\"",
+    if (!self->attr->ref_class) {
+        knd_log("-- no class ref in attr: \"%.*s\"",
                 self->attr->name_size, self->attr->name);
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    c = self->attr->conc;
+    c = self->attr->ref_class;
 
     err = knd_class_get_attr(c, name, name_size, &attr);
     if (err) {
@@ -1038,7 +1038,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
 
     switch (attr->type) {
     case KND_ATTR_AGGR:
-        if (attr->conc) break;
+        if (attr->ref_class) break;
 
         class_name_idx = c->class_name_idx;
         entry = class_name_idx->get(class_name_idx,
@@ -1055,7 +1055,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
             //err = unfreeze_class(conc, entry, &entry->class);
             //if (err) return *total_size = 0, make_gsl_err_external(err);
         }
-        attr->conc = entry->class;
+        attr->ref_class = entry->class;
         break;
     default:
         break;
@@ -1511,7 +1511,7 @@ static gsl_err_t validate_attr_var_list(void *obj,
         //knd_log("== array of refs: %.*s", name_size, name);
         break;
     case KND_ATTR_AGGR:
-        if (attr->conc) break;
+        if (attr->ref_class) break;
 
         // TODO
         class_name_idx = class_var->root_class->class_name_idx;
@@ -1529,7 +1529,7 @@ static gsl_err_t validate_attr_var_list(void *obj,
             //err = unfreeze_class(class_var->root_class, entry, &entry->class);
             //if (err) return *total_size = 0, make_gsl_err_external(err);
         }
-        attr->conc = entry->class;
+        attr->ref_class = entry->class;
         break;
     default:
         break;
