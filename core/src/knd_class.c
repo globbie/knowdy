@@ -593,9 +593,12 @@ static int coordinate(struct kndClass *self)
     if (err) return err;
 
     //calculate_descendants(self);
-
-    if (DEBUG_CLASS_LEVEL_TMP)
-        knd_log("== TOTAL classes: %zu", self->entry->num_terminals);
+    
+    if (self->entry->descendants) {
+        if (DEBUG_CLASS_LEVEL_TMP)
+            knd_log("== TOTAL classes: %zu",
+                    self->entry->descendants->num_elems);
+    }
 
     return knd_OK;
 }
@@ -901,8 +904,7 @@ extern int knd_is_base(struct kndClass *self,
 {
     struct kndClassEntry *entry = child->entry;
     struct kndClassRef *ref;
-
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. check inheritance: %.*s [resolved: %d] => %.*s [resolved:%d]?",
                 child->name_size, child->name, child->is_resolved,
                 self->entry->name_size, self->entry->name, self->is_resolved);
@@ -912,7 +914,7 @@ extern int knd_is_base(struct kndClass *self,
             return knd_OK;
         }
     }
-    if (DEBUG_CLASS_LEVEL_TMP)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log("-- no inheritance from  \"%.*s\" to \"%.*s\" :(",
                 self->entry->name_size, self->entry->name,
                 child->name_size, child->name);
@@ -1211,7 +1213,7 @@ extern int knd_class_ref_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassRef), &page);
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndClassRef), &page);
     if (err) return err;
     *result = page;
     return knd_OK;

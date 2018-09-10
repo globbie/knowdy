@@ -192,7 +192,6 @@ static int index_attr_var_list(struct kndClass *self,
         if (!c->is_resolved) {
             err = c->resolve(c, NULL);                                                RET_ERR();
         }
-        knd_log(".. list item base?");
         err = knd_is_base(base, c);                                                       RET_ERR();
 
         set = attr->parent_class->entry->descendants;
@@ -218,8 +217,8 @@ static int resolve_class_ref(struct kndClass *self,
     struct kndClass *c;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
-        knd_log("\n.. checking class ref:  \"%.*s\"", name_size, name);
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+        knd_log(".. checking class ref:  \"%.*s\"", name_size, name);
 
     err = knd_get_class(self, name, name_size, &c);
     if (err) return err;
@@ -278,7 +277,7 @@ static int resolve_aggr_item(struct kndClass *self,
     size_t classname_size;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. resolve aggr item %.*s..",
                 parent_item->name_size, parent_item->name);
 
@@ -292,11 +291,9 @@ static int resolve_aggr_item(struct kndClass *self,
     c = parent_item->attr->ref_class;
     if (!c->is_resolved) {
         err = c->resolve(c, NULL);                                                RET_ERR();
-        knd_log("== resolve result:%d class:%.*s [%d]",
-                err, c->name_size, c->name, c->is_resolved);
     }
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log("\n.. resolving aggr item \"%.*s\" (count:%zu)"
                 " class:%.*s [resolved:%d]] is_list_item:%d",
                 parent_item->name_size,  parent_item->name,
@@ -357,14 +354,12 @@ static int resolve_aggr_item(struct kndClass *self,
 
     /* resolve nested children */
     for (item = parent_item->children; item; item = item->next) {
-
-        if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
             knd_log(".. check attr \"%.*s\" in class \"%.*s\" "
                     " is_resolved:%d",
                     item->name_size, item->name,
                     c->name_size, c->name, c->is_resolved);
         }
-
         err = knd_class_get_attr(c, item->name, item->name_size, &attr);
         if (err) {
             knd_log("-- no attr \"%.*s\" in class \"%.*s\" :(",
@@ -384,7 +379,6 @@ static int resolve_aggr_item(struct kndClass *self,
             buf_size = item->val_size;
             buf[buf_size] = '\0';
             err = knd_parse_num(buf, &item->numval);
-
             break;
         case KND_ATTR_AGGR:
             if (DEBUG_CLASS_RESOLVE_LEVEL_2)
@@ -394,21 +388,17 @@ static int resolve_aggr_item(struct kndClass *self,
             if (err) return err;
             break;
         case KND_ATTR_REF:
-
             classname = item->val;
             classname_size = item->val_size;
-
             err = resolve_class_ref(self,
                                     classname, classname_size,
                                     attr->ref_class, &item->class);
             if (err) return err;
-
             break;
         default:
             break;
         }
     }
-
     return knd_OK;
 }
 
@@ -517,13 +507,13 @@ static int resolve_attr_vars(struct kndClass *self,
     struct kndTask *task = repo->task;
     int e, err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log("\n.. resolving attr vars of class \"%.*s\"..",
                 self->entry->name_size, self->entry->name);
     }
 
     for (attr_var = parent_item->attrs; attr_var; attr_var = attr_var->next) {
-        if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
             knd_log(".. resolving attr var: %.*s",
                     attr_var->name_size, attr_var->name);
         }
@@ -533,14 +523,6 @@ static int resolve_attr_vars(struct kndClass *self,
             knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                     attr_var->name_size, attr_var->name,
                     self->name_size, self->name);
-            return err;
-        }
-        
-        /*attr_ref = attr_name_idx->get(attr_name_idx,
-                                      attr_var->name, attr_var->name_size);
-        if (!attr_ref) {
-            knd_log("-- no such attr: %.*s",
-                    attr_var->name_size, attr_var->name);
             log->reset(log);
             e = log->write(log, attr_var->name, attr_var->name_size);
             if (e) return e;
@@ -550,13 +532,11 @@ static int resolve_attr_vars(struct kndClass *self,
             task->http_code = HTTP_NOT_FOUND;
             return knd_FAIL;
         }
-        */
-
+        
         /* save attr assignment */
         //attr_ref->attr_var = attr_var;
         //attr = attr_ref->attr;
-
-        if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
             knd_log("++ got attr: %.*s (id:%.*s)",
                     attr->name_size, attr->name,
                     attr->id_size, attr->id);
@@ -620,7 +600,7 @@ if (entry->attr->is_indexed) {
         attr_var->attr = attr;
     }
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log("++ resolved attr vars of class %.*s!",
                 self->entry->name_size, self->entry->name);
     }
@@ -639,7 +619,7 @@ static int check_attr_name_conflict(struct kndClass *self,
     struct ooDict *attr_name_idx = repo->attr_name_idx;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. checking attrs name conflict: %.*s",
                 attr_candidate->name_size,
                 attr_candidate->name);
@@ -715,8 +695,7 @@ static int resolve_primary_attrs(struct kndClass *self)
     struct kndRepo *repo = self->entry->repo;
     struct ooDict *class_name_idx = repo->root_class->class_name_idx;
     int err;
-
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. resolving primary attrs of %.*s.. [total:%zu]",
                 self->name_size, self->name, self->num_attrs);
 
@@ -927,7 +906,7 @@ static int resolve_baseclasses(struct kndClass *self)
     size_t classname_size;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. class \"%.*s\" to resolve its bases..",
                 self->name_size, self->name);
 
@@ -963,7 +942,7 @@ static int resolve_baseclasses(struct kndClass *self)
             err = knd_get_class(self, classname, classname_size, &c);         RET_ERR();
         }
 
-        if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
             c->str(c);
 
         if (c == self) {
@@ -984,7 +963,7 @@ static int resolve_baseclasses(struct kndClass *self)
         cvar->entry->class = c;
     }
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log("++ \"%.*s\" resolved its baseclasses!",
                 self->name_size, self->name);
     return knd_OK;
@@ -1016,7 +995,7 @@ extern int knd_resolve_class(struct kndClass *self,
     entry->numid = self->entry->repo->num_classes;
     knd_num_to_str(entry->numid, entry->id, &entry->id_size, KND_RADIX_BASE);
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. resolving class \"%.*s\" id:%.*s entry numid:%zu  batch mode:%d",
                 self->entry->name_size, self->entry->name,
                 entry->id_size, entry->id, self->entry->numid, self->batch_mode);
@@ -1056,7 +1035,7 @@ extern int knd_resolve_class(struct kndClass *self,
         knd_num_to_str(state->numid, state->id, &state->id_size, KND_RADIX_BASE);
     }
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log("++ class \"%.*s\" id:%.*s resolved!",
             self->entry->name_size, self->entry->name,
             self->entry->id_size, self->entry->id);
@@ -1106,7 +1085,7 @@ extern int knd_resolve_classes(struct kndClass *self)
                              (void*)c->entry);
         if (err) return err;
 
-        if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
             c->str(c);
     } while (key);
 

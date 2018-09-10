@@ -292,8 +292,6 @@ typedef enum knd_storage_type {
 #define KND_TINY_MEMPAGE_SIZE 64
 #define KND_NUM_TINY_MEMPAGES 10000
 
-
-
 #define KND_MAX_TEXT_BUF_SIZE 1024 * 1024 * sizeof(char)
 #define KND_MAX_METADATA_BUF_SIZE 1024 * 10 * sizeof(char)
 #define KND_MAX_OBJ_BUF_SIZE 1024 * 100 * sizeof(char)

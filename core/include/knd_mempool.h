@@ -58,6 +58,7 @@ struct kndSetElemIdx;
 typedef enum knd_mempage_t { KND_MEMPAGE_NORMAL,
                              KND_MEMPAGE_MED,
                              KND_MEMPAGE_SMALL,
+                             KND_MEMPAGE_TINY,
                              KND_MEMPAGE_LARGE
 } knd_mempage_t;
 
@@ -95,6 +96,14 @@ struct kndMemPool
     size_t small_pages_used;
     struct kndMemPage *head_small_page;
     struct kndMemPage *tail_small_page;
+
+    char *tiny_pages;
+    size_t tiny_page_size;
+    size_t tiny_page_payload_size;
+    size_t num_tiny_pages;
+    size_t tiny_pages_used;
+    struct kndMemPage *head_tiny_page;
+    struct kndMemPage *tail_tiny_page;
 
     char *large_pages;
     size_t large_page_size;
