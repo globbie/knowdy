@@ -122,7 +122,6 @@ static gsl_err_t select_by_attr(void *obj,
     log->reset(log);
 
     c = self->curr_attr->parent_class;
-
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
         knd_log("== select by attr value: \"%.*s\" of \"%.*s\" resolved:%d",
                 name_size, name, c->name_size, c->name, c->is_resolved);
@@ -143,23 +142,22 @@ static gsl_err_t select_by_attr(void *obj,
         return make_gsl_err_external(knd_NO_MATCH);
     }
 
-    set = facet->set_name_idx->get(facet->set_name_idx,
-                                   name, name_size);
-    if (!set) {
-        log->writef(log, "no relation to class: %.*s", name_size, name);
-        task->http_code = HTTP_NOT_FOUND;
-        return make_gsl_err(gsl_FAIL);
-    }
 
-    err = knd_get_class(self, name, name_size, &set->base->class);
+    err = knd_get_class(self, name, name_size, &c);
     if (err) {
         log->writef(log, "no relation to class: %.*s", name_size, name);
         task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err_external(err);
     }
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
-        set->str(set, 1);
+    err = facet->set_idx->get(facet->set_idx,
+                              c->entry->id, c->entry->id_size, &set);
+    if (err) {
+        log->writef(log, "no relation to class: %.*s", name_size, name);
+        task->http_code = HTTP_NOT_FOUND;
+        return make_gsl_err(gsl_FAIL);
+    }
+    set->base->class = c;
 
     if (task->num_sets + 1 > KND_MAX_CLAUSES)
         return make_gsl_err(gsl_LIMIT);
@@ -252,7 +250,7 @@ static gsl_err_t run_set_attr_var(void *obj,
                 attr_var->name_size, attr_var->name, val_size, val, c);
     }
 
-    err = mempool->new_state(mempool, &state);
+    err = knd_state_new(mempool, &state);
     if (err) return make_gsl_err_external(err);
 
     state->phase = KND_UPDATED;
@@ -477,7 +475,7 @@ static gsl_err_t present_class_selection(void *obj,
 
         /* intersection required */
         if (task->num_sets > 1) {
-            err = mempool->new_set(mempool, &set);
+            err = knd_set_new(mempool, &set);
             if (err) return make_gsl_err_external(err);
 
             set->type = KND_SET_CLASS;
@@ -689,7 +687,7 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
         knd_log(".. removing class: \"%.*s\"\n",
                 c->name_size, c->name);
 
-    err = mempool->new_state(mempool, &state);
+    err = knd_state_new(mempool, &state);
     if (err) return make_gsl_err_external(err);
 
     state->next = c->states;
@@ -785,7 +783,7 @@ static int knd_select_class_delta(struct kndClass *self,
         return knd_FAIL;
     }
 
-    err = mempool->new_set(mempool, &set);                                        MEMPOOL_ERR(kndSet);
+    err = knd_set_new(mempool, &set);                                        MEMPOOL_ERR(kndSet);
     set->mempool = mempool;
     set->type = KND_SET_STATE_UPDATE;
 

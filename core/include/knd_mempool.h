@@ -26,8 +26,6 @@
 #include "knd_config.h"
 
 struct glbOutput;
-struct kndClassVar;
-struct kndClassInst;
 struct kndElem;
 
 struct kndRel;
@@ -42,18 +40,11 @@ struct kndProcArg;
 struct kndProcArgInstance;
 struct kndProcInstance;
 
-struct kndAttr;
-struct kndUpdate;
-struct kndState;
-struct kndClassUpdate;
-struct kndClassUpdateRef;
 struct kndRelUpdate;
 struct kndRelInstanceUpdate;
 struct kndProcUpdate;
 struct kndProcUpdateRef;
 struct kndUserContext;
-struct kndSet;
-struct kndSetElemIdx;
 
 typedef enum knd_mempage_t { KND_MEMPAGE_NORMAL,
                              KND_MEMPAGE_MED,
@@ -111,14 +102,6 @@ struct kndMemPool
     size_t num_large_pages;
     size_t large_pages_used;
     
-    struct kndSet *sets;
-    size_t max_sets;
-    size_t num_sets;
-
-    struct kndSetElemIdx *set_elem_idxs;
-    size_t max_set_elem_idxs;
-    size_t num_set_elem_idxs;
-
     struct kndFacet *facets;
     size_t max_facets;
     size_t num_facets;
@@ -126,24 +109,6 @@ struct kndMemPool
     struct kndUserContext *user_ctxs;
     size_t max_user_ctxs;
     size_t num_user_ctxs;
-
-    struct kndUpdate *updates;
-    struct kndUpdate **update_idx;
-    size_t max_updates;
-    size_t num_updates;
-    struct kndUpdate **update_selected_idx;
-
-    struct kndState *states;
-    size_t max_states;
-    size_t num_states;
-
-    struct kndClassUpdate *class_updates;
-    size_t max_class_updates;
-    size_t num_class_updates;
-
-    struct kndClassUpdateRef *class_update_refs;
-    size_t max_class_update_refs;
-    size_t num_class_update_refs;
 
     struct kndClassInst *objs;
     size_t max_objs;
@@ -153,9 +118,6 @@ struct kndMemPool
     size_t max_obj_dirs;
     size_t num_obj_dirs;
 
-    struct kndObjEntry *obj_entries;
-    size_t max_obj_entries;
-    size_t num_obj_entries;
 
     struct kndElem *elems;
     size_t max_elems;
@@ -234,33 +196,10 @@ struct kndMemPool
     gsl_err_t (*parse)(struct kndMemPool *self,
 		       const char *rec, size_t *total_size);
 
-    int (*new_set)(struct kndMemPool   *self,
-		     struct kndSet **result);
-    int (*new_set_elem_idx)(struct kndMemPool   *self,
-			    struct kndSetElemIdx **result);
-    int (*new_facet)(struct kndMemPool   *self,
-		     struct kndFacet **result);
-
-    
     int (*new_user_ctx)(struct kndMemPool   *self,
                         struct kndUserContext **result);
-    int (*new_update)(struct kndMemPool   *self,
-                      struct kndUpdate **result);
-    int (*new_state)(struct kndMemPool   *self,
-                      struct kndState **result);
-    int (*new_class_update)(struct kndMemPool   *self,
-                            struct kndClassUpdate **result);
-    int (*new_class_update_ref)(struct kndMemPool   *self,
-                                struct kndClassUpdateRef **result);
 
-    int (*new_class_inst)(struct kndMemPool   *self,
-                          struct kndClassInst **result);
-    int (*new_class_inst_dir)(struct kndMemPool   *self,
-                       struct kndObjDir **result);
-    int (*new_class_inst_entry)(struct kndMemPool   *self,
-                         struct kndObjEntry **result);
-    int (*new_class_inst_elem)(struct kndMemPool   *self,
-                        struct kndElem     **result);
+    
     int (*new_rel)(struct kndMemPool   *self,
                    struct kndRel **result);
     int (*new_rel_entry)(struct kndMemPool   *self,

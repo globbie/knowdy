@@ -49,7 +49,7 @@ static gsl_err_t alloc_class_update(void *obj,
     struct kndClassUpdate *class_update;
     int err;
     assert(name == NULL && name_size == 0);
-    err = mempool->new_class_update(mempool, &class_update);
+    err = knd_class_update_new(mempool, &class_update);
     if (err) return make_gsl_err_external(err);
     class_update->update = self;
     *item = class_update;
@@ -119,12 +119,9 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     void *page;
     int err;
 
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log(".. check or set class name: %.*s .. entry:%p",
-                name_size, name, entry);
-
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log(".. check or set class name: %.*s", name_size, name);
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= sizeof entry->name) return make_gsl_err(gsl_LIMIT);
 
     if (entry->name_size) {
         if (entry->name_size != name_size) {
@@ -136,7 +133,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
             return make_gsl_err(gsl_FAIL);
         }
 
-        if (DEBUG_REPO_LEVEL_2)
+        if (DEBUG_REPO_LEVEL_TMP)
             knd_log("++ class already exists: %.*s!", name_size, name);
 
         self->class = entry->class;
@@ -145,7 +142,14 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_OK);
     }
 
-    memcpy(entry->name, name, name_size);
+    if (DEBUG_REPO_LEVEL_TMP) {
+        knd_log("== batch mode: %d",
+                repo->root_class->batch_mode);
+    }
+    char *s = malloc(name_size);
+    memcpy(s, name, name_size);
+
+    entry->name = s;
     entry->name_size = name_size;
 
     /* get class */
@@ -162,8 +166,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         c->name_size = name_size;
     }
 
-    //c->str(c);
-
     entry->class = c;
 
     /* register class entry */
@@ -175,7 +177,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
                               entry->name, name_size,
                               (void*)entry);
     if (err) return make_gsl_err_external(err);
-
     self->class = c;
     self->entry = entry;
 
@@ -236,7 +237,7 @@ static gsl_err_t alloc_update(void *obj,
 
     assert(name == NULL && name_size == 0);
 
-    err = mempool->new_update(mempool, &update);
+    err = knd_update_new(mempool, &update);
     if (err) return make_gsl_err_external(err);
 
     update->repo = self;
@@ -513,8 +514,7 @@ extern int kndRepo_new(struct kndRepo **repo,
 
     err = kndStateControl_new(&state_ctrl);
     if (err) return err;
-    state_ctrl->max_updates = mempool->max_updates;
-    state_ctrl->updates =     mempool->update_idx;
+    //state_ctrl->updates =     mempool->update_idx;
     state_ctrl->repo = self;
     self->state_ctrl = state_ctrl;
    
@@ -523,16 +523,20 @@ extern int kndRepo_new(struct kndRepo **repo,
     c->entry->repo = self;
     self->root_class = c;
 
-    /* global class idx */
-    err = mempool->new_set(mempool, &self->class_idx);
+    /* global name indices */
+    err = knd_set_new(mempool, &self->class_idx);
     if (err) goto error;
     err = ooDict_new(&self->class_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
-    /* global attr idx */
-    err = mempool->new_set(mempool, &self->attr_idx);
+    /* attrs */
+    err = knd_set_new(mempool, &self->attr_idx);
     if (err) goto error;
     err = ooDict_new(&self->attr_name_idx, KND_MEDIUM_DICT_SIZE);
+    if (err) goto error;
+
+    /* class insts */
+    err = ooDict_new(&self->class_inst_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
     
     err = kndProc_new(&proc, self, mempool);

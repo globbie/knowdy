@@ -403,7 +403,7 @@ static int export_facets_JSON(struct kndClass *self, struct kndSet *set)
         err = out->write(out, facet->attr->name, facet->attr->name_size);
         err = out->write(out,  "\"", 1);                                          RET_ERR();
 
-        if (facet->set_name_idx) {
+        /*if (facet->set_name_idx) {
             err = out->write(out,  "\"_refs\":[", strlen("\"_refs\":["));         RET_ERR();
             set_name_idx = facet->set_name_idx;
             key = NULL;
@@ -412,8 +412,9 @@ static int export_facets_JSON(struct kndClass *self, struct kndSet *set)
                 set_name_idx->next_item(set_name_idx, &key, &val);
                 if (!key) break;
                 subset = (struct kndSet*)val;
+        */
 
-                //err = out->writec(out, '{');                                      RET_ERR();
+        //err = out->writec(out, '{');                                      RET_ERR();
                 //err = out->write(out, subset->base->id,
                 //                 subset->base->id_size);                          RET_ERR();
 
@@ -423,9 +424,11 @@ static int export_facets_JSON(struct kndClass *self, struct kndSet *set)
                 //if (err) return err;
                 //err = out->writec(out, ']');                                      RET_ERR();
                 //err = out->writec(out, '}');                                      RET_ERR();
-            } while (key);
+
+        /*} while (key);
             err = out->writec(out,  ']');                                       RET_ERR();
-        }
+            }*/
+
         err = out->writec(out,  '}');                                           RET_ERR();
     }
     err = out->writec(out,  ']');                                               RET_ERR();
@@ -517,7 +520,12 @@ extern int knd_class_export_JSON(struct kndClass *self,
     err = out->write(out, "{", 1);                                                RET_ERR();
     err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                RET_ERR();
     err = out->write_escaped(out, self->entry->name, self->entry->name_size);     RET_ERR();
-    err = out->write(out, "\"", 1);                                               RET_ERR();
+    err = out->writec(out, '"');                                               RET_ERR();
+
+    err = out->write(out, ",\"_repo\":\"", strlen(",\"_repo\":\""));                      RET_ERR();
+    err = out->write(out, self->entry->repo->name,
+                     self->entry->repo->name_size);                              RET_ERR();
+    err = out->writec(out, '"');                                               RET_ERR();
 
     err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
     err = out->writef(out, "%zu", self->entry->numid);                            RET_ERR();
@@ -622,18 +630,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
     }
 
     // TODO
-    /*if (self->entry->reverse_attr_name_idx) {
-        idx = self->entry->reverse_attr_name_idx;
-        key = NULL;
-        idx->rewind(idx);
-        do {
-            idx->next_item(idx, &key, &val);
-            if (!key) break;
-            set = val;
-
-            knd_log("%s total:%zu", key, set->num_elems);
-        } while (key);
-        }*/
+    /*if (self->entry->reverse_attr_name_idx
 
     if (self->entry->num_children) {
         err = present_subclasses(self, out);                           RET_ERR();

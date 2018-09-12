@@ -121,7 +121,7 @@ typedef enum knd_storage_type {
 //#define KND_STATE_SIZE  (4 * sizeof(char))
 
 #define KND_MAX_MIGRATIONS 256
-#define KND_MAX_SPECS 64
+#define KND_MAX_SPECS 8
 
 #define KND_MAX_OWNERS 256
 
@@ -283,7 +283,7 @@ typedef enum knd_storage_type {
 #define KND_MED_MEMPAGE_SIZE 2048
 #define KND_NUM_MED_MEMPAGES 10000
 
-#define KND_SMALL_MEMPAGE_SIZE 300
+#define KND_SMALL_MEMPAGE_SIZE 320
 #define KND_NUM_SMALL_MEMPAGES 10000
 
 #define KND_SMALLER_MEMPAGE_SIZE 128

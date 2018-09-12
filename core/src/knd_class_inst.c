@@ -7,7 +7,6 @@
 #include "knd_mempool.h"
 #include "knd_attr.h"
 #include "knd_elem.h"
-
 #include "knd_repo.h"
 
 #include "knd_text.h"
@@ -169,7 +168,6 @@ static int export_inst_relrefs_JSON(struct kndClassInst *self)
         if (!relref->idx) continue;
         err = export_inst_relref_JSON(self, relref);                              RET_ERR();
     }
-
     return knd_OK;
 }
 
@@ -569,8 +567,8 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct kndClassInst *self = obj;
     struct kndClass *c = self->base;
-    struct kndObjEntry *entry;
-    struct ooDict *name_idx = c->entry->inst_name_idx;
+    struct kndClassInstEntry *entry;
+    //struct ooDict *name_idx = c->entry->inst_name_idx;
     struct glbOutput *log = c->entry->repo->log;
     struct kndTask *task = c->entry->repo->task;
     int err;
@@ -578,8 +576,8 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    /* check name doublets */
-    if (name_idx) {
+    /* TODO: check name doublets */
+    /*if (name_idx) {
         entry = name_idx->get(name_idx,
                               name, name_size);
         if (entry) {
@@ -600,8 +598,9 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
             return make_gsl_err(gsl_EXISTS);
         }
     }
+    */
 
- assign_name:
+assign_name:
     self->name = name;
     self->name_size = name_size;
 
@@ -727,7 +726,7 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
     }
     
     conc = self->base;
-    err = conc->get_attr(conc, name, name_size, &attr);
+    err = knd_class_get_attr(conc, name, name_size, &attr);
     if (err) {
         knd_log("  -- \"%.*s\" attr is not approved :(", name_size, name);
         log->reset(log);
@@ -754,11 +753,7 @@ static gsl_err_t parse_elem(void *data,
                             const char *rec, size_t *total_size)
 {
     struct kndClassInst *self = data;
-    if (self->curr_inst) {
-        self = self->curr_inst;
-    }
     struct kndClass *root_class;
-    struct kndMemPool *mempool = self->base->entry->repo->mempool;
     struct kndClass *c;
     struct kndClassInst *obj;
     struct kndElem *elem = NULL;
@@ -769,15 +764,14 @@ static gsl_err_t parse_elem(void *data,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_INST_LEVEL_2) {
-        knd_log("..  obj: id:%.*s name:%.*s "
-                " to validate \"%.*s\" elem,"
-                " REC: \"%.*s\"",
-                self->entry->id_size, self->entry->id,
-                self->name_size, self->name,
-                name_size, name, 32, rec);
-    }
+    if (DEBUG_INST_LEVEL_2)
+        knd_log(".. parsing elem REC: %.*s", 128, rec);
 
+    if (self->curr_inst) {
+        self = self->curr_inst;
+    }
+    struct kndMemPool *mempool = self->base->entry->repo->mempool;
+    
     err = kndClassInst_validate_attr(self, name, name_size, &attr, &elem);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
@@ -798,7 +792,7 @@ static gsl_err_t parse_elem(void *data,
         return *total_size = 0, make_gsl_err(gsl_OK);
     }
 
-    err = mempool->new_class_inst_elem(mempool, &elem);
+    err = knd_class_inst_elem_new(mempool, &elem);
     if (err) {
         knd_log("-- elem alloc failed :(");
         return *total_size = 0, make_gsl_err_external(err);
@@ -808,17 +802,16 @@ static gsl_err_t parse_elem(void *data,
     elem->attr = attr;
  
     if (DEBUG_INST_LEVEL_2)
-        knd_log("   == basic elem type: %s",
-                knd_attr_names[attr->type]);
+        knd_log("== basic elem type: %s", knd_attr_names[attr->type]);
 
     switch (attr->type) {
     case KND_ATTR_AGGR:
-        err = mempool->new_class_inst(mempool, &obj);
+        err = knd_class_inst_new(mempool, &obj);
         if (err) {
             knd_log("-- aggr class inst alloc failed :(");
             return *total_size = 0, make_gsl_err_external(err);
         }
-        err = mempool->new_state(mempool, &obj->states);
+        err = knd_state_new(mempool, &obj->states);
         if (err) {
             knd_log("-- state alloc failed :(");
             return *total_size = 0, make_gsl_err_external(err);
@@ -902,7 +895,7 @@ static gsl_err_t parse_elem(void *data,
     }
     self->num_elems++;
 
-    if (DEBUG_INST_LEVEL_3)
+    if (DEBUG_INST_LEVEL_2)
         knd_log("++ elem %.*s parsing OK!",
                 elem->attr->name_size, elem->attr->name);
 
@@ -973,7 +966,7 @@ static gsl_err_t rel_entry_append(void *accu,
 
     set = self->idx;
     if (!set) {
-        err = mempool->new_set(mempool, &set);
+        err = knd_set_new(mempool, &set);
         if (err) return make_gsl_err_external(err);
         set->mempool = mempool;
         set->type = KND_SET_REL_INST;
@@ -1150,7 +1143,7 @@ static gsl_err_t remove_inst(void *data,
     if (DEBUG_INST_LEVEL_2)
         knd_log("== obj to remove: \"%.*s\"", obj->name_size, obj->name);
 
-    err = mempool->new_state(mempool, &state);
+    err = knd_state_new(mempool, &state);
     if (err) return make_gsl_err_external(err);
 
     state->phase = KND_REMOVED;
@@ -1239,6 +1232,9 @@ static gsl_err_t parse_import_inst(struct kndClassInst *self,
                                    const char *rec,
                                    size_t *total_size)
 {
+    if (DEBUG_INST_LEVEL_2)
+        knd_log(".. parsing class inst import REC: %.*s", 128, rec);
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_name,
@@ -1260,9 +1256,6 @@ static gsl_err_t parse_import_inst(struct kndClassInst *self,
           .obj = self
         }
     };
-
-    if (DEBUG_INST_LEVEL_2)
-        knd_log(".. parsing obj REC: %.*s", 128, rec);
  
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
@@ -1376,7 +1369,7 @@ static int select_inst_rel_delta(struct kndClassInst *self,
         return knd_FAIL;
     }
 
-    err = mempool->new_set(mempool, &set);                                        MEMPOOL_ERR(kndSet);
+    err = knd_set_new(mempool, &set);                                        MEMPOOL_ERR(kndSet);
     set->mempool = mempool;
 
     if (!task->state_lt)
@@ -1472,7 +1465,7 @@ static int export_inst_JSON(void *obj,
     if (count < task->start_from) return knd_OK;
     if (task->batch_size >= task->batch_max) return knd_RANGE;
     struct glbOutput *out = base->entry->repo->out;
-    struct kndObjEntry *entry = elem;
+    struct kndClassInstEntry *entry = elem;
     struct kndClassInst *inst = entry->inst;
     int err;
 
@@ -1574,7 +1567,7 @@ static gsl_err_t present_inst_selection(void *data, const char *val __attribute_
 
         /* intersection required */
         /*if (task->num_sets > 1) {
-            err = mempool->new_set(mempool, &set);
+            err = knd_set_new(mempool, &set);
             if (err) return make_gsl_err_external(err);
 
             set->type = KND_SET_CLASS;
@@ -1624,23 +1617,20 @@ static gsl_err_t run_get_inst(void *obj, const char *name, size_t name_size)
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     self->curr_inst = NULL;
-    err = c->get_inst(c, name, name_size, &self->curr_inst);
+    err = knd_get_class_inst(c, name, name_size, &self->curr_inst);
     if (err) {
-        knd_log("-- failed to get obj: %.*s :(", name_size, name);
+        knd_log("-- failed to get class inst: %.*s", name_size, name);
         return make_gsl_err_external(err);
     }
-
     self->curr_inst->max_depth = 0;
 
     /* to return a single object */
-    task->type = KND_GET_STATE;    
+    task->type = KND_GET_STATE;
 
     if (DEBUG_INST_LEVEL_2) {
-        knd_log("++ got class inst: \"%.*s\"!",
-                name_size, name);
+        knd_log("++ got class inst: \"%.*s\"!", name_size, name);
         self->curr_inst->str(self->curr_inst);
     }
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -1692,7 +1682,7 @@ static int select_delta(struct kndClassInst *self,
     if (gt >= base->num_inst_states) return knd_FAIL;
     if (lt && lt < gt) return knd_FAIL;
 
-    err = mempool->new_set(mempool, &set);                                        MEMPOOL_ERR(kndSet);
+    err = knd_set_new(mempool, &set);                                        MEMPOOL_ERR(kndSet);
     set->mempool = mempool;
 
     if (!lt) lt = base->num_inst_states + 1;
@@ -1718,7 +1708,6 @@ static int select_delta(struct kndClassInst *self,
 
     task->sets[0] = set;
     task->num_sets = 1;
-
     return knd_OK;
 }
 
@@ -1743,7 +1732,7 @@ static gsl_err_t parse_select_inst(struct kndClassInst *self,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_INST_LEVEL_2)
+    if (DEBUG_INST_LEVEL_TMP)
         knd_log(".. parsing class instance select: \"%.*s\"", 32, rec);
 
     self->max_depth = 0;
@@ -1833,18 +1822,11 @@ static int kndClassInst_resolve(struct kndClassInst *self)
             knd_log("++ elem resolved: %.*s!",
                     elem->attr->name_size, elem->attr->name);
     }
-
     return knd_OK;
-}
-
-extern void kndObjEntry_init(struct kndObjEntry *self)
-{
-    memset(self, 0, sizeof(struct kndObjEntry));
 }
 
 extern void kndClassInst_init(struct kndClassInst *self)
 {
-    self->name_size = 0;
     self->del = del;
     self->str = str;
     self->parse = parse_import_inst;
@@ -1860,12 +1842,33 @@ extern void kndClassInst_init(struct kndClassInst *self)
 extern int kndClassInst_new(struct kndClassInst **obj)
 {
     struct kndClassInst *self;
-
     self = malloc(sizeof(struct kndClassInst));
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndClassInst));
     kndClassInst_init(self);
     *obj = self;
+    return knd_OK;
+}
 
+extern int knd_class_inst_entry_new(struct kndMemPool *mempool,
+                                    struct kndClassInstEntry **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                            sizeof(struct kndClassInstEntry), &page);  RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
+extern int knd_class_inst_new(struct kndMemPool *mempool,
+                              struct kndClassInst **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                            sizeof(struct kndClassInst), &page);                  RET_ERR();
+    *result = page;
+    kndClassInst_init(*result);
     return knd_OK;
 }

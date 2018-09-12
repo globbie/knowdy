@@ -208,7 +208,7 @@ static int export_facets_GSP(struct kndClass *self, struct kndSet *set)
     struct glbOutput *out = self->entry->repo->out;
     struct kndSet *subset;
     struct kndFacet *facet;
-    struct ooDict *set_name_idx;
+    //struct ooDict *set_name_idx;
     const char *key;
     void *val;
     int err;
@@ -220,7 +220,7 @@ static int export_facets_GSP(struct kndClass *self, struct kndSet *set)
         err = out->write(out, facet->attr->name, facet->attr->name_size);
         err = out->write(out,  " ", 1);                                           RET_ERR();
 
-        if (facet->set_name_idx) {
+        /*if (facet->set_name_idx) {
             err = out->write(out,  "[set", strlen("[set"));                       RET_ERR();
             set_name_idx = facet->set_name_idx;
             key = NULL;
@@ -241,7 +241,7 @@ static int export_facets_GSP(struct kndClass *self, struct kndSet *set)
                 err = out->writec(out, '}');                                      RET_ERR();
             } while (key);
             err = out->write(out,  "]", 1);                                       RET_ERR();
-        }
+            }*/
         err = out->write(out,  "}", 1);                                           RET_ERR();
     }
     err = out->write(out,  "]", 1);                                               RET_ERR();
@@ -659,12 +659,12 @@ static gsl_err_t facet_alloc(void *obj,
         knd_log(".. \"%.*s\" set to alloc a facet..",
                 set->base->name_size, set->base->name);
 
-    err = mempool->new_facet(mempool, &f);
+    err = knd_facet_new(mempool, &f);
     if (err) return make_gsl_err_external(err);
 
     /* TODO: mempool alloc */
-    err = ooDict_new(&f->set_name_idx, KND_SMALL_DICT_SIZE);
-    if (err) return make_gsl_err_external(err);
+    //err = ooDict_new(&f->set_name_idx, KND_SMALL_DICT_SIZE);
+    //if (err) return make_gsl_err_external(err);
 
     f->parent = set;
 
@@ -701,7 +701,7 @@ static gsl_err_t set_facet_name(void *obj, const char *name, size_t name_size)
                 parent->base->name_size, parent->base->name, name_size, name);
 
     c = parent->base->class;
-    err = c->get_attr(c, name, name_size, &attr);
+    err = knd_class_get_attr(c, name, name_size, &attr);
     if (err) {
         knd_log("-- no such facet attr: \"%.*s\"",
                 name_size, name);
@@ -725,7 +725,7 @@ static gsl_err_t set_alloc(void *obj,
 
     assert(name == NULL && name_size == 0);
 
-    err = mempool->new_set(mempool, &set);
+    err = knd_set_new(mempool, &set);
     if (err) return make_gsl_err_external(err);
 
     set->type = KND_SET_CLASS;
@@ -744,13 +744,13 @@ static gsl_err_t set_append(void *accu,
     struct kndSet *set = item;
     int err;
 
-    if (!self->set_name_idx) return make_gsl_err(gsl_OK);
+    /*if (!self->set_name_idx) return make_gsl_err(gsl_OK);
 
     err = self->set_name_idx->set(self->set_name_idx,
                                   set->base->name, set->base->name_size,
                                   (void*)set);
     if (err) return make_gsl_err_external(err);
-
+    */
     return make_gsl_err(gsl_OK);
 }
 
@@ -1186,18 +1186,18 @@ static gsl_err_t alloc_class_inst(void *obj,
 {
     struct kndClass *self = obj;
     struct kndClassInst *inst;
-    struct kndObjEntry *entry;
+    struct kndClassInstEntry *entry;
     struct kndState *state;
     struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
 
-    err = mempool->new_class_inst(mempool, &inst);
+    err = knd_class_inst_new(mempool, &inst);
     if (err) {
         knd_log("-- class inst alloc failed :(");
         return make_gsl_err_external(err);
     }
 
-    err = mempool->new_state(mempool, &state);
+    err = knd_state_new(mempool, &state);
     if (err) {
         knd_log("-- state alloc failed :(");
         return make_gsl_err_external(err);
@@ -1206,7 +1206,7 @@ static gsl_err_t alloc_class_inst(void *obj,
     state->next = inst->states;
     inst->states = state;
 
-    err = mempool->new_class_inst_entry(mempool, &entry);
+    err = knd_class_inst_entry_new(mempool, &entry);
     if (err) return make_gsl_err_external(err);
 
     inst->entry = entry;
@@ -1249,7 +1249,7 @@ static gsl_err_t append_class_inst(void *accu,
 
     /* index by id */
     if (!set) {
-        err = mempool->new_set(mempool, &set);
+        err = knd_set_new(mempool, &set);
         if (err) return make_gsl_err_external(err);
         set->type = KND_SET_CLASS_INST;
         self->entry->inst_idx = set;
@@ -1338,7 +1338,7 @@ static gsl_err_t set_class_state(void *obj,
     struct kndState *state;
     int err;
 
-    err = mempool->new_state(mempool, &state);
+    err = knd_state_new(mempool, &state);
     if (err) {
         knd_log("-- state alloc failed :(");
         return make_gsl_err_external(err);
@@ -1563,7 +1563,7 @@ static gsl_err_t parse_descendants(void *obj,
     if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log(".. parsing a set of descendants: \"%.*s\"", 300, rec);
 
-    err = mempool->new_set(mempool, &set);
+    err = knd_set_new(mempool, &set);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     set->type = KND_SET_CLASS;
     set->base = self->entry;

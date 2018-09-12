@@ -47,6 +47,37 @@ static gsl_err_t import_nested_attr_var(void *obj,
 static void append_attr_var(struct kndClassVar *ci,
                              struct kndAttrVar *attr_var);
 
+static int copy_curr_class(struct kndClass *self)
+{
+    struct kndClass *c;
+    struct kndClassEntry *entry, *src_entry;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    int err;
+
+    err = knd_class_new(mempool, &c);                                             RET_ERR();
+    err = knd_class_entry_new(mempool, &entry);                                   RET_ERR();
+
+    src_entry = self->curr_class->entry;
+
+    entry->name = src_entry->name;
+    entry->name_size = src_entry->name_size;
+
+    entry->repo = self->entry->repo;
+
+    entry->class = c;
+    c->entry = entry;
+    c->root_class = self;
+
+    //self->curr_class = c;
+
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+        knd_log("++ copied entry %.*s from repo \"%.*s\" to repo \"%.*s\"!",
+                entry->name_size, entry->name,
+                src_entry->repo->name_size, src_entry->repo->name,
+                entry->repo->name_size, entry->repo->name);
+    return knd_OK;
+}
+
 extern gsl_err_t knd_parse_import_class_inst(void *data,
                                              const char *rec,
                                              size_t *total_size)
@@ -54,47 +85,59 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     struct kndClass *self = data;
     struct kndClass *c;
     struct kndClassInst *inst;
-    struct kndObjEntry *entry;
+    struct kndClassInstEntry *entry;
     struct kndSet *set;
+    struct ooDict *name_idx;
     struct kndMemPool *mempool = self->entry->repo->mempool;
     struct kndTask *task = self->entry->repo->task;
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
         knd_log(".. import \"%.*s\" inst..", 128, rec);
     }
     if (!self->curr_class) {
-        knd_log("-- class not specified :(");
+        knd_log("-- no class selected");
         return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
 
-    // TODO class copy?
+    c = self->curr_class;
 
-    err = mempool->new_class_inst(mempool, &inst);
+    /* user ctx should have its own copy of a selected class */
+    if (c->entry->repo != self->entry->repo) {
+        err = copy_curr_class(self);
+        if (err) {
+            knd_log("-- class copy failed");
+            return *total_size = 0, make_gsl_err_external(err);
+        }
+        //        c = self->curr_class;
+    }
+
+    c->str(c);
+
+    err = knd_class_inst_new(mempool, &inst);
     if (err) {
         knd_log("-- class inst alloc failed :(");
         return *total_size = 0, make_gsl_err_external(err);
     }
-    err = mempool->new_state(mempool, &inst->states);
+
+    err = knd_state_new(mempool, &inst->states);
     if (err) {
         knd_log("-- state alloc failed :(");
         return *total_size = 0, make_gsl_err_external(err);
     }
-    err = mempool->new_class_inst_entry(mempool, &entry);
+    err = knd_class_inst_entry_new(mempool, &entry);
     if (err) return make_gsl_err_external(err);
 
     inst->entry = entry;
     entry->inst = inst;
     inst->states->phase = KND_SUBMITTED;
-    inst->base = self->curr_class;
+    inst->base = c;
 
     parser_err = inst->parse(inst, rec, total_size);
     if (parser_err.code) return parser_err;
 
-    c = inst->base;
     inst->next = c->inst_inbox;
-
     c->inst_inbox = inst;
     c->inst_inbox_size++;
     c->num_insts++;
@@ -107,36 +150,25 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     inst->entry->numid = c->num_insts;
     knd_num_to_str(inst->entry->numid, inst->entry->id, &inst->entry->id_size, KND_RADIX_BASE);
 
-    if (!c->entry) {
-        if (c->root_class) {
-            knd_log("-- no entry in %.*s :(", c->name_size, c->name);
-            return make_gsl_err(gsl_FAIL);
-        }
-        return make_gsl_err(gsl_OK);
-    }
-
     /* automatic name assignment if no explicit name given */
     if (!inst->name_size) {
         inst->name = inst->entry->id;
         inst->name_size = inst->entry->id_size;
     }
 
-    if (!c->entry->inst_name_idx) {
-        err = ooDict_new(&c->entry->inst_name_idx, KND_HUGE_DICT_SIZE);
-        if (err) return make_gsl_err_external(err);
-    }
+    name_idx = c->entry->repo->class_inst_name_idx;
 
-    err = c->entry->inst_name_idx->set(c->entry->inst_name_idx,
-                                      inst->name, inst->name_size,
-                                      (void*)entry);
+    // TODO  lookup prev class inst ref
+
+    err = name_idx->set(name_idx,
+                        inst->name, inst->name_size,
+                        (void*)entry);
     if (err) return make_gsl_err_external(err);
     c->entry->num_insts++;
 
     set = c->entry->inst_idx;
-
-    /* index by id */
     if (!set) {
-        err = mempool->new_set(mempool, &set);
+        err = knd_set_new(mempool, &set);
         if (err) return make_gsl_err_external(err);
         set->type = KND_SET_CLASS_INST;
         c->entry->inst_idx = set;
@@ -147,13 +179,25 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
         return make_gsl_err_external(err);
     }
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
-        knd_log("++ INST registered in \"%.*s\" IDX:  [total:%zu valid:%zu]",
-                c->name_size, c->name, c->entry->inst_name_idx->size, c->entry->num_insts);
-        inst->depth = self->depth + 1;
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
         inst->str(inst);
     }
+
     task->type = KND_UPDATE_STATE;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_attr_var_name(void *obj, const char *name, size_t name_size)
+{
+    struct kndAttrVar *self = obj;
+
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+        knd_log(".. set attr var name: %.*s", name_size, name);
+
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    self->name = name;
+    self->name_size = name_size;
 
     return make_gsl_err(gsl_OK);
 }
@@ -161,29 +205,11 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
 static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
 {
     struct kndAttrVar *self = obj;
-    struct kndClass *root_class = self->class_var->root_class;
-    struct kndMemPool *mempool = root_class->entry->repo->mempool;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. set attr var value: %.*s batch:%d",
-                val_size, val, root_class->batch_mode);
+        knd_log(".. set attr var value: %.*s", val_size, val);
 
     if (!val_size) return make_gsl_err(gsl_FORMAT);
-
-    /* initial set of classes */
-    if (root_class->batch_mode) {
-
-        if (val_size < KND_MEMPAGE_SIZE) {
-        }
-        // TODO:
-        self->valbuf = malloc(val_size);
-        
-        memcpy(self->valbuf, val, val_size);
-        self->val = self->valbuf;
-        self->val_size = val_size;
-
-        return make_gsl_err(gsl_OK);
-    }
 
     self->val = val;
     self->val_size = val_size;
@@ -197,7 +223,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndRepo *repo = self->root_class->entry->repo;
     struct glbOutput *log = repo->log;
     struct ooDict *class_name_idx = self->root_class->class_name_idx;
-    struct kndMemPool *mempool = repo->mempool;
     struct kndTask *task = repo->task;
     struct kndClassEntry *entry;
     struct kndState *state;
@@ -207,11 +232,9 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         knd_log(".. set class name: %.*s", name_size, name);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= sizeof self->entry->name) return make_gsl_err(gsl_LIMIT);
 
     entry = class_name_idx->get(class_name_idx, name, name_size);
     if (!entry) {
-
         entry = self->entry;
         /*err = mempool->new_class_entry(mempool, &entry);
         if (err) return make_gsl_err_external(err);
@@ -220,7 +243,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         self->entry = entry;
         */
 
-        memcpy(entry->name, name, name_size);
+        entry->name = name;
         entry->name_size = name_size;
         self->name = self->entry->name;
         self->name_size = name_size;
@@ -229,12 +252,10 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
                                   entry->name, name_size,
                                   (void*)entry);
         if (err) return make_gsl_err_external(err);
-
         return make_gsl_err(gsl_OK);
     }
 
     /* class entry already exists */
-
     if (!entry->class) {
         entry->class =    self;
         self->entry =     entry;
@@ -259,7 +280,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
             return make_gsl_err(gsl_OK);
         }
     }
-
     knd_log("-- \"%.*s\" class doublet found :(", name_size, name);
     log->reset(log);
     err = log->write(log, name, name_size);
@@ -302,7 +322,9 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     err = knd_class_entry_new(mempool, &entry);
     if (err) return make_gsl_err_external(err);
 
-    memcpy(entry->name, name, name_size);
+    char *s = malloc(name_size);
+    memcpy(s, name, name_size);
+    entry->name = s;
     entry->name_size = name_size;
 
     err = class_name_idx->set(class_name_idx,
@@ -380,7 +402,6 @@ static gsl_err_t import_attr_var(void *obj,
     int err;
 
     // TODO
-
     /* class var not resolved */
     if (!self->entry) {
         knd_log("-- anonymous class var: %.*s?  REC:%.*s",
@@ -398,14 +419,14 @@ static gsl_err_t import_attr_var(void *obj,
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = self;
 
-    memcpy(attr_var->name, name, name_size);
+    attr_var->name = name;
     attr_var->name_size = name_size;
 
-    struct gslTaskSpec cdata_spec = {
+    /*struct gslTaskSpec cdata_spec = {
         .buf = attr_var->valbuf,
         .buf_size = &attr_var->val_size,
         .max_buf_size = sizeof attr_var->valbuf
-    };
+        };*/
     
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -420,12 +441,12 @@ static gsl_err_t import_attr_var(void *obj,
         { .is_validator = true,
           .validate = import_nested_attr_var,
           .obj = attr_var
-        },
+        }/*,
         { .name = "_cdata",
           .name_size = strlen("_cdata"),
           .parse = gsl_parse_cdata,
           .obj = &cdata_spec
-        }
+          }*/
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -491,9 +512,8 @@ static gsl_err_t parse_nested_attr_var(void *obj,
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .buf = item->name,
-          .buf_size = &item->name_size,
-          .max_buf_size = sizeof item->name
+          .run = set_attr_var_name,
+          .obj = item
         },
         { .is_validator = true,
           .validate = import_nested_attr_var,
@@ -526,7 +546,7 @@ static gsl_err_t import_attr_var_list(void *obj,
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = self;
 
-    memcpy(attr_var->name, name, name_size);
+    attr_var->name = name;
     attr_var->name_size = name_size;
 
     append_attr_var(self, attr_var);
@@ -567,7 +587,7 @@ static gsl_err_t import_nested_attr_var(void *obj,
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = self->class_var;
 
-    memcpy(attr_var->name, name, name_size);
+    attr_var->name = name;
     attr_var->name_size = name_size;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
@@ -755,7 +775,7 @@ extern gsl_err_t knd_import_class(void *obj,
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. import \"%.*s\" class..", 128, rec);
+        knd_log("..import \"%.*s\" class..", 128, rec);
 
     err = knd_class_new(mempool, &c);
     if (err) return *total_size = 0, make_gsl_err_external(err);

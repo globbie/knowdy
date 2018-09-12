@@ -62,6 +62,7 @@ struct kndUpdate
     char id[KND_ID_SIZE];
     size_t id_size;
     size_t numid;
+
     size_t owner_id;
     knd_state_type phase;
     time_t timestamp;
@@ -72,15 +73,17 @@ struct kndUpdate
 
     struct kndRepo *repo;
 
-    struct kndClassUpdate **classes;
+    struct kndClassUpdate *classes;
     size_t num_classes;
-    size_t total_objs;
+    size_t total_class_insts;
 
     struct kndRelUpdate **rels;
     size_t num_rels;
 
     struct kndProcUpdate **procs;
     size_t num_procs;
+
+    struct kndUpdate *next;
 };
 
 struct kndState
@@ -104,11 +107,9 @@ struct kndStateControl
 
     /** transaction log:
      * index of confirmed updates */
-    struct kndUpdate **updates;
+    struct kndUpdate *updates;
     size_t max_updates;
     size_t num_updates;
-    struct kndUpdate **selected;
-    size_t num_selected;
 
     size_t total_objs;
 
@@ -136,3 +137,5 @@ struct kndStateControl
 /* constructors */
 extern int kndStateControl_new(struct kndStateControl **self);
 
+extern int knd_state_new(struct kndMemPool *mempool,
+                         struct kndState **result);

@@ -95,14 +95,13 @@ struct kndAttrVar
 {
     struct kndAttr *attr;
 
-    char name[KND_SHORT_NAME_SIZE];
-    size_t name_size;
-
     char id[KND_ID_SIZE];
     size_t id_size;
 
-    char *valbuf;
-    char *val;
+    const char *name;
+    size_t name_size;
+
+    const char *val;
     size_t val_size;
 
     long numval;

@@ -96,10 +96,10 @@ static void inst_arg_str(struct kndRelArgInstance *inst)
     if (inst->objname_size)
         knd_log("            OBJ name: \"%.*s\"",
                 inst->objname_size, inst->objname);
-    if (inst->obj)
+    /*if (inst->obj)
         knd_log("            OBJ: \"%.*s\"",
                 inst->obj->name_size, inst->obj->name);
-
+    */
     if (inst->val_size)
         knd_log("            VAL: \"%.*s\"",
                 inst->val_size, inst->val);
@@ -477,7 +477,7 @@ static int export_inst_JSON(struct kndRel *self,
     struct kndTask *task = self->entry->repo->task;
     struct kndUpdate *update;
     struct kndState *state;
-    struct kndObjEntry *obj_entry;
+    struct kndClassInstEntry *obj_entry;
     struct kndClassInst *class_inst;
     struct tm tm_info;
     bool in_list = false;
@@ -680,7 +680,7 @@ static gsl_err_t import_rel(struct kndRel *self,
     if (DEBUG_REL_LEVEL_2)
         knd_log(".. import Rel: \"%.*s\"..", 32, rec);
 
-    err  = mempool->new_rel(mempool, &rel);
+    err = knd_rel_new(mempool, &rel);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     rel->rel_name_idx = self->rel_name_idx;
@@ -742,7 +742,7 @@ static gsl_err_t import_rel(struct kndRel *self,
         self->inbox_size++;
     }
 
-    err = mempool->new_rel_entry(mempool, &entry);
+    err = knd_rel_entry_new(mempool, &entry);
     if (err) { return make_gsl_err_external(err); }
     entry->rel = rel;
     entry->repo = self->entry->repo;
@@ -922,7 +922,7 @@ static gsl_err_t inst_entry_append(void *accu,
     
     set = parent_entry->inst_idx;
     if (!set) {
-        err = mempool->new_set(mempool, &set);
+        err = knd_set_new(mempool, &set);
         if (err) return make_gsl_err_external(err);
         set->type = KND_SET_REL_INST;
         parent_entry->inst_idx = set;
@@ -1235,8 +1235,8 @@ static int unfreeze_inst(struct kndRel *self,
     /* done reading */
     close(fd);
 
-    err = mempool->new_rel_inst(mempool, &inst);                      RET_ERR();
-    err = mempool->new_state(mempool, &inst->states);                  RET_ERR();
+    err = knd_rel_inst_new(mempool, &inst);                      RET_ERR();
+    err = knd_state_new(mempool, &inst->states);                  RET_ERR();
     inst->states->phase = KND_FROZEN;
     inst->entry = entry;
     entry->inst = inst;
@@ -1391,7 +1391,7 @@ static int get_rel(struct kndRel *self,
 
     // TODO rel entry
     
-    err = mempool->new_rel(mempool, &rel);                            RET_ERR();
+    err = knd_rel_new(mempool, &rel);                            RET_ERR();
     rel->rel_name_idx = self->rel_name_idx;
     rel->class_idx = self->class_idx;
     rel->class_name_idx = self->class_name_idx;
@@ -1599,7 +1599,7 @@ static gsl_err_t parse_import_instance(void *data,
     err = mempool->new_rel_inst(mempool, &inst);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
-    err = mempool->new_state(mempool, &inst->states);
+    err = knd_state_new(mempool, &inst->states);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     inst->states->phase = KND_SUBMITTED;
@@ -1650,7 +1650,7 @@ static gsl_err_t parse_import_instance(void *data,
     // indices
     set = rel->entry->inst_idx;
     if (!rel->entry->inst_idx) {
-        err = mempool->new_set(mempool, &set);
+        err = knd_set_new(mempool, &set);
         if (err) return make_gsl_err_external(err);
         set->type = KND_SET_REL_INST;
         rel->entry->inst_idx = set;
@@ -1789,7 +1789,7 @@ static gsl_err_t remove_inst(void *data,
         knd_log("== inst to remove: \"%.*s\"  Root Rel inbox:%p",
                 inst->name_size, inst->name, root_rel->inbox);
 
-    err = mempool->new_state(mempool, &state);
+    err = knd_state_new(mempool, &state);
     if (err) return make_gsl_err_external(err);
 
     state->phase = KND_REMOVED;
@@ -2472,7 +2472,7 @@ extern int kndRel_new(struct kndRel **rel,
 
     memset(self, 0, sizeof(struct kndRel));
 
-    err = mempool->new_rel_entry(mempool, &entry);                               RET_ERR();
+    err = knd_rel_entry_new(mempool, &entry);                               RET_ERR();
     entry->name[0] = '/';
     entry->name_size = 1;
     entry->rel = self;
@@ -2488,4 +2488,38 @@ extern int kndRel_new(struct kndRel **rel,
     return knd_OK;
  error:
     return err;
+}
+
+extern int knd_rel_entry_new(struct kndMemPool *mempool,
+                              struct kndRelEntry **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_MED,
+                            sizeof(struct kndRelEntry), &page);  RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
+extern int knd_rel_inst_new(struct kndMemPool *mempool,
+                            struct kndRelInstance **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL,
+                            sizeof(struct kndRelInstance), &page);  RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
+extern int knd_rel_new(struct kndMemPool *mempool,
+                        struct kndRel **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL,
+                            sizeof(struct kndRel), &page);  RET_ERR();
+    *result = page;
+    kndRel_init(*result);
+    return knd_OK;
 }

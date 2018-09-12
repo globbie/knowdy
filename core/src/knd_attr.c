@@ -463,10 +463,10 @@ static gsl_err_t parse_proc(void *obj,
     gsl_err_t parser_err;
 
     mempool = self->parent_class->entry->repo->mempool;
-    err = mempool->new_proc(mempool, &proc);
+    err = knd_proc_new(mempool, &proc);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
-    err = mempool->new_proc_entry(mempool, &entry);
+    err = knd_proc_entry_new(mempool, &entry);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     entry->repo = self->parent_class->entry->repo;
     entry->proc = proc;
@@ -674,7 +674,7 @@ extern int knd_apply_attr_var_updates(struct kndClass *self,
     if (DEBUG_ATTR_LEVEL_TMP)
         knd_log(".. applying attr var updates..");
 
-    err = mempool->new_state(mempool, &state);
+    err = knd_state_new(mempool, &state);
     if (err) return err;
 
     state->update = class_update->update;
