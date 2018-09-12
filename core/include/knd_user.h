@@ -108,3 +108,5 @@ struct kndUser
 
 extern int kndUser_new(struct kndUser **self, struct kndMemPool *mempool);
 
+extern int knd_user_context_new(struct kndMemPool *mempool,
+                                struct kndUserContext **result);

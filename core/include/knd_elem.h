@@ -85,3 +85,5 @@ struct kndElem
 /* constructors */
 extern void kndElem_init(struct kndElem *self);
 extern int kndElem_new(struct kndElem **self);
+extern int knd_class_inst_elem_new(struct kndMemPool *mempool,
+                                   struct kndElem **result);

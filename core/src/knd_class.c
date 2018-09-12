@@ -538,7 +538,10 @@ static int read_GSL_file(struct kndClass *self,
         return err;
     }
 
-    err = parse_GSL(self, (const char*)file_out->buf, &chunk_size);
+    // TODO
+    char *rec = strdup(file_out->buf);
+
+    err = parse_GSL(self, (const char*)rec, &chunk_size);
     if (err) {
         knd_log("-- parsing of \"%.*s\" failed",
                 out->buf_size, out->buf);
@@ -589,11 +592,10 @@ static int coordinate(struct kndClass *self)
         knd_log(".. class coordination in progress ..");
 
     /* resolve names to addresses */
-    err = knd_resolve_classes(self);
-    if (err) return err;
+    err = knd_resolve_classes(self);                    RET_ERR();
 
     //calculate_descendants(self);
-    
+
     if (self->entry->descendants) {
         if (DEBUG_CLASS_LEVEL_TMP)
             knd_log("== TOTAL classes: %zu",
@@ -603,17 +605,18 @@ static int coordinate(struct kndClass *self)
     return knd_OK;
 }
 
-static int get_inst(struct kndClass *self,
-                    const char *name, size_t name_size,
-                    struct kndClassInst **result)
+extern int knd_get_class_inst(struct kndClass *self,
+                              const char *name, size_t name_size,
+                              struct kndClassInst **result)
 {
-    struct kndObjEntry *entry;
+    struct kndClassInstEntry *entry;
     struct kndClassInst *obj;
+    struct ooDict *name_idx;
     struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->entry->repo->task;
     int err, e;
 
-    if (DEBUG_CLASS_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_TMP)
         knd_log(".. \"%.*s\" class to get instance: \"%.*s\"..",
                 self->entry->name_size, self->entry->name,
                 name_size, name);
@@ -623,8 +626,8 @@ static int get_inst(struct kndClass *self,
                 self->entry->name_size, self->entry->name);
     }
 
-    if (!self->entry->inst_name_idx) {
-        knd_log("-- no obj name idx in \"%.*s\" :(",
+    if (!self->entry->inst_idx) {
+        knd_log("-- no inst idx in \"%.*s\" :(",
                 self->entry->name_size, self->entry->name);
         log->reset(log);
         e = log->write(log, self->entry->name, self->entry->name_size);
@@ -636,14 +639,15 @@ static int get_inst(struct kndClass *self,
         return knd_FAIL;
     }
 
-    entry = self->entry->inst_name_idx->get(self->entry->inst_name_idx, name, name_size);
+    name_idx = self->entry->repo->class_inst_name_idx;
+    entry = name_idx->get(name_idx, name, name_size);
     if (!entry) {
-        knd_log("-- no such obj: \"%.*s\" :(", name_size, name);
+        knd_log("-- no such class inst: \"%.*s\"", name_size, name);
         log->reset(log);
         err = log->write(log, name, name_size);
         if (err) return err;
-        err = log->write(log, " obj name not found",
-                               strlen(" obj name not found"));
+        err = log->write(log, " instance not found",
+                               strlen(" instance not found"));
         if (err) return err;
         task->http_code = HTTP_NOT_FOUND;
         return knd_NO_MATCH;
@@ -806,17 +810,11 @@ static int update_state(struct kndClass *self)
                 self->entry->name_size, self->entry->name);
 
     /* new update obj */
-    err = mempool->new_update(mempool, &update);                                  RET_ERR();
-    update->spec = task->spec;
-    update->spec_size = task->spec_size;
-
-    /* create index of class updates */
-    update->classes = calloc(self->inbox_size, sizeof(struct kndClassUpdate*));
-    if (!update->classes) return knd_NOMEM;
+    err = knd_update_new(mempool, &update);                                  RET_ERR();
 
     /* resolve all refs */
     for (c = self->inbox; c; c = c->next) {
-        err = mempool->new_class_update(mempool, &class_update);                  RET_ERR();
+        err = knd_class_update_new(mempool, &class_update);                  RET_ERR();
 
         self->entry->repo->num_classes++;
         c->entry->numid = self->entry->repo->num_classes;
@@ -837,14 +835,14 @@ static int update_state(struct kndClass *self)
             return knd_FAIL;
         }
 
-        update->classes[update->num_classes] = class_update;
+        class_update->next = update->classes;
+        update->classes = class_update;
         update->num_classes++;
-        /* stats */
-        update->total_objs += class_update->num_insts;
+        update->total_class_insts += class_update->num_insts;
     }
 
     if (rel->inbox_size) {
-        err = rel->update(rel, update);                                           RET_ERR();
+        //err = rel->update(rel, update);                                           RET_ERR();
     }
 
     if (proc->inbox_size) {
@@ -1160,8 +1158,8 @@ extern void kndClass_init(struct kndClass *self)
     self->export = export;
     self->export_updates = export_updates;
     self->get = knd_get_class;
-    self->get_inst = get_inst;
-    self->get_attr = knd_class_get_attr;
+    //self->get_inst = knd_get_inst;
+    //self->get_attr = knd_class_get_attr;
 }
 
 extern int kndClass_new(struct kndClass **result,
@@ -1176,13 +1174,13 @@ extern int kndClass_new(struct kndClass **result,
     memset(self, 0, sizeof(struct kndClass));
 
     err = knd_class_entry_new(mempool, &entry);  RET_ERR();
-    entry->name[0] = '/';
-    entry->name_size = 1;
+    //entry->name[0] = '/';
+    //entry->name_size = 1;
     entry->class = self;
     self->entry = entry;
 
     /* specific allocations for the root class */
-    err = mempool->new_set(mempool, &self->class_idx);                            RET_ERR();
+    err = knd_set_new(mempool, &self->class_idx);                            RET_ERR();
     self->class_idx->type = KND_SET_CLASS;
 
     err = ooDict_new(&self->class_name_idx, KND_MEDIUM_DICT_SIZE);
@@ -1224,7 +1222,7 @@ extern int knd_class_entry_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_MED, sizeof(struct kndClassEntry), &page);
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassEntry), &page);
     if (err) return err;
     *result = page;
     return knd_OK;
@@ -1236,6 +1234,17 @@ extern void knd_class_free(struct kndMemPool *mempool,
     knd_mempool_free(mempool, KND_MEMPAGE_NORMAL, (void*)self);
 }
 
+extern int knd_class_update_new(struct kndMemPool *mempool,
+                                struct kndClassUpdate **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                            sizeof(struct kndClassUpdate), &page);  RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
 extern int knd_class_new(struct kndMemPool *mempool,
                          struct kndClass **self)
 {
@@ -1243,11 +1252,11 @@ extern int knd_class_new(struct kndMemPool *mempool,
     void *page;
     int err;
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL,
-                            sizeof(struct kndClass), &page);     RET_ERR();
+                            sizeof(struct kndClass), &page);                      RET_ERR();
     if (err) return err;
     *self = page;
 
-    err = mempool->new_set(mempool, &attr_idx);                 RET_ERR();
+    err = knd_set_new(mempool, &attr_idx);                                        RET_ERR();
     (*self)->attr_idx = attr_idx;
 
     kndClass_init(*self);

@@ -44,11 +44,12 @@ struct glbOutput;
 
 struct kndClassUpdate
 {
-    struct kndClass *class;
+    struct kndUpdate     *update;
+    struct kndClass      *class;
     struct kndClassEntry *entry;
-    struct kndUpdate *update;
     struct kndClassInst **insts;
     size_t num_insts;
+    struct kndClassUpdate *next;
 };
 
 struct kndClassRef
@@ -93,7 +94,7 @@ struct kndClassEntry
     size_t id_size;
     size_t numid;
 
-    char name[KND_NAME_SIZE];
+    const char *name; //[KND_NAME_SIZE];
     size_t name_size;
     struct kndClass *class;
     struct kndRepo *repo;
@@ -267,13 +268,6 @@ struct kndClass
                const char *name, size_t name_size,
                struct kndClass  **result);
 
-    int (*get_inst)(struct kndClass *self,
-                    const char *name, size_t name_size,
-                    struct kndClassInst **result);
-
-    int (*get_attr)(struct kndClass *self,
-                    const char *name, size_t name_size,
-                    struct kndAttr **result);
     gsl_err_t (*import)(void *self,
                         const char *rec,
                         size_t *total_size);
@@ -368,6 +362,12 @@ extern gsl_err_t knd_read_class_state(struct kndClass *self,
                                           const char *rec,
                                           size_t *total_size);
 
+extern int knd_get_class_inst(struct kndClass *self,
+                              const char *name, size_t name_size,
+                              struct kndClassInst **result);
+
+extern int knd_class_update_new(struct kndMemPool *mempool,
+                                struct kndClassUpdate **result);
 extern int knd_class_var_new(struct kndMemPool *mempool,
                              struct kndClassVar **result);
 extern int knd_class_ref_new(struct kndMemPool *mempool,

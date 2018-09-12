@@ -196,7 +196,7 @@ static int index_attr_var_list(struct kndClass *self,
 
         set = attr->parent_class->entry->descendants;
         if (!set) {
-            err = mempool->new_set(mempool, &set);                                RET_ERR();
+            err = knd_set_new(mempool, &set);                                RET_ERR();
             set->type = KND_SET_CLASS;
             set->base =  attr->parent_class->entry;
             attr->parent_class->entry->descendants = set;
@@ -784,7 +784,7 @@ static int resolve_objs(struct kndClass     *self,
             return knd_NOMEM;
         }
 
-        err = mempool->new_state(mempool, &state);                                MEMPOOL_ERR(ClassInstState);
+        err = knd_state_new(mempool, &state);                                MEMPOOL_ERR(ClassInstState);
         state->update = class_update->update;
         state->val = (void*)class_update;
         state->next = self->inst_states;
@@ -868,7 +868,7 @@ static int link_baseclass(struct kndClass *self,
         entry->ancestors = ref;
         entry->num_ancestors++;
         if (!set) {
-            err = mempool->new_set(mempool, &set);                                RET_ERR();
+            err = knd_set_new(mempool, &set);                                RET_ERR();
             set->type = KND_SET_CLASS;
             set->base = ref->entry;
             baseref->entry->descendants = set;
@@ -1024,7 +1024,7 @@ extern int knd_resolve_class(struct kndClass *self,
     }
 
     if (class_update) {
-        err = mempool->new_state(mempool, &state);                                MEMPOOL_ERR(ClassState);
+        err = knd_state_new(mempool, &state);                                MEMPOOL_ERR(ClassState);
         state->update = class_update->update;
         state->val = (void*)class_update;
         state->next = self->states;

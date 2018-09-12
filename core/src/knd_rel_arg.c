@@ -604,7 +604,7 @@ static int parse_inst_GSL(struct kndRelArg *self,
 
 static int link_rel(struct kndRelArg *self,
                     struct kndRelArgInstance *arg_inst,
-                    struct kndObjEntry *obj_entry,
+                    struct kndClassInstEntry *obj_entry,
                     struct kndRelUpdate *orig_rel_update)
 {
     struct kndRel *rel = self->rel;
@@ -631,7 +631,7 @@ static int link_rel(struct kndRelArg *self,
 
     if (!ref) {
         err = mempool->new_rel_ref(mempool, &ref);                                MEMPOOL_ERR(kndRelRef);
-        err = mempool->new_set(mempool, &ref->idx);                               MEMPOOL_ERR(kndSet);
+        err = knd_set_new(mempool, &ref->idx);                               MEMPOOL_ERR(kndSet);
         ref->idx->type = KND_SET_REL_INST;
         ref->rel = rel;
         ref->next = obj_entry->rels;
@@ -651,7 +651,7 @@ static int link_rel(struct kndRelArg *self,
         rel_update->rel = orig_rel_update->rel;
         rel_update->update = orig_rel_update->update;
 
-        err = mempool->new_state(mempool, &state);                                MEMPOOL_ERR(kndRelRef);
+        err = knd_state_new(mempool, &state);                                MEMPOOL_ERR(kndRelRef);
         state->update = orig_rel_update->update;
         state->next = ref->states;
         ref->states = state;
@@ -704,7 +704,7 @@ static int resolve_inst(struct kndRelArg *self,
                         struct kndRelUpdate *rel_update)
 {
     struct kndClassEntry *entry;
-    struct kndObjEntry *obj;
+    struct kndClassInstEntry *obj;
     struct ooDict *name_idx = self->rel->entry->repo->root_class->class_name_idx;
     int err;
 

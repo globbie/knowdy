@@ -255,6 +255,10 @@ struct kndProc
 /* constructors */
 extern void kndProc_init(struct kndProc *self);
 extern int kndProc_new(struct kndProc **self, struct kndRepo *repo, struct kndMemPool *mempool);
+extern int knd_proc_new(struct kndMemPool *mempool,
+                              struct kndProc **result);
+extern int knd_proc_entry_new(struct kndMemPool *mempool,
+                              struct kndProcEntry **result);
 
 extern gsl_err_t kndProc_import(struct kndProc *root_proc, const char *rec, size_t *total_size);
 

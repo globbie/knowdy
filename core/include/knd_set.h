@@ -59,7 +59,7 @@ struct kndSet
     size_t num_elems;
 
     struct kndFacet *parent_facet;
-    struct kndFacet *facets[KND_MAX_ATTRS];
+    struct kndFacet *facets[KND_MAX_SPECS];
     size_t num_facets;
     
     struct kndMemPool *mempool;
@@ -98,3 +98,7 @@ struct kndSet
 
 extern int kndSet_init(struct kndSet *self);
 extern int kndSet_new(struct kndSet **self);
+extern int knd_set_new(struct kndMemPool *mempool,
+                       struct kndSet **result);
+extern int knd_set_elem_idx_new(struct kndMemPool *mempool,
+                                struct kndSetElemIdx **result);

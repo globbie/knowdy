@@ -21,6 +21,7 @@
 #pragma once
 
 #include "knd_utils.h"
+struct kndAttr;
 struct kndMemPool;
 
 typedef enum knd_facet_type { KND_FACET_UNREC,
@@ -43,10 +44,7 @@ static const char* const knd_facet_names[] = {
     "CAT",
     "TOPIC" };
 
-struct kndClass;
 struct kndSet;
-struct kndQuery;
-struct kndOutput;
 
 struct kndFacet
 {
@@ -54,10 +52,12 @@ struct kndFacet
     struct kndAttr *attr;
     struct kndSet *parent;
 
-    struct ooDict *set_name_idx;
+    struct kndSet *set_idx;
     size_t export_depth;
     size_t batch_size;
 };
 
 extern void kndFacet_init(struct kndFacet *self);
 extern int kndFacet_new(struct kndFacet **self);
+extern int knd_facet_new(struct kndMemPool *mempool,
+                         struct kndFacet **result);

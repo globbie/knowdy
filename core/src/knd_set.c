@@ -42,7 +42,6 @@ static void
 kndSet_str(struct kndSet *self, size_t depth)
 {
     struct kndFacet *facet;
-    struct ooDict *set_name_idx;
     struct kndSet *set;
     const char *key;
     void *val;
@@ -55,7 +54,7 @@ kndSet_str(struct kndSet *self, size_t depth)
         knd_log("%*s[%.*s",
                 (depth + 1) * KND_OFFSET_SIZE, "",
                 facet->attr->name_size, facet->attr->name);
-        if (facet->set_name_idx) {
+        /*if (facet->set_name_idx) {
             set_name_idx = facet->set_name_idx;
             key = NULL;
             set_name_idx->rewind(set_name_idx);
@@ -65,7 +64,7 @@ kndSet_str(struct kndSet *self, size_t depth)
                 set = (struct kndSet*)val;
                 set->str(set, depth + 2);
             } while (key);
-        }
+            }*/
 
         knd_log("%*s]",
                 (depth + 1) * KND_OFFSET_SIZE, "");
@@ -129,7 +128,7 @@ static int kndSet_traverse(struct kndSet *self,
         }
         if (!gotcha) continue;
 
-        err = self->mempool->new_set_elem_idx(self->mempool, &sub_idx);
+        err = knd_set_elem_idx_new(self->mempool, &sub_idx);
         if (err) {
             knd_log("-- set elem idx mempool limit reached :(");
             return err;
@@ -214,6 +213,7 @@ kndSet_alloc_facet(struct kndSet  *self,
                    struct kndFacet  **result)
 {
     struct kndFacet *f;
+    struct kndSet *set;
     int err;
     
     for (size_t i = 0; i < self->num_facets; i++) {
@@ -228,12 +228,13 @@ kndSet_alloc_facet(struct kndSet  *self,
         return knd_LIMIT;
 
     /* facet not found, create one */
-    err = self->mempool->new_facet(self->mempool, &f);                                 RET_ERR();
-
-    /* TODO: mempool alloc */
-    err = ooDict_new(&f->set_name_idx, KND_MEDIUM_DICT_SIZE);                          RET_ERR();
+    err = knd_facet_new(self->mempool, &f);                                       RET_ERR();
     f->attr = attr;
     f->parent = self;
+
+    err = knd_set_new(self->mempool, &set);                                      RET_ERR();
+    set->type = KND_SET_CLASS;
+    f->set_idx = set;
 
     self->facets[self->num_facets] = f;
     self->num_facets++;
@@ -274,23 +275,24 @@ static int kndFacet_alloc_set(struct kndFacet  *self,
                               struct kndSet  **result)
 {
     struct kndSet *set;
+    void *obj;
     struct kndMemPool *mempool = self->attr->parent_class->entry->repo->mempool;
     int err;
 
-    set = self->set_name_idx->get(self->set_name_idx,
-                                  base->name, base->name_size);
-    if (set) {
-        *result = set;
+    err = self->set_idx->get(self->set_idx,
+                             base->id, base->id_size, &obj);
+    if (!err) {
+        *result = obj;
         return knd_OK;
     }
 
-    err = mempool->new_set(mempool, &set);                            RET_ERR();
+    err = knd_set_new(mempool, &set);                            RET_ERR();
     set->type = KND_SET_CLASS;
     set->base = base;
     set->parent_facet = self;
 
-    err = self->set_name_idx->set(self->set_name_idx,
-                                  base->name, base->name_size, (void*)set);       RET_ERR();
+    err = self->set_idx->add(self->set_idx,
+                             base->id, base->id_size, (void*)set);       RET_ERR();
 
     err = kndFacet_add_reverse_link(self, base, set);                             RET_ERR();
 
@@ -371,7 +373,7 @@ static int save_elem(struct kndSet *self,
     if (id_size > 1) {
         idx = parent_idx->idxs[idx_pos];
         if (!idx) {
-            err = self->mempool->new_set_elem_idx(self->mempool, &idx);
+            err = knd_set_elem_idx_new(self->mempool, &idx);
             if (err) {
                 knd_log("-- set elem idx mempool limit reached :(");
                 return err;
@@ -528,5 +530,37 @@ kndSet_new(struct kndSet **set)
     kndSet_init(self);
     *set = self;
 
+    return knd_OK;
+}
+
+extern int knd_facet_new(struct kndMemPool *mempool,
+                         struct kndFacet **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_MED, sizeof(struct kndFacet), &page);  RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
+extern int knd_set_new(struct kndMemPool *mempool,
+                       struct kndSet **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_MED, sizeof(struct kndSet), &page);  RET_ERR();
+    *result = page;
+    (*result)->mempool = mempool;
+    kndSet_init(*result);
+    return knd_OK;
+}
+
+extern int knd_set_elem_idx_new(struct kndMemPool *mempool,
+                                struct kndSetElemIdx **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_MED, sizeof(struct kndSetElemIdx), &page);  RET_ERR();
+    *result = page;
     return knd_OK;
 }

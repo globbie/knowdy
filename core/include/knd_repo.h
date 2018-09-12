@@ -68,7 +68,9 @@ struct kndRepo
     struct ooDict *attr_name_idx;
     struct kndSet *attr_idx;
     size_t num_attrs;
-    
+
+    struct ooDict *class_inst_name_idx;
+
     struct kndProc *root_proc;
     struct kndRel *root_rel;
 

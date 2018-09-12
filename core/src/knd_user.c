@@ -387,10 +387,9 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
         return make_gsl_err_external(err);
     }
 
-    err = c->get_inst(c, name, name_size, &inst);
+    err = knd_get_class_inst(c, name, name_size, &inst);
     if (err) {
-        knd_log("-- no such user: %.*s:(",
-                name_size, name);
+        knd_log("-- no such user: %.*s", name_size, name);
         log->reset(log);
         e = log->write(log,   "no such user: ",
                        strlen("no such user: "));
@@ -407,7 +406,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
                               &result);
     ctx = result;
     if (err) {
-        err = mempool->new_user_ctx(mempool, &ctx);
+        err = knd_user_context_new(mempool, &ctx);
         if (err) return make_gsl_err_external(err);
 
         ctx->user_inst = inst;
@@ -418,7 +417,6 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
         memcpy(repo->name, name, name_size);
         repo->name_size = name_size;
         repo->user = self;
-
         repo->user_ctx = ctx;
         repo->base = self->repo;
         ctx->repo = repo;
@@ -782,7 +780,7 @@ static int kndUser_init(struct kndUser *self)
     self->out = self->shard->out;
     self->log = self->shard->log;
 
-    self->repo->name[0] = '~';
+    self->repo->name[0] = '/';
     self->repo->name_size = 1;
 
     err = self->repo->init(self->repo);
@@ -807,7 +805,7 @@ extern int kndUser_new(struct kndUser **user, struct kndMemPool *mempool)
     repo->user = self;
     self->repo = repo;
 
-    err = mempool->new_set(mempool, &self->user_idx);                             RET_ERR();
+    err = knd_set_new(mempool, &self->user_idx);                             RET_ERR();
     self->mempool = mempool;
 
     self->del = del;
@@ -818,5 +816,16 @@ extern int kndUser_new(struct kndUser **user, struct kndMemPool *mempool)
 
     *user = self;
 
+    return knd_OK;
+}
+
+extern int knd_user_context_new(struct kndMemPool *mempool,
+                                struct kndUserContext **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                            sizeof(struct kndUserContext), &page);                RET_ERR();
+    *result = page;
     return knd_OK;
 }

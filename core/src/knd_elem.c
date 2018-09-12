@@ -298,19 +298,20 @@ static gsl_err_t run_empty_val_warning(void *obj,
 static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 {
     struct kndElem *self = obj;
-    struct kndState *state;
-    struct kndMemPool *mempool = self->obj->base->entry->repo->mempool;
-    int err;
 
     if (DEBUG_ELEM_LEVEL_2)
         knd_log(".. %.*s to set val \"%.*s\"",
                 self->attr->name_size, self->attr->name,
                 val_size, val);
 
+    struct kndState *state;
+    struct kndMemPool *mempool = self->obj->base->entry->repo->mempool;
+    int err;
+
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_VAL_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = mempool->new_state(mempool, &state);
+    err = knd_state_new(mempool, &state);
     if (err) {
         knd_log("-- state alloc failed :(");
         return make_gsl_err_external(err);
@@ -347,25 +348,21 @@ static gsl_err_t parse_GSL(struct kndElem *self,
                            const char *rec,
                            size_t *total_size)
 {
+    if (DEBUG_ELEM_LEVEL_2)
+        knd_log(".. ELEM \"%.*s\" parse REC: \"%.*s\"",
+                self->attr->name_size, self->attr->name,
+                16, rec);
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_val,
           .obj = self
         },
-
-        { //.type = GSL_CHANGE_STATE,
-          //.name = "default",
-          //.name_size = strlen("default"),
-          .is_default = true,
+        { .is_default = true,
           .run = run_empty_val_warning,
           .obj = self
         }
     };
-
-    if (DEBUG_ELEM_LEVEL_1)
-        knd_log(".. ELEM \"%.*s\" parse REC: \"%.*s\"",
-                self->attr->name_size, self->attr->name,
-                16, rec);
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
@@ -393,8 +390,7 @@ static int kndElem_resolve(struct kndElem *self)
     return knd_OK;
 }
 
-extern void
-kndElem_init(struct kndElem *self)
+extern void kndElem_init(struct kndElem *self)
 {
     self->del = del;
     self->str = str;
@@ -417,5 +413,17 @@ kndElem_new(struct kndElem **obj)
 
     *obj = self;
 
+    return knd_OK;
+}
+
+extern int knd_class_inst_elem_new(struct kndMemPool *mempool,
+                                   struct kndElem **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                            sizeof(struct kndElem), &page);                       RET_ERR();
+    *result = page;
+    kndElem_init(*result);
     return knd_OK;
 }

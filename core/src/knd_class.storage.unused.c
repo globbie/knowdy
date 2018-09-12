@@ -797,7 +797,7 @@ static int read_obj_entry(struct kndClass *self,
     close(fd);
 
     err = mempool->new_obj(mempool, &obj);                                        RET_ERR();
-    err = mempool->new_state(mempool, &obj->states);                              RET_ERR();
+    err = knd_state_new(mempool, &obj->states);                              RET_ERR();
     obj->states->phase = KND_FROZEN;
 
     obj->base = self;
@@ -894,7 +894,7 @@ static int parse_obj_dir_trailer(struct kndClass *self,
     if (!parent_entry->obj_name_idx) {
         err = ooDict_new(&parent_entry->obj_name_idx, parent_entry->num_insts);    RET_ERR();
 
-        err = self->entry->repo->mempool->new_set(self->entry->repo->mempool,
+        err = knd_set_new(self->entry->repo->mempool,
                                                   &parent_entry->obj_idx);        RET_ERR();
         parent_entry->obj_idx->type = KND_SET_CLASS;
     }
@@ -1137,8 +1137,8 @@ static gsl_err_t dir_entry_append(void *accu,
     int err;
 
     if (!parent_entry->child_idx) {
-        err = mempool->new_set(mempool,
-                               &parent_entry->child_idx);
+        err = knd_set_new(mempool,
+                          &parent_entry->child_idx);
         if (err) return make_gsl_err_external(err);
     }
 

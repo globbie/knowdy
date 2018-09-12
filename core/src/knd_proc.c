@@ -1747,7 +1747,7 @@ kndProc_new(struct kndProc **proc,
 
     memset(self, 0, sizeof(struct kndProc));
 
-    err = mempool->new_proc_entry(mempool, &entry);                               RET_ERR();
+    err = knd_proc_entry_new(mempool, &entry);                               RET_ERR();
     entry->repo = repo;
     entry->proc = self;
     self->entry = entry;
@@ -1761,4 +1761,27 @@ kndProc_new(struct kndProc **proc,
     return knd_OK;
  error:
     return err;
+}
+
+extern int knd_proc_entry_new(struct kndMemPool *mempool,
+                              struct kndProcEntry **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_MED,
+                            sizeof(struct kndProcEntry), &page);  RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
+extern int knd_proc_new(struct kndMemPool *mempool,
+                        struct kndProc **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL,
+                            sizeof(struct kndProc), &page);  RET_ERR();
+    *result = page;
+    kndProc_init(*result);
+    return knd_OK;
 }

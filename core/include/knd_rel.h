@@ -237,3 +237,9 @@ struct kndRel
 extern void kndRel_init(struct kndRel *self);
 extern void kndRelInstance_init(struct kndRelInstance *inst);
 extern int kndRel_new(struct kndRel **self, struct kndMemPool *mempool);
+extern int knd_rel_entry_new(struct kndMemPool *mempool,
+                             struct kndRelEntry **result);
+extern int knd_rel_inst_new(struct kndMemPool *mempool,
+                            struct kndRelInstance **result);
+extern int knd_rel_new(struct kndMemPool *mempool,
+                       struct kndRel **result);

@@ -5,6 +5,7 @@
 
 #include <glb-lib/output.h>
 
+#include "knd_mempool.h"
 #include "knd_state.h"
 #include "knd_user.h"
 #include "knd_repo.h"
@@ -57,8 +58,9 @@ static int export_update_GSP(struct kndUpdate *update,
 
     if  (update->num_classes) {
         err = out->write(out, "[!c", strlen("[!c"));                              RET_ERR();
-        for (size_t i = 0; i < update->num_classes; i++) {
-            class_update = update->classes[i];
+        for (class_update = update->classes;
+             class_update;
+             class_update = class_update->next) {
             c = class_update->class;
             err = c->export_updates(c, class_update, KND_FORMAT_GSP, out);        RET_ERR();
         }
@@ -145,7 +147,7 @@ static int knd_confirm(struct kndStateControl *self,
                 " confirming update %zu..  Repo:%.*s",
                 self->num_updates + 1, repo->name_size, repo->name);
 
-    if (task->type == KND_LIQUID_STATE) {
+    /*if (task->type == KND_LIQUID_STATE) {
         self->updates[self->num_updates] = update;
         self->num_updates++;
         if (DEBUG_STATE_LEVEL_TMP)
@@ -153,16 +155,18 @@ static int knd_confirm(struct kndStateControl *self,
                     update->numid, self->num_updates);
         return knd_OK;
     }
+    */
 
     // TODO: check conflicts with previous updates
 
     // TODO: check the journal file size limit
 
     
-    if (self->num_updates >= self->max_updates) {
+    /*if (self->num_updates >= self->max_updates) {
         knd_log("-- max update limit exceeded, time to freeze?");
         return knd_FAIL;
     }
+    */
 
     update->timestamp = time(NULL);
     update->numid = self->num_updates + 1;
@@ -174,7 +178,9 @@ static int knd_confirm(struct kndStateControl *self,
         // TODO: release resources
         return err;
     }
-    self->updates[self->num_updates] = update;
+
+    update->next = self->updates;
+    self->updates = update;
     self->num_updates++;
 
     if (DEBUG_STATE_LEVEL_TMP)
@@ -251,5 +257,24 @@ extern int kndStateControl_new(struct kndStateControl **state)
 
     *state = self;
 
+    return knd_OK;
+}
+extern int knd_state_new(struct kndMemPool *mempool,
+                         struct kndState **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndState), &page);  RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
+extern int knd_update_new(struct kndMemPool *mempool,
+                          struct kndUpdate **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndUpdate), &page);  RET_ERR();
+    *result = page;
     return knd_OK;
 }
