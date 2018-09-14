@@ -94,19 +94,18 @@ struct kndClassEntry
     size_t id_size;
     size_t numid;
 
-    const char *name; //[KND_NAME_SIZE];
+    const char *name;
     size_t name_size;
     struct kndClass *class;
     struct kndRepo *repo;
 
     knd_state_phase phase;
+
+    /* frozen block TODO: nested struct? */
     size_t global_offset;
     size_t curr_offset;
     size_t block_size;
     size_t frozen_size;
-
-    // TODO: is local fd absolutely necessary?
-    int fd;
     size_t body_size;
     size_t obj_block_size;
     size_t dir_size;
@@ -132,11 +131,6 @@ struct kndClassEntry
     struct kndSet *inst_idx;
     size_t num_insts;
     struct kndSet *attr_idx;
-
-    // TODO: move to kndRepo?
-    //struct kndSet *class_idx;
-    //struct ooDict *class_name_idx;
-    //struct ooDict *inst_name_idx;
 
     struct ooDict *reverse_attr_name_idx;
 
@@ -361,8 +355,12 @@ extern int knd_get_class_inst(struct kndClass *self,
                               const char *name, size_t name_size,
                               struct kndClassInst **result);
 
+extern int knd_class_clone(struct kndClass *self,
+                           struct kndRepo *target_repo,
+                           struct kndClass **result);
+
 extern int knd_class_copy(struct kndClass *self,
-                          struct kndClass *result);
+                          struct kndClass *target);
 
 extern int knd_class_update_new(struct kndMemPool *mempool,
                                 struct kndClassUpdate **result);

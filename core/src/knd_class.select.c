@@ -250,9 +250,9 @@ static gsl_err_t present_attr_var_selection(void *obj,
     struct kndTask *task = self->entry->repo->task;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-        knd_log(".. presenting attrs of class \"%.*s\".. curr_attr:%p",
-                self->curr_class->name_size, self->curr_class->name, self->curr_attr);
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
+        knd_log(".. presenting attrs of class \"%.*s\"..",
+                self->curr_class->name_size, self->curr_class->name);
 
     out->reset(out);
 
@@ -413,7 +413,7 @@ static gsl_err_t present_class_selection(void *obj,
     struct kndTask *task = self->entry->repo->task;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log(".. presenting class \"%.*s\"..",
                 self->entry->name_size, self->entry->name);
 
