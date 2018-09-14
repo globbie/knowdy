@@ -72,32 +72,15 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
         knd_log("-- no class selected");
         return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
-    c = self->curr_class;
 
     /* user ctx should have its own copy of a selected class */
-    if (c->entry->repo != self->entry->repo) {
-        err = knd_class_new(mempool, &c);
+    if (self->curr_class->entry->repo != self->entry->repo) {
+        err = knd_class_clone(self->curr_class, self->entry->repo, &c);
         if (err) return *total_size = 0, make_gsl_err_external(err);
-
-        err = knd_class_entry_new(mempool, &class_entry);
-        if (err) return *total_size = 0, make_gsl_err_external(err);
-
-        class_entry->repo = self->entry->repo;
-        class_entry->class = c;
-        c->entry = class_entry;
-
-        self->entry->repo->num_classes++;
-        class_entry->numid = self->entry->repo->num_classes;
-        knd_num_to_str(class_entry->numid,
-                       class_entry->id, &class_entry->id_size, KND_RADIX_BASE);
-
-        err = knd_class_copy(self->curr_class, c);
-        if (err) {
-            knd_log("-- class copy failed");
-            return *total_size = 0, make_gsl_err_external(err);
-        }
         self->curr_class = c;
     }
+
+    c = self->curr_class;
 
     err = knd_class_inst_new(mempool, &inst);
     if (err) {

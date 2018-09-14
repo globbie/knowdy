@@ -910,7 +910,7 @@ extern int knd_is_base(struct kndClass *self,
     struct kndClassRef *ref;
     struct kndClass *c;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. check inheritance: %.*s (repo:%.*s) [resolved: %d] => "
                 " %.*s (repo:%.*s) [resolved:%d]?",
                 child->name_size, child->name,
@@ -923,12 +923,11 @@ extern int knd_is_base(struct kndClass *self,
 
     for (ref = entry->ancestors; ref; ref = ref->next) {
         c = ref->class;
-        c->str(c);
         if (ref->class == self) {
             return knd_OK;
         }
     }
-    if (DEBUG_CLASS_LEVEL_TMP)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log("-- no inheritance from  \"%.*s\" to \"%.*s\" :(",
                 self->entry->name_size, self->entry->name,
                 child->name_size, child->name);
@@ -946,7 +945,7 @@ extern int knd_class_get_attr(struct kndClass *self,
     struct ooDict *attr_name_idx = self->entry->repo->attr_name_idx;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log("\n.. \"%.*s\" class (repo: %.*s) to select attr \"%.*s\"",
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
@@ -969,8 +968,7 @@ extern int knd_class_get_attr(struct kndClass *self,
 
     for (; ref; ref = ref->next) {
         c = ref->attr->parent_class;
-
-        if (DEBUG_CLASS_LEVEL_TMP)
+        if (DEBUG_CLASS_LEVEL_2)
             knd_log("== attr %.*s belongs to class: %.*s",
                     name_size, name, c->name_size, c->name);
 
@@ -1162,6 +1160,57 @@ extern int knd_get_class_by_id(struct kndClass *self,
     //*result = c;
 
     return knd_FAIL;
+}
+
+extern int knd_class_clone(struct kndClass *self,
+                           struct kndRepo *target_repo,
+                           struct kndClass **result)
+{
+    struct kndRepo *repo = self->entry->repo;
+    struct kndMemPool *mempool = repo->mempool;
+    struct kndClass *c;
+    struct kndClassEntry *entry;
+    struct ooDict *class_name_idx = target_repo->class_name_idx;
+    struct kndSet *class_idx = target_repo->class_idx;
+    int err;
+
+    if (DEBUG_CLASS_LEVEL_TMP)
+        knd_log(".. cloning class %.*s (%.*s) to repo %.*s..",
+                self->name_size, self->name,
+                self->entry->repo->name_size, self->entry->repo->name,
+                target_repo->name_size, target_repo->name);
+
+    err = knd_class_new(mempool, &c);                                             RET_ERR();
+    err = knd_class_entry_new(mempool, &entry);                                   RET_ERR();
+    entry->repo = target_repo;
+    entry->class = c;
+    c->entry = entry;
+
+    target_repo->num_classes++;
+    entry->numid = target_repo->num_classes;
+    knd_num_to_str(entry->numid,
+                   entry->id, &entry->id_size, KND_RADIX_BASE);
+
+    err = knd_class_copy(self, c);
+    if (err) {
+        knd_log("-- class copy failed");
+        return err;
+    }
+
+    /* register */
+    err = class_name_idx->set(class_name_idx,
+                              entry->name, entry->name_size,
+                              (void*)entry);                              RET_ERR();
+    err = class_idx->add(class_idx,
+                         entry->id, entry->id_size,
+                         (void*)entry);                                     RET_ERR();
+
+    knd_log("++ clone OK!");
+    c->str(c);
+
+    *result = c;
+
+    return knd_OK;
 }
 
 extern int knd_class_copy(struct kndClass *self,

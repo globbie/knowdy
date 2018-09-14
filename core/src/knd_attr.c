@@ -748,7 +748,8 @@ extern int knd_copy_attr_ref(void *obj,
 
     err = knd_attr_ref_new(mempool, &ref);                                        RET_ERR();
     ref->attr = attr;
-    
+    ref->attr_var = src_ref->attr_var;
+
     err = attr_idx->add(attr_idx,
                         attr->id, attr->id_size,
                         (void*)ref);                                              RET_ERR();
@@ -776,7 +777,8 @@ extern int knd_register_attr_ref(void *obj,
 
     err = knd_attr_ref_new(mempool, &ref);                                        RET_ERR();
     ref->attr = attr;
-    
+    ref->attr_var = src_ref->attr_var;
+
     err = attr_idx->add(attr_idx,
                         attr->id, attr->id_size,
                         (void*)ref);                                              RET_ERR();

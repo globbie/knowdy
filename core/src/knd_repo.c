@@ -514,12 +514,13 @@ extern int kndRepo_new(struct kndRepo **repo,
 
     err = kndStateControl_new(&state_ctrl);
     if (err) return err;
-    //state_ctrl->updates =     mempool->update_idx;
     state_ctrl->repo = self;
     self->state_ctrl = state_ctrl;
    
     err = kndClass_new(&c, mempool);
     if (err) goto error;
+    c->name = "/";
+    c->name_size = 1;
     c->entry->repo = self;
     self->root_class = c;
 

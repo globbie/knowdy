@@ -229,6 +229,58 @@ static int export_gloss_JSON(struct kndClass *self)
     return knd_OK;
 }
 
+static int export_inherited_attr(void *obj,
+                                 const char *elem_id,
+                                 size_t elem_id_size,
+                                 size_t count,
+                                 void *elem)
+{
+    struct kndClass   *self = obj;
+    struct kndAttrRef *ref = elem;
+    struct kndAttr *attr = ref->attr;
+    struct kndAttrVar *attr_var = NULL;
+    struct glbOutput *out = self->entry->repo->out;
+    int err;
+
+    /*knd_log("== %.*s attr >> %.*s",
+            self->name_size, self->name,
+            attr->name_size, attr->name); */
+    /* skip over immediate attrs */
+    if (attr->parent_class == self) return knd_OK;
+
+    /* NB: display only concise fields */
+    if (!attr->concise_level) {
+        return knd_OK;
+    }
+
+    attr_var = ref->attr_var;
+    if (!attr_var) {
+        err = knd_get_attr_var(self, attr->name, attr->name_size, &attr_var);
+        if (err) return knd_OK;
+    }
+
+    err = out->writec(out, ',');                                          RET_ERR();
+    err = out->writec(out, '"');                                          RET_ERR();
+    err = out->write(out, attr_var->name, attr_var->name_size);           RET_ERR();
+    err = out->write(out, "\":", strlen("\":"));                          RET_ERR();
+
+    switch (attr->type) {
+    case KND_ATTR_NUM:
+        err = out->write(out, attr_var->val, attr_var->val_size);             RET_ERR();
+        break;
+    case KND_ATTR_STR:
+        err = out->write(out, "\"", strlen("\""));                            RET_ERR();
+        err = out->write(out, attr_var->val, attr_var->val_size);             RET_ERR();
+        err = out->write(out, "\"", strlen("\""));                            RET_ERR();
+        break;
+    default:
+        err = out->write(out, "{}", strlen("{}"));                            RET_ERR();
+        break;
+    }
+    
+    return knd_OK;
+}
+
 static int export_concise_JSON(struct kndClass *self)
 {
     struct kndClassVar *item;
@@ -241,46 +293,20 @@ static int export_concise_JSON(struct kndClass *self)
     struct glbOutput *out = self->entry->repo->out;
     int err;
 
-    if (DEBUG_JSON_LEVEL_2)
+    if (DEBUG_JSON_LEVEL_TMP)
         knd_log(".. export concise JSON for %.*s..",
                 self->entry->name_size, self->entry->name, self->entry->repo->out);
 
     for (item = self->baseclass_vars; item; item = item->next) {
         if (!item->attrs) continue;
 
-        err = knd_attr_vars_export_JSON(item->attrs, out, 0, true);
-        if (err) return err;
+        err = knd_attr_vars_export_JSON(item->attrs, out, 0, true);               RET_ERR();
     }
 
-    /* TODO: present inherited attrs */
-
-            /* skip over immediate attrs */
-            //if (attr->parent_class == self) continue;
-
-            /* display only concise fields */
-            //if (!attr->concise_level) continue;
-
-            //attr_var = attr_ref->attr_var;
-            //if (!attr_var) {
-            //    err = knd_get_attr_var(self, attr->name, attr->name_size, &attr_var);
-            //    if (err) continue;
-    // }
-            
-            /* NB: only plain text fields */
-    /*      switch (attr->type) {
-            case KND_ATTR_STR:
-                err = out->writec(out, ',');                                          RET_ERR();
-                err = out->writec(out, '"');                                          RET_ERR();
-                err = out->write(out, attr_var->name, attr_var->name_size);           RET_ERR();
-                err = out->write(out, "\":", strlen("\":"));                          RET_ERR();
-                err = out->write(out, "\"", strlen("\""));                            RET_ERR();
-                err = out->write(out, attr_var->val, attr_var->val_size);             RET_ERR();
-                err = out->write(out, "\"", strlen("\""));                            RET_ERR();
-                break;
-            default:
-                break;
-            }
-    */  
+    /* inherited attrs */
+    err = self->attr_idx->map(self->attr_idx,
+                              export_inherited_attr, (void*)self); 
+    if (err && err != knd_RANGE) return err;
 
     return knd_OK;
 }
@@ -507,26 +533,25 @@ extern int knd_class_export_JSON(struct kndClass *self,
     struct kndClass *c;
     struct kndClassVar *item;
     struct kndClassEntry *entry;
-    const char *key;
-    void *val;
-    struct ooDict *idx;
+    struct kndSet *attr_idx;
     struct kndSet *set;
     size_t item_count;
     int i, err;
 
-    if (DEBUG_JSON_LEVEL_2)
-        knd_log(".. JSON export: \"%.*s\"  ",
-                self->entry->name_size, self->entry->name);
+    if (DEBUG_JSON_LEVEL_TMP)
+        knd_log(".. JSON export: \"%.*s\"   children:%zu",
+                self->entry->name_size, self->entry->name,
+                self->entry->num_children);
 
     err = out->write(out, "{", 1);                                                RET_ERR();
     err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                RET_ERR();
     err = out->write_escaped(out, self->entry->name, self->entry->name_size);     RET_ERR();
-    err = out->writec(out, '"');                                               RET_ERR();
+    err = out->writec(out, '"');                                                  RET_ERR();
 
-    err = out->write(out, ",\"_repo\":\"", strlen(",\"_repo\":\""));                      RET_ERR();
+    err = out->write(out, ",\"_repo\":\"", strlen(",\"_repo\":\""));              RET_ERR();
     err = out->write(out, self->entry->repo->name,
-                     self->entry->repo->name_size);                              RET_ERR();
-    err = out->writec(out, '"');                                               RET_ERR();
+                     self->entry->repo->name_size);                               RET_ERR();
+    err = out->writec(out, '"');                                                  RET_ERR();
 
     err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
     err = out->writef(out, "%zu", self->entry->numid);                            RET_ERR();
@@ -586,12 +611,8 @@ extern int knd_class_export_JSON(struct kndClass *self,
                 if (err) return err;
             }
 
-            /* TODO if (self->attr_name_idx) {
-                err = export_inherited_attrs_JSON(self);                          RET_ERR();
-                }*/
 
-            err = out->write(out, "}", 1);
-            if (err) return err;
+            err = out->write(out, "}", 1);      RET_ERR();
             item_count++;
         }
         err = out->write(out, "]", 1);
@@ -622,6 +643,12 @@ extern int knd_class_export_JSON(struct kndClass *self,
         if (err) return err;
     }
 
+    /* inherited attrs */
+    attr_idx = self->attr_idx;
+    err = attr_idx->map(attr_idx,
+                        export_inherited_attr, (void*)self); 
+    if (err && err != knd_RANGE) return err;
+
     /* facets */
     if (self->entry->descendants) {
         //knd_log("++ desc facets: %zu", self->entry->descendants->num_facets);
@@ -630,12 +657,10 @@ extern int knd_class_export_JSON(struct kndClass *self,
         //if (err) return err;
     }
 
-    // TODO
-    /*if (self->entry->reverse_attr_name_idx
-
     if (self->entry->num_children) {
         err = present_subclasses(self, out);                           RET_ERR();
     }
+
     
     /* instances */
     if (self->entry->num_insts) {
