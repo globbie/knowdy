@@ -51,6 +51,7 @@ static int export_class_state_JSON(struct kndClass *self)
     int err;
 
     update = self->states->update;
+
     err = out->write(out, "\"_state\":", strlen("\"_state\":"));                  RET_ERR();
     err = out->writef(out, "%zu", latest_state);                                  RET_ERR();
     time(&update->timestamp);

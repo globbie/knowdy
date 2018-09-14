@@ -109,6 +109,9 @@ struct kndTask
     size_t state_gt;
     size_t state_lt;
 
+    bool use_default_settings;
+    bool show_removed_objs;
+
     struct kndClassInst *curr_inst;
 
     struct kndSet *sets[KND_MAX_CLAUSES];
@@ -133,10 +136,6 @@ struct kndTask
                size_t   rec_size,
                const char *obj,
                size_t obj_size);
-
-//    int (*parse)(struct kndTask *self,
-//                 const char     *rec,
-//                 size_t   *total_size);
     int (*build_report)(struct kndTask *self);
 };
 
