@@ -137,9 +137,6 @@ struct kndClassInst
     int (*export_state)(struct kndClassInst *self,
                         knd_format format,
                         struct glbOutput *out);
-    gsl_err_t (*select)(struct kndClassInst *self,
-		  const char *rec,
-		  size_t *total_size);
     gsl_err_t (*select_rels)(struct kndClassInst *self,
 		       const char *rec,
 		       size_t *total_size);
@@ -150,6 +147,10 @@ struct kndClassInst
 extern void kndClassInst_init(struct kndClassInst *self);
 extern void kndClassInstEntry_init(struct kndClassInstEntry *self);
 extern int kndClassInst_new(struct kndClassInst **self);
+
+extern gsl_err_t knd_parse_select_inst(void *obj,
+                                       const char *rec,
+                                       size_t *total_size);
 
 extern int knd_class_inst_entry_new(struct kndMemPool *mempool,
                                     struct kndClassInstEntry **result);

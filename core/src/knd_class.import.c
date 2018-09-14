@@ -47,36 +47,6 @@ static gsl_err_t import_nested_attr_var(void *obj,
 static void append_attr_var(struct kndClassVar *ci,
                              struct kndAttrVar *attr_var);
 
-static int copy_curr_class(struct kndClass *self)
-{
-    struct kndClass *c;
-    struct kndClassEntry *entry, *src_entry;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    int err;
-
-    err = knd_class_new(mempool, &c);                                             RET_ERR();
-    err = knd_class_entry_new(mempool, &entry);                                   RET_ERR();
-
-    src_entry = self->curr_class->entry;
-
-    entry->name = src_entry->name;
-    entry->name_size = src_entry->name_size;
-
-    entry->repo = self->entry->repo;
-
-    entry->class = c;
-    c->entry = entry;
-    c->root_class = self;
-
-    //self->curr_class = c;
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
-        knd_log("++ copied entry %.*s from repo \"%.*s\" to repo \"%.*s\"!",
-                entry->name_size, entry->name,
-                src_entry->repo->name_size, src_entry->repo->name,
-                entry->repo->name_size, entry->repo->name);
-    return knd_OK;
-}
 
 extern gsl_err_t knd_parse_import_class_inst(void *data,
                                              const char *rec,
@@ -84,6 +54,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
 {
     struct kndClass *self = data;
     struct kndClass *c;
+    struct kndClassEntry *class_entry;
     struct kndClassInst *inst;
     struct kndClassInstEntry *entry;
     struct kndSet *set;
@@ -93,27 +64,40 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
         knd_log(".. import \"%.*s\" inst..", 128, rec);
     }
+
     if (!self->curr_class) {
         knd_log("-- no class selected");
         return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
-
     c = self->curr_class;
 
     /* user ctx should have its own copy of a selected class */
     if (c->entry->repo != self->entry->repo) {
-        err = copy_curr_class(self);
+        err = knd_class_new(mempool, &c);
+        if (err) return *total_size = 0, make_gsl_err_external(err);
+
+        err = knd_class_entry_new(mempool, &class_entry);
+        if (err) return *total_size = 0, make_gsl_err_external(err);
+
+        class_entry->repo = self->entry->repo;
+        class_entry->class = c;
+        c->entry = class_entry;
+
+        self->entry->repo->num_classes++;
+        class_entry->numid = self->entry->repo->num_classes;
+        knd_num_to_str(class_entry->numid,
+                       class_entry->id, &class_entry->id_size, KND_RADIX_BASE);
+
+        err = knd_class_copy(self->curr_class, c);
         if (err) {
             knd_log("-- class copy failed");
             return *total_size = 0, make_gsl_err_external(err);
         }
-        //        c = self->curr_class;
+        self->curr_class = c;
     }
-
-    c->str(c);
 
     err = knd_class_inst_new(mempool, &inst);
     if (err) {
@@ -222,7 +206,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClass *self = obj;
     struct kndRepo *repo = self->root_class->entry->repo;
     struct glbOutput *log = repo->log;
-    struct ooDict *class_name_idx = self->root_class->class_name_idx;
+
+    struct ooDict *class_name_idx = self->entry->repo->class_name_idx;
     struct kndTask *task = repo->task;
     struct kndClassEntry *entry;
     struct kndState *state;
@@ -298,7 +283,7 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
 {
     struct kndClassVar *self      = obj;
     struct kndClass *root_class   = self->root_class;
-    struct ooDict *class_name_idx = root_class->class_name_idx;
+    struct ooDict *class_name_idx = root_class->entry->repo->class_name_idx;
     struct kndMemPool *mempool    = root_class->entry->repo->mempool;
     struct kndClassEntry *entry;
     void *result;

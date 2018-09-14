@@ -54,6 +54,9 @@ static void reset(struct kndTask *self)
     self->state_gt = 0;
     self->state_lt = 0;
 
+    self->use_default_settings = false;
+    self->show_removed_objs = false;
+
     self->error = 0;
     self->http_code = HTTP_OK;
 

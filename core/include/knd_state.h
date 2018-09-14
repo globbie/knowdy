@@ -137,5 +137,8 @@ struct kndStateControl
 /* constructors */
 extern int kndStateControl_new(struct kndStateControl **self);
 
+extern int knd_update_new(struct kndMemPool *mempool,
+                          struct kndUpdate **result);
+
 extern int knd_state_new(struct kndMemPool *mempool,
                          struct kndState **result);

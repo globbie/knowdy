@@ -9,6 +9,7 @@
 #include "knd_text.h"
 #include "knd_repo.h"
 #include "knd_state.h"
+#include "knd_set.h"
 #include "knd_mempool.h"
 
 #include <gsl-parser.h>
@@ -726,6 +727,67 @@ extern int kndAttr_new(struct kndAttr **c)
 
     *c = self;
 
+    return knd_OK;
+}
+
+extern int knd_copy_attr_ref(void *obj,
+                             const char *elem_id,
+                             size_t elem_id_size,
+                             size_t count,
+                             void *elem)
+{
+    struct kndSet     *attr_idx = obj;
+    struct kndAttrRef *src_ref = elem;
+    struct kndAttr    *attr    = src_ref->attr;
+    struct kndAttrRef *ref;
+    struct kndMemPool *mempool = attr_idx->mempool;
+    int err;
+
+    if (DEBUG_ATTR_LEVEL_2) 
+        knd_log(".. copying %.*s attr..", attr->name_size, attr->name);
+
+    err = knd_attr_ref_new(mempool, &ref);                                        RET_ERR();
+    ref->attr = attr;
+    
+    err = attr_idx->add(attr_idx,
+                        attr->id, attr->id_size,
+                        (void*)ref);                                              RET_ERR();
+
+    return knd_OK;
+}
+
+extern int knd_register_attr_ref(void *obj,
+                                 const char *elem_id,
+                                 size_t elem_id_size,
+                                 size_t count,
+                                 void *elem)
+{
+    struct kndClass     *self = obj;
+    struct kndSet *attr_idx  = self->attr_idx;
+    struct ooDict *attr_name_idx = self->entry->repo->attr_name_idx;
+    struct kndAttrRef *src_ref = elem;
+    struct kndAttr    *attr    = src_ref->attr;
+    struct kndAttrRef *ref, *prev_attr_ref;
+    struct kndMemPool *mempool = attr_idx->mempool;
+    int err;
+
+    if (DEBUG_ATTR_LEVEL_2) 
+        knd_log(".. copying %.*s attr..", attr->name_size, attr->name);
+
+    err = knd_attr_ref_new(mempool, &ref);                                        RET_ERR();
+    ref->attr = attr;
+    
+    err = attr_idx->add(attr_idx,
+                        attr->id, attr->id_size,
+                        (void*)ref);                                              RET_ERR();
+
+    prev_attr_ref = attr_name_idx->get(attr_name_idx,
+                                       attr->name, attr->name_size);
+    ref->next = prev_attr_ref;
+    err = attr_name_idx->set(attr_name_idx,
+                             attr->name, attr->name_size,
+                             (void*)ref);                              RET_ERR();
+ 
     return knd_OK;
 }
 

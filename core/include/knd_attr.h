@@ -244,6 +244,17 @@ extern int knd_compute_num_value(struct kndAttr *attr,
 extern int knd_apply_attr_var_updates(struct kndClass *self,
                                       struct kndClassUpdate *update);
 
+extern int knd_copy_attr_ref(void *obj,
+                             const char *elem_id,
+                             size_t elem_id_size,
+                             size_t count,
+                             void *elem);
+extern int knd_register_attr_ref(void *obj,
+                                 const char *elem_id,
+                                 size_t elem_id_size,
+                                 size_t count,
+                                 void *elem);
+
 extern int knd_attr_var_new(struct kndMemPool *mempool,
                             struct kndAttrVar **result);
 extern int knd_attr_ref_new(struct kndMemPool *mempool,

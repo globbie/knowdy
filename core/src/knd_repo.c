@@ -71,8 +71,8 @@ static gsl_err_t get_class_by_id(void *obj, const char *name, size_t name_size)
     struct kndClassUpdate *self = obj;
     struct kndRepo *repo = self->update->repo;
     struct kndMemPool *mempool = repo->mempool;
-    struct kndSet *class_idx = repo->root_class->class_idx;
-    struct ooDict *class_name_idx = repo->root_class->class_name_idx;
+    struct kndSet *class_idx = repo->class_idx;
+    struct ooDict *class_name_idx = repo->class_name_idx;
     void *result;
     struct kndClassEntry *entry;
     struct kndClass *c;
@@ -112,8 +112,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClassUpdate *self = obj;
     struct kndClass *c;
     struct kndRepo *repo = self->update->repo;
-    struct ooDict *class_name_idx = repo->root_class->class_name_idx;
-    struct kndSet *class_idx = repo->root_class->class_idx;
+    struct ooDict *class_name_idx = repo->class_name_idx;
+    struct kndSet *class_idx = repo->class_idx;
     struct kndMemPool *mempool = repo->mempool;
     struct kndClassEntry *entry = self->entry;
     void *page;

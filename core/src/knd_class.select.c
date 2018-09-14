@@ -41,35 +41,6 @@
 #define DEBUG_CLASS_SELECT_LEVEL_5 0
 #define DEBUG_CLASS_SELECT_LEVEL_TMP 1
 
-
-static gsl_err_t parse_select_inst(void *data,
-                                  const char *rec,
-                                  size_t *total_size)
-{
-    struct kndClass *self = data;
-    struct kndClassInst *inst = self->curr_inst;
-    struct kndTask *task = self->curr_class->entry->repo->task;
-    gsl_err_t err;
-
-    if (!self->curr_class) {
-        knd_log("-- base class not set :(");
-        /* TODO: log*/
-        return *total_size = 0, make_gsl_err(gsl_FAIL);
-    }
-
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
-        knd_log(".. select \"%.*s\" inst.. task type: %d",
-                16, rec, task->type);
-
-    task->type = KND_SELECT_STATE;
-    inst->base = self->curr_class;
-
-    err = inst->select(inst, rec, total_size);
-    if (err.code) return err;
-
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t select_by_baseclass(void *obj,
                                      const char *name, size_t name_size)
 {
@@ -620,6 +591,7 @@ static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_siz
     struct kndClass *self = obj;
     struct kndClass *c;
     struct kndClassEntry *entry;
+    struct kndSet *class_idx = self->entry->repo->class_idx;
     void *result;
     long numval;
     int err;
@@ -642,7 +614,7 @@ static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_siz
         knd_log("ID: %zu => \"%.*s\" [size: %zu]",
                 numval, buf_size, buf, buf_size);
 
-    err = self->class_idx->get(self->class_idx, buf, buf_size, &result);
+    err = class_idx->get(class_idx, buf, buf_size, &result);
     if (err) return make_gsl_err(gsl_FAIL);
     entry = result;
 
@@ -836,6 +808,7 @@ extern gsl_err_t knd_select_class(void *obj,
     self->depth = 0;
     self->selected_state_numid = 0;
     self->curr_class = NULL;
+    self->curr_inst = NULL;
     self->curr_baseclass = NULL;
 
     struct gslTaskSpec specs[] = {
@@ -869,7 +842,7 @@ extern gsl_err_t knd_select_class(void *obj,
         },
         { .name = "inst",
           .name_size = strlen("inst"),
-          .parse = parse_select_inst,
+          .parse = knd_parse_select_inst,
           .obj = self
         },
         { .name = "_is",

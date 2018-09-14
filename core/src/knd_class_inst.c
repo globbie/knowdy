@@ -261,10 +261,14 @@ static int export_JSON(struct kndClassInst *self,
     bool need_separ;
     int err;
 
-    if (DEBUG_INST_LEVEL_2)
-        knd_log(".. JSON export class inst \"%.*s\"  (class: %.*s)",
-                self->name_size, self->name,
-                self->base->name_size, self->base->name);
+    if (DEBUG_INST_LEVEL_2) {
+        knd_log(".. JSON export class inst \"%.*s\"",
+                self->name_size, self->name);
+        if (self->base) {
+            knd_log("   (class: %.*s)",
+                    self->base->name_size, self->base->name);
+        }
+    }
 
     if (self->type == KND_OBJ_AGGR) {
         err = export_aggr_JSON(self, out);
@@ -284,15 +288,9 @@ static int export_JSON(struct kndClassInst *self,
     err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
     err = out->writef(out, "%zu", self->entry->numid);                            RET_ERR();
 
-    if (self->depth >= self->max_depth) {
-        /* any concise fields? */
-        err = export_concise_JSON(self, out);                                     RET_ERR();
-        goto final;
-    }
-    
     if (state) {
         err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));            RET_ERR();
-        err = out->writef(out, "%zu", state->update->numid);                      RET_ERR();
+        err = out->writef(out, "%zu", state->numid);                              RET_ERR();
 
         switch (state->phase) {
         case KND_REMOVED:
@@ -314,6 +312,12 @@ static int export_JSON(struct kndClassInst *self,
         default:
             break;
         }
+    }
+
+    if (self->depth >= self->max_depth) {
+        /* any concise fields? */
+        err = export_concise_JSON(self, out);                                     RET_ERR();
+        goto final;
     }
 
     err = out->write(out, ",\"_class\":\"", strlen(",\"_class\":\""));
@@ -1124,19 +1128,21 @@ static gsl_err_t remove_inst(void *data,
                              const char *name __attribute__((unused)),
                              size_t name_size __attribute__((unused)))
 {
-    struct kndClassInst *self       = data;
-    struct kndClass  *base       = self->base;
-    struct kndClassInst *obj;
-    struct kndState  *state;
-    struct glbOutput *log        = base->entry->repo->log;
-    struct kndMemPool *mempool   = base->entry->repo->mempool;
-    struct kndTask *task         = base->entry->repo->task;
-    int err;
+    struct kndClass *self       = data;
 
     if (!self->curr_inst) {
-        knd_log("-- remove operation: no instance selected :(");
+        knd_log("-- remove operation: no class instance selected :(");
         return make_gsl_err(gsl_FAIL);
     }
+
+    struct kndClass  *base       = self->curr_class;
+    struct kndClassInst *obj;
+    struct kndState  *state;
+    struct kndRepo *repo = self->entry->repo;
+    struct glbOutput *log        = repo->log;
+    struct kndMemPool *mempool   = repo->mempool;
+    struct kndTask *task         = repo->task;
+    int err;
 
     obj = self->curr_inst;
 
@@ -1162,6 +1168,8 @@ static gsl_err_t remove_inst(void *data,
     obj->next = base->inst_inbox;
     base->inst_inbox = obj;
     base->inst_inbox_size++;
+    if (base->num_insts)
+        base->num_insts--;
 
     return make_gsl_err(gsl_OK);
 }
@@ -1227,7 +1235,6 @@ static gsl_err_t read_state(struct kndClassInst *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-/* parse object */
 static gsl_err_t parse_import_inst(struct kndClassInst *self,
                                    const char *rec,
                                    size_t *total_size)
@@ -1459,12 +1466,11 @@ static int export_inst_JSON(void *obj,
                             size_t count,
                             void *elem)
 {
-    struct kndClassInst *self = obj;
-    struct kndClass *base = self->base;
-    struct kndTask *task = base->entry->repo->task;
+    struct kndClass *self = obj;
+    struct kndTask *task = self->entry->repo->task;
     if (count < task->start_from) return knd_OK;
     if (task->batch_size >= task->batch_max) return knd_RANGE;
-    struct glbOutput *out = base->entry->repo->out;
+    struct glbOutput *out = self->entry->repo->out;
     struct kndClassInstEntry *entry = elem;
     struct kndClassInst *inst = entry->inst;
     int err;
@@ -1479,25 +1485,22 @@ static int export_inst_JSON(void *obj,
     if (task->batch_size) {
         err = out->writec(out, ',');                                              RET_ERR();
     }
-
     inst->depth = 0;
     inst->max_depth = 0;
     if (self->max_depth) {
         inst->max_depth = self->max_depth;
     }
-
     err = kndClassInst_export(inst, KND_FORMAT_JSON, out);                        RET_ERR();
-
     task->batch_size++;
 
     return knd_OK;
 }
 
-static int export_inst_set_JSON(struct kndClassInst *self,
+static int export_inst_set_JSON(struct kndClass *self,
                                 struct kndSet *set,
                                 struct glbOutput *out)
 {
-    struct kndTask *task = self->base->entry->repo->task;
+    struct kndTask *task = self->entry->repo->task;
     int err;
 
     err = out->write(out, "{\"_set\":{",
@@ -1508,18 +1511,14 @@ static int export_inst_set_JSON(struct kndClassInst *self,
 
     err = out->write(out, ",\"batch\":[",
                      strlen(",\"batch\":["));                                     RET_ERR();
-
     err = set->map(set, export_inst_JSON, (void*)self);
     if (err && err != knd_RANGE) return err;
-
     err = out->writec(out, ']');                                                  RET_ERR();
 
     err = out->writef(out, ",\"batch_max\":%lu",
                       (unsigned long)task->batch_max);                            RET_ERR();
-
     err = out->writef(out, ",\"batch_size\":%lu",
                       (unsigned long)task->batch_size);                           RET_ERR();
-
     err = out->writef(out, ",\"batch_from\":%lu",
                       (unsigned long)task->batch_from);                           RET_ERR();
 
@@ -1531,9 +1530,9 @@ static int export_inst_set_JSON(struct kndClassInst *self,
 static gsl_err_t present_inst_selection(void *data, const char *val __attribute__((unused)),
                                         size_t val_size __attribute__((unused)))
 {
-    struct kndClassInst *self = data;
+    struct kndClass *self = data;
     struct kndClassInst *inst;
-    struct kndClass *base = self->base;
+    struct kndClass *base = self->curr_class;
     struct kndTask *task = base->entry->repo->task;
     struct glbOutput *out = base->entry->repo->out;
     struct kndSet *set;
@@ -1546,14 +1545,14 @@ static gsl_err_t present_inst_selection(void *data, const char *val __attribute_
     out->reset(out);
 
     if (task->type == KND_SELECT_STATE) {
+
         /* no sets found? */
         if (!task->num_sets) {
-            if (self->base && self->base->entry->inst_idx) {
-                set = self->base->entry->inst_idx;
 
+            if (base->entry->inst_idx) {
+                set = base->entry->inst_idx;
                 err = export_inst_set_JSON(self, set, out);
                 if (err) return make_gsl_err_external(err);
-
                 return make_gsl_err(gsl_OK);
             }
 
@@ -1608,8 +1607,8 @@ static gsl_err_t present_inst_selection(void *data, const char *val __attribute_
 
 static gsl_err_t run_get_inst(void *obj, const char *name, size_t name_size)
 {
-    struct kndClassInst *self = obj;
-    struct kndClass *c = self->base;
+    struct kndClass *self = obj;
+    struct kndClass *c = self->curr_class;
     struct kndTask *task = c->entry->repo->task;
     int err;
 
@@ -1627,24 +1626,33 @@ static gsl_err_t run_get_inst(void *obj, const char *name, size_t name_size)
     /* to return a single object */
     task->type = KND_GET_STATE;
 
-    if (DEBUG_INST_LEVEL_2) {
+    if (DEBUG_INST_LEVEL_TMP) {
         knd_log("++ got class inst: \"%.*s\"!", name_size, name);
         self->curr_inst->str(self->curr_inst);
     }
     return make_gsl_err(gsl_OK);
 }
 
-static int select_delta(struct kndClassInst *self,
+static gsl_err_t set_default_delta_settings(void *obj, const char *name, size_t name_size)
+{
+    struct kndClass *self = obj;
+    struct kndTask *task = self->entry->repo->task;
+    task->use_default_settings = true;
+    return make_gsl_err(gsl_OK);
+}
+
+static int select_delta(struct kndClass *self,
                         const char *rec,
                         size_t *total_size)
 {
-    struct kndClass *base = self->base;
-    struct kndTask *task = base->entry->repo->task;
-    struct kndMemPool *mempool = base->entry->repo->mempool;
+    struct kndClass *base = self->curr_class;
+    struct kndTask *task = self->entry->repo->task;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
     struct kndState *state;
     struct kndSet *set;
     struct kndClassUpdate *class_update;
     struct kndClassInst *inst;
+    void *result;
     size_t gt = 0;
     size_t lt = 0;
     size_t eq = 0;
@@ -1666,15 +1674,20 @@ static int select_delta(struct kndClassInst *self,
           .name_size = strlen("lt"),
           .parse = gsl_parse_size_t,
           .obj = &lt
+        },
+        { .is_default = true,
+          .run = set_default_delta_settings,
+          .obj = base
         }
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
-    if (DEBUG_INST_LEVEL_2)
-        knd_log(".. select delta:  gt %zu  lt %zu ..", gt, lt);
-
+    if (DEBUG_INST_LEVEL_TMP) {
+        knd_log(".. select delta:  gt %zu  lt %zu defaults:%d..",
+                gt, lt, task->use_default_settings);
+    }
     task->type = KND_SELECT_STATE;
 
     // TODO error logs
@@ -1691,23 +1704,35 @@ static int select_delta(struct kndClassInst *self,
         if (state->update->numid >= lt) continue;
         if (state->update->numid <= gt) continue;
 
-        if (DEBUG_INST_LEVEL_2)
+        if (DEBUG_INST_LEVEL_TMP)
             knd_log("== export update: %zu", state->update->numid);
 
         class_update = state->val;
 
         for (size_t i = 0; i < class_update->num_insts; i++) {
             inst = class_update->insts[i];
-            if (DEBUG_INST_LEVEL_3)
+
+            if (DEBUG_INST_LEVEL_TMP)
                 knd_log("* inst id:%.*s", inst->entry->id_size, inst->entry->id);
+
+            /* check if the inst is already in the set */
+            err = set->get(set, inst->entry->id,
+                           inst->entry->id_size,
+                           &result);
+            if (!err) continue;
+
+            /* TODO: filter out the removed insts 
+                     that were initially created _after_ 
+                     the requested update _gt */
+
             err = set->add(set, inst->entry->id,
                            inst->entry->id_size,
-                           (void*)inst);                                          RET_ERR();
+                           (void*)inst->entry);                                          RET_ERR();
         }
     }
-
     task->sets[0] = set;
     task->num_sets = 1;
+    task->show_removed_objs = true;
     return knd_OK;
 }
 
@@ -1715,26 +1740,40 @@ static gsl_err_t parse_select_inst_delta(void *data,
                                          const char *rec,
                                          size_t *total_size)
 {
-    struct kndClassInst *self = data;
+    struct kndClass *self = data;
     int err;
-
+    
     err = select_delta(self, rec, total_size);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_select_inst(struct kndClassInst *self,
-                                   const char *rec,
-                                   size_t *total_size)
+extern gsl_err_t knd_parse_select_inst(void *obj,
+                                       const char *rec,
+                                       size_t *total_size)
 {
+    struct kndClass *self = obj;
     struct glbOutput *log;
+    struct kndTask *task = self->entry->repo->task;
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_INST_LEVEL_TMP)
-        knd_log(".. parsing class instance select: \"%.*s\"", 32, rec);
+    if (!self->curr_class) {
+        knd_log("-- base class not set");
+        /* TODO: log*/
+        return *total_size = 0, make_gsl_err(gsl_FAIL);
+    }
 
+    if (DEBUG_INST_LEVEL_TMP)
+        knd_log(".. class %.*s (repo:%.*s) to select inst: \"%.*s\"",
+                self->curr_class->name_size,
+                self->curr_class->name,
+                self->curr_class->entry->repo->name_size,
+                self->curr_class->entry->repo->name,
+                64, rec);
+
+    task->type = KND_SELECT_STATE;
     self->max_depth = 0;
     self->curr_inst = NULL;
 
@@ -1760,6 +1799,11 @@ static gsl_err_t parse_select_inst(struct kndClassInst *self,
           .parse = select_rel,
           .obj = self
         },
+        { .name = "_rm",
+          .name_size = strlen("_rm"),
+          .run = remove_inst,
+          .obj = self
+        },
         { .type = GSL_SET_STATE,
           .name = "_rm",
           .name_size = strlen("_rm"),
@@ -1780,7 +1824,7 @@ static gsl_err_t parse_select_inst(struct kndClassInst *self,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        log = self->base->entry->repo->log;
+        log = self->entry->repo->log;
         knd_log("-- obj select parse error: \"%.*s\"",
                 log->buf_size, log->buf);
         if (!log->buf_size) {
@@ -1835,7 +1879,6 @@ extern void kndClassInst_init(struct kndClassInst *self)
     self->resolve = kndClassInst_resolve;
     self->export = kndClassInst_export;
     self->export_state = export_state;
-    self->select = parse_select_inst;
     self->select_rels = select_rels;
 }
 

@@ -84,14 +84,11 @@ static int knd_sync_update(struct kndStateControl *self,
 
     /* linearize an update */
     file_out->reset(file_out);
-    err = export_update_GSP(update, file_out);
-    if (err) return err;
+    err = export_update_GSP(update, file_out);    RET_ERR();
 
     out->reset(out);
-    err = out->write(out, self->repo->path, self->repo->path_size);
-    if (err) return err;
-    err = out->writef(out, "/journal%zu.log", self->repo->num_journals);
-    if (err) return err;
+    err = out->write(out, self->repo->path, self->repo->path_size);          RET_ERR();
+    err = out->writef(out, "/journal%zu.log", self->repo->num_journals);     RET_ERR();
     out->buf[out->buf_size] = '\0';
 
     if (stat(out->buf, &st)) {

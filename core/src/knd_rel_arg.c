@@ -682,7 +682,7 @@ static int resolve(struct kndRelArg *self,
                    struct kndRelUpdate *update  __attribute__((unused)))
 {
     struct kndClassEntry *entry;
-    struct ooDict *name_idx = self->rel->entry->repo->root_class->class_name_idx;
+    struct ooDict *name_idx = self->rel->entry->repo->class_name_idx;
 
     if (DEBUG_RELARG_LEVEL_2)
         knd_log(".. resolving Rel Arg %.*s..",
@@ -705,7 +705,7 @@ static int resolve_inst(struct kndRelArg *self,
 {
     struct kndClassEntry *entry;
     struct kndClassInstEntry *obj;
-    struct ooDict *name_idx = self->rel->entry->repo->root_class->class_name_idx;
+    struct ooDict *name_idx = self->rel->entry->repo->class_name_idx;
     int err;
 
     if (DEBUG_RELARG_LEVEL_2)
@@ -733,16 +733,16 @@ static int resolve_inst(struct kndRelArg *self,
             knd_log(".. resolving rel arg inst OBJ ref: \"%.*s\""
                     " CONC DIR: %.*s OBJ IDX:%p",
                     inst->objname_size, inst->objname,
-                    entry->name_size, entry->name, entry->inst_name_idx);
+                    entry->name_size, entry->name, entry->repo->class_inst_name_idx);
 
-        if (!entry->inst_name_idx) {
+        if (!entry->repo->class_inst_name_idx) {
             knd_log("-- empty obj IDX in class \"%.*s\" :(",
                         entry->name_size, entry->name);
             return knd_FAIL;
         }
 
-        obj = entry->inst_name_idx->get(entry->inst_name_idx,
-                                       inst->objname, inst->objname_size);
+        obj = entry->repo->class_inst_name_idx->get(entry->repo->class_inst_name_idx,
+                                                    inst->objname, inst->objname_size);
         if (!obj) {
             knd_log("-- no such obj: %.*s :(",
                     inst->objname_size, inst->objname);

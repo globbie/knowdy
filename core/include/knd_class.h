@@ -129,14 +129,14 @@ struct kndClassEntry
 
     struct kndObjDir *obj_dir;
 
+    struct kndSet *inst_idx;
     size_t num_insts;
+    struct kndSet *attr_idx;
 
     // TODO: move to kndRepo?
-    struct kndSet *class_idx;
-    struct ooDict *class_name_idx;
-    struct kndSet *inst_idx;
-    struct ooDict *inst_name_idx;
-    //struct kndSet *attr_idx;
+    //struct kndSet *class_idx;
+    //struct ooDict *class_name_idx;
+    //struct ooDict *inst_name_idx;
 
     struct ooDict *reverse_attr_name_idx;
 
@@ -214,11 +214,6 @@ struct kndClass
 
     /* submodules */
     struct kndClassFormatter *formatter;
-
-    /* indices */
-    // TODO: move to repo
-    struct kndSet *class_idx;
-    struct ooDict *class_name_idx;
 
     struct kndAttr *computed_attrs[KND_MAX_COMPUTED_ATTRS];
     size_t num_computed_attrs;
@@ -365,6 +360,9 @@ extern gsl_err_t knd_read_class_state(struct kndClass *self,
 extern int knd_get_class_inst(struct kndClass *self,
                               const char *name, size_t name_size,
                               struct kndClassInst **result);
+
+extern int knd_class_copy(struct kndClass *self,
+                          struct kndClass *result);
 
 extern int knd_class_update_new(struct kndMemPool *mempool,
                                 struct kndClassUpdate **result);

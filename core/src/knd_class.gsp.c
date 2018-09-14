@@ -616,7 +616,7 @@ static gsl_err_t atomic_elem_alloc(void *obj,
                 self->entry->name_size, self->entry->name,
                 val_size, val);
     }
-    class_idx = self->class_idx;
+    class_idx = self->entry->repo->class_idx;
 
     err = class_idx->get(class_idx, val, val_size, &elem);
     if (err) {
@@ -775,7 +775,7 @@ static gsl_err_t atomic_classref_alloc(void *obj,
                 val_size, val);
     }
 
-    class_idx = entry->class_idx;
+    class_idx = entry->repo->class_idx;
 
     err = class_idx->get(class_idx, val, val_size, &elem);
     if (err) {
@@ -801,12 +801,15 @@ static gsl_err_t resolve_set_base(void *obj,
     struct kndSet *set = obj;
     struct kndFacet *parent_facet = set->parent_facet;
     struct kndClass *c;
+    struct kndSet *class_idx;
     void *result;
     int err;
 
     c = parent_facet->parent->base->class;
-    err = c->class_idx->get(c->class_idx,
-                            id, id_size, &result);
+    class_idx = c->entry->repo->class_idx;
+
+    err = class_idx->get(class_idx,
+                         id, id_size, &result);
     if (err) {
         knd_log("-- no such class: \"%.*s\":(", id_size, id);
         return make_gsl_err_external(err);
@@ -1040,7 +1043,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
     case KND_ATTR_AGGR:
         if (attr->ref_class) break;
 
-        class_name_idx = c->class_name_idx;
+        class_name_idx = c->entry->repo->class_name_idx;
         entry = class_name_idx->get(class_name_idx,
                                     attr->ref_classname,
                                     attr->ref_classname_size);
@@ -1222,7 +1225,7 @@ static gsl_err_t append_class_inst(void *accu,
 {
     struct kndClass *self =   accu;
     struct kndClassInst *inst = item;
-    struct ooDict *name_idx = self->entry->inst_name_idx;
+    struct ooDict *name_idx = self->entry->repo->class_inst_name_idx;
     struct kndSet *set = self->entry->inst_idx;
     struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
@@ -1235,9 +1238,9 @@ static gsl_err_t append_class_inst(void *accu,
     }
 
     if (!name_idx) {
-        err = ooDict_new(&self->entry->inst_name_idx, KND_HUGE_DICT_SIZE);
+        err = ooDict_new(&self->entry->repo->class_inst_name_idx, KND_HUGE_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
-        name_idx = self->entry->inst_name_idx;
+        name_idx = self->entry->repo->class_inst_name_idx;
     }
 
     err = name_idx->set(name_idx,
@@ -1514,7 +1517,7 @@ static gsl_err_t validate_attr_var_list(void *obj,
         if (attr->ref_class) break;
 
         // TODO
-        class_name_idx = class_var->root_class->class_name_idx;
+        class_name_idx = class_var->entry->repo->class_name_idx;
         entry = class_name_idx->get(class_name_idx,
                                     attr->ref_classname,
                                     attr->ref_classname_size);
