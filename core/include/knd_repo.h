@@ -35,6 +35,9 @@ struct kndRepo
     struct kndUserContext *user_ctx;
     struct kndRepo *base;
 
+    char **source_files;
+    size_t num_source_files;
+
     const char *locale;
     size_t locale_size;
 

@@ -42,11 +42,72 @@
 #define DEBUG_CLASS_IMPORT_LEVEL_TMP 1
 
 static gsl_err_t import_nested_attr_var(void *obj,
-                                         const char *name, size_t name_size,
-                                         const char *rec, size_t *total_size);
+                                        const char *name, size_t name_size,
+                                        const char *rec, size_t *total_size);
 static void append_attr_var(struct kndClassVar *ci,
-                             struct kndAttrVar *attr_var);
+                            struct kndAttrVar *attr_var);
 
+static int register_inst(struct kndClass *self,
+                         struct kndClassInstEntry *entry)
+{
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndSet *inst_idx;
+    struct kndClass *c;
+    struct kndState *state;
+    int err;
+
+    /* skip the root class */
+    if (!self->entry->ancestors) return knd_OK;
+
+    inst_idx = self->entry->inst_idx;
+    if (!inst_idx) {
+        err = knd_set_new(mempool, &inst_idx);                          RET_ERR();
+        inst_idx->type = KND_SET_CLASS_INST;
+        self->entry->inst_idx = inst_idx;
+    }
+
+    err = inst_idx->add(inst_idx, entry->id, entry->id_size, (void*)entry);
+    if (err) {
+        knd_log("-- failed to update the class inst idx");
+        return err;
+    }
+
+    /* increment state */
+    err = knd_state_new(mempool, &state);
+    if (err) {
+        knd_log("-- state alloc failed :(");
+        return err;
+    }
+    state->obj = (void*)entry;
+    state->next = self->inst_states;
+    self->inst_states = state;
+    self->num_inst_states++;
+    state->numid = self->num_inst_states;
+
+    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
+        knd_log(".. register \"%.*s\" inst with class \"%.*s\" (%.*s)  num inst states:%zu",
+                entry->inst->name_size, entry->inst->name,
+                self->name_size, self->name,
+                self->entry->repo->name_size, self->entry->repo->name,
+                self->num_inst_states);
+    }
+
+    if (entry->inst->base != self) return knd_OK;
+
+    for (struct kndClassRef *ref = self->entry->ancestors; ref; ref = ref->next) {
+        c = ref->entry->class;
+
+        if (self->entry->repo != ref->entry->repo) {
+            err = knd_class_clone(ref->entry->class, self->entry->repo, &c);
+            if (err) return err;
+            ref->entry = c->entry;
+        }
+
+        err = register_inst(c, entry);                                         RET_ERR();
+    }
+
+    return knd_OK;
+}
 
 extern gsl_err_t knd_parse_import_class_inst(void *data,
                                              const char *rec,
@@ -54,13 +115,12 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
 {
     struct kndClass *self = data;
     struct kndClass *c;
-    struct kndClassEntry *class_entry;
     struct kndClassInst *inst;
     struct kndClassInstEntry *entry;
-    struct kndSet *set;
     struct ooDict *name_idx;
     struct kndMemPool *mempool = self->entry->repo->mempool;
     struct kndTask *task = self->entry->repo->task;
+    struct kndState *state;
     int err;
     gsl_err_t parser_err;
 
@@ -75,6 +135,8 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
 
     /* user ctx should have its own copy of a selected class */
     if (self->curr_class->entry->repo != self->entry->repo) {
+        knd_log("NB: .. need a class copy!\n");
+
         err = knd_class_clone(self->curr_class, self->entry->repo, &c);
         if (err) return *total_size = 0, make_gsl_err_external(err);
         self->curr_class = c;
@@ -88,7 +150,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
         return *total_size = 0, make_gsl_err_external(err);
     }
 
-    err = knd_state_new(mempool, &inst->states);
+    err = knd_state_new(mempool, &state);
     if (err) {
         knd_log("-- state alloc failed :(");
         return *total_size = 0, make_gsl_err_external(err);
@@ -98,8 +160,10 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
 
     inst->entry = entry;
     entry->inst = inst;
-    inst->states->phase = KND_SUBMITTED;
+    state->phase = KND_SUBMITTED;
+    state->numid = 1;
     inst->base = c;
+    inst->states = state;
 
     parser_err = inst->parse(inst, rec, total_size);
     if (parser_err.code) return parser_err;
@@ -133,18 +197,8 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     if (err) return make_gsl_err_external(err);
     c->entry->num_insts++;
 
-    set = c->entry->inst_idx;
-    if (!set) {
-        err = knd_set_new(mempool, &set);
-        if (err) return make_gsl_err_external(err);
-        set->type = KND_SET_CLASS_INST;
-        c->entry->inst_idx = set;
-    }
-    err = set->add(set, entry->id, entry->id_size, (void*)entry);
-    if (err) {
-        knd_log("-- failed to update the class inst idx");
-        return make_gsl_err_external(err);
-    }
+    err = register_inst(c, entry);
+    if (err) return make_gsl_err_external(err);
 
     if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
         inst->str(inst);
@@ -312,7 +366,6 @@ static gsl_err_t parse_attr(void *obj,
 {
     struct kndClass *self = obj;
     struct kndAttr *attr;
-    void *page;
     struct kndMemPool *mempool = self->entry->repo->mempool;
     const char *c;
     int err;
@@ -332,6 +385,11 @@ static gsl_err_t parse_attr(void *obj,
             attr->type = (knd_attr_type)i;
     }
 
+    if (attr->type == KND_ATTR_NONE) {
+        knd_log("-- attr no supported: %.*s", name_size, name);
+        //return *total_size = 0, make_gsl_err_external(err);
+    }
+    
     parser_err = attr->parse(attr, rec, total_size);
     if (parser_err.code) {
         if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
@@ -364,8 +422,6 @@ static gsl_err_t import_attr_var(void *obj,
     struct kndClassVar *self = obj;
     struct kndAttrVar *attr_var;
     struct kndMemPool *mempool;
-    struct ooDict *attr_name_idx;
-    struct kndAttrEntry *entry;
     gsl_err_t parser_err;
     int err;
 
@@ -738,7 +794,6 @@ extern gsl_err_t knd_import_class(void *obj,
     struct kndMemPool *mempool = self->entry->repo->mempool;
     struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->entry->repo->task;
-    void *page;
     int e, err;
     gsl_err_t parser_err;
 

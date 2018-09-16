@@ -39,22 +39,24 @@ struct kndElem
 
     struct kndClassInst *obj;
     struct kndClassInst *root;
-    struct kndSortTag *tag;
 
     struct kndClassInst *aggr;
     struct kndClassInst *aggr_tail;
+
+    struct kndClassInst *ref_inst;
 
     bool is_list;
 
     const char *val;
     size_t val_size;
-    
+
+    struct kndClass *curr_class;
+
     struct glbOutput *out;
     struct glbOutput *log;
 
     struct kndText *text;
     struct kndNum *num;
-    struct kndRef *ref;
 
     struct kndElem *next;
 

@@ -375,7 +375,7 @@ static int save_elem(struct kndSet *self,
         if (!idx) {
             err = knd_set_elem_idx_new(self->mempool, &idx);
             if (err) {
-                knd_log("-- set elem idx mempool limit reached :(");
+                knd_log("-- set elem idx mempool limit reached");
                 return err;
             }
             parent_idx->idxs[idx_pos] = idx;
@@ -390,6 +390,7 @@ static int save_elem(struct kndSet *self,
     /* assign elem */
     parent_idx->elems[idx_pos] = elem;
     self->num_elems++;
+    self->num_valid_elems++;
 
     return knd_OK;
 }

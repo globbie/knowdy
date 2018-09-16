@@ -572,37 +572,33 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndClassInst *self = obj;
     struct kndClass *c = self->base;
     struct kndClassInstEntry *entry;
-    //struct ooDict *name_idx = c->entry->inst_name_idx;
-    struct glbOutput *log = c->entry->repo->log;
-    struct kndTask *task = c->entry->repo->task;
+    struct kndRepo *repo = c->entry->repo;
+    struct ooDict *name_idx = repo->class_inst_name_idx;
+    struct glbOutput *log = repo->log;
+    struct kndTask *task = repo->task;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    /* TODO: check name doublets */
-    /*if (name_idx) {
-        entry = name_idx->get(name_idx,
-                              name, name_size);
-        if (entry) {
-            if (entry->inst && entry->inst->states->phase == KND_REMOVED) {
-                knd_log("-- this obj has been removed lately: %.*s :(",
+    entry = name_idx->get(name_idx, name, name_size);
+    if (entry) {
+        if (entry->inst && entry->inst->states->phase == KND_REMOVED) {
+            knd_log("-- this class instance has been removed lately: %.*s :(",
                     name_size, name);
-                goto assign_name;
+            goto assign_name;
             }
-            knd_log("-- obj name doublet found: %.*s:(",
-                    name_size, name);
-            log->reset(log);
-            err = log->write(log, name, name_size);
-            if (err) return make_gsl_err_external(err);
-            err = log->write(log,   " class name already exists",
-                             strlen(" class name already exists"));
-            if (err) return make_gsl_err_external(err);
-            task->http_code = HTTP_CONFLICT;
-            return make_gsl_err(gsl_EXISTS);
-        }
+        knd_log("-- class instance name doublet found: %.*s:(",
+                name_size, name);
+        log->reset(log);
+        err = log->write(log, name, name_size);
+        if (err) return make_gsl_err_external(err);
+        err = log->write(log,   " inst name already exists",
+                         strlen(" inst name already exists"));
+        if (err) return make_gsl_err_external(err);
+        task->http_code = HTTP_CONFLICT;
+        return make_gsl_err(gsl_EXISTS);
     }
-    */
 
 assign_name:
     self->name = name;
@@ -815,6 +811,7 @@ static gsl_err_t parse_elem(void *data,
             knd_log("-- aggr class inst alloc failed :(");
             return *total_size = 0, make_gsl_err_external(err);
         }
+
         err = knd_state_new(mempool, &obj->states);
         if (err) {
             knd_log("-- state alloc failed :(");
@@ -823,7 +820,7 @@ static gsl_err_t parse_elem(void *data,
         obj->states->phase = self->states->phase;
 
         obj->type = KND_OBJ_AGGR;
-        if (!attr->ref_class) {
+        /*if (!attr->ref_class) {
             if (self->states->phase == KND_FROZEN || self->states->phase == KND_SUBMITTED) {
                 if (DEBUG_INST_LEVEL_2) {
                     knd_log(".. resolve attr \"%.*s\": \"%.*s\"..",
@@ -842,7 +839,7 @@ static gsl_err_t parse_elem(void *data,
                         attr->name_size, attr->name);
                 return *total_size = 0, make_gsl_err(gsl_FAIL);
             }
-        }
+            }*/
 
         obj->base = attr->ref_class;
         obj->root = self->root ? self->root : self;
@@ -853,7 +850,7 @@ static gsl_err_t parse_elem(void *data,
         elem->aggr = obj;
         obj->parent = elem;
         goto append_elem;
-    case KND_ATTR_NUM:
+        /*case KND_ATTR_NUM:
         err = kndNum_new(&num);
         if (err) return *total_size = 0, make_gsl_err_external(err);
         num->elem = elem;
@@ -862,25 +859,17 @@ static gsl_err_t parse_elem(void *data,
 
         elem->num = num;
         goto append_elem;
-    case KND_ATTR_REF:
-        err = kndRef_new(&ref);
-        if (err) return *total_size = 0, make_gsl_err_external(err);
-        ref->elem = elem;
-        parser_err = ref->parse(ref, rec, total_size);
-        if (parser_err.code) goto final;
-
-        elem->ref = ref;
-        goto append_elem;
-    case KND_ATTR_TEXT:
+        case KND_ATTR_TEXT:
         err = kndText_new(&text);
         if (err) return *total_size = 0, make_gsl_err_external(err);
 
-        //text->elem = elem;
+        text->elem = elem;
         parser_err = text->parse(text, rec, total_size);
         if (parser_err.code) goto final;
         
         elem->text = text;
         goto append_elem;
+        */
     default:
         break;
     }
@@ -909,7 +898,8 @@ static gsl_err_t parse_elem(void *data,
 
     knd_log("-- validation of \"%.*s\" elem failed :(", name_size, name);
 
-    elem->del(elem);
+    // TODO elem->del(elem);
+
     return parser_err;
 }
 
@@ -1240,7 +1230,10 @@ static gsl_err_t parse_import_inst(struct kndClassInst *self,
                                    size_t *total_size)
 {
     if (DEBUG_INST_LEVEL_2)
-        knd_log(".. parsing class inst import REC: %.*s", 128, rec);
+        knd_log(".. parsing class inst (repo:%.*s) import REC: %.*s",
+                self->base->entry->repo->name_size,
+                self->base->entry->repo->name,
+                128, rec);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -1543,7 +1536,6 @@ static gsl_err_t present_inst_selection(void *data, const char *val __attribute_
                 task->type, task->num_sets);
 
     out->reset(out);
-
     if (task->type == KND_SELECT_STATE) {
 
         /* no sets found? */
@@ -1648,11 +1640,7 @@ static int select_delta(struct kndClass *self,
     struct kndClass *base = self->curr_class;
     struct kndTask *task = self->entry->repo->task;
     struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndState *state;
     struct kndSet *set;
-    struct kndClassUpdate *class_update;
-    struct kndClassInst *inst;
-    void *result;
     size_t gt = 0;
     size_t lt = 0;
     size_t eq = 0;
@@ -1691,45 +1679,15 @@ static int select_delta(struct kndClass *self,
     task->type = KND_SELECT_STATE;
 
     // TODO error logs
-    if (!base->num_inst_states) return knd_FAIL;
-    if (gt >= base->num_inst_states) return knd_FAIL;
+    //if (!base->num_inst_states) return knd_FAIL;
+    //if (gt >= base->num_inst_states) return knd_FAIL;
     if (lt && lt < gt) return knd_FAIL;
 
-    err = knd_set_new(mempool, &set);                                        MEMPOOL_ERR(kndSet);
+    err = knd_set_new(mempool, &set);                                       MEMPOOL_ERR(kndSet);
     set->mempool = mempool;
 
-    if (!lt) lt = base->num_inst_states + 1;
-
-    for (state = base->inst_states; state; state = state->next) {
-        if (state->update->numid >= lt) continue;
-        if (state->update->numid <= gt) continue;
-
-        if (DEBUG_INST_LEVEL_TMP)
-            knd_log("== export update: %zu", state->update->numid);
-
-        class_update = state->val;
-
-        for (size_t i = 0; i < class_update->num_insts; i++) {
-            inst = class_update->insts[i];
-
-            if (DEBUG_INST_LEVEL_TMP)
-                knd_log("* inst id:%.*s", inst->entry->id_size, inst->entry->id);
-
-            /* check if the inst is already in the set */
-            err = set->get(set, inst->entry->id,
-                           inst->entry->id_size,
-                           &result);
-            if (!err) continue;
-
-            /* TODO: filter out the removed insts 
-                     that were initially created _after_ 
-                     the requested update _gt */
-
-            err = set->add(set, inst->entry->id,
-                           inst->entry->id_size,
-                           (void*)inst->entry);                                          RET_ERR();
-        }
-    }
+    err = knd_class_get_inst_updates(base, gt, lt, eq, set);                RET_ERR();
+    
     task->sets[0] = set;
     task->num_sets = 1;
     task->show_removed_objs = true;
@@ -1765,8 +1723,8 @@ extern gsl_err_t knd_parse_select_inst(void *obj,
         return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
 
-    if (DEBUG_INST_LEVEL_TMP)
-        knd_log(".. class %.*s (repo:%.*s) to select inst: \"%.*s\"",
+    if (DEBUG_INST_LEVEL_2)
+        knd_log(".. class %.*s (repo:%.*s) to parse inst: \"%.*s\"",
                 self->curr_class->name_size,
                 self->curr_class->name,
                 self->curr_class->entry->repo->name_size,

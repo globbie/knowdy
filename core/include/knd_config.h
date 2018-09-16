@@ -112,7 +112,7 @@ typedef enum knd_storage_type {
 #define KND_RESULT_BATCH_SIZE 10
 #define KND_RESULT_MAX_BATCH_SIZE 100
 
-#define KND_MAX_DEBUG_CONTEXT_SIZE 100
+#define KND_MAX_DEBUG_CONTEXT_SIZE 256
 
 #define KND_ID_SIZE  (8 * sizeof(char))
 #define KND_ID_BATCH_SIZE 10

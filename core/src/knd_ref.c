@@ -302,11 +302,9 @@ static int export_reverse_rel(struct kndRef *self)
     return knd_OK;
 }
 
-
-static gsl_err_t
-parse_GSL(struct kndRef *self,
-          const char *rec,
-          size_t *total_size)
+static gsl_err_t parse_GSL(struct kndRef *self,
+                           const char *rec,
+                           size_t *total_size)
 {
     if (DEBUG_REF_LEVEL_TMP)
         knd_log(".. parse REF field: \"%s\"..", rec);
