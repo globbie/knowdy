@@ -40,17 +40,17 @@ struct kndUpdate;
 //    struct kndProcState *next;
 //};
 
-struct kndProcUpdateRef
-{
+struct kndProcUpdateRef;
+//{
 //    knd_state_phase phase;
 //    struct kndUpdate *update;
 //    struct kndProcUpdateRef *next;
-};
+//};
 
-struct kndProcInstance
-{
+struct kndProcInstance;
+//{
 //    struct kndProc *proc;
-};
+//};
 
 struct kndProcEntry
 {

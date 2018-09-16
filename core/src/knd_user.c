@@ -364,11 +364,11 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. select user: \"%.*s\" repo:%.*s..",
                 name_size, name, self->repo->name_size, self->repo->name);
 
-    err = knd_get_class(self->repo->root_class,
+    err = knd_get_class(self->repo,
                         self->shard->user_classname,
                         self->shard->user_classname_size,
                         &c);
@@ -649,7 +649,13 @@ static gsl_err_t parse_select_user(struct kndUser *self,
           .name_size = strlen("class"),
           .parse = parse_class_array,
           .obj = self
-        },
+        }/*,
+        { .type = GSL_GET_ARRAY_STATE,
+          .name = "class",
+          .name_size = strlen("class"),
+          .parse = parse_class_array,
+          .obj = self
+          }*/,
         { .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_select,

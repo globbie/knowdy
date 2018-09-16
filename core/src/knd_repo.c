@@ -153,7 +153,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     entry->name_size = name_size;
 
     /* get class */
-    err = knd_get_class(repo->root_class, name, name_size, &c);
+    err = knd_get_class(repo, name, name_size, &c);
     if (err) {
         err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL, sizeof(*c), &page);
         if (err) return make_gsl_err_external(err);
@@ -503,6 +503,7 @@ extern int kndRepo_new(struct kndRepo **repo,
     struct kndRepo *self;
     struct kndStateControl *state_ctrl;
     struct kndClass *c;
+    struct kndClassEntry *entry;
     struct kndProc *proc;
     struct kndRel *rel;
     int err;
@@ -516,11 +517,18 @@ extern int kndRepo_new(struct kndRepo **repo,
     if (err) return err;
     state_ctrl->repo = self;
     self->state_ctrl = state_ctrl;
-   
-    err = kndClass_new(&c, mempool);
+
+    err = knd_class_entry_new(mempool, &entry);  RET_ERR();
+    entry->name = "/";
+    entry->name_size = 1;
+
+    err = knd_class_new(mempool, &c);
     if (err) goto error;
-    c->name = "/";
+    c->name = entry->name;
     c->name_size = 1;
+    entry->class = c;
+    c->entry = entry;
+
     c->entry->repo = self;
     self->root_class = c;
 
@@ -542,8 +550,8 @@ extern int kndRepo_new(struct kndRepo **repo,
     
     err = kndProc_new(&proc, self, mempool);
     if (err) goto error;
-    proc->entry->name[0] = '/';
-    proc->entry->name_size = 1;
+    //proc->entry->name[0] = '/';
+    //proc->entry->name_size = 1;
     self->root_proc = proc;
     
     err = kndRel_new(&rel, mempool);

@@ -96,8 +96,10 @@ struct kndClassEntry
 
     const char *name;
     size_t name_size;
+
     struct kndClass *class;
     struct kndRepo *repo;
+    struct kndClassEntry *orig;
 
     knd_state_phase phase;
 
@@ -253,10 +255,6 @@ struct kndClass
                         const char *rec,
                         size_t *total_size);
 
-    int (*get)(struct kndClass  *self,
-               const char *name, size_t name_size,
-               struct kndClass  **result);
-
     gsl_err_t (*import)(void *self,
                         const char *rec,
                         size_t *total_size);
@@ -275,12 +273,16 @@ extern int kndClass_new(struct kndClass **self,
                         struct kndMemPool *mempool);
 
 /* exported functions */
-extern int knd_get_class(struct kndClass *self,
+extern int knd_get_class(struct kndRepo *self,
                          const char *name, size_t name_size,
                          struct kndClass **result);
 extern int knd_get_class_by_id(struct kndClass *self,
                                const char *id, size_t id_size,
                                struct kndClass **result);
+
+extern int knd_class_get_inst_updates(struct kndClass *self,
+                                      size_t gt, size_t lt, size_t eq,
+                                      struct kndSet *set);
 
 extern gsl_err_t import_class_var(struct kndClassVar *self,
                                   const char *rec,

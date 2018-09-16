@@ -82,8 +82,6 @@ struct kndClassInst
     const char *name;
     size_t name_size;
 
-    struct kndClass *base;
-
     struct kndState *states;
     size_t init_state;
     size_t num_states;
@@ -92,7 +90,9 @@ struct kndClassInst
     bool is_concise;
 
     struct kndClassInstEntry *entry;
+    struct kndClass *base;
     struct kndClassInst *root;
+
     struct kndElem *parent;
     struct kndClassInst *curr_inst;
 

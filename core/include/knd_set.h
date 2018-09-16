@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2018 by Dmitri Dmitriev
+ *   Copyright (c) 2011-present by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Graph DB, 
@@ -57,6 +57,7 @@ struct kndSet
 
     struct kndSetElemIdx idx;
     size_t num_elems;
+    size_t num_valid_elems;
 
     struct kndFacet *parent_facet;
     struct kndFacet *facets[KND_MAX_SPECS];

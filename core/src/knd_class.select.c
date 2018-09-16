@@ -53,7 +53,7 @@ static gsl_err_t select_by_baseclass(void *obj,
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_get_class(self, name, name_size, &c);
+    err = knd_get_class(self->entry->repo, name, name_size, &c);
     if (err) return make_gsl_err_external(err);
 
     if (DEBUG_CLASS_SELECT_LEVEL_2)
@@ -83,6 +83,7 @@ static gsl_err_t select_by_attr(void *obj,
     struct kndClass *self = obj;
     struct kndClass *c;
     struct kndSet *set;
+    void *result;
     struct kndFacet *facet;
     struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->entry->repo->task;
@@ -114,7 +115,7 @@ static gsl_err_t select_by_attr(void *obj,
     }
 
 
-    err = knd_get_class(self, name, name_size, &c);
+    err = knd_get_class(self->entry->repo, name, name_size, &c);
     if (err) {
         log->writef(log, "no relation to class: %.*s", name_size, name);
         task->http_code = HTTP_NOT_FOUND;
@@ -122,12 +123,13 @@ static gsl_err_t select_by_attr(void *obj,
     }
 
     err = facet->set_idx->get(facet->set_idx,
-                              c->entry->id, c->entry->id_size, &set);
+                              c->entry->id, c->entry->id_size, &result);
     if (err) {
         log->writef(log, "no relation to class: %.*s", name_size, name);
         task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err(gsl_FAIL);
     }
+    set = result;
     set->base->class = c;
 
     if (task->num_sets + 1 > KND_MAX_CLAUSES)
@@ -572,7 +574,7 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     self->curr_class = NULL;
-    err = knd_get_class(self, name, name_size, &c);
+    err = knd_get_class(self->entry->repo, name, name_size, &c);
     if (err) return make_gsl_err_external(err);
 
     self->curr_class = c;
@@ -619,7 +621,7 @@ static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_siz
     entry = result;
 
     self->curr_class = NULL;
-    err = knd_get_class(self, entry->name, entry->name_size, &c);
+    err = knd_get_class(self->entry->repo, entry->name, entry->name_size, &c);
     if (err) return make_gsl_err_external(err);
 
     self->curr_class = c;
@@ -791,6 +793,51 @@ extern gsl_err_t parse_class_delta(void *data,
     return make_gsl_err(gsl_OK);
 }
 
+extern int knd_class_get_inst_updates(struct kndClass *self,
+                                      size_t gt, size_t lt, size_t eq,
+                                      struct kndSet *set)
+{
+    struct kndState *state;
+    struct kndClassUpdate *class_update;
+    struct kndClassInstEntry *entry;
+    struct kndClassInst *inst;
+    void *result;
+    int err;
+
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+        knd_log(".. class %.*s (repo:%.*s) to extract updates",
+                self->name_size, self->name,
+                self->entry->repo->name_size, self->entry->repo->name);
+
+    if (!lt) lt = self->num_inst_states + 1;
+
+    for (state = self->inst_states; state; state = state->next) {
+        if (state->numid >= lt) continue;
+        if (state->numid <= gt) continue;
+
+        if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+            knd_log("== export update: %zu obj:%p", state->numid, state->obj);
+        }
+
+        entry = state->obj;
+
+        if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+            knd_log("* inst id:%.*s", entry->id_size, entry->id);
+
+        /* check if the inst is already in the set */
+        err = set->get(set, entry->id, entry->id_size, &result);
+        if (!err) continue;
+
+        /* TODO: filter out the removed insts 
+           that were initially created _after_ 
+           the requested update _gt */
+
+        err = set->add(set, entry->id, entry->id_size, (void*)entry);             RET_ERR();
+    }
+
+    return knd_OK;
+}
+
 extern gsl_err_t knd_select_class(void *obj,
                                   const char *rec,
                                   size_t *total_size)
@@ -912,3 +959,4 @@ extern gsl_err_t knd_select_class(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
+
