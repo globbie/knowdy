@@ -294,13 +294,13 @@ static int export_concise_JSON(struct kndClass *self)
     struct glbOutput *out = self->entry->repo->out;
     int err;
 
-    if (DEBUG_JSON_LEVEL_TMP)
+    if (DEBUG_JSON_LEVEL_2)
         knd_log(".. export concise JSON for %.*s..",
                 self->entry->name_size, self->entry->name, self->entry->repo->out);
 
     for (item = self->baseclass_vars; item; item = item->next) {
         if (!item->attrs) continue;
-        err = knd_attr_vars_export_JSON(item->attrs, out, 0, true);               RET_ERR();
+        err = knd_attr_vars_export_JSON(item->attrs, out, true);               RET_ERR();
     }
 
     /* inherited attrs */
@@ -433,9 +433,9 @@ extern int knd_class_export_JSON(struct kndClass *self,
     int i, err;
 
     if (DEBUG_JSON_LEVEL_2)
-        knd_log(".. JSON export: \"%.*s\"   children:%zu",
+        knd_log(".. JSON export: \"%.*s\"   depth:%zu max depth:%zu",
                 self->entry->name_size, self->entry->name,
-                self->entry->num_children);
+                self->depth, self->max_depth);
 
     err = out->write(out, "{", 1);                                                RET_ERR();
     err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                RET_ERR();
@@ -453,7 +453,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
     err = export_gloss_JSON(self);                                                RET_ERR();
 
     if (self->depth >= self->max_depth) {
-        knd_log("== max depth reached: %zu", self->max_depth);
+        //knd_log("== max depth reached: %zu", self->max_depth);
         /* any concise fields? */
         err = export_concise_JSON(self);                                          RET_ERR();
         goto final;
@@ -494,8 +494,9 @@ extern int knd_class_export_JSON(struct kndClass *self,
             if (err) return err;
 
             if (item->attrs) {
-                err = knd_attr_vars_export_JSON(item->attrs, out, 0, false);
-                if (err) return err;
+                item->attrs->depth = self->depth;
+                item->attrs->max_depth = self->max_depth;
+                err = knd_attr_vars_export_JSON(item->attrs, out, false);      RET_ERR();
             }
 
             if (self->num_computed_attrs) {

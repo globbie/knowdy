@@ -243,7 +243,7 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
     size_t count = 0;
     int err;
 
-    if (DEBUG_ATTR_JSON_LEVEL_TMP) {
+    if (DEBUG_ATTR_JSON_LEVEL_2) {
         knd_log(".. export JSON list: %.*s\n\n",
                 parent_item->name_size, parent_item->name);
     }
@@ -339,7 +339,6 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
 
 extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
                                      struct glbOutput *out,
-                                     size_t depth __attribute__((unused)),
                                      bool is_concise)
 {
     struct kndAttrVar *item;
@@ -350,7 +349,16 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
     for (item = items; item; item = item->next) {
         if (!item->attr) continue;
         attr = item->attr;
+
         if (is_concise && !attr->concise_level) continue;
+
+        item->depth = items->depth;
+        item->max_depth = items->max_depth;
+
+        if (DEBUG_ATTR_JSON_LEVEL_2) {
+            knd_log(".. export attr var: %.*s  concise:%d",
+                    attr->name_size, attr->name, is_concise);
+        }
 
         err = out->writec(out, ',');
         if (err) return err;
@@ -416,6 +424,8 @@ extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
 {
     struct kndClass *c;
     int err;
+
+    if (item->depth >= item->max_depth) return knd_OK;
 
     err = out->writec(out, '"');
     if (err) return err;
