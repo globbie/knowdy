@@ -47,68 +47,6 @@ static gsl_err_t import_nested_attr_var(void *obj,
 static void append_attr_var(struct kndClassVar *ci,
                             struct kndAttrVar *attr_var);
 
-static int register_inst(struct kndClass *self,
-                         struct kndClassInstEntry *entry)
-{
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndSet *inst_idx;
-    struct kndClass *c;
-    struct kndState *state;
-    int err;
-
-    /* skip the root class */
-    if (!self->entry->ancestors) return knd_OK;
-
-    inst_idx = self->entry->inst_idx;
-    if (!inst_idx) {
-        err = knd_set_new(mempool, &inst_idx);                          RET_ERR();
-        inst_idx->type = KND_SET_CLASS_INST;
-        self->entry->inst_idx = inst_idx;
-    }
-
-    err = inst_idx->add(inst_idx, entry->id, entry->id_size, (void*)entry);
-    if (err) {
-        knd_log("-- failed to update the class inst idx");
-        return err;
-    }
-
-    /* increment state */
-    err = knd_state_new(mempool, &state);
-    if (err) {
-        knd_log("-- state alloc failed :(");
-        return err;
-    }
-    state->obj = (void*)entry;
-    state->next = self->inst_states;
-    self->inst_states = state;
-    self->num_inst_states++;
-    state->numid = self->num_inst_states;
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
-        knd_log(".. register \"%.*s\" inst with class \"%.*s\" (%.*s)  num inst states:%zu",
-                entry->inst->name_size, entry->inst->name,
-                self->name_size, self->name,
-                self->entry->repo->name_size, self->entry->repo->name,
-                self->num_inst_states);
-    }
-
-    if (entry->inst->base != self) return knd_OK;
-
-    for (struct kndClassRef *ref = self->entry->ancestors; ref; ref = ref->next) {
-        c = ref->entry->class;
-
-        if (self->entry->repo != ref->entry->repo) {
-            err = knd_class_clone(ref->entry->class, self->entry->repo, &c);
-            if (err) return err;
-            ref->entry = c->entry;
-        }
-
-        err = register_inst(c, entry);                                         RET_ERR();
-    }
-
-    return knd_OK;
-}
-
 extern gsl_err_t knd_parse_import_class_inst(void *data,
                                              const char *rec,
                                              size_t *total_size)
