@@ -260,8 +260,10 @@ static int export_inherited_attr(void *obj,
 
     attr_var = ref->attr_var;
     if (!attr_var) {
-        err = knd_get_attr_var(self, attr->name, attr->name_size, &attr_var);
-        if (err) return knd_OK;
+        // TODO
+        return knd_OK;
+        //err = knd_get_attr_var(self, attr->name, attr->name_size, &attr_var);
+        //if (err) return knd_OK;
     }
 
     err = out->writec(out, ',');                                          RET_ERR();

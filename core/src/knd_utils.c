@@ -666,7 +666,7 @@ void knd_base64_encode(char *encoded, const char *string, int len)
 {
     char *p;
     p = encoded;
-    size_t i;
+    int i;
 
     for (i = 0; i < len - 2; i += 3) {
         *p++ = knd_base_64[(string[i] >> 2) & 0x3F];

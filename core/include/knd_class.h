@@ -357,6 +357,11 @@ extern int knd_get_class_inst(struct kndClass *self,
                               const char *name, size_t name_size,
                               struct kndClassInst **result);
 
+extern int knd_register_class_inst(struct kndClass *self,
+                                   struct kndClassInstEntry *entry);
+extern int knd_unregister_class_inst(struct kndClass *self,
+                                   struct kndClassInstEntry *entry);
+
 extern int knd_class_clone(struct kndClass *self,
                            struct kndRepo *target_repo,
                            struct kndClass **result);

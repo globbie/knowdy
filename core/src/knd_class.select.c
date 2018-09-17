@@ -87,7 +87,7 @@ static gsl_err_t select_by_attr(void *obj,
     struct kndFacet *facet;
     struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->entry->repo->task;
-    int err, e;
+    int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -155,7 +155,7 @@ static gsl_err_t parse_attr_select(void *obj,
           .obj = self
         }
     };
-    int err, e;
+    int err;
 
     if (!self->curr_baseclass) return *total_size = 0, make_gsl_err_external(knd_FAIL);
 
@@ -207,7 +207,7 @@ static gsl_err_t run_set_attr_var(void *obj,
                                strlen("-- no attr selected"));
         if (e) return make_gsl_err_external(e);
         task->http_code = HTTP_BAD_REQUEST;
-        return make_gsl_err_external(err);
+        return make_gsl_err_external(knd_FAIL);
     }
 
     attr_var = self->curr_attr_var;
@@ -248,7 +248,6 @@ static gsl_err_t present_attr_var_selection(void *obj,
     struct kndAttr *attr;
     struct kndAttrVar *attr_var;
     struct glbOutput *out = self->entry->repo->out;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
     struct kndTask *task = self->entry->repo->task;
     int err;
 
@@ -301,7 +300,6 @@ static gsl_err_t parse_attr_var_select(void *obj,
 {
     struct kndClass *self = obj;
     struct kndAttr *attr;
-    struct kndAttrVar *attr_var;
     struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->entry->repo->task;
     struct gslTaskSpec specs[] = {
@@ -340,11 +338,12 @@ static gsl_err_t parse_attr_var_select(void *obj,
         knd_log("++ attr selected: \"%.*s\".. curr attr:%p", name_size, name, attr);
     }
 
-    err = knd_get_attr_var(self->curr_class, name, name_size, &attr_var);
+    // TODO
+    /*err = knd_get_attr_var(self->curr_class, name, name_size, &attr_var);
     if (!err) {
         knd_log(".. \"%.*s\" attr var exists!", name_size, name);
         self->curr_attr_var = attr_var;
-    }
+        }*/
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
@@ -354,7 +353,6 @@ static gsl_err_t parse_baseclass_select(void *obj,
                                         size_t *total_size)
 {
     struct kndClass *self = obj;
-    struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->entry->repo->task;
     gsl_err_t err;
 
@@ -508,10 +506,10 @@ static gsl_err_t present_class_selection(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t run_select_class_state(void *obj, const char *name, size_t name_size)
+static gsl_err_t run_select_class_state(void *obj,
+                                        const char *name __attribute__((unused)),
+                                        size_t name_size __attribute__((unused)))
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
     struct kndClass *root_class = obj;
     struct kndClass *self = root_class->curr_class;
     struct glbOutput *out = self->entry->repo->out;
@@ -698,8 +696,6 @@ static int knd_select_class_delta(struct kndClass *self,
     struct kndMemPool *mempool = self->entry->repo->mempool;
     struct kndState *state;
     struct kndSet *set;
-    struct kndClassUpdate *class_update;
-    struct kndClass *c;
     int e, err;
     gsl_err_t parser_err;
 
@@ -798,9 +794,7 @@ extern int knd_class_get_inst_updates(struct kndClass *self,
                                       struct kndSet *set)
 {
     struct kndState *state;
-    struct kndClassUpdate *class_update;
     struct kndClassInstEntry *entry;
-    struct kndClassInst *inst;
     void *result;
     int err;
 
@@ -947,10 +941,8 @@ extern gsl_err_t knd_select_class(void *obj,
     /* any updates happened? */
     if (self->curr_class) {
         c = self->curr_class;
+
         if (task->type == KND_UPDATE_STATE) {
-            if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-                knd_log("NB: update state of class %.*s %p",
-                        c->name_size, c->name, c);
             c->next = self->inbox;
             self->inbox = c;
             self->inbox_size++;

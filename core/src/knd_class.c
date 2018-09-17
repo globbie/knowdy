@@ -79,35 +79,6 @@ static void reset_inbox(struct kndClass *self,
     self->inbox_size = 0;
 }
 
-static void del_class_entry(struct kndClassEntry *entry)
-{
-    /*    struct kndClassEntry *subentry;
-    size_t i;
-
-    for (i = 0; i < entry->num_children; i++) {
-        subentry = entry->children[i];
-        if (!subentry) continue;
-        del_class_entry(subentry);
-        entry->children[i] = NULL;
-    }
-
-    if (entry->children) {
-        free(entry->children);
-        entry->children = NULL;
-    }
-
-    if (entry->inst_name_idx) {
-        entry->inst_name_idx->del(entry->inst_name_idx);
-        entry->inst_name_idx = NULL;
-    }
-
-    if (entry->rels) {
-        free(entry->rels);
-        entry->rels = NULL;
-    }
-    */
-}
-
 /*  class destructor */
 static void kndClass_del(struct kndClass *self)
 {
@@ -184,20 +155,13 @@ static void str_attr_vars(struct kndAttrVar *items, size_t depth)
 
 static void str(struct kndClass *self)
 {
-    struct kndAttr *attr;
-    struct kndAttrEntry *attr_entry;
     struct kndTranslation *tr, *t;
     struct kndClassVar *item;
     struct kndClassRef *ref;
     struct kndClass *c;
-    struct ooDict *idx;
-    struct kndSet *set;
     const char *name;
     size_t name_size;
     char resolved_state = '-';
-    const char *key;
-    void *val;
-    int err;
 
     knd_log("\n%*s{class %.*s (repo:%.*s)   id:%.*s  numid:%zu",
             self->depth * KND_OFFSET_SIZE, "",
@@ -256,7 +220,6 @@ static void str(struct kndClass *self)
     }
 
     // print attrs
-
     /*    for (size_t i = 0; i < self->entry->num_children; i++) {
         c = self->entry->children[i]->class;
         if (!c) continue;
@@ -269,53 +232,6 @@ static void str(struct kndClass *self)
     knd_log("%*s the end of %.*s}", self->depth * KND_OFFSET_SIZE, "",
             self->entry->name_size, self->entry->name);
 }
-
-extern int knd_get_attr_var(struct kndClass *self,
-                            const char *name, size_t name_size,
-                            struct kndAttrVar **result)
-{
-    /*struct kndAttrEntry *entry;
-    struct kndAttrVar *attr_var;
-    struct kndClassVar *cvar;
-    struct kndClass *root_class = self->entry->repo->root_class;
-    struct kndClass *c;
-    int err;
-
-    if (DEBUG_CLASS_LEVEL_TMP) {
-        knd_log(".. \"%.*s\" class to retrieve attr var \"%.*s\"..",
-                self->entry->name_size, self->entry->name,
-                name_size, name);
-    }
-
-    entry = self->attr_name_idx->get(self->attr_name_idx,
-                                     name, name_size);
-    if (!entry) return knd_NO_MATCH;
-
-    if (entry->attr_var) {
-        *result = entry->attr_var;
-        return knd_OK;
-    }
-
-    for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
-        err = knd_get_class(root_class,
-                            cvar->entry->name,
-                            cvar->entry->name_size,
-                            &c);
-        if (err) {
-            if (err == knd_NO_MATCH) continue;
-            return err;
-        }
-
-        err = knd_get_attr_var(c, name, name_size, &attr_var);
-        if (!err) {
-            entry->attr_var = attr_var;
-            *result = entry->attr_var;
-            return knd_OK;
-        }
-    }*/
-    return knd_FAIL;
-}
-
 
 static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
 {
@@ -789,7 +705,6 @@ static int update_state(struct kndClass *self)
     struct kndClassUpdate *class_update;
     struct kndMemPool *mempool = repo->mempool;
     struct kndStateControl *state_ctrl = repo->state_ctrl;
-    struct kndTask *task = repo->task;
     int err;
 
     if (DEBUG_CLASS_LEVEL_TMP)
@@ -875,16 +790,6 @@ static int export_updates(struct kndClass *self,
     return knd_FAIL;
 }
 
-static int open_DB(struct kndClass *self,
-                   const char *filename)
-{
-    // TODO use kndClassStorage to open a frozen DB
-
-    knd_log(".. opening frozen DB: %s", filename);
-
-    return knd_NO_MATCH;
-}
-
 extern int knd_is_base(struct kndClass *self,
                        struct kndClass *child)
 {
@@ -920,10 +825,8 @@ extern int knd_class_get_attr(struct kndClass *self,
                               const char *name, size_t name_size,
                               struct kndAttr **result)
 {
-    struct kndAttr *attr;
     struct kndAttrRef *ref;
     struct kndClass *c;
-    struct kndClassEntry *entry;
     struct ooDict *attr_name_idx = self->entry->repo->attr_name_idx;
     int err;
 
@@ -1145,6 +1048,117 @@ extern int knd_get_class_by_id(struct kndClass *self,
     return knd_FAIL;
 }
 
+extern int knd_unregister_class_inst(struct kndClass *self,
+                                     struct kndClassInstEntry *entry)
+{
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndSet *inst_idx;
+    struct kndClass *c;
+    struct kndState *state;
+    int err;
+
+    /* skip the root class */
+    if (!self->entry->ancestors) return knd_OK;
+
+    inst_idx = self->entry->inst_idx;
+    if (!inst_idx) return knd_OK;
+
+    // remove
+    /* increment state */
+    err = knd_state_new(mempool, &state);
+    if (err) {
+        knd_log("-- state alloc failed :(");
+        return err;
+    }
+    state->obj = (void*)entry;
+    state->next = self->inst_states;
+    self->inst_states = state;
+    self->num_inst_states++;
+    state->numid = self->num_inst_states;
+
+    if (DEBUG_CLASS_LEVEL_2) {
+        knd_log(".. unregister \"%.*s\" inst with class \"%.*s\" (%.*s)  num inst states:%zu",
+                entry->inst->name_size, entry->inst->name,
+                self->name_size, self->name,
+                self->entry->repo->name_size, self->entry->repo->name,
+                self->num_inst_states);
+    }
+
+    if (entry->inst->base != self) return knd_OK;
+
+    for (struct kndClassRef *ref = self->entry->ancestors; ref; ref = ref->next) {
+        c = ref->entry->class;
+
+        if (self->entry->repo != ref->entry->repo) continue;
+
+        err = knd_unregister_class_inst(c, entry);                                         RET_ERR();
+    }
+
+    return knd_OK;
+}
+
+extern int knd_register_class_inst(struct kndClass *self,
+                                   struct kndClassInstEntry *entry)
+{
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndSet *inst_idx;
+    struct kndClass *c;
+    struct kndState *state;
+    int err;
+
+    /* skip the root class */
+    if (!self->entry->ancestors) return knd_OK;
+
+    inst_idx = self->entry->inst_idx;
+    if (!inst_idx) {
+        err = knd_set_new(mempool, &inst_idx);                          RET_ERR();
+        inst_idx->type = KND_SET_CLASS_INST;
+        self->entry->inst_idx = inst_idx;
+    }
+
+    err = inst_idx->add(inst_idx, entry->id, entry->id_size, (void*)entry);
+    if (err) {
+        knd_log("-- failed to update the class inst idx");
+        return err;
+    }
+
+    /* increment state */
+    err = knd_state_new(mempool, &state);
+    if (err) {
+        knd_log("-- state alloc failed :(");
+        return err;
+    }
+    state->obj = (void*)entry;
+    state->next = self->inst_states;
+    self->inst_states = state;
+    self->num_inst_states++;
+    state->numid = self->num_inst_states;
+
+    if (DEBUG_CLASS_LEVEL_TMP) {
+        knd_log(".. register \"%.*s\" inst with class \"%.*s\" (%.*s)  num inst states:%zu",
+                entry->inst->name_size, entry->inst->name,
+                self->name_size, self->name,
+                self->entry->repo->name_size, self->entry->repo->name,
+                self->num_inst_states);
+    }
+
+    if (entry->inst->base != self) return knd_OK;
+
+    for (struct kndClassRef *ref = self->entry->ancestors; ref; ref = ref->next) {
+        c = ref->entry->class;
+
+        if (self->entry->repo != ref->entry->repo) {
+            err = knd_class_clone(ref->entry->class, self->entry->repo, &c);
+            if (err) return err;
+            ref->entry = c->entry;
+        }
+
+        err = knd_register_class_inst(c, entry);                                         RET_ERR();
+    }
+
+    return knd_OK;
+}
+
 extern int knd_class_clone(struct kndClass *self,
                            struct kndRepo *target_repo,
                            struct kndClass **result)
@@ -1203,7 +1217,6 @@ extern int knd_class_copy(struct kndClass *self,
     struct kndRepo *repo =  c->entry->repo;
     struct kndMemPool *mempool = repo->mempool;
     struct ooDict *class_name_idx = repo->class_name_idx;
-    struct ooDict *attr_name_idx = repo->attr_name_idx;
     struct kndClassEntry *entry, *src_entry;
     struct kndClassRef   *ref,   *src_ref;
     int err;
@@ -1248,7 +1261,7 @@ extern void kndClass_init(struct kndClass *self)
 {
     self->del = kndClass_del;
     self->str = str;
-    self->open = open_DB;
+    //self->open = open_DB;
     self->load = read_GSL_file;
     self->reset_inbox = reset_inbox;
 
@@ -1282,9 +1295,6 @@ extern int kndClass_new(struct kndClass **result,
     *result = self;
 
     return knd_OK;
- error:
-    if (self) kndClass_del(self);
-    return err;
 }
 
 extern int knd_class_var_new(struct kndMemPool *mempool,

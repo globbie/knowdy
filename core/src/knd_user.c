@@ -39,16 +39,16 @@ static void str(struct kndUser *self)
     knd_log("USER: %.*s", self->name_size, self->name);
 }
 
-static gsl_err_t run_create_user(void *obj, const char *name, size_t name_size)
+/*static gsl_err_t run_create_user(void *obj, const char *name, size_t name_size)
 {
     struct kndUser *self = obj;
 
     knd_log(".. create user: %.*s", name_size, name);
 
     return make_gsl_err(gsl_OK);
-}
+    }*/
 
-static gsl_err_t parse_create_user(struct kndUser *self,
+ /*static gsl_err_t parse_create_user(struct kndUser *self,
                                    const char *rec,
                                    size_t *total_size)
 {
@@ -61,8 +61,9 @@ static gsl_err_t parse_create_user(struct kndUser *self,
 
     return make_gsl_err(gsl_OK);
 }
+ */
 
-/*static gsl_err_t parse_repo(void *obj,
+  /*static gsl_err_t parse_repo(void *obj,
                             const char *rec,
                             size_t *total_size)
 {
@@ -119,6 +120,11 @@ static gsl_err_t parse_auth(void *obj,
 
     if (!sid_size) {
         knd_log("-- no SID provided :(");
+        return make_gsl_err(gsl_FAIL);
+    }
+
+    if (sid_size != default_sid_size) {
+        knd_log("-- incorrect SID");
         return make_gsl_err(gsl_FAIL);
     }
 
@@ -193,7 +199,7 @@ static gsl_err_t parse_sync_task(void *obj,
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
     struct kndUser *self = obj;
-    struct glbOutput *out = self->out;
+    //struct glbOutput *out = self->out;
     struct stat st;
     char *s, *n;
     size_t path_size;
@@ -561,10 +567,10 @@ static gsl_err_t alloc_class_item(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t append_class_item(void *accu,
+static gsl_err_t append_class_item(void *accu __attribute__((unused)),
                                    void *item  __attribute__((unused)))
 {
-    struct kndClass *self = accu;
+    //struct kndClass *self = accu;
 
     return make_gsl_err(gsl_OK);
 }
@@ -817,7 +823,7 @@ extern int kndUser_new(struct kndUser **user, struct kndMemPool *mempool)
     self->del = del;
     self->str = str;
     self->init = kndUser_init;
-    self->create = parse_create_user;
+    //self->create = parse_create_user;
     self->select = parse_select_user;
 
     *user = self;
