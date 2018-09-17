@@ -383,7 +383,6 @@ static int save_elem(struct kndSet *self,
 
         err = save_elem(self, idx, elem, id + 1, id_size - 1);
         if (err) return err;
-
         return knd_OK;
     }
 

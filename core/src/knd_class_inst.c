@@ -1132,6 +1132,7 @@ static gsl_err_t remove_inst(void *data,
     struct glbOutput *log        = repo->log;
     struct kndMemPool *mempool   = repo->mempool;
     struct kndTask *task         = repo->task;
+    struct kndSet *set;
     int err;
 
     obj = self->curr_inst;
@@ -1158,9 +1159,13 @@ static gsl_err_t remove_inst(void *data,
     obj->next = base->inst_inbox;
     base->inst_inbox = obj;
     base->inst_inbox_size++;
-    if (base->num_insts)
-        base->num_insts--;
 
+    // TODO: detach inst from all ancestors
+    if (base->entry->inst_idx) {
+        set = base->entry->inst_idx;
+        if (set->num_valid_elems)
+            set->num_valid_elems--;
+    }
     return make_gsl_err(gsl_OK);
 }
 

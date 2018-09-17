@@ -135,13 +135,10 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
 
     /* user ctx should have its own copy of a selected class */
     if (self->curr_class->entry->repo != self->entry->repo) {
-        knd_log("NB: .. need a class copy!\n");
-
         err = knd_class_clone(self->curr_class, self->entry->repo, &c);
         if (err) return *total_size = 0, make_gsl_err_external(err);
         self->curr_class = c;
     }
-
     c = self->curr_class;
 
     err = knd_class_inst_new(mempool, &inst);
@@ -197,10 +194,10 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     if (err) return make_gsl_err_external(err);
     c->entry->num_insts++;
 
-    err = register_inst(c, entry);
+    err = knd_register_class_inst(c, entry);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_3) {
         inst->str(inst);
     }
 
@@ -344,6 +341,7 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     err = knd_class_entry_new(mempool, &entry);
     if (err) return make_gsl_err_external(err);
 
+    // TODO
     char *s = malloc(name_size);
     memcpy(s, name, name_size);
     entry->name = s;
