@@ -227,6 +227,12 @@ extern int kndAttr_new(struct kndAttr **self);
 extern int knd_attr_var_export_JSON(struct kndAttrVar *self,
                                     struct glbOutput *out);
 
+extern int knd_export_inherited_attr(void *obj,
+                                     const char *elem_id  __attribute__((unused)),
+                                     size_t elem_id_size  __attribute__((unused)),
+                                     size_t count __attribute__((unused)),
+                                     void *elem);
+
 extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
                                      struct glbOutput *out,
                                      bool is_concise);
