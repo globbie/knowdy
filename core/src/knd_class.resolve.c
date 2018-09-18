@@ -73,7 +73,7 @@ static int index_attr(struct kndClass *self,
     struct kndClass *c = NULL;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
         knd_log("\n.. indexing CURR CLASS: \"%.*s\" .. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" (name:%.*s val:%.*s)",
                 self->entry->name_size, self->entry->name,
@@ -147,27 +147,35 @@ static int index_attr_var_list(struct kndClass *self,
     }
 
     for (item = parent_item->list; item; item = item->next) {
-        if (DEBUG_CLASS_RESOLVE_LEVEL_3)
-            knd_log("== list item name:%.*s", item->name_size, item->name);
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+            knd_log("== index list item:%.*s", item->name_size, item->name);
 
         /* specific class */
         err = knd_get_class(self->entry->repo,
                         item->name,
-                        item->name_size, &c);                                          RET_ERR();
+                        item->name_size, &c);                                     RET_ERR();
         item->class = c;
 
         if (!c->is_resolved) {
-            err = c->resolve(c, NULL);                                                RET_ERR();
+            err = c->resolve(c, NULL);                                            RET_ERR();
         }
-        err = knd_is_base(base, c);                                                       RET_ERR();
+        err = knd_is_base(base, c);                                               RET_ERR();
 
         set = attr->parent_class->entry->descendants;
         if (!set) {
-            err = knd_set_new(mempool, &set);                                RET_ERR();
+            err = knd_set_new(mempool, &set);                                     RET_ERR();
             set->type = KND_SET_CLASS;
             set->base =  attr->parent_class->entry;
             attr->parent_class->entry->descendants = set;
         }
+
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+            knd_log(".. add %.*s ref to %.*s (repo:%.*s)",
+                    item->name_size, item->name,
+                    attr->parent_class->name_size,
+                    attr->parent_class->name,
+                    attr->parent_class->entry->repo->name_size,
+                    attr->parent_class->entry->repo->name);
 
         /* add curr class to the reverse index */
         err = set->add_ref(set, attr, self->entry, c->entry);

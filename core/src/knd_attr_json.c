@@ -206,6 +206,64 @@ static int aggr_item_export_JSON(struct kndAttrVar *parent_item,
     return knd_OK;
 }
 
+extern int knd_export_inherited_attr(void *obj,
+                                     const char *elem_id  __attribute__((unused)),
+                                     size_t elem_id_size  __attribute__((unused)),
+                                     size_t count __attribute__((unused)),
+                                     void *elem)
+{
+    struct kndClass   *self = obj;
+    struct kndAttrRef *ref = elem;
+    struct kndAttr *attr = ref->attr;
+    struct kndAttrVar *attr_var = NULL;
+    struct glbOutput *out = self->entry->repo->out;
+    int err;
+
+    /*knd_log("== %.*s attr >> %.*s",
+            self->name_size, self->name,
+            attr->name_size, attr->name); */
+    /* skip over immediate attrs */
+    if (attr->parent_class == self) return knd_OK;
+
+    /* NB: display only concise fields */
+    if (!attr->concise_level) {
+        return knd_OK;
+    }
+
+    attr_var = ref->attr_var;
+    if (!attr_var) {
+        // TODO
+        return knd_OK;
+        //err = knd_get_attr_var(self, attr->name, attr->name_size, &attr_var);
+        //if (err) return knd_OK;
+    }
+
+    err = out->writec(out, ',');                                          RET_ERR();
+    err = out->writec(out, '"');                                          RET_ERR();
+    err = out->write(out, attr_var->name, attr_var->name_size);           RET_ERR();
+    err = out->write(out, "\":", strlen("\":"));                          RET_ERR();
+
+    switch (attr->type) {
+    case KND_ATTR_NUM:
+        err = out->write(out, attr_var->val, attr_var->val_size);             RET_ERR();
+        break;
+    case KND_ATTR_AGGR:
+        err = aggr_item_export_JSON(attr_var, out);
+        if (err) return err;
+        break;
+    case KND_ATTR_STR:
+        err = out->write(out, "\"", strlen("\""));                            RET_ERR();
+        err = out->write(out, attr_var->val, attr_var->val_size);             RET_ERR();
+        err = out->write(out, "\"", strlen("\""));                            RET_ERR();
+        break;
+    default:
+        err = out->write(out, "{}", strlen("{}"));                            RET_ERR();
+        break;
+    }
+    
+    return knd_OK;
+}
+
 static int ref_item_export_JSON(struct kndAttrVar *item)
 {
     struct kndClass *c;

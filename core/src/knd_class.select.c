@@ -65,17 +65,16 @@ static gsl_err_t select_by_baseclass(void *obj,
         return make_gsl_err(gsl_OK);
     }
 
-    set = c->entry->descendants;
-    if (task->num_sets + 1 > KND_MAX_CLAUSES)
-        return make_gsl_err(gsl_LIMIT);
-    task->sets[task->num_sets] = set;
-    task->num_sets++;
+    //set = c->entry->descendants;
+    //if (task->num_sets + 1 > KND_MAX_CLAUSES)
+    //    return make_gsl_err(gsl_LIMIT);
+    //task->sets[task->num_sets] = set;
+    //task->num_sets++;
 
     self->curr_baseclass = c;
 
     return make_gsl_err(gsl_OK);
 }
-
 
 static gsl_err_t select_by_attr(void *obj,
                                 const char *name, size_t name_size)
@@ -94,7 +93,8 @@ static gsl_err_t select_by_attr(void *obj,
     log->reset(log);
 
     c = self->curr_attr->parent_class;
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+
+    if (DEBUG_CLASS_SELECT_LEVEL_2) {
         knd_log("== select by attr value: \"%.*s\" of \"%.*s\" resolved:%d",
                 name_size, name, c->name_size, c->name, c->is_resolved);
     }
@@ -113,7 +113,6 @@ static gsl_err_t select_by_attr(void *obj,
         task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err_external(knd_NO_MATCH);
     }
-
 
     err = knd_get_class(self->entry->repo, name, name_size, &c);
     if (err) {
@@ -157,7 +156,8 @@ static gsl_err_t parse_attr_select(void *obj,
     };
     int err;
 
-    if (!self->curr_baseclass) return *total_size = 0, make_gsl_err_external(knd_FAIL);
+    if (!self->curr_baseclass)
+        return *total_size = 0, make_gsl_err_external(knd_FAIL);
 
     err = knd_class_get_attr(self->curr_baseclass, name, name_size, &attr);
     if (err) {
@@ -356,7 +356,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
     struct kndTask *task = self->entry->repo->task;
     gsl_err_t err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log(".. select by baseclass \"%.*s\"..", 64, rec);
 
     struct gslTaskSpec specs[] = {
@@ -420,6 +420,7 @@ static gsl_err_t present_class_selection(void *obj,
     out->reset(out);
     
     if (task->type == KND_SELECT_STATE) {
+
         if (DEBUG_CLASS_SELECT_LEVEL_TMP)
             knd_log(".. batch selection: batch size: %zu   start from: %zu",
                     task->batch_max, task->batch_from);
@@ -451,8 +452,6 @@ static gsl_err_t present_class_selection(void *obj,
 
             set->type = KND_SET_CLASS;
             set->mempool = mempool;
-
-            // TODO: compound class
             set->base = task->sets[0]->base;
 
             err = set->intersect(set, task->sets, task->num_sets);
@@ -460,6 +459,7 @@ static gsl_err_t present_class_selection(void *obj,
         }
 
         if (!set->num_elems) {
+            knd_log("== empty set? %p", set);
             err = out->write(out, "{}", strlen("{}"));
             if (err) return make_gsl_err_external(err);
             return make_gsl_err(gsl_OK);

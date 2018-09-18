@@ -42,9 +42,6 @@ static void
 kndSet_str(struct kndSet *self, size_t depth)
 {
     struct kndFacet *facet;
-    struct kndSet *set;
-    const char *key;
-    void *val;
 
     knd_log("%*s{set %.*s [total:%zu]", depth * KND_OFFSET_SIZE, "",
             self->base->name_size, self->base->name, self->num_elems);
@@ -160,7 +157,7 @@ static int kndSet_intersect(struct kndSet *self,
         return knd_FAIL;
     }
 
-    if (DEBUG_SET_LEVEL_2)
+    if (DEBUG_SET_LEVEL_TMP)
         knd_log(" .. intersection by Set \"%.*s\".. total sets:%zu",
                 self->base->name_size, self->base->name, num_sets);
 
@@ -232,7 +229,7 @@ kndSet_alloc_facet(struct kndSet  *self,
     f->attr = attr;
     f->parent = self;
 
-    err = knd_set_new(self->mempool, &set);                                      RET_ERR();
+    err = knd_set_new(self->mempool, &set);                                       RET_ERR();
     set->type = KND_SET_CLASS;
     f->set_idx = set;
 
@@ -278,6 +275,11 @@ static int kndFacet_alloc_set(struct kndFacet  *self,
     void *obj;
     struct kndMemPool *mempool = self->attr->parent_class->entry->repo->mempool;
     int err;
+
+    if (DEBUG_SET_LEVEL_2) {
+        knd_log(".. add  %.*s class to set idx..\n",
+                base->name_size, base->name);
+    } 
 
     err = self->set_idx->get(self->set_idx,
                              base->id, base->id_size, &obj);
