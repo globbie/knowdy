@@ -351,6 +351,21 @@ static gsl_err_t parse_attr(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t confirm_attr_var(void *obj,
+                                  const char *name __attribute__((unused)),
+                                  size_t name_size __attribute__((unused)))
+{
+    struct kndAttrVar *attr_var = obj;
+
+    // TODO empty values?
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
+        if (!attr_var->val_size)
+            knd_log("NB: attr var value not set in %.*s",
+                    attr_var->name_size, attr_var->name);
+    }
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t import_attr_var(void *obj,
                                  const char *name, size_t name_size,
                                  const char *rec, size_t *total_size)
@@ -401,12 +416,16 @@ static gsl_err_t import_attr_var(void *obj,
         { .is_validator = true,
           .validate = import_nested_attr_var,
           .obj = attr_var
-        }/*,
+        },/*
         { .name = "_cdata",
           .name_size = strlen("_cdata"),
           .parse = gsl_parse_cdata,
           .obj = &cdata_spec
           }*/
+        { .is_default = true,
+          .run = confirm_attr_var,
+          .obj = attr_var
+        }
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -522,13 +541,6 @@ static gsl_err_t import_attr_var_list(void *obj,
     parser_err = gsl_parse_array(&import_attr_var_spec, rec, total_size);
     if (parser_err.code) return parser_err;
 
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t confirm_attr_var(void *obj __attribute__((unused)),
-                                  const char *name __attribute__((unused)),
-                                  size_t name_size __attribute__((unused)))
-{
     return make_gsl_err(gsl_OK);
 }
 
