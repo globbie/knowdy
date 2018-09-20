@@ -310,9 +310,9 @@ static gsl_err_t parse_translation_GSL(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t parse_GSL(struct kndText *self,
-                     const char *rec,
-                     size_t *total_size)
+static gsl_err_t parse_GSL(struct kndText *self __attribute__((unused)),
+                           const char *rec,
+                           size_t *total_size)
 {
     struct kndTranslation *tr;
     gsl_err_t parser_err;
