@@ -27,7 +27,6 @@ static void del(struct kndText *self)
 
 static void str(struct kndText *self)
 {
-    struct kndState *state;
     //struct kndTranslation *tr;
 
     state = self->states;
@@ -159,8 +158,6 @@ static int export_JSON(struct kndText *self   __attribute__((unused)),
 */
     return knd_OK;
 }
-
-
 
 static int export_GSP(struct kndText *self   __attribute__((unused)),
                       struct glbOutput *out   __attribute__((unused)))
@@ -353,7 +350,6 @@ static gsl_err_t parse_GSL(struct kndText *self,
                      const char *rec,
                      size_t *total_size)
 {
-    struct kndState *state;
     struct kndTranslation *tr;
     gsl_err_t parser_err;
 

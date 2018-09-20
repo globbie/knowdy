@@ -610,7 +610,6 @@ int knd_parse_dir_size(const char *rec,
                        size_t *total_trailer_size)
 {
     bool in_field = false;
-    bool got_separ = false;
     bool got_tag = false;
     bool got_size = false;
     size_t chunk_size = 0;

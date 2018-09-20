@@ -148,14 +148,12 @@ ooArray_remove(struct ooArray *self,
                      size_t pos)
 {
     unsigned int i;
-    void *res;
 
     if (pos >= self->size)
         return oo_FAIL;
 
     self->size--;
 
-    res = self->data[pos];
     for (i = pos; i < self->size; ++i)
         self->data[i] = self->data[i + 1];
 

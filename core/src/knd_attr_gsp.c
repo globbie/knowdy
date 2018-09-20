@@ -60,10 +60,7 @@ static int aggr_item_export_GSP(struct kndAttrVar *parent_item,
 {
     struct kndAttrVar *item;
     struct kndAttr *attr;
-    struct kndClass *c;
     int err;
-
-    c = parent_item->attr->parent_class;
 
     if (DEBUG_ATTR_GSP_LEVEL_TMP) {
         knd_log(".. GSP export aggr item: %.*s (id:%.*s)",

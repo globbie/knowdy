@@ -42,9 +42,9 @@ static int kndShard_run_task(struct kndShard *self,
                              char *result  __attribute__((unused)),
                              size_t *result_size  __attribute__((unused)))
 {
-    char buf[KND_TEMP_BUF_SIZE];
     const char *rec_start;
 
+    //char buf[KND_TEMP_BUF_SIZE];
     /*clockid_t clk_id;
     clk_id = CLOCK_MONOTONIC;
     struct timespec start_ts;
