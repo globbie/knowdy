@@ -1106,8 +1106,6 @@ extern int knd_register_class_inst(struct kndClass *self,
     struct kndState *state;
     int err;
 
-    /* skip the root class */
-    if (!self->entry->ancestors) return knd_OK;
 
     inst_idx = self->entry->inst_idx;
     if (!inst_idx) {
@@ -1135,7 +1133,8 @@ extern int knd_register_class_inst(struct kndClass *self,
     state->numid = self->num_inst_states;
 
     if (DEBUG_CLASS_LEVEL_TMP) {
-        knd_log(".. register \"%.*s\" inst with class \"%.*s\" (%.*s)  num inst states:%zu",
+        knd_log(".. register \"%.*s\" inst with class \"%.*s\" (%.*s)"
+                " num inst states:%zu",
                 entry->inst->name_size, entry->inst->name,
                 self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name,
@@ -1147,6 +1146,10 @@ extern int knd_register_class_inst(struct kndClass *self,
     for (struct kndClassRef *ref = self->entry->ancestors; ref; ref = ref->next) {
         c = ref->entry->class;
 
+        /* skip the root class */
+        if (!c->entry->ancestors) continue;
+        if (c->state_top) continue;
+       
         if (self->entry->repo != ref->entry->repo) {
             err = knd_class_clone(ref->entry->class, self->entry->repo, &c);
             if (err) return err;
@@ -1207,7 +1210,6 @@ extern int knd_class_clone(struct kndClass *self,
         c->str(c);
 
     *result = c;
-
     return knd_OK;
 }
 

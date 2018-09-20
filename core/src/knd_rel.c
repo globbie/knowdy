@@ -2202,7 +2202,7 @@ static int kndRel_update_state(struct kndRel *self,
     return knd_OK;
 }
 
-static gsl_err_t set_liquid_rel_id(void *obj,
+/*static gsl_err_t set_liquid_rel_id(void *obj,
                                    const char *val,
                                    size_t val_size __attribute__((unused)))
 {
@@ -2226,8 +2226,10 @@ static gsl_err_t set_liquid_rel_id(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
+*/
 
 
+ /*
 static gsl_err_t run_get_liquid_rel(void *obj, const char *name, size_t name_size)
 {
     struct kndRel *self = obj;
@@ -2241,7 +2243,7 @@ static gsl_err_t run_get_liquid_rel(void *obj, const char *name, size_t name_siz
 
     return make_gsl_err(gsl_OK);
 }
-
+ */
 
 static int export_updates(struct kndRel *self)
 {

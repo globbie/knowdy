@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <time.h>
 
 #include "knd_shard.h"
 #include "knd_repo.h"
@@ -38,15 +39,27 @@ parse_memory_settings(void *obj, const char *rec, size_t *total_size)
 static int kndShard_run_task(struct kndShard *self,
                              const char *rec,
                              size_t rec_size,
-                             char *result,
-                             size_t *result_size)
+                             char *result  __attribute__((unused)),
+                             size_t *result_size  __attribute__((unused)))
 {
+    char buf[KND_TEMP_BUF_SIZE];
     const char *rec_start;
+
+    clockid_t clk_id;
+    clk_id = CLOCK_MONOTONIC;
+    struct timespec start_ts;
+    struct timespec end_ts;
     int err;
 
-    knd_log("++ kndShard got new task! curr storage size:%zu  capacity:%zu",
+    err = clock_gettime(clk_id, &start_ts);
+    strftime(buf, sizeof buf, "%D %T", gmtime(&start_ts.tv_sec));
+
+    knd_log("UTC %s.%09ld: new task curr storage size:%zu  capacity:%zu",
+            buf, start_ts.tv_nsec,
             self->task_storage->buf_size, self->task_storage->capacity);
 
+
+    
     rec_start = self->task_storage->buf + self->task_storage->buf_size;
     err = self->task_storage->write(self->task_storage, rec, rec_size);
     if (err) {
@@ -76,19 +89,23 @@ final:
         break;
     }
 
+    // TODO: time calculation
     err = self->task->build_report(self->task);
     if (err != knd_OK) {
         knd_log("-- task report failed: %d", err);
         return -1;
     }
 
-    if (DEBUG_SHARD_LEVEL_2)
-        knd_log("== task report: %.*s",
-                self->task->report_size, self->task->report);
+    err = clock_gettime(clk_id, &end_ts);
+
+    if (DEBUG_SHARD_LEVEL_TMP)
+        knd_log("== task completed in %ld microsecs  [reply size:%zu]",
+                (end_ts.tv_nsec - start_ts.tv_nsec) / 1000,
+                self->task->report_size);
 
     self->report = self->task->report;
     self->report_size = self->task->report_size;
-    
+
     return knd_OK;
 }
 

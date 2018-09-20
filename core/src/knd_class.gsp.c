@@ -206,11 +206,8 @@ static int export_conc_id_GSP(void *obj,
 static int export_facets_GSP(struct kndClass *self, struct kndSet *set)
 {
     struct glbOutput *out = self->entry->repo->out;
-    struct kndSet *subset;
     struct kndFacet *facet;
     //struct ooDict *set_name_idx;
-    const char *key;
-    void *val;
     int err;
 
     err = out->write(out,  "[fc ", strlen("[fc "));                               RET_ERR();
@@ -276,7 +273,7 @@ static int export_descendants_GSP(struct kndClass *self)
     return knd_OK;
 }
 
-static int ref_list_export_GSP(struct kndClass *self,
+/*static int ref_list_export_GSP(struct kndClass *self,
                                struct kndAttrVar *parent_item)
 {
     struct kndAttrVar *item;
@@ -294,7 +291,6 @@ static int ref_list_export_GSP(struct kndClass *self,
     err = out->write(out, "[r", strlen("[r"));
     if (err) return err;
 
-    /* first elem */
     if (parent_item->val_size) {
         c = parent_item->class;
         if (c) {
@@ -322,8 +318,9 @@ static int ref_list_export_GSP(struct kndClass *self,
 
     return knd_OK;
 }
+*/
 
-static int aggr_item_export_GSP(struct kndClass *self,
+ /*static int aggr_item_export_GSP(struct kndClass *self,
                                 struct kndAttrVar *parent_item)
 {
     struct glbOutput *out = self->entry->repo->out;
@@ -345,7 +342,6 @@ static int aggr_item_export_GSP(struct kndClass *self,
         if (err) return err;
     } else {
 
-        /* terminal value */
         if (parent_item->val_size) {
             c = parent_item->attr->ref_class;
             if (c && c->implied_attr) {
@@ -407,8 +403,9 @@ static int aggr_item_export_GSP(struct kndClass *self,
 
     return knd_OK;
 }
-
-static int aggr_list_export_GSP(struct kndClass *self,
+ */
+ 
+/*static int aggr_list_export_GSP(struct kndClass *self,
                                 struct kndAttrVar *parent_item)
 {
     struct kndAttrVar *item;
@@ -443,7 +440,7 @@ static int aggr_list_export_GSP(struct kndClass *self,
 
     return knd_OK;
 }
-
+*/
 
 static int export_class_body_updates(struct kndClass *self,
                                      struct kndClassUpdate *class_update  __attribute__((unused)),
@@ -596,9 +593,7 @@ extern int knd_class_export_GSP(struct kndClass *self,
     return knd_OK;
 }
 
-
-
-
+/*
 static gsl_err_t atomic_elem_alloc(void *obj,
                                    const char *val,
                                    size_t val_size,
@@ -633,16 +628,9 @@ static gsl_err_t atomic_elem_alloc(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
+*/
 
-static gsl_err_t atomic_elem_append(void *accu  __attribute__((unused)),
-                                    void *item __attribute__((unused)))
-{
-
-    return make_gsl_err(gsl_OK);
-}
-
-/* facet parsing */
-static gsl_err_t facet_alloc(void *obj,
+ /*static gsl_err_t facet_alloc(void *obj,
                              const char *name,
                              size_t name_size,
                              size_t count __attribute__((unused)),
@@ -662,7 +650,6 @@ static gsl_err_t facet_alloc(void *obj,
     err = knd_facet_new(mempool, &f);
     if (err) return make_gsl_err_external(err);
 
-    /* TODO: mempool alloc */
     //err = ooDict_new(&f->set_name_idx, KND_SMALL_DICT_SIZE);
     //if (err) return make_gsl_err_external(err);
 
@@ -672,7 +659,9 @@ static gsl_err_t facet_alloc(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
+ */
 
+  /*
 static gsl_err_t facet_append(void *accu,
                               void *item)
 {
@@ -687,8 +676,9 @@ static gsl_err_t facet_append(void *accu,
 
     return make_gsl_err(gsl_OK);
 }
+*/
 
-static gsl_err_t set_facet_name(void *obj, const char *name, size_t name_size)
+   /*static gsl_err_t set_facet_name(void *obj, const char *name, size_t name_size)
 {
     struct kndFacet *f = obj;
     struct kndSet *parent = f->parent;
@@ -711,7 +701,9 @@ static gsl_err_t set_facet_name(void *obj, const char *name, size_t name_size)
     f->attr = attr;
     return make_gsl_err(gsl_OK);
 }
+   */
 
+    /*
 static gsl_err_t set_alloc(void *obj,
                            const char *name,
                            size_t name_size,
@@ -736,25 +728,21 @@ static gsl_err_t set_alloc(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
-
-static gsl_err_t set_append(void *accu,
+    */
+    
+/*static gsl_err_t set_append(void *accu,
                             void *item)
 {
     struct kndFacet *self = accu;
     struct kndSet *set = item;
     int err;
 
-    /*if (!self->set_name_idx) return make_gsl_err(gsl_OK);
-
-    err = self->set_name_idx->set(self->set_name_idx,
-                                  set->base->name, set->base->name_size,
-                                  (void*)set);
-    if (err) return make_gsl_err_external(err);
-    */
     return make_gsl_err(gsl_OK);
 }
+*/
 
 
+ /*
 static gsl_err_t atomic_classref_alloc(void *obj,
                                        const char *val,
                                        size_t val_size,
@@ -794,7 +782,9 @@ static gsl_err_t atomic_classref_alloc(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
+ */
 
+  /*
 static gsl_err_t resolve_set_base(void *obj,
                                   const char *id, size_t id_size)
 {
@@ -822,7 +812,9 @@ static gsl_err_t resolve_set_base(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
-
+  */
+  
+/*
 static gsl_err_t set_read(void *obj,
                           const char *rec,
                           size_t *total_size)
@@ -832,7 +824,7 @@ static gsl_err_t set_read(void *obj,
     struct gslTaskSpec classref_spec = {
         .is_list_item = true,
         .alloc = atomic_classref_alloc,
-        .append = atomic_elem_append,
+        //.append = atomic_elem_append,
         .accu = set
     };
 
@@ -860,7 +852,9 @@ static gsl_err_t set_read(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
+*/
 
+/*
 static gsl_err_t facet_read(void *obj,
                             const char *rec,
                             size_t *total_size)
@@ -870,7 +864,7 @@ static gsl_err_t facet_read(void *obj,
     struct gslTaskSpec set_item_spec = {
         .is_list_item = true,
         .alloc = set_alloc,
-        .append = set_append,
+        //.append = set_append,
         .accu = f,
         .parse = set_read
     };
@@ -899,11 +893,11 @@ static gsl_err_t facet_read(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
-
+*/
 static gsl_err_t attr_var_alloc(void *obj,
-                                const char *name,
-                                size_t name_size,
-                                size_t count,
+                                const char *name __attribute__((unused)),
+                                size_t name_size __attribute__((unused)),
+                                size_t count __attribute__((unused)),
                                 void **result)
 {
     struct kndAttrVar *self = obj;
@@ -914,7 +908,7 @@ static gsl_err_t attr_var_alloc(void *obj,
     err = knd_attr_var_new(mempool, &attr_var);
     if (err) return make_gsl_err_external(err);
 
-    attr_var->name_size = sprintf(attr_var->name, "%lu", (unsigned long)count);
+    //attr_var->name_size = sprintf(attr_var->name, "%lu", (unsigned long)count);
     attr_var->attr = self->attr;
     attr_var->parent = self;
 
@@ -946,11 +940,8 @@ static gsl_err_t check_list_item_id(void *obj,
                                     const char *id, size_t id_size)
 {
     struct kndAttrVar *attr_var = obj;
-    struct kndSet *class_idx;
-    struct kndClassEntry *entry;
     struct kndClass *parent_class = attr_var->attr->parent_class;
     struct kndClass *c;
-    void *result;
     int err;
 
     if (!id_size) return make_gsl_err(gsl_FORMAT);
@@ -1015,7 +1006,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
     attr_var->parent = self;
     attr_var->class_var = self->class_var;
 
-    memcpy(attr_var->name, name, name_size);
+    attr_var->name = name;
     attr_var->name_size = name_size;
 
     if (DEBUG_CLASS_GSP_LEVEL_2) {
@@ -1063,15 +1054,14 @@ static gsl_err_t read_nested_attr_var(void *obj,
     default:
         break;
     }
-
     attr_var->attr = attr;
 
     struct gslTaskSpec specs[] = {
-        { .is_implied = true,
+        /*{ .is_implied = true,
           .buf = attr_var->val,
           .buf_size = &attr_var->val_size,
           .max_buf_size = sizeof attr_var->val
-        },
+          }*/
         { .is_validator = true,
           .validate = read_nested_attr_var,
           .obj = attr_var
@@ -1285,7 +1275,7 @@ static gsl_err_t set_class_inst_name(void *obj, const char *name, size_t name_si
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= sizeof self->entry->name) return make_gsl_err(gsl_LIMIT);
 
-    memcpy(self->entry->name, name, name_size);
+    self->entry->name = name;
     self->entry->name_size = name_size;
 
     self->name = self->entry->name;
@@ -1421,7 +1411,7 @@ static gsl_err_t validate_attr_var(void *obj,
     }
 
     attr_var->attr = attr;
-    memcpy(attr_var->name, name, name_size);
+    attr_var->name = name;
     attr_var->name_size = name_size;
 
     struct gslTaskSpec attr_var_spec = {
@@ -1432,11 +1422,11 @@ static gsl_err_t validate_attr_var(void *obj,
     };
 
     struct gslTaskSpec specs[] = {
-        { .is_implied = true,
+        /*{ .is_implied = true,
           .buf = attr_var->val,
           .buf_size = &attr_var->val_size,
           .max_buf_size = sizeof attr_var->val
-        },
+          },*/
         { .is_validator = true,
           .validate = read_nested_attr_var,
           .obj = attr_var
@@ -1506,7 +1496,7 @@ static gsl_err_t validate_attr_var_list(void *obj,
     attr_var->attr = attr;
     attr_var->class_var = class_var;
 
-    memcpy(attr_var->name, name, name_size);
+    attr_var->name = name;
     attr_var->name_size = name_size;
 
     switch (attr->type) {
@@ -1552,79 +1542,11 @@ static gsl_err_t validate_attr_var_list(void *obj,
 }
 
 
-static gsl_err_t parse_descendants(void *obj,
-                                   const char *rec,
-                                   size_t *total_size)
-{
-    struct kndClass *self = obj;
-    struct kndSet *set;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    size_t total_elems = 0;
-    int err;
-    gsl_err_t parser_err;
-
-    if (DEBUG_CLASS_GSP_LEVEL_2)
-        knd_log(".. parsing a set of descendants: \"%.*s\"", 300, rec);
-
-    err = knd_set_new(mempool, &set);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    set->type = KND_SET_CLASS;
-    set->base = self->entry;
-    self->entry->descendants = set;
-
-    struct gslTaskSpec c_item_spec = {
-        .is_list_item = true,
-        .alloc = atomic_elem_alloc,
-        .append = atomic_elem_append,
-        .accu = self
-    };
-
-    struct gslTaskSpec facet_spec = {
-        .is_list_item = true,
-        .alloc = facet_alloc,
-        .append = facet_append,
-        .parse = facet_read,
-        .accu = set
-    };
-
-    struct gslTaskSpec specs[] = {
-        {  .name = "tot",
-           .name_size = strlen("tot"),
-           .parse = gsl_parse_size_t,
-           .obj = &total_elems
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "c",
-          .name_size = strlen("c"),
-          .parse = gsl_parse_array,
-          .obj = &c_item_spec
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "fc",
-          .name_size = strlen("fc"),
-          .parse = gsl_parse_array,
-          .obj = &facet_spec
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    if (total_elems != set->num_elems) {
-        knd_log("-- set total elems mismatch: %zu vs actual %zu",
-                total_elems, set->num_elems);
-        return make_gsl_err(gsl_FAIL);
-    }
-
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t set_class_var_baseclass(void *obj,
                                          const char *id, size_t id_size)
 {
     struct kndClassVar *class_var = obj;
     struct kndClass *c;
-    struct kndClassEntry *entry;
     int err;
 
     if (!id_size) return make_gsl_err(gsl_FORMAT);
@@ -1729,10 +1651,11 @@ static gsl_err_t parse_baseclass_array(void *obj,
     return gsl_parse_array(&cvar_spec, rec, total_size);
 }
 
-extern gsl_err_t knd_read_class_state(struct kndClass *self,
-                                      struct kndClassUpdate *class_update,
-                                      const char *rec,
-                                      size_t *total_size)
+extern gsl_err_t
+knd_read_class_state(struct kndClass *self,
+                     struct kndClassUpdate *class_update __attribute__((unused)),
+                     const char *rec,
+                     size_t *total_size)
 {
     if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log(".. reading %.*s class state GSP: \"%.*s\"..",

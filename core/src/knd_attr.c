@@ -731,9 +731,9 @@ extern int kndAttr_new(struct kndAttr **c)
 }
 
 extern int knd_copy_attr_ref(void *obj,
-                             const char *elem_id,
-                             size_t elem_id_size,
-                             size_t count,
+                             const char *elem_id __attribute__((unused)),
+                             size_t elem_id_size __attribute__((unused)),
+                             size_t count __attribute__((unused)),
                              void *elem)
 {
     struct kndSet     *attr_idx = obj;
@@ -758,9 +758,9 @@ extern int knd_copy_attr_ref(void *obj,
 }
 
 extern int knd_register_attr_ref(void *obj,
-                                 const char *elem_id,
-                                 size_t elem_id_size,
-                                 size_t count,
+                                 const char *elem_id __attribute__((unused)),
+                                 size_t elem_id_size __attribute__((unused)),
+                                 size_t count __attribute__((unused)),
                                  void *elem)
 {
     struct kndClass     *self = obj;

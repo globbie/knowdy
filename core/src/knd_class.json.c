@@ -309,60 +309,80 @@ extern int knd_class_export_set_JSON(struct kndClass *self,
     return knd_OK;
 }
 
+
+static int present_subclass(struct kndClassRef *ref,
+                            struct glbOutput *out)
+{
+    struct kndClassEntry *entry = ref->entry;
+    struct kndClass *c;
+    int err;
+
+    err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));          RET_ERR();
+    err = out->write(out, entry->name, entry->name_size);                     RET_ERR();
+    err = out->write(out, "\"", 1);                                           RET_ERR();
+
+    err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                  RET_ERR();
+    err = out->writef(out, "%zu", entry->numid);                              RET_ERR();
+
+    if (ref->entry->num_terminals) {
+        err = out->write(out, ",\"_num_terminals\":",
+                         strlen(",\"_num_terminals\":"));                     RET_ERR();
+        err = out->writef(out, "%zu", entry->num_terminals);                  RET_ERR();
+    }
+
+    /* localized glosses */
+    c = entry->class;
+    if (!c) {
+        //err = unfreeze_class(self, entry, &c);                          RET_ERR();
+    }
+    err = export_gloss_JSON(c);                                               RET_ERR();
+    err = export_concise_JSON(c);                                             RET_ERR();
+    err = out->writec(out, '}');                                              RET_ERR();
+    return knd_OK;
+}
+
 static int present_subclasses(struct kndClass *self,
+                              size_t num_children,
                               struct glbOutput *out)
 {
     struct kndClassRef *ref;
-    struct kndClassEntry *entry;
-    struct kndClass *c;
+    struct kndClassEntry *entry = self->entry;
+    struct kndClassEntry *orig_entry = entry->orig;
     bool in_list = false;
     int err;
 
     err = out->write(out, ",\"_num_subclasses\":",
                      strlen(",\"_num_subclasses\":"));                  RET_ERR();
 
-    err = out->writef(out, "%zu", self->entry->num_children);            RET_ERR();
+    err = out->writef(out, "%zu", num_children);                        RET_ERR();
 
-    if (self->entry->num_terminals) {
+    if (entry->num_terminals) {
         err = out->write(out, ",\"_num_terminals\":",
                          strlen(",\"_num_terminals\":"));             RET_ERR();
-        err = out->writef(out, "%zu", self->entry->num_terminals);    RET_ERR();
+        err = out->writef(out, "%zu", entry->num_terminals);    RET_ERR();
     }
 
     err = out->write(out, ",\"_subclasses\":[",
                      strlen(",\"_subclasses\":["));               RET_ERR();
     
-    for (ref = self->entry->children; ref; ref = ref->next) {
+    for (ref = entry->children; ref; ref = ref->next) {
         if (in_list) {
             err = out->write(out, ",", 1);  RET_ERR();
         }
-        entry = ref->entry;
-
-        err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));          RET_ERR();
-        err = out->write(out, entry->name, entry->name_size);                     RET_ERR();
-        err = out->write(out, "\"", 1);                                           RET_ERR();
-
-        err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                  RET_ERR();
-        err = out->writef(out, "%zu", entry->numid);                              RET_ERR();
-
-        if (ref->entry->num_terminals) {
-            err = out->write(out, ",\"_num_terminals\":",
-                             strlen(",\"_num_terminals\":"));                     RET_ERR();
-            err = out->writef(out, "%zu", entry->num_terminals);                  RET_ERR();
-        }
-
-        /* localized glosses */
-        c = entry->class;
-        if (!c) {
-            //err = unfreeze_class(self, entry, &c);                          RET_ERR();
-        }
-
-        err = export_gloss_JSON(c);                                               RET_ERR();
-        err = export_concise_JSON(c);                                             RET_ERR();
-        err = out->writec(out, '}');                                              RET_ERR();
+        err = present_subclass(ref, out);                         RET_ERR();
         in_list = true;
     }
 
+    if (orig_entry) {
+        for (ref = orig_entry->children; ref; ref = ref->next) {
+            if (in_list) {
+                err = out->write(out, ",", 1);  RET_ERR();
+            }
+            err = present_subclass(ref, out);                         RET_ERR();
+            in_list = true;
+        }
+    }
+    
     err = out->write(out, "]", 1);                                                RET_ERR();
     
     return knd_OK;
@@ -376,26 +396,29 @@ extern int knd_class_export_JSON(struct kndClass *self,
     struct kndAttr *attr;
     struct kndClassVar *item;
     struct kndSet *attr_idx;
+    struct kndClassEntry *entry = self->entry;
+    struct kndClassEntry *orig_entry = entry->orig;
     size_t item_count;
+    size_t num_children = 0;
     int i, err;
 
     if (DEBUG_JSON_LEVEL_2)
         knd_log(".. JSON export: \"%.*s\"   depth:%zu max depth:%zu",
-                self->entry->name_size, self->entry->name,
+                entry->name_size, entry->name,
                 self->depth, self->max_depth);
 
     err = out->write(out, "{", 1);                                                RET_ERR();
     err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                RET_ERR();
-    err = out->write_escaped(out, self->entry->name, self->entry->name_size);     RET_ERR();
+    err = out->write_escaped(out, entry->name, entry->name_size);     RET_ERR();
     err = out->writec(out, '"');                                                  RET_ERR();
 
     err = out->write(out, ",\"_repo\":\"", strlen(",\"_repo\":\""));              RET_ERR();
-    err = out->write(out, self->entry->repo->name,
-                     self->entry->repo->name_size);                               RET_ERR();
+    err = out->write(out, entry->repo->name,
+                     entry->repo->name_size);                               RET_ERR();
     err = out->writec(out, '"');                                                  RET_ERR();
 
     err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
-    err = out->writef(out, "%zu", self->entry->numid);                            RET_ERR();
+    err = out->writef(out, "%zu", entry->numid);                            RET_ERR();
 
     err = export_gloss_JSON(self);                                                RET_ERR();
 
@@ -493,23 +516,26 @@ extern int knd_class_export_JSON(struct kndClass *self,
     if (err && err != knd_RANGE) return err;
 
     /* facets */
-    if (self->entry->descendants) {
-        //knd_log("++ desc facets: %zu", self->entry->descendants->num_facets);
-        //self->entry->descendants->num_facets) {
-        //err = export_facets_JSON(self, self->entry->descendants);
+    if (entry->descendants) {
+        //knd_log("++ desc facets: %zu", entry->descendants->num_facets);
+        //entry->descendants->num_facets) {
+        //err = export_facets_JSON(self, entry->descendants);
         //if (err) return err;
     }
 
-    if (self->entry->num_children) {
-        err = present_subclasses(self, out);                                      RET_ERR();
+    num_children = entry->num_children;
+    if (orig_entry)
+        num_children += orig_entry->num_children;
+    if (num_children) {
+        err = present_subclasses(self, num_children, out);                        RET_ERR();
     }
 
     /* instances */
-    if (self->entry->inst_idx && self->entry->inst_idx->num_valid_elems) {
+    if (entry->inst_idx && entry->inst_idx->num_valid_elems) {
         err = out->write(out, ",\"_instances\":{",
                          strlen(",\"_instances\":{"));                            RET_ERR();
         err = out->write(out, "\"_tot\":", strlen("\"_tot\":"));                  RET_ERR();
-        err = out->writef(out, "%zu", self->entry->inst_idx->num_valid_elems);    RET_ERR();
+        err = out->writef(out, "%zu", entry->inst_idx->num_valid_elems);    RET_ERR();
 
 
         // TODO navigation facets?

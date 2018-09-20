@@ -25,11 +25,6 @@ static void del(struct kndStateControl *self)
     free(self);
 }
 
-static void str(struct kndStateControl *self)
-{
-    //knd_log("curr state: %.*s", KND_STATE_SIZE, self->state);
-}
-
 static void reset(struct kndStateControl *self)
 {
     self->num_updates = 0;
@@ -44,7 +39,6 @@ static int export_update_GSP(struct kndUpdate *update,
     struct tm tm_info;
     struct kndClassUpdate *class_update;
     struct kndClass *c;
-    struct kndState *state;
     int err;
 
     err = out->writec(out, '{');                                                  RET_ERR();
@@ -131,8 +125,6 @@ static int knd_sync_update(struct kndStateControl *self,
 static int knd_confirm(struct kndStateControl *self,
                        struct kndUpdate *update)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
     struct kndRepo *repo = self->repo;
     struct kndTask *task = self->repo->task;
     struct glbOutput *out = task->out;
@@ -248,7 +240,6 @@ extern int kndStateControl_new(struct kndStateControl **state)
     if (err) return err;
 
     self->del    = del;
-    self->str    = str;
     self->reset  = reset;
     self->confirm  = knd_confirm;
 
@@ -256,12 +247,14 @@ extern int kndStateControl_new(struct kndStateControl **state)
 
     return knd_OK;
 }
+
 extern int knd_state_new(struct kndMemPool *mempool,
                          struct kndState **result)
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndState), &page);  RET_ERR();
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                            sizeof(struct kndState), &page);                      RET_ERR();
     *result = page;
     return knd_OK;
 }
@@ -271,7 +264,8 @@ extern int knd_update_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndUpdate), &page);  RET_ERR();
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                            sizeof(struct kndUpdate), &page);                     RET_ERR();
     *result = page;
     return knd_OK;
 }

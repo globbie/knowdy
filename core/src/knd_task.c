@@ -308,7 +308,6 @@ static int parse_GSL(struct kndTask *self,
     return knd_OK;
 }
 
-
 static int build_report(struct kndTask *self)
 {
     struct glbOutput *out = self->spec_out;
