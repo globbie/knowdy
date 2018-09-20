@@ -795,7 +795,6 @@ extern int knd_is_base(struct kndClass *self,
 {
     struct kndClassEntry *entry = child->entry;
     struct kndClassRef *ref;
-    struct kndClass *c;
 
     if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. check inheritance: %.*s (repo:%.*s) [resolved: %d] => "
@@ -809,7 +808,6 @@ extern int knd_is_base(struct kndClass *self,
     }
 
     for (ref = entry->ancestors; ref; ref = ref->next) {
-        c = ref->class;
         if (ref->class == self) {
             return knd_OK;
         }

@@ -177,7 +177,6 @@ static int export_concise_JSON(struct kndClassInst *self,
     struct kndClassInst *obj;
     struct kndElem *elem;
     bool is_concise = true;
-    bool need_separ = false;
     int err;
 
     err = out->write(out, ",\"_class\":\"", strlen(",\"_class\":\""));
@@ -258,7 +257,6 @@ static int export_JSON(struct kndClassInst *self,
     struct kndClassInst *obj;
     struct kndState *state = self->states;
     bool is_concise = true;
-    bool need_separ;
     int err;
 
     if (DEBUG_INST_LEVEL_2) {
@@ -331,7 +329,6 @@ static int export_JSON(struct kndClassInst *self,
 
     /* TODO: id */
 
-    need_separ = false;
     for (elem = self->elems; elem; elem = elem->next) {
         /* NB: restricted attr */
         if (elem->attr->access_type == KND_ATTR_ACCESS_RESTRICTED)

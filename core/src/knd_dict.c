@@ -245,7 +245,6 @@ ooDict_remove(struct ooDict *self,
     struct ooList *l;
     const char *cur_key;
     size_t cur_key_size;
-    void *data;
     struct ooListItem *cur;
     unsigned int h;
     
@@ -258,7 +257,7 @@ ooDict_remove(struct ooDict *self,
 
         if (cur_key_size != key_size) continue;
         if (!strncmp(key, cur_key, key_size)) {
-            data = ((struct ooDictItem*)cur->data)->data;
+            //data = ((struct ooDictItem*)cur->data)->data;
 
             cur->data = NULL;
             l->remove(l, cur);

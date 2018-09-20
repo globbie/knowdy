@@ -381,7 +381,7 @@ static int kndRepo_open(struct kndRepo *self)
 {
     struct glbOutput *out;
     struct kndClass *c;
-    struct kndProc *proc;
+    //struct kndProc *proc;
     struct kndRel *rel;
     struct kndClassInst *inst;
     struct stat st;
@@ -451,7 +451,7 @@ static int kndRepo_open(struct kndRepo *self)
             }
 
 
-            proc = self->root_proc;
+            //proc = self->root_proc;
             //err = proc->coordinate(proc);                                     RET_ERR();
             rel = self->root_rel;
             err = rel->coordinate(rel);                                       RET_ERR();

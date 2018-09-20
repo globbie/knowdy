@@ -239,11 +239,11 @@ static int export_GSP(struct kndProcArg *self)
 
 static int export_SVG(struct kndProcArg *self)
 {
-    struct glbOutput *out;
+    //struct glbOutput *out;
     struct kndProc *proc;
     int err;
 
-    out = self->out;
+    //out = self->out;
     /*err = out->write(out, "<text>", strlen("<text>"));                            RET_ERR();
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
     err = out->write(out, "</text>", strlen("</text>"));                          RET_ERR();
