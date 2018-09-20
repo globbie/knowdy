@@ -82,8 +82,6 @@ static void str(struct kndElem *self)
 
 static int export_JSON(struct kndElem *self)
 {
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
     struct glbOutput *out = self->out;
     int err;
 
@@ -185,7 +183,7 @@ static int export_JSON(struct kndElem *self)
     if (self->states) {
         err = out->writef(out, "\"val\":\"%.*s\"",
                           self->states->val_size,
-                          (const char*)selxf->states->val);  RET_ERR();
+                          (const char*)self->states->val);  RET_ERR();
     }
 
 final:
