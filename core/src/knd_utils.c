@@ -632,7 +632,6 @@ int knd_parse_dir_size(const char *rec,
             if (got_tag) got_size = true;
             break;
         case ' ':
-            got_separ = true;
             break;
         case 'L':
             got_tag = true;
