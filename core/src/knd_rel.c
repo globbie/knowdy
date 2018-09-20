@@ -1178,7 +1178,7 @@ static int unfreeze_inst(struct kndRel *self,
     struct kndMemPool *mempool = self->entry->repo->mempool;
     const char *filename;
     size_t filename_size;
-    const char *c, *b, *e;
+    const char *c;
     size_t chunk_size;
     struct stat st;
     int fd;
@@ -1244,7 +1244,7 @@ static int unfreeze_inst(struct kndRel *self,
 
     /* skip over initial brace '{' */
     c = entry->block + 1;
-    b = c;
+    //b = c;
     bool got_separ = false;
     /* ff the name */
     while (*c) {
@@ -1254,7 +1254,7 @@ static int unfreeze_inst(struct kndRel *self,
         case '[':
         case ']':
             got_separ = true;
-            e = c;
+            //e = c;
             break;
         default:
             break;
@@ -2282,7 +2282,6 @@ static int freeze_insts(struct kndRel *self,
     const char *key;
     void *val;
     size_t trailer_size = 0;
-    size_t start_offset = 0;
     size_t inst_block_offset = 0;
     size_t block_size = out->buf_size;
     int err;
@@ -2292,7 +2291,6 @@ static int freeze_insts(struct kndRel *self,
                 self->name_size, self->name,
                 self->entry->num_insts);
 
-    start_offset = out->buf_size;
     inst_block_offset = out->buf_size;
 
     err = trailer->write(trailer, "[i", strlen("[i"));
