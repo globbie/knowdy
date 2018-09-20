@@ -219,7 +219,7 @@ static int export_concise_JSON(struct kndClassInst *self,
                 err = obj->export(obj, KND_FORMAT_JSON, out);
                 if (err) return err;
 
-                need_separ = true;
+                //need_separ = true;
                 continue;
             }
             
@@ -360,7 +360,7 @@ static int export_JSON(struct kndClassInst *self,
                 err = obj->export(obj, KND_FORMAT_JSON, out);
                 if (err) return err;
 
-                need_separ = true;
+                //need_separ = true;
                 continue;
             }
             
