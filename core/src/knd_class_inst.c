@@ -245,9 +245,9 @@ static int export_concise_JSON(struct kndClassInst *self,
             knd_log("-- elem not exported: %s", elem->attr->name);
             return err;
         }
-        need_separ = true;
+        //need_separ = true;
     }
-        return knd_OK;
+    return knd_OK;
 }
 
 static int export_JSON(struct kndClassInst *self,
@@ -386,7 +386,7 @@ static int export_JSON(struct kndClassInst *self,
             knd_log("-- elem not exported: %s", elem->attr->name);
             return err;
         }
-        need_separ = true;
+        //need_separ = true;
     }
 
     if (self->entry->rels) {
