@@ -57,7 +57,7 @@ static gsl_err_t alloc_class_update(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t append_class_update(void *accu,
+/*static gsl_err_t append_class_update(void *accu,
                                      void *item)
 {
     struct kndUpdate *self = accu;
@@ -65,6 +65,7 @@ static gsl_err_t append_class_update(void *accu,
     // TODO
     return make_gsl_err(gsl_OK);
 }
+*/
 
 static gsl_err_t get_class_by_id(void *obj, const char *name, size_t name_size)
 {
@@ -72,10 +73,8 @@ static gsl_err_t get_class_by_id(void *obj, const char *name, size_t name_size)
     struct kndRepo *repo = self->update->repo;
     struct kndMemPool *mempool = repo->mempool;
     struct kndSet *class_idx = repo->class_idx;
-    struct ooDict *class_name_idx = repo->class_name_idx;
     void *result;
     struct kndClassEntry *entry;
-    struct kndClass *c;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -189,7 +188,6 @@ static gsl_err_t parse_class_state(void *obj,
 {
     struct kndClassUpdate *self = obj;
     struct kndClass *c = self->class;
-    gsl_err_t err;
 
     return knd_read_class_state(c, self, rec, total_size);
 }
@@ -227,7 +225,7 @@ static gsl_err_t parse_class_update(void *obj,
 static gsl_err_t alloc_update(void *obj,
                               const char *name,
                               size_t name_size,
-                              size_t count,
+                              size_t count __attribute__((unused)),
                               void **item)
 {
     struct kndRepo *self = obj;
@@ -246,7 +244,7 @@ static gsl_err_t alloc_update(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t append_update(void *accu,
+/*static gsl_err_t append_update(void *accu,
                                void *item)
 {
     struct kndRepo *self =   accu;
@@ -254,6 +252,7 @@ static gsl_err_t append_update(void *accu,
 
     return make_gsl_err(gsl_OK);
 }
+*/
 
 static gsl_err_t get_timestamp(void *obj, const char *name, size_t name_size)
 {
@@ -288,7 +287,7 @@ static gsl_err_t parse_update(void *obj,
     struct gslTaskSpec class_update_spec = {
         .is_list_item = true,
         .alloc  = alloc_class_update,
-        .append = append_class_update,
+        //.append = append_class_update,
         .parse  = parse_class_update,
         .accu = update
     };
@@ -327,7 +326,7 @@ static gsl_err_t kndRepo_read_updates(void *obj,
     struct gslTaskSpec update_spec = {
         .is_list_item = true,
         .alloc  = alloc_update,
-        .append = append_update,
+        //.append = append_update,
         .parse  = parse_update,
         .accu = repo
     };

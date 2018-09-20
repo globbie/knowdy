@@ -28,7 +28,7 @@ static void del(struct kndText *self)
 static void str(struct kndText *self)
 {
     struct kndState *state;
-    struct kndTranslation *tr;
+    //struct kndTranslation *tr;
 
     state = self->states;
     /*while (curr_state) {
@@ -62,21 +62,15 @@ static void str(struct kndText *self)
     */
 }
 
-
-
-static int export_JSON(struct kndText *self,
-                       struct glbOutput *out)
+static int export_JSON(struct kndText *self   __attribute__((unused)),
+                       struct glbOutput *out  __attribute__((unused)))
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //struct kndTranslation *tr;
+    //struct kndTextSelect *sel;
 
-    struct kndState *state;
-    struct kndTranslation *tr;
-    struct kndTextSelect *sel;
+    //int num_trs = 0;
 
-    int num_trs = 0;
-
-    int err = knd_FAIL;
+    //int err = knd_FAIL;
 
 
     if (DEBUG_TEXT_LEVEL_2)
@@ -168,19 +162,15 @@ static int export_JSON(struct kndText *self,
 
 
 
-static int export_GSP(struct kndText *self,
-                      struct glbOutput *out)
+static int export_GSP(struct kndText *self   __attribute__((unused)),
+                      struct glbOutput *out   __attribute__((unused)))
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
+    //struct kndState *state;
+    //struct kndTranslation *tr;
 
-    struct kndState *state;
-    struct kndTranslation *tr;
+    //struct kndTextSelect *sel;
 
-    struct kndTextSelect *sel;
-    size_t curr_size;
-
-    int err = knd_FAIL;
+    //int err = knd_FAIL;
 
     // NB: expects self->states != NULL
     /*curr_state = self->states;

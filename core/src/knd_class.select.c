@@ -45,9 +45,7 @@ static gsl_err_t select_by_baseclass(void *obj,
                                      const char *name, size_t name_size)
 {
     struct kndClass *self = obj;
-    struct kndTask *task = self->entry->repo->task;
     struct kndClass *c;
-    struct kndSet *set;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -64,12 +62,6 @@ static gsl_err_t select_by_baseclass(void *obj,
         knd_log("-- no set of descendants found :(");
         return make_gsl_err(gsl_OK);
     }
-
-    //set = c->entry->descendants;
-    //if (task->num_sets + 1 > KND_MAX_CLAUSES)
-    //    return make_gsl_err(gsl_LIMIT);
-    //task->sets[task->num_sets] = set;
-    //task->num_sets++;
 
     self->curr_baseclass = c;
 
@@ -790,7 +782,8 @@ extern gsl_err_t parse_class_delta(void *data,
 }
 
 extern int knd_class_get_inst_updates(struct kndClass *self,
-                                      size_t gt, size_t lt, size_t eq,
+                                      size_t gt, size_t lt,
+                                      size_t eq __attribute__((unused)),
                                       struct kndSet *set)
 {
     struct kndState *state;

@@ -94,10 +94,6 @@ kndRef_set_reverse_rel(struct kndRef *self,
 static int kndRef_resolve(struct kndRef *self)
 {
     struct kndClass *c;
-    struct kndObjEntry *entry;
-    struct kndClassInst *obj;
-    const char *obj_name;
-    int err, e;
 
     c = self->elem->attr->ref_class;
 

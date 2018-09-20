@@ -105,12 +105,12 @@ extern int knd_mempool_alloc(struct kndMemPool *self,
     return knd_OK;
 }
 
-extern void knd_mempool_free(struct kndMemPool *self,
-                             knd_mempage_t page_size,
+extern void knd_mempool_free(struct kndMemPool *self __attribute__((unused)),
+                             knd_mempage_t page_size __attribute__((unused)),
                              void *page_data)
 {
     struct kndMemPage *page = NULL; //, *prev_page, **head_page, **tail_page;
-    size_t offset;
+    //size_t offset;
     char *c;
 
     knd_log(".. free page:%p", page_data);

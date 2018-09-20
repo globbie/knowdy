@@ -890,7 +890,8 @@ static int link_baseclass(struct kndClass *self,
         }
 
         if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-            knd_log(".. add \"%.*s\" (repo:%.*s) as a descendant of ancestor \"%.*s\" (repo:%.*s)..",
+            knd_log(".. add \"%.*s\" (repo:%.*s) as "
+                    " a descendant of ancestor \"%.*s\" (repo:%.*s)..",
                     entry->name_size, entry->name,
                     entry->repo->name_size, entry->repo->name,
                     baseref->entry->name_size, baseref->entry->name,

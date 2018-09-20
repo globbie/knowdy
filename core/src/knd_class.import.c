@@ -158,6 +158,7 @@ static gsl_err_t set_attr_var_name(void *obj, const char *name, size_t name_size
     return make_gsl_err(gsl_OK);
 }
 
+
 static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
 {
     struct kndAttrVar *self = obj;
@@ -293,6 +294,19 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     entry->repo = root_class->entry->repo;
     self->entry = entry;
 
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_state_top_option(void *obj,
+                                      const char *name  __attribute__((unused)),
+                                      size_t name_size __attribute__((unused)) )
+{
+    struct kndClass *self = obj;
+
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+        knd_log("NB: set class state top option!");
+
+    self->state_top = true;
     return make_gsl_err(gsl_OK);
 }
 
@@ -803,6 +817,11 @@ extern gsl_err_t knd_import_class(void *obj,
           .name = "_summary",
           .name_size = strlen("_summary"),
           .parse = knd_parse_summary_array,
+          .obj = c
+        },
+        { .name = "_state_top",
+          .name_size = strlen("_state_top"),
+          .run = set_state_top_option,
           .obj = c
         },
         { .type = GSL_SET_STATE,

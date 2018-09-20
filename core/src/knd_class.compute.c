@@ -102,15 +102,11 @@ extern int knd_compute_num_value(struct kndAttr *attr,
 
 static int compute_list_sum(struct kndAttrVar *parent_var,
                             struct kndAttrVar *query,
-                            struct kndAttr *attr,
+                            struct kndAttr *attr   __attribute__((unused)),
                             struct kndProcCallArg *arg,
                             long *result)
 {
     struct kndAttrVar *curr_var;
-    struct kndAttrVar *field_var;
-    struct kndClass *c;
-    struct ooDict *attr_name_idx;
-    struct kndAttrEntry *entry;
     long total_numval = 0;
     int err;
 
@@ -123,9 +119,9 @@ static int compute_list_sum(struct kndAttrVar *parent_var,
         if (DEBUG_CLASS_COMP_LEVEL_2) {
             knd_log("\n.. list elem: %.*s numval:%lu",
                     curr_var->id_size, curr_var->id, curr_var->numval);
-            str_attr_vars(curr_var->children, 1);
-            knd_log("QUERY:");
-            str_attr_vars(query, 1);
+            //str_attr_vars(curr_var->children, 1);
+            //knd_log("QUERY:");
+            //str_attr_vars(query, 1);
         }
 
         if (query->children) {
@@ -146,7 +142,7 @@ static int compute_list_sum(struct kndAttrVar *parent_var,
     return knd_OK;
 }
 
-static int compute_attr_var_value(struct kndClass *self,
+static int compute_attr_var_value(struct kndClass *self  __attribute__((unused)),
                                   struct kndClassVar *src,
                                   struct kndAttrVar *query,
                                   struct kndAttr *attr,
@@ -155,7 +151,6 @@ static int compute_attr_var_value(struct kndClass *self,
     struct kndAttrVar *select_var;
     struct kndAttrVar *curr_var;
     struct kndAttrVar *field_var;
-    long numval = 0;
     int err;
 
     if (DEBUG_CLASS_COMP_LEVEL_1) {

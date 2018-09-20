@@ -406,23 +406,6 @@ static int export_JSON(struct kndClassInst *self,
     return err;
 }
 
-static int export_rel_inst_id(void *obj,
-                              const char *elem_id __attribute__((unused)),
-                              size_t elem_id_size __attribute__((unused)),
-                              size_t count __attribute__((unused)),
-                              void *elem)
-{
-    struct glbOutput *out = obj;
-    struct kndRelInstEntry *entry = elem;
-    int err;
-
-    err = out->writec(out, ' ');                                                  RET_ERR();
-    err = out->write(out, entry->id, entry->id_size);                             RET_ERR();
-    if (err) return err;
-
-    return knd_OK;
-}
-
 static int export_rel_inst_JSON(void *obj,
                                 const char *elem_id __attribute__((unused)),
                                 size_t elem_id_size __attribute__((unused)),
@@ -442,37 +425,6 @@ static int export_rel_inst_JSON(void *obj,
     rel->format = KND_FORMAT_JSON;
     err = rel->export_inst(rel, inst);
     if (err) return err;
-
-    return knd_OK;
-}
-
-static int export_rels_GSP(struct kndClassInst *self)
-{
-    struct kndRel *rel;
-    struct kndRelRef *relref;
-    struct glbOutput *out = self->base->entry->repo->out;
-    int err;
-
-    /* sort refs by class */
-    if (DEBUG_INST_LEVEL_2)
-        knd_log(".. GSP export rels of %.*s..",
-                self->name_size, self->name);
-
-    err = out->write(out, "[_rel", strlen("[_rel"));                              RET_ERR();
-    for (relref = self->entry->rels; relref; relref = relref->next) {
-        rel = relref->rel;
-        err = out->writec(out, '{');                                              RET_ERR();
-        err = out->write(out, rel->id, rel->id_size);                             RET_ERR();
-
-        err = out->write(out, "[i", strlen("[i"));                                RET_ERR();
-
-        err = relref->idx->map(relref->idx, export_rel_inst_id, (void*)out);
-        if (err) return err;
-
-        err = out->writec(out, ']');                                              RET_ERR();
-        err = out->writec(out, '}');                                              RET_ERR();
-    }
-    err = out->writec(out, ']');                                                  RET_ERR();
 
     return knd_OK;
 }
@@ -502,7 +454,6 @@ static int export_GSP(struct kndClassInst *self,
                       struct glbOutput *out)
 {
     struct kndElem *elem;
-    size_t start_size = 0;
     int err;
 
     if (self->type == KND_OBJ_AGGR) {
@@ -753,14 +704,10 @@ static gsl_err_t parse_elem(void *data,
                             const char *rec, size_t *total_size)
 {
     struct kndClassInst *self = data;
-    struct kndClass *root_class;
-    struct kndClass *c;
     struct kndClassInst *obj;
     struct kndElem *elem = NULL;
     struct kndAttr *attr = NULL;
-    struct kndRef *ref = NULL;
     struct kndNum *num = NULL;
-    struct kndText *text = NULL;
     int err;
     gsl_err_t parser_err;
 
@@ -1192,14 +1139,13 @@ static gsl_err_t parse_rels(void *obj,
 static gsl_err_t run_set_state_id(void *obj, const char *name, size_t name_size)
 {
     struct kndClassInst *self = obj;
-    int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     if (DEBUG_INST_LEVEL_TMP)
-        knd_log("++ class inst state: \"%.*s\"",
-                name_size, name);
+        knd_log("++ class inst state: \"%.*s\" inst:%.*s",
+                name_size, name, self->name_size, self->name);
 
     return make_gsl_err(gsl_OK);
 }
@@ -1459,8 +1405,8 @@ static gsl_err_t select_rels(struct kndClassInst *self,
 }
 
 static int export_inst_JSON(void *obj,
-                            const char *elem_id,
-                            size_t elem_id_size,
+                            const char *elem_id  __attribute__((unused)),
+                            size_t elem_id_size  __attribute__((unused)),
                             size_t count,
                             void *elem)
 {
@@ -1630,7 +1576,9 @@ static gsl_err_t run_get_inst(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_default_delta_settings(void *obj, const char *name, size_t name_size)
+static gsl_err_t set_default_delta_settings(void *obj,
+                                            const char *name  __attribute__((unused)),
+                                            size_t name_size  __attribute__((unused)))
 {
     struct kndClass *self = obj;
     struct kndTask *task = self->entry->repo->task;

@@ -227,7 +227,7 @@ extern gsl_err_t knd_parse_summary_array(void *obj,
 }
 
 extern int knd_class_export_updates_GSL(struct kndClass *self,
-                                        struct kndUpdate *update,
+                                        struct kndUpdate *update  __attribute__((unused)),
                                         struct glbOutput *out)
 {
     struct kndState *state;

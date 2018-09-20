@@ -41,6 +41,7 @@ struct kndClassUpdate;
 struct kndClassUpdateRef;
 struct kndObjEntry;
 struct glbOutput;
+struct kndClassInstEntry;
 
 struct kndClassUpdate
 {
@@ -152,6 +153,8 @@ struct kndClass
     size_t init_state;
     size_t num_states;
     size_t selected_state_numid;
+
+    bool state_top;
 
     struct kndState *inst_states;
     size_t init_inst_state;
@@ -359,6 +362,7 @@ extern int knd_get_class_inst(struct kndClass *self,
 
 extern int knd_register_class_inst(struct kndClass *self,
                                    struct kndClassInstEntry *entry);
+
 extern int knd_unregister_class_inst(struct kndClass *self,
                                    struct kndClassInstEntry *entry);
 
