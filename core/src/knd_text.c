@@ -25,42 +25,6 @@ static void del(struct kndText *self)
     free(self);
 }
 
-static void str(struct kndText *self)
-{
-    //struct kndTranslation *tr;
-
-    state = self->states;
-    /*while (curr_state) {
-
-        tr = curr_state->translations;
-        while (tr) {
-
-            if (tr->val_size)
-                knd_log("%*s%s: %s [#%lu]", self->depth * KND_OFFSET_SIZE, "", tr->locale, tr->val,
-                        tr->state, (unsigned long)tr->chunk_count);
-
-            if (tr->seq_size)
-                knd_log("%*s%s: %s [#%lu]", self->depth * KND_OFFSET_SIZE, "", tr->locale, tr->seq,
-                        tr->state, (unsigned long)tr->chunk_count);
-
-            sel = tr->selects;
-            while (sel) {
-
-                if (sel->css_name_size) {
-                    knd_log("%*sCSS: \"%s\" @%lu+%lu\n", self->depth * KND_OFFSET_SIZE, "",
-                            sel->css_name, (unsigned long)sel->pos, (unsigned long)sel->len);
-                }
-
-                sel = sel->next;
-            }
-
-            tr = tr->next;
-        }
-        curr_state = curr_state->next;
-    }
-    */
-}
-
 static int export_JSON(struct kndText *self   __attribute__((unused)),
                        struct glbOutput *out  __attribute__((unused)))
 {
@@ -353,7 +317,7 @@ static gsl_err_t parse_GSL(struct kndText *self,
     struct kndTranslation *tr;
     gsl_err_t parser_err;
 
-    state = self->states;
+    //state = self->states;
     /*if (!state) {
         state = malloc(sizeof(struct kndTextState));
         if (!state) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
@@ -394,7 +358,6 @@ kndText_new(struct kndText **text)
     memset(self, 0, sizeof(struct kndText));
 
     self->del = del;
-    self->str = str;
     self->export = kndText_export;
     self->parse = parse_GSL;
 
