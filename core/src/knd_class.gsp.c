@@ -144,9 +144,9 @@ static int export_baseclass_vars(struct kndClass *self,
           .parse = parse_class_var_array,
           .obj = self
         },
-        { .name = "aggr",
-          .name_size = strlen("aggr"),
-          .parse = parse_aggr,
+        { .name = "inner",
+          .name_size = strlen("inner"),
+          .parse = parse_inner,
           .obj = self
         },
         { .name = "str",
@@ -320,7 +320,7 @@ static int export_descendants_GSP(struct kndClass *self)
 }
 */
 
- /*static int aggr_item_export_GSP(struct kndClass *self,
+ /*static int inner_item_export_GSP(struct kndClass *self,
                                 struct kndAttrVar *parent_item)
 {
     struct glbOutput *out = self->entry->repo->out;
@@ -330,7 +330,7 @@ static int export_descendants_GSP(struct kndClass *self)
     int err;
 
     if (DEBUG_CLASS_GSP_LEVEL_2)
-        knd_log("== GSP export of aggr item: %.*s val:%.*s",
+        knd_log("== GSP export of inner item: %.*s val:%.*s",
                 parent_item->name_size, parent_item->name,
                 parent_item->val_size, parent_item->val);
 
@@ -381,8 +381,8 @@ static int export_descendants_GSP(struct kndClass *self)
         case KND_ATTR_REF:
             //knd_log("ref item: %.*s", item->name_size, item->name);
             break;
-        case KND_ATTR_AGGR:
-            err = aggr_item_export_GSP(self, item);
+        case KND_ATTR_INNER:
+            err = inner_item_export_GSP(self, item);
             if (err) return err;
             break;
         default:
@@ -405,7 +405,7 @@ static int export_descendants_GSP(struct kndClass *self)
 }
  */
  
-/*static int aggr_list_export_GSP(struct kndClass *self,
+/*static int inner_list_export_GSP(struct kndClass *self,
                                 struct kndAttrVar *parent_item)
 {
     struct kndAttrVar *item;
@@ -414,7 +414,7 @@ static int export_descendants_GSP(struct kndClass *self)
     int err;
 
     if (DEBUG_CLASS_GSP_LEVEL_1) {
-        knd_log(".. export aggr list: %.*s  val:%.*s",
+        knd_log(".. export inner list: %.*s  val:%.*s",
                 parent_item->name_size, parent_item->name,
                 parent_item->val_size, parent_item->val);
     }
@@ -425,13 +425,13 @@ static int export_descendants_GSP(struct kndClass *self)
     if (err) return err;
 
     if (parent_item->class) {
-        err = aggr_item_export_GSP(self, parent_item);
+        err = inner_item_export_GSP(self, parent_item);
         if (err) return err;
     }
 
     for (item = parent_item->list; item; item = item->next) {
         c = item->class;
-        err = aggr_item_export_GSP(self, item);
+        err = inner_item_export_GSP(self, item);
         if (err) return err;
     }
 
@@ -964,9 +964,9 @@ static gsl_err_t check_list_item_id(void *obj,
         attr_var->class = c;
         attr_var->class_entry = c->entry;
         break;
-    case KND_ATTR_AGGR:
+    case KND_ATTR_INNER:
         // TODO
-        //knd_log(".. checking aggr item id: %.*s", id_size, id);
+        //knd_log(".. checking inner item id: %.*s", id_size, id);
 
         err = knd_get_class_by_id(parent_class, id, id_size, &c);
         if (err) {
@@ -1031,7 +1031,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
     }
 
     switch (attr->type) {
-    case KND_ATTR_AGGR:
+    case KND_ATTR_INNER:
         if (attr->ref_class) break;
 
         class_name_idx = c->entry->repo->class_name_idx;
@@ -1039,7 +1039,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
                                     attr->ref_classname,
                                     attr->ref_classname_size);
         if (!entry) {
-            knd_log("-- aggr ref not resolved :( no such class: %.*s",
+            knd_log("-- inner ref not resolved :( no such class: %.*s",
                     attr->ref_classname_size,
                     attr->ref_classname);
             return *total_size = 0, make_gsl_err(gsl_FAIL);
@@ -1503,7 +1503,7 @@ static gsl_err_t validate_attr_var_list(void *obj,
     case KND_ATTR_REF:
         //knd_log("== array of refs: %.*s", name_size, name);
         break;
-    case KND_ATTR_AGGR:
+    case KND_ATTR_INNER:
         if (attr->ref_class) break;
 
         // TODO
@@ -1512,7 +1512,7 @@ static gsl_err_t validate_attr_var_list(void *obj,
                                     attr->ref_classname,
                                     attr->ref_classname_size);
         if (!entry) {
-            knd_log("-- aggr ref not resolved :( no such class: %.*s",
+            knd_log("-- inner ref not resolved :( no such class: %.*s",
                     attr->ref_classname_size,
                     attr->ref_classname);
             return *total_size = 0, make_gsl_err(gsl_FAIL);

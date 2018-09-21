@@ -240,7 +240,7 @@ static int resolve_proc_ref(struct kndClass *self,
     return knd_OK;
 }
 
-static int resolve_aggr_item(struct kndClass *self,
+static int resolve_inner_item(struct kndClass *self,
                              struct kndAttrVar *parent_item)
 {
     char buf[KND_NAME_SIZE];
@@ -253,7 +253,7 @@ static int resolve_aggr_item(struct kndClass *self,
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-        knd_log(".. resolve aggr item %.*s..",
+        knd_log(".. resolve inner item %.*s..",
                 parent_item->name_size, parent_item->name);
 
     if (!parent_item->attr->ref_class) {
@@ -269,7 +269,7 @@ static int resolve_aggr_item(struct kndClass *self,
     }
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
-        knd_log("\n.. resolving aggr item \"%.*s\" (count:%zu)"
+        knd_log("\n.. resolving inner item \"%.*s\" (count:%zu)"
                 " class:%.*s [resolved:%d]] is_list_item:%d",
                 parent_item->name_size,  parent_item->name,
                 parent_item->list_count,
@@ -314,7 +314,7 @@ static int resolve_aggr_item(struct kndClass *self,
                 // TODO: float parsing
             }
             break;
-        case KND_ATTR_AGGR:
+        case KND_ATTR_INNER:
             break;
         case KND_ATTR_REF:
             err = resolve_class_ref(self,
@@ -355,11 +355,11 @@ static int resolve_aggr_item(struct kndClass *self,
             buf[buf_size] = '\0';
             err = knd_parse_num(buf, &item->numval);
             break;
-        case KND_ATTR_AGGR:
+        case KND_ATTR_INNER:
             if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-                knd_log("== nested aggr item found: %.*s conc:%p",
+                knd_log("== nested inner item found: %.*s conc:%p",
                         item->name_size, item->name, attr->ref_class);
-            err = resolve_aggr_item(self, item);
+            err = resolve_inner_item(self, item);
             if (err) return err;
             break;
         case KND_ATTR_REF:
@@ -419,10 +419,10 @@ static int resolve_attr_var_list(struct kndClass *self,
         parent_item->attr = parent_attr;
 
         switch (parent_attr->type) {
-        case KND_ATTR_AGGR:
-            err = resolve_aggr_item(self, parent_item);
+        case KND_ATTR_INNER:
+            err = resolve_inner_item(self, parent_item);
             if (err) {
-                knd_log("-- first aggr item not resolved :(");
+                knd_log("-- first inner item not resolved :(");
                 return err;
             }
             break;
@@ -442,8 +442,8 @@ static int resolve_attr_var_list(struct kndClass *self,
 
 
         switch (parent_attr->type) {
-        case KND_ATTR_AGGR:
-            err = resolve_aggr_item(self, item);
+        case KND_ATTR_INNER:
+            err = resolve_inner_item(self, item);
             if (err) return err;
             break;
         case KND_ATTR_REF:
@@ -538,12 +538,12 @@ static int resolve_attr_vars(struct kndClass *self,
 
         /* single attr */
         switch (attr->type) {
-        case KND_ATTR_AGGR:
+        case KND_ATTR_INNER:
             /* TODO */
             attr_var->attr = attr;
-            err = resolve_aggr_item(self, attr_var);
+            err = resolve_inner_item(self, attr_var);
             if (err) {
-                knd_log("-- aggr attr_var not resolved :(");
+                knd_log("-- inner attr_var not resolved :(");
                 return err;
             }
 
@@ -685,7 +685,7 @@ static int resolve_primary_attrs(struct kndClass *self)
             self->num_computed_attrs++;
         }
         switch (attr->type) {
-        case KND_ATTR_AGGR:
+        case KND_ATTR_INNER:
         case KND_ATTR_REF:
             if (!attr->ref_classname_size) {
                 knd_log("-- no classname specified for attr \"%s\"",

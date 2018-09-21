@@ -40,8 +40,8 @@ struct kndElem
     struct kndClassInst *obj;
     struct kndClassInst *root;
 
-    struct kndClassInst *aggr;
-    struct kndClassInst *aggr_tail;
+    struct kndClassInst *inner;
+    struct kndClassInst *inner_tail;
 
     struct kndClassInst *ref_inst;
 

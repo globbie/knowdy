@@ -651,7 +651,7 @@ static gsl_err_t parse_GSL(struct kndAttr *self,
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) return err;
 
-    if (self->type == KND_ATTR_AGGR) {
+    if (self->type == KND_ATTR_INNER) {
         if (!self->ref_classname_size) {
             knd_log("-- ref class not specified in %.*s",
                     self->name_size, self->name);

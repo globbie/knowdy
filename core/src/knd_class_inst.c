@@ -55,7 +55,7 @@ static void str(struct kndClassInst *self)
     }
 }
 
-static int export_aggr_JSON(struct kndClassInst *self,
+static int export_inner_JSON(struct kndClassInst *self,
                             struct glbOutput *out)
 {
     struct kndElem *elem;
@@ -89,7 +89,7 @@ static int export_aggr_JSON(struct kndClassInst *self,
     return knd_OK;
 }
 
-static int export_aggr_GSP(struct kndClassInst *self,
+static int export_inner_GSP(struct kndClassInst *self,
                            struct glbOutput *out)
 {
     struct kndElem *elem;
@@ -199,9 +199,9 @@ static int export_concise_JSON(struct kndClassInst *self,
 
         /* filter out detailed presentation */
         if (is_concise) {
-            /* aggr obj? */
-            if (elem->aggr) {
-                obj = elem->aggr;
+            /* inner obj? */
+            if (elem->inner) {
+                obj = elem->inner;
 
                 /*if (need_separ) {*/
                 err = out->write(out, ",", 1);
@@ -268,10 +268,10 @@ static int export_JSON(struct kndClassInst *self,
         }
     }
 
-    if (self->type == KND_OBJ_AGGR) {
-        err = export_aggr_JSON(self, out);
+    if (self->type == KND_OBJ_INNER) {
+        err = export_inner_JSON(self, out);
         if (err) {
-            knd_log("-- aggr obj JSON export failed");
+            knd_log("-- inner obj JSON export failed");
             return err;
         }
         return knd_OK;
@@ -340,9 +340,9 @@ static int export_JSON(struct kndClassInst *self,
 
         /* filter out detailed presentation */
         if (is_concise) {
-            /* aggr obj? */
-            if (elem->aggr) {
-                obj = elem->aggr;
+            /* inner obj? */
+            if (elem->inner) {
+                obj = elem->inner;
 
                 /*if (need_separ) {*/
                 err = out->write(out, ",", 1);
@@ -453,10 +453,10 @@ static int export_GSP(struct kndClassInst *self,
     struct kndElem *elem;
     int err;
 
-    if (self->type == KND_OBJ_AGGR) {
-        err = export_aggr_GSP(self, out);
+    if (self->type == KND_OBJ_INNER) {
+        err = export_inner_GSP(self, out);
         if (err) {
-            knd_log("-- aggr obj GSP export failed");
+            knd_log("-- inner obj GSP export failed");
             return err;
         }
         return knd_OK;
@@ -721,8 +721,8 @@ static gsl_err_t parse_elem(void *data,
 
     if (elem) {
         switch (elem->attr->type) {
-        case KND_ATTR_AGGR:
-            parser_err = elem->aggr->parse(elem->aggr, rec, total_size);
+        case KND_ATTR_INNER:
+            parser_err = elem->inner->parse(elem->inner, rec, total_size);
             if (parser_err.code) return parser_err;
             break;
         case KND_ATTR_NUM:
@@ -749,10 +749,10 @@ static gsl_err_t parse_elem(void *data,
         knd_log("== basic elem type: %s", knd_attr_names[attr->type]);
 
     switch (attr->type) {
-    case KND_ATTR_AGGR:
+    case KND_ATTR_INNER:
         err = knd_class_inst_new(mempool, &obj);
         if (err) {
-            knd_log("-- aggr class inst alloc failed :(");
+            knd_log("-- inner class inst alloc failed :(");
             return *total_size = 0, make_gsl_err_external(err);
         }
 
@@ -763,7 +763,7 @@ static gsl_err_t parse_elem(void *data,
         }
         obj->states->phase = self->states->phase;
 
-        obj->type = KND_OBJ_AGGR;
+        obj->type = KND_OBJ_INNER;
         /*if (!attr->ref_class) {
             if (self->states->phase == KND_FROZEN || self->states->phase == KND_SUBMITTED) {
                 if (DEBUG_INST_LEVEL_2) {
@@ -791,7 +791,7 @@ static gsl_err_t parse_elem(void *data,
         parser_err = obj->parse(obj, rec, total_size);
         if (parser_err.code) return parser_err;
 
-        elem->aggr = obj;
+        elem->inner = obj;
         obj->parent = elem;
         goto append_elem;
         /*case KND_ATTR_NUM:
@@ -1758,7 +1758,7 @@ static int kndClassInst_resolve(struct kndClassInst *self)
                     self->name_size, self->name,
                     self->entry->id_size, self->entry->id);
         } else {
-            knd_log(".. resolve aggr elem \"%.*s\" %.*s..",
+            knd_log(".. resolve inner elem \"%.*s\" %.*s..",
                     self->parent->attr->name_size, self->parent->attr->name,
                     self->base->name_size, self->base->name);
         }
