@@ -55,7 +55,7 @@ static int ref_item_export_GSP(struct kndAttrVar *item,
     return knd_OK;
 }
 
-static int aggr_item_export_GSP(struct kndAttrVar *parent_item,
+static int inner_item_export_GSP(struct kndAttrVar *parent_item,
                                 struct glbOutput *out)
 {
     struct kndAttrVar *item;
@@ -63,7 +63,7 @@ static int aggr_item_export_GSP(struct kndAttrVar *parent_item,
     int err;
 
     if (DEBUG_ATTR_GSP_LEVEL_TMP) {
-        knd_log(".. GSP export aggr item: %.*s (id:%.*s)",
+        knd_log(".. GSP export inner item: %.*s (id:%.*s)",
                 parent_item->name_size, parent_item->name,
                 parent_item->id_size, parent_item->id);
     }
@@ -89,8 +89,8 @@ static int aggr_item_export_GSP(struct kndAttrVar *parent_item,
         case KND_ATTR_REF:
             err = ref_item_export_GSP(item, out);                                 RET_ERR();
             break;
-        case KND_ATTR_AGGR:
-            err = aggr_item_export_GSP(item, out);                                RET_ERR();
+        case KND_ATTR_INNER:
+            err = inner_item_export_GSP(item, out);                                RET_ERR();
             break;
         default:
             err = out->write(out, item->val, item->val_size);                     RET_ERR();
@@ -143,7 +143,7 @@ static int attr_var_list_export_GSP(struct kndAttrVar *parent_item,
                              c->entry->id,
                              c->entry->id_size);                        RET_ERR();
             break;
-        case KND_ATTR_AGGR:
+        case KND_ATTR_INNER:
             /* check implied field */
             
             if (item->class) {
@@ -216,8 +216,8 @@ extern int knd_attr_var_export_GSP(struct kndAttrVar *item,
     case KND_ATTR_PROC:
         err = proc_item_export_GSP(item);                                         RET_ERR();
         break;
-    case KND_ATTR_AGGR:
-        err = aggr_item_export_GSP(item, out);                                    RET_ERR();
+    case KND_ATTR_INNER:
+        err = inner_item_export_GSP(item, out);                                    RET_ERR();
         break;
     default:
         err = out->write(out, item->val, item->val_size);                     RET_ERR();

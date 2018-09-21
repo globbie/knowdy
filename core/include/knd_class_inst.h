@@ -36,7 +36,7 @@ struct kndMemPool;
 
 typedef enum knd_obj_type {
     KND_OBJ_ADDR,
-    KND_OBJ_AGGR
+    KND_OBJ_INNER
 } knd_obj_type;
 
 struct kndMatchPoint

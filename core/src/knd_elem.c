@@ -36,11 +36,11 @@
 
 static void str(struct kndElem *self)
 {
-    if (self->aggr) {
+    if (self->inner) {
         if (self->is_list) {
             knd_log("%*s[%.*s\n",
                     self->depth * KND_OFFSET_SIZE, "", self->attr->name_size, self->attr->name);
-            struct kndClassInst *obj = self->aggr;
+            struct kndClassInst *obj = self->inner;
             while (obj) {
                 obj->depth = self->depth + 1;
                 obj->str(obj);
@@ -53,8 +53,8 @@ static void str(struct kndElem *self)
 
         knd_log("%*s%.*s:",
                 self->depth * KND_OFFSET_SIZE, "", self->attr->name_size, self->attr->name);
-        self->aggr->depth = self->depth + 1;
-        self->aggr->str(self->aggr);
+        self->inner->depth = self->depth + 1;
+        self->inner->str(self->inner);
         return;
     }
 
@@ -85,14 +85,14 @@ static int export_JSON(struct kndElem *self)
     struct glbOutput *out = self->out;
     int err;
 
-    if (self->aggr) {
+    if (self->inner) {
         /*if (self->is_list) {
             buf_size = sprintf(buf, "\"%s_l\":[",
                                self->states->val);
             err = out->write(out, buf, buf_size);
             if (err) return err;
 
-            obj = self->aggr;
+            obj = self->inner;
             while (obj) {
                 err = obj->export(obj);
                 if (obj->next) {
@@ -110,7 +110,7 @@ static int export_JSON(struct kndElem *self)
         }
         */
         
-        /* single anonymous aggr obj */
+        /* single anonymous inner obj */
         err = out->write(out, "\"", 1);
         if (err) goto final;
         err = out->write(out, self->attr->name, self->attr->name_size);
@@ -118,8 +118,8 @@ static int export_JSON(struct kndElem *self)
         err = out->write(out, "\":", strlen("\":"));
         if (err) goto final;
 
-        knd_log(".. aggr inst export..");
-        err = self->aggr->export(self->aggr, KND_FORMAT_JSON, out);
+        knd_log(".. inner inst export..");
+        err = self->inner->export(self->inner, KND_FORMAT_JSON, out);
         
         return err;
     }
@@ -200,14 +200,14 @@ static int export_GSP(struct kndElem *self,
         knd_log("\n  .. GSP export of \"%.*s\" elem.. ",
                 self->attr->name_size, self->attr->name);
     
-    /* single anonymous aggr obj */
-    if (self->aggr) {
+    /* single anonymous inner obj */
+    if (self->inner) {
         err = out->write(out, "{", 1);
         if (err) return err;
         err = out->write(out, self->attr->name, self->attr->name_size);
         if (err) return err;
         
-        err = self->aggr->export(self->aggr, KND_FORMAT_GSP, out);
+        err = self->inner->export(self->inner, KND_FORMAT_GSP, out);
 
         err = out->write(out, "}", 1);
         if (err) return err;
@@ -460,8 +460,8 @@ static int kndElem_resolve(struct kndElem *self)
     struct kndClassInst *obj;
     int err;
     
-    if (self->aggr) {
-        for (obj = self->aggr; obj; obj = obj->next) {
+    if (self->inner) {
+        for (obj = self->inner; obj; obj = obj->next) {
             err = obj->resolve(obj);
             if (err) return err;
         }

@@ -39,7 +39,7 @@ typedef enum knd_attr_type {
     KND_ATTR_STR,
     KND_ATTR_BIN,
     KND_ATTR_CDATA,
-    KND_ATTR_AGGR,
+    KND_ATTR_INNER,
     KND_ATTR_TEXT,
     KND_ATTR_CG,
     KND_ATTR_NUM,
@@ -54,7 +54,7 @@ static const char* const knd_attr_names[] = {
     "str",
     "bin",
     "cdata",
-    "aggr",
+    "inner",
     "text",
     "CG",
     "num",
@@ -244,7 +244,7 @@ extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
                                      size_t depth __attribute__((unused)),
                                      bool is_concise);
 
-extern int knd_present_computed_aggr_attrs(struct kndAttrVar *attr_var,
+extern int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var,
                                            struct glbOutput *out);
 extern int knd_compute_num_value(struct kndAttr *attr,
                                  struct kndAttrVar *attr_var,

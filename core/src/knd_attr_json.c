@@ -40,7 +40,7 @@
 #define DEBUG_ATTR_JSON_LEVEL_5 0
 #define DEBUG_ATTR_JSON_LEVEL_TMP 1
 
-static int aggr_item_export_JSON(struct kndAttrVar *parent_item,
+static int inner_item_export_JSON(struct kndAttrVar *parent_item,
                                  struct glbOutput *out)
 {
     struct kndAttrVar *item;
@@ -52,7 +52,7 @@ static int aggr_item_export_JSON(struct kndAttrVar *parent_item,
     c = parent_item->attr->parent_class;
 
     if (DEBUG_ATTR_JSON_LEVEL_2) {
-        knd_log(".. JSON export aggr item: %.*s",
+        knd_log(".. JSON export inner item: %.*s",
                 parent_item->name_size, parent_item->name);
     }
 
@@ -77,7 +77,7 @@ static int aggr_item_export_JSON(struct kndAttrVar *parent_item,
                         parent_item->name_size, parent_item->name,
                         parent_item->val_size, parent_item->val);
 
-            err = knd_present_computed_aggr_attrs(parent_item, out);
+            err = knd_present_computed_inner_attrs(parent_item, out);
             if (err) return err;
         }
    }
@@ -183,8 +183,8 @@ static int aggr_item_export_JSON(struct kndAttrVar *parent_item,
             err = c->export(c, KND_FORMAT_JSON, out);
             if (err) return err;
             break;
-        case KND_ATTR_AGGR:
-            err = aggr_item_export_JSON(item, out);
+        case KND_ATTR_INNER:
+            err = inner_item_export_JSON(item, out);
             if (err) return err;
             break;
         default:
@@ -247,8 +247,8 @@ extern int knd_export_inherited_attr(void *obj,
     case KND_ATTR_NUM:
         err = out->write(out, attr_var->val, attr_var->val_size);             RET_ERR();
         break;
-    case KND_ATTR_AGGR:
-        err = aggr_item_export_JSON(attr_var, out);
+    case KND_ATTR_INNER:
+        err = inner_item_export_JSON(attr_var, out);
         if (err) return err;
         break;
     case KND_ATTR_STR:
@@ -316,12 +316,12 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
     /* first elem: TODO */
     if (parent_item->class) {
         switch (parent_item->attr->type) {
-        case KND_ATTR_AGGR:
+        case KND_ATTR_INNER:
             parent_item->id_size = sprintf(parent_item->id, "%lu",
                                            (unsigned long)count);
             count++;
 
-            err = aggr_item_export_JSON(parent_item, out);
+            err = inner_item_export_JSON(parent_item, out);
             if (err) return err;
             break;
         case KND_ATTR_REF:
@@ -360,12 +360,12 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
         }
 
         switch (parent_item->attr->type) {
-        case KND_ATTR_AGGR:
+        case KND_ATTR_INNER:
             item->id_size = sprintf(item->id, "%lu",
                                     (unsigned long)count);
             count++;
 
-            err = aggr_item_export_JSON(item, out);
+            err = inner_item_export_JSON(item, out);
             if (err) return err;
             break;
         case KND_ATTR_REF:
@@ -452,9 +452,9 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
                 if (err) return err;
             }
             break;
-        case KND_ATTR_AGGR:
+        case KND_ATTR_INNER:
             if (!item->class) {
-                err = aggr_item_export_JSON(item, out);
+                err = inner_item_export_JSON(item, out);
                 if (err) return err;
             } else {
                 c = item->class;
@@ -512,9 +512,9 @@ extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
             if (err) return err;
         }
         break;
-    case KND_ATTR_AGGR:
+    case KND_ATTR_INNER:
         if (!item->class) {
-            err = aggr_item_export_JSON(item, out);
+            err = inner_item_export_JSON(item, out);
             if (err) return err;
         } else {
             c = item->class;
@@ -534,7 +534,7 @@ extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
     return knd_OK;
 }
 
-extern int knd_present_computed_aggr_attrs(struct kndAttrVar *attr_var,
+extern int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var,
                                            struct glbOutput *out)
 {
     char buf[KND_NAME_SIZE];
