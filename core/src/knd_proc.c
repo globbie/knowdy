@@ -998,7 +998,7 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
     }
 
     /* check circled relations */
-    for (size_t i = 0; i < self->num_inherited; i++) {
+    /*    for (size_t i = 0; i < self->num_inherited; i++) {
         entry = self->inherited[i];
         proc = entry->proc;
 
@@ -1012,7 +1012,7 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
             return knd_FAIL;
         }
     }
-
+    */
     /* get args from parent */
     for (arg = parent->args; arg; arg = arg->next) {
 
@@ -1061,8 +1061,8 @@ static int inherit_args(struct kndProc *self, struct kndProc *parent)
                 parent->entry->proc->name,
                 self->name_size, self->name);
 
-    self->inherited[self->num_inherited] = parent->entry;
-    self->num_inherited++;
+    //    self->inherited[self->num_inherited] = parent->entry;
+    //self->num_inherited++;
 
     /* contact the grandparents */
     for (base = parent->bases; base; base = base->next) {
@@ -1266,14 +1266,14 @@ static int resolve_parents(struct kndProc *self)
         /*if (c->ignore_children) continue; */
 
         /* check base doublets */
-        for (size_t i = 0; i < self->num_children; i++) {
+        /*    for (size_t i = 0; i < self->num_children; i++) {
             entry = self->children[i];
             if (entry->proc == self) {
                 knd_log("-- doublet proc found in \"%.*s\" :(",
                         self->name_size, self->name);
                 return knd_FAIL;
             }
-        }
+            }*/
 
         /*if (proc->num_children >= KND_MAX_PROC_CHILDREN) {
             knd_log("-- %s as child to %s - max proc children exceeded :(",
@@ -1768,7 +1768,8 @@ extern int knd_proc_entry_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_MED,
+    knd_log("..proc entry new [size:%zu]", sizeof(struct kndProcEntry));
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_BASE,
                             sizeof(struct kndProcEntry), &page);  RET_ERR();
     *result = page;
     return knd_OK;
@@ -1779,7 +1780,8 @@ extern int knd_proc_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL,
+    knd_log("++ proc!");
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_BASE,
                             sizeof(struct kndProc), &page);  RET_ERR();
     *result = page;
     kndProc_init(*result);

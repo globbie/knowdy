@@ -15,9 +15,7 @@ static int present_status(struct kndMemPool *self,
                           struct glbOutput *out)
 {
     int err;
-
     err = out->writef(out, "{\"used_pages\":%zu}", self->pages_used);    RET_ERR();
-
     return knd_OK;
 }
 
@@ -25,7 +23,7 @@ extern int knd_mempool_alloc(struct kndMemPool *self,
                              knd_mempage_t page_size,
                              size_t obj_size, void **result)
 {
-    struct kndMemPage *page = NULL, *prev_page, **head_page, **tail_page;
+    struct kndMemPageHeader *page = NULL, *prev_page, **head_page, **tail_page;
     size_t *pages_used;
     size_t max_pages = 0;
     size_t max_page_payload_size;
@@ -33,26 +31,26 @@ extern int knd_mempool_alloc(struct kndMemPool *self,
     //knd_log(".. alloc: page_type:%d size:%zu", page_size, obj_size);
     
     switch (page_size) {
-    case KND_MEMPAGE_LARGE:
+    case KND_MEMPAGE_BASE:
         max_page_payload_size = self->page_payload_size;
         head_page = &self->head_page;
         tail_page = &self->tail_page;
         pages_used = &self->pages_used;
         max_pages = self->num_pages;
         break;
-    case KND_MEMPAGE_NORMAL:
-        max_page_payload_size = self->page_payload_size;
-        head_page = &self->head_page;
-        tail_page = &self->tail_page;
-        pages_used = &self->pages_used;
-        max_pages = self->num_pages;
+    case KND_MEMPAGE_SMALL_X4:
+        max_page_payload_size = self->small_x4_page_payload_size;
+        head_page = &self->head_small_x4_page;
+        tail_page = &self->tail_small_x4_page;
+        pages_used = &self->small_x4_pages_used;
+        max_pages = self->num_small_x4_pages;
         break;
-    case KND_MEMPAGE_MED:
-        max_page_payload_size = self->med_page_payload_size;
-        head_page = &self->head_med_page;
-        tail_page = &self->tail_med_page;
-        pages_used = &self->med_pages_used;
-        max_pages = self->num_med_pages;
+    case KND_MEMPAGE_SMALL_X2:
+        max_page_payload_size = self->small_x2_page_payload_size;
+        head_page = &self->head_small_x2_page;
+        tail_page = &self->tail_small_x2_page;
+        pages_used = &self->small_x2_pages_used;
+        max_pages = self->num_small_x2_pages;
         break;
     case KND_MEMPAGE_SMALL:
         max_page_payload_size = self->small_page_payload_size;
@@ -77,14 +75,21 @@ extern int knd_mempool_alloc(struct kndMemPool *self,
         break;
     }
 
-    if (obj_size >= max_page_payload_size) {
-        knd_log("-- mem page size exceeded: %zu", obj_size);
+    if (obj_size > max_page_payload_size) {
+        knd_log("-- mem page size exceeded: %zu max payload:%zu",
+                obj_size, max_page_payload_size);
+        return knd_LIMIT;
+    }
+
+    if (obj_size < (max_page_payload_size * 0.7) && obj_size > 64) {
+        knd_log("-- too large mem page requested: %zu  max payload:%zu",
+                obj_size, max_page_payload_size);
         return knd_LIMIT;
     }
 
     if (*pages_used + 1 > max_pages) {
-        knd_log("-- mem limit reached: max pages:%zu [%d]",
-                max_pages, page_size);
+        knd_log("-- mem limit reached: max pages:%zu [%d] capacity:%zu",
+                max_pages, page_size, self->capacity);
         return knd_LIMIT;
     }
 
@@ -101,7 +106,7 @@ extern int knd_mempool_alloc(struct kndMemPool *self,
     *head_page = page;
     (*pages_used)++;
 
-    *result = (void*)page->data;
+    *result = (void*)(page + 1);
     return knd_OK;
 }
 
@@ -109,12 +114,12 @@ extern void knd_mempool_free(struct kndMemPool *self __attribute__((unused)),
                              knd_mempage_t page_size __attribute__((unused)),
                              void *page_data)
 {
-    struct kndMemPage *page = NULL; //, *prev_page, **head_page, **tail_page;
+    struct kndMemPageHeader *page = NULL; //, *prev_page, **head_page, **tail_page;
     //size_t offset;
     char *c;
 
     knd_log(".. free page:%p", page_data);
-    c = (char*)page_data - sizeof(struct kndMemPage) + sizeof(void*);
+    c = (char*)page_data - sizeof(struct kndMemPageHeader);
     page = (void*)c;
     knd_log(".. page prev:%p page next:%p", page->prev, page->next);
 }
@@ -122,23 +127,18 @@ extern void knd_mempool_free(struct kndMemPool *self __attribute__((unused)),
 static void build_linked_list(char *pages,
                               size_t num_pages,
                               size_t page_size,
-                              struct kndMemPage **head_page,
-                              struct kndMemPage **tail_page)
+                              struct kndMemPageHeader **head_page,
+                              struct kndMemPageHeader **tail_page)
 {
-    struct kndMemPage *page, *prev_page = NULL;
+    struct kndMemPageHeader *page, *prev_page = NULL;
     char *c = NULL;
     size_t offset = 0;
 
-    *head_page = (struct kndMemPage*)pages;
+    *head_page = (struct kndMemPageHeader*)pages;
     for (size_t i = 0; i < num_pages; i++) {
         offset = (i * page_size);
         c = pages + offset;
-        page = (struct kndMemPage*)c;
-        c = (char*)page + sizeof(struct kndMemPage);
-        page->data = (void*)c;
-
-        //knd_log("%zi) offset:%zu page:%p", i, offset, page);
-
+        page = (struct kndMemPageHeader*)c;
         if (prev_page) {
             prev_page->next = page;
             page->prev = prev_page;
@@ -148,85 +148,90 @@ static void build_linked_list(char *pages,
     *tail_page = page;
 }
 
-static int alloc(struct kndMemPool *self)
+static int alloc_page_buf(struct kndMemPool *self,
+                          char **result_pages,
+                          size_t *result_num_pages, size_t default_num_pages,
+                          size_t *result_page_size, size_t default_page_size,
+                          size_t *page_payload_size)
 {
-    size_t total_alloc_size = 0;
+    size_t num_pages = *result_num_pages;
+    size_t page_size = *result_page_size;
+    char *pages;
 
-    /* regular pages */
-    if (!self->page_size)
-        self->page_size = KND_MEMPAGE_SIZE;
-    if (self->page_size <= sizeof(struct kndMemPage)) return knd_LIMIT;
-    self->page_payload_size = self->page_size - sizeof(struct kndMemPage);
-    if (!self->num_pages)
-        self->num_pages = KND_NUM_MEMPAGES;
+    if (!num_pages)
+        num_pages = default_num_pages;
+    if (!page_size)
+        page_size = default_page_size;
 
-    self->pages = calloc(self->num_pages, self->page_size);
-    if (!self->pages) {
+    if (page_size <= sizeof(struct kndMemPageHeader)) return knd_LIMIT;
+
+    pages = calloc(num_pages, page_size);
+    if (!pages) {
         knd_log("-- mem pages not allocated :(");
         return knd_NOMEM;
     }
+    self->capacity += (num_pages * page_size);
 
-    /* medium size pages */
-    if (!self->med_page_size)
-        self->med_page_size = KND_MED_MEMPAGE_SIZE;
-    if (self->med_page_size <= sizeof(struct kndMemPage)) return knd_LIMIT;
-    self->med_page_payload_size = self->med_page_size - sizeof(struct kndMemPage);
-    if (!self->num_med_pages)
-        self->num_med_pages = KND_NUM_MED_MEMPAGES;
+    knd_log("++ alloc'd %zu pages of %zu size, total capacity:%zu",
+            num_pages, page_size, self->capacity);
 
-    self->med_pages = calloc(self->num_med_pages, self->med_page_size);
-    if (!self->med_pages) {
-        knd_log("-- mem pages not allocated :(");
-        return knd_NOMEM;
-    }
+    *result_pages = pages;
+    *result_page_size = page_size;
+    *result_num_pages = num_pages;
+    *page_payload_size = page_size - sizeof(struct kndMemPageHeader);
+    return knd_OK;
+}
 
-    
-    /* small pages */
-    if (!self->small_page_size)
-        self->small_page_size = KND_SMALL_MEMPAGE_SIZE;
-    if (self->small_page_size <= sizeof(struct kndMemPage)) return knd_LIMIT;
-    self->small_page_payload_size = self->small_page_size - sizeof(struct kndMemPage);
-    if (!self->num_small_pages)
-        self->num_small_pages = KND_NUM_SMALL_MEMPAGES;
+static int alloc_capacity(struct kndMemPool *self)
+{
+    int err;
 
-    self->small_pages = calloc(self->num_small_pages, self->small_page_size);
-    if (!self->small_pages) {
-        knd_log("-- mem pages not allocated :(");
-        return knd_NOMEM;
-    }
-
-    /* tiny pages */
-    if (!self->tiny_page_size)
-        self->tiny_page_size = KND_TINY_MEMPAGE_SIZE;
-    if (self->tiny_page_size <= sizeof(struct kndMemPage)) return knd_LIMIT;
-    self->tiny_page_payload_size = self->tiny_page_size - sizeof(struct kndMemPage);
-    if (!self->num_tiny_pages)
-        self->num_tiny_pages = KND_NUM_TINY_MEMPAGES;
-
-    self->tiny_pages = calloc(self->num_tiny_pages, self->tiny_page_size);
-    if (!self->tiny_pages) {
-        knd_log("-- mem pages not allocated :(");
-        return knd_NOMEM;
-    }
-
+    err = alloc_page_buf(self,
+                         &self->pages, &self->num_pages,
+                         KND_NUM_BASE_MEMPAGES,
+                         &self->page_size, KND_BASE_MEMPAGE_SIZE,
+                         &self->page_payload_size);
     build_linked_list(self->pages, self->num_pages, self->page_size,
                       &self->head_page, &self->tail_page);
 
-    build_linked_list(self->med_pages, self->num_med_pages, self->med_page_size,
-                      &self->head_med_page, &self->tail_med_page);
+    err = alloc_page_buf(self,
+                         &self->small_x4_pages, &self->num_small_x4_pages,
+                         KND_NUM_SMALL_X4_MEMPAGES,
+                         &self->small_x4_page_size, KND_SMALL_X4_MEMPAGE_SIZE,
+                         &self->small_x4_page_payload_size);
+    build_linked_list(self->small_x4_pages,
+                      self->num_small_x4_pages, self->small_x4_page_size,
+                      &self->head_small_x4_page, &self->tail_small_x4_page);
 
-    build_linked_list(self->small_pages, self->num_small_pages, self->small_page_size,
+    err = alloc_page_buf(self,
+                         &self->small_x2_pages, &self->num_small_x2_pages,
+                         KND_NUM_SMALL_X2_MEMPAGES,
+                         &self->small_x2_page_size, KND_SMALL_X2_MEMPAGE_SIZE,
+                         &self->small_x2_page_payload_size);
+    build_linked_list(self->small_x2_pages,
+                      self->num_small_x2_pages, self->small_x2_page_size,
+                      &self->head_small_x2_page, &self->tail_small_x2_page);
+
+    err = alloc_page_buf(self,
+                         &self->small_pages, &self->num_small_pages,
+                         KND_NUM_SMALL_MEMPAGES,
+                         &self->small_page_size, KND_SMALL_MEMPAGE_SIZE,
+                         &self->small_page_payload_size);
+    build_linked_list(self->small_pages,
+                      self->num_small_pages, self->small_page_size,
                       &self->head_small_page, &self->tail_small_page);
 
-    build_linked_list(self->tiny_pages, self->num_tiny_pages, self->tiny_page_size,
+    err = alloc_page_buf(self,
+                         &self->tiny_pages, &self->num_tiny_pages,
+                         KND_NUM_TINY_MEMPAGES,
+                         &self->tiny_page_size, KND_TINY_MEMPAGE_SIZE,
+                         &self->tiny_page_payload_size);
+    build_linked_list(self->tiny_pages,
+                      self->num_tiny_pages, self->tiny_page_size,
                       &self->head_tiny_page, &self->tail_tiny_page);
 
-    total_alloc_size = (self->num_pages * self->page_size);
-    total_alloc_size += self->num_med_pages * self->med_page_size;
-    total_alloc_size += self->num_small_pages * self->small_page_size;
-    total_alloc_size += self->num_tiny_pages * self->tiny_page_size;
 
-    knd_log("== MemPool total bytes alloc'd: %zu", total_alloc_size);
+    knd_log("== MemPool total bytes alloc'd: %zu", self->capacity);
 
     return knd_OK;
 }
@@ -240,15 +245,20 @@ parse_memory_settings(struct kndMemPool *self, const char *rec, size_t *total_si
             .parse = gsl_parse_size_t,
             .obj = &self->max_user_ctxs
         },
-        {   .name = "max_normal_pages",
-            .name_size = strlen("max_normal_pages"),
+        {   .name = "max_base_pages",
+            .name_size = strlen("max_base_pages"),
             .parse = gsl_parse_size_t,
             .obj = &self->num_pages
         },
-        {   .name = "max_med_pages",
-            .name_size = strlen("max_med_pages"),
+        {   .name = "max_small_x4_pages",
+            .name_size = strlen("max_small_x4_pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->num_med_pages
+            .obj = &self->num_small_x4_pages
+        },
+        {   .name = "max_small_x2_pages",
+            .name_size = strlen("max_small_x2_pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->num_small_x2_pages
         },
         {   .name = "max_small_pages",
             .name_size = strlen("max_small_pages"),
@@ -269,7 +279,7 @@ extern void kndMemPool_init(struct kndMemPool *self)
 {
     self->del = del;
     self->parse = parse_memory_settings;
-    self->alloc = alloc;
+    self->alloc = alloc_capacity;
     self->present = present_status;
 }
 

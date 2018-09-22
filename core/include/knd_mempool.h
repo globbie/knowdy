@@ -45,62 +45,72 @@ struct kndRelInstanceUpdate;
 struct kndProcUpdate;
 struct kndProcUpdateRef;
 struct kndUserContext;
+struct kndRelArgInstRef;
+struct kndRelRef;
 
-typedef enum knd_mempage_t { KND_MEMPAGE_NORMAL,
-                             KND_MEMPAGE_MED,
+typedef enum knd_mempage_t { KND_MEMPAGE_LARGE,
+                             KND_MEMPAGE_BASE_X4,
+                             KND_MEMPAGE_BASE_X2,
+                             KND_MEMPAGE_BASE,
+                             KND_MEMPAGE_SMALL_X4,
+                             KND_MEMPAGE_SMALL_X2,
                              KND_MEMPAGE_SMALL,
-                             KND_MEMPAGE_TINY,
-                             KND_MEMPAGE_LARGE
+                             KND_MEMPAGE_TINY
 } knd_mempage_t;
 
-struct kndMemPage
+struct kndMemPageHeader
 {
-    struct kndMemPage *prev;
-    struct kndMemPage *next;
-    void *data;
+    struct kndMemPageHeader *prev;
+    struct kndMemPageHeader *next;
 };
 
 struct kndMemPool
 {
     size_t max_users;
+    size_t capacity;
 
     char *pages;
     size_t page_size;
     size_t page_payload_size;
     size_t num_pages;
     size_t pages_used;
-    struct kndMemPage *head_page;
-    struct kndMemPage *tail_page;
+    struct kndMemPageHeader *head_page;
+    struct kndMemPageHeader *tail_page;
 
-    char *med_pages;
-    size_t med_page_size;
-    size_t med_page_payload_size;
-    size_t num_med_pages;
-    size_t med_pages_used;
-    struct kndMemPage *head_med_page;
-    struct kndMemPage *tail_med_page;
+    char *small_x4_pages;
+    size_t small_x4_page_size;
+    size_t small_x4_page_payload_size;
+    size_t num_small_x4_pages;
+    size_t small_x4_pages_used;
+    struct kndMemPageHeader *head_small_x4_page;
+    struct kndMemPageHeader *tail_small_x4_page;
 
+    /* 256 bytes */
+    char *small_x2_pages;
+    size_t small_x2_page_size;
+    size_t small_x2_page_payload_size;
+    size_t num_small_x2_pages;
+    size_t small_x2_pages_used;
+    struct kndMemPageHeader *head_small_x2_page;
+    struct kndMemPageHeader *tail_small_x2_page;
+
+    /* 128 bytes */
     char *small_pages;
     size_t small_page_size;
     size_t small_page_payload_size;
     size_t num_small_pages;
     size_t small_pages_used;
-    struct kndMemPage *head_small_page;
-    struct kndMemPage *tail_small_page;
+    struct kndMemPageHeader *head_small_page;
+    struct kndMemPageHeader *tail_small_page;
 
+    /* 64 bytes */
     char *tiny_pages;
     size_t tiny_page_size;
     size_t tiny_page_payload_size;
     size_t num_tiny_pages;
     size_t tiny_pages_used;
-    struct kndMemPage *head_tiny_page;
-    struct kndMemPage *tail_tiny_page;
-
-    char *large_pages;
-    size_t large_page_size;
-    size_t large_page_payload_size;
-    size_t num_large_pages;
-    size_t large_pages_used;
+    struct kndMemPageHeader *head_tiny_page;
+    struct kndMemPageHeader *tail_tiny_page;
     
     struct kndFacet *facets;
     size_t max_facets;
@@ -110,82 +120,13 @@ struct kndMemPool
     size_t max_user_ctxs;
     size_t num_user_ctxs;
 
-    struct kndClassInst *objs;
-    size_t max_objs;
-    size_t num_objs;
+    // test
+    size_t num_classes;
+    size_t num_sets;
+    size_t num_set_idxs;
 
-    struct kndObjDir *obj_dirs;
-    size_t max_obj_dirs;
-    size_t num_obj_dirs;
-
-
-    struct kndElem *elems;
-    size_t max_elems;
-    size_t num_elems;
-
-    struct kndRel *rels;
-    size_t max_rels;
-    size_t num_rels;
-
-    struct kndRelUpdate *rel_updates;
-    size_t max_rel_updates;
-    size_t num_rel_updates;
-
-    struct kndRelInstanceUpdate *rel_inst_updates;
-    size_t max_rel_inst_updates;
-    size_t num_rel_inst_updates;
-
-    struct kndRelEntry *rel_entries;
-    size_t max_rel_entries;
-    size_t num_rel_entries;
-
-    struct kndRelRef *rel_refs;
-    size_t max_rel_refs;
-    size_t num_rel_refs;
-
-    struct kndRelInstance *rel_insts;
-    size_t max_rel_insts;
-    size_t num_rel_insts;
-
-    struct kndRelArg *rel_args;
-    size_t max_rel_args;
-    size_t num_rel_args;
-
-    struct kndRelArgInstance *rel_arg_insts;
-    size_t max_rel_arg_insts;
-    size_t num_rel_arg_insts;
-
-    struct kndRelArgInstRef *rel_arg_inst_refs;
-    size_t max_rel_arg_inst_refs;
-    size_t num_rel_arg_inst_refs;
-
-    struct kndProc *procs;
-    size_t max_procs;
-    size_t num_procs;
-
-    struct kndProcEntry *proc_entries;
-    size_t max_proc_entries;
-    size_t num_proc_entries;
-
-    struct kndProcInstance *proc_insts;
-    size_t max_proc_insts;
-    size_t num_proc_insts;
-
-    struct kndProcArg *proc_args;
-    size_t max_proc_args;
-    size_t num_proc_args;
-
-    //struct kndProcArgInstance *proc_arg_insts;
-    //size_t max_proc_arg_insts;
-    //size_t num_proc_arg_insts;
-
-    struct kndProcUpdate *proc_updates;
-    size_t max_proc_updates;
-    size_t num_proc_updates;
-
-    struct kndProcUpdateRef *proc_update_refs;
-    size_t max_proc_update_refs;
-    size_t num_proc_update_refs;
+    size_t num_class_vars;
+    size_t num_attr_vars;
 
     struct glbOutput *log;
 

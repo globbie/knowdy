@@ -1001,7 +1001,6 @@ static gsl_err_t rel_append(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
-
 static gsl_err_t rel_alloc(void *obj,
                            const char *name,
                            size_t name_size,
@@ -1022,8 +1021,8 @@ static gsl_err_t rel_alloc(void *obj,
     err = mempool->new_rel_ref(mempool, &relref);
     if (err) return make_gsl_err_external(err);
 
-    root_rel = self->base->root_class->rel;
-    relref->rel = root_rel;
+    //root_rel = self->base->entry->repo->root_class->rel;
+    //relref->rel = root_rel;
     *item = (void*)relref;
 
     return make_gsl_err(gsl_OK);

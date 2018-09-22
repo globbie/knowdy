@@ -105,13 +105,14 @@ struct kndClassEntry
     knd_state_phase phase;
 
     /* frozen block TODO: nested struct? */
-    size_t global_offset;
+    /*size_t global_offset;
     size_t curr_offset;
     size_t block_size;
     size_t frozen_size;
     size_t body_size;
     size_t obj_block_size;
     size_t dir_size;
+    */
 
     /* immediate children */
     struct kndClassRef *children;
@@ -135,7 +136,7 @@ struct kndClassEntry
     size_t num_insts;
     struct kndSet *attr_idx;
 
-    struct ooDict *reverse_attr_name_idx;
+    //struct ooDict *reverse_attr_name_idx;
 
     size_t child_count;
     struct kndClassEntry *prev;
@@ -160,11 +161,12 @@ struct kndClass
     size_t init_inst_state;
     size_t num_inst_states;
 
-    struct kndState *child_states;
+    /*struct kndState *child_states;
     size_t init_child_state;
     size_t num_child_states;
-
+    
     struct kndText *gloss;
+    */
 
     struct kndTranslation *tr;
     struct kndTranslation *summary;
@@ -187,7 +189,7 @@ struct kndClass
     struct kndProc *proc;
     struct kndRel *rel;
 
-    struct kndClass      *root_class;
+    //struct kndClass      *root_class;
     struct kndClass      *curr_class;
     struct kndClass      *curr_baseclass;
     struct kndAttr       *curr_attr;
@@ -212,16 +214,16 @@ struct kndClass
     bool batch_mode;
 
     /* submodules */
-    struct kndClassFormatter *formatter;
+    //struct kndClassFormatter *formatter;
 
-    struct kndAttr *computed_attrs[KND_MAX_COMPUTED_ATTRS];
+    struct kndAttr *computed_attrs[1];
     size_t num_computed_attrs;
 
     struct kndClass *next;
 
     /***********  public methods ***********/
-    void (*init)(struct kndClass  *self);
-    void (*del)(struct kndClass   *self);
+    //void (*init)(struct kndClass  *self);
+    //void (*del)(struct kndClass   *self);
     void (*reset_inbox)(struct kndClass   *self,
                         bool rollback);
     void (*str)(struct kndClass *self);
@@ -251,9 +253,9 @@ struct kndClass
 		   struct kndClassUpdate *update);
 
     int (*update_state)(struct kndClass *self);
-    gsl_err_t (*apply_liquid_updates)(struct kndClass *self,
+    /*gsl_err_t (*apply_liquid_updates)(struct kndClass *self,
                                       const char *rec,
-                                      size_t *total_size);
+                                      size_t *total_size);*/
     gsl_err_t (*select)(void  *self,
                         const char *rec,
                         size_t *total_size);
@@ -381,6 +383,8 @@ extern int knd_class_ref_new(struct kndMemPool *mempool,
                              struct kndClassRef **result);
 extern int knd_class_entry_new(struct kndMemPool *mempool,
                                struct kndClassEntry **result);
+extern int knd_inner_class_new(struct kndMemPool *mempool,
+                               struct kndClass **self);
 extern int knd_class_new(struct kndMemPool *mempool,
                          struct kndClass **result);
 

@@ -25,7 +25,7 @@
 static void str(struct kndAttr *self)
 {
     struct kndTranslation *tr;
-    struct kndProc *proc;
+    //struct kndProc *proc;
     const char *type_name = knd_attr_names[self->type];
 
     if (self->is_a_set)
@@ -64,25 +64,15 @@ static void str(struct kndAttr *self)
                 self->depth * KND_OFFSET_SIZE, "",
                 self->ref_classname_size, self->ref_classname);
     }
-    if (self->uniq_attr_name_size) {
-        knd_log("%*s  UNIQ attr: %.*s",
-                self->depth * KND_OFFSET_SIZE, "",
-                self->uniq_attr_name_size, self->uniq_attr_name);
-    }
 
-    if (self->ref_procname_size) {
-        knd_log("%*s  PROC template: %s",
-                self->depth * KND_OFFSET_SIZE, "", self->ref_procname);
-    }
-
-    if (self->proc) {
+    /*if (self->proc) {
         proc = self->proc;
         knd_log("%*s  PROC: %.*s",
                 self->depth * KND_OFFSET_SIZE, "", proc->name_size, proc->name);
         proc->depth = self->depth + 1;
         proc->str(proc);
     }
-
+    */
     /*if (self->calc_oper_size) {
         knd_log("%*s  oper: %s attr: %s",
                 self->depth * KND_OFFSET_SIZE, "",
@@ -283,7 +273,8 @@ static int export_GSP(struct kndAttr *self, struct glbOutput *out)
     return knd_OK;
 }
 
-static int export(struct kndAttr *self, knd_format format, struct glbOutput *out)
+extern int knd_attr_export(struct kndAttr *self,
+                           knd_format format, struct glbOutput *out)
 {
     switch (format) {
     case KND_FORMAT_JSON: return export_JSON(self);
@@ -439,13 +430,12 @@ static gsl_err_t parse_quant_type(void *obj,
         { .is_implied = true,
           .run = run_set_quant,
           .obj = self
-        },
+        }, // TODO
         { .type = GSL_SET_STATE,
           .name = "uniq",
           .name_size = strlen("uniq"),
-          .buf = self->uniq_attr_name,
-          .buf_size = &self->uniq_attr_name_size,
-          .max_buf_size = sizeof(self->uniq_attr_name)
+          .run = run_set_quant,
+          .obj = self
         }
     };
 
@@ -520,6 +510,26 @@ static gsl_err_t parse_access_control(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+
+static gsl_err_t set_attr_name(void *obj, const char *name, size_t name_size)
+{
+    struct kndAttr *self = obj;
+
+    if (!name_size) return make_gsl_err(gsl_FAIL);
+    self->name = name;
+    self->name_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_ref_class(void *obj, const char *name, size_t name_size)
+{
+    struct kndAttr *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FAIL);
+    self->ref_classname = name;
+    self->ref_classname_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t parse_GSL(struct kndAttr *self,
                            const char *rec,
                            size_t *total_size)
@@ -529,9 +539,8 @@ static gsl_err_t parse_GSL(struct kndAttr *self,
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .buf = self->name,
-          .buf_size = &self->name_size,
-          .max_buf_size = sizeof(self->name)
+          .run = set_attr_name,
+          .obj = self
         },
         { .type = GSL_SET_ARRAY_STATE,
           .name = "_gloss",
@@ -548,16 +557,14 @@ static gsl_err_t parse_GSL(struct kndAttr *self,
         { .type = GSL_SET_STATE,
           .name = "c",
           .name_size = strlen("c"),
-          .buf = self->ref_classname,
-          .buf_size = &self->ref_classname_size,
-          .max_buf_size = sizeof(self->ref_classname)
+          .run = set_ref_class,
+          .obj = self
         },
         { .name = "c",
           .name_size = strlen("c"),
-          .buf = self->ref_classname,
-          .buf_size = &self->ref_classname_size,
-          .max_buf_size = sizeof(self->ref_classname)
-        },
+          .run = set_ref_class,
+          .obj = self
+        }/*,
         { .type = GSL_SET_STATE,
           .name = "p",
           .name_size = strlen("p"),
@@ -570,7 +577,7 @@ static gsl_err_t parse_GSL(struct kndAttr *self,
           .buf = self->ref_procname,
           .buf_size = &self->ref_procname_size,
           .max_buf_size = sizeof self->ref_procname,
-        },
+          }*/,
         { .name = "proc",
           .name_size = strlen("proc"),
           .parse = parse_proc,
@@ -711,7 +718,6 @@ extern void kndAttr_init(struct kndAttr *self)
     memset(self, 0, sizeof(struct kndAttr));
     self->str = str;
     self->parse = parse_GSL;
-    self->export = export;
 }
 
 extern int kndAttr_new(struct kndAttr **c)
@@ -788,8 +794,7 @@ extern int knd_register_attr_ref(void *obj,
     ref->next = prev_attr_ref;
     err = attr_name_idx->set(attr_name_idx,
                              attr->name, attr->name_size,
-                             (void*)ref);                              RET_ERR();
- 
+                             (void*)ref);                                         RET_ERR();
     return knd_OK;
 }
 
@@ -798,9 +803,14 @@ extern int knd_attr_var_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+    //knd_log("..attr var new [size:%zu]", sizeof(struct kndAttr));
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
                             sizeof(struct kndAttrVar), &page);
     if (err) return err;
+
+    // TEST
+    //mempool->num_attr_vars++;
+
     *result = page;
     return knd_OK;
 }
@@ -822,7 +832,9 @@ extern int knd_attr_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL, sizeof(struct kndAttr), &page);
+    //knd_log("..attr new [size:%zu]", sizeof(struct kndAttr));
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                            sizeof(struct kndAttr), &page);
     if (err) return err;
     *result = page;
     kndAttr_init(*result);

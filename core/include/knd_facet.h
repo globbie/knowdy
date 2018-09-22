@@ -55,6 +55,7 @@ struct kndFacet
     struct kndSet *set_idx;
     size_t export_depth;
     size_t batch_size;
+    struct kndFacet *next;
 };
 
 extern void kndFacet_init(struct kndFacet *self);

@@ -58,7 +58,7 @@ static void reset_inbox(struct kndClass *self,
         next_c = c->next;
 
         if (rollback) {
-            c->del(c);
+            //c->del(c);
             c = next_c;
             continue;
         }
@@ -1104,7 +1104,6 @@ extern int knd_register_class_inst(struct kndClass *self,
     struct kndState *state;
     int err;
 
-
     inst_idx = self->entry->inst_idx;
     if (!inst_idx) {
         err = knd_set_new(mempool, &inst_idx);                          RET_ERR();
@@ -1231,7 +1230,7 @@ extern int knd_class_copy(struct kndClass *self,
 
     entry->class = c;
     c->entry = entry;
-    c->root_class = self->root_class;
+    //c->root_class = self->root_class;
 
     err = class_name_idx->set(class_name_idx,
                               entry->name, entry->name_size,
@@ -1259,9 +1258,7 @@ extern int knd_class_copy(struct kndClass *self,
 
 extern void kndClass_init(struct kndClass *self)
 {
-    self->del = kndClass_del;
     self->str = str;
-    //self->open = open_DB;
     self->load = read_GSL_file;
     self->reset_inbox = reset_inbox;
 
@@ -1276,7 +1273,7 @@ extern void kndClass_init(struct kndClass *self)
     self->export_updates = export_updates;
 }
 
-extern int kndClass_new(struct kndClass **result,
+/*extern int kndClass_new(struct kndClass **result,
                         struct kndMemPool *mempool)
 {
     struct kndClass *self = NULL;
@@ -1296,14 +1293,20 @@ extern int kndClass_new(struct kndClass **result,
 
     return knd_OK;
 }
+*/
 
 extern int knd_class_var_new(struct kndMemPool *mempool,
                              struct kndClassVar **result)
 {
     void *page;
     int err;
+    //knd_log("..class var new [size:%zu]", sizeof(struct kndClassVar));
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassVar), &page);
     if (err) return err;
+
+    // TEST
+    mempool->num_class_vars++;
+
     *result = page;
     return knd_OK;
 }
@@ -1324,8 +1327,12 @@ extern int knd_class_entry_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassEntry), &page);
+
+    //knd_log("..class entry new [size:%zu]", sizeof(struct kndClassEntry));
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                            sizeof(struct kndClassEntry), &page);
     if (err) return err;
+
     *result = page;
     return knd_OK;
 }
@@ -1333,7 +1340,7 @@ extern int knd_class_entry_new(struct kndMemPool *mempool,
 extern void knd_class_free(struct kndMemPool *mempool,
                            struct kndClass *self)
 {
-    knd_mempool_free(mempool, KND_MEMPAGE_NORMAL, (void*)self);
+    knd_mempool_free(mempool, KND_MEMPAGE_SMALL_X4, (void*)self);
 }
 
 extern int knd_class_update_new(struct kndMemPool *mempool,
@@ -1347,19 +1354,40 @@ extern int knd_class_update_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
+extern int knd_inner_class_new(struct kndMemPool *mempool,
+                               struct kndClass **self)
+{
+    void *page;
+    int err;
+
+    //knd_log("..class new [size:%zu]", sizeof(struct kndClass));
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X4,
+                            sizeof(struct kndClass), &page);                      RET_ERR();
+    if (err) return err;
+    *self = page;
+    kndClass_init(*self);
+    return knd_OK;
+}
+
 extern int knd_class_new(struct kndMemPool *mempool,
                          struct kndClass **self)
 {
     struct kndSet *attr_idx;
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL,
+
+    //knd_log("..class new [size:%zu]", sizeof(struct kndClass));
+
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X4,
                             sizeof(struct kndClass), &page);                      RET_ERR();
     if (err) return err;
     *self = page;
 
     err = knd_set_new(mempool, &attr_idx);                                        RET_ERR();
     (*self)->attr_idx = attr_idx;
+
+    // TEST
+    mempool->num_classes++;
 
     kndClass_init(*self);
     return knd_OK;

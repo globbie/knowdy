@@ -46,29 +46,26 @@ struct kndSetElemIdx
 {
     struct kndSetElemIdx *idxs[KND_RADIX_BASE];
     void *elems[KND_RADIX_BASE];
-    size_t num_elems;
 };
 
 struct kndSet
 {
-    knd_set_type type;
     struct kndClassEntry *base;
-    bool is_terminal;
 
-    struct kndSetElemIdx idx;
+    struct kndSetElemIdx *idx;
     size_t num_elems;
     size_t num_valid_elems;
 
     struct kndFacet *parent_facet;
-    struct kndFacet *facets[KND_MAX_SPECS];
+    struct kndFacet *facets;
     size_t num_facets;
     
     struct kndMemPool *mempool;
     struct kndSet *next;
 
+    knd_set_type type;
+
     /******** public methods ********/
-    void (*str)(struct kndSet *self,
-		size_t depth);
     int (*add)(struct kndSet *self,
                const char *key,
                size_t key_size,
@@ -80,21 +77,6 @@ struct kndSet
     int (*map)(struct kndSet *self,
                map_cb_func cb,
                void *obj);
-    int (*add_ref)(struct kndSet *self,
-		   struct kndAttr *attr,
-		   struct kndClassEntry *topic,
-		   struct kndClassEntry *spec);
-    int (*get_facet)(struct kndSet *self,
-		     struct kndAttr *attr,
-		     struct kndFacet **facet);
-
-    int (*intersect)(struct kndSet *self,
-                     struct kndSet **sets,
-                     size_t num_sets);
-
-    int (*facetize)(struct kndSet *self);
-
-    int (*export)(struct kndSet *self);
 };
 
 extern int kndSet_init(struct kndSet *self);
@@ -103,3 +85,16 @@ extern int knd_set_new(struct kndMemPool *mempool,
                        struct kndSet **result);
 extern int knd_set_elem_idx_new(struct kndMemPool *mempool,
                                 struct kndSetElemIdx **result);
+
+extern int knd_set_intersect(struct kndSet *self,
+                             struct kndSet **sets,
+                             size_t num_sets);
+
+extern int knd_set_get_facet(struct kndSet  *self,
+                             struct kndAttr *attr,
+                             struct kndFacet  **result);
+
+extern int knd_set_add_ref(struct kndSet *self,
+                           struct kndAttr *attr,
+                           struct kndClassEntry *topic,
+                           struct kndClassEntry *spec);

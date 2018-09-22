@@ -443,9 +443,6 @@ extern int kndTask_new(struct kndTask **task)
     err = glbOutput_new(&self->file_out, KND_FILE_BUF_SIZE);
     if (err) return err;
 
-    self->visual.text_line_height = KND_TEXT_LINE_HEIGHT;
-    self->visual.text_hangindent_size = KND_TEXT_HANGINDENT_SIZE;
-
     self->del    = del;
     self->reset  = reset;
     self->run    = parse_GSL;
