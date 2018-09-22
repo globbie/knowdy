@@ -9,6 +9,9 @@
 #include "knd_user.h"
 #include "knd_task.h"
 #include "knd_dict.h"
+#include "knd_set.h"
+#include "knd_class.h"
+#include "knd_attr.h"
 #include "knd_mempool.h"
 
 #include <gsl-parser.h>
@@ -194,6 +197,9 @@ kndShard_parse_config(void *obj, const char *rec, size_t *total_size)
         knd_log("-- root SID is not set :(");
         return make_gsl_err(gsl_FAIL);
     }
+
+    // TODO
+    knd_log("\nsize of struct: %zu", sizeof(struct kndAttrVarRef));
 
     return make_gsl_err(gsl_OK);
 }

@@ -154,10 +154,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     /* get class */
     err = knd_get_class(repo, name, name_size, &c);
     if (err) {
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL, sizeof(*c), &page);
+        err = knd_class_new(mempool, &c);
         if (err) return make_gsl_err_external(err);
-        c = page;
-        kndClass_init(c);
 
         c->entry = entry;
         entry->class = c;
@@ -381,7 +379,6 @@ static int kndRepo_open(struct kndRepo *self)
 {
     struct glbOutput *out;
     struct kndClass *c;
-    //struct kndProc *proc;
     struct kndRel *rel;
     struct kndClassInst *inst;
     struct stat st;
@@ -473,10 +470,22 @@ static int kndRepo_open(struct kndRepo *self)
         if (err) return err;
     }
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_TMP) {
+        struct kndMemPool *mempool = self->mempool;
+
         knd_log("++ \"%.*s\" repo opened in \"%.*s\"!",
                 self->name_size, self->name,
                 self->path_size, self->path);
+        knd_log("== mempool: base pages: %zu small_x4:%zu small_x2:%zu small:%zu tiny:%zu",
+                mempool->pages_used,
+                mempool->small_x4_pages_used,
+                mempool->small_x2_pages_used,
+                mempool->small_pages_used,
+                mempool->tiny_pages_used);
+        knd_log("num sets:%zu  set idxs:%zu\n", mempool->num_sets, mempool->num_set_idxs);
+        knd_log("class vars:%zu  attr vars:%zu\n", mempool->num_class_vars,
+                mempool->num_attr_vars);
+    }
 
     return knd_OK;
 }

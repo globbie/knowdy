@@ -340,7 +340,7 @@ static gsl_err_t parse_rel_select(void *obj,
 }
 
 
-static gsl_err_t parse_liquid_updates(void *obj,
+/*static gsl_err_t parse_liquid_updates(void *obj,
                                       const char *rec,
                                       size_t *total_size)
 {
@@ -353,6 +353,7 @@ static gsl_err_t parse_liquid_updates(void *obj,
 
     return self->repo->root_class->apply_liquid_updates(self->repo->root_class, rec, total_size);
 }
+*/
 
 static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 {
@@ -543,7 +544,7 @@ static gsl_err_t remove_user(void *data,
     c->inst_inbox = user_inst;
     c->inst_inbox_size++;
 
-    root_class = c->root_class;
+    root_class = c->entry->repo->root_class;
 
     c->next = root_class->inbox;
     root_class->inbox = c;
@@ -693,13 +694,13 @@ static gsl_err_t parse_select_user(struct kndUser *self,
           .name_size = strlen("_rel"),
           .parse = select_user_rels,
           .obj = self
-        },
+        }/*,
         { .type = GSL_SET_STATE,
           .name = "state",
           .name_size = strlen("state"),
           .parse = parse_liquid_updates,
           .obj = self
-        },
+          }*/,
         { .name = "_sync",
           .name_size = strlen("_sync"),
           .parse = parse_sync_task,

@@ -211,8 +211,7 @@ static int export_facets_GSP(struct kndClass *self, struct kndSet *set)
     int err;
 
     err = out->write(out,  "[fc ", strlen("[fc "));                               RET_ERR();
-    for (size_t i = 0; i < set->num_facets; i++) {
-        facet = set->facets[i];
+    for (facet = set->facets; facet; facet = facet->next) {
         err = out->write(out,  "{", 1);                                           RET_ERR();
         err = out->write(out, facet->attr->name, facet->attr->name_size);
         err = out->write(out,  " ", 1);                                           RET_ERR();
@@ -473,7 +472,7 @@ static int export_class_body_updates(struct kndClass *self,
 
     if (self->attrs) {
         for (attr = self->attrs; attr; attr = attr->next) {
-            err = attr->export(attr, KND_FORMAT_GSP, out);
+            err = knd_attr_export(attr, KND_FORMAT_GSP, out);
             if (err) return err;
         }
     }
@@ -579,7 +578,7 @@ extern int knd_class_export_GSP(struct kndClass *self,
 
     if (self->attrs) {
         for (attr = self->attrs; attr; attr = attr->next) {
-            err = attr->export(attr, KND_FORMAT_GSP, out);                        RET_ERR();
+            err = knd_attr_export(attr, KND_FORMAT_GSP, out);                        RET_ERR();
         }
     }
 
@@ -931,7 +930,7 @@ static gsl_err_t attr_var_append(void *accu,
         self->list_tail = attr_var;
     }
     self->num_list_elems++;
-    attr_var->list_count = self->num_list_elems;
+    //attr_var->list_count = self->num_list_elems;
 
     return make_gsl_err(gsl_OK);
 }

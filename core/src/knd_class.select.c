@@ -99,7 +99,7 @@ static gsl_err_t select_by_attr(void *obj,
 
     set = c->entry->descendants;
 
-    err = set->get_facet(set, self->curr_attr, &facet);
+    err = knd_set_get_facet(set, self->curr_attr, &facet);
     if (err) {
         log->writef(log, "no such facet: \"%.*s\"", name_size, name);
         task->http_code = HTTP_NOT_FOUND;
@@ -274,7 +274,7 @@ static gsl_err_t present_attr_var_selection(void *obj,
     err = out->writec(out, '{');
     if (err) return make_gsl_err_external(err);
     
-    err = attr->export(attr, task->format, out);
+    err = knd_attr_export(attr, task->format, out);
     if (err) {
         knd_log("-- attr export failed");
         return make_gsl_err_external(err);
@@ -446,7 +446,7 @@ static gsl_err_t present_class_selection(void *obj,
             set->mempool = mempool;
             set->base = task->sets[0]->base;
 
-            err = set->intersect(set, task->sets, task->num_sets);
+            err = knd_set_intersect(set, task->sets, task->num_sets);
             if (err) return make_gsl_err_external(err);
         }
 

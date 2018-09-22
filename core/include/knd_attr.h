@@ -88,7 +88,15 @@ struct kndAttrValidator
 struct kndAttrUpdate
 {
     struct kndAttr *attr;
-    struct kndAttrVar *attr_var;
+    struct kndAttrVarRef *attr_var;
+};
+
+struct kndAttrVarRef
+{
+    struct kndAttr *attr;
+    struct kndState *states;
+    struct kndAttrVarRef *children;
+    struct kndAttrVarRef *next;
 };
 
 struct kndAttrVar
@@ -125,7 +133,7 @@ struct kndAttrVar
     struct kndState *states;
     size_t init_state;
     size_t num_states;
-
+    
     /* siblings */
     struct kndAttrVar *list;
     struct kndAttrVar *list_tail;
@@ -148,20 +156,18 @@ struct kndAttrRef
 
 struct kndAttr
 {
+    char id[KND_ID_SIZE];
+    size_t id_size;
     knd_attr_type type;
+
     knd_attr_access_type access_type;
     knd_attr_quant_type quant_type;
 
-    char name[KND_NAME_SIZE];
+    const char *name;
     size_t name_size;
-    char id[KND_ID_SIZE];
-    size_t id_size;
     size_t numid;
 
     struct kndClass *parent_class;
-
-    char uniq_attr_name[KND_SHORT_NAME_SIZE];
-    size_t uniq_attr_name_size;
 
     bool is_a_set;
     //bool is_recursive;
@@ -175,24 +181,20 @@ struct kndAttr
     struct kndTask *task;
 
     /* if refclass is empty: assume self reference by default */
-    char ref_classname[KND_SHORT_NAME_SIZE];
+    const char *ref_classname;
     size_t ref_classname_size;
     struct kndClass *ref_class;
 
-    char ref_procname[KND_SHORT_NAME_SIZE];
+    const char *ref_procname;
     size_t ref_procname_size;
     struct kndProc *proc;
 
     /* concise representation */
     size_t concise_level;
 
-    char calc_attr[KND_NAME_SIZE];
-    //size_t calc_attr_size;
+    const char *calc_attr;//[KND_NAME_SIZE];
 
-    //char default_val[KND_SHORT_NAME_SIZE];
-    //size_t default_val_size;
-
-    char idx_name[KND_SHORT_NAME_SIZE];
+    const char *idx_name; //[KND_SHORT_NAME_SIZE];
     size_t idx_name_size;
 
     struct kndState *states;
@@ -211,13 +213,9 @@ struct kndAttr
                        const char *rec,
                        size_t *chunk_size);
 
-    /*int (*validate)(struct kndAttr *self,
-                    const char   *val,
-                    size_t val_size);
-    */
-    int (*export)(struct kndAttr *self,
+    /*int (*export)(struct kndAttr *self,
                   knd_format format,
-                  struct glbOutput *out);
+                  struct glbOutput *out);*/
 };
 
 /* constructor */
@@ -263,6 +261,9 @@ extern int knd_register_attr_ref(void *obj,
                                  size_t elem_id_size,
                                  size_t count,
                                  void *elem);
+
+extern int knd_attr_export(struct kndAttr *self,
+                           knd_format format, struct glbOutput *out);
 
 extern int knd_attr_var_new(struct kndMemPool *mempool,
                             struct kndAttrVar **result);

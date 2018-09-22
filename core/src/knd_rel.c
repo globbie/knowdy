@@ -753,18 +753,13 @@ static gsl_err_t import_rel(struct kndRel *self,
     knd_num_to_str(entry->numid, entry->id, &entry->id_size, KND_RADIX_BASE);
 
     /* automatic name assignment if no explicit name given */
-    memcpy(entry->name, rel->name, rel->name_size);
+    entry->name = rel->name;
     entry->name_size = rel->name_size;
 
     if (!rel->name_size) {
-        memcpy(entry->name, entry->id, entry->id_size);
+        entry->name = entry->id;
         entry->name_size = entry->id_size;
     }
-
-    //rel->name = entry->name;
-    //rel->name_size = entry->name_size;
-    //rel->id = entry->id;
-    //rel->id_size = entry->id_size;
 
     err = self->rel_name_idx->set(self->rel_name_idx,
                                   entry->name, entry->name_size, (void*)entry);
@@ -823,11 +818,12 @@ static int read_rel_incipit(struct kndRel *self,
                 buf_size, buf);
     entry->id_size = KND_ID_SIZE;
     entry->name_size = KND_NAME_SIZE;
-    err = knd_parse_incipit(buf, buf_size,
+
+    /*err = knd_parse_incipit(buf, buf_size,
                             entry->id, &entry->id_size,
                             entry->name, &entry->name_size);
     if (err) return err;
-
+    */
     if (DEBUG_REL_LEVEL_1)
         knd_log("== REL NAME:\"%.*s\" ID:%.*s",
                 entry->name_size, entry->name, entry->id_size, entry->id);
@@ -2473,7 +2469,7 @@ extern int kndRel_new(struct kndRel **rel,
     memset(self, 0, sizeof(struct kndRel));
 
     err = knd_rel_entry_new(mempool, &entry);                               RET_ERR();
-    entry->name[0] = '/';
+    entry->name = "/";
     entry->name_size = 1;
     entry->rel = self;
     self->entry = entry;
@@ -2495,7 +2491,8 @@ extern int knd_rel_entry_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_MED,
+    knd_log("..rel entry new [size:%zu]", sizeof(struct kndRelEntry));
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
                             sizeof(struct kndRelEntry), &page);  RET_ERR();
     *result = page;
     return knd_OK;
@@ -2506,18 +2503,22 @@ extern int knd_rel_inst_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL,
+
+    knd_log("..rel entry new [size:%zu]", sizeof(struct kndRelInstance));
+
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
                             sizeof(struct kndRelInstance), &page);  RET_ERR();
     *result = page;
     return knd_OK;
 }
 
 extern int knd_rel_new(struct kndMemPool *mempool,
-                        struct kndRel **result)
+                       struct kndRel **result)
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_NORMAL,
+
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X4,
                             sizeof(struct kndRel), &page);  RET_ERR();
     *result = page;
     kndRel_init(*result);

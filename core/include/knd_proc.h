@@ -167,10 +167,10 @@ struct kndProc
     struct kndProcVar *bases;
     size_t num_bases;
 
-    struct kndProcEntry *inherited[KND_MAX_INHERITED];
+    struct kndProcEntry *inherited; //[KND_MAX_INHERITED];
     size_t num_inherited;
 
-    struct kndProcEntry *children[KND_MAX_PROC_CHILDREN];
+    struct kndProcEntry *children; //[KND_MAX_PROC_CHILDREN];
     size_t num_children;
 
     char result_classname[KND_NAME_SIZE];

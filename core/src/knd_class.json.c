@@ -496,7 +496,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
                 err = out->write(out, ",", 1);
                 if (err) return err;
             }
-            err = attr->export(attr, KND_FORMAT_JSON, out);
+            err = knd_attr_export(attr, KND_FORMAT_JSON, out);
             if (err) {
                 if (DEBUG_JSON_LEVEL_TMP)
                     knd_log("-- failed to export %.*s attr",

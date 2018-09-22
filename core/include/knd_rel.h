@@ -74,7 +74,7 @@ struct kndRelEntry
     size_t id_size;
     size_t numid;
 
-    char name[KND_NAME_SIZE];
+    const char *name;
     size_t name_size;
     struct kndRel *rel;
     struct kndRepo *repo;

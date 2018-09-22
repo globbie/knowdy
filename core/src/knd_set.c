@@ -38,39 +38,6 @@ knd_compare_set_by_size_ascend(const void *a,
     return -1;
 }
 
-static void 
-kndSet_str(struct kndSet *self, size_t depth)
-{
-    struct kndFacet *facet;
-
-    knd_log("%*s{set %.*s [total:%zu]", depth * KND_OFFSET_SIZE, "",
-            self->base->name_size, self->base->name, self->num_elems);
-
-    for (size_t i = 0; i < self->num_facets; i++) {
-        facet = self->facets[i];
-        knd_log("%*s[%.*s",
-                (depth + 1) * KND_OFFSET_SIZE, "",
-                facet->attr->name_size, facet->attr->name);
-        /*if (facet->set_name_idx) {
-            set_name_idx = facet->set_name_idx;
-            key = NULL;
-            set_name_idx->rewind(set_name_idx);
-            do {
-                set_name_idx->next_item(set_name_idx, &key, &val);
-                if (!key) break;
-                set = (struct kndSet*)val;
-                set->str(set, depth + 2);
-            } while (key);
-            }*/
-
-        knd_log("%*s]",
-                (depth + 1) * KND_OFFSET_SIZE, "");
-        knd_log("%*s}", depth * KND_OFFSET_SIZE, "");
-    }
-
-    knd_log("%*s}", depth * KND_OFFSET_SIZE, "");
-}
-
 static int kndSet_traverse(struct kndSet *self,
                            struct kndSetElemIdx *base_idx,
                            struct kndSetElemIdx **idxs,
@@ -144,9 +111,9 @@ static int kndSet_traverse(struct kndSet *self,
     return knd_OK;
 }
 
-static int kndSet_intersect(struct kndSet *self,
-                            struct kndSet **sets,
-                            size_t num_sets)
+extern int knd_set_intersect(struct kndSet *self,
+                             struct kndSet **sets,
+                             size_t num_sets)
 {
     struct kndSetElemIdx *base_idx;
     struct kndSetElemIdx *idxs[KND_MAX_CLAUSES];
@@ -168,34 +135,26 @@ static int kndSet_intersect(struct kndSet *self,
           knd_compare_set_by_size_ascend);
 
     /* the smallest set is taken as a base */
-    base_idx = &sets[0]->idx;
+    base_idx = sets[0]->idx;
     sets++;
 
     for (size_t i = 0; i < num_idxs; i++)
-        idxs[i] = &sets[i]->idx;
+        idxs[i] = sets[i]->idx;
 
     err = kndSet_traverse(self,
                           base_idx,
                           idxs, num_idxs,
-                          &self->idx);
+                          self->idx);
     if (err) return err;
 
     return knd_OK;
 }
 
-
-static int
-kndSet_get_facet(struct kndSet  *self,
-                 struct kndAttr *attr,
-                 struct kndFacet  **result)
+extern int knd_set_get_facet(struct kndSet  *self,
+                             struct kndAttr *attr,
+                             struct kndFacet  **result)
 {
-    struct kndFacet *f;    
-
-    for (size_t i = 0; i < self->num_facets; i++) {
-        f = self->facets[i];
-
-        //knd_log(".. get facet: %.*s", f->attr->name_size, f->attr->name);
-
+     for (struct kndFacet *f = self->facets; f; f = f->next) {
         if (f->attr == attr) {
             *result = f;
             return knd_OK;
@@ -213,8 +172,7 @@ kndSet_alloc_facet(struct kndSet  *self,
     struct kndSet *set;
     int err;
     
-    for (size_t i = 0; i < self->num_facets; i++) {
-        f = self->facets[i];
+    for (f = self->facets; f; f = f->next) {
         if (f->attr == attr) {
             *result = f;
             return knd_OK;
@@ -233,39 +191,14 @@ kndSet_alloc_facet(struct kndSet  *self,
     set->type = KND_SET_CLASS;
     f->set_idx = set;
 
-    self->facets[self->num_facets] = f;
+    f->next = self->facets;
+    self->facets = f;
     self->num_facets++;
 
     *result = f;
     return knd_OK;
 }
 
-static int kndFacet_add_reverse_link(struct kndFacet  *self,
-                                     struct kndClassEntry *base,
-                                     struct kndSet  *set)
-{
-    struct kndClassEntry *topic = self->attr->parent_class->entry;
-    struct ooDict *name_idx;
-    int err;
-
-    name_idx = base->reverse_attr_name_idx;
-
-    if (!name_idx) {
-        err = ooDict_new(&name_idx, KND_SMALL_DICT_SIZE);                         RET_ERR();
-        base->reverse_attr_name_idx = name_idx;
-    }
-
-    err = name_idx->set(name_idx,
-                        topic->name, topic->name_size, (void*)set);               RET_ERR();
-
-    if (DEBUG_SET_LEVEL_1) {
-        knd_log(".. add  %.*s to reverse idx of %.*s..",
-                topic->name_size, topic->name,
-                base->name_size, base->name);
-    }
-
-    return knd_OK;
-}
 
 static int kndFacet_alloc_set(struct kndFacet  *self,
                               struct kndClassEntry *base,
@@ -296,13 +229,13 @@ static int kndFacet_alloc_set(struct kndFacet  *self,
     err = self->set_idx->add(self->set_idx,
                              base->id, base->id_size, (void*)set);       RET_ERR();
 
-    err = kndFacet_add_reverse_link(self, base, set);                             RET_ERR();
+    //err = kndFacet_add_reverse_link(self, base, set);                             RET_ERR();
 
     *result = set;
     return knd_OK;
 }
 
-static int
+/*static int
 kndSet_facetize(struct kndSet *self)
 {
     if (DEBUG_SET_LEVEL_1) {
@@ -310,7 +243,7 @@ kndSet_facetize(struct kndSet *self)
                 self->base->name);
     }
     return knd_OK;
-}
+    }*/
 
 static int kndFacet_add_ref(struct kndFacet *self,
                             struct kndClassEntry *topic,
@@ -333,10 +266,10 @@ static int kndFacet_add_ref(struct kndFacet *self,
     return knd_OK;
 }
 
-static int kndSet_add_ref(struct kndSet *self,
-                          struct kndAttr *attr,
-                          struct kndClassEntry *topic,
-                          struct kndClassEntry *spec)
+extern int knd_set_add_ref(struct kndSet *self,
+                           struct kndAttr *attr,
+                           struct kndClassEntry *topic,
+                           struct kndClassEntry *spec)
 {
     struct kndFacet *f;
     int err;
@@ -440,7 +373,15 @@ static int kndSet_add_elem(struct kndSet *self,
 {
     int err;
 
-    err = save_elem(self, &self->idx, elem, key, key_size);
+    if (!self->idx) {
+        err = knd_set_elem_idx_new(self->mempool, &self->idx);
+        if (err) {
+            knd_log("-- set elem idx mempool limit reached :(");
+            return err;
+        }
+    }
+
+    err = save_elem(self, self->idx, elem, key, key_size);
     if (err) return err;
 
     return knd_OK;
@@ -453,7 +394,9 @@ static int kndSet_get_elem(struct kndSet *self,
 {
     int err;
 
-    err = get_elem(self, &self->idx, elem, key, key_size);
+    if (!self->idx) return knd_FAIL;
+
+    err = get_elem(self, self->idx, elem, key, key_size);
     if (err) return err;
 
     return knd_OK;
@@ -500,7 +443,12 @@ static int kndSet_map(struct kndSet *self,
     size_t count = 0;
     int err;
 
-    err = kndSet_traverse_idx(&self->idx, cb, obj, &count);
+    if (!self->idx) {
+        knd_log("NB: -- no root idx");
+        return knd_OK;
+    }
+
+    err = kndSet_traverse_idx(self->idx, cb, obj, &count);
     if (err) return err;
 
     return knd_OK;
@@ -508,21 +456,13 @@ static int kndSet_map(struct kndSet *self,
 
 extern int kndSet_init(struct kndSet *self)
 {
-    self->str = kndSet_str;
     self->add = kndSet_add_elem;
     self->get = kndSet_get_elem;
     self->map = kndSet_map;
-    self->add_ref = kndSet_add_ref;
-    self->intersect = kndSet_intersect;
-
-    self->get_facet = kndSet_get_facet;
-    self->facetize = kndSet_facetize;
-
     return knd_OK;
 }
 
-extern int 
-kndSet_new(struct kndSet **set)
+extern int kndSet_new(struct kndSet **set)
 {
     struct kndSet *self = malloc(sizeof(struct kndSet));
     if (!self) return knd_NOMEM;
@@ -540,7 +480,9 @@ extern int knd_facet_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_MED, sizeof(struct kndFacet), &page);  RET_ERR();
+    //knd_log("..facet new [size:%zu]", sizeof(struct kndFacet));
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                            sizeof(struct kndFacet), &page);  RET_ERR();
     *result = page;
     return knd_OK;
 }
@@ -550,10 +492,16 @@ extern int knd_set_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_MED, sizeof(struct kndSet), &page);  RET_ERR();
+
+    //knd_log("..set new [size:%zu]", sizeof(struct kndSet));
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                            sizeof(struct kndSet), &page);                    RET_ERR();
     *result = page;
     (*result)->mempool = mempool;
     kndSet_init(*result);
+
+    // TEST
+    mempool->num_sets++;
     return knd_OK;
 }
 
@@ -562,7 +510,15 @@ extern int knd_set_elem_idx_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_MED, sizeof(struct kndSetElemIdx), &page);  RET_ERR();
+
+    //knd_log("..set elem idx new [size:%zu] num pages:%zu",
+    //        sizeof(struct kndSetElemIdx),
+    //        mempool->pages_used);
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_BASE,
+                            sizeof(struct kndSetElemIdx), &page);                      RET_ERR();
     *result = page;
+
+    // TEST
+    mempool->num_set_idxs++;
     return knd_OK;
 }

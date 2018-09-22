@@ -177,10 +177,10 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
 static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 {
     struct kndClass *self = obj;
-    struct kndRepo *repo = self->root_class->entry->repo;
+    struct kndRepo *repo = self->entry->repo;
     struct glbOutput *log = repo->log;
 
-    struct ooDict *class_name_idx = self->entry->repo->class_name_idx;
+    struct ooDict *class_name_idx = repo->class_name_idx;
     struct kndTask *task = repo->task;
     struct kndClassEntry *entry;
     struct kndState *state;
@@ -408,6 +408,9 @@ static gsl_err_t import_attr_var(void *obj,
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = self;
 
+    // TEST
+    mempool->num_attr_vars++;
+
     attr_var->name = name;
     attr_var->name_size = name_size;
 
@@ -468,6 +471,9 @@ static gsl_err_t import_attr_var_alloc(void *obj,
     if (err) return make_gsl_err_external(err);
     attr_var->class_var = self->class_var;
 
+    // TEST
+    mempool->num_attr_vars++;
+
     attr_var->is_list_item = true;
 
     *result = attr_var;
@@ -489,7 +495,7 @@ static gsl_err_t import_attr_var_append(void *accu,
         self->list_tail = attr_var;
     }
     self->num_list_elems++;
-    attr_var->list_count = self->num_list_elems;
+    //attr_var->list_count = self->num_list_elems;
 
     return make_gsl_err(gsl_OK);
 }
@@ -558,7 +564,6 @@ static gsl_err_t import_attr_var_list(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-
 static gsl_err_t import_nested_attr_var(void *obj,
                                          const char *name, size_t name_size,
                                          const char *rec, size_t *total_size)
@@ -572,6 +577,9 @@ static gsl_err_t import_nested_attr_var(void *obj,
     err = knd_attr_var_new(mempool, &attr_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = self->class_var;
+
+    // TEST
+    mempool->num_attr_vars++;
 
     attr_var->name = name;
     attr_var->name_size = name_size;
@@ -734,7 +742,7 @@ static gsl_err_t parse_baseclass(void *obj,
 
     err = knd_class_var_new(mempool, &classvar);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    classvar->root_class = self->root_class;
+    classvar->root_class = self->entry->repo->root_class;
 
     parser_err = parse_class_var(classvar, rec, total_size);
     if (parser_err.code) return parser_err;
@@ -753,14 +761,16 @@ extern gsl_err_t knd_import_class(void *obj,
     struct kndClass *self = obj;
     struct kndClass *c;
     struct kndClassEntry *entry;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct glbOutput *log = self->entry->repo->log;
-    struct kndTask *task = self->entry->repo->task;
+    struct kndRepo *repo = self->entry->repo;
+    struct kndMemPool *mempool = repo->mempool;
+    struct glbOutput *log;
+    struct kndTask *task;
     int e, err;
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("..import \"%.*s\" class..", 128, rec);
+        knd_log("..import \"%.*s\" class.. [total:%zu]",
+                128, rec, mempool->num_classes);
 
     err = knd_class_new(mempool, &c);
     if (err) return *total_size = 0, make_gsl_err_external(err);
@@ -768,12 +778,10 @@ extern gsl_err_t knd_import_class(void *obj,
     err = knd_class_entry_new(mempool, &entry);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
-    entry->repo = self->entry->repo;
+    entry->repo = repo;
     entry->class = c;
     c->entry = entry;
 
-    c->root_class = self;
-    
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_class_name,
@@ -843,6 +851,8 @@ extern gsl_err_t knd_import_class(void *obj,
 
     if (!c->name_size) {
         knd_log("-- no class name specified?");
+        log = repo->log;
+        task = repo->task;
         log->reset(log);
         e = log->write(log, "class name not specified",
                        strlen("class name not specified"));

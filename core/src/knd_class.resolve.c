@@ -109,7 +109,7 @@ static int index_attr(struct kndClass *self,
     set = attr->parent_class->entry->descendants;
 
     /* add curr class to the reverse index */
-    err = set->add_ref(set, attr, self->entry, c->entry);
+    err = knd_set_add_ref(set, attr, self->entry, c->entry);
     if (err) return err;
 
     return knd_OK;
@@ -178,7 +178,7 @@ static int index_attr_var_list(struct kndClass *self,
                     attr->parent_class->entry->repo->name);
 
         /* add curr class to the reverse index */
-        err = set->add_ref(set, attr, self->entry, c->entry);
+        err = knd_set_add_ref(set, attr, self->entry, c->entry);
         if (err) return err;
     }
     return knd_OK;
@@ -241,7 +241,7 @@ static int resolve_proc_ref(struct kndClass *self,
 }
 
 static int resolve_inner_item(struct kndClass *self,
-                             struct kndAttrVar *parent_item)
+                              struct kndAttrVar *parent_item)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
@@ -269,10 +269,9 @@ static int resolve_inner_item(struct kndClass *self,
     }
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
-        knd_log("\n.. resolving inner item \"%.*s\" (count:%zu)"
+        knd_log("\n.. resolving inner item \"%.*s\""
                 " class:%.*s [resolved:%d]] is_list_item:%d",
                 parent_item->name_size,  parent_item->name,
-                parent_item->list_count,
                 c->name_size, c->name, c->is_resolved,
                 parent_item->is_list_item);
     }
@@ -350,6 +349,7 @@ static int resolve_inner_item(struct kndClass *self,
                         item->name_size, item->name,
                         item->val_size, item->val, item->val_size);
 
+            // FIX
             memcpy(buf, item->val, item->val_size);
             buf_size = item->val_size;
             buf[buf_size] = '\0';
@@ -357,8 +357,8 @@ static int resolve_inner_item(struct kndClass *self,
             break;
         case KND_ATTR_INNER:
             if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-                knd_log("== nested inner item found: %.*s conc:%p",
-                        item->name_size, item->name, attr->ref_class);
+                knd_log("== nested inner item found: %.*s",
+                        item->name_size, item->name);
             err = resolve_inner_item(self, item);
             if (err) return err;
             break;
@@ -439,7 +439,6 @@ static int resolve_attr_var_list(struct kndClass *self,
 
     for (item = parent_item->list; item; item = item->next) {
         item->attr = parent_attr;
-
 
         switch (parent_attr->type) {
         case KND_ATTR_INNER:
@@ -1000,7 +999,8 @@ extern int knd_resolve_class(struct kndClass *self,
 {
     struct kndClassVar *cvar;
     struct kndClassEntry *entry;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndRepo *repo = self->entry->repo;
+    struct kndMemPool *mempool = repo->mempool;
     struct kndState *state;
     int err;
 
@@ -1015,9 +1015,9 @@ extern int knd_resolve_class(struct kndClass *self,
         return knd_OK;
     }
 
-    self->entry->repo->num_classes++;
+    repo->num_classes++;
     entry = self->entry;
-    entry->numid = self->entry->repo->num_classes;
+    entry->numid = repo->num_classes;
     knd_num_to_str(entry->numid, entry->id, &entry->id_size, KND_RADIX_BASE);
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
@@ -1028,7 +1028,7 @@ extern int knd_resolve_class(struct kndClass *self,
 
     /* a child of the root class */
     if (!self->baseclass_vars) {
-        err = link_baseclass(self, self->root_class);                             RET_ERR();
+        err = link_baseclass(self, repo->root_class);                             RET_ERR();
     } else {
         err = resolve_baseclasses(self);                                              RET_ERR();
 
