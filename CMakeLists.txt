@@ -41,7 +41,7 @@ endif()
 if(NOT TARGET glb-lib)
     add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib")
     include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib/include")
-    set(GLB_LIBRARY glb-lib)
+    set(GLB_LIBRARY glb-lib_static)
 endif()
 
 if(NOT TARGET kmq)
