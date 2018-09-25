@@ -22,6 +22,7 @@
 
 #include <glb-lib/output.h>
 #include "knd_config.h"
+#include "knd_state.h"
 
 struct kndElem;
 struct kndElemRef;

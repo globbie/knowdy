@@ -2178,10 +2178,12 @@ static int kndRel_update_state(struct kndRel *self,
         knd_log(".. updating Rel state..");
 
     /* create index of REL updates */
-    rel_updates = realloc(update->rels,
+    // TODO
+    /*rel_updates = realloc(update->rels,
                           (self->inbox_size * sizeof(struct kndRelUpdate*)));
     if (!rel_updates) return knd_NOMEM;
     update->rels = rel_updates;
+    */
 
     for (rel = self->inbox; rel; rel = rel->next) {
         err = mempool->new_rel_update(mempool, &rel_update);                      RET_ERR();
@@ -2189,8 +2191,8 @@ static int kndRel_update_state(struct kndRel *self,
         rel_update->update = update;
 
         err = rel->resolve(rel, rel_update);                                      RET_ERR();
-        update->rels[update->num_rels] = rel_update;
-        update->num_rels++;
+        //update->rels[update->num_rels] = rel_update;
+        //update->num_rels++;
     }
 
     reset_inbox(self);

@@ -55,7 +55,6 @@ extern int knd_inherit_attrs(struct kndClass *self, struct kndClass *base)
                 self->entry->name_size, self->entry->name,
                 base->name_size, base->name);
     }
-
     /* copy your parent's attr idx */
     self->attr_idx->mempool = mempool;
     err = base->attr_idx->map(base->attr_idx,
@@ -121,7 +120,8 @@ static int index_attr_var_list(struct kndClass *self,
 {
     struct kndClass *base;
     struct kndSet *set;
-    struct kndClass *c = NULL;
+    struct kndClass *c, *idx_class;
+    struct kndClassRef *ref;
     struct kndAttrVar *item = parent_item;
     struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
@@ -139,9 +139,9 @@ static int index_attr_var_list(struct kndClass *self,
 
     /* template base class */
     err = knd_get_class(self->entry->repo,
-                    attr->ref_classname,
-                    attr->ref_classname_size,
-                    &base);                                                       RET_ERR();
+                        attr->ref_classname,
+                        attr->ref_classname_size,
+                        &base);                                                       RET_ERR();
     if (!base->is_resolved) {
         err = base->resolve(base, NULL);                                          RET_ERR();
     }
@@ -152,8 +152,8 @@ static int index_attr_var_list(struct kndClass *self,
 
         /* specific class */
         err = knd_get_class(self->entry->repo,
-                        item->name,
-                        item->name_size, &c);                                     RET_ERR();
+                            item->name,
+                            item->name_size, &c);                                     RET_ERR();
         item->class = c;
 
         if (!c->is_resolved) {
@@ -161,15 +161,36 @@ static int index_attr_var_list(struct kndClass *self,
         }
         err = knd_is_base(base, c);                                               RET_ERR();
 
-        set = attr->parent_class->entry->descendants;
+        idx_class = attr->parent_class;
+
+        if (idx_class->entry->repo != self->entry->repo) {
+
+            // TODO find our copy of this ancestor
+            //self->str(self);
+
+            for (ref = self->entry->ancestors; ref; ref = ref->next) {
+                c = ref->class;
+
+                knd_log("%*s ==> %.*s (repo:%.*s)", self->depth * KND_OFFSET_SIZE, "",
+                        c->entry->name_size, c->entry->name,
+                        c->entry->repo->name_size, c->entry->repo->name);
+                if (c->entry->orig == idx_class->entry)
+                    knd_log("++ gotcha!!!\n");
+
+                
+            }
+
+        }
+
+        set = idx_class->entry->descendants;
         if (!set) {
             err = knd_set_new(mempool, &set);                                     RET_ERR();
             set->type = KND_SET_CLASS;
-            set->base =  attr->parent_class->entry;
-            attr->parent_class->entry->descendants = set;
+            set->base =  idx_class->entry;
+            idx_class->entry->descendants = set;
         }
 
-        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+        if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
             knd_log(".. add %.*s ref to %.*s (repo:%.*s)",
                     item->name_size, item->name,
                     attr->parent_class->name_size,
@@ -329,14 +350,15 @@ static int resolve_inner_item(struct kndClass *self,
     /* resolve nested children */
     for (item = parent_item->children; item; item = item->next) {
         if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
-            knd_log(".. check attr \"%.*s\" in class \"%.*s\" "
+            knd_log(".. check attr \"%.*s\" in class \"%.*s\" (repo:%.*s) "
                     " is_resolved:%d",
                     item->name_size, item->name,
-                    c->name_size, c->name, c->is_resolved);
+                    c->name_size, c->name,
+                     c->entry->repo->name_size, c->entry->repo->name, c->is_resolved);
         }
         err = knd_class_get_attr(c, item->name, item->name_size, &attr);
         if (err) {
-            knd_log("-- no attr \"%.*s\" in class \"%.*s\" :(",
+            knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                     item->name_size, item->name,
                     c->name_size, c->name);
             return err;
@@ -481,11 +503,13 @@ static int resolve_attr_vars(struct kndClass *self,
     int e, err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
-        knd_log("\n.. resolving attr vars of class \"%.*s\"..",
-                self->entry->name_size, self->entry->name);
+        knd_log("\n.. resolving attr vars of class \"%.*s\" (repo:%.*s) ..",
+                self->entry->name_size, self->entry->name,
+                self->entry->repo->name_size, self->entry->repo->name);
     }
 
     for (attr_var = parent_item->attrs; attr_var; attr_var = attr_var->next) {
+
         if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
             knd_log(".. resolving attr var: %.*s",
                     attr_var->name_size, attr_var->name);
@@ -741,79 +765,77 @@ static int resolve_primary_attrs(struct kndClass *self)
     return knd_OK;
 }
 
-static int resolve_objs(struct kndClass     *self,
-                        struct kndClassUpdate *class_update)
+static int link_ancestor(struct kndClass *self,
+                         struct kndClassEntry *base_entry)
 {
+    struct kndClassEntry *entry = self->entry;
+    struct kndClassEntry *prev_entry;
     struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndClassInst *inst;
-    struct kndState *state;
+    struct kndSet *desc_idx;
+    struct kndClass *base;
+    struct kndClassRef *ref;
+    struct ooDict *class_name_idx = self->entry->repo->class_name_idx;
+    void *result;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_1)
-        knd_log("..resolving class insts, inst inbox size: %zu",
-                self->inst_inbox_size);
-
-    if (class_update) {
-
-        // TODO: mempool 
-        class_update->insts = calloc(self->inst_inbox_size,
-                                     sizeof(struct kndClassInst*));
-        if (!class_update->insts) {
-            return knd_NOMEM;
-        }
-
-        err = knd_state_new(mempool, &state);                                MEMPOOL_ERR(ClassInstState);
-        state->update = class_update->update;
-        state->val = (void*)class_update;
-        state->next = self->inst_states;
-        self->inst_states = state;
-        self->num_inst_states++;
-        state->numid = self->num_inst_states;
-    }
-
-    for (inst = self->inst_inbox; inst; inst = inst->next) {
-        if (inst->states->phase == KND_REMOVED) {
-            knd_log("NB: \"%.*s\" inst to be removed", inst->name_size, inst->name);
-            goto update;
-        }
-        err = inst->resolve(inst);
-        if (err) {
-            knd_log("-- %.*s inst not resolved :(",
-                    inst->name_size, inst->name);
-            goto final;
-        }
-        inst->states->phase = KND_CREATED;
-
-    update:
-        if (class_update) {
-
-            /* NB: should never happen: mismatch of num insts */
-            if (class_update->num_insts >= self->inst_inbox_size) {
-                knd_log("-- num insts mismatch in %.*s:  %zu vs %zu:(",
-                        self->entry->name_size, self->entry->name,
-                        class_update->num_insts, self->inst_inbox_size);
-                return knd_FAIL;
-            }
-
-            class_update->insts[class_update->num_insts] = inst;
-
-            class_update->num_insts++;
-            inst->states->update = class_update->update;
-            inst->states->val = (void*)class_update;
+    base = base_entry->class;
+    if (base_entry->repo != entry->repo) {
+        prev_entry = class_name_idx->get(class_name_idx,
+                                         base_entry->name,
+                                         base_entry->name_size);
+        if (prev_entry) {
+            base = prev_entry->class;
+        } else {
+            err = knd_class_clone(base_entry->class, self->entry->repo, &base);   RET_ERR();
         }
     }
-    err =  knd_OK;
 
- final:
+    desc_idx = base->entry->descendants;
+    if (!desc_idx) {
+        err = knd_set_new(mempool, &desc_idx);                                RET_ERR();
+        desc_idx->type = KND_SET_CLASS;
+        desc_idx->base = base->entry;
+        base->entry->descendants = desc_idx;
+    }
+ 
+    err = desc_idx->get(desc_idx, entry->id, entry->id_size, &result);
+    if (!err) {
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+            knd_log("== link already established between %.*s and %.*s",
+                    entry->name_size, entry->name,
+                    base->entry->name_size,
+                    base->entry->name);
+        return knd_OK;
+    }
 
-    return err;
+    err = knd_class_ref_new(mempool, &ref);                                   RET_ERR();
+    ref->class = base;
+    ref->entry = base->entry;
+
+    ref->next = entry->ancestors;
+    entry->ancestors = ref;
+    entry->num_ancestors++;
+    base->entry->num_terminals++;
+
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+        knd_log(".. add \"%.*s\" (repo:%.*s) as "
+                " a descendant of ancestor \"%.*s\" (repo:%.*s)..",
+                entry->name_size, entry->name,
+                entry->repo->name_size, entry->repo->name,
+                base->entry->name_size, base->entry->name,
+                base->entry->repo->name_size, base->entry->repo->name);
+
+    err = desc_idx->add(desc_idx, entry->id, entry->id_size,
+                        (void*)entry);                                             RET_ERR();
+
+    return knd_OK;
 }
 
 static inline void link_child(struct kndClassEntry *self,
-                              struct kndClassRef *childref)
+                              struct kndClassRef *child_ref)
 {
-    childref->next = self->children;
-    self->children = childref;
+    child_ref->next = self->children;
+    self->children = child_ref;
     self->num_children++;
 }
 
@@ -824,8 +846,6 @@ static int link_baseclass(struct kndClass *self,
     struct kndClass *base_copy = NULL;
     struct kndClassEntry *entry = self->entry;
     struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndSet *set;
-    void *result;
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
@@ -837,6 +857,9 @@ static int link_baseclass(struct kndClass *self,
 
     if (base->entry->repo != self->entry->repo) {
         err = knd_class_clone(base, self->entry->repo, &base_copy);               RET_ERR();
+        base = base_copy;
+
+        err = link_ancestor(self, base->entry);                                       RET_ERR();
     }
 
     /* register as a child */
@@ -844,60 +867,11 @@ static int link_baseclass(struct kndClass *self,
     ref->entry = entry;
     ref->class = self;
 
-    if (base_copy)
-        link_child(base_copy->entry, ref);
-    else
-        link_child(base->entry, ref);
+    link_child(base->entry, ref);
 
     /* copy the ancestors */
     for (baseref = base->entry->ancestors; baseref; baseref = baseref->next) {
-        set = baseref->entry->descendants;
-        if (set) {
-
-            // TODO only the same repo links
-            if (!base_copy) {
-                err = set->get(set, entry->id, entry->id_size, &result);
-                if (!err) {
-
-                    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-                        knd_log("== link already established between %.*s and %.*s",
-                                entry->name_size, entry->name,
-                                baseref->entry->name_size,
-                                baseref->entry->name);
-                    continue;
-                }
-            }
-        }
-
-        err = knd_class_ref_new(mempool, &ref);                                   RET_ERR();
-        ref->class = baseref->class;
-        ref->entry = baseref->entry;
-
-        ref->next = entry->ancestors;
-        entry->ancestors = ref;
-        entry->num_ancestors++;
-        baseref->entry->num_terminals++;
-
-        // TODO no registration
-        if (baseref->entry->repo != entry->repo) continue;
-
-        if (!set) {
-            err = knd_set_new(mempool, &set);                                RET_ERR();
-            set->type = KND_SET_CLASS;
-            set->base = ref->entry;
-            baseref->entry->descendants = set;
-        }
-
-        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-            knd_log(".. add \"%.*s\" (repo:%.*s) as "
-                    " a descendant of ancestor \"%.*s\" (repo:%.*s)..",
-                    entry->name_size, entry->name,
-                    entry->repo->name_size, entry->repo->name,
-                    baseref->entry->name_size, baseref->entry->name,
-                    baseref->entry->repo->name_size, baseref->entry->repo->name);
-
-        err = set->add(set, entry->id, entry->id_size,
-                       (void*)entry);                                             RET_ERR();
+        err = link_ancestor(self, baseref->entry);                                RET_ERR();
     }
 
     /* register a parent */
@@ -911,9 +885,11 @@ static int link_baseclass(struct kndClass *self,
     base->entry->num_terminals++;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-        knd_log(".. add \"%.*s\" as a child of \"%.*s\"..",
+        knd_log(".. add \"%.*s\" (repo:%.*s) as a child of \"%.*s\" (repo:%.*s)..",
                 entry->name_size, entry->name,
-                base->entry->name_size, base->entry->name);
+                entry->repo->name_size, entry->repo->name,
+                base->entry->name_size, base->entry->name,
+                base->entry->repo->name_size, base->entry->repo->name);
 
     return knd_OK;
 }
@@ -1005,9 +981,9 @@ extern int knd_resolve_class(struct kndClass *self,
     int err;
 
     if (self->is_resolved) {
-        if (self->inst_inbox_size) {
+        /*if (self->inst_inbox_size) {
             err = resolve_objs(self, class_update);                               RET_ERR();
-        }
+            }*/
 
         if (self->attr_var_inbox_size) {
             err = knd_apply_attr_var_updates(self, class_update);                 RET_ERR();
@@ -1044,7 +1020,7 @@ extern int knd_resolve_class(struct kndClass *self,
         err = resolve_primary_attrs(self);                                        RET_ERR();
     }
     
-    if (self->inst_inbox_size) {
+    /*if (self->inst_inbox_size) {
         err = resolve_objs(self, class_update);                                   RET_ERR();
     }
 
@@ -1056,9 +1032,8 @@ extern int knd_resolve_class(struct kndClass *self,
         self->states = state;
         self->num_states++;
         state->numid = self->num_states;
-        state->id_size = 0;
-        knd_num_to_str(state->numid, state->id, &state->id_size, KND_RADIX_BASE);
     }
+    */
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log("++ class \"%.*s\" id:%.*s resolved!",

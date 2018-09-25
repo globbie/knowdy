@@ -260,8 +260,8 @@ static gsl_err_t get_timestamp(void *obj, const char *name, size_t name_size)
     struct tm tm_info = {0};
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("UPD: id:%.*s  time:\"%.*s\"",
-                update->id_size, update->id, name_size, name);
+        knd_log("UPD: numid:%zu  time:\"%.*s\"",
+                update->numid, name_size, name);
 
     memcpy(buf, name, name_size);
     buf_size = name_size;
@@ -291,11 +291,11 @@ static gsl_err_t parse_update(void *obj,
     };
 
     struct gslTaskSpec specs[] = {
-        { .is_implied = true,
+        /*{ .is_implied = true,
           .buf = update->id,
           .buf_size = &update->id_size,
           .max_buf_size = sizeof update->id
-        },
+          },*/
         { .name = "ts",
           .name_size = strlen("ts"),
           .run = get_timestamp,
@@ -512,6 +512,7 @@ extern int kndRepo_new(struct kndRepo **repo,
     struct kndStateControl *state_ctrl;
     struct kndClass *c;
     struct kndClassEntry *entry;
+    struct kndClassInst *inst;
     struct kndProc *proc;
     struct kndRel *rel;
     int err;
@@ -539,6 +540,12 @@ extern int kndRepo_new(struct kndRepo **repo,
 
     c->entry->repo = self;
     self->root_class = c;
+
+    /* root class instance */
+    err = knd_class_inst_new(mempool, &inst);
+    if (err) goto error;
+    inst->base = c;
+    self->root_inst = inst;
 
     /* global name indices */
     err = knd_set_new(mempool, &self->class_idx);

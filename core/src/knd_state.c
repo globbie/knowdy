@@ -42,7 +42,7 @@ static int export_update_GSP(struct kndUpdate *update,
     int err;
 
     err = out->writec(out, '{');                                                  RET_ERR();
-    err = out->write(out, update->id, update->id_size);                           RET_ERR();
+    //err = out->write(out, update->id, update->id_size);                           RET_ERR();
 
     time(&update->timestamp);
     localtime_r(&update->timestamp, &tm_info);
@@ -122,6 +122,22 @@ static int knd_sync_update(struct kndStateControl *self,
     return knd_OK;
 }
 
+static int build_update_report(struct kndStateControl *self,
+                               struct kndUpdate *update)
+{
+    struct kndRepo *repo = self->repo;
+    struct kndTask *task = self->repo->task;
+    struct glbOutput *out = task->out;
+    int err;
+
+    out->reset(out);
+    err = out->writec(out, '{');                                                  RET_ERR();
+    err = out->writef(out, "\"update\":%zu", update->numid);                      RET_ERR();
+    err = out->writec(out, '}');                                                  RET_ERR();
+
+    return knd_OK;
+}
+
 static int knd_confirm(struct kndStateControl *self,
                        struct kndUpdate *update)
 {
@@ -159,7 +175,7 @@ static int knd_confirm(struct kndStateControl *self,
 
     update->timestamp = time(NULL);
     update->numid = self->num_updates + 1;
-    knd_num_to_str(update->numid, update->id, &update->id_size, KND_RADIX_BASE);
+    //knd_num_to_str(update->numid, update->id, &update->id_size, KND_RADIX_BASE);
 
     /* TODO: send request to sync the update */
     err = knd_sync_update(self, update);
@@ -181,7 +197,7 @@ static int knd_confirm(struct kndStateControl *self,
     file_out->reset(file_out);
     err = file_out->writec(file_out, '{');                                        RET_ERR();
     err = file_out->write(file_out, "state ", strlen("state "));                  RET_ERR();
-    err = file_out->write(file_out, update->id, update->id_size);                 RET_ERR();
+    //err = file_out->write(file_out, update->id, update->id_size);                 RET_ERR();
 
     err = file_out->writec(file_out, '{');                                        RET_ERR();
     err = file_out->write(file_out, "log ", strlen("log "));                      RET_ERR();
@@ -209,12 +225,9 @@ static int knd_confirm(struct kndStateControl *self,
     if (err) return err;
 
     /* build report */
+    err = build_update_report(self, update);     RET_ERR();
     // TODO: add format switch
-    out->reset(out);
-    err = out->writec(out, '{');                                                  RET_ERR();
-    err = out->writef(out, "\"update\":%zu", update->numid);                      RET_ERR();
-    err = out->writec(out, '}');                                                  RET_ERR();
-
+    
     // TODO: trigger pushes to subscription channels
 
     return knd_OK;
@@ -253,8 +266,30 @@ extern int knd_state_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
                             sizeof(struct kndState), &page);                      RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
+extern int knd_state_ref_new(struct kndMemPool *mempool,
+                             struct kndStateRef **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                            sizeof(struct kndStateRef), &page);                      RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
+extern int knd_state_val_new(struct kndMemPool *mempool,
+                             struct kndStateVal **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                            sizeof(struct kndStateVal), &page);                      RET_ERR();
     *result = page;
     return knd_OK;
 }

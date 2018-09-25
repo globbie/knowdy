@@ -1519,10 +1519,11 @@ static int update_state(struct kndProc *self,
     int err;
 
     /* create index of PROC updates */
-    proc_updates = realloc(update->procs,
-                          (self->inbox_size * sizeof(struct kndProcUpdate*)));
-    if (!proc_updates) return knd_NOMEM;
-    update->procs = proc_updates;
+    // TODO
+    //proc_updates = realloc(update->procs,
+    //                      (self->inbox_size * sizeof(struct kndProcUpdate*)));
+    //if (!proc_updates) return knd_NOMEM;
+    //update->procs = proc_updates;
 
     for (proc = self->inbox; proc; proc = proc->next) {
         err = proc->resolve(proc);                                                RET_ERR();
@@ -1534,8 +1535,8 @@ static int update_state(struct kndProc *self,
 
         proc_update->proc = proc;
 
-        update->procs[update->num_procs] = proc_update;
-        update->num_procs++;
+        //update->procs[update->num_procs] = proc_update;
+        //update->num_procs++;
     }
 
     self->inbox = NULL;

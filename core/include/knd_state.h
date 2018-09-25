@@ -27,6 +27,17 @@ struct glbOutput;
 struct kndState;
 struct kndClass;
 struct kndUpdate;
+struct kndStateRef;
+struct kndMemPool;
+
+typedef enum knd_state_phase { KND_SELECTED,
+                               KND_SUBMITTED,
+                               KND_CREATED,
+                               KND_UPDATED,
+                               KND_REMOVED,
+                               KND_FREED,
+                               KND_FROZEN,
+                               KND_RESTORED } knd_state_phase;
 
 typedef enum knd_state_type { KND_INIT_STATE, 
                               KND_FAILED_STATE,
@@ -59,8 +70,6 @@ struct kndProcUpdate
 
 struct kndUpdate
 {
-    char id[KND_ID_SIZE];
-    size_t id_size;
     size_t numid;
 
     size_t owner_id;
@@ -68,35 +77,40 @@ struct kndUpdate
     time_t timestamp;
     size_t orig_state;
 
-    const char *spec;
-    size_t spec_size;
-
     struct kndRepo *repo;
+
+    struct kndStateRef *states;
 
     struct kndClassUpdate *classes;
     size_t num_classes;
     size_t total_class_insts;
 
-    struct kndRelUpdate **rels;
-    size_t num_rels;
-
-    struct kndProcUpdate **procs;
-    size_t num_procs;
-
     struct kndUpdate *next;
+};
+
+struct kndStateVal
+{
+    void *obj;
+    const char *val;
+    size_t val_size;
+    long numid;
+    void *ref;
 };
 
 struct kndState
 {
-    knd_state_phase phase;
-    char id[KND_ID_SIZE];
-    size_t id_size;
     size_t numid;
+    knd_state_phase phase;
     struct kndUpdate *update;
-    void *obj;
-    void *val;
-    size_t val_size;
+    struct kndStateVal *val;
+    struct kndStateRef *children;
     struct kndState *next;
+};
+
+struct kndStateRef
+{
+    struct kndState *state;
+    struct kndStateRef *next;
 };
 
 struct kndStateControl
@@ -130,8 +144,6 @@ struct kndStateControl
 
     int (*confirm)(struct kndStateControl *self,
                    struct kndUpdate *update);
-
-    //int (*select)(struct kndStateControl *self);
 };
 
 /* constructors */
@@ -142,3 +154,7 @@ extern int knd_update_new(struct kndMemPool *mempool,
 
 extern int knd_state_new(struct kndMemPool *mempool,
                          struct kndState **result);
+extern int knd_state_ref_new(struct kndMemPool *mempool,
+                             struct kndStateRef **result);
+extern int knd_state_val_new(struct kndMemPool *mempool,
+                             struct kndStateVal **result);

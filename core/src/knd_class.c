@@ -79,18 +79,6 @@ static void reset_inbox(struct kndClass *self,
     self->inbox_size = 0;
 }
 
-/*  class destructor */
-static void kndClass_del(struct kndClass *self)
-{
-
-    knd_log(".. deconstructing the class: %.*s..",
-            self->entry->name_size, self->entry->name);
-
-    // if (self->entry) del_class_entry(self->entry);
-
-    // TODO: release mem pages
-}
-
 static void str_attr_vars(struct kndAttrVar *items, size_t depth)
 {
     struct kndAttrVar *item;
@@ -175,6 +163,7 @@ static void str(struct kndClass *self)
             self->depth * KND_OFFSET_SIZE, "",
             self->states->update->numid);
     }
+
     if (self->num_inst_states) {
         knd_log("\n%*snum inst states:%zu",
             self->depth * KND_OFFSET_SIZE, "",
@@ -215,8 +204,9 @@ static void str(struct kndClass *self)
 
     for (ref = self->entry->ancestors; ref; ref = ref->next) {
         c = ref->class;
-        knd_log("%*s ==> %.*s", self->depth * KND_OFFSET_SIZE, "",
-                c->entry->name_size, c->entry->name);
+        knd_log("%*s ==> %.*s (repo:%.*s)", self->depth * KND_OFFSET_SIZE, "",
+                c->entry->name_size, c->entry->name,
+                c->entry->repo->name_size, c->entry->repo->name);
     }
 
     // print attrs
@@ -227,7 +217,6 @@ static void str(struct kndClass *self)
                 (self->depth + 1) * KND_OFFSET_SIZE, "",
                 c->name_size, c->name, c->entry->num_terminals);
                 } */
-
 
     knd_log("%*s the end of %.*s}", self->depth * KND_OFFSET_SIZE, "",
             self->entry->name_size, self->entry->name);
@@ -293,7 +282,6 @@ static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
 
     return make_gsl_err(gsl_OK);
 }
-
 
 static gsl_err_t parse_schema(void *self,
                               const char *rec,
@@ -695,6 +683,87 @@ extern int get_arg_value(struct kndAttrVar *src,
     return knd_OK;
 }
 
+static int update_inst_state(struct kndClass *self,
+                             struct kndStateRef *children)
+{
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndTask *task = self->entry->repo->task;
+    struct kndStateRef *state_ref;
+    struct kndState *state;
+    struct kndSet *inst_idx = self->entry->inst_idx;
+    int err;
+
+    assert(inst_idx != NULL);
+
+    err = knd_state_new(mempool, &state);
+    if (err) {
+        knd_log("-- class inst state alloc failed");
+        return err;
+    }
+
+    /* check removed objs */
+    for (state_ref = children; state_ref; state_ref = state_ref->next) {
+        switch (state_ref->state->phase) {
+        case KND_REMOVED:
+            if (inst_idx->num_valid_elems)
+                inst_idx->num_valid_elems--;
+            break;
+        default:
+            break;
+        }
+    }
+
+    state->phase = KND_UPDATED;
+    // set task update
+    state->update = task->update;
+
+    state->children = children;
+    
+    self->num_inst_states++;
+    state->numid = self->num_inst_states;
+    state->next = self->inst_states;
+    self->inst_states = state;
+
+    knd_log("NB: update inst states!");
+
+    return knd_OK;
+}
+
+extern int knd_register_inst_states(struct kndClass *self)
+{
+    struct kndClass *c;
+    int err;
+
+    if (DEBUG_CLASS_LEVEL_TMP) {
+        knd_log("\n .. \"%.*s\" class to register inst updates..",
+                self->name_size, self->name);
+    }
+
+    err = update_inst_state(self, self->inst_state_refs);
+    if (err) return err;
+
+    /* inform your ancestors */
+    for (struct kndClassRef *classref = self->entry->ancestors;
+         classref; classref = classref->next) {
+        
+        c = classref->entry->class;
+        /* skip the root class */
+        if (!c->entry->ancestors) continue;
+        if (c->state_top) continue;
+        if (self->entry->repo != classref->entry->repo) {
+            err = knd_class_clone(classref->entry->class, self->entry->repo, &c);
+            if (err) return err;
+            classref->entry = c->entry;
+        }
+
+        err = update_inst_state(c, self->inst_state_refs);                        RET_ERR();
+    }
+    
+    self->inst_state_refs = NULL;
+
+    return knd_OK;
+}
+
 static int update_state(struct kndClass *self)
 {
     struct kndClass *c;
@@ -1068,7 +1137,7 @@ extern int knd_unregister_class_inst(struct kndClass *self,
         knd_log("-- state alloc failed :(");
         return err;
     }
-    state->obj = (void*)entry;
+    state->val = (void*)entry;
     state->next = self->inst_states;
     self->inst_states = state;
     self->num_inst_states++;
@@ -1116,18 +1185,6 @@ extern int knd_register_class_inst(struct kndClass *self,
         knd_log("-- failed to update the class inst idx");
         return err;
     }
-
-    /* increment state */
-    err = knd_state_new(mempool, &state);
-    if (err) {
-        knd_log("-- state alloc failed :(");
-        return err;
-    }
-    state->obj = (void*)entry;
-    state->next = self->inst_states;
-    self->inst_states = state;
-    self->num_inst_states++;
-    state->numid = self->num_inst_states;
 
     if (DEBUG_CLASS_LEVEL_TMP) {
         knd_log(".. register \"%.*s\" inst with class \"%.*s\" (%.*s)"
@@ -1198,10 +1255,10 @@ extern int knd_class_clone(struct kndClass *self,
     /* idx register */
     err = class_name_idx->set(class_name_idx,
                               entry->name, entry->name_size,
-                              (void*)entry);                              RET_ERR();
+                              (void*)entry);                                      RET_ERR();
     err = class_idx->add(class_idx,
                          entry->id, entry->id_size,
-                         (void*)entry);                                     RET_ERR();
+                         (void*)entry);                                           RET_ERR();
 
     if (DEBUG_CLASS_LEVEL_2)
         c->str(c);
@@ -1230,7 +1287,6 @@ extern int knd_class_copy(struct kndClass *self,
 
     entry->class = c;
     c->entry = entry;
-    //c->root_class = self->root_class;
 
     err = class_name_idx->set(class_name_idx,
                               entry->name, entry->name_size,

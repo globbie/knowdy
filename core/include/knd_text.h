@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2018 by Dmitri Dmitriev
+ *   Copyright (c) 2011-present by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Graph DB, 
@@ -22,6 +22,7 @@
 #include <glb-lib/output.h>
 
 #include "knd_config.h"
+#include "knd_state.h"
 
 struct kndContent;
 

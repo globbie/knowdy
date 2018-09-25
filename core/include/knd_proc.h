@@ -21,6 +21,7 @@
 #pragma once
 
 #include "knd_config.h"
+#include "knd_state.h"
 
 #include "knd_proc_arg.h"
 #include "knd_proc_call.h"

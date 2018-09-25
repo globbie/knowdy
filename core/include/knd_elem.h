@@ -37,7 +37,7 @@ struct kndElem
 {
     struct kndAttr *attr;
 
-    struct kndClassInst *obj;
+    struct kndClassInst *parent;
     struct kndClassInst *root;
 
     struct kndClassInst *inner;
@@ -58,34 +58,41 @@ struct kndElem
     struct kndText *text;
     struct kndNum *num;
 
-    struct kndElem *next;
 
     struct kndState *states;
     size_t init_state;
     size_t num_states;
 
-    knd_format format;
-    size_t depth;
+    //knd_format format;
+    //size_t depth;
+
+    struct kndElem *next;
+
     /******** public methods ********/
     void (*str)(struct kndElem *self);
-    void (*del)(struct kndElem *self);
+    //void (*del)(struct kndElem *self);
     int (*read)(struct kndElem *self);
     int (*resolve)(struct kndElem *self);
     int (*index)(struct kndElem *self);
     gsl_err_t (*parse)(struct kndElem *self,
-                 const char *rec,
-                 size_t *total_size);
-//    int (*match)(struct kndElem *self,
-//                 const char *rec,
-//                 size_t rec_size);
+                       const char *rec,
+                       size_t *total_size);
 
-    int (*export)(struct kndElem *self,
-                  knd_format format,
-                  struct glbOutput *out);
 };
 
 /* constructors */
 extern void kndElem_init(struct kndElem *self);
 extern int kndElem_new(struct kndElem **self);
+
+extern void knd_elem_str(struct kndElem *self, size_t depth);
+
+extern gsl_err_t knd_elem_parse_select(struct kndElem *self,
+                                       const char *rec,
+                                       size_t *total_size);
+
+extern int knd_elem_export(struct kndElem *self,
+                           knd_format format,
+                           struct glbOutput *out);
+
 extern int knd_class_inst_elem_new(struct kndMemPool *mempool,
                                    struct kndElem **result);

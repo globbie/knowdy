@@ -497,7 +497,7 @@ static int export_class_inst_updates(struct kndClass *self  __attribute__((unuse
         err = out->write(out, inst->name, inst->name_size);                       RET_ERR();
         err = out->writec(out, '}');                                              RET_ERR();
 
-        err = inst->export_state(inst, KND_FORMAT_GSP, out);                      RET_ERR();
+        //err = inst->export_state(inst, KND_FORMAT_GSP, out);                      RET_ERR();
         err = out->writec(out, '}');                                              RET_ERR();
     }
     err = out->writec(out, ']');                                                  RET_ERR();
@@ -523,7 +523,9 @@ extern int knd_class_export_updates_GSP(struct kndClass *self,
 
     if (state && state->update == update) {
         err = out->writec(out, ' ');                                              RET_ERR();
-        err = out->write(out, state->id, state->id_size);                         RET_ERR();
+
+        // TODO
+        //err = out->write(out, state->id, state->id_size);                         RET_ERR();
 
         /* any updates of the class body? */
         err = export_class_body_updates(self, class_update, out);                 RET_ERR();
@@ -1223,7 +1225,7 @@ static gsl_err_t append_class_inst(void *accu,
         knd_log(".. append inst: %.*s %.*s",
                 inst->entry->id_size, inst->entry->id,
                 inst->entry->name_size, inst->entry->name);
-        inst->str(inst);
+        knd_class_inst_str(inst, 0);
     }
 
     if (!name_idx) {

@@ -59,6 +59,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     struct kndMemPool *mempool = self->entry->repo->mempool;
     struct kndTask *task = self->entry->repo->task;
     struct kndState *state;
+    struct kndStateRef *state_ref;
     int err;
     gsl_err_t parser_err;
 
@@ -95,23 +96,32 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
 
     inst->entry = entry;
     entry->inst = inst;
-    state->phase = KND_SUBMITTED;
+    state->phase = KND_CREATED;
     state->numid = 1;
     inst->base = c;
     inst->states = state;
+    inst->num_states = 1;
 
     parser_err = inst->parse(inst, rec, total_size);
     if (parser_err.code) return parser_err;
 
-    inst->next = c->inst_inbox;
-    c->inst_inbox = inst;
-    c->inst_inbox_size++;
-    c->num_insts++;
+    err = knd_state_ref_new(mempool, &state_ref);
+    if (err) {
+        knd_log("-- state ref alloc for imported inst failed");
+        return make_gsl_err_external(err);
+    }
+    state_ref->state = state;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+    state_ref->next = c->inst_state_refs;
+    c->inst_state_refs = state_ref;
+
+    c->num_insts++;
+    inst->entry->numid = c->num_insts;
+
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
         knd_log("++ %.*s class inst parse OK! total insts in %.*s: %zu",
                 inst->name_size, inst->name,
-                c->name_size, c->name, c->inst_inbox_size);
+                c->name_size, c->name, c->num_insts);
 
     inst->entry->numid = c->num_insts;
     knd_num_to_str(inst->entry->numid, inst->entry->id, &inst->entry->id_size, KND_RADIX_BASE);
@@ -121,7 +131,6 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
         inst->name = inst->entry->id;
         inst->name_size = inst->entry->id_size;
     }
-
     name_idx = c->entry->repo->class_inst_name_idx;
 
     // TODO  lookup prev class inst ref
@@ -136,7 +145,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     if (err) return make_gsl_err_external(err);
 
     if (DEBUG_CLASS_IMPORT_LEVEL_3) {
-        inst->str(inst);
+        knd_class_inst_str(inst, 0);
     }
 
     task->type = KND_UPDATE_STATE;
