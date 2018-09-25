@@ -63,7 +63,7 @@ static int export_class_state_JSON(struct kndClass *self)
     return knd_OK;
 }
 
-static int export_class_inst_state_JSON(struct kndClass *self)
+extern int knd_export_class_inst_state_JSON(struct kndClass *self)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
@@ -71,25 +71,31 @@ static int export_class_inst_state_JSON(struct kndClass *self)
     struct kndUpdate *update;
     struct tm tm_info;
     size_t latest_state = self->init_inst_state + self->num_inst_states;
+    struct kndState *state;
     int err;
 
     /* latest inst update */
-    err = out->write(out, "\"_num_inst_states\":",
-                     strlen("\"_num_inst_states\":"));                            RET_ERR();
+    err = out->write(out, "\"_num_states\":",
+                     strlen("\"_num_states\":"));                                 RET_ERR();
     err = out->writef(out, "%zu", latest_state);                                  RET_ERR();
 
-    if (self->inst_states->update) {
-        update = self->inst_states->update;
-        time(&update->timestamp);
-        localtime_r(&update->timestamp, &tm_info);
-        buf_size = strftime(buf, KND_NAME_SIZE,
-                            ",\"_modif\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
-        err = out->write(out, buf, buf_size);                                     RET_ERR();
+    if (self->inst_states) {
+        state = self->inst_states;
+        if (state->update) {
+            update = state->update;
+            time(&update->timestamp);
+            localtime_r(&update->timestamp, &tm_info);
+            buf_size = strftime(buf, KND_NAME_SIZE,
+                                ",\"_modif\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
+            err = out->write(out, buf, buf_size);                                     RET_ERR();
+        }
     }
+
+    err = out->write(out, ",\"_tot\":", strlen(",\"_tot\":"));                  RET_ERR();
+    err = out->writef(out, "%zu", self->entry->inst_idx->num_valid_elems);      RET_ERR();
 
     return knd_OK;
 }
-
 
 static int export_conc_elem_JSON(void *obj,
                                  const char *elem_id,
@@ -435,11 +441,12 @@ extern int knd_class_export_JSON(struct kndClass *self,
         if (err) return err;
         err = export_class_state_JSON(self);                                      RET_ERR();
     }
-    if (self->num_inst_states) {
+
+    /*if (self->num_inst_states) {
         err = out->writec(out, ',');
         if (err) return err;
         err = export_class_inst_state_JSON(self);                                      RET_ERR();
-    }
+        }*/
 
     /* display base classes only once */
     if (self->num_baseclass_vars) {
@@ -531,12 +538,13 @@ extern int knd_class_export_JSON(struct kndClass *self,
     }
 
     /* instances */
-    if (entry->inst_idx && entry->inst_idx->num_valid_elems) {
+    if (entry->inst_idx) {
         err = out->write(out, ",\"_instances\":{",
                          strlen(",\"_instances\":{"));                            RET_ERR();
-        err = out->write(out, "\"_tot\":", strlen("\"_tot\":"));                  RET_ERR();
-        err = out->writef(out, "%zu", entry->inst_idx->num_valid_elems);    RET_ERR();
 
+        if (self->inst_states) {
+            err = knd_export_class_inst_state_JSON(self);                                      RET_ERR();
+        }
 
         // TODO navigation facets?
 

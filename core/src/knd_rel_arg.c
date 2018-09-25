@@ -641,8 +641,8 @@ static int link_rel(struct kndRelArg *self,
     // lookup current state
     if (ref->states) {
         for (state = ref->states; state; state = state->next) {
-            rel_update = state->val;
-            if (rel_update == orig_rel_update) break;
+            //rel_update = state->val;
+            //if (rel_update == orig_rel_update) break;
         }
     }
     
@@ -668,9 +668,9 @@ static int link_rel(struct kndRelArg *self,
     err = mempool->new_rel_inst_update(mempool, &rel_inst_update);                MEMPOOL_ERR(kndRelInstUpdate);
 
     rel_inst_update->inst = inst;
-    rel_inst_update->next = state->val;
-    state->val = (void*)rel_inst_update;
-    state->val_size++;
+    //rel_inst_update->next = state->val;
+    //state->val = (void*)rel_inst_update;
+    //state->val_size++;
 
     err = ref->idx->add(ref->idx, inst->id, inst->id_size, (void*)inst);          RET_ERR();
     ref->num_insts++;

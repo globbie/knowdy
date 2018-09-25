@@ -674,8 +674,8 @@ static gsl_err_t parse_GSL(struct kndAttr *self,
 extern int knd_apply_attr_var_updates(struct kndClass *self,
                                       struct kndClassUpdate *class_update)
 {
-    struct kndState *state, *s, *next_state = NULL;
-    struct kndAttrVar *attr_var;
+    struct kndState *state; //, *s, *next_state = NULL;
+    //struct kndAttrVar *attr_var;
     struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
 
@@ -687,22 +687,21 @@ extern int knd_apply_attr_var_updates(struct kndClass *self,
 
     state->update = class_update->update;
     
-    for (s = self->attr_var_inbox; s; s = next_state) {
-        attr_var = s->obj;
+    //for (s = self->attr_var_inbox; s; s = next_state) {
+        //attr_var = s->val;
 
-        knd_log("== attr var %.*s => %.*s",
+        /*knd_log("== attr var %.*s => %.*s",
                 attr_var->name_size, attr_var->name,
-                s->val_size, s->val);
+                s->val_size, s->val); */
 
-        attr_var->val = s->val;
-        attr_var->val_size = s->val_size;
+        //attr_var->val = s->val;
+        //attr_var->val_size = s->val_size;
 
-        next_state = s->next;
-
-        s->next = attr_var->states;
-        attr_var->states = s;
-        attr_var->num_states++;
-    }
+        //next_state = s->next;
+        //s->next = attr_var->states;
+        //attr_var->states = s;
+        //attr_var->num_states++;
+    //}
 
     state->next = self->states;
     self->states = state;
@@ -778,7 +777,7 @@ extern int knd_register_attr_ref(void *obj,
     struct kndMemPool *mempool = attr_idx->mempool;
     int err;
 
-    if (DEBUG_ATTR_LEVEL_2) 
+    if (DEBUG_ATTR_LEVEL_TMP) 
         knd_log(".. copying %.*s attr..", attr->name_size, attr->name);
 
     err = knd_attr_ref_new(mempool, &ref);                                        RET_ERR();

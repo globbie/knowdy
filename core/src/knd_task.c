@@ -24,7 +24,7 @@ static void del(struct kndTask *self)
 {
     self->log->del(self->log);
     self->spec_out->del(self->spec_out);
-    self->update->del(self->update);
+    self->update_out->del(self->update_out);
     free(self);
 }
 
@@ -50,20 +50,22 @@ static void reset(struct kndTask *self)
     self->batch_gt = 0;
     self->batch_lt = 0;
 
-    self->state_eq = 0;
-    self->state_gt = 0;
+    /* initialize request with off limit values */
+    self->state_eq = -1;
+    self->state_gt = -1;
+    self->state_gte = -1;
     self->state_lt = 0;
-
-    self->use_default_settings = false;
+    self->state_lte = 0;
     self->show_removed_objs = false;
 
     self->error = 0;
     self->http_code = HTTP_OK;
+    self->update = NULL;
 
     self->curr_inst = NULL;
     self->log->reset(self->log);
     self->out->reset(self->out);
-    self->update->reset(self->update);
+    self->update_out->reset(self->update_out);
     self->spec_out->reset(self->spec_out);
 }
 
@@ -396,9 +398,9 @@ static int build_report(struct kndTask *self)
 
     /* send delta */
     if (self->type == KND_DELTA_STATE) {
-        if (self->update->buf_size) {
-            self->report = self->update->buf;
-            self->report_size = self->update->buf_size;
+        if (self->update_out->buf_size) {
+            self->report = self->update_out->buf;
+            self->report_size = self->update_out->buf_size;
         }
     }
 
@@ -408,8 +410,8 @@ static int build_report(struct kndTask *self)
         self->report_size = self->out->buf_size;
 
         if (DEBUG_TASK_LEVEL_2) {
-            chunk_size =  self->update->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ?\
-            KND_MAX_DEBUG_CHUNK_SIZE :  self->update->buf_size;
+            chunk_size =  self->update_out->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ?\
+            KND_MAX_DEBUG_CHUNK_SIZE :  self->update_out->buf_size;
             knd_log("\n\n** UPDATE retrievers: \"%.*s\" [%zu]",
                     chunk_size, self->report,
                     self->report_size);
@@ -437,7 +439,7 @@ extern int kndTask_new(struct kndTask **task)
     err = glbOutput_new(&self->spec_out, KND_MED_BUF_SIZE);
     if (err) return err;
 
-    err = glbOutput_new(&self->update, KND_LARGE_BUF_SIZE);
+    err = glbOutput_new(&self->update_out, KND_LARGE_BUF_SIZE);
     if (err) return err;
 
     err = glbOutput_new(&self->file_out, KND_FILE_BUF_SIZE);

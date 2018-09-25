@@ -442,7 +442,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t select_user_rels(void *obj,
+/*static gsl_err_t select_user_rels(void *obj,
                                   const char *rec,
                                   size_t *total_size)
 {
@@ -464,7 +464,7 @@ static gsl_err_t select_user_rels(void *obj,
 
     return user_inst->select_rels(user_inst, rec, total_size);
 }
-
+*/
 static gsl_err_t run_present_user(void *data,
                                   const char *val __attribute__((unused)),
                                   size_t val_size __attribute__((unused)))
@@ -689,12 +689,12 @@ static gsl_err_t parse_select_user(struct kndUser *self,
           .name_size = strlen("rel"),
           .parse = parse_rel_select,
           .obj = self
-        },
+        }/*,
         { .name = "_rel",
           .name_size = strlen("_rel"),
           .parse = select_user_rels,
           .obj = self
-        }/*,
+        },
         { .type = GSL_SET_STATE,
           .name = "state",
           .name_size = strlen("state"),

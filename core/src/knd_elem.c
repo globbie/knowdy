@@ -34,34 +34,36 @@
 }
 */
 
-static void str(struct kndElem *self)
+extern void knd_elem_str(struct kndElem *self, size_t depth)
 {
+    struct kndState *state = self->states;
+    struct kndStateVal *val;
+
     if (self->inner) {
         if (self->is_list) {
             knd_log("%*s[%.*s\n",
-                    self->depth * KND_OFFSET_SIZE, "", self->attr->name_size, self->attr->name);
+                    depth * KND_OFFSET_SIZE, "",
+                    self->attr->name_size, self->attr->name);
             struct kndClassInst *obj = self->inner;
             while (obj) {
-                obj->depth = self->depth + 1;
-                obj->str(obj);
+                knd_class_inst_str(obj, 0);
                 obj = obj->next;
             }
             knd_log("%*s]\n",
-                    self->depth * KND_OFFSET_SIZE, "");
+                    depth * KND_OFFSET_SIZE, "");
             return;
         }
 
         knd_log("%*s%.*s:",
-                self->depth * KND_OFFSET_SIZE, "", self->attr->name_size, self->attr->name);
-        self->inner->depth = self->depth + 1;
-        self->inner->str(self->inner);
+                depth * KND_OFFSET_SIZE, "", self->attr->name_size, self->attr->name);
+        knd_class_inst_str(self->inner, 0);
         return;
     }
 
     switch (self->attr->type) {
     case KND_ATTR_REF:
         knd_log("ref:");
-        self->ref_inst->str(self->ref_inst);
+        knd_class_inst_str(self->ref_inst, 0);
         return;
         /*case KND_ATTR_NUM:
         self->num->depth = self->depth;
@@ -75,14 +77,20 @@ static void str(struct kndElem *self)
         break;
     }
 
-    knd_log("%*s%.*s => %.*s", self->depth * KND_OFFSET_SIZE, "",
+    knd_log("%*s%.*s => %.*s", depth * KND_OFFSET_SIZE, "",
             self->attr->name_size, self->attr->name,
-            self->states->val_size, self->states->val);
+            self->val_size, self->val);
+    if (state) {
+        knd_log("%*s    [state:%zu  phase:%d]",
+                depth * KND_OFFSET_SIZE, "",
+                state->numid, state->phase);
+    }
+
 }
 
-static int export_JSON(struct kndElem *self)
+static int export_JSON(struct kndElem *self,
+                       struct glbOutput *out)
 {
-    struct glbOutput *out = self->out;
     int err;
 
     if (self->inner) {
@@ -118,7 +126,6 @@ static int export_JSON(struct kndElem *self)
         err = out->write(out, "\":", strlen("\":"));
         if (err) goto final;
 
-        knd_log(".. inner inst export..");
         err = self->inner->export(self->inner, KND_FORMAT_JSON, out);
         
         return err;
@@ -139,14 +146,14 @@ static int export_JSON(struct kndElem *self)
         if (err) return err;
         return knd_OK;
     case KND_ATTR_NUM:
-        err = out->write(out, self->states->val, self->states->val_size);
+        err = out->write(out, self->val, self->val_size);
         if (err) goto final;
         return knd_OK;
     case KND_ATTR_STR:
     case KND_ATTR_BIN:
         err = out->writec(out, '"');
         if (err) goto final;
-        err = out->write(out, self->states->val, self->states->val_size);
+        err = out->write(out, self->val, self->val_size);
         if (err) goto final;
         err = out->writec(out, '"');
         if (err) goto final;
@@ -182,8 +189,8 @@ static int export_JSON(struct kndElem *self)
 
     if (self->states) {
         err = out->writef(out, "\"val\":\"%.*s\"",
-                          self->states->val_size,
-                          (const char*)self->states->val);  RET_ERR();
+                          self->val_size,
+                          (const char*)self->val);  RET_ERR();
     }
 
 final:
@@ -223,13 +230,13 @@ static int export_GSP(struct kndElem *self,
 
     /* key:value repr */
     switch (self->attr->type) {
-        /*    err = out->write(out, self->num->states->val, self->num->states->val_size);
+        /*    err = out->write(out, self->num->val, self->num->val_size);
         if (err) return err;
         break;*/
     case KND_ATTR_NUM:
     case KND_ATTR_STR:
     case KND_ATTR_BIN:
-        err = out->write(out, self->states->val, self->states->val_size);
+        err = out->write(out, self->val, self->val_size);
         if (err) return err;
         break;
         /*case  KND_ATTR_TEXT:
@@ -254,15 +261,15 @@ static int export_GSP(struct kndElem *self,
     return knd_OK;
 }
 
-static int kndElem_export(struct kndElem *self,
-                          knd_format format,
-                          struct glbOutput *out)
+extern int knd_elem_export(struct kndElem *self,
+                           knd_format format,
+                           struct glbOutput *out)
 {
     int err;
 
     switch (format) {
     case KND_FORMAT_JSON:
-        err = export_JSON(self);
+        err = export_JSON(self, out);
         if (err) return err;
         break;
     case KND_FORMAT_GSP:
@@ -286,16 +293,33 @@ static gsl_err_t run_empty_val_warning(void *obj,
     return make_gsl_err(gsl_FAIL);
 }
 
+static void register_state(struct kndElem *self,
+                           struct kndState *state,
+                           struct kndStateRef *state_ref)
+{
+    if (!self->states)
+        state->phase = KND_CREATED;
+    else
+        state->phase = KND_UPDATED;
+
+    self->states = state;
+    self->num_states++;
+    state->numid = self->num_states;
+    state_ref->next =  self->parent->elem_state_refs;
+    self->parent->elem_state_refs = state_ref;
+}
+
 static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 {
     struct kndElem *self = obj;
-
     if (DEBUG_ELEM_LEVEL_2)
         knd_log(".. attr \"%.*s\" [%s] to set val \"%.*s\"",
                 self->attr->name_size, self->attr->name,
                 knd_attr_names[self->attr->type], val_size, val);
     struct kndState *state;
-    struct kndMemPool *mempool = self->obj->base->entry->repo->mempool;
+    struct kndStateVal *state_val;
+    struct kndStateRef *state_ref;
+    struct kndMemPool *mempool = self->parent->base->entry->repo->mempool;
     int err;
 
     if (!val_size) return make_gsl_err(gsl_FORMAT);
@@ -303,21 +327,33 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 
     err = knd_state_new(mempool, &state);
     if (err) {
-        knd_log("-- state alloc failed :(");
+        knd_log("-- state alloc failed");
         return make_gsl_err_external(err);
     }
+    err = knd_state_val_new(mempool, &state_val);
+    if (err) {
+        knd_log("-- state val alloc failed");
+        return make_gsl_err_external(err);
+    }
+    err = knd_state_ref_new(mempool, &state_ref);
+    if (err) {
+        knd_log("-- state ref alloc failed");
+        return make_gsl_err_external(err);
+    }
+    state_ref->state = state;
 
-    state->val = (void*)val;
-    state->val_size = val_size;
+    state_val->obj = (void*)self;
+    state_val->val      = val;
+    state_val->val_size = val_size;
+    state->val          = state_val;
+    self->val = val;
+    self->val_size = val_size;
 
-    self->states = state;
-    self->num_states++;
-    state->numid = self->num_states;
-
-    /* TODO: validate if needed */
+    register_state(self, state, state_ref);
 
     if (DEBUG_ELEM_LEVEL_2)
-        knd_log("++ ELEM VAL: \"%.*s\"", state->val_size, state->val);
+        knd_log("++ elem val set: \"%.*s\" [state:%zu]",
+                self->val_size, self->val, state->numid);
 
     return make_gsl_err(gsl_OK);
 }
@@ -455,6 +491,29 @@ static gsl_err_t parse_GSL(struct kndElem *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+extern gsl_err_t knd_elem_parse_select(struct kndElem *self,
+                                       const char *rec,
+                                       size_t *total_size)
+{
+    if (DEBUG_ELEM_LEVEL_2)
+        knd_log(".. ELEM \"%.*s\" parse REC: \"%.*s\"",
+                self->attr->name_size, self->attr->name,
+                16, rec);
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_val,
+          .obj = self
+        },
+        { .is_default = true,
+          .run = run_empty_val_warning,
+          .obj = self
+        }
+    };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 static int kndElem_resolve(struct kndElem *self)
 {
     struct kndClassInst *obj;
@@ -467,23 +526,13 @@ static int kndElem_resolve(struct kndElem *self)
         }
     }
 
-    /*switch (self->attr->type) {
-    case KND_ATTR_REF:
-        err = self->ref->resolve(self->ref);
-        if (err) return err;
-    default:
-        break;
-    }
-    */
     return knd_OK;
 }
 
 extern void kndElem_init(struct kndElem *self)
 {
-    self->str = str;
     self->parse = parse_GSL;
     self->resolve = kndElem_resolve;
-    self->export = kndElem_export;
 }
 
 extern int
@@ -508,7 +557,7 @@ extern int knd_class_inst_elem_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
                             sizeof(struct kndElem), &page);                       RET_ERR();
     *result = page;
     kndElem_init(*result);

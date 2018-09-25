@@ -24,15 +24,6 @@
 
 #include <stdlib.h>
 
-typedef enum knd_state_phase { KND_SELECTED,
-                               KND_SUBMITTED,
-                               KND_CREATED,
-                               KND_UPDATED,
-                               KND_REMOVED,
-                               KND_FREED,
-                               KND_FROZEN,
-                               KND_RESTORED } knd_state_phase;
-
 /* comparison codes */
 typedef enum { knd_EQUALS, knd_LESS, knd_MORE, knd_NOT_COMPARABLE } knd_comparison_codes;
 

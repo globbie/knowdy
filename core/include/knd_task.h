@@ -108,11 +108,12 @@ struct kndTask
     size_t state_eq;
     size_t state_gt;
     size_t state_lt;
-
-    bool use_default_settings;
+    size_t state_gte;
+    size_t state_lte;
     bool show_removed_objs;
 
     struct kndClassInst *curr_inst;
+    struct kndUpdate *update;
 
     struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;
@@ -123,7 +124,7 @@ struct kndTask
     struct glbOutput *out;
     struct glbOutput *spec_out;
     struct glbOutput *file_out;
-    struct glbOutput *update;
+    struct glbOutput *update_out;
     struct kndMemPool *mempool;
 
     /******** public methods ********/

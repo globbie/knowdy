@@ -20,6 +20,7 @@
 #pragma once
 
 #include "knd_config.h"
+#include "knd_state.h"
 #include "knd_class.h"
 
 struct kndState;
@@ -78,7 +79,6 @@ struct kndClassInst
 {
     knd_obj_type type;
 
-    /* unique name */
     const char *name;
     size_t name_size;
 
@@ -99,6 +99,7 @@ struct kndClassInst
     struct kndElem *elems;
     struct kndElem *tail;
     size_t num_elems;
+    struct kndStateRef *elem_state_refs;
 
     size_t depth;
     size_t max_depth;
@@ -110,12 +111,7 @@ struct kndClassInst
     /* rel selection */
     struct kndRelRef *curr_rel;
 
-    /* for lists */
     struct kndClassInst *next;
-
-    /******** public methods ********/
-    void (*str)(struct kndClassInst *self);
-    void (*del)(struct kndClassInst *self);
 
     gsl_err_t (*parse)(struct kndClassInst *self,
                  const char       *rec,
@@ -133,14 +129,6 @@ struct kndClassInst
     int (*export)(struct kndClassInst *self,
                   knd_format format,
                   struct glbOutput *out);
-
-    int (*export_state)(struct kndClassInst *self,
-                        knd_format format,
-                        struct glbOutput *out);
-    gsl_err_t (*select_rels)(struct kndClassInst *self,
-		       const char *rec,
-		       size_t *total_size);
-    int (*sync)(struct kndClassInst *self);
 };
 
 /* constructors */
@@ -148,9 +136,10 @@ extern void kndClassInst_init(struct kndClassInst *self);
 extern void kndClassInstEntry_init(struct kndClassInstEntry *self);
 extern int kndClassInst_new(struct kndClassInst **self);
 
-extern gsl_err_t knd_parse_select_inst(void *obj,
+extern gsl_err_t knd_parse_select_inst(struct kndClassInst *self,
                                        const char *rec,
                                        size_t *total_size);
+extern void knd_class_inst_str(struct kndClassInst *self, size_t depth);
 
 extern int knd_class_inst_entry_new(struct kndMemPool *mempool,
                                     struct kndClassInstEntry **result);

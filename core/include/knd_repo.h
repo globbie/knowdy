@@ -62,7 +62,8 @@ struct kndRepo
     bool restore_mode;
     size_t intersect_matrix_size;
 
-    struct kndClass *root_class;
+    struct kndClass     *root_class;
+    struct kndClassInst *root_inst;
 
     struct ooDict *class_name_idx;
     struct kndSet *class_idx;
@@ -76,11 +77,10 @@ struct kndRepo
 
     struct kndProc *root_proc;
     struct kndRel *root_rel;
+    
+    struct kndClass     *curr_class;
+    struct kndClassInst *curr_class_inst;
 
-    
-    struct kndClass *curr_class;
-    
-    /**********  interface methods  **********/
     void (*del)(struct kndRepo *self);
     void (*str)(struct kndRepo *self);
     int (*init)(struct kndRepo *self);

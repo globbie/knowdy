@@ -24,6 +24,7 @@
 #include "knd_utils.h"
 #include "knd_class_inst.h"
 #include "knd_config.h"
+#include "knd_state.h"
 
 #include <gsl-parser/gsl_err.h>
 
@@ -161,12 +162,7 @@ struct kndClass
     size_t init_inst_state;
     size_t num_inst_states;
 
-    /*struct kndState *child_states;
-    size_t init_child_state;
-    size_t num_child_states;
-    
-    struct kndText *gloss;
-    */
+    struct kndStateRef *inst_state_refs;
 
     struct kndTranslation *tr;
     struct kndTranslation *summary;
@@ -374,6 +370,9 @@ extern int knd_class_clone(struct kndClass *self,
 
 extern int knd_class_copy(struct kndClass *self,
                           struct kndClass *target);
+
+extern int knd_register_inst_states(struct kndClass *self);
+extern int knd_export_class_inst_state_JSON(struct kndClass *self);
 
 extern int knd_class_update_new(struct kndMemPool *mempool,
                                 struct kndClassUpdate **result);
