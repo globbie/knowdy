@@ -25,5 +25,5 @@ set(SOURCES src/knd_array.c src/knd_attr.c src/knd_attr_json.c src/knd_attr_gsp.
 
 add_library(${CORE}_obj OBJECT ${HEADERS} ${SOURCES})
 add_library(${CORE}_static STATIC $<TARGET_OBJECTS:${CORE}_obj>)
-target_link_libraries(${CORE}_static ${GSL_PARSER_LIBRARY})
+target_link_libraries(${CORE}_static ${GSL_PARSER_LIBRARY} ${GLB_LIBRARY})
 
