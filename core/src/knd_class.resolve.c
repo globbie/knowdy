@@ -190,7 +190,7 @@ static int index_attr_var_list(struct kndClass *self,
             idx_class->entry->descendants = set;
         }
 
-        if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
             knd_log(".. add %.*s ref to %.*s (repo:%.*s)",
                     item->name_size, item->name,
                     attr->parent_class->name_size,

@@ -1186,7 +1186,7 @@ extern int knd_register_class_inst(struct kndClass *self,
         return err;
     }
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. register \"%.*s\" inst with class \"%.*s\" (%.*s)"
                 " num inst states:%zu",
                 entry->inst->name_size, entry->inst->name,
@@ -1199,7 +1199,6 @@ extern int knd_register_class_inst(struct kndClass *self,
 
     for (struct kndClassRef *ref = self->entry->ancestors; ref; ref = ref->next) {
         c = ref->entry->class;
-
         /* skip the root class */
         if (!c->entry->ancestors) continue;
         if (c->state_top) continue;

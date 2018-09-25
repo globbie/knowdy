@@ -118,7 +118,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     c->num_insts++;
     inst->entry->numid = c->num_insts;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log("++ %.*s class inst parse OK! total insts in %.*s: %zu",
                 inst->name_size, inst->name,
                 c->name_size, c->name, c->num_insts);
