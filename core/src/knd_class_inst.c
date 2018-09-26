@@ -647,7 +647,8 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
                                    struct kndElem **result_elem)
 {
     struct kndClass *conc;
-    struct kndAttr *attr = NULL;
+    struct kndAttrRef *attr_ref;
+    struct kndAttr *attr;
     struct kndElem *elem = NULL;
     struct glbOutput *log = self->base->entry->repo->log;
     int err, e;
@@ -667,7 +668,7 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
     }
     
     conc = self->base;
-    err = knd_class_get_attr(conc, name, name_size, &attr);
+    err = knd_class_get_attr(conc, name, name_size, &attr_ref);
     if (err) {
         knd_log("  -- \"%.*s\" attr is not approved :(", name_size, name);
         log->reset(log);
@@ -679,6 +680,7 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
         return err;
     }
 
+    attr = attr_ref->attr;
     if (DEBUG_INST_LEVEL_2) {
         const char *type_name = knd_attr_names[attr->type];
         knd_log("++ \"%.*s\" ELEM \"%s\" attr type: \"%s\"",

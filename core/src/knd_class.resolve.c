@@ -120,7 +120,7 @@ static int index_attr_var_list(struct kndClass *self,
 {
     struct kndClass *base;
     struct kndSet *set;
-    struct kndClass *c, *idx_class;
+    struct kndClass *c, *idx_class, *curr_class;
     struct kndClassRef *ref;
     struct kndAttrVar *item = parent_item;
     struct kndMemPool *mempool = self->entry->repo->mempool;
@@ -164,25 +164,14 @@ static int index_attr_var_list(struct kndClass *self,
         idx_class = attr->parent_class;
 
         if (idx_class->entry->repo != self->entry->repo) {
-
-            // TODO find our copy of this ancestor
-            //self->str(self);
-
             for (ref = self->entry->ancestors; ref; ref = ref->next) {
-                c = ref->class;
-
-                knd_log("%*s ==> %.*s (repo:%.*s)", self->depth * KND_OFFSET_SIZE, "",
-                        c->entry->name_size, c->entry->name,
-                        c->entry->repo->name_size, c->entry->repo->name);
-
-                if (c->entry->orig == idx_class->entry) {
-                    knd_log("++ gotcha!!!\n");
-                    idx_class = c;
+                curr_class = ref->class;
+                if (curr_class->entry->orig == idx_class->entry) {
+                    idx_class = curr_class;
                 }
             }
 
         }
-
         set = idx_class->entry->descendants;
         if (!set) {
             err = knd_set_new(mempool, &set);                                     RET_ERR();
@@ -190,14 +179,13 @@ static int index_attr_var_list(struct kndClass *self,
             set->base =  idx_class->entry;
             idx_class->entry->descendants = set;
         }
-
         if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-            knd_log(".. add %.*s ref to %.*s (repo:%.*s)",
+            knd_log("\n.. add %.*s ref to %.*s (repo:%.*s)",
                     item->name_size, item->name,
-                    attr->parent_class->name_size,
-                    attr->parent_class->name,
-                    attr->parent_class->entry->repo->name_size,
-                    attr->parent_class->entry->repo->name);
+                    idx_class->name_size,
+                    idx_class->name,
+                    idx_class->entry->repo->name_size,
+                    idx_class->entry->repo->name);
 
         /* add curr class to the reverse index */
         err = knd_set_add_ref(set, attr, self->entry, c->entry);
@@ -270,6 +258,7 @@ static int resolve_inner_item(struct kndClass *self,
     struct kndClass *c;
     struct kndAttrVar *item;
     struct kndAttr *attr;
+    struct kndAttrRef *attr_ref;
     const char *classname;
     size_t classname_size;
     int err;
@@ -357,13 +346,14 @@ static int resolve_inner_item(struct kndClass *self,
                     c->name_size, c->name,
                      c->entry->repo->name_size, c->entry->repo->name, c->is_resolved);
         }
-        err = knd_class_get_attr(c, item->name, item->name_size, &attr);
+        err = knd_class_get_attr(c, item->name, item->name_size, &attr_ref);
         if (err) {
             knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                     item->name_size, item->name,
                     c->name_size, c->name);
             return err;
         }
+        attr = attr_ref->attr;
         item->attr = attr;
         switch (attr->type) {
         case KND_ATTR_NUM:
@@ -516,7 +506,7 @@ static int resolve_attr_vars(struct kndClass *self,
                     attr_var->name_size, attr_var->name);
         }
         err = knd_class_get_attr(self,
-                                 attr_var->name, attr_var->name_size, &attr);
+                                 attr_var->name, attr_var->name_size, &attr_ref);
         if (err) {
             knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                     attr_var->name_size, attr_var->name,
@@ -530,7 +520,8 @@ static int resolve_attr_vars(struct kndClass *self,
             task->http_code = HTTP_NOT_FOUND;
             return knd_FAIL;
         }
-        
+        attr = attr_ref->attr;
+
         /* save attr assignment */
         err = attr_idx->get(attr_idx, attr->id, attr->id_size, &obj);
         if (!err) {

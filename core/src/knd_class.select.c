@@ -84,12 +84,13 @@ static gsl_err_t select_by_attr(void *obj,
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
     log->reset(log);
 
-    // TODO local context
-    c = self->curr_attr->parent_class;
+    c = self->curr_attr_ref->class_entry->class;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
-        knd_log("== select by attr value: \"%.*s\" of \"%.*s\" resolved:%d",
-                name_size, name, c->name_size, c->name, c->is_resolved);
+        knd_log("== select by attr value: \"%.*s\" of \"%.*s\" (repo:%.*s)",
+                name_size, name,
+                c->name_size, c->name,
+                c->entry->repo->name_size, c->entry->repo->name);
     }
 
     if (!c->entry->descendants) {
@@ -109,7 +110,7 @@ static gsl_err_t select_by_attr(void *obj,
 
     err = knd_get_class(self->entry->repo, name, name_size, &c);
     if (err) {
-        log->writef(log, "no relation to class: %.*s", name_size, name);
+        log->writef(log, "-- no such class: %.*s", name_size, name);
         task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err_external(err);
     }
@@ -117,13 +118,13 @@ static gsl_err_t select_by_attr(void *obj,
     err = facet->set_idx->get(facet->set_idx,
                               c->entry->id, c->entry->id_size, &result);
     if (err) {
-        log->writef(log, "no relation to class: %.*s", name_size, name);
+        log->writef(log, "no such facet class: %.*s", name_size, name);
         task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err(gsl_FAIL);
     }
+
     set = result;
     set->base->class = c;
-
     if (task->num_sets + 1 > KND_MAX_CLAUSES)
         return make_gsl_err(gsl_LIMIT);
 
@@ -138,9 +139,11 @@ static gsl_err_t parse_attr_select(void *obj,
                                    const char *rec, size_t *total_size)
 {
     struct kndClass *self = obj;
+    struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->entry->repo->task;
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = select_by_attr,
@@ -152,7 +155,7 @@ static gsl_err_t parse_attr_select(void *obj,
     if (!self->curr_baseclass)
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
 
-    err = knd_class_get_attr(self->curr_baseclass, name, name_size, &attr);
+    err = knd_class_get_attr(self->curr_baseclass, name, name_size, &attr_ref);
     if (err) {
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                 name_size, name,
@@ -163,6 +166,8 @@ static gsl_err_t parse_attr_select(void *obj,
         return *total_size = 0, make_gsl_err_external(err);
     }
 
+    attr = attr_ref->attr;
+
     if (DEBUG_CLASS_SELECT_LEVEL_2) {
         knd_log(".. select by attr \"%.*s\"..", name_size, name);
         knd_log(".. attr parent: %.*s conc: %.*s",
@@ -172,6 +177,7 @@ static gsl_err_t parse_attr_select(void *obj,
                 attr->ref_class->name);
     }
 
+    self->curr_attr_ref = attr_ref;
     self->curr_attr = attr;
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -293,6 +299,7 @@ static gsl_err_t parse_attr_var_select(void *obj,
                                        const char *rec, size_t *total_size)
 {
     struct kndClass *self = obj;
+    struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->entry->repo->task;
@@ -310,7 +317,7 @@ static gsl_err_t parse_attr_var_select(void *obj,
 
     if (!self->curr_class) return *total_size = 0, make_gsl_err_external(knd_FAIL);
 
-    err = knd_class_get_attr(self->curr_class, name, name_size, &attr);
+    err = knd_class_get_attr(self->curr_class, name, name_size, &attr_ref);
     if (err) {
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                 name_size, name,
@@ -326,6 +333,7 @@ static gsl_err_t parse_attr_var_select(void *obj,
         return *total_size = 0, make_gsl_err_external(err);
     }
 
+    attr = attr_ref->attr;
     self->curr_attr = attr;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
