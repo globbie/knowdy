@@ -893,11 +893,11 @@ extern int knd_class_get_attr(struct kndClass *self,
                               struct kndAttr **result)
 {
     struct kndAttrRef *ref;
-    struct kndClass *c;
+    struct kndClassEntry *class_entry;
     struct ooDict *attr_name_idx = self->entry->repo->attr_name_idx;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_TMP) {
         knd_log("\n.. \"%.*s\" class (repo: %.*s) to select attr \"%.*s\"",
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
@@ -919,16 +919,19 @@ extern int knd_class_get_attr(struct kndClass *self,
     }
 
     for (; ref; ref = ref->next) {
-        c = ref->attr->parent_class;
-        if (DEBUG_CLASS_LEVEL_2)
-            knd_log("== attr %.*s belongs to class: %.*s",
-                    name_size, name, c->name_size, c->name);
+        class_entry = ref->class_entry;
 
-        if (c == self) {
+        if (DEBUG_CLASS_LEVEL_TMP)
+            knd_log("== attr %.*s belongs to class: %.*s (repo:%.*s)",
+                    name_size, name,
+                    class_entry->name_size, class_entry->name,
+                    class_entry->repo->name_size, class_entry->repo->name);
+        if (class_entry == self->entry) {
             *result = ref->attr;
             return knd_OK;
         }
-        err = knd_is_base(c, self);
+
+        err = knd_is_base(class_entry->class, self);
         if (!err) {
             *result = ref->attr;
             return knd_OK;

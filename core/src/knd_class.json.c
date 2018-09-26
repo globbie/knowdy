@@ -91,9 +91,10 @@ extern int knd_export_class_inst_state_JSON(struct kndClass *self)
         }
     }
 
-    err = out->write(out, ",\"_tot\":", strlen(",\"_tot\":"));                  RET_ERR();
-    err = out->writef(out, "%zu", self->entry->inst_idx->num_valid_elems);      RET_ERR();
-
+    if (self->entry->inst_idx) {
+        err = out->write(out, ",\"_tot\":", strlen(",\"_tot\":"));                  RET_ERR();
+        err = out->writef(out, "%zu", self->entry->inst_idx->num_valid_elems);      RET_ERR();
+    }
     return knd_OK;
 }
 

@@ -150,7 +150,7 @@ struct kndAttrRef
 {
     struct kndAttr *attr;
     struct kndAttrVar *attr_var;
-    struct kndClassEntry *class;
+    struct kndClassEntry *class_entry;
     struct kndAttrRef *next;
 };
 

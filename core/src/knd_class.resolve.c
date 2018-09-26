@@ -174,10 +174,11 @@ static int index_attr_var_list(struct kndClass *self,
                 knd_log("%*s ==> %.*s (repo:%.*s)", self->depth * KND_OFFSET_SIZE, "",
                         c->entry->name_size, c->entry->name,
                         c->entry->repo->name_size, c->entry->repo->name);
-                if (c->entry->orig == idx_class->entry)
-                    knd_log("++ gotcha!!!\n");
 
-                
+                if (c->entry->orig == idx_class->entry) {
+                    knd_log("++ gotcha!!!\n");
+                    idx_class = c;
+                }
             }
 
         }
@@ -662,6 +663,7 @@ static int register_new_attr(struct kndClass *self,
     err = knd_attr_ref_new(mempool, &attr_ref);
     if (err) return err;
     attr_ref->attr = attr;
+    attr_ref->class_entry = self->entry;
 
     /* global indices */
     prev_attr_ref = attr_name_idx->get(attr_name_idx,
