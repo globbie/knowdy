@@ -43,6 +43,7 @@ struct kndClassUpdateRef;
 struct kndObjEntry;
 struct glbOutput;
 struct kndClassInstEntry;
+struct kndAttrRef;
 
 struct kndClassUpdate
 {
@@ -173,7 +174,6 @@ struct kndClass
     struct kndClassVar *baseclass_vars;
     size_t num_baseclass_vars;
 
-
     bool is_resolved;
 
     struct kndAttr *attrs;
@@ -185,10 +185,10 @@ struct kndClass
     struct kndProc *proc;
     struct kndRel *rel;
 
-    //struct kndClass      *root_class;
     struct kndClass      *curr_class;
     struct kndClass      *curr_baseclass;
     struct kndAttr       *curr_attr;
+    struct kndAttrRef    *curr_attr_ref;
     struct kndAttrVar    *curr_attr_var;
     struct kndClassInst  *curr_inst;
     struct kndUpdate     *curr_update;
@@ -298,7 +298,7 @@ extern int knd_get_attr_var(struct kndClass *self,
 
 extern int knd_class_get_attr(struct kndClass *self,
                               const char *name, size_t name_size,
-                              struct kndAttr **result);
+                              struct kndAttrRef **result);
 
 extern int knd_class_export_set_JSON(struct kndClass *self,
                                      struct glbOutput *out,
