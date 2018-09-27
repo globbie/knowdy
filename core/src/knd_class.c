@@ -784,47 +784,11 @@ static int update_state(struct kndClass *self)
     /* new update obj */
     err = knd_update_new(mempool, &update);                                  RET_ERR();
 
-    /* resolve all refs */
-    for (c = self->inbox; c; c = c->next) {
-        err = knd_class_update_new(mempool, &class_update);                  RET_ERR();
-
-        self->entry->repo->num_classes++;
-        c->entry->numid = self->entry->repo->num_classes;
-        class_update->class = c;
-        class_update->update = update;
-
-        err = c->resolve(c, class_update);
-        if (err) {
-            knd_log("-- \"%.*s\" class not resolved", c->name_size, c->name);
-            return err;
-        }
-
-        if (DEBUG_CLASS_LEVEL_2)
-            c->str(c);
-
-        if (update->num_classes >= self->inbox_size) {
-            knd_log("-- max class updates reached :(");
-            return knd_FAIL;
-        }
-
-        class_update->next = update->classes;
-        update->classes = class_update;
-        update->num_classes++;
-        update->total_class_insts += class_update->num_insts;
-    }
-
-    if (rel->inbox_size) {
-        //err = rel->update(rel, update);                                           RET_ERR();
-    }
-
-    if (proc->inbox_size) {
-        //err = proc->update(proc, update);                                         RET_ERR();
-    }
-
     err = state_ctrl->confirm(state_ctrl, update);                                RET_ERR();
 
     // TODO: replicas
     //err = export_updates(self, update);                                           RET_ERR();
+    
     return knd_OK;
 }
 

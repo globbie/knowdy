@@ -1425,11 +1425,11 @@ static int export_inst_JSON(void *obj,
         knd_class_inst_str(inst, 0);
     }
 
-    /*if (!task->show_removed_objs) {
+    if (!task->show_removed_objs) {
         state = inst->states;
         if (state && state->phase == KND_REMOVED)
             return knd_OK;
-            }*/
+    }
 
     // TODO unfreeze
 
@@ -1458,8 +1458,13 @@ static int export_inst_set_JSON(struct kndClass *self,
     err = out->write(out, "{\"_set\":{",
                      strlen("{\"_set\":{"));                                      RET_ERR();
 
-    err = out->writef(out, "\"total\":%lu",
-                      (unsigned long)set->num_elems);                             RET_ERR();
+    if (task->show_removed_objs) {
+        err = out->writef(out, "\"total\":%lu",
+                          (unsigned long)set->num_elems);                         RET_ERR();
+    } else {
+        err = out->writef(out, "\"total\":%lu",
+                          (unsigned long)set->num_valid_elems);                   RET_ERR();
+    }
 
     err = out->write(out, ",\"batch\":[",
                      strlen(",\"batch\":["));                                     RET_ERR();
@@ -1625,7 +1630,6 @@ static gsl_err_t present_state(void *obj,
                                      task->state_eq, set);
     if (err) return make_gsl_err_external(err);
 
-
     task->show_removed_objs = true;
 
     err = export_inst_set_JSON(self, set, out);
@@ -1731,6 +1735,8 @@ static int update_elem_states(struct kndClassInst *self)
         return err;
     }
     ref->state = state;
+
+
     state->phase = KND_UPDATED;
     self->num_states++;
     state->numid = self->num_states;
@@ -1751,13 +1757,16 @@ static int update_elem_states(struct kndClassInst *self)
     } else {
         c = self->base;
 
-        knd_log(".. class \"%.*s\" (repo:%.*s) to get new updates..",
+        knd_log("\n.. class \"%.*s\" (repo:%.*s) to get new updates..",
                 c->name_size, c->name,
                 c->entry->repo->name_size, c->entry->repo->name);
+        ref->type = KND_STATE_CLASS_INST;
+        ref->obj = (void*)self;
 
         ref->next = c->inst_state_refs;
         c->inst_state_refs = ref;
     }
+
     return knd_OK;
 }
 

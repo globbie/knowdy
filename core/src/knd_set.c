@@ -123,6 +123,14 @@ extern int knd_set_intersect(struct kndSet *self,
         return knd_FAIL;
     }
 
+    if (!self->idx) {
+        err = knd_set_elem_idx_new(self->mempool, &self->idx);
+        if (err) {
+            knd_log("-- set elem idx mempool limit reached :(");
+            return err;
+        }
+    }
+    
     if (DEBUG_SET_LEVEL_2)
         knd_log(" .. intersection by Set \"%.*s\".. total sets:%zu",
                 self->base->name_size, self->base->name, num_sets);
