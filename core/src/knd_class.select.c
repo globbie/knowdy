@@ -820,14 +820,54 @@ static gsl_err_t parse_select_class_inst(void *data,
     return make_gsl_err(gsl_OK);
 }
 
+static int retrieve_inst_updates(struct kndStateRef *ref,
+                                 struct kndSet *set)
+{
+    struct kndState *state = ref->state;
+    struct kndClassInstEntry *inst_entry;
+    struct kndStateRef *child_ref;
+    int err;
+    
+    knd_log("++ state: %zu  type:%d", state->numid, ref->type);
+
+    for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
+        err = retrieve_inst_updates(child_ref, set);                          RET_ERR();
+    }
+
+    switch (ref->type) {
+    case KND_STATE_CLASS_INST:
+        inst_entry = ref->obj;
+
+        if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+            knd_log("** inst id:%.*s", inst_entry->id_size, inst_entry->id);
+        }
+
+        err = set->add(set,
+                       inst_entry->id,
+                       inst_entry->id_size, (void*)inst_entry);                   RET_ERR();
+
+        /* TODO: filter out the insts 
+           that were created and removed _after_ 
+           the requested update _gt */
+
+        break;
+    default:
+        break;
+    }
+
+
+    
+
+    return knd_OK;
+}
+
 extern int knd_class_get_inst_updates(struct kndClass *self,
                                       size_t gt, size_t lt,
                                       size_t eq __attribute__((unused)),
                                       struct kndSet *set)
 {
     struct kndState *state;
-    struct kndClassInstEntry *entry = NULL;
-    void *result;
+    struct kndStateRef *ref;
     int err;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP)
@@ -841,22 +881,12 @@ extern int knd_class_get_inst_updates(struct kndClass *self,
         if (state->numid >= lt) continue;
         if (state->numid <= gt) continue;
 
-        if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
-            knd_log("== export update: %zu obj:%p",
-                    state->numid, state->val);
+        // TODO
+        if (!state->children) continue;
+
+        for (ref = state->children; ref; ref = ref->next) {
+            err = retrieve_inst_updates(ref, set);                    RET_ERR();
         }
-
-        if (!state->val) continue;
-
-        //if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-        //    knd_log("* inst id:%.*s", entry->id_size, entry->id);
-        /* check if the inst is already in the set */
-        //err = set->get(set, entry->id, entry->id_size, &result);
-        //if (!err) continue;
-        /* TODO: filter out the removed insts 
-           that were initially created _after_ 
-           the requested update _gt */
-        //err = set->add(set, entry->id, entry->id_size, (void*)entry);             RET_ERR();
     }
 
     return knd_OK;
