@@ -1418,11 +1418,18 @@ static int export_inst_JSON(void *obj,
     struct glbOutput *out = self->entry->repo->out;
     struct kndClassInstEntry *entry = elem;
     struct kndClassInst *inst = entry->inst;
+    struct kndState *state;
     int err;
 
-    if (DEBUG_INST_LEVEL_2) {
+    if (DEBUG_INST_LEVEL_TMP) {
         knd_class_inst_str(inst, 0);
     }
+
+    /*if (!task->show_removed_objs) {
+        state = inst->states;
+        if (state && state->phase == KND_REMOVED)
+            return knd_OK;
+            }*/
 
     // TODO unfreeze
 
@@ -1483,8 +1490,10 @@ static gsl_err_t present_inst_selection(void *data, const char *val __attribute_
     struct kndSet *set;
     int err;
 
-    if (DEBUG_INST_LEVEL_2)
-        knd_log(".. inst selection: task type:%d num sets:%zu",
+    if (DEBUG_INST_LEVEL_TMP)
+        knd_log(".. class \"%.*s\" (repo:%.*s) inst selection: task type:%d num sets:%zu",
+                base->name_size, base->name,
+                base->entry->repo->name_size, base->entry->repo->name,
                 task->type, task->num_sets);
 
     out->reset(out);
@@ -1493,6 +1502,8 @@ static gsl_err_t present_inst_selection(void *data, const char *val __attribute_
         if (!task->num_sets) {
             if (base->entry->inst_idx) {
                 set = base->entry->inst_idx;
+
+                task->show_removed_objs = false;
 
                 err = export_inst_set_JSON(self->base, set, out);
                 if (err) return make_gsl_err_external(err);
@@ -1528,6 +1539,7 @@ static gsl_err_t present_inst_selection(void *data, const char *val __attribute_
 
         /* final presentation in JSON 
            TODO: choose output format */
+        task->show_removed_objs = false;
         err = export_inst_set_JSON(self->base, set, out);
         if (err) return make_gsl_err_external(err);
 
@@ -1613,9 +1625,8 @@ static gsl_err_t present_state(void *obj,
                                      task->state_eq, set);
     if (err) return make_gsl_err_external(err);
 
-    //task->sets[0] = set;
-    //task->num_sets = 1;
-    //task->show_removed_objs = true;
+
+    task->show_removed_objs = true;
 
     err = export_inst_set_JSON(self, set, out);
     if (err) return make_gsl_err_external(err);

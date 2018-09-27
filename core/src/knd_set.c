@@ -32,7 +32,6 @@ knd_compare_set_by_size_ascend(const void *a,
     obj2 = (struct kndSet**)b;
 
     if ((*obj1)->num_elems == (*obj2)->num_elems) return 0;
-
     if ((*obj1)->num_elems > (*obj2)->num_elems) return 1;
 
     return -1;
@@ -155,9 +154,9 @@ extern int knd_set_get_facet(struct kndSet  *self,
                              struct kndFacet  **result)
 {
      for (struct kndFacet *f = self->facets; f; f = f->next) {
-        if (f->attr == attr) {
-            *result = f;
-            return knd_OK;
+         if (f->attr == attr) {
+             *result = f;
+             return knd_OK;
         }
     }
     return knd_NO_MATCH;
@@ -178,7 +177,6 @@ kndSet_alloc_facet(struct kndSet  *self,
             return knd_OK;
         }
     }
-
     if (self->num_facets >= KND_MAX_ATTRS)
         return knd_LIMIT;
 

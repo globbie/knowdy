@@ -74,6 +74,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
 
     /* user ctx should have its own copy of a selected class */
     if (self->curr_class->entry->repo != self->entry->repo) {
+
         err = knd_class_clone(self->curr_class, self->entry->repo, &c);
         if (err) return *total_size = 0, make_gsl_err_external(err);
         self->curr_class = c;
