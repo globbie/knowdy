@@ -779,6 +779,10 @@ static int link_ancestor(struct kndClass *self,
         if (prev_entry) {
             base = prev_entry->class;
         } else {
+            knd_log("-- class \"%.*s\" not found in repo \"%.*s\"",
+                    base_entry->name_size, base_entry->name,
+                    self->entry->repo->name_size, self->entry->repo->name);
+
             err = knd_class_clone(base_entry->class, self->entry->repo, &base);   RET_ERR();
         }
     }
@@ -849,6 +853,7 @@ static int link_baseclass(struct kndClass *self,
                 base->entry->repo->name_size, base->entry->repo->name);
 
     if (base->entry->repo != self->entry->repo) {
+
         err = knd_class_clone(base, self->entry->repo, &base_copy);               RET_ERR();
         base = base_copy;
 

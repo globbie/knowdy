@@ -1169,10 +1169,13 @@ extern int knd_unregister_class_inst(struct kndClass *self,
 extern int knd_register_class_inst(struct kndClass *self,
                                    struct kndClassInstEntry *entry)
 {
-    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndRepo *repo = self->entry->repo;
+    struct kndMemPool *mempool = repo->mempool;
     struct kndSet *inst_idx;
     struct kndClass *c;
+    struct kndClassEntry *prev_entry;
     struct kndState *state;
+    struct ooDict *class_name_idx = repo->class_name_idx;
     int err;
 
     inst_idx = self->entry->inst_idx;
@@ -1206,9 +1209,19 @@ extern int knd_register_class_inst(struct kndClass *self,
         if (c->state_top) continue;
        
         if (self->entry->repo != ref->entry->repo) {
-            err = knd_class_clone(ref->entry->class, self->entry->repo, &c);
-            if (err) return err;
-            ref->entry = c->entry;
+
+            /* search local repo */
+            prev_entry = class_name_idx->get(class_name_idx,
+                                             ref->entry->name,
+                                             ref->entry->name_size);
+            if (prev_entry) {
+                ref->entry = prev_entry;
+            } else {
+                knd_log(".. cloning %.*s..", c->name_size, c->name);
+                err = knd_class_clone(ref->entry->class, self->entry->repo, &c);
+                if (err) return err;
+                ref->entry = c->entry;
+            }
         }
 
         err = knd_register_class_inst(c, entry);                                         RET_ERR();
@@ -1274,7 +1287,7 @@ extern int knd_class_copy(struct kndClass *self,
     struct kndRepo *repo =  c->entry->repo;
     struct kndMemPool *mempool = repo->mempool;
     struct ooDict *class_name_idx = repo->class_name_idx;
-    struct kndClassEntry *entry, *src_entry;
+    struct kndClassEntry *entry, *src_entry, *prev_entry;
     struct kndClassRef   *ref,   *src_ref;
     int err;
 
@@ -1305,6 +1318,14 @@ extern int knd_class_copy(struct kndClass *self,
         ref->class = src_ref->class;
         ref->entry = src_ref->entry;
 
+        prev_entry = class_name_idx->get(class_name_idx,
+                                    src_ref->class->name,
+                                    src_ref->class->name_size);
+        if (prev_entry) {
+            ref->entry = prev_entry;
+            ref->class = prev_entry->class;
+        }
+        
         ref->next = entry->ancestors;
         entry->ancestors = ref;
         entry->num_ancestors++;
@@ -1329,28 +1350,6 @@ extern void kndClass_init(struct kndClass *self)
     self->export = export;
     self->export_updates = export_updates;
 }
-
-/*extern int kndClass_new(struct kndClass **result,
-                        struct kndMemPool *mempool)
-{
-    struct kndClass *self = NULL;
-    struct kndClassEntry *entry;
-    int err;
-
-    self = malloc(sizeof(struct kndClass));
-    if (!self) return knd_NOMEM;
-    memset(self, 0, sizeof(struct kndClass));
-
-    err = knd_class_entry_new(mempool, &entry);  RET_ERR();
-    entry->class = self;
-    self->entry = entry;
-
-    kndClass_init(self);
-    *result = self;
-
-    return knd_OK;
-}
-*/
 
 extern int knd_class_var_new(struct kndMemPool *mempool,
                              struct kndClassVar **result)

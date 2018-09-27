@@ -75,6 +75,8 @@ static gsl_err_t select_by_attr(void *obj,
     struct kndClass *c;
     struct kndSet *set;
     void *result;
+    const char *class_id;
+    size_t class_id_size;
     struct kndFacet *facet;
     struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->entry->repo->task;
@@ -87,7 +89,7 @@ static gsl_err_t select_by_attr(void *obj,
     c = self->curr_attr_ref->class_entry->class;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
-        knd_log("== select by attr value: \"%.*s\" of \"%.*s\" (repo:%.*s)",
+        knd_log("\n== select by attr value: \"%.*s\" of \"%.*s\" (repo:%.*s)",
                 name_size, name,
                 c->name_size, c->name,
                 c->entry->repo->name_size, c->entry->repo->name);
@@ -98,7 +100,6 @@ static gsl_err_t select_by_attr(void *obj,
                 c->name_size, c->name);
         return make_gsl_err(gsl_FAIL);
     }
-
     set = c->entry->descendants;
 
     err = knd_set_get_facet(set, self->curr_attr, &facet);
@@ -115,14 +116,20 @@ static gsl_err_t select_by_attr(void *obj,
         return make_gsl_err_external(err);
     }
 
+    class_id = c->entry->id;
+    class_id_size = c->entry->id_size;
+    if (c->entry->orig) {
+        class_id = c->entry->orig->id;
+        class_id_size = c->entry->orig->id_size;
+    }
+
     err = facet->set_idx->get(facet->set_idx,
-                              c->entry->id, c->entry->id_size, &result);
+                              class_id, class_id_size, &result);
     if (err) {
         log->writef(log, "no such facet class: %.*s", name_size, name);
         task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err(gsl_FAIL);
     }
-
     set = result;
     set->base->class = c;
     if (task->num_sets + 1 > KND_MAX_CLAUSES)
@@ -165,7 +172,6 @@ static gsl_err_t parse_attr_select(void *obj,
         task->http_code = HTTP_NOT_FOUND;
         return *total_size = 0, make_gsl_err_external(err);
     }
-
     attr = attr_ref->attr;
 
     if (DEBUG_CLASS_SELECT_LEVEL_2) {
@@ -176,7 +182,6 @@ static gsl_err_t parse_attr_select(void *obj,
                 attr->ref_class->name_size,
                 attr->ref_class->name);
     }
-
     self->curr_attr_ref = attr_ref;
     self->curr_attr = attr;
 
@@ -218,14 +223,15 @@ static gsl_err_t run_set_attr_var(void *obj,
     }
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
-        knd_log(".. updating attr var %.*s with value: \"%.*s\" class:%p",
-                attr_var->name_size, attr_var->name, val_size, val, c);
+        knd_log(".. updating attr var %.*s with value: \"%.*s\"",
+                attr_var->name_size, attr_var->name, val_size, val);
     }
 
     err = knd_state_new(mempool, &state);
     if (err) return make_gsl_err_external(err);
 
     state->phase = KND_UPDATED;
+
     state->val = (void*)attr_var;
     // TODO
     //state->val = (void*)val;
@@ -337,7 +343,7 @@ static gsl_err_t parse_attr_var_select(void *obj,
     self->curr_attr = attr;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
-        knd_log("++ attr selected: \"%.*s\".. curr attr:%p", name_size, name, attr);
+        knd_log("++ attr selected: \"%.*s\"..", name_size, name);
     }
 
     // TODO
