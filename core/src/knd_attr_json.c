@@ -40,6 +40,9 @@
 #define DEBUG_ATTR_JSON_LEVEL_5 0
 #define DEBUG_ATTR_JSON_LEVEL_TMP 1
 
+static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
+                                     struct glbOutput *out);
+
 static int inner_item_export_JSON(struct kndAttrVar *parent_item,
                                  struct glbOutput *out)
 {
@@ -215,13 +218,13 @@ extern int knd_export_inherited_attr(void *obj,
     struct kndClass   *self = obj;
     struct kndAttrRef *ref = elem;
     struct kndAttr *attr = ref->attr;
-    struct kndAttrVar *attr_var = NULL;
+    struct kndAttrVar *attr_var = ref->attr_var;
     struct glbOutput *out = self->entry->repo->out;
     int err;
 
-    /*    knd_log("== %.*s attr >> %.*s",
-            self->name_size, self->name,
-            attr->name_size, attr->name);  */
+    /*knd_log(".. class \"%.*s\" to export inherited attr \"%.*s\"..",
+             self->name_size, self->name,
+             attr->name_size, attr->name); */
 
     /* skip over immediate attrs */
     if (attr->parent_class == self) return knd_OK;
@@ -231,7 +234,6 @@ extern int knd_export_inherited_attr(void *obj,
         return knd_OK;
     }
 
-    attr_var = ref->attr_var;
     if (!attr_var) {
         // TODO
         return knd_OK;
@@ -239,7 +241,15 @@ extern int knd_export_inherited_attr(void *obj,
         //if (err) return knd_OK;
     }
 
+    attr_var->depth = self->depth;
+    attr_var->max_depth = self->max_depth;
+
     err = out->writec(out, ',');                                          RET_ERR();
+
+    if (attr->is_a_set) {
+        return attr_var_list_export_JSON(attr_var, out);
+    }
+
     err = out->writec(out, '"');                                          RET_ERR();
     err = out->write(out, attr_var->name, attr_var->name_size);           RET_ERR();
     err = out->write(out, "\":", strlen("\":"));                          RET_ERR();
@@ -272,13 +282,12 @@ static int ref_item_export_JSON(struct kndAttrVar *item,
     int err;
 
     assert(item->class != NULL);
-
     c = item->class;
+    c->depth = item->depth;
+    c->max_depth = item->max_depth;
 
-    knd_log(".. export ref to %.*s..", c->name_size, c->name);
+    //knd_log(".. JSON export a ref to \"%.*s\" ..", c->name_size, c->name);
 
-    c->depth = 1;
-    c->max_depth = 1;
     err = c->export(c, KND_FORMAT_JSON, out);                     RET_ERR();
     return knd_OK;
 }
@@ -307,7 +316,7 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
     size_t count = 0;
     int err;
 
-    if (DEBUG_ATTR_JSON_LEVEL_TMP) {
+    if (DEBUG_ATTR_JSON_LEVEL_2) {
         knd_log("     .. export JSON list: %.*s\n\n",
                 parent_item->name_size, parent_item->name);
     }
@@ -418,11 +427,6 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
 
         item->depth = items->depth;
         item->max_depth = items->max_depth;
-
-        if (DEBUG_ATTR_JSON_LEVEL_TMP) {
-            knd_log("    .. export attr var: %.*s  concise:%d",
-                    attr->name_size, attr->name, is_concise);
-        }
 
         err = out->writec(out, ',');
         if (err) return err;
