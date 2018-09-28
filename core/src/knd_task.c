@@ -387,7 +387,7 @@ static int build_report(struct kndTask *self)
         if (obj_size > KND_MAX_DEBUG_CONTEXT_SIZE)
             obj_size = KND_MAX_DEBUG_CONTEXT_SIZE;
 
-        knd_log("RESULT: \"%s\" %.*s [size: %zu]\n",
+        knd_log("== RESULT: \"%s\" %.*s [size: %zu]\n",
                 task_status, obj_size,
                 self->out->buf, self->out->buf_size);
     }
