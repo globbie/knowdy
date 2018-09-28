@@ -218,44 +218,20 @@ struct kndClass
     struct kndClass *next;
 
     /***********  public methods ***********/
-    //void (*init)(struct kndClass  *self);
-    //void (*del)(struct kndClass   *self);
     void (*reset_inbox)(struct kndClass   *self,
                         bool rollback);
     void (*str)(struct kndClass *self);
 
-    int (*open)(struct kndClass   *self,
-                const char *filename);
     int (*load)(struct kndClass   *self,
 		struct kndConcFolder *parent_folder,
                 const char *filename,
                 size_t filename_size);
-    gsl_err_t (*read)(struct kndClass   *self,
-                      const char *rec,
-                      size_t *total_size);
-    int (*read_obj_entry)(struct kndClass   *self,
-                          struct kndObjEntry *entry,
-                          struct kndClassInst **result);
-    int (*restore)(struct kndClass   *self);
-
-    int (*freeze)(struct kndClass *self);
-    gsl_err_t (*sync)(void *obj,
-                      const char *rec,
-                      size_t *total_size);
 
     int (*coordinate)(struct kndClass *self);
-
-    int (*resolve)(struct kndClass     *self,
-		   struct kndClassUpdate *update);
-
     int (*update_state)(struct kndClass *self);
-    /*gsl_err_t (*apply_liquid_updates)(struct kndClass *self,
-                                      const char *rec,
-                                      size_t *total_size);*/
     gsl_err_t (*select)(void  *self,
                         const char *rec,
                         size_t *total_size);
-
     gsl_err_t (*import)(void *self,
                         const char *rec,
                         size_t *total_size);
@@ -327,9 +303,6 @@ extern gsl_err_t knd_import_class(void *obj,
                                   const char *rec,
                                   size_t *total_size);
 
-extern int knd_resolve_classes(struct kndClass *self);
-extern int knd_resolve_class(struct kndClass *self,
-                             struct kndClassUpdate *class_update);
 extern int knd_inherit_attrs(struct kndClass *self, struct kndClass *base);
 
 extern int get_arg_value(struct kndAttrVar *src,
@@ -372,7 +345,12 @@ extern int knd_class_copy(struct kndClass *self,
                           struct kndClass *target);
 
 extern int knd_register_inst_states(struct kndClass *self);
+extern int knd_register_descendant_states(struct kndClass *self);
+
 extern int knd_export_class_inst_state_JSON(struct kndClass *self);
+
+extern int knd_resolve_classes(struct kndClass *self);
+extern int knd_class_resolve(struct kndClass *self);
 
 extern int knd_class_update_new(struct kndMemPool *mempool,
                                 struct kndClassUpdate **result);

@@ -219,9 +219,10 @@ extern int knd_export_inherited_attr(void *obj,
     struct glbOutput *out = self->entry->repo->out;
     int err;
 
-    /*knd_log("== %.*s attr >> %.*s",
+    /*    knd_log("== %.*s attr >> %.*s",
             self->name_size, self->name,
-            attr->name_size, attr->name); */
+            attr->name_size, attr->name);  */
+
     /* skip over immediate attrs */
     if (attr->parent_class == self) return knd_OK;
 
@@ -264,16 +265,21 @@ extern int knd_export_inherited_attr(void *obj,
     return knd_OK;
 }
 
-static int ref_item_export_JSON(struct kndAttrVar *item)
+static int ref_item_export_JSON(struct kndAttrVar *item,
+                                struct glbOutput *out)
 {
     struct kndClass *c;
     int err;
 
     assert(item->class != NULL);
+
     c = item->class;
+
+    knd_log(".. export ref to %.*s..", c->name_size, c->name);
+
     c->depth = 1;
     c->max_depth = 1;
-    err = c->export(c, KND_FORMAT_JSON, c->entry->repo->out);                     RET_ERR();
+    err = c->export(c, KND_FORMAT_JSON, out);                     RET_ERR();
     return knd_OK;
 }
 
@@ -301,8 +307,8 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
     size_t count = 0;
     int err;
 
-    if (DEBUG_ATTR_JSON_LEVEL_2) {
-        knd_log(".. export JSON list: %.*s\n\n",
+    if (DEBUG_ATTR_JSON_LEVEL_TMP) {
+        knd_log("     .. export JSON list: %.*s\n\n",
                 parent_item->name_size, parent_item->name);
     }
 
@@ -325,7 +331,7 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
             if (err) return err;
             break;
         case KND_ATTR_REF:
-            err = ref_item_export_JSON(parent_item);
+            err = ref_item_export_JSON(parent_item, out);
             if (err) return err;
             break;
         case KND_ATTR_PROC:
@@ -369,7 +375,7 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
             if (err) return err;
             break;
         case KND_ATTR_REF:
-            err = ref_item_export_JSON(item);
+            err = ref_item_export_JSON(item, out);
             if (err) return err;
             break;
         case KND_ATTR_PROC:
@@ -413,8 +419,8 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
         item->depth = items->depth;
         item->max_depth = items->max_depth;
 
-        if (DEBUG_ATTR_JSON_LEVEL_2) {
-            knd_log(".. export attr var: %.*s  concise:%d",
+        if (DEBUG_ATTR_JSON_LEVEL_TMP) {
+            knd_log("    .. export attr var: %.*s  concise:%d",
                     attr->name_size, attr->name, is_concise);
         }
 
