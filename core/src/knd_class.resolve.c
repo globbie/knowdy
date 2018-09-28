@@ -47,7 +47,7 @@ extern int knd_inherit_attrs(struct kndClass *self, struct kndClass *base)
     int err;
 
     if (!base->is_resolved) {
-        err = base->resolve(base, NULL);                                          RET_ERR();
+        err = knd_class_resolve(base);                                          RET_ERR();
     }
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
@@ -72,7 +72,7 @@ static int index_attr(struct kndClass *self,
     struct kndClass *c = NULL;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log("\n.. indexing CURR CLASS: \"%.*s\" .. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" (name:%.*s val:%.*s)",
                 self->entry->name_size, self->entry->name,
@@ -89,7 +89,7 @@ static int index_attr(struct kndClass *self,
                         attr->ref_classname_size,
                         &base);                                                       RET_ERR();
     if (!base->is_resolved) {
-        err = base->resolve(base, NULL);                                          RET_ERR();
+        err = knd_class_resolve(base);                                          RET_ERR();
     }
 
     /* specific class */
@@ -100,7 +100,7 @@ static int index_attr(struct kndClass *self,
     item->class = c;
 
     if (!c->is_resolved) {
-        err = c->resolve(c, NULL);                                                RET_ERR();
+        err = knd_class_resolve(c);                                                RET_ERR();
     }
 
     err = knd_is_base(base, c);                                                   RET_ERR();
@@ -143,7 +143,7 @@ static int index_attr_var_list(struct kndClass *self,
                         attr->ref_classname_size,
                         &base);                                                       RET_ERR();
     if (!base->is_resolved) {
-        err = base->resolve(base, NULL);                                          RET_ERR();
+        err = knd_class_resolve(base);                                          RET_ERR();
     }
 
     for (item = parent_item->list; item; item = item->next) {
@@ -157,7 +157,7 @@ static int index_attr_var_list(struct kndClass *self,
         item->class = c;
 
         if (!c->is_resolved) {
-            err = c->resolve(c, NULL);                                            RET_ERR();
+            err = knd_class_resolve(c);                                            RET_ERR();
         }
         err = knd_is_base(base, c);                                               RET_ERR();
 
@@ -209,7 +209,7 @@ static int resolve_class_ref(struct kndClass *self,
     if (err) return err;
 
     if (!c->is_resolved) {
-        err = c->resolve(c, NULL);                                                RET_ERR();
+        err = knd_class_resolve(c);                                                RET_ERR();
     }
 
     if (base) {
@@ -237,7 +237,7 @@ static int resolve_proc_ref(struct kndClass *self,
 
     /*c = dir->conc;
     if (!c->is_resolved) {
-        err = c->resolve(c, NULL);                                                RET_ERR();
+        err = knd_class_resolve(c);                                                RET_ERR();
     }
 
     if (base) {
@@ -276,7 +276,7 @@ static int resolve_inner_item(struct kndClass *self,
     }
     c = parent_item->attr->ref_class;
     if (!c->is_resolved) {
-        err = c->resolve(c, NULL);                                                RET_ERR();
+        err = knd_class_resolve(c);                                                RET_ERR();
     }
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
@@ -421,7 +421,7 @@ static int resolve_attr_var_list(struct kndClass *self,
     /* base template class */
     c = parent_attr->ref_class;
     if (!c->is_resolved) {
-        err = c->resolve(c, NULL);                                                RET_ERR();
+        err = knd_class_resolve(c);                                                RET_ERR();
     }
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
@@ -566,7 +566,7 @@ static int resolve_attr_vars(struct kndClass *self,
         case KND_ATTR_REF:
             c = attr->ref_class;
             if (!c->is_resolved) {
-                err = c->resolve(c, NULL);                                        RET_ERR();
+                err = knd_class_resolve(c);                                        RET_ERR();
             }
             err = resolve_class_ref(self, attr_var->val, attr_var->val_size,
                                     c, &attr_var->class);
@@ -575,7 +575,7 @@ static int resolve_attr_vars(struct kndClass *self,
         case KND_ATTR_PROC:
             proc = attr->proc;
             /*if (!c->is_resolved) {
-                err = c->resolve(c, NULL);                                        RET_ERR();
+                err = knd_class_resolve(c);                                        RET_ERR();
                 }*/
             err = resolve_proc_ref(self, attr_var->val, attr_var->val_size,
                                    proc, &attr_var->proc);
@@ -968,8 +968,7 @@ static int resolve_baseclasses(struct kndClass *self)
     return knd_OK;
 }
 
-extern int knd_resolve_class(struct kndClass *self,
-                             struct kndClassUpdate *class_update)
+extern int knd_class_resolve(struct kndClass *self)
 {
     struct kndClassVar *cvar;
     struct kndClassEntry *entry;
@@ -979,13 +978,10 @@ extern int knd_resolve_class(struct kndClass *self,
     int err;
 
     if (self->is_resolved) {
-        /*if (self->inst_inbox_size) {
-            err = resolve_objs(self, class_update);                               RET_ERR();
+        /*if (self->attr_var_inbox_size) {
+            err = knd_apply_attr_var_updates(self, class_update);                 RET_ERR();
             }*/
 
-        if (self->attr_var_inbox_size) {
-            err = knd_apply_attr_var_updates(self, class_update);                 RET_ERR();
-        }
         return knd_OK;
     }
 
@@ -1018,21 +1014,6 @@ extern int knd_resolve_class(struct kndClass *self,
         err = resolve_primary_attrs(self);                                        RET_ERR();
     }
     
-    /*if (self->inst_inbox_size) {
-        err = resolve_objs(self, class_update);                                   RET_ERR();
-    }
-
-    if (class_update) {
-        err = knd_state_new(mempool, &state);                                MEMPOOL_ERR(ClassState);
-        state->update = class_update->update;
-        state->val = (void*)class_update;
-        state->next = self->states;
-        self->states = state;
-        self->num_states++;
-        state->numid = self->num_states;
-    }
-    */
-
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log("++ class \"%.*s\" id:%.*s resolved!",
             self->entry->name_size, self->entry->name,
@@ -1070,7 +1051,7 @@ extern int knd_resolve_classes(struct kndClass *self)
         c = entry->class;
 
         if (!c->is_resolved) {
-            err = c->resolve(c, NULL);
+            err = knd_class_resolve(c);
             if (err) {
                 knd_log("-- couldn't resolve the \"%.*s\" class :(",
                         c->entry->name_size, c->entry->name);

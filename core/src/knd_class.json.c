@@ -248,7 +248,7 @@ static int export_concise_JSON(struct kndClass *self)
     struct glbOutput *out = self->entry->repo->out;
     int err;
 
-    if (DEBUG_JSON_LEVEL_2)
+    if (DEBUG_JSON_LEVEL_TMP)
         knd_log(".. export concise JSON for %.*s..",
                 self->entry->name_size, self->entry->name, self->entry->repo->out);
 

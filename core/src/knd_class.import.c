@@ -75,6 +75,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
 
     /* user ctx should have its own copy of a selected class */
     if (self->curr_class->entry->repo != repo) {
+
         err = knd_class_clone(self->curr_class, repo, &c);
         if (err) return *total_size = 0, make_gsl_err_external(err);
         self->curr_class = c;
@@ -879,9 +880,8 @@ extern gsl_err_t knd_import_class(void *obj,
                 c->name_size, c->name);
 
     if (!self->batch_mode) {
-        c->next = self->inbox;
-        self->inbox = c;
-        self->inbox_size++;
+        err = knd_class_resolve(c); 
+        if (err) return *total_size = 0, make_gsl_err_external(err);
     }
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
