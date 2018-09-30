@@ -23,8 +23,7 @@ task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
         return -1;
     }
 
-    err = self->shard->run_task(self->shard, data, size,
-                                result, &result_size);
+    err = kndShard_run_task(self->shard, data, size, result, &result_size);
     if (err != knd_OK) {
         knd_log("-- task execution failed");
         return -1;
