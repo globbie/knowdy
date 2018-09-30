@@ -73,6 +73,9 @@ foreach(MODULE ${KNOWDY_MODULES})
     add_subdirectory(${MODULE})
 endforeach()
 
+# tests
+
+add_subdirectory(tests)
 
 # packaging
 
