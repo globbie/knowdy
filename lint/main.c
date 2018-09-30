@@ -42,6 +42,6 @@ int main(int argc, const char **argv)
 
     ret = EXIT_SUCCESS;
 exit:
-    shard->del(shard);
+    kndShard_del(shard);
     return ret;
 }

@@ -38,12 +38,12 @@ struct kndShard
     /**********  interface methods  **********/
     void (*del)(struct kndShard *self);
     void (*str)(struct kndShard *self);
-    int (*run_task)(struct kndShard *self,
-                    const char     *rec,
-                    size_t rec_size,
-                    char *result,
-                    size_t *result_size);
 };
 
 extern void kndShard_init(struct kndShard *self);
 extern int kndShard_new(struct kndShard **self, const char *config_filename);
+extern void kndShard_del(struct kndShard *self);
+extern int kndShard_run_task(struct kndShard *self, const char *input, size_t input_size, char *output, size_t *output_size);
+
+
+
