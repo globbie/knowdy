@@ -32,7 +32,6 @@ knd_compare_set_by_size_ascend(const void *a,
     obj2 = (struct kndSet**)b;
 
     if ((*obj1)->num_elems == (*obj2)->num_elems) return 0;
-
     if ((*obj1)->num_elems > (*obj2)->num_elems) return 1;
 
     return -1;
@@ -124,7 +123,15 @@ extern int knd_set_intersect(struct kndSet *self,
         return knd_FAIL;
     }
 
-    if (DEBUG_SET_LEVEL_TMP)
+    if (!self->idx) {
+        err = knd_set_elem_idx_new(self->mempool, &self->idx);
+        if (err) {
+            knd_log("-- set elem idx mempool limit reached :(");
+            return err;
+        }
+    }
+    
+    if (DEBUG_SET_LEVEL_2)
         knd_log(" .. intersection by Set \"%.*s\".. total sets:%zu",
                 self->base->name_size, self->base->name, num_sets);
 
@@ -155,9 +162,9 @@ extern int knd_set_get_facet(struct kndSet  *self,
                              struct kndFacet  **result)
 {
      for (struct kndFacet *f = self->facets; f; f = f->next) {
-        if (f->attr == attr) {
-            *result = f;
-            return knd_OK;
+         if (f->attr == attr) {
+             *result = f;
+             return knd_OK;
         }
     }
     return knd_NO_MATCH;
@@ -178,7 +185,6 @@ kndSet_alloc_facet(struct kndSet  *self,
             return knd_OK;
         }
     }
-
     if (self->num_facets >= KND_MAX_ATTRS)
         return knd_LIMIT;
 
@@ -221,16 +227,15 @@ static int kndFacet_alloc_set(struct kndFacet  *self,
         return knd_OK;
     }
 
-    err = knd_set_new(mempool, &set);                            RET_ERR();
+    err = knd_set_new(mempool, &set);                                             RET_ERR();
     set->type = KND_SET_CLASS;
     set->base = base;
     set->parent_facet = self;
 
     err = self->set_idx->add(self->set_idx,
-                             base->id, base->id_size, (void*)set);       RET_ERR();
+                             base->id, base->id_size, (void*)set);                RET_ERR();
 
     //err = kndFacet_add_reverse_link(self, base, set);                             RET_ERR();
-
     *result = set;
     return knd_OK;
 }
@@ -253,10 +258,13 @@ static int kndFacet_add_ref(struct kndFacet *self,
     int err;
 
     if (DEBUG_SET_LEVEL_2) {
-        knd_log(".. add attr spec \"%.*s\" to topic \"%.*s\"..",
+        knd_log(".. add attr spec \"%.*s\" (repo:%.*s) to topic \"%.*s\" (repo:%.*s)..",
                 spec->name_size, spec->name,
-                topic->name_size, topic->name);
+                spec->repo->name_size, spec->repo->name,
+                topic->name_size, topic->name,
+                topic->repo->name_size, topic->repo->name);
     }
+
 
     /* get baseclass set */
     err = kndFacet_alloc_set(self, spec, &set);                                   RET_ERR();
@@ -275,9 +283,10 @@ extern int knd_set_add_ref(struct kndSet *self,
     int err;
 
     if (DEBUG_SET_LEVEL_2)
-        knd_log("  .. \"%.*s\" idx to add attr ref \"%.*s\" "
+        knd_log("  .. \"%.*s\" (repo:%.*s) idx to add attr ref \"%.*s\" "
                 "(topic \"%.*s\" => spec \"%.*s\")",
                 self->base->name_size, self->base->name,
+                self->base->repo->name_size, self->base->repo->name,
                 attr->name_size, attr->name,
                 topic->name_size, topic->name,
                 spec->name_size, spec->name);

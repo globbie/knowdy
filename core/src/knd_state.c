@@ -50,7 +50,7 @@ static int export_update_GSP(struct kndUpdate *update,
                         "{ts %Y-%m-%d %H:%M:%S}", &tm_info);
     err = out->write(out, buf, buf_size);                                         RET_ERR();
 
-    if  (update->num_classes) {
+    /*if  (update->num_classes) {
         err = out->write(out, "[!c", strlen("[!c"));                              RET_ERR();
         for (class_update = update->classes;
              class_update;
@@ -59,7 +59,7 @@ static int export_update_GSP(struct kndUpdate *update,
             err = c->export_updates(c, class_update, KND_FORMAT_GSP, out);        RET_ERR();
         }
         err = out->writec(out, ']');                                              RET_ERR();
-    }
+        }*/
 
     // TODO: Rel Proc
     err = out->writec(out, '}');                                                  RET_ERR();

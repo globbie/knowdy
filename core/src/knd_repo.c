@@ -425,12 +425,15 @@ static int kndRepo_open(struct kndRepo *self)
 
     /* frozen DB exists? */
     if (!stat(out->buf, &st)) {
-        /* try opening the frozen DB */
-        err = c->open(c, (const char*)out->buf);
+
+        // TODO:  
+        // try opening the frozen DB
+        
+        /*err = c->open(c, (const char*)out->buf);
         if (err) {
             knd_log("-- failed to open a frozen DB");
             return err;
-        }
+            }*/
     } else {
         if (!self->user_ctx) {
             /* read a system-wide schema */

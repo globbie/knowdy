@@ -56,8 +56,9 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     struct kndClassInst *inst;
     struct kndClassInstEntry *entry;
     struct ooDict *name_idx;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndTask *task = self->entry->repo->task;
+    struct kndRepo *repo = self->entry->repo;
+    struct kndMemPool *mempool = repo->mempool;
+    struct kndTask *task = repo->task;
     struct kndState *state;
     struct kndStateRef *state_ref;
     int err;
@@ -73,11 +74,13 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     }
 
     /* user ctx should have its own copy of a selected class */
-    if (self->curr_class->entry->repo != self->entry->repo) {
-        err = knd_class_clone(self->curr_class, self->entry->repo, &c);
+    if (self->curr_class->entry->repo != repo) {
+
+        err = knd_class_clone(self->curr_class, repo, &c);
         if (err) return *total_size = 0, make_gsl_err_external(err);
         self->curr_class = c;
     }
+
     c = self->curr_class;
 
     err = knd_class_inst_new(mempool, &inst);
@@ -111,27 +114,28 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
         return make_gsl_err_external(err);
     }
     state_ref->state = state;
+    state_ref->type = KND_STATE_CLASS_INST;
+    state_ref->obj = (void*)entry;
 
     state_ref->next = c->inst_state_refs;
     c->inst_state_refs = state_ref;
 
-    c->num_insts++;
-    inst->entry->numid = c->num_insts;
+    repo->num_class_insts++;
+    inst->entry->numid = repo->num_class_insts;
+    knd_num_to_str(inst->entry->numid, inst->entry->id,
+                   &inst->entry->id_size, KND_RADIX_BASE);
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log("++ %.*s class inst parse OK! total insts in %.*s: %zu",
                 inst->name_size, inst->name,
                 c->name_size, c->name, c->num_insts);
 
-    inst->entry->numid = c->num_insts;
-    knd_num_to_str(inst->entry->numid, inst->entry->id, &inst->entry->id_size, KND_RADIX_BASE);
-
     /* automatic name assignment if no explicit name given */
     if (!inst->name_size) {
         inst->name = inst->entry->id;
         inst->name_size = inst->entry->id_size;
     }
-    name_idx = c->entry->repo->class_inst_name_idx;
+    name_idx = repo->class_inst_name_idx;
 
     // TODO  lookup prev class inst ref
 
@@ -139,7 +143,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
                         inst->name, inst->name_size,
                         (void*)entry);
     if (err) return make_gsl_err_external(err);
-    c->entry->num_insts++;
+    //c->entry->num_insts++;
 
     err = knd_register_class_inst(c, entry);
     if (err) return make_gsl_err_external(err);
@@ -876,9 +880,8 @@ extern gsl_err_t knd_import_class(void *obj,
                 c->name_size, c->name);
 
     if (!self->batch_mode) {
-        c->next = self->inbox;
-        self->inbox = c;
-        self->inbox_size++;
+        err = knd_class_resolve(c); 
+        if (err) return *total_size = 0, make_gsl_err_external(err);
     }
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
