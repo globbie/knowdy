@@ -754,6 +754,7 @@ extern int knd_copy_attr_ref(void *obj,
     err = knd_attr_ref_new(mempool, &ref);                                        RET_ERR();
     ref->attr = attr;
     ref->attr_var = src_ref->attr_var;
+    ref->class_entry = src_ref->class_entry;
 
     err = attr_idx->add(attr_idx,
                         attr->id, attr->id_size,
@@ -777,12 +778,13 @@ extern int knd_register_attr_ref(void *obj,
     struct kndMemPool *mempool = attr_idx->mempool;
     int err;
 
-    if (DEBUG_ATTR_LEVEL_TMP) 
+    if (DEBUG_ATTR_LEVEL_2) 
         knd_log(".. copying %.*s attr..", attr->name_size, attr->name);
 
     err = knd_attr_ref_new(mempool, &ref);                                        RET_ERR();
     ref->attr = attr;
     ref->attr_var = src_ref->attr_var;
+    ref->class_entry = self->entry;
 
     err = attr_idx->add(attr_idx,
                         attr->id, attr->id_size,

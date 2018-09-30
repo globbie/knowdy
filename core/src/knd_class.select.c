@@ -75,6 +75,8 @@ static gsl_err_t select_by_attr(void *obj,
     struct kndClass *c;
     struct kndSet *set;
     void *result;
+    const char *class_id;
+    size_t class_id_size;
     struct kndFacet *facet;
     struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->entry->repo->task;
@@ -84,12 +86,13 @@ static gsl_err_t select_by_attr(void *obj,
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
     log->reset(log);
 
-    // TODO local context
-    c = self->curr_attr->parent_class;
+    c = self->curr_attr_ref->class_entry->class;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
-        knd_log("== select by attr value: \"%.*s\" of \"%.*s\" resolved:%d",
-                name_size, name, c->name_size, c->name, c->is_resolved);
+        knd_log("\n== select by attr value: \"%.*s\" of \"%.*s\" (repo:%.*s)",
+                name_size, name,
+                c->name_size, c->name,
+                c->entry->repo->name_size, c->entry->repo->name);
     }
 
     if (!c->entry->descendants) {
@@ -97,7 +100,6 @@ static gsl_err_t select_by_attr(void *obj,
                 c->name_size, c->name);
         return make_gsl_err(gsl_FAIL);
     }
-
     set = c->entry->descendants;
 
     err = knd_set_get_facet(set, self->curr_attr, &facet);
@@ -109,21 +111,27 @@ static gsl_err_t select_by_attr(void *obj,
 
     err = knd_get_class(self->entry->repo, name, name_size, &c);
     if (err) {
-        log->writef(log, "no relation to class: %.*s", name_size, name);
+        log->writef(log, "-- no such class: %.*s", name_size, name);
         task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err_external(err);
     }
 
+    class_id = c->entry->id;
+    class_id_size = c->entry->id_size;
+    if (c->entry->orig) {
+        class_id = c->entry->orig->id;
+        class_id_size = c->entry->orig->id_size;
+    }
+
     err = facet->set_idx->get(facet->set_idx,
-                              c->entry->id, c->entry->id_size, &result);
+                              class_id, class_id_size, &result);
     if (err) {
-        log->writef(log, "no relation to class: %.*s", name_size, name);
+        log->writef(log, "no such facet class: %.*s", name_size, name);
         task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err(gsl_FAIL);
     }
     set = result;
     set->base->class = c;
-
     if (task->num_sets + 1 > KND_MAX_CLAUSES)
         return make_gsl_err(gsl_LIMIT);
 
@@ -138,9 +146,11 @@ static gsl_err_t parse_attr_select(void *obj,
                                    const char *rec, size_t *total_size)
 {
     struct kndClass *self = obj;
+    struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->entry->repo->task;
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = select_by_attr,
@@ -152,7 +162,7 @@ static gsl_err_t parse_attr_select(void *obj,
     if (!self->curr_baseclass)
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
 
-    err = knd_class_get_attr(self->curr_baseclass, name, name_size, &attr);
+    err = knd_class_get_attr(self->curr_baseclass, name, name_size, &attr_ref);
     if (err) {
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                 name_size, name,
@@ -162,6 +172,7 @@ static gsl_err_t parse_attr_select(void *obj,
         task->http_code = HTTP_NOT_FOUND;
         return *total_size = 0, make_gsl_err_external(err);
     }
+    attr = attr_ref->attr;
 
     if (DEBUG_CLASS_SELECT_LEVEL_2) {
         knd_log(".. select by attr \"%.*s\"..", name_size, name);
@@ -171,7 +182,7 @@ static gsl_err_t parse_attr_select(void *obj,
                 attr->ref_class->name_size,
                 attr->ref_class->name);
     }
-
+    self->curr_attr_ref = attr_ref;
     self->curr_attr = attr;
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -212,14 +223,15 @@ static gsl_err_t run_set_attr_var(void *obj,
     }
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
-        knd_log(".. updating attr var %.*s with value: \"%.*s\" class:%p",
-                attr_var->name_size, attr_var->name, val_size, val, c);
+        knd_log(".. updating attr var %.*s with value: \"%.*s\"",
+                attr_var->name_size, attr_var->name, val_size, val);
     }
 
     err = knd_state_new(mempool, &state);
     if (err) return make_gsl_err_external(err);
 
     state->phase = KND_UPDATED;
+
     state->val = (void*)attr_var;
     // TODO
     //state->val = (void*)val;
@@ -293,6 +305,7 @@ static gsl_err_t parse_attr_var_select(void *obj,
                                        const char *rec, size_t *total_size)
 {
     struct kndClass *self = obj;
+    struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->entry->repo->task;
@@ -310,7 +323,7 @@ static gsl_err_t parse_attr_var_select(void *obj,
 
     if (!self->curr_class) return *total_size = 0, make_gsl_err_external(knd_FAIL);
 
-    err = knd_class_get_attr(self->curr_class, name, name_size, &attr);
+    err = knd_class_get_attr(self->curr_class, name, name_size, &attr_ref);
     if (err) {
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                 name_size, name,
@@ -326,10 +339,11 @@ static gsl_err_t parse_attr_var_select(void *obj,
         return *total_size = 0, make_gsl_err_external(err);
     }
 
+    attr = attr_ref->attr;
     self->curr_attr = attr;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
-        knd_log("++ attr selected: \"%.*s\".. curr attr:%p", name_size, name, attr);
+        knd_log("++ attr selected: \"%.*s\"..", name_size, name);
     }
 
     // TODO
@@ -806,14 +820,54 @@ static gsl_err_t parse_select_class_inst(void *data,
     return make_gsl_err(gsl_OK);
 }
 
+static int retrieve_inst_updates(struct kndStateRef *ref,
+                                 struct kndSet *set)
+{
+    struct kndState *state = ref->state;
+    struct kndClassInstEntry *inst_entry;
+    struct kndStateRef *child_ref;
+    int err;
+    
+    knd_log("++ state: %zu  type:%d", state->numid, ref->type);
+
+    for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
+        err = retrieve_inst_updates(child_ref, set);                          RET_ERR();
+    }
+
+    switch (ref->type) {
+    case KND_STATE_CLASS_INST:
+        inst_entry = ref->obj;
+
+        if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+            knd_log("** inst id:%.*s", inst_entry->id_size, inst_entry->id);
+        }
+
+        err = set->add(set,
+                       inst_entry->id,
+                       inst_entry->id_size, (void*)inst_entry);                   RET_ERR();
+
+        /* TODO: filter out the insts 
+           that were created and removed _after_ 
+           the requested update _gt */
+
+        break;
+    default:
+        break;
+    }
+
+
+    
+
+    return knd_OK;
+}
+
 extern int knd_class_get_inst_updates(struct kndClass *self,
                                       size_t gt, size_t lt,
                                       size_t eq __attribute__((unused)),
                                       struct kndSet *set)
 {
     struct kndState *state;
-    struct kndClassInstEntry *entry = NULL;
-    void *result;
+    struct kndStateRef *ref;
     int err;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP)
@@ -827,22 +881,12 @@ extern int knd_class_get_inst_updates(struct kndClass *self,
         if (state->numid >= lt) continue;
         if (state->numid <= gt) continue;
 
-        if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
-            knd_log("== export update: %zu obj:%p",
-                    state->numid, state->val);
+        // TODO
+        if (!state->children) continue;
+
+        for (ref = state->children; ref; ref = ref->next) {
+            err = retrieve_inst_updates(ref, set);                    RET_ERR();
         }
-
-        if (!state->val) continue;
-
-        //if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-        //    knd_log("* inst id:%.*s", entry->id_size, entry->id);
-        /* check if the inst is already in the set */
-        //err = set->get(set, entry->id, entry->id_size, &result);
-        //if (!err) continue;
-        /* TODO: filter out the removed insts 
-           that were initially created _after_ 
-           the requested update _gt */
-        //err = set->add(set, entry->id, entry->id_size, (void*)entry);             RET_ERR();
     }
 
     return knd_OK;

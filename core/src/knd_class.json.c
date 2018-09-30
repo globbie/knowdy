@@ -91,9 +91,10 @@ extern int knd_export_class_inst_state_JSON(struct kndClass *self)
         }
     }
 
-    err = out->write(out, ",\"_tot\":", strlen(",\"_tot\":"));                  RET_ERR();
-    err = out->writef(out, "%zu", self->entry->inst_idx->num_valid_elems);      RET_ERR();
-
+    if (self->entry->inst_idx) {
+        err = out->write(out, ",\"_tot\":", strlen(",\"_tot\":"));                  RET_ERR();
+        err = out->writef(out, "%zu", self->entry->inst_idx->num_valid_elems);      RET_ERR();
+    }
     return knd_OK;
 }
 
@@ -249,12 +250,16 @@ static int export_concise_JSON(struct kndClass *self)
 
     if (DEBUG_JSON_LEVEL_2)
         knd_log(".. export concise JSON for %.*s..",
-                self->entry->name_size, self->entry->name, self->entry->repo->out);
+                self->entry->name_size, self->entry->name);
 
     for (item = self->baseclass_vars; item; item = item->next) {
         if (!item->attrs) continue;
         err = knd_attr_vars_export_JSON(item->attrs, out, true);               RET_ERR();
     }
+
+    if (DEBUG_JSON_LEVEL_2)
+        knd_log(".. export inherited attrs of %.*s..",
+                self->entry->name_size, self->entry->name);
 
     /* inherited attrs */
     err = self->attr_idx->map(self->attr_idx,
@@ -429,7 +434,6 @@ extern int knd_class_export_JSON(struct kndClass *self,
     err = export_gloss_JSON(self);                                                RET_ERR();
 
     if (self->depth >= self->max_depth) {
-        //knd_log("== max depth reached: %zu", self->max_depth);
         /* any concise fields? */
         err = export_concise_JSON(self);                                          RET_ERR();
         goto final;

@@ -647,7 +647,8 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
                                    struct kndElem **result_elem)
 {
     struct kndClass *conc;
-    struct kndAttr *attr = NULL;
+    struct kndAttrRef *attr_ref;
+    struct kndAttr *attr;
     struct kndElem *elem = NULL;
     struct glbOutput *log = self->base->entry->repo->log;
     int err, e;
@@ -667,7 +668,7 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
     }
     
     conc = self->base;
-    err = knd_class_get_attr(conc, name, name_size, &attr);
+    err = knd_class_get_attr(conc, name, name_size, &attr_ref);
     if (err) {
         knd_log("  -- \"%.*s\" attr is not approved :(", name_size, name);
         log->reset(log);
@@ -679,6 +680,7 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
         return err;
     }
 
+    attr = attr_ref->attr;
     if (DEBUG_INST_LEVEL_2) {
         const char *type_name = knd_attr_names[attr->type];
         knd_log("++ \"%.*s\" ELEM \"%s\" attr type: \"%s\"",
@@ -1416,10 +1418,17 @@ static int export_inst_JSON(void *obj,
     struct glbOutput *out = self->entry->repo->out;
     struct kndClassInstEntry *entry = elem;
     struct kndClassInst *inst = entry->inst;
+    struct kndState *state;
     int err;
 
-    if (DEBUG_INST_LEVEL_2) {
+    if (DEBUG_INST_LEVEL_TMP) {
         knd_class_inst_str(inst, 0);
+    }
+
+    if (!task->show_removed_objs) {
+        state = inst->states;
+        if (state && state->phase == KND_REMOVED)
+            return knd_OK;
     }
 
     // TODO unfreeze
@@ -1449,8 +1458,13 @@ static int export_inst_set_JSON(struct kndClass *self,
     err = out->write(out, "{\"_set\":{",
                      strlen("{\"_set\":{"));                                      RET_ERR();
 
-    err = out->writef(out, "\"total\":%lu",
-                      (unsigned long)set->num_elems);                             RET_ERR();
+    if (task->show_removed_objs) {
+        err = out->writef(out, "\"total\":%lu",
+                          (unsigned long)set->num_elems);                         RET_ERR();
+    } else {
+        err = out->writef(out, "\"total\":%lu",
+                          (unsigned long)set->num_valid_elems);                   RET_ERR();
+    }
 
     err = out->write(out, ",\"batch\":[",
                      strlen(",\"batch\":["));                                     RET_ERR();
@@ -1481,8 +1495,10 @@ static gsl_err_t present_inst_selection(void *data, const char *val __attribute_
     struct kndSet *set;
     int err;
 
-    if (DEBUG_INST_LEVEL_2)
-        knd_log(".. inst selection: task type:%d num sets:%zu",
+    if (DEBUG_INST_LEVEL_TMP)
+        knd_log(".. class \"%.*s\" (repo:%.*s) inst selection: task type:%d num sets:%zu",
+                base->name_size, base->name,
+                base->entry->repo->name_size, base->entry->repo->name,
                 task->type, task->num_sets);
 
     out->reset(out);
@@ -1491,6 +1507,8 @@ static gsl_err_t present_inst_selection(void *data, const char *val __attribute_
         if (!task->num_sets) {
             if (base->entry->inst_idx) {
                 set = base->entry->inst_idx;
+
+                task->show_removed_objs = false;
 
                 err = export_inst_set_JSON(self->base, set, out);
                 if (err) return make_gsl_err_external(err);
@@ -1526,6 +1544,7 @@ static gsl_err_t present_inst_selection(void *data, const char *val __attribute_
 
         /* final presentation in JSON 
            TODO: choose output format */
+        task->show_removed_objs = false;
         err = export_inst_set_JSON(self->base, set, out);
         if (err) return make_gsl_err_external(err);
 
@@ -1611,9 +1630,7 @@ static gsl_err_t present_state(void *obj,
                                      task->state_eq, set);
     if (err) return make_gsl_err_external(err);
 
-    //task->sets[0] = set;
-    //task->num_sets = 1;
-    //task->show_removed_objs = true;
+    task->show_removed_objs = true;
 
     err = export_inst_set_JSON(self, set, out);
     if (err) return make_gsl_err_external(err);
@@ -1718,6 +1735,8 @@ static int update_elem_states(struct kndClassInst *self)
         return err;
     }
     ref->state = state;
+
+
     state->phase = KND_UPDATED;
     self->num_states++;
     state->numid = self->num_states;
@@ -1738,13 +1757,16 @@ static int update_elem_states(struct kndClassInst *self)
     } else {
         c = self->base;
 
-        knd_log(".. class \"%.*s\" (repo:%.*s) to get new updates..",
+        knd_log("\n.. class \"%.*s\" (repo:%.*s) to get new updates..",
                 c->name_size, c->name,
                 c->entry->repo->name_size, c->entry->repo->name);
+        ref->type = KND_STATE_CLASS_INST;
+        ref->obj = (void*)self;
 
         ref->next = c->inst_state_refs;
         c->inst_state_refs = ref;
     }
+
     return knd_OK;
 }
 
