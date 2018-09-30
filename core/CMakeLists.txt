@@ -7,7 +7,7 @@ set(HEADERS include/knd_array.h include/knd_attr.h
         include/knd_proc.h include/knd_proc_arg.h include/knd_proc_call.h
         include/knd_query.h
         include/knd_ref.h include/knd_rel.h include/knd_rel_arg.h include/knd_repo.h
-        include/knd_set.h include/knd_shard.h include/knd_state.h
+        include/knd_set.h include/knd_set_idx.h include/knd_shard.h include/knd_state.h
         include/knd_task.h include/knd_text.h
         include/knd_user.h include/knd_utils.h
         include/ooconfig.h)
@@ -19,7 +19,7 @@ set(SOURCES src/knd_array.c src/knd_attr.c src/knd_attr_json.c src/knd_attr_gsp.
         src/knd_mempool.c src/knd_num.c
         src/knd_proc.c src/knd_proc.import.c src/knd_proc_arg.c
         src/knd_ref.c src/knd_rel.c src/knd_rel_arg.c src/knd_repo.c
-        src/knd_set.c src/knd_shard.c src/knd_state.c
+        src/knd_set.c src/knd_set_idx.c src/knd_shard.c src/knd_state.c
         src/knd_task.c src/knd_text.c
         src/knd_user.c src/knd_utils.c)
 
