@@ -2,11 +2,20 @@
 
 #include "knd_utils.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stddef.h>
 
 #include <alloca.h>
+
+// Operations with mask:
+#define MASK_MARK_BIT(mask, bit)    (mask |  (UINT64_C(1) << bit))
+#define MASK_UNMARK_BIT(mask, bit)  (mask & ~(UINT64_C(1) << bit))
+#define MASK_TEST_BIT(mask, bit)    (mask &  (UINT64_C(1) << bit))
+#define MASK_LSBIT(mask)            __builtin_ctzll(mask & (~mask + 1))
+#define MASK_CLEAR_LSBIT(mask)      (mask &  (mask - 1))
 
 static inline uint8_t knd_set_idx_key_bit(const char *key, size_t key_size) {
     assert(key_size != 0);
@@ -15,35 +24,46 @@ static inline uint8_t knd_set_idx_key_bit(const char *key, size_t key_size) {
     return (uint8_t)bit;
 }
 
-inline struct kndSetIdxFolder *knd_set_idx_folder_new(void) {
+static inline struct kndSetIdxFolder *knd_set_idx_folder_new(void) {
     return calloc(1, sizeof(struct kndSetIdxFolder));
 }
 
-inline void knd_set_idx_folder_init(struct kndSetIdxFolder *self)
+static int knd_set_idx_folder_do_intersect(struct kndSetIdxFolder *result,
+                                           struct kndSetIdxFolder **operands,
+                                           size_t num_operands)
 {
-    memset(self, 0, sizeof *self);
-}
+    assert(!result->elems_mask && !result->folders_mask);  // |result| isn't empty!!
 
-inline void knd_set_idx_folder_mark_elem(struct kndSetIdxFolder *self, uint8_t elem_bit)
-{
-    self->elems_idx |= (1 << elem_bit);
-}
+    int err;
+    struct kndSetIdxFolder **suboperands = alloca(sizeof(struct kndSetIdxFolder *) * num_operands);
 
-bool knd_set_idx_folder_test_elem(struct kndSetIdxFolder *self, uint8_t elem_bit) {
-    return self->elems_idx & (1 << elem_bit);
-}
+    result->elems_mask = operands[0]->elems_mask;
+    result->folders_mask = operands[0]->folders_mask;
+    for (size_t i = 1; i < num_operands; ++i) {
+        result->elems_mask &= operands[i]->elems_mask;
+        result->folders_mask &= operands[i]->folders_mask;
+    }
 
-void knd_set_idx_folder_mark_folder(struct kndSetIdxFolder *self, uint8_t folder_bit, struct kndSetIdxFolder *folder) {
-    self->folders_idx |= (1 << folder_bit);
-    self->folders[folder_bit] = folder;
-}
+    for (uint64_t folders_mask = result->folders_mask ; folders_mask; folders_mask = MASK_CLEAR_LSBIT(folders_mask)) {
+        uint8_t folder_bit = MASK_LSBIT(folders_mask);
 
-void knd_set_idx_folder_unmark_folder(struct kndSetIdxFolder *self, uint8_t folder_bit)
-{
-    self->folders_idx &= ~(1 << folder_bit);
-}
+        struct kndSetIdxFolder *subresult = result->folders[folder_bit] = knd_set_idx_folder_new();
+        if (subresult == NULL) return knd_NOMEM;
 
-void knd_set_idx_init(struct kndSetIdx *self) { memset(self, 0, sizeof *self); }
+        for (size_t i = 0; i < num_operands; ++i)
+            suboperands[i] = operands[i]->folders[folder_bit];
+
+        err = knd_set_idx_folder_do_intersect(subresult, suboperands, num_operands);
+        if (err) return err;
+
+        if (!subresult->elems_mask && !subresult->folders_mask) {
+            result->folders_mask = MASK_UNMARK_BIT(result->folders_mask, folder_bit);
+            // We can also free |subresult| to reduce memory usage.
+        }
+    }
+
+    return 0;
+}
 
 int knd_set_idx_add(struct kndSetIdx *self, const char *key, size_t key_size)
 {
@@ -51,22 +71,23 @@ int knd_set_idx_add(struct kndSetIdx *self, const char *key, size_t key_size)
 
     struct kndSetIdxFolder *folder = &self->root;
     while (key_size != 1) {
-        uint8_t key_bit = knd_set_idx_key_bit(key, key_size);
+        uint8_t folder_bit = knd_set_idx_key_bit(key, key_size);
 
-        struct kndSetIdxFolder *child = folder->folders[key_bit];
-        if (!child) {
-            child = knd_set_idx_folder_new();
-            if (child == NULL) return knd_NOMEM;
+        struct kndSetIdxFolder *next_folder = folder->folders[folder_bit];
+        if (!next_folder) {
+            next_folder = knd_set_idx_folder_new();
+            if (next_folder == NULL) return knd_NOMEM;
 
-            knd_set_idx_folder_mark_folder(folder, key_bit, child);
+            folder->folders_mask = MASK_MARK_BIT(folder->folders_mask, folder_bit);
+            folder->folders[folder_bit] = next_folder;
         }
 
         key++;
         key_size--;
-        folder = child;
+        folder = next_folder;
     }
 
-    knd_set_idx_folder_mark_elem(folder, knd_set_idx_key_bit(key, key_size));
+    folder->elems_mask = MASK_MARK_BIT(folder->elems_mask, knd_set_idx_key_bit(key, key_size));
     return 0;
 }
 
@@ -80,75 +101,21 @@ bool knd_set_idx_exist(struct kndSetIdx *self, const char *key, size_t key_size)
         // empty body
     }
 
-    return folder && knd_set_idx_folder_test_elem(folder, knd_set_idx_key_bit(key, key_size));
+    return folder && MASK_TEST_BIT(folder->elems_mask, knd_set_idx_key_bit(key, key_size));
 }
 
-#define LSBIT(X)                    (__builtin_ctz((X) & (~(X) + 1)))
-#define CLEARLSBIT(X)               ((X) & ((X) - 1))
-
-int knd_set_idx_folder_intersect(struct kndSetIdxFolder *self, struct kndSetIdxFolder *other,
-                                 struct kndSetIdxFolder *result)
+int knd_set_idx_new(struct kndSetIdx **out)
 {
-    int err;
-
-    result->elems_idx = self->elems_idx & other->elems_idx;
-    result->folders_idx = self->folders_idx & other->folders_idx;
-
-    for (uint64_t folders_idx = result->folders_idx ; folders_idx; folders_idx = CLEARLSBIT(folders_idx)) {
-        uint8_t folder_bit = LSBIT(folders_idx);
-
-        struct kndSetIdxFolder **folder_ptr = &result->folders[folder_bit];
-        *folder_ptr = knd_set_idx_folder_new();
-        if (*folder_ptr == NULL) return knd_NOMEM;
-
-        err = knd_set_idx_folder_intersect(self->folders[folder_bit], other->folders[folder_bit], *folder_ptr);
-        if (err) return err;
-
-        if (!(*folder_ptr)->elems_idx && !(*folder_ptr)->folders_idx) {
-            knd_set_idx_folder_unmark_folder(result, folder_bit);
-            // We can also free folder_ptr to reduce memory usage.
-        }
-    }
-
-    return 0;
+    *out = calloc(1, sizeof(struct kndSetIdx));
+    return *out ? 0 : knd_NOMEM;
 }
 
-int knd_set_idx_intersect(struct kndSetIdx *self, struct kndSetIdx *other, struct kndSetIdx *out_result)
+int knd_set_idx_new_result_of_intersect(struct kndSetIdx **out, struct kndSetIdx **idxs, size_t num_idxs)
 {
-    return knd_set_idx_folder_intersect(&self->root, &other->root, &out_result->root);
-}
+    int err = knd_set_idx_new(out);
+    if (err) return *out = NULL, err;
 
-int knd_set_idx_folder_intersect_n(struct kndSetIdxFolder **folders, size_t num_folders,
-                                   struct kndSetIdxFolder *result)
-{
-    int err;
-    struct kndSetIdxFolder **subfolders = alloca(sizeof(struct kndSetIdxFolder *) * num_folders);
-
-    result->elems_idx = folders[0]->elems_idx;
-    result->folders_idx = folders[0]->folders_idx;
-    for (size_t i = 1; i < num_folders; ++i) {
-        result->elems_idx &= folders[i]->elems_idx;
-        result->folders_idx &= folders[i]->folders_idx;
-    }
-
-    for (uint64_t folders_idx = result->folders_idx ; folders_idx; folders_idx = CLEARLSBIT(folders_idx)) {
-        uint8_t folder_bit = LSBIT(folders_idx);
-
-        struct kndSetIdxFolder **folder_ptr = &result->folders[folder_bit];
-        *folder_ptr = knd_set_idx_folder_new();
-        if (*folder_ptr == NULL) return knd_NOMEM;
-
-        for (size_t i = 0; i < num_folders; ++i)
-            subfolders[i] = folders[i]->folders[folder_bit];
-
-        err = knd_set_idx_folder_intersect(subfolders, num_folders, *folder_ptr);
-        if (err) return err;
-
-        if (!(*folder_ptr)->elems_idx && !(*folder_ptr)->folders_idx) {
-            knd_set_idx_folder_unmark_folder(result, folder_bit);
-            // We can also free folder_ptr to reduce memory usage.
-        }
-    }
-
-    return 0;
+    // That's why I'm casting |idxs| to struct kndSetIdxFolder **
+    _Static_assert(offsetof(struct kndSetIdx, root) == 0, "Illegal cast of idxs to (struct kndSetIdxFolder **)");
+    return knd_set_idx_folder_do_intersect(&(*out)->root, (struct kndSetIdxFolder **)idxs, num_idxs);
 }

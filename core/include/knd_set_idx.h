@@ -24,30 +24,40 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <limits.h>
 
-_Static_assert(KND_RADIX_BASE == 62);
+// Knowdy Set Key (string of 0-9A-Za-z)
+_Static_assert(KND_RADIX_BASE <= CHAR_BIT * sizeof(uint64_t), "KND_RADIX_BASE is too big");  // requried for knd_set_idx_key_bit()
 
 struct kndSetIdxFolder
 {
-    uint64_t elems_idx;
-    uint64_t folders_idx;
-    // void *(*elems)[KND_RADIX_BASE];  Can be optional
+    uint64_t elems_mask;
+    uint64_t folders_mask;
     struct kndSetIdxFolder *folders[KND_RADIX_BASE];
+    // void *elems[];  Can be optional
 };
-
-extern inline void knd_set_idx_folder_init(struct kndSetIdxFolder *self);
-extern inline void knd_set_idx_folder_mark_elem(struct kndSetIdxFolder *self, uint8_t elem_bit);
-extern inline bool knd_set_idx_folder_test_elem(struct kndSetIdxFolder *self, uint8_t elem_bit);
-extern inline void knd_set_idx_folder_mark_folder(struct kndSetIdxFolder *self, uint8_t folder_bit, struct kndSetIdxFolder *folder);
 
 struct kndSetIdx
 {
     struct kndSetIdxFolder root;
 };
 
-extern inline void knd_set_idx_init(struct kndSetIdx *self);
-
+// public:
 extern int knd_set_idx_add(struct kndSetIdx *self, const char *key, size_t key_size);
 extern bool knd_set_idx_exist(struct kndSetIdx *self, const char *key, size_t key_size);
 
-extern int knd_set_idx_intersect(struct kndSetIdx *self, struct kndSetIdx *other, struct kndSetIdx *out_result);
+// knd_set_idx_new() -- Create a new empty set
+//
+// After that you can use it in knd_set_idx_add(), knd_set_idx_exist(), or as one of the operands
+// of knd_set_idx_new_result_of_intersect().
+extern int knd_set_idx_new(struct kndSetIdx **out);
+
+// knd_set_idx_new() -- Create a new set, the result of intersection.
+//
+// After that you can use it in knd_set_idx_add(), knd_set_idx_exist(), or as one of the operands
+// of knd_set_idx_new_result_of_intersect().
+//
+// WARNING: In case of errors, it can also return a valid set object.  Probably we can free |*out| object to
+//          avoid memory leaks but for now you MUST check |*out| all the time!!
+//
+extern int knd_set_idx_new_result_of_intersect(struct kndSetIdx **out, struct kndSetIdx **idxs, size_t num_idxs);
