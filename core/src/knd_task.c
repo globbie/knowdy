@@ -109,11 +109,11 @@ static gsl_err_t enter_system_mode(void *obj,
     knd_log(".. entering system mode.. ");
 
     struct gslTaskSpec specs[] = {
-        /*{ .name = "user",
+        { .name = "user",
           .name_size = strlen("user"),
           .parse = select_user,
           .obj = self
-          }*/
+        }
     };
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
