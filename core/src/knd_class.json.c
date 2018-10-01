@@ -399,13 +399,82 @@ static int present_subclasses(struct kndClass *self,
     return knd_OK;
 }
 
+static int export_attrs(struct kndClass *self,
+                        struct glbOutput *out)
+{
+    struct kndAttr *attr;
+    size_t i = 0;
+    int err;
+    err = out->write(out, ",\"_attrs\":{",
+                     strlen(",\"_attrs\":{"));   RET_ERR();
+    
+    for (attr = self->attrs; attr; attr = attr->next) {
+        if (i) {
+            err = out->write(out, ",", 1);  RET_ERR();
+        }
+        err = knd_attr_export(attr, KND_FORMAT_JSON, out);
+        if (err) {
+            if (DEBUG_JSON_LEVEL_TMP)
+                knd_log("-- failed to export %.*s attr",
+                        attr->name_size, attr->name);
+            return err;
+        }
+        i++;
+    }
+    err = out->writec(out, '}'); RET_ERR();
+    return knd_OK;
+}
+
+static int export_baseclass_vars(struct kndClass *self,
+                                 struct glbOutput *out)
+{
+    struct kndClassVar *item;
+    size_t item_count = 0;
+    int err;
+
+    err = out->write(out, ",\"_is\":[", strlen(",\"_is\":["));                RET_ERR();
+
+    for (item = self->baseclass_vars; item; item = item->next) {
+        if (item_count) {
+            err = out->write(out, ",", 1);                                    RET_ERR();
+        }
+
+        err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));      RET_ERR();
+        err = out->write(out, item->entry->name, item->entry->name_size);   RET_ERR();
+        err = out->write(out, "\"", 1);                                     RET_ERR();
+
+        err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));  RET_ERR();
+        err = out->writef(out, "%zu", item->numid);                       RET_ERR();
+
+        if (item->attrs) {
+            item->attrs->depth = self->depth;
+            item->attrs->max_depth = self->max_depth;
+            err = knd_attr_vars_export_JSON(item->attrs, out, false);      RET_ERR();
+        }
+
+        if (self->num_computed_attrs) {
+            if (DEBUG_JSON_LEVEL_2)
+                knd_log("\n.. export computed attrs of class %.*s",
+                        self->name_size, self->name);
+            err = present_computed_class_attrs(self, item);
+            if (err) return err;
+        }
+
+
+        err = out->write(out, "}", 1);      RET_ERR();
+        item_count++;
+    }
+    err = out->write(out, "]", 1);
+    if (err) return err;
+
+    return knd_OK;
+}
+                                     
 extern int knd_class_export_JSON(struct kndClass *self,
                                  struct glbOutput *out)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
-    struct kndAttr *attr;
-    struct kndClassVar *item;
     struct kndSet *attr_idx;
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
@@ -454,71 +523,21 @@ extern int knd_class_export_JSON(struct kndClass *self,
 
     /* display base classes only once */
     if (self->num_baseclass_vars) {
-        err = out->write(out, ",\"_is\":[", strlen(",\"_is\":["));            RET_ERR();
-
-        item_count = 0;
-        for (item = self->baseclass_vars; item; item = item->next) {
-            if (item_count) {
-                err = out->write(out, ",", 1);                                    RET_ERR();
-            }
-
-            err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));      RET_ERR();
-            err = out->write(out, item->entry->name, item->entry->name_size);
-            if (err) return err;
-            err = out->write(out, "\"", 1);
-            if (err) return err;
-
-            err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));
-            if (err) return err;
-            buf_size = snprintf(buf, KND_NAME_SIZE, "%zu", item->numid);
-            err = out->write(out, buf, buf_size);
-            if (err) return err;
-
-            if (item->attrs) {
-                item->attrs->depth = self->depth;
-                item->attrs->max_depth = self->max_depth;
-                err = knd_attr_vars_export_JSON(item->attrs, out, false);      RET_ERR();
-            }
-
-            if (self->num_computed_attrs) {
-                if (DEBUG_JSON_LEVEL_2)
-                    knd_log("\n.. export computed attrs of class %.*s",
-                            self->name_size, self->name);
-                err = present_computed_class_attrs(self, item);
-                if (err) return err;
-            }
-
-
-            err = out->write(out, "}", 1);      RET_ERR();
-            item_count++;
+        err = export_baseclass_vars(self, out);                          RET_ERR();
+    } else {
+        if (orig_entry && orig_entry->class->num_baseclass_vars) {
+            err = export_baseclass_vars(orig_entry->class, out);         RET_ERR();
         }
-        err = out->write(out, "]", 1);
-        if (err) return err;
     }
 
     if (self->attrs) {
-        err = out->write(out, ",\"_attrs\":{",
-                         strlen(",\"_attrs\":{"));
-        if (err) return err;
-
-        i = 0;
-        for (attr = self->attrs; attr; attr = attr->next) {
-            if (i) {
-                err = out->write(out, ",", 1);
-                if (err) return err;
-            }
-            err = knd_attr_export(attr, KND_FORMAT_JSON, out);
-            if (err) {
-                if (DEBUG_JSON_LEVEL_TMP)
-                    knd_log("-- failed to export %.*s attr",
-                            attr->name_size, attr->name);
-                return err;
-            }
-            i++;
+        err = export_attrs(self, out); RET_ERR();
+    } else {
+        if (orig_entry && orig_entry->class->num_attrs) {
+            err = export_attrs(orig_entry->class, out);                   RET_ERR();
         }
-        err = out->writec(out, '}');
-        if (err) return err;
     }
+
 
     /* inherited attrs */
     attr_idx = self->attr_idx;

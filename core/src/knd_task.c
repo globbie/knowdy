@@ -100,6 +100,25 @@ static gsl_err_t select_user(void *obj,
     return user->select(user, rec, total_size);
 }
 
+static gsl_err_t enter_system_mode(void *obj,
+                                   const char *rec,
+                                   size_t *total_size)
+{
+    struct kndTask *self = obj;
+
+    knd_log(".. entering system mode.. ");
+
+    struct gslTaskSpec specs[] = {
+        { .name = "user",
+          .name_size = strlen("user"),
+          .parse = select_user,
+          .obj = self
+        }
+    };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 static gsl_err_t set_output_format(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *self = obj;
@@ -198,6 +217,11 @@ static gsl_err_t parse_task(void *obj,
         { .name = "user",
           .name_size = strlen("user"),
           .parse = select_user,
+          .obj = self
+        },
+        { .name = "sys",
+          .name_size = strlen("sys"),
+          .parse = enter_system_mode,
           .obj = self
         },
         { .name = "update",
