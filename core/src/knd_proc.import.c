@@ -323,7 +323,7 @@ gsl_err_t kndProc_import(struct kndProc *root_proc,
     struct kndProcEntry *entry;
     int err;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. import Proc: \"%.*s\"..", 32, rec);
 
     err = kndProc_new(&proc, root_proc->entry->repo, root_proc->entry->repo->mempool);
