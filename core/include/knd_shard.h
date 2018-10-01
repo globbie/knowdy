@@ -40,8 +40,7 @@ struct kndShard
     void (*str)(struct kndShard *self);
 };
 
-extern void kndShard_init(struct kndShard *self);
-extern int kndShard_new(struct kndShard **self, const char *config_filename);
+extern int kndShard_new(struct kndShard **self, const char *config, size_t config_size);
 extern void kndShard_del(struct kndShard *self);
 extern int kndShard_run_task(struct kndShard *self, const char *input, size_t input_size, char *output, size_t *output_size);
 

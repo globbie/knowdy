@@ -213,7 +213,7 @@ final:
     return knd_OK;
 }
 
-int kndShard_new(struct kndShard **shard, const char *config_filename)
+int kndShard_new(struct kndShard **shard, const char *config, size_t config_size)
 {
     struct kndShard *self;
     struct kndMemPool *mempool;
@@ -223,7 +223,7 @@ int kndShard_new(struct kndShard **shard, const char *config_filename)
     self = malloc(sizeof(struct kndShard));
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndShard));
-   
+
     err = glbOutput_new(&self->task_storage, KND_TASK_STORAGE_SIZE);
     if (err != knd_OK) goto error;
 
@@ -242,12 +242,7 @@ int kndShard_new(struct kndShard **shard, const char *config_filename)
     self->mempool = mempool;
 
     { // read config
-        size_t chunk_size;
-        err = self->out->write_file_content(self->out,
-                                            config_filename);
-        if (err != knd_OK) goto error;
-
-        err = parse_schema(self, self->out->buf, &chunk_size);
+        err = parse_schema(self, config, &config_size);
         if (err != knd_OK) goto error;
     }
 
