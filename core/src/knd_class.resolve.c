@@ -231,9 +231,8 @@ static int resolve_proc_ref(struct kndClass *self,
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. resolving proc ref:  %.*s", name_size, name);
 
-    root_proc = self->entry->repo->root_proc;
-    err = root_proc->get_proc(root_proc,
-                              name, name_size, &proc);                            RET_ERR();
+    err = knd_get_proc(self->entry->repo,
+                       name, name_size, &proc);                            RET_ERR();
 
     /*c = dir->conc;
     if (!c->is_resolved) {
@@ -728,10 +727,9 @@ static int resolve_primary_attrs(struct kndClass *self)
                         attr->name);
                 return knd_FAIL;
             }
-            root_proc = self->entry->repo->root_proc;
-            proc_entry = root_proc->proc_name_idx->get(root_proc->proc_name_idx,
-                                                       attr->ref_procname,
-                                                       attr->ref_procname_size);
+            proc_entry = repo->proc_name_idx->get(repo->proc_name_idx,
+                                                  attr->ref_procname,
+                                                  attr->ref_procname_size);
             if (!proc_entry) {
                 knd_log("-- no such proc: \"%.*s\" .."
                         "couldn't resolve the \"%.*s\" attr of %.*s :(",

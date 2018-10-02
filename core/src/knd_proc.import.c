@@ -113,7 +113,7 @@ static gsl_err_t kndProc_parse_gloss(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t kndProc_append_summary(void *accu,
+/*static gsl_err_t kndProc_append_summary(void *accu,
                                         void *item)
 {
     struct kndProc *self = accu;
@@ -159,7 +159,7 @@ static gsl_err_t kndProc_parse_summary(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
-
+*/
 static gsl_err_t kndProc_validate_base_arg(void *obj,
                                            const char *name,
                                            size_t name_size,
@@ -175,9 +175,8 @@ static gsl_err_t kndProc_validate_base_arg(void *obj,
     if (!base_arg) return make_gsl_err_external(knd_NOMEM);
     memset(base_arg, 0, sizeof *base_arg);
 
-    memcpy(base_arg->name, name, name_size);
+    base_arg->name = name;
     base_arg->name_size = name_size;
-    base_arg->name[name_size] = '\0';
 
     struct gslTaskSpec specs[] = {
 // FIXME(k15tfu): ?? switch to something like this
@@ -260,7 +259,7 @@ static gsl_err_t kndProc_validate_do_arg(void *obj,
     if (err.code) return *total_size = 0, make_gsl_err_external(err.code);
     class_var->root_class = proc->entry->repo->root_class;
 
-    err = import_class_var(class_var, rec, total_size);
+    err = knd_import_class_var(class_var, rec, total_size);
     if (err.code) return err;
 
     // TODO: use mempool
@@ -273,22 +272,26 @@ static gsl_err_t kndProc_validate_do_arg(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t kndProc_parse_do(void *obj,
-                                  const char *rec,
-                                  size_t *total_size)
+static gsl_err_t knd_proc_parse_do(void *obj,
+                                   const char *rec,
+                                   size_t *total_size)
 {
     struct kndProc *self = obj;
 
     if (DEBUG_PROC_LEVEL_TMP)
-        knd_log(".. Proc Call parsing: \"%.*s\".. entry:%p",
-                32, rec, self->entry);
+        knd_log(".. Proc Call parsing: \"%.*s\"..",
+                32, rec);
+
+    if (!self->proc_call) {
+           return *total_size = 0, make_gsl_err_external(knd_FAIL);
+    }
 
     struct gslTaskSpec specs[] = {
         {
             .is_implied = true,
-            .buf = self->proc_call.name,
-            .buf_size = &self->proc_call.name_size,
-            .max_buf_size = sizeof self->proc_call.name
+            .buf = self->proc_call->name,
+            .buf_size = &self->proc_call->name_size,
+            .max_buf_size = sizeof self->proc_call->name
         },
         {
             .is_validator = true,
@@ -302,34 +305,58 @@ static gsl_err_t kndProc_parse_do(void *obj,
     if (err.code) return err;
 
     // TODO: lookup table
-    if (self->proc_call.name_size == strlen("_mult") &&
-        !strncmp("_mult", self->proc_call.name, self->proc_call.name_size))
-        self->proc_call.type = KND_PROC_MULT;
-    else if (!strncmp("_sum", self->proc_call.name, self->proc_call.name_size))
-        self->proc_call.type = KND_PROC_SUM;
-    else if (!strncmp("_mult_percent", self->proc_call.name, self->proc_call.name_size))
-        self->proc_call.type = KND_PROC_MULT_PERCENT;
-    else if (!strncmp("_div_percent", self->proc_call.name, self->proc_call.name_size))
-        self->proc_call.type = KND_PROC_DIV_PERCENT;
+    if (self->proc_call->name_size == strlen("_mult") &&
+        !strncmp("_mult", self->proc_call->name, self->proc_call->name_size))
+        self->proc_call->type = KND_PROC_MULT;
+    else if (!strncmp("_sum", self->proc_call->name, self->proc_call->name_size))
+        self->proc_call->type = KND_PROC_SUM;
+    else if (!strncmp("_mult_percent", self->proc_call->name, self->proc_call->name_size))
+        self->proc_call->type = KND_PROC_MULT_PERCENT;
+    else if (!strncmp("_div_percent", self->proc_call->name, self->proc_call->name_size))
+        self->proc_call->type = KND_PROC_DIV_PERCENT;
 
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t kndProc_import(struct kndProc *root_proc,
-                         const char *rec,
-                         size_t *total_size)
+static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
+{
+    struct kndProc *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    self->entry->name = name;
+    self->entry->name_size = name_size;
+    self->name = name;
+    self->name_size = name_size;
+
+    return make_gsl_err(gsl_OK);
+}
+
+extern gsl_err_t knd_proc_import(struct kndProc *root_proc,
+                                 const char *rec,
+                                 size_t *total_size)
 {
     struct kndProc *proc;
     struct kndProcEntry *entry;
+    struct kndRepo *repo = root_proc->entry->repo;
+    struct kndMemPool *mempool = repo->mempool;
     int err;
 
     if (DEBUG_PROC_LEVEL_TMP)
-        knd_log(".. import Proc: \"%.*s\"..", 32, rec);
+        knd_log(".. import proc: \"%.*s\"..", 32, rec);
 
-    err = kndProc_new(&proc, root_proc->entry->repo, root_proc->entry->repo->mempool);
+    err = knd_proc_entry_new(mempool, &entry);
     if (err) return *total_size = 0, make_gsl_err_external(err);
+    entry->name = "/";
+    entry->name_size = 1;
+    entry->repo = repo;
 
-    kndProc_inherit_idx(proc, root_proc);
+    err = knd_proc_new(mempool, &proc);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+    proc->name = entry->name;
+    proc->name_size = 1;
+    entry->proc = proc;
+    proc->entry = entry;
+
+    //kndProc_inherit_idx(proc, root_proc);
 
     struct gslTaskSpec proc_arg_spec = {
         .is_list_item = true,
@@ -347,20 +374,18 @@ gsl_err_t kndProc_import(struct kndProc *root_proc,
         .accu = proc
     };
 
-    struct gslTaskSpec summary_spec = {
+    /*struct gslTaskSpec summary_spec = {
         .is_list_item = true,
         .alloc = kndProc_alloc_translation,
         .append = kndProc_append_summary,
         .parse = kndProc_parse_summary,
         .accu = proc
-    };
+        }; */
 
     struct gslTaskSpec specs[] = {
-        {
-            .is_implied = true,
-            .buf = proc->entry->name,
-            .buf_size = &proc->entry->name_size,
-            .max_buf_size = sizeof proc->entry->name
+        {   .is_implied = true,
+            .run = set_proc_name,
+            .obj = proc
         },
         {
             .type = GSL_SET_ARRAY_STATE,
@@ -382,31 +407,30 @@ gsl_err_t kndProc_import(struct kndProc *root_proc,
             .name_size = strlen("_gloss"),
             .parse = gsl_parse_array,
             .obj = &gloss_spec
-        },
+        }/*,
         {
             .type = GSL_SET_ARRAY_STATE,
             .name = "_summary",
             .name_size = strlen("_summary"),
             .parse = gsl_parse_array,
             .obj = &summary_spec
-        },
+            }*/,
         {
             .name = "is",
             .name_size = strlen("is"),
             .parse = kndProc_parse_base,
             .obj = proc
-        },
-        {
+        }
+        /*{
             .name = "result",
             .name_size = strlen("result"),
             .buf = proc->result_classname,
             .buf_size = &proc->result_classname_size,
             .max_buf_size = sizeof proc->result_classname
-        },
-        {
-            .name = "do",
+            }*/,
+        {   .name = "do",
             .name_size = strlen("do"),
-            .parse = kndProc_parse_do,
+            .parse = knd_proc_parse_do,
             .obj = proc
         }
     };
@@ -418,8 +442,8 @@ gsl_err_t kndProc_import(struct kndProc *root_proc,
     if (!proc->entry->name_size)
         return make_gsl_err(gsl_FORMAT);
 
-    entry = root_proc->proc_name_idx->get(root_proc->proc_name_idx,
-                                          proc->entry->name, proc->entry->name_size);
+    entry = repo->proc_name_idx->get(repo->proc_name_idx,
+                                     proc->entry->name, proc->entry->name_size);
     if (entry) {
         if (entry->phase == KND_REMOVED) {
             knd_log("== proc was removed recently");
@@ -438,27 +462,26 @@ gsl_err_t kndProc_import(struct kndProc *root_proc,
         }
     }
 
-    if (!root_proc->batch_mode) {
-        //kndProc_push_to_inbox(root_proc, proc);
+    /*    if (!root_proc->batch_mode) {
         proc->next = root_proc->inbox;
         root_proc->inbox = proc;
         root_proc->inbox_size++;
-    }
+        }*/
 
-    // Genearte ID and Add to proc index
-    root_proc->num_procs++;
-    proc->entry->numid = root_proc->num_procs;
+    /* generate ID and add to proc index */
+    repo->num_procs++;
+    proc->entry->numid = repo->num_procs;
     proc->entry->id_size = KND_ID_SIZE;
 
     knd_num_to_str(proc->entry->numid,
                    proc->entry->id, &proc->entry->id_size, KND_RADIX_BASE);
 
-    err = root_proc->proc_name_idx->set(root_proc->proc_name_idx,
+    err = repo->proc_name_idx->set(repo->proc_name_idx,
                                    proc->entry->name, proc->entry->name_size,
                                    (void*)proc->entry);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         proc->str(proc);
 
     return make_gsl_err(gsl_OK);

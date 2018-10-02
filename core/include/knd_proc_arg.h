@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2018 by Dmitri Dmitriev
+ *   Copyright (c) 2011-present by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Graph DB, 
@@ -78,8 +78,7 @@ struct kndProcArgInstance
 
 struct kndProcArg 
 {
-//    knd_proc_arg_type type;
-    char name[KND_NAME_SIZE];
+    const char *name;
     size_t name_size;
 
     struct kndProcCall proc_call;
@@ -95,16 +94,14 @@ struct kndProcArg
 //    int descr_level;
 //    int browse_level;
 
-    char classname[KND_NAME_SIZE];
+    const char *classname;
     size_t classname_size;
 //    struct kndClass *conc;
 
     size_t numval;
-    char val[KND_VAL_SIZE];
+    const char *val;
     size_t val_size;
 
-    struct glbOutput *out;
-//    struct kndMemPool *mempool;
     struct kndTask *task;
     struct kndVisualFormat *visual;
 
@@ -125,7 +122,6 @@ struct kndProcArg
                     const char   *val,
                     size_t val_size);
     int (*resolve)(struct kndProcArg   *self);
-    int (*export)(struct kndProcArg   *self);
 
     int (*parse_inst)(struct kndProcArg *self,
                       struct kndProcArgInstance *inst,
@@ -141,6 +137,10 @@ struct kndProcArg
 /* constructor */
 extern void kndProcArgInstance_init(struct kndProcArgInstance *self);
 //extern void kndProcArgInstRef_init(struct kndProcArgInstRef *self);
+
+extern int knd_proc_arg_export(struct kndProcArg *self,
+                               knd_format format,
+                               struct glbOutput *out);
 
 extern void kndProcArg_init(struct kndProcArg *self, struct kndProc *proc);
 extern int kndProcArg_new(struct kndProcArg **self, struct kndProc *proc, struct kndMemPool *mempool);

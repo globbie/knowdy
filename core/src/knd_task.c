@@ -100,13 +100,13 @@ static gsl_err_t select_user(void *obj,
     return user->select(user, rec, total_size);
 }
 
-static gsl_err_t enter_system_mode(void *obj,
-                                   const char *rec,
-                                   size_t *total_size)
+static gsl_err_t open_system_repo(void *obj,
+                                  const char *rec,
+                                  size_t *total_size)
 {
     struct kndTask *self = obj;
 
-    knd_log(".. entering system mode.. ");
+    knd_log(".. opening system repo..");
 
     struct gslTaskSpec specs[] = {
         { .name = "user",
@@ -141,7 +141,8 @@ static gsl_err_t set_output_format(void *obj, const char *name, size_t name_size
 
     err = self->log->write(self->log, name, name_size);
     if (err) return make_gsl_err_external(err);
-    err = self->log->write(self->log, " format not supported", strlen(" format not supported"));
+    err = self->log->write(self->log, " format not supported",
+                           strlen(" format not supported"));
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err_external(knd_NO_MATCH);
@@ -219,9 +220,9 @@ static gsl_err_t parse_task(void *obj,
           .parse = select_user,
           .obj = self
         },
-        { .name = "sys",
-          .name_size = strlen("sys"),
-          .parse = enter_system_mode,
+        { .name = "repo",
+          .name_size = strlen("repo"),
+          .parse = open_system_repo,
           .obj = self
         },
         { .name = "update",

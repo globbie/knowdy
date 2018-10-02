@@ -133,7 +133,7 @@ static int export_conc_elem_JSON(void *obj,
         c->max_depth = self->max_depth;
     }
 
-    err = c->export(c, KND_FORMAT_JSON, out);
+    err = knd_class_export(c, KND_FORMAT_JSON, out);
     if (err) return err;
 
     task->batch_size++;
