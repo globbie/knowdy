@@ -1,5 +1,7 @@
 #include <pthread.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
@@ -85,6 +87,11 @@ int kndLearnerService_new(struct kndLearnerService **service,
 {
     struct kndLearnerService *self;
     struct addrinfo *address;
+
+    char *config = NULL;
+    size_t config_size = 0;
+    int fd = -1;
+
     int err;
 
     self = calloc(1, sizeof(*self));
@@ -108,7 +115,27 @@ int kndLearnerService_new(struct kndLearnerService **service,
 
     self->knode->add_endpoint(self->knode, self->entry_point);
 
-    err = kndShard_new(&self->shard, opts->config_file);
+
+    { // read config
+        struct stat stat;
+
+        fd = open(opts->config_file, O_RDONLY);
+        if (fd == -1) goto error;
+        fstat(fd, &stat);
+
+        config_size = (size_t) stat.st_size;
+
+        config = malloc(config_size);
+        if (!config) goto error;
+
+        ssize_t bytes_read = read(fd, config, config_size);
+        if (bytes_read <= 0) goto error;
+
+        if (fd != -1) close(fd);
+        if (config) free(config);
+    }
+
+    err = kndShard_new(&self->shard, config, config_size);
     if (err != 0) goto error;
 
     self->start = start__;
@@ -118,6 +145,8 @@ int kndLearnerService_new(struct kndLearnerService **service,
 
     return knd_OK;
 error:
+    if (fd != -1) close(fd);
+    if (config) free(config);
     delete__(self);
     return knd_FAIL;
 }
