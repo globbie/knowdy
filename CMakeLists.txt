@@ -52,12 +52,10 @@ endif()
 set(KNOWDY_PREFIX "knd")
 set(CORE      "core")
 set(LEARNER   "learner")
-set(LINT      "lint")
 
 set(KNOWDY_MODULES
         ${CORE}
         ${LEARNER}
-        ${LINT}
 )
 
 include_directories(${CORE}/include)
