@@ -436,8 +436,11 @@ static int kndRepo_open(struct kndRepo *self)
             }*/
     } else {
         if (!self->user_ctx) {
+
             /* read a system-wide schema */
-            knd_log("-- no existing frozen DB was found, reading the original schema..");
+            knd_log("-- no existing frozen DB was found, "
+                    " reading the original schema..");
+
             c->batch_mode = true;
             err = knd_read_GSL_file(c, NULL, "index", strlen("index"));
             if (err) {
