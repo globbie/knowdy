@@ -707,9 +707,9 @@ extern gsl_err_t parse_class_var(struct kndClassVar *self,
     return make_gsl_err(gsl_OK);
 }
 
-extern gsl_err_t import_class_var(struct kndClassVar *self,
-                                  const char *rec,
-                                  size_t *total_size)
+extern gsl_err_t knd_import_class_var(struct kndClassVar *self,
+                                      const char *rec,
+                                      size_t *total_size)
 {
     gsl_err_t parser_err;
 
@@ -767,7 +767,7 @@ static gsl_err_t parse_baseclass(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-extern gsl_err_t knd_import_class(void *obj,
+extern gsl_err_t knd_class_import(void *obj,
                                   const char *rec,
                                   size_t *total_size)
 {

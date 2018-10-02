@@ -439,12 +439,12 @@ static int kndRepo_open(struct kndRepo *self)
             /* read a system-wide schema */
             knd_log("-- no existing frozen DB was found, reading the original schema..");
             c->batch_mode = true;
-            err = c->load(c, NULL, "index", strlen("index"));
+            err = knd_read_GSL_file(c, NULL, "index", strlen("index"));
             if (err) {
                 knd_log("-- couldn't read any schemas :(");
                 return err;
             }
-            err = c->coordinate(c);
+            err = knd_class_coordinate(c);
             if (err) {
                 knd_log("-- concept coordination failed");
                 return err;
@@ -517,6 +517,7 @@ extern int kndRepo_new(struct kndRepo **repo,
     struct kndClassEntry *entry;
     struct kndClassInst *inst;
     struct kndProc *proc;
+    struct kndProcEntry *proc_entry;
     struct kndRel *rel;
     int err;
 
@@ -565,13 +566,27 @@ extern int kndRepo_new(struct kndRepo **repo,
     /* class insts */
     err = ooDict_new(&self->class_inst_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
-    
-    err = kndProc_new(&proc, self, mempool);
+
+    /*** PROC ***/
+    err = knd_proc_entry_new(mempool, &proc_entry);  RET_ERR();
+    proc_entry->name = "/";
+    proc_entry->name_size = 1;
+
+    err = knd_proc_new(mempool, &proc);
     if (err) goto error;
-    //proc->entry->name[0] = '/';
-    //proc->entry->name_size = 1;
+    proc->name = proc_entry->name;
+    proc->name_size = 1;
+    proc_entry->proc = proc;
+    proc->entry = proc_entry;
+
+    proc->entry->repo = self;
     self->root_proc = proc;
-    
+
+    err = ooDict_new(&self->proc_name_idx, KND_LARGE_DICT_SIZE);
+    if (err) goto error;
+
+    /*** REL ***/
+
     err = kndRel_new(&rel, mempool);
     if (err) goto error;
     rel->entry->repo = self;

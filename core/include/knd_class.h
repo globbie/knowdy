@@ -209,39 +209,13 @@ struct kndClass
 
     bool batch_mode;
 
-    /* submodules */
-    //struct kndClassFormatter *formatter;
-
     struct kndAttr *computed_attrs[1];
     size_t num_computed_attrs;
 
     struct kndClass *next;
 
     /***********  public methods ***********/
-    void (*reset_inbox)(struct kndClass   *self,
-                        bool rollback);
     void (*str)(struct kndClass *self);
-
-    int (*load)(struct kndClass   *self,
-		struct kndConcFolder *parent_folder,
-                const char *filename,
-                size_t filename_size);
-
-    int (*coordinate)(struct kndClass *self);
-    int (*update_state)(struct kndClass *self);
-    gsl_err_t (*select)(void  *self,
-                        const char *rec,
-                        size_t *total_size);
-    gsl_err_t (*import)(void *self,
-                        const char *rec,
-                        size_t *total_size);
-    int (*export)(struct kndClass *self,
-                  knd_format format,
-                  struct glbOutput *out);
-    int (*export_updates)(struct kndClass *self,
-                          struct kndClassUpdate *update,
-                          knd_format format,
-                          struct glbOutput *out);
 };
 
 /* constructor */
@@ -250,6 +224,12 @@ extern int kndClass_new(struct kndClass **self,
                         struct kndMemPool *mempool);
 
 /* exported functions */
+extern int knd_read_GSL_file(struct kndClass *self,
+                             struct kndConcFolder *parent_folder,
+                             const char *filename,
+                             size_t filename_size);
+extern int knd_class_coordinate(struct kndClass *self);
+
 extern int knd_get_class(struct kndRepo *self,
                          const char *name, size_t name_size,
                          struct kndClass **result);
@@ -261,9 +241,9 @@ extern int knd_class_get_inst_updates(struct kndClass *self,
                                       size_t gt, size_t lt, size_t eq,
                                       struct kndSet *set);
 
-extern gsl_err_t import_class_var(struct kndClassVar *self,
-                                  const char *rec,
-                                  size_t *total_size);
+extern gsl_err_t knd_import_class_var(struct kndClassVar *self,
+                                      const char *rec,
+                                      size_t *total_size);
 extern int knd_is_base(struct kndClass *self,
                        struct kndClass *base);
 
@@ -282,6 +262,10 @@ extern int knd_class_export_set_JSON(struct kndClass *self,
 
 extern int knd_class_export_JSON(struct kndClass *self,
                                  struct glbOutput *out);
+extern int knd_class_export(struct kndClass *self,
+                            knd_format format,
+                            struct glbOutput *out);
+
 extern gsl_err_t knd_parse_gloss_array(void *obj,
                                        const char *rec,
                                        size_t *total_size);
@@ -299,7 +283,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
                                              const char *rec,
                                              size_t *total_size);
 
-extern gsl_err_t knd_import_class(void *obj,
+extern gsl_err_t knd_class_import(void *obj,
                                   const char *rec,
                                   size_t *total_size);
 
@@ -309,13 +293,15 @@ extern int get_arg_value(struct kndAttrVar *src,
                          struct kndAttrVar *query,
                          struct kndProcCallArg *arg);
 
-extern gsl_err_t knd_select_class(void *obj,
+extern gsl_err_t knd_class_select(void *obj,
                                   const char *rec,
                                   size_t *total_size);
 
 extern int knd_compute_class_attr_num_value(struct kndClass *self,
                                             struct kndClassVar *src_class_var,
                                             struct kndAttrVar *attr_var);
+
+extern int knd_update_state(struct kndClass *self);
 
 extern gsl_err_t knd_read_class_inst_state(struct kndClass *self,
                                            struct kndClassUpdate *update,

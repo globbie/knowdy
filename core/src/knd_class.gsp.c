@@ -1384,7 +1384,8 @@ static gsl_err_t validate_attr_var(void *obj,
     struct kndAttrVar *attr_var;
     struct kndAttr *attr;
     struct kndProc *root_proc;
-    struct kndMemPool *mempool = class_var->entry->repo->mempool;
+    struct kndRepo *repo = class_var->entry->repo;
+    struct kndMemPool *mempool = repo->mempool;
     gsl_err_t parser_err;
     int err;
 
@@ -1452,9 +1453,9 @@ static gsl_err_t validate_attr_var(void *obj,
                     attr_var->val_size, attr_var->val);
 
         root_proc = class_var->root_class->proc;
-        err = root_proc->get_proc(root_proc,
-                                  attr_var->val,
-                                  attr_var->val_size, &attr_var->proc);
+        err = knd_get_proc(repo,
+                           attr_var->val,
+                           attr_var->val_size, &attr_var->proc);
         if (err) return make_gsl_err_external(err);
         break;
     default:

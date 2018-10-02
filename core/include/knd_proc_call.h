@@ -42,10 +42,10 @@ typedef enum knd_proc_type {
 
 struct kndProcCallArg
 {
-    char name[KND_SHORT_NAME_SIZE];
+    const char *name;
     size_t name_size;
 
-    char val[KND_NAME_SIZE];
+    const char *val;
     size_t val_size;
 
     long numval;
@@ -60,14 +60,11 @@ struct kndProcCallArg
 
 struct kndProcCall
 {
-    char name[KND_NAME_SIZE];
+    const char *name;
     size_t name_size;
     knd_proc_type type;
-
-//    struct kndProc *proc;
     struct kndProcCallArg *args;
     size_t num_args;
-//    struct kndMemPool *mempool;
 };
 
 //
@@ -86,10 +83,12 @@ static inline void kndProcCallArg_init(struct kndProcCallArg *self,
                                        struct kndClassVar *class_var)
 {
     memset(self, 0, sizeof *self);
-
-    memcpy(self->name, name, name_size);
+    self->name = name;
     self->name_size = name_size;
-    self->name[name_size] = '\0';
-
     self->class_var = class_var;
 }
+
+extern int knd_proc_call_arg_new(struct kndMemPool *mempool,
+                                 struct kndProcCallArg **result);
+extern int knd_proc_call_new(struct kndMemPool *mempool,
+                             struct kndProcCall **result);
