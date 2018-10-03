@@ -173,9 +173,7 @@ static gsl_err_t parse_update(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t parse_task(void *obj,
-                            const char *rec,
-                            size_t *total_size)
+static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *self = obj;
     gsl_err_t err;
@@ -271,7 +269,7 @@ static int log_parser_error(struct kndTask *self,
     for (;;) {
         const char *next_line = strchr(rec, '\n');
         if (next_line == NULL) break;
-        
+
         size_t len = next_line + 1 - rec;
         if (len > pos) break;
 
@@ -280,19 +278,14 @@ static int log_parser_error(struct kndTask *self,
         pos -= len;
     }
     column = pos;
-    
+
     return self->log->writef(self->log, "parser error at line %zu:%zu: %d %s",
                              line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
 }
 
-static int parse_GSL(struct kndTask *self,
-                     const char *rec,
-                     size_t rec_size,
-                     const char *obj,
-                     size_t obj_size)
+static int parse_GSL(struct kndTask *self, const char *rec, size_t rec_size, const char *obj, size_t obj_size)
 {
-    if (DEBUG_TASK_LEVEL_TMP)
-        knd_log(".. parsing task: \"%.*s\"..", 256, rec);
+    if (DEBUG_TASK_LEVEL_TMP) knd_log(".. parsing task: \"%.*s\"..", 256, rec);
 
     reset(self);
 
@@ -324,8 +317,7 @@ static int parse_GSL(struct kndTask *self,
         }
 
         if (!self->log->buf_size) {
-            err = self->log->write(self->log, "internal server error",
-                                 strlen("internal server error"));
+            err = self->log->write(self->log, "internal server error", strlen("internal server error"));
             if (err) return err;
         }
 
@@ -343,8 +335,7 @@ static int build_report(struct kndTask *self)
     const char *task_status = "++";
     int err;
 
-    if (DEBUG_TASK_LEVEL_2)
-        knd_log("..TASK (type: %d) reporting..", self->type);
+    if (DEBUG_TASK_LEVEL_2) knd_log("..TASK (type: %d) reporting..", self->type);
 
     self->report = NULL;
     self->report_size = 0;
@@ -359,35 +350,34 @@ static int build_report(struct kndTask *self)
             break;
         }
 
-        err = out->write(out, "{err ", strlen("{err "));
-        if (err) return err;
-        err = out->write(out, self->log->buf, self->log->buf_size);
-        if (err) return err;
-        err = out->write(out, "}", 1);
-        if (err) return err;
+        //err = out->write(out, "{err ", strlen("{err "));
+        //if (err) return err;
+        //err = out->write(out, self->log->buf, self->log->buf_size);
+        //if (err) return err;
+        //err = out->write(out, "}", 1);
+        //if (err) return err;
 
         /* TODO: build JSON reply in loco */
         self->out->reset(self->out);
+
         err = self->out->write(self->out, "{\"err\":\"", strlen("{\"err\":\""));
         if (err) return err;
 
         if (self->log->buf_size) {
-            err = self->out->write(self->out,
-                                   self->log->buf, self->log->buf_size);
+            err = self->out->write(self->out, self->log->buf, self->log->buf_size);
             if (err) return err;
         } else {
-            err = self->out->write(self->out,
-                                   "internal error",
-                                   strlen("internal error"));
+            err = self->out->write(self->out, "internal error", strlen("internal error"));
             if (err) return err;
         }
+
         err = self->out->write(self->out, "\"", strlen("\""));
         if (err) return err;
 
         if (self->http_code != HTTP_OK) {
-            err = self->out->write(self->out,
-                                   ",\"http_code\":", strlen(",\"http_code\":"));
+            err = self->out->write(self->out, ",\"http_code\":", strlen(",\"http_code\":"));
             if (err) return err;
+
             err = self->out->writef(self->out, "%d", self->http_code);
             if (err) return err;
         }
@@ -401,20 +391,14 @@ static int build_report(struct kndTask *self)
     }
 
     if (!self->out->buf_size) {
-        err = self->out->write(self->out,
-                               "{\"result\":\"OK\"}",
-                               strlen("{\"result\":\"OK\"}"));
+        err = self->out->write(self->out, "{\"result\":\"OK\"}", strlen("{\"result\":\"OK\"}"));
         if (err) return err;
     }
 
     if (DEBUG_TASK_LEVEL_TMP) {
         obj_size = self->out->buf_size;
-        if (obj_size > KND_MAX_DEBUG_CONTEXT_SIZE)
-            obj_size = KND_MAX_DEBUG_CONTEXT_SIZE;
-
-        knd_log("== RESULT: \"%s\" %.*s [size: %zu]\n",
-                task_status, obj_size,
-                self->out->buf, self->out->buf_size);
+        if (obj_size > KND_MAX_DEBUG_CONTEXT_SIZE) obj_size = KND_MAX_DEBUG_CONTEXT_SIZE;
+        knd_log("== RESULT: \"%s\" %.*s [size: %zu]\n", task_status, (int) obj_size, self->out->buf, self->out->buf_size);
     }
 
     /* report body */
@@ -429,17 +413,12 @@ static int build_report(struct kndTask *self)
         }
     }
 
-    /* TODO: inform all retrievers about the state change */
     if (self->type == KND_UPDATE_STATE) {
         self->report = self->out->buf;
         self->report_size = self->out->buf_size;
-
         if (DEBUG_TASK_LEVEL_2) {
-            chunk_size =  self->update_out->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ?\
-            KND_MAX_DEBUG_CHUNK_SIZE :  self->update_out->buf_size;
-            knd_log("\n\n** UPDATE retrievers: \"%.*s\" [%zu]",
-                    chunk_size, self->report,
-                    self->report_size);
+            chunk_size =  self->update_out->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ? KND_MAX_DEBUG_CHUNK_SIZE :  self->update_out->buf_size;
+            knd_log("\n\n** UPDATE retrievers: \"%.*s\" [%zu]", chunk_size, self->report, self->report_size);
         }
     }
     return knd_OK;

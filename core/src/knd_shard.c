@@ -142,8 +142,7 @@ static int parse_schema(struct kndShard *self, const char *rec, size_t *total_si
 }
 
 int kndShard_run_task(struct kndShard *self, const char *rec, size_t rec_size,
-                             char *result  __attribute__((unused)),
-                             size_t *result_size  __attribute__((unused)))
+                             const char **result, size_t *result_size)
 {
     const char *rec_start;
 
@@ -164,7 +163,7 @@ int kndShard_run_task(struct kndShard *self, const char *rec, size_t rec_size,
             self->task_storage->buf_size, self->task_storage->capacity);
 
     */
-    
+
     rec_start = self->task_storage->buf + self->task_storage->buf_size;
     err = self->task_storage->write(self->task_storage, rec, rec_size);
     if (err) {
@@ -172,9 +171,7 @@ int kndShard_run_task(struct kndShard *self, const char *rec, size_t rec_size,
         return err;
     }
 
-    err = self->task->run(self->task,
-                          rec_start, rec_size,
-                          "None", sizeof("None"));
+    err = self->task->run(self->task, rec_start, rec_size, "None", sizeof("None"));
     if (err != knd_OK) {
         self->task->error = err;
         knd_log("-- task running failure: %d", err);
@@ -209,6 +206,9 @@ final:
     */
     self->report = self->task->report;
     self->report_size = self->task->report_size;
+
+    *result = self->task->report;
+    *result_size = self->task->report_size;
 
     return knd_OK;
 }
