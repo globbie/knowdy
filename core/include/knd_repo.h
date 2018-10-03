@@ -85,7 +85,12 @@ struct kndRepo
     struct kndRel *root_rel;
     
     struct kndClass     *curr_class;
+    struct kndClass     *curr_baseclass;
     struct kndClassInst *curr_class_inst;
+    struct kndAttr       *curr_attr;
+    struct kndAttrRef    *curr_attr_ref;
+    struct kndAttrVar    *curr_attr_var;
+    struct kndClassInst  *curr_inst;
 
     void (*del)(struct kndRepo *self);
     void (*str)(struct kndRepo *self);

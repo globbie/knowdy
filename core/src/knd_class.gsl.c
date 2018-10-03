@@ -163,8 +163,8 @@ static gsl_err_t append_summary_item(void *accu,
     struct kndClass *self =   accu;
     struct kndTranslation *tr = item;
 
-    tr->next = self->summary;
-    self->summary = tr;
+    //tr->next = self->summary;
+    //self->summary = tr;
 
     return make_gsl_err(gsl_OK);
 }

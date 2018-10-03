@@ -96,6 +96,64 @@ static void str(struct kndAttr *self)
         knd_log("%*s}",  self->depth * KND_OFFSET_SIZE, "");
 }
 
+static void str_attr_vars(struct kndAttrVar *item, size_t depth)
+{
+    struct kndAttrVar *curr_item;
+    struct kndAttrVar *list_item;
+    const char *classname = "None";
+    size_t classname_size = strlen("None");
+    struct kndClass *c;
+    size_t count = 0;
+
+    /*if (item->attr && item->attr->parent_class) {
+        }*/
+
+    if (item->attr->is_a_set) {
+
+        c = item->attr->parent_class;
+        classname = c->entry->name;
+        classname_size = c->entry->name_size;
+
+        knd_log("%*s_list attr: \"%.*s\" (base: %.*s) size: %zu [",
+                depth * KND_OFFSET_SIZE, "",
+                item->name_size, item->name,
+                classname_size, classname,
+                item->num_list_elems);
+        count = 0;
+        if (item->val_size) {
+            count = 1;
+            knd_log("%*s%zu)  val:%.*s",
+                    depth * KND_OFFSET_SIZE, "",
+                    count,
+                    item->val_size, item->val);
+        }
+
+        for (list_item = item->list;
+             list_item;
+             list_item = list_item->next) {
+            count++;
+            
+            str_attr_vars(list_item, depth + 1);
+            
+        }
+        knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
+        //return;
+    }
+
+    knd_log("%*s_attr: \"%.*s\" (base: %.*s)  => %.*s",
+            depth * KND_OFFSET_SIZE, "",
+            item->name_size, item->name,
+            classname_size, classname,
+            item->val_size, item->val);
+    
+    if (item->children) {
+        for (curr_item = item->children; curr_item; curr_item = curr_item->next) {
+            str_attr_vars(curr_item, depth + 1);
+        }
+    }
+}
+
+
 static int export_JSON(struct kndAttr *self)
 {
     struct kndTask *task = self->parent_class->entry->repo->task;
@@ -795,6 +853,126 @@ extern int knd_register_attr_ref(void *obj,
     err = attr_name_idx->set(attr_name_idx,
                              attr->name, attr->name_size,
                              (void*)ref);                                         RET_ERR();
+    return knd_OK;
+}
+
+extern int knd_get_arg_value(struct kndAttrVar *src,
+                             struct kndAttrVar *query,
+                             struct kndProcCallArg *result_arg)
+{
+    struct kndAttrVar *attr_var;
+    struct kndAttrVar *curr_var;
+    struct kndAttr *attr;
+    struct kndAttrRef *ref;
+    struct kndClass *parent_class = src->class_var->parent;
+    struct kndMemPool *mempool = parent_class->entry->repo->mempool;
+    struct kndProcCall *proc_call;
+    struct kndProcCallArg *arg;
+    struct kndClassVar *class_var;
+
+    long numval = 0;
+    int err;
+
+    if (DEBUG_ATTR_LEVEL_TMP) {
+        knd_log(".. from \"%.*s\" (parent class:%.*s)   extract attr: \"%.*s\"",
+                src->name_size, src->name,
+                parent_class->name_size, parent_class->name,
+                query->name_size, query->name);
+
+        knd_log("ref class: %.*s",
+                src->attr->ref_class->name_size,
+                 src->attr->ref_class->name);
+        str_attr_vars(src, 1);
+    }
+
+    if (src->attr->ref_class) {
+        err = knd_class_get_attr(src->attr->ref_class,
+                                 query->name,
+                                 query->name_size, &ref);
+        if (err) return err;
+        attr = ref->attr;
+
+        if (attr->proc) {
+            knd_log("++ computed attr found!");
+
+            // TODO
+            err = knd_attr_var_new(mempool, &attr_var);                           RET_ERR();
+            attr_var->attr = attr;
+            attr_var->name = attr->name;
+            attr_var->name_size = attr->name_size;
+
+            /*proc_call = attr->proc->proc_call;
+            for (arg = proc_call->args; arg; arg = arg->next) {
+                class_var = arg->class_var;
+                
+                if (DEBUG_ATTR_LEVEL_TMP)
+                    knd_log("ARG: %.*s", arg->name_size, arg->name);
+                    }*/
+
+            err = knd_compute_class_attr_num_value(src->attr->ref_class, attr_var);
+            if (err) return err;
+            
+            result_arg->numval = attr_var->numval;
+            attr_var->is_cached = true;
+
+            return knd_OK;
+        }
+    }
+
+    /* check implied attr */
+    if (src->implied_attr) {
+        attr = src->implied_attr;
+
+        if (!memcmp(attr->name, query->name, query->name_size)) {
+            switch (attr->type) {
+            case KND_ATTR_NUM:
+
+                if (DEBUG_ATTR_LEVEL_TMP) {
+                    knd_log("== implied NUM attr: %.*s value: %.*s numval:%lu",
+                            src->name_size, src->name,
+                            src->val_size, src->val, src->numval);
+                }
+                result_arg->numval = src->numval;
+                return knd_OK;
+
+            case KND_ATTR_REF:
+                knd_log("++ match ref: %.*s",
+                        src->class->name_size, src->class->name);
+
+                return knd_get_class_attr_value(src->class, query->children, result_arg);
+                break;
+            default:
+                break;
+            }
+        }
+    }
+
+    /* iterate children */
+    for (curr_var = src->children; curr_var; curr_var = curr_var->next) {
+
+        if (DEBUG_ATTR_LEVEL_TMP)
+            knd_log("== child:%.*s val: %.*s",
+                    curr_var->name_size, curr_var->name,
+                    curr_var->val_size, curr_var->val);
+        
+        if (curr_var->implied_attr) {
+            attr = curr_var->implied_attr;
+        }
+
+        if (curr_var->name_size != query->name_size) continue;
+
+        if (!strncmp(curr_var->name, query->name, query->name_size)) {
+
+            if (DEBUG_ATTR_LEVEL_TMP)
+                knd_log("++ match: %.*s numval:%zu",
+                        curr_var->val_size, curr_var->val, curr_var->numval);
+
+            result_arg->numval = curr_var->numval;
+
+            if (!query->num_children) return knd_OK;
+            // TODO check children
+        }
+    }
     return knd_OK;
 }
 

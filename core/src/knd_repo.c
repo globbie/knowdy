@@ -143,7 +143,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 
     if (DEBUG_REPO_LEVEL_TMP) {
         knd_log("== batch mode: %d",
-                repo->root_class->batch_mode);
+                repo->task->batch_mode);
     }
     char *s = malloc(name_size);
     memcpy(s, name, name_size);
@@ -441,7 +441,7 @@ static int kndRepo_open(struct kndRepo *self)
             knd_log("-- no existing frozen DB was found, "
                     " reading the original schema..");
 
-            c->batch_mode = true;
+            c->entry->repo->task->batch_mode = true;
             err = knd_read_GSL_file(c, NULL, "index", strlen("index"));
             if (err) {
                 knd_log("-- couldn't read any schemas :(");
@@ -458,7 +458,7 @@ static int kndRepo_open(struct kndRepo *self)
             //err = proc->coordinate(proc);                                     RET_ERR();
             rel = self->root_rel;
             err = rel->coordinate(rel);                                       RET_ERR();
-            c->batch_mode = false;
+            c->entry->repo->task->batch_mode = false;
         }
     }
 

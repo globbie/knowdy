@@ -140,7 +140,7 @@ static int export_conc_elem_JSON(void *obj,
     return knd_OK;
 }
 
-static int present_computed_class_attrs(struct kndClass *self,
+/*static int present_computed_class_attrs(struct kndClass *self,
                                         struct kndClassVar *cvar)
 {
     char buf[KND_NAME_SIZE];
@@ -169,7 +169,6 @@ static int present_computed_class_attrs(struct kndClass *self,
             err = knd_attr_var_new(mempool, &attr_var);                  RET_ERR();
             attr_var->attr = attr;
             attr_var->class_var = cvar;
-            //memcpy(attr_var->name, attr->name, attr->name_size);
             attr_var->name = attr->name;
             attr_var->name_size = attr->name_size;
             entry->attr_var = attr_var;
@@ -209,7 +208,7 @@ static int present_computed_class_attrs(struct kndClass *self,
 
     return knd_OK;
 }
-
+*/
 static int export_gloss_JSON(struct kndClass *self)
 {
     struct kndTranslation *tr;
@@ -228,7 +227,7 @@ static int export_gloss_JSON(struct kndClass *self)
         break;
     }
 
-    for (tr = self->summary; tr; tr = tr->next) {
+    /*    for (tr = self->summary; tr; tr = tr->next) {
         if (memcmp(task->locale, tr->locale, tr->locale_size)) {
             continue;
         }
@@ -236,7 +235,7 @@ static int export_gloss_JSON(struct kndClass *self)
         err = out->write_escaped(out, tr->val,  tr->val_size);                    RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
         break;
-    }
+        }*/
 
     return knd_OK;
 }
@@ -452,13 +451,13 @@ static int export_baseclass_vars(struct kndClass *self,
             err = knd_attr_vars_export_JSON(item->attrs, out, false);      RET_ERR();
         }
 
-        if (self->num_computed_attrs) {
-            if (DEBUG_JSON_LEVEL_2)
+        /*if (self->num_computed_attrs) {
+            if (DEBUG_JSON_LEVEL_TMP)
                 knd_log("\n.. export computed attrs of class %.*s",
                         self->name_size, self->name);
             err = present_computed_class_attrs(self, item);
             if (err) return err;
-        }
+            }*/
 
 
         err = out->write(out, "}", 1);      RET_ERR();
@@ -489,16 +488,16 @@ extern int knd_class_export_JSON(struct kndClass *self,
 
     err = out->write(out, "{", 1);                                                RET_ERR();
     err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                RET_ERR();
-    err = out->write_escaped(out, entry->name, entry->name_size);     RET_ERR();
+    err = out->write_escaped(out, entry->name, entry->name_size);                 RET_ERR();
     err = out->writec(out, '"');                                                  RET_ERR();
 
     err = out->write(out, ",\"_repo\":\"", strlen(",\"_repo\":\""));              RET_ERR();
     err = out->write(out, entry->repo->name,
-                     entry->repo->name_size);                               RET_ERR();
+                     entry->repo->name_size);                                     RET_ERR();
     err = out->writec(out, '"');                                                  RET_ERR();
 
     err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
-    err = out->writef(out, "%zu", entry->numid);                            RET_ERR();
+    err = out->writef(out, "%zu", entry->numid);                                  RET_ERR();
 
     err = export_gloss_JSON(self);                                                RET_ERR();
 
@@ -538,7 +537,6 @@ extern int knd_class_export_JSON(struct kndClass *self,
         }
     }
 
-
     /* inherited attrs */
     attr_idx = self->attr_idx;
     err = attr_idx->map(attr_idx,
@@ -553,12 +551,13 @@ extern int knd_class_export_JSON(struct kndClass *self,
         //if (err) return err;
     }
 
-    num_children = entry->num_children;
+    /*    num_children = entry->num_children;
     if (orig_entry)
         num_children += orig_entry->num_children;
     if (num_children) {
         err = present_subclasses(self, num_children, out);                        RET_ERR();
     }
+    */
 
     /* instances */
     if (entry->inst_idx) {

@@ -101,6 +101,8 @@ struct kndTask
     size_t match_count;
     size_t start_from;
 
+    bool batch_mode;
+
     size_t batch_eq;
     size_t batch_gt;
     size_t batch_lt;

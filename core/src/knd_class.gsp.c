@@ -570,9 +570,9 @@ extern int knd_class_export_GSP(struct kndClass *self,
         err = export_glosses(self, out);                                          RET_ERR();
     }
 
-    if (self->summary) {
+    /*if (self->summary) {
         err = export_summary(self, out);                                          RET_ERR();
-    }
+        }*/
 
     if (self->baseclass_vars) {
         err = export_baseclass_vars(self, out);                                   RET_ERR();
