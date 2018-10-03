@@ -503,9 +503,7 @@ static gsl_err_t present_class_selection(void *obj,
         c->max_depth = self->max_depth;
     }
 
-    //c->str(c);
-
-    err = c->export(c, KND_FORMAT_JSON, out);
+    err = knd_class_export(c, KND_FORMAT_JSON, out);
     if (err) {
         knd_log("-- class export failed");
         return make_gsl_err_external(err);
@@ -892,7 +890,7 @@ extern int knd_class_get_inst_updates(struct kndClass *self,
     return knd_OK;
 }
 
-extern gsl_err_t knd_select_class(void *obj,
+extern gsl_err_t knd_class_select(void *obj,
                                   const char *rec,
                                   size_t *total_size)
 {
@@ -1001,10 +999,10 @@ extern gsl_err_t knd_select_class(void *obj,
         }
 
         /* TODO: release resources */
-        if (self->curr_class) {
+        /*if (self->curr_class) {
             c = self->curr_class;
             c->reset_inbox(c, true);
-        }
+            }*/
         return parser_err;
     }
 

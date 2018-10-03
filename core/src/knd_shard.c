@@ -46,6 +46,7 @@ static gsl_err_t
 kndShard_parse_config(void *obj, const char *rec, size_t *total_size)
 {
     struct kndShard *self = obj;
+
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
             .run = run_check_schema,
@@ -121,8 +122,7 @@ kndShard_parse_config(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int
-parse_schema(struct kndShard *self, const char *rec, size_t *total_size)
+static int parse_schema(struct kndShard *self, const char *rec, size_t *total_size)
 {
     struct gslTaskSpec specs[] = {
         {
@@ -242,6 +242,8 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
     self->mempool = mempool;
 
     { // read config
+        knd_log("CONFIG:%.*s", config_size, config);
+
         err = parse_schema(self, config, &config_size);
         if (err != knd_OK) goto error;
     }

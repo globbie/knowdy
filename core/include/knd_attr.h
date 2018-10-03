@@ -43,6 +43,9 @@ typedef enum knd_attr_type {
     KND_ATTR_TEXT,
     KND_ATTR_CG,
     KND_ATTR_NUM,
+    KND_ATTR_FLOAT,
+    KND_ATTR_BOOL,
+    KND_ATTR_PROB,
     KND_ATTR_REF,
     KND_ATTR_FILE,
     KND_ATTR_PROC
@@ -58,8 +61,10 @@ static const char* const knd_attr_names[] = {
     "text",
     "CG",
     "num",
+    "float",
+    "bool",
+    "prob",
     "ref",
-    "calc",
     "file",
     "proc"
 };

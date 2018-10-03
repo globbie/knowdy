@@ -132,11 +132,12 @@ int kndLearnerService_new(struct kndLearnerService **service,
         if (bytes_read <= 0) goto error;
 
         if (fd != -1) close(fd);
-        if (config) free(config);
     }
 
     err = kndShard_new(&self->shard, config, config_size);
     if (err != 0) goto error;
+
+    if (config) free(config);
 
     self->start = start__;
     self->del = delete__;
