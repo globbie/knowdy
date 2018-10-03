@@ -849,7 +849,7 @@ static gsl_err_t inst_entry_alloc(void *obj,
     if (!entry) return make_gsl_err_external(knd_NOMEM);
     memset(entry, 0, sizeof(struct kndRelInstEntry));
 
-    knd_calc_num_id(val, val_size, &entry->block_size);
+    knd_gsp_num_to_num(val, val_size, &entry->block_size);
 
     *item = entry;
 
@@ -948,7 +948,7 @@ static gsl_err_t set_rel_body_size(void *obj, const char *val, size_t val_size)
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    knd_calc_num_id(val, val_size, &self->body_size);
+    knd_gsp_num_to_num(val, val_size, &self->body_size);
 
     if (DEBUG_REL_LEVEL_1)
         knd_log("== Rel body size: %.*s => %zu",
@@ -1062,7 +1062,7 @@ static int read_dir_trailer(struct kndRel *self,
         return knd_NO_MATCH;
     }
 
-    knd_calc_num_id(val, val_size, &dir_size);
+    knd_gsp_num_to_num(val, val_size, &dir_size);
 
     if (DEBUG_REL_LEVEL_2)
         knd_log("== Rel DIR size: %.*s [chunk size:%zu] => %zu",
@@ -2320,7 +2320,7 @@ static int freeze_insts(struct kndRel *self,
 
         inst_block_offset = out->buf_size;
         buf_size = 0;
-        knd_num_to_str(entry->block_size, buf, &buf_size, KND_RADIX_BASE);
+        knd_num_to_gsp_num(entry->block_size, buf, &buf_size);
 
         err = trailer->writec(trailer, ' ');
         if (err) return err;
@@ -2348,7 +2348,7 @@ static int freeze_insts(struct kndRel *self,
     err = trailer->write(trailer, "{L ", strlen("{L "));
     if (err) return err;
     buf_size = 0;
-    knd_num_to_str(trailer_size, buf, &buf_size, KND_RADIX_BASE);
+    knd_num_to_gsp_num(trailer_size, buf, &buf_size);
     err = trailer->write(trailer, buf, buf_size);
     if (err) return err;
     err = trailer->writec(trailer, '}');
@@ -2402,7 +2402,7 @@ static int freeze(struct kndRel *self,
         err = trailer->write(trailer, "{R ", strlen("{R "));
         if (err) return err;
         buf_size = 0;
-        knd_num_to_str(out->buf_size, buf, &buf_size, KND_RADIX_BASE);
+        knd_num_to_gsp_num(out->buf_size, buf, &buf_size);
         err = trailer->write(trailer, buf, buf_size);
         if (err) return err;
         err = trailer->writec(trailer, '}');
@@ -2417,7 +2417,7 @@ static int freeze(struct kndRel *self,
     output_size++;
 
     buf_size = 0;
-    knd_num_to_str(block_size, buf, &buf_size, KND_RADIX_BASE);
+    knd_num_to_gsp_num(block_size, buf, &buf_size);
     memcpy(output, buf, buf_size);
     output      += buf_size;
     output_size += buf_size;
