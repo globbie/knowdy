@@ -33,13 +33,14 @@ struct kndClass;
 struct kndQuery;
 struct kndClassInst;
 
-typedef enum knd_task_spec_type { KND_GET_STATE, 
-				  KND_SELECT_STATE, 
-                                  KND_CHANGE_STATE,
-                                  KND_UPDATE_STATE,
-                                  KND_LIQUID_STATE,
-                                  KND_SYNC_STATE,
-                                  KND_DELTA_STATE
+typedef enum knd_task_spec_type {
+    KND_GET_STATE,
+    KND_SELECT_STATE,
+    KND_CHANGE_STATE,
+    KND_UPDATE_STATE,
+    KND_LIQUID_STATE,
+    KND_SYNC_STATE,
+    KND_DELTA_STATE
 } knd_task_spec_type;
 
 typedef enum knd_iter_type {
@@ -76,7 +77,7 @@ struct kndTask
 
     const char *locale;
     size_t locale_size;
-    
+
     const char *spec;
     size_t spec_size;
 
@@ -133,7 +134,7 @@ struct kndTask
     void (*del)(struct kndTask *self);
 
     void (*reset)(struct kndTask *self);
-    
+
     int (*run)(struct kndTask *self,
                const char     *rec,
                size_t   rec_size,

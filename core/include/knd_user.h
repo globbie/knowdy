@@ -83,7 +83,7 @@ struct kndUser
 
     struct kndRepo *repo;
     struct kndMemPool *mempool;
-   
+
     /**********  interface methods  **********/
     void (*del)(struct kndUser *self);
     void (*str)(struct kndUser *self);

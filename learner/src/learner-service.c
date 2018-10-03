@@ -15,7 +15,7 @@ task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
     struct kndLearnerService *self = cb_arg;
     const char *data;
     size_t size;
-    char *result = NULL;
+    const char *result = NULL;
     size_t result_size = 0;
     int err;
 
@@ -25,7 +25,7 @@ task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
         return -1;
     }
 
-    err = kndShard_run_task(self->shard, data, size, result, &result_size);
+    err = kndShard_run_task(self->shard, data, size, &result, &result_size);
     if (err != knd_OK) {
         knd_log("-- task execution failed");
         return -1;
