@@ -51,16 +51,16 @@ extern void knd_log(const char *fmt, ...)
     va_end(args);
 }
 
-extern int 
-knd_compare(const char *a, const char *b)
-{
-    for (size_t i = 0; i < KND_ID_SIZE; i++) {
-        if (a[i] > b[i]) return knd_MORE;
-        else if (a[i] < b[i]) return knd_LESS;
-    }
-    
-    return knd_EQUALS;
-}
+//extern int
+//knd_compare(const char *a, const char *b)
+//{
+//    for (size_t i = 0; i < KND_ID_SIZE; i++) {
+//        if (a[i] > b[i]) return knd_MORE;
+//        else if (a[i] < b[i]) return knd_LESS;
+//    }
+//
+//    return knd_EQUALS;
+//}
 
 /*extern int knd_next_state(char *s)
 {
@@ -160,45 +160,44 @@ knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base)
     *buf_size = curr_size;
 }
 
-extern const char *
-knd_max_id(const char *a, const char *b)
-{
-    return (knd_compare(a, b) == knd_MORE) ? a : b;
-}
-
-extern const char *
-knd_min_id(const char *a, const char *b)
-{
-    return knd_compare(a, b) == knd_LESS ? a : b;
-}
-
-
-
-extern unsigned char *
-knd_pack_int(unsigned char *buf,
-             unsigned int val)
-{
-    buf[0] = val >> 24;
-    buf[1] = val >> 16;
-    buf[2] = val >> 8;
-    buf[3] = val;
-
-    return buf + 4;
-}
+//extern const char *
+//knd_max_id(const char *a, const char *b)
+//{
+//    return (knd_compare(a, b) == knd_MORE) ? a : b;
+//}
+//
+//extern const char *
+//knd_min_id(const char *a, const char *b)
+//{
+//    return knd_compare(a, b) == knd_LESS ? a : b;
+//}
 
 
-extern unsigned long
-knd_unpack_int(const unsigned char *buf)
-{
-    unsigned long result = 0;
+//extern unsigned char *
+//knd_pack_int(unsigned char *buf,
+//             unsigned int val)
+//{
+//    buf[0] = val >> 24;
+//    buf[1] = val >> 16;
+//    buf[2] = val >> 8;
+//    buf[3] = val;
+//
+//    return buf + 4;
+//}
 
-    result =  buf[3];
-    result |= buf[2] << 8;
-    result |= buf[1] << 16;
-    result |= buf[0] << 24;
 
-    return result;
-}
+//extern unsigned long
+//knd_unpack_int(const unsigned char *buf)
+//{
+//    unsigned long result = 0;
+//
+//    result =  buf[3];
+//    result |= buf[2] << 8;
+//    result |= buf[1] << 16;
+//    result |= buf[0] << 24;
+//
+//    return result;
+//}
 
 
 
