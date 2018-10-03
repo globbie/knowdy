@@ -138,10 +138,10 @@ static int compute_list_sum(struct kndAttrVar *parent_var,
             total_numval += arg->numval;
             continue;
         } else {
-
-            knd_log("== query elem: %.*s", query->name_size, query->name);
+            //knd_log("== query elem: %.*s", query->name_size, query->name);
             err = knd_get_arg_value(curr_var, query, arg);
             if (err) return err;
+            total_numval += arg->numval;
         }
 
         if (curr_var->numval) {
@@ -228,6 +228,7 @@ extern int knd_compute_class_attr_num_value(struct kndClass *self,
         knd_log("\nPROC CALL: \"%.*s\" type:%d",
                 proc_call->name_size, proc_call->name,
                 proc_call->type);
+
         knd_log("== attr var: \"%.*s\"",
                 attr_var->name_size, attr_var->name);
     }
