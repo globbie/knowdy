@@ -747,10 +747,10 @@ static gsl_err_t import_rel(struct kndRel *self,
     entry->rel = rel;
     entry->repo = self->entry->repo;
     rel->entry = entry;
+
     self->num_rels++;
     entry->numid = self->num_rels;
-
-    knd_num_to_str(entry->numid, entry->id, &entry->id_size, KND_RADIX_BASE);
+    knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
     /* automatic name assignment if no explicit name given */
     entry->name = rel->name;
@@ -1632,7 +1632,7 @@ static gsl_err_t parse_import_instance(void *data,
 
     /* assign id/name */
     inst->numid = rel->entry->num_insts;
-    knd_num_to_str(inst->numid, inst->id, &inst->id_size, KND_RADIX_BASE);
+    knd_uid_create(inst->numid, inst->id, &inst->id_size);
 
     /* automatic name assignment if no explicit name given */
     if (!inst->name_size) {

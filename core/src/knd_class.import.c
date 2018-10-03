@@ -121,8 +121,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
 
     repo->num_class_insts++;
     inst->entry->numid = repo->num_class_insts;
-    knd_num_to_str(inst->entry->numid, inst->entry->id,
-                   &inst->entry->id_size, KND_RADIX_BASE);
+    knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log("++ %.*s class inst parse OK!",

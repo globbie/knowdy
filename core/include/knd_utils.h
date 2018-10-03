@@ -36,6 +36,9 @@ static inline void knd_num_to_gsp_num(size_t num, char *out_val, size_t *out_val
     knd_num_to_str(num, out_val, out_val_size, KND_RADIX_BASE);
 }
 
+static inline void knd_uid_create(size_t seed, char *out_uid, size_t *out_uid_size) {
+    knd_num_to_str(seed, out_uid, out_uid_size, KND_RADIX_BASE);
+}
 
 //extern const char *max_id(const char *a, const char *b);
 //extern const char *min_id(const char *a, const char *b);
