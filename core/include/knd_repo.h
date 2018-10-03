@@ -77,6 +77,11 @@ struct kndRepo
     struct ooDict *class_inst_name_idx;
 
     struct kndProc *root_proc;
+    struct ooDict *proc_name_idx;
+    struct kndSet *proc_idx;
+    size_t num_procs;
+    size_t num_proc_insts;
+    
     struct kndRel *root_rel;
     
     struct kndClass     *curr_class;

@@ -41,44 +41,6 @@
 #define DEBUG_CLASS_LEVEL_5 0
 #define DEBUG_CLASS_LEVEL_TMP 1
 
-static int read_GSL_file(struct kndClass *self,
-                         struct kndConcFolder *parent_folder,
-                         const char *filename,
-                         size_t filename_size);
-
-static void reset_inbox(struct kndClass *self,
-                        bool rollback)
-{
-    struct kndClass *c, *next_c;
-    struct kndClassInst *obj, *next_obj;
-
-    c = self->inbox;
-    while (c) {
-        c->reset_inbox(c, rollback);
-        next_c = c->next;
-
-        if (rollback) {
-            //c->del(c);
-            c = next_c;
-            continue;
-        }
-        c->next = NULL;
-        c = next_c;
-    }
-
-    obj = self->inst_inbox;
-    while (obj) {
-        next_obj = obj->next;
-        obj->next = NULL;
-        obj = next_obj;
-    }
-
-    self->inst_inbox = NULL;
-    self->inst_inbox_size = 0;
-    self->inbox = NULL;
-    self->inbox_size = 0;
-}
-
 static void str_attr_vars(struct kndAttrVar *items, size_t depth)
 {
     struct kndAttrVar *item;
@@ -254,7 +216,7 @@ static gsl_err_t parse_proc_import(void *obj,
     struct kndClass *self = obj;
     struct kndProc *proc = self->entry->repo->root_proc;
 
-    return proc->import(proc, rec, total_size);
+    return knd_proc_import(proc, rec, total_size);
 }
 
 static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
@@ -298,7 +260,7 @@ static gsl_err_t parse_schema(void *self,
         { .type = GSL_SET_STATE,
           .name = "class",
           .name_size = strlen("class"),
-          .parse = knd_import_class,
+          .parse = knd_class_import,
           .obj = self
         },
         { .type = GSL_SET_STATE,
@@ -377,10 +339,10 @@ kndClass_write_filepath(struct glbOutput *out,
     return knd_OK;
 }
 
-static int read_GSL_file(struct kndClass *self,
-                         struct kndConcFolder *parent_folder,
-                         const char *filename,
-                         size_t filename_size)
+extern int knd_read_GSL_file(struct kndClass *self,
+                             struct kndConcFolder *parent_folder,
+                             const char *filename,
+                             size_t filename_size)
 {
     struct kndRepo *repo = self->entry->repo;
     struct glbOutput *out = repo->out;
@@ -454,8 +416,8 @@ static int read_GSL_file(struct kndClass *self,
                 /* right trim the folder's name */
                 folder->name_size = folder_name_size;
 
-                err = read_GSL_file(self, folder,
-                                    index_folder_name, index_folder_name_size);
+                err = knd_read_GSL_file(self, folder,
+                                        index_folder_name, index_folder_name_size);
                 if (err) {
                     knd_log("-- failed to read file: %.*s",
                             index_folder_name_size, index_folder_name);
@@ -465,7 +427,7 @@ static int read_GSL_file(struct kndClass *self,
             }
         }
 
-        err = read_GSL_file(self, parent_folder, folder->name, folder->name_size);
+        err = knd_read_GSL_file(self, parent_folder, folder->name, folder->name_size);
         if (err) {
             knd_log("-- failed to read file: %.*s",
                     folder->name_size, folder->name);
@@ -475,7 +437,7 @@ static int read_GSL_file(struct kndClass *self,
     return knd_OK;
 }
 
-static int coordinate(struct kndClass *self)
+extern int knd_class_coordinate(struct kndClass *self)
 {
     int err;
     if (DEBUG_CLASS_LEVEL_TMP)
@@ -762,7 +724,7 @@ extern int knd_register_inst_states(struct kndClass *self)
     return knd_OK;
 }
 
-static int update_state(struct kndClass *self)
+extern int knd_update_state(struct kndClass *self)
 {
     struct kndClass *c;
     struct kndRepo *repo = self->entry->repo;
@@ -790,9 +752,9 @@ static int update_state(struct kndClass *self)
     return knd_OK;
 }
 
-static int export(struct kndClass *self,
-                  knd_format format,
-                  struct glbOutput *out)
+extern int knd_class_export(struct kndClass *self,
+                            knd_format format,
+                            struct glbOutput *out)
 {
     switch (format) {
     case KND_FORMAT_JSON:
@@ -1299,16 +1261,6 @@ extern int knd_class_copy(struct kndClass *self,
 extern void kndClass_init(struct kndClass *self)
 {
     self->str = str;
-    self->load = read_GSL_file;
-    self->reset_inbox = reset_inbox;
-
-    self->coordinate = coordinate;
-    self->import = knd_import_class;
-    self->select = knd_select_class;
-
-    self->update_state = update_state;
-    self->export = export;
-    self->export_updates = export_updates;
 }
 
 extern int knd_class_var_new(struct kndMemPool *mempool,

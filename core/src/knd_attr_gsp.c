@@ -103,7 +103,8 @@ static int inner_item_export_GSP(struct kndAttrVar *parent_item,
 }
 
 
-static int proc_item_export_GSP(struct kndAttrVar *item)
+static int proc_item_export_GSP(struct kndAttrVar *item,
+                                struct glbOutput *out)
 {
     struct kndProc *proc;
     int err;
@@ -111,8 +112,8 @@ static int proc_item_export_GSP(struct kndAttrVar *item)
     assert(item->proc != NULL);
 
     proc = item->proc;
-    err = proc->export(proc);
-    if (err) return err;
+
+    err = knd_proc_export(proc, KND_FORMAT_GSP, out);  RET_ERR();
 
     return knd_OK;
 }
@@ -214,7 +215,7 @@ extern int knd_attr_var_export_GSP(struct kndAttrVar *item,
         //if (err) return err;
         break;
     case KND_ATTR_PROC:
-        err = proc_item_export_GSP(item);                                         RET_ERR();
+        err = proc_item_export_GSP(item, out);                                         RET_ERR();
         break;
     case KND_ATTR_INNER:
         err = inner_item_export_GSP(item, out);                                    RET_ERR();

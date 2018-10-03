@@ -149,7 +149,7 @@ static gsl_err_t parse_proc_import(void *obj,
     struct kndProc *proc = self->repo->root_class->proc;
 
     self->task->type = KND_UPDATE_STATE;
-    return proc->import(proc, rec, total_size);
+    return knd_proc_import(proc, rec, total_size);
 }
 
 static gsl_err_t parse_proc_select(void *obj,
@@ -159,7 +159,7 @@ static gsl_err_t parse_proc_select(void *obj,
     struct kndUser *self = obj;
     struct kndProc *proc = self->repo->root_class->proc;
 
-    return proc->select(proc, rec, total_size);
+    return knd_proc_select(proc, rec, total_size);
 }
 
 static gsl_err_t parse_rel_import(void *obj,
@@ -187,9 +187,9 @@ static gsl_err_t parse_class_import(void *obj,
         knd_log(".. parsing the default class import: \"%.*s\"..", 64, rec);
 
     self->task->type = KND_UPDATE_STATE;
-    c->reset_inbox(c, false);
+    //c->reset_inbox(c, false);
 
-    return c->import(c, rec, total_size);
+    return knd_class_import(c, rec, total_size);
 }
 
 static gsl_err_t parse_sync_task(void *obj,
@@ -304,16 +304,7 @@ static gsl_err_t parse_class_select(void *obj,
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing the default class select: \"%.*s\"", 64, rec);
 
-    c->reset_inbox(c, false);
-
-    err = c->select(c, rec, total_size);
-    if (err.code) {
-        c->reset_inbox(c, true);
-        knd_log("-- class select failed :(");
-        return err;
-    }
-
-    return make_gsl_err(gsl_OK);
+    return knd_class_select(c, rec, total_size);
 }
 
 static gsl_err_t parse_rel_select(void *obj,
@@ -331,7 +322,7 @@ static gsl_err_t parse_rel_select(void *obj,
     err = rel->select(rel, rec, total_size);
     if (err.code) {
         /* TODO: release resources */
-        rel->reset_inbox(rel);
+        //rel->reset_inbox(rel);
         knd_log("-- rel select failed :(");
         return err;
     }
@@ -581,7 +572,7 @@ static gsl_err_t parse_class_item(void *obj,
                                   size_t *total_size)
 {
     struct kndClass *c = obj;
-    return c->import(c, rec, total_size);
+    return knd_class_import(c, rec, total_size);
 }
 
 static gsl_err_t parse_class_array(void *obj,
@@ -751,13 +742,13 @@ static gsl_err_t parse_select_user(struct kndUser *self,
         self->task->update_spec = rec;
         self->task->update_spec_size = *total_size;
 
-        // TODO: rel proc
-        err = root_class->update_state(root_class);
+        err = knd_update_state(root_class);
         if (err) {
             knd_log("-- failed to update state :(");
             parser_err = make_gsl_err_external(err);
             goto cleanup;
         }
+
         break;
     default:
         break;
@@ -767,9 +758,9 @@ static gsl_err_t parse_select_user(struct kndUser *self,
 
  cleanup:
 
-    if (root_class) {
+    /*    if (root_class) {
         root_class->reset_inbox(root_class, true);
-    }
+        }*/
 
     //root_rel->reset_inbox(root_rel);
 

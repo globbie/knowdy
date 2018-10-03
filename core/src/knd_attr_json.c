@@ -116,9 +116,7 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
 
         c->depth = 1;
         c->max_depth = 1;
-        //knd_log(".. export %.*s class, depth:%zu max depth:%zu\n\n",
-        //        c->name_size, c->name, c->depth, c->max_depth);
-        err = c->export(c, KND_FORMAT_JSON, out);
+        err = knd_class_export(c, KND_FORMAT_JSON, out);
         if (err) return err;
         in_list = true;
     }
@@ -183,7 +181,7 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
             c = item->class;
             c->depth = 1;
             c->max_depth = 1;
-            err = c->export(c, KND_FORMAT_JSON, out);
+            err = knd_class_export(c, KND_FORMAT_JSON, out);
             if (err) return err;
             break;
         case KND_ATTR_INNER:
@@ -286,13 +284,12 @@ static int ref_item_export_JSON(struct kndAttrVar *item,
     c->depth = item->depth;
     c->max_depth = item->max_depth;
 
-    //knd_log(".. JSON export a ref to \"%.*s\" ..", c->name_size, c->name);
-
-    err = c->export(c, KND_FORMAT_JSON, out);                     RET_ERR();
+    err = knd_class_export(c, KND_FORMAT_JSON, out);                 RET_ERR();
     return knd_OK;
 }
 
-static int proc_item_export_JSON(struct kndAttrVar *item)
+static int proc_item_export_JSON(struct kndAttrVar *item,
+                                 struct glbOutput *out)
 {
     struct kndProc *proc;
     int err;
@@ -300,9 +297,8 @@ static int proc_item_export_JSON(struct kndAttrVar *item)
     assert(item->proc != NULL);
 
     proc = item->proc;
-    //proc->depth = self->depth + 1;
-    //proc->max_depth = self->max_depth;
-    err = proc->export(proc);
+
+    err = knd_proc_export(proc, KND_FORMAT_JSON, out);
     if (err) return err;
 
     return knd_OK;
@@ -345,7 +341,7 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
             break;
         case KND_ATTR_PROC:
             if (parent_item->proc) {
-                err = proc_item_export_JSON(parent_item);
+                err = proc_item_export_JSON(parent_item, out);
                 if (err) return err;
             }
             break;
@@ -389,7 +385,7 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
             break;
         case KND_ATTR_PROC:
             if (item->proc) {
-                err = proc_item_export_JSON(item);
+                err = proc_item_export_JSON(item, out);
                 if (err) return err;
             }
             break;
@@ -451,7 +447,7 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
             break;
         case KND_ATTR_PROC:
             if (item->proc) {
-                err = proc_item_export_JSON(item);
+                err = proc_item_export_JSON(item, out);
                 if (err) return err;
             } else {
                 err = out->write(out, "\"", strlen("\""));
@@ -470,7 +466,7 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
                 c = item->class;
                 c->depth = 1;
                 c->max_depth = 1;
-                err = c->export(c, KND_FORMAT_JSON, out);
+                err = knd_class_export(c, KND_FORMAT_JSON, out);
                 if (err) return err;
             }
             break;
@@ -511,7 +507,7 @@ extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
         break;
     case KND_ATTR_PROC:
         if (item->proc) {
-            err = proc_item_export_JSON(item);
+            err = proc_item_export_JSON(item, out);
             if (err) return err;
         } else {
             err = out->write(out, "\"", strlen("\""));
@@ -529,7 +525,7 @@ extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
         } else {
             c = item->class;
             //c->depth = self->depth;
-            err = c->export(c, KND_FORMAT_JSON, out);
+            err = knd_class_export(c, KND_FORMAT_JSON, out);
             if (err) return err;
         }
         break;
