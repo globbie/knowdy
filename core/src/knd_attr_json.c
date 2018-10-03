@@ -74,7 +74,8 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
         in_list = true;
 
         c = parent_item->attr->ref_class;
-        if (c->num_computed_attrs) {
+
+        /*if (c->num_computed_attrs) {
             if (DEBUG_ATTR_JSON_LEVEL_2)
                 knd_log(".. present computed attrs in %.*s (val:%.*s)",
                         parent_item->name_size, parent_item->name,
@@ -82,7 +83,7 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
 
             err = knd_present_computed_inner_attrs(parent_item, out);
             if (err) return err;
-        }
+            }*/
    }
     
     /* export a class ref */
@@ -217,12 +218,17 @@ extern int knd_export_inherited_attr(void *obj,
     struct kndAttrRef *ref = elem;
     struct kndAttr *attr = ref->attr;
     struct kndAttrVar *attr_var = ref->attr_var;
-    struct glbOutput *out = self->entry->repo->out;
+    struct kndRepo *repo = self->entry->repo;
+    struct glbOutput *out = repo->out;
+    struct kndMemPool *mempool = repo->mempool;
+    size_t numval = 0;
     int err;
 
-    /*knd_log(".. class \"%.*s\" to export inherited attr \"%.*s\"..",
-             self->name_size, self->name,
-             attr->name_size, attr->name); */
+    if (DEBUG_ATTR_JSON_LEVEL_2) {
+        knd_log(".. class \"%.*s\" to export inherited attr \"%.*s\"..",
+                self->name_size, self->name,
+                attr->name_size, attr->name);
+    }
 
     /* skip over immediate attrs */
     if (attr->parent_class == self) return knd_OK;
@@ -232,7 +238,50 @@ extern int knd_export_inherited_attr(void *obj,
         return knd_OK;
     }
 
+    if (attr->proc) {
+        if (DEBUG_ATTR_JSON_LEVEL_TMP)
+            knd_log("..computed attr: %.*s!", attr->name_size, attr->name);
+
+        if (!attr_var) {
+            err = knd_attr_var_new(mempool, &attr_var);                           RET_ERR();
+            attr_var->attr = attr;
+            attr_var->name = attr->name;
+            attr_var->name_size = attr->name_size;
+            ref->attr_var = attr_var;
+        }
+
+        switch (attr->type) {
+        case KND_ATTR_NUM:
+            numval = attr_var->numval;
+            if (!attr_var->is_cached) {
+                err = knd_compute_class_attr_num_value(self, attr_var);
+                if (err) return err;
+                numval = attr_var->numval;
+                attr_var->numval = numval;
+                attr_var->is_cached = true;
+            }
+
+            err = out->writec(out, ',');
+            if (err) return err;
+            err = out->writec(out, '"');
+            if (err) return err;
+            err = out->write(out, attr->name, attr->name_size);
+            if (err) return err;
+            err = out->writec(out, '"');
+            if (err) return err;
+            err = out->writec(out, ':');
+            if (err) return err;
+            
+            err = out->writef(out, "%zu", numval);                                RET_ERR();
+            break;
+        default:
+            break;
+        }
+        return knd_OK;
+    }
+
     if (!attr_var) {
+
         // TODO
         return knd_OK;
         //err = knd_get_attr_var(self, attr->name, attr->name_size, &attr_var);
@@ -540,8 +589,8 @@ extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
     return knd_OK;
 }
 
-extern int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var,
-                                           struct glbOutput *out)
+/*extern int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var,
+                                            struct glbOutput *out)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
@@ -558,10 +607,8 @@ extern int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var,
             numval = attr_var->numval;
             if (!attr_var->is_cached) {
                 err = knd_compute_num_value(attr, attr_var, &numval);
-                // TODO: signal failure
                 if (err) continue;
 
-                // memoization
                 attr_var->numval = numval;
                 attr_var->is_cached = true;
             }
@@ -587,3 +634,4 @@ extern int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var,
 
     return knd_OK;
 }
+*/

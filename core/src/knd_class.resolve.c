@@ -55,11 +55,13 @@ extern int knd_inherit_attrs(struct kndClass *self, struct kndClass *base)
                 self->entry->name_size, self->entry->name,
                 base->name_size, base->name);
     }
+
     /* copy your parent's attr idx */
     self->attr_idx->mempool = mempool;
     err = base->attr_idx->map(base->attr_idx,
                               knd_copy_attr_ref,
                               (void*)self->attr_idx);                             RET_ERR();
+
     return knd_OK;
 }
 
@@ -520,6 +522,7 @@ static int resolve_attr_vars(struct kndClass *self,
             return knd_FAIL;
         }
         attr = attr_ref->attr;
+        attr_ref->attr_var = attr_var;
 
         /* save attr assignment */
         err = attr_idx->get(attr_idx, attr->id, attr->id_size, &obj);
@@ -671,10 +674,11 @@ static int register_new_attr(struct kndClass *self,
     err = self->attr_idx->add(self->attr_idx,
                               attr->id, attr->id_size,
                               (void*)attr_ref);                             RET_ERR();
-    
+
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log("++ new primary attr: \"%.*s\" numid:%zu",
                 attr->name_size, attr->name, attr->numid);
+
     return knd_OK;
 }
 
@@ -687,6 +691,7 @@ static int resolve_primary_attrs(struct kndClass *self)
     struct kndRepo *repo = self->entry->repo;
     struct ooDict *class_name_idx = repo->class_name_idx;
     int err;
+
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. resolving primary attrs of %.*s.. [total:%zu]",
                 self->name_size, self->name, self->num_attrs);
@@ -694,11 +699,6 @@ static int resolve_primary_attrs(struct kndClass *self)
     for (attr = self->attrs; attr; attr = attr->next) {
         err = check_attr_name_conflict(self, attr);                      RET_ERR();
         
-        /* computed attr idx */
-        if (attr->proc) {
-            self->computed_attrs[self->num_computed_attrs] = attr;
-            self->num_computed_attrs++;
-        }
         switch (attr->type) {
         case KND_ATTR_INNER:
         case KND_ATTR_REF:
@@ -989,9 +989,9 @@ extern int knd_class_resolve(struct kndClass *self)
     knd_num_to_str(entry->numid, entry->id, &entry->id_size, KND_RADIX_BASE);
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
-        knd_log(".. resolving class \"%.*s\" id:%.*s entry numid:%zu  batch mode:%d",
+        knd_log(".. resolving class \"%.*s\" id:%.*s entry numid:%zu",
                 self->entry->name_size, self->entry->name,
-                entry->id_size, entry->id, self->entry->numid, self->batch_mode);
+                entry->id_size, entry->id, self->entry->numid);
     }
 
     /* a child of the root class */

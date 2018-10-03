@@ -32,6 +32,7 @@ struct kndTranslation;
 struct kndAttr;
 struct kndProc;
 struct kndClassUpdate;
+struct kndProcCallArg;
 
 typedef enum knd_attr_type {
     KND_ATTR_NONE,
@@ -266,6 +267,10 @@ extern int knd_register_attr_ref(void *obj,
                                  size_t elem_id_size,
                                  size_t count,
                                  void *elem);
+
+extern int knd_get_arg_value(struct kndAttrVar *src,
+                             struct kndAttrVar *query,
+                             struct kndProcCallArg *arg);
 
 extern int knd_attr_export(struct kndAttr *self,
                            knd_format format, struct glbOutput *out);

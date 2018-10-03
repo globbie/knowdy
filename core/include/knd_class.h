@@ -79,6 +79,7 @@ struct kndClassVar
     size_t num_states;
 
     struct kndClass *root_class;
+    struct kndClass *parent;
 
     struct kndClassVar *next;
 };
@@ -155,9 +156,8 @@ struct kndClass
     struct kndState *states;
     size_t init_state;
     size_t num_states;
-    size_t selected_state_numid;
+    //size_t selected_state_numid;
 
-    bool state_top;
 
     struct kndState *inst_states;
     size_t init_inst_state;
@@ -166,7 +166,7 @@ struct kndClass
     struct kndStateRef *inst_state_refs;
 
     struct kndTranslation *tr;
-    struct kndTranslation *summary;
+    //struct kndTranslation *summary;
 
     size_t depth;
     size_t max_depth;
@@ -174,43 +174,22 @@ struct kndClass
     struct kndClassVar *baseclass_vars;
     size_t num_baseclass_vars;
 
-    bool is_resolved;
-
     struct kndAttr *attrs;
     struct kndAttr *tail_attr;
     size_t num_attrs;
+
     struct kndSet *attr_idx;
     struct kndAttr *implied_attr;
 
     struct kndProc *proc;
-    struct kndRel *rel;
+    //struct kndRel *rel;
 
-    struct kndClass      *curr_class;
-    struct kndClass      *curr_baseclass;
-    struct kndAttr       *curr_attr;
-    struct kndAttrRef    *curr_attr_ref;
-    struct kndAttrVar    *curr_attr_var;
-    struct kndClassInst  *curr_inst;
-    struct kndUpdate     *curr_update;
 
     struct kndConcFolder *folders;
     size_t num_folders;
 
-    /* incoming */
-    struct kndClass *inbox;
-    size_t inbox_size;
-
-    struct kndClassInst *inst_inbox;
-    size_t inst_inbox_size;
-    size_t num_insts;
-
-    struct kndState *attr_var_inbox;
-    size_t attr_var_inbox_size;
-
-    bool batch_mode;
-
-    struct kndAttr *computed_attrs[1];
-    size_t num_computed_attrs;
+    bool is_resolved;
+    bool state_top;
 
     struct kndClass *next;
 
@@ -289,16 +268,12 @@ extern gsl_err_t knd_class_import(void *obj,
 
 extern int knd_inherit_attrs(struct kndClass *self, struct kndClass *base);
 
-extern int get_arg_value(struct kndAttrVar *src,
-                         struct kndAttrVar *query,
-                         struct kndProcCallArg *arg);
-
 extern gsl_err_t knd_class_select(void *obj,
                                   const char *rec,
                                   size_t *total_size);
 
 extern int knd_compute_class_attr_num_value(struct kndClass *self,
-                                            struct kndClassVar *src_class_var,
+                                            //struct kndClassVar *src_class_var,
                                             struct kndAttrVar *attr_var);
 
 extern int knd_update_state(struct kndClass *self);
@@ -334,6 +309,10 @@ extern int knd_register_inst_states(struct kndClass *self);
 extern int knd_register_descendant_states(struct kndClass *self);
 
 extern int knd_export_class_inst_state_JSON(struct kndClass *self);
+
+extern int knd_get_class_attr_value(struct kndClass *src,
+                                    struct kndAttrVar *query,
+                                    struct kndProcCallArg *arg);
 
 extern int knd_resolve_classes(struct kndClass *self);
 extern int knd_class_resolve(struct kndClass *self);

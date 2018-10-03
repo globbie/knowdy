@@ -68,20 +68,19 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
         knd_log(".. import \"%.*s\" inst..", 128, rec);
     }
 
-    if (!self->curr_class) {
+    if (!repo->curr_class) {
         knd_log("-- no class selected");
         return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
 
     /* user ctx should have its own copy of a selected class */
-    if (self->curr_class->entry->repo != repo) {
-
-        err = knd_class_clone(self->curr_class, repo, &c);
+    if (repo->curr_class->entry->repo != repo) {
+        err = knd_class_clone(repo->curr_class, repo, &c);
         if (err) return *total_size = 0, make_gsl_err_external(err);
-        self->curr_class = c;
+        repo->curr_class = c;
     }
 
-    c = self->curr_class;
+    c = repo->curr_class;
 
     err = knd_class_inst_new(mempool, &inst);
     if (err) {
@@ -126,9 +125,9 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
                    &inst->entry->id_size, KND_RADIX_BASE);
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("++ %.*s class inst parse OK! total insts in %.*s: %zu",
+        knd_log("++ %.*s class inst parse OK!",
                 inst->name_size, inst->name,
-                c->name_size, c->name, c->num_insts);
+                c->name_size, c->name);
 
     /* automatic name assignment if no explicit name given */
     if (!inst->name_size) {
@@ -143,7 +142,6 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
                         inst->name, inst->name_size,
                         (void*)entry);
     if (err) return make_gsl_err_external(err);
-    //c->entry->num_insts++;
 
     err = knd_register_class_inst(c, entry);
     if (err) return make_gsl_err_external(err);
@@ -756,6 +754,7 @@ static gsl_err_t parse_baseclass(void *obj,
     err = knd_class_var_new(mempool, &classvar);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     classvar->root_class = self->entry->repo->root_class;
+    classvar->parent = self;
 
     parser_err = parse_class_var(classvar, rec, total_size);
     if (parser_err.code) return parser_err;
@@ -879,7 +878,7 @@ extern gsl_err_t knd_class_import(void *obj,
         knd_log("++  \"%.*s\" class import completed!\n",
                 c->name_size, c->name);
 
-    if (!self->batch_mode) {
+    if (!repo->task->batch_mode) {
         err = knd_class_resolve(c); 
         if (err) return *total_size = 0, make_gsl_err_external(err);
     }

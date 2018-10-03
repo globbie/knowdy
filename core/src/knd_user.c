@@ -531,16 +531,17 @@ static gsl_err_t remove_user(void *data,
 
     self->task->type = KND_UPDATE_STATE;
 
-    user_inst->next = c->inst_inbox;
+    /*user_inst->next = c->inst_inbox;
     c->inst_inbox = user_inst;
     c->inst_inbox_size++;
+    */
 
     root_class = c->entry->repo->root_class;
 
-    c->next = root_class->inbox;
+    /*c->next = root_class->inbox;
     root_class->inbox = c;
     root_class->inbox_size++;
-
+    */
     return make_gsl_err(gsl_OK);
 }
 
