@@ -191,17 +191,17 @@ static int compute_attr_var_value(struct kndClass *self,
         err = self->attr_idx->get(self->attr_idx,
                                   ref->attr->id, ref->attr->id_size, &obj);
         if (err) return err;
-
-        knd_log("++ set attr var: %.*s", attr->name_size, attr->name);
         ref = obj;
         attr_var = ref->attr_var;
 
-        err = compute_list_sum(ref->attr_var, field_var, attr, arg, &arg->numval);
-        if (err) return err;
+        if (attr_var) {
+            err = compute_list_sum(ref->attr_var, field_var, attr, arg, &arg->numval);
+            if (err) return err;
+        }
 
         // TODO
         //if (!arg->numval) arg->numval = 500;
-        knd_log("== SUM: %zu\n", arg->numval);
+        //knd_log("== SUM: %zu\n", arg->numval);
     }
     return knd_OK;
 }
@@ -245,28 +245,28 @@ extern int knd_compute_class_attr_num_value(struct kndClass *self,
 
         if (!strncmp("total", arg->name, arg->name_size)) {
             total = arg->numval;
-            //knd_log("TIMES:%lu", arg->numval);
+            knd_log("TIMES:%lu", arg->numval);
         }
 
         if (!strncmp("times", arg->name, arg->name_size)) {
             times = arg->numval;
-            //knd_log("TIMES:%lu", arg->numval);
+            knd_log("TIMES:%lu", arg->numval);
         }
 
         if (!strncmp("quant", arg->name, arg->name_size)) {
             quant = arg->numval;
-            //knd_log("QUANT:%lu", arg->numval);
+            knd_log("QUANT:%lu", arg->numval);
         }
 
         if (!strncmp("dividend", arg->name, arg->name_size)) {
             dividend = (float)arg->numval;
-            //knd_log("DIVIDEND:%lu", arg->numval);
+            knd_log("DIVIDEND:%lu", arg->numval);
         }
 
         if (!strncmp("divisor", arg->name, arg->name_size)) {
             divisor = (float)arg->numval;
-            //knd_log("DIVISOR:%lu (arg:%.*s)", arg->numval,
-            //        arg->name_size, arg->name);
+            knd_log("DIVISOR:%lu (arg:%.*s)", arg->numval,
+                    arg->name_size, arg->name);
         }
     }
 

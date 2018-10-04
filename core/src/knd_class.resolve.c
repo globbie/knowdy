@@ -501,13 +501,13 @@ static int resolve_attr_vars(struct kndClass *self,
     }
 
     for (attr_var = parent_item->attrs; attr_var; attr_var = attr_var->next) {
-
         if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
             knd_log(".. resolving attr var: %.*s",
                     attr_var->name_size, attr_var->name);
         }
         err = knd_class_get_attr(self,
-                                 attr_var->name, attr_var->name_size, &attr_ref);
+                                 attr_var->name, attr_var->name_size,
+                                 &attr_ref);
         if (err) {
             knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                     attr_var->name_size, attr_var->name,
@@ -522,7 +522,7 @@ static int resolve_attr_vars(struct kndClass *self,
             return knd_FAIL;
         }
         attr = attr_ref->attr;
-        attr_ref->attr_var = attr_var;
+        //attr_ref->attr_var = attr_var;
 
         /* save attr assignment */
         err = attr_idx->get(attr_idx, attr->id, attr->id_size, &obj);

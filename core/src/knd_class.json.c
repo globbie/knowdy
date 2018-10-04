@@ -540,14 +540,6 @@ extern int knd_class_export_JSON(struct kndClass *self,
                         knd_export_inherited_attr, (void*)self); 
     if (err && err != knd_RANGE) return err;
 
-    /* facets */
-    if (entry->descendants) {
-        //knd_log("++ desc facets: %zu", entry->descendants->num_facets);
-        //entry->descendants->num_facets) {
-        //err = export_facets_JSON(self, entry->descendants);
-        //if (err) return err;
-    }
-
     num_children = entry->num_children;
     if (orig_entry)
         num_children += orig_entry->num_children;
@@ -561,7 +553,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
                          strlen(",\"_instances\":{"));                            RET_ERR();
 
         if (self->inst_states) {
-            err = knd_export_class_inst_state_JSON(self);                                      RET_ERR();
+            err = knd_export_class_inst_state_JSON(self);                         RET_ERR();
         }
 
         // TODO navigation facets?
