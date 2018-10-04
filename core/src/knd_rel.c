@@ -500,12 +500,13 @@ static int export_inst_JSON(struct kndRel *self,
         err = out->writef(out, "%zu", update->numid);
         if (err) return err;
 
-        time(&update->timestamp);
+        /*time(&update->timestamp);
         localtime_r(&update->timestamp, &tm_info);
         buf_size = strftime(buf, KND_NAME_SIZE,
                             ",\"_modif\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
         err = out->write(out, buf, buf_size);
         if (err) return err;
+        */
 
         switch (state->phase) {
         case KND_REMOVED:

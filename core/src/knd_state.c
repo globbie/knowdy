@@ -31,7 +31,7 @@ static void reset(struct kndStateControl *self)
     self->out->reset(self->out);
 }
 
-static int export_update_GSP(struct kndUpdate *update,
+/*static int export_update_GSP(struct kndUpdate *update,
                              struct glbOutput *out)
 {
     char buf[KND_NAME_SIZE] = {0};
@@ -40,8 +40,6 @@ static int export_update_GSP(struct kndUpdate *update,
     int err;
 
     err = out->writec(out, '{');                                                  RET_ERR();
-    //err = out->write(out, update->id, update->id_size);                           RET_ERR();
-
     time(&update->timestamp);
     localtime_r(&update->timestamp, &tm_info);
     buf_size = strftime(buf, KND_NAME_SIZE,
@@ -52,8 +50,9 @@ static int export_update_GSP(struct kndUpdate *update,
     err = out->writec(out, '\n');                                                 RET_ERR();
     return knd_OK;
 }
+ */
 
-static int knd_sync_update(struct kndStateControl *self,
+ static int knd_sync_update(struct kndStateControl *self,
                            struct kndUpdate *update)
 {
     struct glbOutput *out = self->repo->task->out;
@@ -64,7 +63,7 @@ static int knd_sync_update(struct kndStateControl *self,
 
     /* linearize an update */
     file_out->reset(file_out);
-    err = export_update_GSP(update, file_out);    RET_ERR();
+    //err = export_update_GSP(update, file_out);    RET_ERR();
 
     out->reset(out);
     err = out->write(out, self->repo->path, self->repo->path_size);          RET_ERR();
