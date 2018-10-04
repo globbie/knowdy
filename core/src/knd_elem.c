@@ -37,7 +37,6 @@
 extern void knd_elem_str(struct kndElem *self, size_t depth)
 {
     struct kndState *state = self->states;
-    struct kndStateVal *val;
 
     if (self->inner) {
         if (self->is_list) {

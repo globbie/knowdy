@@ -113,53 +113,15 @@ static gsl_err_t kndProc_parse_gloss(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-/*static gsl_err_t kndProc_append_summary(void *accu,
-                                        void *item)
+static gsl_err_t set_base_arg_classname(void *obj, const char *name, size_t name_size)
 {
-    struct kndProc *self = accu;
-    kndProc_declare_summary(self, (struct kndTranslation *)item);
+    struct kndProcArgVar *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    self->name = name;
+    self->name_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t kndProc_parse_summary(void *obj,
-                                       const char *rec,
-                                       size_t *total_size)
-{
-    struct kndTranslation *tr = obj;
-    struct gslTaskSpec specs[] = {
-        {
-            .is_implied = true,
-            .buf = tr->curr_locale,
-            .buf_size = &tr->curr_locale_size,
-            .max_buf_size = sizeof tr->curr_locale
-        },
-        {
-            .name = "t",
-            .name_size = strlen ("t"),
-            .buf = tr->val,
-            .buf_size = &tr->val_size,
-            .max_buf_size = sizeof tr->val
-        }
-    };
-    gsl_err_t err;
-
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
-
-    if (tr->curr_locale_size == 0 || tr->val_size == 0)
-        return make_gsl_err(gsl_FORMAT);  // error: both of them are required ;
-
-    // TODO(k15tfu): remove this
-    tr->locale = tr->curr_locale;
-    tr->locale_size = tr->curr_locale_size;
-
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. read summary translation: \"%.*s\",  text: \"%.*s\"",
-                tr->locale_size, tr->locale, tr->val_size, tr->val);
-
-    return make_gsl_err(gsl_OK);
-}
-*/
 static gsl_err_t kndProc_validate_base_arg(void *obj,
                                            const char *name,
                                            size_t name_size,
@@ -189,9 +151,8 @@ static gsl_err_t kndProc_validate_base_arg(void *obj,
         {
             .name = "c",
             .name_size = strlen("c"),
-            .buf = base_arg->classname,
-            .buf_size = &base_arg->classname_size,
-            .max_buf_size = sizeof base_arg->classname
+            .run = set_base_arg_classname,
+            .obj = base_arg
         }
     };
     gsl_err_t err;
@@ -201,6 +162,15 @@ static gsl_err_t kndProc_validate_base_arg(void *obj,
 
     kndProcVar_declare_arg(base, base_arg);
 
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_proc_var_name(void *obj, const char *name, size_t name_size)
+{
+    struct kndProcVar *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    self->name = name;
+    self->name_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -215,14 +185,11 @@ static gsl_err_t kndProc_parse_base(void *obj,
     memset(base, 0, sizeof *base);
 
     struct gslTaskSpec specs[] = {
-        {
-            .is_implied = true,
-            .buf = base->name,
-            .buf_size = &base->name_size,
-            .max_buf_size = sizeof base->name
+        {   .is_implied = true,
+            .run = set_proc_var_name,
+            .obj = base
         },
-        {
-            .type = GSL_SET_STATE,
+        {   .type = GSL_SET_STATE,
             .is_validator = true,
             .validate = kndProc_validate_base_arg,
             .obj = base
@@ -265,10 +232,19 @@ static gsl_err_t kndProc_validate_do_arg(void *obj,
     // TODO: use mempool
     struct kndProcCallArg *call_arg = malloc(sizeof *call_arg);
     if (!call_arg) return make_gsl_err_external(knd_NOMEM);
+
     kndProcCallArg_init(call_arg, name, name_size, class_var);
+    kndProcCall_declare_arg(proc->proc_call, call_arg);
 
-    kndProcCall_declare_arg(&proc->proc_call, call_arg);
+    return make_gsl_err(gsl_OK);
+}
 
+static gsl_err_t set_proc_call_name(void *obj, const char *name, size_t name_size)
+{
+    struct kndProcCall *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    self->name = name;
+    self->name_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -287,11 +263,9 @@ static gsl_err_t knd_proc_parse_do(void *obj,
     }
 
     struct gslTaskSpec specs[] = {
-        {
-            .is_implied = true,
-            .buf = self->proc_call->name,
-            .buf_size = &self->proc_call->name_size,
-            .max_buf_size = sizeof self->proc_call->name
+        {   .is_implied = true,
+            .run = set_proc_call_name,
+            .obj = self->proc_call
         },
         {
             .is_validator = true,

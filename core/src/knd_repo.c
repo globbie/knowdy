@@ -241,39 +241,6 @@ static gsl_err_t alloc_update(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-/*static gsl_err_t append_update(void *accu,
-                               void *item)
-{
-    struct kndRepo *self =   accu;
-    struct kndUpdate *update = item;
-
-    return make_gsl_err(gsl_OK);
-}
-*/
-
-static gsl_err_t get_timestamp(void *obj, const char *name, size_t name_size)
-{
-    struct kndUpdate *update = obj;
-    char buf[KND_NAME_SIZE] = {0};
-    size_t buf_size = 0;
-    struct tm tm_info = {0};
-
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("UPD: numid:%zu  time:\"%.*s\"",
-                update->numid, name_size, name);
-
-    memcpy(buf, name, name_size);
-    buf_size = name_size;
-
-    /* parse date/time */
-    if (!strptime(buf, "%Y-%m-%d %H:%M:%S", &tm_info)) {
-        knd_log("-- incorrect date/time: %.*s?", buf_size, buf);
-        return make_gsl_err_external(knd_FAIL);
-    }
-    tm_info.tm_isdst = -1;
-    update->timestamp = mktime(&tm_info);
-    return make_gsl_err(gsl_OK);
-}
 
 static gsl_err_t parse_update(void *obj,
                               const char *rec,
@@ -295,11 +262,11 @@ static gsl_err_t parse_update(void *obj,
           .buf_size = &update->id_size,
           .max_buf_size = sizeof update->id
           },*/
-        { .name = "ts",
+        /*{ .name = "ts",
           .name_size = strlen("ts"),
           .run = get_timestamp,
           .obj = update
-        },
+          },*/
         { .type = GSL_SET_ARRAY_STATE,
           .name = "c",
           .name_size = strlen("c"),

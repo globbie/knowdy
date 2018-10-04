@@ -59,7 +59,7 @@ static void str(struct kndProcArg *self)
     }
 }
 
-static int proc_call_arg_export_JSON(struct kndProcArg *self,
+static int proc_call_arg_export_JSON(struct kndProcArg *self  __attribute__((unused)),
                                      struct kndProcCallArg *call_arg,
                                      struct glbOutput *out)
 {
@@ -72,7 +72,7 @@ static int proc_call_arg_export_JSON(struct kndProcArg *self,
     return knd_OK;
 }
 
-static int proc_call_arg_export_GSP(struct kndProcArg *self,
+static int proc_call_arg_export_GSP(struct kndProcArg *self  __attribute__((unused)),
                                     struct kndProcCallArg *call_arg,
                                      struct glbOutput *out)
 {
@@ -252,40 +252,6 @@ static int export_SVG(struct kndProcArg *self,
     return knd_OK;
 }
 
-static int export_inst_GSP(struct kndProcArg *self,
-                           struct kndProcArgInstance *inst,
-                           struct glbOutput *out)
-{
-    int err;
-
-    err = out->write(out, "{class ", strlen("{class "));                          RET_ERR();
-    //err = out->write(out, inst->procname, inst->procname_size);                   RET_ERR();
-    err = out->write(out, "{obj ", strlen("{obj "));                              RET_ERR();
-    err = out->write(out, inst->objname, inst->objname_size);                     RET_ERR();
-    err = out->write(out, "}}", strlen("}}"));                                    RET_ERR();
-
-    return knd_OK;
-}
-
-static int export_inst_JSON(struct kndProcArg *self,
-                            struct kndProcArgInstance *inst,
-                            struct glbOutput *out)
-{
-    int err;
-
-    err = out->write(out, "{", 1);                                               RET_ERR();
-    err = out->write(out, "\"class\":\"", strlen("\"class\":\""));               RET_ERR();
-    //err = out->write(out, inst->procname, inst->procname_size);                RET_ERR();
-    err = out->write(out, "\"", 1);                                              RET_ERR();
-
-    err = out->write(out, ",\"obj\":\"", strlen(",\"obj\":\""));                 RET_ERR();
-    err = out->write(out, inst->objname, inst->objname_size);                    RET_ERR();
-    err = out->write(out, "\"", 1);                                              RET_ERR();
-
-    err = out->write(out, "}", 1);                                               RET_ERR();
-
-    return knd_OK;
-}
 
 extern int knd_proc_arg_export(struct kndProcArg *self,
                                knd_format format,
@@ -310,41 +276,14 @@ extern int knd_proc_arg_export(struct kndProcArg *self,
     return knd_OK;
 }
 
-static int export_inst(struct kndProcArg *self,
-                       struct kndProcArgInstance *inst,
-                       knd_format format,
-                       struct glbOutput *out)
-{
-    int err = knd_FAIL;
-
-    switch (format) {
-    case KND_FORMAT_JSON:
-        err = export_inst_JSON(self, inst, out);
-        if (err) goto final;
-        break;
-    case KND_FORMAT_GSP:
-        err = export_inst_GSP(self, inst, out);
-        if (err) goto final;
-        break;
-    default:
-        break;
-    }
-
- final:
-    return err;
-}
-
 
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct kndProcArg *self = (struct kndProcArg*)obj;
-
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    memcpy(self->name, name, name_size);
+    self->name = name;
     self->name_size = name_size;
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -442,40 +381,17 @@ static gsl_err_t parse_gloss(void *obj,
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
-static gsl_err_t parse_proc_call_arg(void *obj,
-                                     const char *name, size_t name_size,
-                                     const char *rec, size_t *total_size)
+static gsl_err_t set_proc_arg_classname(void *obj, const char *name, size_t name_size)
 {
     struct kndProcArg *self = obj;
-    struct kndProcCallArg *call_arg;
-
-    if (DEBUG_PROC_ARG_LEVEL_1)
-        knd_log(".. Proc Call Arg \"%.*s\" to validate: \"%.*s\"..",
-                name_size, name, 32, rec);
-
-    call_arg = malloc(sizeof(struct kndProcCallArg));
-    if (!call_arg) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
-
-    memset(call_arg, 0, sizeof(struct kndProcCallArg));
-    memcpy(call_arg->name, name, name_size);
-    call_arg->name_size = name_size;
-
-    call_arg->next = self->proc_call.args;
-    self->proc_call.args = call_arg;
-    self->proc_call.num_args++;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .buf_size = &call_arg->val_size,
-          .max_buf_size = KND_SHORT_NAME_SIZE,
-          .buf = call_arg->val
-        }
-    };
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+    self->classname = name;
+    self->classname_size = name_size;
+    return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_proc_call(void *obj,
+/*static gsl_err_t parse_proc_call(void *obj,
                                  const char *rec,
                                  size_t *total_size)
 {
@@ -486,9 +402,8 @@ static gsl_err_t parse_proc_call(void *obj,
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .buf_size = &self->proc_call.name_size,
-          .max_buf_size = KND_NAME_SIZE,
-          .buf = self->proc_call.name
+          .run = set_proc_call_name,
+          .obj = self->proc_call
         },
         { .type = GSL_SET_ARRAY_STATE,
           .name = "_gloss",
@@ -510,10 +425,11 @@ static gsl_err_t parse_proc_call(void *obj,
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
+*/
 
 static gsl_err_t parse_GSL(struct kndProcArg *self,
-                     const char *rec,
-                     size_t *total_size)
+                           const char *rec,
+                           size_t *total_size)
 {
     if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log(".. Proc Arg parsing: \"%.*s\"..", 32, rec);
@@ -537,26 +453,25 @@ static gsl_err_t parse_GSL(struct kndProcArg *self,
         },
         { .name = "c",
           .name_size = strlen("c"),
-          .buf = self->classname,
-          .buf_size = &self->classname_size,
-          .max_buf_size = sizeof self->classname,
-        },
+          .run = set_proc_arg_classname,
+          .obj = self
+        }/*,
         { .name = "val",
           .name_size = strlen("val"),
           .buf = self->val,
           .buf_size = &self->val_size,
           .max_buf_size = sizeof self->val,
-        },
+          }*/,
         {  .name = "num",
            .name_size = strlen("num"),
            .parse = gsl_parse_size_t,
            .obj = &self->numval
-        },
+        }/*,
         { .name = "run",
           .name_size = strlen("run"),
           .parse = parse_proc_call,
           .obj = self
-        }
+          }*/
     };
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -814,7 +729,6 @@ void kndProcArg_init(struct kndProcArg *self, struct kndProc *proc)
     self->resolve = resolve_arg;
     self->parse_inst = parse_inst_GSL;
     self->resolve_inst = resolve_inst;
-    self->export_inst = export_inst;
 }
 
 int kndProcArg_new(struct kndProcArg **self,
