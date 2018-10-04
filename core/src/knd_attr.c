@@ -910,7 +910,7 @@ static int extract_implied_attr_value(struct kndClass *self,
 
     /* go deeper */
     if (parent_item->children) {
-        if (attr_var->attr->is_a_set) {
+        if (attr_var && attr_var->attr->is_a_set) {
             err = extract_list_elem_value(attr_var,
                                           parent_item->children,
                                           result_arg);
