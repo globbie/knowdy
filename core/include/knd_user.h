@@ -34,7 +34,7 @@ struct kndUserContext
     struct kndClassInst *user_inst;
     struct kndRepo *repo;
 
-    //TODO: ACL
+    //TODO: Roles
 };
 
 struct kndUser
@@ -69,13 +69,10 @@ struct kndUser
     size_t max_users;
     size_t num_users;
 
-
     struct kndShard *shard;
     struct kndTask *task;
     struct glbOutput *out;
     struct glbOutput *log;
-
-    //void *update_service;
 
     /* user context storage */
     struct kndSet *user_idx;
@@ -89,21 +86,9 @@ struct kndUser
     void (*str)(struct kndUser *self);
     int (*init)(struct kndUser *self);
 
-    gsl_err_t (*create)(struct kndUser *self,
-                        const char *rec,
-                        size_t *total_size);
     gsl_err_t (*select)(struct kndUser *self,
                         const char *rec,
                         size_t *total_size);
-
-//    int (*get_user)(struct kndUser *self, const char *uid, struct kndUser **user);
-//    int (*get_repo)(struct kndUser *self,
-//                    const char *name, size_t name_size,
-//                    struct kndRepo **result);
-
-//    int (*restore)(struct kndUser *self);
-//    int (*export)(struct kndUser *self);
-//    int (*read)(struct kndUser *self, const char *rec);
 };
 
 extern int kndUser_new(struct kndUser **self, struct kndMemPool *mempool);
