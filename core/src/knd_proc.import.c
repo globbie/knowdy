@@ -471,10 +471,7 @@ extern gsl_err_t knd_proc_import(struct kndProc *root_proc,
     /* generate ID and add to proc index */
     repo->num_procs++;
     proc->entry->numid = repo->num_procs;
-    proc->entry->id_size = KND_ID_SIZE;
-
-    knd_num_to_str(proc->entry->numid,
-                   proc->entry->id, &proc->entry->id_size, KND_RADIX_BASE);
+    knd_uid_create(proc->entry->numid, proc->entry->id, &proc->entry->id_size);
 
     err = repo->proc_name_idx->set(repo->proc_name_idx,
                                    proc->entry->name, proc->entry->name_size,
