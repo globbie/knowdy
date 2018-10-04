@@ -66,7 +66,7 @@ static int export_glosses(struct kndClass *self,
     return knd_OK;
 }
 
-static int export_summary(struct kndClass *self,
+/*static int export_summary(struct kndClass *self,
                           struct glbOutput *out)
 {
     struct kndTranslation *tr;
@@ -91,6 +91,7 @@ static int export_summary(struct kndClass *self,
     if (err) return err;
     return knd_OK;
 }
+*/
 
 static int export_baseclass_vars(struct kndClass *self,
                                  struct glbOutput *out)
@@ -984,7 +985,6 @@ static gsl_err_t check_list_item_id(void *obj,
     default:
         break;
     }
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -995,6 +995,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
     struct kndAttrVar *self = obj;
     struct kndAttrVar *attr_var;
     struct kndAttr *attr;
+    struct kndAttrRef *ref;
     struct kndClass *c = NULL;
     struct ooDict *class_name_idx;
     struct kndClassEntry *entry;
@@ -1023,13 +1024,14 @@ static gsl_err_t read_nested_attr_var(void *obj,
 
     c = self->attr->ref_class;
 
-    err = knd_class_get_attr(c, name, name_size, &attr);
+    err = knd_class_get_attr(c, name, name_size, &ref);
     if (err) {
         knd_log("-- no attr \"%.*s\" in class \"%.*s\" :(",
                 name_size, name,
                 c->entry->name_size, c->entry->name);
         if (err) return *total_size = 0, make_gsl_err_external(err);
     }
+    attr = ref->attr;
 
     switch (attr->type) {
     case KND_ATTR_INNER:
@@ -1383,6 +1385,7 @@ static gsl_err_t validate_attr_var(void *obj,
     struct kndClassVar *class_var = obj;
     struct kndAttrVar *attr_var;
     struct kndAttr *attr;
+    struct kndAttrRef *ref;
     struct kndProc *root_proc;
     struct kndRepo *repo = class_var->entry->repo;
     struct kndMemPool *mempool = repo->mempool;
@@ -1404,14 +1407,15 @@ static gsl_err_t validate_attr_var(void *obj,
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = class_var;
 
-    err = knd_class_get_attr(class_var->entry->class, name, name_size, &attr);
+    err = knd_class_get_attr(class_var->entry->class,
+                             name, name_size, &ref);
     if (err) {
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                 name_size, name,
                 class_var->entry->name_size, class_var->entry->name);
         return *total_size = 0, make_gsl_err_external(err);
     }
-
+    attr = ref->attr;
     attr_var->attr = attr;
     attr_var->name = name;
     attr_var->name_size = name_size;
@@ -1473,6 +1477,7 @@ static gsl_err_t validate_attr_var_list(void *obj,
     struct kndClassVar *class_var = obj;
     struct kndAttrVar *attr_var;
     struct kndAttr *attr;
+    struct kndAttrRef *ref;
     struct ooDict *class_name_idx;
     struct kndClassEntry *entry;
     struct kndMemPool *mempool = class_var->entry->repo->mempool;
@@ -1487,14 +1492,14 @@ static gsl_err_t validate_attr_var_list(void *obj,
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     err = knd_class_get_attr(class_var->entry->class,
-                             name, name_size, &attr);
+                             name, name_size, &ref);
     if (err) {
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                 name_size, name,
                 class_var->entry->name_size, class_var->entry->name);
         return *total_size = 0, make_gsl_err_external(err);
     }
-
+    attr = ref->attr;
     attr_var->attr = attr;
     attr_var->class_var = class_var;
 

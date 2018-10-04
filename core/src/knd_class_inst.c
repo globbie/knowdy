@@ -552,7 +552,7 @@ assign_name:
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t find_obj_rel(void *obj, const char *name, size_t name_size)
+/*static gsl_err_t find_obj_rel(void *obj, const char *name, size_t name_size)
 {
     struct kndClassInst *self = obj;
     struct kndRelRef *relref = NULL;
@@ -584,6 +584,7 @@ static gsl_err_t find_obj_rel(void *obj, const char *name, size_t name_size)
 
     return make_gsl_err(gsl_NO_MATCH);
 }
+*/
 
 static gsl_err_t present_rel(void *data,
                              const char *val __attribute__((unused)),
@@ -619,8 +620,8 @@ static gsl_err_t present_rel(void *data,
 
         return make_gsl_err(gsl_OK);
     }
-    
-    /* display all relrefs */
+
+    // display all relrefs
     if (!self->curr_rel) {
         self->max_depth = 1;
         err = out->writec(out, '[');
@@ -1081,7 +1082,6 @@ static gsl_err_t remove_inst(void *data,
     struct glbOutput *log        = repo->log;
     struct kndMemPool *mempool   = repo->mempool;
     struct kndTask *task         = repo->task;
-    struct kndSet *set;
     int err;
 
     obj = self->curr_inst;
@@ -1243,7 +1243,7 @@ static gsl_err_t present_inst_rels_state(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static int select_inst_rel_delta(struct kndClassInst *self,
+/*static int select_inst_rel_delta(struct kndClassInst *self,
                                  const char *rec,
                                  size_t *total_size)
 {
@@ -1330,7 +1330,7 @@ static int select_inst_rel_delta(struct kndClassInst *self,
         if (task->state_gt >= state->numid) continue;
 
         // iterate over rel insts
-        /*for (rel_inst_upd = state->val; rel_inst_upd; rel_inst_upd = rel_inst_upd->next) {
+        for (rel_inst_upd = state->val; rel_inst_upd; rel_inst_upd = rel_inst_upd->next) {
             inst = rel_inst_upd->inst;
             if (DEBUG_INST_LEVEL_TMP)
                 knd_log("* rel inst id:%.*s",
@@ -1338,7 +1338,7 @@ static int select_inst_rel_delta(struct kndClassInst *self,
 
             err = set->add(set, inst->id, inst->id_size,
                            (void*)inst);                                          RET_ERR();
-                           }*/
+                           }
     }
 
     task->sets[0] = set;
@@ -1347,7 +1347,7 @@ static int select_inst_rel_delta(struct kndClassInst *self,
 
     return knd_OK;
 }
-
+*/
 /*static gsl_err_t parse_select_inst_rel_delta(void *data,
                                              const char *rec,
                                              size_t *total_size)
@@ -1465,7 +1465,6 @@ static int export_inst_set_JSON(struct kndClass *self,
         err = out->writef(out, "\"total\":%lu",
                           (unsigned long)set->num_valid_elems);                   RET_ERR();
     }
-
     err = out->write(out, ",\"batch\":[",
                      strlen(",\"batch\":["));                                     RET_ERR();
     err = set->map(set, export_inst_JSON, (void*)self);

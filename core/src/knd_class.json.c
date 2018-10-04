@@ -472,14 +472,11 @@ static int export_baseclass_vars(struct kndClass *self,
 extern int knd_class_export_JSON(struct kndClass *self,
                                  struct glbOutput *out)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
     struct kndSet *attr_idx;
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
-    size_t item_count;
-    size_t num_children = 0;
-    int i, err;
+    size_t num_children;
+    int err;
 
     if (DEBUG_JSON_LEVEL_2)
         knd_log(".. JSON export: \"%.*s\"   depth:%zu max depth:%zu",
@@ -551,13 +548,12 @@ extern int knd_class_export_JSON(struct kndClass *self,
         //if (err) return err;
     }
 
-    /*    num_children = entry->num_children;
+    num_children = entry->num_children;
     if (orig_entry)
         num_children += orig_entry->num_children;
     if (num_children) {
         err = present_subclasses(self, num_children, out);                        RET_ERR();
     }
-    */
 
     /* instances */
     if (entry->inst_idx) {

@@ -329,7 +329,6 @@ static int parse_GSL(struct kndTask *self, const char *rec, size_t rec_size, con
 
 static int build_report(struct kndTask *self)
 {
-    struct glbOutput *out = self->spec_out;
     size_t obj_size;
     size_t chunk_size;
     const char *task_status = "++";

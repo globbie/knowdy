@@ -163,8 +163,8 @@ static gsl_err_t append_summary_item(void *accu,
     struct kndClass *self =   accu;
     struct kndTranslation *tr = item;
 
-    //tr->next = self->summary;
-    //self->summary = tr;
+    tr->next = self->summary;
+    self->summary = tr;
 
     return make_gsl_err(gsl_OK);
 }
@@ -225,6 +225,7 @@ extern gsl_err_t knd_parse_summary_array(void *obj,
 
     return gsl_parse_array(&item_spec, rec, total_size);
 }
+
 
 extern int knd_class_export_updates_GSL(struct kndClass *self,
                                         struct kndUpdate *update  __attribute__((unused)),

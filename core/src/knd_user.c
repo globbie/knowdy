@@ -292,7 +292,6 @@ static gsl_err_t parse_class_select(void *obj,
     struct kndUser *self = obj;
     struct kndUserContext *ctx = self->curr_ctx;
     struct kndClass *c;
-    gsl_err_t err;
 
     self->task->out->reset(self->task->out);
 

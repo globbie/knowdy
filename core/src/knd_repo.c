@@ -115,7 +115,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndSet *class_idx = repo->class_idx;
     struct kndMemPool *mempool = repo->mempool;
     struct kndClassEntry *entry = self->entry;
-    void *page;
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP)

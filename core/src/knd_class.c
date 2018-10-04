@@ -96,6 +96,7 @@ static void str(struct kndClass *self)
                     item->entry->id_size, item->entry->id, item->numid,
                     resolved_state);
 
+            
             /* if (item->attrs) {
                 str_attr_vars(item->attrs, self->depth + 1);
                 }*/
@@ -593,12 +594,8 @@ extern int knd_register_inst_states(struct kndClass *self)
 
 extern int knd_update_state(struct kndClass *self)
 {
-    struct kndClass *c;
     struct kndRepo *repo = self->entry->repo;
-    struct kndRel *rel = repo->root_rel;
-    struct kndProc *proc = repo->root_proc;
     struct kndUpdate *update;
-    struct kndClassUpdate *class_update;
     struct kndMemPool *mempool = repo->mempool;
     struct kndStateControl *state_ctrl = repo->state_ctrl;
     int err;
@@ -636,7 +633,7 @@ extern int knd_class_export(struct kndClass *self,
     return knd_FAIL;
 }
 
-static int export_updates(struct kndClass *self,
+/*static int export_updates(struct kndClass *self,
                           struct kndClassUpdate *update,
                           knd_format format,
                           struct glbOutput *out)
@@ -648,7 +645,7 @@ static int export_updates(struct kndClass *self,
         break;
     }
     return knd_FAIL;
-}
+    } */
 
 extern int knd_is_base(struct kndClass *self,
                        struct kndClass *child)
@@ -965,7 +962,6 @@ extern int knd_register_class_inst(struct kndClass *self,
     struct kndSet *inst_idx;
     struct kndClass *c;
     struct kndClassEntry *prev_entry;
-    struct kndState *state;
     struct ooDict *class_name_idx = repo->class_name_idx;
     int err;
 
