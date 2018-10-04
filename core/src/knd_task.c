@@ -69,22 +69,6 @@ static void reset(struct kndTask *self)
     self->spec_out->reset(self->spec_out);
 }
 
-
-static gsl_err_t create_user(void *obj,
-                             const char *rec,
-                             size_t *total_size)
-{
-    struct kndTask *self = obj;
-    struct kndUser *user = self->shard->user;
-
-    if (self->curr_locale_size) {
-        self->locale = self->curr_locale;
-        self->locale_size = self->curr_locale_size;
-    }
-
-    return user->create(user, rec, total_size);
-}
-
 static gsl_err_t select_user(void *obj,
                              const char *rec,
                              size_t *total_size)
@@ -200,17 +184,6 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
         { .name = "format",
           .name_size = strlen("format"),
           .run = set_output_format,
-          .obj = self
-        }/*,
-        { .name = "callback",
-          .name_size = strlen("callback"),
-          .parse = parse_delivery_callback,
-          .obj = self
-          }*/,
-        { .type = GSL_SET_STATE,
-          .name = "user",
-          .name_size = strlen("user"),
-          .parse = create_user,
           .obj = self
         },
         { .name = "user",
