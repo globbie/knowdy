@@ -131,12 +131,13 @@ static int export_inst_relref_JSON(struct kndClassInst *self,
         err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));            RET_ERR();
         err = out->writef(out, "%zu", relref->num_states);                        RET_ERR();
 
-        update = relref->states->update;
+        /*update = relref->states->update;
         time(&update->timestamp);
         localtime_r(&update->timestamp, &tm_info);
         buf_size = strftime(buf, KND_NAME_SIZE,
                             ",\"_modif\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
         err = out->write(out, buf, buf_size);                                     RET_ERR();
+        */
     }
 
     set = relref->idx;

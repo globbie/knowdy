@@ -54,11 +54,13 @@ static int export_class_state_JSON(struct kndClass *self)
 
     err = out->write(out, "\"_state\":", strlen("\"_state\":"));                  RET_ERR();
     err = out->writef(out, "%zu", latest_state);                                  RET_ERR();
-    time(&update->timestamp);
+
+    /*time(&update->timestamp);
     localtime_r(&update->timestamp, &tm_info);
     buf_size = strftime(buf, KND_NAME_SIZE,
                         ",\"_modif\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
     err = out->write(out, buf, buf_size);                                         RET_ERR();
+    */
 
     return knd_OK;
 }
@@ -81,14 +83,14 @@ extern int knd_export_class_inst_state_JSON(struct kndClass *self)
 
     if (self->inst_states) {
         state = self->inst_states;
-        if (state->update) {
+        /*if (state->update) {
             update = state->update;
             time(&update->timestamp);
             localtime_r(&update->timestamp, &tm_info);
             buf_size = strftime(buf, KND_NAME_SIZE,
                                 ",\"_modif\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
             err = out->write(out, buf, buf_size);                                     RET_ERR();
-        }
+            }*/
     }
 
     if (self->entry->inst_idx) {
