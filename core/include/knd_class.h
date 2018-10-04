@@ -156,8 +156,6 @@ struct kndClass
     struct kndState *states;
     size_t init_state;
     size_t num_states;
-    //size_t selected_state_numid;
-
 
     struct kndState *inst_states;
     size_t init_inst_state;
@@ -166,7 +164,7 @@ struct kndClass
     struct kndStateRef *inst_state_refs;
 
     struct kndTranslation *tr;
-    //struct kndTranslation *summary;
+    struct kndTranslation *summary;
 
     size_t depth;
     size_t max_depth;
@@ -183,7 +181,6 @@ struct kndClass
 
     struct kndProc *proc;
     //struct kndRel *rel;
-
 
     struct kndConcFolder *folders;
     size_t num_folders;

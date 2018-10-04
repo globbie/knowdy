@@ -880,7 +880,6 @@ static int extract_implied_attr_value(struct kndClass *self,
                                       struct kndProcCallArg *result_arg)
 {
     struct kndAttrVar *attr_var;
-    struct kndAttrVar *curr_var;
     struct kndAttrRef *ref;
     void *obj;
     int err;
@@ -1042,17 +1041,10 @@ extern int knd_get_arg_value(struct kndAttrVar *src,
                              struct kndAttrVar *query,
                              struct kndProcCallArg *result_arg)
 {
-    struct kndAttrVar *attr_var;
     struct kndAttrVar *curr_var;
     struct kndAttr *attr;
     struct kndAttrRef *ref;
     struct kndClass *parent_class = src->class_var->parent;
-    struct kndMemPool *mempool = parent_class->entry->repo->mempool;
-    struct kndProcCall *proc_call;
-    struct kndProcCallArg *arg;
-    struct kndClassVar *class_var;
-
-    long numval = 0;
     int err;
 
     if (DEBUG_ATTR_LEVEL_2) {

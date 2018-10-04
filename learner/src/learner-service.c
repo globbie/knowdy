@@ -2,12 +2,14 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
 
 #include "learner-service.h"
 #include <knd_shard.h>
+#include <knd_utils.h>
 
 static int
 task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
@@ -54,14 +56,6 @@ task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
         reply->del(reply);
     }
     return 0;
-}
-
-static gsl_err_t
-run_set_address(void *obj, const char *val, size_t val_size)
-{
-    struct kndLearnerService *self = obj;
-
-    return make_gsl_err(gsl_OK);
 }
 
 

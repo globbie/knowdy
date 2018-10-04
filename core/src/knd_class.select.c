@@ -196,7 +196,6 @@ static gsl_err_t run_set_attr_var(void *obj,
 {
     struct kndClass *self = obj;
     struct kndRepo *repo = self->entry->repo;
-    struct kndClass *c = repo->curr_class;
     struct kndAttr *attr;
     struct kndAttrVar *attr_var;
     struct glbOutput *log = repo->log;

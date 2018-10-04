@@ -2170,7 +2170,6 @@ static int kndRel_update_state(struct kndRel *self,
 {
     struct kndRel *rel;
     struct kndRelUpdate *rel_update;
-    struct kndRelUpdate **rel_updates;
     struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
 

@@ -838,7 +838,7 @@ extern gsl_err_t knd_class_import(void *obj,
           .name_size = strlen("_summary"),
           .parse = knd_parse_summary_array,
           .obj = c
-        },
+          },
         { .name = "_state_top",
           .name_size = strlen("_state_top"),
           .run = set_state_top_option,

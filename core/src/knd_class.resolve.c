@@ -227,7 +227,7 @@ static int resolve_proc_ref(struct kndClass *self,
                              struct kndProc *base __attribute__((unused)),
                              struct kndProc **result)
 {
-    struct kndProc *root_proc, *proc;
+    struct kndProc *proc;
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
@@ -686,7 +686,6 @@ static int resolve_primary_attrs(struct kndClass *self)
 {
     struct kndAttr *attr;
     struct kndClassEntry *entry;
-    struct kndProc *root_proc;
     struct kndProcEntry *proc_entry;
     struct kndRepo *repo = self->entry->repo;
     struct ooDict *class_name_idx = repo->class_name_idx;
@@ -971,8 +970,6 @@ extern int knd_class_resolve(struct kndClass *self)
     struct kndClassVar *cvar;
     struct kndClassEntry *entry;
     struct kndRepo *repo = self->entry->repo;
-    struct kndMemPool *mempool = repo->mempool;
-    struct kndState *state;
     int err;
 
     if (self->is_resolved) {
