@@ -1044,8 +1044,7 @@ extern int knd_class_clone(struct kndClass *self,
     
     target_repo->num_classes++;
     entry->numid = target_repo->num_classes;
-    knd_num_to_str(entry->numid,
-                   entry->id, &entry->id_size, KND_RADIX_BASE);
+    knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
     err = knd_class_copy(self, c);
     if (err) {

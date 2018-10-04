@@ -620,7 +620,8 @@ static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_siz
     if (numval <= 0) return make_gsl_err(gsl_FAIL);
 
     buf_size = 0;
-    knd_num_to_str((size_t)numval, buf, &buf_size, KND_RADIX_BASE);
+
+    knd_uid_create((size_t)numval, buf, &buf_size);
 
     if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log("ID: %zu => \"%.*s\" [size: %zu]",

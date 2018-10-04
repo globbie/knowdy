@@ -651,7 +651,7 @@ static int register_new_attr(struct kndClass *self,
 
     repo->num_attrs++;
     attr->numid = repo->num_attrs;
-    knd_num_to_str(attr->numid, attr->id, &attr->id_size, KND_RADIX_BASE);
+    knd_uid_create(attr->numid, attr->id, &attr->id_size);
 
     err = knd_attr_ref_new(mempool, &attr_ref);
     if (err) return err;
@@ -983,7 +983,7 @@ extern int knd_class_resolve(struct kndClass *self)
     repo->num_classes++;
     entry = self->entry;
     entry->numid = repo->num_classes;
-    knd_num_to_str(entry->numid, entry->id, &entry->id_size, KND_RADIX_BASE);
+    knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. resolving class \"%.*s\" id:%.*s entry numid:%zu",
