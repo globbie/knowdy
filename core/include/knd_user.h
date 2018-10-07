@@ -16,7 +16,7 @@ struct kndSet;
 
 typedef enum knd_user_role { KND_USER_ROLE_RETRIEVER, 
                              KND_USER_ROLE_LEARNER
-                         } knd_user_role;
+                           } knd_user_role;
 
 struct kndRepoAccess
 {
@@ -52,8 +52,15 @@ struct kndUser
     char path[KND_PATH_SIZE];
     size_t path_size;
 
-    char sid[KND_TID_SIZE];
-    size_t sid_size;
+    const char *class_name;
+    size_t class_name_size;
+    const char *repo_name;
+    size_t repo_name_size;
+    const char *schema_path;
+    size_t schema_path_size;
+
+    //char sid[KND_TID_SIZE];
+    //size_t sid_size;
 
     knd_format format;
     size_t depth;

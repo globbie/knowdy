@@ -274,6 +274,7 @@ extern int knd_get_arg_value(struct kndAttrVar *src,
 
 extern int knd_attr_export(struct kndAttr *self,
                            knd_format format, struct glbOutput *out);
+extern void str_attr_vars(struct kndAttrVar *item, size_t depth);
 
 extern int knd_attr_var_new(struct kndMemPool *mempool,
                             struct kndAttrVar **result);

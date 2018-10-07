@@ -14,14 +14,15 @@ struct kndShard
     char path[KND_PATH_SIZE];
     size_t path_size;
 
-    char user_classname[KND_NAME_SIZE];
-    size_t user_classname_size;
-
     char schema_path[KND_PATH_SIZE];
     size_t schema_path_size;
 
-    char sid[KND_TID_SIZE];
-    size_t sid_size;
+    char user_class_name[KND_NAME_SIZE];
+    size_t user_class_name_size;
+    char user_repo_name[KND_NAME_SIZE];
+    size_t user_repo_name_size;
+    char user_schema_path[KND_PATH_SIZE];
+    size_t user_schema_path_size;
 
     struct glbOutput *task_storage;
     struct glbOutput *out;
@@ -29,6 +30,11 @@ struct kndShard
 
     struct kndTask *task;
     struct kndUser *user;
+
+    /* system repo */
+    struct kndRepo *repo;
+    /* shared repos */
+    struct kndRepo *repos;
 
     const char *report;
     size_t report_size;

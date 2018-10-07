@@ -107,16 +107,6 @@ struct kndClassEntry
 
     knd_state_phase phase;
 
-    /* frozen block TODO: nested struct? */
-    /*size_t global_offset;
-    size_t curr_offset;
-    size_t block_size;
-    size_t frozen_size;
-    size_t body_size;
-    size_t obj_block_size;
-    size_t dir_size;
-    */
-
     /* immediate children */
     struct kndClassRef *children;
     size_t num_children;
@@ -157,11 +147,13 @@ struct kndClass
     size_t init_state;
     size_t num_states;
 
+    struct kndState *desc_states;
+    size_t init_desc_state;
+    size_t num_desc_states;
+
     struct kndState *inst_states;
     size_t init_inst_state;
     size_t num_inst_states;
-
-    struct kndStateRef *inst_state_refs;
 
     struct kndTranslation *tr;
     struct kndTranslation *summary;
@@ -180,7 +172,6 @@ struct kndClass
     struct kndAttr *implied_attr;
 
     struct kndProc *proc;
-    //struct kndRel *rel;
 
     struct kndConcFolder *folders;
     size_t num_folders;
@@ -232,6 +223,9 @@ extern int knd_class_get_attr(struct kndClass *self,
                               const char *name, size_t name_size,
                               struct kndAttrRef **result);
 
+extern int knd_export_class_state_JSON(struct kndClass *self,
+                                       struct glbOutput *out);
+
 extern int knd_class_export_set_JSON(struct kndClass *self,
                                      struct glbOutput *out,
                                      struct kndSet *set);
@@ -273,7 +267,8 @@ extern int knd_compute_class_attr_num_value(struct kndClass *self,
                                             //struct kndClassVar *src_class_var,
                                             struct kndAttrVar *attr_var);
 
-extern int knd_update_state(struct kndClass *self);
+extern int knd_update_state(struct kndClass *self,
+                            knd_state_phase phase);
 
 extern gsl_err_t knd_read_class_inst_state(struct kndClass *self,
                                            struct kndClassUpdate *update,
@@ -302,8 +297,9 @@ extern int knd_class_clone(struct kndClass *self,
 extern int knd_class_copy(struct kndClass *self,
                           struct kndClass *target);
 
-extern int knd_register_inst_states(struct kndClass *self);
+extern int knd_register_state(struct kndClass *self);
 extern int knd_register_descendant_states(struct kndClass *self);
+extern int knd_register_inst_states(struct kndClass *self);
 
 extern int knd_export_class_inst_state_JSON(struct kndClass *self);
 

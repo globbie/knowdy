@@ -29,7 +29,7 @@ struct kndRepo
 
     size_t num_journals;
 
-    char schema_path[KND_PATH_SIZE];
+    const char *schema_path;
     size_t schema_path_size;
 
     struct kndUserContext *user_ctx;
@@ -70,32 +70,39 @@ struct kndRepo
     size_t num_classes;
     size_t num_class_insts;
 
-    struct ooDict *attr_name_idx;
-    struct kndSet *attr_idx;
+    struct ooDict  *attr_name_idx;
+    struct kndSet  *attr_idx;
     size_t num_attrs;
 
-    struct ooDict *class_inst_name_idx;
+    struct ooDict  *class_inst_name_idx;
 
     struct kndProc *root_proc;
-    struct ooDict *proc_name_idx;
-    struct kndSet *proc_idx;
+    struct ooDict  *proc_name_idx;
+    struct kndSet  *proc_idx;
     size_t num_procs;
     size_t num_proc_insts;
     
-    struct kndRel *root_rel;
-    
+    struct kndRel       *root_rel;
     struct kndClass     *curr_class;
+    struct kndStateRef  *curr_class_state_refs;
+    struct kndStateRef  *curr_class_inst_state_refs;
+
     struct kndClass     *curr_baseclass;
     struct kndClassInst *curr_class_inst;
+
     struct kndAttr       *curr_attr;
     struct kndAttrRef    *curr_attr_ref;
     struct kndAttrVar    *curr_attr_var;
     struct kndClassInst  *curr_inst;
 
+    struct kndRepo *next;
+
     void (*del)(struct kndRepo *self);
     void (*str)(struct kndRepo *self);
     int (*init)(struct kndRepo *self);
 };
+
+extern int knd_confirm_state(struct kndRepo *self);
 
 extern int kndRepo_init(struct kndRepo *self);
 extern int kndRepo_new(struct kndRepo **self, struct kndMemPool *mempool);

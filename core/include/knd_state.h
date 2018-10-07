@@ -49,6 +49,7 @@ typedef enum knd_state_type { KND_STATE_CLASS,
                                KND_STATE_CLASS_VAR,
                                KND_STATE_ATTR,
                                KND_STATE_ATTR_VAR,
+                               KND_STATE_CLASS_DESCENDANT,
                                KND_STATE_CLASS_INST,
                                KND_STATE_CLASS_INST_INNER,
                                KND_STATE_CLASS_INST_ELEM
@@ -87,13 +88,7 @@ struct kndUpdate
     size_t orig_state;
 
     struct kndRepo *repo;
-
     struct kndStateRef *states;
-
-    /*struct kndClassUpdate *classes;
-    size_t num_classes;
-    size_t total_class_insts;
-    */
 
     struct kndUpdate *next;
 };

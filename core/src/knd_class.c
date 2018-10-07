@@ -513,6 +513,31 @@ extern int knd_get_class_attr_value(struct kndClass *src,
     return knd_OK;
 }
 
+static int update_state(struct kndClass *self,
+                        struct kndStateRef *children,
+                        knd_state_phase phase)
+{
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndTask *task = self->entry->repo->task;
+    struct kndStateRef *ref;
+    struct kndState *state;
+    int err;
+
+    err = knd_state_new(mempool, &state);
+    if (err) {
+        knd_log("-- class inst state alloc failed");
+        return err;
+    }
+    state->phase = phase;
+    state->children = children;
+    self->num_states++;
+    state->numid = self->num_states;
+    state->next = self->states;
+    self->states = state;
+
+    return knd_OK;
+}
+
 static int update_inst_state(struct kndClass *self,
                              struct kndStateRef *children)
 {
@@ -544,8 +569,7 @@ static int update_inst_state(struct kndClass *self,
     }
 
     state->phase = KND_UPDATED;
-    // set task update
-    state->update = task->update;
+    //state->update = task->update;
 
     state->children = children;
     
@@ -557,19 +581,45 @@ static int update_inst_state(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_register_inst_states(struct kndClass *self)
+extern int knd_update_state(struct kndClass *self,
+                            knd_state_phase phase)
 {
+    struct kndRepo *repo = self->entry->repo;
     struct kndClass *c;
     struct kndClassRef *ref;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_2) {
-        knd_log("\n .. \"%.*s\" class to register inst updates..",
-                self->name_size, self->name);
+    if (DEBUG_CLASS_LEVEL_TMP) {
+        knd_log("\n .. \"%.*s\" class to update its state: %d",
+                self->name_size, self->name, phase);
     }
 
-    err = update_inst_state(self, self->inst_state_refs);
-    if (err) return err;
+    /* newly created class? */
+    switch (phase) {
+    case KND_CREATED:
+    case KND_REMOVED:
+        err = update_state(self, NULL, phase);                                    RET_ERR();
+        break;
+    case KND_UPDATED:
+        /* any attr updates */
+        if (repo->curr_class_state_refs) {
+            err = update_state(self, repo->curr_class_state_refs, phase);         RET_ERR();
+            repo->curr_class_state_refs = NULL;
+        }
+
+        /* instance updates */
+        if (repo->curr_class_inst_state_refs) {
+            if (DEBUG_CLASS_LEVEL_TMP) {
+                knd_log("\n .. \"%.*s\" class to register inst updates..",
+                        self->name_size, self->name);
+            }
+            err = update_inst_state(self, repo->curr_class_inst_state_refs);      RET_ERR();
+            repo->curr_class_inst_state_refs = NULL;
+        }
+        break;
+    default:
+        break;
+    }
 
     /* inform your ancestors */
     for (ref = self->entry->ancestors; ref; ref = ref->next) {
@@ -577,42 +627,16 @@ extern int knd_register_inst_states(struct kndClass *self)
         /* skip the root class */
         if (!c->entry->ancestors) continue;
         if (c->state_top) continue;
-
         if (self->entry->repo != ref->entry->repo) {
             err = knd_class_clone(ref->entry->class, self->entry->repo, &c);
             if (err) return err;
             ref->entry = c->entry;
         }
 
-        err = update_inst_state(c, self->inst_state_refs);                        RET_ERR();
+        knd_log(".. update the state of ancestor: %.*s..", c->name_size, c->name);
+
+        //err = update_inst_state(c, self->inst_state_refs);                        RET_ERR();
     }
-    
-    self->inst_state_refs = NULL;
-
-    return knd_OK;
-}
-
-extern int knd_update_state(struct kndClass *self)
-{
-    struct kndRepo *repo = self->entry->repo;
-    struct kndUpdate *update;
-    struct kndMemPool *mempool = repo->mempool;
-    struct kndStateControl *state_ctrl = repo->state_ctrl;
-    int err;
-
-    if (DEBUG_CLASS_LEVEL_2)
-        knd_log(".. update state of class \"%.*s\" (repo:%.*s)",
-                self->entry->name_size, self->entry->name,
-                self->entry->repo->name_size, self->entry->repo->name);
-
-    /* new update obj */
-    err = knd_update_new(mempool, &update);                                  RET_ERR();
-
-    err = state_ctrl->confirm(state_ctrl, update);                                RET_ERR();
-
-    // TODO: replicas
-    //err = export_updates(self, update);                                           RET_ERR();
-    
     return knd_OK;
 }
 
@@ -632,20 +656,6 @@ extern int knd_class_export(struct kndClass *self,
     knd_log("-- format %d not supported", format);
     return knd_FAIL;
 }
-
-/*static int export_updates(struct kndClass *self,
-                          struct kndClassUpdate *update,
-                          knd_format format,
-                          struct glbOutput *out)
-{
-    switch (format) {
-    case KND_FORMAT_GSP:
-        return knd_class_export_updates_GSP(self, update, out);
-    default:
-        break;
-    }
-    return knd_FAIL;
-    } */
 
 extern int knd_is_base(struct kndClass *self,
                        struct kndClass *child)

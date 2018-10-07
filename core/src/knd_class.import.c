@@ -44,8 +44,7 @@
 static gsl_err_t import_nested_attr_var(void *obj,
                                         const char *name, size_t name_size,
                                         const char *rec, size_t *total_size);
-static void append_attr_var(struct kndClassVar *ci,
-                            struct kndAttrVar *attr_var);
+static void append_attr_var(struct kndClassVar *ci, struct kndAttrVar *attr_var);
 
 extern gsl_err_t knd_parse_import_class_inst(void *data,
                                              const char *rec,
@@ -116,10 +115,11 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
     state_ref->type = KND_STATE_CLASS_INST;
     state_ref->obj = (void*)entry;
 
-    state_ref->next = c->inst_state_refs;
-    c->inst_state_refs = state_ref;
+    state_ref->next = repo->curr_class_inst_state_refs;
+    repo->curr_class_inst_state_refs = state_ref;
 
     repo->num_class_insts++;
+
     inst->entry->numid = repo->num_class_insts;
     knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
 
@@ -196,7 +196,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndState *state;
     int err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
         knd_log(".. set class name: %.*s", name_size, name);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -231,16 +231,19 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         self->name_size = name_size;
 
         // TODO release curr entry
+
         return make_gsl_err(gsl_OK);
     }
 
     if (entry->class->states) {
         state = entry->class->states;
+        knd_log("== curr state:%p", state);
+
         if (state->phase == KND_REMOVED) {
             entry->class = self;
             self->entry =  entry;
 
-            if (DEBUG_CLASS_IMPORT_LEVEL_2)
+            if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
                 knd_log("== class was removed recently");
 
             self->name =      entry->name;
@@ -248,6 +251,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
             return make_gsl_err(gsl_OK);
         }
     }
+
     knd_log("-- \"%.*s\" class doublet found :(", name_size, name);
     log->reset(log);
     err = log->write(log, name, name_size);
@@ -774,8 +778,10 @@ extern gsl_err_t knd_class_import(void *obj,
     struct kndClassEntry *entry;
     struct kndRepo *repo = self->entry->repo;
     struct kndMemPool *mempool = repo->mempool;
+    struct kndTask *task = repo->task;
+    struct kndState *state;
+    struct kndStateRef *state_ref;
     struct glbOutput *log;
-    struct kndTask *task;
     int e, err;
     gsl_err_t parser_err;
 
@@ -837,7 +843,7 @@ extern gsl_err_t knd_class_import(void *obj,
           .name_size = strlen("_summary"),
           .parse = knd_parse_summary_array,
           .obj = c
-          },
+        },
         { .name = "_state_top",
           .name_size = strlen("_state_top"),
           .run = set_state_top_option,
@@ -877,10 +883,15 @@ extern gsl_err_t knd_class_import(void *obj,
         knd_log("++  \"%.*s\" class import completed!\n",
                 c->name_size, c->name);
 
-    if (!repo->task->batch_mode) {
-        err = knd_class_resolve(c); 
-        if (err) return *total_size = 0, make_gsl_err_external(err);
-    }
+    /* initial class load ends here */
+    if (repo->task->batch_mode)
+        return make_gsl_err(gsl_OK);
+
+    err = knd_class_resolve(c);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+    
+    err = knd_update_state(c, KND_CREATED);
+    if (err) return *total_size = 0, make_gsl_err_external(err);    
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         c->str(c);
@@ -888,6 +899,5 @@ extern gsl_err_t knd_class_import(void *obj,
     return make_gsl_err(gsl_OK);
 
  final:
-    //c->del(c);
     return parser_err;
 }

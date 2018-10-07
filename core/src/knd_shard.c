@@ -42,6 +42,66 @@ run_check_schema(void *obj __attribute__((unused)), const char *val, size_t val_
 }
 
 
+static gsl_err_t parse_base_repo(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndShard *self = obj;
+
+    struct gslTaskSpec specs[] = {
+        {   .is_implied = true,
+            .buf = self->user_repo_name,
+            .buf_size = &self->user_repo_name_size,
+            .max_buf_size = KND_NAME_SIZE
+        },
+        {   .name = "schema-path",
+            .name_size = strlen("schema-path"),
+            .buf = self->user_schema_path,
+            .buf_size = &self->user_schema_path_size,
+            .max_buf_size = KND_PATH_SIZE
+        }
+    };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+static gsl_err_t parse_user_settings(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndShard *self = obj;
+
+    struct gslTaskSpec specs[] = {
+        {   .is_implied = true,
+            .buf = self->user_class_name,
+            .buf_size = &self->user_class_name_size,
+            .max_buf_size = KND_NAME_SIZE
+        },
+        {   .name = "base-repo",
+            .name_size = strlen("base-repo"),
+            .parse = parse_base_repo,
+            .obj = self
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+static gsl_err_t parse_schema_path(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndShard *self = obj;
+
+    struct gslTaskSpec specs[] = {
+        {   .is_implied = true,
+            .buf = self->schema_path,
+            .buf_size = &self->schema_path_size,
+            .max_buf_size = KND_NAME_SIZE
+        },
+        {   .name = "user",
+            .name_size = strlen("user"),
+            .parse = parse_user_settings,
+            .obj = self
+        }
+    };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 static gsl_err_t
 kndShard_parse_config(void *obj, const char *rec, size_t *total_size)
 {
@@ -52,29 +112,16 @@ kndShard_parse_config(void *obj, const char *rec, size_t *total_size)
             .run = run_check_schema,
             .obj = self
         },
-        {   .name = "path",
-            .name_size = strlen("path"),
+        {   .name = "db-path",
+            .name_size = strlen("db-path"),
             .buf = self->path,
             .buf_size = &self->path_size,
             .max_buf_size = KND_NAME_SIZE
         },
-        {   .name = "user",
-            .name_size = strlen("user"),
-            .buf = self->user_classname,
-            .buf_size = &self->user_classname_size,
-            .max_buf_size = KND_NAME_SIZE
-        },
-        {   .name = "schemas",
-            .name_size = strlen("schemas"),
-            .buf = self->schema_path,
-            .buf_size = &self->schema_path_size,
-            .max_buf_size = KND_NAME_SIZE
-        },
-        {   .name = "sid",
-            .name_size = strlen("sid"),
-            .buf = self->sid,
-            .buf_size = &self->sid_size,
-            .max_buf_size = KND_NAME_SIZE
+        {   .name = "schema-path",
+            .name_size = strlen("schema-path"),
+            .parse = parse_schema_path,
+            .obj = self,
         },
         {  .name = "memory",
             .name_size = strlen("memory"),
@@ -107,17 +154,9 @@ kndShard_parse_config(void *obj, const char *rec, size_t *total_size)
     if (err != knd_OK) return make_gsl_err_external(err);
 
     if (!self->schema_path_size) {
-        knd_log("-- schema path not set :(");
+        knd_log("-- system schema path not set");
         return make_gsl_err(gsl_FAIL);
     }
-
-    if (!self->sid_size) {
-        knd_log("-- root SID is not set :(");
-        return make_gsl_err(gsl_FAIL);
-    }
-
-    // TODO
-    knd_log("\nsize of struct: %zu", sizeof(struct kndAttrVarRef));
 
     return make_gsl_err(gsl_OK);
 }
@@ -218,6 +257,7 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
     struct kndShard *self;
     struct kndMemPool *mempool;
     struct kndUser *user;
+    struct kndRepo *repo;
     int err;
 
     self = malloc(sizeof(struct kndShard));
@@ -240,28 +280,51 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
     err = kndMemPool_new(&mempool);
     if (err != knd_OK) return err;
     self->mempool = mempool;
-
-    { // read config
-        knd_log("CONFIG:%.*s", config_size, config);
-
+    {
         err = parse_schema(self, config, &config_size);
         if (err != knd_OK) goto error;
     }
 
-    err = mempool->alloc(mempool);                           RET_ERR();
+    err = mempool->alloc(mempool);                                                RET_ERR();
     mempool->log = self->task->log;
 
-    /* set default user class name */
-    if (!self->user_classname_size) {
-        self->user_classname_size = strlen("User");
-        memcpy(self->user_classname, "User", self->user_classname_size);
+    if (!self->user_class_name_size) {
+        self->user_class_name_size = strlen("User");
+        memcpy(self->user_class_name, "User", self->user_class_name_size);
     }
+
+    /* system repo */
+    err = kndRepo_new(&repo, mempool);                                            RET_ERR();
+    memcpy(repo->name, "/", 1);
+    repo->name_size = 1;
+    repo->task = self->task;
+    repo->schema_path = self->schema_path;
+    repo->schema_path_size = self->schema_path_size;
+
+    memcpy(repo->path, self->path, self->path_size);
+    repo->path_size = self->path_size;
+
+    err = repo->init(repo);                                                       RET_ERR();
+    self->repo = repo;
 
     err = kndUser_new(&user, mempool);
     if (err != knd_OK) goto error;
     self->user = user;
     user->shard = self;
+    user->task = self->task;
+    user->out = self->out;
+    user->log = self->log;
 
+    user->class_name = self->user_class_name;
+    user->class_name_size = self->user_class_name_size;
+
+    user->repo_name = self->user_repo_name;
+    user->repo_name_size = self->user_repo_name_size;
+
+    user->schema_path = self->user_schema_path;
+    user->schema_path_size = self->user_schema_path_size;
+
+    
     err = user->init(user);
     if (err != knd_OK) goto error;
 

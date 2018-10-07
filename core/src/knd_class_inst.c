@@ -1055,8 +1055,8 @@ static gsl_err_t remove_inst(void *data,
 
     task->type = KND_UPDATE_STATE;
     
-    state_ref->next = base->inst_state_refs;
-    base->inst_state_refs = state_ref;
+    state_ref->next = repo->curr_class_inst_state_refs;
+    repo->curr_class_inst_state_refs = state_ref;
 
     return make_gsl_err(gsl_OK);
 }
@@ -1152,10 +1152,8 @@ static gsl_err_t parse_import_inst(struct kndClassInst *self,
           .obj = self
         }
     };
- 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
-
 
 static int export_inst_JSON(void *obj,
                             const char *elem_id  __attribute__((unused)),
@@ -1410,8 +1408,7 @@ static gsl_err_t parse_select_state(void *data,
     struct kndTask *task = base->entry->repo->task;
 
     struct gslTaskSpec specs[] = {
-        { .name = "eq",
-          .name_size = strlen("eq"),
+        { .is_implied = true,
           .is_selector = true,
           .parse = gsl_parse_size_t,
           .obj = &task->state_eq
@@ -1445,7 +1442,6 @@ static gsl_err_t parse_select_state(void *data,
           .obj = base
         }
     };
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
@@ -1457,6 +1453,7 @@ static int update_elem_states(struct kndClassInst *self)
     struct kndElem *elem;
     struct kndClass *c;
     struct kndMemPool *mempool = self->base->entry->repo->mempool;
+    struct kndRepo *repo = self->base->entry->repo;
     int err;
 
     if (DEBUG_INST_LEVEL_TMP)
@@ -1487,7 +1484,6 @@ static int update_elem_states(struct kndClassInst *self)
     }
     ref->state = state;
 
-
     state->phase = KND_UPDATED;
     self->num_states++;
     state->numid = self->num_states;
@@ -1514,8 +1510,8 @@ static int update_elem_states(struct kndClassInst *self)
         ref->type = KND_STATE_CLASS_INST;
         ref->obj = (void*)self;
 
-        ref->next = c->inst_state_refs;
-        c->inst_state_refs = ref;
+        ref->next = repo->curr_class_inst_state_refs;
+        repo->curr_class_inst_state_refs = ref;
     }
 
     return knd_OK;

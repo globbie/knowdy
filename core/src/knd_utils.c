@@ -487,8 +487,8 @@ int knd_read_UTF8_char(const char *rec,
     return knd_FAIL;
 }
 
-int knd_parse_num(const char *val,
-                  long *result)
+extern int knd_parse_num(const char *val,
+                         long *result)
 /*int *warning)*/
 {
     long numval;
