@@ -522,12 +522,11 @@ static int resolve_attr_vars(struct kndClass *self,
             return knd_FAIL;
         }
         attr = attr_ref->attr;
-        //attr_ref->attr_var = attr_var;
 
-        /* save attr assignment */
         err = attr_idx->get(attr_idx, attr->id, attr->id_size, &obj);
         if (!err) {
-            //knd_log("++ set attr var: %.*s", attr->name_size, attr->name);
+            knd_log("++ set attr var: %.*s val:%.*s",
+                    attr->name_size, attr->name, attr_var->val_size, attr_var->val);
             attr_ref = obj;
             attr_ref->attr_var = attr_var;
         }
@@ -769,6 +768,11 @@ static int link_ancestor(struct kndClass *self,
     int err;
 
     base = base_entry->class;
+
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+        knd_log(".. linking ancestor: \"%.*s\" top:%d",
+                base->name_size, base->name, base->state_top);
+
     if (base_entry->repo != entry->repo) {
         prev_entry = class_name_idx->get(class_name_idx,
                                          base_entry->name,
@@ -802,25 +806,27 @@ static int link_ancestor(struct kndClass *self,
         return knd_OK;
     }
 
+    /* add an ancestor */
     err = knd_class_ref_new(mempool, &ref);                                   RET_ERR();
     ref->class = base;
     ref->entry = base->entry;
-
     ref->next = entry->ancestors;
     entry->ancestors = ref;
     entry->num_ancestors++;
+
     base->entry->num_terminals++;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+    /* register as a descendant */
+    err = desc_idx->add(desc_idx, entry->id, entry->id_size,
+                        (void*)entry);                                             RET_ERR();
+
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
         knd_log(".. add \"%.*s\" (repo:%.*s) as "
                 " a descendant of ancestor \"%.*s\" (repo:%.*s)..",
                 entry->name_size, entry->name,
                 entry->repo->name_size, entry->repo->name,
                 base->entry->name_size, base->entry->name,
                 base->entry->repo->name_size, base->entry->repo->name);
-
-    err = desc_idx->add(desc_idx, entry->id, entry->id_size,
-                        (void*)entry);                                             RET_ERR();
 
     return knd_OK;
 }
@@ -842,18 +848,20 @@ static int link_baseclass(struct kndClass *self,
     struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-        knd_log(".. \"%.*s\" (%.*s) links to base => \"%.*s\" (%.*s)",
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+        knd_log(".. \"%.*s\" (%.*s) links to base => \"%.*s\" (%.*s) top:%d",
                 entry->name_size, entry->name,
                 entry->repo->name_size, entry->repo->name,
                 base->entry->name_size, base->entry->name,
-                base->entry->repo->name_size, base->entry->repo->name);
+                base->entry->repo->name_size, base->entry->repo->name,
+                base->entry->class->state_top);
 
     if (base->entry->repo != self->entry->repo) {
 
         err = knd_class_clone(base, self->entry->repo, &base_copy);               RET_ERR();
         base = base_copy;
 
+        
         err = link_ancestor(self, base->entry);                                       RET_ERR();
     }
 
@@ -866,6 +874,9 @@ static int link_baseclass(struct kndClass *self,
 
     /* copy the ancestors */
     for (baseref = base->entry->ancestors; baseref; baseref = baseref->next) {
+
+        if (baseref->entry->class && baseref->entry->class->state_top) continue;
+
         err = link_ancestor(self, baseref->entry);                                RET_ERR();
     }
 
@@ -951,6 +962,7 @@ static int resolve_baseclasses(struct kndClass *self)
         }
   
         err = knd_inherit_attrs(self, c);                            RET_ERR();
+
         err = link_baseclass(self, c);                               RET_ERR();
 
         cvar->entry->class = c;

@@ -4,6 +4,7 @@
 
 #include "knd_task.h"
 #include "knd_shard.h"
+#include "knd_repo.h"
 #include "knd_user.h"
 #include "knd_mempool.h"
 #include "knd_utils.h"
@@ -37,6 +38,7 @@ static void reset(struct kndTask *self)
     self->curr_locale_size = 0;
 
     self->type = KND_GET_STATE;
+    self->phase = KND_SELECTED;
 
     self->num_sets = 0;
 
@@ -80,7 +82,6 @@ static gsl_err_t select_user(void *obj,
         self->locale = self->curr_locale;
         self->locale_size = self->curr_locale_size;
     }
-
     return user->select(user, rec, total_size);
 }
 
@@ -157,6 +158,32 @@ static gsl_err_t parse_update(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static gsl_err_t parse_class_import(void *obj,
+                                    const char *rec,
+                                    size_t *total_size)
+{
+    struct kndTask *self = obj;
+    struct kndClass *c = self->shard->repo->root_class;
+
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log(".. parsing the system class import: \"%.*s\"..", 64, rec);
+    self->type = KND_UPDATE_STATE;
+    return knd_class_import(c, rec, total_size);
+}
+
+static gsl_err_t parse_class_select(void *obj,
+                                    const char *rec,
+                                    size_t *total_size)
+{
+    struct kndTask *self = obj;
+    struct kndClass *c = self->shard->repo->root_class;
+
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log(".. parsing the system class select: \"%.*s\"", 64, rec);
+
+    return knd_class_select(c, rec, total_size);
+}
+
 static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *self = obj;
@@ -189,6 +216,23 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
         { .name = "user",
           .name_size = strlen("user"),
           .parse = select_user,
+          .obj = self
+        },
+        { .type = GSL_SET_STATE,
+          .name = "class",
+          .name_size = strlen("class"),
+          .parse = parse_class_import,
+          .obj = self
+        }/*,
+        { .type = GSL_SET_ARRAY_STATE,
+          .name = "class",
+          .name_size = strlen("class"),
+          .parse = parse_class_array,
+          .obj = self
+          }*/,
+        { .name = "class",
+          .name_size = strlen("class"),
+          .parse = parse_class_select,
           .obj = self
         },
         { .name = "repo",

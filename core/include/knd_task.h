@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2018 by Dmitri Dmitriev
+ *   Copyright (c) 2011-present by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Graph DB, 
@@ -21,6 +21,7 @@
 #pragma once
 
 #include "knd_config.h"
+#include "knd_state.h"
 #include "knd_http_codes.h"
 
 #include <gsl-parser/gsl_err.h>
@@ -62,6 +63,7 @@ struct kndVisualFormat {
 struct kndTask
 {
     knd_task_spec_type type;
+    knd_state_phase phase;
 
     char tid[KND_NAME_SIZE];
     size_t tid_size;

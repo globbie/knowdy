@@ -341,6 +341,25 @@ static int kndRepo_restore(struct kndRepo *self,
     return knd_OK;
 }
 
+extern int knd_confirm_state(struct kndRepo *self)
+{
+    struct kndClassRef *ref;
+    struct glbOutput *out = self->task->out;
+    int err;
+
+    if (DEBUG_REPO_LEVEL_TMP) {
+        knd_log(".. \"%.*s\" repo to confirm updates..",
+                self->name_size, self->name);
+    }
+
+    out->reset(out);
+    err = out->writec(out, '{');  RET_ERR();
+    err = out->writec(out, '}');  RET_ERR();
+
+    return knd_OK;
+}
+
+
 static int kndRepo_open(struct kndRepo *self)
 {
     struct glbOutput *out;
@@ -352,13 +371,6 @@ static int kndRepo_open(struct kndRepo *self)
 
     out = self->out;
 
-    memcpy(self->schema_path,
-           self->user->shard->schema_path,
-           self->user->shard->schema_path_size);
-    self->schema_path_size = self->user->shard->schema_path_size;
-
-    memcpy(self->path, self->user->shard->path, self->user->shard->path_size);
-    self->path_size = self->user->shard->path_size;
 
     /* extend user DB path */
     if (self->user_ctx) {
@@ -391,7 +403,6 @@ static int kndRepo_open(struct kndRepo *self)
 
     /* frozen DB exists? */
     if (!stat(out->buf, &st)) {
-
         // TODO:  
         // try opening the frozen DB
         
@@ -465,15 +476,12 @@ static int kndRepo_open(struct kndRepo *self)
 extern int kndRepo_init(struct kndRepo *self)
 {
     int err;
-
-    self->task     = self->user->task;
     self->out      = self->task->out;
     self->file_out = self->task->file_out;
     self->log      = self->task->log;
 
     err = kndRepo_open(self);
     if (err) return err;
-    
     return knd_OK;
 }
 
@@ -510,6 +518,7 @@ extern int kndRepo_new(struct kndRepo **repo,
     c->name_size = 1;
     entry->class = c;
     c->entry = entry;
+    c->state_top = true;
 
     c->entry->repo = self;
     self->root_class = c;

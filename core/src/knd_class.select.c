@@ -191,17 +191,48 @@ static gsl_err_t parse_attr_select(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static gsl_err_t set_curr_state(void *obj,
+                                const char *val, size_t val_size)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size;
+    struct kndTask *task = obj;
+    long numval;
+    int err;
+
+    if (!val_size) return make_gsl_err_external(knd_FAIL);
+    if (val_size >= KND_NAME_SIZE) return make_gsl_err_external(knd_LIMIT);
+
+    memcpy(buf, val, val_size);
+    buf_size = val_size;
+    buf[buf_size] = '\0';
+
+    err = knd_parse_num(buf, &numval);
+    if (err) return make_gsl_err_external(err);
+
+    // TODO: check integer
+
+    task->state_eq = (size_t)numval;
+
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t run_set_attr_var(void *obj,
                                   const char *val, size_t val_size)
 {
     struct kndClass *self = obj;
     struct kndRepo *repo = self->entry->repo;
     struct kndAttr *attr;
+    struct kndAttrRef *attr_ref;
     struct kndAttrVar *attr_var;
     struct glbOutput *log = repo->log;
     struct kndTask *task = repo->task;
     struct kndMemPool *mempool = repo->mempool;
+    struct kndSet *attr_idx = self->attr_idx;
     struct kndState *state;
+    struct kndStateRef *state_ref;
+    struct kndStateVal *state_val;
+    void *elem;
     int err, e;
 
     if (!val_size) return make_gsl_err(gsl_FORMAT);
@@ -217,13 +248,16 @@ static gsl_err_t run_set_attr_var(void *obj,
         return make_gsl_err_external(knd_FAIL);
     }
 
-    attr_var = repo->curr_attr_var;
-
-    if (!attr_var) {
-        knd_log(".. set attr \"%.*s\" with value %.*s",
-                attr->name_size, attr->name, val_size, val);
-        return make_gsl_err(gsl_OK);
+    /*  attr var exists? */
+    err = attr_idx->get(attr_idx, attr->id, attr->id_size, &elem);
+    if (err) {
+        knd_log("-- no attr \"%.*s\" in local attr idx?",
+                attr->name_size, attr->name);
+        return make_gsl_err_external(err);
     }
+
+    attr_ref = elem;
+    attr_var = attr_ref->attr_var;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
         knd_log(".. updating attr var %.*s with value: \"%.*s\"",
@@ -234,15 +268,38 @@ static gsl_err_t run_set_attr_var(void *obj,
     if (err) return make_gsl_err_external(err);
     state->phase = KND_UPDATED;
 
-    state->val = (void*)attr_var;
-    // TODO
-    //state->val = (void*)val;
-    //state->val_size = val_size;
-    //state->next = self->attr_var_inbox;
+    err = knd_state_ref_new(mempool, &state_ref);
+    if (err) {
+        knd_log("-- state ref alloc failed");
+        return make_gsl_err_external(err);
+    }
+    state_ref->state = state;
+    state_ref->type = KND_STATE_ATTR_VAR;
 
-    //c->attr_var_inbox = state;
-    //c->attr_var_inbox_size++;
+    err = knd_state_val_new(mempool, &state_val);
+    if (err) {
+        knd_log("-- state val alloc failed");
+        return make_gsl_err_external(err);
+    }
+
+    state_val->obj = (void*)attr_var;
+    state_val->val      = val;
+    state_val->val_size = val_size;
+    state->val = state_val;
+
+    attr_var->val = val;
+    attr_var->val_size = val_size;
+
+    state->next = attr_var->states;
+    attr_var->states = state;
+    attr_var->num_states++;
+    state->numid = attr_var->num_states;
+
     task->type = KND_UPDATE_STATE;
+
+    /* inform parent class */
+    state_ref->next = repo->curr_class_state_refs;
+    repo->curr_class_state_refs = state_ref;
 
     return make_gsl_err(gsl_OK);
 }
@@ -261,7 +318,7 @@ static gsl_err_t present_attr_var_selection(void *obj,
 
     if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log(".. presenting attrs of class \"%.*s\"..",
-                repo->curr_class->name_size, repo->curr_class->name);
+                self->name_size, self->name);
 
     out->reset(out);
 
@@ -310,28 +367,31 @@ static gsl_err_t parse_attr_var_select(void *obj,
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct kndRepo *repo = self->entry->repo;
-    struct glbOutput *log = self->entry->repo->log;
-    struct kndTask *task = self->entry->repo->task;
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_set_attr_var,
-          .obj = self
-        },
-        { .is_default = true,
-          .run = present_attr_var_selection,
-          .obj = self
-        }
-    };
+    struct glbOutput *log = repo->log;
+    struct kndTask *task = repo->task;
+    struct kndClass *c;
     int err, e;
 
     if (!repo->curr_class) return *total_size = 0, make_gsl_err_external(knd_FAIL);
+    c = repo->curr_class;
 
-    err = knd_class_get_attr(repo->curr_class, name, name_size, &attr_ref);
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_attr_var,
+          .obj = c
+        },
+        { .is_default = true,
+          .run = present_attr_var_selection,
+          .obj = c
+        }
+    };
+
+    err = knd_class_get_attr(c, name, name_size, &attr_ref);
     if (err) {
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                 name_size, name,
-                repo->curr_class->name_size,
-                repo->curr_class->name);
+                c->name_size,
+                c->name);
         log->reset(log);
         e = log->write(log, name, name_size);
         if (e) return *total_size = 0, make_gsl_err_external(e);
@@ -349,13 +409,10 @@ static gsl_err_t parse_attr_var_select(void *obj,
         knd_log("++ attr selected: \"%.*s\"..", name_size, name);
     }
 
-    // TODO
-    /*err = knd_get_attr_var(repo->curr_class, name, name_size, &attr_var);
-    if (!err) {
-        knd_log(".. \"%.*s\" attr var exists!", name_size, name);
-        repo->curr_attr_var = attr_var;
-        }*/
-
+    if (attr->is_a_set) {
+        knd_log(".. parsing array selection..");
+    }
+    
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
@@ -516,61 +573,6 @@ static gsl_err_t present_class_selection(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t run_select_class_state(void *obj,
-                                        const char *name __attribute__((unused)),
-                                        size_t name_size __attribute__((unused)))
-{
-    struct kndClass *root_class = obj;
-    struct kndClass *self = root_class->entry->repo->curr_class;
-    struct glbOutput *out = self->entry->repo->out;
-    bool in_list = false;
-    int err;
-
-    if (!self) return make_gsl_err_external(knd_FAIL);
-
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-        knd_log(".. present state of class \"%.*s\"..",
-                self->name_size, self->name);
-
-    err = out->writec(out, '{');
-    if (err) return make_gsl_err_external(err);
-
-    if (self->num_states) {
-        //err = export_class_state_JSON(self);
-        //if (err) return make_gsl_err_external(err);
-        in_list = true;
-    }
-
-    if (self->num_inst_states) {
-        if (in_list) {
-            err = out->writec(out, ',');
-            if (err) return make_gsl_err_external(err);
-        }
-        err = out->write(out, "\"instances\":{", strlen("\"instances\":{"));
-
-        err = out->write(out, "\"_total\":",
-                         strlen("\"_total\":"));
-        if (err) return make_gsl_err_external(err);
-
-        //err = out->writef(out, "%zu", self->num_insts);
-        //if (err) return make_gsl_err_external(err);
-
-        err = out->writec(out, ',');
-        if (err) return make_gsl_err_external(err);
-        
-        //err = export_class_inst_state_JSON(self);
-        //if (err) return make_gsl_err_external(err);
-
-        err = out->writec(out, '}');
-        if (err) return make_gsl_err_external(err);
-    }
-
-    err = out->writec(out, '}');
-    if (err) return make_gsl_err_external(err);
-    
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 {
     struct kndClass *self = obj;
@@ -585,8 +587,9 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
     err = knd_get_class(repo, name, name_size, &c);
     if (err) return make_gsl_err_external(err);
 
-    c->inst_state_refs = NULL;
     repo->curr_class = c;
+    repo->curr_class_state_refs = NULL;
+    repo->curr_class_inst_state_refs = NULL;
 
     if (DEBUG_CLASS_SELECT_LEVEL_2) {
         c->str(c);
@@ -657,34 +660,54 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
 
     if (!repo->curr_class) {
         knd_log("-- remove operation: class name not specified");
-
         log->reset(log);
         err = log->write(log, name, name_size);
         if (err) return make_gsl_err_external(err);
         err = log->write(log, " class name not specified",
                          strlen(" class name not specified"));
         if (err) return make_gsl_err_external(err);
+        task->http_code = HTTP_BAD_REQUEST;
         return make_gsl_err(gsl_NO_MATCH);
     }
     
     c = repo->curr_class;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
-        knd_log(".. removing class: \"%.*s\"\n",
-                c->name_size, c->name);
 
-    err = knd_state_new(mempool, &state);
-    if (err) return make_gsl_err_external(err);
+    /* check dependants */
+    if (c->entry->num_children) {
+        knd_log("-- remove operation: descendants exist");
+        log->reset(log);
+        err = log->write(log, name, name_size);
+        if (err) return make_gsl_err_external(err);
+        err = log->write(log, "class conflict: descendants exist",
+                         strlen("class conflict: descendants exist"));
+        if (err) return make_gsl_err_external(err);
+        task->http_code = HTTP_CONFLICT;
+        return make_gsl_err(gsl_FAIL);
+    }
 
-    state->next = c->states;
-    c->states = state;
-    c->num_states++;
-    state->numid = c->num_states;
-    state->phase = KND_REMOVED;
+    if (c->entry->num_insts) {
+        knd_log("-- remove operation: instances exist");
+        log->reset(log);
+        err = log->write(log, name, name_size);
+        if (err) return make_gsl_err_external(err);
+        err = log->write(log, "class conflict: instances exist",
+                         strlen("class conflict: instances exist"));
+        if (err) return make_gsl_err_external(err);
+        task->http_code = HTTP_CONFLICT;
+        return make_gsl_err(gsl_FAIL);
+    }
 
-    // TODO: inform parents and dependants
+    // TODO: copy-on-write : add special entry
+    //         for deleted classes from base repo
+
 
     task->type = KND_UPDATE_STATE;
+    task->phase = KND_REMOVED;
+
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+        knd_log("NB: class removed: \"%.*s\"\n",
+                c->name_size, c->name);
 
     log->reset(log);
     err = log->write(log, name, name_size);
@@ -693,104 +716,112 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
                      strlen(" class removed"));
     if (err) return make_gsl_err_external(err);
 
-    /*    c->next = self->inbox;
-    self->inbox = c;
-    self->inbox_size++;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t present_state(void *obj,
+                               const char *name  __attribute__((unused)),
+                               size_t name_size  __attribute__((unused)))
+{
+    struct kndClass *self = obj;
+    struct kndTask *task = self->entry->repo->task;
+    struct glbOutput *out = self->entry->repo->out;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndSet *set;
+    int err;
+
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+        knd_log(".. select class delta:  gt %zu  lt %zu  eq:%zu..",
+                task->state_gt, task->state_lt, task->state_eq);
+    }
+
+    task->type = KND_SELECT_STATE;
+
+    if (task->state_gt >= self->num_states) goto JSON_state;
+    if (task->state_lt && task->state_lt < task->state_gt) goto JSON_state;
+
+    err = knd_set_new(mempool, &set);
+    if (err) return make_gsl_err_external(err);
+    set->mempool = mempool;
+
+    /*    err = knd_class_get_updates(self,
+                                task->state_gt, task->state_lt,
+                                task->state_eq, set);
+    if (err) return make_gsl_err_external(err);
+    task->show_removed_objs = true;
+
+    err = export_inst_set_JSON(self, set, out);
+    if (err) return make_gsl_err_external(err);
     */
+
+    return make_gsl_err(gsl_OK);
+
+ JSON_state:
+    err = out->writec(out, '{');
+    if (err) return make_gsl_err_external(err);
+
+    err = knd_export_class_state_JSON(self, out);
+    if (err) return make_gsl_err_external(err);
+
+    err = out->writec(out, '}');
+    if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
 }
 
-
-static int knd_select_class_delta(struct kndClass *self,
-                                  const char *rec,
-                                  size_t *total_size)
+static int select_class_state(struct kndClass *self,
+                              const char *rec,
+                              size_t *total_size)
 {
-    struct kndTask *task = self->entry->repo->task;
-    struct glbOutput *log = self->entry->repo->log;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndState *state;
-    struct kndSet *set;
-    int e, err;
+    struct kndRepo *repo = self->entry->repo;
+    struct kndTask *task = repo->task;
     gsl_err_t parser_err;
 
+    knd_log(".. select class state in %.*s..", self->name_size, self->name);
+
     struct gslTaskSpec specs[] = {
-        { .name = "eq",
-          .name_size = strlen("eq"),
-          .parse = gsl_parse_size_t,
-          .obj = &task->batch_eq
+        { .is_implied = true,
+          .is_selector = true,
+          .run = set_curr_state,
+          .obj = task
         },
         { .name = "gt",
           .name_size = strlen("gt"),
+          .is_selector = true,
           .parse = gsl_parse_size_t,
-          .obj = &task->batch_gt
+          .obj = &task->state_gt
+        },
+        { .name = "gte",
+          .name_size = strlen("gte"),
+          .is_selector = true,
+          .parse = gsl_parse_size_t,
+          .obj = &task->state_gte
         },
         { .name = "lt",
           .name_size = strlen("lt"),
+          .is_selector = true,
           .parse = gsl_parse_size_t,
-          .obj = &task->batch_lt
+          .obj = &task->state_lt
+        },
+        { .name = "lte",
+          .name_size = strlen("lte"),
+          .is_selector = true,
+          .parse = gsl_parse_size_t,
+          .obj = &task->state_lte
+        },
+        { .is_default = true,
+          .run = present_state,
+          .obj = self
         }
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-        knd_log(".. select %.*s class delta:  gt %zu  lt %zu ..",
-                self->name_size, self->name,
-                task->batch_gt, task->batch_lt);
-
-    task->type = KND_SELECT_STATE;
-    if (!self->num_states) {
-        log->reset(log);
-        e = log->write(log, "no states available",
-                       strlen("no states available"));
-        if (e) return e;
-        task->http_code = HTTP_BAD_REQUEST;
-        return knd_FAIL;
-    }
-
-    if (task->state_lt && task->state_lt < task->state_gt) {
-        log->reset(log);
-        e = log->write(log, "invalid state range given",
-                       strlen("invalid state range given"));
-        if (e) return e;
-        task->http_code = HTTP_BAD_REQUEST;
-        return knd_FAIL;
-    }
-
-    if (task->state_gt >= self->num_states) {
-        log->reset(log);
-        e = log->write(log, "invalid state range given",
-                       strlen("invalid state range given"));
-        if (e) return e;
-        task->http_code = HTTP_BAD_REQUEST;
-        return knd_FAIL;
-    }
-
-    err = knd_set_new(mempool, &set);                                        MEMPOOL_ERR(kndSet);
-    set->mempool = mempool;
-    set->type = KND_SET_STATE_UPDATE;
-
-    if (!task->state_lt)
-        task->state_lt = self->init_state + self->states->update->numid + 1;
-    
-    for (state = self->states; state; state = state->next) {
-        if (task->state_lt <= state->numid) continue;
-        if (task->state_gt >= state->numid) continue;
-
-        // TODO
-        //err = set->add(set, state->id, state->id_size,
-        //               (void*)state);                                          RET_ERR();
-    }
-
-    task->sets[0] = set;
-    task->num_sets = 1;
-    //task->curr_inst = self;
     return knd_OK;
 }
 
-extern gsl_err_t parse_class_delta(void *data,
+static gsl_err_t parse_class_state(void *data,
                                    const char *rec,
                                    size_t *total_size)
 {
@@ -800,7 +831,7 @@ extern gsl_err_t parse_class_delta(void *data,
 
     if (!repo->curr_class) return make_gsl_err(gsl_FAIL);
 
-    err = knd_select_class_delta(repo->curr_class, rec, total_size);
+    err = select_class_state(repo->curr_class, rec, total_size);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -910,6 +941,7 @@ extern gsl_err_t knd_class_select(void *obj,
     struct kndRepo *repo = self->entry->repo;
     struct glbOutput *log = repo->log;
     struct kndTask *task = repo->task;
+    knd_state_phase phase;
     int err;
     gsl_err_t parser_err;
 
@@ -917,7 +949,6 @@ extern gsl_err_t knd_class_select(void *obj,
         knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
 
     self->depth = 0;
-    //self->selected_state_numid = 0;
     repo->curr_class = NULL;
     repo->curr_baseclass = NULL;
 
@@ -932,12 +963,7 @@ extern gsl_err_t knd_class_select(void *obj,
           .is_selector = true,
           .run = run_get_class_by_numid,
           .obj = self
-        }/*,
-        { .name = "_state",
-          .name_size = strlen("_state"),
-          .parse = gsl_parse_size_t,
-          .obj = &self->selected_state_numid
-          }*/,
+        },
         { .type = GSL_SET_STATE,
           .name = "_rm",
           .name_size = strlen("_rm"),
@@ -979,13 +1005,7 @@ extern gsl_err_t knd_class_select(void *obj,
         },
         { .name = "_state",
           .name_size = strlen("_state"),
-          .run = run_select_class_state,
-          .obj = self
-        },
-        { .name = "_delta",
-          .name_size = strlen("_delta"),
-          .is_selector = true,
-          .parse = parse_class_delta,
+          .parse = parse_class_state,
           .obj = self
         },
         { .is_validator = true,
@@ -1011,27 +1031,24 @@ extern gsl_err_t knd_class_select(void *obj,
         }
 
         /* TODO: release resources */
-        /*if (repo->curr_class) {
-            c = repo->curr_class;
-            c->reset_inbox(c, true);
-            }*/
         return parser_err;
     }
 
     if (!repo->curr_class) return make_gsl_err(gsl_OK);
 
     /* any updates happened? */
-    c = repo->curr_class;
-    if (c->inst_state_refs) {
-        err = knd_register_inst_states(c);
+    switch (task->type) {
+    case KND_UPDATE_STATE:
+        phase = KND_UPDATED;
+        if (task->phase == KND_REMOVED)
+            phase = KND_REMOVED;
+        err = knd_update_state(repo->curr_class, phase);
         if (err) return make_gsl_err_external(err);
-
-        task->type = KND_UPDATE_STATE;
-
-        c->inst_state_refs = NULL;
-        return make_gsl_err(gsl_OK);
+        break;
+    default:
+        break;
     }
-
+    
     return make_gsl_err(gsl_OK);
 }
 

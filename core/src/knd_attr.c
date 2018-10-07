@@ -25,7 +25,6 @@
 static void str(struct kndAttr *self)
 {
     struct kndTranslation *tr;
-    //struct kndProc *proc;
     const char *type_name = knd_attr_names[self->type];
 
     if (self->is_a_set)
@@ -96,7 +95,7 @@ static void str(struct kndAttr *self)
         knd_log("%*s}",  self->depth * KND_OFFSET_SIZE, "");
 }
 
-static void str_attr_vars(struct kndAttrVar *item, size_t depth)
+extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
 {
     struct kndAttrVar *curr_item;
     struct kndAttrVar *list_item;
@@ -970,9 +969,8 @@ static int compute_attr_var(struct kndAttrVar *parent_item,
                 if (err) return err;
             } else {
 
-                knd_log("\n  NB:.. regular attr: %.*s",
-                        curr_attr->name_size, curr_attr->name);
-
+                // knd_log("\n  NB:.. regular attr: %.*s",
+                //        curr_attr->name_size, curr_attr->name);
                 err = knd_get_arg_value(parent_item, attr_var, arg);
                 if (err) return err;
             }
@@ -980,28 +978,27 @@ static int compute_attr_var(struct kndAttrVar *parent_item,
 
         if (!strncmp("total", arg->name, arg->name_size)) {
             total = arg->numval;
-            knd_log("TIMES:%lu", arg->numval);
         }
 
         if (!strncmp("times", arg->name, arg->name_size)) {
             times = arg->numval;
-            knd_log("TIMES:%lu", arg->numval);
+            //knd_log("TIMES:%lu", arg->numval);
         }
 
         if (!strncmp("quant", arg->name, arg->name_size)) {
             quant = arg->numval;
-            knd_log("QUANT:%lu", arg->numval);
+            //knd_log("QUANT:%lu", arg->numval);
         }
 
         if (!strncmp("dividend", arg->name, arg->name_size)) {
             dividend = (float)arg->numval;
-            knd_log("DIVIDEND:%lu", arg->numval);
+            //knd_log("DIVIDEND:%lu", arg->numval);
         }
 
         if (!strncmp("divisor", arg->name, arg->name_size)) {
             divisor = (float)arg->numval;
-            knd_log("DIVISOR:%lu (arg:%.*s)", arg->numval,
-                    arg->name_size, arg->name);
+            //knd_log("DIVISOR:%lu (arg:%.*s)", arg->numval,
+            //        arg->name_size, arg->name);
         }
     }
 
@@ -1013,7 +1010,6 @@ static int compute_attr_var(struct kndAttrVar *parent_item,
             numval = total;
         break;
     case KND_PROC_MULT:
-        knd_log(".. mult: %lu * %lu", times, quant);
         numval = (times * quant);
         break;
     case KND_PROC_MULT_PERCENT:
@@ -1026,7 +1022,7 @@ static int compute_attr_var(struct kndAttrVar *parent_item,
         }
         result = (dividend / divisor) * (float)100;
 
-        knd_log("== result: %.2f", result);
+        //knd_log("== result: %.2f", result);
 
         numval = (long)result;
         break;

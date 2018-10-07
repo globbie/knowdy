@@ -40,20 +40,42 @@
 #define DEBUG_JSON_LEVEL_5 0
 #define DEBUG_JSON_LEVEL_TMP 1
 
-static int export_class_state_JSON(struct kndClass *self)
+extern int knd_export_class_state_JSON(struct kndClass *self,
+                                       struct glbOutput *out)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
-    struct glbOutput *out = self->entry->repo->out;
-    struct kndUpdate *update;
-    struct tm tm_info;
+    //char buf[KND_NAME_SIZE];
+    //size_t buf_size = 0;
+    //struct kndUpdate *update;
+    //struct tm tm_info;
+    struct kndState *state = self->states;
     size_t latest_state = self->init_state + self->num_states;
     int err;
 
-    update = self->states->update;
-
     err = out->write(out, "\"_state\":", strlen("\"_state\":"));                  RET_ERR();
     err = out->writef(out, "%zu", latest_state);                                  RET_ERR();
+
+    if (!state) return knd_OK;
+
+    switch (state->phase) {
+    case KND_REMOVED:
+        err = out->write(out,   ",\"_phase\":\"del\"",
+                         strlen(",\"_phase\":\"del\""));                      RET_ERR();
+        // NB: no more details
+        err = out->write(out, "}", 1);
+        if (err) return err;
+        return knd_OK;
+            
+    case KND_UPDATED:
+        err = out->write(out,   ",\"_phase\":\"upd\"",
+                         strlen(",\"_phase\":\"upd\""));                      RET_ERR();
+        break;
+    case KND_CREATED:
+        err = out->write(out,   ",\"_phase\":\"new\"",
+                         strlen(",\"_phase\":\"new\""));                      RET_ERR();
+        break;
+    default:
+        break;
+    }
 
     /*time(&update->timestamp);
     localtime_r(&update->timestamp, &tm_info);
@@ -510,7 +532,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
     if (self->num_states) {
         err = out->writec(out, ',');
         if (err) return err;
-        err = export_class_state_JSON(self);                                      RET_ERR();
+        err = knd_export_class_state_JSON(self, out);                                      RET_ERR();
     }
 
     /*if (self->num_inst_states) {
