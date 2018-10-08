@@ -341,6 +341,23 @@ static int kndRepo_restore(struct kndRepo *self,
     return knd_OK;
 }
 
+extern int knd_present_repo_state(struct kndRepo *self,
+                                  struct glbOutput *out)
+{
+    int err;
+    out->reset(out);
+    err = out->writec(out, '{');                                                  RET_ERR();
+    err = out->write(out, "\"repo\":", strlen("\"repo\":"));                      RET_ERR();
+    err = out->writec(out, '"');                                                  RET_ERR();
+    err = out->write(out,  self->name, self->name_size);                          RET_ERR();
+    err = out->writec(out, '"');                                                  RET_ERR();
+
+    err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));                RET_ERR();
+    err = out->writef(out, "%zu", self->num_updates);                             RET_ERR();
+    err = out->writec(out, '}');  RET_ERR();
+    return knd_OK;
+}
+
 extern int knd_confirm_state(struct kndRepo *self)
 {
     struct kndUpdate *update;
@@ -358,19 +375,7 @@ extern int knd_confirm_state(struct kndRepo *self)
     self->num_updates++;
     update->numid = self->num_updates;
 
-    /* reply */
-    out->reset(out);
-    err = out->writec(out, '{');  RET_ERR();
-    err = out->write(out, "\"repo\":", strlen("\"repo\":"));                        RET_ERR();
-    err = out->writec(out, '"');                                                  RET_ERR();
-    err = out->write(out, self->name, self->name_size);                           RET_ERR();
-    err = out->writec(out, '"');                                                  RET_ERR();
-
-    err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));                RET_ERR();
-    err = out->writef(out, "%zu", self->num_updates);                             RET_ERR();
-
-    
-    err = out->writec(out, '}');  RET_ERR();
+    err = knd_present_repo_state(self, out);  RET_ERR();
 
     return knd_OK;
 }

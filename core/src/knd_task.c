@@ -384,7 +384,6 @@ static int build_report(struct kndTask *self)
             err = self->out->writef(self->out, "%d", HTTP_NOT_FOUND);
             if (err) return err;
         }
-
         err = self->out->write(self->out, "}", strlen("}"));
         if (err) return err;
 
