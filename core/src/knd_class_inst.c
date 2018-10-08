@@ -1399,6 +1399,32 @@ static gsl_err_t present_state(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t set_curr_state(void *obj,
+                                const char *val, size_t val_size)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size;
+    struct kndTask *task = obj;
+    long numval;
+    int err;
+
+    if (!val_size) return make_gsl_err_external(knd_FAIL);
+    if (val_size >= KND_NAME_SIZE) return make_gsl_err_external(knd_LIMIT);
+
+    memcpy(buf, val, val_size);
+    buf_size = val_size;
+    buf[buf_size] = '\0';
+
+    err = knd_parse_num(buf, &numval);
+    if (err) return make_gsl_err_external(err);
+
+    // TODO: check integer
+
+    task->state_eq = (size_t)numval;
+
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t parse_select_state(void *data,
                                     const char *rec,
                                     size_t *total_size)
@@ -1410,8 +1436,8 @@ static gsl_err_t parse_select_state(void *data,
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .is_selector = true,
-          .parse = gsl_parse_size_t,
-          .obj = &task->state_eq
+          .run = set_curr_state,
+          .obj = task
         },
         { .name = "gt",
           .name_size = strlen("gt"),

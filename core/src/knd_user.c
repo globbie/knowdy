@@ -187,7 +187,15 @@ static gsl_err_t parse_class_select(void *obj,
 {
     struct kndUser *self = obj;
     struct kndUserContext *ctx = self->curr_ctx;
+    struct glbOutput *log = self->task->log;
     struct kndClass *c;
+
+    if (!ctx) {
+        knd_log("-- no user selected");
+        log->writef(log, "no user selected");
+        self->task->http_code = HTTP_BAD_REQUEST;
+        return make_gsl_err(gsl_FAIL);
+    }
 
     self->task->out->reset(self->task->out);
 
@@ -359,11 +367,19 @@ static gsl_err_t run_present_state(void *data,
                                    size_t val_size __attribute__((unused)))
 {
     struct kndUser *self = data;
-    /*    struct glbOutput *out = self->task->out;
-    struct kndMemPool *mempool = self->mempool;
+    struct kndRepo *repo;
     int err;
-    */
+
+    if (!self->curr_ctx) {
+        knd_log("-- no user selected");
+        return make_gsl_err(gsl_FAIL);
+    }
+
     knd_log(".. present state of %p..", self);
+
+    repo = self->curr_ctx->repo;
+    err = knd_present_repo_state(repo, self->task->out);
+    if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
 }
