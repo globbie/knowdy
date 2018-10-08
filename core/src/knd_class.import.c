@@ -237,8 +237,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 
     if (entry->class->states) {
         state = entry->class->states;
-        knd_log("== curr state:%p", state);
-
         if (state->phase == KND_REMOVED) {
             entry->class = self;
             self->entry =  entry;

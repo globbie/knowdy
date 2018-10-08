@@ -79,9 +79,9 @@ static gsl_err_t select_by_attr(void *obj,
     const char *class_id;
     size_t class_id_size;
     struct kndFacet *facet;
-    struct kndRepo *repo = self->entry->repo;
-    struct glbOutput *log = self->entry->repo->log;
-    struct kndTask *task = self->entry->repo->task;
+    struct kndRepo *repo =  self->entry->repo;
+    struct glbOutput *log = repo->log;
+    struct kndTask *task =  repo->task;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -106,7 +106,8 @@ static gsl_err_t select_by_attr(void *obj,
 
     err = knd_set_get_facet(set, repo->curr_attr, &facet);
     if (err) {
-        log->writef(log, "no such facet: \"%.*s\"", name_size, name);
+        log->writef(log, "no such facet: %.*s", name_size, name);
+        task->error = knd_NO_MATCH;
         task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err_external(knd_NO_MATCH);
     }

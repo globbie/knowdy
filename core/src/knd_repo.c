@@ -343,7 +343,8 @@ static int kndRepo_restore(struct kndRepo *self,
 
 extern int knd_confirm_state(struct kndRepo *self)
 {
-    struct kndClassRef *ref;
+    struct kndUpdate *update;
+    struct kndMemPool *mempool = self->mempool;
     struct glbOutput *out = self->task->out;
     int err;
 
@@ -351,9 +352,24 @@ extern int knd_confirm_state(struct kndRepo *self)
         knd_log(".. \"%.*s\" repo to confirm updates..",
                 self->name_size, self->name);
     }
+    err = knd_update_new(mempool, &update);  RET_ERR();
+    update->repo = self;
 
+    self->num_updates++;
+    update->numid = self->num_updates;
+
+    /* reply */
     out->reset(out);
     err = out->writec(out, '{');  RET_ERR();
+    err = out->write(out, "\"repo\":", strlen("\"repo\":"));                        RET_ERR();
+    err = out->writec(out, '"');                                                  RET_ERR();
+    err = out->write(out, self->name, self->name_size);                           RET_ERR();
+    err = out->writec(out, '"');                                                  RET_ERR();
+
+    err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));                RET_ERR();
+    err = out->writef(out, "%zu", self->num_updates);                             RET_ERR();
+
+    
     err = out->writec(out, '}');  RET_ERR();
 
     return knd_OK;

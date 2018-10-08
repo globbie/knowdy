@@ -41,7 +41,7 @@ static void reset(struct kndTask *self)
     self->phase = KND_SELECTED;
 
     self->num_sets = 0;
-
+    
     self->batch_max = KND_RESULT_BATCH_SIZE;
     self->batch_size = 0;
     self->batch_from = 0;
@@ -250,18 +250,6 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) return err;
 
-    /* check mandatory fields */
-    /*if (!self->tid_size) {
-        switch (self->type) {
-        case KND_UPDATE_STATE:
-        case KND_LIQUID_STATE:
-            return make_gsl_err(gsl_OK);
-        default:
-            knd_log("-- no TID found");
-            return make_gsl_err_external(knd_FAIL);
-        }
-    }
-    */
     return make_gsl_err(gsl_OK);
 }
 
@@ -366,13 +354,6 @@ static int build_report(struct kndTask *self)
             break;
         }
 
-        //err = out->write(out, "{err ", strlen("{err "));
-        //if (err) return err;
-        //err = out->write(out, self->log->buf, self->log->buf_size);
-        //if (err) return err;
-        //err = out->write(out, "}", 1);
-        //if (err) return err;
-
         /* TODO: build JSON reply in loco */
         self->out->reset(self->out);
 
@@ -393,8 +374,14 @@ static int build_report(struct kndTask *self)
         if (self->http_code != HTTP_OK) {
             err = self->out->write(self->out, ",\"http_code\":", strlen(",\"http_code\":"));
             if (err) return err;
-
             err = self->out->writef(self->out, "%d", self->http_code);
+            if (err) return err;
+        } else {
+            self->http_code = HTTP_NOT_FOUND;
+            // convert error code to HTTP error
+            err = self->out->write(self->out, ",\"http_code\":", strlen(",\"http_code\":"));
+            if (err) return err;
+            err = self->out->writef(self->out, "%d", HTTP_NOT_FOUND);
             if (err) return err;
         }
 
