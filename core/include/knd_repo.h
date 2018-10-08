@@ -95,6 +95,10 @@ struct kndRepo
     struct kndAttrVar    *curr_attr_var;
     struct kndClassInst  *curr_inst;
 
+    struct kndUpdate *updates;
+    size_t max_updates;
+    size_t num_updates;
+
     struct kndRepo *next;
 
     void (*del)(struct kndRepo *self);
