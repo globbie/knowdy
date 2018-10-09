@@ -1,6 +1,6 @@
 
-#include "../core/include/knd_set_idx.h"
-#include "../core/include/knd_utils.h"
+#include <knd_set_idx.h>
+#include <knd_utils.h>
 
 #include <time.h>
 
