@@ -5,8 +5,5 @@ set(SOURCES
         $<TARGET_OBJECTS:glb-lib-options>
 )
 
-add_executable(${BINARY} ${SOURCES})
-
-target_link_libraries(${BINARY} pthread ${CORE}_static kmq)
-
-install(TARGETS ${BINARY} DESTINATION usr/bin)
+add_executable(knd-learner ${SOURCES})
+target_link_libraries(knd-learner knowdy_static kmq)
