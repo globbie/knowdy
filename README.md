@@ -2,23 +2,20 @@
 
 [![Build Status](https://travis-ci.org/globbie/knowdy.svg?branch=master)](https://travis-ci.org/globbie/knowdy)
 
-Meet Knowdy: a scalable knowledge base
+Meet Knowdy: a semantic graph database
 
 ## Build
 
 * Compile sources
-
 
     mkdir build && cd build
     cmake .. && make
 
 * Build package
 
-
     make package
 
-
-After this actions you will get rpm package at your build directory. If you want to deploy your package see 
+After this you will get an RPM package at your build directory. If you want to deploy your package see 
 [infrastructure](https://github.com/globbie/infrastructure) repository.
 
 
@@ -36,8 +33,4 @@ After this actions you will get rpm package at your build directory. If you want
 
 ## Run
 
-    systemctl start knd-collection
-    systemctl start knd-delivery
-    systemctl start knd-retriever
-    systemctl start knd-learner
-    systemctl start knd-storage
+    systemctl start knd-shard
