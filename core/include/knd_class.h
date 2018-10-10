@@ -62,6 +62,14 @@ struct kndClassRef
     struct kndClassRef *next;
 };
 
+struct kndClassRel
+{
+    struct kndClassEntry *topic;
+    struct kndAttr *attr;
+    struct kndSet *set;
+    struct kndClassRel *next;
+};
+
 struct kndClassVar
 {
     char id[KND_ID_SIZE];
@@ -129,7 +137,7 @@ struct kndClassEntry
     size_t num_insts;
     struct kndSet *attr_idx;
 
-    //struct ooDict *reverse_attr_name_idx;
+    struct kndClassRel *reverse_rels;
 
     size_t child_count;
     struct kndClassEntry *prev;
@@ -314,8 +322,12 @@ extern int knd_class_update_new(struct kndMemPool *mempool,
                                 struct kndClassUpdate **result);
 extern int knd_class_var_new(struct kndMemPool *mempool,
                              struct kndClassVar **result);
+
 extern int knd_class_ref_new(struct kndMemPool *mempool,
                              struct kndClassRef **result);
+extern int knd_class_rel_new(struct kndMemPool *mempool,
+                             struct kndClassRel **result);
+
 extern int knd_class_entry_new(struct kndMemPool *mempool,
                                struct kndClassEntry **result);
 extern int knd_inner_class_new(struct kndMemPool *mempool,

@@ -125,6 +125,8 @@ struct kndAttrVar
 
     struct kndClassVar *class_var;
 
+    struct kndText *text;
+
     struct kndAttrVar *parent;
     struct kndAttrVar *children;
     struct kndAttrVar *tail;
@@ -238,6 +240,7 @@ extern int knd_export_inherited_attr(void *obj,
                                      void *elem);
 
 extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
+                                     struct kndTask *task,
                                      struct glbOutput *out,
                                      bool is_concise);
 

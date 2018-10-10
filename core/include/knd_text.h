@@ -49,21 +49,13 @@ struct kndTextSelect
     struct kndTextSelect *next;
 };
 
-struct kndTextChunk
-{
-    char val[KND_TEXT_CHUNK_SIZE];
-    size_t val_size;
-    struct kndTextChunk *next;
-};
-
 struct kndTranslation
 {
-    char curr_locale[KND_LOCALE_SIZE];
+    const char *curr_locale;
     size_t curr_locale_size;
 
     const char *locale;
     size_t locale_size;
-    knd_synt_role_t synt_role; 
 
     struct kndState *states;
     size_t num_states;
@@ -73,67 +65,44 @@ struct kndTranslation
     /* TODO: quality rating, spelling.. etc  */
     int verif_level;
 
-    char val[KND_VAL_SIZE];
+    const char *val;
     size_t val_size;
 
     const char *seq;
     size_t seq_size;
 
-    struct kndTextChunk *chunks;
+    /*struct kndTextChunk *chunks;
     struct kndTextChunk *chunk_tail;
     size_t num_chunks;
+    */
 
+    /*
     struct kndTextSelect *selects;
     struct kndTextSelect *tail;
     size_t num_selects;
-
-    struct kndTranslation *synt_roles;
+    */
+    //struct kndTranslation *synt_roles;
 
     struct kndTranslation *next;
 };
 
-struct kndTextState
-{
-    knd_state_phase phase;
-
-
-    struct kndTextState *next;
-};
-
 struct kndText
 {
-    //struct kndElem *elem;
-    //struct glbOutput *out;
-
-    struct kndContent *content;
-
     /* translations of master text: manual or automatic */
     struct kndTranslation *tr;
     size_t num_trs;
 
+    // TODO: sem graph
+    // visual formatting
+
     struct kndState *states;
     size_t num_states;
-    knd_format format;
-    size_t depth;
-
-    /******** public methods ********/
-    void (*str)(struct kndText *self);
-    void (*del)(struct kndText *self);
-
-    /*int (*hilite)(struct kndText *self,
-                  struct kndElemRef *elemref,
-                  knd_format format);
-    */
-
-    gsl_err_t (*parse)(struct kndText *self,
-                 const char     *rec,
-                 size_t          *total_size);
-
-    int (*export)(struct kndText *self,
-                  knd_format format,
-                  struct glbOutput *out);
 };
 
-/* constructors */
-extern int kndText_init(struct kndText *self);
-extern int kndText_new(struct kndText **self);
+extern int knd_text_export(struct kndText *self, knd_format format,
+                           struct kndTask *task, struct glbOutput *out);
+
+extern int knd_text_translation_new(struct kndMemPool *mempool,
+                                    struct kndTranslation   **self);
+extern int knd_text_new(struct kndMemPool *mempool,
+                        struct kndText   **self);

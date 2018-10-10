@@ -59,6 +59,8 @@ static void reset(struct kndTask *self)
     self->state_lt = 0;
     self->state_lte = 0;
     self->show_removed_objs = false;
+    self->show_rels = false;
+    self->max_depth = 1;
 
     self->error = 0;
     self->http_code = HTTP_OK;
@@ -339,7 +341,8 @@ static int build_report(struct kndTask *self)
     const char *task_status = "++";
     int err;
 
-    if (DEBUG_TASK_LEVEL_2) knd_log("..TASK (type: %d) reporting..", self->type);
+    if (DEBUG_TASK_LEVEL_2)
+        knd_log("..TASK (type: %d) reporting..", self->type);
 
     self->report = NULL;
     self->report_size = 0;

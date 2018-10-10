@@ -70,6 +70,12 @@ struct kndRepo
     size_t num_classes;
     size_t num_class_insts;
 
+    /* selections */
+    struct kndClass     *curr_class;
+    struct kndStateRef  *curr_class_state_refs;
+    struct kndStateRef  *curr_class_inst_state_refs;
+    struct kndStateRef  *class_state_refs;
+
     struct ooDict  *attr_name_idx;
     struct kndSet  *attr_idx;
     size_t num_attrs;
@@ -83,9 +89,7 @@ struct kndRepo
     size_t num_proc_insts;
     
     struct kndRel       *root_rel;
-    struct kndClass     *curr_class;
-    struct kndStateRef  *curr_class_state_refs;
-    struct kndStateRef  *curr_class_inst_state_refs;
+
 
     struct kndClass     *curr_baseclass;
     struct kndClassInst *curr_class_inst;

@@ -125,7 +125,7 @@ extern int knd_get_proc(struct kndRepo *repo,
     struct kndProc *proc;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. repo %.*s to get proc: \"%.*s\"..",
                 repo->name_size, repo->name, name_size, name);
 
@@ -691,6 +691,24 @@ static gsl_err_t append_gloss_item(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t set_gloss_locale(void *obj, const char *name, size_t name_size)
+{
+    struct kndTranslation *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FAIL);
+    if (name_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+    self->curr_locale = name;
+    self->curr_locale_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+static gsl_err_t set_gloss_value(void *obj, const char *name, size_t name_size)
+{
+    struct kndTranslation *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FAIL);
+    self->val = name;
+    self->val_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t parse_gloss_item(void *obj,
                                   const char *rec,
                                   size_t *total_size)
@@ -698,15 +716,13 @@ static gsl_err_t parse_gloss_item(void *obj,
     struct kndTranslation *tr = obj;
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .buf = tr->curr_locale,
-          .buf_size = &tr->curr_locale_size,
-          .max_buf_size = sizeof tr->curr_locale
+          .run = set_gloss_locale,
+          .obj = tr
         },
         { .name = "t",
           .name_size = strlen("t"),
-          .buf = tr->val,
-          .buf_size = &tr->val_size,
-          .max_buf_size = sizeof tr->val
+          .run = set_gloss_value,
+          .obj = tr
         }
     };
     gsl_err_t err;
@@ -893,7 +909,7 @@ static gsl_err_t parse_proc_call_arg(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. Proc Call Arg \"%.*s\" to validate: \"%.*s\"..",
                 name_size, name, 32, rec);
 
@@ -941,7 +957,7 @@ static gsl_err_t parse_proc_call(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. Proc Call parsing: \"%.*s\"..",
                 32, rec);
 
@@ -1022,7 +1038,7 @@ extern gsl_err_t knd_proc_read(struct kndProc *self,
                                const char *rec,
                                size_t *total_size)
 {
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. parsing proc \"%.*s\" GSL: \"%.*s\"..",
                 self->name_size, self->name, 128, rec);
 
@@ -1172,7 +1188,7 @@ static int resolve_proc_call(struct kndProc *self)
     struct kndProcCallArg *call_arg;
     struct kndProcArgEntry *entry;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. resolving proc call %.*s ..",
                 self->proc_call->name_size, self->proc_call->name);
 
@@ -1207,7 +1223,7 @@ extern int knd_proc_resolve(struct kndProc *self)
     struct kndProcEntry *entry;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. resolving PROC: %.*s",
                 self->name_size, self->name);
 
@@ -1306,7 +1322,7 @@ extern int knd_proc_coordinate(struct kndProc *self)
     void *val;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. proc coordination in progress ..");
 
     err = resolve_procs(self);                                                    RET_ERR();
@@ -1353,7 +1369,7 @@ extern int knd_proc_call_arg_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    knd_log("..proc call new [size:%zu]", sizeof(struct kndProcCallArg));
+    //knd_log("..proc call arg new [size:%zu]", sizeof(struct kndProcCallArg));
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
                             sizeof(struct kndProcCallArg), &page);  RET_ERR();
     *result = page;
@@ -1365,7 +1381,7 @@ extern int knd_proc_call_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    knd_log("..proc call new [size:%zu]", sizeof(struct kndProcCall));
+    //knd_log("..proc call new [size:%zu]", sizeof(struct kndProcCall));
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
                             sizeof(struct kndProcCall), &page);  RET_ERR();
     *result = page;
@@ -1378,7 +1394,7 @@ extern int knd_proc_entry_new(struct kndMemPool *mempool,
     void *page;
     int err;
 
-    knd_log("..proc entry new [size:%zu]", sizeof(struct kndProcEntry));
+    //knd_log("..proc entry new [size:%zu]", sizeof(struct kndProcEntry));
 
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
                             sizeof(struct kndProcEntry), &page);  RET_ERR();
@@ -1392,7 +1408,7 @@ extern int knd_proc_new(struct kndMemPool *mempool,
     void *page;
     int err;
 
-    knd_log("++ new proc: [size:%zu]", sizeof(struct kndProc));
+    //knd_log("++ new proc: [size:%zu]", sizeof(struct kndProc));
 
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
                             sizeof(struct kndProc), &page);  RET_ERR();

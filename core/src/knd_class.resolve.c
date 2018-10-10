@@ -196,6 +196,46 @@ static int index_attr_var_list(struct kndClass *self,
     return knd_OK;
 }
 
+static int resolve_text(struct kndClass *self,
+                        struct kndAttrVar *attr_var)
+{
+    struct kndAttrVar *curr_item;
+    struct kndAttrVar *val_item;
+    struct kndText *text;
+    struct kndTranslation *tr;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    int err;
+
+    //knd_log(".. resolving text attr var.. ");
+
+    err = knd_text_new(mempool, &text);                                           RET_ERR();
+
+    for (curr_item = attr_var->list; curr_item; curr_item = curr_item->next) {
+
+        err = knd_text_translation_new(mempool, &tr);  RET_ERR();
+
+        tr->locale = curr_item->name;
+        tr->locale_size = curr_item->name_size;
+
+        // no text value
+        if (!curr_item->children) return knd_FAIL;
+        val_item = curr_item->children;
+        if (memcmp(val_item->name, "t", 1)) return knd_FAIL;
+
+        tr->val = val_item->val;
+        tr->val_size = val_item->val_size;
+
+        tr->next = text->tr;
+        text->tr = tr;
+        //str_attr_vars(curr_item, 1);
+    }
+
+    attr_var->text = text;
+
+    return knd_OK;
+}
+
+
 static int resolve_class_ref(struct kndClass *self,
                              const char *name, size_t name_size,
                              struct kndClass *base,
@@ -525,8 +565,11 @@ static int resolve_attr_vars(struct kndClass *self,
 
         err = attr_idx->get(attr_idx, attr->id, attr->id_size, &obj);
         if (!err) {
-            knd_log("++ set attr var: %.*s val:%.*s",
-                    attr->name_size, attr->name, attr_var->val_size, attr_var->val);
+            if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+                knd_log("++ set attr var: %.*s val:%.*s",
+                        attr->name_size, attr->name,
+                        attr_var->val_size, attr_var->val);
+            }
             attr_ref = obj;
             attr_ref->attr_var = attr_var;
         }
@@ -572,6 +615,9 @@ static int resolve_attr_vars(struct kndClass *self,
             err = resolve_class_ref(self, attr_var->val, attr_var->val_size,
                                     c, &attr_var->class);
             if (err) return err;
+            break;
+        case KND_ATTR_TEXT:
+            err = resolve_text(self, attr_var);                                    RET_ERR();
             break;
         case KND_ATTR_PROC:
             proc = attr->proc;
@@ -820,7 +866,7 @@ static int link_ancestor(struct kndClass *self,
     err = desc_idx->add(desc_idx, entry->id, entry->id_size,
                         (void*)entry);                                             RET_ERR();
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. add \"%.*s\" (repo:%.*s) as "
                 " a descendant of ancestor \"%.*s\" (repo:%.*s)..",
                 entry->name_size, entry->name,
@@ -848,7 +894,7 @@ static int link_baseclass(struct kndClass *self,
     struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. \"%.*s\" (%.*s) links to base => \"%.*s\" (%.*s) top:%d",
                 entry->name_size, entry->name,
                 entry->repo->name_size, entry->repo->name,
@@ -933,7 +979,6 @@ static int resolve_baseclasses(struct kndClass *self)
             entry = c->entry;
             cvar->entry = entry;
         }
-
         if (!c) {
             classname = cvar->entry->name;
             classname_size = cvar->entry->name_size;
@@ -943,7 +988,11 @@ static int resolve_baseclasses(struct kndClass *self)
                 return knd_FAIL;
             }
             err = knd_get_class(self->entry->repo,
-                                classname, classname_size, &c);         RET_ERR();
+                                classname, classname_size, &c);
+            if (err) {
+                knd_log("-- no such class: %.*s", classname_size, classname);
+                return err;
+            }
         }
 
         if (DEBUG_CLASS_RESOLVE_LEVEL_2)

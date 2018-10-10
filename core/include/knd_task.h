@@ -116,6 +116,8 @@ struct kndTask
     size_t state_gte;
     size_t state_lte;
     bool show_removed_objs;
+    bool show_rels;
+    size_t max_depth;
 
     struct kndClassInst *curr_inst;
     struct kndUpdate *update;

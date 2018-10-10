@@ -157,7 +157,6 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
 static gsl_err_t set_attr_var_name(void *obj, const char *name, size_t name_size)
 {
     struct kndAttrVar *self = obj;
-
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. set attr var name: %.*s", name_size, name);
 
@@ -196,7 +195,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndState *state;
     int err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. set class name: %.*s", name_size, name);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -268,8 +267,9 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
 {
     struct kndClassVar *self      = obj;
     struct kndClass *root_class   = self->root_class;
-    struct ooDict *class_name_idx = root_class->entry->repo->class_name_idx;
-    struct kndMemPool *mempool    = root_class->entry->repo->mempool;
+    struct kndRepo *repo          = root_class->entry->repo;
+    struct ooDict *class_name_idx = repo->class_name_idx;
+    struct kndMemPool *mempool    = repo->mempool;
     struct kndClassEntry *entry;
     void *result;
     int err;
@@ -292,10 +292,7 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     err = knd_class_entry_new(mempool, &entry);
     if (err) return make_gsl_err_external(err);
 
-    // TODO
-    char *s = malloc(name_size);
-    memcpy(s, name, name_size);
-    entry->name = s;
+    entry->name = name;
     entry->name_size = name_size;
 
     err = class_name_idx->set(class_name_idx,
@@ -783,7 +780,7 @@ extern gsl_err_t knd_class_import(void *obj,
     int e, err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
         knd_log("..import \"%.*s\" class.. [total:%zu]",
                 128, rec, mempool->num_classes);
 
