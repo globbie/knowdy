@@ -10,10 +10,10 @@ static const char *shard_config =
 "{schema knd"
 "  {agent 007}"
 "  {db-path .}"
-"  {schema-path ../tests/schemas/system"
+"  {schema-path ../../tests/schemas/system"
 "    {user User"
 "       {base-repo test"
-"         {schema-path ../tests/schemas/test}}}}"
+"         {schema-path ../../tests/schemas/test}}}}"
 "  {memory"
 "    {max_base_pages      20000}"
 "    {max_small_x4_pages  4500}"
@@ -43,7 +43,8 @@ START_TEST(shard_table_test)
     ck_assert_int_eq(err, knd_OK);
 
     ck_assert_uint_eq(output_len, expect_len);
-    ck_assert_mem_eq(output, expect, expect_len);
+    int ret = strncmp(output, expect, expect_len);
+    ck_assert_int_eq(ret, 0);
 
     kndShard_del(shard);
 END_TEST
