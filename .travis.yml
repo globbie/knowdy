@@ -1,5 +1,7 @@
 sudo: required
 
+language: c
+
 services:
   - docker
 
@@ -12,6 +14,8 @@ before_install:
     - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
     - git submodule update --init --recursive
     - docker build .
+
+script: echo "done"
 
 notifications:
   slack:
