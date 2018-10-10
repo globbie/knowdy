@@ -75,6 +75,8 @@ add_library(${PROJECT_NAME}_obj OBJECT ${HEADERS} ${SOURCES})
 add_library(${PROJECT_NAME}_static STATIC $<TARGET_OBJECTS:${PROJECT_NAME}_obj>)
 target_link_libraries(${PROJECT_NAME}_static ${GSL_PARSER_LIBRARY} ${GLB_LIBRARY})
 
+enable_testing()
+
 add_subdirectory(tests)
 add_subdirectory(learner)
 
