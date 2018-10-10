@@ -1,0 +1,7 @@
+{schema knd-test
+    {!class User
+        {_state_top}
+        {!str guid}
+        {!str first-name}
+    }
+}
