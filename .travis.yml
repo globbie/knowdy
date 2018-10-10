@@ -1,40 +1,19 @@
+sudo: required
+
 language: c
-addons:
-  apt:
-    sources:
-    - george-edison55-precise-backports
-    - ubuntu-toolchain-r-test
-    - llvm-toolchain-precise-3.6
-    packages:
-    - cmake
-    - cmake-data
-    - gcc-5
-    - clang
-    - libzmq3-dev
-    - libmysqlclient-dev
-    - check
-    - libsubunit-dev
-    - libevent-dev
-dist: trusty
-compiler:
-- gcc
-- clang
+services:
+  - docker
 
 # Handle git submodules yourself
 git:
     submodules: false
+
 # Use sed to replace the SSH URL with the public URL, then initialize submodules
 before_install:
     - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
     - git submodule update --init --recursive
+    - docker build .
 
-install:
-- if [ "$CC" = "gcc" ]; then export CC="gcc-5"; fi
-before_script:
-- mkdir build
-- cd build
-- cmake ..
-script: make
 notifications:
   slack:
     secure: GVXuIMJuzdFeBQmb6caDTiduZVFHbdLbDk9C4tMB6wh6dRueCgfxcrqhZYJ4b4y7v00gfZi/MwPqurvBzbajYp/x5r+MMIvYXlhayrl6XQV1zmdimNY9vySWUHtJk2ajhO9stYKYVamemB2TQpRYH5INvs6FEQE3Nk8QBmKQ8cZgRCz5W266jdnBVVZxMx5oOmJaS8yERyvoW7597PU8XNaWBYEkZOk+LwflYQWlmq0EugillfMLnWQclrejNJgz7CQCpjbI75/i3P7FcQdcGWR8XovoS9nK8iaDTwoLScZ3qmTdxjCQVN5kLb6nvykN9InU27XyaXzLBsVonv7Rzlp95z6/zkgLxQr1YU4R2BlCcPLEdrY9Fa0PeOdthJul0ZsYs3QdXqt9uEUrQILHvPNJblUi9T3AC4IOYw5AeiPWSUSaWd8LT/EgZXpG9ghcbl6X3WswXFQ0ZkUFlIQqhkUhl4dVzKbLiviwr6L+KLn6HlhsEzO2PfSBw+GsoHd8Ri18UPJrGoli6zw7RWcS5JG4YdJ2bOTodTkczaU4Gd72glzXEUdmuYd6GkplC82gxul7HEt1srYuUDhi0cZHD5X0rrFSM81XTNyC0uFjAOQ9nAhlHN5y2GG9VZUnlkSx1rwC59Gl2JrQySChAICnT9YdqQTnKlPgUZ3eNZSGFrs=
