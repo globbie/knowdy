@@ -76,6 +76,7 @@ add_library(${PROJECT_NAME}_static STATIC $<TARGET_OBJECTS:${PROJECT_NAME}_obj>)
 target_link_libraries(${PROJECT_NAME}_static ${GSL_PARSER_LIBRARY} ${GLB_LIBRARY})
 
 add_subdirectory(tests)
+add_subdirectory(learner)
 
 install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)
 install(DIRECTORY etc/systemd/system/ DESTINATION usr/lib/systemd/system)
