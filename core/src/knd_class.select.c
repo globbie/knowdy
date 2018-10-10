@@ -417,6 +417,14 @@ static gsl_err_t parse_attr_var_select(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static gsl_err_t rels_presentation(void *obj,
+                                   const char *val, size_t val_size)
+{
+    struct kndTask *self = obj;
+    self->show_rels = true;
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t parse_baseclass_select(void *obj,
                                         const char *rec,
                                         size_t *total_size)
@@ -447,6 +455,12 @@ static gsl_err_t parse_baseclass_select(void *obj,
            .name_size = strlen("_depth"),
            .parse = gsl_parse_size_t,
            .obj = &self->max_depth
+        },
+        {  .name = "_rels",
+           .name_size = strlen("_rels"),
+           .is_selector = true,
+           .run = rels_presentation,
+           .obj = task
         },
         { .is_validator = true,
           .validate = parse_attr_select,
@@ -492,8 +506,8 @@ static gsl_err_t present_class_selection(void *obj,
     if (task->type == KND_SELECT_STATE) {
 
         if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-            knd_log(".. batch selection: batch size: %zu   start from: %zu",
-                    task->batch_max, task->batch_from);
+            knd_log(".. batch selection: batch size: %zu   start from: %zu  max depth:%zu",
+                    task->batch_max, task->batch_from, self->max_depth);
 
         /* no sets found? */
         if (!task->num_sets) {
@@ -778,8 +792,6 @@ static int select_class_state(struct kndClass *self,
     struct kndTask *task = repo->task;
     gsl_err_t parser_err;
 
-    knd_log(".. select class state in %.*s..", self->name_size, self->name);
-
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .is_selector = true,
@@ -941,7 +953,7 @@ extern gsl_err_t knd_class_select(void *obj,
     struct kndClass *c;
     struct kndRepo *repo = self->entry->repo;
     struct glbOutput *log = repo->log;
-    struct kndTask *task = repo->task;
+    struct kndTask   *task = repo->task;
     knd_state_phase phase;
     int err;
     gsl_err_t parser_err;
@@ -950,6 +962,7 @@ extern gsl_err_t knd_class_select(void *obj,
         knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
 
     self->depth = 0;
+    self->max_depth = 0;
     repo->curr_class = NULL;
     repo->curr_baseclass = NULL;
 

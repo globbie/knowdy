@@ -233,6 +233,11 @@ extern int knd_export_inherited_attr(void *obj,
     /* skip over immediate attrs */
     if (attr->parent_class == self) return knd_OK;
 
+    if (attr_var) {
+        /* already exported by parent */
+        if (attr_var->class_var->parent == self) return knd_OK;
+    }
+
     /* NB: display only concise fields */
     if (!attr->concise_level) {
         return knd_OK;
@@ -241,6 +246,7 @@ extern int knd_export_inherited_attr(void *obj,
     if (attr->proc) {
         if (DEBUG_ATTR_JSON_LEVEL_TMP)
             knd_log("..computed attr: %.*s!", attr->name_size, attr->name);
+
         if (!attr_var) {
             err = knd_attr_var_new(mempool, &attr_var);                           RET_ERR();
             attr_var->attr = attr;
@@ -360,7 +366,7 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
     int err;
 
     if (DEBUG_ATTR_JSON_LEVEL_2) {
-        knd_log("     .. export JSON list: %.*s\n\n",
+        knd_log(".. export JSON list: %.*s\n\n",
                 parent_item->name_size, parent_item->name);
     }
 
@@ -454,6 +460,7 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
 }
 
 extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
+                                     struct kndTask *task,
                                      struct glbOutput *out,
                                      bool is_concise)
 {
@@ -490,6 +497,12 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
         switch (item->attr->type) {
         case KND_ATTR_NUM:
             err = out->write(out, item->val, item->val_size);
+            if (err) return err;
+            break;
+        case KND_ATTR_TEXT:
+            knd_log("== text field: %.*s", item->name_size, item->name);
+
+            err = knd_text_export(item->text, KND_FORMAT_JSON, task, out);
             if (err) return err;
             break;
         case KND_ATTR_PROC:

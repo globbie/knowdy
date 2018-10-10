@@ -205,6 +205,36 @@ kndSet_alloc_facet(struct kndSet  *self,
     return knd_OK;
 }
 
+static int kndFacet_add_reverse_link(struct kndFacet  *self,
+                                     struct kndClassEntry *base,
+                                     struct kndSet  *set,
+                                     struct kndMemPool *mempool)
+{
+    struct kndClassEntry *topic = self->attr->parent_class->entry;
+    struct kndAttr *attr = self->attr;
+    struct kndClassRel *class_rel;
+    int err;
+
+    assert(attr != NULL);
+
+    err = knd_class_rel_new(mempool, &class_rel);                                  RET_ERR();
+
+    class_rel->topic = topic;
+    class_rel->set = set;
+    class_rel->attr = attr;
+
+    class_rel->next =  base->reverse_rels;
+    base->reverse_rels = class_rel;
+
+    if (DEBUG_SET_LEVEL_TMP) {
+        knd_log(".. attr %.*s:  add \"%.*s\" to reverse idx of \"%.*s\"..",
+                attr->name_size,  attr->name,
+                topic->name_size, topic->name,
+                base->name_size,  base->name);
+    }
+
+    return knd_OK;
+}
 
 static int kndFacet_alloc_set(struct kndFacet  *self,
                               struct kndClassEntry *base,
@@ -235,7 +265,8 @@ static int kndFacet_alloc_set(struct kndFacet  *self,
     err = self->set_idx->add(self->set_idx,
                              base->id, base->id_size, (void*)set);                RET_ERR();
 
-    //err = kndFacet_add_reverse_link(self, base, set);                             RET_ERR();
+    err = kndFacet_add_reverse_link(self, base, set, mempool);                    RET_ERR();
+
     *result = set;
     return knd_OK;
 }

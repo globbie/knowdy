@@ -48,6 +48,7 @@ static gsl_err_t alloc_class_update(void *obj,
     struct kndMemPool *mempool = self->repo->mempool;
     struct kndClassUpdate *class_update;
     int err;
+
     assert(name == NULL && name_size == 0);
     err = knd_class_update_new(mempool, &class_update);
     if (err) return make_gsl_err_external(err);
@@ -369,13 +370,17 @@ extern int knd_confirm_state(struct kndRepo *self)
         knd_log(".. \"%.*s\" repo to confirm updates..",
                 self->name_size, self->name);
     }
-    err = knd_update_new(mempool, &update);  RET_ERR();
+
+    // TODO: check conflicts
+    err = knd_update_new(mempool, &update);                                      RET_ERR();
     update->repo = self;
 
     self->num_updates++;
     update->numid = self->num_updates;
 
     err = knd_present_repo_state(self, out);  RET_ERR();
+
+    // build update GSP
 
     return knd_OK;
 }

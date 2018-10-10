@@ -81,14 +81,14 @@ struct kndProcUpdate
 struct kndUpdate
 {
     size_t numid;
-
     size_t owner_id;
     knd_update_confirm confirm;
     time_t timestamp;
     size_t orig_state;
 
     struct kndRepo *repo;
-    struct kndStateRef *states;
+
+    struct kndStateRef *class_state_refs;
 
     struct kndUpdate *next;
 };

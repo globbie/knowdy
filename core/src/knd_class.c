@@ -74,13 +74,6 @@ static void str(struct kndClass *self)
         knd_log("%*s~ %s %.*s",
                 (self->depth + 1) * KND_OFFSET_SIZE, "",
                 tr->locale, tr->val_size, tr->val);
-        if (tr->synt_roles) {
-            for (t = tr->synt_roles; t; t = t->next) {
-                knd_log("%*s  %d: %.*s",
-                        (self->depth + 2) * KND_OFFSET_SIZE, "",
-                        t->synt_role, t->val_size, t->val);
-            }
-        }
     }
 
     if (self->num_baseclass_vars) {
@@ -517,8 +510,9 @@ static int update_state(struct kndClass *self,
                         struct kndStateRef *children,
                         knd_state_phase phase)
 {
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndTask *task = self->entry->repo->task;
+    struct kndRepo *repo = self->entry->repo;
+    struct kndMemPool *mempool = repo->mempool;
+    struct kndTask *task = repo->task;
     struct kndStateRef *ref;
     struct kndState *state;
     int err;
@@ -585,8 +579,10 @@ extern int knd_update_state(struct kndClass *self,
                             knd_state_phase phase)
 {
     struct kndRepo *repo = self->entry->repo;
+    struct kndMemPool *mempool = repo->mempool;
     struct kndClass *c;
     struct kndClassRef *ref;
+    struct kndStateRef *state_ref;
     int err;
 
     if (DEBUG_CLASS_LEVEL_TMP) {
@@ -637,6 +633,15 @@ extern int knd_update_state(struct kndClass *self,
 
         //err = update_inst_state(c, self->inst_state_refs);                        RET_ERR();
     }
+
+    /* register in repo */
+    err = knd_state_ref_new(mempool, &state_ref);   RET_ERR();
+    state_ref->state = self->states;
+    state_ref->type = KND_STATE_CLASS;
+
+    state_ref->next = repo->class_state_refs;
+    repo->class_state_refs = state_ref;
+
     return knd_OK;
 }
 
@@ -1157,6 +1162,17 @@ extern int knd_class_ref_new(struct kndMemPool *mempool,
     void *page;
     int err;
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndClassRef), &page);
+    if (err) return err;
+    *result = page;
+    return knd_OK;
+}
+
+extern int knd_class_rel_new(struct kndMemPool *mempool,
+                             struct kndClassRel **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndClassRel), &page);
     if (err) return err;
     *result = page;
     return knd_OK;

@@ -76,6 +76,25 @@ static gsl_err_t append_gloss_item(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t set_gloss_locale(void *obj, const char *name, size_t name_size)
+{
+    struct kndTranslation *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FAIL);
+    if (name_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+    self->curr_locale = name;
+    self->curr_locale_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_gloss_value(void *obj, const char *name, size_t name_size)
+{
+    struct kndTranslation *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FAIL);
+    self->val = name;
+    self->val_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t parse_gloss_item(void *obj,
                                   const char *rec,
                                   size_t *total_size)
@@ -83,15 +102,13 @@ static gsl_err_t parse_gloss_item(void *obj,
     struct kndTranslation *tr = obj;
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .buf = tr->curr_locale,
-          .buf_size = &tr->curr_locale_size,
-          .max_buf_size = sizeof tr->curr_locale
+          .run = set_gloss_locale,
+          .obj = tr
         },
         { .name = "t",
           .name_size = strlen("t"),
-          .buf = tr->val,
-          .buf_size = &tr->val_size,
-          .max_buf_size = sizeof tr->val
+          .run = set_gloss_value,
+          .obj = tr
         }
     };
     gsl_err_t err;
@@ -176,15 +193,13 @@ static gsl_err_t parse_summary_item(void *obj,
     struct kndTranslation *tr = obj;
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .buf = tr->curr_locale,
-          .buf_size = &tr->curr_locale_size,
-          .max_buf_size = sizeof tr->curr_locale
+          .run = set_gloss_locale,
+          .obj = tr
         },
         { .name = "t",
           .name_size = strlen("t"),
-          .buf = tr->val,
-          .buf_size = &tr->val_size,
-          .max_buf_size = sizeof tr->val
+          .run = set_gloss_value,
+          .obj = tr
         }
     };
     gsl_err_t err;
@@ -225,7 +240,6 @@ extern gsl_err_t knd_parse_summary_array(void *obj,
 
     return gsl_parse_array(&item_spec, rec, total_size);
 }
-
 
 extern int knd_class_export_updates_GSL(struct kndClass *self,
                                         struct kndUpdate *update  __attribute__((unused)),

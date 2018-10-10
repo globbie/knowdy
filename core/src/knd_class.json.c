@@ -89,34 +89,23 @@ extern int knd_export_class_state_JSON(struct kndClass *self,
 
 extern int knd_export_class_inst_state_JSON(struct kndClass *self)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
     struct glbOutput *out = self->entry->repo->out;
-    struct kndUpdate *update;
-    struct tm tm_info;
-    size_t latest_state = self->init_inst_state + self->num_inst_states;
     struct kndState *state;
     int err;
 
-    /* latest inst update */
-    err = out->write(out, "\"_num_states\":",
-                     strlen("\"_num_states\":"));                                 RET_ERR();
-    err = out->writef(out, "%zu", latest_state);                                  RET_ERR();
 
     if (self->inst_states) {
         state = self->inst_states;
-        /*if (state->update) {
-            update = state->update;
-            time(&update->timestamp);
-            localtime_r(&update->timestamp, &tm_info);
-            buf_size = strftime(buf, KND_NAME_SIZE,
-                                ",\"_modif\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
-            err = out->write(out, buf, buf_size);                                     RET_ERR();
-            }*/
+        err = out->write(out, "\"_state\":",
+                         strlen("\"_state\":"));                                    RET_ERR();
+        err = out->writef(out, "%zu", state->numid);                                RET_ERR();
     }
 
     if (self->entry->inst_idx) {
         err = out->write(out, ",\"_tot\":", strlen(",\"_tot\":"));                  RET_ERR();
+        err = out->writef(out, "%zu", self->entry->inst_idx->num_valid_elems);      RET_ERR();
+    } else {
+        err = out->write(out, ",\"_tot\":0", strlen(",\"_tot\":"));                  RET_ERR();
         err = out->writef(out, "%zu", self->entry->inst_idx->num_valid_elems);      RET_ERR();
     }
     return knd_OK;
@@ -161,6 +150,29 @@ static int export_conc_elem_JSON(void *obj,
     if (err) return err;
 
     task->batch_size++;
+    return knd_OK;
+}
+
+static int export_class_ref_JSON(void *obj,
+                                 const char *elem_id,
+                                 size_t elem_id_size,
+                                 size_t count,
+                                 void *elem)
+{
+    struct kndClass *self = obj;
+    struct glbOutput *out = self->entry->repo->out;
+    struct kndClassEntry *entry = elem;
+    struct kndClass *c = entry->class;
+    int err;
+
+    /* separator */
+    if (count) {
+        err = out->writec(out, ',');                                              RET_ERR();
+    }
+    c->depth = 0;
+    c->max_depth = 0;
+    err = knd_class_export(c, KND_FORMAT_JSON, out);
+    if (err) return err;
     return knd_OK;
 }
 
@@ -277,7 +289,8 @@ static int export_concise_JSON(struct kndClass *self)
 
     for (item = self->baseclass_vars; item; item = item->next) {
         if (!item->attrs) continue;
-        err = knd_attr_vars_export_JSON(item->attrs, out, true);               RET_ERR();
+        err = knd_attr_vars_export_JSON(item->attrs,
+                                        self->entry->repo->task, out, true);      RET_ERR();
     }
 
     if (DEBUG_JSON_LEVEL_2)
@@ -296,8 +309,6 @@ extern int knd_class_export_set_JSON(struct kndClass *self,
                                      struct glbOutput *out,
                                      struct kndSet *set)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
     struct kndTask *task = self->entry->repo->task;
     int err;
 
@@ -308,16 +319,14 @@ extern int knd_class_export_set_JSON(struct kndClass *self,
 
     if (set->base) {
         err = out->write(out, "\"_is\":\"",
-                         strlen("\"_is\":\""));                                 RET_ERR();
+                         strlen("\"_is\":\""));                                   RET_ERR();
         err = out->write(out, set->base->name,  set->base->name_size);            RET_ERR();
         err = out->writec(out, '"');                                              RET_ERR();
     }
     err = out->writec(out, '}');                                                  RET_ERR();
 
-    buf_size = sprintf(buf, ",\"total\":%lu",
-                       (unsigned long)set->num_elems);
-    err = out->write(out, buf, buf_size);                                         RET_ERR();
-
+    err = out->writef(out,  ",\"total\":%lu",
+                      (unsigned long)set->num_elems);                             RET_ERR();
 
     err = out->write(out, ",\"batch\":[",
                      strlen(",\"batch\":["));                                     RET_ERR();
@@ -327,18 +336,16 @@ extern int knd_class_export_set_JSON(struct kndClass *self,
 
     err = out->writec(out, ']');                                                  RET_ERR();
 
-    buf_size = sprintf(buf, ",\"batch_max\":%lu",
-                       (unsigned long)task->batch_max);
-    err = out->write(out, buf, buf_size);                                        RET_ERR();
-    buf_size = sprintf(buf, ",\"batch_size\":%lu",
-                       (unsigned long)task->batch_size);
-    err = out->write(out, buf, buf_size);                                     RET_ERR();
-    err = out->write(out,
-                     ",\"batch_from\":", strlen(",\"batch_from\":"));         RET_ERR();
-    buf_size = sprintf(buf, "%lu",
-                       (unsigned long)task->batch_from);
-    err = out->write(out, buf, buf_size);                                     RET_ERR();
+    err = out->writef(out, ",\"batch_max\":%lu",
+                      (unsigned long)task->batch_max);                            RET_ERR();
+    err = out->writef(out, ",\"batch_size\":%lu",
+                       (unsigned long)task->batch_size);                          RET_ERR();
 
+    err = out->write(out,
+                     ",\"batch_from\":", strlen(",\"batch_from\":"));             RET_ERR();
+
+    err = out->writef(out,"%lu",
+                      (unsigned long)task->batch_from);                          RET_ERR();
     err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
 }
@@ -472,7 +479,8 @@ static int export_baseclass_vars(struct kndClass *self,
         if (item->attrs) {
             item->attrs->depth = self->depth;
             item->attrs->max_depth = self->max_depth;
-            err = knd_attr_vars_export_JSON(item->attrs, out, false);      RET_ERR();
+            err = knd_attr_vars_export_JSON(item->attrs,
+                                            self->entry->repo->task, out, false);      RET_ERR();
         }
 
         /*if (self->num_computed_attrs) {
@@ -496,10 +504,14 @@ static int export_baseclass_vars(struct kndClass *self,
 extern int knd_class_export_JSON(struct kndClass *self,
                                  struct glbOutput *out)
 {
-    struct kndSet *attr_idx;
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
+    struct kndTask *task = entry->repo->task;
+    struct kndSet *set;
+    struct kndAttr *attr;
+    struct kndClassRel *class_rel;
     size_t num_children;
+    bool in_list = false;
     int err;
 
     if (DEBUG_JSON_LEVEL_2)
@@ -512,13 +524,17 @@ extern int knd_class_export_JSON(struct kndClass *self,
     err = out->write_escaped(out, entry->name, entry->name_size);                 RET_ERR();
     err = out->writec(out, '"');                                                  RET_ERR();
 
+    err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
+    err = out->writef(out, "%zu", entry->numid);                                  RET_ERR();
+
+    if (task->max_depth == 0) {
+        goto final;
+    }
+
     err = out->write(out, ",\"_repo\":\"", strlen(",\"_repo\":\""));              RET_ERR();
     err = out->write(out, entry->repo->name,
                      entry->repo->name_size);                                     RET_ERR();
     err = out->writec(out, '"');                                                  RET_ERR();
-
-    err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
-    err = out->writef(out, "%zu", entry->numid);                                  RET_ERR();
 
     err = export_gloss_JSON(self);                                                RET_ERR();
 
@@ -559,9 +575,8 @@ extern int knd_class_export_JSON(struct kndClass *self,
     }
 
     /* inherited attrs */
-    attr_idx = self->attr_idx;
-    err = attr_idx->map(attr_idx,
-                        knd_export_inherited_attr, (void*)self); 
+    set = self->attr_idx;
+    err = set->map(set, knd_export_inherited_attr, (void*)self); 
     if (err && err != knd_RANGE) return err;
 
     num_children = entry->num_children;
@@ -586,6 +601,52 @@ extern int knd_class_export_JSON(struct kndClass *self,
         if (err) return err;
     }
 
+
+    /* relations */
+    if (entry->reverse_rels) {
+        err = out->write(out, ",\"_rels\":[", strlen(",\"_rels\":["));            RET_ERR();
+
+        for (class_rel = entry->reverse_rels; class_rel;
+             class_rel = class_rel->next) {
+            if (in_list) {
+                err = out->writec(out, ',');                                      RET_ERR();
+            }
+            err = out->writec(out, '{');                                          RET_ERR();
+            err = out->write(out, "\"topic\":\"",
+                             strlen("\"topic\":\""));                             RET_ERR();
+            err = out->write(out,
+                             class_rel->topic->name,
+                             class_rel->topic->name_size);                        RET_ERR();
+            err = out->writec(out, '"');                                          RET_ERR();
+
+            attr = class_rel->attr;
+            err = out->write(out, ",\"attr\":\"",
+                             strlen(",\"attr\":\""));                             RET_ERR();
+            err = out->write(out, attr->name,
+                             attr->name_size);                                    RET_ERR();
+            err = out->writec(out, '"');                                          RET_ERR();
+
+            err = out->write(out, ",\"total\":",
+                             strlen(",\"total\":"));                              RET_ERR();
+            err = out->writef(out, "%zu", class_rel->set->num_elems);             RET_ERR();
+
+            if (task->show_rels) {
+                set = class_rel->set;
+                err = out->write(out, ",\"batch\":[",
+                                 strlen(",\"batch\":["));                         RET_ERR();
+                task->max_depth = 0;
+                err = set->map(set, export_class_ref_JSON, (void*)self);
+                if (err && err != knd_RANGE) return err;
+                err = out->writec(out, ']');                                      RET_ERR();
+                task->max_depth = 1;
+            }
+
+            err = out->writec(out, '}');                                          RET_ERR();
+            in_list = true;
+        }
+        err = out->writec(out, ']');                                              RET_ERR();
+    }
+    
  final:
     err = out->write(out, "}", 1);
     if (err) return err;
