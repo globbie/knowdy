@@ -22,11 +22,6 @@ find_path(CHECK_INCLUDE_DIR NAMES check.h PATHS ${CHECK_INCLUDE_DIRS})
 find_library(CHECK_LIBRARY NAMES check PATHS ${CHECK_LIBRARY_DIRS})
 include_directories(${CHECK_INCLUDE_DIR})
 
-#pkg_check_modules(OPENSSL REQUIRED openssl)
-#find_path(OPENSSL_INCLUDE_DIR NAMES openssl.h PATHS ${OPENSSL_INCLUDE_DIRS})
-#find_library(CRYPTO_LIBRARY NAMES crypto PATHS ${CRYPTO_LIBRARY_DIRS})
-#include_directories(${OPENSSL_INCLUDE_DIRS})
-
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         set(CHECK_LIBRARY ${CHECK_LIBRARY} rt m pthread subunit)
         set(CURL_LIBRARY ${CURL_LIBRARY} curl)
@@ -49,52 +44,41 @@ if(NOT TARGET kmq)
     include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/knode/include")
 endif()
 
-set(KNOWDY_PREFIX "knd")
-set(CORE      "core")
-set(LEARNER   "learner")
+include_directories("include")
 
-set(KNOWDY_MODULES
-        ${CORE}
-        ${LEARNER}
-)
+set(HEADERS include/knd_array.h include/knd_attr.h
+        include/knd_class.h include/knd_class_inst.h include/knd_config.h
+        include/knd_dict.h
+        include/knd_elem.h include/knd_err.h
+        include/knd_facet.h include/knd_http_codes.h include/knd_list.h
+        include/knd_mempool.h include/knd_num.h
+        include/knd_proc.h include/knd_proc_arg.h include/knd_proc_call.h
+        include/knd_query.h
+        include/knd_ref.h include/knd_rel.h include/knd_rel_arg.h include/knd_repo.h
+        include/knd_set.h include/knd_set_idx.h include/knd_shard.h include/knd_state.h
+        include/knd_task.h include/knd_text.h
+        include/knd_user.h include/knd_utils.h
+        include/ooconfig.h)
+set(SOURCES src/knd_array.c src/knd_attr.c src/knd_attr_json.c src/knd_attr_gsp.c
+        src/knd_class.c src/knd_class.compute.c src/knd_class.gsl.c src/knd_class.gsp.c
+        src/knd_class.import.c src/knd_class.json.c src/knd_class.resolve.c src/knd_class.select.c
+        src/knd_class_inst.c
+        src/knd_dict.c src/knd_elem.c src/knd_list.c
+        src/knd_mempool.c src/knd_num.c
+        src/knd_proc.c src/knd_proc.import.c src/knd_proc_arg.c
+        src/knd_ref.c src/knd_rel.c src/knd_rel_arg.c src/knd_repo.c
+        src/knd_set.c src/knd_set_idx.c src/knd_shard.c src/knd_state.c
+        src/knd_task.c src/knd_text.c
+        src/knd_user.c src/knd_utils.c)
 
-include_directories(${CORE}/include)
-
-foreach(MODULE ${KNOWDY_MODULES})
-    include_directories(${MODULE}/src)
-endforeach()
-
-foreach(MODULE ${KNOWDY_MODULES})
-    set(${MODULE}_BINARY ${KNOWDY_PREFIX}-${MODULE})
-endforeach()
-
-foreach(MODULE ${KNOWDY_MODULES})
-    set(BINARY ${${MODULE}_BINARY})
-    add_subdirectory(${MODULE})
-endforeach()
-
-# tests
+add_library(${PROJECT_NAME}_obj OBJECT ${HEADERS} ${SOURCES})
+add_library(${PROJECT_NAME}_static STATIC $<TARGET_OBJECTS:${PROJECT_NAME}_obj>)
+target_link_libraries(${PROJECT_NAME}_static ${GSL_PARSER_LIBRARY} ${GLB_LIBRARY})
 
 add_subdirectory(tests)
-
-# packaging
 
 install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)
 install(DIRECTORY etc/systemd/system/ DESTINATION usr/lib/systemd/system)
 
 set(VERSION "0.6.0")
-
-set(CPACK_PACKAGE_VERSION ${VERSION})
-set(CPACK_GENERATOR "RPM")
-set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
-set(CPACK_PACKAGE_RELEASE 1)
-set(CPACK_PACKAGE_CONTACT "info@globbie.net")
-set(CPACK_PACKAGE_VENDOR "globbie")
-set(CPACK_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
-
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/knd.spec.in" "${CMAKE_CURRENT_BINARY_DIR}/knd.spec" @ONLY IMMEDIATE)
-set(CPACK_RPM_USER_BINARY_SPECFILE "${CMAKE_CURRENT_BINARY_DIR}/knd.spec")
-
-include(CPack)
 
