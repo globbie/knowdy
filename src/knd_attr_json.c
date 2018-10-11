@@ -233,7 +233,7 @@ extern int knd_export_inherited_attr(void *obj,
     /* skip over immediate attrs */
     if (attr->parent_class == self) return knd_OK;
 
-    if (attr_var) {
+    if (attr_var && attr_var->class_var) {
         /* already exported by parent */
         if (attr_var->class_var->parent == self) return knd_OK;
     }
