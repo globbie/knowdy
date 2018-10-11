@@ -2067,14 +2067,6 @@ static int kndRel_resolve(struct kndRel *self,
 
     /* resolve instances */
     if (self->inst_inbox_size) {
-        if (update) {
-            update->insts = calloc(self->inst_inbox_size,
-                                   sizeof(struct kndRelInstance*));
-            if (!update->insts) {
-                return knd_NOMEM;
-            }
-        }
-
         for (inst = self->inst_inbox; inst; inst = inst->next) {
             err = resolve_inst(self, inst, update);                               RET_ERR();
             update->insts[update->num_insts] = inst;
