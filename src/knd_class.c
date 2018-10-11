@@ -155,20 +155,19 @@ static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
 {
     struct kndClass *self = obj;
     struct kndConcFolder *folder;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    int err;
 
     if (DEBUG_CLASS_LEVEL_1)
         knd_log(".. running include file func.. name: \"%.*s\" [%zu]",
                 (int)name_size, name, name_size);
-
     if (!name_size) return make_gsl_err(gsl_FORMAT);
 
-    folder = malloc(sizeof(struct kndConcFolder));
-    if (!folder) return make_gsl_err_external(knd_NOMEM);
-    memset(folder, 0, sizeof(struct kndConcFolder));
+    err = knd_conc_folder_new(mempool, &folder);
+    if (err) return make_gsl_err_external(knd_NOMEM);
 
-    memcpy(folder->name, name, name_size);
+    folder->name = name;
     folder->name_size = name_size;
-    folder->name[name_size] = '\0';
 
     folder->next = self->folders;
     self->folders = folder;
@@ -318,10 +317,12 @@ extern int knd_read_GSL_file(struct kndClass *self,
     if (!rec) return knd_NOMEM;
     memcpy(rec, file_out->buf, file_out->buf_size);
     rec[file_out->buf_size] = '\0';
+
     recs = (char**)realloc(repo->source_files,
                            (repo->num_source_files + 1) * sizeof(char*));
     if (!recs) return knd_NOMEM;
     recs[repo->num_source_files] = rec;
+    repo->source_files = recs;
     repo->num_source_files++;
 
     /* actual parsing */
@@ -1206,6 +1207,17 @@ extern int knd_class_update_new(struct kndMemPool *mempool,
     int err;
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
                             sizeof(struct kndClassUpdate), &page);  RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
+extern int knd_conc_folder_new(struct kndMemPool *mempool,
+                               struct kndConcFolder **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                            sizeof(struct kndConcFolder), &page);  RET_ERR();
     *result = page;
     return knd_OK;
 }
