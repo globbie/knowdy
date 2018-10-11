@@ -8,12 +8,14 @@
 
 static void del(struct kndMemPool *self)
 {
-    self->log->del(self->log);
+    knd_log(".. del mempool pages..");
     free(self->pages);
     free(self->small_x4_pages);
     free(self->small_x2_pages);
     free(self->small_pages);
     free(self->tiny_pages);
+
+    knd_log(".. del mempool: %p", self);
     free(self);
 }
 
@@ -297,9 +299,6 @@ extern int kndMemPool_new(struct kndMemPool **obj)
     self = malloc(sizeof(struct kndMemPool));
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndMemPool));
-
-    err = glbOutput_new(&self->log, KND_MED_BUF_SIZE);
-    if (err != knd_OK) goto error;
 
     kndMemPool_init(self);
     *obj = self;
