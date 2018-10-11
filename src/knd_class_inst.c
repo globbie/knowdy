@@ -734,6 +734,7 @@ static gsl_err_t parse_import_elem(void *data,
         elem->inner = obj;
         obj->parent = elem;
         goto append_elem;
+
         /*case KND_ATTR_NUM:
         err = kndNum_new(&num);
         if (err) return *total_size = 0, make_gsl_err_external(err);
@@ -1670,17 +1671,6 @@ extern void kndClassInst_init(struct kndClassInst *self)
     self->read_state  = read_state;
     self->resolve = kndClassInst_resolve;
     self->export = kndClassInst_export;
-}
-
-extern int kndClassInst_new(struct kndClassInst **obj)
-{
-    struct kndClassInst *self;
-    self = malloc(sizeof(struct kndClassInst));
-    if (!self) return knd_NOMEM;
-    memset(self, 0, sizeof(struct kndClassInst));
-    kndClassInst_init(self);
-    *obj = self;
-    return knd_OK;
 }
 
 extern int knd_class_inst_entry_new(struct kndMemPool *mempool,

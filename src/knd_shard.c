@@ -341,14 +341,24 @@ void kndShard_del(struct kndShard *self)
     knd_log(".. deconstructing kndShard ..");
 
     self->user->del(self->user);
+
+    knd_log(".. del sys repo..");
     self->repo->del(self->repo);
 
+    knd_log(".. del shard out ..");
     self->out->del(self->out);
+    knd_log(".. del shard log ..");
     self->log->del(self->log);
+
     self->task_storage->del(self->task_storage);
 
+    knd_log(".. del task ..");
     self->task->del(self->task);
+    
+    knd_log(".. del mempool ..");
     self->mempool->del(self->mempool);
+
+    knd_log(".. del shard self: %p", self);
 
     free(self);
 }

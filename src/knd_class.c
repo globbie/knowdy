@@ -313,6 +313,7 @@ extern int knd_read_GSL_file(struct kndClass *self,
     }
 
     // TODO: find another place for storage
+
     rec = malloc(file_out->buf_size + 1);
     if (!rec) return knd_NOMEM;
     memcpy(rec, file_out->buf, file_out->buf_size);
@@ -322,6 +323,7 @@ extern int knd_read_GSL_file(struct kndClass *self,
                            (repo->num_source_files + 1) * sizeof(char*));
     if (!recs) return knd_NOMEM;
     recs[repo->num_source_files] = rec;
+
     repo->source_files = recs;
     repo->num_source_files++;
 
