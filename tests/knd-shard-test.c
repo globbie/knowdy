@@ -6,6 +6,7 @@
 #include <string.h>
 
 
+// todo(n.rodionov): make paths configurable
 static const char *shard_config =
 "{schema knd"
 "  {agent 007}"
