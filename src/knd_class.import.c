@@ -780,7 +780,7 @@ extern gsl_err_t knd_class_import(void *obj,
     int e, err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log("..import \"%.*s\" class.. [total:%zu]",
                 128, rec, mempool->num_classes);
 
