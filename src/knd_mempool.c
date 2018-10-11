@@ -8,6 +8,12 @@
 
 static void del(struct kndMemPool *self)
 {
+    self->log->del(self->log);
+    free(self->pages);
+    free(self->small_x4_pages);
+    free(self->small_x2_pages);
+    free(self->small_pages);
+    free(self->tiny_pages);
     free(self);
 }
 
@@ -287,6 +293,7 @@ extern int kndMemPool_new(struct kndMemPool **obj)
 {
     struct kndMemPool *self;
     int err;
+
     self = malloc(sizeof(struct kndMemPool));
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndMemPool));
