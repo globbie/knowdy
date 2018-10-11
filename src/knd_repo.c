@@ -42,6 +42,7 @@ static void kndRepo_del(struct kndRepo *self)
     self->class_name_idx->del(self->class_name_idx);
     self->class_inst_name_idx->del(self->class_inst_name_idx);
     self->attr_name_idx->del(self->attr_name_idx);
+    self->proc_name_idx->del(self->proc_name_idx);
     free(self);
 }
 
