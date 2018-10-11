@@ -226,7 +226,7 @@ static int kndFacet_add_reverse_link(struct kndFacet  *self,
     class_rel->next =  base->reverse_rels;
     base->reverse_rels = class_rel;
 
-    if (DEBUG_SET_LEVEL_TMP) {
+    if (DEBUG_SET_LEVEL_2) {
         knd_log(".. attr %.*s:  add \"%.*s\" to reverse idx of \"%.*s\"..",
                 attr->name_size,  attr->name,
                 topic->name_size, topic->name,
