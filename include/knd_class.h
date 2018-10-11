@@ -94,7 +94,7 @@ struct kndClassVar
 
 struct kndConcFolder
 {
-    char name[KND_NAME_SIZE];
+    const char *name;
     size_t name_size;
     struct kndConcFolder *parent;
     struct kndConcFolder *next;
@@ -327,6 +327,9 @@ extern int knd_class_ref_new(struct kndMemPool *mempool,
                              struct kndClassRef **result);
 extern int knd_class_rel_new(struct kndMemPool *mempool,
                              struct kndClassRel **result);
+
+extern int knd_conc_folder_new(struct kndMemPool *mempool,
+                               struct kndConcFolder **result);
 
 extern int knd_class_entry_new(struct kndMemPool *mempool,
                                struct kndClassEntry **result);

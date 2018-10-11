@@ -30,6 +30,15 @@
 
 static void kndRepo_del(struct kndRepo *self)
 {
+    char *rec;
+    if (self->num_source_files) {
+        for (size_t i = 0; i < self->num_source_files; i++) {
+            rec = self->source_files[i];
+            free(rec);
+        }
+        free(self->source_files);
+    }
+
     self->class_name_idx->del(self->class_name_idx);
     self->class_inst_name_idx->del(self->class_inst_name_idx);
     self->attr_name_idx->del(self->attr_name_idx);
