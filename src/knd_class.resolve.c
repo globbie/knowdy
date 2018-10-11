@@ -206,21 +206,37 @@ static int resolve_text(struct kndClass *self,
     struct kndMemPool *mempool = self->entry->repo->mempool;
     int err;
 
-    //knd_log(".. resolving text attr var.. ");
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+        knd_log(".. resolving text attr var: %.*s  class:%.*s",
+                attr_var->name_size, attr_var->name,
+                attr_var->class_var->parent->name_size,
+                attr_var->class_var->parent->name);
 
-    err = knd_text_new(mempool, &text);                                           RET_ERR();
+    err = knd_text_new(mempool, &text);
+    if (err) {
+        knd_log("-- no text alloc");
+        return err;
+    }
 
     for (curr_item = attr_var->list; curr_item; curr_item = curr_item->next) {
-
-        err = knd_text_translation_new(mempool, &tr);  RET_ERR();
+        err = knd_text_translation_new(mempool, &tr);
+        if (err) {
+            knd_log("-- no text alloc");
+        }
 
         tr->locale = curr_item->name;
         tr->locale_size = curr_item->name_size;
 
         // no text value
-        if (!curr_item->children) return knd_FAIL;
+        if (!curr_item->children) {
+            knd_log("-- no children");
+            return knd_FAIL;
+        }
         val_item = curr_item->children;
-        if (memcmp(val_item->name, "t", 1)) return knd_FAIL;
+        if (memcmp(val_item->name, "t", 1)) {
+            knd_log("-- no t field");
+            return knd_FAIL;
+        }
 
         tr->val = val_item->val;
         tr->val_size = val_item->val_size;

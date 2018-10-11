@@ -28,7 +28,6 @@ static int export_JSON(struct kndText *self,
         knd_log(".. export text to JSON..");
 
     for (tr = self->tr; tr; tr = tr->next) {
-
         if (memcmp(task->locale, tr->locale, tr->locale_size)) {
             continue;
         }
@@ -262,7 +261,7 @@ extern int knd_text_translation_new(struct kndMemPool *mempool,
     void *page;
     int err;
 
-    knd_log(".. new text translation [size:%zu]", sizeof(struct kndTranslation));
+    //knd_log(".. new text translation [size:%zu]", sizeof(struct kndTranslation));
 
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
                             sizeof(struct kndTranslation), &page);
@@ -277,7 +276,8 @@ extern int knd_text_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    knd_log(".. new text [size:%zu]", sizeof(struct kndText));
+    //knd_log(".. new text [size:%zu]", sizeof(struct kndText));
+
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
                             sizeof(struct kndText), &page);
     if (err) return err;
