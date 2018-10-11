@@ -43,6 +43,7 @@ static void kndRepo_del(struct kndRepo *self)
     self->class_inst_name_idx->del(self->class_inst_name_idx);
     self->attr_name_idx->del(self->attr_name_idx);
     self->proc_name_idx->del(self->proc_name_idx);
+
     free(self);
 }
 
@@ -472,8 +473,8 @@ static int kndRepo_open(struct kndRepo *self)
 
             //proc = self->root_proc;
             //err = proc->coordinate(proc);                                     RET_ERR();
-            rel = self->root_rel;
-            err = rel->coordinate(rel);                                       RET_ERR();
+            //rel = self->root_rel;
+            //err = rel->coordinate(rel);                                       RET_ERR();
             c->entry->repo->task->batch_mode = false;
         }
     }
@@ -604,12 +605,15 @@ extern int kndRepo_new(struct kndRepo **repo,
     if (err) goto error;
 
     /*** REL ***/
-
-    err = kndRel_new(&rel, mempool);
+    /*err = knd_rel_new(mempool, &rel);
     if (err) goto error;
+
+    err = knd_rel_entry_new(mempool, &rel->entry);      RET_ERR();
+    rel->entry->name = "/";
+    rel->entry->name_size = 1;
     rel->entry->repo = self;
     self->root_rel = rel;
-
+    */
     self->mempool = mempool;
     self->max_journal_size = KND_FILE_BUF_SIZE;
 
