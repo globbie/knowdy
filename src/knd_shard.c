@@ -324,14 +324,15 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
     user->schema_path = self->user_schema_path;
     user->schema_path_size = self->user_schema_path_size;
 
-    
     err = user->init(user);
     if (err != knd_OK) goto error;
 
     *shard = self;
     return knd_OK;
  error:
-    // TODO: release resources
+
+    kndShard_del(self);
+
     return err;
 }
 
@@ -340,6 +341,14 @@ void kndShard_del(struct kndShard *self)
     knd_log(".. deconstructing kndShard ..");
 
     self->user->del(self->user);
+    self->repo->del(self->repo);
+
+    self->out->del(self->out);
+    self->log->del(self->log);
+    self->task_storage->del(self->task_storage);
+
+    self->task->del(self->task);
+    self->mempool->del(self->mempool);
 
     free(self);
 }

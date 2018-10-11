@@ -30,6 +30,9 @@
 
 static void kndRepo_del(struct kndRepo *self)
 {
+    self->class_name_idx->del(self->class_name_idx);
+    self->class_inst_name_idx->del(self->class_inst_name_idx);
+    self->attr_name_idx->del(self->attr_name_idx);
     free(self);
 }
 
@@ -529,10 +532,11 @@ extern int kndRepo_new(struct kndRepo **repo,
 
     memset(self, 0, sizeof(struct kndRepo));
 
-    err = kndStateControl_new(&state_ctrl);
+    /*err = kndStateControl_new(&state_ctrl);
     if (err) return err;
     state_ctrl->repo = self;
     self->state_ctrl = state_ctrl;
+    */
 
     err = knd_class_entry_new(mempool, &entry);  RET_ERR();
     entry->name = "/";
