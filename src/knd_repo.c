@@ -159,10 +159,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         knd_log("== batch mode: %d",
                 repo->task->batch_mode);
     }
-    char *s = malloc(name_size);
-    memcpy(s, name, name_size);
 
-    entry->name = s;
+    entry->name = name;
     entry->name_size = name_size;
 
     /* get class */
