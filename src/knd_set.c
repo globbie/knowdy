@@ -502,19 +502,6 @@ extern int kndSet_init(struct kndSet *self)
     return knd_OK;
 }
 
-extern int kndSet_new(struct kndSet **set)
-{
-    struct kndSet *self = malloc(sizeof(struct kndSet));
-    if (!self) return knd_NOMEM;
-
-    memset(self, 0, sizeof(struct kndSet));
-
-    kndSet_init(self);
-    *set = self;
-
-    return knd_OK;
-}
-
 extern int knd_facet_new(struct kndMemPool *mempool,
                          struct kndFacet **result)
 {
@@ -552,8 +539,9 @@ extern int knd_set_elem_idx_new(struct kndMemPool *mempool,
     int err;
 
     //knd_log("..set elem idx new [size:%zu] num pages:%zu",
-    //        sizeof(struct kndSetElemIdx),
+    //       sizeof(struct kndSetElemIdx),
     //        mempool->pages_used);
+
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_BASE,
                             sizeof(struct kndSetElemIdx), &page);                      RET_ERR();
     *result = page;

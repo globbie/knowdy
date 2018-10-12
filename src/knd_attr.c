@@ -386,6 +386,8 @@ static gsl_err_t alloc_gloss_item(void *obj,
 {
     struct kndAttr *self = obj;
     struct kndTranslation *tr;
+    struct kndMemPool *mempool = self->parent_class->entry->repo->mempool;
+    int err;
 
     assert(name == NULL && name_size == 0);
 
@@ -393,10 +395,8 @@ static gsl_err_t alloc_gloss_item(void *obj,
         knd_log(".. %.*s: allocate gloss translation,  count: %zu",
                 self->name_size, self->name, count);
 
-    tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return make_gsl_err_external(knd_NOMEM);
-
-    memset(tr, 0, sizeof(struct kndTranslation));
+    err = knd_text_translation_new(mempool, &tr);
+    if (err) return make_gsl_err_external(knd_NOMEM);
 
     *item = tr;
 
@@ -785,22 +785,6 @@ extern void kndAttr_init(struct kndAttr *self)
     memset(self, 0, sizeof(struct kndAttr));
     self->str = str;
     self->parse = parse_GSL;
-}
-
-extern int kndAttr_new(struct kndAttr **c)
-{
-    struct kndAttr *self;
-
-    self = malloc(sizeof(struct kndAttr));
-    if (!self) return knd_NOMEM;
-
-    memset(self, 0, sizeof(struct kndAttr));
-
-    kndAttr_init(self);
-
-    *c = self;
-
-    return knd_OK;
 }
 
 extern int knd_copy_attr_ref(void *obj,
