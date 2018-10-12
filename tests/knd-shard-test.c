@@ -24,6 +24,37 @@ static const char *shard_config =
 "  }"
 "}";
 
+
+struct table_test {
+    const char *input;
+    const char *expect;
+    int err;
+};
+START_TEST(shard_config_test)
+    static const struct table_test broken_configs[] = {
+        {
+            .input = "{schema knd}",
+            .expect = NULL,
+            .err = knd_FAIL
+        },
+        {
+            .input = NULL
+        }
+    };
+
+    struct kndShard *shard = NULL;
+    int err = 0;
+
+    for (size_t i = 0; i < sizeof broken_configs / sizeof broken_configs[0]; ++i) {
+        const struct table_test *config = &broken_configs[i];
+
+        err = kndShard_new(&shard, config->input, strlen(config->input));
+        ck_assert_int_eq(err, config->err);
+    }
+
+    if (shard) kndShard_del(shard);
+END_TEST
+
 START_TEST(shard_table_test)
     struct kndShard *shard = NULL;
     int err;
@@ -54,6 +85,7 @@ int main(void) {
     Suite *s = suite_create("suite");
 
     TCase *tc_shard_basic = tcase_create("basic shard");
+    tcase_add_test(tc_shard_basic, shard_config_test);
     tcase_add_test(tc_shard_basic, shard_table_test);
     suite_add_tcase(s, tc_shard_basic);
 
