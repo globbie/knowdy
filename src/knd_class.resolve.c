@@ -271,7 +271,13 @@ static int resolve_class_ref(struct kndClass *self,
     }
 
     if (base) {
-        err = knd_is_base(base, c);                                               RET_ERR();
+        err = knd_is_base(base, c);
+        if (err) {
+            knd_log("-- no inheritance from %.*s to %.*s",
+                    base->name_size, base->name,
+                    c->name_size, c->name);
+            return err;
+        }
     }
 
     *result = c;
