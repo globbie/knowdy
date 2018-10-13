@@ -332,15 +332,15 @@ static gsl_err_t parse_gloss_item(void *obj,
     struct kndTranslation *tr = obj;
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .buf = tr->curr_locale,
+          .buf = NULL,//tr->curr_locale,
           .buf_size = &tr->curr_locale_size,
-          .max_buf_size = sizeof tr->curr_locale
+          .max_buf_size = 0//sizeof tr->curr_locale
         },
         { .name = "t",
           .name_size = strlen("t"),
-          .buf = tr->val,
+          .buf = NULL,//tr->val,
           .buf_size = &tr->val_size,
-          .max_buf_size = sizeof tr->val
+          .max_buf_size = 0//sizeof tr->val
         }
     };
     gsl_err_t err;
