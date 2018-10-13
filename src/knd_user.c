@@ -91,7 +91,7 @@ static gsl_err_t parse_class_import(void *obj,
 }
 
 static gsl_err_t parse_sync_task(void *obj,
-                                 const char *rec __attribute__((unused)),
+                                 const char *unused_var(rec),
                                  size_t *total_size)
 {
     char buf[KND_TEMP_BUF_SIZE];
@@ -344,8 +344,8 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 }
 
 static gsl_err_t run_present_user(void *data,
-                                  const char *val __attribute__((unused)),
-                                  size_t val_size __attribute__((unused)))
+                                  const char *unused_var(val),
+                                  size_t unused_var(val_size))
 {
     struct kndUser *self = data;
     struct kndClassInst *user;
@@ -367,8 +367,8 @@ static gsl_err_t run_present_user(void *data,
 }
 
 static gsl_err_t run_present_state(void *data,
-                                   const char *val __attribute__((unused)),
-                                   size_t val_size __attribute__((unused)))
+                                   const char *unused_var(val),
+                                   size_t unused_var(val_size))
 {
     struct kndUser *self = data;
     struct kndRepo *repo;
@@ -391,7 +391,7 @@ static gsl_err_t run_present_state(void *data,
 static gsl_err_t alloc_class_item(void *obj,
                                   const char *name,
                                   size_t name_size,
-                                  size_t count  __attribute__((unused)),
+                                  size_t unused_var(count),
                                   void **item)
 {
     struct kndClass *self = obj;
@@ -403,8 +403,8 @@ static gsl_err_t alloc_class_item(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t append_class_item(void *accu __attribute__((unused)),
-                                   void *item  __attribute__((unused)))
+static gsl_err_t append_class_item(void *unused_var(accu),
+                                   void *unused_var(item))
 {
     //struct kndClass *self = accu;
 

@@ -39,9 +39,9 @@ static int export_JSON(struct kndText *self,
     return knd_OK;
 }
 
-static int export_GSP(struct kndText *self   __attribute__((unused)),
+static int export_GSP(struct kndText *unused_var(self),
                       struct kndTask *unused_var(task),
-                      struct glbOutput *out   __attribute__((unused)))
+                      struct glbOutput *unused_var(out))
 {
     //struct kndState *state;
     //struct kndTranslation *tr;
@@ -227,7 +227,7 @@ static gsl_err_t parse_translation_GSL(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t parse_GSL(struct kndText *self __attribute__((unused)),
+static gsl_err_t parse_GSL(struct kndText *unused_var(self),
                            const char *rec,
                            size_t *total_size)
 {

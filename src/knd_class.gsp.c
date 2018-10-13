@@ -191,9 +191,9 @@ static int export_baseclass_vars(struct kndClass *self,
 */
 
 static int export_conc_id_GSP(void *obj,
-                              const char *elem_id  __attribute__((unused)),
-                              size_t elem_id_size  __attribute__((unused)),
-                              size_t count __attribute__((unused)),
+                              const char *unused_var(elem_id),
+                              size_t unused_var(elem_id_size),
+                              size_t unused_var(count),
                               void *elem)
 {
     struct glbOutput *out = obj;
@@ -443,7 +443,7 @@ static int export_descendants_GSP(struct kndClass *self)
 */
 
 static int export_class_body_updates(struct kndClass *self,
-                                     struct kndClassUpdate *class_update  __attribute__((unused)),
+                                     struct kndClassUpdate *unused_var(class_update),
                                      struct glbOutput *out)
 {
     struct kndState *state = self->states;
@@ -481,7 +481,7 @@ static int export_class_body_updates(struct kndClass *self,
     return knd_OK;
 }
 
-static int export_class_inst_updates(struct kndClass *self  __attribute__((unused)),
+static int export_class_inst_updates(struct kndClass *unused_var(self),
                                      struct kndClassUpdate *class_update,
                                      struct glbOutput *out)
 {
@@ -599,8 +599,8 @@ extern int knd_class_export_GSP(struct kndClass *self,
 static gsl_err_t atomic_elem_alloc(void *obj,
                                    const char *val,
                                    size_t val_size,
-                                   size_t count  __attribute__((unused)),
-                                   void **item __attribute__((unused)))
+                                   size_t unused_var(count),
+                                   void **unused_var(item))
 {
     struct kndClass *self = obj;
     struct kndSet *class_idx, *set;
@@ -635,7 +635,7 @@ static gsl_err_t atomic_elem_alloc(void *obj,
  /*static gsl_err_t facet_alloc(void *obj,
                              const char *name,
                              size_t name_size,
-                             size_t count __attribute__((unused)),
+                             size_t unused_var(count),
                              void **item)
 {
     struct kndSet *set = obj;
@@ -709,7 +709,7 @@ static gsl_err_t facet_append(void *accu,
 static gsl_err_t set_alloc(void *obj,
                            const char *name,
                            size_t name_size,
-                           size_t count __attribute__((unused)),
+                           size_t unused_var(count),
                            void **item)
 {
     struct kndFacet *self = obj;
@@ -748,8 +748,8 @@ static gsl_err_t set_alloc(void *obj,
 static gsl_err_t atomic_classref_alloc(void *obj,
                                        const char *val,
                                        size_t val_size,
-                                       size_t count  __attribute__((unused)),
-                                       void **item __attribute__((unused)))
+                                       size_t unused_var(count),
+                                       void **unused_var(item))
 {
     struct kndSet *self = obj;
     struct kndSet *class_idx;
@@ -897,9 +897,9 @@ static gsl_err_t facet_read(void *obj,
 }
 */
 static gsl_err_t attr_var_alloc(void *obj,
-                                const char *name __attribute__((unused)),
-                                size_t name_size __attribute__((unused)),
-                                size_t count __attribute__((unused)),
+                                const char *unused_var(name),
+                                size_t unused_var(name_size),
+                                size_t unused_var(count),
                                 void **result)
 {
     struct kndAttrVar *self = obj;
@@ -1136,7 +1136,7 @@ static gsl_err_t attr_var_parse(void *obj,
 /*static gsl_err_t attr_var_alloc(void *obj,
                                  const char *name,
                                  size_t name_size,
-                                 size_t count  __attribute__((unused)),
+                                 size_t unused_var(count),
                                  void **result)
 {
     struct kndAttrVar *self = obj;
@@ -1175,9 +1175,9 @@ static gsl_err_t attr_var_parse(void *obj,
 */
 
 static gsl_err_t alloc_class_inst(void *obj,
-                                  const char *val  __attribute__((unused)),
-                                  size_t val_size __attribute__((unused)),
-                                  size_t count  __attribute__((unused)),
+                                  const char *unused_var(val),
+                                  size_t unused_var(val_size),
+                                  size_t unused_var(count),
                                   void **item)
 {
     struct kndClass *self = obj;
@@ -1326,8 +1326,8 @@ static gsl_err_t parse_class_inst(void *obj,
 }
 
 static gsl_err_t set_class_state(void *obj,
-                                 const char *name  __attribute__((unused)),
-                                 size_t name_size  __attribute__((unused)))
+                                 const char *unused_var(name),
+                                 size_t unused_var(name_size))
 {
     struct kndClass *self = obj;
     struct kndMemPool *mempool = self->entry->repo->mempool;
@@ -1577,9 +1577,9 @@ static gsl_err_t set_class_var_baseclass(void *obj,
 }
 
 static gsl_err_t class_var_alloc(void *obj,
-                                 const char *name __attribute__((unused)),
-                                 size_t name_size __attribute__((unused)),
-                                 size_t count  __attribute__((unused)),
+                                 const char *unused_var(name),
+                                 size_t unused_var(name_size),
+                                 size_t unused_var(count),
                                  void **item)
 {
     struct kndClass *self = obj;
@@ -1660,7 +1660,7 @@ static gsl_err_t parse_baseclass_array(void *obj,
 
 extern gsl_err_t
 knd_read_class_state(struct kndClass *self,
-                     struct kndClassUpdate *class_update __attribute__((unused)),
+                     struct kndClassUpdate *unused_var(class_update),
                      const char *rec,
                      size_t *total_size)
 {

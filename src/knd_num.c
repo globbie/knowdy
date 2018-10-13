@@ -33,7 +33,7 @@ static void str(struct kndNum *self)
 }
 
 static int 
-kndNum_index(struct kndNum *self __attribute__((unused)))
+kndNum_index(struct kndNum *unused_var(self))
 {
     //char buf[KND_LARGE_BUF_SIZE];
     //size_t buf_size;
@@ -52,7 +52,7 @@ kndNum_index(struct kndNum *self __attribute__((unused)))
 
 
 static int 
-kndNum_export(struct kndNum *self __attribute__((unused)), knd_format format __attribute__((unused)))
+kndNum_export(struct kndNum *unused_var(self), knd_format unused_var(format))
 {
     //char buf[KND_LARGE_BUF_SIZE];
     //size_t buf_size;

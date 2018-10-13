@@ -695,7 +695,7 @@ static int link_rel(struct kndRelArg *self,
 }
 
 static int resolve(struct kndRelArg *self,
-                   struct kndRelUpdate *update  __attribute__((unused)))
+                   struct kndRelUpdate *unused_var(update))
 {
     struct kndClassEntry *entry;
     struct ooDict *name_idx = self->rel->entry->repo->class_name_idx;

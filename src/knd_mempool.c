@@ -118,8 +118,8 @@ extern int knd_mempool_alloc(struct kndMemPool *self,
     return knd_OK;
 }
 
-extern void knd_mempool_free(struct kndMemPool *self __attribute__((unused)),
-                             knd_mempage_t page_size __attribute__((unused)),
+extern void knd_mempool_free(struct kndMemPool *unused_var(self),
+                             knd_mempage_t unused_var(page_size),
                              void *page_data)
 {
     struct kndMemPageHeader *page = NULL; //, *prev_page, **head_page, **tail_page;

@@ -17,7 +17,7 @@ parse_memory_settings(void *obj, const char *rec, size_t *total_size)
 }
 
 static gsl_err_t
-run_check_schema(void *obj __attribute__((unused)), const char *val, size_t val_size)
+run_check_schema(void *unused_var(obj), const char *val, size_t val_size)
 {
     const char *schema_name = "knd";
     size_t schema_name_size = strlen(schema_name);
