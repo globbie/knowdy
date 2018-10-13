@@ -116,9 +116,9 @@ struct kndMemPool
     size_t max_facets;
     size_t num_facets;
 
-    struct kndUserContext *user_ctxs;
-    size_t max_user_ctxs;
-    size_t num_user_ctxs;
+//    struct kndUserContext *user_ctxs;
+//    size_t max_user_ctxs;
+//    size_t num_user_ctxs;
 
     // test
     size_t num_classes;
