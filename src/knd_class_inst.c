@@ -113,13 +113,9 @@ static int export_inner_GSP(struct kndClassInst *self,
 static int export_inst_relref_JSON(struct kndClassInst *self,
                                    struct kndRelRef *relref)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
     struct glbOutput *out = self->base->entry->repo->out;
     struct kndRel *rel = relref->rel;
-    struct kndUpdate *update;
     struct kndSet *set;
-    struct tm tm_info;
     int err;
 
     err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();

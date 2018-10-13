@@ -60,6 +60,7 @@ static gsl_err_t parse_proc_select(void *obj,
     return knd_proc_select(proc, rec, total_size);
 }
 
+#if 0
 static gsl_err_t parse_rel_import(void *obj,
                                   const char *rec,
                                   size_t *total_size)
@@ -70,6 +71,7 @@ static gsl_err_t parse_rel_import(void *obj,
     self->task->type = KND_UPDATE_STATE;
     return rel->import(rel, rec, total_size);
 }
+#endif
 
 static gsl_err_t parse_class_import(void *obj,
                                     const char *rec,
@@ -210,6 +212,7 @@ static gsl_err_t parse_class_select(void *obj,
     return knd_class_select(c, rec, total_size);
 }
 
+#if 0
 static gsl_err_t parse_rel_select(void *obj,
                                   const char *rec,
                                   size_t *total_size)
@@ -232,6 +235,7 @@ static gsl_err_t parse_rel_select(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
+#endif
 
 
 /*static gsl_err_t parse_liquid_updates(void *obj,
@@ -446,8 +450,6 @@ static gsl_err_t parse_select_user(struct kndUser *self,
                                    const char *rec,
                                    size_t *total_size)
 {
-    struct kndClass *root_class = NULL;
-    struct glbOutput *out = self->task->out;
     struct kndRepo *repo;
     gsl_err_t parser_err;
     int err;

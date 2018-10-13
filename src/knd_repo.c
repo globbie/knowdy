@@ -402,7 +402,6 @@ static int kndRepo_open(struct kndRepo *self)
 {
     struct glbOutput *out;
     struct kndClass *c;
-    struct kndRel *rel;
     struct kndClassInst *inst;
     struct stat st;
     int err;
@@ -527,13 +526,11 @@ extern int kndRepo_new(struct kndRepo **repo,
                        struct kndMemPool *mempool)
 {
     struct kndRepo *self;
-    struct kndStateControl *state_ctrl;
     struct kndClass *c;
     struct kndClassEntry *entry;
     struct kndClassInst *inst;
     struct kndProc *proc;
     struct kndProcEntry *proc_entry;
-    struct kndRel *rel;
     int err;
 
     self = malloc(sizeof(struct kndRepo));

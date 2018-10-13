@@ -668,9 +668,7 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
     struct kndClass *c;
     struct kndRepo *repo = self->entry->repo;
     struct glbOutput *log = repo->log;
-    struct kndMemPool *mempool = repo->mempool;
     struct kndTask *task =   repo->task;
-    struct kndState *state;
     int err;
 
     if (!repo->curr_class) {
@@ -950,7 +948,6 @@ extern gsl_err_t knd_class_select(void *obj,
                                   size_t *total_size)
 {
     struct kndClass *self = obj;
-    struct kndClass *c;
     struct kndRepo *repo = self->entry->repo;
     struct glbOutput *log = repo->log;
     struct kndTask   *task = repo->task;
