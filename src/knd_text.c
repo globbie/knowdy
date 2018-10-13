@@ -40,7 +40,7 @@ static int export_JSON(struct kndText *self,
 }
 
 static int export_GSP(struct kndText *self   __attribute__((unused)),
-                      struct kndTask *task,
+                      struct kndTask *unused_var(task),
                       struct glbOutput *out   __attribute__((unused)))
 {
     //struct kndState *state;

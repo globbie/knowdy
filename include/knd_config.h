@@ -87,6 +87,8 @@ typedef enum knd_storage_type {
 
 #endif
 
+#define unused_var(x) unused_var_ ##x __attribute__((unused))
+
 #define KND_OFFSET_SIZE 4
 
 #define KND_IDLE_TIMEOUT 10 /* in seconds */

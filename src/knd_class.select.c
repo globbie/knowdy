@@ -418,7 +418,7 @@ static gsl_err_t parse_attr_var_select(void *obj,
 }
 
 static gsl_err_t rels_presentation(void *obj,
-                                   const char *val, size_t val_size)
+                                   const char *unused_var(val), size_t unused_var(val_size))
 {
     struct kndTask *self = obj;
     self->show_rels = true;
