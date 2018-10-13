@@ -307,8 +307,8 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
 }
 
 static gsl_err_t set_state_top_option(void *obj,
-                                      const char *name  __attribute__((unused)),
-                                      size_t name_size __attribute__((unused)) )
+                                      const char *unused_var(name),
+                                      size_t unused_var(name_size) )
 {
     struct kndClass *self = obj;
 
@@ -375,8 +375,8 @@ static gsl_err_t parse_attr(void *obj,
 }
 
 static gsl_err_t confirm_attr_var(void *obj,
-                                  const char *name __attribute__((unused)),
-                                  size_t name_size __attribute__((unused)))
+                                  const char *unused_var(name),
+                                  size_t unused_var(name_size))
 {
     struct kndAttrVar *attr_var = obj;
 
@@ -466,9 +466,9 @@ static gsl_err_t import_attr_var(void *obj,
 }
 
 static gsl_err_t import_attr_var_alloc(void *obj,
-                                        const char *name __attribute__((unused)),
-                                        size_t name_size __attribute__((unused)),
-                                        size_t count  __attribute__((unused)),
+                                        const char *unused_var(name),
+                                        size_t unused_var(name_size),
+                                        size_t unused_var(count),
                                         void **result)
 {
     struct kndAttrVar *self = obj;

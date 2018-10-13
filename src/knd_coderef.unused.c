@@ -59,7 +59,7 @@ kndCodeRef_str(struct kndCodeRef *self, size_t depth)
 static int
 kndCodeRef_parse_term(struct kndCodeRef *self,
                       char *rec,
-                      size_t rec_size __attribute__((unused)))
+                      size_t unused_var(rec_size))
 {
     //char buf[KND_NAME_SIZE];
     //size_t buf_size;

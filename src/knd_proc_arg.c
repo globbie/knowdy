@@ -59,7 +59,7 @@ static void str(struct kndProcArg *self)
     }
 }
 
-static int proc_call_arg_export_JSON(struct kndProcArg *self  __attribute__((unused)),
+static int proc_call_arg_export_JSON(struct kndProcArg *unused_var(self),
                                      struct kndProcCallArg *call_arg,
                                      struct glbOutput *out)
 {
@@ -72,7 +72,7 @@ static int proc_call_arg_export_JSON(struct kndProcArg *self  __attribute__((unu
     return knd_OK;
 }
 
-static int proc_call_arg_export_GSP(struct kndProcArg *self  __attribute__((unused)),
+static int proc_call_arg_export_GSP(struct kndProcArg *unused_var(self),
                                     struct kndProcCallArg *call_arg,
                                      struct glbOutput *out)
 {
@@ -477,7 +477,7 @@ static gsl_err_t parse_GSL(struct kndProcArg *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t set_inst_procname(void *obj __attribute__((unused)), const char *name __attribute__((unused)), size_t name_size)
+static gsl_err_t set_inst_procname(void *unused_var(obj), const char *unused_var(name), size_t name_size)
 {
     //struct kndProcArgInstance *self = obj;
 
