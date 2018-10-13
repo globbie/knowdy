@@ -12,5 +12,5 @@ RUN apt-get update && apt-get -y install \
 
 ADD . /src
 
-RUN cd /src && rm -rf build && mkdir build && cd build && cmake .. && make && make install
+RUN cd /src && rm -rf build && mkdir build && cd build && cmake .. && make && make check-knowdy && make install
 RUN rm -rf /src
