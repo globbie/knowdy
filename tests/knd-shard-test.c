@@ -37,9 +37,9 @@ START_TEST(shard_config_test)
             .expect = NULL,
             .err = knd_FAIL
         },
-        {
-            .input = NULL
-        }
+        //{
+        //    .input = NULL
+        //}
     };
 
     struct kndShard *shard = NULL;
@@ -51,8 +51,6 @@ START_TEST(shard_config_test)
         err = kndShard_new(&shard, config->input, strlen(config->input));
         ck_assert_int_eq(err, config->err);
     }
-
-    if (shard) kndShard_del(shard);
 END_TEST
 
 START_TEST(shard_table_test)
