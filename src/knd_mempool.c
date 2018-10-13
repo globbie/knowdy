@@ -198,7 +198,7 @@ static int alloc_capacity(struct kndMemPool *self)
                          &self->pages, &self->num_pages,
                          KND_NUM_BASE_MEMPAGES,
                          &self->page_size, KND_BASE_MEMPAGE_SIZE,
-                         &self->page_payload_size);
+                         &self->page_payload_size);                             RET_ERR();
     build_linked_list(self->pages, self->num_pages, self->page_size,
                       &self->head_page, &self->tail_page);
 
@@ -206,7 +206,7 @@ static int alloc_capacity(struct kndMemPool *self)
                          &self->small_x4_pages, &self->num_small_x4_pages,
                          KND_NUM_SMALL_X4_MEMPAGES,
                          &self->small_x4_page_size, KND_SMALL_X4_MEMPAGE_SIZE,
-                         &self->small_x4_page_payload_size);
+                         &self->small_x4_page_payload_size);                    RET_ERR();
     build_linked_list(self->small_x4_pages,
                       self->num_small_x4_pages, self->small_x4_page_size,
                       &self->head_small_x4_page, &self->tail_small_x4_page);
@@ -215,7 +215,7 @@ static int alloc_capacity(struct kndMemPool *self)
                          &self->small_x2_pages, &self->num_small_x2_pages,
                          KND_NUM_SMALL_X2_MEMPAGES,
                          &self->small_x2_page_size, KND_SMALL_X2_MEMPAGE_SIZE,
-                         &self->small_x2_page_payload_size);
+                         &self->small_x2_page_payload_size);                    RET_ERR();
     build_linked_list(self->small_x2_pages,
                       self->num_small_x2_pages, self->small_x2_page_size,
                       &self->head_small_x2_page, &self->tail_small_x2_page);
@@ -224,7 +224,7 @@ static int alloc_capacity(struct kndMemPool *self)
                          &self->small_pages, &self->num_small_pages,
                          KND_NUM_SMALL_MEMPAGES,
                          &self->small_page_size, KND_SMALL_MEMPAGE_SIZE,
-                         &self->small_page_payload_size);
+                         &self->small_page_payload_size);                       RET_ERR();
     build_linked_list(self->small_pages,
                       self->num_small_pages, self->small_page_size,
                       &self->head_small_page, &self->tail_small_page);
@@ -233,7 +233,7 @@ static int alloc_capacity(struct kndMemPool *self)
                          &self->tiny_pages, &self->num_tiny_pages,
                          KND_NUM_TINY_MEMPAGES,
                          &self->tiny_page_size, KND_TINY_MEMPAGE_SIZE,
-                         &self->tiny_page_payload_size);
+                         &self->tiny_page_payload_size);                        RET_ERR();
     build_linked_list(self->tiny_pages,
                       self->num_tiny_pages, self->tiny_page_size,
                       &self->head_tiny_page, &self->tail_tiny_page);
