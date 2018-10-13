@@ -248,11 +248,11 @@ static gsl_err_t
 parse_memory_settings(struct kndMemPool *self, const char *rec, size_t *total_size)
 {
     struct gslTaskSpec specs[] = {
-        {   .name = "max_user_ctxs",
-            .name_size = strlen("max_use_ctxs"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_user_ctxs
-        },
+//        {   .name = "max_user_ctxs",
+//            .name_size = strlen("max_use_ctxs"),
+//            .parse = gsl_parse_size_t,
+//            .obj = &self->max_user_ctxs
+//        },
         {   .name = "max_base_pages",
             .name_size = strlen("max_base_pages"),
             .parse = gsl_parse_size_t,
