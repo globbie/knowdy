@@ -46,6 +46,8 @@ struct kndShard
     void (*str)(struct kndShard *self);
 };
 
+extern int kndShard_parse_schema(struct kndShard *self, const char *rec, size_t *total_size);
+
 extern int kndShard_new(struct kndShard **self, const char *config, size_t config_size);
 extern void kndShard_del(struct kndShard *self);
 extern int kndShard_run_task(struct kndShard *self, const char *input, size_t input_size, const char **output, size_t *output_size);

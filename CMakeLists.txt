@@ -67,7 +67,7 @@ set(SOURCES src/knd_array.c src/knd_attr.c src/knd_attr_json.c src/knd_attr_gsp.
         src/knd_mempool.c src/knd_num.c
         src/knd_proc.c src/knd_proc.import.c src/knd_proc_arg.c
         src/knd_ref.c src/knd_rel.c src/knd_rel_arg.c src/knd_repo.c
-        src/knd_set.c src/knd_set_idx.c src/knd_shard.c src/knd_state.c
+        src/knd_set.c src/knd_set_idx.c src/knd_shard.c src/knd_shard.schema.c src/knd_state.c
         src/knd_task.c src/knd_text.c
         src/knd_user.c src/knd_utils.c)
 
