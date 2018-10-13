@@ -20,8 +20,8 @@ struct kndRepo
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    char sid[KND_TID_SIZE];
-    size_t sid_size;
+//    char sid[KND_TID_SIZE];
+//    size_t sid_size;
 
     size_t state;
     char path[KND_PATH_SIZE];

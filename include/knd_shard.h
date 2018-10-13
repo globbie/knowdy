@@ -5,8 +5,8 @@
 
 struct kndShard
 {
-    char id[KND_ID_SIZE];
-    size_t id_size;
+//    char id[KND_ID_SIZE];
+//    size_t id_size;
 
     char name[KND_NAME_SIZE];
     size_t name_size;
@@ -34,7 +34,7 @@ struct kndShard
     /* system repo */
     struct kndRepo *repo;
     /* shared repos */
-    struct kndRepo *repos;
+    //struct kndRepo *repos;
 
     const char *report;
     size_t report_size;
