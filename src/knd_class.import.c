@@ -774,8 +774,6 @@ extern gsl_err_t knd_class_import(void *obj,
     struct kndRepo *repo = self->entry->repo;
     struct kndMemPool *mempool = repo->mempool;
     struct kndTask *task = repo->task;
-    struct kndState *state;
-    struct kndStateRef *state_ref;
     struct glbOutput *log;
     int e, err;
     gsl_err_t parser_err;

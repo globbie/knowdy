@@ -294,7 +294,6 @@ extern void kndMemPool_init(struct kndMemPool *self)
 extern int kndMemPool_new(struct kndMemPool **obj)
 {
     struct kndMemPool *self;
-    int err;
 
     self = malloc(sizeof(struct kndMemPool));
     if (!self) return knd_NOMEM;
@@ -303,8 +302,4 @@ extern int kndMemPool_new(struct kndMemPool **obj)
     kndMemPool_init(self);
     *obj = self;
     return knd_OK;
-
-error:
-    del(self);
-    return err;
 }

@@ -485,8 +485,6 @@ static int export_inst_set_JSON(struct kndRel *self,
 static int export_inst_JSON(struct kndRel *self,
                             struct kndRelInstance *inst)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
     struct kndRelArg *relarg;
     struct kndRelArgInstance *relarg_inst;
     struct glbOutput *out = self->entry->repo->out;
@@ -495,7 +493,6 @@ static int export_inst_JSON(struct kndRel *self,
     struct kndState *state;
     struct kndClassInstEntry *obj_entry;
     struct kndClassInst *class_inst;
-    struct tm tm_info;
     bool in_list = false;
     int err;
 

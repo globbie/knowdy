@@ -1,12 +1,13 @@
 #include "knd_shard.h"
+
 #include "knd_err.h"
+#include "knd_mempool.h"
+#include "knd_utils.h"
 
 #include <gsl-parser.h>
 
 #include <string.h>
 #include <stddef.h>
-
-#include "knd_mempool.h"
 
 static gsl_err_t
 parse_memory_settings(void *obj, const char *rec, size_t *total_size)
