@@ -969,7 +969,7 @@ static gsl_err_t rel_alloc(void *obj,
                 self->name_size, self->name,
                 name_size, name, count);
 
-    err = mempool->new_rel_ref(mempool, &relref);
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndRelRef), (void**)&relref);
     if (err) return make_gsl_err_external(err);
 
     *item = (void*)relref;

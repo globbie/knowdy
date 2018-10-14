@@ -127,19 +127,6 @@ struct kndMemPool
                    struct glbOutput  *out);
     gsl_err_t (*parse)(struct kndMemPool *self,
 		       const char *rec, size_t *total_size);
-
-    int (*new_rel_ref)(struct kndMemPool   *self,
-                       struct kndRelRef **result);
-    int (*new_rel_update)(struct kndMemPool   *self,
-                          struct kndRelUpdate **result);
-    int (*new_rel_inst_update)(struct kndMemPool   *self,
-                               struct kndRelInstanceUpdate **result);
-    int (*new_rel_inst)(struct kndMemPool   *self,
-                        struct kndRelInstance **result);
-    int (*new_rel_arg_inst)(struct kndMemPool   *self,
-                            struct kndRelArgInstance **result);
-    int (*new_proc_arg)(struct kndMemPool   *self,
-                        struct kndProcArg **result);
 };
 
 extern int kndMemPool_new(struct kndMemPool **self);
