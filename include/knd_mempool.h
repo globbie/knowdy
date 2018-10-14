@@ -66,7 +66,6 @@ struct kndMemPageHeader
 
 struct kndMemPool
 {
-    size_t max_users;
     size_t capacity;
 
     char *pages;
@@ -111,14 +110,6 @@ struct kndMemPool
     size_t tiny_pages_used;
     struct kndMemPageHeader *head_tiny_page;
     struct kndMemPageHeader *tail_tiny_page;
-    
-    struct kndFacet *facets;
-    size_t max_facets;
-    size_t num_facets;
-
-//    struct kndUserContext *user_ctxs;
-//    size_t max_user_ctxs;
-//    size_t num_user_ctxs;
 
     // test
     size_t num_classes;
@@ -137,14 +128,6 @@ struct kndMemPool
     gsl_err_t (*parse)(struct kndMemPool *self,
 		       const char *rec, size_t *total_size);
 
-    int (*new_user_ctx)(struct kndMemPool   *self,
-                        struct kndUserContext **result);
-
-    
-    int (*new_rel)(struct kndMemPool   *self,
-                   struct kndRel **result);
-    int (*new_rel_entry)(struct kndMemPool   *self,
-                         struct kndRelEntry **result);
     int (*new_rel_ref)(struct kndMemPool   *self,
                        struct kndRelRef **result);
     int (*new_rel_update)(struct kndMemPool   *self,
@@ -155,18 +138,8 @@ struct kndMemPool
                         struct kndRelInstance **result);
     int (*new_rel_arg_inst)(struct kndMemPool   *self,
                             struct kndRelArgInstance **result);
-    int (*new_rel_arg_inst_ref)(struct kndMemPool   *self,
-                                struct kndRelArgInstRef **result);
-    int (*new_proc)(struct kndMemPool   *self,
-                    struct kndProc **result);
-    int (*new_proc_entry)(struct kndMemPool   *self,
-                        struct kndProcEntry **result);
     int (*new_proc_arg)(struct kndMemPool   *self,
                         struct kndProcArg **result);
-    int (*new_proc_update)(struct kndMemPool   *self,
-                          struct kndProcUpdate **result);
-    int (*new_proc_update_ref)(struct kndMemPool   *self,
-                              struct kndProcUpdateRef **result);
 };
 
 extern int kndMemPool_new(struct kndMemPool **self);
