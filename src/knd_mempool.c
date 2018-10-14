@@ -100,6 +100,8 @@ int knd_mempool_alloc(struct kndMemPool *self,
     *page_list = (*page_list)->next;
     (*pages_used)++;
 
+    memset(*result, 0, obj_size);  // FIXME(k15tfu): don't initialize the memory
+
     return knd_OK;
 }
 
