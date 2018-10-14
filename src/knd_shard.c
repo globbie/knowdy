@@ -130,7 +130,6 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
     }
 
     err = mempool->alloc(mempool);                                                RET_ERR();
-    mempool->log = self->task->log;
 
     if (!self->user_class_name_size) {
         self->user_class_name_size = strlen("User");
