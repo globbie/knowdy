@@ -376,6 +376,9 @@ extern int knd_confirm_state(struct kndRepo *self)
     struct kndUpdate *update;
     struct kndMemPool *mempool = self->mempool;
     struct glbOutput *out = self->task->out;
+    struct kndStateRef *ref, *child_ref;
+    struct kndState *state;
+    struct kndClass *c;
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP) {
@@ -383,7 +386,28 @@ extern int knd_confirm_state(struct kndRepo *self)
                 self->name_size, self->name);
     }
 
+    for (ref = self->class_state_refs; ref; ref = ref->next) {
+        c = ref->obj;
+
+        if (c) {
+            knd_log(".. Repo %.*s to confirm updates in \"%.*s\"..",
+                    self->name_size, self->name,
+                    c->name_size, c->name);
+        }
+
+        state = ref->state;
+        for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
+            c = child_ref->obj;
+            if (c) {
+                knd_log("  == %.*s", c->name_size, c->name);
+            }
+        }
+    }
+
+    
+    // 
     // TODO: check conflicts
+
     err = knd_update_new(mempool, &update);                                      RET_ERR();
     update->repo = self;
 

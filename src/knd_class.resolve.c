@@ -596,8 +596,8 @@ static int resolve_attr_vars(struct kndClass *self,
             attr_ref->attr_var = attr_var;
         }
 
-        if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
-            knd_log("++ got attr: %.*s (id:%.*s)",
+        if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+            knd_log("++ got attr: %.*s [id:%.*s]",
                     attr->name_size, attr->name,
                     attr->id_size, attr->id);
         }
@@ -696,7 +696,7 @@ static int check_attr_name_conflict(struct kndClass *self,
         /* local attr storage lookup */
         err = attr_idx->get(attr_idx, attr->id, attr->id_size, &obj);
         if (!err) {
-            knd_log("attr name collision detected: %.*s",
+            knd_log("-- attr name collision detected: %.*s",
                     attr_candidate->name_size, attr_candidate->name);
             return knd_CONFLICT;
         }
@@ -888,7 +888,7 @@ static int link_ancestor(struct kndClass *self,
     err = desc_idx->add(desc_idx, entry->id, entry->id_size,
                         (void*)entry);                                             RET_ERR();
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
         knd_log(".. add \"%.*s\" (repo:%.*s) as "
                 " a descendant of ancestor \"%.*s\" (repo:%.*s)..",
                 entry->name_size, entry->name,
@@ -914,9 +914,10 @@ static int link_baseclass(struct kndClass *self,
     struct kndClass *base_copy = NULL;
     struct kndClassEntry *entry = self->entry;
     struct kndMemPool *mempool = self->entry->repo->mempool;
+    bool parent_linked = false;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
         knd_log(".. \"%.*s\" (%.*s) links to base => \"%.*s\" (%.*s) top:%d",
                 entry->name_size, entry->name,
                 entry->repo->name_size, entry->repo->name,
@@ -925,45 +926,41 @@ static int link_baseclass(struct kndClass *self,
                 base->entry->class->state_top);
 
     if (base->entry->repo != self->entry->repo) {
-
         err = knd_class_clone(base, self->entry->repo, &base_copy);               RET_ERR();
         base = base_copy;
-
-        
-        err = link_ancestor(self, base->entry);                                       RET_ERR();
+        err = link_ancestor(self, base->entry);                                   RET_ERR();
+        parent_linked = true;
     }
 
     /* register as a child */
     err = knd_class_ref_new(mempool, &ref);                                       RET_ERR();
     ref->entry = entry;
     ref->class = self;
-
     link_child(base->entry, ref);
 
     /* copy the ancestors */
     for (baseref = base->entry->ancestors; baseref; baseref = baseref->next) {
-
         if (baseref->entry->class && baseref->entry->class->state_top) continue;
-
         err = link_ancestor(self, baseref->entry);                                RET_ERR();
     }
 
-    /* register a parent */
-    err = knd_class_ref_new(mempool, &ref);                                       RET_ERR();
-    ref->class = base;
-    ref->entry = base->entry;
-    ref->next = entry->ancestors;
-    entry->ancestors = ref;
-    entry->num_ancestors++;
+    if (!parent_linked) {
+        /* register a parent */
+        err = knd_class_ref_new(mempool, &ref);                                       RET_ERR();
+        ref->class = base;
+        ref->entry = base->entry;
+        ref->next = entry->ancestors;
+        entry->ancestors = ref;
+        entry->num_ancestors++;
+        base->entry->num_terminals++;
 
-    base->entry->num_terminals++;
-
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-        knd_log(".. add \"%.*s\" (repo:%.*s) as a child of \"%.*s\" (repo:%.*s)..",
-                entry->name_size, entry->name,
-                entry->repo->name_size, entry->repo->name,
-                base->entry->name_size, base->entry->name,
-                base->entry->repo->name_size, base->entry->repo->name);
+        if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+            knd_log(".. add \"%.*s\" (repo:%.*s) as a child of \"%.*s\" (repo:%.*s)..",
+                    entry->name_size, entry->name,
+                    entry->repo->name_size, entry->repo->name,
+                    base->entry->name_size, base->entry->name,
+                    base->entry->repo->name_size, base->entry->repo->name);
+    }
 
     return knd_OK;
 }
