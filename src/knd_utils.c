@@ -285,10 +285,11 @@ extern int knd_write_file(const char *filename,
     fd = open(filename,  
               O_WRONLY | O_TRUNC | O_CREAT, 0644);
     if (fd < 0) return knd_IO_FAIL;
-    write(fd, buf, buf_size);
+
+    ssize_t written = write(fd, buf, buf_size);
     close(fd);
 
-    return knd_OK;
+    return written == -1 || (size_t)written != buf_size ? knd_IO_FAIL : knd_OK;
 }
 
 extern int 
@@ -305,10 +306,10 @@ knd_append_file(const char *filename,
         return knd_IO_FAIL;
     }
 
-    write(fd, buf, buf_size);
+    ssize_t written = write(fd, buf, buf_size);
     close(fd);
 
-    return knd_OK;
+    return written == -1 || (size_t)written != buf_size ? knd_IO_FAIL : knd_OK;
 }
 
 

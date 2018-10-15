@@ -60,6 +60,7 @@ static gsl_err_t parse_proc_select(void *obj,
     return knd_proc_select(proc, rec, total_size);
 }
 
+#if 0
 static gsl_err_t parse_rel_import(void *obj,
                                   const char *rec,
                                   size_t *total_size)
@@ -70,6 +71,7 @@ static gsl_err_t parse_rel_import(void *obj,
     self->task->type = KND_UPDATE_STATE;
     return rel->import(rel, rec, total_size);
 }
+#endif
 
 static gsl_err_t parse_class_import(void *obj,
                                     const char *rec,
@@ -89,7 +91,7 @@ static gsl_err_t parse_class_import(void *obj,
 }
 
 static gsl_err_t parse_sync_task(void *obj,
-                                 const char *rec __attribute__((unused)),
+                                 const char *unused_var(rec),
                                  size_t *total_size)
 {
     char buf[KND_TEMP_BUF_SIZE];
@@ -210,6 +212,7 @@ static gsl_err_t parse_class_select(void *obj,
     return knd_class_select(c, rec, total_size);
 }
 
+#if 0
 static gsl_err_t parse_rel_select(void *obj,
                                   const char *rec,
                                   size_t *total_size)
@@ -232,6 +235,7 @@ static gsl_err_t parse_rel_select(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
+#endif
 
 
 /*static gsl_err_t parse_liquid_updates(void *obj,
@@ -340,8 +344,8 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 }
 
 static gsl_err_t run_present_user(void *data,
-                                  const char *val __attribute__((unused)),
-                                  size_t val_size __attribute__((unused)))
+                                  const char *unused_var(val),
+                                  size_t unused_var(val_size))
 {
     struct kndUser *self = data;
     struct kndClassInst *user;
@@ -363,8 +367,8 @@ static gsl_err_t run_present_user(void *data,
 }
 
 static gsl_err_t run_present_state(void *data,
-                                   const char *val __attribute__((unused)),
-                                   size_t val_size __attribute__((unused)))
+                                   const char *unused_var(val),
+                                   size_t unused_var(val_size))
 {
     struct kndUser *self = data;
     struct kndRepo *repo;
@@ -387,7 +391,7 @@ static gsl_err_t run_present_state(void *data,
 static gsl_err_t alloc_class_item(void *obj,
                                   const char *name,
                                   size_t name_size,
-                                  size_t count  __attribute__((unused)),
+                                  size_t unused_var(count),
                                   void **item)
 {
     struct kndClass *self = obj;
@@ -399,8 +403,8 @@ static gsl_err_t alloc_class_item(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t append_class_item(void *accu __attribute__((unused)),
-                                   void *item  __attribute__((unused)))
+static gsl_err_t append_class_item(void *unused_var(accu),
+                                   void *unused_var(item))
 {
     //struct kndClass *self = accu;
 
@@ -446,8 +450,6 @@ static gsl_err_t parse_select_user(struct kndUser *self,
                                    const char *rec,
                                    size_t *total_size)
 {
-    struct kndClass *root_class = NULL;
-    struct glbOutput *out = self->task->out;
     struct kndRepo *repo;
     gsl_err_t parser_err;
     int err;

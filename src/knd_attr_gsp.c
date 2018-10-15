@@ -174,7 +174,7 @@ static int attr_var_list_export_GSP(struct kndAttrVar *parent_item,
 
 extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
                                      struct glbOutput *out,
-                                     size_t depth __attribute__((unused)),
+                                     size_t unused_var(depth),
                                      bool is_concise)
 {
     struct kndAttrVar *item;

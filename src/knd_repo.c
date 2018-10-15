@@ -55,7 +55,7 @@ static void kndRepo_str(struct kndRepo *self)
 static gsl_err_t alloc_class_update(void *obj,
                                     const char *name,
                                     size_t name_size,
-                                    size_t count __attribute__((unused)),
+                                    size_t unused_var(count),
                                     void **item)
 {
     struct kndUpdate    *self = obj;
@@ -235,7 +235,7 @@ static gsl_err_t parse_class_update(void *obj,
 static gsl_err_t alloc_update(void *obj,
                               const char *name,
                               size_t name_size,
-                              size_t count __attribute__((unused)),
+                              size_t unused_var(count),
                               void **item)
 {
     struct kndRepo *self = obj;
@@ -402,7 +402,6 @@ static int kndRepo_open(struct kndRepo *self)
 {
     struct glbOutput *out;
     struct kndClass *c;
-    struct kndRel *rel;
     struct kndClassInst *inst;
     struct stat st;
     int err;
@@ -527,13 +526,11 @@ extern int kndRepo_new(struct kndRepo **repo,
                        struct kndMemPool *mempool)
 {
     struct kndRepo *self;
-    struct kndStateControl *state_ctrl;
     struct kndClass *c;
     struct kndClassEntry *entry;
     struct kndClassInst *inst;
     struct kndProc *proc;
     struct kndProcEntry *proc_entry;
-    struct kndRel *rel;
     int err;
 
     self = malloc(sizeof(struct kndRepo));

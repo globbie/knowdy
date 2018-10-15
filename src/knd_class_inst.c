@@ -30,7 +30,7 @@
 static int export_rel_inst_JSON(void *obj,
                                 const char *elem_id, size_t elem_id_size,
                                 size_t count,
-                                void *elem __attribute__((unused)));
+                                void *unused_var(elem));
 
 extern void knd_class_inst_str(struct kndClassInst *self, size_t depth)
 {
@@ -113,13 +113,9 @@ static int export_inner_GSP(struct kndClassInst *self,
 static int export_inst_relref_JSON(struct kndClassInst *self,
                                    struct kndRelRef *relref)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
     struct glbOutput *out = self->base->entry->repo->out;
     struct kndRel *rel = relref->rel;
-    struct kndUpdate *update;
     struct kndSet *set;
-    struct tm tm_info;
     int err;
 
     err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
@@ -398,9 +394,9 @@ static int export_JSON(struct kndClassInst *self,
 }
 
 static int export_rel_inst_JSON(void *obj,
-                                const char *elem_id __attribute__((unused)),
-                                size_t elem_id_size __attribute__((unused)),
-                                size_t count __attribute__((unused)),
+                                const char *unused_var(elem_id),
+                                size_t unused_var(elem_id_size),
+                                size_t count,
                                 void *elem)
 {
     struct glbOutput *out = obj;
@@ -879,7 +875,7 @@ static gsl_err_t rel_entry_append(void *accu,
 static gsl_err_t rel_entry_alloc(void *obj,
                                  const char *name,
                                  size_t name_size,
-                                 size_t count __attribute__((unused)),
+                                 size_t unused_var(count),
                                  void **item)
 {
     struct kndRelRef *self = obj;
@@ -1011,8 +1007,8 @@ static gsl_err_t rel_alloc(void *obj,
 */
 
 static gsl_err_t remove_inst(void *data,
-                             const char *name __attribute__((unused)),
-                             size_t name_size __attribute__((unused)))
+                             const char *unused_var(name),
+                             size_t unused_var(name_size))
 {
     struct kndClassInst *self       = data;
 
@@ -1157,8 +1153,8 @@ static gsl_err_t parse_import_inst(struct kndClassInst *self,
 }
 
 static int export_inst_JSON(void *obj,
-                            const char *elem_id  __attribute__((unused)),
-                            size_t elem_id_size  __attribute__((unused)),
+                            const char *unused_var(elem_id),
+                            size_t unused_var(elem_id_size),
                             size_t count,
                             void *elem)
 {
@@ -1234,8 +1230,8 @@ static int export_inst_set_JSON(struct kndClass *self,
     return knd_OK;
 }
 
-static gsl_err_t present_inst_selection(void *data, const char *val __attribute__((unused)),
-                                        size_t val_size __attribute__((unused)))
+static gsl_err_t present_inst_selection(void *data, const char *unused_var(val),
+                                        size_t unused_var(val_size))
 {
     struct kndClassInst *self = data;
     struct kndClassInst *inst;
@@ -1345,8 +1341,8 @@ static gsl_err_t run_get_inst(void *obj, const char *name, size_t name_size)
 }
 
 static gsl_err_t present_state(void *obj,
-                               const char *name  __attribute__((unused)),
-                               size_t name_size  __attribute__((unused)))
+                               const char *unused_var(name),
+                               size_t unused_var(name_size))
 {
     struct kndClass *self = obj;
     struct kndTask *task = self->entry->repo->task;

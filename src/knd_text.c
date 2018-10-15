@@ -39,9 +39,9 @@ static int export_JSON(struct kndText *self,
     return knd_OK;
 }
 
-static int export_GSP(struct kndText *self   __attribute__((unused)),
-                      struct kndTask *task,
-                      struct glbOutput *out   __attribute__((unused)))
+static int export_GSP(struct kndText *unused_var(self),
+                      struct kndTask *unused_var(task),
+                      struct glbOutput *unused_var(out))
 {
     //struct kndState *state;
     //struct kndTranslation *tr;
@@ -167,6 +167,7 @@ extern int knd_text_export(struct kndText *self,
     return knd_OK;
 }
 
+#if 0
 static gsl_err_t run_set_translation_text(void *obj, const char *val, size_t val_size)
 {
     struct kndTranslation *tr = obj;
@@ -226,7 +227,7 @@ static gsl_err_t parse_translation_GSL(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t parse_GSL(struct kndText *self __attribute__((unused)),
+static gsl_err_t parse_GSL(struct kndText *unused_var(self),
                            const char *rec,
                            size_t *total_size)
 {
@@ -254,6 +255,7 @@ static gsl_err_t parse_GSL(struct kndText *self __attribute__((unused)),
 
     return make_gsl_err(gsl_OK);
 }
+#endif
 
 extern int knd_text_translation_new(struct kndMemPool *mempool,
                                     struct kndTranslation **result)

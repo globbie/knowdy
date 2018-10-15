@@ -357,8 +357,8 @@ static gsl_err_t run_set_quant(void *obj, const char *name, size_t name_size)
 }
 
 static gsl_err_t confirm_idx(void *obj,
-                             const char *name __attribute__((unused)),
-                             size_t name_size __attribute__((unused)))
+                             const char *unused_var(name),
+                             size_t unused_var(name_size))
 {
     struct kndAttr *self = obj;
 
@@ -370,8 +370,8 @@ static gsl_err_t confirm_idx(void *obj,
 }
 
 static gsl_err_t confirm_implied(void *obj,
-                                 const char *name __attribute__((unused)),
-                                 size_t name_size __attribute__((unused)))
+                                 const char *unused_var(name),
+                                 size_t unused_var(name_size))
 {
     struct kndAttr *self = obj;
     self->is_implied = true;
@@ -788,9 +788,9 @@ extern void kndAttr_init(struct kndAttr *self)
 }
 
 extern int knd_copy_attr_ref(void *obj,
-                             const char *elem_id __attribute__((unused)),
-                             size_t elem_id_size __attribute__((unused)),
-                             size_t count __attribute__((unused)),
+                             const char *unused_var(elem_id),
+                             size_t unused_var(elem_id_size),
+                             size_t unused_var(count),
                              void *elem)
 {
     struct kndSet     *attr_idx = obj;
@@ -816,9 +816,9 @@ extern int knd_copy_attr_ref(void *obj,
 }
 
 extern int knd_register_attr_ref(void *obj,
-                                 const char *elem_id __attribute__((unused)),
-                                 size_t elem_id_size __attribute__((unused)),
-                                 size_t count __attribute__((unused)),
+                                 const char *unused_var(elem_id),
+                                 size_t unused_var(elem_id_size),
+                                 size_t unused_var(count),
                                  void *elem)
 {
     struct kndClass     *self = obj;

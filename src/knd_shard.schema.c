@@ -1,12 +1,13 @@
 #include "knd_shard.h"
+
 #include "knd_err.h"
+#include "knd_mempool.h"
+#include "knd_utils.h"
 
 #include <gsl-parser.h>
 
 #include <string.h>
 #include <stddef.h>
-
-#include "knd_mempool.h"
 
 static gsl_err_t
 parse_memory_settings(void *obj, const char *rec, size_t *total_size)
@@ -16,7 +17,7 @@ parse_memory_settings(void *obj, const char *rec, size_t *total_size)
 }
 
 static gsl_err_t
-run_check_schema(void *obj __attribute__((unused)), const char *val, size_t val_size)
+run_check_schema(void *unused_var(obj), const char *val, size_t val_size)
 {
     const char *schema_name = "knd";
     size_t schema_name_size = strlen(schema_name);

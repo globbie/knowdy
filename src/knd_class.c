@@ -43,7 +43,7 @@
 
 static void str(struct kndClass *self)
 {
-    struct kndTranslation *tr, *t;
+    struct kndTranslation *tr;
     struct kndClassVar *item;
     struct kndClassRef *ref;
     struct kndClass *c;
@@ -515,8 +515,6 @@ static int update_state(struct kndClass *self,
 {
     struct kndRepo *repo = self->entry->repo;
     struct kndMemPool *mempool = repo->mempool;
-    struct kndTask *task = repo->task;
-    struct kndStateRef *ref;
     struct kndState *state;
     int err;
 
@@ -539,7 +537,6 @@ static int update_inst_state(struct kndClass *self,
                              struct kndStateRef *children)
 {
     struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndTask *task = self->entry->repo->task;
     struct kndStateRef *ref;
     struct kndState *state;
     struct kndSet *inst_idx = self->entry->inst_idx;

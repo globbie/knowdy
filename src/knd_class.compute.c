@@ -102,7 +102,7 @@ extern int knd_compute_num_value(struct kndAttr *attr,
 
 static int compute_list_sum(struct kndAttrVar *parent_var,
                             struct kndAttrVar *query,
-                            struct kndAttr *attr   __attribute__((unused)),
+                            struct kndAttr *unused_var(attr),
                             struct kndProcCallArg *arg,
                             long *result)
 {

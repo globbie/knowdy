@@ -153,8 +153,8 @@ static int export_conc_elem_JSON(void *obj,
 }
 
 static int export_class_ref_JSON(void *obj,
-                                 const char *elem_id,
-                                 size_t elem_id_size,
+                                 const char *unused_var(elem_id),
+                                 size_t unused_var(elem_id_size),
                                  size_t count,
                                  void *elem)
 {
