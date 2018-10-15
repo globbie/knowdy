@@ -520,7 +520,7 @@ static int update_state(struct kndClass *self,
 
     err = knd_state_new(mempool, &state);
     if (err) {
-        knd_log("-- class inst state alloc failed");
+        knd_log("-- class state alloc failed");
         return err;
     }
     state->phase = phase;
@@ -572,6 +572,60 @@ static int update_inst_state(struct kndClass *self,
     state->next = self->inst_states;
     self->inst_states = state;
 
+    return knd_OK;
+}
+
+static int update_ancestor_state(struct kndClass *self,
+                                 struct kndClass *child)
+{
+    struct kndRepo *repo = self->entry->repo;
+    struct kndMemPool *mempool = repo->mempool;
+    struct kndClass *c;
+    struct kndStateRef *state_ref = NULL;
+    struct kndState *state;
+    int err;
+
+    knd_log(".. update the state of ancestor: %.*s..",
+            self->name_size, self->name);
+
+    /* lookup in repo */
+    for (state_ref = repo->class_state_refs; state_ref; state_ref = state_ref->next) {
+        c = state_ref->obj;
+        if (c == self) break;
+    }
+
+    if (!state_ref) {
+        err = knd_state_new(mempool, &state);
+        if (err) {
+            knd_log("-- class ancestor state alloc failed");
+            return err;
+        }
+        state->phase = KND_UPDATED;
+        self->num_desc_states++;
+        state->numid = self->num_desc_states;
+        state->next = self->desc_states;
+        self->desc_states = state;
+
+        /* register in repo */
+        err = knd_state_ref_new(mempool, &state_ref);                                   RET_ERR();
+        state_ref->obj = (void*)self;
+        state_ref->state = state;
+        state_ref->type = KND_STATE_CLASS;
+
+        state_ref->next = repo->class_state_refs;
+        repo->class_state_refs = state_ref;
+    }
+    state = state_ref->state;
+
+    /* new ref to a child */
+    err = knd_state_ref_new(mempool, &state_ref);                                   RET_ERR();
+    state_ref->obj = (void*)child;
+    state_ref->state = child->states;
+    state_ref->type = KND_STATE_CLASS;
+
+    state_ref->next = state->children;
+    state->children = state_ref;
+    
     return knd_OK;
 }
 
@@ -628,15 +682,11 @@ extern int knd_update_state(struct kndClass *self,
             if (err) return err;
             ref->entry = c->entry;
         }
-
-        knd_log(".. update the state of ancestor: %.*s..", c->name_size, c->name);
-
-        
-        //err = update_inst_state(c, self->inst_state_refs);                        RET_ERR();
+        err = update_ancestor_state(c, self);                                      RET_ERR();
     }
 
     /* register in repo */
-    err = knd_state_ref_new(mempool, &state_ref);   RET_ERR();
+    err = knd_state_ref_new(mempool, &state_ref);                                   RET_ERR();
     state_ref->state = self->states;
     state_ref->type = KND_STATE_CLASS;
 

@@ -20,9 +20,6 @@ struct kndRepo
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-//    char sid[KND_TID_SIZE];
-//    size_t sid_size;
-
     size_t state;
     char path[KND_PATH_SIZE];
     size_t path_size;
@@ -74,6 +71,7 @@ struct kndRepo
     struct kndClass     *curr_class;
     struct kndStateRef  *curr_class_state_refs;
     struct kndStateRef  *curr_class_inst_state_refs;
+
     struct kndStateRef  *class_state_refs;
 
     struct ooDict  *attr_name_idx;
