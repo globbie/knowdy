@@ -619,7 +619,7 @@ extern int knd_update_state(struct kndClass *self,
     default:
         break;
     }
-
+    
     /* inform your ancestors */
     for (ref = self->entry->ancestors; ref; ref = ref->next) {
         c = ref->entry->class;
@@ -634,6 +634,7 @@ extern int knd_update_state(struct kndClass *self,
 
         knd_log(".. update the state of ancestor: %.*s..", c->name_size, c->name);
 
+        
         //err = update_inst_state(c, self->inst_state_refs);                        RET_ERR();
     }
 

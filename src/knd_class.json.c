@@ -388,6 +388,8 @@ static int present_subclasses(struct kndClass *self,
     struct kndClassRef *ref;
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
+    struct kndClass *c;
+    struct kndState *state;
     bool in_list = false;
     int err;
 
@@ -406,18 +408,33 @@ static int present_subclasses(struct kndClass *self,
                      strlen(",\"_subclasses\":["));               RET_ERR();
     
     for (ref = entry->children; ref; ref = ref->next) {
+        c = ref->class;
+        // TODO: defreeze
+        if (!c) continue;
+        
+        state = c->states;
+        if (state && state->phase == KND_REMOVED) continue;
+
         if (in_list) {
             err = out->write(out, ",", 1);  RET_ERR();
         }
+
         err = present_subclass(ref, out);                         RET_ERR();
         in_list = true;
     }
 
     if (orig_entry) {
         for (ref = orig_entry->children; ref; ref = ref->next) {
+            c = ref->class;
+            // TODO: defreeze
+            if (!c) continue;
+            state = c->states;
+            if (state && state->phase == KND_REMOVED) continue;
+
             if (in_list) {
                 err = out->write(out, ",", 1);  RET_ERR();
             }
+
             err = present_subclass(ref, out);                         RET_ERR();
             in_list = true;
         }

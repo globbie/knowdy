@@ -244,7 +244,7 @@ extern int knd_export_inherited_attr(void *obj,
     }
 
     if (attr->proc) {
-        if (DEBUG_ATTR_JSON_LEVEL_TMP)
+        if (DEBUG_ATTR_JSON_LEVEL_2)
             knd_log("..computed attr: %.*s!", attr->name_size, attr->name);
 
         if (!attr_var) {
