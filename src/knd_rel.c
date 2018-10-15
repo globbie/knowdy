@@ -120,9 +120,9 @@ static void inst_str(struct kndRel *self, struct kndRelInstance *inst)
     }
 }
 
-static gsl_err_t run_present_rel(void *obj __attribute__((unused)),
-                                 const char *val __attribute__((unused)),
-                                 size_t val_size __attribute__((unused)))
+static gsl_err_t run_present_rel(void *obj,
+                                 const char *unused_var(val),
+                                 size_t unused_var(val_size))
 {
     struct kndRel *self = obj;
     struct kndRel *rel;
@@ -485,8 +485,6 @@ static int export_inst_set_JSON(struct kndRel *self,
 static int export_inst_JSON(struct kndRel *self,
                             struct kndRelInstance *inst)
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
     struct kndRelArg *relarg;
     struct kndRelArgInstance *relarg_inst;
     struct glbOutput *out = self->entry->repo->out;
@@ -495,7 +493,6 @@ static int export_inst_JSON(struct kndRel *self,
     struct kndState *state;
     struct kndClassInstEntry *obj_entry;
     struct kndClassInst *class_inst;
-    struct tm tm_info;
     bool in_list = false;
     int err;
 
@@ -793,8 +790,8 @@ static gsl_err_t import_rel(struct kndRel *self,
 }
 
 static gsl_err_t confirm_rel_read(void *obj,
-                                  const char *val __attribute__((unused)),
-                                  size_t val_size __attribute__((unused)))
+                                  const char *unused_var(val),
+                                  size_t unused_var(val_size))
 {
     struct kndRel *self = obj;
 
@@ -852,7 +849,7 @@ static int read_rel_incipit(struct kndRel *self,
 static gsl_err_t inst_entry_alloc(void *obj,
                                   const char *val,
                                   size_t val_size,
-                                  size_t count  __attribute__((unused)),
+                                  size_t unused_var(count),
                                   void **item)
 {
     struct kndRelEntry *parent_entry = obj;
@@ -1779,8 +1776,8 @@ static gsl_err_t run_get_rel_inst(void *obj, const char *name, size_t name_size)
 }
 
 static gsl_err_t remove_inst(void *data,
-                             const char *name __attribute__((unused)),
-                             size_t name_size __attribute__((unused)))
+                             const char *unused_var(name),
+                             size_t unused_var(name_size))
 {
     struct kndRel *self         = data;
     struct kndRel  *root_rel    = self->entry->repo->root_rel;
@@ -1832,8 +1829,8 @@ static gsl_err_t remove_inst(void *data,
 }
 
 static gsl_err_t present_inst_selection(void *data,
-                                        const char *val __attribute__((unused)),
-                                        size_t val_size __attribute__((unused)))
+                                        const char *unused_var(val),
+                                        size_t unused_var(val_size))
 {
     struct kndRel *self = data;
     struct kndRelInstance *inst;
@@ -2210,7 +2207,7 @@ static int kndRel_update_state(struct kndRel *self,
 
 /*static gsl_err_t set_liquid_rel_id(void *obj,
                                    const char *val,
-                                   size_t val_size __attribute__((unused)))
+                                   size_t unused_var(val_size))
 {
     struct kndRel *self = (struct kndRel*)obj;
     struct kndRel *rel;

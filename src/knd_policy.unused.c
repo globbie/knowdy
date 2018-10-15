@@ -21,7 +21,7 @@ kndPolicy_del(struct kndPolicy *self)
 }
 
 static int 
-kndPolicy_str(struct kndPolicy *self __attribute__((unused)))
+kndPolicy_str(struct kndPolicy *unused_var(self))
 {
 
     knd_log("POLICY");

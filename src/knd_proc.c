@@ -188,8 +188,8 @@ static gsl_err_t run_get_proc(void *obj, const char *name, size_t name_size)
 }
 
 static gsl_err_t present_proc_selection(void *obj,
-                                        const char *val __attribute__((unused)),
-                                        size_t val_size __attribute__((unused)))
+                                        const char *unused_var(val),
+                                        size_t unused_var(val_size))
 {
     struct kndProc *self = obj;
     struct kndProc *p;
@@ -346,7 +346,7 @@ extern gsl_err_t knd_proc_select(struct kndProc *self,
     return make_gsl_err(gsl_OK);
 }
 
-static int proc_call_arg_export_GSP(struct kndProc *self  __attribute__((unused)),
+static int proc_call_arg_export_GSP(struct kndProc *unused_var(self),
                                     struct kndProcCallArg *call_arg,
                                     struct glbOutput *out)
 {
@@ -436,7 +436,7 @@ static int export_GSP(struct kndProc *self,
     return knd_OK;
 }
 
-static int proc_call_arg_export_JSON(struct kndProc *self  __attribute__((unused)),
+static int proc_call_arg_export_JSON(struct kndProc *unused_var(self),
                                      struct kndProcCallArg *call_arg,
                                      struct glbOutput  *out)
 {
@@ -657,10 +657,10 @@ extern int knd_proc_export(struct kndProc *self,
     return knd_OK;
 }
 
-static gsl_err_t alloc_gloss_item(void *obj __attribute__((unused)),
+static gsl_err_t alloc_gloss_item(void *unused_var(obj),
                                   const char *name,
                                   size_t name_size,
-                                  size_t count __attribute__((unused)),
+                                  size_t unused_var(count),
                                   void **item)
 {
     struct kndTranslation *tr;
@@ -761,9 +761,9 @@ static gsl_err_t parse_gloss(void *obj,
 
 
 static gsl_err_t alloc_proc_arg(void *obj,
-                                const char *name __attribute__((unused)),
-                                size_t name_size __attribute__((unused)),
-                                size_t count __attribute__((unused)),
+                                const char *unused_var(name),
+                                size_t unused_var(name_size),
+                                size_t unused_var(count),
                                 void **item)
 {
     struct kndProc *self = obj;

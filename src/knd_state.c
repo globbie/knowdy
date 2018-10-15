@@ -53,7 +53,7 @@ static void reset(struct kndStateControl *self)
  */
 
  static int knd_sync_update(struct kndStateControl *self,
-                           struct kndUpdate *update)
+                           struct kndUpdate *unused_var(update))
 {
     struct glbOutput *out = self->repo->task->out;
     struct glbOutput *file_out = self->repo->task->file_out;

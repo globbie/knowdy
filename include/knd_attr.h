@@ -234,9 +234,9 @@ extern int knd_attr_var_export_JSON(struct kndAttrVar *self,
                                     struct glbOutput *out);
 
 extern int knd_export_inherited_attr(void *obj,
-                                     const char *elem_id  __attribute__((unused)),
-                                     size_t elem_id_size  __attribute__((unused)),
-                                     size_t count __attribute__((unused)),
+                                     const char *elem_id,
+                                     size_t elem_id_size,
+                                     size_t count,
                                      void *elem);
 
 extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
@@ -248,7 +248,7 @@ extern int knd_attr_var_export_GSP(struct kndAttrVar *self,
                                     struct glbOutput *out);
 extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
                                      struct glbOutput *out,
-                                     size_t depth __attribute__((unused)),
+                                     size_t depth,
                                      bool is_concise);
 
 extern int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var,

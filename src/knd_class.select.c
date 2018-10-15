@@ -306,8 +306,8 @@ static gsl_err_t run_set_attr_var(void *obj,
 }
 
 static gsl_err_t present_attr_var_selection(void *obj,
-                                            const char *val __attribute__((unused)),
-                                            size_t val_size __attribute__((unused)))
+                                            const char *unused_var(val),
+                                            size_t unused_var(val_size))
 {
     struct kndClass *self = obj;
     struct kndAttr *attr;
@@ -418,7 +418,7 @@ static gsl_err_t parse_attr_var_select(void *obj,
 }
 
 static gsl_err_t rels_presentation(void *obj,
-                                   const char *val, size_t val_size)
+                                   const char *unused_var(val), size_t unused_var(val_size))
 {
     struct kndTask *self = obj;
     self->show_rels = true;
@@ -485,8 +485,8 @@ static gsl_err_t parse_baseclass_select(void *obj,
 }
 
 static gsl_err_t present_class_selection(void *obj,
-                                         const char *val __attribute__((unused)),
-                                         size_t val_size __attribute__((unused)))
+                                         const char *unused_var(val),
+                                         size_t unused_var(val_size))
 {
     struct kndClass *self = obj;
     struct kndClass *c;
@@ -668,9 +668,7 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
     struct kndClass *c;
     struct kndRepo *repo = self->entry->repo;
     struct glbOutput *log = repo->log;
-    struct kndMemPool *mempool = repo->mempool;
     struct kndTask *task =   repo->task;
-    struct kndState *state;
     int err;
 
     if (!repo->curr_class) {
@@ -735,8 +733,8 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
 }
 
 static gsl_err_t present_state(void *obj,
-                               const char *name  __attribute__((unused)),
-                               size_t name_size  __attribute__((unused)))
+                               const char *unused_var(name),
+                               size_t unused_var(name_size))
 {
     struct kndClass *self = obj;
     struct kndTask *task = self->entry->repo->task;
@@ -916,7 +914,7 @@ static int retrieve_inst_updates(struct kndStateRef *ref,
 
 extern int knd_class_get_inst_updates(struct kndClass *self,
                                       size_t gt, size_t lt,
-                                      size_t eq __attribute__((unused)),
+                                      size_t unused_var(eq),
                                       struct kndSet *set)
 {
     struct kndState *state;
@@ -950,7 +948,6 @@ extern gsl_err_t knd_class_select(void *obj,
                                   size_t *total_size)
 {
     struct kndClass *self = obj;
-    struct kndClass *c;
     struct kndRepo *repo = self->entry->repo;
     struct glbOutput *log = repo->log;
     struct kndTask   *task = repo->task;

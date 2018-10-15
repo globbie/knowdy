@@ -209,9 +209,9 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
 }
 
 extern int knd_export_inherited_attr(void *obj,
-                                     const char *elem_id  __attribute__((unused)),
-                                     size_t elem_id_size  __attribute__((unused)),
-                                     size_t count __attribute__((unused)),
+                                     const char *unused_var(elem_id),
+                                     size_t unused_var(elem_id_size),
+                                     size_t unused_var(count),
                                      void *elem)
 {
     struct kndClass   *self = obj;

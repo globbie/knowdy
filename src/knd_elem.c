@@ -283,8 +283,8 @@ extern int knd_elem_export(struct kndElem *self,
 }
 
 static gsl_err_t run_empty_val_warning(void *obj,
-                                       const char *val __attribute__((unused)),
-                                       size_t val_size __attribute__((unused)))
+                                       const char *unused_var(val),
+                                       size_t unused_var(val_size))
 {
     struct kndElem *self = (struct kndElem*)obj;
     knd_log("-- empty val of \"%.*s\" not accepted :(",

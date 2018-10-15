@@ -286,7 +286,7 @@ static int resolve_class_ref(struct kndClass *self,
 
 static int resolve_proc_ref(struct kndClass *self,
                              const char *name, size_t name_size,
-                             struct kndProc *base __attribute__((unused)),
+                             struct kndProc *unused_var(base),
                              struct kndProc **result)
 {
     struct kndProc *proc;

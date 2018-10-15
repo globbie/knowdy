@@ -20,9 +20,9 @@
 #define DEBUG_PROC_LEVEL_TMP 1
 
 static gsl_err_t kndProc_alloc_proc_arg(void *obj,
-                                        const char *name __attribute__((unused)),
-                                        size_t name_size __attribute__((unused)),
-                                        size_t count __attribute__((unused)),
+                                        const char *unused_var(name),
+                                        size_t unused_var(name_size),
+                                        size_t unused_var(count),
                                         void **item)
 {
     struct kndProc *self = obj;
@@ -50,10 +50,10 @@ static gsl_err_t kndProc_parse_proc_arg(void *obj,
     return arg->parse(arg, rec, total_size);
 }
 
-static gsl_err_t kndProc_alloc_translation(void *obj __attribute__((unused)),
-                                           const char *name __attribute__((unused)),
-                                           size_t name_size __attribute__((unused)),
-                                           size_t count __attribute__((unused)),
+static gsl_err_t kndProc_alloc_translation(void *unused_var(obj),
+                                           const char *unused_var(name),
+                                           size_t unused_var(name_size),
+                                           size_t unused_var(count),
                                            void **item)
 {
     /* TODO: mempool alloc */
