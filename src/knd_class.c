@@ -582,7 +582,9 @@ static int update_ancestor_state(struct kndClass *self,
     struct kndMemPool *mempool = repo->mempool;
     struct kndClass *c;
     struct kndStateRef *state_ref = NULL;
+    struct kndStateVal *state_val = NULL;
     struct kndState *state;
+    struct kndState *prev_state;
     int err;
 
     knd_log(".. update the state of ancestor: %.*s..",
@@ -603,11 +605,23 @@ static int update_ancestor_state(struct kndClass *self,
         state->phase = KND_UPDATED;
         self->num_desc_states++;
         state->numid = self->num_desc_states;
+
+        err = knd_state_val_new(mempool, &state_val);                             RET_ERR();
+        
+        /* learn curr num children */
+        prev_state = self->desc_states;
+        if (!prev_state) {
+            state_val->val_size = self->entry->num_children;
+        } else {
+            state_val->val_size = prev_state->val->val_size;
+        }
+
+        state->val = state_val;
         state->next = self->desc_states;
         self->desc_states = state;
-
+        
         /* register in repo */
-        err = knd_state_ref_new(mempool, &state_ref);                                   RET_ERR();
+        err = knd_state_ref_new(mempool, &state_ref);                             RET_ERR();
         state_ref->obj = (void*)self;
         state_ref->state = state;
         state_ref->type = KND_STATE_CLASS;
@@ -616,6 +630,13 @@ static int update_ancestor_state(struct kndClass *self,
         repo->class_state_refs = state_ref;
     }
     state = state_ref->state;
+
+    // TODO : switch: new / del
+    state->val->val_size++;
+
+    
+    knd_log("\n++ incr num children to %zu..",
+            state->val->val_size);
 
     /* new ref to a child */
     err = knd_state_ref_new(mempool, &state_ref);                                   RET_ERR();
