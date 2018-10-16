@@ -631,15 +631,17 @@ static int update_ancestor_state(struct kndClass *self,
     }
     state = state_ref->state;
 
-    switch (child->states->phase) {
-    case KND_REMOVED:
-        state->val->val_size--;
-        break;
-    case KND_CREATED:
-        state->val->val_size++;
-        break;
-    default:
-        break;
+    if (child->states) {
+        switch (child->states->phase) {
+        case KND_REMOVED:
+            state->val->val_size--;
+            break;
+        case KND_CREATED:
+            state->val->val_size++;
+            break;
+        default:
+            break;
+        }
     }
 
     /* new ref to a child */
