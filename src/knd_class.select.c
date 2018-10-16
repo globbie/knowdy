@@ -743,15 +743,15 @@ static gsl_err_t present_state(void *obj,
     struct kndSet *set;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
-        knd_log(".. select class delta:  gt %zu  lt %zu  eq:%zu..",
-                task->state_gt, task->state_lt, task->state_eq);
-    }
-
     task->type = KND_SELECT_STATE;
 
     if (task->state_gt >= self->num_states) goto JSON_state;
     if (task->state_lt && task->state_lt < task->state_gt) goto JSON_state;
+
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+        knd_log(".. select class delta:  gt %zu  lt %zu  eq:%zu..",
+                task->state_gt, task->state_lt, task->state_eq);
+    }
 
     err = knd_set_new(mempool, &set);
     if (err) return make_gsl_err_external(err);
