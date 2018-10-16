@@ -386,9 +386,16 @@ extern int knd_confirm_state(struct kndRepo *self)
                 self->name_size, self->name);
     }
 
+    err = knd_update_new(mempool, &update);                                      RET_ERR();
+    update->repo = self;
+    self->num_updates++;
+    update->numid = self->num_updates;
+
+    // TODO: check conflicts
+
+
     for (ref = self->class_state_refs; ref; ref = ref->next) {
         c = ref->obj;
-
         if (c) {
             knd_log(".. Repo %.*s to confirm updates in \"%.*s\"..",
                     self->name_size, self->name,
@@ -404,15 +411,9 @@ extern int knd_confirm_state(struct kndRepo *self)
         }
     }
 
-    
-    // 
-    // TODO: check conflicts
+    self->class_state_refs = NULL;
 
-    err = knd_update_new(mempool, &update);                                      RET_ERR();
-    update->repo = self;
 
-    self->num_updates++;
-    update->numid = self->num_updates;
 
     err = knd_present_repo_state(self, out);  RET_ERR();
 

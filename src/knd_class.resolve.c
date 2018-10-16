@@ -596,7 +596,7 @@ static int resolve_attr_vars(struct kndClass *self,
             attr_ref->attr_var = attr_var;
         }
 
-        if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
             knd_log("++ got attr: %.*s [id:%.*s]",
                     attr->name_size, attr->name,
                     attr->id_size, attr->id);
@@ -818,7 +818,6 @@ static int resolve_primary_attrs(struct kndClass *self)
         /* no conflicts detected, register a new attr */
         err = register_new_attr(self, attr);                                      RET_ERR();
     }
-
     return knd_OK;
 }
 
@@ -904,7 +903,6 @@ static inline void link_child(struct kndClassEntry *self,
 {
     child_ref->next = self->children;
     self->children = child_ref;
-    self->num_children++;
 }
 
 static int link_baseclass(struct kndClass *self,
@@ -937,6 +935,8 @@ static int link_baseclass(struct kndClass *self,
     ref->entry = entry;
     ref->class = self;
     link_child(base->entry, ref);
+    if (repo->task->batch_mode)
+        base->entry->num_children++;
 
     /* copy the ancestors */
     for (baseref = base->entry->ancestors; baseref; baseref = baseref->next) {
@@ -1032,7 +1032,6 @@ static int resolve_baseclasses(struct kndClass *self)
         err = knd_inherit_attrs(self, c);                            RET_ERR();
 
         err = link_baseclass(self, c);                               RET_ERR();
-
         cvar->entry->class = c;
     }
 

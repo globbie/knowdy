@@ -526,6 +526,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
     struct kndSet *set;
     struct kndAttr *attr;
     struct kndClassRel *class_rel;
+    struct kndState *state;
     size_t num_children;
     bool in_list = false;
     int err;
@@ -596,8 +597,15 @@ extern int knd_class_export_JSON(struct kndClass *self,
     if (err && err != knd_RANGE) return err;
 
     num_children = entry->num_children;
+    if (self->desc_states) {
+        state = self->desc_states;
+        if (state->val) 
+            num_children = state->val->val_size;
+    }
+
     if (orig_entry)
         num_children += orig_entry->num_children;
+
     if (num_children) {
         err = present_subclasses(self, num_children, out);                        RET_ERR();
     }
