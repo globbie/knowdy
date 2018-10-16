@@ -7,7 +7,7 @@
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
 
-#include "learner-service.h"
+#include "knd-shard-service.h"
 #include <knd_shard.h>
 #include <knd_utils.h>
 
