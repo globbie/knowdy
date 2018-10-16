@@ -631,12 +631,16 @@ static int update_ancestor_state(struct kndClass *self,
     }
     state = state_ref->state;
 
-    // TODO : switch: new / del
-    state->val->val_size++;
-
-    
-    knd_log("\n++ incr num children to %zu..",
-            state->val->val_size);
+    switch (child->states->phase) {
+    case KND_REMOVED:
+        state->val->val_size--;
+        break;
+    case KND_CREATED:
+        state->val->val_size++;
+        break;
+    default:
+        break;
+    }
 
     /* new ref to a child */
     err = knd_state_ref_new(mempool, &state_ref);                                   RET_ERR();

@@ -43,40 +43,70 @@
 extern int knd_export_class_state_JSON(struct kndClass *self,
                                        struct glbOutput *out)
 {
-    //char buf[KND_NAME_SIZE];
-    //size_t buf_size = 0;
-    //struct kndUpdate *update;
-    //struct tm tm_info;
     struct kndState *state = self->states;
-    size_t latest_state = self->init_state + self->num_states;
+    size_t latest_state_numid = self->init_state + self->num_states;
+    size_t total;
     int err;
 
     err = out->write(out, "\"_state\":", strlen("\"_state\":"));                  RET_ERR();
-    err = out->writef(out, "%zu", latest_state);                                  RET_ERR();
+    err = out->writef(out, "%zu", latest_state_numid);                            RET_ERR();
 
-    if (!state) return knd_OK;
-
-    switch (state->phase) {
-    case KND_REMOVED:
-        err = out->write(out,   ",\"_phase\":\"del\"",
-                         strlen(",\"_phase\":\"del\""));                      RET_ERR();
-        // NB: no more details
-        err = out->write(out, "}", 1);
-        if (err) return err;
-        return knd_OK;
+    if (state) {
+        switch (state->phase) {
+        case KND_REMOVED:
+            err = out->write(out,   ",\"_phase\":\"del\"",
+                             strlen(",\"_phase\":\"del\""));                          RET_ERR();
+            // NB: no more details
+            err = out->write(out, "}", 1);
+            if (err) return err;
+            return knd_OK;
             
-    case KND_UPDATED:
-        err = out->write(out,   ",\"_phase\":\"upd\"",
-                         strlen(",\"_phase\":\"upd\""));                      RET_ERR();
-        break;
-    case KND_CREATED:
-        err = out->write(out,   ",\"_phase\":\"new\"",
-                         strlen(",\"_phase\":\"new\""));                      RET_ERR();
-        break;
-    default:
-        break;
+        case KND_UPDATED:
+            err = out->write(out,   ",\"_phase\":\"upd\"",
+                             strlen(",\"_phase\":\"upd\""));                      RET_ERR();
+            break;
+        case KND_CREATED:
+            err = out->write(out,   ",\"_phase\":\"new\"",
+                             strlen(",\"_phase\":\"new\""));                      RET_ERR();
+            break;
+        default:
+            break;
+        }
     }
 
+    state = self->desc_states;
+    if (state) {
+        latest_state_numid = self->init_desc_state + self->num_desc_states;
+        total = 0;
+        if (state->val)
+            total = state->val->val_size;
+
+        err = out->write(out, ",\"descendants\":{",
+                         strlen(",\"descendants\":{"));                           RET_ERR();
+        err = out->write(out, "\"_state\":", strlen("\"_state\":"));              RET_ERR();
+        err = out->writef(out, "%zu", latest_state_numid);                        RET_ERR();
+        err = out->write(out, ",\"total\":", strlen(",\"total\":"));              RET_ERR();
+        err = out->writef(out, "%zu", total);                                     RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
+    }
+
+    state = self->inst_states;
+    if (state) {
+        latest_state_numid = self->init_inst_state + self->num_inst_states;
+        total = 0;
+        if (state->val)
+            total = state->val->val_size;
+
+        err = out->write(out, ",\"instances\":{",
+                         strlen(",\"instances\":{"));                           RET_ERR();
+        err = out->write(out, "\"_state\":", strlen("\"_state\":"));              RET_ERR();
+        err = out->writef(out, "%zu", latest_state_numid);                        RET_ERR();
+        err = out->write(out, ",\"total\":", strlen(",\"total\":"));              RET_ERR();
+        err = out->writef(out, "%zu", total);                                     RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
+    }
+    
+    // TODO
     /*time(&update->timestamp);
     localtime_r(&update->timestamp, &tm_info);
     buf_size = strftime(buf, KND_NAME_SIZE,
