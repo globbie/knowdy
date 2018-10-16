@@ -400,7 +400,9 @@ static gsl_err_t import_attr_var(void *obj,
     int err;
 
     // TODO
+
     /* class var not resolved */
+
     if (!self->entry) {
         knd_log("-- anonymous class var: %.*s?  REC:%.*s",
                 64, rec);
@@ -473,9 +475,11 @@ static gsl_err_t import_attr_var_alloc(void *obj,
 {
     struct kndAttrVar *self = obj;
     struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = self->class_var->entry->repo->mempool;
+    struct kndMemPool *mempool;
     int err;
 
+    mempool = self->class_var->root_class->entry->repo->mempool;
+ 
     err = knd_attr_var_new(mempool, &attr_var);
     if (err) return make_gsl_err_external(err);
     attr_var->class_var = self->class_var;
@@ -542,9 +546,27 @@ static gsl_err_t import_attr_var_list(void *obj,
 {
     struct kndClassVar *self = obj;
     struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndMemPool *mempool;
+    struct kndRepo *repo = self->root_class->entry->repo;
+    struct glbOutput *log;
+    struct kndTask *task;
     gsl_err_t parser_err;
-    int err;
+    int err, e;
+
+    if (!self->entry) {
+        knd_log("-- anonymous class var: %.*s?  REC:%.*s",
+                64, rec);
+        log = repo->log; 
+        task = repo->task;
+        log->reset(log);
+        e = log->write(log, "no baseclass name specified",
+                     strlen("no baseclass name specified"));
+        if (e) return make_gsl_err_external(e);
+        task->http_code = HTTP_BAD_REQUEST;
+        return *total_size = 0, make_gsl_err_external(knd_FAIL);
+    } 
+
+    mempool = self->root_class->entry->repo->mempool;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_1)
         knd_log("== import attr attr_var list: \"%.*s\" REC: %.*s",
