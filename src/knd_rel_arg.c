@@ -646,8 +646,9 @@ static int link_rel(struct kndRelArg *self,
     }
 
     if (!ref) {
-        err = mempool->new_rel_ref(mempool, &ref);                                MEMPOOL_ERR(kndRelRef);
-        err = knd_set_new(mempool, &ref->idx);                               MEMPOOL_ERR(kndSet);
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndRelRef), (void**)&ref);        MEMPOOL_ERR(kndRelRef);
+        err = knd_set_new(mempool, &ref->idx);                                  MEMPOOL_ERR(kndSet);
         ref->idx->type = KND_SET_REL_INST;
         ref->rel = rel;
         ref->next = obj_entry->rels;
@@ -663,7 +664,8 @@ static int link_rel(struct kndRelArg *self,
     }
     
     if (!state) {
-        err = mempool->new_rel_update(mempool, &rel_update);                      MEMPOOL_ERR(kndRelUpdate);
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndRelUpdate), (void**)&rel_update);        MEMPOOL_ERR(kndRelUpdate);
         rel_update->rel = orig_rel_update->rel;
         rel_update->update = orig_rel_update->update;
 
@@ -681,7 +683,8 @@ static int link_rel(struct kndRelArg *self,
     }
 
     /* save ref to rel inst */
-    err = mempool->new_rel_inst_update(mempool, &rel_inst_update);                MEMPOOL_ERR(kndRelInstUpdate);
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                            sizeof(struct kndRelInstanceUpdate), (void**)&rel_inst_update);        MEMPOOL_ERR(kndRelInstUpdate);
 
     rel_inst_update->inst = inst;
     //rel_inst_update->next = state->val;

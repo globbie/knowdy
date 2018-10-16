@@ -19,34 +19,12 @@
  */
 #pragma once
 
-#include <stddef.h>
+#include "knd_config.h"
+
 #include <glb-lib/output.h>
 #include <gsl-parser.h>
 
-#include "knd_config.h"
-
-struct glbOutput;
-struct kndElem;
-
-struct kndRel;
-struct kndRelEntry;
-struct kndRelInstance;
-struct kndRelArg;
-struct kndRelArgInstance;
-
-struct kndProc;
-struct kndProcEntry;
-struct kndProcArg;
-struct kndProcArgInstance;
-struct kndProcInstance;
-
-struct kndRelUpdate;
-struct kndRelInstanceUpdate;
-struct kndProcUpdate;
-struct kndProcUpdateRef;
-struct kndUserContext;
-struct kndRelArgInstRef;
-struct kndRelRef;
+#include <stddef.h>
 
 typedef enum knd_mempage_t { KND_MEMPAGE_LARGE,
                              KND_MEMPAGE_BASE_X4,
@@ -60,65 +38,47 @@ typedef enum knd_mempage_t { KND_MEMPAGE_LARGE,
 
 struct kndMemPageHeader
 {
-    struct kndMemPageHeader *prev;
     struct kndMemPageHeader *next;
 };
 
 struct kndMemPool
 {
-    size_t max_users;
     size_t capacity;
 
+    /* 1024 bytes */
     char *pages;
     size_t page_size;
-    size_t page_payload_size;
     size_t num_pages;
     size_t pages_used;
-    struct kndMemPageHeader *head_page;
-    struct kndMemPageHeader *tail_page;
+    struct kndMemPageHeader *page_list;
 
+    /* 512 bytes */
     char *small_x4_pages;
     size_t small_x4_page_size;
-    size_t small_x4_page_payload_size;
     size_t num_small_x4_pages;
     size_t small_x4_pages_used;
-    struct kndMemPageHeader *head_small_x4_page;
-    struct kndMemPageHeader *tail_small_x4_page;
+    struct kndMemPageHeader *small_x4_page_list;
 
     /* 256 bytes */
     char *small_x2_pages;
     size_t small_x2_page_size;
-    size_t small_x2_page_payload_size;
     size_t num_small_x2_pages;
     size_t small_x2_pages_used;
-    struct kndMemPageHeader *head_small_x2_page;
-    struct kndMemPageHeader *tail_small_x2_page;
+    struct kndMemPageHeader *small_x2_page_list;
 
     /* 128 bytes */
     char *small_pages;
     size_t small_page_size;
-    size_t small_page_payload_size;
     size_t num_small_pages;
     size_t small_pages_used;
-    struct kndMemPageHeader *head_small_page;
-    struct kndMemPageHeader *tail_small_page;
+    struct kndMemPageHeader *small_page_list;
 
     /* 64 bytes */
     char *tiny_pages;
     size_t tiny_page_size;
-    size_t tiny_page_payload_size;
     size_t num_tiny_pages;
     size_t tiny_pages_used;
-    struct kndMemPageHeader *head_tiny_page;
-    struct kndMemPageHeader *tail_tiny_page;
-    
-    struct kndFacet *facets;
-    size_t max_facets;
-    size_t num_facets;
-
-//    struct kndUserContext *user_ctxs;
-//    size_t max_user_ctxs;
-//    size_t num_user_ctxs;
+    struct kndMemPageHeader *tiny_page_list;
 
     // test
     size_t num_classes;
@@ -128,52 +88,19 @@ struct kndMemPool
     size_t num_class_vars;
     size_t num_attr_vars;
 
-    struct glbOutput *log;
-
     void (*del)(struct kndMemPool   *self);
     int (*alloc)(struct kndMemPool   *self);
     int (*present)(struct kndMemPool *self,
                    struct glbOutput  *out);
     gsl_err_t (*parse)(struct kndMemPool *self,
 		       const char *rec, size_t *total_size);
-
-    int (*new_user_ctx)(struct kndMemPool   *self,
-                        struct kndUserContext **result);
-
-    
-    int (*new_rel)(struct kndMemPool   *self,
-                   struct kndRel **result);
-    int (*new_rel_entry)(struct kndMemPool   *self,
-                         struct kndRelEntry **result);
-    int (*new_rel_ref)(struct kndMemPool   *self,
-                       struct kndRelRef **result);
-    int (*new_rel_update)(struct kndMemPool   *self,
-                          struct kndRelUpdate **result);
-    int (*new_rel_inst_update)(struct kndMemPool   *self,
-                               struct kndRelInstanceUpdate **result);
-    int (*new_rel_inst)(struct kndMemPool   *self,
-                        struct kndRelInstance **result);
-    int (*new_rel_arg_inst)(struct kndMemPool   *self,
-                            struct kndRelArgInstance **result);
-    int (*new_rel_arg_inst_ref)(struct kndMemPool   *self,
-                                struct kndRelArgInstRef **result);
-    int (*new_proc)(struct kndMemPool   *self,
-                    struct kndProc **result);
-    int (*new_proc_entry)(struct kndMemPool   *self,
-                        struct kndProcEntry **result);
-    int (*new_proc_arg)(struct kndMemPool   *self,
-                        struct kndProcArg **result);
-    int (*new_proc_update)(struct kndMemPool   *self,
-                          struct kndProcUpdate **result);
-    int (*new_proc_update_ref)(struct kndMemPool   *self,
-                              struct kndProcUpdateRef **result);
 };
 
 extern int kndMemPool_new(struct kndMemPool **self);
 
 extern int knd_mempool_alloc(struct kndMemPool *self,
-                             knd_mempage_t page_size,
+                             knd_mempage_t page_type,
                              size_t obj_size, void **result);
 extern void knd_mempool_free(struct kndMemPool *self,
-                             knd_mempage_t page_size,
+                             knd_mempage_t page_type,
                              void *page_data);

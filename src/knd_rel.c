@@ -1507,7 +1507,7 @@ static gsl_err_t parse_rel_arg_inst(void *obj,
         return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
 
-    err = mempool->new_rel_arg_inst(mempool, &arg_inst);
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndRelArgInstance), (void**)&arg_inst);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     arg_inst->relarg = arg;
     arg_inst->rel_inst = inst;
@@ -1606,7 +1606,7 @@ static gsl_err_t parse_import_instance(void *data,
     if (task->type != KND_LIQUID_STATE)
         task->type = KND_UPDATE_STATE;
 
-    err = mempool->new_rel_inst(mempool, &inst);
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndRelInstance), (void**)&inst);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     err = knd_state_new(mempool, &inst->states);
@@ -2191,7 +2191,8 @@ static int kndRel_update_state(struct kndRel *self,
     */
 
     for (rel = self->inbox; rel; rel = rel->next) {
-        err = mempool->new_rel_update(mempool, &rel_update);                      RET_ERR();
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndRelUpdate), (void**)&rel_update);        RET_ERR();
         rel_update->rel = rel;
         rel_update->update = update;
 
