@@ -732,6 +732,58 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t present_desc_state(void *obj,
+                                    const char *unused_var(name),
+                                    size_t unused_var(name_size))
+{
+    struct kndClass *self = obj;
+    struct kndTask *task = self->entry->repo->task;
+    struct glbOutput *out = self->entry->repo->out;
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndSet *set;
+    struct kndState *latest_state;
+    int err;
+
+    task->type = KND_SELECT_STATE;
+
+    if (!self->desc_states)                                     goto show_curr_state;
+    latest_state = self->desc_states;
+    if (task->state_gt >= latest_state->numid)             goto show_curr_state;
+    if (task->state_lt && task->state_lt < task->state_gt) goto show_curr_state;
+
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+        knd_log(".. select class descendants update delta:  gt %zu  lt %zu  eq:%zu..",
+                task->state_gt, task->state_lt, task->state_eq);
+    }
+
+    err = knd_set_new(mempool, &set);
+    if (err) return make_gsl_err_external(err);
+    set->mempool = mempool;
+
+    err = knd_class_get_desc_updates(self,
+                                     task->state_gt, task->state_lt,
+                                     task->state_eq, set);
+    if (err) return make_gsl_err_external(err);
+    task->show_removed_objs = true;
+
+    err =  knd_class_export_set_JSON(self, set, out);
+    if (err) return make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
+
+ show_curr_state:
+    err = out->writec(out, '{');
+    if (err) return make_gsl_err_external(err);
+
+    err = knd_export_class_state_JSON(self, out);
+    if (err) return make_gsl_err_external(err);
+
+    err = out->writec(out, '}');
+    if (err) return make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t present_state(void *obj,
                                const char *unused_var(name),
                                size_t unused_var(name_size))
@@ -784,6 +836,69 @@ static gsl_err_t present_state(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
+static int select_class_desc_state(struct kndClass *self,
+                                   const char *rec,
+                                   size_t *total_size)
+{
+    struct kndRepo *repo = self->entry->repo;
+    struct kndTask *task = repo->task;
+    gsl_err_t parser_err;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .is_selector = true,
+          .run = set_curr_state,
+          .obj = task
+        },
+        { .name = "gt",
+          .name_size = strlen("gt"),
+          .is_selector = true,
+          .parse = gsl_parse_size_t,
+          .obj = &task->state_gt
+        },
+        { .name = "gte",
+          .name_size = strlen("gte"),
+          .is_selector = true,
+          .parse = gsl_parse_size_t,
+          .obj = &task->state_gte
+        },
+        { .name = "lt",
+          .name_size = strlen("lt"),
+          .is_selector = true,
+          .parse = gsl_parse_size_t,
+          .obj = &task->state_lt
+        },
+        { .name = "lte",
+          .name_size = strlen("lte"),
+          .is_selector = true,
+          .parse = gsl_parse_size_t,
+          .obj = &task->state_lte
+        },
+        { .is_default = true,
+          .run = present_desc_state,
+          .obj = self
+        }
+    };
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+
+    return knd_OK;
+}
+
+static gsl_err_t parse_class_desc_state(void *data,
+                                        const char *rec,
+                                        size_t *total_size)
+{
+    struct kndClass *self = data;
+    int err;
+
+    err = select_class_desc_state(self, rec, total_size);
+    if (err) return make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
+}
+
 static int select_class_state(struct kndClass *self,
                               const char *rec,
                               size_t *total_size)
@@ -821,6 +936,11 @@ static int select_class_state(struct kndClass *self,
           .is_selector = true,
           .parse = gsl_parse_size_t,
           .obj = &task->state_lte
+        },
+        { .name = "desc",
+          .name_size = strlen("desc"),
+          .parse = parse_class_desc_state,
+          .obj = self
         },
         { .is_default = true,
           .run = present_state,
@@ -923,8 +1043,8 @@ extern int knd_class_get_inst_updates(struct kndClass *self,
     struct kndStateRef *ref;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-        knd_log(".. class %.*s (repo:%.*s) to extract updates",
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
+        knd_log(".. class %.*s (repo:%.*s) to extract instance updates",
                 self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name);
 
@@ -945,7 +1065,6 @@ extern int knd_class_get_inst_updates(struct kndClass *self,
     return knd_OK;
 }
 
-
 static int retrieve_class_updates(struct kndStateRef *ref,
                                   struct kndSet *set)
 {
@@ -963,6 +1082,11 @@ static int retrieve_class_updates(struct kndStateRef *ref,
     switch (ref->type) {
     case KND_STATE_CLASS:
         entry = ref->obj;
+
+        if (!entry) {
+            knd_log("-- no class ref in state ref");
+            return knd_OK;
+        }
 
         if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
             knd_log("** class:%.*s", entry->name_size, entry->name);
@@ -993,13 +1117,42 @@ extern int knd_class_get_updates(struct kndClass *self,
     struct kndStateRef *ref;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-        knd_log(".. class %.*s (repo:%.*s) to extract updates",
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
+        knd_log(".. class %.*s (repo:%.*s) to extract updates..",
                 self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name);
 
     if (!lt) lt = self->states->numid + 1;
 
+    for (state = self->states; state; state = state->next) {
+        if (state->numid >= lt) continue;
+        if (state->numid <= gt) continue;
+
+        // TODO
+        if (!state->children) continue;
+        for (ref = state->children; ref; ref = ref->next) {
+            err = retrieve_class_updates(ref, set);                               RET_ERR();
+        }
+    }
+
+    return knd_OK;
+}
+
+extern int knd_class_get_desc_updates(struct kndClass *self,
+                                      size_t gt, size_t lt,
+                                      size_t unused_var(eq),
+                                      struct kndSet *set)
+{
+    struct kndState *state;
+    struct kndStateRef *ref;
+    int err;
+
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
+        knd_log(".. class %.*s (repo:%.*s) to extract descendant updates..",
+                self->name_size, self->name,
+                self->entry->repo->name_size, self->entry->repo->name);
+
+    if (!lt) lt = self->desc_states->numid + 1;
     for (state = self->desc_states; state; state = state->next) {
         if (state->numid >= lt) continue;
         if (state->numid <= gt) continue;
