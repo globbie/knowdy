@@ -509,72 +509,6 @@ extern int knd_get_class_attr_value(struct kndClass *src,
     return knd_OK;
 }
 
-static int update_state(struct kndClass *self,
-                        struct kndStateRef *children,
-                        knd_state_phase phase)
-{
-    struct kndRepo *repo = self->entry->repo;
-    struct kndMemPool *mempool = repo->mempool;
-    struct kndState *state;
-    int err;
-
-    err = knd_state_new(mempool, &state);
-    if (err) {
-        knd_log("-- class state alloc failed");
-        return err;
-    }
-    state->phase = phase;
-    state->children = children;
-    self->num_states++;
-    state->numid = self->num_states;
-    state->next = self->states;
-    self->states = state;
-
-    return knd_OK;
-}
-
-static int update_inst_state(struct kndClass *self,
-                             struct kndStateRef *children)
-{
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndStateRef *ref;
-    struct kndState *state;
-    struct kndSet *inst_idx = self->entry->inst_idx;
-    int err;
-
-    assert(inst_idx != NULL);
-
-    err = knd_state_new(mempool, &state);
-    if (err) {
-        knd_log("-- class inst state alloc failed");
-        return err;
-    }
-
-    /* check removed objs */
-    for (ref = children; ref; ref = ref->next) {
-        switch (ref->state->phase) {
-        case KND_REMOVED:
-            if (inst_idx->num_valid_elems)
-                inst_idx->num_valid_elems--;
-            break;
-        default:
-            break;
-        }
-    }
-
-    state->phase = KND_UPDATED;
-    //state->update = task->update;
-
-    state->children = children;
-    
-    self->num_inst_states++;
-    state->numid = self->num_inst_states;
-    state->next = self->inst_states;
-    self->inst_states = state;
-
-    return knd_OK;
-}
-
 static int update_ancestor_state(struct kndClass *self,
                                  struct kndClass *child)
 {
@@ -631,17 +565,15 @@ static int update_ancestor_state(struct kndClass *self,
     }
     state = state_ref->state;
 
-    if (child->states) {
-        switch (child->states->phase) {
-        case KND_REMOVED:
-            state->val->val_size--;
-            break;
-        case KND_CREATED:
-            state->val->val_size++;
-            break;
-        default:
-            break;
-        }
+    switch (child->states->phase) {
+    case KND_REMOVED:
+        state->val->val_size--;
+        break;
+    case KND_CREATED:
+        state->val->val_size++;
+        break;
+    default:
+        break;
     }
 
     /* new ref to a child */
@@ -656,13 +588,91 @@ static int update_ancestor_state(struct kndClass *self,
     return knd_OK;
 }
 
+static int update_state(struct kndClass *self,
+                        struct kndStateRef *children,
+                        knd_state_phase phase)
+{
+    struct kndRepo *repo = self->entry->repo;
+    struct kndMemPool *mempool = repo->mempool;
+    struct kndState *state;
+    struct kndClass *c;
+    struct kndClassRef *ref;
+    int err;
+
+    err = knd_state_new(mempool, &state);
+    if (err) {
+        knd_log("-- class state alloc failed");
+        return err;
+    }
+    state->phase = phase;
+    state->children = children;
+    self->num_states++;
+    state->numid = self->num_states;
+    state->next = self->states;
+    self->states = state;
+
+    /* inform your ancestors */
+    for (ref = self->entry->ancestors; ref; ref = ref->next) {
+        c = ref->entry->class;
+        /* skip the root class */
+        if (!c->entry->ancestors) continue;
+        if (c->state_top) continue;
+        if (self->entry->repo != ref->entry->repo) {
+            err = knd_class_clone(ref->entry->class, self->entry->repo, &c);
+            if (err) return err;
+            ref->entry = c->entry;
+        }
+        err = update_ancestor_state(c, self);                                      RET_ERR();
+    }
+
+    return knd_OK;
+}
+
+static int update_inst_state(struct kndClass *self,
+                             struct kndStateRef *children)
+{
+    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndStateRef *ref;
+    struct kndState *state;
+    struct kndSet *inst_idx = self->entry->inst_idx;
+    int err;
+
+    assert(inst_idx != NULL);
+
+    err = knd_state_new(mempool, &state);
+    if (err) {
+        knd_log("-- class inst state alloc failed");
+        return err;
+    }
+
+    /* check removed objs */
+    for (ref = children; ref; ref = ref->next) {
+        switch (ref->state->phase) {
+        case KND_REMOVED:
+            if (inst_idx->num_valid_elems)
+                inst_idx->num_valid_elems--;
+            break;
+        default:
+            break;
+        }
+    }
+
+    state->phase = KND_UPDATED;
+    state->children = children;
+    
+    self->num_inst_states++;
+    state->numid = self->num_inst_states;
+    state->next = self->inst_states;
+    self->inst_states = state;
+
+    return knd_OK;
+}
+
 extern int knd_update_state(struct kndClass *self,
                             knd_state_phase phase)
 {
     struct kndRepo *repo = self->entry->repo;
     struct kndMemPool *mempool = repo->mempool;
-    struct kndClass *c;
-    struct kndClassRef *ref;
     struct kndStateRef *state_ref;
     int err;
 
@@ -692,24 +702,14 @@ extern int knd_update_state(struct kndClass *self,
             }
             err = update_inst_state(self, repo->curr_class_inst_state_refs);      RET_ERR();
             repo->curr_class_inst_state_refs = NULL;
+            return knd_OK;
         }
+
+        // TODO: no updates?
+
         break;
     default:
         break;
-    }
-    
-    /* inform your ancestors */
-    for (ref = self->entry->ancestors; ref; ref = ref->next) {
-        c = ref->entry->class;
-        /* skip the root class */
-        if (!c->entry->ancestors) continue;
-        if (c->state_top) continue;
-        if (self->entry->repo != ref->entry->repo) {
-            err = knd_class_clone(ref->entry->class, self->entry->repo, &c);
-            if (err) return err;
-            ref->entry = c->entry;
-        }
-        err = update_ancestor_state(c, self);                                      RET_ERR();
     }
 
     /* register in repo */
@@ -1097,13 +1097,12 @@ extern int knd_register_class_inst(struct kndClass *self,
             if (prev_entry) {
                 ref->entry = prev_entry;
             } else {
-                knd_log(".. cloning %.*s..", c->name_size, c->name);
+                //knd_log(".. cloning %.*s..", c->name_size, c->name);
                 err = knd_class_clone(ref->entry->class, self->entry->repo, &c);
                 if (err) return err;
                 ref->entry = c->entry;
             }
         }
-
         err = knd_register_class_inst(c, entry);                                         RET_ERR();
     }
 
