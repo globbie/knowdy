@@ -745,23 +745,37 @@ extern int knd_is_base(struct kndClass *self,
 {
     struct kndClassEntry *entry = child->entry;
     struct kndClassRef *ref;
+    struct kndClass *c;
 
     if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. check inheritance: %.*s (repo:%.*s) [resolved: %d] => "
-                " %.*s (repo:%.*s) [resolved:%d]?",
+                " %.*s (repo:%.*s) [resolved:%d] %p",
                 child->name_size, child->name,
                 child->entry->repo->name_size, child->entry->repo->name,
                 child->is_resolved,
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
-                self->is_resolved);
+                self->is_resolved, self);
     }
 
     for (ref = entry->ancestors; ref; ref = ref->next) {
-        if (ref->class == self) {
-            return knd_OK;
-        }
+         c = ref->class;
+         if (DEBUG_CLASS_LEVEL_2) {
+             knd_log("== ancestor: %.*s (repo:%.*s) %p",
+                     c->name_size, c->name,
+                     c->entry->repo->name_size, c->entry->repo->name, c);
+         }
+        
+         if (c == self) {
+             return knd_OK;
+         }
+
+         if (self->entry->orig && self->entry->orig->class == c) {
+             //knd_log("++ inheritance confirmed via orig repo!\n");
+             return knd_OK;
+         }
     }
+
     if (DEBUG_CLASS_LEVEL_2)
         knd_log("-- no inheritance from  \"%.*s\" to \"%.*s\" :(",
                 self->entry->name_size, self->entry->name,
