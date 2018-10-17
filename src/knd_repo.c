@@ -378,7 +378,7 @@ extern int knd_confirm_state(struct kndRepo *self)
     struct glbOutput *out = self->task->out;
     struct kndStateRef *ref, *child_ref;
     struct kndState *state;
-    struct kndClass *c;
+    struct kndClassEntry *entry;
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP) {
@@ -394,21 +394,20 @@ extern int knd_confirm_state(struct kndRepo *self)
     // TODO: check conflicts
 
     for (ref = self->class_state_refs; ref; ref = ref->next) {
-        c = ref->obj;
-        knd_log("state:%p", ref->state);
-        if (c) {
-            knd_log(".. Repo %.*s to confirm updates in \"%.*s\"  state:%p..",
+        entry = ref->obj;
+        if (entry) {
+            knd_log(".. repo %.*s to confirm updates in \"%.*s\"..",
                     self->name_size, self->name,
-                    c->name_size, c->name, ref->state);
+                    entry->name_size, entry->name);
         }
 
         state = ref->state;
         if (!state->children) continue;
 
         for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
-            c = child_ref->obj;
-            if (c) {
-                knd_log("  == %.*s", c->name_size, c->name);
+            entry = child_ref->obj;
+            if (entry) {
+                knd_log("  == class:%.*s", entry->name_size, entry->name);
             }
         }
     }

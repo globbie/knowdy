@@ -500,8 +500,6 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
             if (err) return err;
             break;
         case KND_ATTR_TEXT:
-            knd_log("== text field: %.*s", item->name_size, item->name);
-
             err = knd_text_export(item->text, KND_FORMAT_JSON, task, out);
             if (err) return err;
             break;

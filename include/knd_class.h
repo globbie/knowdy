@@ -216,6 +216,10 @@ extern int knd_class_get_updates(struct kndClass *self,
                                  size_t gt, size_t lt,
                                  size_t unused_var(eq),
                                  struct kndSet *set);
+extern int knd_class_get_desc_updates(struct kndClass *self,
+                                      size_t gt, size_t lt,
+                                      size_t unused_var(eq),
+                                      struct kndSet *set);
 
 extern int knd_class_get_inst_updates(struct kndClass *self,
                                       size_t gt, size_t lt, size_t eq,

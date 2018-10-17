@@ -568,7 +568,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
     struct kndSet *set;
     struct kndAttr *attr;
     struct kndClassRel *class_rel;
-    struct kndState *state;
+    struct kndState *state = self->states;
     size_t num_children;
     bool in_list = false;
     int err;
@@ -595,6 +595,32 @@ extern int knd_class_export_JSON(struct kndClass *self,
                      entry->repo->name_size);                                     RET_ERR();
     err = out->writec(out, '"');                                                  RET_ERR();
 
+    if (state) {
+        err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));            RET_ERR();
+        err = out->writef(out, "%zu", state->numid);                              RET_ERR();
+
+        switch (state->phase) {
+        case KND_REMOVED:
+            err = out->write(out,   ",\"_phase\":\"del\"",
+                             strlen(",\"_phase\":\"del\""));                      RET_ERR();
+            // NB: no more details
+            err = out->write(out, "}", 1);
+            if (err) return err;
+            return knd_OK;
+            
+        case KND_UPDATED:
+            err = out->write(out,   ",\"_phase\":\"upd\"",
+                             strlen(",\"_phase\":\"upd\""));                      RET_ERR();
+            break;
+        case KND_CREATED:
+            err = out->write(out,   ",\"_phase\":\"new\"",
+                             strlen(",\"_phase\":\"new\""));                      RET_ERR();
+            break;
+        default:
+            break;
+        }
+    }
+    
     err = export_gloss_JSON(self);                                                RET_ERR();
 
     if (self->depth >= self->max_depth) {

@@ -553,10 +553,10 @@ static int update_ancestor_state(struct kndClass *self,
         state->val = state_val;
         state->next = self->desc_states;
         self->desc_states = state;
-        
+
         /* register in repo */
         err = knd_state_ref_new(mempool, &state_ref);                             RET_ERR();
-        state_ref->obj = (void*)self;
+        state_ref->obj = (void*)self->entry;
         state_ref->state = state;
         state_ref->type = KND_STATE_CLASS;
 
@@ -578,7 +578,7 @@ static int update_ancestor_state(struct kndClass *self,
 
     /* new ref to a child */
     err = knd_state_ref_new(mempool, &state_ref);                                   RET_ERR();
-    state_ref->obj = (void*)child;
+    state_ref->obj = (void*)child->entry;
     state_ref->state = child->states;
     state_ref->type = KND_STATE_CLASS;
 
