@@ -393,16 +393,18 @@ extern int knd_confirm_state(struct kndRepo *self)
 
     // TODO: check conflicts
 
-
     for (ref = self->class_state_refs; ref; ref = ref->next) {
         c = ref->obj;
+        knd_log("state:%p", ref->state);
         if (c) {
-            knd_log(".. Repo %.*s to confirm updates in \"%.*s\"..",
+            knd_log(".. Repo %.*s to confirm updates in \"%.*s\"  state:%p..",
                     self->name_size, self->name,
-                    c->name_size, c->name);
+                    c->name_size, c->name, ref->state);
         }
 
         state = ref->state;
+        if (!state->children) continue;
+
         for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
             c = child_ref->obj;
             if (c) {
@@ -412,8 +414,6 @@ extern int knd_confirm_state(struct kndRepo *self)
     }
 
     self->class_state_refs = NULL;
-
-
 
     err = knd_present_repo_state(self, out);  RET_ERR();
 

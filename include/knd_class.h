@@ -212,6 +212,11 @@ extern int knd_get_class_by_id(struct kndClass *self,
                                const char *id, size_t id_size,
                                struct kndClass **result);
 
+extern int knd_class_get_updates(struct kndClass *self,
+                                 size_t gt, size_t lt,
+                                 size_t unused_var(eq),
+                                 struct kndSet *set);
+
 extern int knd_class_get_inst_updates(struct kndClass *self,
                                       size_t gt, size_t lt, size_t eq,
                                       struct kndSet *set);
@@ -235,8 +240,8 @@ extern int knd_export_class_state_JSON(struct kndClass *self,
                                        struct glbOutput *out);
 
 extern int knd_class_export_set_JSON(struct kndClass *self,
-                                     struct glbOutput *out,
-                                     struct kndSet *set);
+                                     struct kndSet *set,
+                                     struct glbOutput *out);
 
 extern int knd_class_export_JSON(struct kndClass *self,
                                  struct glbOutput *out);

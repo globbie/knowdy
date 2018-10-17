@@ -515,7 +515,7 @@ static gsl_err_t present_class_selection(void *obj,
                 set = repo->curr_baseclass->entry->descendants;
 
                 // TODO
-                err = knd_class_export_set_JSON(self, out, set);
+                err = knd_class_export_set_JSON(self, set, out);
                 if (err) return make_gsl_err_external(err);
 
                 return make_gsl_err(gsl_OK);
@@ -559,7 +559,7 @@ static gsl_err_t present_class_selection(void *obj,
             if (err) return make_gsl_err_external(err);
             break;
         default:
-            err = knd_class_export_set_JSON(self, out, set);
+            err = knd_class_export_set_JSON(self, set, out);
             if (err) return make_gsl_err_external(err);
         }
 
@@ -741,12 +741,15 @@ static gsl_err_t present_state(void *obj,
     struct glbOutput *out = self->entry->repo->out;
     struct kndMemPool *mempool = self->entry->repo->mempool;
     struct kndSet *set;
+    struct kndState *latest_state;
     int err;
 
     task->type = KND_SELECT_STATE;
 
-    if (task->state_gt >= self->num_states) goto JSON_state;
-    if (task->state_lt && task->state_lt < task->state_gt) goto JSON_state;
+    if (!self->states)                                     goto show_curr_state;
+    latest_state = self->states;
+    if (task->state_gt >= latest_state->numid)             goto show_curr_state;
+    if (task->state_lt && task->state_lt < task->state_gt) goto show_curr_state;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
         knd_log(".. select class delta:  gt %zu  lt %zu  eq:%zu..",
@@ -757,19 +760,18 @@ static gsl_err_t present_state(void *obj,
     if (err) return make_gsl_err_external(err);
     set->mempool = mempool;
 
-    /*    err = knd_class_get_updates(self,
+    err = knd_class_get_updates(self,
                                 task->state_gt, task->state_lt,
                                 task->state_eq, set);
     if (err) return make_gsl_err_external(err);
     task->show_removed_objs = true;
 
-    err = export_inst_set_JSON(self, set, out);
+    err =  knd_class_export_set_JSON(self, set, out);
     if (err) return make_gsl_err_external(err);
-    */
 
     return make_gsl_err(gsl_OK);
 
- JSON_state:
+ show_curr_state:
     err = out->writec(out, '{');
     if (err) return make_gsl_err_external(err);
 
@@ -937,6 +939,75 @@ extern int knd_class_get_inst_updates(struct kndClass *self,
 
         for (ref = state->children; ref; ref = ref->next) {
             err = retrieve_inst_updates(ref, set);                    RET_ERR();
+        }
+    }
+
+    return knd_OK;
+}
+
+
+static int retrieve_class_updates(struct kndStateRef *ref,
+                                  struct kndSet *set)
+{
+    struct kndState *state = ref->state;
+    struct kndClassEntry *entry;
+    struct kndStateRef *child_ref;
+    int err;
+    
+    knd_log("++ class state: %zu  type:%d", state->numid, ref->type);
+
+    for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
+        err = retrieve_class_updates(child_ref, set);                             RET_ERR();
+    }
+
+    switch (ref->type) {
+    case KND_STATE_CLASS:
+        entry = ref->obj;
+
+        if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+            knd_log("** class:%.*s", entry->name_size, entry->name);
+        }
+
+        err = set->add(set,
+                       entry->id,
+                       entry->id_size, (void*)entry);                   RET_ERR();
+
+        /* TODO: filter out the insts
+           that were created and removed _after_ 
+           the requested update _gt */
+
+        break;
+    default:
+        break;
+    }
+
+    return knd_OK;
+}
+
+extern int knd_class_get_updates(struct kndClass *self,
+                                 size_t gt, size_t lt,
+                                 size_t unused_var(eq),
+                                 struct kndSet *set)
+{
+    struct kndState *state;
+    struct kndStateRef *ref;
+    int err;
+
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+        knd_log(".. class %.*s (repo:%.*s) to extract updates",
+                self->name_size, self->name,
+                self->entry->repo->name_size, self->entry->repo->name);
+
+    if (!lt) lt = self->states->numid + 1;
+
+    for (state = self->desc_states; state; state = state->next) {
+        if (state->numid >= lt) continue;
+        if (state->numid <= gt) continue;
+
+        // TODO
+        if (!state->children) continue;
+        for (ref = state->children; ref; ref = ref->next) {
+            err = retrieve_class_updates(ref, set);                               RET_ERR();
         }
     }
 

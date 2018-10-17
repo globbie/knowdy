@@ -98,7 +98,7 @@ extern int knd_export_class_state_JSON(struct kndClass *self,
             total = state->val->val_size;
 
         err = out->write(out, ",\"instances\":{",
-                         strlen(",\"instances\":{"));                           RET_ERR();
+                         strlen(",\"instances\":{"));                             RET_ERR();
         err = out->write(out, "\"_state\":", strlen("\"_state\":"));              RET_ERR();
         err = out->writef(out, "%zu", latest_state_numid);                        RET_ERR();
         err = out->write(out, ",\"total\":", strlen(",\"total\":"));              RET_ERR();
@@ -154,6 +154,7 @@ static int export_conc_elem_JSON(void *obj,
     struct glbOutput *out = self->entry->repo->out;
     struct kndClassEntry *entry = elem;
     struct kndClass *c = entry->class;
+    struct kndState *state;
     int err;
 
     if (DEBUG_JSON_LEVEL_2)
@@ -162,6 +163,12 @@ static int export_conc_elem_JSON(void *obj,
 
     if (!c) {
         //err = unfreeze_class(self, entry, &c);                                      RET_ERR();
+        return knd_OK;
+    }
+
+    if (!task->show_removed_objs) {
+        state = c->states;
+        if (state && state->phase == KND_REMOVED) return knd_OK;
     }
 
     /* separator */
@@ -335,8 +342,8 @@ static int export_concise_JSON(struct kndClass *self)
 }
 
 extern int knd_class_export_set_JSON(struct kndClass *self,
-                                     struct glbOutput *out,
-                                     struct kndSet *set)
+                                     struct kndSet *set,
+                                     struct glbOutput *out)
 {
     struct kndTask *task = self->entry->repo->task;
     int err;
@@ -354,8 +361,13 @@ extern int knd_class_export_set_JSON(struct kndClass *self,
     }
     err = out->writec(out, '}');                                                  RET_ERR();
 
-    err = out->writef(out,  ",\"total\":%lu",
-                      (unsigned long)set->num_elems);                             RET_ERR();
+    if (task->show_removed_objs) {
+        err = out->writef(out, ",\"total\":%lu",
+                          (unsigned long)set->num_elems);                         RET_ERR();
+    } else {
+        err = out->writef(out, ",\"total\":%lu",
+                          (unsigned long)set->num_valid_elems);                   RET_ERR();
+    }
 
     err = out->write(out, ",\"batch\":[",
                      strlen(",\"batch\":["));                                     RET_ERR();
