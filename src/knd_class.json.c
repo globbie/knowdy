@@ -120,16 +120,15 @@ extern int knd_export_class_state_JSON(struct kndClass *self,
 extern int knd_export_class_inst_state_JSON(struct kndClass *self)
 {
     struct glbOutput *out = self->entry->repo->out;
-    struct kndState *state;
+    size_t latest_state_id = 0;
     int err;
 
+    if (self->inst_states)
+        latest_state_id = self->inst_states->numid;
 
-    if (self->inst_states) {
-        state = self->inst_states;
-        err = out->write(out, "\"_state\":",
-                         strlen("\"_state\":"));                                    RET_ERR();
-        err = out->writef(out, "%zu", state->numid);                                RET_ERR();
-    }
+    err = out->write(out, "\"_state\":",
+                     strlen("\"_state\":"));                                      RET_ERR();
+    err = out->writef(out, "%zu", latest_state_id);                               RET_ERR();
 
     if (self->entry->inst_idx) {
         err = out->write(out, ",\"_tot\":", strlen(",\"_tot\":"));                  RET_ERR();

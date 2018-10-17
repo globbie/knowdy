@@ -155,11 +155,11 @@ static int index_attr_var_list(struct kndClass *self,
         /* specific class */
         err = knd_get_class(self->entry->repo,
                             item->name,
-                            item->name_size, &c);                                     RET_ERR();
+                            item->name_size, &c);                                 RET_ERR();
         item->class = c;
 
         if (!c->is_resolved) {
-            err = knd_class_resolve(c);                                            RET_ERR();
+            err = knd_class_resolve(c);                                           RET_ERR();
         }
         err = knd_is_base(base, c);                                               RET_ERR();
 
@@ -174,6 +174,7 @@ static int index_attr_var_list(struct kndClass *self,
             }
 
         }
+
         set = idx_class->entry->descendants;
         if (!set) {
             err = knd_set_new(mempool, &set);                                     RET_ERR();
@@ -181,6 +182,7 @@ static int index_attr_var_list(struct kndClass *self,
             set->base =  idx_class->entry;
             idx_class->entry->descendants = set;
         }
+
         if (DEBUG_CLASS_RESOLVE_LEVEL_2)
             knd_log("\n.. add %.*s ref to %.*s (repo:%.*s)",
                     item->name_size, item->name,
@@ -857,7 +859,7 @@ static int link_ancestor(struct kndClass *self,
 
     desc_idx = base->entry->descendants;
     if (!desc_idx) {
-        err = knd_set_new(mempool, &desc_idx);                                RET_ERR();
+        err = knd_set_new(mempool, &desc_idx);                                    RET_ERR();
         desc_idx->type = KND_SET_CLASS;
         desc_idx->base = base->entry;
         base->entry->descendants = desc_idx;
