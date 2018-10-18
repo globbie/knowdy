@@ -669,6 +669,7 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
     struct kndRepo *repo = self->entry->repo;
     struct glbOutput *log = repo->log;
     struct kndTask *task =   repo->task;
+    size_t num_children;
     int err;
 
     if (!repo->curr_class) {
@@ -685,9 +686,12 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
     
     c = repo->curr_class;
 
-
     /* check dependants */
-    if (c->entry->num_children) {
+    num_children = c->entry->num_children;
+    if (c->desc_states && c->desc_states->val)
+        num_children = c->desc_states->val->val_size;
+
+    if (num_children) {
         knd_log("-- remove operation: descendants exist");
         log->reset(log);
         err = log->write(log, name, name_size);

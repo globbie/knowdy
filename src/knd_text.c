@@ -24,7 +24,7 @@ static int export_JSON(struct kndText *self,
     struct kndTranslation *tr;
     int err;
 
-    if (DEBUG_TEXT_LEVEL_TMP)
+    if (DEBUG_TEXT_LEVEL_2)
         knd_log(".. export text to JSON..");
 
     for (tr = self->tr; tr; tr = tr->next) {
