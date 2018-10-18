@@ -333,6 +333,7 @@ static int ref_item_export_JSON(struct kndAttrVar *item,
     int err;
 
     assert(item->class != NULL);
+
     c = item->class;
     c->depth = item->depth;
     c->max_depth = item->max_depth;
