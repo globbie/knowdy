@@ -41,19 +41,16 @@
 #define DEBUG_CLASS_LEVEL_5 0
 #define DEBUG_CLASS_LEVEL_TMP 1
 
-static int str_facet_val(void *obj,
+static int str_facet_val(void *unused_var(obj),
                          const char *elem_id,
                          size_t elem_id_size,
-                         size_t count,
+                         size_t unused_var(count),
                          void *elem)
 {
-    struct kndClass *self = obj;
     struct kndSet *set = elem;
     struct kndClassEntry *entry;
 
-    knd_log("  + \"%.*s\"",
-            elem_id_size, elem_id);
-
+    knd_log("  + \"%.*s\"", elem_id_size, elem_id);
     if (set->base) {
         entry = set->base;
         knd_log("    entry:%.*s (id:%.*s repo:%.*s)",
@@ -812,10 +809,11 @@ extern int knd_is_base(struct kndClass *self,
          }
 
          if (self->entry->orig) {
-             knd_log("== orig:%p repo:%.*s",
-                     self->entry->orig,
-                     self->entry->orig->repo->name_size,
-                     self->entry->orig->name);
+             /*  knd_log("== orig:%p repo:%.*s",
+                         self->entry->orig,
+                         self->entry->orig->repo->name_size,
+                         self->entry->orig->name); */
+
              if (self->entry->orig->class == c)
                  return knd_OK;
          }
