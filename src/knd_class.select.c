@@ -92,13 +92,16 @@ static gsl_err_t select_by_attr(void *obj,
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
     log->reset(log);
 
+    // TODO
     c = repo->curr_attr_ref->class_entry->class;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
-        knd_log("\n== select by attr value: \"%.*s\" of \"%.*s\" (repo:%.*s)",
+    if (DEBUG_CLASS_SELECT_LEVEL_2) {
+        knd_log("\n\n== select by attr value: \"%.*s\" of \"%.*s\" (id:%.*s repo:%.*s)",
                 name_size, name,
                 c->name_size, c->name,
+                c->entry->id_size, c->entry->id,
                 c->entry->repo->name_size, c->entry->repo->name);
+        c->str(c);
     }
 
     if (!c->entry->descendants) {
@@ -125,20 +128,25 @@ static gsl_err_t select_by_attr(void *obj,
 
     class_id = c->entry->id;
     class_id_size = c->entry->id_size;
-    if (c->entry->orig) {
-        class_id = c->entry->orig->id;
-        class_id_size = c->entry->orig->id_size;
-    }
 
     err = facet->set_idx->get(facet->set_idx,
                               class_id, class_id_size, &result);
     if (err) {
-        log->writef(log, "no such facet class: %.*s", name_size, name);
-        task->http_code = HTTP_NOT_FOUND;
-        return make_gsl_err(gsl_FAIL);
+        if (c->entry->orig) {
+            class_id = c->entry->orig->id;
+            class_id_size = c->entry->orig->id_size;
+        }
+        err = facet->set_idx->get(facet->set_idx,
+                                  class_id, class_id_size, &result);
+        if (err) {
+            log->writef(log, "no such facet class: %.*s", name_size, name);
+            task->http_code = HTTP_NOT_FOUND;
+            return make_gsl_err(gsl_FAIL);
+        }
     }
+
     set = result;
-    //set->base->class = c;
+
     if (task->num_sets + 1 > KND_MAX_CLAUSES)
         return make_gsl_err(gsl_LIMIT);
 

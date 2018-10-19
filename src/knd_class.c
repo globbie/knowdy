@@ -41,16 +41,45 @@
 #define DEBUG_CLASS_LEVEL_5 0
 #define DEBUG_CLASS_LEVEL_TMP 1
 
+static int str_facet_val(void *obj,
+                         const char *elem_id,
+                         size_t elem_id_size,
+                         size_t count,
+                         void *elem)
+{
+    struct kndClass *self = obj;
+    struct kndSet *set = elem;
+    struct kndClassEntry *entry;
+
+    knd_log("  + \"%.*s\"",
+            elem_id_size, elem_id);
+
+    if (set->base) {
+        entry = set->base;
+        knd_log("    entry:%.*s (id:%.*s repo:%.*s)",
+                entry->name_size,
+                entry->name,
+                entry->id_size,
+                entry->id,
+                entry->repo->name_size,
+                entry->repo->name);
+    }
+
+    return knd_OK;
+}
+
 static void str(struct kndClass *self)
 {
     struct kndTranslation *tr;
     struct kndClassVar *item;
     struct kndClassRef *ref;
     struct kndClass *c;
+    struct kndSet *set;
+    struct kndFacet *f;
     const char *name;
     size_t name_size;
     char resolved_state = '-';
-
+    int err;
     knd_log("\n%*s{class %.*s (repo:%.*s)   id:%.*s  numid:%zu",
             self->depth * KND_OFFSET_SIZE, "",
             self->entry->name_size, self->entry->name,
@@ -101,6 +130,18 @@ static void str(struct kndClass *self)
         knd_log("%*s ==> %.*s (repo:%.*s)", self->depth * KND_OFFSET_SIZE, "",
                 c->entry->name_size, c->entry->name,
                 c->entry->repo->name_size, c->entry->repo->name);
+    }
+
+    if (self->entry->descendants) {
+        for (f = self->entry->descendants->facets; f; f = f->next) {
+            knd_log("== facet:\"%.*s\"", f->attr->name_size, f->attr->name);
+            set = f->set_idx;
+
+            if (set) {
+                err = set->map(set, str_facet_val, (void*)self);
+                if (err) return;
+            }
+        }
     }
 
     // print attrs
@@ -770,9 +811,13 @@ extern int knd_is_base(struct kndClass *self,
              return knd_OK;
          }
 
-         if (self->entry->orig && self->entry->orig->class == c) {
-             //knd_log("++ inheritance confirmed via orig repo!\n");
-             return knd_OK;
+         if (self->entry->orig) {
+             knd_log("== orig:%p repo:%.*s",
+                     self->entry->orig,
+                     self->entry->orig->repo->name_size,
+                     self->entry->orig->name);
+             if (self->entry->orig->class == c)
+                 return knd_OK;
          }
     }
 
