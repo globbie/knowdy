@@ -572,10 +572,19 @@ extern int knd_class_export_JSON(struct kndClass *self,
     bool in_list = false;
     int err;
 
-    if (DEBUG_JSON_LEVEL_2)
-        knd_log(".. JSON export: \"%.*s\"   depth:%zu max depth:%zu",
+    if (DEBUG_JSON_LEVEL_2) {
+        knd_log("\n.. JSON export: \"%.*s\"   depth:%zu max depth:%zu",
                 entry->name_size, entry->name,
                 self->depth, self->max_depth);
+        knd_log("= self:%p orig_entry:%p", self, orig_entry);
+        if (orig_entry) {
+            knd_log("= orig_entry_class:%p", orig_entry->class);
+            if (orig_entry->class) {
+                knd_log("= orig_entry_class class vars:%zu", 
+                        orig_entry->class->num_baseclass_vars);
+            }
+        }
+    }
 
     err = out->write(out, "{", 1);                                                RET_ERR();
     err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                RET_ERR();

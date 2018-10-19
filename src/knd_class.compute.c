@@ -56,14 +56,14 @@ extern int knd_compute_num_value(struct kndAttr *attr,
 
     proc_call = attr->proc->proc_call;
 
-    if (DEBUG_CLASS_COMP_LEVEL_TMP)
+    if (DEBUG_CLASS_COMP_LEVEL_2)
         knd_log("PROC CALL: \"%.*s\"",
                 proc_call->name_size, proc_call->name);
 
     for (arg = proc_call->args; arg; arg = arg->next) {
         class_var = arg->class_var;
 
-        if (DEBUG_CLASS_COMP_LEVEL_TMP)
+        if (DEBUG_CLASS_COMP_LEVEL_2)
             knd_log("ARG: %.*s", arg->name_size, arg->name);
 
         err = knd_get_arg_value(attr_var, class_var->attrs, arg);
@@ -107,29 +107,26 @@ static int compute_list_sum(struct kndAttrVar *parent_var,
                             long *result)
 {
     struct kndAttrVar *curr_var;
-    struct kndAttrVar *attr_var;
+    //struct kndAttrVar *attr_var;
     long total_numval = 0;
     int err;
 
-    if (DEBUG_CLASS_COMP_LEVEL_TMP) {
+    if (DEBUG_CLASS_COMP_LEVEL_2) {
         knd_log(".. computing SUM of list: %.*s..",
                 parent_var->name_size, parent_var->name);
     }
 
     for (curr_var = parent_var->list; curr_var; curr_var = curr_var->next) {
-
-        if (DEBUG_CLASS_COMP_LEVEL_TMP) {
+        if (DEBUG_CLASS_COMP_LEVEL_2) {
             knd_log("\n.. list elem: %.*s numval:%lu  ",
                     curr_var->name_size, curr_var->name,
                     curr_var->numval);
         }
 
         if (query->children) {
-
-            for (attr_var = query->children; attr_var; attr_var = attr_var->next) {
-                knd_log(" child query elem: %.*s", attr_var->name_size, attr_var->name);
-            }
-
+            //for (attr_var = query->children; attr_var; attr_var = attr_var->next) {
+            //    knd_log(" child query elem: %.*s", attr_var->name_size, attr_var->name);
+            // }
             if (!curr_var->children) continue;
 
             err = knd_get_arg_value(curr_var->children, query->children, arg);
@@ -148,7 +145,6 @@ static int compute_list_sum(struct kndAttrVar *parent_var,
             total_numval += curr_var->numval;
         }
     }
-
     *result = total_numval;
     return knd_OK;
 }
@@ -165,7 +161,7 @@ static int compute_attr_var_value(struct kndClass *self,
     void *obj;
     int err;
 
-    if (DEBUG_CLASS_COMP_LEVEL_TMP) {
+    if (DEBUG_CLASS_COMP_LEVEL_2) {
         knd_log(".. query the \"%.*s\" class..",
                 self->name_size, self->name);
     }
@@ -175,8 +171,8 @@ static int compute_attr_var_value(struct kndClass *self,
         select_var = query->children;
         if (!select_var) return knd_FAIL;
 
-        knd_log("== select attr var:%.*s",
-                select_var->name_size, select_var->name);
+        //knd_log("== select attr var:%.*s",
+        //        select_var->name_size, select_var->name);
 
         field_var = select_var->children;
         if (!field_var) return knd_FAIL;
@@ -224,11 +220,10 @@ extern int knd_compute_class_attr_num_value(struct kndClass *self,
 
     proc_call = attr->proc->proc_call;
 
-    if (DEBUG_CLASS_COMP_LEVEL_TMP) {
+    if (DEBUG_CLASS_COMP_LEVEL_2) {
         knd_log("\nPROC CALL: \"%.*s\" type:%d",
                 proc_call->name_size, proc_call->name,
                 proc_call->type);
-
         knd_log("== attr var: \"%.*s\"",
                 attr_var->name_size, attr_var->name);
     }
@@ -236,7 +231,7 @@ extern int knd_compute_class_attr_num_value(struct kndClass *self,
     for (arg = proc_call->args; arg; arg = arg->next) {
         class_var = arg->class_var;
 
-        if (DEBUG_CLASS_COMP_LEVEL_TMP)
+        if (DEBUG_CLASS_COMP_LEVEL_2)
             knd_log("ARG: %.*s", arg->name_size, arg->name);
 
         err = compute_attr_var_value(self,
@@ -245,28 +240,28 @@ extern int knd_compute_class_attr_num_value(struct kndClass *self,
 
         if (!strncmp("total", arg->name, arg->name_size)) {
             total = arg->numval;
-            knd_log("TIMES:%lu", arg->numval);
+            //knd_log("TIMES:%lu", arg->numval);
         }
 
         if (!strncmp("times", arg->name, arg->name_size)) {
             times = arg->numval;
-            knd_log("TIMES:%lu", arg->numval);
+            //knd_log("TIMES:%lu", arg->numval);
         }
 
         if (!strncmp("quant", arg->name, arg->name_size)) {
             quant = arg->numval;
-            knd_log("QUANT:%lu", arg->numval);
+            //knd_log("QUANT:%lu", arg->numval);
         }
 
         if (!strncmp("dividend", arg->name, arg->name_size)) {
             dividend = (float)arg->numval;
-            knd_log("DIVIDEND:%lu", arg->numval);
+            //knd_log("DIVIDEND:%lu", arg->numval);
         }
 
         if (!strncmp("divisor", arg->name, arg->name_size)) {
             divisor = (float)arg->numval;
-            knd_log("DIVISOR:%lu (arg:%.*s)", arg->numval,
-                    arg->name_size, arg->name);
+            //knd_log("DIVISOR:%lu (arg:%.*s)", arg->numval,
+            //        arg->name_size, arg->name);
         }
     }
 
@@ -284,16 +279,14 @@ extern int knd_compute_class_attr_num_value(struct kndClass *self,
         numval = (times * quant) / 100;
         break;
     case KND_PROC_DIV_PERCENT:
-        knd_log(".. divide.. ");
         if (!divisor) {
             numval = (long)dividend;
             break;
         }
-
-        knd_log("\n.. divide %.2f by %.2f", dividend, divisor);
+        //knd_log("\n.. divide %.2f by %.2f", dividend, divisor);
         result = (dividend / divisor) * (float)100;
 
-        knd_log("== result: %.2f", result);
+        //knd_log("== division result: %.2f", result);
 
         numval = (long)result;
         break;
