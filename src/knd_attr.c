@@ -883,9 +883,10 @@ static int extract_implied_attr_value(struct kndClass *self,
     void *obj;
     int err;
 
-    knd_log(".. from class %.*s get the value of \"%.*s\"..\n",
-            self->name_size, self->name,
-            parent_item->name_size, parent_item->name);
+    if (DEBUG_ATTR_LEVEL_2)
+        knd_log(".. from class %.*s get the value of \"%.*s\"..\n",
+                self->name_size, self->name,
+                parent_item->name_size, parent_item->name);
 
     /* resolve attr name */
     err = knd_class_get_attr(self,
@@ -901,7 +902,6 @@ static int extract_implied_attr_value(struct kndClass *self,
 
     //knd_log("++ set attr var: %.*s  attr var:%p",
     //        ref->attr->name_size, ref->attr->name, ref->attr_var);
-
     attr_var = ref->attr_var;
 
     //str_attr_vars(attr_var, 1);
@@ -942,13 +942,14 @@ static int compute_attr_var(struct kndAttrVar *parent_item,
     float result = 0;
     int err;
 
-    knd_log("\n\n.. NB: computing attr \"%.*s\"..", attr->name_size, attr->name);
+    if (DEBUG_ATTR_LEVEL_2)
+        knd_log(".. computing attr \"%.*s\"..", attr->name_size, attr->name);
 
     proc_call = attr->proc->proc_call;
     for (arg = proc_call->args; arg; arg = arg->next) {
         class_var = arg->class_var;
 
-        if (DEBUG_ATTR_LEVEL_TMP)
+        if (DEBUG_ATTR_LEVEL_2)
             knd_log("== ARG: %.*s", arg->name_size, arg->name);
         
         for (attr_var = class_var->attrs; attr_var; attr_var = attr_var->next) {
@@ -1076,7 +1077,7 @@ extern int knd_get_arg_value(struct kndAttrVar *src,
         if (!memcmp(attr->name, query->name, query->name_size)) {
             switch (attr->type) {
             case KND_ATTR_NUM:
-                if (DEBUG_ATTR_LEVEL_TMP) {
+                if (DEBUG_ATTR_LEVEL_2) {
                     knd_log("== implied NUM attr: %.*s value: %.*s numval:%lu",
                             src->name_size, src->name,
                             src->val_size, src->val, src->numval);
@@ -1084,8 +1085,8 @@ extern int knd_get_arg_value(struct kndAttrVar *src,
                 result_arg->numval = src->numval;
                 return knd_OK;
             case KND_ATTR_REF:
-                knd_log("++ match ref: %.*s",
-                        src->class->name_size, src->class->name);
+                // knd_log("++ match ref: %.*s",
+                //        src->class->name_size, src->class->name);
 
                 return knd_get_class_attr_value(src->class, query->children, result_arg);
                 break;
@@ -1107,15 +1108,15 @@ extern int knd_get_arg_value(struct kndAttrVar *src,
 
         if (!strncmp(curr_var->name, query->name, query->name_size)) {
 
-            if (DEBUG_ATTR_LEVEL_TMP)
+            if (DEBUG_ATTR_LEVEL_2)
                 knd_log("++ match: %.*s numval:%zu!\n",
                         curr_var->val_size, curr_var->val, curr_var->numval);
 
             /* set the implied value */
             if (curr_var->implied_attr) {
                 attr = curr_var->implied_attr;
-                knd_log("!! implied attr found in \"%.*s\"!\n\n",
-                        curr_var->name_size, curr_var->name);
+                //knd_log("!! implied attr found in \"%.*s\"!\n\n",
+                //        curr_var->name_size, curr_var->name);
                 result_arg->numval = curr_var->numval;
 
                 return knd_OK;
@@ -1124,9 +1125,9 @@ extern int knd_get_arg_value(struct kndAttrVar *src,
             result_arg->numval = curr_var->numval;
             if (!query->num_children) return knd_OK;
 
-            knd_log(".. continue to look up the \"%.*s\" attr..",
-                    query->children->name_size, query->children->name);
-            str_attr_vars(curr_var, 1);
+            //knd_log(".. continue to look up the \"%.*s\" attr..",
+            //        query->children->name_size, query->children->name);
+            //str_attr_vars(curr_var, 1);
             
             err = knd_get_arg_value(curr_var, query->children, result_arg);
             if (err) return err;

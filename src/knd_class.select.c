@@ -58,7 +58,11 @@ static gsl_err_t select_by_baseclass(void *obj,
     if (DEBUG_CLASS_SELECT_LEVEL_2)
         c->str(c);
 
-    c->entry->class = c;
+    if (!c->entry->class) {
+        knd_log(".. resolve class to %.*s", c->name_size, c->name);
+        c->entry->class = c;
+    }
+
     if (!c->entry->descendants) {
         knd_log("-- no set of descendants found :(");
         return make_gsl_err(gsl_OK);
@@ -134,7 +138,7 @@ static gsl_err_t select_by_attr(void *obj,
         return make_gsl_err(gsl_FAIL);
     }
     set = result;
-    set->base->class = c;
+    //set->base->class = c;
     if (task->num_sets + 1 > KND_MAX_CLAUSES)
         return make_gsl_err(gsl_LIMIT);
 

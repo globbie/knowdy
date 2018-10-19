@@ -148,7 +148,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("++ class already exists: %.*s!", name_size, name);
-
         self->class = entry->class;
         self->entry = entry;
 
@@ -156,7 +155,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     }
 
     if (DEBUG_REPO_LEVEL_TMP) {
-        knd_log("== batch mode: %d",
+        knd_log("\n\n== batch mode: %d",
                 repo->task->batch_mode);
     }
 
