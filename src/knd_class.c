@@ -785,7 +785,7 @@ extern int knd_is_base(struct kndClass *self,
     struct kndClassRef *ref;
     struct kndClass *c;
 
-    if (DEBUG_CLASS_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_TMP) {
         knd_log(".. check inheritance: %.*s (repo:%.*s) [resolved: %d] => "
                 " %.*s (repo:%.*s) [resolved:%d] %p",
                 child->name_size, child->name,
@@ -798,7 +798,7 @@ extern int knd_is_base(struct kndClass *self,
 
     for (ref = entry->ancestors; ref; ref = ref->next) {
          c = ref->class;
-         if (DEBUG_CLASS_LEVEL_2) {
+         if (DEBUG_CLASS_LEVEL_TMP) {
              knd_log("== ancestor: %.*s (repo:%.*s) %p",
                      c->name_size, c->name,
                      c->entry->repo->name_size, c->entry->repo->name, c);
@@ -809,10 +809,10 @@ extern int knd_is_base(struct kndClass *self,
          }
 
          if (self->entry->orig) {
-             /*  knd_log("== orig:%p repo:%.*s",
+             knd_log("== orig:%p repo:%.*s",
                          self->entry->orig,
                          self->entry->orig->repo->name_size,
-                         self->entry->orig->name); */
+                         self->entry->orig->name);
 
              if (self->entry->orig->class == c)
                  return knd_OK;
