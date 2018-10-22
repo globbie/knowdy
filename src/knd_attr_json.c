@@ -84,8 +84,8 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
             err = knd_present_computed_inner_attrs(parent_item, out);
             if (err) return err;
             }*/
-   }
-    
+    }
+
     /* export a class ref */
     if (parent_item->class) {
         attr = parent_item->attr;
@@ -333,6 +333,7 @@ static int ref_item_export_JSON(struct kndAttrVar *item,
     struct kndClass *c;
     int err;
 
+    // TODO
     assert(item->class != NULL);
 
     c = item->class;

@@ -262,8 +262,8 @@ static int resolve_class_ref(struct kndClass *self,
     struct kndClass *c;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-        knd_log(".. checking class ref:  \"%.*s\"", name_size, name);
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+        knd_log("\n.. checking class ref:  \"%.*s\"", name_size, name);
 
     err = knd_get_class(self->entry->repo, name, name_size, &c);
     if (err) return err;
@@ -328,7 +328,7 @@ static int resolve_inner_item(struct kndClass *self,
     size_t classname_size;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
         knd_log(".. resolve inner item %.*s..",
                 parent_item->name_size, parent_item->name);
 
@@ -456,14 +456,14 @@ static int resolve_inner_item(struct kndClass *self,
 }
 
 static int resolve_attr_var_list(struct kndClass *self,
-                                  struct kndAttrVar *parent_item)
+                                 struct kndAttrVar *parent_item)
 {
     struct kndAttr *parent_attr = parent_item->attr;
     struct kndAttrVar *item;
-    struct kndClass *c;
+    struct kndClass *c, *local_class;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
         const char *attr_type_name = knd_attr_names[parent_attr->type];
         size_t attr_type_name_size = strlen(attr_type_name);
         knd_log(".. class %.*s to resolve attr item list \"%.*s\" "
@@ -475,6 +475,7 @@ static int resolve_attr_var_list(struct kndClass *self,
                 attr_type_name_size, attr_type_name);
     }
 
+    /* resolve template class ref */
     if (!parent_attr->ref_class) {
         err = resolve_class_ref(self,
                                 parent_attr->ref_classname,
@@ -487,6 +488,17 @@ static int resolve_attr_var_list(struct kndClass *self,
     c = parent_attr->ref_class;
     if (!c->is_resolved) {
         err = knd_class_resolve(c);                                                RET_ERR();
+    }
+
+    /* does local repo have a clone of this class? */
+    if (self->entry->repo != c->entry->repo) {
+        knd_log(".. check local repo..");
+        err = knd_get_class(self->entry->repo,
+                            parent_attr->ref_classname,
+                            parent_attr->ref_classname_size,
+                            &local_class);
+        if (!err)
+            c = local_class;
     }
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
@@ -505,6 +517,7 @@ static int resolve_attr_var_list(struct kndClass *self,
             }
             break;
         case KND_ATTR_REF:
+            knd_log(".. resolve parent elem class ref..");
             err = resolve_class_ref(self,
                                     parent_item->val, parent_item->val_size,
                                     c, &parent_item->class);
@@ -530,7 +543,11 @@ static int resolve_attr_var_list(struct kndClass *self,
                                         c, &item->class);
                 if (err) return err;
             } else {
-                err = resolve_class_ref(self, item->name, item->name_size,
+
+                knd_log(".. resolve list elem class ref..");
+
+                err = resolve_class_ref(self,
+                                        item->name, item->name_size,
                                         c, &item->class);
                 if (err) return err;
             }
@@ -558,7 +575,7 @@ static int resolve_attr_vars(struct kndClass *self,
     void *obj;
     int e, err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
         knd_log("\n.. resolving attr vars of class \"%.*s\" (repo:%.*s) ..",
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name);
