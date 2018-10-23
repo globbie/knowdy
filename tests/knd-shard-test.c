@@ -29,7 +29,7 @@ static const char *shard_config =
         const char *__act = (act);                  \
         size_t __act_size = (act_size);             \
         const char *__exp = (exp);                  \
-        size_t __exp_size = ((exp_size) == -1 ? strlen(__exp) : (exp_size));                     \
+        size_t __exp_size = ((exp_size) == -1 ? strlen(__exp) : (size_t)(exp_size));             \
         ck_assert_msg(__act_size == __exp_size && 0 == strncmp(__act, __exp, __act_size),        \
             "Assertion '%s' failed: %s == \"%.*s\" [len: %zu] but expected \"%.*s\" [len: %zu]", \
             #act" == "#exp, #act, __act_size, __act, __act_size, __exp_size, __exp, __exp_size); \
