@@ -45,16 +45,16 @@ typedef enum knd_task_spec_type {
     KND_DELTA_STATE
 } knd_task_spec_type;
 
-typedef enum knd_iter_type {
-    KND_ITER_NONE,
-    KND_ITER_BREADTH,
-    KND_ITER_DEPTH
-} knd_iter_type;
+//typedef enum knd_iter_type {
+//    KND_ITER_NONE,
+//    KND_ITER_BREADTH,
+//    KND_ITER_DEPTH
+//} knd_iter_type;
 
-typedef enum knd_delivery_type {
-    KND_DELIVERY_CACHE,
-    KND_DELIVERY_HTTP
-} knd_delivery_type;
+//typedef enum knd_delivery_type {
+//    KND_DELIVERY_CACHE,
+//    KND_DELIVERY_HTTP
+//} knd_delivery_type;
 
 struct kndVisualFormat {
     size_t text_line_height;
@@ -73,7 +73,7 @@ struct kndTask
     size_t curr_locale_size;
 
     knd_format format;
-    struct kndVisualFormat visual;
+    //struct kndVisualFormat visual;
 
     char timestamp[KND_NAME_SIZE];
     size_t timestamp_size;
@@ -130,10 +130,9 @@ struct kndTask
 
     struct glbOutput *log;
     struct glbOutput *out;
-    struct glbOutput *spec_out;
     struct glbOutput *file_out;
     struct glbOutput *update_out;
-    struct kndMemPool *mempool;
+    //struct kndMemPool *mempool;
 
     /******** public methods ********/
     void (*del)(struct kndTask *self);

@@ -25,7 +25,6 @@ static void del(struct kndTask *self)
 {
     self->log->del(self->log);
     self->out->del(self->out);
-    self->spec_out->del(self->spec_out);
     self->update_out->del(self->update_out);
     self->file_out->del(self->file_out);
 
@@ -73,7 +72,6 @@ static void reset(struct kndTask *self)
     self->log->reset(self->log);
     self->out->reset(self->out);
     self->update_out->reset(self->update_out);
-    self->spec_out->reset(self->spec_out);
 }
 
 static const char * gsl_err_to_str(gsl_err_t err)
@@ -253,9 +251,6 @@ extern int kndTask_new(struct kndTask **task)
     if (err) return err;
 
     err = glbOutput_new(&self->out, KND_IDX_BUF_SIZE);
-    if (err) return err;
-
-    err = glbOutput_new(&self->spec_out, KND_MED_BUF_SIZE);
     if (err) return err;
 
     err = glbOutput_new(&self->update_out, KND_LARGE_BUF_SIZE);
