@@ -2,6 +2,7 @@
 
 #include <check.h>
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -66,17 +67,29 @@ END_TEST
 START_TEST(shard_table_test)
     static const struct table_test cases[] = {
         {
+            .input = "{task {class Person}}",
+            .expect = "{\"err\":\"Person class name not found\",\"http_code\":404}"
+        },
+        {
+            .input = "{task {!class Person {num age}}}",
+            .expect = "{\"result\":\"OK\"}"
+        },
+        {
+            .input = "{task {!class Person}}",
+            .expect = "{\"err\":\"Person class name already exists\",\"http_code\":409}"
+        },
+        {
+            .input = "{task {!class Worker {is PersonUnknown}}}",
+            .expect = "{\"err\":\"internal server error\",\"http_code\":404}"  // TODO(k15tfu): fix this
+        },
+        {
+            .input = "{task {!class Worker {is Person}}}",
+            .expect = "{\"result\":\"OK\"}"
+        },
+        {
             .input = "{task {class User {!inst Vasya}}}",
             .expect = "{\"result\":\"OK\"}"
-        },
-        {
-            .input = "{task {!class NewClass}}",
-            .expect = "{\"result\":\"OK\"}"
-        },
-        {
-            .input = "{task {!class NewClass}}",
-            .expect = "{\"err\":\"NewClass class name already exists\",\"http_code\":409}"
-        },
+        }
     };
 
     struct kndShard *shard;
@@ -89,6 +102,7 @@ START_TEST(shard_table_test)
         const struct table_test *pcase = &cases[i];
 
         const char *result; size_t result_size;
+        fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
         err = kndShard_run_task(shard, pcase->input, strlen(pcase->input), &result, &result_size);
         ck_assert_int_eq(err, knd_OK);
         ASSERT_STR_EQ(result, result_size, pcase->expect, -1);
