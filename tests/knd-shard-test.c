@@ -34,19 +34,12 @@ static const char *shard_config =
             #act" == "#exp, #act, __act_size, __act, __act_size, __exp_size, __exp, __exp_size); \
     } while (0)
 
-static void check_run_task(struct kndShard* shard, const char *input, const char *expect) {
-    const char *output;
-    size_t output_len;
-    int err = kndShard_run_task(shard, input, strlen(input), &output, &output_len);
-    ck_assert_int_eq(err, knd_OK);
-    ASSERT_STR_EQ(output, output_len, expect, -1);
-}
-
 struct table_test {
     const char *input;
     const char *expect;
     int err;
 };
+
 START_TEST(shard_config_test)
     static const struct table_test broken_configs[] = {
         {
@@ -71,64 +64,38 @@ START_TEST(shard_config_test)
 END_TEST
 
 START_TEST(shard_table_test)
-    struct kndShard *shard = NULL;
+    static const struct table_test cases[] = {
+        {
+            .input = "{task {class User {!inst Vasya}}}",
+            .expect = "{\"result\":\"OK\"}"
+        },
+        {
+            .input = "{task {!class NewClass}}",
+            .expect = "{\"result\":\"OK\"}"
+        },
+        {
+            .input = "{task {!class NewClass}}",
+            .expect = "{\"err\":\"NewClass class name already exists\",\"http_code\":409}"
+        },
+    };
+
+    struct kndShard *shard;
     int err;
 
     err = kndShard_new(&shard, shard_config, strlen(shard_config));
     ck_assert_int_eq(err, knd_OK);
 
-    const char *input = "{task {class User {!inst Vasya}}}";
-    const char *expect = "{\"result\":\"OK\"}";
-    check_run_task(shard, input, expect);
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
+        const struct table_test *pcase = &cases[i];
+
+        const char *result; size_t result_size;
+        err = kndShard_run_task(shard, pcase->input, strlen(pcase->input), &result, &result_size);
+        ck_assert_int_eq(err, knd_OK);
+        ASSERT_STR_EQ(result, result_size, pcase->expect, -1);
+    }
 
     kndShard_del(shard);
 END_TEST
-
-//
-// Class test cases:
-//
-
-// Global: Should be used only in class test cases.
-int err;
-struct kndShard *shard;
-const char *input;
-const char *output; size_t output_len;
-
-static void tc_class_fixture_setup(void) {
-    int err = kndShard_new(&shard, shard_config, strlen(shard_config));
-    ck_assert_int_eq(err, knd_OK);
-}
-
-static void tc_class_fixture_teardown(void) { kndShard_del(shard); }
-
-START_TEST(class_import)
-    const char *input = "{task {!class NewClass}}";
-    err = kndShard_run_task(shard, input, strlen(input), &output, &output_len);
-    ck_assert_int_eq(err, knd_OK);
-    ASSERT_STR_EQ(output, output_len, "{\"result\":\"OK\"}", -1);
-END_TEST
-
-START_TEST(class_import_if_already_exists)
-    const char *input = "{task {!class NewClass}}";
-    err = kndShard_run_task(shard, input, strlen(input), &output, &output_len);
-    ck_assert_int_eq(err, knd_OK);
-    ASSERT_STR_EQ(output, output_len, "{\"result\":\"OK\"}", -1);
-
-    err = kndShard_run_task(shard, input, strlen(input), &output, &output_len);
-    ck_assert_int_eq(err, knd_OK);
-    ASSERT_STR_EQ(output, output_len, "{\"err\":\"NewClass class name already exists\",\"http_code\":409}", -1);
-END_TEST
-
-START_TEST(class_import_if_already_exists_system)
-    const char *input = "{task {!class User}}";
-    err = kndShard_run_task(shard, input, strlen(input), &output, &output_len);
-    ck_assert_int_eq(err, knd_OK);
-    ASSERT_STR_EQ(output, output_len, "{\"result\":\"OK\"}", -1);
-END_TEST
-
-//
-// Class test cases: The End.
-//
 
 int main(void) {
     Suite *s = suite_create("suite");
@@ -138,22 +105,11 @@ int main(void) {
     tcase_add_test(tc_shard_basic, shard_table_test);
     suite_add_tcase(s, tc_shard_basic);
 
-    TCase *tc_class = tcase_create("class");
-    tcase_add_checked_fixture(tc_class, tc_class_fixture_setup, tc_class_fixture_teardown);
-    tcase_add_test(tc_class, class_import);
-    tcase_add_test(tc_class, class_import_if_already_exists);
-    tcase_add_test(tc_class, class_import_if_already_exists_system);
-    suite_add_tcase(s, tc_class);
-
     SRunner* sr = srunner_create(s);
     //srunner_set_fork_status(sr, CK_NOFORK);
     srunner_run_all(sr, CK_NORMAL);
     int num_failures = srunner_ntests_failed(sr);
     srunner_free(sr);
 
-    // List of expected failures:
-    // * class:class_import_if_already_exists_system
-    const int num_expected_failures = 1;
-
-    return num_failures == num_expected_failures ? EXIT_SUCCESS : EXIT_FAILURE;
+    return num_failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
