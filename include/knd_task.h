@@ -24,6 +24,7 @@
 #include "knd_state.h"
 #include "knd_http_codes.h"
 
+#include <glb-lib/output.h>
 #include <gsl-parser/gsl_err.h>
 
 struct glbOutput;
@@ -80,14 +81,14 @@ struct kndTask
     const char *locale;
     size_t locale_size;
 
-    const char *spec;
-    size_t spec_size;
+//    const char *spec;
+//    size_t spec_size;
+//
+//    const char *update_spec;
+//    size_t update_spec_size;
 
-    const char *update_spec;
-    size_t update_spec_size;
-
-    const char *obj;
-    size_t obj_size;
+//    const char *obj;
+//    size_t obj_size;
 
     const char *report;
     size_t report_size;
@@ -150,3 +151,4 @@ struct kndTask
 /* constructor */
 extern int kndTask_new(struct kndTask **self);
 
+extern gsl_err_t knd_select_task(void *obj, const char *rec, size_t *total_size);
