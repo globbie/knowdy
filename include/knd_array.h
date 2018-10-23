@@ -26,6 +26,8 @@
 
 #include "ooconfig.h"
 
+#include <stddef.h>
+
 typedef struct ooArray
 {
     /******** public attributes ********/

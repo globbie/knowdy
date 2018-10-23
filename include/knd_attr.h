@@ -25,6 +25,10 @@
 #include "knd_task.h"
 #include "knd_config.h"
 
+#include <gsl-parser/gsl_err.h>
+
+#include <stddef.h>
+
 struct kndClass;
 struct kndClassEntry;
 struct glbOutput;
@@ -217,10 +221,6 @@ struct kndAttr
     /***********  public methods ***********/
     void (*str)(struct kndAttr *self);
 
-    gsl_err_t (*parse)(struct kndAttr *self,
-                       const char *rec,
-                       size_t *chunk_size);
-
     /*int (*export)(struct kndAttr *self,
                   knd_format format,
                   struct glbOutput *out);*/
@@ -285,3 +285,6 @@ extern int knd_attr_ref_new(struct kndMemPool *mempool,
                             struct kndAttrRef **result);
 extern int knd_attr_new(struct kndMemPool *mempool,
                         struct kndAttr **result);
+
+// knd_attr.import.c
+extern gsl_err_t knd_import_attr(struct kndAttr *self, const char *rec, size_t *total_size);
