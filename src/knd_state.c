@@ -168,9 +168,9 @@ static int knd_confirm(struct kndStateControl *self,
         return err;
     }
 
-    update->next = self->updates;
-    self->updates = update;
-    self->num_updates++;
+    update->next = repo->updates;
+    repo->updates = update;
+    repo->num_updates++;
 
     if (DEBUG_STATE_LEVEL_TMP)
         knd_log("++ State Controller: "

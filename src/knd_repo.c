@@ -341,6 +341,7 @@ static int kndRepo_restore(struct kndRepo *self,
         knd_log("-- failed to open journal: \"%s\"", filename);
         return err;
     }
+
     /* a closing bracket is needed */
     err = out->writec(out, ']');                                                  RET_ERR();
 
@@ -356,7 +357,9 @@ static int kndRepo_restore(struct kndRepo *self,
 extern int knd_present_repo_state(struct kndRepo *self,
                                   struct glbOutput *out)
 {
+    struct kndUpdate *update;
     int err;
+
     out->reset(out);
     err = out->writec(out, '{');                                                  RET_ERR();
     err = out->write(out, "\"repo\":", strlen("\"repo\":"));                      RET_ERR();
@@ -366,7 +369,14 @@ extern int knd_present_repo_state(struct kndRepo *self,
 
     err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));                RET_ERR();
     err = out->writef(out, "%zu", self->num_updates);                             RET_ERR();
-    err = out->writec(out, '}');  RET_ERR();
+
+    if (self->updates) {
+        update = self->updates;
+        err = out->write(out, ",\"_modif\":", strlen(",\"_modif\":"));            RET_ERR();
+        err = out->writef(out, "%zu", (size_t)update->timestamp);                 RET_ERR();
+    }
+    err = out->writec(out, '}');                                                  RET_ERR();
+
     return knd_OK;
 }
 
@@ -387,8 +397,14 @@ extern int knd_confirm_state(struct kndRepo *self)
 
     err = knd_update_new(mempool, &update);                                      RET_ERR();
     update->repo = self;
+
     self->num_updates++;
+
     update->numid = self->num_updates;
+    update->next = self->updates;
+    self->updates = update;
+
+    update->timestamp = time(NULL);
 
     // TODO: check conflicts
 
@@ -419,7 +435,6 @@ extern int knd_confirm_state(struct kndRepo *self)
 
     return knd_OK;
 }
-
 
 static int kndRepo_open(struct kndRepo *self)
 {
