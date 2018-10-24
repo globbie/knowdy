@@ -1120,18 +1120,18 @@ static gsl_err_t read_state(struct kndClassInst *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t import_elem_list(void *obj,
+static gsl_err_t import_elem_list(void *unused_var(obj),
                                   const char *name, size_t name_size,
                                   const char *rec, size_t *total_size)
 {
-    struct kndClassInst *self = obj;
+    //struct kndClassInst *self = obj;
     //struct glbOutput *log;
     //struct kndTask *task;
-    struct kndMemPool *mempool;
+    //struct kndMemPool *mempool;
     //gsl_err_t parser_err;
     //int err, e;
 
-    mempool = self->base->entry->repo->mempool;
+    //mempool = self->base->entry->repo->mempool;
 
     if (DEBUG_INST_LEVEL_TMP)
         knd_log("== import elem list: \"%.*s\" REC: %.*s size:%zu",
