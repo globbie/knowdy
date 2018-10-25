@@ -413,6 +413,10 @@ static int build_report(struct kndTask *self)
     self->report = self->out->buf;
     self->report_size = self->out->buf_size;
 
+    // TMP test
+    err = knd_write_file("/tmp/result.txt",
+                         (void*)self->report, self->report_size);
+
     /* send delta */
     if (self->type == KND_DELTA_STATE) {
         if (self->update_out->buf_size) {

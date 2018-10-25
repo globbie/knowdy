@@ -93,6 +93,8 @@ final:
     *result = self->task->report;
     *result_size = self->task->report_size;
 
+    knd_log("== final report size: %zu", self->task->report_size);
+
     return knd_OK;
 }
 

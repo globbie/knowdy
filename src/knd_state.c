@@ -150,7 +150,6 @@ static int knd_confirm(struct kndStateControl *self,
 
     // TODO: check the journal file size limit
 
-    
     /*if (self->num_updates >= self->max_updates) {
         knd_log("-- max update limit exceeded, time to freeze?");
         return knd_FAIL;

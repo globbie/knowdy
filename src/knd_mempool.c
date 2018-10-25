@@ -82,8 +82,8 @@ int knd_mempool_alloc(struct kndMemPool *self,
     }
 
     if (obj_size <= (page_size * 0.75) && obj_size > 64) {
-        knd_log("-- too large mem page requested: %zu  max size:%zu",
-                obj_size, page_size);
+        //knd_log("-- too large mem page requested: %zu  max size:%zu",
+        //        obj_size, page_size);
         //return knd_LIMIT;  // FIXME(k15tfu): temporarily disabled
     }
 

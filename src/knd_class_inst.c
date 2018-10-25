@@ -60,9 +60,7 @@ static int export_inner_JSON(struct kndClassInst *self,
     struct kndElem *elem;
     int err;
 
-    /* anonymous obj */
-    err = out->write(out, "{", 1);
-    if (err) return err;
+    err = out->writec(out, '{');                                                  RET_ERR();
 
     elem = self->elems;
     while (elem) {
@@ -72,7 +70,6 @@ static int export_inner_JSON(struct kndClassInst *self,
                     elem->attr->name_size, elem->attr->name);
             return err;
         }
-
         if (elem->next) {
             err = out->write(out, ",", 1);
             if (err) return err;
@@ -80,8 +77,7 @@ static int export_inner_JSON(struct kndClassInst *self,
         elem = elem->next;
     }
 
-    err = out->write(out, "}", 1);
-    if (err) return err;
+    err = out->writec(out, '}');   RET_ERR();
 
     return knd_OK;
 }
@@ -647,7 +643,7 @@ static gsl_err_t parse_import_elem(void *data,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_INST_LEVEL_2)
+    if (DEBUG_INST_LEVEL_TMP)
         knd_log(".. parsing elem import REC: %.*s", 128, rec);
     
     err = kndClassInst_validate_attr(self, name, name_size, &attr, &elem);
@@ -663,6 +659,12 @@ static gsl_err_t parse_import_elem(void *data,
             num = elem->num;
             parser_err = num->parse(num, rec, total_size);
             if (parser_err.code) return parser_err;
+            break;
+        case KND_ATTR_DATE:
+            // TODO
+            /*num = elem->num;
+            parser_err = num->parse(num, rec, total_size);
+            if (parser_err.code) return parser_err; */
             break;
         default:
             break;
@@ -849,7 +851,7 @@ static gsl_err_t rel_entry_append(void *accu,
     struct kndSet *set;
     int err;
 
-    if (DEBUG_INST_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_2)
         knd_log("== Rel Instance entry:\"%.*s\"",
                 entry->id_size, entry->id);
 
@@ -883,7 +885,7 @@ static gsl_err_t rel_entry_alloc(void *obj,
     void *elem;
     int err;
 
-    if (DEBUG_INST_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. %.*s Rel Ref to find rel inst \"%.*s\"",
                 self->rel->name_size, self->rel->name,
                 name_size, name);
@@ -1085,7 +1087,7 @@ static gsl_err_t run_set_state_id(void *obj, const char *name, size_t name_size)
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    if (DEBUG_INST_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_2)
         knd_log("++ class inst state: \"%.*s\" inst:%.*s",
                 name_size, name, self->name_size, self->name);
 
@@ -1118,6 +1120,46 @@ static gsl_err_t read_state(struct kndClassInst *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static gsl_err_t import_elem_list(void *obj,
+                                  const char *name, size_t name_size,
+                                  const char *rec, size_t *total_size)
+{
+    struct kndClassInst *self = obj;
+    struct glbOutput *log;
+    struct kndTask *task;
+    gsl_err_t parser_err;
+    int err, e;
+
+    //mempool = self->root_class->entry->repo->mempool;
+
+    if (DEBUG_INST_LEVEL_TMP)
+        knd_log("== import elem list: \"%.*s\" REC: %.*s",
+                name_size, name, 32, rec);
+
+    /*    err = knd_attr_var_new(mempool, &attr_var);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+    attr_var->class_var = self;
+
+    attr_var->name = name;
+    attr_var->name_size = name_size;
+
+    append_attr_var(self, attr_var);
+
+    struct gslTaskSpec import_attr_var_spec = {
+        .is_list_item = true,
+        .accu =   attr_var,
+        .alloc =  import_attr_var_alloc,
+        .append = import_attr_var_append,
+        .parse =  parse_nested_attr_var
+    };
+
+    parser_err = gsl_parse_array(&import_attr_var_spec, rec, total_size);
+    if (parser_err.code) return parser_err;
+    */
+
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t parse_import_inst(struct kndClassInst *self,
                                    const char *rec,
                                    size_t *total_size)
@@ -1140,6 +1182,11 @@ static gsl_err_t parse_import_inst(struct kndClassInst *self,
         },
         { .is_validator = true,
           .validate = parse_import_elem,
+          .obj = self
+        },
+        { .is_validator = true,
+          .type = GSL_SET_ARRAY_STATE,
+          .validate = import_elem_list,
           .obj = self
         },
         { .type = GSL_SET_ARRAY_STATE,
@@ -1168,7 +1215,7 @@ static int export_inst_JSON(void *obj,
     struct kndState *state;
     int err;
 
-    if (DEBUG_INST_LEVEL_TMP) {
+    if (DEBUG_INST_LEVEL_2) {
         knd_class_inst_str(inst, 0);
     }
 
@@ -1241,7 +1288,7 @@ static gsl_err_t present_inst_selection(void *data, const char *unused_var(val),
     struct kndSet *set;
     int err;
 
-    if (DEBUG_INST_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. class \"%.*s\" (repo:%.*s) inst selection: task type:%d num sets:%zu",
                 base->name_size, base->name,
                 base->entry->repo->name_size, base->entry->repo->name,
@@ -1333,7 +1380,7 @@ static gsl_err_t run_get_inst(void *obj, const char *name, size_t name_size)
     task->type = KND_GET_STATE;
     self->curr_inst->elem_state_refs = NULL;
 
-    if (DEBUG_INST_LEVEL_TMP) {
+    if (DEBUG_INST_LEVEL_2) {
         knd_class_inst_str(self->curr_inst, 0);
     }
 
