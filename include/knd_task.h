@@ -24,6 +24,7 @@
 #include "knd_state.h"
 #include "knd_http_codes.h"
 
+#include <glb-lib/output.h>
 #include <gsl-parser/gsl_err.h>
 
 struct glbOutput;
@@ -44,16 +45,16 @@ typedef enum knd_task_spec_type {
     KND_DELTA_STATE
 } knd_task_spec_type;
 
-typedef enum knd_iter_type {
-    KND_ITER_NONE,
-    KND_ITER_BREADTH,
-    KND_ITER_DEPTH
-} knd_iter_type;
+//typedef enum knd_iter_type {
+//    KND_ITER_NONE,
+//    KND_ITER_BREADTH,
+//    KND_ITER_DEPTH
+//} knd_iter_type;
 
-typedef enum knd_delivery_type {
-    KND_DELIVERY_CACHE,
-    KND_DELIVERY_HTTP
-} knd_delivery_type;
+//typedef enum knd_delivery_type {
+//    KND_DELIVERY_CACHE,
+//    KND_DELIVERY_HTTP
+//} knd_delivery_type;
 
 struct kndVisualFormat {
     size_t text_line_height;
@@ -72,7 +73,7 @@ struct kndTask
     size_t curr_locale_size;
 
     knd_format format;
-    struct kndVisualFormat visual;
+    //struct kndVisualFormat visual;
 
     char timestamp[KND_NAME_SIZE];
     size_t timestamp_size;
@@ -80,14 +81,14 @@ struct kndTask
     const char *locale;
     size_t locale_size;
 
-    const char *spec;
-    size_t spec_size;
+//    const char *spec;
+//    size_t spec_size;
+//
+//    const char *update_spec;
+//    size_t update_spec_size;
 
-    const char *update_spec;
-    size_t update_spec_size;
-
-    const char *obj;
-    size_t obj_size;
+//    const char *obj;
+//    size_t obj_size;
 
     const char *report;
     size_t report_size;
@@ -129,10 +130,9 @@ struct kndTask
 
     struct glbOutput *log;
     struct glbOutput *out;
-    struct glbOutput *spec_out;
     struct glbOutput *file_out;
     struct glbOutput *update_out;
-    struct kndMemPool *mempool;
+    //struct kndMemPool *mempool;
 
     /******** public methods ********/
     void (*del)(struct kndTask *self);
@@ -150,3 +150,4 @@ struct kndTask
 /* constructor */
 extern int kndTask_new(struct kndTask **self);
 
+extern gsl_err_t knd_select_task(void *obj, const char *rec, size_t *total_size);

@@ -607,7 +607,6 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
     struct kndClass *c;
     int err;
 
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     repo->curr_class = NULL;
