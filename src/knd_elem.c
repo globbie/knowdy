@@ -140,14 +140,16 @@ static int export_JSON(struct kndElem *self,
 
     /* key:value repr */
     switch (self->attr->type) {
-    case KND_ATTR_REF:
-        err = self->ref_inst->export(self->ref_inst, KND_FORMAT_JSON, out);
-        if (err) return err;
-        return knd_OK;
     case KND_ATTR_NUM:
+    case KND_ATTR_FLOAT:
         err = out->write(out, self->val, self->val_size);
         if (err) goto final;
         return knd_OK;
+    case KND_ATTR_REF:
+        //err = self->ref_inst->export(self->ref_inst, KND_FORMAT_JSON, out);
+        //if (err) return err;
+        //return knd_OK;
+    case KND_ATTR_DATE:
     case KND_ATTR_STR:
     case KND_ATTR_BIN:
         err = out->writec(out, '"');
@@ -412,7 +414,7 @@ static gsl_err_t check_class_name(void *obj, const char *name, size_t name_size)
     struct kndClass *c;
     int err;
 
-    if (DEBUG_ELEM_LEVEL_2)
+    if (DEBUG_ELEM_LEVEL_TMP)
         knd_log(".. attr \"%.*s\" [%s] to check class name: \"%.*s\"",
                 self->attr->name_size, self->attr->name,
                 knd_attr_names[self->attr->type], name_size, name);
@@ -466,7 +468,7 @@ static gsl_err_t parse_GSL(struct kndElem *self,
                            const char *rec,
                            size_t *total_size)
 {
-    if (DEBUG_ELEM_LEVEL_2)
+    if (DEBUG_ELEM_LEVEL_TMP)
         knd_log(".. ELEM \"%.*s\" parse REC: \"%.*s\"",
                 self->attr->name_size, self->attr->name,
                 16, rec);
