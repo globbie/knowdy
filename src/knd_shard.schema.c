@@ -117,6 +117,11 @@ parse_config(void *obj, const char *rec, size_t *total_size)
             .parse = parse_memory_settings,
             .obj = self->mempool,
         },
+        {   .name = "num-workers",
+            .name_size = strlen("num-workers"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->num_workers
+        },
         {   .name = "agent",
             .name_size = strlen("agent"),
             .buf = self->name,

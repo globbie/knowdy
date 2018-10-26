@@ -123,6 +123,7 @@ static gsl_err_t get_class_by_id(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 {
+    struct kndTask *task = obj;
     struct kndClassUpdate *self = obj;
     struct kndClass *c;
     struct kndRepo *repo = self->update->repo;
@@ -155,8 +156,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     }
 
     if (DEBUG_REPO_LEVEL_TMP) {
-        knd_log("\n\n== batch mode: %d",
-                repo->task->batch_mode);
+        knd_log("\n\n== batch mode: %d", task->batch_mode);
     }
 
     entry->name = name;
@@ -436,7 +436,7 @@ extern int knd_confirm_state(struct kndRepo *self)
     return knd_OK;
 }
 
-static int kndRepo_open(struct kndRepo *self)
+static int kndRepo_open(struct kndRepo *self, struct kndTask *task)
 {
     struct glbOutput *out;
     struct kndClass *c;
@@ -493,24 +493,23 @@ static int kndRepo_open(struct kndRepo *self)
             knd_log("-- no existing frozen DB was found, "
                     " reading the original schema..");
 
-            c->entry->repo->task->batch_mode = true;
-            err = knd_read_GSL_file(c, NULL, "index", strlen("index"));
+            task->batch_mode = true;
+            err = knd_read_GSL_file(c, NULL, "index", strlen("index"), task);
             if (err) {
                 knd_log("-- couldn't read any schemas :(");
                 return err;
             }
-            err = knd_class_coordinate(c);
+            err = knd_class_coordinate(c, task);
             if (err) {
                 knd_log("-- concept coordination failed");
                 return err;
             }
 
-
             //proc = self->root_proc;
             //err = proc->coordinate(proc);                                     RET_ERR();
             //rel = self->root_rel;
             //err = rel->coordinate(rel);                                       RET_ERR();
-            c->entry->repo->task->batch_mode = false;
+            task->batch_mode = false;
         }
     }
 
@@ -528,34 +527,19 @@ static int kndRepo_open(struct kndRepo *self)
         if (err) return err;
     }
 
-    if (DEBUG_REPO_LEVEL_TMP) {
-        struct kndMemPool *mempool = self->mempool;
-
-        knd_log("++ \"%.*s\" repo opened in \"%.*s\"!",
-                self->name_size, self->name,
-                self->path_size, self->path);
-        knd_log("== mempool: base pages: %zu small_x4:%zu small_x2:%zu small:%zu tiny:%zu",
-                mempool->pages_used,
-                mempool->small_x4_pages_used,
-                mempool->small_x2_pages_used,
-                mempool->small_pages_used,
-                mempool->tiny_pages_used);
-        knd_log("num sets:%zu  set idxs:%zu\n", mempool->num_sets, mempool->num_set_idxs);
-        knd_log("class vars:%zu  attr vars:%zu\n", mempool->num_class_vars,
-                mempool->num_attr_vars);
-    }
-
     return knd_OK;
 }
 
-extern int kndRepo_init(struct kndRepo *self)
+extern int kndRepo_init(struct kndRepo *self,
+                        struct kndTask *task)
 {
     int err;
-    self->out      = self->task->out;
-    self->file_out = self->task->file_out;
-    self->log      = self->task->log;
 
-    err = kndRepo_open(self);
+    self->out      = task->out;
+    self->file_out = task->file_out;
+    self->log      = task->log;
+
+    err = kndRepo_open(self, task);
     if (err) return err;
     return knd_OK;
 }
@@ -652,7 +636,6 @@ extern int kndRepo_new(struct kndRepo **repo,
 
     self->del = kndRepo_del;
     self->str = kndRepo_str;
-    self->init = kndRepo_init;
 
     *repo = self;
 

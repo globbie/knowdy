@@ -202,8 +202,10 @@ extern int kndClass_new(struct kndClass **self,
 extern int knd_read_GSL_file(struct kndClass *self,
                              struct kndConcFolder *parent_folder,
                              const char *filename,
-                             size_t filename_size);
-extern int knd_class_coordinate(struct kndClass *self);
+                             size_t filename_size,
+                             struct kndTask *task);
+
+extern int knd_class_coordinate(struct kndClass *self, struct kndTask *task);
 
 extern int knd_get_class(struct kndRepo *self,
                          const char *name, size_t name_size,
@@ -270,11 +272,12 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
                                              const char *rec,
                                              size_t *total_size);
 
-extern gsl_err_t knd_class_import(void *obj,
-                                  const char *rec,
-                                  size_t *total_size);
+extern int knd_class_import(struct kndClass *self,
+                            const char *rec,
+                            size_t *total_size,
+                            struct kndTask *task);
 
-extern int knd_inherit_attrs(struct kndClass *self, struct kndClass *base);
+extern int knd_inherit_attrs(struct kndClass *self, struct kndClass *base, struct kndTask *task);
 
 extern gsl_err_t knd_class_select(void *obj,
                                   const char *rec,
@@ -324,8 +327,8 @@ extern int knd_get_class_attr_value(struct kndClass *src,
                                     struct kndAttrVar *query,
                                     struct kndProcCallArg *arg);
 
-extern int knd_resolve_classes(struct kndClass *self);
-extern int knd_class_resolve(struct kndClass *self);
+extern int knd_resolve_classes(struct kndClass *self, struct kndTask *task);
+extern int knd_class_resolve(struct kndClass *self, struct kndTask *task);
 
 extern int knd_class_update_new(struct kndMemPool *mempool,
                                 struct kndClassUpdate **result);

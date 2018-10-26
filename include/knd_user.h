@@ -77,28 +77,28 @@ struct kndUser
     size_t num_users;
 
     struct kndShard *shard;
-    struct kndTask *task;
-    struct glbOutput *out;
-    struct glbOutput *log;
+
+    //struct kndTask *task;
+    //struct glbOutput *out;
+    //struct glbOutput *log;
 
     /* user context storage */
     struct kndSet *user_idx;
     struct kndUserContext *curr_ctx;
 
     struct kndRepo *repo;
-    struct kndMemPool *mempool;
+    //struct kndMemPool *mempool;
 
     /**********  interface methods  **********/
     void (*del)(struct kndUser *self);
     void (*str)(struct kndUser *self);
-    int (*init)(struct kndUser *self);
-
-    gsl_err_t (*select)(struct kndUser *self,
-                        const char *rec,
-                        size_t *total_size);
 };
 
 extern int kndUser_new(struct kndUser **self, struct kndMemPool *mempool);
+extern int kndUser_init(struct kndUser *self, struct kndTask *task);
+extern gsl_err_t knd_parse_select_user(struct kndTask *task,
+                                       const char *rec,
+                                       size_t *total_size);
 
 extern int knd_user_context_new(struct kndMemPool *mempool,
                                 struct kndUserContext **result);

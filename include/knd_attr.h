@@ -291,4 +291,4 @@ extern int knd_attr_new(struct kndMemPool *mempool,
                         struct kndAttr **result);
 
 // knd_attr.import.c
-extern gsl_err_t knd_import_attr(struct kndAttr *self, const char *rec, size_t *total_size);
+extern gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *total_size);

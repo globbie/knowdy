@@ -63,6 +63,7 @@ struct kndVisualFormat {
 
 struct kndTask
 {
+    size_t id;
     knd_task_spec_type type;
     knd_state_phase phase;
 
@@ -120,7 +121,14 @@ struct kndTask
     bool show_rels;
     size_t max_depth;
 
-    struct kndClassInst *curr_inst;
+    struct kndUser *user;
+    struct kndRepo *repo;
+    struct kndClass *class;
+    struct kndClassVar *class_var;
+    struct kndAttrVar *attr_var;
+    struct kndAttr *attr;
+    struct kndClassInst *inst;
+
     struct kndUpdate *update;
 
     struct kndSet *sets[KND_MAX_CLAUSES];
@@ -128,26 +136,20 @@ struct kndTask
 
     struct kndShard *shard;
 
+    struct glbOutput *storage;
     struct glbOutput *log;
     struct glbOutput *out;
     struct glbOutput *file_out;
     struct glbOutput *update_out;
-    //struct kndMemPool *mempool;
-
-    /******** public methods ********/
-    void (*del)(struct kndTask *self);
-
-    void (*reset)(struct kndTask *self);
-
-    int (*run)(struct kndTask *self,
-               const char     *rec,
-               size_t   rec_size,
-               const char *obj,
-               size_t obj_size);
-    int (*build_report)(struct kndTask *self);
+    struct kndMemPool *mempool;
 };
 
 /* constructor */
 extern int kndTask_new(struct kndTask **self);
-
+extern int kndTask_run(struct kndTask *self,
+                       const char     *rec,
+                       size_t   rec_size);
+extern int kndTask_build_report(struct kndTask *self);
+extern void kndTask_reset(struct kndTask *self);
+extern void kndTask_del(struct kndTask *self);
 extern gsl_err_t knd_select_task(void *obj, const char *rec, size_t *total_size);

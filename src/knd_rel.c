@@ -545,9 +545,9 @@ static int export_inst_JSON(struct kndRel *self,
         relarg = relarg_inst->relarg;
 
         /* skip over the selected obj */
-        if (task->curr_inst && relarg_inst->obj) {
+        if (task->inst && relarg_inst->obj) {
             obj_entry = relarg_inst->obj;
-            if (task->curr_inst == obj_entry->inst) continue;
+            if (task->inst == obj_entry->inst) continue;
         }
 
         relarg->out = out;

@@ -5,9 +5,6 @@
 
 struct kndShard
 {
-//    char id[KND_ID_SIZE];
-//    size_t id_size;
-
     char name[KND_NAME_SIZE];
     size_t name_size;
 
@@ -28,8 +25,11 @@ struct kndShard
     struct glbOutput *out;
     struct glbOutput *log;
 
-    struct kndTask *task;
+    struct kndTask **workers;
+    size_t num_workers;
+
     struct kndUser *user;
+    struct kndMemPool *mempool;
 
     /* system repo */
     struct kndRepo *repo;
@@ -38,8 +38,6 @@ struct kndShard
 
     const char *report;
     size_t report_size;
-
-    struct kndMemPool *mempool;
 
     /**********  interface methods  **********/
     void (*del)(struct kndShard *self);
@@ -50,4 +48,4 @@ extern int kndShard_parse_schema(struct kndShard *self, const char *rec, size_t 
 
 extern int kndShard_new(struct kndShard **self, const char *config, size_t config_size);
 extern void kndShard_del(struct kndShard *self);
-extern int kndShard_run_task(struct kndShard *self, const char *input, size_t input_size, const char **output, size_t *output_size);
+extern int kndShard_run_task(struct kndShard *self, const char *input, size_t input_size, const char **output, size_t *output_size, size_t task_id);

@@ -92,18 +92,17 @@ START_TEST(shard_table_test)
         }
     };
 
-    struct kndShard *shard;
-    int err;
+struct kndShard *shard;
+int err;
 
     err = kndShard_new(&shard, shard_config, strlen(shard_config));
     ck_assert_int_eq(err, knd_OK);
-
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
         const struct table_test *pcase = &cases[i];
 
         const char *result; size_t result_size;
         fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
-        err = kndShard_run_task(shard, pcase->input, strlen(pcase->input), &result, &result_size);
+        err = kndShard_run_task(shard, pcase->input, strlen(pcase->input), &result, &result_size, 0);
         ck_assert_int_eq(err, knd_OK);
         ASSERT_STR_EQ(result, result_size, pcase->expect, -1);
     }
