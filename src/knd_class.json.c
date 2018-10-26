@@ -55,7 +55,7 @@ extern int knd_export_class_state_JSON(struct kndClass *self,
         switch (state->phase) {
         case KND_REMOVED:
             err = out->write(out,   ",\"_phase\":\"del\"",
-                             strlen(",\"_phase\":\"del\""));                          RET_ERR();
+                             strlen(",\"_phase\":\"del\""));                      RET_ERR();
             // NB: no more details
             err = out->write(out, "}", 1);
             if (err) return err;
@@ -211,79 +211,10 @@ static int export_class_ref_JSON(void *obj,
     return knd_OK;
 }
 
-/*static int present_computed_class_attrs(struct kndClass *self,
-                                        struct kndClassVar *cvar)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
-    struct glbOutput *out = self->entry->repo->out;
-    struct ooDict *attr_name_idx = self->entry->repo->attr_name_idx;
-    struct kndAttr *attr;
-    struct kndAttrVar *attr_var;
-    struct kndAttrRef *entry;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    long numval;
-    int err;
-
-    for (size_t i = 0; i < self->num_computed_attrs; i++) {
-        attr = self->computed_attrs[i];
-        entry = attr_name_idx->get(attr_name_idx,
-                                   attr->name, attr->name_size);
-        if (!entry) {
-            knd_log("-- attr %.*s not indexed?",
-                    attr->name_size, attr->name);
-            return knd_FAIL;
-        }
-
-        attr_var = entry->attr_var;
-        if (!attr_var) {
-            err = knd_attr_var_new(mempool, &attr_var);                  RET_ERR();
-            attr_var->attr = attr;
-            attr_var->class_var = cvar;
-            attr_var->name = attr->name;
-            attr_var->name_size = attr->name_size;
-            entry->attr_var = attr_var;
-        }
-
-        switch (attr->type) {
-        case KND_ATTR_NUM:
-            numval = attr_var->numval;
-            if (!attr_var->is_cached) {
-
-                err = knd_compute_class_attr_num_value(self, cvar, attr_var);
-                if (err) continue;
-
-                numval = attr_var->numval;
-                attr_var->numval = numval;
-                attr_var->is_cached = true;
-            }
-
-            err = out->writec(out, ',');
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->write(out, attr->name, attr->name_size);
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->writec(out, ':');
-            if (err) return err;
-            
-            buf_size = snprintf(buf, KND_NAME_SIZE, "%lu", numval);
-            err = out->write(out, buf, buf_size);                                     RET_ERR();
-            break;
-        default:
-            break;
-        }
-    }
-
-    return knd_OK;
-}
-*/
-static int export_gloss_JSON(struct kndClass *self)
+static int export_gloss_JSON(struct kndClass *self,
+                             struct glbOutput *out)
 {
     struct kndTranslation *tr;
-    struct glbOutput *out = self->entry->repo->out;
     struct kndTask *task = self->entry->repo->task;
     int err;
 
@@ -298,24 +229,14 @@ static int export_gloss_JSON(struct kndClass *self)
         break;
     }
 
-    /*    for (tr = self->summary; tr; tr = tr->next) {
-        if (memcmp(task->locale, tr->locale, tr->locale_size)) {
-            continue;
-        }
-        err = out->write(out, ",\"_summary\":\"", strlen(",\"_summary\":\""));    RET_ERR();
-        err = out->write_escaped(out, tr->val,  tr->val_size);                    RET_ERR();
-        err = out->write(out, "\"", 1);                                           RET_ERR();
-        break;
-        }*/
-
     return knd_OK;
 }
 
 
-static int export_concise_JSON(struct kndClass *self)
+static int export_concise_JSON(struct kndClass *self,
+                               struct glbOutput *out)
 {
     struct kndClassVar *item;
-    struct glbOutput *out = self->entry->repo->out;
     int err;
 
     if (DEBUG_JSON_LEVEL_2)
@@ -416,8 +337,8 @@ static int present_subclass(struct kndClassRef *ref,
     if (!c) {
         //err = unfreeze_class(self, entry, &c);                          RET_ERR();
     }
-    err = export_gloss_JSON(c);                                               RET_ERR();
-    err = export_concise_JSON(c);                                             RET_ERR();
+    err = export_gloss_JSON(c, out);                                               RET_ERR();
+    err = export_concise_JSON(c, out);                                             RET_ERR();
     err = out->writec(out, '}');                                              RET_ERR();
     return knd_OK;
 }
@@ -519,19 +440,23 @@ static int export_baseclass_vars(struct kndClass *self,
     size_t item_count = 0;
     int err;
 
-    err = out->write(out, ",\"_is\":[", strlen(",\"_is\":["));                RET_ERR();
+    err = out->write(out, ",\"_is\":[", strlen(",\"_is\":["));                    RET_ERR();
 
     for (item = self->baseclass_vars; item; item = item->next) {
         if (item_count) {
-            err = out->write(out, ",", 1);                                    RET_ERR();
+            err = out->write(out, ",", 1);                                        RET_ERR();
         }
 
-        err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));      RET_ERR();
-        err = out->write(out, item->entry->name, item->entry->name_size);   RET_ERR();
-        err = out->write(out, "\"", 1);                                     RET_ERR();
+        err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));          RET_ERR();
+        err = out->write(out, item->entry->name, item->entry->name_size);         RET_ERR();
+        err = out->write(out, "\"", 1);                                           RET_ERR();
 
-        err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));  RET_ERR();
-        err = out->writef(out, "%zu", item->numid);                       RET_ERR();
+        err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                  RET_ERR();
+        err = out->writef(out, "%zu", item->numid);                               RET_ERR();
+
+        if (item->entry->class) {
+            err = export_gloss_JSON(item->entry->class, out);                     RET_ERR();
+        }
 
         if (item->attrs) {
             item->attrs->depth = self->depth;
@@ -637,11 +562,11 @@ extern int knd_class_export_JSON(struct kndClass *self,
         }
     }
     
-    err = export_gloss_JSON(self);                                                RET_ERR();
+    err = export_gloss_JSON(self, out);                                                RET_ERR();
 
     if (self->depth >= self->max_depth) {
         /* any concise fields? */
-        err = export_concise_JSON(self);                                          RET_ERR();
+        err = export_concise_JSON(self, out);                                          RET_ERR();
         goto final;
     }
 
