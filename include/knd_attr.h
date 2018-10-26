@@ -90,20 +90,20 @@ typedef enum knd_attr_quant_type {
     KND_ATTR_LIST
 } knd_attr_quant_type;
 
-struct kndAttrValidator
-{
-    char name[KND_SHORT_NAME_SIZE];
-    size_t name_size;
-    int (*proc)(struct kndAttr *self,
-                const char   *val,
-                size_t val_size);
-};
+//struct kndAttrValidator
+//{
+//    char name[KND_SHORT_NAME_SIZE];
+//    size_t name_size;
+//    int (*proc)(struct kndAttr *self,
+//                const char   *val,
+//                size_t val_size);
+//};
 
-struct kndAttrUpdate
-{
-    struct kndAttr *attr;
-    struct kndAttrVarRef *attr_var;
-};
+//struct kndAttrUpdate
+//{
+//    struct kndAttr *attr;
+//    struct kndAttrVarRef *attr_var;
+//};
 
 struct kndAttrVarRef
 {
