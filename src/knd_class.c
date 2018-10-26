@@ -191,9 +191,10 @@ static gsl_err_t parse_proc_import(void *obj,
 
 static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
 {
-    struct kndClass *self = obj;
+    struct kndTask *task = obj;
+    struct kndClass *self = task->class;
     struct kndConcFolder *folder;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndMemPool *mempool = task->mempool;
     int err;
 
     if (DEBUG_CLASS_LEVEL_1)
@@ -214,10 +215,29 @@ static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_schema(void *self,
+static gsl_err_t parse_class_import(void *obj,
+                                    const char *rec,
+                                    size_t *total_size)
+{
+    struct kndTask *task = obj;
+    struct kndClass *self = task->class;
+    int err;
+
+    task->type = KND_UPDATE_STATE;
+    
+    err = knd_class_import(self, rec, total_size, task);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_schema(void *obj,
                               const char *rec,
                               size_t *total_size)
 {
+    struct kndTask *task = obj;
+    struct kndClass *self = task->class;
+
     if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. parse schema REC: \"%.*s\"..", 32, rec);
 
@@ -229,8 +249,8 @@ static gsl_err_t parse_schema(void *self,
         { .type = GSL_SET_STATE,
           .name = "class",
           .name_size = strlen("class"),
-          .parse = knd_class_import,
-          .obj = self
+          .parse = parse_class_import,
+          .obj = task
         },
         { .type = GSL_SET_STATE,
           .name = "rel",
@@ -249,24 +269,26 @@ static gsl_err_t parse_schema(void *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t parse_include(void *self,
+static gsl_err_t parse_include(void *obj,
                                const char *rec,
                                size_t *total_size)
 {
+    struct kndTask *task = obj;
+
     if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. parse include REC: \"%s\"..", rec);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_read_include,
-          .obj = self
+          .obj = task
         }
     };
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int parse_GSL(struct kndClass *self,
+static int parse_GSL(struct kndTask *task,
                      const char *rec,
                      size_t *total_size)
 {
@@ -274,12 +296,12 @@ static int parse_GSL(struct kndClass *self,
         { .name = "schema",
           .name_size = strlen("schema"),
           .parse = parse_schema,
-          .obj = self
+          .obj = task
         },
         { .name = "include",
           .name_size = strlen("include"),
           .parse = parse_include,
-          .obj = self
+          .obj = task
         }
     };
     gsl_err_t parser_err;
@@ -311,7 +333,8 @@ kndClass_write_filepath(struct glbOutput *out,
 extern int knd_read_GSL_file(struct kndClass *self,
                              struct kndConcFolder *parent_folder,
                              const char *filename,
-                             size_t filename_size)
+                             size_t filename_size,
+                             struct kndTask *task)
 {
     struct kndRepo *repo = self->entry->repo;
     struct glbOutput *out = repo->out;
@@ -366,7 +389,8 @@ extern int knd_read_GSL_file(struct kndClass *self,
     repo->num_source_files++;
 
     /* actual parsing */
-    err = parse_GSL(self, (const char*)rec, &chunk_size);
+    task->class = self;
+    err = parse_GSL(task, (const char*)rec, &chunk_size);
     if (err) {
         knd_log("-- parsing of \"%.*s\" failed",
                 out->buf_size, out->buf);
@@ -390,7 +414,7 @@ extern int knd_read_GSL_file(struct kndClass *self,
                 folder->name_size = folder_name_size;
 
                 err = knd_read_GSL_file(self, folder,
-                                        index_folder_name, index_folder_name_size);
+                                        index_folder_name, index_folder_name_size, task);
                 if (err) {
                     knd_log("-- failed to read file: %.*s",
                             index_folder_name_size, index_folder_name);
@@ -400,7 +424,7 @@ extern int knd_read_GSL_file(struct kndClass *self,
             }
         }
 
-        err = knd_read_GSL_file(self, parent_folder, folder->name, folder->name_size);
+        err = knd_read_GSL_file(self, parent_folder, folder->name, folder->name_size, task);
         if (err) {
             knd_log("-- failed to read file: %.*s",
                     folder->name_size, folder->name);
@@ -410,13 +434,14 @@ extern int knd_read_GSL_file(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_class_coordinate(struct kndClass *self)
+extern int knd_class_coordinate(struct kndClass *self,
+                                struct kndTask *task)
 {
     int err;
     if (DEBUG_CLASS_LEVEL_TMP)
         knd_log(".. class coordination in progress ..");
 
-    err = knd_resolve_classes(self);                    RET_ERR();
+    err = knd_resolve_classes(self, task);                                          RET_ERR();
 
     if (self->entry->descendants) {
         if (DEBUG_CLASS_LEVEL_TMP)
@@ -644,9 +669,12 @@ static int update_state(struct kndClass *self,
     }
     state->phase = phase;
     state->children = children;
+
     self->num_states++;
     state->numid = self->num_states;
     state->next = self->states;
+
+    // NB: atomic
     self->states = state;
 
     /* inform your ancestors */

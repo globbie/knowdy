@@ -249,15 +249,19 @@ static gsl_err_t confirm_idx(void *obj, const char *unused_var(name), size_t unu
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t confirm_implied(void *obj, const char *unused_var(name), size_t unused_var(name_size))
+static gsl_err_t confirm_implied(void *obj,
+                                 const char *unused_var(name),
+                                 size_t unused_var(name_size))
 {
     struct kndAttr *self = obj;
     self->is_implied = true;
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_import_attr(struct kndAttr *self, const char *rec, size_t *total_size)
+gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *total_size)
 {
+    struct kndAttr *self = task->attr;
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_name,

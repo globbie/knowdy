@@ -46,7 +46,8 @@ static gsl_err_t alloc_gloss_item(void *obj,
                                   size_t count,
                                   void **item)
 {
-    struct kndClass *self = obj;
+    struct kndTask *task = obj;
+    struct kndClass *self = task->class;
     struct kndTranslation *tr;
 
     assert(name == NULL && name_size == 0);
@@ -67,7 +68,8 @@ static gsl_err_t alloc_gloss_item(void *obj,
 static gsl_err_t append_gloss_item(void *accu,
                                    void *item)
 {
-    struct kndClass *self =   accu;
+    struct kndTask *task = accu;
+    struct kndClass *self =  task->class;
     struct kndTranslation *tr = item;
 
     tr->next = self->tr;
@@ -133,13 +135,14 @@ extern gsl_err_t knd_parse_gloss_array(void *obj,
                                        const char *rec,
                                        size_t *total_size)
 {
-    struct kndClass *self = obj;
+    struct kndTask *task = obj;
+    struct kndClass *self = task->class;
 
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
         .alloc = alloc_gloss_item,
         .append = append_gloss_item,
-        .accu = self,
+        .accu = task,
         .parse = parse_gloss_item
     };
 

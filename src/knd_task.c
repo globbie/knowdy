@@ -21,7 +21,7 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
-static void del(struct kndTask *self)
+extern void kndTask_del(struct kndTask *self)
 {
     self->log->del(self->log);
     self->out->del(self->out);
@@ -31,7 +31,7 @@ static void del(struct kndTask *self)
     free(self);
 }
 
-static void reset(struct kndTask *self)
+extern void kndTask_reset(struct kndTask *self)
 {
     self->tid_size = 0;
 
@@ -68,7 +68,10 @@ static void reset(struct kndTask *self)
     self->http_code = HTTP_OK;
     self->update = NULL;
 
-    self->curr_inst = NULL;
+    self->user = NULL;
+    self->class = NULL;
+    self->inst = NULL;
+
     self->log->reset(self->log);
     self->out->reset(self->out);
     self->update_out->reset(self->update_out);
@@ -109,20 +112,193 @@ static int log_parser_error(struct kndTask *self,
                              line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
 }
 
-static int parse_GSL(struct kndTask *self,
-                     const char *rec,
-                     size_t rec_size,
-                     const char *unused_var(obj),
-                     size_t unused_var(obj_size))
+static gsl_err_t run_set_format(void *obj,
+                                const char *name,
+                                size_t name_size)
+{
+    struct kndTask *self = obj;
+    int err;
+
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+
+    for (size_t i = 0; i < sizeof knd_format_names / sizeof knd_format_names[0]; i++) {
+        const char *format_str = knd_format_names[i];
+        assert(format_str != NULL);
+
+        size_t format_str_size = strlen(format_str);
+        if (name_size != format_str_size) continue;
+
+        if (!memcmp(format_str, name, name_size)) {
+            self->format = (knd_format)i;
+            return make_gsl_err(gsl_OK);
+        }
+    }
+
+    err = self->log->write(self->log, name, name_size);
+    if (err) return make_gsl_err_external(err);
+    err = self->log->write(self->log, " format not supported",
+                           strlen(" format not supported"));
+    if (err) return make_gsl_err_external(err);
+
+    return make_gsl_err_external(knd_NO_MATCH);
+}
+
+static gsl_err_t parse_user(void *obj,
+                            const char *rec,
+                            size_t *total_size)
+{
+    struct kndTask *task = obj;
+    struct kndUser *user = task->shard->user;
+    task->user = user;
+
+    if (task->curr_locale_size) {
+        task->locale = task->curr_locale;
+        task->locale_size = task->curr_locale_size;
+    }
+    return knd_parse_select_user(task, rec, total_size);
+}
+
+static gsl_err_t parse_class_import(void *obj,
+                                    const char *rec,
+                                    size_t *total_size)
+{
+    struct kndTask *self = obj;
+    struct kndClass *c = self->shard->repo->root_class;
+    int err;
+
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log(".. parsing the system class import: \"%.*s\"..", 64, rec);
+
+    self->type = KND_UPDATE_STATE;
+    err = knd_class_import(c, rec, total_size, self);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+
+    return *total_size = 0, make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_class_select(void *obj,
+                                    const char *rec,
+                                    size_t *total_size)
+{
+    struct kndTask *self = obj;
+    struct kndClass *c = self->shard->repo->root_class;
+
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log(".. parsing the system class select: \"%.*s\"", 64, rec);
+
+    return knd_class_select(c, rec, total_size);
+}
+
+static gsl_err_t open_system_repo(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndTask *self = obj;
+    struct gslTaskSpec specs[] = {
+        { .name = "user",
+          .name_size = strlen("user"),
+          .parse = parse_user,
+          .obj = self
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+} 
+
+static gsl_err_t parse_update(void *obj,
+                              const char *rec,
+                              size_t *total_size)
+{
+    struct kndTask *self = obj;
+
+    self->type = KND_LIQUID_STATE;
+
+    struct gslTaskSpec specs[] = {
+        { .name = "_ts",
+          .name_size = strlen("_ts"),
+          .buf = self->timestamp,
+          .buf_size = &self->timestamp_size,
+          .max_buf_size = sizeof self->timestamp
+        },
+        { .name = "user",
+          .name_size = strlen("user"),
+          .parse = parse_user,
+          .obj = self
+        }
+    };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+
+static gsl_err_t parse_GSL(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndTask *self = obj;
+
+    struct gslTaskSpec specs[] = {
+        { .name = "tid",
+          .name_size = strlen("tid"),
+          .buf = self->tid,
+          .buf_size = &self->tid_size,
+          .max_buf_size = sizeof self->tid
+        },
+        { .name = "locale",
+          .name_size = strlen("locale"),
+          .buf = self->curr_locale,
+          .buf_size = &self->curr_locale_size,
+          .max_buf_size = sizeof self->curr_locale
+        },
+        { .name = "format",
+          .name_size = strlen("format"),
+          .run = run_set_format,
+          .obj = self
+        },
+        { .name = "user",
+          .name_size = strlen("user"),
+          .parse = parse_user,
+          .obj = self
+        },
+        { .type = GSL_SET_STATE,
+          .name = "class",
+          .name_size = strlen("class"),
+          .parse = parse_class_import,
+          .obj = self
+        },
+        { .name = "class",
+          .name_size = strlen("class"),
+          .parse = parse_class_select,
+          .obj = self
+        },
+        { .name = "repo",
+          .name_size = strlen("repo"),
+          .parse = open_system_repo,
+          .obj = self
+        },
+        { .name = "update",
+          .name_size = strlen("update"),
+          .parse = parse_update,
+          .obj = self
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+extern int kndTask_run(struct kndTask *self,
+                       const char *rec, size_t rec_size)
 {
     int err;
     gsl_err_t parser_err;
 
-    reset(self);
+    kndTask_reset(self);
 
-    parser_err = knd_select_task(self, rec, &rec_size);
+    struct gslTaskSpec specs[] = {
+        { .name = "task",
+          .name_size = strlen("task"),
+          .parse = parse_GSL,
+          .obj = self
+        }
+    };
+
+    parser_err = gsl_parse_task(rec, &rec_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("-- task failure :(");
+        knd_log("-- task run failure");
         if (!is_gsl_err_external(parser_err)) {
             // assert(!self->log->buf_size)
             if (!self->log->buf_size) {
@@ -130,19 +306,19 @@ static int parse_GSL(struct kndTask *self,
                 if (err) return err;
             }
         }
-
         if (!self->log->buf_size) {
-            err = self->log->write(self->log, "internal server error", strlen("internal server error"));
+            err = self->log->write(self->log,
+                                   "internal server error",
+                                   strlen("internal server error"));
             if (err) return err;
         }
-
         return gsl_err_to_knd_err_codes(parser_err);
     }
 
     return knd_OK;
 }
 
-static int build_report(struct kndTask *self)
+extern int kndTask_build_report(struct kndTask *self)
 {
     size_t obj_size;
     size_t chunk_size;
@@ -263,10 +439,8 @@ extern int kndTask_new(struct kndTask **task)
     err = glbOutput_new(&self->file_out, KND_FILE_BUF_SIZE);
     if (err) return err;
 
-    self->del    = del;
-    self->reset  = reset;
-    self->run    = parse_GSL;
-    self->build_report = build_report;
+    err = glbOutput_new(&self->storage, KND_TASK_STORAGE_SIZE);
+    if (err) return err;
 
     *task = self;
 
