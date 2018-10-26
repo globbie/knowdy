@@ -112,13 +112,11 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndShard));
 
-
     err = glbOutput_new(&self->out, KND_IDX_BUF_SIZE);
     if (err != knd_OK) goto error;
 
     err = glbOutput_new(&self->log, KND_MED_BUF_SIZE);
     if (err != knd_OK) goto error;
-
 
     err = kndMemPool_new(&mempool);
     if (err != knd_OK) return err;
