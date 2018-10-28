@@ -120,6 +120,7 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
 
     err = kndMemPool_new(&mempool);
     if (err != knd_OK) goto error;
+    self->mempool = mempool;
 
     {
         err = kndShard_parse_schema(self, config, &config_size, mempool);
@@ -128,7 +129,6 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
 
     err = mempool->alloc(mempool); 
     if (err != knd_OK) goto error;
-    self->mempool = mempool;
 
     if (!self->num_workers) self->num_workers = 1;
     self->workers = calloc(sizeof(struct kndTask*), self->num_workers);
@@ -209,6 +209,7 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
 void kndShard_del(struct kndShard *self)
 {
     struct kndTask *task;
+
     knd_log(".. deconstructing kndShard ..");
 
     if (self->user)
