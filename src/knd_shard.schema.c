@@ -158,6 +158,7 @@ parse_config(void *obj, const char *rec, size_t *total_size)
 extern int kndShard_parse_schema(struct kndShard *self, const char *rec, size_t *total_size,
                                  struct kndMemPool *mempool)
 {
+    self->mempool = mempool;
     struct gslTaskSpec specs[] = {
         {
             .name = "schema",
