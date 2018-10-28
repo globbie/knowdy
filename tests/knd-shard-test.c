@@ -62,6 +62,8 @@ START_TEST(shard_config_test)
         err = kndShard_new(&shard, config->input, strlen(config->input));
         ck_assert_int_eq(err, config->err);
     }
+    kndShard_del(shard);
+
 END_TEST
 
 START_TEST(shard_table_test)

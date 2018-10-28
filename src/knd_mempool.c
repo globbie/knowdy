@@ -8,13 +8,16 @@
 
 static void del(struct kndMemPool *self)
 {
-    knd_log(".. del mempool pages..");
-    free(self->pages);
-    free(self->small_x4_pages);
-    free(self->small_x2_pages);
-    free(self->small_pages);
-    free(self->tiny_pages);
-    knd_log(".. del mempool: %p", self);
+    if (self->pages)
+        free(self->pages);
+    if (self->small_x4_pages)
+        free(self->small_x4_pages);
+    if (self->small_x2_pages)
+        free(self->small_x2_pages);
+    if (self->small_pages)
+        free(self->small_pages);
+    if (self->tiny_pages)
+        free(self->tiny_pages);
     free(self);
 }
 
