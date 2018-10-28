@@ -140,7 +140,7 @@ parse_config(void *obj, const char *rec, size_t *total_size)
     }
 
     if (!self->path_size) {
-        knd_log("-- DB path not set :(");
+        knd_log("-- DB path not set");
         return make_gsl_err(gsl_FAIL);
     }
 
@@ -158,9 +158,6 @@ parse_config(void *obj, const char *rec, size_t *total_size)
 extern int kndShard_parse_schema(struct kndShard *self, const char *rec, size_t *total_size,
                                  struct kndMemPool *mempool)
 {
-    // TODO pass through ctx
-    self->mempool = mempool;
-
     struct gslTaskSpec specs[] = {
         {
             .name = "schema",
