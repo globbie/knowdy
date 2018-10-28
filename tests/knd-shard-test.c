@@ -117,7 +117,7 @@ int main(void) {
 
     TCase *tc_shard_basic = tcase_create("basic shard");
     tcase_add_test(tc_shard_basic, shard_config_test);
-    tcase_add_test(tc_shard_basic, shard_table_test);
+    //tcase_add_test(tc_shard_basic, shard_table_test);
     suite_add_tcase(s, tc_shard_basic);
 
     SRunner* sr = srunner_create(s);
