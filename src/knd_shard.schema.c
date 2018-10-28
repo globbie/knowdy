@@ -155,8 +155,12 @@ parse_config(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-int kndShard_parse_schema(struct kndShard *self, const char *rec, size_t *total_size)
+extern int kndShard_parse_schema(struct kndShard *self, const char *rec, size_t *total_size,
+                                 struct kndMemPool *mempool)
 {
+    // TODO pass through ctx
+    self->mempool = mempool;
+
     struct gslTaskSpec specs[] = {
         {
             .name = "schema",

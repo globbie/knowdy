@@ -102,7 +102,7 @@ final:
 int kndShard_new(struct kndShard **shard, const char *config, size_t config_size)
 {
     struct kndShard *self;
-    struct kndMemPool *mempool;
+    struct kndMemPool *mempool = NULL;
     struct kndUser *user;
     struct kndRepo *repo;
     struct kndTask *task;
@@ -119,13 +119,16 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
     if (err != knd_OK) goto error;
 
     err = kndMemPool_new(&mempool);
-    if (err != knd_OK) return err;
-    self->mempool = mempool;
+    if (err != knd_OK) goto error;
+
     {
-        err = kndShard_parse_schema(self, config, &config_size);
+        err = kndShard_parse_schema(self, config, &config_size, mempool);
         if (err != knd_OK) goto error;
     }
-    err = mempool->alloc(mempool);                                                RET_ERR();
+
+    err = mempool->alloc(mempool); 
+    if (err != knd_OK) goto error;
+    self->mempool = mempool;
 
     if (!self->num_workers) self->num_workers = 1;
     self->workers = calloc(sizeof(struct kndTask*), self->num_workers);
@@ -144,6 +147,7 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
 
         err = kndMemPool_new(&task->mempool);
         if (err != knd_OK) goto error;
+
         // TODO: clone function
         task->mempool->num_pages = mempool->num_pages;
         task->mempool->num_small_x4_pages = mempool->num_small_x4_pages;
@@ -159,7 +163,8 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
     }
 
     /* system repo */
-    err = kndRepo_new(&repo, mempool);                                            RET_ERR();
+    err = kndRepo_new(&repo, mempool);
+    if (err != knd_OK) goto error;
     memcpy(repo->name, "/", 1);
     repo->name_size = 1;
 
@@ -171,16 +176,14 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
 
     // TODO
     task = self->workers[0];
-    err = kndRepo_init(repo, task);                                                       RET_ERR();
+    err = kndRepo_init(repo, task);
+    if (err != knd_OK) goto error;
     self->repo = repo;
 
     err = kndUser_new(&user, mempool);
     if (err != knd_OK) goto error;
     self->user = user;
     user->shard = self;
-
-    //user->out = self->out;
-    //user->log = self->log;
 
     user->class_name = self->user_class_name;
     user->class_name_size = self->user_class_name_size;
@@ -211,28 +214,25 @@ void kndShard_del(struct kndShard *self)
     if (self->user)
         self->user->del(self->user);
 
-    knd_log(".. del sys repo..");
     if (self->repo)
         self->repo->del(self->repo);
 
-    knd_log(".. del shard out ..");
     if (self->out)
         self->out->del(self->out);
-    knd_log(".. del shard log ..");
     if (self->log)
         self->log->del(self->log);
 
-    if (self->task_storage)
-        self->task_storage->del(self->task_storage);
-
-    knd_log(".. del tasks ..");
     if (self->workers) {
         for (size_t i = 0; i < self->num_workers; i++) {
             task = self->workers[i];
             kndTask_del(task);
+            if (i == 0) self->mempool = NULL;
         }
         free(self->workers);
     }
+
+    if (self->mempool)
+        self->mempool->del(self->mempool);
 
     free(self);
 }

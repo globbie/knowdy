@@ -28,6 +28,7 @@ extern void kndTask_del(struct kndTask *self)
     self->update_out->del(self->update_out);
     self->file_out->del(self->file_out);
     self->storage->del(self->storage);
+    self->mempool->del(self->mempool);
     free(self);
 }
 

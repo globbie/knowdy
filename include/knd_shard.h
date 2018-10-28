@@ -21,7 +21,6 @@ struct kndShard
     char user_schema_path[KND_PATH_SIZE];
     size_t user_schema_path_size;
 
-    struct glbOutput *task_storage;
     struct glbOutput *out;
     struct glbOutput *log;
 
@@ -29,12 +28,14 @@ struct kndShard
     size_t num_workers;
 
     struct kndUser *user;
-    struct kndMemPool *mempool;
 
     /* system repo */
     struct kndRepo *repo;
     /* shared repos */
     //struct kndRepo *repos;
+
+    // TODO: remove
+    struct kndMemPool *mempool;
 
     const char *report;
     size_t report_size;
@@ -44,7 +45,8 @@ struct kndShard
     void (*str)(struct kndShard *self);
 };
 
-extern int kndShard_parse_schema(struct kndShard *self, const char *rec, size_t *total_size);
+extern int kndShard_parse_schema(struct kndShard *self, const char *rec, size_t *total_size,
+                                 struct kndMemPool *mempool);
 
 extern int kndShard_new(struct kndShard **self, const char *config, size_t config_size);
 extern void kndShard_del(struct kndShard *self);
