@@ -137,16 +137,20 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
         task->shard = self;
         self->workers[i] = task;
 
-        if (mempool) {
+        if (i == 0) {
             task->mempool = mempool;
             continue;
         }
 
-        err = kndMemPool_new(&mempool);
+        err = kndMemPool_new(&task->mempool);
         if (err != knd_OK) goto error;
-        task->mempool = mempool;
-        // TODO: clone and alloc
-        mempool = NULL;
+        // TODO: clone function
+        task->mempool->num_pages = mempool->num_pages;
+        task->mempool->num_small_x4_pages = mempool->num_small_x4_pages;
+        task->mempool->num_small_x2_pages = mempool->num_small_x2_pages;
+        task->mempool->num_small_pages = mempool->num_small_pages;
+        task->mempool->num_tiny_pages = mempool->num_tiny_pages;
+        task->mempool->alloc(task->mempool);
     }
     
     if (!self->user_class_name_size) {
