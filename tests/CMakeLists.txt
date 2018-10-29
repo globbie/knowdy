@@ -7,6 +7,10 @@ target_link_libraries(set_perf_test knowdy_static)
 add_executable(knd-shard-test knd-shard-test.c)
 target_link_libraries(knd-shard-test ${CHECK_LIBRARY} knowdy_static)
 
+# knd-shard-concurrent-test
+add_executable(knd-shard-concurrent-test knd-shard-concurrent-test.c)
+target_link_libraries(knd-shard-concurrent-test ${CHECK_LIBRARY} knowdy_static pthread)
+
 # check-knowdy
 add_custom_target(check-knowdy COMMENT "runs unit tests for knowdy project")
 add_custom_command(TARGET check-knowdy POST_BUILD
