@@ -444,8 +444,9 @@ static int export_descendants_GSP(struct kndClass *self)
 
 static int export_class_body_updates(struct kndClass *self,
                                      struct kndClassUpdate *unused_var(class_update),
-                                     struct glbOutput *out)
+                                     struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndState *state = self->states;
     struct kndAttr *attr;
     int err;
@@ -473,7 +474,7 @@ static int export_class_body_updates(struct kndClass *self,
 
     if (self->attrs) {
         for (attr = self->attrs; attr; attr = attr->next) {
-            err = knd_attr_export(attr, KND_FORMAT_GSP, out);
+            err = knd_attr_export(attr, KND_FORMAT_GSP, task);
             if (err) return err;
         }
     }
@@ -483,8 +484,9 @@ static int export_class_body_updates(struct kndClass *self,
 
 static int export_class_inst_updates(struct kndClass *unused_var(self),
                                      struct kndClassUpdate *class_update,
-                                     struct glbOutput *out)
+                                     struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndClassInst *inst;
     int err;
 
@@ -508,8 +510,9 @@ static int export_class_inst_updates(struct kndClass *unused_var(self),
 
 extern int knd_class_export_updates_GSP(struct kndClass *self,
                                         struct kndClassUpdate *class_update,
-                                        struct glbOutput *out)
+                                        struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndUpdate *update = class_update->update;
     struct kndState *state = self->states;
     int err;
@@ -529,14 +532,14 @@ extern int knd_class_export_updates_GSP(struct kndClass *self,
         //err = out->write(out, state->id, state->id_size);                         RET_ERR();
 
         /* any updates of the class body? */
-        err = export_class_body_updates(self, class_update, out);                 RET_ERR();
+        err = export_class_body_updates(self, class_update, task);                 RET_ERR();
     }
 
     if (self->inst_states) {
         state = self->inst_states;
         /* any updates of the class insts? */
         if (state->update == update) {
-            err = export_class_inst_updates(self, class_update, out);             RET_ERR();
+            err = export_class_inst_updates(self, class_update, task);             RET_ERR();
         }
     }
 
@@ -546,8 +549,9 @@ extern int knd_class_export_updates_GSP(struct kndClass *self,
 }
 
 extern int knd_class_export_GSP(struct kndClass *self,
-                                struct glbOutput *out)
+                                struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndAttr *attr;
     int err;
 
@@ -581,7 +585,7 @@ extern int knd_class_export_GSP(struct kndClass *self,
 
     if (self->attrs) {
         for (attr = self->attrs; attr; attr = attr->next) {
-            err = knd_attr_export(attr, KND_FORMAT_GSP, out);                        RET_ERR();
+            err = knd_attr_export(attr, KND_FORMAT_GSP, task);                        RET_ERR();
         }
     }
 

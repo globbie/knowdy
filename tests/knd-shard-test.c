@@ -7,7 +7,7 @@
 #include <string.h>
 
 // todo(n.rodionov): make paths configurable
-static const char *shard_config =
+/*static const char *shard_config =
 "{schema knd"
 "  {agent 007}"
 "  {db-path .}"
@@ -23,6 +23,7 @@ static const char *shard_config =
 "    {max_tiny_pages      200000}"
 "  }"
 "}";
+*/
 
 #define ASSERT_STR_EQ(act, act_size, exp, exp_size) \
     do {                                            \
@@ -66,6 +67,7 @@ START_TEST(shard_config_test)
 
 END_TEST
 
+/*
 START_TEST(shard_table_test)
     static const struct table_test cases[] = {
         {
@@ -111,6 +113,7 @@ START_TEST(shard_table_test)
 
     kndShard_del(shard);
 END_TEST
+*/
 
 int main(void) {
     Suite *s = suite_create("suite");

@@ -23,8 +23,10 @@
 #define DEBUG_SHARD_LEVEL_3 0
 #define DEBUG_SHARD_LEVEL_TMP 1
 
-extern int kndShard_run_task(struct kndShard *self, const char *rec, size_t rec_size,
-                             const char **result, size_t *result_size, size_t task_id)
+extern int kndShard_run_task(struct kndShard *self,
+                             const char *rec, size_t rec_size,
+                             const char **result, size_t *result_size,
+                             size_t task_id)
 {
     const char *rec_start;
     struct kndTask *task = self->workers[task_id];

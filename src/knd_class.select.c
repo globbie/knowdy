@@ -347,7 +347,7 @@ static gsl_err_t present_attr_var_selection(void *obj,
         err = out->writec(out, '{');
         if (err) return make_gsl_err_external(err);
 
-        err = knd_attr_var_export_JSON(attr_var, out);
+        err = knd_attr_var_export_JSON(attr_var, task);
         if (err) return make_gsl_err_external(err);
         
         err = out->writec(out, '}');
@@ -360,7 +360,7 @@ static gsl_err_t present_attr_var_selection(void *obj,
     err = out->writec(out, '{');
     if (err) return make_gsl_err_external(err);
     
-    err = knd_attr_export(attr, task->format, out);
+    err = knd_attr_export(attr, task->format, task);
     if (err) {
         knd_log("-- attr export failed");
         return make_gsl_err_external(err);
@@ -500,23 +500,23 @@ static gsl_err_t present_class_selection(void *obj,
                                          const char *unused_var(val),
                                          size_t unused_var(val_size))
 {
-    struct kndClass *self = obj;
+    struct kndTask *task = obj;
+    struct glbOutput *out = task->out;
+    struct kndMemPool *mempool = task->mempool;
+
+    struct kndClass *self = task->class;
     struct kndClass *c;
     struct kndSet *set;
     struct kndRepo *repo = self->entry->repo;
-    struct glbOutput *out = repo->out;
-    struct kndMemPool *mempool = repo->mempool;
-    struct kndTask *task = repo->task;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
-        knd_log(".. presenting class \"%.*s\"..",
-                self->entry->name_size, self->entry->name);
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+        knd_log(".. presenting class \"%.*s\".. task:%p",
+                self->entry->name_size, self->entry->name, task);
 
     out->reset(out);
     
     if (task->type == KND_SELECT_STATE) {
-
         if (DEBUG_CLASS_SELECT_LEVEL_TMP)
             knd_log(".. batch selection: batch size: %zu   start from: %zu  max depth:%zu",
                     task->batch_max, task->batch_from, self->max_depth);
@@ -527,7 +527,7 @@ static gsl_err_t present_class_selection(void *obj,
                 set = repo->curr_baseclass->entry->descendants;
 
                 // TODO
-                err = knd_class_export_set_JSON(self, set, out);
+                err = knd_class_export_set_JSON(self, set, task);
                 if (err) return make_gsl_err_external(err);
 
                 return make_gsl_err(gsl_OK);
@@ -571,7 +571,7 @@ static gsl_err_t present_class_selection(void *obj,
             if (err) return make_gsl_err_external(err);
             break;
         default:
-            err = knd_class_export_set_JSON(self, set, out);
+            err = knd_class_export_set_JSON(self, set, task);
             if (err) return make_gsl_err_external(err);
         }
 
@@ -591,7 +591,8 @@ static gsl_err_t present_class_selection(void *obj,
         c->max_depth = self->max_depth;
     }
 
-    err = knd_class_export(c, KND_FORMAT_JSON, out);
+    knd_log(".. output:%p", task->out);
+    err = knd_class_export(c, KND_FORMAT_JSON, task);
     if (err) {
         knd_log("-- class export failed");
         return make_gsl_err_external(err);
@@ -751,10 +752,10 @@ static gsl_err_t present_desc_state(void *obj,
                                     const char *unused_var(name),
                                     size_t unused_var(name_size))
 {
-    struct kndClass *self = obj;
-    struct kndTask *task = self->entry->repo->task;
-    struct glbOutput *out = self->entry->repo->out;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndTask *task = obj;
+    struct kndClass *self = task->class;
+    struct glbOutput *out = task->out;
+    struct kndMemPool *mempool = task->mempool;
     struct kndSet *set;
     struct kndState *latest_state;
     int err;
@@ -781,7 +782,7 @@ static gsl_err_t present_desc_state(void *obj,
     if (err) return make_gsl_err_external(err);
     task->show_removed_objs = true;
 
-    err =  knd_class_export_set_JSON(self, set, out);
+    err =  knd_class_export_set_JSON(self, set, task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -790,7 +791,7 @@ static gsl_err_t present_desc_state(void *obj,
     err = out->writec(out, '{');
     if (err) return make_gsl_err_external(err);
 
-    err = knd_export_class_state_JSON(self, out);
+    err = knd_export_class_state_JSON(self, task);
     if (err) return make_gsl_err_external(err);
 
     err = out->writec(out, '}');
@@ -803,10 +804,10 @@ static gsl_err_t present_state(void *obj,
                                const char *unused_var(name),
                                size_t unused_var(name_size))
 {
-    struct kndClass *self = obj;
-    struct kndTask *task = self->entry->repo->task;
-    struct glbOutput *out = self->entry->repo->out;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndTask *task = obj;
+    struct kndClass *self = task->class;
+    struct glbOutput *out = task->out;
+    struct kndMemPool *mempool = task->mempool;
     struct kndSet *set;
     struct kndState *latest_state;
     int err;
@@ -833,7 +834,7 @@ static gsl_err_t present_state(void *obj,
     if (err) return make_gsl_err_external(err);
     task->show_removed_objs = true;
 
-    err =  knd_class_export_set_JSON(self, set, out);
+    err =  knd_class_export_set_JSON(self, set, task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -842,7 +843,7 @@ static gsl_err_t present_state(void *obj,
     err = out->writec(out, '{');
     if (err) return make_gsl_err_external(err);
 
-    err = knd_export_class_state_JSON(self, out);
+    err = knd_export_class_state_JSON(self, task);
     if (err) return make_gsl_err_external(err);
 
     err = out->writec(out, '}');
@@ -1186,10 +1187,11 @@ extern gsl_err_t knd_class_select(void *obj,
                                   const char *rec,
                                   size_t *total_size)
 {
-    struct kndClass *self = obj;
+    struct kndTask *task = obj;
+    struct kndClass *self = task->class;
     struct kndRepo *repo = self->entry->repo;
-    struct glbOutput *log = repo->log;
-    struct kndTask   *task = repo->task;
+    struct glbOutput *log = task->log;
+    struct kndMemPool *mempool = task->mempool;
     knd_state_phase phase;
     int err;
     gsl_err_t parser_err;
@@ -1224,23 +1226,23 @@ extern gsl_err_t knd_class_select(void *obj,
           .name = "instance",
           .name_size = strlen("instance"),
           .parse = knd_parse_import_class_inst,
-          .obj = self
+          .obj = task
         },
         { .name = "instance",
           .name_size = strlen("instance"),
           .parse = parse_select_class_inst,
-          .obj = self
+          .obj = task
         }, /* shortcuts */
         { .type = GSL_SET_STATE,
           .name = "inst",
           .name_size = strlen("inst"),
           .parse = knd_parse_import_class_inst,
-          .obj = self
+          .obj = task
         },
         { .name = "inst",
           .name_size = strlen("inst"),
           .parse = parse_select_class_inst,
-          .obj = self
+          .obj = task
         },
         { .name = "_is",
           .name_size = strlen("_is"),
@@ -1264,7 +1266,7 @@ extern gsl_err_t knd_class_select(void *obj,
         },
         { .is_default = true,
           .run = present_class_selection,
-          .obj = self
+          .obj = task
         }
     };
 
@@ -1292,7 +1294,7 @@ extern gsl_err_t knd_class_select(void *obj,
         phase = KND_UPDATED;
         if (task->phase == KND_REMOVED)
             phase = KND_REMOVED;
-        err = knd_update_state(repo->curr_class, phase);
+        err = knd_update_state(repo->curr_class, phase, mempool);
         if (err) return make_gsl_err_external(err);
         break;
     default:

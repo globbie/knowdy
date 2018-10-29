@@ -46,18 +46,18 @@ static gsl_err_t import_nested_attr_var(void *obj,
                                         const char *rec, size_t *total_size);
 static void append_attr_var(struct kndClassVar *ci, struct kndAttrVar *attr_var);
 
-extern gsl_err_t knd_parse_import_class_inst(void *data,
+extern gsl_err_t knd_parse_import_class_inst(void *obj,
                                              const char *rec,
                                              size_t *total_size)
 {
-    struct kndClass *self = data;
+    struct kndTask *task = obj;
+    struct kndMemPool *mempool = task->mempool;
+    struct kndClass *self = task->class;
     struct kndClass *c;
     struct kndClassInst *inst;
     struct kndClassInstEntry *entry;
     struct ooDict *name_idx;
     struct kndRepo *repo = self->entry->repo;
-    struct kndMemPool *mempool = repo->mempool;
-    struct kndTask *task = repo->task;
     struct kndState *state;
     struct kndStateRef *state_ref;
     int err;
@@ -74,7 +74,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
 
     /* user ctx should have its own copy of a selected class */
     if (repo->curr_class->entry->repo != repo) {
-        err = knd_class_clone(repo->curr_class, repo, &c);
+        err = knd_class_clone(repo->curr_class, repo, &c, mempool);
         if (err) return *total_size = 0, make_gsl_err_external(err);
         repo->curr_class = c;
     }
@@ -142,7 +142,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *data,
                         (void*)entry);
     if (err) return make_gsl_err_external(err);
 
-    err = knd_register_class_inst(c, entry);
+    err = knd_register_class_inst(c, entry, mempool);
     if (err) return make_gsl_err_external(err);
 
     if (DEBUG_CLASS_IMPORT_LEVEL_3) {
@@ -385,7 +385,7 @@ static gsl_err_t confirm_attr_var(void *obj,
     struct kndAttrVar *attr_var = obj;
 
     // TODO empty values?
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_1) {
         if (!attr_var->val_size)
             knd_log("NB: attr var value not set in %.*s",
                     attr_var->name_size, attr_var->name);
@@ -476,12 +476,11 @@ static gsl_err_t import_attr_var_alloc(void *obj,
                                         size_t unused_var(count),
                                         void **result)
 {
-    struct kndAttrVar *self = obj;
+    struct kndTask *task = obj;
+    struct kndAttrVar *self = task->attr_var;
     struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool;
+    struct kndMemPool *mempool = task->mempool;
     int err;
-
-    mempool = self->class_var->root_class->entry->repo->mempool;
  
     err = knd_attr_var_new(mempool, &attr_var);
     if (err) return make_gsl_err_external(err);
@@ -491,6 +490,7 @@ static gsl_err_t import_attr_var_alloc(void *obj,
     mempool->num_attr_vars++;
 
     attr_var->is_list_item = true;
+    task->attr_var = attr_var;
 
     *result = attr_var;
     return make_gsl_err(gsl_OK);
@@ -499,7 +499,8 @@ static gsl_err_t import_attr_var_alloc(void *obj,
 static gsl_err_t import_attr_var_append(void *accu,
                                         void *obj)
 {
-    struct kndAttrVar *self = accu;
+    struct kndTask *task = accu;
+    struct kndAttrVar *self = task->attr_var;
     struct kndAttrVar *attr_var = obj;
 
     if (!self->list_tail) {
@@ -517,12 +518,12 @@ static gsl_err_t import_attr_var_append(void *accu,
 }
 
 static gsl_err_t parse_nested_attr_var(void *obj,
-                                        const char *rec,
-                                        size_t *total_size)
+                                       const char *rec,
+                                       size_t *total_size)
 {
     struct kndAttrVar *item = obj;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_1)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. parse import attr item..");
 
     struct gslTaskSpec specs[] = {
@@ -902,7 +903,7 @@ extern int knd_class_import(struct kndClass *self,
     if (task->batch_mode) return knd_OK;
 
     err = knd_class_resolve(c, task);                                             RET_ERR();
-    err = knd_update_state(c, KND_CREATED);                                       RET_ERR();
+    err = knd_update_state(c, KND_CREATED, mempool);                                       RET_ERR();
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         c->str(c);

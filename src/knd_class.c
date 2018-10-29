@@ -573,10 +573,10 @@ extern int knd_get_class_attr_value(struct kndClass *src,
 }
 
 static int update_ancestor_state(struct kndClass *self,
-                                 struct kndClass *child)
+                                 struct kndClass *child,
+                                 struct kndMemPool *mempool)
 {
     struct kndRepo *repo = self->entry->repo;
-    struct kndMemPool *mempool = repo->mempool;
     struct kndClass *c;
     struct kndStateRef *state_ref = NULL;
     struct kndStateVal *state_val = NULL;
@@ -653,10 +653,9 @@ static int update_ancestor_state(struct kndClass *self,
 
 static int update_state(struct kndClass *self,
                         struct kndStateRef *children,
-                        knd_state_phase phase)
+                        knd_state_phase phase,
+                        struct kndMemPool *mempool)
 {
-    struct kndRepo *repo = self->entry->repo;
-    struct kndMemPool *mempool = repo->mempool;
     struct kndState *state;
     struct kndClass *c;
     struct kndClassRef *ref;
@@ -684,11 +683,11 @@ static int update_state(struct kndClass *self,
         if (!c->entry->ancestors) continue;
         if (c->state_top) continue;
         if (self->entry->repo != ref->entry->repo) {
-            err = knd_class_clone(ref->entry->class, self->entry->repo, &c);
+            err = knd_class_clone(ref->entry->class, self->entry->repo, &c, mempool);
             if (err) return err;
             ref->entry = c->entry;
         }
-        err = update_ancestor_state(c, self);                                      RET_ERR();
+        err = update_ancestor_state(c, self, mempool);                                      RET_ERR();
     }
 
     return knd_OK;
@@ -735,10 +734,10 @@ static int update_inst_state(struct kndClass *self,
 }
 
 extern int knd_update_state(struct kndClass *self,
-                            knd_state_phase phase)
+                            knd_state_phase phase,
+                            struct kndMemPool *mempool)
 {
     struct kndRepo *repo = self->entry->repo;
-    struct kndMemPool *mempool = repo->mempool;
     struct kndStateRef *state_ref;
     int err;
 
@@ -751,12 +750,12 @@ extern int knd_update_state(struct kndClass *self,
     switch (phase) {
     case KND_CREATED:
     case KND_REMOVED:
-        err = update_state(self, NULL, phase);                                    RET_ERR();
+        err = update_state(self, NULL, phase, mempool);                                    RET_ERR();
         break;
     case KND_UPDATED:
         /* any attr updates */
         if (repo->curr_class_state_refs) {
-            err = update_state(self, repo->curr_class_state_refs, phase);         RET_ERR();
+            err = update_state(self, repo->curr_class_state_refs, phase, mempool);         RET_ERR();
             repo->curr_class_state_refs = NULL;
         }
 
@@ -785,19 +784,19 @@ extern int knd_update_state(struct kndClass *self,
 
     state_ref->next = repo->class_state_refs;
     repo->class_state_refs = state_ref;
-
     return knd_OK;
 }
 
 extern int knd_class_export(struct kndClass *self,
                             knd_format format,
-                            struct glbOutput *out)
+                            struct kndTask *task)
 {
+    knd_log(".. export JSON, task output:%p..", task->out);
     switch (format) {
     case KND_FORMAT_JSON:
-        return knd_class_export_JSON(self, out);
+        return knd_class_export_JSON(self, task);
     case KND_FORMAT_GSP:
-        return knd_class_export_GSP(self, out);
+        return knd_class_export_GSP(self, task);
         break;
     default:
         break;
@@ -1128,10 +1127,10 @@ extern int knd_unregister_class_inst(struct kndClass *self,
 }
 
 extern int knd_register_class_inst(struct kndClass *self,
-                                   struct kndClassInstEntry *entry)
+                                   struct kndClassInstEntry *entry,
+                                   struct kndMemPool *mempool)
 {
     struct kndRepo *repo = self->entry->repo;
-    struct kndMemPool *mempool = repo->mempool;
     struct kndSet *inst_idx;
     struct kndClass *c;
     struct kndClassEntry *prev_entry;
@@ -1178,12 +1177,12 @@ extern int knd_register_class_inst(struct kndClass *self,
                 ref->entry = prev_entry;
             } else {
                 //knd_log(".. cloning %.*s..", c->name_size, c->name);
-                err = knd_class_clone(ref->entry->class, self->entry->repo, &c);
+                err = knd_class_clone(ref->entry->class, self->entry->repo, &c, mempool);
                 if (err) return err;
                 ref->entry = c->entry;
             }
         }
-        err = knd_register_class_inst(c, entry);                                         RET_ERR();
+        err = knd_register_class_inst(c, entry, mempool);                                         RET_ERR();
     }
 
     return knd_OK;
@@ -1191,10 +1190,9 @@ extern int knd_register_class_inst(struct kndClass *self,
 
 extern int knd_class_clone(struct kndClass *self,
                            struct kndRepo *target_repo,
-                           struct kndClass **result)
+                           struct kndClass **result,
+                           struct kndMemPool *mempool)
 {
-    struct kndRepo *repo = self->entry->repo;
-    struct kndMemPool *mempool = repo->mempool;
     struct kndClass *c;
     struct kndClassEntry *entry;
     struct ooDict *class_name_idx = target_repo->class_name_idx;
@@ -1218,7 +1216,7 @@ extern int knd_class_clone(struct kndClass *self,
     entry->numid = target_repo->num_classes;
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
-    err = knd_class_copy(self, c);
+    err = knd_class_copy(self, c, mempool);
     if (err) {
         knd_log("-- class copy failed");
         return err;
@@ -1240,10 +1238,10 @@ extern int knd_class_clone(struct kndClass *self,
 }
 
 extern int knd_class_copy(struct kndClass *self,
-                          struct kndClass *c)
+                          struct kndClass *c,
+                          struct kndMemPool *mempool)
 {
     struct kndRepo *repo =  c->entry->repo;
-    struct kndMemPool *mempool = repo->mempool;
     struct ooDict *class_name_idx = repo->class_name_idx;
     struct kndClassEntry *entry, *src_entry, *prev_entry;
     struct kndClassRef   *ref,   *src_ref;

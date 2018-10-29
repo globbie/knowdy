@@ -41,8 +41,9 @@
 #define DEBUG_JSON_LEVEL_TMP 1
 
 extern int knd_export_class_state_JSON(struct kndClass *self,
-                                       struct glbOutput *out)
+                                       struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndState *state = self->states;
     size_t latest_state_numid = self->init_state + self->num_states;
     size_t total;
@@ -181,7 +182,7 @@ static int export_conc_elem_JSON(void *obj,
         c->max_depth = self->max_depth;
     }
 
-    err = knd_class_export(c, KND_FORMAT_JSON, out);
+    err = knd_class_export(c, KND_FORMAT_JSON, task);
     if (err) return err;
 
     task->batch_size++;
@@ -194,7 +195,8 @@ static int export_class_ref_JSON(void *obj,
                                  size_t count,
                                  void *elem)
 {
-    struct kndClass *self = obj;
+    struct kndTask *task = obj;
+    struct kndClass *self = task->class;
     struct glbOutput *out = self->entry->repo->out;
     struct kndClassEntry *entry = elem;
     struct kndClass *c = entry->class;
@@ -206,16 +208,16 @@ static int export_class_ref_JSON(void *obj,
     }
     c->depth = 0;
     c->max_depth = 0;
-    err = knd_class_export(c, KND_FORMAT_JSON, out);
+    err = knd_class_export(c, KND_FORMAT_JSON, task);
     if (err) return err;
     return knd_OK;
 }
 
 static int export_gloss_JSON(struct kndClass *self,
-                             struct glbOutput *out)
+                             struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndTranslation *tr;
-    struct kndTask *task = self->entry->repo->task;
     int err;
 
     for (tr = self->tr; tr; tr = tr->next) {
@@ -234,7 +236,7 @@ static int export_gloss_JSON(struct kndClass *self,
 
 
 static int export_concise_JSON(struct kndClass *self,
-                               struct glbOutput *out)
+                               struct kndTask *task)
 {
     struct kndClassVar *item;
     int err;
@@ -246,7 +248,7 @@ static int export_concise_JSON(struct kndClass *self,
     for (item = self->baseclass_vars; item; item = item->next) {
         if (!item->attrs) continue;
         err = knd_attr_vars_export_JSON(item->attrs,
-                                        self->entry->repo->task, out, true);      RET_ERR();
+                                        task, true);      RET_ERR();
     }
 
     if (DEBUG_JSON_LEVEL_2)
@@ -255,7 +257,7 @@ static int export_concise_JSON(struct kndClass *self,
 
     /* inherited attrs */
     err = self->attr_idx->map(self->attr_idx,
-                              knd_export_inherited_attr, (void*)self); 
+                              knd_export_inherited_attr, (void*)task); 
     if (err && err != knd_RANGE) return err;
 
     return knd_OK;
@@ -263,9 +265,9 @@ static int export_concise_JSON(struct kndClass *self,
 
 extern int knd_class_export_set_JSON(struct kndClass *self,
                                      struct kndSet *set,
-                                     struct glbOutput *out)
+                                     struct kndTask *task)
 {
-    struct kndTask *task = self->entry->repo->task;
+    struct glbOutput *out = task->out;
     int err;
 
     err = out->write(out, "{\"_set\":{",
@@ -313,8 +315,9 @@ extern int knd_class_export_set_JSON(struct kndClass *self,
 
 
 static int present_subclass(struct kndClassRef *ref,
-                            struct glbOutput *out)
+                            struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndClassEntry *entry = ref->entry;
     struct kndClass *c;
     int err;
@@ -337,16 +340,17 @@ static int present_subclass(struct kndClassRef *ref,
     if (!c) {
         //err = unfreeze_class(self, entry, &c);                          RET_ERR();
     }
-    err = export_gloss_JSON(c, out);                                               RET_ERR();
-    err = export_concise_JSON(c, out);                                             RET_ERR();
+    err = export_gloss_JSON(c, task);                                               RET_ERR();
+    err = export_concise_JSON(c, task);                                             RET_ERR();
     err = out->writec(out, '}');                                              RET_ERR();
     return knd_OK;
 }
 
 static int present_subclasses(struct kndClass *self,
                               size_t num_children,
-                              struct glbOutput *out)
+                              struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndClassRef *ref;
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
@@ -381,7 +385,7 @@ static int present_subclasses(struct kndClass *self,
             err = out->write(out, ",", 1);  RET_ERR();
         }
 
-        err = present_subclass(ref, out);                         RET_ERR();
+        err = present_subclass(ref, task);                         RET_ERR();
         in_list = true;
     }
 
@@ -397,7 +401,7 @@ static int present_subclasses(struct kndClass *self,
                 err = out->write(out, ",", 1);  RET_ERR();
             }
 
-            err = present_subclass(ref, out);                         RET_ERR();
+            err = present_subclass(ref, task);                         RET_ERR();
             in_list = true;
         }
     }
@@ -408,8 +412,9 @@ static int present_subclasses(struct kndClass *self,
 }
 
 static int export_attrs(struct kndClass *self,
-                        struct glbOutput *out)
+                        struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndAttr *attr;
     size_t i = 0;
     int err;
@@ -420,7 +425,7 @@ static int export_attrs(struct kndClass *self,
         if (i) {
             err = out->write(out, ",", 1);  RET_ERR();
         }
-        err = knd_attr_export(attr, KND_FORMAT_JSON, out);
+        err = knd_attr_export(attr, KND_FORMAT_JSON, task);
         if (err) {
             if (DEBUG_JSON_LEVEL_TMP)
                 knd_log("-- failed to export %.*s attr",
@@ -434,8 +439,9 @@ static int export_attrs(struct kndClass *self,
 }
 
 static int export_baseclass_vars(struct kndClass *self,
-                                 struct glbOutput *out)
+                                 struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndClassVar *item;
     size_t item_count = 0;
     int err;
@@ -455,14 +461,14 @@ static int export_baseclass_vars(struct kndClass *self,
         err = out->writef(out, "%zu", item->numid);                               RET_ERR();
 
         if (item->entry->class) {
-            err = export_gloss_JSON(item->entry->class, out);                     RET_ERR();
+            err = export_gloss_JSON(item->entry->class, task);                     RET_ERR();
         }
 
         if (item->attrs) {
             item->attrs->depth = self->depth;
             item->attrs->max_depth = self->max_depth;
             err = knd_attr_vars_export_JSON(item->attrs,
-                                            self->entry->repo->task, out, false);      RET_ERR();
+                                            task, false);      RET_ERR();
         }
 
         /*if (self->num_computed_attrs) {
@@ -484,11 +490,11 @@ static int export_baseclass_vars(struct kndClass *self,
 }
                                      
 extern int knd_class_export_JSON(struct kndClass *self,
-                                 struct glbOutput *out)
+                                 struct kndTask *task)
 {
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
-    struct kndTask *task = entry->repo->task;
+    struct glbOutput *out = task->out;
     struct kndSet *set;
     struct kndAttr *attr;
     struct kndClassRel *class_rel;
@@ -562,11 +568,11 @@ extern int knd_class_export_JSON(struct kndClass *self,
         }
     }
     
-    err = export_gloss_JSON(self, out);                                                RET_ERR();
+    err = export_gloss_JSON(self, task);                                                RET_ERR();
 
     if (self->depth >= self->max_depth) {
         /* any concise fields? */
-        err = export_concise_JSON(self, out);                                          RET_ERR();
+        err = export_concise_JSON(self, task);                                          RET_ERR();
         goto final;
     }
 
@@ -574,7 +580,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
     if (self->num_states) {
         err = out->writec(out, ',');
         if (err) return err;
-        err = knd_export_class_state_JSON(self, out);                                      RET_ERR();
+        err = knd_export_class_state_JSON(self, task);                                      RET_ERR();
     }
 
     /*if (self->num_inst_states) {
@@ -585,24 +591,24 @@ extern int knd_class_export_JSON(struct kndClass *self,
 
     /* display base classes only once */
     if (self->num_baseclass_vars) {
-        err = export_baseclass_vars(self, out);                          RET_ERR();
+        err = export_baseclass_vars(self, task);                          RET_ERR();
     } else {
         if (orig_entry && orig_entry->class->num_baseclass_vars) {
-            err = export_baseclass_vars(orig_entry->class, out);         RET_ERR();
+            err = export_baseclass_vars(orig_entry->class, task);         RET_ERR();
         }
     }
 
     if (self->attrs) {
-        err = export_attrs(self, out); RET_ERR();
+        err = export_attrs(self, task); RET_ERR();
     } else {
         if (orig_entry && orig_entry->class->num_attrs) {
-            err = export_attrs(orig_entry->class, out);                   RET_ERR();
+            err = export_attrs(orig_entry->class, task);                   RET_ERR();
         }
     }
 
     /* inherited attrs */
     set = self->attr_idx;
-    err = set->map(set, knd_export_inherited_attr, (void*)self); 
+    err = set->map(set, knd_export_inherited_attr, (void*)task); 
     if (err && err != knd_RANGE) return err;
 
     num_children = entry->num_children;
@@ -616,7 +622,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
         num_children += orig_entry->num_children;
 
     if (num_children) {
-        err = present_subclasses(self, num_children, out);                        RET_ERR();
+        err = present_subclasses(self, num_children, task);                        RET_ERR();
     }
 
     /* instances */

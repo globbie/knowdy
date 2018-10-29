@@ -243,17 +243,18 @@ extern int knd_class_get_attr(struct kndClass *self,
                               struct kndAttrRef **result);
 
 extern int knd_export_class_state_JSON(struct kndClass *self,
-                                       struct glbOutput *out);
+                                       struct kndTask *task);
 
 extern int knd_class_export_set_JSON(struct kndClass *self,
                                      struct kndSet *set,
-                                     struct glbOutput *out);
+                                     struct kndTask *task);
 
 extern int knd_class_export_JSON(struct kndClass *self,
-                                 struct glbOutput *out);
+                                 struct kndTask *task);
+
 extern int knd_class_export(struct kndClass *self,
                             knd_format format,
-                            struct glbOutput *out);
+                            struct kndTask *task);
 
 extern gsl_err_t knd_parse_gloss_array(void *obj,
                                        const char *rec,
@@ -263,12 +264,13 @@ extern gsl_err_t knd_parse_summary_array(void *obj,
                                          size_t *total_size);
 
 extern int knd_class_export_GSP(struct kndClass *self,
-                                struct glbOutput *out);
+                                struct kndTask *task);
+
 extern int knd_class_export_updates_GSP(struct kndClass *self,
                                         struct kndClassUpdate *update,
-                                        struct glbOutput *out);
+                                        struct kndTask *task);
 
-extern gsl_err_t knd_parse_import_class_inst(void *data,
+extern gsl_err_t knd_parse_import_class_inst(void *obj,
                                              const char *rec,
                                              size_t *total_size);
 
@@ -284,11 +286,11 @@ extern gsl_err_t knd_class_select(void *obj,
                                   size_t *total_size);
 
 extern int knd_compute_class_attr_num_value(struct kndClass *self,
-                                            //struct kndClassVar *src_class_var,
                                             struct kndAttrVar *attr_var);
 
 extern int knd_update_state(struct kndClass *self,
-                            knd_state_phase phase);
+                            knd_state_phase phase,
+                            struct kndMemPool *mempool);
 
 extern gsl_err_t knd_read_class_inst_state(struct kndClass *self,
                                            struct kndClassUpdate *update,
@@ -305,17 +307,20 @@ extern int knd_get_class_inst(struct kndClass *self,
                               struct kndClassInst **result);
 
 extern int knd_register_class_inst(struct kndClass *self,
-                                   struct kndClassInstEntry *entry);
+                                   struct kndClassInstEntry *entry,
+                                    struct kndMemPool *mempool);
 
 extern int knd_unregister_class_inst(struct kndClass *self,
                                    struct kndClassInstEntry *entry);
 
 extern int knd_class_clone(struct kndClass *self,
                            struct kndRepo *target_repo,
-                           struct kndClass **result);
+                           struct kndClass **result,
+                           struct kndMemPool *mempool);
 
 extern int knd_class_copy(struct kndClass *self,
-                          struct kndClass *target);
+                          struct kndClass *target,
+                          struct kndMemPool *mempool);
 
 extern int knd_register_state(struct kndClass *self);
 extern int knd_register_descendant_states(struct kndClass *self);
@@ -332,6 +337,7 @@ extern int knd_class_resolve(struct kndClass *self, struct kndTask *task);
 
 extern int knd_class_update_new(struct kndMemPool *mempool,
                                 struct kndClassUpdate **result);
+
 extern int knd_class_var_new(struct kndMemPool *mempool,
                              struct kndClassVar **result);
 

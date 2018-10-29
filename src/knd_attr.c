@@ -148,11 +148,10 @@ extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
     }
 }
 
-
-static int export_JSON(struct kndAttr *self)
+static int export_JSON(struct kndAttr *self,
+                       struct kndTask *task)
 {
-    struct kndTask *task = self->parent_class->entry->repo->task;
-    struct glbOutput *out = self->parent_class->entry->repo->out;
+    struct glbOutput *out = task->out;
     struct kndTranslation *tr;
     struct kndProc *p;
     const char *type_name = knd_attr_names[self->type];
@@ -325,11 +324,12 @@ static int export_GSP(struct kndAttr *self, struct glbOutput *out)
 }
 
 extern int knd_attr_export(struct kndAttr *self,
-                           knd_format format, struct glbOutput *out)
+                           knd_format format,
+                           struct kndTask *task)
 {
     switch (format) {
-    case KND_FORMAT_JSON: return export_JSON(self);
-    case KND_FORMAT_GSP:  return export_GSP(self, out);
+    case KND_FORMAT_JSON: return export_JSON(self, task);
+    case KND_FORMAT_GSP:  return export_GSP(self, task->out);
     default:              return knd_NO_MATCH;
     }
 }

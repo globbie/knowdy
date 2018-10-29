@@ -235,7 +235,7 @@ extern void kndAttr_init(struct kndAttr *self);
 extern int kndAttr_new(struct kndAttr **self);
 
 extern int knd_attr_var_export_JSON(struct kndAttrVar *self,
-                                    struct glbOutput *out);
+                                    struct kndTask *task);
 
 extern int knd_export_inherited_attr(void *obj,
                                      const char *elem_id,
@@ -245,11 +245,11 @@ extern int knd_export_inherited_attr(void *obj,
 
 extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
                                      struct kndTask *task,
-                                     struct glbOutput *out,
                                      bool is_concise);
 
 extern int knd_attr_var_export_GSP(struct kndAttrVar *self,
                                     struct glbOutput *out);
+
 extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
                                      struct glbOutput *out,
                                      size_t depth,
@@ -257,6 +257,7 @@ extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
 
 extern int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var,
                                            struct glbOutput *out);
+
 extern int knd_compute_num_value(struct kndAttr *attr,
                                  struct kndAttrVar *attr_var,
                                  long *result);
@@ -280,7 +281,7 @@ extern int knd_get_arg_value(struct kndAttrVar *src,
                              struct kndProcCallArg *arg);
 
 extern int knd_attr_export(struct kndAttr *self,
-                           knd_format format, struct glbOutput *out);
+                           knd_format format, struct kndTask *task);
 extern void str_attr_vars(struct kndAttrVar *item, size_t depth);
 
 extern int knd_attr_var_new(struct kndMemPool *mempool,
