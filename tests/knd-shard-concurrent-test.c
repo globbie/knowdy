@@ -76,7 +76,7 @@ static void *worker_proc(void *ptr)
 
     err = kndShard_run_task(worker->shard, worker->input, worker->input_size,
                             &worker->result, &worker->result_size, worker->id);
-    //ck_assert_int_eq(err, knd_OK);
+    ck_assert_int_eq(err, knd_OK);
 
     //ASSERT_STR_EQ(worker->result, worker->result_size,
     //              worker->expect, worker->expect_size);
