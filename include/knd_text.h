@@ -99,8 +99,9 @@ struct kndText
     size_t num_states;
 };
 
-extern int knd_text_export(struct kndText *self, knd_format format,
-                           struct kndTask *task, struct glbOutput *out);
+extern int knd_text_export(struct kndText *self,
+                           knd_format format,
+                           struct kndTask *task);
 
 extern int knd_text_translation_new(struct kndMemPool *mempool,
                                     struct kndTranslation   **self);

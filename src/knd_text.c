@@ -18,9 +18,9 @@
 #define DEBUG_TEXT_LEVEL_TMP 1
 
 static int export_JSON(struct kndText *self,
-                       struct kndTask *task,
-                       struct glbOutput *out)
+                       struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndTranslation *tr;
     int err;
 
@@ -146,18 +146,17 @@ static int export_GSP(struct kndText *unused_var(self),
 
 extern int knd_text_export(struct kndText *self,
                            knd_format format,
-                           struct kndTask *task,
-                           struct glbOutput *out)
+                           struct kndTask *task)
 {
     int err;
 
     switch (format) {
     case KND_FORMAT_JSON:
-        err = export_JSON(self, task, out);
+        err = export_JSON(self, task);
         if (err) return err;
         break;
     case KND_FORMAT_GSP:
-        err = export_GSP(self, task, out);
+        err = export_GSP(self, task, task->out);
         if (err) return err;
         break;
     default:

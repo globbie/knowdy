@@ -215,10 +215,13 @@ static gsl_err_t parse_class_select(void *obj,
         c = ctx->repo->root_class;
     }
 
-    if (DEBUG_USER_LEVEL_2)
-        knd_log(".. parsing the default class select: \"%.*s\"", 64, rec);
+    task->class = c;
 
-    return knd_class_select(c, rec, total_size);
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log(".. parsing the default class select: \"%.*s\"",
+                64, rec);
+
+    return knd_class_select(task, rec, total_size);
 }
 
 #if 0

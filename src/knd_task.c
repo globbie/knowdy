@@ -181,13 +181,14 @@ static gsl_err_t parse_class_select(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct kndTask *self = obj;
-    struct kndClass *c = self->shard->repo->root_class;
+    struct kndTask *task = obj;
+    struct kndClass *c = task->shard->repo->root_class;
 
     if (DEBUG_TASK_LEVEL_TMP)
         knd_log(".. parsing the system class select: \"%.*s\"", 64, rec);
+    task->class = c;
 
-    return knd_class_select(c, rec, total_size);
+    return knd_class_select(task, rec, total_size);
 }
 
 static gsl_err_t open_system_repo(void *obj, const char *rec, size_t *total_size)
