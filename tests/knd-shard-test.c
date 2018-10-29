@@ -48,21 +48,22 @@ START_TEST(shard_config_test)
             .input = "{schema knd}",
             .expect = NULL,
             .err = knd_FAIL
-        },
+        }
         //{
         //    .input = NULL
         //}
     };
 
-    struct kndShard *shard = NULL;
+    struct kndShard *shard;
     int err = 0;
 
     for (size_t i = 0; i < sizeof broken_configs / sizeof broken_configs[0]; ++i) {
         const struct table_test *config = &broken_configs[i];
-
+        shard = NULL;
         err = kndShard_new(&shard, config->input, strlen(config->input));
         ck_assert_int_eq(err, config->err);
-        kndShard_del(shard);
+        if (shard)
+            kndShard_del(shard);
     }
 
 END_TEST
