@@ -123,19 +123,19 @@ struct kndTask
 
     struct kndUser *user;
     struct kndRepo *repo;
+    struct kndClass *root_class;
     struct kndClass *class;
     struct kndClassVar *class_var;
-    struct kndAttrVar *attr_var;
+    //struct kndAttrVar *attr_var;
     struct kndAttr *attr;
-    struct kndClassInst *inst;
+    struct kndClassInst *class_inst;
+    struct kndElem *elem;
 
     struct kndUpdate *update;
-
     struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;
 
     struct kndShard *shard;
-
     struct glbOutput *storage;
     struct glbOutput *log;
     struct glbOutput *out;

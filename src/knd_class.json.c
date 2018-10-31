@@ -146,19 +146,20 @@ static int export_conc_elem_JSON(void *obj,
                                  size_t count,
                                  void *elem)
 {
-    struct kndClass *self = obj;
-    struct kndTask *task = self->entry->repo->task;
+    struct kndTask *task = obj;
+    struct kndClass *self = task->class;
+
     if (count < task->start_from) return knd_OK;
     if (task->batch_size >= task->batch_max) return knd_RANGE;
 
-    struct glbOutput *out = self->entry->repo->out;
+    struct glbOutput *out = task->out;
     struct kndClassEntry *entry = elem;
     struct kndClass *c = entry->class;
     struct kndState *state;
     int err;
 
     if (DEBUG_JSON_LEVEL_2)
-        knd_log("..export elem: %.*s",
+        knd_log(".. JSON export set elem: %.*s",
                 elem_id_size, elem_id);
 
     if (!c) {
@@ -263,8 +264,7 @@ static int export_concise_JSON(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_class_export_set_JSON(struct kndClass *self,
-                                     struct kndSet *set,
+extern int knd_class_export_set_JSON(struct kndSet *set,
                                      struct kndTask *task)
 {
     struct glbOutput *out = task->out;
@@ -294,7 +294,7 @@ extern int knd_class_export_set_JSON(struct kndClass *self,
     err = out->write(out, ",\"batch\":[",
                      strlen(",\"batch\":["));                                     RET_ERR();
 
-    err = set->map(set, export_conc_elem_JSON, (void*)self);
+    err = set->map(set, export_conc_elem_JSON, (void*)task);
     if (err && err != knd_RANGE) return err;
 
     err = out->writec(out, ']');                                                  RET_ERR();

@@ -380,11 +380,11 @@ extern int knd_present_repo_state(struct kndRepo *self,
     return knd_OK;
 }
 
-extern int knd_confirm_state(struct kndRepo *self)
+extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
 {
     struct kndUpdate *update;
-    struct kndMemPool *mempool = self->mempool;
-    struct glbOutput *out = self->task->out;
+    struct kndMemPool *mempool = task->mempool;
+    struct glbOutput *out = task->out;
     struct kndStateRef *ref, *child_ref;
     struct kndState *state;
     struct kndClassEntry *entry;

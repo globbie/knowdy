@@ -786,11 +786,12 @@ static gsl_err_t parse_import_elem(void *data,
     return parser_err;
 }
 
-static gsl_err_t parse_select_elem(void *data,
+static gsl_err_t parse_select_elem(void *obj,
                                    const char *name, size_t name_size,
                                    const char *rec, size_t *total_size)
 {
-    struct kndClassInst *self = data;
+    struct kndTask *task = obj;
+    struct kndClassInst *self = task->class_inst;
     struct kndClassInst *inst;
     struct kndElem *elem = NULL;
     struct kndAttr *attr = NULL;
@@ -824,7 +825,8 @@ static gsl_err_t parse_select_elem(void *data,
 
     switch (elem->attr->type) {
     case KND_ATTR_INNER:
-        parser_err = knd_parse_select_inst(elem->inner, rec, total_size);
+        parser_err = knd_parse_select_inst(elem->inner,
+                                           rec, total_size, task);
         if (parser_err.code) return parser_err;
         break;
     default:
@@ -1361,16 +1363,16 @@ static gsl_err_t present_inst_selection(void *data, const char *unused_var(val),
 
 static gsl_err_t run_get_inst(void *obj, const char *name, size_t name_size)
 {
-    struct kndClassInst *self = obj;
+    struct kndTask *task = obj;
+    struct kndClassInst *self = task->class_inst;
     struct kndClass *c = self->base;
-    struct kndTask *task = c->entry->repo->task;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     self->curr_inst = NULL;
-    err = knd_get_class_inst(c, name, name_size, &self->curr_inst);
+    err = knd_get_class_inst(c, name, name_size, task, &self->curr_inst);
     if (err) {
         knd_log("-- failed to get class inst: %.*s", name_size, name);
         return make_gsl_err_external(err);
@@ -1590,12 +1592,11 @@ static int update_elem_states(struct kndClassInst *self)
 
 extern gsl_err_t knd_parse_select_inst(struct kndClassInst *self,
                                        const char *rec,
-                                       size_t *total_size)
+                                       size_t *total_size,
+                                       struct kndTask *task)
 {
     struct kndRepo *repo = self->base->entry->repo;
-    struct kndTask *task = repo->task;
     struct kndClassInst *inst;
-
     int err;
     gsl_err_t parser_err;
 
@@ -1612,7 +1613,7 @@ extern gsl_err_t knd_parse_select_inst(struct kndClassInst *self,
         { .is_implied = true,
           .is_selector = true,
           .run = run_get_inst,
-          .obj = self
+          .obj = task
         },
         { .name = "_state",
           .name_size = strlen("_state"),
@@ -1621,7 +1622,7 @@ extern gsl_err_t knd_parse_select_inst(struct kndClassInst *self,
         },
         { .is_validator = true,
           .validate = parse_select_elem,
-          .obj = self
+          .obj = task
         }/*,
         { .type = GSL_SET_STATE,
           .is_validator = true,

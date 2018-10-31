@@ -29,6 +29,9 @@ extern int kndShard_run_task(struct kndShard *self,
                              size_t task_id)
 {
     const char *rec_start;
+
+    assert(task_id < self->num_workers);
+
     struct kndTask *task = self->workers[task_id];
     int err;
 
@@ -54,7 +57,6 @@ extern int kndShard_run_task(struct kndShard *self,
         knd_log("-- task storage limit reached!");
         return err;
     }
-
 
     err = kndTask_run(task, rec_start, rec_size);
     if (err != knd_OK) {

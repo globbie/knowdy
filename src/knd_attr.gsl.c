@@ -33,17 +33,17 @@
 
 #include <glb-lib/output.h>
 
-#define DEBUG_ATTR_JSON_LEVEL_1 0
-#define DEBUG_ATTR_JSON_LEVEL_2 0
-#define DEBUG_ATTR_JSON_LEVEL_3 0
-#define DEBUG_ATTR_JSON_LEVEL_4 0
-#define DEBUG_ATTR_JSON_LEVEL_5 0
-#define DEBUG_ATTR_JSON_LEVEL_TMP 1
+#define DEBUG_ATTR_GSL_LEVEL_1 0
+#define DEBUG_ATTR_GSL_LEVEL_2 0
+#define DEBUG_ATTR_GSL_LEVEL_3 0
+#define DEBUG_ATTR_GSL_LEVEL_4 0
+#define DEBUG_ATTR_GSL_LEVEL_5 0
+#define DEBUG_ATTR_GSL_LEVEL_TMP 1
 
-static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
+static int attr_var_list_export_GSL(struct kndAttrVar *parent_item,
                                      struct kndTask *task);
 
-static int inner_item_export_JSON(struct kndAttrVar *parent_item,
+static int inner_item_export_GSL(struct kndAttrVar *parent_item,
                                   struct kndTask *task)
 {
     struct glbOutput *out = task->out;
@@ -55,8 +55,8 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
 
     c = parent_item->attr->parent_class;
 
-    if (DEBUG_ATTR_JSON_LEVEL_2) {
-        knd_log(".. JSON export inner item: %.*s",
+    if (DEBUG_ATTR_GSL_LEVEL_2) {
+        knd_log(".. GSL export inner item: %.*s",
                 parent_item->name_size, parent_item->name);
     }
 
@@ -77,7 +77,7 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
         c = parent_item->attr->ref_class;
 
         /*if (c->num_computed_attrs) {
-            if (DEBUG_ATTR_JSON_LEVEL_2)
+            if (DEBUG_ATTR_GSL_LEVEL_2)
                 knd_log(".. present computed attrs in %.*s (val:%.*s)",
                         parent_item->name_size, parent_item->name,
                         parent_item->val_size, parent_item->val);
@@ -119,7 +119,7 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
         c->depth = 1;
         c->max_depth = 1;
 
-        err = knd_class_export(c, KND_FORMAT_JSON, task);
+        err = knd_class_export(c, KND_FORMAT_GSL, task);
         if (err) return err;
         in_list = true;
     }
@@ -184,11 +184,11 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
             c = item->class;
             c->depth = 1;
             c->max_depth = 1;
-            err = knd_class_export(c, KND_FORMAT_JSON, task);
+            err = knd_class_export(c, KND_FORMAT_GSL, task);
             if (err) return err;
             break;
         case KND_ATTR_INNER:
-            err = inner_item_export_JSON(item, task);
+            err = inner_item_export_GSL(item, task);
             if (err) return err;
             break;
         default:
@@ -210,11 +210,11 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
     return knd_OK;
 }
 
-extern int knd_export_inherited_attr(void *obj,
-                                     const char *unused_var(elem_id),
-                                     size_t unused_var(elem_id_size),
-                                     size_t unused_var(count),
-                                     void *elem)
+extern int knd_export_inherited_attr_GSL(void *obj,
+                                         const char *unused_var(elem_id),
+                                         size_t unused_var(elem_id_size),
+                                         size_t unused_var(count),
+                                         void *elem)
 {
     struct kndTask *task = obj;
     struct kndClass   *self = task->class;
@@ -227,7 +227,7 @@ extern int knd_export_inherited_attr(void *obj,
     size_t numval = 0;
     int err;
 
-    if (DEBUG_ATTR_JSON_LEVEL_2) {
+    if (DEBUG_ATTR_GSL_LEVEL_2) {
         knd_log(".. class \"%.*s\" to export inherited attr \"%.*s\"..",
                 self->name_size, self->name,
                 attr->name_size, attr->name);
@@ -247,7 +247,7 @@ extern int knd_export_inherited_attr(void *obj,
     }
 
     if (attr->proc) {
-        if (DEBUG_ATTR_JSON_LEVEL_2)
+        if (DEBUG_ATTR_GSL_LEVEL_2)
             knd_log("..computed attr: %.*s!", attr->name_size, attr->name);
 
         if (!attr_var) {
@@ -302,7 +302,7 @@ extern int knd_export_inherited_attr(void *obj,
     err = out->writec(out, ',');                                          RET_ERR();
 
     if (attr->is_a_set) {
-        return attr_var_list_export_JSON(attr_var, task);
+        return attr_var_list_export_GSL(attr_var, task);
     }
 
     err = out->writec(out, '"');                                          RET_ERR();
@@ -314,7 +314,7 @@ extern int knd_export_inherited_attr(void *obj,
         err = out->write(out, attr_var->val, attr_var->val_size);             RET_ERR();
         break;
     case KND_ATTR_INNER:
-        err = inner_item_export_JSON(attr_var, task);
+        err = inner_item_export_GSL(attr_var, task);
         if (err) return err;
         break;
     case KND_ATTR_STR:
@@ -330,7 +330,7 @@ extern int knd_export_inherited_attr(void *obj,
     return knd_OK;
 }
 
-static int ref_item_export_JSON(struct kndAttrVar *item,
+static int ref_item_export_GSL(struct kndAttrVar *item,
                                 struct kndTask *task)
 {
     struct kndClass *c;
@@ -343,11 +343,11 @@ static int ref_item_export_JSON(struct kndAttrVar *item,
     c->depth = item->depth;
     c->max_depth = item->max_depth;
 
-    err = knd_class_export(c, KND_FORMAT_JSON, task);                 RET_ERR();
+    err = knd_class_export(c, KND_FORMAT_GSL, task);                 RET_ERR();
     return knd_OK;
 }
 
-static int proc_item_export_JSON(struct kndAttrVar *item,
+static int proc_item_export_GSL(struct kndAttrVar *item,
                                  struct kndTask *task)
 {
     struct glbOutput *out = task->out;
@@ -357,13 +357,13 @@ static int proc_item_export_JSON(struct kndAttrVar *item,
     assert(item->proc != NULL);
     proc = item->proc;
 
-    err = knd_proc_export(proc, KND_FORMAT_JSON, out);
+    err = knd_proc_export(proc, KND_FORMAT_GSL, out);
     if (err) return err;
 
     return knd_OK;
 }
 
-static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
+static int attr_var_list_export_GSL(struct kndAttrVar *parent_item,
                                      struct kndTask *task)
 {
     struct glbOutput *out = task->out;
@@ -372,8 +372,8 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
     size_t count = 0;
     int err;
 
-    if (DEBUG_ATTR_JSON_LEVEL_2) {
-        knd_log(".. export JSON list: %.*s\n\n",
+    if (DEBUG_ATTR_GSL_LEVEL_2) {
+        knd_log(".. export GSL list: %.*s\n\n",
                 parent_item->name_size, parent_item->name);
     }
 
@@ -392,16 +392,16 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
                                            (unsigned long)count);
             count++;
 
-            err = inner_item_export_JSON(parent_item, task);
+            err = inner_item_export_GSL(parent_item, task);
             if (err) return err;
             break;
         case KND_ATTR_REF:
-            err = ref_item_export_JSON(parent_item, task);
+            err = ref_item_export_GSL(parent_item, task);
             if (err) return err;
             break;
         case KND_ATTR_PROC:
             if (parent_item->proc) {
-                err = proc_item_export_JSON(parent_item, task);
+                err = proc_item_export_GSL(parent_item, task);
                 if (err) return err;
             }
             break;
@@ -436,16 +436,16 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
                                     (unsigned long)count);
             count++;
 
-            err = inner_item_export_JSON(item, task);
+            err = inner_item_export_GSL(item, task);
             if (err) return err;
             break;
         case KND_ATTR_REF:
-            err = ref_item_export_JSON(item, task);
+            err = ref_item_export_GSL(item, task);
             if (err) return err;
             break;
         case KND_ATTR_PROC:
             if (item->proc) {
-                err = proc_item_export_JSON(item, task);
+                err = proc_item_export_GSL(item, task);
                 if (err) return err;
             }
             break;
@@ -466,7 +466,7 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
     return knd_OK;
 }
 
-extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
+extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
                                      struct kndTask *task,
                                      bool is_concise)
 {
@@ -489,7 +489,7 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
         if (err) return err;
 
         if (attr->is_a_set) {
-            err = attr_var_list_export_JSON(item, task);
+            err = attr_var_list_export_GSL(item, task);
             if (err) return err;
             continue;
         }
@@ -508,13 +508,13 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
             break;
         case KND_ATTR_TEXT:
             err = out->writec(out, '"');                                          RET_ERR();
-            err = knd_text_export(item->text, KND_FORMAT_JSON, task);
+            err = knd_text_export(item->text, KND_FORMAT_GSL, task);
             err = out->writec(out, '"');                                          RET_ERR();
             if (err) return err;
             break;
         case KND_ATTR_PROC:
             if (item->proc) {
-                err = proc_item_export_JSON(item, task);
+                err = proc_item_export_GSL(item, task);
                 if (err) return err;
             } else {
                 err = out->write(out, "\"", strlen("\""));
@@ -527,13 +527,13 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
             break;
         case KND_ATTR_INNER:
             if (!item->class) {
-                err = inner_item_export_JSON(item, task);
+                err = inner_item_export_GSL(item, task);
                 if (err) return err;
             } else {
                 c = item->class;
                 c->depth = 1;
                 c->max_depth = 1;
-                err = knd_class_export(c, KND_FORMAT_JSON, task);
+                err = knd_class_export(c, KND_FORMAT_GSL, task);
                 if (err) return err;
             }
             break;
@@ -550,7 +550,7 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
     return knd_OK;
 }
 
-extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
+extern int knd_attr_var_export_GSL(struct kndAttrVar *item,
                                     struct kndTask *task)
 {
     struct glbOutput *out = task->out;
@@ -575,7 +575,7 @@ extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
         break;
     case KND_ATTR_PROC:
         if (item->proc) {
-            err = proc_item_export_JSON(item, task);
+            err = proc_item_export_GSL(item, task);
             if (err) return err;
         } else {
             err = out->write(out, "\"", strlen("\""));
@@ -588,12 +588,12 @@ extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
         break;
     case KND_ATTR_INNER:
         if (!item->class) {
-            err = inner_item_export_JSON(item, task);
+            err = inner_item_export_GSL(item, task);
             if (err) return err;
         } else {
             c = item->class;
             //c->depth = self->depth;
-            err = knd_class_export(c, KND_FORMAT_JSON, task);
+            err = knd_class_export(c, KND_FORMAT_GSL, task);
             if (err) return err;
         }
         break;
@@ -607,51 +607,3 @@ extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
     }
     return knd_OK;
 }
-
-/*extern int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var,
-                                            struct kndTask *task)
-{
-    struct glbOutput *out = task->out;
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
-    struct kndClass *c = attr_var->attr->ref_class;
-    struct kndAttr *attr;
-    long numval;
-    int err;
-
-    for (size_t i = 0; i < c->num_computed_attrs; i++) {
-        attr = c->computed_attrs[i];
-
-        switch (attr->type) {
-        case KND_ATTR_NUM:
-            numval = attr_var->numval;
-            if (!attr_var->is_cached) {
-                err = knd_compute_num_value(attr, attr_var, &numval);
-                if (err) continue;
-
-                attr_var->numval = numval;
-                attr_var->is_cached = true;
-            }
-            
-            err = out->writec(out, ',');
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->write(out, attr->name, attr->name_size);
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->writec(out, ':');
-            if (err) return err;
-            
-            buf_size = snprintf(buf, KND_NAME_SIZE, "%lu", numval);
-            err = out->write(out, buf, buf_size);                                     RET_ERR();
-            break;
-        default:
-            break;
-        }
-    }
-
-    return knd_OK;
-}
-*/

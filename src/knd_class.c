@@ -67,7 +67,7 @@ static int str_facet_val(void *unused_var(obj),
 
 static void str(struct kndClass *self)
 {
-    struct kndTranslation *tr;
+    //struct kndTranslation *tr;
     struct kndClassVar *item;
     struct kndClassRef *ref;
     struct kndClass *c;
@@ -77,14 +77,15 @@ static void str(struct kndClass *self)
     size_t name_size;
     char resolved_state = '-';
     int err;
+
     knd_log("\n%*s{class %.*s (repo:%.*s)   id:%.*s  numid:%zu",
             self->depth * KND_OFFSET_SIZE, "",
             self->entry->name_size, self->entry->name,
             self->entry->repo->name_size, self->entry->repo->name,
             self->entry->id_size, self->entry->id,
             self->entry->numid);
-
-    if (self->num_states) {
+    
+    /*if (self->num_states) {
         knd_log("\n%*s_state:%zu",
             self->depth * KND_OFFSET_SIZE, "",
             self->states->update->numid);
@@ -95,14 +96,15 @@ static void str(struct kndClass *self)
             self->depth * KND_OFFSET_SIZE, "",
             self->num_inst_states);
     }
-    
-    for (tr = self->tr; tr; tr = tr->next) {
+    */
+
+    /*for (tr = self->tr; tr; tr = tr->next) {
         knd_log("%*s~ %s %.*s",
                 (self->depth + 1) * KND_OFFSET_SIZE, "",
                 tr->locale, tr->val_size, tr->val);
-    }
+                }*/
 
-    if (self->num_baseclass_vars) {
+    if (self->baseclass_vars) {
         for (item = self->baseclass_vars; item; item = item->next) {
             resolved_state = '-';
 
@@ -114,11 +116,10 @@ static void str(struct kndClass *self)
                     name_size, name,
                     item->entry->id_size, item->entry->id, item->numid,
                     resolved_state);
-
             
-            /* if (item->attrs) {
+            if (item->attrs) {
                 str_attr_vars(item->attrs, self->depth + 1);
-                }*/
+            }
         }
     }
 
@@ -128,7 +129,7 @@ static void str(struct kndClass *self)
                 c->entry->name_size, c->entry->name,
                 c->entry->repo->name_size, c->entry->repo->name);
     }
-
+    
     if (self->entry->descendants) {
         for (f = self->entry->descendants->facets; f; f = f->next) {
             knd_log("== facet:\"%.*s\"", f->attr->name_size, f->attr->name);
@@ -454,13 +455,13 @@ extern int knd_class_coordinate(struct kndClass *self,
 
 extern int knd_get_class_inst(struct kndClass *self,
                               const char *name, size_t name_size,
+                              struct kndTask *task,
                               struct kndClassInst **result)
 {
     struct kndClassInstEntry *entry;
     struct kndClassInst *obj;
     struct ooDict *name_idx;
-    struct glbOutput *log = self->entry->repo->log;
-    struct kndTask *task = self->entry->repo->task;
+    struct glbOutput *log = task->log;
     int err, e;
 
     if (DEBUG_CLASS_LEVEL_2)
@@ -745,7 +746,6 @@ extern int knd_update_state(struct kndClass *self,
         knd_log("\n .. \"%.*s\" class to update its state: %d",
                 self->name_size, self->name, phase);
     }
-
     /* newly created class? */
     switch (phase) {
     case KND_CREATED:
@@ -791,17 +791,14 @@ extern int knd_class_export(struct kndClass *self,
                             knd_format format,
                             struct kndTask *task)
 {
-    knd_log(".. export JSON, task output:%p..", task->out);
     switch (format) {
     case KND_FORMAT_JSON:
         return knd_class_export_JSON(self, task);
     case KND_FORMAT_GSP:
         return knd_class_export_GSP(self, task);
-        break;
     default:
-        break;
+        return knd_class_export_GSL(self, task);
     }
-    knd_log("-- format %d not supported", format);
     return knd_FAIL;
 }
 
@@ -920,9 +917,9 @@ extern int knd_get_class(struct kndRepo *self,
     
     entry = class_name_idx->get(class_name_idx, name, name_size);
     if (!entry) {
-
         if (DEBUG_CLASS_LEVEL_2)
-            knd_log("-- no local class found in: %.*s", self->name_size, self->name);
+            knd_log("-- no local class found in: %.*s (idx:%p)",
+                    self->name_size, self->name, class_name_idx);
 
         /* check parent schema */
         if (self->base) {
@@ -930,7 +927,7 @@ extern int knd_get_class(struct kndRepo *self,
             if (err) return err;
             return knd_OK;
         }
-        knd_log("-- no such class: \"%.*s\":(", name_size, name);
+        //knd_log("-- no such class: \"%.*s\":(", name_size, name);
         log->reset(log);
         err = log->write(log, name, name_size);
         if (err) return err;

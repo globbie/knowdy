@@ -306,7 +306,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
         return make_gsl_err_external(err);
     }
 
-    err = knd_get_class_inst(c, name, name_size, &inst);
+    err = knd_get_class_inst(c, name, name_size, task, &inst);
     if (err) {
         knd_log("-- no such user: %.*s", name_size, name);
         log->reset(log);
@@ -578,7 +578,7 @@ extern gsl_err_t knd_parse_select_user(struct kndTask *task,
 
     switch (task->type) {
     case KND_UPDATE_STATE:
-        err = knd_confirm_state(repo);
+        err = knd_confirm_state(repo, task);
         if (err) return make_gsl_err_external(err);
         break;
     default:

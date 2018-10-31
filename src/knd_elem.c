@@ -359,9 +359,11 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t check_class_inst_name(void *obj, const char *name, size_t name_size)
+static gsl_err_t check_class_inst_name(void *obj,
+                                       const char *name, size_t name_size)
 {
-    struct kndElem *self = obj;
+    struct kndTask *task = obj;
+    struct kndElem *self = task->elem;
     struct kndClass *c = self->curr_class;
     struct kndClassInst *inst;
     int err;
@@ -371,7 +373,7 @@ static gsl_err_t check_class_inst_name(void *obj, const char *name, size_t name_
                 c->name_size, c->name,
                 name_size, name);
 
-    err = knd_get_class_inst(self->curr_class, name, name_size, &inst);
+    err = knd_get_class_inst(self->curr_class, name, name_size, task, &inst);
     if (err) return make_gsl_err_external(err);
 
     self->ref_inst = inst;

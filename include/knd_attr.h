@@ -146,6 +146,7 @@ struct kndAttrVar
     size_t depth;
     size_t max_depth;
 
+    struct kndTask *task;
     struct kndState *states;
     size_t init_state;
     size_t num_states;
@@ -233,6 +234,12 @@ struct kndAttr
 /* constructor */
 extern void kndAttr_init(struct kndAttr *self);
 extern int kndAttr_new(struct kndAttr **self);
+
+extern int knd_attr_var_export_GSL(struct kndAttrVar *self,
+                                   struct kndTask *task);
+extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
+                                    struct kndTask *task,
+                                     bool is_concise);
 
 extern int knd_attr_var_export_JSON(struct kndAttrVar *self,
                                     struct kndTask *task);
