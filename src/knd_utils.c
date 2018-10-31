@@ -51,6 +51,14 @@ extern void knd_log(const char *fmt, ...)
     va_end(args);
 }
 
+extern int knd_print_offset(struct glbOutput *out,
+                            size_t num_spaces)
+{
+    char buf[KND_PATH_SIZE];
+    memset(buf, ' ', num_spaces); 
+    return out->write(out, buf, num_spaces);
+}
+
 //extern int
 //knd_compare(const char *a, const char *b)
 //{

@@ -41,7 +41,7 @@
 #define DEBUG_ATTR_GSL_LEVEL_TMP 1
 
 static int attr_var_list_export_GSL(struct kndAttrVar *parent_item,
-                                     struct kndTask *task);
+                                    struct kndTask *task);
 
 static int inner_item_export_GSL(struct kndAttrVar *parent_item,
                                   struct kndTask *task)
@@ -467,8 +467,9 @@ static int attr_var_list_export_GSL(struct kndAttrVar *parent_item,
 }
 
 extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
-                                     struct kndTask *task,
-                                     bool is_concise)
+                                    struct kndTask *task,
+                                    bool is_concise,
+                                    size_t depth)
 {
     struct glbOutput *out = task->out;
     struct kndAttrVar *item;
@@ -533,7 +534,7 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
                 c = item->class;
                 c->depth = 1;
                 c->max_depth = 1;
-                err = knd_class_export(c, KND_FORMAT_GSL, task);
+                err = knd_class_export_GSL(c, task, depth + 1);
                 if (err) return err;
             }
             break;
@@ -551,13 +552,19 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
 }
 
 extern int knd_attr_var_export_GSL(struct kndAttrVar *item,
-                                    struct kndTask *task)
+                                   struct kndTask *task,
+                                   size_t depth)
 {
     struct glbOutput *out = task->out;
     struct kndClass *c;
     int err;
 
     if (item->depth >= item->max_depth) return knd_OK;
+
+    if (task->format_offset) {
+        err = out->writec(out, '\n');                                             RET_ERR();
+        err = knd_print_offset(out, (depth + 1) * task->format_offset);           RET_ERR();
+    }
 
     err = out->writec(out, '"');
     if (err) return err;
@@ -592,8 +599,7 @@ extern int knd_attr_var_export_GSL(struct kndAttrVar *item,
             if (err) return err;
         } else {
             c = item->class;
-            //c->depth = self->depth;
-            err = knd_class_export(c, KND_FORMAT_GSL, task);
+            err = knd_class_export_GSL(c, task, 0);
             if (err) return err;
         }
         break;

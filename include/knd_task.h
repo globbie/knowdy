@@ -74,7 +74,7 @@ struct kndTask
     size_t curr_locale_size;
 
     knd_format format;
-    //struct kndVisualFormat visual;
+    size_t format_offset;
 
     char timestamp[KND_NAME_SIZE];
     size_t timestamp_size;

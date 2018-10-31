@@ -797,7 +797,7 @@ extern int knd_class_export(struct kndClass *self,
     case KND_FORMAT_GSP:
         return knd_class_export_GSP(self, task);
     default:
-        return knd_class_export_GSL(self, task);
+        return knd_class_export_GSL(self, task, 0);
     }
     return knd_FAIL;
 }

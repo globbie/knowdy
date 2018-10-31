@@ -442,11 +442,17 @@ static int export_class_ref_GSL(void *obj,
 }
 
 static int export_gloss_GSL(struct kndClass *self,
-                             struct kndTask *task)
+                            struct kndTask *task,
+                            size_t depth)
 {
     struct glbOutput *out = task->out;
     struct kndTranslation *tr;
     int err;
+
+    if (task->format_offset) {
+        err = out->writec(out, '\n');                                             RET_ERR();
+        err = knd_print_offset(out, (depth + 1) * task->format_offset);           RET_ERR();
+    }
 
     for (tr = self->tr; tr; tr = tr->next) {
         if (memcmp(task->locale, tr->locale, tr->locale_size)) {
@@ -465,7 +471,8 @@ static int export_gloss_GSL(struct kndClass *self,
 
 
 static int export_concise_GSL(struct kndClass *self,
-                               struct kndTask *task)
+                              struct kndTask *task,
+                              size_t depth)
 {
     struct kndClassVar *item;
     int err;
@@ -477,7 +484,7 @@ static int export_concise_GSL(struct kndClass *self,
     for (item = self->baseclass_vars; item; item = item->next) {
         if (!item->attrs) continue;
         err = knd_attr_vars_export_GSL(item->attrs,
-                                        task, true);      RET_ERR();
+                                       task, true, depth + 1);      RET_ERR();
     }
 
     if (DEBUG_GSL_LEVEL_2)
@@ -543,7 +550,8 @@ extern int knd_class_export_set_GSL(struct kndSet *set,
 
 
 static int present_subclass(struct kndClassRef *ref,
-                            struct kndTask *task)
+                            struct kndTask *task,
+                            size_t depth)
 {
     struct glbOutput *out = task->out;
     struct kndClassEntry *entry = ref->entry;
@@ -568,15 +576,16 @@ static int present_subclass(struct kndClassRef *ref,
     if (!c) {
         //err = unfreeze_class(self, entry, &c);                          RET_ERR();
     }
-    err = export_gloss_GSL(c, task);                                               RET_ERR();
-    err = export_concise_GSL(c, task);                                             RET_ERR();
+    err = export_gloss_GSL(c, task, depth + 1);                                               RET_ERR();
+    err = export_concise_GSL(c, task, depth + 1);                                      RET_ERR();
     err = out->writec(out, '}');                                              RET_ERR();
     return knd_OK;
 }
 
 static int present_subclasses(struct kndClass *self,
                               size_t num_children,
-                              struct kndTask *task)
+                              struct kndTask *task,
+                              size_t depth)
 {
     struct glbOutput *out = task->out;
     struct kndClassRef *ref;
@@ -613,7 +622,7 @@ static int present_subclasses(struct kndClass *self,
             err = out->write(out, ",", 1);  RET_ERR();
         }
 
-        err = present_subclass(ref, task);                         RET_ERR();
+        err = present_subclass(ref, task, depth + 1);                         RET_ERR();
         in_list = true;
     }
 
@@ -629,7 +638,7 @@ static int present_subclasses(struct kndClass *self,
                 err = out->write(out, ",", 1);  RET_ERR();
             }
 
-            err = present_subclass(ref, task);                         RET_ERR();
+            err = present_subclass(ref, task, depth + 1);                         RET_ERR();
             in_list = true;
         }
     }
@@ -640,15 +649,22 @@ static int present_subclasses(struct kndClass *self,
 }
 
 static int export_attrs(struct kndClass *self,
-                        struct kndTask *task)
+                        struct kndTask *task,
+                        size_t depth)
 {
     struct glbOutput *out = task->out;
     struct kndAttr *attr;
     size_t i = 0;
     int err;
-    err = out->write(out, ",\"_attrs\":{",
-                     strlen(",\"_attrs\":{"));   RET_ERR();
-    
+
+    err = out->write(out, "[attrs",
+                     strlen("[attrs"));   RET_ERR();
+
+    if (task->format_offset) {
+        err = out->writec(out, '\n');                                             RET_ERR();
+        err = knd_print_offset(out, (depth + 1) * task->format_offset);           RET_ERR();
+    }
+
     for (attr = self->attrs; attr; attr = attr->next) {
         if (i) {
             err = out->write(out, ",", 1);  RET_ERR();
@@ -663,40 +679,53 @@ static int export_attrs(struct kndClass *self,
         i++;
     }
     err = out->writec(out, '}'); RET_ERR();
+
+    
     return knd_OK;
 }
 
 static int export_baseclass_vars(struct kndClass *self,
-                                 struct kndTask *task)
+                                 struct kndTask *task,
+                                 size_t depth)
 {
     struct glbOutput *out = task->out;
     struct kndClassVar *item;
     size_t item_count = 0;
     int err;
 
-    err = out->write(out, ",\"_is\":[", strlen(",\"_is\":["));                    RET_ERR();
+    err = out->write(out, "[is", strlen("[is"));                                  RET_ERR();
+
+    if (task->format_offset) {
+        err = out->writec(out, '\n');                                             RET_ERR();
+        err = knd_print_offset(out, (depth + 1) * task->format_offset);           RET_ERR();
+    }
 
     for (item = self->baseclass_vars; item; item = item->next) {
-        if (item_count) {
-            err = out->write(out, ",", 1);                                        RET_ERR();
+        err = out->writec(out, '{');               RET_ERR();
+        err = out->write(out, item->entry->name, item->entry->name_size);         RET_ERR();
+        
+        if (task->format_offset) {
+            err = out->writec(out, '\n');                                         RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * task->format_offset);       RET_ERR();
+        }
+        err = out->write(out, "{_id ", strlen("{_id "));                          RET_ERR();
+        err = out->writef(out, "%zu", item->numid);                               RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
+
+        if (task->format_offset) {
+            err = out->writec(out, '\n');                                         RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * task->format_offset);       RET_ERR();
         }
 
-        err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));          RET_ERR();
-        err = out->write(out, item->entry->name, item->entry->name_size);         RET_ERR();
-        err = out->write(out, "\"", 1);                                           RET_ERR();
-
-        err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                  RET_ERR();
-        err = out->writef(out, "%zu", item->numid);                               RET_ERR();
-
         if (item->entry->class) {
-            err = export_gloss_GSL(item->entry->class, task);                     RET_ERR();
+            err = export_gloss_GSL(item->entry->class, task, depth + 2);          RET_ERR();
         }
 
         if (item->attrs) {
             item->attrs->depth = self->depth;
             item->attrs->max_depth = self->max_depth;
             err = knd_attr_vars_export_GSL(item->attrs,
-                                            task, false);      RET_ERR();
+                                           task, false, depth);      RET_ERR();
         }
 
         /*if (self->num_computed_attrs) {
@@ -718,7 +747,8 @@ static int export_baseclass_vars(struct kndClass *self,
 }
                                      
 extern int knd_class_export_GSL(struct kndClass *self,
-                                struct kndTask *task)
+                                struct kndTask *task,
+                                size_t depth)
 {
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
@@ -732,15 +762,19 @@ extern int knd_class_export_GSL(struct kndClass *self,
     int err;
 
     if (DEBUG_GSL_LEVEL_TMP) {
-        knd_log("\n.. GSL export: \"%.*s\" (repo:%.*s)  depth:%zu max depth:%zu",
+        knd_log("\n.. GSL export: \"%.*s\" (repo:%.*s)  depth:%zu max depth:%zu offset:%zu",
                 entry->name_size, entry->name,
                 entry->repo->name_size, entry->repo->name,
-                self->depth, self->max_depth);
+                self->depth, self->max_depth, task->format_offset);
     }
 
-    err = out->write(out, "{class ", strlen("{class "));              RET_ERR();
+    err = out->write(out, "{class ", strlen("{class "));                          RET_ERR();
     err = out->write_escaped(out, entry->name, entry->name_size);                 RET_ERR();
-    err = out->writec(out, '\n');                                                  RET_ERR();
+
+    if (task->format_offset) {
+        err = out->writec(out, '\n');                                             RET_ERR();
+        err = knd_print_offset(out, (depth + 1) * task->format_offset);           RET_ERR();
+    }
 
     err = out->write(out, "{_id ", strlen("{_id "));                              RET_ERR();
     err = out->writef(out, "%zu", entry->numid);                                  RET_ERR();
@@ -750,11 +784,21 @@ extern int knd_class_export_GSL(struct kndClass *self,
         goto final;
     }
 
+    if (task->format_offset) {
+        err = out->writec(out, '\n');                                             RET_ERR();
+        err = knd_print_offset(out, (depth + 1) * task->format_offset);           RET_ERR();
+    }
+    
     err = out->write(out, "{_repo ", strlen("{_repo "));              RET_ERR();
     err = out->write(out, entry->repo->name,
                      entry->repo->name_size);                                     RET_ERR();
-    err = out->writec(out, '\n');                                                  RET_ERR();
+    err = out->writec(out, '}');                                                  RET_ERR();
 
+    if (task->format_offset) {
+        err = out->writec(out, '\n');                                             RET_ERR();
+        err = knd_print_offset(out, (depth + 1) * task->format_offset);           RET_ERR();
+    }
+    
     if (state) {
         err = out->write(out, "{_state ", strlen("{_state "));            RET_ERR();
         err = out->writef(out, "%zu", state->numid);                              RET_ERR();
@@ -782,11 +826,11 @@ extern int knd_class_export_GSL(struct kndClass *self,
         err = out->writec(out, '\n');  RET_ERR();
     }
     
-    err = export_gloss_GSL(self, task);                                                RET_ERR();
+    err = export_gloss_GSL(self, task, depth + 1);                                       RET_ERR();
 
     if (self->depth >= self->max_depth) {
         /* any concise fields? */
-        err = export_concise_GSL(self, task);                                          RET_ERR();
+        err = export_concise_GSL(self, task, depth + 1);                                          RET_ERR();
         goto final;
     }
 
@@ -797,26 +841,20 @@ extern int knd_class_export_GSL(struct kndClass *self,
         err = knd_export_class_state_GSL(self, task);                                      RET_ERR();
     }
 
-    /*if (self->num_inst_states) {
-        err = out->writec(out, ',');
-        if (err) return err;
-        err = export_class_inst_state_GSL(self);                                      RET_ERR();
-        }*/
-
     /* display base classes only once */
     if (self->num_baseclass_vars) {
-        err = export_baseclass_vars(self, task);                          RET_ERR();
+        err = export_baseclass_vars(self, task, depth + 1);                          RET_ERR();
     } else {
         if (orig_entry && orig_entry->class->num_baseclass_vars) {
-            err = export_baseclass_vars(orig_entry->class, task);         RET_ERR();
+            err = export_baseclass_vars(orig_entry->class, task, depth + 1);         RET_ERR();
         }
     }
 
     if (self->attrs) {
-        err = export_attrs(self, task); RET_ERR();
+        err = export_attrs(self, task, depth + 1); RET_ERR();
     } else {
         if (orig_entry && orig_entry->class->num_attrs) {
-            err = export_attrs(orig_entry->class, task);                   RET_ERR();
+            err = export_attrs(orig_entry->class, task, depth + 1);                   RET_ERR();
         }
     }
 
@@ -836,7 +874,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
         num_children += orig_entry->num_children;
 
     if (num_children) {
-        err = present_subclasses(self, num_children, task);                        RET_ERR();
+        err = present_subclasses(self, num_children, task, depth + 1);            RET_ERR();
     }
 
     /* instances */
@@ -845,7 +883,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
                          strlen(",\"_instances\":{"));                            RET_ERR();
 
         if (self->inst_states) {
-            err = knd_export_class_inst_state_GSL(self);                         RET_ERR();
+            err = knd_export_class_inst_state_GSL(self);                          RET_ERR();
         }
 
         // TODO navigation facets?
@@ -853,7 +891,6 @@ extern int knd_class_export_GSL(struct kndClass *self,
         err = out->writec(out, '}');
         if (err) return err;
     }
-
 
     /* relations */
     if (entry->reverse_rels) {
@@ -901,8 +938,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
     }
     
  final:
-    err = out->write(out, "}", 1);
-    if (err) return err;
+    err = out->writec(out, '}');  RET_ERR();
 
     return knd_OK;
 }

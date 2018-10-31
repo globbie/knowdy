@@ -17,6 +17,27 @@
 #define DEBUG_TEXT_LEVEL_3 0
 #define DEBUG_TEXT_LEVEL_TMP 1
 
+static int export_GSL(struct kndText *self,
+                      struct kndTask *task)
+{
+    struct glbOutput *out = task->out;
+    struct kndTranslation *tr;
+    int err;
+
+    if (DEBUG_TEXT_LEVEL_TMP)
+        knd_log(".. export text to GSL, locale: %.*s",
+                task->locale_size, task->locale);
+
+    for (tr = self->tr; tr; tr = tr->next) {
+        if (memcmp(task->locale, tr->locale, tr->locale_size)) {
+            continue;
+        }
+        err = out->write_escaped(out, tr->val,  tr->val_size);                    RET_ERR();
+        break;
+    }
+    return knd_OK;
+}
+
 static int export_JSON(struct kndText *self,
                        struct kndTask *task)
 {
@@ -150,6 +171,10 @@ extern int knd_text_export(struct kndText *self,
     int err;
 
     switch (format) {
+    case KND_FORMAT_GSL:
+        err = export_GSL(self, task);
+        if (err) return err;
+        break;
     case KND_FORMAT_JSON:
         err = export_JSON(self, task);
         if (err) return err;
