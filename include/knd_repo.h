@@ -109,7 +109,7 @@ struct kndRepo
 
 extern int knd_present_repo_state(struct kndRepo *self,
                                   struct glbOutput *out);
-extern int knd_confirm_state(struct kndRepo *self);
+extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task);
 
 extern int kndRepo_init(struct kndRepo *self, struct kndTask *task);
 extern int kndRepo_new(struct kndRepo **self, struct kndMemPool *mempool);

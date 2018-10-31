@@ -138,7 +138,9 @@ extern int kndClassInst_new(struct kndClassInst **self);
 
 extern gsl_err_t knd_parse_select_inst(struct kndClassInst *self,
                                        const char *rec,
-                                       size_t *total_size);
+                                       size_t *total_size,
+                                       struct kndTask *task);
+
 extern void knd_class_inst_str(struct kndClassInst *self, size_t depth);
 
 extern int knd_class_inst_entry_new(struct kndMemPool *mempool,

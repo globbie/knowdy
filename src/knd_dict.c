@@ -99,8 +99,6 @@ ooDict_find_item(struct ooDict *self,
 
     for (cur = l->head; cur; cur = cur->next) {
         item = cur->data;
-        /*knd_log("++ GOT ITEM \"%.*s\": key:%p data:%p",
-          item->key_size, item->key, item->key, item->data); */
         if (item->key_size != key_size) continue;
         if (!memcmp(item->key, key, key_size))
             return item;
@@ -125,7 +123,7 @@ ooDict_get(struct ooDict *self,
 
     h = oo_hash(key, key_size) % self->hash->size;
     l = (struct ooList*)self->hash->data[h];
-    
+
     for (cur = l->head; cur; cur = cur->next) {
         cur_key = ((struct ooDictItem*)cur->data)->key;
         cur_key_size = ((struct ooDictItem*)cur->data)->key_size;
@@ -154,6 +152,7 @@ ooDict_set(struct ooDict *self,
     unsigned int h;
 
     if (!key) return oo_FAIL;
+    if (!data) return oo_FAIL;
 
     h = oo_hash(key, key_size) % self->hash->size;
     l = (struct ooList*)self->hash->data[h];
@@ -169,8 +168,7 @@ ooDict_set(struct ooDict *self,
     }
 
     if (item) {
-        item->data = data;
-        return oo_OK;
+        return oo_CONFLICT;
     }
 
     item = (struct ooDictItem*)malloc(sizeof(struct ooDictItem));

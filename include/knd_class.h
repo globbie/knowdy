@@ -245,8 +245,7 @@ extern int knd_class_get_attr(struct kndClass *self,
 extern int knd_export_class_state_JSON(struct kndClass *self,
                                        struct kndTask *task);
 
-extern int knd_class_export_set_JSON(struct kndClass *self,
-                                     struct kndSet *set,
+extern int knd_class_export_set_JSON(struct kndSet *set,
                                      struct kndTask *task);
 
 extern int knd_class_export_JSON(struct kndClass *self,
@@ -263,6 +262,8 @@ extern gsl_err_t knd_parse_summary_array(void *obj,
                                          const char *rec,
                                          size_t *total_size);
 
+extern int knd_class_export_GSL(struct kndClass *self,
+                                struct kndTask *task);
 extern int knd_class_export_GSP(struct kndClass *self,
                                 struct kndTask *task);
 
@@ -279,7 +280,9 @@ extern int knd_class_import(struct kndClass *self,
                             size_t *total_size,
                             struct kndTask *task);
 
-extern int knd_inherit_attrs(struct kndClass *self, struct kndClass *base, struct kndTask *task);
+extern int knd_inherit_attrs(struct kndClass *self,
+                             struct kndClass *base,
+                             struct kndTask *task);
 
 extern gsl_err_t knd_class_select(void *obj,
                                   const char *rec,
@@ -298,17 +301,18 @@ extern gsl_err_t knd_read_class_inst_state(struct kndClass *self,
                                            size_t *total_size);
 
 extern gsl_err_t knd_read_class_state(struct kndClass *self,
-                                          struct kndClassUpdate *update,
-                                          const char *rec,
-                                          size_t *total_size);
+                                      struct kndClassUpdate *update,
+                                      const char *rec,
+                                      size_t *total_size);
 
 extern int knd_get_class_inst(struct kndClass *self,
                               const char *name, size_t name_size,
+                              struct kndTask *task,
                               struct kndClassInst **result);
 
 extern int knd_register_class_inst(struct kndClass *self,
                                    struct kndClassInstEntry *entry,
-                                    struct kndMemPool *mempool);
+                                   struct kndMemPool *mempool);
 
 extern int knd_unregister_class_inst(struct kndClass *self,
                                    struct kndClassInstEntry *entry);

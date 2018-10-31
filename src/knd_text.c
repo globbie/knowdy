@@ -25,15 +25,14 @@ static int export_JSON(struct kndText *self,
     int err;
 
     if (DEBUG_TEXT_LEVEL_2)
-        knd_log(".. export text to JSON..");
+        knd_log(".. export text to JSON, locale: %.*s",
+                task->locale_size, task->locale);
 
     for (tr = self->tr; tr; tr = tr->next) {
         if (memcmp(task->locale, tr->locale, tr->locale_size)) {
             continue;
         }
-        err = out->writec(out, '"');                                              RET_ERR();
         err = out->write_escaped(out, tr->val,  tr->val_size);                    RET_ERR();
-        err = out->writec(out, '"');                                              RET_ERR();
         break;
     }
     return knd_OK;
@@ -262,8 +261,6 @@ extern int knd_text_translation_new(struct kndMemPool *mempool,
     void *page;
     int err;
 
-    //knd_log(".. new text translation [size:%zu]", sizeof(struct kndTranslation));
-
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
                             sizeof(struct kndTranslation), &page);
     if (err) return err;
@@ -277,8 +274,6 @@ extern int knd_text_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    //knd_log(".. new text [size:%zu]", sizeof(struct kndText));
-
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
                             sizeof(struct kndText), &page);
     if (err) return err;
