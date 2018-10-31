@@ -152,4 +152,6 @@ extern int kndTask_run(struct kndTask *self,
 extern int kndTask_build_report(struct kndTask *self);
 extern void kndTask_reset(struct kndTask *self);
 extern void kndTask_del(struct kndTask *self);
+
+// knd_task.select.c
 extern gsl_err_t knd_select_task(void *obj, const char *rec, size_t *total_size);
