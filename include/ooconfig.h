@@ -25,7 +25,7 @@
 //#define OO_STR(s) #s
 
 /* return error codes */
-enum { oo_OK, oo_FAIL, oo_NOMEM, oo_MATCH, oo_NO_RESULTS } oo_err_codes;
+enum { oo_OK, oo_FAIL, oo_NOMEM, oo_CONFLICT, oo_MATCH, oo_NO_RESULTS } oo_err_codes;
 
 /*static const char *oo_err_codes_text[] =      \
   { "Everything is OK", 
