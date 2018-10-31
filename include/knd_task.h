@@ -144,14 +144,12 @@ struct kndTask
     struct kndMemPool *mempool;
 };
 
-/* constructor */
-extern int kndTask_new(struct kndTask **self);
-extern int kndTask_run(struct kndTask *self,
-                       const char     *rec,
-                       size_t   rec_size);
-extern int kndTask_build_report(struct kndTask *self);
-extern void kndTask_reset(struct kndTask *self);
+// knd_task.c
 extern void kndTask_del(struct kndTask *self);
+extern void kndTask_reset(struct kndTask *self);
+extern int kndTask_run(struct kndTask *self, const char *rec, size_t rec_size);
+extern int kndTask_build_report(struct kndTask *self);
+extern int kndTask_new(struct kndTask **self);
 
 // knd_task.select.c
 extern gsl_err_t knd_select_task(void *obj, const char *rec, size_t *total_size);
