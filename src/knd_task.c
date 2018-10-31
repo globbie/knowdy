@@ -21,7 +21,7 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
-extern void kndTask_del(struct kndTask *self)
+void kndTask_del(struct kndTask *self)
 {
     self->log->del(self->log);
     self->out->del(self->out);
@@ -32,7 +32,7 @@ extern void kndTask_del(struct kndTask *self)
     free(self);
 }
 
-extern void kndTask_reset(struct kndTask *self)
+void kndTask_reset(struct kndTask *self)
 {
     self->tid_size = 0;
 
@@ -116,8 +116,7 @@ static int log_parser_error(struct kndTask *self,
                              line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
 }
 
-extern int kndTask_run(struct kndTask *self,
-                       const char *rec, size_t rec_size)
+int kndTask_run(struct kndTask *self, const char *rec, size_t rec_size)
 {
     int err;
     gsl_err_t parser_err;
@@ -146,7 +145,7 @@ extern int kndTask_run(struct kndTask *self,
     return knd_OK;
 }
 
-extern int kndTask_build_report(struct kndTask *self)
+int kndTask_build_report(struct kndTask *self)
 {
     size_t obj_size;
     size_t chunk_size;
@@ -245,7 +244,7 @@ extern int kndTask_build_report(struct kndTask *self)
     return knd_OK;
 }
 
-extern int kndTask_new(struct kndTask **task)
+int kndTask_new(struct kndTask **task)
 {
     struct kndTask *self;
     int err;
