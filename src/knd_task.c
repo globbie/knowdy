@@ -43,6 +43,9 @@ extern void kndTask_reset(struct kndTask *self)
     self->type = KND_GET_STATE;
     self->phase = KND_SELECTED;
 
+    self->format = KND_FORMAT_GSL;
+    self->format_offset = 0;
+
     self->num_sets = 0;
     
     self->batch_max = KND_RESULT_BATCH_SIZE;
@@ -142,6 +145,28 @@ static gsl_err_t run_set_format(void *obj,
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err_external(knd_NO_MATCH);
+}
+
+
+static gsl_err_t parse_format(void *obj,
+                              const char *rec,
+                              size_t *total_size)
+{
+    struct kndTask *self = obj;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_format,
+          .obj = self
+        },
+        { .name = "offset",
+          .name_size = strlen("offset"),
+          .parse = gsl_parse_size_t,
+          .obj = &self->format_offset
+        }
+    };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static gsl_err_t parse_user(void *obj,
@@ -249,7 +274,7 @@ static gsl_err_t parse_GSL(void *obj, const char *rec, size_t *total_size)
         },
         { .name = "format",
           .name_size = strlen("format"),
-          .run = run_set_format,
+          .parse = parse_format,
           .obj = self
         },
         { .name = "user",

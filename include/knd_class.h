@@ -263,7 +263,8 @@ extern gsl_err_t knd_parse_summary_array(void *obj,
                                          size_t *total_size);
 
 extern int knd_class_export_GSL(struct kndClass *self,
-                                struct kndTask *task);
+                                struct kndTask *task,
+                                size_t depth);
 extern int knd_class_export_GSP(struct kndClass *self,
                                 struct kndTask *task);
 

@@ -6,9 +6,13 @@
 #include <sys/stat.h>
 
 #include "knd_config.h"
+#include <glb-lib/output.h>
 
 extern void  knd_calc_num_id(const char *id, size_t id_size, size_t *numval);
 extern void knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base);
+
+extern int knd_print_offset(struct glbOutput *out,
+                            size_t num_spaces);
 
 static inline void knd_gsp_num_to_num(const char *val, size_t val_size, size_t *num) {
     knd_calc_num_id(val, val_size, num);
