@@ -40,13 +40,13 @@ typedef enum knd_obj_type {
     KND_OBJ_INNER
 } knd_obj_type;
 
-struct kndMatchPoint
-{
-    bool is_accented;
-    size_t score;
-    size_t seqnum;
-    size_t orig_pos;
-};
+//struct kndMatchPoint
+//{
+//    bool is_accented;
+//    size_t score;
+//    size_t seqnum;
+//    size_t orig_pos;
+//};
 
 struct kndClassInstEntry
 {
@@ -66,14 +66,14 @@ struct kndClassInstEntry
     struct kndRelRef *rels;
 };
 
-struct kndObjDir
-{
-    struct kndClassInstEntry *objs[KND_RADIX_BASE];
-    size_t num_objs;
-
-    struct kndObjDir *dirs[KND_RADIX_BASE];
-    size_t num_dirs;
-};
+//struct kndObjDir
+//{
+//    struct kndClassInstEntry *objs[KND_RADIX_BASE];
+//    size_t num_objs;
+//
+//    struct kndObjDir *dirs[KND_RADIX_BASE];
+//    size_t num_dirs;
+//};
 
 struct kndClassInst
 {
