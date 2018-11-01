@@ -214,19 +214,6 @@ extern int knd_get_class_by_id(struct kndClass *self,
                                const char *id, size_t id_size,
                                struct kndClass **result);
 
-extern int knd_class_get_updates(struct kndClass *self,
-                                 size_t gt, size_t lt,
-                                 size_t unused_var(eq),
-                                 struct kndSet *set);
-extern int knd_class_get_desc_updates(struct kndClass *self,
-                                      size_t gt, size_t lt,
-                                      size_t unused_var(eq),
-                                      struct kndSet *set);
-
-extern int knd_class_get_inst_updates(struct kndClass *self,
-                                      size_t gt, size_t lt, size_t eq,
-                                      struct kndSet *set);
-
 extern gsl_err_t knd_import_class_var(struct kndClassVar *self,
                                       const char *rec,
                                       size_t *total_size);
@@ -284,10 +271,6 @@ extern int knd_class_import(struct kndClass *self,
 extern int knd_inherit_attrs(struct kndClass *self,
                              struct kndClass *base,
                              struct kndTask *task);
-
-extern gsl_err_t knd_class_select(void *obj,
-                                  const char *rec,
-                                  size_t *total_size);
 
 extern int knd_compute_class_attr_num_value(struct kndClass *self,
                                             struct kndAttrVar *attr_var);
@@ -361,3 +344,20 @@ extern int knd_inner_class_new(struct kndMemPool *mempool,
 extern int knd_class_new(struct kndMemPool *mempool,
                          struct kndClass **result);
 
+// knd_class.select.c
+extern gsl_err_t knd_class_select(void *obj,
+                                  const char *rec,
+                                  size_t *total_size);
+
+// knd_class.states.c
+extern int knd_class_get_updates(struct kndClass *self,
+                                 size_t gt, size_t lt,
+                                 size_t unused_var(eq),
+                                 struct kndSet *set);
+extern int knd_class_get_desc_updates(struct kndClass *self,
+                                      size_t gt, size_t lt,
+                                      size_t unused_var(eq),
+                                      struct kndSet *set);
+extern int knd_class_get_inst_updates(struct kndClass *self,
+                                      size_t gt, size_t lt, size_t eq,
+                                      struct kndSet *set);
