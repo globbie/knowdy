@@ -131,7 +131,7 @@ struct kndClassEntry
     struct kndProcEntry **procs;
     size_t num_procs;
 
-    struct kndObjDir *obj_dir;
+    //struct kndObjDir *obj_dir;
 
     struct kndSet *inst_idx;
     size_t num_insts;
