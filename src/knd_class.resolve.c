@@ -275,18 +275,42 @@ static int resolve_class_ref(struct kndClass *self,
     struct ooDict *class_name_idx = self->entry->repo->class_name_idx;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. checking class ref:  \"%.*s\"..",
                 name_size, name);
+        if (base) {
+            knd_log(".. base template: \"%.*s\"..",
+                    base->name_size, base->name);
+        }
+    }
 
     if (task->batch_mode) {
         entry = class_name_idx->get(class_name_idx,
                                     name, name_size);
         if (!entry) {
-            knd_log("-- couldn't resolve the class ref \"%.*s\" idx:%p",
-                    name_size, name, class_name_idx);
+            knd_log("-- couldn't resolve the class ref \"%.*s\"",
+                    name_size, name);
             return knd_FAIL;
         }
+
+        if (base) {
+            c = entry->class;
+            if (!c) {
+                knd_log("-- no such class: \"%.*s\"", name_size, name);
+                return knd_FAIL;
+            }
+            if (!c->is_resolved) {
+                err = knd_class_resolve(c, task);                                   RET_ERR();
+            }
+            err = knd_is_base(base, c);
+            if (err) {
+                knd_log("-- no inheritance from %.*s to %.*s",
+                        base->name_size, base->name,
+                        c->name_size, c->name);
+                return err;
+            }
+        }
+
         return knd_OK;
     }
 
