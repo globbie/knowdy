@@ -180,6 +180,9 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
 
         switch (item->attr->type) {
         case KND_ATTR_REF:
+            knd_log("ref:%.*s  %.*s",
+                    item->name_size, item->name,
+                    item->val_size, item->val);
             assert(item->class != NULL);
             c = item->class;
             c->depth = 1;
@@ -335,6 +338,10 @@ static int ref_item_export_JSON(struct kndAttrVar *item,
 {
     struct kndClass *c;
     int err;
+
+    knd_log("== ref:\"%.*s\"  val:\"%.*s\"",
+            item->name_size, item->name,
+            item->val_size, item->val);
 
     // TODO
     assert(item->class != NULL);

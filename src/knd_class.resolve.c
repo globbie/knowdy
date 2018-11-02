@@ -292,16 +292,16 @@ static int resolve_class_ref(struct kndClass *self,
                     name_size, name);
             return knd_FAIL;
         }
+        c = entry->class;
+        if (!c) {
+            knd_log("-- no such class: \"%.*s\"", name_size, name);
+            return knd_FAIL;
+        }
+        if (!c->is_resolved) {
+            err = knd_class_resolve(c, task);                                   RET_ERR();
+        }
 
         if (base) {
-            c = entry->class;
-            if (!c) {
-                knd_log("-- no such class: \"%.*s\"", name_size, name);
-                return knd_FAIL;
-            }
-            if (!c->is_resolved) {
-                err = knd_class_resolve(c, task);                                   RET_ERR();
-            }
             err = knd_is_base(base, c);
             if (err) {
                 knd_log("-- no inheritance from %.*s to %.*s",
@@ -310,7 +310,7 @@ static int resolve_class_ref(struct kndClass *self,
                 return err;
             }
         }
-
+        *result = c;
         return knd_OK;
     }
 

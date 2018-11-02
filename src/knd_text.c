@@ -172,16 +172,13 @@ extern int knd_text_export(struct kndText *self,
 
     switch (format) {
     case KND_FORMAT_GSL:
-        err = export_GSL(self, task);
-        if (err) return err;
+        err = export_GSL(self, task);  RET_ERR();
         break;
     case KND_FORMAT_JSON:
-        err = export_JSON(self, task);
-        if (err) return err;
+        err = export_JSON(self, task);  RET_ERR();
         break;
     case KND_FORMAT_GSP:
-        err = export_GSP(self, task, task->out);
-        if (err) return err;
+        err = export_GSP(self, task, task->out);  RET_ERR();
         break;
     default:
         break;
