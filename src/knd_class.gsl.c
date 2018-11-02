@@ -601,7 +601,6 @@ static int present_subclasses(struct kndClass *self,
     struct kndClassEntry *orig_entry = entry->orig;
     struct kndClass *c;
     struct kndState *state;
-    bool in_list = false;
     int err;
 
     err = out->write(out, "{_subclasses {total ",
@@ -634,7 +633,6 @@ static int present_subclasses(struct kndClass *self,
             err = knd_print_offset(out, (depth + 2) * task->format_offset);           RET_ERR();
         }
         err = present_subclass(ref, task, depth + 2);                             RET_ERR();
-        in_list = true;
     }
 
     if (orig_entry) {
