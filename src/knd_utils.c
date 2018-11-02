@@ -20,6 +20,7 @@
 #include <glb-lib/output.h>
 
 #include "knd_config.h"
+#include "knd_task.h"
 #include "knd_utils.h"
 
 #define DEBUG_UTILS_LEVEL_1 0
@@ -49,6 +50,31 @@ extern void knd_log(const char *fmt, ...)
     vprintf(fmt, args);
     printf("\n");
     va_end(args);
+}
+
+extern gsl_err_t knd_set_curr_state(void *obj,
+                                    const char *val, size_t val_size)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size;
+    struct kndTask *task = obj;
+    long numval;
+    int err;
+
+    if (!val_size) return make_gsl_err_external(knd_FAIL);
+    if (val_size >= KND_NAME_SIZE) return make_gsl_err_external(knd_LIMIT);
+
+    memcpy(buf, val, val_size);
+    buf_size = val_size;
+    buf[buf_size] = '\0';
+
+    err = knd_parse_num(buf, &numval);
+    if (err) return make_gsl_err_external(err);
+
+    // TODO: check integer
+    task->state_eq = (size_t)numval;
+
+    return make_gsl_err(gsl_OK);
 }
 
 extern int knd_print_offset(struct glbOutput *out,
