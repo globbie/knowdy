@@ -302,13 +302,9 @@ static int proc_item_export_GSL(struct kndAttrVar *item,
     struct glbOutput *out = task->out;
     struct kndProc *proc;
     int err;
-
     assert(item->proc != NULL);
     proc = item->proc;
-
-    err = knd_proc_export(proc, KND_FORMAT_GSL, out);
-    if (err) return err;
-
+    err = knd_proc_export(proc, KND_FORMAT_GSL, out);  RET_ERR();
     return knd_OK;
 }
 
@@ -431,20 +427,19 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
 
         if (in_list) {
             if (task->format_offset) {
-                err = out->writec(out, '\n');                                         RET_ERR();
-                err = knd_print_offset(out, (depth + 1) * task->format_offset);       RET_ERR();
+                err = out->writec(out, '\n');                                     RET_ERR();
+                err = knd_print_offset(out, (depth + 1) * task->format_offset);   RET_ERR();
             }
         }
 
-        err = out->writec(out, '{');
-        if (err) return err;
-        err = out->write(out, item->name, item->name_size);
-        if (err) return err;
+        err = out->writec(out, '{');                                              RET_ERR();
+        err = out->write(out, item->name, item->name_size);                       RET_ERR();
 
         switch (item->attr->type) {
         case KND_ATTR_NUM:
             err = out->writec(out, ' ');  RET_ERR();
             err = out->write(out, item->val, item->val_size); RET_ERR();
+            break;
         case KND_ATTR_TEXT:
             err = out->writec(out, ' ');                                          RET_ERR();
             err = knd_text_export(item->text, KND_FORMAT_GSL, task);
@@ -475,8 +470,9 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
             }
             break;
         default:
-            err = out->writec(out, ' ');  RET_ERR();
-            err = out->write(out, item->val, item->val_size);  RET_ERR();
+            err = out->writec(out, ' ');                                          RET_ERR();
+            err = out->write(out, item->val, item->val_size);                     RET_ERR();
+            break;
         }
     }
 
