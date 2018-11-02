@@ -177,15 +177,15 @@ static gsl_err_t parse_user(void *obj,
                             const char *rec,
                             size_t *total_size)
 {
-    struct kndTask *task = obj;
-    struct kndUser *user = task->shard->user;
-    task->user = user;
+    struct kndTask *self = obj;
+    struct kndUser *user = self->shard->user;
+    self->user = user;
 
-    if (task->curr_locale_size) {
-        task->locale = task->curr_locale;
-        task->locale_size = task->curr_locale_size;
+    if (self->curr_locale_size) {
+        self->locale = self->curr_locale;
+        self->locale_size = self->curr_locale_size;
     }
-    return knd_parse_select_user(task, rec, total_size);
+    return knd_parse_select_user(self, rec, total_size);
 }
 
 static gsl_err_t parse_class_import(void *obj,
@@ -289,14 +289,13 @@ static gsl_err_t parse_update(void *obj,
         }
     };
 
+    self->type = KND_LIQUID_STATE;
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-
-extern gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *self = obj;
-
     struct gslTaskSpec specs[] = {
         { .name = "tid",
           .name_size = strlen("tid"),
@@ -342,5 +341,23 @@ extern gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
           .obj = self
         }
     };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+gsl_err_t knd_select_task(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndTask *self = obj;
+    struct gslTaskSpec specs[] = {
+        { .name = "task",
+          .name_size = strlen("task"),
+          .parse = parse_task,
+          .obj = self
+        }
+    };
+
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log(".. parsing task: \"%.*s\"..", 256, rec);
+
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }

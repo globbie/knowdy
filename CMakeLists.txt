@@ -61,7 +61,7 @@ set(HEADERS include/knd_array.h include/knd_attr.h
         include/ooconfig.h)
 set(SOURCES src/knd_array.c src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr.json.c src/knd_attr.gsl.c
         src/knd_class.c src/knd_class.compute.c src/knd_class.gsl.c src/knd_class.gsp.c
-        src/knd_class.import.c src/knd_class.json.c src/knd_class.gsl.c src/knd_class.resolve.c src/knd_class.select.c
+        src/knd_class.import.c src/knd_class.json.c src/knd_class.resolve.c src/knd_class.select.c src/knd_class.states.c
         src/knd_class_inst.c
         src/knd_dict.c src/knd_elem.c src/knd_list.c
         src/knd_mempool.c src/knd_num.c
