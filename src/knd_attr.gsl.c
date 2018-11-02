@@ -52,7 +52,6 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
     struct kndAttrVar *item;
     struct kndAttr *attr;
     struct kndClass *c;
-    bool in_list = false;
     int err;
 
     c = parent_item->attr->parent_class;
@@ -69,7 +68,6 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
         err = out->writec(out, ' '); RET_ERR();
         err = out->write(out, parent_item->id, parent_item->id_size); RET_ERR();
         err = out->writec(out, '}'); RET_ERR();
-        in_list = true;
         c = parent_item->attr->ref_class;
         /*if (c->num_computed_attrs) {
             if (DEBUG_ATTR_GSL_LEVEL_2)
@@ -111,7 +109,6 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
 
         err = knd_class_export_GSL(c, task, depth + 1);
         if (err) return err;
-        in_list = true;
     }
 
     if (!parent_item->class) {
@@ -128,18 +125,17 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
             err = out->writec(out, ' '); RET_ERR();
 
             err = out->write(out, parent_item->val, parent_item->val_size); RET_ERR();
-            in_list = true;
         }
     }
 
     for (item = parent_item->children; item; item = item->next) {
         if (task->format_offset) {
-            err = out->writec(out, '\n');                                             RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->format_offset);           RET_ERR();
+            err = out->writec(out, '\n');                                         RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * task->format_offset);       RET_ERR();
         }
 
-        err = out->writec(out, '{'); RET_ERR();
-        err = out->write(out, item->name, item->name_size);  RET_ERR();
+        err = out->writec(out, '{');                                              RET_ERR();
+        err = out->write(out, item->name, item->name_size);                       RET_ERR();
 
         switch (item->attr->type) {
         case KND_ATTR_REF:
@@ -147,23 +143,20 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
             c = item->class;
             c->depth = 1;
             c->max_depth = 1;
-            err = knd_class_export_GSL(c, task, depth + 1);
-            if (err) return err;
+            err = knd_class_export_GSL(c, task, depth + 1);                       RET_ERR();
             break;
         case KND_ATTR_INNER:
             err = inner_item_export_GSL(item, task, depth + 1);
             if (err) return err;
             break;
         default:
-            err = out->writec(out, ' '); RET_ERR();
-            err = out->write(out, item->val, item->val_size); RET_ERR();
+            err = out->writec(out, ' ');                                          RET_ERR();
+            err = out->write(out, item->val, item->val_size);                     RET_ERR();
             break;
         }
-
-        in_list = true;
+        err = out->writec(out, '}');                                              RET_ERR();
     }
-
-    err = out->writec(out, '}');  RET_ERR();
+    err = out->writec(out, '}');                                                  RET_ERR();
 
     return knd_OK;
 }
@@ -258,18 +251,16 @@ extern int knd_export_inherited_attr_GSL(void *obj,
     attr_var->depth = self->depth;
     attr_var->max_depth = self->max_depth;
 
-    err = out->writec(out, ',');                                          RET_ERR();
-
     if (attr->is_a_set) {
         return attr_var_list_export_GSL(attr_var, task, depth);
     }
 
-    err = out->writec(out, '"');                                          RET_ERR();
+    err = out->writec(out, '{');                                          RET_ERR();
     err = out->write(out, attr_var->name, attr_var->name_size);           RET_ERR();
-    err = out->write(out, "\":", strlen("\":"));                          RET_ERR();
 
     switch (attr->type) {
     case KND_ATTR_NUM:
+        err = out->writec(out, ' ');                            RET_ERR();
         err = out->write(out, attr_var->val, attr_var->val_size);             RET_ERR();
         break;
     case KND_ATTR_INNER:
@@ -277,14 +268,13 @@ extern int knd_export_inherited_attr_GSL(void *obj,
         if (err) return err;
         break;
     case KND_ATTR_STR:
-        err = out->write(out, "\"", strlen("\""));                            RET_ERR();
+        err = out->writec(out, ' ');                            RET_ERR();
         err = out->write(out, attr_var->val, attr_var->val_size);             RET_ERR();
-        err = out->write(out, "\"", strlen("\""));                            RET_ERR();
         break;
     default:
-        err = out->write(out, "{}", strlen("{}"));                            RET_ERR();
         break;
     }
+    err = out->writec(out, '}');                                          RET_ERR();
     
     return knd_OK;
 }
@@ -328,7 +318,6 @@ static int attr_var_list_export_GSL(struct kndAttrVar *parent_item,
 {
     struct glbOutput *out = task->out;
     struct kndAttrVar *item;
-    bool in_list = false;
     size_t count = 0;
     int err;
 
@@ -337,45 +326,34 @@ static int attr_var_list_export_GSL(struct kndAttrVar *parent_item,
                 parent_item->name_size, parent_item->name);
     }
 
-    err = out->writec(out, '"');
-    if (err) return err;
-    err = out->write(out, parent_item->name, parent_item->name_size);
-    if (err) return err;
-    err = out->write(out, "\":[", strlen("\":["));
-    if (err) return err;
+    err = out->writec(out, '[');  RET_ERR();
+    err = out->write(out, parent_item->name, parent_item->name_size);  RET_ERR();
 
     /* first elem: TODO */
-    if (parent_item->class) {
+    /*if (parent_item->class) {
         switch (parent_item->attr->type) {
         case KND_ATTR_INNER:
             parent_item->id_size = sprintf(parent_item->id, "%lu",
                                            (unsigned long)count);
             count++;
 
-            err = inner_item_export_GSL(parent_item, task, depth + 1);
-            if (err) return err;
+            err = inner_item_export_GSL(parent_item, task, depth + 1);       RET_ERR();
             break;
         case KND_ATTR_REF:
-            err = ref_item_export_GSL(parent_item, task);
-            if (err) return err;
+            err = ref_item_export_GSL(parent_item, task);                    RET_ERR();
             break;
         case KND_ATTR_PROC:
             if (parent_item->proc) {
-                err = proc_item_export_GSL(parent_item, task);
-                if (err) return err;
+                err = proc_item_export_GSL(parent_item, task);   RET_ERR();
             }
             break;
         default:
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->write(out, parent_item->val, parent_item->val_size);
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
+            err = out->writec(out, ' ');  RET_ERR();
+            err = out->write(out, parent_item->val, parent_item->val_size);  RET_ERR();
             break;
         }
-        in_list = true;
     }
+    */
 
     for (item = parent_item->list; item; item = item->next) {
         /* TODO */
@@ -385,10 +363,12 @@ static int attr_var_list_export_GSL(struct kndAttrVar *parent_item,
             continue;
         }
 
-        if (in_list) {
-            err = out->writec(out, ',');
-            if (err) return err;
+        if (task->format_offset) {
+            err = out->writec(out, '\n');                                         RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * task->format_offset);       RET_ERR();
         }
+
+        err = out->writec(out, '{');  RET_ERR();
 
         switch (parent_item->attr->type) {
         case KND_ATTR_INNER:
@@ -410,15 +390,11 @@ static int attr_var_list_export_GSL(struct kndAttrVar *parent_item,
             }
             break;
         default:
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->write(out, item->val, item->val_size);
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
+            err = out->writec(out, ' ');  RET_ERR();
+            err = out->write(out, item->val, item->val_size);  RET_ERR();
             break;
         }
-        in_list = true;
+        err = out->writec(out, '}');  RET_ERR();
     }
     err = out->writec(out, ']');
     if (err) return err;
