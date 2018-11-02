@@ -23,11 +23,11 @@ static gsl_err_t present_repo_state(void *obj,
                                     size_t unused_var(name_size))
 {
     struct kndTask *task = obj;
-    struct kndRepo *repo = task->repo;
+    //struct kndRepo *repo = task->repo;
     struct glbOutput *out = task->out;
-    struct kndMemPool *mempool = task->mempool;
-    struct kndSet *set;
-    struct kndState *latest_state;
+    //struct kndMemPool *mempool = task->mempool;
+    //struct kndSet *set;
+    //struct kndState *latest_state;
     int err;
 
     task->type = KND_SELECT_STATE;
@@ -36,8 +36,8 @@ static gsl_err_t present_repo_state(void *obj,
 
     //latest_state = self->states;
 
-    if (task->state_gt >= latest_state->numid)             goto show_curr_state;
-    if (task->state_lt && task->state_lt < task->state_gt) goto show_curr_state;
+    //if (task->state_gt >= latest_state->numid)             goto show_curr_state;
+    //if (task->state_lt && task->state_lt < task->state_gt) goto show_curr_state;
 
     if (DEBUG_TASK_LEVEL_TMP) {
         knd_log(".. select repo delta:  gt %zu  lt %zu  eq:%zu..",
@@ -59,7 +59,7 @@ static gsl_err_t present_repo_state(void *obj,
 
     return make_gsl_err(gsl_OK);
     */
- show_curr_state:
+    //show_curr_state:
 
     err = out->writec(out, '{');
     if (err) return make_gsl_err_external(err);
@@ -78,7 +78,6 @@ static gsl_err_t parse_repo_state(void *obj,
                                   size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndRepo *repo = task->repo;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -109,11 +108,11 @@ static gsl_err_t parse_repo_state(void *obj,
           .is_selector = true,
           .parse = gsl_parse_size_t,
           .obj = &task->state_lte
-        }/*,
+        },
         { .is_default = true,
-          .run = present_state,
+          .run = present_repo_state,
           .obj = task
-          }*/
+        }
     };
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -237,18 +236,6 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
 
     return make_gsl_err(gsl_FAIL);
 }
-
-static gsl_err_t parse_select_repo_state(void *obj, const char *rec, size_t *total_size)
-{
-    struct kndTask *self = obj;
-    struct gslTaskSpec specs[] = {
-        {   .is_implied = true,
-            .run = run_select_repo,
-            .obj = self
-        }
-    };
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-} 
 
 static gsl_err_t parse_select_repo(void *obj, const char *rec, size_t *total_size)
 {
