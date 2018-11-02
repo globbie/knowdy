@@ -8,6 +8,9 @@
 #include "knd_config.h"
 #include <glb-lib/output.h>
 
+extern gsl_err_t knd_set_curr_state(void *obj,
+                                    const char *val, size_t val_size);
+
 extern void  knd_calc_num_id(const char *id, size_t id_size, size_t *numval);
 extern void knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base);
 
