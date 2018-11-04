@@ -12,6 +12,7 @@ struct glbOutput;
 struct kndTask;
 
 #include "knd_config.h"
+#include "knd_mempool.h"
 
 struct kndRepo
 {
