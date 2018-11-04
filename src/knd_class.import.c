@@ -102,7 +102,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *obj,
     inst->states = state;
     inst->num_states = 1;
 
-    parser_err = inst->parse(inst, rec, total_size);
+    parser_err = knd_import_class_inst(inst, rec, total_size, task);
     if (parser_err.code) return parser_err;
 
     err = knd_state_ref_new(mempool, &state_ref);
