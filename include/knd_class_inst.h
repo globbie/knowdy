@@ -116,13 +116,13 @@ struct kndClassInst
     gsl_err_t (*parse)(struct kndClassInst *self,
                  const char       *rec,
                  size_t           *total_size);
-    gsl_err_t (*read)(struct kndClassInst *self,
-                      const char *rec,
-                      size_t *total_size);
+//    gsl_err_t (*read)(struct kndClassInst *self,
+//                      const char *rec,
+//                      size_t *total_size);
 
-    gsl_err_t (*read_state)(struct kndClassInst *self,
-                            const char *rec,
-                            size_t *total_size);
+//    gsl_err_t (*read_state)(struct kndClassInst *self,
+//                            const char *rec,
+//                            size_t *total_size);
 
     int (*resolve)(struct kndClassInst *self);
 
@@ -136,14 +136,14 @@ extern void kndClassInst_init(struct kndClassInst *self);
 extern void kndClassInstEntry_init(struct kndClassInstEntry *self);
 extern int kndClassInst_new(struct kndClassInst **self);
 
-extern gsl_err_t knd_parse_select_inst(struct kndClassInst *self,
-                                       const char *rec,
-                                       size_t *total_size,
-                                       struct kndTask *task);
-
 extern void knd_class_inst_str(struct kndClassInst *self, size_t depth);
 
 extern int knd_class_inst_entry_new(struct kndMemPool *mempool,
                                     struct kndClassInstEntry **result);
 extern int knd_class_inst_new(struct kndMemPool *mempool,
                               struct kndClassInst **result);
+
+// knd_class_inst.select.c
+extern gsl_err_t knd_select_class_inst(struct kndClassInst *self,
+                                       const char *rec, size_t *total_size,
+                                       struct kndTask *task);

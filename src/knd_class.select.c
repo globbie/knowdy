@@ -976,7 +976,7 @@ static gsl_err_t parse_select_class_inst(void *obj,
     root_inst = repo->root_inst;
     root_inst->base = repo->curr_class;
 
-    parser_err = knd_parse_select_inst(root_inst, rec, total_size, ctx->task);
+    parser_err = knd_select_class_inst(root_inst, rec, total_size, ctx->task);
     if (parser_err.code) return parser_err;
 
     return make_gsl_err(gsl_OK);
