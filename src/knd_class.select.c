@@ -237,15 +237,15 @@ static gsl_err_t set_curr_state(void *obj,
 static gsl_err_t run_set_attr_var(void *obj,
                                   const char *val, size_t val_size)
 {
-    struct kndTask *task;
-    struct kndClass *self = obj;
-    struct kndRepo *repo = self->entry->repo;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     struct kndAttr *attr;
     struct kndAttrRef *attr_ref;
     struct kndAttrVar *attr_var;
-    struct glbOutput *log = repo->log;
+    struct glbOutput *log = task->log;
     struct kndMemPool *mempool = task->mempool;
-    struct kndSet *attr_idx = self->attr_idx;
+    struct kndSet *attr_idx = repo->attr_idx;
     struct kndState *state;
     struct kndStateRef *state_ref;
     struct kndStateVal *state_val;
@@ -325,11 +325,12 @@ static gsl_err_t present_attr_var_selection(void *obj,
                                             const char *unused_var(val),
                                             size_t unused_var(val_size))
 {
-    struct kndTask *task = obj;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
     struct kndClass *self = task->class;
     struct kndAttr *attr;
     struct kndAttrVar *attr_var;
-    struct kndRepo *repo = self->entry->repo;
+    struct kndRepo *repo = ctx->repo;
     struct glbOutput *out = task->out;
     int err;
 
@@ -394,11 +395,11 @@ static gsl_err_t parse_attr_var_select(void *obj,
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_attr_var,
-          .obj = task
+          .obj = ctx
         },
         { .is_default = true,
           .run = present_attr_var_selection,
-          .obj = task
+          .obj = ctx
         }
     };
 
@@ -687,6 +688,7 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndRepo *repo = ctx->repo;
+    struct kndTask *task = ctx->task;
     struct kndClass *c;
     struct glbOutput *log = repo->log;
     size_t num_children;
@@ -700,7 +702,7 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
         err = log->write(log, " class name not specified",
                          strlen(" class name not specified"));
         if (err) return make_gsl_err_external(err);
-        ctx->task->http_code = HTTP_BAD_REQUEST;
+        task->http_code = HTTP_BAD_REQUEST;
         return make_gsl_err(gsl_NO_MATCH);
     }
 
@@ -860,13 +862,12 @@ static gsl_err_t present_state(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static int select_class_desc_state(struct kndClass *self,
-                                   const char *rec,
-                                   size_t *total_size)
+static gsl_err_t parse_select_class_desc_state(void *obj,
+                                               const char *rec,
+                                               size_t *total_size)
 {
-    struct kndRepo *repo = self->entry->repo;
-    struct kndTask *task = repo->task;
-    gsl_err_t parser_err;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -900,36 +901,19 @@ static int select_class_desc_state(struct kndClass *self,
         },
         { .is_default = true,
           .run = present_desc_state,
-          .obj = self
+          .obj = task
         }
     };
 
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
-
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t parse_class_desc_state(void *data,
-                                        const char *rec,
-                                        size_t *total_size)
+static gsl_err_t parse_select_class_state(void *obj,
+                                          const char *rec,
+                                          size_t *total_size)
 {
-    struct kndClass *self = data;
-    int err;
-
-    err = select_class_desc_state(self, rec, total_size);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static int select_class_state(struct kndClass *self,
-                              const char *rec,
-                              size_t *total_size)
-{
-    struct kndRepo *repo = self->entry->repo;
-    struct kndTask *task = repo->task;
-    gsl_err_t parser_err;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -963,35 +947,16 @@ static int select_class_state(struct kndClass *self,
         },
         { .name = "desc",
           .name_size = strlen("desc"),
-          .parse = parse_class_desc_state,
-          .obj = self
+          .parse = parse_select_class_desc_state,
+          .obj = ctx
         },
         { .is_default = true,
           .run = present_state,
-          .obj = self
+          .obj = task
         }
     };
 
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
-
-    return knd_OK;
-}
-
-static gsl_err_t parse_class_state(void *obj,
-                                   const char *rec,
-                                   size_t *total_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
-    int err;
-
-    if (!c) return make_gsl_err(gsl_FAIL);
-
-    err = select_class_state(c, rec, total_size);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static gsl_err_t parse_select_class_inst(void *obj,
@@ -1022,7 +987,6 @@ gsl_err_t knd_select_class(struct kndRepo *repo,
                            struct kndTask *task)
 {
     struct kndClass  *self = task->root_class;
-    struct kndMemPool *mempool = task->mempool;
     knd_state_phase phase;
     int err;
     gsl_err_t parser_err;
@@ -1090,7 +1054,7 @@ gsl_err_t knd_select_class(struct kndRepo *repo,
         },
         { .name = "_state",
           .name_size = strlen("_state"),
-          .parse = parse_class_state,
+          .parse = parse_select_class_state,
           .obj = &ctx
         },
         { .is_validator = true,
@@ -1127,7 +1091,7 @@ gsl_err_t knd_select_class(struct kndRepo *repo,
         phase = KND_UPDATED;
         if (task->phase == KND_REMOVED)
             phase = KND_REMOVED;
-        err = knd_update_state(repo->curr_class, phase, mempool);
+        err = knd_update_state(repo->curr_class, phase, task);
         if (err) return make_gsl_err_external(err);
         break;
     default:
