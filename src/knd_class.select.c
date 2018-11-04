@@ -383,9 +383,8 @@ static gsl_err_t parse_attr_var_select(void *obj,
     struct LocalContext *ctx = obj;
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
-    struct kndRepo *repo = ctx->repo;
-    struct glbOutput *log = repo->log;
-    struct kndTask *task = repo->task;
+    struct kndTask *task = ctx->task;
+    struct glbOutput *log = task->log;
     struct kndClass *c;
     int err, e;
 
@@ -618,10 +617,10 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_get_class(repo, name, name_size, &c, task);
+    err = knd_get_class(repo, name, name_size, &c, ctx->task);
     if (err) return make_gsl_err_external(err);
 
-    task->class = c;
+    ctx->task->class = c;
 
     // TODO
     repo->curr_class_state_refs = NULL;
@@ -640,8 +639,7 @@ static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_siz
     struct kndRepo *repo = ctx->repo;
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
-    struct kndTask *task = obj;
-    struct kndClass *self = task->class;
+    struct kndTask *task = ctx->task;
     struct kndClass *c;
     struct kndClassEntry *entry;
     struct kndSet *class_idx = repo->class_idx;
@@ -702,7 +700,7 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
         err = log->write(log, " class name not specified",
                          strlen(" class name not specified"));
         if (err) return make_gsl_err_external(err);
-        task->http_code = HTTP_BAD_REQUEST;
+        ctx->task->http_code = HTTP_BAD_REQUEST;
         return make_gsl_err(gsl_NO_MATCH);
     }
 
@@ -1023,10 +1021,7 @@ gsl_err_t knd_select_class(struct kndRepo *repo,
                            const char *rec, size_t *total_size,
                            struct kndTask *task)
 {
-    struct kndTask   *task = obj;
     struct kndClass  *self = task->root_class;
-    struct kndRepo   *repo = task->repo;
-    struct glbOutput *log  = task->log;
     struct kndMemPool *mempool = task->mempool;
     knd_state_phase phase;
     int err;
