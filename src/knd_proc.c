@@ -152,7 +152,7 @@ extern int knd_get_proc(struct kndRepo *repo,
                                strlen(" proc was removed"));
         if (err) return err;
         
-        repo->task->http_code = HTTP_GONE;
+        repo->root_proc->task->http_code = HTTP_GONE;
         return knd_NO_MATCH;
     }
     
@@ -160,7 +160,7 @@ extern int knd_get_proc(struct kndRepo *repo,
         proc = entry->proc;
 
         entry->phase = KND_SELECTED;
-        proc->task = repo->task;
+        proc->task = repo->root_proc->task;
         *result = proc;
         return knd_OK;
     }
@@ -193,7 +193,7 @@ static gsl_err_t present_proc_selection(void *obj,
 {
     struct kndProc *self = obj;
     struct kndProc *p;
-    knd_format format = self->entry->repo->task->format;
+    knd_format format = self->entry->repo->root_proc->task->format;
     struct glbOutput *out = self->entry->repo->out;
     int err;
 
@@ -768,7 +768,7 @@ static gsl_err_t alloc_proc_arg(void *obj,
 {
     struct kndProc *self = obj;
     struct kndProcArg *arg;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndMemPool *mempool = self->task->mempool;
     int err;
 
     err = kndProcArg_new(&arg, self, mempool);
@@ -905,7 +905,7 @@ static gsl_err_t parse_proc_call_arg(void *obj,
     struct kndProcCall *proc_call = proc->proc_call;
     struct kndProcCallArg *call_arg;
     struct kndClassVar *class_var;
-    struct kndMemPool *mempool = proc->entry->repo->mempool;
+    struct kndMemPool *mempool = proc->task->mempool;
     gsl_err_t parser_err;
     int err;
 
@@ -962,7 +962,7 @@ static gsl_err_t parse_proc_call(void *obj,
                 32, rec);
 
     if (!proc_call) {
-        mempool = proc->entry->repo->mempool;
+        mempool = proc->task->mempool;
         err = knd_proc_call_new(mempool, &proc->proc_call);
         if (err) return make_gsl_err_external(err);
         proc_call = proc->proc_call;
@@ -1162,7 +1162,7 @@ static int resolve_parents(struct kndProc *self)
                         arg_entry->arg->name_size, arg_entry->arg->name,
                         arg_entry->arg->classname_size, arg_entry->arg->classname);
 
-            err = kndProcArg_new(&arg, self, self->entry->repo->mempool);
+            err = kndProcArg_new(&arg, self, self->task->mempool);
             if (err) return err;
 
             arg->name = arg_item->name;
