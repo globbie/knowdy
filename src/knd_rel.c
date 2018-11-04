@@ -269,7 +269,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 static int export_JSON(struct kndRel *self)
 {
     struct glbOutput *out = self->entry->repo->out;
-    struct kndTask *task = self->entry->repo->task;
+    struct kndTask *task = self->task;
     struct kndRelArg *arg;
     struct kndTranslation *tr;
     bool in_list = false;
@@ -415,7 +415,7 @@ static int export_inst_setelem_JSON(void *obj,
                                     void *elem)
 {
     struct kndRel *self = obj;
-    struct kndTask *task = self->entry->repo->task;
+    struct kndTask *task = self->task;
     if (count < task->start_from) return knd_OK;
     if (task->batch_size >= task->batch_max) return knd_RANGE;
     struct glbOutput *out = self->entry->repo->out;
@@ -449,7 +449,7 @@ static int export_inst_set_JSON(struct kndRel *self,
                                 struct kndSet *set)
 {
     struct glbOutput *out = self->entry->repo->out;
-    struct kndTask *task = self->entry->repo->task;
+    struct kndTask *task = self->task;
     int err;
 
     err = out->write(out, "{\"_set\":{",
@@ -488,7 +488,7 @@ static int export_inst_JSON(struct kndRel *self,
     struct kndRelArg *relarg;
     struct kndRelArgInstance *relarg_inst;
     struct glbOutput *out = self->entry->repo->out;
-    struct kndTask *task = self->entry->repo->task;
+    struct kndTask *task = self->task;
     struct kndUpdate *update;
     struct kndState *state;
     struct kndClassInstEntry *obj_entry;
@@ -686,8 +686,8 @@ static gsl_err_t import_rel(struct kndRel *self,
 {
     struct kndRel *rel;
     struct kndRelEntry *entry;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct glbOutput *log = self->entry->repo->log;
+    struct kndMemPool *mempool = self->task->mempool;
+    struct glbOutput *log = self->task->log;
     int err;
     gsl_err_t parser_err;
 
@@ -877,7 +877,7 @@ static gsl_err_t inst_entry_append(void *accu,
     size_t buf_size;
     struct kndRelEntry *parent_entry = accu;
     struct kndRelInstEntry *entry = item;
-    struct kndMemPool *mempool = parent_entry->repo->mempool;
+    struct kndMemPool *mempool = parent_entry->rel->task->mempool;
     struct kndSet *set;
     off_t offset = 0;
     int fd = parent_entry->fd;
@@ -1185,7 +1185,7 @@ static int unfreeze_inst(struct kndRel *self,
                          struct kndRelInstEntry *entry)
 {
     struct kndRelInstance *inst;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndMemPool *mempool = self->task->mempool;
     const char *filename;
     size_t filename_size;
     const char *c;
@@ -1306,7 +1306,7 @@ static int get_rel(struct kndRel *self,
 {
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndMemPool *mempool = self->task->mempool;
     struct glbOutput *log = self->entry->repo->log;
     size_t chunk_size = 0;
     size_t *total_size;
@@ -1488,7 +1488,7 @@ static gsl_err_t parse_rel_arg_inst(void *obj,
     struct kndRelInstance *inst = obj;
     struct kndRel *rel = inst->rel;
     struct kndRelArg *arg = NULL;
-    struct kndMemPool *mempool = inst->rel->entry->repo->mempool;
+    struct kndMemPool *mempool = inst->task->mempool;
     struct kndRelArgInstance *arg_inst = NULL;
     int err;
 
@@ -1588,8 +1588,8 @@ static gsl_err_t parse_import_instance(void *data,
     struct kndRel *rel;
     struct kndRelInstance *inst;
     struct kndRelInstEntry *entry;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
-    struct kndTask *task = self->entry->repo->task;
+    struct kndMemPool *mempool = self->task->mempool;
+    struct kndTask *task = self->task;
     struct kndSet *set;
     int err;
     gsl_err_t parser_err;
@@ -1700,7 +1700,7 @@ static int get_rel_inst(struct kndRel *self,
                         struct kndRelInstance **result)
 {
     struct glbOutput *log = self->entry->repo->log;
-    struct kndTask *task = self->entry->repo->task;
+    struct kndTask *task = self->task;
     struct kndRelInstEntry *entry;
     struct kndRelInstance *inst;
     int e;
@@ -1783,9 +1783,9 @@ static gsl_err_t remove_inst(void *data,
     struct kndRel  *root_rel    = self->entry->repo->root_rel;
     struct kndRelInstance *inst;
     struct kndState  *state;
-    struct kndTask *task         = self->entry->repo->task;
-    struct glbOutput *log        = self->entry->repo->log;
-    struct kndMemPool *mempool   = self->entry->repo->mempool;
+    struct kndTask *task         = self->task;
+    struct glbOutput *log        = task->log;
+    struct kndMemPool *mempool   = task->mempool;
     int err;
 
     if (!self->curr_inst) {
@@ -1886,8 +1886,8 @@ static gsl_err_t parse_rel_inst_select(void *data,
 {
     struct kndRel *self = data;
     struct kndRel *rel = self->curr_rel;
-    struct glbOutput *log = self->entry->repo->log;
-    struct kndTask *task = self->entry->repo->task;
+    struct kndTask *task = self->task;
+    struct glbOutput *log = task->log;
     gsl_err_t parser_err;
     int err;
 
@@ -2176,7 +2176,7 @@ static int kndRel_update_state(struct kndRel *self,
 {
     struct kndRel *rel;
     struct kndRelUpdate *rel_update;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndMemPool *mempool = self->task->mempool;
     int err;
 
     if (DEBUG_REL_LEVEL_TMP)

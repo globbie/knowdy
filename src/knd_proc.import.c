@@ -28,7 +28,7 @@ static gsl_err_t kndProc_alloc_proc_arg(void *obj,
     struct kndProc *self = obj;
     int err;
 
-    err = kndProcArg_new((struct kndProcArg **)item, self, self->entry->repo->mempool);
+    err = kndProcArg_new((struct kndProcArg **)item, self, self->task->mempool);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -236,7 +236,7 @@ static gsl_err_t kndProc_validate_do_arg(void *obj,
         return *total_size = 0, make_gsl_err(gsl_LIMIT);
 
     struct kndClassVar *class_var;
-    err.code = knd_class_var_new(proc->entry->repo->mempool, &class_var);
+    err.code = knd_class_var_new(proc->task->mempool, &class_var);
     if (err.code) return *total_size = 0, make_gsl_err_external(err.code);
     class_var->root_class = proc->entry->repo->root_class;
 
@@ -325,7 +325,7 @@ extern gsl_err_t knd_proc_import(struct kndProc *root_proc,
     struct kndProc *proc;
     struct kndProcEntry *entry;
     struct kndRepo *repo = root_proc->entry->repo;
-    struct kndMemPool *mempool = repo->mempool;
+    struct kndMemPool *mempool = root_proc->task->mempool;
     int err;
 
     if (DEBUG_PROC_LEVEL_TMP)

@@ -628,7 +628,7 @@ static int link_rel(struct kndRelArg *self,
     struct kndRelRef *ref = NULL;
     struct kndRelUpdate *rel_update;
     struct kndRelInstanceUpdate *rel_inst_update;
-    struct kndMemPool *mempool = rel->entry->repo->mempool;
+    struct kndMemPool *mempool = rel->task->mempool;
     struct kndState *state = NULL;
     int err;
 
