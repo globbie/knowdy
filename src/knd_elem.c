@@ -34,6 +34,11 @@
 }
 */
 
+struct LocalContext {
+    struct kndElem *elem;
+    struct kndTask *task;
+};
+
 extern void knd_elem_str(struct kndElem *self, size_t depth)
 {
     struct kndState *state = self->states;
@@ -312,7 +317,8 @@ static void register_state(struct kndElem *self,
 
 static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 {
-    struct kndElem *self = obj;
+    struct LocalContext *ctx = obj;
+    struct kndElem *self = ctx->elem;
     if (DEBUG_ELEM_LEVEL_2)
         knd_log(".. attr \"%.*s\" [%s] to set val \"%.*s\"",
                 self->attr->name_size, self->attr->name,
@@ -320,7 +326,7 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
     struct kndState *state;
     struct kndStateVal *state_val;
     struct kndStateRef *state_ref;
-    struct kndMemPool *mempool = self->parent->base->entry->repo->mempool;
+    struct kndMemPool *mempool = ctx->task->mempool;
     int err;
 
     if (!val_size) return make_gsl_err(gsl_FORMAT);
@@ -410,7 +416,8 @@ static gsl_err_t parse_class_inst_ref(void *obj,
 
 static gsl_err_t check_class_name(void *obj, const char *name, size_t name_size)
 {
-    struct kndElem *self = obj;
+    struct LocalContext *ctx = obj;
+    struct kndElem *self = ctx->elem;
     struct kndClass *ref_class = self->attr->ref_class;
     struct kndRepo *repo = self->root->base->entry->repo;
     struct kndClass *c;
@@ -426,7 +433,7 @@ static gsl_err_t check_class_name(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_FAIL);
     }
 
-    err = knd_get_class(repo, name, name_size, &c);
+    err = knd_get_class(repo, name, name_size, &c, ctx->task);
     if (err) {
         knd_log("-- no such class");
         return make_gsl_err_external(err);
@@ -443,7 +450,8 @@ static gsl_err_t parse_class_ref(void *obj,
                                 const char *rec,
                                 size_t *total_size)
 {
-    struct kndElem *self = obj;
+    struct LocalContext *ctx = obj;
+    struct kndElem *self = ctx->elem;
 
     if (DEBUG_ELEM_LEVEL_2)
         knd_log(".. parse class ref: \"%.*s\"", 16, rec);
@@ -451,7 +459,7 @@ static gsl_err_t parse_class_ref(void *obj,
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = check_class_name,
-          .obj = self
+          .obj = ctx
         },
         { .name = "inst",
           .name_size = strlen("inst"),
@@ -466,24 +474,28 @@ static gsl_err_t parse_class_ref(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t parse_GSL(struct kndElem *self,
-                           const char *rec,
-                           size_t *total_size)
+gsl_err_t knd_import_elem(struct kndElem *self,
+                          const char *rec, size_t *total_size,
+                          struct kndTask *task)
 {
     if (DEBUG_ELEM_LEVEL_2)
         knd_log(".. ELEM \"%.*s\" parse REC: \"%.*s\"",
                 self->attr->name_size, self->attr->name,
                 16, rec);
 
+    struct LocalContext ctx = {
+        .elem = self,
+        .task = task
+    };
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_val,
-          .obj = self
+          .obj = &ctx
         },
         { .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_ref,
-          .obj = self
+          .obj = &ctx
         },
         { .is_default = true,
           .run = run_empty_val_warning,
@@ -534,7 +546,7 @@ static int kndElem_resolve(struct kndElem *self)
 
 extern void kndElem_init(struct kndElem *self)
 {
-    self->parse = parse_GSL;
+    //self->parse = parse_GSL;
     self->resolve = kndElem_resolve;
 }
 
