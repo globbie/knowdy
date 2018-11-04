@@ -94,7 +94,8 @@ static gsl_err_t select_by_attr(void *obj,
     c = repo->curr_attr_ref->class_entry->class;
 
     if (DEBUG_CLASS_SELECT_LEVEL_2) {
-        knd_log("\n\n== select by attr value: \"%.*s\" of \"%.*s\" (id:%.*s repo:%.*s)",
+        knd_log("\n\n== select by attr value: \"%.*s\" of \"%.*s\""
+                "(id:%.*s repo:%.*s)",
                 name_size, name,
                 c->name_size, c->name,
                 c->entry->id_size, c->entry->id,
@@ -347,17 +348,17 @@ static gsl_err_t present_attr_var_selection(void *obj,
 
         err = knd_attr_var_export_JSON(attr_var, task);
         if (err) return make_gsl_err_external(err);
-        
+
         err = out->writec(out, '}');
         if (err) return make_gsl_err_external(err);
-        
+
         return make_gsl_err(gsl_OK);
     }
 
     // TODO
     err = out->writec(out, '{');
     if (err) return make_gsl_err_external(err);
-    
+
     err = knd_attr_export(attr, task->format, task);
     if (err) {
         knd_log("-- attr export failed");
@@ -423,7 +424,7 @@ static gsl_err_t parse_attr_var_select(void *obj,
     if (attr->is_a_set) {
         knd_log(".. parsing array selection..");
     }
-    
+
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
@@ -558,7 +559,7 @@ static gsl_err_t present_class_selection(void *obj,
             return make_gsl_err(gsl_OK);
         }
 
-        /* final presentation in JSON 
+        /* final presentation in JSON
            TODO: choose output format */
 
         switch (set->type) {
@@ -691,7 +692,7 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
         task->http_code = HTTP_BAD_REQUEST;
         return make_gsl_err(gsl_NO_MATCH);
     }
-    
+
     c = repo->curr_class;
 
     /* check dependants */
@@ -1002,7 +1003,7 @@ static gsl_err_t parse_select_class_inst(void *obj,
 
     parser_err = knd_parse_select_inst(root_inst, rec, total_size, task);
     if (parser_err.code) return parser_err;
-   
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -1123,7 +1124,6 @@ gsl_err_t knd_class_select(void *obj,
     default:
         break;
     }
-    
+
     return make_gsl_err(gsl_OK);
 }
-
