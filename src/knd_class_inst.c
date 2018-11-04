@@ -49,13 +49,13 @@ extern void knd_class_inst_str(struct kndClassInst *self, size_t depth)
     }
 }
 
-int knd_class_inst_export(struct kndClassInst *self, knd_format format, struct kndTask *task)
+int knd_class_inst_export(struct kndClassInst *self, knd_format format, struct glbOutput *out)
 {
     switch (format) {
         case KND_FORMAT_JSON:
-            return knd_class_inst_export_JSON(self, task);
+            return knd_class_inst_export_JSON(self, out);
         case KND_FORMAT_GSP:
-            return knd_class_inst_export_GSP(self, task);
+            return knd_class_inst_export_GSP(self, out);
         default:
             return knd_RANGE;
     }

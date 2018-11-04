@@ -142,13 +142,12 @@ extern int knd_class_inst_entry_new(struct kndMemPool *mempool,
                                     struct kndClassInstEntry **result);
 extern int knd_class_inst_new(struct kndMemPool *mempool,
                               struct kndClassInst **result);
-extern int knd_class_inst_export(struct kndClassInst *self, knd_format format,
-                                 struct kndTask *task);
+extern int knd_class_inst_export(struct kndClassInst *self, knd_format format, struct glbOutput *out);
 extern int knd_class_inst_set_export(struct kndClassInst *self, knd_format format,
                                      struct kndTask *task);
 
 // knd_class_inst.gsp.c
-extern int knd_class_inst_export_GSP(struct kndClassInst *self, struct kndTask *task);
+extern int knd_class_inst_export_GSP(struct kndClassInst *self, struct glbOutput *out);
 
 // knd_class_inst.import.c
 extern gsl_err_t knd_import_class_inst(struct kndClassInst *self,
@@ -156,7 +155,7 @@ extern gsl_err_t knd_import_class_inst(struct kndClassInst *self,
                                        struct kndTask *task);
 
 // knd_class_inst.json.c
-extern int knd_class_inst_export_JSON(struct kndClassInst *self, struct kndTask *task);
+extern int knd_class_inst_export_JSON(struct kndClassInst *self, struct glbOutput *out);
 extern int knd_class_inst_set_export_JSON(struct kndSet *set, struct kndTask *task);
 
 // knd_class_inst.select.c
