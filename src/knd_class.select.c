@@ -40,6 +40,11 @@
 #define DEBUG_CLASS_SELECT_LEVEL_5 0
 #define DEBUG_CLASS_SELECT_LEVEL_TMP 1
 
+struct LocalContext {
+    struct kndRepo *repo;
+    struct kndTask *task;
+};
+
 static gsl_err_t select_by_baseclass(void *obj,
                                      const char *name, size_t name_size)
 {
@@ -375,10 +380,10 @@ static gsl_err_t parse_attr_var_select(void *obj,
                                        const char *name, size_t name_size,
                                        const char *rec, size_t *total_size)
 {
-    struct kndClass *self = obj;
+    struct LocalContext *ctx = obj;
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
-    struct kndRepo *repo = self->entry->repo;
+    struct kndRepo *repo = ctx->repo;
     struct glbOutput *log = repo->log;
     struct kndTask *task = repo->task;
     struct kndClass *c;
@@ -440,7 +445,8 @@ static gsl_err_t parse_baseclass_select(void *obj,
                                         const char *rec,
                                         size_t *total_size)
 {
-    struct kndTask *task = obj;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
     struct kndClass *self = task->class;
     gsl_err_t err;
 
@@ -499,14 +505,15 @@ static gsl_err_t present_class_selection(void *obj,
                                          const char *unused_var(val),
                                          size_t unused_var(val_size))
 {
-    struct kndTask *task = obj;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
     struct glbOutput *out = task->out;
     struct kndMemPool *mempool = task->mempool;
 
     struct kndClass *self = task->class;
     struct kndClass *c;
     struct kndSet *set;
-    struct kndRepo *repo = self->entry->repo;
+    struct kndRepo *repo = ctx->repo;
     int err;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP)
@@ -600,8 +607,8 @@ static gsl_err_t present_class_selection(void *obj,
 
 static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 {
-    struct kndClass *self = obj;
-    struct kndRepo *repo = self->entry->repo;
+    struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
     struct kndClass *c;
     int err;
 
@@ -624,12 +631,12 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_size)
 {
+    struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
-    struct kndClass *self = obj;
     struct kndClass *c;
     struct kndClassEntry *entry;
-    struct kndRepo *repo = self->entry->repo;
     struct kndSet *class_idx = repo->class_idx;
     void *result;
     long numval;
@@ -673,9 +680,9 @@ static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_siz
 
 static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
 {
-    struct kndClass *self = obj;
+    struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
     struct kndClass *c;
-    struct kndRepo *repo = self->entry->repo;
     struct glbOutput *log = repo->log;
     struct kndTask *task =   repo->task;
     size_t num_children;
@@ -967,12 +974,12 @@ static int select_class_state(struct kndClass *self,
     return knd_OK;
 }
 
-static gsl_err_t parse_class_state(void *data,
+static gsl_err_t parse_class_state(void *obj,
                                    const char *rec,
                                    size_t *total_size)
 {
-    struct kndClass *self = data;
-    struct kndRepo *repo = self->entry->repo;
+    struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
     int err;
 
     if (!repo->curr_class) return make_gsl_err(gsl_FAIL);
@@ -987,9 +994,8 @@ static gsl_err_t parse_select_class_inst(void *obj,
                                          const char *rec,
                                          size_t *total_size)
 {
-    struct kndTask *task = obj;
-    struct kndClass *self = task->class;
-    struct kndRepo *repo = self->entry->repo;
+    struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
     struct kndClassInst *root_inst;
     gsl_err_t parser_err;
 
@@ -1001,20 +1007,16 @@ static gsl_err_t parse_select_class_inst(void *obj,
     root_inst = repo->root_inst;
     root_inst->base = repo->curr_class;
 
-    parser_err = knd_parse_select_inst(root_inst, rec, total_size, task);
+    parser_err = knd_parse_select_inst(root_inst, rec, total_size, ctx->task);
     if (parser_err.code) return parser_err;
 
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_class_select(void *obj,
-                           const char *rec,
-                           size_t *total_size)
+gsl_err_t knd_select_class(struct kndRepo *repo,
+                           const char *rec, size_t *total_size,
+                           struct kndTask *task)
 {
-    struct kndTask *task = obj;
-    struct kndClass *self = task->class;
-    struct kndRepo *repo = self->entry->repo;
-    struct glbOutput *log = task->log;
     struct kndMemPool *mempool = task->mempool;
     knd_state_phase phase;
     int err;
@@ -1023,28 +1025,32 @@ gsl_err_t knd_class_select(void *obj,
     if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
 
-    self->depth = 0;
-    self->max_depth = 0;
+    repo->root_class->depth = 0;
+    repo->root_class->max_depth = 0;
     repo->curr_class = NULL;
     repo->curr_baseclass = NULL;
 
+    struct LocalContext ctx = {
+        .task = task,
+        .repo = task->class->entry->repo
+    };
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .is_selector = true,
           .run = run_get_class,
-          .obj = self
+          .obj = &ctx
         },
         { .name = "_id",
           .name_size = strlen("_id"),
           .is_selector = true,
           .run = run_get_class_by_numid,
-          .obj = self
+          .obj = &ctx
         },
         { .type = GSL_SET_STATE,
           .name = "_rm",
           .name_size = strlen("_rm"),
           .run = run_remove_class,
-          .obj = self
+          .obj = &ctx
         },
         { .type = GSL_SET_STATE,
           .name = "instance",
@@ -1055,7 +1061,7 @@ gsl_err_t knd_class_select(void *obj,
         { .name = "instance",
           .name_size = strlen("instance"),
           .parse = parse_select_class_inst,
-          .obj = task
+          .obj = &ctx
         }, /* shortcuts */
         { .type = GSL_SET_STATE,
           .name = "inst",
@@ -1066,31 +1072,31 @@ gsl_err_t knd_class_select(void *obj,
         { .name = "inst",
           .name_size = strlen("inst"),
           .parse = parse_select_class_inst,
-          .obj = task
+          .obj = &ctx
         },
         { .name = "_is",
           .name_size = strlen("_is"),
           .is_selector = true,
           .parse = parse_baseclass_select,
-          .obj = task
+          .obj = &ctx
         },
         {  .name = "_depth",
            .name_size = strlen("_depth"),
            .parse = gsl_parse_size_t,
-           .obj = &self->max_depth
+           .obj = &repo->root_class->max_depth
         },
         { .name = "_state",
           .name_size = strlen("_state"),
           .parse = parse_class_state,
-          .obj = self
+          .obj = &ctx
         },
         { .is_validator = true,
           .validate = parse_attr_var_select,
-          .obj = self
+          .obj = &ctx
         },
         { .is_default = true,
           .run = present_class_selection,
-          .obj = task
+          .obj = &ctx
         }
     };
 
@@ -1098,11 +1104,11 @@ gsl_err_t knd_class_select(void *obj,
     if (parser_err.code) {
         if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
             knd_log("-- class select error %d: \"%.*s\"",
-                    parser_err.code, log->buf_size, log->buf);
+                    parser_err.code, task->log->buf_size, task->log->buf);
         }
-        if (!log->buf_size) {
-            err = log->write(log, "class parse failure",
-                                 strlen("class parse failure"));
+        if (!task->log->buf_size) {
+            err = task->log->write(task->log, "class parse failure",
+                                       strlen("class parse failure"));
             if (err) return make_gsl_err_external(err);
         }
 
