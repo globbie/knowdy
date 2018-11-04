@@ -289,6 +289,8 @@ extern int knd_get_arg_value(struct kndAttrVar *src,
                              struct kndAttrVar *query,
                              struct kndProcCallArg *arg);
 
+extern int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth);
+
 extern int knd_attr_export(struct kndAttr *self,
                            knd_format format, struct kndTask *task);
 extern void str_attr_vars(struct kndAttrVar *item, size_t depth);

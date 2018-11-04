@@ -467,18 +467,24 @@ static int export_concise_GSL(struct kndClass *self,
                               size_t depth)
 {
     struct kndClassVar *item;
+    struct glbOutput *out = task->out;
     int err;
 
-    if (DEBUG_GSL_LEVEL_2)
+    if (DEBUG_GSL_LEVEL_TMP)
         knd_log(".. export concise GSL for %.*s..",
                 self->entry->name_size, self->entry->name);
+
+    if (task->format_offset) {
+        err = out->writec(out, '\n');                                             RET_ERR();
+        err = knd_print_offset(out, (depth + 1) * task->format_offset);           RET_ERR();
+    }
 
     for (item = self->baseclass_vars; item; item = item->next) {
         if (!item->attrs) continue;
         err = knd_attr_vars_export_GSL(item->attrs,
-                                       task, true, depth + 1);      RET_ERR();
+                                       task, true, depth);      RET_ERR();
     }
-    
+
     /*if (DEBUG_GSL_LEVEL_2)
         knd_log(".. export inherited attrs of %.*s..",
                 self->entry->name_size, self->entry->name);
@@ -584,7 +590,7 @@ static int present_subclass(struct kndClassRef *ref,
         err = out->writec(out, '\n');                                             RET_ERR();
         err = knd_print_offset(out, (depth + 1) * task->format_offset);           RET_ERR();
     }
-    err = export_concise_GSL(c, task, depth + 1);                                 RET_ERR();
+    err = export_concise_GSL(c, task, depth);                                 RET_ERR();
 
     err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
@@ -664,19 +670,17 @@ static int export_attrs(struct kndClass *self,
     size_t i = 0;
     int err;
 
-    err = out->write(out, "[attrs",
-                     strlen("[attrs"));   RET_ERR();
+    knd_log(".. export attrs GSL..\n\n");
 
-    if (task->format_offset) {
-        err = out->writec(out, '\n');                                             RET_ERR();
-        err = knd_print_offset(out, (depth + 1) * task->format_offset);           RET_ERR();
-    }
+    err = out->write(out, "[attrs", strlen("[attrs"));   RET_ERR();
 
     for (attr = self->attrs; attr; attr = attr->next) {
-        if (i) {
-            err = out->write(out, ",", 1);  RET_ERR();
+        if (task->format_offset) {
+            err = out->writec(out, '\n');                                         RET_ERR();
+            err = knd_print_offset(out, (depth + 2) * task->format_offset);       RET_ERR();
         }
-        err = knd_attr_export(attr, KND_FORMAT_GSL, task);
+
+        err = knd_attr_export_GSL(attr, task, depth + 1);
         if (err) {
             if (DEBUG_GSL_LEVEL_TMP)
                 knd_log("-- failed to export %.*s attr",
@@ -685,7 +689,7 @@ static int export_attrs(struct kndClass *self,
         }
         i++;
     }
-    err = out->writec(out, '}'); RET_ERR();
+    err = out->writec(out, ']');                                                  RET_ERR();
 
     
     return knd_OK;
@@ -835,11 +839,10 @@ extern int knd_class_export_GSL(struct kndClass *self,
         err = export_gloss_GSL(self, task);                                       RET_ERR();
     }
 
-    /*
     if (self->depth >= self->max_depth) {
-        err = export_concise_GSL(self, task, depth + 1);                          RET_ERR();
+        err = export_concise_GSL(self, task, depth);                          RET_ERR();
         goto final;
-        }*/
+    }
 
     /* state info */
     if (self->num_states) {
@@ -866,9 +869,17 @@ extern int knd_class_export_GSL(struct kndClass *self,
     }
 
     if (self->attrs) {
+        if (task->format_offset) {
+            err = out->writec(out, '\n');                                         RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * task->format_offset);       RET_ERR();
+        }
         err = export_attrs(self, task, depth + 1); RET_ERR();
     } else {
         if (orig_entry && orig_entry->class->num_attrs) {
+            if (task->format_offset) {
+                err = out->writec(out, '\n');                                         RET_ERR();
+                err = knd_print_offset(out, (depth + 1) * task->format_offset);       RET_ERR();
+            }
             err = export_attrs(orig_entry->class, task, depth + 1);                   RET_ERR();
         }
     }
