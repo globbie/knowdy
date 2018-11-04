@@ -29,13 +29,13 @@ static int export_inner_GSP(struct kndClassInst *self,
     return knd_OK;
 }
 
-int knd_class_inst_export_GSP(struct kndClassInst *self, struct kndTask *task)
+int knd_class_inst_export_GSP(struct kndClassInst *self, struct glbOutput *out)
 {
     struct kndElem *elem;
     int err;
 
     if (self->type == KND_OBJ_INNER) {
-        err = export_inner_GSP(self, task->out);
+        err = export_inner_GSP(self, out);
         if (err) {
             knd_log("-- inner obj GSP export failed");
             return err;
@@ -45,7 +45,7 @@ int knd_class_inst_export_GSP(struct kndClassInst *self, struct kndTask *task)
 
     /* elems */
     for (elem = self->elems; elem; elem = elem->next) {
-        err = knd_elem_export(elem, KND_FORMAT_GSP, task->out);
+        err = knd_elem_export(elem, KND_FORMAT_GSP, out);
         if (err) {
             knd_log("-- export of \"%s\" elem failed: %d :(",
                     elem->attr->name, err);

@@ -198,12 +198,11 @@ static int export_inst_relrefs_JSON(struct kndClassInst *self)
     return knd_OK;
 }
 
-int knd_class_inst_export_JSON(struct kndClassInst *self, struct kndTask *task)
+int knd_class_inst_export_JSON(struct kndClassInst *self, struct glbOutput *out)
 {
     struct kndElem *elem;
     struct kndClassInst *obj;
     struct kndState *state = self->states;
-    struct glbOutput *out = task->out;
     bool is_concise = true;
     int err;
 
@@ -385,7 +384,7 @@ static int export_class_inst_JSON(void *obj,
     if (task->repo->root_class->max_depth) {
         inst->max_depth = task->repo->root_class->max_depth;
     }
-    err = knd_class_inst_export_JSON(inst, task);                        RET_ERR();
+    err = knd_class_inst_export_JSON(inst, task->out);                        RET_ERR();
     task->batch_size++;
 
     return knd_OK;
