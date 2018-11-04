@@ -248,7 +248,7 @@ static gsl_err_t parse_import_elem(void *obj1,
             break;
     }
 
-    parser_err = elem->parse(elem, rec, total_size);
+    parser_err = knd_import_elem(elem, rec, total_size, ctx->task);
     if (parser_err.code) goto final;
 
     append_elem:

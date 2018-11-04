@@ -74,9 +74,9 @@ struct kndElem
     int (*read)(struct kndElem *self);
     int (*resolve)(struct kndElem *self);
     int (*index)(struct kndElem *self);
-    gsl_err_t (*parse)(struct kndElem *self,
-                       const char *rec,
-                       size_t *total_size);
+//    gsl_err_t (*parse)(struct kndElem *self,
+//                       const char *rec,
+//                       size_t *total_size);
 
 };
 
@@ -96,3 +96,7 @@ extern int knd_elem_export(struct kndElem *self,
 
 extern int knd_class_inst_elem_new(struct kndMemPool *mempool,
                                    struct kndElem **result);
+
+extern gsl_err_t knd_import_elem(struct kndElem *self,
+                                 const char *rec, size_t *total_size,
+                                 struct kndTask *task);
