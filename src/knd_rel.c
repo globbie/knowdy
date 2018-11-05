@@ -1834,7 +1834,7 @@ static gsl_err_t present_inst_selection(void *data,
 {
     struct kndRel *self = data;
     struct kndRelInstance *inst;
-    struct kndTask *task = self->entry->repo->task;
+    struct kndTask *task = self->task;
     struct glbOutput *out = self->entry->repo->out;
     //struct kndMemPool *mempool = base->entry->repo->mempool;
     struct kndSet *set;

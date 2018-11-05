@@ -59,9 +59,12 @@ static gsl_err_t alloc_class_update(void *obj,
                                     void **item)
 {
     struct kndUpdate    *self = obj;
-    struct kndMemPool *mempool = self->repo->mempool;
+    struct kndMemPool *mempool = NULL; // = self->repo->mempool;
     struct kndClassUpdate *class_update;
     int err;
+
+    assert(mempool);
+    return make_gsl_err_external(knd_FAIL);
 
     assert(name == NULL && name_size == 0);
     err = knd_class_update_new(mempool, &class_update);
@@ -86,11 +89,14 @@ static gsl_err_t get_class_by_id(void *obj, const char *name, size_t name_size)
 {
     struct kndClassUpdate *self = obj;
     struct kndRepo *repo = self->update->repo;
-    struct kndMemPool *mempool = repo->mempool;
+    struct kndMemPool *mempool = NULL; // repo->mempool;
     struct kndSet *class_idx = repo->class_idx;
     void *result;
     struct kndClassEntry *entry;
     int err;
+
+    assert(mempool);
+    return make_gsl_err_external(knd_FAIL);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -129,7 +135,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndRepo *repo = self->update->repo;
     struct ooDict *class_name_idx = repo->class_name_idx;
     struct kndSet *class_idx = repo->class_idx;
-    struct kndMemPool *mempool = repo->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndClassEntry *entry = self->entry;
     int err;
 
@@ -163,7 +169,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     entry->name_size = name_size;
 
     /* get class */
-    err = knd_get_class(repo, name, name_size, &c);
+    err = knd_get_class(repo, name, name_size, &c, task);
     if (err) {
         err = knd_class_new(mempool, &c);
         if (err) return make_gsl_err_external(err);
@@ -238,9 +244,12 @@ static gsl_err_t alloc_update(void *obj,
                               void **item)
 {
     struct kndRepo *self = obj;
-    struct kndMemPool *mempool = self->mempool;
+    struct kndMemPool *mempool = NULL;//self->mempool;
     struct kndUpdate *update;
     int err;
+
+    assert(mempool);
+    return make_gsl_err_external(knd_FAIL);
 
     assert(name == NULL && name_size == 0);
 
@@ -324,9 +333,9 @@ static gsl_err_t kndRepo_read_updates(void *obj,
 }
 
 static int kndRepo_restore(struct kndRepo *self,
-                           const char *filename)
+                           const char *filename,
+                           struct glbOutput *out)
 {
-    struct glbOutput *out = self->task->file_out;
     size_t total_size = 0;
     gsl_err_t parser_err;
     int err;
@@ -523,7 +532,7 @@ static int kndRepo_open(struct kndRepo *self, struct kndTask *task)
 
     /* read any existing updates to the frozen DB (failure recovery) */
     if (!stat(out->buf, &st)) {
-        err = kndRepo_restore(self, out->buf);
+        err = kndRepo_restore(self, out->buf, task->file_out);
         if (err) return err;
     }
 
@@ -631,7 +640,7 @@ extern int kndRepo_new(struct kndRepo **repo,
     rel->entry->repo = self;
     self->root_rel = rel;
     */
-    self->mempool = mempool;
+    //self->mempool = mempool;
     self->max_journal_size = KND_FILE_BUF_SIZE;
 
     self->del = kndRepo_del;
