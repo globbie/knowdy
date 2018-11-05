@@ -242,7 +242,7 @@ static int kndFacet_alloc_set(struct kndFacet  *self,
 {
     struct kndSet *set;
     void *obj;
-    struct kndMemPool *mempool = self->attr->parent_class->entry->repo->mempool;
+    struct kndMemPool *mempool = self->parent->mempool;
     int err;
 
     if (DEBUG_SET_LEVEL_2) {
