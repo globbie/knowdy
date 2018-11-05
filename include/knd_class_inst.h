@@ -153,6 +153,9 @@ extern int knd_class_inst_export_GSP(struct kndClassInst *self, struct glbOutput
 extern gsl_err_t knd_import_class_inst(struct kndClassInst *self,
                                        const char *rec, size_t *total_size,
                                        struct kndTask *task);
+extern gsl_err_t kndClassInst_read_state(struct kndClassInst *self,
+                                         const char *rec, size_t *total_size,
+                                         struct kndTask *task);
 
 // knd_class_inst.json.c
 extern int knd_class_inst_export_JSON(struct kndClassInst *self, struct glbOutput *out);

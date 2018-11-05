@@ -516,3 +516,47 @@ gsl_err_t knd_import_class_inst(struct kndClassInst *self,
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
+
+static gsl_err_t run_set_state_id(void *obj, const char *name, size_t name_size)
+{
+    struct kndClassInst *self = obj;
+
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    if (DEBUG_INST_LEVEL_2)
+        knd_log("++ class inst state: \"%.*s\" inst:%.*s",
+                name_size, name, self->name_size, self->name);
+
+    return make_gsl_err(gsl_OK);
+}
+
+gsl_err_t kndClassInst_read_state(struct kndClassInst *self,
+                                  const char *rec,
+                                  size_t *total_size)
+{
+    struct LocalContext ctx = {
+        .class_inst = self,
+        .task = task
+    };
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_state_id,
+          .obj = self
+        },
+        { .type = GSL_SET_STATE,
+          .is_validator = true,
+          .validate = parse_import_elem,
+          .obj = &ctx
+        },
+        { .is_validator = true,
+          .validate = parse_import_elem,
+          .obj = &ctx
+        }
+    };
+
+    if (DEBUG_INST_LEVEL_2)
+        knd_log(".. reading class inst state: %.*s", 128, rec);
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
