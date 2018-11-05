@@ -55,8 +55,8 @@ static void reset(struct kndStateControl *self)
  static int knd_sync_update(struct kndStateControl *self,
                            struct kndUpdate *unused_var(update))
 {
-    struct glbOutput *out = self->repo->task->out;
-    struct glbOutput *file_out = self->repo->task->file_out;
+    struct glbOutput *out = self->task->out;
+    struct glbOutput *file_out = self->task->file_out;
     struct stat st;
     size_t planned_journal_size = 0;
     int err;
@@ -110,7 +110,7 @@ static void reset(struct kndStateControl *self)
 static int build_update_report(struct kndStateControl *self,
                                struct kndUpdate *update)
 {
-    struct kndTask *task = self->repo->task;
+    struct kndTask *task = self->task;
     struct glbOutput *out = task->out;
     int err;
 
@@ -126,7 +126,7 @@ static int knd_confirm(struct kndStateControl *self,
                        struct kndUpdate *update)
 {
     struct kndRepo *repo = self->repo;
-    struct kndTask *task = self->repo->task;
+    struct kndTask *task = self->task;
     struct glbOutput *out = task->out;
     struct glbOutput *file_out = task->file_out;
     int err;

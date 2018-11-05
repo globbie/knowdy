@@ -293,7 +293,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     err = knd_get_class(repo,
                         self->class_name,
                         self->class_name_size,
-                        &c);
+                        &c, task);
     if (err) {
         knd_log("-- no such class: %.*s",
                 self->class_name_size,
