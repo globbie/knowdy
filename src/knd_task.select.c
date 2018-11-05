@@ -218,7 +218,7 @@ static gsl_err_t parse_class_select(void *obj,
     task->root_class = c;
     task->repo = task->shard->repo;
 
-    return knd_class_select(task, rec, total_size);
+    return knd_select_task(task->shard->repo, rec, total_size);
 }
 
 static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)

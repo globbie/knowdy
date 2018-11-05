@@ -222,7 +222,8 @@ static gsl_err_t parse_class_select(void *obj,
         knd_log(".. parsing the default class select: \"%.*s\" root_class:%p",
                 64, rec, c);
 
-    return knd_class_select(task, rec, total_size);
+    return knd_select_class(ctx ? ctx->repo : self->repo,
+                            rec, total_size, task);
 }
 
 #if 0
