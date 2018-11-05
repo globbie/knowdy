@@ -226,7 +226,7 @@ extern int knd_export_inherited_attr(void *obj,
     struct kndAttrVar *attr_var = ref->attr_var;
     struct kndRepo *repo = self->entry->repo;
     struct glbOutput *out = repo->out;
-    struct kndMemPool *mempool = repo->mempool;
+    struct kndMemPool *mempool = task->mempool;
     size_t numval = 0;
     int err;
 
@@ -339,10 +339,6 @@ static int ref_item_export_JSON(struct kndAttrVar *item,
     struct kndClass *c;
     int err;
 
-    knd_log("== ref:\"%.*s\"  val:\"%.*s\"",
-            item->name_size, item->name,
-            item->val_size, item->val);
-
     // TODO
     assert(item->class != NULL);
 
@@ -350,7 +346,7 @@ static int ref_item_export_JSON(struct kndAttrVar *item,
     c->depth = item->depth;
     c->max_depth = item->max_depth;
 
-    err = knd_class_export(c, KND_FORMAT_JSON, task);                 RET_ERR();
+    err = knd_class_export_JSON(c, task);                 RET_ERR();
     return knd_OK;
 }
 

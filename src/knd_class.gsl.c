@@ -410,7 +410,7 @@ static int export_conc_elem_GSL(void *obj,
         c->max_depth = self->max_depth;
     }
 
-    err = knd_class_export(c, KND_FORMAT_GSL, task);
+    err = knd_class_export_GSL(c, task, 1);
     if (err) return err;
 
     task->batch_size++;
@@ -470,7 +470,7 @@ static int export_concise_GSL(struct kndClass *self,
     struct glbOutput *out = task->out;
     int err;
 
-    if (DEBUG_GSL_LEVEL_TMP)
+    if (DEBUG_GSL_LEVEL_2)
         knd_log(".. export concise GSL for %.*s..",
                 self->entry->name_size, self->entry->name);
 
@@ -495,35 +495,34 @@ static int export_concise_GSL(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_class_export_set_GSL(struct kndSet *set,
-                                     struct kndTask *task)
+extern int knd_class_set_export_GSL(struct kndSet *set,
+                                    struct kndTask *task)
 {
     struct glbOutput *out = task->out;
     int err;
 
-    err = out->write(out, "{\"_set\":{",
-                     strlen("{\"_set\":{"));                                      RET_ERR();
+    err = out->write(out, "{_set",
+                     strlen("{_set"));                                      RET_ERR();
 
     /* TODO: present child clauses */
-
     if (set->base) {
-        err = out->write(out, "\"_is\":\"",
-                         strlen("\"_is\":\""));                                   RET_ERR();
+        err = out->write(out, "{_is ",
+                         strlen("{_is "));                                   RET_ERR();
         err = out->write(out, set->base->name,  set->base->name_size);            RET_ERR();
-        err = out->writec(out, '"');                                              RET_ERR();
+        err = out->writec(out, '}');                                                  RET_ERR();
+    }
+
+    if (task->show_removed_objs) {
+        err = out->writef(out, "{total %lu",
+                          (unsigned long)set->num_elems);                         RET_ERR();
+    } else {
+        err = out->writef(out, "{total %lu",
+                          (unsigned long)set->num_valid_elems);                   RET_ERR();
     }
     err = out->writec(out, '}');                                                  RET_ERR();
 
-    if (task->show_removed_objs) {
-        err = out->writef(out, ",\"total\":%lu",
-                          (unsigned long)set->num_elems);                         RET_ERR();
-    } else {
-        err = out->writef(out, ",\"total\":%lu",
-                          (unsigned long)set->num_valid_elems);                   RET_ERR();
-    }
-
-    err = out->write(out, ",\"batch\":[",
-                     strlen(",\"batch\":["));                                     RET_ERR();
+    err = out->write(out, "[batch",
+                     strlen("[batch"));                                     RET_ERR();
 
     err = set->map(set, export_conc_elem_GSL, (void*)task);
     if (err && err != knd_RANGE) return err;
@@ -771,7 +770,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
     size_t num_children;
     int err;
 
-    if (DEBUG_GSL_LEVEL_TMP) {
+    if (DEBUG_GSL_LEVEL_2) {
         knd_log(".. GSL export: \"%.*s\" (repo:%.*s)  depth:%zu max depth:%zu offset:%zu",
                 entry->name_size, entry->name,
                 entry->repo->name_size, entry->repo->name,
@@ -840,7 +839,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
     }
 
     if (self->depth >= self->max_depth) {
-        err = export_concise_GSL(self, task, depth);                          RET_ERR();
+        err = export_concise_GSL(self, task, depth);                              RET_ERR();
         goto final;
     }
 
@@ -852,8 +851,8 @@ extern int knd_class_export_GSL(struct kndClass *self,
     /* display base classes only once */
     if (self->num_baseclass_vars) {
         if (task->format_offset) {
-            err = out->writec(out, '\n');                                             RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->format_offset);           RET_ERR();
+            err = out->writec(out, '\n');                                         RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * task->format_offset);       RET_ERR();
         }
         err = export_baseclass_vars(self, task, depth + 1);                       RET_ERR();
 

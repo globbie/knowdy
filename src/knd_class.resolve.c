@@ -91,7 +91,7 @@ static int index_attr(struct kndClass *self,
     err = knd_get_class(self->entry->repo,
                         attr->ref_classname,
                         attr->ref_classname_size,
-                        &base);                                                       RET_ERR();
+                        &base, task);                                                       RET_ERR();
     if (!base->is_resolved) {
         err = knd_class_resolve(base, task);                                          RET_ERR();
     }
@@ -99,7 +99,7 @@ static int index_attr(struct kndClass *self,
     /* specific class */
     err = knd_get_class(self->entry->repo,
                         item->val,
-                        item->val_size, &c);                                          RET_ERR();
+                        item->val_size, &c, task);                                          RET_ERR();
 
     item->class = c;
 
@@ -128,7 +128,7 @@ static int index_attr_var_list(struct kndClass *self,
     struct kndClass *c, *idx_class, *curr_class;
     struct kndClassRef *ref;
     struct kndAttrVar *item = parent_item;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndMemPool *mempool = task->mempool;
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
@@ -146,7 +146,7 @@ static int index_attr_var_list(struct kndClass *self,
     err = knd_get_class(self->entry->repo,
                         attr->ref_classname,
                         attr->ref_classname_size,
-                        &base);                                                       RET_ERR();
+                        &base, task);                                                       RET_ERR();
     if (!base->is_resolved) {
         err = knd_class_resolve(base, task);                                          RET_ERR();
     }
@@ -158,7 +158,7 @@ static int index_attr_var_list(struct kndClass *self,
         /* specific class */
         err = knd_get_class(self->entry->repo,
                             item->name,
-                            item->name_size, &c);                                 RET_ERR();
+                            item->name_size, &c, task);                                 RET_ERR();
         item->class = c;
 
         if (!c->is_resolved) {
@@ -314,7 +314,7 @@ static int resolve_class_ref(struct kndClass *self,
         return knd_OK;
     }
 
-    err = knd_get_class(self->entry->repo, name, name_size, &c);
+    err = knd_get_class(self->entry->repo, name, name_size, &c, task);
     if (err) {
         knd_log("-- no such class: %.*s [repo:%.*s]",
                 name_size, name,
@@ -558,7 +558,7 @@ static int resolve_attr_var_list(struct kndClass *self,
         err = knd_get_class(self->entry->repo,
                             parent_attr->ref_classname,
                             parent_attr->ref_classname_size,
-                            &local_class);
+                            &local_class, task);
         if (!err)
             c = local_class;
     }
@@ -1091,7 +1091,7 @@ static int resolve_baseclasses(struct kndClass *self,
         c = NULL;
         if (cvar->id_size) {
             err = knd_get_class_by_id(self->entry->repo->root_class,
-                                      cvar->id, cvar->id_size, &c);
+                                      cvar->id, cvar->id_size, &c, task);
             if (err) {
                 knd_log("-- no class with id %.*s", cvar->id_size, cvar->id);
                 return knd_FAIL;
@@ -1108,7 +1108,7 @@ static int resolve_baseclasses(struct kndClass *self,
                 return knd_FAIL;
             }
             err = knd_get_class(self->entry->repo,
-                                classname, classname_size, &c);
+                                classname, classname_size, &c, task);
             if (err) {
                 knd_log("-- no such class: %.*s", classname_size, classname);
                 return err;

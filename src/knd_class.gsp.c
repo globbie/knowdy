@@ -900,15 +900,17 @@ static gsl_err_t facet_read(void *obj,
     return make_gsl_err(gsl_OK);
 }
 */
+
 static gsl_err_t attr_var_alloc(void *obj,
                                 const char *unused_var(name),
                                 size_t unused_var(name_size),
                                 size_t unused_var(count),
                                 void **result)
 {
-    struct kndAttrVar *self = obj;
+    struct kndTask *task = obj;
+    struct kndAttrVar *self = task->attr_var;
     struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = self->attr->parent_class->entry->repo->mempool;
+    struct kndMemPool *mempool = task->mempool;
     int err;
 
     err = knd_attr_var_new(mempool, &attr_var);
@@ -958,7 +960,7 @@ static gsl_err_t check_list_item_id(void *obj,
 
     switch (attr_var->attr->type) {
     case KND_ATTR_REF:
-        err = knd_get_class_by_id(parent_class, id, id_size, &c);
+        err = knd_get_class_by_id(parent_class, id, id_size, &c, task);
         if (err) {
             knd_log("-- no such class: %.*s", id_size, id);
             return make_gsl_err(gsl_FAIL);
@@ -1383,8 +1385,8 @@ static void append_attr_var(struct kndClassVar *ci,
 }
 
 static gsl_err_t validate_attr_var(void *obj,
-                                    const char *name, size_t name_size,
-                                    const char *rec, size_t *total_size)
+                                   const char *name, size_t name_size,
+                                   const char *rec, size_t *total_size)
 {
     struct kndClassVar *class_var = obj;
     struct kndAttrVar *attr_var;
@@ -1392,6 +1394,7 @@ static gsl_err_t validate_attr_var(void *obj,
     struct kndAttrRef *ref;
     struct kndRepo *repo = class_var->entry->repo;
     struct kndMemPool *mempool = repo->mempool;
+    struct kndAttrVarCtx ctx;
     gsl_err_t parser_err;
     int err;
 
@@ -1660,11 +1663,10 @@ static gsl_err_t parse_baseclass_array(void *obj,
     return gsl_parse_array(&cvar_spec, rec, total_size);
 }
 
-extern gsl_err_t
-knd_read_class_state(struct kndClass *self,
-                     struct kndClassUpdate *unused_var(class_update),
-                     const char *rec,
-                     size_t *total_size)
+extern gsl_err_t knd_read_class_state(struct kndClass *self,
+                                      struct kndClassUpdate *unused_var(class_update),
+                                      const char *rec,
+                                      size_t *total_size)
 {
     if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log(".. reading %.*s class state GSP: \"%.*s\"..",

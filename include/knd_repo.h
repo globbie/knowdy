@@ -9,6 +9,7 @@ struct kndUser;
 struct kndUserContext;
 struct kndQuery;
 struct glbOutput;
+struct kndTask;
 
 #include "knd_config.h"
 
@@ -23,7 +24,6 @@ struct kndRepo
     size_t state;
     char path[KND_PATH_SIZE];
     size_t path_size;
-
     size_t num_journals;
 
     const char *schema_path;
@@ -49,13 +49,11 @@ struct kndRepo
     struct kndRepo *curr_repo;
     
     struct kndUser *user;
-    struct kndTask *task;
-
-    struct kndMemPool *mempool;
+    //struct kndTask *task;
+    //struct kndMemPool *mempool;
     size_t max_journal_size;
 
     struct kndStateControl *state_ctrl;
-
     bool restore_mode;
     size_t intersect_matrix_size;
 

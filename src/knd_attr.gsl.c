@@ -171,7 +171,7 @@ extern int knd_export_inherited_attr_GSL(void *obj,
     struct kndAttrVar *attr_var = ref->attr_var;
     struct kndRepo *repo = self->entry->repo;
     struct glbOutput *out = repo->out;
-    struct kndMemPool *mempool = repo->mempool;
+    struct kndMemPool *mempool = task->mempool;
     size_t numval = 0;
     size_t depth = 1;
     int err;

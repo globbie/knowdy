@@ -24,7 +24,7 @@ static int export_GSL(struct kndText *self,
     struct kndTranslation *tr;
     int err;
 
-    if (DEBUG_TEXT_LEVEL_TMP)
+    if (DEBUG_TEXT_LEVEL_2)
         knd_log(".. export text to GSL, locale: %.*s",
                 task->locale_size, task->locale);
 

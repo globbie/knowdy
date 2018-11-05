@@ -470,7 +470,7 @@ static gsl_err_t parse_GSL(struct kndElem *self,
                            const char *rec,
                            size_t *total_size)
 {
-    if (DEBUG_ELEM_LEVEL_TMP)
+    if (DEBUG_ELEM_LEVEL_2)
         knd_log(".. ELEM \"%.*s\" parse REC: \"%.*s\"",
                 self->attr->name_size, self->attr->name,
                 16, rec);

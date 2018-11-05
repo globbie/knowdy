@@ -9,9 +9,8 @@
 #include <assert.h>
 #include <string.h>
 
-#include "knd_class.h"  // FIXME(k15tfu): ?? remove this
-#include "knd_proc.h"   // FIXME(k15tfu): ?? remove this
-#include "knd_repo.h"   // FIXME(k15tfu): ?? remove this
+#include "knd_task.h"
+#include "knd_proc.h"
 
 #define DEBUG_ATTR_LEVEL_1 0
 #define DEBUG_ATTR_LEVEL_2 0
@@ -31,9 +30,10 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 static gsl_err_t alloc_gloss_item(void *obj, const char *name, size_t name_size,
                                   size_t count, void **item)
 {
-    struct kndAttr *self = obj;
+    struct kndTask *task = obj;
+    struct kndAttr *self = task->attr;
     struct kndTranslation *tr;
-    struct kndMemPool *mempool = self->parent_class->entry->repo->mempool;
+    struct kndMemPool *mempool = task->mempool;
     int err;
 
     assert(name == NULL && name_size == 0);
@@ -140,21 +140,21 @@ static gsl_err_t set_ref_class(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t parse_proc(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndAttr *self = obj;
+    struct kndTask *task = obj;
+    struct kndAttr *self = task->attr;
     struct kndProc *proc;
     struct kndProcEntry *entry;
-    struct kndMemPool *mempool;
+    struct kndMemPool *mempool = task->mempool;
     int err;
     gsl_err_t parser_err;
 
-    mempool = self->parent_class->entry->repo->mempool;
     err = knd_proc_new(mempool, &proc);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     err = knd_proc_entry_new(mempool, &entry);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
-    entry->repo = self->parent_class->entry->repo;
+    entry->repo = task->repo;
     entry->proc = proc;
     proc->entry = entry;
 

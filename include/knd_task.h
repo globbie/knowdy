@@ -126,7 +126,6 @@ struct kndTask
     struct kndClass *root_class;
     struct kndClass *class;
     struct kndClassVar *class_var;
-    //struct kndAttrVar *attr_var;
     struct kndAttr *attr;
     struct kndClassInst *class_inst;
     struct kndElem *elem;

@@ -655,8 +655,9 @@ static int update_ancestor_state(struct kndClass *self,
 static int update_state(struct kndClass *self,
                         struct kndStateRef *children,
                         knd_state_phase phase,
-                        struct kndMemPool *mempool)
+                        struct kndTask *task)
 {
+    struct kndMemPool *mempool = task->mempool;
     struct kndState *state;
     struct kndClass *c;
     struct kndClassRef *ref;
@@ -695,9 +696,10 @@ static int update_state(struct kndClass *self,
 }
 
 static int update_inst_state(struct kndClass *self,
-                             struct kndStateRef *children)
+                             struct kndStateRef *children,
+                             struct kndTask *task)
 {
-    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndStateRef *ref;
     struct kndState *state;
     struct kndSet *inst_idx = self->entry->inst_idx;
@@ -736,8 +738,9 @@ static int update_inst_state(struct kndClass *self,
 
 extern int knd_update_state(struct kndClass *self,
                             knd_state_phase phase,
-                            struct kndMemPool *mempool)
+                            struct kndTask *task)
 {
+    struct kndMemPool *mempool = task->mempool;
     struct kndRepo *repo = self->entry->repo;
     struct kndStateRef *state_ref;
     int err;
@@ -750,12 +753,12 @@ extern int knd_update_state(struct kndClass *self,
     switch (phase) {
     case KND_CREATED:
     case KND_REMOVED:
-        err = update_state(self, NULL, phase, mempool);                                    RET_ERR();
+        err = update_state(self, NULL, phase, task);                                       RET_ERR();
         break;
     case KND_UPDATED:
         /* any attr updates */
         if (repo->curr_class_state_refs) {
-            err = update_state(self, repo->curr_class_state_refs, phase, mempool);         RET_ERR();
+            err = update_state(self, repo->curr_class_state_refs, phase, task);         RET_ERR();
             repo->curr_class_state_refs = NULL;
         }
 
@@ -765,7 +768,7 @@ extern int knd_update_state(struct kndClass *self,
                 knd_log("\n .. \"%.*s\" class to register inst updates..",
                         self->name_size, self->name);
             }
-            err = update_inst_state(self, repo->curr_class_inst_state_refs);      RET_ERR();
+            err = update_inst_state(self, repo->curr_class_inst_state_refs, task);      RET_ERR();
             repo->curr_class_inst_state_refs = NULL;
             return knd_OK;
         }
@@ -785,6 +788,19 @@ extern int knd_update_state(struct kndClass *self,
     state_ref->next = repo->class_state_refs;
     repo->class_state_refs = state_ref;
     return knd_OK;
+}
+
+extern int knd_class_set_export(struct kndSet *self,
+                                knd_format format,
+                                struct kndTask *task)
+{
+    switch (format) {
+    case KND_FORMAT_JSON:
+        return knd_class_set_export_JSON(self, task);
+    default:
+        return knd_class_set_export_GSL(self, task);
+    }
+    return knd_FAIL;
 }
 
 extern int knd_class_export(struct kndClass *self,
@@ -899,13 +915,13 @@ extern int knd_class_get_attr(struct kndClass *self,
 
 extern int knd_get_class(struct kndRepo *self,
                          const char *name, size_t name_size,
-                         struct kndClass **result)
+                         struct kndClass **result,
+                         struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
     struct glbOutput *log = self->log;
     struct ooDict *class_name_idx = self->class_name_idx;
-    struct kndTask *task = self->task;
     struct kndState *state;
     int err;
 
@@ -923,7 +939,7 @@ extern int knd_get_class(struct kndRepo *self,
 
         /* check parent schema */
         if (self->base) {
-            err = knd_get_class(self->base, name, name_size, result);
+            err = knd_get_class(self->base, name, name_size, result, task);
             if (err) return err;
             return knd_OK;
         }
@@ -966,7 +982,7 @@ extern int knd_get_class(struct kndRepo *self,
     }
 
     if (self->base) {
-        err = knd_get_class(self->base, name, name_size, result);
+        err = knd_get_class(self->base, name, name_size, result, task);
         if (err) return err;
         return knd_OK;
     }
@@ -988,14 +1004,14 @@ extern int knd_get_class(struct kndRepo *self,
 
 extern int knd_get_class_by_id(struct kndClass *self,
                                const char *id, size_t id_size,
-                               struct kndClass **result)
+                               struct kndClass **result,
+                               struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
     struct kndRepo *repo = self->entry->repo;
     struct glbOutput *log = repo->log;
     struct kndSet *class_idx = repo->class_idx;
-    struct kndTask *task = repo->task;
     void *elem;
     struct kndState *state;
     int err;
@@ -1009,7 +1025,7 @@ extern int knd_get_class_by_id(struct kndClass *self,
     if (err) {
         /* check parent schema */
         if (repo->base) {
-            err = knd_get_class_by_id(repo->base->root_class, id, id_size, result);
+            err = knd_get_class_by_id(repo->base->root_class, id, id_size, result, task);
             if (err) return err;
             return knd_OK;
         }
@@ -1054,7 +1070,7 @@ extern int knd_get_class_by_id(struct kndClass *self,
     }
 
     if (repo->base) {
-        err = knd_get_class_by_id(repo->base->root_class, id, id_size, result);
+        err = knd_get_class_by_id(repo->base->root_class, id, id_size, result, task);
         if (err) return err;
         return knd_OK;
     }
@@ -1075,9 +1091,10 @@ extern int knd_get_class_by_id(struct kndClass *self,
 }
 
 extern int knd_unregister_class_inst(struct kndClass *self,
-                                     struct kndClassInstEntry *entry)
+                                     struct kndClassInstEntry *entry,
+                                     struct kndTask *task)
 {
-    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndSet *inst_idx;
     struct kndClass *c;
     struct kndState *state;
@@ -1114,12 +1131,10 @@ extern int knd_unregister_class_inst(struct kndClass *self,
 
     for (struct kndClassRef *ref = self->entry->ancestors; ref; ref = ref->next) {
         c = ref->entry->class;
-
         if (self->entry->repo != ref->entry->repo) continue;
 
-        err = knd_unregister_class_inst(c, entry);                                         RET_ERR();
+        err = knd_unregister_class_inst(c, entry, task);                                     RET_ERR();
     }
-
     return knd_OK;
 }
 
