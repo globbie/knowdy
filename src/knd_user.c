@@ -408,11 +408,11 @@ static gsl_err_t alloc_class_item(void *obj,
                                   size_t unused_var(count),
                                   void **item)
 {
-    struct kndClass *self = obj;
+    struct kndTask *task = obj;
 
     assert(name == NULL && name_size == 0);
 
-    *item = self;
+    *item = task;
 
     return make_gsl_err(gsl_OK);
 }
@@ -430,8 +430,12 @@ static gsl_err_t parse_class_item(void *obj,
                                   const char *rec,
                                   size_t *total_size)
 {
-    struct kndClass *c = obj;
-    struct kndTask *task = c->entry->repo->task;
+    struct kndTask *task = obj;
+    struct kndUser *self = task->user;
+    struct kndClass *c = self->repo->root_class;
+    struct kndUserContext *ctx = self->curr_ctx;
+    if (ctx)
+        c = ctx->repo->root_class;
     int err;
 
     err = knd_class_import(c, rec, total_size, task);
@@ -445,11 +449,6 @@ static gsl_err_t parse_class_array(void *obj,
                                    size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndUser *self = task->user;
-    struct kndClass *c = self->repo->root_class;
-    struct kndUserContext *ctx = self->curr_ctx;   
-    if (ctx)
-        c = ctx->repo->root_class;
 
     task->type = KND_UPDATE_STATE;
 
@@ -457,7 +456,7 @@ static gsl_err_t parse_class_array(void *obj,
         .is_list_item = true,
         .alloc = alloc_class_item,
         .append = append_class_item,
-        .accu = c,
+        .accu = task,
         .parse = parse_class_item
     };
 
