@@ -532,8 +532,8 @@ static gsl_err_t run_set_state_id(void *obj, const char *name, size_t name_size)
 }
 
 gsl_err_t kndClassInst_read_state(struct kndClassInst *self,
-                                  const char *rec,
-                                  size_t *total_size)
+                                  const char *rec, size_t *total_size,
+                                  struct kndTask *task)
 {
     struct LocalContext ctx = {
         .class_inst = self,
