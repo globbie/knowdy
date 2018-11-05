@@ -37,6 +37,7 @@ struct kndAttr;
 struct kndProc;
 struct kndClassUpdate;
 struct kndProcCallArg;
+struct kndTask;
 
 typedef enum knd_attr_type {
     KND_ATTR_NONE,
@@ -104,6 +105,13 @@ typedef enum knd_attr_quant_type {
 //    struct kndAttr *attr;
 //    struct kndAttrVarRef *attr_var;
 //};
+
+struct kndAttrVarCtx
+{
+    struct kndAttrVar *parent_var;
+    struct kndAttrVar *attr_var;
+    struct kndTask *task;
+};
 
 struct kndAttrVarRef
 {
@@ -272,7 +280,8 @@ extern int knd_compute_num_value(struct kndAttr *attr,
                                  long *result);
 
 extern int knd_apply_attr_var_updates(struct kndClass *self,
-                                      struct kndClassUpdate *update);
+                                      struct kndClassUpdate *update,
+                                      struct kndTask *task);
 
 extern int knd_copy_attr_ref(void *obj,
                              const char *elem_id,

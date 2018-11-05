@@ -52,12 +52,11 @@ extern gsl_err_t knd_parse_import_class_inst(void *obj,
 {
     struct kndTask *task = obj;
     struct kndMemPool *mempool = task->mempool;
-    struct kndClass *self = task->class;
     struct kndClass *c;
     struct kndClassInst *inst;
     struct kndClassInstEntry *entry;
     struct ooDict *name_idx;
-    struct kndRepo *repo = self->entry->repo;
+    struct kndRepo *repo = task->repo;
     struct kndState *state;
     struct kndStateRef *state_ref;
     int err;
@@ -67,19 +66,19 @@ extern gsl_err_t knd_parse_import_class_inst(void *obj,
         knd_log(".. import \"%.*s\" inst..", 128, rec);
     }
 
-    if (!repo->curr_class) {
+    if (!task->class) {
         knd_log("-- no class selected");
         return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
 
-    /* user ctx should have its own copy of a selected class */
-    if (repo->curr_class->entry->repo != repo) {
-        err = knd_class_clone(repo->curr_class, repo, &c, mempool);
-        if (err) return *total_size = 0, make_gsl_err_external(err);
-        repo->curr_class = c;
-    }
+    c = task->class;
 
-    c = repo->curr_class;
+    /* user ctx should have its own copy of a selected class */
+    if (c->entry->repo != repo) {
+        err = knd_class_clone(task->class, repo, &c, mempool);
+        if (err) return *total_size = 0, make_gsl_err_external(err);
+        task->class = c;
+    }
 
     err = knd_class_inst_new(mempool, &inst);
     if (err) {
@@ -204,7 +203,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 
     if (!task->batch_mode) {
         knd_log(".. doublet checking..\n");
-        err = knd_get_class(repo, name, name_size, &c);
+        err = knd_get_class(repo, name, name_size, &c, task);
         if (!err) goto doublet;
     }
 
@@ -918,26 +917,17 @@ extern int knd_class_import(struct kndClass *self,
         knd_log("++  \"%.*s\" class import completed! batch mode:%d",
                 c->name_size, c->name, task->batch_mode);
 
-    // test
-    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
-        //    c->str(c);
-        entry = repo->class_name_idx->get(repo->class_name_idx,
-                                          "RMC-М4511",
-                                          strlen("RMC-М4511"));
-        knd_log("++ class \"%.*s\"   idx:%p test:%p",
-                c->name_size, c->name,
-                repo->class_name_idx, entry);
-    }
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+        c->str(c);
     
     /* initial class load ends here */
     if (task->batch_mode) return knd_OK;
 
     err = knd_class_resolve(c, task);                                             RET_ERR();
-    err = knd_update_state(c, KND_CREATED, mempool);                              RET_ERR();
+    err = knd_update_state(c, KND_CREATED, task);                              RET_ERR();
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         c->str(c);
-
 
     return knd_OK;
 

@@ -335,11 +335,12 @@ extern int knd_attr_export(struct kndAttr *self,
 }
 
 extern int knd_apply_attr_var_updates(struct kndClass *self,
-                                      struct kndClassUpdate *class_update)
+                                      struct kndClassUpdate *class_update,
+                                      struct kndTask *task)
 {
     struct kndState *state; //, *s, *next_state = NULL;
     //struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = self->entry->repo->mempool;
+    struct kndMemPool *mempool = task->mempool;
     int err;
 
     if (DEBUG_ATTR_LEVEL_TMP)

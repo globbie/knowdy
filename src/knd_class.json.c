@@ -264,7 +264,7 @@ static int export_concise_JSON(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_class_export_set_JSON(struct kndSet *set,
+extern int knd_class_set_export_JSON(struct kndSet *set,
                                      struct kndTask *task)
 {
     struct glbOutput *out = task->out;
