@@ -355,9 +355,9 @@ extern int knd_class_new(struct kndMemPool *mempool,
                          struct kndClass **result);
 
 // knd_class.select.c
-extern gsl_err_t knd_class_select(void *obj,
-                                  const char *rec,
-                                  size_t *total_size);
+extern gsl_err_t knd_select_class(struct kndRepo *repo,
+                                  const char *rec, size_t *total_size,
+                                  struct kndTask *task);
 
 // knd_class.states.c
 extern int knd_class_get_updates(struct kndClass *self,
