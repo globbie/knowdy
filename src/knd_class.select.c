@@ -1077,10 +1077,12 @@ gsl_err_t knd_select_class(struct kndRepo *repo,
 
     if (!task->class) return make_gsl_err(gsl_OK);
 
+    knd_state_phase phase;
+
     /* any updates happened? */
     switch (task->type) {
     case KND_UPDATE_STATE:
-        knd_state_phase phase = KND_UPDATED;
+        phase = KND_UPDATED;
         if (task->phase == KND_REMOVED)
             phase = KND_REMOVED;
         err = knd_update_state(task->class, phase, task);
