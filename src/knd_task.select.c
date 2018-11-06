@@ -216,9 +216,10 @@ static gsl_err_t parse_class_select(void *obj,
         knd_log(".. parsing the system class select: \"%.*s\"", 64, rec);
 
     task->root_class = c;
+    task->class = c;
     task->repo = task->shard->repo;
 
-    return knd_select_task(task->shard->repo, rec, total_size);
+    return knd_select_class(task->shard->repo, rec, total_size, task);
 }
 
 static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
