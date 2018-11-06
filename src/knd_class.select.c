@@ -983,16 +983,11 @@ gsl_err_t knd_select_class(struct kndRepo *repo,
                            const char *rec, size_t *total_size,
                            struct kndTask *task)
 {
-    struct kndClass  *self = task->root_class;
-    knd_state_phase phase;
-    int err;
     gsl_err_t parser_err;
+    int err;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-        knd_log(".. parsing class select rec: \"%.*s\" root_class:%p", 32, rec, self);
-
-    self->depth = 0;
-    self->max_depth = 0;
+        knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
 
     struct LocalContext ctx = {
         .task = task,
@@ -1085,7 +1080,7 @@ gsl_err_t knd_select_class(struct kndRepo *repo,
     /* any updates happened? */
     switch (task->type) {
     case KND_UPDATE_STATE:
-        phase = KND_UPDATED;
+        knd_state_phase phase = KND_UPDATED;
         if (task->phase == KND_REMOVED)
             phase = KND_REMOVED;
         err = knd_update_state(task->class, phase, task);
