@@ -180,6 +180,7 @@ static gsl_err_t parse_user(void *obj,
     struct kndUser *user = self->shard->user;
     self->user = user;
 
+    knd_log(".. start user task..");
     if (self->curr_locale_size) {
         self->locale = self->curr_locale;
         self->locale_size = self->curr_locale_size;

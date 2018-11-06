@@ -88,13 +88,13 @@ static gsl_err_t parse_class_import(void *obj,
         c = ctx->repo->root_class;
 
     if (DEBUG_USER_LEVEL_2)
-        knd_log(".. parsing the default class import: \"%.*s\"..", 64, rec);
+        knd_log(".. parsing user class import: \"%.*s\"..", 64, rec);
 
     task->type = KND_UPDATE_STATE;
     err = knd_class_import(c, rec, total_size, task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
-    return *total_size = 0, make_gsl_err(gsl_OK);
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_sync_task(void *obj,
@@ -362,6 +362,8 @@ static gsl_err_t run_present_user(void *obj,
                                   const char *unused_var(val),
                                   size_t unused_var(val_size))
 {
+    knd_log(".. presenting user..");
+
     struct kndTask *task = obj;
     struct kndUser *self = task->user;
     struct kndClassInst *user_inst;
@@ -556,7 +558,7 @@ extern gsl_err_t knd_parse_select_user(struct kndTask *task,
         { .is_default = true,
           .run = run_present_user,
           .obj = task
-        }
+          }
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
