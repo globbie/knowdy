@@ -113,18 +113,15 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
 
 static gsl_err_t parse_gloss(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndAttr *self = obj;
+    struct kndTask *task = obj;
+
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
         .alloc = alloc_gloss_item,
         .append = append_gloss_item,
         .parse = parse_gloss_item,
-        .accu = self
+        .accu = task
     };
-
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. %.*s: reading gloss",
-                self->name_size, self->name);
 
     return gsl_parse_array(&item_spec, rec, total_size);
 }
@@ -271,7 +268,7 @@ gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *total_s
           .name = "_gloss",
           .name_size = strlen("_gloss"),
           .parse = parse_gloss,
-          .obj = self
+          .obj = task
         },
         { .type = GSL_SET_ARRAY_STATE,
           .name = "_g",
