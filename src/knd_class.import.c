@@ -451,12 +451,10 @@ static gsl_err_t import_attr_var(void *obj,
           .obj = attr_var
         },
         { .type = GSL_SET_STATE,
-          .is_validator = true,
           .validate = import_nested_attr_var,
           .obj = attr_var
         },
-        { .is_validator = true,
-          .validate = import_nested_attr_var,
+        { .validate = import_nested_attr_var,
           .obj = attr_var
         },/*
         { .name = "_cdata",
@@ -545,8 +543,7 @@ static gsl_err_t parse_nested_attr_var(void *obj,
           .run = set_attr_var_name,
           .obj = item
         },
-        { .is_validator = true,
-          .validate = import_nested_attr_var,
+        { .validate = import_nested_attr_var,
           .obj = item
         }
     };
@@ -644,12 +641,10 @@ static gsl_err_t import_nested_attr_var(void *obj,
           .obj = attr_var
         },
         { .type = GSL_SET_STATE,
-          .is_validator = true,
           .validate = import_nested_attr_var,
           .obj = attr_var
         },
-        { .is_validator = true,
-          .validate = import_nested_attr_var,
+        { .validate = import_nested_attr_var,
           .obj = attr_var
         }/*,
         { .name = "_cdata",
@@ -722,16 +717,13 @@ extern gsl_err_t parse_class_var(struct kndTask *task,
           .obj = task
         },
         { .type = GSL_SET_STATE,
-          .is_validator = true,
           .validate = import_attr_var,
           .obj = task
         },
-        { .is_validator = true,
-          .validate = import_attr_var,
+        { .validate = import_attr_var,
           .obj = task
         },
-        { .is_validator = true,
-          .type = GSL_SET_ARRAY_STATE,
+        { .type = GSL_SET_ARRAY_STATE,
           .validate = import_attr_var_list,
           .obj = task
         }
@@ -755,16 +747,13 @@ extern gsl_err_t knd_import_class_var(struct kndClassVar *self,
           .obj = self
         },
         { .type = GSL_SET_STATE,
-          .is_validator = true,
           .validate = import_attr_var,
           .obj = self
         },
-        { .is_validator = true,
-          .validate = import_attr_var,
+        { .validate = import_attr_var,
           .obj = self
         },
-        { .is_validator = true,
-          .type = GSL_SET_ARRAY_STATE,
+        { .type = GSL_SET_ARRAY_STATE,
           .validate = import_attr_var_list,
           .obj = self
         }
@@ -885,12 +874,10 @@ extern int knd_class_import(struct kndClass *self,
           .obj = c
         },
         { .type = GSL_SET_STATE,
-          .is_validator = true,
           .validate = parse_attr,
           .obj = task
         },
-        { .is_validator = true,
-          .validate = parse_attr,
+        { .validate = parse_attr,
           .obj = task
         }
     };

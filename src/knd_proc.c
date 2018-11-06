@@ -994,8 +994,7 @@ static gsl_err_t parse_proc_call(void *obj,
           .parse = parse_gloss,
           .obj = proc_call
         },
-        { .is_validator = true,
-          .validate = parse_proc_call_arg,
+        { .validate = parse_proc_call_arg,
           .obj = proc
         }
     };

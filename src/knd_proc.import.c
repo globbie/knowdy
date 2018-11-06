@@ -204,7 +204,6 @@ static gsl_err_t kndProc_parse_base(void *obj,
             .obj = base
         },
         {   .type = GSL_SET_STATE,
-            .is_validator = true,
             .validate = kndProc_validate_base_arg,
             .obj = base
         }
@@ -282,7 +281,6 @@ static gsl_err_t knd_proc_parse_do(void *obj,
             .obj = self->proc_call
         },
         {
-            .is_validator = true,
             .validate = kndProc_validate_do_arg,
             .obj = self
         }
