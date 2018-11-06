@@ -67,7 +67,7 @@ struct kndRepo
     size_t num_class_insts;
 
     /* selections */
-    struct kndClass     *curr_class;
+    //struct kndClass     *curr_class;
     struct kndStateRef  *curr_class_state_refs;
     struct kndStateRef  *curr_class_inst_state_refs;
 

@@ -216,6 +216,7 @@ static gsl_err_t parse_class_select(void *obj,
     }
 
     task->root_class = c;
+    task->class = c;
     task->repo = self->repo;
 
     if (DEBUG_USER_LEVEL_TMP)
