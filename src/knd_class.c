@@ -339,7 +339,7 @@ extern int knd_read_GSL_file(struct kndClass *self,
 {
     struct kndRepo *repo = self->entry->repo;
     struct glbOutput *out = repo->out;
-    struct glbOutput *file_out = repo->file_out;
+    struct glbOutput *file_out = task->file_out;
     struct kndConcFolder *folder, *folders;
     const char *c;
     char *rec;
@@ -920,7 +920,7 @@ extern int knd_get_class(struct kndRepo *self,
 {
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
-    struct glbOutput *log = self->log;
+    struct glbOutput *log = task->log;
     struct ooDict *class_name_idx = self->class_name_idx;
     struct kndState *state;
     int err;
@@ -1010,7 +1010,7 @@ extern int knd_get_class_by_id(struct kndClass *self,
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
     struct kndRepo *repo = self->entry->repo;
-    struct glbOutput *log = repo->log;
+    struct glbOutput *log = task->log;
     struct kndSet *class_idx = repo->class_idx;
     void *elem;
     struct kndState *state;

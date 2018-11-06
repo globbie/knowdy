@@ -123,7 +123,7 @@ extern int knd_get_proc(struct kndRepo *repo,
 {
     struct kndProcEntry *entry;
     struct kndProc *proc;
-    int err;
+    //int err;
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log(".. repo %.*s to get proc: \"%.*s\"..",
@@ -134,24 +134,24 @@ extern int knd_get_proc(struct kndRepo *repo,
     if (!entry) {
         knd_log("-- no such proc: \"%.*s\"",
                 name_size, name);
-        repo->log->reset(repo->log);
+        /*repo->log->reset(repo->log);
         err = repo->log->write(repo->log, name, name_size);
         if (err) return err;
         err = repo->log->write(repo->log, " Proc name not found",
                                strlen(" Proc name not found"));
-        if (err) return err;
+                               if (err) return err;*/
         return knd_NO_MATCH;
     }
 
     if (entry->phase == KND_REMOVED) {
         knd_log("-- \"%s\" proc was removed", name);
-        repo->log->reset(repo->log);
+        /*repo->log->reset(repo->log);
         err = repo->log->write(repo->log, name, name_size);
         if (err) return err;
         err = repo->log->write(repo->log, " proc was removed",
                                strlen(" proc was removed"));
         if (err) return err;
-        
+        */
         repo->root_proc->task->http_code = HTTP_GONE;
         return knd_NO_MATCH;
     }
@@ -244,21 +244,20 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
 {
     struct kndProc *self = obj;
     struct kndProc *proc;
-    struct kndRepo *repo = self->entry->repo;
-    int err;
+    //int err;
 
     if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. removing proc..");
+        knd_log(".. removing proc: %.*s", name_size, name);
 
     if (!self->curr_proc) {
         knd_log("-- remove operation: proc name not specified:(");
 
-        repo->log->reset(repo->log);
+        /*repo->log->reset(repo->log);
         err = repo->log->write(repo->log, name, name_size);
         if (err) return make_gsl_err_external(err);
         err = repo->log->write(repo->log, " class name not specified",
                                strlen(" class name not specified"));
-        if (err) return make_gsl_err_external(err);
+                               if (err) return make_gsl_err_external(err);*/
         return make_gsl_err(gsl_NO_MATCH);
     }
 
@@ -269,13 +268,13 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
 
     proc->entry->phase = KND_REMOVED;
 
-    repo->log->reset(repo->log);
-    err = repo->log->write(repo->log, proc->name, proc->name_size);
+    //repo->log->reset(repo->log);
+    /*err = repo->log->write(repo->log, proc->name, proc->name_size);
     if (err) return make_gsl_err_external(err);
     err = repo->log->write(repo->log, " proc removed",
                            strlen(" proc removed"));
     if (err) return make_gsl_err_external(err);
-
+    */
     /*    proc->next = self->inbox;
     self->inbox = proc;
     self->inbox_size++;
@@ -287,9 +286,7 @@ extern gsl_err_t knd_proc_select(struct kndProc *self,
                                  const char *rec,
                                  size_t *total_size)
 {
-    struct kndRepo *repo = self->entry->repo;
     gsl_err_t parser_err;
-    int e;
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log(".. parsing Proc select: \"%.*s\"",
@@ -324,13 +321,13 @@ extern gsl_err_t knd_proc_select(struct kndProc *self,
     parser_err = gsl_parse_task(rec, total_size, specs,
                                 sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("-- proc parse error: \"%.*s\"",
+        /*knd_log("-- proc parse error: \"%.*s\"",
                 repo->log->buf_size, repo->log->buf);
         if (!repo->log->buf_size) {
             e = repo->log->write(repo->log, "proc parse failure",
                                  strlen("proc parse failure"));
             if (e) return make_gsl_err_external(e);
-        }
+            }*/
         return parser_err;
     }
 

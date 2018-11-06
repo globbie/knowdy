@@ -199,8 +199,8 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct kndElem *elem = NULL;
-    struct glbOutput *log = self->base->entry->repo->log;
-    int err, e;
+    //struct glbOutput *log = self->base->entry->repo->log;
+    int err;
 
     if (DEBUG_INST_LEVEL_2)
         knd_log(".. \"%.*s\" to validate elem: \"%.*s\"",
@@ -220,12 +220,12 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
     err = knd_class_get_attr(conc, name, name_size, &attr_ref);
     if (err) {
         knd_log("  -- \"%.*s\" attr is not approved :(", name_size, name);
-        log->reset(log);
-        e = log->write(log, name, name_size);
+        //log->reset(log);
+        /*e = log->write(log, name, name_size);
         if (e) return e;
         e = log->write(log, " attr not confirmed",
                        strlen(" attr not confirmed"));
-        if (e) return e;
+                       if (e) return e; */
         return err;
     }
 

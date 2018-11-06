@@ -437,15 +437,14 @@ extern gsl_err_t knd_proc_import(struct kndProc *root_proc,
             knd_log("== proc was removed recently");
         } else {
             knd_log(".. doublet?");
-            knd_log("-- %.*s proc name doublet found :( log:%p",
-                    proc->entry->name_size, proc->entry->name,
-                    root_proc->entry->repo->log);
+            knd_log("-- %.*s proc name doublet found :(",
+                    proc->entry->name_size, proc->entry->name);
 
-            root_proc->entry->repo->log->reset(root_proc->entry->repo->log);
+            /*root_proc->entry->repo->log->reset(root_proc->entry->repo->log);
             err = root_proc->entry->repo->log->writef(root_proc->entry->repo->log,
                                                       "%*s proc name already exists",
                                                       proc->name_size, proc->name);
-            if (err) return make_gsl_err_external(err);
+                                                      if (err) return make_gsl_err_external(err); */
             return make_gsl_err_external(knd_EXISTS);
         }
     }
