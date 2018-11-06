@@ -689,7 +689,7 @@ static int update_state(struct kndClass *self,
             if (err) return err;
             ref->entry = c->entry;
         }
-        err = update_ancestor_state(c, self, mempool);                                      RET_ERR();
+        err = update_ancestor_state(c, self, mempool);                            RET_ERR();
     }
 
     return knd_OK;
@@ -745,7 +745,7 @@ extern int knd_update_state(struct kndClass *self,
     struct kndStateRef *state_ref;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log("\n .. \"%.*s\" class to update its state: %d",
                 self->name_size, self->name, phase);
     }
@@ -764,7 +764,7 @@ extern int knd_update_state(struct kndClass *self,
 
         /* instance updates */
         if (repo->curr_class_inst_state_refs) {
-            if (DEBUG_CLASS_LEVEL_TMP) {
+            if (DEBUG_CLASS_LEVEL_2) {
                 knd_log("\n .. \"%.*s\" class to register inst updates..",
                         self->name_size, self->name);
             }
@@ -779,7 +779,7 @@ extern int knd_update_state(struct kndClass *self,
     default:
         break;
     }
-
+    
     /* register in repo */
     err = knd_state_ref_new(mempool, &state_ref);                                   RET_ERR();
     state_ref->state = self->states;
@@ -1207,7 +1207,7 @@ extern int knd_class_clone(struct kndClass *self,
 {
     struct kndClass *c;
     struct kndClassEntry *entry;
-    struct ooDict *class_name_idx = target_repo->class_name_idx;
+    //struct ooDict *class_name_idx = target_repo->class_name_idx;
     struct kndSet *class_idx = target_repo->class_idx;
     int err;
 
@@ -1235,9 +1235,10 @@ extern int knd_class_clone(struct kndClass *self,
     }
 
     /* idx register */
-    err = class_name_idx->set(class_name_idx,
+    /*err = class_name_idx->set(class_name_idx,
                               entry->name, entry->name_size,
-                              (void*)entry);                                      RET_ERR();
+                              (void*)entry);                                      RET_ERR();*/
+
     err = class_idx->add(class_idx,
                          entry->id, entry->id_size,
                          (void*)entry);                                           RET_ERR();
@@ -1259,6 +1260,9 @@ extern int knd_class_copy(struct kndClass *self,
     struct kndClassRef   *ref,   *src_ref;
     int err;
 
+    if (DEBUG_CLASS_LEVEL_TMP)
+        knd_log(".. copying class %.*s..", self->name_size, self->name);
+
     entry = c->entry;
     src_entry = self->entry;
 
@@ -1270,9 +1274,10 @@ extern int knd_class_copy(struct kndClass *self,
     entry->class = c;
     c->entry = entry;
 
-    err = class_name_idx->set(class_name_idx,
+    /*err = class_name_idx->set(class_name_idx,
                               entry->name, entry->name_size,
                               (void*)entry);                                      RET_ERR();
+    */
 
     /* copy the attrs */
     c->attr_idx->mempool = mempool;

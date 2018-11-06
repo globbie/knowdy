@@ -406,7 +406,6 @@ extern int knd_copy_attr_ref(void *obj,
     err = attr_idx->add(attr_idx,
                         attr->id, attr->id_size,
                         (void*)ref);                                              RET_ERR();
-
     return knd_OK;
 }
 
@@ -439,7 +438,13 @@ extern int knd_register_attr_ref(void *obj,
 
     prev_attr_ref = attr_name_idx->get(attr_name_idx,
                                        attr->name, attr->name_size);
-    ref->next = prev_attr_ref;
+
+    if (prev_attr_ref) {
+        err = attr_name_idx->remove(attr_name_idx,
+                                    attr->name, attr->name_size);                     RET_ERR();
+        ref->next = prev_attr_ref;
+    }
+
     err = attr_name_idx->set(attr_name_idx,
                              attr->name, attr->name_size,
                              (void*)ref);                                         RET_ERR();

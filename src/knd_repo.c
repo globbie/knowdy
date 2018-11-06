@@ -399,7 +399,7 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
     struct kndClassEntry *entry;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP) {
+    if (DEBUG_REPO_LEVEL_2) {
         knd_log(".. \"%.*s\" repo to confirm updates..",
                 self->name_size, self->name);
     }
