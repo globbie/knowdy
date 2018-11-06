@@ -1307,7 +1307,7 @@ static int get_rel(struct kndRel *self,
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
     struct kndMemPool *mempool = self->task->mempool;
-    struct glbOutput *log = self->entry->repo->log;
+    //struct glbOutput *log = self->entry->repo->log;
     size_t chunk_size = 0;
     size_t *total_size;
     struct kndRelEntry *entry;
@@ -1331,12 +1331,12 @@ static int get_rel(struct kndRel *self,
                                   name, name_size);
     if (!entry) {
         knd_log("-- no such rel: \"%.*s\" :(", name_size, name);
-        log->reset(log);
+        /*log->reset(log);
         err = log->write(log, name, name_size);
         if (err) return err;
         err = log->write(log, " Rel name not found",
                                strlen(" Rel name not found"));
-        if (err) return err;
+                               if (err) return err; */
         return knd_NO_MATCH;
     }
 
@@ -1699,22 +1699,22 @@ static int get_rel_inst(struct kndRel *self,
                         size_t name_size,
                         struct kndRelInstance **result)
 {
-    struct glbOutput *log = self->entry->repo->log;
+    //struct glbOutput *log = self->entry->repo->log;
     struct kndTask *task = self->task;
     struct kndRelInstEntry *entry;
     struct kndRelInstance *inst;
-    int e;
-    int err;
+    //int e;
+    //int err;
     
     if (!self->entry->inst_name_idx) {
         knd_log("-- no inst name idx in \"%.*s\" :(",
                 self->entry->name_size, self->entry->name);
-        log->reset(log);
+        /*log->reset(log);
         e = log->write(log, self->entry->name, self->entry->name_size);
         if (e) return e;
         e = log->write(log, " class has no instances",
                              strlen(" class has no instances"));
-        if (e) return e;
+                             if (e) return e;*/
         task->http_code = HTTP_NOT_FOUND;
         return knd_FAIL;
     }
@@ -1722,12 +1722,12 @@ static int get_rel_inst(struct kndRel *self,
     entry = self->entry->inst_name_idx->get(self->entry->inst_name_idx, name, name_size);
     if (!entry) {
         knd_log("-- no such inst: \"%.*s\"", name_size, name);
-        log->reset(log);
+        /*log->reset(log);
         err = log->write(log, name, name_size);
         if (err) return err;
         err = log->write(log, " rel inst name not found",
                                strlen(" rel inst name not found"));
-        if (err) return err;
+                               if (err) return err; */
         task->http_code = HTTP_NOT_FOUND;
         return knd_NO_MATCH;
     }
@@ -1740,12 +1740,12 @@ static int get_rel_inst(struct kndRel *self,
 
     if (entry->inst->states->phase == KND_REMOVED) {
         knd_log("-- \"%.*s\" inst was removed", name_size, name);
-        log->reset(log);
+        /*log->reset(log);
         err = log->write(log, name, name_size);
         if (err) return err;
         err = log->write(log, " rel inst was removed",
                                strlen(" rel inst was removed"));
-        if (err) return err;
+                               if (err) return err; */
         return knd_NO_MATCH;
     }
 
@@ -1784,7 +1784,7 @@ static gsl_err_t remove_inst(void *data,
     struct kndRelInstance *inst;
     struct kndState  *state;
     struct kndTask *task         = self->task;
-    struct glbOutput *log        = task->log;
+    //struct glbOutput *log        = task->log;
     struct kndMemPool *mempool   = task->mempool;
     int err;
 
@@ -1806,11 +1806,12 @@ static gsl_err_t remove_inst(void *data,
     state->next = inst->states;
     inst->states = state;
 
-    log->reset(log);
+    /*log->reset(log);
     err = log->write(log, self->name, self->name_size);
     if (err) return make_gsl_err_external(err);
     err = log->write(log, " rel inst removed", strlen(" rel inst removed"));
     if (err) return make_gsl_err_external(err);
+    */
 
     task->type = KND_UPDATE_STATE;
     inst->next = self->inst_inbox;
@@ -1954,9 +1955,9 @@ static gsl_err_t parse_rel_select(struct kndRel *self,
                                   const char *rec,
                                   size_t *total_size)
 {
-    struct glbOutput *log = self->entry->repo->log;
+    //struct glbOutput *log = self->entry->repo->log;
     struct kndRel *rel;
-    int e;
+    //int e;
     gsl_err_t parser_err;
 
     if (DEBUG_REL_LEVEL_2)
@@ -1990,13 +1991,11 @@ static gsl_err_t parse_rel_select(struct kndRel *self,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("-- rel parse error: \"%.*s\"",
-                log->buf_size, log->buf);
-        if (!log->buf_size) {
+        /*if (!log->buf_size) {
             e = log->write(log, "rel parse failure",
                            strlen("rel parse failure"));
             if (e) return make_gsl_err_external(e);
-        }
+            }*/
 
         if (self->curr_rel) {
             rel = self->curr_rel;

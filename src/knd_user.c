@@ -463,7 +463,7 @@ static gsl_err_t parse_class_array(void *obj,
         .parse = parse_class_item
     };
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. import class array..");
 
     return gsl_parse_array(&item_spec, rec, total_size);

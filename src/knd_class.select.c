@@ -44,12 +44,15 @@ struct LocalContext {
     struct kndRepo *repo;
     struct kndTask *task;
     struct kndClass *class;
+    struct kndAttrRef *attr_ref;
+    struct kndAttr *attr;
 };
 
 static gsl_err_t select_by_baseclass(void *obj,
                                      const char *name, size_t name_size)
 {
-    struct kndTask *task = obj;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
     struct kndRepo *repo = task->repo;
     struct kndClass *c;
     int err;
@@ -73,8 +76,7 @@ static gsl_err_t select_by_baseclass(void *obj,
         return make_gsl_err(gsl_OK);
     }
 
-    // TODO ctx->class
-    task->class = c;
+    ctx->class = c;
     
     return make_gsl_err(gsl_OK);
 }
@@ -82,25 +84,22 @@ static gsl_err_t select_by_baseclass(void *obj,
 static gsl_err_t select_by_attr(void *obj,
                                 const char *name, size_t name_size)
 {
-    struct kndTask *task = obj;
-
-    // TODO ctx->class
-    struct kndClass *self = task->class;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndClass *self = ctx->class;
     struct kndClass *c;
     struct kndSet *set;
     void *result;
     const char *class_id;
     size_t class_id_size;
     struct kndFacet *facet;
-    struct kndRepo *repo =  self->entry->repo;
     struct glbOutput *log = task->log;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    // TODO
-    c = repo->curr_attr_ref->class_entry->class;
+    c = ctx->attr_ref->class_entry->class;
 
     if (DEBUG_CLASS_SELECT_LEVEL_2) {
         knd_log("\n\n== select by attr value: \"%.*s\" of \"%.*s\""
@@ -119,7 +118,7 @@ static gsl_err_t select_by_attr(void *obj,
     }
     set = c->entry->descendants;
 
-    err = knd_set_get_facet(set, repo->curr_attr, &facet);
+    err = knd_set_get_facet(set, ctx->attr, &facet);
     if (err) {
         log->reset(log);
         log->writef(log, "no such facet: %.*s", name_size, name);
@@ -169,30 +168,29 @@ static gsl_err_t parse_attr_select(void *obj,
                                    const char *name, size_t name_size,
                                    const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
-    struct kndClass *self = task->class;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndClass *self = ctx->class;
+    struct glbOutput *log = task->log;
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
-    struct kndRepo *repo = self->entry->repo;
-    struct glbOutput *log = task->log;
+    int err;
+
+    if (!self) return *total_size = 0, make_gsl_err_external(knd_FAIL);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = select_by_attr,
-          .obj = task
+          .obj = ctx
         }
     };
-    int err;
 
-    if (!repo->curr_baseclass)
-        return *total_size = 0, make_gsl_err_external(knd_FAIL);
-
-    err = knd_class_get_attr(repo->curr_baseclass, name, name_size, &attr_ref);
+    err = knd_class_get_attr(self, name, name_size, &attr_ref);
     if (err) {
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                 name_size, name,
-                repo->curr_baseclass->name_size,
-                repo->curr_baseclass->name);
+                self->name_size,
+                self->name);
         log->writef(log, ": no such attribute: %.*s", name_size, name);
         task->http_code = HTTP_NOT_FOUND;
         return *total_size = 0, make_gsl_err_external(err);
@@ -207,8 +205,8 @@ static gsl_err_t parse_attr_select(void *obj,
                 attr->ref_class->name_size,
                 attr->ref_class->name);
     }
-    repo->curr_attr_ref = attr_ref;
-    repo->curr_attr = attr;
+    ctx->attr_ref = attr_ref;
+    ctx->attr = attr;
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
@@ -260,7 +258,7 @@ static gsl_err_t run_set_attr_var(void *obj,
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    attr = repo->curr_attr;
+    attr = ctx->attr;
     if (!attr) {
         log->reset(log);
         e = log->write(log, "-- no attr selected",
@@ -345,11 +343,11 @@ static gsl_err_t present_attr_var_selection(void *obj,
 
     out->reset(out);
 
-    if (!repo->curr_attr) {
+    if (!ctx->attr) {
         knd_log("-- no attr to present");
         return make_gsl_err_external(knd_FAIL);
     }
-    attr = repo->curr_attr;
+    attr = ctx->attr;
 
     if (repo->curr_attr_var) {
         attr_var = repo->curr_attr_var;
@@ -461,7 +459,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = select_by_baseclass,
-          .obj = task
+          .obj = ctx
         },
         { .name = "_batch",
           .name_size = strlen("_batch"),
@@ -486,7 +484,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
         },
         { .is_validator = true,
           .validate = parse_attr_select,
-          .obj = task
+          .obj = ctx
         }
     };
 
@@ -514,10 +512,8 @@ static gsl_err_t present_class_selection(void *obj,
     struct kndTask *task = ctx->task;
     struct glbOutput *out = task->out;
     struct kndMemPool *mempool = task->mempool;
-
-    struct kndClass *c = task->class;
+    struct kndClass *c = ctx->class;
     struct kndSet *set;
-    struct kndRepo *repo = ctx->repo;
     int err;
 
     out->reset(out);
@@ -528,8 +524,8 @@ static gsl_err_t present_class_selection(void *obj,
 
         /* no sets found? */
         if (!task->num_sets) {
-            if (repo->curr_baseclass && repo->curr_baseclass->entry->descendants) {
-                set = repo->curr_baseclass->entry->descendants;
+            if (c && c->entry->descendants) {
+                set = c->entry->descendants;
 
                 err = knd_class_set_export(set, task->format, task);
                 if (err) return make_gsl_err_external(err);

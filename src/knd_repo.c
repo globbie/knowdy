@@ -545,8 +545,6 @@ extern int kndRepo_init(struct kndRepo *self,
     int err;
 
     self->out      = task->out;
-    self->file_out = task->file_out;
-    self->log      = task->log;
 
     err = kndRepo_open(self, task);
     if (err) return err;

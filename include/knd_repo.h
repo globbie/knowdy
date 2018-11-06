@@ -40,18 +40,11 @@ struct kndRepo
     size_t locale_size;
 
     struct glbOutput *out;
-    struct glbOutput *dir_out;
-    struct glbOutput *file_out;
-    struct glbOutput *path_out;
-    struct glbOutput *log;
     
     /* local repo index */
     struct ooDict *repo_idx;
-    struct kndRepo *curr_repo;
     
     struct kndUser *user;
-    //struct kndTask *task;
-    //struct kndMemPool *mempool;
     size_t max_journal_size;
 
     struct kndStateControl *state_ctrl;
@@ -66,8 +59,6 @@ struct kndRepo
     size_t num_classes;
     size_t num_class_insts;
 
-    /* selections */
-    //struct kndClass     *curr_class;
     struct kndStateRef  *curr_class_state_refs;
     struct kndStateRef  *curr_class_inst_state_refs;
 
@@ -87,12 +78,7 @@ struct kndRepo
     
     struct kndRel       *root_rel;
 
-
-    struct kndClass     *curr_baseclass;
     struct kndClassInst *curr_class_inst;
-
-    struct kndAttr       *curr_attr;
-    struct kndAttrRef    *curr_attr_ref;
     struct kndAttrVar    *curr_attr_var;
     struct kndClassInst  *curr_inst;
 
