@@ -1093,8 +1093,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
           .buf_size = &attr_var->val_size,
           .max_buf_size = sizeof attr_var->val
           }*/
-        { .is_validator = true,
-          .validate = read_nested_attr_var,
+        { .validate = read_nested_attr_var,
           .obj = &nested_ctx
         }
     };
@@ -1149,8 +1148,7 @@ static gsl_err_t attr_var_parse(void *obj,
           .run = check_list_item_id,
           .obj = &nested_ctx
         },
-        { .is_validator = true,
-          .validate = read_nested_attr_var,
+        { .validate = read_nested_attr_var,
           .obj = &nested_ctx
         }
     };
@@ -1473,8 +1471,7 @@ static gsl_err_t validate_attr_var(void *obj,
           .buf_size = &attr_var->val_size,
           .max_buf_size = sizeof attr_var->val
           },*/
-        { .is_validator = true,
-          .validate = read_nested_attr_var,
+        { .validate = read_nested_attr_var,
           .obj = attr_var
         },
         { .type = GSL_SET_ARRAY_STATE,
@@ -1664,13 +1661,11 @@ static gsl_err_t class_var_read(void *obj,
           .run = set_class_var_baseclass,
           .obj = ctx
         },
-        { .is_validator = true,
-          .type = GSL_SET_ARRAY_STATE,
+        { .type = GSL_SET_ARRAY_STATE,
           .validate = validate_attr_var_list,
           .obj = ctx
         },
-        { .is_validator = true,
-          .validate = validate_attr_var,
+        { .validate = validate_attr_var,
           .obj = ctx
         }
     };
