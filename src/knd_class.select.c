@@ -43,6 +43,7 @@
 struct LocalContext {
     struct kndRepo *repo;
     struct kndTask *task;
+    struct kndClass *class;
 };
 
 static gsl_err_t select_by_baseclass(void *obj,
@@ -72,7 +73,9 @@ static gsl_err_t select_by_baseclass(void *obj,
         return make_gsl_err(gsl_OK);
     }
 
+    // TODO ctx->class
     task->class = c;
+    
     return make_gsl_err(gsl_OK);
 }
 
@@ -80,6 +83,8 @@ static gsl_err_t select_by_attr(void *obj,
                                 const char *name, size_t name_size)
 {
     struct kndTask *task = obj;
+
+    // TODO ctx->class
     struct kndClass *self = task->class;
     struct kndClass *c;
     struct kndSet *set;
@@ -510,21 +515,16 @@ static gsl_err_t present_class_selection(void *obj,
     struct glbOutput *out = task->out;
     struct kndMemPool *mempool = task->mempool;
 
-    struct kndClass *self = task->class;
-    struct kndClass *c;
+    struct kndClass *c = task->class;
     struct kndSet *set;
     struct kndRepo *repo = ctx->repo;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-        knd_log(".. presenting class \"%.*s\"..",
-                self->entry->name_size, self->entry->name);
-
     out->reset(out);
     if (task->type == KND_SELECT_STATE) {
         if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-            knd_log(".. batch selection: batch size: %zu   start from: %zu  max depth:%zu",
-                    task->batch_max, task->batch_from, self->max_depth);
+            knd_log(".. batch selection: batch size: %zu   start from: %zu",
+                    task->batch_max, task->batch_from);
 
         /* no sets found? */
         if (!task->num_sets) {
@@ -582,18 +582,13 @@ static gsl_err_t present_class_selection(void *obj,
         return make_gsl_err(gsl_OK);
     }
 
-    if (!repo->curr_class) {
+    if (!c) {
         knd_log("-- no class to present :(");
         return make_gsl_err_external(knd_FAIL);
     }
 
-    c = repo->curr_class;
-
     c->depth = 0;
     c->max_depth = 1;
-    if (self->max_depth) {
-        c->max_depth = self->max_depth;
-    }
 
     err = knd_class_export(c, task->format, task);
     if (err) {
@@ -622,6 +617,7 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
     if (err) return make_gsl_err_external(err);
 
     ctx->task->class = c;
+    ctx->class = c;
 
     // TODO
     repo->curr_class_state_refs = NULL;
@@ -671,11 +667,12 @@ static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_siz
     if (err) return make_gsl_err(gsl_FAIL);
     entry = result;
 
-    repo->curr_class = NULL;
     err = knd_get_class(repo, entry->name, entry->name_size, &c, task);
     if (err) return make_gsl_err_external(err);
 
-    repo->curr_class = c;
+    // TODO
+    task->class = c;
+    ctx->class = c;
 
     if (DEBUG_CLASS_SELECT_LEVEL_2) {
         c->str(c);
@@ -687,14 +684,13 @@ static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_siz
 static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
     struct kndTask *task = ctx->task;
     struct kndClass *c;
-    struct glbOutput *log = repo->log;
+    struct glbOutput *log = task->log;
     size_t num_children;
     int err;
 
-    if (!repo->curr_class) {
+    if (!task->class) {
         knd_log("-- remove operation: class name not specified");
         log->reset(log);
         err = log->write(log, name, name_size);
@@ -706,7 +702,7 @@ static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_NO_MATCH);
     }
 
-    c = repo->curr_class;
+    c = task->class;
 
     /* check dependants */
     num_children = c->entry->num_children;
@@ -968,13 +964,14 @@ static gsl_err_t parse_select_class_inst(void *obj,
     struct kndClassInst *root_inst;
     gsl_err_t parser_err;
 
-    if (!repo->curr_class)  {
+    if (!ctx->task->class)  {
         knd_log("-- no baseclass selected");
         return make_gsl_err_external(knd_FAIL);
     }
 
     root_inst = repo->root_inst;
-    root_inst->base = repo->curr_class;
+    // TODO
+    root_inst->base = ctx->task->class;
 
     parser_err = knd_select_class_inst(root_inst, rec, total_size, ctx->task);
     if (parser_err.code) return parser_err;
@@ -1083,7 +1080,7 @@ gsl_err_t knd_select_class(struct kndRepo *repo,
         return parser_err;
     }
 
-    if (!repo->curr_class) return make_gsl_err(gsl_OK);
+    if (!task->class) return make_gsl_err(gsl_OK);
 
     /* any updates happened? */
     switch (task->type) {
@@ -1091,7 +1088,7 @@ gsl_err_t knd_select_class(struct kndRepo *repo,
         phase = KND_UPDATED;
         if (task->phase == KND_REMOVED)
             phase = KND_REMOVED;
-        err = knd_update_state(repo->curr_class, phase, task);
+        err = knd_update_state(task->class, phase, task);
         if (err) return make_gsl_err_external(err);
         break;
     default:
