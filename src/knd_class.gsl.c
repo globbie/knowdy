@@ -452,7 +452,6 @@ static int export_gloss_GSL(struct kndClass *self,
         if (memcmp(task->locale, tr->locale, tr->locale_size)) {
             continue;
         }
-
         err = out->write(out, "{_gloss ", strlen("{_gloss "));                    RET_ERR();
         err = out->write_escaped(out, tr->val,  tr->val_size);                    RET_ERR();
         err = out->writec(out, '}');                                              RET_ERR();
@@ -467,22 +466,22 @@ static int export_concise_GSL(struct kndClass *self,
                               size_t depth)
 {
     struct kndClassVar *item;
-    struct glbOutput *out = task->out;
+    //struct glbOutput *out = task->out;
     int err;
 
     if (DEBUG_GSL_LEVEL_2)
         knd_log(".. export concise GSL for %.*s..",
                 self->entry->name_size, self->entry->name);
 
-    if (task->format_offset) {
+    /*if (task->format_offset) {
         err = out->writec(out, '\n');                                             RET_ERR();
         err = knd_print_offset(out, (depth + 1) * task->format_offset);           RET_ERR();
-    }
+        }*/
 
     for (item = self->baseclass_vars; item; item = item->next) {
         if (!item->attrs) continue;
         err = knd_attr_vars_export_GSL(item->attrs,
-                                       task, true, depth);      RET_ERR();
+                                       task, true, depth);                        RET_ERR();
     }
 
     /*if (DEBUG_GSL_LEVEL_2)
@@ -586,17 +585,13 @@ static int present_subclass(struct kndClassRef *ref,
 
     if (c->tr) {
         if (task->format_offset) {
-            err = out->writec(out, '\n');                                             RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->format_offset);           RET_ERR();
+            err = out->writec(out, '\n');                                         RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * task->format_offset);       RET_ERR();
         }
-        err = export_gloss_GSL(c, task);                                   RET_ERR();
+        err = export_gloss_GSL(c, task);                                          RET_ERR();
     }
 
-    if (task->format_offset) {
-        err = out->writec(out, '\n');                                             RET_ERR();
-        err = knd_print_offset(out, (depth + 1) * task->format_offset);           RET_ERR();
-    }
-    err = export_concise_GSL(c, task, depth);                                 RET_ERR();
+    err = export_concise_GSL(c, task, depth);                                     RET_ERR();
 
     err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;

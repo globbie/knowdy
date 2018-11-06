@@ -403,7 +403,7 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
     struct kndAttrVar *item;
     struct kndAttr *attr;
     struct kndClass *c;
-    bool in_list = false;
+    //bool in_list = false;
     int err;
 
     for (item = items; item; item = item->next) {
@@ -415,13 +415,10 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
         item->depth = items->depth;
         item->max_depth = items->max_depth;
 
-        if (in_list) {
-            if (task->format_offset) {
-                err = out->writec(out, '\n');                                     RET_ERR();
-                err = knd_print_offset(out, (depth + 1) * task->format_offset);   RET_ERR();
-            }
+        if (task->format_offset) {
+            err = out->writec(out, '\n');                                     RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * task->format_offset);   RET_ERR();
         }
-        in_list = true;
 
         if (attr->is_a_set) {
             err = attr_var_list_export_GSL(item, task, depth + 1);
