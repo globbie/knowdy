@@ -399,15 +399,15 @@ static int export_conc_elem_GSL(void *obj,
         if (state && state->phase == KND_REMOVED) return knd_OK;
     }
 
-    /* separator */
-    if (task->batch_size) {
-        err = out->writec(out, ',');                                              RET_ERR();
-    }
-
     c->depth = 0;
     c->max_depth = 0;
     if (self->max_depth) {
         c->max_depth = self->max_depth;
+    }
+    
+    if (task->format_offset) {
+        err = out->writec(out, '\n');                                             RET_ERR();
+        err = knd_print_offset(out, task->format_offset);                         RET_ERR();
     }
 
     err = knd_class_export_GSL(c, task, 1);
@@ -502,14 +502,14 @@ extern int knd_class_set_export_GSL(struct kndSet *set,
     int err;
 
     err = out->write(out, "{_set",
-                     strlen("{_set"));                                      RET_ERR();
+                     strlen("{_set"));                                            RET_ERR();
 
     /* TODO: present child clauses */
     if (set->base) {
         err = out->write(out, "{_is ",
-                         strlen("{_is "));                                   RET_ERR();
+                         strlen("{_is "));                                        RET_ERR();
         err = out->write(out, set->base->name,  set->base->name_size);            RET_ERR();
-        err = out->writec(out, '}');                                                  RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
     }
 
     if (task->show_removed_objs) {
@@ -521,25 +521,32 @@ extern int knd_class_set_export_GSL(struct kndSet *set,
     }
     err = out->writec(out, '}');                                                  RET_ERR();
 
+    if (task->format_offset) {
+        err = out->writec(out, '\n');                                             RET_ERR();
+        err = knd_print_offset(out, task->format_offset);                         RET_ERR();
+    }
+    
     err = out->write(out, "[batch",
-                     strlen("[batch"));                                     RET_ERR();
+                     strlen("[batch"));                                           RET_ERR();
 
     err = set->map(set, export_conc_elem_GSL, (void*)task);
     if (err && err != knd_RANGE) return err;
 
     err = out->writec(out, ']');                                                  RET_ERR();
 
-    err = out->writef(out, ",\"batch_max\":%lu",
+    if (task->format_offset) {
+        err = out->writec(out, '\n');                                             RET_ERR();
+        err = knd_print_offset(out, task->format_offset);                         RET_ERR();
+    }
+
+    err = out->writef(out, "{batch {max %lu}",
                       (unsigned long)task->batch_max);                            RET_ERR();
-    err = out->writef(out, ",\"batch_size\":%lu",
+    err = out->writef(out, "{size %lu}",
                        (unsigned long)task->batch_size);                          RET_ERR();
 
-    err = out->write(out,
-                     ",\"batch_from\":", strlen(",\"batch_from\":"));             RET_ERR();
+    err = out->writef(out,
+                     "{from %lu}}", (unsigned long)task->batch_from);             RET_ERR();
 
-    err = out->writef(out,"%lu",
-                      (unsigned long)task->batch_from);                          RET_ERR();
-    err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
 }
 

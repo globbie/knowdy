@@ -579,8 +579,22 @@ static gsl_err_t present_class_selection(void *obj,
     }
 
     if (!c) {
-        knd_log("-- no class to present :(");
-        return make_gsl_err_external(knd_FAIL);
+        knd_log("-- no specific class selected");
+        set = ctx->repo->class_idx;
+        if (set->num_elems) {
+            err = knd_class_set_export(set, task->format, task);
+            if (err) return make_gsl_err_external(err);
+            return make_gsl_err(gsl_OK);
+        }
+        if (ctx->repo->base) {
+            set = ctx->repo->base->class_idx;
+            err = knd_class_set_export(set, task->format, task);
+            if (err) return make_gsl_err_external(err);
+            return make_gsl_err(gsl_OK);
+        }
+        err = out->write(out, "{}", strlen("{}"));
+        if (err) return make_gsl_err_external(err);
+        return make_gsl_err(gsl_OK);
     }
 
     c->depth = 0;
@@ -608,6 +622,14 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
     int err;
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    /* check root name */
+    if (name_size == 1 && *name == '/') {
+        ctx->class = repo->root_class;
+        if (repo->base)
+            ctx->class = repo->base->root_class;
+        return make_gsl_err(gsl_OK);
+    }
 
     err = knd_get_class(repo, name, name_size, &c, ctx->task);
     if (err) return make_gsl_err_external(err);
