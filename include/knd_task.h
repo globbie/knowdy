@@ -29,6 +29,7 @@
 
 struct glbOutput;
 struct kndTask;
+struct kndShard;
 struct kndUser;
 struct kndUserContext;
 struct kndStateControl;
@@ -125,7 +126,9 @@ struct kndTask
     struct kndUser *user;
     struct kndUserContext *user_ctx;
 
+    struct kndRepo *root_repo;
     struct kndRepo *repo;
+
     struct kndClass *root_class;
     struct kndClass *class;
     struct kndClassVar *class_var;

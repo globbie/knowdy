@@ -1,5 +1,5 @@
 #include "knd_task.h"
-
+#include "knd_repo.h"
 #include "knd_class.h"
 #include "knd_user.h"
 #include "knd_utils.h"
@@ -8,9 +8,6 @@
 
 #include <assert.h>
 #include <string.h>
-
-#include "knd_repo.h"   // FIXME(k15tfu): ?? remove this
-#include "knd_shard.h"  // FIXME(k15tfu): ?? remove this
 
 #define DEBUG_TASK_LEVEL_0 0
 #define DEBUG_TASK_LEVEL_1 0
@@ -71,35 +68,35 @@ static gsl_err_t parse_format(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t parse_user(void *obj,
+/*static gsl_err_t parse_user(void *obj,
                             const char *rec,
                             size_t *total_size)
 {
     struct kndTask *self = obj;
-    struct kndUser *user = self->shard->user;
-    self->user = user;
 
-    knd_log(".. start user task..");
     if (self->curr_locale_size) {
         self->locale = self->curr_locale;
         self->locale_size = self->curr_locale_size;
     }
     return knd_parse_select_user(self, rec, total_size);
 }
+*/
 
 static gsl_err_t parse_class_import(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct kndTask *self = obj;
-    struct kndClass *c = self->shard->repo->root_class;
+    struct kndTask *task = obj;
+    if (!task->repo)
+        task->repo = task->root_repo;
+    struct kndClass *c = task->repo->root_class;
     int err;
 
     if (DEBUG_TASK_LEVEL_TMP)
         knd_log(".. parsing the system class import: \"%.*s\"..", 64, rec);
 
-    self->type = KND_UPDATE_STATE;
-    err = knd_class_import(c, rec, total_size, self);
+    task->type = KND_UPDATE_STATE;
+    err = knd_class_import(c, rec, total_size, task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     return *total_size = 0, make_gsl_err(gsl_OK);
@@ -110,16 +107,18 @@ static gsl_err_t parse_class_select(void *obj,
                                     size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndClass *c = task->shard->repo->root_class;
+    if (!task->repo)
+        task->repo = task->root_repo;
+
+    struct kndClass *c = task->repo->root_class;
 
     if (DEBUG_TASK_LEVEL_TMP)
         knd_log(".. parsing the system class select: \"%.*s\"", 64, rec);
 
     task->root_class = c;
     task->class = c;
-    task->repo = task->shard->repo;
 
-    return knd_select_class(task->shard->repo, rec, total_size, task);
+    return knd_select_class(task->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_update(void *obj,
@@ -139,7 +138,7 @@ static gsl_err_t parse_update(void *obj,
         },
         { .name = "user",
           .name_size = strlen("user"),
-          .parse = parse_user,
+          .parse = knd_parse_select_user,
           .obj = self
         }
     };
@@ -171,7 +170,7 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
         },
         { .name = "user",
           .name_size = strlen("user"),
-          .parse = parse_user,
+          .parse = knd_parse_select_user,
           .obj = self
         },
         { .type = GSL_SET_STATE,
@@ -196,7 +195,6 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
           .obj = self
         }
     };
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
