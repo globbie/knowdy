@@ -897,7 +897,7 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
         c->str(c);
 
     /* initial class load ends here */
-    if (task->batch_mode) return make_gsl_err_external(err);
+    if (task->batch_mode) return make_gsl_err(gsl_OK);
 
     err = knd_class_resolve(c, task);
     if (err) return make_gsl_err_external(err);
