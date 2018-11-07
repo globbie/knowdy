@@ -196,31 +196,29 @@ static gsl_err_t parse_class_select(void *obj,
                                     size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndUser *self = task->user;
-    struct kndUserContext *ctx = self->curr_ctx;
-    struct glbOutput *log = task->log;
+    struct kndUserContext *ctx = task->user_ctx;
+    struct kndRepo *repo;
     struct kndClass *c;
 
     if (!ctx) {
+        struct glbOutput *log = task->log;
         knd_log("-- no user selected");
         log->writef(log, "no user selected");
         task->http_code = HTTP_BAD_REQUEST;
         return make_gsl_err(gsl_FAIL);
     }
 
-    task->out->reset(task->out);
+    repo = ctx->repo;
+    if (task->repo)
+        repo = task->repo;
+    else
+        task->repo = repo;
 
-    c = self->repo->root_class;
-    if (ctx) {
-        c = ctx->repo->root_class;
-    }
-
+    c = repo->root_class;
     task->root_class = c;
     task->class = c;
-    task->repo = self->repo;
 
-    return knd_select_class(ctx ? ctx->repo : self->repo,
-                            rec, total_size, task);
+    return knd_select_class(repo, rec, total_size, task);
 }
 
 #if 0
@@ -350,6 +348,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     }
 
     self->curr_ctx = ctx;
+    task->user_ctx = ctx;
 
     return make_gsl_err(gsl_OK);
 }
@@ -491,6 +490,11 @@ extern gsl_err_t knd_parse_select_user(struct kndTask *task,
           .parse = gsl_parse_size_t,
           .obj = &self->max_depth
         },
+        { .name = "repo",
+          .name_size = strlen("repo"),
+          .parse = knd_parse_repo,
+          .obj = task
+        },
         { .type = GSL_SET_STATE,
           .name = "class",
           .name_size = strlen("class"),
@@ -584,7 +588,6 @@ extern gsl_err_t knd_parse_select_user(struct kndTask *task,
     default:
         break;
     }
-
     return make_gsl_err(gsl_OK);
 
  cleanup:
