@@ -112,7 +112,6 @@ int kndLearnerService_new(struct kndLearnerService **service,
 
     self->knode->add_endpoint(self->knode, self->entry_point);
 
-
     { // read config
         struct stat stat;
 
