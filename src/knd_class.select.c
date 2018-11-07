@@ -1002,7 +1002,7 @@ static gsl_err_t parse_select_class_inst(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_select_class(struct kndRepo *repo,
+gsl_err_t knd_class_select(struct kndRepo *repo,
                            const char *rec, size_t *total_size,
                            struct kndTask *task)
 {

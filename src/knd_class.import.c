@@ -809,12 +809,11 @@ static gsl_err_t parse_baseclass(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-extern int knd_class_import(struct kndClass *self,
-                            const char *rec,
-                            size_t *total_size,
-                            struct kndTask *task)
+extern gsl_err_t knd_class_import(struct kndRepo *repo,
+                                  const char *rec,
+                                  size_t *total_size,
+                                  struct kndTask *task)
 {
-    struct kndRepo *repo = self->entry->repo;
     struct kndMemPool *mempool = task->mempool;
     struct kndClass *c;
     struct kndClassEntry *entry;
@@ -826,8 +825,11 @@ extern int knd_class_import(struct kndClass *self,
         knd_log("..worker \"%zu\" to import class: \"%.*s\".. [total:%zu]",
                 task->id, 128, rec, mempool->num_classes);
 
-    err = knd_class_new(mempool, &c);                                             RET_ERR();
-    err = knd_class_entry_new(mempool, &entry);                                   RET_ERR();
+    err = knd_class_new(mempool, &c);
+    if (err) return make_gsl_err_external(err);
+
+    err = knd_class_entry_new(mempool, &entry);
+    if (err) return make_gsl_err_external(err);
 
     entry->repo = repo;
     entry->class = c;
@@ -903,11 +905,11 @@ extern int knd_class_import(struct kndClass *self,
 
     if (!c->name_size) {
         knd_log("-- no class name specified?");
-        log = task->log;
+        /*log = task->log;
         log->reset(log);
         e = log->write(log, "class name not specified",
                        strlen("class name not specified"));
-        if (e) return e;
+                       if (e) return e; */
         task->http_code = HTTP_BAD_REQUEST;
         parser_err = make_gsl_err(gsl_FAIL);
         goto final;
@@ -921,16 +923,18 @@ extern int knd_class_import(struct kndClass *self,
         c->str(c);
 
     /* initial class load ends here */
-    if (task->batch_mode) return knd_OK;
+    if (task->batch_mode) return make_gsl_err_external(err);
 
-    err = knd_class_resolve(c, task);                                             RET_ERR();
-    err = knd_update_state(c, KND_CREATED, task);                                 RET_ERR();
+    err = knd_class_resolve(c, task);
+    if (err) return make_gsl_err_external(err);
+
+    err = knd_update_state(c, KND_CREATED, task);
+    if (err) return make_gsl_err_external(err);
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         c->str(c);
 
-    return knd_OK;
-
+    return make_gsl_err(gsl_OK);
  final:
-    return gsl_err_to_knd_err_codes(parser_err);
+    return parser_err;
 }

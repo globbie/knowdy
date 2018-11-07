@@ -616,7 +616,37 @@ static gsl_err_t parse_class_select(void *obj,
     task->root_class = c;
     task->class = c;
 
-    return knd_select_class(repo, rec, total_size, task);
+    return knd_class_select(repo, rec, total_size, task);
+}
+
+static gsl_err_t parse_class_import(void *obj,
+                                    const char *rec,
+                                    size_t *total_size)
+{
+    struct kndTask *task = obj;
+    struct kndUserContext *ctx = task->user_ctx;
+    struct kndRepo *repo;
+    struct kndClass *c;
+
+    if (!ctx) {
+        struct glbOutput *log = task->log;
+        knd_log("-- no user selected");
+        log->writef(log, "no user selected");
+        task->http_code = HTTP_BAD_REQUEST;
+        return make_gsl_err(gsl_FAIL);
+    }
+
+    repo = ctx->repo;
+    if (task->repo)
+        repo = task->repo;
+    else
+        task->repo = repo;
+
+    c = repo->root_class;
+    task->root_class = c;
+    task->class = c;
+
+    return knd_class_import(repo, rec, total_size, task);
 }
 
 extern gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)
@@ -627,6 +657,12 @@ extern gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)
         {   .is_implied = true,
             .run = run_select_repo,
             .obj = task
+        },
+        { .type = GSL_SET_STATE,
+          .name = "class",
+          .name_size = strlen("class"),
+          .parse = parse_class_import,
+          .obj = task
         },
         { .name = "class",
           .name_size = strlen("class"),
