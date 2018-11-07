@@ -5,11 +5,11 @@
 #include <time.h>
 
 #include "knd_shard.h"
-#include "knd_repo.h"
 #include "knd_user.h"
 #include "knd_task.h"
 #include "knd_dict.h"
 #include "knd_set.h"
+#include "knd_repo.h"
 #include "knd_class.h"
 #include "knd_attr.h"
 #include "knd_mempool.h"
@@ -97,8 +97,6 @@ final:
 
     *result = task->report;
     *result_size = task->report_size;
-
-    knd_log("== final report size: %zu", task->report_size);
 
     return knd_OK;
 }
@@ -200,6 +198,12 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
 
     err = kndUser_init(user, task);
     if (err != knd_OK) goto error;
+
+    for (size_t i = 0; i < self->num_workers; i++) {
+        task = self->workers[i];
+        task->root_repo = repo;
+        task->user = user;
+    }
 
     *shard = self;
     return knd_OK;

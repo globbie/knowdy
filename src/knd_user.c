@@ -464,10 +464,11 @@ static gsl_err_t parse_class_array(void *obj,
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
-extern gsl_err_t knd_parse_select_user(struct kndTask *task,
+extern gsl_err_t knd_parse_select_user(void *obj,
                                        const char *rec,
                                        size_t *total_size)
 {
+    struct kndTask *task = obj;
     struct kndUser *self = task->user;
     struct kndRepo *repo;
     gsl_err_t parser_err;

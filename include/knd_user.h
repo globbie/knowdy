@@ -96,7 +96,7 @@ struct kndUser
 
 extern int kndUser_new(struct kndUser **self, struct kndMemPool *mempool);
 extern int kndUser_init(struct kndUser *self, struct kndTask *task);
-extern gsl_err_t knd_parse_select_user(struct kndTask *task,
+extern gsl_err_t knd_parse_select_user(void *obj,
                                        const char *rec,
                                        size_t *total_size);
 

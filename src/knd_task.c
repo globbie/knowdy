@@ -72,9 +72,9 @@ void kndTask_reset(struct kndTask *self)
     self->http_code = HTTP_OK;
     self->update = NULL;
 
-    self->user = NULL;
-    self->root_class = NULL;
+    self->user_ctx = NULL;
     self->repo = NULL;
+    self->root_class = NULL;
     self->class = NULL;
     self->class_inst = NULL;
 
