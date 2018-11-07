@@ -516,6 +516,11 @@ static gsl_err_t present_class_selection(void *obj,
     struct kndSet *set;
     int err;
 
+    if (task->curr_locale_size) {
+        task->locale = task->curr_locale;
+        task->locale_size = task->curr_locale_size;
+    }
+
     out->reset(out);
     if (task->type == KND_SELECT_STATE) {
         if (DEBUG_CLASS_SELECT_LEVEL_TMP)
