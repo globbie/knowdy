@@ -589,18 +589,54 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t parse_class_select(void *obj,
+                                    const char *rec,
+                                    size_t *total_size)
+{
+    struct kndTask *task = obj;
+    struct kndUserContext *ctx = task->user_ctx;
+    struct kndRepo *repo;
+    struct kndClass *c;
+
+    if (!ctx) {
+        struct glbOutput *log = task->log;
+        knd_log("-- no user selected");
+        log->writef(log, "no user selected");
+        task->http_code = HTTP_BAD_REQUEST;
+        return make_gsl_err(gsl_FAIL);
+    }
+
+    repo = ctx->repo;
+    if (task->repo)
+        repo = task->repo;
+    else
+        task->repo = repo;
+
+    c = repo->root_class;
+    task->root_class = c;
+    task->class = c;
+
+    return knd_select_class(repo, rec, total_size, task);
+}
+
 extern gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *self = obj;
+    struct kndTask *task = obj;
+
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
             .run = run_select_repo,
-            .obj = self
+            .obj = task
+        },
+        { .name = "class",
+          .name_size = strlen("class"),
+          .parse = parse_class_select,
+          .obj = task
         },
         { .name = "_state",
           .name_size = strlen("_state"),
           .parse = parse_repo_state,
-          .obj = self
+          .obj = task
         }
     };
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -739,12 +775,6 @@ extern int kndRepo_new(struct kndRepo **repo,
     if (!self) return knd_NOMEM;
 
     memset(self, 0, sizeof(struct kndRepo));
-
-    /*err = kndStateControl_new(&state_ctrl);
-    if (err) return err;
-    state_ctrl->repo = self;
-    self->state_ctrl = state_ctrl;
-    */
 
     err = knd_class_entry_new(mempool, &entry);  RET_ERR();
     entry->name = "/";
