@@ -482,8 +482,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
            .run = rels_presentation,
            .obj = task
         },
-        { .is_validator = true,
-          .validate = parse_attr_select,
+        { .validate = parse_attr_select,
           .obj = ctx
         }
     };
@@ -1072,8 +1071,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
           .parse = parse_select_class_state,
           .obj = &ctx
         },
-        { .is_validator = true,
-          .validate = parse_attr_var_select,
+        { .validate = parse_attr_var_select,
           .obj = &ctx
         },
         { .is_default = true,
