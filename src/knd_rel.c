@@ -719,7 +719,6 @@ static gsl_err_t import_rel(struct kndRel *self,
           .obj = rel
         },
         { .type = GSL_SET_STATE,
-          .is_validator = true,
           .validate = validate_rel_arg,
           .obj = rel
         }
@@ -1168,8 +1167,7 @@ static gsl_err_t read_GSP(struct kndRel *self,
           .parse = parse_gloss,
           .obj = self
         },
-        { .is_validator = true,
-          .validate = validate_rel_arg,
+        { .validate = validate_rel_arg,
           .obj = self
         },
         { .is_default = true,
@@ -1556,12 +1554,10 @@ static int read_instance(struct kndRel *self,
           .run = set_inst_name,
           .obj = inst
         },
-        { .is_validator = true,
-          .validate = parse_rel_arg_inst,
+        { .validate = parse_rel_arg_inst,
           .obj = inst
         },
         { .type = GSL_SET_STATE,
-          .is_validator = true,
           .validate = parse_rel_arg_inst,
           .obj = inst
         }/*,
@@ -1621,7 +1617,6 @@ static gsl_err_t parse_import_instance(void *data,
           .obj = inst
         },
         { .type = GSL_SET_STATE,
-          .is_validator = true,
           .validate = parse_rel_arg_inst,
           .obj = inst
         }/*,

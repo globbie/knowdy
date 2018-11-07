@@ -493,16 +493,13 @@ gsl_err_t knd_import_class_inst(struct kndClassInst *self,
           .obj = &ctx
         },
         { .type = GSL_SET_STATE,
-          .is_validator = true,
           .validate = parse_import_elem,
           .obj = &ctx
         },
-        { .is_validator = true,
-          .validate = parse_import_elem,
+        { .validate = parse_import_elem,
           .obj = &ctx
         },
-        { .is_validator = true,
-          .type = GSL_SET_ARRAY_STATE,
+        { .type = GSL_SET_ARRAY_STATE,
           .validate = import_elem_list,
           .obj = self
         },
@@ -545,12 +542,10 @@ gsl_err_t kndClassInst_read_state(struct kndClassInst *self,
           .obj = self
         },
         { .type = GSL_SET_STATE,
-          .is_validator = true,
           .validate = parse_import_elem,
           .obj = &ctx
         },
-        { .is_validator = true,
-          .validate = parse_import_elem,
+        { .validate = parse_import_elem,
           .obj = &ctx
         }
     };
