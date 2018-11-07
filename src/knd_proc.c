@@ -654,49 +654,15 @@ extern int knd_proc_export(struct kndProc *self,
     return knd_OK;
 }
 
-static gsl_err_t alloc_gloss_item(void *unused_var(obj),
-                                  const char *name,
-                                  size_t name_size,
-                                  size_t unused_var(count),
-                                  void **item)
-{
-    struct kndTranslation *tr;
-
-    assert(name == NULL && name_size == 0);
-
-    /* TODO: mempool alloc */
-    //self->entry->repo->mempool->new_text_seq();
-    tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return make_gsl_err_external(knd_NOMEM);
-
-    memset(tr, 0, sizeof(struct kndTranslation));
-
-    *item = tr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t append_gloss_item(void *accu,
-                                   void *item)
-{
-    struct kndProc *self = accu;
-    struct kndTranslation *tr = item;
-
-    tr->next = self->tr;
-    self->tr = tr;
-
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t set_gloss_locale(void *obj, const char *name, size_t name_size)
 {
     struct kndTranslation *self = obj;
-    if (!name_size) return make_gsl_err(gsl_FAIL);
     if (name_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
     self->curr_locale = name;
     self->curr_locale_size = name_size;
     return make_gsl_err(gsl_OK);
 }
+
 static gsl_err_t set_gloss_value(void *obj, const char *name, size_t name_size)
 {
     struct kndTranslation *self = obj;
@@ -710,7 +676,15 @@ static gsl_err_t parse_gloss_item(void *obj,
                                   const char *rec,
                                   size_t *total_size)
 {
-    struct kndTranslation *tr = obj;
+    struct kndProc *self = obj;
+    struct kndTranslation *tr;
+
+    /* TODO: mempool alloc */
+    //self->entry->repo->mempool->new_text_seq();
+    tr = malloc(sizeof(struct kndTranslation));
+    if (!tr) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
+    memset(tr, 0, sizeof(struct kndTranslation));
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_gloss_locale,
@@ -737,6 +711,10 @@ static gsl_err_t parse_gloss_item(void *obj,
         knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
                 tr->locale_size, tr->locale, tr->val_size, tr->val);
 
+    // append
+    tr->next = self->tr;
+    self->tr = tr;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -747,58 +725,37 @@ static gsl_err_t parse_gloss(void *obj,
     struct kndProc *self = obj;
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
-        .alloc = alloc_gloss_item,
-        .append = append_gloss_item,
-        .accu = self,
-        .parse = parse_gloss_item
+        .parse = parse_gloss_item,
+        .obj = self
     };
-
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
-
-static gsl_err_t alloc_proc_arg(void *obj,
-                                const char *unused_var(name),
-                                size_t unused_var(name_size),
-                                size_t unused_var(count),
-                                void **item)
+static gsl_err_t parse_proc_arg_item(void *obj,
+                                     const char *rec,
+                                     size_t *total_size)
 {
     struct kndProc *self = obj;
     struct kndProcArg *arg;
     struct kndMemPool *mempool = self->task->mempool;
     int err;
+    gsl_err_t parser_err;
 
     err = kndProcArg_new(&arg, self, mempool);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
 
     arg->task = self->task;
     arg->parent = self;
 
-    *item = arg;
+    parser_err = arg->parse(arg, rec, total_size);
+    if (parser_err.code) return parser_err;
 
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t append_proc_arg(void *accu,
-                                 void *item)
-{
-    struct kndProc *self = accu;
-    struct kndProcArg *arg = item;
-
+    // append
     arg->next = self->args;
     self->args = arg;
     self->num_args++;
 
     return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_proc_arg(void *obj,
-                                const char *rec,
-                                size_t *total_size)
-{
-    struct kndProcArg *arg = obj;
-
-    return arg->parse(arg, rec, total_size);
 }
 
 static int inherit_args(struct kndProc *self, struct kndProc *parent)
@@ -1040,10 +997,8 @@ extern gsl_err_t knd_proc_read(struct kndProc *self,
 
     struct gslTaskSpec proc_arg_spec = {
         .is_list_item = true,
-        .alloc = alloc_proc_arg,
-        .append = append_proc_arg,
-        .parse = parse_proc_arg,
-        .accu = self
+        .parse = parse_proc_arg_item,
+        .obj = self
     };
 
     struct gslTaskSpec specs[] = {

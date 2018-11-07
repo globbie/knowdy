@@ -479,33 +479,8 @@ static gsl_err_t import_attr_var(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t import_attr_var_alloc(void *obj,
-                                       const char *unused_var(name),
-                                       size_t unused_var(name_size),
-                                       size_t unused_var(count),
-                                       void **result)
-{
-    struct kndAttrVar *self = obj;
-    struct kndTask *task = self->task;
-    struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = task->mempool;
-    int err;
- 
-    err = knd_attr_var_new(mempool, &attr_var);
-    if (err) return make_gsl_err_external(err);
-    attr_var->class_var = self->class_var;
-    attr_var->task = task;
-
-    // TEST
-    mempool->num_attr_vars++;
-    attr_var->is_list_item = true;
-
-    *result = attr_var;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t import_attr_var_append(void *accu,
-                                        void *obj)
+static gsl_err_t append_attr_var_list_item(void *accu,
+                                           void *obj)
 {
     struct kndAttrVar *self = accu;
     struct kndAttrVar *attr_var = obj;
@@ -529,11 +504,24 @@ static gsl_err_t import_attr_var_append(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_nested_attr_var(void *obj,
-                                       const char *rec,
-                                       size_t *total_size)
+static gsl_err_t import_attr_var_list_item(void *obj,
+                                           const char *rec,
+                                           size_t *total_size)
 {
-    struct kndAttrVar *item = obj;
+    struct kndAttrVar *self = obj;
+    struct kndTask *task = self->task;
+    struct kndAttrVar *attr_var;
+    struct kndMemPool *mempool = task->mempool;
+    int err;
+
+    err = knd_attr_var_new(mempool, &attr_var);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+    attr_var->class_var = self->class_var;
+    attr_var->task = task;
+
+    // TEST
+    mempool->num_attr_vars++;
+    attr_var->is_list_item = true;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. parse import attr item..");
@@ -541,18 +529,19 @@ static gsl_err_t parse_nested_attr_var(void *obj,
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_attr_var_name,
-          .obj = item
+          .obj = attr_var
         },
         { .validate = import_nested_attr_var,
-          .obj = item
+          .obj = attr_var
         }
     };
-    gsl_err_t err;
+    gsl_err_t parser_err;
 
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err;
 
-    return make_gsl_err(gsl_OK);
+    // append
+    return append_attr_var_list_item(self, attr_var);
 }
 
 static gsl_err_t import_attr_var_list(void *obj,
@@ -593,10 +582,8 @@ static gsl_err_t import_attr_var_list(void *obj,
 
     struct gslTaskSpec import_attr_var_spec = {
         .is_list_item = true,
-        .accu = attr_var,
-        .alloc =  import_attr_var_alloc,
-        .append = import_attr_var_append,
-        .parse =  parse_nested_attr_var
+        .parse = import_attr_var_list_item,
+        .obj = attr_var
     };
 
     parser_err = gsl_parse_array(&import_attr_var_spec, rec, total_size);

@@ -405,33 +405,9 @@ static gsl_err_t run_present_state(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t alloc_class_item(void *obj,
-                                  const char *name,
-                                  size_t name_size,
-                                  size_t unused_var(count),
-                                  void **item)
-{
-    struct kndTask *task = obj;
-
-    assert(name == NULL && name_size == 0);
-
-    *item = task;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t append_class_item(void *unused_var(accu),
-                                   void *unused_var(item))
-{
-    //struct kndClass *self = accu;
-
-    knd_log(".. append class item..");
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_class_item(void *obj,
-                                  const char *rec,
-                                  size_t *total_size)
+static gsl_err_t parse_class_array_item(void *obj,
+                                        const char *rec,
+                                        size_t *total_size)
 {
     struct kndTask *task = obj;
 
@@ -448,10 +424,8 @@ static gsl_err_t parse_class_array(void *obj,
 
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
-        .alloc = alloc_class_item,
-        .append = append_class_item,
-        .accu = task,
-        .parse = parse_class_item
+        .parse = parse_class_array_item,
+        .obj = task
     };
 
     if (DEBUG_USER_LEVEL_2)
