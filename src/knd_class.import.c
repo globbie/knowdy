@@ -822,7 +822,7 @@ extern int knd_class_import(struct kndClass *self,
     int e, err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log("..worker \"%zu\" to import class: \"%.*s\".. [total:%zu]",
                 task->id, 128, rec, mempool->num_classes);
 
