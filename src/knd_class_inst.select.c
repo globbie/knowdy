@@ -306,12 +306,9 @@ static gsl_err_t remove_inst(void *obj,
         knd_log("-- remove operation: no class instance selected");
         return make_gsl_err(gsl_FAIL);
     }
-
-    struct kndClass  *base       = self->base;
     struct kndClassInst *obj1 = self->curr_inst;
     struct kndState  *state;
     struct kndStateRef  *state_ref;
-    struct kndRepo *repo = base->entry->repo;
     struct kndTask *task         = ctx->task;
     struct glbOutput *log        = task->log;
     struct kndMemPool *mempool   = task->mempool;
@@ -341,8 +338,8 @@ static gsl_err_t remove_inst(void *obj,
 
     task->type = KND_UPDATE_STATE;
 
-    state_ref->next = repo->curr_class_inst_state_refs;
-    repo->curr_class_inst_state_refs = state_ref;
+    state_ref->next = task->class_inst_state_refs;
+    task->class_inst_state_refs = state_ref;
 
     return make_gsl_err(gsl_OK);
 }
@@ -437,7 +434,6 @@ static int update_elem_states(struct kndClassInst *self, struct kndTask *task)
     struct kndElem *elem;
     struct kndClass *c;
     struct kndMemPool *mempool = task->mempool;
-    struct kndRepo *repo = task->repo;
     int err;
 
     if (DEBUG_INST_LEVEL_TMP)
@@ -494,8 +490,8 @@ static int update_elem_states(struct kndClassInst *self, struct kndTask *task)
         ref->type = KND_STATE_CLASS_INST;
         ref->obj = (void*)self;
 
-        ref->next = repo->curr_class_inst_state_refs;
-        repo->curr_class_inst_state_refs = ref;
+        ref->next = task->class_inst_state_refs;
+        task->class_inst_state_refs = ref;
     }
 
     return knd_OK;

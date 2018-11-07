@@ -114,8 +114,8 @@ extern gsl_err_t knd_parse_import_class_inst(void *obj,
     state_ref->type = KND_STATE_CLASS_INST;
     state_ref->obj = (void*)entry;
 
-    state_ref->next = repo->curr_class_inst_state_refs;
-    repo->curr_class_inst_state_refs = state_ref;
+    state_ref->next = task->class_inst_state_refs;
+    task->class_inst_state_refs = state_ref;
 
     repo->num_class_insts++;
 
@@ -822,7 +822,7 @@ extern int knd_class_import(struct kndClass *self,
     int e, err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
         knd_log("..worker \"%zu\" to import class: \"%.*s\".. [total:%zu]",
                 task->id, 128, rec, mempool->num_classes);
 
@@ -919,12 +919,12 @@ extern int knd_class_import(struct kndClass *self,
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         c->str(c);
-    
+
     /* initial class load ends here */
     if (task->batch_mode) return knd_OK;
 
     err = knd_class_resolve(c, task);                                             RET_ERR();
-    err = knd_update_state(c, KND_CREATED, task);                              RET_ERR();
+    err = knd_update_state(c, KND_CREATED, task);                                 RET_ERR();
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         c->str(c);

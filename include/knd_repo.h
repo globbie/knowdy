@@ -59,8 +59,8 @@ struct kndRepo
     size_t num_classes;
     size_t num_class_insts;
 
-    struct kndStateRef  *curr_class_state_refs;
-    struct kndStateRef  *curr_class_inst_state_refs;
+    //struct kndStateRef  *curr_class_state_refs;
+    //struct kndStateRef  *curr_class_inst_state_refs;
 
     struct kndStateRef  *class_state_refs;
 
@@ -78,6 +78,7 @@ struct kndRepo
     
     struct kndRel       *root_rel;
 
+    // remove
     struct kndClassInst *curr_class_inst;
     struct kndAttrVar    *curr_attr_var;
     struct kndClassInst  *curr_inst;
@@ -93,8 +94,10 @@ struct kndRepo
 };
 
 extern int knd_present_repo_state(struct kndRepo *self,
-                                  struct glbOutput *out);
+                                  struct kndTask *task);
 extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task);
+
+extern gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size);
 
 extern int kndRepo_init(struct kndRepo *self, struct kndTask *task);
 extern int kndRepo_new(struct kndRepo **self, struct kndMemPool *mempool);

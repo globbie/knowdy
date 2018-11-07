@@ -363,8 +363,8 @@ static int kndRepo_restore(struct kndRepo *self,
     return knd_OK;
 }
 
-extern int knd_present_repo_state(struct kndRepo *self,
-                                  struct glbOutput *out)
+static int present_repo_state_JSON(struct kndRepo *self,
+                                   struct glbOutput *out)
 {
     struct kndUpdate *update;
     int err;
@@ -438,12 +438,145 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
 
     self->class_state_refs = NULL;
 
-    err = knd_present_repo_state(self, out);  RET_ERR();
+    // TODO
+    err = present_repo_state_JSON(self, out);  RET_ERR();
 
-    // build update GSP
+    // TODO: build update GSP
 
     return knd_OK;
 }
+
+
+static gsl_err_t present_repo_state(void *obj,
+                                    const char *unused_var(name),
+                                    size_t unused_var(name_size))
+{
+    struct kndTask *task = obj;
+    struct kndRepo *repo = task->repo;
+    struct glbOutput *out = task->out;
+
+    //struct kndMemPool *mempool = task->mempool;
+    //struct kndSet *set;
+    //struct kndState *latest_state;
+    int err;
+
+    task->type = KND_SELECT_STATE;
+
+    //if (!repo->states)                                     goto show_curr_state;
+
+    //latest_state = self->states;
+
+    //if (task->state_gt >= latest_state->numid)             goto show_curr_state;
+    //if (task->state_lt && task->state_lt < task->state_gt) goto show_curr_state;
+
+    if (DEBUG_REPO_LEVEL_TMP) {
+        knd_log(".. select repo delta:  gt %zu  lt %zu  eq:%zu..",
+                task->state_gt, task->state_lt, task->state_eq);
+    }
+
+    /*    err = knd_set_new(mempool, &set);
+    if (err) return make_gsl_err_external(err);
+    set->mempool = mempool;
+
+    err = knd_class_get_updates(self,
+                                task->state_gt, task->state_lt,
+                                task->state_eq, set);
+    if (err) return make_gsl_err_external(err);
+    task->show_removed_objs = true;
+
+    err =  knd_class_export_set_JSON(set, task);
+    if (err) return make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
+    */
+    //show_curr_state:
+
+    err = present_repo_state_JSON(repo, out);  
+    if (err) return make_gsl_err_external(err);
+    
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_repo_state(void *obj,
+                                  const char *rec,
+                                  size_t *total_size)
+{
+    struct kndTask *task = obj;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .is_selector = true,
+          .run = knd_set_curr_state,
+          .obj = task
+        },
+        { .name = "gt",
+          .name_size = strlen("gt"),
+          .is_selector = true,
+          .parse = gsl_parse_size_t,
+          .obj = &task->state_gt
+        },
+        { .name = "gte",
+          .name_size = strlen("gte"),
+          .is_selector = true,
+          .parse = gsl_parse_size_t,
+          .obj = &task->state_gte
+        },
+        { .name = "lt",
+          .name_size = strlen("lt"),
+          .is_selector = true,
+          .parse = gsl_parse_size_t,
+          .obj = &task->state_lt
+        },
+        { .name = "lte",
+          .name_size = strlen("lte"),
+          .is_selector = true,
+          .parse = gsl_parse_size_t,
+          .obj = &task->state_lte
+        },
+        { .is_default = true,
+          .run = present_repo_state,
+          .obj = task
+        }
+    };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
+{
+    struct kndTask *task = obj;
+
+    if (!name_size)  return make_gsl_err(gsl_FAIL);
+    if (!memcmp(name, "/", 1)) {
+        knd_log("== system repo selected!");
+        task->repo = task->shard->repo;
+        return make_gsl_err(gsl_OK);
+    } else {
+        // TODO: name match
+        knd_log("== user base repo selected!");
+        task->repo = task->shard->user->repo;
+        return make_gsl_err(gsl_OK);
+    }
+
+    return make_gsl_err(gsl_FAIL);
+}
+
+extern gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndTask *self = obj;
+    struct gslTaskSpec specs[] = {
+        {   .is_implied = true,
+            .run = run_select_repo,
+            .obj = self
+        },
+        { .name = "_state",
+          .name_size = strlen("_state"),
+          .parse = parse_repo_state,
+          .obj = self
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+} 
 
 static int kndRepo_open(struct kndRepo *self, struct kndTask *task)
 {
@@ -535,6 +668,18 @@ static int kndRepo_open(struct kndRepo *self, struct kndTask *task)
         err = kndRepo_restore(self, out->buf, task->file_out);
         if (err) return err;
     }
+
+    return knd_OK;
+}
+
+extern int knd_present_repo_state(struct kndRepo *self,
+                                  struct kndTask *task)
+{
+    int err;
+
+    // TODO: choose format
+    err = present_repo_state_JSON(self,
+                                  task->out);     RET_ERR();
 
     return knd_OK;
 }

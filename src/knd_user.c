@@ -219,10 +219,6 @@ static gsl_err_t parse_class_select(void *obj,
     task->class = c;
     task->repo = self->repo;
 
-    if (DEBUG_USER_LEVEL_TMP)
-        knd_log(".. parsing the default class select: \"%.*s\" root_class:%p",
-                64, rec, c);
-
     return knd_select_class(ctx ? ctx->repo : self->repo,
                             rec, total_size, task);
 }
@@ -399,7 +395,7 @@ static gsl_err_t run_present_state(void *obj,
     }
 
     repo = self->curr_ctx->repo;
-    err = knd_present_repo_state(repo, task->out);
+    err = knd_present_repo_state(repo, task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);

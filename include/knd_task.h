@@ -130,7 +130,11 @@ struct kndTask
     struct kndClassInst *class_inst;
     struct kndElem *elem;
 
+    /* updates */
+    struct kndStateRef  *inner_class_state_refs;
+    struct kndStateRef  *class_inst_state_refs;
     struct kndUpdate *update;
+
     struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;
 
