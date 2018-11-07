@@ -272,10 +272,10 @@ extern gsl_err_t knd_parse_import_class_inst(void *obj,
                                              const char *rec,
                                              size_t *total_size);
 
-extern int knd_class_import(struct kndClass *self,
-                            const char *rec,
-                            size_t *total_size,
-                            struct kndTask *task);
+extern gsl_err_t knd_class_import(struct kndRepo *repo,
+                                  const char *rec,
+                                  size_t *total_size,
+                                  struct kndTask *task);
 
 extern int knd_inherit_attrs(struct kndClass *self,
                              struct kndClass *base,
@@ -355,7 +355,7 @@ extern int knd_class_new(struct kndMemPool *mempool,
                          struct kndClass **result);
 
 // knd_class.select.c
-extern gsl_err_t knd_select_class(struct kndRepo *repo,
+extern gsl_err_t knd_class_select(struct kndRepo *repo,
                                   const char *rec, size_t *total_size,
                                   struct kndTask *task);
 

@@ -226,10 +226,7 @@ static gsl_err_t parse_class_import(void *obj,
 
     task->type = KND_UPDATE_STATE;
     
-    err = knd_class_import(self, rec, total_size, task);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
+    return knd_class_import(task->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_schema(void *obj,

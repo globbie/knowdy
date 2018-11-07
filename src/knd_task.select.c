@@ -89,17 +89,12 @@ static gsl_err_t parse_class_import(void *obj,
     struct kndTask *task = obj;
     if (!task->repo)
         task->repo = task->root_repo;
-    struct kndClass *c = task->repo->root_class;
-    int err;
 
     if (DEBUG_TASK_LEVEL_TMP)
         knd_log(".. parsing the system class import: \"%.*s\"..", 64, rec);
 
     task->type = KND_UPDATE_STATE;
-    err = knd_class_import(c, rec, total_size, task);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-
-    return *total_size = 0, make_gsl_err(gsl_OK);
+    return knd_class_import(task->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_class_select(void *obj,
@@ -118,7 +113,7 @@ static gsl_err_t parse_class_select(void *obj,
     task->root_class = c;
     task->class = c;
 
-    return knd_select_class(task->repo, rec, total_size, task);
+    return knd_class_select(task->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_update(void *obj,
