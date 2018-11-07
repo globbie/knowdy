@@ -460,6 +460,16 @@ static gsl_err_t present_repo_state(void *obj,
     //struct kndState *latest_state;
     int err;
 
+    if (!repo) {
+        knd_log("-- no repo selected");
+        out->reset(out);
+        err = out->writec(out, '{');
+        if (err) return make_gsl_err_external(err);
+        err = out->writec(out, '}');
+        if (err) return make_gsl_err_external(err);
+        return make_gsl_err(gsl_OK);
+    }
+
     task->type = KND_SELECT_STATE;
 
     //if (!repo->states)                                     goto show_curr_state;
@@ -547,18 +557,36 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
     struct kndTask *task = obj;
 
     if (!name_size)  return make_gsl_err(gsl_FAIL);
-    if (!memcmp(name, "/", 1)) {
-        knd_log("== system repo selected!");
-        task->repo = task->shard->repo;
-        return make_gsl_err(gsl_OK);
-    } else {
-        // TODO: name match
+
+    if (task->user_ctx) {
+        switch (*name) {
+        case '~':
+            knd_log("== user home repo selected!");
+            task->repo = task->user_ctx->repo;
+            return make_gsl_err(gsl_OK);
+        default:
+            break;
+        }
         knd_log("== user base repo selected!");
         task->repo = task->shard->user->repo;
         return make_gsl_err(gsl_OK);
     }
 
-    return make_gsl_err(gsl_FAIL);
+    if (name_size == 1) {
+        switch (*name) {
+        case '/':
+            knd_log("== system repo selected!");
+            task->repo = task->shard->repo;
+            return make_gsl_err(gsl_OK);
+        default:
+            break;
+        }
+    }
+
+    // TODO: name match
+    knd_log("== shared repo selected!");
+    task->repo = task->shard->user->repo;
+    return make_gsl_err(gsl_OK);
 }
 
 extern gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)

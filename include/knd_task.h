@@ -30,6 +30,7 @@
 struct glbOutput;
 struct kndTask;
 struct kndUser;
+struct kndUserContext;
 struct kndStateControl;
 struct kndClass;
 struct kndQuery;
@@ -122,6 +123,8 @@ struct kndTask
     size_t max_depth;
 
     struct kndUser *user;
+    struct kndUserContext *user_ctx;
+
     struct kndRepo *repo;
     struct kndClass *root_class;
     struct kndClass *class;
