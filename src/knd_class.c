@@ -753,23 +753,24 @@ extern int knd_update_state(struct kndClass *self,
     switch (phase) {
     case KND_CREATED:
     case KND_REMOVED:
-        err = update_state(self, NULL, phase, task);                                       RET_ERR();
+        err = update_state(self, NULL, phase, task);                              RET_ERR();
         break;
     case KND_UPDATED:
         /* any attr updates */
-        if (repo->curr_class_state_refs) {
-            err = update_state(self, repo->curr_class_state_refs, phase, task);         RET_ERR();
-            repo->curr_class_state_refs = NULL;
+        if (task->inner_class_state_refs) {
+            err = update_state(self, task->inner_class_state_refs, phase, task);   RET_ERR();
+            task->inner_class_state_refs = NULL;
         }
 
         /* instance updates */
-        if (repo->curr_class_inst_state_refs) {
+        if (task->class_inst_state_refs) {
             if (DEBUG_CLASS_LEVEL_2) {
                 knd_log("\n .. \"%.*s\" class to register inst updates..",
                         self->name_size, self->name);
             }
-            err = update_inst_state(self, repo->curr_class_inst_state_refs, task);      RET_ERR();
-            repo->curr_class_inst_state_refs = NULL;
+            err = update_inst_state(self,
+                                    task->class_inst_state_refs, task);      RET_ERR();
+            task->class_inst_state_refs = NULL;
             return knd_OK;
         }
 

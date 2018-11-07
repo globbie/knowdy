@@ -143,7 +143,6 @@ int kndTask_run(struct kndTask *self, const char *rec, size_t rec_size)
         }
         return gsl_err_to_knd_err_codes(parser_err);
     }
-
     return knd_OK;
 }
 
@@ -222,10 +221,6 @@ int kndTask_build_report(struct kndTask *self)
     /* report body */
     self->report = self->out->buf;
     self->report_size = self->out->buf_size;
-
-    // TMP test
-    err = knd_write_file("/tmp/result.txt",
-                         (void*)self->report, self->report_size);
 
     /* send delta */
     if (self->type == KND_DELTA_STATE) {

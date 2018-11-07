@@ -318,8 +318,8 @@ static gsl_err_t run_set_attr_var(void *obj,
     task->type = KND_UPDATE_STATE;
 
     /* inform parent class */
-    state_ref->next = repo->curr_class_state_refs;
-    repo->curr_class_state_refs = state_ref;
+    state_ref->next = task->inner_class_state_refs;
+    task->inner_class_state_refs = state_ref;
 
     return make_gsl_err(gsl_OK);
 }
@@ -617,6 +617,7 @@ static gsl_err_t present_class_selection(void *obj,
 static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
     struct kndRepo *repo = ctx->repo;
     struct kndClass *c;
     int err;
@@ -637,9 +638,8 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
     ctx->task->class = c;
     ctx->class = c;
 
-    // TODO
-    repo->curr_class_state_refs = NULL;
-    repo->curr_class_inst_state_refs = NULL;
+    task->inner_class_state_refs = NULL;
+    task->class_inst_state_refs = NULL;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
         c->str(c);
