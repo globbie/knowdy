@@ -52,6 +52,7 @@ static void kndRepo_str(struct kndRepo *self)
     knd_log("Repo: %p", self);
 }
 
+__attribute__((unused))
 static gsl_err_t alloc_class_update(void *obj,
                                     const char *name,
                                     size_t name_size,
@@ -237,6 +238,7 @@ static gsl_err_t parse_class_update(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
+__attribute__((unused))
 static gsl_err_t alloc_update(void *obj,
                               const char *name,
                               size_t name_size,
@@ -263,18 +265,18 @@ static gsl_err_t alloc_update(void *obj,
 }
 
 
-static gsl_err_t parse_update(void *obj,
+static gsl_err_t parse_update(void *unused_var(obj),
                               const char *rec,
                               size_t *total_size)
 {
-    struct kndUpdate *update = obj;
+    //struct kndUpdate *update = obj;
 
     struct gslTaskSpec class_update_spec = {
         .is_list_item = true,
-        .alloc  = alloc_class_update,
+        //.alloc  = alloc_class_update,
         //.append = append_class_update,
         .parse  = parse_class_update,
-        .accu = update
+        //.accu = update
     };
 
     struct gslTaskSpec specs[] = {
@@ -303,17 +305,17 @@ static gsl_err_t parse_update(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t kndRepo_read_updates(void *obj,
+static gsl_err_t kndRepo_read_updates(void *unused_var(obj),
                                       const char *rec,
                                       size_t *total_size)
 {
-    struct kndRepo *repo = obj;
+    //struct kndRepo *repo = obj;
     struct gslTaskSpec update_spec = {
         .is_list_item = true,
-        .alloc  = alloc_update,
+        //.alloc  = alloc_update,
         //.append = append_update,
         .parse  = parse_update,
-        .accu = repo
+        //.accu = repo
     };
 
     struct gslTaskSpec specs[] = {
