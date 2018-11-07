@@ -806,8 +806,7 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
     struct kndMemPool *mempool = task->mempool;
     struct kndClass *c;
     struct kndClassEntry *entry;
-    struct glbOutput *log;
-    int e, err;
+    int err;
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)

@@ -221,8 +221,6 @@ static gsl_err_t parse_class_import(void *obj,
                                     size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndClass *self = task->class;
-    int err;
 
     task->type = KND_UPDATE_STATE;
     
