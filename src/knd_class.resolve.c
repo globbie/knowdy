@@ -1230,7 +1230,7 @@ extern int knd_resolve_classes(struct kndClass *self,
         if (!c->is_resolved) {
             err = knd_class_resolve(c, task);
             if (err) {
-                knd_log("-- couldn't resolve the \"%.*s\" class :(",
+                knd_log("-- couldn't resolve the \"%.*s\" class",
                         c->entry->name_size, c->entry->name);
                 return err;
             }

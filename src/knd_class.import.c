@@ -186,7 +186,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *task = obj;
     struct kndClass *self = task->class;
-    struct kndRepo *repo = self->entry->repo;
+    struct kndRepo *repo = task->repo;
     struct glbOutput *log = task->log;
     struct kndClass *c;
     struct ooDict *class_name_idx = repo->class_name_idx;
@@ -796,9 +796,9 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("..worker \"%zu\" to import class: \"%.*s\".. [total:%zu]",
-                task->id, 128, rec, mempool->num_classes);
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+        knd_log("..worker \"%zu\" to import class: \"%.*s\".. [total:%zu] repo:%p",
+                task->id, 128, rec, mempool->num_classes, repo);
 
     err = knd_class_new(mempool, &c);
     if (err) return make_gsl_err_external(err);
@@ -810,6 +810,7 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
     entry->class = c;
     c->entry = entry;
     task->class = c;
+    task->repo = repo;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,

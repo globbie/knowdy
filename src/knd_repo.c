@@ -689,7 +689,7 @@ static int kndRepo_open(struct kndRepo *self, struct kndTask *task)
     int err;
 
     out = self->out;
-
+    task->repo = self;
 
     /* extend user DB path */
     if (self->user_ctx) {
@@ -792,6 +792,8 @@ extern int kndRepo_init(struct kndRepo *self,
     int err;
 
     self->out      = task->out;
+
+    knd_log("== open repo:%.*s", self->name_size, self->name);
 
     err = kndRepo_open(self, task);
     if (err) return err;
