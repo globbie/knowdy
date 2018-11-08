@@ -278,52 +278,15 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t alloc_gloss_item(void *obj,
-                                  const char *name,
-                                  size_t name_size,
-                                  size_t count,
-                                  void **item)
-{
-    struct kndRelArg *self = obj;
-    struct kndTranslation *tr;
-
-    assert(name == NULL && name_size == 0);
-
-    if (DEBUG_RELARG_LEVEL_2)
-        knd_log(".. %.*s: allocate gloss translation,  count: %zu",
-                self->name_size, self->name, count);
-
-    tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return make_gsl_err_external(knd_NOMEM);
-
-    memset(tr, 0, sizeof(struct kndTranslation));
-
-    *item = tr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t append_gloss_item(void *accu,
-                                   void *item)
-{
-    struct kndRelArg *self = accu;
-    struct kndTranslation *tr = item;
-
-    tr->next = self->tr;
-    self->tr = tr;
-
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t set_gloss_locale(void *obj, const char *name, size_t name_size)
 {
     struct kndTranslation *self = obj;
-    if (!name_size) return make_gsl_err(gsl_FAIL);
     if (name_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
     self->curr_locale = name;
     self->curr_locale_size = name_size;
     return make_gsl_err(gsl_OK);
 }
+
 static gsl_err_t set_gloss_value(void *obj, const char *name, size_t name_size)
 {
     struct kndTranslation *self = obj;
@@ -337,7 +300,17 @@ static gsl_err_t parse_gloss_item(void *obj,
                                   const char *rec,
                                   size_t *total_size)
 {
-    struct kndTranslation *tr = obj;
+    struct kndRelArg *self = obj;
+    struct kndTranslation *tr;
+
+    if (DEBUG_RELARG_LEVEL_2)
+        knd_log(".. %.*s: allocate gloss translation",
+                self->name_size, self->name);
+
+    tr = malloc(sizeof(struct kndTranslation));
+    if (!tr) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
+    memset(tr, 0, sizeof(struct kndTranslation));
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_gloss_locale,
@@ -364,6 +337,10 @@ static gsl_err_t parse_gloss_item(void *obj,
         knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
                 tr->locale_size, tr->locale, tr->val_size, tr->val);
 
+    // append
+    tr->next = self->tr;
+    self->tr = tr;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -374,10 +351,8 @@ static gsl_err_t parse_gloss(void *obj,
     struct kndRelArg *self = obj;
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
-        .alloc = alloc_gloss_item,
-        .append = append_gloss_item,
-        .accu = self,
-        .parse = parse_gloss_item
+        .parse = parse_gloss_item,
+        .obj = self
     };
 
     if (DEBUG_RELARG_LEVEL_2)

@@ -80,21 +80,26 @@ static gsl_err_t parse_class_import(void *obj,
                                     size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndUser *self = task->user;
-    struct kndClass *c = self->repo->root_class;
-    struct kndUserContext *ctx = self->curr_ctx;
-    int err;
-    if (ctx)
-        c = ctx->repo->root_class;
+    struct kndUserContext *ctx = task->user_ctx;
+    struct kndClass *c;
+    struct kndRepo *repo;
+
+    repo = ctx->repo;
+    if (task->repo)
+        repo = task->repo;
+    else
+        task->repo = repo;
+
+    c = repo->root_class;
+    task->root_class = c;
+    task->class = c;
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing user class import: \"%.*s\"..", 64, rec);
 
     task->type = KND_UPDATE_STATE;
-    err = knd_class_import(c, rec, total_size, task);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
 
-    return make_gsl_err(gsl_OK);
+    return knd_class_import(repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_sync_task(void *obj,
@@ -218,7 +223,7 @@ static gsl_err_t parse_class_select(void *obj,
     task->root_class = c;
     task->class = c;
 
-    return knd_select_class(repo, rec, total_size, task);
+    return knd_class_select(repo, rec, total_size, task);
 }
 
 #if 0
@@ -400,46 +405,13 @@ static gsl_err_t run_present_state(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t alloc_class_item(void *obj,
-                                  const char *name,
-                                  size_t name_size,
-                                  size_t unused_var(count),
-                                  void **item)
+static gsl_err_t parse_class_array_item(void *obj,
+                                        const char *rec,
+                                        size_t *total_size)
 {
     struct kndTask *task = obj;
 
-    assert(name == NULL && name_size == 0);
-
-    *item = task;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t append_class_item(void *unused_var(accu),
-                                   void *unused_var(item))
-{
-    //struct kndClass *self = accu;
-
-    knd_log(".. append class item..");
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_class_item(void *obj,
-                                  const char *rec,
-                                  size_t *total_size)
-{
-    struct kndTask *task = obj;
-    struct kndUser *self = task->user;
-    struct kndClass *c = self->repo->root_class;
-    struct kndUserContext *ctx = self->curr_ctx;
-    if (ctx)
-        c = ctx->repo->root_class;
-    int err;
-
-    err = knd_class_import(c, rec, total_size, task);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-
-    return *total_size = 0, make_gsl_err(gsl_OK);
+    return knd_class_import(task->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_class_array(void *obj,
@@ -452,10 +424,8 @@ static gsl_err_t parse_class_array(void *obj,
 
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
-        .alloc = alloc_class_item,
-        .append = append_class_item,
-        .accu = task,
-        .parse = parse_class_item
+        .parse = parse_class_array_item,
+        .obj = task
     };
 
     if (DEBUG_USER_LEVEL_2)
@@ -620,7 +590,7 @@ extern int kndUser_init(struct kndUser *self,
     memcpy(repo->name, self->repo_name, self->repo_name_size);
     repo->name_size = self->repo_name_size;
 
-    err = kndRepo_init(self->repo, task);
+    err = kndRepo_init(repo, task);
     if (err) return err;
 
     return knd_OK;

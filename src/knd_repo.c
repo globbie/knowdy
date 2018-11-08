@@ -52,6 +52,7 @@ static void kndRepo_str(struct kndRepo *self)
     knd_log("Repo: %p", self);
 }
 
+__attribute__((unused))
 static gsl_err_t alloc_class_update(void *obj,
                                     const char *name,
                                     size_t name_size,
@@ -237,6 +238,7 @@ static gsl_err_t parse_class_update(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
+__attribute__((unused))
 static gsl_err_t alloc_update(void *obj,
                               const char *name,
                               size_t name_size,
@@ -262,18 +264,19 @@ static gsl_err_t alloc_update(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_update(void *obj,
+
+static gsl_err_t parse_update(void *unused_var(obj),
                               const char *rec,
                               size_t *total_size)
 {
-    struct kndUpdate *update = obj;
+    //struct kndUpdate *update = obj;
 
     struct gslTaskSpec class_update_spec = {
         .is_list_item = true,
-        .alloc  = alloc_class_update,
+        //.alloc  = alloc_class_update,
         //.append = append_class_update,
         .parse  = parse_class_update,
-        .accu = update
+        //.accu = update
     };
 
     struct gslTaskSpec specs[] = {
@@ -302,17 +305,17 @@ static gsl_err_t parse_update(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t kndRepo_read_updates(void *obj,
+static gsl_err_t kndRepo_read_updates(void *unused_var(obj),
                                       const char *rec,
                                       size_t *total_size)
 {
-    struct kndRepo *repo = obj;
+    //struct kndRepo *repo = obj;
     struct gslTaskSpec update_spec = {
         .is_list_item = true,
-        .alloc  = alloc_update,
+        //.alloc  = alloc_update,
         //.append = append_update,
         .parse  = parse_update,
-        .accu = repo
+        //.accu = repo
     };
 
     struct gslTaskSpec specs[] = {
@@ -685,7 +688,37 @@ static gsl_err_t parse_class_select(void *obj,
     task->root_class = c;
     task->class = c;
 
-    return knd_select_class(repo, rec, total_size, task);
+    return knd_class_select(repo, rec, total_size, task);
+}
+
+static gsl_err_t parse_class_import(void *obj,
+                                    const char *rec,
+                                    size_t *total_size)
+{
+    struct kndTask *task = obj;
+    struct kndUserContext *ctx = task->user_ctx;
+    struct kndRepo *repo;
+    struct kndClass *c;
+
+    if (!ctx) {
+        struct glbOutput *log = task->log;
+        knd_log("-- no user selected");
+        log->writef(log, "no user selected");
+        task->http_code = HTTP_BAD_REQUEST;
+        return make_gsl_err(gsl_FAIL);
+    }
+
+    repo = ctx->repo;
+    if (task->repo)
+        repo = task->repo;
+    else
+        task->repo = repo;
+
+    c = repo->root_class;
+    task->root_class = c;
+    task->class = c;
+
+    return knd_class_import(repo, rec, total_size, task);
 }
 
 extern gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)
@@ -696,6 +729,12 @@ extern gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)
         {   .is_implied = true,
             .run = run_select_repo,
             .obj = task
+        },
+        { .type = GSL_SET_STATE,
+          .name = "class",
+          .name_size = strlen("class"),
+          .parse = parse_class_import,
+          .obj = task
         },
         { .name = "class",
           .name_size = strlen("class"),
@@ -720,7 +759,7 @@ static int kndRepo_open(struct kndRepo *self, struct kndTask *task)
     int err;
 
     out = self->out;
-
+    task->repo = self;
 
     /* extend user DB path */
     if (self->user_ctx) {
@@ -823,6 +862,8 @@ extern int kndRepo_init(struct kndRepo *self,
     int err;
 
     self->out      = task->out;
+
+    knd_log("== open repo:%.*s", self->name_size, self->name);
 
     err = kndRepo_open(self, task);
     if (err) return err;
