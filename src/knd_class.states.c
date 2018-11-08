@@ -112,8 +112,8 @@ extern int knd_class_get_inst_updates(struct kndClass *self,
     return knd_OK;
 }
 
-static int retrieve_class_updates(struct kndStateRef *ref,
-                                  struct kndSet *set)
+extern int knd_retrieve_class_updates(struct kndStateRef *ref,
+                                      struct kndSet *set)
 {
     struct kndState *state = ref->state;
     struct kndClassEntry *entry;
@@ -123,13 +123,12 @@ static int retrieve_class_updates(struct kndStateRef *ref,
     knd_log("++ class state: %zu  type:%d", state->numid, ref->type);
 
     for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
-        err = retrieve_class_updates(child_ref, set);                             RET_ERR();
+        err = knd_retrieve_class_updates(child_ref, set);                             RET_ERR();
     }
 
     switch (ref->type) {
         case KND_STATE_CLASS:
             entry = ref->obj;
-
             if (!entry) {
                 knd_log("-- no class ref in state ref");
                 return knd_OK;
@@ -151,7 +150,6 @@ static int retrieve_class_updates(struct kndStateRef *ref,
         default:
             break;
     }
-
     return knd_OK;
 }
 
@@ -178,7 +176,7 @@ extern int knd_class_get_updates(struct kndClass *self,
         // TODO
         if (!state->children) continue;
         for (ref = state->children; ref; ref = ref->next) {
-            err = retrieve_class_updates(ref, set);                               RET_ERR();
+            err = knd_retrieve_class_updates(ref, set);                               RET_ERR();
         }
     }
 
@@ -207,7 +205,7 @@ extern int knd_class_get_desc_updates(struct kndClass *self,
         // TODO
         if (!state->children) continue;
         for (ref = state->children; ref; ref = ref->next) {
-            err = retrieve_class_updates(ref, set);                               RET_ERR();
+            err = knd_retrieve_class_updates(ref, set);                               RET_ERR();
         }
     }
 
