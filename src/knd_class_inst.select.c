@@ -530,8 +530,7 @@ gsl_err_t knd_select_class_inst(struct kndClassInst *self,  // TODO(k15tfu): use
           .parse = parse_select_state,
           .obj = &ctx
         },
-        { .is_validator = true,
-          .validate = parse_select_elem,
+        { .validate = parse_select_elem,
           .obj = task
         }/*,
         { .type = GSL_SET_STATE,

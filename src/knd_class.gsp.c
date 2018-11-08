@@ -46,12 +46,7 @@ struct LocalContext {
     struct kndAttrVar *attr_var;
     struct kndClass *class;
     struct kndClassInst *class_inst;
-
-    struct kndAttrVar *attr_var_alloc_result;  // Should be used only in attr_var_alloc()
-
-    struct kndClassInst *alloc_class_inst_result;  // Should be used only in alloc_class_inst()
-
-    struct kndClassVar *class_var_alloc_result; // Should be used only in class_var_alloc()
+    struct kndClassVar *class_var;
 };
 
 static int export_glosses(struct kndClass *self,
@@ -914,11 +909,7 @@ static gsl_err_t facet_read(void *obj,
 }
 */
 
-static gsl_err_t attr_var_alloc(void *accu,
-                                const char *unused_var(name),
-                                size_t unused_var(name_size),
-                                size_t unused_var(count),
-                                void **result)
+static gsl_err_t attr_var_alloc(void *accu, struct kndAttrVar **result)
 {
     struct LocalContext *ctx = accu;
     struct kndTask *task = ctx->task;
@@ -934,18 +925,13 @@ static gsl_err_t attr_var_alloc(void *accu,
     attr_var->attr = self->attr;
     attr_var->parent = self;
 
-    ctx->attr_var_alloc_result = attr_var;
-    *result = ctx;
+    *result = attr_var;
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t attr_var_append(void *accu,
-                                 void *unused_var(obj))
+static gsl_err_t attr_var_append(struct kndAttrVar *self,
+                                 struct kndAttrVar *attr_var)
 {
-    struct LocalContext *ctx = accu;
-    struct kndAttrVar *self = ctx->attr_var;
-    struct kndAttrVar *attr_var = ctx->attr_var_alloc_result;
-
     if (!self->list_tail) {
         self->list_tail = attr_var;
         self->list = attr_var;
@@ -960,11 +946,25 @@ static gsl_err_t attr_var_append(void *accu,
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t run_attr_var_item(void *obj,
+                                   const char *unused_var(name),
+                                   size_t unused_var(name_size))
+{
+    struct LocalContext *ctx = obj;
+    struct kndAttrVar *attr_var;
+    gsl_err_t err;
+
+    err = attr_var_alloc(ctx, &attr_var);
+    if (err.code) return err;
+
+    return attr_var_append(ctx->attr_var, attr_var);
+}
+
 static gsl_err_t check_list_item_id(void *obj,
                                     const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndAttrVar *attr_var = ctx->attr_var_alloc_result;
+    struct kndAttrVar *attr_var = ctx->attr_var;
     struct kndClass *parent_class = attr_var->attr->parent_class;
     struct kndClass *c;
     int err;
@@ -1093,8 +1093,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
           .buf_size = &attr_var->val_size,
           .max_buf_size = sizeof attr_var->val
           }*/
-        { .is_validator = true,
-          .validate = read_nested_attr_var,
+        { .validate = read_nested_attr_var,
           .obj = &nested_ctx
         }
     };
@@ -1133,24 +1132,27 @@ static gsl_err_t read_nested_attr_var(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t attr_var_parse(void *obj,
-                                const char *rec,
-                                size_t *total_size)
+static gsl_err_t parse_attr_var_item(void *obj,
+                                     const char *rec,
+                                     size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    gsl_err_t parser_err;
+    struct kndAttrVar *attr_var;
+    gsl_err_t err;
+
+    err = attr_var_alloc(ctx, &attr_var);
+    if (err.code) return *total_size = 0, err;
 
     struct LocalContext nested_ctx = {
         .task = ctx->task,
-        .attr_var = ctx->attr_var_alloc_result,
+        .attr_var = attr_var
     };
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = check_list_item_id,
           .obj = &nested_ctx
         },
-        { .is_validator = true,
-          .validate = read_nested_attr_var,
+        { .validate = read_nested_attr_var,
           .obj = &nested_ctx
         }
     };
@@ -1158,10 +1160,10 @@ static gsl_err_t attr_var_parse(void *obj,
     if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log(".. parsing nested item: \"%.*s\"", 64, rec);
 
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (err.code) return err;
 
-    return make_gsl_err(gsl_OK);
+    return attr_var_append(ctx->attr_var, attr_var);
 }
 
 
@@ -1206,13 +1208,8 @@ static gsl_err_t attr_var_parse(void *obj,
 }
 */
 
-static gsl_err_t alloc_class_inst(void *obj,
-                                  const char *unused_var(val),
-                                  size_t unused_var(val_size),
-                                  size_t unused_var(count),
-                                  void **item)
+static gsl_err_t alloc_class_inst_item(struct LocalContext *ctx, struct kndClassInst **item)
 {
-    struct LocalContext *ctx = obj;
     struct kndClass *self = ctx->class;
     struct kndClassInst *inst;
     struct kndClassInstEntry *entry;
@@ -1242,18 +1239,14 @@ static gsl_err_t alloc_class_inst(void *obj,
     entry->inst = inst;
     inst->base = self;
 
-    ctx->alloc_class_inst_result = inst;
-    *item = ctx;
+    *item = inst;
 
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t append_class_inst(void *accu,
-                                   void *unused_var(item))
+static gsl_err_t append_class_inst_item(struct LocalContext *ctx, struct kndClassInst *inst)
 {
-    struct LocalContext *ctx = accu;
     struct kndClass *self =   ctx->class;
-    struct kndClassInst *inst = ctx->alloc_class_inst_result;
     struct ooDict *name_idx = self->entry->repo->class_inst_name_idx;
     struct kndSet *set = self->entry->inst_idx;
     struct kndMemPool *mempool = ctx->task->mempool;
@@ -1333,12 +1326,16 @@ static gsl_err_t parse_class_inst_state(void *obj,
     return kndClassInst_read_state(ctx->class_inst, rec, total_size, ctx->task);
 }
 
-static gsl_err_t parse_class_inst(void *obj,
-                                  const char *rec,
-                                  size_t *total_size)
+static gsl_err_t parse_class_inst_item(void *obj,
+                                       const char *rec,
+                                       size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    ctx->class_inst = ctx->alloc_class_inst_result;
+    gsl_err_t err;
+
+    err = alloc_class_inst_item(ctx, &ctx->class_inst);
+    if (err.code) return *total_size = 0, err;
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_class_inst_id,
@@ -1355,12 +1352,11 @@ static gsl_err_t parse_class_inst(void *obj,
           .obj = ctx
         }
     };
-    gsl_err_t err;
 
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) return err;
 
-    return make_gsl_err(gsl_OK);
+    return append_class_inst_item(ctx, ctx->class_inst);
 }
 
 static gsl_err_t set_class_state(void *obj,
@@ -1422,7 +1418,7 @@ static gsl_err_t validate_attr_var(void *obj,
                                    const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndClassVar *class_var = ctx->class_var_alloc_result;
+    struct kndClassVar *class_var = ctx->class_var;
     struct kndAttrVar *attr_var;
     struct kndAttr *attr;
     struct kndAttrRef *ref;
@@ -1462,9 +1458,8 @@ static gsl_err_t validate_attr_var(void *obj,
 
     struct gslTaskSpec attr_var_spec = {
         .is_list_item = true,
-        .accu = attr_var,
-        .alloc = attr_var_alloc,
-        .append = attr_var_append
+        .run = run_attr_var_item,
+        .obj = attr_var
     };
 
     struct gslTaskSpec specs[] = {
@@ -1473,8 +1468,7 @@ static gsl_err_t validate_attr_var(void *obj,
           .buf_size = &attr_var->val_size,
           .max_buf_size = sizeof attr_var->val
           },*/
-        { .is_validator = true,
-          .validate = read_nested_attr_var,
+        { .validate = read_nested_attr_var,
           .obj = attr_var
         },
         { .type = GSL_SET_ARRAY_STATE,
@@ -1514,7 +1508,7 @@ static gsl_err_t validate_attr_var_list(void *obj,
                                          const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndClassVar *class_var = ctx->class_var_alloc_result;
+    struct kndClassVar *class_var = ctx->class_var;
     struct kndAttrVar *attr_var;
     struct kndAttr *attr;
     struct kndAttrRef *ref;
@@ -1577,10 +1571,8 @@ static gsl_err_t validate_attr_var_list(void *obj,
 
     struct gslTaskSpec attr_var_spec = {
         .is_list_item = true,
-        .accu = attr_var,
-        .alloc = attr_var_alloc,
-        .append = attr_var_append,
-        .parse = attr_var_parse
+        .parse = parse_attr_var_item,
+        .obj = ctx
     };
 
     append_attr_var(class_var, attr_var);
@@ -1593,7 +1585,7 @@ static gsl_err_t set_class_var_baseclass(void *obj,
                                          const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndClassVar *class_var = ctx->class_var_alloc_result;
+    struct kndClassVar *class_var = ctx->class_var;
     struct kndClass *c;
     int err;
 
@@ -1617,11 +1609,8 @@ static gsl_err_t set_class_var_baseclass(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t class_var_alloc(void *obj,
-                                 const char *unused_var(name),
-                                 size_t unused_var(name_size),
-                                 size_t unused_var(count),
-                                 void **item)
+static gsl_err_t parse_baseclass_array_item(void *obj,
+                                            const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndClass *self = ctx->class;
@@ -1630,47 +1619,20 @@ static gsl_err_t class_var_alloc(void *obj,
     int err;
 
     err = knd_class_var_new(mempool, &class_var);
-    if (err) return make_gsl_err_external(err);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     class_var->root_class = self;
-
-    ctx->class_var_alloc_result = class_var;
-    *item = ctx;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t class_var_append(void *accu,
-                                  void *unused_var(item))
-{
-    struct LocalContext *ctx = accu;
-    struct kndClass *self = ctx->class;
-    struct kndClassVar *ci = ctx->class_var_alloc_result;
-
-    ci->next = self->baseclass_vars;
-    self->baseclass_vars = ci;
-    self->num_baseclass_vars++;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t class_var_read(void *obj,
-                                const char *rec, size_t *total_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndClassVar *cvar = ctx->class_var_alloc_result;
+    ctx->class_var = class_var;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_class_var_baseclass,
           .obj = ctx
         },
-        { .is_validator = true,
-          .type = GSL_SET_ARRAY_STATE,
+        { .type = GSL_SET_ARRAY_STATE,
           .validate = validate_attr_var_list,
           .obj = ctx
         },
-        { .is_validator = true,
-          .validate = validate_attr_var,
+        { .validate = validate_attr_var,
           .obj = ctx
         }
     };
@@ -1681,7 +1643,12 @@ static gsl_err_t class_var_read(void *obj,
                                 specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
-    knd_calc_num_id(cvar->id, cvar->id_size, &cvar->numid);
+    knd_calc_num_id(class_var->id, class_var->id_size, &class_var->numid);
+
+    // append
+    class_var->next = self->baseclass_vars;
+    self->baseclass_vars = class_var;
+    self->num_baseclass_vars++;
 
     return make_gsl_err(gsl_OK);
 }
@@ -1694,10 +1661,8 @@ static gsl_err_t parse_baseclass_array(void *obj,
 
     struct gslTaskSpec cvar_spec = {
         .is_list_item = true,
-        .accu = ctx,
-        .alloc = class_var_alloc,
-        .append = class_var_append,
-        .parse = class_var_read
+        .parse = parse_baseclass_array_item,
+        .obj = ctx
     };
 
     return gsl_parse_array(&cvar_spec, rec, total_size);
@@ -1722,10 +1687,8 @@ extern gsl_err_t knd_read_class_state(struct kndClass *self,
 
     struct gslTaskSpec inst_update_spec = {
         .is_list_item = true,
-        .alloc  = alloc_class_inst,
-        .append = append_class_inst,
-        .parse  = parse_class_inst,
-        .accu = &ctx
+        .parse  = parse_class_inst_item,
+        .obj = &ctx
     };
 
     struct gslTaskSpec specs[] = {

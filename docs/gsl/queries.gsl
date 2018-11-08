@@ -1,0 +1,37 @@
+
+{class gsl-docs-queries
+  {is doc 
+    [para
+      {[txt
+        {en {t
+            To list all the classes of a given repo you can use
+            the following statement.}
+        {ru {t
+            Просмотреть список классов выбранного репозитория можно
+            с помощью  следующего запроса:}}}]
+        {code
+            {_cdata {""" {class} """}}}}
+
+       {[txt
+        {en {t
+            The root class and its immediate children can be obtained
+            with the following statement.}
+        {ru {t
+            Корневой класс и его непосредственные дочерние классы можно
+            получить с помощью  следующего запроса:}}}]
+        {code
+            {_cdata {""" {class /} """}}}}
+
+       {[txt
+        {en {t
+            Every class of a given repo can be obtained
+            by specifying its full name which normally is
+            a valid UTF-8 text string. Class name can contain whitespaces.}
+        {ru {t
+            Любой класс, имеющийся в конкретном репозитории, можно
+            запросить, указав его полное имя, представляющее собой
+            строку в кодировке UTF-8. Имена классов могут содержать пробелы.}}}]
+        {code
+            {_cdata {""" {class My Personal Class} """}}}}
+
+    ]}}

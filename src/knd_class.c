@@ -221,15 +221,10 @@ static gsl_err_t parse_class_import(void *obj,
                                     size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndClass *self = task->class;
-    int err;
 
     task->type = KND_UPDATE_STATE;
-    
-    err = knd_class_import(self, rec, total_size, task);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
 
-    return make_gsl_err(gsl_OK);
+    return knd_class_import(task->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_schema(void *obj,
@@ -364,8 +359,8 @@ extern int knd_read_GSL_file(struct kndClass *self,
     err = out->write(out, filename, filename_size);  RET_ERR();
     err = out->write(out, file_ext, file_ext_size);   RET_ERR();
 
-    if (DEBUG_CLASS_LEVEL_2)
-        knd_log(".. reading GSL file: %.*s", out->buf_size, out->buf);
+    if (DEBUG_CLASS_LEVEL_TMP)
+        knd_log("\n\n.. reading GSL file: %.*s", out->buf_size, out->buf);
 
     file_out->reset(file_out);
     err = file_out->write_file_content(file_out, (const char*)out->buf);
@@ -442,7 +437,7 @@ extern int knd_class_coordinate(struct kndClass *self,
     if (DEBUG_CLASS_LEVEL_TMP)
         knd_log(".. class coordination in progress ..");
 
-    err = knd_resolve_classes(self, task);                                          RET_ERR();
+    err = knd_resolve_classes(self, task);                                        RET_ERR();
 
     if (self->entry->descendants) {
         if (DEBUG_CLASS_LEVEL_TMP)
