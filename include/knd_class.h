@@ -360,6 +360,8 @@ extern gsl_err_t knd_select_class(struct kndRepo *repo,
                                   struct kndTask *task);
 
 // knd_class.states.c
+extern int knd_retrieve_class_updates(struct kndStateRef *ref,
+                                      struct kndSet *set);
 extern int knd_class_get_updates(struct kndClass *self,
                                  size_t gt, size_t lt,
                                  size_t unused_var(eq),

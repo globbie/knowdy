@@ -147,8 +147,6 @@ static int export_conc_elem_JSON(void *obj,
                                  void *elem)
 {
     struct kndTask *task = obj;
-    struct kndClass *self = task->class;
-
     if (count < task->start_from) return knd_OK;
     if (task->batch_size >= task->batch_max) return knd_RANGE;
 
@@ -157,6 +155,8 @@ static int export_conc_elem_JSON(void *obj,
     struct kndClass *c = entry->class;
     struct kndState *state;
     int err;
+
+    task->class = c;
 
     if (DEBUG_JSON_LEVEL_2)
         knd_log(".. JSON export set elem: %.*s",
@@ -179,9 +179,9 @@ static int export_conc_elem_JSON(void *obj,
 
     c->depth = 0;
     c->max_depth = 0;
-    if (self->max_depth) {
+    /*if (self->max_depth) {
         c->max_depth = self->max_depth;
-    }
+        }*/
 
     err = knd_class_export(c, KND_FORMAT_JSON, task);
     if (err) return err;
