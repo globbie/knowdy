@@ -391,6 +391,32 @@ static int present_repo_state_JSON(struct kndRepo *self,
     return knd_OK;
 }
 
+static int present_repo_state_GSL(struct kndRepo *self,
+                                  struct glbOutput *out)
+{
+    struct kndUpdate *update;
+    int err;
+
+    out->reset(out);
+    err = out->writec(out, '{');                                                  RET_ERR();
+    err = out->write(out, "repo ", strlen("repo "));                              RET_ERR();
+    err = out->write(out,  self->name, self->name_size);                          RET_ERR();
+
+    err = out->write(out, "{_state ", strlen("{_state "));                        RET_ERR();
+    err = out->writef(out, "%zu", self->num_updates);                             RET_ERR();
+    err = out->writec(out, '}');                                                  RET_ERR();
+
+    if (self->updates) {
+        update = self->updates;
+        err = out->write(out, "{modif ", strlen("{modif "));                      RET_ERR();
+        err = out->writef(out, "%zu", (size_t)update->timestamp);                 RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
+    }
+    err = out->writec(out, '}');                                                  RET_ERR();
+
+    return knd_OK;
+}
+
 extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
 {
     struct kndUpdate *update;
@@ -408,14 +434,6 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
 
     err = knd_update_new(mempool, &update);                                      RET_ERR();
     update->repo = self;
-
-    self->num_updates++;
-
-    update->numid = self->num_updates;
-    update->next = self->updates;
-    self->updates = update;
-
-    update->timestamp = time(NULL);
 
     // TODO: check conflicts
 
@@ -438,16 +456,54 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
         }
     }
 
+    // TODO atomics
+    update->class_state_refs = self->class_state_refs;
     self->class_state_refs = NULL;
+    self->num_updates++;
+    update->numid = self->num_updates;
+    update->next = self->updates;
+    self->updates = update;
 
-    // TODO
-    err = present_repo_state_JSON(self, out);  RET_ERR();
+    // delegate to the caller
+    update->timestamp = time(NULL);
+
+
+    // NB: transaction atomically confirmed here
+    update->confirm = KND_VALID_STATE;
+
+    switch (task->format) {
+    case KND_FORMAT_JSON:
+        err = present_repo_state_JSON(self, out);   RET_ERR(); 
+    default:
+        err = present_repo_state_GSL(self, out);    RET_ERR();
+        break;
+    }
 
     // TODO: build update GSP
 
     return knd_OK;
 }
 
+static int select_update_range(struct kndRepo *self,
+                               size_t gt, size_t lt,
+                               size_t unused_var(eq),
+                               struct kndSet *set)
+{
+    struct kndUpdate *update;
+    struct kndStateRef *ref;
+    int err;
+
+    for (update = self->updates; update; update = update->next) {
+        if (update->numid >= lt) continue;
+        if (update->numid <= gt) continue;
+
+        for (ref = update->class_state_refs; ref; ref = ref->next) {
+            err = knd_retrieve_class_updates(ref, set);                           RET_ERR();
+        }
+    }
+
+    return knd_OK;
+}
 
 static gsl_err_t present_repo_state(void *obj,
                                     const char *unused_var(name),
@@ -456,10 +512,9 @@ static gsl_err_t present_repo_state(void *obj,
     struct kndTask *task = obj;
     struct kndRepo *repo = task->repo;
     struct glbOutput *out = task->out;
-
-    //struct kndMemPool *mempool = task->mempool;
-    //struct kndSet *set;
-    //struct kndState *latest_state;
+    struct kndMemPool *mempool = task->mempool;
+    struct kndSet *set;
+    struct kndUpdate *update;
     int err;
 
     if (!repo) {
@@ -474,38 +529,52 @@ static gsl_err_t present_repo_state(void *obj,
 
     task->type = KND_SELECT_STATE;
 
-    //if (!repo->states)                                     goto show_curr_state;
-
-    //latest_state = self->states;
-
-    //if (task->state_gt >= latest_state->numid)             goto show_curr_state;
+    if (!repo->updates)                                     goto show_curr_state;
+    update = repo->updates;
+    if (task->state_gt >= update->numid)                    goto show_curr_state;
     //if (task->state_lt && task->state_lt < task->state_gt) goto show_curr_state;
+
+    task->state_lt = repo->num_updates + 1;
 
     if (DEBUG_REPO_LEVEL_TMP) {
         knd_log(".. select repo delta:  gt %zu  lt %zu  eq:%zu..",
                 task->state_gt, task->state_lt, task->state_eq);
     }
 
-    /*    err = knd_set_new(mempool, &set);
+    err = knd_set_new(mempool, &set);
     if (err) return make_gsl_err_external(err);
     set->mempool = mempool;
 
-    err = knd_class_get_updates(self,
-                                task->state_gt, task->state_lt,
-                                task->state_eq, set);
+    err = select_update_range(repo,
+                              task->state_gt, task->state_lt,
+                              task->state_eq, set);
     if (err) return make_gsl_err_external(err);
+
+    // export
     task->show_removed_objs = true;
 
-    err =  knd_class_export_set_JSON(set, task);
+    if (task->curr_locale_size) {
+        task->locale = task->curr_locale;
+        task->locale_size = task->curr_locale_size;
+    }
+    // TODO: formats
+    err = knd_class_set_export_JSON(set, task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
-    */
-    //show_curr_state:
-
-    err = present_repo_state_JSON(repo, out);  
-    if (err) return make_gsl_err_external(err);
     
+ show_curr_state:
+
+    switch (task->format) {
+    case KND_FORMAT_JSON:
+        err = present_repo_state_JSON(repo, out);  
+        if (err) return make_gsl_err_external(err);
+    default:
+        err = present_repo_state_GSL(repo, out);  
+        if (err) return make_gsl_err_external(err);
+        break;
+    }
+
     return make_gsl_err(gsl_OK);
 }
 
