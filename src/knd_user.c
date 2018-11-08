@@ -590,7 +590,7 @@ extern int kndUser_init(struct kndUser *self,
     memcpy(repo->name, self->repo_name, self->repo_name_size);
     repo->name_size = self->repo_name_size;
 
-    err = kndRepo_init(self->repo, task);
+    err = kndRepo_init(repo, task);
     if (err) return err;
 
     return knd_OK;
