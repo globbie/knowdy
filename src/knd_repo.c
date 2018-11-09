@@ -473,7 +473,8 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
 
     switch (task->format) {
     case KND_FORMAT_JSON:
-        err = present_repo_state_JSON(self, out);   RET_ERR(); 
+        err = present_repo_state_JSON(self, out);   RET_ERR();
+        break;
     default:
         err = present_repo_state_GSL(self, out);    RET_ERR();
         break;
@@ -569,6 +570,7 @@ static gsl_err_t present_repo_state(void *obj,
     case KND_FORMAT_JSON:
         err = present_repo_state_JSON(repo, out);  
         if (err) return make_gsl_err_external(err);
+        break;
     default:
         err = present_repo_state_GSL(repo, out);  
         if (err) return make_gsl_err_external(err);
