@@ -177,11 +177,7 @@ static int export_conc_elem_JSON(void *obj,
         err = out->writec(out, ',');                                              RET_ERR();
     }
 
-    c->depth = 0;
-    c->max_depth = 0;
-    /*if (self->max_depth) {
-        c->max_depth = self->max_depth;
-        }*/
+    task->depth = 0;
 
     err = knd_class_export(c, KND_FORMAT_JSON, task);
     if (err) return err;
@@ -207,8 +203,6 @@ static int export_class_ref_JSON(void *obj,
     if (count) {
         err = out->writec(out, ',');                                              RET_ERR();
     }
-    c->depth = 0;
-    c->max_depth = 0;
     err = knd_class_export(c, KND_FORMAT_JSON, task);
     if (err) return err;
     return knd_OK;
@@ -465,8 +459,8 @@ static int export_baseclass_vars(struct kndClass *self,
         }
 
         if (item->attrs) {
-            item->attrs->depth = self->depth;
-            item->attrs->max_depth = self->max_depth;
+            item->attrs->depth = task->depth;
+            item->attrs->max_depth = task->max_depth;
             err = knd_attr_vars_export_JSON(item->attrs,
                                             task, false);      RET_ERR();
         }
@@ -507,22 +501,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
         knd_log("\n.. JSON export: \"%.*s\" (repo:%.*s)  depth:%zu max depth:%zu",
                 entry->name_size, entry->name,
                 entry->repo->name_size, entry->repo->name,
-                self->depth, self->max_depth);
-
-        knd_log("= self:%p orig_entry:%p", self, orig_entry);
-        if (orig_entry) {
-            knd_log("= orig_entry_class:%p \"%.*s\" (repo:%.*s)",
-                    orig_entry->class,
-                    orig_entry->class->name_size,
-                    orig_entry->class->name,
-                    orig_entry->repo->name_size,
-                    orig_entry->repo->name);
-
-            if (orig_entry->class) {
-                knd_log("= orig_entry_class class vars:%zu", 
-                        orig_entry->class->num_baseclass_vars);
-            }
-        }
+                task->depth, task->max_depth);
     }
 
     err = out->write(out, "{", 1);                                                RET_ERR();
@@ -570,7 +549,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
     
     err = export_gloss_JSON(self, task);                                                RET_ERR();
 
-    if (self->depth >= self->max_depth) {
+    if (task->depth >= task->max_depth) {
         /* any concise fields? */
         err = export_concise_JSON(self, task);                                          RET_ERR();
         goto final;
@@ -673,11 +652,9 @@ extern int knd_class_export_JSON(struct kndClass *self,
                 set = class_rel->set;
                 err = out->write(out, ",\"batch\":[",
                                  strlen(",\"batch\":["));                         RET_ERR();
-                task->max_depth = 0;
                 err = set->map(set, export_class_ref_JSON, (void*)self);
                 if (err && err != knd_RANGE) return err;
                 err = out->writec(out, ']');                                      RET_ERR();
-                task->max_depth = 1;
             }
 
             err = out->writec(out, '}');                                          RET_ERR();

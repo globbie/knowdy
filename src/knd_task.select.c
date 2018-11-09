@@ -203,7 +203,6 @@ gsl_err_t knd_select_task(void *obj, const char *rec, size_t *total_size)
           .obj = self
         }
     };
-
     if (DEBUG_TASK_LEVEL_TMP)
         knd_log(".. parsing task: \"%.*s\"..", 256, rec);
 

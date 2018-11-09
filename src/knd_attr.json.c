@@ -116,9 +116,7 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
         err = out->writec(out, ':');
         if (err) return err;
 
-        c->depth = 1;
-        c->max_depth = 1;
-
+        task->depth = 0;
         err = knd_class_export(c, KND_FORMAT_JSON, task);
         if (err) return err;
         in_list = true;
@@ -185,8 +183,7 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
                     item->val_size, item->val);
             assert(item->class != NULL);
             c = item->class;
-            c->depth = 1;
-            c->max_depth = 1;
+
             err = knd_class_export(c, KND_FORMAT_JSON, task);
             if (err) return err;
             break;
@@ -299,8 +296,8 @@ extern int knd_export_inherited_attr(void *obj,
         //if (err) return knd_OK;
     }
 
-    attr_var->depth = self->depth;
-    attr_var->max_depth = self->max_depth;
+    attr_var->depth = task->depth;
+    attr_var->max_depth = task->max_depth;
 
     err = out->writec(out, ',');                                          RET_ERR();
 
@@ -343,8 +340,8 @@ static int ref_item_export_JSON(struct kndAttrVar *item,
     assert(item->class != NULL);
 
     c = item->class;
-    c->depth = item->depth;
-    c->max_depth = item->max_depth;
+    //c->depth = item->depth;
+    //c->max_depth = item->max_depth;
 
     err = knd_class_export_JSON(c, task);                 RET_ERR();
     return knd_OK;
@@ -534,8 +531,8 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
                 if (err) return err;
             } else {
                 c = item->class;
-                c->depth = 1;
-                c->max_depth = 1;
+                //c->depth = 1;
+                //c->max_depth = 1;
                 err = knd_class_export(c, KND_FORMAT_JSON, task);
                 if (err) return err;
             }

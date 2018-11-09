@@ -64,7 +64,7 @@ static gsl_err_t select_by_baseclass(void *obj,
     if (err) return make_gsl_err_external(err);
 
     if (DEBUG_CLASS_SELECT_LEVEL_2)
-        c->str(c);
+        c->str(c, 1);
 
     if (!c->entry->class) {
         knd_log(".. resolve class to %.*s", c->name_size, c->name);
@@ -108,7 +108,7 @@ static gsl_err_t select_by_attr(void *obj,
                 c->name_size, c->name,
                 c->entry->id_size, c->entry->id,
                 c->entry->repo->name_size, c->entry->repo->name);
-        c->str(c);
+        c->str(c, 1);
     }
 
     if (!c->entry->descendants) {
@@ -450,7 +450,6 @@ static gsl_err_t parse_baseclass_select(void *obj,
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndClass *self = task->class;
     gsl_err_t err;
 
     if (DEBUG_CLASS_SELECT_LEVEL_2)
@@ -474,7 +473,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
         {  .name = "_depth",
            .name_size = strlen("_depth"),
            .parse = gsl_parse_size_t,
-           .obj = &self->max_depth
+           .obj = &task->max_depth
         },
         {  .name = "_rels",
            .name_size = strlen("_rels"),
@@ -601,8 +600,8 @@ static gsl_err_t present_class_selection(void *obj,
         return make_gsl_err(gsl_OK);
     }
 
-    c->depth = 0;
-    c->max_depth = 1;
+    //c->depth = 0;
+    //c->max_depth = 1;
 
     err = knd_class_export(c, task->format, task);
     if (err) {
@@ -646,7 +645,7 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
     task->class_inst_state_refs = NULL;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
-        c->str(c);
+        c->str(c, 1);
     }
 
     return make_gsl_err(gsl_OK);
@@ -697,7 +696,7 @@ static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_siz
     ctx->class = c;
 
     if (DEBUG_CLASS_SELECT_LEVEL_2) {
-        c->str(c);
+        c->str(c, 1);
     }
 
     return make_gsl_err(gsl_OK);
@@ -1013,7 +1012,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
 
     struct LocalContext ctx = {
         .task = task,
-        .repo = task->class->entry->repo
+        .repo = repo
     };
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -1064,7 +1063,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
         {  .name = "_depth",
            .name_size = strlen("_depth"),
            .parse = gsl_parse_size_t,
-           .obj = &repo->root_class->max_depth
+           .obj = &task->max_depth
         },
         { .name = "_state",
           .name_size = strlen("_state"),

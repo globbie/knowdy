@@ -106,7 +106,7 @@ static gsl_err_t present_state(void *obj,
     task->type = KND_SELECT_STATE;
 
     if (DEBUG_INST_LEVEL_TMP) {
-        self->str(self);
+        self->str(self, 1);
     }
 
     if (task->state_gt  >= self->num_inst_states) goto JSON_state;

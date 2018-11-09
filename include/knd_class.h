@@ -166,9 +166,6 @@ struct kndClass
     struct kndTranslation *tr;
     struct kndTranslation *summary;
 
-    size_t depth;
-    size_t max_depth;
-
     struct kndClassVar *baseclass_vars;
     size_t num_baseclass_vars;
 
@@ -190,7 +187,7 @@ struct kndClass
     struct kndClass *next;
 
     /***********  public methods ***********/
-    void (*str)(struct kndClass *self);
+    void (*str)(struct kndClass *self, size_t depth);
 };
 
 /* constructor */
