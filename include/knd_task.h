@@ -130,7 +130,6 @@ struct kndTask
 
     struct kndRepo *repo;
 
-    struct kndClass *root_class;
     struct kndClass *class;
     struct kndClassVar *class_var;
     struct kndAttr *attr;

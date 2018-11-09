@@ -119,7 +119,6 @@ static gsl_err_t parse_class_select(void *obj,
     if (DEBUG_TASK_LEVEL_TMP)
         knd_log(".. parsing the system class select: \"%.*s\"", 64, rec);
 
-    task->root_class = c;
     task->class = c;
 
     return knd_class_select(task->repo, rec, total_size, task);

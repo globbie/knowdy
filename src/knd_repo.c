@@ -686,7 +686,6 @@ static gsl_err_t parse_class_select(void *obj,
         task->repo = repo;
 
     c = repo->root_class;
-    task->root_class = c;
     task->class = c;
 
     return knd_class_select(repo, rec, total_size, task);
@@ -717,7 +716,6 @@ static gsl_err_t parse_class_import(void *obj,
     assert(repo != NULL);
 
     c = repo->root_class;
-    task->root_class = c;
     task->class = c;
 
     return knd_class_import(repo, rec, total_size, task);

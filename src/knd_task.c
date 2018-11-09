@@ -75,7 +75,6 @@ void kndTask_reset(struct kndTask *self)
 
     self->user_ctx = NULL;
     self->repo = NULL;
-    self->root_class = NULL;
     self->class = NULL;
     self->class_inst = NULL;
 
