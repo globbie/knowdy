@@ -119,14 +119,14 @@ static int log_parser_error(struct kndTask *self,
                              line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
 }
 
-int kndTask_run(struct kndTask *self, const char *rec, size_t rec_size)
+int kndTask_run(struct kndTask *self, const char *rec, size_t rec_size, struct kndShard *shard)
 {
     int err;
     gsl_err_t parser_err;
 
     kndTask_reset(self);
 
-    parser_err = knd_select_task(self, rec, &rec_size);
+    parser_err = knd_select_task(self, rec, &rec_size, shard);
     if (parser_err.code) {
         knd_log("-- task run failure");
         if (!is_gsl_err_external(parser_err)) {
