@@ -45,9 +45,10 @@ struct kndShard
     void (*str)(struct kndShard *self);
 };
 
-extern int kndShard_parse_config(struct kndShard *self, const char *rec, size_t *total_size,
-                                 struct kndMemPool *mempool);
-
 extern int kndShard_new(struct kndShard **self, const char *config, size_t config_size);
 extern void kndShard_del(struct kndShard *self);
 extern int kndShard_run_task(struct kndShard *self, const char *input, size_t input_size, const char **output, size_t *output_size, size_t task_id);
+
+// knd_shard.config.c
+extern int kndShard_parse_config(struct kndShard *self, const char *rec, size_t *total_size,
+                                 struct kndMemPool *mempool);
