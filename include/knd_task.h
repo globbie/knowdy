@@ -34,6 +34,7 @@ struct kndUser;
 struct kndUserContext;
 struct kndStateControl;
 struct kndClass;
+struct kndClassVar;
 struct kndQuery;
 struct kndClassInst;
 
