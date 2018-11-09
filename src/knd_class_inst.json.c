@@ -381,8 +381,8 @@ static int export_class_inst_JSON(void *obj,
     }
     inst->depth = 0;
     inst->max_depth = 0;
-    if (task->repo->root_class->max_depth) {
-        inst->max_depth = task->repo->root_class->max_depth;
+    if (task->max_depth) {
+        inst->max_depth = task->max_depth;
     }
     err = knd_class_inst_export_JSON(inst, task->out);                        RET_ERR();
     task->batch_size++;

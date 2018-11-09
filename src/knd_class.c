@@ -65,7 +65,7 @@ static int str_facet_val(void *unused_var(obj),
     return knd_OK;
 }
 
-static void str(struct kndClass *self)
+static void str(struct kndClass *self, size_t depth)
 {
     //struct kndTranslation *tr;
     struct kndClassVar *item;
@@ -78,13 +78,12 @@ static void str(struct kndClass *self)
     char resolved_state = '-';
     int err;
 
-    knd_log("\n%*s{class %.*s (repo:%.*s)   id:%.*s  numid:%zu",
-            self->depth * KND_OFFSET_SIZE, "",
+    knd_log("\n{class %.*s (repo:%.*s)   id:%.*s  numid:%zu",
             self->entry->name_size, self->entry->name,
             self->entry->repo->name_size, self->entry->repo->name,
             self->entry->id_size, self->entry->id,
             self->entry->numid);
-    
+
     /*if (self->num_states) {
         knd_log("\n%*s_state:%zu",
             self->depth * KND_OFFSET_SIZE, "",
@@ -112,20 +111,20 @@ static void str(struct kndClass *self)
             name_size = item->entry->name_size;
 
             knd_log("%*s_base \"%.*s\" id:%.*s numid:%zu [%c]",
-                    (self->depth + 1) * KND_OFFSET_SIZE, "",
+                    (depth + 1) * KND_OFFSET_SIZE, "",
                     name_size, name,
                     item->entry->id_size, item->entry->id, item->numid,
                     resolved_state);
             
             if (item->attrs) {
-                str_attr_vars(item->attrs, self->depth + 1);
+                str_attr_vars(item->attrs, depth + 1);
             }
         }
     }
 
     for (ref = self->entry->ancestors; ref; ref = ref->next) {
         c = ref->class;
-        knd_log("%*s ==> %.*s (repo:%.*s)", self->depth * KND_OFFSET_SIZE, "",
+        knd_log("%*s ==> %.*s (repo:%.*s)", depth * KND_OFFSET_SIZE, "",
                 c->entry->name_size, c->entry->name,
                 c->entry->repo->name_size, c->entry->repo->name);
     }
@@ -151,7 +150,7 @@ static void str(struct kndClass *self)
                 c->name_size, c->name, c->entry->num_terminals);
                 } */
 
-    knd_log("%*s the end of %.*s}", self->depth * KND_OFFSET_SIZE, "",
+    knd_log("%*s the end of %.*s}", depth * KND_OFFSET_SIZE, "",
             self->entry->name_size, self->entry->name);
 }
 
@@ -971,7 +970,7 @@ extern int knd_get_class(struct kndRepo *self,
         }
         c->next = NULL;
         if (DEBUG_CLASS_LEVEL_2)
-            c->str(c);
+            c->str(c, 1);
 
         *result = c;
         return knd_OK;
@@ -1059,7 +1058,7 @@ extern int knd_get_class_by_id(struct kndClass *self,
         }
         c->next = NULL;
         if (DEBUG_CLASS_LEVEL_2)
-            c->str(c);
+            c->str(c, 1);
 
         *result = c;
         return knd_OK;
@@ -1240,7 +1239,7 @@ extern int knd_class_clone(struct kndClass *self,
                          (void*)entry);                                           RET_ERR();
 
     if (DEBUG_CLASS_LEVEL_2)
-        c->str(c);
+        c->str(c, 1);
 
     *result = c;
     return knd_OK;

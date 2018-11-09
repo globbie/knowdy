@@ -696,22 +696,23 @@ static gsl_err_t parse_class_import(void *obj,
 {
     struct kndTask *task = obj;
     struct kndUserContext *ctx = task->user_ctx;
-    struct kndRepo *repo;
+    struct kndRepo *repo = task->repo;
     struct kndClass *c;
 
-    if (!ctx) {
+    /*if (!ctx) {
         struct glbOutput *log = task->log;
         knd_log("-- no user selected");
         log->writef(log, "no user selected");
         task->http_code = HTTP_BAD_REQUEST;
         return make_gsl_err(gsl_FAIL);
+        } */
+
+    if (ctx) {
+        repo = ctx->repo;
+        task->repo = repo;
     }
 
-    repo = ctx->repo;
-    if (task->repo)
-        repo = task->repo;
-    else
-        task->repo = repo;
+    assert(repo != NULL);
 
     c = repo->root_class;
     task->root_class = c;

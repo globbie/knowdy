@@ -984,7 +984,7 @@ static gsl_err_t check_list_item_id(void *obj,
         }
 
         if (DEBUG_CLASS_GSP_LEVEL_2)
-            c->str(c);
+            c->str(c, 1);
 
         attr_var->class = c;
         attr_var->class_entry = c->entry;
@@ -1000,7 +1000,7 @@ static gsl_err_t check_list_item_id(void *obj,
         }
 
         if (DEBUG_CLASS_GSP_LEVEL_2)
-            c->str(c);
+            c->str(c, 1);
 
         attr_var->class = c;
         attr_var->class_entry = c->entry;
@@ -1117,7 +1117,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
         }
 
         if (DEBUG_CLASS_GSP_LEVEL_2)
-            c->str(c);
+            c->str(c, 1);
 
         attr_var->class = c;
         attr_var->class_entry = c->entry;
