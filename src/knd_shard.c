@@ -125,7 +125,7 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
     self->mempool = mempool;
 
     {
-        err = kndShard_parse_schema(self, config, &config_size, mempool);
+        err = kndShard_parse_config(self, config, &config_size, mempool);
         if (err != knd_OK) goto error;
     }
 
