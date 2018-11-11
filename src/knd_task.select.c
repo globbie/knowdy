@@ -1,6 +1,8 @@
 #include "knd_task.h"
-#include "knd_repo.h"
+
 #include "knd_class.h"
+#include "knd_repo.h"
+#include "knd_shard.h"
 #include "knd_user.h"
 #include "knd_utils.h"
 
@@ -14,6 +16,11 @@
 #define DEBUG_TASK_LEVEL_2 0
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
+
+struct LocalContext {
+    struct kndTask *self;
+    struct kndShard *shard;
+};
 
 static gsl_err_t run_set_format(void *obj,
                                 const char *name,
@@ -86,31 +93,32 @@ static gsl_err_t parse_class_import(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct kndTask *task = obj;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->self;
     if (!task->repo)
-        task->repo = task->root_repo;
+        task->repo = ctx->shard->repo;
 
     if (DEBUG_TASK_LEVEL_TMP)
         knd_log(".. parsing the system class import: \"%.*s\"..", 64, rec);
 
     task->type = KND_UPDATE_STATE;
-    return knd_class_import(task->repo, rec, total_size, task);
+    return knd_class_import(ctx->shard->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_class_select(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct kndTask *task = obj;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->self;
     if (!task->repo)
-        task->repo = task->root_repo;
+        task->repo = ctx->shard->repo;
 
     struct kndClass *c = task->repo->root_class;
 
     if (DEBUG_TASK_LEVEL_TMP)
         knd_log(".. parsing the system class select: \"%.*s\"", 64, rec);
 
-    task->root_class = c;
     task->class = c;
 
     return knd_class_select(task->repo, rec, total_size, task);
@@ -144,7 +152,11 @@ static gsl_err_t parse_update(void *obj,
 
 static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *self = obj;
+    struct LocalContext *ctx = obj;
+    struct kndTask *self = ctx->self;
+    gsl_err_t parser_err;
+    int err;
+
     struct gslTaskSpec specs[] = {
         { .name = "tid",
           .name_size = strlen("tid"),
@@ -172,12 +184,12 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
           .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_import,
-          .obj = self
+          .obj = ctx
         },
         { .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_select,
-          .obj = self
+          .obj = ctx
         },
         { .name = "repo",
           .name_size = strlen("repo"),
@@ -190,20 +202,49 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
           .obj = self
         }
     };
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        struct glbOutput *log = self->log;
+        knd_log("-- task parse failure: \"%.*s\"",
+                log->buf_size, log->buf);
+        if (!log->buf_size) {
+            err = log->write(log, "internal server error",
+                             strlen("internal server error"));
+            if (err) {
+                parser_err = make_gsl_err_external(err);
+                goto cleanup;
+            }
+        }
+        goto cleanup;
+    }
+
+    switch (self->type) {
+    case KND_UPDATE_STATE:
+        err = knd_confirm_state(self->repo, self);
+        if (err) return make_gsl_err_external(err);
+        break;
+    default:
+        break;
+    }
+
+    return make_gsl_err(gsl_OK);
+
+ cleanup:
+    // any resources to free?
+    return parser_err;
 }
 
-gsl_err_t knd_select_task(void *obj, const char *rec, size_t *total_size)
+gsl_err_t knd_select_task(struct kndTask *self, const char *rec, size_t *total_size, struct kndShard *shard)
 {
-    struct kndTask *self = obj;
+    struct LocalContext ctx = { self, shard };
     struct gslTaskSpec specs[] = {
         { .name = "task",
           .name_size = strlen("task"),
           .parse = parse_task,
-          .obj = self
+          .obj = &ctx
         }
     };
-
     if (DEBUG_TASK_LEVEL_TMP)
         knd_log(".. parsing task: \"%.*s\"..", 256, rec);
 

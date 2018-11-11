@@ -62,20 +62,7 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
     }
 
     if (parent_item->name_size) {
-        //err = out->write(out, "{_id", strlen("{_id")); RET_ERR();
-        //err = out->writec(out, ' '); RET_ERR();
-        err = out->write(out, parent_item->name, parent_item->name_size);          RET_ERR();
-        //err = out->writec(out, '}'); RET_ERR();
         c = parent_item->attr->ref_class;
-        /*if (c->num_computed_attrs) {
-            if (DEBUG_ATTR_GSL_LEVEL_2)
-                knd_log(".. present computed attrs in %.*s (val:%.*s)",
-                        parent_item->name_size, parent_item->name,
-                        parent_item->val_size, parent_item->val);
-
-            err = knd_present_computed_inner_attrs(parent_item, task);
-            if (err) return err;
-            }*/
     }
 
     /* export a class ref */
@@ -101,9 +88,6 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
         err = out->writec(out, '{');
         if (err) return err;
         err = out->write(out, attr->name, attr->name_size); RET_ERR();
-
-        c->depth = 1;
-        c->max_depth = 1;
 
         err = knd_class_export_GSL(c, task, depth + 1);
         if (err) return err;
@@ -139,8 +123,6 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
         case KND_ATTR_REF:
             assert(item->class != NULL);
             c = item->class;
-            c->depth = 1;
-            c->max_depth = 1;
             err = knd_class_export_GSL(c, task, depth + 1);                       RET_ERR();
             break;
         case KND_ATTR_INNER:
@@ -169,8 +151,7 @@ extern int knd_export_inherited_attr_GSL(void *obj,
     struct kndAttrRef *ref = elem;
     struct kndAttr *attr = ref->attr;
     struct kndAttrVar *attr_var = ref->attr_var;
-    struct kndRepo *repo = self->entry->repo;
-    struct glbOutput *out = repo->out;
+    struct glbOutput *out = task->out;
     struct kndMemPool *mempool = task->mempool;
     size_t numval = 0;
     size_t depth = 1;
@@ -245,8 +226,8 @@ extern int knd_export_inherited_attr_GSL(void *obj,
         //if (err) return knd_OK;
     }
 
-    attr_var->depth = self->depth;
-    attr_var->max_depth = self->max_depth;
+    attr_var->depth = task->depth;
+    attr_var->max_depth = task->max_depth;
 
     if (attr->is_a_set) {
         return attr_var_list_export_GSL(attr_var, task, depth);
@@ -281,15 +262,20 @@ static int ref_item_export_GSL(struct kndAttrVar *item,
                                size_t depth)
 {
     struct kndClass *c;
+    size_t curr_depth = task->depth;
     int err;
 
     // TODO
     assert(item->class != NULL);
     c = item->class;
-    c->depth = item->depth;
-    c->max_depth = item->max_depth;
+
+    knd_log(".. expand ref %.*s: depth:%zu max_depth:%zu",
+            c->name_size, c->name, task->depth, task->max_depth);
 
     err = knd_class_export_GSL(c, task, depth);                               RET_ERR();
+
+    task->depth = curr_depth;
+
     return knd_OK;
 }
 
@@ -403,7 +389,6 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
     struct kndAttrVar *item;
     struct kndAttr *attr;
     struct kndClass *c;
-    //bool in_list = false;
     int err;
 
     for (item = items; item; item = item->next) {
@@ -457,8 +442,6 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
                 if (err) return err;
             } else {
                 c = item->class;
-                c->depth = 1;
-                c->max_depth = 1;
                 err = knd_class_export_GSL(c, task, depth + 1);
                 if (err) return err;
             }

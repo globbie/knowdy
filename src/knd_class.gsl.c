@@ -217,8 +217,8 @@ extern int knd_class_export_updates_GSL(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_export_class_state_GSL(struct kndClass *self,
-                                       struct kndTask *task)
+static int export_class_state_GSL(struct kndClass *self,
+                                  struct kndTask *task)
 {
     struct glbOutput *out = task->out;
     struct kndState *state = self->states;
@@ -295,9 +295,10 @@ extern int knd_export_class_state_GSL(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_export_class_inst_state_GSL(struct kndClass *self)
+static int export_class_inst_state_GSL(struct kndClass *self,
+                                       struct kndTask *task)
 {
-    struct glbOutput *out = self->entry->repo->out;
+    struct glbOutput *out = task->out;
     size_t latest_state_id = 0;
     int err;
 
@@ -324,15 +325,13 @@ static int export_conc_elem_GSL(void *obj,
                                  void *elem)
 {
     struct kndTask *task = obj;
-    struct kndClass *self = task->class;
-
     if (count < task->start_from) return knd_OK;
     if (task->batch_size >= task->batch_max) return knd_RANGE;
-
     struct glbOutput *out = task->out;
     struct kndClassEntry *entry = elem;
     struct kndClass *c = entry->class;
     struct kndState *state;
+    size_t curr_depth = 0;
     int err;
 
     if (DEBUG_GSL_LEVEL_2)
@@ -349,12 +348,8 @@ static int export_conc_elem_GSL(void *obj,
         if (state && state->phase == KND_REMOVED) return knd_OK;
     }
 
-    c->depth = 0;
-    c->max_depth = 0;
-    if (self->max_depth) {
-        c->max_depth = self->max_depth;
-    }
-    
+    curr_depth = task->depth;
+    task->depth = 0;
     if (task->format_offset) {
         err = out->writec(out, '\n');                                             RET_ERR();
         err = knd_print_offset(out, task->format_offset);                         RET_ERR();
@@ -363,6 +358,7 @@ static int export_conc_elem_GSL(void *obj,
     err = knd_class_export_GSL(c, task, 1);
     if (err) return err;
 
+    task->depth = curr_depth;
     task->batch_size++;
     return knd_OK;
 }
@@ -374,8 +370,7 @@ static int export_class_ref_GSL(void *obj,
                                  void *elem)
 {
     struct kndTask *task = obj;
-    struct kndClass *self = task->class;
-    struct glbOutput *out = self->entry->repo->out;
+    struct glbOutput *out = task->out;
     struct kndClassEntry *entry = elem;
     struct kndClass *c = entry->class;
     int err;
@@ -384,8 +379,7 @@ static int export_class_ref_GSL(void *obj,
     if (count) {
         err = out->writec(out, ',');                                              RET_ERR();
     }
-    c->depth = 0;
-    c->max_depth = 0;
+    task->depth = 0;
     err = knd_class_export(c, KND_FORMAT_GSL, task);
     if (err) return err;
     return knd_OK;
@@ -676,8 +670,8 @@ static int export_baseclass_vars(struct kndClass *self,
                 err = out->writec(out, '\n');                                     RET_ERR();
                 err = knd_print_offset(out, (depth + 2) * task->format_offset);   RET_ERR();
             }
-            cvar->attrs->depth = self->depth;
-            cvar->attrs->max_depth = self->max_depth;
+            cvar->attrs->depth = task->depth;
+            cvar->attrs->max_depth = task->max_depth;
             err = knd_attr_vars_export_GSL(cvar->attrs,
                                            task, false, depth + 1);               RET_ERR();
         }
@@ -712,11 +706,11 @@ extern int knd_class_export_GSL(struct kndClass *self,
     size_t num_children;
     int err;
 
-    if (DEBUG_GSL_LEVEL_2) {
+    if (DEBUG_GSL_LEVEL_TMP) {
         knd_log(".. GSL export: \"%.*s\" (repo:%.*s)  depth:%zu max depth:%zu offset:%zu",
                 entry->name_size, entry->name,
                 entry->repo->name_size, entry->repo->name,
-                self->depth, self->max_depth, task->format_offset);
+                task->depth, task->max_depth, task->format_offset);
     }
 
     err = out->write(out, "{class ", strlen("{class "));                          RET_ERR();
@@ -780,14 +774,17 @@ extern int knd_class_export_GSL(struct kndClass *self,
         err = export_gloss_GSL(self, task);                                       RET_ERR();
     }
 
-    if (self->depth >= self->max_depth) {
+    if (task->depth >= task->max_depth) {
         err = export_concise_GSL(self, task, depth);                              RET_ERR();
         goto final;
     }
 
+    // expand
+    task->depth++;
+
     /* state info */
     if (self->num_states) {
-        err = knd_export_class_state_GSL(self, task);                             RET_ERR();
+        err = export_class_state_GSL(self, task);                             RET_ERR();
     }
 
     /* display base classes only once */
@@ -855,7 +852,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
                          strlen("{instance-state"));                                   RET_ERR();
 
         if (self->inst_states) {
-            err = knd_export_class_inst_state_GSL(self);                          RET_ERR();
+            err = export_class_inst_state_GSL(self, task);                          RET_ERR();
         }
 
         // TODO navigation facets?
@@ -903,11 +900,10 @@ extern int knd_class_export_GSL(struct kndClass *self,
                 set = class_rel->set;
                 err = out->write(out, "[item",
                                  strlen("[item"));                                RET_ERR();
-                task->max_depth = 0;
+                //task->max_depth = 0;
                 err = set->map(set, export_class_ref_GSL, (void*)self);
                 if (err && err != knd_RANGE) return err;
                 err = out->writec(out, ']');                                      RET_ERR();
-                task->max_depth = 1;
             }
 
             err = out->writec(out, '}');                                          RET_ERR();

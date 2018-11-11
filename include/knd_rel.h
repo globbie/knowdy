@@ -31,6 +31,7 @@ struct kndUpdate;
 struct kndRelUpdate;
 struct kndRepo;
 struct kndSet;
+struct kndTask;
 
 struct kndRelInstEntry
 {
@@ -217,21 +218,23 @@ struct kndRel
                     struct kndRelEntry *entry,
                     int fd);
     gsl_err_t (*select)(struct kndRel  *self,
-                  const char *rec,
-                  size_t *total_size);
+                        const char *rec,
+                        size_t *total_size,
+                        struct kndTask *task);
     int (*coordinate)(struct kndRel *self);
     int (*resolve)(struct kndRel *self, struct kndRelUpdate *update);
     int (*update)(struct kndRel *self, struct kndUpdate *update);
     int (*freeze)(struct kndRel *self,
                   size_t *total_frozen_size,
                   char *output,
-                  size_t *total_size);
-    int (*export)(struct kndRel *self);
+                  size_t *total_size,
+                  struct kndTask *task);
+    int (*export)(struct kndRel *self, struct kndTask *task);
     int (*export_updates)(struct kndRel *self);
-    int (*export_inst)(struct kndRel *self,
-		       struct kndRelInstance *inst);
-    int (*export_inst_set)(struct kndRel *self,
-                           struct kndSet *set);
+    int (*export_inst)(struct kndRelInstance *inst,
+                       struct kndTask *task);
+    int (*export_inst_set)(struct kndSet *set,
+                           struct kndTask *task);
 };
 
 extern void kndRel_init(struct kndRel *self);

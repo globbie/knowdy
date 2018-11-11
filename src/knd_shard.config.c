@@ -92,7 +92,7 @@ parse_schema_path(void *obj, const char *rec, size_t *total_size)
 }
 
 static gsl_err_t
-parse_config(void *obj, const char *rec, size_t *total_size)
+parse_schema(void *obj, const char *rec, size_t *total_size)
 {
     struct kndShard *self = obj;
 
@@ -155,15 +155,15 @@ parse_config(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-extern int kndShard_parse_schema(struct kndShard *self, const char *rec, size_t *total_size,
-                                 struct kndMemPool *mempool)
+int kndShard_parse_config(struct kndShard *self, const char *rec, size_t *total_size,
+                          struct kndMemPool *mempool)
 {
     self->mempool = mempool;
     struct gslTaskSpec specs[] = {
         {
             .name = "schema",
-            .name_size = sizeof("schema") - 1,
-            .parse = parse_config,
+            .name_size = strlen("schema"),
+            .parse = parse_schema,
             .obj = self
         }
     };

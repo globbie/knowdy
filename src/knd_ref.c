@@ -160,10 +160,11 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int export_reverse_rel_JSON(struct kndRef *self)
+static int export_reverse_rel_JSON(struct kndRef *self,
+                                   struct kndTask *task)
 {
     struct kndClassInst *obj;
-    struct glbOutput *out = self->out;
+    struct glbOutput *out = task->out;
     int err = knd_FAIL;
 
     if (!self->elem) {
@@ -181,7 +182,7 @@ static int export_reverse_rel_JSON(struct kndRef *self)
         knd_log(".. export reverse_rel to JSON..");
 
     obj->depth = 0;
-    err = obj->export(obj, KND_FORMAT_JSON, out);
+    err = obj->export(obj, KND_FORMAT_JSON, task);
     if (err) return err;
 
     /*err = out->write(out, "\"", 1);
@@ -223,15 +224,15 @@ static int export_GSP(struct kndRef *self)
     return knd_OK;
 }
 
-static int
-export_reverse_rel_GSP(struct kndRef *self)
+static int export_reverse_rel_GSP(struct kndRef *self,
+                                  struct kndTask *task)
 {
     struct kndClassInst *obj;
-    struct glbOutput *out;
+    struct glbOutput *out = task->out;
     int err = knd_FAIL;
 
     obj = self->elem->root;
-    out = obj->base->entry->repo->out;
+    out = task->out;
 
     if (DEBUG_REF_LEVEL_2)
         knd_log(".. export reverse_rel to JSON..");
@@ -278,17 +279,18 @@ static int export(struct kndRef *self)
     return knd_OK;
 }
 
-static int export_reverse_rel(struct kndRef *self)
+static int export_reverse_rel(struct kndRef *self,
+                              struct kndTask *task)
 {
     int err;
 
     switch (self->format) {
     case KND_FORMAT_JSON:
-        err = export_reverse_rel_JSON(self);
+        err = export_reverse_rel_JSON(self, task);
         if (err) return err;
         break;
     case KND_FORMAT_GSP:
-        err = export_reverse_rel_GSP(self);
+        err = export_reverse_rel_GSP(self, task);
         if (err) return err;
         break;
     default:

@@ -28,6 +28,7 @@
 struct kndElem;
 struct kndElemRef;
 struct glbOutput;
+struct kndTask;
 
 typedef enum knd_ref_t { knd_LOCAL, knd_FILESYSTEM, knd_URI } knd_ref_t;
 
@@ -82,7 +83,7 @@ struct kndRef
     int (*resolve)(struct kndRef *self);
     
     int (*export)(struct kndRef *self);
-    int (*export_reverse_rel)(struct kndRef *self);
+    int (*export_reverse_rel)(struct kndRef *self, struct kndTask *task);
 };
 
 /* constructors */

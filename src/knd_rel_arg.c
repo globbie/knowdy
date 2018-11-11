@@ -48,9 +48,10 @@ static void str(struct kndRelArg *self)
 /**
  *  EXPORT
  */
-static int export_JSON(struct kndRelArg *self)
+static int export_JSON(struct kndRelArg *self,
+                       struct kndTask *task)
 {
-    struct glbOutput *out = self->rel->entry->repo->out;
+    struct glbOutput *out = task->out;
     struct kndTranslation *tr;
 
     const char *type_name = knd_relarg_names[self->type];
@@ -93,9 +94,10 @@ static int export_JSON(struct kndRelArg *self)
     return knd_OK;
 }
 
-static int export_GSP(struct kndRelArg *self)
+static int export_GSP(struct kndRelArg *self,
+                      struct kndTask *task)
 {
-    struct glbOutput *out;
+    struct glbOutput *out = task->out;
     struct kndTranslation *tr;
 
     const char *type_name = knd_relarg_names[self->type];
@@ -221,17 +223,18 @@ static int export_inst_JSON(struct kndRelArg *self,
     return knd_OK;
 }
 
-static int export(struct kndRelArg *self)
+static int export(struct kndRelArg *self,
+                  struct kndTask *task)
 {
     int err = knd_FAIL;
 
     switch (self->format) {
     case KND_FORMAT_JSON:
-        err = export_JSON(self);
+        err = export_JSON(self, task);
         if (err) goto final;
         break;
     case KND_FORMAT_GSP:
-        err = export_GSP(self);
+        err = export_GSP(self, task);
         if (err) goto final;
         break;
     default:

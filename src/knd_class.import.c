@@ -894,7 +894,7 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
                 c->name_size, c->name, task->batch_mode);
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        c->str(c);
+        c->str(c, 1);
 
     /* initial class load ends here */
     if (task->batch_mode) return make_gsl_err(gsl_OK);
@@ -906,7 +906,7 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
     if (err) return make_gsl_err_external(err);
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        c->str(c);
+        c->str(c, 1);
 
     return make_gsl_err(gsl_OK);
  final:

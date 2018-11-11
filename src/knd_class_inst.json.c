@@ -16,8 +16,9 @@
 #define DEBUG_INST_LEVEL_TMP 1
 
 static int export_inner_JSON(struct kndClassInst *self,
-                             struct glbOutput *out)
+                             struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndElem *elem;
     int err;
 
@@ -25,7 +26,7 @@ static int export_inner_JSON(struct kndClassInst *self,
 
     elem = self->elems;
     while (elem) {
-        err = knd_elem_export(elem, KND_FORMAT_JSON, out);
+        err = knd_elem_export(elem, KND_FORMAT_JSON, task);
         if (err) {
             knd_log("-- inst elem export failed: %.*s",
                     elem->attr->name_size, elem->attr->name);
@@ -44,8 +45,9 @@ static int export_inner_JSON(struct kndClassInst *self,
 }
 
 static int export_concise_JSON(struct kndClassInst *self,
-                               struct glbOutput *out)
+                               struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndClassInst *obj;
     struct kndElem *elem;
     bool is_concise = true;
@@ -88,7 +90,7 @@ static int export_concise_JSON(struct kndClassInst *self,
                 err = out->write(out, "\":", 2);
                 if (err) return err;
 
-                err = obj->export(obj, KND_FORMAT_JSON, out);
+                err = obj->export(obj, KND_FORMAT_JSON, task);
                 if (err) return err;
 
                 //need_separ = true;
@@ -110,7 +112,7 @@ static int export_concise_JSON(struct kndClassInst *self,
         if (err) return err;
 
         /* default export */
-        err = knd_elem_export(elem, KND_FORMAT_JSON, out);
+        err = knd_elem_export(elem, KND_FORMAT_JSON, task);
         if (err) {
             knd_log("-- elem not exported: %s", elem->attr->name);
             return err;
@@ -126,7 +128,8 @@ static int export_rel_inst_JSON(void *obj,
                                 size_t count,
                                 void *elem)
 {
-    struct glbOutput *out = obj;
+    struct kndTask *task = obj;
+    struct glbOutput *out = task->out;
     struct kndRelInstance *inst = elem;
     struct kndRel *rel = inst->rel;
     int err;
@@ -137,16 +140,17 @@ static int export_rel_inst_JSON(void *obj,
     }
     rel->out = out;
     rel->format = KND_FORMAT_JSON;
-    err = rel->export_inst(rel, inst);
+    err = rel->export_inst(inst, task);
     if (err) return err;
 
     return knd_OK;
 }
 
 static int export_inst_relref_JSON(struct kndClassInst *self,
-                                   struct kndRelRef *relref)
+                                   struct kndRelRef *relref,
+                                   struct kndTask *task)
 {
-    struct glbOutput *out = self->base->entry->repo->out;
+    struct glbOutput *out = task->out;
     struct kndRel *rel = relref->rel;
     struct kndSet *set;
     int err;
@@ -178,7 +182,7 @@ static int export_inst_relref_JSON(struct kndClassInst *self,
         err = out->write(out, ",\"instances\":",
                          strlen(",\"instances\":"));                              RET_ERR();
         err = out->writec(out, '[');                                              RET_ERR();
-        err = set->map(set, export_rel_inst_JSON, (void*)out);
+        err = set->map(set, export_rel_inst_JSON, (void*)task);
         if (err) return err;
         err = out->writec(out, ']');                                              RET_ERR();
     }
@@ -186,20 +190,23 @@ static int export_inst_relref_JSON(struct kndClassInst *self,
     return knd_OK;
 }
 
-static int export_inst_relrefs_JSON(struct kndClassInst *self)
+static int export_inst_relrefs_JSON(struct kndClassInst *self,
+                                    struct kndTask *task)
 {
     struct kndRelRef *relref;
     int err;
 
     for (relref = self->entry->rels; relref; relref = relref->next) {
         if (!relref->idx) continue;
-        err = export_inst_relref_JSON(self, relref);                              RET_ERR();
+        err = export_inst_relref_JSON(self, relref, task);                              RET_ERR();
     }
     return knd_OK;
 }
 
-int knd_class_inst_export_JSON(struct kndClassInst *self, struct glbOutput *out)
+int knd_class_inst_export_JSON(struct kndClassInst *self,
+                               struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndElem *elem;
     struct kndClassInst *obj;
     struct kndState *state = self->states;
@@ -216,7 +223,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, struct glbOutput *out)
     }
 
     if (self->type == KND_OBJ_INNER) {
-        err = export_inner_JSON(self, out);
+        err = export_inner_JSON(self, task);
         if (err) {
             knd_log("-- inner obj JSON export failed");
             return err;
@@ -261,7 +268,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, struct glbOutput *out)
 
     if (self->depth >= self->max_depth) {
         /* any concise fields? */
-        err = export_concise_JSON(self, out);                                     RET_ERR();
+        err = export_concise_JSON(self, task);                                     RET_ERR();
         goto final;
     }
 
@@ -304,7 +311,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, struct glbOutput *out)
                 err = out->write(out, "\":", 2);
                 if (err) return err;
 
-                err = obj->export(obj, KND_FORMAT_JSON, out);
+                err = obj->export(obj, KND_FORMAT_JSON, task);
                 if (err) return err;
 
                 //need_separ = true;
@@ -326,7 +333,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, struct glbOutput *out)
         if (err) return err;
 
         /* default export */
-        err = knd_elem_export(elem, KND_FORMAT_JSON, out);
+        err = knd_elem_export(elem, KND_FORMAT_JSON, task);
         if (err) {
             knd_log("-- elem not exported: %s", elem->attr->name);
             return err;
@@ -337,7 +344,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, struct glbOutput *out)
     if (self->entry->rels) {
         err = out->write(out, ",\"_rel\":", strlen(",\"_rel\":"));                RET_ERR();
         err = out->writec(out, '[');                                              RET_ERR();
-        err = export_inst_relrefs_JSON(self);                                     RET_ERR();
+        err = export_inst_relrefs_JSON(self, task);                                     RET_ERR();
         err = out->writec(out, ']');                                              RET_ERR();
     }
 
@@ -379,12 +386,9 @@ static int export_class_inst_JSON(void *obj,
     if (task->batch_size) {
         err = out->writec(out, ',');                                              RET_ERR();
     }
-    inst->depth = 0;
-    inst->max_depth = 0;
-    if (task->repo->root_class->max_depth) {
-        inst->max_depth = task->repo->root_class->max_depth;
-    }
-    err = knd_class_inst_export_JSON(inst, task->out);                        RET_ERR();
+
+    // TODO: depth
+    err = knd_class_inst_export_JSON(inst, task);                        RET_ERR();
     task->batch_size++;
 
     return knd_OK;

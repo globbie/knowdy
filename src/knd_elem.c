@@ -93,8 +93,9 @@ extern void knd_elem_str(struct kndElem *self, size_t depth)
 }
 
 static int export_JSON(struct kndElem *self,
-                       struct glbOutput *out)
+                       struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     int err;
 
     if (self->inner) {
@@ -130,7 +131,7 @@ static int export_JSON(struct kndElem *self,
         err = out->write(out, "\":", strlen("\":"));
         if (err) goto final;
 
-        err = self->inner->export(self->inner, KND_FORMAT_JSON, out);
+        err = self->inner->export(self->inner, KND_FORMAT_JSON, task);
         
         return err;
     }
@@ -205,8 +206,9 @@ final:
 }
 
 static int export_GSP(struct kndElem *self,
-                      struct glbOutput *out)
+                      struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     int err;
 
     if (DEBUG_ELEM_LEVEL_2)
@@ -220,7 +222,7 @@ static int export_GSP(struct kndElem *self,
         err = out->write(out, self->attr->name, self->attr->name_size);
         if (err) return err;
         
-        err = self->inner->export(self->inner, KND_FORMAT_GSP, out);
+        err = self->inner->export(self->inner, KND_FORMAT_GSP, task);
 
         err = out->write(out, "}", 1);
         if (err) return err;
@@ -269,17 +271,17 @@ static int export_GSP(struct kndElem *self,
 
 extern int knd_elem_export(struct kndElem *self,
                            knd_format format,
-                           struct glbOutput *out)
+                           struct kndTask *task)
 {
     int err;
 
     switch (format) {
     case KND_FORMAT_JSON:
-        err = export_JSON(self, out);
+        err = export_JSON(self, task);
         if (err) return err;
         break;
     case KND_FORMAT_GSP:
-        err = export_GSP(self, out);
+        err = export_GSP(self, task);
         if (err) return err;
         break;
     default:

@@ -27,6 +27,12 @@
 #define DEBUG_PROC_LEVEL_3 0
 #define DEBUG_PROC_LEVEL_TMP 1
 
+struct LocalContext {
+    struct kndRepo *repo;
+    struct kndTask *task;
+    struct kndProc *proc;
+};
+
 static void proc_call_arg_str(struct kndProcCallArg *self,
                               size_t depth)
 {
@@ -83,9 +89,9 @@ static void str(struct kndProc *self)
     }
 }
 
-static int kndProc_export_SVG_header(struct kndProc *self)
+static int kndProc_export_SVG_header(struct kndTask *task)
 {
-    struct glbOutput *out = self->entry->repo->out;
+    struct glbOutput *out = task->out;
     const char *svg_header = "<svg version=\"1.1\""
         " width=\"100%\" height=\"100%\""
         " xmlns=\"http://www.w3.org/2000/svg\""
@@ -106,9 +112,8 @@ static int kndProc_export_SVG_header(struct kndProc *self)
     return knd_OK;
 }
 
-static int kndProc_export_SVG_footer(struct kndProc *self)
+static int kndProc_export_SVG_footer(struct glbOutput *out)
 {
-    struct glbOutput *out = self->entry->repo->out;
     const char *svg_footer = "</g></svg>";
     size_t svg_footer_size = strlen(svg_footer);
     int err;
@@ -191,10 +196,12 @@ static gsl_err_t present_proc_selection(void *obj,
                                         const char *unused_var(val),
                                         size_t unused_var(val_size))
 {
-    struct kndProc *self = obj;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndProc *self = ctx->proc;
     struct kndProc *p;
-    knd_format format = self->entry->repo->root_proc->task->format;
-    struct glbOutput *out = self->entry->repo->out;
+    knd_format format = task->format;
+    struct glbOutput *out = task->out;
     int err;
 
     if (DEBUG_PROC_LEVEL_2)
@@ -208,11 +215,11 @@ static gsl_err_t present_proc_selection(void *obj,
     /* export HEADER */
     switch (format) {
     case KND_FORMAT_SVG:
-        err = kndProc_export_SVG_header(p);
+        err = kndProc_export_SVG_header(task);
         if (err) return make_gsl_err_external(err);
      break;
     case KND_FORMAT_HTML:
-        err = kndProc_export_SVG_header(p);
+        err = kndProc_export_SVG_header(task);
         if (err) return make_gsl_err_external(err);
      break;
     default:
@@ -226,11 +233,11 @@ static gsl_err_t present_proc_selection(void *obj,
     /* export FOOTER */
     switch (format) {
     case KND_FORMAT_SVG:
-        err = kndProc_export_SVG_footer(p);
+        err = kndProc_export_SVG_footer(out);
         if (err) return make_gsl_err_external(err);
      break;
     case KND_FORMAT_HTML:
-        err = kndProc_export_SVG_footer(p);
+        err = kndProc_export_SVG_footer(out);
         if (err) return make_gsl_err_external(err);
      break;
     default:
@@ -282,10 +289,15 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-extern gsl_err_t knd_proc_select(struct kndProc *self,
+extern gsl_err_t knd_proc_select(struct kndRepo *repo,
                                  const char *rec,
-                                 size_t *total_size)
+                                 size_t *total_size,
+                                 struct kndTask *task)
 {
+    struct LocalContext ctx = {
+        .task = task,
+        .repo = repo
+    };
     gsl_err_t parser_err;
 
     if (DEBUG_PROC_LEVEL_2)
@@ -296,13 +308,13 @@ extern gsl_err_t knd_proc_select(struct kndProc *self,
         { .is_implied = true,
           .is_selector = true,
           .run = run_get_proc,
-          .obj = self
+          .obj = &ctx
         },
         { .type = GSL_SET_STATE,
           .name = "_rm",
           .name_size = strlen("_rm"),
           .run = remove_proc,
-          .obj = self
+          .obj = &ctx
         }/*,
         { .type = GSL_SET_STATE,
           .name = "inst",
@@ -312,11 +324,9 @@ extern gsl_err_t knd_proc_select(struct kndProc *self,
           }*/,
         { .is_default = true,
           .run = present_proc_selection,
-          .obj = self
+          .obj = &ctx
         }
     };
-
-    self->curr_proc = NULL;
 
     parser_err = gsl_parse_task(rec, total_size, specs,
                                 sizeof specs / sizeof specs[0]);

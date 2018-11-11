@@ -212,9 +212,10 @@ static int export_conc_id_GSP(void *obj,
     return knd_OK;
 }
 
-static int export_facets_GSP(struct kndClass *self, struct kndSet *set)
+static int export_facets_GSP(struct kndSet *set,
+                             struct kndTask *task)
 {
-    struct glbOutput *out = self->entry->repo->out;
+    struct glbOutput *out = task->out;
     struct kndFacet *facet;
     //struct ooDict *set_name_idx;
     int err;
@@ -253,11 +254,12 @@ static int export_facets_GSP(struct kndClass *self, struct kndSet *set)
     return knd_OK;
 }
 
-static int export_descendants_GSP(struct kndClass *self)
+static int export_descendants_GSP(struct kndClass *self,
+                                  struct kndTask *task)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
-    struct glbOutput *out = self->entry->repo->out;
+    struct glbOutput *out = task->out;
     struct kndSet *set;
     int err;
 
@@ -273,7 +275,7 @@ static int export_descendants_GSP(struct kndClass *self)
     err = out->writec(out, ']');                                                  RET_ERR();
 
     if (set->num_facets) {
-        err = export_facets_GSP(self, set);                                       RET_ERR();
+        err = export_facets_GSP(set, task);                                       RET_ERR();
     }
 
     err = out->writec(out, '}');                                                  RET_ERR();
@@ -598,7 +600,7 @@ extern int knd_class_export_GSP(struct kndClass *self,
     }
 
     if (self->entry->descendants) {
-        err = export_descendants_GSP(self);                                       RET_ERR();
+        err = export_descendants_GSP(self, task);                                     RET_ERR();
     }
 
     err = out->writec(out, '}');
@@ -984,7 +986,7 @@ static gsl_err_t check_list_item_id(void *obj,
         }
 
         if (DEBUG_CLASS_GSP_LEVEL_2)
-            c->str(c);
+            c->str(c, 1);
 
         attr_var->class = c;
         attr_var->class_entry = c->entry;
@@ -1000,7 +1002,7 @@ static gsl_err_t check_list_item_id(void *obj,
         }
 
         if (DEBUG_CLASS_GSP_LEVEL_2)
-            c->str(c);
+            c->str(c, 1);
 
         attr_var->class = c;
         attr_var->class_entry = c->entry;
@@ -1117,7 +1119,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
         }
 
         if (DEBUG_CLASS_GSP_LEVEL_2)
-            c->str(c);
+            c->str(c, 1);
 
         attr_var->class = c;
         attr_var->class_entry = c->entry;

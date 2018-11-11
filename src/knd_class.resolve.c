@@ -417,7 +417,7 @@ static int resolve_inner_item(struct kndClass *self,
     }
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-        c->str(c);
+        c->str(c, 1);
 
     if (c->implied_attr) {
         attr = c->implied_attr;
@@ -564,7 +564,7 @@ static int resolve_attr_var_list(struct kndClass *self,
     }
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-        c->str(c);
+        c->str(c, 1);
 
     /* first item */
     if (parent_item->val_size) {
@@ -1116,7 +1116,7 @@ static int resolve_baseclasses(struct kndClass *self,
         }
 
         if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-            c->str(c);
+            c->str(c, 1);
 
         if (c == self) {
             knd_log("-- self reference detected in \"%.*s\"",
@@ -1139,7 +1139,7 @@ static int resolve_baseclasses(struct kndClass *self,
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log("++ \"%.*s\" has resolved its baseclasses!",
                 self->name_size, self->name);
-        self->str(self);
+        self->str(self, 1);
     }
 
     return knd_OK;
@@ -1243,7 +1243,7 @@ extern int knd_resolve_classes(struct kndClass *self,
         if (err) return err;
 
         if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
-                c->str(c);
+                c->str(c, 1);
         }
 
     } while (key);
