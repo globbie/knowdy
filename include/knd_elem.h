@@ -32,6 +32,7 @@ struct kndRelType;
 struct kndUser;
 struct kndRepo;
 struct kndClass;
+struct kndTask;
 
 struct kndElem
 {
@@ -92,7 +93,7 @@ extern gsl_err_t knd_elem_parse_select(struct kndElem *self,
 
 extern int knd_elem_export(struct kndElem *self,
                            knd_format format,
-                           struct glbOutput *out);
+                           struct kndTask *task);
 
 extern int knd_class_inst_elem_new(struct kndMemPool *mempool,
                                    struct kndElem **result);

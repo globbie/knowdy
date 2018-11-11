@@ -6,7 +6,7 @@
 #include "knd_attr.h"  // FIXME(k15tfu): ?? remove this
 
 static int export_inner_GSP(struct kndClassInst *self,
-                            struct glbOutput *out)
+                            struct kndTask *task)
 {
     struct kndElem *elem;
     int err;
@@ -16,7 +16,7 @@ static int export_inner_GSP(struct kndClassInst *self,
 
     elem = self->elems;
     while (elem) {
-        err = knd_elem_export(elem, KND_FORMAT_GSP, out);
+        err = knd_elem_export(elem, KND_FORMAT_GSP, task);
         if (err) {
             knd_log("-- inst elem GSP export failed: %.*s",
                     elem->attr->name_size, elem->attr->name);
@@ -29,13 +29,13 @@ static int export_inner_GSP(struct kndClassInst *self,
     return knd_OK;
 }
 
-int knd_class_inst_export_GSP(struct kndClassInst *self, struct glbOutput *out)
+int knd_class_inst_export_GSP(struct kndClassInst *self, struct kndTask *task)
 {
     struct kndElem *elem;
     int err;
 
     if (self->type == KND_OBJ_INNER) {
-        err = export_inner_GSP(self, out);
+        err = export_inner_GSP(self, task);
         if (err) {
             knd_log("-- inner obj GSP export failed");
             return err;
@@ -45,7 +45,7 @@ int knd_class_inst_export_GSP(struct kndClassInst *self, struct glbOutput *out)
 
     /* elems */
     for (elem = self->elems; elem; elem = elem->next) {
-        err = knd_elem_export(elem, KND_FORMAT_GSP, out);
+        err = knd_elem_export(elem, KND_FORMAT_GSP, task);
         if (err) {
             knd_log("-- export of \"%s\" elem failed: %d :(",
                     elem->attr->name, err);

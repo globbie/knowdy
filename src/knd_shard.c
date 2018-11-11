@@ -58,7 +58,7 @@ extern int kndShard_run_task(struct kndShard *self,
         return err;
     }
 
-    err = kndTask_run(task, rec_start, rec_size);
+    err = kndTask_run(task, rec_start, rec_size, self);
     if (err != knd_OK) {
         task->error = err;
         knd_log("-- task running failure: %d", err);
@@ -125,7 +125,7 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
     self->mempool = mempool;
 
     {
-        err = kndShard_parse_schema(self, config, &config_size, mempool);
+        err = kndShard_parse_config(self, config, &config_size, mempool);
         if (err != knd_OK) goto error;
     }
 
@@ -201,7 +201,6 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
 
     for (size_t i = 0; i < self->num_workers; i++) {
         task = self->workers[i];
-        task->root_repo = repo;
         task->user = user;
     }
 

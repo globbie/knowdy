@@ -183,9 +183,10 @@ extern int knd_proc_export(struct kndProc *self,
                            struct glbOutput *out);
 extern int knd_proc_coordinate(struct kndProc *self);
 
-extern gsl_err_t knd_proc_select(struct kndProc *self,
+extern gsl_err_t knd_proc_select(struct kndRepo *repo,
                                  const char *rec,
-                                 size_t *total_size);
+                                 size_t *total_size,
+                                 struct kndTask *task);
 
 extern gsl_err_t knd_proc_import(struct kndProc *root_proc, const char *rec, size_t *total_size);
 

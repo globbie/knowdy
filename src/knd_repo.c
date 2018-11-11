@@ -427,7 +427,7 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
     struct kndClassEntry *entry;
     int err;
 
-    if (DEBUG_REPO_LEVEL_2) {
+    if (DEBUG_REPO_LEVEL_TMP) {
         knd_log(".. \"%.*s\" repo to confirm updates..",
                 self->name_size, self->name);
     }
@@ -473,7 +473,8 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
 
     switch (task->format) {
     case KND_FORMAT_JSON:
-        err = present_repo_state_JSON(self, out);   RET_ERR(); 
+        err = present_repo_state_JSON(self, out);   RET_ERR();
+        break;
     default:
         err = present_repo_state_GSL(self, out);    RET_ERR();
         break;
@@ -570,6 +571,7 @@ static gsl_err_t present_repo_state(void *obj,
     case KND_FORMAT_JSON:
         err = present_repo_state_JSON(repo, out);  
         if (err) return make_gsl_err_external(err);
+        break;
     default:
         err = present_repo_state_GSL(repo, out);  
         if (err) return make_gsl_err_external(err);
@@ -685,7 +687,6 @@ static gsl_err_t parse_class_select(void *obj,
         task->repo = repo;
 
     c = repo->root_class;
-    task->root_class = c;
     task->class = c;
 
     return knd_class_select(repo, rec, total_size, task);
@@ -697,26 +698,27 @@ static gsl_err_t parse_class_import(void *obj,
 {
     struct kndTask *task = obj;
     struct kndUserContext *ctx = task->user_ctx;
-    struct kndRepo *repo;
+    struct kndRepo *repo = task->repo;
     struct kndClass *c;
 
-    if (!ctx) {
+    /*if (!ctx) {
         struct glbOutput *log = task->log;
         knd_log("-- no user selected");
         log->writef(log, "no user selected");
         task->http_code = HTTP_BAD_REQUEST;
         return make_gsl_err(gsl_FAIL);
+        } */
+
+    if (ctx) {
+        repo = ctx->repo;
+        task->repo = repo;
     }
 
-    repo = ctx->repo;
-    if (task->repo)
-        repo = task->repo;
-    else
-        task->repo = repo;
+    assert(repo != NULL);
 
     c = repo->root_class;
-    task->root_class = c;
     task->class = c;
+    task->type = KND_UPDATE_STATE;
 
     return knd_class_import(repo, rec, total_size, task);
 }
@@ -758,7 +760,7 @@ static int kndRepo_open(struct kndRepo *self, struct kndTask *task)
     struct stat st;
     int err;
 
-    out = self->out;
+    out = task->out;
     task->repo = self;
 
     /* extend user DB path */
@@ -860,8 +862,6 @@ extern int kndRepo_init(struct kndRepo *self,
                         struct kndTask *task)
 {
     int err;
-
-    self->out      = task->out;
 
     knd_log("== open repo:%.*s", self->name_size, self->name);
 

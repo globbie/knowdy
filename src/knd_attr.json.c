@@ -116,9 +116,7 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
         err = out->writec(out, ':');
         if (err) return err;
 
-        c->depth = 1;
-        c->max_depth = 1;
-
+        task->depth = 0;
         err = knd_class_export(c, KND_FORMAT_JSON, task);
         if (err) return err;
         in_list = true;
@@ -185,8 +183,7 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
                     item->val_size, item->val);
             assert(item->class != NULL);
             c = item->class;
-            c->depth = 1;
-            c->max_depth = 1;
+
             err = knd_class_export(c, KND_FORMAT_JSON, task);
             if (err) return err;
             break;
@@ -224,8 +221,7 @@ extern int knd_export_inherited_attr(void *obj,
     struct kndAttrRef *ref = elem;
     struct kndAttr *attr = ref->attr;
     struct kndAttrVar *attr_var = ref->attr_var;
-    struct kndRepo *repo = task->repo;
-    struct glbOutput *out = repo->out;
+    struct glbOutput *out = task->out;
     struct kndMemPool *mempool = task->mempool;
     size_t numval = 0;
     int err;
@@ -299,8 +295,8 @@ extern int knd_export_inherited_attr(void *obj,
         //if (err) return knd_OK;
     }
 
-    attr_var->depth = self->depth;
-    attr_var->max_depth = self->max_depth;
+    attr_var->depth = task->depth;
+    attr_var->max_depth = task->max_depth;
 
     err = out->writec(out, ',');                                          RET_ERR();
 
@@ -339,13 +335,9 @@ static int ref_item_export_JSON(struct kndAttrVar *item,
     struct kndClass *c;
     int err;
 
-    // TODO
     assert(item->class != NULL);
 
     c = item->class;
-    c->depth = item->depth;
-    c->max_depth = item->max_depth;
-
     err = knd_class_export_JSON(c, task);                 RET_ERR();
     return knd_OK;
 }
@@ -534,8 +526,6 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
                 if (err) return err;
             } else {
                 c = item->class;
-                c->depth = 1;
-                c->max_depth = 1;
                 err = knd_class_export(c, KND_FORMAT_JSON, task);
                 if (err) return err;
             }
@@ -595,7 +585,6 @@ extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
             if (err) return err;
         } else {
             c = item->class;
-            //c->depth = self->depth;
             err = knd_class_export(c, KND_FORMAT_JSON, task);
             if (err) return err;
         }
@@ -611,50 +600,3 @@ extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
     return knd_OK;
 }
 
-/*extern int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var,
-                                            struct kndTask *task)
-{
-    struct glbOutput *out = task->out;
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
-    struct kndClass *c = attr_var->attr->ref_class;
-    struct kndAttr *attr;
-    long numval;
-    int err;
-
-    for (size_t i = 0; i < c->num_computed_attrs; i++) {
-        attr = c->computed_attrs[i];
-
-        switch (attr->type) {
-        case KND_ATTR_NUM:
-            numval = attr_var->numval;
-            if (!attr_var->is_cached) {
-                err = knd_compute_num_value(attr, attr_var, &numval);
-                if (err) continue;
-
-                attr_var->numval = numval;
-                attr_var->is_cached = true;
-            }
-            
-            err = out->writec(out, ',');
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->write(out, attr->name, attr->name_size);
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->writec(out, ':');
-            if (err) return err;
-            
-            buf_size = snprintf(buf, KND_NAME_SIZE, "%lu", numval);
-            err = out->write(out, buf, buf_size);                                     RET_ERR();
-            break;
-        default:
-            break;
-        }
-    }
-
-    return knd_OK;
-}
-*/

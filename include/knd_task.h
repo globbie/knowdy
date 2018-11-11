@@ -34,6 +34,7 @@ struct kndUser;
 struct kndUserContext;
 struct kndStateControl;
 struct kndClass;
+struct kndClassVar;
 struct kndQuery;
 struct kndClassInst;
 
@@ -121,20 +122,23 @@ struct kndTask
     size_t state_lte;
     bool show_removed_objs;
     bool show_rels;
+
+    size_t depth;
     size_t max_depth;
 
     struct kndUser *user;
     struct kndUserContext *user_ctx;
 
-    struct kndRepo *root_repo;
     struct kndRepo *repo;
 
-    struct kndClass *root_class;
     struct kndClass *class;
     struct kndClassVar *class_var;
     struct kndAttr *attr;
     struct kndClassInst *class_inst;
     struct kndElem *elem;
+
+    struct kndRel *rel;
+    struct kndProc *proc;
 
     /* updates */
     struct kndStateRef  *inner_class_state_refs;
@@ -156,9 +160,9 @@ struct kndTask
 // knd_task.c
 extern void kndTask_del(struct kndTask *self);
 extern void kndTask_reset(struct kndTask *self);
-extern int kndTask_run(struct kndTask *self, const char *rec, size_t rec_size);
+extern int kndTask_run(struct kndTask *self, const char *rec, size_t rec_size, struct kndShard *shard);
 extern int kndTask_build_report(struct kndTask *self);
 extern int kndTask_new(struct kndTask **self);
 
 // knd_task.select.c
-extern gsl_err_t knd_select_task(void *obj, const char *rec, size_t *total_size);
+extern gsl_err_t knd_select_task(struct kndTask *self, const char *rec, size_t *total_size, struct kndShard *shard);

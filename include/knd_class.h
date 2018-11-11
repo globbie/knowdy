@@ -166,9 +166,6 @@ struct kndClass
     struct kndTranslation *tr;
     struct kndTranslation *summary;
 
-    size_t depth;
-    size_t max_depth;
-
     struct kndClassVar *baseclass_vars;
     size_t num_baseclass_vars;
 
@@ -190,7 +187,7 @@ struct kndClass
     struct kndClass *next;
 
     /***********  public methods ***********/
-    void (*str)(struct kndClass *self);
+    void (*str)(struct kndClass *self, size_t depth);
 };
 
 /* constructor */
@@ -324,7 +321,8 @@ extern int knd_register_state(struct kndClass *self);
 extern int knd_register_descendant_states(struct kndClass *self);
 extern int knd_register_inst_states(struct kndClass *self);
 
-extern int knd_export_class_inst_state_JSON(struct kndClass *self);
+extern int knd_export_class_inst_state_JSON(struct kndClass *self,
+                                            struct kndTask *task);
 
 extern int knd_get_class_attr_value(struct kndClass *src,
                                     struct kndAttrVar *query,
