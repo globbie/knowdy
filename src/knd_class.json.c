@@ -507,11 +507,11 @@ extern int knd_class_export_JSON(struct kndClass *self,
     bool in_list = false;
     int err;
 
-    if (DEBUG_JSON_LEVEL_TMP) {
-        knd_log("\n.. JSON export: \"%.*s\" (repo:%.*s)  depth:%zu max depth:%zu out:%p",
+    if (DEBUG_JSON_LEVEL_2) {
+        knd_log("\n.. JSON export: \"%.*s\" (repo:%.*s)  depth:%zu max depth:%zu",
                 entry->name_size, entry->name,
                 entry->repo->name_size, entry->repo->name,
-                task->depth, task->max_depth, out);
+                task->depth, task->max_depth);
     }
 
     err = out->write(out, "{", 1);                                                RET_ERR();
@@ -534,6 +534,11 @@ extern int knd_class_export_JSON(struct kndClass *self,
     if (state) {
         err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));            RET_ERR();
         err = out->writef(out, "%zu", state->numid);                              RET_ERR();
+
+        if (state->update) {
+            err = out->write(out, ",\"_update\":", strlen(",\"_update\":"));      RET_ERR();
+            err = out->writef(out, "%zu", state->update->numid);                  RET_ERR();
+        }
 
         switch (state->phase) {
         case KND_REMOVED:

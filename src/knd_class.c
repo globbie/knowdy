@@ -735,11 +735,11 @@ extern int knd_update_state(struct kndClass *self,
                             struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
-    struct kndRepo *repo = self->entry->repo;
+    struct kndRepo *repo = task->repo;
     struct kndStateRef *state_ref;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_TMP) {
         knd_log("\n .. \"%.*s\" class to update its state: %d",
                 self->name_size, self->name, phase);
     }

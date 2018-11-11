@@ -154,6 +154,9 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *self = ctx->self;
+    gsl_err_t parser_err;
+    int err;
+
     struct gslTaskSpec specs[] = {
         { .name = "tid",
           .name_size = strlen("tid"),
@@ -199,7 +202,37 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
           .obj = self
         }
     };
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        struct glbOutput *log = self->log;
+        knd_log("-- task parse failure: \"%.*s\"",
+                log->buf_size, log->buf);
+        if (!log->buf_size) {
+            err = log->write(log, "internal server error",
+                             strlen("internal server error"));
+            if (err) {
+                parser_err = make_gsl_err_external(err);
+                goto cleanup;
+            }
+        }
+        goto cleanup;
+    }
+
+    switch (self->type) {
+    case KND_UPDATE_STATE:
+        err = knd_confirm_state(self->repo, self);
+        if (err) return make_gsl_err_external(err);
+        break;
+    default:
+        break;
+    }
+
+    return make_gsl_err(gsl_OK);
+
+ cleanup:
+    // any resources to free?
+    return parser_err;
 }
 
 gsl_err_t knd_select_task(struct kndTask *self, const char *rec, size_t *total_size, struct kndShard *shard)
