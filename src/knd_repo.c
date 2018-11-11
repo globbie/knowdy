@@ -427,7 +427,7 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
     struct kndClassEntry *entry;
     int err;
 
-    if (DEBUG_REPO_LEVEL_2) {
+    if (DEBUG_REPO_LEVEL_TMP) {
         knd_log(".. \"%.*s\" repo to confirm updates..",
                 self->name_size, self->name);
     }
@@ -717,6 +717,7 @@ static gsl_err_t parse_class_import(void *obj,
 
     c = repo->root_class;
     task->class = c;
+    task->type = KND_UPDATE_STATE;
 
     return knd_class_import(repo, rec, total_size, task);
 }
