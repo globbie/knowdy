@@ -332,7 +332,7 @@ extern int knd_read_GSL_file(struct kndClass *self,
                              struct kndTask *task)
 {
     struct kndRepo *repo = self->entry->repo;
-    struct glbOutput *out = repo->out;
+    struct glbOutput *out = task->out;
     struct glbOutput *file_out = task->file_out;
     struct kndConcFolder *folder, *folders;
     const char *c;

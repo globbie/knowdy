@@ -321,7 +321,8 @@ extern int knd_register_state(struct kndClass *self);
 extern int knd_register_descendant_states(struct kndClass *self);
 extern int knd_register_inst_states(struct kndClass *self);
 
-extern int knd_export_class_inst_state_JSON(struct kndClass *self);
+extern int knd_export_class_inst_state_JSON(struct kndClass *self,
+                                            struct kndTask *task);
 
 extern int knd_get_class_attr_value(struct kndClass *src,
                                     struct kndAttrVar *query,

@@ -29,8 +29,8 @@
 #define DEBUG_REL_LEVEL_3 0
 #define DEBUG_REL_LEVEL_TMP 1
 
-static int export_inst_JSON(struct kndRel *self,
-                            struct kndRelInstance *inst);
+static int export_inst_JSON(struct kndRelInstance *inst,
+                            struct kndTask *task);
 
 static int read_instance(struct kndRel *self,
                          struct kndRelInstance *inst,
@@ -124,7 +124,8 @@ static gsl_err_t run_present_rel(void *obj,
                                  const char *unused_var(val),
                                  size_t unused_var(val_size))
 {
-    struct kndRel *self = obj;
+    struct kndTask *task = obj;
+    struct kndRel *self = task->rel;
     struct kndRel *rel;
     int err;
 
@@ -138,7 +139,7 @@ static gsl_err_t run_present_rel(void *obj,
     rel->format = KND_FORMAT_JSON;
 
     /* export BODY */
-    err = rel->export(rel);
+    err = rel->export(rel, task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -241,10 +242,10 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int export_JSON(struct kndRel *self)
+static int export_JSON(struct kndRel *self,
+                       struct kndTask *task)
 {
-    struct glbOutput *out = self->entry->repo->out;
-    struct kndTask *task = self->task;
+    struct glbOutput *out = task->out;
     struct kndRelArg *arg;
     struct kndTranslation *tr;
     bool in_list = false;
@@ -293,9 +294,10 @@ static int export_JSON(struct kndRel *self)
     return knd_OK;
 }
 
-static int export_GSP(struct kndRel *self)
+static int export_GSP(struct kndRel *self,
+                      struct kndTask *task)
 {
-    struct glbOutput *out = self->out;
+    struct glbOutput *out = task->out;
     struct kndRelArg *arg;
     struct kndTranslation *tr;
     int err;
@@ -345,12 +347,12 @@ static int export_GSP(struct kndRel *self)
     return knd_OK;
 }
 
-static int export_inst_GSP(struct kndRel *self,
-                           struct kndRelInstance *inst)
+static int export_inst_GSP(struct kndRelInstance *inst,
+                           struct kndTask *task)
 {
     struct kndRelArg *relarg;
     struct kndRelArgInstance *relarg_inst;
-    struct glbOutput *out = self->out;
+    struct glbOutput *out = task->out;
     int err;
 
     if (DEBUG_REL_LEVEL_2)
@@ -389,11 +391,11 @@ static int export_inst_setelem_JSON(void *obj,
                                     size_t count,
                                     void *elem)
 {
-    struct kndRel *self = obj;
-    struct kndTask *task = self->task;
+    struct kndTask *task = obj;
+    struct kndRel *self = task->rel;
     if (count < task->start_from) return knd_OK;
     if (task->batch_size >= task->batch_max) return knd_RANGE;
-    struct glbOutput *out = self->entry->repo->out;
+    struct glbOutput *out = task->out;
     struct kndRelInstance *inst = elem;
     int err;
 
@@ -413,18 +415,17 @@ static int export_inst_setelem_JSON(void *obj,
         inst->max_depth = self->max_depth;
     }
 
-    err = export_inst_JSON(self, inst);                                                 RET_ERR();
+    err = export_inst_JSON(inst, task);                                                 RET_ERR();
 
     task->batch_size++;
 
     return knd_OK;
 }
 
-static int export_inst_set_JSON(struct kndRel *self,
+static int export_inst_set_JSON(struct kndTask *task,
                                 struct kndSet *set)
 {
-    struct glbOutput *out = self->entry->repo->out;
-    struct kndTask *task = self->task;
+    struct glbOutput *out = task->out;
     int err;
 
     err = out->write(out, "{\"_set\":{",
@@ -436,7 +437,7 @@ static int export_inst_set_JSON(struct kndRel *self,
     err = out->write(out, ",\"batch\":[",
                      strlen(",\"batch\":["));                                     RET_ERR();
 
-    err = set->map(set, export_inst_setelem_JSON, (void*)self);
+    err = set->map(set, export_inst_setelem_JSON, (void*)task);
     if (err && err != knd_RANGE) return err;
 
     err = out->writec(out, ']');                                                  RET_ERR();
@@ -456,14 +457,12 @@ static int export_inst_set_JSON(struct kndRel *self,
     return knd_OK;
 }
 
-
-static int export_inst_JSON(struct kndRel *self,
-                            struct kndRelInstance *inst)
+static int export_inst_JSON(struct kndRelInstance *inst,
+                            struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndRelArg *relarg;
     struct kndRelArgInstance *relarg_inst;
-    struct glbOutput *out = self->entry->repo->out;
-    struct kndTask *task = self->task;
     struct kndUpdate *update;
     struct kndState *state;
     struct kndClassInstEntry *obj_entry;
@@ -538,7 +537,7 @@ static int export_inst_JSON(struct kndRel *self,
             class_inst = relarg_inst->obj->inst;
             // TODO max_depth
             class_inst->depth = 1;
-            err = class_inst->export(class_inst, KND_FORMAT_JSON, out);
+            err = class_inst->export(class_inst, KND_FORMAT_JSON, task);
             if (err) return err;
         } else {
             if (relarg_inst->val_size) {
@@ -559,17 +558,18 @@ static int export_inst_JSON(struct kndRel *self,
     return knd_OK;
 }
 
-static int export(struct kndRel *self)
+static int export(struct kndRel *self,
+                  struct kndTask *task)
 {
     int err;
 
     switch (self->format) {
     case KND_FORMAT_JSON:
-        err = export_JSON(self);
+        err = export_JSON(self, task);
         if (err) return err;
         break;
     case KND_FORMAT_GSP:
-        err = export_GSP(self);
+        err = export_GSP(self, task);
         if (err) return err;
         break;
     default:
@@ -578,21 +578,18 @@ static int export(struct kndRel *self)
     return knd_OK;
 }
 
-static int export_inst(struct kndRel *self,
-                       struct kndRelInstance *inst)
+static int export_inst(struct kndRelInstance *inst,
+                       struct kndTask *task)
 {
     int err;
 
-    if (DEBUG_REL_LEVEL_TMP)
-        inst_str(self, inst);
-
-    switch (self->format) {
+    switch (task->format) {
     case KND_FORMAT_JSON:
-        err = export_inst_JSON(self, inst);
+        err = export_inst_JSON(inst, task);
         if (err) return err;
         break;
     case KND_FORMAT_GSP:
-        err = export_inst_GSP(self, inst);
+        err = export_inst_GSP(inst, task);
         if (err) return err;
         break;
     default:
@@ -1797,10 +1794,10 @@ static gsl_err_t present_inst_selection(void *data,
                                         const char *unused_var(val),
                                         size_t unused_var(val_size))
 {
-    struct kndRel *self = data;
+    struct kndTask *task = data;
+    struct kndRel *self = task->rel;
     struct kndRelInstance *inst;
-    struct kndTask *task = self->task;
-    struct glbOutput *out = self->entry->repo->out;
+    struct glbOutput *out = task->out;
     //struct kndMemPool *mempool = base->entry->repo->mempool;
     struct kndSet *set;
     int err;
@@ -1896,7 +1893,7 @@ static gsl_err_t parse_rel_inst_select(void *data,
           }*/,
         { .is_default = true,
           .run = present_inst_selection,
-          .obj = rel
+          .obj = task
         }
     };
 
@@ -1917,7 +1914,8 @@ static gsl_err_t parse_rel_inst_select(void *data,
 
 static gsl_err_t parse_rel_select(struct kndRel *self,
                                   const char *rec,
-                                  size_t *total_size)
+                                  size_t *total_size,
+                                  struct kndTask *task)
 {
     //struct glbOutput *log = self->entry->repo->log;
     struct kndRel *rel;
@@ -1947,7 +1945,7 @@ static gsl_err_t parse_rel_select(struct kndRel *self,
         },
         { .is_default = true,
           .run = run_present_rel,
-          .obj = self
+          .obj = task
         }
     };
 
@@ -2238,7 +2236,8 @@ static int export_updates(struct kndRel *self)
 }
 
 static int freeze_insts(struct kndRel *self,
-                       size_t *total_size)
+                        size_t *total_size,
+                        struct kndTask *task)
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size;
@@ -2277,7 +2276,7 @@ static int freeze_insts(struct kndRel *self,
             continue;
             }*/
 
-        err = export_inst_GSP(self, inst);
+        err = export_inst_GSP(inst, task);
         if (err) {
             knd_log("-- couldn't export GSP of the \"%.*s\" inst :(",
                     inst->name_size, inst->name);
@@ -2336,20 +2335,21 @@ static int freeze_insts(struct kndRel *self,
 static int freeze(struct kndRel *self,
                   size_t *total_frozen_size,
                   char *output,
-                  size_t *total_size)
+                  size_t *total_size,
+                  struct kndTask *task)
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size;
     size_t block_size;
     size_t output_size = 0;
-    struct glbOutput *out = self->out;
+    struct glbOutput *out = task->out;
     struct glbOutput *trailer = self->dir_out;
     int err;
 
     out->reset(out);
     trailer->reset(trailer);
 
-    err = export_GSP(self);
+    err = export_GSP(self, task);
     if (err) {
         knd_log("-- GSP export of %.*s Rel failed :(",
                 self->name_size, self->name);
@@ -2378,7 +2378,7 @@ static int freeze(struct kndRel *self,
         if (err) return err;
 
         out->reset(out);
-        err = freeze_insts(self, &block_size);       RET_ERR();
+        err = freeze_insts(self, &block_size, task);       RET_ERR();
     }
 
     memcpy(output, " ", 1);

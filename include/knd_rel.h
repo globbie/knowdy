@@ -31,6 +31,7 @@ struct kndUpdate;
 struct kndRelUpdate;
 struct kndRepo;
 struct kndSet;
+struct kndTask;
 
 struct kndRelInstEntry
 {
@@ -225,11 +226,12 @@ struct kndRel
     int (*freeze)(struct kndRel *self,
                   size_t *total_frozen_size,
                   char *output,
-                  size_t *total_size);
-    int (*export)(struct kndRel *self);
+                  size_t *total_size,
+                  struct kndTask *task);
+    int (*export)(struct kndRel *self, struct kndTask *task);
     int (*export_updates)(struct kndRel *self);
-    int (*export_inst)(struct kndRel *self,
-		       struct kndRelInstance *inst);
+    int (*export_inst)(struct kndRelInstance *inst,
+                       struct kndTask *task);
     int (*export_inst_set)(struct kndRel *self,
                            struct kndSet *set);
 };

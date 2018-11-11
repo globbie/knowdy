@@ -39,7 +39,7 @@ struct kndRepo
     const char *locale;
     size_t locale_size;
 
-    struct glbOutput *out;
+    //struct glbOutput *out;
     
     /* local repo index */
     struct ooDict *repo_idx;
