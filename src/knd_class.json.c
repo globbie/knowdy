@@ -197,14 +197,24 @@ static int export_class_ref_JSON(void *obj,
     struct glbOutput *out = task->out;
     struct kndClassEntry *entry = elem;
     struct kndClass *c = entry->class;
+    size_t curr_depth = 0;
+    size_t curr_max_depth = 0;
     int err;
 
     /* separator */
     if (count) {
         err = out->writec(out, ',');                                              RET_ERR();
     }
+    curr_depth = task->depth;
+    curr_max_depth = task->max_depth;
+    task->depth = 0;
+    task->max_depth = 0;
     err = knd_class_export(c, KND_FORMAT_JSON, task);
     if (err) return err;
+
+    task->depth = curr_depth;
+    task->max_depth = curr_max_depth;
+    
     return knd_OK;
 }
 
@@ -497,11 +507,11 @@ extern int knd_class_export_JSON(struct kndClass *self,
     bool in_list = false;
     int err;
 
-    if (DEBUG_JSON_LEVEL_2) {
-        knd_log("\n.. JSON export: \"%.*s\" (repo:%.*s)  depth:%zu max depth:%zu",
+    if (DEBUG_JSON_LEVEL_TMP) {
+        knd_log("\n.. JSON export: \"%.*s\" (repo:%.*s)  depth:%zu max depth:%zu out:%p",
                 entry->name_size, entry->name,
                 entry->repo->name_size, entry->repo->name,
-                task->depth, task->max_depth);
+                task->depth, task->max_depth, out);
     }
 
     err = out->write(out, "{", 1);                                                RET_ERR();
@@ -652,8 +662,9 @@ extern int knd_class_export_JSON(struct kndClass *self,
                 set = class_rel->set;
                 err = out->write(out, ",\"batch\":[",
                                  strlen(",\"batch\":["));                         RET_ERR();
-                err = set->map(set, export_class_ref_JSON, (void*)self);
+                err = set->map(set, export_class_ref_JSON, (void*)task);
                 if (err && err != knd_RANGE) return err;
+                
                 err = out->writec(out, ']');                                      RET_ERR();
             }
 
