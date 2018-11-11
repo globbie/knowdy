@@ -55,10 +55,9 @@ static gsl_err_t parse_proc_select(void *obj,
                                    const char *rec,
                                    size_t *total_size)
 {
-    struct kndTask = obj;
-    struct kndProc *proc = task->proc;
+    struct kndTask *task = obj;
 
-    return knd_proc_select(proc, rec, total_size, task);
+    return knd_proc_select(task->repo, rec, total_size, task);
 }
 
 #if 0
@@ -360,8 +359,6 @@ static gsl_err_t run_present_user(void *obj,
                                   const char *unused_var(val),
                                   size_t unused_var(val_size))
 {
-    knd_log(".. presenting user..");
-
     struct kndTask *task = obj;
     struct kndUser *self = task->user;
     struct kndClassInst *user_inst;
@@ -376,7 +373,7 @@ static gsl_err_t run_present_user(void *obj,
     user_inst = self->curr_ctx->user_inst;
     user_inst->max_depth = self->max_depth;
 
-    err = user_inst->export(user_inst, KND_FORMAT_JSON, out);
+    err = user_inst->export(user_inst, KND_FORMAT_JSON, task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);

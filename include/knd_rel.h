@@ -218,8 +218,9 @@ struct kndRel
                     struct kndRelEntry *entry,
                     int fd);
     gsl_err_t (*select)(struct kndRel  *self,
-                  const char *rec,
-                  size_t *total_size);
+                        const char *rec,
+                        size_t *total_size,
+                        struct kndTask *task);
     int (*coordinate)(struct kndRel *self);
     int (*resolve)(struct kndRel *self, struct kndRelUpdate *update);
     int (*update)(struct kndRel *self, struct kndUpdate *update);
@@ -232,8 +233,8 @@ struct kndRel
     int (*export_updates)(struct kndRel *self);
     int (*export_inst)(struct kndRelInstance *inst,
                        struct kndTask *task);
-    int (*export_inst_set)(struct kndRel *self,
-                           struct kndSet *set);
+    int (*export_inst_set)(struct kndSet *set,
+                           struct kndTask *task);
 };
 
 extern void kndRel_init(struct kndRel *self);

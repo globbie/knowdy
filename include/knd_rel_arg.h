@@ -36,6 +36,7 @@ struct kndRelUpdate;
 struct kndRelArg;
 struct kndRelArgInstance;
 struct kndClassInst;
+struct kndTask;
 
 typedef enum knd_relarg_type {
     KND_RELARG_NONE,
@@ -132,7 +133,7 @@ struct kndRelArg
                     const char   *val,
                     size_t val_size);
     int (*resolve)(struct kndRelArg *self, struct kndRelUpdate *update);
-    int (*export)(struct kndRelArg  *self);
+    int (*export)(struct kndRelArg  *self, struct kndTask *task);
 
     int (*parse_inst)(struct kndRelArg *self,
                       struct kndRelArgInstance *inst,

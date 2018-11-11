@@ -206,8 +206,9 @@ final:
 }
 
 static int export_GSP(struct kndElem *self,
-                      struct glbOutput *out)
+                      struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     int err;
 
     if (DEBUG_ELEM_LEVEL_2)
@@ -221,7 +222,7 @@ static int export_GSP(struct kndElem *self,
         err = out->write(out, self->attr->name, self->attr->name_size);
         if (err) return err;
         
-        err = self->inner->export(self->inner, KND_FORMAT_GSP, out);
+        err = self->inner->export(self->inner, KND_FORMAT_GSP, task);
 
         err = out->write(out, "}", 1);
         if (err) return err;

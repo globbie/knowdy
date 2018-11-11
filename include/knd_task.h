@@ -136,7 +136,9 @@ struct kndTask
     struct kndAttr *attr;
     struct kndClassInst *class_inst;
     struct kndElem *elem;
+
     struct kndRel *rel;
+    struct kndProc *proc;
 
     /* updates */
     struct kndStateRef  *inner_class_state_refs;
