@@ -8,7 +8,6 @@ struct kndRepo;
 struct kndUser;
 struct kndUserContext;
 struct kndQuery;
-struct glbOutput;
 struct kndTask;
 
 #include "knd_config.h"
@@ -39,8 +38,6 @@ struct kndRepo
     const char *locale;
     size_t locale_size;
 
-    //struct glbOutput *out;
-    
     /* local repo index */
     struct ooDict *repo_idx;
     
