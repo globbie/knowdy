@@ -16,8 +16,9 @@
 #define DEBUG_INST_LEVEL_TMP 1
 
 static int export_inner_JSON(struct kndClassInst *self,
-                             struct glbOutput *out)
+                             struct kndTask *task)
 {
+    struct glbOutput *out = task->out;
     struct kndElem *elem;
     int err;
 
@@ -25,7 +26,7 @@ static int export_inner_JSON(struct kndClassInst *self,
 
     elem = self->elems;
     while (elem) {
-        err = knd_elem_export(elem, KND_FORMAT_JSON, out);
+        err = knd_elem_export(elem, KND_FORMAT_JSON, task);
         if (err) {
             knd_log("-- inst elem export failed: %.*s",
                     elem->attr->name_size, elem->attr->name);
@@ -111,7 +112,7 @@ static int export_concise_JSON(struct kndClassInst *self,
         if (err) return err;
 
         /* default export */
-        err = knd_elem_export(elem, KND_FORMAT_JSON, out);
+        err = knd_elem_export(elem, KND_FORMAT_JSON, task);
         if (err) {
             knd_log("-- elem not exported: %s", elem->attr->name);
             return err;
@@ -127,7 +128,8 @@ static int export_rel_inst_JSON(void *obj,
                                 size_t count,
                                 void *elem)
 {
-    struct glbOutput *out = obj;
+    struct kndTask *task = obj;
+    struct glbOutput *out = task->out;
     struct kndRelInstance *inst = elem;
     struct kndRel *rel = inst->rel;
     int err;
@@ -138,7 +140,7 @@ static int export_rel_inst_JSON(void *obj,
     }
     rel->out = out;
     rel->format = KND_FORMAT_JSON;
-    err = rel->export_inst(rel, inst);
+    err = rel->export_inst(inst, task);
     if (err) return err;
 
     return knd_OK;
@@ -180,7 +182,7 @@ static int export_inst_relref_JSON(struct kndClassInst *self,
         err = out->write(out, ",\"instances\":",
                          strlen(",\"instances\":"));                              RET_ERR();
         err = out->writec(out, '[');                                              RET_ERR();
-        err = set->map(set, export_rel_inst_JSON, (void*)out);
+        err = set->map(set, export_rel_inst_JSON, (void*)task);
         if (err) return err;
         err = out->writec(out, ']');                                              RET_ERR();
     }
@@ -221,7 +223,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
     }
 
     if (self->type == KND_OBJ_INNER) {
-        err = export_inner_JSON(self, out);
+        err = export_inner_JSON(self, task);
         if (err) {
             knd_log("-- inner obj JSON export failed");
             return err;
@@ -331,7 +333,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
         if (err) return err;
 
         /* default export */
-        err = knd_elem_export(elem, KND_FORMAT_JSON, out);
+        err = knd_elem_export(elem, KND_FORMAT_JSON, task);
         if (err) {
             knd_log("-- elem not exported: %s", elem->attr->name);
             return err;

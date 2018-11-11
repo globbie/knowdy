@@ -284,7 +284,7 @@ static int export_JSON(struct kndRel *self,
         if (in_list) {
             err = out->write(out, ",", 1);                                    RET_ERR();
         }
-        err = arg->export(arg);
+        err = arg->export(arg, task);
         if (err) return err;
     }
 
@@ -337,7 +337,7 @@ static int export_GSP(struct kndRel *self,
     for (arg = self->args; arg; arg = arg->next) {
         arg->format = KND_FORMAT_GSP;
         arg->out = self->out;
-        err = arg->export(arg);
+        err = arg->export(arg, task);
         if (err) return err;
     }
 
@@ -422,8 +422,8 @@ static int export_inst_setelem_JSON(void *obj,
     return knd_OK;
 }
 
-static int export_inst_set_JSON(struct kndTask *task,
-                                struct kndSet *set)
+static int export_inst_set_JSON(struct kndSet *set,
+                                struct kndTask *task)
 {
     struct glbOutput *out = task->out;
     int err;
