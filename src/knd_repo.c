@@ -758,7 +758,7 @@ static int kndRepo_open(struct kndRepo *self, struct kndTask *task)
     struct stat st;
     int err;
 
-    out = self->out;
+    out = task->out;
     task->repo = self;
 
     /* extend user DB path */
@@ -860,8 +860,6 @@ extern int kndRepo_init(struct kndRepo *self,
                         struct kndTask *task)
 {
     int err;
-
-    self->out      = task->out;
 
     knd_log("== open repo:%.*s", self->name_size, self->name);
 

@@ -55,10 +55,10 @@ static gsl_err_t parse_proc_select(void *obj,
                                    const char *rec,
                                    size_t *total_size)
 {
-    struct kndUser *self = obj;
-    struct kndProc *proc = self->repo->root_class->proc;
+    struct kndTask = obj;
+    struct kndProc *proc = task->proc;
 
-    return knd_proc_select(proc, rec, total_size);
+    return knd_proc_select(proc, rec, total_size, task);
 }
 
 #if 0

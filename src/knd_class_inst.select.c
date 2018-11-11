@@ -134,7 +134,7 @@ static gsl_err_t present_state(void *obj,
     err = out->writec(out, '{');
     if (err) return make_gsl_err_external(err);
 
-    err = knd_export_class_inst_state_JSON(self);
+    err = knd_export_class_inst_state_JSON(self, task);
     if (err) return make_gsl_err_external(err);
 
     err = out->writec(out, '}');
@@ -418,9 +418,10 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
     }
 
     inst = self->curr_inst;
-    inst->max_depth = self->max_depth;
 
-    err = inst->export(inst, KND_FORMAT_JSON, out);
+    //inst->max_depth = self->max_depth;
+
+    err = inst->export(inst, KND_FORMAT_JSON, task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);

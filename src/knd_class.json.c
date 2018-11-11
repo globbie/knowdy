@@ -118,9 +118,10 @@ extern int knd_export_class_state_JSON(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_export_class_inst_state_JSON(struct kndClass *self)
+extern int knd_export_class_inst_state_JSON(struct kndClass *self,
+                                            struct kndTask *task)
 {
-    struct glbOutput *out = self->entry->repo->out;
+    struct glbOutput *out = task->out;
     size_t latest_state_id = 0;
     int err;
 
@@ -193,8 +194,7 @@ static int export_class_ref_JSON(void *obj,
                                  void *elem)
 {
     struct kndTask *task = obj;
-    struct kndClass *self = task->class;
-    struct glbOutput *out = self->entry->repo->out;
+    struct glbOutput *out = task->out;
     struct kndClassEntry *entry = elem;
     struct kndClass *c = entry->class;
     int err;
@@ -610,7 +610,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
                          strlen(",\"_instances\":{"));                            RET_ERR();
 
         if (self->inst_states) {
-            err = knd_export_class_inst_state_JSON(self);                         RET_ERR();
+            err = knd_export_class_inst_state_JSON(self, task);                         RET_ERR();
         }
 
         // TODO navigation facets?

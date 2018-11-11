@@ -217,8 +217,8 @@ extern int knd_class_export_updates_GSL(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_export_class_state_GSL(struct kndClass *self,
-                                       struct kndTask *task)
+static int export_class_state_GSL(struct kndClass *self,
+                                  struct kndTask *task)
 {
     struct glbOutput *out = task->out;
     struct kndState *state = self->states;
@@ -295,9 +295,10 @@ extern int knd_export_class_state_GSL(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_export_class_inst_state_GSL(struct kndClass *self)
+static int export_class_inst_state_GSL(struct kndClass *self,
+                                       struct kndTask *task)
 {
-    struct glbOutput *out = self->entry->repo->out;
+    struct glbOutput *out = task->out;
     size_t latest_state_id = 0;
     int err;
 
@@ -369,8 +370,7 @@ static int export_class_ref_GSL(void *obj,
                                  void *elem)
 {
     struct kndTask *task = obj;
-    struct kndClass *self = task->class;
-    struct glbOutput *out = self->entry->repo->out;
+    struct glbOutput *out = task->out;
     struct kndClassEntry *entry = elem;
     struct kndClass *c = entry->class;
     int err;
@@ -784,7 +784,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
 
     /* state info */
     if (self->num_states) {
-        err = knd_export_class_state_GSL(self, task);                             RET_ERR();
+        err = export_class_state_GSL(self, task);                             RET_ERR();
     }
 
     /* display base classes only once */
@@ -852,7 +852,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
                          strlen("{instance-state"));                                   RET_ERR();
 
         if (self->inst_states) {
-            err = knd_export_class_inst_state_GSL(self);                          RET_ERR();
+            err = export_class_inst_state_GSL(self, task);                          RET_ERR();
         }
 
         // TODO navigation facets?
