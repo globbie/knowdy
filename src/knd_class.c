@@ -458,7 +458,7 @@ extern int knd_get_class_inst(struct kndClass *self,
     struct glbOutput *log = task->log;
     int err, e;
 
-    if (DEBUG_CLASS_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_TMP)
         knd_log(".. \"%.*s\" class (%.*s) to get instance: \"%.*s\"..",
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
