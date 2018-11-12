@@ -83,5 +83,5 @@ add_subdirectory(service)
 install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)
 install(DIRECTORY etc/systemd/system/ DESTINATION usr/lib/systemd/system)
 
-set(VERSION "0.7.1")
+set(VERSION "0.7.2")
 

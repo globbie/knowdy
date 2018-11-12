@@ -536,11 +536,12 @@ static gsl_err_t present_repo_state(void *obj,
 
     task->type = KND_SELECT_STATE;
 
-    if (!repo->updates)                                     goto show_curr_state;
+    if (!repo->updates) goto show_curr_state;
     update = repo->updates;
-    if (task->state_gt >= update->numid)                    goto show_curr_state;
-    //if (task->state_lt && task->state_lt < task->state_gt) goto show_curr_state;
+    if (task->state_gt >= update->numid) goto show_curr_state;
 
+    // TODO: handle lt and eq cases
+    //if (task->state_lt && task->state_lt < task->state_gt) goto show_curr_state;
     task->state_lt = repo->num_updates + 1;
 
     if (DEBUG_REPO_LEVEL_TMP) {
