@@ -358,8 +358,8 @@ extern int knd_read_GSL_file(struct kndClass *self,
     err = out->write(out, filename, filename_size);  RET_ERR();
     err = out->write(out, file_ext, file_ext_size);   RET_ERR();
 
-    if (DEBUG_CLASS_LEVEL_TMP)
-        knd_log("\n\n.. reading GSL file: %.*s", out->buf_size, out->buf);
+    if (DEBUG_CLASS_LEVEL_2)
+        knd_log(".. reading GSL file: %.*s", out->buf_size, out->buf);
 
     file_out->reset(file_out);
     err = file_out->write_file_content(file_out, (const char*)out->buf);
@@ -458,7 +458,7 @@ extern int knd_get_class_inst(struct kndClass *self,
     struct glbOutput *log = task->log;
     int err, e;
 
-    if (DEBUG_CLASS_LEVEL_2)
+    if (DEBUG_CLASS_LEVEL_TMP)
         knd_log(".. \"%.*s\" class (%.*s) to get instance: \"%.*s\"..",
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,

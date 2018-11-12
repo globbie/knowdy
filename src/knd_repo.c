@@ -385,6 +385,9 @@ static int present_repo_state_JSON(struct kndRepo *self,
         update = self->updates;
         err = out->write(out, ",\"_modif\":", strlen(",\"_modif\":"));            RET_ERR();
         err = out->writef(out, "%zu", (size_t)update->timestamp);                 RET_ERR();
+    } else {
+        err = out->write(out, ",\"_modif\":", strlen(",\"_modif\":"));            RET_ERR();
+        err = out->writef(out, "%zu", (size_t)self->timestamp);                   RET_ERR();
     }
     err = out->writec(out, '}');                                                  RET_ERR();
 
@@ -446,6 +449,7 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
         }
 
         state = ref->state;
+        state->update = update;
         if (!state->children) continue;
 
         for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
@@ -453,6 +457,8 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
             if (entry) {
                 knd_log("  == class:%.*s", entry->name_size, entry->name);
             }
+            state = child_ref->state;
+            state->update = update;
         }
     }
 
@@ -842,6 +848,8 @@ static int kndRepo_open(struct kndRepo *self, struct kndTask *task)
         err = kndRepo_restore(self, out->buf, task->file_out);
         if (err) return err;
     }
+
+    self->timestamp = time(NULL);
 
     return knd_OK;
 }

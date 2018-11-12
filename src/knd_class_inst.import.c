@@ -37,14 +37,38 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndClassInst *self = ctx->class_inst;
+    struct kndClassEntry *class_entry;
     struct kndClassInstEntry *entry;
     struct kndRepo *repo = ctx->task->repo;
+    struct ooDict *class_name_idx = repo->class_name_idx;
     struct ooDict *name_idx = repo->class_inst_name_idx;
     struct glbOutput *log = ctx->task->log;
     struct kndTask *task = ctx->task;
+    struct kndClass *c;
     int err;
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    /* inner obj? */
+    if (self->type == KND_OBJ_INNER) {
+        knd_log("== inner obj class: %.*s", name_size, name);
+        class_entry = class_name_idx->get(class_name_idx, name, name_size);
+        if (!class_entry) {
+            knd_log("-- no such class: %.*s", name_size, name);
+            return make_gsl_err(gsl_FAIL);
+        }
+        c = class_entry->class;
+
+        err = knd_is_base(self->base, c);
+        if (err) {
+            knd_log("-- no inheritance from %.*s to %.*s",
+                    self->base->name_size, self->base->name,
+                    c->name_size, c->name);
+            return make_gsl_err_external(err);
+        }
+        self->base = c;
+        return make_gsl_err(gsl_OK);
+    }
 
     entry = name_idx->get(name_idx, name, name_size);
     if (entry) {
@@ -134,7 +158,7 @@ static gsl_err_t parse_import_elem(void *obj1,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_INST_LEVEL_2)
+    if (DEBUG_INST_LEVEL_TMP)
         knd_log(".. parsing elem import REC: %.*s", 128, rec);
 
     err = kndClassInst_validate_attr(self, name, name_size, &attr, &elem);
@@ -143,6 +167,7 @@ static gsl_err_t parse_import_elem(void *obj1,
     if (elem) {
         switch (elem->attr->type) {
             case KND_ATTR_INNER:
+                knd_log(".. inner obj import.. %p", elem->inner);
                 parser_err = knd_import_class_inst(elem->inner, rec, total_size, ctx->task);
                 if (parser_err.code) return parser_err;
                 break;
@@ -183,6 +208,7 @@ static gsl_err_t parse_import_elem(void *obj1,
                 knd_log("-- inner class inst alloc failed :(");
                 return *total_size = 0, make_gsl_err_external(err);
             }
+            // CHECK: do we need a state here?
             err = knd_state_new(mempool, &obj->states);
             if (err) {
                 knd_log("-- state alloc failed :(");
@@ -217,6 +243,8 @@ static gsl_err_t parse_import_elem(void *obj1,
             obj->base = attr->ref_class;
             obj->root = self->root ? self->root : self;
 
+            knd_log(".. import inner obj of default class: %.*s",
+                    obj->base->name_size, obj->base->name);
             parser_err = knd_import_class_inst(obj, rec, total_size, ctx->task);
             if (parser_err.code) return parser_err;
 
@@ -457,7 +485,11 @@ static gsl_err_t parse_rels(void *obj,
 
 gsl_err_t knd_import_class_inst(struct kndClassInst *self,
                                 const char *rec, size_t *total_size,
-                                struct kndTask *task) {
+                                struct kndTask *task)
+{
+    if (DEBUG_INST_LEVEL_TMP)
+        knd_log(".. class inst import REC: %.*s", 128, rec);
+
     struct LocalContext ctx = {
         .class_inst = self,
         .task = task
