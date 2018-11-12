@@ -358,8 +358,8 @@ extern int knd_read_GSL_file(struct kndClass *self,
     err = out->write(out, filename, filename_size);  RET_ERR();
     err = out->write(out, file_ext, file_ext_size);   RET_ERR();
 
-    if (DEBUG_CLASS_LEVEL_TMP)
-        knd_log("\n\n.. reading GSL file: %.*s", out->buf_size, out->buf);
+    if (DEBUG_CLASS_LEVEL_2)
+        knd_log(".. reading GSL file: %.*s", out->buf_size, out->buf);
 
     file_out->reset(file_out);
     err = file_out->write_file_content(file_out, (const char*)out->buf);

@@ -754,6 +754,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
 
     if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log(".. select by baseclass \"%.*s\"..", 64, rec);
+    task->state_gt = 0;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -774,6 +775,11 @@ static gsl_err_t parse_baseclass_select(void *obj,
           .name_size = strlen("_depth"),
           .parse = gsl_parse_size_t,
           .obj = &task->max_depth
+        },
+        { .name = "_update",
+          .name_size = strlen("_update"),
+          .parse = gsl_parse_size_t,
+          .obj = &task->state_gt
         },
         { .name = "_rels",
           .name_size = strlen("_rels"),
