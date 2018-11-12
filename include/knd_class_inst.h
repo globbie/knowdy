@@ -163,6 +163,6 @@ extern int knd_class_inst_export_JSON(struct kndClassInst *self, struct kndTask 
 extern int knd_class_inst_set_export_JSON(struct kndSet *set, struct kndTask *task);
 
 // knd_class_inst.select.c
-extern gsl_err_t knd_select_class_inst(struct kndClassInst *self,
+extern gsl_err_t knd_select_class_inst(struct kndClass *c,
                                        const char *rec, size_t *total_size,
                                        struct kndTask *task);

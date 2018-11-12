@@ -554,8 +554,6 @@ static gsl_err_t parse_select_class_inst(void *obj,
                                          size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
-    struct kndClassInst *root_inst;
     gsl_err_t parser_err;
 
     if (!ctx->task->class)  {
@@ -563,11 +561,8 @@ static gsl_err_t parse_select_class_inst(void *obj,
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    root_inst = repo->root_inst;
-    // TODO
-    root_inst->base = ctx->task->class;
+    parser_err = knd_select_class_inst(ctx->task->class, rec, total_size, ctx->task);
 
-    parser_err = knd_select_class_inst(root_inst, rec, total_size, ctx->task);
     if (parser_err.code) return parser_err;
 
     return make_gsl_err(gsl_OK);
@@ -755,6 +750,8 @@ static gsl_err_t parse_baseclass_select(void *obj,
     if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log(".. select by baseclass \"%.*s\"..", 64, rec);
 
+    task->state_gt = 0;
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = select_by_baseclass,
@@ -774,6 +771,11 @@ static gsl_err_t parse_baseclass_select(void *obj,
           .name_size = strlen("_depth"),
           .parse = gsl_parse_size_t,
           .obj = &task->max_depth
+        },
+        { .name = "_update",
+          .name_size = strlen("_update"),
+          .parse = gsl_parse_size_t,
+          .obj = &task->state_gt
         },
         { .name = "_rels",
           .name_size = strlen("_rels"),
@@ -879,6 +881,7 @@ static gsl_err_t run_set_attr_var(void *obj,
     attr_var->states = state;
     attr_var->num_states++;
     state->numid = attr_var->num_states;
+
 
     task->type = KND_UPDATE_STATE;
 

@@ -10,6 +10,7 @@ struct kndUserContext;
 struct kndQuery;
 struct kndTask;
 
+#include <time.h>
 #include "knd_config.h"
 #include "knd_mempool.h"
 
@@ -25,6 +26,7 @@ struct kndRepo
     char path[KND_PATH_SIZE];
     size_t path_size;
     size_t num_journals;
+    time_t timestamp;
 
     const char *schema_path;
     size_t schema_path_size;
