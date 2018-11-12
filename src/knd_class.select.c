@@ -562,6 +562,7 @@ static gsl_err_t parse_select_class_inst(void *obj,
     }
 
     parser_err = knd_select_class_inst(ctx->task->class, rec, total_size, ctx->task);
+
     if (parser_err.code) return parser_err;
 
     return make_gsl_err(gsl_OK);
@@ -748,6 +749,7 @@ static gsl_err_t parse_baseclass_select(void *obj,
 
     if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log(".. select by baseclass \"%.*s\"..", 64, rec);
+
     task->state_gt = 0;
 
     struct gslTaskSpec specs[] = {
@@ -879,6 +881,7 @@ static gsl_err_t run_set_attr_var(void *obj,
     attr_var->states = state;
     attr_var->num_states++;
     state->numid = attr_var->num_states;
+
 
     task->type = KND_UPDATE_STATE;
 
