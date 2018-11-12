@@ -1,0 +1,32 @@
+
+{class gsl-docs-user-create
+  {is doc 
+    [para
+      {[txt
+        {en {t
+            To add a new user to a database you need to create
+            an instance of the User class in the system repo.}
+        {ru {t
+            Для добавления нового пользователя базы данных необходимо
+            создать экземпляр класса User в системном репозитории базы.
+            }}}]
+        {code
+            {_cdata {""" {task {class User {!inst Unique name or id}}} """}}}}
+
+       {[txt
+        {ru {t
+            Системный класс User содержит базовый набор атрибутов для
+            регистрации пользователей, включая их полные имена, контактные
+            данные, способы аутентификации и т.п. Данный класс
+            можно редактировать и расширять, настраивая под собственные нужды.
+            Пример создания пользовательской
+            учетной записи с указанием базовой информации:}}}]
+        {code
+            {_cdata {""" {class User 
+                             {!inst Alice
+                                 {name Russian Name
+                                     {forename Алиса}
+                                 {biometrics 
+                                     {birth-date 2000/01/01} 
+                                     {sex Female Sex}}}}} """}}}}
+    ]}}
