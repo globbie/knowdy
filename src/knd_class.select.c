@@ -554,8 +554,6 @@ static gsl_err_t parse_select_class_inst(void *obj,
                                          size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
-    struct kndClassInst *root_inst;
     gsl_err_t parser_err;
 
     if (!ctx->task->class)  {
@@ -563,11 +561,7 @@ static gsl_err_t parse_select_class_inst(void *obj,
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    root_inst = repo->root_inst;
-    // TODO
-    root_inst->base = ctx->task->class;
-
-    parser_err = knd_select_class_inst(root_inst, rec, total_size, ctx->task);
+    parser_err = knd_select_class_inst(ctx->task->class, rec, total_size, ctx->task);
     if (parser_err.code) return parser_err;
 
     return make_gsl_err(gsl_OK);
