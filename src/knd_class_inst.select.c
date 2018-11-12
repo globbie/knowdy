@@ -413,10 +413,7 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
         return make_gsl_err(gsl_FAIL);
     }
 
-
     inst = ctx->class_inst;
-    //inst->max_depth = self->max_depth;
-
     err = inst->export(inst, KND_FORMAT_JSON, task);
     if (err) return make_gsl_err_external(err);
 
