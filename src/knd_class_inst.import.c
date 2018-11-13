@@ -158,7 +158,7 @@ static gsl_err_t parse_import_elem(void *obj1,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_INST_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. parsing elem import REC: %.*s", 128, rec);
 
     err = kndClassInst_validate_attr(self, name, name_size, &attr, &elem);
@@ -318,7 +318,7 @@ static gsl_err_t import_elem_list(void *unused_var(obj),
 
     //mempool = self->base->entry->repo->mempool;
 
-    if (DEBUG_INST_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_2)
         knd_log("== import elem list: \"%.*s\" REC: %.*s size:%zu",
                 name_size, name, 32, rec, *total_size);
 
@@ -487,7 +487,7 @@ gsl_err_t knd_import_class_inst(struct kndClassInst *self,
                                 const char *rec, size_t *total_size,
                                 struct kndTask *task)
 {
-    if (DEBUG_INST_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. class inst import REC: %.*s", 128, rec);
 
     struct LocalContext ctx = {
