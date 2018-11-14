@@ -2,6 +2,7 @@
 
 #include <check.h>
 
+#include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -74,31 +75,31 @@ START_TEST(shard_table_test)
             .input = "{task {class Person}}",
             .expect = "{\"err\":\"Person class name not found\",\"http_code\":404}"
         },
-        //{
-        //    .input = "{task {!class Person {num age}}}",
-        //    .expect = "{\"result\":\"OK\"}"
-        //},
-        //{
-        //    .input = "{task {!class Person}}",
-        //    .expect = "{\"err\":\"Person class name already exists\",\"http_code\":409}"
-        //},
+        {
+            .input = "{task {!class Person {num age}}}",
+            .expect = "{repo /{_state 1}{modif [0-9]*}}"
+        },
+        {
+            .input = "{task {!class Person}}",
+            .expect = "{\"err\":\"Person class name already exists\",\"http_code\":409}"
+        },
 //        {
 //            .input = "{task {!class Worker {is PersonUnknown}}}",
 //            .expect = "{\"err\":\"internal server error\",\"http_code\":404}"  // TODO(k15tfu): fix this
 //        },
-        //{
-        //    .input = "{task {!class Worker {is Person}}}",
-        //    .expect = "{\"result\":\"OK\"}"
-        //},
-        //{
-        //    .input = "{task {class User {!inst Vasya}}}",
-        //    .expect = "{\"result\":\"OK\"}"
-        //},
+        {
+            .input = "{task {!class Worker {is Person}}}",
+            .expect = "{repo /{_state 2}{modif [0-9]*}}"
+        },
+        {
+            .input = "{task {class User {!inst Vasya}}}",
+            .expect = "{repo /{_state 3}{modif [0-9]*}}"
+        },
         // get class
-        //{
-        //    .input = "{task {class Person}}",
-        //    .expect = "{class Person{_id 2} {_repo /}{_state 1{phase new}}[attrs{num age}]{_subclasses {total 1} {num_terminals 1}[batch{Worker {_id 3}}]}}"
-        //},
+        {
+            .input = "{task {class Person}}",
+            .expect = "{class Person{_id 2} {_repo /}{_state 1{phase new}}\\[attrs{num age}]{_subclasses {total 1} {num_terminals 1}\\[batch{Worker {_id 3}}]}}"
+        },
 // FIXME(k15tfu): _id doesn't work
 //        {
 //            .input = "{task {class {_id 2}}}",
@@ -125,10 +126,10 @@ START_TEST(shard_table_test)
 //            .expect = "??"
 //        },
         // get the latest state
-        //{
-        //    .input = "{task {class Person {_state}}}",
-        //    .expect = "{\"_state\":1,\"_phase\":\"new\",\"descendants\":{\"_state\":1,\"total\":1}}"
-        //},
+        {
+            .input = "{task {class Person {_state}}}",
+            .expect = "{\"_state\":1,\"_phase\":\"new\",\"descendants\":{\"_state\":1,\"total\":1}}"
+        },
 // FIXME(k15tfu): _id doesn't work
 //        {
 //            .input = "{task {class {_id 2} {_state}}}",
@@ -186,14 +187,24 @@ START_TEST(shard_table_test)
 
     err = kndShard_new(&shard, shard_config, strlen(shard_config));
     ck_assert_int_eq(err, knd_OK);
+
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
         const struct table_test *pcase = &cases[i];
+        fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
 
         const char *result; size_t result_size;
-        fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
         err = kndShard_run_task(shard, pcase->input, strlen(pcase->input), &result, &result_size, 0);
         ck_assert_int_eq(err, knd_OK);
-        ASSERT_STR_EQ(result, result_size, pcase->expect, -1);
+
+        *((char*)result + result_size) = '\0';  // UNSAFE!
+
+        regex_t reg;
+        ck_assert(0 == regcomp(&reg, pcase->expect, 0));
+        if (0 != regexec(&reg, result, 0, NULL, 0)) {
+            ck_abort_msg("Assertion failed: \"%.*s\" doesn't match \"%s\"",
+                         (int)result_size, result, pcase->expect);
+        }
+        regfree(&reg);
     }
 
     kndShard_del(shard);
