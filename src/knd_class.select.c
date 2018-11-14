@@ -468,10 +468,10 @@ static gsl_err_t present_class_selection(void *obj,
         return make_gsl_err_external(err);
     }
 
-    err = out->writec(out, '\n');
-    if (err) {
-        return make_gsl_err_external(err);
-    }
+//    err = out->writec(out, '\n');
+//    if (err) {
+//        return make_gsl_err_external(err);
+//    }
 
     return make_gsl_err(gsl_OK);
 }
