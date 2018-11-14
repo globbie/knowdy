@@ -789,7 +789,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
     task->depth++;
 
     /* state info */
-    if (self->num_states) {
+    if (0 && self->num_states) {
         err = export_class_state_GSL(self, task);                             RET_ERR();
     }
 
