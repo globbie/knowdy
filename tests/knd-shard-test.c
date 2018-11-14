@@ -93,7 +93,92 @@ START_TEST(shard_table_test)
         {
             .input = "{task {class User {!inst Vasya}}}",
             .expect = "{\"result\":\"OK\"}"
-        }
+        },
+        // get class
+        {
+            .input = "{task {class Person}}",
+            .expect = "{class Person{_id 2} {_repo /}{_state 1{phase new}}[attrs{num age}]{_subclasses {total 1} {num_terminals 1}[batch{Worker {_id 3}}]}}"
+        },
+// FIXME(k15tfu): _id doesn't work
+//        {
+//            .input = "{task {class {_id 2}}}",
+//            .expect = "??"
+//        },
+        // get class attribute
+// FIXME(k15tfu): no attr to present
+//        {
+//            .input = "{task {class Person {age}}}",
+//            .expect = "??"
+//        },
+// FIXME(k15tfu): no such attribute
+//        {
+//            .input = "{task {class Person {_desc}}}",
+//            .expect = "??"
+//        },
+// FIXME(k15tfu): _id doesn't work
+//        {
+//            .input = "{task {class {_id 2} {age}}}",
+//            .expect = "??"
+//        },
+//        {
+//            .input = "{task {class {_id 2} {_desc}}}",
+//            .expect = "??"
+//        },
+        // get the latest state
+        {
+            .input = "{task {class Person {_state}}}",
+            .expect = "{\"_state\":1,\"_phase\":\"new\",\"descendants\":{\"_state\":1,\"total\":1}}"
+        },
+// FIXME(k15tfu): _id doesn't work
+//        {
+//            .input = "{task {class {_id 2} {_state}}}",
+//            .expect = "??"
+//        },
+// FIXME(k15tfu): class parse failure
+//        {
+//            .input = "{task {class Person {age {_state}}}}",
+//            .expect = "??"
+//        },
+// FIXME(k15tfu): no such attribute
+//        {
+//            .input = "{task {class Person {_desc {_state}}}}",
+//            .expect = "??"
+//        },
+// FIXME(k15tfu): _id doesn't work
+//        {
+//            .input = "{task {class {_id 2} {age {_state}}}}",
+//            .expect = "??"
+//        },
+//        {
+//            .input = "{task {class {_id 2} {_desc {_state}}}}",
+//            .expect = "??"
+//        },
+        // get list of all states
+// FIXME(k15tfu): fix them:
+//        {
+//            .input = "{task {class Person {_state {gt 0}}}}",
+//            .expect = "??"
+//        },
+//        {
+//            .input = "{task {class {_id 2} {_state {gt 0}}}}",
+//            .expect = "??"
+//        },
+//        {
+//            .input = "{task {class Person {age {_state {gt 0}}}}}",
+//            .expect = "??"
+//        },
+//        {
+//            .input = "{task {class Person {_desc {_state {gt 0}}}}}",
+//            .expect = "??"
+//        },
+//        {
+//            .input = "{task {class {_id 2} {age {_state {gt 0}}}}}",
+//            .expect = "??"
+//        },
+//        {
+//            .input = "{task {class {_id 2} {_desc {_state {gt 0}}}}}",
+//            .expect = "??"
+//        },
     };
 
     struct kndShard *shard;
