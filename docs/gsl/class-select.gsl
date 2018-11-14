@@ -1,5 +1,5 @@
 
-{class gsl-docs-queries
+{class gsl-docs-class-select
   {is doc 
     [para
       {[txt
@@ -33,5 +33,19 @@
             строку в кодировке UTF-8. Имена классов могут содержать пробелы.}}}]
         {code
             {_cdata {""" {class My Personal Class} """}}}}
+
+      {[txt
+        {en {t
+            To list all the classes that inherit from a known parent, use
+            the following statement.}
+        {ru {t
+            Просмотреть список классов, наследующих конкретный родительский
+            класс, можно с помощью служебного атрибута _is, принимающего
+            массив аргументов. У массивов по умолчанию используется семантика
+            логического И (AND). Приведенный ниже запрос содержит указание
+            вернуть множество классов, каждый из которых наследуется
+            от класса Furniture.}}}]
+        {code
+            {_cdata {""" {class [_is {Furniture} ]} """}}}}
 
     ]}}

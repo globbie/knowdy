@@ -216,7 +216,9 @@ extern int knd_get_class_by_id(struct kndClass *self,
 
 extern gsl_err_t knd_import_class_var(struct kndClassVar *self,
                                       const char *rec,
-                                      size_t *total_size);
+                                      size_t *total_size,
+                                      struct kndTask *task);
+
 extern int knd_is_base(struct kndClass *self,
                        struct kndClass *base);
 

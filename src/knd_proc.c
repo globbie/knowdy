@@ -870,6 +870,7 @@ static gsl_err_t parse_proc_call_arg(void *obj,
     struct kndProcCallArg *call_arg;
     struct kndClassVar *class_var;
     struct kndMemPool *mempool = proc->task->mempool;
+    struct kndTask *task = proc->task;
     gsl_err_t parser_err;
     int err;
 
@@ -892,7 +893,7 @@ static gsl_err_t parse_proc_call_arg(void *obj,
 
     class_var->root_class = proc->entry->repo->root_class;
 
-    parser_err = knd_import_class_var(class_var, rec, total_size);
+    parser_err = knd_import_class_var(class_var, rec, total_size, task);
     if (parser_err.code) return parser_err;
 
     call_arg->class_var = class_var;
