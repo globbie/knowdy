@@ -199,7 +199,8 @@ static gsl_err_t kndProc_validate_do_arg(void *obj,
                                          const char *rec,
                                          size_t *total_size)
 {
-    struct kndProc *proc = obj;
+    struct kndTask *task = obj;
+    struct kndProc *proc = task->proc;
     gsl_err_t err;
 
     if (DEBUG_PROC_LEVEL_2)
@@ -214,7 +215,7 @@ static gsl_err_t kndProc_validate_do_arg(void *obj,
     if (err.code) return *total_size = 0, make_gsl_err_external(err.code);
     class_var->root_class = proc->entry->repo->root_class;
 
-    err = knd_import_class_var(class_var, rec, total_size);
+    err = knd_import_class_var(class_var, rec, total_size, task);
     if (err.code) return err;
 
     // TODO: use mempool

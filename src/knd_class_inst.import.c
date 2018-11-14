@@ -51,10 +51,9 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 
     /* inner obj? */
     if (self->type == KND_OBJ_INNER) {
-        knd_log("== inner obj class: %.*s", name_size, name);
         class_entry = class_name_idx->get(class_name_idx, name, name_size);
         if (!class_entry) {
-            knd_log("-- no such class: %.*s", name_size, name);
+            knd_log("-- inner obj: no such class: %.*s", name_size, name);
             return make_gsl_err(gsl_FAIL);
         }
         c = class_entry->class;
@@ -219,32 +218,13 @@ static gsl_err_t parse_import_elem(void *obj1,
             obj->name = attr->name;
             obj->name_size = attr->name_size;
 
-            /*if (!attr->ref_class) {
-                if (self->states->phase == KND_FROZEN || self->states->phase == KND_SUBMITTED) {
-                    if (DEBUG_INST_LEVEL_2) {
-                        knd_log(".. resolve attr \"%.*s\": \"%.*s\"..",
-                                attr->name_size, attr->name,
-                                attr->ref_classname_size, attr->ref_classname);
-                    }
-                    root_class = self->base->root_class;
-                    err = root_class->get(root_class,
-                                          attr->ref_classname, attr->ref_classname_size,
-                                          &c);
-                    if (err) return *total_size = 0, make_gsl_err_external(err);
-                    attr->ref_class = c;
-                }
-                else {
-                    knd_log("-- couldn't resolve the %.*s attr :(",
-                            attr->name_size, attr->name);
-                    return *total_size = 0, make_gsl_err(gsl_FAIL);
-                }
-                }*/
-
             obj->base = attr->ref_class;
             obj->root = self->root ? self->root : self;
 
-            knd_log(".. import inner obj of default class: %.*s",
-                    obj->base->name_size, obj->base->name);
+            if (DEBUG_INST_LEVEL_2)
+                knd_log(".. import inner obj of default class: %.*s",
+                        obj->base->name_size, obj->base->name);
+
             parser_err = knd_import_class_inst(obj, rec, total_size, ctx->task);
             if (parser_err.code) return parser_err;
 
@@ -318,7 +298,7 @@ static gsl_err_t import_elem_list(void *unused_var(obj),
 
     //mempool = self->base->entry->repo->mempool;
 
-    if (DEBUG_INST_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_2)
         knd_log("== import elem list: \"%.*s\" REC: %.*s size:%zu",
                 name_size, name, 32, rec, *total_size);
 
@@ -487,7 +467,7 @@ gsl_err_t knd_import_class_inst(struct kndClassInst *self,
                                 const char *rec, size_t *total_size,
                                 struct kndTask *task)
 {
-    if (DEBUG_INST_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. class inst import REC: %.*s", 128, rec);
 
     struct LocalContext ctx = {
