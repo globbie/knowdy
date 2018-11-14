@@ -521,7 +521,7 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
           .name = "_summary",
           .name_size = strlen("_summary"),
           .parse = knd_parse_summary_array,
-          .obj = c
+          .obj = task
         },
         { .name = "_state_top",
           .name_size = strlen("_state_top"),
