@@ -601,7 +601,8 @@ static int present_subclasses(struct kndClass *self,
         }
     }
     err = out->writec(out, ']');                                                  RET_ERR();
-    
+    err = out->writec(out, '}');                                                  RET_ERR();
+
     return knd_OK;
 }
 
