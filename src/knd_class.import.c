@@ -41,11 +41,6 @@
 #define DEBUG_CLASS_IMPORT_LEVEL_5 0
 #define DEBUG_CLASS_IMPORT_LEVEL_TMP 1
 
-static gsl_err_t import_nested_attr_var(void *obj,
-                                        const char *name, size_t name_size,
-                                        const char *rec, size_t *total_size);
-static void append_attr_var(struct kndClassVar *ci, struct kndAttrVar *attr_var);
-
 extern gsl_err_t knd_parse_import_class_inst(void *obj,
                                              const char *rec,
                                              size_t *total_size)
@@ -153,34 +148,6 @@ extern gsl_err_t knd_parse_import_class_inst(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_attr_var_name(void *obj, const char *name, size_t name_size)
-{
-    struct kndAttrVar *self = obj;
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. set attr var name: %.*s", name_size, name);
-
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-    self->name = name;
-    self->name_size = name_size;
-
-    return make_gsl_err(gsl_OK);
-}
-
-
-static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
-{
-    struct kndAttrVar *self = obj;
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. set attr var value: %.*s", val_size, val);
-
-    if (!val_size) return make_gsl_err(gsl_FORMAT);
-
-    self->val = val;
-    self->val_size = val_size;
-
-    return make_gsl_err(gsl_OK);
-}
 
 static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 {
@@ -388,310 +355,6 @@ static gsl_err_t parse_attr(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t confirm_attr_var(void *obj,
-                                  const char *unused_var(name),
-                                  size_t unused_var(name_size))
-{
-    struct kndAttrVar *attr_var = obj;
-
-    // TODO empty values?
-    if (DEBUG_CLASS_IMPORT_LEVEL_1) {
-        if (!attr_var->val_size)
-            knd_log("NB: attr var value not set in %.*s",
-                    attr_var->name_size, attr_var->name);
-    }
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t import_attr_var(void *obj,
-                                 const char *name, size_t name_size,
-                                 const char *rec, size_t *total_size)
-{
-    struct kndTask *task = obj;
-    struct kndClassVar *self = task->class_var;
-    struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = task->mempool;
-    gsl_err_t parser_err;
-    int err;
-
-    // TODO
-
-    /* class var not resolved */
-
-    if (!self->entry) {
-        knd_log("-- anonymous class var: %.*s?  REC:%.*s",
-                64, rec);
-        //return *total_size = 0, make_gsl_err_external(knd_FAIL);
-    } 
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. import attr var: \"%.*s\" REC: %.*s",
-                name_size, name, 64, rec);
-
-    err = knd_attr_var_new(mempool, &attr_var);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr_var->class_var = self;
-
-    // TEST
-    mempool->num_attr_vars++;
-
-    attr_var->name = name;
-    attr_var->name_size = name_size;
-    attr_var->task = task;
-
-    /*struct gslTaskSpec cdata_spec = {
-        .buf = attr_var->valbuf,
-        .buf_size = &attr_var->val_size,
-        .max_buf_size = sizeof attr_var->valbuf
-        };*/
-    
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = set_attr_var_value,
-          .obj = attr_var
-        },
-        { .type = GSL_SET_STATE,
-          .validate = import_nested_attr_var,
-          .obj = attr_var
-        },
-        { .validate = import_nested_attr_var,
-          .obj = attr_var
-        },/*
-        { .name = "_cdata",
-          .name_size = strlen("_cdata"),
-          .parse = gsl_parse_cdata,
-          .obj = &cdata_spec
-          }*/
-        { .is_default = true,
-          .run = confirm_attr_var,
-          .obj = attr_var
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    append_attr_var(self, attr_var);
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("++ attr var value: %.*s", attr_var->val_size, attr_var->val);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t append_attr_var_list_item(void *accu,
-                                           void *obj)
-{
-    struct kndAttrVar *self = accu;
-    struct kndAttrVar *attr_var = obj;
-
-    /*if (!memcmp(self,
-                "description", strlen("description"))) {
-        str_attr_vars(attr_var, 1);
-        }*/
-
-    if (!self->list_tail) {
-        self->list_tail = attr_var;
-        self->list = attr_var;
-    }
-    else {
-        self->list_tail->next = attr_var;
-        self->list_tail = attr_var;
-    }
-    self->num_list_elems++;
-    //attr_var->list_count = self->num_list_elems;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t import_attr_var_list_item(void *obj,
-                                           const char *rec,
-                                           size_t *total_size)
-{
-    struct kndAttrVar *self = obj;
-    struct kndTask *task = self->task;
-    struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = task->mempool;
-    int err;
-
-    err = knd_attr_var_new(mempool, &attr_var);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr_var->class_var = self->class_var;
-    attr_var->task = task;
-
-    // TEST
-    mempool->num_attr_vars++;
-    attr_var->is_list_item = true;
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. parse import attr item..");
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = set_attr_var_name,
-          .obj = attr_var
-        },
-        { .validate = import_nested_attr_var,
-          .obj = attr_var
-        }
-    };
-    gsl_err_t parser_err;
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    // append
-    return append_attr_var_list_item(self, attr_var);
-}
-
-static gsl_err_t import_attr_var_list(void *obj,
-                                       const char *name, size_t name_size,
-                                       const char *rec, size_t *total_size)
-{
-    struct kndTask *task = obj;
-    struct kndClassVar *self = task->class_var;
-    struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = task->mempool;
-    gsl_err_t parser_err;
-    int err, e;
-
-    if (!self->entry) {
-        knd_log("-- anonymous class var: %.*s?  REC:%.*s",
-                64, rec);
-        struct glbOutput *log = task->log; 
-        log->reset(log);
-        e = log->write(log, "no baseclass name specified",
-                     strlen("no baseclass name specified"));
-        if (e) return make_gsl_err_external(e);
-        task->http_code = HTTP_BAD_REQUEST;
-        return *total_size = 0, make_gsl_err_external(knd_FAIL);
-    } 
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("== import attr attr_var list: \"%.*s\" REC: %.*s",
-                name_size, name, 32, rec);
-
-    err = knd_attr_var_new(mempool, &attr_var);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr_var->class_var = self;
-    attr_var->name = name;
-    attr_var->name_size = name_size;
-
-    append_attr_var(self, attr_var);
-    attr_var->task = task;
-
-    struct gslTaskSpec import_attr_var_spec = {
-        .is_list_item = true,
-        .parse = import_attr_var_list_item,
-        .obj = attr_var
-    };
-
-    parser_err = gsl_parse_array(&import_attr_var_spec, rec, total_size);
-    if (parser_err.code) return parser_err;
-
-    // test
-    /*   if (!memcmp(name, "description", strlen("description")))
-        str_attr_vars(attr_var, 1);
-    */
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t import_nested_attr_var(void *obj,
-                                        const char *name, size_t name_size,
-                                        const char *rec, size_t *total_size)
-{
-    struct kndAttrVar *self = obj;
-    struct kndTask *task = self->task;
-    struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = task->mempool;
-    gsl_err_t parser_err;
-    int err;
-
-    err = knd_attr_var_new(mempool, &attr_var);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr_var->class_var = self->class_var;
-
-    // TEST
-    mempool->num_attr_vars++;
-
-    attr_var->name = name;
-    attr_var->name_size = name_size;
-    attr_var->task = task;
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. import nested attr: \"%.*s\" REC: %.*s",
-                attr_var->name_size, attr_var->name, 16, rec);
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = set_attr_var_value,
-          .obj = attr_var
-        },
-        { .type = GSL_SET_STATE,
-          .validate = import_nested_attr_var,
-          .obj = attr_var
-        },
-        { .validate = import_nested_attr_var,
-          .obj = attr_var
-        }/*,
-        { .name = "_cdata",
-          .name_size = strlen("_cdata"),
-          .parse = parse_attr_var_cdata,
-          .obj = attr_var
-          }*/,
-        { .is_default = true,
-          .run = confirm_attr_var,
-          .obj = self
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("++ attr var: \"%.*s\" val:%.*s",
-                attr_var->name_size, attr_var->name,
-                attr_var->val_size, attr_var->val);
-
-    attr_var->next = self->children;
-    self->children = attr_var;
-    self->num_children++;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static void append_attr_var(struct kndClassVar *ci,
-                            struct kndAttrVar *attr_var)
-{
-    struct kndAttrVar *curr_var;
-
-    for (curr_var = ci->attrs; curr_var; curr_var = curr_var->next) {
-        if (curr_var->name_size != attr_var->name_size) continue;
-        if (!memcmp(curr_var->name, attr_var->name, attr_var->name_size)) {
-            if (!curr_var->list_tail) {
-                curr_var->list_tail = attr_var;
-                curr_var->list = attr_var;
-            }
-            else {
-                curr_var->list_tail->next = attr_var;
-                curr_var->list_tail = attr_var;
-            }
-            curr_var->num_list_elems++;
-            return;
-        }
-    }
-
-    if (!ci->tail) {
-        ci->tail  = attr_var;
-        ci->attrs = attr_var;
-    }
-    else {
-        ci->tail->next = attr_var;
-        ci->tail = attr_var;
-    }
-    ci->num_attrs++;
-}
-
 extern gsl_err_t parse_class_var(struct kndTask *task,
                                  const char *rec,
                                  size_t *total_size)
@@ -704,14 +367,14 @@ extern gsl_err_t parse_class_var(struct kndTask *task,
           .obj = task
         },
         { .type = GSL_SET_STATE,
-          .validate = import_attr_var,
+          .validate = knd_import_attr_var,
           .obj = task
         },
-        { .validate = import_attr_var,
+        { .validate = knd_import_attr_var,
           .obj = task
         },
         { .type = GSL_SET_ARRAY_STATE,
-          .validate = import_attr_var_list,
+          .validate = knd_import_attr_var_list,
           .obj = task
         }
     };
@@ -724,25 +387,28 @@ extern gsl_err_t parse_class_var(struct kndTask *task,
 
 extern gsl_err_t knd_import_class_var(struct kndClassVar *self,
                                       const char *rec,
-                                      size_t *total_size)
+                                      size_t *total_size,
+                                      struct kndTask *task)
 {
     gsl_err_t parser_err;
+
+    task->class_var = self;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_class_var,
-          .obj = self
+          .obj = task
         },
         { .type = GSL_SET_STATE,
-          .validate = import_attr_var,
-          .obj = self
+          .validate = knd_import_attr_var,
+          .obj = task
         },
-        { .validate = import_attr_var,
-          .obj = self
+        { .validate = knd_import_attr_var,
+          .obj = task
         },
         { .type = GSL_SET_ARRAY_STATE,
-          .validate = import_attr_var_list,
-          .obj = self
+          .validate = knd_import_attr_var_list,
+          .obj = task
         }
     };
 
@@ -797,8 +463,8 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("..worker \"%zu\" to import class: \"%.*s\".. [total:%zu] repo:%p",
-                task->id, 128, rec, mempool->num_classes, repo);
+        knd_log("..worker \"%zu\" to import class: \"%.*s\".. [total:%zu]",
+                task->id, 128, rec, mempool->num_classes);
 
     err = knd_class_new(mempool, &c);
     if (err) return make_gsl_err_external(err);
