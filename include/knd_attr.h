@@ -154,7 +154,6 @@ struct kndAttrVar
     size_t depth;
     size_t max_depth;
 
-    struct kndTask *task;
     struct kndState *states;
     size_t init_state;
     size_t num_states;
@@ -312,4 +311,11 @@ extern int knd_attr_new(struct kndMemPool *mempool,
                         struct kndAttr **result);
 
 // knd_attr.import.c
+extern gsl_err_t knd_import_attr_var(void *obj,
+                                     const char *name, size_t name_size,
+                                     const char *rec, size_t *total_size);
+extern gsl_err_t knd_import_attr_var_list(void *obj,
+                                          const char *name, size_t name_size,
+                                          const char *rec, size_t *total_size);
+
 extern gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *total_size);
