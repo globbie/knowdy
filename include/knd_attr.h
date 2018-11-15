@@ -216,9 +216,9 @@ struct kndAttr
     /* concise representation */
     size_t concise_level;
 
-    const char *calc_attr;//[KND_NAME_SIZE];
+    const char *calc_attr;
 
-    const char *idx_name; //[KND_SHORT_NAME_SIZE];
+    const char *idx_name;
     size_t idx_name_size;
 
     struct kndState *states;
@@ -319,3 +319,12 @@ extern gsl_err_t knd_import_attr_var_list(void *obj,
                                           const char *rec, size_t *total_size);
 
 extern gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *total_size);
+
+// knd_attr.select.c
+extern gsl_err_t knd_attr_select_clause(struct kndAttr *attr,
+                                        struct kndTask *task,
+                                        const char *rec, size_t *total_size);
+extern gsl_err_t knd_parse_attr_var_select(void *obj,
+                                           const char *name, size_t name_size,
+                                           const char *rec, size_t *total_size);
+

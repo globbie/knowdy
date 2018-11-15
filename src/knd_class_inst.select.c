@@ -104,7 +104,7 @@ static gsl_err_t present_state(void *obj,
 
     task->type = KND_SELECT_STATE;
 
-    if (DEBUG_INST_LEVEL_TMP) {
+    if (DEBUG_INST_LEVEL_2) {
         self->str(self, 1);
     }
 

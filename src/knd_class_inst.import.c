@@ -157,7 +157,7 @@ static gsl_err_t parse_import_elem(void *obj1,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_INST_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. parsing elem import REC: %.*s", 128, rec);
 
     err = kndClassInst_validate_attr(self, name, name_size, &attr, &elem);

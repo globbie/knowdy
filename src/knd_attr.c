@@ -28,9 +28,16 @@ static void str(struct kndAttr *self)
     const char *type_name = knd_attr_names[self->type];
 
     if (self->is_a_set)
-        knd_log("\n%*s[%s", self->depth * KND_OFFSET_SIZE, "", self->name);
+        knd_log("\n%*s[%.*s", self->depth * KND_OFFSET_SIZE, "",
+                self->name_size, self->name);
     else
-        knd_log("\n%*s{%s %s", self->depth * KND_OFFSET_SIZE, "", type_name, self->name);
+        knd_log("\n%*s{%s %.*s", self->depth * KND_OFFSET_SIZE, "",
+                type_name, self->name_size, self->name);
+
+    knd_log("%*s  IDX:\"%.*s\" [%zu]",
+            self->depth * KND_OFFSET_SIZE, "",
+            self->idx_name_size, self->idx_name,
+            self->idx_name_size);
 
     if (self->access_type == KND_ATTR_ACCESS_RESTRICTED) {
         knd_log("%*s  ACL:restricted",
@@ -46,6 +53,8 @@ static void str(struct kndAttr *self)
         knd_log("%*s  CONCISE:%zu",
                 self->depth * KND_OFFSET_SIZE, "", self->concise_level);
     }
+
+
     if (self->is_implied) {
         knd_log("%*s  (implied)",
                 self->depth * KND_OFFSET_SIZE, "");
@@ -78,10 +87,6 @@ static void str(struct kndAttr *self)
                 self->calc_oper, self->calc_attr);
     }
     */
-    if (self->idx_name_size) {
-        knd_log("%*s  idx: %s",
-                self->depth * KND_OFFSET_SIZE, "", self->idx_name);
-    }
 
     /*if (self->default_val_size) {
         knd_log("%*s  default VAL: %s",
