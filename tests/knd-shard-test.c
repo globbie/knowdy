@@ -78,10 +78,10 @@ START_TEST(shard_table_test)
         //    .input = "{task {!class Person {num age}}}",
         //    .expect = "{\"result\":\"OK\"}"
         //},
-        {
-            .input = "{task {!class Person}}",
-            .expect = "{\"err\":\"Person class name already exists\",\"http_code\":409}"
-        },
+        //{
+        //    .input = "{task {!class Person}}",
+        //    .expect = "{\"err\":\"Person class name already exists\",\"http_code\":409}"
+        //},
 //        {
 //            .input = "{task {!class Worker {is PersonUnknown}}}",
 //            .expect = "{\"err\":\"internal server error\",\"http_code\":404}"  // TODO(k15tfu): fix this
@@ -95,10 +95,10 @@ START_TEST(shard_table_test)
         //    .expect = "{\"result\":\"OK\"}"
         //},
         // get class
-        {
-            .input = "{task {class Person}}",
-            .expect = "{class Person{_id 2} {_repo /}{_state 1{phase new}}[attrs{num age}]{_subclasses {total 1} {num_terminals 1}[batch{Worker {_id 3}}]}}"
-        },
+        //{
+        //    .input = "{task {class Person}}",
+        //    .expect = "{class Person{_id 2} {_repo /}{_state 1{phase new}}[attrs{num age}]{_subclasses {total 1} {num_terminals 1}[batch{Worker {_id 3}}]}}"
+        //},
 // FIXME(k15tfu): _id doesn't work
 //        {
 //            .input = "{task {class {_id 2}}}",
@@ -125,10 +125,10 @@ START_TEST(shard_table_test)
 //            .expect = "??"
 //        },
         // get the latest state
-        {
-            .input = "{task {class Person {_state}}}",
-            .expect = "{\"_state\":1,\"_phase\":\"new\",\"descendants\":{\"_state\":1,\"total\":1}}"
-        },
+        //{
+        //    .input = "{task {class Person {_state}}}",
+        //    .expect = "{\"_state\":1,\"_phase\":\"new\",\"descendants\":{\"_state\":1,\"total\":1}}"
+        //},
 // FIXME(k15tfu): _id doesn't work
 //        {
 //            .input = "{task {class {_id 2} {_state}}}",
