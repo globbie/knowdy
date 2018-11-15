@@ -2,35 +2,40 @@
 
 [![Build Status](https://travis-ci.org/globbie/knowdy.svg?branch=master)](https://travis-ci.org/globbie/knowdy)
 
-Meet Knowdy: a semantic graph database
+An embedded semantic graph database.
+If you want to test as a HTTP service, please see [Gnode](https://github.com/globbie/gnode) Golang wrapper.
 
 ## Build
 
-* Compile sources
+### Dependencies list
 
-    mkdir build && cd build
-    cmake .. && make
+* cmake
+* gcc
+* make
+* pkg-config
+* libevent-dev
+* check
+* libsubunit-dev
+* valgrind
 
-* Build package
+### Before compilation
 
-    make package
+```bash
+git submodules update --init --recursive
+```
 
-After this you will get an RPM package at your build directory. If you want to deploy your package see 
-[infrastructure](https://github.com/globbie/infrastructure) repository.
+### Compilation
 
+```bash
+mkdir build && cd build
+cmake .. && make
+```
+
+### Test
+
+Execute `make check-knowdy` in your build directory to run tests.
 
 ## Install
 
-### Installing from sources
+Run `make install` in your build directory.
 
-* Run `make install` in you build directory.
-
-### Installing on CentOS 7
-
-* Add yum repository `http://repo.globbie.com/centos/$releasever/$basearch/`
-* Install knowdy `yum install knowdy`
-
-
-## Run
-
-    systemctl start knd-shard
