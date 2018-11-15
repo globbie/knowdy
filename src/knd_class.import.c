@@ -58,7 +58,8 @@ extern gsl_err_t knd_parse_import_class_inst(void *obj,
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2) {
-        knd_log(".. import \"%.*s\" inst..", 128, rec);
+        knd_log(".. import \"%.*s\" inst.. (repo:%.*s)",
+                128, rec, repo->name_size, repo->name);
     }
 
     if (!task->class) {
@@ -462,7 +463,7 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log("..worker \"%zu\" to import class: \"%.*s\".. [total:%zu]",
                 task->id, 128, rec, mempool->num_classes);
 

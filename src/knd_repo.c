@@ -424,7 +424,7 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
 {
     struct kndUpdate *update;
     struct kndMemPool *mempool = task->mempool;
-    //struct glbOutput *out = task->out;
+    struct glbOutput *out = task->out;
     struct kndStateRef *ref, *child_ref;
     struct kndState *state;
     struct kndClassEntry *entry;
@@ -479,14 +479,14 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
 
     // TODO: build update GSP
 
-//    switch (task->format) {
-//    case KND_FORMAT_JSON:
-//        err = present_repo_state_JSON(self, out);   RET_ERR();
-//        break;
-//    default:
-//        err = present_repo_state_GSL(self, out);    RET_ERR();
-//        break;
-//    }
+    switch (task->format) {
+    case KND_FORMAT_JSON:
+        err = present_repo_state_JSON(self, out);   RET_ERR();
+        break;
+    default:
+        err = present_repo_state_GSL(self, out);    RET_ERR();
+        break;
+    }
 
     return knd_OK;
 }

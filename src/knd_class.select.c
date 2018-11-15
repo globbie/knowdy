@@ -711,12 +711,14 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
     int err;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-        knd_log(".. parsing class select rec: \"%.*s\"", 32, rec);
+        knd_log(".. parsing class select rec: \"%.*s\" (repo:%.*s)",
+                32, rec, repo->name_size, repo->name);
 
     struct LocalContext ctx = {
         .task = task,
         .repo = repo
     };
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .is_selector = true,
