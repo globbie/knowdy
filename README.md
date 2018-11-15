@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/globbie/knowdy.svg?branch=master)](https://travis-ci.org/globbie/knowdy)
 
 An embedded semantic graph database.
-If you want to test as a HTTP service, please see [Gnode](https://github.com/globbie/gnode) Golang wrapper.
+If you want to test Knowdy as a HTTP service, please see [Gnode](https://github.com/globbie/gnode) Golang wrapper.
 
 ## Build
 
