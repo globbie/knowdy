@@ -65,13 +65,15 @@ static gsl_err_t parse_gloss_item(void *obj,
     struct kndTask *task = obj;
     struct kndClass *self = task->class;
     struct kndTranslation *tr;
+    int err;
 
     if (DEBUG_GSL_LEVEL_2)
         knd_log(".. %.*s: allocate gloss translation",
                 self->entry->name_size, self->entry->name);
 
-    tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
+    err = knd_mempool_alloc(task->mempool, KND_MEMPAGE_SMALL,
+                            sizeof(struct kndTranslation), (void **)&tr);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     memset(tr, 0, sizeof(struct kndTranslation));
 
     struct gslTaskSpec specs[] = {
@@ -85,10 +87,10 @@ static gsl_err_t parse_gloss_item(void *obj,
           .obj = tr
         }
     };
-    gsl_err_t err;
+    gsl_err_t parser_err;
 
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err;
 
     if (tr->curr_locale_size == 0 || tr->val_size == 0)
         return make_gsl_err(gsl_FORMAT);  // error: both of them are required
@@ -131,15 +133,18 @@ static gsl_err_t parse_summary_array_item(void *obj,
                                           const char *rec,
                                           size_t *total_size)
 {
-    struct kndClass *self = obj;
+    struct kndTask *task = obj;
+    struct kndClass *self = task->class;
     struct kndTranslation *tr;
+    int err;
 
     if (DEBUG_GSL_LEVEL_2)
         knd_log(".. %.*s: allocate summary translation",
                 self->entry->name_size, self->entry->name);
 
-    tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
+    err = knd_mempool_alloc(task->mempool, KND_MEMPAGE_SMALL,
+                            sizeof(struct kndTranslation), (void **)&tr);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
     memset(tr, 0, sizeof(struct kndTranslation));
 
     struct gslTaskSpec specs[] = {
@@ -153,10 +158,10 @@ static gsl_err_t parse_summary_array_item(void *obj,
           .obj = tr
         }
     };
-    gsl_err_t err;
+    gsl_err_t parser_err;
 
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err;
 
     if (tr->curr_locale_size == 0 || tr->val_size == 0)
         return make_gsl_err(gsl_FORMAT);  // error: both of them are required
@@ -179,17 +184,17 @@ extern gsl_err_t knd_parse_summary_array(void *obj,
                                          const char *rec,
                                          size_t *total_size)
 {
-    struct kndClass *self = obj;
+    struct kndTask *task = obj;
 
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
         .parse = parse_summary_array_item,
-        .obj = self
+        .obj = task
     };
 
     if (DEBUG_GSL_LEVEL_2)
         knd_log(".. %.*s: reading summary",
-                self->entry->name_size, self->entry->name);
+                task->class->entry->name_size, task->class->entry->name);
 
     return gsl_parse_array(&item_spec, rec, total_size);
 }
@@ -596,7 +601,8 @@ static int present_subclasses(struct kndClass *self,
         }
     }
     err = out->writec(out, ']');                                                  RET_ERR();
-    
+    err = out->writec(out, '}');                                                  RET_ERR();
+
     return knd_OK;
 }
 
@@ -783,7 +789,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
     task->depth++;
 
     /* state info */
-    if (self->num_states) {
+    if (0 && self->num_states) {
         err = export_class_state_GSL(self, task);                             RET_ERR();
     }
 

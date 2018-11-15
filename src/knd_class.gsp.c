@@ -1702,7 +1702,7 @@ extern gsl_err_t knd_read_class_state(struct kndClass *self,
           .name = "_g",
           .name_size = strlen("_g"),
           .parse = knd_parse_gloss_array,
-          .obj = self
+          .obj = ctx.task,
         },
         { .type = GSL_SET_ARRAY_STATE,
           .name = "_is",
