@@ -321,7 +321,7 @@ static gsl_err_t parse_num_clause(struct kndAttr *attr,
         knd_log(".. pare num attr \"%.*s\"..",
                 attr->name_size, attr->name);
 
-        struct gslTaskSpec specs[] = {
+    struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = select_by_attr,
           .obj = ctx
