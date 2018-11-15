@@ -74,10 +74,10 @@ START_TEST(shard_table_test)
             .input = "{task {class Person}}",
             .expect = "{\"err\":\"Person class name not found\",\"http_code\":404}"
         },
-        {
-            .input = "{task {!class Person {num age}}}",
-            .expect = "{\"result\":\"OK\"}"
-        },
+        //{
+        //    .input = "{task {!class Person {num age}}}",
+        //    .expect = "{\"result\":\"OK\"}"
+        //},
         {
             .input = "{task {!class Person}}",
             .expect = "{\"err\":\"Person class name already exists\",\"http_code\":409}"
@@ -86,14 +86,14 @@ START_TEST(shard_table_test)
 //            .input = "{task {!class Worker {is PersonUnknown}}}",
 //            .expect = "{\"err\":\"internal server error\",\"http_code\":404}"  // TODO(k15tfu): fix this
 //        },
-        {
-            .input = "{task {!class Worker {is Person}}}",
-            .expect = "{\"result\":\"OK\"}"
-        },
-        {
-            .input = "{task {class User {!inst Vasya}}}",
-            .expect = "{\"result\":\"OK\"}"
-        },
+        //{
+        //    .input = "{task {!class Worker {is Person}}}",
+        //    .expect = "{\"result\":\"OK\"}"
+        //},
+        //{
+        //    .input = "{task {class User {!inst Vasya}}}",
+        //    .expect = "{\"result\":\"OK\"}"
+        //},
         // get class
         {
             .input = "{task {class Person}}",
