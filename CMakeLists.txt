@@ -74,8 +74,11 @@ ExternalProject_Add(knode-external
     INSTALL_COMMAND ""
 )
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/knode/include")
-link_directories("${CMAKE_BINARY_DIR}/libs/knode/lib")
-set(KNODE_LIBRARY "kmq")
+add_library(kmq_shared SHARED IMPORTED)
+add_dependencies(kmq_shared knode-external)
+set_target_properties(kmq_shared PROPERTIES
+    IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/libs/knode/lib/libkmq${CMAKE_SHARED_LIBRARY_SUFFIX}")
+set(KNODE_LIBRARY kmq_shared)
 
 include_directories("include")
 
