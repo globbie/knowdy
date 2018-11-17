@@ -27,9 +27,22 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(CURL_LIBRARY ${CURL_LIBRARY} curl)
 endif()
 
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/gsl-parser" EXCLUDE_FROM_ALL)
+include(ExternalProject)
+
+ExternalProject_Add(gsl-parser-external
+    PREFIX ${CMAKE_BINARY_DIR}/libs/gsl-parser
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/gsl-parser
+    BINARY_DIR ${CMAKE_BINARY_DIR}/libs/gsl-parser
+    CMAKE_ARGS
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    BUILD_COMMAND make gsl-parser_static
+    BUILD_ALWAYS TRUE
+    INSTALL_COMMAND ""
+)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/gsl-parser/include")
-set(GSL_PARSER_LIBRARY gsl-parser_static)
+set(GSL_PARSER_LIBRARY "${CMAKE_BINARY_DIR}/libs/gsl-parser/lib/libgsl-parser_static.a")
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib" EXCLUDE_FROM_ALL)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib/include")
