@@ -42,8 +42,7 @@ ExternalProject_Add(gsl-parser-external
     INSTALL_COMMAND ""
 )
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/gsl-parser/include")
-link_directories("${CMAKE_BINARY_DIR}/libs/gsl-parser/lib")
-set(GSL_PARSER_LIBRARY gsl-parser_static)
+set(GSL_PARSER_LIBRARY "${CMAKE_BINARY_DIR}/libs/gsl-parser/lib/libgsl-parser_static.a")
 
 ExternalProject_Add(glb-lib-external
     PREFIX ${CMAKE_BINARY_DIR}/libs/glb-lib
@@ -58,11 +57,24 @@ ExternalProject_Add(glb-lib-external
     INSTALL_COMMAND ""
 )
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib/include")
-link_directories("${CMAKE_BINARY_DIR}/libs/glb-lib/lib")
-set(GLB_LIBRARY glb-lib_static glb-lib-options_static)
+set(GLB_LIBRARY
+    "${CMAKE_BINARY_DIR}/libs/glb-lib/lib/libglb-lib_static.a"
+    "${CMAKE_BINARY_DIR}/libs/glb-lib/lib/libglb-lib-options_static.a")
 
+ExternalProject_Add(knode-external
+    PREFIX ${CMAKE_BINARY_DIR}/libs/knode
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/knode
+    BINARY_DIR ${CMAKE_BINARY_DIR}/libs/knode
+    CMAKE_ARGS
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    BUILD_COMMAND make kmq
+    BUILD_ALWAYS TRUE
+    INSTALL_COMMAND ""
+)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/knode/include")
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/knode" EXCLUDE_FROM_ALL)
+set(KNODE_LIBRARY "${CMAKE_BINARY_DIR}/libs/knode/lib/libkmq.so")
 
 include_directories("include")
 
