@@ -42,11 +42,24 @@ ExternalProject_Add(gsl-parser-external
     INSTALL_COMMAND ""
 )
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/gsl-parser/include")
-set(GSL_PARSER_LIBRARY "${CMAKE_BINARY_DIR}/libs/gsl-parser/lib/libgsl-parser_static.a")
+link_directories("${CMAKE_BINARY_DIR}/libs/gsl-parser/lib")
+set(GSL_PARSER_LIBRARY gsl-parser_static)
 
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib" EXCLUDE_FROM_ALL)
+ExternalProject_Add(glb-lib-external
+    PREFIX ${CMAKE_BINARY_DIR}/libs/glb-lib
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib
+    BINARY_DIR ${CMAKE_BINARY_DIR}/libs/glb-lib
+    CMAKE_ARGS
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    BUILD_COMMAND make glb-lib_static glb-lib-options_static
+    BUILD_ALWAYS TRUE
+    INSTALL_COMMAND ""
+)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib/include")
-set(GLB_LIBRARY glb-lib_static)
+link_directories("${CMAKE_BINARY_DIR}/libs/glb-lib/lib")
+set(GLB_LIBRARY glb-lib_static glb-lib-options_static)
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/knode/include")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/knode" EXCLUDE_FROM_ALL)
