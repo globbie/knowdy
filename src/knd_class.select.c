@@ -77,7 +77,7 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
     task->inner_class_state_refs = NULL;
     task->class_inst_state_refs = NULL;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+    if (DEBUG_CLASS_SELECT_LEVEL_2) {
         c->str(c, 1);
     }
 
@@ -276,7 +276,7 @@ static gsl_err_t present_state(void *obj,
     if (task->state_gt >= latest_state->numid)             goto show_curr_state;
     if (task->state_lt && task->state_lt < task->state_gt) goto show_curr_state;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+    if (DEBUG_CLASS_SELECT_LEVEL_2) {
         knd_log(".. select class delta:  gt %zu  lt %zu  eq:%zu..",
                 task->state_gt, task->state_lt, task->state_eq);
     }
@@ -379,7 +379,7 @@ static gsl_err_t present_class_selection(void *obj,
 
     out->reset(out);
     if (task->type == KND_SELECT_STATE) {
-        if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+        if (DEBUG_CLASS_SELECT_LEVEL_2)
             knd_log(".. batch selection: batch size: %zu   start from: %zu",
                     task->batch_max, task->batch_from);
 
@@ -388,6 +388,11 @@ static gsl_err_t present_class_selection(void *obj,
             if (c && c->entry->descendants) {
                 set = c->entry->descendants;
 
+
+                // TODO apply clauses if any
+                // &set
+                
+                // export
                 err = knd_class_set_export(set, task->format, task);
                 if (err) return make_gsl_err_external(err);
 
@@ -400,6 +405,7 @@ static gsl_err_t present_class_selection(void *obj,
         }
 
         /* TODO: intersection cache lookup  */
+
         set = task->sets[0];
 
         /* intersection required */
@@ -422,9 +428,10 @@ static gsl_err_t present_class_selection(void *obj,
             return make_gsl_err(gsl_OK);
         }
 
-        /* final presentation in JSON
-           TODO: choose output format */
+        // TODO apply clauses
 
+
+        /* final presentation */
         switch (set->type) {
             case KND_SET_STATE_UPDATE:
                 knd_log(".. export state set..");
@@ -439,6 +446,7 @@ static gsl_err_t present_class_selection(void *obj,
         return make_gsl_err(gsl_OK);
     }
 
+    /* display all classes*/
     if (!c) {
         knd_log("-- no specific class selected");
         set = ctx->repo->class_idx;
@@ -458,19 +466,11 @@ static gsl_err_t present_class_selection(void *obj,
         return make_gsl_err(gsl_OK);
     }
 
-    //c->depth = 0;
-    //c->max_depth = 1;
-
     err = knd_class_export(c, task->format, task);
     if (err) {
         knd_log("-- class export failed");
         return make_gsl_err_external(err);
     }
-
-//    err = out->writec(out, '\n');
-//    if (err) {
-//        return make_gsl_err_external(err);
-//    }
 
     return make_gsl_err(gsl_OK);
 }
@@ -608,12 +608,63 @@ static gsl_err_t rels_presentation(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
+extern int knd_class_match_query(struct kndClass *self,
+                                 struct kndAttrVar *query)
+{
+    struct kndSet *attr_idx = self->attr_idx;
+    knd_logic logic = query->logic;
+    struct kndAttrRef *attr_ref;
+    struct kndAttrVar *attr_var;
+    struct kndAttr *attr;
+    void *result;
+    int err;
+
+    for (attr_var = query->children; attr_var; attr_var = attr_var->next) {
+        attr = attr_var->attr;
+
+        err = attr_idx->get(attr_idx, attr->id, attr->id_size, &result);
+        if (err) return err;
+        attr_ref = result;
+
+        // TODO check the default value
+        if (!attr_ref->attr_var) return knd_NO_MATCH;
+        
+        err = knd_attr_var_match(attr_ref->attr_var, attr_var);
+        if (err == knd_NO_MATCH) {
+            switch (logic) {
+            case KND_LOGIC_AND:
+                return knd_NO_MATCH;
+            default:
+                break;
+            }
+            continue;
+        }
+
+        /* got a match */
+        switch (logic) {
+        case KND_LOGIC_OR:
+            return knd_OK;
+        default:
+            break;
+        }
+    }
+
+    switch (logic) {
+    case KND_LOGIC_OR:
+        return knd_NO_MATCH;
+    default:
+        break;
+    }
+
+    return knd_OK;
+}
+    
 static gsl_err_t parse_attr_select(void *obj,
                                    const char *name, size_t name_size,
                                    const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
+    struct kndTask *task  = ctx->task;
     struct kndClass *self = ctx->class;
     struct glbOutput *log = task->log;
     struct kndAttrRef *attr_ref;
@@ -633,6 +684,7 @@ static gsl_err_t parse_attr_select(void *obj,
         return *total_size = 0, make_gsl_err_external(err);
     }
     attr = attr_ref->attr;
+    task->class = self;
 
     return knd_attr_select_clause(attr, task, rec, total_size);
 }
@@ -710,7 +762,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log(".. parsing class select rec: \"%.*s\" (repo:%.*s)",
                 32, rec, repo->name_size, repo->name);
 

@@ -131,8 +131,6 @@ struct kndClassEntry
     struct kndProcEntry **procs;
     size_t num_procs;
 
-    //struct kndObjDir *obj_dir;
-
     struct kndSet *inst_idx;
     size_t num_insts;
     struct kndSet *attr_idx;
@@ -355,6 +353,8 @@ extern int knd_class_new(struct kndMemPool *mempool,
                          struct kndClass **result);
 
 // knd_class.select.c
+extern int knd_class_match_query(struct kndClass *self,
+                                 struct kndAttrVar *query);
 extern gsl_err_t knd_class_select(struct kndRepo *repo,
                                   const char *rec, size_t *total_size,
                                   struct kndTask *task);

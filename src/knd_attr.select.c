@@ -41,12 +41,64 @@
 #define DEBUG_ATTR_SELECT_LEVEL_TMP 1
 
 struct LocalContext {
-    struct kndTask *task;
-    struct kndRepo *repo;
-    struct kndClass *class;
+    struct kndTask    *task;
+    struct kndRepo    *repo;
+    struct kndClass   *class;
     struct kndAttrRef *attr_ref;
-    struct kndAttr *attr;
+    struct kndAttrVar *attr_var;
+    struct kndAttr    *attr;
+    knd_logic logic;
 };
+
+static gsl_err_t set_logic_OR_val(void *obj,
+                                  const char *val,
+                                  size_t val_size)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndMemPool *mempool = task->mempool;
+    struct kndAttrVar *attr_var;
+    int err;
+
+    if (DEBUG_ATTR_SELECT_LEVEL_2)
+        knd_log("== set logic OR val: %.*s", val_size, val);
+
+    err = knd_attr_var_new(mempool, &attr_var);
+    if (err) return make_gsl_err_external(err);
+
+    attr_var->attr = ctx->attr;
+    attr_var->val = val;
+    attr_var->val_size = val_size;
+
+    if (ctx->attr->type == KND_ATTR_NUM) {
+        memcpy(buf, val, val_size);
+        buf_size = val_size;
+        buf[buf_size] = '\0';
+        err = knd_parse_num(buf, &attr_var->numval);
+    }
+    
+    attr_var->next = ctx->attr_var;
+    ctx->attr_var = attr_var;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_logic_OR_val_array(void *obj,
+                                          const char *rec,
+                                          size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    ctx->logic = KND_LOGIC_OR;
+
+    struct gslTaskSpec item_spec = {
+        .is_list_item = true,
+        .run = set_logic_OR_val,
+        .obj = obj
+    };
+    return gsl_parse_array(&item_spec, rec, total_size);
+}
 
 static gsl_err_t run_set_attr_var(void *obj,
                                   const char *val, size_t val_size)
@@ -126,7 +178,6 @@ static gsl_err_t run_set_attr_var(void *obj,
     attr_var->num_states++;
     state->numid = attr_var->num_states;
 
-
     task->type = KND_UPDATE_STATE;
 
     /* inform parent class */
@@ -196,7 +247,7 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndClass *self = ctx->class;
+    struct kndClass *self = task->class;
     struct kndClass *c;
     struct kndSet *set;
     void *result;
@@ -204,18 +255,18 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     size_t class_id_size;
     struct kndFacet *facet;
     struct glbOutput *log = task->log;
-    struct kndAttr *attr = ctx->attr_ref->attr;
+    struct kndAttr *attr = ctx->attr;
     int err;
 
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
+    c = attr->ref_class;
 
-    c = ctx->attr_ref->class_entry->class;
-
-    if (DEBUG_ATTR_SELECT_LEVEL_TMP) {
-        knd_log("\n\n== select %.*s attr by value: \"%.*s\" (class: \"%.*s\" "
+    if (DEBUG_ATTR_SELECT_LEVEL_2) {
+        knd_log("\n\n== _is class:%.*s  select %.*s attr by value: \"%.*s\" (class: \"%.*s\" "
                 " id:%.*s repo:%.*s)",
+                self->name_size, self->name,
                 attr->name_size, attr->name,
                 val_size, val,
                 c->name_size, c->name,
@@ -224,17 +275,18 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
         c->str(c, 1);
     }
 
-    if (!c->entry->descendants) {
+    if (!self->entry->descendants) {
         knd_log("-- no descendants idx in \"%.*s\" :(",
-                c->name_size, c->name);
+                self->name_size, self->name);
         return make_gsl_err(gsl_FAIL);
     }
-    set = c->entry->descendants;
+    set = self->entry->descendants;
 
     err = knd_set_get_facet(set, ctx->attr, &facet);
     if (err) {
         log->reset(log);
-        log->writef(log, "no such facet: %.*s", val_size, val);
+        log->writef(log, "-- no such facet: %.*s",
+                    ctx->attr->name_size, ctx->attr->name);
         task->error = knd_NO_MATCH;
         task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err_external(knd_NO_MATCH);
@@ -265,7 +317,6 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
             return make_gsl_err(gsl_FAIL);
         }
     }
-
     set = result;
 
     if (task->num_sets + 1 > KND_MAX_CLAUSES)
@@ -281,13 +332,43 @@ static gsl_err_t parse_classref_clause(struct kndAttr *attr,
                                        struct LocalContext *ctx,
                                        const char *rec, size_t *total_size)
 {
-    if (DEBUG_ATTR_SELECT_LEVEL_TMP)
-        knd_log(".. pare classref attr \"%.*s\"..",
+    if (DEBUG_ATTR_SELECT_LEVEL_2)
+        knd_log(".. parse classref attr \"%.*s\"..",
                 attr->name_size, attr->name);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = select_by_attr,
+          .obj = ctx
+        },
+        { .type = GSL_SET_ARRAY_STATE,
+          .name = "_or",
+          .name_size = strlen("_or"),
+          .parse = parse_logic_OR_val_array,
+          .obj = ctx
+        }
+    };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+static gsl_err_t parse_num_clause(struct kndAttr *attr,
+                                  struct LocalContext *ctx,
+                                  const char *rec, size_t *total_size)
+{
+    if (DEBUG_ATTR_SELECT_LEVEL_2)
+        knd_log(".. parse num attr \"%.*s\"..",
+                attr->name_size, attr->name);
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = select_by_attr,
+          .obj = ctx
+        },
+        { .type = GSL_SET_ARRAY_STATE,
+          .name = "_or",
+          .name_size = strlen("_or"),
+          .parse = parse_logic_OR_val_array,
           .obj = ctx
         }
     };
@@ -299,31 +380,19 @@ static gsl_err_t parse_str_clause(struct kndAttr *attr,
                                   struct LocalContext *ctx,
                                   const char *rec, size_t *total_size)
 {
-    if (DEBUG_ATTR_SELECT_LEVEL_TMP)
-        knd_log(".. pare str attr \"%.*s\"..",
+    if (DEBUG_ATTR_SELECT_LEVEL_2)
+        knd_log(".. parse num attr \"%.*s\"..",
                 attr->name_size, attr->name);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = select_by_attr,
           .obj = ctx
-        }
-    };
-   
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
-static gsl_err_t parse_num_clause(struct kndAttr *attr,
-                                  struct LocalContext *ctx,
-                                  const char *rec, size_t *total_size)
-{
-    if (DEBUG_ATTR_SELECT_LEVEL_TMP)
-        knd_log(".. pare num attr \"%.*s\"..",
-                attr->name_size, attr->name);
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = select_by_attr,
+        },
+        { .type = GSL_SET_ARRAY_STATE,
+          .name = "_or",
+          .name_size = strlen("_or"),
+          .parse = parse_logic_OR_val_array,
           .obj = ctx
         }
     };
@@ -335,8 +404,13 @@ extern gsl_err_t knd_attr_select_clause(struct kndAttr *attr,
                                         struct kndTask *task,
                                         const char *rec, size_t *total_size)
 {
-    if (DEBUG_ATTR_SELECT_LEVEL_TMP) {
-        knd_log(".. select by attr \"%.*s\"..", attr->name_size, attr->name);
+    struct kndMemPool *mempool = task->mempool;
+    struct kndAttrVar *attr_var;
+    gsl_err_t parser_err;
+    int err;
+    if (DEBUG_ATTR_SELECT_LEVEL_2) {
+        knd_log(".. select by attr \"%.*s\"..",
+                attr->name_size, attr->name);
         attr->str(attr);
     }
 
@@ -347,20 +421,50 @@ extern gsl_err_t knd_attr_select_clause(struct kndAttr *attr,
 
     switch (attr->type) {
     case KND_ATTR_REF:
-        return parse_classref_clause(attr, &ctx, rec, total_size);
+        parser_err = parse_classref_clause(attr, &ctx, rec, total_size);
+        if (parser_err.code) return parser_err;
+        break;
     case KND_ATTR_NUM:
-        return parse_num_clause(attr, &ctx, rec, total_size);
+        parser_err = parse_num_clause(attr, &ctx, rec, total_size);
+        if (parser_err.code) return parser_err;
+        break;
     case KND_ATTR_STR:
-        return parse_str_clause(attr, &ctx, rec, total_size);
+        parser_err = parse_str_clause(attr, &ctx, rec, total_size);
+        if (parser_err.code) return parser_err;
+        break;
     default:
         knd_log("-- no clause filtering in attr %.*s",
                 attr->name_size, attr->name);
         return *total_size = 0, make_gsl_err_external(gsl_FAIL);
-        break;
+    }
+
+    err = knd_attr_var_new(mempool, &attr_var);
+    if (err) return make_gsl_err_external(err);
+
+    attr_var->attr = attr;
+    attr_var->logic = ctx.logic;
+    attr_var->children = ctx.attr_var;
+
+    /* if this attr is not indexed (= no precomputed sets available), 
+       just add a logical clause to the query */
+    if (!attr->idx_name_size) {
+        attr_var->next = task->attr_var;
+        task->attr_var = attr_var;
     }
 
     return make_gsl_err(gsl_OK);
 }
+
+extern int knd_attr_var_match(struct kndAttrVar *self,
+                              struct kndAttrVar *query)
+{
+    // TODO not just numeric types
+
+    if (self->numval != query->numval) return knd_NO_MATCH; 
+
+    return knd_OK;
+}
+
 
 extern gsl_err_t knd_parse_attr_var_select(void *obj,
                                            const char *name, size_t name_size,

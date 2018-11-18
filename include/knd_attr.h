@@ -136,6 +136,7 @@ struct kndAttrVar
 
     long numval;
     bool is_cached; // for computed fields
+    knd_logic logic;
 
     struct kndAttr *implied_attr;
 
@@ -321,6 +322,8 @@ extern gsl_err_t knd_import_attr_var_list(void *obj,
 extern gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *total_size);
 
 // knd_attr.select.c
+extern int knd_attr_var_match(struct kndAttrVar *self,
+                              struct kndAttrVar *template);
 extern gsl_err_t knd_attr_select_clause(struct kndAttr *attr,
                                         struct kndTask *task,
                                         const char *rec, size_t *total_size);

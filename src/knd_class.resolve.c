@@ -629,6 +629,8 @@ static int resolve_attr_vars(struct kndClass *self,
                              struct kndClassVar *parent_item,
                              struct kndTask *task)
 {
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
     struct kndAttrVar *attr_var;
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
@@ -728,6 +730,12 @@ static int resolve_attr_vars(struct kndClass *self,
             break;
         case KND_ATTR_TEXT:
             err = resolve_text(attr_var, task);                                    RET_ERR();
+            break;
+        case KND_ATTR_NUM:
+            memcpy(buf, attr_var->val, attr_var->val_size);
+            buf_size = attr_var->val_size;
+            buf[buf_size] = '\0';
+            err = knd_parse_num(buf, &attr_var->numval);
             break;
         case KND_ATTR_PROC:
             proc = attr->proc;

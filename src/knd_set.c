@@ -162,6 +162,7 @@ extern int knd_set_get_facet(struct kndSet  *self,
                              struct kndFacet  **result)
 {
      for (struct kndFacet *f = self->facets; f; f = f->next) {
+         knd_log("== facet: %.*s", f->attr->name_size, f->attr->name);
          if (f->attr == attr) {
              *result = f;
              return knd_OK;
@@ -295,7 +296,6 @@ static int kndFacet_add_ref(struct kndFacet *self,
                 topic->name_size, topic->name,
                 topic->repo->name_size, topic->repo->name);
     }
-
 
     /* get baseclass set */
     err = kndFacet_alloc_set(self, spec, &set);                                   RET_ERR();

@@ -77,6 +77,8 @@ void kndTask_reset(struct kndTask *self)
     self->repo = NULL;
     self->class = NULL;
     self->class_inst = NULL;
+    self->attr = NULL;
+    self->attr_var = NULL;
 
     self->log->reset(self->log);
     self->out->reset(self->out);
