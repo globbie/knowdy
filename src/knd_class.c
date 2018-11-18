@@ -813,7 +813,22 @@ extern int knd_class_export(struct kndClass *self,
     case KND_FORMAT_GSP:
         return knd_class_export_GSP(self, task);
     default:
+        assert(format == KND_FORMAT_GSL);
         return knd_class_export_GSL(self, task, 0);
+    }
+    return knd_FAIL;
+}
+
+extern int knd_class_export_state(struct kndClass *self,
+                                  knd_format format,
+                                  struct kndTask *task)
+{
+    switch (format) {
+        case KND_FORMAT_JSON:
+            return knd_export_class_state_JSON(self, task);
+        default:
+            assert(format == KND_FORMAT_GSL);
+            return knd_export_class_state_GSL(self, task);
     }
     return knd_FAIL;
 }

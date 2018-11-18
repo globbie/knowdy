@@ -922,3 +922,12 @@ extern int knd_class_export_GSL(struct kndClass *self,
 
     return knd_OK;
 }
+
+extern int knd_export_class_state_GSL(struct kndClass *self,
+                                      struct kndTask *task)
+{
+    struct glbOutput *out = task->out;
+    size_t latest_state_numid = self->init_state + self->num_states;
+
+    return out->writef(out, "{_state %zu}", latest_state_numid);
+}

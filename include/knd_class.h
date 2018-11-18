@@ -243,12 +243,20 @@ extern int knd_class_export(struct kndClass *self,
                             knd_format format,
                             struct kndTask *task);
 
+extern int knd_class_export_state(struct kndClass *self,
+                                  knd_format format,
+                                  struct kndTask *task);
+
 extern gsl_err_t knd_parse_gloss_array(void *obj,
                                        const char *rec,
                                        size_t *total_size);
 extern gsl_err_t knd_parse_summary_array(void *obj,
                                          const char *rec,
                                          size_t *total_size);
+
+extern int knd_export_class_state_GSL(struct kndClass *self,
+                                      struct kndTask *task);
+
 
 extern int knd_class_export_GSL(struct kndClass *self,
                                 struct kndTask *task,
