@@ -48,4 +48,11 @@
         {code
             {_cdata {""" {class [_is {Furniture} ]} """}}}}
 
+      {[txt
+        {ru {t
+            Оператор _or может использоваться при формировании объединения
+            (логическое ИЛИ) наследуемых классов.}}}]
+        {code
+            {_cdata {""" {class [_is [_or {Kitchen Furniture} {Kitchen Appliance}] ]}"""}}}}
+
     ]}}
