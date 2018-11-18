@@ -36,7 +36,7 @@
             классов.}}}]
         {code
             {_cdata {""" {!class Furniture
-                              {_is Physical Object}
-                              {_is Product of Labor}} """}}}}
+                              [_is {Physical Object}
+                                   {Product of Labor}] } """}}}}
 
     ]}}
