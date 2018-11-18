@@ -72,6 +72,50 @@ END_TEST
 START_TEST(shard_table_test)
     static const struct table_test cases[] = {
         {
+            .input = "{task {class}}",
+            .expect = "{_set{total 1}\\[batch{class User{_id 1} {_repo /}\\[attrs{str guid}{str first-name}]}]"
+        },
+        {
+            .input = "{task {class User}}",
+            .expect = "{class User{_id 1} {_repo /}\\[attrs{str guid}{str first-name}]}"
+        },
+        {
+            .input = "{task {class {_id 1}}}",
+            .expect = ".*"  // FIXME(k15tfu): "{class User{_id 1} {_repo /}\\[attrs{str guid}{str first-name}]}"
+        },
+        {
+            .input = "{task {class User {_state}}}",
+            .expect = "{\"_state\":0}"
+        },
+        {
+            .input = "{task {class User {_state 123456}}}",
+            .expect = ".*"  // FIXME(k15tfu): state_eq is ignored
+        },
+        {
+            .input = "{task {class User {_state {lt 0}}}}",
+            .expect = ".*"  // FIXME(k15tfu): state_* are ignored
+        },
+        {
+            .input = "{task {class User {_state {desc}}}}",
+            .expect = "{\"_state\":0}"
+        },
+        {
+            .input = "{task {class User {guid}}}",
+            .expect = ".*"  // FIXME(k15tfu)
+        },
+        {
+            .input = "{task {class User {guid {_state}}}}",
+            .expect = ".*"  // FIXME(k15tfu)
+        },
+        {
+            .input = "{task {class User {guid {_state 123456}}}}",
+            .expect = ".*"  // FIXME(k15tfu)
+        },
+        {
+            .input = "{task {class User {guid {_state {lt 0}}}}}",
+            .expect = ".*"  // FIXME(k15tfu)
+        },
+        {
             .input = "{task {class Person}}",
             .expect = "{\"err\":\"Person class name not found\",\"http_code\":404}"
         },
