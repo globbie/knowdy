@@ -11,7 +11,7 @@
             поля с именами атрибутов и задавать их значения.}}}]
         {code
             {_cdata {""" {class [_is {Furniture
-                                         {brand {_class Cozy Chairs}}
+                                         {brand Cozy Chairs}
                                          {price {_gt 100}}}
                                 ]} """}}}}
 
@@ -27,8 +27,8 @@
             в предикатах запроса.}}}]
         {code
             {_cdata {""" {class [_is {Furniture
-                                         {brand {_class [_not {Plastic Chairs}
-                                                              {Rainforest Woods} ] }}}
+                                         {brand [_not {Plastic Chairs}
+                                                      {Rainforest Woods}]}}
                                 ]} """}}}}
 
     ]}}
