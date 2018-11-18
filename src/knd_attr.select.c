@@ -41,10 +41,13 @@
 #define DEBUG_ATTR_SELECT_LEVEL_TMP 1
 
 struct LocalContext {
-    struct kndTask    *task;
-    struct kndRepo    *repo;
     struct kndClass   *class;
-    struct kndAttrRef *attr_ref;
+    struct kndTask    *task;
+    struct kndAttrRef *selected_attr_ref;
+
+    struct kndRepo    *repo;
+
+    //struct kndAttrRef *attr_ref;
     struct kndAttrVar *attr_var;
     struct kndAttr    *attr;
     knd_logic logic;
@@ -192,6 +195,35 @@ static gsl_err_t present_attr_var_selection(void *obj,
                                             size_t unused_var(val_size))
 {
     struct LocalContext *ctx = obj;
+    int err;
+
+    // FIXME(k15tfu): assert(ctx->selected_attr_ref->attr_var);
+
+    if (!ctx->selected_attr_ref->attr_var) {
+        // FIXME(k15tfu): Why it's empty??
+        knd_log("-- not implemented: export empty attr var");
+//        err = ctx->task->log->writef(ctx->task->log, "not implemented: export empty attr var");
+//        if (err) return make_gsl_err_external(err);
+//        return make_gsl_err_external(knd_FAIL);
+
+        // WORKAROUND: export attribute (not attr_var)  FIXME(k15tfu): remove this
+        err = knd_attr_export(ctx->selected_attr_ref->attr, KND_FORMAT_GSP/*ctx->task->format*/, ctx->task);
+        if (err) return make_gsl_err_external(err);
+        return make_gsl_err(gsl_OK);
+    }
+
+    err = knd_attr_var_export_GSL(ctx->selected_attr_ref->attr_var, ctx->task, 0);
+    if (err) {
+        knd_log("-- attr export failed");
+        return make_gsl_err_external(err);
+    }
+
+    return make_gsl_err(gsl_OK);
+#if 0
+    if (DEBUG_ATTR_SELECT_LEVEL_2)
+        knd_log(".. presenting attrs of class \"%.*s\"..",
+                ctx->selected_attr_ref->name_size, self->name);
+
     struct kndTask *task = ctx->task;
     struct kndClass *self = task->class;
     struct kndAttr *attr;
@@ -241,6 +273,7 @@ static gsl_err_t present_attr_var_selection(void *obj,
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
+#endif
 }
 
 static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
@@ -466,59 +499,42 @@ extern int knd_attr_var_match(struct kndAttrVar *self,
     return knd_OK;
 }
 
-
-extern gsl_err_t knd_parse_attr_var_select(void *obj,
-                                           const char *name, size_t name_size,
-                                           const char *rec, size_t *total_size)
+gsl_err_t
+knd_select_attr_var(struct kndClass *class,
+                    const char *name, size_t name_size,
+                    const char *rec, size_t *total_size,
+                    struct kndTask *task)
 {
-    struct LocalContext *ctx = obj;
-    struct kndAttrRef *attr_ref;
-    struct kndAttr *attr;
-    struct kndTask *task = ctx->task;
-    struct glbOutput *log = task->log;
-    struct kndClass *c;
-    int err, e;
+    struct kndAttrRef *selected_attr_ref;
+    int err;
 
-    if (!task->class) return *total_size = 0, make_gsl_err_external(knd_FAIL);
-    c = task->class;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_set_attr_var,
-          .obj = ctx
-        },
-        { .is_default = true,
-          .run = present_attr_var_selection,
-          .obj = ctx
-        }
-    };
-
-    err = knd_class_get_attr(c, name, name_size, &attr_ref);
+    err = knd_class_get_attr(class, name, name_size, &selected_attr_ref);
     if (err) {
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
-                name_size, name,
-                c->name_size,
-                c->name);
-        log->reset(log);
-        e = log->write(log, name, name_size);
-        if (e) return *total_size = 0, make_gsl_err_external(e);
-        e = log->write(log, ": no such attribute",
-                       strlen(": no such attribute"));
-        if (e) return *total_size = 0, make_gsl_err_external(e);
-        task->http_code = HTTP_NOT_FOUND;
+                name_size, name, class->name_size, class->name);
+        task->log->writef(task->log, "%.*s: no such attribute",
+                          (int)name_size, name);
         return *total_size = 0, make_gsl_err_external(err);
     }
-
-    attr = attr_ref->attr;
-    task->attr = attr;
 
     if (DEBUG_ATTR_SELECT_LEVEL_TMP) {
         knd_log("++ attr selected: \"%.*s\"..", name_size, name);
     }
 
-    if (attr->is_a_set) {
-        knd_log(".. parsing array selection..");
-    }
-
+    struct LocalContext ctx = {
+        .class = class,
+        .task = task,
+        .selected_attr_ref = selected_attr_ref
+    };
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_attr_var,
+          .obj = &ctx
+        },
+        { .is_default = true,
+          .run = present_attr_var_selection,
+          .obj = &ctx
+        }
+    };
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
