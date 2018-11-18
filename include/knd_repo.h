@@ -22,7 +22,7 @@ struct kndRepo
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    size_t state;
+    //size_t state;
     char path[KND_PATH_SIZE];
     size_t path_size;
     size_t num_journals;
