@@ -54,8 +54,8 @@ static void kndRepo_str(struct kndRepo *self)
 
 __attribute__((unused))
 static gsl_err_t alloc_class_update(void *obj,
-                                    const char *unused_var(name),
-                                    size_t unused_var(name_size),
+                                    const char *name,
+                                    size_t name_size,
                                     size_t unused_var(count),
                                     void **item)
 {
@@ -240,8 +240,8 @@ static gsl_err_t parse_class_update(void *obj,
 
 __attribute__((unused))
 static gsl_err_t alloc_update(void *obj,
-                              const char *unused_var(name),
-                              size_t unused_var(name_size),
+                              const char *name,
+                              size_t name_size,
                               size_t unused_var(count),
                               void **item)
 {
