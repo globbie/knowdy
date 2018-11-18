@@ -43,126 +43,184 @@
 struct LocalContext {
     struct kndTask *task;
     struct kndRepo *repo;
+//    union {
+        struct kndClass *selected_class;
+//    } ;
+    struct {
+        size_t state_eq;
+        size_t state_gt;
+        size_t state_lt;
+        size_t state_gte;
+        size_t state_lte;
+    } state_filter;
+
     struct kndClass *class;
-    struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
 };
 
-static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
+static gsl_err_t
+run_get_class(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
-    struct kndClass *c;
-    int err;
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     /* check root name */
     if (name_size == 1 && *name == '/') {
-        ctx->class = repo->root_class;
-        if (repo->base)
-            ctx->class = repo->base->root_class;
+        ctx->selected_class = ctx->repo->root_class;
         return make_gsl_err(gsl_OK);
     }
 
-    err = knd_get_class(repo, name, name_size, &c, ctx->task);
+    int err = knd_get_class(ctx->repo, name, name_size, &ctx->selected_class, ctx->task);
     if (err) return make_gsl_err_external(err);
 
-    ctx->task->class = c;
-    ctx->class = c;
-
-    task->inner_class_state_refs = NULL;
-    task->class_inst_state_refs = NULL;
-
-    if (DEBUG_CLASS_SELECT_LEVEL_2) {
-        c->str(c, 1);
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+        ctx->selected_class->str(ctx->selected_class, 1);
     }
 
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t run_get_class_by_numid(void *obj, const char *id, size_t id_size)
+static gsl_err_t
+parse_get_class_by_numid(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
-    struct kndTask *task = ctx->task;
-    struct kndClass *c;
-    struct kndClassEntry *entry;
-    struct kndSet *class_idx = repo->class_idx;
-    void *result;
-    long numval;
     int err;
 
-    if (id_size >= KND_NAME_SIZE)
-        return make_gsl_err(gsl_FAIL);
+    size_t numid;
+    gsl_err_t parser_err = gsl_parse_size_t(&numid, rec, total_size);
+    if (parser_err.code) return parser_err;
 
-    memcpy(buf, id, id_size);
-    buf[id_size] = '0';
-
-    err = knd_parse_num((const char*)buf, &numval);
-    if (err) return make_gsl_err_external(err);
-
-    if (numval <= 0) return make_gsl_err(gsl_FAIL);
-
-    buf_size = 0;
-
-    knd_uid_create((size_t)numval, buf, &buf_size);
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    knd_uid_create(numid, id, &id_size);
 
     if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log("ID: %zu => \"%.*s\" [size: %zu]",
-                numval, buf_size, buf, buf_size);
+                numid, (int)id_size, id, id_size);
 
-    err = class_idx->get(class_idx, buf, buf_size, &result);
-    if (err) return make_gsl_err(gsl_FAIL);
-    entry = result;
-
-    err = knd_get_class(repo, entry->name, entry->name_size, &c, task);
+    struct kndClassEntry *entry;
+    err = ctx->repo->class_idx->get(ctx->repo->class_idx, id, id_size, (void **)&entry);
     if (err) return make_gsl_err_external(err);
 
-    // TODO
-    task->class = c;
-    ctx->class = c;
+    ctx->selected_class = entry->class;
+//    err = knd_get_class(ctx->repo, entry->name, entry->name_size, &ctx->selected_class, ctx->task);
+//    if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2) {
-        c->str(c, 1);
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+        ctx->selected_class->str(ctx->selected_class, 1);
     }
 
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_curr_state(void *obj, const char *val, size_t val_size)
+static gsl_err_t
+present_class_state(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
-    struct kndTask *task = obj;
-    long numval;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
     int err;
 
-    if (!val_size) return make_gsl_err_external(knd_FAIL);
-    if (val_size >= KND_NAME_SIZE) return make_gsl_err_external(knd_LIMIT);
+    assert(ctx->selected_class);
 
-    memcpy(buf, val, val_size);
-    buf_size = val_size;
-    buf[buf_size] = '\0';
+    if (ctx->state_filter.state_eq || ctx->state_filter.state_lt || ctx->state_filter.state_lte ||
+        ctx->state_filter.state_gte || ctx->state_filter.state_gt) {
+        knd_log("-- not implemented: filter class state");
+        err = task->log->writef(task->log, "not implemented: filter class state");
+        if (err) return make_gsl_err_external(err);
+        return make_gsl_err_external(knd_FAIL);
+    }
 
-    err = knd_parse_num(buf, &numval);
-    if (err) return make_gsl_err_external(err);
-
-    // TODO: check integer
-
-    task->state_eq = (size_t)numval;
+    err = knd_class_export_state(ctx->selected_class, task->format, task);
+    if (err) {
+        knd_log("-- class state export failed");
+        return make_gsl_err_external(err);
+    }
 
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t present_desc_state(void *obj,
-                                    const char *unused_var(name),
-                                    size_t unused_var(name_size))
+static gsl_err_t
+parse_select_class_state(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
+    struct LocalContext *ctx = obj;
+
+    if (!ctx->selected_class) {
+        knd_log("-- class not selected");
+        int err = ctx->task->log->writef(ctx->task->log, "class not selected");
+        if (err) return *total_size = 0, make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(knd_FAIL);
+    }
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .is_selector = true,
+          .run = gsl_run_set_size_t,
+          .obj = &ctx->state_filter.state_eq
+        },
+        { .is_selector = true,
+          .name = "lt",
+          .name_size = strlen("lt"),
+          .parse = gsl_parse_size_t,
+          .obj = &ctx->state_filter.state_lt
+        },
+        { .is_selector = true,
+          .name = "lte",
+          .name_size = strlen("lte"),
+          .parse = gsl_parse_size_t,
+          .obj = &ctx->state_filter.state_lte
+        },
+        { .is_selector = true,
+          .name = "gte",
+          .name_size = strlen("gte"),
+          .parse = gsl_parse_size_t,
+          .obj = &ctx->state_filter.state_gte
+        },
+        { .is_selector = true,
+          .name = "gt",
+          .name_size = strlen("gt"),
+          .parse = gsl_parse_size_t,
+          .obj = &ctx->state_filter.state_gt
+        },
+        { .is_default = true,
+          .run = present_class_state,
+          .obj = ctx
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+static gsl_err_t
+present_class_desc_state(void *obj, const char *unused_var(name), size_t unused_var(name_size))
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    int err;
+
+    assert(ctx->selected_class);
+
+    if (ctx->state_filter.state_eq || ctx->state_filter.state_lt || ctx->state_filter.state_lte ||
+        ctx->state_filter.state_gte || ctx->state_filter.state_gt) {
+        knd_log("-- not implemented: filter class desc state");
+        err = task->log->writef(task->log, "not implemented: filter class desc state");
+        if (err) return make_gsl_err_external(err);
+        return make_gsl_err_external(knd_FAIL);
+    }
+
+    knd_log("-- not implemented: export class desc state");
+    err = task->log->writef(task->log, "not implemented: export class desc state");
+    if (err) return make_gsl_err_external(err);
+    return make_gsl_err_external(knd_FAIL);
+//    err = knd_class_export_desc_state(ctx->selected_class, task->format, task);
+//    if (err) {
+//        knd_log("-- class state export failed");
+//        return make_gsl_err_external(err);
+//    }
+//
+//    return make_gsl_err(gsl_OK);
+
+#if 0
+struct kndTask *task = obj;
     struct kndClass *self = task->class;
     struct glbOutput *out = task->out;
     struct kndMemPool *mempool = task->mempool;
@@ -210,168 +268,134 @@ static gsl_err_t present_desc_state(void *obj,
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
+#endif
 }
 
-static gsl_err_t parse_select_class_desc_state(void *obj, const char *rec,
-                                               size_t *total_size)
+static gsl_err_t
+parse_select_class_desc_state(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .is_selector = true,
-          .run = set_curr_state,
-          .obj = task
+          .run = gsl_run_set_size_t,
+          .obj = &ctx->state_filter.state_eq
         },
-        { .name = "gt",
-          .name_size = strlen("gt"),
-          .is_selector = true,
-          .parse = gsl_parse_size_t,
-          .obj = &task->state_gt
-        },
-        { .name = "gte",
-          .name_size = strlen("gte"),
-          .is_selector = true,
-          .parse = gsl_parse_size_t,
-          .obj = &task->state_gte
-        },
-        { .name = "lt",
+        { .is_selector = true,
+          .name = "lt",
           .name_size = strlen("lt"),
-          .is_selector = true,
           .parse = gsl_parse_size_t,
-          .obj = &task->state_lt
+          .obj = &ctx->state_filter.state_lt
         },
-        { .name = "lte",
+        { .is_selector = true,
+          .name = "lte",
           .name_size = strlen("lte"),
-          .is_selector = true,
           .parse = gsl_parse_size_t,
-          .obj = &task->state_lte
+          .obj = &ctx->state_filter.state_lte
+        },
+        { .is_selector = true,
+          .name = "gte",
+          .name_size = strlen("gte"),
+          .parse = gsl_parse_size_t,
+          .obj = &ctx->state_filter.state_gte
+        },
+        { .is_selector = true,
+          .name = "gt",
+          .name_size = strlen("gt"),
+          .parse = gsl_parse_size_t,
+          .obj = &ctx->state_filter.state_gt
         },
         { .is_default = true,
-          .run = present_desc_state,
-          .obj = task
+          .run = present_class_desc_state,
+          .obj = ctx
         }
     };
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t present_state(void *obj,
-                               const char *unused_var(name),
-                               size_t unused_var(name_size))
+static gsl_err_t
+present_class_desc(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
-    struct kndTask *task = obj;
-    struct kndClass *self = task->class;
-    struct glbOutput *out = task->out;
-    struct kndMemPool *mempool = task->mempool;
-    struct kndSet *set;
-    struct kndState *latest_state;
+    struct LocalContext *ctx = obj;
     int err;
 
-    task->type = KND_SELECT_STATE;
+    assert(ctx->selected_class);
+    // FIXME(k15tfu): assert(ctx->selected_class->entry->descendants);
 
-    if (!self->states)                                     goto show_curr_state;
-    latest_state = self->states;
-    if (task->state_gt >= latest_state->numid)             goto show_curr_state;
-    if (task->state_lt && task->state_lt < task->state_gt) goto show_curr_state;
-
-    if (DEBUG_CLASS_SELECT_LEVEL_2) {
-        knd_log(".. select class delta:  gt %zu  lt %zu  eq:%zu..",
-                task->state_gt, task->state_lt, task->state_eq);
+    if (!ctx->selected_class->entry->descendants) {
+        // FIXME(k15tfu): Why it's empty??
+        knd_log("-- not implemented: export empty class desc");
+        err = ctx->task->log->writef(ctx->task->log, "not implemented: export empty class desc");
+        if (err) return make_gsl_err_external(err);
+        return make_gsl_err_external(knd_FAIL);
     }
 
-    err = knd_set_new(mempool, &set);
-    if (err) return make_gsl_err_external(err);
-    set->mempool = mempool;
-
-    err = knd_class_get_updates(self,
-                                task->state_gt, task->state_lt,
-                                task->state_eq, set);
-    if (err) return make_gsl_err_external(err);
-    task->show_removed_objs = true;
-
-    err =  knd_class_set_export_JSON(set, task);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-
-    show_curr_state:
-    err = out->writec(out, '{');
-    if (err) return make_gsl_err_external(err);
-
-    err = knd_export_class_state_JSON(self, task);
-    if (err) return make_gsl_err_external(err);
-
-    err = out->writec(out, '}');
+    err = knd_class_set_export(ctx->selected_class->entry->descendants, ctx->task->format, ctx->task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_select_class_state(void *obj,
-                                          const char *rec,
-                                          size_t *total_size)
+static gsl_err_t
+parse_select_class_desc(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
+
+    if (!ctx->selected_class) {
+        knd_log("-- class not selected");
+        int err = ctx->task->log->writef(ctx->task->log, "class not selected");
+        if (err) return *total_size = 0, make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(knd_FAIL);
+    }
 
     struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .is_selector = true,
-          .run = set_curr_state,
-          .obj = task
-        },
-        { .name = "gt",
-          .name_size = strlen("gt"),
-          .is_selector = true,
-          .parse = gsl_parse_size_t,
-          .obj = &task->state_gt
-        },
-        { .name = "gte",
-          .name_size = strlen("gte"),
-          .is_selector = true,
-          .parse = gsl_parse_size_t,
-          .obj = &task->state_gte
-        },
-        { .name = "lt",
-          .name_size = strlen("lt"),
-          .is_selector = true,
-          .parse = gsl_parse_size_t,
-          .obj = &task->state_lt
-        },
-        { .name = "lte",
-          .name_size = strlen("lte"),
-          .is_selector = true,
-          .parse = gsl_parse_size_t,
-          .obj = &task->state_lte
-        },
-        { .name = "desc",
-          .name_size = strlen("desc"),
+        { .name = "_state",
+          .name_size = strlen("_state"),
           .parse = parse_select_class_desc_state,
           .obj = ctx
         },
         { .is_default = true,
-          .run = present_state,
-          .obj = task
-        }
+          .run = present_class_desc,
+          .obj = ctx
+        },
     };
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t present_class_selection(void *obj,
-                                         const char *unused_var(val),
-                                         size_t unused_var(val_size))
+
+static gsl_err_t
+validate_select_class_attr(void *obj, const char *name, size_t name_size,
+                           const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+
+    return knd_select_attr_var(ctx->selected_class, name, name_size, rec, total_size, ctx->task);
+}
+
+static gsl_err_t
+present_class_selection(void *obj, const char *unused_var(val), size_t unused_var(val_size))
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct glbOutput *out = task->out;
-    struct kndMemPool *mempool = task->mempool;
-    struct kndClass *c = ctx->class;
-    struct kndSet *set;
     int err;
 
+    if (ctx->selected_class) {
+        err = knd_class_export(ctx->selected_class, task->format, task);
+        if (err) {
+            knd_log("-- class export failed");
+            return make_gsl_err_external(err);
+        }
+        return make_gsl_err(gsl_OK);
+    }
+
+    knd_log("-- no specific class selected");
+
+    err = knd_class_set_export(ctx->repo->class_idx, task->format, task);
+    if (err) return make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
+#if 0
     if (task->curr_locale_size) {
         task->locale = task->curr_locale;
         task->locale_size = task->curr_locale_size;
@@ -391,7 +415,7 @@ static gsl_err_t present_class_selection(void *obj,
 
                 // TODO apply clauses if any
                 // &set
-                
+
                 // export
                 err = knd_class_set_export(set, task->format, task);
                 if (err) return make_gsl_err_external(err);
@@ -473,6 +497,7 @@ static gsl_err_t present_class_selection(void *obj,
     }
 
     return make_gsl_err(gsl_OK);
+#endif
 }
 
 static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
@@ -777,15 +802,23 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
           .run = run_get_class,
           .obj = &ctx
         },
-        { .name = "_id",
+        { .is_selector = true,
+          .name = "_id",
           .name_size = strlen("_id"),
-          .is_selector = true,
-          .run = run_get_class_by_numid,
+          .parse = parse_get_class_by_numid,
           .obj = &ctx
         },
         { .name = "_state",
           .name_size = strlen("_state"),
           .parse = parse_select_class_state,
+          .obj = &ctx
+        },
+        { .name = "_desc",
+          .name_size = strlen("_desc"),
+          .parse = parse_select_class_desc,
+          .obj = &ctx
+        },
+        { .validate = validate_select_class_attr,
           .obj = &ctx
         },
         { .is_default = true,
@@ -837,9 +870,6 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
           .is_selector = true,
           .run = rels_presentation,
           .obj = task
-        },
-        { .validate = knd_parse_attr_var_select,
-          .obj = &ctx
         }
     };
 

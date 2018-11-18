@@ -81,27 +81,39 @@ START_TEST(shard_table_test)
         },
         {
             .input = "{task {class {_id 1}}}",
-            .expect = ".*"  // FIXME(k15tfu): "{class User{_id 1} {_repo /}\\[attrs{str guid}{str first-name}]}"
+            .expect = "{class User{_id 1} {_repo /}\\[attrs{str guid}{str first-name}]}"
         },
         {
             .input = "{task {class User {_state}}}",
-            .expect = "{\"_state\":0}"
+            .expect = "{_state 0}"
         },
         {
             .input = "{task {class User {_state 123456}}}",
-            .expect = ".*"  // FIXME(k15tfu): state_eq is ignored
+            .expect = "not implemented: filter class state"
         },
         {
-            .input = "{task {class User {_state {lt 0}}}}",
-            .expect = ".*"  // FIXME(k15tfu): state_* are ignored
+            .input = "{task {class User {_state {lt 123456}}}}",
+            .expect = "not implemented: filter class state"
         },
         {
-            .input = "{task {class User {_state {desc}}}}",
-            .expect = "{\"_state\":0}"
+            .input = "{task {class User {_desc}}}",
+            .expect = "not implemented: export empty class desc"
+        },
+        {
+            .input = "{task {class User {_desc {_state}}}}",
+            .expect = "not implemented: export class desc state"
+        },
+        {
+            .input = "{task {class User {_desc {_state 123456}}}}",
+            .expect = "not implemented: filter class desc state"
+        },
+        {
+            .input = "{task {class User {_desc {_state {lt 123456}}}}}",
+            .expect = "not implemented: filter class desc state"
         },
         {
             .input = "{task {class User {guid}}}",
-            .expect = ".*"  // FIXME(k15tfu)
+            .expect = "{str guid}"
         },
         {
             .input = "{task {class User {guid {_state}}}}",
@@ -112,7 +124,7 @@ START_TEST(shard_table_test)
             .expect = ".*"  // FIXME(k15tfu)
         },
         {
-            .input = "{task {class User {guid {_state {lt 0}}}}}",
+            .input = "{task {class User {guid {_state {lt 123456}}}}}",
             .expect = ".*"  // FIXME(k15tfu)
         },
         {
@@ -144,22 +156,19 @@ START_TEST(shard_table_test)
             .input = "{task {class Person}}",
             .expect = "{class Person{_id 2} {_repo /}{_state 1{phase new}}\\[attrs{num age}]{_subclasses {total 1} {num_terminals 1}\\[batch{Worker {_id 3}}]}}"
         },
-// FIXME(k15tfu): _id doesn't work
-//        {
-//            .input = "{task {class {_id 2}}}",
-//            .expect = "??"
-//        },
+        {
+            .input = "{task {class {_id 2}}}",
+            .expect = ".*"  // FIXME(k15tfu): Person is not in kndRepo.class_idx
+        },
         // get class attribute
-// FIXME(k15tfu): no attr to present
-//        {
-//            .input = "{task {class Person {age}}}",
-//            .expect = "??"
-//        },
-// FIXME(k15tfu): no such attribute
-//        {
-//            .input = "{task {class Person {_desc}}}",
-//            .expect = "??"
-//        },
+        {
+            .input = "{task {class Person {age}}}",
+            .expect = "{num age}"
+        },
+        {
+            .input = "{task {class Person {_desc}}}",
+            .expect = "not implemented: export empty class desc"
+        },
 // FIXME(k15tfu): _id doesn't work
 //        {
 //            .input = "{task {class {_id 2} {age}}}",
@@ -172,7 +181,7 @@ START_TEST(shard_table_test)
         // get the latest state
         {
             .input = "{task {class Person {_state}}}",
-            .expect = "{\"_state\":1,\"_phase\":\"new\",\"descendants\":{\"_state\":1,\"total\":1}}"
+            .expect = "{_state 1}"
         },
 // FIXME(k15tfu): _id doesn't work
 //        {
@@ -184,11 +193,10 @@ START_TEST(shard_table_test)
 //            .input = "{task {class Person {age {_state}}}}",
 //            .expect = "??"
 //        },
-// FIXME(k15tfu): no such attribute
-//        {
-//            .input = "{task {class Person {_desc {_state}}}}",
-//            .expect = "??"
-//        },
+        {
+            .input = "{task {class Person {_desc {_state}}}}",
+            .expect = "not implemented: export class desc state"
+        },
 // FIXME(k15tfu): _id doesn't work
 //        {
 //            .input = "{task {class {_id 2} {age {_state}}}}",
@@ -200,22 +208,22 @@ START_TEST(shard_table_test)
 //        },
         // get list of all states
 // FIXME(k15tfu): fix them:
+        {
+            .input = "{task {class Person {_state {gt 123456}}}}",
+            .expect = "not implemented: filter class state"
+        },
 //        {
-//            .input = "{task {class Person {_state {gt 0}}}}",
-//            .expect = "??"
-//        },
-//        {
-//            .input = "{task {class {_id 2} {_state {gt 0}}}}",
+//            .input = "{task {class {_id 2} {_state {gt 123456}}}}",
 //            .expect = "??"
 //        },
 //        {
 //            .input = "{task {class Person {age {_state {gt 0}}}}}",
 //            .expect = "??"
 //        },
-//        {
-//            .input = "{task {class Person {_desc {_state {gt 0}}}}}",
-//            .expect = "??"
-//        },
+        {
+            .input = "{task {class Person {_desc {_state {gt 123456}}}}}",
+            .expect = "not implemented: filter class desc state"
+        },
 //        {
 //            .input = "{task {class {_id 2} {age {_state {gt 0}}}}}",
 //            .expect = "??"
