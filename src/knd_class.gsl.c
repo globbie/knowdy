@@ -907,7 +907,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
                 err = out->write(out, "[item",
                                  strlen("[item"));                                RET_ERR();
                 //task->max_depth = 0;
-                err = set->map(set, export_class_ref_GSL, (void*)self);
+                err = set->map(set, export_class_ref_GSL, (void*)task);
                 if (err && err != knd_RANGE) return err;
                 err = out->writec(out, ']');                                      RET_ERR();
             }

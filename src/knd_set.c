@@ -172,9 +172,9 @@ extern int knd_set_get_facet(struct kndSet  *self,
 }
 
 static int
-kndSet_alloc_facet(struct kndSet  *self,
-                   struct kndAttr *attr,
-                   struct kndFacet  **result)
+kndSet_alloc_facet(struct kndSet    *self,
+                   struct kndAttr   *attr,
+                   struct kndFacet **result)
 {
     struct kndFacet *f;
     struct kndSet *set;

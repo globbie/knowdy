@@ -43,8 +43,6 @@
 struct LocalContext {
     struct kndTask *task;
     struct kndRepo *repo;
-    //struct kndClass *selected_class;
-
     struct kndClass *class;
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
@@ -193,6 +191,8 @@ static gsl_err_t present_desc_state(void *obj,
                                      task->state_eq, set);
     if (err) return make_gsl_err_external(err);
     task->show_removed_objs = true;
+
+    // TODO export format
 
     err =  knd_class_set_export_JSON(set, task);
     if (err) return make_gsl_err_external(err);
@@ -831,6 +831,12 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
            .name_size = strlen("_depth"),
            .parse = gsl_parse_size_t,
            .obj = &task->max_depth
+        },
+        { .name = "_rels",
+          .name_size = strlen("_rels"),
+          .is_selector = true,
+          .run = rels_presentation,
+          .obj = task
         },
         { .validate = knd_parse_attr_var_select,
           .obj = &ctx

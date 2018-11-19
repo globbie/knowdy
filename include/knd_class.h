@@ -51,23 +51,24 @@ struct kndClassUpdate
     struct kndClass      *class;
     struct kndClassEntry *entry;
     struct kndClassInst **insts;
-    size_t num_insts;
+    size_t                num_insts;
     struct kndClassUpdate *next;
 };
 
 struct kndClassRef
 {
-    struct kndClass *class;
+    struct kndClass      *class;
     struct kndClassEntry *entry;
-    struct kndClassRef *next;
+    struct kndClassRef   *next;
 };
 
 struct kndClassRel
 {
     struct kndClassEntry *topic;
-    struct kndAttr *attr;
-    struct kndSet *set;
-    struct kndClassRel *next;
+    struct kndAttr       *attr;
+    struct kndAttrVar    *attr_var;
+    struct kndSet        *set;
+    struct kndClassRel   *next;
 };
 
 struct kndClassVar
