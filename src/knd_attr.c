@@ -134,25 +134,22 @@ extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
              list_item;
              list_item = list_item->next) {
             count++;
-            
             str_attr_vars(list_item, depth + 1);
-            
         }
         knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
         //return;
     }
-    else {
-        if (item->parent) {
-            name = item->parent->name;
-            name_size = item->parent->name_size;
-        }
 
-        knd_log("%*s_attr: \"%.*s\" (parent: %.*s)  => %.*s",
-                depth * KND_OFFSET_SIZE, "",
-                item->name_size, item->name,
-                name_size, name,
-                item->val_size, item->val);
+    if (item->parent) {
+        name = item->parent->name;
+        name_size = item->parent->name_size;
     }
+
+    knd_log("%*s_attr: \"%.*s\" (parent: %.*s)  => %.*s",
+            depth * KND_OFFSET_SIZE, "",
+            item->name_size, item->name,
+            name_size, name,
+            item->val_size, item->val);
 
     if (item->children) {
         for (curr_item = item->children; curr_item; curr_item = curr_item->next) {

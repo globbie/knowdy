@@ -22,6 +22,7 @@
 
 struct LocalContext {
     struct kndClassVar *class_var;
+    struct kndAttrVar *list_parent;
     struct kndAttrVar *attr_var;
     struct kndTask *task;
 };
@@ -396,7 +397,7 @@ static gsl_err_t import_attr_var_list_item(void *obj,
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndAttrVar *self = ctx->attr_var;
+    struct kndAttrVar *self = ctx->list_parent;
     struct kndAttrVar *attr_var;
     struct kndMemPool *mempool = task->mempool;
     int err;
@@ -404,13 +405,13 @@ static gsl_err_t import_attr_var_list_item(void *obj,
     err = knd_attr_var_new(mempool, &attr_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = self->class_var;
-
-    ctx->attr_var = attr_var;
     attr_var->is_list_item = true;
     attr_var->parent = self;
+    ctx->attr_var = attr_var;
 
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. parse import attr item..");
+    if (DEBUG_ATTR_LEVEL_2) {
+        knd_log("== item of %.*s: %.*s", self->name_size, self->name, 32, rec);
+    }
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -466,7 +467,8 @@ extern gsl_err_t knd_import_attr_var_list(void *obj,
     append_attr_var(self, attr_var);
 
     struct LocalContext ctx = {
-        .attr_var = attr_var,
+        .list_parent = attr_var,
+        //.attr_var = attr_var,
         .task = task
     };
 
@@ -478,6 +480,11 @@ extern gsl_err_t knd_import_attr_var_list(void *obj,
 
     parser_err = gsl_parse_array(&import_attr_var_spec, rec, total_size);
     if (parser_err.code) return parser_err;
+    
+    if (!memcmp(name, "ingr", strlen("ingr"))) {
+        knd_log(".. attr var   list:%p  children:%p", attr_var->list, attr_var->children);
+        //str_attr_vars(self, 1);
+    }
 
     return make_gsl_err(gsl_OK);
 }

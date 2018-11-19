@@ -219,7 +219,7 @@ static int index_attr_var_list(struct kndClass *self,
     return knd_OK;
 }
 
-static int index_inner_class_ref(struct kndClass   *self,
+static int index_inner_class_ref(struct kndClass   *unused_var(self),
                                  struct kndAttrVar *item,
                                  struct kndAttr *attr,
                                  struct kndTask *unused_var(task))
@@ -229,7 +229,7 @@ static int index_inner_class_ref(struct kndClass   *self,
     struct kndAttrVar *parent_item = item->parent;
     //int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. \"%.*s\" is a descendant of \"%.*s\" parent:%p",
                 c->name_size, c->name,
                 base->name_size, base->name, parent_item);
@@ -259,7 +259,7 @@ static int index_inner_attr_var(struct kndClass *self,
     size_t classname_size;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. index inner attr var \"%.*s\" (val:%.*s) in class \"%.*s\" is list item:%d..",
                 parent_item->name_size, parent_item->name,
                 parent_item->val_size, parent_item->val,
@@ -341,7 +341,7 @@ static int index_inner_attr_var(struct kndClass *self,
             err = knd_parse_num(buf, &item->numval);
             break;
         case KND_ATTR_INNER:
-            if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+            if (DEBUG_CLASS_RESOLVE_LEVEL_2)
                 knd_log("== nested inner item found: %.*s",
                         item->name_size, item->name);
             err = index_inner_attr_var(self, item, task);
@@ -367,20 +367,14 @@ static int index_inner_attr_var_list(struct kndClass *self,
                                      struct kndAttrVar *parent_item,
                                      struct kndTask *task)
 {
-    struct kndClass *attr_owner = parent_item->attr->parent_class;
-    struct kndClass *inner_list = parent_item->attr->ref_class;
+    //struct kndClass *attr_owner = parent_item->attr->parent_class;
+    //struct kndClass *inner_list = parent_item->attr->ref_class;
     //struct kndAttrVar *parent_item = item->parent;
     struct kndAttrVar *item;
     int err;
 
-    // TEST only
-    if (memcmp(parent_item->name, "ingr", strlen("ingr"))) return knd_OK;
-
-    knd_log("\n== list parent: %.*s",
-            parent_item->name_size, parent_item->name);
-
-    inner_list->str(inner_list, 1);
-    attr_owner->str(attr_owner, 1);
+    //inner_list->str(inner_list, 1);
+    //attr_owner->str(attr_owner, 1);
 
     for (item = parent_item->list; item; item = item->next) {
         err = index_inner_attr_var(self, item, task);                             RET_ERR();
@@ -568,7 +562,7 @@ static int resolve_inner_item(struct kndClass *self,
     size_t classname_size;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. resolve inner item %.*s (val:%.*s) is list item:%d..",
                 parent_item->name_size, parent_item->name,
                 parent_item->val_size, parent_item->val,
@@ -710,7 +704,7 @@ static int resolve_attr_var_list(struct kndClass *self,
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         const char *attr_type_name = knd_attr_names[parent_attr->type];
         size_t attr_type_name_size = strlen(attr_type_name);
-        knd_log(".. class %.*s to resolve attr item list \"%.*s\" "
+        knd_log("\n.. class %.*s to resolve attr item list \"%.*s\" "
                 " of CLASS:%.*s   attr type:%.*s",
                 self->entry->name_size, self->entry->name,
                 parent_item->name_size, parent_item->name,
@@ -777,8 +771,6 @@ static int resolve_attr_var_list(struct kndClass *self,
 
     for (item = parent_item->list; item; item = item->next) {
         item->attr = parent_attr;
-
-        //knd_log("== list item:%.*s", item->name_size, item->name);
 
         switch (parent_attr->type) {
         case KND_ATTR_INNER:
@@ -869,9 +861,16 @@ static int resolve_attr_vars(struct kndClass *self,
         }
 
         if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
-            knd_log("++ got attr: %.*s [id:%.*s]",
-                    attr->name_size, attr->name,
-                    attr->id_size, attr->id);
+            if (!memcmp(attr->name, "ingr", strlen("ingr"))) {
+
+                knd_log("\n.. resolving attr vars of class \"%.*s\" (repo:%.*s) ..",
+                        self->entry->name_size, self->entry->name,
+                        repo->name_size, repo->name);
+                knd_log("++ got attr: %.*s [id:%.*s] indexed:%d",
+                        attr->name_size, attr->name,
+                        attr->id_size, attr->id, attr->is_indexed);
+                str_attr_vars(attr_var, 1);
+            }
         }
 
         if (attr->is_a_set) {
