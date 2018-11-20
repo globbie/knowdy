@@ -77,7 +77,7 @@ run_get_class(void *obj, const char *name, size_t name_size)
     /* NB: class instances need this */
     ctx->task->class = ctx->selected_class;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+    if (DEBUG_CLASS_SELECT_LEVEL_1) {
         ctx->selected_class->str(ctx->selected_class, 1);
     }
 
@@ -328,6 +328,8 @@ present_class_desc(void *obj, const char *unused_var(name), size_t unused_var(na
 
     if (!ctx->selected_class->entry->descendants) {
         // FIXME(k15tfu): Why it's empty??
+        // DD: the index of descendants is not created for every class,
+        // only for the non-terminal classes with actual children, grandchildren etc.
         knd_log("-- not implemented: export empty class desc");
         err = ctx->task->log->writef(ctx->task->log, "not implemented: export empty class desc");
         if (err) return make_gsl_err_external(err);
