@@ -517,6 +517,7 @@ extern gsl_err_t knd_parse_attr_var_select(void *obj,
     }
 
     if (attr->is_a_set) {
+        // TODO
         knd_log(".. parsing array selection..");
     }
 

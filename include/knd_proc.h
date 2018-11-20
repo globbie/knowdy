@@ -178,6 +178,12 @@ extern int knd_get_proc(struct kndRepo *repo,
                         const char *name, size_t name_size,
                         struct kndProc **result);
 
+extern int knd_resolve_proc_ref(struct kndClass *self,
+                                const char *name, size_t name_size,
+                                struct kndProc *unused_var(base),
+                                struct kndProc **result,
+                                struct kndTask *unused_var(task));
+
 extern int knd_proc_export(struct kndProc *self,
                            knd_format format,
                            struct glbOutput *out);

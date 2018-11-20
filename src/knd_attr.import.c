@@ -480,11 +480,6 @@ extern gsl_err_t knd_import_attr_var_list(void *obj,
 
     parser_err = gsl_parse_array(&import_attr_var_spec, rec, total_size);
     if (parser_err.code) return parser_err;
-    
-    if (!memcmp(name, "ingr", strlen("ingr"))) {
-        knd_log(".. attr var   list:%p  children:%p", attr_var->list, attr_var->children);
-        //str_attr_vars(self, 1);
-    }
 
     return make_gsl_err(gsl_OK);
 }

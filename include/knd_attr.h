@@ -331,3 +331,11 @@ extern gsl_err_t knd_parse_attr_var_select(void *obj,
                                            const char *name, size_t name_size,
                                            const char *rec, size_t *total_size);
 
+// knd_attr.resolve.c
+extern int knd_resolve_attr_vars(struct kndClass *self,
+                                 struct kndClassVar *parent_item,
+                                 struct kndTask *task);
+extern int knd_resolve_primary_attrs(struct kndClass *self,
+                                     struct kndTask *task);
+
+

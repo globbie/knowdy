@@ -374,3 +374,11 @@ extern int knd_class_get_desc_updates(struct kndClass *self,
 extern int knd_class_get_inst_updates(struct kndClass *self,
                                       size_t gt, size_t lt, size_t eq,
                                       struct kndSet *set);
+
+// knd_class.resolve.c
+extern int knd_resolve_class_ref(struct kndClass *self,
+                                 const char *name, size_t name_size,
+                                 struct kndClass *base,
+                                 struct kndClass **result,
+                                 struct kndTask *task);
+
