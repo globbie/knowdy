@@ -2,12 +2,13 @@
 
 #include <check.h>
 
+#include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 // todo(n.rodionov): make paths configurable
-/*static const char *shard_config =
+static const char *shard_config =
 "{schema knd"
 "  {agent 007}"
 "  {db-path .}"
@@ -23,7 +24,6 @@
 "    {max_tiny_pages      200000}"
 "  }"
 "}";
-*/
 
 #define ASSERT_STR_EQ(act, act_size, exp, exp_size) \
     do {                                            \
@@ -68,16 +68,60 @@ START_TEST(shard_config_test)
 
 END_TEST
 
-/*
+
 START_TEST(shard_table_test)
     static const struct table_test cases[] = {
+        {
+            .input = "{task {class}}",
+            .expect = "{_set{total 1}\\[batch{class User{_id 1} {_repo /}\\[attrs{str guid}{str first-name}]}]"
+        },
+        {
+            .input = "{task {class User}}",
+            .expect = "{class User{_id 1} {_repo /}\\[attrs{str guid}{str first-name}]}"
+        },
+        {
+            .input = "{task {class {_id 1}}}",
+            .expect = ".*"  // FIXME(k15tfu): "{class User{_id 1} {_repo /}\\[attrs{str guid}{str first-name}]}"
+        },
+        {
+            .input = "{task {class User {_state}}}",
+            .expect = "{\"_state\":0}"
+        },
+        {
+            .input = "{task {class User {_state 123456}}}",
+            .expect = ".*"  // FIXME(k15tfu): state_eq is ignored
+        },
+        {
+            .input = "{task {class User {_state {lt 0}}}}",
+            .expect = ".*"  // FIXME(k15tfu): state_* are ignored
+        },
+        {
+            .input = "{task {class User {_state {desc}}}}",
+            .expect = "{\"_state\":0}"
+        },
+        {
+            .input = "{task {class User {guid}}}",
+            .expect = ".*"  // FIXME(k15tfu)
+        },
+        {
+            .input = "{task {class User {guid {_state}}}}",
+            .expect = ".*"  // FIXME(k15tfu)
+        },
+        {
+            .input = "{task {class User {guid {_state 123456}}}}",
+            .expect = ".*"  // FIXME(k15tfu)
+        },
+        {
+            .input = "{task {class User {guid {_state {lt 0}}}}}",
+            .expect = ".*"  // FIXME(k15tfu)
+        },
         {
             .input = "{task {class Person}}",
             .expect = "{\"err\":\"Person class name not found\",\"http_code\":404}"
         },
         {
             .input = "{task {!class Person {num age}}}",
-            .expect = "{\"result\":\"OK\"}"
+            .expect = "{repo /{_state 1}{modif [0-9]*}}"
         },
         {
             .input = "{task {!class Person}}",
@@ -89,12 +133,97 @@ START_TEST(shard_table_test)
 //        },
         {
             .input = "{task {!class Worker {is Person}}}",
-            .expect = "{\"result\":\"OK\"}"
+            .expect = "{repo /{_state 2}{modif [0-9]*}}"
         },
         {
             .input = "{task {class User {!inst Vasya}}}",
-            .expect = "{\"result\":\"OK\"}"
-        }
+            .expect = "{repo /{_state 3}{modif [0-9]*}}"
+        },
+        // get class
+        {
+            .input = "{task {class Person}}",
+            .expect = "{class Person{_id 2} {_repo /}{_state 1{phase new}}\\[attrs{num age}]{_subclasses {total 1} {num_terminals 1}\\[batch{Worker {_id 3}}]}}"
+        },
+// FIXME(k15tfu): _id doesn't work
+//        {
+//            .input = "{task {class {_id 2}}}",
+//            .expect = "??"
+//        },
+        // get class attribute
+// FIXME(k15tfu): no attr to present
+//        {
+//            .input = "{task {class Person {age}}}",
+//            .expect = "??"
+//        },
+// FIXME(k15tfu): no such attribute
+//        {
+//            .input = "{task {class Person {_desc}}}",
+//            .expect = "??"
+//        },
+// FIXME(k15tfu): _id doesn't work
+//        {
+//            .input = "{task {class {_id 2} {age}}}",
+//            .expect = "??"
+//        },
+//        {
+//            .input = "{task {class {_id 2} {_desc}}}",
+//            .expect = "??"
+//        },
+        // get the latest state
+        {
+            .input = "{task {class Person {_state}}}",
+            .expect = "{\"_state\":1,\"_phase\":\"new\",\"descendants\":{\"_state\":1,\"total\":1}}"
+        },
+// FIXME(k15tfu): _id doesn't work
+//        {
+//            .input = "{task {class {_id 2} {_state}}}",
+//            .expect = "??"
+//        },
+// FIXME(k15tfu): class parse failure
+//        {
+//            .input = "{task {class Person {age {_state}}}}",
+//            .expect = "??"
+//        },
+// FIXME(k15tfu): no such attribute
+//        {
+//            .input = "{task {class Person {_desc {_state}}}}",
+//            .expect = "??"
+//        },
+// FIXME(k15tfu): _id doesn't work
+//        {
+//            .input = "{task {class {_id 2} {age {_state}}}}",
+//            .expect = "??"
+//        },
+//        {
+//            .input = "{task {class {_id 2} {_desc {_state}}}}",
+//            .expect = "??"
+//        },
+        // get list of all states
+// FIXME(k15tfu): fix them:
+//        {
+//            .input = "{task {class Person {_state {gt 0}}}}",
+//            .expect = "??"
+//        },
+//        {
+//            .input = "{task {class {_id 2} {_state {gt 0}}}}",
+//            .expect = "??"
+//        },
+//        {
+//            .input = "{task {class Person {age {_state {gt 0}}}}}",
+//            .expect = "??"
+//        },
+//        {
+//            .input = "{task {class Person {_desc {_state {gt 0}}}}}",
+//            .expect = "??"
+//        },
+//        {
+//            .input = "{task {class {_id 2} {age {_state {gt 0}}}}}",
+//            .expect = "??"
+//        },
+//        {
+//            .input = "{task {class {_id 2} {_desc {_state {gt 0}}}}}",
+//            .expect = "??"
+//        },
     };
 
     struct kndShard *shard;
@@ -102,30 +231,39 @@ START_TEST(shard_table_test)
 
     err = kndShard_new(&shard, shard_config, strlen(shard_config));
     ck_assert_int_eq(err, knd_OK);
+
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
         const struct table_test *pcase = &cases[i];
+        fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
 
         const char *result; size_t result_size;
-        fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
         err = kndShard_run_task(shard, pcase->input, strlen(pcase->input), &result, &result_size, 0);
         ck_assert_int_eq(err, knd_OK);
-        ASSERT_STR_EQ(result, result_size, pcase->expect, -1);
+
+        *((char*)result + result_size) = '\0';  // UNSAFE!
+
+        regex_t reg;
+        ck_assert(0 == regcomp(&reg, pcase->expect, 0));
+        if (0 != regexec(&reg, result, 0, NULL, 0)) {
+            ck_abort_msg("Assertion failed: \"%.*s\" doesn't match \"%s\"",
+                         (int)result_size, result, pcase->expect);
+        }
+        regfree(&reg);
     }
 
     kndShard_del(shard);
 END_TEST
-*/
 
 int main(void) {
     Suite *s = suite_create("suite");
 
     TCase *tc_shard_basic = tcase_create("basic shard");
     tcase_add_test(tc_shard_basic, shard_config_test);
-    //tcase_add_test(tc_shard_basic, shard_table_test);
+    tcase_add_test(tc_shard_basic, shard_table_test);
     suite_add_tcase(s, tc_shard_basic);
 
     SRunner* sr = srunner_create(s);
-    //srunner_set_fork_status(sr, CK_NOFORK);
+    srunner_set_fork_status(sr, CK_NOFORK);
     srunner_run_all(sr, CK_NORMAL);
     int num_failures = srunner_ntests_failed(sr);
     srunner_free(sr);

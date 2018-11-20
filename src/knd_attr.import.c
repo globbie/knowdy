@@ -22,6 +22,7 @@
 
 struct LocalContext {
     struct kndClassVar *class_var;
+    struct kndAttrVar *list_parent;
     struct kndAttrVar *attr_var;
     struct kndTask *task;
 };
@@ -251,8 +252,10 @@ static gsl_err_t confirm_implied(void *obj,
 static gsl_err_t set_attr_var_name(void *obj, const char *name, size_t name_size)
 {
     struct kndAttrVar *self = obj;
+
     if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. set attr var name: %.*s", name_size, name);
+        knd_log(".. set attr var name: %.*s is_list_item:%d",
+                name_size, name, self->is_list_item);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     self->name = name;
@@ -394,7 +397,7 @@ static gsl_err_t import_attr_var_list_item(void *obj,
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndAttrVar *self = ctx->attr_var;
+    struct kndAttrVar *self = ctx->list_parent;
     struct kndAttrVar *attr_var;
     struct kndMemPool *mempool = task->mempool;
     int err;
@@ -402,12 +405,13 @@ static gsl_err_t import_attr_var_list_item(void *obj,
     err = knd_attr_var_new(mempool, &attr_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = self->class_var;
-
-    ctx->attr_var = attr_var;
     attr_var->is_list_item = true;
+    attr_var->parent = self;
+    ctx->attr_var = attr_var;
 
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. parse import attr item..");
+    if (DEBUG_ATTR_LEVEL_2) {
+        knd_log("== item of %.*s: %.*s", self->name_size, self->name, 32, rec);
+    }
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -463,7 +467,8 @@ extern gsl_err_t knd_import_attr_var_list(void *obj,
     append_attr_var(self, attr_var);
 
     struct LocalContext ctx = {
-        .attr_var = attr_var,
+        .list_parent = attr_var,
+        //.attr_var = attr_var,
         .task = task
     };
 
@@ -494,6 +499,7 @@ static gsl_err_t import_nested_attr_var(void *obj,
     err = knd_attr_var_new(mempool, &attr_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = self->class_var;
+    attr_var->parent = self;
 
     attr_var->name = name;
     attr_var->name_size = name_size;

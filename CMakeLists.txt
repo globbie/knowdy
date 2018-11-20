@@ -9,8 +9,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_INSTALL_PREFIX /)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -pedantic")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -g3")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O3 -Werror")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g3")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -Werror")
 
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Using 'Debug' build type as default")
@@ -22,27 +22,60 @@ find_path(CHECK_INCLUDE_DIR NAMES check.h PATHS ${CHECK_INCLUDE_DIRS})
 find_library(CHECK_LIBRARY NAMES check PATHS ${CHECK_LIBRARY_DIRS})
 include_directories(${CHECK_INCLUDE_DIR})
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-        set(CHECK_LIBRARY ${CHECK_LIBRARY} rt m pthread subunit)
-        set(CURL_LIBRARY ${CURL_LIBRARY} curl)
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    set(CHECK_LIBRARY ${CHECK_LIBRARY} rt m pthread subunit)
+    set(CURL_LIBRARY ${CURL_LIBRARY} curl)
 endif()
 
-if(NOT TARGET gsl-parser_obj)
-    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/gsl-parser")
-    include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/gsl-parser/include")
-    set(GSL_PARSER_LIBRARY gsl-parser_static)
-endif()
+include(ExternalProject)
 
-if(NOT TARGET glb-lib)
-    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib")
-    include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib/include")
-    set(GLB_LIBRARY glb-lib_static)
-endif()
+ExternalProject_Add(gsl-parser-external
+    PREFIX ${CMAKE_BINARY_DIR}/libs/gsl-parser
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/gsl-parser
+    BINARY_DIR ${CMAKE_BINARY_DIR}/libs/gsl-parser
+    CMAKE_ARGS
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    BUILD_COMMAND make gsl-parser_static
+    BUILD_ALWAYS TRUE
+    INSTALL_COMMAND ""
+)
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/gsl-parser/include")
+set(GSL_PARSER_LIBRARY "${CMAKE_BINARY_DIR}/libs/gsl-parser/lib/libgsl-parser_static.a")
 
-if(NOT TARGET kmq)
-    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/knode")
-    include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/knode/include")
-endif()
+ExternalProject_Add(glb-lib-external
+    PREFIX ${CMAKE_BINARY_DIR}/libs/glb-lib
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib
+    BINARY_DIR ${CMAKE_BINARY_DIR}/libs/glb-lib
+    CMAKE_ARGS
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    BUILD_COMMAND make glb-lib_static glb-lib-options_static
+    BUILD_ALWAYS TRUE
+    INSTALL_COMMAND ""
+)
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib/include")
+set(GLB_LIBRARY
+    "${CMAKE_BINARY_DIR}/libs/glb-lib/lib/libglb-lib_static.a"
+    "${CMAKE_BINARY_DIR}/libs/glb-lib/lib/libglb-lib-options_static.a")
+
+ExternalProject_Add(knode-external
+    PREFIX ${CMAKE_BINARY_DIR}/libs/knode
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/knode
+    BINARY_DIR ${CMAKE_BINARY_DIR}/libs/knode
+    CMAKE_ARGS
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    BUILD_COMMAND make kmq
+    BUILD_ALWAYS TRUE
+    INSTALL_COMMAND ""
+)
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/knode/include")
+link_directories("${CMAKE_BINARY_DIR}/libs/knode/lib")
+set(KNODE_LIBRARY "kmq")
 
 include_directories("include")
 
@@ -59,7 +92,7 @@ set(HEADERS include/knd_array.h include/knd_attr.h
         include/knd_task.h include/knd_text.h
         include/knd_user.h include/knd_utils.h
         include/ooconfig.h)
-set(SOURCES src/knd_array.c src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr.json.c src/knd_attr.gsl.c
+set(SOURCES src/knd_array.c src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr.resolve.c src/knd_attr.select.c src/knd_attr.json.c src/knd_attr.gsl.c
         src/knd_class.c src/knd_class.compute.c src/knd_class.gsl.c src/knd_class.gsp.c
         src/knd_class.import.c src/knd_class.json.c src/knd_class.resolve.c src/knd_class.select.c src/knd_class.states.c
         src/knd_class_inst.c src/knd_class_inst.gsp.c src/knd_class_inst.import.c src/knd_class_inst.json.c src/knd_class_inst.select.c

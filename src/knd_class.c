@@ -458,7 +458,7 @@ extern int knd_get_class_inst(struct kndClass *self,
     struct glbOutput *log = task->log;
     int err, e;
 
-    if (DEBUG_CLASS_LEVEL_TMP)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. \"%.*s\" class (%.*s) to get instance: \"%.*s\"..",
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
@@ -740,9 +740,12 @@ extern int knd_update_state(struct kndClass *self,
     int err;
 
     if (DEBUG_CLASS_LEVEL_TMP) {
-        knd_log("\n .. \"%.*s\" class to update its state: %d",
-                self->name_size, self->name, phase);
+        knd_log("\n .. \"%.*s\" class (repo:%.*s) to update its state: %d",
+                self->name_size, self->name,
+                self->entry->repo->name_size, self->entry->repo->name,
+                phase);
     }
+
     /* newly created class? */
     switch (phase) {
     case KND_CREATED:
@@ -758,9 +761,11 @@ extern int knd_update_state(struct kndClass *self,
 
         /* instance updates */
         if (task->class_inst_state_refs) {
-            if (DEBUG_CLASS_LEVEL_2) {
-                knd_log("\n .. \"%.*s\" class to register inst updates..",
-                        self->name_size, self->name);
+
+            if (DEBUG_CLASS_LEVEL_TMP) {
+                knd_log("\n .. \"%.*s\" class (repo:%.*s) to register inst updates..",
+                        self->name_size, self->name,
+                        self->entry->repo->name_size, self->entry->repo->name);
             }
             err = update_inst_state(self,
                                     task->class_inst_state_refs, task);      RET_ERR();
@@ -1144,6 +1149,12 @@ extern int knd_register_class_inst(struct kndClass *self,
     struct ooDict *class_name_idx = repo->class_name_idx;
     int err;
 
+    if (DEBUG_CLASS_LEVEL_2)
+        knd_log(".. the %.*s class (repo:%.*s) to register \"%.*s\" inst",
+                self->name_size, self->name,
+                self->entry->repo->name_size, self->entry->repo->name,
+                entry->inst->name_size, entry->inst->name);
+
     inst_idx = self->entry->inst_idx;
     if (!inst_idx) {
         err = knd_set_new(mempool, &inst_idx);                          RET_ERR();
@@ -1202,8 +1213,9 @@ extern int knd_class_clone(struct kndClass *self,
 {
     struct kndClass *c;
     struct kndClassEntry *entry;
-    //struct ooDict *class_name_idx = target_repo->class_name_idx;
+    struct ooDict *class_name_idx = target_repo->class_name_idx;
     struct kndSet *class_idx = target_repo->class_idx;
+    void *ref;
     int err;
 
     if (DEBUG_CLASS_LEVEL_2)
@@ -1230,9 +1242,13 @@ extern int knd_class_clone(struct kndClass *self,
     }
 
     /* idx register */
-    /*err = class_name_idx->set(class_name_idx,
-                              entry->name, entry->name_size,
-                              (void*)entry);                                      RET_ERR();*/
+    ref = class_name_idx->get(class_name_idx,
+                              entry->name, entry->name_size);
+    if (!ref) {
+        err = class_name_idx->set(class_name_idx,
+                                  entry->name, entry->name_size,
+                                  (void*)entry);                                      RET_ERR();
+    }
 
     err = class_idx->add(class_idx,
                          entry->id, entry->id_size,
@@ -1255,7 +1271,7 @@ extern int knd_class_copy(struct kndClass *self,
     struct kndClassRef   *ref,   *src_ref;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. copying class %.*s..", self->name_size, self->name);
 
     entry = c->entry;

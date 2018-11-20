@@ -136,7 +136,7 @@ extern int knd_export_class_inst_state_JSON(struct kndClass *self,
         err = out->write(out, ",\"_tot\":", strlen(",\"_tot\":"));                  RET_ERR();
         err = out->writef(out, "%zu", self->entry->inst_idx->num_valid_elems);      RET_ERR();
     } else {
-        err = out->write(out, ",\"_tot\":0", strlen(",\"_tot\":"));                  RET_ERR();
+        err = out->write(out, ",\"_tot\":0", strlen(",\"_tot\":0"));                  RET_ERR();
     }
     return knd_OK;
 }
@@ -164,7 +164,7 @@ static int export_class_setelem_JSON(void *obj,
     if (DEBUG_JSON_LEVEL_2)
         knd_log(".. JSON export set elem: %.*s gt:%zu",
                 elem_id_size, elem_id, task->state_gt);
-    
+
     if (!c) {
         //err = unfreeze_class(self, entry, &c);                                      RET_ERR();
         return knd_OK;
@@ -179,17 +179,24 @@ static int export_class_setelem_JSON(void *obj,
         if (state && state->phase == KND_REMOVED) return knd_OK;
     }
 
+    // TODO: move to select module
+
     /* filter out the irrelevant states */
     if (curr_state < state_gt)
         return knd_OK;
+
+    /* any logical clause to filter? */
+    if (task->attr_var) {
+        /* return early if the query conditions are not met */
+        err = knd_class_match_query(c, task->attr_var);
+        if (err) return knd_OK;
+    }
 
     /* separator */
     if (task->batch_size) {
         err = out->writec(out, ',');                                              RET_ERR();
     }
-
     task->depth = 0;
-
     err = knd_class_export(c, KND_FORMAT_JSON, task);
     if (err) return err;
 

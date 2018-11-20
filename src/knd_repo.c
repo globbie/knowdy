@@ -54,8 +54,8 @@ static void kndRepo_str(struct kndRepo *self)
 
 __attribute__((unused))
 static gsl_err_t alloc_class_update(void *obj,
-                                    const char *name,
-                                    size_t name_size,
+                                    const char *name __attribute__((unused)),
+                                    size_t name_size __attribute__((unused)),
                                     size_t unused_var(count),
                                     void **item)
 {
@@ -240,8 +240,8 @@ static gsl_err_t parse_class_update(void *obj,
 
 __attribute__((unused))
 static gsl_err_t alloc_update(void *obj,
-                              const char *name,
-                              size_t name_size,
+                              const char *name __attribute__((unused)),
+                              size_t name_size __attribute__((unused)),
                               size_t unused_var(count),
                               void **item)
 {
@@ -477,6 +477,8 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
     // NB: transaction atomically confirmed here
     update->confirm = KND_VALID_STATE;
 
+    // TODO: build update GSP
+
     switch (task->format) {
     case KND_FORMAT_JSON:
         err = present_repo_state_JSON(self, out);   RET_ERR();
@@ -485,8 +487,6 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
         err = present_repo_state_GSL(self, out);    RET_ERR();
         break;
     }
-
-    // TODO: build update GSP
 
     return knd_OK;
 }

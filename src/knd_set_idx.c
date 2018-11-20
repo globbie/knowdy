@@ -17,7 +17,7 @@
 #define MASK_LSBIT(mask)            __builtin_ctzll(mask & (~mask + 1))
 #define MASK_CLEAR_LSBIT(mask)      (mask &  (mask - 1))
 
-static inline uint8_t knd_set_idx_key_bit(const char *key, size_t key_size) {
+static inline uint8_t knd_set_idx_key_bit(const char *key, size_t key_size __attribute__((unused))) {
     assert(key_size != 0);
     int bit = obj_id_base[(unsigned char)*key];
     assert(bit >= 0);

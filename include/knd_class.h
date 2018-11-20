@@ -51,23 +51,24 @@ struct kndClassUpdate
     struct kndClass      *class;
     struct kndClassEntry *entry;
     struct kndClassInst **insts;
-    size_t num_insts;
+    size_t                num_insts;
     struct kndClassUpdate *next;
 };
 
 struct kndClassRef
 {
-    struct kndClass *class;
+    struct kndClass      *class;
     struct kndClassEntry *entry;
-    struct kndClassRef *next;
+    struct kndClassRef   *next;
 };
 
 struct kndClassRel
 {
     struct kndClassEntry *topic;
-    struct kndAttr *attr;
-    struct kndSet *set;
-    struct kndClassRel *next;
+    struct kndAttr       *attr;
+    struct kndAttrVar    *attr_var;
+    struct kndSet        *set;
+    struct kndClassRel   *next;
 };
 
 struct kndClassVar
@@ -130,8 +131,6 @@ struct kndClassEntry
 
     struct kndProcEntry **procs;
     size_t num_procs;
-
-    //struct kndObjDir *obj_dir;
 
     struct kndSet *inst_idx;
     size_t num_insts;
@@ -355,6 +354,8 @@ extern int knd_class_new(struct kndMemPool *mempool,
                          struct kndClass **result);
 
 // knd_class.select.c
+extern int knd_class_match_query(struct kndClass *self,
+                                 struct kndAttrVar *query);
 extern gsl_err_t knd_class_select(struct kndRepo *repo,
                                   const char *rec, size_t *total_size,
                                   struct kndTask *task);
@@ -373,3 +374,11 @@ extern int knd_class_get_desc_updates(struct kndClass *self,
 extern int knd_class_get_inst_updates(struct kndClass *self,
                                       size_t gt, size_t lt, size_t eq,
                                       struct kndSet *set);
+
+// knd_class.resolve.c
+extern int knd_resolve_class_ref(struct kndClass *self,
+                                 const char *name, size_t name_size,
+                                 struct kndClass *base,
+                                 struct kndClass **result,
+                                 struct kndTask *task);
+

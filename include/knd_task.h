@@ -48,17 +48,6 @@ typedef enum knd_task_spec_type {
     KND_DELTA_STATE
 } knd_task_spec_type;
 
-//typedef enum knd_iter_type {
-//    KND_ITER_NONE,
-//    KND_ITER_BREADTH,
-//    KND_ITER_DEPTH
-//} knd_iter_type;
-
-//typedef enum knd_delivery_type {
-//    KND_DELIVERY_CACHE,
-//    KND_DELIVERY_HTTP
-//} knd_delivery_type;
-
 struct kndVisualFormat {
     size_t text_line_height;
     size_t text_hangindent_size;
@@ -84,15 +73,6 @@ struct kndTask
 
     const char *locale;
     size_t locale_size;
-
-//    const char *spec;
-//    size_t spec_size;
-//
-//    const char *update_spec;
-//    size_t update_spec_size;
-
-//    const char *obj;
-//    size_t obj_size;
 
     const char *report;
     size_t report_size;
@@ -134,6 +114,7 @@ struct kndTask
     struct kndClass *class;
     struct kndClassVar *class_var;
     struct kndAttr *attr;
+    struct kndAttrVar *attr_var;
     struct kndClassInst *class_inst;
     struct kndElem *elem;
 

@@ -1321,6 +1321,37 @@ extern int knd_proc_coordinate(struct kndProc *self)
     return knd_OK;
 }
 
+extern int knd_resolve_proc_ref(struct kndClass *self,
+                                const char *name, size_t name_size,
+                                struct kndProc *unused_var(base),
+                                struct kndProc **result,
+                                struct kndTask *unused_var(task))
+{
+    struct kndProc *proc;
+    int err;
+
+    if (DEBUG_PROC_LEVEL_2)
+        knd_log(".. resolving proc ref:  %.*s", name_size, name);
+
+    err = knd_get_proc(self->entry->repo,
+                       name, name_size, &proc);                            RET_ERR();
+
+    /*c = dir->conc;
+    if (!c->is_resolved) {
+        err = knd_class_resolve(c);                                                RET_ERR();
+    }
+
+    if (base) {
+        err = is_base(base, c);                                                   RET_ERR();
+    }
+    */
+
+    *result = proc;
+
+    return knd_OK;
+}
+
+
 extern void knd_proc_init(struct kndProc *self)
 {
     self->str = str;

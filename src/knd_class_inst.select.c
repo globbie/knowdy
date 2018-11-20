@@ -90,7 +90,7 @@ static gsl_err_t present_state(void *obj,
                                size_t unused_var(name_size))
 {
     struct LocalContext *ctx = obj;
-    struct kndClass *self = ctx->class_inst->base;
+    struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
     struct glbOutput *out = task->out;
     struct kndMemPool *mempool = task->mempool;
@@ -104,7 +104,7 @@ static gsl_err_t present_state(void *obj,
 
     task->type = KND_SELECT_STATE;
 
-    if (DEBUG_INST_LEVEL_TMP) {
+    if (DEBUG_INST_LEVEL_2) {
         self->str(self, 1);
     }
 
@@ -130,6 +130,7 @@ static gsl_err_t present_state(void *obj,
     return make_gsl_err(gsl_OK);
 
     JSON_state:
+    out->reset(out);
     err = out->writec(out, '{');
     if (err) return make_gsl_err_external(err);
 
