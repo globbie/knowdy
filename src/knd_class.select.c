@@ -378,62 +378,53 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndMemPool *mempool = task->mempool;
+    struct kndClass *c;
+    struct kndSet *set;
     int err;
 
-    if (ctx->selected_class) {
-        err = knd_class_export(ctx->selected_class, task->format, task);
-        if (err) {
-            knd_log("-- class export failed");
-            return make_gsl_err_external(err);
-        }
-        return make_gsl_err(gsl_OK);
-    }
+    // TODO move to export functions
+    //if (task->curr_locale_size) {
+    //    task->locale = task->curr_locale;
+    //    task->locale_size = task->curr_locale_size;
+    //}
 
-    knd_log("-- no specific class selected");
+    /* select a set of classes by base class */
+    if (ctx->class) {
+        c = ctx->class;
 
-    err = knd_class_set_export(ctx->repo->class_idx, task->format, task);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-#if 0
-    if (task->curr_locale_size) {
-        task->locale = task->curr_locale;
-        task->locale_size = task->curr_locale_size;
-    }
-
-    out->reset(out);
-    if (task->type == KND_SELECT_STATE) {
-        if (DEBUG_CLASS_SELECT_LEVEL_2)
-            knd_log(".. batch selection: batch size: %zu   start from: %zu",
-                    task->batch_max, task->batch_from);
-
-        /* no sets found? */
+        /* if no sets are selected - present all descendants of a class */
         if (!task->num_sets) {
-            if (c && c->entry->descendants) {
-                set = c->entry->descendants;
 
-
-                // TODO apply clauses if any
-                // &set
-
-                // export
-                err = knd_class_set_export(set, task->format, task);
-                if (err) return make_gsl_err_external(err);
-
+            if (!c->entry->descendants) {
+                // TODO
+                //err = out->write(out, "{}", strlen("{}"));
+                //if (err) return make_gsl_err_external(err);
                 return make_gsl_err(gsl_OK);
             }
-
-            err = out->write(out, "{}", strlen("{}"));
+            set = c->entry->descendants;
+            // TODO apply clauses if any
+            // &set
+            // export
+            err = knd_class_set_export(set, task->format, task);
             if (err) return make_gsl_err_external(err);
+            
             return make_gsl_err(gsl_OK);
         }
 
-        /* TODO: intersection cache lookup  */
-
+        /* at least one set is available */
         set = task->sets[0];
 
+        /* sets were selected: we need to intersect them */
         /* intersection required */
+
+        // TODO intersection cache lookup
+
+        // TODO support all logical operators,
+        //  current: just LOGIC AND
+
         if (task->num_sets > 1) {
+            /* result set */
             err = knd_set_new(mempool, &set);
             if (err) return make_gsl_err_external(err);
 
@@ -445,59 +436,49 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
             if (err) return make_gsl_err_external(err);
         }
 
+        /* empty set */
         if (!set->num_elems) {
-            knd_log("== empty set? %p", set);
-            err = out->write(out, "{}", strlen("{}"));
-            if (err) return make_gsl_err_external(err);
+            // TODO export empty set in a chosen format
+            //err = out->write(out, "{}", strlen("{}"));
+            //if (err) return make_gsl_err_external(err);
             return make_gsl_err(gsl_OK);
         }
 
-        // TODO apply clauses
-
-
         /* final presentation */
-        switch (set->type) {
-            case KND_SET_STATE_UPDATE:
-                knd_log(".. export state set..");
-                err = out->write(out, "{}", strlen("{}"));
-                if (err) return make_gsl_err_external(err);
-                break;
-            default:
-                err = knd_class_set_export(set, task->format, task);
-                if (err) return make_gsl_err_external(err);
-        }
+        err = knd_class_set_export(set, task->format, task);
+        if (err) return make_gsl_err_external(err);
 
         return make_gsl_err(gsl_OK);
     }
+    
+    /* get one class by name */
+    if (ctx->selected_class) {
+        err = knd_class_export(ctx->selected_class, task->format, task);
+        if (err) {
+            knd_log("-- class export failed");
+            return make_gsl_err_external(err);
+        }
+        return make_gsl_err(gsl_OK);
+    }
+
+    knd_log("-- no specific class selected");
 
     /* display all classes*/
-    if (!c) {
-        knd_log("-- no specific class selected");
-        set = ctx->repo->class_idx;
-        if (set->num_elems) {
-            err = knd_class_set_export(set, task->format, task);
-            if (err) return make_gsl_err_external(err);
-            return make_gsl_err(gsl_OK);
-        }
-        if (ctx->repo->base) {
-            set = ctx->repo->base->class_idx;
-            err = knd_class_set_export(set, task->format, task);
-            if (err) return make_gsl_err_external(err);
-            return make_gsl_err(gsl_OK);
-        }
-        err = out->write(out, "{}", strlen("{}"));
+    set = ctx->repo->class_idx;
+    if (set->num_elems) {
+        err = knd_class_set_export(set, task->format, task);
+        if (err) return make_gsl_err_external(err);
+        return make_gsl_err(gsl_OK);
+    }
+    /* try the base repo */
+    if (ctx->repo->base) {
+        set = ctx->repo->base->class_idx;
+        err = knd_class_set_export(set, task->format, task);
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }
 
-    err = knd_class_export(c, task->format, task);
-    if (err) {
-        knd_log("-- class export failed");
-        return make_gsl_err_external(err);
-    }
-
     return make_gsl_err(gsl_OK);
-#endif
 }
 
 static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
