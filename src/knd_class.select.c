@@ -74,6 +74,9 @@ run_get_class(void *obj, const char *name, size_t name_size)
     int err = knd_get_class(ctx->repo, name, name_size, &ctx->selected_class, ctx->task);
     if (err) return make_gsl_err_external(err);
 
+    /* NB: class instances need this */
+    ctx->task->class = ctx->selected_class;
+
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
         ctx->selected_class->str(ctx->selected_class, 1);
     }
@@ -833,6 +836,12 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
         { .name = "inst",
           .name_size = strlen("inst"),
           .parse = parse_select_class_inst,
+          .obj = &ctx
+        },
+        { .name = "is",
+          .name_size = strlen("is"),
+          .is_selector = true,
+          .parse = parse_baseclass_select,
           .obj = &ctx
         },
         { .name = "_is",

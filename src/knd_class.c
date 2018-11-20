@@ -840,7 +840,7 @@ extern int knd_is_base(struct kndClass *self,
     struct kndClassRef *ref;
     struct kndClass *c;
 
-    if (DEBUG_CLASS_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_TMP) {
         knd_log(".. check inheritance: %.*s (repo:%.*s) [resolved: %d] => "
                 " %.*s (repo:%.*s) [resolved:%d] %p",
                 child->name_size, child->name,
@@ -885,7 +885,7 @@ extern int knd_class_get_attr(struct kndClass *self,
     struct ooDict *attr_name_idx = self->entry->repo->attr_name_idx;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_TMP) {
         knd_log("\n.. \"%.*s\" class (repo: %.*s) to select attr \"%.*s\"",
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
@@ -907,7 +907,7 @@ extern int knd_class_get_attr(struct kndClass *self,
     for (; ref; ref = ref->next) {
         class_entry = ref->class_entry;
 
-        if (DEBUG_CLASS_LEVEL_2)
+        if (DEBUG_CLASS_LEVEL_TMP)
             knd_log("== attr %.*s belongs to class: %.*s (repo:%.*s)",
                     name_size, name,
                     class_entry->name_size, class_entry->name,
