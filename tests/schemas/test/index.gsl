@@ -1,4 +1,6 @@
 {include person}
+{include food}
+{include fruit}
 
 {schema knd-basic
 

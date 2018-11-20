@@ -590,7 +590,7 @@ static gsl_err_t select_by_baseclass(void *obj, const char *name, size_t name_si
     err = knd_get_class(repo, name, name_size, &c, task);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
         c->str(c, 1);
 
     if (!c->entry->class) {

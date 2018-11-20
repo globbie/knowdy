@@ -289,7 +289,7 @@ extern int knd_class_set_export_JSON(struct kndSet *set,
 {
     struct glbOutput *out = task->out;
     int err;
-
+    out->reset(out);
     err = out->write(out, "{\"_set\":{",
                      strlen("{\"_set\":{"));                                      RET_ERR();
 

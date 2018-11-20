@@ -73,7 +73,7 @@ START_TEST(shard_table_test)
     static const struct table_test cases[] = {
         {
             .input = "{task {class}}",
-            .expect = "{_set{total 1}\\[batch{class User{_id 1} {_repo /}\\[attrs{str guid}{str first-name}]}]"
+            .expect = "{set{total 1}\\[batch{class User{_id 1} {_repo /}\\[attrs{str guid}{str first-name}]}]"
         },
         {
             .input = "{task {class User}}",
@@ -148,7 +148,7 @@ START_TEST(shard_table_test)
             .expect = "{repo /{_state 2}{modif [0-9]*}}"
         },
         {
-            .input = "{task {class User {!inst Vasya}}}",
+            .input = "{task {class User {!inst Alice}}}",
             .expect = "{repo /{_state 3}{modif [0-9]*}}"
         },
         // get class
@@ -232,6 +232,11 @@ START_TEST(shard_table_test)
 //            .input = "{task {class {_id 2} {_desc {_state {gt 0}}}}}",
 //            .expect = "??"
 //        },
+        /*** inheritance ***/
+        {   /*  */
+            .input = "{task {user Alice {class {is Edible Object}}}}",
+            .expect = "{set{is Edible Object}{total 3}[batch{class Banana{_id 7} {_repo test}[is{Fruit{_id 8}[nutr{{source{class USDA{_id 13} {_repo test}}{energy 89}}]}]}{class Orange{_id 18} {_repo test}[is{Fruit{_id 8}[nutr{{source{class USDA{_id 13} {_repo test}}{energy 47}}]}]}{class Apple{_id 30} {_repo test}[is{Fruit{_id 8}[nutr{{source{class USDA{_id 13} {_repo test}}{energy 52}}]}]}]{batch {max 10}{size 3}{from 0}}"
+        },
     };
 
     struct kndShard *shard;

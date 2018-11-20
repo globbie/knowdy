@@ -1,0 +1,31 @@
+{schema knd-basic
+
+{!class Apple
+    {is Fruit 
+          [!nutr
+           {USDA
+             {energy 52}
+             {carbs 13.81}
+             {fat 0.17}
+             {protein 0.26}}]}}
+
+{!class Banana
+    {is Fruit 
+        [!nutr
+           {USDA
+             {energy 89}
+             {carbs 22.84}
+             {fat 0.33}
+             {protein 1.09}
+        }]}}
+
+{!class Orange
+    {is Fruit 
+        [!nutr
+           {USDA
+             {energy 47}
+             {carbs 11.75}
+             {fat 0.12}
+             {protein 0.94}
+        }]}}
+}

@@ -161,7 +161,7 @@ static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    /* TODO: get current schema */
+    /* set current schema */
     if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. select schema %.*s from: \"%.*s\"..",
                 name_size, name, self->entry->name_size, self->entry->name);
@@ -496,9 +496,6 @@ extern int knd_get_class_inst(struct kndClass *self,
         return knd_NO_MATCH;
     }
 
-    // NB: inst name collisions may occur
-    // TODO name -> id + lookup inst_idx
-
     if (DEBUG_CLASS_LEVEL_2)
         knd_log("++ got obj entry %.*s  size: %zu",
                 name_size, name, entry->block_size);
@@ -522,7 +519,7 @@ extern int knd_get_class_inst(struct kndClass *self,
     return knd_OK;
 
  read_entry:
-    // TODO
+
     //err = unfreeze_obj_entry(self, entry, result);
     //if (err) return err;
 
@@ -773,8 +770,6 @@ extern int knd_update_state(struct kndClass *self,
             return knd_OK;
         }
 
-        // TODO: no updates?
-
         break;
     default:
         break;
@@ -1005,7 +1000,6 @@ extern int knd_get_class(struct kndRepo *self,
     if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. unfreezing the \"%.*s\" class ..", name_size, name);
 
-    // TODO
     /*err = unfreeze_class(self, entry, &c);
     if (err) {
         knd_log("-- failed to unfreeze class: %.*s",
@@ -1093,7 +1087,6 @@ extern int knd_get_class_by_id(struct kndClass *self,
     if (DEBUG_CLASS_LEVEL_1)
         knd_log(".. unfreezing the \"%.*s\" class ..", id_size, id);
 
-    // TODO
     /*err = unfreeze_class(self, entry, &c);
     if (err) {
         knd_log("-- failed to unfreeze class: %.*s",

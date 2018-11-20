@@ -134,7 +134,7 @@ static int link_ancestor(struct kndClass *self,
     err = desc_idx->add(desc_idx, entry->id, entry->id_size,
                         (void*)entry);                                             RET_ERR();
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
         knd_log(".. add \"%.*s\" (repo:%.*s) as "
                 " a descendant of ancestor \"%.*s\" (repo:%.*s)..",
                 entry->name_size, entry->name,
@@ -165,7 +165,7 @@ static int link_baseclass(struct kndClass *self,
     bool parent_linked = false;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
         knd_log(".. \"%.*s\" (%.*s) links to base => \"%.*s\" (%.*s) top:%d",
                 entry->name_size, entry->name,
                 entry->repo->name_size, entry->repo->name,
@@ -174,9 +174,9 @@ static int link_baseclass(struct kndClass *self,
                 base->entry->class->state_top);
 
     if (base->entry->repo != repo) {
-        err = knd_class_clone(base, repo, &base_copy, mempool);               RET_ERR();
+        err = knd_class_clone(base, repo, &base_copy, mempool);                   RET_ERR();
         base = base_copy;
-        err = link_ancestor(self, base->entry, task);                                   RET_ERR();
+        err = link_ancestor(self, base->entry, task);                             RET_ERR();
         parent_linked = true;
     }
 
@@ -191,7 +191,7 @@ static int link_baseclass(struct kndClass *self,
     /* copy the ancestors */
     for (baseref = base->entry->ancestors; baseref; baseref = baseref->next) {
         if (baseref->entry->class && baseref->entry->class->state_top) continue;
-        err = link_ancestor(self, baseref->entry, task);                                RET_ERR();
+        err = link_ancestor(self, baseref->entry, task);                          RET_ERR();
     }
 
     if (!parent_linked) {
