@@ -104,8 +104,10 @@ extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
 {
     struct kndAttrVar *curr_item;
     struct kndAttrVar *list_item;
-    const char *classname = "None";
-    size_t classname_size = strlen("None");
+    const char *classname = "";
+    size_t classname_size = 0;
+    const char *name = "";
+    size_t name_size = 0;
     struct kndClass *c;
     size_t count = 0;
 
@@ -114,7 +116,7 @@ extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
         classname = c->entry->name;
         classname_size = c->entry->name_size;
 
-        knd_log("%*s_list attr: \"%.*s\" (base: %.*s) size: %zu [",
+        knd_log("%*s_list attr: \"%.*s\" (parent: %.*s) size: %zu [",
                 depth * KND_OFFSET_SIZE, "",
                 item->name_size, item->name,
                 classname_size, classname,
@@ -132,20 +134,23 @@ extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
              list_item;
              list_item = list_item->next) {
             count++;
-            
             str_attr_vars(list_item, depth + 1);
-            
         }
         knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
         //return;
     }
 
-    knd_log("%*s_attr: \"%.*s\" (base: %.*s)  => %.*s",
+    if (item->parent) {
+        name = item->parent->name;
+        name_size = item->parent->name_size;
+    }
+
+    knd_log("%*s_attr: \"%.*s\" (parent: %.*s)  => %.*s",
             depth * KND_OFFSET_SIZE, "",
             item->name_size, item->name,
-            classname_size, classname,
+            name_size, name,
             item->val_size, item->val);
-    
+
     if (item->children) {
         for (curr_item = item->children; curr_item; curr_item = curr_item->next) {
             str_attr_vars(curr_item, depth + 1);

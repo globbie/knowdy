@@ -536,5 +536,11 @@ knd_select_attr_var(struct kndClass *class,
           .obj = &ctx
         }
     };
+
+
+    // TODO array selection
+    //if (attr->is_a_set) {
+    //    knd_log(".. parsing array selection..");
+    //}
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }

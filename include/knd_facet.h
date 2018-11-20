@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2018 by Dmitri Dmitriev
+ *   Copyright (c) 2011-present by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Graph DB, 
@@ -33,7 +33,6 @@ typedef enum knd_facet_type { KND_FACET_UNREC,
                               KND_FACET_CATEGORICAL,
                               KND_FACET_TOPICAL } knd_facet_type;
 
-
 static const char* const knd_facet_names[] = {
     "UNREC",
     "ATOMIC",
@@ -53,8 +52,7 @@ struct kndFacet
     struct kndSet *parent;
 
     struct kndSet *set_idx;
-    size_t export_depth;
-    size_t batch_size;
+    struct kndFacet *children;
     struct kndFacet *next;
 };
 
