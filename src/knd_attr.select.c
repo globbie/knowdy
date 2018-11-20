@@ -537,7 +537,6 @@ knd_select_attr_var(struct kndClass *class,
         }
     };
 
-
     // TODO array selection
     //if (attr->is_a_set) {
     //    knd_log(".. parsing array selection..");
