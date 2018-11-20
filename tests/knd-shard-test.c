@@ -235,7 +235,7 @@ START_TEST(shard_table_test)
         /*** inheritance ***/
         {   /*  */
             .input = "{task {user Alice {class {is Edible Object}}}}",
-            .expect = "{set{is Edible Object}{total 3}[batch{class Banana{_id 7} {_repo test}[is{Fruit{_id 8}[nutr{{source{class USDA{_id 13} {_repo test}}{energy 89}}]}]}{class Orange{_id 18} {_repo test}[is{Fruit{_id 8}[nutr{{source{class USDA{_id 13} {_repo test}}{energy 47}}]}]}{class Apple{_id 30} {_repo test}[is{Fruit{_id 8}[nutr{{source{class USDA{_id 13} {_repo test}}{energy 52}}]}]}]{batch {max 10}{size 3}{from 0}}"
+            .expect = "{set{is Edible Object}{total 3}\\[batch{class Banana{_id 7} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 89}}\\]}\\]}{class Orange{_id 18} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 47}}\\]}\\]}{class Apple{_id 30} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 52}}\\]}\\]}\\]{batch {max 10}{size 3}{from 0}}"
         },
     };
 
