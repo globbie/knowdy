@@ -165,10 +165,10 @@ START_TEST(shard_table_test)
             .input = "{task {class Person {age}}}",
             .expect = "{num age}"
         },
-        {
-            .input = "{task {class Person {_desc}}}",
-            .expect = "not implemented: export empty class desc"
-        },
+        //{
+        //    .input = "{task {class Person {_desc}}}",
+        //    .expect = "not implemented: export empty class desc"
+        //},
 // FIXME(k15tfu): _id doesn't work
 //        {
 //            .input = "{task {class {_id 2} {age}}}",
@@ -232,10 +232,16 @@ START_TEST(shard_table_test)
 //            .input = "{task {class {_id 2} {_desc {_state {gt 0}}}}}",
 //            .expect = "??"
 //        },
-        /*** inheritance ***/
-        {   /*  */
-            .input = "{task {user Alice {class {is Edible Object}}}}",
-            .expect = "{set{is Edible Object}{total 3}\\[batch{class Banana{_id 7} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 89}}\\]}\\]}{class Orange{_id 18} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 47}}\\]}\\]}{class Apple{_id 30} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 52}}\\]}\\]}\\]{batch {max 10}{size 3}{from 0}}"
+        /** 
+         **  INHERITANCE 
+         **/
+        {   /* check an immediate parent */
+            .input  = "{task {user Alice {class {is Fruit}}}}",
+            .expect = "{set{is Fruit}{total 3}\\[batch{class Banana{_id 7} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 89}}\\]}\\]}{class Orange{_id 18} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 47}}\\]}\\]}{class Apple{_id 30} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 52}}\\]}\\]}\\]{batch {max 10}{size 3}{from 0}}"
+        },
+        {   /* check a distant ancestor (grandparent) */
+            .input  = "{task {user Alice {class {is Edible Object}}}}",
+            .expect = "{set{is Edible Object}{total 4}\\[batch{class Banana{_id 7} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 89}}]}]}{class Fruit{_id 8} {_repo test}\\[is{Edible Object{_id 9}}]{_subclasses {total 3} {num_terminals 3}\\[batch{Apple {_id 30}}{Orange {_id 18}}{Banana {_id 7}}]}}{class Orange{_id 18} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 47}}]}]}{class Apple{_id 30} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 52}}]}]}]{batch {max 10}{size 4}{from 0}}"
         },
     };
 

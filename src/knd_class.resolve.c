@@ -162,6 +162,7 @@ static int link_baseclass(struct kndClass *self,
     struct kndClass *base_copy = NULL;
     struct kndClassEntry *entry = self->entry;
     struct kndRepo *repo = self->entry->repo;
+    struct kndSet *desc_idx;
     bool parent_linked = false;
     int err;
 
@@ -204,12 +205,23 @@ static int link_baseclass(struct kndClass *self,
         entry->num_ancestors++;
         base->entry->num_terminals++;
 
-        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+        if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
             knd_log(".. add \"%.*s\" (repo:%.*s) as a child of \"%.*s\" (repo:%.*s)..",
                     entry->name_size, entry->name,
                     entry->repo->name_size, entry->repo->name,
                     base->entry->name_size, base->entry->name,
                     base->entry->repo->name_size, base->entry->repo->name);
+
+        /* register a descendant */
+        desc_idx = base->entry->descendants;
+        if (!desc_idx) {
+            err = knd_set_new(mempool, &desc_idx);                                RET_ERR();
+            desc_idx->type = KND_SET_CLASS;
+            desc_idx->base = base->entry;
+            base->entry->descendants = desc_idx;
+        }
+        err = desc_idx->add(desc_idx, entry->id, entry->id_size,
+                            (void*)entry);                                        RET_ERR();
     }
 
     return knd_OK;

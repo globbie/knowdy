@@ -637,7 +637,6 @@ extern int knd_class_match_query(struct kndClass *self,
         if (err) return err;
         attr_ref = result;
 
-        // TODO check the default value
         if (!attr_ref->attr_var) return knd_NO_MATCH;
         
         err = knd_attr_var_match(attr_ref->attr_var, attr_var);

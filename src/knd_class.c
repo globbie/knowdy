@@ -133,7 +133,6 @@ static void str(struct kndClass *self, size_t depth)
         for (f = self->entry->descendants->facets; f; f = f->next) {
             knd_log("== facet:\"%.*s\"", f->attr->name_size, f->attr->name);
             set = f->set_idx;
-
             if (set) {
                 err = set->map(set, str_facet_val, (void*)self);
                 if (err) return;
@@ -576,8 +575,10 @@ static int update_ancestor_state(struct kndClass *self,
     struct kndState *prev_state;
     int err;
 
-    knd_log(".. update the state of ancestor: %.*s..",
-            self->name_size, self->name);
+    if (DEBUG_CLASS_LEVEL_2) {
+        knd_log(".. update the state of ancestor: %.*s..",
+                self->name_size, self->name);
+    }
 
     /* lookup in repo */
     for (state_ref = repo->class_state_refs; state_ref; state_ref = state_ref->next) {
@@ -835,7 +836,7 @@ extern int knd_is_base(struct kndClass *self,
     struct kndClassRef *ref;
     struct kndClass *c;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. check inheritance: %.*s (repo:%.*s) [resolved: %d] => "
                 " %.*s (repo:%.*s) [resolved:%d] %p",
                 child->name_size, child->name,
@@ -880,7 +881,7 @@ extern int knd_class_get_attr(struct kndClass *self,
     struct ooDict *attr_name_idx = self->entry->repo->attr_name_idx;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log("\n.. \"%.*s\" class (repo: %.*s) to select attr \"%.*s\"",
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
@@ -902,7 +903,7 @@ extern int knd_class_get_attr(struct kndClass *self,
     for (; ref; ref = ref->next) {
         class_entry = ref->class_entry;
 
-        if (DEBUG_CLASS_LEVEL_TMP)
+        if (DEBUG_CLASS_LEVEL_2)
             knd_log("== attr %.*s belongs to class: %.*s (repo:%.*s)",
                     name_size, name,
                     class_entry->name_size, class_entry->name,
@@ -1051,7 +1052,6 @@ extern int knd_get_class_by_id(struct kndClass *self,
     }
 
     entry = elem;
-
     if (entry->class) {
         c = entry->class;
         
@@ -1336,13 +1336,8 @@ extern int knd_class_var_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    //knd_log("..class var new [size:%zu]", sizeof(struct kndClassVar));
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassVar), &page);
     if (err) return err;
-
-    // TEST
-    mempool->num_class_vars++;
-
     *result = page;
     return knd_OK;
 }
@@ -1374,8 +1369,6 @@ extern int knd_class_entry_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-
-    //knd_log("..class entry new [size:%zu]", sizeof(struct kndClassEntry));
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
                             sizeof(struct kndClassEntry), &page);
     if (err) return err;
@@ -1417,8 +1410,6 @@ extern int knd_inner_class_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-
-    //knd_log("..class new [size:%zu]", sizeof(struct kndClass));
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X4,
                             sizeof(struct kndClass), &page);                      RET_ERR();
     if (err) return err;
@@ -1433,9 +1424,6 @@ extern int knd_class_new(struct kndMemPool *mempool,
     struct kndSet *attr_idx;
     void *page;
     int err;
-
-    //knd_log("..class new [size:%zu]", sizeof(struct kndClass));
-
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
                             sizeof(struct kndClass), &page);                      RET_ERR();
     if (err) return err;
@@ -1443,9 +1431,6 @@ extern int knd_class_new(struct kndMemPool *mempool,
 
     err = knd_set_new(mempool, &attr_idx);                                        RET_ERR();
     (*self)->attr_idx = attr_idx;
-
-    // TEST
-    mempool->num_classes++;
 
     kndClass_init(*self);
     return knd_OK;
