@@ -134,7 +134,7 @@ static int link_ancestor(struct kndClass *self,
     err = desc_idx->add(desc_idx, entry->id, entry->id_size,
                         (void*)entry);                                             RET_ERR();
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. add \"%.*s\" (repo:%.*s) as "
                 " a descendant of ancestor \"%.*s\" (repo:%.*s)..",
                 entry->name_size, entry->name,
@@ -166,7 +166,7 @@ static int link_baseclass(struct kndClass *self,
     bool parent_linked = false;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. \"%.*s\" (%.*s) links to base => \"%.*s\" (%.*s) top:%d",
                 entry->name_size, entry->name,
                 entry->repo->name_size, entry->repo->name,
@@ -205,7 +205,7 @@ static int link_baseclass(struct kndClass *self,
         entry->num_ancestors++;
         base->entry->num_terminals++;
 
-        if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
             knd_log(".. add \"%.*s\" (repo:%.*s) as a child of \"%.*s\" (repo:%.*s)..",
                     entry->name_size, entry->name,
                     entry->repo->name_size, entry->repo->name,

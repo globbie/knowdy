@@ -108,6 +108,8 @@ static int index_attr_var_list(struct kndClass *self,
     struct kndClassRef *ref;
     struct kndAttrVar *item = parent_item;
     struct kndMemPool *mempool = task->mempool;
+    const char *name;
+    size_t name_size;
     int err;
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
@@ -133,19 +135,29 @@ static int index_attr_var_list(struct kndClass *self,
     err = knd_get_class(self->entry->repo,
                         attr->ref_classname,
                         attr->ref_classname_size,
-                        &base, task);                                                       RET_ERR();
+                        &base, task);                                                 RET_ERR();
     if (!base->is_resolved) {
         err = knd_class_resolve(base, task);                                          RET_ERR();
     }
 
     for (item = parent_item->list; item; item = item->next) {
-        if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-            knd_log("== index list item:%.*s", item->name_size, item->name);
 
+        if (DEBUG_ATTR_RESOLVE_LEVEL_2)
+            knd_log("== index list item: \"%.*s\" val:%.*s",
+                    item->name_size, item->name,
+                    item->val_size, item->val);
+
+        name = item->name;
+        name_size = item->name_size;
+        if (item->val_size) {
+            name = item->val;
+            name_size = item->val_size;
+        }
+        
         /* specific class */
         err = knd_get_class(self->entry->repo,
-                            item->name,
-                            item->name_size, &c, task);                                 RET_ERR();
+                            name,
+                            name_size, &c, task);                                 RET_ERR();
         item->class = c;
 
         if (!c->is_resolved) {
@@ -687,7 +699,9 @@ static int register_new_attr(struct kndClass *self,
     knd_uid_create(attr->numid, attr->id, &attr->id_size);
 
     err = knd_attr_ref_new(mempool, &attr_ref);
-    if (err) return err;
+    if (err) {
+        return err;
+    }
     attr_ref->attr = attr;
     attr_ref->class_entry = self->entry;
 
@@ -697,6 +711,7 @@ static int register_new_attr(struct kndClass *self,
     attr_ref->next = prev_attr_ref;
 
     if (prev_attr_ref) {
+        //knd_log("-- dict remove");
         err = attr_name_idx->remove(attr_name_idx,
                                     attr->name, attr->name_size);           RET_ERR();
     }

@@ -458,6 +458,7 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
     
     /* get one class by name */
     if (ctx->selected_class) {
+        task->out->reset(task->out);
         err = knd_class_export(ctx->selected_class, task->format, task);
         if (err) {
             knd_log("-- class export failed");

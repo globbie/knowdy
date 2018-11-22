@@ -124,6 +124,10 @@ static gsl_err_t set_ref_class(void *obj, const char *name, size_t name_size)
 {
     struct kndAttr *self = obj;
     if (!name_size) return make_gsl_err(gsl_FAIL);
+    if (!self->name_size) {
+        knd_log("-- attr name not specified");
+        return make_gsl_err(gsl_FAIL);
+    }
     self->ref_classname = name;
     self->ref_classname_size = name_size;
     return make_gsl_err(gsl_OK);
@@ -178,6 +182,11 @@ static gsl_err_t run_set_quant(void *obj, const char *name, size_t name_size)
 static gsl_err_t parse_quant_type(void *obj, const char *rec, size_t *total_size)
 {
     struct kndAttr *self = obj;
+    if (!self->name_size) {
+        knd_log("-- attr name not specified");
+        return make_gsl_err(gsl_FAIL);
+    }
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_quant,
