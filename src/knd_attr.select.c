@@ -108,7 +108,7 @@ static gsl_err_t run_set_attr_var(void *obj,
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepo *repo = task->repo;
     struct kndAttr *attr;
     struct kndAttrRef *attr_ref;
     struct kndAttrVar *attr_var;
@@ -124,7 +124,7 @@ static gsl_err_t run_set_attr_var(void *obj,
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    attr = ctx->attr;
+    attr = ctx->selected_attr_ref->attr;
     if (!attr) {
         log->reset(log);
         e = log->write(log, "-- no attr selected",
@@ -137,7 +137,7 @@ static gsl_err_t run_set_attr_var(void *obj,
     /*  attr var exists? */
     err = attr_idx->get(attr_idx, attr->id, attr->id_size, &elem);
     if (err) {
-        knd_log("-- no attr \"%.*s\" in local attr idx?",
+        knd_log("-- no attr var \"%.*s\" in local attr idx",
                 attr->name_size, attr->name);
         return make_gsl_err_external(err);
     }

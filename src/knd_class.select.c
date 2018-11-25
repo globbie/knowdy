@@ -375,7 +375,15 @@ validate_select_class_attr(void *obj, const char *name, size_t name_size,
 {
     struct LocalContext *ctx = obj;
 
-    return knd_select_attr_var(ctx->selected_class, name, name_size, rec, total_size, ctx->task);
+    if (!ctx->selected_class) {
+        knd_log("-- no class selected");
+        int err = ctx->task->log->writef(ctx->task->log, "no class selected");
+        if (err) return *total_size = 0, make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(knd_FAIL);
+    }
+
+    return knd_select_attr_var(ctx->selected_class, name, name_size,
+                               rec, total_size, ctx->task);
 }
 
 static gsl_err_t
