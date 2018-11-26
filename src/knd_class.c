@@ -67,7 +67,7 @@ static int str_facet_val(void *unused_var(obj),
 
 static void str(struct kndClass *self, size_t depth)
 {
-    //struct kndTranslation *tr;
+    struct kndTranslation *tr;
     struct kndClassVar *item;
     struct kndClassRef *ref;
     struct kndClass *c;
@@ -97,11 +97,12 @@ static void str(struct kndClass *self, size_t depth)
     }
     */
 
-    /*for (tr = self->tr; tr; tr = tr->next) {
-        knd_log("%*s~ %s %.*s",
-                (self->depth + 1) * KND_OFFSET_SIZE, "",
-                tr->locale, tr->val_size, tr->val);
-                }*/
+    for (tr = self->tr; tr; tr = tr->next) {
+        knd_log("%*s~ %.*s %.*s",
+                (depth + 1) * KND_OFFSET_SIZE, "",
+                tr->locale_size, tr->locale,
+                tr->val_size, tr->val);
+    }
 
     if (self->baseclass_vars) {
         for (item = self->baseclass_vars; item; item = item->next) {

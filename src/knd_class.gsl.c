@@ -67,7 +67,7 @@ static gsl_err_t parse_gloss_item(void *obj,
     struct kndTranslation *tr;
     int err;
 
-    if (DEBUG_GSL_LEVEL_2)
+    if (DEBUG_GSL_LEVEL_TMP)
         knd_log(".. %.*s: allocate gloss translation",
                 self->entry->name_size, self->entry->name);
 
@@ -98,7 +98,7 @@ static gsl_err_t parse_gloss_item(void *obj,
     tr->locale = tr->curr_locale;
     tr->locale_size = tr->curr_locale_size;
 
-    if (DEBUG_GSL_LEVEL_2)
+    if (DEBUG_GSL_LEVEL_TMP)
         knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
                 tr->locale_size, tr->locale, tr->val_size, tr->val);
 
@@ -122,8 +122,9 @@ extern gsl_err_t knd_parse_gloss_array(void *obj,
         .obj = task
     };
 
-    if (DEBUG_GSL_LEVEL_2) {
-        knd_log(".. %.*s: reading gloss", self->entry->name_size, self->entry->name);
+    if (DEBUG_GSL_LEVEL_TMP) {
+        knd_log(".. %.*s: reading gloss",
+                self->entry->name_size, self->entry->name);
     }
 
     return gsl_parse_array(&item_spec, rec, total_size);
