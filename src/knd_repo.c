@@ -368,9 +368,9 @@ static int kndRepo_restore(struct kndRepo *self,
 static int present_update_JSON(struct kndUpdate *update,
                                struct glbOutput *out)
 {
-    struct kndStateRef *ref, *child_ref;
+    struct kndStateRef *ref; //, *child_ref;
     struct kndClassEntry *entry;
-    struct kndState *state;
+    //struct kndState *state;
     int err;
     err = out->write(out, ",\"update\":", strlen(",\"update\":"));                  RET_ERR();
     err = out->writec(out, '{');                                                  RET_ERR();
