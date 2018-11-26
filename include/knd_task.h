@@ -122,9 +122,11 @@ struct kndTask
     struct kndProc *proc;
 
     /* updates */
+    //struct kndStateRef  *class_state_refs;
     struct kndStateRef  *inner_class_state_refs;
     struct kndStateRef  *class_inst_state_refs;
     struct kndUpdate *update;
+    bool update_confirmed;
 
     struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;

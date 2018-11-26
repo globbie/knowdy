@@ -580,7 +580,8 @@ static gsl_err_t parse_select_class_inst(void *obj,
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    parser_err = knd_select_class_inst(ctx->task->class, rec, total_size, ctx->task);
+    parser_err = knd_select_class_inst(ctx->task->class, rec,
+                                       total_size, ctx->task);
 
     if (parser_err.code) return parser_err;
 

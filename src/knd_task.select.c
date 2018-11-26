@@ -221,8 +221,10 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
 
     switch (self->type) {
     case KND_UPDATE_STATE:
-        err = knd_confirm_state(self->repo, self);
-        if (err) return make_gsl_err_external(err);
+        if (!self->update_confirmed) {
+            err = knd_confirm_state(self->repo, self);
+            if (err) return make_gsl_err_external(err);
+        }
         break;
     default:
         break;

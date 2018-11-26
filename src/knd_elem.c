@@ -98,6 +98,11 @@ static int export_JSON(struct kndElem *self,
     struct glbOutput *out = task->out;
     int err;
 
+    if (DEBUG_ELEM_LEVEL_TMP)
+        knd_log(".. export %.*s elem val => \"%.*s\"",
+                self->attr->name_size, self->attr->name,
+                self->val_size, self->val);
+
     if (self->inner) {
         /*if (self->is_list) {
             buf_size = sprintf(buf, "\"%s_l\":[",
@@ -355,12 +360,13 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
     state_val->val      = val;
     state_val->val_size = val_size;
     state->val          = state_val;
+
     self->val = val;
     self->val_size = val_size;
 
     register_state(self, state, state_ref);
 
-    if (DEBUG_ELEM_LEVEL_2)
+    if (DEBUG_ELEM_LEVEL_TMP)
         knd_log("++ elem val set: \"%.*s\" [state:%zu]",
                 self->val_size, self->val, state->numid);
 

@@ -210,12 +210,12 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
     struct kndElem *elem;
     struct kndClassInst *obj;
     struct kndState *state = self->states;
-    bool is_concise = true;
+    bool is_concise = false;
     int err;
 
-    if (DEBUG_INST_LEVEL_2) {
-        knd_log(".. JSON export class inst \"%.*s\"",
-                self->name_size, self->name);
+    if (DEBUG_INST_LEVEL_TMP) {
+        knd_log(".. JSON export class inst \"%.*s\" curr depth:%zu max depth:%zu",
+                self->name_size, self->name, self->depth, task->max_depth);
         if (self->base) {
             knd_log("   (class: %.*s)",
                     self->base->name_size, self->base->name);
@@ -266,7 +266,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
         }
     }
 
-    if (self->depth >= self->max_depth) {
+    if (self->depth >= task->max_depth) {
         /* any concise fields? */
         err = export_concise_JSON(self, task);                                     RET_ERR();
         goto final;
@@ -288,7 +288,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
         if (elem->attr->access_type == KND_ATTR_ACCESS_RESTRICTED)
             continue;
 
-        if (DEBUG_INST_LEVEL_3)
+        if (DEBUG_INST_LEVEL_TMP)
             knd_log(".. export elem: %.*s",
                     elem->attr->name_size, elem->attr->name);
 
@@ -297,7 +297,6 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
             /* inner obj? */
             if (elem->inner) {
                 obj = elem->inner;
-
                 /*if (need_separ) {*/
                 err = out->write(out, ",", 1);
                 if (err) return err;
@@ -322,8 +321,9 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
                 if (elem->attr->concise_level)
                     goto export_elem;
 
-            if (DEBUG_INST_LEVEL_2)
-                knd_log("  .. skip JSON elem: %s..\n", elem->attr->name);
+            if (DEBUG_INST_LEVEL_TMP)
+                knd_log("  .. skip JSON elem: %.*s..\n",
+                        elem->attr->name_size, elem->attr->name);
             continue;
         }
 
@@ -388,7 +388,7 @@ static int export_class_inst_JSON(void *obj,
     }
 
     // TODO: depth
-    err = knd_class_inst_export_JSON(inst, task);                        RET_ERR();
+    err = knd_class_inst_export_JSON(inst, task);                                 RET_ERR();
     task->batch_size++;
 
     return knd_OK;

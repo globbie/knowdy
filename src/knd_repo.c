@@ -365,6 +365,28 @@ static int kndRepo_restore(struct kndRepo *self,
     return knd_OK;
 }
 
+static int present_update_JSON(struct kndUpdate *update,
+                               struct glbOutput *out)
+{
+    struct kndStateRef *ref, *child_ref;
+    struct kndClassEntry *entry;
+    struct kndState *state;
+    int err;
+    err = out->write(out, ",\"update\":", strlen(",\"update\":"));                  RET_ERR();
+    err = out->writec(out, '{');                                                  RET_ERR();
+
+    for (ref = update->class_state_refs; ref; ref = ref->next) {
+        entry = ref->obj;
+        if (entry) {
+            knd_log(".. last update to present changes in \"%.*s\"..",
+                    entry->name_size, entry->name);
+        }
+    }
+    err = out->writec(out, '}');                                                  RET_ERR();
+
+    return knd_OK;
+}
+
 static int present_repo_state_JSON(struct kndRepo *self,
                                    struct glbOutput *out)
 {
@@ -385,6 +407,8 @@ static int present_repo_state_JSON(struct kndRepo *self,
         update = self->updates;
         err = out->write(out, ",\"_modif\":", strlen(",\"_modif\":"));            RET_ERR();
         err = out->writef(out, "%zu", (size_t)update->timestamp);                 RET_ERR();
+
+        err = present_update_JSON(update, out);  RET_ERR();
     } else {
         err = out->write(out, ",\"_modif\":", strlen(",\"_modif\":"));            RET_ERR();
         err = out->writef(out, "%zu", (size_t)self->timestamp);                   RET_ERR();
@@ -431,9 +455,13 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP) {
-        knd_log(".. \"%.*s\" repo to confirm updates..",
-                self->name_size, self->name);
+        knd_log(".. \"%.*s\" repo to confirm updates.. class refs:%p",
+                self->name_size, self->name,
+                self->class_state_refs);
     }
+
+    // update flag off
+    task->update_confirmed = true;
 
     err = knd_update_new(mempool, &update);                                      RET_ERR();
     update->repo = self;

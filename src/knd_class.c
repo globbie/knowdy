@@ -695,6 +695,7 @@ static int update_inst_state(struct kndClass *self,
     struct kndStateRef *ref;
     struct kndState *state;
     struct kndSet *inst_idx = self->entry->inst_idx;
+    struct kndRepo *repo = task->repo;
     int err;
 
     assert(inst_idx != NULL);
@@ -725,6 +726,15 @@ static int update_inst_state(struct kndClass *self,
     state->next = self->inst_states;
     self->inst_states = state;
 
+    /* inform our repo */
+    err = knd_state_ref_new(mempool, &ref);                                 RET_ERR();
+    ref->state = state;
+    ref->type = KND_STATE_CLASS;
+    ref->obj = self->entry;
+
+    ref->next = repo->class_state_refs;
+    repo->class_state_refs = ref;
+    
     return knd_OK;
 }
 
@@ -759,15 +769,15 @@ extern int knd_update_state(struct kndClass *self,
 
         /* instance updates */
         if (task->class_inst_state_refs) {
-
             if (DEBUG_CLASS_LEVEL_TMP) {
                 knd_log("\n .. \"%.*s\" class (repo:%.*s) to register inst updates..",
                         self->name_size, self->name,
                         self->entry->repo->name_size, self->entry->repo->name);
             }
             err = update_inst_state(self,
-                                    task->class_inst_state_refs, task);      RET_ERR();
+                                    task->class_inst_state_refs, task);           RET_ERR();
             task->class_inst_state_refs = NULL;
+
             return knd_OK;
         }
 
@@ -777,9 +787,10 @@ extern int knd_update_state(struct kndClass *self,
     }
     
     /* register in repo */
-    err = knd_state_ref_new(mempool, &state_ref);                                   RET_ERR();
+    err = knd_state_ref_new(mempool, &state_ref);                                 RET_ERR();
     state_ref->state = self->states;
     state_ref->type = KND_STATE_CLASS;
+    state_ref->obj = self->entry;
 
     state_ref->next = repo->class_state_refs;
     repo->class_state_refs = state_ref;
