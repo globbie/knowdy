@@ -67,7 +67,7 @@ static gsl_err_t parse_gloss_item(void *obj,
     struct kndTranslation *tr;
     int err;
 
-    if (DEBUG_GSL_LEVEL_TMP)
+    if (DEBUG_GSL_LEVEL_2)
         knd_log(".. %.*s: allocate gloss translation",
                 self->entry->name_size, self->entry->name);
 
@@ -98,7 +98,7 @@ static gsl_err_t parse_gloss_item(void *obj,
     tr->locale = tr->curr_locale;
     tr->locale_size = tr->curr_locale_size;
 
-    if (DEBUG_GSL_LEVEL_TMP)
+    if (DEBUG_GSL_LEVEL_2)
         knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
                 tr->locale_size, tr->locale, tr->val_size, tr->val);
 
@@ -122,8 +122,8 @@ extern gsl_err_t knd_parse_gloss_array(void *obj,
         .obj = task
     };
 
-    if (DEBUG_GSL_LEVEL_TMP) {
-        knd_log(".. %.*s: reading gloss",
+    if (DEBUG_GSL_LEVEL_2) {
+        knd_log(".. %.*s: reading glosses..",
                 self->entry->name_size, self->entry->name);
     }
 
@@ -791,7 +791,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
 
     /* state info */
     if (0 && self->num_states) {
-        err = export_class_state_GSL(self, task);                             RET_ERR();
+        err = export_class_state_GSL(self, task);                                 RET_ERR();
     }
 
     /* display base classes only once */
@@ -875,17 +875,17 @@ extern int knd_class_export_GSL(struct kndClass *self,
             err = knd_print_offset(out, (depth + 1) * task->format_offset);       RET_ERR();
         }
 
-        err = out->write(out, "[_rels", strlen("[_rels"));            RET_ERR();
+        err = out->write(out, "[_rels", strlen("[_rels"));                        RET_ERR();
         for (class_rel = entry->reverse_rels; class_rel;
              class_rel = class_rel->next) {
             if (task->format_offset) {
-                err = out->writec(out, '\n');                                         RET_ERR();
-                err = knd_print_offset(out, (depth + 2) * task->format_offset);       RET_ERR();
+                err = out->writec(out, '\n');                                     RET_ERR();
+                err = knd_print_offset(out, (depth + 2) * task->format_offset);   RET_ERR();
             }
 
             err = out->writec(out, '{');                                          RET_ERR();
             err = out->write(out, "{topic ",
-                             strlen("{topic "));                             RET_ERR();
+                             strlen("{topic "));                                  RET_ERR();
             err = out->write(out,
                              class_rel->topic->name,
                              class_rel->topic->name_size);                        RET_ERR();

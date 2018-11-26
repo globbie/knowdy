@@ -377,6 +377,10 @@ extern gsl_err_t parse_class_var(struct kndTask *task,
         { .type = GSL_SET_ARRAY_STATE,
           .validate = knd_import_attr_var_list,
           .obj = task
+        },
+        { .type = GSL_GET_ARRAY_STATE,
+          .validate = knd_import_attr_var_list,
+          .obj = task
         }
     };
 
