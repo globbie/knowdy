@@ -78,7 +78,7 @@ extern int knd_index_attr(struct kndClass *self,
                           struct kndTask *task)
 {
     struct kndClass *base;
-    struct kndSet *set;
+    //struct kndSet *set;
     struct kndClass *c = NULL;
     int err;
 
@@ -115,7 +115,7 @@ extern int knd_index_attr(struct kndClass *self,
 
     err = knd_is_base(base, c);                                                   RET_ERR();
 
-    set = attr->parent_class->entry->descendants;
+    //set = attr->parent_class->entry->descendants;
 
     /* add curr class to the reverse index */
     //err = knd_set_add_ref(set, attr, self->entry, c->entry);
