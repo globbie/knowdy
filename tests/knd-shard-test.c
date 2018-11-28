@@ -265,6 +265,17 @@ START_TEST(shard_table_test)
             .input  = "{task {user Alice {class {_is Fruit {nutr}}}}}",
             .expect = "not implemented: filter baseclass attribute"
         },
+        /**
+         **  class remove
+         **/
+        {
+            .input  = "{task {user Alice {class Banana {!_rm}}}}",
+            .expect = "not implemented: remove class"
+        },
+        {
+            .input  = "{task {user Alice {class Banana {!_rm WRONG_FORMAT}}}}",
+            .expect = "class parse failure"  // FIXME(k15tfu)
+        },
     };
 
     struct kndShard *shard;

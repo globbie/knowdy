@@ -229,7 +229,7 @@ parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
 //        },
     };
 
-    task->type = KND_SELECT_STATE;
+    //task->type = KND_SELECT_STATE;
 
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) return err;
@@ -514,6 +514,52 @@ validate_select_class_attr(void *obj, const char *name, size_t name_size,
 }
 
 static gsl_err_t
+run_remove_class(void *obj, const char *unused_var(name), size_t name_size)
+{
+    struct LocalContext *ctx = obj;
+    int err;
+
+    if (name_size) return make_gsl_err(gsl_FORMAT);
+
+    if (!ctx->selected_class) {
+        knd_log("-- no class selected");
+        err = ctx->task->log->writef(ctx->task->log, "no class selected");
+        if (err) return make_gsl_err_external(err);
+        //ctx->task->http_code = HTTP_BAD_REQUEST;  // FIXME(k15tfu): ??
+        return make_gsl_err_external(knd_FAIL);
+    }
+
+    if (ctx->selected_class->entry->num_children) {
+        knd_log("-- descendants exist");
+        err = ctx->task->log->writef(ctx->task->log, "descendants exist");
+        if (err) return make_gsl_err_external(err);
+        //ctx->task->http_code = HTTP_CONFLICT;  // FIXME(k15tfu): ??
+        return make_gsl_err_external(knd_FAIL);
+    }
+
+    if (ctx->selected_class->entry->num_insts) {
+        knd_log("-- instances exist");
+        err = ctx->task->log->writef(ctx->task->log, "instances exist");
+        if (err) return make_gsl_err_external(err);
+        //ctx->task->http_code = HTTP_CONFLICT;  // FIXME(k15tfu): ??
+        return make_gsl_err_external(knd_FAIL);
+    }
+
+    knd_log("-- not implemented: remove class");
+    err = ctx->task->log->writef(ctx->task->log, "not implemented: remove class");
+    if (err) return make_gsl_err_external(err);
+    return make_gsl_err_external(knd_FAIL);
+#if 0
+    // TODO: copy-on-write : add special entry
+    //         for deleted classes from base repo
+    ctx->task->type = KND_UPDATE_STATE;
+    ctx->task->phase = KND_REMOVED;
+
+    return make_gsl_err(gsl_OK);
+#endif
+}
+
+static gsl_err_t
 present_class_selection(void *obj, const char *unused_var(val), size_t unused_var(val_size))
 {
     struct LocalContext *ctx = obj;
@@ -595,79 +641,6 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t run_remove_class(void *obj, const char *name, size_t name_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndClass *c;
-    struct glbOutput *log = task->log;
-    size_t num_children;
-    int err;
-
-    if (!task->class) {
-        knd_log("-- remove operation: class name not specified");
-        log->reset(log);
-        err = log->write(log, name, name_size);
-        if (err) return make_gsl_err_external(err);
-        err = log->write(log, " class name not specified",
-                         strlen(" class name not specified"));
-        if (err) return make_gsl_err_external(err);
-        task->http_code = HTTP_BAD_REQUEST;
-        return make_gsl_err(gsl_NO_MATCH);
-    }
-
-    c = task->class;
-
-    /* check dependants */
-    num_children = c->entry->num_children;
-    if (c->desc_states && c->desc_states->val)
-        num_children = c->desc_states->val->val_size;
-
-    if (num_children) {
-        knd_log("-- remove operation: descendants exist");
-        log->reset(log);
-        err = log->write(log, name, name_size);
-        if (err) return make_gsl_err_external(err);
-        err = log->write(log, "class conflict: descendants exist",
-                         strlen("class conflict: descendants exist"));
-        if (err) return make_gsl_err_external(err);
-        task->http_code = HTTP_CONFLICT;
-        return make_gsl_err(gsl_FAIL);
-    }
-
-    if (c->entry->num_insts) {
-        knd_log("-- remove operation: instances exist");
-        log->reset(log);
-        err = log->write(log, name, name_size);
-        if (err) return make_gsl_err_external(err);
-        err = log->write(log, "class conflict: instances exist",
-                         strlen("class conflict: instances exist"));
-        if (err) return make_gsl_err_external(err);
-        task->http_code = HTTP_CONFLICT;
-        return make_gsl_err(gsl_FAIL);
-    }
-
-    // TODO: copy-on-write : add special entry
-    //         for deleted classes from base repo
-
-
-    task->type = KND_UPDATE_STATE;
-    task->phase = KND_REMOVED;
-
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-        knd_log("NB: class removed: \"%.*s\"\n",
-                c->name_size, c->name);
-
-    log->reset(log);
-    err = log->write(log, name, name_size);
-    if (err) return make_gsl_err_external(err);
-    err = log->write(log, " class removed",
-                     strlen(" class removed"));
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t parse_select_class_inst(void *obj,
                                          const char *rec,
                                          size_t *total_size)
@@ -744,17 +717,17 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
         { .validate = validate_select_class_attr,
           .obj = &ctx
         },
-        { .is_default = true,
-          .run = present_class_selection,
-          .obj = &ctx
-        },
-    // TODO(k15tfu): review the specs below
         { .type = GSL_SET_STATE,
           .name = "_rm",
           .name_size = strlen("_rm"),
           .run = run_remove_class,
           .obj = &ctx
         },
+        { .is_default = true,
+          .run = present_class_selection,
+          .obj = &ctx
+        },
+    // TODO(k15tfu): review the specs below
         { .type = GSL_SET_STATE,
           .name = "instance",
           .name_size = strlen("instance"),
