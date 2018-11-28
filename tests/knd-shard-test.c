@@ -236,11 +236,11 @@ START_TEST(shard_table_test)
          **  INHERITANCE 
          **/
         {   /* check no parent */
-            .input  = "{task {user Alice {class {is Banana}}}}",
+            .input  = "{task {user Alice {class {_is Banana}}}}",
             .expect = "not implemented: export empty baseclass desc"
         },
         {   /* check an immediate parent */
-            .input  = "{task {user Alice {class {is Fruit}}}}",
+            .input  = "{task {user Alice {class {_is Fruit}}}}",
             .expect =
                 "{set{is Fruit}{total 3}\\[batch"
                     "{class Banana{_id 7} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 89}}]}]}"
@@ -249,7 +249,7 @@ START_TEST(shard_table_test)
                 "]{batch {max 10}{size 3}{from 0}}"
         },
         {   /* check a distant ancestor (grandparent) */
-            .input  = "{task {user Alice {class {is Edible Object}}}}",
+            .input  = "{task {user Alice {class {_is Edible Object}}}}",
             .expect =
                 "{set{is Edible Object}{total 4}\\[batch"
                     "{class Banana{_id 7} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 89}}]}]}"
@@ -262,7 +262,7 @@ START_TEST(shard_table_test)
                 "]{batch {max 10}{size 4}{from 0}}"
         },
         {
-            .input  = "{task {user Alice {class {is Fruit {nutr}}}}}",
+            .input  = "{task {user Alice {class {_is Fruit {nutr}}}}}",
             .expect = "not implemented: filter baseclass attribute"
         },
     };
