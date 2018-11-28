@@ -284,8 +284,8 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     struct kndClass *c;
     struct kndSet *set;
     //void *result;
-    const char *class_id;
-    size_t class_id_size;
+    //const char *class_id;
+    //size_t class_id_size;
     //struct kndFacet *facet;
     struct glbOutput *log = task->log;
     struct kndAttr *attr = ctx->attr;
@@ -332,8 +332,8 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
         return make_gsl_err_external(err);
     }
 
-    class_id = c->entry->id;
-    class_id_size = c->entry->id_size;
+    //class_id = c->entry->id;
+    //class_id_size = c->entry->id_size;
 
     /*    err = facet->set_idx->get(facet->set_idx,
                               class_id, class_id_size, &result);

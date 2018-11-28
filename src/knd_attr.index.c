@@ -342,7 +342,6 @@ extern int knd_index_inner_attr_var(struct kndClass *self,
                 self->name_size, self->name,
                 parent_item->is_list_item);
 
-
     if (parent_item->implied_attr) {
         err = index_attr_item(self, parent_item->implied_attr,
                               parent_item, task);                                 RET_ERR();
