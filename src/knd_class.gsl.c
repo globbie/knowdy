@@ -369,7 +369,7 @@ static int export_conc_elem_GSL(void *obj,
     return knd_OK;
 }
 
-static int export_class_ref_GSL(void *obj,
+/*static int export_class_ref_GSL(void *obj,
                                  const char *unused_var(elem_id),
                                  size_t unused_var(elem_id_size),
                                  size_t count,
@@ -381,7 +381,6 @@ static int export_class_ref_GSL(void *obj,
     struct kndClass *c = entry->class;
     int err;
 
-    /* separator */
     if (count) {
         err = out->writec(out, ',');                                              RET_ERR();
     }
@@ -390,6 +389,7 @@ static int export_class_ref_GSL(void *obj,
     if (err) return err;
     return knd_OK;
 }
+*/
 
 static int export_gloss_GSL(struct kndClass *self,
                             struct kndTask *task)
@@ -706,8 +706,8 @@ extern int knd_class_export_GSL(struct kndClass *self,
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
     struct glbOutput *out = task->out;
-    struct kndSet *set;
-    struct kndAttr *attr;
+    //struct kndSet *set;
+    //struct kndAttr *attr;
     struct kndClassRel *class_rel;
     struct kndState *state = self->states;
     size_t num_children;
@@ -883,7 +883,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
                 err = knd_print_offset(out, (depth + 2) * task->format_offset);   RET_ERR();
             }
 
-            err = out->writec(out, '{');                                          RET_ERR();
+            /*err = out->writec(out, '{');                                          RET_ERR();
             err = out->write(out, "{topic ",
                              strlen("{topic "));                                  RET_ERR();
             err = out->write(out,
@@ -912,7 +912,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
                 if (err && err != knd_RANGE) return err;
                 err = out->writec(out, ']');                                      RET_ERR();
             }
-
+            */
             err = out->writec(out, '}');                                          RET_ERR();
         }
         err = out->writec(out, ']');                                              RET_ERR();

@@ -204,7 +204,8 @@ static int export_class_setelem_JSON(void *obj,
     return knd_OK;
 }
 
-static int export_class_ref_JSON(void *obj,
+
+/*static int export_class_ref_JSON(void *obj,
                                  const char *unused_var(elem_id),
                                  size_t unused_var(elem_id_size),
                                  size_t count,
@@ -218,7 +219,6 @@ static int export_class_ref_JSON(void *obj,
     size_t curr_max_depth = 0;
     int err;
 
-    /* separator */
     if (count) {
         err = out->writec(out, ',');                                              RET_ERR();
     }
@@ -234,6 +234,7 @@ static int export_class_ref_JSON(void *obj,
     
     return knd_OK;
 }
+*/
 
 static int export_gloss_JSON(struct kndClass *self,
                              struct kndTask *task)
@@ -516,11 +517,11 @@ extern int knd_class_export_JSON(struct kndClass *self,
     struct kndClassEntry *orig_entry = entry->orig;
     struct glbOutput *out = task->out;
     struct kndSet *set;
-    struct kndAttr *attr;
+    //struct kndAttr *attr;
     struct kndClassRel *class_rel;
     struct kndState *state = self->states;
     size_t num_children;
-    bool in_list = false;
+    //bool in_list = false;
     int err;
 
     if (DEBUG_JSON_LEVEL_2) {
@@ -657,7 +658,8 @@ extern int knd_class_export_JSON(struct kndClass *self,
 
         for (class_rel = entry->reverse_rels; class_rel;
              class_rel = class_rel->next) {
-            if (in_list) {
+
+            /*if (in_list) {
                 err = out->writec(out, ',');                                      RET_ERR();
             }
             err = out->writec(out, '{');                                          RET_ERR();
@@ -691,6 +693,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
 
             err = out->writec(out, '}');                                          RET_ERR();
             in_list = true;
+            */
         }
         err = out->writec(out, ']');                                              RET_ERR();
     }

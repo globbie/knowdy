@@ -283,10 +283,10 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     struct kndClass *self = task->class;
     struct kndClass *c;
     struct kndSet *set;
-    void *result;
+    //void *result;
     const char *class_id;
     size_t class_id_size;
-    struct kndFacet *facet;
+    //struct kndFacet *facet;
     struct glbOutput *log = task->log;
     struct kndAttr *attr = ctx->attr;
     int err;
@@ -315,7 +315,7 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     }
     set = self->entry->descendants;
 
-    err = knd_set_get_facet(set, ctx->attr, &facet);
+    /*err = knd_set_get_facet(set, ctx->attr, &facet);
     if (err) {
         log->reset(log);
         log->writef(log, "-- no such facet: %.*s",
@@ -323,7 +323,7 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
         task->error = knd_NO_MATCH;
         task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err_external(knd_NO_MATCH);
-    }
+        }*/
 
     err = knd_get_class(self->entry->repo, val, val_size, &c, task);
     if (err) {
@@ -335,7 +335,7 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     class_id = c->entry->id;
     class_id_size = c->entry->id_size;
 
-    err = facet->set_idx->get(facet->set_idx,
+    /*    err = facet->set_idx->get(facet->set_idx,
                               class_id, class_id_size, &result);
     if (err) {
         if (c->entry->orig) {
@@ -352,6 +352,7 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     }
 
     set = result;
+    */
 
     if (task->num_sets + 1 > KND_MAX_CLAUSES)
         return make_gsl_err(gsl_LIMIT);

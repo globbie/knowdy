@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "knd_facet.h"
 #include "knd_class.h"
 #include "knd_utils.h"
 #include "knd_repo.h"
@@ -157,178 +156,6 @@ extern int knd_set_intersect(struct kndSet *self,
     return knd_OK;
 }
 
-extern int knd_set_get_facet(struct kndSet  *self,
-                             struct kndAttr *attr,
-                             struct kndFacet  **result)
-{
-     for (struct kndFacet *f = self->facets; f; f = f->next) {
-         knd_log("== facet: %.*s", f->attr->name_size, f->attr->name);
-         if (f->attr == attr) {
-             *result = f;
-             return knd_OK;
-        }
-    }
-    return knd_NO_MATCH;
-}
-
-static int
-kndSet_alloc_facet(struct kndSet    *self,
-                   struct kndAttr   *attr,
-                   struct kndFacet **result)
-{
-    struct kndFacet *f;
-    struct kndSet *set;
-    int err;
-    
-    for (f = self->facets; f; f = f->next) {
-        if (f->attr == attr) {
-            *result = f;
-            return knd_OK;
-        }
-    }
-    if (self->num_facets >= KND_MAX_ATTRS)
-        return knd_LIMIT;
-
-    /* facet not found, create one */
-    err = knd_facet_new(self->mempool, &f);                                       RET_ERR();
-    f->attr = attr;
-    f->parent = self;
-
-    err = knd_set_new(self->mempool, &set);                                       RET_ERR();
-    set->type = KND_SET_CLASS;
-    f->set_idx = set;
-
-    f->next = self->facets;
-    self->facets = f;
-    self->num_facets++;
-
-    *result = f;
-    return knd_OK;
-}
-
-static int kndFacet_add_reverse_link(struct kndFacet  *self,
-                                     struct kndClassEntry *base,
-                                     struct kndSet  *set,
-                                     struct kndMemPool *mempool)
-{
-    struct kndClassEntry *topic = self->attr->parent_class->entry;
-    struct kndAttr *attr = self->attr;
-    struct kndClassRel *class_rel;
-    int err;
-
-    assert(attr != NULL);
-
-    err = knd_class_rel_new(mempool, &class_rel);                                  RET_ERR();
-
-    class_rel->topic = topic;
-    class_rel->set = set;
-    class_rel->attr = attr;
-
-    class_rel->next =  base->reverse_rels;
-    base->reverse_rels = class_rel;
-
-    if (DEBUG_SET_LEVEL_2) {
-        knd_log(".. attr %.*s:  add \"%.*s\" to reverse idx of \"%.*s\"..",
-                attr->name_size,  attr->name,
-                topic->name_size, topic->name,
-                base->name_size,  base->name);
-    }
-
-    return knd_OK;
-}
-
-static int kndFacet_alloc_set(struct kndFacet  *self,
-                              struct kndClassEntry *base,
-                              struct kndSet  **result)
-{
-    struct kndSet *set;
-    void *obj;
-    struct kndMemPool *mempool = self->parent->mempool;
-    int err;
-
-    if (DEBUG_SET_LEVEL_2) {
-        knd_log(".. add  %.*s class to set idx..\n",
-                base->name_size, base->name);
-    } 
-
-    err = self->set_idx->get(self->set_idx,
-                             base->id, base->id_size, &obj);
-    if (!err) {
-        *result = obj;
-        return knd_OK;
-    }
-
-    err = knd_set_new(mempool, &set);                                             RET_ERR();
-    set->type = KND_SET_CLASS;
-    set->base = base;
-    set->parent_facet = self;
-
-    err = self->set_idx->add(self->set_idx,
-                             base->id, base->id_size, (void*)set);                RET_ERR();
-
-    err = kndFacet_add_reverse_link(self, base, set, mempool);                    RET_ERR();
-
-    *result = set;
-    return knd_OK;
-}
-
-/*static int
-kndSet_facetize(struct kndSet *self)
-{
-    if (DEBUG_SET_LEVEL_1) {
-        knd_log("\n    .. further facetize the set \"%s\"..\n",
-                self->base->name);
-    }
-    return knd_OK;
-    }*/
-
-static int kndFacet_add_ref(struct kndFacet *self,
-                            struct kndClassEntry *topic,
-                            struct kndClassEntry *spec)
-{
-    struct kndSet *set;
-    int err;
-
-    if (DEBUG_SET_LEVEL_2) {
-        knd_log(".. add attr spec \"%.*s\" (repo:%.*s) to topic \"%.*s\" (repo:%.*s)..",
-                spec->name_size, spec->name,
-                spec->repo->name_size, spec->repo->name,
-                topic->name_size, topic->name,
-                topic->repo->name_size, topic->repo->name);
-    }
-
-    /* get baseclass set */
-    err = kndFacet_alloc_set(self, spec, &set);                                   RET_ERR();
-
-    err = set->add(set, topic->id, topic->id_size, (void*)topic);                 RET_ERR();
-
-    return knd_OK;
-}
-
-extern int knd_set_add_ref(struct kndSet *self,
-                           struct kndAttr *attr,
-                           struct kndClassEntry *topic,
-                           struct kndClassEntry *spec)
-{
-    struct kndFacet *f;
-    int err;
-
-    if (DEBUG_SET_LEVEL_2)
-        knd_log("  .. \"%.*s\" (repo:%.*s) idx to add attr ref \"%.*s\" "
-                "(topic \"%.*s\" => spec \"%.*s\")",
-                self->base->name_size, self->base->name,
-                self->base->repo->name_size, self->base->repo->name,
-                attr->name_size, attr->name,
-                topic->name_size, topic->name,
-                spec->name_size, spec->name);
-
-    err = kndSet_alloc_facet(self, attr, &f);                                     RET_ERR();
-
-    err = kndFacet_add_ref(f, topic, spec);                                       RET_ERR();
-
-    return knd_OK;
-}
-
 static int save_elem(struct kndSet *self,
                      struct kndSetElemIdx *parent_idx,
                      void *elem,
@@ -420,10 +247,8 @@ static int kndSet_add_elem(struct kndSet *self,
             return err;
         }
     }
-
     err = save_elem(self, self->idx, elem, key, key_size);
     if (err) return err;
-
     return knd_OK;
 }
 
@@ -499,18 +324,6 @@ extern int kndSet_init(struct kndSet *self)
     self->add = kndSet_add_elem;
     self->get = kndSet_get_elem;
     self->map = kndSet_map;
-    return knd_OK;
-}
-
-extern int knd_facet_new(struct kndMemPool *mempool,
-                         struct kndFacet **result)
-{
-    void *page;
-    int err;
-    //knd_log("..facet new [size:%zu]", sizeof(struct kndFacet));
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                            sizeof(struct kndFacet), &page);  RET_ERR();
-    *result = page;
     return knd_OK;
 }
 

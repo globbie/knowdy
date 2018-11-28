@@ -339,4 +339,16 @@ extern int knd_resolve_attr_vars(struct kndClass *self,
 extern int knd_resolve_primary_attrs(struct kndClass *self,
                                      struct kndTask *task);
 
+// knd_attr.index.c
+extern int knd_index_attr(struct kndClass *self,
+                          struct kndAttr *attr,
+                          struct kndAttrVar *item,
+                          struct kndTask *task);
+extern int knd_index_attr_var_list(struct kndClass *self,
+                                   struct kndAttr *attr,
+                                   struct kndAttrVar *item,
+                                   struct kndTask *task);
+extern int knd_index_inner_attr_var(struct kndClass *self,
+                                    struct kndAttrVar *item,
+                                    struct kndTask *task);
 

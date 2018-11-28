@@ -41,336 +41,6 @@
 #define DEBUG_ATTR_RESOLVE_LEVEL_5 0
 #define DEBUG_ATTR_RESOLVE_LEVEL_TMP 1
 
-static int index_inner_attr_var_list(struct kndClass *self,
-                                     struct kndAttrVar *parent_item,
-                                     struct kndTask *task);
-
-static int index_attr(struct kndClass *self,
-                      struct kndAttr *attr,
-                      struct kndAttrVar *item,
-                      struct kndTask *task)
-{
-    struct kndClass *base;
-    struct kndSet *set;
-    struct kndClass *c = NULL;
-    int err;
-
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
-        knd_log("\n.. indexing CURR CLASS: \"%.*s\" .. index attr: \"%.*s\" [type:%d]"
-                " refclass: \"%.*s\" (name:%.*s val:%.*s)",
-                self->entry->name_size, self->entry->name,
-                attr->name_size, attr->name, attr->type,
-                attr->ref_classname_size, attr->ref_classname,
-                item->name_size, item->name, item->val_size, item->val);
-    }
-
-    if (!attr->ref_classname_size) return knd_OK;
-
-    /* template base class */
-    err = knd_get_class(self->entry->repo,
-                        attr->ref_classname,
-                        attr->ref_classname_size,
-                        &base, task);                                             RET_ERR();
-    if (!base->is_resolved) {
-        err = knd_class_resolve(base, task);                                      RET_ERR();
-    }
-
-    /* specific class */
-    err = knd_get_class(self->entry->repo,
-                        item->val,
-                        item->val_size, &c, task);                                RET_ERR();
-
-    item->class = c;
-
-    if (!c->is_resolved) {
-        err = knd_class_resolve(c, task);                                         RET_ERR();
-    }
-
-    err = knd_is_base(base, c);                                                   RET_ERR();
-
-    set = attr->parent_class->entry->descendants;
-
-    /* add curr class to the reverse index */
-    err = knd_set_add_ref(set, attr, self->entry, c->entry);
-    if (err) return err;
-
-    return knd_OK;
-}
-
-static int index_attr_var_list(struct kndClass *self,
-                               struct kndAttr *attr,
-                               struct kndAttrVar *parent_item,
-                               struct kndTask *task)
-{
-    struct kndClass *base;
-    struct kndSet *set;
-    struct kndClass *c, *idx_class, *curr_class;
-    struct kndClassRef *ref;
-    struct kndAttrVar *item = parent_item;
-    struct kndMemPool *mempool = task->mempool;
-    const char *name;
-    size_t name_size;
-    int err;
-
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
-        knd_log("\n.. attr item list indexing.. (class:%.*s) .. index attr: \"%.*s\" [type:%d]"
-                " refclass: \"%.*s\" (name:%.*s val:%.*s)",
-                self->entry->name_size, self->entry->name,
-                attr->name_size, attr->name, attr->type,
-                attr->ref_classname_size, attr->ref_classname,
-                item->name_size, item->name, item->val_size, item->val);
-    }
-
-    switch (attr->type) {
-    case KND_ATTR_INNER:
-        knd_log("..indexing inner class..\n");
-        break;
-    default:
-        break;
-    }
-
-    if (!attr->ref_classname_size) return knd_OK;
-
-    /* template base class */
-    err = knd_get_class(self->entry->repo,
-                        attr->ref_classname,
-                        attr->ref_classname_size,
-                        &base, task);                                                 RET_ERR();
-    if (!base->is_resolved) {
-        err = knd_class_resolve(base, task);                                          RET_ERR();
-    }
-
-    for (item = parent_item->list; item; item = item->next) {
-
-        if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-            knd_log("== index list item: \"%.*s\" val:%.*s",
-                    item->name_size, item->name,
-                    item->val_size, item->val);
-
-        name = item->name;
-        name_size = item->name_size;
-        if (item->val_size) {
-            name = item->val;
-            name_size = item->val_size;
-        }
-        
-        /* specific class */
-        err = knd_get_class(self->entry->repo,
-                            name,
-                            name_size, &c, task);                                 RET_ERR();
-        item->class = c;
-
-        if (!c->is_resolved) {
-            err = knd_class_resolve(c, task);                                           RET_ERR();
-        }
-
-        err = knd_is_base(base, c);
-        if (err) {
-            knd_log("-- no inheritance from \"%.*s\" to \"%.*s\"",
-                    base->name_size, base->name, c->name_size, c->name);
-            return err;
-        }
-
-        idx_class = attr->parent_class;
-
-        if (idx_class->entry->repo != self->entry->repo) {
-            for (ref = self->entry->ancestors; ref; ref = ref->next) {
-                curr_class = ref->class;
-                if (curr_class->entry->orig == idx_class->entry) {
-                    idx_class = curr_class;
-                }
-            }
-
-        }
-
-        set = idx_class->entry->descendants;
-        if (!set) {
-            err = knd_set_new(mempool, &set);                                     RET_ERR();
-            set->type = KND_SET_CLASS;
-            set->base =  idx_class->entry;
-            idx_class->entry->descendants = set;
-        }
-
-        if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-            knd_log("\n.. add %.*s ref to %.*s (repo:%.*s)",
-                    item->name_size, item->name,
-                    idx_class->name_size,
-                    idx_class->name,
-                    idx_class->entry->repo->name_size,
-                    idx_class->entry->repo->name);
-
-        /* add curr class to the reverse index */
-        err = knd_set_add_ref(set, attr, self->entry, c->entry);
-        if (err) return err;
-    }
-    return knd_OK;
-}
-
-static int index_inner_class_ref(struct kndClass   *unused_var(self),
-                                 struct kndAttrVar *item,
-                                 struct kndAttr *attr,
-                                 struct kndTask *unused_var(task))
-{
-    struct kndClass *base = attr->ref_class;
-    struct kndClass *c = item->class;
-    struct kndAttrVar *parent_item = item->parent;
-    //int err;
-
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
-        knd_log(".. \"%.*s\" is a descendant of \"%.*s\" parent:%p",
-                c->name_size, c->name,
-                base->name_size, base->name, parent_item);
-
-        str_attr_vars(item, 1);
-    }
-
-    //set = attr->parent_class->entry->descendants;
-    //set = self->entry->descendants;
-
-    /* add curr class to the reverse index */
-    //err = knd_set_add_ref(set, attr, self->entry, c->entry);
-    //if (err) return err;
-    return knd_OK;
-}
-
-static int index_inner_attr_var(struct kndClass *self,
-                                struct kndAttrVar *parent_item,
-                                struct kndTask *task)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
-    struct kndClass *c;
-    struct kndAttrVar *item;
-    struct kndAttr *attr;
-    const char *classname;
-    size_t classname_size;
-    int err;
-
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-        knd_log(".. index inner attr var \"%.*s\" (val:%.*s) in class \"%.*s\" is list item:%d..",
-                parent_item->name_size, parent_item->name,
-                parent_item->val_size, parent_item->val,
-                self->name_size, self->name,
-                parent_item->is_list_item);
-
-    return knd_OK;
-    //if (parent_item->attr->is_a_set) {
-    //}
-    
-    c = parent_item->attr->ref_class;
-
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
-        knd_log("\n.. indexing inner item \"%.*s\""
-                " class:%.*s [resolved:%d]] is_list_item:%d",
-                parent_item->name_size,  parent_item->name,
-                c->name_size, c->name, c->is_resolved,
-                parent_item->is_list_item);
-    }
-
-    classname = parent_item->val;
-    classname_size = parent_item->val_size;
-    if (parent_item->is_list_item) {
-        classname = parent_item->name;
-        classname_size = parent_item->name_size;
-    }
-
-    if (parent_item->implied_attr) {
-        attr = parent_item->implied_attr;
-        if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-            knd_log("== class: \"%.*s\" implied attr: %.*s idx:%d",
-                    classname_size, classname,
-                    attr->name_size, attr->name,
-                    attr->is_indexed);
-
-        switch (attr->type) {
-        case KND_ATTR_NUM:
-            if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-                knd_log(".. indexing implied num attr: %.*s val:%.*s",
-                        parent_item->name_size, parent_item->name,
-                        parent_item->val_size, parent_item->val);
-
-            if (parent_item->val_size) {
-                memcpy(buf, parent_item->val, parent_item->val_size);
-                buf_size = parent_item->val_size;
-                buf[buf_size] = '\0';
-
-                err = knd_parse_num(buf, &parent_item->numval);
-                // TODO: float parsing
-            }
-            break;
-        case KND_ATTR_INNER:
-            break;
-        case KND_ATTR_REF:
-            err = index_inner_class_ref(self,
-                                        parent_item,
-                                        attr,
-                                        task);                        RET_ERR();
-            break;
-        default:
-            break;
-        }
-    }
-
-    /* index nested children */
-    for (item = parent_item->children; item; item = item->next) {
-        attr = item->attr;
-        switch (attr->type) {
-        case KND_ATTR_NUM:
-            if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-                knd_log(".. indexing default num attr: %.*s val:\"%.*s\" val size:%zu",
-                        item->name_size, item->name,
-                        item->val_size, item->val, item->val_size);
-
-            // FIX
-            memcpy(buf, item->val, item->val_size);
-            buf_size = item->val_size;
-            buf[buf_size] = '\0';
-            err = knd_parse_num(buf, &item->numval);
-            break;
-        case KND_ATTR_INNER:
-            if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-                knd_log("== nested inner item found: %.*s",
-                        item->name_size, item->name);
-            err = index_inner_attr_var(self, item, task);
-            if (err) return err;
-            break;
-        case KND_ATTR_REF:
-            /*classname = item->val;
-            classname_size = item->val_size;
-            err = index_class_ref(self,
-                                    classname, classname_size,
-                                    attr->ref_class, &item->class, task);
-            if (err) return err;
-            */
-            break;
-        default:
-            break;
-        }
-    }
-    return knd_OK;
-}
-
-static int index_inner_attr_var_list(struct kndClass *self,
-                                     struct kndAttrVar *parent_item,
-                                     struct kndTask *task)
-{
-    //struct kndClass *attr_owner = parent_item->attr->parent_class;
-    //struct kndClass *inner_list = parent_item->attr->ref_class;
-    //struct kndAttrVar *parent_item = item->parent;
-    struct kndAttrVar *item;
-    int err;
-
-    //inner_list->str(inner_list, 1);
-    //attr_owner->str(attr_owner, 1);
-
-    for (item = parent_item->list; item; item = item->next) {
-        err = index_inner_attr_var(self, item, task);                             RET_ERR();
-    }
-
-    return knd_OK;
-}
-
-
 static int resolve_text(struct kndAttrVar *attr_var,
                         struct kndTask *task)
 {
@@ -782,6 +452,7 @@ extern int knd_resolve_attr_vars(struct kndClass *self,
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
     struct kndAttrVar *attr_var;
+    struct kndAttrVar *item;
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct kndClass *c;
@@ -855,14 +526,16 @@ extern int knd_resolve_attr_vars(struct kndClass *self,
                 attr_var->num_list_elems++;
 
             if (attr->is_indexed) {
-                err = index_attr_var_list(self, attr, attr_var, task);
+                err = knd_index_attr_var_list(self, attr, attr_var, task);
                 if (err) return err;
             }
 
+            task->attr = attr;
             switch (attr->type) {
             case KND_ATTR_INNER:
-                err = index_inner_attr_var_list(self, attr_var, task);
-                if (err) return err;
+                for (item = attr_var->list; item; item = item->next) {
+                    err = knd_index_inner_attr_var(self, item, task);             RET_ERR();
+                }
               break;
             default:
                 break;
@@ -916,7 +589,7 @@ extern int knd_resolve_attr_vars(struct kndClass *self,
         }
 
         if (attr->is_indexed) {
-            err = index_attr(self, attr, attr_var, task);
+            err = knd_index_attr(self, attr, attr_var, task);
             if (err) return err;
         }
         attr_var->attr = attr;

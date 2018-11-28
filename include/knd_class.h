@@ -64,11 +64,14 @@ struct kndClassRef
 
 struct kndClassRel
 {
-    struct kndClassEntry *topic;
-    struct kndAttr       *attr;
-    struct kndAttrVar    *attr_var;
-    struct kndSet        *set;
-    struct kndClassRel   *next;
+    struct kndSet      *specs;
+    struct kndSet      *topics;
+
+    struct kndAttr     *attr;
+    //struct kndAttrVar  *attr_var;
+
+    struct kndClassRel *children;
+    struct kndClassRel *next;
 };
 
 struct kndClassVar
