@@ -117,11 +117,11 @@ struct kndClassEntry
 
     struct kndSet *descendants;
 
-    struct kndRelEntry **rels;
-    size_t num_rels;
+    //struct kndRelEntry **rels;
+    //size_t num_rels;
 
-    struct kndProcEntry **procs;
-    size_t num_procs;
+    //struct kndProcEntry **procs;
+    //size_t num_procs;
 
     struct kndSet *inst_idx;
     size_t num_insts;
@@ -129,9 +129,9 @@ struct kndClassEntry
 
     struct kndAttrHub *attr_hubs;
 
-    size_t child_count;
-    struct kndClassEntry *prev;
-    struct kndClassEntry *next;
+    //size_t child_count;
+    //struct kndClassEntry *prev;
+    //struct kndClassEntry *next;
 };
 
 struct kndClass
@@ -165,8 +165,6 @@ struct kndClass
 
     struct kndSet *attr_idx;
     struct kndAttr *implied_attr;
-
-    struct kndProc *proc;
 
     struct kndConcFolder *folders;
     size_t num_folders;
