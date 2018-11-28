@@ -145,7 +145,7 @@ run_get_baseclass(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t
 validate_select_by_baseclass_attr(void *obj, const char *name, size_t name_size,
-                                  const char *rec, size_t *total_size)
+                                  const char *unused_var(rec), size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     int err;
@@ -168,11 +168,17 @@ validate_select_by_baseclass_attr(void *obj, const char *name, size_t name_size,
         return *total_size = 0, make_gsl_err_external(err);
     }
 
+    knd_log("-- not implemented: filter baseclass attribute");
+    err = ctx->task->log->writef(ctx->task->log, "not implemented: filter baseclass attribute");
+    if (err) return make_gsl_err_external(err);
+    return *total_size = 0, make_gsl_err_external(knd_FAIL);
+#if 0
     // FIXME(k15tfu): used by knd_attr_select_clause()
     ctx->task->class = ctx->selected_base;
     ctx->task->repo = ctx->repo;
 
     return knd_attr_select_clause(attr_ref->attr, ctx->task, rec, total_size);
+#endif
 }
 
 static gsl_err_t
