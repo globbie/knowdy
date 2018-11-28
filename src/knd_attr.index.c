@@ -48,7 +48,7 @@
 {
     struct kndClassEntry *topic = self->attr->parent_class->entry;
     struct kndAttr *attr = self->attr;
-    struct kndClassRel *class_rel;
+    struct kndAttrHub *class_rel;
     int err;
 
     assert(attr != NULL);
@@ -234,11 +234,11 @@ extern int knd_index_attr_var_list(struct kndClass *self,
     return knd_OK;
 }
 
-static void str_rel_path(struct kndAttrVar *item)
+static void str_hub_path(struct kndAttrVar *item)
 {
     if (!item->parent) return;
     knd_log("   in \"%.*s\"", item->parent->name_size, item->parent->name);
-    str_rel_path(item->parent);
+    str_hub_path(item->parent);
 }
 
 static int index_inner_class_ref(struct kndClass   *self,
@@ -249,21 +249,39 @@ static int index_inner_class_ref(struct kndClass   *self,
     struct kndClass *base = attr->ref_class;
     struct kndClass *topic = task->attr->parent_class;
     struct kndClass *spec = item->class;
+    struct kndMemPool *mempool = task->mempool;
     struct kndClassRef *ref;
+    struct kndAttrHub *hub = NULL;
     struct kndClass *curr_class;
     int err;
 
     if (DEBUG_ATTR_INDEX_LEVEL_TMP) {
-        knd_log("\n.. index rel from \"%.*s\" (template:\"%.*s\")",
+        knd_log("\n.. index hub from \"%.*s\" (template:\"%.*s\")",
                 spec->name_size, spec->name,
                 base->name_size, base->name);
         knd_log("   as \"%.*s\"", attr->name_size, attr->name);
-        str_rel_path(item);
+        str_hub_path(item);
 
         knd_log("   of \"%.*s\" (desc of: %.*s)",
                 self->name_size, self->name,
                 topic->name_size, topic->name);
     }
+
+    for (hub = spec->entry->attr_hubs; hub; hub = hub->next) {
+        if (hub->attr == attr) {
+            knd_log("   ++ got attr: %.*s",
+                    attr->name_size, attr->name);
+            break;
+        }
+    }
+
+    if (!hub) {
+        err = knd_attr_hub_new(mempool, &hub);                             RET_ERR();
+        hub->attr = attr;
+        hub->next = spec->entry->attr_hubs;
+        spec->entry->attr_hubs = hub;
+    }
+
 
     for (ref = spec->entry->ancestors; ref; ref = ref->next) {
         curr_class = ref->class;

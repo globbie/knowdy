@@ -763,6 +763,17 @@ extern int knd_attr_var_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
+extern int knd_attr_hub_new(struct kndMemPool *mempool,
+                            struct kndAttrHub **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndAttrHub), &page);
+    if (err) return err;
+    *result = page;
+    return knd_OK;
+}
+
 extern int knd_attr_ref_new(struct kndMemPool *mempool,
                             struct kndAttrRef **result)
 {

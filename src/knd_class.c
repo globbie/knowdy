@@ -1330,17 +1330,6 @@ extern int knd_class_ref_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-extern int knd_class_rel_new(struct kndMemPool *mempool,
-                             struct kndClassRel **result)
-{
-    void *page;
-    int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndClassRel), &page);
-    if (err) return err;
-    *result = page;
-    return knd_OK;
-}
-
 extern int knd_class_entry_new(struct kndMemPool *mempool,
                                struct kndClassEntry **result)
 {

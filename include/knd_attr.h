@@ -106,6 +106,18 @@ typedef enum knd_attr_quant_type {
 //    struct kndAttrVarRef *attr_var;
 //};
 
+/* index of reverse attr paths */
+struct kndAttrHub
+{
+    struct kndSet      *specs;
+    struct kndSet      *topics;
+
+    struct kndAttr     *attr;
+
+    struct kndAttrHub  *children;
+    struct kndAttrHub  *next;
+};
+
 struct kndAttrVarCtx
 {
     struct kndAttrVar *parent_var;
@@ -308,6 +320,9 @@ extern int knd_attr_var_new(struct kndMemPool *mempool,
                             struct kndAttrVar **result);
 extern int knd_attr_ref_new(struct kndMemPool *mempool,
                             struct kndAttrRef **result);
+extern int knd_attr_hub_new(struct kndMemPool *mempool,
+                            struct kndAttrHub **result);
+
 extern int knd_attr_new(struct kndMemPool *mempool,
                         struct kndAttr **result);
 

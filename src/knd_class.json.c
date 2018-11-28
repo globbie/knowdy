@@ -518,7 +518,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
     struct glbOutput *out = task->out;
     struct kndSet *set;
     //struct kndAttr *attr;
-    struct kndClassRel *class_rel;
+    struct kndAttrHub *attr_hub;
     struct kndState *state = self->states;
     size_t num_children;
     //bool in_list = false;
@@ -653,11 +653,11 @@ extern int knd_class_export_JSON(struct kndClass *self,
 
 
     /* relations */
-    if (entry->reverse_rels) {
+    if (entry->attr_hubs) {
         err = out->write(out, ",\"_rels\":[", strlen(",\"_rels\":["));            RET_ERR();
 
-        for (class_rel = entry->reverse_rels; class_rel;
-             class_rel = class_rel->next) {
+        for (attr_hub = entry->attr_hubs; attr_hub;
+             attr_hub = attr_hub->next) {
 
             /*if (in_list) {
                 err = out->writec(out, ',');                                      RET_ERR();
@@ -666,11 +666,11 @@ extern int knd_class_export_JSON(struct kndClass *self,
             err = out->write(out, "\"topic\":\"",
                              strlen("\"topic\":\""));                             RET_ERR();
             err = out->write(out,
-                             class_rel->topic->name,
-                             class_rel->topic->name_size);                        RET_ERR();
+                             attr_hub->topic->name,
+                             attr_hub->topic->name_size);                        RET_ERR();
             err = out->writec(out, '"');                                          RET_ERR();
 
-            attr = class_rel->attr;
+            attr = attr_hub->attr;
             err = out->write(out, ",\"attr\":\"",
                              strlen(",\"attr\":\""));                             RET_ERR();
             err = out->write(out, attr->name,
@@ -679,10 +679,10 @@ extern int knd_class_export_JSON(struct kndClass *self,
 
             err = out->write(out, ",\"total\":",
                              strlen(",\"total\":"));                              RET_ERR();
-            err = out->writef(out, "%zu", class_rel->set->num_elems);             RET_ERR();
+            err = out->writef(out, "%zu", attr_hub->set->num_elems);             RET_ERR();
 
             if (task->show_rels) {
-                set = class_rel->set;
+                set = attr_hub->set;
                 err = out->write(out, ",\"batch\":[",
                                  strlen(",\"batch\":["));                         RET_ERR();
                 err = set->map(set, export_class_ref_JSON, (void*)task);
