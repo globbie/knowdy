@@ -697,56 +697,6 @@ static gsl_err_t rels_presentation(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-extern int knd_class_match_query(struct kndClass *self,
-                                 struct kndAttrVar *query)
-{
-    struct kndSet *attr_idx = self->attr_idx;
-    knd_logic logic = query->logic;
-    struct kndAttrRef *attr_ref;
-    struct kndAttrVar *attr_var;
-    struct kndAttr *attr;
-    void *result;
-    int err;
-
-    for (attr_var = query->children; attr_var; attr_var = attr_var->next) {
-        attr = attr_var->attr;
-
-        err = attr_idx->get(attr_idx, attr->id, attr->id_size, &result);
-        if (err) return err;
-        attr_ref = result;
-
-        if (!attr_ref->attr_var) return knd_NO_MATCH;
-        
-        err = knd_attr_var_match(attr_ref->attr_var, attr_var);
-        if (err == knd_NO_MATCH) {
-            switch (logic) {
-            case KND_LOGIC_AND:
-                return knd_NO_MATCH;
-            default:
-                break;
-            }
-            continue;
-        }
-
-        /* got a match */
-        switch (logic) {
-        case KND_LOGIC_OR:
-            return knd_OK;
-        default:
-            break;
-        }
-    }
-
-    switch (logic) {
-    case KND_LOGIC_OR:
-        return knd_NO_MATCH;
-    default:
-        break;
-    }
-
-    return knd_OK;
-}
-    
 gsl_err_t knd_class_select(struct kndRepo *repo,
                            const char *rec, size_t *total_size,
                            struct kndTask *task)
@@ -880,4 +830,54 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
     }
 
     return make_gsl_err(gsl_OK);
+}
+
+int knd_class_match_query(struct kndClass *self,
+                          struct kndAttrVar *query)
+{
+    struct kndSet *attr_idx = self->attr_idx;
+    knd_logic logic = query->logic;
+    struct kndAttrRef *attr_ref;
+    struct kndAttrVar *attr_var;
+    struct kndAttr *attr;
+    void *result;
+    int err;
+
+    for (attr_var = query->children; attr_var; attr_var = attr_var->next) {
+        attr = attr_var->attr;
+
+        err = attr_idx->get(attr_idx, attr->id, attr->id_size, &result);
+        if (err) return err;
+        attr_ref = result;
+
+        if (!attr_ref->attr_var) return knd_NO_MATCH;
+
+        err = knd_attr_var_match(attr_ref->attr_var, attr_var);
+        if (err == knd_NO_MATCH) {
+            switch (logic) {
+                case KND_LOGIC_AND:
+                    return knd_NO_MATCH;
+                default:
+                    break;
+            }
+            continue;
+        }
+
+        /* got a match */
+        switch (logic) {
+            case KND_LOGIC_OR:
+                return knd_OK;
+            default:
+                break;
+        }
+    }
+
+    switch (logic) {
+        case KND_LOGIC_OR:
+            return knd_NO_MATCH;
+        default:
+            break;
+    }
+
+    return knd_OK;
 }

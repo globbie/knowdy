@@ -349,11 +349,11 @@ extern int knd_class_new(struct kndMemPool *mempool,
                          struct kndClass **result);
 
 // knd_class.select.c
-extern int knd_class_match_query(struct kndClass *self,
-                                 struct kndAttrVar *query);
 extern gsl_err_t knd_class_select(struct kndRepo *repo,
                                   const char *rec, size_t *total_size,
                                   struct kndTask *task);
+extern int knd_class_match_query(struct kndClass *self,
+                                 struct kndAttrVar *query);
 
 // knd_class.states.c
 extern int knd_retrieve_class_updates(struct kndStateRef *ref,
