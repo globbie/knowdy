@@ -274,7 +274,7 @@ START_TEST(shard_table_test)
         },
         {
             .input  = "{task {user Alice {class Banana {!_rm WRONG_FORMAT}}}}",
-            .expect = "class parse failure"  // FIXME(k15tfu)
+            .expect = "internal server error"  // FIXME(k15tfu)
         },
     };
 

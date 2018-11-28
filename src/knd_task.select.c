@@ -205,17 +205,9 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        struct glbOutput *log = self->log;
         knd_log("-- task parse failure: \"%.*s\"",
-                log->buf_size, log->buf);
-        if (!log->buf_size) {
-            err = log->write(log, "internal server error",
-                             strlen("internal server error"));
-            if (err) {
-                parser_err = make_gsl_err_external(err);
-                goto cleanup;
-            }
-        }
+                self->log->buf_size, self->log->buf);
+
         goto cleanup;
     }
 

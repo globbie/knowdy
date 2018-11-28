@@ -139,9 +139,7 @@ int kndTask_run(struct kndTask *self, const char *rec, size_t rec_size, struct k
             }
         }
         if (!self->log->buf_size) {
-            err = self->log->write(self->log,
-                                   "internal server error",
-                                   strlen("internal server error"));
+            err = self->log->writef(self->log, "unclassified server error");
             if (err) return err;
         }
         return gsl_err_to_knd_err_codes(parser_err);

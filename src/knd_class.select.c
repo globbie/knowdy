@@ -771,20 +771,14 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+        if (DEBUG_CLASS_SELECT_LEVEL_TMP)
             knd_log("-- class select error %d: \"%.*s\"",
                     parser_err.code, task->log->buf_size, task->log->buf);
-        }
-        if (!task->log->buf_size) {
-            err = task->log->write(task->log, "class parse failure",
-                                       strlen("class parse failure"));
-            if (err) return make_gsl_err_external(err);
-        }
 
-        /* TODO: release resources */
         return parser_err;
     }
 
+    // FIXME(k15tfu): vv
     if (!task->class) return make_gsl_err(gsl_OK);
 
     knd_state_phase phase;
