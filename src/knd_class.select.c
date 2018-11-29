@@ -688,7 +688,6 @@ static gsl_err_t parse_attr_select(void *obj,
     struct kndClass *self = ctx->class;
     struct glbOutput *log = task->log;
     struct kndAttrRef *attr_ref;
-    struct kndAttr *attr;
     int err;
 
     if (!self) return *total_size = 0, make_gsl_err_external(knd_FAIL);
@@ -703,10 +702,10 @@ static gsl_err_t parse_attr_select(void *obj,
         task->http_code = HTTP_NOT_FOUND;
         return *total_size = 0, make_gsl_err_external(err);
     }
-    attr = attr_ref->attr;
     task->class = self;
+    task->repo = ctx->repo;
 
-    return knd_attr_select_clause(attr, task, rec, total_size);
+    return knd_attr_select_clause(attr_ref->attr, task, rec, total_size);
 }
 
 static gsl_err_t parse_baseclass_select(void *obj,
