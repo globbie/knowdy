@@ -55,11 +55,11 @@ extern int knd_index_attr(struct kndClass *self,
                           struct kndTask *task)
 {
     struct kndClass *base;
-    //struct kndSet *set;
-    struct kndClass *c = NULL;
+    struct kndClassRef *ref;
+    struct kndClass *c, *curr_class;
     int err;
 
-    if (DEBUG_ATTR_INDEX_LEVEL_2) {
+    if (DEBUG_ATTR_INDEX_LEVEL_TMP) {
         knd_log("\n.. indexing CURR CLASS: \"%.*s\" .. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" (name:%.*s val:%.*s)",
                 self->entry->name_size, self->entry->name,
@@ -67,7 +67,6 @@ extern int knd_index_attr(struct kndClass *self,
                 attr->ref_classname_size, attr->ref_classname,
                 item->name_size, item->name, item->val_size, item->val);
     }
-
     if (!attr->ref_classname_size) return knd_OK;
 
     /* template base class */
@@ -78,26 +77,26 @@ extern int knd_index_attr(struct kndClass *self,
     if (!base->is_resolved) {
         err = knd_class_resolve(base, task);                                      RET_ERR();
     }
-
-    /* specific class */
+    /* spec class */
     err = knd_get_class(self->entry->repo,
-                        item->val,
-                        item->val_size, &c, task);                                RET_ERR();
-
+                        item->val, item->val_size, &c, task);                     RET_ERR();
     item->class = c;
-
     if (!c->is_resolved) {
         err = knd_class_resolve(c, task);                                         RET_ERR();
     }
-
     err = knd_is_base(base, c);                                                   RET_ERR();
 
-    //set = attr->parent_class->entry->descendants;
+    err = update_attr_hub(self, c, &c->entry->attr_hubs,
+                          item, attr, task, false);                               RET_ERR();
 
-    /* add curr class to the reverse index */
-    //err = knd_set_add_ref(set, attr, self->entry, c->entry);
-    //if (err) return err;
-
+    /* update the ancestors */
+    for (ref = c->entry->ancestors; ref; ref = ref->next) {
+        curr_class = ref->class;
+        err = knd_is_base(base, curr_class);
+        if (err) continue;
+        err = update_attr_hub(self, c, &curr_class->entry->attr_hubs,
+                              item, attr, task, true);                            RET_ERR();
+    }
     return knd_OK;
 }
 
@@ -114,7 +113,7 @@ extern int knd_index_attr_var_list(struct kndClass *self,
     size_t name_size;
     int err;
 
-    if (DEBUG_ATTR_INDEX_LEVEL_TMP) {
+    if (DEBUG_ATTR_INDEX_LEVEL_2) {
         knd_log("\n.. attr item list indexing.. (class:%.*s) "
                 ".. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" (name:%.*s val:%.*s)",
@@ -265,7 +264,7 @@ static int index_inner_class_ref(struct kndClass   *self,
     struct kndClass *curr_class;
     int err;
 
-    if (DEBUG_ATTR_INDEX_LEVEL_TMP) {
+    if (DEBUG_ATTR_INDEX_LEVEL_2) {
         knd_log("\n.. index path from \"%.*s\" (template:\"%.*s\")",
                 spec->name_size, spec->name,
                 base->name_size, base->name);
