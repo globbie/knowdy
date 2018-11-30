@@ -210,10 +210,10 @@ extern gsl_err_t knd_import_class_var(struct kndClassVar *self,
 extern int knd_is_base(struct kndClass *self,
                        struct kndClass *base);
 
-extern int knd_get_attr_var(struct kndClass *self,
-                            const char *name,
-                            size_t name_size,
-                            struct kndAttrVar **result);
+extern int knd_class_get_attr_var(struct kndClass *self,
+                                  const char *name,
+                                  size_t name_size,
+                                  struct kndAttrVar **result);
 
 extern int knd_class_get_attr(struct kndClass *self,
                               const char *name, size_t name_size,
