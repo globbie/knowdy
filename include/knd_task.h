@@ -103,8 +103,9 @@ struct kndTask
     struct kndUser *user;
     struct kndUserContext *user_ctx;
 
-    struct kndRepo *repo;
+    struct kndRepo *repo;  // FIXME(k15tfu): remove this
 
+    // FIXME(k15tfu): remove these vv
     struct kndClass *class;
     struct kndClassVar *class_var;
     struct kndAttr *attr;

@@ -95,13 +95,15 @@ static gsl_err_t parse_class_import(void *obj,
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->self;
-    if (!task->repo)
-        task->repo = ctx->shard->repo;
 
     if (DEBUG_TASK_LEVEL_TMP)
         knd_log(".. parsing the system class import: \"%.*s\"..", 64, rec);
 
     task->type = KND_UPDATE_STATE;
+
+    // FIXME(k15tfu): used by knd_attr
+    task->repo = ctx->shard->repo;
+
     return knd_class_import(ctx->shard->repo, rec, total_size, task);
 }
 
@@ -111,17 +113,14 @@ static gsl_err_t parse_class_select(void *obj,
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->self;
-    if (!task->repo)
-        task->repo = ctx->shard->repo;
-
-    struct kndClass *c = task->repo->root_class;
 
     if (DEBUG_TASK_LEVEL_TMP)
         knd_log(".. parsing the system class select: \"%.*s\"", 64, rec);
 
-    task->class = c;
+    // FIXME(k15tfu): used by knd_attr
+    task->repo = ctx->shard->repo;
 
-    return knd_class_select(task->repo, rec, total_size, task);
+    return knd_class_select(ctx->shard->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_update(void *obj,
