@@ -65,7 +65,6 @@ void kndTask_reset(struct kndTask *self)
     self->state_lt = 0;
     self->state_lte = 0;
     self->show_removed_objs = false;
-    self->show_rels = false;
     self->depth = 0;
     self->max_depth = 1;
 
