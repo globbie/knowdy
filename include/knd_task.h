@@ -86,14 +86,9 @@ struct kndTask
     size_t batch_max;
     size_t batch_from;
     size_t batch_size;
-    size_t match_count;
     size_t start_from;
 
     bool batch_mode;
-
-    size_t batch_eq;
-    size_t batch_gt;
-    size_t batch_lt;
 
     size_t state_eq;
     size_t state_gt;

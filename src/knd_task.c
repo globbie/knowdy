@@ -52,11 +52,6 @@ void kndTask_reset(struct kndTask *self)
     self->batch_size = 0;
     self->batch_from = 0;
     self->start_from = 0;
-    self->match_count = 0;
-
-    self->batch_eq = 0;
-    self->batch_gt = 0;
-    self->batch_lt = 0;
 
     /* initialize request with off limit values */
     self->state_eq = -1;
