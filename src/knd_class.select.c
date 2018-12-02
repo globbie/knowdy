@@ -91,8 +91,7 @@ static gsl_err_t
 parse_get_class_by_numid(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndClass *c;
-    int err;
+
     size_t numid;
     gsl_err_t parser_err = gsl_parse_size_t(&numid, rec, total_size);
     if (parser_err.code) return parser_err;
@@ -105,19 +104,14 @@ parse_get_class_by_numid(void *obj, const char *rec, size_t *total_size)
         knd_log("ID: %zu => \"%.*s\" [size: %zu]",
                 numid, (int)id_size, id, id_size);
 
-    err = knd_get_class_by_id(ctx->repo,
-                              id, id_size, &c,
-                              ctx->task);
-    if (err) {
-        return make_gsl_err_external(err);
-    }
+    int err = knd_get_class_by_id(ctx->repo, id, id_size, &ctx->selected_class, ctx->task);
+    if (err) return make_gsl_err_external(err);
 
-    ctx->selected_class = c;
     /* NB: class instances need this */
-    ctx->task->class = c;
+    ctx->task->class = ctx->selected_class;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
-        c->str(c, 1);
+        ctx->selected_class->str(ctx->selected_class, 1);
     }
 
     return make_gsl_err(gsl_OK);
