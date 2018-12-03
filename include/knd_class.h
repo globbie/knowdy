@@ -197,7 +197,7 @@ extern int knd_get_class(struct kndRepo *self,
                          struct kndClass **result,
                          struct kndTask *task);
 
-extern int knd_get_class_by_id(struct kndClass *self,
+extern int knd_get_class_by_id(struct kndRepo *self,
                                const char *id, size_t id_size,
                                struct kndClass **result,
                                struct kndTask *task);

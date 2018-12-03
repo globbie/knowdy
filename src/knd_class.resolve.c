@@ -252,7 +252,7 @@ static int resolve_baseclasses(struct kndClass *self,
         }
         c = NULL;
         if (cvar->id_size) {
-            err = knd_get_class_by_id(self->entry->repo->root_class,
+            err = knd_get_class_by_id(self->entry->repo,
                                       cvar->id, cvar->id_size, &c, task);
             if (err) {
                 knd_log("-- no class with id %.*s", cvar->id_size, cvar->id);

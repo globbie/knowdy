@@ -967,7 +967,6 @@ static gsl_err_t check_list_item_id(void *obj,
 {
     struct LocalContext *ctx = obj;
     struct kndAttrVar *attr_var = ctx->attr_var;
-    struct kndClass *parent_class = attr_var->attr->parent_class;
     struct kndClass *c;
     int err;
 
@@ -979,7 +978,7 @@ static gsl_err_t check_list_item_id(void *obj,
 
     switch (attr_var->attr->type) {
     case KND_ATTR_REF:
-        err = knd_get_class_by_id(parent_class, id, id_size, &c, ctx->task);
+        err = knd_get_class_by_id(ctx->task->repo, id, id_size, &c, ctx->task);
         if (err) {
             knd_log("-- no such class: %.*s", id_size, id);
             return make_gsl_err(gsl_FAIL);
@@ -995,7 +994,7 @@ static gsl_err_t check_list_item_id(void *obj,
         // TODO
         //knd_log(".. checking inner item id: %.*s", id_size, id);
 
-        err = knd_get_class_by_id(parent_class, id, id_size, &c, ctx->task);
+        err = knd_get_class_by_id(ctx->task->repo, id, id_size, &c, ctx->task);
         if (err) {
             knd_log("-- no such class: %.*s", id_size, id);
             return make_gsl_err(gsl_FAIL);
@@ -1111,7 +1110,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
     /* resolve refs */
     switch (attr->type) {
     case KND_ATTR_REF:
-        err = knd_get_class_by_id(self->attr->parent_class,
+        err = knd_get_class_by_id(ctx->task->repo,
                                   attr_var->val, attr_var->val_size, &c, ctx->task);
         if (err) {
             knd_log("-- no such class: %.*s", attr_var->val_size, attr_var->val);
@@ -1597,7 +1596,7 @@ static gsl_err_t set_class_var_baseclass(void *obj,
     memcpy(class_var->id, id, id_size);
     class_var->id_size = id_size;
 
-    err = knd_get_class_by_id(class_var->root_class, id, id_size, &c, ctx->task);
+    err = knd_get_class_by_id(ctx->task->repo, id, id_size, &c, ctx->task);
     if (err) {
         return make_gsl_err(gsl_FAIL);
     }

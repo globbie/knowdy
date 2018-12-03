@@ -1012,14 +1012,13 @@ extern int knd_get_class(struct kndRepo *self,
     return knd_FAIL;
 }
 
-extern int knd_get_class_by_id(struct kndClass *self,
+extern int knd_get_class_by_id(struct kndRepo *repo,
                                const char *id, size_t id_size,
                                struct kndClass **result,
                                struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
-    struct kndRepo *repo = self->entry->repo;
     struct glbOutput *log = task->log;
     struct kndSet *class_idx = repo->class_idx;
     void *elem;
@@ -1035,7 +1034,7 @@ extern int knd_get_class_by_id(struct kndClass *self,
     if (err) {
         /* check parent schema */
         if (repo->base) {
-            err = knd_get_class_by_id(repo->base->root_class, id, id_size, result, task);
+            err = knd_get_class_by_id(repo->base, id, id_size, result, task);
             if (err) return err;
             return knd_OK;
         }
@@ -1079,7 +1078,7 @@ extern int knd_get_class_by_id(struct kndClass *self,
     }
 
     if (repo->base) {
-        err = knd_get_class_by_id(repo->base->root_class, id, id_size, result, task);
+        err = knd_get_class_by_id(repo->base, id, id_size, result, task);
         if (err) return err;
         return knd_OK;
     }

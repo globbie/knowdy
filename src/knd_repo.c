@@ -482,9 +482,9 @@ extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
 
         for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
             entry = child_ref->obj;
-            if (entry) {
+            /*if (entry) {
                 knd_log("  == class:%.*s", entry->name_size, entry->name);
-            }
+                }*/
             state = child_ref->state;
             state->update = update;
         }

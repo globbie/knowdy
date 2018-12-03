@@ -213,7 +213,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
     bool is_concise = false;
     int err;
 
-    if (DEBUG_INST_LEVEL_TMP) {
+    if (DEBUG_INST_LEVEL_2) {
         knd_log(".. JSON export class inst \"%.*s\" curr depth:%zu max depth:%zu",
                 self->name_size, self->name, self->depth, task->max_depth);
         if (self->base) {
@@ -288,7 +288,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
         if (elem->attr->access_type == KND_ATTR_ACCESS_RESTRICTED)
             continue;
 
-        if (DEBUG_INST_LEVEL_TMP)
+        if (DEBUG_INST_LEVEL_2)
             knd_log(".. export elem: %.*s",
                     elem->attr->name_size, elem->attr->name);
 

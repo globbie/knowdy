@@ -108,7 +108,7 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
     struct kndElem *elem = NULL;
     //struct glbOutput *log;
     int err;
-    if (DEBUG_INST_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. \"%.*s\" (base class: %.*s) to validate elem: \"%.*s\"",
                 self->name_size, self->name,
                 self->base->name_size, self->base->name,
