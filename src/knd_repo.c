@@ -704,7 +704,6 @@ static gsl_err_t parse_class_select(void *obj,
     struct kndTask *task = obj;
     struct kndUserContext *ctx = task->user_ctx;
     struct kndRepo *repo;
-    struct kndClass *c;
 
     if (!ctx) {
         struct glbOutput *log = task->log;
@@ -719,9 +718,6 @@ static gsl_err_t parse_class_select(void *obj,
         repo = task->repo;
     else
         task->repo = repo;
-
-    c = repo->root_class;
-    task->class = c;
 
     return knd_class_select(repo, rec, total_size, task);
 }

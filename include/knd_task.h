@@ -86,14 +86,9 @@ struct kndTask
     size_t batch_max;
     size_t batch_from;
     size_t batch_size;
-    size_t match_count;
     size_t start_from;
 
     bool batch_mode;
-
-    size_t batch_eq;
-    size_t batch_gt;
-    size_t batch_lt;
 
     size_t state_eq;
     size_t state_gt;
@@ -101,7 +96,6 @@ struct kndTask
     size_t state_gte;
     size_t state_lte;
     bool show_removed_objs;
-    bool show_rels;
 
     size_t depth;
     size_t max_depth;
@@ -109,8 +103,9 @@ struct kndTask
     struct kndUser *user;
     struct kndUserContext *user_ctx;
 
-    struct kndRepo *repo;
+    struct kndRepo *repo;  // FIXME(k15tfu): remove this
 
+    // FIXME(k15tfu): remove these vv
     struct kndClass *class;
     struct kndClassVar *class_var;
     struct kndAttr *attr;

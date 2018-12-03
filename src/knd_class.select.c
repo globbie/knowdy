@@ -664,15 +664,6 @@ static gsl_err_t parse_select_class_inst(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t rels_presentation(void *obj,
-                                   const char *unused_var(val),
-                                   size_t unused_var(val_size))
-{
-    struct kndTask *self = obj;
-    self->show_rels = true;
-    return make_gsl_err(gsl_OK);
-}
-
 gsl_err_t knd_class_select(struct kndRepo *repo,
                            const char *rec, size_t *total_size,
                            struct kndTask *task)
@@ -763,12 +754,6 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
            .name_size = strlen("_depth"),
            .parse = gsl_parse_size_t,
            .obj = &task->max_depth
-        },
-        { .name = "_rels",
-          .name_size = strlen("_rels"),
-          .is_selector = true,
-          .run = rels_presentation,
-          .obj = task
         }
     };
 
