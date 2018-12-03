@@ -168,6 +168,22 @@ START_TEST(shard_table_test)
             .input = "{task {class User {!inst Alice}}}",
             .expect = "{repo /{_state 3}{modif [0-9]*}}"
         },
+        {
+            .input = "{task {class User {!inst {first-name Bob} {guid 4e99a114-d1eb-4ead-aa36-f5d3e825e311}}}}",
+            .expect = "{repo /{_state 4}{modif [0-9]*}}"
+        },
+        {
+            .input = "{task {class User {!inst {unknown-field some value}}}}",
+            .expect = "{\"err\":\"unclassified server error\",\"http_code\":404}"
+        },
+        {
+            .input = "{task {class User {inst Alice}}}",
+            .expect = "{\"_name\":\"Alice\",\"_id\":1,\"_state\":1,\"_class\":\"User\"}"
+        },
+        {
+            .input = "{task {class User {inst {_id 2}}}}",
+            .expect = "{\"_name\":\"2\",\"_id\":2,\"_state\":1,\"_phase\":\"new\",\"_class\":\"User\",\"first-name\":\"Bob\",\"guid\":\"4e99a114-d1eb-4ead-aa36-f5d3e825e311\"}"
+        },
         // get class
         {
             .input = "{task {class Person}}",

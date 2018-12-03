@@ -208,6 +208,7 @@ parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
         { .validate = validate_select_by_baseclass_attr,
           .obj = ctx
         },
+    // FIXME(k15tfu): vv
         { .name = "_batch",
           .name_size = strlen("_batch"),
           .parse = gsl_parse_size_t,
@@ -509,6 +510,36 @@ parse_select_class_desc(void *obj, const char *rec, size_t *total_size)
 }
 
 static gsl_err_t
+parse_select_class_inst(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+
+    if (!ctx->selected_class) {
+        knd_log("-- class not selected");
+        int err = ctx->task->log->writef(ctx->task->log, "class not selected");
+        if (err) return *total_size = 0, make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(knd_FAIL);
+    }
+
+    return knd_select_class_inst(ctx->selected_class, rec, total_size, ctx->task);
+}
+
+static gsl_err_t
+parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+
+    if (!ctx->selected_class) {
+        knd_log("-- class not selected");
+        int err = ctx->task->log->writef(ctx->task->log, "class not selected");
+        if (err) return *total_size = 0, make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(knd_FAIL);
+    }
+
+    return knd_parse_import_class_inst(ctx->task, rec, total_size);
+}
+
+static gsl_err_t
 validate_select_class_attr(void *obj, const char *name, size_t name_size,
                            const char *rec, size_t *total_size)
 {
@@ -656,26 +687,6 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_select_class_inst(void *obj,
-                                         const char *rec,
-                                         size_t *total_size)
-{
-    struct LocalContext *ctx = obj;
-    gsl_err_t parser_err;
-
-    if (!ctx->task->class)  {
-        knd_log("-- no baseclass selected");
-        return *total_size = 0, make_gsl_err_external(knd_FAIL);
-    }
-
-    parser_err = knd_select_class_inst(ctx->task->class, rec,
-                                       total_size, ctx->task);
-
-    if (parser_err.code) return parser_err;
-
-    return make_gsl_err(gsl_OK);
-}
-
 gsl_err_t knd_class_select(struct kndRepo *repo,
                            const char *rec, size_t *total_size,
                            struct kndTask *task)
@@ -720,6 +731,17 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
           .parse = parse_select_class_desc,
           .obj = &ctx
         },
+        { .name = "_inst",
+          .name_size = strlen("_inst"),
+          .parse = parse_select_class_inst,
+          .obj = &ctx
+        },
+        { .type = GSL_SET_STATE,
+          .name = "_inst",
+          .name_size = strlen("_inst"),
+          .parse = parse_import_class_inst,
+          .obj = &ctx
+        },
         { .validate = validate_select_class_attr,
           .obj = &ctx
         },
@@ -737,23 +759,23 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
         { .type = GSL_SET_STATE,
           .name = "instance",
           .name_size = strlen("instance"),
-          .parse = knd_parse_import_class_inst,
+          .parse = parse_import_class_inst,
           .obj = task
         },
         { .name = "instance",
           .name_size = strlen("instance"),
           .parse = parse_select_class_inst,
           .obj = &ctx
-        }, /* shortcuts */
-        { .type = GSL_SET_STATE,
-          .name = "inst",
-          .name_size = strlen("inst"),
-          .parse = knd_parse_import_class_inst,
-          .obj = task
         },
         { .name = "inst",
           .name_size = strlen("inst"),
           .parse = parse_select_class_inst,
+          .obj = &ctx
+        },
+        { .type = GSL_SET_STATE,
+          .name = "inst",
+          .name_size = strlen("inst"),
+          .parse = parse_import_class_inst,
           .obj = &ctx
         },
         { .name = "is",
@@ -762,10 +784,10 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
           .parse = parse_select_by_baseclass,
           .obj = &ctx
         },
-        {  .name = "_depth",
-           .name_size = strlen("_depth"),
-           .parse = gsl_parse_size_t,
-           .obj = &task->max_depth
+        { .name = "_depth",
+          .name_size = strlen("_depth"),
+          .parse = gsl_parse_size_t,
+          .obj = &task->max_depth
         }
     };
 
