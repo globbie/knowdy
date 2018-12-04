@@ -776,6 +776,19 @@ extern int knd_class_set_export(struct kndSet *self,
     return knd_FAIL;
 }
 
+extern int knd_empty_set_export(struct kndClass *self,
+                                knd_format format,
+                                struct kndTask *task)
+{
+    switch (format) {
+    case KND_FORMAT_JSON:
+        return knd_empty_set_export_JSON(self, task);
+    default:
+        return knd_empty_set_export_GSL(self, task);
+    }
+    return knd_FAIL;
+}
+
 extern int knd_class_export(struct kndClass *self,
                             knd_format format,
                             struct kndTask *task)

@@ -437,6 +437,22 @@ static int export_concise_GSL(struct kndClass *self,
     return knd_OK;
 }
 
+extern int knd_empty_set_export_GSL(struct kndClass *self,
+                                    struct kndTask *task)
+{
+    struct glbOutput *out = task->out;
+    int err;
+    out->reset(out);
+
+    err = out->write(out, "{set", strlen("{set"));                                RET_ERR();
+    err = out->write(out, "{_is ", strlen("{_is "));                              RET_ERR();
+    err = out->write(out, self->name,  self->name_size);                          RET_ERR();
+    err = out->writec(out, '}');                                                  RET_ERR();
+    err = out->write(out, "{total 0}}", strlen("{total 0}}"));
+
+    return knd_OK;
+}
+
 extern int knd_class_set_export_GSL(struct kndSet *set,
                                     struct kndTask *task)
 {
@@ -448,8 +464,8 @@ extern int knd_class_set_export_GSL(struct kndSet *set,
 
     /* TODO: present child clauses */
     if (set->base) {
-        err = out->write(out, "{is ",
-                         strlen("{is "));                                        RET_ERR();
+        err = out->write(out, "{_is ",
+                         strlen("{_is "));                                        RET_ERR();
         err = out->write(out, set->base->name,  set->base->name_size);            RET_ERR();
         err = out->writec(out, '}');                                              RET_ERR();
     }

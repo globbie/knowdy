@@ -587,13 +587,16 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
 
     /* select a set of classes by base class */
     if (ctx->selected_base) {
-        /* if no sets are selected - present all descendants of a class */
+        /* 
+         *  if no sets are selected - 
+         *  present all descendants of a class if any
+         */
         if (!task->num_sets) {
+
             if (!ctx->selected_base->entry->descendants) {
-                knd_log("-- not implemented: export empty baseclass desc");
-                err = task->log->writef(task->log, "not implemented: export empty baseclass desc");
+                err = knd_empty_set_export(ctx->selected_base, task->format, task);
                 if (err) return make_gsl_err_external(err);
-                return make_gsl_err_external(knd_FAIL);
+                return make_gsl_err(gsl_OK);
             }
 
             err = knd_class_set_export(ctx->selected_base->entry->descendants, task->format, task);
@@ -618,10 +621,8 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
         if (err) return make_gsl_err_external(err);
 
         if (!set->num_elems) {
-            knd_log("-- not implemented: export empty class set");
-            err = task->log->writef(task->log, "not implemented: export empty class set");
+            err = knd_empty_set_export(ctx->selected_base, task->format, task);
             if (err) return make_gsl_err_external(err);
-            return make_gsl_err_external(knd_FAIL);
         }
 
         err = knd_class_set_export(set, task->format, task);

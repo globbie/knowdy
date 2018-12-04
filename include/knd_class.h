@@ -222,6 +222,8 @@ extern int knd_class_get_attr(struct kndClass *self,
 extern int knd_export_class_state_JSON(struct kndClass *self,
                                        struct kndTask *task);
 
+extern int knd_empty_set_export_JSON(struct kndClass *self,
+                                    struct kndTask *task);
 extern int knd_class_set_export_JSON(struct kndSet *set,
                                      struct kndTask *task);
 
@@ -250,11 +252,18 @@ extern int knd_export_class_state_GSL(struct kndClass *self,
 extern int knd_class_export_GSL(struct kndClass *self,
                                 struct kndTask *task,
                                 size_t depth);
+
+extern int knd_empty_set_export_GSL(struct kndClass *self,
+                                    struct kndTask *task);
+
 extern int knd_class_set_export(struct kndSet *self,
                                 knd_format format,
                                 struct kndTask *task);
+extern int knd_empty_set_export(struct kndClass *self,
+                                knd_format format,
+                                struct kndTask *task);
 extern int knd_class_set_export_GSL(struct kndSet *set,
-                                     struct kndTask *task);
+                                    struct kndTask *task);
 
 extern int knd_class_export_GSP(struct kndClass *self,
                                 struct kndTask *task);

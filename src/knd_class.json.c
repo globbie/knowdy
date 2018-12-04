@@ -285,6 +285,16 @@ static int export_concise_JSON(struct kndClass *self,
     return knd_OK;
 }
 
+extern int knd_empty_set_export_JSON(struct kndClass *unused_var(self),
+                                     struct kndTask *task)
+{
+    struct glbOutput *out = task->out;
+    int err;
+    out->reset(out);
+    err = out->write(out, "{}", strlen("{}"));                                    RET_ERR();
+    return knd_OK;
+}
+
 extern int knd_class_set_export_JSON(struct kndSet *set,
                                      struct kndTask *task)
 {
