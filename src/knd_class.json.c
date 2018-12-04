@@ -651,10 +651,11 @@ extern int knd_class_export_JSON(struct kndClass *self,
         if (err) return err;
     }
 
-
-    /* relations */
+    /* inverse relations */
     if (entry->attr_hubs) {
-        err = out->write(out, ",\"_rels\":[", strlen(",\"_rels\":["));            RET_ERR();
+        err = out->write(out,
+                         ",\"_inverse_rels\":[",
+                         strlen(",\"_inverse_rels\":["));                         RET_ERR();
 
         for (attr_hub = entry->attr_hubs; attr_hub;
              attr_hub = attr_hub->next) {
@@ -681,7 +682,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
                              strlen(",\"total\":"));                              RET_ERR();
             err = out->writef(out, "%zu", attr_hub->set->num_elems);             RET_ERR();
 
-            if (task->show_rels) {
+            if (task->show_inverse_rels) {
                 set = attr_hub->set;
                 err = out->write(out, ",\"batch\":[",
                                  strlen(",\"batch\":["));                         RET_ERR();

@@ -185,6 +185,15 @@ validate_select_by_baseclass_attr(void *obj, const char *name, size_t name_size,
 }
 
 static gsl_err_t
+show_inverse_rels(void *obj, const char *unused_var(name),
+                  size_t unused_var(name_size))
+{
+    struct kndTask *task = obj;
+    task->show_inverse_rels = true;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t
 parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -212,6 +221,11 @@ parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
         { .name = "_from",
           .name_size = strlen("_from"),
           .parse = gsl_parse_size_t,
+          .obj = &task->start_from
+        },
+        { .name = "_from_batch",
+          .name_size = strlen("_from_batch"),
+          .parse = gsl_parse_size_t,
           .obj = &task->batch_from
         },
         { .name = "_depth",
@@ -223,13 +237,13 @@ parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
           .name_size = strlen("_update"),
           .parse = gsl_parse_size_t,
           .obj = &task->state_gt
+        },
+        { .name = "_inverse_rels",
+          .name_size = strlen("_inverse_rels"),
+          .is_selector = true,
+          .run = show_inverse_rels,
+          .obj = task
         }
-//        { .name = "_rels",
-//          .name_size = strlen("_rels"),
-//          .is_selector = true,
-//          .run = rels_presentation,
-//          .obj = task
-//        },
     };
 
     //task->type = KND_SELECT_STATE;
