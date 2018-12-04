@@ -91,6 +91,13 @@ typedef enum knd_attr_quant_type {
     KND_ATTR_LIST
 } knd_attr_quant_type;
 
+
+/* index of direct attr values */
+struct kndAttrFacet
+{
+    struct kndSet *topics;
+};
+
 /* index of reverse attr paths */
 struct kndAttrHub
 {
@@ -215,24 +222,24 @@ struct kndAttr
 
     const char *calc_attr;
 
-    const char *idx_name;
-    size_t idx_name_size;
+    //const char *idx_name;
+    //size_t idx_name_size;
+
+    /* facet values indexing */
+    struct kndSet *facet_idx;
 
     struct kndState *states;
     size_t init_state;
     size_t num_states;
 
     struct kndTranslation *tr;
-    size_t depth;
+    //size_t depth;
 
     struct kndAttr *next;
 
     /***********  public methods ***********/
-    void (*str)(struct kndAttr *self);
-
-    /*int (*export)(struct kndAttr *self,
-                  knd_format format,
-                  struct glbOutput *out);*/
+    void (*str)(struct kndAttr *self,
+                size_t depth);
 };
 
 /* constructor */
@@ -304,6 +311,8 @@ extern int knd_attr_var_new(struct kndMemPool *mempool,
                             struct kndAttrVar **result);
 extern int knd_attr_ref_new(struct kndMemPool *mempool,
                             struct kndAttrRef **result);
+extern int knd_attr_facet_new(struct kndMemPool *mempool,
+                              struct kndAttrFacet **result);
 extern int knd_attr_hub_new(struct kndMemPool *mempool,
                             struct kndAttrHub **result);
 

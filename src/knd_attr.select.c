@@ -619,7 +619,7 @@ extern gsl_err_t knd_attr_select_clause(struct kndAttr *attr,
     if (DEBUG_ATTR_SELECT_LEVEL_TMP) {
         knd_log(".. select by attr \"%.*s\".. repo:%p",
                 attr->name_size, attr->name, task->repo);
-        attr->str(attr);
+        attr->str(attr, 1);
     }
 
     struct LocalContext ctx = {
@@ -659,8 +659,7 @@ extern gsl_err_t knd_attr_select_clause(struct kndAttr *attr,
 
     /* if this attr is not indexed (= no precomputed sets available), 
        just add a logical clause to the query */
-    if (!attr->idx_name_size) {
-
+    if (!attr->is_indexed) {
         /* no new sets added to a task?*/
         if (num_sets == task->num_sets) {
             attr_var->next = task->attr_var;

@@ -22,82 +22,78 @@
 #define DEBUG_ATTR_LEVEL_5 0
 #define DEBUG_ATTR_LEVEL_TMP 1
 
-static void str(struct kndAttr *self)
+static void str(struct kndAttr *self,
+                size_t depth)
 {
     struct kndTranslation *tr;
     const char *type_name = knd_attr_names[self->type];
 
     if (self->is_a_set)
-        knd_log("\n%*s[%.*s", self->depth * KND_OFFSET_SIZE, "",
+        knd_log("\n%*s[%.*s", depth * KND_OFFSET_SIZE, "",
                 self->name_size, self->name);
     else
-        knd_log("\n%*s{%s %.*s", self->depth * KND_OFFSET_SIZE, "",
+        knd_log("\n%*s{%s %.*s", depth * KND_OFFSET_SIZE, "",
                 type_name, self->name_size, self->name);
-
-    knd_log("%*s  IDX:\"%.*s\" [%zu]",
-            self->depth * KND_OFFSET_SIZE, "",
-            self->idx_name_size, self->idx_name,
-            self->idx_name_size);
 
     if (self->access_type == KND_ATTR_ACCESS_RESTRICTED) {
         knd_log("%*s  ACL:restricted",
-                self->depth * KND_OFFSET_SIZE, "");
+                depth * KND_OFFSET_SIZE, "");
     }
 
     if (self->quant_type == KND_ATTR_SET) {
         knd_log("%*s  QUANT:SET",
-                self->depth * KND_OFFSET_SIZE, "");
+                depth * KND_OFFSET_SIZE, "");
     }
 
     if (self->concise_level) {
         knd_log("%*s  CONCISE:%zu",
-                self->depth * KND_OFFSET_SIZE, "", self->concise_level);
+                depth * KND_OFFSET_SIZE, "", self->concise_level);
     }
 
 
     if (self->is_implied) {
         knd_log("%*s  (implied)",
-                self->depth * KND_OFFSET_SIZE, "");
+                depth * KND_OFFSET_SIZE, "");
     }
 
     tr = self->tr;
     while (tr) {
         knd_log("%*s   ~ %s %s",
-                self->depth * KND_OFFSET_SIZE, "", tr->locale, tr->val);
+                depth * KND_OFFSET_SIZE, "", tr->locale, tr->val);
         tr = tr->next;
     }
 
     if (self->ref_classname_size) {
         knd_log("%*s  REF class template: %.*s",
-                self->depth * KND_OFFSET_SIZE, "",
+                depth * KND_OFFSET_SIZE, "",
                 self->ref_classname_size, self->ref_classname);
     }
 
     /*if (self->proc) {
         proc = self->proc;
         knd_log("%*s  PROC: %.*s",
-                self->depth * KND_OFFSET_SIZE, "", proc->name_size, proc->name);
-        proc->depth = self->depth + 1;
+                depth * KND_OFFSET_SIZE, "", proc->name_size, proc->name);
+        proc->depth = depth + 1;
         proc->str(proc);
     }
     */
     /*if (self->calc_oper_size) {
         knd_log("%*s  oper: %s attr: %s",
-                self->depth * KND_OFFSET_SIZE, "",
+                depth * KND_OFFSET_SIZE, "",
                 self->calc_oper, self->calc_attr);
     }
     */
 
     /*if (self->default_val_size) {
         knd_log("%*s  default VAL: %s",
-                self->depth * KND_OFFSET_SIZE, "", self->default_val);
+                depth * KND_OFFSET_SIZE, "", self->default_val);
     }
     */
 
     if (self->is_a_set)
-        knd_log("%*s]", self->depth * KND_OFFSET_SIZE, "");
+        knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
     else
-        knd_log("%*s}",  self->depth * KND_OFFSET_SIZE, "");
+        knd_log("%*s}",  depth * KND_OFFSET_SIZE, "");
 }
 
 extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
@@ -759,6 +755,17 @@ extern int knd_attr_var_new(struct kndMemPool *mempool,
     // TEST
     //mempool->num_attr_vars++;
 
+    *result = page;
+    return knd_OK;
+}
+
+extern int knd_attr_facet_new(struct kndMemPool *mempool,
+                            struct kndAttrFacet **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndAttrFacet), &page);
+    if (err) return err;
     *result = page;
     return knd_OK;
 }

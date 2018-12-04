@@ -49,6 +49,44 @@ static int update_attr_hub(struct kndClass   *topic,
                            struct kndTask    *task,
                            bool is_ancestor);
 
+static int update_attr_facet(struct kndAttr *attr,
+                             struct kndClass *topic,
+                             struct kndClass *spec,
+                             struct kndTask *task)
+{
+    struct kndSet *set;
+    struct kndAttrFacet *facet;
+    struct kndMemPool *mempool = task->mempool;
+    int err;
+
+    knd_log(".. update the \"%.*s\" attr facet: topic:%.*s spec:%.*s task:%p",
+            attr->name_size, attr->name,
+            topic->name_size, topic->name,
+            spec->name_size, spec->name, task);
+
+    set = attr->facet_idx;
+    if (!set) {
+        err = knd_set_new(mempool, &set);                                         RET_ERR();
+        attr->facet_idx = set;
+    }
+
+    err = set->get(set,
+                   topic->entry->id, topic->entry->id_size,
+                   (void**)&facet);
+    if (err) {
+        err = knd_attr_facet_new(mempool, &facet);                                RET_ERR();
+        err = knd_set_new(mempool, &facet->topics);                               RET_ERR();
+        err = set->add(set, topic->entry->id, topic->entry->id_size,
+                       (void*)facet);                                             RET_ERR();
+    }
+    
+    err = facet->topics->add(facet->topics,
+                             topic->entry->id, topic->entry->id_size,
+                             (void*)topic);                                       RET_ERR();
+    
+    return knd_OK;
+}
+
 extern int knd_index_attr(struct kndClass *self,
                           struct kndAttr *attr,
                           struct kndAttrVar *item,
@@ -113,13 +151,14 @@ extern int knd_index_attr_var_list(struct kndClass *self,
     size_t name_size;
     int err;
 
-    if (DEBUG_ATTR_INDEX_LEVEL_2) {
+    if (DEBUG_ATTR_INDEX_LEVEL_TMP) {
         knd_log("\n.. attr item list indexing.. (class:%.*s) "
                 ".. index attr: \"%.*s\" [type:%d]"
-                " refclass: \"%.*s\" (name:%.*s val:%.*s)",
+                " refclass: \"%.*s\" %p (name:%.*s val:%.*s)",
                 self->entry->name_size, self->entry->name,
                 attr->name_size, attr->name, attr->type,
                 attr->ref_classname_size, attr->ref_classname,
+                attr->ref_class,
                 item->name_size, item->name, item->val_size, item->val);
     }
 
@@ -131,15 +170,19 @@ extern int knd_index_attr_var_list(struct kndClass *self,
         break;
     }
 
-    if (!attr->ref_classname_size) return knd_OK;
+    if (!attr->ref_classname) return knd_OK;
 
     /* template base class */
-    err = knd_get_class(self->entry->repo,
-                        attr->ref_classname,
-                        attr->ref_classname_size,
-                        &base, task);                                             RET_ERR();
-    if (!base->is_resolved) {
-        err = knd_class_resolve(base, task);                                      RET_ERR();
+    base = attr->ref_class;
+    if (!base) {
+        err = knd_get_class(self->entry->repo,
+                            attr->ref_classname,
+                            attr->ref_classname_size,
+                            &base, task);                                             RET_ERR();
+        if (!base->is_resolved) {
+            err = knd_class_resolve(base, task);                                      RET_ERR();
+            attr->ref_class = base;
+        }
     }
 
     for (item = parent_item->list; item; item = item->next) {
@@ -168,16 +211,28 @@ extern int knd_index_attr_var_list(struct kndClass *self,
             return err;
         }
 
+        /*** index direct rels ***/
+        err = update_attr_facet(item->attr, self, c, task);                       RET_ERR();
+        
+        /*** index inverse rels ***/
+
         /* update immediate hub */
         err = update_attr_hub(self, c, &c->entry->attr_hubs,
-                              item, item->attr, task, false);                            RET_ERR();
+                              item, item->attr, task, false);                     RET_ERR();
         /* update the ancestors */
         for (ref = c->entry->ancestors; ref; ref = ref->next) {
             curr_class = ref->class;
+            if (base == curr_class) goto update_hub;
+
             err = knd_is_base(base, curr_class);
             if (err) continue;
+
+        update_hub:
+            if (DEBUG_ATTR_INDEX_LEVEL_2)
+                knd_log(".. updating the attr hub of \"%.*s\"",
+                        curr_class->name_size, curr_class->name);
             err = update_attr_hub(self, c, &curr_class->entry->attr_hubs,
-                                  item, item->attr, task, true);                        RET_ERR();
+                                  item, item->attr, task, true);                  RET_ERR();
         }
 
     }

@@ -348,7 +348,7 @@ static gsl_err_t parse_attr(void *obj,
     self->num_attrs++;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        attr->str(attr);
+        attr->str(attr, 1);
 
     if (attr->is_implied)
         self->implied_attr = attr;
