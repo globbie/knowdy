@@ -1,0 +1,16 @@
+{schema knd-basic
+
+{!class Country
+    {is Abstract Object}}
+
+{!class Authoritative Source
+    {is Agent}
+    {ref country {c Country}}}
+
+{!class USA
+    {is Country}}
+
+{!class USDA
+    {is Authoritative Source
+        {country USA}}}
+}

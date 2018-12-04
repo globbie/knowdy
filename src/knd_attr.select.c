@@ -286,11 +286,7 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     struct kndTask *task = ctx->task;
     struct kndClass *self = task->class;
     struct kndClass *c;
-    struct kndSet *set;
-    //void *result;
-    //const char *class_id;
-    //size_t class_id_size;
-    //struct kndFacet *facet;
+    struct kndAttrFacet *facet;
     struct glbOutput *log = task->log;
     struct kndAttr *attr = ctx->attr;
     int err;
@@ -300,40 +296,42 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
 
     c = attr->ref_class;
 
-    if (DEBUG_ATTR_SELECT_LEVEL_2) {
-        knd_log("\n\n== _is class:%.*s  select %.*s attr by value: \"%.*s\" (class: \"%.*s\" "
+    if (DEBUG_ATTR_SELECT_LEVEL_TMP) {
+        knd_log("\n\n== _is class:%.*s  select %.*s attr (idx:%d) "
+                " by value: \"%.*s\" (class: \"%.*s\" "
                 " id:%.*s repo:%.*s)",
                 self->name_size, self->name,
-                attr->name_size, attr->name,
+                attr->name_size, attr->name, attr->is_indexed,
                 val_size, val,
                 c->name_size, c->name,
                 c->entry->id_size, c->entry->id,
                 c->entry->repo->name_size, c->entry->repo->name);
-        c->str(c, 1);
     }
-
-    if (!self->entry->descendants) {
-        knd_log("-- no descendants idx in \"%.*s\" :(",
-                self->name_size, self->name);
-        return make_gsl_err(gsl_FAIL);
-    }
-    set = self->entry->descendants;
-
-    /*err = knd_set_get_facet(set, ctx->attr, &facet);
-    if (err) {
-        log->reset(log);
-        log->writef(log, "-- no such facet: %.*s",
-                    ctx->attr->name_size, ctx->attr->name);
-        task->error = knd_NO_MATCH;
-        task->http_code = HTTP_NOT_FOUND;
-        return make_gsl_err_external(knd_NO_MATCH);
-        }*/
 
     err = knd_get_class(self->entry->repo, val, val_size, &c, task);
     if (err) {
         log->writef(log, "-- no such class: %.*s", val_size, val);
         task->http_code = HTTP_NOT_FOUND;
         return make_gsl_err_external(err);
+    }
+    
+    if (!attr->facet_idx) {
+        knd_log("-- no facet idx found in %.*s", attr->name_size, attr->name);
+        // TODO: add plain clause
+        return make_gsl_err(gsl_OK);
+    }
+
+    /* try direct lookup */
+    err = attr->facet_idx->get(attr->facet_idx,
+                               c->entry->id, c->entry->id_size,
+                               (void**)&facet);
+    if (err) {
+        log->reset(log);
+        log->writef(log, "-- no such facet value: %.*s",
+                    val_size, val);
+        task->error = knd_NO_MATCH;
+        task->http_code = HTTP_NOT_FOUND;
+        return make_gsl_err_external(knd_NO_MATCH);
     }
 
     //class_id = c->entry->id;
@@ -354,14 +352,13 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
             return make_gsl_err(gsl_FAIL);
         }
     }
-
     set = result;
     */
 
     if (task->num_sets + 1 > KND_MAX_CLAUSES)
         return make_gsl_err(gsl_LIMIT);
 
-    task->sets[task->num_sets] = set;
+    task->sets[task->num_sets] = facet->topics;
     task->num_sets++;
 
     return make_gsl_err(gsl_OK);
@@ -484,7 +481,7 @@ static gsl_err_t parse_nested_attr_var(void *obj,
     struct kndMemPool *mempool = task->mempool;
     gsl_err_t parser_err;
     int err;
-    
+
     err = knd_attr_var_new(mempool, &attr_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->parent = self;
@@ -537,8 +534,8 @@ static gsl_err_t parse_inner_class_clause(struct kndAttr *attr,
                                           const char *rec, size_t *total_size)
 {
     if (DEBUG_ATTR_SELECT_LEVEL_TMP)
-        knd_log(".. parse inner class clause: \"%.*s\".. repo:%p",
-                attr->name_size, attr->name, parent_ctx->task->repo);
+        knd_log(".. parse inner class clause: \"%.*s\"..",
+                attr->name_size, attr->name);
 
     struct LocalContext ctx = {
         .task = parent_ctx->task,
@@ -617,8 +614,8 @@ extern gsl_err_t knd_attr_select_clause(struct kndAttr *attr,
     int err;
 
     if (DEBUG_ATTR_SELECT_LEVEL_TMP) {
-        knd_log(".. select by attr \"%.*s\".. repo:%p",
-                attr->name_size, attr->name, task->repo);
+        knd_log(".. select by attr \"%.*s\"..",
+                attr->name_size, attr->name);
         attr->str(attr, 1);
     }
 
@@ -665,6 +662,7 @@ extern gsl_err_t knd_attr_select_clause(struct kndAttr *attr,
             attr_var->next = task->attr_var;
             task->attr_var = attr_var;
         }
+        return make_gsl_err(gsl_OK);
     }
 
     return make_gsl_err(gsl_OK);

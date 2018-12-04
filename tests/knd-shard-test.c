@@ -299,32 +299,41 @@ START_TEST(shard_inheritance_test)
             .input  = "{task {class {_is Banana}}}",
             .expect = "not implemented: export empty baseclass desc"
         },
-        {   /* check an immediate parent */
+        /* check an immediate parent */
+        /*{  
             .input  = "{task {class {_is Fruit}}}",
             .expect =
-                "{set{is Fruit}{total 3}\\[batch"
-            "{class Banana{_id 4}{_repo /}\\[is{Fruit{_id 5}\\[nutr{{source{class USDA{_id 11}{_repo /}}{energy 89}}]}]}"
-            "{class Apple{_id 18}{_repo /}\\[is{Fruit{_id 5}\\[nutr{{source{class USDA{_id 11}{_repo /}}{energy 52}}]}]}"
-            "{class Orange{_id 22}{_repo /}\\[is{Fruit{_id 5}\\[nutr{{source{class USDA{_id 11}{_repo /}}{energy 47}}]}]}]"
-            "{batch {max 10}{size 3}{from 0}}"
-        },
+                  "{set{is Fruit}{total 3}\\[batch"
+                  "{class Banana{_id [0-9]*}{_repo /}\\[is{Fruit{_id [0-9]*}"
+                              "\\[nutr{{source{class USDA{_id [0-9]*}{_repo /}}{energy 89}}]}]}"
+                  "{class Apple{_id [0-9]*}{_repo /}\\[is{Fruit{_id [0-9]*}"
+                              "\\[nutr{{source{class USDA{_id [0-9]*}{_repo /}}{energy 52}}]}]}"
+                  "{class Orange{_id [0-9]*}{_repo /}\\[is{Fruit{_id [0-9]*}"
+                              "\\[nutr{{source{class USDA{_id [0-9]*}{_repo /}}{energy 47}}]}]}]"
+                  "{batch {max 10}{size 3}{from 0}}"
+                  },*/
         /* check a distant ancestor (grandparent) */
         /*{   .input  = "{task {class {_is Edible Object}}}",
-            .expect =
-                "{set{is Edible Object}{total 4}\\[batch"
-                    "{class Banana{_id 7} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 89}}]}]}"
-                    "{class Fruit{_id 8} {_repo test}\\[is{Edible Object{_id 9}}]"
-                        "{_subclasses {total 3} {num_terminals 3}\\[batch"
-                            "{Apple {_id 30}}{Orange {_id 18}}{Banana {_id 7}}"
-                        "]}}"
-                    "{class Orange{_id 18} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 47}}]}]}"
-                    "{class Apple{_id 30} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 52}}]}]}"
-                "]{batch {max 10}{size 4}{from 0}}"
-                },*/
+            .expect = "test"
+            },*/
         {
+            .input  = "{task {class {_is Dish {cuisine American Cuisine}}}}",
+            .expect = "{set{is Dish}{total 0}\\[batch"
+               "{class Apple Pie{_id [0-9]*}{_repo /}[is{Dish{_id [0-9]*}"
+                 "\\[ingr{{product{class Apple{_id [0-9]*}{_repo /}}{quant 5}}"
+                      "{{product{class Flour{_id [0-9]*}{_repo /}}{quant 200}}"
+                      "{{product{class Butter{_id [0-9]*}{_repo /}}{quant 100}}]"
+                 "\\[cuisine{{class American Cuisine{_id [0-9]*}{_repo /}}}]}]}]"
+                "{batch {max 10}{size 1}{from 0}}"
+        },
+        /*{
+            .input  = "{task {class {_is Dish {ingr {product Milk}}}}}",
+            .expect = "not implemented: filter baseclass attribute"
+            },*/
+        /*{
             .input  = "{task {class {_is Fruit {nutr}}}}",
             .expect = "not implemented: filter baseclass attribute"
-        }
+            }*/
     };
 
     struct kndShard *shard;

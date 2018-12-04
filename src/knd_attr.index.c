@@ -59,7 +59,7 @@ static int update_attr_facet(struct kndAttr *attr,
     struct kndMemPool *mempool = task->mempool;
     int err;
 
-    knd_log(".. update the \"%.*s\" attr facet: topic:%.*s spec:%.*s task:%p",
+    knd_log("\n\n.. update the \"%.*s\" attr facet: topic:%.*s spec:%.*s task:%p",
             attr->name_size, attr->name,
             topic->name_size, topic->name,
             spec->name_size, spec->name, task);
@@ -71,18 +71,19 @@ static int update_attr_facet(struct kndAttr *attr,
     }
 
     err = set->get(set,
-                   topic->entry->id, topic->entry->id_size,
+                   spec->entry->id, spec->entry->id_size,
                    (void**)&facet);
     if (err) {
         err = knd_attr_facet_new(mempool, &facet);                                RET_ERR();
         err = knd_set_new(mempool, &facet->topics);                               RET_ERR();
-        err = set->add(set, topic->entry->id, topic->entry->id_size,
+        err = set->add(set, spec->entry->id, spec->entry->id_size,
                        (void*)facet);                                             RET_ERR();
     }
     
     err = facet->topics->add(facet->topics,
                              topic->entry->id, topic->entry->id_size,
-                             (void*)topic);                                       RET_ERR();
+                             (void*)topic->entry);                                RET_ERR();
+    topic->str(topic, 1);
     
     return knd_OK;
 }
@@ -186,7 +187,7 @@ extern int knd_index_attr_var_list(struct kndClass *self,
     }
 
     for (item = parent_item->list; item; item = item->next) {
-        if (DEBUG_ATTR_INDEX_LEVEL_2)
+        if (DEBUG_ATTR_INDEX_LEVEL_TMP)
             knd_log("== index list item: \"%.*s\" val:%.*s",
                     item->name_size, item->name,
                     item->val_size, item->val);

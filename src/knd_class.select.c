@@ -142,7 +142,7 @@ run_get_baseclass(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t
 validate_select_by_baseclass_attr(void *obj, const char *name, size_t name_size,
-                                  const char *unused_var(rec), size_t *total_size)
+                                  const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     int err;
@@ -165,17 +165,18 @@ validate_select_by_baseclass_attr(void *obj, const char *name, size_t name_size,
         return *total_size = 0, make_gsl_err_external(err);
     }
 
+#if 0
     knd_log("-- not implemented: filter baseclass attribute");
     err = ctx->task->log->writef(ctx->task->log, "not implemented: filter baseclass attribute");
     if (err) return make_gsl_err_external(err);
     return *total_size = 0, make_gsl_err_external(knd_FAIL);
-#if 0
+#endif
+
     // FIXME(k15tfu): used by knd_attr_select_clause()
     ctx->task->class = ctx->selected_base;
     ctx->task->repo = ctx->repo;
 
     return knd_attr_select_clause(attr_ref->attr, ctx->task, rec, total_size);
-#endif
 }
 
 static gsl_err_t
@@ -575,6 +576,7 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndSet *set;
     int err;
 
     // TODO move to export functions
@@ -599,20 +601,21 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
             return make_gsl_err(gsl_OK);
         }
 
-        /* at least one set is available */
-        struct kndSet *set = task->sets[0];
+        /* add base set */
+        task->sets[task->num_sets] = ctx->selected_base->entry->descendants;
+        task->num_sets++;
 
-        /* sets were selected: we need to intersect them */
-        if (task->num_sets > 1) {
-            err = knd_set_new(task->mempool, &set);
-            if (err) return make_gsl_err_external(err);
-            set->type = KND_SET_CLASS;
-            set->mempool = task->mempool;
-            set->base = task->sets[0]->base;
+        knd_log(".. intersecting of %zu sets..", task->num_sets);
 
-            err = knd_set_intersect(set, task->sets, task->num_sets);
-            if (err) return make_gsl_err_external(err);
-        }
+        /* intersection result set */
+        err = knd_set_new(task->mempool, &set);
+        if (err) return make_gsl_err_external(err);
+        set->type = KND_SET_CLASS;
+        set->mempool = task->mempool;
+        set->base = ctx->selected_base->entry;
+
+        err = knd_set_intersect(set, task->sets, task->num_sets);
+        if (err) return make_gsl_err_external(err);
 
         if (!set->num_elems) {
             knd_log("-- not implemented: export empty class set");

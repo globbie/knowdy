@@ -244,7 +244,6 @@ static gsl_err_t confirm_idx(void *obj, const char *unused_var(name), size_t unu
 
     if (DEBUG_ATTR_LEVEL_1)
         knd_log(".. confirm IDX");
-
     self->is_indexed = true;
     return make_gsl_err(gsl_OK);
 }

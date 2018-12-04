@@ -1,5 +1,6 @@
 {include food}
 {include fruit}
+{include geo}
 
 {schema knd-basic
 
@@ -36,11 +37,9 @@
     {!base Abstract Object}
     {!ref  unit-type {c Object}}}
 
-
 {!class Custom Class
     [!_gloss {ru {t класс с произвольной семантикой}}]
-    {!base Abstract Object}
-}
+    {!base Abstract Object}}
 
 {!class Organic Object
     [!_gloss {ru {t органический объект}}]

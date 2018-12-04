@@ -6,12 +6,13 @@
 
 {!class Dish
     {is Product of Labor}
-    {inner ingredient {c Dish Ingredient} {t set}}}
+    {inner ingr  {c Dish Ingredient}  {t set}}
+    {ref cuisine {c Regional Cuisine} {t set} {idx}}}
 
 {!class Dish Ingredient
    {is Information}
-   {num quantity}
-   {ref product {c Edible Object} {impl}}}
+   {num quant}
+   {ref product {c Edible Object} {impl} {idx}}}
 
 {!class Nutritional Value
     [!_gloss {ru {t пищевая ценность}}]
@@ -22,11 +23,13 @@
     {float fat}
     {float protein}}
 
-{!class Authoritative Source
-    {is Agent}}
+{!class Regional Cuisine
+    {is Activity}
+    {ref region {c Country}}}
 
-{!class USDA
-    {is Authoritative Source}}
+{!class American Cuisine
+     {is Regional Cuisine
+         {region USA}}}
 
 {!class Fruit
     {is Edible Object}}
@@ -37,10 +40,21 @@
 {!class Butter
     {is Edible Object}}
 
+{!class Milk
+    {is Edible Object}}
+
 {!class Apple Pie
     {is Dish
-       [!ingredient
-           {Apple  {quantity 5}}
-           {Flour  {quantity 200}}
-           {Butter {quantity 100}}] }}
+       [!ingr
+           {Apple  {quant 5}}
+           {Flour  {quant 200}}
+           {Butter {quant 100}}]
+       [cuisine {American Cuisine}]}}
+
+{!class Banana Smoothie
+    {is Dish
+       [!ingr
+           {Banana {quant 1}}
+           {Milk   {quant 200}} ] }}
+
 }
