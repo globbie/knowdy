@@ -504,7 +504,7 @@ static int present_subclass(struct kndClassRef *ref,
 
     err = out->writec(out, '{');                                                  RET_ERR();
     err = out->write(out, entry->name, entry->name_size);                         RET_ERR();
-    err = out->writec(out, ' ');                                                  RET_ERR();
+    //err = out->writec(out, ' ');                                                  RET_ERR();
 
     if (task->format_offset) {
         err = out->writec(out, '\n');                                             RET_ERR();
@@ -773,7 +773,10 @@ extern int knd_class_export_GSL(struct kndClass *self,
         goto final;
     }
 
-    err = out->writec(out, ' ');                                                  RET_ERR();
+    if (task->format_offset) {
+        err = out->writec(out, ' ');                                              RET_ERR();
+    }
+
     err = out->write(out, "{_repo ", strlen("{_repo "));                          RET_ERR();
     err = out->write(out, entry->repo->name,
                      entry->repo->name_size);                                     RET_ERR();
