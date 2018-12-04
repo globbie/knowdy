@@ -180,11 +180,11 @@ validate_select_by_baseclass_attr(void *obj, const char *name, size_t name_size,
 }
 
 static gsl_err_t
-show_inverse_rels(void *obj, const char *unused_var(name),
-                  size_t unused_var(name_size))
+show_inverse_rels(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
-    struct kndTask *task = obj;
-    task->show_inverse_rels = true;
+    struct LocalContext *ctx = obj;
+
+    ctx->task->show_inverse_rels = true;
     return make_gsl_err(gsl_OK);
 }
 
@@ -214,31 +214,30 @@ parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
           .parse = gsl_parse_size_t,
           .obj = &task->batch_max
         },
-        { .name = "_from",
-          .name_size = strlen("_from"),
-          .parse = gsl_parse_size_t,
-          .obj = &task->start_from
-        },
         { .name = "_from_batch",
           .name_size = strlen("_from_batch"),
           .parse = gsl_parse_size_t,
           .obj = &task->batch_from
         },
-        { .name = "_depth",
-          .name_size = strlen("_depth"),
+        { .name = "_from",
+          .name_size = strlen("_from"),
           .parse = gsl_parse_size_t,
-          .obj = &task->max_depth
+          .obj = &task->start_from
         },
         { .name = "_update",
           .name_size = strlen("_update"),
           .parse = gsl_parse_size_t,
           .obj = &task->state_gt
         },
+        { .name = "_depth",
+          .name_size = strlen("_depth"),
+          .parse = gsl_parse_size_t,
+          .obj = &task->max_depth
+        },
         { .name = "_inverse_rels",
           .name_size = strlen("_inverse_rels"),
-          .is_selector = true,
           .run = show_inverse_rels,
-          .obj = task
+          .obj = ctx
         }
     };
 
