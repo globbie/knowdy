@@ -592,7 +592,6 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndSet *set;
     int err;
 
     // TODO move to export functions
@@ -608,6 +607,7 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
          *  present all descendants of a class if any
          */
         if (!task->num_sets) {
+            // FIXME(k15tfu): remove this case
 
             if (!ctx->selected_base->entry->descendants) {
                 err = knd_empty_set_export(ctx->selected_base, task->format, task);
@@ -621,12 +621,14 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
         }
 
         /* add base set */
+        assert(task->num_sets + 1 <= KND_MAX_CLAUSES);  // FIXME(k15tfu): <<
         task->sets[task->num_sets] = ctx->selected_base->entry->descendants;
         task->num_sets++;
 
         knd_log(".. intersecting of %zu sets..", task->num_sets);
 
         /* intersection result set */
+        struct kndSet *set;
         err = knd_set_new(task->mempool, &set);
         if (err) return make_gsl_err_external(err);
         set->type = KND_SET_CLASS;
