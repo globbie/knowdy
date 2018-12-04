@@ -25,6 +25,23 @@ static const char *shard_config =
 "  }"
 "}";
 
+static const char *shard_inheritance_config =
+"{schema knd"
+"  {agent 007}"
+"  {db-path .}"
+"  {schema-path ../../tests/schemas/food"
+"    {user User"
+"       {base-repo test"
+"         {schema-path ../../tests/schemas/test}}}}"
+"  {memory"
+"    {max_base_pages      20000}"
+"    {max_small_x4_pages  4500}"
+"    {max_small_x2_pages  150000}"
+"    {max_small_pages     23000}"
+"    {max_tiny_pages      200000}"
+"  }"
+"}";
+
 #define ASSERT_STR_EQ(act, act_size, exp, exp_size) \
     do {                                            \
         const char *__act = (act);                  \
@@ -232,50 +249,17 @@ START_TEST(shard_table_test)
 //            .input = "{task {class {_id 2} {_desc {_state {gt 0}}}}}",
 //            .expect = "??"
 //        },
-        /** 
-         **  INHERITANCE 
-         **/
-        {   /* check no parent */
-            .input  = "{task {user Alice {class {_is Banana}}}}",
-            .expect = "not implemented: export empty baseclass desc"
-        },
-        {   /* check an immediate parent */
-            .input  = "{task {user Alice {class {_is Fruit}}}}",
-            .expect =
-                "{set{is Fruit}{total 3}\\[batch"
-                    "{class Banana{_id 7} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 89}}]}]}"
-                    "{class Orange{_id 18} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 47}}]}]}"
-                    "{class Apple{_id 30} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 52}}]}]}"
-                "]{batch {max 10}{size 3}{from 0}}"
-        },
-        {   /* check a distant ancestor (grandparent) */
-            .input  = "{task {user Alice {class {_is Edible Object}}}}",
-            .expect =
-                "{set{is Edible Object}{total 4}\\[batch"
-                    "{class Banana{_id 7} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 89}}]}]}"
-                    "{class Fruit{_id 8} {_repo test}\\[is{Edible Object{_id 9}}]"
-                        "{_subclasses {total 3} {num_terminals 3}\\[batch"
-                            "{Apple {_id 30}}{Orange {_id 18}}{Banana {_id 7}}"
-                        "]}}"
-                    "{class Orange{_id 18} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 47}}]}]}"
-                    "{class Apple{_id 30} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 52}}]}]}"
-                "]{batch {max 10}{size 4}{from 0}}"
-        },
-        {
-            .input  = "{task {user Alice {class {_is Fruit {nutr}}}}}",
-            .expect = "not implemented: filter baseclass attribute"
-        },
         /**
          **  class remove
          **/
-        {
+        /*{
             .input  = "{task {user Alice {class Banana {!_rm}}}}",
             .expect = "not implemented: remove class"
         },
         {
             .input  = "{task {user Alice {class Banana {!_rm WRONG_FORMAT}}}}",
             .expect = "internal server error"  // FIXME(k15tfu)
-        },
+            }*/
     };
 
     struct kndShard *shard;
@@ -306,12 +290,78 @@ START_TEST(shard_table_test)
     kndShard_del(shard);
 END_TEST
 
+
+/** INHERITANCE **/
+
+START_TEST(shard_inheritance_test)
+    static const struct table_test cases[] = {
+        {   /* check no parent */
+            .input  = "{task {class {_is Banana}}}",
+            .expect = "not implemented: export empty baseclass desc"
+        },
+        {   /* check an immediate parent */
+            .input  = "{task {class {_is Fruit}}}",
+            .expect =
+                "{set{is Fruit}{total 3}\\[batch"
+                    "{class Banana{_id 7} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 89}}]}]}"
+                    "{class Orange{_id 18} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 47}}]}]}"
+                    "{class Apple{_id 30} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 52}}]}]}"
+                "]{batch {max 10}{size 3}{from 0}}"
+        },
+        {   /* check a distant ancestor (grandparent) */
+            .input  = "{task {class {_is Edible Object}}}",
+            .expect =
+                "{set{is Edible Object}{total 4}\\[batch"
+                    "{class Banana{_id 7} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 89}}]}]}"
+                    "{class Fruit{_id 8} {_repo test}\\[is{Edible Object{_id 9}}]"
+                        "{_subclasses {total 3} {num_terminals 3}\\[batch"
+                            "{Apple {_id 30}}{Orange {_id 18}}{Banana {_id 7}}"
+                        "]}}"
+                    "{class Orange{_id 18} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 47}}]}]}"
+                    "{class Apple{_id 30} {_repo test}\\[is{Fruit{_id 8}\\[nutr{{source{class USDA{_id 13} {_repo test}}{energy 52}}]}]}"
+                "]{batch {max 10}{size 4}{from 0}}"
+        },
+        {
+            .input  = "{task {class {_is Fruit {nutr}}}}",
+            .expect = "not implemented: filter baseclass attribute"
+        }
+    };
+
+    struct kndShard *shard;
+    int err;
+
+    err = kndShard_new(&shard, shard_inheritance_config, strlen(shard_inheritance_config));
+    ck_assert_int_eq(err, knd_OK);
+
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
+        const struct table_test *pcase = &cases[i];
+        fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
+
+        const char *result; size_t result_size;
+        err = kndShard_run_task(shard, pcase->input, strlen(pcase->input), &result, &result_size, 0);
+        ck_assert_int_eq(err, knd_OK);
+
+        *((char*)result + result_size) = '\0';  // UNSAFE!
+
+        regex_t reg;
+        ck_assert(0 == regcomp(&reg, pcase->expect, 0));
+        if (0 != regexec(&reg, result, 0, NULL, 0)) {
+            ck_abort_msg("Assertion failed: \"%.*s\" doesn't match \"%s\"",
+                         (int)result_size, result, pcase->expect);
+        }
+        regfree(&reg);
+    }
+
+    kndShard_del(shard);
+END_TEST
+
 int main(void) {
     Suite *s = suite_create("suite");
 
     TCase *tc_shard_basic = tcase_create("basic shard");
     tcase_add_test(tc_shard_basic, shard_config_test);
     tcase_add_test(tc_shard_basic, shard_table_test);
+    tcase_add_test(tc_shard_basic, shard_inheritance_test);
     suite_add_tcase(s, tc_shard_basic);
 
     SRunner* sr = srunner_create(s);
