@@ -48,7 +48,7 @@ static int kndSet_traverse(struct kndSet *self,
     bool gotcha = false;
     int err;
 
-    if (DEBUG_SET_LEVEL_2)
+    if (DEBUG_SET_LEVEL_TMP)
         knd_log(".. traverse %.*s, total elems: %zu",
                 self->base->name_size, self->base->name, self->num_elems);
 
@@ -70,6 +70,7 @@ static int kndSet_traverse(struct kndSet *self,
         /* the elem is present in _all_ sets,
            save the result */
         result_idx->elems[i] = elem;
+        self->num_valid_elems++;
         self->num_elems++;
     }
 

@@ -318,7 +318,7 @@ START_TEST(shard_inheritance_test)
             },*/
         {
             .input  = "{task {class {_is Dish {cuisine American Cuisine}}}}",
-            .expect = "{set{is Dish}{total 0}\\[batch"
+            .expect = "{set{is Dish}{total 1}\\[batch"
                "{class Apple Pie{_id [0-9]*}{_repo /}[is{Dish{_id [0-9]*}"
                  "\\[ingr{{product{class Apple{_id [0-9]*}{_repo /}}{quant 5}}"
                       "{{product{class Flour{_id [0-9]*}{_repo /}}{quant 200}}"

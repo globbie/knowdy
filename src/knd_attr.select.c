@@ -334,27 +334,6 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
         return make_gsl_err_external(knd_NO_MATCH);
     }
 
-    //class_id = c->entry->id;
-    //class_id_size = c->entry->id_size;
-
-    /*    err = facet->set_idx->get(facet->set_idx,
-                              class_id, class_id_size, &result);
-    if (err) {
-        if (c->entry->orig) {
-            class_id = c->entry->orig->id;
-            class_id_size = c->entry->orig->id_size;
-        }
-        err = facet->set_idx->get(facet->set_idx,
-                                  class_id, class_id_size, &result);
-        if (err) {
-            log->writef(log, "-- no such facet class: %.*s", val_size, val);
-            task->http_code = HTTP_NOT_FOUND;
-            return make_gsl_err(gsl_FAIL);
-        }
-    }
-    set = result;
-    */
-
     if (task->num_sets + 1 > KND_MAX_CLAUSES)
         return make_gsl_err(gsl_LIMIT);
 
