@@ -180,15 +180,6 @@ validate_select_by_baseclass_attr(void *obj, const char *name, size_t name_size,
 }
 
 static gsl_err_t
-show_inverse_rels(void *obj, const char *unused_var(name), size_t unused_var(name_size))
-{
-    struct LocalContext *ctx = obj;
-
-    ctx->task->show_inverse_rels = true;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t
 parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -233,11 +224,6 @@ parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
           .name_size = strlen("_depth"),
           .parse = gsl_parse_size_t,
           .obj = &task->max_depth
-        },
-        { .name = "_inverse_rels",
-          .name_size = strlen("_inverse_rels"),
-          .run = show_inverse_rels,
-          .obj = ctx
         }
     };
 

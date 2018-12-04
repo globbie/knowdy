@@ -96,7 +96,6 @@ struct kndTask
     size_t state_gte;
     size_t state_lte;
     bool show_removed_objs;
-    bool show_inverse_rels;
 
     size_t depth;
     size_t max_depth;
