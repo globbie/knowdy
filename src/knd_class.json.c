@@ -155,8 +155,8 @@ static int export_class_set_elem(void *obj,
     struct kndClassEntry *entry = elem;
     struct kndClass *c = entry->class;
     struct kndState *state;
-    //size_t state_gt = task->state_gt;
-    //size_t curr_state = 0;
+    size_t state_gt = task->state_gt;
+    size_t curr_state = 0;
     int err;
 
     task->class = c;
@@ -172,7 +172,7 @@ static int export_class_set_elem(void *obj,
 
     state = c->states;
     if (state && state->update) {
-        curr_state = state->update->numid;
+       curr_state = state->update->numid;
     }
 
     //if (!task->show_removed_objs) {
@@ -182,8 +182,8 @@ static int export_class_set_elem(void *obj,
     // TODO: move to select module
 
     /* filter out the irrelevant states */
-    //if (curr_state < state_gt)
-    //    return knd_OK;
+    if (curr_state < state_gt)
+        return knd_OK;
 
     /* any logical clause to filter? */
     if (task->attr_var) {
