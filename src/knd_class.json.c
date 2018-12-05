@@ -156,7 +156,7 @@ static int export_class_set_elem(void *obj,
     struct kndClass *c = entry->class;
     struct kndState *state;
     //size_t state_gt = task->state_gt;
-    size_t curr_state = 0;
+    //size_t curr_state = 0;
     int err;
 
     task->class = c;
