@@ -51,6 +51,7 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
     struct kndAttr *attr;
     struct kndClass *c;
     bool in_list = false;
+    size_t curr_depth = 0;
     int err;
 
     c = parent_item->attr->parent_class;
@@ -116,9 +117,10 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
         err = out->writec(out, ':');
         if (err) return err;
 
-        task->depth = 0;
-        err = knd_class_export(c, KND_FORMAT_JSON, task);
-        if (err) return err;
+        curr_depth = task->depth;
+        task->depth++;
+        err = knd_class_export_JSON(c, task);   RET_ERR();
+        task->depth = curr_depth;
         in_list = true;
     }
 
@@ -183,9 +185,10 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
                     item->val_size, item->val);
             assert(item->class != NULL);
             c = item->class;
-
-            err = knd_class_export(c, KND_FORMAT_JSON, task);
-            if (err) return err;
+            curr_depth = task->depth;
+            task->depth++;
+            err = knd_class_export_JSON(c, task);                                 RET_ERR();
+            task->depth = curr_depth;
             break;
         case KND_ATTR_INNER:
             err = inner_item_export_JSON(item, task);
@@ -226,7 +229,7 @@ extern int knd_export_inherited_attr(void *obj,
     size_t numval = 0;
     int err;
 
-    if (DEBUG_ATTR_JSON_LEVEL_2) {
+    if (DEBUG_ATTR_JSON_LEVEL_TMP) {
         knd_log(".. class \"%.*s\" to export inherited attr \"%.*s\"..",
                 self->name_size, self->name,
                 attr->name_size, attr->name);
@@ -333,12 +336,17 @@ static int ref_item_export_JSON(struct kndAttrVar *item,
                                 struct kndTask *task)
 {
     struct kndClass *c;
+    size_t curr_depth = 0;
     int err;
 
     assert(item->class != NULL);
 
     c = item->class;
-    err = knd_class_export_JSON(c, task);                 RET_ERR();
+    curr_depth = task->depth;
+    task->depth++;
+    err = knd_class_export_JSON(c, task);                                         RET_ERR();
+    task->depth = curr_depth;
+
     return knd_OK;
 }
 
@@ -379,38 +387,6 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
     err = out->write(out, "\":[", strlen("\":["));
     if (err) return err;
 
-    /* first elem: TODO */
-    if (parent_item->class) {
-        switch (parent_item->attr->type) {
-        case KND_ATTR_INNER:
-            parent_item->id_size = sprintf(parent_item->id, "%lu",
-                                           (unsigned long)count);
-            count++;
-
-            err = inner_item_export_JSON(parent_item, task);
-            if (err) return err;
-            break;
-        case KND_ATTR_REF:
-            err = ref_item_export_JSON(parent_item, task);
-            if (err) return err;
-            break;
-        case KND_ATTR_PROC:
-            if (parent_item->proc) {
-                err = proc_item_export_JSON(parent_item, task);
-                if (err) return err;
-            }
-            break;
-        default:
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->write(out, parent_item->val, parent_item->val_size);
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
-            break;
-        }
-        in_list = true;
-    }
 
     for (item = parent_item->list; item; item = item->next) {
         /* TODO */
@@ -430,7 +406,6 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
             item->id_size = sprintf(item->id, "%lu",
                                     (unsigned long)count);
             count++;
-
             err = inner_item_export_JSON(item, task);
             if (err) return err;
             break;
@@ -469,6 +444,7 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
     struct kndAttrVar *item;
     struct kndAttr *attr;
     struct kndClass *c;
+    size_t curr_depth = 0;
     int err;
 
     for (item = items; item; item = item->next) {
@@ -503,7 +479,7 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
             break;
         case KND_ATTR_TEXT:
             err = out->writec(out, '"');                                          RET_ERR();
-            err = knd_text_export(item->text, KND_FORMAT_JSON, task);
+            err = knd_text_export(item->text, KND_FORMAT_JSON, task);             RET_ERR();
             err = out->writec(out, '"');                                          RET_ERR();
             if (err) return err;
             break;
@@ -526,8 +502,10 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
                 if (err) return err;
             } else {
                 c = item->class;
-                err = knd_class_export(c, KND_FORMAT_JSON, task);
-                if (err) return err;
+                curr_depth = task->depth;
+                task->depth++;
+                err = knd_class_export_JSON(c, task);  RET_ERR();
+                task->depth = curr_depth;
             }
             break;
         default:
@@ -585,7 +563,7 @@ extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
             if (err) return err;
         } else {
             c = item->class;
-            err = knd_class_export(c, KND_FORMAT_JSON, task);
+            err = knd_class_export_JSON(c, task);
             if (err) return err;
         }
         break;

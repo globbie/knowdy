@@ -767,6 +767,8 @@ extern int knd_class_set_export(struct kndSet *self,
                                 knd_format format,
                                 struct kndTask *task)
 {
+    task->out->reset(task->out);
+    knd_log(".. set export reset out..");
     switch (format) {
     case KND_FORMAT_JSON:
         return knd_class_set_export_JSON(self, task);
@@ -780,6 +782,8 @@ extern int knd_empty_set_export(struct kndClass *self,
                                 knd_format format,
                                 struct kndTask *task)
 {
+    task->out->reset(task->out);
+
     switch (format) {
     case KND_FORMAT_JSON:
         return knd_empty_set_export_JSON(self, task);
@@ -793,6 +797,8 @@ extern int knd_class_export(struct kndClass *self,
                             knd_format format,
                             struct kndTask *task)
 {
+    task->out->reset(task->out);
+    knd_log(".. RESET out..");
     switch (format) {
     case KND_FORMAT_JSON:
         return knd_class_export_JSON(self, task);

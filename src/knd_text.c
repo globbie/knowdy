@@ -50,12 +50,14 @@ static int export_JSON(struct kndText *self,
                 task->locale_size, task->locale);
 
     for (tr = self->tr; tr; tr = tr->next) {
+        //knd_log("== %.*s", tr->val_size, tr->val);
         if (memcmp(task->locale, tr->locale, tr->locale_size)) {
             continue;
         }
         err = out->write_escaped(out, tr->val,  tr->val_size);                    RET_ERR();
         break;
     }
+
     return knd_OK;
 }
 
@@ -175,7 +177,7 @@ extern int knd_text_export(struct kndText *self,
         err = export_GSL(self, task);  RET_ERR();
         break;
     case KND_FORMAT_JSON:
-        err = export_JSON(self, task);  RET_ERR();
+        err = export_JSON(self, task);                           RET_ERR();
         break;
     case KND_FORMAT_GSP:
         err = export_GSP(self, task, task->out);  RET_ERR();
