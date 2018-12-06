@@ -162,9 +162,8 @@ static int export_class_set_elem(void *obj,
     task->class = c;
 
     if (DEBUG_JSON_LEVEL_2)
-        knd_log(".. JSON export set elem: %.*s gt:%zu",
-                elem_id_size, elem_id, task->state_gt);
-
+        knd_log(".. JSON export set elem: %.*s gt:%zu start from:%zu   batch max size:%zu",
+                elem_id_size, elem_id, task->state_gt, task->start_from, task->batch_max);
     if (!c) {
         //err = unfreeze_class(self, entry, &c);                                      RET_ERR();
         return knd_OK;
@@ -197,8 +196,7 @@ static int export_class_set_elem(void *obj,
         err = out->writec(out, ',');                                              RET_ERR();
     }
     task->depth = 0;
-    err = knd_class_export_JSON(c, task);
-    if (err) return err;
+    err = knd_class_export_JSON(c, task);                                         RET_ERR();
 
     task->batch_size++;
     return knd_OK;

@@ -215,7 +215,9 @@ parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
         return make_gsl_err(gsl_LIMIT);
     }
 
-    task->start_from = task->batch_max * task->batch_from;
+    if (task->batch_from) {
+        task->start_from = task->batch_max * task->batch_from;
+    }
 
     return make_gsl_err(gsl_OK);
 }
