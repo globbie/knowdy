@@ -768,7 +768,13 @@ extern int knd_class_set_export(struct kndSet *self,
                                 struct kndTask *task)
 {
     task->out->reset(task->out);
-    knd_log(".. set export reset out..");
+
+    /* set locale */
+    if (task->curr_locale_size) {
+        task->locale = task->curr_locale;
+        task->locale_size = task->curr_locale_size;
+    }
+
     switch (format) {
     case KND_FORMAT_JSON:
         return knd_class_set_export_JSON(self, task);
@@ -798,7 +804,13 @@ extern int knd_class_export(struct kndClass *self,
                             struct kndTask *task)
 {
     task->out->reset(task->out);
-    knd_log(".. RESET out..");
+
+    /* set locale */
+    if (task->curr_locale_size) {
+        task->locale = task->curr_locale;
+        task->locale_size = task->curr_locale_size;
+    }
+
     switch (format) {
     case KND_FORMAT_JSON:
         return knd_class_export_JSON(self, task);

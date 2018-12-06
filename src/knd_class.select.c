@@ -571,12 +571,6 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
     struct kndTask *task = ctx->task;
     int err;
 
-    // TODO move to export functions
-    if (task->curr_locale_size) {
-        task->locale = task->curr_locale;
-        task->locale_size = task->curr_locale_size;
-    }
-
     /* select a set of classes by base class */
     if (ctx->selected_base) {
         /* 
