@@ -336,11 +336,18 @@ extern int knd_class_set_export_JSON(struct kndSet *set,
     err = out->writef(out, ",\"batch_size\":%lu",
                        (unsigned long)task->batch_size);                          RET_ERR();
 
-    err = out->write(out,
-                     ",\"batch_from\":", strlen(",\"batch_from\":"));             RET_ERR();
+    if (task->batch_from) {
+        err = out->write(out,
+                         ",\"from_batch\":", strlen(",\"from_batch\":"));             RET_ERR();
+        err = out->writef(out,"%lu",
+                          (unsigned long)task->batch_from);                           RET_ERR();
+    } else {
+        err = out->write(out,
+                         ",\"from\":", strlen(",\"from\":"));             RET_ERR();
 
-    err = out->writef(out,"%lu",
-                      (unsigned long)task->batch_from);                           RET_ERR();
+        err = out->writef(out,"%lu",
+                          (unsigned long)task->start_from);                           RET_ERR();
+    }
     err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
 }
