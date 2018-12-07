@@ -212,44 +212,15 @@ static int export_conc_id_GSP(void *obj,
     return knd_OK;
 }
 
-static int export_facets_GSP(struct kndSet *set,
+static int export_facets_GSP(struct kndSet *unused_var(set),
                              struct kndTask *task)
 {
     struct glbOutput *out = task->out;
-    struct kndFacet *facet;
-    //struct ooDict *set_name_idx;
+    //struct kndClassFacet *facet;
     int err;
 
     err = out->write(out,  "[fc ", strlen("[fc "));                               RET_ERR();
-    for (facet = set->facets; facet; facet = facet->next) {
-        err = out->write(out,  "{", 1);                                           RET_ERR();
-        err = out->write(out, facet->attr->name, facet->attr->name_size);
-        err = out->write(out,  " ", 1);                                           RET_ERR();
 
-        /*if (facet->set_name_idx) {
-            err = out->write(out,  "[set", strlen("[set"));                       RET_ERR();
-            set_name_idx = facet->set_name_idx;
-            key = NULL;
-            set_name_idx->rewind(set_name_idx);
-            do {
-                set_name_idx->next_item(set_name_idx, &key, &val);
-                if (!key) break;
-                subset = (struct kndSet*)val;
-
-                err = out->writec(out, '{');                                      RET_ERR();
-                err = out->write(out, subset->base->id,
-                                 subset->base->id_size);                          RET_ERR();
-
-                err = out->write(out, "[c", strlen("[c"));                        RET_ERR();
-                err = subset->map(subset, export_conc_id_GSP, (void*)out);
-                if (err) return err;
-                err = out->writec(out, ']');                                      RET_ERR();
-                err = out->writec(out, '}');                                      RET_ERR();
-            } while (key);
-            err = out->write(out,  "]", 1);                                       RET_ERR();
-            }*/
-        err = out->write(out,  "}", 1);                                           RET_ERR();
-    }
     err = out->write(out,  "]", 1);                                               RET_ERR();
     return knd_OK;
 }
@@ -274,7 +245,7 @@ static int export_descendants_GSP(struct kndClass *self,
     if (err) return err;
     err = out->writec(out, ']');                                                  RET_ERR();
 
-    if (set->num_facets) {
+    if (set->facets) {
         err = export_facets_GSP(set, task);                                       RET_ERR();
     }
 

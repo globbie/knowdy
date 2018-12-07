@@ -80,13 +80,7 @@ struct kndMemPool
     size_t tiny_pages_used;
     struct kndMemPageHeader *tiny_page_list;
 
-    // test
-    size_t num_classes;
-    size_t num_sets;
-    size_t num_set_idxs;
-
-    size_t num_class_vars;
-    size_t num_attr_vars;
+    size_t max_set_size;
 
     void (*del)(struct kndMemPool   *self);
     int (*alloc)(struct kndMemPool   *self);

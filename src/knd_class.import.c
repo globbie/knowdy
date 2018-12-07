@@ -468,8 +468,8 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("..worker \"%zu\" to import class: \"%.*s\".. [total:%zu]",
-                task->id, 128, rec, mempool->num_classes);
+        knd_log("..worker \"%zu\" to import class: \"%.*s\"..",
+                task->id, 128, rec);
 
     err = knd_class_new(mempool, &c);
     if (err) return make_gsl_err_external(err);

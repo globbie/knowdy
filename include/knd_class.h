@@ -55,6 +55,12 @@ struct kndClassUpdate
     struct kndClassUpdate *next;
 };
 
+struct kndClassFacet
+{
+    struct kndClassEntry *val;
+    struct kndSet *set;
+};
+
 struct kndClassRef
 {
     struct kndClass      *class;
@@ -346,6 +352,8 @@ extern int knd_class_var_new(struct kndMemPool *mempool,
 
 extern int knd_class_ref_new(struct kndMemPool *mempool,
                              struct kndClassRef **result);
+extern int knd_class_facet_new(struct kndMemPool *mempool,
+                               struct kndClassFacet **result);
 
 extern int knd_conc_folder_new(struct kndMemPool *mempool,
                                struct kndConcFolder **result);

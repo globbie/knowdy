@@ -203,36 +203,6 @@ static int export_class_set_elem(void *obj,
 }
 
 
-/*static int export_class_ref_JSON(void *obj,
-                                 const char *unused_var(elem_id),
-                                 size_t unused_var(elem_id_size),
-                                 size_t count,
-                                 void *elem)
-{
-    struct kndTask *task = obj;
-    struct glbOutput *out = task->out;
-    struct kndClassEntry *entry = elem;
-    struct kndClass *c = entry->class;
-    size_t curr_depth = 0;
-    size_t curr_max_depth = 0;
-    int err;
-
-    if (count) {
-        err = out->writec(out, ',');                                              RET_ERR();
-    }
-    curr_depth = task->depth;
-    curr_max_depth = task->max_depth;
-    task->depth = 0;
-    task->max_depth = 0;
-    err = knd_class_export(c, KND_FORMAT_JSON, task);
-    if (err) return err;
-
-    task->depth = curr_depth;
-    task->max_depth = curr_max_depth;
-    
-    return knd_OK;
-}
-*/
 
 static int export_gloss_JSON(struct kndClass *self,
                              struct kndTask *task)
@@ -293,6 +263,89 @@ extern int knd_empty_set_export_JSON(struct kndClass *unused_var(self),
     return knd_OK;
 }
 
+static int export_class_ref(void *obj,
+                            const char *unused_var(elem_id),
+                            size_t unused_var(elem_id_size),
+                            size_t count,
+                            void *elem)
+{
+    struct kndTask *task = obj;
+    struct glbOutput *out = task->out;
+    struct kndClassEntry *entry = elem;
+    struct kndClass *c = entry->class;
+    size_t curr_depth = 0;
+    size_t curr_max_depth = 0;
+    int err;
+
+    if (count) {
+        err = out->writec(out, ',');                                              RET_ERR();
+    }
+    curr_depth = task->depth;
+    curr_max_depth = task->max_depth;
+    task->depth = 0;
+    task->max_depth = 0;
+    err = knd_class_export_JSON(c, task);
+    if (err) return err;
+    task->depth = curr_depth;
+    task->max_depth = curr_max_depth;
+    return knd_OK;
+}
+
+static int export_facet(void *obj,
+                        const char *unused_var(elem_id),
+                        size_t unused_var(elem_id_size),
+                        size_t count,
+                        void *elem)
+{
+    struct kndTask *task = obj;
+    struct glbOutput *out = task->out;
+    struct kndClassFacet *facet = elem;
+    int err;
+
+    if (count) {
+        err = out->writec(out, ',');                                              RET_ERR();
+    }
+
+    err = out->write(out, "{\"name\":",
+                     strlen("{\"name\":"));                                       RET_ERR();
+    err = out->writec(out, '"');                                                  RET_ERR();
+    err = out->write(out, facet->val->name,
+                     facet->val->name_size);                                      RET_ERR();
+    err = out->writec(out, '"');                                                  RET_ERR();
+
+
+    err = out->writef(out, ",\"total\":%lu",
+                      (unsigned long)facet->set->num_valid_elems);                RET_ERR();
+
+    err = out->write(out, ",\"refs\":[",
+                     strlen(",\"refs\":["));                                      RET_ERR();
+    err = facet->set->map(facet->set,
+                          export_class_ref, (void*)task);                         RET_ERR();
+    err = out->writec(out, ']');                                                  RET_ERR();
+
+    
+    err = out->writec(out, '}');                                                  RET_ERR();
+
+    return knd_OK;
+}
+
+static int export_facets(struct kndSet *set,
+                         struct kndTask *task)
+{
+    struct glbOutput *out = task->out;
+    int err;
+
+    err = out->write(out, ",\"facets\":[",
+                     strlen(",\"facets\":["));                                RET_ERR();
+
+    err = set->facets->map(set->facets,
+                           export_facet, (void*)task);                        RET_ERR();
+
+    err = out->writec(out, ']');                                              RET_ERR();
+
+    return knd_OK;
+}
+
 extern int knd_class_set_export_JSON(struct kndSet *set,
                                      struct kndTask *task)
 {
@@ -331,6 +384,10 @@ extern int knd_class_set_export_JSON(struct kndSet *set,
 
     err = out->writec(out, ']');                                                  RET_ERR();
 
+    if (set->facets) {
+        err = export_facets(set, task);                                           RET_ERR();
+    }
+    
     err = out->writef(out, ",\"batch_max\":%lu",
                       (unsigned long)task->batch_max);                            RET_ERR();
     err = out->writef(out, ",\"batch_size\":%lu",
@@ -338,9 +395,9 @@ extern int knd_class_set_export_JSON(struct kndSet *set,
 
     if (task->batch_from) {
         err = out->write(out,
-                         ",\"from_batch\":", strlen(",\"from_batch\":"));             RET_ERR();
+                         ",\"from_batch\":", strlen(",\"from_batch\":"));         RET_ERR();
         err = out->writef(out,"%lu",
-                          (unsigned long)task->batch_from);                           RET_ERR();
+                          (unsigned long)task->batch_from);                       RET_ERR();
     } else {
         err = out->write(out,
                          ",\"from\":", strlen(",\"from\":"));             RET_ERR();

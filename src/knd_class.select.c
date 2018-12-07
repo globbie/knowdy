@@ -34,6 +34,8 @@ struct LocalContext {
         size_t state_lte;
     } state_filter;
 
+    bool create_subsets;
+
     struct kndClass *class;
     struct kndAttr *attr;
 };
@@ -60,8 +62,105 @@ run_get_class(void *obj, const char *name, size_t name_size)
     if (DEBUG_CLASS_SELECT_LEVEL_1) {
         ctx->selected_class->str(ctx->selected_class, 1);
     }
-
     return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t
+subsets_option(void *obj,
+               const char *unused_var(name),
+               size_t unused_var(name_size))
+{
+    struct LocalContext *ctx = obj;
+    ctx->create_subsets = true;
+    return make_gsl_err(gsl_OK);
+}
+
+static int update_subset(struct kndSet *parent_set,
+                         struct kndClassEntry *facet_entry,
+                         struct kndClassEntry *elem,
+                         struct kndTask *task)
+{
+    struct kndSet *set = NULL;
+    struct kndClassFacet *facet;
+    struct kndMemPool *mempool = task->mempool;
+    int err;
+
+    err = parent_set->get(parent_set,
+                          facet_entry->id, facet_entry->id_size,
+                          (void**)&facet);
+    if (err) {
+        err = knd_class_facet_new(mempool, &facet);                                  RET_ERR();
+        err = knd_set_new(mempool, &facet->set);                                     RET_ERR();
+        facet->set->mempool = mempool;
+        facet->set->base = facet_entry;
+        facet->val = facet_entry;
+
+        knd_log(".. build facet %.*s", facet_entry->name_size, facet_entry->name);
+
+        err = parent_set->add(parent_set, facet_entry->id, facet_entry->id_size,
+                   (void*)facet);                                                    RET_ERR();
+    }
+
+    set = facet->set;
+    /*    knd_log(".. add class %.*s to a subset \"%.*s\" (total:%zu)..",
+            elem->name_size, elem->name,
+            facet_entry->name_size, facet_entry->name,
+            set->num_valid_elems);
+    */
+
+    err = set->add(set, elem->id, elem->id_size, (void*)elem);                            RET_ERR();
+
+    return knd_OK;
+}
+
+static int facetize_class(void *obj,
+                          const char *unused_var(elem_id),
+                          size_t unused_var(elem_id_size),
+                          size_t unused_var(count),
+                          void *elem)
+{
+    struct kndTask *task = obj;
+    struct kndSet *set = task->set;
+    struct kndClass *base = task->class;
+    struct kndClassEntry *entry = elem;
+    struct kndClassRef *ref, *child_ref;
+    int err;
+
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
+        knd_log(".. set %.*s to facetize \"%.*s\"..",
+                base->name_size, base->name,
+                entry->name_size, entry->name);
+
+    /* facetize by base class */
+    for (ref = entry->ancestors; ref; ref = ref->next) {
+        /* find immediate child */
+        for (child_ref = base->entry->children; child_ref;
+             child_ref = child_ref->next) {
+
+            if (child_ref->entry != ref->entry) continue;
+            err = update_subset(set->facets, ref->entry, entry, task);              RET_ERR();
+            return knd_OK;
+        }
+    }
+    return knd_OK;
+}
+
+static int create_subsets(struct kndSet *set,
+                          struct kndTask *task)
+{
+    int err;
+    task->class = set->base->class;
+    task->set = set;
+
+    err = knd_set_new(task->mempool, &set->facets);                                     RET_ERR();
+    set->facets->mempool = task->mempool;
+
+    knd_log(".. subsets in progress .. max set size:%zu base:%p",
+            task->mempool->max_set_size, set->base->class);
+
+    err = set->map(set, facetize_class, (void*)task);                             RET_ERR();
+
+    return knd_OK;
 }
 
 static gsl_err_t
@@ -191,6 +290,12 @@ parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
           .name_size = strlen("_from"),
           .parse = gsl_parse_size_t,
           .obj = &task->start_from
+        },
+        { .is_selector = true,
+          .name = "_subsets",
+          .name_size = strlen("_subsets"),
+          .run = subsets_option,
+          .obj = ctx
         },
         { .name = "_update",
           .name_size = strlen("_update"),
@@ -598,7 +703,8 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
         task->sets[task->num_sets] = ctx->selected_base->entry->descendants;
         task->num_sets++;
 
-        knd_log(".. intersecting of %zu sets..", task->num_sets);
+        knd_log(".. intersecting of %zu sets base:%p..",
+                task->num_sets, ctx->selected_base->entry);
 
         /* intersection result set */
         struct kndSet *set;
@@ -613,6 +719,12 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
 
         if (!set->num_elems) {
             err = knd_empty_set_export(ctx->selected_base, task->format, task);
+            if (err) return make_gsl_err_external(err);
+        }
+
+        /* result set subdivision required? */
+        if (ctx->create_subsets) {
+            err = create_subsets(set, task);
             if (err) return make_gsl_err_external(err);
         }
 
@@ -632,7 +744,6 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
     }
 
     /* display all classes */
-
     if (ctx->repo->class_idx->num_elems) {
         err = knd_class_set_export(ctx->repo->class_idx, task->format, task);
         if (err) return make_gsl_err_external(err);

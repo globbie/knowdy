@@ -1383,6 +1383,17 @@ extern int knd_class_ref_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
+extern int knd_class_facet_new(struct kndMemPool *mempool,
+                             struct kndClassFacet **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndClassFacet), &page);
+    if (err) return err;
+    *result = page;
+    return knd_OK;
+}
+
 extern int knd_class_entry_new(struct kndMemPool *mempool,
                                struct kndClassEntry **result)
 {

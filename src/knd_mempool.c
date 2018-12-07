@@ -276,6 +276,11 @@ parse_memory_settings(struct kndMemPool *self, const char *rec, size_t *total_si
             .name_size = strlen("max_tiny_pages"),
             .parse = gsl_parse_size_t,
             .obj = &self->num_tiny_pages
+        },
+        {   .name = "max_set_size",
+            .name_size = strlen("max_set_size"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_set_size
         }
     };
 

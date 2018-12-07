@@ -105,8 +105,10 @@ struct kndTask
 
     struct kndRepo *repo;  // FIXME(k15tfu): remove this
 
-    // FIXME(k15tfu): remove these vv
     struct kndClass *class;
+    struct kndSet *set;
+
+    // FIXME(k15tfu): remove these vv
     struct kndClassVar *class_var;
     struct kndAttr *attr;
     struct kndAttrVar *attr_var;

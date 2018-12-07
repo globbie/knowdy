@@ -341,8 +341,6 @@ extern int knd_set_new(struct kndMemPool *mempool,
     (*result)->mempool = mempool;
     kndSet_init(*result);
 
-    // TEST
-    mempool->num_sets++;
     return knd_OK;
 }
 
@@ -359,8 +357,5 @@ extern int knd_set_elem_idx_new(struct kndMemPool *mempool,
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_BASE,
                             sizeof(struct kndSetElemIdx), &page);                      RET_ERR();
     *result = page;
-
-    // TEST
-    mempool->num_set_idxs++;
     return knd_OK;
 }

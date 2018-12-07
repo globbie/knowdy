@@ -56,9 +56,7 @@ struct kndSet
     size_t num_elems;
     size_t num_valid_elems;
 
-    struct kndFacet *parent_facet;
-    struct kndFacet *facets;
-    size_t num_facets;
+    struct kndSet *facets;
     
     struct kndMemPool *mempool;
     struct kndSet *next;
