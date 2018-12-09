@@ -582,6 +582,7 @@ static int export_inverse_attrs(struct kndClass *self,
             //if (task->show_inverse_rels) {
             curr_depth = task->max_depth;
             task->max_depth = 0;
+            task->batch_size = 0;
             set = attr_hub->topics;
             err = out->write(out, ",\"topics\":[",
                              strlen(",\"topics\":["));                         RET_ERR();
@@ -590,7 +591,6 @@ static int export_inverse_attrs(struct kndClass *self,
             err = out->writec(out, ']');                                      RET_ERR();
             task->max_depth = curr_depth;
         }
-
         err = out->writec(out, '}');                                          RET_ERR();
         in_list = true;
     }
