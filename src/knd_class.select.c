@@ -710,7 +710,18 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
                 if (err) return make_gsl_err_external(err);
                 return make_gsl_err(gsl_OK);
             }
-            
+
+            /* result set subdivision required? */
+            if (ctx->create_subsets) {
+                task->class = ctx->selected_base;
+                err = create_subsets(ctx->selected_base->entry->descendants, task);
+                if (err) return make_gsl_err_external(err);
+                
+                err = knd_class_facets_export(task);
+                if (err) return make_gsl_err_external(err);
+                return make_gsl_err(gsl_OK);
+            }
+
             knd_log("\n.. clause filtering is required: %p",
                     task->attr_var);
 
