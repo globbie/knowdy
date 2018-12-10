@@ -692,6 +692,9 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
                 if (err) return make_gsl_err_external(err);
                 return make_gsl_err(gsl_OK);
             }
+            
+            knd_log("\n.. clause filtering is required: %p",
+                    task->attr_var);
 
             err = knd_class_set_export(ctx->selected_base->entry->descendants, task->format, task);
             if (err) return make_gsl_err_external(err);
@@ -892,8 +895,8 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
     return make_gsl_err(gsl_OK);
 }
 
-int knd_class_match_query(struct kndClass *self,
-                          struct kndAttrVar *query)
+extern int knd_class_match_query(struct kndClass *self,
+                                 struct kndAttrVar *query)
 {
     struct kndSet *attr_idx = self->attr_idx;
     knd_logic logic = query->logic;
@@ -907,11 +910,22 @@ int knd_class_match_query(struct kndClass *self,
         attr = attr_var->attr;
 
         err = attr_idx->get(attr_idx, attr->id, attr->id_size, &result);
-        if (err) return err;
+        if (err) {
+            knd_log("-- attr \"%.*s\" not present in %.*s?",
+                    self->name_size, self->name);
+            return err;
+        }
         attr_ref = result;
 
-        if (!attr_ref->attr_var) return knd_NO_MATCH;
+        if (!attr_ref->attr_var) {
+            return knd_OK;
+        }
 
+        /* _null value expected */
+        if (!attr_var->val || !attr_var->numval) {
+            return knd_NO_MATCH;
+        }
+        
         err = knd_attr_var_match(attr_ref->attr_var, attr_var);
         if (err == knd_NO_MATCH) {
             switch (logic) {

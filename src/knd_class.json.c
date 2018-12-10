@@ -186,6 +186,10 @@ static int export_class_set_elem(void *obj,
 
     /* any logical clause to filter? */
     if (task->attr_var) {
+
+        //knd_log("\n.. clause filtering is required: %p",
+        //        task->attr_var);
+
         /* return early if the query conditions are not met */
         err = knd_class_match_query(c, task->attr_var);
         if (err) return knd_OK;

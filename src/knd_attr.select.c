@@ -47,7 +47,7 @@ struct LocalContext {
 
     struct kndRepo    *repo;
 
-    //struct kndAttrRef *attr_ref;
+    struct kndAttrVar *clauses;
     struct kndAttrVar *attr_var;
     struct kndAttr    *attr;
     knd_logic logic;
@@ -284,8 +284,10 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndMemPool *mempool = task->mempool;
     struct kndClass *self = task->class;
     struct kndClass *c;
+    struct kndAttrVar *attr_var;
     struct kndAttrFacet *facet;
     struct glbOutput *log = task->log;
     struct kndAttr *attr = ctx->attr;
@@ -308,6 +310,19 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
                 c->entry->repo->name_size, c->entry->repo->name);
     }
 
+    /* TODO: special value: _null */
+    if (val_size == strlen("_null")) {
+        if (!memcmp(val, "_null", val_size)) {
+            err = knd_attr_var_new(mempool, &attr_var);
+            if (err) return make_gsl_err_external(err);
+            attr_var->attr = ctx->attr;
+
+            attr_var->next = ctx->clauses;
+            ctx->clauses = attr_var;
+            return make_gsl_err(gsl_OK);
+        }
+    }
+                
     err = knd_get_class(self->entry->repo, val, val_size, &c, task);
     if (err) {
         log->writef(log, "-- no such class: %.*s", val_size, val);
@@ -512,6 +527,8 @@ static gsl_err_t parse_inner_class_clause(struct kndAttr *attr,
                                           struct LocalContext *parent_ctx,
                                           const char *rec, size_t *total_size)
 {
+    gsl_err_t parser_err;
+
     if (DEBUG_ATTR_SELECT_LEVEL_TMP)
         knd_log(".. parse inner class clause: \"%.*s\"..",
                 attr->name_size, attr->name);
@@ -531,7 +548,17 @@ static gsl_err_t parse_inner_class_clause(struct kndAttr *attr,
           .obj = &ctx
         }
     };
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err;
+
+    knd_log("== clauses: %p", ctx.clauses);
+
+    if (ctx.clauses) {
+        ctx.clauses->next = parent_ctx->clauses;
+        parent_ctx->clauses = ctx.clauses;
+    }
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_num_clause(struct kndAttr *attr,
@@ -589,7 +616,7 @@ extern gsl_err_t knd_attr_select_clause(struct kndAttr *attr,
     struct kndMemPool *mempool = task->mempool;
     struct kndAttrVar *attr_var;
     gsl_err_t parser_err;
-    size_t num_sets = task->num_sets;
+    //size_t num_sets = task->num_sets;
     int err;
 
     if (DEBUG_ATTR_SELECT_LEVEL_TMP) {
@@ -626,22 +653,23 @@ extern gsl_err_t knd_attr_select_clause(struct kndAttr *attr,
         return *total_size = 0, make_gsl_err_external(gsl_FAIL);
     }
 
-    err = knd_attr_var_new(mempool, &attr_var);
-    if (err) return make_gsl_err_external(err);
-
-    attr_var->attr = attr;
-    attr_var->logic = ctx.logic;
-    attr_var->children = ctx.attr_var;
-
     /* if this attr is not indexed (= no precomputed sets available), 
        just add a logical clause to the query */
     if (!attr->is_indexed) {
-        /* no new sets added to a task?*/
-        if (num_sets == task->num_sets) {
+        knd_log("clauses: %p", ctx.clauses);
+
+        /* some logical clauses present */
+        if (ctx.clauses) {
+            err = knd_attr_var_new(mempool, &attr_var);
+            if (err) return make_gsl_err_external(err);
+
+            attr_var->attr = attr;
+            attr_var->logic = ctx.logic;
+            attr_var->children = ctx.clauses;
+
             attr_var->next = task->attr_var;
             task->attr_var = attr_var;
         }
-        return make_gsl_err(gsl_OK);
     }
 
     return make_gsl_err(gsl_OK);
