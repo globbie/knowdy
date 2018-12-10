@@ -59,11 +59,11 @@ static int update_attr_facet(struct kndAttr *attr,
     struct kndMemPool *mempool = task->mempool;
     int err;
 
-    knd_log("\n\n.. update the \"%.*s\" attr facet: topic:%.*s spec:%.*s task:%p",
+    /*knd_log("\n\n.. update the \"%.*s\" attr facet: topic:%.*s spec:%.*s task:%p",
             attr->name_size, attr->name,
             topic->name_size, topic->name,
             spec->name_size, spec->name, task);
-
+    */
     set = attr->facet_idx;
     if (!set) {
         err = knd_set_new(mempool, &set);                                         RET_ERR();
@@ -83,7 +83,6 @@ static int update_attr_facet(struct kndAttr *attr,
     err = facet->topics->add(facet->topics,
                              topic->entry->id, topic->entry->id_size,
                              (void*)topic->entry);                                RET_ERR();
-    topic->str(topic, 1);
     
     return knd_OK;
 }
@@ -98,7 +97,7 @@ extern int knd_index_attr(struct kndClass *self,
     struct kndClass *c, *curr_class;
     int err;
 
-    if (DEBUG_ATTR_INDEX_LEVEL_TMP) {
+    if (DEBUG_ATTR_INDEX_LEVEL_2) {
         knd_log("\n.. indexing CURR CLASS: \"%.*s\" .. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" (name:%.*s val:%.*s)",
                 self->entry->name_size, self->entry->name,
@@ -152,7 +151,7 @@ extern int knd_index_attr_var_list(struct kndClass *self,
     size_t name_size;
     int err;
 
-    if (DEBUG_ATTR_INDEX_LEVEL_TMP) {
+    if (DEBUG_ATTR_INDEX_LEVEL_2) {
         knd_log("\n.. attr item list indexing.. (class:%.*s) "
                 ".. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" %p (name:%.*s val:%.*s)",
@@ -187,7 +186,7 @@ extern int knd_index_attr_var_list(struct kndClass *self,
     }
 
     for (item = parent_item->list; item; item = item->next) {
-        if (DEBUG_ATTR_INDEX_LEVEL_TMP)
+        if (DEBUG_ATTR_INDEX_LEVEL_2)
             knd_log("== index list item: \"%.*s\" val:%.*s",
                     item->name_size, item->name,
                     item->val_size, item->val);
@@ -359,7 +358,7 @@ static int index_attr_item(struct kndClass *self,
     case KND_ATTR_NUM:
         if (!attr->is_indexed) break;
 
-        if (DEBUG_ATTR_INDEX_LEVEL_TMP)
+        if (DEBUG_ATTR_INDEX_LEVEL_2)
             knd_log(".. indexing num attr: %.*s val:%.*s",
                     item->name_size, item->name,
                     item->val_size, item->val);

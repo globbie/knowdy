@@ -57,8 +57,12 @@ struct kndClassUpdate
 
 struct kndClassFacet
 {
-    struct kndClassEntry *val;
+    struct kndClassEntry *base;
     struct kndSet *set;
+    struct kndClassRef *elems;
+    size_t num_elems;
+    struct kndClassFacet *children;
+    struct kndClassFacet *next;
 };
 
 struct kndClassRef
@@ -123,9 +127,6 @@ struct kndClassEntry
 
     struct kndSet *descendants;
 
-    //struct kndRelEntry **rels;
-    //size_t num_rels;
-
     //struct kndProcEntry **procs;
     //size_t num_procs;
 
@@ -134,10 +135,6 @@ struct kndClassEntry
     struct kndSet *attr_idx;
 
     struct kndAttrHub *attr_hubs;
-
-    //size_t child_count;
-    //struct kndClassEntry *prev;
-    //struct kndClassEntry *next;
 };
 
 struct kndClass
@@ -233,6 +230,8 @@ extern int knd_empty_set_export_JSON(struct kndClass *self,
 extern int knd_class_set_export_JSON(struct kndSet *set,
                                      struct kndTask *task);
 
+extern int knd_class_facets_export_JSON(struct kndTask *task);
+
 extern int knd_class_export_JSON(struct kndClass *self,
                                  struct kndTask *task);
 
@@ -261,6 +260,8 @@ extern int knd_class_export_GSL(struct kndClass *self,
 
 extern int knd_empty_set_export_GSL(struct kndClass *self,
                                     struct kndTask *task);
+
+extern int knd_class_facets_export(struct kndTask *task);
 
 extern int knd_class_set_export(struct kndSet *self,
                                 knd_format format,

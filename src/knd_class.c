@@ -784,6 +784,26 @@ extern int knd_class_set_export(struct kndSet *self,
     return knd_FAIL;
 }
 
+extern int knd_class_facets_export(struct kndTask *task)
+{
+    task->out->reset(task->out);
+
+    /* set locale */
+    if (task->curr_locale_size) {
+        task->locale = task->curr_locale;
+        task->locale_size = task->curr_locale_size;
+    }
+
+    switch (task->format) {
+    case KND_FORMAT_JSON:
+        return knd_class_facets_export_JSON(task);
+    default:
+        break;
+        //return knd_class_set_export_GSL(self, task);
+    }
+    return knd_FAIL;
+}
+
 extern int knd_empty_set_export(struct kndClass *self,
                                 knd_format format,
                                 struct kndTask *task)

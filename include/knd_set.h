@@ -55,8 +55,6 @@ struct kndSet
     struct kndSetElemIdx *idx;
     size_t num_elems;
     size_t num_valid_elems;
-
-    struct kndSet *facets;
     
     struct kndMemPool *mempool;
     struct kndSet *next;
@@ -88,9 +86,9 @@ extern int knd_set_intersect(struct kndSet *self,
                              struct kndSet **sets,
                              size_t num_sets);
 
-extern int knd_set_get_facet(struct kndSet  *self,
-                             struct kndAttr *attr,
-                             struct kndFacet  **result);
+//extern int knd_set_get_facet(struct kndSet  *self,
+//                             struct kndAttr *attr,
+//                             struct kndFacet  **result);
 
 extern int knd_set_add_ref(struct kndSet *self,
                            struct kndAttr *attr,

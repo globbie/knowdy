@@ -34,6 +34,7 @@ struct kndUser;
 struct kndUserContext;
 struct kndStateControl;
 struct kndClass;
+struct kndClassFacet;
 struct kndClassVar;
 struct kndQuery;
 struct kndClassInst;
@@ -106,6 +107,7 @@ struct kndTask
     struct kndRepo *repo;  // FIXME(k15tfu): remove this
 
     struct kndClass *class;
+    struct kndClassFacet *facet;
     struct kndSet *set;
 
     // FIXME(k15tfu): remove these vv

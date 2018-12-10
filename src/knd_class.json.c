@@ -267,7 +267,7 @@ extern int knd_empty_set_export_JSON(struct kndClass *unused_var(self),
     return knd_OK;
 }
 
-static int export_class_ref(void *obj,
+/*static int export_class_ref(void *obj,
                             const char *unused_var(elem_id),
                             size_t unused_var(elem_id_size),
                             size_t count,
@@ -294,58 +294,86 @@ static int export_class_ref(void *obj,
     task->max_depth = curr_max_depth;
     return knd_OK;
 }
+*/
 
-static int export_facet(void *obj,
-                        const char *unused_var(elem_id),
-                        size_t unused_var(elem_id_size),
-                        size_t count,
-                        void *elem)
+static int export_facet(struct kndClassFacet *parent_facet,
+                        struct kndTask *task)
 {
-    struct kndTask *task = obj;
     struct glbOutput *out = task->out;
-    struct kndClassFacet *facet = elem;
+    struct kndClassFacet *facet;
+    struct kndClassRef *ref;
+    bool in_list = false;
     int err;
 
-    if (count) {
-        err = out->writec(out, ',');                                              RET_ERR();
+    err = out->write(out, "{\"_name\":",
+                     strlen("{\"_name\":"));                                       RET_ERR();
+    err = out->writec(out, '"');                                                  RET_ERR();
+    err = out->write(out, parent_facet->base->name,
+                     parent_facet->base->name_size);                               RET_ERR();
+    err = out->writec(out, '"');                                                  RET_ERR();
+
+    err = export_gloss_JSON(parent_facet->base->class, task);                     RET_ERR();
+
+    err = export_concise_JSON(parent_facet->base->class, task);                   RET_ERR();
+    
+    err = out->writef(out, ",\"_total\":%zu",
+                      parent_facet->num_elems);                RET_ERR();
+
+    if (parent_facet->children) {
+        in_list = false;
+        err = out->write(out, ",\"_subclasses\":[",
+                         strlen(",\"_subclasses\":["));                            RET_ERR();
+        for (facet = parent_facet->children; facet; facet = facet->next) {
+            if (in_list) {
+                err = out->writec(out, ',');                                      RET_ERR();
+            }
+            err = export_facet(facet, task);                                      RET_ERR();
+            in_list = true;
+        }
+        err = out->writec(out, ']');                                              RET_ERR();
     }
 
-    err = out->write(out, "{\"name\":",
-                     strlen("{\"name\":"));                                       RET_ERR();
-    err = out->writec(out, '"');                                                  RET_ERR();
-    err = out->write(out, facet->val->name,
-                     facet->val->name_size);                                      RET_ERR();
-    err = out->writec(out, '"');                                                  RET_ERR();
-
-
-    err = out->writef(out, ",\"total\":%lu",
-                      (unsigned long)facet->set->num_valid_elems);                RET_ERR();
-
-    err = out->write(out, ",\"refs\":[",
-                     strlen(",\"refs\":["));                                      RET_ERR();
-    err = facet->set->map(facet->set,
-                          export_class_ref, (void*)task);                         RET_ERR();
-    err = out->writec(out, ']');                                                  RET_ERR();
-
+    if (parent_facet->elems) {
+        in_list = false;
+        err = out->write(out, ",\"_elems\":[",
+                         strlen(",\"_elems\":["));                                 RET_ERR();
+        for (ref = parent_facet->elems; ref; ref = ref->next) {
+            task->depth = 0;
+            task->max_depth = 0;
+            if (in_list) {
+                err = out->writec(out, ',');                                      RET_ERR();
+            }
+            err = knd_class_export_JSON(ref->entry->class, task);  RET_ERR();
+            in_list = true;
+        }
+        err = out->writec(out, ']');                                              RET_ERR();
+    }
     
     err = out->writec(out, '}');                                                  RET_ERR();
 
     return knd_OK;
 }
 
-static int export_facets(struct kndSet *set,
-                         struct kndTask *task)
+extern int knd_class_facets_export_JSON(struct kndTask *task)
 {
+    struct kndClassFacet *facet;
     struct glbOutput *out = task->out;
+    bool in_list = false;
     int err;
 
-    err = out->write(out, ",\"facets\":[",
-                     strlen(",\"facets\":["));                                RET_ERR();
+    err = out->write(out, "{\"_facets\":[",
+                     strlen("{\"_facets\":["));                                   RET_ERR();
 
-    err = set->facets->map(set->facets,
-                           export_facet, (void*)task);                        RET_ERR();
+    for (facet = task->facet->children; facet; facet = facet->next) {
+        if (in_list) {
+            err = out->writec(out, ',');                                          RET_ERR();
+        }
+        err = export_facet(facet, task);                                          RET_ERR();
+        in_list = true;
+    }
 
-    err = out->writec(out, ']');                                              RET_ERR();
+    err = out->writec(out, ']');                                                  RET_ERR();
+    err = out->writec(out, '}');                                                  RET_ERR();
 
     return knd_OK;
 }
@@ -388,9 +416,9 @@ extern int knd_class_set_export_JSON(struct kndSet *set,
 
     err = out->writec(out, ']');                                                  RET_ERR();
 
-    if (set->facets) {
+    /*if (set->facets) {
         err = export_facets(set, task);                                           RET_ERR();
-    }
+        }*/
     
     err = out->writef(out, ",\"batch_max\":%lu",
                       (unsigned long)task->batch_max);                            RET_ERR();

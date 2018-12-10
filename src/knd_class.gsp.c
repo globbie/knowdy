@@ -212,11 +212,10 @@ static int export_conc_id_GSP(void *obj,
     return knd_OK;
 }
 
-static int export_facets_GSP(struct kndSet *unused_var(set),
+/*static int export_facets_GSP(struct kndSet *unused_var(set),
                              struct kndTask *task)
 {
     struct glbOutput *out = task->out;
-    //struct kndClassFacet *facet;
     int err;
 
     err = out->write(out,  "[fc ", strlen("[fc "));                               RET_ERR();
@@ -224,6 +223,7 @@ static int export_facets_GSP(struct kndSet *unused_var(set),
     err = out->write(out,  "]", 1);                                               RET_ERR();
     return knd_OK;
 }
+*/
 
 static int export_descendants_GSP(struct kndClass *self,
                                   struct kndTask *task)
@@ -245,9 +245,9 @@ static int export_descendants_GSP(struct kndClass *self,
     if (err) return err;
     err = out->writec(out, ']');                                                  RET_ERR();
 
-    if (set->facets) {
+    /*    if (set->facets) {
         err = export_facets_GSP(set, task);                                       RET_ERR();
-    }
+        } */
 
     err = out->writec(out, '}');                                                  RET_ERR();
 
