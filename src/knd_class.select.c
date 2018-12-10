@@ -722,9 +722,6 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
                 return make_gsl_err(gsl_OK);
             }
 
-            knd_log("\n.. clause filtering is required: %p",
-                    task->attr_var);
-
             err = knd_class_set_export(ctx->selected_base->entry->descendants, task->format, task);
             if (err) return make_gsl_err_external(err);
             return make_gsl_err(gsl_OK);
@@ -734,9 +731,6 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
         assert(task->num_sets + 1 <= KND_MAX_CLAUSES);  // FIXME(k15tfu): <<
         task->sets[task->num_sets] = ctx->selected_base->entry->descendants;
         task->num_sets++;
-
-        knd_log(".. intersecting of %zu sets base:%p..",
-                task->num_sets, ctx->selected_base->entry);
 
         /* intersection result set */
         struct kndSet *set;
