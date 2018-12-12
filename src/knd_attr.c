@@ -388,32 +388,6 @@ extern void kndAttr_init(struct kndAttr *self)
     self->str = str;
 }
 
-extern int knd_copy_attr_ref(void *obj,
-                             const char *unused_var(elem_id),
-                             size_t unused_var(elem_id_size),
-                             size_t unused_var(count),
-                             void *elem)
-{
-    struct kndSet     *attr_idx = obj;
-    struct kndAttrRef *src_ref = elem;
-    struct kndAttr    *attr    = src_ref->attr;
-    struct kndAttrRef *ref;
-    struct kndMemPool *mempool = attr_idx->mempool;
-    int err;
-
-    if (DEBUG_ATTR_LEVEL_2) 
-        knd_log(".. copying %.*s attr..", attr->name_size, attr->name);
-
-    err = knd_attr_ref_new(mempool, &ref);                                        RET_ERR();
-    ref->attr = attr;
-    ref->attr_var = src_ref->attr_var;
-    ref->class_entry = src_ref->class_entry;
-
-    err = attr_idx->add(attr_idx,
-                        attr->id, attr->id_size,
-                        (void*)ref);                                              RET_ERR();
-    return knd_OK;
-}
 
 extern int knd_register_attr_ref(void *obj,
                                  const char *unused_var(elem_id),
@@ -421,7 +395,7 @@ extern int knd_register_attr_ref(void *obj,
                                  size_t unused_var(count),
                                  void *elem)
 {
-    struct kndClass     *self = obj;
+    struct kndClass *self = obj;
     struct kndSet *attr_idx  = self->attr_idx;
     struct ooDict *attr_name_idx = self->entry->repo->attr_name_idx;
     struct kndAttrRef *src_ref = elem;

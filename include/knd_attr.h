@@ -286,11 +286,6 @@ extern int knd_apply_attr_var_updates(struct kndClass *self,
                                       struct kndClassUpdate *update,
                                       struct kndTask *task);
 
-extern int knd_copy_attr_ref(void *obj,
-                             const char *elem_id,
-                             size_t elem_id_size,
-                             size_t count,
-                             void *elem);
 extern int knd_register_attr_ref(void *obj,
                                  const char *elem_id,
                                  size_t elem_id_size,

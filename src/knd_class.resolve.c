@@ -41,14 +41,57 @@
 #define DEBUG_CLASS_RESOLVE_LEVEL_5 0
 #define DEBUG_CLASS_RESOLVE_LEVEL_TMP 1
 
-extern int knd_inherit_attrs(struct kndClass *self, struct kndClass *base,
-                             struct kndTask *task)
+static int inherit_attr(void *obj,
+                        const char *unused_var(elem_id),
+                        size_t unused_var(elem_id_size),
+                        size_t unused_var(count),
+                        void *elem)
 {
+    struct kndTask *task = obj;
     struct kndMemPool *mempool = task->mempool;
+    struct kndClass *self = task->class;
+    struct kndSet     *attr_idx = task->class->attr_idx;
+    struct kndAttrRef *src_ref = elem;
+    struct kndAttr    *attr    = src_ref->attr;
+    struct kndAttrRef *ref;
+    int err;
+
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) 
+        knd_log("..  \"%.*s\" attr inherited by %.*s..",
+                attr->name_size, attr->name,
+                self->name_size, self->name);
+
+    err = knd_attr_ref_new(mempool, &ref);                                        RET_ERR();
+    ref->attr = attr;
+    ref->attr_var = src_ref->attr_var;
+    ref->class_entry = src_ref->class_entry;
+
+    err = attr_idx->add(attr_idx,
+                        attr->id, attr->id_size,
+                        (void*)ref);                                              RET_ERR();
+
+    if (ref->attr_var) {
+        if (attr->is_indexed) {
+            if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) 
+                knd_log("..  indexing \"%.*s\" attr var in %.*s..",
+                        attr->name_size, attr->name,
+                        self->name_size, self->name);
+            if (attr->is_a_set) {
+                err = knd_index_attr_var_list(self, attr, ref->attr_var, task);  RET_ERR();
+            }
+        }
+    }
+
+    return knd_OK;
+}
+
+static int inherit_attrs(struct kndClass *self, struct kndClass *base,
+                         struct kndTask *task)
+{
     int err;
 
     if (!base->is_resolved) {
-        err = knd_class_resolve(base, task);                                          RET_ERR();
+        err = knd_class_resolve(base, task);                                      RET_ERR();
     }
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
@@ -56,13 +99,10 @@ extern int knd_inherit_attrs(struct kndClass *self, struct kndClass *base,
                 self->entry->name_size, self->entry->name,
                 base->name_size, base->name);
     }
-
-    /* copy your parent's attr idx */
-    self->attr_idx->mempool = mempool;
+    task->class = self;
     err = base->attr_idx->map(base->attr_idx,
-                              knd_copy_attr_ref,
-                              (void*)self->attr_idx);                             RET_ERR();
-
+                              inherit_attr,
+                              (void*)task);                                        RET_ERR();
     return knd_OK;
 }
 
@@ -291,10 +331,9 @@ static int resolve_baseclasses(struct kndClass *self,
                     cvar->entry->name_size, cvar->entry->name,
                     self->entry->name_size, self->entry->name);
         }
-  
-        err = knd_inherit_attrs(self, c, task);                            RET_ERR();
+        err = inherit_attrs(self, c, task);                                       RET_ERR();
 
-        err = link_baseclass(self, c, task);                               RET_ERR();
+        err = link_baseclass(self, c, task);                                      RET_ERR();
         cvar->entry->class = c;
     }
 
