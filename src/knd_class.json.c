@@ -709,6 +709,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
     err = out->writef(out, "%zu", entry->numid);                                  RET_ERR();
 
     if (task->max_depth == 0) {
+        err = export_gloss_JSON(self, task);                                      RET_ERR();
         goto final;
     }
 
@@ -747,7 +748,6 @@ extern int knd_class_export_JSON(struct kndClass *self,
             break;
         }
     }
-    err = export_gloss_JSON(self, task);                                          RET_ERR();
 
     if (task->depth >= task->max_depth) {
         /* any concise fields? */
