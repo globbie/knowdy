@@ -335,8 +335,8 @@ static int export_facet(struct kndClassFacet *parent_facet,
 
     if (parent_facet->elems) {
         in_list = false;
-        err = out->write(out, ",\"_elems\":[",
-                         strlen(",\"_elems\":["));                                 RET_ERR();
+        err = out->write(out, ",\"_subclasses\":[",
+                         strlen(",\"_subclasses\":["));                                 RET_ERR();
         for (ref = parent_facet->elems; ref; ref = ref->next) {
             task->depth = 0;
             task->max_depth = 0;
