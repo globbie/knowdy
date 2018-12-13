@@ -319,10 +319,11 @@ static int export_facet(struct kndClassFacet *parent_facet,
     err = out->writef(out, ",\"_total\":%zu",
                       parent_facet->num_elems);                RET_ERR();
 
-    if (parent_facet->children) {
+    if (parent_facet->children || parent_facet->elems) {
         in_list = false;
         err = out->write(out, ",\"_subclasses\":[",
                          strlen(",\"_subclasses\":["));                            RET_ERR();
+
         for (facet = parent_facet->children; facet; facet = facet->next) {
             if (in_list) {
                 err = out->writec(out, ',');                                      RET_ERR();
@@ -330,25 +331,18 @@ static int export_facet(struct kndClassFacet *parent_facet,
             err = export_facet(facet, task);                                      RET_ERR();
             in_list = true;
         }
-        err = out->writec(out, ']');                                              RET_ERR();
-    } else {
 
-    if (parent_facet->elems) {
-        in_list = false;
-        err = out->write(out, ",\"_subclasses\":[",
-                         strlen(",\"_subclasses\":["));                                 RET_ERR();
         for (ref = parent_facet->elems; ref; ref = ref->next) {
             task->depth = 0;
             task->max_depth = 0;
             if (in_list) {
                 err = out->writec(out, ',');                                      RET_ERR();
             }
-            err = knd_class_export_JSON(ref->entry->class, task);  RET_ERR();
+            err = knd_class_export_JSON(ref->entry->class, task);                 RET_ERR();
             in_list = true;
         }
         err = out->writec(out, ']');                                              RET_ERR();
-    }
-    }
+    } 
 
     err = out->writec(out, '}');                                                  RET_ERR();
 
