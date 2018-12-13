@@ -331,7 +331,7 @@ static int export_facet(struct kndClassFacet *parent_facet,
             in_list = true;
         }
         err = out->writec(out, ']');                                              RET_ERR();
-    }
+    } else {
 
     if (parent_facet->elems) {
         in_list = false;
@@ -348,7 +348,8 @@ static int export_facet(struct kndClassFacet *parent_facet,
         }
         err = out->writec(out, ']');                                              RET_ERR();
     }
-    
+    }
+
     err = out->writec(out, '}');                                                  RET_ERR();
 
     return knd_OK;
