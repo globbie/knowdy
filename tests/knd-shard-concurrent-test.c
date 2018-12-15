@@ -78,7 +78,7 @@ static void *worker_proc(void *ptr)
     worker->input_size = strlen("{task{!class User}}");
 
     err = kndShard_run_task(worker->shard, worker->input, worker->input_size,
-                            &worker->result, &worker->result_size, worker->id);
+                            &worker->result, &worker->result_size, NULL, worker->id);
     //ck_assert_int_eq(err, knd_OK);
     printf("err:%d\n", err);
 
