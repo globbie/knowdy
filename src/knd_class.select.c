@@ -181,6 +181,33 @@ static int create_subsets(struct kndSet *set,
     return knd_OK;
 }
 
+static void free_facet(struct kndMemPool *mempool,
+                       struct kndClassFacet *parent_facet)
+{
+    struct kndClassFacet *facet, *facet_next = NULL;
+    struct kndClassRef *ref, *ref_next;
+
+    for (facet = parent_facet->children; facet; facet = facet_next) {
+        facet_next = facet->next;
+        free_facet(mempool, facet);
+    }
+
+    for (ref = parent_facet->elems; ref; ref = ref_next) {
+        ref_next = ref->next;
+        knd_mempool_free(mempool, KND_MEMPAGE_TINY, (void*)ref);
+    }
+
+    knd_mempool_free(mempool, KND_MEMPAGE_TINY, (void*)parent_facet);
+}
+
+static void free_subsets(struct kndTask *task)
+{
+    free_facet(task->mempool, task->facet);
+    task->facet = NULL;
+    //knd_log("== mempool tiny pages in use: %zu",
+    //        task->mempool->tiny_pages_used);
+}
+
 static gsl_err_t
 parse_get_class_by_numid(void *obj, const char *rec, size_t *total_size)
 {
@@ -719,6 +746,9 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
                 
                 err = knd_class_facets_export(task);
                 if (err) return make_gsl_err_external(err);
+
+                free_subsets(task);
+
                 return make_gsl_err(gsl_OK);
             }
 
@@ -755,6 +785,8 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
 
             err = knd_class_facets_export(task);
             if (err) return make_gsl_err_external(err);
+
+            free_subsets(task);
             return make_gsl_err(gsl_OK);
         }
 

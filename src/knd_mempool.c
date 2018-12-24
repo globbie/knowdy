@@ -141,9 +141,7 @@ void knd_mempool_free(struct kndMemPool *self,
             break;
     }
 
-
-    knd_log(".. free page:%p", page_data);
-
+    //knd_log(".. free page:%p", page_data);
     freed->next = *page_list;
     *page_list = freed;
     (*pages_used)--;
