@@ -325,8 +325,8 @@ extern gsl_err_t knd_import_attr_var(void *obj,
     } 
 
     if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. import attr var: \"%.*s\" REC: %.*s",
-                name_size, name, 64, rec);
+        knd_log("\n.. import attr var: \"%.*s\" REC: %.*s",
+                name_size, name, 32, rec);
 
     err = knd_attr_var_new(mempool, &attr_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
@@ -511,11 +511,13 @@ static gsl_err_t import_nested_attr_var(void *obj,
 
     attr_var->name = name;
     attr_var->name_size = name_size;
+
     ctx->attr_var = attr_var;
 
     if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. import nested attr: \"%.*s\" REC: %.*s",
-                attr_var->name_size, attr_var->name, 64, rec);
+        knd_log(".. import nested attr: \"%.*s\" (parent item:%.*s)",
+                attr_var->name_size, attr_var->name,
+                self->name_size, self->name);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -543,10 +545,14 @@ static gsl_err_t import_nested_attr_var(void *obj,
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
+    /* restore parent */
+    ctx->attr_var = self;
+
     if (DEBUG_ATTR_LEVEL_2)
-        knd_log("++ attr var: \"%.*s\" val:%.*s",
+        knd_log("++ attr var: \"%.*s\" val:%.*s (parent item: %.*s)",
                 attr_var->name_size, attr_var->name,
-                attr_var->val_size, attr_var->val);
+                attr_var->val_size, attr_var->val,
+                self->name_size, self->name);
 
     attr_var->next = self->children;
     self->children = attr_var;
