@@ -849,7 +849,7 @@ static gsl_err_t parse_schema(void *obj,
 {
     struct kndTask *task = obj;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. parse schema REC: \"%.*s\"..", 64, rec);
 
     struct gslTaskSpec specs[] = {
@@ -880,7 +880,7 @@ static gsl_err_t parse_include(void *obj,
 {
     struct kndTask *task = obj;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. parse include REC: \"%.*s\"..", 64, rec);
 
     struct gslTaskSpec specs[] = {
@@ -967,7 +967,7 @@ static int read_GSL_file(struct kndRepo *repo,
     err = out->write(out, filename, filename_size);                               RET_ERR();
     err = out->write(out, file_ext, file_ext_size);                               RET_ERR();
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. reading GSL file: %.*s", out->buf_size, out->buf);
 
     file_out->reset(file_out);
@@ -998,8 +998,6 @@ static int read_GSL_file(struct kndRepo *repo,
                 out->buf_size, out->buf);
         return err;
     }
-
-    knd_log(" == folders: %p  total:%zu", task->folders, task->num_folders);
 
     /* high time to read our folders */
     folders = task->folders;

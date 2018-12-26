@@ -26,21 +26,21 @@ struct LocalContext {
     struct kndProcArg *proc_arg;
 };
 
-static void proc_call_arg_str(struct kndProcCallArg *self,
-                              size_t depth)
+void proc_call_arg_str(struct kndProcCallArg *self,
+                       size_t depth)
 {
      knd_log("%*s  {%.*s %.*s}", depth * KND_OFFSET_SIZE, "",
              self->name_size, self->name,
              self->val_size, self->val);
 }
 
-static void str(struct kndProcArg *self)
+void knd_proc_arg_str(struct kndProcArg *self,
+                      size_t depth)
 {
-    struct kndTranslation *tr;
+    //struct kndTranslation *tr;
     struct kndProcCallArg *arg;
-    size_t depth = 0;
 
-    knd_log("%*sarg: \"%.*s\" [class:%.*s]", depth * KND_OFFSET_SIZE, "",
+    knd_log("%*s{%.*s   {_c %.*s}", depth * KND_OFFSET_SIZE, "",
             self->name_size, self->name, self->classname_size, self->classname);
 
     if (self->proc_call.name_size) {
@@ -53,11 +53,11 @@ static void str(struct kndProcArg *self)
         knd_log("%*s    }", depth * KND_OFFSET_SIZE, "");
     }
 
-    tr = self->tr;
+    /*tr = self->tr;
     while (tr) {
         knd_log("%*s   ~ %s %s", depth * KND_OFFSET_SIZE, "", tr->locale, tr->val);
         tr = tr->next;
-    }
+        }*/
 }
 
 static int proc_call_arg_export_JSON(struct kndProcArg *unused_var(self),
@@ -110,8 +110,8 @@ static int export_JSON(struct kndProcArg *self,
     while (tr) {
         if (DEBUG_PROC_ARG_LEVEL_TMP)
             knd_log("LANG: %s == CURR LOCALE: %s [%zu] => %s",
-                    tr->locale, self->locale, self->locale_size, tr->val);
-        if (strncmp(self->locale, tr->locale, tr->locale_size)) {
+                    tr->locale, task->locale, task->locale_size, tr->val);
+        if (strncmp(task->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
         }
         err = out->write(out, ",\"gloss\":\"", strlen(",\"gloss\":\""));          RET_ERR();
@@ -435,10 +435,10 @@ gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
           .parse = parse_gloss,
           .obj = &ctx
         },
-        { .name = "c",
-          .name_size = strlen("c"),
+        { .name = "_c",
+          .name_size = strlen("_c"),
           .run = set_proc_arg_classname,
-          .obj = &ctx
+          .obj = self
         }/*,
         { .name = "val",
           .name_size = strlen("val"),
@@ -533,10 +533,10 @@ static gsl_err_t parse_inst_class(void *data,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int parse_inst_GSL(struct kndProcArg *self,
-                          struct kndProcArgInstance *inst,
-                          const char *rec,
-                          size_t *total_size)
+int knd_parse_inst_GSL(struct kndProcArg *self,
+                       struct kndProcArgInstance *inst,
+                       const char *rec,
+                       size_t *total_size)
 {
     if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log(".. %.*s Proc Arg instance parsing: \"%.*s\"..",
@@ -592,10 +592,10 @@ static int parse_inst_GSL(struct kndProcArg *self,
 }
 */
 
-static int resolve_arg(struct kndProcArg *self)
+int knd_proc_resolve_arg(struct kndProcArg *self,
+                         struct kndRepo *repo)
 {
     struct kndProcEntry *entry;
-    struct kndRepo *repo = self->parent->entry->repo;
     int err;
 
     if (DEBUG_PROC_ARG_LEVEL_2)
@@ -647,8 +647,8 @@ static int resolve_arg(struct kndProcArg *self)
     return knd_OK;
 }
 
-static int resolve_inst(struct kndProcArg *self,
-                        struct kndProcArgInstance *inst)
+int knd_proc_arg_resolve_inst(struct kndProcArg *self,
+                              struct kndProcArgInstance *inst)
 {
     //struct kndProcEntry *proc_entry;
     struct kndProcEntry *entry;
@@ -700,22 +700,15 @@ extern void kndProcArgInstance_init(struct kndProcArgInstance *self)
 //    memset(self, 0, sizeof(struct kndProcArgInstRef));
 //}
 
-void kndProcArg_init(struct kndProcArg *self)
-{
-    self->str = str;
-    self->resolve = resolve_arg;
-    self->parse_inst = parse_inst_GSL;
-    self->resolve_inst = resolve_inst;
-}
 
-int kndProcArg_new(struct kndProcArg **self,
-                   struct kndMemPool *mempool)
+int knd_proc_arg_new(struct kndProcArg **self,
+                     struct kndMemPool *mempool)
 {
     int err = knd_mempool_alloc(mempool,
                                 KND_MEMPAGE_SMALL_X2,
                                 sizeof(struct kndProcArg), (void**)self);
     if (err) return err;
 
-    kndProcArg_init(*self);
+    //kndProcArg_init(*self);
     return knd_OK;
 }

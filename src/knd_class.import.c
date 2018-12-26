@@ -467,7 +467,7 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log("..worker \"%zu\" to import class: \"%.*s\"..",
                 task->id, 128, rec);
 
@@ -581,9 +581,6 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
 
     err = knd_update_state(c, KND_CREATED, task);
     if (err) return make_gsl_err_external(err);
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        c->str(c, 1);
 
     return make_gsl_err(gsl_OK);
  final:

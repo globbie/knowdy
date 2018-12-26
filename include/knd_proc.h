@@ -207,7 +207,7 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
 #include <knd_proc_arg.h>
 #include <knd_text.h>
 
-static inline void kndProcVar_declare_arg(struct kndProcVar *base, struct kndProcArgVar *base_arg)
+static inline void knd_proc_var_declare_arg(struct kndProcVar *base, struct kndProcArgVar *base_arg)
 {
     if (base->tail) {
         base->tail->next = base_arg;
@@ -218,7 +218,7 @@ static inline void kndProcVar_declare_arg(struct kndProcVar *base, struct kndPro
     base->num_args++;
 }
 
-static inline void kndProc_declare_arg(struct kndProc *self, struct kndProcArg *arg)
+static inline void knd_proc_declare_arg(struct kndProc *self, struct kndProcArg *arg)
 {
     arg->next = self->args;
     self->args = arg;

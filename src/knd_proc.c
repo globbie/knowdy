@@ -62,8 +62,8 @@ static void str(struct kndProc *self)
     struct kndProcCallArg *call_arg;
     size_t depth = 0;
 
-    knd_log("PROC %p: %.*s id:%.*s",
-            self, self->entry->name_size, self->entry->name,
+    knd_log("{proc %.*s  {_id %.*s}",
+            self->name_size, self->name,
             self->entry->id_size, self->entry->id);
 
     for (tr = self->tr; tr; tr = tr->next) {
@@ -75,19 +75,16 @@ static void str(struct kndProc *self)
         base_str(base, depth + 1);
         }*/
 
-    return;
-
     if (self->result_classname_size) {
         knd_log("%*s    {result class:%.*s}", depth * KND_OFFSET_SIZE, "",
                 self->result_classname_size, self->result_classname);
     }
 
     for (arg = self->args; arg; arg = arg->next) {
-        arg->depth = depth + 1;
-        arg->str(arg);
+        knd_proc_arg_str(arg, depth + 1);
     }
 
-    if (self->proc_call->name_size) {
+    if (self->proc_call) {
         knd_log("%*s    {do %.*s", depth * KND_OFFSET_SIZE, "",
                 self->proc_call->name_size, self->proc_call->name);
         for (call_arg = self->proc_call->args; call_arg; call_arg = call_arg->next) {
@@ -95,6 +92,7 @@ static void str(struct kndProc *self)
         }
         knd_log("%*s    }", depth * KND_OFFSET_SIZE, "");
     }
+    knd_log("}");
 }
 
 static int kndProc_export_SVG_header(struct kndTask *task)
@@ -611,9 +609,6 @@ static int export_SVG(struct kndProc *self,
         x_offset = 0;
         y_offset = 0;
         for (arg = self->args; arg; arg = arg->next) {
-            arg->format = KND_FORMAT_SVG;
-
-            //arg->visual = self->visual;
             //y_offset += self->visual->text_line_height;
 
             err = out->write(out,   "<g", strlen("<g"));                          RET_ERR();
@@ -622,7 +617,7 @@ static int export_SVG(struct kndProc *self,
             err = out->write(out,   buf, buf_size);                               RET_ERR();
             err = out->write(out, ">", 1);                                        RET_ERR();
 
-            err = knd_proc_arg_export(arg, KND_FORMAT_SVG, task, out);                          RET_ERR();
+            err = knd_proc_arg_export(arg, KND_FORMAT_SVG, task, out);            RET_ERR();
             err = out->write(out, "</g>", strlen("</g>"));                        RET_ERR();
         }
         err = out->write(out, "</g>", strlen("</g>"));                            RET_ERR();
@@ -759,7 +754,7 @@ static gsl_err_t parse_proc_arg_item(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    err = kndProcArg_new(&arg, mempool);
+    err = knd_proc_arg_new(&arg, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     arg->parent = proc;
 
@@ -854,7 +849,7 @@ static int resolve_parents(struct kndProc *self,
                         arg_entry->arg->name_size, arg_entry->arg->name,
                         arg_entry->arg->classname_size, arg_entry->arg->classname);
 
-            err = kndProcArg_new(&arg, task->mempool);
+            err = knd_proc_arg_new(&arg, task->mempool);
             if (err) return err;
 
             arg->name = arg_item->name;
@@ -890,9 +885,9 @@ static int proc_resolve(struct kndProc *self,
         err = ooDict_new(&self->arg_idx, KND_SMALL_DICT_SIZE);                    RET_ERR();
 
         for (arg = self->args; arg; arg = arg->next) {
-            err = arg->resolve(arg);                                              RET_ERR();
+            err = knd_proc_resolve_arg(arg, task->repo);                          RET_ERR();
 
-            /* TODO: register arg entry */
+            /* TODO: index  arg entry */
             /*arg_entry = malloc(sizeof(struct kndProcArgEntry));
             if (!arg_entry) return knd_NOMEM;
 
@@ -1215,14 +1210,13 @@ static int resolve_proc_call(struct kndProc *self)
     struct kndProcCallArg *call_arg;
     struct kndProcArgEntry *entry;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. resolving proc call %.*s ..",
                 self->proc_call->name_size, self->proc_call->name);
 
     if (!self->arg_idx) return knd_FAIL;
 
     for (call_arg = self->proc_call->args; call_arg; call_arg = call_arg->next) {
-
         if (DEBUG_PROC_LEVEL_2)
             knd_log(".. proc call arg %.*s ..",
                     call_arg->name_size, call_arg->name,
@@ -1387,7 +1381,6 @@ extern int knd_proc_call_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    //knd_log("..proc call new [size:%zu]", sizeof(struct kndProcCall));
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
                             sizeof(struct kndProcCall), &page);  RET_ERR();
     *result = page;

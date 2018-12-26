@@ -85,13 +85,9 @@ struct kndProcArg
     struct kndProc *parent;
     struct kndProcEntry *proc_entry;
 
-    const char *locale;
-    size_t locale_size;
-    knd_format format;
-
-//    int concise_level;
-//    int descr_level;
-//    int browse_level;
+    //const char *locale;
+    //size_t locale_size;
+    //knd_format format;
 
     const char *classname;
     size_t classname_size;
@@ -101,18 +97,10 @@ struct kndProcArg
     const char *val;
     size_t val_size;
 
-    //struct kndVisualFormat *visual;
-
     struct kndTranslation *tr;
-    size_t depth;
     struct kndProcArg *next;
     
     /***********  public methods ***********/
-    void (*init)(struct kndProcArg  *self);
-    void (*del)(struct kndProcArg   *self);
-    void (*str)(struct kndProcArg *self);
-
-
     int (*validate)(struct kndProcArg *self,
                     const char   *val,
                     size_t val_size);
@@ -144,5 +132,11 @@ extern int knd_proc_arg_export(struct kndProcArg *self,
                                struct glbOutput *out);
 
 extern void kndProcArg_init(struct kndProcArg *self);
-extern int kndProcArg_new(struct kndProcArg **self,
-                          struct kndMemPool *mempool);
+
+void knd_proc_arg_str(struct kndProcArg *self,
+                      size_t depth);
+
+int knd_proc_resolve_arg(struct kndProcArg *self,
+                         struct kndRepo *repo);
+int knd_proc_arg_new(struct kndProcArg **self,
+                     struct kndMemPool *mempool);

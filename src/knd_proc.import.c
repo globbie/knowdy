@@ -28,7 +28,7 @@ struct LocalContext {
     struct kndProcVar *proc_var;
 };
 
-/*static gsl_err_t parse_proc_arg_item(void *obj,
+static gsl_err_t parse_proc_arg_item(void *obj,
                                      const char *rec,
                                      size_t *total_size)
 {
@@ -38,18 +38,18 @@ struct LocalContext {
     int err;
     gsl_err_t parser_err;
 
-    err = kndProcArg_new(&arg, ctx->task->mempool);
+    err = knd_proc_arg_new(&arg, ctx->task->mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     parser_err = knd_proc_arg_parse(arg, rec, total_size, ctx->task);
     if (parser_err.code) return parser_err;
 
     // append
-    kndProc_declare_arg(self, arg);
+    knd_proc_declare_arg(self, arg);
 
     return make_gsl_err(gsl_OK);
 }
-*/
+
 
 static gsl_err_t set_base_arg_classname(void *obj, const char *name, size_t name_size)
 {
@@ -104,7 +104,7 @@ static gsl_err_t validate_base_arg(void *obj,
         return parser_err;
     }
 
-    kndProcVar_declare_arg(base, proc_arg_var);
+    knd_proc_var_declare_arg(base, proc_arg_var);
 
     return make_gsl_err(gsl_OK);
 }
@@ -206,12 +206,13 @@ static gsl_err_t proc_parse_do(void *obj,
     struct LocalContext *ctx = obj;
     struct kndProc *self = ctx->proc;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. Proc Call parsing: \"%.*s\"..",
                 32, rec);
 
     if (!self->proc_call) {
-           return *total_size = 0, make_gsl_err_external(knd_FAIL);
+        int e = knd_proc_call_new(ctx->task->mempool, &self->proc_call);
+        if (e) return *total_size = 0, make_gsl_err_external(e);
     }
 
     struct gslTaskSpec specs[] = {
@@ -265,7 +266,7 @@ extern gsl_err_t knd_proc_import(struct kndRepo *repo,
     struct kndProc *proc;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. import proc: \"%.*s\"..", 32, rec);
 
     err = knd_proc_entry_new(mempool, &entry);
@@ -289,11 +290,11 @@ extern gsl_err_t knd_proc_import(struct kndRepo *repo,
         .proc = proc
     };
 
-    /*    struct gslTaskSpec proc_arg_spec = {
+    struct gslTaskSpec proc_arg_spec = {
         .is_list_item = true,
         .parse = parse_proc_arg_item,
         .obj = &ctx
-        }; */
+    }; 
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -310,13 +311,13 @@ extern gsl_err_t knd_proc_import(struct kndRepo *repo,
           .name_size = strlen("is"),
           .parse = parse_base,
           .obj = &ctx
-        },/* 
-        {   .type = GSL_SET_ARRAY_STATE,
+        }, 
+        {   .type = GSL_GET_ARRAY_STATE,
             .name = "arg",
             .name_size = strlen("arg"),
             .parse = gsl_parse_array,
             .obj = &proc_arg_spec
-        }
+        },/*
         {
             .name = "result",
             .name_size = strlen("result"),
