@@ -102,6 +102,7 @@ static int export_glosses(struct kndClass *self,
 */
 
 static int export_baseclass_vars(struct kndClass *self,
+                                 struct kndTask *task,
                                  struct glbOutput *out)
 {
     struct kndClassVar *item;
@@ -114,7 +115,7 @@ static int export_baseclass_vars(struct kndClass *self,
         c = item->entry->class;
         err = out->write(out, c->entry->id, c->entry->id_size);             RET_ERR();
         if (item->attrs) {
-            err = knd_attr_vars_export_GSP(item->attrs, out, 0, false);
+            err = knd_attr_vars_export_GSP(item->attrs, out, task, 0, false);
             if (err) return err;
         }
         err = out->writec(out, '}');                                              RET_ERR();
@@ -450,7 +451,7 @@ static int export_class_body_updates(struct kndClass *self,
     }
 
     if (self->baseclass_vars) {
-        err = export_baseclass_vars(self, out);                                   RET_ERR();
+        err = export_baseclass_vars(self, task, out);                                   RET_ERR();
     }
 
     if (self->attrs) {
@@ -561,7 +562,7 @@ extern int knd_class_export_GSP(struct kndClass *self,
         }*/
 
     if (self->baseclass_vars) {
-        err = export_baseclass_vars(self, out);                                   RET_ERR();
+        err = export_baseclass_vars(self, task, out);                                   RET_ERR();
     }
 
     if (self->attrs) {

@@ -467,7 +467,7 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
         knd_log("..worker \"%zu\" to import class: \"%.*s\"..",
                 task->id, 128, rec);
 
@@ -558,6 +558,12 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
         task->http_code = HTTP_BAD_REQUEST;
         parser_err = make_gsl_err(gsl_FAIL);
         goto final;
+    }
+
+    /* reassign glosses */
+    if (task->tr) {
+        c->tr = task->tr;
+        task->tr = NULL;
     }
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)

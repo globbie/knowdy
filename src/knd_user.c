@@ -44,11 +44,8 @@ static gsl_err_t parse_proc_import(void *obj,
                                    size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndUser *self = task->user;
-    struct kndProc *proc = self->repo->root_proc;
-
     task->type = KND_UPDATE_STATE;
-    return knd_proc_import(proc, rec, total_size);
+    return knd_proc_import(task->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_proc_select(void *obj,

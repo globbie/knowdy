@@ -38,6 +38,8 @@ struct kndClassFacet;
 struct kndClassVar;
 struct kndQuery;
 struct kndClassInst;
+struct kndConcFolder;
+struct kndTranslation;
 
 typedef enum knd_task_spec_type {
     KND_GET_STATE,
@@ -75,6 +77,8 @@ struct kndTask
     const char *locale;
     size_t locale_size;
 
+    struct kndTranslation *tr;
+
     const char *report;
     size_t report_size;
 
@@ -110,6 +114,9 @@ struct kndTask
     struct kndClassFacet *facet;
     struct kndSet *set;
 
+    struct kndConcFolder *folders;
+    size_t num_folders;
+
     // FIXME(k15tfu): remove these vv
     struct kndClassVar *class_var;
     struct kndAttr *attr;
@@ -117,7 +124,6 @@ struct kndTask
     struct kndClassInst *class_inst;
     struct kndElem *elem;
 
-    struct kndRel *rel;
     struct kndProc *proc;
 
     /* updates */

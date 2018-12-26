@@ -104,6 +104,7 @@ static int inner_item_export_GSP(struct kndAttrVar *parent_item,
 
 
 static int proc_item_export_GSP(struct kndAttrVar *item,
+                                struct kndTask *task,
                                 struct glbOutput *out)
 {
     struct kndProc *proc;
@@ -113,12 +114,13 @@ static int proc_item_export_GSP(struct kndAttrVar *item,
 
     proc = item->proc;
 
-    err = knd_proc_export(proc, KND_FORMAT_GSP, out);  RET_ERR();
+    err = knd_proc_export(proc, KND_FORMAT_GSP, task, out);  RET_ERR();
 
     return knd_OK;
 }
 
 static int attr_var_list_export_GSP(struct kndAttrVar *parent_item,
+                                    struct kndTask *task,
                                     struct glbOutput *out)
 {
     struct kndAttrVar *item;
@@ -157,13 +159,13 @@ static int attr_var_list_export_GSP(struct kndAttrVar *parent_item,
                                  item->name,
                                  item->name_size);                                RET_ERR();
             }
-            err = knd_attr_var_export_GSP(item, out);                             RET_ERR();
+            err = knd_attr_var_export_GSP(item, task, out);                             RET_ERR();
             break;
         default:
             err = out->write(out,
                              item->name,
                              item->name_size);                                    RET_ERR();
-            err = knd_attr_var_export_GSP(item, out);                             RET_ERR();
+            err = knd_attr_var_export_GSP(item, task, out);                             RET_ERR();
         }
         err = out->writec(out, '}');                                              RET_ERR();
     }
@@ -173,9 +175,10 @@ static int attr_var_list_export_GSP(struct kndAttrVar *parent_item,
 }
 
 extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
-                                     struct glbOutput *out,
-                                     size_t unused_var(depth),
-                                     bool is_concise)
+                                    struct glbOutput *out,
+                                    struct kndTask *task,
+                                    size_t unused_var(depth),
+                                    bool is_concise)
 {
     struct kndAttrVar *item;
     struct kndAttr *attr;
@@ -187,7 +190,7 @@ extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
         if (is_concise && !attr->concise_level) continue;
 
         if (attr->is_a_set) {
-            err = attr_var_list_export_GSP(item, out);
+            err = attr_var_list_export_GSP(item, task, out);
             if (err) return err;
             continue;
         }
@@ -195,14 +198,15 @@ extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
         err = out->writec(out, '{');                                                  RET_ERR();
         err = out->write(out, item->name, item->name_size);                           RET_ERR();
         err = out->writec(out, ' ');                                                  RET_ERR();
-        err = knd_attr_var_export_GSP(item, out);                                     RET_ERR();
+        err = knd_attr_var_export_GSP(item, task, out);                               RET_ERR();
         err = out->writec(out, '}');                                                  RET_ERR();
     }
     return knd_OK;
 }
 
 extern int knd_attr_var_export_GSP(struct kndAttrVar *item,
-                                    struct glbOutput *out)
+                                   struct kndTask *task,
+                                   struct glbOutput *out)
 {
     int err;
     
@@ -215,7 +219,7 @@ extern int knd_attr_var_export_GSP(struct kndAttrVar *item,
         //if (err) return err;
         break;
     case KND_ATTR_PROC:
-        err = proc_item_export_GSP(item, out);                                         RET_ERR();
+        err = proc_item_export_GSP(item, task, out);                              RET_ERR();
         break;
     case KND_ATTR_INNER:
         err = inner_item_export_GSP(item, out);                                    RET_ERR();

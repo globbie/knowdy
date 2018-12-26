@@ -287,7 +287,7 @@ static int proc_item_export_GSL(struct kndAttrVar *item,
     int err;
     assert(item->proc != NULL);
     proc = item->proc;
-    err = knd_proc_export(proc, KND_FORMAT_GSL, out);  RET_ERR();
+    err = knd_proc_export(proc, KND_FORMAT_GSL, task, out);  RET_ERR();
     return knd_OK;
 }
 

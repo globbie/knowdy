@@ -143,20 +143,12 @@ struct kndProc
 //    size_t estim_time;
 //    size_t estim_time_total;
 
-    struct kndTask *task;
+    //struct kndTask *task;
     struct kndVisualFormat *visual;
 
-    //const char *frozen_output_file_name;
-    //size_t frozen_output_file_name_size;
-//    size_t frozen_size;
-
-    bool batch_mode;
+    //bool batch_mode;
     bool is_resolved;
 
-    //    size_t depth;
-    //size_t max_depth;
-
-    struct kndProc *curr_proc;
     struct kndProc *next;
 
     /******** public methods ********/
@@ -164,37 +156,50 @@ struct kndProc
 };
 
 /* constructors */
-extern int knd_proc_new(struct kndMemPool *mempool,
-                              struct kndProc **result);
-extern int knd_proc_entry_new(struct kndMemPool *mempool,
-                              struct kndProcEntry **result);
-extern void knd_proc_init(struct kndProc *self);
-extern gsl_err_t knd_proc_read(struct kndProc *self,
-                               const char *rec,
-                               size_t *total_size);
-extern int knd_proc_resolve(struct kndProc *self);
+int knd_proc_new(struct kndMemPool *mempool,
+                 struct kndProc **result);
 
-extern int knd_get_proc(struct kndRepo *repo,
-                        const char *name, size_t name_size,
-                        struct kndProc **result);
+int knd_proc_entry_new(struct kndMemPool *mempool,
+                       struct kndProcEntry **result);
+int knd_proc_var_new(struct kndMemPool *mempool,
+                     struct kndProcVar **result);
+int knd_proc_arg_var_new(struct kndMemPool *mempool,
+                         struct kndProcArgVar **result);
 
-extern int knd_resolve_proc_ref(struct kndClass *self,
-                                const char *name, size_t name_size,
-                                struct kndProc *unused_var(base),
-                                struct kndProc **result,
-                                struct kndTask *unused_var(task));
+void knd_proc_init(struct kndProc *self);
 
-extern int knd_proc_export(struct kndProc *self,
-                           knd_format format,
-                           struct glbOutput *out);
-extern int knd_proc_coordinate(struct kndProc *self);
+gsl_err_t knd_proc_read(struct kndProc *self,
+                        const char *rec,
+                        size_t *total_size);
 
-extern gsl_err_t knd_proc_select(struct kndRepo *repo,
-                                 const char *rec,
-                                 size_t *total_size,
-                                 struct kndTask *task);
+int knd_proc_resolve(struct kndProc *self);
 
-extern gsl_err_t knd_proc_import(struct kndProc *root_proc, const char *rec, size_t *total_size);
+int knd_get_proc(struct kndRepo *repo,
+                 const char *name, size_t name_size,
+                 struct kndProc **result);
+
+int knd_resolve_proc_ref(struct kndClass *self,
+                         const char *name, size_t name_size,
+                         struct kndProc *unused_var(base),
+                         struct kndProc **result,
+                         struct kndTask *unused_var(task));
+
+int knd_proc_export(struct kndProc *self,
+                    knd_format format,
+                    struct kndTask *task,
+                    struct glbOutput *out);
+
+int knd_proc_coordinate(struct kndProc *self,
+                        struct kndTask *task);
+
+gsl_err_t knd_proc_select(struct kndRepo *repo,
+                          const char *rec,
+                          size_t *total_size,
+                          struct kndTask *task);
+
+gsl_err_t knd_proc_import(struct kndRepo *repo,
+                          const char *rec, size_t *total_size,
+                          struct kndTask *task);
 
 //
 // TODO(k15tfu): ?? Move to knd_proc_impl.h

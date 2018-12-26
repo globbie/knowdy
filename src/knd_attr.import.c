@@ -149,7 +149,6 @@ static gsl_err_t parse_proc(void *obj, const char *rec, size_t *total_size)
     err = knd_proc_entry_new(mempool, &entry);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
-    entry->repo = task->repo;
     entry->proc = proc;
     proc->entry = entry;
 

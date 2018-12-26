@@ -14,6 +14,15 @@ struct kndTask;
 #include "knd_config.h"
 #include "knd_mempool.h"
 
+struct kndConcFolder
+{
+    const char *name;
+    size_t name_size;
+    struct kndConcFolder *parent;
+    struct kndConcFolder *next;
+};
+
+
 struct kndRepo
 {
     char id[KND_ID_SIZE];
@@ -22,11 +31,13 @@ struct kndRepo
     char name[KND_NAME_SIZE];
     size_t name_size;
 
-    //size_t state;
     char path[KND_PATH_SIZE];
     size_t path_size;
     size_t num_journals;
     time_t timestamp;
+
+    const char *schema_name;
+    size_t schema_name_size;
 
     const char *schema_path;
     size_t schema_path_size;
@@ -97,6 +108,9 @@ extern int knd_present_repo_state(struct kndRepo *self,
 extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task);
 
 extern gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size);
+
+extern int knd_conc_folder_new(struct kndMemPool *mempool,
+                               struct kndConcFolder **result);
 
 extern int kndRepo_init(struct kndRepo *self, struct kndTask *task);
 extern int kndRepo_new(struct kndRepo **self, struct kndMemPool *mempool);

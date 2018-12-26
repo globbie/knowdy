@@ -94,14 +94,6 @@ struct kndClassVar
     struct kndClassVar *next;
 };
 
-struct kndConcFolder
-{
-    const char *name;
-    size_t name_size;
-    struct kndConcFolder *parent;
-    struct kndConcFolder *next;
-};
-
 struct kndClassEntry
 {
     char id[KND_ID_SIZE];
@@ -169,9 +161,6 @@ struct kndClass
     struct kndSet *attr_idx;
     struct kndAttr *implied_attr;
 
-    struct kndConcFolder *folders;
-    size_t num_folders;
-
     bool is_resolved;
     bool state_top;
 
@@ -185,13 +174,6 @@ struct kndClass
 extern void kndClass_init(struct kndClass *self);
 extern int kndClass_new(struct kndClass **self,
                         struct kndMemPool *mempool);
-
-/* exported functions */
-extern int knd_read_GSL_file(struct kndClass *self,
-                             struct kndConcFolder *parent_folder,
-                             const char *filename,
-                             size_t filename_size,
-                             struct kndTask *task);
 
 extern int knd_class_coordinate(struct kndClass *self, struct kndTask *task);
 
@@ -356,8 +338,6 @@ extern int knd_class_ref_new(struct kndMemPool *mempool,
 extern int knd_class_facet_new(struct kndMemPool *mempool,
                                struct kndClassFacet **result);
 
-extern int knd_conc_folder_new(struct kndMemPool *mempool,
-                               struct kndConcFolder **result);
 
 extern int knd_class_entry_new(struct kndMemPool *mempool,
                                struct kndClassEntry **result);

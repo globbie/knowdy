@@ -63,13 +63,8 @@ static gsl_err_t parse_gloss_item(void *obj,
                                   size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndClass *self = task->class;
     struct kndTranslation *tr;
     int err;
-
-    if (DEBUG_GSL_LEVEL_2)
-        knd_log(".. %.*s: allocate gloss translation",
-                self->entry->name_size, self->entry->name);
 
     err = knd_mempool_alloc(task->mempool, KND_MEMPAGE_SMALL,
                             sizeof(struct kndTranslation), (void **)&tr);
@@ -103,8 +98,8 @@ static gsl_err_t parse_gloss_item(void *obj,
                 tr->locale_size, tr->locale, tr->val_size, tr->val);
 
     // append
-    tr->next = self->tr;
-    self->tr = tr;
+    tr->next = task->tr;
+    task->tr = tr;
 
     return make_gsl_err(gsl_OK);
 }
@@ -114,18 +109,12 @@ extern gsl_err_t knd_parse_gloss_array(void *obj,
                                        size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndClass *self = task->class;
 
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
         .parse = parse_gloss_item,
         .obj = task
     };
-
-    if (DEBUG_GSL_LEVEL_2) {
-        knd_log(".. %.*s: reading glosses..",
-                self->entry->name_size, self->entry->name);
-    }
 
     return gsl_parse_array(&item_spec, rec, total_size);
 }

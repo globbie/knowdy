@@ -23,7 +23,6 @@
 
 #include "knd_dict.h"
 #include "knd_utils.h"
-#include "knd_task.h"
 #include "knd_config.h"
 
 #include "knd_proc_call.h"
@@ -36,8 +35,8 @@ struct kndProcInstance;
 struct kndProcArg;
 struct kndProcArgInstance;
 struct kndClassInst;
-struct kndTask;
 struct kndClassVar;
+struct kndTask;
 
 //typedef enum knd_proc_arg_type {
 //    KND_PROCARG_NONE,
@@ -102,8 +101,7 @@ struct kndProcArg
     const char *val;
     size_t val_size;
 
-    struct kndTask *task;
-    struct kndVisualFormat *visual;
+    //struct kndVisualFormat *visual;
 
     struct kndTranslation *tr;
     size_t depth;
@@ -114,9 +112,6 @@ struct kndProcArg
     void (*del)(struct kndProcArg   *self);
     void (*str)(struct kndProcArg *self);
 
-    gsl_err_t (*parse)(struct kndProcArg *self,
-                 const char   *rec,
-                 size_t *chunk_size);
 
     int (*validate)(struct kndProcArg *self,
                     const char   *val,
@@ -138,9 +133,16 @@ struct kndProcArg
 extern void kndProcArgInstance_init(struct kndProcArgInstance *self);
 //extern void kndProcArgInstRef_init(struct kndProcArgInstRef *self);
 
+gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
+                             const char   *rec,
+                             size_t *chunk_size,
+                             struct kndTask *task);
+
 extern int knd_proc_arg_export(struct kndProcArg *self,
                                knd_format format,
+                               struct kndTask *task,
                                struct glbOutput *out);
 
-extern void kndProcArg_init(struct kndProcArg *self, struct kndProc *proc);
-extern int kndProcArg_new(struct kndProcArg **self, struct kndProc *proc, struct kndMemPool *mempool);
+extern void kndProcArg_init(struct kndProcArg *self);
+extern int kndProcArg_new(struct kndProcArg **self,
+                          struct kndMemPool *mempool);

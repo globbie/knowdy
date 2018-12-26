@@ -119,283 +119,9 @@ static void str(struct kndClass *self, size_t depth)
             self->entry->name_size, self->entry->name);
 }
 
-static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
-{
-    struct kndClass *self = obj;
 
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    /* set current schema */
-    if (DEBUG_CLASS_LEVEL_2)
-        knd_log(".. select schema %.*s from: \"%.*s\"..",
-                name_size, name, self->entry->name_size, self->entry->name);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_rel_import(void *obj,
-                                  const char *rec,
-                                  size_t *total_size)
-{
-    struct kndClass *self = obj;
-    struct kndRel *rel = self->entry->repo->root_rel;
-    
-    return rel->import(rel, rec, total_size);
-}
-
-static gsl_err_t parse_proc_import(void *obj,
-                                   const char *rec,
-                                   size_t *total_size)
-{
-    struct kndClass *self = obj;
-    struct kndProc *proc = self->entry->repo->root_proc;
-
-    return knd_proc_import(proc, rec, total_size);
-}
-
-static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
-{
-    struct kndTask *task = obj;
-    struct kndClass *self = task->class;
-    struct kndConcFolder *folder;
-    struct kndMemPool *mempool = task->mempool;
-    int err;
-
-    if (DEBUG_CLASS_LEVEL_1)
-        knd_log(".. running include file func.. name: \"%.*s\" [%zu]",
-                (int)name_size, name, name_size);
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-
-    err = knd_conc_folder_new(mempool, &folder);
-    if (err) return make_gsl_err_external(knd_NOMEM);
-
-    folder->name = name;
-    folder->name_size = name_size;
-
-    folder->next = self->folders;
-    self->folders = folder;
-    self->num_folders++;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_class_import(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
-{
-    struct kndTask *task = obj;
-
-    task->type = KND_UPDATE_STATE;
-
-    return knd_class_import(task->repo, rec, total_size, task);
-}
-
-static gsl_err_t parse_schema(void *obj,
-                              const char *rec,
-                              size_t *total_size)
-{
-    struct kndTask *task = obj;
-    struct kndClass *self = task->class;
-
-    if (DEBUG_CLASS_LEVEL_2)
-        knd_log(".. parse schema REC: \"%.*s\"..", 32, rec);
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_get_schema,
-          .obj = self
-        },
-        { .type = GSL_SET_STATE,
-          .name = "class",
-          .name_size = strlen("class"),
-          .parse = parse_class_import,
-          .obj = task
-        },
-        { .type = GSL_SET_STATE,
-          .name = "rel",
-          .name_size = strlen("rel"),
-          .parse = parse_rel_import,
-          .obj = self
-        },
-        { .type = GSL_SET_STATE,
-          .name = "proc",
-          .name_size = strlen("proc"),
-          .parse = parse_proc_import,
-          .obj = self
-        }
-    };
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
-static gsl_err_t parse_include(void *obj,
-                               const char *rec,
-                               size_t *total_size)
-{
-    struct kndTask *task = obj;
-
-    if (DEBUG_CLASS_LEVEL_2)
-        knd_log(".. parse include REC: \"%s\"..", rec);
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_read_include,
-          .obj = task
-        }
-    };
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
-static int parse_GSL(struct kndTask *task,
-                     const char *rec,
-                     size_t *total_size)
-{
-    struct gslTaskSpec specs[] = {
-        { .name = "schema",
-          .name_size = strlen("schema"),
-          .parse = parse_schema,
-          .obj = task
-        },
-        { .name = "include",
-          .name_size = strlen("include"),
-          .parse = parse_include,
-          .obj = task
-        }
-    };
-    gsl_err_t parser_err;
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
-
-    return knd_OK;
-}
-
-
-static int
-kndClass_write_filepath(struct glbOutput *out,
-                        struct kndConcFolder *folder)
-{
-    int err;
-
-    if (folder->parent) {
-        err = kndClass_write_filepath(out, folder->parent);
-        if (err) return err;
-    }
-
-    err = out->write(out, folder->name, folder->name_size);
-    if (err) return err;
-
-    return knd_OK;
-}
-
-extern int knd_read_GSL_file(struct kndClass *self,
-                             struct kndConcFolder *parent_folder,
-                             const char *filename,
-                             size_t filename_size,
-                             struct kndTask *task)
-{
-    struct kndRepo *repo = self->entry->repo;
-    struct glbOutput *out = task->out;
-    struct glbOutput *file_out = task->file_out;
-    struct kndConcFolder *folder, *folders;
-    const char *c;
-    char *rec;
-    char **recs;
-    size_t folder_name_size;
-    const char *index_folder_name = "index";
-    size_t index_folder_name_size = strlen("index");
-    const char *file_ext = ".gsl";
-    size_t file_ext_size = strlen(".gsl");
-    size_t chunk_size = 0;
-    int err;
-
-    out->reset(out);
-    err = out->write(out, self->entry->repo->schema_path,
-                     self->entry->repo->schema_path_size);                        RET_ERR();
-    err = out->write(out, "/", 1);                                                RET_ERR();
-
-    if (parent_folder) {
-        err = kndClass_write_filepath(out, parent_folder);  RET_ERR();
-    }
-
-    err = out->write(out, filename, filename_size);  RET_ERR();
-    err = out->write(out, file_ext, file_ext_size);   RET_ERR();
-
-    if (DEBUG_CLASS_LEVEL_2)
-        knd_log(".. reading GSL file: %.*s", out->buf_size, out->buf);
-
-    file_out->reset(file_out);
-    err = file_out->write_file_content(file_out, (const char*)out->buf);
-    if (err) {
-        knd_log("-- couldn't read GSL class file \"%s\"", out->buf);
-        return err;
-    }
-
-    // TODO: find another place for storage
-
-    rec = malloc(file_out->buf_size + 1);
-    if (!rec) return knd_NOMEM;
-    memcpy(rec, file_out->buf, file_out->buf_size);
-    rec[file_out->buf_size] = '\0';
-
-    recs = (char**)realloc(repo->source_files,
-                           (repo->num_source_files + 1) * sizeof(char*));
-    if (!recs) return knd_NOMEM;
-    recs[repo->num_source_files] = rec;
-
-    repo->source_files = recs;
-    repo->num_source_files++;
-
-    /* actual parsing */
-    task->class = self;
-    err = parse_GSL(task, (const char*)rec, &chunk_size);
-    if (err) {
-        knd_log("-- parsing of \"%.*s\" failed",
-                out->buf_size, out->buf);
-        return err;
-    }
-
-    /* high time to read our folders */
-    folders = self->folders;
-    self->folders = NULL;
-    self->num_folders = 0;
-
-    for (folder = folders; folder; folder = folder->next) {
-        folder->parent = parent_folder;
-
-        /* reading a subfolder */
-        if (folder->name_size > index_folder_name_size) {
-            folder_name_size = folder->name_size - index_folder_name_size;
-            c = folder->name + folder_name_size;
-            if (!memcmp(c, index_folder_name, index_folder_name_size)) {
-                /* right trim the folder's name */
-                folder->name_size = folder_name_size;
-
-                err = knd_read_GSL_file(self, folder,
-                                        index_folder_name, index_folder_name_size, task);
-                if (err) {
-                    knd_log("-- failed to read file: %.*s",
-                            index_folder_name_size, index_folder_name);
-                    return err;
-                }
-                continue;
-            }
-        }
-
-        err = knd_read_GSL_file(self, parent_folder, folder->name, folder->name_size, task);
-        if (err) {
-            knd_log("-- failed to read file: %.*s",
-                    folder->name_size, folder->name);
-            return err;
-        }
-    }
-    return knd_OK;
-}
-
-extern int knd_class_coordinate(struct kndClass *self,
-                                struct kndTask *task)
+int knd_class_coordinate(struct kndClass *self,
+                         struct kndTask *task)
 {
     int err;
     if (DEBUG_CLASS_LEVEL_TMP)
@@ -408,7 +134,6 @@ extern int knd_class_coordinate(struct kndClass *self,
             knd_log("== TOTAL classes: %zu",
                     self->entry->descendants->num_elems);
     }
-
     return knd_OK;
 }
 
@@ -491,9 +216,9 @@ extern int knd_get_class_inst(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_get_class_attr_value(struct kndClass *src,
-                                    struct kndAttrVar *query,
-                                    struct kndProcCallArg *arg)
+int knd_get_class_attr_value(struct kndClass *src,
+                             struct kndAttrVar *query,
+                             struct kndProcCallArg *arg)
 {
     struct kndAttrRef *attr_ref;
     struct kndAttrVar *child_var;
@@ -649,7 +374,6 @@ static int update_state(struct kndClass *self,
         }
         err = update_ancestor_state(c, self, mempool);                            RET_ERR();
     }
-
     return knd_OK;
 }
 
@@ -1444,16 +1168,6 @@ extern int knd_class_update_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-extern int knd_conc_folder_new(struct kndMemPool *mempool,
-                               struct kndConcFolder **result)
-{
-    void *page;
-    int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                            sizeof(struct kndConcFolder), &page);  RET_ERR();
-    *result = page;
-    return knd_OK;
-}
 
 extern int knd_inner_class_new(struct kndMemPool *mempool,
                                struct kndClass **self)

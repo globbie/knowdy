@@ -112,7 +112,7 @@ static gsl_err_t run_set_attr_var(void *obj,
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = task->repo;
+    struct kndRepo *repo = ctx->repo;
     struct kndAttr *attr;
     struct kndAttrRef *attr_ref;
     struct kndAttrVar *attr_var;
@@ -416,14 +416,12 @@ static gsl_err_t select_spec_by_baseclass(void *obj, const char *name, size_t na
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = task->repo;
+    struct kndRepo *repo = ctx->repo;
     struct kndClass *c;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-
-
     
     err = knd_get_class(repo, name, name_size, &c, task);
     if (err) return make_gsl_err_external(err);

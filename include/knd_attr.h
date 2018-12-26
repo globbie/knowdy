@@ -268,12 +268,14 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
                                      bool is_concise);
 
 extern int knd_attr_var_export_GSP(struct kndAttrVar *self,
-                                    struct glbOutput *out);
+                                   struct kndTask *task,
+                                   struct glbOutput *out);
 
 extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
-                                     struct glbOutput *out,
-                                     size_t depth,
-                                     bool is_concise);
+                                    struct glbOutput *out,
+                                    struct kndTask *task,
+                                    size_t depth,
+                                    bool is_concise);
 
 extern int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var,
                                            struct glbOutput *out);

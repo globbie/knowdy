@@ -227,7 +227,7 @@ static int export_JSON(struct kndAttr *self,
         err = out->write(out, ",\"proc\":", strlen(",\"proc\":"));
         if (err) return err;
         p = self->proc;
-        err = knd_proc_export(p, KND_FORMAT_JSON, out);
+        err = knd_proc_export(p, KND_FORMAT_JSON, task, out);
         if (err) return err;
     }
 
