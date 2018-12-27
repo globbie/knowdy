@@ -13,6 +13,7 @@
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
 #include "knd_class.h"
+#include "knd_attr.h"
 #include "knd_task.h"
 #include "knd_state.h"
 #include "knd_mempool.h"
@@ -44,15 +45,32 @@ static void proc_call_arg_str(struct kndProcCallArg *self,
 {
     const char *arg_type = "";
     size_t arg_type_size = 0;
+    struct kndClassVar *cvar;
 
     if (self->arg) {
         arg_type = self->arg->classname;
         arg_type_size = self->arg->classname_size;
     }
 
-    knd_log("%*s  {%.*s %.*s [class:%.*s]}", depth * KND_OFFSET_SIZE, "",
+    knd_log("%*s  {%.*s %.*s", depth * KND_OFFSET_SIZE, "",
             self->name_size, self->name,
-            self->val_size, self->val, arg_type_size, arg_type);
+            self->val_size, self->val);
+
+    if (self->val_size) {
+        knd_log("%*s  {_c %.*s}", depth * KND_OFFSET_SIZE, "",
+                arg_type_size, arg_type);
+    }
+
+    if (self->class_var) {
+        cvar = self->class_var;
+        knd_log("%*s    {", depth * KND_OFFSET_SIZE, "");
+        if (cvar->attrs) {
+            str_attr_vars(cvar->attrs, depth + 1);
+        }
+        knd_log("%*s    }", depth * KND_OFFSET_SIZE, "");
+    }
+
+    knd_log("%*s  }", depth * KND_OFFSET_SIZE, "");
 }
 
 static void str(struct kndProc *self)
@@ -80,8 +98,12 @@ static void str(struct kndProc *self)
                 self->result_classname_size, self->result_classname);
     }
 
-    for (arg = self->args; arg; arg = arg->next) {
-        knd_proc_arg_str(arg, depth + 1);
+    if (self->args) {
+        knd_log("%*s    [arg", depth * KND_OFFSET_SIZE, "");
+        for (arg = self->args; arg; arg = arg->next) {
+            knd_proc_arg_str(arg, depth + 2);
+        }
+        knd_log("%*s    ]", depth * KND_OFFSET_SIZE, "");
     }
 
     if (self->proc_call) {
@@ -247,9 +269,9 @@ extern gsl_err_t knd_proc_select(struct kndRepo *repo,
     };
     gsl_err_t parser_err;
 
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. parsing Proc select: \"%.*s\"",
-                16, rec);
+    if (DEBUG_PROC_LEVEL_TMP)
+        knd_log(".. parsing Proc select: \"%.*s\" repo:%p",
+                16, rec, repo);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -744,7 +766,6 @@ extern int knd_proc_call_arg_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    //knd_log("..proc call arg new [size:%zu]", sizeof(struct kndProcCallArg));
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
                             sizeof(struct kndProcCallArg), &page);  RET_ERR();
     *result = page;

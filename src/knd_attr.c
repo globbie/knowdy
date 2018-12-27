@@ -141,10 +141,9 @@ extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
         name_size = item->parent->name_size;
     }
 
-    knd_log("%*s_attr: \"%.*s\" (parent: %.*s)  => %.*s",
+    knd_log("%*s_attr: \"%.*s\" => %.*s",
             depth * KND_OFFSET_SIZE, "",
             item->name_size, item->name,
-            name_size, name,
             item->val_size, item->val);
 
     if (item->children) {

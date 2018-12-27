@@ -1593,7 +1593,6 @@ static gsl_err_t parse_baseclass_array_item(void *obj,
 
     err = knd_class_var_new(mempool, &class_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    class_var->root_class = self;
     ctx->class_var = class_var;
 
     struct gslTaskSpec specs[] = {

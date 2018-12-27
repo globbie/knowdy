@@ -243,20 +243,19 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
 {
-    struct kndTask *task = obj;
+    struct kndTask *task          = obj;
     struct kndMemPool *mempool    = task->mempool;
     struct kndClassVar *self      = task->class_var;
-    struct kndClass *root_class   = self->root_class;
-    struct kndRepo *repo          = root_class->entry->repo;
+    struct kndRepo *repo          = task->repo;
     struct ooDict *class_name_idx = repo->class_name_idx;
     struct kndClassEntry *entry;
     void *result;
     int err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. root class:\"%.*s\" to check class var name: %.*s [task id:%zu]",
-                root_class->entry->name_size,
-                root_class->entry->name,
+        knd_log(".. repo \"%.*s\" to check class var name: %.*s [task id:%zu]",
+                repo->name_size,
+                repo->name,
                 name_size, name, task->id);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -280,7 +279,7 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
                               (void*)entry);
     if (err) return make_gsl_err_external(err);
 
-    entry->repo = root_class->entry->repo;
+    entry->repo = repo;
     self->entry = entry;
 
     return make_gsl_err(gsl_OK);
@@ -390,12 +389,15 @@ extern gsl_err_t parse_class_var(struct kndTask *task,
     return make_gsl_err(gsl_OK);
 }
 
-extern gsl_err_t knd_import_class_var(struct kndClassVar *self,
-                                      const char *rec,
-                                      size_t *total_size,
-                                      struct kndTask *task)
+gsl_err_t knd_import_class_var(struct kndClassVar *self,
+                               const char *rec,
+                               size_t *total_size,
+                               struct kndTask *task)
 {
     gsl_err_t parser_err;
+
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+        knd_log(".. import class var: %.*s", 32, rec);
 
     task->class_var = self;
 
@@ -420,7 +422,6 @@ extern gsl_err_t knd_import_class_var(struct kndClassVar *self,
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
-    knd_log("");
     return make_gsl_err(gsl_OK);
 }
 
@@ -440,7 +441,6 @@ static gsl_err_t parse_baseclass(void *obj,
 
     err = knd_class_var_new(mempool, &class_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    class_var->root_class = self->entry->repo->root_class;
     class_var->parent = self;
 
     task->class_var = class_var;

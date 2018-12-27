@@ -60,6 +60,15 @@ static gsl_err_t set_base_arg_classname(void *obj, const char *name, size_t name
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t set_result_classname(void *obj, const char *name, size_t name_size)
+{
+    struct kndProc *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    self->name = name;
+    self->name_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t validate_base_arg(void *obj,
                                    const char *name,
                                    size_t name_size,
@@ -150,7 +159,7 @@ static gsl_err_t parse_base(void *obj,
         return parser_err;
     }
 
-    //declare_base(self, proc_var);
+    declare_base(self, proc_var);
 
     return make_gsl_err(gsl_OK);
 }
@@ -169,20 +178,16 @@ static gsl_err_t validate_do_arg(void *obj,
         knd_log(".. Proc Call Arg \"%.*s\" to validate: \"%.*s\"..",
                 name_size, name, 32, rec);
 
-    if (name_size > sizeof ((struct kndProcCallArg *)NULL)->name)
-        return *total_size = 0, make_gsl_err(gsl_LIMIT);
-
     struct kndClassVar *class_var;
     err.code = knd_class_var_new(ctx->task->mempool, &class_var);
     if (err.code) return *total_size = 0, make_gsl_err_external(err.code);
-    class_var->root_class = ctx->repo->root_class;
 
     err = knd_import_class_var(class_var, rec, total_size, ctx->task);
     if (err.code) return err;
 
-    // TODO: use mempool
-    struct kndProcCallArg *call_arg = malloc(sizeof *call_arg);
-    if (!call_arg) return make_gsl_err_external(knd_NOMEM);
+    struct kndProcCallArg *call_arg;
+    err.code = knd_proc_call_arg_new(ctx->task->mempool, &call_arg);
+    if (err.code) return *total_size = 0, make_gsl_err_external(err.code);
 
     kndProcCallArg_init(call_arg, name, name_size, class_var);
     kndProcCall_declare_arg(proc->proc_call, call_arg);
@@ -299,14 +304,13 @@ int knd_inner_proc_import(struct kndProc *proc,
             .name_size = strlen("arg"),
             .parse = gsl_parse_array,
             .obj = &proc_arg_spec
-        },/*
+        },
         {
             .name = "result",
             .name_size = strlen("result"),
-            .buf = proc->result_classname,
-            .buf_size = &proc->result_classname_size,
-            .max_buf_size = sizeof proc->result_classname
-            },*/
+            .run = set_result_classname,
+            .obj = proc
+        },
         {   .name = "do",
             .name_size = strlen("do"),
             .parse = proc_call_parse,
@@ -389,14 +393,13 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
             .name_size = strlen("arg"),
             .parse = gsl_parse_array,
             .obj = &proc_arg_spec
-        },/*
+        },
         {
             .name = "result",
             .name_size = strlen("result"),
-            .buf = proc->result_classname,
-            .buf_size = &proc->result_classname_size,
-            .max_buf_size = sizeof proc->result_classname
-            },*/
+            .run = set_result_classname,
+            .obj = proc
+        },
         {   .name = "do",
             .name_size = strlen("do"),
             .parse = proc_call_parse,

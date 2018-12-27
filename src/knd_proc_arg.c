@@ -50,6 +50,7 @@ void knd_proc_arg_str(struct kndProcArg *self,
         for (arg = self->proc_call.args; arg; arg = arg->next) {
             proc_call_arg_str(arg, depth + 1);
         }
+
         knd_log("%*s    }", depth * KND_OFFSET_SIZE, "");
     }
 

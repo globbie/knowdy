@@ -314,15 +314,6 @@ extern gsl_err_t knd_import_attr_var(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    // TODO
-
-    /* class var not resolved */
-    if (!self->entry) {
-        knd_log("-- anonymous class var: %.*s?  REC:%.*s",
-                64, rec);
-        //return *total_size = 0, make_gsl_err_external(knd_FAIL);
-    } 
-
     if (DEBUG_ATTR_LEVEL_2)
         knd_log("\n.. import attr var: \"%.*s\" REC: %.*s",
                 name_size, name, 32, rec);

@@ -88,7 +88,7 @@ struct kndClassVar
     size_t init_state;
     size_t num_states;
 
-    struct kndClass *root_class;
+    //struct kndClass *root_class;
     struct kndClass *parent;
 
     struct kndClassVar *next;

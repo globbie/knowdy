@@ -242,7 +242,7 @@ static inline void kndProc_declare_tr(struct kndProc *self, struct kndTranslatio
     self->tr = tr;
 }
 
-static inline void kndProc_declare_base(struct kndProc *self, struct kndProcVar *base)
+static inline void declare_base(struct kndProc *self, struct kndProcVar *base)
 {
     base->next = self->bases;
     self->bases = base;

@@ -51,14 +51,14 @@ int knd_proc_export_JSON(struct kndProc *self,
     struct kndProcCallArg *carg;
     struct kndTranslation *tr;
     bool in_list = false;
+    bool in_arg = false;
     int err;
 
     if (DEBUG_PROC_JSON_LEVEL_2)
         knd_log(".. \"%.*s\" proc export JSON..",
                 self->name_size, self->name);
 
-    err = out->writec(out, '{');                                                RET_ERR();
-
+    err = out->writec(out, '{');                                                  RET_ERR();
     if (self->name_size) {
         err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));            RET_ERR();
         err = out->write(out, self->name, self->name_size);                       RET_ERR();
@@ -73,9 +73,9 @@ int knd_proc_export_JSON(struct kndProc *self,
             goto next_tr;
         }
         if (in_list) {
-            err = out->write(out, ",", 1);                                    RET_ERR();
+            err = out->write(out, ",", 1);                                        RET_ERR();
         }
-        err = out->write(out, "\"_gloss\":\"", strlen("\"_gloss\":\""));        RET_ERR();
+        err = out->write(out, "\"_gloss\":\"", strlen("\"_gloss\":\""));          RET_ERR();
         err = out->write(out, tr->val,  tr->val_size);                            RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
         in_list = true;
@@ -88,14 +88,15 @@ int knd_proc_export_JSON(struct kndProc *self,
         if (in_list) {
             err = out->write(out, ",", 1);                                        RET_ERR();
         }
+
         err = out->write(out, "\"args\":[", strlen("\"args\":["));                RET_ERR();
         for (arg = self->args; arg; arg = arg->next) {
-            if (in_list) {
+            if (in_arg) {
                 err = out->write(out, ",", 1);                                    RET_ERR();
             }
 
             err = knd_proc_arg_export(arg, KND_FORMAT_JSON, task, out);           RET_ERR();
-            in_list = true;
+            in_arg = true;
         }
         err = out->write(out, "]", 1);                                            RET_ERR();
     }

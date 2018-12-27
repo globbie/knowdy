@@ -344,6 +344,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 
     self->curr_ctx = ctx;
     task->user_ctx = ctx;
+    task->repo = repo;
 
     return make_gsl_err(gsl_OK);
 }

@@ -53,8 +53,6 @@ struct kndProcCallArg
     struct kndProcArg *arg;
     struct kndClassVar *class_var;
 
-//    struct kndProcCall proc_call;
-
     struct kndProcCallArg *next;
 };
 
