@@ -199,15 +199,15 @@ static gsl_err_t set_proc_call_name(void *obj, const char *name, size_t name_siz
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t proc_parse_do(void *obj,
-                               const char *rec,
-                               size_t *total_size)
+static gsl_err_t proc_call_parse(void *obj,
+                                 const char *rec,
+                                 size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndProc *self = ctx->proc;
 
     if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. Proc Call parsing: \"%.*s\"..",
+        knd_log(".. proc call parsing: \"%.*s\"..",
                 32, rec);
 
     if (!self->proc_call) {
@@ -256,10 +256,82 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-extern gsl_err_t knd_proc_import(struct kndRepo *repo,
-                                 const char *rec,
-                                 size_t *total_size,
-                                 struct kndTask *task)
+int knd_inner_proc_import(struct kndProc *proc,
+                          const char *rec,
+                          size_t *total_size,
+                          struct kndRepo *repo,
+                          struct kndTask *task)
+{
+    if (DEBUG_PROC_LEVEL_TMP)
+        knd_log(".. import an anonymous inner proc: %.*s..",
+                128, rec);
+
+    struct LocalContext ctx = {
+        .task = task,
+        .repo = repo,
+        .proc = proc
+    };
+
+    struct gslTaskSpec proc_arg_spec = {
+        .is_list_item = true,
+        .parse = parse_proc_arg_item,
+        .obj = &ctx
+    }; 
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_proc_name,
+          .obj = proc
+        },
+        { .type = GSL_GET_ARRAY_STATE,
+          .name = "_gloss",
+          .name_size = strlen("_gloss"),
+          .parse = knd_parse_gloss_array,
+          .obj = task
+        },
+        { .name = "is",
+          .name_size = strlen("is"),
+          .parse = parse_base,
+          .obj = &ctx
+        }, 
+        {   .type = GSL_GET_ARRAY_STATE,
+            .name = "arg",
+            .name_size = strlen("arg"),
+            .parse = gsl_parse_array,
+            .obj = &proc_arg_spec
+        },/*
+        {
+            .name = "result",
+            .name_size = strlen("result"),
+            .buf = proc->result_classname,
+            .buf_size = &proc->result_classname_size,
+            .max_buf_size = sizeof proc->result_classname
+            },*/
+        {   .name = "do",
+            .name_size = strlen("do"),
+            .parse = proc_call_parse,
+            .obj = &ctx
+        }
+    };
+    gsl_err_t parser_err;
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err.code;
+
+    if (task->tr) {
+        proc->tr = task->tr;
+        task->tr = NULL;
+    }
+    if (DEBUG_PROC_LEVEL_TMP)
+        proc->str(proc);
+
+    return knd_OK;
+}
+
+gsl_err_t knd_proc_import(struct kndRepo *repo,
+                          const char *rec,
+                          size_t *total_size,
+                          struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndProcEntry *entry;
@@ -327,7 +399,7 @@ extern gsl_err_t knd_proc_import(struct kndRepo *repo,
             },*/
         {   .name = "do",
             .name_size = strlen("do"),
-            .parse = proc_parse_do,
+            .parse = proc_call_parse,
             .obj = &ctx
         }
     };

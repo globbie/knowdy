@@ -98,7 +98,8 @@ set(SOURCES src/knd_array.c src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.impor
         src/knd_class_inst.c src/knd_class_inst.gsp.c src/knd_class_inst.import.c src/knd_class_inst.json.c src/knd_class_inst.select.c
         src/knd_dict.c src/knd_elem.c src/knd_list.c
         src/knd_mempool.c src/knd_num.c
-        src/knd_proc.c src/knd_proc.import.c src/knd_proc_arg.c
+        src/knd_proc.c src/knd_proc.import.c
+        src/knd_proc.json.c src/knd_proc.svg.c src/knd_proc_arg.c
         src/knd_ref.c src/knd_repo.c
         src/knd_set.c src/knd_set_idx.c src/knd_shard.c src/knd_shard.config.c src/knd_state.c
         src/knd_task.c src/knd_task.select.c src/knd_text.c

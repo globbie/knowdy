@@ -24,6 +24,7 @@ struct LocalContext {
     struct kndClassVar *class_var;
     struct kndAttrVar *list_parent;
     struct kndAttrVar *attr_var;
+    struct kndRepo *repo;
     struct kndTask *task;
 };
 
@@ -141,7 +142,6 @@ static gsl_err_t parse_proc(void *obj, const char *rec, size_t *total_size)
     struct kndProcEntry *entry;
     struct kndMemPool *mempool = task->mempool;
     int err;
-    gsl_err_t parser_err;
 
     err = knd_proc_new(mempool, &proc);
     if (err) return *total_size = 0, make_gsl_err_external(err);
@@ -152,8 +152,8 @@ static gsl_err_t parse_proc(void *obj, const char *rec, size_t *total_size)
     entry->proc = proc;
     proc->entry = entry;
 
-    parser_err = knd_proc_read(proc, rec, total_size);
-    if (parser_err.code) return parser_err;
+    err = knd_inner_proc_import(proc, rec, total_size, task->repo, task);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
 
     self->proc = proc;
 
@@ -592,7 +592,6 @@ static void append_attr_var(struct kndClassVar *ci,
     ci->num_attrs++;
 }
 
-
 gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *total_size)
 {
     struct kndAttr *self = task->attr;
@@ -625,16 +624,10 @@ gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *total_s
           .run = set_ref_class,
           .obj = self
         },
-        { .type = GSL_SET_STATE,
-          .name = "proc",
-          .name_size = strlen("proc"),
-          .parse = parse_proc,
-          .obj = self
-        },
         { .name = "proc",
           .name_size = strlen("proc"),
           .parse = parse_proc,
-          .obj = self
+          .obj = task
         },
         { .type = GSL_SET_STATE,
           .name = "t",

@@ -353,16 +353,8 @@ static int ref_item_export_JSON(struct kndAttrVar *item,
 static int proc_item_export_JSON(struct kndAttrVar *item,
                                  struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
-    struct kndProc *proc;
-    int err;
-
     assert(item->proc != NULL);
-    proc = item->proc;
-
-    err = knd_proc_export(proc, KND_FORMAT_JSON, task, out);
-    if (err) return err;
-
+    int err = knd_proc_export_JSON(item->proc, task, task->out);                  RET_ERR();
     return knd_OK;
 }
 

@@ -168,9 +168,11 @@ int knd_proc_arg_var_new(struct kndMemPool *mempool,
 
 void knd_proc_init(struct kndProc *self);
 
-gsl_err_t knd_proc_read(struct kndProc *self,
-                        const char *rec,
-                        size_t *total_size);
+int knd_inner_proc_import(struct kndProc *self,
+                          const char *rec,
+                          size_t *total_size,
+                          struct kndRepo *repo,
+                          struct kndTask *task);
 
 int knd_proc_resolve(struct kndProc *self);
 
@@ -200,6 +202,15 @@ gsl_err_t knd_proc_select(struct kndRepo *repo,
 gsl_err_t knd_proc_import(struct kndRepo *repo,
                           const char *rec, size_t *total_size,
                           struct kndTask *task);
+
+// knd_proc.json.c
+int knd_proc_export_JSON(struct kndProc *self,
+                         struct kndTask *task,
+                         struct glbOutput  *out);
+// knd_proc.svg.c
+int knd_proc_export_SVG(struct kndProc *self,
+                        struct kndTask *task,
+                        struct glbOutput  *out);
 
 //
 // TODO(k15tfu): ?? Move to knd_proc_impl.h
