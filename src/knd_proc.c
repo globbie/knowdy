@@ -709,11 +709,11 @@ extern int knd_proc_coordinate(struct kndProc *self,
     return knd_OK;
 }
 
-extern int knd_resolve_proc_ref(struct kndClass *self,
-                                const char *name, size_t name_size,
-                                struct kndProc *unused_var(base),
-                                struct kndProc **result,
-                                struct kndTask *unused_var(task))
+int knd_resolve_proc_ref(struct kndClass *self,
+                         const char *name, size_t name_size,
+                         struct kndProc *unused_var(base),
+                         struct kndProc **result,
+                         struct kndTask *unused_var(task))
 {
     struct kndProc *proc;
     int err;

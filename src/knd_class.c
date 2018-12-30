@@ -667,19 +667,22 @@ extern int knd_class_get_attr(struct kndClass *self,
     return knd_FAIL;
 }
 
-extern int knd_class_get_attr_var(struct kndClass *self,
-                                  const char *name, size_t name_size,
-                                  struct kndAttrVar **result)
+int knd_class_get_attr_var(struct kndClass *self,
+                           const char *name, size_t name_size,
+                           struct kndAttrVar **result)
 {
     struct kndAttrRef *ref;
     struct kndAttr *attr;
     void *obj;
     int err;
 
-    err = knd_class_get_attr(self, name, name_size, &ref);                        RET_ERR();
+    err = knd_class_get_attr(self, name, name_size, &ref);
+    if (err) return err;
     attr = ref->attr;
     err = self->attr_idx->get(self->attr_idx,
-                              attr->id, attr->id_size, &obj);                     RET_ERR();
+                              attr->id, attr->id_size, &obj);
+    if (err) return err;
+
     ref = obj;
     if (!ref->attr_var) {
         knd_log("-- no attr var %.*s in class %.*s",
