@@ -405,7 +405,7 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
             err = ref_item_export_JSON(item, task);
             if (err) return err;
             break;
-        case KND_ATTR_PROC:
+        case KND_ATTR_PROCREF:
             if (item->proc) {
                 err = proc_item_export_JSON(item, task);
                 if (err) return err;
@@ -475,7 +475,7 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
             err = out->writec(out, '"');                                          RET_ERR();
             if (err) return err;
             break;
-        case KND_ATTR_PROC:
+        case KND_ATTR_PROCREF:
             if (item->proc) {
                 err = proc_item_export_JSON(item, task);
                 if (err) return err;
@@ -536,7 +536,7 @@ extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
         if (err) return err;
         
         break;
-    case KND_ATTR_PROC:
+    case KND_ATTR_PROCREF:
         if (item->proc) {
             err = proc_item_export_JSON(item, task);
             if (err) return err;

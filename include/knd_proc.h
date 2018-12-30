@@ -120,8 +120,7 @@ struct kndProc
     struct kndProcArg *args;
     size_t num_args;
 
-    /* all inherited args */
-    struct ooDict *arg_idx;
+    struct kndSet *arg_idx;
 
     struct kndProcCall *proc_call;
 
@@ -138,15 +137,12 @@ struct kndProc
     size_t result_classname_size;
 //    struct kndClass *result;
 
-//    size_t estim_cost;
     size_t estim_cost_total;
-//    size_t estim_time;
-//    size_t estim_time_total;
 
     //struct kndTask *task;
-    struct kndVisualFormat *visual;
+    //struct kndVisualFormat *visual;
 
-    //bool batch_mode;
+
     bool is_resolved;
 
     struct kndProc *next;

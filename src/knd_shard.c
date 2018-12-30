@@ -225,7 +225,7 @@ void kndShard_del(struct kndShard *self)
         self->user->del(self->user);
 
     if (self->repo)
-        self->repo->del(self->repo);
+        knd_repo_del(self->repo);
 
     if (self->out)
         self->out->del(self->out);

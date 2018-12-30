@@ -74,6 +74,9 @@ struct kndTask
     char timestamp[KND_NAME_SIZE];
     size_t timestamp_size;
 
+    const char *input;
+    size_t input_size;
+
     const char *locale;
     size_t locale_size;
 

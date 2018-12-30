@@ -1456,7 +1456,7 @@ static gsl_err_t validate_attr_var(void *obj,
     if (parser_err.code) return parser_err;
 
     switch (attr->type) {
-    case KND_ATTR_PROC:
+    case KND_ATTR_PROCREF:
 
         if (DEBUG_CLASS_GSP_LEVEL_2)
             knd_log("== proc attr: %.*s => %.*s",

@@ -30,7 +30,7 @@
 static void del(struct kndUser *self)
 {
     if (self->repo)
-        self->repo->del(self->repo);
+        knd_repo_del(self->repo);
     free(self);
 }
 

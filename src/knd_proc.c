@@ -17,6 +17,7 @@
 #include "knd_task.h"
 #include "knd_state.h"
 #include "knd_mempool.h"
+#include "knd_set.h"
 #include "knd_utils.h"
 #include "knd_text.h"
 #include "knd_dict.h"
@@ -73,11 +74,19 @@ static void proc_call_arg_str(struct kndProcCallArg *self,
     knd_log("%*s  }", depth * KND_OFFSET_SIZE, "");
 }
 
+static void proc_base_str(struct kndProcVar *self,
+                          size_t depth)
+{
+    knd_log("%*s  {is %.*s}", depth * KND_OFFSET_SIZE, "",
+            self->name_size, self->name);
+}
+
 static void str(struct kndProc *self)
 {
     struct kndTranslation *tr;
     struct kndProcArg *arg;
     struct kndProcCallArg *call_arg;
+    struct kndProcVar *base;
     size_t depth = 0;
 
     knd_log("{proc %.*s  {_id %.*s}",
@@ -85,13 +94,13 @@ static void str(struct kndProc *self)
             self->entry->id_size, self->entry->id);
 
     for (tr = self->tr; tr; tr = tr->next) {
-        knd_log("%*s~ %.*s %.*s", (depth + 1) * KND_OFFSET_SIZE, "",
+        knd_log("%*s  {%.*s %.*s}", (depth + 1) * KND_OFFSET_SIZE, "",
                 tr->locale_size, tr->locale, tr->val_size, tr->val);
     }
 
-    /*for (base = self->bases; base; base = base->next) {
-        base_str(base, depth + 1);
-        }*/
+    for (base = self->bases; base; base = base->next) {
+        proc_base_str(base, depth + 1);
+    }
 
     if (self->result_classname_size) {
         knd_log("%*s    {result class:%.*s}", depth * KND_OFFSET_SIZE, "",
@@ -117,61 +126,6 @@ static void str(struct kndProc *self)
     knd_log("}");
 }
 
-extern int knd_get_proc(struct kndRepo *repo,
-                        const char *name, size_t name_size,
-                        struct kndProc **result)
-{
-    struct kndProcEntry *entry;
-    struct kndProc *proc;
-    int err;
-
-    if (DEBUG_PROC_LEVEL_TMP)
-        knd_log(".. repo %.*s to get proc: \"%.*s\"..",
-                repo->name_size, repo->name, name_size, name);
-
-    entry = (struct kndProcEntry*)repo->proc_name_idx->get(repo->proc_name_idx,
-                                                           name, name_size);
-    if (!entry) {
-        if (repo->base) {
-            err = knd_get_proc(repo->base, name, name_size, result);
-            if (err) return err;
-            return knd_OK;
-        }
-
-        knd_log("-- no such proc: \"%.*s\"", name_size, name);
-
-        /*repo->log->reset(repo->log);
-        err = repo->log->write(repo->log, name, name_size);
-        if (err) return err;
-        err = repo->log->write(repo->log, " Proc name not found",
-                               strlen(" Proc name not found"));
-                               if (err) return err;*/
-        return knd_NO_MATCH;
-    }
-
-    if (entry->phase == KND_REMOVED) {
-        knd_log("-- \"%s\" proc was removed", name);
-        /*repo->log->reset(repo->log);
-        err = repo->log->write(repo->log, name, name_size);
-        if (err) return err;
-        err = repo->log->write(repo->log, " proc was removed",
-                               strlen(" proc was removed"));
-        if (err) return err;
-        */
-        //repo->root_proc->task->http_code = HTTP_GONE;
-        return knd_NO_MATCH;
-    }
-
-    if (entry->proc) {
-        proc = entry->proc;
-        entry->phase = KND_SELECTED;
-        *result = proc;
-        return knd_OK;
-    }
-
-    // TODO: defreeze
-    return knd_FAIL;
-}
 
 static gsl_err_t run_get_proc(void *obj, const char *name, size_t name_size)
 {
@@ -359,13 +313,13 @@ static int resolve_parents(struct kndProc *self,
     struct kndProcArgVar *arg_item;
     int err;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. resolve parent procs of \"%.*s\"..",
                 self->name_size, self->name);
 
     /* resolve refs  */
     for (base = self->bases; base; base = base->next) {
-        if (DEBUG_PROC_LEVEL_2)
+        if (DEBUG_PROC_LEVEL_TMP)
             knd_log("\n.. \"%.*s\" proc to get its parent: \"%.*s\"..",
                     self->name_size, self->name,
                     base->name_size, base->name);
@@ -410,18 +364,19 @@ static int resolve_parents(struct kndProc *self,
 
         /* redefine inherited args if needed */
 
-        for (arg_item = base->args; arg_item; arg_item = arg_item->next) {
-            arg_entry = self->arg_idx->get(self->arg_idx,
+        /*for (arg_item = base->args; arg_item; arg_item = arg_item->next) {
+            arg_ref = self->arg_idx->get(self->arg_idx,
                                        arg_item->name, arg_item->name_size);
-            if (!arg_entry) {
+            if (!arg_ref) {
                 knd_log("-- no arg \"%.*s\" in proc \"%.*s\' :(",
                         arg_item->name_size, arg_item->name,
                         proc->name_size, proc->name);
                 return knd_FAIL;
             }
-
+        */
             /* TODO: check class inheritance */
 
+        /*
             if (DEBUG_PROC_LEVEL_2)
                 knd_log(".. arg \"%.*s\" [class:%.*s] to replace \"%.*s\" [class:%.*s]",
                         arg_item->name_size, arg_item->name,
@@ -443,11 +398,64 @@ static int resolve_parents(struct kndProc *self,
             arg->next = self->args;
             self->args = arg;
             self->num_args++;
-        }
+            } */
     }
+    return knd_OK;
+}
+
+static int register_new_arg(struct kndProc *self,
+                            struct kndProcArg *arg,
+                            struct kndRepo *repo,
+                            struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->mempool;
+    struct kndSet *arg_idx = repo->proc_arg_idx;
+    struct ooDict *arg_name_idx = repo->proc_arg_name_idx;
+    struct kndProcArgRef *arg_ref, *prev_arg_ref;
+    int err;
+
+    repo->num_proc_args++;
+    arg->numid = repo->num_proc_args;
+    knd_uid_create(arg->numid, arg->id, &arg->id_size);
+
+    err = knd_proc_arg_ref_new(mempool, &arg_ref);
+    if (err) {
+        return err;
+    }
+    arg_ref->arg = arg;
+    arg_ref->proc = self;
+
+    /* global indices */
+    prev_arg_ref = arg_name_idx->get(arg_name_idx,
+                                     arg->name, arg->name_size);
+    arg_ref->next = prev_arg_ref;
+
+    if (prev_arg_ref) {
+        //knd_log("-- dict remove");
+        err = arg_name_idx->remove(arg_name_idx,
+                                    arg->name, arg->name_size);           RET_ERR();
+    }
+
+    err = arg_name_idx->set(arg_name_idx,
+                             arg->name, arg->name_size,
+                             (void*)arg_ref);                              RET_ERR();
+
+    err = arg_idx->add(arg_idx,
+                        arg->id, arg->id_size,
+                        (void*)arg_ref);                                   RET_ERR();
+    
+    /* local index */
+    err = self->arg_idx->add(self->arg_idx,
+                              arg->id, arg->id_size,
+                              (void*)arg_ref);                             RET_ERR();
+
+    if (DEBUG_PROC_LEVEL_TMP)
+        knd_log("++ new primary arg: \"%.*s\" (id:%.*s)",
+                arg->name_size, arg->name, arg->id_size, arg->id);
 
     return knd_OK;
 }
+
 
 static int proc_resolve(struct kndProc *self,
                         struct kndTask *task)
@@ -457,48 +465,27 @@ static int proc_resolve(struct kndProc *self,
     //struct kndProcEntry *entry;
     int err;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. resolving PROC: %.*s",
                 self->name_size, self->name);
 
     if (!self->arg_idx) {
-        err = ooDict_new(&self->arg_idx, KND_SMALL_DICT_SIZE);                    RET_ERR();
+        err = knd_set_new(task->mempool, &self->arg_idx);                        RET_ERR();
+    }
 
-        for (arg = self->args; arg; arg = arg->next) {
-            err = knd_proc_resolve_arg(arg, task->repo);                          RET_ERR();
+    for (arg = self->args; arg; arg = arg->next) {
+        err = knd_proc_resolve_arg(arg, task->repo);                              RET_ERR();
 
-            /* TODO: index  arg entry */
-            /*arg_entry = malloc(sizeof(struct kndProcArgEntry));
-            if (!arg_entry) return knd_NOMEM;
-
-            memset(arg_entry, 0, sizeof(struct kndProcArgEntry));
-
-            arg_entry->name = arg->name;
-            arg_entry->name_size = arg->name_size;
-            arg_entry->arg = arg;
-            err = self->arg_idx->set(self->arg_idx,
-                                     arg_entry->name,
-                                     arg_entry->name_size, (void*)arg_entry);
-            if (err) return err;
-            */
-
-            /*if (arg->proc_entry) {
-                entry = arg->proc_entry;
-                if (entry->proc) {
-                    if (DEBUG_PROC_LEVEL_2)
-                        knd_log("== ARG proc estimate: %zu", entry->proc->estim_cost_total);
-                    self->estim_cost_total += entry->proc->estim_cost_total;
-                }
-                } */
-        }
+        /* no conflicts detected, register a new arg */
+        err = register_new_arg(self, arg, task->repo, task);                      RET_ERR();
     }
 
     if (self->bases) {
-        err = resolve_parents(self, task);                                              RET_ERR();
+        err = resolve_parents(self, task);                                        RET_ERR();
     }
 
     if (self->proc_call) {
-        err = resolve_proc_call(self);                                                  RET_ERR();
+        err = resolve_proc_call(self);                                            RET_ERR();
     }
     
     self->is_resolved = true;
@@ -543,8 +530,8 @@ static int inherit_args(struct kndProc *self,
     for (arg = parent->args; arg; arg = arg->next) {
 
         /* compare with exiting args */
-        arg_entry = self->arg_idx->get(self->arg_idx,
-                                   arg->name, arg->name_size);
+        /*arg_entry = self->arg_idx->get(self->arg_idx,
+                                       arg->name, arg->name_size);
         if (arg_entry) {
             knd_log("-- arg \"%.*s\" collision between \"%.*s\""
                     " and parent proc \"%.*s\"?",
@@ -554,7 +541,6 @@ static int inherit_args(struct kndProc *self,
             return knd_OK;
         }
 
-        /* register arg entry */
         arg_entry = malloc(sizeof(struct kndProcArgEntry));
         if (!arg_entry) return knd_NOMEM;
 
@@ -574,6 +560,7 @@ static int inherit_args(struct kndProc *self,
                                  arg_entry->name, arg_entry->name_size,
                                  (void*)arg_entry);
         if (err) return err;
+        */
     }
     
     if (self->num_inherited >= KND_MAX_INHERITED) {
@@ -597,10 +584,8 @@ static int inherit_args(struct kndProc *self,
             err = inherit_args(self, base->proc, task);                                 RET_ERR();
         }
     }
-    
     return knd_OK;
 }
-
 
 static int resolve_proc_call(struct kndProc *self)
 {
@@ -608,10 +593,10 @@ static int resolve_proc_call(struct kndProc *self)
     struct kndProcArgEntry *entry;
 
     if (DEBUG_PROC_LEVEL_TMP)
-        knd_log(".. resolving proc call %.*s ..",
+        knd_log(".. resolving proc call: \"%.*s\" ..",
                 self->proc_call->name_size, self->proc_call->name);
 
-    if (!self->arg_idx) return knd_FAIL;
+    /*if (!self->arg_idx) return knd_FAIL;
 
     for (call_arg = self->proc_call->args; call_arg; call_arg = call_arg->next) {
         if (DEBUG_PROC_LEVEL_2)
@@ -627,10 +612,9 @@ static int resolve_proc_call(struct kndProc *self)
                 call_arg->val_size, call_arg->val);
             return knd_FAIL;
         }
-
         call_arg->arg = entry->arg;
     }
-
+    */
     return knd_OK;
 }
 
@@ -645,9 +629,9 @@ static int resolve_procs(struct kndProc *self,
     void *val;
     int err;
 
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. resolving procs by \"%.*s\"",
-                self->name_size, self->name);
+    if (DEBUG_PROC_LEVEL_TMP)
+        knd_log(".. resolving procs by \"%.*s\" idx:%p",
+                self->name_size, self->name, repo->proc_name_idx);
     key = NULL;
     repo->proc_name_idx->rewind(repo->proc_name_idx);
     do {
@@ -665,10 +649,10 @@ static int resolve_procs(struct kndProc *self,
 
         err = proc_resolve(proc, task);
         if (err) {
-            knd_log("-- couldn't resolve the \"%s\" proc :(", proc->name);
+            knd_log("-- couldn't resolve the \"%.*s\" proc",
+                    proc->name_size, proc->name);
             return err;
         }
-
         if (DEBUG_PROC_LEVEL_2) {
             knd_log("--");
             proc->str(proc);
@@ -688,10 +672,10 @@ extern int knd_proc_coordinate(struct kndProc *self,
     void *val;
     int err;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. proc coordination in progress ..");
 
-    err = resolve_procs(self, task);                                                   RET_ERR();
+    err = resolve_procs(self, task);                                              RET_ERR();
 
     /* assign ids */
     key = NULL;
@@ -755,6 +739,61 @@ extern int knd_resolve_proc_ref(struct kndClass *self,
     return knd_OK;
 }
 
+int knd_get_proc(struct kndRepo *repo,
+                 const char *name, size_t name_size,
+                 struct kndProc **result)
+{
+    struct kndProcEntry *entry;
+    struct kndProc *proc;
+    int err;
+
+    if (DEBUG_PROC_LEVEL_TMP)
+        knd_log(".. repo %.*s to get proc: \"%.*s\"..",
+                repo->name_size, repo->name, name_size, name);
+
+    entry = (struct kndProcEntry*)repo->proc_name_idx->get(repo->proc_name_idx,
+                                                           name, name_size);
+    if (!entry) {
+        if (repo->base) {
+            err = knd_get_proc(repo->base, name, name_size, result);
+            if (err) return err;
+            return knd_OK;
+        }
+
+        knd_log("-- no such proc: \"%.*s\"", name_size, name);
+
+        /*repo->log->reset(repo->log);
+        err = repo->log->write(repo->log, name, name_size);
+        if (err) return err;
+        err = repo->log->write(repo->log, " Proc name not found",
+                               strlen(" Proc name not found"));
+                               if (err) return err;*/
+        return knd_NO_MATCH;
+    }
+
+    if (entry->phase == KND_REMOVED) {
+        knd_log("-- \"%s\" proc was removed", name);
+        /*repo->log->reset(repo->log);
+        err = repo->log->write(repo->log, name, name_size);
+        if (err) return err;
+        err = repo->log->write(repo->log, " proc was removed",
+                               strlen(" proc was removed"));
+        if (err) return err;
+        */
+        //repo->root_proc->task->http_code = HTTP_GONE;
+        return knd_NO_MATCH;
+    }
+
+    if (entry->proc) {
+        proc = entry->proc;
+        entry->phase = KND_SELECTED;
+        *result = proc;
+        return knd_OK;
+    }
+
+    // TODO: defreeze
+    return knd_FAIL;
+}
 
 extern void knd_proc_init(struct kndProc *self)
 {

@@ -218,7 +218,7 @@ extern int knd_attr_var_export_GSP(struct kndAttrVar *item,
         //err = ref_item_export_GSP(item, out);
         //if (err) return err;
         break;
-    case KND_ATTR_PROC:
+    case KND_ATTR_PROCREF:
         err = proc_item_export_GSP(item, task, out);                              RET_ERR();
         break;
     case KND_ATTR_INNER:

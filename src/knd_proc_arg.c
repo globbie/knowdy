@@ -43,22 +43,16 @@ void knd_proc_arg_str(struct kndProcArg *self,
     knd_log("%*s{%.*s   {_c %.*s}", depth * KND_OFFSET_SIZE, "",
             self->name_size, self->name, self->classname_size, self->classname);
 
-    if (self->proc_call.name_size) {
+    if (self->proc_call) {
         knd_log("%*s    {run %.*s [type:%d]", depth * KND_OFFSET_SIZE, "",
-                self->proc_call.name_size, self->proc_call.name,
-                self->proc_call.type);
-        for (arg = self->proc_call.args; arg; arg = arg->next) {
+                self->proc_call->name_size, self->proc_call->name,
+                self->proc_call->type);
+        for (arg = self->proc_call->args; arg; arg = arg->next) {
             proc_call_arg_str(arg, depth + 1);
         }
 
         knd_log("%*s    }", depth * KND_OFFSET_SIZE, "");
     }
-
-    /*tr = self->tr;
-    while (tr) {
-        knd_log("%*s   ~ %s %s", depth * KND_OFFSET_SIZE, "", tr->locale, tr->val);
-        tr = tr->next;
-        }*/
 }
 
 static int proc_call_arg_export_JSON(struct kndProcArg *unused_var(self),
@@ -87,9 +81,6 @@ static int proc_call_arg_export_GSP(struct kndProcArg *unused_var(self),
     return knd_OK;
 }
 
-/**
- *  EXPORT
- */
 static int export_JSON(struct kndProcArg *self,
                        struct kndTask *task,
                        struct glbOutput *out)
@@ -144,7 +135,7 @@ static int export_JSON(struct kndProcArg *self,
         err = out->write(out, buf, buf_size);                                     RET_ERR();
     }
     
-    if (self->proc_call.name_size) {
+    if (self->proc_call->name_size) {
         if (self->proc_entry) {
             proc = self->proc_entry->proc;
             if (proc) {
@@ -153,14 +144,14 @@ static int export_JSON(struct kndProcArg *self,
             }
         } else {
             err = out->write(out, ",\"run\":\"", strlen(",\"run\":\""));          RET_ERR();
-            err = out->write(out, self->proc_call.name,
-                             self->proc_call.name_size);                          RET_ERR();
+            err = out->write(out, self->proc_call->name,
+                             self->proc_call->name_size);                          RET_ERR();
             err = out->write(out, "\"", 1);                                       RET_ERR();
         }
 
-        if (self->proc_call.num_args) {
+        if (self->proc_call->num_args) {
             err = out->write(out, ",\"args\":[", strlen(",\"args\":["));          RET_ERR();
-            for (arg = self->proc_call.args; arg; arg = arg->next) {
+            for (arg = self->proc_call->args; arg; arg = arg->next) {
                 if (in_list) {
                     err = out->write(out, ",", 1);                                RET_ERR();
                 }
@@ -224,10 +215,10 @@ static int export_GSP(struct kndProcArg *self,
         err = out->writec(out, '}');                                              RET_ERR();
     }
     
-    if (self->proc_call.name_size) {
+    if (self->proc_call->name_size) {
         err = out->write(out, "{run ", strlen("{run "));                          RET_ERR();
-        err = out->write(out, self->proc_call.name, self->proc_call.name_size);   RET_ERR();
-        for (arg = self->proc_call.args; arg; arg = arg->next) {
+        err = out->write(out, self->proc_call->name, self->proc_call->name_size);   RET_ERR();
+        for (arg = self->proc_call->args; arg; arg = arg->next) {
             err = proc_call_arg_export_GSP(self, arg, out);                            RET_ERR();
         }
         err = out->write(out, "}", 1);                                            RET_ERR();
@@ -280,7 +271,6 @@ extern int knd_proc_arg_export(struct kndProcArg *self,
 
     return knd_OK;
 }
-
 
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
@@ -599,50 +589,20 @@ int knd_proc_resolve_arg(struct kndProcArg *self,
     struct kndProcEntry *entry;
     int err;
 
-    if (DEBUG_PROC_ARG_LEVEL_2)
+    if (DEBUG_PROC_ARG_LEVEL_TMP)
         knd_log(".. resolving arg \"%.*s\"..",
                 self->name_size, self->name);
 
     if (self->classname_size) {
         /* TODO */
-        if (DEBUG_PROC_ARG_LEVEL_2)
+        if (DEBUG_PROC_ARG_LEVEL_TMP)
             knd_log(".. resolving arg class template: %.*s..",
                     self->classname_size, self->classname);
-
-        return knd_OK;
     }
 
-    if (!self->proc_call.name_size) {
-
-        return knd_OK;
+    if (self->proc_call) {
+        // TODO: resolve proc call
     }
-
-    /* special name */
-    if (self->proc_call.name[0] == '_') {
-        self->proc_call.type = KND_PROC_SYSTEM;
-        return knd_OK;
-    }
-
-    entry = repo->proc_name_idx->get(repo->proc_name_idx,
-                                     self->proc_call.name,
-                                     self->proc_call.name_size);
-    if (!entry) {
-        knd_log("-- Proc Arg resolve: no such proc: \"%.*s\"",
-                self->proc_call.name_size,
-                self->proc_call.name);
-        return knd_FAIL;
-    }
-
-    if (!entry->proc) {
-        err = knd_get_proc(repo,
-                           entry->name, entry->name_size, &entry->proc);      RET_ERR();
-    }
-    self->proc_entry = entry;
-
-    if (DEBUG_PROC_ARG_LEVEL_2)
-        knd_log("++ Proc Arg %.*s  call:\"%.*s\"  resolved!",
-                self->name_size, self->name,
-                self->proc_call.name_size, self->proc_call.name);
 
 
     return knd_OK;
@@ -702,14 +662,22 @@ extern void kndProcArgInstance_init(struct kndProcArgInstance *self)
 //}
 
 
-int knd_proc_arg_new(struct kndProcArg **self,
-                     struct kndMemPool *mempool)
+int knd_proc_arg_ref_new(struct kndMemPool *mempool,
+                         struct kndProcArgRef **self)
 {
     int err = knd_mempool_alloc(mempool,
-                                KND_MEMPAGE_SMALL_X2,
-                                sizeof(struct kndProcArg), (void**)self);
-    if (err) return err;
+                                KND_MEMPAGE_TINY,
+                                sizeof(struct kndProcArgRef),
+                                (void**)self);                      RET_ERR();
+    return knd_OK;
+}
 
-    //kndProcArg_init(*self);
+int knd_proc_arg_new(struct kndMemPool *mempool,
+                     struct kndProcArg **self)
+{
+    int err = knd_mempool_alloc(mempool,
+                                KND_MEMPAGE_SMALL,
+                                sizeof(struct kndProcArg),
+                                (void**)self);                     RET_ERR();
     return knd_OK;
 }

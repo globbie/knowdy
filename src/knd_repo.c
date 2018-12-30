@@ -27,7 +27,7 @@
 #define DEBUG_REPO_LEVEL_3 0
 #define DEBUG_REPO_LEVEL_TMP 1
 
-static void kndRepo_del(struct kndRepo *self)
+void knd_repo_del(struct kndRepo *self)
 {
     char *rec;
     if (self->num_source_files) {
@@ -42,6 +42,7 @@ static void kndRepo_del(struct kndRepo *self)
     self->class_inst_name_idx->del(self->class_inst_name_idx);
     self->attr_name_idx->del(self->attr_name_idx);
     self->proc_name_idx->del(self->proc_name_idx);
+    self->proc_arg_name_idx->del(self->proc_arg_name_idx);
 
     free(self);
 }
@@ -991,6 +992,9 @@ static int read_GSL_file(struct kndRepo *repo,
     repo->source_files = recs;
     repo->num_source_files++;
 
+    task->input = rec;
+    task->input_size = file_out->buf_size;
+
     /* actual parsing */
     err = parse_GSL(task, (const char*)rec, &chunk_size);
     if (err) {
@@ -1244,21 +1248,13 @@ extern int kndRepo_new(struct kndRepo **repo,
     err = ooDict_new(&self->proc_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
 
-    /*** REL ***/
-    /*err = knd_rel_new(mempool, &rel);
+    /* proc args */
+    err = knd_set_new(mempool, &self->proc_arg_idx);
+    if (err) goto error;
+    err = ooDict_new(&self->proc_arg_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
-    err = knd_rel_entry_new(mempool, &rel->entry);      RET_ERR();
-    rel->entry->name = "/";
-    rel->entry->name_size = 1;
-    rel->entry->repo = self;
-    self->root_rel = rel;
-    */
-    //self->mempool = mempool;
     self->max_journal_size = KND_FILE_BUF_SIZE;
-
-    self->del = kndRepo_del;
-    self->str = kndRepo_str;
 
     *repo = self;
 

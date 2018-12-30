@@ -134,6 +134,19 @@ static gsl_err_t set_ref_class(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t set_procref(void *obj, const char *name, size_t name_size)
+{
+    struct kndAttr *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FAIL);
+    if (!self->name_size) {
+        knd_log("-- attr name not specified");
+        return make_gsl_err(gsl_FAIL);
+    }
+    self->ref_procname = name;
+    self->ref_procname_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t parse_proc(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
@@ -613,6 +626,11 @@ gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *total_s
         { .name = "c",
           .name_size = strlen("c"),
           .run = set_ref_class,
+          .obj = self
+        },
+        { .name = "_proc",
+          .name_size = strlen("_proc"),
+          .run = set_procref,
           .obj = self
         },
         { .name = "proc",

@@ -574,7 +574,7 @@ extern int knd_resolve_attr_vars(struct kndClass *self,
             buf[buf_size] = '\0';
             err = knd_parse_num(buf, &attr_var->numval);
             break;
-        case KND_ATTR_PROC:
+        case KND_ATTR_PROCREF:
             proc = attr->proc;
             /*if (!c->is_resolved) {
                 err = knd_class_resolve(c);                                        RET_ERR();
@@ -602,8 +602,8 @@ extern int knd_resolve_attr_vars(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_resolve_primary_attrs(struct kndClass *self,
-                                     struct kndTask *task)
+int knd_resolve_primary_attrs(struct kndClass *self,
+                              struct kndTask *task)
 {
     struct kndAttr *attr;
     struct kndClassEntry *entry;
@@ -618,7 +618,6 @@ extern int knd_resolve_primary_attrs(struct kndClass *self,
 
     for (attr = self->attrs; attr; attr = attr->next) {
         err = check_attr_name_conflict(self, attr);                      RET_ERR();
-        
         switch (attr->type) {
         case KND_ATTR_INNER:
         case KND_ATTR_REF:
@@ -641,7 +640,7 @@ extern int knd_resolve_primary_attrs(struct kndClass *self,
             }
             attr->ref_class = entry->class;
             break;
-        case KND_ATTR_PROC:
+        case KND_ATTR_PROCREF:
             if (!attr->ref_procname_size) {
                 knd_log("-- no proc name specified for attr \"%s\"",
                         attr->name);
@@ -659,7 +658,7 @@ extern int knd_resolve_primary_attrs(struct kndClass *self,
                         self->entry->name_size, self->entry->name);
                 return knd_FAIL;
             }
-            if (DEBUG_ATTR_RESOLVE_LEVEL_2)
+            if (DEBUG_ATTR_RESOLVE_LEVEL_TMP)
                 knd_log("++ proc ref resolved: %.*s!",
                         proc_entry->name_size, proc_entry->name);
             break;

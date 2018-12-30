@@ -122,6 +122,9 @@ int kndTask_run(struct kndTask *self, const char *rec, size_t rec_size, struct k
 
     kndTask_reset(self);
 
+    self->input = rec;
+    self->input_size = rec_size;
+
     parser_err = knd_select_task(self, rec, &rec_size, shard);
     if (parser_err.code) {
         knd_log("-- task run failure");

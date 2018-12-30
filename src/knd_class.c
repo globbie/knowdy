@@ -105,15 +105,6 @@ static void str(struct kndClass *self, size_t depth)
                 c->entry->name_size, c->entry->name,
                 c->entry->repo->name_size, c->entry->repo->name);
     }
-    
-    // print attrs
-    /*    for (size_t i = 0; i < self->entry->num_children; i++) {
-        c = self->entry->children[i]->class;
-        if (!c) continue;
-        knd_log("%*sbase of --> %.*s [%zu]",
-                (self->depth + 1) * KND_OFFSET_SIZE, "",
-                c->name_size, c->name, c->entry->num_terminals);
-                } */
 
     knd_log("%*s the end of %.*s}", depth * KND_OFFSET_SIZE, "",
             self->entry->name_size, self->entry->name);

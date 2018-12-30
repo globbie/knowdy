@@ -38,7 +38,7 @@ static gsl_err_t parse_proc_arg_item(void *obj,
     int err;
     gsl_err_t parser_err;
 
-    err = knd_proc_arg_new(&arg, ctx->task->mempool);
+    err = knd_proc_arg_new(ctx->task->mempool, &arg);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     parser_err = knd_proc_arg_parse(arg, rec, total_size, ctx->task);
@@ -144,7 +144,7 @@ static gsl_err_t parse_base(void *obj,
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
             .run = set_proc_var_name,
-            .obj = &ctx
+            .obj = proc_var
         },
         {   .type = GSL_SET_STATE,
             .validate = validate_base_arg,
@@ -174,7 +174,7 @@ static gsl_err_t validate_do_arg(void *obj,
     struct kndProc *proc = ctx->proc;
     gsl_err_t err;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. Proc Call Arg \"%.*s\" to validate: \"%.*s\"..",
                 name_size, name, 32, rec);
 
@@ -311,6 +311,12 @@ int knd_inner_proc_import(struct kndProc *proc,
             .run = set_result_classname,
             .obj = proc
         },
+        {   /* a synonym for result */
+            .name = "effect",
+            .name_size = strlen("effect"),
+            .run = set_result_classname,
+            .obj = proc
+        },
         {   .name = "do",
             .name_size = strlen("do"),
             .parse = proc_call_parse,
@@ -320,7 +326,10 @@ int knd_inner_proc_import(struct kndProc *proc,
     gsl_err_t parser_err;
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err.code;
+    if (parser_err.code) {
+        knd_log("-- parser error: %d", parser_err.code);
+        return parser_err.code;
+    }
 
     if (task->tr) {
         proc->tr = task->tr;
@@ -409,7 +418,15 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
     gsl_err_t parser_err;
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
+    if (parser_err.code) {
+        knd_log("-- parser error: %d  total size:%zu",
+                parser_err.code, *total_size);
+
+        const char *c = rec + *total_size;
+        knd_log("== CONTEXT: %.*s", 32, c);
+        knd_log("==          ^^^^");
+        return parser_err;
+    }
 
     if (task->tr) {
         proc->tr = task->tr;

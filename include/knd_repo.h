@@ -85,11 +85,13 @@ struct kndRepo
     struct kndSet  *proc_idx;
     size_t num_procs;
     size_t num_proc_insts;
-    
-    struct kndRel       *root_rel;
+
+    struct ooDict  *proc_arg_name_idx;
+    struct kndSet  *proc_arg_idx;
+    size_t num_proc_args;
 
     // remove
-    struct kndClassInst *curr_class_inst;
+    //struct kndClassInst *curr_class_inst;
     struct kndAttrVar    *curr_attr_var;
     struct kndClassInst  *curr_inst;
 
@@ -99,18 +101,19 @@ struct kndRepo
 
     struct kndRepo *next;
 
-    void (*del)(struct kndRepo *self);
-    void (*str)(struct kndRepo *self);
+    //void (*del)(struct kndRepo *self);
+    //void (*str)(struct kndRepo *self);
 };
 
-extern int knd_present_repo_state(struct kndRepo *self,
+int knd_present_repo_state(struct kndRepo *self,
                                   struct kndTask *task);
-extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task);
+int knd_confirm_state(struct kndRepo *self, struct kndTask *task);
 
-extern gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size);
+gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size);
 
-extern int knd_conc_folder_new(struct kndMemPool *mempool,
-                               struct kndConcFolder **result);
+int knd_conc_folder_new(struct kndMemPool *mempool,
+                        struct kndConcFolder **result);
 
-extern int kndRepo_init(struct kndRepo *self, struct kndTask *task);
-extern int kndRepo_new(struct kndRepo **self, struct kndMemPool *mempool);
+void knd_repo_del(struct kndRepo *self);
+int kndRepo_init(struct kndRepo *self, struct kndTask *task);
+int kndRepo_new(struct kndRepo **self, struct kndMemPool *mempool);
