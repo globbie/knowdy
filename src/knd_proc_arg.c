@@ -584,10 +584,9 @@ int knd_parse_inst_GSL(struct kndProcArg *self,
 */
 
 int knd_proc_resolve_arg(struct kndProcArg *self,
-                         struct kndRepo *repo)
+                         struct kndRepo *unused_var(repo))
 {
-    struct kndProcEntry *entry;
-    int err;
+    //struct kndProcEntry *entry;
 
     if (DEBUG_PROC_ARG_LEVEL_TMP)
         knd_log(".. resolving arg \"%.*s\"..",

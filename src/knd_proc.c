@@ -308,9 +308,9 @@ static int resolve_parents(struct kndProc *self,
 {
     struct kndProcVar *base;
     struct kndProc *proc;
-    struct kndProcArg *arg;
-    struct kndProcArgEntry *arg_entry;
-    struct kndProcArgVar *arg_item;
+    //struct kndProcArg *arg;
+    //struct kndProcArgEntry *arg_entry;
+    //struct kndProcArgVar *arg_item;
     int err;
 
     if (DEBUG_PROC_LEVEL_TMP)
@@ -498,7 +498,7 @@ static int inherit_args(struct kndProc *self,
                         struct kndTask *task)
 {
     struct kndProcArg *arg;
-    struct kndProcArgEntry *arg_entry;
+    //struct kndProcArgEntry *arg_entry;
     struct kndProcVar *base;
     int err;
 
@@ -589,8 +589,8 @@ static int inherit_args(struct kndProc *self,
 
 static int resolve_proc_call(struct kndProc *self)
 {
-    struct kndProcCallArg *call_arg;
-    struct kndProcArgEntry *entry;
+    //struct kndProcCallArg *call_arg;
+    //struct kndProcArgEntry *entry;
 
     if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. resolving proc call: \"%.*s\" ..",
