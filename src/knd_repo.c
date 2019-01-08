@@ -47,11 +47,6 @@ void knd_repo_del(struct kndRepo *self)
     free(self);
 }
 
-static void kndRepo_str(struct kndRepo *self)
-{
-    knd_log("Repo: %p", self);
-}
-
 __attribute__((unused))
 static gsl_err_t alloc_class_update(void *obj,
                                     const char *name __attribute__((unused)),
