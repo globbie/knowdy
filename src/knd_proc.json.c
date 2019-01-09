@@ -101,7 +101,7 @@ int knd_proc_export_JSON(struct kndProc *self,
         err = out->write(out, "]", 1);                                            RET_ERR();
     }
 
-    if (self->proc_call->name_size) {
+    if (self->proc_call) {
         if (in_list) {
             err = out->write(out, ",", 1);                                        RET_ERR();
         }

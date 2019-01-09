@@ -35,12 +35,6 @@ struct LocalContext {
     struct kndProc *proc;
 };
 
-static int resolve_proc_call(struct kndProc *self);
-
-static int inherit_args(struct kndProc *self,
-                        struct kndProc *parent,
-                        struct kndTask *task);
-
 static void proc_call_arg_str(struct kndProcCallArg *self,
                               size_t depth)
 {
@@ -212,10 +206,10 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-extern gsl_err_t knd_proc_select(struct kndRepo *repo,
-                                 const char *rec,
-                                 size_t *total_size,
-                                 struct kndTask *task)
+gsl_err_t knd_proc_select(struct kndRepo *repo,
+                          const char *rec,
+                          size_t *total_size,
+                          struct kndTask *task)
 {
     struct LocalContext ctx = {
         .task = task,
@@ -299,445 +293,9 @@ int knd_proc_export(struct kndProc *self,
     default:
         break;
     }
-    
     return knd_OK;
 }
 
-static int resolve_parents(struct kndProc *self,
-                           struct kndTask *task)
-{
-    struct kndProcVar *base;
-    struct kndProc *proc;
-    //struct kndProcArg *arg;
-    //struct kndProcArgEntry *arg_entry;
-    //struct kndProcArgVar *arg_item;
-    int err;
-
-    if (DEBUG_PROC_LEVEL_TMP)
-        knd_log(".. resolve parent procs of \"%.*s\"..",
-                self->name_size, self->name);
-
-    /* resolve refs  */
-    for (base = self->bases; base; base = base->next) {
-        if (DEBUG_PROC_LEVEL_TMP)
-            knd_log("\n.. \"%.*s\" proc to get its parent: \"%.*s\"..",
-                    self->name_size, self->name,
-                    base->name_size, base->name);
-
-        err = knd_get_proc(self->entry->repo,
-                           base->name, base->name_size, &proc);                 RET_ERR();
-        if (proc == self) {
-            knd_log("-- self reference detected in \"%.*s\" :(",
-                    base->name_size, base->name);
-            return knd_FAIL;
-        }
-
-        base->proc = proc;
-
-        /* should we keep track of our children? */
-        /*if (c->ignore_children) continue; */
-
-        /* check base doublets */
-        /*    for (size_t i = 0; i < self->num_children; i++) {
-            entry = self->children[i];
-            if (entry->proc == self) {
-                knd_log("-- doublet proc found in \"%.*s\" :(",
-                        self->name_size, self->name);
-                return knd_FAIL;
-            }
-            }*/
-
-        /*if (proc->num_children >= KND_MAX_PROC_CHILDREN) {
-            knd_log("-- %s as child to %s - max proc children exceeded :(",
-                    self->name, base->name);
-            return knd_FAIL;
-        }
-        entry = &proc->children[proc->num_children];
-        entry->proc = self;
-        proc->num_children++;
-        */
-        if (DEBUG_PROC_LEVEL_2)
-            knd_log("\n\n.. children of proc \"%.*s\": %zu",
-                    proc->name_size, proc->name, proc->num_children);
-        
-        err = inherit_args(self, base->proc, task);                                     RET_ERR();
-
-        /* redefine inherited args if needed */
-
-        /*for (arg_item = base->args; arg_item; arg_item = arg_item->next) {
-            arg_ref = self->arg_idx->get(self->arg_idx,
-                                       arg_item->name, arg_item->name_size);
-            if (!arg_ref) {
-                knd_log("-- no arg \"%.*s\" in proc \"%.*s\' :(",
-                        arg_item->name_size, arg_item->name,
-                        proc->name_size, proc->name);
-                return knd_FAIL;
-            }
-        */
-            /* TODO: check class inheritance */
-
-        /*
-            if (DEBUG_PROC_LEVEL_2)
-                knd_log(".. arg \"%.*s\" [class:%.*s] to replace \"%.*s\" [class:%.*s]",
-                        arg_item->name_size, arg_item->name,
-                        arg_item->classname_size, arg_item->classname,
-                        arg_entry->arg->name_size, arg_entry->arg->name,
-                        arg_entry->arg->classname_size, arg_entry->arg->classname);
-
-            err = knd_proc_arg_new(&arg, task->mempool);
-            if (err) return err;
-
-            arg->name = arg_item->name;
-            arg->name_size = arg_item->name_size;
-
-            arg->classname = arg_item->classname;
-            arg->classname_size = arg_item->classname_size;
-            arg_entry->arg = arg;
-
-            arg->parent = self;
-            arg->next = self->args;
-            self->args = arg;
-            self->num_args++;
-            } */
-    }
-    return knd_OK;
-}
-
-static int register_new_arg(struct kndProc *self,
-                            struct kndProcArg *arg,
-                            struct kndRepo *repo,
-                            struct kndTask *task)
-{
-    struct kndMemPool *mempool = task->mempool;
-    struct kndSet *arg_idx = repo->proc_arg_idx;
-    struct ooDict *arg_name_idx = repo->proc_arg_name_idx;
-    struct kndProcArgRef *arg_ref, *prev_arg_ref;
-    int err;
-
-    repo->num_proc_args++;
-    arg->numid = repo->num_proc_args;
-    knd_uid_create(arg->numid, arg->id, &arg->id_size);
-
-    err = knd_proc_arg_ref_new(mempool, &arg_ref);
-    if (err) {
-        return err;
-    }
-    arg_ref->arg = arg;
-    arg_ref->proc = self;
-
-    /* global indices */
-    prev_arg_ref = arg_name_idx->get(arg_name_idx,
-                                     arg->name, arg->name_size);
-    arg_ref->next = prev_arg_ref;
-
-    if (prev_arg_ref) {
-        //knd_log("-- dict remove");
-        err = arg_name_idx->remove(arg_name_idx,
-                                    arg->name, arg->name_size);           RET_ERR();
-    }
-
-    err = arg_name_idx->set(arg_name_idx,
-                             arg->name, arg->name_size,
-                             (void*)arg_ref);                              RET_ERR();
-
-    err = arg_idx->add(arg_idx,
-                        arg->id, arg->id_size,
-                        (void*)arg_ref);                                   RET_ERR();
-    
-    /* local index */
-    err = self->arg_idx->add(self->arg_idx,
-                              arg->id, arg->id_size,
-                              (void*)arg_ref);                             RET_ERR();
-
-    if (DEBUG_PROC_LEVEL_TMP)
-        knd_log("++ new primary arg: \"%.*s\" (id:%.*s)",
-                arg->name_size, arg->name, arg->id_size, arg->id);
-
-    return knd_OK;
-}
-
-
-static int proc_resolve(struct kndProc *self,
-                        struct kndTask *task)
-{
-    struct kndProcArg *arg = NULL;
-    //struct kndProcArgEntry *arg_entry;
-    //struct kndProcEntry *entry;
-    int err;
-
-    if (DEBUG_PROC_LEVEL_TMP)
-        knd_log(".. resolving PROC: %.*s",
-                self->name_size, self->name);
-
-    if (!self->arg_idx) {
-        err = knd_set_new(task->mempool, &self->arg_idx);                        RET_ERR();
-    }
-
-    for (arg = self->args; arg; arg = arg->next) {
-        err = knd_proc_resolve_arg(arg, task->repo);                              RET_ERR();
-
-        /* no conflicts detected, register a new arg */
-        err = register_new_arg(self, arg, task->repo, task);                      RET_ERR();
-    }
-
-    if (self->bases) {
-        err = resolve_parents(self, task);                                        RET_ERR();
-    }
-
-    if (self->proc_call) {
-        err = resolve_proc_call(self);                                            RET_ERR();
-    }
-    
-    self->is_resolved = true;
-
-    return knd_OK;
-}
-
-static int inherit_args(struct kndProc *self,
-                        struct kndProc *parent,
-                        struct kndTask *task)
-{
-    struct kndProcArg *arg;
-    //struct kndProcArgEntry *arg_entry;
-    struct kndProcVar *base;
-    int err;
-
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. \"%.*s\" proc to inherit args from \"%.*s\" (num args:%zu)",
-                self->name_size, self->name, parent->name_size, parent->name, parent->num_args);
-
-    if (!parent->is_resolved) {
-        err = proc_resolve(parent, task);                                            RET_ERR();
-    }
-
-    /* check circled relations */
-    /*    for (size_t i = 0; i < self->num_inherited; i++) {
-        entry = self->inherited[i];
-        proc = entry->proc;
-
-        if (DEBUG_PROC_LEVEL_2)
-            knd_log("== (%zu of %zu)  \"%.*s\" is a parent of \"%.*s\"", 
-                    i, self->num_inherited, proc->name_size, proc->name,
-                    self->name_size, self->name);
-        if (entry->proc == parent) {
-            knd_log("-- circle inheritance detected for \"%.*s\" :(",
-                    parent->name_size, parent->name);
-            return knd_FAIL;
-        }
-    }
-    */
-    /* get args from parent */
-    for (arg = parent->args; arg; arg = arg->next) {
-
-        /* compare with exiting args */
-        /*arg_entry = self->arg_idx->get(self->arg_idx,
-                                       arg->name, arg->name_size);
-        if (arg_entry) {
-            knd_log("-- arg \"%.*s\" collision between \"%.*s\""
-                    " and parent proc \"%.*s\"?",
-                    arg_entry->name_size, arg_entry->name,
-                    self->name_size, self->name,
-                    parent->name_size, parent->name);
-            return knd_OK;
-        }
-
-        arg_entry = malloc(sizeof(struct kndProcArgEntry));
-        if (!arg_entry) return knd_NOMEM;
-
-        memset(arg_entry, 0, sizeof(struct kndProcArgEntry));
-
-        arg_entry->name = arg->name;
-        arg_entry->name_size = arg->name_size;
-        arg_entry->arg = arg;
-
-        if (DEBUG_PROC_LEVEL_2)
-            knd_log("NB: ++ proc \"%.*s\" inherits arg \"%.*s\" from \"%.*s\"",
-                    self->name_size, self->name,
-                    arg->name_size, arg->name,
-                    parent->name_size, parent->name);
-
-        err = self->arg_idx->set(self->arg_idx,
-                                 arg_entry->name, arg_entry->name_size,
-                                 (void*)arg_entry);
-        if (err) return err;
-        */
-    }
-    
-    if (self->num_inherited >= KND_MAX_INHERITED) {
-        knd_log("-- max inherited exceeded for %.*s :(",
-                self->name_size, self->name);
-        return knd_FAIL;
-    }
-
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(" .. add \"%.*s\" parent to \"%.*s\"",
-                parent->entry->proc->name_size,
-                parent->entry->proc->name,
-                self->name_size, self->name);
-
-    //    self->inherited[self->num_inherited] = parent->entry;
-    //self->num_inherited++;
-
-    /* contact the grandparents */
-    for (base = parent->bases; base; base = base->next) {
-        if (base->proc) {
-            err = inherit_args(self, base->proc, task);                                 RET_ERR();
-        }
-    }
-    return knd_OK;
-}
-
-static int resolve_proc_call(struct kndProc *self)
-{
-    //struct kndProcCallArg *call_arg;
-    //struct kndProcArgEntry *entry;
-
-    if (DEBUG_PROC_LEVEL_TMP)
-        knd_log(".. resolving proc call: \"%.*s\" ..",
-                self->proc_call->name_size, self->proc_call->name);
-
-    /*if (!self->arg_idx) return knd_FAIL;
-
-    for (call_arg = self->proc_call->args; call_arg; call_arg = call_arg->next) {
-        if (DEBUG_PROC_LEVEL_2)
-            knd_log(".. proc call arg %.*s ..",
-                    call_arg->name_size, call_arg->name,
-                    call_arg->val_size, call_arg->val);
-
-        entry = self->arg_idx->get(self->arg_idx,
-                                   call_arg->val, call_arg->val_size);
-        if (!entry) {
-            knd_log("-- couldn't resolve proc call arg %.*s: %.*s :(",
-                call_arg->name_size, call_arg->name,
-                call_arg->val_size, call_arg->val);
-            return knd_FAIL;
-        }
-        call_arg->arg = entry->arg;
-    }
-    */
-    return knd_OK;
-}
-
-
-static int resolve_procs(struct kndProc *self,
-                         struct kndTask *task)
-{
-    struct kndProc *proc;
-    struct kndRepo *repo = self->entry->repo;
-    struct kndProcEntry *entry;
-    const char *key;
-    void *val;
-    int err;
-
-    if (DEBUG_PROC_LEVEL_TMP)
-        knd_log(".. resolving procs by \"%.*s\" idx:%p",
-                self->name_size, self->name, repo->proc_name_idx);
-    key = NULL;
-    repo->proc_name_idx->rewind(repo->proc_name_idx);
-    do {
-        repo->proc_name_idx->next_item(repo->proc_name_idx, &key, &val);
-        if (!key) break;
-
-        entry = (struct kndProcEntry*)val;
-        proc = entry->proc;
-
-        if (proc->is_resolved) {
-            /*knd_log("--");
-              proc->str(proc); */
-            continue;
-        }
-
-        err = proc_resolve(proc, task);
-        if (err) {
-            knd_log("-- couldn't resolve the \"%.*s\" proc",
-                    proc->name_size, proc->name);
-            return err;
-        }
-        if (DEBUG_PROC_LEVEL_2) {
-            knd_log("--");
-            proc->str(proc);
-        }
-    } while (key);
-
-    return knd_OK;
-}
-
-extern int knd_proc_coordinate(struct kndProc *self,
-                               struct kndTask *task)
-{
-    struct kndProc *proc;
-    struct kndRepo *repo = self->entry->repo;
-    struct kndProcEntry *entry;
-    const char *key;
-    void *val;
-    int err;
-
-    if (DEBUG_PROC_LEVEL_TMP)
-        knd_log(".. proc coordination in progress ..");
-
-    err = resolve_procs(self, task);                                              RET_ERR();
-
-    /* assign ids */
-    key = NULL;
-    repo->proc_name_idx->rewind(repo->proc_name_idx);
-    do {
-        repo->proc_name_idx->next_item(repo->proc_name_idx, &key, &val);
-        if (!key) break;
-
-        entry = (struct kndProcEntry*)val;
-        proc = entry->proc;
-
-        /* assign id */
-        self->next_id++;
-        proc->id = self->next_id;
-        proc->entry->phase = KND_CREATED;
-    } while (key);
-
-    /* display all procs */
-    if (DEBUG_PROC_LEVEL_2) {
-        key = NULL;
-        repo->proc_name_idx->rewind(repo->proc_name_idx);
-        do {
-            repo->proc_name_idx->next_item(repo->proc_name_idx, &key, &val);
-            if (!key) break;
-            entry = (struct kndProcEntry*)val;
-            proc = entry->proc;
-            proc->str(proc);
-        } while (key);
-    }
-
-    return knd_OK;
-}
-
-int knd_resolve_proc_ref(struct kndClass *self,
-                         const char *name, size_t name_size,
-                         struct kndProc *unused_var(base),
-                         struct kndProc **result,
-                         struct kndTask *unused_var(task))
-{
-    struct kndProc *proc;
-    int err;
-
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. resolving proc ref:  %.*s", name_size, name);
-
-    err = knd_get_proc(self->entry->repo,
-                       name, name_size, &proc);                            RET_ERR();
-
-    /*c = dir->conc;
-    if (!c->is_resolved) {
-        err = knd_class_resolve(c);                                                RET_ERR();
-    }
-
-    if (base) {
-        err = is_base(base, c);                                                   RET_ERR();
-    }
-    */
-
-    *result = proc;
-
-    return knd_OK;
-}
 
 int knd_get_proc(struct kndRepo *repo,
                  const char *name, size_t name_size,
@@ -795,13 +353,13 @@ int knd_get_proc(struct kndRepo *repo,
     return knd_FAIL;
 }
 
-extern void knd_proc_init(struct kndProc *self)
+void knd_proc_init(struct kndProc *self)
 {
     self->str = str;
 }
 
-extern int knd_proc_call_arg_new(struct kndMemPool *mempool,
-                                 struct kndProcCallArg **result)
+int knd_proc_call_arg_new(struct kndMemPool *mempool,
+                          struct kndProcCallArg **result)
 {
     void *page;
     int err;
@@ -811,8 +369,8 @@ extern int knd_proc_call_arg_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-extern int knd_proc_call_new(struct kndMemPool *mempool,
-                             struct kndProcCall **result)
+int knd_proc_call_new(struct kndMemPool *mempool,
+                      struct kndProcCall **result)
 {
     void *page;
     int err;
@@ -822,7 +380,7 @@ extern int knd_proc_call_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-extern int knd_proc_var_new(struct kndMemPool *mempool,
+int knd_proc_var_new(struct kndMemPool *mempool,
                             struct kndProcVar **result)
 {
     void *page;
@@ -833,19 +391,19 @@ extern int knd_proc_var_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-extern int knd_proc_arg_var_new(struct kndMemPool *mempool,
+int knd_proc_arg_var_new(struct kndMemPool *mempool,
                                 struct kndProcArgVar **result)
 {
     void *page;
     int err;
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndProcArgVar), &page);          RET_ERR();
+                            sizeof(struct kndProcArgVar), &page);                 RET_ERR();
     *result = page;
     return knd_OK;
 }
 
-extern int knd_proc_entry_new(struct kndMemPool *mempool,
-                              struct kndProcEntry **result)
+int knd_proc_entry_new(struct kndMemPool *mempool,
+                       struct kndProcEntry **result)
 {
     void *page;
     int err;
@@ -855,8 +413,8 @@ extern int knd_proc_entry_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-extern int knd_proc_new(struct kndMemPool *mempool,
-                        struct kndProc **result)
+int knd_proc_new(struct kndMemPool *mempool,
+                 struct kndProc **result)
 {
     void *page;
     int err;

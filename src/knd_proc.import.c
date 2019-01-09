@@ -50,7 +50,6 @@ static gsl_err_t parse_proc_arg_item(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-
 static gsl_err_t set_base_arg_classname(void *obj, const char *name, size_t name_size)
 {
     struct kndProcArgVar *self = obj;

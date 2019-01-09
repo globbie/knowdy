@@ -73,7 +73,7 @@ static int export_GSP(struct kndProc *self,
         err = out->writec(out, ']');                                              RET_ERR();
     }
 
-    if (self->proc_call->name_size) {
+    if (self->proc_call) {
         err = out->write(out, "{run ", strlen("{run "));                          RET_ERR();
         err = out->write(out, self->proc_call->name,
                          self->proc_call->name_size);   RET_ERR();

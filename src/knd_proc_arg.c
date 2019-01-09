@@ -135,7 +135,7 @@ static int export_JSON(struct kndProcArg *self,
         err = out->write(out, buf, buf_size);                                     RET_ERR();
     }
     
-    if (self->proc_call->name_size) {
+    if (self->proc_call) {
         if (self->proc_entry) {
             proc = self->proc_entry->proc;
             if (proc) {
@@ -160,7 +160,6 @@ static int export_JSON(struct kndProcArg *self,
             }
             err = out->write(out, "]", 1);                                        RET_ERR();
         }
-
     }
 
     err = out->write(out, "}", 1);                                                RET_ERR();
@@ -282,74 +281,6 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_gloss_item(void *obj,
-                                  const char *rec,
-                                  size_t *total_size)
-{
-    struct kndProcArg *self = obj;
-    struct kndTranslation *tr;
-
-    if (DEBUG_PROC_ARG_LEVEL_2)
-        knd_log(".. %.*s: allocate gloss translation",
-                self->name_size, self->name);
-
-    tr = malloc(sizeof(struct kndTranslation));
-    if (!tr) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
-    memset(tr, 0, sizeof(struct kndTranslation));
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .buf = NULL,//tr->curr_locale,
-          .buf_size = &tr->curr_locale_size,
-          .max_buf_size = 0//sizeof tr->curr_locale
-        },
-        { .name = "t",
-          .name_size = strlen("t"),
-          .buf = NULL,//tr->val,
-          .buf_size = &tr->val_size,
-          .max_buf_size = 0//sizeof tr->val
-        }
-    };
-    gsl_err_t err;
-
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
-
-    if (tr->curr_locale_size == 0 || tr->val_size == 0)
-        return make_gsl_err(gsl_FORMAT);  // error: both of them are required
-
-    tr->locale = tr->curr_locale;
-    tr->locale_size = tr->curr_locale_size;
-
-    if (DEBUG_PROC_ARG_LEVEL_2)
-        knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
-                tr->locale_size, tr->locale, tr->val_size, tr->val);
-
-    // append
-    tr->next = self->tr;
-    self->tr = tr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_gloss(void *obj,
-                             const char *rec,
-                             size_t *total_size)
-{
-    struct kndProcArg *self = obj;
-    struct gslTaskSpec item_spec = {
-        .is_list_item = true,
-        .parse = parse_gloss_item,
-        .obj = self
-    };
-
-    if (DEBUG_PROC_ARG_LEVEL_2)
-        knd_log(".. %.*s: reading gloss",
-                self->name_size, self->name);
-
-    return gsl_parse_array(&item_spec, rec, total_size);
-}
-
 static gsl_err_t set_proc_arg_classname(void *obj, const char *name, size_t name_size)
 {
     struct kndProcArg *self = obj;
@@ -399,21 +330,21 @@ static gsl_err_t set_proc_arg_classname(void *obj, const char *name, size_t name
 gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
                              const char *rec,
                              size_t *total_size,
-                             struct kndTask *task)
+                             struct kndTask *unused_var(task))
 {
     if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log(".. Proc Arg parsing: \"%.*s\"..", 32, rec);
 
-    struct LocalContext ctx = {
+    /*    struct LocalContext ctx = {
         .task = task,
         .proc_arg = self
-    };
+        }; */
     
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_name,
           .obj = self
-        },
+        }/*,
         { .type = GSL_SET_ARRAY_STATE,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
@@ -425,7 +356,7 @@ gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
           .name_size = strlen("_g"),
           .parse = parse_gloss,
           .obj = &ctx
-        },
+          }*/,
         { .name = "_c",
           .name_size = strlen("_c"),
           .run = set_proc_arg_classname,
@@ -448,7 +379,6 @@ gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
           .obj = self
           }*/
     };
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
@@ -584,26 +514,35 @@ int knd_parse_inst_GSL(struct kndProcArg *self,
 */
 
 int knd_proc_resolve_arg(struct kndProcArg *self,
-                         struct kndRepo *unused_var(repo))
+                         struct kndRepo *repo)
 {
     //struct kndProcEntry *entry;
+    struct kndClassEntry *entry;
 
     if (DEBUG_PROC_ARG_LEVEL_TMP)
-        knd_log(".. resolving arg \"%.*s\"..",
-                self->name_size, self->name);
+        knd_log(".. resolving arg \"%.*s\"  repo:%.*s..",
+                self->name_size, self->name, repo->name_size, repo->name);
 
     if (self->classname_size) {
-        /* TODO */
         if (DEBUG_PROC_ARG_LEVEL_TMP)
             knd_log(".. resolving arg class template: %.*s..",
                     self->classname_size, self->classname);
+        entry = repo->class_name_idx->get(repo->class_name_idx,
+                                          self->classname, self->classname_size);
+        if (!entry) {
+            knd_log("-- no such class: %.*s",
+                    self->classname_size, self->classname);
+        return knd_FAIL;
+        }
     }
+
 
     if (self->proc_call) {
         // TODO: resolve proc call
     }
 
 
+    
     return knd_OK;
 }
 
@@ -650,15 +589,6 @@ int knd_proc_arg_resolve_inst(struct kndProcArg *self,
 
     return knd_OK;
 }
-
-extern void kndProcArgInstance_init(struct kndProcArgInstance *self)
-{
-    memset(self, 0, sizeof(struct kndProcArgInstance));
-}
-//extern void kndProcArgInstRef_init(struct kndProcArgInstRef *self)
-//{
-//    memset(self, 0, sizeof(struct kndProcArgInstRef));
-//}
 
 
 int knd_proc_arg_ref_new(struct kndMemPool *mempool,

@@ -913,8 +913,6 @@ static int parse_GSL(struct kndTask *task,
     return knd_OK;
 }
 
-
-
 static int write_filepath(struct glbOutput *out,
                           struct kndConcFolder *folder)
 {
@@ -1036,11 +1034,92 @@ static int read_GSL_file(struct kndRepo *repo,
     return knd_OK;
 }
 
+int knd_repo_index_proc_arg(struct kndRepo *repo,
+                            struct kndProc *proc,
+                            struct kndProcArg *arg,
+                            struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->mempool;
+    struct kndSet *arg_idx = repo->proc_arg_idx;
+    struct ooDict *arg_name_idx = repo->proc_arg_name_idx;
+    struct kndProcArgRef *arg_ref, *prev_arg_ref;
+    int err;
+
+    repo->num_proc_args++;
+    arg->numid = repo->num_proc_args;
+    knd_uid_create(arg->numid, arg->id, &arg->id_size);
+
+    err = knd_proc_arg_ref_new(mempool, &arg_ref);
+    if (err) {
+        return err;
+    }
+    arg_ref->arg = arg;
+    arg_ref->proc = proc;
+
+    /* global indices */
+    prev_arg_ref = arg_name_idx->get(arg_name_idx,
+                                     arg->name, arg->name_size);
+    arg_ref->next = prev_arg_ref;
+
+    if (prev_arg_ref) {
+        //knd_log("-- dict remove");
+        err = arg_name_idx->remove(arg_name_idx,
+                                   arg->name, arg->name_size);           RET_ERR();
+    }
+
+    err = arg_name_idx->set(arg_name_idx,
+                             arg->name, arg->name_size,
+                             (void*)arg_ref);                              RET_ERR();
+
+    err = arg_idx->add(arg_idx,
+                        arg->id, arg->id_size,
+                        (void*)arg_ref);                                   RET_ERR();
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("++ new primary arg: \"%.*s\" (id:%.*s)",
+                arg->name_size, arg->name, arg->id_size, arg->id);
+
+    return knd_OK;
+}
+
+static int resolve_procs(struct kndRepo *self,
+                         struct kndTask *task)
+{
+    struct kndProcEntry *entry;
+    const char *key;
+    void *val;
+    int err;
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log(".. resolving procs of repo \"%.*s\"..",
+                self->name_size, self->name);
+
+    key = NULL;
+    self->proc_name_idx->rewind(self->proc_name_idx);
+    do {
+        self->proc_name_idx->next_item(self->proc_name_idx, &key, &val);
+        if (!key) break;
+
+        entry = (struct kndProcEntry*)val;
+        if (entry->proc->is_resolved) {
+            continue;
+        }
+
+        err = knd_proc_resolve(entry->proc, task);
+        if (err) {
+            knd_log("-- couldn't resolve the \"%.*s\" proc",
+                    entry->proc->name_size, entry->proc->name);
+            return err;
+        }
+    } while (key);
+
+    return knd_OK;
+}
+
 static int kndRepo_open(struct kndRepo *self, struct kndTask *task)
 {
     struct glbOutput *out;
     struct kndClass *c;
-    struct kndProc *proc;
     struct kndClassInst *inst;
     struct stat st;
     int err;
@@ -1107,13 +1186,11 @@ static int kndRepo_open(struct kndRepo *self, struct kndTask *task)
                 return err;
             }
 
-            proc = self->root_proc;
-            err = knd_proc_coordinate(proc, task);
+            err = resolve_procs(self, task);
             if (err) {
-                knd_log("-- proc coordination failed");
+                knd_log("-- resolving of procs failed");
                 return err;
             }
-
             task->batch_mode = false;
         }
     }

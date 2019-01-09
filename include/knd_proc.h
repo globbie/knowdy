@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2018 by Dmitri Dmitriev
+ *   Copyright (c) 2011-present by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Graph DB, 
@@ -135,13 +135,8 @@ struct kndProc
 
     const char *result_classname;
     size_t result_classname_size;
-//    struct kndClass *result;
 
     size_t estim_cost_total;
-
-    //struct kndTask *task;
-    //struct kndVisualFormat *visual;
-
 
     bool is_resolved;
 
@@ -170,8 +165,6 @@ int knd_inner_proc_import(struct kndProc *self,
                           struct kndRepo *repo,
                           struct kndTask *task);
 
-int knd_proc_resolve(struct kndProc *self);
-
 int knd_get_proc(struct kndRepo *repo,
                  const char *name, size_t name_size,
                  struct kndProc **result);
@@ -194,6 +187,9 @@ gsl_err_t knd_proc_select(struct kndRepo *repo,
                           const char *rec,
                           size_t *total_size,
                           struct kndTask *task);
+
+int knd_proc_resolve(struct kndProc *self,
+                     struct kndTask *task);
 
 gsl_err_t knd_proc_import(struct kndRepo *repo,
                           const char *rec, size_t *total_size,
