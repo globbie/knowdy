@@ -30,6 +30,37 @@ struct glbOutput;
 struct kndProcCallArg;
 struct kndUpdate;
 
+struct kndProcInstEntry
+{
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    size_t numid;
+
+    const char *name;
+    size_t name_size;
+
+    //char *block;
+    //size_t block_size;
+    //size_t offset;
+    knd_state_phase phase;
+    struct kndProcInst *inst;
+};
+
+struct kndProcInst
+{
+    const char *name;
+    size_t name_size;
+
+    struct kndProcInstEntry *entry;
+    struct kndProc *base;
+
+    struct kndState *states;
+    size_t init_state;
+    size_t num_states;
+
+    struct kndProcInst *next;
+};
+
 struct kndProcEntry
 {
     char id[KND_ID_SIZE];
@@ -141,12 +172,8 @@ struct kndProc
     bool is_resolved;
 
     struct kndProc *next;
-
-    /******** public methods ********/
-    void (*str)(struct kndProc *self);
 };
 
-/* constructors */
 int knd_proc_new(struct kndMemPool *mempool,
                  struct kndProc **result);
 
@@ -157,7 +184,17 @@ int knd_proc_var_new(struct kndMemPool *mempool,
 int knd_proc_arg_var_new(struct kndMemPool *mempool,
                          struct kndProcArgVar **result);
 
-void knd_proc_init(struct kndProc *self);
+int knd_proc_inst_new(struct kndMemPool *mempool,
+                      struct kndProcInst **result);
+int knd_proc_inst_entry_new(struct kndMemPool *mempool,
+                            struct kndProcInstEntry **result);
+
+void knd_proc_str(struct kndProc *self, size_t depth);
+
+gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
+                                     const char *rec,
+                                     size_t *total_size,
+                                     struct kndTask *task);
 
 int knd_inner_proc_import(struct kndProc *self,
                           const char *rec,

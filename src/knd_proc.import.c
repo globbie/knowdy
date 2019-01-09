@@ -15,11 +15,11 @@
 #include <knd_class.h>
 #include <knd_repo.h>
 
-#define DEBUG_PROC_LEVEL_0 0
-#define DEBUG_PROC_LEVEL_1 0
-#define DEBUG_PROC_LEVEL_2 0
-#define DEBUG_PROC_LEVEL_3 0
-#define DEBUG_PROC_LEVEL_TMP 1
+#define DEBUG_PROC_IMPORT_LEVEL_0 0
+#define DEBUG_PROC_IMPORT_LEVEL_1 0
+#define DEBUG_PROC_IMPORT_LEVEL_2 0
+#define DEBUG_PROC_IMPORT_LEVEL_3 0
+#define DEBUG_PROC_IMPORT_LEVEL_TMP 1
 
 struct LocalContext {
     struct kndTask *task;
@@ -173,7 +173,7 @@ static gsl_err_t validate_do_arg(void *obj,
     struct kndProc *proc = ctx->proc;
     gsl_err_t err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
         knd_log(".. Proc Call Arg \"%.*s\" to validate: \"%.*s\"..",
                 name_size, name, 32, rec);
 
@@ -210,7 +210,7 @@ static gsl_err_t proc_call_parse(void *obj,
     struct LocalContext *ctx = obj;
     struct kndProc *self = ctx->proc;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_log(".. proc call parsing: \"%.*s\"..",
                 32, rec);
 
@@ -266,7 +266,7 @@ int knd_inner_proc_import(struct kndProc *proc,
                           struct kndRepo *repo,
                           struct kndTask *task)
 {
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
         knd_log(".. import an anonymous inner proc: %.*s..",
                 128, rec);
 
@@ -334,11 +334,108 @@ int knd_inner_proc_import(struct kndProc *proc,
         proc->tr = task->tr;
         task->tr = NULL;
     }
-    if (DEBUG_PROC_LEVEL_TMP)
-        proc->str(proc);
+    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
+        knd_proc_str(proc, 0);
 
     return knd_OK;
 }
+
+gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
+                                     const char *rec,
+                                     size_t *total_size,
+                                     struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->mempool;
+    struct kndProcInst *inst;
+    struct kndProcInstEntry *entry;
+    struct ooDict *name_idx;
+    struct kndRepo *repo = task->repo;
+    struct kndState *state;
+    struct kndStateRef *state_ref;
+    int err;
+
+    if (DEBUG_PROC_IMPORT_LEVEL_2) {
+        knd_log(".. import \"%.*s\" inst.. (repo:%.*s)",
+                128, rec,
+                repo->name_size, repo->name);
+    }
+
+    /* user ctx should have its own copy of a selected class */
+    /*if (self->entry->repo != repo) {
+        err = knd_proc_clone(self, repo, &proc, mempool);
+        if (err) return *total_size = 0, make_gsl_err_external(err);
+    }
+    */
+
+    err = knd_proc_inst_new(mempool, &inst);
+    if (err) {
+        knd_log("-- proc inst alloc failed");
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+
+    err = knd_state_new(mempool, &state);
+    if (err) {
+        knd_log("-- state alloc failed");
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+    err = knd_proc_inst_entry_new(mempool, &entry);
+    if (err) return make_gsl_err_external(err);
+
+    inst->entry = entry;
+    entry->inst = inst;
+    state->phase = KND_CREATED;
+    state->numid = 1;
+    inst->base = self;
+    inst->states = state;
+    inst->num_states = 1;
+
+    //parser_err = knd_proc_inst_import(inst, rec, total_size, task);
+    //if (parser_err.code) return parser_err;
+
+    err = knd_state_ref_new(mempool, &state_ref);
+    if (err) {
+        knd_log("-- state ref alloc for imported inst failed");
+        return make_gsl_err_external(err);
+    }
+    state_ref->state = state;
+    state_ref->type = KND_STATE_PROC_INST;
+    state_ref->obj = (void*)entry;
+
+    state_ref->next = task->class_inst_state_refs;
+    task->class_inst_state_refs = state_ref;
+
+    repo->num_proc_insts++;
+
+    inst->entry->numid = repo->num_proc_insts;
+    knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
+
+    if (DEBUG_PROC_IMPORT_LEVEL_2)
+        knd_log("++ %.*s proc inst parse OK!",
+                inst->name_size, inst->name,
+                self->name_size, self->name);
+
+    /* automatic name assignment if no explicit name given */
+    if (!inst->name_size) {
+        inst->name = inst->entry->id;
+        inst->name_size = inst->entry->id_size;
+    }
+    name_idx = repo->proc_inst_name_idx;
+
+    // TODO  lookup prev inst ref
+
+    err = name_idx->set(name_idx,
+                        inst->name, inst->name_size,
+                        (void*)entry);
+    if (err) return make_gsl_err_external(err);
+
+    //    err = knd_register_proc_inst(self, entry, mempool);
+    //if (err) return make_gsl_err_external(err);
+
+    task->type = KND_UPDATE_STATE;
+
+    return make_gsl_err(gsl_OK);
+}
+
 
 gsl_err_t knd_proc_import(struct kndRepo *repo,
                           const char *rec,
@@ -350,7 +447,7 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
     struct kndProc *proc;
     int err;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_log(".. import proc: \"%.*s\"..", 32, rec);
 
     err = knd_proc_entry_new(mempool, &entry);
@@ -469,8 +566,8 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
                                    (void*)proc->entry);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_PROC_LEVEL_TMP)
-        proc->str(proc);
+    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
+        knd_proc_str(proc, 0);
 
     return make_gsl_err(gsl_OK);
 }

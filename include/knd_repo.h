@@ -70,20 +70,17 @@ struct kndRepo
     size_t num_classes;
     size_t num_class_insts;
 
-    //struct kndStateRef  *curr_class_state_refs;
-    //struct kndStateRef  *curr_class_inst_state_refs;
-
     struct kndStateRef  *class_state_refs;
-
     struct ooDict  *attr_name_idx;
     struct kndSet  *attr_idx;
     size_t num_attrs;
-
     struct ooDict  *class_inst_name_idx;
 
     struct kndProc *root_proc;
     struct ooDict  *proc_name_idx;
     struct kndSet  *proc_idx;
+    struct ooDict  *proc_inst_name_idx;
+
     size_t num_procs;
     size_t num_proc_insts;
 
@@ -91,19 +88,11 @@ struct kndRepo
     struct kndSet  *proc_arg_idx;
     size_t num_proc_args;
 
-    // remove
-    //struct kndClassInst *curr_class_inst;
-    struct kndAttrVar    *curr_attr_var;
-    struct kndClassInst  *curr_inst;
-
     struct kndUpdate *updates;
     size_t max_updates;
     size_t num_updates;
 
     struct kndRepo *next;
-
-    //void (*del)(struct kndRepo *self);
-    //void (*str)(struct kndRepo *self);
 };
 
 int knd_present_repo_state(struct kndRepo *self,

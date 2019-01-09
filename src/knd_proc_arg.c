@@ -384,7 +384,7 @@ gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
 
 static gsl_err_t set_inst_procname(void *unused_var(obj), const char *unused_var(name), size_t name_size)
 {
-    //struct kndProcArgInstance *self = obj;
+    //struct kndProcArgInst *self = obj;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -401,7 +401,7 @@ static gsl_err_t set_inst_procname(void *unused_var(obj), const char *unused_var
 
 static gsl_err_t set_inst_objname(void *obj, const char *name, size_t name_size)
 {
-    struct kndProcArgInstance *self = obj;
+    struct kndProcArgInst *self = obj;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -421,7 +421,7 @@ static gsl_err_t parse_inst_obj(void *data,
                                 const char *rec,
                                 size_t *total_size)
 {
-    struct kndProcArgInstance *inst = data;
+    struct kndProcArgInst *inst = data;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -437,7 +437,7 @@ static gsl_err_t parse_inst_class(void *data,
                                   const char *rec,
                                   size_t *total_size)
 {
-    struct kndProcArgInstance *self = data;
+    struct kndProcArgInst *self = data;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -455,7 +455,7 @@ static gsl_err_t parse_inst_class(void *data,
 }
 
 int knd_parse_inst_GSL(struct kndProcArg *self,
-                       struct kndProcArgInstance *inst,
+                       struct kndProcArgInst *inst,
                        const char *rec,
                        size_t *total_size)
 {
@@ -479,7 +479,7 @@ int knd_parse_inst_GSL(struct kndProcArg *self,
 }
 
 /*static int link_proc(struct kndProcArg *self,
-                    struct kndProcArgInstance *inst,
+                    struct kndProcArgInst *inst,
                     struct kndObjEntry *obj_entry)
 {
     struct kndProc *proc = self->proc;
@@ -513,7 +513,7 @@ int knd_parse_inst_GSL(struct kndProcArg *self,
 }
 */
 
-int knd_proc_resolve_arg(struct kndProcArg *self,
+int knd_proc_arg_resolve(struct kndProcArg *self,
                          struct kndRepo *repo)
 {
     //struct kndProcEntry *entry;
@@ -532,24 +532,20 @@ int knd_proc_resolve_arg(struct kndProcArg *self,
         if (!entry) {
             knd_log("-- no such class: %.*s",
                     self->classname_size, self->classname);
-        return knd_FAIL;
+            return knd_FAIL;
         }
     }
-
 
     if (self->proc_call) {
         // TODO: resolve proc call
     }
-
-
     
     return knd_OK;
 }
 
 int knd_proc_arg_resolve_inst(struct kndProcArg *self,
-                              struct kndProcArgInstance *inst)
+                              struct kndProcArgInst *inst)
 {
-    //struct kndProcEntry *proc_entry;
     struct kndProcEntry *entry;
     struct kndRepo *repo = self->parent->entry->repo;
     struct kndObjEntry *obj;
@@ -557,7 +553,7 @@ int knd_proc_arg_resolve_inst(struct kndProcArg *self,
     entry = repo->class_name_idx->get(repo->class_name_idx,
                                       inst->procname, inst->procname_size);
     if (!entry) {
-        knd_log("-- no such class: %.*s :(",
+        knd_log("-- no such proc: %.*s",
                 inst->procname_size, inst->procname);
         return knd_FAIL;
     }
@@ -579,7 +575,8 @@ int knd_proc_arg_resolve_inst(struct kndProcArg *self,
             inst->obj = obj;
 
             if (DEBUG_PROC_ARG_LEVEL_2)
-                knd_log("++ obj resolved: \"%.*s\"!",  inst->objname_size, inst->objname);
+                knd_log("++ obj resolved: \"%.*s\"!",
+                        inst->objname_size, inst->objname);
         }
     }
 
@@ -590,6 +587,15 @@ int knd_proc_arg_resolve_inst(struct kndProcArg *self,
     return knd_OK;
 }
 
+int knd_proc_arg_inst_new(struct kndMemPool *mempool,
+                          struct kndProcArgInst **self)
+{
+    int err = knd_mempool_alloc(mempool,
+                                KND_MEMPAGE_TINY,
+                                sizeof(struct kndProcArgInst),
+                                (void**)self);                      RET_ERR();
+    return knd_OK;
+}
 
 int knd_proc_arg_ref_new(struct kndMemPool *mempool,
                          struct kndProcArgRef **self)

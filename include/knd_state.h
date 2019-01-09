@@ -46,13 +46,15 @@ typedef enum knd_update_confirm { KND_INIT_STATE,
 } knd_update_confirm;
 
 typedef enum knd_state_type { KND_STATE_CLASS,
-                               KND_STATE_CLASS_VAR,
-                               KND_STATE_ATTR,
-                               KND_STATE_ATTR_VAR,
-                               KND_STATE_CLASS_DESCENDANT,
-                               KND_STATE_CLASS_INST,
-                               KND_STATE_CLASS_INST_INNER,
-                               KND_STATE_CLASS_INST_ELEM
+                              KND_STATE_CLASS_VAR,
+                              KND_STATE_ATTR,
+                              KND_STATE_ATTR_VAR,
+                              KND_STATE_CLASS_DESCENDANT,
+                              KND_STATE_CLASS_INST,
+                              KND_STATE_CLASS_INST_INNER,
+                              KND_STATE_CLASS_INST_ELEM,
+                              KND_STATE_PROC,
+                              KND_STATE_PROC_INST
 } knd_state_type;
 
 struct kndRelUpdate

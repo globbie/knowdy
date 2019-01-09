@@ -75,15 +75,15 @@ static void proc_base_str(struct kndProcVar *self,
             self->name_size, self->name);
 }
 
-static void str(struct kndProc *self)
+void knd_proc_str(struct kndProc *self, size_t depth)
 {
     struct kndTranslation *tr;
     struct kndProcArg *arg;
     struct kndProcCallArg *call_arg;
     struct kndProcVar *base;
-    size_t depth = 0;
 
-    knd_log("{proc %.*s  {_id %.*s}",
+    knd_log("%*s{proc %.*s  {_id %.*s}",
+            depth * KND_OFFSET_SIZE, "",
             self->name_size, self->name,
             self->entry->id_size, self->entry->id);
 
@@ -117,7 +117,8 @@ static void str(struct kndProc *self)
         }
         knd_log("%*s    }", depth * KND_OFFSET_SIZE, "");
     }
-    knd_log("}");
+    knd_log("%*s}",
+            depth * KND_OFFSET_SIZE, "");
 }
 
 
@@ -202,8 +203,21 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
     self->inbox = proc;
     self->inbox_size++;
     */
-
     return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t
+parse_proc_inst_import(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+
+    if (!ctx->proc) {
+        knd_log("-- proc not selected");
+        int err = ctx->task->log->writef(ctx->task->log, "proc not selected");
+        if (err) return *total_size = 0, make_gsl_err_external(err);
+        return *total_size = 0, make_gsl_err_external(knd_FAIL);
+    }
+    return knd_proc_inst_parse_import(ctx->proc, rec, total_size, ctx->task);
 }
 
 gsl_err_t knd_proc_select(struct kndRepo *repo,
@@ -218,8 +232,8 @@ gsl_err_t knd_proc_select(struct kndRepo *repo,
     gsl_err_t parser_err;
 
     if (DEBUG_PROC_LEVEL_TMP)
-        knd_log(".. parsing Proc select: \"%.*s\" repo:%p",
-                16, rec, repo);
+        knd_log(".. parsing Proc select: \"%.*s\"",
+                16, rec);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -232,13 +246,13 @@ gsl_err_t knd_proc_select(struct kndRepo *repo,
           .name_size = strlen("_rm"),
           .run = remove_proc,
           .obj = &ctx
-        }/*,
+        },
         { .type = GSL_SET_STATE,
           .name = "inst",
           .name_size = strlen("inst"),
-          .parse = parse_import_instance,
-          .obj = self
-          }*/,
+          .parse = parse_proc_inst_import,
+          .obj = &ctx
+        },
         { .is_default = true,
           .run = present_proc_selection,
           .obj = &ctx
@@ -353,11 +367,6 @@ int knd_get_proc(struct kndRepo *repo,
     return knd_FAIL;
 }
 
-void knd_proc_init(struct kndProc *self)
-{
-    self->str = str;
-}
-
 int knd_proc_call_arg_new(struct kndMemPool *mempool,
                           struct kndProcCallArg **result)
 {
@@ -402,6 +411,28 @@ int knd_proc_arg_var_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
+int knd_proc_inst_entry_new(struct kndMemPool *mempool,
+                            struct kndProcInstEntry **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                            sizeof(struct kndProcInstEntry), &page);                  RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
+int knd_proc_inst_new(struct kndMemPool *mempool,
+                      struct kndProcInst **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                            sizeof(struct kndProcInst), &page);                       RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
 int knd_proc_entry_new(struct kndMemPool *mempool,
                        struct kndProcEntry **result)
 {
@@ -421,6 +452,5 @@ int knd_proc_new(struct kndMemPool *mempool,
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
                             sizeof(struct kndProc), &page);                       RET_ERR();
     *result = page;
-    knd_proc_init(*result);
     return knd_OK;
 }

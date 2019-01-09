@@ -162,7 +162,7 @@ int knd_proc_resolve(struct kndProc *self,
     }
 
     for (arg = self->args; arg; arg = arg->next) {
-        err = knd_proc_resolve_arg(arg, task->repo);                              RET_ERR();
+        err = knd_proc_arg_resolve(arg, task->repo);                              RET_ERR();
 
         /* no conflicts detected, register a new arg in repo */
         err = knd_repo_index_proc_arg(task->repo, self, arg, task);               RET_ERR();
