@@ -227,7 +227,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     }
 
  doublet:
-    knd_log("-- \"%.*s\" class doublet found :(", name_size, name);
+    knd_log("-- \"%.*s\" class doublet found", name_size, name);
     log->reset(log);
     err = log->write(log, name, name_size);
     if (err) return make_gsl_err_external(err);
@@ -464,6 +464,7 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
     struct kndMemPool *mempool = task->mempool;
     struct kndClass *c;
     struct kndClassEntry *entry;
+    struct ooDict *class_name_idx;
     int err;
     gsl_err_t parser_err;
 
@@ -577,12 +578,26 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
     if (task->batch_mode) return make_gsl_err(gsl_OK);
 
     err = knd_class_resolve(c, task);
-    if (err) return make_gsl_err_external(err);
+    if (err) {
+        parser_err = make_gsl_err_external(err);
+        goto final;
+    }
 
     err = knd_update_state(c, KND_CREATED, task);
-    if (err) return make_gsl_err_external(err);
+    if (err) {
+        parser_err = make_gsl_err_external(err);
+        goto final;
+    }
 
     return make_gsl_err(gsl_OK);
+
  final:
+
+    /* clean up */
+    class_name_idx = repo->class_name_idx;
+    class_name_idx->remove(class_name_idx, c->name, c->name_size);
+
+    // TODO free resources
+    
     return parser_err;
 }

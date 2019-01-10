@@ -271,6 +271,7 @@ static int resolve_baseclasses(struct kndClass *self,
     struct kndClassVar *cvar;
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
+    struct glbOutput *log = task->log;
     const char *classname;
     size_t classname_size;
     int err;
@@ -311,6 +312,9 @@ static int resolve_baseclasses(struct kndClass *self,
                                 classname, classname_size, &c, task);
             if (err) {
                 knd_log("-- no such class: %.*s", classname_size, classname);
+                log->reset(log);
+                log->writef(log, "%.*s class name not found",
+                            classname_size, classname);
                 return err;
             }
         }

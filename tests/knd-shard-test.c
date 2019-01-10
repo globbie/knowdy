@@ -160,7 +160,7 @@ START_TEST(shard_table_test)
         },
         {
             .input = "{task {class Person}}",
-            .expect = "{\"err\":\"Person class name not found\",\"http_code\":404}"
+            .expect = "{err 404{_gloss Person class name not found}}"
         },
         {
             .input = "{task {!class Person {num age}}}",
@@ -168,12 +168,12 @@ START_TEST(shard_table_test)
         },
         {
             .input = "{task {!class Person}}",
-            .expect = "{\"err\":\"Person class name already exists\",\"http_code\":409}"
+            .expect = "{err 409{_gloss Person class name already exists}}"
         },
-//        {
-//            .input = "{task {!class Worker {is PersonUnknown}}}",
-//            .expect = "{\"err\":\"internal server error\",\"http_code\":404}"  // TODO(k15tfu): fix this
-//        },
+        {
+            .input = "{task {!class Worker {is PersonUnknown}}}",
+            .expect = "{err 404{_gloss PersonUnknown class name not found}}"
+        },
         {
             .input = "{task {!class Worker {is Person}}}",
             .expect = "{repo /{_state 2}{modif [0-9]*}}"
@@ -188,7 +188,7 @@ START_TEST(shard_table_test)
         },
         {
             .input = "{task {class User {!inst {unknown-field some value}}}}",
-            .expect = "{\"err\":\"unclassified server error\",\"http_code\":404}"
+            .expect = "{err 500{_gloss unclassified server error}}"
         },
         {
             .input = "{task {class User {inst Alice}}}",
@@ -201,7 +201,7 @@ START_TEST(shard_table_test)
         // get class
         {
             .input = "{task {class Person}}",
-            .expect = "{class Person{_id 2}{_repo /}{_state 1{phase new}}\\[attrs{num age}]{_subclasses {total 1} {num_terminals 1}\\[batch{Worker{_id 3}}]}}"
+            .expect = "{class Person{_id 2}{_repo /}{_state 1{phase new}}\\[attrs{num age}]{_subclasses {total 1} {num_terminals 1}\\[batch{Worker{_id 4}}]}}"
         },
         {
             .input = "{task {class {_id 2}}}",
@@ -395,14 +395,18 @@ END_TEST
 /** PROC **/
 START_TEST(shard_proc_test)
     static const struct table_test cases[] = {
-        {   /* create new proc */
+        {   /* create a new proc */
             .input  = "{task {!proc test Process}}",
             .expect = "{repo /{_state 1}{modif [0-9]*}}"
         },
-        {
+        {   /* try to import the same proc */
             .input = "{task {!proc test Process}}",
-            .expect = "{\"err\":\"test Process proc name already exists\",\"http_code\":409}"
-        }
+            .expect = "{err 409{_gloss test Process proc name already exists}}"
+        }//,
+        //{   /* remove proc */
+        //    .input = "{task {proc test Process {!_rm}}}",
+        //    .expect = "{repo /{_state 2}{modif [0-9]*}}"
+        //}
     };
     struct kndShard *shard;
     int err;
