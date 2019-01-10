@@ -170,13 +170,13 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndProc *proc = ctx->proc;
+    struct ooDict *proc_name_idx = ctx->repo->proc_name_idx;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. removing proc: %.*s", name_size, name);
 
     if (!proc) {
         knd_log("-- remove operation: no proc selected");
-
         /*repo->log->reset(repo->log);
         err = repo->log->write(repo->log, name, name_size);
         if (err) return make_gsl_err_external(err);
@@ -186,11 +186,14 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_NO_MATCH);
     }
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log("== proc to remove: \"%.*s\"\n",
                 proc->name_size, proc->name);
 
     proc->entry->phase = KND_REMOVED;
+
+    proc_name_idx->remove(proc_name_idx,
+                          proc->name, proc->name_size);
 
     //repo->log->reset(repo->log);
     /*err = repo->log->write(repo->log, proc->name, proc->name_size);
@@ -198,10 +201,6 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
     err = repo->log->write(repo->log, " proc removed",
                            strlen(" proc removed"));
     if (err) return make_gsl_err_external(err);
-    */
-    /*    proc->next = self->inbox;
-    self->inbox = proc;
-    self->inbox_size++;
     */
     return make_gsl_err(gsl_OK);
 }

@@ -97,7 +97,7 @@ static gsl_err_t parse_class_import(void *obj,
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->self;
 
-    if (DEBUG_TASK_LEVEL_TMP)
+    if (DEBUG_TASK_LEVEL_2)
         knd_log(".. parsing the system class import: \"%.*s\"..", 64, rec);
 
     task->type = KND_UPDATE_STATE;
@@ -108,21 +108,6 @@ static gsl_err_t parse_class_import(void *obj,
     return knd_class_import(ctx->shard->repo, rec, total_size, task);
 }
 
-static gsl_err_t parse_proc_import(void *obj,
-                                   const char *rec,
-                                   size_t *total_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->self;
-
-    if (DEBUG_TASK_LEVEL_TMP)
-        knd_log(".. parsing the system proc import: \"%.*s\"..", 64, rec);
-
-    task->type = KND_UPDATE_STATE;
-
-    return knd_proc_import(ctx->shard->repo, rec, total_size, task);
-}
-
 static gsl_err_t parse_class_select(void *obj,
                                     const char *rec,
                                     size_t *total_size)
@@ -130,13 +115,41 @@ static gsl_err_t parse_class_select(void *obj,
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->self;
 
-    if (DEBUG_TASK_LEVEL_TMP)
+    if (DEBUG_TASK_LEVEL_2)
         knd_log(".. parsing the system class select: \"%.*s\"", 64, rec);
 
     // FIXME(k15tfu): used by knd_attr
     task->repo = ctx->shard->repo;
 
     return knd_class_select(ctx->shard->repo, rec, total_size, task);
+}
+
+static gsl_err_t parse_proc_import(void *obj,
+                                   const char *rec,
+                                   size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->self;
+
+    if (DEBUG_TASK_LEVEL_2)
+        knd_log(".. parsing the system proc import: \"%.*s\"..", 64, rec);
+
+    task->type = KND_UPDATE_STATE;
+
+    return knd_proc_import(ctx->shard->repo, rec, total_size, task);
+}
+
+static gsl_err_t parse_proc_select(void *obj,
+                                    const char *rec,
+                                    size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->self;
+
+    if (DEBUG_TASK_LEVEL_2)
+        knd_log(".. parsing the system proc select: \"%.*s\"", 64, rec);
+
+    return knd_proc_select(ctx->shard->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_update(void *obj,
@@ -210,6 +223,11 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
           .name = "proc",
           .name_size = strlen("proc"),
           .parse = parse_proc_import,
+          .obj = ctx
+        },
+        { .name = "proc",
+          .name_size = strlen("proc"),
+          .parse = parse_proc_select,
           .obj = ctx
         },
         { .name = "repo",

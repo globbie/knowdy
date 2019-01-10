@@ -128,10 +128,10 @@ int knd_class_coordinate(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_get_class_inst(struct kndClass *self,
-                              const char *name, size_t name_size,
-                              struct kndTask *task,
-                              struct kndClassInst **result)
+int knd_get_class_inst(struct kndClass *self,
+                       const char *name, size_t name_size,
+                       struct kndTask *task,
+                       struct kndClassInst **result)
 {
     struct kndClassInstEntry *entry;
     struct kndClassInst *obj;

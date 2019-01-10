@@ -402,11 +402,30 @@ START_TEST(shard_proc_test)
         {   /* try to import the same proc */
             .input = "{task {!proc test Process}}",
             .expect = "{err 409{_gloss test Process proc name already exists}}"
-        }//,
-        //{   /* remove proc */
-        //    .input = "{task {proc test Process {!_rm}}}",
-        //    .expect = "{repo /{_state 2}{modif [0-9]*}}"
-        //}
+        },
+        {   /* remove proc */
+            .input = "{task {proc test Process {!_rm}}}",
+            .expect = "{}"
+        },
+        {   /* create a proc once more */
+            .input  = "{task {!proc test Process}}",
+            .expect = "{repo /{_state 2}{modif [0-9]*}}"
+        },
+        {   /* create a proc with glosses */
+            .input  = "{task {!proc another test Process"
+                      "[_gloss {en {t gloss in English}}"
+                      "{ru {t пояснение по-русски}}]}}",
+            .expect = "{repo /{_state 3}{modif [0-9]*}}"
+        },
+        {   /* proc with a base */
+            .input  = "{task {!proc press {is Physical Impact Process}}}",
+            .expect = "{repo /{_state 4}{modif [0-9]*}}"
+        },
+        {   /* proc with args */
+            .input  = "{task {!proc cut {is Physical Impact Process}"
+                      "[arg {instr {_c Physical Object}}]}}",
+            .expect = "{repo /{_state 5}{modif [0-9]*}}"
+        }
     };
     struct kndShard *shard;
     int err;

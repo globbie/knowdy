@@ -711,7 +711,6 @@ run_remove_class(void *obj, const char *unused_var(name), size_t name_size)
     //         for deleted classes from base repo
     ctx->task->type = KND_UPDATE_STATE;
     ctx->task->phase = KND_REMOVED;
-
     return make_gsl_err(gsl_OK);
 #endif
 }
@@ -725,7 +724,7 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
 
     /* select a set of classes by base class */
     if (ctx->selected_base) {
-        /* 
+        /** 
          *  if no sets are selected - 
          *  present all descendants of a class if any
          */
@@ -984,7 +983,6 @@ extern int knd_class_match_query(struct kndClass *self,
         if (!attr_var->val || !attr_var->numval) {
             return knd_NO_MATCH;
         }
-        
         err = knd_attr_var_match(attr_ref->attr_var, attr_var);
         if (err == knd_NO_MATCH) {
             switch (logic) {
@@ -995,7 +993,6 @@ extern int knd_class_match_query(struct kndClass *self,
             }
             continue;
         }
-
         /* got a match */
         switch (logic) {
             case KND_LOGIC_OR:
