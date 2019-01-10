@@ -180,7 +180,7 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
 
     // TODO
     task = self->workers[0];
-    err = kndRepo_init(repo, task);
+    err = knd_repo_open(repo, task);
     if (err != knd_OK) goto error;
     self->repo = repo;
 

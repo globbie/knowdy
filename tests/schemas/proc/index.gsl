@@ -1,0 +1,31 @@
+{schema knd-proc-test
+
+   {!proc Process
+       [_gloss {ru {t процесс как изменение реальности}}]}
+
+   {!proc Natural Process
+       [_gloss {ru {t естественный процесс}}]
+       {is Process}}
+
+   {!proc Agent Driven Process
+      [_gloss {ru {t агентивный процесс}}]
+      {is Process}
+      [arg {agent {_c Agent}}]}
+
+   {!proc Physical Impact Process
+      [_gloss {ru {t процесс физического воздействия на объект}}]
+      {is Agent Driven Process}
+      [arg {obj {_c Physical Object}}]}
+
+{-- classes --}
+{!class Object}
+
+{!class Abstract Object
+    {is Object}}
+
+{!class Physical Object
+    {is Object}}
+
+{!class Agent}
+
+}

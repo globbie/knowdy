@@ -1,6 +1,7 @@
 #include "knd_task.h"
 
 #include "knd_class.h"
+#include "knd_proc.h"
 #include "knd_repo.h"
 #include "knd_shard.h"
 #include "knd_user.h"
@@ -107,6 +108,21 @@ static gsl_err_t parse_class_import(void *obj,
     return knd_class_import(ctx->shard->repo, rec, total_size, task);
 }
 
+static gsl_err_t parse_proc_import(void *obj,
+                                   const char *rec,
+                                   size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->self;
+
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log(".. parsing the system proc import: \"%.*s\"..", 64, rec);
+
+    task->type = KND_UPDATE_STATE;
+
+    return knd_proc_import(ctx->shard->repo, rec, total_size, task);
+}
+
 static gsl_err_t parse_class_select(void *obj,
                                     const char *rec,
                                     size_t *total_size)
@@ -190,6 +206,12 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
           .parse = parse_class_select,
           .obj = ctx
         },
+        { .type = GSL_SET_STATE,
+          .name = "proc",
+          .name_size = strlen("proc"),
+          .parse = parse_proc_import,
+          .obj = ctx
+        },
         { .name = "repo",
           .name_size = strlen("repo"),
           .parse = knd_parse_repo,
@@ -210,10 +232,11 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
         goto cleanup;
     }
 
+    /* any system repo updates? */
     switch (self->type) {
     case KND_UPDATE_STATE:
         if (!self->update_confirmed) {
-            err = knd_confirm_state(self->repo, self);
+            err = knd_confirm_state(ctx->shard->repo, self);
             if (err) return make_gsl_err_external(err);
         }
         break;
@@ -228,7 +251,8 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
     return parser_err;
 }
 
-gsl_err_t knd_select_task(struct kndTask *self, const char *rec, size_t *total_size, struct kndShard *shard)
+gsl_err_t knd_select_task(struct kndTask *self, const char *rec, size_t *total_size,
+                          struct kndShard *shard)
 {
     struct LocalContext ctx = { self, shard };
     struct gslTaskSpec specs[] = {

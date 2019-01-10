@@ -439,80 +439,6 @@ static int present_repo_state_GSL(struct kndRepo *self,
     return knd_OK;
 }
 
-extern int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
-{
-    struct kndUpdate *update;
-    struct kndMemPool *mempool = task->mempool;
-    struct glbOutput *out = task->out;
-    struct kndStateRef *ref, *child_ref;
-    struct kndState *state;
-    struct kndClassEntry *entry;
-    int err;
-
-    if (DEBUG_REPO_LEVEL_TMP) {
-        knd_log(".. \"%.*s\" repo to confirm updates.. class refs:%p",
-                self->name_size, self->name,
-                self->class_state_refs);
-    }
-
-    // update flag off
-    task->update_confirmed = true;
-
-    err = knd_update_new(mempool, &update);                                      RET_ERR();
-    update->repo = self;
-
-    // TODO: check conflicts
-
-    for (ref = self->class_state_refs; ref; ref = ref->next) {
-        entry = ref->obj;
-        if (entry) {
-            knd_log(".. repo %.*s to confirm updates in \"%.*s\"..",
-                    self->name_size, self->name,
-                    entry->name_size, entry->name);
-        }
-
-        state = ref->state;
-        state->update = update;
-        if (!state->children) continue;
-
-        for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
-            entry = child_ref->obj;
-            /*if (entry) {
-                knd_log("  == class:%.*s", entry->name_size, entry->name);
-                }*/
-            state = child_ref->state;
-            state->update = update;
-        }
-    }
-
-    // TODO atomics
-    update->class_state_refs = self->class_state_refs;
-    self->class_state_refs = NULL;
-    self->num_updates++;
-    update->numid = self->num_updates;
-    update->next = self->updates;
-    self->updates = update;
-
-    // delegate to the caller
-    update->timestamp = time(NULL);
-
-
-    // NB: transaction atomically confirmed here
-    update->confirm = KND_VALID_STATE;
-
-    // TODO: build update GSP
-
-    switch (task->format) {
-    case KND_FORMAT_JSON:
-        err = present_repo_state_JSON(self, out);   RET_ERR();
-        break;
-    default:
-        err = present_repo_state_GSL(self, out);    RET_ERR();
-        break;
-    }
-
-    return knd_OK;
-}
 
 static int select_update_range(struct kndRepo *self,
                                size_t gt, size_t lt,
@@ -1116,7 +1042,7 @@ static int resolve_procs(struct kndRepo *self,
     return knd_OK;
 }
 
-static int kndRepo_open(struct kndRepo *self, struct kndTask *task)
+int knd_repo_open(struct kndRepo *self, struct kndTask *task)
 {
     struct glbOutput *out;
     struct kndClass *c;
@@ -1214,7 +1140,81 @@ static int kndRepo_open(struct kndRepo *self, struct kndTask *task)
     return knd_OK;
 }
 
-extern int knd_present_repo_state(struct kndRepo *self,
+int knd_confirm_state(struct kndRepo *self, struct kndTask *task)
+{
+    struct kndUpdate *update;
+    struct kndMemPool *mempool = task->mempool;
+    struct glbOutput *out = task->out;
+    struct kndStateRef *ref, *child_ref;
+    struct kndState *state;
+    struct kndClassEntry *entry;
+    int err;
+
+    if (DEBUG_REPO_LEVEL_TMP) {
+        knd_log(".. \"%.*s\" repo to confirm updates..",
+                self->name_size, self->name);
+    }
+
+    // update flag off
+    task->update_confirmed = true;
+
+    err = knd_update_new(mempool, &update);                                      RET_ERR();
+    update->repo = self;
+
+    // TODO: check conflicts
+
+    for (ref = self->class_state_refs; ref; ref = ref->next) {
+        entry = ref->obj;
+        if (entry) {
+            knd_log(".. repo %.*s to confirm updates in \"%.*s\"..",
+                    self->name_size, self->name,
+                    entry->name_size, entry->name);
+        }
+
+        state = ref->state;
+        state->update = update;
+        if (!state->children) continue;
+
+        for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
+            entry = child_ref->obj;
+            /*if (entry) {
+                knd_log("  == class:%.*s", entry->name_size, entry->name);
+                }*/
+            state = child_ref->state;
+            state->update = update;
+        }
+    }
+
+    // TODO atomics
+    update->class_state_refs = self->class_state_refs;
+    self->class_state_refs = NULL;
+    self->num_updates++;
+    update->numid = self->num_updates;
+    update->next = self->updates;
+    self->updates = update;
+
+    // delegate to the caller
+    update->timestamp = time(NULL);
+
+
+    // NB: transaction atomically confirmed here
+    update->confirm = KND_VALID_STATE;
+
+    // TODO: build update GSP
+
+    switch (task->format) {
+    case KND_FORMAT_JSON:
+        err = present_repo_state_JSON(self, out);   RET_ERR();
+        break;
+    default:
+        err = present_repo_state_GSL(self, out);    RET_ERR();
+        break;
+    }
+
+    return knd_OK;
+}
+
+int knd_present_repo_state(struct kndRepo *self,
                                   struct kndTask *task)
 {
     int err;
@@ -1226,17 +1226,17 @@ extern int knd_present_repo_state(struct kndRepo *self,
     return knd_OK;
 }
 
-extern int kndRepo_init(struct kndRepo *self,
+/*extern int kndRepo_init(struct kndRepo *self,
                         struct kndTask *task)
 {
     int err;
 
     knd_log("== open repo:%.*s", self->name_size, self->name);
-
     err = kndRepo_open(self, task);
     if (err) return err;
     return knd_OK;
 }
+*/
 
 extern int knd_conc_folder_new(struct kndMemPool *mempool,
                                struct kndConcFolder **result)

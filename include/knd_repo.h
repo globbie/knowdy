@@ -109,6 +109,7 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
                             struct kndProcArg *arg,
                             struct kndTask *task);
 
+int knd_repo_open(struct kndRepo *self, struct kndTask *task);
+
 void knd_repo_del(struct kndRepo *self);
-int kndRepo_init(struct kndRepo *self, struct kndTask *task);
 int kndRepo_new(struct kndRepo **self, struct kndMemPool *mempool);

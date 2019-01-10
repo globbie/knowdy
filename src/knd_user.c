@@ -333,7 +333,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
         repo->base = self->repo;
         ctx->repo = repo;
 
-        err = kndRepo_init(repo, task);
+        err = knd_repo_open(repo, task);
         if (err) return make_gsl_err_external(err);
 
         err = self->user_idx->add(self->user_idx,
@@ -579,8 +579,7 @@ extern int kndUser_init(struct kndUser *self,
     memcpy(repo->name, self->repo_name, self->repo_name_size);
     repo->name_size = self->repo_name_size;
 
-    err = kndRepo_init(repo, task);
-    if (err) return err;
+    err = knd_repo_open(repo, task);                                              RET_ERR();
 
     return knd_OK;
 }

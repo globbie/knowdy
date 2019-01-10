@@ -436,7 +436,6 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
     return make_gsl_err(gsl_OK);
 }
 
-
 gsl_err_t knd_proc_import(struct kndRepo *repo,
                           const char *rec,
                           size_t *total_size,
@@ -540,12 +539,16 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
         } else {
             knd_log("-- %.*s proc name doublet found",
                     proc->name_size, proc->name);
+            struct glbOutput *log = task->log;
+            log->reset(log);
+            err = log->write(log, proc->name, proc->name_size);
+            if (err) return make_gsl_err_external(err);
+            err = log->write(log,   " proc name already exists",
+                             strlen(" proc name already exists"));
+            if (err) return make_gsl_err_external(err);
+            task->http_code = HTTP_CONFLICT;
 
-            /*root_proc->entry->repo->log->reset(root_proc->entry->repo->log);
-            err = root_proc->entry->repo->log->writef(root_proc->entry->repo->log,
-                                                      "%*s proc name already exists",
-                                                      proc->name_size, proc->name);
-                                                      if (err) return make_gsl_err_external(err); */
+            // TODO: free proc?
             return make_gsl_err_external(knd_EXISTS);
         }
     }

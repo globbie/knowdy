@@ -10,7 +10,6 @@
 // todo(n.rodionov): make paths configurable
 static const char *shard_config =
 "{schema knd"
-"  {agent 007}"
 "  {db-path .}"
 "  {schema-path ../../tests/schemas/system"
 "    {user User"
@@ -27,9 +26,24 @@ static const char *shard_config =
 
 static const char *shard_inheritance_config =
 "{schema knd"
-"  {agent 007}"
 "  {db-path .}"
 "  {schema-path ../../tests/schemas/food"
+"    {user User"
+"       {base-repo test"
+"         {schema-path ../../tests/schemas/test}}}}"
+"  {memory"
+"    {max_base_pages      20000}"
+"    {max_small_x4_pages  4500}"
+"    {max_small_x2_pages  150000}"
+"    {max_small_pages     23000}"
+"    {max_tiny_pages      200000}"
+"  }"
+"}";
+
+static const char *shard_proc_config =
+"{schema knd"
+"  {db-path .}"
+"  {schema-path ../../tests/schemas/proc"
 "    {user User"
 "       {base-repo test"
 "         {schema-path ../../tests/schemas/test}}}}"
@@ -307,7 +321,7 @@ START_TEST(shard_table_test)
 END_TEST
 
 
-/** INHERITANCE **/
+/** CLASS INHERITANCE **/
 
 START_TEST(shard_inheritance_test)
     static const struct table_test cases[] = {
@@ -367,7 +381,6 @@ START_TEST(shard_inheritance_test)
         ck_assert_int_eq(err, knd_OK);
 
         *((char*)result + result_size) = '\0';  // UNSAFE!
-
         regex_t reg;
         ck_assert(0 == regcomp(&reg, pcase->expect, 0));
         if (0 != regexec(&reg, result, 0, NULL, 0)) {
@@ -376,7 +389,44 @@ START_TEST(shard_inheritance_test)
         }
         regfree(&reg);
     }
+    kndShard_del(shard);
+END_TEST
 
+/** PROC **/
+START_TEST(shard_proc_test)
+    static const struct table_test cases[] = {
+        {   /* create new proc */
+            .input  = "{task {!proc test Process}}",
+            .expect = "{repo /{_state 1}{modif [0-9]*}}"
+        },
+        {
+            .input = "{task {!proc test Process}}",
+            .expect = "{\"err\":\"test Process proc name already exists\",\"http_code\":409}"
+        }
+    };
+    struct kndShard *shard;
+    int err;
+
+    err = kndShard_new(&shard, shard_proc_config, strlen(shard_proc_config));
+    ck_assert_int_eq(err, knd_OK);
+
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
+        const struct table_test *pcase = &cases[i];
+        fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
+        const char *result; size_t result_size;
+        err = kndShard_run_task(shard, pcase->input, strlen(pcase->input),
+                                &result, &result_size, NULL, 0);
+        ck_assert_int_eq(err, knd_OK);
+
+        *((char*)result + result_size) = '\0';  // UNSAFE!
+        regex_t reg;
+        ck_assert(0 == regcomp(&reg, pcase->expect, 0));
+        if (0 != regexec(&reg, result, 0, NULL, 0)) {
+            ck_abort_msg("Assertion failed: \"%.*s\" doesn't match \"%s\"",
+                         (int)result_size, result, pcase->expect);
+        }
+        regfree(&reg);
+    }
     kndShard_del(shard);
 END_TEST
 
@@ -387,6 +437,7 @@ int main(void) {
     tcase_add_test(tc_shard_basic, shard_config_test);
     tcase_add_test(tc_shard_basic, shard_table_test);
     tcase_add_test(tc_shard_basic, shard_inheritance_test);
+    tcase_add_test(tc_shard_basic, shard_proc_test);
     suite_add_tcase(s, tc_shard_basic);
 
     SRunner* sr = srunner_create(s);
