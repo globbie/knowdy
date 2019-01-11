@@ -24,6 +24,8 @@ struct LocalContext {
     struct kndTask *task;
     struct kndRepo *repo;
     struct kndProcArg *proc_arg;
+    struct kndProcArgInst *proc_arg_inst;
+    struct kndClass *class;
 };
 
 void proc_call_arg_str(struct kndProcCallArg *self,
@@ -406,12 +408,12 @@ static gsl_err_t set_inst_objname(void *obj, const char *name, size_t name_size)
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    self->objname = name;
-    self->objname_size = name_size;
+    self->class_inst_name = name;
+    self->class_inst_name_size = name_size;
 
-    if (DEBUG_PROC_ARG_LEVEL_2)
-        knd_log("++ INST ARG OBJ NAME: \"%.*s\"",
-                self->objname_size, self->objname);
+    if (DEBUG_PROC_ARG_LEVEL_TMP)
+        knd_log("++ ARG class inst NAME: \"%.*s\"",
+                self->class_inst_name_size, self->class_inst_name);
 
     return make_gsl_err(gsl_OK);
 }
@@ -543,12 +545,223 @@ int knd_proc_arg_resolve(struct kndProcArg *self,
     return knd_OK;
 }
 
-int knd_proc_arg_resolve_inst(struct kndProcArg *self,
+static void register_state(struct kndProcArgInst *self,
+                           struct kndState *state,
+                           struct kndStateRef *state_ref)
+{
+    if (!self->states)
+        state->phase = KND_CREATED;
+    else
+        state->phase = KND_UPDATED;
+
+    self->states = state;
+    self->num_states++;
+    state->numid = self->num_states;
+    state_ref->next =  self->parent->arg_inst_state_refs;
+    self->parent->arg_inst_state_refs = state_ref;
+}
+
+static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndProcArgInst *self = ctx->proc_arg_inst;
+    struct kndState *state;
+    struct kndStateVal *state_val;
+    struct kndStateRef *state_ref;
+    struct kndMemPool *mempool = ctx->task->mempool;
+    int err;
+
+    if (!val_size) return make_gsl_err(gsl_FORMAT);
+    if (val_size >= KND_VAL_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    err = knd_state_new(mempool, &state);
+    if (err) {
+        knd_log("-- state alloc failed");
+        return make_gsl_err_external(err);
+    }
+    err = knd_state_val_new(mempool, &state_val);
+    if (err) {
+        knd_log("-- state val alloc failed");
+        return make_gsl_err_external(err);
+    }
+    err = knd_state_ref_new(mempool, &state_ref);
+    if (err) {
+        knd_log("-- state ref alloc failed");
+        return make_gsl_err_external(err);
+    }
+    state_ref->state = state;
+
+    state_val->obj = (void*)self;
+    state_val->val      = val;
+    state_val->val_size = val_size;
+    state->val          = state_val;
+
+    self->val = val;
+    self->val_size = val_size;
+
+    register_state(self, state, state_ref);
+
+    if (DEBUG_PROC_ARG_LEVEL_TMP)
+        knd_log("++ arg inst val set: \"%.*s\" [state:%zu]",
+                self->val_size, self->val, state->numid);
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t run_empty_val_warning(void *obj,
+                                       const char *unused_var(val),
+                                       size_t unused_var(val_size))
+{
+    struct kndProcArgInst *self = obj;
+    knd_log("-- empty val of \"%.*s\" not accepted",
+            self->arg->name_size, self->arg->name);
+    return make_gsl_err(gsl_FAIL);
+}
+
+static gsl_err_t check_class_inst_name(void *obj,
+                                       const char *name, size_t name_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndProcArgInst *self = ctx->proc_arg_inst;
+    struct kndClass *c = ctx->class;
+    struct kndClassInst *inst;
+    int err;
+
+    if (DEBUG_PROC_ARG_LEVEL_2)
+        knd_log(".. class \"%.*s\" to check inst name: \"%.*s\"",
+                c->name_size, c->name, name_size, name);
+
+    err = knd_get_class_inst(c, name, name_size, task, &inst);
+    if (err) return make_gsl_err_external(err);
+
+    self->class_inst = inst;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_class_inst_ref(void *obj,
+                                      const char *rec,
+                                      size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+
+    if (DEBUG_PROC_ARG_LEVEL_2)
+        knd_log(".. parse class inst: \"%.*s\"", 16, rec);
+
+    if (!ctx->class) {
+        knd_log("-- no class specified");
+        return make_gsl_err(gsl_FAIL);
+    }
+    
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = check_class_inst_name,
+          .obj = ctx
+        },
+        { .is_default = true,
+          .run = run_empty_val_warning,
+          .obj = ctx
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+static gsl_err_t check_class_name(void *obj, const char *name, size_t name_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndProcArgInst *self = ctx->proc_arg_inst;
+    struct kndClass *ref_class = self->arg->class;
+    struct kndRepo *repo = ctx->repo;
+    struct kndClass *c;
+    int err;
+
+    if (DEBUG_PROC_ARG_LEVEL_TMP)
+        knd_log(".. attr \"%.*s\" to check class name: \"%.*s\"",
+                self->arg->name_size, self->arg->name,
+                name_size, name);
+
+    if (!ref_class)  {
+        knd_log("-- no ref template class specified");
+        return make_gsl_err(gsl_FAIL);
+    }
+
+    err = knd_get_class(repo, name, name_size, &c, ctx->task);
+    if (err) {
+        knd_log("-- no such class");
+        return make_gsl_err_external(err);
+    }
+
+    err = knd_is_base(ref_class, c);
+    if (err) return make_gsl_err_external(err);
+
+    ctx->class = c;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_class_ref(void *obj,
+                                const char *rec,
+                                size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+
+    if (DEBUG_PROC_ARG_LEVEL_2)
+        knd_log(".. parse class ref: \"%.*s\"", 16, rec);
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = check_class_name,
+          .obj = ctx
+        },
+        { .name = "inst",
+          .name_size = strlen("inst"),
+          .parse = parse_class_inst_ref,
+          .obj = ctx
+        },
+        { .is_default = true,
+          .run = run_empty_val_warning,
+          .obj = ctx
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+gsl_err_t knd_arg_inst_import(struct kndProcArgInst *self,
+                              const char *rec, size_t *total_size,
+                              struct kndTask *task)
+{
+    if (DEBUG_PROC_ARG_LEVEL_TMP)
+        knd_log(".. proc arg inst \"%.*s\" parse REC: \"%.*s\"",
+                self->arg->name_size, self->arg->name,
+                16, rec);
+
+    struct LocalContext ctx = {
+        .proc_arg_inst = self,
+        .task = task
+    };
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_val,
+          .obj = &ctx
+        },
+        { .name = "class",
+          .name_size = strlen("class"),
+          .parse = parse_class_ref,
+          .obj = &ctx
+        },
+        { .is_default = true,
+          .run = run_empty_val_warning,
+          .obj = self
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+int knd_proc_arg_inst_resolve(struct kndProcArg *self,
                               struct kndProcArgInst *inst)
 {
     struct kndProcEntry *entry;
     struct kndRepo *repo = self->parent->entry->repo;
-    struct kndObjEntry *obj;
+    struct kndClassInstEntry *class_inst_entry;
 
     entry = repo->class_name_idx->get(repo->class_name_idx,
                                       inst->procname, inst->procname_size);
@@ -562,21 +775,23 @@ int knd_proc_arg_resolve_inst(struct kndProcArg *self,
 
     inst->proc_entry = entry;
 
-    /* resolve obj ref */
-    if (inst->objname_size) {
+    /* resolve class inst ref */
+    if (inst->class_inst_name_size) {
         if (entry->inst_idx) {
-            obj = entry->inst_idx->get(entry->inst_idx,
-                                    inst->objname, inst->objname_size);
-            if (!obj) {
-                knd_log("-- no such obj: %.*s :(", inst->objname_size, inst->objname);
+            class_inst_entry = entry->inst_idx->get(entry->inst_idx,
+                                    inst->class_inst_name, inst->class_inst_name_size);
+            if (!class_inst_entry) {
+                knd_log("-- no such class_inst_entry: %.*s",
+                        inst->class_inst_name_size,
+                        inst->class_inst_name);
                 return knd_FAIL;
             }
-            //err = link_proc(self, inst, obj);        RET_ERR();
-            inst->obj = obj;
+            //err = link_proc(self, inst, class_inst_entry);        RET_ERR();
+            inst->class_inst = class_inst_entry->inst;
 
-            if (DEBUG_PROC_ARG_LEVEL_2)
-                knd_log("++ obj resolved: \"%.*s\"!",
-                        inst->objname_size, inst->objname);
+            if (DEBUG_PROC_ARG_LEVEL_TMP)
+                knd_log("++ class inst ref resolved: \"%.*s\"!",
+                        inst->class_inst_name_size, inst->class_inst_name);
         }
     }
 

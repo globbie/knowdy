@@ -66,15 +66,6 @@ struct kndClassInstEntry
     struct kndRelRef *rels;
 };
 
-//struct kndObjDir
-//{
-//    struct kndClassInstEntry *objs[KND_RADIX_BASE];
-//    size_t num_objs;
-//
-//    struct kndObjDir *dirs[KND_RADIX_BASE];
-//    size_t num_dirs;
-//};
-
 struct kndClassInst
 {
     knd_obj_type type;

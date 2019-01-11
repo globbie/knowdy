@@ -866,9 +866,9 @@ extern int knd_get_class_by_id(struct kndRepo *repo,
     return knd_FAIL;
 }
 
-extern int knd_unregister_class_inst(struct kndClass *self,
-                                     struct kndClassInstEntry *entry,
-                                     struct kndTask *task)
+int knd_unregister_class_inst(struct kndClass *self,
+                              struct kndClassInstEntry *entry,
+                              struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndSet *inst_idx;
@@ -914,9 +914,9 @@ extern int knd_unregister_class_inst(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_register_class_inst(struct kndClass *self,
-                                   struct kndClassInstEntry *entry,
-                                   struct kndMemPool *mempool)
+int knd_register_class_inst(struct kndClass *self,
+                            struct kndClassInstEntry *entry,
+                            struct kndMemPool *mempool)
 {
     struct kndRepo *repo = self->entry->repo;
     struct kndSet *inst_idx;
@@ -933,7 +933,7 @@ extern int knd_register_class_inst(struct kndClass *self,
 
     inst_idx = self->entry->inst_idx;
     if (!inst_idx) {
-        err = knd_set_new(mempool, &inst_idx);                          RET_ERR();
+        err = knd_set_new(mempool, &inst_idx);                                    RET_ERR();
         inst_idx->type = KND_SET_CLASS_INST;
         self->entry->inst_idx = inst_idx;
     }
@@ -962,7 +962,6 @@ extern int knd_register_class_inst(struct kndClass *self,
         if (c->state_top) continue;
        
         if (self->entry->repo != ref->entry->repo) {
-
             /* search local repo */
             prev_entry = class_name_idx->get(class_name_idx,
                                              ref->entry->name,
@@ -976,16 +975,16 @@ extern int knd_register_class_inst(struct kndClass *self,
                 ref->entry = c->entry;
             }
         }
-        err = knd_register_class_inst(c, entry, mempool);                                         RET_ERR();
+        err = knd_register_class_inst(c, entry, mempool);                         RET_ERR();
     }
 
     return knd_OK;
 }
 
-extern int knd_class_clone(struct kndClass *self,
-                           struct kndRepo *target_repo,
-                           struct kndClass **result,
-                           struct kndMemPool *mempool)
+int knd_class_clone(struct kndClass *self,
+                    struct kndRepo *target_repo,
+                    struct kndClass **result,
+                    struct kndMemPool *mempool)
 {
     struct kndClass *c;
     struct kndClassEntry *entry;
@@ -1023,7 +1022,7 @@ extern int knd_class_clone(struct kndClass *self,
     if (!ref) {
         err = class_name_idx->set(class_name_idx,
                                   entry->name, entry->name_size,
-                                  (void*)entry);                                      RET_ERR();
+                                  (void*)entry);                                  RET_ERR();
     }
 
     err = class_idx->add(class_idx,

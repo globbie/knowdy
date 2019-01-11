@@ -422,9 +422,22 @@ START_TEST(shard_proc_test)
             .expect = "{repo /{_state 4}{modif [0-9]*}}"
         },
         {   /* proc with args */
-            .input  = "{task {!proc cut {is Physical Impact Process}"
+            .input  = "{task {!proc wash {is Physical Impact Process}"
                       "[arg {instr {_c Physical Object}}]}}",
             .expect = "{repo /{_state 5}{modif [0-9]*}}"
+        },
+        {   /* add an agent */
+            .input = "{task {class Person {!inst Alice}}}",
+            .expect = "{repo /{_state 6}{modif [0-9]*}}"
+        },
+        {   /* add an object */
+            .input = "{task {class Window {!inst kitchen window}}}",
+            .expect = "{repo /{_state 7}{modif [0-9]*}}"
+        },
+        {   /* register a proc inst */
+            .input = "{task {proc wash {!inst Alice-to-wash-a-window"
+                     "{-- {agent Alice} {obj kitchen window} --} }}}",
+            .expect = "{repo /{_state 8}{modif [0-9]*}}"
         }
     };
     struct kndShard *shard;

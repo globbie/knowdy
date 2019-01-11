@@ -26,6 +26,12 @@
 {!class Physical Object
     {is Object}}
 
+{!class Window
+    {is Physical Object}}
+
 {!class Agent}
+
+{!class Person
+    {is Agent}}
 
 }

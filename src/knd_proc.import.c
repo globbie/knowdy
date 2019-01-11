@@ -337,6 +337,7 @@ int knd_inner_proc_import(struct kndProc *proc,
 }
 
 gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
+                                     struct kndRepo *repo,
                                      const char *rec,
                                      size_t *total_size,
                                      struct kndTask *task)
@@ -345,23 +346,16 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
     struct kndProcInst *inst;
     struct kndProcInstEntry *entry;
     struct ooDict *name_idx;
-    struct kndRepo *repo = task->repo;
     struct kndState *state;
     struct kndStateRef *state_ref;
+    gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_PROC_IMPORT_LEVEL_2) {
+    if (DEBUG_PROC_IMPORT_LEVEL_TMP) {
         knd_log(".. import \"%.*s\" inst.. (repo:%.*s)",
                 128, rec,
                 repo->name_size, repo->name);
     }
-
-    /* user ctx should have its own copy of a selected class */
-    /*if (self->entry->repo != repo) {
-        err = knd_proc_clone(self, repo, &proc, mempool);
-        if (err) return *total_size = 0, make_gsl_err_external(err);
-    }
-    */
 
     err = knd_proc_inst_new(mempool, &inst);
     if (err) {
@@ -385,8 +379,8 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
     inst->states = state;
     inst->num_states = 1;
 
-    //parser_err = knd_proc_inst_import(inst, rec, total_size, task);
-    //if (parser_err.code) return parser_err;
+    parser_err = knd_proc_inst_import(inst, repo, rec, total_size, task);
+    if (parser_err.code) return parser_err;
 
     err = knd_state_ref_new(mempool, &state_ref);
     if (err) {
@@ -418,13 +412,12 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
     name_idx = repo->proc_inst_name_idx;
 
     // TODO  lookup prev inst ref
-
     err = name_idx->set(name_idx,
                         inst->name, inst->name_size,
                         (void*)entry);
     if (err) return make_gsl_err_external(err);
 
-    //    err = knd_register_proc_inst(self, entry, mempool);
+    // err = knd_register_proc_inst(self, entry, mempool);
     //if (err) return make_gsl_err_external(err);
 
     task->type = KND_UPDATE_STATE;

@@ -54,10 +54,16 @@ struct kndProcInst
     struct kndProcInstEntry *entry;
     struct kndProc *base;
 
+    struct kndProcArgInst *arg_insts;
+    size_t num_arg_insts;
+    struct kndStateRef *arg_inst_state_refs;
+
     struct kndState *states;
     size_t init_state;
     size_t num_states;
 
+    
+    struct kndProcArgInst *tail;
     struct kndProcInst *next;
 };
 
@@ -191,7 +197,12 @@ int knd_proc_inst_entry_new(struct kndMemPool *mempool,
 
 void knd_proc_str(struct kndProc *self, size_t depth);
 
+gsl_err_t knd_proc_inst_import(struct kndProcInst *self,
+                               struct kndRepo *repo,
+                               const char *rec, size_t *total_size,
+                               struct kndTask *task);
 gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
+                                     struct kndRepo *repo,
                                      const char *rec,
                                      size_t *total_size,
                                      struct kndTask *task);
@@ -205,6 +216,9 @@ int knd_inner_proc_import(struct kndProc *self,
 int knd_get_proc(struct kndRepo *repo,
                  const char *name, size_t name_size,
                  struct kndProc **result);
+int knd_proc_get_arg(struct kndProc *self,
+                     const char *name, size_t name_size,
+                     struct kndProcArgRef **result);
 
 int knd_resolve_proc_ref(struct kndClass *self,
                          const char *name, size_t name_size,

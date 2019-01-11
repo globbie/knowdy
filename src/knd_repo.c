@@ -1326,8 +1326,11 @@ extern int kndRepo_new(struct kndRepo **repo,
     err = ooDict_new(&self->proc_arg_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
-    self->max_journal_size = KND_FILE_BUF_SIZE;
+    /* proc insts */
+    err = ooDict_new(&self->proc_inst_name_idx, KND_LARGE_DICT_SIZE);
+    if (err) goto error;
 
+    self->max_journal_size = KND_FILE_BUF_SIZE;
     *repo = self;
 
     return knd_OK;

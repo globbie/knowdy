@@ -121,7 +121,6 @@ void knd_proc_str(struct kndProc *self, size_t depth)
             depth * KND_OFFSET_SIZE, "");
 }
 
-
 static gsl_err_t run_get_proc(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
@@ -212,11 +211,11 @@ parse_proc_inst_import(void *obj, const char *rec, size_t *total_size)
 
     if (!ctx->proc) {
         knd_log("-- proc not selected");
-        int err = ctx->task->log->writef(ctx->task->log, "proc not selected");
+        int err = ctx->task->log->writef(ctx->task->log, "no proc selected");
         if (err) return *total_size = 0, make_gsl_err_external(err);
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
-    return knd_proc_inst_parse_import(ctx->proc, rec, total_size, ctx->task);
+    return knd_proc_inst_parse_import(ctx->proc, ctx->repo, rec, total_size, ctx->task);
 }
 
 gsl_err_t knd_proc_select(struct kndRepo *repo,
@@ -278,7 +277,7 @@ gsl_err_t knd_proc_select(struct kndRepo *repo,
             self->inbox = self->curr_proc;
             self->inbox_size++;
         }
-        }*/
+    }*/
 
     return make_gsl_err(gsl_OK);
 }
@@ -307,6 +306,56 @@ int knd_proc_export(struct kndProc *self,
         break;
     }
     return knd_OK;
+}
+
+int knd_proc_get_arg(struct kndProc *self,
+                     const char *name, size_t name_size,
+                     struct kndProcArgRef **result)
+{
+    struct kndProcArgRef *ref;
+    struct kndProc *proc;
+    struct ooDict *arg_name_idx = self->entry->repo->proc_arg_name_idx;
+    // int err;
+
+    if (DEBUG_PROC_LEVEL_2) {
+        knd_log("\n.. \"%.*s\" proc (repo: %.*s) to select arg \"%.*s\"",
+                self->entry->name_size, self->entry->name,
+                self->entry->repo->name_size, self->entry->repo->name,
+                name_size, name);
+    }
+
+    ref = arg_name_idx->get(arg_name_idx, name, name_size);
+    if (!ref) {
+        /*if (self->entry->repo->base) {
+            arg_name_idx = self->entry->repo->base->arg_name_idx;
+            ref = arg_name_idx->get(arg_name_idx, name, name_size);
+            }*/
+        if (!ref) {
+            knd_log("-- no such proc arg: \"%.*s\"", name_size, name);
+            return knd_NO_MATCH;
+        }
+    }
+
+    for (; ref; ref = ref->next) {
+        proc = ref->proc;
+
+        if (DEBUG_PROC_LEVEL_2)
+            knd_log("== attr %.*s belongs to proc %.*s",
+                    name_size, name,
+                    proc->name_size, proc->name);
+
+        if (proc == self) {
+            *result = ref;
+            return knd_OK;
+        }
+
+        /*err = knd_is_base(class_entry->class, self);
+        if (!err) {
+            *result = ref;
+            return knd_OK;
+            } */
+    }
+    return knd_FAIL;
 }
 
 
@@ -426,7 +475,7 @@ int knd_proc_inst_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
                             sizeof(struct kndProcInst), &page);                       RET_ERR();
     *result = page;
     return knd_OK;
