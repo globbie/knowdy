@@ -240,6 +240,7 @@ gsl_err_t knd_proc_select(struct kndRepo *repo,
                           struct kndTask *task);
 
 int knd_proc_resolve(struct kndProc *self,
+                     struct kndRepo *repo,
                      struct kndTask *task);
 
 gsl_err_t knd_proc_import(struct kndRepo *repo,

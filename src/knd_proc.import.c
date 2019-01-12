@@ -561,5 +561,25 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
     if (DEBUG_PROC_IMPORT_LEVEL_TMP)
         knd_proc_str(proc, 0);
 
+        /* initial class load ends here */
+    if (task->batch_mode) return make_gsl_err(gsl_OK);
+
+    err = knd_proc_resolve(proc, repo, task);
+    if (err) {
+        parser_err = make_gsl_err_external(err);
+        goto final;
+    }
+
+    /*err = knd_update_state(proc, KND_CREATED, task);
+    if (err) {
+        parser_err = make_gsl_err_external(err);
+        goto final;
+        }*/
+
     return make_gsl_err(gsl_OK);
+ final:
+
+    // TODO free resources
+    
+    return parser_err;
 }

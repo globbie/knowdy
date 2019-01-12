@@ -55,12 +55,13 @@ static int inherit_arg(void *obj,
 
 static int inherit_args(struct kndProc *self,
                         struct kndProc *base,
+                        struct kndRepo *repo,
                         struct kndTask *task)
 {
     int err;
 
     if (!base->is_resolved) {
-        err = knd_proc_resolve(base, task);                                      RET_ERR();
+        err = knd_proc_resolve(base, repo, task);                                      RET_ERR();
     }
 
     if (DEBUG_PROC_RESOLVE_LEVEL_TMP) {
@@ -81,6 +82,7 @@ static int inherit_args(struct kndProc *self,
 }
 
 static int resolve_parents(struct kndProc *self,
+                           struct kndRepo *repo,
                            struct kndTask *task)
 {
     struct kndProcVar *base;
@@ -101,7 +103,7 @@ static int resolve_parents(struct kndProc *self,
                     self->name_size, self->name,
                     base->name_size, base->name);
 
-        err = knd_get_proc(self->entry->repo,
+        err = knd_get_proc(repo,
                            base->name, base->name_size, &proc);                 RET_ERR();
         if (proc == self) {
             knd_log("-- self reference detected in \"%.*s\" :(",
@@ -110,7 +112,7 @@ static int resolve_parents(struct kndProc *self,
         }
         base->proc = proc;
 
-        err = inherit_args(self, base->proc, task);                                     RET_ERR();
+        err = inherit_args(self, base->proc, repo, task);                                     RET_ERR();
 
     }
     return knd_OK;
@@ -147,6 +149,7 @@ int knd_resolve_proc_ref(struct kndClass *self,
 }
 
 int knd_proc_resolve(struct kndProc *self,
+                     struct kndRepo *repo,
                      struct kndTask *task)
 {
     struct kndProcArg *arg = NULL;
@@ -162,10 +165,10 @@ int knd_proc_resolve(struct kndProc *self,
     }
 
     for (arg = self->args; arg; arg = arg->next) {
-        err = knd_proc_arg_resolve(arg, task->repo);                              RET_ERR();
+        err = knd_proc_arg_resolve(arg, repo);                              RET_ERR();
 
         /* no conflicts detected, register a new arg in repo */
-        err = knd_repo_index_proc_arg(task->repo, self, arg, task);               RET_ERR();
+        err = knd_repo_index_proc_arg(repo, self, arg, task);               RET_ERR();
 
         /* local index */
         err = knd_proc_arg_ref_new(task->mempool, &arg_ref);                            RET_ERR();
@@ -178,7 +181,7 @@ int knd_proc_resolve(struct kndProc *self,
     }
 
     if (self->bases) {
-        err = resolve_parents(self, task);                                        RET_ERR();
+        err = resolve_parents(self, repo, task);                                        RET_ERR();
     }
 
     //   if (self->proc_call) {

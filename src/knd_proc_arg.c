@@ -806,7 +806,7 @@ int knd_proc_arg_inst_new(struct kndMemPool *mempool,
                           struct kndProcArgInst **self)
 {
     int err = knd_mempool_alloc(mempool,
-                                KND_MEMPAGE_TINY,
+                                KND_MEMPAGE_SMALL,
                                 sizeof(struct kndProcArgInst),
                                 (void**)self);                      RET_ERR();
     return knd_OK;

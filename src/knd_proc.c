@@ -313,15 +313,15 @@ int knd_proc_get_arg(struct kndProc *self,
                      struct kndProcArgRef **result)
 {
     struct kndProcArgRef *ref;
-    struct kndProc *proc;
     struct ooDict *arg_name_idx = self->entry->repo->proc_arg_name_idx;
-    // int err;
+    struct kndSet *arg_idx = self->arg_idx;
+    int err;
 
-    if (DEBUG_PROC_LEVEL_2) {
-        knd_log("\n.. \"%.*s\" proc (repo: %.*s) to select arg \"%.*s\"",
-                self->entry->name_size, self->entry->name,
+    if (DEBUG_PROC_LEVEL_TMP) {
+        knd_log("\n.. \"%.*s\" proc (repo: %.*s) to select arg \"%.*s\" arg_idx:%p",
+                self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name,
-                name_size, name);
+                name_size, name, arg_idx);
     }
 
     ref = arg_name_idx->get(arg_name_idx, name, name_size);
@@ -336,26 +336,12 @@ int knd_proc_get_arg(struct kndProc *self,
         }
     }
 
-    for (; ref; ref = ref->next) {
-        proc = ref->proc;
+    err = arg_idx->get(arg_idx,
+                       ref->arg->id, ref->arg->id_size, (void**)&ref);      RET_ERR();
+    if (err) return knd_NO_MATCH;
 
-        if (DEBUG_PROC_LEVEL_2)
-            knd_log("== attr %.*s belongs to proc %.*s",
-                    name_size, name,
-                    proc->name_size, proc->name);
-
-        if (proc == self) {
-            *result = ref;
-            return knd_OK;
-        }
-
-        /*err = knd_is_base(class_entry->class, self);
-        if (!err) {
-            *result = ref;
-            return knd_OK;
-            } */
-    }
-    return knd_FAIL;
+    *result = ref;
+    return knd_OK;
 }
 
 

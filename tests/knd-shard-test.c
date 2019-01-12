@@ -436,7 +436,7 @@ START_TEST(shard_proc_test)
         },
         {   /* register a proc inst */
             .input = "{task {proc wash {!inst Alice-to-wash-a-window"
-                     "{-- {agent Alice} {obj kitchen window} --} }}}",
+                     "{agent Alice} {obj kitchen window} }}}",
             .expect = "{repo /{_state 8}{modif [0-9]*}}"
         }
     };

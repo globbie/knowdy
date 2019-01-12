@@ -1031,7 +1031,7 @@ static int resolve_procs(struct kndRepo *self,
             continue;
         }
 
-        err = knd_proc_resolve(entry->proc, task);
+        err = knd_proc_resolve(entry->proc, self, task);
         if (err) {
             knd_log("-- couldn't resolve the \"%.*s\" proc",
                     entry->proc->name_size, entry->proc->name);
