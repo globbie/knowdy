@@ -438,6 +438,16 @@ START_TEST(shard_proc_test)
             .input = "{task {proc wash {!inst Alice-to-wash-a-window"
                      "{agent Alice} {obj kitchen window} }}}",
             .expect = "{repo /{_state 8}{modif [0-9]*}}"
+        },
+        {   /* another proc inst */
+            .input = "{task {proc wash {!inst Alice-to-wash-a-window-again"
+                     "{agent Alice} {obj kitchen window} }}}",
+            .expect = "{repo /{_state 9}{modif [0-9]*}}"
+        },
+        {   /* yeat another proc inst */
+            .input = "{task {proc wash {!inst Alice-to-wash-a-window-3"
+                     "{agent Alice} {obj kitchen window} }}}",
+            .expect = "{repo /{_state 10}{modif [0-9]*}}"
         }
     };
     struct kndShard *shard;

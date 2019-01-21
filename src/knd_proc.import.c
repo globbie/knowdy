@@ -1,4 +1,6 @@
 #include <string.h>
+#include <stdatomic.h>
+
 #include <gsl-parser.h>
 
 #include "knd_proc.h"
@@ -394,14 +396,15 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
     state_ref->next = task->class_inst_state_refs;
     task->class_inst_state_refs = state_ref;
 
-    repo->num_proc_insts++;
+    inst->entry->numid = atomic_fetch_add_explicit(&repo->num_proc_insts, 1,\
+                                                   memory_order_relaxed);
 
-    inst->entry->numid = repo->num_proc_insts;
     knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
 
-    if (DEBUG_PROC_IMPORT_LEVEL_2)
-        knd_log("++ %.*s proc inst parse OK!",
+    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
+        knd_log("++ \"%.*s\" (%.*s) proc inst parse OK!",
                 inst->name_size, inst->name,
+                inst->entry->id_size, inst->entry->id,
                 self->name_size, self->name);
 
     /* automatic name assignment if no explicit name given */

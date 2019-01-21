@@ -12,6 +12,8 @@ struct kndQuery;
 struct kndTask;
 
 #include <time.h>
+#include <stdatomic.h>
+
 #include "knd_config.h"
 #include "knd_mempool.h"
 
@@ -82,8 +84,9 @@ struct kndRepo
     struct ooDict  *proc_inst_name_idx;
 
     size_t num_procs;
-    size_t num_proc_insts;
 
+    atomic_size_t num_proc_insts;
+    
     struct ooDict  *proc_arg_name_idx;
     struct kndSet  *proc_arg_idx;
     size_t num_proc_args;
