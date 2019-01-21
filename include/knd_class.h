@@ -161,6 +161,8 @@ struct kndClass
     struct kndSet *attr_idx;
     struct kndAttr *implied_attr;
 
+    // detect vicious circles
+    bool resolve_in_progress;
     bool is_resolved;
     bool state_top;
 

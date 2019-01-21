@@ -364,6 +364,13 @@ extern int knd_class_resolve(struct kndClass *self,
         return knd_OK;
     }
 
+    if (self->resolve_in_progress) {
+        knd_log("-- vicious circle detected in \"%.*s\"",
+                self->name_size, self->name);
+        return knd_FAIL;
+    }
+
+    self->resolve_in_progress = true;
     repo->num_classes++;
     entry = self->entry;
     entry->numid = repo->num_classes;
