@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <stdatomic.h>
+
 #include "knd_config.h"
 #include "knd_state.h"
 #include "knd_http_codes.h"
@@ -41,6 +43,11 @@ struct kndClassInst;
 struct kndConcFolder;
 struct kndTranslation;
 
+typedef int (*task_cb_func)(void *obj,
+                            const char *task_id,
+                            size_t task_id_size,
+                            void *ctx);
+
 typedef enum knd_task_spec_type {
     KND_GET_STATE,
     KND_SELECT_STATE,
@@ -51,9 +58,23 @@ typedef enum knd_task_spec_type {
     KND_DELTA_STATE
 } knd_task_spec_type;
 
+typedef enum knd_task_phase_t { KND_SUBMITTED,
+                                KND_CANCELED,
+                                KND_COMPLETE } knd_task_phase_t;
+
 struct kndVisualFormat {
     size_t text_line_height;
     size_t text_hangindent_size;
+};
+
+struct kndTaskDestination
+{
+
+    char URI[KND_NAME_SIZE];
+    size_t URI_size;
+
+    //  auth 
+
 };
 
 struct kndTaskContext {
@@ -62,8 +83,19 @@ struct kndTaskContext {
     size_t numid;
 
     knd_task_spec_type type;
-    knd_state_phase phase;
-    size_t worker_id;
+    _Atomic knd_task_phase_t phase;
+    void *obj;
+    task_cb_func cb;
+
+    char *input;
+    size_t input_size;
+
+    char   *output;
+    size_t output_size;
+    int error;
+
+    struct kndTaskDestination *dest;
+
     struct kndTaskContext *next;
 };
 
@@ -75,6 +107,8 @@ struct kndTask
 
     char tid[KND_NAME_SIZE];
     size_t tid_size;
+
+    struct kndTaskContext *ctx;
 
     char curr_locale[KND_NAME_SIZE];
     size_t curr_locale_size;
@@ -151,12 +185,16 @@ struct kndTask
     struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;
 
-    struct kndShard *shard;
-    struct glbOutput *storage;
-    struct glbOutput *log;
-    struct glbOutput *out;
-    struct glbOutput *file_out;
-    struct glbOutput *update_out;
+    struct ooDict *class_name_idx;
+    struct ooDict *proc_name_idx;
+
+    struct kndShard   *shard;
+    struct kndStorage *storage;
+    struct glbOutput  *log;
+    struct glbOutput  *task_out;
+    struct glbOutput  *out;
+    struct glbOutput  *file_out;
+    struct glbOutput  *update_out;
     struct kndMemPool *mempool;
 };
 
@@ -171,4 +209,5 @@ int knd_task_context_new(struct kndMemPool *mempool,
                          struct kndTaskContext **ctx);
 
 // knd_task.select.c
-extern gsl_err_t knd_select_task(struct kndTask *self, const char *rec, size_t *total_size, struct kndShard *shard);
+extern gsl_err_t knd_select_task(struct kndTask *self,
+                                 const char *rec, size_t *total_size, struct kndShard *shard);

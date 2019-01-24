@@ -31,13 +31,11 @@ struct kndStateRef;
 struct kndMemPool;
 
 typedef enum knd_state_phase { KND_SELECTED,
-                               KND_SUBMITTED,
                                KND_CREATED,
                                KND_UPDATED,
                                KND_REMOVED,
                                KND_FREED,
                                KND_FROZEN,
-                               KND_COMPLETE,
                                KND_RESTORED } knd_state_phase;
 
 typedef enum knd_update_confirm { KND_INIT_STATE, 

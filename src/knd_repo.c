@@ -396,6 +396,7 @@ static int present_latest_state_JSON(struct kndRepo *self,
     return knd_OK;
 }
 
+#if 0
 static int present_latest_state_GSL(struct kndRepo *self,
                                     struct glbOutput *out)
 {
@@ -424,6 +425,8 @@ static int present_latest_state_GSL(struct kndRepo *self,
 
     return knd_OK;
 }
+#endif
+
 
 #if 0
 static int select_update_range(struct kndRepo *self,
@@ -1132,13 +1135,32 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
 static int check_conflicts(struct kndRepo *self,
                            struct kndUpdate *update)
 {
-
     // make sure there are no conflicts
     // from origin_id to latest_id
 
     // try to push yourself
     // to a queue of latests updates    
-    
+
+        // TODO: any conflicts?
+    //err = check_conflicts(self, update);
+    //if (err) {
+        // release resources
+        // build err msg
+    //  return err;
+    //}
+
+    update->timestamp = time(NULL);
+
+    /* build a reply */
+    switch (task->format) {
+    case KND_FORMAT_JSON:
+        err = present_latest_state_JSON(self, out);   RET_ERR();
+        break;
+    default:
+        err = present_latest_state_GSL(self, out);    RET_ERR();
+        break;
+    }
+
     return knd_OK;
 }
 #endif
@@ -1146,7 +1168,6 @@ static int check_conflicts(struct kndRepo *self,
 int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
 {
     struct kndUpdate *update = task->update;
-    struct glbOutput *out = task->out;
     struct kndStateRef *ref, *child_ref;
     struct kndState *state;
     struct kndClassEntry *entry;
@@ -1199,31 +1220,18 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
         err = knd_proc_resolve(proc_entry->proc, task);                     RET_ERR();
     }
 
-
+    /* generate unique update id */
     update->numid = atomic_fetch_add_explicit(&self->update_id_count, 1,
                                               memory_order_relaxed);
 
+
     // TODO: build update GSP
 
-    // TODO: any conflicts?
-    //err = check_conflicts(self, update);
-    //if (err) {
-        // release resources
-        // build err msg
-    //  return err;
-    //}
-
-    update->timestamp = time(NULL);
-
-    /* build a reply */
-    switch (task->format) {
-    case KND_FORMAT_JSON:
-        err = present_latest_state_JSON(self, out);   RET_ERR();
-        break;
-    default:
-        err = present_latest_state_GSL(self, out);    RET_ERR();
-        break;
-    }
+    /*    err = knd_storage_put(task->storage, task,
+                          task->out->buf,
+                          task->out->buf_size);
+    if (err) return err;
+    */
     return knd_OK;
 }
 

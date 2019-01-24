@@ -27,7 +27,7 @@ void kndTask_del(struct kndTask *self)
     self->out->del(self->out);
     self->update_out->del(self->update_out);
     self->file_out->del(self->file_out);
-    self->storage->del(self->storage);
+    self->task_out->del(self->task_out);
     self->mempool->del(self->mempool);
     free(self);
 }
@@ -335,7 +335,7 @@ int kndTask_new(struct kndTask **task)
     err = glbOutput_new(&self->file_out, KND_FILE_BUF_SIZE);
     if (err) return err;
 
-    err = glbOutput_new(&self->storage, KND_TASK_STORAGE_SIZE);
+    err = glbOutput_new(&self->task_out, KND_TASK_STORAGE_SIZE);
     if (err) return err;
 
     *task = self;

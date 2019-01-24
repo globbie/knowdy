@@ -83,7 +83,9 @@ struct kndRepo
     struct ooDict  *proc_inst_name_idx;
 
     atomic_size_t num_procs;
+    atomic_size_t proc_id_count;
     atomic_size_t num_proc_insts;
+    atomic_size_t proc_inst_id_count;
     
     struct ooDict  *proc_arg_name_idx;
     struct kndSet  *proc_arg_idx;
@@ -91,9 +93,8 @@ struct kndRepo
 
     struct kndSet *update_idx;
     atomic_size_t num_updates;
-    size_t max_updates;
-
     atomic_size_t update_id_count;
+    size_t max_updates;
 
     struct kndRepo *next;
 };

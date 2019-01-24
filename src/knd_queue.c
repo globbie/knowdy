@@ -93,7 +93,7 @@ int knd_queue_new(struct kndQueue **queue,
     memset(self, 0, sizeof(struct kndQueue));
 
     if (capacity) {
-        self->elems = calloc(sizeof(void*), capacity);
+        self->elems = calloc(capacity, sizeof(void*));
         if (!self->elems) return knd_NOMEM;
         self->capacity = capacity;
     }

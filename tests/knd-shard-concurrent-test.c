@@ -72,24 +72,29 @@ typedef struct worker {
 static void *worker_proc(void *ptr)
 {
     worker_t *worker = (worker_t *)ptr;
-    struct kndQueue *queue = worker->shard->task_queue;
+    struct kndQueue *queue = worker->shard->task_context_queue;
     struct kndTaskContext *ctx;
     void *elem;
+    size_t attempt_count = 0;
     int err;
 
     fprintf(stdout, "== worker: #%zu..\n", worker->id);
 
-    for (size_t i = 0; i < MAX_DEQUE_ATTEMPTS; i++) {
-        sleep(1);
+    while (1) {
+        attempt_count++;
         err = knd_queue_pop(queue, &elem);
-        if (err) continue;
-
+        if (err) {
+            if (attempt_count > MAX_DEQUE_ATTEMPTS)
+                usleep(500);
+            continue;
+        }
         ctx = elem;
-        ctx->worker_id = worker->id;
         ctx->phase = KND_COMPLETE;
+        attempt_count = 0;
 
         fprintf(stdout, "++ #%zu worker got task #%zu!\n",
                 worker->id, ctx->numid);
+        usleep(1000);
     }
     return NULL;
 }
@@ -98,24 +103,22 @@ static void *task_assign_proc(void *ptr)
 {
     worker_t *worker = (worker_t *)ptr;
     struct kndMemPool *mempool = worker->shard->mempool;
-    struct kndQueue *queue = worker->shard->task_queue;
+    struct kndQueue *queue = worker->shard->task_context_queue;
     struct kndTaskContext *ctx = NULL;
     int err;
 
     fprintf(stdout, "== task assigner: #%zu..\n", worker->id);
 
     for (size_t i = 0; i < MAX_TASKS; ++i) {
-
         if (!ctx) {
-            fprintf(stdout, ".. create task #%zu..\n",
-                    worker->id);
-
             err = knd_task_context_new(mempool, &ctx);
             if (err) return NULL;
             ctx->numid = i;
-
             ctx->next = worker->shard->contexts;
             worker->shard->contexts = ctx;
+
+            fprintf(stdout, ".. create task #%zu..\n",
+                    ctx->numid);
         }
 
     retry_push:
@@ -181,7 +184,7 @@ START_TEST(shard_concurrent_import_test)
     // TODO: check expectations
     struct kndTaskContext *ctx;
     for (ctx = shard->contexts; ctx; ctx = ctx->next) {
-        knd_log("ctx #%zu: worker:%zu", ctx->numid, ctx->worker_id);
+        knd_log("== ctx #%zu", ctx->numid);
     }
     
     /* release resources */

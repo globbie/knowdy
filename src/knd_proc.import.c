@@ -416,10 +416,11 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
     name_idx = repo->proc_inst_name_idx;
 
     // TODO  lookup prev inst ref
-    err = name_idx->set(name_idx,
+    /*err = name_idx->set(name_idx,
                         inst->name, inst->name_size,
                         (void*)entry);
     if (err) return make_gsl_err_external(err);
+    */
 
     // err = knd_register_proc_inst(self, entry, mempool);
     //if (err) return make_gsl_err_external(err);
@@ -553,7 +554,7 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
         }*/
 
     /* generate ID and add to proc index */
-    proc->entry->numid = atomic_fetch_add_explicit(&repo->num_procs, 1,\
+    proc->entry->numid = atomic_fetch_add_explicit(&repo->proc_id_count, 1,\
                                                    memory_order_relaxed);
 
     knd_uid_create(proc->entry->numid, proc->entry->id, &proc->entry->id_size);
