@@ -72,7 +72,6 @@ struct kndRepo
     size_t num_classes;
     size_t num_class_insts;
 
-    struct kndStateRef  *class_state_refs;
     struct ooDict  *attr_name_idx;
     struct kndSet  *attr_idx;
     size_t num_attrs;
@@ -83,24 +82,25 @@ struct kndRepo
     struct kndSet  *proc_idx;
     struct ooDict  *proc_inst_name_idx;
 
-    size_t num_procs;
-
+    atomic_size_t num_procs;
     atomic_size_t num_proc_insts;
     
     struct ooDict  *proc_arg_name_idx;
     struct kndSet  *proc_arg_idx;
     size_t num_proc_args;
 
-    struct kndUpdate *updates;
+    struct kndSet *update_idx;
+    atomic_size_t num_updates;
     size_t max_updates;
-    size_t num_updates;
+
+    atomic_size_t update_id_count;
 
     struct kndRepo *next;
 };
 
 int knd_present_repo_state(struct kndRepo *self,
                                   struct kndTask *task);
-int knd_confirm_state(struct kndRepo *self, struct kndTask *task);
+int knd_confirm_updates(struct kndRepo *self, struct kndTask *task);
 
 gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size);
 

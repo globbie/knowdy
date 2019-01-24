@@ -37,6 +37,7 @@ typedef enum knd_state_phase { KND_SELECTED,
                                KND_REMOVED,
                                KND_FREED,
                                KND_FROZEN,
+                               KND_COMPLETE,
                                KND_RESTORED } knd_state_phase;
 
 typedef enum knd_update_confirm { KND_INIT_STATE, 
@@ -57,42 +58,22 @@ typedef enum knd_state_type { KND_STATE_CLASS,
                               KND_STATE_PROC_INST
 } knd_state_type;
 
-struct kndRelUpdate
-{
-    struct kndRel *rel;
-    struct kndUpdate *update;
-    struct kndSet *idx;
-    struct kndRelInstance **insts;
-    size_t num_insts;
-};
-
-struct kndRelInstanceUpdate
-{
-    struct kndRelInstance *inst;
-    struct kndRelInstanceUpdate *next;
-};
-
-struct kndProcUpdate
-{
-    struct kndProc *proc;
-    struct kndUpdate *update;
-    struct kndProcInstance **insts;
-    size_t num_insts;
-};
-
 struct kndUpdate
 {
+    char id[KND_ID_SIZE];
+    size_t id_size;
     size_t numid;
+
     size_t owner_id;
-    knd_update_confirm confirm;
+    size_t orig_state_id;
+
     time_t timestamp;
-    size_t orig_state;
+    knd_update_confirm confirm;
 
     struct kndRepo *repo;
 
     struct kndStateRef *class_state_refs;
-
-    struct kndUpdate *next;
+    struct kndStateRef *proc_state_refs;
 };
 
 struct kndStateVal

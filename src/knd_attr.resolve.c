@@ -120,8 +120,8 @@ static int resolve_inner_item(struct kndClass *self,
 
     if (!parent_item->attr->ref_class) {
         err = knd_resolve_class_ref(self,
-                                parent_item->attr->ref_classname,
-                                parent_item->attr->ref_classname_size,
+                                    parent_item->attr->ref_classname,
+                                    parent_item->attr->ref_classname_size,
                                 NULL, &parent_item->attr->ref_class, task);
         if (err) return err;
     }

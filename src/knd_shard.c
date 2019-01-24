@@ -8,6 +8,7 @@
 #include "knd_user.h"
 #include "knd_task.h"
 #include "knd_dict.h"
+#include "knd_queue.h"
 #include "knd_set.h"
 #include "knd_repo.h"
 #include "knd_class.h"
@@ -160,7 +161,12 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
         task->mempool->num_tiny_pages = mempool->num_tiny_pages;
         task->mempool->alloc(task->mempool);
     }
-    
+
+    // TODO
+    size_t task_queue_capacity = 10; //self->num_workers * mempool->num_small_pages;
+    err = knd_queue_new(&self->task_queue, task_queue_capacity);
+    if (err != knd_OK) goto error;
+
     if (!self->user_class_name_size) {
         self->user_class_name_size = strlen("User");
         memcpy(self->user_class_name, "User", self->user_class_name_size);

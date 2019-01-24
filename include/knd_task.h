@@ -56,6 +56,17 @@ struct kndVisualFormat {
     size_t text_hangindent_size;
 };
 
+struct kndTaskContext {
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    size_t numid;
+
+    knd_task_spec_type type;
+    knd_state_phase phase;
+    size_t worker_id;
+    struct kndTaskContext *next;
+};
+
 struct kndTask
 {
     size_t id;
@@ -126,13 +137,14 @@ struct kndTask
     struct kndAttrVar *attr_var;
     struct kndClassInst *class_inst;
     struct kndElem *elem;
-
-    struct kndProc *proc;
+    //struct kndProc *proc;
 
     /* updates */
-    //struct kndStateRef  *class_state_refs;
+    struct kndStateRef  *class_state_refs;
     struct kndStateRef  *inner_class_state_refs;
     struct kndStateRef  *class_inst_state_refs;
+    struct kndStateRef  *proc_state_refs;
+    struct kndStateRef  *proc_inst_state_refs;
     struct kndUpdate *update;
     bool update_confirmed;
 
@@ -154,6 +166,9 @@ extern void kndTask_reset(struct kndTask *self);
 extern int kndTask_run(struct kndTask *self, const char *rec, size_t rec_size, struct kndShard *shard);
 extern int kndTask_build_report(struct kndTask *self);
 extern int kndTask_new(struct kndTask **self);
+
+int knd_task_context_new(struct kndMemPool *mempool,
+                         struct kndTaskContext **ctx);
 
 // knd_task.select.c
 extern gsl_err_t knd_select_task(struct kndTask *self, const char *rec, size_t *total_size, struct kndShard *shard);

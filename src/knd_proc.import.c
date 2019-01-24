@@ -393,8 +393,8 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
     state_ref->type = KND_STATE_PROC_INST;
     state_ref->obj = (void*)entry;
 
-    state_ref->next = task->class_inst_state_refs;
-    task->class_inst_state_refs = state_ref;
+    state_ref->next = task->proc_inst_state_refs;
+    task->proc_inst_state_refs = state_ref;
 
     inst->entry->numid = atomic_fetch_add_explicit(&repo->num_proc_insts, 1,\
                                                    memory_order_relaxed);
@@ -412,6 +412,7 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
         inst->name = inst->entry->id;
         inst->name_size = inst->entry->id_size;
     }
+
     name_idx = repo->proc_inst_name_idx;
 
     // TODO  lookup prev inst ref
@@ -552,37 +553,22 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
         }*/
 
     /* generate ID and add to proc index */
-    repo->num_procs++;
-    proc->entry->numid = repo->num_procs;
+    proc->entry->numid = atomic_fetch_add_explicit(&repo->num_procs, 1,\
+                                                   memory_order_relaxed);
+
     knd_uid_create(proc->entry->numid, proc->entry->id, &proc->entry->id_size);
 
     err = repo->proc_name_idx->set(repo->proc_name_idx,
                                    proc->name, proc->name_size,
                                    (void*)proc->entry);
-    if (err) return make_gsl_err_external(err);
+    if (err) {
+        return make_gsl_err_external(err);
+    }
 
     if (DEBUG_PROC_IMPORT_LEVEL_TMP)
         knd_proc_str(proc, 0);
 
-        /* initial class load ends here */
-    if (task->batch_mode) return make_gsl_err(gsl_OK);
-
-    err = knd_proc_resolve(proc, repo, task);
-    if (err) {
-        parser_err = make_gsl_err_external(err);
-        goto final;
-    }
-
-    /*err = knd_update_state(proc, KND_CREATED, task);
-    if (err) {
-        parser_err = make_gsl_err_external(err);
-        goto final;
-        }*/
-
     return make_gsl_err(gsl_OK);
- final:
-
     // TODO free resources
-    
-    return parser_err;
+    //return parser_err;
 }

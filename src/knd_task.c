@@ -125,6 +125,10 @@ int kndTask_run(struct kndTask *self, const char *rec, size_t rec_size, struct k
     self->input = rec;
     self->input_size = rec_size;
 
+    if (!self->update) {
+        err = knd_update_new(self->mempool, &self->update);                       RET_ERR();
+    }
+
     parser_err = knd_select_task(self, rec, &rec_size, shard);
     if (parser_err.code) {
         knd_log("-- task run failure");
@@ -295,6 +299,17 @@ int kndTask_build_report(struct kndTask *self)
                     chunk_size, self->report, self->report_size);
         }
     }
+    return knd_OK;
+}
+
+int knd_task_context_new(struct kndMemPool *mempool,
+                         struct kndTaskContext **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                            sizeof(struct kndTaskContext), &page);  RET_ERR();
+    *result = page;
     return knd_OK;
 }
 

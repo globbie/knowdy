@@ -579,7 +579,6 @@ present_class_desc(void *obj, const char *unused_var(name), size_t unused_var(na
     int err;
 
     assert(ctx->selected_class);
-    // FIXME(k15tfu): assert(ctx->selected_class->entry->descendants);
 
     if (!ctx->selected_class->entry->descendants) {
         // FIXME(k15tfu): Why it's empty??
@@ -943,7 +942,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
         phase = KND_UPDATED;
         if (task->phase == KND_REMOVED)
             phase = KND_REMOVED;
-        err = knd_update_state(task->class, phase, task);
+        err = knd_class_update_state(task->class, phase, task);
         if (err) return make_gsl_err_external(err);
         break;
     default:

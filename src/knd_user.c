@@ -45,6 +45,10 @@ static gsl_err_t parse_proc_import(void *obj,
 {
     struct kndTask *task = obj;
     task->type = KND_UPDATE_STATE;
+
+    if (!task->update->orig_state_id)
+        task->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+                                                           memory_order_relaxed);
     return knd_proc_import(task->repo, rec, total_size, task);
 }
 
@@ -542,7 +546,7 @@ extern gsl_err_t knd_parse_select_user(void *obj,
 
     switch (task->type) {
     case KND_UPDATE_STATE:
-        err = knd_confirm_state(repo, task);
+        err = knd_confirm_updates(repo, task);
         if (err) return make_gsl_err_external(err);
         break;
     default:

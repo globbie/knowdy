@@ -176,6 +176,7 @@ struct kndProc
     size_t estim_cost_total;
 
     bool is_resolved;
+    bool resolving_in_progress;
 
     struct kndProc *next;
 };
@@ -240,7 +241,6 @@ gsl_err_t knd_proc_select(struct kndRepo *repo,
                           struct kndTask *task);
 
 int knd_proc_resolve(struct kndProc *self,
-                     struct kndRepo *repo,
                      struct kndTask *task);
 
 gsl_err_t knd_proc_import(struct kndRepo *repo,

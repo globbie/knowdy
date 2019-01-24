@@ -310,7 +310,8 @@ static int kndSet_map(struct kndSet *self,
     int err;
 
     if (!self->idx) {
-        knd_log("NB: -- no root idx");
+        if (DEBUG_SET_LEVEL_2)
+            knd_log("NB: -- set has no root idx");
         return knd_OK;
     }
 

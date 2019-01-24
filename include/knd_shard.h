@@ -2,6 +2,7 @@
 
 #include <knd_err.h>
 #include <knd_config.h>
+#include <knd_task.h>
 
 struct kndShard
 {
@@ -26,6 +27,8 @@ struct kndShard
 
     struct kndTask **workers;
     size_t num_workers;
+    struct kndQueue *task_queue;
+    struct kndTaskContext *contexts;
 
     struct kndUser *user;
 

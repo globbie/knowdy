@@ -577,18 +577,6 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
     /* initial class load ends here */
     if (task->batch_mode) return make_gsl_err(gsl_OK);
 
-    err = knd_class_resolve(c, task);
-    if (err) {
-        parser_err = make_gsl_err_external(err);
-        goto final;
-    }
-
-    err = knd_update_state(c, KND_CREATED, task);
-    if (err) {
-        parser_err = make_gsl_err_external(err);
-        goto final;
-    }
-
     return make_gsl_err(gsl_OK);
 
  final:

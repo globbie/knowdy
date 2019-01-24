@@ -155,7 +155,7 @@ ooDict_set(struct ooDict *self,
     if (!data) return oo_FAIL;
 
     h = oo_hash(key, key_size) % self->hash->size;
-    l = (struct ooList*)self->hash->data[h];   
+    l = (struct ooList*)self->hash->data[h];
     for (cur = l->head; cur; cur = cur->next) {
         cur_key = ((struct ooDictItem*)cur->data)->key;
         cur_key_size = ((struct ooDictItem*)cur->data)->key_size;

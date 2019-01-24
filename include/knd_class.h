@@ -162,7 +162,7 @@ struct kndClass
     struct kndAttr *implied_attr;
 
     // detect vicious circles
-    bool resolve_in_progress;
+    bool resolving_in_progress;
     bool is_resolved;
     bool state_top;
 
@@ -279,9 +279,9 @@ extern int knd_inherit_attrs(struct kndClass *self,
 extern int knd_compute_class_attr_num_value(struct kndClass *self,
                                             struct kndAttrVar *attr_var);
 
-extern int knd_update_state(struct kndClass *self,
-                            knd_state_phase phase,
-                            struct kndTask *task);
+int knd_class_update_state(struct kndClass *self,
+                           knd_state_phase phase,
+                           struct kndTask *task);
 
 extern gsl_err_t knd_read_class_inst_state(struct kndClass *self,
                                            struct kndClassUpdate *update,
@@ -327,7 +327,8 @@ extern int knd_get_class_attr_value(struct kndClass *src,
                                     struct kndProcCallArg *arg);
 
 extern int knd_resolve_classes(struct kndClass *self, struct kndTask *task);
-extern int knd_class_resolve(struct kndClass *self, struct kndTask *task);
+extern int knd_class_resolve(struct kndClass *self,
+                             struct kndTask *task);
 
 extern int knd_class_update_new(struct kndMemPool *mempool,
                                 struct kndClassUpdate **result);

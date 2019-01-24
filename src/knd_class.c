@@ -247,9 +247,9 @@ int knd_get_class_attr_value(struct kndClass *src,
 
 static int update_ancestor_state(struct kndClass *self,
                                  struct kndClass *child,
-                                 struct kndMemPool *mempool)
+                                 struct kndTask *task)
 {
-    struct kndRepo *repo = self->entry->repo;
+    struct kndMemPool *mempool = task->mempool;
     struct kndClass *c;
     struct kndStateRef *state_ref = NULL;
     struct kndStateVal *state_val = NULL;
@@ -262,8 +262,7 @@ static int update_ancestor_state(struct kndClass *self,
                 self->name_size, self->name);
     }
 
-    /* lookup in repo */
-    for (state_ref = repo->class_state_refs; state_ref; state_ref = state_ref->next) {
+    for (state_ref = task->class_state_refs; state_ref; state_ref = state_ref->next) {
         c = state_ref->obj;
         if (c == self) break;
     }
@@ -298,8 +297,8 @@ static int update_ancestor_state(struct kndClass *self,
         state_ref->state = state;
         state_ref->type = KND_STATE_CLASS;
 
-        state_ref->next = repo->class_state_refs;
-        repo->class_state_refs = state_ref;
+        state_ref->next = task->class_state_refs;
+        task->class_state_refs = state_ref;
     }
     state = state_ref->state;
 
@@ -363,7 +362,7 @@ static int update_state(struct kndClass *self,
             if (err) return err;
             ref->entry = c->entry;
         }
-        err = update_ancestor_state(c, self, mempool);                            RET_ERR();
+        err = update_ancestor_state(c, self, task);                            RET_ERR();
     }
     return knd_OK;
 }
@@ -376,7 +375,6 @@ static int update_inst_state(struct kndClass *self,
     struct kndStateRef *ref;
     struct kndState *state;
     struct kndSet *inst_idx = self->entry->inst_idx;
-    struct kndRepo *repo = task->repo;
     int err;
 
     assert(inst_idx != NULL);
@@ -413,18 +411,17 @@ static int update_inst_state(struct kndClass *self,
     ref->type = KND_STATE_CLASS;
     ref->obj = self->entry;
 
-    ref->next = repo->class_state_refs;
-    repo->class_state_refs = ref;
+    ref->next = task->class_state_refs;
+    task->class_state_refs = ref;
     
     return knd_OK;
 }
 
-extern int knd_update_state(struct kndClass *self,
-                            knd_state_phase phase,
-                            struct kndTask *task)
+int knd_class_update_state(struct kndClass *self,
+                           knd_state_phase phase,
+                           struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
-    struct kndRepo *repo = task->repo;
     struct kndStateRef *state_ref;
     int err;
 
@@ -467,14 +464,14 @@ extern int knd_update_state(struct kndClass *self,
         break;
     }
     
-    /* register in repo */
+    /* register in a task */
     err = knd_state_ref_new(mempool, &state_ref);                                 RET_ERR();
     state_ref->state = self->states;
     state_ref->type = KND_STATE_CLASS;
     state_ref->obj = self->entry;
 
-    state_ref->next = repo->class_state_refs;
-    repo->class_state_refs = state_ref;
+    state_ref->next = task->class_state_refs;
+    task->class_state_refs = state_ref;
     return knd_OK;
 }
 

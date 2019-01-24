@@ -11,6 +11,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <stdatomic.h>
 
 #define DEBUG_TASK_LEVEL_0 0
 #define DEBUG_TASK_LEVEL_1 0
@@ -104,6 +105,9 @@ static gsl_err_t parse_class_import(void *obj,
 
     // FIXME(k15tfu): used by knd_attr
     task->repo = ctx->shard->repo;
+    if (!task->update->orig_state_id)
+        task->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+                                                           memory_order_relaxed);
 
     return knd_class_import(ctx->shard->repo, rec, total_size, task);
 }
@@ -130,12 +134,14 @@ static gsl_err_t parse_proc_import(void *obj,
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->self;
-
+    struct kndRepo *repo = ctx->shard->repo;
     if (DEBUG_TASK_LEVEL_2)
         knd_log(".. parsing the system proc import: \"%.*s\"..", 64, rec);
 
     task->type = KND_UPDATE_STATE;
-
+    if (!task->update->orig_state_id)
+        task->update->orig_state_id = atomic_load_explicit(&repo->num_updates,
+                                                           memory_order_relaxed);
     return knd_proc_import(ctx->shard->repo, rec, total_size, task);
 }
 
@@ -254,7 +260,7 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
     switch (self->type) {
     case KND_UPDATE_STATE:
         if (!self->update_confirmed) {
-            err = knd_confirm_state(ctx->shard->repo, self);
+            err = knd_confirm_updates(ctx->shard->repo, self);
             if (err) return make_gsl_err_external(err);
         }
         break;

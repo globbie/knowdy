@@ -364,13 +364,13 @@ extern int knd_class_resolve(struct kndClass *self,
         return knd_OK;
     }
 
-    if (self->resolve_in_progress) {
+    if (self->resolving_in_progress) {
         knd_log("-- vicious circle detected in \"%.*s\"",
                 self->name_size, self->name);
         return knd_FAIL;
     }
 
-    self->resolve_in_progress = true;
+    self->resolving_in_progress = true;
     repo->num_classes++;
     entry = self->entry;
     entry->numid = repo->num_classes;
@@ -495,9 +495,9 @@ int knd_resolve_classes(struct kndClass *self,
     void *val;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
-        knd_log(".. resolving classes in \"%.*s\"  idx:%p",
-                self->entry->name_size, self->entry->name, class_name_idx);
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+        knd_log(".. resolving classes in \"%.*s\"",
+                self->entry->name_size, self->entry->name);
 
     key = NULL;
     class_name_idx->rewind(class_name_idx);
