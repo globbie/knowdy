@@ -17,6 +17,7 @@
 #include "knd_class.h"
 #include "knd_attr.h"
 #include "knd_mempool.h"
+#include "knd_storage.h"
 
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
@@ -27,21 +28,16 @@
 #define DEBUG_SHARD_LEVEL_3 0
 #define DEBUG_SHARD_LEVEL_TMP 1
 
-#define MAX_DEQUE_ATTEMPTS 100
-#define TASK_TIMEOUT_USECS 500
-#define TASK_QUEUE_CAPACITY 20
-
-static void *worker_proc(void *ptr)
+static void *task_runner(void *ptr)
 {
-    struct kndWorker *worker = (struct kndWorker*)ptr;
-    struct kndQueue *queue = worker->shard->task_context_queue;
+    struct kndTask *task = ptr;
+    struct kndQueue *queue = task->context_queue;
     struct kndTaskContext *ctx;
-    struct kndTask *task;
     void *elem;
     size_t attempt_count = 0;
     int err;
 
-    knd_log(".. shard's worker #%zu..", worker->id);
+    knd_log("\n.. shard's task runner #%zu..", task->id);
 
     while (1) {
         attempt_count++;
@@ -51,144 +47,88 @@ static void *worker_proc(void *ptr)
                 usleep(TASK_TIMEOUT_USECS);
             continue;
         }
+        attempt_count = 0;
         ctx = elem;
         ctx->phase = KND_COMPLETE;
-        attempt_count = 0;
 
         knd_log("++ #%zu worker got task #%zu!",
-                worker->id, ctx->numid);
-        task = worker->task;
+                task->id, ctx->numid);
+
+        knd_task_reset(task);
         task->ctx = ctx;
 
-        err = kndTask_run(task, ctx->input, ctx->input_size, worker->shard);
+        /*err = knd_task_run(task);
         if (err != knd_OK) {
             ctx->error = err;
             knd_log("-- task running failure: %d", err);
-            // report failure
-        }
+            }*/
     }
     return NULL;
 }
 
 int knd_shard_run_task(struct kndShard *self,
                        const char *input, size_t input_size,
-                       const char **task_id, size_t *task_id_size)
+                       const char **task_id, size_t *task_id_size,
+                       task_cb_func cb)
 {
-    //char buf[KND_TEMP_BUF_SIZE];
-    /*clockid_t clk_id;
-    clk_id = CLOCK_MONOTONIC;
-    struct timespec start_ts;
-    struct timespec end_ts;
-    */
+    struct kndTaskContext *ctx;
+    struct kndMemPool *mempool = self->mempool;
+    clockid_t clk_id = CLOCK_MONOTONIC;
+    int err;
 
-    /*err = clock_gettime(clk_id, &start_ts);
-    strftime(buf, sizeof buf, "%D %T", gmtime(&start_ts.tv_sec));
+    err = knd_task_context_new(mempool, &ctx);                                    RET_ERR();
+    ctx->cb = cb;
+    ctx->input = input;
+    ctx->input_size = input_size;
 
+    self->task_count++;
+    ctx->numid = self->task_count;
+    knd_uid_create(ctx->numid, ctx->id, &ctx->id_size);
+
+    err = clock_gettime(clk_id, &ctx->start_ts);
+
+    /*strftime(buf, sizeof buf, "%D %T", gmtime(&start_ts.tv_sec));
     knd_log("UTC %s.%09ld: new task curr storage size:%zu  capacity:%zu",
             buf, start_ts.tv_nsec,
             self->task_storage->buf_size, self->task_storage->capacity);
     */
 
-    // enqueue task
-    
-    return knd_OK;
-}
+    err = knd_queue_push(self->task_context_queue, (void*)ctx);
+    if (err) return err;
 
-int kndShard_run_task(struct kndShard *self,
-                      const char *rec, size_t rec_size,
-                      const char **result, size_t *result_size,
-                      int *out_task_type,
-                      size_t task_id)
-{
-    const char *rec_start;
-
-    assert(task_id < self->num_workers);
-
-    struct kndTask *task = self->tasks[task_id];
-    int err;
-
-    rec_start = task->task_out->buf + task->task_out->buf_size;
-    err = task->task_out->write(task->task_out, rec, rec_size);
-    if (err) {
-        knd_log("-- task task_out limit reached!");
-        return err;
-    }
-
-    err = kndTask_run(task, rec_start, rec_size, self);
-    if (err != knd_OK) {
-        task->error = err;
-        knd_log("-- task running failure: %d", err);
-        goto final;
-    }
-
-final:
-
-    /* save only the successful write transaction */
-    switch (task->type) {
-    case KND_UPDATE_STATE:
-        if (!task->error)
-            break;
-        // fallthrough
-    default:
-        /* retract last write to task_task_out */
-        task->task_out->rtrim(task->task_out, rec_size);
-        break;
-    }
-
-    // TODO: time calculation
-    err = kndTask_build_report(task);
-    if (err != knd_OK) {
-        knd_log("-- task report failed: %d", err);
-        return -1;
-    }
-
-    /*err = clock_gettime(clk_id, &end_ts);
-    if (DEBUG_SHARD_LEVEL_TMP)
-        knd_log("== task completed in %ld microsecs  [reply size:%zu]",
-                (end_ts.tv_nsec - start_ts.tv_nsec) / 1000,
-                task->report_size);
-    */
-    self->report = task->report;
-    self->report_size = task->report_size;
-
-    *result = task->report;
-    *result_size = task->report_size;
-    if (out_task_type) *out_task_type = task->type;
-
+    knd_log("++ enqueued task #%zu", ctx->numid);
+    *task_id = ctx->id; 
+    *task_id_size = ctx->id_size;
     return knd_OK;
 }
 
 int knd_shard_serve(struct kndShard *self)
 {
-    struct kndWorker *worker;
+    struct kndTask *task;
+    int err;
 
-    for (size_t i = 0; i < self->num_workers; i++) {
-        if ((worker = malloc(sizeof(struct kndWorker))) == NULL) {
-            perror("-- worker allocation failed");
-            return knd_NOMEM;
-        }
+    for (size_t i = 0; i < self->num_tasks; i++) {
+        task = self->tasks[i];
+        task->id = i;
 
-        memset(worker, 0, sizeof(*worker));
-        worker->id = i;
-        worker->shard = self;
-        worker->task = self->tasks[i];
-        self->workers[i] = worker;
-
-        if (pthread_create(&worker->thread, NULL, worker_proc, (void*)worker)) {
-            perror("-- kndWorker thread creation failed");
+        if (pthread_create(&task->thread, NULL, task_runner, (void*)task)) {
+            perror("-- kndTask thread creation failed");
             return knd_FAIL;
         }
     }
 
-    for (size_t i = 0; i < self->num_workers; i++) {
-        worker = self->workers[i];
-        pthread_join(worker->thread, NULL);
-    }
+    err = knd_storage_serve(self->storage);
+    if (err) return err;
+
+    /*for (size_t i = 0; i < self->num_tasks; i++) {
+        task = self->tasks[i];
+        pthread_join(task->thread, NULL);
+        }*/
 
     return knd_OK;
 }
 
-int kndShard_new(struct kndShard **shard, const char *config, size_t config_size)
+int knd_shard_new(struct kndShard **shard, const char *config, size_t config_size)
 {
     struct kndShard *self;
     struct kndMemPool *mempool = NULL;
@@ -212,30 +152,22 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
     self->mempool = mempool;
 
     {
-        err = kndShard_parse_config(self, config, &config_size, mempool);
+        err = knd_shard_parse_config(self, config, &config_size, mempool);
         if (err != knd_OK) goto error;
     }
 
     err = mempool->alloc(mempool); 
     if (err != knd_OK) goto error;
 
-    if (!self->num_workers) self->num_workers = 1;
+    if (!self->num_tasks) self->num_tasks = 1;
 
-    self->workers = calloc(sizeof(struct kndWorker*), self->num_workers);
-    if (!self->workers) goto error;
-    self->tasks = calloc(sizeof(struct kndTask*), self->num_workers);
+    self->tasks = calloc(sizeof(struct kndTask*), self->num_tasks);
     if (!self->tasks) goto error;
 
-    for (size_t i = 0; i < self->num_workers; i++) {
-        err = kndTask_new(&task);
+    for (size_t i = 0; i < self->num_tasks; i++) {
+        err = knd_task_new(&task);
         if (err != knd_OK) goto error;
-        task->shard = self;
         self->tasks[i] = task;
-
-        if (i == 0) {
-            task->mempool = mempool;
-            continue;
-        }
 
         err = kndMemPool_new(&task->mempool);
         if (err != knd_OK) goto error;
@@ -246,11 +178,12 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
         task->mempool->num_small_x2_pages = mempool->num_small_x2_pages;
         task->mempool->num_small_pages = mempool->num_small_pages;
         task->mempool->num_tiny_pages = mempool->num_tiny_pages;
+
         task->mempool->alloc(task->mempool);
     }
 
     // TODO
-    size_t task_queue_capacity = TASK_QUEUE_CAPACITY; //self->num_workers * mempool->num_small_pages;
+    size_t task_queue_capacity = TASK_QUEUE_CAPACITY; //self->num_tasks * mempool->num_small_pages;
     err = knd_queue_new(&self->task_context_queue, task_queue_capacity);
     if (err != knd_OK) goto error;
 
@@ -259,6 +192,7 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
         memcpy(self->user_class_name, "User", self->user_class_name_size);
     }
 
+    /* IO service */
     err = knd_storage_new(&self->storage, task_queue_capacity);
     if (err != knd_OK) goto error;
     
@@ -298,25 +232,25 @@ int kndShard_new(struct kndShard **shard, const char *config, size_t config_size
     if (err != knd_OK) goto error;
 
     /* init fields in tasks */
-    for (size_t i = 0; i < self->num_workers; i++) {
+    for (size_t i = 0; i < self->num_tasks; i++) {
         task = self->tasks[i];
         task->user = user;
         task->storage = self->storage;
+        task->context_queue = self->task_context_queue;
     }
 
     *shard = self;
     return knd_OK;
  error:
 
-    kndShard_del(self);
+    knd_shard_del(self);
 
     return err;
 }
 
-void kndShard_del(struct kndShard *self)
+void knd_shard_del(struct kndShard *self)
 {
     struct kndTask *task;
-    struct kndWorker *worker;
 
     knd_log(".. deconstructing kndShard ..");
 
@@ -331,16 +265,12 @@ void kndShard_del(struct kndShard *self)
     if (self->log)
         self->log->del(self->log);
 
-    if (self->workers) {
-        for (size_t i = 0; i < self->num_workers; i++) {
-            worker = self->workers[i];
-
-            kndTask_del(worker->task);
-            free(worker);
-
-            if (i == 0) self->mempool = NULL;
+    if (self->num_tasks) {
+        for (size_t i = 0; i < self->num_tasks; i++) {
+            task = self->tasks[i];
+            knd_task_del(task);
         }
-        free(self->workers);
+        free(self->tasks);
     }
 
     if (self->mempool)

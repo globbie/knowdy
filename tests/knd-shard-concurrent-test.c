@@ -142,15 +142,15 @@ START_TEST(shard_concurrent_import_test)
     worker_t *worker;
     int err;
 
-    err = kndShard_new(&shard, shard_config, strlen(shard_config));
+    err = knd_shard_new(&shard, shard_config, strlen(shard_config));
     ck_assert_int_eq(err, knd_OK);
 
-    fprintf(stdout, "== total num of workers: %zu\n", shard->num_workers);
+    fprintf(stdout, "== total num of workers: %zu\n", shard->num_tasks);
 
-    workers = calloc(sizeof(worker_t*), shard->num_workers);
+    workers = calloc(sizeof(worker_t*), shard->num_tasks);
     if (!workers) return;
 
-    for (size_t i = 0; i < shard->num_workers; i++) {
+    for (size_t i = 0; i < shard->num_tasks; i++) {
         if ((worker = malloc(sizeof(worker_t))) == NULL) {
             perror("-- worker allocation failed");
             return;
@@ -176,7 +176,7 @@ START_TEST(shard_concurrent_import_test)
         }
     }
 
-    for (size_t i = 0; i < shard->num_workers; i++) {
+    for (size_t i = 0; i < shard->num_tasks; i++) {
         worker = workers[i];
         pthread_join(worker->thread, NULL);
     }
@@ -188,11 +188,11 @@ START_TEST(shard_concurrent_import_test)
     }
     
     /* release resources */
-    for (size_t i = 0; i < shard->num_workers; i++)
+    for (size_t i = 0; i < shard->num_tasks; i++)
         free(workers[i]);
 
     free(workers);
-    kndShard_del(shard);
+    knd_shard_del(shard);
 }
 END_TEST
 

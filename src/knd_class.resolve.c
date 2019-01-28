@@ -41,16 +41,24 @@
 #define DEBUG_CLASS_RESOLVE_LEVEL_5 0
 #define DEBUG_CLASS_RESOLVE_LEVEL_TMP 1
 
+struct LocalContext {
+    struct kndTask *task;
+    struct kndRepo *repo;
+    struct kndClass *class;
+    struct kndClassVar *class_var;
+};
+
 static int inherit_attr(void *obj,
                         const char *unused_var(elem_id),
                         size_t unused_var(elem_id_size),
                         size_t unused_var(count),
                         void *elem)
 {
-    struct kndTask *task = obj;
+    struct LocalContext *ctx = obj;
+    struct kndTask    *task = ctx->task;
     struct kndMemPool *mempool = task->mempool;
-    struct kndClass *self = task->class;
-    struct kndSet     *attr_idx = task->class->attr_idx;
+    struct kndClass   *self = ctx->class;
+    struct kndSet     *attr_idx = self->attr_idx;
     struct kndAttrRef *src_ref = elem;
     struct kndAttr    *attr    = src_ref->attr;
     struct kndAttrRef *ref;
@@ -83,7 +91,8 @@ static int inherit_attr(void *obj,
     return knd_OK;
 }
 
-static int inherit_attrs(struct kndClass *self, struct kndClass *base,
+static int inherit_attrs(struct kndClass *self,
+                         struct kndClass *base,
                          struct kndTask *task)
 {
     int err;
@@ -97,10 +106,15 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base,
                 self->entry->name_size, self->entry->name,
                 base->name_size, base->name);
     }
-    task->class = self;
+
+    struct LocalContext ctx = {
+        .task = task,
+        .class = self
+    };
+
     err = base->attr_idx->map(base->attr_idx,
                               inherit_attr,
-                              (void*)task);                                        RET_ERR();
+                              (void*)&ctx);                                        RET_ERR();
     return knd_OK;
 }
 

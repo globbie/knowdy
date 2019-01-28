@@ -375,8 +375,8 @@ static gsl_err_t remove_inst(void *obj,
 
     task->type = KND_UPDATE_STATE;
 
-    state_ref->next = task->class_inst_state_refs;
-    task->class_inst_state_refs = state_ref;
+    // TODO state_ref->next = task->class_inst_state_refs;
+    //task->class_inst_state_refs = state_ref;
 
     return make_gsl_err(gsl_OK);
 }

@@ -46,9 +46,9 @@ static gsl_err_t parse_proc_import(void *obj,
     struct kndTask *task = obj;
     task->type = KND_UPDATE_STATE;
 
-    if (!task->update->orig_state_id)
-        task->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
-                                                           memory_order_relaxed);
+    if (!task->ctx->update->orig_state_id)
+        task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+                                                                memory_order_relaxed);
     return knd_proc_import(task->repo, rec, total_size, task);
 }
 
@@ -81,7 +81,6 @@ static gsl_err_t parse_class_import(void *obj,
 {
     struct kndTask *task = obj;
     struct kndUserContext *ctx = task->user_ctx;
-    struct kndClass *c;
     struct kndRepo *repo;
 
     repo = ctx->repo;
@@ -89,9 +88,6 @@ static gsl_err_t parse_class_import(void *obj,
         repo = task->repo;
     else
         task->repo = repo;
-
-    c = repo->root_class;
-    task->class = c;
 
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing user class import: \"%.*s\"..", 64, rec);

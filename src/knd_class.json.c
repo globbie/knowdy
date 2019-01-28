@@ -40,6 +40,13 @@
 #define DEBUG_JSON_LEVEL_5 0
 #define DEBUG_JSON_LEVEL_TMP 1
 
+struct LocalContext {
+    struct kndTask *task;
+    struct kndRepo *repo;
+    struct kndClass *class;
+    struct kndClassVar *class_var;
+};
+
 extern int knd_export_class_state_JSON(struct kndClass *self,
                                        struct kndTask *task)
 {
@@ -158,8 +165,6 @@ static int export_class_set_elem(void *obj,
     size_t state_gt = task->state_gt;
     size_t curr_state = 0;
     int err;
-
-    task->class = c;
 
     if (DEBUG_JSON_LEVEL_2)
         knd_log(".. JSON export set elem: %.*s gt:%zu start from:%zu   batch max size:%zu",
@@ -405,6 +410,7 @@ extern int knd_class_set_export_JSON(struct kndSet *set,
     curr_depth = task->max_depth;
 
     task->max_depth = 1;
+
     err = set->map(set, export_class_set_elem, (void*)task);
     if (err && err != knd_RANGE) return err;
     task->max_depth = curr_depth;

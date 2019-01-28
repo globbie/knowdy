@@ -211,8 +211,9 @@ extern int knd_export_class_state_JSON(struct kndClass *self,
 
 extern int knd_empty_set_export_JSON(struct kndClass *self,
                                     struct kndTask *task);
-extern int knd_class_set_export_JSON(struct kndSet *set,
-                                     struct kndTask *task);
+
+int knd_class_set_export_JSON(struct kndSet *set,
+                              struct kndTask *task);
 
 extern int knd_class_facets_export_JSON(struct kndTask *task);
 
@@ -263,9 +264,10 @@ extern int knd_class_export_updates_GSP(struct kndClass *self,
                                         struct kndClassUpdate *update,
                                         struct kndTask *task);
 
-extern gsl_err_t knd_parse_import_class_inst(void *obj,
-                                             const char *rec,
-                                             size_t *total_size);
+int knd_parse_import_class_inst(struct kndClass *self,
+                                const char *rec,
+                                size_t *total_size,
+                                struct kndTask *task);
 
 extern gsl_err_t knd_class_import(struct kndRepo *repo,
                                   const char *rec,

@@ -124,7 +124,7 @@ static gsl_err_t parse_summary_array_item(void *obj,
                                           size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndClass *self = task->class;
+    struct kndClass *self = NULL; // TODO task->class;
     struct kndTranslation *tr;
     int err;
 
@@ -163,28 +163,24 @@ static gsl_err_t parse_summary_array_item(void *obj,
         knd_log(".. read summary translation: \"%.*s\",  text: \"%.*s\"",
                 tr->locale_size, tr->locale, tr->val_size, tr->val);
 
-    // append
-    tr->next = self->summary;
-    self->summary = tr;
+    // TODO append
+    //tr->next = self->summary;
+    //self->summary = tr;
 
     return make_gsl_err(gsl_OK);
 }
 
-extern gsl_err_t knd_parse_summary_array(void *obj,
-                                         const char *rec,
-                                         size_t *total_size)
+gsl_err_t knd_parse_summary_array(void *obj,
+                                  const char *rec,
+                                  size_t *total_size)
 {
     struct kndTask *task = obj;
 
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
         .parse = parse_summary_array_item,
-        .obj = task
+        .obj = task // add context
     };
-
-    if (DEBUG_GSL_LEVEL_2)
-        knd_log(".. %.*s: reading summary",
-                task->class->entry->name_size, task->class->entry->name);
 
     return gsl_parse_array(&item_spec, rec, total_size);
 }

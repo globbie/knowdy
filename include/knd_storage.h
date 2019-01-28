@@ -21,6 +21,7 @@
 #pragma once
 
 #include <stdatomic.h>
+
 #include "knd_config.h"
 #include "knd_task.h"
 #include "knd_queue.h"
@@ -32,10 +33,14 @@ struct kndStorage
 
     struct kndQueue *queue;
     struct kndSet *task_idx;
+
+    struct kndTask  **tasks;
+    size_t num_tasks;
 };
 
 int knd_storage_new(struct kndStorage **self, size_t queue_capacity);
 int knd_storage_reset(struct kndStorage *self);
+int knd_storage_serve(struct kndStorage *self);
 
 int knd_storage_put(struct kndStorage *self,
                     struct kndTask *task);

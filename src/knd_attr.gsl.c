@@ -147,7 +147,7 @@ extern int knd_export_inherited_attr_GSL(void *obj,
                                          void *elem)
 {
     struct kndTask *task = obj;
-    struct kndClass   *self = task->class;
+    struct kndClass   *self = NULL; // TODO task->class;
     struct kndAttrRef *ref = elem;
     struct kndAttr *attr = ref->attr;
     struct kndAttrVar *attr_var = ref->attr_var;

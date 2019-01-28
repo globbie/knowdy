@@ -19,11 +19,6 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
-struct LocalContext {
-    struct kndTask *self;
-    struct kndShard *shard;
-};
-
 static gsl_err_t run_set_format(void *obj,
                                 const char *name,
                                 size_t name_size)
@@ -95,67 +90,58 @@ static gsl_err_t parse_class_import(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->self;
+    struct kndTask *task = obj;
 
     if (DEBUG_TASK_LEVEL_2)
         knd_log(".. parsing the system class import: \"%.*s\"..", 64, rec);
 
     task->type = KND_UPDATE_STATE;
 
-    // FIXME(k15tfu): used by knd_attr
-    task->repo = ctx->shard->repo;
-    if (!task->update->orig_state_id)
-        task->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
-                                                           memory_order_relaxed);
+    if (!task->ctx->update->orig_state_id)
+        task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+                                                                memory_order_relaxed);
 
-    return knd_class_import(ctx->shard->repo, rec, total_size, task);
+    return knd_class_import(task->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_class_select(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->self;
+    struct kndTask *task = obj;
 
     if (DEBUG_TASK_LEVEL_2)
         knd_log(".. parsing the system class select: \"%.*s\"", 64, rec);
 
-    // FIXME(k15tfu): used by knd_attr
-    task->repo = ctx->shard->repo;
-
-    return knd_class_select(ctx->shard->repo, rec, total_size, task);
+    return knd_class_select(task->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_proc_import(void *obj,
                                    const char *rec,
                                    size_t *total_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->self;
-    struct kndRepo *repo = ctx->shard->repo;
+    struct kndTask *task = obj;
+    struct kndRepo *repo = task->repo;
     if (DEBUG_TASK_LEVEL_2)
         knd_log(".. parsing the system proc import: \"%.*s\"..", 64, rec);
 
     task->type = KND_UPDATE_STATE;
-    if (!task->update->orig_state_id)
-        task->update->orig_state_id = atomic_load_explicit(&repo->num_updates,
-                                                           memory_order_relaxed);
-    return knd_proc_import(ctx->shard->repo, rec, total_size, task);
+    if (!task->ctx->update->orig_state_id)
+        task->ctx->update->orig_state_id = atomic_load_explicit(&repo->num_updates,
+                                                                memory_order_relaxed);
+    return knd_proc_import(task->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_proc_select(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->self;
+    struct kndTask *task = obj;
 
     if (DEBUG_TASK_LEVEL_2)
         knd_log(".. parsing the system proc select: \"%.*s\"", 64, rec);
 
-    return knd_proc_select(ctx->shard->repo, rec, total_size, task);
+    return knd_proc_select(task->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_update(void *obj,
@@ -186,8 +172,7 @@ static gsl_err_t parse_update(void *obj,
 
 static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *self = ctx->self;
+    struct kndTask *self = obj;
     gsl_err_t parser_err;
     int err;
 
@@ -218,23 +203,23 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
           .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_import,
-          .obj = ctx
+          .obj = self
         },
         { .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_select,
-          .obj = ctx
+          .obj = self
         },
         { .type = GSL_SET_STATE,
           .name = "proc",
           .name_size = strlen("proc"),
           .parse = parse_proc_import,
-          .obj = ctx
+          .obj = self
         },
         { .name = "proc",
           .name_size = strlen("proc"),
           .parse = parse_proc_select,
-          .obj = ctx
+          .obj = self
         },
         { .name = "repo",
           .name_size = strlen("repo"),
@@ -259,8 +244,8 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
     /* any system repo updates? */
     switch (self->type) {
     case KND_UPDATE_STATE:
-        if (!self->update_confirmed) {
-            err = knd_confirm_updates(ctx->shard->repo, self);
+        if (!self->ctx->update_confirmed) {
+            err = knd_confirm_updates(self->repo, self);
             if (err) return make_gsl_err_external(err);
         }
         break;
@@ -275,19 +260,14 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
     return parser_err;
 }
 
-gsl_err_t knd_select_task(struct kndTask *self, const char *rec, size_t *total_size,
-                          struct kndShard *shard)
+gsl_err_t knd_select_task(struct kndTask *self, const char *rec, size_t *total_size)
 {
-    struct LocalContext ctx = { self, shard };
     struct gslTaskSpec specs[] = {
         { .name = "task",
           .name_size = strlen("task"),
           .parse = parse_task,
-          .obj = &ctx
+          .obj = self
         }
     };
-    if (DEBUG_TASK_LEVEL_TMP)
-        knd_log(".. parsing task: \"%.*s\"..", 256, rec);
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }

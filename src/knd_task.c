@@ -21,7 +21,7 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
-void kndTask_del(struct kndTask *self)
+void knd_task_del(struct kndTask *self)
 {
     self->log->del(self->log);
     self->out->del(self->out);
@@ -32,17 +32,12 @@ void kndTask_del(struct kndTask *self)
     free(self);
 }
 
-void kndTask_reset(struct kndTask *self)
+void knd_task_reset(struct kndTask *self)
 {
-    self->tid_size = 0;
-
-    self->locale = self->shard->user->default_locale;
-    self->locale_size = self->shard->user->default_locale_size;
     self->curr_locale_size = 0;
 
     self->type = KND_GET_STATE;
     self->phase = KND_SELECTED;
-
     self->format = KND_FORMAT_GSL;
     self->format_offset = 0;
 
@@ -59,21 +54,16 @@ void kndTask_reset(struct kndTask *self)
     self->state_gte = -1;
     self->state_lt = 0;
     self->state_lte = 0;
+
     self->show_removed_objs = false;
     self->depth = 0;
     self->max_depth = 1;
 
     self->error = 0;
     self->http_code = HTTP_OK;
-    self->update = NULL;
-    self->update_confirmed = false;
 
     self->user_ctx = NULL;
     self->repo = NULL;
-    self->class = NULL;
-    self->class_inst = NULL;
-    self->attr = NULL;
-    self->attr_var = NULL;
 
     self->log->reset(self->log);
     self->out->reset(self->out);
@@ -115,28 +105,23 @@ static int log_parser_error(struct kndTask *self,
                              line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
 }
 
-int kndTask_run(struct kndTask *self, const char *rec, size_t rec_size, struct kndShard *shard)
+int knd_task_run(struct kndTask *self)
 {
     int err;
     gsl_err_t parser_err;
 
-    kndTask_reset(self);
-
-    self->input = rec;
-    self->input_size = rec_size;
-
-    if (!self->update) {
-        err = knd_update_new(self->mempool, &self->update);                       RET_ERR();
+    if (!self->ctx->update) {
+        err = knd_update_new(self->mempool, &self->ctx->update);                  RET_ERR();
     }
 
-    parser_err = knd_select_task(self, rec, &rec_size, shard);
+    parser_err = knd_select_task(self, self->input, &self->input_size);
     if (parser_err.code) {
         knd_log("-- task run failure");
         if (!is_gsl_err_external(parser_err)) {
             // assert(!self->log->buf_size)
             if (!self->log->buf_size) {
                 self->http_code = HTTP_BAD_REQUEST;
-                err = log_parser_error(self, parser_err, rec_size, rec);
+                err = log_parser_error(self, parser_err, self->input_size, self->input);
                 if (err) return err;
             }
         }
@@ -193,18 +178,15 @@ static int task_err_export_GSP(struct kndTask *self,
                                struct glbOutput *out)
 {
     int err;
-
     err = out->write(out, "{err ", strlen("{err "));                              RET_ERR();
     err = out->writef(out, "%d", self->http_code);                                RET_ERR();
 
     err = out->write(out, "{_gloss ", strlen("{_gloss "));                        RET_ERR();
-
     if (self->log->buf_size) {
         err = out->write(out, self->log->buf, self->log->buf_size);               RET_ERR();
     } else {
         err = out->write(out, "internal error", strlen("internal error"));        RET_ERR();
     }
-
     err = out->writec(out, '}');                                                  RET_ERR();
     err = out->writec(out, '}');                                                  RET_ERR();
 
@@ -307,13 +289,13 @@ int knd_task_context_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
                             sizeof(struct kndTaskContext), &page);  RET_ERR();
     *result = page;
     return knd_OK;
 }
 
-int kndTask_new(struct kndTask **task)
+int knd_task_new(struct kndTask **task)
 {
     struct kndTask *self;
     int err;

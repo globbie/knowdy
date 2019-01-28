@@ -97,6 +97,10 @@ typedef enum knd_storage_type {
 #define KND_DEBUG_LEVEL_4 0
 #define KND_DEBUG_LEVEL_5 0
 
+#define MAX_DEQUE_ATTEMPTS 100
+#define TASK_TIMEOUT_USECS 500
+#define TASK_QUEUE_CAPACITY 20
+
 #define KND_RESULT_BATCH_SIZE 10
 #define KND_RESULT_MAX_BATCH_SIZE 500
 

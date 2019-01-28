@@ -589,7 +589,7 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
             break;
         }
         knd_log("== user base repo selected!");
-        task->repo = task->shard->user->repo;
+        task->repo = task->user_ctx->repo;
         return make_gsl_err(gsl_OK);
     }
 
@@ -597,7 +597,7 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
         switch (*name) {
         case '/':
             knd_log("== system repo selected!");
-            task->repo = task->shard->repo;
+            //task->repo = task->shard->repo;
             return make_gsl_err(gsl_OK);
         default:
             break;
@@ -606,7 +606,8 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
 
     // TODO: name match
     knd_log("== shared repo selected!");
-    task->repo = task->shard->user->repo;
+    //task->repo = task->user->repo;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -642,7 +643,6 @@ static gsl_err_t parse_class_import(void *obj,
     struct kndTask *task = obj;
     struct kndUserContext *ctx = task->user_ctx;
     struct kndRepo *repo = task->repo;
-    struct kndClass *c;
 
     /*if (!ctx) {
         struct glbOutput *log = task->log;
@@ -657,10 +657,6 @@ static gsl_err_t parse_class_import(void *obj,
         task->repo = repo;
     }
 
-    assert(repo != NULL);
-
-    c = repo->root_class;
-    task->class = c;
     task->type = KND_UPDATE_STATE;
 
     return knd_class_import(repo, rec, total_size, task);
@@ -1167,7 +1163,7 @@ static int check_conflicts(struct kndRepo *self,
 
 int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
 {
-    struct kndUpdate *update = task->update;
+    struct kndUpdate *update = task->ctx->update;
     struct kndStateRef *ref, *child_ref;
     struct kndState *state;
     struct kndClassEntry *entry;
@@ -1181,7 +1177,7 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
 
     update->repo = self;
 
-    for (ref = task->class_state_refs; ref; ref = ref->next) {
+    for (ref = task->ctx->class_state_refs; ref; ref = ref->next) {
         entry = ref->obj;
         if (entry) {
             knd_log(".. repo %.*s to confirm updates in \"%.*s\"..",
@@ -1205,11 +1201,11 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
         }
     }
 
-    update->class_state_refs = task->class_state_refs;
-    task->class_state_refs = NULL;
+    update->class_state_refs = task->ctx->class_state_refs;
+    task->ctx->class_state_refs = NULL;
 
     /* PROCS */
-    for (ref = task->proc_state_refs; ref; ref = ref->next) {
+    for (ref = task->ctx->proc_state_refs; ref; ref = ref->next) {
         proc_entry = ref->obj;
         if (proc_entry) {
             knd_log(".. confirming updates in \"%.*s\"..",

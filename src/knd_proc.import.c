@@ -393,8 +393,8 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
     state_ref->type = KND_STATE_PROC_INST;
     state_ref->obj = (void*)entry;
 
-    state_ref->next = task->proc_inst_state_refs;
-    task->proc_inst_state_refs = state_ref;
+    state_ref->next = task->ctx->proc_inst_state_refs;
+    task->ctx->proc_inst_state_refs = state_ref;
 
     inst->entry->numid = atomic_fetch_add_explicit(&repo->num_proc_insts, 1,\
                                                    memory_order_relaxed);

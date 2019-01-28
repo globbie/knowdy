@@ -21,6 +21,7 @@
 #pragma once
 
 #include <stdatomic.h>
+#include <pthread.h>
 
 #include "knd_config.h"
 #include "knd_state.h"
@@ -69,7 +70,6 @@ struct kndVisualFormat {
 
 struct kndTaskDestination
 {
-
     char URI[KND_NAME_SIZE];
     size_t URI_size;
 
@@ -84,17 +84,32 @@ struct kndTaskContext {
 
     knd_task_spec_type type;
     _Atomic knd_task_phase_t phase;
+    struct timespec start_ts;
+    struct timespec end_ts;
+
     void *obj;
     task_cb_func cb;
 
-    char *input;
+    const char *input;
     size_t input_size;
 
-    char   *output;
+    const char   *output;
     size_t output_size;
     int error;
 
+    const char *locale;
+    size_t locale_size;
+
     struct kndTaskDestination *dest;
+
+    /* updates */
+    struct kndStateRef  *class_state_refs;
+    struct kndStateRef  *inner_class_state_refs;
+    struct kndStateRef  *class_inst_state_refs;
+    struct kndStateRef  *proc_state_refs;
+    struct kndStateRef  *proc_inst_state_refs;
+    struct kndUpdate *update;
+    bool update_confirmed;
 
     struct kndTaskContext *next;
 };
@@ -108,10 +123,15 @@ struct kndTask
     char tid[KND_NAME_SIZE];
     size_t tid_size;
 
+    pthread_t thread;
+
     struct kndTaskContext *ctx;
 
     char curr_locale[KND_NAME_SIZE];
     size_t curr_locale_size;
+
+    const char *locale;
+    size_t locale_size;
 
     knd_format format;
     size_t format_offset;
@@ -121,9 +141,6 @@ struct kndTask
 
     const char *input;
     size_t input_size;
-
-    const char *locale;
-    size_t locale_size;
 
     struct kndTranslation *tr;
 
@@ -156,9 +173,9 @@ struct kndTask
     struct kndUser *user;
     struct kndUserContext *user_ctx;
 
-    struct kndRepo *repo;  // FIXME(k15tfu): remove this
+    struct kndRepo *repo;
 
-    struct kndClass *class;
+    //struct kndClass *class;
     struct kndClassFacet *facet;
     struct kndSet *set;
 
@@ -167,20 +184,12 @@ struct kndTask
 
     // FIXME(k15tfu): remove these vv
     struct kndClassVar *class_var;
+
     struct kndAttr *attr;
     struct kndAttrVar *attr_var;
     struct kndClassInst *class_inst;
-    struct kndElem *elem;
-    //struct kndProc *proc;
 
-    /* updates */
-    struct kndStateRef  *class_state_refs;
-    struct kndStateRef  *inner_class_state_refs;
-    struct kndStateRef  *class_inst_state_refs;
-    struct kndStateRef  *proc_state_refs;
-    struct kndStateRef  *proc_inst_state_refs;
-    struct kndUpdate *update;
-    bool update_confirmed;
+    struct kndElem *elem;
 
     struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;
@@ -188,8 +197,9 @@ struct kndTask
     struct ooDict *class_name_idx;
     struct ooDict *proc_name_idx;
 
-    struct kndShard   *shard;
     struct kndStorage *storage;
+    struct kndQueue   *context_queue;
+
     struct glbOutput  *log;
     struct glbOutput  *task_out;
     struct glbOutput  *out;
@@ -199,15 +209,16 @@ struct kndTask
 };
 
 // knd_task.c
-extern void kndTask_del(struct kndTask *self);
-extern void kndTask_reset(struct kndTask *self);
-extern int kndTask_run(struct kndTask *self, const char *rec, size_t rec_size, struct kndShard *shard);
-extern int kndTask_build_report(struct kndTask *self);
-extern int kndTask_new(struct kndTask **self);
+int knd_task_new(struct kndTask **self);
+void knd_task_del(struct kndTask *self);
+void knd_task_reset(struct kndTask *self);
+//extern int kndTask_build_report(struct kndTask *self);
+
+int knd_task_run(struct kndTask *self);
 
 int knd_task_context_new(struct kndMemPool *mempool,
                          struct kndTaskContext **ctx);
 
 // knd_task.select.c
-extern gsl_err_t knd_select_task(struct kndTask *self,
-                                 const char *rec, size_t *total_size, struct kndShard *shard);
+gsl_err_t knd_select_task(struct kndTask *self,
+                          const char *rec, size_t *total_size);

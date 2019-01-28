@@ -56,9 +56,6 @@ run_get_class(void *obj, const char *name, size_t name_size)
     int err = knd_get_class(ctx->repo, name, name_size, &ctx->selected_class, ctx->task);
     if (err) return make_gsl_err_external(err);
 
-    /* NB: class instances need this */
-    ctx->task->class = ctx->selected_class;
-
     if (DEBUG_CLASS_SELECT_LEVEL_1) {
         ctx->selected_class->str(ctx->selected_class, 1);
     }
@@ -139,8 +136,9 @@ static int facetize_class(void *obj,
                           size_t unused_var(count),
                           void *elem)
 {
-    struct kndTask *task = obj;
-    struct kndClass *base = task->class;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndClass *base = ctx->class;
     struct kndClassEntry *entry = elem;
     struct kndClassRef *ref, *child_ref;
     int err;
@@ -152,6 +150,7 @@ static int facetize_class(void *obj,
 
     /* facetize by base class */
     for (ref = entry->ancestors; ref; ref = ref->next) {
+
         /* find immediate child */
         for (child_ref = base->entry->children; child_ref;
              child_ref = child_ref->next) {
@@ -166,9 +165,15 @@ static int facetize_class(void *obj,
 }
 
 static int create_subsets(struct kndSet *set,
+                          struct kndClass *c,
                           struct kndTask *task)
 {
     int err;
+
+    struct LocalContext ctx = {
+        .task = task,
+        .class = c
+    };
 
     err = knd_class_facet_new(task->mempool, &task->facet);                       RET_ERR();
     task->facet->base = set->base->class->entry;
@@ -176,7 +181,7 @@ static int create_subsets(struct kndSet *set,
     knd_log(".. subsets in progress .. max set size:%zu base:%p",
             task->mempool->max_set_size, set->base->class);
 
-    err = set->map(set, facetize_class, (void*)task);                             RET_ERR();
+    err = set->map(set, facetize_class, (void*)&ctx);                             RET_ERR();
 
     return knd_OK;
 }
@@ -227,9 +232,6 @@ parse_get_class_by_numid(void *obj, const char *rec, size_t *total_size)
 
     int err = knd_get_class_by_id(ctx->repo, id, id_size, &ctx->selected_class, ctx->task);
     if (err) return make_gsl_err_external(err);
-
-    /* NB: class instances need this */
-    ctx->task->class = ctx->selected_class;
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
         ctx->selected_class->str(ctx->selected_class, 1);
@@ -293,11 +295,13 @@ validate_select_by_baseclass_attr(void *obj, const char *name, size_t name_size,
     return *total_size = 0, make_gsl_err_external(knd_FAIL);
 #endif
 
-    // FIXME(k15tfu): used by knd_attr_select_clause()
-    ctx->task->class = ctx->selected_base;
-    ctx->task->repo = ctx->repo;
+    err = knd_attr_select_clause(attr_ref->attr,
+                                 ctx->selected_base,
+                                 ctx->repo,
+                                 ctx->task, rec, total_size);
+    if (err) return make_gsl_err_external(err);
 
-    return knd_attr_select_clause(attr_ref->attr, ctx->task, rec, total_size);
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t
@@ -641,6 +645,7 @@ static gsl_err_t
 parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
+    int err;
 
     if (!ctx->selected_class) {
         knd_log("-- class not selected");
@@ -649,7 +654,10 @@ parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    return knd_parse_import_class_inst(ctx->task, rec, total_size);
+    err = knd_parse_import_class_inst(ctx->selected_class, rec, total_size, ctx->task);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t
@@ -738,8 +746,9 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
 
             /* result set subdivision required? */
             if (ctx->create_subsets) {
-                task->class = ctx->selected_base;
-                err = create_subsets(ctx->selected_base->entry->descendants, task);
+                err = create_subsets(ctx->selected_base->entry->descendants,
+                                     ctx->selected_base,
+                                     task);
                 if (err) return make_gsl_err_external(err);
                 
                 err = knd_class_facets_export(task);
@@ -778,7 +787,7 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
 
         /* result set subdivision required? */
         if (ctx->create_subsets) {
-            err = create_subsets(set, task);
+            err = create_subsets(set, ctx->selected_base, task);
             if (err) return make_gsl_err_external(err);
 
             err = knd_class_facets_export(task);
@@ -931,8 +940,8 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
         return parser_err;
     }
 
-    // FIXME(k15tfu): vv
-    if (!task->class) return make_gsl_err(gsl_OK);
+    if (!ctx.selected_class)
+        return make_gsl_err(gsl_OK);
 
     knd_state_phase phase;
 
@@ -942,7 +951,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
         phase = KND_UPDATED;
         if (task->phase == KND_REMOVED)
             phase = KND_REMOVED;
-        err = knd_class_update_state(task->class, phase, task);
+        err = knd_class_update_state(ctx.selected_class, phase, task);
         if (err) return make_gsl_err_external(err);
         break;
     default:

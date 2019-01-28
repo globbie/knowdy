@@ -27,9 +27,9 @@ task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
         return -1;
     }
 
-    err = kndShard_run_task(self->shard, data, size, &result, &result_size, NULL, 0);
+    err = knd_shard_run_task(self->shard, data, size, &result, &result_size, NULL);
     if (err != knd_OK) {
-        knd_log("-- task execution failed");
+        knd_log("-- task append failed");
         return -1;
     }
 
@@ -41,10 +41,10 @@ task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
             return -1;
         }
 
-        knd_log("== Knode: task report size: %zu", self->shard->report_size);
+        knd_log("== Knode: task id: %.*s", result_size, result);
 
         err = reply->copy_data(reply,
-                               self->shard->report, self->shard->report_size);
+                               result, result_size);
         if (err != 0) {
             knd_log("-- task report failed, reply data copy failed");
             goto free_reply;
@@ -61,13 +61,20 @@ task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
     return 0;
 }
 
-
 static int
 start__(struct kndLearnerService *self)
 {
-    knd_log("Knowdy shard service is up and running..\n");
+    int err;
+
+    err = knd_shard_serve(self->shard);
+    if (err) return err;
+
+    knd_log("\n.. Knowdy shard service is up and running, num workers:%zu\n",
+            self->shard->num_tasks);
+
     self->knode->dispatch(self->knode);
-    knd_log("Knowdy shard service has been stopped.\n");
+
+    knd_log("-- Knowdy shard service has been stopped.\n");
     return knd_FAIL;
 }
 
@@ -130,7 +137,7 @@ int kndLearnerService_new(struct kndLearnerService **service,
         if (fd != -1) close(fd);
     }
 
-    err = kndShard_new(&self->shard, config, config_size);
+    err = knd_shard_new(&self->shard, config, config_size);
     if (err != 0) goto error;
 
     if (config) free(config);

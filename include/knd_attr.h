@@ -322,9 +322,13 @@ extern gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *
 // knd_attr.select.c
 extern int knd_attr_var_match(struct kndAttrVar *self,
                               struct kndAttrVar *template);
-extern gsl_err_t knd_attr_select_clause(struct kndAttr *attr,
-                                        struct kndTask *task,
-                                        const char *rec, size_t *total_size);
+
+int knd_attr_select_clause(struct kndAttr *attr,
+                           struct kndClass *c,
+                           struct kndRepo *repo,
+                           struct kndTask *task,
+                           const char *rec, size_t *total_size);
+
 extern gsl_err_t knd_select_attr_var(struct kndClass *class,
                                      const char *name, size_t name_size,
                                      const char *rec, size_t *total_size,

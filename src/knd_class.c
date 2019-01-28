@@ -250,7 +250,7 @@ static int update_ancestor_state(struct kndClass *self,
                                  struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
-    struct kndClass *c;
+    //struct kndClass *c;
     struct kndStateRef *state_ref = NULL;
     struct kndStateVal *state_val = NULL;
     struct kndState *state;
@@ -262,10 +262,12 @@ static int update_ancestor_state(struct kndClass *self,
                 self->name_size, self->name);
     }
 
-    for (state_ref = task->class_state_refs; state_ref; state_ref = state_ref->next) {
+#if 0
+        for (state_ref = task->class_state_refs; state_ref; state_ref = state_ref->next) {
         c = state_ref->obj;
         if (c == self) break;
     }
+#endif
 
     if (!state_ref) {
         err = knd_state_new(mempool, &state);
@@ -297,8 +299,8 @@ static int update_ancestor_state(struct kndClass *self,
         state_ref->state = state;
         state_ref->type = KND_STATE_CLASS;
 
-        state_ref->next = task->class_state_refs;
-        task->class_state_refs = state_ref;
+        // TODO state_ref->next = task->class_state_refs;
+        //task->class_state_refs = state_ref;
     }
     state = state_ref->state;
 
@@ -367,6 +369,7 @@ static int update_state(struct kndClass *self,
     return knd_OK;
 }
 
+#if 0
 static int update_inst_state(struct kndClass *self,
                              struct kndStateRef *children,
                              struct kndTask *task)
@@ -411,11 +414,12 @@ static int update_inst_state(struct kndClass *self,
     ref->type = KND_STATE_CLASS;
     ref->obj = self->entry;
 
-    ref->next = task->class_state_refs;
-    task->class_state_refs = ref;
+    // TODO    ref->next = task->class_state_refs;
+    //task->class_state_refs = ref;
     
     return knd_OK;
 }
+#endif
 
 int knd_class_update_state(struct kndClass *self,
                            knd_state_phase phase,
@@ -440,6 +444,8 @@ int knd_class_update_state(struct kndClass *self,
         break;
     case KND_UPDATED:
         /* any attr updates */
+
+#if 0        
         if (task->inner_class_state_refs) {
             err = update_state(self, task->inner_class_state_refs, phase, task);   RET_ERR();
             task->inner_class_state_refs = NULL;
@@ -458,7 +464,7 @@ int knd_class_update_state(struct kndClass *self,
 
             return knd_OK;
         }
-
+#endif
         break;
     default:
         break;
@@ -470,8 +476,8 @@ int knd_class_update_state(struct kndClass *self,
     state_ref->type = KND_STATE_CLASS;
     state_ref->obj = self->entry;
 
-    state_ref->next = task->class_state_refs;
-    task->class_state_refs = state_ref;
+    //state_ref->next = task->class_state_refs;
+    //task->class_state_refs = state_ref;
     return knd_OK;
 }
 

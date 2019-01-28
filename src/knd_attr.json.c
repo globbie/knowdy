@@ -213,14 +213,14 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
     return knd_OK;
 }
 
-extern int knd_export_inherited_attr(void *obj,
-                                     const char *unused_var(elem_id),
-                                     size_t unused_var(elem_id_size),
-                                     size_t unused_var(count),
-                                     void *elem)
+int knd_export_inherited_attr(void *obj,
+                              const char *unused_var(elem_id),
+                              size_t unused_var(elem_id_size),
+                              size_t unused_var(count),
+                              void *elem)
 {
     struct kndTask *task = obj;
-    struct kndClass   *self = task->class;
+    struct kndClass *self = NULL; // TODO
     struct kndAttrRef *ref = elem;
     struct kndAttr *attr = ref->attr;
     struct kndAttrVar *attr_var = ref->attr_var;

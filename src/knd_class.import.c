@@ -41,13 +41,20 @@
 #define DEBUG_CLASS_IMPORT_LEVEL_5 0
 #define DEBUG_CLASS_IMPORT_LEVEL_TMP 1
 
-extern gsl_err_t knd_parse_import_class_inst(void *obj,
-                                             const char *rec,
-                                             size_t *total_size)
+struct LocalContext {
+    struct kndTask *task;
+    struct kndRepo *repo;
+    struct kndClass *class;
+    struct kndClassVar *class_var;
+};
+
+int knd_parse_import_class_inst(struct kndClass *self,
+                                const char *rec,
+                                size_t *total_size,
+                                struct kndTask *task)
 {
-    struct kndTask *task = obj;
     struct kndMemPool *mempool = task->mempool;
-    struct kndClass *c;
+    struct kndClass *c = self;
     struct kndClassInst *inst;
     struct kndClassInstEntry *entry;
     struct ooDict *name_idx;
@@ -61,34 +68,25 @@ extern gsl_err_t knd_parse_import_class_inst(void *obj,
         knd_log(".. import \"%.*s\" inst.. (repo:%.*s)",
                 128, rec, repo->name_size, repo->name);
     }
-
-    if (!task->class) {
-        knd_log("-- no class selected");
-        return *total_size = 0, make_gsl_err(gsl_FAIL);
-    }
-
-    c = task->class;
-
     /* user ctx should have its own copy of a selected class */
-    if (c->entry->repo != repo) {
-        err = knd_class_clone(task->class, repo, &c, mempool);
-        if (err) return *total_size = 0, make_gsl_err_external(err);
-        task->class = c;
+    if (self->entry->repo != repo) {
+        err = knd_class_clone(self, repo, &c, mempool);
+        if (err) return err;
     }
 
     err = knd_class_inst_new(mempool, &inst);
     if (err) {
         knd_log("-- class inst alloc failed :(");
-        return *total_size = 0, make_gsl_err_external(err);
+        return err;
     }
 
     err = knd_state_new(mempool, &state);
     if (err) {
         knd_log("-- state alloc failed :(");
-        return *total_size = 0, make_gsl_err_external(err);
+        return err;
     }
     err = knd_class_inst_entry_new(mempool, &entry);
-    if (err) return make_gsl_err_external(err);
+    if (err) return err;
 
     inst->entry = entry;
     entry->inst = inst;
@@ -99,19 +97,19 @@ extern gsl_err_t knd_parse_import_class_inst(void *obj,
     inst->num_states = 1;
 
     parser_err = knd_import_class_inst(inst, rec, total_size, task);
-    if (parser_err.code) return parser_err;
+    if (parser_err.code) return parser_err.code;
 
     err = knd_state_ref_new(mempool, &state_ref);
     if (err) {
         knd_log("-- state ref alloc for imported inst failed");
-        return make_gsl_err_external(err);
+        return err;
     }
     state_ref->state = state;
     state_ref->type = KND_STATE_CLASS_INST;
     state_ref->obj = (void*)entry;
 
-    state_ref->next = task->class_inst_state_refs;
-    task->class_inst_state_refs = state_ref;
+    // TODO state_ref->next = task->class_inst_state_refs;
+    //task->class_inst_state_refs = state_ref;
 
     repo->num_class_insts++;
 
@@ -121,7 +119,7 @@ extern gsl_err_t knd_parse_import_class_inst(void *obj,
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log("++ %.*s class inst parse OK!",
                 inst->name_size, inst->name,
-                c->name_size, c->name);
+                self->name_size, self->name);
 
     /* automatic name assignment if no explicit name given */
     if (!inst->name_size) {
@@ -135,10 +133,10 @@ extern gsl_err_t knd_parse_import_class_inst(void *obj,
     err = name_idx->set(name_idx,
                         inst->name, inst->name_size,
                         (void*)entry);
-    if (err) return make_gsl_err_external(err);
+    if (err) return err;
 
     err = knd_register_class_inst(c, entry, mempool);
-    if (err) return make_gsl_err_external(err);
+    if (err) return err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_3) {
         knd_class_inst_str(inst, 0);
@@ -146,15 +144,15 @@ extern gsl_err_t knd_parse_import_class_inst(void *obj,
 
     task->type = KND_UPDATE_STATE;
 
-    return make_gsl_err(gsl_OK);
+    return knd_OK;
 }
-
 
 static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 {
-    struct kndTask *task = obj;
-    struct kndClass *self = task->class;
-    struct kndRepo *repo = task->repo;
+    struct LocalContext *ctx = obj;
+    struct kndClass *self = ctx->class;
+    struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     struct glbOutput *log = task->log;
     struct kndClass *c;
     struct ooDict *class_name_idx = repo->class_name_idx;
@@ -302,8 +300,9 @@ static gsl_err_t parse_attr(void *obj,
                             const char *name, size_t name_size,
                             const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
-    struct kndClass *self = task->class;
+    struct LocalContext *ctx = obj;
+    struct kndClass *self = ctx->class;
+    struct kndTask *task = ctx->task;
     struct kndAttr *attr;
     struct kndMemPool *mempool = task->mempool;
     const char *c;
@@ -429,8 +428,9 @@ static gsl_err_t parse_baseclass(void *obj,
                                  const char *rec,
                                  size_t *total_size)
 {
-    struct kndTask *task = obj;
-    struct kndClass *self = task->class;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndClass *self = ctx->class;
     struct kndClassVar *class_var;
     struct kndMemPool *mempool = task->mempool;
     gsl_err_t parser_err;
@@ -456,10 +456,10 @@ static gsl_err_t parse_baseclass(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-extern gsl_err_t knd_class_import(struct kndRepo *repo,
-                                  const char *rec,
-                                  size_t *total_size,
-                                  struct kndTask *task)
+gsl_err_t knd_class_import(struct kndRepo *repo,
+                           const char *rec,
+                           size_t *total_size,
+                           struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClass *c;
@@ -468,9 +468,9 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("..worker \"%zu\" to import class: \"%.*s\"..",
-                task->id, 128, rec);
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+        knd_log("..worker \"%zu\" to import class: \"%.*s\".. mem:%p",
+                task->id, 128, rec, mempool);
 
     err = knd_class_new(mempool, &c);
     if (err) return make_gsl_err_external(err);
@@ -481,35 +481,39 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
     entry->repo = repo;
     entry->class = c;
     c->entry = entry;
-    task->class = c;
-    task->repo = repo;
+
+    struct LocalContext ctx = {
+        .task = task,
+        .repo = repo,
+        .class = c
+    };
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_class_name,
-          .obj = task
+          .obj = &ctx
         },
         { .type = GSL_SET_STATE,
           .name = "base",
           .name_size = strlen("base"),
           .parse = parse_baseclass,
-          .obj = task
+          .obj = &ctx
         },
         { .name = "base",
           .name_size = strlen("base"),
           .parse = parse_baseclass,
-          .obj = task
+          .obj = &ctx
         },
         { .type = GSL_SET_STATE,
           .name = "is",
           .name_size = strlen("is"),
           .parse = parse_baseclass,
-          .obj = task
+          .obj = &ctx
         },
         { .name = "is",
           .name_size = strlen("is"),
           .parse = parse_baseclass,
-          .obj = task
+          .obj = &ctx
         },
         { .type = GSL_SET_ARRAY_STATE,
           .name = "_gloss",
@@ -536,10 +540,10 @@ extern gsl_err_t knd_class_import(struct kndRepo *repo,
         },
         { .type = GSL_SET_STATE,
           .validate = parse_attr,
-          .obj = task
+          .obj = &ctx
         },
         { .validate = parse_attr,
-          .obj = task
+          .obj = &ctx
         }
     };
 

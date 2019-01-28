@@ -87,7 +87,6 @@ parse_schema_path(void *obj, const char *rec, size_t *total_size)
             .obj = self
         }
     };
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
@@ -120,7 +119,7 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
         {   .name = "num-workers",
             .name_size = strlen("num-workers"),
             .parse = gsl_parse_size_t,
-            .obj = &self->num_workers
+            .obj = &self->num_tasks
         },
         {   .name = "agent",
             .name_size = strlen("agent"),
@@ -129,7 +128,6 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
             .max_buf_size = KND_NAME_SIZE
         }
     };
-
     int err = knd_FAIL;
     gsl_err_t parser_err;
 
@@ -151,12 +149,12 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
         knd_log("-- system schema path not set");
         return make_gsl_err(gsl_FAIL);
     }
-
     return make_gsl_err(gsl_OK);
 }
 
-int kndShard_parse_config(struct kndShard *self, const char *rec, size_t *total_size,
-                          struct kndMemPool *mempool)
+int knd_shard_parse_config(struct kndShard *self,
+                           const char *rec, size_t *total_size,
+                           struct kndMemPool *mempool)
 {
     self->mempool = mempool;
     struct gslTaskSpec specs[] = {
@@ -167,7 +165,6 @@ int kndShard_parse_config(struct kndShard *self, const char *rec, size_t *total_
             .obj = self
         }
     };
-
     gsl_err_t parser_err;
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);

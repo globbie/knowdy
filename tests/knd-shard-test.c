@@ -91,10 +91,10 @@ START_TEST(shard_config_test)
     for (size_t i = 0; i < sizeof broken_configs / sizeof broken_configs[0]; ++i) {
         const struct table_test *config = &broken_configs[i];
         shard = NULL;
-        err = kndShard_new(&shard, config->input, strlen(config->input));
+        err = knd_shard_new(&shard, config->input, strlen(config->input));
         ck_assert_int_eq(err, config->err);
         if (shard)
-            kndShard_del(shard);
+            knd_shard_del(shard);
     }
 
 END_TEST
@@ -295,15 +295,17 @@ START_TEST(shard_table_test)
     struct kndShard *shard;
     int err;
 
-    err = kndShard_new(&shard, shard_config, strlen(shard_config));
+    err = knd_shard_new(&shard, shard_config, strlen(shard_config));
     ck_assert_int_eq(err, knd_OK);
 
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
         const struct table_test *pcase = &cases[i];
+
         fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
 
         const char *result; size_t result_size;
-        err = kndShard_run_task(shard, pcase->input, strlen(pcase->input), &result, &result_size, NULL, 0);
+        err = knd_shard_run_task(shard, pcase->input, strlen(pcase->input),
+                                 &result, &result_size, NULL);
         ck_assert_int_eq(err, knd_OK);
 
         *((char*)result + result_size) = '\0';  // UNSAFE!
@@ -317,7 +319,7 @@ START_TEST(shard_table_test)
         regfree(&reg);
     }
 
-    kndShard_del(shard);
+    knd_shard_del(shard);
 END_TEST
 
 
@@ -369,7 +371,7 @@ START_TEST(shard_inheritance_test)
     struct kndShard *shard;
     int err;
 
-    err = kndShard_new(&shard, shard_inheritance_config, strlen(shard_inheritance_config));
+    err = knd_shard_new(&shard, shard_inheritance_config, strlen(shard_inheritance_config));
     ck_assert_int_eq(err, knd_OK);
 
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
@@ -377,7 +379,8 @@ START_TEST(shard_inheritance_test)
         fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
 
         const char *result; size_t result_size;
-        err = kndShard_run_task(shard, pcase->input, strlen(pcase->input), &result, &result_size, NULL, 0);
+        err = knd_shard_run_task(shard, pcase->input, strlen(pcase->input),
+                                &result, &result_size, NULL);
         ck_assert_int_eq(err, knd_OK);
 
         *((char*)result + result_size) = '\0';  // UNSAFE!
@@ -389,7 +392,7 @@ START_TEST(shard_inheritance_test)
         }
         regfree(&reg);
     }
-    kndShard_del(shard);
+    knd_shard_del(shard);
 END_TEST
 
 /** PROC **/
@@ -453,15 +456,16 @@ START_TEST(shard_proc_test)
     struct kndShard *shard;
     int err;
 
-    err = kndShard_new(&shard, shard_proc_config, strlen(shard_proc_config));
+    err = knd_shard_new(&shard, shard_proc_config, strlen(shard_proc_config));
     ck_assert_int_eq(err, knd_OK);
 
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
         const struct table_test *pcase = &cases[i];
         fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
         const char *result; size_t result_size;
-        err = kndShard_run_task(shard, pcase->input, strlen(pcase->input),
-                                &result, &result_size, NULL, 0);
+        err = knd_shard_run_task(shard,
+                                 pcase->input, strlen(pcase->input),
+                                 &result, &result_size, NULL);
         ck_assert_int_eq(err, knd_OK);
 
         *((char*)result + result_size) = '\0';  // UNSAFE!
@@ -473,7 +477,7 @@ START_TEST(shard_proc_test)
         }
         regfree(&reg);
     }
-    kndShard_del(shard);
+    knd_shard_del(shard);
 END_TEST
 
 int main(void) {
