@@ -49,8 +49,12 @@ static void *task_runner(void *ptr)
         }
         attempt_count = 0;
         ctx = elem;
-        ctx->phase = KND_COMPLETE;
+        if (ctx->type == KND_STOP_STATE) {
+            knd_log("\n-- shard's task runner #%zu received a stop signal..", task->id);
+            return NULL;
+        }
 
+        ctx->phase = KND_COMPLETE;
         knd_log("++ #%zu worker got task #%zu!",
                 task->id, ctx->numid);
 
@@ -120,11 +124,35 @@ int knd_shard_serve(struct kndShard *self)
     err = knd_storage_serve(self->storage);
     if (err) return err;
 
-    /*for (size_t i = 0; i < self->num_tasks; i++) {
+
+    return knd_OK;
+}
+
+int knd_shard_stop(struct kndShard *self)
+{
+    struct kndTaskContext ctx;
+    struct kndTask *task;
+    int err;
+
+    err = knd_storage_stop(self->storage);
+    if (err) return err;
+
+    memset(&ctx, 0, sizeof(struct kndTaskContext));
+    ctx.type = KND_STOP_STATE;
+
+    knd_log(".. scheduling shard stop tasks..");
+
+    for (size_t i = 0; i < self->num_tasks * 2; i++) {
+        err = knd_queue_push(self->task_context_queue, (void*)&ctx);
+        if (err) return err;
+    }
+
+    for (size_t i = 0; i < self->num_tasks; i++) {
         task = self->tasks[i];
         pthread_join(task->thread, NULL);
-        }*/
+    }
 
+    knd_log(".. shard tasks stopped.");
     return knd_OK;
 }
 
@@ -195,7 +223,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     /* IO service */
     err = knd_storage_new(&self->storage, task_queue_capacity);
     if (err != knd_OK) goto error;
-    
+
     /* system repo */
     err = kndRepo_new(&repo, mempool);
     if (err != knd_OK) goto error;

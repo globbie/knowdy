@@ -52,146 +52,20 @@ struct table_test {
     int err;
 };
 
-typedef struct worker {
-    pthread_t thread;
-    size_t id;
-    struct kndShard *shard;
-    const char *input;
-    size_t input_size;
-
-    const char *result;
-    size_t result_size;
-
-    const char *expect;
-    size_t expect_size;
-
-    size_t num_success;
-    size_t num_failed;
-} worker_t;
-
-static void *worker_proc(void *ptr)
-{
-    worker_t *worker = (worker_t *)ptr;
-    struct kndQueue *queue = worker->shard->task_context_queue;
-    struct kndTaskContext *ctx;
-    void *elem;
-    size_t attempt_count = 0;
-    int err;
-
-    fprintf(stdout, "== worker: #%zu..\n", worker->id);
-
-    while (1) {
-        attempt_count++;
-        err = knd_queue_pop(queue, &elem);
-        if (err) {
-            if (attempt_count > MAX_DEQUE_ATTEMPTS)
-                usleep(500);
-            continue;
-        }
-        ctx = elem;
-        ctx->phase = KND_COMPLETE;
-        attempt_count = 0;
-
-        fprintf(stdout, "++ #%zu worker got task #%zu!\n",
-                worker->id, ctx->numid);
-        usleep(1000);
-    }
-    return NULL;
-}
-
-static void *task_assign_proc(void *ptr)
-{
-    worker_t *worker = (worker_t *)ptr;
-    struct kndMemPool *mempool = worker->shard->mempool;
-    struct kndQueue *queue = worker->shard->task_context_queue;
-    struct kndTaskContext *ctx = NULL;
-    int err;
-
-    fprintf(stdout, "== task assigner: #%zu..\n", worker->id);
-
-    for (size_t i = 0; i < MAX_TASKS; ++i) {
-        if (!ctx) {
-            err = knd_task_context_new(mempool, &ctx);
-            if (err) return NULL;
-            ctx->numid = i;
-            ctx->next = worker->shard->contexts;
-            worker->shard->contexts = ctx;
-
-            fprintf(stdout, ".. create task #%zu..\n",
-                    ctx->numid);
-        }
-
-    retry_push:
-        err = knd_queue_push(queue, (void*)ctx);
-        if (err) {
-            knd_log("-- queue still full at task %zu", ctx->numid);
-            sleep(3);
-            goto retry_push;
-        }
-
-        ctx = NULL;
-    }
-    
-    return NULL;
-}
-
-START_TEST(shard_concurrent_import_test)
+START_TEST(shard_concurrent_service_test)
 {
     struct kndShard *shard;
-    worker_t **workers;
-    worker_t *worker;
     int err;
 
     err = knd_shard_new(&shard, shard_config, strlen(shard_config));
     ck_assert_int_eq(err, knd_OK);
 
-    fprintf(stdout, "== total num of workers: %zu\n", shard->num_tasks);
+    err = knd_shard_serve(shard);
+    ck_assert_int_eq(err, knd_OK);
 
-    workers = calloc(sizeof(worker_t*), shard->num_tasks);
-    if (!workers) return;
-
-    for (size_t i = 0; i < shard->num_tasks; i++) {
-        if ((worker = malloc(sizeof(worker_t))) == NULL) {
-            perror("-- worker allocation failed");
-            return;
-        }
-        memset(worker, 0, sizeof(*worker));
-        worker->id = i;
-        worker->shard = shard;
-        workers[i] = worker;
-
-        if (i == 0) {
-            if (pthread_create(&worker->thread, NULL, task_assign_proc, (void*)worker)) {
-                perror("-- task assigner thread creation failed");
-                free(worker);
-                return;
-            }
-            continue;
-        }
-
-        if (pthread_create(&worker->thread, NULL, worker_proc, (void*)worker)) {
-            perror("-- worker thread creation failed");
-            free(worker);
-            return;
-        }
-    }
-
-    for (size_t i = 0; i < shard->num_tasks; i++) {
-        worker = workers[i];
-        pthread_join(worker->thread, NULL);
-    }
-
-    // TODO: check expectations
-    struct kndTaskContext *ctx;
-    for (ctx = shard->contexts; ctx; ctx = ctx->next) {
-        knd_log("== ctx #%zu", ctx->numid);
-    }
+    err = knd_shard_stop(shard);
+    ck_assert_int_eq(err, knd_OK);
     
-    /* release resources */
-    for (size_t i = 0; i < shard->num_tasks; i++)
-        free(workers[i]);
-
-    free(workers);
     knd_shard_del(shard);
 }
 END_TEST
@@ -202,7 +76,7 @@ int main(void) {
     TCase *tc_shard_concurrent = tcase_create("concurrent shard");
     tcase_set_timeout(tc_shard_concurrent, 100);
 
-    tcase_add_test(tc_shard_concurrent, shard_concurrent_import_test);
+    tcase_add_test(tc_shard_concurrent, shard_concurrent_service_test);
     
     suite_add_tcase(s, tc_shard_concurrent);
 

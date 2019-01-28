@@ -54,6 +54,8 @@ int knd_shard_new(struct kndShard **self, const char *config, size_t config_size
 void knd_shard_del(struct kndShard *self);
 
 int knd_shard_serve(struct kndShard *self);
+int knd_shard_stop(struct kndShard *self);
+
 int knd_shard_run_task(struct kndShard *self,
                        const char *input, size_t input_size,
                        const char **task_id, size_t *task_id_size,

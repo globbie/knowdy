@@ -211,7 +211,7 @@ static int task_err_export(struct kndTask *self,
     return knd_OK;
 }
 
-int kndTask_build_report(struct kndTask *self)
+int knd_task_build_report(struct kndTask *self)
 {
     size_t obj_size;
     size_t chunk_size;

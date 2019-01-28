@@ -45,6 +45,13 @@ static void *task_runner(void *ptr)
                 usleep(TASK_TIMEOUT_USECS);
             continue;
         }
+
+        if (ctx->type == KND_STOP_STATE) {
+            knd_log("\n-- storage task runner #%zu received a stop signal..",
+                    task->id);
+            return NULL;
+        }
+
         ctx->phase = KND_COMPLETE;
         attempt_count = 0;
 
@@ -83,15 +90,35 @@ int knd_storage_serve(struct kndStorage *self)
         }
     }
 
-    /*for (size_t i = 0; i < self->num_tasks; i++) {
-        task = self->tasks[i];
-        pthread_join(task->thread, NULL);
-        }*/
-
     return knd_OK;
 
  error:
     return err;
+}
+
+int knd_storage_stop(struct kndStorage *self)
+{
+    struct kndTask *task;
+    struct kndTaskContext ctx;
+    int err;
+
+    memset(&ctx, 0, sizeof(struct kndTaskContext));
+    ctx.type = KND_STOP_STATE;
+
+    knd_log(".. scheduling storage stop tasks..");
+
+    for (size_t i = 0; i < self->num_tasks * 2; i++) {
+        err = knd_queue_push(self->queue, (void*)&ctx);
+        if (err) return err;
+    }
+
+    for (size_t i = 0; i < self->num_tasks; i++) {
+        task = self->tasks[i];
+        pthread_join(task->thread, NULL);
+    }
+
+    knd_log(".. storage tasks stopped.");
+    return knd_OK;
 }
 
 int knd_storage_new(struct kndStorage **storage,

@@ -461,8 +461,10 @@ START_TEST(shard_proc_test)
 
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
         const struct table_test *pcase = &cases[i];
+
         fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
         const char *result; size_t result_size;
+
         err = knd_shard_run_task(shard,
                                  pcase->input, strlen(pcase->input),
                                  &result, &result_size, NULL);
@@ -480,7 +482,8 @@ START_TEST(shard_proc_test)
     knd_shard_del(shard);
 END_TEST
 
-int main(void) {
+int main(void)
+{
     Suite *s = suite_create("suite");
 
     TCase *tc_shard_basic = tcase_create("basic shard");
