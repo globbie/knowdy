@@ -84,15 +84,17 @@ static void str(struct kndClass *self, size_t depth)
         for (item = self->baseclass_vars; item; item = item->next) {
             resolved_state = '-';
 
-            name = item->entry->name;
-            name_size = item->entry->name_size;
+            if (item->entry) {
+                name = item->entry->name;
+                name_size = item->entry->name_size;
 
-            knd_log("%*s_base \"%.*s\" id:%.*s numid:%zu [%c]",
-                    (depth + 1) * KND_OFFSET_SIZE, "",
-                    name_size, name,
-                    item->entry->id_size, item->entry->id, item->numid,
-                    resolved_state);
-            
+                knd_log("%*s_base \"%.*s\" id:%.*s numid:%zu [%c]",
+                        (depth + 1) * KND_OFFSET_SIZE, "",
+                        name_size, name,
+                        item->entry->id_size, item->entry->id, item->numid,
+                        resolved_state);
+            }
+
             if (item->attrs) {
                 str_attr_vars(item->attrs, depth + 1);
             }
@@ -135,7 +137,7 @@ int knd_get_class_inst(struct kndClass *self,
 {
     struct kndClassInstEntry *entry;
     struct kndClassInst *obj;
-    struct ooDict *name_idx;
+    struct kndDict *name_idx;
     struct glbOutput *log = task->log;
     int err, e;
 
@@ -164,7 +166,7 @@ int knd_get_class_inst(struct kndClass *self,
     }
 
     name_idx = self->entry->repo->class_inst_name_idx;
-    entry = name_idx->get(name_idx, name, name_size);
+    entry = knd_dict_get(name_idx, name, name_size);
     if (!entry) {
         knd_log("-- no such class inst: \"%.*s\"", name_size, name);
         log->reset(log);
@@ -213,10 +215,10 @@ int knd_get_class_attr_value(struct kndClass *src,
 {
     struct kndAttrRef *attr_ref;
     struct kndAttrVar *child_var;
-    struct ooDict *attr_name_idx = src->entry->repo->attr_name_idx;
+    struct kndDict *attr_name_idx = src->entry->repo->attr_name_idx;
     int err;
 
-    attr_ref = attr_name_idx->get(attr_name_idx,
+    attr_ref = knd_dict_get(attr_name_idx,
                                   query->name, query->name_size);
     if (!attr_ref) {
         knd_log("-- no such attr: %.*s", query->name_size, query->name);
@@ -624,7 +626,7 @@ extern int knd_class_get_attr(struct kndClass *self,
 {
     struct kndAttrRef *ref;
     struct kndClassEntry *class_entry;
-    struct ooDict *attr_name_idx = self->entry->repo->attr_name_idx;
+    struct kndDict *attr_name_idx = self->entry->repo->attr_name_idx;
     int err;
 
     if (DEBUG_CLASS_LEVEL_2) {
@@ -634,11 +636,11 @@ extern int knd_class_get_attr(struct kndClass *self,
                 name_size, name);
     }
 
-    ref = attr_name_idx->get(attr_name_idx, name, name_size);
+    ref = knd_dict_get(attr_name_idx, name, name_size);
     if (!ref) {
         if (self->entry->repo->base) {
             attr_name_idx = self->entry->repo->base->attr_name_idx;
-            ref = attr_name_idx->get(attr_name_idx, name, name_size);
+            ref = knd_dict_get(attr_name_idx, name, name_size);
         }
         if (!ref) {
             knd_log("-- no such attr: \"%.*s\"", name_size, name);
@@ -704,7 +706,7 @@ extern int knd_get_class(struct kndRepo *self,
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
     struct glbOutput *log = task->log;
-    struct ooDict *class_name_idx = self->class_name_idx;
+    struct kndDict *class_name_idx = self->class_name_idx;
     struct kndState *state;
     int err;
 
@@ -714,7 +716,7 @@ extern int knd_get_class(struct kndRepo *self,
                 name_size, name);
     }
     
-    entry = class_name_idx->get(class_name_idx, name, name_size);
+    entry = knd_dict_get(class_name_idx, name, name_size);
     if (!entry) {
         if (DEBUG_CLASS_LEVEL_2)
             knd_log("-- no local class found in: %.*s (idx:%p)",
@@ -925,7 +927,7 @@ int knd_register_class_inst(struct kndClass *self,
     struct kndSet *inst_idx;
     struct kndClass *c;
     struct kndClassEntry *prev_entry;
-    struct ooDict *class_name_idx = repo->class_name_idx;
+    struct kndDict *class_name_idx = repo->class_name_idx;
     int err;
 
     if (DEBUG_CLASS_LEVEL_2)
@@ -966,7 +968,7 @@ int knd_register_class_inst(struct kndClass *self,
        
         if (self->entry->repo != ref->entry->repo) {
             /* search local repo */
-            prev_entry = class_name_idx->get(class_name_idx,
+            prev_entry = knd_dict_get(class_name_idx,
                                              ref->entry->name,
                                              ref->entry->name_size);
             if (prev_entry) {
@@ -991,7 +993,7 @@ int knd_class_clone(struct kndClass *self,
 {
     struct kndClass *c;
     struct kndClassEntry *entry;
-    struct ooDict *class_name_idx = target_repo->class_name_idx;
+    struct kndDict *class_name_idx = target_repo->class_name_idx;
     struct kndSet *class_idx = target_repo->class_idx;
     void *ref;
     int err;
@@ -1020,10 +1022,10 @@ int knd_class_clone(struct kndClass *self,
     }
 
     /* idx register */
-    ref = class_name_idx->get(class_name_idx,
-                              entry->name, entry->name_size);
+    ref = knd_dict_get(class_name_idx,
+                       entry->name, entry->name_size);
     if (!ref) {
-        err = class_name_idx->set(class_name_idx,
+        err = knd_dict_set(class_name_idx,
                                   entry->name, entry->name_size,
                                   (void*)entry);                                  RET_ERR();
     }
@@ -1044,7 +1046,7 @@ extern int knd_class_copy(struct kndClass *self,
                           struct kndMemPool *mempool)
 {
     struct kndRepo *repo =  c->entry->repo;
-    struct ooDict *class_name_idx = repo->class_name_idx;
+    struct kndDict *class_name_idx = repo->class_name_idx;
     struct kndClassEntry *entry, *src_entry, *prev_entry;
     struct kndClassRef   *ref,   *src_ref;
     int err;
@@ -1063,7 +1065,7 @@ extern int knd_class_copy(struct kndClass *self,
     entry->class = c;
     c->entry = entry;
 
-    /*err = class_name_idx->set(class_name_idx,
+    /*err = knd_dict_set(class_name_idx,
                               entry->name, entry->name_size,
                               (void*)entry);                                      RET_ERR();
     */
@@ -1080,9 +1082,9 @@ extern int knd_class_copy(struct kndClass *self,
         ref->class = src_ref->class;
         ref->entry = src_ref->entry;
 
-        prev_entry = class_name_idx->get(class_name_idx,
-                                    src_ref->class->name,
-                                    src_ref->class->name_size);
+        prev_entry = knd_dict_get(class_name_idx,
+                                  src_ref->class->name,
+                                  src_ref->class->name_size);
         if (prev_entry) {
             ref->entry = prev_entry;
             ref->class = prev_entry->class;

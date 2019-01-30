@@ -169,7 +169,7 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndProc *proc = ctx->proc;
-    struct ooDict *proc_name_idx = ctx->repo->proc_name_idx;
+    //struct kndDict *proc_name_idx = ctx->repo->proc_name_idx;
 
     if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. removing proc: %.*s", name_size, name);
@@ -191,8 +191,8 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
 
     proc->entry->phase = KND_REMOVED;
 
-    proc_name_idx->remove(proc_name_idx,
-                          proc->name, proc->name_size);
+    // TODO proc_name_idx->remove(proc_name_idx,
+    //                      proc->name, proc->name_size);
 
     //repo->log->reset(repo->log);
     /*err = repo->log->write(repo->log, proc->name, proc->name_size);
@@ -313,7 +313,7 @@ int knd_proc_get_arg(struct kndProc *self,
                      struct kndProcArgRef **result)
 {
     struct kndProcArgRef *ref;
-    struct ooDict *arg_name_idx = self->entry->repo->proc_arg_name_idx;
+    struct kndDict *arg_name_idx = self->entry->repo->proc_arg_name_idx;
     struct kndSet *arg_idx = self->arg_idx;
     int err;
 
@@ -324,7 +324,7 @@ int knd_proc_get_arg(struct kndProc *self,
                 name_size, name, arg_idx);
     }
 
-    ref = arg_name_idx->get(arg_name_idx, name, name_size);
+    ref = knd_dict_get(arg_name_idx, name, name_size);
     if (!ref) {
         /*if (self->entry->repo->base) {
             arg_name_idx = self->entry->repo->base->arg_name_idx;
@@ -357,8 +357,8 @@ int knd_get_proc(struct kndRepo *repo,
         knd_log(".. repo %.*s to get proc: \"%.*s\"..",
                 repo->name_size, repo->name, name_size, name);
 
-    entry = (struct kndProcEntry*)repo->proc_name_idx->get(repo->proc_name_idx,
-                                                           name, name_size);
+    entry = knd_dict_get(repo->proc_name_idx,
+                         name, name_size);
     if (!entry) {
         if (repo->base) {
             err = knd_get_proc(repo->base, name, name_size, result);

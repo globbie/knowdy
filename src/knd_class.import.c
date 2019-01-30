@@ -57,7 +57,7 @@ int knd_parse_import_class_inst(struct kndClass *self,
     struct kndClass *c = self;
     struct kndClassInst *inst;
     struct kndClassInstEntry *entry;
-    struct ooDict *name_idx;
+    struct kndDict *name_idx;
     struct kndRepo *repo = task->repo;
     struct kndState *state;
     struct kndStateRef *state_ref;
@@ -130,9 +130,9 @@ int knd_parse_import_class_inst(struct kndClass *self,
 
     // TODO  lookup prev class inst ref
 
-    err = name_idx->set(name_idx,
-                        inst->name, inst->name_size,
-                        (void*)entry);
+    err = knd_dict_set(name_idx,
+                       inst->name, inst->name_size,
+                       (void*)entry);
     if (err) return err;
 
     err = knd_register_class_inst(c, entry, mempool);
@@ -155,12 +155,12 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndRepo *repo = ctx->repo;
     struct glbOutput *log = task->log;
     struct kndClass *c;
-    struct ooDict *class_name_idx = repo->class_name_idx;
+    struct kndDict *class_name_idx = task->ctx->class_name_idx;
     struct kndClassEntry *entry;
     struct kndState *state;
     int err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
         knd_log(".. set class name: \"%.*s\"..",
                 name_size, name);
     }
@@ -173,7 +173,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         if (!err) goto doublet;
     }
 
-    entry = class_name_idx->get(class_name_idx, name, name_size);
+    entry = knd_dict_get(class_name_idx, name, name_size);
     if (!entry) {
         entry = self->entry;
         //knd_log("entry: %p", self->entry);
@@ -189,17 +189,19 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         self->name = self->entry->name;
         self->name_size = name_size;
 
-        err = class_name_idx->set(class_name_idx,
-                                  name, name_size,
-                                  (void*)entry);
+        err = knd_dict_set(class_name_idx,
+                           name, name_size,
+                           (void*)entry);
         if (err) return make_gsl_err_external(err);
         
         return make_gsl_err(gsl_OK);
     }
 
+    knd_log("entry class: %p", entry->class);
+
     /* class entry already exists */
     if (!entry->class) {
-        entry->class =    self;
+        //entry->class =    self;
         self->entry =     entry;
         self->name =      entry->name;
         self->name_size = name_size;
@@ -225,7 +227,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     }
 
  doublet:
-    knd_log("-- \"%.*s\" class doublet found", name_size, name);
+    knd_log("-- \"%.*s\" class doublet found?", name_size, name);
     log->reset(log);
     err = log->write(log, name, name_size);
     if (err) return make_gsl_err_external(err);
@@ -241,11 +243,12 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
 {
-    struct kndTask *task          = obj;
+    struct LocalContext *ctx      = obj;
+    struct kndTask *task          = ctx->task;
     struct kndMemPool *mempool    = task->mempool;
-    struct kndClassVar *self      = task->class_var;
+    struct kndClassVar *self      = ctx->class_var;
     struct kndRepo *repo          = task->repo;
-    struct ooDict *class_name_idx = repo->class_name_idx;
+    struct kndDict *class_name_idx = repo->class_name_idx;
     struct kndClassEntry *entry;
     void *result;
     int err;
@@ -259,22 +262,21 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    result = class_name_idx->get(class_name_idx, name, name_size);
+    result = knd_dict_get(class_name_idx, name, name_size);
     if (result) {
         self->entry = result;
         return make_gsl_err(gsl_OK);
     }
 
-    /* register new class entry */
     err = knd_class_entry_new(mempool, &entry);
     if (err) return make_gsl_err_external(err);
 
     entry->name = name;
     entry->name_size = name_size;
 
-    err = class_name_idx->set(class_name_idx,
-                              entry->name, name_size,
-                              (void*)entry);
+    err = knd_dict_set(class_name_idx,
+                       entry->name, name_size,
+                       (void*)entry);
     if (err) return make_gsl_err_external(err);
 
     entry->repo = repo;
@@ -354,31 +356,59 @@ static gsl_err_t parse_attr(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-extern gsl_err_t parse_class_var(struct kndTask *task,
-                                 const char *rec,
-                                 size_t *total_size)
+static gsl_err_t import_attr_var(void *obj,
+                                 const char *name, size_t name_size,
+                                 const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    int err;
+
+    err = knd_import_attr_var(ctx->class_var, name, name_size,
+                              rec, total_size, ctx->task);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t import_attr_var_list(void *obj,
+                                      const char *name, size_t name_size,
+                                      const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    int err;
+
+    err = knd_import_attr_var_list(ctx->class_var, name, name_size,
+                                   rec, total_size, ctx->task);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_class_var(const char *rec,
+                                 size_t *total_size,
+                                 struct LocalContext *ctx)
 {
     gsl_err_t parser_err;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_class_var,
-          .obj = task
+          .obj = ctx
         },
         { .type = GSL_SET_STATE,
-          .validate = knd_import_attr_var,
-          .obj = task
+          .validate = import_attr_var,
+          .obj = ctx
         },
-        { .validate = knd_import_attr_var,
-          .obj = task
+        { .validate = import_attr_var,
+          .obj = ctx
         },
         { .type = GSL_SET_ARRAY_STATE,
-          .validate = knd_import_attr_var_list,
-          .obj = task
+          .validate = import_attr_var_list,
+          .obj = ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
-          .validate = knd_import_attr_var_list,
-          .obj = task
+          .validate = import_attr_var_list,
+          .obj = ctx
         }
     };
 
@@ -387,6 +417,8 @@ extern gsl_err_t parse_class_var(struct kndTask *task,
 
     return make_gsl_err(gsl_OK);
 }
+
+
 
 gsl_err_t knd_import_class_var(struct kndClassVar *self,
                                const char *rec,
@@ -398,23 +430,26 @@ gsl_err_t knd_import_class_var(struct kndClassVar *self,
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. import class var: %.*s", 32, rec);
 
-    task->class_var = self;
+    struct LocalContext ctx = {
+        .task = task,
+        .class_var = self
+    };
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_class_var,
-          .obj = task
+          .obj = &ctx
         },
         { .type = GSL_SET_STATE,
-          .validate = knd_import_attr_var,
-          .obj = task
+          .validate = import_attr_var,
+          .obj = &ctx
         },
-        { .validate = knd_import_attr_var,
-          .obj = task
+        { .validate = import_attr_var,
+          .obj = &ctx
         },
         { .type = GSL_SET_ARRAY_STATE,
-          .validate = knd_import_attr_var_list,
-          .obj = task
+          .validate = import_attr_var_list,
+          .obj = &ctx
         }
     };
 
@@ -443,8 +478,8 @@ static gsl_err_t parse_baseclass(void *obj,
     if (err) return *total_size = 0, make_gsl_err_external(err);
     class_var->parent = self;
 
-    task->class_var = class_var;
-    parser_err = parse_class_var(task, rec, total_size);
+    ctx->class_var = class_var;
+    parser_err = parse_class_var(rec, total_size, ctx);
     if (parser_err.code) return parser_err;
 
     class_var->next = self->baseclass_vars;
@@ -464,13 +499,12 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
     struct kndMemPool *mempool = task->mempool;
     struct kndClass *c;
     struct kndClassEntry *entry;
-    struct ooDict *class_name_idx;
     int err;
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
-        knd_log("..worker \"%zu\" to import class: \"%.*s\".. mem:%p",
-                task->id, 128, rec, mempool);
+        knd_log("..worker \"%zu\" to import class: \"%.*s\"..",
+                task->id, 128, rec);
 
     err = knd_class_new(mempool, &c);
     if (err) return make_gsl_err_external(err);
@@ -572,22 +606,15 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
     }
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("++  \"%.*s\" class import completed! batch mode:%d",
-                c->name_size, c->name, task->batch_mode);
+        knd_log("++  \"%.*s\" class import completed!",
+                c->name_size, c->name);
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
         c->str(c, 1);
-
-    /* initial class load ends here */
-    if (task->batch_mode) return make_gsl_err(gsl_OK);
 
     return make_gsl_err(gsl_OK);
 
  final:
-
-    /* clean up */
-    class_name_idx = repo->class_name_idx;
-    class_name_idx->remove(class_name_idx, c->name, c->name_size);
 
     // TODO free resources
     

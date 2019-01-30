@@ -19,6 +19,41 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
+static const char * gsl_err_to_str(gsl_err_t err)
+{
+    switch (err.code) {
+    case gsl_FAIL:     return "Unclassified error";
+    case gsl_LIMIT:    return "LIMIT error";
+    case gsl_NO_MATCH: return "NO_MATCH error";
+    case gsl_FORMAT:   return "FORMAT error";
+    case gsl_EXISTS:   return "EXISTS error";
+    default:           return "Unknown error";
+    }
+}
+
+static int log_parser_error(struct kndTask *self,
+                           gsl_err_t parser_err,
+                           size_t pos,
+                           const char *rec)
+{
+    size_t line = 0, column;
+    for (;;) {
+        const char *next_line = strchr(rec, '\n');
+        if (next_line == NULL) break;
+
+        size_t len = next_line + 1 - rec;
+        if (len > pos) break;
+
+        line++;
+        rec = next_line + 1;
+        pos -= len;
+    }
+    column = pos;
+
+    return self->log->writef(self->log, "parser error at line %zu:%zu: %d %s",
+                             line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
+}
+
 static gsl_err_t run_set_format(void *obj,
                                 const char *name,
                                 size_t name_size)
@@ -91,15 +126,22 @@ static gsl_err_t parse_class_import(void *obj,
                                     size_t *total_size)
 {
     struct kndTask *task = obj;
+    int err;
 
-    if (DEBUG_TASK_LEVEL_2)
+    if (DEBUG_TASK_LEVEL_TMP)
         knd_log(".. parsing the system class import: \"%.*s\"..", 64, rec);
 
     task->type = KND_UPDATE_STATE;
+    if (!task->ctx->update) {
+        err = knd_update_new(task->mempool, &task->ctx->update);
+        if (err) return make_gsl_err_external(err);
 
-    if (!task->ctx->update->orig_state_id)
+        err = knd_dict_new(&task->ctx->class_name_idx, KND_SMALL_DICT_SIZE);
+        if (err) return make_gsl_err_external(err);
+
         task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
                                                                 memory_order_relaxed);
+    }
 
     return knd_class_import(task->repo, rec, total_size, task);
 }
@@ -122,13 +164,23 @@ static gsl_err_t parse_proc_import(void *obj,
 {
     struct kndTask *task = obj;
     struct kndRepo *repo = task->repo;
+    int err;
+
     if (DEBUG_TASK_LEVEL_2)
         knd_log(".. parsing the system proc import: \"%.*s\"..", 64, rec);
 
     task->type = KND_UPDATE_STATE;
-    if (!task->ctx->update->orig_state_id)
+    if (!task->ctx->update) {
+        err = knd_update_new(task->mempool, &task->ctx->update);
+        if (err) return make_gsl_err_external(err);
+
+        err = knd_dict_new(&task->ctx->proc_name_idx, KND_SMALL_DICT_SIZE);
+        if (err) return make_gsl_err_external(err);
+
         task->ctx->update->orig_state_id = atomic_load_explicit(&repo->num_updates,
                                                                 memory_order_relaxed);
+    }
+
     return knd_proc_import(task->repo, rec, total_size, task);
 }
 
@@ -237,7 +289,6 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
     if (parser_err.code) {
         knd_log("-- task parse failure: \"%.*s\"",
                 self->log->buf_size, self->log->buf);
-
         goto cleanup;
     }
 
@@ -260,8 +311,19 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
     return parser_err;
 }
 
-gsl_err_t knd_select_task(struct kndTask *self, const char *rec, size_t *total_size)
+int knd_task_run(struct kndTask *self)
 {
+    size_t total_size = self->ctx->input_size;
+    gsl_err_t parser_err;
+    int err;
+
+    if (DEBUG_TASK_LEVEL_TMP) {
+        size_t chunk_size = KND_TEXT_CHUNK_SIZE;
+        if (self->ctx->input_size < chunk_size)
+            chunk_size = self->ctx->input_size;
+        knd_log("== input: %.*s ..", chunk_size, self->ctx->input);
+    }
+
     struct gslTaskSpec specs[] = {
         { .name = "task",
           .name_size = strlen("task"),
@@ -269,5 +331,24 @@ gsl_err_t knd_select_task(struct kndTask *self, const char *rec, size_t *total_s
           .obj = self
         }
     };
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    parser_err = gsl_parse_task(self->ctx->input, &total_size,
+                                specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        knd_log("-- task run failure");
+        if (!is_gsl_err_external(parser_err)) {
+            // assert(!self->log->buf_size)
+            if (!self->log->buf_size) {
+                self->http_code = HTTP_BAD_REQUEST;
+                err = log_parser_error(self, parser_err, self->input_size, self->input);
+                if (err) return err;
+            }
+        }
+        if (!self->log->buf_size) {
+            self->http_code = HTTP_INTERNAL_SERVER_ERROR;
+            err = self->log->writef(self->log, "unclassified server error");
+            if (err) return err;
+        }
+        return gsl_err_to_knd_err_codes(parser_err);
+    }
+    return knd_OK;
 }

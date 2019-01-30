@@ -92,11 +92,11 @@ set(HEADERS include/knd_array.h include/knd_attr.h
         include/knd_task.h include/knd_text.h
         include/knd_user.h include/knd_utils.h
         include/ooconfig.h)
-set(SOURCES src/knd_array.c src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr.index.c src/knd_attr.resolve.c src/knd_attr.select.c src/knd_attr.json.c src/knd_attr.gsl.c
+set(SOURCES src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr.index.c src/knd_attr.resolve.c src/knd_attr.select.c src/knd_attr.json.c src/knd_attr.gsl.c
         src/knd_class.c src/knd_class.compute.c src/knd_class.gsl.c src/knd_class.gsp.c
         src/knd_class.import.c src/knd_class.json.c src/knd_class.resolve.c src/knd_class.select.c src/knd_class.states.c
         src/knd_class_inst.c src/knd_class_inst.gsp.c src/knd_class_inst.import.c src/knd_class_inst.json.c src/knd_class_inst.select.c
-        src/knd_dict.c src/knd_elem.c src/knd_list.c
+        src/knd_dict.c src/knd_elem.c
         src/knd_mempool.c src/knd_num.c
         src/knd_proc.c src/knd_proc.import.c src/knd_proc_inst.import.c src/knd_proc.resolve.c
         src/knd_proc.json.c src/knd_proc.svg.c src/knd_proc_arg.c

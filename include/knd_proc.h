@@ -91,7 +91,8 @@ struct kndProcEntry
 //    struct kndProcEntry **children;
 //    size_t num_children;
 
-    struct ooDict *inst_idx;
+    struct kndDict *inst_idx;
+
     //struct kndMemPool *mempool;
     //int fd;
 

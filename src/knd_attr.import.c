@@ -316,12 +316,11 @@ static gsl_err_t confirm_attr_var(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-extern gsl_err_t knd_import_attr_var(void *obj,
-                                     const char *name, size_t name_size,
-                                     const char *rec, size_t *total_size)
+int knd_import_attr_var(struct kndClassVar *self,
+                        const char *name, size_t name_size,
+                        const char *rec, size_t *total_size,
+                        struct kndTask *task)
 {
-    struct kndTask *task = obj;
-    struct kndClassVar *self = task->class_var;
     struct kndAttrVar *attr_var;
     struct kndMemPool *mempool = task->mempool;
     gsl_err_t parser_err;
@@ -332,9 +331,8 @@ extern gsl_err_t knd_import_attr_var(void *obj,
                 name_size, name, 32, rec);
 
     err = knd_attr_var_new(mempool, &attr_var);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
+    if (err) return err;
     attr_var->class_var = self;
-
     attr_var->name = name;
     attr_var->name_size = name_size;
 
@@ -367,14 +365,14 @@ extern gsl_err_t knd_import_attr_var(void *obj,
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
+    if (parser_err.code) return parser_err.code;
 
     append_attr_var(self, attr_var);
 
     if (DEBUG_ATTR_LEVEL_2)
         knd_log("++ attr var value: %.*s", attr_var->val_size, attr_var->val);
 
-    return make_gsl_err(gsl_OK);
+    return knd_OK;
 }
 
 static gsl_err_t append_attr_var_list_item(void *accu,
@@ -442,12 +440,11 @@ static gsl_err_t import_attr_var_list_item(void *obj,
     return append_attr_var_list_item(self, attr_var);
 }
 
-extern gsl_err_t knd_import_attr_var_list(void *obj,
-                                          const char *name, size_t name_size,
-                                          const char *rec, size_t *total_size)
+int knd_import_attr_var_list(struct kndClassVar *self,
+                             const char *name, size_t name_size,
+                             const char *rec, size_t *total_size,
+                             struct kndTask *task)
 {
-    struct kndTask *task = obj;
-    struct kndClassVar *self = task->class_var;
     struct kndAttrVar *attr_var;
     struct kndMemPool *mempool = task->mempool;
     gsl_err_t parser_err;
@@ -460,17 +457,16 @@ extern gsl_err_t knd_import_attr_var_list(void *obj,
         log->reset(log);
         e = log->write(log, "no baseclass name specified",
                      strlen("no baseclass name specified"));
-        if (e) return make_gsl_err_external(e);
+        if (e) return e;
         task->http_code = HTTP_BAD_REQUEST;
-        return *total_size = 0, make_gsl_err_external(knd_FAIL);
+        return knd_FAIL;
     } 
 
     if (DEBUG_ATTR_LEVEL_2)
         knd_log("== import attr attr_var list: \"%.*s\" REC: %.*s",
                 name_size, name, 32, rec);
 
-    err = knd_attr_var_new(mempool, &attr_var);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
+    err = knd_attr_var_new(mempool, &attr_var);  RET_ERR();
     attr_var->class_var = self;
     attr_var->name = name;
     attr_var->name_size = name_size;
@@ -490,9 +486,9 @@ extern gsl_err_t knd_import_attr_var_list(void *obj,
     };
 
     parser_err = gsl_parse_array(&import_attr_var_spec, rec, total_size);
-    if (parser_err.code) return parser_err;
+    if (parser_err.code) return parser_err.code;
 
-    return make_gsl_err(gsl_OK);
+    return knd_OK;
 }
 
 static gsl_err_t import_nested_attr_var(void *obj,

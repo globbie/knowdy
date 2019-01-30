@@ -61,20 +61,6 @@ static gsl_err_t parse_proc_select(void *obj,
     return knd_proc_select(task->repo, rec, total_size, task);
 }
 
-#if 0
-static gsl_err_t parse_rel_import(void *obj,
-                                  const char *rec,
-                                  size_t *total_size)
-{
-    struct kndTask *task = obj;
-    struct kndUser *self = task->user;
-    struct kndRel *rel = self->repo->root_rel;
-
-    task->type = KND_UPDATE_STATE;
-    return rel->import(rel, rec, total_size);
-}
-#endif
-
 static gsl_err_t parse_class_import(void *obj,
                                     const char *rec,
                                     size_t *total_size)
@@ -578,6 +564,8 @@ extern int kndUser_init(struct kndUser *self,
 
     memcpy(repo->name, self->repo_name, self->repo_name_size);
     repo->name_size = self->repo_name_size;
+
+    task->ctx->class_name_idx = repo->class_name_idx;
 
     err = knd_repo_open(repo, task);                                              RET_ERR();
 

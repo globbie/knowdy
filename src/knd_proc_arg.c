@@ -529,8 +529,8 @@ int knd_proc_arg_resolve(struct kndProcArg *self,
         if (DEBUG_PROC_ARG_LEVEL_TMP)
             knd_log(".. resolving arg class template: %.*s..",
                     self->classname_size, self->classname);
-        entry = repo->class_name_idx->get(repo->class_name_idx,
-                                          self->classname, self->classname_size);
+        entry = knd_dict_get(repo->class_name_idx,
+                             self->classname, self->classname_size);
         if (!entry) {
             knd_log("-- no such class: %.*s",
                     self->classname_size, self->classname);
@@ -763,8 +763,8 @@ int knd_proc_arg_inst_resolve(struct kndProcArg *self,
     struct kndRepo *repo = self->parent->entry->repo;
     struct kndClassInstEntry *class_inst_entry;
 
-    entry = repo->class_name_idx->get(repo->class_name_idx,
-                                      inst->procname, inst->procname_size);
+    entry = knd_dict_get(repo->class_name_idx,
+                         inst->procname, inst->procname_size);
     if (!entry) {
         knd_log("-- no such proc: %.*s",
                 inst->procname_size, inst->procname);
@@ -778,8 +778,9 @@ int knd_proc_arg_inst_resolve(struct kndProcArg *self,
     /* resolve class inst ref */
     if (inst->class_inst_name_size) {
         if (entry->inst_idx) {
-            class_inst_entry = entry->inst_idx->get(entry->inst_idx,
-                                    inst->class_inst_name, inst->class_inst_name_size);
+            class_inst_entry = knd_dict_get(entry->inst_idx,
+                                            inst->class_inst_name,
+                                            inst->class_inst_name_size);
             if (!class_inst_entry) {
                 knd_log("-- no such class_inst_entry: %.*s",
                         inst->class_inst_name_size,

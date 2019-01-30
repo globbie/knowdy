@@ -25,6 +25,7 @@
 
 #include "knd_config.h"
 #include "knd_state.h"
+#include "knd_dict.h"
 #include "knd_http_codes.h"
 
 #include <glb-lib/output.h>
@@ -56,17 +57,19 @@ typedef enum knd_task_spec_type {
     KND_UPDATE_STATE,
     KND_LIQUID_STATE,
     KND_SYNC_STATE,
-    KND_DELTA_STATE
+    KND_DELTA_STATE,
+    KND_STOP_STATE
 } knd_task_spec_type;
 
-typedef enum knd_task_phase_t { KND_SUBMITTED,
-                                KND_CANCELED,
+typedef enum knd_task_phase_t { KND_SUBMIT,
+                                KND_CANCEL,
+                                KND_REJECT,
+                                KND_IMPORT,
+                                KND_CONFLICT,
+                                KND_WAL_WRITE,
+                                KND_WAL_COMMIT,
+                                KND_DELIVER,
                                 KND_COMPLETE } knd_task_phase_t;
-
-struct kndVisualFormat {
-    size_t text_line_height;
-    size_t text_hangindent_size;
-};
 
 struct kndTaskDestination
 {
@@ -83,13 +86,14 @@ struct kndTaskContext {
     size_t numid;
 
     knd_task_spec_type type;
-    _Atomic knd_task_phase_t phase;
+    knd_task_phase_t phase;
     struct timespec start_ts;
     struct timespec end_ts;
 
     void *obj;
     task_cb_func cb;
 
+    char *input_buf;
     const char *input;
     size_t input_size;
 
@@ -101,6 +105,7 @@ struct kndTaskContext {
     size_t locale_size;
 
     struct kndTaskDestination *dest;
+    struct kndRepo *repo;
 
     /* updates */
     struct kndStateRef  *class_state_refs;
@@ -108,6 +113,10 @@ struct kndTaskContext {
     struct kndStateRef  *class_inst_state_refs;
     struct kndStateRef  *proc_state_refs;
     struct kndStateRef  *proc_inst_state_refs;
+
+    struct kndDict *class_name_idx;
+    struct kndDict *proc_name_idx;
+
     struct kndUpdate *update;
     bool update_confirmed;
 
@@ -147,6 +156,12 @@ struct kndTask
     const char *report;
     size_t report_size;
 
+    const char *path;
+    size_t path_size;
+
+    const char *filename;
+    size_t filename_size;
+
     // TODO: subscription channel
     // to push any updates
 
@@ -173,9 +188,9 @@ struct kndTask
     struct kndUser *user;
     struct kndUserContext *user_ctx;
 
+    struct kndRepo *system_repo;
     struct kndRepo *repo;
 
-    //struct kndClass *class;
     struct kndClassFacet *facet;
     struct kndSet *set;
 
@@ -183,8 +198,6 @@ struct kndTask
     size_t num_folders;
 
     // FIXME(k15tfu): remove these vv
-    struct kndClassVar *class_var;
-
     struct kndAttr *attr;
     struct kndAttrVar *attr_var;
     struct kndClassInst *class_inst;
@@ -194,11 +207,9 @@ struct kndTask
     struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;
 
-    struct ooDict *class_name_idx;
-    struct ooDict *proc_name_idx;
-
     struct kndStorage *storage;
-    struct kndQueue   *context_queue;
+    struct kndQueue   *input_queue;
+    struct kndQueue   *output_queue;
 
     struct glbOutput  *log;
     struct glbOutput  *task_out;
@@ -210,15 +221,11 @@ struct kndTask
 
 // knd_task.c
 int knd_task_new(struct kndTask **self);
-void knd_task_del(struct kndTask *self);
-void knd_task_reset(struct kndTask *self);
-//extern int kndTask_build_report(struct kndTask *self);
-
-int knd_task_run(struct kndTask *self);
-
 int knd_task_context_new(struct kndMemPool *mempool,
                          struct kndTaskContext **ctx);
+void knd_task_del(struct kndTask *self);
+void knd_task_reset(struct kndTask *self);
+int knd_task_build_report(struct kndTask *self);
 
 // knd_task.select.c
-gsl_err_t knd_select_task(struct kndTask *self,
-                          const char *rec, size_t *total_size);
+int knd_task_run(struct kndTask *self);

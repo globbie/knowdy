@@ -638,7 +638,7 @@ static gsl_err_t atomic_elem_alloc(void *obj,
     err = knd_facet_new(mempool, &f);
     if (err) return make_gsl_err_external(err);
 
-    //err = ooDict_new(&f->set_name_idx, KND_SMALL_DICT_SIZE);
+    //err = kndDict_new(&f->set_name_idx, KND_SMALL_DICT_SIZE);
     //if (err) return make_gsl_err_external(err);
 
     f->parent = set;
@@ -994,7 +994,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
     struct kndAttr *attr;
     struct kndAttrRef *ref;
     struct kndClass *c = NULL;
-    struct ooDict *class_name_idx;
+    struct kndDict *class_name_idx;
     struct kndClassEntry *entry;
     struct kndMemPool *mempool = ctx->task->mempool;
     gsl_err_t parser_err;
@@ -1035,7 +1035,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
         if (attr->ref_class) break;
 
         class_name_idx = c->entry->repo->class_name_idx;
-        entry = class_name_idx->get(class_name_idx,
+        entry = knd_dict_get(class_name_idx,
                                     attr->ref_classname,
                                     attr->ref_classname_size);
         if (!entry) {
@@ -1220,7 +1220,7 @@ static gsl_err_t alloc_class_inst_item(struct LocalContext *ctx, struct kndClass
 static gsl_err_t append_class_inst_item(struct LocalContext *ctx, struct kndClassInst *inst)
 {
     struct kndClass *self =   ctx->class;
-    struct ooDict *name_idx = self->entry->repo->class_inst_name_idx;
+    struct kndDict *name_idx = self->entry->repo->class_inst_name_idx;
     struct kndSet *set = self->entry->inst_idx;
     struct kndMemPool *mempool = ctx->task->mempool;
     int err;
@@ -1232,18 +1232,20 @@ static gsl_err_t append_class_inst_item(struct LocalContext *ctx, struct kndClas
         knd_class_inst_str(inst, 0);
     }
 
+    // TODO atomic
     if (!name_idx) {
-        err = ooDict_new(&self->entry->repo->class_inst_name_idx, KND_HUGE_DICT_SIZE);
+        err = knd_dict_new(&self->entry->repo->class_inst_name_idx, KND_HUGE_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
         name_idx = self->entry->repo->class_inst_name_idx;
     }
 
-    err = name_idx->set(name_idx,
-                        inst->name, inst->name_size,
-                        (void*)inst->entry);
+    err = knd_dict_set(name_idx,
+                       inst->name, inst->name_size,
+                       (void*)inst->entry);
     if (err) return make_gsl_err_external(err);
 
     self->entry->num_insts++;
+
 
     /* index by id */
     if (!set) {
@@ -1485,7 +1487,7 @@ static gsl_err_t validate_attr_var_list(void *obj,
     struct kndAttrVar *attr_var;
     struct kndAttr *attr;
     struct kndAttrRef *ref;
-    struct ooDict *class_name_idx;
+    struct kndDict *class_name_idx;
     struct kndClassEntry *entry;
     struct kndMemPool *mempool = ctx->task->mempool;
     int err;
@@ -1522,9 +1524,9 @@ static gsl_err_t validate_attr_var_list(void *obj,
 
         // TODO
         class_name_idx = class_var->entry->repo->class_name_idx;
-        entry = class_name_idx->get(class_name_idx,
-                                    attr->ref_classname,
-                                    attr->ref_classname_size);
+        entry = knd_dict_get(class_name_idx,
+                             attr->ref_classname,
+                             attr->ref_classname_size);
         if (!entry) {
             knd_log("-- inner ref not resolved :( no such class: %.*s",
                     attr->ref_classname_size,

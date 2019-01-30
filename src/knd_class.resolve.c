@@ -129,7 +129,7 @@ static int link_ancestor(struct kndClass *self,
     struct kndSet *desc_idx;
     struct kndClass *base;
     struct kndClassRef *ref;
-    struct ooDict *class_name_idx = self->entry->repo->class_name_idx;
+    struct kndDict *class_name_idx = self->entry->repo->class_name_idx;
     void *result;
     int err;
 
@@ -140,7 +140,7 @@ static int link_ancestor(struct kndClass *self,
                 base->name_size, base->name, base->state_top);
 
     if (base_entry->repo != entry->repo) {
-        prev_entry = class_name_idx->get(class_name_idx,
+        prev_entry = knd_dict_get(class_name_idx,
                                          base_entry->name,
                                          base_entry->name_size);
         if (prev_entry) {
@@ -362,8 +362,8 @@ static int resolve_baseclasses(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_class_resolve(struct kndClass *self,
-                             struct kndTask *task)
+int knd_class_resolve(struct kndClass *self,
+                      struct kndTask *task)
 {
     struct kndClassVar *cvar;
     struct kndClassEntry *entry;
@@ -385,8 +385,11 @@ extern int knd_class_resolve(struct kndClass *self,
     }
 
     self->resolving_in_progress = true;
+
+    // atomic
     repo->num_classes++;
     entry = self->entry;
+
     entry->numid = repo->num_classes;
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
@@ -429,7 +432,7 @@ int knd_resolve_class_ref(struct kndClass *self,
 {
     struct kndClassEntry *entry;
     struct kndClass *c;
-    struct ooDict *class_name_idx = self->entry->repo->class_name_idx;
+    struct kndDict *class_name_idx = self->entry->repo->class_name_idx;
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
@@ -442,8 +445,8 @@ int knd_resolve_class_ref(struct kndClass *self,
     }
 
     if (task->batch_mode) {
-        entry = class_name_idx->get(class_name_idx,
-                                    name, name_size);
+        entry = knd_dict_get(class_name_idx,
+                             name, name_size);
         if (!entry) {
             knd_log("-- couldn't resolve the class ref \"%.*s\"",
                     name_size, name);
@@ -504,7 +507,7 @@ int knd_resolve_classes(struct kndClass *self,
     struct kndClass *c;
     struct kndClassEntry *entry;
     struct kndSet *class_idx = self->entry->repo->class_idx;
-    struct ooDict *class_name_idx = self->entry->repo->class_name_idx;
+    struct kndDict *class_name_idx = self->entry->repo->class_name_idx;
     const char *key;
     void *val;
     int err;
@@ -514,7 +517,8 @@ int knd_resolve_classes(struct kndClass *self,
                 self->entry->name_size, self->entry->name);
 
     key = NULL;
-    class_name_idx->rewind(class_name_idx);
+
+    /*    class_name_idx->rewind(class_name_idx);
     do {
         class_name_idx->next_item(class_name_idx, &key, &val);
         if (!key) break;
@@ -544,8 +548,8 @@ int knd_resolve_classes(struct kndClass *self,
         if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
                 c->str(c, 1);
         }
-
     } while (key);
+    */
 
     return knd_OK;
 }

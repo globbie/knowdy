@@ -347,7 +347,7 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
     struct kndMemPool *mempool = task->mempool;
     struct kndProcInst *inst;
     struct kndProcInstEntry *entry;
-    struct ooDict *name_idx;
+    struct kndDict *name_idx;
     struct kndState *state;
     struct kndStateRef *state_ref;
     gsl_err_t parser_err;
@@ -525,8 +525,8 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
     if (!proc->name_size)
         return make_gsl_err(gsl_FORMAT);
 
-    entry = repo->proc_name_idx->get(repo->proc_name_idx,
-                                     proc->name, proc->name_size);
+    entry = knd_dict_get(repo->proc_name_idx,
+                         proc->name, proc->name_size);
     if (entry) {
         if (entry->phase == KND_REMOVED) {
             knd_log("== proc was removed recently");
@@ -559,9 +559,9 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
 
     knd_uid_create(proc->entry->numid, proc->entry->id, &proc->entry->id_size);
 
-    err = repo->proc_name_idx->set(repo->proc_name_idx,
-                                   proc->name, proc->name_size,
-                                   (void*)proc->entry);
+    err = knd_dict_set(repo->proc_name_idx,
+                       proc->name, proc->name_size,
+                       (void*)proc->entry);
     if (err) {
         return make_gsl_err_external(err);
     }

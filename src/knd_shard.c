@@ -22,16 +22,13 @@
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
 
-#define DEBUG_SHARD_LEVEL_0 0
 #define DEBUG_SHARD_LEVEL_1 0
-#define DEBUG_SHARD_LEVEL_2 0
-#define DEBUG_SHARD_LEVEL_3 0
 #define DEBUG_SHARD_LEVEL_TMP 1
 
 static void *task_runner(void *ptr)
 {
     struct kndTask *task = ptr;
-    struct kndQueue *queue = task->context_queue;
+    struct kndQueue *queue = task->input_queue;
     struct kndTaskContext *ctx;
     void *elem;
     size_t attempt_count = 0;
@@ -50,22 +47,43 @@ static void *task_runner(void *ptr)
         attempt_count = 0;
         ctx = elem;
         if (ctx->type == KND_STOP_STATE) {
-            knd_log("\n-- shard's task runner #%zu received a stop signal..", task->id);
+            knd_log("\n-- shard's task runner #%zu received a stop signal..",
+                    task->id);
             return NULL;
         }
 
-        ctx->phase = KND_COMPLETE;
         knd_log("++ #%zu worker got task #%zu!",
                 task->id, ctx->numid);
 
-        knd_task_reset(task);
-        task->ctx = ctx;
+        switch (ctx->phase) {
+        case KND_SUBMIT:
+            knd_task_reset(task);
+            task->ctx = ctx;
+            err = knd_task_run(task);
+            if (err != knd_OK) {
+                ctx->error = err;
+                knd_log("-- task running failure: %d", err);
+            }
+            continue;
+        case KND_COMPLETE:
+            knd_log("\n-- task #%zu already completed",
+                    ctx->numid);
+            continue;
+        case KND_CANCEL:
+            knd_log("\n-- task #%zu was canceled",
+                    ctx->numid);
+            continue;
+        default:
+            break;
+        }
 
-        /*err = knd_task_run(task);
-        if (err != knd_OK) {
-            ctx->error = err;
-            knd_log("-- task running failure: %d", err);
-            }*/
+        /* any other phase requires a callback execution */
+        if (ctx->cb) {
+            err = ctx->cb(task, ctx->id, ctx->id_size, ctx);
+            if (err) {
+                // signal
+            }
+        }
     }
     return NULL;
 }
@@ -76,13 +94,19 @@ int knd_shard_run_task(struct kndShard *self,
                        task_cb_func cb)
 {
     struct kndTaskContext *ctx;
-    struct kndMemPool *mempool = self->mempool;
     clockid_t clk_id = CLOCK_MONOTONIC;
     int err;
 
-    err = knd_task_context_new(mempool, &ctx);                                    RET_ERR();
+    ctx = malloc(sizeof(struct kndTaskContext));
+    if (!ctx) return knd_NOMEM;
+    memset(ctx, 0, (sizeof(struct kndTaskContext)));
     ctx->cb = cb;
-    ctx->input = input;
+
+    ctx->input_buf = malloc(input_size + 1);
+    if (!ctx->input_buf) return knd_NOMEM; 
+    memcpy(ctx->input_buf, input, input_size);
+    ctx->input_buf[input_size] = '\0';
+    ctx->input = ctx->input_buf;
     ctx->input_size = input_size;
 
     self->task_count++;
@@ -101,6 +125,7 @@ int knd_shard_run_task(struct kndShard *self,
     if (err) return err;
 
     knd_log("++ enqueued task #%zu", ctx->numid);
+
     *task_id = ctx->id; 
     *task_id_size = ctx->id_size;
     return knd_OK;
@@ -163,6 +188,9 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     struct kndUser *user;
     struct kndRepo *repo;
     struct kndTask *task;
+    struct kndTaskContext *ctx;
+    char *c;
+    size_t chunk_size;
     int err;
 
     self = malloc(sizeof(struct kndShard));
@@ -189,7 +217,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
 
     if (!self->num_tasks) self->num_tasks = 1;
 
-    self->tasks = calloc(sizeof(struct kndTask*), self->num_tasks);
+    self->tasks = calloc(self->num_tasks, sizeof(struct kndTask*));
     if (!self->tasks) goto error;
 
     for (size_t i = 0; i < self->num_tasks; i++) {
@@ -223,6 +251,23 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     /* IO service */
     err = knd_storage_new(&self->storage, task_queue_capacity);
     if (err != knd_OK) goto error;
+    self->storage->output_queue = self->task_context_queue;
+    memcpy(self->storage->path, self->path, self->path_size);
+    self->storage->path_size = self->path_size;
+
+    /* global commit filename */
+    c = self->storage->commit_filename;
+    memcpy(c, self->path, self->path_size);
+    c += self->path_size;
+    chunk_size = self->path_size;
+    *c = '/';
+    c++;
+    chunk_size++;
+
+    memcpy(c, "commit.log", strlen("commit.log"));
+    c++;
+    chunk_size += strlen("commit.log");
+    self->storage->commit_filename_size = chunk_size;
 
     /* system repo */
     err = kndRepo_new(&repo, mempool);
@@ -236,8 +281,13 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     memcpy(repo->path, self->path, self->path_size);
     repo->path_size = self->path_size;
 
-    // TODO
     task = self->tasks[0];
+    ctx = malloc(sizeof(struct kndTaskContext));
+    if (!ctx) return knd_NOMEM;
+    memset(ctx, 0, (sizeof(struct kndTaskContext)));
+    ctx->class_name_idx = repo->class_name_idx;
+    task->ctx = ctx;
+
     err = knd_repo_open(repo, task);
     if (err != knd_OK) goto error;
     self->repo = repo;
@@ -264,7 +314,14 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
         task = self->tasks[i];
         task->user = user;
         task->storage = self->storage;
-        task->context_queue = self->task_context_queue;
+        task->path = self->path;
+        task->path_size = self->path_size;
+
+        /* NB: the same queue is used as input and output */
+        task->input_queue = self->task_context_queue;
+        task->output_queue = self->task_context_queue;
+
+        task->system_repo = self->repo;
     }
 
     *shard = self;

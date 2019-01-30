@@ -34,15 +34,15 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     //struct kndProcEntry *proc_entry;
     struct kndProcInstEntry *entry;
     struct kndRepo *repo = ctx->repo;
-    //struct ooDict *proc_name_idx = repo->proc_name_idx;
-    struct ooDict *name_idx = repo->proc_inst_name_idx;
+    //struct kndDict *proc_name_idx = repo->proc_name_idx;
+    struct kndDict *name_idx = repo->proc_inst_name_idx;
     struct glbOutput *log = ctx->task->log;
     struct kndTask *task = ctx->task;
     int err;
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    entry = name_idx->get(name_idx, name, name_size);
+    entry = knd_dict_get(name_idx, name, name_size);
     if (entry) {
         if (entry->inst && entry->inst->states->phase == KND_REMOVED) {
             knd_log("-- this proc instance has been removed lately: %.*s",

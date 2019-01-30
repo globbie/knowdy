@@ -11,9 +11,7 @@
 
 #include "knd_text.h"
 #include "knd_num.h"
-#include "knd_rel.h"
 #include "knd_set.h"
-#include "knd_rel_arg.h"
 
 #include "knd_user.h"
 #include "knd_state.h"
@@ -40,8 +38,8 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndClassEntry *class_entry;
     struct kndClassInstEntry *entry;
     struct kndRepo *repo = ctx->task->repo;
-    struct ooDict *class_name_idx = repo->class_name_idx;
-    struct ooDict *name_idx = repo->class_inst_name_idx;
+    struct kndDict *class_name_idx = repo->class_name_idx;
+    struct kndDict *name_idx = repo->class_inst_name_idx;
     struct glbOutput *log = ctx->task->log;
     struct kndTask *task = ctx->task;
     struct kndClass *c;
@@ -51,7 +49,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 
     /* inner obj? */
     if (self->type == KND_OBJ_INNER) {
-        class_entry = class_name_idx->get(class_name_idx, name, name_size);
+        class_entry = knd_dict_get(class_name_idx, name, name_size);
         if (!class_entry) {
             knd_log("-- inner obj: no such class: %.*s", name_size, name);
             return make_gsl_err(gsl_FAIL);
@@ -69,7 +67,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_OK);
     }
 
-    entry = name_idx->get(name_idx, name, name_size);
+    entry = knd_dict_get(name_idx, name, name_size);
     if (entry) {
         if (entry->inst && entry->inst->states->phase == KND_REMOVED) {
             knd_log("-- this class instance has been removed lately: %.*s :(",
@@ -329,143 +327,6 @@ static gsl_err_t import_elem_list(void *unused_var(obj),
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t append_rel_entry_item(void *accu, void *item)
-{
-    struct kndRelRef *self = accu;
-    struct kndRel *rel;
-    struct kndRelInstEntry *entry = item;
-    struct kndMemPool *mempool = NULL; // = self->rel->entry->repo->mempool; // FIXME(k15tfu): <--
-    struct kndSet *set;
-    int err;
-
-    assert(mempool);
-    return make_gsl_err_external(knd_FAIL);
-
-    if (DEBUG_INST_LEVEL_2)
-        knd_log("== Rel Instance entry:\"%.*s\"",
-                entry->id_size, entry->id);
-
-    set = self->idx;
-    if (!set) {
-        err = knd_set_new(mempool, &set);
-        if (err) return make_gsl_err_external(err);
-        set->mempool = mempool;
-        set->type = KND_SET_REL_INST;
-        self->idx = set;
-    }
-
-    err = set->add(set, entry->id, entry->id_size, (void*)entry);
-    if (err) return make_gsl_err_external(err);
-
-    rel = self->rel;
-    err = rel->unfreeze_inst(rel, entry);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t run_rel_entry_item(void *obj,
-                                    const char *name,
-                                    size_t name_size)
-{
-    struct kndRelRef *self = obj;
-    struct kndSet *set;
-    void *elem;
-    int err;
-
-    if (DEBUG_INST_LEVEL_2)
-        knd_log(".. %.*s Rel Ref to find rel inst \"%.*s\"",
-                self->rel->name_size, self->rel->name,
-                name_size, name);
-
-    set = self->rel->entry->inst_idx;
-    if (!set) return make_gsl_err(gsl_FAIL);
-
-    err = set->get(set, name, name_size, &elem);
-    if (err) return make_gsl_err(gsl_FAIL);
-
-    // append
-    return append_rel_entry_item(self, elem);
-}
-
-static gsl_err_t read_rel_insts(void *obj,
-                                const char *rec,
-                                size_t *total_size)
-{
-    struct kndRelRef *self = obj;
-    struct gslTaskSpec rel_inst_spec = {
-        .is_list_item = true,
-        .run = run_rel_entry_item,
-        .obj = self
-    };
-
-    if (DEBUG_INST_LEVEL_2)
-        knd_log(".. reading insts of rel %.*s..",
-                self->rel->name_size, self->rel->name);
-
-    return gsl_parse_array(&rel_inst_spec, rec, total_size);
-}
-
-static gsl_err_t parse_rels_item(void *obj,
-                                 const char *rec,
-                                 size_t *total_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndRelRef *relref = NULL;
-    //struct kndRel *root_rel;
-    struct kndMemPool *mempool = ctx->task->mempool;
-    int err;
-    gsl_err_t parser_err;
-
-    if (DEBUG_INST_LEVEL_2)
-        knd_log(".. %.*s OBJ to alloc rel ref..",
-                ctx->class_inst->name_size, ctx->class_inst->name);
-
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndRelRef), (void**)&relref);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-
-    struct gslTaskSpec specs[] = {
-        /*{ .is_implied = true,
-          .run = resolve_relref,
-          .obj = relref
-          },*/
-        { .type = GSL_SET_ARRAY_STATE,
-            .name = "i",
-            .name_size = strlen("i"),
-            .parse = read_rel_insts,
-            .obj = relref
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    // append
-    struct kndClassInst *self = ctx->class_inst;
-    relref->next = self->entry->rels;
-    self->entry->rels = relref;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_rels(void *obj,
-                            const char *rec,
-                            size_t *total_size)
-{
-    struct LocalContext *ctx = obj;
-    struct gslTaskSpec rel_spec = {
-        .is_list_item = true,
-        .parse = parse_rels_item,
-        .obj = ctx
-    };
-
-    if (DEBUG_INST_LEVEL_2)
-        knd_log(".. reading rels of obj %.*s..",
-                ctx->class_inst->name_size, ctx->class_inst->name);
-
-    return gsl_parse_array(&rel_spec, rec, total_size);
-}
-
 gsl_err_t knd_import_class_inst(struct kndClassInst *self,
                                 const char *rec, size_t *total_size,
                                 struct kndTask *task)
@@ -492,12 +353,6 @@ gsl_err_t knd_import_class_inst(struct kndClassInst *self,
         { .type = GSL_SET_ARRAY_STATE,
           .validate = import_elem_list,
           .obj = self
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "_rel",
-          .name_size = strlen("_rel"),
-          .parse = parse_rels,
-          .obj = &ctx
         }
     };
 

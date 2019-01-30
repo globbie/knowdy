@@ -360,7 +360,7 @@ static int register_new_attr(struct kndClass *self,
     struct kndRepo *repo = self->entry->repo;
     struct kndMemPool *mempool = task->mempool;
     struct kndSet *attr_idx = repo->attr_idx;
-    struct ooDict *attr_name_idx = repo->attr_name_idx;
+    struct kndDict *attr_name_idx = repo->attr_name_idx;
     struct kndAttrRef *attr_ref, *prev_attr_ref;
     int err;
 
@@ -376,19 +376,19 @@ static int register_new_attr(struct kndClass *self,
     attr_ref->class_entry = self->entry;
 
     /* global indices */
-    prev_attr_ref = attr_name_idx->get(attr_name_idx,
+    prev_attr_ref = knd_dict_get(attr_name_idx,
                                        attr->name, attr->name_size);
     attr_ref->next = prev_attr_ref;
 
-    if (prev_attr_ref) {
+    //if (prev_attr_ref) {
         //knd_log("-- dict remove");
-        err = attr_name_idx->remove(attr_name_idx,
-                                    attr->name, attr->name_size);           RET_ERR();
-    }
+    //  err = attr_name_idx->remove(attr_name_idx,
+    //                               attr->name, attr->name_size);           RET_ERR();
+    //}
 
-    err = attr_name_idx->set(attr_name_idx,
-                             attr->name, attr->name_size,
-                             (void*)attr_ref);                              RET_ERR();
+    err = knd_dict_set(attr_name_idx,
+                       attr->name, attr->name_size,
+                       (void*)attr_ref);                              RET_ERR();
 
     err = attr_idx->add(attr_idx,
                         attr->id, attr->id_size,
@@ -416,7 +416,7 @@ static int check_attr_name_conflict(struct kndClass *self,
     void *obj;
     struct kndRepo *repo = self->entry->repo;
     struct kndSet *attr_idx = self->attr_idx;
-    struct ooDict *attr_name_idx = repo->attr_name_idx;
+    struct kndDict *attr_name_idx = repo->attr_name_idx;
     int err;
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
@@ -425,7 +425,7 @@ static int check_attr_name_conflict(struct kndClass *self,
                 attr_candidate->name);
 
     /* global attr name search */
-    attr_ref = attr_name_idx->get(attr_name_idx,
+    attr_ref = knd_dict_get(attr_name_idx,
                                   attr_candidate->name, attr_candidate->name_size);
     if (!attr_ref) return knd_OK;
 
@@ -609,7 +609,7 @@ int knd_resolve_primary_attrs(struct kndClass *self,
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
     struct kndRepo *repo = self->entry->repo;
-    struct ooDict *class_name_idx = repo->class_name_idx;
+    struct kndDict *class_name_idx = repo->class_name_idx;
     int err;
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
@@ -626,9 +626,9 @@ int knd_resolve_primary_attrs(struct kndClass *self,
                         attr->name);
                 return knd_FAIL;
             }
-            entry = class_name_idx->get(class_name_idx,
-                                        attr->ref_classname,
-                                        attr->ref_classname_size);
+            entry = knd_dict_get(class_name_idx,
+                                 attr->ref_classname,
+                                 attr->ref_classname_size);
             if (!entry) {
                 knd_log("-- no such class: \"%.*s\" .."
                         "couldn't resolve the \"%.*s\" attr of %.*s :(",
@@ -646,9 +646,9 @@ int knd_resolve_primary_attrs(struct kndClass *self,
                         attr->name);
                 return knd_FAIL;
             }
-            proc_entry = repo->proc_name_idx->get(repo->proc_name_idx,
-                                                  attr->ref_procname,
-                                                  attr->ref_procname_size);
+            proc_entry = knd_dict_get(repo->proc_name_idx,
+                                      attr->ref_procname,
+                                      attr->ref_procname_size);
             if (!proc_entry) {
                 knd_log("-- no such proc: \"%.*s\" .."
                         "couldn't resolve the \"%.*s\" attr of %.*s :(",

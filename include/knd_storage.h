@@ -31,7 +31,12 @@ struct kndStorage
     char path[KND_PATH_SIZE];
     size_t path_size;
 
-    struct kndQueue *queue;
+    char commit_filename[KND_PATH_SIZE];
+    size_t commit_filename_size;
+
+    struct kndQueue *input_queue;
+    struct kndQueue *output_queue;
+
     struct kndSet *task_idx;
 
     struct kndTask  **tasks;
@@ -41,9 +46,8 @@ struct kndStorage
 int knd_storage_new(struct kndStorage **self, size_t queue_capacity);
 int knd_storage_reset(struct kndStorage *self);
 int knd_storage_serve(struct kndStorage *self);
+int knd_storage_stop(struct kndStorage *self);
 
-int knd_storage_put(struct kndStorage *self,
-                    struct kndTask *task);
 int knd_storage_report(struct kndStorage *self,
                        const char task_id, size_t task_id_size);
 int knd_storage_cancel(struct kndStorage *self,

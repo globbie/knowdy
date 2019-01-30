@@ -63,76 +63,11 @@ void knd_task_reset(struct kndTask *self)
     self->http_code = HTTP_OK;
 
     self->user_ctx = NULL;
-    self->repo = NULL;
+    self->repo = self->system_repo;
 
     self->log->reset(self->log);
     self->out->reset(self->out);
     self->update_out->reset(self->update_out);
-}
-
-static const char * gsl_err_to_str(gsl_err_t err)
-{
-    switch (err.code) {
-    case gsl_FAIL:     return "Unclassified error";
-    case gsl_LIMIT:    return "LIMIT error";
-    case gsl_NO_MATCH: return "NO_MATCH error";
-    case gsl_FORMAT:   return "FORMAT error";
-    case gsl_EXISTS:   return "EXISTS error";
-    default:           return "Unknown error";
-    }
-}
-
-static int log_parser_error(struct kndTask *self,
-                           gsl_err_t parser_err,
-                           size_t pos,
-                           const char *rec)
-{
-    size_t line = 0, column;
-    for (;;) {
-        const char *next_line = strchr(rec, '\n');
-        if (next_line == NULL) break;
-
-        size_t len = next_line + 1 - rec;
-        if (len > pos) break;
-
-        line++;
-        rec = next_line + 1;
-        pos -= len;
-    }
-    column = pos;
-
-    return self->log->writef(self->log, "parser error at line %zu:%zu: %d %s",
-                             line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
-}
-
-int knd_task_run(struct kndTask *self)
-{
-    int err;
-    gsl_err_t parser_err;
-
-    if (!self->ctx->update) {
-        err = knd_update_new(self->mempool, &self->ctx->update);                  RET_ERR();
-    }
-
-    parser_err = knd_select_task(self, self->input, &self->input_size);
-    if (parser_err.code) {
-        knd_log("-- task run failure");
-        if (!is_gsl_err_external(parser_err)) {
-            // assert(!self->log->buf_size)
-            if (!self->log->buf_size) {
-                self->http_code = HTTP_BAD_REQUEST;
-                err = log_parser_error(self, parser_err, self->input_size, self->input);
-                if (err) return err;
-            }
-        }
-        if (!self->log->buf_size) {
-            self->http_code = HTTP_INTERNAL_SERVER_ERROR;
-            err = self->log->writef(self->log, "unclassified server error");
-            if (err) return err;
-        }
-        return gsl_err_to_knd_err_codes(parser_err);
-    }
-    return knd_OK;
 }
 
 static int task_err_export_JSON(struct kndTask *self,

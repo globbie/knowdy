@@ -39,12 +39,12 @@ void knd_repo_del(struct kndRepo *self)
         free(self->source_files);
     }
 
-    self->class_name_idx->del(self->class_name_idx);
+    /* self->class_name_idx->del(self->class_name_idx);
     self->class_inst_name_idx->del(self->class_inst_name_idx);
     self->attr_name_idx->del(self->attr_name_idx);
     self->proc_name_idx->del(self->proc_name_idx);
     self->proc_arg_name_idx->del(self->proc_arg_name_idx);
-
+    */
     free(self);
 }
 
@@ -130,7 +130,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClassUpdate *self = obj;
     struct kndClass *c;
     struct kndRepo *repo = self->update->repo;
-    struct ooDict *class_name_idx = repo->class_name_idx;
+    struct kndDict *class_name_idx = repo->class_name_idx;
     struct kndSet *class_idx = repo->class_idx;
     struct kndMemPool *mempool = task->mempool;
     struct kndClassEntry *entry = self->entry;
@@ -184,9 +184,9 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
                          entry->id, entry->id_size, (void*)entry);
     if (err) return make_gsl_err_external(err);
 
-    err = class_name_idx->set(class_name_idx,
-                              entry->name, name_size,
-                              (void*)entry);
+    err = knd_dict_set(class_name_idx,
+                       entry->name, name_size,
+                       (void*)entry);
     if (err) return make_gsl_err_external(err);
     self->class = c;
     self->entry = entry;
@@ -955,7 +955,7 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndSet *arg_idx = repo->proc_arg_idx;
-    struct ooDict *arg_name_idx = repo->proc_arg_name_idx;
+    struct kndDict *arg_name_idx = repo->proc_arg_name_idx;
     struct kndProcArgRef *arg_ref, *prev_arg_ref;
     int err;
 
@@ -971,19 +971,19 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
     arg_ref->proc = proc;
 
     /* global indices */
-    prev_arg_ref = arg_name_idx->get(arg_name_idx,
-                                     arg->name, arg->name_size);
+    prev_arg_ref = knd_dict_get(arg_name_idx,
+                                arg->name, arg->name_size);
     arg_ref->next = prev_arg_ref;
 
     if (prev_arg_ref) {
         //knd_log("-- dict remove");
-        err = arg_name_idx->remove(arg_name_idx,
-                                   arg->name, arg->name_size);           RET_ERR();
+        //err = arg_name_idx->remove(arg_name_idx,
+        //                           arg->name, arg->name_size);           RET_ERR();
     }
 
-    err = arg_name_idx->set(arg_name_idx,
-                             arg->name, arg->name_size,
-                             (void*)arg_ref);                              RET_ERR();
+    err = knd_dict_set(arg_name_idx,
+                       arg->name, arg->name_size,
+                       (void*)arg_ref);                              RET_ERR();
 
     err = arg_idx->add(arg_idx,
                         arg->id, arg->id_size,
@@ -1009,7 +1009,7 @@ static int resolve_procs(struct kndRepo *self,
                 self->name_size, self->name);
 
     key = NULL;
-    self->proc_name_idx->rewind(self->proc_name_idx);
+    /*    self->proc_name_idx->rewind(self->proc_name_idx);
     do {
         self->proc_name_idx->next_item(self->proc_name_idx, &key, &val);
         if (!key) break;
@@ -1025,7 +1025,7 @@ static int resolve_procs(struct kndRepo *self,
             return err;
         }
     } while (key);
-
+    */
     return knd_OK;
 }
 
@@ -1161,9 +1161,48 @@ static int check_conflicts(struct kndRepo *self,
 }
 #endif
 
+static int deliver_task_report(void *obj,
+                               const char *task_id,
+                               size_t task_id_size,
+                               void *ctx_obj)
+{
+    struct kndTask *task = obj;
+    struct kndTaskContext *ctx = ctx_obj;
+    int err;
+
+    knd_log(".. worker:%zu / ctx:%zu  delivering report on task #%zu..",
+            task->id, ctx->numid, ctx->update->numid);
+
+    ctx->phase = KND_COMPLETE;
+    
+    return knd_OK;
+}
+
+static int build_persistent_commit(void *obj,
+                                   const char *task_id,
+                                   size_t task_id_size,
+                                   void *ctx_obj)
+{
+    struct kndTask *task = obj;
+    struct kndTaskContext *ctx = ctx_obj;
+    int err;
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("..  worker:#%zu / ctx:%zu    write commit #%zu ..",
+                task->id, ctx->numid, ctx->update->numid);
+
+    ctx->phase = KND_WAL_COMMIT;
+    ctx->cb = deliver_task_report;
+    err = knd_queue_push(task->storage->input_queue, (void*)ctx);
+    if (err) return err;
+
+    return knd_OK;
+}
+
 int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
 {
-    struct kndUpdate *update = task->ctx->update;
+    struct kndTaskContext *ctx = task->ctx;
+    struct kndUpdate *update = ctx->update;
     struct kndStateRef *ref, *child_ref;
     struct kndState *state;
     struct kndClassEntry *entry;
@@ -1216,18 +1255,21 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
         err = knd_proc_resolve(proc_entry->proc, task);                     RET_ERR();
     }
 
+
     /* generate unique update id */
     update->numid = atomic_fetch_add_explicit(&self->update_id_count, 1,
                                               memory_order_relaxed);
+    knd_uid_create(update->numid, update->id, &update->id_size);
 
+    // TODO: serialize update
 
-    // TODO: build update GSP
+    ctx->phase = KND_WAL_WRITE;
+    ctx->cb = build_persistent_commit;
+    ctx->repo = self;
 
-    /*    err = knd_storage_put(task->storage, task,
-                          task->out->buf,
-                          task->out->buf_size);
+    err = knd_queue_push(task->storage->input_queue, (void*)ctx);
     if (err) return err;
-    */
+
     return knd_OK;
 }
 
@@ -1251,6 +1293,17 @@ int knd_conc_folder_new(struct kndMemPool *mempool,
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
                             sizeof(struct kndConcFolder), &page);  RET_ERR();
     *result = page;
+    return knd_OK;
+}
+
+int knd_repo_update_name_idx(struct kndRepo *self,
+                             struct kndTaskContext *ctx)
+{
+    int err;
+
+    knd_log(".. updating name indices..");
+
+
     return knd_OK;
 }
 
@@ -1294,17 +1347,17 @@ int kndRepo_new(struct kndRepo **repo,
     /* global name indices */
     err = knd_set_new(mempool, &self->class_idx);
     if (err) goto error;
-    err = ooDict_new(&self->class_name_idx, KND_MEDIUM_DICT_SIZE);
+    err = knd_dict_new(&self->class_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
     /* attrs */
     err = knd_set_new(mempool, &self->attr_idx);
     if (err) goto error;
-    err = ooDict_new(&self->attr_name_idx, KND_MEDIUM_DICT_SIZE);
+    err = knd_dict_new(&self->attr_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
     /* class insts */
-    err = ooDict_new(&self->class_inst_name_idx, KND_LARGE_DICT_SIZE);
+    err = knd_dict_new(&self->class_inst_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
 
     /*** PROC ***/
@@ -1322,17 +1375,17 @@ int kndRepo_new(struct kndRepo **repo,
     proc->entry->repo = self;
     self->root_proc = proc;
 
-    err = ooDict_new(&self->proc_name_idx, KND_LARGE_DICT_SIZE);
+    err = knd_dict_new(&self->proc_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
 
     /* proc args */
     err = knd_set_new(mempool, &self->proc_arg_idx);
     if (err) goto error;
-    err = ooDict_new(&self->proc_arg_name_idx, KND_MEDIUM_DICT_SIZE);
+    err = knd_dict_new(&self->proc_arg_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
     /* proc insts */
-    err = ooDict_new(&self->proc_inst_name_idx, KND_LARGE_DICT_SIZE);
+    err = knd_dict_new(&self->proc_inst_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
 
     self->max_journal_size = KND_FILE_BUF_SIZE;

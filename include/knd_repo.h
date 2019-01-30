@@ -16,6 +16,7 @@ struct kndTask;
 
 #include "knd_config.h"
 #include "knd_mempool.h"
+#include "knd_task.h"
 
 struct kndConcFolder
 {
@@ -55,7 +56,7 @@ struct kndRepo
     size_t locale_size;
 
     /* local repo index */
-    struct ooDict *repo_idx;
+    struct kndDict *repo_idx;
     
     struct kndUser *user;
     size_t max_journal_size;
@@ -67,27 +68,27 @@ struct kndRepo
     struct kndClass     *root_class;
     struct kndClassInst *root_inst;
 
-    struct ooDict *class_name_idx;
+    struct kndDict *class_name_idx;
     struct kndSet *class_idx;
     size_t num_classes;
     size_t num_class_insts;
 
-    struct ooDict  *attr_name_idx;
+    struct kndDict  *attr_name_idx;
     struct kndSet  *attr_idx;
     size_t num_attrs;
-    struct ooDict  *class_inst_name_idx;
+    struct kndDict  *class_inst_name_idx;
 
     struct kndProc *root_proc;
-    struct ooDict  *proc_name_idx;
+    struct kndDict  *proc_name_idx;
     struct kndSet  *proc_idx;
-    struct ooDict  *proc_inst_name_idx;
+    struct kndDict  *proc_inst_name_idx;
 
     atomic_size_t num_procs;
     atomic_size_t proc_id_count;
     atomic_size_t num_proc_insts;
     atomic_size_t proc_inst_id_count;
     
-    struct ooDict  *proc_arg_name_idx;
+    struct kndDict  *proc_arg_name_idx;
     struct kndSet  *proc_arg_idx;
     size_t num_proc_args;
 
@@ -112,6 +113,8 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
                             struct kndProc *self,
                             struct kndProcArg *arg,
                             struct kndTask *task);
+int knd_repo_update_name_idx(struct kndRepo *self,
+                             struct kndTaskContext *ctx);
 
 int knd_repo_open(struct kndRepo *self, struct kndTask *task);
 

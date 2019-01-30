@@ -389,7 +389,7 @@ extern int knd_register_attr_ref(void *obj,
 {
     struct kndClass *self = obj;
     struct kndSet *attr_idx  = self->attr_idx;
-    struct ooDict *attr_name_idx = self->entry->repo->attr_name_idx;
+    struct kndDict *attr_name_idx = self->entry->repo->attr_name_idx;
     struct kndAttrRef *src_ref = elem;
     struct kndAttr    *attr    = src_ref->attr;
     struct kndAttrRef *ref, *prev_attr_ref;
@@ -408,18 +408,18 @@ extern int knd_register_attr_ref(void *obj,
                         attr->id, attr->id_size,
                         (void*)ref);                                              RET_ERR();
 
-    prev_attr_ref = attr_name_idx->get(attr_name_idx,
-                                       attr->name, attr->name_size);
+    prev_attr_ref = knd_dict_get(attr_name_idx,
+                                 attr->name, attr->name_size);
 
-    if (prev_attr_ref) {
+    /*if (prev_attr_ref) {
         err = attr_name_idx->remove(attr_name_idx,
                                     attr->name, attr->name_size);                     RET_ERR();
         ref->next = prev_attr_ref;
-    }
+        }*/
 
-    err = attr_name_idx->set(attr_name_idx,
-                             attr->name, attr->name_size,
-                             (void*)ref);                                         RET_ERR();
+    err = knd_dict_set(attr_name_idx,
+                       attr->name, attr->name_size,
+                       (void*)ref);                                         RET_ERR();
     return knd_OK;
 }
 
