@@ -88,9 +88,6 @@ int knd_dict_set(struct kndDict *self,
 int knd_dict_new(struct kndDict **dict, 
                  size_t init_size)
 {
-    size_t i;
-    int ret;
-
     struct kndDict *self = malloc(sizeof(struct kndDict));
     if (!self) return knd_NOMEM;
 

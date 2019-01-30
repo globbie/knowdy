@@ -61,7 +61,7 @@ struct kndRepo
     struct kndUser *user;
     size_t max_journal_size;
 
-    struct kndStateControl *state_ctrl;
+    //struct kndStateControl *state_ctrl;
     bool restore_mode;
     size_t intersect_matrix_size;
 
@@ -70,8 +70,10 @@ struct kndRepo
 
     struct kndDict *class_name_idx;
     struct kndSet *class_idx;
-    size_t num_classes;
-    size_t num_class_insts;
+    atomic_size_t num_classes;
+    atomic_size_t class_id_count;
+    atomic_size_t num_class_insts;
+    atomic_size_t class_inst_id_count;
 
     struct kndDict  *attr_name_idx;
     struct kndSet  *attr_idx;

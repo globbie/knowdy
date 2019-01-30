@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <stdatomic.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -385,15 +386,14 @@ int knd_class_resolve(struct kndClass *self,
     }
 
     self->resolving_in_progress = true;
-
-    // atomic
-    repo->num_classes++;
     entry = self->entry;
 
-    entry->numid = repo->num_classes;
+    /* generate unique class id */
+    entry->numid = atomic_fetch_add_explicit(&repo->class_id_count, 1,
+                                             memory_order_relaxed);
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
         knd_log(".. resolving class \"%.*s\" id:%.*s entry numid:%zu task:%zu",
                 self->entry->name_size, self->entry->name,
                 entry->id_size, entry->id, self->entry->numid, task->id);
@@ -501,55 +501,3 @@ int knd_resolve_class_ref(struct kndClass *self,
     return knd_OK;
 }
 
-int knd_resolve_classes(struct kndClass *self,
-                        struct kndTask *task)
-{
-    struct kndClass *c;
-    struct kndClassEntry *entry;
-    struct kndSet *class_idx = self->entry->repo->class_idx;
-    struct kndDict *class_name_idx = self->entry->repo->class_name_idx;
-    const char *key;
-    void *val;
-    int err;
-
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-        knd_log(".. resolving classes in \"%.*s\"",
-                self->entry->name_size, self->entry->name);
-
-    key = NULL;
-
-    /*    class_name_idx->rewind(class_name_idx);
-    do {
-        class_name_idx->next_item(class_name_idx, &key, &val);
-        if (!key) break;
-        entry = (struct kndClassEntry*)val;
-        if (!entry->class) {
-            knd_log("-- unresolved class entry: %.*s",
-                    entry->name_size, entry->name);
-            return knd_FAIL;
-        }
-        c = entry->class;
-
-        if (!c->is_resolved) {
-            err = knd_class_resolve(c, task);
-            if (err) {
-                knd_log("-- couldn't resolve the \"%.*s\" class",
-                        c->entry->name_size, c->entry->name);
-                return err;
-            }
-            c->is_resolved = true;
-        }
-
-        err = class_idx->add(class_idx,
-                             c->entry->id, c->entry->id_size,
-                             (void*)c->entry);
-        if (err) return err;
-
-        if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
-                c->str(c, 1);
-        }
-    } while (key);
-    */
-
-    return knd_OK;
-}

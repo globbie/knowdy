@@ -19,6 +19,7 @@ static int wal_write(struct kndTask *task,
     knd_log(".. kndStorage to write a WAL entry.. (commit file:%s)",
             task->filename);
 
+    
     return knd_OK;
 }
 

@@ -445,9 +445,9 @@ static int check_attr_name_conflict(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_resolve_attr_vars(struct kndClass *self,
-                                 struct kndClassVar *parent_item,
-                                 struct kndTask *task)
+int knd_resolve_attr_vars(struct kndClass *self,
+                          struct kndClassVar *parent_item,
+                          struct kndTask *task)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;

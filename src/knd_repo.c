@@ -996,43 +996,89 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
     return knd_OK;
 }
 
+static int resolve_classes(struct kndRepo *self,
+                           struct kndTask *task)
+{
+    struct kndClass *c;
+    struct kndClassEntry *entry;
+    struct kndDictItem *item;
+    struct kndSet *class_idx = self->class_idx;
+    struct kndDict *name_idx = task->ctx->class_name_idx;
+    int err;
+
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log(".. resolving classes in \"%.*s\"",
+                self->name_size, self->name);
+
+    for (size_t i = 0; i < name_idx->size; i++) {
+        item = atomic_load_explicit(&name_idx->hash_array[i],
+                                    memory_order_relaxed);
+        for (; item; item = item->next) {
+            entry = item->data;
+            if (!entry->class) {
+                knd_log("-- unresolved class entry: %.*s",
+                        entry->name_size, entry->name);
+                return knd_FAIL;
+            }
+            c = entry->class;
+
+            if (!c->is_resolved) {
+                err = knd_class_resolve(c, task);
+                if (err) {
+                    knd_log("-- couldn't resolve the \"%.*s\" class",
+                            c->entry->name_size, c->entry->name);
+                    return err;
+                }
+                c->is_resolved = true;
+            }
+            
+            err = class_idx->add(class_idx,
+                                 c->entry->id, c->entry->id_size,
+                                 (void*)c->entry);
+            if (err) return err;
+            if (DEBUG_REPO_LEVEL_TMP) {
+                c->str(c, 1);
+            }
+        }
+    }
+    return knd_OK;
+}
+
 static int resolve_procs(struct kndRepo *self,
                          struct kndTask *task)
 {
     struct kndProcEntry *entry;
-    const char *key;
-    void *val;
+    struct kndDictItem *item;
+    struct kndDict *name_idx = task->ctx->proc_name_idx;
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP)
         knd_log(".. resolving procs of repo \"%.*s\"..",
                 self->name_size, self->name);
 
-    key = NULL;
-    /*    self->proc_name_idx->rewind(self->proc_name_idx);
-    do {
-        self->proc_name_idx->next_item(self->proc_name_idx, &key, &val);
-        if (!key) break;
+    for (size_t i = 0; i < name_idx->size; i++) {
+        item = atomic_load_explicit(&name_idx->hash_array[i],
+                                    memory_order_relaxed);
+        for (; item; item = item->next) {
+            entry = item->data;
 
-        entry = (struct kndProcEntry*)val;
-        if (entry->proc->is_resolved) {
-            continue;
+            if (entry->proc->is_resolved) {
+                continue;
+            }
+            err = knd_proc_resolve(entry->proc, task);
+            if (err) {
+                knd_log("-- couldn't resolve the \"%.*s\" proc",
+                        entry->proc->name_size, entry->proc->name);
+                return err;
+            }
         }
-        err = knd_proc_resolve(entry->proc, task);
-        if (err) {
-            knd_log("-- couldn't resolve the \"%.*s\" proc",
-                    entry->proc->name_size, entry->proc->name);
-            return err;
-        }
-    } while (key);
-    */
+    }
     return knd_OK;
 }
 
 int knd_repo_open(struct kndRepo *self, struct kndTask *task)
 {
     struct glbOutput *out;
-    struct kndClass *c;
     struct kndClassInst *inst;
     struct stat st;
     int err;
@@ -1092,8 +1138,7 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
                 return err;
             }
 
-            c = self->root_class;
-            err = knd_class_coordinate(c, task);
+            err = resolve_classes(self, task);
             if (err) {
                 knd_log("-- class coordination failed");
                 return err;
@@ -1162,13 +1207,13 @@ static int check_conflicts(struct kndRepo *self,
 #endif
 
 static int deliver_task_report(void *obj,
-                               const char *task_id,
-                               size_t task_id_size,
+                               const char *unused_var(task_id),
+                               size_t unused_var(task_id_size),
                                void *ctx_obj)
 {
     struct kndTask *task = obj;
     struct kndTaskContext *ctx = ctx_obj;
-    int err;
+    //int err;
 
     knd_log(".. worker:%zu / ctx:%zu  delivering report on task #%zu..",
             task->id, ctx->numid, ctx->update->numid);
@@ -1179,8 +1224,8 @@ static int deliver_task_report(void *obj,
 }
 
 static int build_persistent_commit(void *obj,
-                                   const char *task_id,
-                                   size_t task_id_size,
+                                   const char *unused_var(task_id),
+                                   size_t unused_var(task_id_size),
                                    void *ctx_obj)
 {
     struct kndTask *task = obj;
@@ -1299,10 +1344,22 @@ int knd_conc_folder_new(struct kndMemPool *mempool,
 int knd_repo_update_name_idx(struct kndRepo *self,
                              struct kndTaskContext *ctx)
 {
+    struct kndStateRef *ref;
+    struct kndClassEntry *entry;
+    struct kndDict *name_idx = self->class_name_idx;
     int err;
 
     knd_log(".. updating name indices..");
 
+    for (ref = ctx->class_state_refs; ref; ref = ref->next) {
+        entry = ref->obj;
+
+        knd_log("== class: %.*s", entry->name_size, entry->name);
+        err = knd_dict_set(name_idx,
+                           entry->name,  entry->name_size,
+                           (void*)entry);
+        if (err) return err;
+    }
 
     return knd_OK;
 }

@@ -112,24 +112,6 @@ static void str(struct kndClass *self, size_t depth)
             self->entry->name_size, self->entry->name);
 }
 
-
-int knd_class_coordinate(struct kndClass *self,
-                         struct kndTask *task)
-{
-    int err;
-    if (DEBUG_CLASS_LEVEL_TMP)
-        knd_log(".. class coordination in progress ..");
-
-    err = knd_resolve_classes(self, task);                                        RET_ERR();
-
-    if (self->entry->descendants) {
-        if (DEBUG_CLASS_LEVEL_TMP)
-            knd_log("== TOTAL classes: %zu",
-                    self->entry->descendants->num_elems);
-    }
-    return knd_OK;
-}
-
 int knd_get_class_inst(struct kndClass *self,
                        const char *name, size_t name_size,
                        struct kndTask *task,
@@ -1010,7 +992,7 @@ int knd_class_clone(struct kndClass *self,
     entry->orig = self->entry;
     entry->class = c;
     c->entry = entry;
-    
+
     target_repo->num_classes++;
     entry->numid = target_repo->num_classes;
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
