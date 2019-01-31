@@ -197,11 +197,9 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_OK);
     }
 
-    knd_log("entry class: %p", entry->class);
-
     /* class entry already exists */
     if (!entry->class) {
-        //entry->class =    self;
+        entry->class =    self;
         self->entry =     entry;
         self->name =      entry->name;
         self->name_size = name_size;
@@ -502,7 +500,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log("..worker \"%zu\" to import class: \"%.*s\"..",
                 task->id, 128, rec);
 
@@ -609,7 +607,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
         knd_log("++  \"%.*s\" class import completed!",
                 c->name_size, c->name);
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         c->str(c, 1);
 
     return make_gsl_err(gsl_OK);

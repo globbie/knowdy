@@ -543,8 +543,8 @@ extern gsl_err_t knd_parse_select_user(void *obj,
     return parser_err;
 }
 
-extern int kndUser_init(struct kndUser *self,
-                        struct kndTask *task)
+int kndUser_init(struct kndUser *self,
+                 struct kndTask *task)
 {
     struct kndRepo *repo = self->repo;
     int err;
@@ -566,6 +566,9 @@ extern int kndUser_init(struct kndUser *self,
     repo->name_size = self->repo_name_size;
 
     task->ctx->class_name_idx = repo->class_name_idx;
+    task->ctx->attr_name_idx = repo->attr_name_idx;
+    task->ctx->proc_name_idx = repo->proc_name_idx;
+    task->ctx->proc_arg_name_idx = repo->proc_arg_name_idx;
 
     err = knd_repo_open(repo, task);                                              RET_ERR();
 

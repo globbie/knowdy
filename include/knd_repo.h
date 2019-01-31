@@ -77,7 +77,8 @@ struct kndRepo
 
     struct kndDict  *attr_name_idx;
     struct kndSet  *attr_idx;
-    size_t num_attrs;
+    atomic_size_t attr_id_count;
+    atomic_size_t num_attrs;
     struct kndDict  *class_inst_name_idx;
 
     struct kndProc *root_proc;
@@ -92,7 +93,8 @@ struct kndRepo
     
     struct kndDict  *proc_arg_name_idx;
     struct kndSet  *proc_arg_idx;
-    size_t num_proc_args;
+    atomic_size_t proc_arg_id_count;
+    atomic_size_t num_proc_args;
 
     struct kndSet *update_idx;
     atomic_size_t num_updates;

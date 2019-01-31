@@ -93,9 +93,9 @@ struct kndTaskContext {
     void *obj;
     task_cb_func cb;
 
-    char *input_buf;
+    char       *input_buf;
     const char *input;
-    size_t input_size;
+    size_t      input_size;
 
     const char   *output;
     size_t output_size;
@@ -115,7 +115,9 @@ struct kndTaskContext {
     struct kndStateRef  *proc_inst_state_refs;
 
     struct kndDict *class_name_idx;
+    struct kndDict *attr_name_idx;
     struct kndDict *proc_name_idx;
+    struct kndDict *proc_arg_name_idx;
 
     struct kndUpdate *update;
     bool update_confirmed;

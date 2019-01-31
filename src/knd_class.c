@@ -768,10 +768,10 @@ extern int knd_get_class(struct kndRepo *self,
     return knd_FAIL;
 }
 
-extern int knd_get_class_by_id(struct kndRepo *repo,
-                               const char *id, size_t id_size,
-                               struct kndClass **result,
-                               struct kndTask *task)
+int knd_get_class_by_id(struct kndRepo *repo,
+                        const char *id, size_t id_size,
+                        struct kndClass **result,
+                        struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
@@ -781,7 +781,7 @@ extern int knd_get_class_by_id(struct kndRepo *repo,
     struct kndState *state;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_TMP) {
         knd_log(".. repo \"%.*s\" to get class by id: \"%.*s\"..",
                 repo->name_size, repo->name, id_size, id);
     }

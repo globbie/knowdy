@@ -339,8 +339,8 @@ static int kndRepo_restore(struct kndRepo *self,
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("  .. restoring repo \"%.*s\" in \"%s\" repo:%p",
-                self->name_size, self->name, filename, self);
+        knd_log("  .. restoring repo \"%.*s\" in \"%s\"",
+                self->name_size, self->name, filename);
 
     out->reset(out);
     err = out->write_file_content(out, filename);
@@ -953,14 +953,15 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
                             struct kndProcArg *arg,
                             struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->mempool;
-    struct kndSet *arg_idx = repo->proc_arg_idx;
-    struct kndDict *arg_name_idx = repo->proc_arg_name_idx;
+    struct kndMemPool *mempool =   task->mempool;
+    struct kndSet *arg_idx =       repo->proc_arg_idx;
+    struct kndDict *arg_name_idx = task->ctx->proc_arg_name_idx;
     struct kndProcArgRef *arg_ref, *prev_arg_ref;
     int err;
 
-    repo->num_proc_args++;
-    arg->numid = repo->num_proc_args;
+    /* generate unique attr id */
+    arg->numid = atomic_fetch_add_explicit(&repo->proc_arg_id_count, 1,
+                                           memory_order_relaxed);
     knd_uid_create(arg->numid, arg->id, &arg->id_size);
 
     err = knd_proc_arg_ref_new(mempool, &arg_ref);
@@ -976,18 +977,17 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
     arg_ref->next = prev_arg_ref;
 
     if (prev_arg_ref) {
-        //knd_log("-- dict remove");
-        //err = arg_name_idx->remove(arg_name_idx,
-        //                           arg->name, arg->name_size);           RET_ERR();
+        arg_ref->next = prev_arg_ref;
+        prev_arg_ref->next = arg_ref;
+    } else {
+        err = knd_dict_set(arg_name_idx,
+                           arg->name, arg->name_size,
+                           (void*)arg_ref);                                       RET_ERR();
     }
-
-    err = knd_dict_set(arg_name_idx,
-                       arg->name, arg->name_size,
-                       (void*)arg_ref);                              RET_ERR();
 
     err = arg_idx->add(arg_idx,
                         arg->id, arg->id_size,
-                        (void*)arg_ref);                                   RET_ERR();
+                        (void*)arg_ref);                                          RET_ERR();
 
     if (DEBUG_REPO_LEVEL_TMP)
         knd_log("++ new primary arg: \"%.*s\" (id:%.*s)",
@@ -1036,7 +1036,7 @@ static int resolve_classes(struct kndRepo *self,
                                  c->entry->id, c->entry->id_size,
                                  (void*)c->entry);
             if (err) return err;
-            if (DEBUG_REPO_LEVEL_TMP) {
+            if (DEBUG_REPO_LEVEL_2) {
                 c->str(c, 1);
             }
         }

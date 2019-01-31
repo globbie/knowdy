@@ -286,6 +286,9 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     if (!ctx) return knd_NOMEM;
     memset(ctx, 0, (sizeof(struct kndTaskContext)));
     ctx->class_name_idx = repo->class_name_idx;
+    ctx->attr_name_idx  = repo->attr_name_idx;
+    ctx->proc_name_idx  = repo->proc_name_idx;
+    ctx->proc_arg_name_idx  = repo->proc_arg_name_idx;
     task->ctx = ctx;
 
     err = knd_repo_open(repo, task);

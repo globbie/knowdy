@@ -287,11 +287,12 @@ static int resolve_baseclasses(struct kndClass *self,
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
     struct glbOutput *log = task->log;
+    struct kndRepo *repo = self->entry->repo;
     const char *classname;
     size_t classname_size;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
         knd_log(".. class \"%.*s\" to resolve its bases..",
                 self->name_size, self->name);
 
@@ -326,7 +327,8 @@ static int resolve_baseclasses(struct kndClass *self,
             err = knd_get_class(self->entry->repo,
                                 classname, classname_size, &c, task);
             if (err) {
-                knd_log("-- no such class: %.*s", classname_size, classname);
+                knd_log("-- no such class: %.*s? repo:%.*s",
+                        classname_size, classname, repo->name_size, repo->name);
                 log->reset(log);
                 log->writef(log, "%.*s class name not found",
                             classname_size, classname);
@@ -435,7 +437,7 @@ int knd_resolve_class_ref(struct kndClass *self,
     struct kndDict *class_name_idx = self->entry->repo->class_name_idx;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
         knd_log(".. checking class ref:  \"%.*s\"..",
                 name_size, name);
         if (base) {
@@ -454,7 +456,7 @@ int knd_resolve_class_ref(struct kndClass *self,
         }
         c = entry->class;
         if (!c) {
-            knd_log("-- no such class: \"%.*s\"", name_size, name);
+            knd_log("-- no such class: \"%.*s\" :(", name_size, name);
             return knd_FAIL;
         }
         if (!c->is_resolved) {

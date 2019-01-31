@@ -357,15 +357,16 @@ static int register_new_attr(struct kndClass *self,
                              struct kndAttr *attr,
                              struct kndTask *task)
 {
-    struct kndRepo *repo = self->entry->repo;
+    struct kndRepo *repo =       self->entry->repo;
     struct kndMemPool *mempool = task->mempool;
-    struct kndSet *attr_idx = repo->attr_idx;
-    struct kndDict *attr_name_idx = repo->attr_name_idx;
+    struct kndSet *attr_idx =    repo->attr_idx;
+    struct kndDict *attr_name_idx = task->ctx->attr_name_idx;
     struct kndAttrRef *attr_ref, *prev_attr_ref;
     int err;
 
-    repo->num_attrs++;
-    attr->numid = repo->num_attrs;
+    /* generate unique attr id */
+    attr->numid = atomic_fetch_add_explicit(&repo->attr_id_count, 1,
+                                            memory_order_relaxed);
     knd_uid_create(attr->numid, attr->id, &attr->id_size);
 
     err = knd_attr_ref_new(mempool, &attr_ref);
@@ -377,28 +378,24 @@ static int register_new_attr(struct kndClass *self,
 
     /* global indices */
     prev_attr_ref = knd_dict_get(attr_name_idx,
-                                       attr->name, attr->name_size);
-    attr_ref->next = prev_attr_ref;
-
-    //if (prev_attr_ref) {
-        //knd_log("-- dict remove");
-    //  err = attr_name_idx->remove(attr_name_idx,
-    //                               attr->name, attr->name_size);           RET_ERR();
-    //}
-
-    err = knd_dict_set(attr_name_idx,
-                       attr->name, attr->name_size,
-                       (void*)attr_ref);                              RET_ERR();
+                                 attr->name, attr->name_size);
+    
+    if (prev_attr_ref) {
+        attr_ref->next = prev_attr_ref->next;
+        prev_attr_ref->next = attr_ref;
+    } else {
+        err = knd_dict_set(attr_name_idx,
+                           attr->name, attr->name_size,
+                           (void*)attr_ref);                                          RET_ERR();
+    }
 
     err = attr_idx->add(attr_idx,
                         attr->id, attr->id_size,
-                        (void*)attr_ref);                                   RET_ERR();
-    
+                        (void*)attr_ref);                                         RET_ERR();
     /* local index */
     err = self->attr_idx->add(self->attr_idx,
                               attr->id, attr->id_size,
-                              (void*)attr_ref);                             RET_ERR();
-
+                              (void*)attr_ref);                                   RET_ERR();
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
         knd_log("++ new primary attr: \"%.*s\" numid:%zu",
                 attr->name_size, attr->name, attr->numid);
