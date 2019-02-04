@@ -19,6 +19,7 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
+#if 0
 static const char * gsl_err_to_str(gsl_err_t err)
 {
     switch (err.code) {
@@ -30,7 +31,9 @@ static const char * gsl_err_to_str(gsl_err_t err)
     default:           return "Unknown error";
     }
 }
+#endif
 
+#if 0
 static int log_parser_error(struct kndTask *self,
                            gsl_err_t parser_err,
                            size_t pos,
@@ -53,6 +56,7 @@ static int log_parser_error(struct kndTask *self,
     return self->log->writef(self->log, "parser error at line %zu:%zu: %d %s",
                              line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
 }
+#endif
 
 static gsl_err_t run_set_format(void *obj,
                                 const char *name,
@@ -315,7 +319,6 @@ int knd_task_run(struct kndTask *self)
 {
     size_t total_size = self->ctx->input_size;
     gsl_err_t parser_err;
-    int err;
 
     if (DEBUG_TASK_LEVEL_TMP) {
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
