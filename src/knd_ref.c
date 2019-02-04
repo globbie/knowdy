@@ -12,7 +12,7 @@
 #include "knd_utils.h"
 #include "knd_class.h"
 #include "knd_attr.h"
-
+#include "knd_output.h"
 
 #define DEBUG_REF_LEVEL_0 0
 #define DEBUG_REF_LEVEL_1 0
@@ -164,7 +164,7 @@ static int export_reverse_rel_JSON(struct kndRef *self,
                                    struct kndTask *task)
 {
     struct kndClassInst *obj;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     int err = knd_FAIL;
 
     if (!self->elem) {
@@ -200,7 +200,7 @@ static int export_reverse_rel_JSON(struct kndRef *self,
 static int export_GSP(struct kndRef *self)
 {
     struct kndClassInst *obj;
-    struct glbOutput *out = self->out;
+    struct kndOutput *out = self->out;
     int err;
 
     if (!self->states) return knd_FAIL;
@@ -228,7 +228,7 @@ static int export_reverse_rel_GSP(struct kndRef *self,
                                   struct kndTask *task)
 {
     struct kndClassInst *obj;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     int err = knd_FAIL;
 
     obj = self->elem->root;

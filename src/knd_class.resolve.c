@@ -30,10 +30,10 @@
 #include "knd_proc_arg.h"
 #include "knd_set.h"
 #include "knd_utils.h"
+#include "knd_output.h"
 #include "knd_http_codes.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_CLASS_RESOLVE_LEVEL_1 0
 #define DEBUG_CLASS_RESOLVE_LEVEL_2 0
@@ -286,7 +286,7 @@ static int resolve_baseclasses(struct kndClass *self,
     struct kndClassVar *cvar;
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
-    struct glbOutput *log = task->log;
+    struct kndOutput *log = task->log;
     struct kndRepo *repo = self->entry->repo;
     const char *classname;
     size_t classname_size;

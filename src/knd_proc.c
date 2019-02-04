@@ -8,7 +8,6 @@
 #include <sys/types.h>
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
@@ -22,6 +21,7 @@
 #include "knd_text.h"
 #include "knd_dict.h"
 #include "knd_repo.h"
+#include "knd_output.h"
 
 #define DEBUG_PROC_LEVEL_0 0
 #define DEBUG_PROC_LEVEL_1 0
@@ -148,7 +148,7 @@ static gsl_err_t present_proc_selection(void *obj,
     struct kndTask *task = ctx->task;
     struct kndProc *proc = ctx->proc;
     knd_format format = task->format;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     int err;
 
     if (DEBUG_PROC_LEVEL_2)
@@ -285,7 +285,7 @@ gsl_err_t knd_proc_select(struct kndRepo *repo,
 int knd_proc_export(struct kndProc *self,
                     knd_format format,
                     struct kndTask *task,
-                    struct glbOutput *out)
+                    struct kndOutput *out)
 {
     int err;
 

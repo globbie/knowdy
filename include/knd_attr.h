@@ -24,6 +24,7 @@
 #include "knd_utils.h"
 #include "knd_task.h"
 #include "knd_config.h"
+#include "knd_output.h"
 
 #include <gsl-parser/gsl_err.h>
 
@@ -31,7 +32,6 @@
 
 struct kndClass;
 struct kndClassEntry;
-struct glbOutput;
 struct kndTranslation;
 struct kndAttr;
 struct kndProc;
@@ -262,16 +262,16 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
 
 extern int knd_attr_var_export_GSP(struct kndAttrVar *self,
                                    struct kndTask *task,
-                                   struct glbOutput *out);
+                                   struct kndOutput *out);
 
 extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
-                                    struct glbOutput *out,
+                                    struct kndOutput *out,
                                     struct kndTask *task,
                                     size_t depth,
                                     bool is_concise);
 
 extern int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var,
-                                           struct glbOutput *out);
+                                           struct kndOutput *out);
 
 extern int knd_compute_num_value(struct kndAttr *attr,
                                  struct kndAttrVar *attr_var,

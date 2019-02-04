@@ -12,6 +12,7 @@
 #include "knd_task.h"
 #include "knd_class.h"
 #include "knd_proc.h"
+#include "knd_output.h"
 
 #define DEBUG_ATTR_LEVEL_1 0
 #define DEBUG_ATTR_LEVEL_2 0
@@ -453,7 +454,7 @@ int knd_import_attr_var_list(struct kndClassVar *self,
     if (!self->entry) {
         knd_log("-- anonymous class var: %.*s?  REC:%.*s",
                 64, rec);
-        struct glbOutput *log = task->log; 
+        struct kndOutput *log = task->log; 
         log->reset(log);
         e = log->write(log, "no baseclass name specified",
                      strlen("no baseclass name specified"));

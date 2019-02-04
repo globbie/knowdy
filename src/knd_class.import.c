@@ -29,10 +29,10 @@
 #include "knd_proc_arg.h"
 #include "knd_set.h"
 #include "knd_utils.h"
+#include "knd_output.h"
 #include "knd_http_codes.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_CLASS_IMPORT_LEVEL_1 0
 #define DEBUG_CLASS_IMPORT_LEVEL_2 0
@@ -153,7 +153,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
     struct kndRepo *repo = ctx->repo;
-    struct glbOutput *log = task->log;
+    struct kndOutput *log = task->log;
     struct kndClass *c;
     struct kndDict *class_name_idx = task->ctx->class_name_idx;
     struct kndClassEntry *entry;

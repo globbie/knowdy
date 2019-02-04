@@ -60,9 +60,9 @@ static void *task_runner(void *ptr)
         case KND_SUBMIT:
             knd_task_reset(task);
 
-
-
             task->ctx = ctx;
+            task->out = ctx->out;
+
             err = knd_task_run(task);
             if (err != knd_OK) {
                 ctx->error = err;
@@ -162,9 +162,9 @@ int knd_shard_run_task(struct kndShard *self,
     ctx->input = ctx->input_buf;
     ctx->input_size = input_size;
 
+    knd_log("== output buf size: %zu", *output_size);
     err = knd_output_new(&ctx->out, output, *output_size);
     *output_size = 0;
-    knd_log("== output buf size: %zu", *output_size);
 
     self->task_count++;
     ctx->numid = self->task_count;

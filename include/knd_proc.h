@@ -22,11 +22,11 @@
 
 #include "knd_config.h"
 #include "knd_state.h"
+#include "knd_output.h"
 
 #include "knd_proc_arg.h"
 #include "knd_proc_call.h"
 
-struct glbOutput;
 struct kndProcCallArg;
 struct kndUpdate;
 
@@ -231,7 +231,7 @@ int knd_resolve_proc_ref(struct kndClass *self,
 int knd_proc_export(struct kndProc *self,
                     knd_format format,
                     struct kndTask *task,
-                    struct glbOutput *out);
+                    struct kndOutput *out);
 
 int knd_proc_coordinate(struct kndProc *self,
                         struct kndTask *task);
@@ -251,11 +251,11 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
 // knd_proc.json.c
 int knd_proc_export_JSON(struct kndProc *self,
                          struct kndTask *task,
-                         struct glbOutput  *out);
+                         struct kndOutput  *out);
 // knd_proc.svg.c
 int knd_proc_export_SVG(struct kndProc *self,
                         struct kndTask *task,
-                        struct glbOutput  *out);
+                        struct kndOutput  *out);
 
 //
 // TODO(k15tfu): ?? Move to knd_proc_impl.h

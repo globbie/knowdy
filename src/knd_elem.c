@@ -6,7 +6,6 @@
 #include <sys/stat.h>
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #include "knd_class_inst.h"
 #include "knd_class.h"
@@ -15,6 +14,7 @@
 #include "knd_attr.h"
 #include "knd_state.h"
 #include "knd_mempool.h"
+#include "knd_output.h"
 
 #include "knd_text.h"
 #include "knd_ref.h"
@@ -95,7 +95,7 @@ extern void knd_elem_str(struct kndElem *self, size_t depth)
 static int export_JSON(struct kndElem *self,
                        struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     int err;
 
     if (DEBUG_ELEM_LEVEL_2)
@@ -213,7 +213,7 @@ final:
 static int export_GSP(struct kndElem *self,
                       struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     int err;
 
     if (DEBUG_ELEM_LEVEL_2)

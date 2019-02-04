@@ -305,13 +305,14 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
         }
         break;
     default:
+        self->ctx->phase = KND_COMPLETE;
         break;
     }
 
     return make_gsl_err(gsl_OK);
 
  cleanup:
-    // any resources to free?
+    self->ctx->phase = KND_COMPLETE;
     return parser_err;
 }
 

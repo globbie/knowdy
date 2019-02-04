@@ -17,9 +17,9 @@
 
 #include "knd_user.h"
 #include "knd_state.h"
+#include "knd_output.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_INST_LEVEL_1 0
 #define DEBUG_INST_LEVEL_2 0
@@ -134,7 +134,7 @@ static gsl_err_t present_state(void *obj,
     struct LocalContext *ctx = obj;
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndMemPool *mempool = task->mempool;
     struct kndSet *set;
     int err;
@@ -241,7 +241,7 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct kndElem *elem = NULL;
-    //struct glbOutput *log = self->base->entry->repo->log;
+    //struct kndOutput *log = self->base->entry->repo->log;
     int err;
 
     if (DEBUG_INST_LEVEL_2)
@@ -347,7 +347,7 @@ static gsl_err_t remove_inst(void *obj,
     struct kndState  *state;
     struct kndStateRef  *state_ref;
     struct kndTask *task         = ctx->task;
-    struct glbOutput *log        = task->log;
+    struct kndOutput *log        = task->log;
     struct kndMemPool *mempool   = task->mempool;
     int err;
 
@@ -387,7 +387,7 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
     struct LocalContext *ctx = obj;
     struct kndClassInst *inst;
     struct kndTask *task = ctx->task;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndSet *set;
     struct kndClass *base = ctx->class;
     int err;
@@ -599,7 +599,7 @@ gsl_err_t knd_select_class_inst(struct kndClass *c,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        struct glbOutput *log = task->log;
+        struct kndOutput *log = task->log;
         knd_log("-- obj select parse error: \"%.*s\"",
                 log->buf_size, log->buf);
         if (!log->buf_size) {

@@ -29,9 +29,8 @@
 #include "knd_proc_arg.h"
 #include "knd_set.h"
 #include "knd_utils.h"
+#include "knd_output.h"
 #include "knd_http_codes.h"
-
-#include <glb-lib/output.h>
 
 #define DEBUG_ATTR_GSL_LEVEL_1 0
 #define DEBUG_ATTR_GSL_LEVEL_2 0
@@ -48,7 +47,7 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
                                  struct kndTask *task,
                                  size_t depth)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndAttrVar *item;
     struct kndAttr *attr;
     struct kndClass *c;
@@ -151,7 +150,7 @@ extern int knd_export_inherited_attr_GSL(void *obj,
     struct kndAttrRef *ref = elem;
     struct kndAttr *attr = ref->attr;
     struct kndAttrVar *attr_var = ref->attr_var;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndMemPool *mempool = task->mempool;
     size_t numval = 0;
     size_t depth = 1;
@@ -282,7 +281,7 @@ static int ref_item_export_GSL(struct kndAttrVar *item,
 static int proc_item_export_GSL(struct kndAttrVar *item,
                                 struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndProc *proc;
     int err;
     assert(item->proc != NULL);
@@ -295,7 +294,7 @@ static int attr_var_list_export_GSL(struct kndAttrVar *parent_item,
                                     struct kndTask *task,
                                     size_t depth)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndAttrVar *item;
     size_t count = 0;
     int err;
@@ -385,7 +384,7 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
                                     bool is_concise,
                                     size_t depth)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndAttrVar *item;
     struct kndAttr *attr;
     struct kndClass *c;
@@ -461,7 +460,7 @@ extern int knd_attr_var_export_GSL(struct kndAttrVar *item,
                                    struct kndTask *task,
                                    size_t depth)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndClass *c;
     int err;
 
@@ -506,7 +505,7 @@ extern int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_
     char buf[KND_NAME_SIZE] = {0};
     size_t buf_size = 0;
     struct kndTranslation *tr;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     const char *type_name = knd_attr_names[self->type];
     size_t type_name_size = strlen(knd_attr_names[self->type]);
     int err;

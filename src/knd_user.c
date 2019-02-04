@@ -7,19 +7,17 @@
 #include <unistd.h>
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
-//#include "knd_policy.h"
 #include "knd_user.h"
 #include "knd_shard.h"
 #include "knd_repo.h"
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_proc.h"
-#include "knd_rel.h"
 #include "knd_set.h"
 #include "knd_mempool.h"
 #include "knd_state.h"
+#include "knd_output.h"
 
 #define DEBUG_USER_LEVEL_0 0
 #define DEBUG_USER_LEVEL_1 0
@@ -89,7 +87,7 @@ static gsl_err_t parse_sync_task(void *obj,
 {
     struct kndTask *task = obj;
     struct kndUser *self = task->user;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
     struct stat st;
@@ -186,7 +184,7 @@ static gsl_err_t parse_class_select(void *obj,
     struct kndRepo *repo;
 
     if (!ctx) {
-        struct glbOutput *log = task->log;
+        struct kndOutput *log = task->log;
         knd_log("-- no user selected");
         log->writef(log, "no user selected");
         task->http_code = HTTP_BAD_REQUEST;
@@ -251,7 +249,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     struct kndUserContext *ctx;
     struct kndClassInst *inst;
     struct kndMemPool *mempool = task->mempool;
-    struct glbOutput *log = task->log;
+    struct kndOutput *log = task->log;
 
     struct kndRepo *repo = self->shard->repo;
     void *result = NULL;
@@ -342,7 +340,7 @@ static gsl_err_t run_present_user(void *obj,
     struct kndTask *task = obj;
     struct kndUser *self = task->user;
     struct kndClassInst *user_inst;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     int err;
 
     if (!self->curr_ctx) {
@@ -509,7 +507,7 @@ extern gsl_err_t knd_parse_select_user(void *obj,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        struct glbOutput *log = task->log;
+        struct kndOutput *log = task->log;
         knd_log("-- user task parse failure: \"%.*s\"",
                 log->buf_size, log->buf);
         if (!log->buf_size) {

@@ -11,9 +11,9 @@
 #include "knd_state.h"
 #include "knd_set.h"
 #include "knd_mempool.h"
+#include "knd_output.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_ATTR_LEVEL_1 0
 #define DEBUG_ATTR_LEVEL_2 0
@@ -149,7 +149,7 @@ extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
 static int export_JSON(struct kndAttr *self,
                        struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndTranslation *tr;
     struct kndProc *p;
     const char *type_name = knd_attr_names[self->type];
@@ -229,7 +229,7 @@ static int export_JSON(struct kndAttr *self,
     return knd_OK;
 }
 
-static int export_GSP(struct kndAttr *self, struct glbOutput *out)
+static int export_GSP(struct kndAttr *self, struct kndOutput *out)
 {
     char buf[KND_NAME_SIZE] = {0};
     size_t buf_size = 0;

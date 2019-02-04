@@ -8,11 +8,11 @@
 #include "knd_user.h"
 #include "knd_mempool.h"
 #include "knd_utils.h"
+#include "knd_output.h"
 #include "knd_class.h"
 #include "knd_http_codes.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 #include <gsl-parser/gsl_err.h>
 
 #define DEBUG_TASK_LEVEL_0 0
@@ -66,12 +66,11 @@ void knd_task_reset(struct kndTask *self)
     self->repo = self->system_repo;
 
     self->log->reset(self->log);
-    self->out->reset(self->out);
     self->update_out->reset(self->update_out);
 }
 
 static int task_err_export_JSON(struct kndTask *self,
-                                struct glbOutput *out)
+                                struct kndOutput *out)
 {
     int err;
 
@@ -110,7 +109,7 @@ static int task_err_export_JSON(struct kndTask *self,
 }
 
 static int task_err_export_GSP(struct kndTask *self,
-                               struct glbOutput *out)
+                               struct kndOutput *out)
 {
     int err;
     err = out->write(out, "{err ", strlen("{err "));                              RET_ERR();
@@ -130,7 +129,7 @@ static int task_err_export_GSP(struct kndTask *self,
 
 static int task_err_export(struct kndTask *self,
                            knd_format format,
-                           struct glbOutput *out)
+                           struct kndOutput *out)
 {
     int err;
     out->reset(out);
@@ -240,19 +239,16 @@ int knd_task_new(struct kndTask **task)
 
     memset(self, 0, sizeof(struct kndTask));
 
-    err = glbOutput_new(&self->log, KND_TEMP_BUF_SIZE);
+    err = knd_output_new(&self->log, NULL, KND_TEMP_BUF_SIZE);
     if (err) return err;
 
-    err = glbOutput_new(&self->out, KND_IDX_BUF_SIZE);
+    err = knd_output_new(&self->update_out, NULL, KND_LARGE_BUF_SIZE);
     if (err) return err;
 
-    err = glbOutput_new(&self->update_out, KND_LARGE_BUF_SIZE);
+    err = knd_output_new(&self->file_out, NULL, KND_FILE_BUF_SIZE);
     if (err) return err;
 
-    err = glbOutput_new(&self->file_out, KND_FILE_BUF_SIZE);
-    if (err) return err;
-
-    err = glbOutput_new(&self->task_out, KND_TASK_STORAGE_SIZE);
+    err = knd_output_new(&self->task_out, NULL, KND_TASK_STORAGE_SIZE);
     if (err) return err;
 
     *task = self;

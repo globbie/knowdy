@@ -13,12 +13,12 @@
 #include "knd_num.h"
 #include "knd_rel.h"
 #include "knd_set.h"
+#include "knd_output.h"
 
 #include "knd_user.h"
 #include "knd_state.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_INST_LEVEL_1 0
 #define DEBUG_INST_LEVEL_2 0

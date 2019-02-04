@@ -6,6 +6,7 @@
 #include "knd_proc.h"
 #include "knd_utils.h"
 #include "knd_task.h"
+#include "knd_output.h"
 
 #include <knd_mempool.h>
 #include <knd_proc_arg.h>
@@ -533,7 +534,7 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
         } else {
             knd_log("-- %.*s proc name doublet found",
                     proc->name_size, proc->name);
-            struct glbOutput *log = task->log;
+            struct kndOutput *log = task->log;
             log->reset(log);
             err = log->write(log, proc->name, proc->name_size);
             if (err) return make_gsl_err_external(err);

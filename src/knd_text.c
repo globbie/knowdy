@@ -3,13 +3,13 @@
 #include <string.h>
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #include "knd_text.h"
 #include "knd_task.h"
 #include "knd_repo.h"
 #include "knd_utils.h"
 #include "knd_mempool.h"
+#include "knd_output.h"
 
 #define DEBUG_TEXT_LEVEL_0 0
 #define DEBUG_TEXT_LEVEL_1 0
@@ -20,7 +20,7 @@
 static int export_GSL(struct kndText *self,
                       struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndTranslation *tr;
     int err;
 
@@ -41,7 +41,7 @@ static int export_GSL(struct kndText *self,
 static int export_JSON(struct kndText *self,
                        struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndTranslation *tr;
     int err;
 
@@ -63,7 +63,7 @@ static int export_JSON(struct kndText *self,
 
 static int export_GSP(struct kndText *unused_var(self),
                       struct kndTask *unused_var(task),
-                      struct glbOutput *unused_var(out))
+                      struct kndOutput *unused_var(out))
 {
     //struct kndState *state;
     //struct kndTranslation *tr;

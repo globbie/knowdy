@@ -8,7 +8,6 @@
 #include <sys/types.h>
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
@@ -20,6 +19,7 @@
 #include "knd_text.h"
 #include "knd_dict.h"
 #include "knd_repo.h"
+#include "knd_output.h"
 
 #define DEBUG_PROC_SVG_LEVEL_0 0
 #define DEBUG_PROC_SVG_LEVEL_1 0
@@ -27,7 +27,7 @@
 #define DEBUG_PROC_SVG_LEVEL_3 0
 #define DEBUG_PROC_SVG_LEVEL_TMP 1
 
-static int export_SVG_header(struct glbOutput *out)
+static int export_SVG_header(struct kndOutput *out)
 {
     const char *svg_header = "<svg version=\"1.1\""
         " width=\"100%\" height=\"100%\""
@@ -49,7 +49,7 @@ static int export_SVG_header(struct glbOutput *out)
     return knd_OK;
 }
 
-static int export_SVG_footer(struct glbOutput *out)
+static int export_SVG_footer(struct kndOutput *out)
 {
     const char *svg_footer = "</g></svg>";
     size_t svg_footer_size = strlen(svg_footer);
@@ -61,7 +61,7 @@ static int export_SVG_footer(struct glbOutput *out)
 
 int knd_proc_export_SVG(struct kndProc *self,
                         struct kndTask *task,
-                        struct glbOutput *out)
+                        struct kndOutput *out)
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size = 0;

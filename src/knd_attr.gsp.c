@@ -29,9 +29,8 @@
 #include "knd_proc_arg.h"
 #include "knd_set.h"
 #include "knd_utils.h"
+#include "knd_output.h"
 #include "knd_http_codes.h"
-
-#include <glb-lib/output.h>
 
 #define DEBUG_ATTR_GSP_LEVEL_1 0
 #define DEBUG_ATTR_GSP_LEVEL_2 0
@@ -41,7 +40,7 @@
 #define DEBUG_ATTR_GSP_LEVEL_TMP 1
 
 static int ref_item_export_GSP(struct kndAttrVar *item,
-                               struct glbOutput *out)
+                               struct kndOutput *out)
 {
     struct kndClass *c;
     int err;
@@ -56,7 +55,7 @@ static int ref_item_export_GSP(struct kndAttrVar *item,
 }
 
 static int inner_item_export_GSP(struct kndAttrVar *parent_item,
-                                struct glbOutput *out)
+                                struct kndOutput *out)
 {
     struct kndAttrVar *item;
     struct kndAttr *attr;
@@ -105,7 +104,7 @@ static int inner_item_export_GSP(struct kndAttrVar *parent_item,
 
 static int proc_item_export_GSP(struct kndAttrVar *item,
                                 struct kndTask *task,
-                                struct glbOutput *out)
+                                struct kndOutput *out)
 {
     struct kndProc *proc;
     int err;
@@ -121,7 +120,7 @@ static int proc_item_export_GSP(struct kndAttrVar *item,
 
 static int attr_var_list_export_GSP(struct kndAttrVar *parent_item,
                                     struct kndTask *task,
-                                    struct glbOutput *out)
+                                    struct kndOutput *out)
 {
     struct kndAttrVar *item;
     struct kndClass *c;
@@ -175,7 +174,7 @@ static int attr_var_list_export_GSP(struct kndAttrVar *parent_item,
 }
 
 extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
-                                    struct glbOutput *out,
+                                    struct kndOutput *out,
                                     struct kndTask *task,
                                     size_t unused_var(depth),
                                     bool is_concise)
@@ -206,7 +205,7 @@ extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
 
 extern int knd_attr_var_export_GSP(struct kndAttrVar *item,
                                    struct kndTask *task,
-                                   struct glbOutput *out)
+                                   struct kndOutput *out)
 {
     int err;
     

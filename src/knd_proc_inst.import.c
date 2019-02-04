@@ -11,9 +11,9 @@
 
 #include "knd_user.h"
 #include "knd_state.h"
+#include "knd_output.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_PROC_INST_LEVEL_1 0
 #define DEBUG_PROC_INST_LEVEL_2 0
@@ -36,7 +36,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndRepo *repo = ctx->repo;
     //struct kndDict *proc_name_idx = repo->proc_name_idx;
     struct kndDict *name_idx = repo->proc_inst_name_idx;
-    struct glbOutput *log = ctx->task->log;
+    struct kndOutput *log = ctx->task->log;
     struct kndTask *task = ctx->task;
     int err;
 
@@ -79,7 +79,7 @@ static int validate_arg(struct kndProcInst *self,
     struct kndProcArgRef *arg_ref;
     struct kndProcArg *arg;
     struct kndProcArgInst *arg_inst = NULL;
-    //struct glbOutput *log;
+    //struct kndOutput *log;
     int err;
 
     if (DEBUG_PROC_INST_LEVEL_2)

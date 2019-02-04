@@ -29,10 +29,10 @@
 #include "knd_proc_arg.h"
 #include "knd_set.h"
 #include "knd_utils.h"
+#include "knd_output.h"
 #include "knd_http_codes.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_CLASS_LEVEL_1 0
 #define DEBUG_CLASS_LEVEL_2 0
@@ -120,7 +120,7 @@ int knd_get_class_inst(struct kndClass *self,
     struct kndClassInstEntry *entry;
     struct kndClassInst *obj;
     struct kndDict *name_idx;
-    struct glbOutput *log = task->log;
+    struct kndOutput *log = task->log;
     int err, e;
 
     if (DEBUG_CLASS_LEVEL_2)
@@ -687,7 +687,7 @@ extern int knd_get_class(struct kndRepo *self,
 {
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
-    struct glbOutput *log = task->log;
+    struct kndOutput *log = task->log;
     struct kndDict *class_name_idx = self->class_name_idx;
     struct kndState *state;
     int err;
@@ -775,7 +775,7 @@ int knd_get_class_by_id(struct kndRepo *repo,
 {
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
-    struct glbOutput *log = task->log;
+    struct kndOutput *log = task->log;
     struct kndSet *class_idx = repo->class_idx;
     void *elem;
     struct kndState *state;

@@ -21,7 +21,6 @@
 #include "knd_output.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_REPO_LEVEL_0 0
 #define DEBUG_REPO_LEVEL_1 0
@@ -333,7 +332,7 @@ static gsl_err_t kndRepo_read_updates(void *unused_var(obj),
 
 static int kndRepo_restore(struct kndRepo *self,
                            const char *filename,
-                           struct glbOutput *out)
+                           struct kndOutput *out)
 {
     size_t total_size = 0;
     gsl_err_t parser_err;
@@ -364,7 +363,7 @@ static int kndRepo_restore(struct kndRepo *self,
 
 
 static int present_latest_state_JSON(struct kndRepo *self,
-                                     struct glbOutput *out)
+                                     struct kndOutput *out)
 {
     size_t latest_update_id = atomic_load_explicit(&self->num_updates,
                                                    memory_order_relaxed);
@@ -399,7 +398,7 @@ static int present_latest_state_JSON(struct kndRepo *self,
 
 #if 0
 static int present_latest_state_GSL(struct kndRepo *self,
-                                    struct glbOutput *out)
+                                    struct kndOutput *out)
 {
     size_t latest_update_id = atomic_load_explicit(&self->num_updates,
                                                    memory_order_relaxed);
@@ -458,7 +457,7 @@ static gsl_err_t present_repo_state(void *obj,
 {
     struct kndTask *task = obj;
     struct kndRepo *repo = task->repo;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndMemPool *mempool = task->mempool;
     struct kndSet *set;
     int err;
@@ -621,7 +620,7 @@ static gsl_err_t parse_class_select(void *obj,
     struct kndRepo *repo;
 
     if (!ctx) {
-        struct glbOutput *log = task->log;
+        struct kndOutput *log = task->log;
         knd_log("-- no user selected");
         log->writef(log, "no user selected");
         task->http_code = HTTP_BAD_REQUEST;
@@ -646,7 +645,7 @@ static gsl_err_t parse_class_import(void *obj,
     struct kndRepo *repo = task->repo;
 
     /*if (!ctx) {
-        struct glbOutput *log = task->log;
+        struct kndOutput *log = task->log;
         knd_log("-- no user selected");
         log->writef(log, "no user selected");
         task->http_code = HTTP_BAD_REQUEST;
@@ -828,7 +827,7 @@ static int parse_GSL(struct kndTask *task,
     return knd_OK;
 }
 
-static int write_filepath(struct glbOutput *out,
+static int write_filepath(struct kndOutput *out,
                           struct kndConcFolder *folder)
 {
     int err;
@@ -850,8 +849,8 @@ static int read_GSL_file(struct kndRepo *repo,
                          size_t filename_size,
                          struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
-    struct glbOutput *file_out = task->file_out;
+    struct kndOutput *out = task->log;
+    struct kndOutput *file_out = task->file_out;
     struct kndConcFolder *folder, *folders;
     const char *c;
     char *rec;
@@ -1079,12 +1078,12 @@ static int resolve_procs(struct kndRepo *self,
 
 int knd_repo_open(struct kndRepo *self, struct kndTask *task)
 {
-    struct glbOutput *out;
+    struct kndOutput *out;
     struct kndClassInst *inst;
     struct stat st;
     int err;
 
-    out = task->out;
+    out = task->log;
     task->repo = self;
 
     /* extend user DB path */

@@ -28,10 +28,9 @@
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
 #include "knd_set.h"
+#include "knd_output.h"
 #include "knd_utils.h"
 #include "knd_http_codes.h"
-
-#include <glb-lib/output.h>
 
 #define DEBUG_JSON_LEVEL_1 0
 #define DEBUG_JSON_LEVEL_2 0
@@ -50,7 +49,7 @@ struct LocalContext {
 extern int knd_export_class_state_JSON(struct kndClass *self,
                                        struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndState *state = self->states;
     size_t latest_state_numid = self->init_state + self->num_states;
     size_t total;
@@ -128,7 +127,7 @@ extern int knd_export_class_state_JSON(struct kndClass *self,
 extern int knd_export_class_inst_state_JSON(struct kndClass *self,
                                             struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     size_t latest_state_id = 0;
     int err;
 
@@ -158,7 +157,7 @@ static int export_class_set_elem(void *obj,
     if (count < task->start_from) return knd_OK;
     if (task->batch_size >= task->batch_max) return knd_RANGE;
 
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndClassEntry *entry = elem;
     struct kndClass *c = entry->class;
     struct kndState *state;
@@ -216,7 +215,7 @@ static int export_class_set_elem(void *obj,
 static int export_gloss_JSON(struct kndClass *self,
                              struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndTranslation *tr;
     int err;
 
@@ -265,7 +264,7 @@ static int export_concise_JSON(struct kndClass *self,
 extern int knd_empty_set_export_JSON(struct kndClass *unused_var(self),
                                      struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     int err;
     out->reset(out);
     err = out->write(out, "{}", strlen("{}"));                                    RET_ERR();
@@ -279,7 +278,7 @@ extern int knd_empty_set_export_JSON(struct kndClass *unused_var(self),
                             void *elem)
 {
     struct kndTask *task = obj;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndClassEntry *entry = elem;
     struct kndClass *c = entry->class;
     size_t curr_depth = 0;
@@ -304,7 +303,7 @@ extern int knd_empty_set_export_JSON(struct kndClass *unused_var(self),
 static int export_facet(struct kndClassFacet *parent_facet,
                         struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndClassFacet *facet;
     struct kndClassRef *ref;
     bool in_list = false;
@@ -357,7 +356,7 @@ static int export_facet(struct kndClassFacet *parent_facet,
 extern int knd_class_facets_export_JSON(struct kndTask *task)
 {
     struct kndClassFacet *facet;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     bool in_list = false;
     int err;
 
@@ -381,7 +380,7 @@ extern int knd_class_facets_export_JSON(struct kndTask *task)
 extern int knd_class_set_export_JSON(struct kndSet *set,
                                      struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     size_t curr_depth = 0;
     int err;
     err = out->write(out, "{\"_set\":{",
@@ -446,7 +445,7 @@ extern int knd_class_set_export_JSON(struct kndSet *set,
 static int present_subclass(struct kndClassRef *ref,
                             struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndClassEntry *entry = ref->entry;
     struct kndClass *c;
     int err;
@@ -479,7 +478,7 @@ static int present_subclasses(struct kndClass *self,
                               size_t num_children,
                               struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndClassRef *ref;
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
@@ -543,7 +542,7 @@ static int present_subclasses(struct kndClass *self,
 static int export_attrs(struct kndClass *self,
                         struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndAttr *attr;
     size_t i = 0;
     int err;
@@ -574,7 +573,7 @@ static int export_inverse_attrs(struct kndClass *self,
     struct kndAttrHub *attr_hub;
     struct kndAttr *attr;
     struct kndSet *set;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     bool in_list = false;
     size_t curr_depth = 0;
     int err;
@@ -635,7 +634,7 @@ static int export_inverse_attrs(struct kndClass *self,
 static int export_baseclass_vars(struct kndClass *self,
                                  struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndClassVar *item;
     size_t item_count = 0;
     int err;
@@ -688,7 +687,7 @@ extern int knd_class_export_JSON(struct kndClass *self,
 {
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     //struct kndSet *set;
     struct kndState *state = self->states;
     size_t num_children;

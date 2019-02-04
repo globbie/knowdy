@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 
 #include "knd_config.h"
-#include <glb-lib/output.h>
+#include "knd_output.h"
 
 extern gsl_err_t knd_set_curr_state(void *obj,
                                     const char *val, size_t val_size);
@@ -14,7 +14,7 @@ extern gsl_err_t knd_set_curr_state(void *obj,
 extern void  knd_calc_num_id(const char *id, size_t id_size, size_t *numval);
 extern void knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base);
 
-extern int knd_print_offset(struct glbOutput *out,
+extern int knd_print_offset(struct kndOutput *out,
                             size_t num_spaces);
 
 static inline void knd_gsp_num_to_num(const char *val, size_t val_size, size_t *num) {

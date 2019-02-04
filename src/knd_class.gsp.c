@@ -29,10 +29,10 @@
 #include "knd_proc_arg.h"
 #include "knd_set.h"
 #include "knd_utils.h"
+#include "knd_output.h"
 #include "knd_http_codes.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_CLASS_GSP_LEVEL_1 0
 #define DEBUG_CLASS_GSP_LEVEL_2 0
@@ -50,7 +50,7 @@ struct LocalContext {
 };
 
 static int export_glosses(struct kndClass *self,
-                          struct glbOutput *out)
+                          struct kndOutput *out)
 {
     struct kndTranslation *tr;
     int err;
@@ -75,7 +75,7 @@ static int export_glosses(struct kndClass *self,
 }
 
 /*static int export_summary(struct kndClass *self,
-                          struct glbOutput *out)
+                          struct kndOutput *out)
 {
     struct kndTranslation *tr;
     int err;
@@ -103,7 +103,7 @@ static int export_glosses(struct kndClass *self,
 
 static int export_baseclass_vars(struct kndClass *self,
                                  struct kndTask *task,
-                                 struct glbOutput *out)
+                                 struct kndOutput *out)
 {
     struct kndClassVar *item;
     struct kndClass *c;
@@ -205,7 +205,7 @@ static int export_conc_id_GSP(void *obj,
                               size_t unused_var(count),
                               void *elem)
 {
-    struct glbOutput *out = obj;
+    struct kndOutput *out = obj;
     struct kndClassEntry *entry = elem;
     int err;
     err = out->writec(out, ' ');                                                  RET_ERR();
@@ -216,7 +216,7 @@ static int export_conc_id_GSP(void *obj,
 /*static int export_facets_GSP(struct kndSet *unused_var(set),
                              struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     int err;
 
     err = out->write(out,  "[fc ", strlen("[fc "));                               RET_ERR();
@@ -231,7 +231,7 @@ static int export_descendants_GSP(struct kndClass *self,
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndSet *set;
     int err;
 
@@ -259,7 +259,7 @@ static int export_descendants_GSP(struct kndClass *self,
                                struct kndAttrVar *parent_item)
 {
     struct kndAttrVar *item;
-    struct glbOutput *out;
+    struct kndOutput *out;
     struct kndClass *c;
     int err;
 
@@ -305,7 +305,7 @@ static int export_descendants_GSP(struct kndClass *self,
  /*static int inner_item_export_GSP(struct kndClass *self,
                                 struct kndAttrVar *parent_item)
 {
-    struct glbOutput *out = self->entry->repo->out;
+    struct kndOutput *out = self->entry->repo->out;
     struct kndClass *c = parent_item->class;
     struct kndAttrVar *item;
     struct kndAttr *attr;
@@ -391,7 +391,7 @@ static int export_descendants_GSP(struct kndClass *self,
                                 struct kndAttrVar *parent_item)
 {
     struct kndAttrVar *item;
-    struct glbOutput *out = self->entry->repo->out;
+    struct kndOutput *out = self->entry->repo->out;
     struct kndClass *c;
     int err;
 
@@ -428,7 +428,7 @@ static int export_class_body_updates(struct kndClass *self,
                                      struct kndClassUpdate *unused_var(class_update),
                                      struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndState *state = self->states;
     struct kndAttr *attr;
     int err;
@@ -468,7 +468,7 @@ static int export_class_inst_updates(struct kndClass *unused_var(self),
                                      struct kndClassUpdate *class_update,
                                      struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndClassInst *inst;
     int err;
 
@@ -494,7 +494,7 @@ extern int knd_class_export_updates_GSP(struct kndClass *self,
                                         struct kndClassUpdate *class_update,
                                         struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndUpdate *update = class_update->update;
     struct kndState *state = self->states;
     int err;
@@ -533,7 +533,7 @@ extern int knd_class_export_updates_GSP(struct kndClass *self,
 extern int knd_class_export_GSP(struct kndClass *self,
                                 struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndAttr *attr;
     int err;
 

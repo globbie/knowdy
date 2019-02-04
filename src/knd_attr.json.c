@@ -29,9 +29,8 @@
 #include "knd_proc_arg.h"
 #include "knd_set.h"
 #include "knd_utils.h"
+#include "knd_output.h"
 #include "knd_http_codes.h"
-
-#include <glb-lib/output.h>
 
 #define DEBUG_ATTR_JSON_LEVEL_1 0
 #define DEBUG_ATTR_JSON_LEVEL_2 0
@@ -46,7 +45,7 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
 static int inner_item_export_JSON(struct kndAttrVar *parent_item,
                                   struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndAttrVar *item;
     struct kndAttr *attr;
     struct kndClass *c;
@@ -224,7 +223,7 @@ int knd_export_inherited_attr(void *obj,
     struct kndAttrRef *ref = elem;
     struct kndAttr *attr = ref->attr;
     struct kndAttrVar *attr_var = ref->attr_var;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndMemPool *mempool = task->mempool;
     size_t numval = 0;
     int err;
@@ -361,7 +360,7 @@ static int proc_item_export_JSON(struct kndAttrVar *item,
 static int attr_var_list_export_JSON(struct kndAttrVar *parent_item,
                                      struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndAttrVar *item;
     bool in_list = false;
     size_t count = 0;
@@ -432,7 +431,7 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
                                      struct kndTask *task,
                                      bool is_concise)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndAttrVar *item;
     struct kndAttr *attr;
     struct kndClass *c;
@@ -516,7 +515,7 @@ extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
 extern int knd_attr_var_export_JSON(struct kndAttrVar *item,
                                     struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndClass *c;
     int err;
 

@@ -29,9 +29,8 @@
 #include "knd_proc_arg.h"
 #include "knd_set.h"
 #include "knd_utils.h"
+#include "knd_output.h"
 #include "knd_http_codes.h"
-
-#include <glb-lib/output.h>
 
 #define DEBUG_GSL_LEVEL_1 0
 #define DEBUG_GSL_LEVEL_2 0
@@ -187,7 +186,7 @@ gsl_err_t knd_parse_summary_array(void *obj,
 
 extern int knd_class_export_updates_GSL(struct kndClass *self,
                                         struct kndUpdate *unused_var(update),
-                                        struct glbOutput *out)
+                                        struct kndOutput *out)
 {
     int err;
 
@@ -211,7 +210,7 @@ extern int knd_class_export_updates_GSL(struct kndClass *self,
 static int export_class_state_GSL(struct kndClass *self,
                                   struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndState *state = self->states;
     size_t latest_state_numid = self->init_state + self->num_states;
     size_t total;
@@ -289,7 +288,7 @@ static int export_class_state_GSL(struct kndClass *self,
 static int export_class_inst_state_GSL(struct kndClass *self,
                                        struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     size_t latest_state_id = 0;
     int err;
 
@@ -318,7 +317,7 @@ static int export_conc_elem_GSL(void *obj,
     struct kndTask *task = obj;
     if (count < task->start_from) return knd_OK;
     if (task->batch_size >= task->batch_max) return knd_RANGE;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndClassEntry *entry = elem;
     struct kndClass *c = entry->class;
     struct kndState *state;
@@ -361,7 +360,7 @@ static int export_class_ref_GSL(void *obj,
                                  void *elem)
 {
     struct kndTask *task = obj;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndClassEntry *entry = elem;
     struct kndClass *c = entry->class;
     int err;
@@ -378,7 +377,7 @@ static int export_class_ref_GSL(void *obj,
 int export_gloss_GSL(struct kndClass *self,
                             struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndTranslation *tr;
     int err;
 
@@ -425,7 +424,7 @@ static int export_concise_GSL(struct kndClass *self,
 extern int knd_empty_set_export_GSL(struct kndClass *self,
                                     struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     int err;
     out->reset(out);
 
@@ -441,7 +440,7 @@ extern int knd_empty_set_export_GSL(struct kndClass *self,
 extern int knd_class_set_export_GSL(struct kndSet *set,
                                     struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     int err;
     out->reset(out);
     err = out->write(out, "{set",
@@ -498,7 +497,7 @@ static int present_subclass(struct kndClassRef *ref,
                             struct kndTask *task,
                             size_t depth)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndClassEntry *entry = ref->entry;
     struct kndClass *c;
     int err;
@@ -546,7 +545,7 @@ static int present_subclasses(struct kndClass *self,
                               struct kndTask *task,
                               size_t depth)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndClassRef *ref;
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
@@ -611,7 +610,7 @@ static int export_attrs(struct kndClass *self,
                         struct kndTask *task,
                         size_t depth)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndAttr *attr;
     size_t i = 0;
     int err;
@@ -641,7 +640,7 @@ static int export_baseclass_vars(struct kndClass *self,
                                  struct kndTask *task,
                                  size_t depth)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndClassVar *cvar;
     size_t cvar_count = 0;
     int err;
@@ -700,7 +699,7 @@ static int export_baseclass_vars(struct kndClass *self,
 }
 
 static int export_attr_hub_GSL(struct kndAttrHub *hub,
-                               struct glbOutput *out,
+                               struct kndOutput *out,
                                struct kndTask *task,
                                size_t depth)
 {
@@ -744,7 +743,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
 {
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndAttrHub *attr_hub;
     struct kndState *state = self->states;
     size_t num_children;
@@ -936,7 +935,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
 extern int knd_export_class_state_GSL(struct kndClass *self,
                                       struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     size_t latest_state_numid = self->init_state + self->num_states;
 
     return out->writef(out, "{_state %zu}", latest_state_numid);

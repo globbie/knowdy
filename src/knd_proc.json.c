@@ -8,7 +8,6 @@
 #include <sys/types.h>
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
@@ -20,6 +19,7 @@
 #include "knd_text.h"
 #include "knd_dict.h"
 #include "knd_repo.h"
+#include "knd_output.h"
 
 #define DEBUG_PROC_JSON_LEVEL_0 0
 #define DEBUG_PROC_JSON_LEVEL_1 0
@@ -30,7 +30,7 @@
 
 static int proc_call_arg_export_JSON(struct kndProc *unused_var(self),
                                      struct kndProcCallArg *call_arg,
-                                     struct glbOutput  *out)
+                                     struct kndOutput  *out)
 {
     int err;
     err = out->writec(out, '"');                                                  RET_ERR();
@@ -45,7 +45,7 @@ static int proc_call_arg_export_JSON(struct kndProc *unused_var(self),
 
 int knd_proc_export_JSON(struct kndProc *self,
                          struct kndTask *task,
-                         struct glbOutput  *out)
+                         struct kndOutput  *out)
 {
     struct kndProcArg *arg;
     struct kndProcCallArg *carg;

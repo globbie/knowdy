@@ -217,11 +217,12 @@ struct kndTask
     struct kndQueue   *output_queue;
     struct kndSet     *ctx_idx;
 
-    struct glbOutput  *log;
-    struct glbOutput  *task_out;
-    struct glbOutput  *out;
-    struct glbOutput  *file_out;
-    struct glbOutput  *update_out;
+    struct kndOutput  *out;
+    struct kndOutput  *log;
+    struct kndOutput  *task_out;
+    struct kndOutput  *file_out;
+    struct kndOutput  *update_out;
+
     struct kndMemPool *mempool;
 };
 

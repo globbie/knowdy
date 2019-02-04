@@ -29,10 +29,10 @@
 #include "knd_proc_arg.h"
 #include "knd_set.h"
 #include "knd_utils.h"
+#include "knd_output.h"
 #include "knd_http_codes.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_ATTR_RESOLVE_LEVEL_1 0
 #define DEBUG_ATTR_RESOLVE_LEVEL_2 0
@@ -456,7 +456,7 @@ int knd_resolve_attr_vars(struct kndClass *self,
     struct kndProc *proc;
     struct kndSet *attr_idx = self->attr_idx;
     struct kndRepo *repo = self->entry->repo;
-    struct glbOutput *log = task->log;
+    struct kndOutput *log = task->log;
     void *obj;
     int e, err;
 

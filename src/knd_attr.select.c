@@ -28,10 +28,10 @@
 #include "knd_proc_arg.h"
 #include "knd_set.h"
 #include "knd_utils.h"
+#include "knd_output.h"
 #include "knd_http_codes.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_ATTR_SELECT_LEVEL_1 0
 #define DEBUG_ATTR_SELECT_LEVEL_2 0
@@ -116,7 +116,7 @@ static gsl_err_t run_set_attr_var(void *obj,
     struct kndAttr *attr;
     struct kndAttrRef *attr_ref;
     struct kndAttrVar *attr_var;
-    struct glbOutput *log = task->log;
+    struct kndOutput *log = task->log;
     struct kndMemPool *mempool = task->mempool;
     struct kndSet *attr_idx = repo->attr_idx;
     struct kndState *state;
@@ -234,7 +234,7 @@ static gsl_err_t present_attr_var_selection(void *obj,
     struct kndAttr *attr;
     struct kndAttrVar *attr_var;
     struct kndRepo *repo = ctx->repo;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     int err;
 
     if (DEBUG_ATTR_SELECT_LEVEL_2)
@@ -290,7 +290,7 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     struct kndClass *c;
     struct kndAttrVar *attr_var;
     struct kndAttrFacet *facet;
-    struct glbOutput *log = task->log;
+    struct kndOutput *log = task->log;
     struct kndAttr *attr = ctx->attr;
     int err;
 

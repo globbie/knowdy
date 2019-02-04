@@ -19,11 +19,11 @@
  */
 #pragma once
 
-#include <glb-lib/output.h>
 
 #include "knd_dict.h"
 #include "knd_utils.h"
 #include "knd_config.h"
+#include "knd_output.h"
 
 #include "knd_proc_call.h"
 
@@ -119,7 +119,7 @@ gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
 int knd_proc_arg_export(struct kndProcArg *self,
                         knd_format format,
                         struct kndTask *task,
-                        struct glbOutput *out);
+                        struct kndOutput *out);
 int knd_proc_arg_resolve(struct kndProcArg *self,
                          struct kndRepo *repo);
 

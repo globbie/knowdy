@@ -4,9 +4,9 @@
 #include "knd_task.h"
 #include "knd_repo.h"
 #include "knd_set.h"
+#include "knd_output.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #include <assert.h>
 #include <stddef.h>
@@ -484,7 +484,7 @@ present_class_desc_state(void *obj, const char *unused_var(name), size_t unused_
 #if 0
 struct kndTask *task = obj;
     struct kndClass *self = task->class;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndMemPool *mempool = task->mempool;
     struct kndSet *set;
     struct kndState *latest_state;
