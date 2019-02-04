@@ -12,6 +12,7 @@
 #include "knd_utils.h"
 #include "knd_storage.h"
 #include "knd_repo.h"
+#include "knd_set.h"
 
 static int wal_write(struct kndTask *task,
                      struct kndTaskContext *unused_var(ctx))
@@ -52,10 +53,11 @@ static int wal_commit(struct kndTask *task,
 
     memcpy(c, "}}", 2);
     c += 2;
-    buf_size += 2;
+    *c = '\n';
+    buf_size += 3;
 
-    knd_log(".. kndStorage (%s) to confirm commit %zu",
-            task->filename, ctx->numid);
+    //knd_log(".. kndStorage (%s) to confirm commit %zu",
+    //        task->filename, ctx->numid);
 
     err = knd_append_file(task->filename,
                           buf, buf_size);
@@ -63,6 +65,7 @@ static int wal_commit(struct kndTask *task,
         knd_log("-- commit write failure: %d", err);
         return err;
     }
+    update->confirm = KND_VALID_STATE;
 
     return knd_OK;
 }
@@ -98,10 +101,19 @@ static void *task_runner(void *ptr)
         }
 
         attempt_count = 0;
-        knd_log("++ #%zu storage (path: %.*s) got task #%zu  (phase:%d)",
-                task->id, task->path_size, task->path, ctx->numid, ctx->phase);
+
+        //knd_log("++ #%zu storage (path: %.*s) got task #%zu  (phase:%d)",
+        //        task->id, task->path_size, task->path, ctx->numid, ctx->phase);
 
         switch (ctx->phase) {
+        case KND_REGISTER:
+            err = task->ctx_idx->add(task->ctx_idx,
+                                     ctx->id, ctx->id_size, (void*)ctx);
+            if (err) {
+                // signal
+            }
+            ctx->phase = KND_SUBMIT;
+            break;
         case KND_CANCEL:
             knd_log("\n-- storage task #%zu was canceled",
                     ctx->numid);
@@ -175,6 +187,7 @@ int knd_storage_serve(struct kndStorage *self)
 
         task->filename = self->commit_filename;
         task->filename_size = self->commit_filename_size;
+        task->ctx_idx = self->ctx_idx;
 
         self->tasks[i] = task;
 

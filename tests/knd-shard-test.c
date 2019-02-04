@@ -305,7 +305,7 @@ START_TEST(shard_table_test)
 
         const char *result; size_t result_size;
         err = knd_shard_run_task(shard, pcase->input, strlen(pcase->input),
-                                 &result, &result_size, NULL);
+                                 &result, &result_size);
         ck_assert_int_eq(err, knd_OK);
 
         *((char*)result + result_size) = '\0';  // UNSAFE!
@@ -379,8 +379,9 @@ START_TEST(shard_inheritance_test)
         fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
 
         const char *result; size_t result_size;
-        err = knd_shard_run_task(shard, pcase->input, strlen(pcase->input),
-                                &result, &result_size, NULL);
+        err = knd_shard_run_task(shard,
+                                 pcase->input, strlen(pcase->input),
+                                 &result, &result_size);
         ck_assert_int_eq(err, knd_OK);
 
         *((char*)result + result_size) = '\0';  // UNSAFE!
@@ -467,7 +468,7 @@ START_TEST(shard_proc_test)
 
         err = knd_shard_run_task(shard,
                                  pcase->input, strlen(pcase->input),
-                                 &result, &result_size, NULL);
+                                 &result, &result_size);
         ck_assert_int_eq(err, knd_OK);
 
         *((char*)result + result_size) = '\0';  // UNSAFE!

@@ -97,7 +97,7 @@ set(SOURCES src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr
         src/knd_class.import.c src/knd_class.json.c src/knd_class.resolve.c src/knd_class.select.c src/knd_class.states.c
         src/knd_class_inst.c src/knd_class_inst.gsp.c src/knd_class_inst.import.c src/knd_class_inst.json.c src/knd_class_inst.select.c
         src/knd_dict.c src/knd_elem.c
-        src/knd_mempool.c src/knd_num.c
+        src/knd_mempool.c src/knd_num.c src/knd_output.c
         src/knd_proc.c src/knd_proc.import.c src/knd_proc_inst.import.c src/knd_proc.resolve.c
         src/knd_proc.json.c src/knd_proc.svg.c src/knd_proc_arg.c
         src/knd_queue.c src/knd_ref.c src/knd_repo.c

@@ -18,6 +18,7 @@
 #include "knd_proc.h"
 #include "knd_mempool.h"
 #include "knd_state.h"
+#include "knd_output.h"
 
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
@@ -1213,11 +1214,22 @@ static int deliver_task_report(void *obj,
 {
     struct kndTask *task = obj;
     struct kndTaskContext *ctx = ctx_obj;
-    //int err;
+    int err;
 
     knd_log(".. worker:%zu / ctx:%zu  delivering report on task #%zu..",
             task->id, ctx->numid, ctx->update->numid);
 
+
+    err = ctx->out->write(ctx->out, "{}", strlen("{}"));
+    if (err) return err;
+
+    /*if (ctx->external_cb) {
+        err = ctx->external_cb(ctx->external_obj,
+                               ctx->id, ctx->id_size, NULL);
+        if (err) {
+        }
+        }*/
+    
     ctx->phase = KND_COMPLETE;
     
     return knd_OK;
@@ -1349,12 +1361,13 @@ int knd_repo_update_name_idx(struct kndRepo *self,
     struct kndDict *name_idx = self->class_name_idx;
     int err;
 
-    knd_log(".. updating name indices..");
+    //knd_log(".. updating name indices..");
 
     for (ref = ctx->class_state_refs; ref; ref = ref->next) {
         entry = ref->obj;
 
-        knd_log("== class: %.*s", entry->name_size, entry->name);
+        //knd_log("== class: %.*s", entry->name_size, entry->name);
+
         err = knd_dict_set(name_idx,
                            entry->name,  entry->name_size,
                            (void*)entry);

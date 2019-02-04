@@ -335,8 +335,7 @@ int knd_task_run(struct kndTask *self)
                                 specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         knd_log("-- task run failure");
-        if (!is_gsl_err_external(parser_err)) {
-            // assert(!self->log->buf_size)
+        /*if (!is_gsl_err_external(parser_err)) {
             if (!self->log->buf_size) {
                 self->http_code = HTTP_BAD_REQUEST;
                 err = log_parser_error(self, parser_err, self->input_size, self->input);
@@ -347,7 +346,7 @@ int knd_task_run(struct kndTask *self)
             self->http_code = HTTP_INTERNAL_SERVER_ERROR;
             err = self->log->writef(self->log, "unclassified server error");
             if (err) return err;
-        }
+            }*/
         return gsl_err_to_knd_err_codes(parser_err);
     }
     return knd_OK;

@@ -46,8 +46,8 @@ struct kndConcFolder;
 struct kndTranslation;
 
 typedef int (*task_cb_func)(void *obj,
-                            const char *task_id,
-                            size_t task_id_size,
+                            const char *msg,
+                            size_t msg_size,
                             void *ctx);
 
 typedef enum knd_task_spec_type {
@@ -61,7 +61,8 @@ typedef enum knd_task_spec_type {
     KND_STOP_STATE
 } knd_task_spec_type;
 
-typedef enum knd_task_phase_t { KND_SUBMIT,
+typedef enum knd_task_phase_t { KND_REGISTER,
+                                KND_SUBMIT,
                                 KND_CANCEL,
                                 KND_REJECT,
                                 KND_IMPORT,
@@ -92,13 +93,14 @@ struct kndTaskContext {
 
     void *obj;
     task_cb_func cb;
+    void *external_obj;
+    task_cb_func external_cb;
 
     char       *input_buf;
     const char *input;
     size_t      input_size;
 
-    const char   *output;
-    size_t output_size;
+    struct kndOutput  *out;
     int error;
 
     const char *locale;
@@ -118,6 +120,7 @@ struct kndTaskContext {
     struct kndDict *attr_name_idx;
     struct kndDict *proc_name_idx;
     struct kndDict *proc_arg_name_idx;
+
 
     struct kndUpdate *update;
     bool update_confirmed;
@@ -200,8 +203,8 @@ struct kndTask
     size_t num_folders;
 
     // FIXME(k15tfu): remove these vv
-    struct kndAttr *attr;
-    struct kndAttrVar *attr_var;
+    struct kndAttr      *attr;
+    struct kndAttrVar   *attr_var;
     struct kndClassInst *class_inst;
 
     struct kndElem *elem;
@@ -212,6 +215,7 @@ struct kndTask
     struct kndStorage *storage;
     struct kndQueue   *input_queue;
     struct kndQueue   *output_queue;
+    struct kndSet     *ctx_idx;
 
     struct glbOutput  *log;
     struct glbOutput  *task_out;

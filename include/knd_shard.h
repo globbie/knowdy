@@ -30,8 +30,7 @@ struct kndShard
 
     struct kndQueue *task_context_queue;
 
-    // TODO: ctx idx
-    struct kndTaskContext *contexts;
+    struct kndSet *ctx_idx;
     size_t task_count;
 
     struct kndStorage *storage;
@@ -56,10 +55,13 @@ void knd_shard_del(struct kndShard *self);
 int knd_shard_serve(struct kndShard *self);
 int knd_shard_stop(struct kndShard *self);
 
+int knd_shard_push_task(struct kndShard *self,
+                        const char *input, size_t input_size,
+                        const char **task_id, size_t *task_id_size,
+                        task_cb_func cb, void *obj);
 int knd_shard_run_task(struct kndShard *self,
                        const char *input, size_t input_size,
-                       const char **task_id, size_t *task_id_size,
-                       task_cb_func cb);
+                       char *output, size_t *output_size);
 
 int knd_shard_report_task(struct kndShard *self,
                           const char *task_id, size_t task_id_size);

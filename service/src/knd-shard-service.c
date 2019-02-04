@@ -11,54 +11,72 @@
 #include <knd_shard.h>
 #include <knd_utils.h>
 
+static int send_reply(struct kmqEndPoint *endpoint,
+                      const char *result, size_t result_size)
+{
+    struct kmqTask *reply;
+    int err;
+
+    knd_log("== Knode got reply: %.*s",  result_size, result);
+
+    err = kmqTask_new(&reply);
+    if (err != 0) {
+        knd_log("-- task report failed, allocation failed");
+        return -1;
+    }
+
+    err = reply->copy_data(reply,
+                           result, result_size);
+    if (err != 0) {
+        knd_log("-- task report failed, reply data copy failed");
+        goto free_reply;
+    }
+
+    err = endpoint->schedule_task(endpoint, reply);
+    if (err != 0) {
+        knd_log("-- task report failed, schedule reply failed");
+        goto free_reply;
+    }
+
+ free_reply:
+    reply->del(reply);
+    return knd_OK;
+}
+
 static int
 task_callback(struct kmqEndPoint *endpoint, struct kmqTask *task, void *cb_arg)
 {
     struct kndLearnerService *self = cb_arg;
     const char *data;
     size_t size;
-    const char *result = NULL;
-    size_t result_size = 0;
+    char *result = malloc(KND_IDX_BUF_SIZE);
+    if (!result) return -1;
+
+    size_t result_size = KND_IDX_BUF_SIZE;
     int err;
 
     err = task->get_data(task, 0, &data, &size);
     if (err != knd_OK) {
         knd_log("-- task read failed");
-        return -1;
+        goto error;
     }
 
-    err = knd_shard_run_task(self->shard, data, size, &result, &result_size, NULL);
+    err = knd_shard_run_task(self->shard, data, size,
+                             result, &result_size);
     if (err != knd_OK) {
-        knd_log("-- task append failed");
-        return -1;
+        knd_log("-- task run failed");
+        goto error;
     }
 
-    {
-        struct kmqTask *reply;
-        err = kmqTask_new(&reply);
-        if (err != 0) {
-            knd_log("-- task report failed, allocation failed");
-            return -1;
-        }
-
-        knd_log("== Knode: task id: %.*s", result_size, result);
-
-        err = reply->copy_data(reply,
-                               result, result_size);
-        if (err != 0) {
-            knd_log("-- task report failed, reply data copy failed");
-            goto free_reply;
-        }
-        err = endpoint->schedule_task(endpoint, reply);
-        if (err != 0) {
-            knd_log("-- task report failed, schedule reply failed");
-            goto free_reply;
-        }
-
-    free_reply:
-        reply->del(reply);
+    err = send_reply(endpoint, result, result_size);
+    if (err != knd_OK) {
+        knd_log("-- task reply failed");
+        goto error;
     }
-    return 0;
+
+ error:
+    free(result);
+    return err;
 }
 
 static int

@@ -18,6 +18,7 @@
 #include "knd_attr.h"
 #include "knd_mempool.h"
 #include "knd_storage.h"
+#include "knd_output.h"
 
 #include <gsl-parser.h>
 #include <glb-lib/output.h>
@@ -58,6 +59,9 @@ static void *task_runner(void *ptr)
         switch (ctx->phase) {
         case KND_SUBMIT:
             knd_task_reset(task);
+
+
+
             task->ctx = ctx;
             err = knd_task_run(task);
             if (err != knd_OK) {
@@ -66,7 +70,7 @@ static void *task_runner(void *ptr)
             }
             continue;
         case KND_COMPLETE:
-            knd_log("\n-- task #%zu already completed",
+            knd_log("\n-- task #%zu already complete",
                     ctx->numid);
             continue;
         case KND_CANCEL:
@@ -79,7 +83,7 @@ static void *task_runner(void *ptr)
 
         /* any other phase requires a callback execution */
         if (ctx->cb) {
-            err = ctx->cb(task, ctx->id, ctx->id_size, ctx);
+            err = ctx->cb((void*)task, ctx->id, ctx->id_size, (void*)ctx);
             if (err) {
                 // signal
             }
@@ -88,10 +92,11 @@ static void *task_runner(void *ptr)
     return NULL;
 }
 
-int knd_shard_run_task(struct kndShard *self,
-                       const char *input, size_t input_size,
-                       const char **task_id, size_t *task_id_size,
-                       task_cb_func cb)
+/* non-blocking interface */
+int knd_shard_push_task(struct kndShard *self,
+                        const char *input, size_t input_size,
+                        const char **task_id, size_t *task_id_size,
+                        task_cb_func cb, void *obj)
 {
     struct kndTaskContext *ctx;
     clockid_t clk_id = CLOCK_MONOTONIC;
@@ -100,7 +105,8 @@ int knd_shard_run_task(struct kndShard *self,
     ctx = malloc(sizeof(struct kndTaskContext));
     if (!ctx) return knd_NOMEM;
     memset(ctx, 0, (sizeof(struct kndTaskContext)));
-    ctx->cb = cb;
+    ctx->external_cb = cb;
+    ctx->external_obj = obj;
 
     ctx->input_buf = malloc(input_size + 1);
     if (!ctx->input_buf) return knd_NOMEM; 
@@ -121,6 +127,7 @@ int knd_shard_run_task(struct kndShard *self,
             self->task_storage->buf_size, self->task_storage->capacity);
     */
 
+    
     err = knd_queue_push(self->task_context_queue, (void*)ctx);
     if (err) return err;
 
@@ -128,6 +135,75 @@ int knd_shard_run_task(struct kndShard *self,
 
     *task_id = ctx->id; 
     *task_id_size = ctx->id_size;
+    return knd_OK;
+}
+
+/* blocking interface */
+int knd_shard_run_task(struct kndShard *self,
+                       const char *input, size_t input_size,
+                       char *output, size_t *output_size)
+{
+    struct kndTaskContext *ctx;
+    clockid_t clk_id = CLOCK_MONOTONIC;
+    size_t num_attempts = 0;
+    int err;
+
+    ctx = malloc(sizeof(struct kndTaskContext));
+    if (!ctx) return knd_NOMEM;
+    memset(ctx, 0, (sizeof(struct kndTaskContext)));
+
+    err = clock_gettime(clk_id, &ctx->start_ts);
+    // TODO error
+
+    ctx->input_buf = malloc(input_size + 1);
+    if (!ctx->input_buf) return knd_NOMEM; 
+    memcpy(ctx->input_buf, input, input_size);
+    ctx->input_buf[input_size] = '\0';
+    ctx->input = ctx->input_buf;
+    ctx->input_size = input_size;
+
+    err = knd_output_new(&ctx->out, output, *output_size);
+    *output_size = 0;
+    knd_log("== output buf size: %zu", *output_size);
+
+    self->task_count++;
+    ctx->numid = self->task_count;
+    knd_uid_create(ctx->numid, ctx->id, &ctx->id_size);
+
+    /*strftime(buf, sizeof buf, "%D %T", gmtime(&start_ts.tv_sec));
+    knd_log("UTC %s.%09ld: new task curr storage size:%zu  capacity:%zu",
+            buf, start_ts.tv_nsec,
+            self->task_storage->buf_size, self->task_storage->capacity);
+    */
+
+    //err = knd_queue_push(self->storage->input_queue, (void*)ctx);
+    //if (err) return err;
+    ctx->phase = KND_SUBMIT;
+    err = knd_queue_push(self->task_context_queue, (void*)ctx);
+    if (err) return err;
+
+    while (1) {
+        err = clock_gettime(clk_id, &ctx->end_ts);
+        if (err) {
+            // signal
+        }
+        if ((ctx->end_ts.tv_sec - ctx->start_ts.tv_sec) > TASK_MAX_TIMEOUT_SECS) {
+            *output_size = ctx->out->buf_size;
+            break;
+        }
+
+        switch (ctx->phase) {
+        case KND_COMPLETE:
+            *output_size = ctx->out->buf_size;
+            knd_log("== num attempts: %zu", num_attempts);
+            return knd_OK;
+        default:
+            break;
+        }
+        usleep(TASK_TIMEOUT_USECS);
+        num_attempts++;
+    }
+
     return knd_OK;
 }
 
@@ -148,7 +224,6 @@ int knd_shard_serve(struct kndShard *self)
 
     err = knd_storage_serve(self->storage);
     if (err) return err;
-
 
     return knd_OK;
 }
@@ -215,6 +290,10 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     err = mempool->alloc(mempool); 
     if (err != knd_OK) goto error;
 
+    err = knd_set_new(mempool, &self->ctx_idx);
+    if (err != knd_OK) goto error;
+    self->ctx_idx->mempool = mempool;
+
     if (!self->num_tasks) self->num_tasks = 1;
 
     self->tasks = calloc(self->num_tasks, sizeof(struct kndTask*));
@@ -254,6 +333,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     self->storage->output_queue = self->task_context_queue;
     memcpy(self->storage->path, self->path, self->path_size);
     self->storage->path_size = self->path_size;
+    self->storage->ctx_idx = self->ctx_idx;
 
     /* global commit filename */
     c = self->storage->commit_filename;

@@ -37,7 +37,7 @@ struct kndStorage
     struct kndQueue *input_queue;
     struct kndQueue *output_queue;
 
-    struct kndSet *task_idx;
+    struct kndSet *ctx_idx;
 
     struct kndTask  **tasks;
     size_t num_tasks;
