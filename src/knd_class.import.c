@@ -160,7 +160,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndState *state;
     int err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
         knd_log(".. set class name: \"%.*s\"..",
                 name_size, name);
     }
@@ -289,7 +289,7 @@ static gsl_err_t set_state_top_option(void *obj,
 {
     struct kndClass *self = obj;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log("NB: set class state top option!");
 
     self->state_top = true;

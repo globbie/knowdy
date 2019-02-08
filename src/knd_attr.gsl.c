@@ -88,7 +88,7 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
         if (err) return err;
         err = out->write(out, attr->name, attr->name_size); RET_ERR();
 
-        err = knd_class_export_GSL(c, task, depth + 1);
+        err = knd_class_export_GSL(c, task, false, depth + 1);
         if (err) return err;
     }
 
@@ -122,7 +122,7 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
         case KND_ATTR_REF:
             assert(item->class != NULL);
             c = item->class;
-            err = knd_class_export_GSL(c, task, depth + 1);                       RET_ERR();
+            err = knd_class_export_GSL(c, task, false, depth + 1);                       RET_ERR();
             break;
         case KND_ATTR_INNER:
             err = inner_item_export_GSL(item, task, depth + 1);
@@ -271,7 +271,7 @@ static int ref_item_export_GSL(struct kndAttrVar *item,
     knd_log(".. expand ref %.*s: depth:%zu max_depth:%zu",
             c->name_size, c->name, task->depth, task->max_depth);
 
-    err = knd_class_export_GSL(c, task, depth);                               RET_ERR();
+    err = knd_class_export_GSL(c, task, false, depth);                               RET_ERR();
 
     task->depth = curr_depth;
 
@@ -441,7 +441,7 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
                 if (err) return err;
             } else {
                 c = item->class;
-                err = knd_class_export_GSL(c, task, depth + 1);
+                err = knd_class_export_GSL(c, task, false, depth + 1);
                 if (err) return err;
             }
             break;
@@ -489,7 +489,7 @@ extern int knd_attr_var_export_GSL(struct kndAttrVar *item,
             err = inner_item_export_GSL(item, task, depth + 1);  RET_ERR();
         } else {
             c = item->class;
-            err = knd_class_export_GSL(c, task, depth + 1);  RET_ERR();
+            err = knd_class_export_GSL(c, task, false, depth + 1);  RET_ERR();
         }
         break;
     default:

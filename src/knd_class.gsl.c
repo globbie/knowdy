@@ -325,7 +325,7 @@ static int export_conc_elem_GSL(void *obj,
     int err;
 
     if (DEBUG_GSL_LEVEL_2)
-        knd_log(".. GSL export set elem: %.*s",
+        knd_log(".. GSL export class set elem: %.*s",
                 elem_id_size, elem_id);
 
     if (!c) {
@@ -345,11 +345,10 @@ static int export_conc_elem_GSL(void *obj,
         err = knd_print_offset(out, task->format_offset);                         RET_ERR();
     }
 
-    err = knd_class_export_GSL(c, task, 1);
-    if (err) return err;
+    err = knd_class_export_GSL(c, task, true, 1);                                 RET_ERR();
 
     task->depth = curr_depth;
-    task->batch_size++;
+    task->ctx->batch_size++;
     return knd_OK;
 }
 
@@ -437,8 +436,8 @@ extern int knd_empty_set_export_GSL(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_class_set_export_GSL(struct kndSet *set,
-                                    struct kndTask *task)
+int knd_class_set_export_GSL(struct kndSet *set,
+                             struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
@@ -446,7 +445,7 @@ extern int knd_class_set_export_GSL(struct kndSet *set,
     err = out->write(out, "{set",
                      strlen("{set"));                                            RET_ERR();
 
-    /* TODO: present child clauses */
+    // TODO: present child clauses
     if (set->base) {
         err = out->write(out, "{_is ",
                          strlen("{_is "));                                        RET_ERR();
@@ -461,19 +460,20 @@ extern int knd_class_set_export_GSL(struct kndSet *set,
         err = out->writef(out, "{total %lu",
                           (unsigned long)set->num_valid_elems);                   RET_ERR();
     }
-    err = out->writec(out, '}');                                                  RET_ERR();
 
     if (task->format_offset) {
         err = out->writec(out, '\n');                                             RET_ERR();
         err = knd_print_offset(out, task->format_offset);                         RET_ERR();
     }
-    
-    err = out->write(out, "[batch",
-                     strlen("[batch"));                                           RET_ERR();
 
+    if (!task->ctx->batch_max) {
+        task->ctx->batch_max = KND_RESULT_BATCH_SIZE;
+    }
+
+    err = out->write(out, "[class",
+                     strlen("[class"));                                            RET_ERR();
     err = set->map(set, export_conc_elem_GSL, (void*)task);
     if (err && err != knd_RANGE) return err;
-
     err = out->writec(out, ']');                                                  RET_ERR();
 
     if (task->format_offset) {
@@ -481,13 +481,14 @@ extern int knd_class_set_export_GSL(struct kndSet *set,
         err = knd_print_offset(out, task->format_offset);                         RET_ERR();
     }
 
-    err = out->writef(out, "{batch {max %lu}",
-                      (unsigned long)task->batch_max);                            RET_ERR();
+    err = out->writef(out, "{batch{max %lu}",
+                      (unsigned long)task->ctx->batch_max);                       RET_ERR();
     err = out->writef(out, "{size %lu}",
-                       (unsigned long)task->batch_size);                          RET_ERR();
-
+                       (unsigned long)task->ctx->batch_size);                     RET_ERR();
     err = out->writef(out,
-                     "{from %lu}}", (unsigned long)task->batch_from);             RET_ERR();
+                     "{from %lu}}", (unsigned long)task->ctx->batch_from);        RET_ERR();
+
+    err = out->writec(out, '}');                                                  RET_ERR();
 
     return knd_OK;
 }
@@ -615,7 +616,7 @@ static int export_attrs(struct kndClass *self,
     size_t i = 0;
     int err;
 
-    err = out->write(out, "[attrs", strlen("[attrs"));                            RET_ERR();
+    err = out->write(out, "[attr", strlen("[attr"));                            RET_ERR();
 
     for (attr = self->attrs; attr; attr = attr->next) {
         if (task->format_offset) {
@@ -737,9 +738,10 @@ static int export_attr_hub_GSL(struct kndAttrHub *hub,
     return knd_OK;
 }
 
-extern int knd_class_export_GSL(struct kndClass *self,
-                                struct kndTask *task,
-                                size_t depth)
+int knd_class_export_GSL(struct kndClass *self,
+                         struct kndTask *task,
+                         bool is_list_item,
+                         size_t depth)
 {
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
@@ -757,7 +759,11 @@ extern int knd_class_export_GSL(struct kndClass *self,
                 task->depth, task->max_depth, task->format_offset);
     }
 
-    err = out->write(out, "{class ", strlen("{class "));                          RET_ERR();
+    err = out->writec(out, '{');                                                  RET_ERR();
+
+    if (!is_list_item) {
+        err = out->write(out, "class ", strlen("class "));                        RET_ERR();
+    }
     err = out->write_escaped(out, entry->name, entry->name_size);                 RET_ERR();
 
     if (task->format_offset) {
@@ -777,10 +783,10 @@ extern int knd_class_export_GSL(struct kndClass *self,
         err = out->writec(out, ' ');                                              RET_ERR();
     }
 
-    err = out->write(out, "{_repo ", strlen("{_repo "));                          RET_ERR();
-    err = out->write(out, entry->repo->name,
-                     entry->repo->name_size);                                     RET_ERR();
-    err = out->writec(out, '}');                                                  RET_ERR();
+    //err = out->write(out, "{_repo ", strlen("{_repo "));                          RET_ERR();
+    //err = out->write(out, entry->repo->name,
+    //                 entry->repo->name_size);                                     RET_ERR();
+    //err = out->writec(out, '}');                                                  RET_ERR();
 
     if (state) {
         if (task->format_offset) {
@@ -927,8 +933,7 @@ extern int knd_class_export_GSL(struct kndClass *self,
     }
 
  final:
-    err = out->writec(out, '}');  RET_ERR();
-
+    err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
 }
 

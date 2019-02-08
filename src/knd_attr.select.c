@@ -345,8 +345,8 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
         log->reset(log);
         log->writef(log, "-- no such facet value: %.*s",
                     val_size, val);
-        task->error = knd_NO_MATCH;
-        task->http_code = HTTP_NOT_FOUND;
+        task->ctx->error = knd_NO_MATCH;
+        task->ctx->http_code = HTTP_NOT_FOUND;
         return make_gsl_err_external(knd_NO_MATCH);
     }
 

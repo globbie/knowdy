@@ -1006,7 +1006,7 @@ static int resolve_classes(struct kndRepo *self,
     struct kndDict *name_idx = task->ctx->class_name_idx;
     int err;
 
-    if (DEBUG_REPO_LEVEL_2)
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log(".. resolving classes in \"%.*s\"",
                 self->name_size, self->name);
 
@@ -1280,7 +1280,7 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
                     entry->name_size, entry->name);
         }
 
-        err = knd_class_resolve(entry->class, task);  RET_ERR();
+        err = knd_class_resolve(entry->class, task);                              RET_ERR();
         
         state = ref->state;
         state->update = update;
@@ -1316,6 +1316,8 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
     update->numid = atomic_fetch_add_explicit(&self->update_id_count, 1,
                                               memory_order_relaxed);
     knd_uid_create(update->numid, update->id, &update->id_size);
+
+
 
     // TODO: serialize update
 
@@ -1460,6 +1462,10 @@ int kndRepo_new(struct kndRepo **repo,
     self->max_journal_size = KND_FILE_BUF_SIZE;
     *repo = self;
 
+    atomic_store_explicit(&self->class_id_count, 1,
+                          memory_order_relaxed);
+    atomic_store_explicit(&self->proc_id_count, 1,
+                          memory_order_relaxed);
     return knd_OK;
  error:
     // TODO: release resources

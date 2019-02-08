@@ -465,26 +465,6 @@ int knd_class_update_state(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_class_set_export(struct kndSet *self,
-                                knd_format format,
-                                struct kndTask *task)
-{
-    task->out->reset(task->out);
-
-    /* set locale */
-    if (task->curr_locale_size) {
-        task->locale = task->curr_locale;
-        task->locale_size = task->curr_locale_size;
-    }
-
-    switch (format) {
-    case KND_FORMAT_JSON:
-        return knd_class_set_export_JSON(self, task);
-    default:
-        return knd_class_set_export_GSL(self, task);
-    }
-    return knd_FAIL;
-}
 
 extern int knd_class_facets_export(struct kndTask *task)
 {
@@ -521,9 +501,9 @@ extern int knd_empty_set_export(struct kndClass *self,
     return knd_FAIL;
 }
 
-extern int knd_class_export(struct kndClass *self,
-                            knd_format format,
-                            struct kndTask *task)
+int knd_class_export(struct kndClass *self,
+                     knd_format format,
+                     struct kndTask *task)
 {
     task->out->reset(task->out);
 
@@ -540,7 +520,7 @@ extern int knd_class_export(struct kndClass *self,
         return knd_class_export_GSP(self, task);
     default:
         assert(format == KND_FORMAT_GSL);
-        return knd_class_export_GSL(self, task, 0);
+        return knd_class_export_GSL(self, task, false, 0);
     }
     return knd_FAIL;
 }
@@ -680,10 +660,31 @@ int knd_class_get_attr_var(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_get_class(struct kndRepo *self,
-                         const char *name, size_t name_size,
-                         struct kndClass **result,
+int knd_class_set_export(struct kndSet *self,
+                         knd_format format,
                          struct kndTask *task)
+{
+    task->out->reset(task->out);
+
+    /* set locale */
+    if (task->curr_locale_size) {
+        task->locale = task->curr_locale;
+        task->locale_size = task->curr_locale_size;
+    }
+
+    switch (format) {
+    case KND_FORMAT_JSON:
+        return knd_class_set_export_JSON(self, task);
+    default:
+        return knd_class_set_export_GSL(self, task);
+    }
+    return knd_FAIL;
+}
+
+int knd_get_class(struct kndRepo *self,
+                  const char *name, size_t name_size,
+                  struct kndClass **result,
+                  struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
@@ -1008,8 +1009,8 @@ int knd_class_clone(struct kndClass *self,
                        entry->name, entry->name_size);
     if (!ref) {
         err = knd_dict_set(class_name_idx,
-                                  entry->name, entry->name_size,
-                                  (void*)entry);                                  RET_ERR();
+                           entry->name, entry->name_size,
+                           (void*)entry);                                         RET_ERR();
     }
 
     err = class_idx->add(class_idx,

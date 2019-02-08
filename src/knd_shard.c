@@ -126,7 +126,6 @@ int knd_shard_push_task(struct kndShard *self,
             buf, start_ts.tv_nsec,
             self->task_storage->buf_size, self->task_storage->capacity);
     */
-
     
     err = knd_queue_push(self->task_context_queue, (void*)ctx);
     if (err) return err;
@@ -153,7 +152,7 @@ int knd_shard_run_task(struct kndShard *self,
     memset(ctx, 0, (sizeof(struct kndTaskContext)));
 
     err = clock_gettime(clk_id, &ctx->start_ts);
-    // TODO error
+    if (err) return err;
 
     ctx->input_buf = malloc(input_size + 1);
     if (!ctx->input_buf) return knd_NOMEM; 
@@ -162,9 +161,13 @@ int knd_shard_run_task(struct kndShard *self,
     ctx->input = ctx->input_buf;
     ctx->input_size = input_size;
 
-    knd_log("== output buf size: %zu", *output_size);
     err = knd_output_new(&ctx->out, output, *output_size);
+    if (err) goto final;
+
     *output_size = 0;
+
+    err = knd_output_new(&ctx->log, NULL, KND_TEMP_BUF_SIZE);
+    if (err) goto final;
 
     self->task_count++;
     ctx->numid = self->task_count;
@@ -184,18 +187,26 @@ int knd_shard_run_task(struct kndShard *self,
 
     while (1) {
         err = clock_gettime(clk_id, &ctx->end_ts);
-        if (err) {
-            // signal
-        }
+        if (err) goto final;
+
         if ((ctx->end_ts.tv_sec - ctx->start_ts.tv_sec) > TASK_MAX_TIMEOUT_SECS) {
+            // signal timeout
+            err = knd_task_err_export(ctx);
+            if (err) goto final;
             *output_size = ctx->out->buf_size;
             break;
         }
 
+        // TODO atomic load
         switch (ctx->phase) {
         case KND_COMPLETE:
+            if (ctx->error) {
+                err = knd_task_err_export(ctx);
+                if (err) return err;
+            }
             *output_size = ctx->out->buf_size;
-            knd_log("== num attempts: %zu", num_attempts);
+            knd_log("\n== RESULT: %.*s\n== num attempts: %zu\n",
+                    ctx->out->buf_size, ctx->out->buf, num_attempts);
             return knd_OK;
         default:
             break;
@@ -205,6 +216,10 @@ int knd_shard_run_task(struct kndShard *self,
     }
 
     return knd_OK;
+
+ final:
+    // TODO free ctx
+    return err;
 }
 
 int knd_shard_serve(struct kndShard *self)

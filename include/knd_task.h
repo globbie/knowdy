@@ -101,10 +101,22 @@ struct kndTaskContext {
     size_t      input_size;
 
     struct kndOutput  *out;
+    struct kndOutput  *log;
     int error;
+    knd_http_code_t http_code;
 
     const char *locale;
     size_t locale_size;
+    knd_format format;
+    size_t format_offset;
+
+    size_t batch_max;
+    size_t batch_from;
+    size_t batch_size;
+    size_t start_from;
+
+    // TODO: subscription channel
+    // to push any updates
 
     struct kndTaskDestination *dest;
     struct kndRepo *repo;
@@ -120,7 +132,6 @@ struct kndTaskContext {
     struct kndDict *attr_name_idx;
     struct kndDict *proc_name_idx;
     struct kndDict *proc_arg_name_idx;
-
 
     struct kndUpdate *update;
     bool update_confirmed;
@@ -150,6 +161,8 @@ struct kndTask
     knd_format format;
     size_t format_offset;
 
+    int error;
+
     char timestamp[KND_NAME_SIZE];
     size_t timestamp_size;
 
@@ -167,10 +180,7 @@ struct kndTask
     const char *filename;
     size_t filename_size;
 
-    // TODO: subscription channel
-    // to push any updates
 
-    int error;
     knd_http_code_t http_code;
 
     size_t batch_max;
@@ -232,7 +242,7 @@ int knd_task_context_new(struct kndMemPool *mempool,
                          struct kndTaskContext **ctx);
 void knd_task_del(struct kndTask *self);
 void knd_task_reset(struct kndTask *self);
-int knd_task_build_report(struct kndTask *self);
+int knd_task_err_export(struct kndTaskContext *self);
 
 // knd_task.select.c
 int knd_task_run(struct kndTask *self);

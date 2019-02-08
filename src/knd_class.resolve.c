@@ -292,7 +292,7 @@ static int resolve_baseclasses(struct kndClass *self,
     size_t classname_size;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. class \"%.*s\" to resolve its bases..",
                 self->name_size, self->name);
 
@@ -395,7 +395,7 @@ int knd_class_resolve(struct kndClass *self,
                                              memory_order_relaxed);
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. resolving class \"%.*s\" id:%.*s entry numid:%zu task:%zu",
                 self->entry->name_size, self->entry->name,
                 entry->id_size, entry->id, self->entry->numid, task->id);

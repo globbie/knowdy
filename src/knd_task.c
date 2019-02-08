@@ -24,7 +24,6 @@
 void knd_task_del(struct kndTask *self)
 {
     self->log->del(self->log);
-    self->out->del(self->out);
     self->update_out->del(self->update_out);
     self->file_out->del(self->file_out);
     self->task_out->del(self->task_out);
@@ -69,7 +68,7 @@ void knd_task_reset(struct kndTask *self)
     self->update_out->reset(self->update_out);
 }
 
-static int task_err_export_JSON(struct kndTask *self,
+static int task_err_export_JSON(struct kndTaskContext *self,
                                 struct kndOutput *out)
 {
     int err;
@@ -104,11 +103,10 @@ static int task_err_export_JSON(struct kndTask *self,
     err = out->write(out, "}", strlen("}"));
     if (err) return err;
 
-
     return knd_OK;
 }
 
-static int task_err_export_GSP(struct kndTask *self,
+static int task_err_export_GSP(struct kndTaskContext *self,
                                struct kndOutput *out)
 {
     int err;
@@ -127,11 +125,12 @@ static int task_err_export_GSP(struct kndTask *self,
     return knd_OK;
 }
 
-static int task_err_export(struct kndTask *self,
-                           knd_format format,
-                           struct kndOutput *out)
+int knd_task_err_export(struct kndTaskContext *self)
 {
+    struct kndOutput *out = self->out;
+    knd_format format = self->format;
     int err;
+
     out->reset(out);
 
     switch (format) {
@@ -141,79 +140,6 @@ static int task_err_export(struct kndTask *self,
     default:
         err = task_err_export_GSP(self, out);                                     RET_ERR();
         break;
-    }
-    return knd_OK;
-}
-
-int knd_task_build_report(struct kndTask *self)
-{
-    size_t obj_size;
-    size_t chunk_size;
-    const char *task_status = "++";
-    int err;
-
-    if (DEBUG_TASK_LEVEL_2)
-        knd_log("..TASK (type: %d) reporting..", self->type);
-
-    self->report = NULL;
-    self->report_size = 0;
-
-    if (self->error) {
-        switch (self->error) {
-        case knd_NOMEM:
-        case knd_IO_FAIL:
-            self->http_code = HTTP_INTERNAL_SERVER_ERROR;
-            break;
-        default:
-            break;
-        }
-
-        err = task_err_export(self, self->format, self->out);
-        if (err) {
-            self->report = "{err internal server error}";
-            self->report_size = strlen(self->report);
-            self->http_code = HTTP_INTERNAL_SERVER_ERROR;
-            return err;
-        } else {
-            self->report = self->out->buf;
-            self->report_size = self->out->buf_size;
-        }
-        return knd_OK;
-    }
-
-    if (!self->out->buf_size) {
-        err = self->out->write(self->out, "{}", strlen("{}"));
-        if (err) return err;
-    }
-
-    if (DEBUG_TASK_LEVEL_TMP) {
-        obj_size = self->out->buf_size;
-        if (obj_size > KND_MAX_DEBUG_CONTEXT_SIZE) obj_size = KND_MAX_DEBUG_CONTEXT_SIZE;
-        knd_log("== RESULT: \"%s\" %.*s [size: %zu]\n", task_status,
-                (int) obj_size, self->out->buf, self->out->buf_size);
-    }
-
-    /* report body */
-    self->report = self->out->buf;
-    self->report_size = self->out->buf_size;
-
-    /* send delta */
-    if (self->type == KND_DELTA_STATE) {
-        if (self->update_out->buf_size) {
-            self->report = self->update_out->buf;
-            self->report_size = self->update_out->buf_size;
-        }
-    }
-
-    if (self->type == KND_UPDATE_STATE) {
-        self->report = self->out->buf;
-        self->report_size = self->out->buf_size;
-        if (DEBUG_TASK_LEVEL_2) {
-            chunk_size =  self->update_out->buf_size > KND_MAX_DEBUG_CHUNK_SIZE ? \
-                KND_MAX_DEBUG_CHUNK_SIZE :  self->update_out->buf_size;
-            knd_log("\n\n** UPDATE retrievers: \"%.*s\" [%zu]",
-                    chunk_size, self->report, self->report_size);
-        }
     }
     return knd_OK;
 }

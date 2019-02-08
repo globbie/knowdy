@@ -241,6 +241,7 @@ extern int knd_export_class_state_GSL(struct kndClass *self,
 
 extern int knd_class_export_GSL(struct kndClass *self,
                                 struct kndTask *task,
+                                bool is_list_item,
                                 size_t depth);
 
 extern int knd_empty_set_export_GSL(struct kndClass *self,

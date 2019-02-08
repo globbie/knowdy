@@ -293,7 +293,7 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
     if (parser_err.code) {
         knd_log("-- task parse failure: \"%.*s\"",
                 self->log->buf_size, self->log->buf);
-        goto cleanup;
+        goto final;
     }
 
     /* any system repo updates? */
@@ -301,7 +301,10 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
     case KND_UPDATE_STATE:
         if (!self->ctx->update_confirmed) {
             err = knd_confirm_updates(self->repo, self);
-            if (err) return make_gsl_err_external(err);
+            if (err) {
+                return make_gsl_err_external(err);
+                goto final;
+            }
         }
         break;
     default:
@@ -311,7 +314,7 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
 
     return make_gsl_err(gsl_OK);
 
- cleanup:
+ final:
     self->ctx->phase = KND_COMPLETE;
     return parser_err;
 }
@@ -325,7 +328,7 @@ int knd_task_run(struct kndTask *self)
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
         if (self->ctx->input_size < chunk_size)
             chunk_size = self->ctx->input_size;
-        knd_log("== input: %.*s ..", chunk_size, self->ctx->input);
+        knd_log("== INPUT: %.*s ..", chunk_size, self->ctx->input);
     }
 
     struct gslTaskSpec specs[] = {

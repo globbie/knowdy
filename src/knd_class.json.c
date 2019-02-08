@@ -682,8 +682,8 @@ static int export_baseclass_vars(struct kndClass *self,
     return knd_OK;
 }
                                      
-extern int knd_class_export_JSON(struct kndClass *self,
-                                 struct kndTask *task)
+int knd_class_export_JSON(struct kndClass *self,
+                          struct kndTask *task)
 {
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
