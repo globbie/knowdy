@@ -20,9 +20,10 @@
 
 #pragma once
 
-#include "knd_err.h"
-
 #include <stdlib.h>
+#include <stddef.h>
+
+#include "knd_err.h"
 
 /* comparison codes */
 typedef enum { knd_EQUALS, knd_LESS, knd_MORE, knd_NOT_COMPARABLE } knd_comparison_codes;

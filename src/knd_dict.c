@@ -13,8 +13,8 @@
 #include <string.h>
 #include <stdatomic.h>
 
-#include <knd_dict.h>
-#include <knd_config.h>
+#include "knd_dict.h"
+#include "knd_config.h"
 
 static size_t 
 knd_dict_hash(const char *key, size_t key_size)

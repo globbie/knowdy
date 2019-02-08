@@ -1,15 +1,7 @@
-/**
- *   Copyright (c) 2011-2017 by Dmitri Dmitriev
- *   All rights reserved.
- *
- *   --------
- *   knd_dict.h
- *   Knowdy Dictionary
- */
-
 #pragma once
 
 #include <stdatomic.h>
+#include "knd_config"
 
 struct kndDictItem
 {
@@ -37,11 +29,5 @@ int knd_dict_set(struct kndDict *self,
 int knd_dict_remove(struct kndDict *self,
                     const char *key,
                     size_t key_size);
-
-/* listing the keys and values */
-/*int (*rewind)(struct kndDict *self);
-int (*next_item)(struct kndDict *self,
-                 const char **key,
-                 void **data); */
 
 int knd_dict_new(struct kndDict **self, size_t init_size);
