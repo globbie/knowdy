@@ -26,6 +26,8 @@
 #define DEBUG_SHARD_LEVEL_1 0
 #define DEBUG_SHARD_LEVEL_TMP 1
 
+#define _POSIX_C_SOURCE >= 199309L
+
 static void *task_runner(void *ptr)
 {
     struct kndTask *task = ptr;
@@ -99,7 +101,7 @@ int knd_shard_push_task(struct kndShard *self,
                         task_cb_func cb, void *obj)
 {
     struct kndTaskContext *ctx;
-    clockid_t clk_id = CLOCK_MONOTONIC;
+    //clockid_t clk_id = CLOCK_MONOTONIC;
     int err;
 
     ctx = malloc(sizeof(struct kndTaskContext));
@@ -119,7 +121,7 @@ int knd_shard_push_task(struct kndShard *self,
     ctx->numid = self->task_count;
     knd_uid_create(ctx->numid, ctx->id, &ctx->id_size);
 
-    err = clock_gettime(clk_id, &ctx->start_ts);
+    //err = clock_gettime(clk_id, &ctx->start_ts);
 
     /*strftime(buf, sizeof buf, "%D %T", gmtime(&start_ts.tv_sec));
     knd_log("UTC %s.%09ld: new task curr storage size:%zu  capacity:%zu",
