@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
-#include <time.h>
+
+#include <pthread.h>
 
 #include <unistd.h>
-#include <pthread.h>
+#include <time.h>
 
 #include "knd_shard.h"
 #include "knd_user.h"
@@ -21,7 +22,6 @@
 #include "knd_output.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_SHARD_LEVEL_1 0
 #define DEBUG_SHARD_LEVEL_TMP 1
@@ -41,8 +41,8 @@ static void *task_runner(void *ptr)
         attempt_count++;
         err = knd_queue_pop(queue, &elem);
         if (err) {
-            if (attempt_count > MAX_DEQUE_ATTEMPTS)
-                usleep(TASK_TIMEOUT_USECS);
+            //if (attempt_count > MAX_DEQUE_ATTEMPTS)
+            //    nanosleep(TASK_TIMEOUT_USECS);
             continue;
         }
         attempt_count = 0;
@@ -99,7 +99,7 @@ int knd_shard_push_task(struct kndShard *self,
                         task_cb_func cb, void *obj)
 {
     struct kndTaskContext *ctx;
-    clockid_t clk_id = CLOCK_MONOTONIC;
+    //clockid_t clk_id = CLOCK_MONOTONIC;
     int err;
 
     ctx = malloc(sizeof(struct kndTaskContext));
@@ -119,7 +119,7 @@ int knd_shard_push_task(struct kndShard *self,
     ctx->numid = self->task_count;
     knd_uid_create(ctx->numid, ctx->id, &ctx->id_size);
 
-    err = clock_gettime(clk_id, &ctx->start_ts);
+    //err = clock_gettime(clk_id, &ctx->start_ts);
 
     /*strftime(buf, sizeof buf, "%D %T", gmtime(&start_ts.tv_sec));
     knd_log("UTC %s.%09ld: new task curr storage size:%zu  capacity:%zu",
@@ -143,7 +143,7 @@ int knd_shard_run_task(struct kndShard *self,
                        char *output, size_t *output_size)
 {
     struct kndTaskContext *ctx;
-    clockid_t clk_id = CLOCK_MONOTONIC;
+    //clockid_t clk_id = CLOCK_MONOTONIC;
     size_t num_attempts = 0;
     int err;
 
@@ -151,8 +151,8 @@ int knd_shard_run_task(struct kndShard *self,
     if (!ctx) return knd_NOMEM;
     memset(ctx, 0, (sizeof(struct kndTaskContext)));
 
-    err = clock_gettime(clk_id, &ctx->start_ts);
-    if (err) return err;
+    //err = clock_gettime(clk_id, &ctx->start_ts);
+    //if (err) return err;
 
     ctx->input_buf = malloc(input_size + 1);
     if (!ctx->input_buf) return knd_NOMEM; 
@@ -186,8 +186,8 @@ int knd_shard_run_task(struct kndShard *self,
     if (err) return err;
 
     while (1) {
-        err = clock_gettime(clk_id, &ctx->end_ts);
-        if (err) goto final;
+        //err = clock_gettime(clk_id, &ctx->end_ts);
+        //if (err) goto final;
 
         if ((ctx->end_ts.tv_sec - ctx->start_ts.tv_sec) > TASK_MAX_TIMEOUT_SECS) {
             // signal timeout
@@ -211,7 +211,7 @@ int knd_shard_run_task(struct kndShard *self,
         default:
             break;
         }
-        usleep(TASK_TIMEOUT_USECS);
+        //nanosleep(TASK_TIMEOUT_USECS);
         num_attempts++;
     }
 
@@ -287,11 +287,11 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndShard));
 
-    err = glbOutput_new(&self->out, KND_IDX_BUF_SIZE);
-    if (err != knd_OK) goto error;
+    //err = glbOutput_new(&self->out, KND_IDX_BUF_SIZE);
+    //if (err != knd_OK) goto error;
 
-    err = glbOutput_new(&self->log, KND_MED_BUF_SIZE);
-    if (err != knd_OK) goto error;
+    //err = glbOutput_new(&self->log, KND_MED_BUF_SIZE);
+    //if (err != knd_OK) goto error;
 
     err = kndMemPool_new(&mempool);
     if (err != knd_OK) goto error;

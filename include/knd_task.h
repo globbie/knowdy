@@ -22,16 +22,15 @@
 
 #include <stdatomic.h>
 #include <pthread.h>
+#include <time.h>
 
 #include "knd_config.h"
 #include "knd_state.h"
 #include "knd_dict.h"
 #include "knd_http_codes.h"
 
-#include <glb-lib/output.h>
 #include <gsl-parser/gsl_err.h>
 
-struct glbOutput;
 struct kndTask;
 struct kndShard;
 struct kndUser;
