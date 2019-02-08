@@ -392,7 +392,7 @@ extern int knd_register_attr_ref(void *obj,
     struct kndDict *attr_name_idx = self->entry->repo->attr_name_idx;
     struct kndAttrRef *src_ref = elem;
     struct kndAttr    *attr    = src_ref->attr;
-    struct kndAttrRef *ref, *prev_attr_ref;
+    struct kndAttrRef *ref; //, *prev_attr_ref;
     struct kndMemPool *mempool = attr_idx->mempool;
     int err;
 
@@ -408,8 +408,8 @@ extern int knd_register_attr_ref(void *obj,
                         attr->id, attr->id_size,
                         (void*)ref);                                              RET_ERR();
 
-    prev_attr_ref = knd_dict_get(attr_name_idx,
-                                 attr->name, attr->name_size);
+    //prev_attr_ref = knd_dict_get(attr_name_idx,
+    //                             attr->name, attr->name_size);
 
     /*if (prev_attr_ref) {
         err = attr_name_idx->remove(attr_name_idx,
