@@ -5,4 +5,4 @@ set(SOURCES
 )
 
 add_executable(knd-shard ${SOURCES})
-target_link_libraries(knd-shard knowdy_static ${GLB_LIBRARY} ${KNODE_LIBRARY})
+target_link_libraries(knd-shard knowdy_static ${GLB_LIBRARY} ${KNODE_LIBRARY} pthread)
