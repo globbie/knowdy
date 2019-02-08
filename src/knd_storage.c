@@ -5,6 +5,7 @@
 
 #include <unistd.h>
 #include <pthread.h>
+#include <time.h>
 
 #include "knd_queue.h"
 #include "knd_config.h"
@@ -86,8 +87,8 @@ static void *task_runner(void *ptr)
         attempt_count++;
         err = knd_queue_pop(queue, (void**)&ctx);
         if (err) {
-            if (attempt_count > MAX_DEQUE_ATTEMPTS)
-                usleep(TASK_TIMEOUT_USECS);
+            //if (attempt_count > MAX_DEQUE_ATTEMPTS)
+            //    nanosleep(TASK_TIMEOUT_USECS);
             continue;
         }
 
