@@ -348,7 +348,7 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
     struct kndMemPool *mempool = task->mempool;
     struct kndProcInst *inst;
     struct kndProcInstEntry *entry;
-    struct kndDict *name_idx;
+    // struct kndDict *name_idx;
     struct kndState *state;
     struct kndStateRef *state_ref;
     gsl_err_t parser_err;
@@ -414,7 +414,7 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
         inst->name_size = inst->entry->id_size;
     }
 
-    name_idx = repo->proc_inst_name_idx;
+    //name_idx = repo->proc_inst_name_idx;
 
     // TODO  lookup prev inst ref
     /*err = name_idx->set(name_idx,
