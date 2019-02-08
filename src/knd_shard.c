@@ -99,7 +99,7 @@ int knd_shard_push_task(struct kndShard *self,
                         task_cb_func cb, void *obj)
 {
     struct kndTaskContext *ctx;
-    //clockid_t clk_id = CLOCK_MONOTONIC;
+    clockid_t clk_id = CLOCK_MONOTONIC;
     int err;
 
     ctx = malloc(sizeof(struct kndTaskContext));
@@ -119,7 +119,7 @@ int knd_shard_push_task(struct kndShard *self,
     ctx->numid = self->task_count;
     knd_uid_create(ctx->numid, ctx->id, &ctx->id_size);
 
-    //err = clock_gettime(clk_id, &ctx->start_ts);
+    err = clock_gettime(clk_id, &ctx->start_ts);
 
     /*strftime(buf, sizeof buf, "%D %T", gmtime(&start_ts.tv_sec));
     knd_log("UTC %s.%09ld: new task curr storage size:%zu  capacity:%zu",
