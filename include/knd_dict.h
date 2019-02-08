@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdatomic.h>
-#include "knd_config"
+#include "knd_config.h"
 
 struct kndDictItem
 {
