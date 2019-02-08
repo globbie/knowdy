@@ -11,9 +11,6 @@
 
 #include <stdatomic.h>
 
-typedef size_t (*knd_hash_func)(const char *key, size_t key_size);
-struct kndDictItem;
-
 struct kndDictItem
 {
     const char *key;
@@ -26,8 +23,6 @@ struct kndDict
 {
     struct kndDictItem* _Atomic *hash_array;
     size_t size;
-
-    knd_hash_func hash_func;
 
     atomic_size_t num_items;
 };
@@ -42,9 +37,6 @@ int knd_dict_set(struct kndDict *self,
 int knd_dict_remove(struct kndDict *self,
                     const char *key,
                     size_t key_size);
-
-int knd_dict_set_hash(struct kndDict *self,
-                      knd_hash_func new_hash);
 
 /* listing the keys and values */
 /*int (*rewind)(struct kndDict *self);
