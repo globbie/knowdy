@@ -26,8 +26,6 @@
 #define DEBUG_SHARD_LEVEL_1 0
 #define DEBUG_SHARD_LEVEL_TMP 1
 
-#define _POSIX_C_SOURCE >= 199309L
-
 static void *task_runner(void *ptr)
 {
     struct kndTask *task = ptr;
