@@ -79,19 +79,18 @@ set(KNODE_LIBRARY "kmq")
 
 include_directories("include")
 
-set(HEADERS include/knd_array.h include/knd_attr.h
+set(HEADERS include/knd_attr.h
         include/knd_class.h include/knd_class_inst.h include/knd_config.h
         include/knd_dict.h
         include/knd_elem.h include/knd_err.h
-        include/knd_facet.h include/knd_http_codes.h include/knd_list.h
+        include/knd_facet.h include/knd_http_codes.h
         include/knd_mempool.h include/knd_num.h
         include/knd_proc.h include/knd_proc_arg.h include/knd_proc_call.h
         include/knd_queue.h include/knd_query.h
         include/knd_ref.h include/knd_repo.h
         include/knd_set.h include/knd_set_idx.h include/knd_shard.h include/knd_state.h
         include/knd_task.h include/knd_text.h
-        include/knd_user.h include/knd_utils.h
-        include/ooconfig.h)
+        include/knd_user.h include/knd_utils.h)
 set(SOURCES src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr.index.c src/knd_attr.resolve.c src/knd_attr.select.c src/knd_attr.json.c src/knd_attr.gsl.c
         src/knd_class.c src/knd_class.compute.c src/knd_class.gsl.c src/knd_class.gsp.c
         src/knd_class.import.c src/knd_class.json.c src/knd_class.resolve.c src/knd_class.select.c src/knd_class.states.c
