@@ -33,6 +33,7 @@ static void *task_runner(void *ptr)
     struct kndTask *task = ptr;
     struct kndQueue *queue = task->input_queue;
     struct kndTaskContext *ctx;
+    struct timespec ts = {0, TASK_TIMEOUT_USECS * 1000L };
     void *elem;
     size_t attempt_count = 0;
     int err;
@@ -43,8 +44,8 @@ static void *task_runner(void *ptr)
         attempt_count++;
         err = knd_queue_pop(queue, &elem);
         if (err) {
-            //if (attempt_count > MAX_DEQUE_ATTEMPTS)
-            //    nanosleep(TASK_TIMEOUT_USECS);
+            if (attempt_count > MAX_DEQUE_ATTEMPTS)
+                nanosleep(&ts, NULL);
             continue;
         }
         attempt_count = 0;
@@ -146,6 +147,7 @@ int knd_shard_run_task(struct kndShard *self,
 {
     struct kndTaskContext *ctx;
     //clockid_t clk_id = CLOCK_MONOTONIC;
+    struct timespec ts = {0, TASK_TIMEOUT_USECS * 1000L };
     size_t num_attempts = 0;
     int err;
 
@@ -213,7 +215,7 @@ int knd_shard_run_task(struct kndShard *self,
         default:
             break;
         }
-        //nanosleep(TASK_TIMEOUT_USECS);
+        nanosleep(&ts, NULL);
         num_attempts++;
     }
 

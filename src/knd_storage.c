@@ -78,6 +78,7 @@ static void *task_runner(void *ptr)
     struct kndQueue *queue =        task->input_queue;
     struct kndQueue *output_queue = task->output_queue;
     struct kndTaskContext *ctx;
+    struct timespec ts = {0, TASK_TIMEOUT_USECS * 1000L };
     size_t attempt_count = 0;
     int err;
 
@@ -87,8 +88,8 @@ static void *task_runner(void *ptr)
         attempt_count++;
         err = knd_queue_pop(queue, (void**)&ctx);
         if (err) {
-            //if (attempt_count > MAX_DEQUE_ATTEMPTS)
-            //    nanosleep(TASK_TIMEOUT_USECS);
+            if (attempt_count > MAX_DEQUE_ATTEMPTS)
+                nanosleep(&ts, NULL);
             continue;
         }
 
