@@ -233,12 +233,6 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
     int err;
 
     struct gslTaskSpec specs[] = {
-        { .name = "tid",
-          .name_size = strlen("tid"),
-          .buf = self->tid,
-          .buf_size = &self->tid_size,
-          .max_buf_size = sizeof self->tid
-        },
         { .name = "locale",
           .name_size = strlen("locale"),
           .buf = self->curr_locale,
@@ -328,7 +322,9 @@ int knd_task_run(struct kndTask *self)
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
         if (self->ctx->input_size < chunk_size)
             chunk_size = self->ctx->input_size;
-        knd_log("== INPUT: %.*s ..", chunk_size, self->ctx->input);
+        knd_log("== INPUT (size:%zu): %.*s ..",
+                self->ctx->input_size,
+                chunk_size, self->ctx->input);
     }
 
     struct gslTaskSpec specs[] = {

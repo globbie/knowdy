@@ -39,7 +39,7 @@ struct LocalContext {
     struct kndTask *task;
 };
 
-extern void knd_elem_str(struct kndElem *self, size_t depth)
+void knd_elem_str(struct kndElem *self, size_t depth)
 {
     struct kndState *state = self->states;
 
@@ -66,8 +66,8 @@ extern void knd_elem_str(struct kndElem *self, size_t depth)
 
     switch (self->attr->type) {
     case KND_ATTR_REF:
-        knd_log("ref:");
-        knd_class_inst_str(self->ref_inst, 0);
+        if (self->ref_inst)
+            knd_class_inst_str(self->ref_inst, 0);
         return;
         /*case KND_ATTR_NUM:
         self->num->depth = self->depth;

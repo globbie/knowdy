@@ -144,9 +144,6 @@ struct kndTask
     knd_task_spec_type type;
     knd_state_phase phase;
 
-    char tid[KND_NAME_SIZE];
-    size_t tid_size;
-
     pthread_t thread;
 
     struct kndTaskContext *ctx;

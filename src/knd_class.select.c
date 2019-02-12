@@ -1,5 +1,4 @@
 #include "knd_class.h"
-
 #include "knd_attr.h"
 #include "knd_task.h"
 #include "knd_repo.h"
@@ -11,6 +10,7 @@
 #include <assert.h>
 #include <stddef.h>
 #include <string.h>
+#include <stdatomic.h>
 
 #define DEBUG_CLASS_SELECT_LEVEL_1 0
 #define DEBUG_CLASS_SELECT_LEVEL_2 0
@@ -645,6 +645,7 @@ static gsl_err_t
 parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
     int err;
 
     if (!ctx->selected_class) {
@@ -654,7 +655,20 @@ parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    err = knd_parse_import_class_inst(ctx->selected_class, rec, total_size, ctx->task);
+    /* flag update */
+    task->type = KND_UPDATE_STATE;
+    if (!task->ctx->update) {
+        err = knd_update_new(task->mempool, &task->ctx->update);
+        if (err) return make_gsl_err_external(err);
+
+        err = knd_dict_new(&task->ctx->class_name_idx, KND_SMALL_DICT_SIZE);
+        if (err) return make_gsl_err_external(err);
+
+        task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+                                                                memory_order_relaxed);
+    }
+    
+    err = knd_parse_import_class_inst(ctx->selected_class, rec, total_size, task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);

@@ -81,10 +81,7 @@ START_TEST(shard_config_test)
             .input = "{schema knd}",
             .expect = NULL,
             .err = knd_FAIL
-        }
-        //{
-        //    .input = NULL
-        //}
+        },
     };
 
     struct kndShard *shard;

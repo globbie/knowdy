@@ -26,7 +26,7 @@
 #define DEBUG_INST_LEVEL_4 0
 #define DEBUG_INST_LEVEL_TMP 1
 
-extern void knd_class_inst_str(struct kndClassInst *self, size_t depth)
+void knd_class_inst_str(struct kndClassInst *self, size_t depth)
 {
     struct kndElem *elem;
     struct kndState *state = self->states;

@@ -68,6 +68,7 @@ int knd_parse_import_class_inst(struct kndClass *self,
         knd_log(".. import \"%.*s\" inst.. (repo:%.*s)",
                 128, rec, repo->name_size, repo->name);
     }
+
     /* user ctx should have its own copy of a selected class */
     if (self->entry->repo != repo) {
         err = knd_class_clone(self, repo, &c, mempool);
@@ -138,7 +139,7 @@ int knd_parse_import_class_inst(struct kndClass *self,
     err = knd_register_class_inst(c, entry, mempool);
     if (err) return err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_3) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
         knd_class_inst_str(inst, 0);
     }
 
