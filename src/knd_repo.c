@@ -716,18 +716,6 @@ static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-/*static gsl_err_t parse_class_import(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
-{
-    struct kndTask *task = obj;
-
-    task->type = KND_UPDATE_STATE;
-
-    return knd_class_import(task->repo, rec, total_size, task);
-}
-*/
-
 static gsl_err_t parse_proc_import(void *obj,
                                    const char *rec,
                                    size_t *total_size)
@@ -1218,17 +1206,10 @@ static int deliver_task_report(void *obj,
     knd_log(".. worker:%zu / ctx:%zu  delivering report on task #%zu..",
             task->id, ctx->numid, ctx->update->numid);
 
-
-    err = ctx->out->write(ctx->out, "{}", strlen("{}"));
-    if (err) return err;
-
-    /*if (ctx->external_cb) {
-        err = ctx->external_cb(ctx->external_obj,
-                               ctx->id, ctx->id_size, NULL);
-        if (err) {
-        }
-        }*/
-    
+    if (!ctx->out->buf_size) {
+        err = ctx->out->write(ctx->out, "{}", strlen("{}"));
+        if (err) return err;
+    }
     ctx->phase = KND_COMPLETE;
     
     return knd_OK;
@@ -1462,6 +1443,7 @@ int kndRepo_new(struct kndRepo **repo,
     self->max_journal_size = KND_FILE_BUF_SIZE;
     *repo = self;
 
+    /* set id counters to 1 */
     atomic_store_explicit(&self->class_id_count, 1,
                           memory_order_relaxed);
     atomic_store_explicit(&self->proc_id_count, 1,

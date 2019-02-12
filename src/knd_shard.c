@@ -100,7 +100,7 @@ int knd_shard_push_task(struct kndShard *self,
                         task_cb_func cb, void *obj)
 {
     struct kndTaskContext *ctx;
-    //clockid_t clk_id = CLOCK_MONOTONIC;
+    clockid_t clk_id = CLOCK_MONOTONIC;
     int err;
 
     ctx = malloc(sizeof(struct kndTaskContext));
@@ -120,7 +120,7 @@ int knd_shard_push_task(struct kndShard *self,
     ctx->numid = self->task_count;
     knd_uid_create(ctx->numid, ctx->id, &ctx->id_size);
 
-    //err = clock_gettime(clk_id, &ctx->start_ts);
+    err = clock_gettime(clk_id, &ctx->start_ts);
 
     /*strftime(buf, sizeof buf, "%D %T", gmtime(&start_ts.tv_sec));
     knd_log("UTC %s.%09ld: new task curr storage size:%zu  capacity:%zu",
@@ -144,7 +144,7 @@ int knd_shard_run_task(struct kndShard *self,
                        char *output, size_t *output_size)
 {
     struct kndTaskContext *ctx;
-    //clockid_t clk_id = CLOCK_MONOTONIC;
+    clockid_t clk_id = CLOCK_MONOTONIC;
     struct timespec ts = {0, TASK_TIMEOUT_USECS * 1000L };
     size_t num_attempts = 0;
     int err;
@@ -153,8 +153,8 @@ int knd_shard_run_task(struct kndShard *self,
     if (!ctx) return knd_NOMEM;
     memset(ctx, 0, (sizeof(struct kndTaskContext)));
 
-    //err = clock_gettime(clk_id, &ctx->start_ts);
-    //if (err) return err;
+    err = clock_gettime(clk_id, &ctx->start_ts);
+    if (err) return err;
 
     ctx->input_buf = malloc(input_size + 1);
     if (!ctx->input_buf) return knd_NOMEM; 
@@ -188,8 +188,8 @@ int knd_shard_run_task(struct kndShard *self,
     if (err) return err;
 
     while (1) {
-        //err = clock_gettime(clk_id, &ctx->end_ts);
-        //if (err) goto final;
+        err = clock_gettime(clk_id, &ctx->end_ts);
+        if (err) goto final;
 
         if ((ctx->end_ts.tv_sec - ctx->start_ts.tv_sec) > TASK_MAX_TIMEOUT_SECS) {
             // signal timeout
