@@ -409,20 +409,20 @@ START_TEST(shard_proc_test)
     static const struct table_test cases[] = {
         {   /* create a new proc */
             .input  = "{task {!proc test Process}}",
-            .expect = "{}" // repo /{_state 1}{modif [0-9]*}}
+            .expect = "{update [0-9]*{time [0-9]*}}"
         },
 #if 0
         {   /* try to import the same proc */
             .input = "{task {!proc test Process}}",
-            .expect = "{err 409{_gloss test Process proc name already exists}}"
+            .expect = "{err 409{gloss test Process proc name already exists}}"
         },
         {   /* remove proc */
             .input = "{task {proc test Process {!_rm}}}",
-            .expect = "{}"
+            .expect = "{update [0-9]*{time [0-9]*}}",
         },
         {   /* create a proc once more */
             .input  = "{task {!proc test Process}}",
-            .expect = "{repo /{_state 2}{modif [0-9]*}}"
+            .expect = "{update [0-9]*{time [0-9]*}}",
         },
         {   /* create a proc with glosses */
             .input  = "{task {!proc another test Process"
