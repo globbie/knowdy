@@ -521,12 +521,12 @@ int knd_proc_arg_resolve(struct kndProcArg *self,
     //struct kndProcEntry *entry;
     struct kndClassEntry *entry;
 
-    if (DEBUG_PROC_ARG_LEVEL_TMP)
+    if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log(".. resolving arg \"%.*s\"  repo:%.*s..",
                 self->name_size, self->name, repo->name_size, repo->name);
 
     if (self->classname_size) {
-        if (DEBUG_PROC_ARG_LEVEL_TMP)
+        if (DEBUG_PROC_ARG_LEVEL_2)
             knd_log(".. resolving arg class template: %.*s..",
                     self->classname_size, self->classname);
         entry = knd_dict_get(repo->class_name_idx,

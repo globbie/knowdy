@@ -133,6 +133,14 @@ static void *task_runner(void *ptr)
             break;
         case KND_WAL_COMMIT:
 
+            /* check conflicts */
+            err = knd_repo_check_conflicts(ctx->repo, ctx);
+            if (err) {
+                ctx->error = err;
+                // signal
+                break;
+            }
+
             /* update in-memory repo name idx */
             err = knd_repo_update_name_idx(ctx->repo, ctx);
             if (err) {

@@ -34,7 +34,6 @@ void knd_task_del(struct kndTask *self)
 void knd_task_reset(struct kndTask *self)
 {
     self->curr_locale_size = 0;
-
     self->type = KND_GET_STATE;
     self->phase = KND_SELECTED;
     self->format = KND_FORMAT_GSL;

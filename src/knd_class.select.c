@@ -971,7 +971,6 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
     default:
         break;
     }
-
     return make_gsl_err(gsl_OK);
 }
 

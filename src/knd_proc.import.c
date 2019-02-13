@@ -265,9 +265,9 @@ int knd_inner_proc_import(struct kndProc *proc,
                           struct kndRepo *repo,
                           struct kndTask *task)
 {
-    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
+    if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_log(".. import an anonymous inner proc: %.*s..",
-                128, rec);
+                64, rec);
 
     struct LocalContext ctx = {
         .task = task,
@@ -399,7 +399,7 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
 
     inst->entry->numid = atomic_fetch_add_explicit(&repo->num_proc_insts, 1,\
                                                    memory_order_relaxed);
-
+    inst->entry->numid++;
     knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
 
     if (DEBUG_PROC_IMPORT_LEVEL_TMP)
@@ -548,16 +548,10 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
         }
     }
 
-    /*    if (!root_proc->batch_mode) {
-        proc->next = root_proc->inbox;
-        root_proc->inbox = proc;
-        root_proc->inbox_size++;
-        }*/
-
     /* generate ID and add to proc index */
     proc->entry->numid = atomic_fetch_add_explicit(&repo->proc_id_count, 1,\
                                                    memory_order_relaxed);
-
+    proc->entry->numid++;
     knd_uid_create(proc->entry->numid, proc->entry->id, &proc->entry->id_size);
 
     err = knd_dict_set(repo->proc_name_idx,
@@ -567,7 +561,7 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
         return make_gsl_err_external(err);
     }
 
-    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
+    if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_proc_str(proc, 0);
 
     return make_gsl_err(gsl_OK);

@@ -39,7 +39,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndClassInstEntry *entry;
     struct kndRepo *repo = ctx->task->repo;
     struct kndDict *class_name_idx = repo->class_name_idx;
-    struct kndDict *name_idx = repo->class_inst_name_idx;
+    struct kndDict *name_idx = self->base->entry->inst_name_idx;
     struct kndOutput *log = ctx->task->log;
     struct kndTask *task = ctx->task;
     struct kndClass *c;
@@ -74,7 +74,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
                     name_size, name);
             goto assign_name;
         }
-        knd_log("-- class instance name doublet found: %.*s:(",
+        knd_log("-- class instance name doublet found: %.*s",
                 name_size, name);
         log->reset(log);
         err = log->write(log, name, name_size);
@@ -85,7 +85,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
         task->http_code = HTTP_CONFLICT;
         return make_gsl_err(gsl_EXISTS);
     }
-    assign_name:
+ assign_name:
     self->name = name;
     self->name_size = name_size;
     if (DEBUG_INST_LEVEL_2)
@@ -121,7 +121,6 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
             return knd_OK;
         }
     }
-
     conc = self->base;
     err = knd_class_get_attr(conc, name, name_size, &attr_ref);
     if (err) {

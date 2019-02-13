@@ -239,7 +239,8 @@ static int link_baseclass(struct kndClass *self,
     ref->entry = entry;
     ref->class = self;
     link_child(base->entry, ref);
-    if (task->batch_mode)
+
+    if (task->type == KND_LOAD_STATE)
         base->entry->num_children++;
 
     /* copy the ancestors */
@@ -393,12 +394,13 @@ int knd_class_resolve(struct kndClass *self,
     /* generate unique class id */
     entry->numid = atomic_fetch_add_explicit(&repo->class_id_count, 1,
                                              memory_order_relaxed);
+    entry->numid++;
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
-        knd_log(".. resolving class \"%.*s\" id:%.*s entry numid:%zu task:%zu",
+        knd_log(".. resolving class \"%.*s\" id:%.*s entry numid:%zu",
                 self->entry->name_size, self->entry->name,
-                entry->id_size, entry->id, self->entry->numid, task->id);
+                entry->id_size, entry->id, self->entry->numid);
     }
 
     /* a child of the root class */
@@ -437,7 +439,7 @@ int knd_resolve_class_ref(struct kndClass *self,
     struct kndDict *class_name_idx = self->entry->repo->class_name_idx;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. checking class ref:  \"%.*s\"..",
                 name_size, name);
         if (base) {
@@ -446,7 +448,7 @@ int knd_resolve_class_ref(struct kndClass *self,
         }
     }
 
-    if (task->batch_mode) {
+    if (task->type == KND_LOAD_STATE) {
         entry = knd_dict_get(class_name_idx,
                              name, name_size);
         if (!entry) {

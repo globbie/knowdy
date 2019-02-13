@@ -24,7 +24,6 @@
 #include "knd_task.h"
 #include "knd_user.h"
 #include "knd_text.h"
-#include "knd_rel.h"
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
 #include "knd_set.h"
@@ -47,6 +46,7 @@ static void str(struct kndClass *self, size_t depth)
     struct kndClassVar *item;
     struct kndClassRef *ref;
     struct kndClass *c;
+    struct kndState *state;
     //struct kndSet *set;
     //struct kndFacet *f;
     const char *name;
@@ -60,13 +60,15 @@ static void str(struct kndClass *self, size_t depth)
             self->entry->id_size, self->entry->id,
             self->entry->numid);
 
-    /*if (self->num_states) {
+    state = atomic_load_explicit(&self->states,
+                                 memory_order_relaxed);
+    for (; state; state = state->next) {
         knd_log("\n%*s_state:%zu",
-            self->depth * KND_OFFSET_SIZE, "",
-            self->states->update->numid);
+            depth * KND_OFFSET_SIZE, "",
+            state->update->numid);
     }
 
-    if (self->num_inst_states) {
+    /* if (self->num_inst_states) {
         knd_log("\n%*snum inst states:%zu",
             self->depth * KND_OFFSET_SIZE, "",
             self->num_inst_states);
@@ -147,7 +149,7 @@ int knd_get_class_inst(struct kndClass *self,
         return knd_FAIL;
     }
 
-    name_idx = self->entry->repo->class_inst_name_idx;
+    name_idx = self->entry->inst_name_idx;
     entry = knd_dict_get(name_idx, name, name_size);
     if (!entry) {
         knd_log("-- no such class inst: \"%.*s\"", name_size, name);
@@ -201,7 +203,7 @@ int knd_get_class_attr_value(struct kndClass *src,
     int err;
 
     attr_ref = knd_dict_get(attr_name_idx,
-                                  query->name, query->name_size);
+                            query->name, query->name_size);
     if (!attr_ref) {
         knd_log("-- no such attr: %.*s", query->name_size, query->name);
         return knd_FAIL;
@@ -314,10 +316,11 @@ static int update_ancestor_state(struct kndClass *self,
 static int update_state(struct kndClass *self,
                         struct kndStateRef *children,
                         knd_state_phase phase,
+                        struct kndState **result,
                         struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
-    struct kndState *state;
+    struct kndState *head, *state;
     struct kndClass *c;
     struct kndClassRef *ref;
     int err;
@@ -328,15 +331,15 @@ static int update_state(struct kndClass *self,
         return err;
     }
     state->phase = phase;
+    state->update = task->ctx->update;
     state->children = children;
 
-    self->num_states++;
-    state->numid = self->num_states;
-    state->next = self->states;
-
-    // NB: atomic
-    self->states = state;
-
+    do {
+       head = atomic_load_explicit(&self->states,
+                                   memory_order_relaxed);
+       state->next = head;
+    } while (!atomic_compare_exchange_weak(&self->states, &head, state));
+ 
     /* inform your ancestors */
     for (ref = self->entry->ancestors; ref; ref = ref->next) {
         c = ref->entry->class;
@@ -350,6 +353,8 @@ static int update_state(struct kndClass *self,
         }
         err = update_ancestor_state(c, self, task);                            RET_ERR();
     }
+
+    *result = state;
     return knd_OK;
 }
 
@@ -411,10 +416,12 @@ int knd_class_update_state(struct kndClass *self,
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndStateRef *state_ref;
+    struct kndUpdate *update = task->ctx->update;
+    struct kndState *state = NULL;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
-        knd_log("\n .. \"%.*s\" class (repo:%.*s) to update its state: %d",
+    if (DEBUG_CLASS_LEVEL_2) {
+        knd_log(".. \"%.*s\" class (repo:%.*s) to update its state (phase:%d)",
                 self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name,
                 phase);
@@ -424,14 +431,14 @@ int knd_class_update_state(struct kndClass *self,
     switch (phase) {
     case KND_CREATED:
     case KND_REMOVED:
-        err = update_state(self, NULL, phase, task);                              RET_ERR();
+        err = update_state(self, NULL, phase, &state, task);                      RET_ERR();
         break;
     case KND_UPDATED:
         /* any attr updates */
 
 #if 0        
         if (task->inner_class_state_refs) {
-            err = update_state(self, task->inner_class_state_refs, phase, task);   RET_ERR();
+            err = update_state(self, task->inner_class_state_refs, phase, task);  RET_ERR();
             task->inner_class_state_refs = NULL;
         }
 
@@ -454,14 +461,15 @@ int knd_class_update_state(struct kndClass *self,
         break;
     }
     
-    /* register in a task */
+    /* register state */
     err = knd_state_ref_new(mempool, &state_ref);                                 RET_ERR();
-    state_ref->state = self->states;
+    state_ref->state = state;
     state_ref->type = KND_STATE_CLASS;
     state_ref->obj = self->entry;
 
-    //state_ref->next = task->class_state_refs;
-    //task->class_state_refs = state_ref;
+    state_ref->next = update->class_state_refs;
+    update->class_state_refs = state_ref;
+
     return knd_OK;
 }
 
@@ -486,9 +494,9 @@ extern int knd_class_facets_export(struct kndTask *task)
     return knd_FAIL;
 }
 
-extern int knd_empty_set_export(struct kndClass *self,
-                                knd_format format,
-                                struct kndTask *task)
+int knd_empty_set_export(struct kndClass *self,
+                         knd_format format,
+                         struct kndTask *task)
 {
     task->out->reset(task->out);
 
@@ -525,9 +533,9 @@ int knd_class_export(struct kndClass *self,
     return knd_FAIL;
 }
 
-extern int knd_class_export_state(struct kndClass *self,
-                                  knd_format format,
-                                  struct kndTask *task)
+int knd_class_export_state(struct kndClass *self,
+                           knd_format format,
+                           struct kndTask *task)
 {
     switch (format) {
         case KND_FORMAT_JSON:
@@ -539,8 +547,8 @@ extern int knd_class_export_state(struct kndClass *self,
     return knd_FAIL;
 }
 
-extern int knd_is_base(struct kndClass *self,
-                       struct kndClass *child)
+int knd_is_base(struct kndClass *self,
+                struct kndClass *child)
 {
     struct kndClassEntry *entry = child->entry;
     struct kndClassRef *ref;
@@ -582,9 +590,9 @@ extern int knd_is_base(struct kndClass *self,
     return knd_FAIL;
 }
 
-extern int knd_class_get_attr(struct kndClass *self,
-                              const char *name, size_t name_size,
-                              struct kndAttrRef **result)
+int knd_class_get_attr(struct kndClass *self,
+                       const char *name, size_t name_size,
+                       struct kndAttrRef **result)
 {
     struct kndAttrRef *ref;
     struct kndClassEntry *class_entry;
@@ -952,8 +960,8 @@ int knd_register_class_inst(struct kndClass *self,
         if (self->entry->repo != ref->entry->repo) {
             /* search local repo */
             prev_entry = knd_dict_get(class_name_idx,
-                                             ref->entry->name,
-                                             ref->entry->name_size);
+                                      ref->entry->name,
+                                      ref->entry->name_size);
             if (prev_entry) {
                 ref->entry = prev_entry;
             } else {

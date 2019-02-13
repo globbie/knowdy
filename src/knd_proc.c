@@ -344,7 +344,6 @@ int knd_proc_get_arg(struct kndProc *self,
     return knd_OK;
 }
 
-
 int knd_get_proc(struct kndRepo *repo,
                  const char *name, size_t name_size,
                  struct kndProc **result)
@@ -353,7 +352,7 @@ int knd_get_proc(struct kndRepo *repo,
     struct kndProc *proc;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. repo %.*s to get proc: \"%.*s\"..",
                 repo->name_size, repo->name, name_size, name);
 

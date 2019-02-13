@@ -52,11 +52,11 @@ typedef int (*task_cb_func)(void *obj,
 typedef enum knd_task_spec_type {
     KND_GET_STATE,
     KND_SELECT_STATE,
-    KND_CHANGE_STATE,
     KND_UPDATE_STATE,
     KND_LIQUID_STATE,
     KND_SYNC_STATE,
     KND_DELTA_STATE,
+    KND_LOAD_STATE,
     KND_STOP_STATE
 } knd_task_spec_type;
 
@@ -183,8 +183,6 @@ struct kndTask
     size_t batch_from;
     size_t batch_size;
     size_t start_from;
-
-    bool batch_mode;
 
     size_t state_eq;
     size_t state_gt;

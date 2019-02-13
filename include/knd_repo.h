@@ -26,7 +26,6 @@ struct kndConcFolder
     struct kndConcFolder *next;
 };
 
-
 struct kndRepo
 {
     char id[KND_ID_SIZE];
@@ -61,7 +60,6 @@ struct kndRepo
     struct kndUser *user;
     size_t max_journal_size;
 
-    //struct kndStateControl *state_ctrl;
     bool restore_mode;
     size_t intersect_matrix_size;
 
@@ -72,40 +70,37 @@ struct kndRepo
     struct kndSet *class_idx;
     atomic_size_t num_classes;
     atomic_size_t class_id_count;
-    atomic_size_t num_class_insts;
-    atomic_size_t class_inst_id_count;
 
-    struct kndDict  *attr_name_idx;
+    struct kndDict *attr_name_idx;
     struct kndSet  *attr_idx;
-    atomic_size_t attr_id_count;
-    atomic_size_t num_attrs;
-    struct kndDict  *class_inst_name_idx;
+    atomic_size_t   attr_id_count;
+    atomic_size_t   num_attrs;
 
     struct kndProc *root_proc;
-    struct kndDict  *proc_name_idx;
+    struct kndDict *proc_name_idx;
     struct kndSet  *proc_idx;
-    struct kndDict  *proc_inst_name_idx;
+    struct kndDict *proc_inst_name_idx;
 
     atomic_size_t num_procs;
     atomic_size_t proc_id_count;
     atomic_size_t num_proc_insts;
     atomic_size_t proc_inst_id_count;
     
-    struct kndDict  *proc_arg_name_idx;
+    struct kndDict *proc_arg_name_idx;
     struct kndSet  *proc_arg_idx;
-    atomic_size_t proc_arg_id_count;
-    atomic_size_t num_proc_args;
+    atomic_size_t   proc_arg_id_count;
+    atomic_size_t   num_proc_args;
 
     struct kndSet *update_idx;
-    atomic_size_t num_updates;
-    atomic_size_t update_id_count;
-    size_t max_updates;
+    atomic_size_t  num_updates;
+    atomic_size_t  update_id_count;
+    size_t         max_updates;
 
     struct kndRepo *next;
 };
 
 int knd_present_repo_state(struct kndRepo *self,
-                                  struct kndTask *task);
+                           struct kndTask *task);
 int knd_confirm_updates(struct kndRepo *self, struct kndTask *task);
 
 gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size);
@@ -118,6 +113,8 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
                             struct kndProcArg *arg,
                             struct kndTask *task);
 int knd_repo_update_name_idx(struct kndRepo *self,
+                             struct kndTaskContext *ctx);
+int knd_repo_check_conflicts(struct kndRepo *self,
                              struct kndTaskContext *ctx);
 
 int knd_repo_open(struct kndRepo *self, struct kndTask *task);

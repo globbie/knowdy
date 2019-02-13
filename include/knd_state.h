@@ -39,9 +39,9 @@ typedef enum knd_state_phase { KND_SELECTED,
                                KND_RESTORED } knd_state_phase;
 
 typedef enum knd_update_confirm { KND_INIT_STATE, 
-                                 KND_FAILED_STATE,
-                                 KND_CONFLICT_STATE,
-                                 KND_VALID_STATE
+                                  KND_FAILED_STATE,
+                                  KND_CONFLICT_STATE,
+                                  KND_VALID_STATE
 } knd_update_confirm;
 
 typedef enum knd_state_type { KND_STATE_CLASS,
@@ -62,7 +62,6 @@ struct kndUpdate
     size_t id_size;
     size_t numid;
 
-    size_t owner_id;
     size_t orig_state_id;
 
     time_t timestamp;

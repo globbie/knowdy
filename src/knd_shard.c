@@ -54,8 +54,9 @@ static void *task_runner(void *ptr)
             return NULL;
         }
 
-        knd_log("++ #%zu worker got task #%zu!",
-                task->id, ctx->numid);
+        if (DEBUG_SHARD_LEVEL_1)
+            knd_log("++ #%zu worker got task #%zu!",
+                    task->id, ctx->numid);
 
         switch (ctx->phase) {
         case KND_SUBMIT:

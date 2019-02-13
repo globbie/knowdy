@@ -27,6 +27,7 @@
 #include "knd_state.h"
 
 #include <gsl-parser/gsl_err.h>
+#include <stdatomic.h>
 
 struct kndAttr;
 struct kndAttrVar;
@@ -119,11 +120,11 @@ struct kndClassEntry
 
     struct kndSet *descendants;
 
-    //struct kndProcEntry **procs;
-    //size_t num_procs;
+    struct kndSet   *inst_idx;
+    struct kndDict  *inst_name_idx;
+    atomic_size_t    num_insts;
+    atomic_size_t    inst_id_count;
 
-    struct kndSet *inst_idx;
-    size_t num_insts;
     struct kndSet *attr_idx;
 
     struct kndAttrHub *attr_hubs;
@@ -136,7 +137,7 @@ struct kndClass
 
     struct kndClassEntry *entry;
 
-    struct kndState *states;
+    struct kndState * _Atomic states;
     size_t init_state;
     size_t num_states;
 

@@ -57,7 +57,6 @@ int knd_parse_import_class_inst(struct kndClass *self,
     struct kndClass *c = self;
     struct kndClassInst *inst;
     struct kndClassInstEntry *entry;
-    struct kndDict *name_idx;
     struct kndRepo *repo = task->repo;
     struct kndState *state;
     struct kndStateRef *state_ref;
@@ -112,10 +111,11 @@ int knd_parse_import_class_inst(struct kndClass *self,
     // TODO state_ref->next = task->class_inst_state_refs;
     //task->class_inst_state_refs = state_ref;
 
-    repo->num_class_insts++;
-
-    inst->entry->numid = repo->num_class_insts;
-    knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
+    /* generate unique inst id */
+     inst->entry->numid = atomic_fetch_add_explicit(&c->entry->inst_id_count, 1,
+                                                    memory_order_relaxed);
+     inst->entry->numid++;
+     knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log("++ %.*s class inst parse OK!",
@@ -127,14 +127,14 @@ int knd_parse_import_class_inst(struct kndClass *self,
         inst->name = inst->entry->id;
         inst->name_size = inst->entry->id_size;
     }
-    name_idx = repo->class_inst_name_idx;
+    //name_idx = repo->class_inst_name_idx;
 
     // TODO  lookup prev class inst ref
 
-    err = knd_dict_set(name_idx,
-                       inst->name, inst->name_size,
-                       (void*)entry);
-    if (err) return err;
+    //err = knd_dict_set(name_idx,
+    //                   inst->name, inst->name_size,
+    //                   (void*)entry);
+    //if (err) return err;
 
     err = knd_register_class_inst(c, entry, mempool);
     if (err) return err;
@@ -168,7 +168,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
 
-    if (!task->batch_mode) {
+    if (task->type != KND_LOAD_STATE) {
         knd_log(".. doublet checking..\n");
         err = knd_get_class(repo, name, name_size, &c, task);
         if (!err) goto doublet;
@@ -325,7 +325,7 @@ static gsl_err_t parse_attr(void *obj,
     }
 
     if (attr->type == KND_ATTR_NONE) {
-        knd_log("-- attr no supported: %.*s", name_size, name);
+        knd_log("-- \"%.*s\" attr is not supported", name_size, name);
         //return *total_size = 0, make_gsl_err_external(err);
     }
 
@@ -610,6 +610,11 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         c->str(c, 1);
+
+    if (task->type == KND_UPDATE_STATE) {
+        err = knd_class_update_state(c, KND_CREATED, task);
+        if (err) return make_gsl_err_external(err);
+    }
 
     return make_gsl_err(gsl_OK);
 
