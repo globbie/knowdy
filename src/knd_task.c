@@ -112,7 +112,7 @@ static int task_err_export_GSP(struct kndTaskContext *self,
     err = out->write(out, "{err ", strlen("{err "));                              RET_ERR();
     err = out->writef(out, "%d", self->http_code);                                RET_ERR();
 
-    err = out->write(out, "{_gloss ", strlen("{_gloss "));                        RET_ERR();
+    err = out->write(out, "{gloss ", strlen("{gloss "));                          RET_ERR();
     if (self->log->buf_size) {
         err = out->write(out, self->log->buf, self->log->buf_size);               RET_ERR();
     } else {

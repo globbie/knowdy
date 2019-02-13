@@ -166,7 +166,6 @@ int knd_shard_run_task(struct kndShard *self,
 
     err = knd_output_new(&ctx->out, output, *output_size);
     if (err) goto final;
-
     *output_size = 0;
 
     err = knd_output_new(&ctx->log, NULL, KND_TEMP_BUF_SIZE);

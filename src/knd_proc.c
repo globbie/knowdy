@@ -169,7 +169,8 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndProc *proc = ctx->proc;
-    //struct kndDict *proc_name_idx = ctx->repo->proc_name_idx;
+    struct kndTask *task = ctx->task;
+    int err;
 
     if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. removing proc: %.*s", name_size, name);
@@ -189,18 +190,18 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
         knd_log("== proc to remove: \"%.*s\"\n",
                 proc->name_size, proc->name);
 
-    proc->entry->phase = KND_REMOVED;
+    task->type = KND_UPDATE_STATE;
+    if (!task->ctx->update) {
+        err = knd_update_new(task->mempool, &task->ctx->update);
+        if (err) return make_gsl_err_external(err);
 
-    // TODO proc_name_idx->remove(proc_name_idx,
-    //                      proc->name, proc->name_size);
+        task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+                                                                memory_order_relaxed);
+    }
 
-    //repo->log->reset(repo->log);
-    /*err = repo->log->write(repo->log, proc->name, proc->name_size);
+    err = knd_proc_update_state(proc, KND_REMOVED, task);
     if (err) return make_gsl_err_external(err);
-    err = repo->log->write(repo->log, " proc removed",
-                           strlen(" proc removed"));
-    if (err) return make_gsl_err_external(err);
-    */
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -398,6 +399,78 @@ int knd_get_proc(struct kndRepo *repo,
 
     // TODO: defreeze
     return knd_FAIL;
+}
+
+static int update_state(struct kndProc *self,
+                        struct kndStateRef *children,
+                        knd_state_phase phase,
+                        struct kndState **result,
+                        struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->mempool;
+    struct kndState *head, *state;
+    int err;
+
+    err = knd_state_new(mempool, &state);
+    if (err) {
+        knd_log("-- proc state alloc failed");
+        return err;
+    }
+    state->phase = phase;
+    state->update = task->ctx->update;
+    state->children = children;
+
+    do {
+       head = atomic_load_explicit(&self->states,
+                                   memory_order_relaxed);
+       state->next = head;
+    } while (!atomic_compare_exchange_weak(&self->states, &head, state));
+ 
+    // TODO inform your ancestors 
+
+    *result = state;
+    return knd_OK;
+}
+
+int knd_proc_update_state(struct kndProc *self,
+                          knd_state_phase phase,
+                          struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->mempool;
+    struct kndStateRef *state_ref;
+    struct kndUpdate *update = task->ctx->update;
+    struct kndState *state = NULL;
+    int err;
+
+    if (DEBUG_PROC_LEVEL_TMP) {
+        knd_log(".. \"%.*s\" proc (repo:%.*s) to update its state (phase:%d)",
+                self->name_size, self->name,
+                self->entry->repo->name_size, self->entry->repo->name,
+                phase);
+    }
+
+    /* newly created proc? */
+    switch (phase) {
+    case KND_CREATED:
+    case KND_REMOVED:
+        err = update_state(self, NULL, phase, &state, task);                      RET_ERR();
+        break;
+    case KND_UPDATED:
+        /* any arg updates */
+        break;
+    default:
+        break;
+    }
+
+    /* register state */
+    err = knd_state_ref_new(mempool, &state_ref);                                 RET_ERR();
+    state_ref->state = state;
+    state_ref->type = KND_STATE_PROC;
+    state_ref->obj = self->entry;
+
+    state_ref->next = update->proc_state_refs;
+    update->proc_state_refs = state_ref;
+    return knd_OK;
 }
 
 int knd_proc_call_arg_new(struct kndMemPool *mempool,

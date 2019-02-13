@@ -1164,7 +1164,7 @@ static int present_repo_update_JSON(struct kndTaskContext *ctx)
     struct kndUpdate *update = ctx->update;
     int err;
 
-    err = out->write(out,  "{\"update\":{", strlen("{\"update\":{"));             RET_ERR();
+    err = out->write(out,  "{\"state\":{", strlen("{\"state\":{"));             RET_ERR();
     err = out->writef(out, "\"id\":%zu", (size_t)update->numid);                  RET_ERR();
     err = out->write(out,  "\"time\":", strlen("\"time\":"));                     RET_ERR();
     err = out->writef(out, "%zu", (size_t)update->timestamp);                     RET_ERR();
@@ -1179,7 +1179,7 @@ static int present_repo_update_GSL(struct kndTaskContext *ctx)
     struct kndUpdate *update = ctx->update;
     int err;
 
-    err = out->write(out,  "{update ", strlen("{update "));                       RET_ERR();
+    err = out->write(out,  "{state ", strlen("{state "));                       RET_ERR();
     err = out->writef(out, "%zu", (size_t)update->numid);                         RET_ERR();
     err = out->write(out,  "{time ", strlen("{time "));                           RET_ERR();
     err = out->writef(out, "%zu", (size_t)update->timestamp);                     RET_ERR();

@@ -92,6 +92,7 @@ START_TEST(shard_config_test)
         shard = NULL;
         err = knd_shard_new(&shard, config->input, strlen(config->input));
         ck_assert_int_eq(err, config->err);
+
         if (shard)
             knd_shard_del(shard);
     }
@@ -116,7 +117,7 @@ START_TEST(shard_table_test)
 #if 0
         {   /* get the latest valid class state */
             .input = "{task {class User {_state}}}",
-            .expect = "{_state 0}"
+            .expect = "{state [0-9]*{time [0-9]*}}"
         },
         {    /* get some specific state */
             .input = "{task {class User {_state 42}}}",
@@ -148,7 +149,7 @@ START_TEST(shard_table_test)
         },
         {
             .input = "{task {class User {guid {_state}}}}",
-            .expect = ".*"  // FIXME(k15tfu)
+            .expect = "{state [0-9]*{time [0-9]*}}"
         },
         {
             .input = "{task {class User {guid {_state 123456}}}}",
@@ -160,31 +161,31 @@ START_TEST(shard_table_test)
         },
         {
             .input = "{task {class Person}}",
-            .expect = "{err 404{_gloss Person class name not found}}"
+            .expect = "{err 404{gloss Person class name not found}}"
         },
         {
             .input = "{task {!class Person {num age}}}",
-            .expect = "{repo /{_state 1}{modif [0-9]*}}"
+            .expect = "{state [0-9]*{modif [0-9]*}}"
         },
         {
             .input = "{task {!class Person}}",
-            .expect = "{err 409{_gloss Person class name already exists}}"
+            .expect = "{err 409{gloss Person class name already exists}}"
         },
         {
             .input = "{task {!class Worker {is PersonUnknown}}}",
-            .expect = "{err 404{_gloss PersonUnknown class name not found}}"
+            .expect = "{err 404{gloss PersonUnknown class name not found}}"
         },
         {
             .input = "{task {!class Worker {is Person}}}",
-            .expect = "{repo /{_state 2}{modif [0-9]*}}"
+            .expect = "{state [0-9]*{time [0-9]*}}"
         },
         {
             .input = "{task {class User {!inst Alice}}}",
-            .expect = "{repo /{_state 3}{modif [0-9]*}}"
+            .expect = "{state [0-9]*{time [0-9]*}}"
         },
         {
             .input = "{task {class User {!inst {first-name Bob} {guid 4e99a114-d1eb-4ead-aa36-f5d3e825e311}}}}",
-            .expect = "{repo /{_state 4}{modif [0-9]*}}"
+            .expect = "{state [0-9]*{time [0-9]*}}"
         },
         {
             .input = "{task {class User {!inst {unknown-field some value}}}}",
@@ -228,7 +229,7 @@ START_TEST(shard_table_test)
         // get the latest state
         {
             .input = "{task {class Person {_state}}}",
-            .expect = "{_state 1}"
+            .expect = "{state [0-9]*{time [0-9]*}}"
         },
 // FIXME(k15tfu): _id doesn't work
 //        {
@@ -305,7 +306,7 @@ START_TEST(shard_table_test)
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
         const struct table_test *pcase = &cases[i];
 
-        fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
+        fprintf(stdout, ".. checking input #%zu: %s...\n", i, pcase->input);
 
         char result[OUTPUT_BUF_SIZE + 1] = { 0 };
         size_t result_size = OUTPUT_BUF_SIZE;
@@ -409,58 +410,58 @@ START_TEST(shard_proc_test)
     static const struct table_test cases[] = {
         {   /* create a new proc */
             .input  = "{task {!proc test Process}}",
-            .expect = "{update [0-9]*{time [0-9]*}}"
+            .expect = "{state [0-9]*{time [0-9]*}}"
         },
-#if 0
         {   /* try to import the same proc */
             .input = "{task {!proc test Process}}",
             .expect = "{err 409{gloss test Process proc name already exists}}"
         },
         {   /* remove proc */
             .input = "{task {proc test Process {!_rm}}}",
-            .expect = "{update [0-9]*{time [0-9]*}}",
+            .expect = "{state [0-9]*{time [0-9]*}}",
         },
+#if 0
         {   /* create a proc once more */
             .input  = "{task {!proc test Process}}",
-            .expect = "{update [0-9]*{time [0-9]*}}",
+            .expect = "{state [0-9]*{time [0-9]*}}",
         },
         {   /* create a proc with glosses */
             .input  = "{task {!proc another test Process"
                       "[_gloss {en {t gloss in English}}"
                       "{ru {t пояснение по-русски}}]}}",
-            .expect = "{repo /{_state 3}{modif [0-9]*}}"
+            .expect = "{state [0-9]*{modif [0-9]*}}"
         },
         {   /* proc with a base */
             .input  = "{task {!proc press {is Physical Impact Process}}}",
-            .expect = "{repo /{_state 4}{modif [0-9]*}}"
+            .expect = "{state [0-9]*{modif [0-9]*}}"
         },
         {   /* proc with args */
             .input  = "{task {!proc wash {is Physical Impact Process}"
                       "[arg {instr {_c Physical Object}}]}}",
-            .expect = "{repo /{_state 5}{modif [0-9]*}}"
+            .expect = "{state [0-9]*{modif [0-9]*}}"
         },
         {   /* add an agent */
             .input = "{task {class Person {!inst Alice}}}",
-            .expect = "{repo /{_state 6}{modif [0-9]*}}"
+            .expect = "{state [0-9]*{modif [0-9]*}}"
         },
         {   /* add an object */
             .input = "{task {class Window {!inst kitchen window}}}",
-            .expect = "{repo /{_state 7}{modif [0-9]*}}"
+            .expect = "{state [0-9]*{modif [0-9]*}}"
         },
         {   /* register a proc inst */
             .input = "{task {proc wash {!inst Alice-to-wash-a-window"
                      "{agent Alice} {obj kitchen window} }}}",
-            .expect = "{repo /{_state 8}{modif [0-9]*}}"
+            .expect = "{state [0-9]*{modif [0-9]*}}"
         },
         {   /* another proc inst */
             .input = "{task {proc wash {!inst Alice-to-wash-a-window-again"
                      "{agent Alice} {obj kitchen window} }}}",
-            .expect = "{repo /{_state 9}{modif [0-9]*}}"
+            .expect = "{state [0-9]*{modif [0-9]*}}"
         },
         {   /* yet another proc inst */
             .input = "{task {proc wash {!inst Alice-to-wash-a-window-3"
                      "{agent Alice} {obj kitchen window} }}}",
-            .expect = "{repo /{_state 10}{modif [0-9]*}}"
+            .expect = "{state [0-9]*{modif [0-9]*}}"
         }
 #endif
     };
@@ -476,7 +477,7 @@ START_TEST(shard_proc_test)
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
         const struct table_test *pcase = &cases[i];
 
-        fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
+        fprintf(stdout, ".. checking input #%zu: %s...\n", i, pcase->input);
 
         char result[OUTPUT_BUF_SIZE + 1] = { 0 };
         size_t result_size = OUTPUT_BUF_SIZE;
@@ -497,6 +498,7 @@ START_TEST(shard_proc_test)
     }
     err = knd_shard_stop(shard);
     ck_assert_int_eq(err, knd_OK);
+
     knd_shard_del(shard);
 END_TEST
 

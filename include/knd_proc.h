@@ -58,10 +58,9 @@ struct kndProcInst
     size_t num_arg_insts;
     struct kndStateRef *arg_inst_state_refs;
 
-    struct kndState *states;
+    struct kndState * _Atomic states;
     size_t init_state;
     size_t num_states;
-
     
     struct kndProcArgInst *tail;
     struct kndProcInst *next;
@@ -151,7 +150,7 @@ struct kndProc
 
     struct kndTranslation *tr;
 
-    struct kndState *states;
+    struct kndState * _Atomic states;
     size_t num_states;
 
     /* immediate args */
@@ -280,6 +279,10 @@ static inline void knd_proc_declare_arg(struct kndProc *self, struct kndProcArg 
     self->args = arg;
     self->num_args++;
 }
+
+int knd_proc_update_state(struct kndProc *self,
+                          knd_state_phase phase,
+                          struct kndTask *task);
 
 static inline void kndProc_declare_tr(struct kndProc *self, struct kndTranslation *tr)
 {
