@@ -441,8 +441,8 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
     struct kndProc *proc;
     int err;
 
-    if (DEBUG_PROC_IMPORT_LEVEL_2)
-        knd_log(".. import proc: \"%.*s\"..", 32, rec);
+    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
+        knd_log(".. import proc: \"%.*s\".. ctx error:%d", 32, rec, task->ctx->error);
 
     err = knd_proc_entry_new(mempool, &entry);
     if (err) return *total_size = 0, make_gsl_err_external(err);
@@ -529,6 +529,7 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
     entry = knd_dict_get(repo->proc_name_idx,
                          proc->name, proc->name_size);
     if (entry) {
+        knd_log("== proc %.*s %p phase:%d", proc->name_size, proc->name, entry, entry->phase);
         if (entry->phase == KND_REMOVED) {
             knd_log("== proc was removed recently");
         } else {
@@ -555,15 +556,13 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
     proc->entry->numid++;
     knd_uid_create(proc->entry->numid, proc->entry->id, &proc->entry->id_size);
 
-    err = knd_dict_set(repo->proc_name_idx,
-                       proc->name, proc->name_size,
-                       (void*)proc->entry);
-    if (err) {
-        return make_gsl_err_external(err);
-    }
-
     if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_proc_str(proc, 0);
+
+    if (task->type == KND_UPDATE_STATE) {
+        err = knd_proc_update_state(proc, KND_CREATED, task);
+        if (err) return make_gsl_err_external(err);
+    }
 
     return make_gsl_err(gsl_OK);
     // TODO free resources

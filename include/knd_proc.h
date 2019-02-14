@@ -216,7 +216,9 @@ int knd_inner_proc_import(struct kndProc *self,
 
 int knd_get_proc(struct kndRepo *repo,
                  const char *name, size_t name_size,
-                 struct kndProc **result);
+                 struct kndProc **result,
+                 struct kndTask *task);
+
 int knd_proc_get_arg(struct kndProc *self,
                      const char *name, size_t name_size,
                      struct kndProcArgRef **result);

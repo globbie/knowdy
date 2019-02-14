@@ -141,8 +141,8 @@ static void *task_runner(void *ptr)
                 break;
             }
 
-            /* update in-memory repo name idx */
-            err = knd_repo_update_name_idx(ctx->repo, ctx);
+            /* update in-memory repo indices */
+            err = knd_repo_update_indices(ctx->repo, ctx);
             if (err) {
                 ctx->error = err;
                 // signal

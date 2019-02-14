@@ -112,8 +112,8 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
                             struct kndProc *self,
                             struct kndProcArg *arg,
                             struct kndTask *task);
-int knd_repo_update_name_idx(struct kndRepo *self,
-                             struct kndTaskContext *ctx);
+int knd_repo_update_indices(struct kndRepo *self,
+                            struct kndTaskContext *ctx);
 int knd_repo_check_conflicts(struct kndRepo *self,
                              struct kndTaskContext *ctx);
 

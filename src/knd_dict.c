@@ -41,6 +41,8 @@ void* knd_dict_get(struct kndDict *self,
     while (item) {
         if (item->key_size != key_size) goto next_item;
         if (!memcmp(item->key, key, key_size)) {
+            if (item->phase == KND_DICT_REMOVED)
+                return NULL;
             return item->data;
         }
     next_item:
@@ -67,10 +69,17 @@ int knd_dict_set(struct kndDict *self,
     next_item:
         item = item->next;
     }
-    if (item) return knd_CONFLICT;
+    if (item) {
+        if (item->phase == KND_DICT_VALID)
+            return knd_CONFLICT;
+        item->data = data;
+        item->phase = KND_DICT_VALID;
+        return knd_OK;
+    }
 
     item = malloc(sizeof(struct kndDictItem));
     if (!item) return knd_NOMEM;
+    memset(item, 0, sizeof(struct kndDictItem));
     item->data = data;
     item->key = key;
     item->key_size = key_size;
@@ -78,10 +87,31 @@ int knd_dict_set(struct kndDict *self,
     
     atomic_store_explicit(&self->hash_array[h], item,
                           memory_order_relaxed);
-
     atomic_fetch_add_explicit(&self->num_items, 1,
                               memory_order_relaxed);
+    return knd_OK;
+}
 
+int knd_dict_remove(struct kndDict *self,
+                    const char *key,
+                    size_t key_size)
+{
+    size_t h = knd_dict_hash(key, key_size) % self->size;
+    struct kndDictItem *head = atomic_load_explicit(&self->hash_array[h],
+                                                    memory_order_relaxed);
+    struct kndDictItem *item = head;
+
+    while (item) {
+        if (item->key_size != key_size) goto next_item;
+        if (!memcmp(item->key, key, key_size)) {
+            break;
+        }
+    next_item:
+        item = item->next;
+    }
+    if (!item) return knd_FAIL;
+
+    item->phase = KND_DICT_REMOVED;
     return knd_OK;
 }
 

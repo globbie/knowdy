@@ -1466,7 +1466,7 @@ static gsl_err_t validate_attr_var(void *obj,
 
         err = knd_get_proc(repo,
                            attr_var->val,
-                           attr_var->val_size, &attr_var->proc);
+                           attr_var->val_size, &attr_var->proc, ctx->task);
         if (err) return make_gsl_err_external(err);
         break;
     default:

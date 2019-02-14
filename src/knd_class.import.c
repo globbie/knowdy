@@ -608,7 +608,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
         knd_log("++  \"%.*s\" class import completed!",
                 c->name_size, c->name);
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
         c->str(c, 1);
 
     if (task->type == KND_UPDATE_STATE) {

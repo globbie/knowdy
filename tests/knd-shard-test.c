@@ -92,7 +92,6 @@ START_TEST(shard_config_test)
         shard = NULL;
         err = knd_shard_new(&shard, config->input, strlen(config->input));
         ck_assert_int_eq(err, config->err);
-
         if (shard)
             knd_shard_del(shard);
     }
@@ -420,7 +419,6 @@ START_TEST(shard_proc_test)
             .input = "{task {proc test Process {!_rm}}}",
             .expect = "{state [0-9]*{time [0-9]*}}",
         },
-#if 0
         {   /* create a proc once more */
             .input  = "{task {!proc test Process}}",
             .expect = "{state [0-9]*{time [0-9]*}}",
@@ -429,24 +427,25 @@ START_TEST(shard_proc_test)
             .input  = "{task {!proc another test Process"
                       "[_gloss {en {t gloss in English}}"
                       "{ru {t пояснение по-русски}}]}}",
-            .expect = "{state [0-9]*{modif [0-9]*}}"
+            .expect = "{state [0-9]*{time [0-9]*}}"
         },
+#if 0
         {   /* proc with a base */
             .input  = "{task {!proc press {is Physical Impact Process}}}",
-            .expect = "{state [0-9]*{modif [0-9]*}}"
+            .expect = "{state [0-9]*{time [0-9]*}}"
         },
         {   /* proc with args */
             .input  = "{task {!proc wash {is Physical Impact Process}"
                       "[arg {instr {_c Physical Object}}]}}",
-            .expect = "{state [0-9]*{modif [0-9]*}}"
+            .expect = "{state [0-9]*{time [0-9]*}}"
         },
         {   /* add an agent */
             .input = "{task {class Person {!inst Alice}}}",
-            .expect = "{state [0-9]*{modif [0-9]*}}"
+            .expect = "{state [0-9]*{time [0-9]*}}"
         },
         {   /* add an object */
             .input = "{task {class Window {!inst kitchen window}}}",
-            .expect = "{state [0-9]*{modif [0-9]*}}"
+            .expect = "{state [0-9]*{time [0-9]*}}"
         },
         {   /* register a proc inst */
             .input = "{task {proc wash {!inst Alice-to-wash-a-window"
@@ -509,8 +508,8 @@ int main(void)
     TCase *tc_shard_basic = tcase_create("basic shard");
     tcase_add_test(tc_shard_basic, shard_config_test);
     tcase_add_test(tc_shard_basic, shard_table_test);
-    tcase_add_test(tc_shard_basic, shard_inheritance_test);
     tcase_add_test(tc_shard_basic, shard_proc_test);
+    tcase_add_test(tc_shard_basic, shard_inheritance_test);
     suite_add_tcase(s, tc_shard_basic);
 
     SRunner* sr = srunner_create(s);

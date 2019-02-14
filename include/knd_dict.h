@@ -3,11 +3,15 @@
 #include <stdatomic.h>
 #include "knd_config.h"
 
+typedef enum knd_dict_item_phase { KND_DICT_VALID,
+                                   KND_DICT_REMOVED } knd_dict_item_phase;
+
 struct kndDictItem
 {
     const char *key;
     size_t key_size;
     void *data;
+    knd_dict_item_phase phase;
     struct kndDictItem *next;
 };
 

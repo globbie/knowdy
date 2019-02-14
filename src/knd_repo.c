@@ -1164,11 +1164,10 @@ static int present_repo_update_JSON(struct kndTaskContext *ctx)
     struct kndUpdate *update = ctx->update;
     int err;
 
-    err = out->write(out,  "{\"state\":{", strlen("{\"state\":{"));             RET_ERR();
-    err = out->writef(out, "\"id\":%zu", (size_t)update->numid);                  RET_ERR();
+    err = out->write(out,  "{\"state\":", strlen("{\"state\":"));                 RET_ERR();
+    err = out->writef(out, "%zu,", (size_t)update->numid);                        RET_ERR();
     err = out->write(out,  "\"time\":", strlen("\"time\":"));                     RET_ERR();
     err = out->writef(out, "%zu", (size_t)update->timestamp);                     RET_ERR();
-    err = out->writec(out, '}');                                                  RET_ERR();
     err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
 }
@@ -1179,7 +1178,7 @@ static int present_repo_update_GSL(struct kndTaskContext *ctx)
     struct kndUpdate *update = ctx->update;
     int err;
 
-    err = out->write(out,  "{state ", strlen("{state "));                       RET_ERR();
+    err = out->write(out,  "{state ", strlen("{state "));                         RET_ERR();
     err = out->writef(out, "%zu", (size_t)update->numid);                         RET_ERR();
     err = out->write(out,  "{time ", strlen("{time "));                           RET_ERR();
     err = out->writef(out, "%zu", (size_t)update->timestamp);                     RET_ERR();
@@ -1209,12 +1208,13 @@ static int deliver_task_report(void *obj,
     struct kndTaskContext *ctx = ctx_obj;
     int err;
 
-    knd_log(".. worker:%zu (type:%d) / ctx:%zu  delivering report on task #%zu..",
-            task->id, task->type, ctx->numid, ctx->update->numid);
+    knd_log(".. worker:%zu (type:%d) / ctx:%zu  delivering report on task #%zu.. error:%d",
+            task->id, task->type, ctx->numid, ctx->update->numid, ctx->error);
 
     if (ctx->update) {
         ctx->update->timestamp = time(NULL);
         err = present_repo_update(ctx);                                           RET_ERR();
+        knd_log("= %.*s", ctx->out->buf_size, ctx->out->buf);
     }
 
     if (!ctx->out->buf_size) {
@@ -1223,7 +1223,6 @@ static int deliver_task_report(void *obj,
     }
 
     ctx->phase = KND_COMPLETE;
-    
     return knd_OK;
 }
 
@@ -1264,14 +1263,18 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
     update->repo = self;
 
     for (ref = update->class_state_refs; ref; ref = ref->next) {
+        if (ref->state->phase == KND_REMOVED) {
+            continue;
+        }
+
         entry = ref->obj;
         if (entry) {
             knd_log(".. repo %.*s to confirm updates in \"%.*s\"..",
                     self->name_size, self->name,
                     entry->name_size, entry->name);
         }
+
         err = knd_class_resolve(entry->class, task);                              RET_ERR();
-        
         state = ref->state;
         state->update = update;
         if (!state->children) continue;
@@ -1288,12 +1291,18 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
 
     /* PROCS */
     for (ref = update->proc_state_refs; ref; ref = ref->next) {
+        if (ref->state->phase == KND_REMOVED) {
+            knd_log(".. proc to be removed");
+            continue;
+        }
+
         proc_entry = ref->obj;
         if (proc_entry) {
-            knd_log(".. confirming updates in \"%.*s\"..",
+            knd_log(".. confirming proc updates in \"%.*s\"..",
                     self->name_size, self->name,
                     proc_entry->name_size, proc_entry->name);
         }
+
         /* proc resolving */
         err = knd_proc_resolve(proc_entry->proc, task);                     RET_ERR();
     }
@@ -1399,11 +1408,12 @@ int knd_repo_check_conflicts(struct kndRepo *self,
     return knd_OK;
 }
 
-int knd_repo_update_name_idx(struct kndRepo *self,
-                             struct kndTaskContext *ctx)
+int knd_repo_update_indices(struct kndRepo *self,
+                            struct kndTaskContext *ctx)
 {
     struct kndStateRef *ref;
     struct kndClassEntry *entry;
+    struct kndProcEntry *proc_entry;
     struct kndDict *name_idx = self->class_name_idx;
     struct kndUpdate *update = ctx->update;
     int err;
@@ -1411,15 +1421,41 @@ int knd_repo_update_name_idx(struct kndRepo *self,
     for (ref = update->class_state_refs; ref; ref = ref->next) {
         entry = ref->obj;
 
+        if (ref->state->phase == KND_REMOVED) {
+            entry->phase = KND_REMOVED;
+            knd_log("-- mark as removed: %p", entry);
+            continue;
+        }
+
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log(".. register class \"%.*s\"..",
                     entry->name_size, entry->name);
+
         err = knd_dict_set(name_idx,
                            entry->name,  entry->name_size,
-                           (void*)entry);
-        if (err) return err;
+                           (void*)entry);                            RET_ERR();
     }
 
+    name_idx = self->proc_name_idx;
+    for (ref = update->proc_state_refs; ref; ref = ref->next) {
+        proc_entry = ref->obj;
+
+        if (ref->state->phase == KND_REMOVED) {
+            proc_entry->phase = KND_REMOVED;
+            knd_log("-- mark proc as removed: %p", proc_entry);
+            err = knd_dict_remove(name_idx,
+                                  proc_entry->name,  proc_entry->name_size);         RET_ERR();
+            continue;
+        }
+
+        if (DEBUG_REPO_LEVEL_TMP)
+            knd_log(".. register proc \"%.*s\"..",
+                    proc_entry->name_size, proc_entry->name);
+
+        err = knd_dict_set(name_idx,
+                           proc_entry->name,  proc_entry->name_size,
+                           (void*)proc_entry);                              RET_ERR();
+    }
     return knd_OK;
 }
 
@@ -1439,7 +1475,8 @@ int kndRepo_new(struct kndRepo **repo,
 
     memset(self, 0, sizeof(struct kndRepo));
 
-    err = knd_class_entry_new(mempool, &entry);  RET_ERR();
+    err = knd_class_entry_new(mempool, &entry);
+    if (err) goto error;
     entry->name = "/";
     entry->name_size = 1;
 

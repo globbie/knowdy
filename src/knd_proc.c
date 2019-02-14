@@ -133,7 +133,7 @@ static gsl_err_t run_get_proc(void *obj, const char *name, size_t name_size)
 
     ctx->proc = NULL;
 
-    err = knd_get_proc(repo, name, name_size, &proc);
+    err = knd_get_proc(repo, name, name_size, &proc, ctx->task);
     if (err) return make_gsl_err_external(err);
     ctx->proc = proc;
 
@@ -347,10 +347,12 @@ int knd_proc_get_arg(struct kndProc *self,
 
 int knd_get_proc(struct kndRepo *repo,
                  const char *name, size_t name_size,
-                 struct kndProc **result)
+                 struct kndProc **result,
+                 struct kndTask *task)
 {
     struct kndProcEntry *entry;
     struct kndProc *proc;
+    struct kndOutput *log = task->ctx->log;
     int err;
 
     if (DEBUG_PROC_LEVEL_2)
@@ -361,32 +363,31 @@ int knd_get_proc(struct kndRepo *repo,
                          name, name_size);
     if (!entry) {
         if (repo->base) {
-            err = knd_get_proc(repo->base, name, name_size, result);
+            err = knd_get_proc(repo->base, name, name_size, result, task);
             if (err) return err;
             return knd_OK;
         }
 
         knd_log("-- no such proc: \"%.*s\"", name_size, name);
 
-        /*repo->log->reset(repo->log);
-        err = repo->log->write(repo->log, name, name_size);
+        log->reset(log);
+        err = log->write(log, name, name_size);
         if (err) return err;
-        err = repo->log->write(repo->log, " Proc name not found",
-                               strlen(" Proc name not found"));
-                               if (err) return err;*/
+        err = log->write(log, " proc name not found",
+                         strlen(" proc name not found"));
+        if (err) return err;
         return knd_NO_MATCH;
     }
 
     if (entry->phase == KND_REMOVED) {
         knd_log("-- \"%s\" proc was removed", name);
-        /*repo->log->reset(repo->log);
-        err = repo->log->write(repo->log, name, name_size);
+        log->reset(log);
+        err = log->write(log, name, name_size);
         if (err) return err;
-        err = repo->log->write(repo->log, " proc was removed",
-                               strlen(" proc was removed"));
+        err = log->write(log, " proc was removed",
+                         strlen(" proc was removed"));
         if (err) return err;
-        */
-        //repo->root_proc->task->http_code = HTTP_GONE;
+        task->ctx->http_code = HTTP_GONE;
         return knd_NO_MATCH;
     }
 

@@ -104,7 +104,7 @@ static int resolve_parents(struct kndProc *self,
                     base->name_size, base->name);
 
         err = knd_get_proc(repo,
-                           base->name, base->name_size, &proc);                 RET_ERR();
+                           base->name, base->name_size, &proc, task);             RET_ERR();
         if (proc == self) {
             knd_log("-- self reference detected in \"%.*s\" :(",
                     base->name_size, base->name);
@@ -112,7 +112,7 @@ static int resolve_parents(struct kndProc *self,
         }
         base->proc = proc;
 
-        err = inherit_args(self, base->proc, repo, task);                                     RET_ERR();
+        err = inherit_args(self, base->proc, repo, task);                         RET_ERR();
 
     }
     return knd_OK;
@@ -122,7 +122,7 @@ int knd_resolve_proc_ref(struct kndClass *self,
                          const char *name, size_t name_size,
                          struct kndProc *unused_var(base),
                          struct kndProc **result,
-                         struct kndTask *unused_var(task))
+                         struct kndTask *task)
 {
     struct kndProc *proc;
     int err;
@@ -131,7 +131,7 @@ int knd_resolve_proc_ref(struct kndClass *self,
         knd_log(".. resolving proc ref:  %.*s", name_size, name);
 
     err = knd_get_proc(self->entry->repo,
-                       name, name_size, &proc);                                   RET_ERR();
+                       name, name_size, &proc, task);                             RET_ERR();
 
     /*c = dir->conc;
     if (!c->is_resolved) {
