@@ -444,7 +444,7 @@ int knd_class_update_state(struct kndClass *self,
 
         /* instance updates */
         if (task->class_inst_state_refs) {
-            if (DEBUG_CLASS_LEVEL_TMP) {
+            if (DEBUG_CLASS_LEVEL_2) {
                 knd_log("\n .. \"%.*s\" class (repo:%.*s) to register inst updates..",
                         self->name_size, self->name,
                         self->entry->repo->name_size, self->entry->repo->name);
@@ -554,7 +554,7 @@ int knd_is_base(struct kndClass *self,
     struct kndClassRef *ref;
     struct kndClass *c;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. check inheritance: %.*s (repo:%.*s) [resolved: %d] => "
                 " %.*s (repo:%.*s) [resolved:%d]",
                 child->name_size, child->name,
@@ -568,7 +568,7 @@ int knd_is_base(struct kndClass *self,
     for (ref = entry->ancestors; ref; ref = ref->next) {
          c = ref->class;
 
-         if (DEBUG_CLASS_LEVEL_TMP) {
+         if (DEBUG_CLASS_LEVEL_2) {
              knd_log("== ancestor: %.*s (repo:%.*s)",
                      c->name_size, c->name,
                      c->entry->repo->name_size, c->entry->repo->name);
@@ -601,7 +601,7 @@ int knd_class_get_attr(struct kndClass *self,
     struct kndAttr    *attr;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log("\n.. \"%.*s\" class (repo: %.*s) to select attr \"%.*s\"",
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
@@ -622,7 +622,7 @@ int knd_class_get_attr(struct kndClass *self,
 
     attr = ref->attr;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log("== attr %.*s originates in class: %.*s (repo:%.*s)",
                 name_size, name,
                 ref->class_entry->name_size, ref->class_entry->name,
@@ -774,7 +774,7 @@ int knd_get_class_by_id(struct kndRepo *repo,
     struct kndState *state;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. repo \"%.*s\" to get class by id: \"%.*s\"..",
                 repo->name_size, repo->name, id_size, id);
     }

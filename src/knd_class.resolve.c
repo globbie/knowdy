@@ -65,7 +65,7 @@ static int inherit_attr(void *obj,
     struct kndAttrRef *ref;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) 
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) 
         knd_log("..  \"%.*s\" attr inherited by %.*s..",
                 attr->name_size, attr->name,
                 self->name_size, self->name);
@@ -133,7 +133,7 @@ static int link_ancestor(struct kndClass *self,
 
     base = base_entry->class;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. %.*s class to link an ancestor: \"%.*s\" top:%d",
                 self->name_size, self->name,
                 base->name_size, base->name, base->state_top);
@@ -227,7 +227,7 @@ static int link_baseclass(struct kndClass *self,
         /* NB: moved to knd_class_index
               register a descendant */
 
-        if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
             knd_log(".. add \"%.*s\" (repo:%.*s) as a child of \"%.*s\" (repo:%.*s)..",
                     entry->name_size, entry->name,
                     entry->repo->name_size, entry->repo->name,
@@ -354,7 +354,7 @@ int knd_class_resolve(struct kndClass *self,
 
     self->resolving_in_progress = true;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. resolving class \"%.*s\"..",
                 entry->name_size, entry->name);
     }
@@ -383,7 +383,7 @@ int knd_class_resolve(struct kndClass *self,
     entry->numid++;
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log("++ class \"%.*s\" (id:%.*s) resolved!",
                 entry->name_size, entry->name,
                 entry->id_size, entry->id);
@@ -402,7 +402,7 @@ int knd_resolve_class_ref(struct kndClass *self,
     struct kndDict *class_name_idx = task->ctx->class_name_idx;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. checking class ref:  \"%.*s\"..",
                 name_size, name);
         if (base) {

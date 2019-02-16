@@ -216,7 +216,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
             entry->class = self;
             self->entry =  entry;
 
-            if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+            if (DEBUG_CLASS_IMPORT_LEVEL_2)
                 knd_log("== class was removed recently");
 
             self->name =      entry->name;
@@ -236,6 +236,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     if (err) return make_gsl_err_external(err);
 
     task->ctx->http_code = HTTP_CONFLICT;
+    task->ctx->error = KND_CONFLICT;
 
     return make_gsl_err(gsl_FAIL);
 }

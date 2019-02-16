@@ -135,8 +135,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClassEntry *entry = self->entry;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log(".. check or set class name: %.*s", name_size, name);
     if (!name_size) return make_gsl_err(gsl_FORMAT);
 
     if (entry->name_size) {
@@ -149,7 +147,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
             return make_gsl_err(gsl_FAIL);
         }
 
-        if (DEBUG_REPO_LEVEL_TMP)
+        if (DEBUG_REPO_LEVEL_2)
             knd_log("++ class already exists: %.*s!", name_size, name);
         self->class = entry->class;
         self->entry = entry;

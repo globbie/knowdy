@@ -125,11 +125,15 @@ START_TEST(shard_table_test)
             .input = "{task {!class Person}}",
             .expect = "{err 409{gloss Person class name already exists}}"
         },
-#if 0
-        {   /* get the latest valid class state */
+        {   /* get the latest valid User class state */
             .input =  "{task {class User {_state}}}",
-            .expect = "{state [0-9]*{time [0-9]*}}"
+            .expect = "{state 0{time [0-9]*}}"
         },
+        {   /* get the latest valid Person class state */
+            .input =  "{task {class Person {_state}}}",
+            .expect = "{state 1{time [0-9]*}}"
+        },
+#if 0
         {    /* try to get a non-existent state */
             .input = "{task {class User {_state 42}}}",
             .expect = "not implemented: filter class state"

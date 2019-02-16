@@ -655,7 +655,7 @@ int knd_resolve_primary_attrs(struct kndClass *self,
                         self->entry->name_size, self->entry->name);
                 return knd_FAIL;
             }
-            if (DEBUG_ATTR_RESOLVE_LEVEL_TMP)
+            if (DEBUG_ATTR_RESOLVE_LEVEL_2)
                 knd_log("++ proc ref resolved: %.*s!",
                         proc_entry->name_size, proc_entry->name);
             break;
