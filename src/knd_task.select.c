@@ -302,7 +302,6 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
         if (!self->ctx->update_confirmed) {
             err = knd_confirm_updates(self->repo, self);
             if (err) {
-                return make_gsl_err_external(err);
                 goto final;
             }
         }

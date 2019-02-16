@@ -125,6 +125,14 @@ START_TEST(shard_table_test)
             .input = "{task {!class Person}}",
             .expect = "{err 409{gloss Person class name already exists}}"
         },
+        {
+            .input = "{task {!class Worker {is PersonUnknown}}}",
+            .expect = "{err 404{gloss PersonUnknown class name not found}}"
+        },
+        {
+            .input = "{task {!class Worker {is Person}}}",
+            .expect = "{state [0-9]*{time [0-9]*}}"
+        },
         {   /* get the latest valid User class state */
             .input =  "{task {class User {_state}}}",
             .expect = "{state 0{time [0-9]*}}"
@@ -173,14 +181,6 @@ START_TEST(shard_table_test)
         {
             .input = "{task {class User {guid {_state {lt 123456}}}}}",
             .expect = ".*"  // FIXME(k15tfu)
-        },
-        {
-            .input = "{task {!class Worker {is PersonUnknown}}}",
-            .expect = "{err 404{gloss PersonUnknown class name not found}}"
-        },
-        {
-            .input = "{task {!class Worker {is Person}}}",
-            .expect = "{state [0-9]*{time [0-9]*}}"
         },
         {
             .input = "{task {class User {!inst Alice}}}",
@@ -508,8 +508,8 @@ int main(void)
     TCase *tc_shard_basic = tcase_create("basic shard");
     tcase_add_test(tc_shard_basic, shard_config_test);
     tcase_add_test(tc_shard_basic, shard_proc_test);
-    tcase_add_test(tc_shard_basic, shard_table_test);
     tcase_add_test(tc_shard_basic, shard_inheritance_test);
+    tcase_add_test(tc_shard_basic, shard_table_test);
     suite_add_tcase(s, tc_shard_basic);
 
     SRunner* sr = srunner_create(s);

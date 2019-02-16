@@ -257,7 +257,7 @@ static int resolve_baseclasses(struct kndClass *self,
     struct kndClassVar *cvar;
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
-    struct kndOutput *log = task->log;
+    struct kndOutput *log = task->ctx->log;
     struct kndRepo *repo = self->entry->repo;
     const char *classname;
     size_t classname_size;
@@ -303,6 +303,8 @@ static int resolve_baseclasses(struct kndClass *self,
                 log->reset(log);
                 log->writef(log, "%.*s class name not found",
                             classname_size, classname);
+                task->ctx->error = knd_NO_MATCH;
+                task->ctx->http_code = HTTP_NOT_FOUND;
                 return err;
             }
         }

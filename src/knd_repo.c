@@ -1309,6 +1309,7 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
         }
 
         err = knd_class_resolve(entry->class, task);                              RET_ERR();
+
         state = ref->state;
         state->update = update;
         if (!state->children) continue;
