@@ -247,16 +247,54 @@ static gsl_err_t proc_call_parse(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-
 static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
 {
-    struct kndProc *self = obj;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
+    struct kndOutput *log = task->ctx->log;
+    struct kndProc *self = ctx->proc, *proc;
+    struct kndDict *proc_name_idx = task->ctx->proc_name_idx;
+    struct kndProcEntry *entry;
+    int err;
+
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     self->entry->name = name;
     self->entry->name_size = name_size;
     self->name = name;
     self->name_size = name_size;
+
+    if (task->type != KND_LOAD_STATE) {
+        knd_log(".. proc doublet checking..\n");
+        err = knd_get_proc(repo, name, name_size, &proc, task);
+        if (!err) goto doublet;
+    }
+
+    entry = knd_dict_get(proc_name_idx, name, name_size);
+    if (!entry) {
+        entry = self->entry;
+        err = knd_dict_set(proc_name_idx,
+                           name, name_size,
+                           (void*)entry);
+        if (err) return make_gsl_err_external(err);
+        return make_gsl_err(gsl_OK);
+    }
+
     return make_gsl_err(gsl_OK);
+
+ doublet:
+    knd_log("-- \"%.*s\" proc doublet found?", name_size, name);
+    log->reset(log);
+    err = log->write(log, name, name_size);
+    if (err) return make_gsl_err_external(err);
+
+    err = log->write(log,   " proc name already exists",
+                     strlen(" proc name already exists"));
+    if (err) return make_gsl_err_external(err);
+
+    task->ctx->http_code = HTTP_CONFLICT;
+
+    return make_gsl_err(gsl_FAIL);
 }
 
 int knd_inner_proc_import(struct kndProc *proc,
@@ -284,7 +322,7 @@ int knd_inner_proc_import(struct kndProc *proc,
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_proc_name,
-          .obj = proc
+          .obj = &ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
           .name = "_gloss",
@@ -442,7 +480,7 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
     int err;
 
     if (DEBUG_PROC_IMPORT_LEVEL_TMP)
-        knd_log(".. import proc: \"%.*s\".. ctx error:%d", 32, rec, task->ctx->error);
+        knd_log(".. import proc: \"%.*s\"..", 32, rec);
 
     err = knd_proc_entry_new(mempool, &entry);
     if (err) return *total_size = 0, make_gsl_err_external(err);
@@ -453,6 +491,7 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
 
     err = knd_proc_new(mempool, &proc);
     if (err) return *total_size = 0, make_gsl_err_external(err);
+
 
     proc->name = entry->name;
     proc->name_size = 1;
@@ -474,7 +513,7 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_proc_name,
-          .obj = proc
+          .obj = &ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
           .name = "_gloss",
@@ -526,37 +565,7 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
     if (!proc->name_size)
         return make_gsl_err(gsl_FORMAT);
 
-    entry = knd_dict_get(repo->proc_name_idx,
-                         proc->name, proc->name_size);
-    if (entry) {
-        knd_log("== proc %.*s %p phase:%d", proc->name_size, proc->name, entry, entry->phase);
-        if (entry->phase == KND_REMOVED) {
-            knd_log("== proc was removed recently");
-        } else {
-            knd_log("-- %.*s proc name doublet found",
-                    proc->name_size, proc->name);
-            struct kndOutput *log = task->ctx->log;
-            log->reset(log);
-            err = log->write(log, proc->name, proc->name_size);
-            if (err) return make_gsl_err_external(err);
-            err = log->write(log,   " proc name already exists",
-                             strlen(" proc name already exists"));
-            if (err) return make_gsl_err_external(err);
-            task->ctx->http_code = HTTP_CONFLICT;
-
-            // TODO: free proc?
-
-            return make_gsl_err_external(knd_EXISTS);
-        }
-    }
-
-    /* generate ID and add to proc index */
-    proc->entry->numid = atomic_fetch_add_explicit(&repo->proc_id_count, 1,\
-                                                   memory_order_relaxed);
-    proc->entry->numid++;
-    knd_uid_create(proc->entry->numid, proc->entry->id, &proc->entry->id_size);
-
-    if (DEBUG_PROC_IMPORT_LEVEL_2)
+    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
         knd_proc_str(proc, 0);
 
     if (task->type == KND_UPDATE_STATE) {

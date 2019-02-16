@@ -230,7 +230,6 @@ static int get_elem(struct kndSet *self,
     }
 
     *result = elem;
-
     return knd_OK;
 }
 
@@ -240,6 +239,8 @@ static int kndSet_add_elem(struct kndSet *self,
                            void *elem)
 {
     int err;
+    assert(key_size != 0);
+    assert(key != NULL);
 
     if (!self->idx) {
         err = knd_set_elem_idx_new(self->mempool, &self->idx);

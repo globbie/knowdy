@@ -356,7 +356,7 @@ int knd_get_proc(struct kndRepo *repo,
     int err;
 
     if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. repo %.*s to get proc: \"%.*s\"..",
+        knd_log(".. \"%.*s\" repo to get proc: \"%.*s\"..",
                 repo->name_size, repo->name, name_size, name);
 
     entry = knd_dict_get(repo->proc_name_idx,

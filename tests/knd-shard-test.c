@@ -113,12 +113,24 @@ START_TEST(shard_table_test)
             .input = "{task {class {_id 1}}}",
             .expect = "{class User{_id 1}\\[attr{str guid}{str first-name}]}"
         },
-#if 0
-        {   /* get the latest valid class state */
-            .input = "{task {class User {_state}}}",
+        {
+            .input = "{task {class Person}}",
+            .expect = "{err 404{gloss Person class name not found}}"
+        },
+        {
+            .input = "{task {!class Person {num age}}}",
             .expect = "{state [0-9]*{time [0-9]*}}"
         },
-        {    /* get some specific state */
+        {
+            .input = "{task {!class Person}}",
+            .expect = "{err 409{gloss Person class name already exists}}"
+        },
+#if 0
+        {   /* get the latest valid class state */
+            .input =  "{task {class User {_state}}}",
+            .expect = "{state [0-9]*{time [0-9]*}}"
+        },
+        {    /* try to get a non-existent state */
             .input = "{task {class User {_state 42}}}",
             .expect = "not implemented: filter class state"
         },
@@ -159,18 +171,6 @@ START_TEST(shard_table_test)
             .expect = ".*"  // FIXME(k15tfu)
         },
         {
-            .input = "{task {class Person}}",
-            .expect = "{err 404{gloss Person class name not found}}"
-        },
-        {
-            .input = "{task {!class Person {num age}}}",
-            .expect = "{state [0-9]*{modif [0-9]*}}"
-        },
-        {
-            .input = "{task {!class Person}}",
-            .expect = "{err 409{gloss Person class name already exists}}"
-        },
-        {
             .input = "{task {!class Worker {is PersonUnknown}}}",
             .expect = "{err 404{gloss PersonUnknown class name not found}}"
         },
@@ -207,8 +207,7 @@ START_TEST(shard_table_test)
             .input = "{task {class {_id 2}}}",
             .expect = ".*"  // FIXME(k15tfu): Person is not in kndRepo.class_idx
         },
-        // get class attribute
-        {
+        {   /* get class attribute */
             .input = "{task {class Person {age}}}",
             .expect = "{num age}"
         },
@@ -329,12 +328,11 @@ START_TEST(shard_table_test)
     knd_shard_del(shard);
 END_TEST
 
-
 /** CLASS INHERITANCE **/
-
 START_TEST(shard_inheritance_test)
     static const struct table_test cases[] = {
-        {   /* empty result set */
+        {   /* expect empty result set, 
+               as there are no descendants of Banana */
             .input  = "{task {class {_is Banana}}}",
             .expect = "{set{_is Banana}{total 0}}"
         },
@@ -355,10 +353,10 @@ START_TEST(shard_inheritance_test)
         /*{   .input  = "{task {class {_is Edible Object}}}",
             .expect = "test"
             },*/
-        {
+        /*{
             .input  = "{task {class {_is Dish {cuisine American Cuisine}}}}",
             .expect = "{set{_is Dish}{total 1\\[class{Apple Pie{_id 16}\\[is{Dish{_id 17}\\[ingr{{product{class Apple{_id 20}}{quant 5}}{{product{class Flour{_id 21}}{quant 200}}{{product{class Butter{_id 22}}{quant 100}}]\\[cuisine{{class American Cuisine{_id 24}}}]}]}]{batch{max 10}{size 1}{from 0}}}"
-        },
+            },*/
         /*{
             .input  = "{task {class {_is Dish {ingr {product Milk}}}}}",
             .expect = "not implemented: filter baseclass attribute"
@@ -429,7 +427,6 @@ START_TEST(shard_proc_test)
                       "{ru {t пояснение по-русски}}]}}",
             .expect = "{state [0-9]*{time [0-9]*}}"
         },
-#if 0
         {   /* proc with a base */
             .input  = "{task {!proc press {is Physical Impact Process}}}",
             .expect = "{state [0-9]*{time [0-9]*}}"
@@ -439,6 +436,7 @@ START_TEST(shard_proc_test)
                       "[arg {instr {_c Physical Object}}]}}",
             .expect = "{state [0-9]*{time [0-9]*}}"
         },
+#if 0
         {   /* add an agent */
             .input = "{task {class Person {!inst Alice}}}",
             .expect = "{state [0-9]*{time [0-9]*}}"
@@ -475,12 +473,10 @@ START_TEST(shard_proc_test)
 
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
         const struct table_test *pcase = &cases[i];
-
         fprintf(stdout, ".. checking input #%zu: %s...\n", i, pcase->input);
 
         char result[OUTPUT_BUF_SIZE + 1] = { 0 };
         size_t result_size = OUTPUT_BUF_SIZE;
-
         err = knd_shard_run_task(shard,
                                  pcase->input, strlen(pcase->input),
                                  result, &result_size);
@@ -507,8 +503,8 @@ int main(void)
 
     TCase *tc_shard_basic = tcase_create("basic shard");
     tcase_add_test(tc_shard_basic, shard_config_test);
-    tcase_add_test(tc_shard_basic, shard_table_test);
     tcase_add_test(tc_shard_basic, shard_proc_test);
+    tcase_add_test(tc_shard_basic, shard_table_test);
     tcase_add_test(tc_shard_basic, shard_inheritance_test);
     suite_add_tcase(s, tc_shard_basic);
 

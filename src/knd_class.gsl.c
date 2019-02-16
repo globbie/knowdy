@@ -207,81 +207,32 @@ extern int knd_class_export_updates_GSL(struct kndClass *self,
     return knd_OK;
 }
 
-static int export_class_state_GSL(struct kndClass *self,
-                                  struct kndTask *task)
+int knd_export_class_state_GSL(struct kndClass *self,
+                               struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndState *state = self->states;
-    size_t latest_state_numid = self->init_state + self->num_states;
-    size_t total;
+    struct kndState *state;
+    time_t timestamp;
     int err;
 
-    err = out->write(out, "\"_state\":", strlen("\"_state\":"));                  RET_ERR();
-    err = out->writef(out, "%zu", latest_state_numid);                            RET_ERR();
+    err = out->write(out, "{state ", strlen("{state "));                          RET_ERR();
+
+    state = atomic_load_explicit(&self->states,
+                                 memory_order_relaxed);
 
     if (state) {
-        switch (state->phase) {
-        case KND_REMOVED:
-            err = out->write(out,   ",\"_phase\":\"del\"",
-                             strlen(",\"_phase\":\"del\""));                      RET_ERR();
-            // NB: no more details
-            err = out->write(out, "}", 1);
-            if (err) return err;
-            return knd_OK;
-            
-        case KND_UPDATED:
-            err = out->write(out,   ",\"_phase\":\"upd\"",
-                             strlen(",\"_phase\":\"upd\""));                      RET_ERR();
-            break;
-        case KND_CREATED:
-            err = out->write(out,   ",\"_phase\":\"new\"",
-                             strlen(",\"_phase\":\"new\""));                      RET_ERR();
-            break;
-        default:
-            break;
-        }
-    }
-
-    state = self->desc_states;
-    if (state) {
-        latest_state_numid = self->init_desc_state + self->num_desc_states;
-        total = 0;
-        if (state->val)
-            total = state->val->val_size;
-
-        err = out->write(out, ",\"descendants\":{",
-                         strlen(",\"descendants\":{"));                           RET_ERR();
-        err = out->write(out, "\"_state\":", strlen("\"_state\":"));              RET_ERR();
-        err = out->writef(out, "%zu", latest_state_numid);                        RET_ERR();
-        err = out->write(out, ",\"total\":", strlen(",\"total\":"));              RET_ERR();
-        err = out->writef(out, "%zu", total);                                     RET_ERR();
-        err = out->writec(out, '}');                                              RET_ERR();
-    }
-
-    state = self->inst_states;
-    if (state) {
-        latest_state_numid = self->init_inst_state + self->num_inst_states;
-        total = 0;
-        if (state->val)
-            total = state->val->val_size;
-
-        err = out->write(out, ",\"instances\":{",
-                         strlen(",\"instances\":{"));                             RET_ERR();
-        err = out->write(out, "\"_state\":", strlen("\"_state\":"));              RET_ERR();
-        err = out->writef(out, "%zu", latest_state_numid);                        RET_ERR();
-        err = out->write(out, ",\"total\":", strlen(",\"total\":"));              RET_ERR();
-        err = out->writef(out, "%zu", total);                                     RET_ERR();
-        err = out->writec(out, '}');                                              RET_ERR();
+        err = out->writef(out, "%zu", state->update->numid);                      RET_ERR();
+        timestamp = state->update->timestamp;
+    } else {
+        err = out->writec(out, '0');                                              RET_ERR();
+        timestamp = self->entry->repo->timestamp;
     }
     
-    // TODO
-    /*time(&update->timestamp);
-    localtime_r(&update->timestamp, &tm_info);
-    buf_size = strftime(buf, KND_NAME_SIZE,
-                        ",\"_modif\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
-    err = out->write(out, buf, buf_size);                                         RET_ERR();
-    */
+    err = out->write(out, "{time ", strlen("{time "));                            RET_ERR();
 
+    err = out->writef(out, "%zu", timestamp);                                     RET_ERR();
+    err = out->writec(out, '}');                                                  RET_ERR();
+    err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
 }
 
@@ -837,7 +788,7 @@ int knd_class_export_GSL(struct kndClass *self,
 
     /* state info */
     if (0 && self->num_states) {
-        err = export_class_state_GSL(self, task);                                 RET_ERR();
+        err = knd_export_class_state_GSL(self, task);                                 RET_ERR();
     }
 
     /* display base classes only once */
@@ -935,13 +886,4 @@ int knd_class_export_GSL(struct kndClass *self,
  final:
     err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
-}
-
-extern int knd_export_class_state_GSL(struct kndClass *self,
-                                      struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    size_t latest_state_numid = self->init_state + self->num_states;
-
-    return out->writef(out, "{_state %zu}", latest_state_numid);
 }

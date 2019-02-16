@@ -35,12 +35,12 @@
 
 #include <gsl-parser.h>
 
-#define DEBUG_CLASS_RESOLVE_LEVEL_1 0
-#define DEBUG_CLASS_RESOLVE_LEVEL_2 0
-#define DEBUG_CLASS_RESOLVE_LEVEL_3 0
-#define DEBUG_CLASS_RESOLVE_LEVEL_4 0
-#define DEBUG_CLASS_RESOLVE_LEVEL_5 0
-#define DEBUG_CLASS_RESOLVE_LEVEL_TMP 1
+#define DEBUG_CLASS_INDEX_LEVEL_1 0
+#define DEBUG_CLASS_INDEX_LEVEL_2 0
+#define DEBUG_CLASS_INDEX_LEVEL_3 0
+#define DEBUG_CLASS_INDEX_LEVEL_4 0
+#define DEBUG_CLASS_INDEX_LEVEL_5 0
+#define DEBUG_CLASS_INDEX_LEVEL_TMP 1
 
 struct LocalContext {
     struct kndTask *task;
@@ -65,7 +65,7 @@ static int inherit_attr(void *obj,
     struct kndAttrRef *ref;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) 
+    if (DEBUG_CLASS_INDEX_LEVEL_TMP) 
         knd_log("..  \"%.*s\" attr inherited by %.*s..",
                 attr->name_size, attr->name,
                 self->name_size, self->name);
@@ -80,7 +80,7 @@ static int inherit_attr(void *obj,
                         (void*)ref);                                              RET_ERR();
     if (ref->attr_var) {
         if (attr->is_indexed) {
-            if (DEBUG_CLASS_RESOLVE_LEVEL_2) 
+            if (DEBUG_CLASS_INDEX_LEVEL_2) 
                 knd_log("..  indexing \"%.*s\" attr var in %.*s..",
                         attr->name_size, attr->name,
                         self->name_size, self->name);
@@ -102,7 +102,7 @@ static int inherit_attrs(struct kndClass *self,
         err = knd_class_resolve(base, task);                                      RET_ERR();
     }
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+    if (DEBUG_CLASS_INDEX_LEVEL_2) {
         knd_log(".. \"%.*s\" class to inherit attrs from \"%.*s\"..",
                 self->entry->name_size, self->entry->name,
                 base->name_size, base->name);
@@ -126,14 +126,16 @@ static int link_ancestor(struct kndClass *self,
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *prev_entry;
     struct kndMemPool *mempool = task->mempool;
+    struct kndSet *desc_idx;
     struct kndClass *base;
     struct kndClassRef *ref;
     struct kndDict *class_name_idx = task->ctx->class_name_idx;
+    void *result;
     int err;
 
     base = base_entry->class;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_INDEX_LEVEL_TMP)
         knd_log(".. %.*s class to link an ancestor: \"%.*s\" top:%d",
                 self->name_size, self->name,
                 base->name_size, base->name, base->state_top);
@@ -154,13 +156,47 @@ static int link_ancestor(struct kndClass *self,
         }
     }
 
+    desc_idx = base->entry->descendants;
+    if (!desc_idx) {
+        err = knd_set_new(mempool, &desc_idx);                                    RET_ERR();
+        desc_idx->type = KND_SET_CLASS;
+        desc_idx->base = base->entry;
+        base->entry->descendants = desc_idx;
+    }
+ 
+    err = desc_idx->get(desc_idx, entry->id, entry->id_size, &result);
+    if (!err) {
+        if (DEBUG_CLASS_INDEX_LEVEL_TMP)
+            knd_log("== link already established between %.*s (%.*s)"
+                    " and its ancestor %.*s",
+                    entry->name_size, entry->name,
+                    entry->id_size, entry->id,
+                    base->entry->name_size,
+                    base->entry->name);
+        return knd_OK;
+    }
+
     /* add an ancestor */
-    err = knd_class_ref_new(mempool, &ref);                                       RET_ERR();
+    err = knd_class_ref_new(mempool, &ref);                                   RET_ERR();
     ref->class = base;
     ref->entry = base->entry;
     ref->next = entry->ancestors;
     entry->ancestors = ref;
     entry->num_ancestors++;
+
+    base->entry->num_terminals++;
+
+    /* register as a descendant */
+    err = desc_idx->add(desc_idx, entry->id, entry->id_size,
+                        (void*)entry);                                             RET_ERR();
+
+    if (DEBUG_CLASS_INDEX_LEVEL_TMP)
+        knd_log("++ added \"%.*s\" (repo:%.*s) as "
+                " a descendant of ancestor \"%.*s\" (repo:%.*s)..",
+                entry->name_size, entry->name,
+                entry->repo->name_size, entry->repo->name,
+                base->entry->name_size, base->entry->name,
+                base->entry->repo->name_size, base->entry->repo->name);
 
     return knd_OK;
 }
@@ -182,10 +218,11 @@ static int link_baseclass(struct kndClass *self,
     struct kndClass *base_copy = NULL;
     struct kndClassEntry *entry = self->entry;
     struct kndRepo *repo = self->entry->repo;
+    struct kndSet *desc_idx;
     bool parent_linked = false;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+    if (DEBUG_CLASS_INDEX_LEVEL_2)
         knd_log(".. \"%.*s\" (%.*s) links to base => \"%.*s\" (%.*s) top:%d",
                 entry->name_size, entry->name,
                 entry->repo->name_size, entry->repo->name,
@@ -223,20 +260,17 @@ static int link_baseclass(struct kndClass *self,
         ref->next = entry->ancestors;
         entry->ancestors = ref;
         entry->num_ancestors++;
+        base->entry->num_terminals++;
 
-        /* NB: moved to knd_class_index
-              register a descendant */
-
-        if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+        if (DEBUG_CLASS_INDEX_LEVEL_TMP)
             knd_log(".. add \"%.*s\" (repo:%.*s) as a child of \"%.*s\" (repo:%.*s)..",
                     entry->name_size, entry->name,
                     entry->repo->name_size, entry->repo->name,
                     base->entry->name_size, base->entry->name,
                     base->entry->repo->name_size, base->entry->repo->name);
 
-        //base->entry->num_terminals++;
-
-        /*desc_idx = base->entry->descendants;
+        /* register a descendant */
+        desc_idx = base->entry->descendants;
         if (!desc_idx) {
             err = knd_set_new(mempool, &desc_idx);                                RET_ERR();
             desc_idx->type = KND_SET_CLASS;
@@ -246,7 +280,6 @@ static int link_baseclass(struct kndClass *self,
 
         err = desc_idx->add(desc_idx, entry->id, entry->id_size,
                             (void*)entry);                                        RET_ERR();
-        */
     }
     return knd_OK;
 }
@@ -263,14 +296,14 @@ static int resolve_baseclasses(struct kndClass *self,
     size_t classname_size;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+    if (DEBUG_CLASS_INDEX_LEVEL_2)
         knd_log(".. class \"%.*s\" to resolve its bases..",
                 self->name_size, self->name);
 
     for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
         if (cvar->entry->class == self) {
             /* TODO */
-            if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+            if (DEBUG_CLASS_INDEX_LEVEL_2)
                 knd_log(".. \"%.*s\" class to check the update request: \"%s\"..",
                         self->entry->name_size, self->entry->name,
                         cvar->entry->name_size, cvar->entry->name);
@@ -307,7 +340,7 @@ static int resolve_baseclasses(struct kndClass *self,
             }
         }
 
-        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+        if (DEBUG_CLASS_INDEX_LEVEL_2)
             c->str(c, 1);
 
         if (c == self) {
@@ -316,7 +349,7 @@ static int resolve_baseclasses(struct kndClass *self,
             return knd_FAIL;
         }
 
-        if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+        if (DEBUG_CLASS_INDEX_LEVEL_2) {
             knd_log("++ \"%.*s\" ref established as a base class for \"%.*s\"!",
                     cvar->entry->name_size, cvar->entry->name,
                     self->entry->name_size, self->entry->name);
@@ -327,7 +360,7 @@ static int resolve_baseclasses(struct kndClass *self,
         cvar->entry->class = c;
     }
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+    if (DEBUG_CLASS_INDEX_LEVEL_2) {
         knd_log("++ \"%.*s\" has resolved its baseclasses!",
                 self->name_size, self->name);
         self->str(self, 1);
@@ -336,27 +369,37 @@ static int resolve_baseclasses(struct kndClass *self,
     return knd_OK;
 }
 
-int knd_class_resolve(struct kndClass *self,
-                      struct kndTask *task)
+int knd_class_index(struct kndClass *self,
+                    struct kndTask *task)
 {
     struct kndClassVar *cvar;
-    struct kndClassEntry *entry = self->entry;
-    struct kndRepo *repo = entry->repo;
+    struct kndClassEntry *entry;
+    struct kndRepo *repo = self->entry->repo;
     int err;
 
-    assert(!self->is_resolved);
+    if (self->is_indexed) {
+        return knd_OK;
+    }
 
-    if (self->resolving_in_progress) {
+    if (self->indexing_in_progress) {
         knd_log("-- vicious circle detected in \"%.*s\"",
-                entry->name_size, entry->name);
+                self->name_size, self->name);
         return knd_FAIL;
     }
 
-    self->resolving_in_progress = true;
+    self->indexing_in_progress = true;
+    entry = self->entry;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
-        knd_log(".. resolving class \"%.*s\"..",
-                entry->name_size, entry->name);
+    if (DEBUG_CLASS_INDEX_LEVEL_TMP) {
+        knd_log(".. indexing class \"%.*s\"..",
+                self->entry->name_size, self->entry->name);
+    }
+
+    if (task->type == KND_LOAD_STATE) {
+        entry->numid = atomic_fetch_add_explicit(&entry->repo->class_id_count, 1, \
+                                                 memory_order_relaxed);
+        entry->numid++;
+        knd_uid_create(entry->numid, entry->id, &entry->id_size);
     }
     
     /* a child of the root class */
@@ -375,96 +418,11 @@ int knd_class_resolve(struct kndClass *self,
         err = knd_resolve_primary_attrs(self, task);                              RET_ERR();
     }
 
+    if (DEBUG_CLASS_INDEX_LEVEL_2)
+        knd_log("++ class \"%.*s\" resolved!",
+                self->entry->name_size, self->entry->name);
+
     self->is_resolved = true;
-
-    /* get a gold star: assign unique class id */
-    entry->numid = atomic_fetch_add_explicit(&repo->class_id_count, 1,\
-                                             memory_order_relaxed);
-    entry->numid++;
-    knd_uid_create(entry->numid, entry->id, &entry->id_size);
-
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
-        knd_log("++ class \"%.*s\" (id:%.*s) resolved!",
-                entry->name_size, entry->name,
-                entry->id_size, entry->id);
-
-    return knd_OK;
-}
-
-int knd_resolve_class_ref(struct kndClass *self,
-                          const char *name, size_t name_size,
-                          struct kndClass *base,
-                          struct kndClass **result,
-                          struct kndTask *task)
-{
-    struct kndClassEntry *entry;
-    struct kndClass *c;
-    struct kndDict *class_name_idx = task->ctx->class_name_idx;
-    int err;
-
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
-        knd_log(".. checking class ref:  \"%.*s\"..",
-                name_size, name);
-        if (base) {
-            knd_log(".. base template: \"%.*s\"..",
-                    base->name_size, base->name);
-        }
-    }
-
-    if (task->type == KND_LOAD_STATE) {
-        entry = knd_dict_get(class_name_idx,
-                             name, name_size);
-        if (!entry) {
-            knd_log("-- couldn't resolve the class ref \"%.*s\"",
-                    name_size, name);
-            return knd_FAIL;
-        }
-        c = entry->class;
-        if (!c) {
-            knd_log("-- no such class: \"%.*s\" :(", name_size, name);
-            return knd_FAIL;
-        }
-        if (!c->is_resolved) {
-            err = knd_class_resolve(c, task);                                   RET_ERR();
-        }
-
-        if (base) {
-            err = knd_is_base(base, c);
-            if (err) {
-                knd_log("-- no inheritance from %.*s to %.*s",
-                        base->name_size, base->name,
-                        c->name_size, c->name);
-                return err;
-            }
-        }
-        *result = c;
-        return knd_OK;
-    }
-
-    err = knd_get_class(self->entry->repo, name, name_size, &c, task);
-    if (err) {
-        knd_log("-- no such class: %.*s [repo:%.*s]",
-                name_size, name,
-                self->entry->repo->name_size,
-                self->entry->repo->name);
-        return err;
-    }
-
-    if (!c->is_resolved) {
-        err = knd_class_resolve(c, task);                                                RET_ERR();
-    }
-
-    if (base) {
-        err = knd_is_base(base, c);
-        if (err) {
-            knd_log("-- no inheritance from %.*s to %.*s",
-                    base->name_size, base->name,
-                    c->name_size, c->name);
-            return err;
-        }
-    }
-
-    *result = c;
     return knd_OK;
 }
 

@@ -169,7 +169,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     if (!name_size) return make_gsl_err(gsl_FORMAT);
 
     if (task->type != KND_LOAD_STATE) {
-        knd_log(".. doublet checking..\n");
+        knd_log(".. doublet checking.. ctx err:%d", task->ctx->error);
         err = knd_get_class(repo, name, name_size, &c, task);
         if (!err) goto doublet;
     }
@@ -608,7 +608,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
         knd_log("++  \"%.*s\" class import completed!",
                 c->name_size, c->name);
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         c->str(c, 1);
 
     if (task->type == KND_UPDATE_STATE) {

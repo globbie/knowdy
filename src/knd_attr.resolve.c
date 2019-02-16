@@ -386,7 +386,7 @@ static int register_new_attr(struct kndClass *self,
     } else {
         err = knd_dict_set(attr_name_idx,
                            attr->name, attr->name_size,
-                           (void*)attr_ref);                                          RET_ERR();
+                           (void*)attr_ref);                                      RET_ERR();
     }
 
     err = attr_idx->add(attr_idx,
@@ -449,7 +449,7 @@ int knd_resolve_attr_vars(struct kndClass *self,
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
     struct kndAttrVar *attr_var;
-    struct kndAttrVar *item;
+    //struct kndAttrVar *item;
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct kndClass *c;
@@ -522,12 +522,12 @@ int knd_resolve_attr_vars(struct kndClass *self,
             if (attr_var->val_size)
                 attr_var->num_list_elems++;
 
-            if (attr->is_indexed) {
+            /*if (attr->is_indexed) {
                 err = knd_index_attr_var_list(self, attr, attr_var, task);
                 if (err) return err;
-            }
+                }*/
 
-            task->attr = attr;
+            /*task->attr = attr;
             switch (attr->type) {
             case KND_ATTR_INNER:
                 for (item = attr_var->list; item; item = item->next) {
@@ -537,7 +537,7 @@ int knd_resolve_attr_vars(struct kndClass *self,
             default:
                 break;
             }
-
+            */
             continue;
         }
 

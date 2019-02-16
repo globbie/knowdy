@@ -386,6 +386,12 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     ctx->attr_name_idx  = repo->attr_name_idx;
     ctx->proc_name_idx  = repo->proc_name_idx;
     ctx->proc_arg_name_idx  = repo->proc_arg_name_idx;
+
+    err = knd_output_new(&ctx->out, NULL, KND_TEMP_BUF_SIZE);
+    if (err) goto error;
+    err = knd_output_new(&ctx->log, NULL, KND_TEMP_BUF_SIZE);
+    if (err) goto error;
+
     task->ctx = ctx;
 
     err = knd_repo_open(repo, task);

@@ -554,23 +554,24 @@ int knd_is_base(struct kndClass *self,
     struct kndClassRef *ref;
     struct kndClass *c;
 
-    if (DEBUG_CLASS_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_TMP) {
         knd_log(".. check inheritance: %.*s (repo:%.*s) [resolved: %d] => "
-                " %.*s (repo:%.*s) [resolved:%d] %p",
+                " %.*s (repo:%.*s) [resolved:%d]",
                 child->name_size, child->name,
                 child->entry->repo->name_size, child->entry->repo->name,
                 child->is_resolved,
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
-                self->is_resolved, self);
+                self->is_resolved);
     }
 
     for (ref = entry->ancestors; ref; ref = ref->next) {
          c = ref->class;
-         if (DEBUG_CLASS_LEVEL_2) {
-             knd_log("== ancestor: %.*s (repo:%.*s) %p",
+
+         if (DEBUG_CLASS_LEVEL_TMP) {
+             knd_log("== ancestor: %.*s (repo:%.*s)",
                      c->name_size, c->name,
-                     c->entry->repo->name_size, c->entry->repo->name, c);
+                     c->entry->repo->name_size, c->entry->repo->name);
          }
         
          if (c == self) {
@@ -595,11 +596,12 @@ int knd_class_get_attr(struct kndClass *self,
                        struct kndAttrRef **result)
 {
     struct kndAttrRef *ref;
-    struct kndClassEntry *class_entry;
     struct kndDict *attr_name_idx = self->entry->repo->attr_name_idx;
+    struct kndSet *attr_idx = self->attr_idx;
+    struct kndAttr    *attr;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_TMP) {
         knd_log("\n.. \"%.*s\" class (repo: %.*s) to select attr \"%.*s\"",
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
@@ -618,28 +620,19 @@ int knd_class_get_attr(struct kndClass *self,
         }
     }
 
-    for (; ref; ref = ref->next) {
-        class_entry = ref->class_entry;
+    attr = ref->attr;
 
-        if (DEBUG_CLASS_LEVEL_2)
-            knd_log("== attr %.*s belongs to class: %.*s (repo:%.*s)",
-                    name_size, name,
-                    class_entry->name_size, class_entry->name,
-                    class_entry->repo->name_size, class_entry->repo->name);
-
-        if (class_entry == self->entry) {
-            *result = ref;
-            return knd_OK;
-        }
-
-        err = knd_is_base(class_entry->class, self);
-        if (!err) {
-            *result = ref;
-            return knd_OK;
-        }
+    if (DEBUG_CLASS_LEVEL_TMP) {
+        knd_log("== attr %.*s originates in class: %.*s (repo:%.*s)",
+                name_size, name,
+                ref->class_entry->name_size, ref->class_entry->name,
+                ref->class_entry->repo->name_size, ref->class_entry->repo->name);
     }
 
-    return knd_FAIL;
+    err = attr_idx->get(attr_idx, attr->id, attr->id_size, (void**)&ref);           RET_ERR();
+
+    *result = ref;
+    return knd_OK;
 }
 
 int knd_class_get_attr_var(struct kndClass *self,
@@ -696,7 +689,7 @@ int knd_get_class(struct kndRepo *self,
 {
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
-    struct kndOutput *log = task->log;
+    struct kndOutput *log = task->ctx->log;
     struct kndDict *class_name_idx = self->class_name_idx;
     struct kndState *state;
     int err;
@@ -706,7 +699,7 @@ int knd_get_class(struct kndRepo *self,
                 self->name_size, self->name,
                 name_size, name);
     }
-    
+
     entry = knd_dict_get(class_name_idx, name, name_size);
     if (!entry) {
         if (DEBUG_CLASS_LEVEL_2)
@@ -719,15 +712,6 @@ int knd_get_class(struct kndRepo *self,
             if (err) return err;
             return knd_OK;
         }
-        //knd_log("-- no such class: \"%.*s\":(", name_size, name);
-        log->reset(log);
-        err = log->write(log, name, name_size);
-        if (err) return err;
-        err = log->write(log, " class name not found",
-                               strlen(" class name not found"));
-        if (err) return err;
-        if (task)
-            task->http_code = HTTP_NOT_FOUND;
         return knd_NO_MATCH;
     }
 

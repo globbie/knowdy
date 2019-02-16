@@ -130,8 +130,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClassUpdate *self = obj;
     struct kndClass *c;
     struct kndRepo *repo = self->update->repo;
-    struct kndDict *class_name_idx = repo->class_name_idx;
-    struct kndSet *class_idx = repo->class_idx;
+    struct kndDict *class_name_idx = task->ctx->class_name_idx;
     struct kndMemPool *mempool = task->mempool;
     struct kndClassEntry *entry = self->entry;
     int err;
@@ -172,18 +171,13 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         c->name = c->entry->name;
         c->name_size = name_size;
     }
-
     entry->class = c;
-
-    /* register class entry */
-    err = class_idx->add(class_idx,
-                         entry->id, entry->id_size, (void*)entry);
-    if (err) return make_gsl_err_external(err);
 
     err = knd_dict_set(class_name_idx,
                        entry->name, name_size,
                        (void*)entry);
     if (err) return make_gsl_err_external(err);
+
     self->class = c;
     self->entry = entry;
 
@@ -652,6 +646,9 @@ static gsl_err_t parse_class_import(void *obj,
             err = knd_dict_new(&task->ctx->class_name_idx, KND_SMALL_DICT_SIZE);
             if (err) return make_gsl_err_external(err);
 
+            err = knd_dict_new(&task->ctx->attr_name_idx, KND_SMALL_DICT_SIZE);
+            if (err) return make_gsl_err_external(err);
+
             task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
                                                                     memory_order_relaxed);
         }
@@ -719,6 +716,33 @@ static gsl_err_t parse_proc_import(void *obj,
                                    size_t *total_size)
 {
     struct kndTask *task = obj;
+    struct kndUserContext *ctx = task->user_ctx;
+    struct kndRepo *repo = task->repo;
+    int err;
+
+    if (ctx) {
+        repo = ctx->repo;
+        task->repo = repo;
+    }
+
+    if (task->type != KND_LOAD_STATE) {
+        task->type = KND_UPDATE_STATE;
+
+        if (!task->ctx->update) {
+            err = knd_update_new(task->mempool, &task->ctx->update);
+            if (err) return make_gsl_err_external(err);
+
+            err = knd_dict_new(&task->ctx->proc_name_idx, KND_SMALL_DICT_SIZE);
+            if (err) return make_gsl_err_external(err);
+
+            err = knd_dict_new(&task->ctx->proc_arg_name_idx, KND_SMALL_DICT_SIZE);
+            if (err) return make_gsl_err_external(err);
+
+            task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+                                                                    memory_order_relaxed);
+        }
+    }
+
     return knd_proc_import(task->repo, rec, total_size, task);
 }
 
@@ -989,8 +1013,8 @@ static int resolve_classes(struct kndRepo *self,
     struct kndClass *c;
     struct kndClassEntry *entry;
     struct kndDictItem *item;
+    struct kndDict *name_idx = self->class_name_idx;
     struct kndSet *class_idx = self->class_idx;
-    struct kndDict *name_idx = task->ctx->class_name_idx;
     int err;
 
     if (DEBUG_REPO_LEVEL_2)
@@ -1009,23 +1033,26 @@ static int resolve_classes(struct kndRepo *self,
             }
             c = entry->class;
 
-            if (!c->is_resolved) {
-                err = knd_class_resolve(c, task);
-                if (err) {
-                    knd_log("-- couldn't resolve the \"%.*s\" class",
-                            c->entry->name_size, c->entry->name);
-                    return err;
-                }
-                c->is_resolved = true;
-            }
+            if (c->is_resolved) continue;
+
             
-            err = class_idx->add(class_idx,
-                                 c->entry->id, c->entry->id_size,
-                                 (void*)c->entry);
-            if (err) return err;
-            if (DEBUG_REPO_LEVEL_2) {
-                c->str(c, 1);
+            err = knd_class_resolve(c, task);
+            if (err) {
+                knd_log("-- couldn't resolve the \"%.*s\" class",
+                        c->entry->name_size, c->entry->name);
+                return err;
             }
+
+            /*err = knd_class_index(c, task);
+            if (err) {
+                knd_log("-- couldn't index the \"%.*s\" class",
+                        c->entry->name_size, c->entry->name);
+                return err;
+                }*/
+
+            err = class_idx->add(class_idx,
+                                 entry->id, entry->id_size, (void*)entry);
+            if (err) return err;
         }
     }
     return knd_OK;
@@ -1036,15 +1063,16 @@ static int resolve_procs(struct kndRepo *self,
 {
     struct kndProcEntry *entry;
     struct kndDictItem *item;
-    struct kndDict *name_idx = task->ctx->proc_name_idx;
+    struct kndDict *proc_name_idx = self->proc_name_idx;
+    struct kndSet *proc_idx = self->proc_idx;
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP)
         knd_log(".. resolving procs of repo \"%.*s\"..",
                 self->name_size, self->name);
 
-    for (size_t i = 0; i < name_idx->size; i++) {
-        item = atomic_load_explicit(&name_idx->hash_array[i],
+    for (size_t i = 0; i < proc_name_idx->size; i++) {
+        item = atomic_load_explicit(&proc_name_idx->hash_array[i],
                                     memory_order_relaxed);
         for (; item; item = item->next) {
             entry = item->data;
@@ -1057,6 +1085,19 @@ static int resolve_procs(struct kndRepo *self,
                 knd_log("-- couldn't resolve the \"%.*s\" proc",
                         entry->proc->name_size, entry->proc->name);
                 return err;
+            }
+
+            entry->numid = atomic_fetch_add_explicit(&self->proc_id_count, 1, \
+                                                     memory_order_relaxed);
+            entry->numid++;
+            knd_uid_create(entry->numid, entry->id, &entry->id_size);
+            
+            err = proc_idx->add(proc_idx,
+                                entry->id, entry->id_size, (void*)entry);
+            if (err) return err;
+
+            if (DEBUG_REPO_LEVEL_2) {
+                knd_proc_str(entry->proc, 1);
             }
         }
     }
@@ -1136,6 +1177,7 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
                 knd_log("-- resolving of procs failed");
                 return err;
             }
+            
         }
     }
 
@@ -1208,20 +1250,15 @@ static int deliver_task_report(void *obj,
     struct kndTaskContext *ctx = ctx_obj;
     int err;
 
-    knd_log(".. worker:%zu (type:%d) / ctx:%zu  delivering report on task #%zu.. error:%d",
-            task->id, task->type, ctx->numid, ctx->update->numid, ctx->error);
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log(".. worker:%zu (type:%d) / ctx:%zu "
+                " to deliver report on task #%zu.. error:%d",
+                task->id, task->type, ctx->numid, ctx->update->numid, ctx->error);
 
     if (ctx->update) {
         ctx->update->timestamp = time(NULL);
         err = present_repo_update(ctx);                                           RET_ERR();
-        knd_log("= %.*s", ctx->out->buf_size, ctx->out->buf);
     }
-
-    if (!ctx->out->buf_size) {
-        err = ctx->out->write(ctx->out, "{}", strlen("{}"));
-        if (err) return err;
-    }
-
     ctx->phase = KND_COMPLETE;
     return knd_OK;
 }
@@ -1242,7 +1279,6 @@ static int build_persistent_commit(void *obj,
     ctx->phase = KND_WAL_COMMIT;
     ctx->cb = deliver_task_report;
     err = knd_queue_push(task->storage->input_queue, (void*)ctx);                 RET_ERR();
-
     return knd_OK;
 }
 
@@ -1257,8 +1293,8 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP) {
-        knd_log("\n.. \"%.*s\" repo to confirm updates..",
-                self->name_size, self->name);
+        knd_log("\n.. \"%.*s\" repo to confirm updates.. ctx err:%d",
+                self->name_size, self->name, task->ctx->error);
     }
     update->repo = self;
 
@@ -1433,7 +1469,7 @@ int knd_repo_update_indices(struct kndRepo *self,
 
         err = knd_dict_set(name_idx,
                            entry->name,  entry->name_size,
-                           (void*)entry);                            RET_ERR();
+                           (void*)entry);                                         RET_ERR();
     }
 
     name_idx = self->proc_name_idx;
@@ -1442,9 +1478,8 @@ int knd_repo_update_indices(struct kndRepo *self,
 
         if (ref->state->phase == KND_REMOVED) {
             proc_entry->phase = KND_REMOVED;
-            knd_log("-- mark proc as removed: %p", proc_entry);
             err = knd_dict_remove(name_idx,
-                                  proc_entry->name,  proc_entry->name_size);         RET_ERR();
+                                  proc_entry->name, proc_entry->name_size);       RET_ERR();
             continue;
         }
 
@@ -1454,8 +1489,11 @@ int knd_repo_update_indices(struct kndRepo *self,
 
         err = knd_dict_set(name_idx,
                            proc_entry->name,  proc_entry->name_size,
-                           (void*)proc_entry);                              RET_ERR();
+                           (void*)proc_entry);                                    RET_ERR();
     }
+
+    knd_log("++ name indices updated!");
+
     return knd_OK;
 }
 
@@ -1524,6 +1562,8 @@ int kndRepo_new(struct kndRepo **repo,
     proc->entry->repo = self;
     self->root_proc = proc;
 
+    err = knd_set_new(mempool, &self->proc_idx);
+    if (err) goto error;
     err = knd_dict_new(&self->proc_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
 

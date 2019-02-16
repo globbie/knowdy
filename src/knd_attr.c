@@ -419,7 +419,7 @@ extern int knd_register_attr_ref(void *obj,
 
     err = knd_dict_set(attr_name_idx,
                        attr->name, attr->name_size,
-                       (void*)ref);                                         RET_ERR();
+                       (void*)ref);                                               RET_ERR();
     return knd_OK;
 }
 

@@ -44,6 +44,9 @@ static gsl_err_t
 run_get_class(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndOutput *log = task->ctx->log;
+    int err, e;
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
@@ -53,8 +56,19 @@ run_get_class(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_OK);
     }
 
-    int err = knd_get_class(ctx->repo, name, name_size, &ctx->selected_class, ctx->task);
-    if (err) return make_gsl_err_external(err);
+    err = knd_get_class(ctx->repo, name, name_size, &ctx->selected_class, ctx->task);
+    if (err) {
+        log->reset(log);
+        e = log->write(log, name, name_size);
+        if (e) return make_gsl_err_external(e);
+        e = log->write(log, " class name not found",
+                       strlen(" class name not found"));
+        if (e) return make_gsl_err_external(e);
+
+        task->ctx->http_code = HTTP_NOT_FOUND;
+        task->ctx->error = knd_NO_MATCH;
+        return make_gsl_err_external(err);
+    }
 
     if (DEBUG_CLASS_SELECT_LEVEL_1) {
         ctx->selected_class->str(ctx->selected_class, 1);
@@ -832,13 +846,19 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }
+
     if (ctx->repo->base) {
         err = knd_class_set_export(ctx->repo->base->class_idx, task->format, task);
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }
 
-    return make_gsl_err(gsl_OK);
+    task->ctx->http_code = 404;
+    struct kndOutput *log = task->ctx->log;
+    log->reset(log);
+    err = log->writef(log, "nothing to present");
+    if (err) return make_gsl_err_external(err);
+    return make_gsl_err(gsl_FAIL);
 }
 
 gsl_err_t knd_class_select(struct kndRepo *repo,

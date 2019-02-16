@@ -66,6 +66,7 @@ static gsl_err_t parse_class_import(void *obj,
     struct kndTask *task = obj;
     struct kndUserContext *ctx = task->user_ctx;
     struct kndRepo *repo;
+    int err;
 
     repo = ctx->repo;
     if (task->repo)
@@ -78,6 +79,20 @@ static gsl_err_t parse_class_import(void *obj,
 
     task->type = KND_UPDATE_STATE;
 
+    if (!task->ctx->update) {
+        err = knd_update_new(task->mempool, &task->ctx->update);
+        if (err) return make_gsl_err_external(err);
+        
+        err = knd_dict_new(&task->ctx->class_name_idx, KND_SMALL_DICT_SIZE);
+        if (err) return make_gsl_err_external(err);
+        
+        err = knd_dict_new(&task->ctx->attr_name_idx, KND_SMALL_DICT_SIZE);
+        if (err) return make_gsl_err_external(err);
+        
+        task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+                                                                memory_order_relaxed);
+    }
+    
     return knd_class_import(repo, rec, total_size, task);
 }
 
