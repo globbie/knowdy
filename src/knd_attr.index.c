@@ -87,10 +87,10 @@ static int update_attr_facet(struct kndAttr *attr,
     return knd_OK;
 }
 
-extern int knd_index_attr(struct kndClass *self,
-                          struct kndAttr *attr,
-                          struct kndAttrVar *item,
-                          struct kndTask *task)
+int knd_index_attr(struct kndClass *self,
+                   struct kndAttr *attr,
+                   struct kndAttrVar *item,
+                   struct kndTask *task)
 {
     struct kndClass *base;
     struct kndClassRef *ref;

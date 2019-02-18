@@ -61,10 +61,6 @@ static int export_concise_JSON(struct kndClassInst *self,
     if (err) return err;
 
     for (elem = self->elems; elem; elem = elem->next) {
-        /* NB: restricted attr */
-        if (elem->attr->access_type == KND_ATTR_ACCESS_RESTRICTED)
-            continue;
-
         if (DEBUG_INST_LEVEL_3)
             knd_log(".. export elem: %.*s",
                     elem->attr->name_size, elem->attr->name);
@@ -202,9 +198,6 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
     /* TODO: id */
 
     for (elem = self->elems; elem; elem = elem->next) {
-        /* NB: restricted attr */
-        if (elem->attr->access_type == KND_ATTR_ACCESS_RESTRICTED)
-            continue;
 
         if (DEBUG_INST_LEVEL_2)
             knd_log(".. export elem: %.*s",

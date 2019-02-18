@@ -359,7 +359,7 @@ static int register_new_attr(struct kndClass *self,
 {
     struct kndRepo *repo =       self->entry->repo;
     struct kndMemPool *mempool = task->mempool;
-    struct kndSet *attr_idx =    repo->attr_idx;
+    struct kndSet *attr_idx    = repo->attr_idx;
     struct kndDict *attr_name_idx = task->ctx->attr_name_idx;
     struct kndAttrRef *attr_ref, *prev_attr_ref;
     int err;
@@ -367,6 +367,7 @@ static int register_new_attr(struct kndClass *self,
     /* generate unique attr id */
     attr->numid = atomic_fetch_add_explicit(&repo->attr_id_count, 1,
                                             memory_order_relaxed);
+    attr->numid++;
     knd_uid_create(attr->numid, attr->id, &attr->id_size);
 
     err = knd_attr_ref_new(mempool, &attr_ref);
@@ -392,13 +393,15 @@ static int register_new_attr(struct kndClass *self,
     err = attr_idx->add(attr_idx,
                         attr->id, attr->id_size,
                         (void*)attr_ref);                                         RET_ERR();
-    /* local index */
+
+    /* local class index */
     err = self->attr_idx->add(self->attr_idx,
                               attr->id, attr->id_size,
                               (void*)attr_ref);                                   RET_ERR();
+
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-        knd_log("++ new primary attr: \"%.*s\" numid:%zu",
-                attr->name_size, attr->name, attr->numid);
+        knd_log("++ new primary attr registered: \"%.*s\" (id:%.*s)",
+                attr->name_size, attr->name, attr->id_size, attr->id);
 
     return knd_OK;
 }
@@ -585,10 +588,10 @@ int knd_resolve_attr_vars(struct kndClass *self,
             break;
         }
 
-        if (attr->is_indexed) {
+        /*if (attr->is_indexed) {
             err = knd_index_attr(self, attr, attr_var, task);
             if (err) return err;
-        }
+            }*/
         attr_var->attr = attr;
     }
 

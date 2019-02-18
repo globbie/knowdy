@@ -79,12 +79,6 @@ static const char* const knd_attr_names[] = {
     "file"
 };
 
-typedef enum knd_attr_access_type {
-    KND_ATTR_ACCESS_USER,
-    KND_ATTR_ACCESS_RESTRICTED,
-    KND_ATTR_ACCESS_PUB
-} knd_attr_access_type;
-
 typedef enum knd_attr_quant_type {
     KND_ATTR_SINGLE,
     KND_ATTR_SET,
@@ -186,14 +180,13 @@ struct kndAttr
 {
     char id[KND_ID_SIZE];
     size_t id_size;
+    size_t numid;
     knd_attr_type type;
 
-    knd_attr_access_type access_type;
     knd_attr_quant_type quant_type;
 
     const char *name;
     size_t name_size;
-    size_t numid;
 
     struct kndClass *parent_class;
 
@@ -235,78 +228,77 @@ struct kndAttr
                 size_t depth);
 };
 
-/* constructor */
-extern void kndAttr_init(struct kndAttr *self);
-extern int kndAttr_new(struct kndAttr **self);
+void kndAttr_init(struct kndAttr *self);
+int kndAttr_new(struct kndAttr **self);
 
-extern int knd_attr_var_export_GSL(struct kndAttrVar *self,
-                                   struct kndTask *task,
-                                   size_t depth);
-extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
-                                    struct kndTask *task,
-                                    bool is_concise,
-                                    size_t depth);
+int knd_attr_var_export_GSL(struct kndAttrVar *self,
+                            struct kndTask *task,
+                            size_t depth);
+int knd_attr_vars_export_GSL(struct kndAttrVar *items,
+                             struct kndTask *task,
+                             bool is_concise,
+                             size_t depth);
 
-extern int knd_attr_var_export_JSON(struct kndAttrVar *self,
-                                    struct kndTask *task);
+int knd_attr_var_export_JSON(struct kndAttrVar *self,
+                             struct kndTask *task);
 
-extern int knd_export_inherited_attr(void *obj,
-                                     const char *elem_id,
-                                     size_t elem_id_size,
-                                     size_t count,
-                                     void *elem);
+int knd_export_inherited_attr(void *obj,
+                              const char *elem_id,
+                              size_t elem_id_size,
+                              size_t count,
+                              void *elem);
 
-extern int knd_attr_vars_export_JSON(struct kndAttrVar *items,
+int knd_attr_vars_export_JSON(struct kndAttrVar *items,
                                      struct kndTask *task,
                                      bool is_concise);
 
-extern int knd_attr_var_export_GSP(struct kndAttrVar *self,
+int knd_attr_var_export_GSP(struct kndAttrVar *self,
                                    struct kndTask *task,
                                    struct kndOutput *out);
 
-extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
+int knd_attr_vars_export_GSP(struct kndAttrVar *items,
                                     struct kndOutput *out,
                                     struct kndTask *task,
                                     size_t depth,
                                     bool is_concise);
 
-extern int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var,
+int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var,
                                            struct kndOutput *out);
 
-extern int knd_compute_num_value(struct kndAttr *attr,
+int knd_compute_num_value(struct kndAttr *attr,
                                  struct kndAttrVar *attr_var,
                                  long *result);
 
-extern int knd_apply_attr_var_updates(struct kndClass *self,
+int knd_apply_attr_var_updates(struct kndClass *self,
                                       struct kndClassUpdate *update,
                                       struct kndTask *task);
 
-extern int knd_register_attr_ref(void *obj,
+int knd_register_attr_ref(void *obj,
                                  const char *elem_id,
                                  size_t elem_id_size,
                                  size_t count,
                                  void *elem);
 
-extern int knd_get_arg_value(struct kndAttrVar *src,
+int knd_get_arg_value(struct kndAttrVar *src,
                              struct kndAttrVar *query,
                              struct kndProcCallArg *arg);
 
-extern int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth);
+int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth);
 
-extern int knd_attr_export(struct kndAttr *self,
+int knd_attr_export(struct kndAttr *self,
                            knd_format format, struct kndTask *task);
 extern void str_attr_vars(struct kndAttrVar *item, size_t depth);
 
-extern int knd_attr_var_new(struct kndMemPool *mempool,
+int knd_attr_var_new(struct kndMemPool *mempool,
                             struct kndAttrVar **result);
-extern int knd_attr_ref_new(struct kndMemPool *mempool,
+int knd_attr_ref_new(struct kndMemPool *mempool,
                             struct kndAttrRef **result);
-extern int knd_attr_facet_new(struct kndMemPool *mempool,
+int knd_attr_facet_new(struct kndMemPool *mempool,
                               struct kndAttrFacet **result);
-extern int knd_attr_hub_new(struct kndMemPool *mempool,
+int knd_attr_hub_new(struct kndMemPool *mempool,
                             struct kndAttrHub **result);
 
-extern int knd_attr_new(struct kndMemPool *mempool,
+int knd_attr_new(struct kndMemPool *mempool,
                         struct kndAttr **result);
 
 // knd_attr.import.c
@@ -322,7 +314,7 @@ int knd_import_attr_var_list(struct kndClassVar *self,
 extern gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *total_size);
 
 // knd_attr.select.c
-extern int knd_attr_var_match(struct kndAttrVar *self,
+int knd_attr_var_match(struct kndAttrVar *self,
                               struct kndAttrVar *template);
 
 int knd_attr_select_clause(struct kndAttr *attr,
@@ -337,22 +329,22 @@ extern gsl_err_t knd_select_attr_var(struct kndClass *class,
                                      struct kndTask *task);
 
 // knd_attr.resolve.c
-extern int knd_resolve_attr_vars(struct kndClass *self,
+int knd_resolve_attr_vars(struct kndClass *self,
                                  struct kndClassVar *parent_item,
                                  struct kndTask *task);
-extern int knd_resolve_primary_attrs(struct kndClass *self,
+int knd_resolve_primary_attrs(struct kndClass *self,
                                      struct kndTask *task);
 
 // knd_attr.index.c
-extern int knd_index_attr(struct kndClass *self,
+int knd_index_attr(struct kndClass *self,
                           struct kndAttr *attr,
                           struct kndAttrVar *item,
                           struct kndTask *task);
-extern int knd_index_attr_var_list(struct kndClass *self,
-                                   struct kndAttr *attr,
-                                   struct kndAttrVar *item,
-                                   struct kndTask *task);
-extern int knd_index_inner_attr_var(struct kndClass *self,
-                                    struct kndAttrVar *item,
-                                    struct kndTask *task);
+int knd_index_attr_var_list(struct kndClass *self,
+                            struct kndAttr *attr,
+                            struct kndAttrVar *item,
+                            struct kndTask *task);
+int knd_index_inner_attr_var(struct kndClass *self,
+                             struct kndAttrVar *item,
+                             struct kndTask *task);
 

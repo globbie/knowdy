@@ -35,11 +35,6 @@ static void str(struct kndAttr *self,
         knd_log("\n%*s{%s %.*s", depth * KND_OFFSET_SIZE, "",
                 type_name, self->name_size, self->name);
 
-    if (self->access_type == KND_ATTR_ACCESS_RESTRICTED) {
-        knd_log("%*s  ACL:restricted",
-                depth * KND_OFFSET_SIZE, "");
-    }
-
     if (self->quant_type == KND_ATTR_SET) {
         knd_log("%*s  QUANT:SET",
                 depth * KND_OFFSET_SIZE, "");

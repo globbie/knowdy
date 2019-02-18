@@ -596,13 +596,13 @@ int knd_class_get_attr(struct kndClass *self,
                        struct kndAttrRef **result)
 {
     struct kndAttrRef *ref;
-    struct kndDict *attr_name_idx = self->entry->repo->attr_name_idx;
-    struct kndSet *attr_idx = self->attr_idx;
-    struct kndAttr    *attr;
+    struct kndDict    *attr_name_idx = self->entry->repo->attr_name_idx;
+    struct kndSet     *attr_idx = self->attr_idx;
+    struct kndAttr    *attr = NULL;
     int err;
 
     if (DEBUG_CLASS_LEVEL_2) {
-        knd_log("\n.. \"%.*s\" class (repo: %.*s) to select attr \"%.*s\"",
+        knd_log(".. \"%.*s\" class (repo: %.*s) to select attr \"%.*s\"",
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
                 name_size, name);
@@ -620,19 +620,42 @@ int knd_class_get_attr(struct kndClass *self,
         }
     }
 
-    attr = ref->attr;
+    /* iterating over synonymous attrs */
+    for (; ref; ref = ref->next) {
+        attr = ref->attr;
 
-    if (DEBUG_CLASS_LEVEL_2) {
-        knd_log("== attr %.*s originates in class: %.*s (repo:%.*s)",
-                name_size, name,
-                ref->class_entry->name_size, ref->class_entry->name,
-                ref->class_entry->repo->name_size, ref->class_entry->repo->name);
+        if (DEBUG_CLASS_LEVEL_2) {
+            knd_log("== attr %.*s is used in class: %.*s (repo:%.*s)",
+                    name_size, name,
+                    ref->class_entry->name_size,
+                    ref->class_entry->name,
+                    ref->class_entry->repo->name_size,
+                    ref->class_entry->repo->name);
+        }
+
+        if (attr->parent_class == self) break;
+        err = knd_is_base(attr->parent_class, self);
+        if (!err) break;
     }
 
-    err = attr_idx->get(attr_idx, attr->id, attr->id_size, (void**)&ref);           RET_ERR();
+    if (!attr) {
+        err = knd_NO_MATCH;
+        goto final;
+    }
+
+    err = attr_idx->get(attr_idx, attr->id, attr->id_size, (void**)&ref);
+    if (err) {
+        goto final;
+    }
 
     *result = ref;
     return knd_OK;
+
+ final:
+    knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
+            name_size, name,
+            self->entry->name_size, self->entry->name);
+    return err;
 }
 
 int knd_class_get_attr_var(struct kndClass *self,

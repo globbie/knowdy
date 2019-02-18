@@ -216,41 +216,6 @@ static gsl_err_t parse_quant_type(void *obj, const char *rec, size_t *total_size
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t run_set_access_control(void *obj, const char *name, size_t name_size)
-{
-    struct kndAttr *self = (struct kndAttr*)obj;
-
-    if (name_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. run set ACL..");
-
-    if (!strncmp(name, "restrict", strlen("restrict"))) {
-        self->access_type = KND_ATTR_ACCESS_RESTRICTED;
-        if (DEBUG_ATTR_LEVEL_2)
-            knd_log("** NB: restricted attr: %.*s!",
-                    self->name_size, self->name);
-    }
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_access_control(void *obj, const char *rec, size_t *total_size)
-{
-    struct kndAttr *self = (struct kndAttr*)obj;
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = run_set_access_control,
-          .obj = self
-        }
-    };
-
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. parsing ACL: \"%s\"", rec);
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
 static gsl_err_t confirm_idx(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
     struct kndAttr *self = obj;
@@ -644,12 +609,6 @@ gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *total_s
         { .name = "t",
           .name_size = strlen("t"),
           .parse = parse_quant_type,
-          .obj = self
-        },
-        { .type = GSL_SET_STATE,
-          .name = "acl",
-          .name_size = strlen("acl"),
-          .parse = parse_access_control,
           .obj = self
         },
         { .type = GSL_SET_STATE,

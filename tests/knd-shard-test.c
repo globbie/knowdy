@@ -440,7 +440,6 @@ START_TEST(shard_proc_test)
                       "[arg {instr {_c Physical Object}}]}}",
             .expect = "{state [0-9]*{time [0-9]*}}"
         },
-#if 0
         {   /* add an agent */
             .input = "{task {class Person {!inst Alice}}}",
             .expect = "{state [0-9]*{time [0-9]*}}"
@@ -449,6 +448,7 @@ START_TEST(shard_proc_test)
             .input = "{task {class Window {!inst kitchen window}}}",
             .expect = "{state [0-9]*{time [0-9]*}}"
         },
+#if 0
         {   /* register a proc inst */
             .input = "{task {proc wash {!inst Alice-to-wash-a-window"
                      "{agent Alice} {obj kitchen window} }}}",

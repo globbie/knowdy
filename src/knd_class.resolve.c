@@ -66,8 +66,9 @@ static int inherit_attr(void *obj,
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) 
-        knd_log("..  \"%.*s\" attr inherited by %.*s..",
+        knd_log("..  \"%.*s\" (id:%.*s) attr inherited by %.*s..",
                 attr->name_size, attr->name,
+                attr->id_size, attr->id,
                 self->name_size, self->name);
 
     err = knd_attr_ref_new(mempool, &ref);                                        RET_ERR();
@@ -84,9 +85,9 @@ static int inherit_attr(void *obj,
                 knd_log("..  indexing \"%.*s\" attr var in %.*s..",
                         attr->name_size, attr->name,
                         self->name_size, self->name);
-            if (attr->is_a_set) {
+            /*if (attr->is_a_set) {
                 err = knd_index_attr_var_list(self, attr, ref->attr_var, task);   RET_ERR();
-            }
+                }*/
         }
     }
     return knd_OK;
@@ -360,7 +361,12 @@ int knd_class_resolve(struct kndClass *self,
         knd_log(".. resolving class \"%.*s\"..",
                 entry->name_size, entry->name);
     }
-    
+
+    /* primary attrs */
+    if (self->num_attrs) {
+        err = knd_resolve_primary_attrs(self, task);                              RET_ERR();
+    }
+
     /* a child of the root class */
     if (!self->baseclass_vars) {
         err = link_baseclass(self, repo->root_class, task);                       RET_ERR();
@@ -371,10 +377,6 @@ int knd_class_resolve(struct kndClass *self,
                 err = knd_resolve_attr_vars(self, cvar, task);                    RET_ERR();
             }
         }
-    }
-    /* primary attrs */
-    if (self->num_attrs) {
-        err = knd_resolve_primary_attrs(self, task);                              RET_ERR();
     }
 
     self->is_resolved = true;
