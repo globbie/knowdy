@@ -169,7 +169,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     if (!name_size) return make_gsl_err(gsl_FORMAT);
 
     if (task->type != KND_LOAD_STATE) {
-        knd_log(".. doublet checking.. ctx err:%d", task->ctx->error);
         err = knd_get_class(repo, name, name_size, &c, task);
         if (!err) goto doublet;
     }
@@ -177,14 +176,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     entry = knd_dict_get(class_name_idx, name, name_size);
     if (!entry) {
         entry = self->entry;
-        //knd_log("entry: %p", self->entry);
-        /*err = mempool->new_class_entry(mempool, &entry);
-        if (err) return make_gsl_err_external(err);
-        entry->repo = repo;
-        entry->class = self;
-        self->entry = entry;
-        */
-
         entry->name = name;
         entry->name_size = name_size;
         self->name = self->entry->name;

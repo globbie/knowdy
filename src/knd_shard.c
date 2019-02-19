@@ -210,7 +210,7 @@ int knd_shard_run_task(struct kndShard *self,
                 if (err) return err;
             }
             *output_size = ctx->out->buf_size;
-            knd_log("\n== RESULT: %.*s\n== num attempts: %zu\n",
+            knd_log("\n== RESULT: \"%.*s\"\n== task progress polling, num attempts: %zu\n",
                     ctx->out->buf_size, ctx->out->buf, num_attempts);
             return knd_OK;
         default:

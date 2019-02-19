@@ -184,7 +184,7 @@ static gsl_err_t parse_class_import(void *obj,
     struct kndTask *task = obj;
     int err;
 
-    if (DEBUG_TASK_LEVEL_TMP)
+    if (DEBUG_TASK_LEVEL_2)
         knd_log(".. parsing the system class import: \"%.*s\"..", 64, rec);
 
     task->type = KND_UPDATE_STATE;

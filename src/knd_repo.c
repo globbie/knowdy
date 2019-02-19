@@ -1483,12 +1483,12 @@ int knd_repo_update_indices(struct kndRepo *self,
 
         switch (ref->state->phase) {
         case KND_REMOVED:
-            entry->phase = KND_REMOVED;
+            proc_entry->phase = KND_REMOVED;
             err = knd_dict_remove(name_idx,
                                   proc_entry->name, proc_entry->name_size);       RET_ERR();
             continue;
         case KND_UPDATED:
-            entry->phase = KND_UPDATED;
+            proc_entry->phase = KND_UPDATED;
             continue;
         default:
             break;
@@ -1502,8 +1502,6 @@ int knd_repo_update_indices(struct kndRepo *self,
                            proc_entry->name,  proc_entry->name_size,
                            (void*)proc_entry);                                    RET_ERR();
     }
-
-    knd_log("++ name indices updated!");
 
     return knd_OK;
 }
