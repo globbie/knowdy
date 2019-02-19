@@ -33,19 +33,8 @@ void knd_task_del(struct kndTask *self)
 
 void knd_task_reset(struct kndTask *self)
 {
-    self->curr_locale_size = 0;
     self->type = KND_GET_STATE;
     self->phase = KND_SELECTED;
-    self->format = KND_FORMAT_GSL;
-    self->format_offset = 0;
-
-    self->num_sets = 0;
-    
-    self->batch_max = KND_RESULT_BATCH_SIZE;
-    self->batch_size = 0;
-    self->batch_from = 0;
-    self->start_from = 0;
-
     /* initialize request with off limit values */
     self->state_eq = -1;
     self->state_gt = -1;
@@ -57,7 +46,6 @@ void knd_task_reset(struct kndTask *self)
     self->depth = 0;
     self->max_depth = 1;
 
-    self->error = 0;
     self->http_code = HTTP_OK;
 
     self->user_ctx = NULL;

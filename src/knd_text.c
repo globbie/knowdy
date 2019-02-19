@@ -22,14 +22,17 @@ static int export_GSL(struct kndText *self,
 {
     struct kndOutput *out = task->out;
     struct kndTranslation *tr;
+    const char *curr_locale = task->ctx->locale;
+    size_t curr_locale_size = task->ctx->locale_size;
     int err;
 
-    if (DEBUG_TEXT_LEVEL_2)
-        knd_log(".. export text to GSL, locale: %.*s",
-                task->locale_size, task->locale);
+    if (DEBUG_TEXT_LEVEL_TMP)
+        knd_log(".. export text to GSL, locale \"%.*s\"",
+                curr_locale_size, curr_locale);
 
     for (tr = self->tr; tr; tr = tr->next) {
-        if (memcmp(task->locale, tr->locale, tr->locale_size)) {
+        if (curr_locale_size != tr->locale_size) continue;
+        if (memcmp(curr_locale, tr->locale, tr->locale_size)) {
             continue;
         }
         err = out->write_escaped(out, tr->val,  tr->val_size);                    RET_ERR();
@@ -47,11 +50,12 @@ static int export_JSON(struct kndText *self,
 
     if (DEBUG_TEXT_LEVEL_2)
         knd_log(".. export text to JSON, locale: %.*s",
-                task->locale_size, task->locale);
+                task->ctx->locale_size, task->ctx->locale);
 
     for (tr = self->tr; tr; tr = tr->next) {
-        //knd_log("== %.*s", tr->val_size, tr->val);
-        if (memcmp(task->locale, tr->locale, tr->locale_size)) {
+        if (task->ctx->locale_size != tr->locale_size) continue;
+
+        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
             continue;
         }
         err = out->write_escaped(out, tr->val,  tr->val_size);                    RET_ERR();

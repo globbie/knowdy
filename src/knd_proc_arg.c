@@ -102,10 +102,7 @@ static int export_JSON(struct kndProcArg *self,
     /* choose gloss */
     tr = self->tr;
     while (tr) {
-        if (DEBUG_PROC_ARG_LEVEL_TMP)
-            knd_log("LANG: %s == CURR LOCALE: %s [%zu] => %s",
-                    tr->locale, task->locale, task->locale_size, tr->val);
-        if (strncmp(task->locale, tr->locale, tr->locale_size)) {
+        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
         }
         err = out->write(out, ",\"gloss\":\"", strlen(",\"gloss\":\""));          RET_ERR();
@@ -249,10 +246,10 @@ static int export_SVG(struct kndProcArg *self,
 }
 
 
-extern int knd_proc_arg_export(struct kndProcArg *self,
-                               knd_format format,
-                               struct kndTask *task,
-                               struct kndOutput *out)
+int knd_proc_arg_export(struct kndProcArg *self,
+                        knd_format format,
+                        struct kndTask *task,
+                        struct kndOutput *out)
 {
     int err;
 

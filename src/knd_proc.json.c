@@ -69,7 +69,9 @@ int knd_proc_export_JSON(struct kndProc *self,
     /* choose gloss */
     tr = self->tr;
     while (tr) {
-        if (memcmp(task->locale, tr->locale, tr->locale_size)) {
+        if (task->ctx->locale_size != tr->locale_size) continue;
+
+        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
         }
         if (in_list) {

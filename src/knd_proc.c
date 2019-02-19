@@ -147,21 +147,24 @@ static gsl_err_t present_proc_selection(void *obj,
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndProc *proc = ctx->proc;
-    knd_format format = task->format;
-    struct kndOutput *out = task->out;
+    knd_format format = task->ctx->format;
+    struct kndOutput *out = task->ctx->out;
     int err;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. presenting proc selection..");
 
     if (!proc) return make_gsl_err(gsl_FAIL);
 
     out->reset(out);
 
+    
     /* export BODY */
     err = knd_proc_export(proc, format, task, out);
     if (err) return make_gsl_err_external(err);
 
+    knd_log("== proc export result: \"%.*s\"",
+            out->buf_size, out->buf);
     return make_gsl_err(gsl_OK);
 }
 
@@ -229,10 +232,10 @@ gsl_err_t knd_proc_select(struct kndRepo *repo,
         .repo = repo
     };
     gsl_err_t parser_err;
+    int err;
 
     if (DEBUG_PROC_LEVEL_TMP)
-        knd_log(".. parsing Proc select: \"%.*s\"",
-                16, rec);
+        knd_log(".. proc selection: \"%.*s\"", 16, rec);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -271,14 +274,23 @@ gsl_err_t knd_proc_select(struct kndRepo *repo,
         return parser_err;
     }
 
+    if (!ctx.proc)
+        return make_gsl_err(gsl_FAIL);
+
+    knd_state_phase phase;
+
     /* any updates happened? */
-    /*if (self->curr_proc) {
-        if (self->curr_proc->inbox_size || self->curr_proc->inst_inbox_size) {
-            self->curr_proc->next = self->inbox;
-            self->inbox = self->curr_proc;
-            self->inbox_size++;
-        }
-    }*/
+    switch (task->type) {
+    case KND_UPDATE_STATE:
+        phase = KND_UPDATED;
+        if (task->phase == KND_REMOVED)
+            phase = KND_REMOVED;
+        err = knd_proc_update_state(ctx.proc, phase, task);
+        if (err) return make_gsl_err_external(err);
+        break;
+    default:
+        break;
+    }
 
     return make_gsl_err(gsl_OK);
 }
@@ -304,6 +316,8 @@ int knd_proc_export(struct kndProc *self,
         if (err) return err;
         break;
     default:
+        err = knd_proc_export_GSL(self, task, false, 0);
+        if (err) return err;
         break;
     }
     return knd_OK;
@@ -450,18 +464,17 @@ int knd_proc_update_state(struct kndProc *self,
                 phase);
     }
 
-    /* newly created proc? */
-    switch (phase) {
+    err = update_state(self, NULL, phase, &state, task);                          RET_ERR();
+
+    /*switch (phase) {
     case KND_CREATED:
     case KND_REMOVED:
-        err = update_state(self, NULL, phase, &state, task);                      RET_ERR();
         break;
     case KND_UPDATED:
-        /* any arg updates */
         break;
     default:
         break;
-    }
+        }*/
 
     /* register state */
     err = knd_state_ref_new(mempool, &state_ref);                                 RET_ERR();

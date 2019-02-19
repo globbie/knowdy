@@ -494,11 +494,6 @@ static gsl_err_t present_repo_state(void *obj,
     // export
     task->show_removed_objs = true;
 
-    if (task->curr_locale_size) {
-        task->locale = task->curr_locale;
-        task->locale_size = task->curr_locale_size;
-    }
-
     // TODO: formats
     err = knd_class_set_export_JSON(set, task);
     if (err) return make_gsl_err_external(err);
@@ -1290,6 +1285,8 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
     struct kndProcEntry *proc_entry;
     int err;
 
+    assert(update != NULL);
+
     if (DEBUG_REPO_LEVEL_TMP) {
         knd_log("\n.. \"%.*s\" repo to confirm updates.. ctx err:%d",
                 self->name_size, self->name, task->ctx->error);
@@ -1308,7 +1305,9 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
                     entry->name_size, entry->name);
         }
 
-        err = knd_class_resolve(entry->class, task);                              RET_ERR();
+        if (!entry->class->is_resolved) {
+            err = knd_class_resolve(entry->class, task);                              RET_ERR();
+        }
 
         state = ref->state;
         state->update = update;
@@ -1339,7 +1338,9 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
         }
 
         /* proc resolving */
-        err = knd_proc_resolve(proc_entry->proc, task);                     RET_ERR();
+        if (!proc_entry->proc->is_resolved) {
+            err = knd_proc_resolve(proc_entry->proc, task);                     RET_ERR();
+        }
     }
 
     // TODO: serialize update
@@ -1456,13 +1457,18 @@ int knd_repo_update_indices(struct kndRepo *self,
     for (ref = update->class_state_refs; ref; ref = ref->next) {
         entry = ref->obj;
 
-        if (ref->state->phase == KND_REMOVED) {
+        switch (ref->state->phase) {
+        case KND_REMOVED:
             entry->phase = KND_REMOVED;
-            knd_log("-- mark as removed: %p", entry);
             continue;
+        case KND_UPDATED:
+            entry->phase = KND_UPDATED;
+            continue;
+        default:
+            break;
         }
 
-        if (DEBUG_REPO_LEVEL_TMP)
+        if (DEBUG_REPO_LEVEL_2)
             knd_log(".. register class \"%.*s\"..",
                     entry->name_size, entry->name);
 
@@ -1475,11 +1481,17 @@ int knd_repo_update_indices(struct kndRepo *self,
     for (ref = update->proc_state_refs; ref; ref = ref->next) {
         proc_entry = ref->obj;
 
-        if (ref->state->phase == KND_REMOVED) {
-            proc_entry->phase = KND_REMOVED;
+        switch (ref->state->phase) {
+        case KND_REMOVED:
+            entry->phase = KND_REMOVED;
             err = knd_dict_remove(name_idx,
                                   proc_entry->name, proc_entry->name_size);       RET_ERR();
             continue;
+        case KND_UPDATED:
+            entry->phase = KND_UPDATED;
+            continue;
+        default:
+            break;
         }
 
         if (DEBUG_REPO_LEVEL_TMP)

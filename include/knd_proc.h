@@ -249,6 +249,11 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
                           const char *rec, size_t *total_size,
                           struct kndTask *task);
 
+// knd_proc.gsl.c
+int knd_proc_export_GSL(struct kndProc *self,
+                        struct kndTask *task,
+                        bool is_list_item,
+                        size_t depth);
 // knd_proc.json.c
 int knd_proc_export_JSON(struct kndProc *self,
                          struct kndTask *task,

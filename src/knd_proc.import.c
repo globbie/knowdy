@@ -367,9 +367,9 @@ int knd_inner_proc_import(struct kndProc *proc,
         return parser_err.code;
     }
 
-    if (task->tr) {
-        proc->tr = task->tr;
-        task->tr = NULL;
+    if (task->ctx->tr) {
+        proc->tr = task->ctx->tr;
+        task->ctx->tr = NULL;
     }
     if (DEBUG_PROC_IMPORT_LEVEL_TMP)
         knd_proc_str(proc, 0);
@@ -466,6 +466,15 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
 
     task->type = KND_UPDATE_STATE;
 
+    if (!task->ctx->update) {
+        err = knd_update_new(task->mempool, &task->ctx->update);
+        if (err) return make_gsl_err_external(err);
+
+        task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+                                                                memory_order_relaxed);
+    }
+    state->update = task->ctx->update;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -557,9 +566,9 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
         return parser_err;
     }
 
-    if (task->tr) {
-        proc->tr = task->tr;
-        task->tr = NULL;
+    if (task->ctx->tr) {
+        proc->tr = task->ctx->tr;
+        task->ctx->tr = NULL;
     }
 
     if (!proc->name_size)

@@ -420,22 +420,19 @@ int knd_class_update_state(struct kndClass *self,
     struct kndState *state = NULL;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_TMP) {
         knd_log(".. \"%.*s\" class (repo:%.*s) to update its state (phase:%d)",
                 self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name,
                 phase);
     }
 
+    err = update_state(self, NULL, phase, &state, task);                      RET_ERR();
+
     /* newly created class? */
     switch (phase) {
-    case KND_CREATED:
-    case KND_REMOVED:
-        err = update_state(self, NULL, phase, &state, task);                      RET_ERR();
-        break;
     case KND_UPDATED:
         /* any attr updates */
-
 #if 0        
         if (task->inner_class_state_refs) {
             err = update_state(self, task->inner_class_state_refs, phase, task);  RET_ERR();
@@ -465,6 +462,7 @@ int knd_class_update_state(struct kndClass *self,
     err = knd_state_ref_new(mempool, &state_ref);                                 RET_ERR();
     state_ref->state = state;
     state_ref->type = KND_STATE_CLASS;
+
     state_ref->obj = self->entry;
 
     state_ref->next = update->class_state_refs;
@@ -478,13 +476,7 @@ extern int knd_class_facets_export(struct kndTask *task)
 {
     task->out->reset(task->out);
 
-    /* set locale */
-    if (task->curr_locale_size) {
-        task->locale = task->curr_locale;
-        task->locale_size = task->curr_locale_size;
-    }
-
-    switch (task->format) {
+    switch (task->ctx->format) {
     case KND_FORMAT_JSON:
         return knd_class_facets_export_JSON(task);
     default:
@@ -514,12 +506,6 @@ int knd_class_export(struct kndClass *self,
                      struct kndTask *task)
 {
     task->out->reset(task->out);
-
-    /* set locale */
-    if (task->curr_locale_size) {
-        task->locale = task->curr_locale;
-        task->locale_size = task->curr_locale_size;
-    }
 
     switch (format) {
     case KND_FORMAT_JSON:
@@ -689,12 +675,6 @@ int knd_class_set_export(struct kndSet *self,
                          struct kndTask *task)
 {
     task->out->reset(task->out);
-
-    /* set locale */
-    if (task->curr_locale_size) {
-        task->locale = task->curr_locale;
-        task->locale_size = task->curr_locale_size;
-    }
 
     switch (format) {
     case KND_FORMAT_JSON:

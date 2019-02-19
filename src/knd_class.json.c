@@ -220,7 +220,9 @@ static int export_gloss_JSON(struct kndClass *self,
     int err;
 
     for (tr = self->tr; tr; tr = tr->next) {
-        if (memcmp(task->locale, tr->locale, tr->locale_size)) {
+        if (task->ctx->locale_size != tr->locale_size) continue;
+
+        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
             continue;
         }
 

@@ -186,12 +186,8 @@ static int export_JSON(struct kndAttr *self,
     /* choose gloss */
     tr = self->tr;
     while (tr) {
-        if (DEBUG_ATTR_LEVEL_2)
-            knd_log("LANG: %s == CURR LOCALE: %s [%lu] => %s",
-                    tr->locale, task->locale,
-                    (unsigned long)task->locale_size, tr->val);
-
-        if (strncmp(task->locale, tr->locale, tr->locale_size)) {
+        if (task->ctx->locale_size != tr->locale_size) continue;
+        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
         }
 

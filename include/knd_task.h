@@ -104,10 +104,13 @@ struct kndTaskContext {
     int error;
     knd_http_code_t http_code;
 
-    const char *locale;
+    char locale[KND_ID_SIZE];
     size_t locale_size;
+
     knd_format format;
     size_t format_offset;
+
+    struct kndTranslation *tr;
 
     size_t batch_max;
     size_t batch_from;
@@ -148,24 +151,13 @@ struct kndTask
 
     struct kndTaskContext *ctx;
 
-    char curr_locale[KND_NAME_SIZE];
-    size_t curr_locale_size;
-
-    const char *locale;
-    size_t locale_size;
-
-    knd_format format;
-    size_t format_offset;
-
-    int error;
+    // int error;
 
     char timestamp[KND_NAME_SIZE];
     size_t timestamp_size;
 
     const char *input;
     size_t input_size;
-
-    struct kndTranslation *tr;
 
     const char *report;
     size_t report_size;
@@ -175,7 +167,6 @@ struct kndTask
 
     const char *filename;
     size_t filename_size;
-
 
     knd_http_code_t http_code;
 

@@ -407,7 +407,7 @@ present_class_state(void *obj, const char *unused_var(name), size_t unused_var(n
         return make_gsl_err_external(knd_FAIL);
     }
 
-    err = knd_class_export_state(ctx->selected_class, task->format, task);
+    err = knd_class_export_state(ctx->selected_class, task->ctx->format, task);
     if (err) {
         knd_log("-- class state export failed");
         return make_gsl_err_external(err);
@@ -487,7 +487,7 @@ present_class_desc_state(void *obj, const char *unused_var(name), size_t unused_
     err = task->log->writef(task->log, "not implemented: export class desc state");
     if (err) return make_gsl_err_external(err);
     return make_gsl_err_external(knd_FAIL);
-//    err = knd_class_export_desc_state(ctx->selected_class, task->format, task);
+//    err = knd_class_export_desc_state(ctx->selected_class, task->ctx->format, task);
 //    if (err) {
 //        knd_log("-- class state export failed");
 //        return make_gsl_err_external(err);
@@ -608,7 +608,7 @@ present_class_desc(void *obj, const char *unused_var(name), size_t unused_var(na
         return make_gsl_err_external(knd_FAIL);
     }
 
-    err = knd_class_set_export(ctx->selected_class->entry->descendants, ctx->task->format, ctx->task);
+    err = knd_class_set_export(ctx->selected_class->entry->descendants, ctx->task->ctx->format, ctx->task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -767,7 +767,7 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
             // FIXME(k15tfu): remove this case
 
             if (!ctx->selected_base->entry->descendants) {
-                err = knd_empty_set_export(ctx->selected_base, task->format, task);
+                err = knd_empty_set_export(ctx->selected_base, task->ctx->format, task);
                 if (err) return make_gsl_err_external(err);
                 return make_gsl_err(gsl_OK);
             }
@@ -787,7 +787,7 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
                 return make_gsl_err(gsl_OK);
             }
 
-            err = knd_class_set_export(ctx->selected_base->entry->descendants, task->format, task);
+            err = knd_class_set_export(ctx->selected_base->entry->descendants, task->ctx->format, task);
             if (err) return make_gsl_err_external(err);
             return make_gsl_err(gsl_OK);
         }
@@ -809,7 +809,7 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
         if (err) return make_gsl_err_external(err);
 
         if (!set->num_elems) {
-            err = knd_empty_set_export(ctx->selected_base, task->format, task);
+            err = knd_empty_set_export(ctx->selected_base, task->ctx->format, task);
             if (err) return make_gsl_err_external(err);
         }
 
@@ -825,14 +825,14 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
             return make_gsl_err(gsl_OK);
         }
 
-        err = knd_class_set_export(set, task->format, task);
+        err = knd_class_set_export(set, task->ctx->format, task);
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }
     
     /* get one class by name */
     if (ctx->selected_class) {
-        err = knd_class_export(ctx->selected_class, task->format, task);
+        err = knd_class_export(ctx->selected_class, task->ctx->format, task);
         if (err) {
             knd_log("-- class export failed");
             return make_gsl_err_external(err);
@@ -842,13 +842,13 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
 
     /* display all classes */
     if (ctx->repo->class_idx->num_elems) {
-        err = knd_class_set_export(ctx->repo->class_idx, task->format, task);
+        err = knd_class_set_export(ctx->repo->class_idx, task->ctx->format, task);
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }
 
     if (ctx->repo->base) {
-        err = knd_class_set_export(ctx->repo->base->class_idx, task->format, task);
+        err = knd_class_set_export(ctx->repo->base->class_idx, task->ctx->format, task);
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }
@@ -925,10 +925,6 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
           .run = run_remove_class,
           .obj = &ctx
         },
-        { .is_default = true,
-          .run = present_class_selection,
-          .obj = &ctx
-        },
     // TODO(k15tfu): review the specs below
         { .type = GSL_SET_STATE,
           .name = "instance",
@@ -962,6 +958,10 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
           .name_size = strlen("_depth"),
           .parse = gsl_parse_size_t,
           .obj = &task->max_depth
+        },
+        { .is_default = true,
+          .run = present_class_selection,
+          .obj = &ctx
         }
     };
 

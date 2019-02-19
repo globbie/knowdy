@@ -101,10 +101,12 @@ END_TEST
 
 START_TEST(shard_table_test)
     static const struct table_test cases[] = {
-        {   /* display all available classes */
+#if 0
+    {   /* display all available classes */
             .input = "{task {class}}",
             .expect = "{set{total 1\\[class{User{_id 1}\\[attr{str guid}{str first-name}]}]{batch{max 10}{size 1}{from 0}}}"
         },
+#endif
         {   /* get class by name */
             .input = "{task {class User}}",
             .expect = "{class User{_id 1}\\[attr{str guid}{str first-name}]}"
@@ -425,6 +427,10 @@ START_TEST(shard_proc_test)
             .input  = "{task {!proc test Process}}",
             .expect = "{state [0-9]*{time [0-9]*}}",
         },
+        {   /* get a newly created proc */
+            .input  = "{task {proc test Process}}",
+            .expect = "{proc test Process{_id [0-9]*}}",
+        },
         {   /* create a proc with glosses */
             .input  = "{task {!proc another test Process"
                       "[_gloss {en {t gloss in English}}"
@@ -448,23 +454,21 @@ START_TEST(shard_proc_test)
             .input = "{task {class Window {!inst kitchen window}}}",
             .expect = "{state [0-9]*{time [0-9]*}}"
         },
-#if 0
         {   /* register a proc inst */
             .input = "{task {proc wash {!inst Alice-to-wash-a-window"
                      "{agent Alice} {obj kitchen window} }}}",
-            .expect = "{state [0-9]*{modif [0-9]*}}"
+            .expect = "{state [0-9]*{time [0-9]*}}"
         },
         {   /* another proc inst */
             .input = "{task {proc wash {!inst Alice-to-wash-a-window-again"
                      "{agent Alice} {obj kitchen window} }}}",
-            .expect = "{state [0-9]*{modif [0-9]*}}"
+            .expect = "{state [0-9]*{time [0-9]*}}"
         },
         {   /* yet another proc inst */
             .input = "{task {proc wash {!inst Alice-to-wash-a-window-3"
                      "{agent Alice} {obj kitchen window} }}}",
-            .expect = "{state [0-9]*{modif [0-9]*}}"
+            .expect = "{state [0-9]*{time [0-9]*}}"
         }
-#endif
     };
     struct kndShard *shard;
     int err;

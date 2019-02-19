@@ -36,12 +36,12 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct LocalContext *ctx = obj;
     struct kndClassInst *self = ctx->class_inst;
     struct kndClassEntry *class_entry;
-    struct kndClassInstEntry *entry;
+    // struct kndClassInstEntry *entry;
     struct kndRepo *repo = ctx->task->repo;
     struct kndDict *class_name_idx = repo->class_name_idx;
-    struct kndDict *name_idx = self->base->entry->inst_name_idx;
-    struct kndOutput *log = ctx->task->log;
-    struct kndTask *task = ctx->task;
+    // struct kndDict *name_idx = self->base->entry->inst_name_idx;
+    // struct kndOutput *log = ctx->task->log;
+    // struct kndTask *task = ctx->task;
     struct kndClass *c;
     int err;
 
@@ -67,6 +67,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_OK);
     }
 
+#if 0
     entry = knd_dict_get(name_idx, name, name_size);
     if (entry) {
         if (entry->inst && entry->inst->states->phase == KND_REMOVED) {
@@ -86,8 +87,10 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_EXISTS);
     }
  assign_name:
+#endif
     self->name = name;
     self->name_size = name_size;
+
     if (DEBUG_INST_LEVEL_2)
         knd_log("++ class inst name: \"%.*s\"",
                 self->name_size, self->name);

@@ -116,6 +116,11 @@ gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
                              size_t *chunk_size,
                              struct kndTask *task);
 
+int knd_proc_arg_export_GSL(struct kndProcArg *self,
+                            struct kndTask *task,
+                            bool is_list_item,
+                            size_t depth);
+
 int knd_proc_arg_export(struct kndProcArg *self,
                         knd_format format,
                         struct kndTask *task,

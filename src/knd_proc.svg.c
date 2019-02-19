@@ -80,7 +80,7 @@ int knd_proc_export_SVG(struct kndProc *self,
     /* choose gloss */
     tr = self->tr;
     while (tr) {
-        if (memcmp(task->locale, tr->locale, tr->locale_size)) {
+        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
         }
         err = out->write(out, "<text", strlen("<text"));          RET_ERR();

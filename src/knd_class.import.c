@@ -118,8 +118,8 @@ int knd_parse_import_class_inst(struct kndClass *self,
      knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("++ %.*s class inst parse OK!",
-                inst->name_size, inst->name,
+        knd_log("++ inst \"%.*s\" of \"%.*s\" class parse OK!",
+                inst->entry->id_size, inst->entry->id,
                 self->name_size, self->name);
 
     /* automatic name assignment if no explicit name given */
@@ -600,9 +600,9 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
     }
 
     /* reassign glosses */
-    if (task->tr) {
-        c->tr = task->tr;
-        task->tr = NULL;
+    if (task->ctx->tr) {
+        c->tr = task->ctx->tr;
+        task->ctx->tr = NULL;
     }
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)

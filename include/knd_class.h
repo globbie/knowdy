@@ -248,6 +248,9 @@ extern int knd_class_export_GSL(struct kndClass *self,
 extern int knd_empty_set_export_GSL(struct kndClass *self,
                                     struct kndTask *task);
 
+int knd_export_gloss_GSL(struct kndTranslation *tr,
+                         struct kndTask *task);
+
 extern int knd_class_facets_export(struct kndTask *task);
 
 extern int knd_class_set_export(struct kndSet *self,

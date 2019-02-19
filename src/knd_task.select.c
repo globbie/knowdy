@@ -75,7 +75,7 @@ static gsl_err_t run_set_format(void *obj,
         if (name_size != format_str_size) continue;
 
         if (!memcmp(format_str, name, name_size)) {
-            self->format = (knd_format)i;
+            self->ctx->format = (knd_format)i;
             return make_gsl_err(gsl_OK);
         }
     }
@@ -104,7 +104,59 @@ static gsl_err_t parse_format(void *obj,
         { .name = "offset",
           .name_size = strlen("offset"),
           .parse = gsl_parse_size_t,
-          .obj = &self->format_offset
+          .obj = &self->ctx->format_offset
+        }
+    };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+static gsl_err_t run_set_locale(void *obj,
+                                const char *name,
+                                size_t name_size)
+{
+    struct kndTask *self = obj;
+
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size > sizeof(self->ctx->locale)) return make_gsl_err(gsl_FORMAT);
+
+    memcpy(self->ctx->locale, name, name_size);
+    self->ctx->locale_size = name_size;
+
+    /* TODO check locale
+    for (size_t i = 0; i < sizeof knd_format_names / sizeof knd_format_names[0]; i++) {
+        const char *format_str = knd_format_names[i];
+        assert(format_str != NULL);
+
+        size_t format_str_size = strlen(format_str);
+        if (name_size != format_str_size) continue;
+
+        if (!memcmp(format_str, name, name_size)) {
+            self->ctx->format = (knd_format)i;
+            return make_gsl_err(gsl_OK);
+        }
+    }
+
+    err = self->log->write(self->log, name, name_size);
+    if (err) return make_gsl_err_external(err);
+    err = self->log->write(self->log, " locale not supported",
+                           strlen(" locale not supported"));
+    if (err) return make_gsl_err_external(err);
+    */
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_locale(void *obj,
+                              const char *rec,
+                              size_t *total_size)
+{
+    struct kndTask *self = obj;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_locale,
+          .obj = self
         }
     };
 
@@ -241,9 +293,8 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
     struct gslTaskSpec specs[] = {
         { .name = "locale",
           .name_size = strlen("locale"),
-          .buf = self->curr_locale,
-          .buf_size = &self->curr_locale_size,
-          .max_buf_size = sizeof self->curr_locale
+          .parse = parse_locale,
+          .obj = self
         },
         { .name = "format",
           .name_size = strlen("format"),

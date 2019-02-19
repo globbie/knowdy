@@ -164,6 +164,9 @@ int knd_shard_run_task(struct kndShard *self,
     ctx->input = ctx->input_buf;
     ctx->input_size = input_size;
 
+    ctx->batch_max = KND_RESULT_BATCH_SIZE;
+
+    
     err = knd_output_new(&ctx->out, output, *output_size);
     if (err) goto final;
     *output_size = 0;
