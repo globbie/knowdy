@@ -16,12 +16,61 @@
 #include "knd_set.h"
 
 static int wal_write(struct kndTask *task,
-                     struct kndTaskContext *unused_var(ctx))
+                     struct kndTaskContext *ctx)
 {
-    knd_log(".. kndStorage to write a WAL entry.. (commit file:%s)",
-            task->filename);
+    struct kndOutput *out = ctx->out;
+    struct kndOutput *file_out = task->file_out;
+    size_t planned_journal_size = 0;
+    struct stat st;
+    int err;
 
+    knd_log(".. kndStorage to write a WAL entry: %.*s (path:%.*s)",
+            out->buf_size, out->buf, ctx->repo->path_size, ctx->repo->path);
+
+    file_out->reset(file_out);
+    err = file_out->write(file_out, ctx->repo->path, ctx->repo->path_size);
+    if (err) return err;
+
+    err = file_out->writef(file_out, "/journal%zu.log", ctx->repo->num_journals);
+    if (err) return err;
+    file_out->buf[file_out->buf_size] = '\0';
     
+    if (stat(file_out->buf, &st)) {
+        knd_log(".. initializing the journal: \"%.*s\"",
+                file_out->buf_size, file_out->buf);
+
+        err = knd_write_file((const char*)file_out->buf,
+                             "[!update\n", strlen("[!update\n"));
+        if (err) return err;
+        goto append_wal_rec;
+    }
+
+    planned_journal_size = st.st_size + out->buf_size;
+    if (planned_journal_size >= ctx->repo->max_journal_size) {
+        knd_log("!NB: journal size limit reached!");
+        ctx->repo->num_journals++;
+
+        file_out->reset(file_out);
+        err = out->write(out, ctx->repo->path, ctx->repo->path_size);
+        if (err) return err;
+        err = out->writef(out, "/journal%zu.log", ctx->repo->num_journals);
+        if (err) return err;
+        file_out->buf[file_out->buf_size] = '\0';
+
+        knd_log(".. switch to a new journal: \"%.*s\"",
+                file_out->buf_size, file_out->buf);
+        err = knd_write_file((const char*)file_out->buf,
+                             "[!update\n", strlen("[!update\n"));
+        if (err) return err;
+    }
+
+ append_wal_rec:
+    err = knd_append_file((const char*)file_out->buf,
+                          out->buf, out->buf_size);
+    if (err) {
+        knd_log("-- update write failure");
+        return err;
+    }
     return knd_OK;
 }
 
@@ -66,6 +115,7 @@ static int wal_commit(struct kndTask *task,
         knd_log("-- commit write failure: %d", err);
         return err;
     }
+
     update->confirm = KND_VALID_STATE;
 
     return knd_OK;

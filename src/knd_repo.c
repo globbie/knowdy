@@ -1275,6 +1275,32 @@ static int build_persistent_commit(void *obj,
     return knd_OK;
 }
 
+static int export_update_GSL(struct kndRepo *self,
+                             struct kndUpdate *update,
+                             struct kndTask *task)
+{
+    char buf[KND_NAME_SIZE] = {0};
+    size_t buf_size = 0;
+    struct tm tm_info;
+    struct kndOutput *out = task->ctx->out;
+    int err;
+
+    err = out->writec(out, '{');                                                  RET_ERR();
+    err = out->write(out, "repo ", strlen("repo "));                              RET_ERR();
+    err = out->write(out, self->name, self->name_size);                           RET_ERR();
+
+    time(&update->timestamp);
+    localtime_r(&update->timestamp, &tm_info);
+    buf_size = strftime(buf, KND_NAME_SIZE,
+                        "{ts %Y-%m-%d %H:%M:%S}", &tm_info);
+    err = out->write(out, buf, buf_size);                                         RET_ERR();
+
+    err = out->writec(out, '}');                                                  RET_ERR();
+    err = out->writec(out, '\n');                                                 RET_ERR();
+
+    return knd_OK;
+}
+
 int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
 {
     struct kndTaskContext *ctx = task->ctx;
@@ -1339,11 +1365,12 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
 
         /* proc resolving */
         if (!proc_entry->proc->is_resolved) {
-            err = knd_proc_resolve(proc_entry->proc, task);                     RET_ERR();
+            err = knd_proc_resolve(proc_entry->proc, task);                       RET_ERR();
         }
     }
 
-    // TODO: serialize update
+    /* serialize a WAL entry */
+    err = export_update_GSL(self, update, task);                                  RET_ERR();
 
     ctx->phase = KND_WAL_WRITE;
     ctx->cb = build_persistent_commit;
@@ -1388,8 +1415,8 @@ int knd_repo_check_conflicts(struct kndRepo *self,
     int err;
 
     if (DEBUG_REPO_LEVEL_2)
-        knd_log("== orig update: #%zu ",
-                update->orig_state_id);
+        knd_log("== orig update: #%zu", update->orig_state_id);
+
     size_t latest_update_id = atomic_load_explicit(&self->num_updates,
                                                    memory_order_relaxed);
 
@@ -1425,7 +1452,7 @@ int knd_repo_check_conflicts(struct kndRepo *self,
             update->orig_state_id = i;
         }
     }
-    
+
     update->confirm = KND_VALID_STATE;
     update->numid = atomic_fetch_add_explicit(&self->num_updates, 1,
                                               memory_order_relaxed);
@@ -1437,7 +1464,7 @@ int knd_repo_check_conflicts(struct kndRepo *self,
                                 (void*)update);
     if (err) return err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("++ no conflicts found, update #%zu confirmed!",
                 update->numid);
 
