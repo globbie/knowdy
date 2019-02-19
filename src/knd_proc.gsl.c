@@ -11,6 +11,7 @@
 
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
+#include "knd_proc_call.h"
 #include "knd_class.h"
 #include "knd_task.h"
 #include "knd_state.h"
@@ -103,9 +104,23 @@ int knd_proc_export_GSL(struct kndProc *self,
         err = out->write(out, self->proc_call->name, self->proc_call->name_size); RET_ERR();
 
         for (carg = self->proc_call->args; carg; carg = carg->next) {
-            err = proc_call_arg_export_GSL(self, carg, out);                     RET_ERR();
+            err = proc_call_arg_export_GSL(self, carg, out);                      RET_ERR();
         }
         err = out->write(out, "}", 1);                                            RET_ERR();
+    }
+
+    if (self->estimate.cost) {
+        if (task->ctx->format_offset) {
+            err = out->writec(out, '\n');                                         RET_ERR();
+            err = knd_print_offset(out,
+                                   (depth + 1) * task->ctx->format_offset);       RET_ERR();
+        }
+        err = out->write(out, "{estim ", strlen("{estim "));                      RET_ERR();
+        err = out->writef(out, "%zu", self->estimate.cost);                       RET_ERR();
+        err = out->write(out, "{time ", strlen("{time "));                      RET_ERR();
+        err = out->writef(out, "%zu", self->estimate.time);                       RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
     }
 
  final:

@@ -23,11 +23,22 @@
 #include "knd_config.h"
 #include "knd_state.h"
 #include "knd_output.h"
-
 #include "knd_proc_arg.h"
-#include "knd_proc_call.h"
 
-struct kndProcCallArg;
+struct kndProcEstimate
+{
+    size_t cost;
+    size_t aggr_cost;
+
+    size_t time;
+    size_t aggr_time;
+
+    size_t num_agents;
+    size_t aggr_num_agents;
+};
+
+// struct kndProcCall;
+// struct kndProcCallArg;
 struct kndUpdate;
 
 struct kndProcInstEntry
@@ -80,24 +91,9 @@ struct kndProcEntry
     knd_state_phase phase;
 
     size_t global_offset;
-//    size_t curr_offset;
     size_t block_size;
 
-//    size_t body_size;
-//    size_t obj_block_size;
-//    size_t dir_size;
-
-//    struct kndProcEntry **children;
-//    size_t num_children;
-
     struct kndDict *inst_idx;
-
-    //struct kndMemPool *mempool;
-    //int fd;
-
-//    size_t num_procs;
-//    bool is_terminal;
-    //struct kndProcEntry *next;
 };
 
 struct kndProcArgVar
@@ -173,7 +169,7 @@ struct kndProc
     const char *result_classname;
     size_t result_classname_size;
 
-    size_t estim_cost_total;
+    struct kndProcEstimate estimate;
 
     bool is_resolved;
     bool resolving_in_progress;

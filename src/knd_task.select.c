@@ -342,8 +342,6 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("-- task parse failure: \"%.*s\"",
-                self->log->buf_size, self->log->buf);
         goto final;
     }
 
@@ -393,7 +391,6 @@ int knd_task_run(struct kndTask *self)
     parser_err = gsl_parse_task(self->ctx->input, &total_size,
                                 specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("-- task run failure");
         /*if (!is_gsl_err_external(parser_err)) {
             if (!self->log->buf_size) {
                 self->http_code = HTTP_BAD_REQUEST;

@@ -9,9 +9,22 @@
 
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
+#include "knd_proc_call.h"
 #include "knd_class.h"
 #include "knd_task.h"
 #include "knd_state.h"
+
+static int proc_call_arg_export_GSL(struct kndProcCallArg *call_arg,
+                                    struct kndOutput *out)
+{
+    int err;
+    err = out->write(out, "{\"", strlen("{\""));                                  RET_ERR();
+    err = out->write(out, call_arg->name, call_arg->name_size);                   RET_ERR();
+    err = out->write(out, "\":\"", strlen("\":\""));                              RET_ERR();
+    err = out->write(out, call_arg->val, call_arg->val_size);                     RET_ERR();
+    err = out->write(out, "\"}", strlen("\"}"));                                  RET_ERR();
+    return knd_OK;
+}
 
 int knd_proc_arg_export_GSL(struct kndProcArg *self,
                             struct kndTask *task,
@@ -20,7 +33,7 @@ int knd_proc_arg_export_GSL(struct kndProcArg *self,
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
-    // struct kndProcCallArg *arg;
+    struct kndProcCallArg *arg;
     struct kndOutput  *out = task->ctx->out;
     int err;
 
@@ -76,14 +89,14 @@ int knd_proc_arg_export_GSL(struct kndProcArg *self,
         err = out->writec(out, '}');                                              RET_ERR();
     }
     
-    /*if (self->proc_call->name_size) {
-        err = out->write(out, "{run ", strlen("{run "));                          RET_ERR();
+    if (self->proc_call->name_size) {
+        err = out->write(out, "{do ", strlen("{do "));                          RET_ERR();
         err = out->write(out, self->proc_call->name, self->proc_call->name_size); RET_ERR();
         for (arg = self->proc_call->args; arg; arg = arg->next) {
-            err = knd_proc_call_arg_export_GSL(self, arg, out);                   RET_ERR();
+            err = proc_call_arg_export_GSL(arg, out);                   RET_ERR();
         }
         err = out->write(out, "}", 1);                                            RET_ERR();
-        }*/
+    }
 
  final:
     err = out->writec(out, '}');                                                RET_ERR();

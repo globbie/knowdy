@@ -7,6 +7,7 @@
 #include "knd_repo.h"
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
+#include "knd_proc_call.h"
 #include "knd_task.h"
 #include "knd_class.h"
 #include "knd_text.h"
@@ -39,22 +40,27 @@ void proc_call_arg_str(struct kndProcCallArg *self,
 void knd_proc_arg_str(struct kndProcArg *self,
                       size_t depth)
 {
-    //struct kndTranslation *tr;
     struct kndProcCallArg *arg;
 
-    knd_log("%*s{%.*s   {_c %.*s}", depth * KND_OFFSET_SIZE, "",
-            self->name_size, self->name, self->classname_size, self->classname);
+    if (self->classname_size) {
+        knd_log("%*s{%.*s   {_c %.*s}", depth * KND_OFFSET_SIZE, "",
+                self->name_size, self->name, self->classname_size, self->classname);
+    } else {
+        knd_log("%*s{%.*s", depth * KND_OFFSET_SIZE, "",
+                self->name_size, self->name);
+    }
 
     if (self->proc_call) {
-        knd_log("%*s    {run %.*s [type:%d]", depth * KND_OFFSET_SIZE, "",
+        knd_log("%*s    {do %.*s [type:%d]", depth * KND_OFFSET_SIZE, "",
                 self->proc_call->name_size, self->proc_call->name,
                 self->proc_call->type);
         for (arg = self->proc_call->args; arg; arg = arg->next) {
             proc_call_arg_str(arg, depth + 1);
         }
-
         knd_log("%*s    }", depth * KND_OFFSET_SIZE, "");
     }
+
+    knd_log("%*s    }", depth * KND_OFFSET_SIZE, "");
 }
 
 static int proc_call_arg_export_JSON(struct kndProcArg *unused_var(self),
@@ -139,12 +145,12 @@ static int export_JSON(struct kndProcArg *self,
             proc = self->proc_entry->proc;
             if (proc) {
                 err = out->write(out, ",\"proc\":", strlen(",\"proc\":"));        RET_ERR();
-                err = knd_proc_export(proc, KND_FORMAT_JSON, task, out);                                         RET_ERR();
+                err = knd_proc_export(proc, KND_FORMAT_JSON, task, out);          RET_ERR();
             }
         } else {
-            err = out->write(out, ",\"run\":\"", strlen(",\"run\":\""));          RET_ERR();
+            err = out->write(out, ",\"do\":\"", strlen(",\"do\":\""));          RET_ERR();
             err = out->write(out, self->proc_call->name,
-                             self->proc_call->name_size);                          RET_ERR();
+                             self->proc_call->name_size);                         RET_ERR();
             err = out->write(out, "\"", 1);                                       RET_ERR();
         }
 
@@ -154,7 +160,7 @@ static int export_JSON(struct kndProcArg *self,
                 if (in_list) {
                     err = out->write(out, ",", 1);                                RET_ERR();
                 }
-                err = proc_call_arg_export_JSON(self, arg, out);                       RET_ERR();
+                err = proc_call_arg_export_JSON(self, arg, out);                  RET_ERR();
                 in_list = true;
             }
             err = out->write(out, "]", 1);                                        RET_ERR();
@@ -290,55 +296,56 @@ static gsl_err_t set_proc_arg_classname(void *obj, const char *name, size_t name
     return make_gsl_err(gsl_OK);
 }
 
-/*static gsl_err_t parse_proc_call(void *obj,
+static gsl_err_t set_proc_call_name(void *obj, const char *name, size_t name_size)
+{
+    struct kndProcCall *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    self->name = name;
+    self->name_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_proc_call(void *obj,
                                  const char *rec,
                                  size_t *total_size)
 {
-    struct kndProcArg *self = obj;
+    struct LocalContext *ctx = obj;
+    struct kndProcArg *self = ctx->proc_arg;
 
     if (DEBUG_PROC_ARG_LEVEL_2)
-        knd_log(".. Proc Call parsing: \"%.*s\"..", 32, rec);
+        knd_log(".. proc call parsing: \"%.*s\"..", 32, rec);
+
+    if (!self->proc_call) {
+        int e = knd_proc_call_new(ctx->task->mempool, &self->proc_call);
+        if (e) return *total_size = 0, make_gsl_err_external(e);
+    }
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_proc_call_name,
           .obj = self->proc_call
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "_gloss",
-          .name_size = strlen("_gloss"),
-          .parse = parse_gloss,
-          .obj = self
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "_g",
-          .name_size = strlen("_g"),
-          .parse = parse_gloss,
-          .obj = self
-        },
+        }/*,
         { .is_validator = true,
           .validate = parse_proc_call_arg,
           .obj = self
-        }
+          }*/
     };
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
-*/
 
 gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
                              const char *rec,
                              size_t *total_size,
-                             struct kndTask *unused_var(task))
+                             struct kndTask *task)
 {
     if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log(".. Proc Arg parsing: \"%.*s\"..", 32, rec);
 
-    /*    struct LocalContext ctx = {
+    struct LocalContext ctx = {
         .task = task,
         .proc_arg = self
-        }; */
-    
+    };
+   
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_name,
@@ -371,12 +378,12 @@ gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
            .name_size = strlen("num"),
            .parse = gsl_parse_size_t,
            .obj = &self->numval
-        }/*,
-        { .name = "run",
-          .name_size = strlen("run"),
+        },
+        { .name = "do",
+          .name_size = strlen("do"),
           .parse = parse_proc_call,
-          .obj = self
-          }*/
+          .obj = &ctx
+        }
     };
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }

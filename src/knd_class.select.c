@@ -240,7 +240,7 @@ parse_get_class_by_numid(void *obj, const char *rec, size_t *total_size)
     size_t id_size;
     knd_uid_create(numid, id, &id_size);
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log("ID: %zu => \"%.*s\" [size: %zu]",
                 numid, (int)id_size, id, id_size);
 

@@ -4,15 +4,16 @@
 #include <gsl-parser.h>
 
 #include "knd_proc.h"
+#include "knd_proc_arg.h"
+#include "knd_proc_call.h"
 #include "knd_utils.h"
 #include "knd_task.h"
 #include "knd_output.h"
-
-#include <knd_mempool.h>
-#include <knd_proc_arg.h>
-#include <knd_text.h>
-#include <knd_class.h>
-#include <knd_repo.h>
+#include "knd_mempool.h"
+#include "knd_proc_arg.h"
+#include "knd_text.h"
+#include "knd_class.h"
+#include "knd_repo.h"
 
 #define DEBUG_PROC_IMPORT_LEVEL_0 0
 #define DEBUG_PROC_IMPORT_LEVEL_1 0
@@ -245,6 +246,56 @@ static gsl_err_t proc_call_parse(void *obj,
         self->proc_call->type = KND_PROC_DIV_PERCENT;
 
     return make_gsl_err(gsl_OK);
+}
+
+
+static gsl_err_t run_set_cost(void *obj, const char *val, size_t val_size)
+{
+    struct kndProc *self = obj;
+    char buf[KND_NAME_SIZE];
+    size_t buf_size;
+    long numval;
+    int err;
+
+    if (!val_size) return make_gsl_err_external(knd_FAIL);
+    if (val_size >= KND_NAME_SIZE) return make_gsl_err_external(knd_LIMIT);
+
+    memcpy(buf, val, val_size);
+    buf_size = val_size;
+    buf[buf_size] = '\0';
+
+    err = knd_parse_num(buf, &numval);
+    if (err) return make_gsl_err_external(err);
+    
+    self->estimate.cost = numval;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_estimate(void *obj,
+                                const char *rec,
+                                size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndProc *self = ctx->proc;
+
+    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
+        knd_log(".. proc estimate parsing: \"%.*s\"..",
+                32, rec);
+
+    struct gslTaskSpec specs[] = {
+        {   .is_implied = true,
+            .run = run_set_cost,
+            .obj = self
+        },
+        {   .name = "time",
+            .name_size = strlen("time"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->estimate.time
+        }
+    };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
@@ -546,6 +597,11 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
             .name_size = strlen("result"),
             .run = set_result_classname,
             .obj = proc
+        },
+        {   .name = "estim",
+            .name_size = strlen("estim"),
+            .parse = parse_estimate,
+            .obj = &ctx
         },
         {   .name = "do",
             .name_size = strlen("do"),

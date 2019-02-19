@@ -25,8 +25,6 @@
 #include "knd_config.h"
 #include "knd_output.h"
 
-#include "knd_proc_call.h"
-
 struct kndClass;
 struct kndMemPool;
 struct kndTranslation;
@@ -37,6 +35,8 @@ struct kndProcArgInst;
 struct kndClassInst;
 struct kndClassVar;
 struct kndTask;
+struct kndProcCall;
+struct kndProcCallArg;
 
 //typedef enum knd_proc_arg_type {
 //    KND_PROCARG_NONE,

@@ -11,6 +11,7 @@
 
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
+#include "knd_proc_call.h"
 #include "knd_class.h"
 #include "knd_task.h"
 #include "knd_state.h"
@@ -117,10 +118,20 @@ int knd_proc_export_JSON(struct kndProc *self,
             err = proc_call_arg_export_JSON(self, carg, out);                     RET_ERR();
         }
 
-        err = out->write(out, "}", 1);                                            RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
     }
 
-    err = out->write(out, "}", 1);                                                RET_ERR();
+
+    if (self->estimate.cost) {
+        err = out->write(out, ",\"estim\":{", strlen(",\"estim\":{"));             RET_ERR();
+        err = out->write(out, "\"cost\":", strlen("\"cost\":"));                  RET_ERR();
+        err = out->writef(out, "%zu", self->estimate.cost);                       RET_ERR();
+        err = out->write(out, ",\"time\":", strlen(",\"time\":"));                  RET_ERR();
+        err = out->writef(out, "%zu", self->estimate.time);                       RET_ERR();
+        err = out->writec(out, '}');                                              RET_ERR();
+    }
+    
+    err = out->writec(out, '}');                                                  RET_ERR();
 
     return knd_OK;
 }

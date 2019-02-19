@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2018 by Dmitri Dmitriev
+ *   Copyright (c) 2011-present by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Graph DB, 
@@ -20,14 +20,13 @@
 
 #pragma once
 
+#include "knd_proc.h"
 #include "knd_config.h"
 
 #include <stddef.h>
 #include <string.h>
 
 struct kndClassVar;
-struct kndProc;
-struct kndProcArg;
 struct kndMemPool;
 
 typedef enum knd_proc_type {
@@ -63,6 +62,8 @@ struct kndProcCall
     knd_proc_type type;
     struct kndProcCallArg *args;
     size_t num_args;
+
+    struct kndProcEstimate *estimate;
 };
 
 //

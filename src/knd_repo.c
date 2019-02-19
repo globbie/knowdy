@@ -1243,10 +1243,11 @@ static int deliver_task_report(void *obj,
     struct kndTaskContext *ctx = ctx_obj;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. worker:%zu (type:%d) / ctx:%zu "
                 " to deliver report on task #%zu.. error:%d",
-                task->id, task->type, ctx->numid, ctx->update->numid, ctx->error);
+                task->id, task->type, ctx->numid,
+                ctx->update->numid, ctx->error);
 
     if (ctx->update) {
         ctx->update->timestamp = time(NULL);
