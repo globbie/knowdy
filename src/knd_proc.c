@@ -152,20 +152,17 @@ static gsl_err_t present_proc_selection(void *obj,
     struct kndOutput *out = task->ctx->out;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. presenting proc selection..");
 
     if (!proc) return make_gsl_err(gsl_FAIL);
 
     out->reset(out);
-
     
     /* export BODY */
     err = knd_proc_export(proc, format, task, out);
     if (err) return make_gsl_err_external(err);
 
-    knd_log("== proc export result: \"%.*s\"",
-            out->buf_size, out->buf);
     return make_gsl_err(gsl_OK);
 }
 
@@ -305,7 +302,7 @@ int knd_proc_export(struct kndProc *self,
 
     switch (format) {
     case KND_FORMAT_JSON:
-        err = knd_proc_export_JSON(self, task, out);
+        err = knd_proc_export_JSON(self, task, out, 0);
         if (err) return err;
         break;
         /*case KND_FORMAT_GSP:

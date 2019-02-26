@@ -44,10 +44,38 @@ static int proc_call_arg_export_JSON(struct kndProc *unused_var(self),
     return knd_OK;
 }
 
+static int export_gloss_JSON(struct kndTranslation *tr,
+                             struct kndTask *task,
+                             struct kndOutput *out,
+                             bool separ_needed)
+{
+    int err;
+
+    while (tr) {
+        if (task->ctx->locale_size != tr->locale_size) continue;
+
+        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
+            goto next_tr;
+        }
+        if (separ_needed) {
+            err = out->write(out, ",", 1);                                        RET_ERR();
+        }
+        err = out->write(out, "\"_gloss\":\"", strlen("\"_gloss\":\""));          RET_ERR();
+        err = out->write(out, tr->val,  tr->val_size);                            RET_ERR();
+        err = out->write(out, "\"", 1);                                           RET_ERR();
+        break;
+    next_tr:
+        tr = tr->next;
+    }
+    return knd_OK;
+}
+
 int knd_proc_export_JSON(struct kndProc *self,
                          struct kndTask *task,
-                         struct kndOutput  *out)
+                         bool is_list_item,
+                         size_t depth)
 {
+    struct kndOutput  *out = task->ctx->out;
     struct kndProcArg *arg;
     struct kndProcCallArg *carg;
     struct kndTranslation *tr;
@@ -67,24 +95,8 @@ int knd_proc_export_JSON(struct kndProc *self,
         in_list = true;
     }
 
-    /* choose gloss */
-    tr = self->tr;
-    while (tr) {
-        if (task->ctx->locale_size != tr->locale_size) continue;
-
-        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
-            goto next_tr;
-        }
-        if (in_list) {
-            err = out->write(out, ",", 1);                                        RET_ERR();
-        }
-        err = out->write(out, "\"_gloss\":\"", strlen("\"_gloss\":\""));          RET_ERR();
-        err = out->write(out, tr->val,  tr->val_size);                            RET_ERR();
-        err = out->write(out, "\"", 1);                                           RET_ERR();
-        in_list = true;
-        break;
-    next_tr:
-        tr = tr->next;
+    if (self->tr) {
+        err = export_gloss_JSON(self->tr,  task, out, in_list);                   RET_ERR();
     }
 
     if (self->args) {
@@ -97,7 +109,6 @@ int knd_proc_export_JSON(struct kndProc *self,
             if (in_arg) {
                 err = out->write(out, ",", 1);                                    RET_ERR();
             }
-
             err = knd_proc_arg_export(arg, KND_FORMAT_JSON, task, out);           RET_ERR();
             in_arg = true;
         }
@@ -122,12 +133,12 @@ int knd_proc_export_JSON(struct kndProc *self,
     }
 
 
-    if (self->estimate.cost) {
-        err = out->write(out, ",\"estim\":{", strlen(",\"estim\":{"));             RET_ERR();
+    if (self->estimate.aggr_cost) {
+        err = out->write(out, ",\"estim\":{", strlen(",\"estim\":{"));            RET_ERR();
         err = out->write(out, "\"cost\":", strlen("\"cost\":"));                  RET_ERR();
-        err = out->writef(out, "%zu", self->estimate.cost);                       RET_ERR();
-        err = out->write(out, ",\"time\":", strlen(",\"time\":"));                  RET_ERR();
-        err = out->writef(out, "%zu", self->estimate.time);                       RET_ERR();
+        err = out->writef(out, "%zu", self->estimate.aggr_cost);                  RET_ERR();
+        err = out->write(out, ",\"time\":", strlen(",\"time\":"));                RET_ERR();
+        err = out->writef(out, "%zu", self->estimate.aggr_time);                  RET_ERR();
         err = out->writec(out, '}');                                              RET_ERR();
     }
     

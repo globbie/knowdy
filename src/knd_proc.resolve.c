@@ -6,6 +6,7 @@
 #include "knd_mempool.h"
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
+#include "knd_proc_call.h"
 #include "knd_class.h"
 #include "knd_repo.h"
 
@@ -189,6 +190,35 @@ int knd_proc_resolve(struct kndProc *self,
     //}
     
     self->is_resolved = true;
+
+    return knd_OK;
+}
+
+int knd_proc_compute(struct kndProc *self,
+                     struct kndTask *task)
+{
+    struct kndRepo *repo = self->entry->repo;
+    struct kndProcArg *arg = NULL;
+    int err;
+
+    if (DEBUG_PROC_RESOLVE_LEVEL_TMP)
+        knd_log(".. proc to compute: %.*s",
+                self->name_size, self->name);
+
+    for (arg = self->args; arg; arg = arg->next) {
+        err = knd_proc_arg_compute(arg, task);                                    RET_ERR();
+
+        if (!arg->proc_call) continue;
+        if (!arg->proc_call->proc) continue;
+
+        self->estimate.aggr_cost += arg->proc_call->proc->estimate.aggr_cost;
+        self->estimate.aggr_time += arg->proc_call->proc->estimate.aggr_time;
+    }
+
+    self->estimate.aggr_cost += self->estimate.cost;
+    self->estimate.aggr_time += self->estimate.time;
+
+    self->is_computed = true;
 
     return knd_OK;
 }

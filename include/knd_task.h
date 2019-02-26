@@ -117,6 +117,9 @@ struct kndTaskContext {
     size_t batch_size;
     size_t start_from;
 
+    size_t depth;
+    size_t max_depth;
+
     // TODO: subscription channel
     // to push any updates
 

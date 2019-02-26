@@ -28,15 +28,16 @@
 struct kndClass;
 struct kndMemPool;
 struct kndTranslation;
+struct kndClassInst;
+struct kndClassVar;
+struct kndTask;
 struct kndProc;
 struct kndProcInst;
 struct kndProcArg;
 struct kndProcArgInst;
-struct kndClassInst;
-struct kndClassVar;
-struct kndTask;
 struct kndProcCall;
 struct kndProcCallArg;
+
 
 //typedef enum knd_proc_arg_type {
 //    KND_PROCARG_NONE,
@@ -131,6 +132,9 @@ int knd_proc_arg_resolve(struct kndProcArg *self,
 gsl_err_t knd_arg_inst_import(struct kndProcArgInst *self,
                               const char *rec, size_t *total_size,
                               struct kndTask *task);
+
+int knd_proc_arg_compute(struct kndProcArg *self,
+                         struct kndTask *task);
 
 void knd_proc_arg_str(struct kndProcArg *self,
                       size_t depth);

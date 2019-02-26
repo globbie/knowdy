@@ -172,6 +172,7 @@ struct kndProc
     struct kndProcEstimate estimate;
 
     bool is_resolved;
+    bool is_computed;
     bool resolving_in_progress;
 
     struct kndProc *next;
@@ -240,6 +241,8 @@ gsl_err_t knd_proc_select(struct kndRepo *repo,
 
 int knd_proc_resolve(struct kndProc *self,
                      struct kndTask *task);
+int knd_proc_compute(struct kndProc *self,
+                     struct kndTask *task);
 
 gsl_err_t knd_proc_import(struct kndRepo *repo,
                           const char *rec, size_t *total_size,
@@ -253,7 +256,9 @@ int knd_proc_export_GSL(struct kndProc *self,
 // knd_proc.json.c
 int knd_proc_export_JSON(struct kndProc *self,
                          struct kndTask *task,
-                         struct kndOutput  *out);
+                         bool is_list_item,
+                         size_t depth);
+
 // knd_proc.svg.c
 int knd_proc_export_SVG(struct kndProc *self,
                         struct kndTask *task,

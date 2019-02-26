@@ -99,7 +99,7 @@ typedef enum knd_storage_type {
 #define KND_DEBUG_LEVEL_5 0
 
 #define MAX_DEQUE_ATTEMPTS 100
-#define TASK_TIMEOUT_USECS 500
+#define TASK_TIMEOUT_USECS 100
 #define TASK_MAX_TIMEOUT_SECS 5
 #define TASK_QUEUE_CAPACITY 20
 

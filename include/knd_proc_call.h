@@ -60,6 +60,8 @@ struct kndProcCall
     const char *name;
     size_t name_size;
     knd_proc_type type;
+
+    struct kndProc *proc;
     struct kndProcCallArg *args;
     size_t num_args;
 

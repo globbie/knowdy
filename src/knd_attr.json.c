@@ -353,7 +353,7 @@ static int proc_item_export_JSON(struct kndAttrVar *item,
                                  struct kndTask *task)
 {
     assert(item->proc != NULL);
-    int err = knd_proc_export_JSON(item->proc, task, task->out);                  RET_ERR();
+    int err = knd_proc_export_JSON(item->proc, task, false, 0);                   RET_ERR();
     return knd_OK;
 }
 

@@ -1089,6 +1089,16 @@ static int resolve_procs(struct kndRepo *self,
                                 entry->id, entry->id_size, (void*)entry);
             if (err) return err;
 
+            /* compute proc */
+            if (!entry->proc->is_computed) {
+                err = knd_proc_compute(entry->proc, task);
+                if (err) {
+                    knd_log("-- couldn't compute the \"%.*s\" proc",
+                            entry->proc->name_size, entry->proc->name);
+                    return err;
+                }
+            }
+            
             if (DEBUG_REPO_LEVEL_2) {
                 knd_proc_str(entry->proc, 1);
             }

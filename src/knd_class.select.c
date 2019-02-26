@@ -368,7 +368,7 @@ parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
         { .name = "_depth",
           .name_size = strlen("_depth"),
           .parse = gsl_parse_size_t,
-          .obj = &task->max_depth
+          .obj = &task->ctx->max_depth
         }
     };
 
@@ -957,7 +957,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
         { .name = "_depth",
           .name_size = strlen("_depth"),
           .parse = gsl_parse_size_t,
-          .obj = &task->max_depth
+          .obj = &task->ctx->max_depth
         },
         { .is_default = true,
           .run = present_class_selection,
