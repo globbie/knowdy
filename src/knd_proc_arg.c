@@ -121,9 +121,7 @@ static int export_JSON(struct kndProcArg *self,
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
-    struct kndTranslation *tr;
     struct kndProcCallArg *arg;
-    struct kndProc *proc;
     bool in_list = false;
     int err;
 
@@ -566,7 +564,6 @@ int knd_proc_arg_resolve(struct kndProcArg *self,
 int knd_proc_arg_compute(struct kndProcArg *self,
                          struct kndTask *task)
 {
-    struct kndClassEntry *entry;
     int err;
 
     if (DEBUG_PROC_ARG_LEVEL_TMP)

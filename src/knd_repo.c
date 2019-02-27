@@ -1073,6 +1073,7 @@ static int resolve_procs(struct kndRepo *self,
             if (entry->proc->is_resolved) {
                 continue;
             }
+
             err = knd_proc_resolve(entry->proc, task);
             if (err) {
                 knd_log("-- couldn't resolve the \"%.*s\" proc",
@@ -1088,8 +1089,17 @@ static int resolve_procs(struct kndRepo *self,
             err = proc_idx->add(proc_idx,
                                 entry->id, entry->id_size, (void*)entry);
             if (err) return err;
+            if (DEBUG_REPO_LEVEL_2) {
+                knd_proc_str(entry->proc, 1);
+            }
+        }
+    }
 
-            /* compute proc */
+    for (size_t i = 0; i < proc_name_idx->size; i++) {
+        item = atomic_load_explicit(&proc_name_idx->hash_array[i],
+                                    memory_order_relaxed);
+        for (; item; item = item->next) {
+            entry = item->data;
             if (!entry->proc->is_computed) {
                 err = knd_proc_compute(entry->proc, task);
                 if (err) {
@@ -1098,12 +1108,9 @@ static int resolve_procs(struct kndRepo *self,
                     return err;
                 }
             }
-            
-            if (DEBUG_REPO_LEVEL_2) {
-                knd_proc_str(entry->proc, 1);
-            }
         }
     }
+
     return knd_OK;
 }
 

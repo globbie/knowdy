@@ -78,14 +78,13 @@ int knd_proc_export_JSON(struct kndProc *self,
     struct kndOutput  *out = task->ctx->out;
     struct kndProcArg *arg;
     struct kndProcCallArg *carg;
-    struct kndTranslation *tr;
     bool in_list = false;
     bool in_arg = false;
     int err;
 
     if (DEBUG_PROC_JSON_LEVEL_2)
-        knd_log(".. \"%.*s\" proc export JSON..",
-                self->name_size, self->name);
+        knd_log(".. \"%.*s\" proc export JSON.. list:%d depth:%zu",
+                self->name_size, self->name, is_list_item, depth);
 
     err = out->writec(out, '{');                                                  RET_ERR();
     if (self->name_size) {

@@ -197,7 +197,6 @@ int knd_proc_resolve(struct kndProc *self,
 int knd_proc_compute(struct kndProc *self,
                      struct kndTask *task)
 {
-    struct kndRepo *repo = self->entry->repo;
     struct kndProcArg *arg = NULL;
     int err;
 
@@ -206,10 +205,17 @@ int knd_proc_compute(struct kndProc *self,
                 self->name_size, self->name);
 
     for (arg = self->args; arg; arg = arg->next) {
+        if (!arg->proc_call) {
+            knd_log("-- %.*s arg has no proc call",
+                    arg->name_size, arg->name);
+            continue;
+        }
+        if (!arg->proc_call->proc) {
+            knd_log("-- %.*s arg has no do proc",
+                    arg->name_size, arg->name);
+            continue;
+        }
         err = knd_proc_arg_compute(arg, task);                                    RET_ERR();
-
-        if (!arg->proc_call) continue;
-        if (!arg->proc_call->proc) continue;
 
         self->estimate.aggr_cost += arg->proc_call->proc->estimate.aggr_cost;
         self->estimate.aggr_time += arg->proc_call->proc->estimate.aggr_time;
@@ -219,6 +225,11 @@ int knd_proc_compute(struct kndProc *self,
     self->estimate.aggr_time += self->estimate.time;
 
     self->is_computed = true;
+
+    if (DEBUG_PROC_RESOLVE_LEVEL_TMP)
+        knd_log(".. proc \"%.*s\" cost:%zu",
+                self->name_size, self->name,
+                self->estimate.aggr_cost);
 
     return knd_OK;
 }
