@@ -40,13 +40,10 @@ struct kndShard
 
     /* system repo */
     struct kndRepo *repo;
+    /* all other repos */
+    struct kndSet *repos;
 
     struct kndMemPool *mempool;
-    struct glbOutput *out;
-    struct glbOutput *log;
-
-    //const char *report;
-    //size_t report_size;
 };
 
 int knd_shard_new(struct kndShard **self, const char *config, size_t config_size);

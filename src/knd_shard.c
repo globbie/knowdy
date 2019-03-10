@@ -295,12 +295,6 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndShard));
 
-    //err = glbOutput_new(&self->out, KND_IDX_BUF_SIZE);
-    //if (err != knd_OK) goto error;
-
-    //err = glbOutput_new(&self->log, KND_MED_BUF_SIZE);
-    //if (err != knd_OK) goto error;
-
     err = kndMemPool_new(&mempool);
     if (err != knd_OK) goto error;
     self->mempool = mempool;
@@ -316,6 +310,9 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     err = knd_set_new(mempool, &self->ctx_idx);
     if (err != knd_OK) goto error;
     self->ctx_idx->mempool = mempool;
+
+    err = knd_set_new(mempool, &self->repos);
+    if (err != knd_OK) goto error;
 
     if (!self->num_tasks) self->num_tasks = 1;
 
@@ -456,11 +453,6 @@ void knd_shard_del(struct kndShard *self)
 
     if (self->repo)
         knd_repo_del(self->repo);
-
-    if (self->out)
-        self->out->del(self->out);
-    if (self->log)
-        self->log->del(self->log);
 
     if (self->num_tasks) {
         for (size_t i = 0; i < self->num_tasks; i++) {
