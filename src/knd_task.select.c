@@ -1,6 +1,7 @@
 #include "knd_task.h"
 
 #include "knd_class.h"
+#include "knd_proc.h"
 #include "knd_repo.h"
 #include "knd_shard.h"
 #include "knd_user.h"
@@ -10,6 +11,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <stdatomic.h>
 
 #define DEBUG_TASK_LEVEL_0 0
 #define DEBUG_TASK_LEVEL_1 0
@@ -17,10 +19,44 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
-struct LocalContext {
-    struct kndTask *self;
-    struct kndShard *shard;
-};
+#if 0
+static const char * gsl_err_to_str(gsl_err_t err)
+{
+    switch (err.code) {
+    case gsl_FAIL:     return "Unclassified error";
+    case gsl_LIMIT:    return "LIMIT error";
+    case gsl_NO_MATCH: return "NO_MATCH error";
+    case gsl_FORMAT:   return "FORMAT error";
+    case gsl_EXISTS:   return "EXISTS error";
+    default:           return "Unknown error";
+    }
+}
+#endif
+
+#if 0
+static int log_parser_error(struct kndTask *self,
+                           gsl_err_t parser_err,
+                           size_t pos,
+                           const char *rec)
+{
+    size_t line = 0, column;
+    for (;;) {
+        const char *next_line = strchr(rec, '\n');
+        if (next_line == NULL) break;
+
+        size_t len = next_line + 1 - rec;
+        if (len > pos) break;
+
+        line++;
+        rec = next_line + 1;
+        pos -= len;
+    }
+    column = pos;
+
+    return self->log->writef(self->log, "parser error at line %zu:%zu: %d %s",
+                             line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
+}
+#endif
 
 static gsl_err_t run_set_format(void *obj,
                                 const char *name,
@@ -39,7 +75,7 @@ static gsl_err_t run_set_format(void *obj,
         if (name_size != format_str_size) continue;
 
         if (!memcmp(format_str, name, name_size)) {
-            self->format = (knd_format)i;
+            self->ctx->format = (knd_format)i;
             return make_gsl_err(gsl_OK);
         }
     }
@@ -68,7 +104,59 @@ static gsl_err_t parse_format(void *obj,
         { .name = "offset",
           .name_size = strlen("offset"),
           .parse = gsl_parse_size_t,
-          .obj = &self->format_offset
+          .obj = &self->ctx->format_offset
+        }
+    };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+static gsl_err_t run_set_locale(void *obj,
+                                const char *name,
+                                size_t name_size)
+{
+    struct kndTask *self = obj;
+
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size > sizeof(self->ctx->locale)) return make_gsl_err(gsl_FORMAT);
+
+    memcpy(self->ctx->locale, name, name_size);
+    self->ctx->locale_size = name_size;
+
+    /* TODO check locale
+    for (size_t i = 0; i < sizeof knd_format_names / sizeof knd_format_names[0]; i++) {
+        const char *format_str = knd_format_names[i];
+        assert(format_str != NULL);
+
+        size_t format_str_size = strlen(format_str);
+        if (name_size != format_str_size) continue;
+
+        if (!memcmp(format_str, name, name_size)) {
+            self->ctx->format = (knd_format)i;
+            return make_gsl_err(gsl_OK);
+        }
+    }
+
+    err = self->log->write(self->log, name, name_size);
+    if (err) return make_gsl_err_external(err);
+    err = self->log->write(self->log, " locale not supported",
+                           strlen(" locale not supported"));
+    if (err) return make_gsl_err_external(err);
+    */
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_locale(void *obj,
+                              const char *rec,
+                              size_t *total_size)
+{
+    struct kndTask *self = obj;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = run_set_locale,
+          .obj = self
         }
     };
 
@@ -93,35 +181,81 @@ static gsl_err_t parse_class_import(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->self;
-    if (!task->repo)
-        task->repo = ctx->shard->repo;
+    struct kndTask *task = obj;
+    int err;
 
-    if (DEBUG_TASK_LEVEL_TMP)
+    if (DEBUG_TASK_LEVEL_2)
         knd_log(".. parsing the system class import: \"%.*s\"..", 64, rec);
 
     task->type = KND_UPDATE_STATE;
-    return knd_class_import(ctx->shard->repo, rec, total_size, task);
+    if (!task->ctx->update) {
+        err = knd_update_new(task->mempool, &task->ctx->update);
+        if (err) return make_gsl_err_external(err);
+
+        err = knd_dict_new(&task->ctx->class_name_idx, KND_SMALL_DICT_SIZE);
+        if (err) return make_gsl_err_external(err);
+
+        err = knd_dict_new(&task->ctx->attr_name_idx, KND_SMALL_DICT_SIZE);
+        if (err) return make_gsl_err_external(err);
+
+        task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+                                                                memory_order_relaxed);
+    }
+
+    return knd_class_import(task->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_class_select(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->self;
-    if (!task->repo)
-        task->repo = ctx->shard->repo;
+    struct kndTask *task = obj;
 
-    struct kndClass *c = task->repo->root_class;
-
-    if (DEBUG_TASK_LEVEL_TMP)
+    if (DEBUG_TASK_LEVEL_2)
         knd_log(".. parsing the system class select: \"%.*s\"", 64, rec);
 
-    task->class = c;
-
     return knd_class_select(task->repo, rec, total_size, task);
+}
+
+static gsl_err_t parse_proc_import(void *obj,
+                                   const char *rec,
+                                   size_t *total_size)
+{
+    struct kndTask *task = obj;
+    struct kndRepo *repo = task->repo;
+    int err;
+
+    if (DEBUG_TASK_LEVEL_2)
+        knd_log(".. parsing the system proc import: \"%.*s\"..", 64, rec);
+
+    task->type = KND_UPDATE_STATE;
+    if (!task->ctx->update) {
+        err = knd_update_new(task->mempool, &task->ctx->update);
+        if (err) return make_gsl_err_external(err);
+
+        err = knd_dict_new(&task->ctx->proc_name_idx, KND_SMALL_DICT_SIZE);
+        if (err) return make_gsl_err_external(err);
+
+        err = knd_dict_new(&task->ctx->proc_arg_name_idx, KND_SMALL_DICT_SIZE);
+        if (err) return make_gsl_err_external(err);
+
+        task->ctx->update->orig_state_id = atomic_load_explicit(&repo->num_updates,
+                                                                memory_order_relaxed);
+    }
+
+    return knd_proc_import(task->repo, rec, total_size, task);
+}
+
+static gsl_err_t parse_proc_select(void *obj,
+                                    const char *rec,
+                                    size_t *total_size)
+{
+    struct kndTask *task = obj;
+
+    if (DEBUG_TASK_LEVEL_2)
+        knd_log(".. parsing the system proc select: \"%.*s\"", 64, rec);
+
+    return knd_proc_select(task->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_update(void *obj,
@@ -152,23 +286,15 @@ static gsl_err_t parse_update(void *obj,
 
 static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *self = ctx->self;
+    struct kndTask *self = obj;
     gsl_err_t parser_err;
     int err;
 
     struct gslTaskSpec specs[] = {
-        { .name = "tid",
-          .name_size = strlen("tid"),
-          .buf = self->tid,
-          .buf_size = &self->tid_size,
-          .max_buf_size = sizeof self->tid
-        },
         { .name = "locale",
           .name_size = strlen("locale"),
-          .buf = self->curr_locale,
-          .buf_size = &self->curr_locale_size,
-          .max_buf_size = sizeof self->curr_locale
+          .parse = parse_locale,
+          .obj = self
         },
         { .name = "format",
           .name_size = strlen("format"),
@@ -184,12 +310,23 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
           .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_import,
-          .obj = ctx
+          .obj = self
         },
         { .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_select,
-          .obj = ctx
+          .obj = self
+        },
+        { .type = GSL_SET_STATE,
+          .name = "proc",
+          .name_size = strlen("proc"),
+          .parse = parse_proc_import,
+          .obj = self
+        },
+        { .name = "proc",
+          .name_size = strlen("proc"),
+          .parse = parse_proc_select,
+          .obj = self
         },
         { .name = "repo",
           .name_size = strlen("repo"),
@@ -205,48 +342,68 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        struct glbOutput *log = self->log;
-        knd_log("-- task parse failure: \"%.*s\"",
-                log->buf_size, log->buf);
-        if (!log->buf_size) {
-            err = log->write(log, "internal server error",
-                             strlen("internal server error"));
-            if (err) {
-                parser_err = make_gsl_err_external(err);
-                goto cleanup;
-            }
-        }
-        goto cleanup;
+        goto final;
     }
 
+    /* any system repo updates? */
     switch (self->type) {
     case KND_UPDATE_STATE:
-        err = knd_confirm_state(self->repo, self);
-        if (err) return make_gsl_err_external(err);
+        if (!self->ctx->update_confirmed) {
+            err = knd_confirm_updates(self->repo, self);
+            if (err) {
+                goto final;
+            }
+        }
         break;
     default:
+        self->ctx->phase = KND_COMPLETE;
         break;
     }
 
     return make_gsl_err(gsl_OK);
 
- cleanup:
-    // any resources to free?
+ final:
+    self->ctx->phase = KND_COMPLETE;
     return parser_err;
 }
 
-gsl_err_t knd_select_task(struct kndTask *self, const char *rec, size_t *total_size, struct kndShard *shard)
+int knd_task_run(struct kndTask *self)
 {
-    struct LocalContext ctx = { self, shard };
+    size_t total_size = self->ctx->input_size;
+    gsl_err_t parser_err;
+
+    if (DEBUG_TASK_LEVEL_TMP) {
+        size_t chunk_size = KND_TEXT_CHUNK_SIZE;
+        if (self->ctx->input_size < chunk_size)
+            chunk_size = self->ctx->input_size;
+        knd_log("== INPUT (size:%zu): %.*s ..",
+                self->ctx->input_size,
+                chunk_size, self->ctx->input);
+    }
+
     struct gslTaskSpec specs[] = {
         { .name = "task",
           .name_size = strlen("task"),
           .parse = parse_task,
-          .obj = &ctx
+          .obj = self
         }
     };
-    if (DEBUG_TASK_LEVEL_TMP)
-        knd_log(".. parsing task: \"%.*s\"..", 256, rec);
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    parser_err = gsl_parse_task(self->ctx->input, &total_size,
+                                specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        /*if (!is_gsl_err_external(parser_err)) {
+            if (!self->log->buf_size) {
+                self->http_code = HTTP_BAD_REQUEST;
+                err = log_parser_error(self, parser_err, self->input_size, self->input);
+                if (err) return err;
+            }
+        }
+        if (!self->log->buf_size) {
+            self->http_code = HTTP_INTERNAL_SERVER_ERROR;
+            err = self->log->writef(self->log, "unclassified server error");
+            if (err) return err;
+            }*/
+        return gsl_err_to_knd_err_codes(parser_err);
+    }
+    return knd_OK;
 }

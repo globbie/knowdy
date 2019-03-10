@@ -23,31 +23,10 @@
 #include "knd_utils.h"
 struct kndAttr;
 struct kndMemPool;
-
-typedef enum knd_facet_type { KND_FACET_UNREC,
-                              KND_FACET_ATOMIC,
-                              KND_FACET_CONC_BASE,
-                              KND_FACET_CONC_SPEC,
-                              KND_FACET_POSITIONAL,
-                              KND_FACET_ACCUMULATED, 
-                              KND_FACET_CATEGORICAL,
-                              KND_FACET_TOPICAL } knd_facet_type;
-
-static const char* const knd_facet_names[] = {
-    "UNREC",
-    "ATOMIC",
-    "CONC_BASE", 
-    "CONC_SPEC",
-    "POS",
-    "ACC",
-    "CAT",
-    "TOPIC" };
-
 struct kndSet;
 
 struct kndFacet
 {
-    knd_facet_type type;
     struct kndAttr *attr;
     struct kndSet *parent;
 

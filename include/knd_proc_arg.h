@@ -19,25 +19,25 @@
  */
 #pragma once
 
-#include <glb-lib/output.h>
 
 #include "knd_dict.h"
 #include "knd_utils.h"
-#include "knd_task.h"
 #include "knd_config.h"
-
-#include "knd_proc_call.h"
+#include "knd_output.h"
 
 struct kndClass;
 struct kndMemPool;
 struct kndTranslation;
-struct kndProc;
-struct kndProcInstance;
-struct kndProcArg;
-struct kndProcArgInstance;
 struct kndClassInst;
-struct kndTask;
 struct kndClassVar;
+struct kndTask;
+struct kndProc;
+struct kndProcInst;
+struct kndProcArg;
+struct kndProcArgInst;
+struct kndProcCall;
+struct kndProcCallArg;
+
 
 //typedef enum knd_proc_arg_type {
 //    KND_PROCARG_NONE,
@@ -53,94 +53,96 @@ struct kndClassVar;
 //    "ins",
 //};
 
-//struct kndProcArgInstRef
-//{
-//    struct kndProcArgInstance *inst;
-//    struct kndProcArgInstRef *next;
-//};
+struct kndProcArgRef
+{
+    struct kndProcArg    *arg;
+    struct kndProc       *proc;
+    struct kndProcArgRef *next;
+};
 
-struct kndProcArgInstance
+struct kndProcArgInst
 {
 //    knd_task_spec_type type;
-//    struct kndProcArg *proc_arg;
-//    struct kndProcInstance *proc_inst;
+    struct kndProcArg *arg;
+    struct kndProcInst *parent;
 
     const char *procname;
     size_t procname_size;
     struct kndProcEntry *proc_entry;
 
-    const char *objname;
-    size_t objname_size;
-    struct kndObjEntry *obj;
-    
-//    struct kndProcArgInstance *next;
+    const char *class_inst_name;
+    size_t class_inst_name_size;
+    struct kndClassInst *class_inst;
+
+    const char *val;
+    size_t val_size;
+
+    struct kndState *states;
+    size_t init_state;
+    size_t num_states;
+
+    struct kndProcArgInst *next;
 };
 
 struct kndProcArg 
 {
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    size_t numid;
+
     const char *name;
     size_t name_size;
 
-    struct kndProcCall proc_call;
-
-    struct kndProc *parent;
-    struct kndProcEntry *proc_entry;
-
-    const char *locale;
-    size_t locale_size;
-    knd_format format;
-
-//    int concise_level;
-//    int descr_level;
-//    int browse_level;
-
     const char *classname;
     size_t classname_size;
-//    struct kndClass *conc;
+    struct kndClass *class;
+
+    struct kndProc *parent;
+
+    struct kndProcCall  *proc_call;
+    struct kndProcEntry *proc_entry;
 
     size_t numval;
     const char *val;
     size_t val_size;
 
-    struct kndTask *task;
-    struct kndVisualFormat *visual;
-
     struct kndTranslation *tr;
-    size_t depth;
     struct kndProcArg *next;
-    
-    /***********  public methods ***********/
-    void (*init)(struct kndProcArg  *self);
-    void (*del)(struct kndProcArg   *self);
-    void (*str)(struct kndProcArg *self);
-
-    gsl_err_t (*parse)(struct kndProcArg *self,
-                 const char   *rec,
-                 size_t *chunk_size);
-
-    int (*validate)(struct kndProcArg *self,
-                    const char   *val,
-                    size_t val_size);
-    int (*resolve)(struct kndProcArg   *self);
-
-    int (*parse_inst)(struct kndProcArg *self,
-                      struct kndProcArgInstance *inst,
-                      const char *rec,
-                      size_t *total_size);
-    int (*resolve_inst)(struct kndProcArg *self,
-			struct kndProcArgInstance *inst);
-    int (*export_inst)(struct kndProcArg *self,
-		       struct kndProcArgInstance *inst);
 };
 
+extern void kndProcArgInst_init(struct kndProcArgInst *self);
 
-/* constructor */
-extern void kndProcArgInstance_init(struct kndProcArgInstance *self);
-//extern void kndProcArgInstRef_init(struct kndProcArgInstRef *self);
+gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
+                             const char   *rec,
+                             size_t *chunk_size,
+                             struct kndTask *task);
 
-extern int knd_proc_arg_export(struct kndProcArg *self,
-                               knd_format format,
-                               struct glbOutput *out);
+int knd_proc_arg_export_GSL(struct kndProcArg *self,
+                            struct kndTask *task,
+                            bool is_list_item,
+                            size_t depth);
 
-extern void kndProcArg_init(struct kndProcArg *self, struct kndProc *proc);
-extern int kndProcArg_new(struct kndProcArg **self, struct kndProc *proc, struct kndMemPool *mempool);
+int knd_proc_arg_export(struct kndProcArg *self,
+                        knd_format format,
+                        struct kndTask *task,
+                        struct kndOutput *out);
+int knd_proc_arg_resolve(struct kndProcArg *self,
+                         struct kndRepo *repo);
+
+gsl_err_t knd_arg_inst_import(struct kndProcArgInst *self,
+                              const char *rec, size_t *total_size,
+                              struct kndTask *task);
+
+int knd_proc_arg_compute(struct kndProcArg *self,
+                         struct kndTask *task);
+
+void knd_proc_arg_str(struct kndProcArg *self,
+                      size_t depth);
+
+/* allocators */
+int knd_proc_arg_ref_new(struct kndMemPool *mempool,
+                         struct kndProcArgRef **self);
+int knd_proc_arg_inst_new(struct kndMemPool *mempool,
+                          struct kndProcArgInst **self);
+int knd_proc_arg_new(struct kndMemPool *mempool,
+                     struct kndProcArg **self);

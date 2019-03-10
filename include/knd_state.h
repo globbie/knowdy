@@ -31,7 +31,6 @@ struct kndStateRef;
 struct kndMemPool;
 
 typedef enum knd_state_phase { KND_SELECTED,
-                               KND_SUBMITTED,
                                KND_CREATED,
                                KND_UPDATED,
                                KND_REMOVED,
@@ -40,57 +39,38 @@ typedef enum knd_state_phase { KND_SELECTED,
                                KND_RESTORED } knd_state_phase;
 
 typedef enum knd_update_confirm { KND_INIT_STATE, 
-                                 KND_FAILED_STATE,
-                                 KND_CONFLICT_STATE,
-                                 KND_VALID_STATE
+                                  KND_FAILED_STATE,
+                                  KND_CONFLICT_STATE,
+                                  KND_VALID_STATE
 } knd_update_confirm;
 
 typedef enum knd_state_type { KND_STATE_CLASS,
-                               KND_STATE_CLASS_VAR,
-                               KND_STATE_ATTR,
-                               KND_STATE_ATTR_VAR,
-                               KND_STATE_CLASS_DESCENDANT,
-                               KND_STATE_CLASS_INST,
-                               KND_STATE_CLASS_INST_INNER,
-                               KND_STATE_CLASS_INST_ELEM
+                              KND_STATE_CLASS_VAR,
+                              KND_STATE_ATTR,
+                              KND_STATE_ATTR_VAR,
+                              KND_STATE_CLASS_DESCENDANT,
+                              KND_STATE_CLASS_INST,
+                              KND_STATE_CLASS_INST_INNER,
+                              KND_STATE_CLASS_INST_ELEM,
+                              KND_STATE_PROC,
+                              KND_STATE_PROC_INST
 } knd_state_type;
-
-struct kndRelUpdate
-{
-    struct kndRel *rel;
-    struct kndUpdate *update;
-    struct kndSet *idx;
-    struct kndRelInstance **insts;
-    size_t num_insts;
-};
-
-struct kndRelInstanceUpdate
-{
-    struct kndRelInstance *inst;
-    struct kndRelInstanceUpdate *next;
-};
-
-struct kndProcUpdate
-{
-    struct kndProc *proc;
-    struct kndUpdate *update;
-    struct kndProcInstance **insts;
-    size_t num_insts;
-};
 
 struct kndUpdate
 {
+    char id[KND_ID_SIZE];
+    size_t id_size;
     size_t numid;
-    size_t owner_id;
-    knd_update_confirm confirm;
+
+    size_t orig_state_id;
+
     time_t timestamp;
-    size_t orig_state;
+    knd_update_confirm confirm;
 
     struct kndRepo *repo;
 
     struct kndStateRef *class_state_refs;
-
-    struct kndUpdate *next;
+    struct kndStateRef *proc_state_refs;
 };
 
 struct kndStateVal

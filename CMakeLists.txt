@@ -8,7 +8,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 set(CMAKE_INSTALL_PREFIX /)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -pedantic")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -pedantic -D_GNU_SOURCE")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g3")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -Werror")
 
@@ -79,28 +79,30 @@ set(KNODE_LIBRARY "kmq")
 
 include_directories("include")
 
-set(HEADERS include/knd_array.h include/knd_attr.h
+set(HEADERS include/knd_attr.h
         include/knd_class.h include/knd_class_inst.h include/knd_config.h
         include/knd_dict.h
         include/knd_elem.h include/knd_err.h
-        include/knd_facet.h include/knd_http_codes.h include/knd_list.h
+        include/knd_facet.h include/knd_http_codes.h
         include/knd_mempool.h include/knd_num.h
         include/knd_proc.h include/knd_proc_arg.h include/knd_proc_call.h
-        include/knd_query.h
-        include/knd_ref.h include/knd_rel.h include/knd_rel_arg.h include/knd_repo.h
+        include/knd_queue.h include/knd_query.h
+        include/knd_ref.h include/knd_repo.h
         include/knd_set.h include/knd_set_idx.h include/knd_shard.h include/knd_state.h
         include/knd_task.h include/knd_text.h
-        include/knd_user.h include/knd_utils.h
-        include/ooconfig.h)
-set(SOURCES src/knd_array.c src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr.resolve.c src/knd_attr.select.c src/knd_attr.json.c src/knd_attr.gsl.c
+        include/knd_user.h include/knd_utils.h)
+set(SOURCES src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr.index.c src/knd_attr.resolve.c src/knd_attr.select.c src/knd_attr.json.c src/knd_attr.gsl.c
         src/knd_class.c src/knd_class.compute.c src/knd_class.gsl.c src/knd_class.gsp.c
         src/knd_class.import.c src/knd_class.json.c src/knd_class.resolve.c src/knd_class.select.c src/knd_class.states.c
         src/knd_class_inst.c src/knd_class_inst.gsp.c src/knd_class_inst.import.c src/knd_class_inst.json.c src/knd_class_inst.select.c
-        src/knd_dict.c src/knd_elem.c src/knd_list.c
-        src/knd_mempool.c src/knd_num.c
-        src/knd_proc.c src/knd_proc.import.c src/knd_proc_arg.c
-        src/knd_ref.c src/knd_rel.c src/knd_rel_arg.c src/knd_repo.c
-        src/knd_set.c src/knd_set_idx.c src/knd_shard.c src/knd_shard.config.c src/knd_state.c
+        src/knd_dict.c src/knd_elem.c
+        src/knd_mempool.c src/knd_num.c src/knd_output.c
+        src/knd_proc.c src/knd_proc.import.c src/knd_proc_inst.import.c src/knd_proc.resolve.c
+        src/knd_proc.gsl.c src/knd_proc.json.c src/knd_proc.svg.c src/knd_proc_arg.c
+        src/knd_proc_arg.gsl.c
+        src/knd_queue.c src/knd_ref.c src/knd_repo.c
+        src/knd_set.c src/knd_set_idx.c src/knd_shard.c src/knd_shard.config.c
+        src/knd_state.c src/knd_storage.c
         src/knd_task.c src/knd_task.select.c src/knd_text.c
         src/knd_user.c src/knd_utils.c)
 

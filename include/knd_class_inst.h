@@ -66,15 +66,6 @@ struct kndClassInstEntry
     struct kndRelRef *rels;
 };
 
-//struct kndObjDir
-//{
-//    struct kndClassInstEntry *objs[KND_RADIX_BASE];
-//    size_t num_objs;
-//
-//    struct kndObjDir *dirs[KND_RADIX_BASE];
-//    size_t num_dirs;
-//};
-
 struct kndClassInst
 {
     knd_obj_type type;
@@ -123,7 +114,6 @@ struct kndClassInst
 //    gsl_err_t (*read_state)(struct kndClassInst *self,
 //                            const char *rec,
 //                            size_t *total_size);
-
     int (*resolve)(struct kndClassInst *self);
 
     int (*export)(struct kndClassInst *self,
@@ -132,37 +122,37 @@ struct kndClassInst
 };
 
 /* constructors */
-extern void kndClassInst_init(struct kndClassInst *self);
-extern void kndClassInstEntry_init(struct kndClassInstEntry *self);
-extern int kndClassInst_new(struct kndClassInst **self);
+void kndClassInst_init(struct kndClassInst *self);
+void kndClassInstEntry_init(struct kndClassInstEntry *self);
+int kndClassInst_new(struct kndClassInst **self);
 
-extern void knd_class_inst_str(struct kndClassInst *self, size_t depth);
+void knd_class_inst_str(struct kndClassInst *self, size_t depth);
 
-extern int knd_class_inst_entry_new(struct kndMemPool *mempool,
-                                    struct kndClassInstEntry **result);
-extern int knd_class_inst_new(struct kndMemPool *mempool,
-                              struct kndClassInst **result);
-extern int knd_class_inst_export(struct kndClassInst *self, knd_format format,
+int knd_class_inst_entry_new(struct kndMemPool *mempool,
+                             struct kndClassInstEntry **result);
+int knd_class_inst_new(struct kndMemPool *mempool,
+                       struct kndClassInst **result);
+int knd_class_inst_export(struct kndClassInst *self, knd_format format,
                                   struct kndTask *task);
-extern int knd_class_inst_set_export(struct kndClassInst *self, knd_format format,
+int knd_class_inst_set_export(struct kndClassInst *self, knd_format format,
                                      struct kndTask *task);
 
 // knd_class_inst.gsp.c
-extern int knd_class_inst_export_GSP(struct kndClassInst *self,  struct kndTask *task);
+int knd_class_inst_export_GSP(struct kndClassInst *self,  struct kndTask *task);
 
 // knd_class_inst.import.c
-extern gsl_err_t knd_import_class_inst(struct kndClassInst *self,
+gsl_err_t knd_import_class_inst(struct kndClassInst *self,
                                        const char *rec, size_t *total_size,
                                        struct kndTask *task);
-extern gsl_err_t kndClassInst_read_state(struct kndClassInst *self,
+gsl_err_t kndClassInst_read_state(struct kndClassInst *self,
                                          const char *rec, size_t *total_size,
                                          struct kndTask *task);
 
 // knd_class_inst.json.c
-extern int knd_class_inst_export_JSON(struct kndClassInst *self, struct kndTask *task);
-extern int knd_class_inst_set_export_JSON(struct kndSet *set, struct kndTask *task);
+int knd_class_inst_export_JSON(struct kndClassInst *self, struct kndTask *task);
+int knd_class_inst_set_export_JSON(struct kndSet *set, struct kndTask *task);
 
 // knd_class_inst.select.c
-extern gsl_err_t knd_select_class_inst(struct kndClass *c,
+gsl_err_t knd_select_class_inst(struct kndClass *c,
                                        const char *rec, size_t *total_size,
                                        struct kndTask *task);

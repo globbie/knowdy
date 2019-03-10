@@ -27,6 +27,7 @@
 #include "knd_rel.h"
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
+#include "knd_proc_call.h"
 #include "knd_set.h"
 #include "knd_utils.h"
 #include "knd_http_codes.h"

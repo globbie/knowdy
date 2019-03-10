@@ -141,9 +141,7 @@ void knd_mempool_free(struct kndMemPool *self,
             break;
     }
 
-
-    knd_log(".. free page:%p", page_data);
-
+    //knd_log(".. free page:%p", page_data);
     freed->next = *page_list;
     *page_list = freed;
     (*pages_used)--;
@@ -276,6 +274,11 @@ parse_memory_settings(struct kndMemPool *self, const char *rec, size_t *total_si
             .name_size = strlen("max_tiny_pages"),
             .parse = gsl_parse_size_t,
             .obj = &self->num_tiny_pages
+        },
+        {   .name = "max_set_size",
+            .name_size = strlen("max_set_size"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->max_set_size
         }
     };
 

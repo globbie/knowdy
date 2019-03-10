@@ -20,9 +20,10 @@
 
 #pragma once
 
-#include "knd_err.h"
-
 #include <stdlib.h>
+#include <stddef.h>
+
+#include "knd_err.h"
 
 /* comparison codes */
 typedef enum { knd_EQUALS, knd_LESS, knd_MORE, knd_NOT_COMPARABLE } knd_comparison_codes;
@@ -96,6 +97,11 @@ typedef enum knd_storage_type {
 #define KND_DEBUG_LEVEL_3 0
 #define KND_DEBUG_LEVEL_4 0
 #define KND_DEBUG_LEVEL_5 0
+
+#define MAX_DEQUE_ATTEMPTS 100
+#define TASK_TIMEOUT_USECS 100
+#define TASK_MAX_TIMEOUT_SECS 5
+#define TASK_QUEUE_CAPACITY 20
 
 #define KND_RESULT_BATCH_SIZE 10
 #define KND_RESULT_MAX_BATCH_SIZE 500

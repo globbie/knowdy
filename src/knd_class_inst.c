@@ -13,13 +13,12 @@
 #include "knd_num.h"
 #include "knd_rel.h"
 #include "knd_set.h"
-#include "knd_rel_arg.h"
+#include "knd_output.h"
 
 #include "knd_user.h"
 #include "knd_state.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_INST_LEVEL_1 0
 #define DEBUG_INST_LEVEL_2 0
@@ -27,7 +26,7 @@
 #define DEBUG_INST_LEVEL_4 0
 #define DEBUG_INST_LEVEL_TMP 1
 
-extern void knd_class_inst_str(struct kndClassInst *self, size_t depth)
+void knd_class_inst_str(struct kndClassInst *self, size_t depth)
 {
     struct kndElem *elem;
     struct kndState *state = self->states;

@@ -27,6 +27,7 @@
 #include "knd_state.h"
 
 #include <gsl-parser/gsl_err.h>
+#include <stdatomic.h>
 
 struct kndAttr;
 struct kndAttrVar;
@@ -55,20 +56,21 @@ struct kndClassUpdate
     struct kndClassUpdate *next;
 };
 
+struct kndClassFacet
+{
+    struct kndClassEntry *base;
+    struct kndSet *set;
+    struct kndClassRef *elems;
+    size_t num_elems;
+    struct kndClassFacet *children;
+    struct kndClassFacet *next;
+};
+
 struct kndClassRef
 {
     struct kndClass      *class;
     struct kndClassEntry *entry;
     struct kndClassRef   *next;
-};
-
-struct kndClassRel
-{
-    struct kndClassEntry *topic;
-    struct kndAttr       *attr;
-    struct kndAttrVar    *attr_var;
-    struct kndSet        *set;
-    struct kndClassRel   *next;
 };
 
 struct kndClassVar
@@ -87,18 +89,10 @@ struct kndClassVar
     size_t init_state;
     size_t num_states;
 
-    struct kndClass *root_class;
+    //struct kndClass *root_class;
     struct kndClass *parent;
 
     struct kndClassVar *next;
-};
-
-struct kndConcFolder
-{
-    const char *name;
-    size_t name_size;
-    struct kndConcFolder *parent;
-    struct kndConcFolder *next;
 };
 
 struct kndClassEntry
@@ -126,21 +120,14 @@ struct kndClassEntry
 
     struct kndSet *descendants;
 
-    struct kndRelEntry **rels;
-    size_t num_rels;
+    struct kndSet   *inst_idx;
+    struct kndDict  *inst_name_idx;
+    atomic_size_t    num_insts;
+    atomic_size_t    inst_id_count;
 
-    struct kndProcEntry **procs;
-    size_t num_procs;
-
-    struct kndSet *inst_idx;
-    size_t num_insts;
     struct kndSet *attr_idx;
 
-    struct kndClassRel *reverse_rels;
-
-    size_t child_count;
-    struct kndClassEntry *prev;
-    struct kndClassEntry *next;
+    struct kndAttrHub *attr_hubs;
 };
 
 struct kndClass
@@ -150,7 +137,7 @@ struct kndClass
 
     struct kndClassEntry *entry;
 
-    struct kndState *states;
+    struct kndState * _Atomic states;
     size_t init_state;
     size_t num_states;
 
@@ -175,11 +162,8 @@ struct kndClass
     struct kndSet *attr_idx;
     struct kndAttr *implied_attr;
 
-    struct kndProc *proc;
-
-    struct kndConcFolder *folders;
-    size_t num_folders;
-
+    // detect vicious circles
+    bool resolving_in_progress;
     bool is_resolved;
     bool state_top;
 
@@ -194,13 +178,6 @@ extern void kndClass_init(struct kndClass *self);
 extern int kndClass_new(struct kndClass **self,
                         struct kndMemPool *mempool);
 
-/* exported functions */
-extern int knd_read_GSL_file(struct kndClass *self,
-                             struct kndConcFolder *parent_folder,
-                             const char *filename,
-                             size_t filename_size,
-                             struct kndTask *task);
-
 extern int knd_class_coordinate(struct kndClass *self, struct kndTask *task);
 
 extern int knd_get_class(struct kndRepo *self,
@@ -208,7 +185,7 @@ extern int knd_get_class(struct kndRepo *self,
                          struct kndClass **result,
                          struct kndTask *task);
 
-extern int knd_get_class_by_id(struct kndClass *self,
+extern int knd_get_class_by_id(struct kndRepo *self,
                                const char *id, size_t id_size,
                                struct kndClass **result,
                                struct kndTask *task);
@@ -221,10 +198,10 @@ extern gsl_err_t knd_import_class_var(struct kndClassVar *self,
 extern int knd_is_base(struct kndClass *self,
                        struct kndClass *base);
 
-extern int knd_get_attr_var(struct kndClass *self,
-                            const char *name,
-                            size_t name_size,
-                            struct kndAttrVar **result);
+extern int knd_class_get_attr_var(struct kndClass *self,
+                                  const char *name,
+                                  size_t name_size,
+                                  struct kndAttrVar **result);
 
 extern int knd_class_get_attr(struct kndClass *self,
                               const char *name, size_t name_size,
@@ -233,8 +210,13 @@ extern int knd_class_get_attr(struct kndClass *self,
 extern int knd_export_class_state_JSON(struct kndClass *self,
                                        struct kndTask *task);
 
-extern int knd_class_set_export_JSON(struct kndSet *set,
-                                     struct kndTask *task);
+extern int knd_empty_set_export_JSON(struct kndClass *self,
+                                    struct kndTask *task);
+
+int knd_class_set_export_JSON(struct kndSet *set,
+                              struct kndTask *task);
+
+extern int knd_class_facets_export_JSON(struct kndTask *task);
 
 extern int knd_class_export_JSON(struct kndClass *self,
                                  struct kndTask *task);
@@ -243,6 +225,10 @@ extern int knd_class_export(struct kndClass *self,
                             knd_format format,
                             struct kndTask *task);
 
+extern int knd_class_export_state(struct kndClass *self,
+                                  knd_format format,
+                                  struct kndTask *task);
+
 extern gsl_err_t knd_parse_gloss_array(void *obj,
                                        const char *rec,
                                        size_t *total_size);
@@ -250,14 +236,31 @@ extern gsl_err_t knd_parse_summary_array(void *obj,
                                          const char *rec,
                                          size_t *total_size);
 
+extern int knd_export_class_state_GSL(struct kndClass *self,
+                                      struct kndTask *task);
+
+
 extern int knd_class_export_GSL(struct kndClass *self,
                                 struct kndTask *task,
+                                bool is_list_item,
                                 size_t depth);
+
+extern int knd_empty_set_export_GSL(struct kndClass *self,
+                                    struct kndTask *task);
+
+int knd_export_gloss_GSL(struct kndTranslation *tr,
+                         struct kndTask *task);
+
+extern int knd_class_facets_export(struct kndTask *task);
+
 extern int knd_class_set_export(struct kndSet *self,
                                 knd_format format,
                                 struct kndTask *task);
+extern int knd_empty_set_export(struct kndClass *self,
+                                knd_format format,
+                                struct kndTask *task);
 extern int knd_class_set_export_GSL(struct kndSet *set,
-                                     struct kndTask *task);
+                                    struct kndTask *task);
 
 extern int knd_class_export_GSP(struct kndClass *self,
                                 struct kndTask *task);
@@ -266,9 +269,10 @@ extern int knd_class_export_updates_GSP(struct kndClass *self,
                                         struct kndClassUpdate *update,
                                         struct kndTask *task);
 
-extern gsl_err_t knd_parse_import_class_inst(void *obj,
-                                             const char *rec,
-                                             size_t *total_size);
+int knd_parse_import_class_inst(struct kndClass *self,
+                                const char *rec,
+                                size_t *total_size,
+                                struct kndTask *task);
 
 extern gsl_err_t knd_class_import(struct kndRepo *repo,
                                   const char *rec,
@@ -282,9 +286,9 @@ extern int knd_inherit_attrs(struct kndClass *self,
 extern int knd_compute_class_attr_num_value(struct kndClass *self,
                                             struct kndAttrVar *attr_var);
 
-extern int knd_update_state(struct kndClass *self,
-                            knd_state_phase phase,
-                            struct kndTask *task);
+int knd_class_update_state(struct kndClass *self,
+                           knd_state_phase phase,
+                           struct kndTask *task);
 
 extern gsl_err_t knd_read_class_inst_state(struct kndClass *self,
                                            struct kndClassUpdate *update,
@@ -330,7 +334,8 @@ extern int knd_get_class_attr_value(struct kndClass *src,
                                     struct kndProcCallArg *arg);
 
 extern int knd_resolve_classes(struct kndClass *self, struct kndTask *task);
-extern int knd_class_resolve(struct kndClass *self, struct kndTask *task);
+extern int knd_class_resolve(struct kndClass *self,
+                             struct kndTask *task);
 
 extern int knd_class_update_new(struct kndMemPool *mempool,
                                 struct kndClassUpdate **result);
@@ -340,11 +345,9 @@ extern int knd_class_var_new(struct kndMemPool *mempool,
 
 extern int knd_class_ref_new(struct kndMemPool *mempool,
                              struct kndClassRef **result);
-extern int knd_class_rel_new(struct kndMemPool *mempool,
-                             struct kndClassRel **result);
+extern int knd_class_facet_new(struct kndMemPool *mempool,
+                               struct kndClassFacet **result);
 
-extern int knd_conc_folder_new(struct kndMemPool *mempool,
-                               struct kndConcFolder **result);
 
 extern int knd_class_entry_new(struct kndMemPool *mempool,
                                struct kndClassEntry **result);
@@ -354,11 +357,11 @@ extern int knd_class_new(struct kndMemPool *mempool,
                          struct kndClass **result);
 
 // knd_class.select.c
-extern int knd_class_match_query(struct kndClass *self,
-                                 struct kndAttrVar *query);
 extern gsl_err_t knd_class_select(struct kndRepo *repo,
                                   const char *rec, size_t *total_size,
                                   struct kndTask *task);
+extern int knd_class_match_query(struct kndClass *self,
+                                 struct kndAttrVar *query);
 
 // knd_class.states.c
 extern int knd_retrieve_class_updates(struct kndStateRef *ref,

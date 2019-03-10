@@ -20,7 +20,10 @@ typedef enum knd_user_role { KND_USER_ROLE_RETRIEVER,
 
 struct kndRepoAccess
 {
-    char repo_id[KND_ID_SIZE + 1];
+    struct kndClassInst *owner;
+    char repo_id[KND_ID_SIZE];
+    size_t repo_id_size;
+    size_t repo_numid;
 
     bool may_import;
     bool may_update;
@@ -34,7 +37,7 @@ struct kndUserContext
     struct kndClassInst *user_inst;
     struct kndRepo *repo;
 
-    //TODO: Roles
+    //TODO: permits
 };
 
 struct kndUser

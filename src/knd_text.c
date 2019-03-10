@@ -3,13 +3,13 @@
 #include <string.h>
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #include "knd_text.h"
 #include "knd_task.h"
 #include "knd_repo.h"
 #include "knd_utils.h"
 #include "knd_mempool.h"
+#include "knd_output.h"
 
 #define DEBUG_TEXT_LEVEL_0 0
 #define DEBUG_TEXT_LEVEL_1 0
@@ -20,16 +20,19 @@
 static int export_GSL(struct kndText *self,
                       struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndTranslation *tr;
+    const char *curr_locale = task->ctx->locale;
+    size_t curr_locale_size = task->ctx->locale_size;
     int err;
 
-    if (DEBUG_TEXT_LEVEL_2)
-        knd_log(".. export text to GSL, locale: %.*s",
-                task->locale_size, task->locale);
+    if (DEBUG_TEXT_LEVEL_TMP)
+        knd_log(".. export text to GSL, locale \"%.*s\"",
+                curr_locale_size, curr_locale);
 
     for (tr = self->tr; tr; tr = tr->next) {
-        if (memcmp(task->locale, tr->locale, tr->locale_size)) {
+        if (curr_locale_size != tr->locale_size) continue;
+        if (memcmp(curr_locale, tr->locale, tr->locale_size)) {
             continue;
         }
         err = out->write_escaped(out, tr->val,  tr->val_size);                    RET_ERR();
@@ -41,27 +44,30 @@ static int export_GSL(struct kndText *self,
 static int export_JSON(struct kndText *self,
                        struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndTranslation *tr;
     int err;
 
     if (DEBUG_TEXT_LEVEL_2)
         knd_log(".. export text to JSON, locale: %.*s",
-                task->locale_size, task->locale);
+                task->ctx->locale_size, task->ctx->locale);
 
     for (tr = self->tr; tr; tr = tr->next) {
-        if (memcmp(task->locale, tr->locale, tr->locale_size)) {
+        if (task->ctx->locale_size != tr->locale_size) continue;
+
+        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
             continue;
         }
         err = out->write_escaped(out, tr->val,  tr->val_size);                    RET_ERR();
         break;
     }
+
     return knd_OK;
 }
 
 static int export_GSP(struct kndText *unused_var(self),
                       struct kndTask *unused_var(task),
-                      struct glbOutput *unused_var(out))
+                      struct kndOutput *unused_var(out))
 {
     //struct kndState *state;
     //struct kndTranslation *tr;
@@ -175,7 +181,7 @@ extern int knd_text_export(struct kndText *self,
         err = export_GSL(self, task);  RET_ERR();
         break;
     case KND_FORMAT_JSON:
-        err = export_JSON(self, task);  RET_ERR();
+        err = export_JSON(self, task);                           RET_ERR();
         break;
     case KND_FORMAT_GSP:
         err = export_GSP(self, task, task->out);  RET_ERR();

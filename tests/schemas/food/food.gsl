@@ -1,0 +1,60 @@
+{schema knd-basic
+
+{!class Edible Object
+    {is Organic Object}
+    {inner nutr {c Nutritional Value} {t set}}}
+
+{!class Dish
+    {is Product of Labor}
+    {inner ingr  {c Dish Ingredient}  {t set}}
+    {ref cuisine {c Regional Cuisine} {t set} {idx}}}
+
+{!class Dish Ingredient
+   {is Information}
+   {num quant}
+   {ref product {c Edible Object} {impl} {idx}}}
+
+{!class Nutritional Value
+    [!_gloss {ru {t пищевая ценность}}]
+    {is Information}
+    {ref source {c Authoritative Source} {impl}}
+    {num energy}
+    {float carbs}
+    {float fat}
+    {float protein}}
+
+{!class Regional Cuisine
+    {is Activity}
+    {ref region {c Country}}}
+
+{!class American Cuisine
+     {is Regional Cuisine
+         {region USA}}}
+
+{!class Fruit
+    {is Edible Object}}
+
+{!class Flour
+    {is Edible Object}}
+
+{!class Butter
+    {is Edible Object}}
+
+{!class Milk
+    {is Edible Object}}
+
+{!class Apple Pie
+    {is Dish
+       [!ingr
+           {Apple  {quant 5}}
+           {Flour  {quant 200}}
+           {Butter {quant 100}}]
+       [cuisine {American Cuisine}]}}
+
+{!class Banana Smoothie
+    {is Dish
+       [!ingr
+           {Banana {quant 1}}
+           {Milk   {quant 200}} ] }}
+
+}

@@ -1,7 +1,11 @@
 #pragma once
 
+#include <pthread.h>
+
 #include <knd_err.h>
 #include <knd_config.h>
+#include <knd_task.h>
+#include <knd_storage.h>
 
 struct kndShard
 {
@@ -21,34 +25,47 @@ struct kndShard
     char user_schema_path[KND_PATH_SIZE];
     size_t user_schema_path_size;
 
-    struct glbOutput *out;
-    struct glbOutput *log;
+    struct kndTask **tasks;
+    size_t num_tasks;
 
-    struct kndTask **workers;
-    size_t num_workers;
+    struct kndQueue *task_context_queue;
+
+    struct kndSet *ctx_idx;
+    size_t task_count;
+
+    struct kndStorage *storage;
+    //struct kndNetwork *network;
 
     struct kndUser *user;
 
     /* system repo */
     struct kndRepo *repo;
-    /* shared repos */
-    //struct kndRepo *repos;
+    /* all other repos */
+    struct kndSet *repos;
 
-    // TODO: remove
     struct kndMemPool *mempool;
-
-    const char *report;
-    size_t report_size;
-
-    /**********  interface methods  **********/
-    void (*del)(struct kndShard *self);
-    void (*str)(struct kndShard *self);
 };
 
-extern int kndShard_new(struct kndShard **self, const char *config, size_t config_size);
-extern void kndShard_del(struct kndShard *self);
-extern int kndShard_run_task(struct kndShard *self, const char *input, size_t input_size, const char **output, size_t *output_size, size_t task_id);
+int knd_shard_new(struct kndShard **self, const char *config, size_t config_size);
+void knd_shard_del(struct kndShard *self);
+
+int knd_shard_serve(struct kndShard *self);
+int knd_shard_stop(struct kndShard *self);
+
+int knd_shard_push_task(struct kndShard *self,
+                        const char *input, size_t input_size,
+                        const char **task_id, size_t *task_id_size,
+                        task_cb_func cb, void *obj);
+int knd_shard_run_task(struct kndShard *self,
+                       const char *input, size_t input_size,
+                       char *output, size_t *output_size);
+
+int knd_shard_report_task(struct kndShard *self,
+                          const char *task_id, size_t task_id_size);
+int knd_shard_cancel_task(struct kndShard *self,
+                          const char *task_id, size_t task_id_size);
 
 // knd_shard.config.c
-extern int kndShard_parse_config(struct kndShard *self, const char *rec, size_t *total_size,
-                                 struct kndMemPool *mempool);
+int knd_shard_parse_config(struct kndShard *self,
+                           const char *rec, size_t *total_size,
+                           struct kndMemPool *mempool);

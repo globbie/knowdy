@@ -1,5 +1,5 @@
 /**
- *   Copyright (c) 2011-2018 by Dmitri Dmitriev
+ *   Copyright (c) 2011-present by Dmitri Dmitriev
  *   All rights reserved.
  *
  *   This file is part of the Knowdy Graph DB, 
@@ -22,13 +22,60 @@
 
 #include "knd_config.h"
 #include "knd_state.h"
-
+#include "knd_output.h"
 #include "knd_proc_arg.h"
-#include "knd_proc_call.h"
 
-struct glbOutput;
-struct kndProcCallArg;
+struct kndProcEstimate
+{
+    size_t cost;
+    size_t aggr_cost;
+
+    size_t time;
+    size_t aggr_time;
+
+    size_t num_agents;
+    size_t aggr_num_agents;
+};
+
+// struct kndProcCall;
+// struct kndProcCallArg;
 struct kndUpdate;
+
+struct kndProcInstEntry
+{
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    size_t numid;
+
+    const char *name;
+    size_t name_size;
+
+    //char *block;
+    //size_t block_size;
+    //size_t offset;
+    knd_state_phase phase;
+    struct kndProcInst *inst;
+};
+
+struct kndProcInst
+{
+    const char *name;
+    size_t name_size;
+
+    struct kndProcInstEntry *entry;
+    struct kndProc *base;
+
+    struct kndProcArgInst *arg_insts;
+    size_t num_arg_insts;
+    struct kndStateRef *arg_inst_state_refs;
+
+    struct kndState * _Atomic states;
+    size_t init_state;
+    size_t num_states;
+    
+    struct kndProcArgInst *tail;
+    struct kndProcInst *next;
+};
 
 struct kndProcEntry
 {
@@ -44,23 +91,9 @@ struct kndProcEntry
     knd_state_phase phase;
 
     size_t global_offset;
-//    size_t curr_offset;
     size_t block_size;
 
-//    size_t body_size;
-//    size_t obj_block_size;
-//    size_t dir_size;
-
-//    struct kndProcEntry **children;
-//    size_t num_children;
-
-    struct ooDict *inst_idx;
-    //struct kndMemPool *mempool;
-    //int fd;
-
-//    size_t num_procs;
-//    bool is_terminal;
-    //struct kndProcEntry *next;
+    struct kndDict *inst_idx;
 };
 
 struct kndProcArgVar
@@ -113,15 +146,14 @@ struct kndProc
 
     struct kndTranslation *tr;
 
-    struct kndState *states;
+    struct kndState * _Atomic states;
     size_t num_states;
 
     /* immediate args */
     struct kndProcArg *args;
     size_t num_args;
 
-    /* all inherited args */
-    struct ooDict *arg_idx;
+    struct kndSet *arg_idx;
 
     struct kndProcCall *proc_call;
 
@@ -136,65 +168,101 @@ struct kndProc
 
     const char *result_classname;
     size_t result_classname_size;
-//    struct kndClass *result;
 
-//    size_t estim_cost;
-    size_t estim_cost_total;
-//    size_t estim_time;
-//    size_t estim_time_total;
+    struct kndProcEstimate estimate;
 
-    struct kndTask *task;
-    struct kndVisualFormat *visual;
-
-    //const char *frozen_output_file_name;
-    //size_t frozen_output_file_name_size;
-//    size_t frozen_size;
-
-    bool batch_mode;
     bool is_resolved;
+    bool is_computed;
+    bool resolving_in_progress;
 
-    //    size_t depth;
-    //size_t max_depth;
-
-    struct kndProc *curr_proc;
     struct kndProc *next;
-
-    /******** public methods ********/
-    void (*str)(struct kndProc *self);
 };
 
-/* constructors */
-extern int knd_proc_new(struct kndMemPool *mempool,
-                              struct kndProc **result);
-extern int knd_proc_entry_new(struct kndMemPool *mempool,
-                              struct kndProcEntry **result);
-extern void knd_proc_init(struct kndProc *self);
-extern gsl_err_t knd_proc_read(struct kndProc *self,
-                               const char *rec,
-                               size_t *total_size);
-extern int knd_proc_resolve(struct kndProc *self);
+int knd_proc_new(struct kndMemPool *mempool,
+                 struct kndProc **result);
 
-extern int knd_get_proc(struct kndRepo *repo,
-                        const char *name, size_t name_size,
-                        struct kndProc **result);
+int knd_proc_entry_new(struct kndMemPool *mempool,
+                       struct kndProcEntry **result);
+int knd_proc_var_new(struct kndMemPool *mempool,
+                     struct kndProcVar **result);
+int knd_proc_arg_var_new(struct kndMemPool *mempool,
+                         struct kndProcArgVar **result);
 
-extern int knd_resolve_proc_ref(struct kndClass *self,
-                                const char *name, size_t name_size,
-                                struct kndProc *unused_var(base),
-                                struct kndProc **result,
-                                struct kndTask *unused_var(task));
+int knd_proc_inst_new(struct kndMemPool *mempool,
+                      struct kndProcInst **result);
+int knd_proc_inst_entry_new(struct kndMemPool *mempool,
+                            struct kndProcInstEntry **result);
 
-extern int knd_proc_export(struct kndProc *self,
-                           knd_format format,
-                           struct glbOutput *out);
-extern int knd_proc_coordinate(struct kndProc *self);
+void knd_proc_str(struct kndProc *self, size_t depth);
 
-extern gsl_err_t knd_proc_select(struct kndRepo *repo,
-                                 const char *rec,
-                                 size_t *total_size,
-                                 struct kndTask *task);
+gsl_err_t knd_proc_inst_import(struct kndProcInst *self,
+                               struct kndRepo *repo,
+                               const char *rec, size_t *total_size,
+                               struct kndTask *task);
+gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
+                                     struct kndRepo *repo,
+                                     const char *rec,
+                                     size_t *total_size,
+                                     struct kndTask *task);
 
-extern gsl_err_t knd_proc_import(struct kndProc *root_proc, const char *rec, size_t *total_size);
+int knd_inner_proc_import(struct kndProc *self,
+                          const char *rec,
+                          size_t *total_size,
+                          struct kndRepo *repo,
+                          struct kndTask *task);
+
+int knd_get_proc(struct kndRepo *repo,
+                 const char *name, size_t name_size,
+                 struct kndProc **result,
+                 struct kndTask *task);
+
+int knd_proc_get_arg(struct kndProc *self,
+                     const char *name, size_t name_size,
+                     struct kndProcArgRef **result);
+
+int knd_resolve_proc_ref(struct kndClass *self,
+                         const char *name, size_t name_size,
+                         struct kndProc *unused_var(base),
+                         struct kndProc **result,
+                         struct kndTask *unused_var(task));
+
+int knd_proc_export(struct kndProc *self,
+                    knd_format format,
+                    struct kndTask *task,
+                    struct kndOutput *out);
+
+int knd_proc_coordinate(struct kndProc *self,
+                        struct kndTask *task);
+
+gsl_err_t knd_proc_select(struct kndRepo *repo,
+                          const char *rec,
+                          size_t *total_size,
+                          struct kndTask *task);
+
+int knd_proc_resolve(struct kndProc *self,
+                     struct kndTask *task);
+int knd_proc_compute(struct kndProc *self,
+                     struct kndTask *task);
+
+gsl_err_t knd_proc_import(struct kndRepo *repo,
+                          const char *rec, size_t *total_size,
+                          struct kndTask *task);
+
+// knd_proc.gsl.c
+int knd_proc_export_GSL(struct kndProc *self,
+                        struct kndTask *task,
+                        bool is_list_item,
+                        size_t depth);
+// knd_proc.json.c
+int knd_proc_export_JSON(struct kndProc *self,
+                         struct kndTask *task,
+                         bool is_list_item,
+                         size_t depth);
+
+// knd_proc.svg.c
+int knd_proc_export_SVG(struct kndProc *self,
+                        struct kndTask *task,
+                        struct kndOutput  *out);
 
 //
 // TODO(k15tfu): ?? Move to knd_proc_impl.h
@@ -202,7 +270,7 @@ extern gsl_err_t knd_proc_import(struct kndProc *root_proc, const char *rec, siz
 #include <knd_proc_arg.h>
 #include <knd_text.h>
 
-static inline void kndProcVar_declare_arg(struct kndProcVar *base, struct kndProcArgVar *base_arg)
+static inline void knd_proc_var_declare_arg(struct kndProcVar *base, struct kndProcArgVar *base_arg)
 {
     if (base->tail) {
         base->tail->next = base_arg;
@@ -213,12 +281,16 @@ static inline void kndProcVar_declare_arg(struct kndProcVar *base, struct kndPro
     base->num_args++;
 }
 
-static inline void kndProc_declare_arg(struct kndProc *self, struct kndProcArg *arg)
+static inline void knd_proc_declare_arg(struct kndProc *self, struct kndProcArg *arg)
 {
     arg->next = self->args;
     self->args = arg;
     self->num_args++;
 }
+
+int knd_proc_update_state(struct kndProc *self,
+                          knd_state_phase phase,
+                          struct kndTask *task);
 
 static inline void kndProc_declare_tr(struct kndProc *self, struct kndTranslation *tr)
 {
@@ -226,7 +298,7 @@ static inline void kndProc_declare_tr(struct kndProc *self, struct kndTranslatio
     self->tr = tr;
 }
 
-static inline void kndProc_declare_base(struct kndProc *self, struct kndProcVar *base)
+static inline void declare_base(struct kndProc *self, struct kndProcVar *base)
 {
     base->next = self->bases;
     self->bases = base;

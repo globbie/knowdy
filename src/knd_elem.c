@@ -6,7 +6,6 @@
 #include <sys/stat.h>
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #include "knd_class_inst.h"
 #include "knd_class.h"
@@ -15,6 +14,7 @@
 #include "knd_attr.h"
 #include "knd_state.h"
 #include "knd_mempool.h"
+#include "knd_output.h"
 
 #include "knd_text.h"
 #include "knd_ref.h"
@@ -39,7 +39,7 @@ struct LocalContext {
     struct kndTask *task;
 };
 
-extern void knd_elem_str(struct kndElem *self, size_t depth)
+void knd_elem_str(struct kndElem *self, size_t depth)
 {
     struct kndState *state = self->states;
 
@@ -66,8 +66,8 @@ extern void knd_elem_str(struct kndElem *self, size_t depth)
 
     switch (self->attr->type) {
     case KND_ATTR_REF:
-        knd_log("ref:");
-        knd_class_inst_str(self->ref_inst, 0);
+        if (self->ref_inst)
+            knd_class_inst_str(self->ref_inst, 0);
         return;
         /*case KND_ATTR_NUM:
         self->num->depth = self->depth;
@@ -95,8 +95,13 @@ extern void knd_elem_str(struct kndElem *self, size_t depth)
 static int export_JSON(struct kndElem *self,
                        struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     int err;
+
+    if (DEBUG_ELEM_LEVEL_2)
+        knd_log(".. export %.*s elem val => \"%.*s\"",
+                self->attr->name_size, self->attr->name,
+                self->val_size, self->val);
 
     if (self->inner) {
         /*if (self->is_list) {
@@ -208,7 +213,7 @@ final:
 static int export_GSP(struct kndElem *self,
                       struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     int err;
 
     if (DEBUG_ELEM_LEVEL_2)
@@ -355,6 +360,7 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
     state_val->val      = val;
     state_val->val_size = val_size;
     state->val          = state_val;
+
     self->val = val;
     self->val_size = val_size;
 

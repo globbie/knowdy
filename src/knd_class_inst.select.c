@@ -17,9 +17,9 @@
 
 #include "knd_user.h"
 #include "knd_state.h"
+#include "knd_output.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_INST_LEVEL_1 0
 #define DEBUG_INST_LEVEL_2 0
@@ -61,6 +61,48 @@ static gsl_err_t run_get_inst(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t
+parse_get_inst_by_numid(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndClass *base = ctx->class;
+    struct kndSet *inst_idx = base->entry->inst_idx;
+    struct kndClassInstEntry *entry;
+    struct kndClassInst *inst;
+    int err;
+    size_t numid;
+    void *result;
+    gsl_err_t parser_err = gsl_parse_size_t(&numid, rec, total_size);
+    if (parser_err.code) return parser_err;
+
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    knd_uid_create(numid, id, &id_size);
+
+    if (DEBUG_INST_LEVEL_TMP)
+        knd_log("ID: %zu => \"%.*s\" [size: %zu]",
+                numid, (int)id_size, id, id_size);
+
+    err = inst_idx->get(inst_idx, id, id_size, &result);
+    if (err) {
+        knd_log("-- no such instance: %.*s", id_size, id);
+        return make_gsl_err_external(err);
+    }
+
+    entry = result;
+    inst = entry->inst;
+    task->type = KND_GET_STATE;
+    inst->elem_state_refs = NULL;
+
+    if (DEBUG_INST_LEVEL_TMP) {
+        knd_class_inst_str(inst, 0);
+    }
+    ctx->class_inst = inst;
+
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t set_curr_state(void *obj, const char *val, size_t val_size)
 {
     char buf[KND_NAME_SIZE];
@@ -92,7 +134,7 @@ static gsl_err_t present_state(void *obj,
     struct LocalContext *ctx = obj;
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndMemPool *mempool = task->mempool;
     struct kndSet *set;
     int err;
@@ -199,7 +241,7 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct kndElem *elem = NULL;
-    //struct glbOutput *log = self->base->entry->repo->log;
+    //struct kndOutput *log = self->base->entry->repo->log;
     int err;
 
     if (DEBUG_INST_LEVEL_2)
@@ -244,27 +286,22 @@ static gsl_err_t parse_select_elem(void *obj,
                                    const char *name, size_t name_size,
                                    const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
-    struct kndClassInst *self = task->class_inst;
-    struct kndClassInst *inst;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndClassInst *inst = ctx->class_inst;
     struct kndElem *elem = NULL;
     struct kndAttr *attr = NULL;
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_INST_LEVEL_2)
-        knd_log(".. parsing elem \"%.*s\" select REC: %.*s",
-                name_size, name, 128, rec);
-
-    inst = self->curr_inst;
-    if (self->parent) {
-        inst = self;
-    }
-
     if (!inst) {
         knd_log("-- no inst selected");
         return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
+
+    if (DEBUG_INST_LEVEL_2)
+        knd_log(".. parsing elem \"%.*s\" select REC: %.*s",
+                name_size, name, 128, rec);
 
     err = kndClassInst_validate_attr(inst, name, name_size, &attr, &elem);
     if (err) {
@@ -302,21 +339,21 @@ static gsl_err_t remove_inst(void *obj,
     struct LocalContext *ctx = obj;
     struct kndClassInst *self = ctx->class_inst;
 
-    if (!self->curr_inst) {
+    if (!self) {
         knd_log("-- remove operation: no class instance selected");
         return make_gsl_err(gsl_FAIL);
     }
-    struct kndClassInst *obj1 = self->curr_inst;
+
     struct kndState  *state;
     struct kndStateRef  *state_ref;
     struct kndTask *task         = ctx->task;
-    struct glbOutput *log        = task->log;
+    struct kndOutput *log        = task->log;
     struct kndMemPool *mempool   = task->mempool;
     int err;
 
-    if (DEBUG_INST_LEVEL_2)
-        knd_log("== class inst to remove: \"%.*s\"",
-                obj1->name_size, obj1->name);
+    if (DEBUG_INST_LEVEL_TMP)
+        knd_log("== class inst to be deleted: \"%.*s\"",
+                self->name_size, self->name);
 
     err = knd_state_new(mempool, &state);
     if (err) return make_gsl_err_external(err);
@@ -325,21 +362,21 @@ static gsl_err_t remove_inst(void *obj,
     state_ref->state = state;
 
     state->phase = KND_REMOVED;
-    state->next = obj1->states;
-    obj1->states = state;
-    obj1->num_states++;
-    state->numid = obj1->num_states;
+    state->next = self->states;
+    self->states = state;
+    self->num_states++;
+    state->numid = self->num_states;
 
     log->reset(log);
     err = log->write(log, self->name, self->name_size);
     if (err) return make_gsl_err_external(err);
-    err = log->write(log, " obj removed", strlen(" obj removed"));
+    err = log->write(log, " class inst removed", strlen(" class inst removed"));
     if (err) return make_gsl_err_external(err);
 
     task->type = KND_UPDATE_STATE;
 
-    state_ref->next = task->class_inst_state_refs;
-    task->class_inst_state_refs = state_ref;
+    // TODO state_ref->next = task->class_inst_state_refs;
+    //task->class_inst_state_refs = state_ref;
 
     return make_gsl_err(gsl_OK);
 }
@@ -350,7 +387,7 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
     struct LocalContext *ctx = obj;
     struct kndClassInst *inst;
     struct kndTask *task = ctx->task;
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndSet *set;
     struct kndClass *base = ctx->class;
     int err;
@@ -518,13 +555,19 @@ gsl_err_t knd_select_class_inst(struct kndClass *c,
           .run = run_get_inst,
           .obj = &ctx
         },
+        { .is_selector = true,
+          .name = "_id",
+          .name_size = strlen("_id"),
+          .parse = parse_get_inst_by_numid,
+          .obj = &ctx
+        },
         { .name = "_state",
           .name_size = strlen("_state"),
           .parse = parse_select_state,
           .obj = &ctx
         },
         { .validate = parse_select_elem,
-          .obj = task
+          .obj = &ctx
         }/*,
         { .type = GSL_SET_STATE,
           .is_validator = true,
@@ -556,7 +599,7 @@ gsl_err_t knd_select_class_inst(struct kndClass *c,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        struct glbOutput *log = task->log;
+        struct kndOutput *log = task->log;
         knd_log("-- obj select parse error: \"%.*s\"",
                 log->buf_size, log->buf);
         if (!log->buf_size) {

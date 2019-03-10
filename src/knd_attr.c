@@ -4,6 +4,8 @@
 
 #include "knd_attr.h"
 #include "knd_proc.h"
+#include "knd_proc_arg.h"
+#include "knd_proc_call.h"
 #include "knd_task.h"
 #include "knd_class.h"
 #include "knd_text.h"
@@ -11,9 +13,9 @@
 #include "knd_state.h"
 #include "knd_set.h"
 #include "knd_mempool.h"
+#include "knd_output.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_ATTR_LEVEL_1 0
 #define DEBUG_ATTR_LEVEL_2 0
@@ -22,82 +24,73 @@
 #define DEBUG_ATTR_LEVEL_5 0
 #define DEBUG_ATTR_LEVEL_TMP 1
 
-static void str(struct kndAttr *self)
+static void str(struct kndAttr *self,
+                size_t depth)
 {
     struct kndTranslation *tr;
     const char *type_name = knd_attr_names[self->type];
 
     if (self->is_a_set)
-        knd_log("\n%*s[%.*s", self->depth * KND_OFFSET_SIZE, "",
+        knd_log("\n%*s[%.*s", depth * KND_OFFSET_SIZE, "",
                 self->name_size, self->name);
     else
-        knd_log("\n%*s{%s %.*s", self->depth * KND_OFFSET_SIZE, "",
+        knd_log("\n%*s{%s %.*s", depth * KND_OFFSET_SIZE, "",
                 type_name, self->name_size, self->name);
-
-    knd_log("%*s  IDX:\"%.*s\" [%zu]",
-            self->depth * KND_OFFSET_SIZE, "",
-            self->idx_name_size, self->idx_name,
-            self->idx_name_size);
-
-    if (self->access_type == KND_ATTR_ACCESS_RESTRICTED) {
-        knd_log("%*s  ACL:restricted",
-                self->depth * KND_OFFSET_SIZE, "");
-    }
 
     if (self->quant_type == KND_ATTR_SET) {
         knd_log("%*s  QUANT:SET",
-                self->depth * KND_OFFSET_SIZE, "");
+                depth * KND_OFFSET_SIZE, "");
     }
 
     if (self->concise_level) {
         knd_log("%*s  CONCISE:%zu",
-                self->depth * KND_OFFSET_SIZE, "", self->concise_level);
+                depth * KND_OFFSET_SIZE, "", self->concise_level);
     }
 
 
     if (self->is_implied) {
         knd_log("%*s  (implied)",
-                self->depth * KND_OFFSET_SIZE, "");
+                depth * KND_OFFSET_SIZE, "");
     }
 
     tr = self->tr;
     while (tr) {
         knd_log("%*s   ~ %s %s",
-                self->depth * KND_OFFSET_SIZE, "", tr->locale, tr->val);
+                depth * KND_OFFSET_SIZE, "", tr->locale, tr->val);
         tr = tr->next;
     }
 
     if (self->ref_classname_size) {
         knd_log("%*s  REF class template: %.*s",
-                self->depth * KND_OFFSET_SIZE, "",
+                depth * KND_OFFSET_SIZE, "",
                 self->ref_classname_size, self->ref_classname);
     }
 
     /*if (self->proc) {
         proc = self->proc;
         knd_log("%*s  PROC: %.*s",
-                self->depth * KND_OFFSET_SIZE, "", proc->name_size, proc->name);
-        proc->depth = self->depth + 1;
+                depth * KND_OFFSET_SIZE, "", proc->name_size, proc->name);
+        proc->depth = depth + 1;
         proc->str(proc);
     }
     */
     /*if (self->calc_oper_size) {
         knd_log("%*s  oper: %s attr: %s",
-                self->depth * KND_OFFSET_SIZE, "",
+                depth * KND_OFFSET_SIZE, "",
                 self->calc_oper, self->calc_attr);
     }
     */
 
     /*if (self->default_val_size) {
         knd_log("%*s  default VAL: %s",
-                self->depth * KND_OFFSET_SIZE, "", self->default_val);
+                depth * KND_OFFSET_SIZE, "", self->default_val);
     }
     */
 
     if (self->is_a_set)
-        knd_log("%*s]", self->depth * KND_OFFSET_SIZE, "");
+        knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
     else
-        knd_log("%*s}",  self->depth * KND_OFFSET_SIZE, "");
+        knd_log("%*s}",  depth * KND_OFFSET_SIZE, "");
 }
 
 extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
@@ -106,8 +99,6 @@ extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
     struct kndAttrVar *list_item;
     const char *classname = "";
     size_t classname_size = 0;
-    const char *name = "";
-    size_t name_size = 0;
     struct kndClass *c;
     size_t count = 0;
 
@@ -140,15 +131,9 @@ extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
         //return;
     }
 
-    if (item->parent) {
-        name = item->parent->name;
-        name_size = item->parent->name_size;
-    }
-
-    knd_log("%*s_attr: \"%.*s\" (parent: %.*s)  => %.*s",
+    knd_log("%*s_attr: \"%.*s\" => %.*s",
             depth * KND_OFFSET_SIZE, "",
             item->name_size, item->name,
-            name_size, name,
             item->val_size, item->val);
 
     if (item->children) {
@@ -161,7 +146,7 @@ extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
 static int export_JSON(struct kndAttr *self,
                        struct kndTask *task)
 {
-    struct glbOutput *out = task->out;
+    struct kndOutput *out = task->out;
     struct kndTranslation *tr;
     struct kndProc *p;
     const char *type_name = knd_attr_names[self->type];
@@ -203,12 +188,8 @@ static int export_JSON(struct kndAttr *self,
     /* choose gloss */
     tr = self->tr;
     while (tr) {
-        if (DEBUG_ATTR_LEVEL_2)
-            knd_log("LANG: %s == CURR LOCALE: %s [%lu] => %s",
-                    tr->locale, task->locale,
-                    (unsigned long)task->locale_size, tr->val);
-
-        if (strncmp(task->locale, tr->locale, tr->locale_size)) {
+        if (task->ctx->locale_size != tr->locale_size) continue;
+        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
             goto next_tr;
         }
 
@@ -231,7 +212,7 @@ static int export_JSON(struct kndAttr *self,
         err = out->write(out, ",\"proc\":", strlen(",\"proc\":"));
         if (err) return err;
         p = self->proc;
-        err = knd_proc_export(p, KND_FORMAT_JSON, out);
+        err = knd_proc_export(p, KND_FORMAT_JSON, task, out);
         if (err) return err;
     }
 
@@ -241,7 +222,7 @@ static int export_JSON(struct kndAttr *self,
     return knd_OK;
 }
 
-static int export_GSP(struct kndAttr *self, struct glbOutput *out)
+static int export_GSP(struct kndAttr *self, struct kndOutput *out)
 {
     char buf[KND_NAME_SIZE] = {0};
     size_t buf_size = 0;
@@ -392,32 +373,6 @@ extern void kndAttr_init(struct kndAttr *self)
     self->str = str;
 }
 
-extern int knd_copy_attr_ref(void *obj,
-                             const char *unused_var(elem_id),
-                             size_t unused_var(elem_id_size),
-                             size_t unused_var(count),
-                             void *elem)
-{
-    struct kndSet     *attr_idx = obj;
-    struct kndAttrRef *src_ref = elem;
-    struct kndAttr    *attr    = src_ref->attr;
-    struct kndAttrRef *ref;
-    struct kndMemPool *mempool = attr_idx->mempool;
-    int err;
-
-    if (DEBUG_ATTR_LEVEL_2) 
-        knd_log(".. copying %.*s attr..", attr->name_size, attr->name);
-
-    err = knd_attr_ref_new(mempool, &ref);                                        RET_ERR();
-    ref->attr = attr;
-    ref->attr_var = src_ref->attr_var;
-    ref->class_entry = src_ref->class_entry;
-
-    err = attr_idx->add(attr_idx,
-                        attr->id, attr->id_size,
-                        (void*)ref);                                              RET_ERR();
-    return knd_OK;
-}
 
 extern int knd_register_attr_ref(void *obj,
                                  const char *unused_var(elem_id),
@@ -425,12 +380,12 @@ extern int knd_register_attr_ref(void *obj,
                                  size_t unused_var(count),
                                  void *elem)
 {
-    struct kndClass     *self = obj;
+    struct kndClass *self = obj;
     struct kndSet *attr_idx  = self->attr_idx;
-    struct ooDict *attr_name_idx = self->entry->repo->attr_name_idx;
+    struct kndDict *attr_name_idx = self->entry->repo->attr_name_idx;
     struct kndAttrRef *src_ref = elem;
     struct kndAttr    *attr    = src_ref->attr;
-    struct kndAttrRef *ref, *prev_attr_ref;
+    struct kndAttrRef *ref; //, *prev_attr_ref;
     struct kndMemPool *mempool = attr_idx->mempool;
     int err;
 
@@ -446,21 +401,20 @@ extern int knd_register_attr_ref(void *obj,
                         attr->id, attr->id_size,
                         (void*)ref);                                              RET_ERR();
 
-    prev_attr_ref = attr_name_idx->get(attr_name_idx,
-                                       attr->name, attr->name_size);
+    //prev_attr_ref = knd_dict_get(attr_name_idx,
+    //                             attr->name, attr->name_size);
 
-    if (prev_attr_ref) {
+    /*if (prev_attr_ref) {
         err = attr_name_idx->remove(attr_name_idx,
                                     attr->name, attr->name_size);                     RET_ERR();
         ref->next = prev_attr_ref;
-    }
+        }*/
 
-    err = attr_name_idx->set(attr_name_idx,
-                             attr->name, attr->name_size,
-                             (void*)ref);                                         RET_ERR();
+    err = knd_dict_set(attr_name_idx,
+                       attr->name, attr->name_size,
+                       (void*)ref);                                               RET_ERR();
     return knd_OK;
 }
-
 
 static int extract_list_elem_value(struct kndAttrVar *parent_item,
                                    struct kndAttrVar *query,
@@ -746,25 +700,42 @@ extern int knd_get_arg_value(struct kndAttrVar *src,
     return knd_OK;
 }
 
-extern int knd_attr_var_new(struct kndMemPool *mempool,
-                            struct kndAttrVar **result)
+int knd_attr_var_new(struct kndMemPool *mempool,
+                     struct kndAttrVar **result)
 {
     void *page;
     int err;
-    //knd_log("..attr var new [size:%zu]", sizeof(struct kndAttr));
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                            sizeof(struct kndAttrVar), &page);
+                            sizeof(struct kndAttrVar), &page);                    RET_ERR();
     if (err) return err;
-
-    // TEST
-    //mempool->num_attr_vars++;
-
     *result = page;
     return knd_OK;
 }
 
-extern int knd_attr_ref_new(struct kndMemPool *mempool,
-                            struct kndAttrRef **result)
+int knd_attr_facet_new(struct kndMemPool *mempool,
+                       struct kndAttrFacet **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                            sizeof(struct kndAttrFacet), &page);                  RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
+int knd_attr_hub_new(struct kndMemPool *mempool,
+                     struct kndAttrHub **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndAttrHub), &page);
+    if (err) return err;
+    *result = page;
+    return knd_OK;
+}
+
+int knd_attr_ref_new(struct kndMemPool *mempool,
+                     struct kndAttrRef **result)
 {
     void *page;
     int err;
@@ -775,12 +746,11 @@ extern int knd_attr_ref_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-extern int knd_attr_new(struct kndMemPool *mempool,
-                        struct kndAttr **result)
+int knd_attr_new(struct kndMemPool *mempool,
+                 struct kndAttr **result)
 {
     void *page;
     int err;
-    //knd_log("..attr new [size:%zu]", sizeof(struct kndAttr));
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
                             sizeof(struct kndAttr), &page);
     if (err) return err;
