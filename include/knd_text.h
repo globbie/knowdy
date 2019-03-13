@@ -19,12 +19,11 @@
  */
 #pragma once
 
-#include <glb-lib/output.h>
-
 #include "knd_config.h"
 #include "knd_state.h"
 
 struct kndContent;
+struct kndTask;
 
 #define KND_SYNT_ROLE_NAME_SIZE 3
 

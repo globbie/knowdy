@@ -23,12 +23,12 @@
 #include <time.h>
 #include "knd_config.h"
 
-struct glbOutput;
 struct kndState;
 struct kndClass;
 struct kndUpdate;
 struct kndStateRef;
 struct kndMemPool;
+struct kndOutput;
 
 typedef enum knd_state_phase { KND_SELECTED,
                                KND_CREATED,
@@ -100,45 +100,8 @@ struct kndStateRef
     struct kndStateRef *next;
 };
 
-struct kndStateControl
-{
-    struct kndUser *admin;
-    struct kndTask *task;
-    struct kndRepo *repo;
-
-    /** transaction log:
-     * index of confirmed updates */
-    struct kndUpdate *updates;
-    size_t max_updates;
-    size_t num_updates;
-
-    size_t total_objs;
-
-    struct glbOutput *log;
-    struct glbOutput *out;
-    struct glbOutput *spec_out;
-    struct glbOutput *update;
-
-    /******** public methods ********/
-    void (*str)(struct kndStateControl *self);
-    void (*del)(struct kndStateControl *self);
-    void (*reset)(struct kndStateControl *self);
-    
-    int (*get)(struct kndStateControl *self,
-               const char     **state_id,
-               size_t   *state_id_size,
-               struct tm *date);
-
-    int (*confirm)(struct kndStateControl *self,
-                   struct kndUpdate *update);
-};
-
-/* constructors */
-extern int kndStateControl_new(struct kndStateControl **self);
-
 extern int knd_update_new(struct kndMemPool *mempool,
                           struct kndUpdate **result);
-
 extern int knd_state_new(struct kndMemPool *mempool,
                          struct kndState **result);
 extern int knd_state_ref_new(struct kndMemPool *mempool,

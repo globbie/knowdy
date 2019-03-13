@@ -32,7 +32,6 @@
 #include "knd_http_codes.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_ATTR_INDEX_LEVEL_1 0
 #define DEBUG_ATTR_INDEX_LEVEL_2 0

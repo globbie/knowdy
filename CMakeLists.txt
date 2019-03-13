@@ -108,7 +108,7 @@ set(SOURCES src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr
 
 add_library(${PROJECT_NAME}_obj OBJECT ${HEADERS} ${SOURCES})
 add_library(${PROJECT_NAME}_static STATIC $<TARGET_OBJECTS:${PROJECT_NAME}_obj>)
-target_link_libraries(${PROJECT_NAME}_static ${GSL_PARSER_LIBRARY} ${GLB_LIBRARY})
+target_link_libraries(${PROJECT_NAME}_static ${GSL_PARSER_LIBRARY})
 
 enable_testing()
 

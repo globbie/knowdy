@@ -21,10 +21,10 @@
 
 #include "knd_config.h"
 
-#include <glb-lib/output.h>
 #include <gsl-parser.h>
-
 #include <stddef.h>
+
+struct kndOutput;
 
 typedef enum knd_mempage_t { KND_MEMPAGE_LARGE,
                              KND_MEMPAGE_BASE_X4,
@@ -85,7 +85,7 @@ struct kndMemPool
     void (*del)(struct kndMemPool   *self);
     int (*alloc)(struct kndMemPool   *self);
     int (*present)(struct kndMemPool *self,
-                   struct glbOutput  *out);
+                   struct kndOutput  *out);
     gsl_err_t (*parse)(struct kndMemPool *self,
 		       const char *rec, size_t *total_size);
 };

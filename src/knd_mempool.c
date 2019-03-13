@@ -4,7 +4,7 @@
 
 #include "knd_mempool.h"
 #include "knd_utils.h"
-#include <glb-lib/output.h>
+#include "knd_output.h"
 
 static void del(struct kndMemPool *self)
 {
@@ -22,7 +22,7 @@ static void del(struct kndMemPool *self)
 }
 
 static int present_status(struct kndMemPool *self,
-                          struct glbOutput *out)
+                          struct kndOutput *out)
 {
     int err;
     err = out->writef(out, "{\"used_pages\":%zu}", self->pages_used);    RET_ERR();
