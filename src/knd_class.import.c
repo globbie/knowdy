@@ -239,7 +239,7 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     struct kndMemPool *mempool    = task->mempool;
     struct kndClassVar *self      = ctx->class_var;
     struct kndRepo *repo          = task->repo;
-    struct kndDict *class_name_idx = repo->class_name_idx;
+    struct kndDict *class_name_idx = task->ctx->class_name_idx;
     struct kndClassEntry *entry;
     void *result;
     int err;
