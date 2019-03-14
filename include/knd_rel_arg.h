@@ -20,8 +20,6 @@
 
 #pragma once
 
-#include <glb-lib/output.h>
-
 #include "knd_dict.h"
 #include "knd_utils.h"
 #include "knd_task.h"
@@ -112,9 +110,8 @@ struct kndRelArg
     char idx_name[KND_NAME_SIZE];
     size_t idx_name_size;
 
-    struct kndRefSet *browser;
+    // struct kndRefSet *browser;
     struct kndClassInst *curr_obj;
-    struct glbOutput *out;
     
     struct kndTranslation *tr;
     size_t depth;

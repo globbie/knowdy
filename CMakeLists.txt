@@ -24,7 +24,6 @@ include_directories(${CHECK_INCLUDE_DIR})
 
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(CHECK_LIBRARY ${CHECK_LIBRARY} rt m pthread subunit)
-    set(CURL_LIBRARY ${CURL_LIBRARY} curl)
 endif()
 
 include(ExternalProject)
@@ -43,39 +42,6 @@ ExternalProject_Add(gsl-parser-external
 )
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/gsl-parser/include")
 set(GSL_PARSER_LIBRARY "${CMAKE_BINARY_DIR}/libs/gsl-parser/lib/libgsl-parser_static.a")
-
-ExternalProject_Add(glb-lib-external
-    PREFIX ${CMAKE_BINARY_DIR}/libs/glb-lib
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib
-    BINARY_DIR ${CMAKE_BINARY_DIR}/libs/glb-lib
-    CMAKE_ARGS
-        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-    BUILD_COMMAND make glb-lib_static glb-lib-options_static
-    BUILD_ALWAYS TRUE
-    INSTALL_COMMAND ""
-)
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/glb-lib/include")
-set(GLB_LIBRARY
-    "${CMAKE_BINARY_DIR}/libs/glb-lib/lib/libglb-lib_static.a"
-    "${CMAKE_BINARY_DIR}/libs/glb-lib/lib/libglb-lib-options_static.a")
-
-ExternalProject_Add(knode-external
-    PREFIX ${CMAKE_BINARY_DIR}/libs/knode
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/knode
-    BINARY_DIR ${CMAKE_BINARY_DIR}/libs/knode
-    CMAKE_ARGS
-        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-    BUILD_COMMAND make kmq
-    BUILD_ALWAYS TRUE
-    INSTALL_COMMAND ""
-)
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libs/knode/include")
-link_directories("${CMAKE_BINARY_DIR}/libs/knode/lib")
-set(KNODE_LIBRARY "kmq")
 
 include_directories("include")
 
@@ -113,7 +79,7 @@ target_link_libraries(${PROJECT_NAME}_static ${GSL_PARSER_LIBRARY})
 enable_testing()
 
 add_subdirectory(tests)
-add_subdirectory(service)
+add_subdirectory(shell)
 
 install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)
 install(DIRECTORY etc/systemd/system/ DESTINATION usr/lib/systemd/system)

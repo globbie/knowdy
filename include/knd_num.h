@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include <glb-lib/output.h>
 #include "knd_config.h"
 #include "knd_state.h"
 

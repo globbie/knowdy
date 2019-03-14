@@ -12,7 +12,6 @@
 #include "knd_task.h"
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #define DEBUG_SET_LEVEL_0 0
 #define DEBUG_SET_LEVEL_1 0

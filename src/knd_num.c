@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include <gsl-parser.h>
-#include <glb-lib/output.h>
 
 #include "knd_num.h"
 #include "knd_repo.h"

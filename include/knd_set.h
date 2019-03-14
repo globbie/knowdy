@@ -20,7 +20,6 @@
 
 #pragma once
 
-struct glbOutput;
 struct kndClass;
 struct kndClassEntry;
 struct kndObjEntry;
