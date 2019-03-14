@@ -7,7 +7,7 @@ RUN apt-get update && apt-get -y install \
         pkg-config \
         libevent-dev \
         check \
-        readline\
+        libreadline-dev\
         libsubunit-dev \
         valgrind
 
