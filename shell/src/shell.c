@@ -57,15 +57,22 @@ static int knd_interact(struct kndShard *shard)
     size_t buf_size;
     int err;
 
-    printf("Knowdy at your service!     (finish session by pressing Ctrl+C)\n");
+    err = knd_shard_serve(shard);
+    if (err) return err;
+
+    knd_log("\n++ Knowdy shard service is up and running, num workers:%zu\n",
+            shard->num_tasks);
+
+    printf("   (finish session by pressing Ctrl+C)\n");
 
     while ((buf = readline(">> ")) != NULL) {
         buf_size = strlen(buf);
         if (buf_size) {
             add_history(buf);
         }
+        if (!buf_size) continue;
 
-        printf("[%s]\n", buf);
+        printf("[%s :%zu]\n", buf, buf_size);
 
         err = knd_shard_run_task(shard, buf, buf_size,
                                  result, &result_size);
