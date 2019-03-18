@@ -211,10 +211,12 @@ int knd_shard_run_task(struct kndShard *self,
             }
             *output_size = ctx->out->buf_size;
 
-            knd_log("\n== RESULT: \"%.*s\" (size:%zu)\n"
-                    "== task progress polling, num attempts: %zu\n",
-                    ctx->out->buf_size, ctx->out->buf,
-                    ctx->out->buf_size, num_attempts);
+            if (DEBUG_SHARD_LEVEL_1)
+                knd_log("\n== RESULT: \"%.*s\" (size:%zu)\n"
+                        "== task progress polling, num attempts: %zu\n",
+                        ctx->out->buf_size, ctx->out->buf,
+                        ctx->out->buf_size, num_attempts);
+
             return knd_OK;
         default:
             break;

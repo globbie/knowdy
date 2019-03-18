@@ -331,9 +331,9 @@ static int index_baseclasses(struct kndClass *self,
                     cvar->entry->name_size, cvar->entry->name,
                     self->entry->name_size, self->entry->name);
         }
-        err = index_attrs(self, c, task);                                       RET_ERR();
+        err = index_attrs(self, c, task);                                         RET_ERR();
 
-        err = index_baseclass(self, c, task);                                      RET_ERR();
+        err = index_baseclass(self, c, task);                                     RET_ERR();
         cvar->entry->class = c;
     }
 

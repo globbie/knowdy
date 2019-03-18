@@ -502,7 +502,7 @@ static int present_subclasses(struct kndClass *self,
                               struct kndTask *task,
                               size_t depth)
 {
-    struct kndOutput *out = task->out;
+    struct kndOutput *out = task->ctx->out;
     struct kndClassRef *ref;
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
@@ -705,7 +705,7 @@ int knd_class_export_GSL(struct kndClass *self,
 {
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
-    struct kndOutput *out = task->out;
+    struct kndOutput *out = task->ctx->out;
     struct kndAttrHub *attr_hub;
     struct kndState *state = self->states;
     size_t num_children;
@@ -713,10 +713,10 @@ int knd_class_export_GSL(struct kndClass *self,
 
     if (DEBUG_GSL_LEVEL_2) {
         knd_log(".. GSL export: \"%.*s\" (repo:%.*s) "
-                " depth:%zu max depth:%zu offset:%zu",
+                " depth:%zu max depth:%zu offset:%zu  out:%p",
                 entry->name_size, entry->name,
                 entry->repo->name_size, entry->repo->name,
-                task->depth, task->max_depth, task->ctx->format_offset);
+                task->depth, task->max_depth, task->ctx->format_offset, out);
     }
 
     err = out->writec(out, '{');                                                  RET_ERR();
@@ -728,7 +728,7 @@ int knd_class_export_GSL(struct kndClass *self,
 
     if (task->ctx->format_offset) {
         err = out->writec(out, '\n');                                             RET_ERR();
-        err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);           RET_ERR();
+        err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);      RET_ERR();
     }
 
     err = out->write(out, "{_id ", strlen("{_id "));                              RET_ERR();

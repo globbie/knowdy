@@ -72,8 +72,8 @@ static int knd_interact(struct kndShard *shard)
         }
         if (!buf_size) continue;
 
+        result_size = KND_IDX_BUF_SIZE;
         printf("[%s :%zu]\n", buf, buf_size);
-
         err = knd_shard_run_task(shard, buf, buf_size,
                                  result, &result_size);
         if (err != knd_OK) {
@@ -81,11 +81,12 @@ static int knd_interact(struct kndShard *shard)
             goto next_line;
         }
 
+        knd_log("== %.*s", result_size, result);
+
         /* readline allocates a new buffer every time */
     next_line:
         free(buf);
     }
-
     return knd_OK;
 }
 

@@ -372,7 +372,7 @@ int knd_task_run(struct kndTask *self)
     size_t total_size = self->ctx->input_size;
     gsl_err_t parser_err;
 
-    if (DEBUG_TASK_LEVEL_TMP) {
+    if (DEBUG_TASK_LEVEL_2) {
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
         if (self->ctx->input_size < chunk_size)
             chunk_size = self->ctx->input_size;
