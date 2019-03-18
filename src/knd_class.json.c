@@ -567,7 +567,6 @@ static int export_attrs(struct kndClass *self,
     return knd_OK;
 }
 
-
 static int export_inverse_attrs(struct kndClass *self,
                                 struct kndTask *task)
 {

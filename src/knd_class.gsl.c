@@ -318,9 +318,11 @@ static int export_class_ref_GSL(void *obj,
     task->depth = 0;
     if (task->ctx->format_offset) {
         err = out->writec(out, '\n');                                             RET_ERR();
-        err = knd_print_offset(out, task->ctx->format_offset);                         RET_ERR();
+        err = knd_print_offset(out, task->ctx->format_offset);                    RET_ERR();
     }
-    err = knd_class_export(c, KND_FORMAT_GSL, task);                              RET_ERR();
+
+    err = knd_class_export_GSL(c, task, true, 1);                                 RET_ERR();
+
     return knd_OK;
 }
 
@@ -670,10 +672,10 @@ static int export_attr_hub_GSL(struct kndAttrHub *hub,
     err = out->writec(out, '{');                                                  RET_ERR();
     err = out->write(out,
                      hub->attr->name,
-                     hub->attr->name_size);                                  RET_ERR();
+                     hub->attr->name_size);                                       RET_ERR();
 
     if (hub->parent) {
-        err = export_attr_hub_GSL(hub->parent, out, task, depth);            RET_ERR();
+        err = export_attr_hub_GSL(hub->parent, out, task, depth);                 RET_ERR();
     }
 
     if (hub->topics) {
@@ -713,10 +715,10 @@ int knd_class_export_GSL(struct kndClass *self,
 
     if (DEBUG_GSL_LEVEL_2) {
         knd_log(".. GSL export: \"%.*s\" (repo:%.*s) "
-                " depth:%zu max depth:%zu offset:%zu  out:%p",
+                " depth:%zu max depth:%zu offset:%zu",
                 entry->name_size, entry->name,
                 entry->repo->name_size, entry->repo->name,
-                task->depth, task->max_depth, task->ctx->format_offset, out);
+                task->depth, task->max_depth, task->ctx->format_offset);
     }
 
     err = out->writec(out, '{');                                                  RET_ERR();
@@ -876,6 +878,7 @@ int knd_class_export_GSL(struct kndClass *self,
 
     /* reverse attr paths */
     if (entry->attr_hubs) {
+        knd_log("== reverse attrs GSL export: ctx:%.*s", out->buf_size, out->buf);
         if (task->ctx->format_offset) {
             err = out->writec(out, '\n');                                         RET_ERR();
             err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);  RET_ERR();

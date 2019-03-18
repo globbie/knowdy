@@ -380,7 +380,6 @@ static int register_new_attr(struct kndClass *self,
     /* global indices */
     prev_attr_ref = knd_dict_get(attr_name_idx,
                                  attr->name, attr->name_size);
-    
     if (prev_attr_ref) {
         attr_ref->next = prev_attr_ref->next;
         prev_attr_ref->next = attr_ref;

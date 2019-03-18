@@ -49,73 +49,38 @@ struct LocalContext {
     struct kndClassVar *class_var;
 };
 
-static int inherit_attr(void *obj,
-                        const char *unused_var(elem_id),
-                        size_t unused_var(elem_id_size),
-                        size_t unused_var(count),
-                        void *elem)
+static int index_attr(void *obj,
+                      const char *unused_var(elem_id),
+                      size_t unused_var(elem_id_size),
+                      size_t unused_var(count),
+                      void *elem)
 {
     struct LocalContext *ctx = obj;
     struct kndTask    *task = ctx->task;
-    struct kndMemPool *mempool = task->mempool;
     struct kndClass   *self = ctx->class;
-    struct kndSet     *attr_idx = self->attr_idx;
-    struct kndAttrRef *src_ref = elem;
-    struct kndAttr    *attr    = src_ref->attr;
-    struct kndAttrRef *ref;
+    struct kndAttrRef *src_ref  = elem;
+    struct kndAttr    *attr     = src_ref->attr;
     int err;
 
     if (DEBUG_CLASS_INDEX_LEVEL_TMP) 
-        knd_log("..  \"%.*s\" attr inherited by %.*s..",
+        knd_log("..  \"%.*s\" attr indexed by %.*s..",
                 attr->name_size, attr->name,
                 self->name_size, self->name);
 
-    err = knd_attr_ref_new(mempool, &ref);                                        RET_ERR();
-    ref->attr = attr;
-    ref->attr_var = src_ref->attr_var;
-    ref->class_entry = src_ref->class_entry;
+    if (!attr->is_indexed) return knd_OK;
+    if (!src_ref->attr_var) return knd_OK;
 
-    err = attr_idx->add(attr_idx,
-                        attr->id, attr->id_size,
-                        (void*)ref);                                              RET_ERR();
-    if (ref->attr_var) {
-        if (attr->is_indexed) {
-            if (DEBUG_CLASS_INDEX_LEVEL_2) 
-                knd_log("..  indexing \"%.*s\" attr var in %.*s..",
-                        attr->name_size, attr->name,
-                        self->name_size, self->name);
-            if (attr->is_a_set) {
-                err = knd_index_attr_var_list(self, attr, ref->attr_var, task);   RET_ERR();
-            }
-        }
-    }
-    return knd_OK;
-}
-
-static int index_attrs(struct kndClass *self,
-                       struct kndClass *base,
-                       struct kndTask *task)
-{
-    int err;
-
-    if (!base->is_resolved) {
-        err = knd_class_resolve(base, task);                                      RET_ERR();
+    if (DEBUG_CLASS_INDEX_LEVEL_TMP) 
+        knd_log("..  indexing \"%.*s\" attr var in %.*s..",
+                attr->name_size, attr->name,
+                self->name_size, self->name);
+    if (attr->is_a_set) {
+        err = knd_index_attr_var_list(self, attr, src_ref->attr_var, task);           RET_ERR();
+        return knd_OK;
     }
 
-    if (DEBUG_CLASS_INDEX_LEVEL_2) {
-        knd_log(".. \"%.*s\" class to inherit attrs from \"%.*s\"..",
-                self->entry->name_size, self->entry->name,
-                base->name_size, base->name);
-    }
+    // single attr val
 
-    struct LocalContext ctx = {
-        .task = task,
-        .class = self
-    };
-
-    err = base->attr_idx->map(base->attr_idx,
-                              inherit_attr,
-                              (void*)&ctx);                                        RET_ERR();
     return knd_OK;
 }
 
@@ -265,12 +230,6 @@ static int index_baseclasses(struct kndClass *self,
                              struct kndTask *task)
 {
     struct kndClassVar *cvar;
-    struct kndClassEntry *entry;
-    struct kndClass *c = NULL;
-    struct kndOutput *log = task->log;
-    struct kndRepo *repo = self->entry->repo;
-    const char *classname;
-    size_t classname_size;
     int err;
 
     if (DEBUG_CLASS_INDEX_LEVEL_TMP)
@@ -278,63 +237,7 @@ static int index_baseclasses(struct kndClass *self,
                 self->name_size, self->name);
 
     for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
-        if (cvar->entry->class == self) {
-            /* TODO */
-            if (DEBUG_CLASS_INDEX_LEVEL_2)
-                knd_log(".. \"%.*s\" class to check the update request: \"%s\"..",
-                        self->entry->name_size, self->entry->name,
-                        cvar->entry->name_size, cvar->entry->name);
-            continue;
-        }
-        c = NULL;
-        if (cvar->id_size) {
-            err = knd_get_class_by_id(self->entry->repo,
-                                      cvar->id, cvar->id_size, &c, task);
-            if (err) {
-                knd_log("-- no class with id %.*s", cvar->id_size, cvar->id);
-                return knd_FAIL;
-            }
-            entry = c->entry;
-            cvar->entry = entry;
-        }
-        if (!c) {
-            classname = cvar->entry->name;
-            classname_size = cvar->entry->name_size;
-            if (!classname_size) {
-                knd_log("-- no base class specified in class cvar \"%.*s\"",
-                        self->entry->name_size, self->entry->name);
-                return knd_FAIL;
-            }
-            err = knd_get_class(self->entry->repo,
-                                classname, classname_size, &c, task);
-            if (err) {
-                knd_log("-- no such class: %.*s? repo:%.*s",
-                        classname_size, classname, repo->name_size, repo->name);
-                log->reset(log);
-                log->writef(log, "%.*s class name not found",
-                            classname_size, classname);
-                return err;
-            }
-        }
-
-        if (DEBUG_CLASS_INDEX_LEVEL_2)
-            c->str(c, 1);
-
-        if (c == self) {
-            knd_log("-- self reference detected in \"%.*s\"",
-                    cvar->entry->name_size, cvar->entry->name);
-            return knd_FAIL;
-        }
-
-        if (DEBUG_CLASS_INDEX_LEVEL_2) {
-            knd_log("++ \"%.*s\" ref established as a base class for \"%.*s\"!",
-                    cvar->entry->name_size, cvar->entry->name,
-                    self->entry->name_size, self->entry->name);
-        }
-        err = index_attrs(self, c, task);                                         RET_ERR();
-
-        err = index_baseclass(self, c, task);                                     RET_ERR();
-        cvar->entry->class = c;
+        err = index_baseclass(self, cvar->entry->class, task);                                     RET_ERR();
     }
 
     return knd_OK;
@@ -343,7 +246,6 @@ static int index_baseclasses(struct kndClass *self,
 int knd_class_index(struct kndClass *self,
                     struct kndTask *task)
 {
-    struct kndClassVar *cvar;
     struct kndRepo *repo = self->entry->repo;
     int err;
 
@@ -352,7 +254,7 @@ int knd_class_index(struct kndClass *self,
     }
 
     if (self->indexing_in_progress) {
-        knd_log("-- vicious circle detected in \"%.*s\"",
+        knd_log("-- vicious circle detected in \"%.*s\" while indexing",
                 self->name_size, self->name);
         return knd_FAIL;
     }
@@ -369,21 +271,20 @@ int knd_class_index(struct kndClass *self,
         err = index_baseclass(self, repo->root_class, task);                       RET_ERR();
     } else {
         err = index_baseclasses(self, task);                                      RET_ERR();
-        for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
-            if (cvar->attrs) {
-                // err = knd_resolve_attr_vars(self, cvar, task);                    RET_ERR();
-            }
-        }
     }
 
-    /* primary attrs */
-    if (self->num_attrs) {
-        // err = knd_resolve_primary_attrs(self, task);                              RET_ERR();
-    }
+    struct LocalContext ctx = {
+        .task = task,
+        .class = self
+    };
+    err = self->attr_idx->map(self->attr_idx,
+                              index_attr,
+                              (void*)&ctx);                                        RET_ERR();
 
     if (DEBUG_CLASS_INDEX_LEVEL_TMP)
         knd_log("++ class \"%.*s\" indexed!",
                 self->entry->name_size, self->entry->name);
+
     self->is_indexed = true;
     return knd_OK;
 }

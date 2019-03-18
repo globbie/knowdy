@@ -150,7 +150,7 @@ extern int knd_index_attr_var_list(struct kndClass *self,
     size_t name_size;
     int err;
 
-    if (DEBUG_ATTR_INDEX_LEVEL_2) {
+    if (DEBUG_ATTR_INDEX_LEVEL_TMP) {
         knd_log("\n.. attr item list indexing.. (class:%.*s) "
                 ".. index attr: \"%.*s\" [type:%d]"
                 " refclass: \"%.*s\" %p (name:%.*s val:%.*s)",
@@ -227,7 +227,7 @@ extern int knd_index_attr_var_list(struct kndClass *self,
             if (err) continue;
 
         update_hub:
-            if (DEBUG_ATTR_INDEX_LEVEL_2)
+            if (DEBUG_ATTR_INDEX_LEVEL_TMP)
                 knd_log(".. updating the attr hub of \"%.*s\"",
                         curr_class->name_size, curr_class->name);
             err = update_attr_hub(self, c, &curr_class->entry->attr_hubs,
@@ -277,7 +277,6 @@ static int update_attr_hub(struct kndClass   *topic,
         err = update_attr_hub(topic, spec, &hub->parent,
                               item->parent, item->parent->attr,
                               task, is_ancestor);                                 RET_ERR();
-     
         return knd_OK;
     }
 

@@ -268,11 +268,12 @@ static int ref_item_export_GSL(struct kndAttrVar *item,
     assert(item->class != NULL);
     c = item->class;
 
-    knd_log(".. expand ref %.*s: depth:%zu max_depth:%zu",
-            c->name_size, c->name, task->depth, task->max_depth);
+    if (DEBUG_ATTR_GSL_LEVEL_2) {
+        knd_log(".. expand ref %.*s: depth:%zu max_depth:%zu",
+                c->name_size, c->name, task->depth, task->max_depth);
+    }
 
-    err = knd_class_export_GSL(c, task, false, depth);                               RET_ERR();
-
+    err = knd_class_export_GSL(c, task, false, depth);                            RET_ERR();
     task->depth = curr_depth;
 
     return knd_OK;
