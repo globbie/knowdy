@@ -279,7 +279,7 @@ static gsl_err_t parse_estimate(void *obj,
     struct LocalContext *ctx = obj;
     struct kndProc *self = ctx->proc;
 
-    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
+    if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_log(".. proc estimate parsing: \"%.*s\"..",
                 32, rec);
 
@@ -539,7 +539,7 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
     struct kndProc *proc;
     int err;
 
-    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
+    if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_log(".. import proc: \"%.*s\"..", 32, rec);
 
     err = knd_proc_entry_new(mempool, &entry);
@@ -630,7 +630,7 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
     if (!proc->name_size)
         return make_gsl_err(gsl_FORMAT);
 
-    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
+    if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_proc_str(proc, 0);
 
     if (task->type == KND_UPDATE_STATE) {

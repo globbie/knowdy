@@ -392,11 +392,7 @@ extern int knd_index_inner_attr_var(struct kndClass *self,
                                     struct kndAttrVar *parent_item,
                                     struct kndTask *task)
 {
-    //struct kndClass *c;
     struct kndAttrVar *item;
-    //struct kndAttr *attr;
-    //const char *classname;
-    //size_t classname_size;
     int err;
 
     if (DEBUG_ATTR_INDEX_LEVEL_2)

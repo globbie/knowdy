@@ -200,7 +200,7 @@ int knd_proc_compute(struct kndProc *self,
     struct kndProcArg *arg = NULL;
     int err;
 
-    if (DEBUG_PROC_RESOLVE_LEVEL_TMP)
+    if (DEBUG_PROC_RESOLVE_LEVEL_2)
         knd_log(".. proc to compute: %.*s",
                 self->name_size, self->name);
 
@@ -226,7 +226,7 @@ int knd_proc_compute(struct kndProc *self,
 
     self->is_computed = true;
 
-    if (DEBUG_PROC_RESOLVE_LEVEL_TMP)
+    if (DEBUG_PROC_RESOLVE_LEVEL_2)
         knd_log(".. proc \"%.*s\" cost:%zu",
                 self->name_size, self->name,
                 self->estimate.aggr_cost);

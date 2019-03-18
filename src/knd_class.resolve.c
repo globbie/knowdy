@@ -141,8 +141,8 @@ static int link_ancestor(struct kndClass *self,
 
     if (base_entry->repo != entry->repo) {
         prev_entry = knd_dict_get(class_name_idx,
-                                         base_entry->name,
-                                         base_entry->name_size);
+                                  base_entry->name,
+                                  base_entry->name_size);
         if (prev_entry) {
             base = prev_entry->class;
         } else {
@@ -164,14 +164,6 @@ static int link_ancestor(struct kndClass *self,
     entry->num_ancestors++;
 
     return knd_OK;
-}
-
-static inline void link_child(struct kndClassEntry *self,
-                              struct kndClassRef *child_ref)
-{
-    child_ref->next = self->children;
-    // atomic
-    self->children = child_ref;
 }
 
 static int link_baseclass(struct kndClass *self,
@@ -200,16 +192,6 @@ static int link_baseclass(struct kndClass *self,
         err = link_ancestor(self, base->entry, task);                             RET_ERR();
         parent_linked = true;
     }
-
-    /* register as a child */
-    err = knd_class_ref_new(mempool, &ref);                                       RET_ERR();
-    ref->entry = entry;
-    ref->class = self;
-    link_child(base->entry, ref);
-
-    if (task->type == KND_LOAD_STATE)
-        base->entry->num_children++;
-
     /* copy the ancestors */
     for (baseref = base->entry->ancestors; baseref; baseref = baseref->next) {
         if (baseref->entry->class && baseref->entry->class->state_top) continue;
@@ -224,30 +206,6 @@ static int link_baseclass(struct kndClass *self,
         ref->next = entry->ancestors;
         entry->ancestors = ref;
         entry->num_ancestors++;
-
-        /* NB: moved to knd_class_index
-              register a descendant */
-
-        if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-            knd_log(".. add \"%.*s\" (repo:%.*s) as a child of \"%.*s\" (repo:%.*s)..",
-                    entry->name_size, entry->name,
-                    entry->repo->name_size, entry->repo->name,
-                    base->entry->name_size, base->entry->name,
-                    base->entry->repo->name_size, base->entry->repo->name);
-
-        //base->entry->num_terminals++;
-
-        /*desc_idx = base->entry->descendants;
-        if (!desc_idx) {
-            err = knd_set_new(mempool, &desc_idx);                                RET_ERR();
-            desc_idx->type = KND_SET_CLASS;
-            desc_idx->base = base->entry;
-            base->entry->descendants = desc_idx;
-        }
-
-        err = desc_idx->add(desc_idx, entry->id, entry->id_size,
-                            (void*)entry);                                        RET_ERR();
-        */
     }
     return knd_OK;
 }
@@ -378,7 +336,6 @@ int knd_class_resolve(struct kndClass *self,
             }
         }
     }
-
     self->is_resolved = true;
 
     /* get a gold star: assign unique class id */

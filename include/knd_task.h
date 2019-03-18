@@ -68,7 +68,8 @@ typedef enum knd_task_phase_t { KND_REGISTER,
                                 KND_CONFLICT,
                                 KND_WAL_WRITE,
                                 KND_WAL_COMMIT,
-                                KND_DELIVER,
+                                KND_UPDATE_INDICES,
+                                KND_DELIVER_RESULT,
                                 KND_COMPLETE } knd_task_phase_t;
 
 struct kndTaskDestination

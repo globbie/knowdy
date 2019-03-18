@@ -1007,7 +1007,6 @@ static int resolve_classes(struct kndRepo *self,
     struct kndClassEntry *entry;
     struct kndDictItem *item;
     struct kndDict *name_idx = self->class_name_idx;
-    struct kndSet *class_idx = self->class_idx;
     int err;
 
     if (DEBUG_REPO_LEVEL_2)
@@ -1028,20 +1027,49 @@ static int resolve_classes(struct kndRepo *self,
 
             if (c->is_resolved) continue;
 
-            
             err = knd_class_resolve(c, task);
             if (err) {
                 knd_log("-- couldn't resolve the \"%.*s\" class",
                         c->entry->name_size, c->entry->name);
                 return err;
             }
+        }
+    }
+    return knd_OK;
+}
 
-            /*err = knd_class_index(c, task);
+static int index_classes(struct kndRepo *self,
+                         struct kndTask *task)
+{
+    struct kndClass *c;
+    struct kndClassEntry *entry;
+    struct kndDictItem *item;
+    struct kndDict *name_idx = self->class_name_idx;
+    struct kndSet *class_idx = self->class_idx;
+    int err;
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log(".. indexing classes in \"%.*s\"..",
+                self->name_size, self->name);
+
+    for (size_t i = 0; i < name_idx->size; i++) {
+        item = atomic_load_explicit(&name_idx->hash_array[i],
+                                    memory_order_relaxed);
+        for (; item; item = item->next) {
+            entry = item->data;
+            if (!entry->class) {
+                knd_log("-- unresolved class entry: %.*s",
+                        entry->name_size, entry->name);
+                return knd_FAIL;
+            }
+            c = entry->class;
+
+            err = knd_class_index(c, task);
             if (err) {
                 knd_log("-- couldn't index the \"%.*s\" class",
                         c->entry->name_size, c->entry->name);
                 return err;
-                }*/
+            }
 
             err = class_idx->add(class_idx,
                                  entry->id, entry->id_size, (void*)entry);
@@ -1178,7 +1206,7 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
 
             err = resolve_classes(self, task);
             if (err) {
-                knd_log("-- class coordination failed");
+                knd_log("-- class resolving failed");
                 return err;
             }
 
@@ -1187,7 +1215,12 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
                 knd_log("-- resolving of procs failed");
                 return err;
             }
-            
+
+            err = index_classes(self, task);
+            if (err) {
+                knd_log("-- class indexing failed");
+                return err;
+            }
         }
     }
 
@@ -1197,14 +1230,13 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     if (err) return err;
     err = out->write(out, "/journal.log", strlen("/journal.log"));
     if (err) return err;
-     out->buf[out->buf_size] = '\0';
+    out->buf[out->buf_size] = '\0';
 
     /* read any existing updates to the frozen DB (failure recovery) */
     if (!stat(out->buf, &st)) {
         err = kndRepo_restore(self, out->buf, task->file_out);
         if (err) return err;
     }
-
     self->timestamp = time(NULL);
 
     return knd_OK;

@@ -92,9 +92,9 @@ static int inherit_attr(void *obj,
     return knd_OK;
 }
 
-static int inherit_attrs(struct kndClass *self,
-                         struct kndClass *base,
-                         struct kndTask *task)
+static int index_attrs(struct kndClass *self,
+                       struct kndClass *base,
+                       struct kndTask *task)
 {
     int err;
 
@@ -119,16 +119,15 @@ static int inherit_attrs(struct kndClass *self,
     return knd_OK;
 }
 
-static int link_ancestor(struct kndClass *self,
-                         struct kndClassEntry *base_entry,
-                         struct kndTask *task)
+static int index_ancestor(struct kndClass *self,
+                          struct kndClassEntry *base_entry,
+                          struct kndTask *task)
 {
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *prev_entry;
     struct kndMemPool *mempool = task->mempool;
     struct kndSet *desc_idx;
     struct kndClass *base;
-    struct kndClassRef *ref;
     struct kndDict *class_name_idx = task->ctx->class_name_idx;
     void *result;
     int err;
@@ -136,7 +135,7 @@ static int link_ancestor(struct kndClass *self,
     base = base_entry->class;
 
     if (DEBUG_CLASS_INDEX_LEVEL_TMP)
-        knd_log(".. %.*s class to link an ancestor: \"%.*s\" top:%d",
+        knd_log(".. %.*s class to update desc_idx of an ancestor: \"%.*s\" top:%d",
                 self->name_size, self->name,
                 base->name_size, base->name, base->state_top);
 
@@ -167,7 +166,7 @@ static int link_ancestor(struct kndClass *self,
     err = desc_idx->get(desc_idx, entry->id, entry->id_size, &result);
     if (!err) {
         if (DEBUG_CLASS_INDEX_LEVEL_TMP)
-            knd_log("== link already established between %.*s (%.*s)"
+            knd_log("== index already present between %.*s (%.*s)"
                     " and its ancestor %.*s",
                     entry->name_size, entry->name,
                     entry->id_size, entry->id,
@@ -176,42 +175,27 @@ static int link_ancestor(struct kndClass *self,
         return knd_OK;
     }
 
-    /* add an ancestor */
-    err = knd_class_ref_new(mempool, &ref);                                   RET_ERR();
-    ref->class = base;
-    ref->entry = base->entry;
-    ref->next = entry->ancestors;
-    entry->ancestors = ref;
-    entry->num_ancestors++;
-
     base->entry->num_terminals++;
 
     /* register as a descendant */
-    err = desc_idx->add(desc_idx, entry->id, entry->id_size,
-                        (void*)entry);                                             RET_ERR();
-
-    if (DEBUG_CLASS_INDEX_LEVEL_TMP)
-        knd_log("++ added \"%.*s\" (repo:%.*s) as "
-                " a descendant of ancestor \"%.*s\" (repo:%.*s)..",
-                entry->name_size, entry->name,
-                entry->repo->name_size, entry->repo->name,
-                base->entry->name_size, base->entry->name,
-                base->entry->repo->name_size, base->entry->repo->name);
+    err = desc_idx->add(desc_idx,
+                        entry->id, entry->id_size,
+                        (void*)entry);                                            RET_ERR();
 
     return knd_OK;
 }
 
-static inline void link_child(struct kndClassEntry *self,
-                              struct kndClassRef *child_ref)
+static inline void set_child_ref(struct kndClassEntry *self,
+                                 struct kndClassRef *child_ref)
 {
     child_ref->next = self->children;
     // atomic
     self->children = child_ref;
 }
 
-static int link_baseclass(struct kndClass *self,
-                          struct kndClass *base,
-                          struct kndTask *task)
+static int index_baseclass(struct kndClass *self,
+                           struct kndClass *base,
+                           struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClassRef *ref, *baseref;
@@ -233,7 +217,7 @@ static int link_baseclass(struct kndClass *self,
     if (base->entry->repo != repo) {
         err = knd_class_clone(base, repo, &base_copy, mempool);                   RET_ERR();
         base = base_copy;
-        err = link_ancestor(self, base->entry, task);                             RET_ERR();
+        err = index_ancestor(self, base->entry, task);                             RET_ERR();
         parent_linked = true;
     }
 
@@ -241,25 +225,18 @@ static int link_baseclass(struct kndClass *self,
     err = knd_class_ref_new(mempool, &ref);                                       RET_ERR();
     ref->entry = entry;
     ref->class = self;
-    link_child(base->entry, ref);
+    set_child_ref(base->entry, ref);
 
     if (task->type == KND_LOAD_STATE)
         base->entry->num_children++;
 
-    /* copy the ancestors */
+    /* update ancestors' indices */
     for (baseref = base->entry->ancestors; baseref; baseref = baseref->next) {
         if (baseref->entry->class && baseref->entry->class->state_top) continue;
-        err = link_ancestor(self, baseref->entry, task);                          RET_ERR();
+        err = index_ancestor(self, baseref->entry, task);                          RET_ERR();
     }
 
     if (!parent_linked) {
-        /* register a parent */
-        err = knd_class_ref_new(mempool, &ref);                                   RET_ERR();
-        ref->class = base;
-        ref->entry = base->entry;
-        ref->next = entry->ancestors;
-        entry->ancestors = ref;
-        entry->num_ancestors++;
         base->entry->num_terminals++;
 
         if (DEBUG_CLASS_INDEX_LEVEL_TMP)
@@ -284,8 +261,8 @@ static int link_baseclass(struct kndClass *self,
     return knd_OK;
 }
 
-static int resolve_baseclasses(struct kndClass *self,
-                               struct kndTask *task)
+static int index_baseclasses(struct kndClass *self,
+                             struct kndTask *task)
 {
     struct kndClassVar *cvar;
     struct kndClassEntry *entry;
@@ -296,8 +273,8 @@ static int resolve_baseclasses(struct kndClass *self,
     size_t classname_size;
     int err;
 
-    if (DEBUG_CLASS_INDEX_LEVEL_2)
-        knd_log(".. class \"%.*s\" to resolve its bases..",
+    if (DEBUG_CLASS_INDEX_LEVEL_TMP)
+        knd_log(".. class \"%.*s\" to update its base class indices..",
                 self->name_size, self->name);
 
     for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
@@ -354,16 +331,10 @@ static int resolve_baseclasses(struct kndClass *self,
                     cvar->entry->name_size, cvar->entry->name,
                     self->entry->name_size, self->entry->name);
         }
-        err = inherit_attrs(self, c, task);                                       RET_ERR();
+        err = index_attrs(self, c, task);                                       RET_ERR();
 
-        err = link_baseclass(self, c, task);                                      RET_ERR();
+        err = index_baseclass(self, c, task);                                      RET_ERR();
         cvar->entry->class = c;
-    }
-
-    if (DEBUG_CLASS_INDEX_LEVEL_2) {
-        knd_log("++ \"%.*s\" has resolved its baseclasses!",
-                self->name_size, self->name);
-        self->str(self, 1);
     }
 
     return knd_OK;
@@ -395,34 +366,27 @@ int knd_class_index(struct kndClass *self,
                 self->entry->name_size, self->entry->name);
     }
 
-    if (task->type == KND_LOAD_STATE) {
-        entry->numid = atomic_fetch_add_explicit(&entry->repo->class_id_count, 1, \
-                                                 memory_order_relaxed);
-        entry->numid++;
-        knd_uid_create(entry->numid, entry->id, &entry->id_size);
-    }
-    
     /* a child of the root class */
     if (!self->baseclass_vars) {
-        err = link_baseclass(self, repo->root_class, task);                       RET_ERR();
+        err = index_baseclass(self, repo->root_class, task);                       RET_ERR();
     } else {
-        err = resolve_baseclasses(self, task);                                    RET_ERR();
+        err = index_baseclasses(self, task);                                      RET_ERR();
         for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
             if (cvar->attrs) {
-                err = knd_resolve_attr_vars(self, cvar, task);                    RET_ERR();
+                // err = knd_resolve_attr_vars(self, cvar, task);                    RET_ERR();
             }
         }
     }
+
     /* primary attrs */
     if (self->num_attrs) {
-        err = knd_resolve_primary_attrs(self, task);                              RET_ERR();
+        // err = knd_resolve_primary_attrs(self, task);                              RET_ERR();
     }
 
-    if (DEBUG_CLASS_INDEX_LEVEL_2)
-        knd_log("++ class \"%.*s\" resolved!",
+    if (DEBUG_CLASS_INDEX_LEVEL_TMP)
+        knd_log("++ class \"%.*s\" indexed!",
                 self->entry->name_size, self->entry->name);
-
-    self->is_resolved = true;
+    self->is_indexed = true;
     return knd_OK;
 }
 

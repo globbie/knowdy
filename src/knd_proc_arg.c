@@ -566,7 +566,7 @@ int knd_proc_arg_compute(struct kndProcArg *self,
 {
     int err;
 
-    if (DEBUG_PROC_ARG_LEVEL_TMP)
+    if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log(".. computing arg \"%.*s\"..",
                 self->name_size, self->name);
     if (!self->proc_call) return knd_OK;
