@@ -66,7 +66,7 @@ static int index_attr(void *obj,
     if (!attr->is_indexed) return knd_OK;
     if (!src_ref->attr_var) return knd_OK;
 
-    if (DEBUG_CLASS_INDEX_LEVEL_TMP) 
+    if (DEBUG_CLASS_INDEX_LEVEL_2) 
         knd_log("..  \"%.*s\" attr indexed by %.*s..",
                 attr->name_size, attr->name,
                 self->name_size, self->name);
@@ -76,9 +76,8 @@ static int index_attr(void *obj,
         return knd_OK;
     }
 
-    // single attr val
-    knd_log("-- attr single val\n\n");
-    
+    err = knd_index_attr(self, attr, src_ref->attr_var, task);                    RET_ERR();
+
     return knd_OK;
 }
 

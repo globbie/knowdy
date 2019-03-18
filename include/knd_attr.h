@@ -337,9 +337,9 @@ int knd_resolve_primary_attrs(struct kndClass *self,
 
 // knd_attr.index.c
 int knd_index_attr(struct kndClass *self,
-                          struct kndAttr *attr,
-                          struct kndAttrVar *item,
-                          struct kndTask *task);
+                   struct kndAttr *attr,
+                   struct kndAttrVar *item,
+                   struct kndTask *task);
 int knd_index_attr_var_list(struct kndClass *self,
                             struct kndAttr *attr,
                             struct kndAttrVar *item,

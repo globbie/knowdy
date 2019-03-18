@@ -317,7 +317,7 @@ static int index_inner_class_ref(struct kndClass   *self,
     struct kndClass *curr_class;
     int err;
 
-    if (DEBUG_ATTR_INDEX_LEVEL_2) {
+    if (DEBUG_ATTR_INDEX_LEVEL_TMP) {
         knd_log("\n.. index path from \"%.*s\" (template:\"%.*s\")",
                 spec->name_size, spec->name,
                 base->name_size, base->name);
@@ -339,7 +339,6 @@ static int index_inner_class_ref(struct kndClass   *self,
         err = update_attr_hub(self, spec, &curr_class->entry->attr_hubs,
                               item, attr, task, true);                            RET_ERR();
     }
-
     return knd_OK;
 }
 
