@@ -344,7 +344,6 @@ int knd_class_index(struct kndClass *self,
                     struct kndTask *task)
 {
     struct kndClassVar *cvar;
-    struct kndClassEntry *entry;
     struct kndRepo *repo = self->entry->repo;
     int err;
 
@@ -359,7 +358,6 @@ int knd_class_index(struct kndClass *self,
     }
 
     self->indexing_in_progress = true;
-    entry = self->entry;
 
     if (DEBUG_CLASS_INDEX_LEVEL_TMP) {
         knd_log(".. indexing class \"%.*s\"..",
