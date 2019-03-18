@@ -79,17 +79,6 @@ static int inherit_attr(void *obj,
     err = attr_idx->add(attr_idx,
                         attr->id, attr->id_size,
                         (void*)ref);                                              RET_ERR();
-    if (ref->attr_var) {
-        if (attr->is_indexed) {
-            if (DEBUG_CLASS_RESOLVE_LEVEL_2) 
-                knd_log("..  indexing \"%.*s\" attr var in %.*s..",
-                        attr->name_size, attr->name,
-                        self->name_size, self->name);
-            /*if (attr->is_a_set) {
-                err = knd_index_attr_var_list(self, attr, ref->attr_var, task);   RET_ERR();
-                }*/
-        }
-    }
     return knd_OK;
 }
 

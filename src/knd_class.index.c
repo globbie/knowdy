@@ -60,27 +60,25 @@ static int index_attr(void *obj,
     struct kndClass   *self = ctx->class;
     struct kndAttrRef *src_ref  = elem;
     struct kndAttr    *attr     = src_ref->attr;
+    // struct kndAttrVar *item;
     int err;
+
+    if (!attr->is_indexed) return knd_OK;
+    if (!src_ref->attr_var) return knd_OK;
 
     if (DEBUG_CLASS_INDEX_LEVEL_TMP) 
         knd_log("..  \"%.*s\" attr indexed by %.*s..",
                 attr->name_size, attr->name,
                 self->name_size, self->name);
 
-    if (!attr->is_indexed) return knd_OK;
-    if (!src_ref->attr_var) return knd_OK;
-
-    if (DEBUG_CLASS_INDEX_LEVEL_TMP) 
-        knd_log("..  indexing \"%.*s\" attr var in %.*s..",
-                attr->name_size, attr->name,
-                self->name_size, self->name);
     if (attr->is_a_set) {
-        err = knd_index_attr_var_list(self, attr, src_ref->attr_var, task);           RET_ERR();
+        err = knd_index_attr_var_list(self, attr, src_ref->attr_var, task);       RET_ERR();
         return knd_OK;
     }
 
     // single attr val
-
+    knd_log("-- attr single val\n\n");
+    
     return knd_OK;
 }
 
@@ -99,7 +97,7 @@ static int index_ancestor(struct kndClass *self,
 
     base = base_entry->class;
 
-    if (DEBUG_CLASS_INDEX_LEVEL_TMP)
+    if (DEBUG_CLASS_INDEX_LEVEL_2)
         knd_log(".. %.*s class to update desc_idx of an ancestor: \"%.*s\" top:%d",
                 self->name_size, self->name,
                 base->name_size, base->name, base->state_top);
@@ -130,7 +128,7 @@ static int index_ancestor(struct kndClass *self,
  
     err = desc_idx->get(desc_idx, entry->id, entry->id_size, &result);
     if (!err) {
-        if (DEBUG_CLASS_INDEX_LEVEL_TMP)
+        if (DEBUG_CLASS_INDEX_LEVEL_2)
             knd_log("== index already present between %.*s (%.*s)"
                     " and its ancestor %.*s",
                     entry->name_size, entry->name,
@@ -204,7 +202,7 @@ static int index_baseclass(struct kndClass *self,
     if (!parent_linked) {
         base->entry->num_terminals++;
 
-        if (DEBUG_CLASS_INDEX_LEVEL_TMP)
+        if (DEBUG_CLASS_INDEX_LEVEL_2)
             knd_log(".. add \"%.*s\" (repo:%.*s) as a child of \"%.*s\" (repo:%.*s)..",
                     entry->name_size, entry->name,
                     entry->repo->name_size, entry->repo->name,
@@ -232,7 +230,7 @@ static int index_baseclasses(struct kndClass *self,
     struct kndClassVar *cvar;
     int err;
 
-    if (DEBUG_CLASS_INDEX_LEVEL_TMP)
+    if (DEBUG_CLASS_INDEX_LEVEL_2)
         knd_log(".. class \"%.*s\" to update its base class indices..",
                 self->name_size, self->name);
 
@@ -261,7 +259,7 @@ int knd_class_index(struct kndClass *self,
 
     self->indexing_in_progress = true;
 
-    if (DEBUG_CLASS_INDEX_LEVEL_TMP) {
+    if (DEBUG_CLASS_INDEX_LEVEL_2) {
         knd_log(".. indexing class \"%.*s\"..",
                 self->entry->name_size, self->entry->name);
     }
@@ -281,7 +279,7 @@ int knd_class_index(struct kndClass *self,
                               index_attr,
                               (void*)&ctx);                                        RET_ERR();
 
-    if (DEBUG_CLASS_INDEX_LEVEL_TMP)
+    if (DEBUG_CLASS_INDEX_LEVEL_2)
         knd_log("++ class \"%.*s\" indexed!",
                 self->entry->name_size, self->entry->name);
 

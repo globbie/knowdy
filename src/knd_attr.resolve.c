@@ -451,7 +451,6 @@ int knd_resolve_attr_vars(struct kndClass *self,
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
     struct kndAttrVar *attr_var;
-    //struct kndAttrVar *item;
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct kndClass *c;
