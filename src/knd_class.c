@@ -662,8 +662,9 @@ int knd_class_get_attr_var(struct kndClass *self,
 
     ref = obj;
     if (!ref->attr_var) {
-        knd_log("-- no attr var %.*s in class %.*s",
-                name_size, name, self->name_size, self->name);
+        if (DEBUG_CLASS_LEVEL_2)
+            knd_log("-- no attr var %.*s in class %.*s",
+                    name_size, name, self->name_size, self->name);
         return knd_FAIL;
     }
     *result = ref->attr_var; 
