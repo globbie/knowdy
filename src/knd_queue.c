@@ -14,9 +14,9 @@ int knd_queue_push(struct kndQueue *self,
 
     do {
         tail_pos = atomic_load_explicit(&self->tail_pos,
-                                        memory_order_relaxed);
+                                        memory_order_acquire);
         head_pos = atomic_load_explicit(&self->head_pos,
-                                        memory_order_relaxed);
+                                        memory_order_acquire);
         next_tail_pos = tail_pos + 1;
 
         if (next_tail_pos == head_pos) {
@@ -54,9 +54,9 @@ int knd_queue_pop(struct kndQueue *self,
 
     do {
         tail_pos = atomic_load_explicit(&self->tail_pos,
-                                        memory_order_relaxed);
+                                        memory_order_release);
         head_pos = atomic_load_explicit(&self->head_pos,
-                                        memory_order_relaxed);
+                                        memory_order_release);
         if (tail_pos == head_pos) {
             //knd_log("-- queue is empty at head pos %zu", head_pos);
             return knd_NO_MATCH;
@@ -68,8 +68,7 @@ int knd_queue_pop(struct kndQueue *self,
         }
         //knd_log("== try to pop: tail pos:%zu  next head pos:%zu",
         //        tail_pos, next_head_pos);
-    }
-    while (!atomic_compare_exchange_weak(&self->head_pos, &head_pos, next_head_pos));
+    } while (!atomic_compare_exchange_weak(&self->head_pos, &head_pos, next_head_pos));
 
     if (!self->elems[next_head_pos]) {
         knd_log("-- pos %zu is empty?", head_pos);
