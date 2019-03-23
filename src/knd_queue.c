@@ -54,9 +54,9 @@ int knd_queue_pop(struct kndQueue *self,
 
     do {
         tail_pos = atomic_load_explicit(&self->tail_pos,
-                                        memory_order_release);
+                                        memory_order_acquire);
         head_pos = atomic_load_explicit(&self->head_pos,
-                                        memory_order_release);
+                                        memory_order_acquire);
         if (tail_pos == head_pos) {
             //knd_log("-- queue is empty at head pos %zu", head_pos);
             return knd_NO_MATCH;
