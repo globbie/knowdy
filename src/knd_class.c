@@ -541,7 +541,7 @@ int knd_is_base(struct kndClass *self,
     struct kndClass *c;
     size_t count = 0;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. check inheritance: %.*s (repo:%.*s) [resolved: %d] => "
                 " %.*s (repo:%.*s) num ancestors:%zu [base resolved:%d  resolved:%d]",
                 child->name_size, child->name,
@@ -555,7 +555,8 @@ int knd_is_base(struct kndClass *self,
 
     for (ref = entry->ancestors; ref; ref = ref->next) {
          c = ref->class;
-         if (DEBUG_CLASS_LEVEL_TMP) {
+
+         if (DEBUG_CLASS_LEVEL_2) {
              knd_log("  => is %zu): %.*s (repo:%.*s)  base resolved:%d",
                      count,
                      c->name_size, c->name,

@@ -211,7 +211,7 @@ static int resolve_baseclasses(struct kndClass *self,
     size_t classname_size;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_1)
         knd_log(".. class \"%.*s\" to resolve its bases..",
                 self->name_size, self->name);
 
@@ -280,7 +280,7 @@ static int resolve_baseclasses(struct kndClass *self,
         cvar->entry->class = c;
     }
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_1) {
         knd_log("++ \"%.*s\" has resolved its baseclasses!",
                 self->name_size, self->name);
         self->str(self, 1);
@@ -365,13 +365,7 @@ int knd_class_resolve_base(struct kndClass *self,
                 entry->name_size, entry->name);
         return knd_FAIL;
     }
-
     self->base_resolving_in_progress = true;
-
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
-        knd_log(".. resolving base class \"%.*s\"..",
-                entry->name_size, entry->name);
-    }
 
     err = resolve_baseclasses(self, task);                                        RET_ERR();
 
