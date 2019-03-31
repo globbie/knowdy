@@ -373,7 +373,7 @@ int knd_class_resolve_base(struct kndClass *self,
                 entry->name_size, entry->name);
     }
 
-    err = resolve_baseclasses(self, task);                                    RET_ERR();
+    err = resolve_baseclasses(self, task);                                        RET_ERR();
 
     self->base_is_resolved = true;
 

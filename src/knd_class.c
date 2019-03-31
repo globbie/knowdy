@@ -539,39 +539,41 @@ int knd_is_base(struct kndClass *self,
     struct kndClassEntry *entry = child->entry;
     struct kndClassRef *ref;
     struct kndClass *c;
+    size_t count = 0;
 
     if (DEBUG_CLASS_LEVEL_TMP) {
         knd_log(".. check inheritance: %.*s (repo:%.*s) [resolved: %d] => "
-                " %.*s (repo:%.*s) [base resolved:%d  resolved:%d]",
+                " %.*s (repo:%.*s) num ancestors:%zu [base resolved:%d  resolved:%d]",
                 child->name_size, child->name,
                 child->entry->repo->name_size, child->entry->repo->name,
                 child->is_resolved,
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
+                self->entry->num_ancestors,
                 self->base_is_resolved, self->is_resolved);
     }
 
     for (ref = entry->ancestors; ref; ref = ref->next) {
          c = ref->class;
-
          if (DEBUG_CLASS_LEVEL_TMP) {
-             knd_log("== ancestor: %.*s (repo:%.*s)  base resolved:%d",
+             knd_log("  => is %zu): %.*s (repo:%.*s)  base resolved:%d",
+                     count,
                      c->name_size, c->name,
                      c->entry->repo->name_size, c->entry->repo->name,
                      c->base_is_resolved);
          }
-        
+         count++;
+
          if (c == self) {
              return knd_OK;
          }
-
          if (self->entry->orig) {
              if (self->entry->orig->class == c)
                  return knd_OK;
          }
     }
 
-    if (DEBUG_CLASS_LEVEL_TMP)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log("-- no inheritance from  \"%.*s\" to \"%.*s\" :(",
                 self->entry->name_size, self->entry->name,
                 child->name_size, child->name);
