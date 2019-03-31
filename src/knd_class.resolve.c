@@ -105,7 +105,7 @@ static int inherit_attrs(struct kndClass *self,
 
     err = base->attr_idx->map(base->attr_idx,
                               inherit_attr,
-                              (void*)&ctx);                                        RET_ERR();
+                              (void*)&ctx);                                       RET_ERR();
     return knd_OK;
 }
 
@@ -211,7 +211,7 @@ static int resolve_baseclasses(struct kndClass *self,
     size_t classname_size;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
         knd_log(".. class \"%.*s\" to resolve its bases..",
                 self->name_size, self->name);
 
@@ -271,17 +271,22 @@ static int resolve_baseclasses(struct kndClass *self,
                     cvar->entry->name_size, cvar->entry->name,
                     self->entry->name_size, self->entry->name);
         }
-        err = inherit_attrs(self, c, task);                                       RET_ERR();
+
+        if (!c->base_is_resolved) {
+            err = knd_class_resolve_base(c, task);                            RET_ERR();
+        }
 
         err = link_baseclass(self, c, task);                                      RET_ERR();
         cvar->entry->class = c;
     }
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
         knd_log("++ \"%.*s\" has resolved its baseclasses!",
                 self->name_size, self->name);
         self->str(self, 1);
     }
+
+    self->base_is_resolved = true;
 
     return knd_OK;
 }
@@ -318,8 +323,14 @@ int knd_class_resolve(struct kndClass *self,
     if (!self->baseclass_vars) {
         err = link_baseclass(self, repo->root_class, task);                       RET_ERR();
     } else {
-        err = resolve_baseclasses(self, task);                                    RET_ERR();
+
+        if (!self->base_is_resolved) {
+            err = resolve_baseclasses(self, task);                                RET_ERR();
+        }
+
         for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
+            err = inherit_attrs(self, cvar->entry->class, task);                  RET_ERR();
+            
             if (cvar->attrs) {
                 err = knd_resolve_attr_vars(self, cvar, task);                    RET_ERR();
             }
@@ -337,6 +348,34 @@ int knd_class_resolve(struct kndClass *self,
         knd_log("++ class \"%.*s\" (id:%.*s) resolved!",
                 entry->name_size, entry->name,
                 entry->id_size, entry->id);
+
+    return knd_OK;
+}
+
+int knd_class_resolve_base(struct kndClass *self,
+                           struct kndTask *task)
+{
+    struct kndClassEntry *entry = self->entry;
+    int err;
+
+    assert(!self->base_is_resolved);
+
+    if (self->base_resolving_in_progress) {
+        knd_log("-- vicious circle detected while resolving bases of \"%.*s\"",
+                entry->name_size, entry->name);
+        return knd_FAIL;
+    }
+
+    self->base_resolving_in_progress = true;
+
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+        knd_log(".. resolving base class \"%.*s\"..",
+                entry->name_size, entry->name);
+    }
+
+    err = resolve_baseclasses(self, task);                                    RET_ERR();
+
+    self->base_is_resolved = true;
 
     return knd_OK;
 }
@@ -374,11 +413,17 @@ int knd_resolve_class_ref(struct kndClass *self,
             knd_log("-- no such class: \"%.*s\" :(", name_size, name);
             return knd_FAIL;
         }
-        if (!c->is_resolved) {
-            err = knd_class_resolve(c, task);                                   RET_ERR();
+
+        if (!c->base_is_resolved) {
+            err = knd_class_resolve_base(c, task);                                   RET_ERR();
         }
 
         if (base) {
+
+            if (!base->base_is_resolved) {
+                err = knd_class_resolve_base(base, task);                            RET_ERR();
+            }
+
             err = knd_is_base(base, c);
             if (err) {
                 knd_log("-- no inheritance from %.*s to %.*s",
@@ -400,11 +445,16 @@ int knd_resolve_class_ref(struct kndClass *self,
         return err;
     }
 
-    if (!c->is_resolved) {
-        err = knd_class_resolve(c, task);                                                RET_ERR();
+    if (!c->base_is_resolved) {
+        err = knd_class_resolve_base(c, task);                                    RET_ERR();
     }
 
     if (base) {
+
+        if (!base->base_is_resolved) {
+            err = knd_class_resolve_base(base, task);                            RET_ERR();
+        }
+
         err = knd_is_base(base, c);
         if (err) {
             knd_log("-- no inheritance from %.*s to %.*s",

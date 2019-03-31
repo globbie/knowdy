@@ -165,6 +165,8 @@ struct kndClass
     // detect vicious circles
     bool resolving_in_progress;
     bool is_resolved;
+    bool base_resolving_in_progress;
+    bool base_is_resolved;
     bool indexing_in_progress;
     bool is_indexed;
     bool state_top;
@@ -336,6 +338,8 @@ int knd_get_class_attr_value(struct kndClass *src,
                                     struct kndProcCallArg *arg);
 
 int knd_resolve_classes(struct kndClass *self, struct kndTask *task);
+int knd_class_resolve_base(struct kndClass *self,
+                           struct kndTask *task);
 int knd_class_resolve(struct kndClass *self,
                              struct kndTask *task);
 int knd_class_index(struct kndClass *self,
