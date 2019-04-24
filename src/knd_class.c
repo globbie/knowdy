@@ -642,9 +642,11 @@ int knd_class_get_attr(struct kndClass *self,
     return knd_OK;
 
  final:
-    knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
-            name_size, name,
-            self->entry->name_size, self->entry->name);
+    if (DEBUG_CLASS_LEVEL_2) {
+        knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
+                name_size, name,
+                self->entry->name_size, self->entry->name);
+    }
     return err;
 }
 
