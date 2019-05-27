@@ -326,6 +326,7 @@ int knd_proc_get_arg(struct kndProc *self,
                      struct kndProcArgRef **result)
 {
     struct kndProcArgRef *ref;
+    struct kndProcArg *arg = NULL;
     struct kndDict *arg_name_idx = self->entry->repo->proc_arg_name_idx;
     struct kndSet *arg_idx = self->arg_idx;
     int err;
@@ -339,18 +340,39 @@ int knd_proc_get_arg(struct kndProc *self,
 
     ref = knd_dict_get(arg_name_idx, name, name_size);
     if (!ref) {
-        /*if (self->entry->repo->base) {
+        /* if (self->entry->repo->base) {
             arg_name_idx = self->entry->repo->base->arg_name_idx;
             ref = arg_name_idx->get(arg_name_idx, name, name_size);
-            }*/
+        }*/
         if (!ref) {
             knd_log("-- no such proc arg: \"%.*s\"", name_size, name);
             return knd_NO_MATCH;
         }
     }
 
+    /* iterating over synonymous attrs */
+    for (; ref; ref = ref->next) {
+        arg = ref->arg;
+
+        if (DEBUG_PROC_LEVEL_TMP) {
+            knd_log("== arg %.*s is used in proc: %.*s",
+                    name_size, name,
+                    ref->proc->name_size,
+                    ref->proc->name);
+        }
+
+        if (ref->proc == self) break;
+
+        //err = knd_is_base(attr->parent_class, self);
+        //if (!err) break;
+    }
+
+    if (!arg) {
+        return knd_NO_MATCH;
+    }
+    
     err = arg_idx->get(arg_idx,
-                       ref->arg->id, ref->arg->id_size, (void**)&ref);      RET_ERR();
+                       arg->id, arg->id_size, (void**)&ref);            RET_ERR();
     if (err) return knd_NO_MATCH;
 
     *result = ref;

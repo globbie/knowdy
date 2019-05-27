@@ -43,14 +43,17 @@ static int inherit_arg(void *obj,
                 arg->name_size, arg->name,
                 self->name_size, self->name);
 
-    err = knd_proc_arg_ref_new(mempool, &ref);                                        RET_ERR();
+    err = knd_proc_arg_ref_new(mempool, &ref);                                    RET_ERR();
     ref->arg = arg;
     //ref->arg_var = src_ref->arg_var;
     ref->proc = src_ref->proc;
 
+    if (DEBUG_PROC_RESOLVE_LEVEL_TMP) 
+        knd_log("== inherit arg with id: %.*s", arg->id_size, arg->id);
+
     err = arg_idx->add(arg_idx,
                        arg->id, arg->id_size,
-                       (void*)ref);                                              RET_ERR();
+                       (void*)ref);                                               RET_ERR();
     return knd_OK;
 }
 
@@ -62,10 +65,10 @@ static int inherit_args(struct kndProc *self,
     int err;
 
     if (!base->is_resolved) {
-        err = knd_proc_resolve(base, task);                                      RET_ERR();
+        err = knd_proc_resolve(base, task);                                       RET_ERR();
     }
 
-    if (DEBUG_PROC_RESOLVE_LEVEL_2) {
+    if (DEBUG_PROC_RESOLVE_LEVEL_TMP) {
         knd_log(".. \"%.*s\" proc to inherit args from \"%.*s\"..",
                 self->entry->name_size, self->entry->name,
                 base->name_size, base->name);
@@ -157,7 +160,7 @@ int knd_proc_resolve(struct kndProc *self,
     struct kndProcArgRef *arg_ref;
     int err;
 
-    if (DEBUG_PROC_RESOLVE_LEVEL_2)
+    if (DEBUG_PROC_RESOLVE_LEVEL_TMP)
         knd_log(".. resolving proc: %.*s",
                 self->name_size, self->name);
 

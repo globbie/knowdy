@@ -978,10 +978,8 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
     /* global indices */
     prev_arg_ref = knd_dict_get(arg_name_idx,
                                 arg->name, arg->name_size);
-    arg_ref->next = prev_arg_ref;
-
     if (prev_arg_ref) {
-        arg_ref->next = prev_arg_ref;
+        arg_ref->next = prev_arg_ref->next;
         prev_arg_ref->next = arg_ref;
     } else {
         err = knd_dict_set(arg_name_idx,
@@ -993,7 +991,7 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
                         arg->id, arg->id_size,
                         (void*)arg_ref);                                          RET_ERR();
 
-    if (DEBUG_REPO_LEVEL_2)
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log("++ new primary arg: \"%.*s\" (id:%.*s)",
                 arg->name_size, arg->name, arg->id_size, arg->id);
 

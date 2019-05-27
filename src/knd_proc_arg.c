@@ -530,7 +530,7 @@ int knd_proc_arg_resolve(struct kndProcArg *self,
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
 
-    if (DEBUG_PROC_ARG_LEVEL_2)
+    if (DEBUG_PROC_ARG_LEVEL_TMP)
         knd_log(".. resolving arg \"%.*s\"  repo:%.*s..",
                 self->name_size, self->name, repo->name_size, repo->name);
 
