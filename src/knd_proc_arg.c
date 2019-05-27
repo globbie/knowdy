@@ -545,6 +545,7 @@ int knd_proc_arg_resolve(struct kndProcArg *self,
                     self->classname_size, self->classname);
             return knd_FAIL;
         }
+        self->class = entry->class;
     }
 
     if (self->proc_call) {
