@@ -273,7 +273,7 @@ static int resolve_baseclasses(struct kndClass *self,
         }
 
         if (!c->base_is_resolved) {
-            err = knd_class_resolve_base(c, task);                            RET_ERR();
+            err = knd_class_resolve_base(c, task);                                RET_ERR();
         }
 
         err = link_baseclass(self, c, task);                                      RET_ERR();

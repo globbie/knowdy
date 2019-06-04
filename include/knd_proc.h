@@ -72,7 +72,7 @@ struct kndProcInst
     struct kndState * _Atomic states;
     size_t init_state;
     size_t num_states;
-    
+
     struct kndProcArgInst *tail;
     struct kndProcInst *next;
 };
@@ -88,10 +88,21 @@ struct kndProcEntry
     struct kndProc *proc;
     struct kndRepo *repo;
 
+    struct kndProcEntry *orig;
+
     knd_state_phase phase;
 
     size_t global_offset;
     size_t block_size;
+
+    /* immediate children */
+    struct kndProcRef *children;
+    size_t num_children;
+    size_t num_terminals;
+
+    struct kndProcRef *ancestors;
+    size_t num_ancestors;
+    struct kndSet *descendants;
 
     struct kndDict *inst_idx;
 };
@@ -117,6 +128,13 @@ struct kndProcArgEntry
     struct kndProcArg *arg;
 
     struct kndProcArgVar *next;
+};
+
+struct kndProcRef
+{
+    struct kndProc      *proc;
+    struct kndProcEntry *entry;
+    struct kndProcRef   *next;
 };
 
 struct kndProcVar
@@ -174,12 +192,16 @@ struct kndProc
     bool is_resolved;
     bool is_computed;
     bool resolving_in_progress;
+    bool base_resolving_in_progress;
+    bool base_is_resolved;
 
     struct kndProc *next;
 };
 
 int knd_proc_new(struct kndMemPool *mempool,
                  struct kndProc **result);
+int knd_proc_ref_new(struct kndMemPool *mempool,
+                     struct kndProcRef **result);
 
 int knd_proc_entry_new(struct kndMemPool *mempool,
                        struct kndProcEntry **result);
@@ -210,6 +232,9 @@ int knd_inner_proc_import(struct kndProc *self,
                           size_t *total_size,
                           struct kndRepo *repo,
                           struct kndTask *task);
+
+int knd_proc_is_base(struct kndProc *self,
+                     struct kndProc *child);
 
 int knd_get_proc(struct kndRepo *repo,
                  const char *name, size_t name_size,

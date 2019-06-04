@@ -114,6 +114,13 @@ static int resolve_parents(struct kndProc *self,
                     base->name_size, base->name);
             return knd_FAIL;
         }
+
+        if (!proc->base_is_resolved) {
+            // TODO
+            //err = knd_proc_resolve_base(proc, task);                              RET_ERR();
+        }
+        //err = link_base_parent(self, proc, task);                                 RET_ERR();
+
         base->proc = proc;
 
         err = inherit_args(self, base->proc, repo, task);                         RET_ERR();

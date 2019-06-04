@@ -232,7 +232,7 @@ gsl_err_t knd_proc_select(struct kndRepo *repo,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. proc selection: \"%.*s\"", 16, rec);
 
     struct gslTaskSpec specs[] = {
@@ -331,7 +331,7 @@ int knd_proc_get_arg(struct kndProc *self,
     struct kndSet *arg_idx = self->arg_idx;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP) {
+    if (DEBUG_PROC_LEVEL_2) {
         knd_log("\n.. \"%.*s\" proc (repo: %.*s) to select arg \"%.*s\" arg_idx:%p",
                 self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name,
@@ -353,8 +353,7 @@ int knd_proc_get_arg(struct kndProc *self,
     /* iterating over synonymous attrs */
     for (; ref; ref = ref->next) {
         arg = ref->arg;
-
-        if (DEBUG_PROC_LEVEL_TMP) {
+        if (DEBUG_PROC_LEVEL_2) {
             knd_log("== arg %.*s is used in proc: %.*s",
                     name_size, name,
                     ref->proc->name_size,
@@ -363,13 +362,10 @@ int knd_proc_get_arg(struct kndProc *self,
 
         if (ref->proc == self) break;
 
-        //err = knd_is_base(attr->parent_class, self);
-        //if (!err) break;
+        err = knd_proc_is_base(ref->proc, self);
+        if (!err) break;
     }
-
-    if (!arg) {
-        return knd_NO_MATCH;
-    }
+    if (!arg) return knd_NO_MATCH;
     
     err = arg_idx->get(arg_idx,
                        arg->id, arg->id_size, (void**)&ref);            RET_ERR();
@@ -377,6 +373,54 @@ int knd_proc_get_arg(struct kndProc *self,
 
     *result = ref;
     return knd_OK;
+}
+
+int knd_proc_is_base(struct kndProc *self,
+                     struct kndProc *child)
+{
+    struct kndProcEntry *entry = child->entry;
+    struct kndProcRef *ref;
+    struct kndProc *proc;
+    size_t count = 0;
+
+    if (DEBUG_PROC_LEVEL_2) {
+        knd_log(".. check inheritance: %.*s (repo:%.*s) [resolved: %d] => "
+                " %.*s (repo:%.*s) num ancestors:%zu [base resolved:%d  resolved:%d]",
+                child->name_size, child->name,
+                child->entry->repo->name_size, child->entry->repo->name,
+                child->is_resolved,
+                self->entry->name_size, self->entry->name,
+                self->entry->repo->name_size, self->entry->repo->name,
+                self->entry->num_ancestors,
+                self->base_is_resolved, self->is_resolved);
+    }
+
+    for (ref = entry->ancestors; ref; ref = ref->next) {
+         proc = ref->proc;
+
+         if (DEBUG_PROC_LEVEL_2) {
+             knd_log("  => is %zu): %.*s (repo:%.*s)  base resolved:%d",
+                     count,
+                     proc->name_size, proc->name,
+                     proc->entry->repo->name_size, proc->entry->repo->name,
+                     proc->base_is_resolved);
+         }
+         count++;
+
+         if (proc == self) {
+             return knd_OK;
+         }
+         if (self->entry->orig) {
+             if (self->entry->orig->proc == proc)
+                 return knd_OK;
+         }
+    }
+
+    if (DEBUG_PROC_LEVEL_2)
+        knd_log("-- no inheritance from  \"%.*s\" to \"%.*s\" :(",
+                self->entry->name_size, self->entry->name,
+                child->name_size, child->name);
+    return knd_FAIL;
 }
 
 int knd_get_proc(struct kndRepo *repo,
@@ -578,8 +622,19 @@ int knd_proc_entry_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
                             sizeof(struct kndProcEntry), &page);                  RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
+int knd_proc_ref_new(struct kndMemPool *mempool,
+                     struct kndProcRef **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndProcRef), &page);
+    if (err) return err;
     *result = page;
     return knd_OK;
 }
