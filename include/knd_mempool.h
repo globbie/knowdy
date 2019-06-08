@@ -84,6 +84,7 @@ struct kndMemPool
 
     void (*del)(struct kndMemPool   *self);
     int (*alloc)(struct kndMemPool   *self);
+    int (*reset)(struct kndMemPool   *self);
     int (*present)(struct kndMemPool *self,
                    struct kndOutput  *out);
     gsl_err_t (*parse)(struct kndMemPool *self,
