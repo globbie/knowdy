@@ -195,8 +195,6 @@ static void build_linked_list(char *pages,
 
 static int reset_capacity(struct kndMemPool *self)
 {
-    int err;
-
     memset(self->pages, 0, self->page_size * self->num_pages);
     build_linked_list(self->pages, self->num_pages, self->page_size, &self->page_list);
 
