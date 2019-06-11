@@ -40,17 +40,15 @@
 #define DEBUG_CLASS_LEVEL_5 0
 #define DEBUG_CLASS_LEVEL_TMP 1
 
-static int str_attr_idx_rec(void *obj,
+static int str_attr_idx_rec(void *unused_var(obj),
                             const char *unused_var(elem_id),
                             size_t unused_var(elem_id_size),
                             size_t unused_var(count),
                             void *elem)
 {
-    struct kndClass *self = obj;
     struct kndAttrRef *src_ref = elem;
 
     if (!src_ref->attr_var) return knd_OK;
-
     /*knd_log("     + %.*s => %p",
             src_ref->attr->name_size, src_ref->attr->name,
             src_ref->attr_var);
@@ -133,7 +131,7 @@ static void str(struct kndClass *self, size_t depth)
     err = self->attr_idx->map(self->attr_idx,
                               str_attr_idx_rec,
                               (void*)self);
-
+    if (err) return;
     
     knd_log("%*s the end of %.*s}", depth * KND_OFFSET_SIZE, "",
             self->entry->name_size, self->entry->name);
