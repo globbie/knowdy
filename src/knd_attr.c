@@ -128,13 +128,12 @@ extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
             str_attr_vars(list_item, depth + 1);
         }
         knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
-        //return;
+    } else {
+        knd_log("%*s_attr: \"%.*s\" => %.*s",
+                depth * KND_OFFSET_SIZE, "",
+                item->name_size, item->name,
+                item->val_size, item->val);
     }
-
-    knd_log("%*s_attr: \"%.*s\" => %.*s",
-            depth * KND_OFFSET_SIZE, "",
-            item->name_size, item->name,
-            item->val_size, item->val);
 
     if (item->children) {
         for (curr_item = item->children; curr_item; curr_item = curr_item->next) {
@@ -372,7 +371,6 @@ extern void kndAttr_init(struct kndAttr *self)
     memset(self, 0, sizeof(struct kndAttr));
     self->str = str;
 }
-
 
 extern int knd_register_attr_ref(void *obj,
                                  const char *unused_var(elem_id),

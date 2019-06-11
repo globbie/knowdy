@@ -991,7 +991,7 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
                         arg->id, arg->id_size,
                         (void*)arg_ref);                                          RET_ERR();
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("++ new primary arg: \"%.*s\" (id:%.*s)",
                 arg->name_size, arg->name, arg->id_size, arg->id);
 
@@ -1031,6 +1031,11 @@ static int resolve_classes(struct kndRepo *self,
                         c->entry->name_size, c->entry->name);
                 return err;
             }
+
+            if (DEBUG_REPO_LEVEL_2) {
+                c->str(c, 1);
+            }
+
         }
     }
     return knd_OK;
@@ -1046,7 +1051,7 @@ static int index_classes(struct kndRepo *self,
     struct kndSet *class_idx = self->class_idx;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. indexing classes in \"%.*s\"..",
                 self->name_size, self->name);
 
@@ -1086,7 +1091,7 @@ static int resolve_procs(struct kndRepo *self,
     struct kndSet *proc_idx = self->proc_idx;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. resolving procs of repo \"%.*s\"..",
                 self->name_size, self->name);
 
@@ -1569,7 +1574,7 @@ int knd_repo_update_indices(struct kndRepo *self,
             break;
         }
 
-        if (DEBUG_REPO_LEVEL_TMP)
+        if (DEBUG_REPO_LEVEL_2)
             knd_log(".. register proc \"%.*s\"..",
                     proc_entry->name_size, proc_entry->name);
 
