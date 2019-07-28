@@ -55,7 +55,9 @@ typedef enum knd_attr_type {
     KND_ATTR_BOOL,
     KND_ATTR_PROB,
     KND_ATTR_REF,
-    KND_ATTR_PROCREF,
+    KND_ATTR_ATTR_REF,
+    KND_ATTR_PROC_REF,
+    KND_ATTR_PROC_ARG_REF,
     KND_ATTR_FILE
 } knd_attr_type;
 
@@ -75,7 +77,9 @@ static const char* const knd_attr_names[] = {
     "bool",
     "prob",
     "ref",
-    "procref",
+    "attr-ref",
+    "proc-ref",
+    "proc-arg-ref",
     "file"
 };
 
@@ -203,9 +207,17 @@ struct kndAttr
     size_t ref_classname_size;
     struct kndClass *ref_class;
 
+    const char *ref_attr_name;
+    size_t ref_attr_name_size;
+    struct kndAttr *ref_attr;
+
     const char *ref_procname;
     size_t ref_procname_size;
     struct kndProc *proc;
+
+    const char *ref_proc_arg_name;
+    size_t ref_proc_arg_name_size;
+    struct kndProcArg *ref_proc_arg;
 
     /* concise representation */
     size_t concise_level;

@@ -321,7 +321,7 @@ static int attr_var_list_export_GSL(struct kndAttrVar *parent_item,
         case KND_ATTR_REF:
             err = ref_item_export_GSL(parent_item, task);                    RET_ERR();
             break;
-        case KND_ATTR_PROCREF:
+        case KND_ATTR_PROC_REF:
             if (parent_item->proc) {
                 err = proc_item_export_GSL(parent_item, task);   RET_ERR();
             }
@@ -361,7 +361,7 @@ static int attr_var_list_export_GSL(struct kndAttrVar *parent_item,
             err = ref_item_export_GSL(item, task, depth + 1);
             if (err) return err;
             break;
-        case KND_ATTR_PROCREF:
+        case KND_ATTR_PROC_REF:
             if (item->proc) {
                 err = proc_item_export_GSL(item, task);
                 if (err) return err;
@@ -423,7 +423,7 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
             err = out->writec(out, ' ');                                          RET_ERR();
             err = knd_text_export(item->text, KND_FORMAT_GSL, task);
             break;
-        case KND_ATTR_PROCREF:
+        case KND_ATTR_PROC_REF:
             if (item->proc) {
                 err = proc_item_export_GSL(item, task);
                 if (err) return err;
@@ -478,7 +478,7 @@ extern int knd_attr_var_export_GSL(struct kndAttrVar *item,
     case KND_ATTR_NUM:
         err = out->write(out, item->val, item->val_size); RET_ERR();
         break;
-    case KND_ATTR_PROCREF:
+    case KND_ATTR_PROC_REF:
         if (item->proc) {
             err = proc_item_export_GSL(item, task);  RET_ERR();
         } else {

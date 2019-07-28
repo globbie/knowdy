@@ -573,7 +573,7 @@ int knd_resolve_attr_vars(struct kndClass *self,
             buf[buf_size] = '\0';
             err = knd_parse_num(buf, &attr_var->numval);
             break;
-        case KND_ATTR_PROCREF:
+        case KND_ATTR_PROC_REF:
             proc = attr->proc;
             /*if (!c->is_resolved) {
                 err = knd_class_resolve(c);                                        RET_ERR();
@@ -639,7 +639,7 @@ int knd_resolve_primary_attrs(struct kndClass *self,
             }
             attr->ref_class = entry->class;
             break;
-        case KND_ATTR_PROCREF:
+        case KND_ATTR_PROC_REF:
             if (!attr->ref_procname_size) {
                 knd_log("-- no proc name specified for attr \"%s\"",
                         attr->name);
