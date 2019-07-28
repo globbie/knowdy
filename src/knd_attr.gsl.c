@@ -401,8 +401,8 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
         item->max_depth = items->max_depth;
 
         if (task->ctx->format_offset) {
-            err = out->writec(out, '\n');                                     RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);   RET_ERR();
+            err = out->writec(out, '\n');                                         RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);  RET_ERR();
         }
 
         if (attr->is_a_set) {
@@ -423,6 +423,13 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
             err = out->writec(out, ' ');                                          RET_ERR();
             err = knd_text_export(item->text, KND_FORMAT_GSL, task);
             break;
+	case KND_ATTR_ATTR_REF:
+	    if (item->ref_attr) {
+		err = knd_attr_export_GSL(item->ref_attr, task, depth + 1);       RET_ERR();
+	    } else {
+		err = out->write(out, "_null", strlen("_null"));                  RET_ERR();
+	    }
+        break;
         case KND_ATTR_PROC_REF:
             if (item->proc) {
                 err = proc_item_export_GSL(item, task);
@@ -467,22 +474,27 @@ extern int knd_attr_var_export_GSL(struct kndAttrVar *item,
 
     if (item->depth >= item->max_depth) return knd_OK;
 
-    err = out->writec(out, '{');
-    if (err) return err;
-    err = out->write(out, item->name, item->name_size);
-    if (err) return err;
-    err = out->writec(out, ' ');
-    if (err) return err;
-    
+    err = out->writec(out, '{');                                                  RET_ERR();
+    err = out->write(out, item->name, item->name_size);                           RET_ERR();
+    err = out->writec(out, ' ');                                                  RET_ERR();
+
+
     switch (item->attr->type) {
     case KND_ATTR_NUM:
-        err = out->write(out, item->val, item->val_size); RET_ERR();
+        err = out->write(out, item->val, item->val_size);                         RET_ERR();
+        break;
+    case KND_ATTR_ATTR_REF:
+        if (item->ref_attr) {
+	    err = knd_attr_export_GSL(item->ref_attr, task, depth + 1);           RET_ERR();
+        } else {
+            err = out->write(out, "_null", strlen("_null"));                      RET_ERR();
+        }
         break;
     case KND_ATTR_PROC_REF:
         if (item->proc) {
-            err = proc_item_export_GSL(item, task);  RET_ERR();
+            err = proc_item_export_GSL(item, task);                               RET_ERR();
         } else {
-            err = out->write(out, item->val, item->val_size);  RET_ERR();
+            err = out->write(out, item->val, item->val_size);                     RET_ERR();
         }
         break;
     case KND_ATTR_INNER:
@@ -500,7 +512,6 @@ extern int knd_attr_var_export_GSL(struct kndAttrVar *item,
     return knd_OK;
 }
 
-
 extern int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth)
 {
     char buf[KND_NAME_SIZE] = {0};
@@ -511,13 +522,10 @@ extern int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_
     size_t type_name_size = strlen(knd_attr_names[self->type]);
     int err;
 
-    err = out->write(out, "{", 1);  RET_ERR();
-    err = out->write(out, type_name, type_name_size);
-    if (err) return err;
-    err = out->write(out, " ", 1);
-    if (err) return err;
-    err = out->write(out, self->name, self->name_size);
-    if (err) return err;
+    err = out->write(out, "{", 1);                                                RET_ERR();
+    err = out->write(out, type_name, type_name_size);                             RET_ERR();
+    err = out->write(out, " ", 1);                                                RET_ERR();
+    err = out->write(out, self->name, self->name_size);                           RET_ERR();
 
     if (self->is_a_set) {
         err = out->write(out, " {t set}", strlen(" {t set}"));
@@ -565,8 +573,8 @@ extern int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_
     /* choose gloss */
     if (self->tr) {
         if (task->ctx->format_offset) {
-            err = out->writec(out, '\n');                                             RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);           RET_ERR();
+            err = out->writec(out, '\n');                                         RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);  RET_ERR();
         }
         err = out->write(out,
                          "[_g", strlen("[_g"));

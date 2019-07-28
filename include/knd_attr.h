@@ -169,6 +169,9 @@ struct kndAttrVar
     struct kndClassEntry *class_entry;
     struct kndProc *proc;
 
+    struct kndAttr *ref_attr;
+
+    
     struct kndAttrVar *next;
 };
 
@@ -207,17 +210,13 @@ struct kndAttr
     size_t ref_classname_size;
     struct kndClass *ref_class;
 
-    const char *ref_attr_name;
-    size_t ref_attr_name_size;
-    struct kndAttr *ref_attr;
-
     const char *ref_procname;
     size_t ref_procname_size;
     struct kndProc *proc;
 
-    const char *ref_proc_arg_name;
-    size_t ref_proc_arg_name_size;
-    struct kndProcArg *ref_proc_arg;
+    //const char *ref_proc_arg_name;
+    //size_t ref_proc_arg_name_size;
+    //struct kndProcArg *ref_proc_arg;
 
     /* concise representation */
     size_t concise_level;
