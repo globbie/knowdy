@@ -344,10 +344,14 @@ int knd_class_resolve(struct kndClass *self,
     entry->numid++;
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+        if (!memcmp("SyNode Tree", entry->name, strlen("SyNode Tree"))) {
         knd_log("++ class \"%.*s\" (id:%.*s) resolved!",
                 entry->name_size, entry->name,
                 entry->id_size, entry->id);
+        entry->class->str(entry->class, 1);
+        }
+    }
 
     return knd_OK;
 }

@@ -198,10 +198,11 @@ struct kndAttr
     struct kndClass *parent_class;
 
     bool is_a_set;
+    bool set_is_unique;
+    bool set_is_atomic;
 
     /* build reverse indices */
     bool is_indexed;
-
     /* attr name may not be specified */
     bool is_implied;
 
@@ -213,10 +214,6 @@ struct kndAttr
     const char *ref_procname;
     size_t ref_procname_size;
     struct kndProc *proc;
-
-    //const char *ref_proc_arg_name;
-    //size_t ref_proc_arg_name_size;
-    //struct kndProcArg *ref_proc_arg;
 
     /* concise representation */
     size_t concise_level;

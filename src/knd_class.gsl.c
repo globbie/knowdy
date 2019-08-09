@@ -634,6 +634,7 @@ static int export_baseclass_vars(struct kndClass *self,
         }
 
         if (cvar->attrs) {
+            knd_log("class var attrs..");
             if (task->ctx->format_offset) {
                 err = out->writec(out, '\n');                                     RET_ERR();
                 err = knd_print_offset(out,

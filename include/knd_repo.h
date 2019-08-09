@@ -120,4 +120,5 @@ int knd_repo_check_conflicts(struct kndRepo *self,
 int knd_repo_open(struct kndRepo *self, struct kndTask *task);
 
 void knd_repo_del(struct kndRepo *self);
-int kndRepo_new(struct kndRepo **self, struct kndMemPool *mempool);
+
+int knd_repo_new(struct kndRepo **self, struct kndMemPool *mempool);

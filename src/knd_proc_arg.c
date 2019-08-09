@@ -420,7 +420,7 @@ static gsl_err_t set_inst_objname(void *obj, const char *name, size_t name_size)
     self->class_inst_name = name;
     self->class_inst_name_size = name_size;
 
-    if (DEBUG_PROC_ARG_LEVEL_TMP)
+    if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log("++ ARG class inst NAME: \"%.*s\"",
                 self->class_inst_name_size, self->class_inst_name);
 
@@ -530,7 +530,7 @@ int knd_proc_arg_resolve(struct kndProcArg *self,
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
 
-    if (DEBUG_PROC_ARG_LEVEL_TMP)
+    if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log(".. resolving arg \"%.*s\"  repo:%.*s..",
                 self->name_size, self->name, repo->name_size, repo->name);
 
@@ -638,7 +638,7 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 
     register_state(self, state, state_ref);
 
-    if (DEBUG_PROC_ARG_LEVEL_TMP)
+    if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log("++ arg inst val set: \"%.*s\" [state:%zu]",
                 self->val_size, self->val, state->numid);
 
@@ -712,7 +712,7 @@ static gsl_err_t check_class_name(void *obj, const char *name, size_t name_size)
     struct kndClass *c;
     int err;
 
-    if (DEBUG_PROC_ARG_LEVEL_TMP)
+    if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log(".. attr \"%.*s\" to check class name: \"%.*s\"",
                 self->arg->name_size, self->arg->name,
                 name_size, name);
@@ -766,7 +766,7 @@ gsl_err_t knd_arg_inst_import(struct kndProcArgInst *self,
                               const char *rec, size_t *total_size,
                               struct kndTask *task)
 {
-    if (DEBUG_PROC_ARG_LEVEL_TMP)
+    if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log(".. proc arg inst \"%.*s\" parse REC: \"%.*s\"",
                 self->arg->name_size, self->arg->name,
                 16, rec);
@@ -827,7 +827,7 @@ int knd_proc_arg_inst_resolve(struct kndProcArg *self,
             //err = link_proc(self, inst, class_inst_entry);        RET_ERR();
             inst->class_inst = class_inst_entry->inst;
 
-            if (DEBUG_PROC_ARG_LEVEL_TMP)
+            if (DEBUG_PROC_ARG_LEVEL_2)
                 knd_log("++ class inst ref resolved: \"%.*s\"!",
                         inst->class_inst_name_size, inst->class_inst_name);
         }

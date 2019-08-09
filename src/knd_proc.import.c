@@ -173,7 +173,7 @@ static gsl_err_t validate_do_arg(void *obj,
     struct kndProc *proc = ctx->proc;
     gsl_err_t err;
 
-    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
+    if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_log(".. Proc Call Arg \"%.*s\" to validate: \"%.*s\"..",
                 name_size, name, 32, rec);
 
@@ -422,7 +422,7 @@ int knd_inner_proc_import(struct kndProc *proc,
         proc->tr = task->ctx->tr;
         task->ctx->tr = NULL;
     }
-    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
+    if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_proc_str(proc, 0);
 
     return knd_OK;
@@ -443,7 +443,7 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_PROC_IMPORT_LEVEL_TMP) {
+    if (DEBUG_PROC_IMPORT_LEVEL_2) {
         knd_log(".. import \"%.*s\" inst.. (repo:%.*s)",
                 128, rec,
                 repo->name_size, repo->name);
@@ -491,7 +491,7 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
     inst->entry->numid++;
     knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
 
-    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
+    if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_log("++ \"%.*s\" (%.*s) proc inst parse OK!",
                 inst->name_size, inst->name,
                 inst->entry->id_size, inst->entry->id,

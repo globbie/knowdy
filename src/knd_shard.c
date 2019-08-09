@@ -371,7 +371,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     self->storage->commit_filename_size = chunk_size;
 
     /* system repo */
-    err = kndRepo_new(&repo, mempool);
+    err = knd_repo_new(&repo, mempool);
     if (err != knd_OK) goto error;
     memcpy(repo->name, "/", 1);
     repo->name_size = 1;

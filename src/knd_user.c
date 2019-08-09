@@ -320,7 +320,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 
         ctx->user_inst = inst;
 
-        err = kndRepo_new(&repo, task->mempool);
+        err = knd_repo_new(&repo, task->mempool);
         if (err) return make_gsl_err_external(err);
 
         memcpy(repo->name, name, name_size);
@@ -600,7 +600,7 @@ extern int kndUser_new(struct kndUser **user, struct kndMemPool *mempool)
     memset(self->last_uid, '0', KND_ID_SIZE);
     memset(self->db_state, '0', KND_ID_SIZE);
 
-    err = kndRepo_new(&repo, mempool);                                            RET_ERR();
+    err = knd_repo_new(&repo, mempool);                                            RET_ERR();
     repo->user = self;
     self->repo = repo;
 
