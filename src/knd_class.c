@@ -205,8 +205,9 @@ int knd_get_class_attr_value(struct kndClass *src,
     attr_ref = knd_dict_get(attr_name_idx,
                             query->name, query->name_size);
     if (!attr_ref) {
-        knd_log("-- no such attr: %.*s", query->name_size, query->name);
-        return knd_FAIL;
+        if (DEBUG_CLASS_LEVEL_2)
+            knd_log("-- no such attr: %.*s", query->name_size, query->name);
+        return knd_NO_MATCH;
     }
 
     if (DEBUG_CLASS_LEVEL_2) {
@@ -214,7 +215,7 @@ int knd_get_class_attr_value(struct kndClass *src,
                 query->name_size, query->name);
     }
 
-    if (!attr_ref->attr_var) return knd_FAIL;
+    if (!attr_ref->attr_var) return knd_NO_MATCH;
 
     /* no more query specs */
     if (!query->num_children) return knd_OK;
@@ -605,7 +606,8 @@ int knd_class_get_attr(struct kndClass *self,
             ref = knd_dict_get(attr_name_idx, name, name_size);
         }
         if (!ref) {
-            knd_log("-- no such attr: \"%.*s\"", name_size, name);
+            if (DEBUG_CLASS_LEVEL_2)
+                knd_log("-- no such attr: \"%.*s\"", name_size, name);
             return knd_NO_MATCH;
         }
     }

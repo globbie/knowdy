@@ -388,9 +388,6 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
     int err;
 
     for (item = items; item; item = item->next) {
-
-        knd_log("..%.*s %p", item->name_size, item->name, item->attr);
-
         if (!item->attr) continue;
         attr = item->attr;
         
