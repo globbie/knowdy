@@ -48,8 +48,9 @@ static int str_attr_ref(void *obj,
 {
     struct kndClass *self = obj;
     struct kndAttrRef *ref = elem;
-    knd_log("== REF:%p attr \"%.*s\": %p", ref,
-            ref->attr->name_size, ref->attr->name, ref->attr_var);
+    knd_log("== attr: \"%.*s\" (class:%.*s)",
+            ref->attr->name_size, ref->attr->name,
+            self->name_size, self->name);
     return knd_OK;
 }
 
@@ -123,11 +124,10 @@ static void str(struct kndClass *self, size_t depth)
                 c->entry->repo->name_size, c->entry->repo->name);
     }
 
-    knd_log("ATTR IDX:%p", self->attr_idx);
-    int err = self->attr_idx->map(self->attr_idx,
-                                  str_attr_ref,
-                                  (void*)self);
-    
+    self->attr_idx->map(self->attr_idx,
+                        str_attr_ref,
+                        (void*)self);
+
     knd_log("%*s the end of %.*s}", depth * KND_OFFSET_SIZE, "",
             self->entry->name_size, self->entry->name);
 }
