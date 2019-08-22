@@ -65,6 +65,19 @@ static int inherit_attr(void *obj,
     struct kndAttrRef *ref;
     int err;
 
+    err = attr_idx->get(attr_idx, attr->id, attr->id_size, (void**)&ref);
+    if (!err) {
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+            knd_log("..  \"%.*s\" (id:%.*s) attr already active in \"%.*s\"..",
+                    attr->name_size, attr->name,
+                    attr->id_size, attr->id,
+                    self->name_size, self->name);
+        }
+        /* no need to override an existing attr var */
+        if (ref->attr_var)
+            return knd_OK;
+    }
+
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) 
         knd_log("..  \"%.*s\" (id:%.*s) attr inherited by %.*s..",
                 attr->name_size, attr->name,
@@ -344,13 +357,8 @@ int knd_class_resolve(struct kndClass *self,
     entry->numid++;
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
-        if (!memcmp("SyNode Tree", entry->name, strlen("SyNode Tree"))) {
-        knd_log("++ class \"%.*s\" (id:%.*s) resolved!",
-                entry->name_size, entry->name,
-                entry->id_size, entry->id);
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         entry->class->str(entry->class, 1);
-        }
     }
 
     return knd_OK;

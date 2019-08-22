@@ -202,7 +202,7 @@ static gsl_err_t run_set_quant_uniq(void *obj,
 {
     struct kndAttr *self = (struct kndAttr*)obj;
 
-    if (DEBUG_ATTR_LEVEL_TMP)
+    if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. set is uniq");
     self->set_is_unique = true;
     return make_gsl_err(gsl_OK);
@@ -214,7 +214,7 @@ static gsl_err_t run_set_quant_atomic(void *obj,
 {
     struct kndAttr *self = (struct kndAttr*)obj;
 
-    if (DEBUG_ATTR_LEVEL_TMP)
+    if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. set is atomic");
     self->set_is_atomic = true;
     return make_gsl_err(gsl_OK);

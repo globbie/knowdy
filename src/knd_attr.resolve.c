@@ -45,6 +45,19 @@ static int resolve_attr_var_list(struct kndClass *self,
                                  struct kndAttrVar *parent_item,
                                  struct kndTask *task);
 
+static int str_attr_ref(void *obj,
+                        const char *unused_var(elem_id),
+                        size_t unused_var(elem_id_size),
+                        size_t unused_var(count),
+                        void *elem)
+{
+    struct kndClass *self = obj;
+    struct kndAttrRef *ref = elem;
+    knd_log("== REF:%p attr \"%.*s\": %p", ref,
+            ref->attr->name_size, ref->attr->name, ref->attr_var);
+    return knd_OK;
+}
+
 static int resolve_text(struct kndAttrVar *attr_var,
                         struct kndTask *task)
 {
@@ -274,6 +287,8 @@ static int resolve_attr_var_list(struct kndClass *self,
     struct kndAttr *parent_attr = parent_item->attr;
     struct kndAttrVar *item;
     struct kndClass *c, *local_class;
+    const char *classname;
+    size_t classname_size;
     int err;
 
     switch (parent_attr->type) {
@@ -313,7 +328,7 @@ static int resolve_attr_var_list(struct kndClass *self,
     /* base template class */
     c = parent_attr->ref_class;
     if (!c->is_resolved) {
-        err = knd_class_resolve(c, task);                                                RET_ERR();
+        err = knd_class_resolve(c, task);                                         RET_ERR();
     }
 
     /* does local repo have a clone of this class? */
@@ -361,23 +376,18 @@ static int resolve_attr_var_list(struct kndClass *self,
             if (err) return err;
             break;
         case KND_ATTR_REF:
+            classname = item->name;
+            classname_size = item->name_size;
             if (item->val_size) {
-                err = knd_resolve_class_ref(self, item->val, item->val_size,
-                                        c, &item->class, task);
-                if (err) {
-                    knd_log("-- class ref not resolved");
-                    return err;
-                }
-            } else {
-                err = knd_resolve_class_ref(self,
-                                            item->name, item->name_size,
-                                            c, &item->class, task);
-                if (err) {
-                    knd_log("-- class ref not resolved :(");
-                    return err;
-                }
+                classname = item->val;
+                classname_size = item->val_size;
             }
-
+            err = knd_resolve_class_ref(self, classname, classname_size,
+                                        c, &item->class, task);
+            if (err) {
+                knd_log("-- class ref not resolved");
+                return err;
+            }
             break;
         default:
             break;
@@ -564,7 +574,7 @@ int knd_resolve_attr_vars(struct kndClass *self,
     int e, err;
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
-        knd_log("\n.. resolving attr vars of class \"%.*s\" (repo:%.*s) ..",
+        knd_log(".. resolving attr vars of class \"%.*s\" (repo:%.*s) ..",
                 self->entry->name_size, self->entry->name,
                 repo->name_size, repo->name);
     }
@@ -590,18 +600,9 @@ int knd_resolve_attr_vars(struct kndClass *self,
             task->http_code = HTTP_NOT_FOUND;
             return knd_FAIL;
         }
-        attr = attr_ref->attr;
 
-        err = attr_idx->get(attr_idx, attr->id, attr->id_size, &obj);
-        if (!err) {
-            if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
-                knd_log("++ set attr var: %.*s val:%.*s",
-                        attr->name_size, attr->name,
-                        attr_var->val_size, attr_var->val);
-            }
-            attr_ref = obj;
-            attr_ref->attr_var = attr_var;
-        }
+         attr = attr_ref->attr;
+        attr_ref->attr_var = attr_var;
 
         if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
             knd_log("\n.. resolving attr vars of class \"%.*s\" (repo:%.*s) ..",
@@ -691,17 +692,15 @@ int knd_resolve_attr_vars(struct kndClass *self,
             /* atomic value, call a validation function? */
             break;
         }
-
-        /*if (attr->is_indexed) {
-            err = knd_index_attr(self, attr, attr_var, task);
-            if (err) return err;
-            }*/
         attr_var->attr = attr;
     }
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
-        knd_log("++ resolved attr vars of class %.*s!",
+    if (DEBUG_ATTR_RESOLVE_LEVEL_1) {
+        knd_log("++ resolved attr vars of class \"%.*s\"!",
                 self->entry->name_size, self->entry->name);
+        int err = self->attr_idx->map(self->attr_idx,
+                                      str_attr_ref,
+                                      (void*)self);
     }
     return knd_OK;
 }

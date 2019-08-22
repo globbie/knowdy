@@ -40,6 +40,19 @@
 #define DEBUG_CLASS_LEVEL_5 0
 #define DEBUG_CLASS_LEVEL_TMP 1
 
+static int str_attr_ref(void *obj,
+                        const char *unused_var(elem_id),
+                        size_t unused_var(elem_id_size),
+                        size_t unused_var(count),
+                        void *elem)
+{
+    struct kndClass *self = obj;
+    struct kndAttrRef *ref = elem;
+    knd_log("== REF:%p attr \"%.*s\": %p", ref,
+            ref->attr->name_size, ref->attr->name, ref->attr_var);
+    return knd_OK;
+}
+
 static void str(struct kndClass *self, size_t depth)
 {
     struct kndTranslation *tr;
@@ -110,6 +123,11 @@ static void str(struct kndClass *self, size_t depth)
                 c->entry->repo->name_size, c->entry->repo->name);
     }
 
+    knd_log("ATTR IDX:%p", self->attr_idx);
+    int err = self->attr_idx->map(self->attr_idx,
+                                  str_attr_ref,
+                                  (void*)self);
+    
     knd_log("%*s the end of %.*s}", depth * KND_OFFSET_SIZE, "",
             self->entry->name_size, self->entry->name);
 }
@@ -658,17 +676,16 @@ int knd_class_get_attr_var(struct kndClass *self,
 {
     struct kndAttrRef *ref;
     struct kndAttr *attr;
-    void *obj;
     int err;
 
     err = knd_class_get_attr(self, name, name_size, &ref);
     if (err) return err;
+
     attr = ref->attr;
     err = self->attr_idx->get(self->attr_idx,
-                              attr->id, attr->id_size, &obj);
+                              attr->id, attr->id_size, (void**)&ref);
     if (err) return err;
 
-    ref = obj;
     if (!ref->attr_var) {
         if (DEBUG_CLASS_LEVEL_2)
             knd_log("-- no attr var %.*s in class %.*s",

@@ -102,39 +102,45 @@ extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
     struct kndClass *c;
     size_t count = 0;
 
-    if (item->attr && item->attr->is_a_set) {
-        c = item->attr->parent_class;
-        classname = c->entry->name;
-        classname_size = c->entry->name_size;
+    if (item->attr) {
+        if (item->attr->is_a_set) {
 
-        knd_log("%*s_list attr: \"%.*s\" (parent: %.*s) size: %zu [",
-                depth * KND_OFFSET_SIZE, "",
-                item->name_size, item->name,
-                classname_size, classname,
-                item->num_list_elems);
-        count = 0;
-        if (item->val_size) {
-            count = 1;
-            knd_log("%*s%zu)  val:%.*s",
+
+            
+            c = item->attr->parent_class;
+            classname = c->entry->name;
+            classname_size = c->entry->name_size;
+
+            knd_log("%*s_list attr: \"%.*s\" (parent: %.*s) size: %zu [",
                     depth * KND_OFFSET_SIZE, "",
-                    count,
-                    item->val_size, item->val);
+                    item->name_size, item->name,
+                    classname_size, classname,
+                    item->num_list_elems);
+            
+            count = 0;
+            if (item->val_size) {
+                count = 1;
+                knd_log("%*s%zu)  val:%.*s",
+                        depth * KND_OFFSET_SIZE, "",
+                        count,
+                        item->val_size, item->val);
+            }
+            
+            for (list_item = item->list;
+                 list_item;
+                 list_item = list_item->next) {
+                count++;
+                str_attr_vars(list_item, depth + 1);
+            }
+            knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
+            return;
+        } else {
+            knd_log("%*s_attr: \"%.*s\" => %.*s (ref:%p)",
+                    depth * KND_OFFSET_SIZE, "",
+                    item->name_size, item->name,
+                    item->val_size, item->val, item->class);
         }
-
-        for (list_item = item->list;
-             list_item;
-             list_item = list_item->next) {
-            count++;
-            str_attr_vars(list_item, depth + 1);
-        }
-        knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
-        //return;
     }
-
-    knd_log("%*s_attr: \"%.*s\" => %.*s",
-            depth * KND_OFFSET_SIZE, "",
-            item->name_size, item->name,
-            item->val_size, item->val);
 
     if (item->children) {
         for (curr_item = item->children; curr_item; curr_item = curr_item->next) {
