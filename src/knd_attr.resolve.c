@@ -568,10 +568,8 @@ int knd_resolve_attr_vars(struct kndClass *self,
     struct kndAttr *attr;
     struct kndClass *c;
     struct kndProc *proc;
-    struct kndSet *attr_idx = self->attr_idx;
     struct kndRepo *repo = self->entry->repo;
     struct kndOutput *log = task->log;
-    void *obj;
     int e, err;
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
