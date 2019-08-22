@@ -53,8 +53,9 @@ static int str_attr_ref(void *obj,
 {
     struct kndClass *self = obj;
     struct kndAttrRef *ref = elem;
-    knd_log("== REF:%p attr \"%.*s\": %p", ref,
-            ref->attr->name_size, ref->attr->name, ref->attr_var);
+    knd_log("== attr: \"%.*s\" (class:%.*s)",
+            ref->attr->name_size, ref->attr->name,
+            self->name_size, self->name);
     return knd_OK;
 }
 
@@ -698,9 +699,9 @@ int knd_resolve_attr_vars(struct kndClass *self,
     if (DEBUG_ATTR_RESOLVE_LEVEL_1) {
         knd_log("++ resolved attr vars of class \"%.*s\"!",
                 self->entry->name_size, self->entry->name);
-        int err = self->attr_idx->map(self->attr_idx,
-                                      str_attr_ref,
-                                      (void*)self);
+        self->attr_idx->map(self->attr_idx,
+                            str_attr_ref,
+                            (void*)self);
     }
     return knd_OK;
 }
