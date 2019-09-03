@@ -189,8 +189,8 @@ extern int knd_export_inherited_attr_GSL(void *obj,
             numval = attr_var->numval;
 
             if (!attr_var->is_cached) {
-                err = knd_compute_class_attr_num_value(self, attr_var);
-                if (err) return err;
+                //err = knd_compute_class_attr_num_value(self, attr_var);
+                //if (err) return err;
                 numval = attr_var->numval;
                 attr_var->numval = numval;
                 attr_var->is_cached = true;

@@ -22,11 +22,12 @@
 
 #include "knd_proc.h"
 #include "knd_config.h"
+#include "knd_task.h"
 
 #include <stddef.h>
 #include <string.h>
 
-struct kndClassVar;
+struct kndAttrVar;
 struct kndMemPool;
 
 typedef enum knd_proc_type {
@@ -50,7 +51,7 @@ struct kndProcCallArg
     long numval;
 
     struct kndProcArg *arg;
-    struct kndClassVar *class_var;
+    struct kndAttrVar *attr_var;
 
     struct kndProcCallArg *next;
 };
@@ -66,30 +67,29 @@ struct kndProcCall
     size_t num_args;
 
     struct kndProcEstimate *estimate;
+    struct kndProcCall *next;
 };
 
 //
 // TODO(k15tfu): ?? Move to knd_proc_call_impl.h
 //
 
-static inline void kndProcCall_declare_arg(struct kndProcCall *proc_call, struct kndProcCallArg *call_arg)
+static inline void knd_proc_call_declare_arg(struct kndProcCall *proc_call,
+                                             struct kndProcCallArg *call_arg)
 {
     call_arg->next = proc_call->args;
     proc_call->args = call_arg;
     proc_call->num_args++;
 }
 
-static inline void kndProcCallArg_init(struct kndProcCallArg *self,
-                                       const char *name, size_t name_size,
-                                       struct kndClassVar *class_var)
-{
-    memset(self, 0, sizeof *self);
-    self->name = name;
-    self->name_size = name_size;
-    self->class_var = class_var;
-}
+int knd_proc_call_arg_new(struct kndMemPool *mempool,
+                          struct kndProcCallArg **result);
+int knd_proc_call_new(struct kndMemPool *mempool,
+                      struct kndProcCall **result);
 
-extern int knd_proc_call_arg_new(struct kndMemPool *mempool,
-                                 struct kndProcCallArg **result);
-extern int knd_proc_call_new(struct kndMemPool *mempool,
-                             struct kndProcCall **result);
+gsl_err_t knd_proc_call_parse(struct kndProcCall *self,
+                              const char *rec,
+                              size_t *total_size,
+                              struct kndTask *task);
+void knd_proc_call_str(struct kndProcCall *self,
+                       size_t depth);

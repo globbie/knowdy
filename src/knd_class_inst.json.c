@@ -84,7 +84,7 @@ static int export_concise_JSON(struct kndClassInst *self,
                 err = out->write(out, "\":", 2);
                 if (err) return err;
 
-                err = obj->export(obj, KND_FORMAT_JSON, task);
+                err = knd_class_inst_export(obj, KND_FORMAT_JSON, task);
                 if (err) return err;
 
                 //need_separ = true;
@@ -221,7 +221,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
                 err = out->write(out, "\":", 2);
                 if (err) return err;
 
-                err = obj->export(obj, KND_FORMAT_JSON, task);
+                err = knd_class_inst_export(obj, KND_FORMAT_JSON, task);
                 if (err) return err;
 
                 //need_separ = true;

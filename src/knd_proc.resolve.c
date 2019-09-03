@@ -167,7 +167,7 @@ int knd_proc_resolve(struct kndProc *self,
     struct kndProcArgRef *arg_ref;
     int err;
 
-    if (DEBUG_PROC_RESOLVE_LEVEL_2)
+    if (DEBUG_PROC_RESOLVE_LEVEL_TMP)
         knd_log(".. resolving proc: %.*s",
                 self->name_size, self->name);
 
@@ -178,10 +178,10 @@ int knd_proc_resolve(struct kndProc *self,
     for (arg = self->args; arg; arg = arg->next) {
         err = knd_proc_arg_resolve(arg, repo);                                    RET_ERR();
 
-        /* no conflicts detected, register a new arg in repo */
+        // no conflicts detected, register a new arg in repo
         err = knd_repo_index_proc_arg(repo, self, arg, task);                     RET_ERR();
 
-        /* local index */
+        // local index 
         err = knd_proc_arg_ref_new(task->mempool, &arg_ref);                      RET_ERR();
         arg_ref->arg = arg;
         arg_ref->proc = self;
@@ -216,13 +216,15 @@ int knd_proc_compute(struct kndProc *self,
 
     for (arg = self->args; arg; arg = arg->next) {
         if (!arg->proc_call) {
-            knd_log("-- the \"%.*s\" arg has no proc call",
-                    arg->name_size, arg->name);
+            if (DEBUG_PROC_RESOLVE_LEVEL_2)
+                knd_log("-- the \"%.*s\" arg has no proc call",
+                        arg->name_size, arg->name);
             continue;
         }
         if (!arg->proc_call->proc) {
-            knd_log("-- the \"%.*s\" arg has no do proc",
-                    arg->name_size, arg->name);
+            if (DEBUG_PROC_RESOLVE_LEVEL_2)
+                knd_log("-- the \"%.*s\" arg has no do proc",
+                        arg->name_size, arg->name);
             continue;
         }
         err = knd_proc_arg_compute(arg, task);                                    RET_ERR();

@@ -104,9 +104,6 @@ extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
 
     if (item->attr) {
         if (item->attr->is_a_set) {
-
-
-            
             c = item->attr->parent_class;
             classname = c->entry->name;
             classname_size = c->entry->name_size;
@@ -422,6 +419,7 @@ extern int knd_register_attr_ref(void *obj,
     return knd_OK;
 }
 
+/*
 static int extract_list_elem_value(struct kndAttrVar *parent_item,
                                    struct kndAttrVar *query,
                                    struct kndProcCallArg *result_arg)
@@ -429,7 +427,6 @@ static int extract_list_elem_value(struct kndAttrVar *parent_item,
     struct kndAttrVar *curr_var;
     int err;
 
-    /* iterate over a list */
     for (curr_var = parent_item->list; curr_var; curr_var = curr_var->next) {
         if (DEBUG_ATTR_LEVEL_2)
             knd_log("== list item:%.*s val: %.*s",
@@ -443,7 +440,9 @@ static int extract_list_elem_value(struct kndAttrVar *parent_item,
     }
     return knd_OK;
 }
+*/
 
+/*
 static int extract_implied_attr_value(struct kndClass *self,
                                       struct kndAttrVar *parent_item,
                                       struct kndProcCallArg *result_arg)
@@ -458,13 +457,11 @@ static int extract_implied_attr_value(struct kndClass *self,
                 self->name_size, self->name,
                 parent_item->name_size, parent_item->name);
 
-    /* resolve attr name */
     err = knd_class_get_attr(self,
                              parent_item->name,
                              parent_item->name_size, &ref);
     if (err) return err;
     
-    /* get attr var */
     err = self->attr_idx->get(self->attr_idx,
                               ref->attr->id, ref->attr->id_size, &obj);
     if (err) return err;
@@ -477,7 +474,7 @@ static int extract_implied_attr_value(struct kndClass *self,
     //str_attr_vars(attr_var, 1);
     //str_attr_vars(parent_item, 1);
 
-    /* go deeper */
+    // go deeper
     if (parent_item->children) {
         if (attr_var && attr_var->attr->is_a_set) {
             err = extract_list_elem_value(attr_var,
@@ -491,18 +488,18 @@ static int extract_implied_attr_value(struct kndClass *self,
     
     return knd_OK;
 }
+*/
 
-static int compute_attr_var(struct kndAttrVar *parent_item,
+static int compute_attr_var(struct kndAttrVar *unused_var(parent_item),
                             struct kndAttr *attr,
                             struct kndProcCallArg *result_arg)
 {
     struct kndProcCall *proc_call;
-    struct kndProcCallArg *arg;
-    struct kndClassVar *class_var;
-    struct kndAttrVar *attr_var;
-    struct kndAttr *curr_attr;
-    struct kndAttrRef *ref;
-    struct kndClass *template_class = parent_item->attr->ref_class;
+    //struct kndProcCallArg *arg;
+    //struct kndAttrVar *attr_var;
+    //struct kndAttr *curr_attr;
+    //struct kndAttrRef *ref;
+    //struct kndClass *template_class = parent_item->attr->ref_class;
     long numval = 0;
     long total = 0;
     long times = 0;
@@ -510,13 +507,15 @@ static int compute_attr_var(struct kndAttrVar *parent_item,
     float dividend = 0;
     float divisor = 0;
     float result = 0;
-    int err;
+    //int err;
 
     if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. computing attr \"%.*s\"..", attr->name_size, attr->name);
 
-    proc_call = attr->proc->proc_call;
-    for (arg = proc_call->args; arg; arg = arg->next) {
+    // TODO: proc call list
+    proc_call = attr->proc->calls;
+
+    /*for (arg = proc_call->args; arg; arg = arg->next) {
         class_var = arg->class_var;
 
         if (DEBUG_ATTR_LEVEL_2)
@@ -539,7 +538,6 @@ static int compute_attr_var(struct kndAttrVar *parent_item,
                                                  attr_var->children, arg);
                 if (err) return err;
             } else {
-
                 // knd_log("\n  NB:.. regular attr: %.*s",
                 //        curr_attr->name_size, curr_attr->name);
                 err = knd_get_arg_value(parent_item, attr_var, arg);
@@ -572,6 +570,7 @@ static int compute_attr_var(struct kndAttrVar *parent_item,
             //        arg->name_size, arg->name);
         }
     }
+    */
 
     /* run main proc */
     switch (proc_call->type) {

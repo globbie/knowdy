@@ -61,17 +61,8 @@ int knd_class_inst_export(struct kndClassInst *self, knd_format format,
     }
 }
 
-extern void kndClassInst_init(struct kndClassInst *self)
-{
-    //self->parse = parse_import_inst;
-    //self->read = parse_import_inst;
-    //self->read_state  = read_state;
-    //self->resolve = kndClassInst_resolve;
-    self->export = knd_class_inst_export;
-}
-
-extern int knd_class_inst_entry_new(struct kndMemPool *mempool,
-                                    struct kndClassInstEntry **result)
+int knd_class_inst_entry_new(struct kndMemPool *mempool,
+                             struct kndClassInstEntry **result)
 {
     void *page;
     int err;
@@ -81,14 +72,24 @@ extern int knd_class_inst_entry_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-extern int knd_class_inst_new(struct kndMemPool *mempool,
-                              struct kndClassInst **result)
+int knd_class_inst_new(struct kndMemPool *mempool,
+                       struct kndClassInst **result)
 {
     void *page;
     int err;
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
                             sizeof(struct kndClassInst), &page);                  RET_ERR();
     *result = page;
-    kndClassInst_init(*result);
+    return knd_OK;
+}
+
+int knd_class_inst_mem(struct kndMemPool *mempool,
+                       struct kndClassInst **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                 sizeof(struct kndClassInst), &page);                  RET_ERR();
+    *result = page;
     return knd_OK;
 }

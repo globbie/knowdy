@@ -452,7 +452,7 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
     }
 
     inst = ctx->class_inst;
-    err = inst->export(inst, KND_FORMAT_JSON, task);
+    err = knd_class_inst_export(inst, KND_FORMAT_JSON, task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);

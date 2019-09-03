@@ -132,6 +132,8 @@ int knd_class_inst_entry_new(struct kndMemPool *mempool,
                              struct kndClassInstEntry **result);
 int knd_class_inst_new(struct kndMemPool *mempool,
                        struct kndClassInst **result);
+int knd_class_inst_mem(struct kndMemPool *mempool,
+                       struct kndClassInst **result);
 int knd_class_inst_export(struct kndClassInst *self, knd_format format,
                                   struct kndTask *task);
 int knd_class_inst_set_export(struct kndClassInst *self, knd_format format,

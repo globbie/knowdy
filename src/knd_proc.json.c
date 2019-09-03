@@ -114,16 +114,16 @@ int knd_proc_export_JSON(struct kndProc *self,
         err = out->write(out, "]", 1);                                            RET_ERR();
     }
 
-    if (self->proc_call) {
+    if (self->calls) {
         if (in_list) {
             err = out->write(out, ",", 1);                                        RET_ERR();
         }
         err = out->write(out, "\"do\":{", strlen("\"do\":{"));                    RET_ERR();
         err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));            RET_ERR();
-        err = out->write(out, self->proc_call->name, self->proc_call->name_size); RET_ERR();
+        err = out->write(out, self->calls->name, self->calls->name_size); RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
 
-        for (carg = self->proc_call->args; carg; carg = carg->next) {
+        for (carg = self->calls->args; carg; carg = carg->next) {
             err = out->writec(out, ',');                                          RET_ERR();
             err = proc_call_arg_export_JSON(self, carg, out);                     RET_ERR();
         }
