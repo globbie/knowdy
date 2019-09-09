@@ -6,7 +6,7 @@
 #include "knd_class.h"
 #include "knd_mempool.h"
 #include "knd_attr.h"
-#include "knd_elem.h"
+#include "knd_attr_inst.h"
 #include "knd_repo.h"
 
 #include "knd_text.h"
@@ -101,26 +101,26 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
                                       const char *name,
                                       size_t name_size,
                                       struct kndAttr **result,
-                                      struct kndElem **result_elem)
+                                      struct kndAttrInst **result_attr_inst)
 {
     struct kndClass *conc;
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
-    struct kndElem *elem = NULL;
+    struct kndAttrInst *attr_inst = NULL;
     //struct kndOutput *log;
     int err;
     if (DEBUG_INST_LEVEL_2)
-        knd_log(".. \"%.*s\" (base class: %.*s) to validate elem: \"%.*s\"",
+        knd_log(".. \"%.*s\" (base class: %.*s) to validate attr_inst: \"%.*s\"",
                 self->name_size, self->name,
                 self->base->name_size, self->base->name,
                 name_size, name);
 
-    /* check existing elems */
-    for (elem = self->elems; elem; elem = elem->next) {
-        if (!memcmp(elem->attr->name, name, name_size)) {
+    /* check existing attr_insts */
+    for (attr_inst = self->attr_insts; attr_inst; attr_inst = attr_inst->next) {
+        if (!memcmp(attr_inst->attr->name, name, name_size)) {
             if (DEBUG_INST_LEVEL_2)
-                knd_log("++ ELEM \"%.*s\" is already set!", name_size, name);
-            *result_elem = elem;
+                knd_log("++ ATTR_INST \"%.*s\" is already set!", name_size, name);
+            *result_attr_inst = attr_inst;
             return knd_OK;
         }
     }
@@ -139,21 +139,21 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
     attr = attr_ref->attr;
     if (DEBUG_INST_LEVEL_2) {
         const char *type_name = knd_attr_names[attr->type];
-        knd_log("++ \"%.*s\" ELEM \"%s\" attr type: \"%s\"",
+        knd_log("++ \"%.*s\" ATTR_INST \"%s\" attr type: \"%s\"",
                 name_size, name, attr->name, type_name);
     }
     *result = attr;
     return knd_OK;
 }
 
-static gsl_err_t parse_import_elem(void *obj1,
+static gsl_err_t parse_import_attr_inst(void *obj1,
                                    const char *name, size_t name_size,
                                    const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj1;
     struct kndClassInst *self = ctx->class_inst;
     struct kndClassInst *obj;
-    struct kndElem *elem = NULL;
+    struct kndAttrInst *attr_inst = NULL;
     struct kndAttr *attr = NULL;
     struct kndNum *num = NULL;
     struct kndMemPool *mempool;
@@ -161,26 +161,26 @@ static gsl_err_t parse_import_elem(void *obj1,
     gsl_err_t parser_err;
 
     if (DEBUG_INST_LEVEL_2)
-        knd_log(".. parsing elem import REC: %.*s", 128, rec);
+        knd_log(".. parsing attr_inst import REC: %.*s", 128, rec);
 
-    err = kndClassInst_validate_attr(self, name, name_size, &attr, &elem);
+    err = kndClassInst_validate_attr(self, name, name_size, &attr, &attr_inst);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
-    if (elem) {
-        switch (elem->attr->type) {
+    if (attr_inst) {
+        switch (attr_inst->attr->type) {
             case KND_ATTR_INNER:
-                knd_log(".. inner obj import.. %p", elem->inner);
-                parser_err = knd_import_class_inst(elem->inner, rec, total_size, ctx->task);
+                knd_log(".. inner obj import.. %p", attr_inst->inner);
+                parser_err = knd_import_class_inst(attr_inst->inner, rec, total_size, ctx->task);
                 if (parser_err.code) return parser_err;
                 break;
             case KND_ATTR_NUM:
-                num = elem->num;
+                num = attr_inst->num;
                 parser_err = num->parse(num, rec, total_size);
                 if (parser_err.code) return parser_err;
                 break;
             case KND_ATTR_DATE:
                 // TODO
-                /*num = elem->num;
+                /*num = attr_inst->num;
                 parser_err = num->parse(num, rec, total_size);
                 if (parser_err.code) return parser_err; */
                 break;
@@ -191,17 +191,17 @@ static gsl_err_t parse_import_elem(void *obj1,
     }
 
     mempool = ctx->task->mempool;
-    err = knd_class_inst_elem_new(mempool, &elem);
+    err = knd_attr_inst_new(mempool, &attr_inst);
     if (err) {
-        knd_log("-- elem alloc failed :(");
+        knd_log("-- attr_inst alloc failed :(");
         return *total_size = 0, make_gsl_err_external(err);
     }
-    elem->parent = self;
-    elem->root = self->root ? self->root : self;
-    elem->attr = attr;
+    attr_inst->parent = self;
+    attr_inst->root = self->root ? self->root : self;
+    attr_inst->attr = attr;
 
     if (DEBUG_INST_LEVEL_2)
-        knd_log("== basic elem type: %s", knd_attr_names[attr->type]);
+        knd_log("== basic attr_inst type: %s", knd_attr_names[attr->type]);
 
     switch (attr->type) {
         case KND_ATTR_INNER:
@@ -231,64 +231,64 @@ static gsl_err_t parse_import_elem(void *obj1,
             parser_err = knd_import_class_inst(obj, rec, total_size, ctx->task);
             if (parser_err.code) return parser_err;
 
-            elem->inner = obj;
-            obj->parent = elem;
-            goto append_elem;
+            attr_inst->inner = obj;
+            obj->parent = attr_inst;
+            goto append_attr_inst;
 
             /*case KND_ATTR_NUM:
             err = kndNum_new(&num);
             if (err) return *total_size = 0, make_gsl_err_external(err);
-            num->elem = elem;
+            num->attr_inst = attr_inst;
             parser_err = num->parse(num, rec, total_size);
             if (parser_err.code) goto final;
 
-            elem->num = num;
-            goto append_elem;
+            attr_inst->num = num;
+            goto append_attr_inst;
             case KND_ATTR_TEXT:
             err = kndText_new(&text);
             if (err) return *total_size = 0, make_gsl_err_external(err);
 
-            text->elem = elem;
+            text->attr_inst = attr_inst;
             parser_err = text->parse(text, rec, total_size);
             if (parser_err.code) goto final;
 
-            elem->text = text;
-            goto append_elem;
+            attr_inst->text = text;
+            goto append_attr_inst;
             */
         default:
             break;
     }
 
-    parser_err = knd_import_elem(elem, rec, total_size, ctx->task);
+    parser_err = knd_import_attr_inst(attr_inst, rec, total_size, ctx->task);
     if (parser_err.code) goto final;
 
-    append_elem:
+    append_attr_inst:
     if (!self->tail) {
-        self->tail = elem;
-        self->elems = elem;
+        self->tail = attr_inst;
+        self->attr_insts = attr_inst;
     }
     else {
-        self->tail->next = elem;
-        self->tail = elem;
+        self->tail->next = attr_inst;
+        self->tail = attr_inst;
     }
-    self->num_elems++;
+    self->num_attr_insts++;
 
     if (DEBUG_INST_LEVEL_2)
-        knd_log("++ elem %.*s parsing OK!",
-                elem->attr->name_size, elem->attr->name);
+        knd_log("++ attr_inst %.*s parsing OK!",
+                attr_inst->attr->name_size, attr_inst->attr->name);
 
     return make_gsl_err(gsl_OK);
 
     final:
 
-    knd_log("-- validation of \"%.*s\" elem failed :(", name_size, name);
+    knd_log("-- validation of \"%.*s\" attr_inst failed :(", name_size, name);
 
-    // TODO elem->del(elem);
+    // TODO attr_inst->del(attr_inst);
 
     return parser_err;
 }
 
-static gsl_err_t import_elem_list(void *unused_var(obj),
+static gsl_err_t import_attr_inst_list(void *unused_var(obj),
                                   const char *name, size_t name_size,
                                   const char *rec, size_t *total_size)
 {
@@ -302,7 +302,7 @@ static gsl_err_t import_elem_list(void *unused_var(obj),
     //mempool = self->base->entry->repo->mempool;
 
     if (DEBUG_INST_LEVEL_2)
-        knd_log("== import elem list: \"%.*s\" REC: %.*s size:%zu",
+        knd_log("== import attr_inst list: \"%.*s\" REC: %.*s size:%zu",
                 name_size, name, 32, rec, *total_size);
 
     /*    err = knd_attr_var_new(mempool, &attr_var);
@@ -346,14 +346,14 @@ gsl_err_t knd_import_class_inst(struct kndClassInst *self,
           .obj = &ctx
         },
         { .type = GSL_SET_STATE,
-          .validate = parse_import_elem,
+          .validate = parse_import_attr_inst,
           .obj = &ctx
         },
-        { .validate = parse_import_elem,
+        { .validate = parse_import_attr_inst,
           .obj = &ctx
         },
         { .type = GSL_SET_ARRAY_STATE,
-          .validate = import_elem_list,
+          .validate = import_attr_inst_list,
           .obj = self
         }
     };
@@ -389,10 +389,10 @@ gsl_err_t kndClassInst_read_state(struct kndClassInst *self,
           .obj = self
         },
         { .type = GSL_SET_STATE,
-          .validate = parse_import_elem,
+          .validate = parse_import_attr_inst,
           .obj = &ctx
         },
-        { .validate = parse_import_elem,
+        { .validate = parse_import_attr_inst,
           .obj = &ctx
         }
     };

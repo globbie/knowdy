@@ -8,7 +8,7 @@
 #include "knd_class_inst.h"
 #include "knd_task.h"
 #include "knd_repo.h"
-#include "knd_elem.h"
+#include "knd_attr_inst.h"
 #include "knd_utils.h"
 #include "knd_class.h"
 #include "knd_attr.h"
@@ -30,7 +30,7 @@ static void str(struct kndRef *self)
 {
     if (self->states) {
         knd_log("%*s%.*s -> \"%.*s\"", self->depth * KND_OFFSET_SIZE, "",
-                self->elem->attr->name_size, self->elem->attr->name,
+                self->attr_inst->attr->name_size, self->attr_inst->attr->name,
                 self->states->val_size, self->states->val);
     }
 }
@@ -43,7 +43,7 @@ kndRef_set_reverse_rel(struct kndRef *self,
     struct kndRelType *reltype;
     struct kndClass *conc;
 
-    conc = self->elem->attr->parent_conc;
+    conc = self->attr_inst->attr->parent_conc;
     if (DEBUG_REF_LEVEL_2)
         knd_log(".. %.*s OBJ to get REF from %s => %s",
                 obj->name_size, obj->name,
@@ -64,7 +64,7 @@ kndRef_set_reverse_rel(struct kndRef *self,
         obj->reverse_rel_classes = relc;
     }
     for (reltype = relc->rel_types; reltype; reltype = reltype->next) {
-        if (reltype->attr == self->elem->attr) break;
+        if (reltype->attr == self->attr_inst->attr) break;
     }
 
 
@@ -72,7 +72,7 @@ kndRef_set_reverse_rel(struct kndRef *self,
         reltype = malloc(sizeof(struct kndRelType));
         if (!reltype) return knd_NOMEM;
         memset(reltype, 0, sizeof(struct kndRelType));
-        reltype->attr = self->elem->attr;
+        reltype->attr = self->attr_inst->attr;
         reltype->next = relc->rel_types;
         relc->rel_types = reltype;
     }
@@ -95,7 +95,7 @@ static int kndRef_resolve(struct kndRef *self)
 {
     struct kndClass *c;
 
-    c = self->elem->attr->ref_class;
+    c = self->attr_inst->attr->ref_class;
 
     if (DEBUG_REF_LEVEL_TMP) {
         knd_log(".. resolve REF: %.*s  state:%p",
@@ -104,14 +104,14 @@ static int kndRef_resolve(struct kndRef *self)
 
         knd_log(".. resolve REF: %.*s::%.*s => \"%.*s\"",
                 c->name_size, c->name,
-                self->elem->attr->name_size, self->elem->attr->name,
+                self->attr_inst->attr->name_size, self->attr_inst->attr->name,
                 self->states->val_size, self->states->val);
     }
 
     /*if (!conc->dir || !conc->dir->obj_idx) {
         knd_log("-- \"%.*s\" class has no obj idx, unable to resolve ref: \"%.*s\" :(",
                 conc->name_size, conc->name,
-                self->elem->attr->name_size, self->elem->attr->name);
+                self->attr_inst->attr->name_size, self->attr_inst->attr->name);
         return knd_FAIL;
     }
 
@@ -167,7 +167,7 @@ static int export_reverse_rel_JSON(struct kndRef *self,
     struct kndOutput *out = task->out;
     int err = knd_FAIL;
 
-    if (!self->elem) {
+    if (!self->attr_inst) {
         err = out->write(out, "\"", 1);
         if (err) return err;
         err = out->write(out, self->name, self->name_size);
@@ -177,7 +177,7 @@ static int export_reverse_rel_JSON(struct kndRef *self,
         return knd_OK;
     }
 
-    obj = self->elem->root;
+    obj = self->attr_inst->root;
     if (DEBUG_REF_LEVEL_2)
         knd_log(".. export reverse_rel to JSON..");
 
@@ -205,7 +205,7 @@ static int export_GSP(struct kndRef *self)
 
     if (!self->states) return knd_FAIL;
 
-    obj = self->elem->root;
+    obj = self->attr_inst->root;
 
 
     err = out->write(out, "{", 1);
@@ -231,7 +231,7 @@ static int export_reverse_rel_GSP(struct kndRef *self,
     struct kndOutput *out = task->out;
     int err = knd_FAIL;
 
-    obj = self->elem->root;
+    obj = self->attr_inst->root;
     out = task->out;
 
     if (DEBUG_REF_LEVEL_2)

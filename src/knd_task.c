@@ -137,7 +137,18 @@ int knd_task_context_new(struct kndMemPool *mempool,
     void *page;
     int err;
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                            sizeof(struct kndTaskContext), &page);  RET_ERR();
+                            sizeof(struct kndTaskContext), &page);                RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
+int knd_task_mem(struct kndMemPool *mempool,
+                 struct kndTask **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_BASE,
+                                 sizeof(struct kndTask), &page);                   RET_ERR();
     *result = page;
     return knd_OK;
 }

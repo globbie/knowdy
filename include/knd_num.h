@@ -23,8 +23,7 @@
 #include "knd_config.h"
 #include "knd_state.h"
 
-struct kndElem;
-struct kndElemRef;
+struct kndAttrInst;
 
 typedef enum knd_num_base_type { KND_NUM_DIGIT,
                                  KND_NUM_TEN,
@@ -71,7 +70,7 @@ struct kndNumState
 
 struct kndNum
 {
-    struct kndElem *elem;
+    struct kndAttrInst *attr_inst;
     struct glbOutput *out;
 
     struct kndNumState *states;

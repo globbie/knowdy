@@ -319,7 +319,9 @@ int knd_import_attr_var_list(struct kndClassVar *self,
                              const char *rec, size_t *total_size,
                              struct kndTask *task);
 
-extern gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *total_size);
+extern gsl_err_t knd_import_attr(struct kndAttr *attr,
+                                 struct kndTask *task,
+                                 const char *rec, size_t *total_size);
 
 // knd_attr.select.c
 int knd_attr_var_match(struct kndAttrVar *self,

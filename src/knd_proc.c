@@ -541,38 +541,6 @@ int knd_proc_arg_var_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-int knd_proc_inst_entry_new(struct kndMemPool *mempool,
-                            struct kndProcInstEntry **result)
-{
-    void *page;
-    int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndProcInstEntry), &page);                  RET_ERR();
-    *result = page;
-    return knd_OK;
-}
-
-int knd_proc_inst_new(struct kndMemPool *mempool,
-                      struct kndProcInst **result)
-{
-    void *page;
-    int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                            sizeof(struct kndProcInst), &page);                   RET_ERR();
-    *result = page;
-    return knd_OK;
-}
-
-int knd_proc_inst_mem(struct kndMemPool *mempool,
-                      struct kndProcInst **result)
-{
-    void *page;
-    int err;
-    err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
-                                 sizeof(struct kndProcInst), &page);              RET_ERR();
-    *result = page;
-    return knd_OK;
-}
 
 int knd_proc_entry_new(struct kndMemPool *mempool,
                        struct kndProcEntry **result)

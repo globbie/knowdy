@@ -6,7 +6,7 @@
 #include "knd_class.h"
 #include "knd_mempool.h"
 #include "knd_attr.h"
-#include "knd_elem.h"
+#include "knd_attr_inst.h"
 #include "knd_repo.h"
 
 #include "knd_user.h"
@@ -73,27 +73,27 @@ static int validate_arg(struct kndProcInst *self,
                         const char *name,
                         size_t name_size,
                         struct kndProcArg **result,
-                        struct kndProcArgInst **result_arg_inst)
+                        struct kndProcArgInst **result_arg)
 {
     struct kndProc *conc;
     struct kndProcArgRef *arg_ref;
-    struct kndProcArg *arg;
-    struct kndProcArgInst *arg_inst = NULL;
+    struct kndProcArg *proc_arg;
+    struct kndProcArgInst *arg = NULL;
     //struct kndOutput *log;
     int err;
 
     if (DEBUG_PROC_INST_LEVEL_2)
-        knd_log(".. \"%.*s\" (base proc: %.*s) to validate arg_inst: \"%.*s\"",
+        knd_log(".. \"%.*s\" (base proc: %.*s) to validate arg: \"%.*s\"",
                 self->name_size, self->name,
                 self->base->name_size, self->base->name,
                 name_size, name);
 
-    /* check existing arg_insts */
-    for (arg_inst = self->arg_insts; arg_inst; arg_inst = arg_inst->next) {
-        if (!memcmp(arg_inst->arg->name, name, name_size)) {
+    /* check existing args */
+    for (arg = self->args; arg; arg = arg->next) {
+        if (!memcmp(arg->arg->name, name, name_size)) {
             if (DEBUG_PROC_INST_LEVEL_2)
-                knd_log("++ ARG_INST \"%.*s\" is already set!", name_size, name);
-            *result_arg_inst = arg_inst;
+                knd_log("++ ARG \"%.*s\" is already set!", name_size, name);
+            *result_arg = arg;
             return knd_OK;
         }
     }
@@ -111,61 +111,61 @@ static int validate_arg(struct kndProcInst *self,
         return err;
     }
 
-    arg = arg_ref->arg;
-    *result = arg;
+    proc_arg = arg_ref->arg;
+    *result = proc_arg;
     return knd_OK;
 }
 
-static gsl_err_t parse_import_arg_inst(void *obj,
+static gsl_err_t parse_import_arg(void *obj,
                                        const char *name, size_t name_size,
                                        const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndProcInst *self = ctx->proc_inst;
-    struct kndProcArgInst *arg_inst = NULL;
+    struct kndProcArgInst *arg = NULL;
     struct kndProcArg *proc_arg = NULL;
     struct kndMemPool *mempool;
     int err;
     gsl_err_t parser_err;
 
     if (DEBUG_PROC_INST_LEVEL_2)
-        knd_log(".. parsing arg_inst import REC: %.*s", 128, rec);
+        knd_log(".. parsing arg import REC: %.*s", 128, rec);
 
-    err = validate_arg(self, name, name_size, &proc_arg, &arg_inst);
+    err = validate_arg(self, name, name_size, &proc_arg, &arg);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     mempool = ctx->task->mempool;
-    err = knd_proc_arg_inst_new(mempool, &arg_inst);
+    err = knd_proc_arg_inst_new(mempool, &arg);
     if (err) {
-        knd_log("-- arg_inst alloc failed :(");
+        knd_log("-- arg alloc failed :(");
         return *total_size = 0, make_gsl_err_external(err);
     }
-    arg_inst->parent = self;
-    arg_inst->arg = proc_arg;
+    arg->parent = self;
+    arg->arg = proc_arg;
 
-    parser_err = knd_arg_inst_import(arg_inst, rec, total_size, ctx->task);
+    parser_err = knd_arg_inst_import(arg, rec, total_size, ctx->task);
     if (parser_err.code) goto final;
 
     if (!self->tail) {
-        self->tail = arg_inst;
-        self->arg_insts = arg_inst;
+        self->tail = arg;
+        self->args = arg;
     }
     else {
-        self->tail->next = arg_inst;
-        self->tail = arg_inst;
+        self->tail->next = arg;
+        self->tail = arg;
     }
-    self->num_arg_insts++;
+    self->num_args++;
 
     if (DEBUG_PROC_INST_LEVEL_2)
-        knd_log("++ arg_inst %.*s parsing OK!",
-                arg_inst->arg->name_size, arg_inst->arg->name);
+        knd_log("++ arg %.*s parsing OK!",
+                arg->arg->name_size, arg->arg->name);
 
     return make_gsl_err(gsl_OK);
 
     final:
 
-    knd_log("-- validation of \"%.*s\" arg_inst failed :(", name_size, name);
-    // TODO arg_inst->del(arg_inst);
+    knd_log("-- validation of \"%.*s\" arg failed :(", name_size, name);
+    // TODO arg->del(arg);
 
     return parser_err;
 }
@@ -189,10 +189,10 @@ gsl_err_t knd_proc_inst_import(struct kndProcInst *self,
           .obj = &ctx
         },
         { .type = GSL_SET_STATE,
-          .validate = parse_import_arg_inst,
+          .validate = parse_import_arg,
           .obj = &ctx
         },
-        { .validate = parse_import_arg_inst,
+        { .validate = parse_import_arg,
           .obj = &ctx
         }
     };
@@ -228,10 +228,10 @@ gsl_err_t kndProcInst_read_state(struct kndProcInst *self,
           .obj = self
         },
         { .type = GSL_SET_STATE,
-          .validate = parse_import_arg_inst,
+          .validate = parse_import_arg,
           .obj = &ctx
         },
-        { .validate = parse_import_arg_inst,
+        { .validate = parse_import_arg,
           .obj = &ctx
         }
     };

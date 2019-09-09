@@ -7,8 +7,6 @@
 #include "knd_repo.h"
 #include "knd_mempool.h"
 #include "knd_set.h"
-#include "knd_attr.h"
-#include "knd_elem.h"
 #include "knd_task.h"
 
 #include <gsl-parser.h>

@@ -667,8 +667,8 @@ int knd_attr_select_clause(struct kndAttr *attr,
             attr_var->logic = ctx.logic;
             attr_var->children = ctx.clauses;
 
-            attr_var->next = task->attr_var;
-            task->attr_var = attr_var;
+            // attr_var->next = task->attr_var;
+            // task->attr_var = attr_var;
         }
     }
      return knd_OK;

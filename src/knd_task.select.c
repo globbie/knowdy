@@ -267,12 +267,6 @@ static gsl_err_t parse_update(void *obj,
     self->type = KND_LIQUID_STATE;
 
     struct gslTaskSpec specs[] = {
-        { .name = "_ts",
-          .name_size = strlen("_ts"),
-          .buf = self->timestamp,
-          .buf_size = &self->timestamp_size,
-          .max_buf_size = sizeof self->timestamp
-        },
         { .name = "user",
           .name_size = strlen("user"),
           .parse = knd_parse_select_user,

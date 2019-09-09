@@ -6,7 +6,7 @@
 #include "knd_class.h"
 #include "knd_mempool.h"
 #include "knd_attr.h"
-#include "knd_elem.h"
+#include "knd_attr_inst.h"
 #include "knd_repo.h"
 
 #include "knd_text.h"
@@ -51,7 +51,7 @@ static gsl_err_t run_get_inst(void *obj, const char *name, size_t name_size)
 
     /* to return a single object */
     task->type = KND_GET_STATE;
-    inst->elem_state_refs = NULL;
+    inst->attr_inst_state_refs = NULL;
 
     if (DEBUG_INST_LEVEL_2) {
         knd_class_inst_str(inst, 0);
@@ -93,7 +93,7 @@ parse_get_inst_by_numid(void *obj, const char *rec, size_t *total_size)
     entry = result;
     inst = entry->inst;
     task->type = KND_GET_STATE;
-    inst->elem_state_refs = NULL;
+    inst->attr_inst_state_refs = NULL;
 
     if (DEBUG_INST_LEVEL_TMP) {
         knd_class_inst_str(inst, 0);
@@ -235,25 +235,25 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
                                       const char *name,
                                       size_t name_size,
                                       struct kndAttr **result,
-                                      struct kndElem **result_elem)
+                                      struct kndAttrInst **result_attr_inst)
 {
     struct kndClass *conc;
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
-    struct kndElem *elem = NULL;
+    struct kndAttrInst *attr_inst = NULL;
     //struct kndOutput *log = self->base->entry->repo->log;
     int err;
 
     if (DEBUG_INST_LEVEL_2)
-        knd_log(".. \"%.*s\" to validate elem: \"%.*s\"",
+        knd_log(".. \"%.*s\" to validate attr_inst: \"%.*s\"",
                 self->name_size, self->name, name_size, name);
 
-    /* check existing elems */
-    for (elem = self->elems; elem; elem = elem->next) {
-        if (!memcmp(elem->attr->name, name, name_size)) {
+    /* check existing attr_insts */
+    for (attr_inst = self->attr_insts; attr_inst; attr_inst = attr_inst->next) {
+        if (!memcmp(attr_inst->attr->name, name, name_size)) {
             if (DEBUG_INST_LEVEL_2)
-                knd_log("++ ELEM \"%.*s\" is already set!", name_size, name);
-            *result_elem = elem;
+                knd_log("++ ATTR_INST \"%.*s\" is already set!", name_size, name);
+            *result_attr_inst = attr_inst;
             return knd_OK;
         }
     }
@@ -274,7 +274,7 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
     attr = attr_ref->attr;
     if (DEBUG_INST_LEVEL_2) {
         const char *type_name = knd_attr_names[attr->type];
-        knd_log("++ \"%.*s\" ELEM \"%s\" attr type: \"%s\"",
+        knd_log("++ \"%.*s\" ATTR_INST \"%s\" attr type: \"%s\"",
                 name_size, name, attr->name, type_name);
     }
 
@@ -282,14 +282,14 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
     return knd_OK;
 }
 
-static gsl_err_t parse_select_elem(void *obj,
+static gsl_err_t parse_select_attr_inst(void *obj,
                                    const char *name, size_t name_size,
                                    const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndClassInst *inst = ctx->class_inst;
-    struct kndElem *elem = NULL;
+    struct kndAttrInst *attr_inst = NULL;
     struct kndAttr *attr = NULL;
     int err;
     gsl_err_t parser_err;
@@ -300,34 +300,34 @@ static gsl_err_t parse_select_elem(void *obj,
     }
 
     if (DEBUG_INST_LEVEL_2)
-        knd_log(".. parsing elem \"%.*s\" select REC: %.*s",
+        knd_log(".. parsing attr_inst \"%.*s\" select REC: %.*s",
                 name_size, name, 128, rec);
 
-    err = kndClassInst_validate_attr(inst, name, name_size, &attr, &elem);
+    err = kndClassInst_validate_attr(inst, name, name_size, &attr, &attr_inst);
     if (err) {
         knd_log("-- \"%.*s\" attr not validated", name_size, name);
         return *total_size = 0, make_gsl_err_external(err);
     }
 
-    if (!elem) {
-        knd_log("-- elem not set");
+    if (!attr_inst) {
+        knd_log("-- attr_inst not set");
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    switch (elem->attr->type) {
+    switch (attr_inst->attr->type) {
         case KND_ATTR_INNER:
-            parser_err = knd_select_class_inst(elem->inner->base, rec, total_size, task);
+            parser_err = knd_select_class_inst(attr_inst->inner->base, rec, total_size, task);
             if (parser_err.code) return parser_err;
             break;
         default:
-            parser_err = knd_elem_parse_select(elem, rec, total_size);
+            parser_err = knd_attr_inst_parse_select(attr_inst, rec, total_size);
             if (parser_err.code) return parser_err;
             break;
     }
 
     if (DEBUG_INST_LEVEL_2)
-        knd_log("++ elem %.*s select parsing OK!",
-                elem->attr->name_size, elem->attr->name);
+        knd_log("++ attr_inst %.*s select parsing OK!",
+                attr_inst->attr->name_size, attr_inst->attr->name);
 
     return make_gsl_err(gsl_OK);
 }
@@ -459,12 +459,12 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
 }
 
 /*
-static int update_elem_states(struct kndClassInst *self, struct kndTask *task)
+static int update_attr_inst_states(struct kndClassInst *self, struct kndTask *task)
 {
     struct kndStateRef *ref;
     struct kndState *state;
     struct kndClassInst *inst;
-    struct kndElem *elem;
+    struct kndAttrInst *attr_inst;
     struct kndClass *c;
     struct kndMemPool *mempool = task->mempool;
     int err;
@@ -473,15 +473,15 @@ static int update_elem_states(struct kndClassInst *self, struct kndTask *task)
         knd_log("\n++ \"%.*s\" class inst updates happened:",
                 self->name_size, self->name);
 
-    for (ref = self->elem_state_refs; ref; ref = ref->next) {
+    for (ref = self->attr_inst_state_refs; ref; ref = ref->next) {
         state = ref->state;
         if (state->val) {
-            elem = state->val->obj;
-            knd_log("== elem %.*s updated!",
-                    elem->attr->name_size, elem->attr->name);
+            attr_inst = state->val->obj;
+            knd_log("== attr_inst %.*s updated!",
+                    attr_inst->attr->name_size, attr_inst->attr->name);
         }
         if (state->children) {
-            knd_log("== child elem updated: %zu", state->numid);
+            knd_log("== child attr_inst updated: %zu", state->numid);
         }
     }
 
@@ -500,20 +500,20 @@ static int update_elem_states(struct kndClassInst *self, struct kndTask *task)
     state->phase = KND_UPDATED;
     self->num_states++;
     state->numid = self->num_states;
-    state->children = self->elem_state_refs;
-    self->elem_state_refs = NULL;
+    state->children = self->attr_inst_state_refs;
+    self->attr_inst_state_refs = NULL;
     self->states = state;
 
     // inform your immediate parent or baseclass
     if (self->parent) {
-        elem = self->parent;
-        inst = elem->parent;
+        attr_inst = self->parent;
+        inst = attr_inst->parent;
 
         knd_log(".. inst \"%.*s\" to get new updates..",
                 inst->name_size, inst->name);
 
-        ref->next = inst->elem_state_refs;
-        inst->elem_state_refs = ref;
+        ref->next = inst->attr_inst_state_refs;
+        inst->attr_inst_state_refs = ref;
     } else {
         c = self->base;
 
@@ -566,12 +566,12 @@ gsl_err_t knd_select_class_inst(struct kndClass *c,
           .parse = parse_select_state,
           .obj = &ctx
         },
-        { .validate = parse_select_elem,
+        { .validate = parse_select_attr_inst,
           .obj = &ctx
         }/*,
         { .type = GSL_SET_STATE,
           .is_validator = true,
-          .validate = parse_import_elem,
+          .validate = parse_import_attr_inst,
           .obj = self->
           }*/,
         { .is_selector = true,
@@ -610,12 +610,12 @@ gsl_err_t knd_select_class_inst(struct kndClass *c,
         return parser_err;
     }
 
-    /* check elem updates */
+    /* check attr_inst updates */
     /*inst = ctx.class_inst;
     if (!inst) return make_gsl_err(gsl_OK);
 
-    if (inst->elem_state_refs) {
-        err = update_elem_states(inst, task);
+    if (inst->attr_inst_state_refs) {
+        err = update_attr_inst_states(inst, task);
         if (err) return make_gsl_err_external(err);
     }
     */

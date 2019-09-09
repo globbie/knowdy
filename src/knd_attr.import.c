@@ -23,10 +23,11 @@
 
 struct LocalContext {
     struct kndClassVar *class_var;
-    struct kndAttrVar *list_parent;
-    struct kndAttrVar *attr_var;
-    struct kndRepo *repo;
-    struct kndTask *task;
+    struct kndAttrVar  *list_parent;
+    struct kndAttr     *attr;
+    struct kndAttrVar  *attr_var;
+    struct kndRepo     *repo;
+    struct kndTask     *task;
 };
 
 static gsl_err_t import_attr_var_list_item(void *obj,
@@ -66,8 +67,9 @@ static gsl_err_t set_gloss_value(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
-    struct kndAttr *self = task->attr;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndAttr *self = ctx->attr;
     struct kndTranslation *tr;
     struct kndMemPool *mempool = task->mempool;
     int err;
@@ -115,12 +117,12 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
 
 static gsl_err_t parse_gloss(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
+    struct LocalContext *ctx = obj;
 
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
         .parse = parse_gloss_item,
-        .obj = task
+        .obj = ctx
     };
 
     return gsl_parse_array(&item_spec, rec, total_size);
@@ -154,8 +156,9 @@ static gsl_err_t set_procref(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t parse_proc(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
-    struct kndAttr *self = task->attr;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndAttr *self = ctx->attr;
     struct kndProc *proc;
     struct kndProcEntry *entry;
     struct kndMemPool *mempool = task->mempool;
@@ -672,32 +675,25 @@ static void append_attr_var(struct kndClassVar *ci,
     ci->num_attrs++;
 }
 
-gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *total_size)
+gsl_err_t knd_import_attr(struct kndAttr *self,
+                          struct kndTask *task,
+                          const char *rec, size_t *total_size)
 {
-    struct kndAttr *self = task->attr;
+    struct LocalContext ctx = {
+        .attr = self,
+        .task = task
+    };
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_name,
           .obj = self
         },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "_gloss",
-          .name_size = strlen("_gloss"),
-          .parse = parse_gloss,
-          .obj = task
-        },
         { .type = GSL_GET_ARRAY_STATE,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
           .parse = parse_gloss,
-          .obj = task
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "_g",
-          .name_size = strlen("_g"),
-          .parse = parse_gloss,
-          .obj = self
+          .obj = &ctx
         },
         { .type = GSL_SET_STATE,
           .name = "c",
@@ -718,7 +714,7 @@ gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *total_s
         { .name = "proc",
           .name_size = strlen("proc"),
           .parse = parse_proc,
-          .obj = task
+          .obj = &ctx
         },
         { .name = "t",
           .name_size = strlen("t"),

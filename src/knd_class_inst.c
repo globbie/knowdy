@@ -6,7 +6,7 @@
 #include "knd_class.h"
 #include "knd_mempool.h"
 #include "knd_attr.h"
-#include "knd_elem.h"
+#include "knd_attr_inst.h"
 #include "knd_repo.h"
 
 #include "knd_text.h"
@@ -28,7 +28,7 @@
 
 void knd_class_inst_str(struct kndClassInst *self, size_t depth)
 {
-    struct kndElem *elem;
+    struct kndAttrInst *attr_inst;
     struct kndState *state = self->states;
 
     if (self->type == KND_OBJ_ADDR) {
@@ -43,17 +43,20 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
         }
     }
 
-    for (elem = self->elems; elem; elem = elem->next) {
-        knd_elem_str(elem, depth + 1);
+    for (attr_inst = self->attr_insts; attr_inst; attr_inst = attr_inst->next) {
+        knd_attr_inst_str(attr_inst, depth + 1);
     }
 }
 
-int knd_class_inst_export(struct kndClassInst *self, knd_format format,
+int knd_class_inst_export(struct kndClassInst *self,
+                          knd_format format,
                           struct kndTask *task)
 {
     switch (format) {
         case KND_FORMAT_JSON:
             return knd_class_inst_export_JSON(self, task);
+        case KND_FORMAT_GSL:
+            return knd_class_inst_export_GSL(self, task);
         case KND_FORMAT_GSP:
             return knd_class_inst_export_GSP(self, task);
         default:

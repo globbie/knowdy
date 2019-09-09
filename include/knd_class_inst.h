@@ -26,9 +26,9 @@
 struct kndState;
 struct glbOutput;
 struct kndSortTag;
-struct kndElemRef;
+struct kndAttrInstRef;
 struct kndTask;
-struct kndElem;
+struct kndAttrInst;
 struct kndRelClass;
 
 struct kndOutput;
@@ -84,13 +84,13 @@ struct kndClassInst
     struct kndClass *base;
     struct kndClassInst *root;
 
-    struct kndElem *parent;
+    struct kndAttrInst *parent;
     struct kndClassInst *curr_inst;
 
-    struct kndElem *elems;
-    struct kndElem *tail;
-    size_t num_elems;
-    struct kndStateRef *elem_state_refs;
+    struct kndAttrInst *attr_insts;
+    struct kndAttrInst *tail;
+    size_t num_attr_insts;
+    struct kndStateRef *attr_inst_state_refs;
 
     size_t depth;
     size_t max_depth;
@@ -141,6 +141,9 @@ int knd_class_inst_set_export(struct kndClassInst *self, knd_format format,
 
 // knd_class_inst.gsp.c
 int knd_class_inst_export_GSP(struct kndClassInst *self,  struct kndTask *task);
+
+// knd_class_inst.gsl.c
+int knd_class_inst_export_GSL(struct kndClassInst *self,  struct kndTask *task);
 
 // knd_class_inst.import.c
 gsl_err_t knd_import_class_inst(struct kndClassInst *self,

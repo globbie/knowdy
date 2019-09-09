@@ -311,7 +311,7 @@ static int index_inner_class_ref(struct kndClass   *self,
                                  struct kndTask *task)
 {
     struct kndClass *base = attr->ref_class;
-    struct kndClass *topic = task->attr->parent_class;
+    struct kndClass *topic = NULL; // task->attr->parent_class;
     struct kndClass *spec = item->class;
     struct kndClassRef *ref;
     struct kndClass *curr_class;

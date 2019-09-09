@@ -659,14 +659,14 @@ int knd_resolve_attr_vars(struct kndClass *self,
         case KND_ATTR_REF:
             c = attr->ref_class;
             if (!c->is_resolved) {
-                err = knd_class_resolve(c, task);                                        RET_ERR();
+                err = knd_class_resolve(c, task);                                 RET_ERR();
             }
             err = knd_resolve_class_ref(self, attr_var->val, attr_var->val_size,
                                         c, &attr_var->class, task);
             if (err) return err;
             break;
         case KND_ATTR_TEXT:
-            err = resolve_text(attr_var, task);                                    RET_ERR();
+            err = resolve_text(attr_var, task);                                   RET_ERR();
             break;
         case KND_ATTR_NUM:
             memcpy(buf, attr_var->val, attr_var->val_size);
@@ -680,9 +680,6 @@ int knd_resolve_attr_vars(struct kndClass *self,
             break;
         case KND_ATTR_PROC_REF:
             proc = attr->proc;
-            /*if (!c->is_resolved) {
-                err = knd_class_resolve(c);                                        RET_ERR();
-                }*/
             err = knd_resolve_proc_ref(self, attr_var->val, attr_var->val_size,
                                        proc, &attr_var->proc, task);
             if (err) return err;

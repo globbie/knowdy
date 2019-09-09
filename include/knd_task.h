@@ -155,11 +155,6 @@ struct kndTask
 
     struct kndTaskContext *ctx;
 
-    // int error;
-
-    char timestamp[KND_NAME_SIZE];
-    size_t timestamp_size;
-
     const char *input;
     size_t input_size;
 
@@ -201,13 +196,6 @@ struct kndTask
     struct kndConcFolder *folders;
     size_t num_folders;
 
-    // FIXME(k15tfu): remove these vv
-    struct kndAttr      *attr;
-    struct kndAttrVar   *attr_var;
-    struct kndClassInst *class_inst;
-
-    struct kndElem *elem;
-
     struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;
 
@@ -221,12 +209,13 @@ struct kndTask
     struct kndOutput  *task_out;
     struct kndOutput  *file_out;
     struct kndOutput  *update_out;
-
     struct kndMemPool *mempool;
 };
 
 // knd_task.c
 int knd_task_new(struct kndTask **self);
+int knd_task_mem(struct kndMemPool *mempool,
+                 struct kndTask **result);
 int knd_task_context_new(struct kndMemPool *mempool,
                          struct kndTaskContext **ctx);
 void knd_task_del(struct kndTask *self);

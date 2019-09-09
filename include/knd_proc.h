@@ -64,8 +64,10 @@ struct kndProcInst
     struct kndProcInstEntry *entry;
     struct kndProc *base;
 
-    struct kndProcArgInst *arg_insts;
-    size_t num_arg_insts;
+    struct kndClassInst *agent;
+
+    struct kndProcArgInst *args;
+    size_t num_args;
     struct kndStateRef *arg_inst_state_refs;
 
     struct kndState * _Atomic states;
@@ -102,6 +104,8 @@ struct kndProcEntry
     struct kndProcRef *ancestors;
     size_t num_ancestors;
     struct kndSet *descendants;
+
+    struct kndAttrHub *attr_hubs;
 
     struct kndDict *inst_idx;
 };
@@ -166,6 +170,8 @@ struct kndProc
     struct kndState * _Atomic states;
     size_t num_states;
 
+    struct kndClass *agent;
+
     /* immediate args */
     struct kndProcArg *args;
     size_t num_args;
@@ -219,6 +225,11 @@ int knd_proc_inst_entry_new(struct kndMemPool *mempool,
                             struct kndProcInstEntry **result);
 
 void knd_proc_str(struct kndProc *self, size_t depth);
+
+void knd_proc_inst_str(struct kndProcInst *self, size_t depth);
+int knd_proc_inst_export_GSL(struct kndProcInst *self,
+                             struct kndOutput *out,
+                             size_t depth);
 
 gsl_err_t knd_proc_inst_import(struct kndProcInst *self,
                                struct kndRepo *repo,

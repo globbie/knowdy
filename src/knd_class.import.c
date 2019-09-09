@@ -321,8 +321,7 @@ static gsl_err_t parse_attr(void *obj,
         //return *total_size = 0, make_gsl_err_external(err);
     }
 
-    task->attr = attr;
-    parser_err = knd_import_attr(task, rec, total_size);
+    parser_err = knd_import_attr(attr, task, rec, total_size);
     if (parser_err.code) {
         if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
             knd_log("-- failed to parse the attr field: %d", parser_err.code);
