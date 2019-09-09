@@ -3,80 +3,80 @@
 {schema knd-basic
 
 {!class Object
-    [!_gloss {ru {t объект}}
+    [_gloss {ru {t объект}}
              {ja {t 物体}}]
     {-- совокупность сенсорных восприятий и
         когнитивных представлений субъекта
         о любой части внешнего мира --}
     {_state_top}
-    {!str guid}}
+    {str guid}}
 
 {!class Abstract Object
-    [!_gloss {ru {t абстракция}}
+    [_gloss {ru {t абстракция}}
              {ja {t 概念}}]
     {-- [!_summary {ru {t абстрактное понятие, формируемое сознанием человека
                      путем обобщения признаков конкретных объектов}}
                  {en {t a general concept formed by extracting common features
                        from   specific examples}}] --}
-    {!base Object}}
+    {is Object}}
 
 {!class Physical Object
-    [!_gloss {ru {t физический объект}}]
-    {!base Object}
+    [_gloss {ru {t физический объект}}]
+    {is Object}
     {--!inner location {c Spatial Location}--}
-    {!str img {!concise 1}}}
+    {str img {concise 1}}}
 
 {!class Information
-    [!_gloss {ru {t информация}}]
-    {!base   Abstract Object}}
+    [_gloss {ru {t информация}}]
+    {is   Abstract Object}}
 
 {!class Collection
-    [!_gloss {ru {t множество}}]
-    {!base Abstract Object}
-    {!ref  unit-type {c Object}}}
+    [_gloss {ru {t множество}}]
+    {is Abstract Object}
+    {ref  unit-type {c Object}}}
 
 
 {!class Custom Class
-    [!_gloss {ru {t класс с произвольной семантикой}}]
-    {!base Abstract Object}
+    [_gloss {ru {t класс с произвольной семантикой}}]
+    {is Abstract Object}
 }
 
 {!class Organic Object
-    [!_gloss {ru {t органический объект}}]
-    {!base Physical Object}}
+    [_gloss {ru {t органический объект}}]
+    {is Physical Object}}
 
 {!class Product of Labor
-    [!_gloss {ru {t продукт труда}}]
+    [_gloss {ru {t продукт труда}}]
     [!_summary {ru {t результат целенаправленной деятельности Агента,
                       пригодный для решения какой-либо задачи}}]
-    {!str purpose}}
+    {str purpose}}
 
 {!class Material Product
-    [!_gloss {ru {t изделие}}]
-    {!base Physical Object}
-    {!base Product of Labor}}
+    [_gloss {ru {t изделие}}]
+    {is Physical Object}
+    {is Product of Labor}}
 
 {!class Group
-    [!_gloss {ru {t группа объектов}}]
-    {!base Abstract Object}}
+    [_gloss {ru {t группа объектов}}]
+    {is Abstract Object}}
 
 {!class Sensory Object
-    [!_gloss {ru {t объект восприятия}}]
-    {!base Object}}
+    [_gloss {ru {t объект восприятия}}]
+    {is Object}}
 
 {!class Agent
-    [!_gloss {ru {t субъект}}]
+    [_gloss {ru {t субъект}}]
     {_state_top}}
 
 {!class Activity
-    [!_gloss {ru {t деятельность}}]
-    {!base Abstract Object}}
+    [_gloss {ru {t деятельность}}]
+    {is Abstract Object}}
 
 {!class Encoded Data
-    [!_gloss {ru {t кодированная информация}}]
+    [_gloss {ru {t кодированная информация}}]
     {is Information}
     {str mimetype}
     {bool is-binary}
-    {!cdata body}}
+    {cdata body}}
 
 }

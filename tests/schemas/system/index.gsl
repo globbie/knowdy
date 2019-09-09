@@ -1,6 +1,6 @@
 {schema knd-test
     {!class User
-        {!str guid}
-        {!str first-name}
+        {str guid}
+        {str first-name}
     }
 }
