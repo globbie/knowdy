@@ -102,12 +102,10 @@ int knd_proc_inst_export_GSL(struct kndProcInst *self,
 
         err = out->writef(out, "%*s]", (depth + 1) * KND_OFFSET_SIZE, "");
     }
-
     err = out->writef(out, "%*s}",
                       depth * KND_OFFSET_SIZE, "");
     return knd_OK;
 }
-
 
 int knd_proc_inst_entry_new(struct kndMemPool *mempool,
                             struct kndProcInstEntry **result)
@@ -115,7 +113,7 @@ int knd_proc_inst_entry_new(struct kndMemPool *mempool,
     void *page;
     int err;
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndProcInstEntry), &page);                  RET_ERR();
+                            sizeof(struct kndProcInstEntry), &page);              RET_ERR();
     *result = page;
     return knd_OK;
 }
@@ -125,8 +123,13 @@ int knd_proc_inst_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                            sizeof(struct kndProcInst), &page);                   RET_ERR();
+    if (mempool->type == KND_ALLOC_INCR) {
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
+                                     sizeof(struct kndProcInst), &page);          RET_ERR();
+    } else {
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                                sizeof(struct kndProcInst), &page);               RET_ERR();
+    }
     *result = page;
     return knd_OK;
 }

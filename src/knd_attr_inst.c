@@ -556,8 +556,13 @@ extern int knd_attr_inst_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                            sizeof(struct kndAttrInst), &page);                       RET_ERR();
+    if (mempool->type == KND_ALLOC_INCR) {
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                     sizeof(struct kndAttrInst), &page);          RET_ERR();
+    } else {
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                sizeof(struct kndAttrInst), &page);               RET_ERR();
+    }
     *result = page;
     return knd_OK;
 }

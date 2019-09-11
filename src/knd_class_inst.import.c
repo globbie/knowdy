@@ -97,18 +97,18 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int kndClassInst_validate_attr(struct kndClassInst *self,
-                                      const char *name,
-                                      size_t name_size,
-                                      struct kndAttr **result,
-                                      struct kndAttrInst **result_attr_inst)
+static int validate_attr(struct kndClassInst *self,
+                         const char *name,
+                         size_t name_size,
+                         struct kndAttr **result,
+                         struct kndAttrInst **result_attr_inst)
 {
     struct kndClass *conc;
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct kndAttrInst *attr_inst = NULL;
-    //struct kndOutput *log;
     int err;
+
     if (DEBUG_INST_LEVEL_2)
         knd_log(".. \"%.*s\" (base class: %.*s) to validate attr_inst: \"%.*s\"",
                 self->name_size, self->name,
@@ -147,8 +147,8 @@ static int kndClassInst_validate_attr(struct kndClassInst *self,
 }
 
 static gsl_err_t parse_import_attr_inst(void *obj1,
-                                   const char *name, size_t name_size,
-                                   const char *rec, size_t *total_size)
+                                        const char *name, size_t name_size,
+                                        const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj1;
     struct kndClassInst *self = ctx->class_inst;
@@ -163,7 +163,7 @@ static gsl_err_t parse_import_attr_inst(void *obj1,
     if (DEBUG_INST_LEVEL_2)
         knd_log(".. parsing attr_inst import REC: %.*s", 128, rec);
 
-    err = kndClassInst_validate_attr(self, name, name_size, &attr, &attr_inst);
+    err = validate_attr(self, name, name_size, &attr, &attr_inst);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     if (attr_inst) {
