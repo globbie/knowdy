@@ -278,7 +278,7 @@ static gsl_err_t parse_update(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
+gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *self = obj;
     gsl_err_t parser_err;
@@ -361,43 +361,3 @@ static gsl_err_t parse_task(void *obj, const char *rec, size_t *total_size)
     return parser_err;
 }
 
-int knd_task_run(struct kndTask *self)
-{
-    size_t total_size = self->ctx->input_size;
-    gsl_err_t parser_err;
-
-    if (DEBUG_TASK_LEVEL_2) {
-        size_t chunk_size = KND_TEXT_CHUNK_SIZE;
-        if (self->ctx->input_size < chunk_size)
-            chunk_size = self->ctx->input_size;
-        knd_log("== INPUT (size:%zu): %.*s ..",
-                self->ctx->input_size,
-                chunk_size, self->ctx->input);
-    }
-
-    struct gslTaskSpec specs[] = {
-        { .name = "task",
-          .name_size = strlen("task"),
-          .parse = parse_task,
-          .obj = self
-        }
-    };
-    parser_err = gsl_parse_task(self->ctx->input, &total_size,
-                                specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) {
-        /*if (!is_gsl_err_external(parser_err)) {
-            if (!self->log->buf_size) {
-                self->http_code = HTTP_BAD_REQUEST;
-                err = log_parser_error(self, parser_err, self->input_size, self->input);
-                if (err) return err;
-            }
-        }
-        if (!self->log->buf_size) {
-            self->http_code = HTTP_INTERNAL_SERVER_ERROR;
-            err = self->log->writef(self->log, "unclassified server error");
-            if (err) return err;
-            }*/
-        return gsl_err_to_knd_err_codes(parser_err);
-    }
-    return knd_OK;
-}

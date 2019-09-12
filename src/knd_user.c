@@ -25,16 +25,11 @@
 #define DEBUG_USER_LEVEL_3 0
 #define DEBUG_USER_LEVEL_TMP 1
 
-static void del(struct kndUser *self)
+void knd_user_del(struct kndUser *self)
 {
     if (self->repo)
         knd_repo_del(self->repo);
     free(self);
-}
-
-static void str(struct kndUser *self)
-{
-    knd_log("USER: %.*s", self->name_size, self->name);
 }
 
 static gsl_err_t parse_proc_import(void *obj,
@@ -265,8 +260,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     struct kndClassInst *inst;
     struct kndMemPool *mempool = task->mempool;
     struct kndOutput *log = task->log;
-
-    struct kndRepo *repo = self->shard->repo;
+    struct kndRepo *repo = task->shard->repo;
     void *result = NULL;
     int e, err;
 
@@ -556,14 +550,14 @@ extern gsl_err_t knd_parse_select_user(void *obj,
     return parser_err;
 }
 
-int kndUser_init(struct kndUser *self,
-                 struct kndTask *task)
+int knd_user_init(struct kndUser *self,
+                  struct kndTask *task)
 {
     struct kndRepo *repo = self->repo;
     int err;
 
-    memcpy(self->path, self->shard->path, self->shard->path_size);
-    self->path_size = self->shard->path_size;
+    memcpy(self->path, task->shard->path, task->shard->path_size);
+    self->path_size = task->shard->path_size;
 
     char *p = self->path + self->path_size;
     memcpy(p, "/users", strlen("/users"));
@@ -605,9 +599,6 @@ extern int kndUser_new(struct kndUser **user, struct kndMemPool *mempool)
     self->repo = repo;
 
     err = knd_set_new(mempool, &self->user_idx);                                  RET_ERR();
-
-    self->del = del;
-    self->str = str;
 
     *user = self;
 

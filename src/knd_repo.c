@@ -1311,7 +1311,7 @@ static int build_persistent_commit(void *obj,
 {
     struct kndTask *task = obj;
     struct kndTaskContext *ctx = ctx_obj;
-    int err;
+    // int err;
 
     if (DEBUG_REPO_LEVEL_TMP)
         knd_log("..  worker:#%zu / ctx:%zu    write commit #%zu ..",
@@ -1319,7 +1319,7 @@ static int build_persistent_commit(void *obj,
 
     ctx->phase = KND_WAL_COMMIT;
     ctx->cb = deliver_task_report;
-    err = knd_queue_push(task->storage->input_queue, (void*)ctx);                 RET_ERR();
+    // err = knd_queue_push(task->storage->input_queue, (void*)ctx);                 RET_ERR();
     return knd_OK;
 }
 
@@ -1330,7 +1330,7 @@ static int export_update_GSL(struct kndRepo *self,
     char buf[KND_NAME_SIZE] = {0};
     size_t buf_size = 0;
     struct tm tm_info;
-    struct kndOutput *out = task->ctx->out;
+    struct kndOutput *out = task->out;
     int err;
 
     err = out->writec(out, '{');                                                  RET_ERR();
@@ -1424,8 +1424,8 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
     ctx->cb = build_persistent_commit;
     ctx->repo = self;
 
-    err = knd_queue_push(task->storage->input_queue, (void*)ctx);
-    if (err) return err;
+    // err = knd_queue_push(task->storage->input_queue, (void*)ctx);
+    // if (err) return err;
 
     return knd_OK;
 }

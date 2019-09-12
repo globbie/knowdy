@@ -151,8 +151,9 @@ struct kndTask
     knd_task_spec_type type;
     knd_state_phase phase;
 
-    pthread_t thread;
+    // pthread_t thread;
 
+    struct kndShard *shard;
     struct kndTaskContext *ctx;
 
     const char *input;
@@ -199,9 +200,9 @@ struct kndTask
     struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;
 
-    struct kndStorage *storage;
-    struct kndQueue   *input_queue;
-    struct kndQueue   *output_queue;
+    // struct kndStorage *storage;
+    // struct kndQueue   *input_queue;
+    // struct kndQueue   *output_queue;
     struct kndSet     *ctx_idx;
 
     struct kndOutput  *out;
@@ -213,7 +214,9 @@ struct kndTask
 };
 
 // knd_task.c
-int knd_task_new(struct kndTask **self);
+int knd_task_new(struct kndShard *shard,
+                 struct kndMemPool *mempool,
+                 struct kndTask **task);
 int knd_task_mem(struct kndMemPool *mempool,
                  struct kndTask **result);
 int knd_task_context_new(struct kndMemPool *mempool,
@@ -221,6 +224,7 @@ int knd_task_context_new(struct kndMemPool *mempool,
 void knd_task_del(struct kndTask *self);
 void knd_task_reset(struct kndTask *self);
 int knd_task_err_export(struct kndTaskContext *self);
+int knd_task_run(struct kndTask *self);
 
 // knd_task.select.c
-int knd_task_run(struct kndTask *self);
+gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size);

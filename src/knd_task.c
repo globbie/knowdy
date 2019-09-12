@@ -131,6 +131,47 @@ int knd_task_err_export(struct kndTaskContext *self)
     return knd_OK;
 }
 
+int knd_task_run(struct kndTask *self)
+{
+    size_t total_size = self->ctx->input_size;
+    gsl_err_t parser_err;
+
+    if (DEBUG_TASK_LEVEL_2) {
+        size_t chunk_size = KND_TEXT_CHUNK_SIZE;
+        if (self->ctx->input_size < chunk_size)
+            chunk_size = self->ctx->input_size;
+        knd_log("== INPUT (size:%zu): %.*s ..",
+                self->ctx->input_size,
+                chunk_size, self->ctx->input);
+    }
+
+    struct gslTaskSpec specs[] = {
+        { .name = "task",
+          .name_size = strlen("task"),
+          .parse = knd_parse_task,
+          .obj = self
+        }
+    };
+    parser_err = gsl_parse_task(self->ctx->input, &total_size,
+                                specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        /*if (!is_gsl_err_external(parser_err)) {
+            if (!self->log->buf_size) {
+                self->http_code = HTTP_BAD_REQUEST;
+                err = log_parser_error(self, parser_err, self->input_size, self->input);
+                if (err) return err;
+            }
+        }
+        if (!self->log->buf_size) {
+            self->http_code = HTTP_INTERNAL_SERVER_ERROR;
+            err = self->log->writef(self->log, "unclassified server error");
+            if (err) return err;
+            }*/
+        return gsl_err_to_knd_err_codes(parser_err);
+    }
+    return knd_OK;
+}
+
 int knd_task_context_new(struct kndMemPool *mempool,
                          struct kndTaskContext **result)
 {
@@ -153,16 +194,32 @@ int knd_task_mem(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-int knd_task_new(struct kndTask **task)
+int knd_task_new(struct kndShard *shard,
+                 struct kndMemPool *mempool,
+                 struct kndTask **task)
 {
     struct kndTask *self;
     int err;
 
     self = malloc(sizeof(struct kndTask));
     if (!self) return knd_NOMEM;
-
     memset(self, 0, sizeof(struct kndTask));
+    self->shard = shard;
 
+    if (!mempool) {
+        err = kndMemPool_new(&mempool);
+        if (err) return err;
+        mempool->type = KND_ALLOC_INCR;
+        mempool->num_pages = shard->ctx_mem_config.num_pages;
+        mempool->num_small_x4_pages = shard->ctx_mem_config.num_small_x4_pages;
+        mempool->num_small_x2_pages = shard->ctx_mem_config.num_small_x2_pages;
+        mempool->num_small_pages = shard->ctx_mem_config.num_small_pages;
+        mempool->num_tiny_pages = shard->ctx_mem_config.num_tiny_pages;
+        err = mempool->alloc(mempool); 
+        if (err) return err;
+    }
+    self->mempool = mempool;
+    
     err = knd_output_new(&self->log, NULL, KND_TEMP_BUF_SIZE);
     if (err) return err;
 

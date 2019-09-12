@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stddef.h>
 
+
 static gsl_err_t
 parse_memory_settings(void *obj, const char *rec, size_t *total_size)
 {

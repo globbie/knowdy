@@ -26,257 +26,226 @@
 #define DEBUG_SHARD_LEVEL_1 0
 #define DEBUG_SHARD_LEVEL_TMP 1
 
-static void *task_runner(void *ptr)
+static gsl_err_t parse_ctx_mem_config(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = ptr;
-    struct kndQueue *queue = task->input_queue;
-    struct kndTaskContext *ctx;
-    struct timespec ts = {0, TASK_TIMEOUT_USECS * 1000L };
-    void *elem;
-    size_t attempt_count = 0;
-    int err;
+    struct kndShard *self = obj;
 
-    knd_log("\n.. shard's task runner #%zu..", task->id);
-
-    while (1) {
-        attempt_count++;
-        err = knd_queue_pop(queue, &elem);
-        if (err) {
-            if (attempt_count > MAX_DEQUE_ATTEMPTS)
-                nanosleep(&ts, NULL);
-            continue;
+    struct gslTaskSpec specs[] = {
+        {   .name = "max_base_pages",
+            .name_size = strlen("max_base_pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->ctx_mem_config.num_pages
+        },
+        {   .name = "max_small_x4_pages",
+            .name_size = strlen("max_small_x4_pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->ctx_mem_config.num_small_x4_pages
+        },
+        {   .name = "max_small_x2_pages",
+            .name_size = strlen("max_small_x2_pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->ctx_mem_config.num_small_x2_pages
+        },
+        {   .name = "max_small_pages",
+            .name_size = strlen("max_small_pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->ctx_mem_config.num_small_pages
+        },
+        {   .name = "max_tiny_pages",
+            .name_size = strlen("max_tiny_pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->ctx_mem_config.num_tiny_pages
         }
-        attempt_count = 0;
-        ctx = elem;
-        if (ctx->type == KND_STOP_STATE) {
-            knd_log("\n-- shard's task runner #%zu received a stop signal..",
-                    task->id);
-            return NULL;
-        }
-
-        if (DEBUG_SHARD_LEVEL_1)
-            knd_log("++ #%zu worker got task #%zu!",
-                    task->id, ctx->numid);
-
-        switch (ctx->phase) {
-        case KND_SUBMIT:
-            knd_task_reset(task);
-
-            task->ctx = ctx;
-            task->out = ctx->out;
-
-            err = knd_task_run(task);
-            if (err != knd_OK) {
-                ctx->error = err;
-                knd_log("-- task running failure: %d", err);
-            }
-            continue;
-        case KND_COMPLETE:
-            knd_log("\n-- task #%zu already complete",
-                    ctx->numid);
-            continue;
-        case KND_CANCEL:
-            knd_log("\n-- task #%zu was canceled",
-                    ctx->numid);
-            continue;
-        default:
-            break;
-        }
-
-        /* any other phase requires a callback execution */
-        if (ctx->cb) {
-            err = ctx->cb((void*)task, ctx->id, ctx->id_size, (void*)ctx);
-            if (err) {
-                // signal
-            }
-        }
-    }
-    return NULL;
+    };
+   
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-/* non-blocking interface */
-int knd_shard_push_task(struct kndShard *self,
-                        const char *input, size_t input_size,
-                        const char **task_id, size_t *task_id_size,
-                        task_cb_func cb, void *obj)
+static gsl_err_t parse_mem_config(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTaskContext *ctx;
-    clockid_t clk_id = CLOCK_MONOTONIC;
-    int err;
+    struct kndShard *self = obj;
 
-    ctx = malloc(sizeof(struct kndTaskContext));
-    if (!ctx) return knd_NOMEM;
-    memset(ctx, 0, (sizeof(struct kndTaskContext)));
-    ctx->external_cb = cb;
-    ctx->external_obj = obj;
+    struct gslTaskSpec specs[] = {
+       {   .name = "ctx",
+           .name_size = strlen("ctx"),
+           .parse = parse_ctx_mem_config,
+           .obj = self
+        },
+        {   .name = "max_base_pages",
+            .name_size = strlen("max_base_pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_config.num_pages
+        },
+        {   .name = "max_small_x4_pages",
+            .name_size = strlen("max_small_x4_pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_config.num_small_x4_pages
+        },
+        {   .name = "max_small_x2_pages",
+            .name_size = strlen("max_small_x2_pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_config.num_small_x2_pages
+        },
+        {   .name = "max_small_pages",
+            .name_size = strlen("max_small_pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_config.num_small_pages
+        },
+        {   .name = "max_tiny_pages",
+            .name_size = strlen("max_tiny_pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_config.num_tiny_pages
+        }
+    };
 
-    ctx->input_buf = malloc(input_size + 1);
-    if (!ctx->input_buf) return knd_NOMEM; 
-    memcpy(ctx->input_buf, input, input_size);
-    ctx->input_buf[input_size] = '\0';
-    ctx->input = ctx->input_buf;
-    ctx->input_size = input_size;
-
-    self->task_count++;
-    ctx->numid = self->task_count;
-    knd_uid_create(ctx->numid, ctx->id, &ctx->id_size);
-
-    err = clock_gettime(clk_id, &ctx->start_ts);
-
-    /*strftime(buf, sizeof buf, "%D %T", gmtime(&start_ts.tv_sec));
-    knd_log("UTC %s.%09ld: new task curr storage size:%zu  capacity:%zu",
-            buf, start_ts.tv_nsec,
-            self->task_storage->buf_size, self->task_storage->capacity);
-    */
-    
-    err = knd_queue_push(self->task_context_queue, (void*)ctx);
-    if (err) return err;
-
-    knd_log("++ enqueued task #%zu", ctx->numid);
-
-    *task_id = ctx->id; 
-    *task_id_size = ctx->id_size;
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-/* blocking interface */
-int knd_shard_run_task(struct kndShard *self,
-                       const char *input, size_t input_size,
-                       char *output, size_t *output_size)
+static gsl_err_t
+run_check_schema(void *unused_var(obj), const char *val, size_t val_size)
 {
-    struct kndTaskContext *ctx;
-    clockid_t clk_id = CLOCK_MONOTONIC;
-    struct timespec ts = {0, TASK_TIMEOUT_USECS * 1000L };
-    size_t num_attempts = 0;
-    int err;
+    const char *schema_name = "knd";
+    size_t schema_name_size = strlen(schema_name);
 
-    ctx = malloc(sizeof(struct kndTaskContext));
-    if (!ctx) return knd_NOMEM;
-    memset(ctx, 0, (sizeof(struct kndTaskContext)));
-
-    err = clock_gettime(clk_id, &ctx->start_ts);
-    if (err) return err;
-
-    ctx->input_buf = malloc(input_size + 1);
-    if (!ctx->input_buf) return knd_NOMEM; 
-    memcpy(ctx->input_buf, input, input_size);
-    ctx->input_buf[input_size] = '\0';
-    ctx->input = ctx->input_buf;
-    ctx->input_size = input_size;
-
-    ctx->batch_max = KND_RESULT_BATCH_SIZE;
-    
-    err = knd_output_new(&ctx->out, output, *output_size);
-    if (err) goto final;
-    *output_size = 0;
-
-    err = knd_output_new(&ctx->log, NULL, KND_TEMP_BUF_SIZE);
-    if (err) goto final;
-
-    self->task_count++;
-    ctx->numid = self->task_count;
-    knd_uid_create(ctx->numid, ctx->id, &ctx->id_size);
-
-    /*strftime(buf, sizeof buf, "%D %T", gmtime(&start_ts.tv_sec));
-    knd_log("UTC %s.%09ld: new task curr storage size:%zu  capacity:%zu",
-            buf, start_ts.tv_nsec,
-            self->task_storage->buf_size, self->task_storage->capacity);
-    */
-
-    //err = knd_queue_push(self->storage->input_queue, (void*)ctx);
-    //if (err) return err;
-    ctx->phase = KND_SUBMIT;
-    err = knd_queue_push(self->task_context_queue, (void*)ctx);
-    if (err) return err;
-
-    while (1) {
-        err = clock_gettime(clk_id, &ctx->end_ts);
-        if (err) goto final;
-
-        if ((ctx->end_ts.tv_sec - ctx->start_ts.tv_sec) > TASK_MAX_TIMEOUT_SECS) {
-            // signal timeout
-            err = knd_task_err_export(ctx);
-            if (err) goto final;
-            *output_size = ctx->out->buf_size;
-            break;
-        }
-
-        // TODO atomic load
-        switch (ctx->phase) {
-        case KND_COMPLETE:
-            if (ctx->error) {
-                err = knd_task_err_export(ctx);
-                if (err) return err;
-            }
-            *output_size = ctx->out->buf_size;
-
-            if (DEBUG_SHARD_LEVEL_1)
-                knd_log("\n== RESULT: \"%.*s\" (size:%zu)\n"
-                        "== task progress polling, num attempts: %zu\n",
-                        ctx->out->buf_size, ctx->out->buf,
-                        ctx->out->buf_size, num_attempts);
-
-            return knd_OK;
-        default:
-            break;
-        }
-        nanosleep(&ts, NULL);
-        num_attempts++;
-    }
-
-    return knd_OK;
-
- final:
-    // TODO free ctx
-    return err;
+    if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);
+    if (memcmp(schema_name, val, val_size)) return make_gsl_err(gsl_FAIL);
+    return make_gsl_err(gsl_OK);
 }
 
-int knd_shard_serve(struct kndShard *self)
+static gsl_err_t
+parse_base_repo(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task;
-    int err;
+    struct kndShard *self = obj;
 
-    for (size_t i = 0; i < self->num_tasks; i++) {
-        task = self->tasks[i];
-        task->id = i;
-
-        if (pthread_create(&task->thread, NULL, task_runner, (void*)task)) {
-            perror("-- kndTask thread creation failed");
-            return knd_FAIL;
+    struct gslTaskSpec specs[] = {
+        {   .is_implied = true,
+            .buf = self->user_repo_name,
+            .buf_size = &self->user_repo_name_size,
+            .max_buf_size = KND_NAME_SIZE
+        },
+        {   .name = "schema-path",
+            .name_size = strlen("schema-path"),
+            .buf = self->user_schema_path,
+            .buf_size = &self->user_schema_path_size,
+            .max_buf_size = KND_PATH_SIZE
         }
-    }
+    };
 
-    err = knd_storage_serve(self->storage);
-    if (err) return err;
-
-    return knd_OK;
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-int knd_shard_stop(struct kndShard *self)
+static gsl_err_t
+parse_user_settings(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTaskContext ctx;
-    struct kndTask *task;
-    int err;
+    struct kndShard *self = obj;
 
-    err = knd_storage_stop(self->storage);
-    if (err) return err;
+    struct gslTaskSpec specs[] = {
+        {   .is_implied = true,
+            .buf = self->user_class_name,
+            .buf_size = &self->user_class_name_size,
+            .max_buf_size = KND_NAME_SIZE
+        },
+        {   .name = "base-repo",
+            .name_size = strlen("base-repo"),
+            .parse = parse_base_repo,
+            .obj = self
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
 
-    memset(&ctx, 0, sizeof(struct kndTaskContext));
-    ctx.type = KND_STOP_STATE;
+static gsl_err_t
+parse_schema_path(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndShard *self = obj;
 
-    knd_log(".. scheduling shard stop tasks..");
+    struct gslTaskSpec specs[] = {
+        {   .is_implied = true,
+            .buf = self->schema_path,
+            .buf_size = &self->schema_path_size,
+            .max_buf_size = KND_NAME_SIZE
+        },
+        {   .name = "user",
+            .name_size = strlen("user"),
+            .parse = parse_user_settings,
+            .obj = self
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
 
-    for (size_t i = 0; i < self->num_tasks * 2; i++) {
-        err = knd_queue_push(self->task_context_queue, (void*)&ctx);
-        if (err) return err;
+static gsl_err_t
+parse_schema(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndShard *self = obj;
+
+    struct gslTaskSpec specs[] = {
+        {   .is_implied = true,
+            .run = run_check_schema,
+            .obj = self
+        },
+        {   .name = "db-path",
+            .name_size = strlen("db-path"),
+            .buf = self->path,
+            .buf_size = &self->path_size,
+            .max_buf_size = KND_NAME_SIZE
+        },
+        {   .name = "schema-path",
+            .name_size = strlen("schema-path"),
+            .parse = parse_schema_path,
+            .obj = self,
+        },
+        {  .name = "memory",
+            .name_size = strlen("memory"),
+            .parse = parse_mem_config,
+            .obj = self,
+        },
+        {   .name = "agent",
+            .name_size = strlen("agent"),
+            .buf = self->name,
+            .buf_size = &self->name_size,
+            .max_buf_size = KND_NAME_SIZE
+        }
+    };
+    int err = knd_FAIL;
+    gsl_err_t parser_err;
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        knd_log("-- config parse error: %d", parser_err.code);
+        return parser_err;
     }
 
-    for (size_t i = 0; i < self->num_tasks; i++) {
-        task = self->tasks[i];
-        pthread_join(task->thread, NULL);
+    if (!self->path_size) {
+        knd_log("-- DB path not set");
+        return make_gsl_err(gsl_FAIL);
     }
 
-    knd_log(".. shard tasks stopped.");
+    err = knd_mkpath(self->path, self->path_size, 0755, false);
+    if (err != knd_OK) return make_gsl_err_external(err);
+
+    if (!self->schema_path_size) {
+        knd_log("-- system schema path not set");
+        return make_gsl_err(gsl_FAIL);
+    }
+    return make_gsl_err(gsl_OK);
+}
+
+static int parse_config(struct kndShard *self,
+                        const char *rec, size_t *total_size)
+{
+    struct gslTaskSpec specs[] = {
+        {
+            .name = "schema",
+            .name_size = strlen("schema"),
+            .parse = parse_schema,
+            .obj = self
+        }
+    };
+    gsl_err_t parser_err;
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code != gsl_OK) return gsl_err_to_knd_err_codes(parser_err);
     return knd_OK;
 }
 
@@ -296,51 +265,20 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndShard));
 
+    err = parse_config(self, config, &config_size);
+    if (err != knd_OK) goto error;
+
     err = kndMemPool_new(&mempool);
     if (err != knd_OK) goto error;
-    self->mempool = mempool;
-
-    {
-        err = knd_shard_parse_config(self, config, &config_size, mempool);
-        if (err != knd_OK) goto error;
-    }
-
-    err = mempool->alloc(mempool); 
+    mempool->num_pages = self->mem_config.num_pages;
+    mempool->num_small_x4_pages = self->mem_config.num_small_x4_pages;
+    mempool->num_small_x2_pages = self->mem_config.num_small_x2_pages;
+    mempool->num_small_pages = self->mem_config.num_small_pages;
+    mempool->num_tiny_pages = self->mem_config.num_tiny_pages;
+    err = mempool->alloc(mempool);
     if (err != knd_OK) goto error;
-
-    err = knd_set_new(mempool, &self->ctx_idx);
-    if (err != knd_OK) goto error;
-    self->ctx_idx->mempool = mempool;
 
     err = knd_set_new(mempool, &self->repos);
-    if (err != knd_OK) goto error;
-
-    if (!self->num_tasks) self->num_tasks = 1;
-
-    self->tasks = calloc(self->num_tasks, sizeof(struct kndTask*));
-    if (!self->tasks) goto error;
-
-    for (size_t i = 0; i < self->num_tasks; i++) {
-        err = knd_task_new(&task);
-        if (err != knd_OK) goto error;
-        self->tasks[i] = task;
-
-        err = kndMemPool_new(&task->mempool);
-        if (err != knd_OK) goto error;
-
-        // TODO: clone function
-        task->mempool->num_pages = mempool->num_pages;
-        task->mempool->num_small_x4_pages = mempool->num_small_x4_pages;
-        task->mempool->num_small_x2_pages = mempool->num_small_x2_pages;
-        task->mempool->num_small_pages = mempool->num_small_pages;
-        task->mempool->num_tiny_pages = mempool->num_tiny_pages;
-
-        task->mempool->alloc(task->mempool);
-    }
-
-    // TODO
-    size_t task_queue_capacity = TASK_QUEUE_CAPACITY; //self->num_tasks * mempool->num_small_pages;
-    err = knd_queue_new(&self->task_context_queue, task_queue_capacity);
     if (err != knd_OK) goto error;
 
     if (!self->user_class_name_size) {
@@ -348,65 +286,27 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
         memcpy(self->user_class_name, "User", self->user_class_name_size);
     }
 
-    /* IO service */
-    err = knd_storage_new(&self->storage, task_queue_capacity);
-    if (err != knd_OK) goto error;
-    self->storage->output_queue = self->task_context_queue;
-    memcpy(self->storage->path, self->path, self->path_size);
-    self->storage->path_size = self->path_size;
-    self->storage->ctx_idx = self->ctx_idx;
-
-    /* global commit filename */
-    c = self->storage->commit_filename;
-    memcpy(c, self->path, self->path_size);
-    c += self->path_size;
-    chunk_size = self->path_size;
-    *c = '/';
-    c++;
-    chunk_size++;
-
-    memcpy(c, "commit.log", strlen("commit.log"));
-    c++;
-    chunk_size += strlen("commit.log");
-    self->storage->commit_filename_size = chunk_size;
-
     /* system repo */
     err = knd_repo_new(&repo, mempool);
     if (err != knd_OK) goto error;
     memcpy(repo->name, "/", 1);
     repo->name_size = 1;
-
     repo->schema_path = self->schema_path;
     repo->schema_path_size = self->schema_path_size;
-
     memcpy(repo->path, self->path, self->path_size);
     repo->path_size = self->path_size;
 
-    task = self->tasks[0];
-    ctx = malloc(sizeof(struct kndTaskContext));
-    if (!ctx) return knd_NOMEM;
-    memset(ctx, 0, (sizeof(struct kndTaskContext)));
-    ctx->class_name_idx = repo->class_name_idx;
-    ctx->attr_name_idx  = repo->attr_name_idx;
-    ctx->proc_name_idx  = repo->proc_name_idx;
-    ctx->proc_arg_name_idx  = repo->proc_arg_name_idx;
-
-    err = knd_output_new(&ctx->out, NULL, KND_TEMP_BUF_SIZE);
-    if (err) goto error;
-    err = knd_output_new(&ctx->log, NULL, KND_TEMP_BUF_SIZE);
-    if (err) goto error;
-
-    task->ctx = ctx;
+    err = knd_task_new(self, mempool, &task);
+    if (err != knd_OK) goto error;
+    self->task = task;
 
     err = knd_repo_open(repo, task);
     if (err != knd_OK) goto error;
     self->repo = repo;
 
-    err = kndUser_new(&user, mempool);
+    err = knd_user_new(&user, mempool);
     if (err != knd_OK) goto error;
     self->user = user;
-    user->shard = self;
-
     user->class_name = self->user_class_name;
     user->class_name_size = self->user_class_name_size;
 
@@ -416,23 +316,8 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     user->schema_path = self->user_schema_path;
     user->schema_path_size = self->user_schema_path_size;
 
-    err = kndUser_init(user, task);
+    err = knd_user_init(user, task);
     if (err != knd_OK) goto error;
-
-    /* init fields in tasks */
-    for (size_t i = 0; i < self->num_tasks; i++) {
-        task = self->tasks[i];
-        task->user = user;
-        task->storage = self->storage;
-        task->path = self->path;
-        task->path_size = self->path_size;
-
-        /* NB: the same queue is used as input and output */
-        task->input_queue = self->task_context_queue;
-        task->output_queue = self->task_context_queue;
-
-        task->system_repo = self->repo;
-    }
 
     *shard = self;
     return knd_OK;
@@ -445,26 +330,16 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
 
 void knd_shard_del(struct kndShard *self)
 {
-    struct kndTask *task;
-
     knd_log(".. deconstructing kndShard ..");
 
     if (self->user)
-        self->user->del(self->user);
+        knd_user_del(self->user);
 
     if (self->repo)
         knd_repo_del(self->repo);
 
-    if (self->num_tasks) {
-        for (size_t i = 0; i < self->num_tasks; i++) {
-            task = self->tasks[i];
-            knd_task_del(task);
-        }
-        free(self->tasks);
-    }
-
-    if (self->mempool)
-        self->mempool->del(self->mempool);
+    if (self->task)
+        knd_task_del(self->task);
 
     free(self);
 }
