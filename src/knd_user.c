@@ -582,7 +582,7 @@ int knd_user_init(struct kndUser *self,
     return knd_OK;
 }
 
-extern int kndUser_new(struct kndUser **user, struct kndMemPool *mempool)
+int knd_user_new(struct kndUser **user, struct kndMemPool *mempool)
 {
     struct kndUser *self;
     struct kndRepo *repo;
