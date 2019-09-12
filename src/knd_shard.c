@@ -256,9 +256,6 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     struct kndUser *user;
     struct kndRepo *repo;
     struct kndTask *task;
-    struct kndTaskContext *ctx;
-    char *c;
-    size_t chunk_size;
     int err;
 
     self = malloc(sizeof(struct kndShard));
