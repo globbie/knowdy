@@ -151,13 +151,14 @@ struct kndTask
     knd_task_spec_type type;
     knd_state_phase phase;
 
-    // pthread_t thread;
-
     struct kndShard *shard;
     struct kndTaskContext *ctx;
 
     const char *input;
     size_t input_size;
+
+    const char *output;
+    size_t output_size;
 
     const char *report;
     size_t report_size;
@@ -200,9 +201,6 @@ struct kndTask
     struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;
 
-    // struct kndStorage *storage;
-    // struct kndQueue   *input_queue;
-    // struct kndQueue   *output_queue;
     struct kndSet     *ctx_idx;
 
     struct kndOutput  *out;
