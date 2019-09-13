@@ -471,7 +471,7 @@ START_TEST(shard_proc_test)
         ck_assert(0 == regcomp(&reg, pcase->expect, 0));
         if (0 != regexec(&reg, task->output, 0, NULL, 0)) {
             ck_abort_msg("Assertion failed: \"%.*s\" doesn't match \"%s\"",
-                         (int)task->output, task->output, pcase->expect);
+                         (int)task->output_size, task->output, pcase->expect);
         }
         regfree(&reg);
     }
