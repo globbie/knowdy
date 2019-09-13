@@ -10,6 +10,7 @@
 #define OUTPUT_BUF_SIZE 1024 * 10
 
 // todo(n.rodionov): make paths configurable
+#if 0
 static const char *shard_config =
 "{schema knd"
 "  {db-path .}"
@@ -41,7 +42,9 @@ static const char *shard_inheritance_config =
 "    {max_tiny_pages      200000}"
 "  }"
 "}";
+#endif
 
+#if 0
 static const char *shard_proc_config =
 "{schema knd"
 "  {db-path .}"
@@ -57,6 +60,7 @@ static const char *shard_proc_config =
 "    {max_tiny_pages      200000}"
 "  }"
 "}";
+#endif
 
 #define ASSERT_STR_EQ(act, act_size, exp, exp_size) \
     do {                                            \
@@ -98,7 +102,7 @@ START_TEST(shard_config_test)
 
 END_TEST
 
-
+#if 0
 START_TEST(shard_table_test)
     static const struct table_test cases[] = {
 #if 0
@@ -143,7 +147,7 @@ START_TEST(shard_table_test)
             .input =  "{task {class Person {_state}}}",
             .expect = "{state 1{time [0-9]*}}"
         },
-#if 0
+    // add tests below
         {    /* try to get a non-existent state */
             .input = "{task {class User {_state 42}}}",
             .expect = "not implemented: filter class state"
@@ -295,7 +299,6 @@ START_TEST(shard_table_test)
             .input  = "{task {user Alice {class Banana {!_rm WRONG_FORMAT}}}}",
             .expect = "internal server error"  // FIXME(k15tfu)
         }*/
-#endif
         };
 
     struct kndShard *shard;
@@ -325,7 +328,9 @@ START_TEST(shard_table_test)
 
     knd_shard_del(shard);
 END_TEST
+#endif
 
+#if 0
 /** CLASS INHERITANCE **/
 START_TEST(shard_inheritance_test)
     static const struct table_test cases[] = {
@@ -389,8 +394,10 @@ START_TEST(shard_inheritance_test)
     }
     knd_shard_del(shard);
 END_TEST
+#endif
 
 /** PROC **/
+#if 0
 START_TEST(shard_proc_test)
     static const struct table_test cases[] = {
         {   /* create a new proc */
@@ -478,6 +485,7 @@ START_TEST(shard_proc_test)
 
     knd_shard_del(shard);
 END_TEST
+#endif
 
 int main(void)
 {
@@ -485,9 +493,9 @@ int main(void)
 
     TCase *tc_shard_basic = tcase_create("basic shard");
     tcase_add_test(tc_shard_basic, shard_config_test);
-    tcase_add_test(tc_shard_basic, shard_proc_test);
-    tcase_add_test(tc_shard_basic, shard_inheritance_test);
-    tcase_add_test(tc_shard_basic, shard_table_test);
+    // tcase_add_test(tc_shard_basic, shard_proc_test);
+    // tcase_add_test(tc_shard_basic, shard_inheritance_test);
+    // tcase_add_test(tc_shard_basic, shard_table_test);
     suite_add_tcase(s, tc_shard_basic);
 
     SRunner* sr = srunner_create(s);
