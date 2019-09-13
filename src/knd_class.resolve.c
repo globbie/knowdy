@@ -131,7 +131,7 @@ static int link_ancestor(struct kndClass *self,
     struct kndMemPool *mempool = task->mempool;
     struct kndClass *base;
     struct kndClassRef *ref;
-    struct kndDict *class_name_idx = task->ctx->class_name_idx;
+    struct kndDict *class_name_idx = task->class_name_idx;
     int err;
 
     base = base_entry->class;
@@ -218,7 +218,7 @@ static int resolve_baseclasses(struct kndClass *self,
     struct kndClassVar *cvar;
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
-    struct kndOutput *log = task->ctx->log;
+    struct kndOutput *log = task->log;
     struct kndRepo *repo = self->entry->repo;
     const char *classname;
     size_t classname_size;
@@ -394,7 +394,7 @@ int knd_resolve_class_ref(struct kndClass *self,
 {
     struct kndClassEntry *entry;
     struct kndClass *c;
-    struct kndDict *class_name_idx = task->ctx->class_name_idx;
+    struct kndDict *class_name_idx = task->class_name_idx;
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {

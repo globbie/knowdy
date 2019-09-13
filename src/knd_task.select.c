@@ -192,10 +192,10 @@ static gsl_err_t parse_class_import(void *obj,
         err = knd_update_new(task->mempool, &task->ctx->update);
         if (err) return make_gsl_err_external(err);
 
-        err = knd_dict_new(&task->ctx->class_name_idx, KND_SMALL_DICT_SIZE);
+        err = knd_dict_new(&task->class_name_idx, KND_SMALL_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
 
-        err = knd_dict_new(&task->ctx->attr_name_idx, KND_SMALL_DICT_SIZE);
+        err = knd_dict_new(&task->attr_name_idx, KND_SMALL_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
 
         task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
@@ -233,10 +233,10 @@ static gsl_err_t parse_proc_import(void *obj,
         err = knd_update_new(task->mempool, &task->ctx->update);
         if (err) return make_gsl_err_external(err);
 
-        err = knd_dict_new(&task->ctx->proc_name_idx, KND_SMALL_DICT_SIZE);
+        err = knd_dict_new(&task->proc_name_idx, KND_SMALL_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
 
-        err = knd_dict_new(&task->ctx->proc_arg_name_idx, KND_SMALL_DICT_SIZE);
+        err = knd_dict_new(&task->proc_arg_name_idx, KND_SMALL_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
 
         task->ctx->update->orig_state_id = atomic_load_explicit(&repo->num_updates,

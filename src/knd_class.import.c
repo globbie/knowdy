@@ -154,9 +154,9 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
     struct kndRepo *repo = ctx->repo;
-    struct kndOutput *log = task->ctx->log;
+    struct kndOutput *log = task->log;
     struct kndClass *c;
-    struct kndDict *class_name_idx = task->ctx->class_name_idx;
+    struct kndDict *class_name_idx = task->class_name_idx;
     struct kndClassEntry *entry;
     struct kndState *state;
     int err;
@@ -239,7 +239,7 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     struct kndMemPool *mempool    = task->mempool;
     struct kndClassVar *self      = ctx->class_var;
     struct kndRepo *repo          = task->repo;
-    struct kndDict *class_name_idx = task->ctx->class_name_idx;
+    struct kndDict *class_name_idx = task->class_name_idx;
     struct kndClassEntry *entry;
     void *result;
     int err;
@@ -317,7 +317,8 @@ static gsl_err_t parse_attr(void *obj,
     }
 
     if (attr->type == KND_ATTR_NONE) {
-        knd_log("-- \"%.*s\" attr is not supported", name_size, name);
+        knd_log("-- \"%.*s\" attr is not supported (imported class:%.*s)",
+                name_size, name, self->name_size, self->name);
         //return *total_size = 0, make_gsl_err_external(err);
     }
 

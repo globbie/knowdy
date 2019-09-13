@@ -718,7 +718,7 @@ int knd_get_class(struct kndRepo *self,
 {
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
-    struct kndOutput *log = task->ctx->log;
+    struct kndOutput *log = task->log;
     struct kndDict *class_name_idx = self->class_name_idx;
     struct kndState *state;
     int err;

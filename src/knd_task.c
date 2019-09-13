@@ -55,32 +55,33 @@ void knd_task_reset(struct kndTask *self)
     self->update_out->reset(self->update_out);
 }
 
-static int task_err_export_JSON(struct kndTaskContext *self,
-                                struct kndOutput *out)
+static int task_err_export_JSON(struct kndTask *task)
 {
+    struct kndOutput *out = task->out;
+    struct kndTaskContext *ctx = task->ctx;
     int err;
 
     err = out->write(out, "{\"err\":\"", strlen("{\"err\":\""));
     if (err) return err;
 
-    if (self->log->buf_size) {
-        err = out->write(out, self->log->buf, self->log->buf_size);
+    if (task->log->buf_size) {
+        err = out->write(out, task->log->buf, task->log->buf_size);
         if (err) return err;
     } else {
-        self->http_code = HTTP_INTERNAL_SERVER_ERROR;
+        ctx->http_code = HTTP_INTERNAL_SERVER_ERROR;
         err = out->write(out, "internal server error", strlen("internal server error"));
         if (err) return err;
     }
     err = out->write(out, "\"", strlen("\""));
     if (err) return err;
 
-    if (self->http_code != HTTP_OK) {
+    if (ctx->http_code != HTTP_OK) {
         err = out->write(out, ",\"http_code\":", strlen(",\"http_code\":"));
         if (err) return err;
-        err = out->writef(out, "%d", self->http_code);
+        err = out->writef(out, "%d", ctx->http_code);
         if (err) return err;
     } else {
-        self->http_code = HTTP_NOT_FOUND;
+        ctx->http_code = HTTP_NOT_FOUND;
         // convert error code to HTTP error
         err = out->write(out, ",\"http_code\":", strlen(",\"http_code\":"));
         if (err) return err;
@@ -93,16 +94,17 @@ static int task_err_export_JSON(struct kndTaskContext *self,
     return knd_OK;
 }
 
-static int task_err_export_GSP(struct kndTaskContext *self,
-                               struct kndOutput *out)
+static int task_err_export_GSP(struct kndTask *task)
 {
+    struct kndOutput *out = task->out;
+    struct kndTaskContext *ctx = task->ctx;
     int err;
     err = out->write(out, "{err ", strlen("{err "));                              RET_ERR();
-    err = out->writef(out, "%d", self->http_code);                                RET_ERR();
+    err = out->writef(out, "%d", ctx->http_code);                                RET_ERR();
 
     err = out->write(out, "{gloss ", strlen("{gloss "));                          RET_ERR();
-    if (self->log->buf_size) {
-        err = out->write(out, self->log->buf, self->log->buf_size);               RET_ERR();
+    if (task->log->buf_size) {
+        err = out->write(out, task->log->buf, task->log->buf_size);               RET_ERR();
     } else {
         err = out->write(out, "internal error", strlen("internal error"));        RET_ERR();
     }
@@ -112,20 +114,18 @@ static int task_err_export_GSP(struct kndTaskContext *self,
     return knd_OK;
 }
 
-int knd_task_err_export(struct kndTaskContext *self)
+int knd_task_err_export(struct kndTask *task)
 {
-    struct kndOutput *out = self->out;
-    knd_format format = self->format;
     int err;
 
-    out->reset(out);
+    task->out->reset(task->out);
 
-    switch (format) {
+    switch (task->ctx->format) {
     case KND_FORMAT_JSON:
-        err = task_err_export_JSON(self, out);                                    RET_ERR();
+        err = task_err_export_JSON(task);                                    RET_ERR();
         break;
     default:
-        err = task_err_export_GSP(self, out);                                     RET_ERR();
+        err = task_err_export_GSP(task);                                     RET_ERR();
         break;
     }
     return knd_OK;
@@ -133,16 +133,20 @@ int knd_task_err_export(struct kndTaskContext *self)
 
 int knd_task_run(struct kndTask *self)
 {
-    size_t total_size = self->ctx->input_size;
+    size_t total_size = self->input_size;
     gsl_err_t parser_err;
+    int err;
+
+    self->output = NULL;
+    self->output_size = 0;
 
     if (DEBUG_TASK_LEVEL_2) {
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
-        if (self->ctx->input_size < chunk_size)
-            chunk_size = self->ctx->input_size;
+        if (self->input_size < chunk_size)
+            chunk_size = self->input_size;
         knd_log("== INPUT (size:%zu): %.*s ..",
-                self->ctx->input_size,
-                chunk_size, self->ctx->input);
+                self->input_size,
+                chunk_size, self->input);
     }
 
     struct gslTaskSpec specs[] = {
@@ -152,7 +156,7 @@ int knd_task_run(struct kndTask *self)
           .obj = self
         }
     };
-    parser_err = gsl_parse_task(self->ctx->input, &total_size,
+    parser_err = gsl_parse_task(self->input, &total_size,
                                 specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         /*if (!is_gsl_err_external(parser_err)) {
@@ -161,14 +165,21 @@ int knd_task_run(struct kndTask *self)
                 err = log_parser_error(self, parser_err, self->input_size, self->input);
                 if (err) return err;
             }
-        }
+            }*/
         if (!self->log->buf_size) {
             self->http_code = HTTP_INTERNAL_SERVER_ERROR;
             err = self->log->writef(self->log, "unclassified server error");
             if (err) return err;
-            }*/
+        }
+
+        self->output = self->log->buf;
+        self->output_size = self->log->buf_size;
+        
         return gsl_err_to_knd_err_codes(parser_err);
     }
+    self->output = self->out->buf;
+    self->output_size = self->out->buf_size;
+
     return knd_OK;
 }
 
@@ -219,7 +230,11 @@ int knd_task_new(struct kndShard *shard,
         if (err) return err;
     }
     self->mempool = mempool;
-    
+
+    // TODO: configurable outputs
+    err = knd_output_new(&self->out, NULL, KND_LARGE_BUF_SIZE);
+    if (err) return err;
+
     err = knd_output_new(&self->log, NULL, KND_TEMP_BUF_SIZE);
     if (err) return err;
 

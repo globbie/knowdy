@@ -100,8 +100,8 @@ struct kndTaskContext {
     const char *input;
     size_t      input_size;
 
-    struct kndOutput  *out;
-    struct kndOutput  *log;
+    // struct kndOutput  *out;
+    // struct kndOutput  *log;
     int error;
     knd_http_code_t http_code;
 
@@ -134,10 +134,11 @@ struct kndTaskContext {
     struct kndStateRef  *proc_state_refs;
     struct kndStateRef  *proc_inst_state_refs;
 
-    struct kndDict *class_name_idx;
+    /* struct kndDict *class_name_idx;
     struct kndDict *attr_name_idx;
     struct kndDict *proc_name_idx;
     struct kndDict *proc_arg_name_idx;
+    */
 
     struct kndUpdate *update;
     bool update_confirmed;
@@ -209,6 +210,11 @@ struct kndTask
     struct kndOutput  *file_out;
     struct kndOutput  *update_out;
     struct kndMemPool *mempool;
+
+    struct kndDict *class_name_idx;
+    struct kndDict *attr_name_idx;
+    struct kndDict *proc_name_idx;
+    struct kndDict *proc_arg_name_idx;
 };
 
 // knd_task.c
@@ -221,7 +227,7 @@ int knd_task_context_new(struct kndMemPool *mempool,
                          struct kndTaskContext **ctx);
 void knd_task_del(struct kndTask *self);
 void knd_task_reset(struct kndTask *self);
-int knd_task_err_export(struct kndTaskContext *self);
+int knd_task_err_export(struct kndTask *self);
 int knd_task_run(struct kndTask *self);
 
 // knd_task.select.c

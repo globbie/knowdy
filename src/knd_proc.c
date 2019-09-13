@@ -116,7 +116,7 @@ static gsl_err_t present_proc_selection(void *obj,
     struct kndTask *task = ctx->task;
     struct kndProc *proc = ctx->proc;
     knd_format format = task->ctx->format;
-    struct kndOutput *out = task->ctx->out;
+    struct kndOutput *out = task->out;
     int err;
 
     if (DEBUG_PROC_LEVEL_2)
@@ -397,7 +397,7 @@ int knd_get_proc(struct kndRepo *repo,
 {
     struct kndProcEntry *entry;
     struct kndProc *proc;
-    struct kndOutput *log = task->ctx->log;
+    struct kndOutput *log = task->log;
     int err;
 
     if (DEBUG_PROC_LEVEL_2)

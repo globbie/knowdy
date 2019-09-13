@@ -51,7 +51,7 @@ int knd_proc_export_GSL(struct kndProc *self,
 {
     struct kndProcArg *arg;
     struct kndProcCallArg *carg;
-    struct kndOutput  *out = task->ctx->out;
+    struct kndOutput  *out = task->out;
     int err;
 
     if (DEBUG_PROC_GSL_LEVEL_2)

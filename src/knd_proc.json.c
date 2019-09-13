@@ -75,7 +75,7 @@ int knd_proc_export_JSON(struct kndProc *self,
                          bool is_list_item,
                          size_t depth)
 {
-    struct kndOutput  *out = task->ctx->out;
+    struct kndOutput  *out = task->out;
     struct kndProcArg *arg;
     struct kndProcCallArg *carg;
     bool in_list = false;

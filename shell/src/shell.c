@@ -50,18 +50,12 @@ static void display_usage(void)
 
 static int knd_interact(struct kndShard *shard)                      
 {
-    char *result = malloc(KND_IDX_BUF_SIZE);
-    if (!result) return -1;
-    size_t result_size = KND_IDX_BUF_SIZE;
-    char* buf;
+    struct kndTask *task = shard->task;
+    char  *buf;
     size_t buf_size;
     int err;
 
-    err = knd_shard_serve(shard);
-    if (err) return err;
-
-    knd_log("\n++ Knowdy shard service is up and running, num workers:%zu\n",
-            shard->num_tasks);
+    knd_log("\n++ Knowdy shard service is up and running!\n");
 
     printf("   (finish session by pressing Ctrl+C)\n");
 
@@ -72,16 +66,17 @@ static int knd_interact(struct kndShard *shard)
         }
         if (!buf_size) continue;
 
-        result_size = KND_IDX_BUF_SIZE;
         printf("[%s :%zu]\n", buf, buf_size);
-        err = knd_shard_run_task(shard, buf, buf_size,
-                                 result, &result_size);
+        task->input = buf;
+        task->input_size = buf_size;
+
+        err = knd_task_run(task);
         if (err != knd_OK) {
             knd_log("-- task run failed");
             goto next_line;
         }
 
-        knd_log("== %.*s", result_size, result);
+        knd_log("== %.*s", task->output_size, task->output);
 
         /* readline allocates a new buffer every time */
     next_line:

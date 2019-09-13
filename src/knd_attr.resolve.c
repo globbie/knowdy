@@ -404,7 +404,7 @@ static int register_new_attr(struct kndClass *self,
     struct kndRepo *repo =       self->entry->repo;
     struct kndMemPool *mempool = task->mempool;
     struct kndSet *attr_idx    = repo->attr_idx;
-    struct kndDict *attr_name_idx = task->ctx->attr_name_idx;
+    struct kndDict *attr_name_idx = task->attr_name_idx;
     struct kndAttrRef *attr_ref, *prev_attr_ref;
     int err;
 

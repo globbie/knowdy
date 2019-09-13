@@ -240,9 +240,9 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndRepo *repo = ctx->repo;
-    struct kndOutput *log = task->ctx->log;
+    struct kndOutput *log = task->log;
     struct kndProc *self = ctx->proc, *proc;
-    struct kndDict *proc_name_idx = task->ctx->proc_name_idx;
+    struct kndDict *proc_name_idx = task->proc_name_idx;
     struct kndProcEntry *entry;
     int err;
 

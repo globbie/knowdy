@@ -90,7 +90,7 @@ static int index_ancestor(struct kndClass *self,
     struct kndMemPool *mempool = task->mempool;
     struct kndSet *desc_idx;
     struct kndClass *base;
-    struct kndDict *class_name_idx = task->ctx->class_name_idx;
+    struct kndDict *class_name_idx = task->class_name_idx;
     void *result;
     int err;
 

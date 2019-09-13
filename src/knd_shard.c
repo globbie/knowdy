@@ -288,7 +288,13 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
 
     err = knd_task_new(self, mempool, &task);
     if (err != knd_OK) goto error;
+    task->ctx = calloc(1, sizeof(struct kndTaskContext));
+    if (!task->ctx) return knd_NOMEM;
     self->task = task;
+    task->class_name_idx = repo->class_name_idx;
+    task->attr_name_idx = repo->attr_name_idx;
+    task->proc_name_idx = repo->proc_name_idx;
+    task->proc_arg_name_idx = repo->proc_arg_name_idx;
 
     err = knd_repo_open(repo, task);
     if (err != knd_OK) goto error;

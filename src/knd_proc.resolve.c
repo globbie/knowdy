@@ -167,7 +167,7 @@ int knd_proc_resolve(struct kndProc *self,
     struct kndProcArgRef *arg_ref;
     int err;
 
-    if (DEBUG_PROC_RESOLVE_LEVEL_TMP)
+    if (DEBUG_PROC_RESOLVE_LEVEL_2)
         knd_log(".. resolving proc: %.*s",
                 self->name_size, self->name);
 

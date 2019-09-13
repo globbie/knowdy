@@ -89,10 +89,7 @@ static gsl_err_t set_proc_call_name(void *obj, const char *name, size_t name_siz
     struct kndProcCall *self = ctx->proc_call;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     self->name = name;
-    self->name_size = name_size;
-
-    knd_log("++ proc call: \"%.*s\"", name_size, name);
-    
+    self->name_size = name_size;    
     return make_gsl_err(gsl_OK);
 }
 
@@ -100,7 +97,7 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
 {
     struct kndAttrVar *self = obj;
 
-    if (DEBUG_PROC_CALL_LEVEL_TMP)
+    if (DEBUG_PROC_CALL_LEVEL_2)
         knd_log(".. set proc call attr var value: %.*s %.*s",
                 self->name_size, self->name, val_size, val);
 
@@ -195,7 +192,7 @@ static gsl_err_t validate_do_arg(void *obj,
     gsl_err_t err;
     int e;
 
-    if (DEBUG_PROC_CALL_LEVEL_TMP)
+    if (DEBUG_PROC_CALL_LEVEL_2)
         knd_log(".. Proc Call Arg \"%.*s\" to parse: \"%.*s\"..",
                 name_size, name, 32, rec);
 

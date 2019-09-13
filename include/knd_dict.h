@@ -35,3 +35,4 @@ int knd_dict_remove(struct kndDict *self,
                     size_t key_size);
 
 int knd_dict_new(struct kndDict **self, size_t init_size);
+int knd_dict_del(struct kndDict *self);
