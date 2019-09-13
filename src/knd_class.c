@@ -228,8 +228,9 @@ int knd_get_class_attr_value(struct kndClass *src,
     attr_ref = knd_dict_get(attr_name_idx,
                             query->name, query->name_size);
     if (!attr_ref) {
-        knd_log("-- no such attr: %.*s", query->name_size, query->name);
-        return knd_FAIL;
+        if (DEBUG_CLASS_LEVEL_2)
+            knd_log("-- no such attr: %.*s", query->name_size, query->name);
+        return knd_NO_MATCH;
     }
 
     if (DEBUG_CLASS_LEVEL_2) {
@@ -237,7 +238,7 @@ int knd_get_class_attr_value(struct kndClass *src,
                 query->name_size, query->name);
     }
 
-    if (!attr_ref->attr_var) return knd_FAIL;
+    if (!attr_ref->attr_var) return knd_NO_MATCH;
 
     /* no more query specs */
     if (!query->num_children) return knd_OK;
@@ -628,7 +629,8 @@ int knd_class_get_attr(struct kndClass *self,
             ref = knd_dict_get(attr_name_idx, name, name_size);
         }
         if (!ref) {
-            knd_log("-- no such attr: \"%.*s\"", name_size, name);
+            if (DEBUG_CLASS_LEVEL_2)
+                knd_log("-- no such attr: \"%.*s\"", name_size, name);
             return knd_NO_MATCH;
         }
     }
@@ -679,17 +681,16 @@ int knd_class_get_attr_var(struct kndClass *self,
 {
     struct kndAttrRef *ref;
     struct kndAttr *attr;
-    void *obj;
     int err;
 
     err = knd_class_get_attr(self, name, name_size, &ref);
     if (err) return err;
+
     attr = ref->attr;
     err = self->attr_idx->get(self->attr_idx,
-                              attr->id, attr->id_size, &obj);
+                              attr->id, attr->id_size, (void**)&ref);
     if (err) return err;
 
-    ref = obj;
     if (!ref->attr_var) {
         if (DEBUG_CLASS_LEVEL_2)
             knd_log("-- no attr var %.*s in class %.*s",
@@ -722,7 +723,7 @@ int knd_get_class(struct kndRepo *self,
 {
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
-    struct kndOutput *log = task->ctx->log;
+    struct kndOutput *log = task->log;
     struct kndDict *class_name_idx = self->class_name_idx;
     struct kndState *state;
     int err;

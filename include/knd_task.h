@@ -100,8 +100,8 @@ struct kndTaskContext {
     const char *input;
     size_t      input_size;
 
-    struct kndOutput  *out;
-    struct kndOutput  *log;
+    // struct kndOutput  *out;
+    // struct kndOutput  *log;
     int error;
     knd_http_code_t http_code;
 
@@ -134,10 +134,11 @@ struct kndTaskContext {
     struct kndStateRef  *proc_state_refs;
     struct kndStateRef  *proc_inst_state_refs;
 
-    struct kndDict *class_name_idx;
+    /* struct kndDict *class_name_idx;
     struct kndDict *attr_name_idx;
     struct kndDict *proc_name_idx;
     struct kndDict *proc_arg_name_idx;
+    */
 
     struct kndUpdate *update;
     bool update_confirmed;
@@ -147,21 +148,18 @@ struct kndTaskContext {
 
 struct kndTask
 {
-    size_t id;
+    int id;
     knd_task_spec_type type;
     knd_state_phase phase;
 
-    pthread_t thread;
-
+    struct kndShard *shard;
     struct kndTaskContext *ctx;
-
-    // int error;
-
-    char timestamp[KND_NAME_SIZE];
-    size_t timestamp_size;
 
     const char *input;
     size_t input_size;
+
+    const char *output;
+    size_t output_size;
 
     const char *report;
     size_t report_size;
@@ -201,19 +199,9 @@ struct kndTask
     struct kndConcFolder *folders;
     size_t num_folders;
 
-    // FIXME(k15tfu): remove these vv
-    struct kndAttr      *attr;
-    struct kndAttrVar   *attr_var;
-    struct kndClassInst *class_inst;
-
-    struct kndElem *elem;
-
     struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;
 
-    struct kndStorage *storage;
-    struct kndQueue   *input_queue;
-    struct kndQueue   *output_queue;
     struct kndSet     *ctx_idx;
 
     struct kndOutput  *out;
@@ -221,17 +209,27 @@ struct kndTask
     struct kndOutput  *task_out;
     struct kndOutput  *file_out;
     struct kndOutput  *update_out;
-
     struct kndMemPool *mempool;
+
+    struct kndDict *class_name_idx;
+    struct kndDict *attr_name_idx;
+    struct kndDict *proc_name_idx;
+    struct kndDict *proc_arg_name_idx;
 };
 
 // knd_task.c
-int knd_task_new(struct kndTask **self);
+int knd_task_new(struct kndShard *shard,
+                 struct kndMemPool *mempool,
+                 int task_id,
+                 struct kndTask **task);
+int knd_task_mem(struct kndMemPool *mempool,
+                 struct kndTask **result);
 int knd_task_context_new(struct kndMemPool *mempool,
                          struct kndTaskContext **ctx);
 void knd_task_del(struct kndTask *self);
 void knd_task_reset(struct kndTask *self);
-int knd_task_err_export(struct kndTaskContext *self);
+int knd_task_err_export(struct kndTask *self);
+int knd_task_run(struct kndTask *self, const char *input, size_t input_size);
 
 // knd_task.select.c
-int knd_task_run(struct kndTask *self);
+gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size);

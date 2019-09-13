@@ -504,7 +504,7 @@ static int present_subclasses(struct kndClass *self,
                               struct kndTask *task,
                               size_t depth)
 {
-    struct kndOutput *out = task->ctx->out;
+    struct kndOutput *out = task->out;
     struct kndClassRef *ref;
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
@@ -634,6 +634,7 @@ static int export_baseclass_vars(struct kndClass *self,
         }
 
         if (cvar->attrs) {
+            knd_log("class var attrs..");
             if (task->ctx->format_offset) {
                 err = out->writec(out, '\n');                                     RET_ERR();
                 err = knd_print_offset(out,
@@ -707,7 +708,7 @@ int knd_class_export_GSL(struct kndClass *self,
 {
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->orig;
-    struct kndOutput *out = task->ctx->out;
+    struct kndOutput *out = task->out;
     struct kndAttrHub *attr_hub;
     struct kndState *state = self->states;
     size_t num_children;

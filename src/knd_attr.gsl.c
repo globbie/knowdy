@@ -48,25 +48,39 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
                                  size_t depth)
 {
     struct kndOutput *out = task->out;
+    struct kndAttr *attr = parent_item->attr;
+    struct kndClass *c = attr->parent_class;
     struct kndAttrVar *item;
-    struct kndAttr *attr;
-    struct kndClass *c;
     int err;
 
-    c = parent_item->attr->parent_class;
-
     if (DEBUG_ATTR_GSL_LEVEL_2) {
-        knd_log(".. GSL export inner item: %.*s",
-                parent_item->name_size, parent_item->name);
+        knd_log(".. GSL export inner item: %.*s (class: %.*s)",
+                parent_item->name_size, parent_item->name,
+                c->name_size, c->name);
     }
 
-    if (parent_item->name_size) {
-        c = parent_item->attr->ref_class;
+    //if (parent_item->name_size) {
+    //    c = parent_item->attr->ref_class;
+    //}
+
+    if (task->ctx->format_offset) {
+        err = out->writec(out, '\n');                                         RET_ERR();
+        err = knd_print_offset(out,
+                               (depth + 1) * task->ctx->format_offset);       RET_ERR();
     }
 
+    if (parent_item->list) {
+        err = attr_var_list_export_GSL(parent_item, task, depth + 1);
+        if (err) return err;
+        return knd_OK;
+    }
+    
+    err = out->writec(out, '{');
+    if (err) return err;
+    err = out->write(out, attr->name, attr->name_size);                       RET_ERR();
+    
     /* export a class ref */
     if (parent_item->class) {
-        attr = parent_item->attr;
         c = parent_item->attr->ref_class;
 
         /* TODO: check assignment */
@@ -79,15 +93,6 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
 
         c = parent_item->class;
 
-        if (task->ctx->format_offset) {
-            err = out->writec(out, '\n');                                             RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);           RET_ERR();
-        }
-
-        err = out->writec(out, '{');
-        if (err) return err;
-        err = out->write(out, attr->name, attr->name_size); RET_ERR();
-
         err = knd_class_export_GSL(c, task, false, depth + 1);
         if (err) return err;
     }
@@ -95,26 +100,16 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
     if (!parent_item->class) {
         /* terminal string value */
         if (parent_item->val_size) {
-            c = parent_item->attr->ref_class;
-            attr = parent_item->attr;
-
-            if (c->implied_attr) {
-                attr = c->implied_attr;
-                err = out->writec(out, '{'); RET_ERR();
-                err = out->write(out, attr->name, attr->name_size); RET_ERR();
-            }
-            err = out->writec(out, ' '); RET_ERR();
-
-            err = out->write(out, parent_item->val, parent_item->val_size); RET_ERR();
+            err = out->write(out, parent_item->val, parent_item->val_size);       RET_ERR();
         }
     }
 
     for (item = parent_item->children; item; item = item->next) {
+
         if (task->ctx->format_offset) {
             err = out->writec(out, '\n');                                         RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);       RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);  RET_ERR();
         }
-
         err = out->writec(out, '{');                                              RET_ERR();
         err = out->write(out, item->name, item->name_size);                       RET_ERR();
 
@@ -136,6 +131,8 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
         err = out->writec(out, '}');                                              RET_ERR();
     }
 
+    err = out->writec(out, '}');                                              RET_ERR();
+    
     return knd_OK;
 }
 
@@ -192,8 +189,8 @@ extern int knd_export_inherited_attr_GSL(void *obj,
             numval = attr_var->numval;
 
             if (!attr_var->is_cached) {
-                err = knd_compute_class_attr_num_value(self, attr_var);
-                if (err) return err;
+                //err = knd_compute_class_attr_num_value(self, attr_var);
+                //if (err) return err;
                 numval = attr_var->numval;
                 attr_var->numval = numval;
                 attr_var->is_cached = true;
@@ -305,8 +302,8 @@ static int attr_var_list_export_GSL(struct kndAttrVar *parent_item,
                 parent_item->name_size, parent_item->name);
     }
 
-    err = out->writec(out, '[');  RET_ERR();
-    err = out->write(out, parent_item->name, parent_item->name_size);  RET_ERR();
+    err = out->writec(out, '[');                                                  RET_ERR();
+    err = out->write(out, parent_item->name, parent_item->name_size);             RET_ERR();
 
     /* first elem: TODO */
     /*if (parent_item->class) {
@@ -321,7 +318,7 @@ static int attr_var_list_export_GSL(struct kndAttrVar *parent_item,
         case KND_ATTR_REF:
             err = ref_item_export_GSL(parent_item, task);                    RET_ERR();
             break;
-        case KND_ATTR_PROCREF:
+        case KND_ATTR_PROC_REF:
             if (parent_item->proc) {
                 err = proc_item_export_GSL(parent_item, task);   RET_ERR();
             }
@@ -361,7 +358,7 @@ static int attr_var_list_export_GSL(struct kndAttrVar *parent_item,
             err = ref_item_export_GSL(item, task, depth + 1);
             if (err) return err;
             break;
-        case KND_ATTR_PROCREF:
+        case KND_ATTR_PROC_REF:
             if (item->proc) {
                 err = proc_item_export_GSL(item, task);
                 if (err) return err;
@@ -388,21 +385,24 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
     struct kndOutput *out = task->out;
     struct kndAttrVar *item;
     struct kndAttr *attr;
-    struct kndClass *c;
     int err;
 
     for (item = items; item; item = item->next) {
         if (!item->attr) continue;
         attr = item->attr;
-
-        if (is_concise && !attr->concise_level) continue;
+        
+        if (is_concise && !attr->concise_level) {
+            knd_log(".. concise level: %d", attr->concise_level);
+            if (item->attr->type != KND_ATTR_INNER) 
+                continue;
+        }
 
         item->depth = items->depth;
         item->max_depth = items->max_depth;
 
         if (task->ctx->format_offset) {
-            err = out->writec(out, '\n');                                     RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);   RET_ERR();
+            err = out->writec(out, '\n');                                         RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);  RET_ERR();
         }
 
         if (attr->is_a_set) {
@@ -423,7 +423,14 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
             err = out->writec(out, ' ');                                          RET_ERR();
             err = knd_text_export(item->text, KND_FORMAT_GSL, task);
             break;
-        case KND_ATTR_PROCREF:
+	case KND_ATTR_ATTR_REF:
+	    if (item->ref_attr) {
+		err = knd_attr_export_GSL(item->ref_attr, task, depth + 1);       RET_ERR();
+	    } else {
+		err = out->write(out, "_null", strlen("_null"));                  RET_ERR();
+	    }
+        break;
+        case KND_ATTR_PROC_REF:
             if (item->proc) {
                 err = proc_item_export_GSL(item, task);
                 if (err) return err;
@@ -437,14 +444,14 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
             }
             break;
         case KND_ATTR_INNER:
-            if (!item->class) {
-                err = inner_item_export_GSL(item, task, depth + 1);
-                if (err) return err;
-            } else {
-                c = item->class;
-                err = knd_class_export_GSL(c, task, false, depth + 1);
-                if (err) return err;
-            }
+            //if (!item->class) {
+            err = inner_item_export_GSL(item, task, depth + 1);
+            if (err) return err;
+            //} else {
+            //    c = item->class;
+            //    err = knd_class_export_GSL(c, task, false, depth + 1);
+            //    if (err) return err;
+            // }
             break;
         default:
             err = out->writec(out, ' ');                                          RET_ERR();
@@ -467,30 +474,36 @@ extern int knd_attr_var_export_GSL(struct kndAttrVar *item,
 
     if (item->depth >= item->max_depth) return knd_OK;
 
-    err = out->writec(out, '{');
-    if (err) return err;
-    err = out->write(out, item->name, item->name_size);
-    if (err) return err;
-    err = out->writec(out, ' ');
-    if (err) return err;
-    
+    err = out->writec(out, '{');                                                  RET_ERR();
+    err = out->write(out, item->name, item->name_size);                           RET_ERR();
+    err = out->writec(out, ' ');                                                  RET_ERR();
+
+
     switch (item->attr->type) {
     case KND_ATTR_NUM:
-        err = out->write(out, item->val, item->val_size); RET_ERR();
+        err = out->write(out, item->val, item->val_size);                         RET_ERR();
         break;
-    case KND_ATTR_PROCREF:
-        if (item->proc) {
-            err = proc_item_export_GSL(item, task);  RET_ERR();
+    case KND_ATTR_ATTR_REF:
+        if (item->ref_attr) {
+	    err = knd_attr_export_GSL(item->ref_attr, task, depth + 1);           RET_ERR();
         } else {
-            err = out->write(out, item->val, item->val_size);  RET_ERR();
+            err = out->write(out, "_null", strlen("_null"));                      RET_ERR();
+        }
+        break;
+    case KND_ATTR_PROC_REF:
+        if (item->proc) {
+            err = proc_item_export_GSL(item, task);                               RET_ERR();
+        } else {
+            err = out->write(out, item->val, item->val_size);                     RET_ERR();
         }
         break;
     case KND_ATTR_INNER:
+        knd_log(".. export inner item..");
         if (!item->class) {
-            err = inner_item_export_GSL(item, task, depth + 1);  RET_ERR();
+            err = inner_item_export_GSL(item, task, depth + 1);                   RET_ERR();
         } else {
             c = item->class;
-            err = knd_class_export_GSL(c, task, false, depth + 1);  RET_ERR();
+            err = knd_class_export_GSL(c, task, false, depth + 1);                RET_ERR();
         }
         break;
     default:
@@ -499,7 +512,6 @@ extern int knd_attr_var_export_GSL(struct kndAttrVar *item,
     }
     return knd_OK;
 }
-
 
 extern int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth)
 {
@@ -511,13 +523,10 @@ extern int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_
     size_t type_name_size = strlen(knd_attr_names[self->type]);
     int err;
 
-    err = out->write(out, "{", 1);  RET_ERR();
-    err = out->write(out, type_name, type_name_size);
-    if (err) return err;
-    err = out->write(out, " ", 1);
-    if (err) return err;
-    err = out->write(out, self->name, self->name_size);
-    if (err) return err;
+    err = out->write(out, "{", 1);                                                RET_ERR();
+    err = out->write(out, type_name, type_name_size);                             RET_ERR();
+    err = out->write(out, " ", 1);                                                RET_ERR();
+    err = out->write(out, self->name, self->name_size);                           RET_ERR();
 
     if (self->is_a_set) {
         err = out->write(out, " {t set}", strlen(" {t set}"));
@@ -565,8 +574,8 @@ extern int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_
     /* choose gloss */
     if (self->tr) {
         if (task->ctx->format_offset) {
-            err = out->writec(out, '\n');                                             RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);           RET_ERR();
+            err = out->writec(out, '\n');                                         RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);  RET_ERR();
         }
         err = out->write(out,
                          "[_g", strlen("[_g"));

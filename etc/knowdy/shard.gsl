@@ -12,6 +12,14 @@
          {max_small_x2_pages    150000}
          {max_small_pages       23000}
          {max_tiny_pages        200000}
+
+         {-- operational memory: per ctx --}
+         {ctx
+            {max_base_pages        10000}
+            {max_small_x4_pages    20000}
+            {max_small_x2_pages    31000}
+            {max_small_pages       90000}
+            {max_tiny_pages        120000}}
     }
 }
 }

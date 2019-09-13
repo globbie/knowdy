@@ -79,26 +79,17 @@ struct kndUser
     size_t max_users;
     size_t num_users;
 
-    struct kndShard *shard;
-
-    //struct kndTask *task;
-    //struct glbOutput *out;
-    //struct glbOutput *log;
-
     /* user context storage */
     struct kndSet *user_idx;
     struct kndUserContext *curr_ctx;
 
     struct kndRepo *repo;
-    //struct kndMemPool *mempool;
-
-    /**********  interface methods  **********/
-    void (*del)(struct kndUser *self);
-    void (*str)(struct kndUser *self);
 };
 
-extern int kndUser_new(struct kndUser **self, struct kndMemPool *mempool);
-extern int kndUser_init(struct kndUser *self, struct kndTask *task);
+int knd_user_new(struct kndUser **self, struct kndMemPool *mempool);
+int knd_user_init(struct kndUser *self, struct kndTask *task);
+void knd_user_del(struct kndUser *self);
+
 extern gsl_err_t knd_parse_select_user(void *obj,
                                        const char *rec,
                                        size_t *total_size);

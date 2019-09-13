@@ -74,11 +74,15 @@ struct kndSet
                void *obj);
 };
 
-extern int kndSet_init(struct kndSet *self);
-extern int kndSet_new(struct kndSet **self);
 extern int knd_set_new(struct kndMemPool *mempool,
                        struct kndSet **result);
+extern int knd_set_mem(struct kndMemPool *mempool,
+		       struct kndSet **result);
+extern int knd_set_init(struct kndSet *self);
+
 extern int knd_set_elem_idx_new(struct kndMemPool *mempool,
+                                struct kndSetElemIdx **result);
+extern int knd_set_elem_idx_mem(struct kndMemPool *mempool,
                                 struct kndSetElemIdx **result);
 
 extern int knd_set_intersect(struct kndSet *self,

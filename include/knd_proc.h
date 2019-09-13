@@ -23,6 +23,7 @@
 #include "knd_config.h"
 #include "knd_state.h"
 #include "knd_output.h"
+#include "knd_proc_call.h"
 #include "knd_proc_arg.h"
 
 struct kndProcEstimate
@@ -37,8 +38,6 @@ struct kndProcEstimate
     size_t aggr_num_agents;
 };
 
-// struct kndProcCall;
-// struct kndProcCallArg;
 struct kndUpdate;
 
 struct kndProcInstEntry
@@ -65,8 +64,10 @@ struct kndProcInst
     struct kndProcInstEntry *entry;
     struct kndProc *base;
 
-    struct kndProcArgInst *arg_insts;
-    size_t num_arg_insts;
+    struct kndClassInst *agent;
+
+    struct kndProcArgInst *args;
+    size_t num_args;
     struct kndStateRef *arg_inst_state_refs;
 
     struct kndState * _Atomic states;
@@ -103,6 +104,8 @@ struct kndProcEntry
     struct kndProcRef *ancestors;
     size_t num_ancestors;
     struct kndSet *descendants;
+
+    struct kndAttrHub *attr_hubs;
 
     struct kndDict *inst_idx;
 };
@@ -167,14 +170,17 @@ struct kndProc
     struct kndState * _Atomic states;
     size_t num_states;
 
+    struct kndClass *agent;
+
     /* immediate args */
     struct kndProcArg *args;
     size_t num_args;
 
     struct kndSet *arg_idx;
 
-    struct kndProcCall *proc_call;
-
+    struct kndProcCall *calls;
+    size_t num_calls;
+    
     struct kndProcVar *bases;
     size_t num_bases;
 
@@ -212,10 +218,18 @@ int knd_proc_arg_var_new(struct kndMemPool *mempool,
 
 int knd_proc_inst_new(struct kndMemPool *mempool,
                       struct kndProcInst **result);
+int knd_proc_inst_mem(struct kndMemPool *mempool,
+                      struct kndProcInst **result);
+
 int knd_proc_inst_entry_new(struct kndMemPool *mempool,
                             struct kndProcInstEntry **result);
 
 void knd_proc_str(struct kndProc *self, size_t depth);
+
+void knd_proc_inst_str(struct kndProcInst *self, size_t depth);
+int knd_proc_inst_export_GSL(struct kndProcInst *self,
+                             struct kndOutput *out,
+                             size_t depth);
 
 gsl_err_t knd_proc_inst_import(struct kndProcInst *self,
                                struct kndRepo *repo,
@@ -311,6 +325,13 @@ static inline void knd_proc_declare_arg(struct kndProc *self, struct kndProcArg 
     arg->next = self->args;
     self->args = arg;
     self->num_args++;
+}
+
+static inline void knd_proc_declare_call(struct kndProc *self, struct kndProcCall *call)
+{
+    call->next = self->calls;
+    self->calls = call;
+    self->num_calls++;
 }
 
 int knd_proc_update_state(struct kndProc *self,

@@ -66,6 +66,19 @@ static int inherit_attr(void *obj,
     struct kndAttrRef *ref = NULL;
     int err;
 
+    err = attr_idx->get(attr_idx, attr->id, attr->id_size, (void**)&ref);
+    if (!err) {
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+            knd_log("..  \"%.*s\" (id:%.*s) attr already active in \"%.*s\"..",
+                    attr->name_size, attr->name,
+                    attr->id_size, attr->id,
+                    self->name_size, self->name);
+        }
+        /* no need to override an existing attr var */
+        if (ref->attr_var)
+            return knd_OK;
+    }
+
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) 
         knd_log("..  \"%.*s\" (id:%.*s attr_var:%p) attr inherited by %.*s..",
                 attr->name_size, attr->name,
@@ -141,7 +154,7 @@ static int link_ancestor(struct kndClass *self,
     struct kndMemPool *mempool = task->mempool;
     struct kndClass *base;
     struct kndClassRef *ref;
-    struct kndDict *class_name_idx = task->ctx->class_name_idx;
+    struct kndDict *class_name_idx = task->class_name_idx;
     int err;
 
     base = base_entry->class;
@@ -233,7 +246,7 @@ static int resolve_baseclasses(struct kndClass *self,
     struct kndClassVar *cvar;
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
-    struct kndOutput *log = task->ctx->log;
+    struct kndOutput *log = task->log;
     struct kndRepo *repo = self->entry->repo;
     const char *classname;
     size_t classname_size;
@@ -372,10 +385,9 @@ int knd_class_resolve(struct kndClass *self,
     entry->numid++;
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-        knd_log("++ class \"%.*s\" (id:%.*s) resolved!",
-                entry->name_size, entry->name,
-                entry->id_size, entry->id);
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+        entry->class->str(entry->class, 1);
+    }
 
     return knd_OK;
 }
@@ -410,7 +422,7 @@ int knd_resolve_class_ref(struct kndClass *self,
 {
     struct kndClassEntry *entry;
     struct kndClass *c;
-    struct kndDict *class_name_idx = task->ctx->class_name_idx;
+    struct kndDict *class_name_idx = task->class_name_idx;
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {

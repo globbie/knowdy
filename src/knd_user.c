@@ -25,16 +25,11 @@
 #define DEBUG_USER_LEVEL_3 0
 #define DEBUG_USER_LEVEL_TMP 1
 
-static void del(struct kndUser *self)
+void knd_user_del(struct kndUser *self)
 {
     if (self->repo)
         knd_repo_del(self->repo);
     free(self);
-}
-
-static void str(struct kndUser *self)
-{
-    knd_log("USER: %.*s", self->name_size, self->name);
 }
 
 static gsl_err_t parse_proc_import(void *obj,
@@ -83,10 +78,10 @@ static gsl_err_t parse_class_import(void *obj,
         err = knd_update_new(task->mempool, &task->ctx->update);
         if (err) return make_gsl_err_external(err);
         
-        err = knd_dict_new(&task->ctx->class_name_idx, KND_SMALL_DICT_SIZE);
+        err = knd_dict_new(&task->class_name_idx, KND_SMALL_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
         
-        err = knd_dict_new(&task->ctx->attr_name_idx, KND_SMALL_DICT_SIZE);
+        err = knd_dict_new(&task->attr_name_idx, KND_SMALL_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
         
         task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
@@ -265,8 +260,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     struct kndClassInst *inst;
     struct kndMemPool *mempool = task->mempool;
     struct kndOutput *log = task->log;
-
-    struct kndRepo *repo = self->shard->repo;
+    struct kndRepo *repo = task->shard->repo;
     void *result = NULL;
     int e, err;
 
@@ -320,7 +314,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 
         ctx->user_inst = inst;
 
-        err = kndRepo_new(&repo, task->mempool);
+        err = knd_repo_new(&repo, task->mempool);
         if (err) return make_gsl_err_external(err);
 
         memcpy(repo->name, name, name_size);
@@ -556,14 +550,14 @@ extern gsl_err_t knd_parse_select_user(void *obj,
     return parser_err;
 }
 
-int kndUser_init(struct kndUser *self,
-                 struct kndTask *task)
+int knd_user_init(struct kndUser *self,
+                  struct kndTask *task)
 {
     struct kndRepo *repo = self->repo;
     int err;
 
-    memcpy(self->path, self->shard->path, self->shard->path_size);
-    self->path_size = self->shard->path_size;
+    memcpy(self->path, task->shard->path, task->shard->path_size);
+    self->path_size = task->shard->path_size;
 
     char *p = self->path + self->path_size;
     memcpy(p, "/users", strlen("/users"));
@@ -578,17 +572,17 @@ int kndUser_init(struct kndUser *self,
     memcpy(repo->name, self->repo_name, self->repo_name_size);
     repo->name_size = self->repo_name_size;
 
-    task->ctx->class_name_idx = repo->class_name_idx;
-    task->ctx->attr_name_idx = repo->attr_name_idx;
-    task->ctx->proc_name_idx = repo->proc_name_idx;
-    task->ctx->proc_arg_name_idx = repo->proc_arg_name_idx;
+    task->class_name_idx = repo->class_name_idx;
+    task->attr_name_idx = repo->attr_name_idx;
+    task->proc_name_idx = repo->proc_name_idx;
+    task->proc_arg_name_idx = repo->proc_arg_name_idx;
 
     err = knd_repo_open(repo, task);                                              RET_ERR();
 
     return knd_OK;
 }
 
-extern int kndUser_new(struct kndUser **user, struct kndMemPool *mempool)
+int knd_user_new(struct kndUser **user, struct kndMemPool *mempool)
 {
     struct kndUser *self;
     struct kndRepo *repo;
@@ -600,14 +594,11 @@ extern int kndUser_new(struct kndUser **user, struct kndMemPool *mempool)
     memset(self->last_uid, '0', KND_ID_SIZE);
     memset(self->db_state, '0', KND_ID_SIZE);
 
-    err = kndRepo_new(&repo, mempool);                                            RET_ERR();
+    err = knd_repo_new(&repo, mempool);                                            RET_ERR();
     repo->user = self;
     self->repo = repo;
 
     err = knd_set_new(mempool, &self->user_idx);                                  RET_ERR();
-
-    self->del = del;
-    self->str = str;
 
     *user = self;
 

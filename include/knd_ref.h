@@ -15,7 +15,7 @@
  *
  *   ----------
  *   knd_ref.h
- *   Knowdy Ref Element
+ *   Knowdy Ref Attr_Instent
  */
 
 #pragma once
@@ -23,8 +23,7 @@
 #include "knd_config.h"
 #include "knd_state.h"
 
-struct kndElem;
-struct kndElemRef;
+struct kndAttrInst;
 struct kndOutput;
 struct kndTask;
 
@@ -46,7 +45,7 @@ struct kndRefState
 struct kndRef
 {
     knd_ref_t type;
-    struct kndElem *elem;
+    struct kndAttrInst *attr_inst;
 
     char name[KND_NAME_SIZE];
     size_t name_size;

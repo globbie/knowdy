@@ -34,7 +34,7 @@ int knd_proc_arg_export_GSL(struct kndProcArg *self,
     char buf[KND_NAME_SIZE];
     size_t buf_size;
     struct kndProcCallArg *arg;
-    struct kndOutput  *out = task->ctx->out;
+    struct kndOutput  *out = task->out;
     int err;
 
     err = out->writec(out, '{');                                                  RET_ERR();

@@ -55,7 +55,9 @@ typedef enum knd_attr_type {
     KND_ATTR_BOOL,
     KND_ATTR_PROB,
     KND_ATTR_REF,
-    KND_ATTR_PROCREF,
+    KND_ATTR_ATTR_REF,
+    KND_ATTR_PROC_REF,
+    KND_ATTR_PROC_ARG_REF,
     KND_ATTR_FILE
 } knd_attr_type;
 
@@ -75,7 +77,9 @@ static const char* const knd_attr_names[] = {
     "bool",
     "prob",
     "ref",
-    "procref",
+    "attr-ref",
+    "proc-ref",
+    "proc-arg-ref",
     "file"
 };
 
@@ -165,6 +169,9 @@ struct kndAttrVar
     struct kndClassEntry *class_entry;
     struct kndProc *proc;
 
+    struct kndAttr *ref_attr;
+
+    
     struct kndAttrVar *next;
 };
 
@@ -191,10 +198,11 @@ struct kndAttr
     struct kndClass *parent_class;
 
     bool is_a_set;
+    bool set_is_unique;
+    bool set_is_atomic;
 
     /* build reverse indices */
     bool is_indexed;
-
     /* attr name may not be specified */
     bool is_implied;
 
@@ -311,7 +319,9 @@ int knd_import_attr_var_list(struct kndClassVar *self,
                              const char *rec, size_t *total_size,
                              struct kndTask *task);
 
-extern gsl_err_t knd_import_attr(struct kndTask *task, const char *rec, size_t *total_size);
+extern gsl_err_t knd_import_attr(struct kndAttr *attr,
+                                 struct kndTask *task,
+                                 const char *rec, size_t *total_size);
 
 // knd_attr.select.c
 int knd_attr_var_match(struct kndAttrVar *self,

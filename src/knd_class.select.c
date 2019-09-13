@@ -45,7 +45,7 @@ run_get_class(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndOutput *log = task->ctx->log;
+    struct kndOutput *log = task->log;
     int err, e;
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -675,7 +675,7 @@ parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
         err = knd_update_new(task->mempool, &task->ctx->update);
         if (err) return make_gsl_err_external(err);
 
-        err = knd_dict_new(&task->ctx->class_name_idx, KND_SMALL_DICT_SIZE);
+        err = knd_dict_new(&task->class_name_idx, KND_SMALL_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
 
         task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
@@ -832,6 +832,10 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
     
     /* get one class by name */
     if (ctx->selected_class) {
+        knd_log(".. export class:%.*s input:%.*s",
+                ctx->selected_class->name_size,
+                ctx->selected_class->name,
+                task->input_size, task->input);
         err = knd_class_export(ctx->selected_class, task->ctx->format, task);
         if (err) {
             knd_log("-- class export failed");
@@ -854,7 +858,7 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
     }
 
     task->ctx->http_code = 404;
-    struct kndOutput *log = task->ctx->log;
+    struct kndOutput *log = task->log;
     log->reset(log);
     err = log->writef(log, "nothing to present");
     if (err) return make_gsl_err_external(err);
@@ -868,9 +872,9 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
-        knd_log(".. parsing class select rec: \"%.*s\" (repo:%.*s)",
-                32, rec, repo->name_size, repo->name);
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+        knd_log(".. parsing class select rec: \"%.*s\" (repo:%.*s) INPUT:%.*s",
+                32, rec, repo->name_size, repo->name, task->input_size, task->input);
 
     struct LocalContext ctx = {
         .task = task,

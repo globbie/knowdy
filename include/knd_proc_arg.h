@@ -38,21 +38,6 @@ struct kndProcArgInst;
 struct kndProcCall;
 struct kndProcCallArg;
 
-
-//typedef enum knd_proc_arg_type {
-//    KND_PROCARG_NONE,
-//    KND_PROCARG_SUBJ,
-//    KND_PROCARG_OBJ,
-//    KND_PROCARG_INS
-//} knd_proc_arg_type;
-
-//static const char* const knd_proc_arg_names[] = {
-//    "none",
-//    "subj",
-//    "obj",
-//    "ins",
-//};
-
 struct kndProcArgRef
 {
     struct kndProcArg    *arg;
@@ -96,6 +81,7 @@ struct kndProcArg
     const char *classname;
     size_t classname_size;
     struct kndClass *class;
+    struct kndAttrVar *attr_var;
 
     struct kndProc *parent;
 
@@ -105,8 +91,8 @@ struct kndProcArg
     size_t numval;
     const char *val;
     size_t val_size;
-
     struct kndTranslation *tr;
+
     struct kndProcArg *next;
 };
 
@@ -142,7 +128,11 @@ void knd_proc_arg_str(struct kndProcArg *self,
 /* allocators */
 int knd_proc_arg_ref_new(struct kndMemPool *mempool,
                          struct kndProcArgRef **self);
+
 int knd_proc_arg_inst_new(struct kndMemPool *mempool,
                           struct kndProcArgInst **self);
+int knd_proc_arg_inst_mem(struct kndMemPool *mempool,
+                          struct kndProcArgInst **self);
+
 int knd_proc_arg_new(struct kndMemPool *mempool,
                      struct kndProcArg **self);

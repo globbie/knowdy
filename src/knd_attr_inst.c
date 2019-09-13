@@ -10,7 +10,7 @@
 #include "knd_class_inst.h"
 #include "knd_class.h"
 #include "knd_repo.h"
-#include "knd_elem.h"
+#include "knd_attr_inst.h"
 #include "knd_attr.h"
 #include "knd_state.h"
 #include "knd_mempool.h"
@@ -22,24 +22,19 @@
 
 #include "knd_user.h"
 
-#define DEBUG_ELEM_LEVEL_1 0
-#define DEBUG_ELEM_LEVEL_2 0
-#define DEBUG_ELEM_LEVEL_3 0
-#define DEBUG_ELEM_LEVEL_4 0
-#define DEBUG_ELEM_LEVEL_TMP 1
-
-/*static void del(struct kndElem *self)
-{
-    // TODO
-}
-*/
+#define DEBUG_ATTR_INST_LEVEL_1 0
+#define DEBUG_ATTR_INST_LEVEL_2 0
+#define DEBUG_ATTR_INST_LEVEL_3 0
+#define DEBUG_ATTR_INST_LEVEL_4 0
+#define DEBUG_ATTR_INST_LEVEL_TMP 1
 
 struct LocalContext {
-    struct kndElem *elem;
+    struct kndAttrInst *attr_inst;
+    struct kndClass *class;
     struct kndTask *task;
 };
 
-void knd_elem_str(struct kndElem *self, size_t depth)
+void knd_attr_inst_str(struct kndAttrInst *self, size_t depth)
 {
     struct kndState *state = self->states;
 
@@ -92,14 +87,14 @@ void knd_elem_str(struct kndElem *self, size_t depth)
 
 }
 
-static int export_JSON(struct kndElem *self,
+static int export_JSON(struct kndAttrInst *self,
                        struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
 
-    if (DEBUG_ELEM_LEVEL_2)
-        knd_log(".. export %.*s elem val => \"%.*s\"",
+    if (DEBUG_ATTR_INST_LEVEL_2)
+        knd_log(".. export %.*s attr_inst val => \"%.*s\"",
                 self->attr->name_size, self->attr->name,
                 self->val_size, self->val);
 
@@ -206,20 +201,19 @@ static int export_JSON(struct kndElem *self,
     }
 
 final:
-
     return err;
 }
 
-static int export_GSP(struct kndElem *self,
+static int export_GSL(struct kndAttrInst *self,
                       struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
 
-    if (DEBUG_ELEM_LEVEL_2)
-        knd_log("\n  .. GSP export of \"%.*s\" elem.. ",
+    if (DEBUG_ATTR_INST_LEVEL_2)
+        knd_log("\n  .. GSL export of \"%.*s\" attr_inst.. ",
                 self->attr->name_size, self->attr->name);
-    
+
     /* single anonymous inner obj */
     if (self->inner) {
         err = out->write(out, "{", 1);
@@ -227,7 +221,7 @@ static int export_GSP(struct kndElem *self,
         err = out->write(out, self->attr->name, self->attr->name_size);
         if (err) return err;
         
-        err = self->inner->export(self->inner, KND_FORMAT_GSP, task);
+        err = self->inner->export(self->inner, KND_FORMAT_GSL, task);
 
         err = out->write(out, "}", 1);
         if (err) return err;
@@ -274,7 +268,7 @@ static int export_GSP(struct kndElem *self,
     return knd_OK;
 }
 
-extern int knd_elem_export(struct kndElem *self,
+extern int knd_attr_inst_export(struct kndAttrInst *self,
                            knd_format format,
                            struct kndTask *task)
 {
@@ -285,8 +279,12 @@ extern int knd_elem_export(struct kndElem *self,
         err = export_JSON(self, task);
         if (err) return err;
         break;
+    case KND_FORMAT_GSL:
+        err = export_GSL(self, task);
+        if (err) return err;
+        break;
     case KND_FORMAT_GSP:
-        err = export_GSP(self, task);
+        err = export_GSL(self, task);
         if (err) return err;
         break;
     default:
@@ -300,13 +298,13 @@ static gsl_err_t run_empty_val_warning(void *obj,
                                        const char *unused_var(val),
                                        size_t unused_var(val_size))
 {
-    struct kndElem *self = (struct kndElem*)obj;
+    struct kndAttrInst *self = (struct kndAttrInst*)obj;
     knd_log("-- empty val of \"%.*s\" not accepted :(",
             self->attr->name_size, self->attr->name);
     return make_gsl_err(gsl_FAIL);
 }
 
-static void register_state(struct kndElem *self,
+static void register_state(struct kndAttrInst *self,
                            struct kndState *state,
                            struct kndStateRef *state_ref)
 {
@@ -318,15 +316,15 @@ static void register_state(struct kndElem *self,
     self->states = state;
     self->num_states++;
     state->numid = self->num_states;
-    state_ref->next =  self->parent->elem_state_refs;
-    self->parent->elem_state_refs = state_ref;
+    state_ref->next =  self->parent->attr_inst_state_refs;
+    self->parent->attr_inst_state_refs = state_ref;
 }
 
 static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndElem *self = ctx->elem;
-    if (DEBUG_ELEM_LEVEL_2)
+    struct kndAttrInst *self = ctx->attr_inst;
+    if (DEBUG_ATTR_INST_LEVEL_2)
         knd_log(".. attr \"%.*s\" [%s] to set val \"%.*s\"",
                 self->attr->name_size, self->attr->name,
                 knd_attr_names[self->attr->type], val_size, val);
@@ -366,8 +364,8 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 
     register_state(self, state, state_ref);
 
-    if (DEBUG_ELEM_LEVEL_2)
-        knd_log("++ elem val set: \"%.*s\" [state:%zu]",
+    if (DEBUG_ATTR_INST_LEVEL_2)
+        knd_log("++ attr_inst val set: \"%.*s\" [state:%zu]",
                 self->val_size, self->val, state->numid);
 
     return make_gsl_err(gsl_OK);
@@ -376,18 +374,19 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 static gsl_err_t check_class_inst_name(void *obj,
                                        const char *name, size_t name_size)
 {
-    struct kndTask *task = obj;
-    struct kndElem *self = task->elem;
-    struct kndClass *c = self->curr_class;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndAttrInst *self = ctx->attr_inst;
+    struct kndClass *c = ctx->class;
     struct kndClassInst *inst;
     int err;
 
-    if (DEBUG_ELEM_LEVEL_2)
+    if (DEBUG_ATTR_INST_LEVEL_2)
         knd_log(".. class \"%.*s\" to check inst name: \"%.*s\"",
                 c->name_size, c->name,
                 name_size, name);
 
-    err = knd_get_class_inst(self->curr_class, name, name_size, task, &inst);
+    err = knd_get_class_inst(c, name, name_size, task, &inst);
     if (err) return make_gsl_err_external(err);
 
     self->ref_inst = inst;
@@ -399,20 +398,21 @@ static gsl_err_t parse_class_inst_ref(void *obj,
                                       const char *rec,
                                       size_t *total_size)
 {
-    struct kndElem *self = obj;
+    struct LocalContext *ctx = obj;
+    struct kndAttrInst *self = ctx->attr_inst;
 
-    if (DEBUG_ELEM_LEVEL_2)
+    if (DEBUG_ATTR_INST_LEVEL_2)
         knd_log(".. parse class inst: \"%.*s\"", 16, rec);
 
-    if (!self->curr_class) {
+    if (!ctx->class) {
         knd_log("-- no class specified");
         return make_gsl_err(gsl_FAIL);
     }
-    
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = check_class_inst_name,
-          .obj = self
+          .obj = ctx
         },
         { .is_default = true,
           .run = run_empty_val_warning,
@@ -425,13 +425,13 @@ static gsl_err_t parse_class_inst_ref(void *obj,
 static gsl_err_t check_class_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndElem *self = ctx->elem;
+    struct kndAttrInst *self = ctx->attr_inst;
     struct kndClass *ref_class = self->attr->ref_class;
     struct kndRepo *repo = self->root->base->entry->repo;
     struct kndClass *c;
     int err;
 
-    if (DEBUG_ELEM_LEVEL_TMP)
+    if (DEBUG_ATTR_INST_LEVEL_TMP)
         knd_log(".. attr \"%.*s\" [%s] to check class name: \"%.*s\"",
                 self->attr->name_size, self->attr->name,
                 knd_attr_names[self->attr->type], name_size, name);
@@ -450,7 +450,7 @@ static gsl_err_t check_class_name(void *obj, const char *name, size_t name_size)
     err = knd_is_base(ref_class, c);
     if (err) return make_gsl_err_external(err);
 
-    self->curr_class = c;
+    ctx->class = c;
     return make_gsl_err(gsl_OK);
 }
 
@@ -459,9 +459,9 @@ static gsl_err_t parse_class_ref(void *obj,
                                 size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndElem *self = ctx->elem;
+    struct kndAttrInst *self = ctx->attr_inst;
 
-    if (DEBUG_ELEM_LEVEL_2)
+    if (DEBUG_ATTR_INST_LEVEL_2)
         knd_log(".. parse class ref: \"%.*s\"", 16, rec);
 
     struct gslTaskSpec specs[] = {
@@ -472,7 +472,7 @@ static gsl_err_t parse_class_ref(void *obj,
         { .name = "inst",
           .name_size = strlen("inst"),
           .parse = parse_class_inst_ref,
-          .obj = self
+          .obj = ctx
         },
         { .is_default = true,
           .run = run_empty_val_warning,
@@ -482,17 +482,17 @@ static gsl_err_t parse_class_ref(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-gsl_err_t knd_import_elem(struct kndElem *self,
+gsl_err_t knd_import_attr_inst(struct kndAttrInst *self,
                           const char *rec, size_t *total_size,
                           struct kndTask *task)
 {
-    if (DEBUG_ELEM_LEVEL_2)
-        knd_log(".. ELEM \"%.*s\" parse REC: \"%.*s\"",
+    if (DEBUG_ATTR_INST_LEVEL_2)
+        knd_log(".. ATTR_INST \"%.*s\" parse REC: \"%.*s\"",
                 self->attr->name_size, self->attr->name,
                 16, rec);
 
     struct LocalContext ctx = {
-        .elem = self,
+        .attr_inst = self,
         .task = task
     };
     struct gslTaskSpec specs[] = {
@@ -514,12 +514,12 @@ gsl_err_t knd_import_elem(struct kndElem *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-extern gsl_err_t knd_elem_parse_select(struct kndElem *self,
+extern gsl_err_t knd_attr_inst_parse_select(struct kndAttrInst *self,
                                        const char *rec,
                                        size_t *total_size)
 {
-    if (DEBUG_ELEM_LEVEL_2)
-        knd_log(".. ELEM \"%.*s\" parse REC: \"%.*s\"",
+    if (DEBUG_ATTR_INST_LEVEL_2)
+        knd_log(".. ATTR_INST \"%.*s\" parse REC: \"%.*s\"",
                 self->attr->name_size, self->attr->name,
                 16, rec);
 
@@ -537,7 +537,7 @@ extern gsl_err_t knd_elem_parse_select(struct kndElem *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int kndElem_resolve(struct kndElem *self)
+int knd_attr_inst_resolve(struct kndAttrInst *self)
 {
     struct kndClassInst *obj;
     int err;
@@ -548,41 +548,32 @@ static int kndElem_resolve(struct kndElem *self)
             if (err) return err;
         }
     }
-
     return knd_OK;
 }
 
-extern void kndElem_init(struct kndElem *self)
-{
-    //self->parse = parse_GSL;
-    self->resolve = kndElem_resolve;
-}
-
-extern int
-kndElem_new(struct kndElem **obj)
-{
-    struct kndElem *self;
-
-    self = malloc(sizeof(struct kndElem));
-    if (!self) return knd_NOMEM;
-
-    memset(self, 0, sizeof(struct kndElem));
-
-    kndElem_init(self);
-
-    *obj = self;
-
-    return knd_OK;
-}
-
-extern int knd_class_inst_elem_new(struct kndMemPool *mempool,
-                                   struct kndElem **result)
+extern int knd_attr_inst_new(struct kndMemPool *mempool,
+                             struct kndAttrInst **result)
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                            sizeof(struct kndElem), &page);                       RET_ERR();
+    if (mempool->type == KND_ALLOC_INCR) {
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                     sizeof(struct kndAttrInst), &page);          RET_ERR();
+    } else {
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                sizeof(struct kndAttrInst), &page);               RET_ERR();
+    }
     *result = page;
-    kndElem_init(*result);
+    return knd_OK;
+}
+
+extern int knd_attr_inst_mem(struct kndMemPool *mempool,
+                             struct kndAttrInst **result)
+{
+    void *page;
+    int err;
+    err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                 sizeof(struct kndAttrInst), &page);                       RET_ERR();
+    *result = page;
     return knd_OK;
 }

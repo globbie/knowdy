@@ -36,7 +36,7 @@ void* knd_dict_get(struct kndDict *self,
                    size_t key_size)
 {
     size_t h = knd_dict_hash(key, key_size) % self->size;
-    struct kndDictItem* item = atomic_load_explicit(&self->hash_array[h],
+    struct kndDictItem *item = atomic_load_explicit(&self->hash_array[h],
                                                     memory_order_relaxed);
     while (item) {
         if (item->key_size != key_size) goto next_item;
@@ -113,6 +113,14 @@ int knd_dict_remove(struct kndDict *self,
 
     item->phase = KND_DICT_REMOVED;
     return knd_OK;
+}
+
+void knd_dict_del(struct kndDict *self)
+{
+    //struct kndDictItem *item;
+    // TODO
+    free(self->hash_array);
+    free(self);
 }
 
 int knd_dict_new(struct kndDict **dict, 

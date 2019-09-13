@@ -7,6 +7,14 @@
 #include <knd_task.h>
 #include <knd_storage.h>
 
+struct kndMemConfig {
+    size_t num_pages;
+    size_t num_small_x4_pages;
+    size_t num_small_x2_pages;
+    size_t num_small_pages;
+    size_t num_tiny_pages;
+};
+
 struct kndShard
 {
     char name[KND_NAME_SIZE];
@@ -25,25 +33,16 @@ struct kndShard
     char user_schema_path[KND_PATH_SIZE];
     size_t user_schema_path_size;
 
-    struct kndTask **tasks;
-    size_t num_tasks;
+    struct kndMemConfig mem_config;
+    struct kndMemConfig ctx_mem_config;
 
-    struct kndQueue *task_context_queue;
-
-    struct kndSet *ctx_idx;
-    size_t task_count;
-
-    struct kndStorage *storage;
-    //struct kndNetwork *network;
-
+    struct kndTask *task;
     struct kndUser *user;
 
     /* system repo */
     struct kndRepo *repo;
-    /* all other repos */
+    /* user space repos */
     struct kndSet *repos;
-
-    struct kndMemPool *mempool;
 };
 
 int knd_shard_new(struct kndShard **self, const char *config, size_t config_size);

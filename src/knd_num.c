@@ -6,8 +6,7 @@
 
 #include "knd_num.h"
 #include "knd_repo.h"
-#include "knd_elem.h"
-#include "knd_attr.h"
+#include "knd_attr_inst.h"
 #include "knd_task.h"
 #include "knd_user.h"
 
@@ -27,7 +26,7 @@ static void str(struct kndNum *self)
 {
     knd_log("%*s%.*s => %.*s",
                 self->depth * KND_OFFSET_SIZE, "",
-            self->elem->attr->name_size, self->elem->attr->name,
+            self->attr_inst->attr->name_size, self->attr_inst->attr->name,
             self->states->val_size, self->states->val);
 }
 
@@ -42,7 +41,7 @@ kndNum_index(struct kndNum *unused_var(self))
     
     //int err = knd_FAIL;
 
-    //obj = self->elem->obj;
+    //obj = self->attr_inst->obj;
 
     //curr_state = self->states;
 
@@ -61,7 +60,7 @@ kndNum_export(struct kndNum *unused_var(self), knd_format unused_var(format))
     //struct kndClassInst *obj;
     int err = knd_FAIL;
 
-    //obj = self->elem->obj;
+    //obj = self->attr_inst->obj;
 
     //curr_state = self->states;
 

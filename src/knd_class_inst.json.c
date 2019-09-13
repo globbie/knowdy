@@ -1,7 +1,7 @@
 #include "knd_class_inst.h"
 
 #include "knd_attr.h"
-#include "knd_elem.h"
+#include "knd_attr_inst.h"
 #include "knd_set.h"
 #include "knd_output.h"
 
@@ -17,24 +17,24 @@ static int export_inner_JSON(struct kndClassInst *self,
                              struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndElem *elem;
+    struct kndAttrInst *attr_inst;
     int err;
 
     err = out->writec(out, '{');                                                  RET_ERR();
 
-    elem = self->elems;
-    while (elem) {
-        err = knd_elem_export(elem, KND_FORMAT_JSON, task);
+    attr_inst = self->attr_insts;
+    while (attr_inst) {
+        err = knd_attr_inst_export(attr_inst, KND_FORMAT_JSON, task);
         if (err) {
-            knd_log("-- inst elem export failed: %.*s",
-                    elem->attr->name_size, elem->attr->name);
+            knd_log("-- inst attr_inst export failed: %.*s",
+                    attr_inst->attr->name_size, attr_inst->attr->name);
             return err;
         }
-        if (elem->next) {
+        if (attr_inst->next) {
             err = out->write(out, ",", 1);
             if (err) return err;
         }
-        elem = elem->next;
+        attr_inst = attr_inst->next;
     }
 
     err = out->writec(out, '}');   RET_ERR();
@@ -47,7 +47,7 @@ static int export_concise_JSON(struct kndClassInst *self,
 {
     struct kndOutput *out = task->out;
     struct kndClassInst *obj;
-    struct kndElem *elem;
+    struct kndAttrInst *attr_inst;
     bool is_concise = true;
     int err;
 
@@ -60,16 +60,16 @@ static int export_concise_JSON(struct kndClassInst *self,
     err = out->write(out, "\"", 1);
     if (err) return err;
 
-    for (elem = self->elems; elem; elem = elem->next) {
+    for (attr_inst = self->attr_insts; attr_inst; attr_inst = attr_inst->next) {
         if (DEBUG_INST_LEVEL_3)
-            knd_log(".. export elem: %.*s",
-                    elem->attr->name_size, elem->attr->name);
+            knd_log(".. export attr_inst: %.*s",
+                    attr_inst->attr->name_size, attr_inst->attr->name);
 
         /* filter out detailed presentation */
         if (is_concise) {
             /* inner obj? */
-            if (elem->inner) {
-                obj = elem->inner;
+            if (attr_inst->inner) {
+                obj = attr_inst->inner;
 
                 /*if (need_separ) {*/
                 err = out->write(out, ",", 1);
@@ -78,37 +78,37 @@ static int export_concise_JSON(struct kndClassInst *self,
                 err = out->write(out, "\"", 1);
                 if (err) return err;
                 err = out->write(out,
-                                 elem->attr->name,
-                                 elem->attr->name_size);
+                                 attr_inst->attr->name,
+                                 attr_inst->attr->name_size);
                 if (err) return err;
                 err = out->write(out, "\":", 2);
                 if (err) return err;
 
-                err = obj->export(obj, KND_FORMAT_JSON, task);
+                err = knd_class_inst_export(obj, KND_FORMAT_JSON, task);
                 if (err) return err;
 
                 //need_separ = true;
                 continue;
             }
 
-            if (elem->attr)
-                if (elem->attr->concise_level)
-                    goto export_elem;
+            if (attr_inst->attr)
+                if (attr_inst->attr->concise_level)
+                    goto export_attr_inst;
 
             if (DEBUG_INST_LEVEL_2)
-                knd_log("  .. skip JSON elem: %s..\n", elem->attr->name);
+                knd_log("  .. skip JSON attr_inst: %s..\n", attr_inst->attr->name);
             continue;
         }
 
-        export_elem:
+        export_attr_inst:
         /*if (need_separ) {*/
         err = out->write(out, ",", 1);
         if (err) return err;
 
         /* default export */
-        err = knd_elem_export(elem, KND_FORMAT_JSON, task);
+        err = knd_attr_inst_export(attr_inst, KND_FORMAT_JSON, task);
         if (err) {
-            knd_log("-- elem not exported: %s", elem->attr->name);
+            knd_log("-- attr_inst not exported: %s", attr_inst->attr->name);
             return err;
         }
         //need_separ = true;
@@ -116,12 +116,11 @@ static int export_concise_JSON(struct kndClassInst *self,
     return knd_OK;
 }
 
-
 int knd_class_inst_export_JSON(struct kndClassInst *self,
                                struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndElem *elem;
+    struct kndAttrInst *attr_inst;
     struct kndClassInst *obj;
     struct kndState *state = self->states;
     bool is_concise = false;
@@ -197,17 +196,17 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
 
     /* TODO: id */
 
-    for (elem = self->elems; elem; elem = elem->next) {
+    for (attr_inst = self->attr_insts; attr_inst; attr_inst = attr_inst->next) {
 
         if (DEBUG_INST_LEVEL_2)
-            knd_log(".. export elem: %.*s",
-                    elem->attr->name_size, elem->attr->name);
+            knd_log(".. export attr_inst: %.*s",
+                    attr_inst->attr->name_size, attr_inst->attr->name);
 
         /* filter out detailed presentation */
         if (is_concise) {
             /* inner obj? */
-            if (elem->inner) {
-                obj = elem->inner;
+            if (attr_inst->inner) {
+                obj = attr_inst->inner;
                 /*if (need_separ) {*/
                 err = out->write(out, ",", 1);
                 if (err) return err;
@@ -215,38 +214,38 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
                 err = out->write(out, "\"", 1);
                 if (err) return err;
                 err = out->write(out,
-                                 elem->attr->name,
-                                 elem->attr->name_size);
+                                 attr_inst->attr->name,
+                                 attr_inst->attr->name_size);
                 if (err) return err;
                 err = out->write(out, "\":", 2);
                 if (err) return err;
 
-                err = obj->export(obj, KND_FORMAT_JSON, task);
+                err = knd_class_inst_export(obj, KND_FORMAT_JSON, task);
                 if (err) return err;
 
                 //need_separ = true;
                 continue;
             }
 
-            if (elem->attr)
-                if (elem->attr->concise_level)
-                    goto export_elem;
+            if (attr_inst->attr)
+                if (attr_inst->attr->concise_level)
+                    goto export_attr_inst;
 
             if (DEBUG_INST_LEVEL_TMP)
-                knd_log("  .. skip JSON elem: %.*s..\n",
-                        elem->attr->name_size, elem->attr->name);
+                knd_log("  .. skip JSON attr_inst: %.*s..\n",
+                        attr_inst->attr->name_size, attr_inst->attr->name);
             continue;
         }
 
-        export_elem:
+        export_attr_inst:
         /*if (need_separ) {*/
         err = out->write(out, ",", 1);
         if (err) return err;
 
         /* default export */
-        err = knd_elem_export(elem, KND_FORMAT_JSON, task);
+        err = knd_attr_inst_export(attr_inst, KND_FORMAT_JSON, task);
         if (err) {
-            knd_log("-- elem not exported: %s", elem->attr->name);
+            knd_log("-- attr_inst not exported: %s", attr_inst->attr->name);
             return err;
         }
         //need_separ = true;
@@ -267,16 +266,16 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
 }
 
 static int export_class_inst_JSON(void *obj,
-                            const char *unused_var(elem_id),
-                            size_t unused_var(elem_id_size),
-                            size_t count,
-                            void *elem)
+                                  const char *unused_var(attr_inst_id),
+                                  size_t unused_var(attr_inst_id_size),
+                                  size_t count,
+                                  void *attr_inst)
 {
     struct kndTask *task = obj;
     if (count < task->start_from) return knd_OK;
     if (task->batch_size >= task->batch_max) return knd_RANGE;
     struct kndOutput *out = task->out;
-    struct kndClassInstEntry *entry = elem;
+    struct kndClassInstEntry *entry = attr_inst;
     struct kndClassInst *inst = entry->inst;
     struct kndState *state;
     int err;

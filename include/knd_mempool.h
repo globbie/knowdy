@@ -36,6 +36,10 @@ typedef enum knd_mempage_t { KND_MEMPAGE_LARGE,
                              KND_MEMPAGE_TINY
 } knd_mempage_t;
 
+typedef enum knd_mempool_t { KND_ALLOC_LIST,
+                             KND_ALLOC_INCR
+} knd_mempool_t;
+
 struct kndMemPageHeader
 {
     struct kndMemPageHeader *next;
@@ -44,6 +48,8 @@ struct kndMemPageHeader
 struct kndMemPool
 {
     size_t capacity;
+
+    knd_mempool_t type;
 
     /* 1024 bytes */
     char *pages;
@@ -96,6 +102,10 @@ extern int kndMemPool_new(struct kndMemPool **self);
 extern int knd_mempool_alloc(struct kndMemPool *self,
                              knd_mempage_t page_type,
                              size_t obj_size, void **result);
+extern int knd_mempool_incr_alloc(struct kndMemPool *self,
+				  knd_mempage_t page_type,
+				  size_t obj_size, void **result);
 extern void knd_mempool_free(struct kndMemPool *self,
                              knd_mempage_t page_type,
                              void *page_data);
+extern void knd_mempool_reset(struct kndMemPool *self);

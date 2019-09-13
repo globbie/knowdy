@@ -7,8 +7,6 @@
 #include "knd_repo.h"
 #include "knd_mempool.h"
 #include "knd_set.h"
-#include "knd_attr.h"
-#include "knd_elem.h"
 #include "knd_task.h"
 
 #include <gsl-parser.h>
@@ -90,7 +88,11 @@ static int kndSet_traverse(struct kndSet *self,
         }
         if (!gotcha) continue;
 
-        err = knd_set_elem_idx_new(self->mempool, &sub_idx);
+        if (self->mempool->type == KND_ALLOC_LIST) {
+	    err = knd_set_elem_idx_new(self->mempool, &sub_idx);
+	} else {
+	    err = knd_set_elem_idx_mem(self->mempool, &sub_idx);
+	}
         if (err) {
             knd_log("-- set elem idx mempool limit reached :(");
             return err;
@@ -123,7 +125,11 @@ extern int knd_set_intersect(struct kndSet *self,
     }
 
     if (!self->idx) {
-        err = knd_set_elem_idx_new(self->mempool, &self->idx);
+        if (self->mempool->type == KND_ALLOC_LIST) {
+	    err = knd_set_elem_idx_new(self->mempool, &self->idx);
+	} else {
+	    err = knd_set_elem_idx_mem(self->mempool, &self->idx);
+	}
         if (err) {
             knd_log("-- set elem idx mempool limit reached :(");
             return err;
@@ -175,7 +181,11 @@ static int save_elem(struct kndSet *self,
     if (id_size > 1) {
         idx = parent_idx->idxs[idx_pos];
         if (!idx) {
-            err = knd_set_elem_idx_new(self->mempool, &idx);
+	    if (self->mempool->type == KND_ALLOC_LIST) {
+		err = knd_set_elem_idx_new(self->mempool, &idx);
+	    } else {
+		err = knd_set_elem_idx_mem(self->mempool, &idx);
+	    }
             if (err) {
                 knd_log("-- set elem idx mempool limit reached");
                 return err;
@@ -242,7 +252,11 @@ static int kndSet_add_elem(struct kndSet *self,
     assert(key != NULL);
 
     if (!self->idx) {
-        err = knd_set_elem_idx_new(self->mempool, &self->idx);
+        if (self->mempool->type == KND_ALLOC_LIST) {
+	    err = knd_set_elem_idx_new(self->mempool, &self->idx);
+	} else {
+	    err = knd_set_elem_idx_mem(self->mempool, &self->idx);
+	}
         if (err) {
             knd_log("-- set elem idx mempool limit reached :(");
             return err;
@@ -321,7 +335,7 @@ static int kndSet_map(struct kndSet *self,
     return knd_OK;
 }
 
-extern int kndSet_init(struct kndSet *self)
+extern int knd_set_init(struct kndSet *self)
 {
     self->add = kndSet_add_elem;
     self->get = kndSet_get_elem;
@@ -340,7 +354,22 @@ extern int knd_set_new(struct kndMemPool *mempool,
                             sizeof(struct kndSet), &page);                    RET_ERR();
     *result = page;
     (*result)->mempool = mempool;
-    kndSet_init(*result);
+    knd_set_init(*result);
+
+    return knd_OK;
+}
+
+extern int knd_set_mem(struct kndMemPool *mempool,
+                       struct kndSet **result)
+{
+    void *page;
+    int err;
+
+    err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
+				 sizeof(struct kndSet), &page);                    RET_ERR();
+    *result = page;
+    (*result)->mempool = mempool;
+    knd_set_init(*result);
 
     return knd_OK;
 }
@@ -351,12 +380,20 @@ extern int knd_set_elem_idx_new(struct kndMemPool *mempool,
     void *page;
     int err;
 
-    //knd_log("..set elem idx new [size:%zu] num pages:%zu",
-    //       sizeof(struct kndSetElemIdx),
-    //        mempool->pages_used);
-
     err = knd_mempool_alloc(mempool, KND_MEMPAGE_BASE,
                             sizeof(struct kndSetElemIdx), &page);                      RET_ERR();
+    *result = page;
+    return knd_OK;
+}
+
+extern int knd_set_elem_idx_mem(struct kndMemPool *mempool,
+                                struct kndSetElemIdx **result)
+{
+    void *page;
+    int err;
+
+    err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_BASE,
+				 sizeof(struct kndSetElemIdx), &page);                      RET_ERR();
     *result = page;
     return knd_OK;
 }

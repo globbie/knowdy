@@ -54,13 +54,13 @@ extern int knd_compute_num_value(struct kndAttr *attr,
     float div_result = 0;
     int err;
 
-    proc_call = attr->proc->proc_call;
+    proc_call = attr->proc->calls;
 
     if (DEBUG_CLASS_COMP_LEVEL_2)
         knd_log("PROC CALL: \"%.*s\"",
                 proc_call->name_size, proc_call->name);
 
-    for (arg = proc_call->args; arg; arg = arg->next) {
+    /*    for (arg = proc_call->args; arg; arg = arg->next) {
         class_var = arg->class_var;
 
         if (DEBUG_CLASS_COMP_LEVEL_2)
@@ -79,7 +79,7 @@ extern int knd_compute_num_value(struct kndAttr *attr,
             //knd_log("QUANT:%lu", arg->numval);
         }
     }
-
+    */
     /* run main proc */
     switch (proc_call->type) {
         /* multiplication */
@@ -100,14 +100,13 @@ extern int knd_compute_num_value(struct kndAttr *attr,
     return knd_OK;
 }
 
-static int compute_list_sum(struct kndAttrVar *parent_var,
+/*static int compute_list_sum(struct kndAttrVar *parent_var,
                             struct kndAttrVar *query,
                             struct kndAttr *unused_var(attr),
                             struct kndProcCallArg *arg,
                             long *result)
 {
     struct kndAttrVar *curr_var;
-    //struct kndAttrVar *attr_var;
     long total_numval = 0;
     int err;
 
@@ -148,7 +147,9 @@ static int compute_list_sum(struct kndAttrVar *parent_var,
     *result = total_numval;
     return knd_OK;
 }
+*/
 
+/*
 static int compute_attr_var_value(struct kndClass *self,
                                   struct kndAttrVar *query,
                                   struct kndAttr *attr,
@@ -177,13 +178,11 @@ static int compute_attr_var_value(struct kndClass *self,
         field_var = select_var->children;
         if (!field_var) return knd_FAIL;
 
-        /* resolve attr name */
         err = knd_class_get_attr(self,
                                  select_var->name,
                                  select_var->name_size, &ref);
         if (err) return err;
 
-        /* get attr var */
         err = self->attr_idx->get(self->attr_idx,
                                   ref->attr->id, ref->attr->id_size, &obj);
         if (err) return err;
@@ -194,13 +193,10 @@ static int compute_attr_var_value(struct kndClass *self,
             err = compute_list_sum(ref->attr_var, field_var, attr, arg, &arg->numval);
             if (err) return err;
         }
-
-        // TODO
-        //if (!arg->numval) arg->numval = 500;
-        //knd_log("== SUM: %zu\n", arg->numval);
     }
     return knd_OK;
 }
+*/
 
 extern int knd_compute_class_attr_num_value(struct kndClass *self,
                                             struct kndAttrVar *attr_var)
@@ -218,7 +214,7 @@ extern int knd_compute_class_attr_num_value(struct kndClass *self,
     float result = 0;
     int err;
 
-    proc_call = attr->proc->proc_call;
+    proc_call = attr->proc->calls;
 
     if (DEBUG_CLASS_COMP_LEVEL_2) {
         knd_log("\nPROC CALL: \"%.*s\" type:%d",
@@ -228,12 +224,12 @@ extern int knd_compute_class_attr_num_value(struct kndClass *self,
                 attr_var->name_size, attr_var->name);
     }
 
-    for (arg = proc_call->args; arg; arg = arg->next) {
-        class_var = arg->class_var;
-
+    /* 
+  for (arg = proc_call->args; arg; arg = arg->next) {
         if (DEBUG_CLASS_COMP_LEVEL_2)
             knd_log("ARG: %.*s", arg->name_size, arg->name);
 
+        class_var = arg->class_var;
         err = compute_attr_var_value(self,
                                      class_var->attrs, attr, arg);
         if (err) return err;
@@ -264,7 +260,8 @@ extern int knd_compute_class_attr_num_value(struct kndClass *self,
             //        arg->name_size, arg->name);
         }
     }
-
+    */
+    
     /* run main proc */
     switch (proc_call->type) {
         /* multiplication */

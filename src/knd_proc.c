@@ -36,39 +36,6 @@ struct LocalContext {
     struct kndProc *proc;
 };
 
-static void proc_call_arg_str(struct kndProcCallArg *self,
-                              size_t depth)
-{
-    const char *arg_type = "";
-    size_t arg_type_size = 0;
-    struct kndClassVar *cvar;
-
-    if (self->arg) {
-        arg_type = self->arg->classname;
-        arg_type_size = self->arg->classname_size;
-    }
-
-    knd_log("%*s  {%.*s %.*s", depth * KND_OFFSET_SIZE, "",
-            self->name_size, self->name,
-            self->val_size, self->val);
-
-    if (self->val_size) {
-        knd_log("%*s  {_c %.*s}", depth * KND_OFFSET_SIZE, "",
-                arg_type_size, arg_type);
-    }
-
-    if (self->class_var) {
-        cvar = self->class_var;
-        knd_log("%*s    {", depth * KND_OFFSET_SIZE, "");
-        if (cvar->attrs) {
-            str_attr_vars(cvar->attrs, depth + 1);
-        }
-        knd_log("%*s    }", depth * KND_OFFSET_SIZE, "");
-    }
-
-    knd_log("%*s  }", depth * KND_OFFSET_SIZE, "");
-}
-
 static void proc_base_str(struct kndProcVar *self,
                           size_t depth)
 {
@@ -80,7 +47,7 @@ void knd_proc_str(struct kndProc *self, size_t depth)
 {
     struct kndTranslation *tr;
     struct kndProcArg *arg;
-    struct kndProcCallArg *call_arg;
+    struct kndProcCall *call;
     struct kndProcVar *base;
 
     knd_log("%*s{proc %.*s  {_id %.*s}",
@@ -110,14 +77,14 @@ void knd_proc_str(struct kndProc *self, size_t depth)
         knd_log("%*s    ]", depth * KND_OFFSET_SIZE, "");
     }
 
-    if (self->proc_call) {
-        knd_log("%*s    {do %.*s", depth * KND_OFFSET_SIZE, "",
-                self->proc_call->name_size, self->proc_call->name);
-        for (call_arg = self->proc_call->args; call_arg; call_arg = call_arg->next) {
-            proc_call_arg_str(call_arg, depth + 1);
+    if (self->calls) {
+        knd_log("%*s    [call", depth * KND_OFFSET_SIZE, "");
+        for (call = self->calls; call; call = call->next) {
+            knd_proc_call_str(call, depth + 2);
         }
-        knd_log("%*s    }", depth * KND_OFFSET_SIZE, "");
+        knd_log("%*s    ]", depth * KND_OFFSET_SIZE, "");
     }
+
     knd_log("%*s}",
             depth * KND_OFFSET_SIZE, "");
 }
@@ -149,7 +116,7 @@ static gsl_err_t present_proc_selection(void *obj,
     struct kndTask *task = ctx->task;
     struct kndProc *proc = ctx->proc;
     knd_format format = task->ctx->format;
-    struct kndOutput *out = task->ctx->out;
+    struct kndOutput *out = task->out;
     int err;
 
     if (DEBUG_PROC_LEVEL_2)
@@ -430,7 +397,7 @@ int knd_get_proc(struct kndRepo *repo,
 {
     struct kndProcEntry *entry;
     struct kndProc *proc;
-    struct kndOutput *log = task->ctx->log;
+    struct kndOutput *log = task->log;
     int err;
 
     if (DEBUG_PROC_LEVEL_2)
@@ -551,27 +518,6 @@ int knd_proc_update_state(struct kndProc *self,
     return knd_OK;
 }
 
-int knd_proc_call_arg_new(struct kndMemPool *mempool,
-                          struct kndProcCallArg **result)
-{
-    void *page;
-    int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                            sizeof(struct kndProcCallArg), &page);  RET_ERR();
-    *result = page;
-    return knd_OK;
-}
-
-int knd_proc_call_new(struct kndMemPool *mempool,
-                      struct kndProcCall **result)
-{
-    void *page;
-    int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndProcCall), &page);  RET_ERR();
-    *result = page;
-    return knd_OK;
-}
 
 int knd_proc_var_new(struct kndMemPool *mempool,
                             struct kndProcVar **result)
@@ -595,27 +541,6 @@ int knd_proc_arg_var_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-int knd_proc_inst_entry_new(struct kndMemPool *mempool,
-                            struct kndProcInstEntry **result)
-{
-    void *page;
-    int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndProcInstEntry), &page);                  RET_ERR();
-    *result = page;
-    return knd_OK;
-}
-
-int knd_proc_inst_new(struct kndMemPool *mempool,
-                      struct kndProcInst **result)
-{
-    void *page;
-    int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                            sizeof(struct kndProcInst), &page);                       RET_ERR();
-    *result = page;
-    return knd_OK;
-}
 
 int knd_proc_entry_new(struct kndMemPool *mempool,
                        struct kndProcEntry **result)

@@ -51,7 +51,7 @@ int knd_proc_export_GSL(struct kndProc *self,
 {
     struct kndProcArg *arg;
     struct kndProcCallArg *carg;
-    struct kndOutput  *out = task->ctx->out;
+    struct kndOutput  *out = task->out;
     int err;
 
     if (DEBUG_PROC_GSL_LEVEL_2)
@@ -99,11 +99,11 @@ int knd_proc_export_GSL(struct kndProc *self,
         err = out->write(out, "]", 1);                                            RET_ERR();
     }
 
-    if (self->proc_call) {
+    if (self->calls) {
         err = out->write(out, "{do ", strlen("{do "));                            RET_ERR();
-        err = out->write(out, self->proc_call->name, self->proc_call->name_size); RET_ERR();
+        err = out->write(out, self->calls->name, self->calls->name_size); RET_ERR();
 
-        for (carg = self->proc_call->args; carg; carg = carg->next) {
+        for (carg = self->calls->args; carg; carg = carg->next) {
             err = proc_call_arg_export_GSL(self, carg, out);                      RET_ERR();
         }
         err = out->write(out, "}", 1);                                            RET_ERR();

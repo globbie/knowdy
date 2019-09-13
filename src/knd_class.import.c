@@ -154,9 +154,9 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
     struct kndRepo *repo = ctx->repo;
-    struct kndOutput *log = task->ctx->log;
+    struct kndOutput *log = task->log;
     struct kndClass *c;
-    struct kndDict *class_name_idx = task->ctx->class_name_idx;
+    struct kndDict *class_name_idx = task->class_name_idx;
     struct kndClassEntry *entry;
     struct kndState *state;
     int err;
@@ -239,7 +239,7 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     struct kndMemPool *mempool    = task->mempool;
     struct kndClassVar *self      = ctx->class_var;
     struct kndRepo *repo          = task->repo;
-    struct kndDict *class_name_idx = task->ctx->class_name_idx;
+    struct kndDict *class_name_idx = task->class_name_idx;
     struct kndClassEntry *entry;
     void *result;
     int err;
@@ -317,12 +317,12 @@ static gsl_err_t parse_attr(void *obj,
     }
 
     if (attr->type == KND_ATTR_NONE) {
-        knd_log("-- \"%.*s\" attr is not supported", name_size, name);
+        knd_log("-- \"%.*s\" attr is not supported (imported class:%.*s)",
+                name_size, name, self->name_size, self->name);
         //return *total_size = 0, make_gsl_err_external(err);
     }
 
-    task->attr = attr;
-    parser_err = knd_import_attr(task, rec, total_size);
+    parser_err = knd_import_attr(attr, task, rec, total_size);
     if (parser_err.code) {
         if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
             knd_log("-- failed to parse the attr field: %d", parser_err.code);
@@ -517,7 +517,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
         { .is_implied = true,
           .run = set_class_name,
           .obj = &ctx
-        },
+        }/*,
         { .type = GSL_SET_STATE,
           .name = "base",
           .name_size = strlen("base"),
@@ -534,13 +534,19 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
           .name_size = strlen("is"),
           .parse = parse_baseclass,
           .obj = &ctx
-        },
+          }*/,
         { .name = "is",
           .name_size = strlen("is"),
           .parse = parse_baseclass,
           .obj = &ctx
         },
         { .type = GSL_SET_ARRAY_STATE,
+          .name = "_gloss",
+          .name_size = strlen("_gloss"),
+          .parse = knd_parse_gloss_array,
+          .obj = task
+        },
+        { .type = GSL_GET_ARRAY_STATE,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
           .parse = knd_parse_gloss_array,
@@ -574,7 +580,8 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("-- class parse failed: %d", parser_err.code);
+        knd_log("-- \"%.*s\" class parse failed: %d",
+                c->name_size, c->name, parser_err.code);
         goto final;
     }
 
