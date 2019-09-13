@@ -67,10 +67,7 @@ static int knd_interact(struct kndShard *shard)
         if (!buf_size) continue;
 
         printf("[%s :%zu]\n", buf, buf_size);
-        task->input = buf;
-        task->input_size = buf_size;
-
-        err = knd_task_run(task);
+        err = knd_task_run(task, buf, buf_size);
         if (err != knd_OK) {
             knd_log("-- task run failed");
             goto next_line;

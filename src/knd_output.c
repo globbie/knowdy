@@ -235,7 +235,7 @@ int knd_output_new(struct kndOutput **output,
     if (!self) return knd_NOMEM;
 
     if (!buf) {
-        self->buf = malloc(capacity * sizeof(char));
+        self->buf = malloc((capacity + 1) * sizeof(char));
         if (self->buf == NULL) return knd_NOMEM;
     } else {
         self->buf = buf;

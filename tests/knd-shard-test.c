@@ -299,37 +299,29 @@ START_TEST(shard_table_test)
         };
 
     struct kndShard *shard;
+    struct kndTask *task;
     int err;
 
     err = knd_shard_new(&shard, shard_config, strlen(shard_config));
     ck_assert_int_eq(err, knd_OK);
-
-    err = knd_shard_serve(shard);
-    ck_assert_int_eq(err, knd_OK);
+    task = shard->task;
 
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
         const struct table_test *pcase = &cases[i];
 
         fprintf(stdout, ".. checking input #%zu: %s...\n", i, pcase->input);
 
-        char result[OUTPUT_BUF_SIZE + 1] = { 0 };
-        size_t result_size = OUTPUT_BUF_SIZE;
-
-        err = knd_shard_run_task(shard, pcase->input, strlen(pcase->input),
-                                 result, &result_size);
+        err = knd_task_run(task, pcase->input, strlen(pcase->input));
         ck_assert_int_eq(err, knd_OK);
-        *((char*)result + result_size) = '\0';
 
         regex_t reg;
         ck_assert(0 == regcomp(&reg, pcase->expect, 0));
-        if (0 != regexec(&reg, result, 0, NULL, 0)) {
+        if (0 != regexec(&reg, task->output, 0, NULL, 0)) {
             ck_abort_msg("Assertion failed: \"%.*s\" doesn't match \"%s\"",
-                         (int)result_size, result, pcase->expect);
+                         (int)task->output_size, task->output, pcase->expect);
         }
         regfree(&reg);
     }
-    err = knd_shard_stop(shard);
-    ck_assert_int_eq(err, knd_OK);
 
     knd_shard_del(shard);
 END_TEST
@@ -374,37 +366,27 @@ START_TEST(shard_inheritance_test)
     };
 
     struct kndShard *shard;
+    struct kndTask *task;
     int err;
 
     err = knd_shard_new(&shard, shard_inheritance_config, strlen(shard_inheritance_config));
     ck_assert_int_eq(err, knd_OK);
-
-    err = knd_shard_serve(shard);
-    ck_assert_int_eq(err, knd_OK);
-
+    task = shard->task;
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
         const struct table_test *pcase = &cases[i];
         fprintf(stdout, "Checking #%zu: %s...\n", i, pcase->input);
 
-        char result[OUTPUT_BUF_SIZE + 1] = { 0 };
-        size_t result_size = OUTPUT_BUF_SIZE;
-
-        err = knd_shard_run_task(shard,
-                                 pcase->input, strlen(pcase->input),
-                                 result, &result_size);
+        err = knd_task_run(task, pcase->input, strlen(pcase->input));
         ck_assert_int_eq(err, knd_OK);
-        *((char*)result + result_size) = '\0';
 
         regex_t reg;
         ck_assert(0 == regcomp(&reg, pcase->expect, 0));
-        if (0 != regexec(&reg, result, 0, NULL, 0)) {
+        if (0 != regexec(&reg, task->output, 0, NULL, 0)) {
             ck_abort_msg("Assertion failed: \"%.*s\" doesn't match \"%s\"",
-                         (int)result_size, result, pcase->expect);
+                         (int)task->output_size, task->output, pcase->expect);
         }
         regfree(&reg);
     }
-    err = knd_shard_stop(shard);
-    ck_assert_int_eq(err, knd_OK);
     knd_shard_del(shard);
 END_TEST
 
@@ -471,36 +453,28 @@ START_TEST(shard_proc_test)
         }
     };
     struct kndShard *shard;
+    struct kndTask *task;
     int err;
 
     err = knd_shard_new(&shard, shard_proc_config, strlen(shard_proc_config));
     ck_assert_int_eq(err, knd_OK);
-
-    err = knd_shard_serve(shard);
-    ck_assert_int_eq(err, knd_OK);
+    task = shard->task;
 
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
         const struct table_test *pcase = &cases[i];
         fprintf(stdout, ".. checking input #%zu: %s...\n", i, pcase->input);
 
-        char result[OUTPUT_BUF_SIZE + 1] = { 0 };
-        size_t result_size = OUTPUT_BUF_SIZE;
-        err = knd_shard_run_task(shard,
-                                 pcase->input, strlen(pcase->input),
-                                 result, &result_size);
+        err = knd_task_run(task, pcase->input, strlen(pcase->input));
         ck_assert_int_eq(err, knd_OK);
-        *((char*)result + result_size) = '\0';
 
         regex_t reg;
         ck_assert(0 == regcomp(&reg, pcase->expect, 0));
-        if (0 != regexec(&reg, result, 0, NULL, 0)) {
+        if (0 != regexec(&reg, task->output, 0, NULL, 0)) {
             ck_abort_msg("Assertion failed: \"%.*s\" doesn't match \"%s\"",
-                         (int)result_size, result, pcase->expect);
+                         (int)task->output, task->output, pcase->expect);
         }
         regfree(&reg);
     }
-    err = knd_shard_stop(shard);
-    ck_assert_int_eq(err, knd_OK);
 
     knd_shard_del(shard);
 END_TEST

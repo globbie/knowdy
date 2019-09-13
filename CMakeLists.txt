@@ -81,7 +81,7 @@ target_link_libraries(${PROJECT_NAME}_static ${GSL_PARSER_LIBRARY})
 
 enable_testing()
 
-#add_subdirectory(tests)
+add_subdirectory(tests)
 add_subdirectory(shell)
 
 install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)

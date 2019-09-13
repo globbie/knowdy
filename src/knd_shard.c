@@ -286,7 +286,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     memcpy(repo->path, self->path, self->path_size);
     repo->path_size = self->path_size;
 
-    err = knd_task_new(self, mempool, &task);
+    err = knd_task_new(self, mempool, 0, &task);
     if (err != knd_OK) goto error;
     task->ctx = calloc(1, sizeof(struct kndTaskContext));
     if (!task->ctx) return knd_NOMEM;

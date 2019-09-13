@@ -115,7 +115,7 @@ int knd_dict_remove(struct kndDict *self,
     return knd_OK;
 }
 
-int knd_dict_del(struct kndDict *self)
+void knd_dict_del(struct kndDict *self)
 {
     //struct kndDictItem *item;
     // TODO

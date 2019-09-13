@@ -48,11 +48,16 @@ void knd_task_reset(struct kndTask *self)
 
     self->http_code = HTTP_OK;
 
+    if (self->ctx)
+        memset(self->ctx, 0, sizeof(*self->ctx));
+
     self->user_ctx = NULL;
     self->repo = self->system_repo;
 
+    self->out->reset(self->out);
     self->log->reset(self->log);
     self->update_out->reset(self->update_out);
+    knd_mempool_reset(self->mempool);
 }
 
 static int task_err_export_JSON(struct kndTask *task)
@@ -131,11 +136,14 @@ int knd_task_err_export(struct kndTask *task)
     return knd_OK;
 }
 
-int knd_task_run(struct kndTask *self)
+int knd_task_run(struct kndTask *self, const char *input, size_t input_size)
 {
-    size_t total_size = self->input_size;
+    size_t total_size = 0;
     gsl_err_t parser_err;
     int err;
+
+    self->input = input;
+    self->input_size = input_size;
 
     self->output = NULL;
     self->output_size = 0;
@@ -172,14 +180,15 @@ int knd_task_run(struct kndTask *self)
             if (err) return err;
         }
 
+        self->log->buf[self->log->buf_size] = '\0';
         self->output = self->log->buf;
         self->output_size = self->log->buf_size;
-        
         return gsl_err_to_knd_err_codes(parser_err);
     }
+
+    self->out->buf[self->out->buf_size] = '\0';
     self->output = self->out->buf;
     self->output_size = self->out->buf_size;
-
     return knd_OK;
 }
 
@@ -207,6 +216,7 @@ int knd_task_mem(struct kndMemPool *mempool,
 
 int knd_task_new(struct kndShard *shard,
                  struct kndMemPool *mempool,
+                 int task_id,
                  struct kndTask **task)
 {
     struct kndTask *self;
@@ -216,6 +226,7 @@ int knd_task_new(struct kndShard *shard,
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndTask));
     self->shard = shard;
+    self->id = task_id;
 
     if (!mempool) {
         err = kndMemPool_new(&mempool);

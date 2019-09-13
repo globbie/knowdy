@@ -148,7 +148,7 @@ struct kndTaskContext {
 
 struct kndTask
 {
-    size_t id;
+    int id;
     knd_task_spec_type type;
     knd_state_phase phase;
 
@@ -220,6 +220,7 @@ struct kndTask
 // knd_task.c
 int knd_task_new(struct kndShard *shard,
                  struct kndMemPool *mempool,
+                 int task_id,
                  struct kndTask **task);
 int knd_task_mem(struct kndMemPool *mempool,
                  struct kndTask **result);
@@ -228,7 +229,7 @@ int knd_task_context_new(struct kndMemPool *mempool,
 void knd_task_del(struct kndTask *self);
 void knd_task_reset(struct kndTask *self);
 int knd_task_err_export(struct kndTask *self);
-int knd_task_run(struct kndTask *self);
+int knd_task_run(struct kndTask *self, const char *input, size_t input_size);
 
 // knd_task.select.c
 gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size);
