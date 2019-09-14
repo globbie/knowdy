@@ -137,6 +137,12 @@ extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
                     item->name_size, item->name,
                     item->val_size, item->val, item->class);
         }
+        knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
+    } else {
+        knd_log("%*s_attr: \"%.*s\" => %.*s",
+                depth * KND_OFFSET_SIZE, "",
+                item->name_size, item->name,
+                item->val_size, item->val);
     }
 
     if (item->children) {
@@ -375,7 +381,6 @@ extern void kndAttr_init(struct kndAttr *self)
     memset(self, 0, sizeof(struct kndAttr));
     self->str = str;
 }
-
 
 extern int knd_register_attr_ref(void *obj,
                                  const char *unused_var(elem_id),

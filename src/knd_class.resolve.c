@@ -46,6 +46,7 @@ struct LocalContext {
     struct kndTask *task;
     struct kndRepo *repo;
     struct kndClass *class;
+    struct kndClass *baseclass;
     struct kndClassVar *class_var;
 };
 
@@ -62,7 +63,7 @@ static int inherit_attr(void *obj,
     struct kndSet     *attr_idx = self->attr_idx;
     struct kndAttrRef *src_ref = elem;
     struct kndAttr    *attr    = src_ref->attr;
-    struct kndAttrRef *ref;
+    struct kndAttrRef *ref = NULL;
     int err;
 
     err = attr_idx->get(attr_idx, attr->id, attr->id_size, (void**)&ref);
@@ -79,11 +80,32 @@ static int inherit_attr(void *obj,
     }
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) 
-        knd_log("..  \"%.*s\" (id:%.*s) attr inherited by %.*s..",
+        knd_log("..  \"%.*s\" (id:%.*s attr_var:%p) attr inherited by %.*s..",
                 attr->name_size, attr->name,
                 attr->id_size, attr->id,
+                src_ref->attr_var,
                 self->name_size, self->name);
 
+    err = attr_idx->get(attr_idx,
+                        attr->id, attr->id_size, (void**)&ref);
+    if (!err) {
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2) 
+            knd_log("  == attr already exists: %.*s",
+                    ref->attr_var);
+        if (src_ref->attr_var) {
+            if (ref->attr_var) {
+                knd_log("-- conflict in attr %.*s assignment in class %.*s",
+                        attr->name_size, attr->name,
+                            self->name_size, self->name);
+                return knd_FAIL;
+            }
+            ref->attr_var = src_ref->attr_var;
+            ref->class_entry = src_ref->class_entry;
+        }
+        return knd_OK;
+    }
+
+    /* new attr entry */
     err = knd_attr_ref_new(mempool, &ref);                                        RET_ERR();
     ref->attr = attr;
     ref->attr_var = src_ref->attr_var;
@@ -113,7 +135,8 @@ static int inherit_attrs(struct kndClass *self,
 
     struct LocalContext ctx = {
         .task = task,
-        .class = self
+        .class = self,
+        .baseclass = base
     };
 
     err = base->attr_idx->map(base->attr_idx,
@@ -135,6 +158,11 @@ static int link_ancestor(struct kndClass *self,
     int err;
 
     base = base_entry->class;
+
+    /* check doublets */
+    for (ref = entry->ancestors; ref; ref = ref->next) {
+        if (ref->class == base) return knd_OK;
+    }
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. %.*s class to link an ancestor: \"%.*s\" top:%d",

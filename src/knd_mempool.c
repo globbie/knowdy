@@ -290,6 +290,36 @@ static void build_linked_list(char *pages,
     *page_list = NULL;
 }
 
+static int reset_capacity(struct kndMemPool *self)
+{
+    memset(self->pages, 0, self->page_size * self->num_pages);
+    build_linked_list(self->pages, self->num_pages, self->page_size, &self->page_list);
+
+    memset(self->small_x4_pages, 0, self->small_x4_page_size * self->num_small_x4_pages);
+    build_linked_list(self->small_x4_pages,
+                      self->num_small_x4_pages, self->small_x4_page_size,
+                      &self->small_x4_page_list);
+
+    memset(self->small_x2_pages, 0, self->small_x2_page_size * self->num_small_x2_pages);
+    build_linked_list(self->small_x2_pages,
+                      self->num_small_x2_pages, self->small_x2_page_size,
+                      &self->small_x2_page_list);
+
+    memset(self->small_pages, 0, self->small_page_size * self->num_small_pages);
+    build_linked_list(self->small_pages,
+                      self->num_small_pages, self->small_page_size,
+                      &self->small_page_list);
+
+    memset(self->tiny_pages, 0, self->tiny_page_size * self->num_tiny_pages);
+    build_linked_list(self->tiny_pages,
+                      self->num_tiny_pages, self->tiny_page_size,
+                      &self->tiny_page_list);
+
+    knd_log("== MemPool reset, total capacity: %zu", self->capacity);
+
+    return knd_OK;
+}
+
 static int alloc_capacity(struct kndMemPool *self)
 {
     int err;
@@ -395,6 +425,7 @@ extern void kndMemPool_init(struct kndMemPool *self)
     self->del = del;
     self->parse = parse_memory_settings;
     self->alloc = alloc_capacity;
+    self->reset = reset_capacity;
     self->present = present_status;
 }
 

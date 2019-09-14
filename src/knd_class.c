@@ -40,17 +40,21 @@
 #define DEBUG_CLASS_LEVEL_5 0
 #define DEBUG_CLASS_LEVEL_TMP 1
 
-static int str_attr_ref(void *obj,
-                        const char *unused_var(elem_id),
-                        size_t unused_var(elem_id_size),
-                        size_t unused_var(count),
-                        void *elem)
+static int str_attr_idx_rec(void *unused_var(obj),
+                            const char *unused_var(elem_id),
+                            size_t unused_var(elem_id_size),
+                            size_t unused_var(count),
+                            void *elem)
 {
-    struct kndClass *self = obj;
-    struct kndAttrRef *ref = elem;
-    knd_log("== attr: \"%.*s\" (class:%.*s)",
-            ref->attr->name_size, ref->attr->name,
-            self->name_size, self->name);
+    struct kndAttrRef *src_ref = elem;
+
+    if (!src_ref->attr_var) return knd_OK;
+    /*knd_log("     + %.*s => %p",
+            src_ref->attr->name_size, src_ref->attr->name,
+            src_ref->attr_var);
+    */
+    str_attr_vars(src_ref->attr_var, 2);
+
     return knd_OK;
 }
 
@@ -66,7 +70,7 @@ static void str(struct kndClass *self, size_t depth)
     const char *name;
     size_t name_size;
     char resolved_state = '-';
-    //int err;
+    int err;
 
     knd_log("\n{class %.*s (repo:%.*s)   id:%.*s  numid:%zu",
             self->entry->name_size, self->entry->name,
@@ -119,15 +123,16 @@ static void str(struct kndClass *self, size_t depth)
 
     for (ref = self->entry->ancestors; ref; ref = ref->next) {
         c = ref->class;
-        knd_log("%*s ==> %.*s (repo:%.*s)", depth * KND_OFFSET_SIZE, "",
+        knd_log("%*s = %.*s (repo:%.*s)", depth * KND_OFFSET_SIZE, "",
                 c->entry->name_size, c->entry->name,
                 c->entry->repo->name_size, c->entry->repo->name);
     }
 
-    self->attr_idx->map(self->attr_idx,
-                        str_attr_ref,
-                        (void*)self);
-
+    err = self->attr_idx->map(self->attr_idx,
+                              str_attr_idx_rec,
+                              (void*)self);
+    if (err) return;
+    
     knd_log("%*s the end of %.*s}", depth * KND_OFFSET_SIZE, "",
             self->entry->name_size, self->entry->name);
 }

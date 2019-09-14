@@ -573,14 +573,15 @@ int knd_resolve_attr_vars(struct kndClass *self,
     int e, err;
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
-        knd_log(".. resolving attr vars of class \"%.*s\" (repo:%.*s) ..",
+        knd_log("\n.. resolving attr vars of class \"%.*s\" (base:%.*s) (repo:%.*s) ..",
                 self->entry->name_size, self->entry->name,
+                parent_item->entry->name_size, parent_item->entry->name,
                 repo->name_size, repo->name);
     }
 
     for (attr_var = parent_item->attrs; attr_var; attr_var = attr_var->next) {
         if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
-            knd_log(".. resolving attr var: %.*s",
+            knd_log("    .. resolving attr var: %.*s",
                     attr_var->name_size, attr_var->name);
         }
         err = knd_class_get_attr(self,

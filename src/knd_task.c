@@ -220,6 +220,7 @@ int knd_task_new(struct kndShard *shard,
                  struct kndTask **task)
 {
     struct kndTask *self;
+    struct kndRepo *repo = shard->repo;
     int err;
 
     self = malloc(sizeof(struct kndTask));
@@ -257,6 +258,14 @@ int knd_task_new(struct kndShard *shard,
 
     err = knd_output_new(&self->task_out, NULL, KND_TASK_STORAGE_SIZE);
     if (err) return err;
+
+    /* system repo defaults */
+    self->system_repo       = repo;
+    self->repo              = repo;
+    self->class_name_idx    = repo->class_name_idx;
+    self->attr_name_idx     = repo->attr_name_idx;
+    self->proc_name_idx     = repo->proc_name_idx;
+    self->proc_arg_name_idx = repo->proc_arg_name_idx;
 
     *task = self;
 

@@ -1033,6 +1033,11 @@ static int resolve_classes(struct kndRepo *self,
                         c->entry->name_size, c->entry->name);
                 return err;
             }
+
+            if (DEBUG_REPO_LEVEL_2) {
+                c->str(c, 1);
+            }
+
         }
     }
     return knd_OK;
