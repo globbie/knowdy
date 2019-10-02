@@ -6,8 +6,9 @@
 #include "knd_utils.h"
 #include "knd_output.h"
 
-static void del(struct kndMemPool *self)
+void knd_mempool_del(struct kndMemPool *self)
 {
+    knd_log(".. del kndMemPool..");
     if (self->pages)
         free(self->pages);
     if (self->small_x4_pages)
@@ -267,8 +268,8 @@ static int alloc_page_buf(struct kndMemPool *self,
     }
     self->capacity += (num_pages * page_size);
 
-    knd_log("++ mempool %p: alloc'd %zu pages of %zu size, total capacity:%zu",
-            self, num_pages, page_size, self->capacity);
+    // knd_log("++ mempool %p: alloc'd %zu pages of %zu size, total capacity:%zu",
+    //        self, num_pages, page_size, self->capacity);
 
     *result_pages = pages;
     *result_page_size = page_size;
@@ -315,7 +316,7 @@ static int reset_capacity(struct kndMemPool *self)
                       self->num_tiny_pages, self->tiny_page_size,
                       &self->tiny_page_list);
 
-    knd_log("== MemPool reset, total capacity: %zu", self->capacity);
+    // knd_log("== MemPool reset, total capacity: %zu", self->capacity);
 
     return knd_OK;
 }
@@ -422,14 +423,13 @@ parse_memory_settings(struct kndMemPool *self, const char *rec, size_t *total_si
 
 extern void kndMemPool_init(struct kndMemPool *self)
 {
-    self->del = del;
     self->parse = parse_memory_settings;
     self->alloc = alloc_capacity;
     self->reset = reset_capacity;
     self->present = present_status;
 }
 
-extern int kndMemPool_new(struct kndMemPool **obj)
+extern int knd_mempool_new(struct kndMemPool **obj)
 {
     struct kndMemPool *self;
 

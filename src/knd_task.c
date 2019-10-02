@@ -27,7 +27,7 @@ void knd_task_del(struct kndTask *self)
     self->update_out->del(self->update_out);
     self->file_out->del(self->file_out);
     self->task_out->del(self->task_out);
-    self->mempool->del(self->mempool);
+    knd_mempool_del(self->mempool);
     free(self);
 }
 
@@ -230,7 +230,7 @@ int knd_task_new(struct kndShard *shard,
     self->id = task_id;
 
     if (!mempool) {
-        err = kndMemPool_new(&mempool);
+        err = knd_mempool_new(&mempool);
         if (err) return err;
         mempool->type = KND_ALLOC_INCR;
         mempool->num_pages = shard->ctx_mem_config.num_pages;

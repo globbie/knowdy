@@ -6,7 +6,6 @@
 #include <stdatomic.h>
 
 #include "knd_repo.h"
-#include "knd_shard.h"
 #include "knd_attr.h"
 #include "knd_set.h"
 #include "knd_user.h"
@@ -40,11 +39,9 @@ void knd_repo_del(struct kndRepo *self)
     }
 
     knd_dict_del(self->class_name_idx);
-    // knd_dit_del(self->class_inst_name_idx);
     knd_dict_del(self->attr_name_idx);
     knd_dict_del(self->proc_name_idx);
     knd_dict_del(self->proc_arg_name_idx);
-
     free(self);
 }
 
@@ -71,16 +68,6 @@ static gsl_err_t alloc_class_update(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
-
-/*static gsl_err_t append_class_update(void *accu,
-                                     void *item)
-{
-    struct kndUpdate *self = accu;
-    struct kndClassUpdate *class_update = item;
-    // TODO
-    return make_gsl_err(gsl_OK);
-}
-*/
 
 static gsl_err_t get_class_by_id(void *obj, const char *name, size_t name_size)
 {
@@ -134,8 +121,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndMemPool *mempool = task->mempool;
     struct kndClassEntry *entry = self->entry;
     int err;
-
-    knd_log("== class name idx:%p", class_name_idx);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
 
@@ -249,7 +234,6 @@ static gsl_err_t alloc_update(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
-
 
 static gsl_err_t parse_update(void *unused_var(obj),
                               const char *rec,
@@ -587,7 +571,6 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
         switch (*name) {
         case '/':
             knd_log("== system repo selected!");
-            //task->repo = task->shard->repo;
             return make_gsl_err(gsl_OK);
         default:
             break;
@@ -1182,8 +1165,6 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     if (err) return err;
     err = out->write(out, "/frozen.gsp", strlen("/frozen.gsp"));
     if (err) return err;
-    out->buf[out->buf_size] = '\0';
-
 
     /* frozen DB exists? */
     if (!stat(out->buf, &st)) {
@@ -1597,7 +1578,6 @@ int knd_repo_new(struct kndRepo **repo,
     struct kndRepo *self;
     struct kndClass *c;
     struct kndClassEntry *entry;
-    struct kndClassInst *inst;
     struct kndProc *proc;
     struct kndProcEntry *proc_entry;
     int err;
@@ -1622,12 +1602,6 @@ int knd_repo_new(struct kndRepo **repo,
 
     c->entry->repo = self;
     self->root_class = c;
-
-    /* root class instance */
-    err = knd_class_inst_new(mempool, &inst);
-    if (err) goto error;
-    inst->base = c;
-    self->root_inst = inst;
 
     /* global name indices */
     err = knd_set_new(mempool, &self->class_idx);

@@ -7,6 +7,8 @@
 #include <knd_task.h>
 #include <knd_storage.h>
 
+struct kndMemPool;
+
 struct kndMemConfig {
     size_t num_pages;
     size_t num_small_x4_pages;
@@ -38,6 +40,7 @@ struct kndShard
 
     struct kndTask *task;
     struct kndUser *user;
+    struct kndMemPool *mempool;
 
     /* system repo */
     struct kndRepo *repo;

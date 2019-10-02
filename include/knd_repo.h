@@ -56,7 +56,7 @@ struct kndRepo
 
     /* local repo index */
     struct kndDict *repo_idx;
-    
+
     struct kndUser *user;
     size_t max_journal_size;
 
@@ -64,8 +64,10 @@ struct kndRepo
     size_t intersect_matrix_size;
 
     struct kndClass     *root_class;
-    struct kndClassInst *root_inst;
 
+    struct kndClassEntry *head_class_entry;
+    struct kndClassEntry *tail_class_entry;
+    
     struct kndDict *class_name_idx;
     struct kndSet *class_idx;
     atomic_size_t num_classes;

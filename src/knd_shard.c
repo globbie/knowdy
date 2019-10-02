@@ -258,7 +258,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     err = parse_config(self, config, &config_size);
     if (err != knd_OK) goto error;
 
-    err = kndMemPool_new(&mempool);
+    err = knd_mempool_new(&mempool);
     if (err != knd_OK) goto error;
     mempool->num_pages = self->mem_config.num_pages;
     mempool->num_small_x4_pages = self->mem_config.num_small_x4_pages;
@@ -267,6 +267,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     mempool->num_tiny_pages = self->mem_config.num_tiny_pages;
     err = mempool->alloc(mempool);
     if (err != knd_OK) goto error;
+    self->mempool = mempool;
 
     err = knd_set_new(mempool, &self->repos);
     if (err != knd_OK) goto error;
@@ -332,6 +333,9 @@ void knd_shard_del(struct kndShard *self)
 
     if (self->task)
         knd_task_del(self->task);
+
+    if (self->mempool)
+        knd_mempool_del(self->mempool);
 
     free(self);
 }

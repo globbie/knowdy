@@ -46,3 +46,4 @@ struct kndOutput
 int knd_output_new(struct kndOutput **self,
                    char *buf,
                    size_t capacity);
+int knd_output_del(struct kndOutput *self);

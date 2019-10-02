@@ -128,6 +128,10 @@ struct kndClassEntry
     struct kndSet *attr_idx;
 
     struct kndAttrHub *attr_hubs;
+
+    /* usage queue */
+    struct kndClassEntry *prev;
+    struct kndClassEntry *next;
 };
 
 struct kndClass

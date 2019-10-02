@@ -88,7 +88,6 @@ struct kndMemPool
 
     size_t max_set_size;
 
-    void (*del)(struct kndMemPool   *self);
     int (*alloc)(struct kndMemPool   *self);
     int (*reset)(struct kndMemPool   *self);
     int (*present)(struct kndMemPool *self,
@@ -97,15 +96,16 @@ struct kndMemPool
 		       const char *rec, size_t *total_size);
 };
 
-extern int kndMemPool_new(struct kndMemPool **self);
+int knd_mempool_new(struct kndMemPool **self);
+void knd_mempool_del(struct kndMemPool *self);
 
-extern int knd_mempool_alloc(struct kndMemPool *self,
-                             knd_mempage_t page_type,
-                             size_t obj_size, void **result);
-extern int knd_mempool_incr_alloc(struct kndMemPool *self,
-				  knd_mempage_t page_type,
-				  size_t obj_size, void **result);
-extern void knd_mempool_free(struct kndMemPool *self,
-                             knd_mempage_t page_type,
-                             void *page_data);
-extern void knd_mempool_reset(struct kndMemPool *self);
+int knd_mempool_alloc(struct kndMemPool *self,
+                      knd_mempage_t page_type,
+                      size_t obj_size, void **result);
+int knd_mempool_incr_alloc(struct kndMemPool *self,
+                           knd_mempage_t page_type,
+                           size_t obj_size, void **result);
+void knd_mempool_free(struct kndMemPool *self,
+                      knd_mempage_t page_type,
+                      void *page_data);
+void knd_mempool_reset(struct kndMemPool *self);
