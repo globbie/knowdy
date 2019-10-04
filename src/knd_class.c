@@ -737,8 +737,8 @@ int knd_get_class(struct kndRepo *self,
     entry = knd_dict_get(class_name_idx, name, name_size);
     if (!entry) {
         if (DEBUG_CLASS_LEVEL_2)
-            knd_log("-- no local class found in: %.*s (idx:%p)",
-                    self->name_size, self->name, class_name_idx);
+            knd_log("-- no local class found in: %.*s",
+                    self->name_size, self->name);
 
         /* check parent schema */
         if (self->base) {
@@ -751,7 +751,7 @@ int knd_get_class(struct kndRepo *self,
 
     if (entry->class) {
         c = entry->class;
-        
+
         if (c->num_states) {
             state = c->states;
             if (state->phase == KND_REMOVED) {

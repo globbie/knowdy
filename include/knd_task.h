@@ -100,8 +100,6 @@ struct kndTaskContext {
     const char *input;
     size_t      input_size;
 
-    // struct kndOutput  *out;
-    // struct kndOutput  *log;
     int error;
     knd_http_code_t http_code;
 
@@ -134,12 +132,6 @@ struct kndTaskContext {
     struct kndStateRef  *proc_state_refs;
     struct kndStateRef  *proc_inst_state_refs;
 
-    /* struct kndDict *class_name_idx;
-    struct kndDict *attr_name_idx;
-    struct kndDict *proc_name_idx;
-    struct kndDict *proc_arg_name_idx;
-    */
-
     struct kndUpdate *update;
     bool update_confirmed;
 
@@ -148,8 +140,8 @@ struct kndTaskContext {
 
 struct kndTask
 {
-    int id;
     knd_task_spec_type type;
+    int id;
     knd_state_phase phase;
 
     struct kndShard *shard;

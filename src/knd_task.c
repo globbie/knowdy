@@ -243,7 +243,6 @@ int knd_task_new(struct kndShard *shard,
     }
     self->mempool = mempool;
 
-    // TODO: configurable outputs
     err = knd_output_new(&self->out, NULL, KND_LARGE_BUF_SIZE);
     if (err) return err;
 

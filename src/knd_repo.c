@@ -837,7 +837,7 @@ static int read_GSL_file(struct kndRepo *repo,
                          size_t filename_size,
                          struct kndTask *task)
 {
-    struct kndOutput *out = task->log;
+    struct kndOutput *out = task->out;
     struct kndOutput *file_out = task->file_out;
     struct kndConcFolder *folder, *folders;
     const char *c;
@@ -1180,21 +1180,13 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
         if (!self->user_ctx) {
 
             /* read a system-wide schema */
-            knd_log("-- no existing frozen DB was found, "
-                    " reading the original schema..");
 
             task->type = KND_LOAD_STATE;
             err = read_GSL_file(self, NULL, "index", strlen("index"), task);
-            if (err) {
-                knd_log("-- couldn't read any schemas");
-                return err;
-            }
+            KND_TASK_ERR("schema import failed");
 
             err = resolve_classes(self, task);
-            if (err) {
-                knd_log("-- class resolving failed");
-                return err;
-            }
+            KND_TASK_ERR("class resolving failed");
 
             err = resolve_procs(self, task);
             if (err) {

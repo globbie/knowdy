@@ -67,6 +67,49 @@ typedef enum knd_storage_type {
 #define ALLOC_ERR(V) if (!(V)) { return knd_NOMEM; }
 #define PARSE_ERR(V) if (err) { printf("LINEAR POS:%zu", *total_size); return err; } 
 
+#define KND_TASK_ERR(...) \
+    if (err) { \
+        task->out->reset(task->out);\
+        int e = task->out->writef(task->out, "" __VA_ARGS__); \
+        if (e) return e; \
+        if (task->log->buf_size != 0) { \
+            e = task->out->write(task->out,      \
+                      " <= ", strlen(" <= "));  \
+            if (e) return e; \
+            e = task->out->write(task->out, task->log->buf, task->log->buf_size); \
+            if (e) return e; \
+        }\
+        task->log->reset(task->log); \
+        e = task->log->write(task->log, task->out->buf, task->out->buf_size); \
+        if (e) return e; \
+        task->output = task->log->buf; \
+        task->output_size = task->log->buf_size; \
+        return err;\
+    }
+
+#define KND_TASK_LOG(...)                     \
+    do {                                     \
+        task->out->reset(task->out);           \
+        int e = task->out->writef(task->out,   \
+          "" __VA_ARGS__);                   \
+        if (e) break;                        \
+        if (task->log->buf_size != 0) {       \
+          e = task->out->write(task->out,      \
+                   " <= ", strlen(" <= "));  \
+          if (e) break;                      \
+          e = task->out->write(task->out,      \
+          task->log->buf, task->log->buf_size);\
+          if (e) break;                      \
+        }                                    \
+        task->log->reset(task->log);           \
+        e = task->log->write(task->log,        \
+         task->out->buf, task->out->buf_size); \
+        if (e) break;                        \
+        task->output = task->log->buf;         \
+        task->output_size = task->log->buf_size;\
+    } while (0)
+
+
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 
 #include <stdbool.h>
