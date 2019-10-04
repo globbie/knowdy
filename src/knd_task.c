@@ -230,7 +230,7 @@ int knd_task_new(struct kndShard *shard,
     self->id = task_id;
 
     if (!mempool) {
-        err = knd_mempool_new(&mempool);
+        err = knd_mempool_new(&mempool, 0);
         if (err) return err;
         mempool->type = KND_ALLOC_INCR;
         mempool->num_pages = shard->ctx_mem_config.num_pages;

@@ -329,8 +329,10 @@ static gsl_err_t confirm_attr_var(void *obj,
     // TODO empty values?
     if (DEBUG_ATTR_LEVEL_TMP) {
         if (!attr_var->val_size)
-            knd_log("NB: attr var value not set in %.*s",
-                    attr_var->name_size, attr_var->name);
+            knd_log("NB: attr var value not set in %.*s (class: %.*s)",
+                    attr_var->name_size, attr_var->name,
+                    attr_var->class_var->entry->name_size,
+                    attr_var->class_var->entry->name);
     }
     return make_gsl_err(gsl_OK);
 }

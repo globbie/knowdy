@@ -47,9 +47,10 @@ struct kndMemPageHeader
 
 struct kndMemPool
 {
-    size_t capacity;
-
     knd_mempool_t type;
+    int id;
+
+    size_t capacity;
 
     /* 1024 bytes */
     char *pages;
@@ -96,7 +97,7 @@ struct kndMemPool
 		       const char *rec, size_t *total_size);
 };
 
-int knd_mempool_new(struct kndMemPool **self);
+int knd_mempool_new(struct kndMemPool **self, int mempool_id);
 void knd_mempool_del(struct kndMemPool *self);
 
 int knd_mempool_alloc(struct kndMemPool *self,

@@ -8,7 +8,6 @@
 
 void knd_mempool_del(struct kndMemPool *self)
 {
-    knd_log(".. del kndMemPool..");
     if (self->pages)
         free(self->pages);
     if (self->small_x4_pages)
@@ -350,7 +349,7 @@ static int alloc_capacity(struct kndMemPool *self)
                          KND_NUM_TINY_MEMPAGES,
                          &self->tiny_page_size, KND_TINY_MEMPAGE_SIZE);           RET_ERR();
 
-    knd_log("== MemPool total bytes alloc'd: %zu", self->capacity);
+    // knd_log("== MemPool total bytes alloc'd: %zu", self->capacity);
 
     if (self->type != KND_ALLOC_LIST) return knd_OK;
 
@@ -381,11 +380,6 @@ static gsl_err_t
 parse_memory_settings(struct kndMemPool *self, const char *rec, size_t *total_size)
 {
     struct gslTaskSpec specs[] = {
-//        {   .name = "max_user_ctxs",
-//            .name_size = strlen("max_use_ctxs"),
-//            .parse = gsl_parse_size_t,
-//            .obj = &self->max_user_ctxs
-//        },
         {   .name = "max_base_pages",
             .name_size = strlen("max_base_pages"),
             .parse = gsl_parse_size_t,
@@ -429,13 +423,14 @@ extern void kndMemPool_init(struct kndMemPool *self)
     self->present = present_status;
 }
 
-extern int knd_mempool_new(struct kndMemPool **obj)
+int knd_mempool_new(struct kndMemPool **obj, int mempool_id)
 {
     struct kndMemPool *self;
 
     self = malloc(sizeof(struct kndMemPool));
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndMemPool));
+    self->id = mempool_id;
 
     kndMemPool_init(self);
     *obj = self;
