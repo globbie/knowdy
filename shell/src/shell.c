@@ -50,14 +50,20 @@ static void display_usage(void)
 
 static int knd_interact(struct kndShard *shard)                      
 {
-    struct kndTask *task = shard->task;
+    struct kndTask *task;
     char  *buf;
     size_t buf_size;
+    const char  *block;
+    size_t block_size;
     int err;
 
-    knd_log("\n++ Knowdy shard service is up and running!\n");
+    err = knd_task_new(shard, NULL, 1, &task);
+    if (err) return err;
+    task->ctx = calloc(1, sizeof(struct kndTaskContext));
+    if (!task->ctx) return knd_NOMEM;
 
-    printf("   (finish session by pressing Ctrl+C)\n");
+    knd_log("\n++ Knowdy shard service is up and running!\n");
+    knd_log("   (finish session by pressing Ctrl+C)\n");
 
     while ((buf = readline(">> ")) != NULL) {
         buf_size = strlen(buf);
@@ -67,13 +73,39 @@ static int knd_interact(struct kndShard *shard)
         if (!buf_size) continue;
 
         printf("[%s :%zu]\n", buf, buf_size);
+
+        knd_task_reset(task);
+
         err = knd_task_run(task, buf, buf_size);
         if (err != knd_OK) {
-            knd_log("-- task run failed");
+            knd_log("-- task run failed: %.*s", task->output_size, task->output);
             goto next_line;
         }
 
-        knd_log("== %.*s", task->output_size, task->output);
+        /* update tasks require another run,
+           possibly involving network communication */
+        switch (task->ctx->phase) {
+        case KND_CONFIRM_UPDATE:
+            err = knd_task_copy_block(task,
+                                      task->output, task->output_size,
+                                      &block, &block_size);
+            if (err != knd_OK) {
+                knd_log("-- update block allocation failed");
+                goto next_line;
+            }
+
+            knd_task_reset(task);
+            err = knd_task_run(task, block, block_size);
+            if (err != knd_OK) {
+                knd_log("-- update confirm failed: %.*s", task->output_size, task->output);
+                goto next_line;
+            }
+            break;
+        default:
+            break;
+        }
+
+        knd_log("== RESULT ==\n%.*s", task->output_size, task->output);
 
         /* readline allocates a new buffer every time */
     next_line:
@@ -144,7 +176,8 @@ int main(int argc, char *argv[])
     err = knd_shard_new(&shard, config_body, config_body_size);
     if (err != 0) goto error;
 
-    knd_interact(shard);
+    err = knd_interact(shard);
+    if (err != 0) goto error;
 
  error:
     if (config_body) free(config_body);

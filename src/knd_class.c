@@ -1128,8 +1128,15 @@ extern int knd_class_ref_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndClassRef), &page);
-    if (err) return err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndClassRef), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndClassRef), &page);
+        if (err) return err;
+    }
     *result = page;
     return knd_OK;
 }
@@ -1145,15 +1152,22 @@ extern int knd_class_facet_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-extern int knd_class_entry_new(struct kndMemPool *mempool,
-                               struct kndClassEntry **result)
+int knd_class_entry_new(struct kndMemPool *mempool,
+                        struct kndClassEntry **result)
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                            sizeof(struct kndClassEntry), &page);
-    if (err) return err;
-
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                sizeof(struct kndClassEntry), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                     sizeof(struct kndClassEntry), &page);
+        if (err) return err;
+    }
     *result = page;
     return knd_OK;
 }
@@ -1169,8 +1183,15 @@ extern int knd_class_update_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                            sizeof(struct kndClassUpdate), &page);  RET_ERR();
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                                sizeof(struct kndClassUpdate), &page);  RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
+                                     sizeof(struct kndClassUpdate), &page);  RET_ERR();
+    }
     *result = page;
     return knd_OK;
 }
@@ -1181,26 +1202,41 @@ extern int knd_inner_class_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X4,
-                            sizeof(struct kndClass), &page);                      RET_ERR();
-    if (err) return err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X4,
+                                sizeof(struct kndClass), &page);                      RET_ERR();
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X4,
+                                     sizeof(struct kndClass), &page);                      RET_ERR();
+        if (err) return err;
+    }
     *self = page;
     kndClass_init(*self);
     return knd_OK;
 }
 
-extern int knd_class_new(struct kndMemPool *mempool,
-                         struct kndClass **self)
+int knd_class_new(struct kndMemPool *mempool,
+                  struct kndClass **self)
 {
     struct kndSet *attr_idx;
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                            sizeof(struct kndClass), &page);                      RET_ERR();
-    if (err) return err;
-    *self = page;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                sizeof(struct kndClass), &page);                      RET_ERR();
+        err = knd_set_new(mempool, &attr_idx);                                        RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                     sizeof(struct kndClass), &page);                      RET_ERR();
+        err = knd_set_mem(mempool, &attr_idx);                                        RET_ERR();
+    }
 
-    err = knd_set_new(mempool, &attr_idx);                                        RET_ERR();
+    *self = page;
     (*self)->attr_idx = attr_idx;
 
     kndClass_init(*self);

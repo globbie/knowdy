@@ -230,7 +230,8 @@ static int link_baseclass(struct kndClass *self,
 
     if (!parent_linked) {
         /* register a parent */
-        err = knd_class_ref_new(mempool, &ref);                                   RET_ERR();
+        err = knd_class_ref_new(mempool, &ref);
+        KND_TASK_ERR("mempool failed to alloc kndClassRef");
         ref->class = base;
         ref->entry = base->entry;
         ref->next = entry->ancestors;

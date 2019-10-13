@@ -118,6 +118,9 @@ int knd_repo_update_indices(struct kndRepo *self,
                             struct kndTaskContext *ctx);
 int knd_repo_check_conflicts(struct kndRepo *self,
                              struct kndTaskContext *ctx);
+gsl_err_t knd_parse_repo_update(void *obj,
+                                const char *rec,
+                                size_t *total_size);
 
 int knd_repo_open(struct kndRepo *self, struct kndTask *task);
 

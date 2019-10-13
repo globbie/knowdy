@@ -498,10 +498,15 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
                 task->id, 128, rec);
 
     err = knd_class_new(mempool, &c);
-    if (err) return make_gsl_err_external(err);
-
+    if (err) {
+        KND_TASK_LOG("mempool failed to alloc kndClass");
+        return make_gsl_err_external(err);
+    }
     err = knd_class_entry_new(mempool, &entry);
-    if (err) return make_gsl_err_external(err);
+    if (err) {
+        KND_TASK_LOG("mempool failed to alloc kndClassEntry");
+        return make_gsl_err_external(err);
+    }
 
     entry->repo = repo;
     entry->class = c;
@@ -580,18 +585,13 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("-- \"%.*s\" class parse failed: %d",
-                c->name_size, c->name, parser_err.code);
+        KND_TASK_LOG("\"%.*s\" class parsing error",
+                     c->name_size, c->name);
         goto final;
     }
 
     if (!c->name_size) {
-        knd_log("-- no class name specified?");
-        /*log = task->log;
-        log->reset(log);
-        e = log->write(log, "class name not specified",
-                       strlen("class name not specified"));
-                       if (e) return e; */
+        KND_TASK_LOG("no class name specified");
         task->http_code = HTTP_BAD_REQUEST;
         parser_err = make_gsl_err(gsl_FAIL);
         goto final;
@@ -612,7 +612,9 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
 
     if (task->type == KND_UPDATE_STATE) {
         err = knd_class_update_state(c, KND_CREATED, task);
-        if (err) return make_gsl_err_external(err);
+        if (err) {
+            return make_gsl_err_external(err);
+        }
     }
 
     return make_gsl_err(gsl_OK);

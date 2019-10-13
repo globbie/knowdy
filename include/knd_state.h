@@ -25,7 +25,6 @@
 
 struct kndState;
 struct kndClass;
-struct kndUpdate;
 struct kndStateRef;
 struct kndMemPool;
 struct kndOutput;
@@ -100,11 +99,16 @@ struct kndStateRef
     struct kndStateRef *next;
 };
 
-extern int knd_update_new(struct kndMemPool *mempool,
-                          struct kndUpdate **result);
-extern int knd_state_new(struct kndMemPool *mempool,
-                         struct kndState **result);
-extern int knd_state_ref_new(struct kndMemPool *mempool,
-                             struct kndStateRef **result);
-extern int knd_state_val_new(struct kndMemPool *mempool,
-                             struct kndStateVal **result);
+int knd_update_new(struct kndMemPool *mempool,
+                   struct kndUpdate **result);
+int knd_update_mem(struct kndMemPool *mempool,
+                   struct kndUpdate **result);
+int knd_state_new(struct kndMemPool *mempool,
+                  struct kndState **result);
+int knd_state_mem(struct kndMemPool *mempool,
+                  struct kndState **result);
+
+int knd_state_ref_new(struct kndMemPool *mempool,
+                      struct kndStateRef **result);
+int knd_state_val_new(struct kndMemPool *mempool,
+                      struct kndStateVal **result);

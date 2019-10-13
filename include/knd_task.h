@@ -66,8 +66,8 @@ typedef enum knd_task_phase_t { KND_REGISTER,
                                 KND_REJECT,
                                 KND_IMPORT,
                                 KND_CONFLICT,
+                                KND_CONFIRM_UPDATE,
                                 KND_WAL_WRITE,
-                                KND_WAL_COMMIT,
                                 KND_UPDATE_INDICES,
                                 KND_DELIVER_RESULT,
                                 KND_COMPLETE } knd_task_phase_t;
@@ -80,6 +80,14 @@ struct kndTaskDestination
     //  auth 
 
 };
+
+struct kndMemBlock {
+    size_t tid;
+    char *buf;
+    size_t buf_size;
+    struct kndMemBlock *next;
+};
+
 
 struct kndTaskContext {
     char id[KND_ID_SIZE];
@@ -202,6 +210,11 @@ struct kndTask
     struct kndOutput  *file_out;
     struct kndOutput  *update_out;
     struct kndMemPool *mempool;
+    bool is_mempool_owner;
+
+    struct kndMemBlock *blocks;
+    size_t num_blocks;
+    size_t total_block_size;
 
     struct kndDict *class_name_idx;
     struct kndDict *attr_name_idx;
@@ -218,6 +231,12 @@ int knd_task_mem(struct kndMemPool *mempool,
                  struct kndTask **result);
 int knd_task_context_new(struct kndMemPool *mempool,
                          struct kndTaskContext **ctx);
+int knd_task_block_new(struct kndMemPool *mempool,
+                       struct kndTask **result);
+int knd_task_copy_block(struct kndTask *self,
+                        const char *input, size_t input_size,
+                        const char **output, size_t *output_size);
+
 void knd_task_del(struct kndTask *self);
 void knd_task_reset(struct kndTask *self);
 int knd_task_err_export(struct kndTask *self);

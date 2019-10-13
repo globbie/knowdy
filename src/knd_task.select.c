@@ -163,20 +163,6 @@ static gsl_err_t parse_locale(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-/*static gsl_err_t parse_user(void *obj,
-                            const char *rec,
-                            size_t *total_size)
-{
-    struct kndTask *self = obj;
-
-    if (self->curr_locale_size) {
-        self->locale = self->curr_locale;
-        self->locale_size = self->curr_locale_size;
-    }
-    return knd_parse_select_user(self, rec, total_size);
-}
-*/
-
 static gsl_err_t parse_class_import(void *obj,
                                     const char *rec,
                                     size_t *total_size)
@@ -342,12 +328,8 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
     /* any system repo updates? */
     switch (self->type) {
     case KND_UPDATE_STATE:
-        if (!self->ctx->update_confirmed) {
-            err = knd_confirm_updates(self->repo, self);
-            if (err) {
-                goto final;
-            }
-        }
+        err = knd_confirm_updates(self->repo, self);
+        if (err) return make_gsl_err_external(err);
         break;
     default:
         self->ctx->phase = KND_COMPLETE;
@@ -357,7 +339,6 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 
  final:
-    self->ctx->phase = KND_COMPLETE;
     return parser_err;
 }
 
