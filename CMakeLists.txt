@@ -17,12 +17,12 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
 endif()
 
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
-if(CMAKE_COMPILER_IS_GNUCC)
-    include(CodeCoverage)
-    APPEND_COVERAGE_COMPILER_FLAGS()
-    SETUP_TARGET_FOR_COVERAGE_LCOV(NAME ${PROJECT_NAME}_coverage
-                                   EXECUTABLE knd-shard-test)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
+  include(CodeCoverage)
+  APPEND_COVERAGE_COMPILER_FLAGS()
+  SETUP_TARGET_FOR_COVERAGE_LCOV(NAME ${PROJECT_NAME}_coverage
+                                 EXECUTABLE knd-shard-test)
 endif()
 
 pkg_check_modules(CHECK REQUIRED check)
