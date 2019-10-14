@@ -933,7 +933,7 @@ static gsl_err_t append_class_inst_item(struct LocalContext *ctx, struct kndClas
 
     // TODO atomic
     if (!name_idx) {
-        err = knd_dict_new(&self->entry->inst_name_idx, KND_HUGE_DICT_SIZE);
+        err = knd_dict_new(&self->entry->inst_name_idx, mempool, KND_HUGE_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
         name_idx = self->entry->inst_name_idx;
     }

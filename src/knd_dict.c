@@ -15,6 +15,27 @@
 
 #include "knd_dict.h"
 #include "knd_config.h"
+#include "knd_utils.h"
+
+static int dict_item_new(struct kndMemPool *mempool,
+                         struct kndDictItem **result)
+{
+    void *page;
+    int err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndDictItem), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
+                                     sizeof(struct kndDictItem), &page);
+        if (err) return err;
+    }
+    *result = page;
+    return knd_OK;
+}
 
 static size_t 
 knd_dict_hash(const char *key, size_t key_size)
@@ -56,10 +77,12 @@ int knd_dict_set(struct kndDict *self,
                  size_t key_size,
                  void *data)
 {
+    struct kndDictItem *head;
+    struct kndDictItem *new_item;
     size_t h = knd_dict_hash(key, key_size) % self->size;
-    struct kndDictItem *head = atomic_load_explicit(&self->hash_array[h],
-                                                    memory_order_relaxed);
-    struct kndDictItem *item = head;
+    struct kndDictItem *orig_head = atomic_load_explicit(&self->hash_array[h],
+                                                         memory_order_relaxed);
+    struct kndDictItem *item = orig_head;
 
     while (item) {
         if (item->key_size != key_size) goto next_item;
@@ -72,21 +95,43 @@ int knd_dict_set(struct kndDict *self,
     if (item) {
         if (item->phase == KND_DICT_VALID)
             return knd_CONFLICT;
-        item->data = data;
+        // TODO: atomic assign
+        item->data  = data;
         item->phase = KND_DICT_VALID;
         return knd_OK;
     }
 
-    item = malloc(sizeof(struct kndDictItem));
-    if (!item) return knd_NOMEM;
-    memset(item, 0, sizeof(struct kndDictItem));
-    item->data = data;
-    item->key = key;
-    item->key_size = key_size;
-    item->next = head;
-    
-    atomic_store_explicit(&self->hash_array[h], item,
-                          memory_order_relaxed);
+    /* add new item */
+    if (dict_item_new(self->mempool, &new_item) != knd_OK) return knd_NOMEM;
+    new_item->phase = KND_DICT_VALID;
+    new_item->data = data;
+    new_item->key = key;
+    new_item->key_size = key_size;
+
+    do {
+        head = atomic_load_explicit(&self->hash_array[h],
+                                    memory_order_relaxed);
+        new_item->next = head;
+        item = head;
+        /* no new conflicts in place? */
+        while (item) {
+            if (item == orig_head) {
+                item = NULL;
+                break;
+            }
+            if (item->key_size != key_size) goto next_check;
+            if (!memcmp(item->key, key, key_size)) {
+                break;
+            }
+        next_check:
+            item = item->next;
+        }
+        if (item && item->phase == KND_DICT_VALID) {
+            // free mempool item
+            return knd_CONFLICT;
+        }
+    } while (!atomic_compare_exchange_weak(&self->hash_array[h], &head, new_item));
+
     atomic_fetch_add_explicit(&self->num_items, 1,
                               memory_order_relaxed);
     return knd_OK;
@@ -123,11 +168,13 @@ void knd_dict_del(struct kndDict *self)
     free(self);
 }
 
-int knd_dict_new(struct kndDict **dict, 
+int knd_dict_new(struct kndDict **dict,
+                 struct kndMemPool *mempool,
                  size_t init_size)
 {
     struct kndDict *self = malloc(sizeof(struct kndDict));
     if (!self) return knd_NOMEM;
+    self->mempool = mempool;
 
     self->hash_array = calloc(init_size, sizeof(struct kndDictItem*));
     if (!self->hash_array) return knd_NOMEM;

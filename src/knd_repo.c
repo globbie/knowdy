@@ -625,10 +625,10 @@ static gsl_err_t parse_class_import(void *obj,
             err = knd_commit_new(task->mempool, &task->ctx->commit);
             if (err) return make_gsl_err_external(err);
 
-            err = knd_dict_new(&task->class_name_idx, KND_SMALL_DICT_SIZE);
+            err = knd_dict_new(&task->class_name_idx, task->mempool, KND_SMALL_DICT_SIZE);
             if (err) return make_gsl_err_external(err);
 
-            err = knd_dict_new(&task->attr_name_idx, KND_SMALL_DICT_SIZE);
+            err = knd_dict_new(&task->attr_name_idx, task->mempool, KND_SMALL_DICT_SIZE);
             if (err) return make_gsl_err_external(err);
 
             task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->num_commits,
@@ -713,10 +713,10 @@ static gsl_err_t parse_proc_import(void *obj,
             err = knd_commit_new(task->mempool, &task->ctx->commit);
             if (err) return make_gsl_err_external(err);
 
-            err = knd_dict_new(&task->proc_name_idx, KND_SMALL_DICT_SIZE);
+            err = knd_dict_new(&task->proc_name_idx, task->mempool, KND_SMALL_DICT_SIZE);
             if (err) return make_gsl_err_external(err);
 
-            err = knd_dict_new(&task->proc_arg_name_idx, KND_SMALL_DICT_SIZE);
+            err = knd_dict_new(&task->proc_arg_name_idx, task->mempool, KND_SMALL_DICT_SIZE);
             if (err) return make_gsl_err_external(err);
 
             task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->num_commits,
@@ -1579,13 +1579,13 @@ int knd_repo_new(struct kndRepo **repo,
     /* global name indices */
     err = knd_set_new(mempool, &self->class_idx);
     if (err) goto error;
-    err = knd_dict_new(&self->class_name_idx, KND_MEDIUM_DICT_SIZE);
+    err = knd_dict_new(&self->class_name_idx, mempool, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
     /* attrs */
     err = knd_set_new(mempool, &self->attr_idx);
     if (err) goto error;
-    err = knd_dict_new(&self->attr_name_idx, KND_MEDIUM_DICT_SIZE);
+    err = knd_dict_new(&self->attr_name_idx, mempool, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
     /*** PROC ***/
@@ -1605,17 +1605,17 @@ int knd_repo_new(struct kndRepo **repo,
 
     err = knd_set_new(mempool, &self->proc_idx);
     if (err) goto error;
-    err = knd_dict_new(&self->proc_name_idx, KND_LARGE_DICT_SIZE);
+    err = knd_dict_new(&self->proc_name_idx, mempool, KND_LARGE_DICT_SIZE);
     if (err) goto error;
 
     /* proc args */
     err = knd_set_new(mempool, &self->proc_arg_idx);
     if (err) goto error;
-    err = knd_dict_new(&self->proc_arg_name_idx, KND_MEDIUM_DICT_SIZE);
+    err = knd_dict_new(&self->proc_arg_name_idx, mempool, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
     /* proc insts */
-    err = knd_dict_new(&self->proc_inst_name_idx, KND_LARGE_DICT_SIZE);
+    err = knd_dict_new(&self->proc_inst_name_idx, mempool, KND_LARGE_DICT_SIZE);
     if (err) goto error;
 
     /* commits */

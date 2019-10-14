@@ -67,7 +67,7 @@ struct kndRepo
 
     struct kndClassEntry *head_class_entry;
     struct kndClassEntry *tail_class_entry;
-    
+
     struct kndDict *class_name_idx;
     struct kndSet *class_idx;
     atomic_size_t num_classes;
