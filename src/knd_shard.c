@@ -94,6 +94,35 @@ static gsl_err_t parse_mem_config(void *obj, const char *rec, size_t *total_size
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static gsl_err_t get_agent_role(void *obj, const char *name, size_t name_size)
+{
+    struct kndShard *self = obj;
+
+    if (name_size == strlen("Writer") && !memcmp(name, "Writer", name_size)) {
+        self->role = KND_WRITER;
+    }
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_agent(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndShard *self = obj;
+
+    struct gslTaskSpec specs[] = {
+        {   .is_implied = true,
+            .buf = self->name,
+            .buf_size = &self->name_size,
+            .max_buf_size = KND_NAME_SIZE
+        },
+        {   .name = "role",
+            .name_size = strlen("role"),
+            .run = get_agent_role,
+            .obj = self
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 static gsl_err_t
 run_check_schema(void *unused_var(obj), const char *val, size_t val_size)
 {
@@ -195,9 +224,8 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
         },
         {   .name = "agent",
             .name_size = strlen("agent"),
-            .buf = self->name,
-            .buf_size = &self->name_size,
-            .max_buf_size = KND_NAME_SIZE
+            .parse = parse_agent,
+            .obj = self
         }
     };
     int err = knd_FAIL;

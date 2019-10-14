@@ -1343,8 +1343,13 @@ int knd_confirm_commits(struct kndRepo *self, struct kndTask *task)
 
     /* serialize a WAL entry */
     err = export_commit_GSL(self, commit, task);                                  RET_ERR();
-
     ctx->phase = KND_CONFIRM_COMMIT;
+
+    // TODO: check your worker status
+    //       if in master mode:
+    //          apply commits yourself
+    //       else:
+    //          delegate
 
     return knd_OK;
 }

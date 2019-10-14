@@ -48,16 +48,6 @@ typedef enum knd_logic { KND_LOGIC_AND,
                           KND_LOGIC_NOT
 } knd_logic;
 
-typedef enum knd_agent_role { KND_WRITER, 
-                              KND_READER
-} knd_agent_role;
-
-typedef enum knd_storage_type {
-    KND_STORAGE_DB, 
-    KND_STORAGE_XML
-} knd_storage_type;
-
-
 #define RET_ERR(S)  if (err) { printf("%s", "" #S);                               \
                               printf ("-- <%s> failed at line %d of file \"%s\"\n",\
                                       __func__, __LINE__, __FILE__); return err; } 
@@ -154,8 +144,6 @@ typedef enum knd_storage_type {
 #define KND_ID_SIZE  (8 * sizeof(char))
 #define KND_ID_BATCH_SIZE 10
 #define KND_LOCALE_SIZE 8
-
-//#define KND_STATE_SIZE  (4 * sizeof(char))
 
 #define KND_MAX_MIGRATIONS 256
 #define KND_MAX_SPECS 8

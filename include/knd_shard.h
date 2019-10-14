@@ -17,11 +17,18 @@ struct kndMemConfig {
     size_t num_tiny_pages;
 };
 
+typedef enum knd_agent_role_type {
+    KND_READER,
+    KND_WRITER
+} knd_agent_role_type;
+
 struct kndShard
 {
+    knd_agent_role_type role;
+
     char name[KND_NAME_SIZE];
     size_t name_size;
-
+    
     char path[KND_PATH_SIZE];
     size_t path_size;
 

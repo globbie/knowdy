@@ -62,7 +62,7 @@ static int knd_interact(struct kndShard *shard)
     task->ctx = calloc(1, sizeof(struct kndTaskContext));
     if (!task->ctx) return knd_NOMEM;
 
-    knd_log("\n++ Knowdy shard service is up and running!\n");
+    knd_log("\n++ Knowdy shard service is up and running! (agent role:%d)\n", shard->role);
     knd_log("   (finish session by pressing Ctrl+C)\n");
 
     while ((buf = readline(">> ")) != NULL) {

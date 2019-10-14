@@ -1,5 +1,5 @@
 {schema knd
-      {agent 007}
+      {agent 007 {role Writer}}
       {db-path /var/lib/knowdy/db}
       {schema-path /etc/knowdy/schemas
            {user User

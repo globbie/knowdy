@@ -605,8 +605,8 @@ int knd_user_new(struct kndUser **user, struct kndMemPool *mempool)
     return knd_OK;
 }
 
-extern int knd_user_context_new(struct kndMemPool *mempool,
-                                struct kndUserContext **result)
+int knd_user_context_new(struct kndMemPool *mempool,
+                         struct kndUserContext **result)
 {
     void *page;
     int err;
