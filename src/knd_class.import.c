@@ -143,7 +143,7 @@ int knd_parse_import_class_inst(struct kndClass *self,
         knd_class_inst_str(inst, 0);
     }
 
-    task->type = KND_UPDATE_STATE;
+    task->type = KND_COMMIT_STATE;
 
     return knd_OK;
 }
@@ -610,8 +610,8 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         c->str(c, 1);
 
-    if (task->type == KND_UPDATE_STATE) {
-        err = knd_class_update_state(c, KND_CREATED, task);
+    if (task->type == KND_COMMIT_STATE) {
+        err = knd_class_commit_state(c, KND_CREATED, task);
         if (err) {
             return make_gsl_err_external(err);
         }

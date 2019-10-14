@@ -83,7 +83,7 @@ static void str(struct kndClass *self, size_t depth)
     for (; state; state = state->next) {
         knd_log("\n%*s_state:%zu",
             depth * KND_OFFSET_SIZE, "",
-            state->update->numid);
+            state->commit->numid);
     }
 
     /* if (self->num_inst_states) {
@@ -337,7 +337,7 @@ static int update_ancestor_state(struct kndClass *self,
     return knd_OK;
 }
 
-static int update_state(struct kndClass *self,
+static int commit_state(struct kndClass *self,
                         struct kndStateRef *children,
                         knd_state_phase phase,
                         struct kndState **result,
@@ -355,7 +355,7 @@ static int update_state(struct kndClass *self,
         return err;
     }
     state->phase = phase;
-    state->update = task->ctx->update;
+    state->commit = task->ctx->commit;
     state->children = children;
 
     do {
@@ -434,39 +434,39 @@ static int update_inst_state(struct kndClass *self,
 }
 #endif
 
-int knd_class_update_state(struct kndClass *self,
+int knd_class_commit_state(struct kndClass *self,
                            knd_state_phase phase,
                            struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndStateRef *state_ref;
-    struct kndUpdate *update = task->ctx->update;
+    struct kndCommit *commit = task->ctx->commit;
     struct kndState *state = NULL;
     int err;
 
     if (DEBUG_CLASS_LEVEL_TMP) {
-        knd_log(".. \"%.*s\" class (repo:%.*s) to update its state (phase:%d)",
+        knd_log(".. \"%.*s\" class (repo:%.*s) to commit its state (phase:%d)",
                 self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name,
                 phase);
     }
 
-    err = update_state(self, NULL, phase, &state, task);                      RET_ERR();
+    err = commit_state(self, NULL, phase, &state, task);                      RET_ERR();
 
     /* newly created class? */
     switch (phase) {
     case KND_UPDATED:
-        /* any attr updates */
+        /* any attr commits */
 #if 0        
         if (task->inner_class_state_refs) {
-            err = update_state(self, task->inner_class_state_refs, phase, task);  RET_ERR();
+            err = commit_state(self, task->inner_class_state_refs, phase, task);  RET_ERR();
             task->inner_class_state_refs = NULL;
         }
 
-        /* instance updates */
+        /* instance commits */
         if (task->class_inst_state_refs) {
             if (DEBUG_CLASS_LEVEL_2) {
-                knd_log("\n .. \"%.*s\" class (repo:%.*s) to register inst updates..",
+                knd_log("\n .. \"%.*s\" class (repo:%.*s) to register inst commits..",
                         self->name_size, self->name,
                         self->entry->repo->name_size, self->entry->repo->name);
             }
@@ -489,8 +489,8 @@ int knd_class_update_state(struct kndClass *self,
 
     state_ref->obj = self->entry;
 
-    state_ref->next = update->class_state_refs;
-    update->class_state_refs = state_ref;
+    state_ref->next = commit->class_state_refs;
+    commit->class_state_refs = state_ref;
 
     return knd_OK;
 }
@@ -1178,19 +1178,19 @@ extern void knd_class_free(struct kndMemPool *mempool,
     knd_mempool_free(mempool, KND_MEMPAGE_SMALL_X4, (void*)self);
 }
 
-extern int knd_class_update_new(struct kndMemPool *mempool,
-                                struct kndClassUpdate **result)
+extern int knd_class_commit_new(struct kndMemPool *mempool,
+                                struct kndClassCommit **result)
 {
     void *page;
     int err;
     switch (mempool->type) {
     case KND_ALLOC_LIST:
         err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                                sizeof(struct kndClassUpdate), &page);  RET_ERR();
+                                sizeof(struct kndClassCommit), &page);  RET_ERR();
         break;
     default:
         err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
-                                     sizeof(struct kndClassUpdate), &page);  RET_ERR();
+                                     sizeof(struct kndClassCommit), &page);  RET_ERR();
     }
     *result = page;
     return knd_OK;

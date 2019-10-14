@@ -424,8 +424,8 @@ static int export_descendants_GSP(struct kndClass *self,
 }
 */
 
-static int export_class_body_updates(struct kndClass *self,
-                                     struct kndClassUpdate *unused_var(class_update),
+static int export_class_body_commits(struct kndClass *self,
+                                     struct kndClassCommit *unused_var(class_commit),
                                      struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -464,8 +464,8 @@ static int export_class_body_updates(struct kndClass *self,
     return knd_OK;
 }
 
-static int export_class_inst_updates(struct kndClass *unused_var(self),
-                                     struct kndClassUpdate *class_update,
+static int export_class_inst_commits(struct kndClass *unused_var(self),
+                                     struct kndClassCommit *class_commit,
                                      struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -473,8 +473,8 @@ static int export_class_inst_updates(struct kndClass *unused_var(self),
     int err;
 
     err = out->write(out, "[!inst", strlen("[!inst"));                            RET_ERR();
-    for (size_t i = 0; i < class_update->num_insts; i++) {
-        inst = class_update->insts[i];
+    for (size_t i = 0; i < class_commit->num_insts; i++) {
+        inst = class_commit->insts[i];
         err = out->writec(out, '{');                                              RET_ERR();
         err = out->write(out, inst->entry->id, inst->entry->id_size);             RET_ERR();
 
@@ -490,12 +490,12 @@ static int export_class_inst_updates(struct kndClass *unused_var(self),
     return knd_OK;
 }
 
-extern int knd_class_export_updates_GSP(struct kndClass *self,
-                                        struct kndClassUpdate *class_update,
+extern int knd_class_export_commits_GSP(struct kndClass *self,
+                                        struct kndClassCommit *class_commit,
                                         struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndUpdate *update = class_update->update;
+    struct kndCommit *commit = class_commit->commit;
     struct kndState *state = self->states;
     int err;
     
@@ -507,21 +507,21 @@ extern int knd_class_export_updates_GSP(struct kndClass *self,
 
     err = out->write(out, "{_st", strlen("{_st"));                                RET_ERR();
 
-    if (state && state->update == update) {
+    if (state && state->commit == commit) {
         err = out->writec(out, ' ');                                              RET_ERR();
 
         // TODO
         //err = out->write(out, state->id, state->id_size);                         RET_ERR();
 
-        /* any updates of the class body? */
-        err = export_class_body_updates(self, class_update, task);                 RET_ERR();
+        /* any commits of the class body? */
+        err = export_class_body_commits(self, class_commit, task);                 RET_ERR();
     }
 
     if (self->inst_states) {
         state = self->inst_states;
-        /* any updates of the class insts? */
-        if (state->update == update) {
-            err = export_class_inst_updates(self, class_update, task);             RET_ERR();
+        /* any commits of the class insts? */
+        if (state->commit == commit) {
+            err = export_class_inst_commits(self, class_commit, task);             RET_ERR();
         }
     }
 
@@ -954,7 +954,7 @@ static gsl_err_t append_class_inst_item(struct LocalContext *ctx, struct kndClas
     }
     err = set->add(set, inst->entry->id, inst->entry->id_size, (void*)inst->entry);
     if (err) {
-        knd_log("-- failed to update the class inst idx");
+        knd_log("-- failed to commit the class inst idx");
         return make_gsl_err_external(err);
     }
     return make_gsl_err(gsl_OK);
@@ -1340,7 +1340,7 @@ static gsl_err_t parse_baseclass_array(void *obj,
 }
 
 extern gsl_err_t knd_read_class_state(struct kndClass *self,
-                                      struct kndClassUpdate *unused_var(class_update),
+                                      struct kndClassCommit *unused_var(class_commit),
                                       const char *rec,
                                       size_t *total_size)
 {
@@ -1356,7 +1356,7 @@ extern gsl_err_t knd_read_class_state(struct kndClass *self,
     assert(ctx.task);
     return make_gsl_err_external(knd_FAIL);
 
-    struct gslTaskSpec inst_update_spec = {
+    struct gslTaskSpec inst_commit_spec = {
         .is_list_item = true,
         .parse  = parse_class_inst_item,
         .obj = &ctx
@@ -1383,7 +1383,7 @@ extern gsl_err_t knd_read_class_state(struct kndClass *self,
           .name = "inst",
           .name_size = strlen("inst"),
           .parse = gsl_parse_array,
-          .obj = &inst_update_spec
+          .obj = &inst_commit_spec
         }
     };
     gsl_err_t err;
@@ -1394,8 +1394,8 @@ extern gsl_err_t knd_read_class_state(struct kndClass *self,
     // TODO
     //self->str(self);
     /*state = self->states;
-    state->val = (void*)class_update;
-    state->update = class_update->update;
+    state->val = (void*)class_commit;
+    state->commit = class_commit->commit;
     */
     return make_gsl_err(gsl_OK);
 }

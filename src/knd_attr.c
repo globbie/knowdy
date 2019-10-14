@@ -334,8 +334,8 @@ extern int knd_attr_export(struct kndAttr *self,
     }
 }
 
-extern int knd_apply_attr_var_updates(struct kndClass *self,
-                                      struct kndClassUpdate *class_update,
+extern int knd_apply_attr_var_commits(struct kndClass *self,
+                                      struct kndClassCommit *class_commit,
                                       struct kndTask *task)
 {
     struct kndState *state; //, *s, *next_state = NULL;
@@ -344,12 +344,12 @@ extern int knd_apply_attr_var_updates(struct kndClass *self,
     int err;
 
     if (DEBUG_ATTR_LEVEL_TMP)
-        knd_log(".. applying attr var updates..");
+        knd_log(".. applying attr var commits..");
 
     err = knd_state_new(mempool, &state);
     if (err) return err;
 
-    state->update = class_update->update;
+    state->commit = class_commit->commit;
     
     //for (s = self->attr_var_inbox; s; s = next_state) {
         //attr_var = s->val;

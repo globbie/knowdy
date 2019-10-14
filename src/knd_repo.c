@@ -46,33 +46,33 @@ void knd_repo_del(struct kndRepo *self)
 }
 
 __attribute__((unused))
-static gsl_err_t alloc_class_update(void *obj,
+static gsl_err_t alloc_class_commit(void *obj,
                                     const char *name __attribute__((unused)),
                                     size_t name_size __attribute__((unused)),
                                     size_t unused_var(count),
                                     void **item)
 {
-    struct kndUpdate    *self = obj;
+    struct kndCommit    *self = obj;
     struct kndMemPool *mempool = NULL; // = self->repo->mempool;
-    struct kndClassUpdate *class_update;
+    struct kndClassCommit *class_commit;
     int err;
 
     assert(mempool);
     return make_gsl_err_external(knd_FAIL);
 
     assert(name == NULL && name_size == 0);
-    err = knd_class_update_new(mempool, &class_update);
+    err = knd_class_commit_new(mempool, &class_commit);
     if (err) return make_gsl_err_external(err);
-    class_update->update = self;
-    *item = class_update;
+    class_commit->commit = self;
+    *item = class_commit;
 
     return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t get_class_by_id(void *obj, const char *name, size_t name_size)
 {
-    struct kndClassUpdate *self = obj;
-    struct kndRepo *repo = self->update->repo;
+    struct kndClassCommit *self = obj;
+    struct kndRepo *repo = self->commit->repo;
     struct kndMemPool *mempool = NULL; // repo->mempool;
     struct kndSet *class_idx = repo->class_idx;
     void *result;
@@ -112,12 +112,12 @@ static gsl_err_t get_class_by_id(void *obj, const char *name, size_t name_size)
 static gsl_err_t get_repo_by_name(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *task = obj;
-    struct kndUpdate *update = task->ctx->update;
+    struct kndCommit *commit = task->ctx->commit;
 
     if (DEBUG_REPO_LEVEL_TMP)
         knd_log(".. get repo by name:%.*s", name_size, name);
 
-    update->repo = task->repo;
+    commit->repo = task->repo;
     
     return make_gsl_err(gsl_OK);
 }
@@ -125,9 +125,9 @@ static gsl_err_t get_repo_by_name(void *obj, const char *name, size_t name_size)
 static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *task = obj;
-    struct kndClassUpdate *self = obj;
+    struct kndClassCommit *self = obj;
     struct kndClass *c;
-    struct kndRepo *repo = self->update->repo;
+    struct kndRepo *repo = self->commit->repo;
     struct kndDict *class_name_idx = task->class_name_idx;
     struct kndMemPool *mempool = task->mempool;
     struct kndClassEntry *entry = self->entry;
@@ -184,32 +184,32 @@ static gsl_err_t parse_class_state(void *obj,
                                    const char *rec,
                                    size_t *total_size)
 {
-    struct kndClassUpdate *self = obj;
+    struct kndClassCommit *self = obj;
     struct kndClass *c = self->class;
 
     return knd_read_class_state(c, self, rec, total_size);
 }
 
-static gsl_err_t parse_class_update(void *obj,
+static gsl_err_t parse_class_commit(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct kndClassUpdate *class_update = obj;
+    struct kndClassCommit *class_commit = obj;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = get_class_by_id,
-          .obj = class_update
+          .obj = class_commit
         },
         { .name = "_n",
           .name_size = strlen("_n"),
           .run = set_class_name,
-          .obj = class_update
+          .obj = class_commit
         },
         { .name = "_st",
           .name_size = strlen("_st"),
           .parse = parse_class_state,
-          .obj = class_update
+          .obj = class_commit
         }
     };
     gsl_err_t err;
@@ -221,7 +221,7 @@ static gsl_err_t parse_class_update(void *obj,
 }
 
 __attribute__((unused))
-static gsl_err_t alloc_update(void *obj,
+static gsl_err_t alloc_commit(void *obj,
                               const char *name __attribute__((unused)),
                               size_t name_size __attribute__((unused)),
                               size_t unused_var(count),
@@ -229,7 +229,7 @@ static gsl_err_t alloc_update(void *obj,
 {
     struct kndRepo *self = obj;
     struct kndMemPool *mempool = NULL;//self->mempool;
-    struct kndUpdate *update;
+    struct kndCommit *commit;
     int err;
 
     assert(mempool);
@@ -237,42 +237,42 @@ static gsl_err_t alloc_update(void *obj,
 
     assert(name == NULL && name_size == 0);
 
-    err = knd_update_new(mempool, &update);
+    err = knd_commit_new(mempool, &commit);
     if (err) return make_gsl_err_external(err);
 
-    update->repo = self;
-    *item = update;
+    commit->repo = self;
+    *item = commit;
 
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_update(void *unused_var(obj),
+static gsl_err_t parse_commit(void *unused_var(obj),
                               const char *rec,
                               size_t *total_size)
 {
-    //struct kndUpdate *update = obj;
+    //struct kndCommit *commit = obj;
 
-    struct gslTaskSpec class_update_spec = {
+    struct gslTaskSpec class_commit_spec = {
         .is_list_item = true,
-        .parse  = parse_class_update,
+        .parse  = parse_class_commit,
     };
 
     struct gslTaskSpec specs[] = {
         /*{ .is_implied = true,
-          .buf = update->id,
-          .buf_size = &update->id_size,
-          .max_buf_size = sizeof update->id
+          .buf = commit->id,
+          .buf_size = &commit->id_size,
+          .max_buf_size = sizeof commit->id
           },*/
         /*{ .name = "ts",
           .name_size = strlen("ts"),
           .run = get_timestamp,
-          .obj = update
+          .obj = commit
           },*/
         { .type = GSL_SET_ARRAY_STATE,
           .name = "c",
           .name_size = strlen("c"),
           .parse = gsl_parse_array,
-          .obj = &class_update_spec
+          .obj = &class_commit_spec
         }
     };
     gsl_err_t err;
@@ -283,22 +283,22 @@ static gsl_err_t parse_update(void *unused_var(obj),
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t kndRepo_read_updates(void *unused_var(obj),
+static gsl_err_t kndRepo_read_commits(void *unused_var(obj),
                                       const char *rec,
                                       size_t *total_size)
 {
     //struct kndRepo *repo = obj;
-    struct gslTaskSpec update_spec = {
+    struct gslTaskSpec commit_spec = {
         .is_list_item = true,
-        .parse  = parse_update,
+        .parse  = parse_commit,
     };
 
     struct gslTaskSpec specs[] = {
         { .type = GSL_SET_ARRAY_STATE,
-          .name = "update",
-          .name_size = strlen("update"),
+          .name = "commit",
+          .name_size = strlen("commit"),
           .parse = gsl_parse_array,
-          .obj = &update_spec
+          .obj = &commit_spec
         }
     };
     gsl_err_t err;
@@ -334,7 +334,7 @@ static int restore_state(struct kndRepo *self,
     if (DEBUG_REPO_LEVEL_2)
         knd_log(".. restoring the journal file: %.*s", out->buf_size, out->buf);
 
-    parser_err = kndRepo_read_updates(self, out->buf, &total_size);
+    parser_err = kndRepo_read_commits(self, out->buf, &total_size);
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
     return knd_OK;
@@ -346,9 +346,9 @@ static int present_latest_state_JSON(struct kndRepo *self,
 {
     char idbuf[KND_ID_SIZE];
     size_t idbuf_size;
-    size_t latest_update_id = atomic_load_explicit(&self->num_updates,
+    size_t latest_commit_id = atomic_load_explicit(&self->num_commits,
                                                    memory_order_relaxed);
-    struct kndUpdate *update;
+    struct kndCommit *commit;
     int err;
 
     out->reset(out);
@@ -359,17 +359,17 @@ static int present_latest_state_JSON(struct kndRepo *self,
     err = out->writec(out, '"');                                                  RET_ERR();
 
     err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));                RET_ERR();
-    err = out->writef(out, "%zu", latest_update_id);                              RET_ERR();
+    err = out->writef(out, "%zu", latest_commit_id);                              RET_ERR();
 
 
-    if (latest_update_id) {
-        knd_uid_create(latest_update_id, idbuf, &idbuf_size);
-        err = self->update_idx->get(self->update_idx,
+    if (latest_commit_id) {
+        knd_uid_create(latest_commit_id, idbuf, &idbuf_size);
+        err = self->commit_idx->get(self->commit_idx,
                                     idbuf, idbuf_size,
-                                    (void**)&update);                             RET_ERR();
+                                    (void**)&commit);                             RET_ERR();
         err = out->write(out, ",\"_time\":", strlen(",\"_time\":"));              RET_ERR();
-        err = out->writef(out, "%zu", (size_t)update->timestamp);                 RET_ERR();
-        //err = present_update_JSON(update, out);  RET_ERR();
+        err = out->writef(out, "%zu", (size_t)commit->timestamp);                 RET_ERR();
+        //err = present_commit_JSON(commit, out);  RET_ERR();
     } else {
         err = out->write(out, ",\"_time\":", strlen(",\"_time\":"));              RET_ERR();
         err = out->writef(out, "%zu", (size_t)self->timestamp);                   RET_ERR();
@@ -384,9 +384,9 @@ static int present_latest_state_JSON(struct kndRepo *self,
 static int present_latest_state_GSL(struct kndRepo *self,
                                     struct kndOutput *out)
 {
-    size_t latest_update_id = atomic_load_explicit(&self->num_updates,
+    size_t latest_commit_id = atomic_load_explicit(&self->num_commits,
                                                    memory_order_relaxed);
-    //struct kndUpdate *update;
+    //struct kndCommit *commit;
     int err;
 
     out->reset(out);
@@ -395,13 +395,13 @@ static int present_latest_state_GSL(struct kndRepo *self,
     err = out->write(out,  self->name, self->name_size);                          RET_ERR();
 
     err = out->write(out, "{_state ", strlen("{_state "));                        RET_ERR();
-    err = out->writef(out, "%zu", latest_update_id);                              RET_ERR();
+    err = out->writef(out, "%zu", latest_commit_id);                              RET_ERR();
     err = out->writec(out, '}');                                                  RET_ERR();
 
-    /*    if (self->updates) {
-        update = self->updates;
+    /*    if (self->commits) {
+        commit = self->commits;
         err = out->write(out, "{modif ", strlen("{modif "));                      RET_ERR();
-        err = out->writef(out, "%zu", (size_t)update->timestamp);                 RET_ERR();
+        err = out->writef(out, "%zu", (size_t)commit->timestamp);                 RET_ERR();
         err = out->writec(out, '}');                                              RET_ERR();
         }*/
 
@@ -413,21 +413,21 @@ static int present_latest_state_GSL(struct kndRepo *self,
 
 
 #if 0
-static int select_update_range(struct kndRepo *self,
+static int select_commit_range(struct kndRepo *self,
                                size_t gt, size_t lt,
                                size_t unused_var(eq),
                                struct kndSet *set)
 {
-    struct kndUpdate *update;
+    struct kndCommit *commit;
     struct kndStateRef *ref;
     int err;
 
-    /*    for (update = self->updates; update; update = update->next) {
-        if (update->numid >= lt) continue;
-        if (update->numid <= gt) continue;
+    /*    for (commit = self->commits; commit; commit = commit->next) {
+        if (commit->numid >= lt) continue;
+        if (commit->numid <= gt) continue;
 
-        for (ref = update->class_state_refs; ref; ref = ref->next) {
-            err = knd_retrieve_class_updates(ref, set);                           RET_ERR();
+        for (ref = commit->class_state_refs; ref; ref = ref->next) {
+            err = knd_retrieve_class_commits(ref, set);                           RET_ERR();
         }
     }
     */
@@ -458,14 +458,14 @@ static gsl_err_t present_repo_state(void *obj,
 
     task->type = KND_SELECT_STATE;
 
-    /* restore:    if (!repo->updates) goto show_curr_state;
-    update = repo->updates;
-    if (task->state_gt >= update->numid) goto show_curr_state;
+    /* restore:    if (!repo->commits) goto show_curr_state;
+    commit = repo->commits;
+    if (task->state_gt >= commit->numid) goto show_curr_state;
     */
 
     // TODO: handle lt and eq cases
     //if (task->state_lt && task->state_lt < task->state_gt) goto show_curr_state;
-    task->state_lt = repo->num_updates + 1;
+    task->state_lt = repo->num_commits + 1;
 
     if (DEBUG_REPO_LEVEL_TMP) {
         knd_log(".. select repo delta:  gt %zu  lt %zu  eq:%zu..",
@@ -476,7 +476,7 @@ static gsl_err_t present_repo_state(void *obj,
     if (err) return make_gsl_err_external(err);
     set->mempool = mempool;
 
-    /*err = select_update_range(repo,
+    /*err = select_commit_range(repo,
                               task->state_gt, task->state_lt,
                               task->state_eq, set);
     if (err) return make_gsl_err_external(err);
@@ -620,9 +620,9 @@ static gsl_err_t parse_class_import(void *obj,
     }
 
     if (task->type != KND_LOAD_STATE) {
-        task->type = KND_UPDATE_STATE;
-        if (!task->ctx->update) {
-            err = knd_update_new(task->mempool, &task->ctx->update);
+        task->type = KND_COMMIT_STATE;
+        if (!task->ctx->commit) {
+            err = knd_commit_new(task->mempool, &task->ctx->commit);
             if (err) return make_gsl_err_external(err);
 
             err = knd_dict_new(&task->class_name_idx, KND_SMALL_DICT_SIZE);
@@ -631,7 +631,7 @@ static gsl_err_t parse_class_import(void *obj,
             err = knd_dict_new(&task->attr_name_idx, KND_SMALL_DICT_SIZE);
             if (err) return make_gsl_err_external(err);
 
-            task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+            task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->num_commits,
                                                                     memory_order_relaxed);
         }
     }
@@ -707,10 +707,10 @@ static gsl_err_t parse_proc_import(void *obj,
     }
 
     if (task->type != KND_LOAD_STATE) {
-        task->type = KND_UPDATE_STATE;
+        task->type = KND_COMMIT_STATE;
 
-        if (!task->ctx->update) {
-            err = knd_update_new(task->mempool, &task->ctx->update);
+        if (!task->ctx->commit) {
+            err = knd_commit_new(task->mempool, &task->ctx->commit);
             if (err) return make_gsl_err_external(err);
 
             err = knd_dict_new(&task->proc_name_idx, KND_SMALL_DICT_SIZE);
@@ -719,7 +719,7 @@ static gsl_err_t parse_proc_import(void *obj,
             err = knd_dict_new(&task->proc_arg_name_idx, KND_SMALL_DICT_SIZE);
             if (err) return make_gsl_err_external(err);
 
-            task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+            task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->num_commits,
                                                                     memory_order_relaxed);
         }
     }
@@ -1213,7 +1213,7 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     err = out->write(out, "/state.db", strlen("/state.db"));
     if (err) return err;
 
-    /* read any existing updates to the frozen DB (failure recovery) */
+    /* read any existing commits to the frozen DB (failure recovery) */
     if (!stat(out->buf, &st)) {
         err = restore_state(self, out->buf, task->file_out);
         if (err) return err;
@@ -1223,8 +1223,8 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     return knd_OK;
 }
 
-static int export_update_GSL(struct kndRepo *self,
-                             struct kndUpdate *update,
+static int export_commit_GSL(struct kndRepo *self,
+                             struct kndCommit *commit,
                              struct kndTask *task)
 {
     // char buf[KND_NAME_SIZE] = {0};
@@ -1240,20 +1240,20 @@ static int export_update_GSL(struct kndRepo *self,
     err = out->write(out, "repo ", strlen("repo "));                              RET_ERR();
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
 
-    err = out->writef(out, "{state %zu}", update->orig_state_id);                RET_ERR();
-    err = out->writef(out, "{tid %zu}", update->id);                           RET_ERR();
+    err = out->writef(out, "{state %zu}", commit->orig_state_id);                RET_ERR();
+    err = out->writef(out, "{tid %zu}", commit->id);                           RET_ERR();
     
-    time(&update->timestamp);
-    // localtime_r(&update->timestamp, &tm_info);
+    time(&commit->timestamp);
+    // localtime_r(&commit->timestamp, &tm_info);
     /*buf_size = strftime(buf, KND_NAME_SIZE,
                         "{time %Y-%m-%d %H:%M:%S}", &tm_info);
     err = out->write(out, buf, buf_size);                                         RET_ERR();
     */
-    err = out->writef(out, "{time %zu}", (size_t)update->timestamp);              RET_ERR();
+    err = out->writef(out, "{time %zu}", (size_t)commit->timestamp);              RET_ERR();
     
-    err = out->write(out, "{update ", strlen("{update "));                        RET_ERR();
+    err = out->write(out, "{commit ", strlen("{commit "));                        RET_ERR();
 
-    for (ref = update->class_state_refs; ref; ref = ref->next) {
+    for (ref = commit->class_state_refs; ref; ref = ref->next) {
         entry = ref->obj;
         if (!entry) continue;
 
@@ -1276,31 +1276,31 @@ static int export_update_GSL(struct kndRepo *self,
     return knd_OK;
 }
 
-int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
+int knd_confirm_commits(struct kndRepo *self, struct kndTask *task)
 {
     struct kndTaskContext *ctx = task->ctx;
-    struct kndUpdate *update = ctx->update;
+    struct kndCommit *commit = ctx->commit;
     struct kndStateRef *ref, *child_ref;
     struct kndState *state;
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
     int err;
 
-    assert(update != NULL);
+    assert(commit != NULL);
 
     if (DEBUG_REPO_LEVEL_2) {
-        knd_log("\n.. \"%.*s\" repo to confirm updates..",
+        knd_log("\n.. \"%.*s\" repo to confirm commits..",
                 self->name_size, self->name);
     }
-    update->repo = self;
+    commit->repo = self;
 
-    for (ref = update->class_state_refs; ref; ref = ref->next) {
+    for (ref = commit->class_state_refs; ref; ref = ref->next) {
         if (ref->state->phase == KND_REMOVED) {
             continue;
         }
         entry = ref->obj;
         if (entry) {
-            knd_log(".. repo %.*s to confirm updates in \"%.*s\"..",
+            knd_log(".. repo %.*s to confirm commits in \"%.*s\"..",
                     self->name_size, self->name,
                     entry->name_size, entry->name);
         }
@@ -1309,7 +1309,7 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
             err = knd_class_resolve(entry->class, task);                              RET_ERR();
         }
         state = ref->state;
-        state->update = update;
+        state->commit = commit;
         if (!state->children) continue;
 
         for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
@@ -1318,19 +1318,19 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
                 knd_log("  == class:%.*s", entry->name_size, entry->name);
                 }*/
             state = child_ref->state;
-            state->update = update;
+            state->commit = commit;
         }
     }
 
     /* PROCS */
-    for (ref = update->proc_state_refs; ref; ref = ref->next) {
+    for (ref = commit->proc_state_refs; ref; ref = ref->next) {
         if (ref->state->phase == KND_REMOVED) {
             knd_log(".. proc to be removed");
             continue;
         }
         proc_entry = ref->obj;
         if (proc_entry) {
-            knd_log(".. confirming proc updates in \"%.*s\"..",
+            knd_log(".. confirming proc commits in \"%.*s\"..",
                     self->name_size, self->name,
                     proc_entry->name_size, proc_entry->name);
         }
@@ -1342,9 +1342,9 @@ int knd_confirm_updates(struct kndRepo *self, struct kndTask *task)
     }
 
     /* serialize a WAL entry */
-    err = export_update_GSL(self, update, task);                                  RET_ERR();
+    err = export_commit_GSL(self, commit, task);                                  RET_ERR();
 
-    ctx->phase = KND_CONFIRM_UPDATE;
+    ctx->phase = KND_CONFIRM_COMMIT;
 
     return knd_OK;
 }
@@ -1378,30 +1378,30 @@ int knd_repo_check_conflicts(struct kndRepo *self,
     size_t idbuf_size;
     struct kndStateRef *ref;
     struct kndClassEntry *entry;
-    struct kndUpdate *update = ctx->update, *curr_update;
+    struct kndCommit *commit = ctx->commit, *curr_commit;
     int err;
 
     if (DEBUG_REPO_LEVEL_2)
-        knd_log("== orig update: #%zu", update->orig_state_id);
+        knd_log("== orig commit: #%zu", commit->orig_state_id);
 
-    size_t latest_update_id = atomic_load_explicit(&self->num_updates,
+    size_t latest_commit_id = atomic_load_explicit(&self->num_commits,
                                                    memory_order_relaxed);
 
-    for (size_t i = update->orig_state_id; i < latest_update_id; i++) {
+    for (size_t i = commit->orig_state_id; i < latest_commit_id; i++) {
         knd_uid_create(i + 1, idbuf, &idbuf_size);
 
         if (DEBUG_REPO_LEVEL_TMP)
-            knd_log(".. any conflicts with prev update #%zu [id:%.*s]?",
+            knd_log(".. any conflicts with prev commit #%zu [id:%.*s]?",
                     i, idbuf_size, idbuf);
 
-        err = self->update_idx->get(self->update_idx,
-                                    idbuf, idbuf_size, (void**)&curr_update);
+        err = self->commit_idx->get(self->commit_idx,
+                                    idbuf, idbuf_size, (void**)&curr_commit);
         if (err) {
-            knd_log("-- no such update: #%zu", (i + 1));
+            knd_log("-- no such commit: #%zu", (i + 1));
             return err;
         }
 
-        for (ref = update->class_state_refs; ref; ref = ref->next) {
+        for (ref = commit->class_state_refs; ref; ref = ref->next) {
             entry = ref->obj;
 
             knd_log(".. check class conflicts: %.*s..",
@@ -1413,42 +1413,42 @@ int knd_repo_check_conflicts(struct kndRepo *self,
                      (void*)entry);
                      if (err) return err;
             */
-            //update->confirm = KND_CONFLICT_STATE;
+            //commit->confirm = KND_CONFLICT_STATE;
 
-            /* no conflicts with this update */
-            update->orig_state_id = i;
+            /* no conflicts with this commit */
+            commit->orig_state_id = i;
         }
     }
 
-    update->confirm = KND_VALID_STATE;
-    update->numid = atomic_fetch_add_explicit(&self->num_updates, 1,
+    commit->confirm = KND_VALID_STATE;
+    commit->numid = atomic_fetch_add_explicit(&self->num_commits, 1,
                                               memory_order_relaxed);
-    update->numid++;
-    knd_uid_create(update->numid, update->id, &update->id_size);
+    commit->numid++;
+    knd_uid_create(commit->numid, commit->id, &commit->id_size);
 
-    err = self->update_idx->add(self->update_idx,
-                                update->id, update->id_size,
-                                (void*)update);
+    err = self->commit_idx->add(self->commit_idx,
+                                commit->id, commit->id_size,
+                                (void*)commit);
     if (err) return err;
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("++ no conflicts found, update #%zu confirmed!",
-                update->numid);
+        knd_log("++ no conflicts found, commit #%zu confirmed!",
+                commit->numid);
 
     return knd_OK;
 }
 
-int knd_repo_update_indices(struct kndRepo *self,
+int knd_repo_commit_indices(struct kndRepo *self,
                             struct kndTaskContext *ctx)
 {
     struct kndStateRef *ref;
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
     struct kndDict *name_idx = self->class_name_idx;
-    struct kndUpdate *update = ctx->update;
+    struct kndCommit *commit = ctx->commit;
     int err;
 
-    for (ref = update->class_state_refs; ref; ref = ref->next) {
+    for (ref = commit->class_state_refs; ref; ref = ref->next) {
         entry = ref->obj;
 
         switch (ref->state->phase) {
@@ -1472,7 +1472,7 @@ int knd_repo_update_indices(struct kndRepo *self,
     }
 
     name_idx = self->proc_name_idx;
-    for (ref = update->proc_state_refs; ref; ref = ref->next) {
+    for (ref = commit->proc_state_refs; ref; ref = ref->next) {
         proc_entry = ref->obj;
 
         switch (ref->state->phase) {
@@ -1500,16 +1500,16 @@ int knd_repo_update_indices(struct kndRepo *self,
     return knd_OK;
 }
 
-gsl_err_t knd_parse_repo_update(void *obj,
+gsl_err_t knd_parse_repo_commit(void *obj,
                                 const char *rec,
                                 size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndUpdate *update = task->ctx->update;
+    struct kndCommit *commit = task->ctx->commit;
 
-    int err = knd_update_new(task->mempool, &update);
+    int err = knd_commit_new(task->mempool, &commit);
     if (err) return make_gsl_err_external(err);
-    task->ctx->update = update;
+    task->ctx->commit = commit;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -1519,17 +1519,17 @@ gsl_err_t knd_parse_repo_update(void *obj,
         { .name = "state",
           .name_size = strlen("state"),
           .parse = gsl_parse_size_t,
-          .obj = &update->orig_state_id
+          .obj = &commit->orig_state_id
         },
         { .name = "tid",
           .name_size = strlen("tid"),
           .parse = gsl_parse_size_t,
-          .obj = &update->numid
+          .obj = &commit->numid
         },
         { .name = "time",
           .name_size = strlen("time"),
           .parse = gsl_parse_size_t,
-          .obj = &update->timestamp
+          .obj = &commit->timestamp
         }
     };
     gsl_err_t parser_err;
@@ -1613,8 +1613,8 @@ int knd_repo_new(struct kndRepo **repo,
     err = knd_dict_new(&self->proc_inst_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
 
-    /* updates */
-    err = knd_set_new(mempool, &self->update_idx);
+    /* commits */
+    err = knd_set_new(mempool, &self->commit_idx);
     if (err) goto error;
 
     self->max_journal_size = KND_FILE_BUF_SIZE;

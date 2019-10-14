@@ -85,7 +85,7 @@ static int knd_interact(struct kndShard *shard)
         /* update tasks require another run,
            possibly involving network communication */
         switch (task->ctx->phase) {
-        case KND_CONFIRM_UPDATE:
+        case KND_CONFIRM_COMMIT:
             err = knd_task_copy_block(task,
                                       task->output, task->output_size,
                                       &block, &block_size);

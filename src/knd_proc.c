@@ -158,16 +158,16 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
         knd_log("== proc to remove: \"%.*s\"\n",
                 proc->name_size, proc->name);
 
-    task->type = KND_UPDATE_STATE;
-    if (!task->ctx->update) {
-        err = knd_update_new(task->mempool, &task->ctx->update);
+    task->type = KND_COMMIT_STATE;
+    if (!task->ctx->commit) {
+        err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->num_commits,
                                                                 memory_order_relaxed);
     }
 
-    err = knd_proc_update_state(proc, KND_REMOVED, task);
+    err = knd_proc_commit_state(proc, KND_REMOVED, task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -244,13 +244,13 @@ gsl_err_t knd_proc_select(struct kndRepo *repo,
 
     knd_state_phase phase;
 
-    /* any updates happened? */
+    /* any commits happened? */
     switch (task->type) {
-    case KND_UPDATE_STATE:
+    case KND_COMMIT_STATE:
         phase = KND_UPDATED;
         if (task->phase == KND_REMOVED)
             phase = KND_REMOVED;
-        err = knd_proc_update_state(ctx.proc, phase, task);
+        err = knd_proc_commit_state(ctx.proc, phase, task);
         if (err) return make_gsl_err_external(err);
         break;
     default:
@@ -447,7 +447,7 @@ int knd_get_proc(struct kndRepo *repo,
     return knd_FAIL;
 }
 
-static int update_state(struct kndProc *self,
+static int commit_state(struct kndProc *self,
                         struct kndStateRef *children,
                         knd_state_phase phase,
                         struct kndState **result,
@@ -463,7 +463,7 @@ static int update_state(struct kndProc *self,
         return err;
     }
     state->phase = phase;
-    state->update = task->ctx->update;
+    state->commit = task->ctx->commit;
     state->children = children;
 
     do {
@@ -478,24 +478,24 @@ static int update_state(struct kndProc *self,
     return knd_OK;
 }
 
-int knd_proc_update_state(struct kndProc *self,
+int knd_proc_commit_state(struct kndProc *self,
                           knd_state_phase phase,
                           struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndStateRef *state_ref;
-    struct kndUpdate *update = task->ctx->update;
+    struct kndCommit *commit = task->ctx->commit;
     struct kndState *state = NULL;
     int err;
 
     if (DEBUG_PROC_LEVEL_TMP) {
-        knd_log(".. \"%.*s\" proc (repo:%.*s) to update its state (phase:%d)",
+        knd_log(".. \"%.*s\" proc (repo:%.*s) to commit its state (phase:%d)",
                 self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name,
                 phase);
     }
 
-    err = update_state(self, NULL, phase, &state, task);                          RET_ERR();
+    err = commit_state(self, NULL, phase, &state, task);                          RET_ERR();
 
     /*switch (phase) {
     case KND_CREATED:
@@ -513,8 +513,8 @@ int knd_proc_update_state(struct kndProc *self,
     state_ref->type = KND_STATE_PROC;
     state_ref->obj = self->entry;
 
-    state_ref->next = update->proc_state_refs;
-    update->proc_state_refs = state_ref;
+    state_ref->next = commit->proc_state_refs;
+    commit->proc_state_refs = state_ref;
     return knd_OK;
 }
 

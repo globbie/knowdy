@@ -52,7 +52,7 @@ typedef int (*task_cb_func)(void *obj,
 typedef enum knd_task_spec_type {
     KND_GET_STATE,
     KND_SELECT_STATE,
-    KND_UPDATE_STATE,
+    KND_COMMIT_STATE,
     KND_LIQUID_STATE,
     KND_SYNC_STATE,
     KND_DELTA_STATE,
@@ -66,9 +66,9 @@ typedef enum knd_task_phase_t { KND_REGISTER,
                                 KND_REJECT,
                                 KND_IMPORT,
                                 KND_CONFLICT,
-                                KND_CONFIRM_UPDATE,
+                                KND_CONFIRM_COMMIT,
                                 KND_WAL_WRITE,
-                                KND_UPDATE_INDICES,
+                                KND_COMMIT_INDICES,
                                 KND_DELIVER_RESULT,
                                 KND_COMPLETE } knd_task_phase_t;
 
@@ -128,20 +128,20 @@ struct kndTaskContext {
     size_t max_depth;
 
     // TODO: subscription channel
-    // to push any updates
+    // to push any commits
 
     struct kndTaskDestination *dest;
     struct kndRepo *repo;
 
-    /* updates */
+    /* commits */
     struct kndStateRef  *class_state_refs;
     struct kndStateRef  *inner_class_state_refs;
     struct kndStateRef  *class_inst_state_refs;
     struct kndStateRef  *proc_state_refs;
     struct kndStateRef  *proc_inst_state_refs;
 
-    struct kndUpdate *update;
-    bool update_confirmed;
+    struct kndCommit *commit;
+    bool commit_confirmed;
 
     struct kndTaskContext *next;
 };
@@ -206,9 +206,8 @@ struct kndTask
 
     struct kndOutput  *out;
     struct kndOutput  *log;
-    struct kndOutput  *task_out;
     struct kndOutput  *file_out;
-    struct kndOutput  *update_out;
+
     struct kndMemPool *mempool;
     bool is_mempool_owner;
 

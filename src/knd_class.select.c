@@ -360,8 +360,8 @@ parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
           .run = subsets_option,
           .obj = ctx
         },
-        { .name = "_update",
-          .name_size = strlen("_update"),
+        { .name = "_commit",
+          .name_size = strlen("_commit"),
           .parse = gsl_parse_size_t,
           .obj = &task->state_gt
         },
@@ -669,16 +669,16 @@ parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    /* flag update */
-    task->type = KND_UPDATE_STATE;
-    if (!task->ctx->update) {
-        err = knd_update_new(task->mempool, &task->ctx->update);
+    /* flag commit */
+    task->type = KND_COMMIT_STATE;
+    if (!task->ctx->commit) {
+        err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
         err = knd_dict_new(&task->class_name_idx, KND_SMALL_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->num_commits,
                                                                 memory_order_relaxed);
     }
     
@@ -744,7 +744,7 @@ run_remove_class(void *obj, const char *unused_var(name), size_t name_size)
 #if 0
     // TODO: copy-on-write : add special entry
     //         for deleted classes from base repo
-    ctx->task->type = KND_UPDATE_STATE;
+    ctx->task->type = KND_COMMIT_STATE;
     ctx->task->phase = KND_REMOVED;
     return make_gsl_err(gsl_OK);
 #endif
@@ -983,13 +983,13 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
 
     knd_state_phase phase;
 
-    /* any updates happened? */
+    /* any commits happened? */
     switch (task->type) {
-    case KND_UPDATE_STATE:
+    case KND_COMMIT_STATE:
         phase = KND_UPDATED;
         if (task->phase == KND_REMOVED)
             phase = KND_REMOVED;
-        err = knd_class_update_state(ctx.selected_class, phase, task);
+        err = knd_class_commit_state(ctx.selected_class, phase, task);
         if (err) return make_gsl_err_external(err);
         break;
     default:

@@ -442,16 +442,16 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
     // err = knd_register_proc_inst(self, entry, mempool);
     //if (err) return make_gsl_err_external(err);
 
-    task->type = KND_UPDATE_STATE;
+    task->type = KND_COMMIT_STATE;
 
-    if (!task->ctx->update) {
-        err = knd_update_new(task->mempool, &task->ctx->update);
+    if (!task->ctx->commit) {
+        err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->num_commits,
                                                                 memory_order_relaxed);
     }
-    state->update = task->ctx->update;
+    state->commit = task->ctx->commit;
 
     return make_gsl_err(gsl_OK);
 }
@@ -567,8 +567,8 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
     if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_proc_str(proc, 0);
 
-    if (task->type == KND_UPDATE_STATE) {
-        err = knd_proc_update_state(proc, KND_CREATED, task);
+    if (task->type == KND_COMMIT_STATE) {
+        err = knd_proc_commit_state(proc, KND_CREATED, task);
         if (err) return make_gsl_err_external(err);
     }
 

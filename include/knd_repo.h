@@ -93,17 +93,17 @@ struct kndRepo
     atomic_size_t   proc_arg_id_count;
     atomic_size_t   num_proc_args;
 
-    struct kndSet *update_idx;
-    atomic_size_t  num_updates;
-    atomic_size_t  update_id_count;
-    size_t         max_updates;
+    struct kndSet *commit_idx;
+    atomic_size_t  num_commits;
+    atomic_size_t  commit_id_count;
+    size_t         max_commits;
 
     struct kndRepo *next;
 };
 
 int knd_present_repo_state(struct kndRepo *self,
                            struct kndTask *task);
-int knd_confirm_updates(struct kndRepo *self, struct kndTask *task);
+int knd_confirm_commits(struct kndRepo *self, struct kndTask *task);
 
 gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size);
 
@@ -114,11 +114,11 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
                             struct kndProc *self,
                             struct kndProcArg *arg,
                             struct kndTask *task);
-int knd_repo_update_indices(struct kndRepo *self,
+int knd_repo_commit_indices(struct kndRepo *self,
                             struct kndTaskContext *ctx);
 int knd_repo_check_conflicts(struct kndRepo *self,
                              struct kndTaskContext *ctx);
-gsl_err_t knd_parse_repo_update(void *obj,
+gsl_err_t knd_parse_repo_commit(void *obj,
                                 const char *rec,
                                 size_t *total_size);
 

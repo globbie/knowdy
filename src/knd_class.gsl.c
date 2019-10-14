@@ -221,8 +221,8 @@ int knd_export_class_state_GSL(struct kndClass *self,
                                  memory_order_relaxed);
 
     if (state) {
-        err = out->writef(out, "%zu", state->update->numid);                      RET_ERR();
-        timestamp = state->update->timestamp;
+        err = out->writef(out, "%zu", state->commit->numid);                      RET_ERR();
+        timestamp = state->commit->timestamp;
     } else {
         err = out->writec(out, '0');                                              RET_ERR();
         timestamp = self->entry->repo->timestamp;

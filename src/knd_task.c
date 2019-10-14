@@ -25,9 +25,7 @@ void knd_task_del(struct kndTask *self)
 {
     self->log->del(self->log);
     self->out->del(self->out);
-    self->update_out->del(self->update_out);
     self->file_out->del(self->file_out);
-    self->task_out->del(self->task_out);
     if (self->is_mempool_owner)
         knd_mempool_del(self->mempool);
     free(self);
@@ -58,7 +56,6 @@ void knd_task_reset(struct kndTask *self)
 
     self->out->reset(self->out);
     self->log->reset(self->log);
-    self->update_out->reset(self->update_out);
     knd_mempool_reset(self->mempool);
 }
 
@@ -168,7 +165,7 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
         },
         { .name = "repo",
           .name_size = strlen("repo"),
-          .parse = knd_parse_repo_update,
+          .parse = knd_parse_repo_commit,
           .obj = task
         }
     };
@@ -289,13 +286,7 @@ int knd_task_new(struct kndShard *shard,
     err = knd_output_new(&self->log, NULL, KND_TEMP_BUF_SIZE);
     if (err) return err;
 
-    err = knd_output_new(&self->update_out, NULL, KND_LARGE_BUF_SIZE);
-    if (err) return err;
-
     err = knd_output_new(&self->file_out, NULL, KND_FILE_BUF_SIZE);
-    if (err) return err;
-
-    err = knd_output_new(&self->task_out, NULL, KND_TASK_STORAGE_SIZE);
     if (err) return err;
 
     /* system repo defaults */

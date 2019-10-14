@@ -37,10 +37,10 @@ static gsl_err_t parse_proc_import(void *obj,
                                    size_t *total_size)
 {
     struct kndTask *task = obj;
-    task->type = KND_UPDATE_STATE;
+    task->type = KND_COMMIT_STATE;
 
-    if (!task->ctx->update->orig_state_id)
-        task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+    if (!task->ctx->commit->orig_state_id)
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->num_commits,
                                                                 memory_order_relaxed);
     return knd_proc_import(task->repo, rec, total_size, task);
 }
@@ -72,10 +72,10 @@ static gsl_err_t parse_class_import(void *obj,
     if (DEBUG_USER_LEVEL_2)
         knd_log(".. parsing user class import: \"%.*s\"..", 64, rec);
 
-    task->type = KND_UPDATE_STATE;
+    task->type = KND_COMMIT_STATE;
 
-    if (!task->ctx->update) {
-        err = knd_update_new(task->mempool, &task->ctx->update);
+    if (!task->ctx->commit) {
+        err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
         
         err = knd_dict_new(&task->class_name_idx, KND_SMALL_DICT_SIZE);
@@ -84,7 +84,7 @@ static gsl_err_t parse_class_import(void *obj,
         err = knd_dict_new(&task->attr_name_idx, KND_SMALL_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
         
-        task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->num_commits,
                                                                 memory_order_relaxed);
     }
     
@@ -236,18 +236,18 @@ static gsl_err_t parse_rel_select(void *obj,
 #endif
 
 
-/*static gsl_err_t parse_liquid_updates(void *obj,
+/*static gsl_err_t parse_liquid_commits(void *obj,
                                       const char *rec,
                                       size_t *total_size)
 {
     struct kndUser *self = (struct kndUser*)obj;
 
     if (DEBUG_USER_LEVEL_2)
-        knd_log(".. parse and apply liquid updates..");
+        knd_log(".. parse and apply liquid commits..");
 
     task->type = KND_LIQUID_STATE;
 
-    return self->repo->root_class->apply_liquid_updates(self->repo->root_class, rec, total_size);
+    return self->repo->root_class->apply_liquid_commits(self->repo->root_class, rec, total_size);
 }
 */
 
@@ -402,7 +402,7 @@ static gsl_err_t parse_class_array(void *obj,
 {
     struct kndTask *task = obj;
 
-    task->type = KND_UPDATE_STATE;
+    task->type = KND_COMMIT_STATE;
 
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
@@ -534,8 +534,8 @@ extern gsl_err_t knd_parse_select_user(void *obj,
     repo = self->curr_ctx->repo;
 
     switch (task->type) {
-    case KND_UPDATE_STATE:
-        err = knd_confirm_updates(repo, task);
+    case KND_COMMIT_STATE:
+        err = knd_confirm_commits(repo, task);
         if (err) return make_gsl_err_external(err);
         break;
     default:

@@ -38,7 +38,7 @@ struct kndProcEstimate
     size_t aggr_num_agents;
 };
 
-struct kndUpdate;
+struct kndCommit;
 
 struct kndProcInstEntry
 {
@@ -334,7 +334,7 @@ static inline void knd_proc_declare_call(struct kndProc *self, struct kndProcCal
     self->num_calls++;
 }
 
-int knd_proc_update_state(struct kndProc *self,
+int knd_proc_commit_state(struct kndProc *self,
                           knd_state_phase phase,
                           struct kndTask *task);
 
