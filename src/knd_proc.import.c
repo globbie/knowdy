@@ -244,6 +244,7 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
     struct kndProc *self = ctx->proc, *proc;
     struct kndDict *proc_name_idx = task->proc_name_idx;
     struct kndProcEntry *entry;
+    struct kndDictItem *item;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -263,7 +264,8 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
         entry = self->entry;
         err = knd_dict_set(proc_name_idx,
                            name, name_size,
-                           (void*)entry);
+                           (void*)entry,
+                           task->ctx->commit, &item);
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }

@@ -31,8 +31,6 @@
 
 #include <gsl-parser/gsl_err.h>
 
-struct kndTask;
-struct kndShard;
 struct kndUser;
 struct kndUserContext;
 struct kndStateControl;
@@ -48,6 +46,11 @@ typedef int (*task_cb_func)(void *obj,
                             const char *msg,
                             size_t msg_size,
                             void *ctx);
+
+typedef enum knd_agent_role_type {
+    KND_READER,
+    KND_WRITER
+} knd_agent_role_type;
 
 typedef enum knd_task_spec_type {
     KND_GET_STATE,
@@ -148,6 +151,7 @@ struct kndTaskContext {
 
 struct kndTask
 {
+    knd_agent_role_type role;
     knd_task_spec_type type;
     int id;
     knd_state_phase phase;
@@ -235,6 +239,7 @@ int knd_task_block_new(struct kndMemPool *mempool,
 int knd_task_copy_block(struct kndTask *self,
                         const char *input, size_t input_size,
                         const char **output, size_t *output_size);
+int knd_save_commit_WAL(struct kndTask *task, struct kndCommit *commit);
 
 void knd_task_del(struct kndTask *self);
 void knd_task_reset(struct kndTask *self);

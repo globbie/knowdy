@@ -154,11 +154,11 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
     struct kndRepo *repo = ctx->repo;
-    struct kndOutput *log = task->log;
     struct kndClass *c;
     struct kndDict *class_name_idx = task->class_name_idx;
     struct kndClassEntry *entry;
     struct kndState *state;
+    struct kndDictItem *item;
     int err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2) {
@@ -183,7 +183,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 
         err = knd_dict_set(class_name_idx,
                            name, name_size,
-                           (void*)entry);
+                           (void*)entry,
+                           task->ctx->commit, &item);
         if (err) return make_gsl_err_external(err);
         
         return make_gsl_err(gsl_OK);
@@ -217,15 +218,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     }
 
  doublet:
-    knd_log("-- \"%.*s\" class doublet found?", name_size, name);
-    log->reset(log);
-    err = log->write(log, name, name_size);
-    if (err) return make_gsl_err_external(err);
-
-    err = log->write(log,   " class name already exists",
-                     strlen(" class name already exists"));
-    if (err) return make_gsl_err_external(err);
-
+    KND_TASK_LOG("\"%.*s\" class name already exists", name_size, name);
     task->ctx->http_code = HTTP_CONFLICT;
     task->ctx->error = KND_CONFLICT;
 
@@ -241,6 +234,7 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     struct kndRepo *repo          = task->repo;
     struct kndDict *class_name_idx = task->class_name_idx;
     struct kndClassEntry *entry;
+    struct kndDictItem *item;
     void *result;
     int err;
 
@@ -267,7 +261,8 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
 
     err = knd_dict_set(class_name_idx,
                        entry->name, name_size,
-                       (void*)entry);
+                       (void*)entry,
+                       task->ctx->commit, &item);
     if (err) return make_gsl_err_external(err);
 
     entry->repo = repo;

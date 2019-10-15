@@ -4,7 +4,11 @@
 #include "knd_config.h"
 #include "knd_mempool.h"
 
+struct kndCommit;
+struct kndState;
+
 typedef enum knd_dict_item_phase { KND_DICT_VALID,
+                                   KND_DICT_PENDING,
                                    KND_DICT_REMOVED } knd_dict_item_phase;
 
 struct kndDictItem
@@ -13,6 +17,7 @@ struct kndDictItem
     const char *key;
     size_t key_size;
     void *data;
+    struct kndState* _Atomic states;
     struct kndDictItem *next;
 };
 
@@ -28,13 +33,19 @@ struct kndDict
 void* knd_dict_get(struct kndDict *self,
                    const char *key,
                    size_t key_size);
+
 int knd_dict_set(struct kndDict *self,
                  const char *key,
                  size_t key_size,
-                 void *data);
+                 void *data,
+                 struct kndCommit *commit,
+                 struct kndDictItem **result);
+
 int knd_dict_remove(struct kndDict *self,
                     const char *key,
                     size_t key_size);
 
-int knd_dict_new(struct kndDict **self, struct kndMemPool *mempool, size_t init_size);
+int knd_dict_new(struct kndDict **self,
+                 struct kndMemPool *mempool,
+                 size_t init_size);
 void knd_dict_del(struct kndDict *self);

@@ -1036,7 +1036,7 @@ int knd_class_clone(struct kndClass *self,
     if (!ref) {
         err = knd_dict_set(class_name_idx,
                            entry->name, entry->name_size,
-                           (void*)entry);                                         RET_ERR();
+                           (void*)entry, NULL, NULL);                                   RET_ERR();
     }
 
     err = class_idx->add(class_idx,
@@ -1073,11 +1073,6 @@ extern int knd_class_copy(struct kndClass *self,
 
     entry->class = c;
     c->entry = entry;
-
-    /*err = knd_dict_set(class_name_idx,
-                              entry->name, entry->name_size,
-                              (void*)entry);                                      RET_ERR();
-    */
 
     /* copy the attrs */
     c->attr_idx->mempool = mempool;

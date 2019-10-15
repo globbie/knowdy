@@ -105,7 +105,7 @@ static gsl_err_t parse_sync_task(void *obj,
     size_t path_size;
     int err;
 
-    if (DEBUG_USER_LEVEL_TMP)
+    if (DEBUG_USER_LEVEL_2)
         knd_log(".. got sync task..");
 
     s = self->path;
@@ -535,7 +535,7 @@ extern gsl_err_t knd_parse_select_user(void *obj,
 
     switch (task->type) {
     case KND_COMMIT_STATE:
-        err = knd_confirm_commits(repo, task);
+        err = knd_confirm_commit(repo, task);
         if (err) return make_gsl_err_external(err);
         break;
     default:

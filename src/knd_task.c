@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "knd_task.h"
 #include "knd_shard.h"
 #include "knd_repo.h"
+#include "knd_state.h"
 #include "knd_user.h"
 #include "knd_mempool.h"
 #include "knd_utils.h"
@@ -148,7 +150,7 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     task->output = NULL;
     task->output_size = 0;
 
-    if (DEBUG_TASK_LEVEL_2) {
+    if (DEBUG_TASK_LEVEL_TMP) {
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
         if (task->input_size < chunk_size)
             chunk_size = task->input_size;
@@ -161,11 +163,6 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
         { .name = "task",
           .name_size = strlen("task"),
           .parse = knd_parse_task,
-          .obj = task
-        },
-        { .name = "repo",
-          .name_size = strlen("repo"),
-          .parse = knd_parse_repo_commit,
           .obj = task
         }
     };
@@ -217,6 +214,100 @@ int knd_task_copy_block(struct kndTask *task,
     return knd_OK;
 }
 
+int knd_save_commit_WAL(struct kndTask *task, struct kndCommit *commit)
+{
+    struct kndTaskContext *ctx = task->ctx;
+    struct kndOutput *out = task->out;
+    struct kndOutput *file_out = task->file_out;
+    size_t planned_journal_size = 0;
+    struct stat st;
+    int err;
+
+    assert(ctx->repo);
+    commit->timestamp = time(NULL);
+    if (DEBUG_TASK_LEVEL_TMP) {
+        knd_log(".. kndTask #%zu to write a WAL entry: %.*s (path:%.*s)",
+                task->id,
+                task->input_size, task->input, task->path_size, task->path);
+    }
+
+    out->reset(out);
+    err = out->writef(out, "{commit %zu{_ts %zu}{_size %zu}",
+                      commit->numid, (size_t)commit->timestamp, task->input_size);
+    KND_TASK_ERR("commit header output failed");
+    err = out->write(out, task->input, task->input_size);
+    KND_TASK_ERR("commit body output failed");
+    err = out->write(out, "}\n", strlen("}\n"));
+    KND_TASK_ERR("commit footer output failed");
+    
+    file_out->reset(file_out);
+    err = file_out->write(file_out, task->path, task->path_size);
+    KND_TASK_ERR("system path construction failed");
+
+    if (ctx->repo->path_size) {
+        err = out->write(file_out, ctx->repo->path, ctx->repo->path_size);
+        KND_TASK_ERR("repo path construction failed");
+    }
+
+    err = out->writef(file_out, "agent_%d/", task->id);
+    KND_TASK_ERR("agent path construction failed");
+
+    err = knd_mkpath((const char*)file_out->buf, file_out->buf_size, 0755, false);
+    KND_TASK_ERR("mkpath %.*s failed", file_out->buf_size, file_out->buf);
+
+    err = file_out->writef(file_out, "journal_%zu.log", ctx->repo->num_journals[task->id]);
+    KND_TASK_ERR("log filename construction failed");
+    file_out->buf[file_out->buf_size] = '\0';
+
+    knd_log("WAL filename: %.*s", file_out->buf_size, file_out->buf);
+
+    if (stat(file_out->buf, &st)) {
+        if (DEBUG_TASK_LEVEL_TMP)
+            knd_log(".. initializing the journal: \"%.*s\"",
+                    file_out->buf_size, file_out->buf);
+        err = knd_write_file((const char*)file_out->buf,
+                             "{WAL\n", strlen("{WAL\n"));
+        KND_TASK_ERR("failed writing to file %.*s", file_out->buf_size, file_out->buf);
+        goto append_wal_rec;
+    }
+
+    planned_journal_size = st.st_size + out->buf_size;
+    if (planned_journal_size >= ctx->repo->max_journal_size) {
+        if (DEBUG_TASK_LEVEL_TMP)
+            knd_log("!NB: journal size limit reached!");
+        ctx->repo->num_journals[task->id]++;
+
+        file_out->reset(file_out);
+        err = out->write(file_out, task->path, task->path_size);
+        if (err) return err;
+
+        if (ctx->repo->path_size) {
+            err = out->write(file_out, ctx->repo->path, ctx->repo->path_size);
+            if (err) return err;
+        }
+        //err = out->writef(file_out, "journal%zu.log", ctx->repo->num_journals);
+        //if (err) return err;
+        //file_out->buf[file_out->buf_size] = '\0';
+
+        //if (DEBUG_TASK_LEVEL_TMP)
+        //    knd_log(".. switching to a new journal: \"%.*s\"",
+        //            file_out->buf_size, file_out->buf);
+
+        // err = knd_write_file((const char*)file_out->buf,
+        //                     "{WAL\n", strlen("{WAL\n"));
+        // if (err) return err;
+    }
+
+ append_wal_rec:
+
+    knd_log(".. append to WAL: %.*s", out->buf_size, out->buf);
+    err = knd_append_file((const char*)file_out->buf,
+                          out->buf, out->buf_size);
+    KND_TASK_ERR("WAL file append failed");
+
+    return knd_OK;
+}
+
 int knd_task_context_new(struct kndMemPool *mempool,
                          struct kndTaskContext **result)
 {
@@ -264,6 +355,10 @@ int knd_task_new(struct kndShard *shard,
     memset(self, 0, sizeof(struct kndTask));
     self->shard = shard;
     self->id = task_id;
+    self->role = shard->role;
+
+    self->path = shard->path;
+    self->path_size = shard->path_size;
 
     if (!mempool) {
         err = knd_mempool_new(&mempool, 0);

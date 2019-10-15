@@ -210,7 +210,7 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
             .name_size = strlen("db-path"),
             .buf = self->path,
             .buf_size = &self->path_size,
-            .max_buf_size = KND_NAME_SIZE
+            .max_buf_size = KND_PATH_SIZE
         },
         {   .name = "schema-path",
             .name_size = strlen("schema-path"),
@@ -238,15 +238,25 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
     }
 
     if (!self->path_size) {
-        knd_log("-- DB path not set");
+        knd_log("DB path not set");
         return make_gsl_err(gsl_FAIL);
+    }
+
+    if (self->path[self->path_size - 1] != '/') {
+        if (self->path_size + 1 >= KND_PATH_SIZE) {
+            knd_log("DB path exceeds current limit");
+            return make_gsl_err(gsl_FAIL);
+        }
+        self->path[self->path_size] = '/';
+        self->path_size++;
+        self->path[self->path_size] = '\0';
     }
 
     err = knd_mkpath(self->path, self->path_size, 0755, false);
     if (err != knd_OK) return make_gsl_err_external(err);
 
     if (!self->schema_path_size) {
-        knd_log("-- system schema path not set");
+        knd_log("system schema path not set");
         return make_gsl_err(gsl_FAIL);
     }
     return make_gsl_err(gsl_OK);
@@ -312,8 +322,6 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     repo->name_size = 1;
     repo->schema_path = self->schema_path;
     repo->schema_path_size = self->schema_path_size;
-    memcpy(repo->path, self->path, self->path_size);
-    repo->path_size = self->path_size;
     self->repo = repo;
 
     err = knd_task_new(self, mempool, 0, &task);

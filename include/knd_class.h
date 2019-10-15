@@ -107,6 +107,7 @@ struct kndClassEntry
     struct kndClass *class;
     struct kndRepo *repo;
     struct kndClassEntry *orig;
+    struct kndDictItem   *dict_item;
 
     knd_state_phase phase;
 

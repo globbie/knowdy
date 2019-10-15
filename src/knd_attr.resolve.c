@@ -406,6 +406,7 @@ static int register_new_attr(struct kndClass *self,
     struct kndSet *attr_idx    = repo->attr_idx;
     struct kndDict *attr_name_idx = task->attr_name_idx;
     struct kndAttrRef *attr_ref, *prev_attr_ref;
+    struct kndDictItem *item;
     int err;
 
     /* generate unique attr id */
@@ -430,7 +431,8 @@ static int register_new_attr(struct kndClass *self,
     } else {
         err = knd_dict_set(attr_name_idx,
                            attr->name, attr->name_size,
-                           (void*)attr_ref);                                      RET_ERR();
+                           (void*)attr_ref,
+                           task->ctx->commit, &item);                                      RET_ERR();
     }
 
     err = attr_idx->add(attr_idx,

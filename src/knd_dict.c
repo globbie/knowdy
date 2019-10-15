@@ -14,6 +14,7 @@
 #include <stdatomic.h>
 
 #include "knd_dict.h"
+#include "knd_state.h"
 #include "knd_config.h"
 #include "knd_utils.h"
 
@@ -75,7 +76,9 @@ void* knd_dict_get(struct kndDict *self,
 int knd_dict_set(struct kndDict *self,
                  const char *key,
                  size_t key_size,
-                 void *data)
+                 void *data,
+                 struct kndCommit *commit,
+                 struct kndDictItem **result)
 {
     struct kndDictItem *head;
     struct kndDictItem *new_item;
@@ -83,6 +86,8 @@ int knd_dict_set(struct kndDict *self,
     struct kndDictItem *orig_head = atomic_load_explicit(&self->hash_array[h],
                                                          memory_order_relaxed);
     struct kndDictItem *item = orig_head;
+    struct kndState *state;
+    int err;
 
     while (item) {
         if (item->key_size != key_size) goto next_item;
@@ -95,15 +100,21 @@ int knd_dict_set(struct kndDict *self,
     if (item) {
         if (item->phase == KND_DICT_VALID)
             return knd_CONFLICT;
-        // TODO: atomic assign
-        item->data  = data;
-        item->phase = KND_DICT_VALID;
-        return knd_OK;
     }
 
     /* add new item */
     if (dict_item_new(self->mempool, &new_item) != knd_OK) return knd_NOMEM;
     new_item->phase = KND_DICT_VALID;
+    if (commit) {
+        new_item->phase = KND_DICT_PENDING;
+        err = knd_state_new(self->mempool, &state);
+        if (err) return err;
+        state->commit = commit;
+        state->data = data;
+        new_item->states = state;
+        *result = new_item;
+    }
+
     new_item->data = data;
     new_item->key = key;
     new_item->key_size = key_size;

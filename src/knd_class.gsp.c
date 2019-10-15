@@ -922,6 +922,7 @@ static gsl_err_t append_class_inst_item(struct LocalContext *ctx, struct kndClas
     struct kndDict *name_idx = self->entry->inst_name_idx;
     struct kndSet *set = self->entry->inst_idx;
     struct kndMemPool *mempool = ctx->task->mempool;
+    struct kndDictItem *item;
     int err;
 
     if (DEBUG_CLASS_GSP_LEVEL_2) {
@@ -940,7 +941,8 @@ static gsl_err_t append_class_inst_item(struct LocalContext *ctx, struct kndClas
 
     err = knd_dict_set(name_idx,
                        inst->name, inst->name_size,
-                       (void*)inst->entry);
+                       (void*)inst->entry,
+                       ctx->task->ctx->commit, &item);
     if (err) return make_gsl_err_external(err);
 
     self->entry->num_insts++;

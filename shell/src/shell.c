@@ -75,7 +75,7 @@ static int knd_interact(struct kndShard *shard)
         printf("[%s :%zu]\n", buf, buf_size);
 
         knd_task_reset(task);
-
+        task->role = KND_READER;
         err = knd_task_run(task, buf, buf_size);
         if (err != knd_OK) {
             knd_log("-- task run failed: %.*s", task->output_size, task->output);
@@ -95,6 +95,7 @@ static int knd_interact(struct kndShard *shard)
             }
 
             knd_task_reset(task);
+            task->role = KND_WRITER;
             err = knd_task_run(task, block, block_size);
             if (err != knd_OK) {
                 knd_log("-- update confirm failed: %.*s", task->output_size, task->output);

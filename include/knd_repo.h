@@ -36,7 +36,9 @@ struct kndRepo
 
     char path[KND_PATH_SIZE];
     size_t path_size;
-    size_t num_journals;
+
+    /* array of ints => each task/writer can produce a number of WAL journals */
+    size_t num_journals[KND_MAX_TASKS];
     time_t timestamp;
 
     const char *schema_name;
@@ -93,6 +95,8 @@ struct kndRepo
     atomic_size_t   proc_arg_id_count;
     atomic_size_t   num_proc_args;
 
+    /* commits */
+    struct kndCommit * _Atomic commits;
     struct kndSet *commit_idx;
     atomic_size_t  num_commits;
     atomic_size_t  commit_id_count;
@@ -103,7 +107,7 @@ struct kndRepo
 
 int knd_present_repo_state(struct kndRepo *self,
                            struct kndTask *task);
-int knd_confirm_commits(struct kndRepo *self, struct kndTask *task);
+int knd_confirm_commit(struct kndRepo *self, struct kndTask *task);
 
 gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size);
 

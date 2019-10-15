@@ -64,12 +64,14 @@ struct kndCommit
     size_t orig_state_id;
 
     time_t timestamp;
-    knd_commit_confirm confirm;
+    knd_commit_confirm _Atomic confirm;
 
     struct kndRepo *repo;
 
     struct kndStateRef *class_state_refs;
     struct kndStateRef *proc_state_refs;
+
+    struct kndCommit *prev;
 };
 
 struct kndStateVal
@@ -87,6 +89,7 @@ struct kndState
     knd_state_phase phase;
     struct kndCommit *commit;
     struct kndStateVal *val;
+    void *data;
     struct kndStateRef *children;
     struct kndState *next;
 };

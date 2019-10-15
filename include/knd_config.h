@@ -148,7 +148,7 @@ typedef enum knd_logic { KND_LOGIC_AND,
 #define KND_MAX_MIGRATIONS 256
 #define KND_MAX_SPECS 8
 
-#define KND_MAX_OWNERS 256
+#define KND_MAX_TASKS 64
 
 #define KND_MAX_BASES 256
 #define KND_MAX_INHERITED 256

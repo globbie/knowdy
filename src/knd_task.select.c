@@ -228,7 +228,6 @@ static gsl_err_t parse_proc_import(void *obj,
         task->ctx->commit->orig_state_id = atomic_load_explicit(&repo->num_commits,
                                                                 memory_order_relaxed);
     }
-
     return knd_proc_import(task->repo, rec, total_size, task);
 }
 
@@ -244,7 +243,7 @@ static gsl_err_t parse_proc_select(void *obj,
     return knd_proc_select(task->repo, rec, total_size, task);
 }
 
-static gsl_err_t parse_commit(void *obj,
+static gsl_err_t parse_update(void *obj,
                               const char *rec,
                               size_t *total_size)
 {
@@ -313,9 +312,9 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
           .parse = knd_parse_repo,
           .obj = self
         },
-        { .name = "commit",
-          .name_size = strlen("commit"),
-          .parse = parse_commit,
+        { .name = "update",
+          .name_size = strlen("update"),
+          .parse = parse_update,
           .obj = self
         }
     };
@@ -328,14 +327,13 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
     /* any system repo commits? */
     switch (self->type) {
     case KND_COMMIT_STATE:
-        err = knd_confirm_commits(self->repo, self);
+        err = knd_confirm_commit(self->repo, self);
         if (err) return make_gsl_err_external(err);
         break;
     default:
         self->ctx->phase = KND_COMPLETE;
         break;
     }
-
     return make_gsl_err(gsl_OK);
 
  final:

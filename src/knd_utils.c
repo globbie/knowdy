@@ -230,8 +230,6 @@ knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base)
 //    return result;
 //}
 
-
-
 static int 
 knd_mkdir(const char *path, mode_t mode)
 {
