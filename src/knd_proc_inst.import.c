@@ -6,6 +6,7 @@
 #include "knd_class.h"
 #include "knd_mempool.h"
 #include "knd_attr.h"
+#include "knd_shared_dict.h"
 #include "knd_attr_inst.h"
 #include "knd_repo.h"
 
@@ -31,18 +32,16 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndProcInst *self = ctx->proc_inst;
-    //struct kndProcEntry *proc_entry;
     struct kndProcInstEntry *entry;
     struct kndRepo *repo = ctx->repo;
-    //struct kndDict *proc_name_idx = repo->proc_name_idx;
-    struct kndDict *name_idx = repo->proc_inst_name_idx;
+    struct kndSharedDict *name_idx = repo->proc_inst_name_idx;
     struct kndOutput *log = ctx->task->log;
     struct kndTask *task = ctx->task;
     int err;
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    entry = knd_dict_get(name_idx, name, name_size);
+    entry = knd_shared_dict_get(name_idx, name, name_size);
     if (entry) {
         if (entry->inst && entry->inst->states->phase == KND_REMOVED) {
             knd_log("-- this proc instance has been removed lately: %.*s",

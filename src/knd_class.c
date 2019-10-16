@@ -144,7 +144,7 @@ int knd_get_class_inst(struct kndClass *self,
 {
     struct kndClassInstEntry *entry;
     struct kndClassInst *obj;
-    struct kndDict *name_idx;
+    struct kndSharedDict *name_idx;
     struct kndOutput *log = task->log;
     int err, e;
 
@@ -173,17 +173,11 @@ int knd_get_class_inst(struct kndClass *self,
     }
 
     name_idx = self->entry->inst_name_idx;
-    entry = knd_dict_get(name_idx, name, name_size);
+    entry = knd_shared_dict_get(name_idx, name, name_size);
     if (!entry) {
-        knd_log("-- no such class inst: \"%.*s\"", name_size, name);
-        log->reset(log);
-        err = log->write(log, name, name_size);
-        if (err) return err;
-        err = log->write(log, " instance not found",
-                               strlen(" instance not found"));
-        if (err) return err;
+        err = knd_NO_MATCH;
         task->http_code = HTTP_NOT_FOUND;
-        return knd_NO_MATCH;
+        KND_TASK_ERR("no such class inst: \"%.*s\"", name_size, name);
     }
 
     if (DEBUG_CLASS_LEVEL_2)
@@ -222,11 +216,11 @@ int knd_get_class_attr_value(struct kndClass *src,
 {
     struct kndAttrRef *attr_ref;
     struct kndAttrVar *child_var;
-    struct kndDict *attr_name_idx = src->entry->repo->attr_name_idx;
+    struct kndSharedDict *attr_name_idx = src->entry->repo->attr_name_idx;
     int err;
 
-    attr_ref = knd_dict_get(attr_name_idx,
-                            query->name, query->name_size);
+    attr_ref = knd_shared_dict_get(attr_name_idx,
+                                   query->name, query->name_size);
     if (!attr_ref) {
         if (DEBUG_CLASS_LEVEL_2)
             knd_log("-- no such attr: %.*s", query->name_size, query->name);
@@ -239,14 +233,12 @@ int knd_get_class_attr_value(struct kndClass *src,
     }
 
     if (!attr_ref->attr_var) return knd_NO_MATCH;
-
     /* no more query specs */
     if (!query->num_children) return knd_OK;
 
     /* check nested attrs */
 
     // TODO: list item selection
-
     for (child_var = attr_ref->attr_var->list; child_var; child_var = child_var->next) {
         err = knd_get_arg_value(child_var, query->children, arg);
         if (err) return err;
@@ -610,7 +602,7 @@ int knd_class_get_attr(struct kndClass *self,
                        struct kndAttrRef **result)
 {
     struct kndAttrRef *ref;
-    struct kndDict    *attr_name_idx = self->entry->repo->attr_name_idx;
+    struct kndSharedDict *attr_name_idx = self->entry->repo->attr_name_idx;
     struct kndSet     *attr_idx = self->attr_idx;
     struct kndAttr    *attr = NULL;
     int err;
@@ -622,11 +614,11 @@ int knd_class_get_attr(struct kndClass *self,
                 name_size, name);
     }
 
-    ref = knd_dict_get(attr_name_idx, name, name_size);
+    ref = knd_shared_dict_get(attr_name_idx, name, name_size);
     if (!ref) {
         if (self->entry->repo->base) {
             attr_name_idx = self->entry->repo->base->attr_name_idx;
-            ref = knd_dict_get(attr_name_idx, name, name_size);
+            ref = knd_shared_dict_get(attr_name_idx, name, name_size);
         }
         if (!ref) {
             if (DEBUG_CLASS_LEVEL_2)
@@ -724,7 +716,7 @@ int knd_get_class(struct kndRepo *self,
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
     struct kndOutput *log = task->log;
-    struct kndDict *class_name_idx = self->class_name_idx;
+    struct kndSharedDict *class_name_idx = self->class_name_idx;
     struct kndState *state;
     int err;
 
@@ -734,7 +726,7 @@ int knd_get_class(struct kndRepo *self,
                 name_size, name);
     }
 
-    entry = knd_dict_get(class_name_idx, name, name_size);
+    entry = knd_shared_dict_get(class_name_idx, name, name_size);
     if (!entry) {
         if (DEBUG_CLASS_LEVEL_2)
             knd_log("-- no local class found in: %.*s",
@@ -936,7 +928,7 @@ int knd_register_class_inst(struct kndClass *self,
     struct kndSet *inst_idx;
     struct kndClass *c;
     struct kndClassEntry *prev_entry;
-    struct kndDict *class_name_idx = repo->class_name_idx;
+    struct kndSharedDict *class_name_idx = repo->class_name_idx;
     int err;
 
     if (DEBUG_CLASS_LEVEL_2)
@@ -977,9 +969,9 @@ int knd_register_class_inst(struct kndClass *self,
        
         if (self->entry->repo != ref->entry->repo) {
             /* search local repo */
-            prev_entry = knd_dict_get(class_name_idx,
-                                      ref->entry->name,
-                                      ref->entry->name_size);
+            prev_entry = knd_shared_dict_get(class_name_idx,
+                                             ref->entry->name,
+                                             ref->entry->name_size);
             if (prev_entry) {
                 ref->entry = prev_entry;
             } else {
@@ -1002,7 +994,7 @@ int knd_class_clone(struct kndClass *self,
 {
     struct kndClass *c;
     struct kndClassEntry *entry;
-    struct kndDict *class_name_idx = target_repo->class_name_idx;
+    struct kndSharedDict *class_name_idx = target_repo->class_name_idx;
     struct kndSet *class_idx = target_repo->class_idx;
     void *ref;
     int err;
@@ -1031,12 +1023,14 @@ int knd_class_clone(struct kndClass *self,
     }
 
     /* idx register */
-    ref = knd_dict_get(class_name_idx,
+    ref = knd_shared_dict_get(class_name_idx,
                        entry->name, entry->name_size);
     if (!ref) {
-        err = knd_dict_set(class_name_idx,
-                           entry->name, entry->name_size,
-                           (void*)entry, NULL, NULL);                                   RET_ERR();
+        err = knd_shared_dict_set(class_name_idx,
+                                  entry->name, entry->name_size,
+                                  (void*)entry,
+                                  mempool,
+                                  NULL, NULL);                                   RET_ERR();
     }
 
     err = class_idx->add(class_idx,
@@ -1055,7 +1049,7 @@ extern int knd_class_copy(struct kndClass *self,
                           struct kndMemPool *mempool)
 {
     struct kndRepo *repo =  c->entry->repo;
-    struct kndDict *class_name_idx = repo->class_name_idx;
+    struct kndSharedDict *class_name_idx = repo->class_name_idx;
     struct kndClassEntry *entry, *src_entry, *prev_entry;
     struct kndClassRef   *ref,   *src_ref;
     int err;
@@ -1086,9 +1080,9 @@ extern int knd_class_copy(struct kndClass *self,
         ref->class = src_ref->class;
         ref->entry = src_ref->entry;
 
-        prev_entry = knd_dict_get(class_name_idx,
-                                  src_ref->class->name,
-                                  src_ref->class->name_size);
+        prev_entry = knd_shared_dict_get(class_name_idx,
+                                         src_ref->class->name,
+                                         src_ref->class->name_size);
         if (prev_entry) {
             ref->entry = prev_entry;
             ref->class = prev_entry->class;

@@ -390,7 +390,7 @@ extern int knd_register_attr_ref(void *obj,
 {
     struct kndClass *self = obj;
     struct kndSet *attr_idx  = self->attr_idx;
-    struct kndDict *attr_name_idx = self->entry->repo->attr_name_idx;
+    struct kndSharedDict *attr_name_idx = self->entry->repo->attr_name_idx;
     struct kndAttrRef *src_ref = elem;
     struct kndAttr    *attr    = src_ref->attr;
     struct kndAttrRef *ref; //, *prev_attr_ref;
@@ -418,83 +418,13 @@ extern int knd_register_attr_ref(void *obj,
         ref->next = prev_attr_ref;
         }*/
 
-    err = knd_dict_set(attr_name_idx,
-                       attr->name, attr->name_size,
-                       (void*)ref,
-                       NULL, NULL);                                               RET_ERR();
+    err = knd_shared_dict_set(attr_name_idx,
+                              attr->name, attr->name_size,
+                              (void*)ref,
+                              mempool,
+                              NULL, NULL);                                               RET_ERR();
     return knd_OK;
 }
-
-/*
-static int extract_list_elem_value(struct kndAttrVar *parent_item,
-                                   struct kndAttrVar *query,
-                                   struct kndProcCallArg *result_arg)
-{
-    struct kndAttrVar *curr_var;
-    int err;
-
-    for (curr_var = parent_item->list; curr_var; curr_var = curr_var->next) {
-        if (DEBUG_ATTR_LEVEL_2)
-            knd_log("== list item:%.*s val: %.*s",
-                    curr_var->name_size, curr_var->name,
-                    curr_var->val_size, curr_var->val);
-        if (!memcmp(curr_var->name, query->name, query->name_size)) {
-            err = knd_get_arg_value(curr_var, query->children, result_arg);
-            if (err) return err;
-            //knd_log("result arg:%zu", result_arg->numval);
-        }
-    }
-    return knd_OK;
-}
-*/
-
-/*
-static int extract_implied_attr_value(struct kndClass *self,
-                                      struct kndAttrVar *parent_item,
-                                      struct kndProcCallArg *result_arg)
-{
-    struct kndAttrVar *attr_var;
-    struct kndAttrRef *ref;
-    void *obj;
-    int err;
-
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. from class %.*s get the value of \"%.*s\"..\n",
-                self->name_size, self->name,
-                parent_item->name_size, parent_item->name);
-
-    err = knd_class_get_attr(self,
-                             parent_item->name,
-                             parent_item->name_size, &ref);
-    if (err) return err;
-    
-    err = self->attr_idx->get(self->attr_idx,
-                              ref->attr->id, ref->attr->id_size, &obj);
-    if (err) return err;
-    ref = obj;
-
-    //knd_log("++ set attr var: %.*s  attr var:%p",
-    //        ref->attr->name_size, ref->attr->name, ref->attr_var);
-    attr_var = ref->attr_var;
-
-    //str_attr_vars(attr_var, 1);
-    //str_attr_vars(parent_item, 1);
-
-    // go deeper
-    if (parent_item->children) {
-        if (attr_var && attr_var->attr->is_a_set) {
-            err = extract_list_elem_value(attr_var,
-                                          parent_item->children,
-                                          result_arg);
-            if (err) return err;
-        }
-
-        return knd_OK;
-    }
-    
-    return knd_OK;
-}
-*/
 
 static int compute_attr_var(struct kndAttrVar *unused_var(parent_item),
                             struct kndAttr *attr,

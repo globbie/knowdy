@@ -8,6 +8,7 @@
 #include "knd_proc_call.h"
 #include "knd_utils.h"
 #include "knd_task.h"
+#include "knd_dict.h"
 #include "knd_output.h"
 #include "knd_mempool.h"
 #include "knd_proc_arg.h"
@@ -244,7 +245,6 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
     struct kndProc *self = ctx->proc, *proc;
     struct kndDict *proc_name_idx = task->proc_name_idx;
     struct kndProcEntry *entry;
-    struct kndDictItem *item;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -264,8 +264,7 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
         entry = self->entry;
         err = knd_dict_set(proc_name_idx,
                            name, name_size,
-                           (void*)entry,
-                           task->ctx->commit, &item);
+                           (void*)entry);
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }

@@ -572,10 +572,11 @@ int knd_user_init(struct kndUser *self,
     memcpy(repo->name, self->repo_name, self->repo_name_size);
     repo->name_size = self->repo_name_size;
 
-    task->class_name_idx = repo->class_name_idx;
+    /*task->class_name_idx = repo->class_name_idx;
     task->attr_name_idx = repo->attr_name_idx;
     task->proc_name_idx = repo->proc_name_idx;
     task->proc_arg_name_idx = repo->proc_arg_name_idx;
+    */
 
     err = knd_repo_open(repo, task);                                              RET_ERR();
 

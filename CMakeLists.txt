@@ -55,7 +55,7 @@ include_directories("include")
 
 set(HEADERS include/knd_attr.h include/knd_attr_inst.h
         include/knd_class.h include/knd_class_inst.h include/knd_config.h
-        include/knd_dict.h
+        include/knd_dict.h include/knd_shared_dict.h
         include/knd_err.h
         include/knd_facet.h include/knd_http_codes.h
         include/knd_mempool.h include/knd_num.h
@@ -70,7 +70,7 @@ set(SOURCES src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr
         src/knd_class.import.c src/knd_class.json.c src/knd_class.resolve.c src/knd_class.index.c
         src/knd_class.select.c src/knd_class.states.c
         src/knd_class_inst.c src/knd_class_inst.gsl.c src/knd_class_inst.gsp.c src/knd_class_inst.import.c src/knd_class_inst.json.c src/knd_class_inst.select.c
-        src/knd_dict.c
+        src/knd_dict.c src/knd_shared_dict.c
         src/knd_mempool.c src/knd_num.c src/knd_output.c
         src/knd_proc.c src/knd_proc_inst.c
         src/knd_proc.import.c src/knd_proc_inst.import.c

@@ -10,6 +10,7 @@ struct kndUser;
 struct kndUserContext;
 struct kndQuery;
 struct kndTask;
+struct kndSharedDict;
 
 #include <time.h>
 #include <stdatomic.h>
@@ -57,7 +58,7 @@ struct kndRepo
     size_t locale_size;
 
     /* local repo index */
-    struct kndDict *repo_idx;
+    struct kndSharedDict *repo_idx;
 
     struct kndUser *user;
     size_t max_journal_size;
@@ -70,27 +71,27 @@ struct kndRepo
     struct kndClassEntry *head_class_entry;
     struct kndClassEntry *tail_class_entry;
 
-    struct kndDict *class_name_idx;
+    struct kndSharedDict *class_name_idx;
     struct kndSet *class_idx;
     atomic_size_t num_classes;
     atomic_size_t class_id_count;
 
-    struct kndDict *attr_name_idx;
+    struct kndSharedDict *attr_name_idx;
     struct kndSet  *attr_idx;
     atomic_size_t   attr_id_count;
     atomic_size_t   num_attrs;
 
     struct kndProc *root_proc;
-    struct kndDict *proc_name_idx;
+    struct kndSharedDict *proc_name_idx;
     struct kndSet  *proc_idx;
-    struct kndDict *proc_inst_name_idx;
+    struct kndSharedDict *proc_inst_name_idx;
 
     atomic_size_t num_procs;
     atomic_size_t proc_id_count;
     atomic_size_t num_proc_insts;
     atomic_size_t proc_inst_id_count;
     
-    struct kndDict *proc_arg_name_idx;
+    struct kndSharedDict *proc_arg_name_idx;
     struct kndSet  *proc_arg_idx;
     atomic_size_t   proc_arg_id_count;
     atomic_size_t   num_proc_args;

@@ -23,6 +23,7 @@
 #include "knd_attr.h"
 #include "knd_task.h"
 #include "knd_user.h"
+#include "knd_dict.h"
 #include "knd_text.h"
 #include "knd_rel.h"
 #include "knd_proc.h"
@@ -158,7 +159,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndDict *class_name_idx = task->class_name_idx;
     struct kndClassEntry *entry;
     struct kndState *state;
-    struct kndDictItem *item;
     int err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2) {
@@ -182,11 +182,9 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         self->name_size = name_size;
 
         err = knd_dict_set(class_name_idx,
-                           name, name_size,
-                           (void*)entry,
-                           task->ctx->commit, &item);
+                                  name, name_size,
+                                  (void*)entry);
         if (err) return make_gsl_err_external(err);
-        
         return make_gsl_err(gsl_OK);
     }
 
@@ -234,7 +232,6 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     struct kndRepo *repo          = task->repo;
     struct kndDict *class_name_idx = task->class_name_idx;
     struct kndClassEntry *entry;
-    struct kndDictItem *item;
     void *result;
     int err;
 
@@ -260,9 +257,8 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     entry->name_size = name_size;
 
     err = knd_dict_set(class_name_idx,
-                       entry->name, name_size,
-                       (void*)entry,
-                       task->ctx->commit, &item);
+                              entry->name, name_size,
+                              (void*)entry);
     if (err) return make_gsl_err_external(err);
 
     entry->repo = repo;

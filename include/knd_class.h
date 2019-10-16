@@ -20,6 +20,7 @@
 #pragma once
 
 #include "knd_dict.h"
+#include "knd_shared_dict.h"
 #include "knd_facet.h"
 #include "knd_utils.h"
 #include "knd_class_inst.h"
@@ -107,7 +108,7 @@ struct kndClassEntry
     struct kndClass *class;
     struct kndRepo *repo;
     struct kndClassEntry *orig;
-    struct kndDictItem   *dict_item;
+    struct kndSharedDictItem   *dict_item;
 
     knd_state_phase phase;
 
@@ -121,8 +122,8 @@ struct kndClassEntry
 
     struct kndSet *descendants;
 
-    struct kndSet   *inst_idx;
-    struct kndDict  *inst_name_idx;
+    struct kndSet        *inst_idx;
+    struct kndSharedDict *inst_name_idx;
     atomic_size_t    num_insts;
     atomic_size_t    inst_id_count;
 

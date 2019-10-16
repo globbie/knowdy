@@ -294,7 +294,7 @@ int knd_proc_get_arg(struct kndProc *self,
 {
     struct kndProcArgRef *ref;
     struct kndProcArg *arg = NULL;
-    struct kndDict *arg_name_idx = self->entry->repo->proc_arg_name_idx;
+    struct kndSharedDict *arg_name_idx = self->entry->repo->proc_arg_name_idx;
     struct kndSet *arg_idx = self->arg_idx;
     int err;
 
@@ -305,7 +305,7 @@ int knd_proc_get_arg(struct kndProc *self,
                 name_size, name, arg_idx);
     }
 
-    ref = knd_dict_get(arg_name_idx, name, name_size);
+    ref = knd_shared_dict_get(arg_name_idx, name, name_size);
     if (!ref) {
         /* if (self->entry->repo->base) {
             arg_name_idx = self->entry->repo->base->arg_name_idx;
@@ -404,8 +404,8 @@ int knd_get_proc(struct kndRepo *repo,
         knd_log(".. \"%.*s\" repo to get proc: \"%.*s\"..",
                 repo->name_size, repo->name, name_size, name);
 
-    entry = knd_dict_get(repo->proc_name_idx,
-                         name, name_size);
+    entry = knd_shared_dict_get(repo->proc_name_idx,
+                                name, name_size);
     if (!entry) {
         if (repo->base) {
             err = knd_get_proc(repo->base, name, name_size, result, task);

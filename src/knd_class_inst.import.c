@@ -38,10 +38,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndClassEntry *class_entry;
     // struct kndClassInstEntry *entry;
     struct kndRepo *repo = ctx->task->repo;
-    struct kndDict *class_name_idx = repo->class_name_idx;
-    // struct kndDict *name_idx = self->base->entry->inst_name_idx;
-    // struct kndOutput *log = ctx->task->log;
-    // struct kndTask *task = ctx->task;
+    struct kndSharedDict *class_name_idx = repo->class_name_idx;
     struct kndClass *c;
     int err;
 
@@ -49,7 +46,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 
     /* inner obj? */
     if (self->type == KND_OBJ_INNER) {
-        class_entry = knd_dict_get(class_name_idx, name, name_size);
+        class_entry = knd_shared_dict_get(class_name_idx, name, name_size);
         if (!class_entry) {
             knd_log("-- inner obj: no such class: %.*s", name_size, name);
             return make_gsl_err(gsl_FAIL);

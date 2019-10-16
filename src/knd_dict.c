@@ -4,14 +4,13 @@
  *
  *   --------
  *   knd_dict.c
- *   Knowdy lock-free dict implementation
+ *   Knowdy dict implementation
  *
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdatomic.h>
 
 #include "knd_dict.h"
 #include "knd_state.h"
@@ -58,8 +57,7 @@ void* knd_dict_get(struct kndDict *self,
                    size_t key_size)
 {
     size_t h = knd_dict_hash(key, key_size) % self->size;
-    struct kndDictItem *item = atomic_load_explicit(&self->hash_array[h],
-                                                    memory_order_relaxed);
+    struct kndDictItem *item = self->hash_array[h];
     while (item) {
         if (item->key_size != key_size) goto next_item;
         if (!memcmp(item->key, key, key_size)) {
@@ -76,18 +74,12 @@ void* knd_dict_get(struct kndDict *self,
 int knd_dict_set(struct kndDict *self,
                  const char *key,
                  size_t key_size,
-                 void *data,
-                 struct kndCommit *commit,
-                 struct kndDictItem **result)
+                 void *data)
 {
-    struct kndDictItem *head;
     struct kndDictItem *new_item;
     size_t h = knd_dict_hash(key, key_size) % self->size;
-    struct kndDictItem *orig_head = atomic_load_explicit(&self->hash_array[h],
-                                                         memory_order_relaxed);
+    struct kndDictItem *orig_head = self->hash_array[h];
     struct kndDictItem *item = orig_head;
-    struct kndState *state;
-    int err;
 
     while (item) {
         if (item->key_size != key_size) goto next_item;
@@ -105,46 +97,11 @@ int knd_dict_set(struct kndDict *self,
     /* add new item */
     if (dict_item_new(self->mempool, &new_item) != knd_OK) return knd_NOMEM;
     new_item->phase = KND_DICT_VALID;
-    if (commit) {
-        new_item->phase = KND_DICT_PENDING;
-        err = knd_state_new(self->mempool, &state);
-        if (err) return err;
-        state->commit = commit;
-        state->data = data;
-        new_item->states = state;
-        *result = new_item;
-    }
-
     new_item->data = data;
     new_item->key = key;
     new_item->key_size = key_size;
-
-    do {
-        head = atomic_load_explicit(&self->hash_array[h],
-                                    memory_order_relaxed);
-        new_item->next = head;
-        item = head;
-        /* no new conflicts in place? */
-        while (item) {
-            if (item == orig_head) {
-                item = NULL;
-                break;
-            }
-            if (item->key_size != key_size) goto next_check;
-            if (!memcmp(item->key, key, key_size)) {
-                break;
-            }
-        next_check:
-            item = item->next;
-        }
-        if (item && item->phase == KND_DICT_VALID) {
-            // free mempool item
-            return knd_CONFLICT;
-        }
-    } while (!atomic_compare_exchange_weak(&self->hash_array[h], &head, new_item));
-
-    atomic_fetch_add_explicit(&self->num_items, 1,
-                              memory_order_relaxed);
+    new_item->next = orig_head;
+    self->num_items++;
     return knd_OK;
 }
 
@@ -153,8 +110,7 @@ int knd_dict_remove(struct kndDict *self,
                     size_t key_size)
 {
     size_t h = knd_dict_hash(key, key_size) % self->size;
-    struct kndDictItem *head = atomic_load_explicit(&self->hash_array[h],
-                                                    memory_order_relaxed);
+    struct kndDictItem *head = self->hash_array[h];
     struct kndDictItem *item = head;
 
     while (item) {
@@ -177,6 +133,11 @@ void knd_dict_del(struct kndDict *self)
     // TODO
     free(self->hash_array);
     free(self);
+}
+
+void knd_dict_reset(struct kndDict *self)
+{
+    memset(self->hash_array, 0, sizeof(struct kndDictItem*) * self->size);
 }
 
 int knd_dict_new(struct kndDict **dict,

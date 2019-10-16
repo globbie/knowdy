@@ -107,7 +107,7 @@ struct kndProcEntry
 
     struct kndAttrHub *attr_hubs;
 
-    struct kndDict *inst_idx;
+    struct kndSharedDict *inst_name_idx;
 };
 
 struct kndProcArgVar

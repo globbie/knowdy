@@ -59,6 +59,11 @@ void knd_task_reset(struct kndTask *self)
     self->out->reset(self->out);
     self->log->reset(self->log);
     knd_mempool_reset(self->mempool);
+
+    knd_dict_reset(self->class_name_idx);
+    knd_dict_reset(self->attr_name_idx);
+    knd_dict_reset(self->proc_name_idx);
+    knd_dict_reset(self->proc_arg_name_idx);
 }
 
 static int task_err_export_JSON(struct kndTask *task)
@@ -387,10 +392,15 @@ int knd_task_new(struct kndShard *shard,
     /* system repo defaults */
     self->system_repo       = repo;
     self->repo              = repo;
-    self->class_name_idx    = repo->class_name_idx;
-    self->attr_name_idx     = repo->attr_name_idx;
-    self->proc_name_idx     = repo->proc_name_idx;
-    self->proc_arg_name_idx = repo->proc_arg_name_idx;
+
+    err = knd_dict_new(&self->class_name_idx, mempool, KND_SMALL_DICT_SIZE);
+    if (err) return err;
+    err = knd_dict_new(&self->attr_name_idx, mempool, KND_SMALL_DICT_SIZE);
+    if (err) return err;
+    err = knd_dict_new(&self->proc_name_idx, mempool, KND_SMALL_DICT_SIZE);
+    if (err) return err;
+    err = knd_dict_new(&self->proc_arg_name_idx, mempool, KND_SMALL_DICT_SIZE);
+    if (err) return err;
 
     *task = self;
 

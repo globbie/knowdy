@@ -12,6 +12,7 @@
 #include "knd_query.h"
 #include "knd_task.h"
 #include "knd_dict.h"
+#include "knd_shared_dict.h"
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_proc.h"
@@ -38,10 +39,10 @@ void knd_repo_del(struct kndRepo *self)
         free(self->source_files);
     }
 
-    knd_dict_del(self->class_name_idx);
-    knd_dict_del(self->attr_name_idx);
-    knd_dict_del(self->proc_name_idx);
-    knd_dict_del(self->proc_arg_name_idx);
+    knd_shared_dict_del(self->class_name_idx);
+    knd_shared_dict_del(self->attr_name_idx);
+    knd_shared_dict_del(self->proc_name_idx);
+    knd_shared_dict_del(self->proc_arg_name_idx);
     free(self);
 }
 
@@ -118,7 +119,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndDict *class_name_idx = task->class_name_idx;
     struct kndMemPool *mempool = task->mempool;
     struct kndClassEntry *entry = self->entry;
-    struct kndDictItem *item;
     int err;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -159,9 +159,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 
     err = knd_dict_set(class_name_idx,
                        entry->name, name_size,
-                       (void*)entry,
-                       task->ctx->commit,
-                       &item);
+                       (void*)entry);
     if (err) return make_gsl_err_external(err);
 
     self->class = c;
@@ -941,9 +939,9 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
 {
     struct kndMemPool *mempool   = task->mempool;
     struct kndSet *arg_idx       = repo->proc_arg_idx;
-    struct kndDict *arg_name_idx = task->proc_arg_name_idx;
+    struct kndSharedDict *arg_name_idx = repo->proc_arg_name_idx;
     struct kndProcArgRef *arg_ref, *prev_arg_ref;
-    struct kndDictItem *item;
+    struct kndSharedDictItem *item;
     int err;
 
     /* generate unique attr id */
@@ -960,16 +958,17 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
     arg_ref->proc = proc;
 
     /* global indices */
-    prev_arg_ref = knd_dict_get(arg_name_idx,
-                                arg->name, arg->name_size);
+    prev_arg_ref = knd_shared_dict_get(arg_name_idx,
+                                       arg->name, arg->name_size);
     if (prev_arg_ref) {
         arg_ref->next = prev_arg_ref->next;
         prev_arg_ref->next = arg_ref;
     } else {
-        err = knd_dict_set(arg_name_idx,
-                           arg->name, arg->name_size,
-                           (void*)arg_ref,
-                           task->ctx->commit, &item);                                       RET_ERR();
+        err = knd_shared_dict_set(arg_name_idx,
+                                  arg->name, arg->name_size,
+                                  (void*)arg_ref,
+                                  mempool,
+                                  task->ctx->commit, &item);                                       RET_ERR();
     }
 
     err = arg_idx->add(arg_idx,
@@ -988,14 +987,15 @@ static int resolve_classes(struct kndRepo *self,
 {
     struct kndClass *c;
     struct kndClassEntry *entry;
-    struct kndDictItem *item;
-    struct kndDict *name_idx = self->class_name_idx;
+    struct kndSharedDictItem *item;
+    struct kndSharedDict *name_idx = self->class_name_idx;
     int err;
 
     if (DEBUG_REPO_LEVEL_2)
         knd_log(".. resolving classes in \"%.*s\"..",
                 self->name_size, self->name);
 
+    // TODO: iterate func in kndSharedDict
     for (size_t i = 0; i < name_idx->size; i++) {
         item = atomic_load_explicit(&name_idx->hash_array[i],
                                     memory_order_relaxed);
@@ -1031,8 +1031,8 @@ static int index_classes(struct kndRepo *self,
 {
     struct kndClass *c;
     struct kndClassEntry *entry;
-    struct kndDictItem *item;
-    struct kndDict *name_idx = self->class_name_idx;
+    struct kndSharedDictItem *item;
+    struct kndSharedDict *name_idx = self->class_name_idx;
     struct kndSet *class_idx = self->class_idx;
     int err;
 
@@ -1040,6 +1040,7 @@ static int index_classes(struct kndRepo *self,
         knd_log(".. indexing classes in \"%.*s\"..",
                 self->name_size, self->name);
 
+    // TODO iterate func
     for (size_t i = 0; i < name_idx->size; i++) {
         item = atomic_load_explicit(&name_idx->hash_array[i],
                                     memory_order_relaxed);
@@ -1071,8 +1072,8 @@ static int resolve_procs(struct kndRepo *self,
                          struct kndTask *task)
 {
     struct kndProcEntry *entry;
-    struct kndDictItem *item;
-    struct kndDict *proc_name_idx = self->proc_name_idx;
+    struct kndSharedDictItem *item;
+    struct kndSharedDict *proc_name_idx = self->proc_name_idx;
     struct kndSet *proc_idx = self->proc_idx;
     int err;
 
@@ -1266,8 +1267,8 @@ static int update_indices(struct kndRepo *self,
     struct kndStateRef *ref;
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
-    struct kndDict *name_idx = self->class_name_idx;
-    struct kndDictItem *item;
+    struct kndSharedDict *name_idx = self->class_name_idx;
+    struct kndSharedDictItem *item;
     int err;
 
     for (ref = commit->class_state_refs; ref; ref = ref->next) {
@@ -1288,10 +1289,11 @@ static int update_indices(struct kndRepo *self,
             knd_log(".. register new class \"%.*s\"..",
                     entry->name_size, entry->name);
 
-        err = knd_dict_set(name_idx,
-                           entry->name,  entry->name_size,
-                           (void*)entry,
-                           commit, &item);
+        err = knd_shared_dict_set(name_idx,
+                                  entry->name,  entry->name_size,
+                                  (void*)entry,
+                                  task->mempool,
+                                  commit, &item);
         KND_TASK_ERR("failed to register class %.*s", entry->name_size, entry->name);
 
         entry->dict_item = item;
@@ -1304,7 +1306,7 @@ static int update_indices(struct kndRepo *self,
         switch (ref->state->phase) {
         case KND_REMOVED:
             proc_entry->phase = KND_REMOVED;
-            err = knd_dict_remove(name_idx,
+            err = knd_shared_dict_remove(name_idx,
                                   proc_entry->name, proc_entry->name_size);       RET_ERR();
             continue;
         case KND_UPDATED:
@@ -1318,10 +1320,11 @@ static int update_indices(struct kndRepo *self,
             knd_log(".. register proc \"%.*s\"..",
                     proc_entry->name_size, proc_entry->name);
 
-        err = knd_dict_set(name_idx,
-                           proc_entry->name,  proc_entry->name_size,
-                           (void*)proc_entry,
-                           commit, &item);                                    RET_ERR();
+        err = knd_shared_dict_set(name_idx,
+                                  proc_entry->name,  proc_entry->name_size,
+                                  (void*)proc_entry,
+                                  task->mempool,
+                                  commit, &item);                                    RET_ERR();
     }
 
     return knd_OK;
@@ -1568,13 +1571,13 @@ int knd_repo_new(struct kndRepo **repo,
     /* global name indices */
     err = knd_set_new(mempool, &self->class_idx);
     if (err) goto error;
-    err = knd_dict_new(&self->class_name_idx, mempool, KND_MEDIUM_DICT_SIZE);
+    err = knd_shared_dict_new(&self->class_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
     /* attrs */
     err = knd_set_new(mempool, &self->attr_idx);
     if (err) goto error;
-    err = knd_dict_new(&self->attr_name_idx, mempool, KND_MEDIUM_DICT_SIZE);
+    err = knd_shared_dict_new(&self->attr_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
     /*** PROC ***/
@@ -1594,17 +1597,17 @@ int knd_repo_new(struct kndRepo **repo,
 
     err = knd_set_new(mempool, &self->proc_idx);
     if (err) goto error;
-    err = knd_dict_new(&self->proc_name_idx, mempool, KND_LARGE_DICT_SIZE);
+    err = knd_shared_dict_new(&self->proc_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
 
     /* proc args */
     err = knd_set_new(mempool, &self->proc_arg_idx);
     if (err) goto error;
-    err = knd_dict_new(&self->proc_arg_name_idx, mempool, KND_MEDIUM_DICT_SIZE);
+    err = knd_shared_dict_new(&self->proc_arg_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
     /* proc insts */
-    err = knd_dict_new(&self->proc_inst_name_idx, mempool, KND_LARGE_DICT_SIZE);
+    err = knd_shared_dict_new(&self->proc_inst_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
 
     /* commits */

@@ -26,6 +26,7 @@
 #include "knd_text.h"
 #include "knd_rel.h"
 #include "knd_proc.h"
+#include "knd_shared_dict.h"
 #include "knd_proc_arg.h"
 #include "knd_set.h"
 #include "knd_utils.h"
@@ -693,7 +694,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
     struct kndAttr *attr;
     struct kndAttrRef *ref;
     struct kndClass *c = NULL;
-    struct kndDict *class_name_idx;
+    struct kndSharedDict *class_name_idx;
     struct kndClassEntry *entry;
     struct kndMemPool *mempool = ctx->task->mempool;
     gsl_err_t parser_err;
@@ -734,9 +735,9 @@ static gsl_err_t read_nested_attr_var(void *obj,
         if (attr->ref_class) break;
 
         class_name_idx = c->entry->repo->class_name_idx;
-        entry = knd_dict_get(class_name_idx,
-                             attr->ref_classname,
-                             attr->ref_classname_size);
+        entry = knd_shared_dict_get(class_name_idx,
+                                    attr->ref_classname,
+                                    attr->ref_classname_size);
         if (!entry) {
             knd_log("-- inner ref not resolved :( no such class: %.*s",
                     attr->ref_classname_size,
@@ -919,10 +920,10 @@ static gsl_err_t alloc_class_inst_item(struct LocalContext *ctx, struct kndClass
 static gsl_err_t append_class_inst_item(struct LocalContext *ctx, struct kndClassInst *inst)
 {
     struct kndClass *self =   ctx->class;
-    struct kndDict *name_idx = self->entry->inst_name_idx;
+    struct kndSharedDict *name_idx = self->entry->inst_name_idx;
     struct kndSet *set = self->entry->inst_idx;
     struct kndMemPool *mempool = ctx->task->mempool;
-    struct kndDictItem *item;
+    struct kndSharedDictItem *item;
     int err;
 
     if (DEBUG_CLASS_GSP_LEVEL_2) {
@@ -934,15 +935,16 @@ static gsl_err_t append_class_inst_item(struct LocalContext *ctx, struct kndClas
 
     // TODO atomic
     if (!name_idx) {
-        err = knd_dict_new(&self->entry->inst_name_idx, mempool, KND_HUGE_DICT_SIZE);
+        err = knd_shared_dict_new(&self->entry->inst_name_idx, KND_HUGE_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
         name_idx = self->entry->inst_name_idx;
     }
 
-    err = knd_dict_set(name_idx,
-                       inst->name, inst->name_size,
-                       (void*)inst->entry,
-                       ctx->task->ctx->commit, &item);
+    err = knd_shared_dict_set(name_idx,
+                              inst->name, inst->name_size,
+                              (void*)inst->entry,
+                              mempool,
+                              ctx->task->ctx->commit, &item);
     if (err) return make_gsl_err_external(err);
 
     self->entry->num_insts++;
@@ -1186,7 +1188,7 @@ static gsl_err_t validate_attr_var_list(void *obj,
     struct kndAttrVar *attr_var;
     struct kndAttr *attr;
     struct kndAttrRef *ref;
-    struct kndDict *class_name_idx;
+    struct kndSharedDict *class_name_idx;
     struct kndClassEntry *entry;
     struct kndMemPool *mempool = ctx->task->mempool;
     int err;
@@ -1223,9 +1225,9 @@ static gsl_err_t validate_attr_var_list(void *obj,
 
         // TODO
         class_name_idx = class_var->entry->repo->class_name_idx;
-        entry = knd_dict_get(class_name_idx,
-                             attr->ref_classname,
-                             attr->ref_classname_size);
+        entry = knd_shared_dict_get(class_name_idx,
+                                    attr->ref_classname,
+                                    attr->ref_classname_size);
         if (!entry) {
             knd_log("-- inner ref not resolved :( no such class: %.*s",
                     attr->ref_classname_size,
