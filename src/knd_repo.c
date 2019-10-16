@@ -563,7 +563,6 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
     if (name_size == 1) {
         switch (*name) {
         case '/':
-            knd_log("== system repo selected!");
             return make_gsl_err(gsl_OK);
         default:
             break;
@@ -1273,7 +1272,6 @@ static int update_indices(struct kndRepo *self,
 
     for (ref = commit->class_state_refs; ref; ref = ref->next) {
         entry = ref->obj;
-
         switch (ref->state->phase) {
         case KND_REMOVED:
             entry->phase = KND_REMOVED;
@@ -1284,18 +1282,12 @@ static int update_indices(struct kndRepo *self,
         default:
             break;
         }
-
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log(".. register new class \"%.*s\"..",
-                    entry->name_size, entry->name);
-
         err = knd_shared_dict_set(name_idx,
                                   entry->name,  entry->name_size,
                                   (void*)entry,
                                   task->mempool,
                                   commit, &item);
         KND_TASK_ERR("failed to register class %.*s", entry->name_size, entry->name);
-
         entry->dict_item = item;
     }
 
@@ -1315,11 +1307,6 @@ static int update_indices(struct kndRepo *self,
         default:
             break;
         }
-
-        if (DEBUG_REPO_LEVEL_2)
-            knd_log(".. register proc \"%.*s\"..",
-                    proc_entry->name_size, proc_entry->name);
-
         err = knd_shared_dict_set(name_idx,
                                   proc_entry->name,  proc_entry->name_size,
                                   (void*)proc_entry,
@@ -1388,8 +1375,8 @@ static int check_commit_conflicts(struct kndRepo *self,
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log(".. check any commit conflicts since state #%zu..",
-                new_commit->orig_state_id);
+        knd_log(".. new commit #%zu (%p) to check any commit conflicts since state #%zu..",
+                new_commit->numid, new_commit, new_commit->orig_state_id);
 
     do {
         head_commit = atomic_load_explicit(&self->commits,
@@ -1397,8 +1384,6 @@ static int check_commit_conflicts(struct kndRepo *self,
         new_commit->prev = head_commit;
         if (head_commit)
             new_commit->numid = head_commit->numid + 1;
-        else
-            new_commit->numid = 1;
 
         err = check_class_conflicts(self, new_commit, task);
         KND_TASK_ERR("class level conflicts detected");

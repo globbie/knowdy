@@ -50,17 +50,24 @@ static void display_usage(void)
 
 static int knd_interact(struct kndShard *shard)                      
 {
-    struct kndTask *task;
+    struct kndTask *writer_task, *reader_task;
     char  *buf;
     size_t buf_size;
     const char  *block;
     size_t block_size;
     int err;
 
-    err = knd_task_new(shard, NULL, 1, &task);
+    err = knd_task_new(shard, NULL, 1, &writer_task);
     if (err) return err;
-    task->ctx = calloc(1, sizeof(struct kndTaskContext));
-    if (!task->ctx) return knd_NOMEM;
+    writer_task->ctx = calloc(1, sizeof(struct kndTaskContext));
+    if (!writer_task->ctx) return knd_NOMEM;
+    writer_task->role = KND_WRITER;
+
+    err = knd_task_new(shard, NULL, 1, &reader_task);
+    if (err) return err;
+    reader_task->ctx = calloc(1, sizeof(struct kndTaskContext));
+    if (!reader_task->ctx) return knd_NOMEM;
+    reader_task->role = KND_READER;
 
     knd_log("\n++ Knowdy shard service is up and running! (agent role:%d)\n", shard->role);
     knd_log("   (finish session by pressing Ctrl+C)\n");
@@ -74,39 +81,40 @@ static int knd_interact(struct kndShard *shard)
 
         printf("[%s :%zu]\n", buf, buf_size);
 
-        knd_task_reset(task);
-        task->role = KND_READER;
-        err = knd_task_run(task, buf, buf_size);
+        knd_task_reset(reader_task);
+        err = knd_task_run(reader_task, buf, buf_size);
         if (err != knd_OK) {
-            knd_log("-- task run failed: %.*s", task->output_size, task->output);
+            knd_log("-- task run failed: %.*s",
+                    reader_task->output_size, reader_task->output);
             goto next_line;
         }
+        knd_log("== READER RESULT ==\n%.*s",
+                reader_task->output_size, reader_task->output);
 
         /* update tasks require another run,
            possibly involving network communication */
-        switch (task->ctx->phase) {
+        switch (reader_task->ctx->phase) {
         case KND_CONFIRM_COMMIT:
-            err = knd_task_copy_block(task,
-                                      task->output, task->output_size,
+            err = knd_task_copy_block(reader_task,
+                                      reader_task->output, reader_task->output_size,
                                       &block, &block_size);
             if (err != knd_OK) {
                 knd_log("-- update block allocation failed");
                 goto next_line;
             }
-
-            knd_task_reset(task);
-            task->role = KND_WRITER;
-            err = knd_task_run(task, block, block_size);
+            knd_task_reset(writer_task);
+            err = knd_task_run(writer_task, block, block_size);
             if (err != knd_OK) {
-                knd_log("-- update confirm failed: %.*s", task->output_size, task->output);
+                knd_log("-- update confirm failed: %.*s",
+                        writer_task->output_size, writer_task->output);
                 goto next_line;
             }
+            knd_log("== WRITER RESULT ==\n%.*s",
+                    writer_task->output_size, writer_task->output);
             break;
         default:
             break;
         }
-
-        knd_log("== RESULT ==\n%.*s", task->output_size, task->output);
 
         /* readline allocates a new buffer every time */
     next_line:

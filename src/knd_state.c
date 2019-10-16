@@ -69,7 +69,7 @@ int knd_commit_new(struct kndMemPool *mempool,
     int err;
     switch (mempool->type) {
     case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_BASE,
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
                                 sizeof(struct kndCommit), &page);                   RET_ERR();
         break;
     default:
@@ -77,5 +77,6 @@ int knd_commit_new(struct kndMemPool *mempool,
                                      sizeof(struct kndCommit), &page);                     RET_ERR();
     }
     *result = page;
+    (*result)->numid = 1;
     return knd_OK;
 }

@@ -58,7 +58,9 @@ void knd_task_reset(struct kndTask *self)
 
     self->out->reset(self->out);
     self->log->reset(self->log);
-    knd_mempool_reset(self->mempool);
+
+    if (self->role == KND_READER)
+        knd_mempool_reset(self->mempool);
 
     knd_dict_reset(self->class_name_idx);
     knd_dict_reset(self->attr_name_idx);
