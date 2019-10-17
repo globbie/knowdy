@@ -253,7 +253,10 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
     }
 
     err = knd_mkpath(self->path, self->path_size, 0755, false);
-    if (err != knd_OK) return make_gsl_err_external(err);
+    if (err != knd_OK) {
+        knd_log("-- failed to make path: \"%.*s\"", self->path_size, self->path);
+        return make_gsl_err_external(err);
+    }
 
     if (!self->schema_path_size) {
         knd_log("system schema path not set");
