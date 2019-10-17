@@ -20,7 +20,7 @@
 static const char *shard_config =
 "{schema knd"
 "  {agent 007 {role Reader}}"
-"  {db-path /var/lib/knowdy/db/}"
+"  {db-path .}"
 "  {schema-path ../../tests/schemas/system"
 "    {user User"
 "       {base-repo test"
