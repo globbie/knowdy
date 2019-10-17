@@ -20,7 +20,7 @@
 static const char *shard_config =
 "{schema knd"
 "  {agent 007 {role Reader}}"
-"  {db-path /tmp/}"
+"  {db-path ./}"
 "  {schema-path ../../tests/schemas/system"
 "    {user User"
 "       {base-repo test"
@@ -142,7 +142,7 @@ int check_final_results(struct kndShard *shard,
     size_t buf_size;
     struct kndTask *task;
     const char *classname;
-    size_t classname_size;
+    size_t classname_size = 0;
     size_t total_matches = 0;
     int err;
 
@@ -157,7 +157,7 @@ int check_final_results(struct kndShard *shard,
         classname = classnames[i];
         classname_size = strlen(classname);
 
-        buf_size = snprintf(buf, 1024, "{task{class %s}}", classname);
+        buf_size = snprintf(buf, 1024, "{task{class %.*s}}", classname_size, classname);
 
         knd_task_reset(task);
         err = knd_task_run(task, buf, buf_size);
