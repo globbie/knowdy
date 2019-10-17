@@ -20,9 +20,9 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
   include(CodeCoverage)
-  APPEND_COVERAGE_COMPILER_FLAGS()
-  SETUP_TARGET_FOR_COVERAGE_LCOV(NAME ${PROJECT_NAME}_coverage
-                                 EXECUTABLE knd-shard-test)
+  #APPEND_COVERAGE_COMPILER_FLAGS()
+  #SETUP_TARGET_FOR_COVERAGE_LCOV(NAME ${PROJECT_NAME}_coverage
+  #                               EXECUTABLE knd-shard-concurrent-test)
 endif()
 
 pkg_check_modules(CHECK REQUIRED check)

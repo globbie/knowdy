@@ -85,8 +85,9 @@ int knd_shared_dict_set(struct kndSharedDict *self,
     struct kndSharedDictItem *head;
     struct kndSharedDictItem *new_item;
     size_t h = knd_shared_dict_hash(key, key_size) % self->size;
+
     struct kndSharedDictItem *orig_head = atomic_load_explicit(&self->hash_array[h],
-                                                               memory_order_relaxed);
+                                                               memory_order_acquire);
     struct kndSharedDictItem *item = orig_head;
     struct kndState *state;
     int err;
@@ -106,6 +107,8 @@ int knd_shared_dict_set(struct kndSharedDict *self,
 
     /* add new item */
     if (dict_item_new(mempool, &new_item) != knd_OK) return knd_NOMEM;
+    memset(new_item, 0, sizeof(struct kndSharedDictItem));
+
     new_item->phase = KND_SHARED_DICT_VALID;
     if (commit) {
         new_item->phase = KND_SHARED_DICT_PENDING;
@@ -123,9 +126,10 @@ int knd_shared_dict_set(struct kndSharedDict *self,
 
     do {
         head = atomic_load_explicit(&self->hash_array[h],
-                                    memory_order_relaxed);
+                                    memory_order_acquire);
         new_item->next = head;
         item = head;
+
         /* no new conflicts in place? */
         while (item) {
             if (item == orig_head) {
@@ -139,12 +143,12 @@ int knd_shared_dict_set(struct kndSharedDict *self,
         next_check:
             item = item->next;
         }
-        if (item && item->phase == KND_SHARED_DICT_VALID) {
+        if (item) {
             // free mempool item
             return knd_CONFLICT;
         }
     } while (!atomic_compare_exchange_weak(&self->hash_array[h], &head, new_item));
-
+    
     atomic_fetch_add_explicit(&self->num_items, 1,
                               memory_order_relaxed);
     return knd_OK;

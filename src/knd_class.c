@@ -436,7 +436,7 @@ int knd_class_commit_state(struct kndClass *self,
     struct kndState *state = NULL;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. \"%.*s\" class (repo:%.*s) to commit its state (phase:%d)",
                 self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name,

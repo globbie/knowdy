@@ -1267,7 +1267,7 @@ static int update_indices(struct kndRepo *self,
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
     struct kndSharedDict *name_idx = self->class_name_idx;
-    struct kndSharedDictItem *item;
+    struct kndSharedDictItem *item = NULL;
     int err;
 
     for (ref = commit->class_state_refs; ref; ref = ref->next) {
@@ -1282,6 +1282,7 @@ static int update_indices(struct kndRepo *self,
         default:
             break;
         }
+        
         err = knd_shared_dict_set(name_idx,
                                   entry->name,  entry->name_size,
                                   (void*)entry,
@@ -1294,7 +1295,6 @@ static int update_indices(struct kndRepo *self,
     name_idx = self->proc_name_idx;
     for (ref = commit->proc_state_refs; ref; ref = ref->next) {
         proc_entry = ref->obj;
-
         switch (ref->state->phase) {
         case KND_REMOVED:
             proc_entry->phase = KND_REMOVED;
@@ -1312,8 +1312,8 @@ static int update_indices(struct kndRepo *self,
                                   (void*)proc_entry,
                                   task->mempool,
                                   commit, &item);                                    RET_ERR();
+        proc_entry->dict_item = item;
     }
-
     return knd_OK;
 }
 
@@ -1380,7 +1380,7 @@ static int check_commit_conflicts(struct kndRepo *self,
 
     do {
         head_commit = atomic_load_explicit(&self->commits,
-                                           memory_order_relaxed);
+                                           memory_order_acquire);
         new_commit->prev = head_commit;
         if (head_commit)
             new_commit->numid = head_commit->numid + 1;
@@ -1430,7 +1430,7 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
         }
         entry = ref->obj;
         if (entry) {
-            knd_log(".. repo %.*s to confirm commits in \"%.*s\"..",
+            knd_log(".. repo %.*s to resolve commits in \"%.*s\"..",
                     self->name_size, self->name,
                     entry->name_size, entry->name);
         }
@@ -1473,11 +1473,12 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
 
     switch (task->role) {
     case KND_WRITER:
-        
+
         err = update_indices(self, commit, task);
         KND_TASK_ERR("index update failed");
 
-        knd_log(".. Writer to confirm commit #%zu..", commit->numid);
+        knd_log(".. Writer #%d to confirm commit #%zu..", task->id, commit->numid);
+
         err = check_commit_conflicts(self, commit, task);
         KND_TASK_ERR("commit conflicts detected, please get the latest repo updates");
 
@@ -1487,7 +1488,7 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
 
         // err = build_reply(task, commit);
         // KND_TASK_ERR("index update failed");
-
+        task->out->write(task->out, "OK", 2);
         
         break;
     default:

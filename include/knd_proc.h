@@ -22,6 +22,7 @@
 
 #include "knd_config.h"
 #include "knd_state.h"
+#include "knd_shared_dict.h"
 #include "knd_output.h"
 #include "knd_proc_call.h"
 #include "knd_proc_arg.h"
@@ -108,6 +109,8 @@ struct kndProcEntry
     struct kndAttrHub *attr_hubs;
 
     struct kndSharedDict *inst_name_idx;
+
+    struct kndSharedDictItem *dict_item;
 };
 
 struct kndProcArgVar
