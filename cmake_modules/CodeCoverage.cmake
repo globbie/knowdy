@@ -121,7 +121,7 @@ endif() # NOT CMAKE_BUILD_TYPE STREQUAL "Debug"
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
     link_libraries(gcov)
 else()
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ")
 endif()
 
 # Defines a target for running and collection code coverage information
@@ -305,4 +305,3 @@ function(APPEND_COVERAGE_COMPILER_FLAGS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COVERAGE_COMPILER_FLAGS}" PARENT_SCOPE)
     message(STATUS "Appending code coverage compiler flags: ${COVERAGE_COMPILER_FLAGS}")
 endfunction() # APPEND_COVERAGE_COMPILER_FLAGS
-
