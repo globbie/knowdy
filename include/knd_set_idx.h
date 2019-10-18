@@ -27,7 +27,7 @@
 #include <limits.h>
 
 // Knowdy Set Key (string of 0-9A-Za-z)
-_Static_assert(KND_RADIX_BASE <= CHAR_BIT * sizeof(uint64_t), "KND_RADIX_BASE is too big");  // requried for knd_set_idx_key_bit()
+_Static_assert(KND_RADIX_BASE <= CHAR_BIT * sizeof(uint64_t), "KND_RADIX_BASE is too big");  // required for knd_set_idx_key_bit()
 
 struct kndSetIdxFolder
 {

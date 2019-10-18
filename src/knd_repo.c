@@ -1341,19 +1341,23 @@ static int check_class_conflicts(struct kndRepo *unused_var(self),
             knd_log(".. any new states in class name idx?");
 
             state = atomic_load_explicit(&entry->dict_item->states,
-                                         memory_order_relaxed);
+                                         memory_order_acquire);
 
             for (; state; state = state->next) {
                 if (state->commit == new_commit) continue;
 
                 confirm = atomic_load_explicit(&state->commit->confirm,
-                                               memory_order_relaxed);
-                if (confirm == KND_VALID_STATE) {
+                                               memory_order_acquire);
+                switch (confirm) {
+                case KND_VALID_STATE:
+                case KND_PERSISTENT_STATE:
                     atomic_store_explicit(&new_commit->confirm,
-                                          KND_CONFLICT_STATE, memory_order_relaxed);
+                                          KND_CONFLICT_STATE, memory_order_release);
                     err = knd_FAIL;
                     KND_TASK_ERR("%.*s class already registered",
                                  entry->name_size, entry->name);
+                default:
+                    break;
                 }
             }
             

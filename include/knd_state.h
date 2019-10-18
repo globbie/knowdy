@@ -40,7 +40,8 @@ typedef enum knd_state_phase { KND_SELECTED,
 typedef enum knd_commit_confirm { KND_INIT_STATE, 
                                   KND_FAILED_STATE,
                                   KND_CONFLICT_STATE,
-                                  KND_VALID_STATE
+                                  KND_VALID_STATE,
+                                  KND_PERSISTENT_STATE
 } knd_commit_confirm;
 
 typedef enum knd_state_type { KND_STATE_CLASS,

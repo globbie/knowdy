@@ -362,8 +362,6 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
 
 void knd_shard_del(struct kndShard *self)
 {
-    knd_log(".. deconstructing kndShard ..");
-
     if (self->user)
         knd_user_del(self->user);
 

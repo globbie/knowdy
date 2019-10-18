@@ -157,7 +157,7 @@ int check_final_results(struct kndShard *shard,
         classname = classnames[i];
         classname_size = strlen(classname);
 
-        buf_size = snprintf(buf, 1024, "{task{class %.*s}}", classname_size, classname);
+        buf_size = snprintf(buf, 1024, "{task{class %.*s}}", (int)classname_size, classname);
 
         knd_task_reset(task);
         err = knd_task_run(task, buf, buf_size);
