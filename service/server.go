@@ -12,8 +12,6 @@ import (
 	"os/signal"
 	"runtime"
 	"time"
-
-	// "github.com/gorilla/schema"
 )
 
 type Config struct {
@@ -23,11 +21,6 @@ type Config struct {
 	RequestsMax       int           `json:"requests-max"`
 	SlotAwaitDuration time.Duration `json:"slot-await-duration"`
 }
-
-//type Msg struct {
-//	Content   string `schema:"uid,required"`
-//	SessionId string `schema:"sid,optional"`
-//}
 
 var (
 	cfg       *Config
@@ -45,10 +38,10 @@ func init() {
 		duration      time.Duration
 	)
 
-	flag.StringVar(&configPath, "config-path", "/etc/gnode/gnode.json", "path to Gnode config")
+	flag.StringVar(&configPath, "config-path", "/etc/knowdy/service.json", "path to http service config")
 	flag.StringVar(&kndConfigPath, "knd-config-path", "/etc/knowdy/shard.gsl", "path to Knowdy config")
 	flag.StringVar(&listenAddress, "listen-address", "127.0.0.1:8089", "Knowdy listen address")
-	flag.StringVar(&parentAddress, "parent-address", "", "Knowdy shard parent address")
+	flag.StringVar(&parentAddress, "parent-address", "", "parent service address")
 	flag.IntVar(&requestsMax, "requests-limit", 10, "maximum number of requests to process simultaneously")
 	flag.DurationVar(&duration, "request-limit-duration", 1*time.Second, "free slot awaiting time")
 	flag.Parse()
@@ -56,7 +49,7 @@ func init() {
 	{ // load config
 		configData, err := ioutil.ReadFile(configPath)
 		if err != nil {
-			log.Fatalln("could not read gnode config, error:", err)
+			log.Fatalln("could not read service config, error:", err)
 		}
 		err = json.Unmarshal(configData, &cfg)
 		if err != nil {
@@ -177,7 +170,7 @@ func gslHandler(proc *kndProc) http.Handler {
 		}
 		result, _, err := proc.RunTask(string(body), len(body))
 		if err != nil {
-			http.Error(w, "internal server error: " + err.Error(),
+			http.Error(w, "internal server error: "+err.Error(),
 				http.StatusInternalServerError)
 			return
 		}

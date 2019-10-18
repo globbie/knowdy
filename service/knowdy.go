@@ -1,8 +1,5 @@
 package main
 
-// #cgo CFLAGS: -I${SRCDIR}/../knowdy/include
-// #cgo CFLAGS: -I${SRCDIR}/../knowdy/libs/gsl-parser/include
-
 // #cgo LDFLAGS:
 // #include <stdio.h>
 // #include <stdlib.h>
