@@ -11,9 +11,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <time.h>
 
 #define TEST_NUM_AGENTS 8
-#define TEST_NUM_CLASSES 10
+#define TEST_NUM_CLASSES 10000
 #define MIN_CLASSNAME_SIZE 16
 #define MAX_CLASSNAME_SIZE 64
 
@@ -31,6 +32,12 @@ static const char *shard_config =
 "    {max_small_x2_pages  150000}"
 "    {max_small_pages     23000}"
 "    {max_tiny_pages      200000}"
+"            {ctx"
+"            {max_base_pages        48000}"
+"            {max_small_x4_pages    40000}"
+"            {max_small_x2_pages    124000}"
+"            {max_small_pages       190000}"
+"            {max_tiny_pages        350000}}"
 "  }"
 "}";
 
@@ -74,8 +81,13 @@ static void *agent_runner(void *ptr)
     for (size_t i = 0; i < TEST_NUM_CLASSES; i++) { 
         classname = t->classnames[i];
         classname_size = strlen(classname);
-        buf_size = snprintf(buf, 1024, "{task{!class %.*s}}",
-                            (int)classname_size, classname);
+        buf_size = snprintf(buf, 1024,
+                            "{task{!class %d__%.*s {is User}}"
+                            "{!class 02_%d__%.*s {is User}}"
+                            "{!class 03_%d__%.*s {is User}}}",
+                            task->id, (int)classname_size, classname,
+                            task->id, (int)classname_size, classname,
+                            task->id, (int)classname_size, classname);
 
         /* NB: Writer's tasks must be permanently allocated 
            before submitting.
@@ -86,8 +98,8 @@ static void *agent_runner(void *ptr)
                                   &block, &block_size);
         if (err != knd_OK) return NULL;
 
-        knd_log(".. agent #%d to run task: \"%.*s\"..",
-                task->id, block_size, block);
+        //knd_log(".. agent #%d to run task: \"%.*s\"..",
+        //        task->id, block_size, block);
 
         knd_task_reset(task);
         t->total_jobs++;
@@ -98,8 +110,8 @@ static void *agent_runner(void *ptr)
             //        task->id, task->output_size, task->output);
             continue;
         }
-        knd_log("agent #%d) ++ write task success: %.*s!",
-                task->id, task->output_size, task->output);
+        //knd_log("agent #%d) ++ write task success: %.*s!",
+        //        task->id, task->output_size, task->output);
         t->success_jobs++;
     }
     return NULL;
@@ -162,12 +174,12 @@ int check_final_results(struct kndShard *shard,
         knd_task_reset(task);
         err = knd_task_run(task, buf, buf_size);
         if (err != knd_OK) {
-            knd_log("-- reading confirm failed: %.*s",
-                    task->output_size, task->output);
+            // knd_log("-- reading confirm failed: %.*s",
+            //        task->output_size, task->output);
             continue;
         }
-        knd_log("== confirm read OK: %.*s",
-                task->output_size, task->output);
+        //knd_log("== confirm read OK: %.*s",
+        //        task->output_size, task->output);
         total_matches++;
     }
     knd_log("== total class names: %zu  confirmed matches:%zu",
@@ -186,7 +198,7 @@ START_TEST(shard_concurrent_update_test)
     size_t num_classnames = TEST_NUM_CLASSES;
     char *classname = "";
     size_t classname_size = 0;
-    const char *c;
+    clock_t from;
     int err;
     
     err = knd_shard_new(&shard, shard_config, strlen(shard_config));
@@ -198,7 +210,7 @@ START_TEST(shard_concurrent_update_test)
         classname_size = MIN_CLASSNAME_SIZE + (rand() % MAX_CLASSNAME_SIZE);
         classname = calloc(1, classname_size + 1);
         gen_rand_str(classname, classname_size);
-        knd_log("%zu) %.*s [len:%zu]", i, classname_size, classname, classname_size);
+        // knd_log("%zu) %.*s [len:%zu]", i, classname_size, classname, classname_size);
         classnames[i] = classname;
     }
 
@@ -223,13 +235,15 @@ START_TEST(shard_concurrent_update_test)
             t->classnames[j] = classnames[j];
         shuffle_classnames(t->classnames, TEST_NUM_CLASSES);
 
-        knd_log("\n == agent #%d", task->id);
+        /*knd_log("\n == agent #%d", task->id);
         for (int j = 0; j < TEST_NUM_CLASSES; j++) {
-            c = t->classnames[j];
+            const char *c = t->classnames[j];
             classname_size = strlen(c);
             knd_log("== %.*s [len:%zu]", classname_size, c, classname_size);
-        }
+            }*/
     }
+
+    from = clock();
 
     /* start threads */
     for (int i = 0; i < TEST_NUM_AGENTS; i++) {
@@ -242,7 +256,9 @@ START_TEST(shard_concurrent_update_test)
     for (int i = 0; i < TEST_NUM_AGENTS; i++) {
         pthread_join(agents[i], NULL);
     }
-    
+
+    printf("++ jobs finished in: %fsec\n", ((double)(clock() - from)) / CLOCKS_PER_SEC);
+
     /* present reports */
     for (int i = 0; i < TEST_NUM_AGENTS; i++) {
         t = &tests[i];

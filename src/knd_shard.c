@@ -332,9 +332,12 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     task->ctx = calloc(1, sizeof(struct kndTaskContext));
     if (!task->ctx) return knd_NOMEM;
     self->task = task;
-
+    
     err = knd_repo_open(repo, task);
-    if (err != knd_OK) goto error;
+    if (err != knd_OK) {
+        knd_log("ERR LOG:%.*s", task->output_size, task->output);
+        goto error;
+    }
 
     err = knd_user_new(&user, mempool);
     if (err != knd_OK) goto error;

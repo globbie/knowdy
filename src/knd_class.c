@@ -731,7 +731,6 @@ int knd_get_class(struct kndRepo *self,
         if (DEBUG_CLASS_LEVEL_2)
             knd_log("-- no local class found in: %.*s",
                     self->name_size, self->name);
-
         /* check parent schema */
         if (self->base) {
             err = knd_get_class(self->base, name, name_size, result, task);
@@ -743,7 +742,6 @@ int knd_get_class(struct kndRepo *self,
 
     if (entry->class) {
         c = entry->class;
-
         if (c->num_states) {
             state = c->states;
             if (state->phase == KND_REMOVED) {
@@ -1024,13 +1022,14 @@ int knd_class_clone(struct kndClass *self,
 
     /* idx register */
     ref = knd_shared_dict_get(class_name_idx,
-                       entry->name, entry->name_size);
+                              entry->name, entry->name_size);
+
     if (!ref) {
         err = knd_shared_dict_set(class_name_idx,
                                   entry->name, entry->name_size,
                                   (void*)entry,
                                   mempool,
-                                  NULL, NULL);                                   RET_ERR();
+                                  NULL, NULL, false);                                   RET_ERR();
     }
 
     err = class_idx->add(class_idx,
@@ -1096,18 +1095,25 @@ extern int knd_class_copy(struct kndClass *self,
     return knd_OK;
 }
 
-extern void kndClass_init(struct kndClass *self)
+static void kndClass_init(struct kndClass *self)
 {
     self->str = str;
 }
 
-extern int knd_class_var_new(struct kndMemPool *mempool,
-                             struct kndClassVar **result)
+int knd_class_var_new(struct kndMemPool *mempool,
+                      struct kndClassVar **result)
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassVar), &page);
-    if (err) return err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassVar), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassVar), &page);
+        if (err) return err;
+    }
     *result = page;
     return knd_OK;
 }
@@ -1130,8 +1136,8 @@ extern int knd_class_ref_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-extern int knd_class_facet_new(struct kndMemPool *mempool,
-                             struct kndClassFacet **result)
+int knd_class_facet_new(struct kndMemPool *mempool,
+                        struct kndClassFacet **result)
 {
     void *page;
     int err;

@@ -956,23 +956,23 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
     arg_ref->arg = arg;
     arg_ref->proc = proc;
 
+    // if (task->type == KND_LOAD_STATE) {
+
     /* global indices */
     prev_arg_ref = knd_shared_dict_get(arg_name_idx,
                                        arg->name, arg->name_size);
-    if (prev_arg_ref) {
-        arg_ref->next = prev_arg_ref->next;
-        prev_arg_ref->next = arg_ref;
-    } else {
-        err = knd_shared_dict_set(arg_name_idx,
-                                  arg->name, arg->name_size,
-                                  (void*)arg_ref,
-                                  mempool,
-                                  task->ctx->commit, &item);                                       RET_ERR();
-    }
+    arg_ref->next = prev_arg_ref;
+    err = knd_shared_dict_set(arg_name_idx,
+                              arg->name, arg->name_size,
+                              (void*)arg_ref,
+                              mempool,
+                              task->ctx->commit, &item, true);                                       RET_ERR();
 
     err = arg_idx->add(arg_idx,
                         arg->id, arg->id_size,
                         (void*)arg_ref);                                          RET_ERR();
+
+    // TODO: local task register
 
     if (DEBUG_REPO_LEVEL_2)
         knd_log("++ new primary arg: \"%.*s\" (id:%.*s)",
@@ -1137,7 +1137,7 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     struct stat st;
     int err;
 
-    out = task->log;
+    out = task->file_out;
     task->repo = self;
 
     /* extend user DB path */
@@ -1202,13 +1202,7 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
         }
     }
 
-    /* restore the recent state */
-    out->reset(out);
-    err = out->write(out, self->path, self->path_size);
-    if (err) return err;
-    err = out->write(out, "/state.db", strlen("/state.db"));
-    if (err) return err;
-
+    /* TODO: restore the recent state */
     /* read any existing commits to the frozen DB (failure recovery) */
     if (!stat(out->buf, &st)) {
         err = restore_state(self, out->buf, task->file_out);
@@ -1282,12 +1276,11 @@ static int update_indices(struct kndRepo *self,
         default:
             break;
         }
-        
         err = knd_shared_dict_set(name_idx,
                                   entry->name,  entry->name_size,
                                   (void*)entry,
                                   task->mempool,
-                                  commit, &item);
+                                  commit, &item, false);
         KND_TASK_ERR("failed to register class %.*s", entry->name_size, entry->name);
         entry->dict_item = item;
     }
@@ -1311,7 +1304,7 @@ static int update_indices(struct kndRepo *self,
                                   proc_entry->name,  proc_entry->name_size,
                                   (void*)proc_entry,
                                   task->mempool,
-                                  commit, &item);                                    RET_ERR();
+                                  commit, &item, false);                                    RET_ERR();
         proc_entry->dict_item = item;
     }
     return knd_OK;
@@ -1331,14 +1324,14 @@ static int check_class_conflicts(struct kndRepo *unused_var(self),
         entry = ref->obj;
         state = ref->state;
 
-        if (DEBUG_REPO_LEVEL_TMP)
+        if (DEBUG_REPO_LEVEL_2)
             knd_log(".. checking \"%.*s\" class conflicts, state phase: %d",
                     entry->name_size, entry->name, state->phase);
 
         switch (state->phase) {
         case KND_CREATED:
             /* check class name idx */
-            knd_log(".. any new states in class name idx?");
+            // knd_log(".. any new states in class name idx?");
 
             state = atomic_load_explicit(&entry->dict_item->states,
                                          memory_order_acquire);
@@ -1360,12 +1353,10 @@ static int check_class_conflicts(struct kndRepo *unused_var(self),
                     break;
                 }
             }
-            
             break;
         default:
             break;
         }
-
     }
     
     return knd_OK;
@@ -1378,7 +1369,7 @@ static int check_commit_conflicts(struct kndRepo *self,
     struct kndCommit *head_commit = NULL;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. new commit #%zu (%p) to check any commit conflicts since state #%zu..",
                 new_commit->numid, new_commit, new_commit->orig_state_id);
 
@@ -1397,13 +1388,7 @@ static int check_commit_conflicts(struct kndRepo *self,
     atomic_store_explicit(&new_commit->confirm, KND_VALID_STATE, memory_order_relaxed);
     atomic_fetch_add_explicit(&self->num_commits, 1, memory_order_relaxed);
 
-    // knd_uid_create(new_commit->numid, new_commit->id, &new_commit->id_size);
-    // err = self->commit_idx->add(self->commit_idx,
-    //                            commit->id, commit->id_size,
-    //                            (void*)commit);
-    //if (err) return err;
-
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("++ no conflicts found, commit #%zu confirmed!",
                 new_commit->numid);
 
@@ -1414,7 +1399,7 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
 {
     struct kndTaskContext *ctx = task->ctx;
     struct kndCommit *commit = ctx->commit;
-    struct kndStateRef *ref, *child_ref;
+    struct kndStateRef *ref; //, *child_ref;
     struct kndState *state;
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
@@ -1422,7 +1407,7 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
 
     assert(commit != NULL);
 
-    if (DEBUG_REPO_LEVEL_TMP) {
+    if (DEBUG_REPO_LEVEL_2) {
         knd_log(".. \"%.*s\" repo to apply commit #%zu..",
                 self->name_size, self->name, commit->numid);
     }
@@ -1433,27 +1418,20 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
             continue;
         }
         entry = ref->obj;
-        if (entry) {
-            knd_log(".. repo %.*s to resolve commits in \"%.*s\"..",
-                    self->name_size, self->name,
-                    entry->name_size, entry->name);
-        }
-
         if (!entry->class->is_resolved) {
-            err = knd_class_resolve(entry->class, task);                              RET_ERR();
+            err = knd_class_resolve(entry->class, task);
+            KND_TASK_ERR("failed to resolve class \"%.*s\"",
+                         entry->name_size, entry->name);
         }
         state = ref->state;
         state->commit = commit;
         if (!state->children) continue;
 
-        for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
-            entry = child_ref->obj;
-            /*if (entry) {
-                knd_log("  == class:%.*s", entry->name_size, entry->name);
-                }*/
-            state = child_ref->state;
-            state->commit = commit;
-        }
+        //for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
+        //    entry = child_ref->obj;
+        //    state = child_ref->state;
+        //    state->commit = commit;
+        //}
     }
 
     /* PROCS */
@@ -1481,8 +1459,6 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
         err = update_indices(self, commit, task);
         KND_TASK_ERR("index update failed");
 
-        knd_log(".. Writer #%d to confirm commit #%zu..", task->id, commit->numid);
-
         err = check_commit_conflicts(self, commit, task);
         KND_TASK_ERR("commit conflicts detected, please get the latest repo updates");
 
@@ -1492,7 +1468,6 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
 
         // err = build_reply(task, commit);
         // KND_TASK_ERR("index update failed");
-        task->out->write(task->out, "OK", 2);
         
         break;
     default:
@@ -1561,6 +1536,7 @@ int knd_repo_new(struct kndRepo **repo,
     /* global name indices */
     err = knd_set_new(mempool, &self->class_idx);
     if (err) goto error;
+
     err = knd_shared_dict_new(&self->class_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 

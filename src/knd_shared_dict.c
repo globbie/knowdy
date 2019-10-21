@@ -80,7 +80,8 @@ int knd_shared_dict_set(struct kndSharedDict *self,
                         void *data,
                         struct kndMemPool *mempool,
                         struct kndCommit *commit,
-                        struct kndSharedDictItem **result)
+                        struct kndSharedDictItem **result,
+                        bool allow_overwrite)
 {
     struct kndSharedDictItem *head;
     struct kndSharedDictItem *new_item;
@@ -100,9 +101,14 @@ int knd_shared_dict_set(struct kndSharedDict *self,
     next_item:
         item = item->next;
     }
-    if (item) {
-        if (item->phase == KND_SHARED_DICT_VALID)
+    if (item && !allow_overwrite) {
+        switch (item->phase) {
+        case KND_SHARED_DICT_VALID:
+            // knd_log("valid entry already present in kndSharedDict");
             return knd_CONFLICT;
+        default:
+            break;
+        }
     }
 
     /* add new item */

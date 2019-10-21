@@ -944,7 +944,7 @@ static gsl_err_t append_class_inst_item(struct LocalContext *ctx, struct kndClas
                               inst->name, inst->name_size,
                               (void*)inst->entry,
                               mempool,
-                              ctx->task->ctx->commit, &item);
+                              ctx->task->ctx->commit, &item, false);
     if (err) return make_gsl_err_external(err);
 
     self->entry->num_insts++;

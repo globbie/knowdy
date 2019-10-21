@@ -155,10 +155,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
     struct kndRepo *repo = ctx->repo;
-    struct kndClass *c;
-    struct kndDict *class_name_idx = task->class_name_idx;
     struct kndClassEntry *entry;
-    struct kndState *state;
+    struct kndClass *c;
     int err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2) {
@@ -166,60 +164,67 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
                 name_size, name);
     }
 
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    /* initial bulk load in progress */
+    if (task->type == KND_LOAD_STATE) {
+        entry = knd_shared_dict_get(repo->class_name_idx, name, name_size);
+        if (!entry) {
+            entry = self->entry;
+            entry->name = name;
+            entry->name_size = name_size;
+            self->name = name;
+            self->name_size = name_size;
 
-    if (task->type != KND_LOAD_STATE) {
-        err = knd_get_class(repo, name, name_size, &c, task);
-        if (!err) goto doublet;
+            /* register globally */
+            err = knd_shared_dict_set(repo->class_name_idx,
+                                      name, name_size,
+                                      (void*)entry,
+                                      task->mempool,
+                                      NULL, NULL, false);
+            if (err) return make_gsl_err_external(err);
+            return make_gsl_err(gsl_OK);
+        }
+        /* class entry has no class body */
+        if (!entry->class) {
+            entry->class =    self;
+            self->entry =     entry;
+            self->name =      name;
+            self->name_size = name_size;
+            // TODO release curr entry ?
+            return make_gsl_err(gsl_OK);
+        }
+        KND_TASK_LOG("\"%.*s\" class name already exists", name_size, name);
+        task->ctx->http_code = HTTP_CONFLICT;
+        task->ctx->error = KND_CONFLICT;
+        return make_gsl_err(gsl_FAIL);
     }
 
-    entry = knd_dict_get(class_name_idx, name, name_size);
+    /* commit in progress */
+    err = knd_get_class(repo, name, name_size, &c, task);
+    if (!err) {
+        KND_TASK_LOG("\"%.*s\" class already exists", name_size, name);
+        task->ctx->http_code = HTTP_CONFLICT;
+        task->ctx->error = KND_CONFLICT;
+        return make_gsl_err(gsl_FAIL);
+    }
+
+    /* update local task idx */
+    entry = knd_dict_get(task->class_name_idx, name, name_size);
     if (!entry) {
         entry = self->entry;
         entry->name = name;
         entry->name_size = name_size;
-        self->name = self->entry->name;
+        self->name = name;
         self->name_size = name_size;
-
-        err = knd_dict_set(class_name_idx,
-                                  name, name_size,
-                                  (void*)entry);
+        err = knd_dict_set(task->class_name_idx,
+                           name, name_size,
+                           (void*)entry);
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }
 
-    /* class entry already exists */
-    if (!entry->class) {
-        entry->class =    self;
-        self->entry =     entry;
-        self->name =      entry->name;
-        self->name_size = name_size;
-
-        // TODO release curr entry
-
-        return make_gsl_err(gsl_OK);
-    }
-
-    if (entry->class->states) {
-        state = entry->class->states;
-        if (state->phase == KND_REMOVED) {
-            entry->class = self;
-            self->entry =  entry;
-
-            if (DEBUG_CLASS_IMPORT_LEVEL_2)
-                knd_log("== class was removed recently");
-
-            self->name =      entry->name;
-            self->name_size = name_size;
-            return make_gsl_err(gsl_OK);
-        }
-    }
-
- doublet:
-    KND_TASK_LOG("\"%.*s\" class name already exists", name_size, name);
+    KND_TASK_LOG("current commit already has a doublet of \"%.*s\" class", name_size, name);
     task->ctx->http_code = HTTP_CONFLICT;
     task->ctx->error = KND_CONFLICT;
-
     return make_gsl_err(gsl_FAIL);
 }
 
@@ -400,8 +405,6 @@ static gsl_err_t parse_class_var(const char *rec,
     return make_gsl_err(gsl_OK);
 }
 
-
-
 gsl_err_t knd_import_class_var(struct kndClassVar *self,
                                const char *rec,
                                size_t *total_size,
@@ -457,7 +460,10 @@ static gsl_err_t parse_baseclass(void *obj,
         knd_log(".. parsing the base class: \"%.*s\"", 32, rec);
 
     err = knd_class_var_new(mempool, &class_var);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
+    if (err) {
+        KND_TASK_LOG("failed to alloc a class var");
+        return *total_size = 0, make_gsl_err_external(err);
+    }
     class_var->parent = self;
 
     ctx->class_var = class_var;
@@ -498,7 +504,6 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
         KND_TASK_LOG("mempool failed to alloc kndClassEntry");
         return make_gsl_err_external(err);
     }
-
     entry->repo = repo;
     entry->class = c;
     c->entry = entry;
@@ -513,34 +518,11 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
         { .is_implied = true,
           .run = set_class_name,
           .obj = &ctx
-        }/*,
-        { .type = GSL_SET_STATE,
-          .name = "base",
-          .name_size = strlen("base"),
-          .parse = parse_baseclass,
-          .obj = &ctx
         },
-        { .name = "base",
-          .name_size = strlen("base"),
-          .parse = parse_baseclass,
-          .obj = &ctx
-        },
-        { .type = GSL_SET_STATE,
-          .name = "is",
-          .name_size = strlen("is"),
-          .parse = parse_baseclass,
-          .obj = &ctx
-          }*/,
         { .name = "is",
           .name_size = strlen("is"),
           .parse = parse_baseclass,
           .obj = &ctx
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "_gloss",
-          .name_size = strlen("_gloss"),
-          .parse = knd_parse_gloss_array,
-          .obj = task
         },
         { .type = GSL_GET_ARRAY_STATE,
           .name = "_gloss",
@@ -548,13 +530,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
           .parse = knd_parse_gloss_array,
           .obj = task
         },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "_g",
-          .name_size = strlen("_g"),
-          .parse = knd_parse_gloss_array,
-          .obj = task
-        },
-        { .type = GSL_SET_ARRAY_STATE,
+        { .type = GSL_GET_ARRAY_STATE,
           .name = "_summary",
           .name_size = strlen("_summary"),
           .parse = knd_parse_summary_array,
@@ -564,10 +540,6 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
           .name_size = strlen("_state_top"),
           .run = set_state_top_option,
           .obj = c
-        },
-        { .type = GSL_SET_STATE,
-          .validate = parse_attr,
-          .obj = &ctx
         },
         { .validate = parse_attr,
           .obj = &ctx

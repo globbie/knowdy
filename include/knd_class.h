@@ -184,9 +184,8 @@ struct kndClass
 };
 
 /* constructor */
-extern void kndClass_init(struct kndClass *self);
 int kndClass_new(struct kndClass **self,
-                        struct kndMemPool *mempool);
+                 struct kndMemPool *mempool);
 
 int knd_class_coordinate(struct kndClass *self, struct kndTask *task);
 

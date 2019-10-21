@@ -38,7 +38,8 @@ int knd_shared_dict_set(struct kndSharedDict *self,
                         void *data,
                         struct kndMemPool *mempool,
                         struct kndCommit *commit,
-                        struct kndSharedDictItem **result);
+                        struct kndSharedDictItem **result,
+                        bool allow_overwrite);
 
 int knd_shared_dict_remove(struct kndSharedDict *self,
                            const char *key,

@@ -157,7 +157,7 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     task->output = NULL;
     task->output_size = 0;
 
-    if (DEBUG_TASK_LEVEL_TMP) {
+    if (DEBUG_TASK_LEVEL_2) {
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
         if (task->input_size < chunk_size)
             chunk_size = task->input_size;
@@ -232,7 +232,7 @@ int knd_save_commit_WAL(struct kndTask *task, struct kndCommit *commit)
 
     assert(ctx->repo);
     commit->timestamp = time(NULL);
-    if (DEBUG_TASK_LEVEL_TMP) {
+    if (DEBUG_TASK_LEVEL_2) {
         knd_log(".. kndTask #%zu to write a WAL entry: %.*s (path:%.*s)",
                 task->id,
                 task->input_size, task->input, task->path_size, task->path);
@@ -266,7 +266,7 @@ int knd_save_commit_WAL(struct kndTask *task, struct kndCommit *commit)
     KND_TASK_ERR("log filename construction failed");
     file_out->buf[file_out->buf_size] = '\0';
 
-    knd_log("WAL filename: %.*s", file_out->buf_size, file_out->buf);
+    // knd_log("WAL filename: %.*s", file_out->buf_size, file_out->buf);
 
     if (stat(file_out->buf, &st)) {
         if (DEBUG_TASK_LEVEL_TMP)
@@ -307,10 +307,10 @@ int knd_save_commit_WAL(struct kndTask *task, struct kndCommit *commit)
 
  append_wal_rec:
 
-    knd_log(".. append to WAL: %.*s", out->buf_size, out->buf);
-    err = knd_append_file((const char*)file_out->buf,
-                          out->buf, out->buf_size);
-    KND_TASK_ERR("WAL file append failed");
+    // knd_log(".. appending to WAL: %.*s", out->buf_size, out->buf);
+    //err = knd_append_file((const char*)file_out->buf,
+    //                      out->buf, out->buf_size);
+    //KND_TASK_ERR("WAL file append failed");
 
     return knd_OK;
 }
@@ -391,10 +391,7 @@ int knd_task_new(struct kndShard *shard,
     err = knd_output_new(&self->file_out, NULL, KND_FILE_BUF_SIZE);
     if (err) return err;
 
-    /* system repo defaults */
-    self->system_repo       = repo;
-    self->repo              = repo;
-
+    /* local name indices */
     err = knd_dict_new(&self->class_name_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) return err;
     err = knd_dict_new(&self->attr_name_idx, mempool, KND_SMALL_DICT_SIZE);
@@ -403,6 +400,10 @@ int knd_task_new(struct kndShard *shard,
     if (err) return err;
     err = knd_dict_new(&self->proc_arg_name_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) return err;
+
+    /* system repo defaults */
+    self->system_repo       = repo;
+    self->repo              = repo;
 
     *task = self;
 

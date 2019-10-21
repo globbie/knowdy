@@ -393,7 +393,7 @@ extern int knd_register_attr_ref(void *obj,
     struct kndSharedDict *attr_name_idx = self->entry->repo->attr_name_idx;
     struct kndAttrRef *src_ref = elem;
     struct kndAttr    *attr    = src_ref->attr;
-    struct kndAttrRef *ref; //, *prev_attr_ref;
+    struct kndAttrRef *ref, *prev_attr_ref;
     struct kndMemPool *mempool = attr_idx->mempool;
     int err;
 
@@ -409,20 +409,16 @@ extern int knd_register_attr_ref(void *obj,
                         attr->id, attr->id_size,
                         (void*)ref);                                              RET_ERR();
 
-    //prev_attr_ref = knd_dict_get(attr_name_idx,
-    //                             attr->name, attr->name_size);
+    prev_attr_ref = knd_shared_dict_get(attr_name_idx,
+                                        attr->name, attr->name_size);
 
-    /*if (prev_attr_ref) {
-        err = attr_name_idx->remove(attr_name_idx,
-                                    attr->name, attr->name_size);                     RET_ERR();
-        ref->next = prev_attr_ref;
-        }*/
-
+    ref->next = prev_attr_ref;
     err = knd_shared_dict_set(attr_name_idx,
                               attr->name, attr->name_size,
                               (void*)ref,
                               mempool,
-                              NULL, NULL);                                               RET_ERR();
+                              NULL, NULL, true);                                  RET_ERR();
+
     return knd_OK;
 }
 
@@ -646,9 +642,17 @@ int knd_attr_var_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                            sizeof(struct kndAttrVar), &page);                    RET_ERR();
-    if (err) return err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                sizeof(struct kndAttrVar), &page);                    RET_ERR();
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                     sizeof(struct kndAttrVar), &page);                    RET_ERR();
+        if (err) return err;
+    }        
     *result = page;
     return knd_OK;
 }
@@ -658,8 +662,15 @@ int knd_attr_facet_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndAttrFacet), &page);                  RET_ERR();
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndAttrFacet), &page);                  RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
+                                     sizeof(struct kndAttrFacet), &page);                  RET_ERR();
+    }    
     *result = page;
     return knd_OK;
 }
@@ -669,8 +680,15 @@ int knd_attr_hub_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndAttrHub), &page);
-    if (err) return err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndAttrHub), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndAttrHub), &page);
+        if (err) return err;
+    }
     *result = page;
     return knd_OK;
 }
@@ -680,9 +698,18 @@ int knd_attr_ref_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndAttrRef), &page);
-    if (err) return err;
+
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndAttrRef), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
+                                     sizeof(struct kndAttrRef), &page);
+        if (err) return err;
+    }
     *result = page;
     return knd_OK;
 }
@@ -692,9 +719,18 @@ int knd_attr_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                            sizeof(struct kndAttr), &page);
-    if (err) return err;
+
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                sizeof(struct kndAttr), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                     sizeof(struct kndAttr), &page);
+        if (err) return err;
+    }
     *result = page;
     kndAttr_init(*result);
     return knd_OK;

@@ -14,7 +14,7 @@
 {!class Abstract Object
     [_gloss {ru {t абстракция}}
              {ja {t 概念}}]
-    {-- [!_summary {ru {t абстрактное понятие, формируемое сознанием человека
+    {-- [_summary {ru {t абстрактное понятие, формируемое сознанием человека
                      путем обобщения признаков конкретных объектов}}
                  {en {t a general concept formed by extracting common features
                        from   specific examples}}] --}
@@ -47,7 +47,7 @@
 
 {!class Product of Labor
     [_gloss {ru {t продукт труда}}]
-    [!_summary {ru {t результат целенаправленной деятельности Агента,
+    [_summary {ru {t результат целенаправленной деятельности Агента,
                       пригодный для решения какой-либо задачи}}]
     {str purpose}}
 

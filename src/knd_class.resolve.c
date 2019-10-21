@@ -94,10 +94,10 @@ static int inherit_attr(void *obj,
                     ref->attr_var);
         if (src_ref->attr_var) {
             if (ref->attr_var) {
-                knd_log("-- conflict in attr %.*s assignment in class %.*s",
-                        attr->name_size, attr->name,
-                            self->name_size, self->name);
-                return knd_FAIL;
+                err = knd_CONFLICT;
+                KND_TASK_ERR("conflict in attr %.*s assignment in class \"%.*s\"",
+                             attr->name_size, attr->name,
+                             self->name_size, self->name);
             }
             ref->attr_var = src_ref->attr_var;
             ref->class_entry = src_ref->class_entry;
@@ -106,14 +106,16 @@ static int inherit_attr(void *obj,
     }
 
     /* new attr entry */
-    err = knd_attr_ref_new(mempool, &ref);                                        RET_ERR();
+    err = knd_attr_ref_new(mempool, &ref);
+    KND_TASK_ERR("failed to alloc kndAttrRef");
     ref->attr = attr;
     ref->attr_var = src_ref->attr_var;
     ref->class_entry = src_ref->class_entry;
 
     err = attr_idx->add(attr_idx,
                         attr->id, attr->id_size,
-                        (void*)ref);                                              RET_ERR();
+                        (void*)ref);
+    KND_TASK_ERR("failed to update attr idx of %.*s", self->name_size, self->name);
     return knd_OK;
 }
 
@@ -124,7 +126,8 @@ static int inherit_attrs(struct kndClass *self,
     int err;
 
     if (!base->is_resolved) {
-        err = knd_class_resolve(base, task);                                      RET_ERR();
+        err = knd_class_resolve(base, task);
+        KND_TASK_ERR("base class \"%.*s\" failed to resolve", base->name_size, base->name);
     }
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
@@ -141,7 +144,9 @@ static int inherit_attrs(struct kndClass *self,
 
     err = base->attr_idx->map(base->attr_idx,
                               inherit_attr,
-                              (void*)&ctx);                                       RET_ERR();
+                              (void*)&ctx);
+    KND_TASK_ERR("class \"%.*s\" failed to inherit attrs from \"%.*s\"",
+                 self->name_size, self->name, base->name_size, base->name);
     return knd_OK;
 }
 
@@ -247,7 +252,6 @@ static int resolve_baseclasses(struct kndClass *self,
     struct kndClassVar *cvar;
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
-    struct kndOutput *log = task->log;
     struct kndRepo *repo = self->entry->repo;
     const char *classname;
     size_t classname_size;
@@ -281,22 +285,14 @@ static int resolve_baseclasses(struct kndClass *self,
             classname = cvar->entry->name;
             classname_size = cvar->entry->name_size;
             if (!classname_size) {
-                knd_log("-- no base class specified in class cvar \"%.*s\"",
-                        self->entry->name_size, self->entry->name);
-                return knd_FAIL;
+                err = knd_FAIL;
+                KND_TASK_ERR("no base class specified in class cvar \"%.*s\"",
+                             self->entry->name_size, self->entry->name);
             }
             err = knd_get_class(self->entry->repo,
                                 classname, classname_size, &c, task);
-            if (err) {
-                knd_log("-- no such class: %.*s? repo:%.*s",
-                        classname_size, classname, repo->name_size, repo->name);
-                log->reset(log);
-                log->writef(log, "%.*s class name not found",
-                            classname_size, classname);
-                task->ctx->error = knd_NO_MATCH;
-                task->ctx->http_code = HTTP_NOT_FOUND;
-                return err;
-            }
+            KND_TASK_ERR("no class \"%.*s\" found in repo \"%.*s\"",
+                         classname_size, classname, repo->name_size, repo->name);
         }
 
         if (DEBUG_CLASS_RESOLVE_LEVEL_2)
@@ -408,10 +404,10 @@ int knd_class_resolve_base(struct kndClass *self,
     }
     self->base_resolving_in_progress = true;
 
-    err = resolve_baseclasses(self, task);                                        RET_ERR();
+    err = resolve_baseclasses(self, task);
+    KND_TASK_ERR("failed to resolve baseclasses of %.*s", entry->name_size, entry->name);
 
     self->base_is_resolved = true;
-
     return knd_OK;
 }
 
@@ -423,7 +419,7 @@ int knd_resolve_class_ref(struct kndClass *self,
 {
     struct kndClassEntry *entry;
     struct kndClass *c;
-    struct kndDict *class_name_idx = task->class_name_idx;
+    struct kndSharedDict *class_name_idx = self->entry->repo->class_name_idx;
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
@@ -435,26 +431,27 @@ int knd_resolve_class_ref(struct kndClass *self,
         }
     }
 
+    /* initial bulk load */
     if (task->type == KND_LOAD_STATE) {
-        entry = knd_dict_get(class_name_idx,
-                             name, name_size);
+        entry = knd_shared_dict_get(class_name_idx, name, name_size);
         if (!entry) {
-            knd_log("-- couldn't resolve the class ref \"%.*s\"",
-                    name_size, name);
-            return knd_FAIL;
+            err = knd_NO_MATCH;
+            KND_TASK_ERR("failed to resolve a class ref to \"%.*s\"",
+                         name_size, name);
         }
+
         c = entry->class;
         if (!c) {
-            knd_log("-- no such class: \"%.*s\" :(", name_size, name);
-            return knd_FAIL;
+            err = knd_NO_MATCH;
+            KND_TASK_ERR("no such class body: \"%.*s\"", name_size, name);
         }
 
         if (!c->base_is_resolved) {
-            err = knd_class_resolve_base(c, task);                                   RET_ERR();
+            err = knd_class_resolve_base(c, task);
+            KND_TASK_ERR("failed to resolve base classes of %.*s", name_size, name);
         }
 
         if (base) {
-
             if (!base->base_is_resolved) {
                 err = knd_class_resolve_base(base, task);                            RET_ERR();
             }
