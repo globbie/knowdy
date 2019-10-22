@@ -469,7 +469,7 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->num_commits,
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
                                                                 memory_order_relaxed);
     }
     state->commit = task->ctx->commit;

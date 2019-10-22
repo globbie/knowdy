@@ -40,7 +40,7 @@ static gsl_err_t parse_proc_import(void *obj,
     task->type = KND_COMMIT_STATE;
 
     if (!task->ctx->commit->orig_state_id)
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->num_commits,
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
                                                                 memory_order_relaxed);
     return knd_proc_import(task->repo, rec, total_size, task);
 }
@@ -84,7 +84,7 @@ static gsl_err_t parse_class_import(void *obj,
         err = knd_dict_new(&task->attr_name_idx, task->mempool, KND_SMALL_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
         
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->num_commits,
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
                                                                 memory_order_relaxed);
     }
     

@@ -27,6 +27,20 @@ struct kndConcFolder
     struct kndConcFolder *next;
 };
 
+struct kndRepoSnapshot
+{
+    size_t numid;
+    struct kndCommit * _Atomic commits;
+    struct kndSet *commit_idx;
+    atomic_size_t  num_commits;
+    atomic_size_t  commit_id_count;
+    size_t         max_commits;
+
+    /* array of ints => each task/writer can produce a number of WAL journals */
+    size_t num_journals[KND_MAX_TASKS];
+    time_t timestamp;
+};
+
 struct kndRepo
 {
     char id[KND_ID_SIZE];
@@ -37,10 +51,6 @@ struct kndRepo
 
     char path[KND_PATH_SIZE];
     size_t path_size;
-
-    /* array of ints => each task/writer can produce a number of WAL journals */
-    size_t num_journals[KND_MAX_TASKS];
-    time_t timestamp;
 
     const char *schema_name;
     size_t schema_name_size;
@@ -96,13 +106,8 @@ struct kndRepo
     atomic_size_t   proc_arg_id_count;
     atomic_size_t   num_proc_args;
 
-    /* commits */
-    struct kndCommit * _Atomic commits;
-    struct kndSet *commit_idx;
-    atomic_size_t  num_commits;
-    atomic_size_t  commit_id_count;
-    size_t         max_commits;
-
+    struct kndRepoSnapshot snapshot;
+  
     struct kndRepo *next;
 };
 

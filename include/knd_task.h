@@ -239,7 +239,6 @@ int knd_task_block_new(struct kndMemPool *mempool,
 int knd_task_copy_block(struct kndTask *self,
                         const char *input, size_t input_size,
                         const char **output, size_t *output_size);
-int knd_save_commit_WAL(struct kndTask *task, struct kndCommit *commit);
 
 void knd_task_del(struct kndTask *self);
 void knd_task_reset(struct kndTask *self);
