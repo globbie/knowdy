@@ -13,8 +13,7 @@
 #define DEBUG_OUTPUT_LEVEL_3 0
 #define DEBUG_OUTPUT_LEVEL_TMP 1
 
-static void
-kndOutput_del(struct kndOutput *self)
+void knd_output_del(struct kndOutput *self)
 {
     if (self->local_alloc)
         free(self->buf);
@@ -211,7 +210,7 @@ kndOutput_init(struct kndOutput *self,
     self->buf_size = 0;
     self->capacity = capacity;
 
-    self->del = kndOutput_del;
+    self->del = knd_output_del;
     self->reset = kndOutput_reset;
     self->rtrim = kndOutput_rtrim;
     self->writec = kndOutput_writec;

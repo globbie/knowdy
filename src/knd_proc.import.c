@@ -8,6 +8,7 @@
 #include "knd_proc_call.h"
 #include "knd_utils.h"
 #include "knd_task.h"
+#include "knd_dict.h"
 #include "knd_output.h"
 #include "knd_mempool.h"
 #include "knd_proc_arg.h"
@@ -240,9 +241,7 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndRepo *repo = ctx->repo;
-    struct kndOutput *log = task->log;
     struct kndProc *self = ctx->proc, *proc;
-    struct kndDict *proc_name_idx = task->proc_name_idx;
     struct kndProcEntry *entry;
     int err;
 
@@ -252,36 +251,58 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
     self->name = name;
     self->name_size = name_size;
 
-    if (task->type != KND_LOAD_STATE) {
-        knd_log(".. proc doublet checking..\n");
-        err = knd_get_proc(repo, name, name_size, &proc, task);
-        if (!err) goto doublet;
+    /* initial bulk load in progress */
+    if (task->type == KND_LOAD_STATE) {
+        entry = knd_shared_dict_get(repo->proc_name_idx, name, name_size);
+        if (!entry) {
+            entry = self->entry;
+            entry->name = name;
+            entry->name_size = name_size;
+            self->name = name;
+            self->name_size = name_size;
+
+            /* register globally */
+            err = knd_shared_dict_set(repo->proc_name_idx,
+                                      name, name_size,
+                                      (void*)entry,
+                                      task->mempool,
+                                      NULL, NULL, false);
+            if (err) return make_gsl_err_external(err);
+            return make_gsl_err(gsl_OK);
+        }
+        /* proc entry has no body */
+        if (!entry->proc) {
+            entry->proc =    self;
+            self->entry =     entry;
+            self->name =      name;
+            self->name_size = name_size;
+            // TODO release curr entry ?
+            return make_gsl_err(gsl_OK);
+        }
+        KND_TASK_LOG("\"%.*s\" proc name already exists", name_size, name);
+        task->ctx->http_code = HTTP_CONFLICT;
+        task->ctx->error = KND_CONFLICT;
+        return make_gsl_err(gsl_FAIL);
     }
 
-    entry = knd_dict_get(proc_name_idx, name, name_size);
+    /* import comit in progress */
+    err = knd_get_proc(repo, name, name_size, &proc, task);
+    if (!err) goto doublet;
+
+    entry = knd_dict_get(task->proc_name_idx, name, name_size);
     if (!entry) {
         entry = self->entry;
-        err = knd_dict_set(proc_name_idx,
+        err = knd_dict_set(task->proc_name_idx,
                            name, name_size,
                            (void*)entry);
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }
-
     return make_gsl_err(gsl_OK);
 
  doublet:
-    knd_log("-- \"%.*s\" proc doublet found?", name_size, name);
-    log->reset(log);
-    err = log->write(log, name, name_size);
-    if (err) return make_gsl_err_external(err);
-
-    err = log->write(log,   " proc name already exists",
-                     strlen(" proc name already exists"));
-    if (err) return make_gsl_err_external(err);
-
     task->ctx->http_code = HTTP_CONFLICT;
-
+    KND_TASK_LOG("\"%.*s\" proc doublet found?", name_size, name);
     return make_gsl_err(gsl_FAIL);
 }
 
@@ -442,16 +463,16 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
     // err = knd_register_proc_inst(self, entry, mempool);
     //if (err) return make_gsl_err_external(err);
 
-    task->type = KND_UPDATE_STATE;
+    task->type = KND_COMMIT_STATE;
 
-    if (!task->ctx->update) {
-        err = knd_update_new(task->mempool, &task->ctx->update);
+    if (!task->ctx->commit) {
+        err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->update->orig_state_id = atomic_load_explicit(&task->repo->num_updates,
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
                                                                 memory_order_relaxed);
     }
-    state->update = task->ctx->update;
+    state->commit = task->ctx->commit;
 
     return make_gsl_err(gsl_OK);
 }
@@ -567,8 +588,8 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
     if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_proc_str(proc, 0);
 
-    if (task->type == KND_UPDATE_STATE) {
-        err = knd_proc_update_state(proc, KND_CREATED, task);
+    if (task->type == KND_COMMIT_STATE) {
+        err = knd_proc_commit_state(proc, KND_CREATED, task);
         if (err) return make_gsl_err_external(err);
     }
 

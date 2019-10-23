@@ -20,8 +20,15 @@ extern int knd_state_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndState), &page);                      RET_ERR();
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndState), &page);                      RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
+                                     sizeof(struct kndState), &page);                      RET_ERR();
+    }
     *result = page;
     return knd_OK;
 }
@@ -31,8 +38,16 @@ extern int knd_state_ref_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndStateRef), &page);                      RET_ERR();
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndStateRef), &page);                      RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
+                                     sizeof(struct kndStateRef), &page);                      RET_ERR();
+    }
+    memset(page, 0, sizeof(struct kndStateRef));
     *result = page;
     return knd_OK;
 }
@@ -48,13 +63,21 @@ extern int knd_state_val_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-extern int knd_update_new(struct kndMemPool *mempool,
-                          struct kndUpdate **result)
+int knd_commit_new(struct kndMemPool *mempool,
+                   struct kndCommit **result)
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                            sizeof(struct kndUpdate), &page);                     RET_ERR();
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                                sizeof(struct kndCommit), &page);                   RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
+                                     sizeof(struct kndCommit), &page);                     RET_ERR();
+    }
     *result = page;
+    (*result)->numid = 1;
     return knd_OK;
 }

@@ -9,12 +9,20 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_INSTALL_PREFIX /)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -pedantic -D_GNU_SOURCE")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g3")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -Werror")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g3 -Wno-gnu-zero-variadic-macro-arguments")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -Wgnu-zero-variadic-macro-arguments")
 
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Using 'Debug' build type as default")
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
+  include(CodeCoverage)
+  APPEND_COVERAGE_COMPILER_FLAGS()
+  SETUP_TARGET_FOR_COVERAGE_LCOV(NAME ${PROJECT_NAME}_coverage
+                                 EXECUTABLE knd-shard-test)
 endif()
 
 pkg_check_modules(CHECK REQUIRED check)
@@ -47,7 +55,7 @@ include_directories("include")
 
 set(HEADERS include/knd_attr.h include/knd_attr_inst.h
         include/knd_class.h include/knd_class_inst.h include/knd_config.h
-        include/knd_dict.h
+        include/knd_dict.h include/knd_shared_dict.h
         include/knd_err.h
         include/knd_facet.h include/knd_http_codes.h
         include/knd_mempool.h include/knd_num.h
@@ -62,7 +70,7 @@ set(SOURCES src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr
         src/knd_class.import.c src/knd_class.json.c src/knd_class.resolve.c src/knd_class.index.c
         src/knd_class.select.c src/knd_class.states.c
         src/knd_class_inst.c src/knd_class_inst.gsl.c src/knd_class_inst.gsp.c src/knd_class_inst.import.c src/knd_class_inst.json.c src/knd_class_inst.select.c
-        src/knd_dict.c
+        src/knd_dict.c src/knd_shared_dict.c
         src/knd_mempool.c src/knd_num.c src/knd_output.c
         src/knd_proc.c src/knd_proc_inst.c
         src/knd_proc.import.c src/knd_proc_inst.import.c
@@ -87,5 +95,5 @@ add_subdirectory(shell)
 install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)
 install(DIRECTORY etc/systemd/system/ DESTINATION usr/lib/systemd/system)
 
-set(VERSION "0.7.4")
+set(VERSION "0.7.7")
 

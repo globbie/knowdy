@@ -114,8 +114,8 @@ extern int knd_export_class_state_JSON(struct kndClass *self,
     }
     
     // TODO
-    /*time(&update->timestamp);
-    localtime_r(&update->timestamp, &tm_info);
+    /*time(&commit->timestamp);
+    localtime_r(&commit->timestamp, &tm_info);
     buf_size = strftime(buf, KND_NAME_SIZE,
                         ",\"_modif\":\"%Y-%m-%d %H:%M:%S\"", &tm_info);
     err = out->write(out, buf, buf_size);                                         RET_ERR();
@@ -174,8 +174,8 @@ static int export_class_set_elem(void *obj,
     }
 
     state = c->states;
-    if (state && state->update) {
-       curr_state = state->update->numid;
+    if (state && state->commit) {
+       curr_state = state->commit->numid;
     }
 
     //if (!task->show_removed_objs) {
@@ -720,9 +720,9 @@ int knd_class_export_JSON(struct kndClass *self,
         err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));            RET_ERR();
         err = out->writef(out, "%zu", state->numid);                              RET_ERR();
 
-        if (state->update) {
-            err = out->write(out, ",\"_update\":", strlen(",\"_update\":"));      RET_ERR();
-            err = out->writef(out, "%zu", state->update->numid);                  RET_ERR();
+        if (state->commit) {
+            err = out->write(out, ",\"_commit\":", strlen(",\"_commit\":"));      RET_ERR();
+            err = out->writef(out, "%zu", state->commit->numid);                  RET_ERR();
         }
 
         switch (state->phase) {

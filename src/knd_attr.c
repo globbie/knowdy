@@ -334,8 +334,8 @@ extern int knd_attr_export(struct kndAttr *self,
     }
 }
 
-extern int knd_apply_attr_var_updates(struct kndClass *self,
-                                      struct kndClassUpdate *class_update,
+extern int knd_apply_attr_var_commits(struct kndClass *self,
+                                      struct kndClassCommit *class_commit,
                                       struct kndTask *task)
 {
     struct kndState *state; //, *s, *next_state = NULL;
@@ -344,12 +344,12 @@ extern int knd_apply_attr_var_updates(struct kndClass *self,
     int err;
 
     if (DEBUG_ATTR_LEVEL_TMP)
-        knd_log(".. applying attr var updates..");
+        knd_log(".. applying attr var commits..");
 
     err = knd_state_new(mempool, &state);
     if (err) return err;
 
-    state->update = class_update->update;
+    state->commit = class_commit->commit;
     
     //for (s = self->attr_var_inbox; s; s = next_state) {
         //attr_var = s->val;
@@ -390,10 +390,10 @@ extern int knd_register_attr_ref(void *obj,
 {
     struct kndClass *self = obj;
     struct kndSet *attr_idx  = self->attr_idx;
-    struct kndDict *attr_name_idx = self->entry->repo->attr_name_idx;
+    struct kndSharedDict *attr_name_idx = self->entry->repo->attr_name_idx;
     struct kndAttrRef *src_ref = elem;
     struct kndAttr    *attr    = src_ref->attr;
-    struct kndAttrRef *ref; //, *prev_attr_ref;
+    struct kndAttrRef *ref, *prev_attr_ref;
     struct kndMemPool *mempool = attr_idx->mempool;
     int err;
 
@@ -409,91 +409,18 @@ extern int knd_register_attr_ref(void *obj,
                         attr->id, attr->id_size,
                         (void*)ref);                                              RET_ERR();
 
-    //prev_attr_ref = knd_dict_get(attr_name_idx,
-    //                             attr->name, attr->name_size);
+    prev_attr_ref = knd_shared_dict_get(attr_name_idx,
+                                        attr->name, attr->name_size);
 
-    /*if (prev_attr_ref) {
-        err = attr_name_idx->remove(attr_name_idx,
-                                    attr->name, attr->name_size);                     RET_ERR();
-        ref->next = prev_attr_ref;
-        }*/
+    ref->next = prev_attr_ref;
+    err = knd_shared_dict_set(attr_name_idx,
+                              attr->name, attr->name_size,
+                              (void*)ref,
+                              mempool,
+                              NULL, NULL, true);                                  RET_ERR();
 
-    err = knd_dict_set(attr_name_idx,
-                       attr->name, attr->name_size,
-                       (void*)ref);                                               RET_ERR();
     return knd_OK;
 }
-
-/*
-static int extract_list_elem_value(struct kndAttrVar *parent_item,
-                                   struct kndAttrVar *query,
-                                   struct kndProcCallArg *result_arg)
-{
-    struct kndAttrVar *curr_var;
-    int err;
-
-    for (curr_var = parent_item->list; curr_var; curr_var = curr_var->next) {
-        if (DEBUG_ATTR_LEVEL_2)
-            knd_log("== list item:%.*s val: %.*s",
-                    curr_var->name_size, curr_var->name,
-                    curr_var->val_size, curr_var->val);
-        if (!memcmp(curr_var->name, query->name, query->name_size)) {
-            err = knd_get_arg_value(curr_var, query->children, result_arg);
-            if (err) return err;
-            //knd_log("result arg:%zu", result_arg->numval);
-        }
-    }
-    return knd_OK;
-}
-*/
-
-/*
-static int extract_implied_attr_value(struct kndClass *self,
-                                      struct kndAttrVar *parent_item,
-                                      struct kndProcCallArg *result_arg)
-{
-    struct kndAttrVar *attr_var;
-    struct kndAttrRef *ref;
-    void *obj;
-    int err;
-
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. from class %.*s get the value of \"%.*s\"..\n",
-                self->name_size, self->name,
-                parent_item->name_size, parent_item->name);
-
-    err = knd_class_get_attr(self,
-                             parent_item->name,
-                             parent_item->name_size, &ref);
-    if (err) return err;
-    
-    err = self->attr_idx->get(self->attr_idx,
-                              ref->attr->id, ref->attr->id_size, &obj);
-    if (err) return err;
-    ref = obj;
-
-    //knd_log("++ set attr var: %.*s  attr var:%p",
-    //        ref->attr->name_size, ref->attr->name, ref->attr_var);
-    attr_var = ref->attr_var;
-
-    //str_attr_vars(attr_var, 1);
-    //str_attr_vars(parent_item, 1);
-
-    // go deeper
-    if (parent_item->children) {
-        if (attr_var && attr_var->attr->is_a_set) {
-            err = extract_list_elem_value(attr_var,
-                                          parent_item->children,
-                                          result_arg);
-            if (err) return err;
-        }
-
-        return knd_OK;
-    }
-    
-    return knd_OK;
-}
-*/
 
 static int compute_attr_var(struct kndAttrVar *unused_var(parent_item),
                             struct kndAttr *attr,
@@ -715,9 +642,17 @@ int knd_attr_var_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                            sizeof(struct kndAttrVar), &page);                    RET_ERR();
-    if (err) return err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                sizeof(struct kndAttrVar), &page);                    RET_ERR();
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                     sizeof(struct kndAttrVar), &page);                    RET_ERR();
+        if (err) return err;
+    }        
     *result = page;
     return knd_OK;
 }
@@ -727,8 +662,15 @@ int knd_attr_facet_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndAttrFacet), &page);                  RET_ERR();
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndAttrFacet), &page);                  RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
+                                     sizeof(struct kndAttrFacet), &page);                  RET_ERR();
+    }    
     *result = page;
     return knd_OK;
 }
@@ -738,8 +680,15 @@ int knd_attr_hub_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndAttrHub), &page);
-    if (err) return err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndAttrHub), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndAttrHub), &page);
+        if (err) return err;
+    }
     *result = page;
     return knd_OK;
 }
@@ -749,9 +698,18 @@ int knd_attr_ref_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndAttrRef), &page);
-    if (err) return err;
+
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndAttrRef), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
+                                     sizeof(struct kndAttrRef), &page);
+        if (err) return err;
+    }
     *result = page;
     return knd_OK;
 }
@@ -761,9 +719,18 @@ int knd_attr_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                            sizeof(struct kndAttr), &page);
-    if (err) return err;
+
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                sizeof(struct kndAttr), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                     sizeof(struct kndAttr), &page);
+        if (err) return err;
+    }
     *result = page;
     kndAttr_init(*result);
     return knd_OK;

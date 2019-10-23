@@ -185,7 +185,7 @@ static gsl_err_t run_set_attr_var(void *obj,
     attr_var->num_states++;
     state->numid = attr_var->num_states;
 
-    task->type = KND_UPDATE_STATE;
+    task->type = KND_COMMIT_STATE;
 
     /* TODO: inform parent class */
     //state_ref->next = task->inner_class_state_refs;

@@ -83,7 +83,7 @@ static void str(struct kndClass *self, size_t depth)
     for (; state; state = state->next) {
         knd_log("\n%*s_state:%zu",
             depth * KND_OFFSET_SIZE, "",
-            state->update->numid);
+            state->commit->numid);
     }
 
     /* if (self->num_inst_states) {
@@ -144,7 +144,7 @@ int knd_get_class_inst(struct kndClass *self,
 {
     struct kndClassInstEntry *entry;
     struct kndClassInst *obj;
-    struct kndDict *name_idx;
+    struct kndSharedDict *name_idx;
     struct kndOutput *log = task->log;
     int err, e;
 
@@ -173,17 +173,11 @@ int knd_get_class_inst(struct kndClass *self,
     }
 
     name_idx = self->entry->inst_name_idx;
-    entry = knd_dict_get(name_idx, name, name_size);
+    entry = knd_shared_dict_get(name_idx, name, name_size);
     if (!entry) {
-        knd_log("-- no such class inst: \"%.*s\"", name_size, name);
-        log->reset(log);
-        err = log->write(log, name, name_size);
-        if (err) return err;
-        err = log->write(log, " instance not found",
-                               strlen(" instance not found"));
-        if (err) return err;
+        err = knd_NO_MATCH;
         task->http_code = HTTP_NOT_FOUND;
-        return knd_NO_MATCH;
+        KND_TASK_ERR("no such class inst: \"%.*s\"", name_size, name);
     }
 
     if (DEBUG_CLASS_LEVEL_2)
@@ -222,11 +216,11 @@ int knd_get_class_attr_value(struct kndClass *src,
 {
     struct kndAttrRef *attr_ref;
     struct kndAttrVar *child_var;
-    struct kndDict *attr_name_idx = src->entry->repo->attr_name_idx;
+    struct kndSharedDict *attr_name_idx = src->entry->repo->attr_name_idx;
     int err;
 
-    attr_ref = knd_dict_get(attr_name_idx,
-                            query->name, query->name_size);
+    attr_ref = knd_shared_dict_get(attr_name_idx,
+                                   query->name, query->name_size);
     if (!attr_ref) {
         if (DEBUG_CLASS_LEVEL_2)
             knd_log("-- no such attr: %.*s", query->name_size, query->name);
@@ -239,14 +233,12 @@ int knd_get_class_attr_value(struct kndClass *src,
     }
 
     if (!attr_ref->attr_var) return knd_NO_MATCH;
-
     /* no more query specs */
     if (!query->num_children) return knd_OK;
 
     /* check nested attrs */
 
     // TODO: list item selection
-
     for (child_var = attr_ref->attr_var->list; child_var; child_var = child_var->next) {
         err = knd_get_arg_value(child_var, query->children, arg);
         if (err) return err;
@@ -337,7 +329,7 @@ static int update_ancestor_state(struct kndClass *self,
     return knd_OK;
 }
 
-static int update_state(struct kndClass *self,
+static int commit_state(struct kndClass *self,
                         struct kndStateRef *children,
                         knd_state_phase phase,
                         struct kndState **result,
@@ -355,8 +347,9 @@ static int update_state(struct kndClass *self,
         return err;
     }
     state->phase = phase;
-    state->update = task->ctx->update;
+    state->commit = task->ctx->commit;
     state->children = children;
+    state->next = NULL;
 
     do {
        head = atomic_load_explicit(&self->states,
@@ -364,10 +357,9 @@ static int update_state(struct kndClass *self,
        state->next = head;
     } while (!atomic_compare_exchange_weak(&self->states, &head, state));
  
-    /* inform your ancestors */
+    // inform your ancestors
     for (ref = self->entry->ancestors; ref; ref = ref->next) {
         c = ref->entry->class;
-        /* skip the root class */
         if (!c->entry->ancestors) continue;
         if (c->state_top) continue;
         if (self->entry->repo != ref->entry->repo) {
@@ -434,39 +426,39 @@ static int update_inst_state(struct kndClass *self,
 }
 #endif
 
-int knd_class_update_state(struct kndClass *self,
+int knd_class_commit_state(struct kndClass *self,
                            knd_state_phase phase,
                            struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndStateRef *state_ref;
-    struct kndUpdate *update = task->ctx->update;
+    struct kndCommit *commit = task->ctx->commit;
     struct kndState *state = NULL;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
-        knd_log(".. \"%.*s\" class (repo:%.*s) to update its state (phase:%d)",
+    if (DEBUG_CLASS_LEVEL_2) {
+        knd_log(".. \"%.*s\" class (repo:%.*s) to commit its state (phase:%d)",
                 self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name,
                 phase);
     }
 
-    err = update_state(self, NULL, phase, &state, task);                      RET_ERR();
+    err = commit_state(self, NULL, phase, &state, task);                      RET_ERR();
 
     /* newly created class? */
     switch (phase) {
     case KND_UPDATED:
-        /* any attr updates */
+        /* any attr commits */
 #if 0        
         if (task->inner_class_state_refs) {
-            err = update_state(self, task->inner_class_state_refs, phase, task);  RET_ERR();
+            err = commit_state(self, task->inner_class_state_refs, phase, task);  RET_ERR();
             task->inner_class_state_refs = NULL;
         }
 
-        /* instance updates */
+        /* instance commits */
         if (task->class_inst_state_refs) {
             if (DEBUG_CLASS_LEVEL_2) {
-                knd_log("\n .. \"%.*s\" class (repo:%.*s) to register inst updates..",
+                knd_log("\n .. \"%.*s\" class (repo:%.*s) to register inst commits..",
                         self->name_size, self->name,
                         self->entry->repo->name_size, self->entry->repo->name);
             }
@@ -489,8 +481,8 @@ int knd_class_update_state(struct kndClass *self,
 
     state_ref->obj = self->entry;
 
-    state_ref->next = update->class_state_refs;
-    update->class_state_refs = state_ref;
+    state_ref->next = commit->class_state_refs;
+    commit->class_state_refs = state_ref;
 
     return knd_OK;
 }
@@ -610,7 +602,7 @@ int knd_class_get_attr(struct kndClass *self,
                        struct kndAttrRef **result)
 {
     struct kndAttrRef *ref;
-    struct kndDict    *attr_name_idx = self->entry->repo->attr_name_idx;
+    struct kndSharedDict *attr_name_idx = self->entry->repo->attr_name_idx;
     struct kndSet     *attr_idx = self->attr_idx;
     struct kndAttr    *attr = NULL;
     int err;
@@ -622,11 +614,11 @@ int knd_class_get_attr(struct kndClass *self,
                 name_size, name);
     }
 
-    ref = knd_dict_get(attr_name_idx, name, name_size);
+    ref = knd_shared_dict_get(attr_name_idx, name, name_size);
     if (!ref) {
         if (self->entry->repo->base) {
             attr_name_idx = self->entry->repo->base->attr_name_idx;
-            ref = knd_dict_get(attr_name_idx, name, name_size);
+            ref = knd_shared_dict_get(attr_name_idx, name, name_size);
         }
         if (!ref) {
             if (DEBUG_CLASS_LEVEL_2)
@@ -724,7 +716,7 @@ int knd_get_class(struct kndRepo *self,
     struct kndClassEntry *entry;
     struct kndClass *c = NULL;
     struct kndOutput *log = task->log;
-    struct kndDict *class_name_idx = self->class_name_idx;
+    struct kndSharedDict *class_name_idx = self->class_name_idx;
     struct kndState *state;
     int err;
 
@@ -734,12 +726,11 @@ int knd_get_class(struct kndRepo *self,
                 name_size, name);
     }
 
-    entry = knd_dict_get(class_name_idx, name, name_size);
+    entry = knd_shared_dict_get(class_name_idx, name, name_size);
     if (!entry) {
         if (DEBUG_CLASS_LEVEL_2)
-            knd_log("-- no local class found in: %.*s (idx:%p)",
-                    self->name_size, self->name, class_name_idx);
-
+            knd_log("-- no local class found in: %.*s",
+                    self->name_size, self->name);
         /* check parent schema */
         if (self->base) {
             err = knd_get_class(self->base, name, name_size, result, task);
@@ -751,7 +742,6 @@ int knd_get_class(struct kndRepo *self,
 
     if (entry->class) {
         c = entry->class;
-        
         if (c->num_states) {
             state = c->states;
             if (state->phase == KND_REMOVED) {
@@ -936,7 +926,7 @@ int knd_register_class_inst(struct kndClass *self,
     struct kndSet *inst_idx;
     struct kndClass *c;
     struct kndClassEntry *prev_entry;
-    struct kndDict *class_name_idx = repo->class_name_idx;
+    struct kndSharedDict *class_name_idx = repo->class_name_idx;
     int err;
 
     if (DEBUG_CLASS_LEVEL_2)
@@ -977,9 +967,9 @@ int knd_register_class_inst(struct kndClass *self,
        
         if (self->entry->repo != ref->entry->repo) {
             /* search local repo */
-            prev_entry = knd_dict_get(class_name_idx,
-                                      ref->entry->name,
-                                      ref->entry->name_size);
+            prev_entry = knd_shared_dict_get(class_name_idx,
+                                             ref->entry->name,
+                                             ref->entry->name_size);
             if (prev_entry) {
                 ref->entry = prev_entry;
             } else {
@@ -1002,7 +992,7 @@ int knd_class_clone(struct kndClass *self,
 {
     struct kndClass *c;
     struct kndClassEntry *entry;
-    struct kndDict *class_name_idx = target_repo->class_name_idx;
+    struct kndSharedDict *class_name_idx = target_repo->class_name_idx;
     struct kndSet *class_idx = target_repo->class_idx;
     void *ref;
     int err;
@@ -1031,12 +1021,15 @@ int knd_class_clone(struct kndClass *self,
     }
 
     /* idx register */
-    ref = knd_dict_get(class_name_idx,
-                       entry->name, entry->name_size);
+    ref = knd_shared_dict_get(class_name_idx,
+                              entry->name, entry->name_size);
+
     if (!ref) {
-        err = knd_dict_set(class_name_idx,
-                           entry->name, entry->name_size,
-                           (void*)entry);                                         RET_ERR();
+        err = knd_shared_dict_set(class_name_idx,
+                                  entry->name, entry->name_size,
+                                  (void*)entry,
+                                  mempool,
+                                  NULL, NULL, false);                                   RET_ERR();
     }
 
     err = class_idx->add(class_idx,
@@ -1055,7 +1048,7 @@ extern int knd_class_copy(struct kndClass *self,
                           struct kndMemPool *mempool)
 {
     struct kndRepo *repo =  c->entry->repo;
-    struct kndDict *class_name_idx = repo->class_name_idx;
+    struct kndSharedDict *class_name_idx = repo->class_name_idx;
     struct kndClassEntry *entry, *src_entry, *prev_entry;
     struct kndClassRef   *ref,   *src_ref;
     int err;
@@ -1074,11 +1067,6 @@ extern int knd_class_copy(struct kndClass *self,
     entry->class = c;
     c->entry = entry;
 
-    /*err = knd_dict_set(class_name_idx,
-                              entry->name, entry->name_size,
-                              (void*)entry);                                      RET_ERR();
-    */
-
     /* copy the attrs */
     c->attr_idx->mempool = mempool;
     err = self->attr_idx->map(self->attr_idx,
@@ -1091,9 +1079,9 @@ extern int knd_class_copy(struct kndClass *self,
         ref->class = src_ref->class;
         ref->entry = src_ref->entry;
 
-        prev_entry = knd_dict_get(class_name_idx,
-                                  src_ref->class->name,
-                                  src_ref->class->name_size);
+        prev_entry = knd_shared_dict_get(class_name_idx,
+                                         src_ref->class->name,
+                                         src_ref->class->name_size);
         if (prev_entry) {
             ref->entry = prev_entry;
             ref->class = prev_entry->class;
@@ -1107,18 +1095,25 @@ extern int knd_class_copy(struct kndClass *self,
     return knd_OK;
 }
 
-extern void kndClass_init(struct kndClass *self)
+static void kndClass_init(struct kndClass *self)
 {
     self->str = str;
 }
 
-extern int knd_class_var_new(struct kndMemPool *mempool,
-                             struct kndClassVar **result)
+int knd_class_var_new(struct kndMemPool *mempool,
+                      struct kndClassVar **result)
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassVar), &page);
-    if (err) return err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassVar), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassVar), &page);
+        if (err) return err;
+    }
     *result = page;
     return knd_OK;
 }
@@ -1128,14 +1123,21 @@ extern int knd_class_ref_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndClassRef), &page);
-    if (err) return err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndClassRef), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndClassRef), &page);
+        if (err) return err;
+    }
     *result = page;
     return knd_OK;
 }
 
-extern int knd_class_facet_new(struct kndMemPool *mempool,
-                             struct kndClassFacet **result)
+int knd_class_facet_new(struct kndMemPool *mempool,
+                        struct kndClassFacet **result)
 {
     void *page;
     int err;
@@ -1145,15 +1147,22 @@ extern int knd_class_facet_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-extern int knd_class_entry_new(struct kndMemPool *mempool,
-                               struct kndClassEntry **result)
+int knd_class_entry_new(struct kndMemPool *mempool,
+                        struct kndClassEntry **result)
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                            sizeof(struct kndClassEntry), &page);
-    if (err) return err;
-
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                sizeof(struct kndClassEntry), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                     sizeof(struct kndClassEntry), &page);
+        if (err) return err;
+    }
     *result = page;
     return knd_OK;
 }
@@ -1164,13 +1173,20 @@ extern void knd_class_free(struct kndMemPool *mempool,
     knd_mempool_free(mempool, KND_MEMPAGE_SMALL_X4, (void*)self);
 }
 
-extern int knd_class_update_new(struct kndMemPool *mempool,
-                                struct kndClassUpdate **result)
+extern int knd_class_commit_new(struct kndMemPool *mempool,
+                                struct kndClassCommit **result)
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                            sizeof(struct kndClassUpdate), &page);  RET_ERR();
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                                sizeof(struct kndClassCommit), &page);  RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
+                                     sizeof(struct kndClassCommit), &page);  RET_ERR();
+    }
     *result = page;
     return knd_OK;
 }
@@ -1181,26 +1197,41 @@ extern int knd_inner_class_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X4,
-                            sizeof(struct kndClass), &page);                      RET_ERR();
-    if (err) return err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X4,
+                                sizeof(struct kndClass), &page);                      RET_ERR();
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X4,
+                                     sizeof(struct kndClass), &page);                      RET_ERR();
+        if (err) return err;
+    }
     *self = page;
     kndClass_init(*self);
     return knd_OK;
 }
 
-extern int knd_class_new(struct kndMemPool *mempool,
-                         struct kndClass **self)
+int knd_class_new(struct kndMemPool *mempool,
+                  struct kndClass **self)
 {
     struct kndSet *attr_idx;
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                            sizeof(struct kndClass), &page);                      RET_ERR();
-    if (err) return err;
-    *self = page;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                sizeof(struct kndClass), &page);                      RET_ERR();
+        err = knd_set_new(mempool, &attr_idx);                                        RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
+                                     sizeof(struct kndClass), &page);                      RET_ERR();
+        err = knd_set_mem(mempool, &attr_idx);                                        RET_ERR();
+    }
 
-    err = knd_set_new(mempool, &attr_idx);                                        RET_ERR();
+    *self = page;
     (*self)->attr_idx = attr_idx;
 
     kndClass_init(*self);

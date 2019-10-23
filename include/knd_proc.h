@@ -22,6 +22,7 @@
 
 #include "knd_config.h"
 #include "knd_state.h"
+#include "knd_shared_dict.h"
 #include "knd_output.h"
 #include "knd_proc_call.h"
 #include "knd_proc_arg.h"
@@ -38,7 +39,7 @@ struct kndProcEstimate
     size_t aggr_num_agents;
 };
 
-struct kndUpdate;
+struct kndCommit;
 
 struct kndProcInstEntry
 {
@@ -107,7 +108,9 @@ struct kndProcEntry
 
     struct kndAttrHub *attr_hubs;
 
-    struct kndDict *inst_idx;
+    struct kndSharedDict *inst_name_idx;
+
+    struct kndSharedDictItem *dict_item;
 };
 
 struct kndProcArgVar
@@ -334,7 +337,7 @@ static inline void knd_proc_declare_call(struct kndProc *self, struct kndProcCal
     self->num_calls++;
 }
 
-int knd_proc_update_state(struct kndProc *self,
+int knd_proc_commit_state(struct kndProc *self,
                           knd_state_phase phase,
                           struct kndTask *task);
 

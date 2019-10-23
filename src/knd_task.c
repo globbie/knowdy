@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "knd_task.h"
 #include "knd_shard.h"
 #include "knd_repo.h"
+#include "knd_state.h"
 #include "knd_user.h"
 #include "knd_mempool.h"
 #include "knd_utils.h"
@@ -24,10 +26,10 @@
 void knd_task_del(struct kndTask *self)
 {
     self->log->del(self->log);
-    self->update_out->del(self->update_out);
+    self->out->del(self->out);
     self->file_out->del(self->file_out);
-    self->task_out->del(self->task_out);
-    self->mempool->del(self->mempool);
+    if (self->is_mempool_owner)
+        knd_mempool_del(self->mempool);
     free(self);
 }
 
@@ -56,8 +58,14 @@ void knd_task_reset(struct kndTask *self)
 
     self->out->reset(self->out);
     self->log->reset(self->log);
-    self->update_out->reset(self->update_out);
-    knd_mempool_reset(self->mempool);
+
+    if (self->role == KND_READER)
+        knd_mempool_reset(self->mempool);
+
+    knd_dict_reset(self->class_name_idx);
+    knd_dict_reset(self->attr_name_idx);
+    knd_dict_reset(self->proc_name_idx);
+    knd_dict_reset(self->proc_arg_name_idx);
 }
 
 static int task_err_export_JSON(struct kndTask *task)
@@ -136,60 +144,146 @@ int knd_task_err_export(struct kndTask *task)
     return knd_OK;
 }
 
-int knd_task_run(struct kndTask *self, const char *input, size_t input_size)
+int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
 {
     size_t total_size = 0;
     gsl_err_t parser_err;
-    int err;
 
-    self->input = input;
-    self->input_size = input_size;
+    assert(task->ctx != NULL);
 
-    self->output = NULL;
-    self->output_size = 0;
+    task->input = input;
+    task->input_size = input_size;
+
+    task->output = NULL;
+    task->output_size = 0;
 
     if (DEBUG_TASK_LEVEL_2) {
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
-        if (self->input_size < chunk_size)
-            chunk_size = self->input_size;
+        if (task->input_size < chunk_size)
+            chunk_size = task->input_size;
         knd_log("== INPUT (size:%zu): %.*s ..",
-                self->input_size,
-                chunk_size, self->input);
+                task->input_size,
+                chunk_size, task->input);
     }
 
     struct gslTaskSpec specs[] = {
         { .name = "task",
           .name_size = strlen("task"),
           .parse = knd_parse_task,
-          .obj = self
+          .obj = task
         }
     };
-    parser_err = gsl_parse_task(self->input, &total_size,
+    parser_err = gsl_parse_task(task->input, &total_size,
                                 specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        /*if (!is_gsl_err_external(parser_err)) {
-            if (!self->log->buf_size) {
-                self->http_code = HTTP_BAD_REQUEST;
-                err = log_parser_error(self, parser_err, self->input_size, self->input);
-                if (err) return err;
-            }
-            }*/
-        if (!self->log->buf_size) {
-            self->http_code = HTTP_INTERNAL_SERVER_ERROR;
-            err = self->log->writef(self->log, "unclassified server error");
-            if (err) return err;
+        if (!task->log->buf_size) {
+            task->http_code = HTTP_INTERNAL_SERVER_ERROR;
+            KND_TASK_LOG("unclassified server error");
         }
-
-        self->log->buf[self->log->buf_size] = '\0';
-        self->output = self->log->buf;
-        self->output_size = self->log->buf_size;
         return gsl_err_to_knd_err_codes(parser_err);
     }
-
-    self->out->buf[self->out->buf_size] = '\0';
-    self->output = self->out->buf;
-    self->output_size = self->out->buf_size;
+    task->output = task->out->buf;
+    task->output_size = task->out->buf_size;
     return knd_OK;
+}
+
+int knd_task_copy_block(struct kndTask *task,
+                        const char *input, size_t input_size,
+                        const char **output, size_t *output_size)
+{
+    int err;
+    struct kndMemBlock *block = malloc(sizeof(struct kndMemBlock));
+    if (!block) {
+        err = knd_NOMEM;
+        KND_TASK_ERR("block alloc failed");
+    }
+
+    char *b = malloc(input_size + 1);
+    if (!b) {
+        err = knd_NOMEM;
+        KND_TASK_ERR("block alloc failed");
+    }
+
+    memcpy(b, input, input_size);
+    b[input_size] = '\0';
+
+    block->tid = 0;
+    block->buf = b;
+    block->buf_size = input_size;
+    block->next = task->blocks;
+
+    task->blocks = block;
+    task->num_blocks++;
+    task->total_block_size += input_size;
+
+    *output = b;
+    *output_size = input_size;
+    return knd_OK;
+}
+
+int knd_task_read_file_block(struct kndTask *task,
+                             const char *filename, size_t file_size,
+                             struct kndMemBlock **result)
+{
+    FILE *file_stream;
+    size_t read_size;
+    size_t num_extra_bytes = 2; // closing brace + null term
+    int err;
+
+    struct kndMemBlock *block = malloc(sizeof(struct kndMemBlock));
+    if (!block) {
+        err = knd_NOMEM;
+        KND_TASK_ERR("block alloc failed");
+    }
+
+    char *b = malloc(file_size + num_extra_bytes);
+    if (!b) {
+        err = knd_NOMEM;
+        KND_TASK_ERR("file memblock alloc failed");
+    }
+
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log(" .. opening file \"%s\"..\n", filename);
+
+    file_stream = fopen(filename, "r");
+    if (file_stream == NULL) {
+        err = knd_IO_FAIL;
+        KND_TASK_ERR("error opening FILE \"%s\"", filename);
+    }
+
+    read_size = fread(b, 1, file_size, file_stream);
+
+    b[file_size] = '}';
+    b[file_size + 1] = '\0';
+
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log("   ++ FILE \"%s\" read OK: %.*s [size: %zu]\n",
+                filename, file_size + 1, b, file_size);
+
+    block->tid = 0;
+    block->buf = b;
+    block->buf_size = file_size + 1;
+    block->next = task->blocks;
+
+    task->blocks = block;
+    task->num_blocks++;
+    task->total_block_size += block->buf_size;
+
+    *result = block;
+    return knd_OK;
+}
+
+void knd_task_free_blocks(struct kndTask *task)
+{
+    struct kndMemBlock *block, *next_block = NULL;
+
+    for (block = task->blocks; block; block = next_block) {
+        next_block = block->next;
+        free(block->buf);
+        free(block);
+    }
+    task->total_block_size = 0;
+    task->num_blocks = 0;
 }
 
 int knd_task_context_new(struct kndMemPool *mempool,
@@ -203,13 +297,13 @@ int knd_task_context_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-int knd_task_mem(struct kndMemPool *mempool,
-                 struct kndTask **result)
+int knd_task_block_new(struct kndMemPool *mempool,
+                       struct kndTask **result)
 {
     void *page;
     int err;
-    err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_BASE,
-                                 sizeof(struct kndTask), &page);                   RET_ERR();
+    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                            sizeof(struct kndTask), &page);                   RET_ERR();
     *result = page;
     return knd_OK;
 }
@@ -228,9 +322,13 @@ int knd_task_new(struct kndShard *shard,
     memset(self, 0, sizeof(struct kndTask));
     self->shard = shard;
     self->id = task_id;
+    self->role = shard->role;
+
+    self->path = shard->path;
+    self->path_size = shard->path_size;
 
     if (!mempool) {
-        err = kndMemPool_new(&mempool);
+        err = knd_mempool_new(&mempool, 0);
         if (err) return err;
         mempool->type = KND_ALLOC_INCR;
         mempool->num_pages = shard->ctx_mem_config.num_pages;
@@ -240,32 +338,32 @@ int knd_task_new(struct kndShard *shard,
         mempool->num_tiny_pages = shard->ctx_mem_config.num_tiny_pages;
         err = mempool->alloc(mempool); 
         if (err) return err;
+        self->is_mempool_owner = true;
     }
     self->mempool = mempool;
 
-    // TODO: configurable outputs
     err = knd_output_new(&self->out, NULL, KND_LARGE_BUF_SIZE);
     if (err) return err;
 
     err = knd_output_new(&self->log, NULL, KND_TEMP_BUF_SIZE);
     if (err) return err;
 
-    err = knd_output_new(&self->update_out, NULL, KND_LARGE_BUF_SIZE);
-    if (err) return err;
-
     err = knd_output_new(&self->file_out, NULL, KND_FILE_BUF_SIZE);
     if (err) return err;
 
-    err = knd_output_new(&self->task_out, NULL, KND_TASK_STORAGE_SIZE);
+    /* local name indices */
+    err = knd_dict_new(&self->class_name_idx, mempool, KND_SMALL_DICT_SIZE);
+    if (err) return err;
+    err = knd_dict_new(&self->attr_name_idx, mempool, KND_SMALL_DICT_SIZE);
+    if (err) return err;
+    err = knd_dict_new(&self->proc_name_idx, mempool, KND_SMALL_DICT_SIZE);
+    if (err) return err;
+    err = knd_dict_new(&self->proc_arg_name_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) return err;
 
     /* system repo defaults */
     self->system_repo       = repo;
     self->repo              = repo;
-    self->class_name_idx    = repo->class_name_idx;
-    self->attr_name_idx     = repo->attr_name_idx;
-    self->proc_name_idx     = repo->proc_name_idx;
-    self->proc_arg_name_idx = repo->proc_arg_name_idx;
 
     *task = self;
 

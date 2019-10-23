@@ -48,16 +48,6 @@ typedef enum knd_logic { KND_LOGIC_AND,
                           KND_LOGIC_NOT
 } knd_logic;
 
-typedef enum knd_agent_role { KND_WRITER, 
-                              KND_READER
-} knd_agent_role;
-
-typedef enum knd_storage_type {
-    KND_STORAGE_DB, 
-    KND_STORAGE_XML
-} knd_storage_type;
-
-
 #define RET_ERR(S)  if (err) { printf("%s", "" #S);                               \
                               printf ("-- <%s> failed at line %d of file \"%s\"\n",\
                                       __func__, __LINE__, __FILE__); return err; } 
@@ -66,6 +56,49 @@ typedef enum knd_storage_type {
                 __func__, __LINE__, __FILE__); return err; } 
 #define ALLOC_ERR(V) if (!(V)) { return knd_NOMEM; }
 #define PARSE_ERR(V) if (err) { printf("LINEAR POS:%zu", *total_size); return err; } 
+
+#define KND_TASK_ERR(...) \
+    if (err) { \
+        task->out->reset(task->out);\
+        int e = task->out->writef(task->out, "" __VA_ARGS__); \
+        if (e) return e; \
+        if (task->log->buf_size != 0) { \
+            e = task->out->write(task->out,      \
+                      " <= ", strlen(" <= "));  \
+            if (e) return e; \
+            e = task->out->write(task->out, task->log->buf, task->log->buf_size); \
+            if (e) return e; \
+        }\
+        task->log->reset(task->log); \
+        e = task->log->write(task->log, task->out->buf, task->out->buf_size); \
+        if (e) return e; \
+        task->output = task->log->buf; \
+        task->output_size = task->log->buf_size; \
+        return err;\
+    }
+
+#define KND_TASK_LOG(...)                     \
+    do {                                     \
+        task->out->reset(task->out);           \
+        int e = task->out->writef(task->out,   \
+          "" __VA_ARGS__);                   \
+        if (e) break;                        \
+        if (task->log->buf_size != 0) {       \
+          e = task->out->write(task->out,      \
+                   " <= ", strlen(" <= "));  \
+          if (e) break;                      \
+          e = task->out->write(task->out,      \
+          task->log->buf, task->log->buf_size);\
+          if (e) break;                      \
+        }                                    \
+        task->log->reset(task->log);           \
+        e = task->log->write(task->log,        \
+         task->out->buf, task->out->buf_size); \
+        if (e) break;                        \
+        task->output = task->log->buf;         \
+        task->output_size = task->log->buf_size;\
+    } while (0)
+
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 
@@ -103,6 +136,10 @@ typedef enum knd_storage_type {
 #define TASK_MAX_TIMEOUT_SECS 5
 #define TASK_QUEUE_CAPACITY 20
 
+#define KND_MAX_JOURNALS 64
+#define KND_MAX_JOURNAL_SIZE 1024 * 1024
+#define KND_MAX_SNAPSHOTS 256
+
 #define KND_RESULT_BATCH_SIZE 10
 #define KND_RESULT_MAX_BATCH_SIZE 500
 
@@ -112,12 +149,10 @@ typedef enum knd_storage_type {
 #define KND_ID_BATCH_SIZE 10
 #define KND_LOCALE_SIZE 8
 
-//#define KND_STATE_SIZE  (4 * sizeof(char))
-
 #define KND_MAX_MIGRATIONS 256
 #define KND_MAX_SPECS 8
 
-#define KND_MAX_OWNERS 256
+#define KND_MAX_TASKS 64
 
 #define KND_MAX_BASES 256
 #define KND_MAX_INHERITED 256

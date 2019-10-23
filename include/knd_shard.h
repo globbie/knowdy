@@ -7,6 +7,8 @@
 #include <knd_task.h>
 #include <knd_storage.h>
 
+struct kndMemPool;
+
 struct kndMemConfig {
     size_t num_pages;
     size_t num_small_x4_pages;
@@ -17,13 +19,15 @@ struct kndMemConfig {
 
 struct kndShard
 {
-    char name[KND_NAME_SIZE];
-    size_t name_size;
+    knd_agent_role_type role;
 
-    char path[KND_PATH_SIZE];
+    char name[KND_NAME_SIZE + 1];
+    size_t name_size;
+    
+    char path[KND_PATH_SIZE + 1];
     size_t path_size;
 
-    char schema_path[KND_PATH_SIZE];
+    char schema_path[KND_PATH_SIZE + 1];
     size_t schema_path_size;
 
     char user_class_name[KND_NAME_SIZE];
@@ -38,6 +42,7 @@ struct kndShard
 
     struct kndTask *task;
     struct kndUser *user;
+    struct kndMemPool *mempool;
 
     /* system repo */
     struct kndRepo *repo;

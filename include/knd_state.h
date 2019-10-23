@@ -25,7 +25,6 @@
 
 struct kndState;
 struct kndClass;
-struct kndUpdate;
 struct kndStateRef;
 struct kndMemPool;
 struct kndOutput;
@@ -38,11 +37,12 @@ typedef enum knd_state_phase { KND_SELECTED,
                                KND_FROZEN,
                                KND_RESTORED } knd_state_phase;
 
-typedef enum knd_update_confirm { KND_INIT_STATE, 
+typedef enum knd_commit_confirm { KND_INIT_STATE, 
                                   KND_FAILED_STATE,
                                   KND_CONFLICT_STATE,
-                                  KND_VALID_STATE
-} knd_update_confirm;
+                                  KND_VALID_STATE,
+                                  KND_PERSISTENT_STATE
+} knd_commit_confirm;
 
 typedef enum knd_state_type { KND_STATE_CLASS,
                               KND_STATE_CLASS_VAR,
@@ -56,21 +56,25 @@ typedef enum knd_state_type { KND_STATE_CLASS,
                               KND_STATE_PROC_INST
 } knd_state_type;
 
-struct kndUpdate
+struct kndCommit
 {
     char id[KND_ID_SIZE];
     size_t id_size;
     size_t numid;
 
     size_t orig_state_id;
+    char *rec;
+    size_t rec_size;
 
     time_t timestamp;
-    knd_update_confirm confirm;
+    knd_commit_confirm _Atomic confirm;
 
     struct kndRepo *repo;
 
     struct kndStateRef *class_state_refs;
     struct kndStateRef *proc_state_refs;
+
+    struct kndCommit *prev;
 };
 
 struct kndStateVal
@@ -86,8 +90,9 @@ struct kndState
 {
     size_t numid;
     knd_state_phase phase;
-    struct kndUpdate *update;
+    struct kndCommit *commit;
     struct kndStateVal *val;
+    void *data;
     struct kndStateRef *children;
     struct kndState *next;
 };
@@ -100,11 +105,16 @@ struct kndStateRef
     struct kndStateRef *next;
 };
 
-extern int knd_update_new(struct kndMemPool *mempool,
-                          struct kndUpdate **result);
-extern int knd_state_new(struct kndMemPool *mempool,
-                         struct kndState **result);
-extern int knd_state_ref_new(struct kndMemPool *mempool,
-                             struct kndStateRef **result);
-extern int knd_state_val_new(struct kndMemPool *mempool,
-                             struct kndStateVal **result);
+int knd_commit_new(struct kndMemPool *mempool,
+                   struct kndCommit **result);
+int knd_commit_mem(struct kndMemPool *mempool,
+                   struct kndCommit **result);
+int knd_state_new(struct kndMemPool *mempool,
+                  struct kndState **result);
+int knd_state_mem(struct kndMemPool *mempool,
+                  struct kndState **result);
+
+int knd_state_ref_new(struct kndMemPool *mempool,
+                      struct kndStateRef **result);
+int knd_state_val_new(struct kndMemPool *mempool,
+                      struct kndStateVal **result);

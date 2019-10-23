@@ -31,8 +31,6 @@
 
 #include <gsl-parser/gsl_err.h>
 
-struct kndTask;
-struct kndShard;
 struct kndUser;
 struct kndUserContext;
 struct kndStateControl;
@@ -49,14 +47,20 @@ typedef int (*task_cb_func)(void *obj,
                             size_t msg_size,
                             void *ctx);
 
+typedef enum knd_agent_role_type {
+    KND_READER,
+    KND_WRITER
+} knd_agent_role_type;
+
 typedef enum knd_task_spec_type {
     KND_GET_STATE,
     KND_SELECT_STATE,
-    KND_UPDATE_STATE,
+    KND_COMMIT_STATE,
     KND_LIQUID_STATE,
     KND_SYNC_STATE,
     KND_DELTA_STATE,
     KND_LOAD_STATE,
+    KND_RESTORE_STATE,
     KND_STOP_STATE
 } knd_task_spec_type;
 
@@ -66,9 +70,9 @@ typedef enum knd_task_phase_t { KND_REGISTER,
                                 KND_REJECT,
                                 KND_IMPORT,
                                 KND_CONFLICT,
+                                KND_CONFIRM_COMMIT,
                                 KND_WAL_WRITE,
-                                KND_WAL_COMMIT,
-                                KND_UPDATE_INDICES,
+                                KND_COMMIT_INDICES,
                                 KND_DELIVER_RESULT,
                                 KND_COMPLETE } knd_task_phase_t;
 
@@ -80,6 +84,14 @@ struct kndTaskDestination
     //  auth 
 
 };
+
+struct kndMemBlock {
+    size_t tid;
+    char *buf;
+    size_t buf_size;
+    struct kndMemBlock *next;
+};
+
 
 struct kndTaskContext {
     char id[KND_ID_SIZE];
@@ -100,8 +112,6 @@ struct kndTaskContext {
     const char *input;
     size_t      input_size;
 
-    // struct kndOutput  *out;
-    // struct kndOutput  *log;
     int error;
     knd_http_code_t http_code;
 
@@ -122,34 +132,29 @@ struct kndTaskContext {
     size_t max_depth;
 
     // TODO: subscription channel
-    // to push any updates
+    // to push any commits
 
     struct kndTaskDestination *dest;
     struct kndRepo *repo;
 
-    /* updates */
+    /* commits */
     struct kndStateRef  *class_state_refs;
     struct kndStateRef  *inner_class_state_refs;
     struct kndStateRef  *class_inst_state_refs;
     struct kndStateRef  *proc_state_refs;
     struct kndStateRef  *proc_inst_state_refs;
 
-    /* struct kndDict *class_name_idx;
-    struct kndDict *attr_name_idx;
-    struct kndDict *proc_name_idx;
-    struct kndDict *proc_arg_name_idx;
-    */
-
-    struct kndUpdate *update;
-    bool update_confirmed;
+    struct kndCommit *commit;
+    bool commit_confirmed;
 
     struct kndTaskContext *next;
 };
 
 struct kndTask
 {
-    int id;
+    knd_agent_role_type role;
     knd_task_spec_type type;
+    int id;
     knd_state_phase phase;
 
     struct kndShard *shard;
@@ -206,10 +211,14 @@ struct kndTask
 
     struct kndOutput  *out;
     struct kndOutput  *log;
-    struct kndOutput  *task_out;
     struct kndOutput  *file_out;
-    struct kndOutput  *update_out;
+
     struct kndMemPool *mempool;
+    bool is_mempool_owner;
+
+    struct kndMemBlock *blocks;
+    size_t num_blocks;
+    size_t total_block_size;
 
     struct kndDict *class_name_idx;
     struct kndDict *attr_name_idx;
@@ -226,6 +235,17 @@ int knd_task_mem(struct kndMemPool *mempool,
                  struct kndTask **result);
 int knd_task_context_new(struct kndMemPool *mempool,
                          struct kndTaskContext **ctx);
+int knd_task_block_new(struct kndMemPool *mempool,
+                       struct kndTask **result);
+int knd_task_copy_block(struct kndTask *self,
+                        const char *input, size_t input_size,
+                        const char **output, size_t *output_size);
+
+int knd_task_read_file_block(struct kndTask *self,
+                             const char *filename, size_t filename_size,
+                             struct kndMemBlock **result);
+void knd_task_free_blocks(struct kndTask *self);
+
 void knd_task_del(struct kndTask *self);
 void knd_task_reset(struct kndTask *self);
 int knd_task_err_export(struct kndTask *self);

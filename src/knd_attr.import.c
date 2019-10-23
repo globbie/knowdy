@@ -329,8 +329,10 @@ static gsl_err_t confirm_attr_var(void *obj,
     // TODO empty values?
     if (DEBUG_ATTR_LEVEL_TMP) {
         if (!attr_var->val_size)
-            knd_log("NB: attr var value not set in %.*s",
-                    attr_var->name_size, attr_var->name);
+            knd_log("NB: attr var value not set in %.*s (class: %.*s)",
+                    attr_var->name_size, attr_var->name,
+                    attr_var->class_var->entry->name_size,
+                    attr_var->class_var->entry->name);
     }
     return make_gsl_err(gsl_OK);
 }
@@ -695,12 +697,6 @@ gsl_err_t knd_import_attr(struct kndAttr *self,
           .parse = parse_gloss,
           .obj = &ctx
         },
-        { .type = GSL_SET_STATE,
-          .name = "c",
-          .name_size = strlen("c"),
-          .run = set_ref_class,
-          .obj = self
-        },
         { .name = "c",
           .name_size = strlen("c"),
           .run = set_ref_class,
@@ -721,33 +717,15 @@ gsl_err_t knd_import_attr(struct kndAttr *self,
           .parse = parse_quant_type,
           .obj = self
         },
-        { .type = GSL_SET_STATE,
-          .name = "idx",
-          .name_size = strlen("idx"),
-          .run = confirm_idx,
-          .obj = self
-        },
         { .name = "idx",
           .name_size = strlen("idx"),
           .run = confirm_idx,
-          .obj = self
-        },
-        { .type = GSL_SET_STATE,
-          .name = "impl",
-          .name_size = strlen("impl"),
-          .run = confirm_implied,
           .obj = self
         },
         { .name = "impl",
           .name_size = strlen("impl"),
           .run = confirm_implied,
           .obj = self
-        },
-        { .type = GSL_SET_STATE,
-          .name = "concise",
-          .name_size = strlen("concise"),
-          .parse = gsl_parse_size_t,
-          .obj = &self->concise_level
         },
         { .name = "concise",
           .name_size = strlen("concise"),

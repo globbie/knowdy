@@ -121,7 +121,6 @@ static int wal_commit(struct kndTask *task,
     return knd_OK;
 }
 
-
 static void *task_runner(void *ptr)
 {
     struct kndTask *task = ptr;

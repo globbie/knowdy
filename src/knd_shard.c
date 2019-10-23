@@ -94,6 +94,35 @@ static gsl_err_t parse_mem_config(void *obj, const char *rec, size_t *total_size
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static gsl_err_t get_agent_role(void *obj, const char *name, size_t name_size)
+{
+    struct kndShard *self = obj;
+
+    if (name_size == strlen("Writer") && !memcmp(name, "Writer", name_size)) {
+        self->role = KND_WRITER;
+    }
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_agent(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndShard *self = obj;
+
+    struct gslTaskSpec specs[] = {
+        {   .is_implied = true,
+            .buf = self->name,
+            .buf_size = &self->name_size,
+            .max_buf_size = KND_NAME_SIZE
+        },
+        {   .name = "role",
+            .name_size = strlen("role"),
+            .run = get_agent_role,
+            .obj = self
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 static gsl_err_t
 run_check_schema(void *unused_var(obj), const char *val, size_t val_size)
 {
@@ -181,7 +210,7 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
             .name_size = strlen("db-path"),
             .buf = self->path,
             .buf_size = &self->path_size,
-            .max_buf_size = KND_NAME_SIZE
+            .max_buf_size = KND_PATH_SIZE
         },
         {   .name = "schema-path",
             .name_size = strlen("schema-path"),
@@ -195,9 +224,8 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
         },
         {   .name = "agent",
             .name_size = strlen("agent"),
-            .buf = self->name,
-            .buf_size = &self->name_size,
-            .max_buf_size = KND_NAME_SIZE
+            .parse = parse_agent,
+            .obj = self
         }
     };
     int err = knd_FAIL;
@@ -210,15 +238,28 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
     }
 
     if (!self->path_size) {
-        knd_log("-- DB path not set");
+        knd_log("DB path not set");
         return make_gsl_err(gsl_FAIL);
     }
 
+    if (self->path[self->path_size - 1] != '/') {
+        if (self->path_size + 1 >= KND_PATH_SIZE) {
+            knd_log("DB path exceeds current limit");
+            return make_gsl_err(gsl_FAIL);
+        }
+        self->path[self->path_size] = '/';
+        self->path_size++;
+        self->path[self->path_size] = '\0';
+    }
+
     err = knd_mkpath(self->path, self->path_size, 0755, false);
-    if (err != knd_OK) return make_gsl_err_external(err);
+    if (err != knd_OK) {
+        knd_log("-- failed to make path: \"%.*s\"", self->path_size, self->path);
+        return make_gsl_err_external(err);
+    }
 
     if (!self->schema_path_size) {
-        knd_log("-- system schema path not set");
+        knd_log("system schema path not set");
         return make_gsl_err(gsl_FAIL);
     }
     return make_gsl_err(gsl_OK);
@@ -258,7 +299,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     err = parse_config(self, config, &config_size);
     if (err != knd_OK) goto error;
 
-    err = kndMemPool_new(&mempool);
+    err = knd_mempool_new(&mempool, 0);
     if (err != knd_OK) goto error;
     mempool->num_pages = self->mem_config.num_pages;
     mempool->num_small_x4_pages = self->mem_config.num_small_x4_pages;
@@ -267,6 +308,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     mempool->num_tiny_pages = self->mem_config.num_tiny_pages;
     err = mempool->alloc(mempool);
     if (err != knd_OK) goto error;
+    self->mempool = mempool;
 
     err = knd_set_new(mempool, &self->repos);
     if (err != knd_OK) goto error;
@@ -277,14 +319,10 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     }
 
     /* system repo */
-    err = knd_repo_new(&repo, mempool);
+    err = knd_repo_new(&repo, "/", 1, mempool);
     if (err != knd_OK) goto error;
-    memcpy(repo->name, "/", 1);
-    repo->name_size = 1;
     repo->schema_path = self->schema_path;
     repo->schema_path_size = self->schema_path_size;
-    memcpy(repo->path, self->path, self->path_size);
-    repo->path_size = self->path_size;
     self->repo = repo;
 
     err = knd_task_new(self, mempool, 0, &task);
@@ -294,7 +332,10 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     self->task = task;
 
     err = knd_repo_open(repo, task);
-    if (err != knd_OK) goto error;
+    if (err != knd_OK) {
+        knd_log("ERR LOG:%.*s", task->output_size, task->output);
+        goto error;
+    }
 
     err = knd_user_new(&user, mempool);
     if (err != knd_OK) goto error;
@@ -302,8 +343,8 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     user->class_name = self->user_class_name;
     user->class_name_size = self->user_class_name_size;
 
-    user->repo_name = self->user_repo_name;
-    user->repo_name_size = self->user_repo_name_size;
+    //user->repo_name = self->user_repo_name;
+    //user->repo_name_size = self->user_repo_name_size;
 
     user->schema_path = self->user_schema_path;
     user->schema_path_size = self->user_schema_path_size;
@@ -322,8 +363,6 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
 
 void knd_shard_del(struct kndShard *self)
 {
-    knd_log(".. deconstructing kndShard ..");
-
     if (self->user)
         knd_user_del(self->user);
 
@@ -332,6 +371,9 @@ void knd_shard_del(struct kndShard *self)
 
     if (self->task)
         knd_task_del(self->task);
+
+    if (self->mempool)
+        knd_mempool_del(self->mempool);
 
     free(self);
 }

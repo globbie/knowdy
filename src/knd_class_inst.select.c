@@ -373,7 +373,7 @@ static gsl_err_t remove_inst(void *obj,
     err = log->write(log, " class inst removed", strlen(" class inst removed"));
     if (err) return make_gsl_err_external(err);
 
-    task->type = KND_UPDATE_STATE;
+    task->type = KND_COMMIT_STATE;
 
     // TODO state_ref->next = task->class_inst_state_refs;
     //task->class_inst_state_refs = state_ref;

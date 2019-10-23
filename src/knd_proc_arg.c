@@ -610,8 +610,8 @@ int knd_proc_arg_resolve(struct kndProcArg *self,
         if (DEBUG_PROC_ARG_LEVEL_2)
             knd_log(".. resolving arg class template: %.*s..",
                     self->classname_size, self->classname);
-        entry = knd_dict_get(repo->class_name_idx,
-                             self->classname, self->classname_size);
+        entry = knd_shared_dict_get(repo->class_name_idx,
+                                    self->classname, self->classname_size);
         if (!entry) {
             knd_log("-- no such class: %.*s",
                     self->classname_size, self->classname);
@@ -621,8 +621,8 @@ int knd_proc_arg_resolve(struct kndProcArg *self,
     }
 
     if (self->proc_call) {
-        proc_entry = knd_dict_get(repo->proc_name_idx,
-                                  self->proc_call->name, self->proc_call->name_size);
+        proc_entry = knd_shared_dict_get(repo->proc_name_idx,
+                                         self->proc_call->name, self->proc_call->name_size);
         if (!proc_entry) {
             knd_log("-- no such proc: %.*s",
                     self->proc_call->name_size, self->proc_call->name);
@@ -630,7 +630,6 @@ int knd_proc_arg_resolve(struct kndProcArg *self,
         }
         self->proc_call->proc = proc_entry->proc;
     }
-    
     return knd_OK;
 }
 
@@ -872,8 +871,8 @@ int knd_proc_arg_inst_resolve(struct kndProcArg *self,
     struct kndRepo *repo = self->parent->entry->repo;
     struct kndClassInstEntry *class_inst_entry;
 
-    entry = knd_dict_get(repo->class_name_idx,
-                         inst->procname, inst->procname_size);
+    entry = knd_shared_dict_get(repo->class_name_idx,
+                                inst->procname, inst->procname_size);
     if (!entry) {
         knd_log("-- no such proc: %.*s",
                 inst->procname_size, inst->procname);
@@ -881,15 +880,14 @@ int knd_proc_arg_inst_resolve(struct kndProcArg *self,
     }
 
     /* TODO: check inheritance or role */
-
     inst->proc_entry = entry;
 
     /* resolve class inst ref */
     if (inst->class_inst_name_size) {
-        if (entry->inst_idx) {
-            class_inst_entry = knd_dict_get(entry->inst_idx,
-                                            inst->class_inst_name,
-                                            inst->class_inst_name_size);
+        if (entry->inst_name_idx) {
+            class_inst_entry = knd_shared_dict_get(entry->inst_name_idx,
+                                                   inst->class_inst_name,
+                                                   inst->class_inst_name_size);
             if (!class_inst_entry) {
                 knd_log("-- no such class_inst_entry: %.*s",
                         inst->class_inst_name_size,
