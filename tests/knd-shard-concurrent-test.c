@@ -5,7 +5,6 @@
 #include <knd_state.h>
 
 #include <check.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,8 +12,8 @@
 #include <pthread.h>
 #include <time.h>
 
-#define TEST_NUM_AGENTS 8
-#define TEST_NUM_CLASSES 10000
+#define TEST_NUM_AGENTS 2
+#define TEST_NUM_CLASSES 25000
 #define MIN_CLASSNAME_SIZE 16
 #define MAX_CLASSNAME_SIZE 64
 
@@ -33,11 +32,11 @@ static const char *shard_config =
 "    {max_small_pages     23000}"
 "    {max_tiny_pages      200000}"
 "            {ctx"
-"            {max_base_pages        48000}"
-"            {max_small_x4_pages    40000}"
-"            {max_small_x2_pages    124000}"
-"            {max_small_pages       190000}"
-"            {max_tiny_pages        350000}}"
+"            {max_base_pages        132000}"
+"            {max_small_x4_pages    100}"
+"            {max_small_x2_pages    380000}"
+"            {max_small_pages       390000}"
+"            {max_tiny_pages        950000}}"
 "  }"
 "}";
 
@@ -68,49 +67,24 @@ struct class_test {
 
 static void *agent_runner(void *ptr)
 {
-    char buf[1024];
-    size_t buf_size;
     struct class_test *t = ptr;
     struct kndTask *task = t->task;
-    const char *classname;
-    size_t classname_size;
-    const char *block;
-    size_t block_size;
+    struct kndMemBlock *block;
     int err;
 
-    for (size_t i = 0; i < TEST_NUM_CLASSES; i++) { 
-        classname = t->classnames[i];
-        classname_size = strlen(classname);
-        buf_size = snprintf(buf, 1024,
-                            "{task{!class %d__%.*s {is User}}"
-                            "{!class 02_%d__%.*s {is User}}"
-                            "{!class 03_%d__%.*s {is User}}}",
-                            task->id, (int)classname_size, classname,
-                            task->id, (int)classname_size, classname,
-                            task->id, (int)classname_size, classname);
-
-        /* NB: Writer's tasks must be permanently allocated 
-           before submitting.
-           No string copy allocations will take place within the DB!
-        */
-        err = knd_task_copy_block(task,
-                                  buf, buf_size,
-                                  &block, &block_size);
-        if (err != knd_OK) return NULL;
-
+    for (block = task->blocks; block; block = block->next) {
         //knd_log(".. agent #%d to run task: \"%.*s\"..",
-        //        task->id, block_size, block);
-
+        //        task->id, block->buf_size, block->buf);
         knd_task_reset(task);
         t->total_jobs++;
 
-        err = knd_task_run(task, block, block_size);
+        err = knd_task_run(task, block->buf, block->buf_size);
         if (err != knd_OK) {
-            //knd_log("agent #%d) -- update confirm failed: %.*s",
+            // knd_log("agent #%d) update confirm failed: %.*s",
             //        task->id, task->output_size, task->output);
             continue;
         }
-        //knd_log("agent #%d) ++ write task success: %.*s!",
+        // knd_log("agent #%d) ++ write task success: %.*s!",
         //        task->id, task->output_size, task->output);
         t->success_jobs++;
     }
@@ -150,7 +124,7 @@ int check_final_results(struct kndShard *shard,
                         const char **classnames,
                         size_t num_classnames)
 {
-    char buf[1024];
+    char buf[2048];
     size_t buf_size;
     struct kndTask *task;
     const char *classname;
@@ -169,13 +143,14 @@ int check_final_results(struct kndShard *shard,
         classname = classnames[i];
         classname_size = strlen(classname);
 
-        buf_size = snprintf(buf, 1024, "{task{class %.*s}}", (int)classname_size, classname);
+        buf_size = snprintf(buf, 2048, "{task{class %.*s}}",
+                            (int)classname_size, classname);
 
         knd_task_reset(task);
         err = knd_task_run(task, buf, buf_size);
         if (err != knd_OK) {
-            // knd_log("-- reading confirm failed: %.*s",
-            //        task->output_size, task->output);
+            knd_log("-- reading confirm failed: %.*s",
+                    task->output_size, task->output);
             continue;
         }
         //knd_log("== confirm read OK: %.*s",
@@ -197,7 +172,12 @@ START_TEST(shard_concurrent_update_test)
     char **classnames;
     size_t num_classnames = TEST_NUM_CLASSES;
     char *classname = "";
+    const char *c;
     size_t classname_size = 0;
+    char buf[2048];
+    size_t buf_size = 0;
+    const char *block;
+    size_t block_size;
     clock_t from;
     int err;
     
@@ -222,25 +202,51 @@ START_TEST(shard_concurrent_update_test)
 
         err = knd_task_new(shard, NULL, 1, &task);
         ck_assert_int_eq(err, knd_OK);
-
         task->ctx = calloc(1, sizeof(struct kndTaskContext));
         ck_assert(task->ctx != NULL);
         task->role = KND_WRITER;
         task->id = i;
         t->task = task;
-        
+
         t->classnames = calloc(1, sizeof(const char *) * TEST_NUM_CLASSES);
         t->num_classnames = TEST_NUM_CLASSES;
         for (size_t j = 0; j < TEST_NUM_CLASSES; j++)
             t->classnames[j] = classnames[j];
         shuffle_classnames(t->classnames, TEST_NUM_CLASSES);
 
-        /*knd_log("\n == agent #%d", task->id);
-        for (int j = 0; j < TEST_NUM_CLASSES; j++) {
-            const char *c = t->classnames[j];
+        for (size_t j = 0; j < t->num_classnames; j++) {
+            c = t->classnames[j];
             classname_size = strlen(c);
-            knd_log("== %.*s [len:%zu]", classname_size, c, classname_size);
-            }*/
+            buf_size = snprintf(buf, 2048,
+                                "{task{!class %.*s {is User}}}",
+                                //"{!class %d__02__%.*s {is User}}}",
+                                //task->id, (int)classname_size, c,
+                                (int)classname_size, c);
+
+            /* NB: Writer's tasks must be permanently allocated 
+               before submitting.
+               No string copy allocations will take place within the DB!
+            */
+            err = knd_task_copy_block(task,
+                                      buf, buf_size,
+                                      &block, &block_size);
+            ck_assert_int_eq(err, knd_OK);
+
+            /* unique to agent */
+            buf_size = snprintf(buf, 2048,
+                                "{task{!class %d__%.*s {is User}}}",
+                                task->id, (int)classname_size, c);
+
+            /* NB: Writer's tasks must be permanently allocated 
+               before submitting.
+               No string copy allocations will take place within the DB!
+            */
+            err = knd_task_copy_block(task,
+                                      buf, buf_size,
+                                      &block, &block_size);
+            ck_assert_int_eq(err, knd_OK);
+            
+        }
     }
 
     from = clock();
@@ -257,7 +263,7 @@ START_TEST(shard_concurrent_update_test)
         pthread_join(agents[i], NULL);
     }
 
-    printf("++ jobs finished in: %fsec\n", ((double)(clock() - from)) / CLOCKS_PER_SEC);
+    printf("++ all tasks finished in %fsec\n", ((double)(clock() - from)) / CLOCKS_PER_SEC);
 
     /* present reports */
     for (int i = 0; i < TEST_NUM_AGENTS; i++) {
