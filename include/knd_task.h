@@ -60,6 +60,7 @@ typedef enum knd_task_spec_type {
     KND_SYNC_STATE,
     KND_DELTA_STATE,
     KND_LOAD_STATE,
+    KND_RESTORE_STATE,
     KND_STOP_STATE
 } knd_task_spec_type;
 
@@ -219,6 +220,8 @@ struct kndTask
     size_t num_blocks;
     size_t total_block_size;
 
+    struct kndCommit *commit;
+
     struct kndDict *class_name_idx;
     struct kndDict *attr_name_idx;
     struct kndDict *proc_name_idx;
@@ -239,6 +242,10 @@ int knd_task_block_new(struct kndMemPool *mempool,
 int knd_task_copy_block(struct kndTask *self,
                         const char *input, size_t input_size,
                         const char **output, size_t *output_size);
+
+int knd_task_read_file_block(struct kndTask *self,
+                             const char *filename, size_t filename_size,
+                             struct kndMemBlock **result);
 
 void knd_task_del(struct kndTask *self);
 void knd_task_reset(struct kndTask *self);

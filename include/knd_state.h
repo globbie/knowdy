@@ -63,6 +63,8 @@ struct kndCommit
     size_t numid;
 
     size_t orig_state_id;
+    char *rec;
+    size_t rec_size;
 
     time_t timestamp;
     knd_commit_confirm _Atomic confirm;

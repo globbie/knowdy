@@ -78,12 +78,6 @@ static gsl_err_t parse_class_import(void *obj,
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
         
-        err = knd_dict_new(&task->class_name_idx, task->mempool, KND_SMALL_DICT_SIZE);
-        if (err) return make_gsl_err_external(err);
-
-        err = knd_dict_new(&task->attr_name_idx, task->mempool, KND_SMALL_DICT_SIZE);
-        if (err) return make_gsl_err_external(err);
-        
         task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
                                                                 memory_order_relaxed);
     }
@@ -266,7 +260,6 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-
     if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. select user: \"%.*s\" system repo:%.*s..",
                 name_size, name,
@@ -314,11 +307,8 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 
         ctx->user_inst = inst;
 
-        err = knd_repo_new(&repo, task->mempool);
+        err = knd_repo_new(&repo, name, name_size, task->mempool);
         if (err) return make_gsl_err_external(err);
-
-        memcpy(repo->name, name, name_size);
-        repo->name_size = name_size;
         repo->user = self;
         repo->user_ctx = ctx;
 
@@ -546,7 +536,6 @@ extern gsl_err_t knd_parse_select_user(void *obj,
  cleanup:
 
     // TODO release resources 
-
     return parser_err;
 }
 
@@ -569,16 +558,7 @@ int knd_user_init(struct kndUser *self,
     repo->schema_path = self->schema_path;
     repo->schema_path_size = self->schema_path_size;
 
-    memcpy(repo->name, self->repo_name, self->repo_name_size);
-    repo->name_size = self->repo_name_size;
-
-    /*task->class_name_idx = repo->class_name_idx;
-    task->attr_name_idx = repo->attr_name_idx;
-    task->proc_name_idx = repo->proc_name_idx;
-    task->proc_arg_name_idx = repo->proc_arg_name_idx;
-    */
-
-    err = knd_repo_open(repo, task);                                              RET_ERR();
+    // err = knd_repo_open(repo, task);                                              RET_ERR();
 
     return knd_OK;
 }
@@ -595,7 +575,7 @@ int knd_user_new(struct kndUser **user, struct kndMemPool *mempool)
     memset(self->last_uid, '0', KND_ID_SIZE);
     memset(self->db_state, '0', KND_ID_SIZE);
 
-    err = knd_repo_new(&repo, mempool);                                            RET_ERR();
+    err = knd_repo_new(&repo, "/", 1, mempool);                                            RET_ERR();
     repo->user = self;
     self->repo = repo;
 

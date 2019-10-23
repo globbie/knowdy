@@ -553,9 +553,6 @@ final:
     return err;
 }
 
-
-
-
 /**
  * read out the tag and the implied field value (name)
  */

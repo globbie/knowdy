@@ -319,10 +319,8 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     }
 
     /* system repo */
-    err = knd_repo_new(&repo, mempool);
+    err = knd_repo_new(&repo, "/", 1, mempool);
     if (err != knd_OK) goto error;
-    memcpy(repo->name, "/", 1);
-    repo->name_size = 1;
     repo->schema_path = self->schema_path;
     repo->schema_path_size = self->schema_path_size;
     self->repo = repo;
@@ -332,7 +330,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     task->ctx = calloc(1, sizeof(struct kndTaskContext));
     if (!task->ctx) return knd_NOMEM;
     self->task = task;
-    
+
     err = knd_repo_open(repo, task);
     if (err != knd_OK) {
         knd_log("ERR LOG:%.*s", task->output_size, task->output);
@@ -345,8 +343,8 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     user->class_name = self->user_class_name;
     user->class_name_size = self->user_class_name_size;
 
-    user->repo_name = self->user_repo_name;
-    user->repo_name_size = self->user_repo_name_size;
+    //user->repo_name = self->user_repo_name;
+    //user->repo_name_size = self->user_repo_name_size;
 
     user->schema_path = self->user_schema_path;
     user->schema_path_size = self->user_schema_path_size;

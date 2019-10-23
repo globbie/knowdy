@@ -38,6 +38,8 @@ struct kndRepoSnapshot
 
     /* array of ints => each task/writer can produce a number of WAL journals */
     size_t num_journals[KND_MAX_TASKS];
+    size_t max_journals;
+    size_t max_journal_size;
     time_t timestamp;
 };
 
@@ -71,7 +73,6 @@ struct kndRepo
     struct kndSharedDict *repo_idx;
 
     struct kndUser *user;
-    size_t max_journal_size;
 
     bool restore_mode;
     size_t intersect_matrix_size;
@@ -136,4 +137,5 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task);
 
 void knd_repo_del(struct kndRepo *self);
 
-int knd_repo_new(struct kndRepo **self, struct kndMemPool *mempool);
+int knd_repo_new(struct kndRepo **self,
+                 const char *name, size_t name_size, struct kndMemPool *mempool);

@@ -89,7 +89,6 @@ static gsl_err_t run_set_format(void *obj,
     return make_gsl_err_external(knd_NO_MATCH);
 }
 
-
 static gsl_err_t parse_format(void *obj,
                               const char *rec,
                               size_t *total_size)
@@ -213,12 +212,6 @@ static gsl_err_t parse_proc_import(void *obj,
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        err = knd_dict_new(&task->proc_name_idx, task->mempool, KND_SMALL_DICT_SIZE);
-        if (err) return make_gsl_err_external(err);
-
-        err = knd_dict_new(&task->proc_arg_name_idx, task->mempool, KND_SMALL_DICT_SIZE);
-        if (err) return make_gsl_err_external(err);
-
         task->ctx->commit->orig_state_id = atomic_load_explicit(&repo->snapshot.num_commits,
                                                                 memory_order_relaxed);
     }
@@ -313,16 +306,21 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
         }
     };
 
+    knd_log("REC:\"%.*s\"", 64, rec);
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         goto final;
     }
 
+    knd_log("== parsed TASK REC total size: %zu", *total_size);
     /* any system repo commits? */
     switch (self->type) {
     case KND_COMMIT_STATE:
         err = knd_confirm_commit(self->repo, self);
         if (err) return make_gsl_err_external(err);
+        break;
+    case KND_RESTORE_STATE:
+        knd_log("== restore commits ==");
         break;
     default:
         self->ctx->phase = KND_COMPLETE;

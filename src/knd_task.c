@@ -221,6 +221,58 @@ int knd_task_copy_block(struct kndTask *task,
     return knd_OK;
 }
 
+int knd_task_read_file_block(struct kndTask *task,
+                             const char *filename, size_t file_size,
+                             struct kndMemBlock **result)
+{
+    FILE *file_stream;
+    size_t read_size;
+    size_t num_extra_bytes = 2; // closing brace + null term
+    int err;
+
+    struct kndMemBlock *block = malloc(sizeof(struct kndMemBlock));
+    if (!block) {
+        err = knd_NOMEM;
+        KND_TASK_ERR("block alloc failed");
+    }
+
+    char *b = malloc(file_size + num_extra_bytes);
+    if (!b) {
+        err = knd_NOMEM;
+        KND_TASK_ERR("file memblock alloc failed");
+    }
+
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log(" .. opening file \"%s\"..\n", filename);
+
+    file_stream = fopen(filename, "r");
+    if (file_stream == NULL) {
+        err = knd_IO_FAIL;
+        KND_TASK_ERR("error opening FILE \"%s\"", filename);
+    }
+
+    read_size = fread(b, 1, file_size, file_stream);
+
+    b[file_size] = '}';
+    b[file_size + 1] = '\0';
+
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log("   ++ FILE \"%s\" read OK: %.*s [size: %zu]\n",
+                filename, file_size + 1, b, file_size);
+
+    block->tid = 0;
+    block->buf = b;
+    block->buf_size = file_size + 1;
+    block->next = task->blocks;
+
+    task->blocks = block;
+    task->num_blocks++;
+    task->total_block_size += block->buf_size;
+
+    *result = block;
+    return knd_OK;
+}
+
 
 int knd_task_context_new(struct kndMemPool *mempool,
                          struct kndTaskContext **result)
