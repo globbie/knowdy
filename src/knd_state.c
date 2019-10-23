@@ -47,6 +47,7 @@ extern int knd_state_ref_new(struct kndMemPool *mempool,
         err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
                                      sizeof(struct kndStateRef), &page);                      RET_ERR();
     }
+    memset(page, 0, sizeof(struct kndStateRef));
     *result = page;
     return knd_OK;
 }

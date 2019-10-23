@@ -273,6 +273,18 @@ int knd_task_read_file_block(struct kndTask *task,
     return knd_OK;
 }
 
+void knd_task_free_blocks(struct kndTask *task)
+{
+    struct kndMemBlock *block, *next_block = NULL;
+
+    for (block = task->blocks; block; block = next_block) {
+        next_block = block->next;
+        free(block->buf);
+        free(block);
+    }
+    task->total_block_size = 0;
+    task->num_blocks = 0;
+}
 
 int knd_task_context_new(struct kndMemPool *mempool,
                          struct kndTaskContext **result)

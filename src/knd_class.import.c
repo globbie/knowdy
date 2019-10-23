@@ -566,18 +566,24 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
         task->ctx->tr = NULL;
     }
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
         knd_log("++  \"%.*s\" class import completed!",
                 c->name_size, c->name);
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         c->str(c, 1);
 
-    if (task->type == KND_COMMIT_STATE) {
+    switch (task->type) {
+    case KND_RESTORE_STATE:
+        // fall through
+    case KND_COMMIT_STATE:
         err = knd_class_commit_state(c, KND_CREATED, task);
         if (err) {
             return make_gsl_err_external(err);
         }
+        break;
+    default:
+        break;
     }
 
     return make_gsl_err(gsl_OK);

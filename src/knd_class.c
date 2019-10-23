@@ -349,6 +349,7 @@ static int commit_state(struct kndClass *self,
     state->phase = phase;
     state->commit = task->ctx->commit;
     state->children = children;
+    state->next = NULL;
 
     do {
        head = atomic_load_explicit(&self->states,
@@ -356,10 +357,9 @@ static int commit_state(struct kndClass *self,
        state->next = head;
     } while (!atomic_compare_exchange_weak(&self->states, &head, state));
  
-    /* inform your ancestors */
+    // inform your ancestors
     for (ref = self->entry->ancestors; ref; ref = ref->next) {
         c = ref->entry->class;
-        /* skip the root class */
         if (!c->entry->ancestors) continue;
         if (c->state_top) continue;
         if (self->entry->repo != ref->entry->repo) {

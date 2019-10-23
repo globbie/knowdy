@@ -306,13 +306,11 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
         }
     };
 
-    knd_log("REC:\"%.*s\"", 64, rec);
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         goto final;
     }
 
-    knd_log("== parsed TASK REC total size: %zu", *total_size);
     /* any system repo commits? */
     switch (self->type) {
     case KND_COMMIT_STATE:
