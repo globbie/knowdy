@@ -10,7 +10,7 @@ set(CMAKE_INSTALL_PREFIX /)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -pedantic -D_GNU_SOURCE")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g3 -Wno-gnu-zero-variadic-macro-arguments")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -Werror")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -Wgnu-zero-variadic-macro-arguments")
 
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Using 'Debug' build type as default")
@@ -95,5 +95,5 @@ add_subdirectory(shell)
 install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)
 install(DIRECTORY etc/systemd/system/ DESTINATION usr/lib/systemd/system)
 
-set(VERSION "0.7.4")
+set(VERSION "0.7.7")
 
