@@ -250,6 +250,26 @@ static gsl_err_t parse_update(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static gsl_err_t parse_sync_task(void *obj,
+                                 const char *unused_var(rec),
+                                 size_t *total_size)
+{
+    struct kndTask *task = obj;
+    int err;
+
+    task->type = KND_SYNC_STATE;
+    
+    knd_log(".. syncing sys repo.. ");
+
+    err = knd_repo_sync(task->repo, task);
+    if (err) {
+        KND_TASK_LOG("failed to sync sys repo");
+        return *total_size = 0, make_gsl_err(gsl_FAIL);
+    }
+
+    return *total_size = 0, make_gsl_err(gsl_OK);
+}
+
 gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *self = obj;
@@ -302,6 +322,11 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
         { .name = "update",
           .name_size = strlen("update"),
           .parse = parse_update,
+          .obj = self
+        },
+        { .name = "_sync",
+          .name_size = strlen("_sync"),
+          .parse = parse_sync_task,
           .obj = self
         }
     };

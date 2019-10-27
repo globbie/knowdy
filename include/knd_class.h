@@ -131,7 +131,9 @@ struct kndClassEntry
 
     struct kndAttrHub *attr_hubs;
 
-    /* usage queue */
+    /* usage */
+    atomic_size_t num_requests;
+    
     struct kndClassEntry *prev;
     struct kndClassEntry *next;
 };
@@ -142,6 +144,7 @@ struct kndClass
     size_t name_size;
 
     struct kndClassEntry *entry;
+    struct kndMemBlock *memblock;
 
     struct kndState * _Atomic states;
     size_t init_state;

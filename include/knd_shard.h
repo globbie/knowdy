@@ -46,8 +46,10 @@ struct kndShard
 
     /* system repo */
     struct kndRepo *repo;
-    /* user space repos */
-    struct kndSet *repos;
+
+    /* user space */
+    struct kndSet *repo_idx;
+    struct kndSet *user_idx;
 };
 
 int knd_shard_new(struct kndShard **self, const char *config, size_t config_size);

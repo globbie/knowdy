@@ -18,9 +18,8 @@
 #define DEBUG_SET_LEVEL_4 0
 #define DEBUG_SET_LEVEL_TMP 1
 
-static int 
-knd_compare_set_by_size_ascend(const void *a,
-                                   const void *b)
+static int compare_set_by_size_ascend(const void *a,
+                                      const void *b)
 {
     struct kndSet **obj1, **obj2;
 
@@ -124,18 +123,6 @@ extern int knd_set_intersect(struct kndSet *self,
         return knd_FAIL;
     }
 
-    if (!self->idx) {
-        if (self->mempool->type == KND_ALLOC_LIST) {
-	    err = knd_set_elem_idx_new(self->mempool, &self->idx);
-	} else {
-	    err = knd_set_elem_idx_mem(self->mempool, &self->idx);
-	}
-        if (err) {
-            knd_log("-- set elem idx mempool limit reached :(");
-            return err;
-        }
-    }
-    
     if (DEBUG_SET_LEVEL_2)
         knd_log(" .. intersection by Set \"%.*s\".. total sets:%zu",
                 self->base->name_size, self->base->name, num_sets);
@@ -144,7 +131,7 @@ extern int knd_set_intersect(struct kndSet *self,
     qsort(sets,
           num_sets,
           sizeof(struct kndSet*),
-          knd_compare_set_by_size_ascend);
+          compare_set_by_size_ascend);
 
     /* the smallest set is taken as a base */
     base_idx = sets[0]->idx;
@@ -199,6 +186,11 @@ static int save_elem(struct kndSet *self,
     }
 
     /* assign elem */
+    if (!self->allow_overwrite &&
+        parent_idx->elems[idx_pos] != NULL) {
+        return knd_CONFLICT;
+    }
+
     parent_idx->elems[idx_pos] = elem;
     self->num_elems++;
     self->num_valid_elems++;
@@ -251,17 +243,6 @@ static int kndSet_add_elem(struct kndSet *self,
     assert(key_size != 0);
     assert(key != NULL);
 
-    if (!self->idx) {
-        if (self->mempool->type == KND_ALLOC_LIST) {
-	    err = knd_set_elem_idx_new(self->mempool, &self->idx);
-	} else {
-	    err = knd_set_elem_idx_mem(self->mempool, &self->idx);
-	}
-        if (err) {
-            knd_log("-- set elem idx mempool limit reached :(");
-            return err;
-        }
-    }
     err = save_elem(self, self->idx, elem, key, key_size);
     if (err) return err;
     return knd_OK;
@@ -335,7 +316,156 @@ static int kndSet_map(struct kndSet *self,
     return knd_OK;
 }
 
-extern int knd_set_init(struct kndSet *self)
+static int build_dir_footer(struct kndSetDir *dir,
+                                bool use_positional_indexing,
+                                struct kndTask *task)
+{
+    unsigned char buf[KND_NAME_SIZE];
+    size_t buf_size = KND_UINT_SIZE;
+    unsigned int numval;
+    struct kndSetDirEntry *entry;
+    struct kndOutput *out = task->out;
+    int err;
+
+    out->reset(out);
+    for (size_t i = 0; i < KND_RADIX_BASE; i++) {
+        entry = &dir->entries[i];
+        /* explicit field naming */
+        if (!use_positional_indexing) {
+            if (entry->payload_size || entry->subdir) {
+                err = out->writec(out, (char)i);
+                KND_TASK_ERR("output failure");
+            }
+        }
+
+        if (!entry->payload_size) {
+            if (use_positional_indexing) {
+                knd_pack_int(buf, 0);
+                err = out->write(out, (const char*)buf, buf_size);
+                KND_TASK_ERR("set output failed");
+            }
+        } else {
+            numval = entry->payload_size;
+            knd_pack_int(buf, numval);
+            err = out->write(out, (const char*)buf, buf_size);
+            KND_TASK_ERR("set output failed");
+        }
+
+        if (!entry->subdir) {
+            if (use_positional_indexing) {
+                err = out->write(out, "|0000", 5);
+                KND_TASK_ERR("set output failed");
+            }
+        } else {
+            err = out->writef(out, "|%zu", entry->subdir->total_size);
+            KND_TASK_ERR("set output failed");
+        }
+    }
+
+    knd_log("SUBDIRS:%zu ELEMS:%zu DIR SIZE:%zu DIR:%.*s",
+            dir->num_subdirs, dir->num_elems, dir->total_size, out->buf_size, out->buf);
+
+    //knd_pack_int(buf, numval);
+    
+    return knd_OK;
+}
+
+static int traverse_sync(struct kndSetElemIdx *parent_idx,
+                         map_cb_func cb,
+                         void *obj,
+                         struct kndSetDir **result_dir)
+{
+    char buf[KND_ID_SIZE];
+    size_t buf_size = 0;
+    struct kndTask *task = obj;
+    struct kndSetElemIdx *idx;
+    struct kndSetDir *dir, *subdir;
+    struct kndSetDirEntry *entry;
+    size_t num_empty_entries = 0;
+    bool use_positional_indexing = true;
+    void *elem;
+    int err;
+
+    dir = calloc(1, sizeof(struct kndSetDir));
+    if (!dir) {
+        err = knd_NOMEM;
+        KND_TASK_ERR("failed to alloc kndSetDir");
+    }
+
+    /* sync subdirs */
+    for (size_t i = 0; i < KND_RADIX_BASE; i++) {
+        idx = parent_idx->idxs[i];
+        if (!idx) continue;
+
+        entry = &dir->entries[i];
+
+        subdir = NULL;
+        err = traverse_sync(idx, cb, obj, &subdir);
+        if (err) return err;
+
+        entry->subdir = subdir;
+
+        dir->total_size += entry->subdir->total_size;
+        dir->total_elems += subdir->total_elems;
+        dir->num_subdirs++;
+    }
+
+    /* sync elem bodies */
+    for (size_t i = 0; i < KND_RADIX_BASE; i++) {
+        elem = parent_idx->elems[i];
+        if (!elem) {
+            if (!parent_idx->idxs[i])
+                num_empty_entries++;
+            continue;
+        }
+
+        buf_size = 0;
+        buf[buf_size] = obj_id_seq[i];
+        buf_size = 1;
+
+        err = cb(obj, buf, buf_size, 0, elem);
+        if (err) return err;
+
+        entry = &dir->entries[i];
+        entry->payload_size = task->out->buf_size;
+        dir->total_size += entry->payload_size;
+
+        dir->num_elems++;
+
+        // TODO: sync entry payload to file
+    }
+
+    /* build footer */
+    if (num_empty_entries > KND_RADIX_BASE / 2)
+        use_positional_indexing = false;
+
+    err = build_dir_footer(dir, use_positional_indexing, task);
+    KND_TASK_ERR("failed to build set dir footer");
+
+    *result_dir = dir;
+
+    return knd_OK;
+}
+
+int knd_set_sync(struct kndSet *self,
+                 map_cb_func cb,
+                 size_t *total_size,
+                 struct kndTask *task)
+{
+    struct kndSetDir *root_dir;
+    int err;
+
+    knd_log(".. sync kndSet.. ");
+
+    err = traverse_sync(self->idx, cb, task, &root_dir);
+    if (err) return err;
+
+    knd_log("== total exported set size:%zu", root_dir->total_size);
+    *total_size = root_dir->total_size;
+    return knd_OK;
+}
+
+int knd_set_init(struct kndSet *self)
 {
     self->add = kndSet_add_elem;
     self->get = kndSet_get_elem;
@@ -343,39 +473,40 @@ extern int knd_set_init(struct kndSet *self)
     return knd_OK;
 }
 
-extern int knd_set_new(struct kndMemPool *mempool,
-                       struct kndSet **result)
+int knd_set_new(struct kndMemPool *mempool,
+                struct kndSet **result)
 {
     void *page;
+    struct kndSetElemIdx *idx;
     int err;
 
-    //knd_log("..set new [size:%zu]", sizeof(struct kndSet));
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                            sizeof(struct kndSet), &page);                    RET_ERR();
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                                sizeof(struct kndSet), &page);
+        RET_ERR();
+
+        err = knd_set_elem_idx_new(mempool, &idx);
+        RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
+                                     sizeof(struct kndSet), &page);
+        RET_ERR();
+        
+        err = knd_set_elem_idx_mem(mempool, &idx);
+        RET_ERR();
+    }
+    
     *result = page;
     (*result)->mempool = mempool;
+    (*result)->idx = idx;
     knd_set_init(*result);
-
     return knd_OK;
 }
 
-extern int knd_set_mem(struct kndMemPool *mempool,
-                       struct kndSet **result)
-{
-    void *page;
-    int err;
-
-    err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
-				 sizeof(struct kndSet), &page);                    RET_ERR();
-    *result = page;
-    (*result)->mempool = mempool;
-    knd_set_init(*result);
-
-    return knd_OK;
-}
-
-extern int knd_set_elem_idx_new(struct kndMemPool *mempool,
-                                struct kndSetElemIdx **result)
+int knd_set_elem_idx_new(struct kndMemPool *mempool,
+                         struct kndSetElemIdx **result)
 {
     void *page;
     int err;
@@ -386,8 +517,8 @@ extern int knd_set_elem_idx_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-extern int knd_set_elem_idx_mem(struct kndMemPool *mempool,
-                                struct kndSetElemIdx **result)
+int knd_set_elem_idx_mem(struct kndMemPool *mempool,
+                         struct kndSetElemIdx **result)
 {
     void *page;
     int err;

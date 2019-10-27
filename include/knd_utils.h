@@ -29,6 +29,9 @@ static inline void knd_uid_create(size_t seed, char *out_uid, size_t *out_uid_si
     knd_num_to_str(seed, out_uid, out_uid_size, KND_RADIX_BASE);
 }
 
+unsigned char * knd_pack_int(unsigned char *buf, 
+                             unsigned int val);
+
 extern int knd_mkpath(const char *path, size_t path_size, mode_t mode, bool has_filename);
 
 extern int knd_write_file(const char *filename, 

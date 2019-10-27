@@ -31,6 +31,7 @@
 static int update_indices(struct kndRepo *self,
                           struct kndCommit *commit,
                           struct kndTask *task);
+static int resolve_commit(struct kndCommit *commit, struct kndTask *task);
 
 void knd_repo_del(struct kndRepo *self)
 {
@@ -71,7 +72,7 @@ static gsl_err_t set_commit_numid(void *obj, const char *val, size_t val_size)
     commit->numid = (size_t)numval;
     knd_uid_create(commit->numid, commit->id, &commit->id_size);
 
-    knd_log("++ commit #%zu", commit->numid);
+    //knd_log("++ commit #%zu", commit->numid);
     
     return make_gsl_err(gsl_OK);
 }
@@ -99,10 +100,9 @@ static gsl_err_t save_commit_body(void *obj, const char *rec, size_t *total_size
     commit->rec[rec_size] = '\0';
 
     commit->rec_size = rec_size;
-    knd_log("COMMIT REC: \"%.*s\"", commit->rec_size, commit->rec);
+    //knd_log("COMMIT REC: \"%.*s\"", commit->rec_size, commit->rec);
 
     *total_size = rec_size - 1; // closing brace
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -155,7 +155,11 @@ static gsl_err_t parse_commit(void *obj,
                                          commit->id, commit->id_size,
                                          (void*)commit);
     if (err) {
-        KND_TASK_LOG("failed to index commit #%zu", commit->numid);
+        if (err == knd_CONFLICT) {
+            KND_TASK_LOG("commit #%zu already exists", commit->numid);
+        } else {
+            KND_TASK_LOG("failed to index commit #%zu", commit->numid);
+        }
         return make_gsl_err_external(err);
     }
     return make_gsl_err(gsl_OK);
@@ -254,11 +258,11 @@ static int apply_commit(void *obj,
 {
     struct kndTask *task = obj;
     struct kndCommit *commit = elem;
+    struct kndCommit *head_commit;
+    struct kndRepo *repo = task->repo;
     gsl_err_t parser_err;
     size_t total_size = commit->rec_size;
     int err;
-
-    //knd_log("== elem: %.*s commit:%p", elem_id_size, elem_id, commit);
 
     task->type = KND_RESTORE_STATE;
     task->ctx->commit = commit;
@@ -274,10 +278,18 @@ static int apply_commit(void *obj,
     parser_err = gsl_parse_task(commit->rec, &total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
-    err = update_indices(task->repo, commit, task);
+    err = resolve_commit(commit, task);
+    KND_TASK_ERR("failed to resolve commit #%zu", commit->numid);
+    
+    err = update_indices(repo, commit, task);
     KND_TASK_ERR("index update failed");
 
-    //knd_log("++ reapplied commit #%.*s", elem_id_size, elem_id);
+    do {
+        head_commit = atomic_load_explicit(&repo->snapshot.commits,
+                                           memory_order_acquire);
+        commit->prev = head_commit;
+    } while (!atomic_compare_exchange_weak(&repo->snapshot.commits,
+                                           &head_commit, commit));
     
     return knd_OK;
 }
@@ -345,16 +357,21 @@ static int restore_state(struct kndRepo *self,
         file_out->rtrim(file_out, buf_size);
     }
 
+    /* all commits are there in the idx,
+       time to apply them in timely order */
     err = self->snapshot.commit_idx->map(self->snapshot.commit_idx,
                                          apply_commit,
                                          (void*)task);
-    KND_TASK_ERR("failed to reapply commits");
+    KND_TASK_ERR("failed to apply commits");
 
+    atomic_store_explicit(&self->snapshot.num_commits,
+                          self->snapshot.commit_idx->num_elems, memory_order_relaxed);
+
+    knd_log("== total commits applied: %zu", self->snapshot.commit_idx->num_elems);
     knd_task_free_blocks(task);
 
     return knd_OK;
 }
-
 
 static int present_latest_state_JSON(struct kndRepo *self,
                                      struct kndOutput *out)
@@ -1405,18 +1422,19 @@ static int save_commit_WAL(struct kndRepo *self, struct kndCommit *commit, struc
     err = out->write(out, "}\n", strlen("}\n"));
     KND_TASK_ERR("commit footer output failed");
     
+
     file_out->reset(file_out);
     err = file_out->write(file_out, task->path, task->path_size);
     KND_TASK_ERR("system path construction failed");
 
     if (self->path_size) {
-        err = out->write(file_out, self->path, self->path_size);
+        err = file_out->write(file_out, self->path, self->path_size);
         KND_TASK_ERR("repo path construction failed");
     }
-    err = out->writef(file_out, "snapshot_%zu/", self->snapshot.numid);
+    err = file_out->writef(file_out, "snapshot_%zu/", self->snapshot.numid);
     KND_TASK_ERR("snapshot path construction failed");
 
-    err = out->writef(file_out, "agent_%d/", task->id);
+    err = file_out->writef(file_out, "agent_%d/", task->id);
     KND_TASK_ERR("agent path construction failed");
 
     err = knd_mkpath((const char*)file_out->buf, file_out->buf_size, 0755, false);
@@ -1445,11 +1463,11 @@ static int save_commit_WAL(struct kndRepo *self, struct kndCommit *commit, struc
         self->snapshot.num_journals[task->id]++;
 
         file_out->reset(file_out);
-        err = out->write(file_out, task->path, task->path_size);
+        err = file_out->write(file_out, task->path, task->path_size);
         if (err) return err;
 
         if (self->path_size) {
-            err = out->write(file_out, self->path, self->path_size);
+            err = file_out->write(file_out, self->path, self->path_size);
             if (err) return err;
         }
 
@@ -1478,23 +1496,13 @@ static int save_commit_WAL(struct kndRepo *self, struct kndCommit *commit, struc
     return knd_OK;
 }
 
-int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
+static int resolve_commit(struct kndCommit *commit, struct kndTask *task)
 {
-    struct kndTaskContext *ctx = task->ctx;
-    struct kndCommit *commit = ctx->commit;
-    struct kndStateRef *ref; //, *child_ref;
     struct kndState *state;
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
+    struct kndStateRef *ref;
     int err;
-
-    assert(commit != NULL);
-
-    if (DEBUG_REPO_LEVEL_2) {
-        knd_log(".. \"%.*s\" repo to apply commit #%zu..",
-                self->name_size, self->name, commit->numid);
-    }
-    commit->repo = self;
 
     for (ref = commit->class_state_refs; ref; ref = ref->next) {
         if (ref->state->phase == KND_REMOVED) {
@@ -1506,6 +1514,12 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
             KND_TASK_ERR("failed to resolve class \"%.*s\"",
                          entry->name_size, entry->name);
         }
+
+        knd_log("resolve status of %.*s (%.*s): %d",
+                entry->name_size, entry->name,
+                entry->id_size, entry->id,
+                entry->class->is_resolved);
+
         state = ref->state;
         state->commit = commit;
         if (!state->children) continue;
@@ -1524,17 +1538,30 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
             continue;
         }
         proc_entry = ref->obj;
-        if (proc_entry) {
-            knd_log(".. confirming proc commits in \"%.*s\"..",
-                    self->name_size, self->name,
-                    proc_entry->name_size, proc_entry->name);
-        }
-
         /* proc resolving */
         if (!proc_entry->proc->is_resolved) {
             err = knd_proc_resolve(proc_entry->proc, task);                       RET_ERR();
         }
     }
+    return knd_OK;
+}
+
+int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
+{
+    struct kndTaskContext *ctx = task->ctx;
+    struct kndCommit *commit = ctx->commit;
+    int err;
+
+    assert(commit != NULL);
+
+    if (DEBUG_REPO_LEVEL_TMP) {
+        knd_log(".. \"%.*s\" repo to apply commit #%zu..",
+                self->name_size, self->name, commit->numid);
+    }
+    commit->repo = self;
+
+    err = resolve_commit(commit, task);
+    KND_TASK_ERR("failed to resolve commit #%zu", commit->numid);
 
     switch (task->role) {
     case KND_WRITER:

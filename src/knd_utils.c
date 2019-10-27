@@ -82,69 +82,6 @@ extern int knd_print_offset(struct kndOutput *out,
     return out->write(out, buf, num_spaces);
 }
 
-//extern int
-//knd_compare(const char *a, const char *b)
-//{
-//    for (size_t i = 0; i < KND_ID_SIZE; i++) {
-//        if (a[i] > b[i]) return knd_MORE;
-//        else if (a[i] < b[i]) return knd_LESS;
-//    }
-//
-//    return knd_EQUALS;
-//}
-
-/*extern int knd_next_state(char *s)
-{
-    char *c;
-    for (int i = KND_STATE_SIZE - 1; i > -1; i--) {
-        c = &s[i];
-        switch (*c) {
-        case '9':
-            *c = 'A';
-            return knd_OK;
-        case 'Z':
-            *c = 'a';
-            return knd_OK;
-        case 'z':
-            // last position overflow
-            if (i == 0) return knd_LIMIT; 
-            *c = '0';
-            continue;
-        default:
-            (*c)++;
-            return knd_OK;
-        }
-    }
-
-    return knd_OK;
-}
-
-extern int 
-knd_state_is_valid(const char *id, size_t id_size)
-{
-    if (id_size > KND_STATE_SIZE) return knd_FAIL;
-    
-    for (size_t i = 0; i < KND_STATE_SIZE; i++) {
-        if (id[i] >= '0' && id[i] <= '9') continue;
-        if (id[i] >= 'A' && id[i] <= 'Z') continue;
-        if (id[i] >= 'a' && id[i] <= 'z') continue;
-        return knd_FAIL;
-    }
-
-    return knd_OK;
-}
-
-extern int 
-knd_state_compare(const char *a, const char *b)
-{
-    for (size_t i = 0; i < KND_STATE_SIZE; i++) {
-        if (a[i] > b[i]) return knd_MORE;
-        else if (a[i] < b[i]) return knd_LESS;
-    }
-    return knd_EQUALS;
-}
-*/
-
 /* big-endian order: Y1 (62 alphanum base) => 96 (decimal) */
 extern void knd_calc_num_id(const char *id, size_t id_size, size_t *numval)
 {
@@ -191,55 +128,42 @@ knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base)
     *buf_size = curr_size;
 }
 
-//extern const char *
-//knd_max_id(const char *a, const char *b)
-//{
-//    return (knd_compare(a, b) == knd_MORE) ? a : b;
-//}
-//
-//extern const char *
-//knd_min_id(const char *a, const char *b)
-//{
-//    return knd_compare(a, b) == knd_LESS ? a : b;
-//}
+unsigned char * knd_pack_int(unsigned char *buf,
+                             unsigned int val)
+{
+    buf[0] = val >> 24;
+    buf[1] = val >> 16;
+    buf[2] = val >> 8;
+    buf[3] = val;
 
+    return buf + 4;
+}
 
-//extern unsigned char *
-//knd_pack_int(unsigned char *buf,
-//             unsigned int val)
-//{
-//    buf[0] = val >> 24;
-//    buf[1] = val >> 16;
-//    buf[2] = val >> 8;
-//    buf[3] = val;
-//
-//    return buf + 4;
-//}
+unsigned long knd_unpack_int(const unsigned char *buf)
+{
+    unsigned long result = 0;
 
+    result =  buf[3];
+    result |= buf[2] << 8;
+    result |= buf[1] << 16;
+    result |= buf[0] << 24;
 
-//extern unsigned long
-//knd_unpack_int(const unsigned char *buf)
-//{
-//    unsigned long result = 0;
-//
-//    result =  buf[3];
-//    result |= buf[2] << 8;
-//    result |= buf[1] << 16;
-//    result |= buf[0] << 24;
-//
-//    return result;
-//}
+    return result;
+}
 
-static int 
-knd_mkdir(const char *path, mode_t mode)
+static int knd_mkdir(const char *path, mode_t mode)
 {
     struct stat st;
     int err = knd_OK;
 
     if (stat(path, &st) != 0) {
-        /* directory does not exist */
-        if (mkdir(path, mode) != 0)
-            err = knd_FAIL;
+        /* directory does not exist so far */
+        if (mkdir(path, mode) != 0) {
+            /* check errno EEXISTS - 
+               some other thread might already created this dir? */
+            if (errno == EEXIST) return knd_OK;
+            err = knd_IO_FAIL;
+        }
     }
     else if (!S_ISDIR(st.st_mode)) {
         errno = ENOTDIR;
@@ -248,7 +172,6 @@ knd_mkdir(const char *path, mode_t mode)
 
     return err;
 }
-
 
 /**
  * knd_mkpath - ensure all directories in path exist
@@ -341,12 +264,32 @@ knd_append_file(const char *filename,
     return written == -1 || (size_t)written != buf_size ? knd_IO_FAIL : knd_OK;
 }
 
+int knd_read_file_footer(const char *filename,
+                         void *footer,
+                         size_t footer_size,
+                         struct kndTask *task)
+{
+    int fd, num_bytes;
+    int err;
 
-extern int 
-knd_make_id_path(char *buf,
-                 const char *path,
-                 const char *id, 
-                 const char *filename)
+    fd = open(filename, O_RDONLY);
+    if (fd == -1) {
+        err = knd_IO_FAIL;
+        KND_TASK_ERR("failed to open file");
+    }
+
+    lseek(fd, -(int)footer_size, SEEK_END);
+    num_bytes = read(fd, footer, footer_size);
+
+    close(fd);
+    return knd_OK;
+}
+
+
+int knd_make_id_path(char *buf,
+                     const char *path,
+                     const char *id, 
+                     const char *filename)
 {
     char *curr_buf = buf;
     size_t path_size = 0;
@@ -390,43 +333,6 @@ extern void knd_remove_nonprintables(char *data)
         c++;
     }
 }
-
-/*extern int knd_graphic_rounded_rect(struct kndOutput *out,
-                                    size_t x, size_t y,
-                                    size_t w, size_t h,
-                                    size_t r,
-                                    bool tl, bool tr, bool bl, bool br)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
-    int err;
-
-    buf_size = sprintf(buf, "M%zu,%zu", (x + r), y);
-
-        retval += "h" + (w - 2*r);
-
-        if (tr) {
-            retval += "a" + r + "," + r + " 0 0 1 " + r + "," + r;
-        } else {
-            retval += "h" + r; retval += "v" + r;
-        }
-
-        retval += "v" + (h - 2*r);
-
-        if (br) {
-            retval += "a" + r + "," + r + " 0 0 1 " + -r + "," + r;
-        } else { retval += "v" + r; retval += "h" + -r; }
-        retval += "h" + (2*r - w);
-        if (bl) { retval += "a" + r + "," + r + " 0 0 1 " + -r + "," + -r; }
-        else { retval += "h" + -r; retval += "v" + -r; }
-        retval += "v" + (2*r - h);
-        if (tl) { retval += "a" + r + "," + r + " 0 0 1 " + r + "," + -r; }
-        else { retval += "v" + -r; retval += "h" + r; }
-        retval += "z";
-        return retval;
-}
-*/
-
 
 int knd_read_UTF8_char(const char *rec,
                    size_t rec_size,
@@ -552,136 +458,6 @@ final:
 
     return err;
 }
-
-/**
- * read out the tag and the implied field value (name)
- */
-int knd_parse_incipit(const char *rec,
-                      size_t rec_size,
-                      char *result_tag_name,
-                      size_t *result_tag_name_size,
-                      char *result_name,
-                      size_t *result_name_size)
-{
-    const char *c, *b, *e;
-    bool in_tag = false;
-    bool in_name = false;
-    bool got_name = false;
-    size_t tag_size;
-    size_t name_size;
-    
-    c = rec;
-    b = rec;
-    e = rec;
-
-    for (size_t i = 0; i < rec_size; i++) {
-        c = rec + i;
-        switch (*c) {
-        case ' ':
-        case '\n':
-        case '\r':
-        case '\t':
-	    if (in_name) break;
-	    if (in_tag) {
-		tag_size = c - b;
-		if (!tag_size)
-		    return knd_FAIL;
-		if (tag_size >= *result_tag_name_size)
-		    return knd_FAIL;
-
-		memcpy(result_tag_name, b, tag_size);
-		*result_tag_name_size = tag_size;
-                b = c + 1;
-                e = b;
-                in_name = true;
-                break;
-            }
-
-            break;
-        case '[':
-        case '{':
-            if (!in_tag) {
-                in_tag = true;
-                b = c + 1;
-                e = b;
-                break;
-	    }
-
-            got_name = true;
-            e = c;
-            break;
-        default:
-            e = c;
-            break;
-        }
-        if (got_name) break;
-    }
-
-    name_size = e - b;
-    if (!name_size)
-	return knd_FAIL;
-    if (name_size >= *result_name_size)
-	return knd_FAIL;
-
-    memcpy(result_name, b, name_size);
-    *result_name_size = name_size;
-
-    return knd_OK;
-}
-
-int knd_parse_dir_size(const char *rec,
-                       size_t rec_size,
-                       const char **val,
-                       size_t *val_size,
-                       size_t *total_trailer_size)
-{
-    bool in_field = false;
-    bool got_tag = false;
-    bool got_size = false;
-    size_t chunk_size = 0;
-    const char *c, *b;
-    int i = 0;
-
-    b = rec;
-    for (i = rec_size - 1; i >= 0; i--) { 
-        c = rec + i;
-        switch (*c) {
-        case '\n':
-        case '\r':
-            break;
-        case '}':
-            if (in_field) return knd_FAIL;
-            in_field = true;
-            break;
-        case '{':
-            if (!in_field) return knd_FAIL;
-            if (got_tag) got_size = true;
-            break;
-        case ' ':
-            break;
-        case 'L':
-            got_tag = true;
-            break;
-        default:
-            if (!in_field) return knd_FAIL;
-            if (got_tag) return knd_FAIL;
-            if (!isalnum(*c))  return knd_FAIL;
-            b = c;
-            chunk_size++;
-            break;
-        }
-        if (got_size) {
-            *val = b;
-            *val_size = chunk_size;
-            *total_trailer_size = rec_size - i;
-             return knd_OK;
-        }
-    }
-
-    return knd_FAIL;
-}
-
-
 
 static const char knd_base_64[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

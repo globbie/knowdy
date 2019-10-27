@@ -287,7 +287,6 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
 {
     struct kndShard *self;
     struct kndMemPool *mempool = NULL;
-    struct kndUser *user;
     struct kndRepo *repo;
     struct kndTask *task;
     int err;
@@ -310,13 +309,8 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     if (err != knd_OK) goto error;
     self->mempool = mempool;
 
-    err = knd_set_new(mempool, &self->repos);
+    err = knd_set_new(mempool, &self->repo_idx);
     if (err != knd_OK) goto error;
-
-    if (!self->user_class_name_size) {
-        self->user_class_name_size = strlen("User");
-        memcpy(self->user_class_name, "User", self->user_class_name_size);
-    }
 
     /* system repo */
     err = knd_repo_new(&repo, "/", 1, mempool);
@@ -337,20 +331,12 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
         goto error;
     }
 
-    err = knd_user_new(&user, mempool);
-    if (err != knd_OK) goto error;
-    self->user = user;
-    user->class_name = self->user_class_name;
-    user->class_name_size = self->user_class_name_size;
+    if (!self->user_class_name_size) {
+        self->user_class_name_size = strlen("User");
+        memcpy(self->user_class_name, "User", self->user_class_name_size);
+    }
+    err = knd_set_new(mempool, &self->user_idx);                                  RET_ERR();
 
-    //user->repo_name = self->user_repo_name;
-    //user->repo_name_size = self->user_repo_name_size;
-
-    user->schema_path = self->user_schema_path;
-    user->schema_path_size = self->user_schema_path_size;
-
-    err = knd_user_init(user, task);
-    if (err != knd_OK) goto error;
 
     *shard = self;
     return knd_OK;

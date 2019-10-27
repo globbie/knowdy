@@ -119,6 +119,7 @@ typedef enum knd_logic { KND_LOGIC_AND,
 #define unused_var(x) unused_var_ ##x __attribute__((unused))
 
 #define KND_OFFSET_SIZE 4
+#define KND_UINT_SIZE 4
 
 #define KND_IDLE_TIMEOUT 10 /* in seconds */
 

@@ -174,6 +174,9 @@ struct kndTask
 
     const char *filename;
     size_t filename_size;
+    char filepath[KND_PATH_SIZE];
+    size_t filepath_size;
+    int fd;
 
     knd_http_code_t http_code;
 

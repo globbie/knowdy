@@ -27,6 +27,7 @@ struct kndConcFolder
     struct kndConcFolder *next;
 };
 
+/*  steady-state DB snapshot */
 struct kndRepoSnapshot
 {
     size_t numid;
@@ -134,6 +135,7 @@ gsl_err_t knd_parse_repo_commit(void *obj,
                                 size_t *total_size);
 
 int knd_repo_open(struct kndRepo *self, struct kndTask *task);
+int knd_repo_sync(struct kndRepo *self, struct kndTask *task);
 
 void knd_repo_del(struct kndRepo *self);
 

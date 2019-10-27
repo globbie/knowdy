@@ -406,9 +406,9 @@ static gsl_err_t parse_class_array(void *obj,
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
-extern gsl_err_t knd_parse_select_user(void *obj,
-                                       const char *rec,
-                                       size_t *total_size)
+gsl_err_t knd_parse_select_user(void *obj,
+                                const char *rec,
+                                size_t *total_size)
 {
     struct kndTask *task = obj;
     struct kndUser *self = task->user;
@@ -575,11 +575,9 @@ int knd_user_new(struct kndUser **user, struct kndMemPool *mempool)
     memset(self->last_uid, '0', KND_ID_SIZE);
     memset(self->db_state, '0', KND_ID_SIZE);
 
-    err = knd_repo_new(&repo, "/", 1, mempool);                                            RET_ERR();
+    err = knd_repo_new(&repo, "/", 1, mempool);                                   RET_ERR();
     repo->user = self;
     self->repo = repo;
-
-    err = knd_set_new(mempool, &self->user_idx);                                  RET_ERR();
 
     *user = self;
 

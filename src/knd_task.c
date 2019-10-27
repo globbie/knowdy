@@ -315,6 +315,7 @@ int knd_task_new(struct kndShard *shard,
 {
     struct kndTask *self;
     struct kndRepo *repo = shard->repo;
+    struct kndUser *user;
     int err;
 
     self = malloc(sizeof(struct kndTask));
@@ -329,7 +330,7 @@ int knd_task_new(struct kndShard *shard,
 
     if (!mempool) {
         err = knd_mempool_new(&mempool, 0);
-        if (err) return err;
+        if (err) goto error;
         mempool->type = KND_ALLOC_INCR;
         mempool->num_pages = shard->ctx_mem_config.num_pages;
         mempool->num_small_x4_pages = shard->ctx_mem_config.num_small_x4_pages;
@@ -337,29 +338,41 @@ int knd_task_new(struct kndShard *shard,
         mempool->num_small_pages = shard->ctx_mem_config.num_small_pages;
         mempool->num_tiny_pages = shard->ctx_mem_config.num_tiny_pages;
         err = mempool->alloc(mempool); 
-        if (err) return err;
+        if (err) goto error;
         self->is_mempool_owner = true;
     }
     self->mempool = mempool;
 
     err = knd_output_new(&self->out, NULL, KND_LARGE_BUF_SIZE);
-    if (err) return err;
+    if (err) goto error;
 
     err = knd_output_new(&self->log, NULL, KND_TEMP_BUF_SIZE);
-    if (err) return err;
+    if (err) goto error;
 
     err = knd_output_new(&self->file_out, NULL, KND_FILE_BUF_SIZE);
-    if (err) return err;
+    if (err) goto error;
 
     /* local name indices */
     err = knd_dict_new(&self->class_name_idx, mempool, KND_SMALL_DICT_SIZE);
-    if (err) return err;
+    if (err) goto error;
     err = knd_dict_new(&self->attr_name_idx, mempool, KND_SMALL_DICT_SIZE);
-    if (err) return err;
+    if (err) goto error;
     err = knd_dict_new(&self->proc_name_idx, mempool, KND_SMALL_DICT_SIZE);
-    if (err) return err;
+    if (err) goto error;
     err = knd_dict_new(&self->proc_arg_name_idx, mempool, KND_SMALL_DICT_SIZE);
-    if (err) return err;
+    if (err) goto error;
+
+    /* user */
+    err = knd_user_new(&user, mempool);
+    if (err != knd_OK) goto error;
+    user->class_name = shard->user_class_name;
+    user->class_name_size = shard->user_class_name_size;
+    user->schema_path = shard->user_schema_path;
+    user->schema_path_size = shard->user_schema_path_size;
+    err = knd_user_init(user, self);
+    if (err != knd_OK) goto error;
+
+    self->user = user;
 
     /* system repo defaults */
     self->system_repo       = repo;
@@ -368,4 +381,8 @@ int knd_task_new(struct kndShard *shard,
     *task = self;
 
     return knd_OK;
+
+ error:
+    // TODO free
+    return err;
 }

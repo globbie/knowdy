@@ -55,13 +55,13 @@ static int ref_item_export_GSP(struct kndAttrVar *item,
 }
 
 static int inner_item_export_GSP(struct kndAttrVar *parent_item,
-                                struct kndOutput *out)
+                                 struct kndOutput *out)
 {
     struct kndAttrVar *item;
     struct kndAttr *attr;
     int err;
 
-    if (DEBUG_ATTR_GSP_LEVEL_TMP) {
+    if (DEBUG_ATTR_GSP_LEVEL_2) {
         knd_log(".. GSP export inner item: %.*s (id:%.*s)",
                 parent_item->name_size, parent_item->name,
                 parent_item->id_size, parent_item->id);

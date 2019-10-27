@@ -1222,14 +1222,17 @@ int knd_class_new(struct kndMemPool *mempool,
     switch (mempool->type) {
     case KND_ALLOC_LIST:
         err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                                sizeof(struct kndClass), &page);                      RET_ERR();
-        err = knd_set_new(mempool, &attr_idx);                                        RET_ERR();
+                                sizeof(struct kndClass), &page);
+        RET_ERR();
         break;
     default:
         err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                                     sizeof(struct kndClass), &page);                      RET_ERR();
-        err = knd_set_mem(mempool, &attr_idx);                                        RET_ERR();
+                                     sizeof(struct kndClass), &page);
+        RET_ERR();
     }
+
+    err = knd_set_new(mempool, &attr_idx);
+    RET_ERR();
 
     *self = page;
     (*self)->attr_idx = attr_idx;
