@@ -36,9 +36,11 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct LocalContext *ctx = obj;
     struct kndClassInst *self = ctx->class_inst;
     struct kndClassEntry *class_entry;
-    // struct kndClassInstEntry *entry;
+    struct kndClassInstEntry *entry;
     struct kndRepo *repo = ctx->task->repo;
+    struct kndTask *task = ctx->task;
     struct kndSharedDict *class_name_idx = repo->class_name_idx;
+    struct kndSharedDict *name_idx = self->base->entry->inst_name_idx;
     struct kndClass *c;
     int err;
 
@@ -64,29 +66,24 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_OK);
     }
 
-#if 0
-    entry = knd_dict_get(name_idx, name, name_size);
-    if (entry) {
-        if (entry->inst && entry->inst->states->phase == KND_REMOVED) {
-            knd_log("-- this class instance has been removed lately: %.*s :(",
-                    name_size, name);
-            goto assign_name;
+    if (name_idx) {
+        entry = knd_shared_dict_get(name_idx, name, name_size);
+        if (entry) {
+            /*if (entry->inst && entry->inst->states->phase == KND_REMOVED) {
+              knd_log("-- this class instance has been removed lately: %.*s",
+              name_size, name);
+              goto assign_name;
+              }*/
+            KND_TASK_LOG("class instance name doublet found: %.*s",
+                         name_size, name);
+            return make_gsl_err(gsl_EXISTS);
         }
-        knd_log("-- class instance name doublet found: %.*s",
-                name_size, name);
-        log->reset(log);
-        err = log->write(log, name, name_size);
-        if (err) return make_gsl_err_external(err);
-        err = log->write(log,   " inst name already exists",
-                         strlen(" inst name already exists"));
-        if (err) return make_gsl_err_external(err);
-        task->http_code = HTTP_CONFLICT;
-        return make_gsl_err(gsl_EXISTS);
     }
- assign_name:
-#endif
+
     self->name = name;
     self->name_size = name_size;
+    self->entry->name = name;
+    self->entry->name_size = name_size;
 
     if (DEBUG_INST_LEVEL_2)
         knd_log("++ class inst name: \"%.*s\"",

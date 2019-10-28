@@ -1,9 +1,9 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "knd_class_inst.h"
-
 #include "knd_attr_inst.h"
-#include "knd_utils.h"
-
-#include "knd_attr.h"  // FIXME(k15tfu): ?? remove this
 
 static int export_inner_GSL(struct kndClassInst *self,
                             struct kndTask *task)
@@ -32,6 +32,7 @@ static int export_inner_GSL(struct kndClassInst *self,
 int knd_class_inst_export_GSL(struct kndClassInst *self, struct kndTask *task)
 {
     struct kndAttrInst *attr_inst;
+    struct kndOutput *out = task->out;
     int err;
 
     if (self->type == KND_OBJ_INNER) {
@@ -43,6 +44,12 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, struct kndTask *task)
         return knd_OK;
     }
 
+    err = out->write(out, self->name, self->name_size);   RET_ERR();
+    err = out->write(out, "{_id ", strlen("{_id "));      RET_ERR();
+    err = out->write(out, self->entry->id,
+                          self->entry->id_size);       RET_ERR();
+    err = out->writec(out, '}');                          RET_ERR();
+   
     /* attr_insts */
     for (attr_inst = self->attr_insts; attr_inst; attr_inst = attr_inst->next) {
         err = knd_attr_inst_export(attr_inst, KND_FORMAT_GSL, task);
@@ -52,6 +59,5 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, struct kndTask *task)
             return err;
         }
     }
-
     return knd_OK;
 }

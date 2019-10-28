@@ -72,7 +72,10 @@ struct kndCommit
     struct kndRepo *repo;
 
     struct kndStateRef *class_state_refs;
+    size_t num_class_state_refs;
+
     struct kndStateRef *proc_state_refs;
+    size_t num_proc_state_refs;
 
     struct kndCommit *prev;
 };
@@ -91,9 +94,13 @@ struct kndState
     size_t numid;
     knd_state_phase phase;
     struct kndCommit *commit;
-    struct kndStateVal *val;
+
     void *data;
+    /* typed val */
+    struct kndStateVal *val;
+
     struct kndStateRef *children;
+    size_t num_children;
     struct kndState *next;
 };
 

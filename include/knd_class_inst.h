@@ -24,15 +24,13 @@
 #include "knd_class.h"
 
 struct kndState;
-struct glbOutput;
 struct kndSortTag;
 struct kndAttrInstRef;
 struct kndTask;
 struct kndAttrInst;
-struct kndRelClass;
 
+struct kndClassEntry;
 struct kndOutput;
-struct kndFlatTable;
 struct kndMemPool;
 
 typedef enum knd_obj_type {
@@ -40,19 +38,12 @@ typedef enum knd_obj_type {
     KND_OBJ_INNER
 } knd_obj_type;
 
-//struct kndMatchPoint
-//{
-//    bool is_accented;
-//    size_t score;
-//    size_t seqnum;
-//    size_t orig_pos;
-//};
-
 struct kndClassInstEntry
 {
     char id[KND_ID_SIZE];
     size_t id_size;
     size_t numid;
+    knd_state_phase phase;
 
     const char *name;
     size_t name_size;
@@ -60,7 +51,8 @@ struct kndClassInstEntry
     char *block;
     size_t block_size;
     size_t offset;
-    knd_state_phase phase;
+
+    struct kndSharedDictItem   *dict_item;
 
     struct kndClassInst *inst;
     struct kndRelRef *rels;
@@ -138,6 +130,15 @@ int knd_class_inst_export(struct kndClassInst *self, knd_format format,
                                   struct kndTask *task);
 int knd_class_inst_set_export(struct kndClassInst *self, knd_format format,
                                      struct kndTask *task);
+int knd_class_inst_commit_state(struct kndClass *self,
+                                struct kndStateRef *children,
+                                size_t num_children,
+                                struct kndTask *task);
+int knd_class_inst_export_commit(struct kndStateRef *state_refs,
+                                 struct kndTask *task);
+int knd_class_inst_update_indices(struct kndClassEntry *baseclass,
+                                  struct kndStateRef *state_refs,
+                                  struct kndTask *task);
 
 // knd_class_inst.gsp.c
 int knd_class_inst_export_GSP(struct kndClassInst *self,  struct kndTask *task);

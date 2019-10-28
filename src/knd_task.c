@@ -8,6 +8,7 @@
 #include "knd_repo.h"
 #include "knd_state.h"
 #include "knd_user.h"
+#include "knd_set.h"
 #include "knd_mempool.h"
 #include "knd_utils.h"
 #include "knd_output.h"
@@ -28,6 +29,8 @@ void knd_task_del(struct kndTask *self)
     self->log->del(self->log);
     self->out->del(self->out);
     self->file_out->del(self->file_out);
+    if (self->user)
+        knd_user_del(self->user);
     if (self->is_mempool_owner)
         knd_mempool_del(self->mempool);
     free(self);
@@ -242,9 +245,6 @@ int knd_task_read_file_block(struct kndTask *task,
         KND_TASK_ERR("file memblock alloc failed");
     }
 
-    if (DEBUG_TASK_LEVEL_TMP)
-        knd_log(" .. opening file \"%s\"..\n", filename);
-
     file_stream = fopen(filename, "r");
     if (file_stream == NULL) {
         err = knd_IO_FAIL;
@@ -256,9 +256,9 @@ int knd_task_read_file_block(struct kndTask *task,
     b[file_size] = '}';
     b[file_size + 1] = '\0';
 
-    if (DEBUG_TASK_LEVEL_TMP)
+    if (DEBUG_TASK_LEVEL_2)
         knd_log("   ++ FILE \"%s\" read OK: %.*s [size: %zu]\n",
-                filename, file_size + 1, b, file_size);
+                filename, file_size + 1, b, read_size);
 
     block->tid = 0;
     block->buf = b;
@@ -362,21 +362,33 @@ int knd_task_new(struct kndShard *shard,
     err = knd_dict_new(&self->proc_arg_name_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) goto error;
 
+    /* system repo defaults */
+    self->system_repo       = repo;
+    self->repo              = repo;
+
     /* user */
-    err = knd_user_new(&user, mempool);
+    err = knd_user_new(&user);
     if (err != knd_OK) goto error;
+
+    if (repo->class_idx->num_elems) {
+        err = knd_get_class(repo,
+                            shard->user_class_name,
+                            shard->user_class_name_size,
+                            &user->class, self);
+        if (err) {
+            knd_log("no such user class: %.*s",
+                    shard->user_class_name_size,
+                    shard->user_class_name);
+            goto error;
+        }
+    }
+
     user->class_name = shard->user_class_name;
     user->class_name_size = shard->user_class_name_size;
     user->schema_path = shard->user_schema_path;
     user->schema_path_size = shard->user_schema_path_size;
-    err = knd_user_init(user, self);
-    if (err != knd_OK) goto error;
-
     self->user = user;
 
-    /* system repo defaults */
-    self->system_repo       = repo;
-    self->repo              = repo;
 
     *task = self;
 

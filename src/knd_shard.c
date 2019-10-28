@@ -228,7 +228,6 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
             .obj = self
         }
     };
-    int err = knd_FAIL;
     gsl_err_t parser_err;
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -250,12 +249,6 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
         self->path[self->path_size] = '/';
         self->path_size++;
         self->path[self->path_size] = '\0';
-    }
-
-    err = knd_mkpath(self->path, self->path_size, 0755, false);
-    if (err != knd_OK) {
-        knd_log("-- failed to make path: \"%.*s\"", self->path_size, self->path);
-        return make_gsl_err_external(err);
     }
 
     if (!self->schema_path_size) {
@@ -286,6 +279,8 @@ static int parse_config(struct kndShard *self,
 int knd_shard_new(struct kndShard **shard, const char *config, size_t config_size)
 {
     struct kndShard *self;
+    char path[KND_PATH_SIZE];
+    size_t path_size;
     struct kndMemPool *mempool = NULL;
     struct kndRepo *repo;
     struct kndTask *task;
@@ -298,6 +293,26 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     err = parse_config(self, config, &config_size);
     if (err != knd_OK) goto error;
 
+    /* DB paths */
+    err = knd_mkpath(self->path, self->path_size, 0755, false);
+    if (err != knd_OK) {
+        knd_log("-- failed to make path: \"%.*s\"", self->path_size, self->path);
+        goto error;
+    }
+
+    path_size = strlen("users/");
+    if (self->path_size + path_size >= KND_PATH_SIZE) {
+        knd_log("path limit exceeded");
+        goto error;
+    }
+    memcpy(path, self->path, self->path_size);
+    memcpy(path + self->path_size, "users/", path_size);
+    err = knd_mkpath(path, self->path_size + path_size, 0755, false);
+    if (err != knd_OK) {
+        knd_log("-- failed to make path: \"%.*s/users/\"", self->path_size, self->path);
+        goto error;
+    }
+
     err = knd_mempool_new(&mempool, 0);
     if (err != knd_OK) goto error;
     mempool->num_pages = self->mem_config.num_pages;
@@ -309,10 +324,12 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     if (err != knd_OK) goto error;
     self->mempool = mempool;
 
+
     err = knd_set_new(mempool, &self->repo_idx);
     if (err != knd_OK) goto error;
 
     /* system repo */
+    knd_log(".. shard to create sys repo..");
     err = knd_repo_new(&repo, "/", 1, mempool);
     if (err != knd_OK) goto error;
     repo->schema_path = self->schema_path;
@@ -337,7 +354,6 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     }
     err = knd_set_new(mempool, &self->user_idx);                                  RET_ERR();
 
-
     *shard = self;
     return knd_OK;
  error:
@@ -349,9 +365,6 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
 
 void knd_shard_del(struct kndShard *self)
 {
-    if (self->user)
-        knd_user_del(self->user);
-
     if (self->repo)
         knd_repo_del(self->repo);
 

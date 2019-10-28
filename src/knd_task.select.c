@@ -287,6 +287,12 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
           .parse = parse_format,
           .obj = self
         },
+        { .type = GSL_SET_STATE,
+          .name = "user",
+          .name_size = strlen("user"),
+          .parse = knd_create_user,
+          .obj = self
+        },
         { .name = "user",
           .name_size = strlen("user"),
           .parse = knd_parse_select_user,

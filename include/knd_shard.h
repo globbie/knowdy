@@ -41,7 +41,6 @@ struct kndShard
     struct kndMemConfig ctx_mem_config;
 
     struct kndTask *task;
-    struct kndUser *user;
     struct kndMemPool *mempool;
 
     /* system repo */

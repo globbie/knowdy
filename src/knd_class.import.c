@@ -64,7 +64,7 @@ int knd_parse_import_class_inst(struct kndClass *self,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
         knd_log(".. import \"%.*s\" inst.. (repo:%.*s)",
                 128, rec, repo->name_size, repo->name);
     }
@@ -82,12 +82,10 @@ int knd_parse_import_class_inst(struct kndClass *self,
     }
 
     err = knd_state_new(mempool, &state);
-    if (err) {
-        knd_log("-- state alloc failed :(");
-        return err;
-    }
+    KND_TASK_ERR("state alloc failed");
+
     err = knd_class_inst_entry_new(mempool, &entry);
-    if (err) return err;
+    KND_TASK_ERR("class inst  alloc failed");
 
     inst->entry = entry;
     entry->inst = inst;
@@ -109,41 +107,30 @@ int knd_parse_import_class_inst(struct kndClass *self,
     state_ref->type = KND_STATE_CLASS_INST;
     state_ref->obj = (void*)entry;
 
-    // TODO state_ref->next = task->class_inst_state_refs;
-    //task->class_inst_state_refs = state_ref;
+    state_ref->next = task->ctx->class_inst_state_refs;
+    task->ctx->class_inst_state_refs = state_ref;
+    task->ctx->num_class_inst_state_refs++;
 
     /* generate unique inst id */
-     inst->entry->numid = atomic_fetch_add_explicit(&c->entry->inst_id_count, 1,
-                                                    memory_order_relaxed);
-     inst->entry->numid++;
-     knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("++ inst \"%.*s\" of \"%.*s\" class parse OK!",
-                inst->entry->id_size, inst->entry->id,
-                self->name_size, self->name);
+    inst->entry->numid = atomic_fetch_add_explicit(&c->entry->inst_id_count, 1,
+                                                   memory_order_relaxed);
+    inst->entry->numid++;
+    knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
 
     /* automatic name assignment if no explicit name given */
     if (!inst->name_size) {
         inst->name = inst->entry->id;
         inst->name_size = inst->entry->id_size;
     }
-    //name_idx = repo->class_inst_name_idx;
 
-    // TODO  lookup prev class inst ref
-
-    //err = knd_dict_set(name_idx,
-    //                   inst->name, inst->name_size,
-    //                   (void*)entry);
-    //if (err) return err;
-
-    err = knd_register_class_inst(c, entry, mempool);
-    if (err) return err;
-
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+        knd_log("++ inst \"%.*s\" of \"%.*s\" class import  OK!",
+                inst->entry->id_size, inst->entry->id,
+                self->name_size, self->name);
+    
     if (DEBUG_CLASS_IMPORT_LEVEL_2) {
         knd_class_inst_str(inst, 0);
     }
-
     task->type = KND_COMMIT_STATE;
 
     return knd_OK;
@@ -566,7 +553,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
         task->ctx->tr = NULL;
     }
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log("++  \"%.*s\" class import completed!",
                 c->name_size, c->name);
 

@@ -48,6 +48,51 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
     }
 }
 
+int knd_class_inst_update_indices(struct kndClassEntry *baseclass,
+                                  struct kndStateRef *state_refs,
+                                  struct kndTask *task)
+{
+    struct kndStateRef *ref;
+    struct kndClassInstEntry *entry;
+    struct kndSharedDict *name_idx = baseclass->inst_name_idx;
+    //struct kndSet *idx = baseclass->inst_idx;
+    struct kndCommit *commit = state_refs->state->commit;
+    struct kndSharedDictItem *item = NULL;
+    int err;
+
+    knd_log("== update idx of selected class insts");
+
+    if (!name_idx) {
+        err = knd_shared_dict_new(&name_idx, KND_MEDIUM_DICT_SIZE);
+        KND_TASK_ERR("failed to create inst name idx");
+
+        // TODO: atomic
+        baseclass->inst_name_idx = name_idx; 
+    }
+
+    for (ref = state_refs; ref; ref = ref->next) {
+        entry = ref->obj;
+        switch (ref->state->phase) {
+        case KND_CREATED:
+            err = knd_shared_dict_set(name_idx,
+                                      entry->name,  entry->name_size,
+                                      (void*)entry,
+                                      task->mempool,
+                                      commit, &item, false);
+            KND_TASK_ERR("failed to register class inst %.*s",
+                         entry->name_size, entry->name);
+            entry->dict_item = item;
+
+            knd_log("++ registered class inst %.*s",
+                    entry->name_size, entry->name);
+            break;
+        default:
+            break;
+        }
+    }
+    return knd_OK;
+}
+
 int knd_class_inst_export(struct kndClassInst *self,
                           knd_format format,
                           struct kndTask *task)
@@ -64,13 +109,87 @@ int knd_class_inst_export(struct kndClassInst *self,
     }
 }
 
+int knd_class_inst_commit_state(struct kndClass *self,
+                                struct kndStateRef *children,
+                                size_t num_children,
+                                struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->mempool;
+    struct kndCommit *commit = task->ctx->commit;
+    struct kndStateRef *ref;
+    struct kndState *state, *head;
+    int err;
+
+    err = knd_state_new(mempool, &state);
+    KND_TASK_ERR("class inst state alloc failed");
+    state->phase = KND_SELECTED;
+    state->children = children;
+    state->num_children = num_children;
+
+    do {
+        head = atomic_load_explicit(&self->inst_states,
+                                    memory_order_relaxed);
+        if (head) {
+            state->next = head;
+            state->numid = head->numid + 1;
+        }
+    } while (!atomic_compare_exchange_weak(&self->inst_states, &head, state));
+
+    /* inform our repo */
+    err = knd_state_ref_new(mempool, &ref);                                 RET_ERR();
+    ref->state = state;
+    ref->type = KND_STATE_CLASS;
+    ref->obj = self->entry;
+
+    ref->next = commit->class_state_refs;
+    commit->class_state_refs = ref;
+    commit->num_class_state_refs++;
+
+    return knd_OK;
+}
+
+int knd_class_inst_export_commit(struct kndStateRef *state_refs,
+                                 struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    struct kndStateRef *ref;
+    struct kndClassInstEntry *entry;
+    int err;
+
+    for (ref = state_refs; ref; ref = ref->next) {
+        entry = ref->obj;
+        if (!entry) continue;
+
+        err = out->writec(out, '{');                                              RET_ERR();
+        if (ref->state->phase == KND_CREATED) {
+            err = out->writec(out, '!');                                          RET_ERR();
+        }
+
+        err = out->write(out, "inst ", strlen("inst "));                        RET_ERR();
+        err = out->write(out, entry->name, entry->name_size);                     RET_ERR();
+
+        err = out->writec(out, '}');                                              RET_ERR();
+    }
+
+    return knd_OK;
+}
+
 int knd_class_inst_entry_new(struct kndMemPool *mempool,
                              struct kndClassInstEntry **result)
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                            sizeof(struct kndClassInstEntry), &page);  RET_ERR();
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                                sizeof(struct kndClassInstEntry), &page);
+        RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
+                                     sizeof(struct kndClassInstEntry), &page);
+        RET_ERR();
+    }
     *result = page;
     return knd_OK;
 }

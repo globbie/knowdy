@@ -1223,6 +1223,7 @@ static int export_commit_GSL(struct kndRepo *self,
 {
     struct kndOutput *out = task->out;
     struct kndStateRef *ref;
+    struct kndState *state;
     struct kndClassEntry *entry;
     // struct kndProcEntry *proc_entry;
     int err;
@@ -1235,19 +1236,31 @@ static int export_commit_GSL(struct kndRepo *self,
         entry = ref->obj;
         if (!entry) continue;
 
-        err = out->writec(out, '{');                                                  RET_ERR();
-        if (ref->state->phase == KND_CREATED) {
-            err = out->writec(out, '!');                                                  RET_ERR();
+        state = ref->state;
+
+        err = out->writec(out, '{');                                              RET_ERR();
+        if (state->phase == KND_CREATED) {
+            err = out->writec(out, '!');                                          RET_ERR();
         }
-        err = out->write(out, "class ", strlen("class "));                            RET_ERR();
-        err = out->write(out, entry->name, entry->name_size);                           RET_ERR();
-        
-        if (ref->state->phase == KND_REMOVED) {
-            err = out->write(out, "_rm ", strlen("_rm"));                              RET_ERR();
-            err = out->writec(out, '}');                                                  RET_ERR();
+
+        err = out->write(out, "class ", strlen("class "));                        RET_ERR();
+        err = out->write(out, entry->name, entry->name_size);                     RET_ERR();
+
+        if (state->phase == KND_REMOVED) {
+            err = out->write(out, "_rm ", strlen("_rm"));                         RET_ERR();
+            err = out->writec(out, '}');                                          RET_ERR();
             continue;
         }
-        err = out->writec(out, '}');                                                  RET_ERR();
+
+        if (state->phase == KND_SELECTED) {
+
+            knd_log(".. export class inst GSL..");
+
+            err = knd_class_inst_export_commit(state->children, task);
+            KND_TASK_ERR("failed to export class inst commit");
+        }
+
+        err = out->writec(out, '}');                                              RET_ERR();
     }    
     
     err = out->writec(out, '}');                                                  RET_ERR();
@@ -1270,23 +1283,35 @@ static int update_indices(struct kndRepo *self,
     for (ref = commit->class_state_refs; ref; ref = ref->next) {
         entry = ref->obj;
         switch (ref->state->phase) {
+        case KND_CREATED:
+            /* register new class */
+            err = knd_shared_dict_set(name_idx,
+                                      entry->name,  entry->name_size,
+                                      (void*)entry,
+                                      task->mempool,
+                                      commit, &item, false);
+            KND_TASK_ERR("failed to register class %.*s", entry->name_size, entry->name);
+            entry->dict_item = item;
+            continue;
         case KND_REMOVED:
             entry->phase = KND_REMOVED;
             continue;
         case KND_UPDATED:
             entry->phase = KND_UPDATED;
+
+            err = knd_class_update_indices(entry, ref->state, task);
+            KND_TASK_ERR("failed to update indices of class %.*s",
+                         entry->name_size, entry->name);
             continue;
         default:
+
+            err = knd_class_inst_update_indices(entry, ref->state->children, task);
+            KND_TASK_ERR("failed to update inst idx of class %.*s",
+                         entry->name_size, entry->name);
+            
             break;
         }
-        err = knd_shared_dict_set(name_idx,
-                                  entry->name,  entry->name_size,
-                                  (void*)entry,
-                                  task->mempool,
-                                  commit, &item, false);
-        KND_TASK_ERR("failed to register class %.*s", entry->name_size, entry->name);
 
-        entry->dict_item = item;
     }
 
     name_idx = self->proc_name_idx;
@@ -1333,6 +1358,9 @@ static int check_class_conflicts(struct kndRepo *unused_var(self),
                     entry->name_size, entry->name, state->phase);
 
         switch (state->phase) {
+        case KND_SELECTED:
+            // TODO: check instances
+            break;
         case KND_CREATED:
             /* check class name idx */
             // knd_log(".. any new states in class name idx?");
@@ -1380,12 +1408,14 @@ static int check_commit_conflicts(struct kndRepo *self,
     do {
         head_commit = atomic_load_explicit(&self->snapshot.commits,
                                            memory_order_acquire);
-        new_commit->prev = head_commit;
-        if (head_commit)
+        if (head_commit) {
+            new_commit->prev = head_commit;
             new_commit->numid = head_commit->numid + 1;
+        }
 
         err = check_class_conflicts(self, new_commit, task);
         KND_TASK_ERR("class level conflicts detected");
+
     } while (!atomic_compare_exchange_weak(&self->snapshot.commits, &head_commit, new_commit));
 
     atomic_store_explicit(&new_commit->confirm, KND_VALID_STATE, memory_order_release);
@@ -1496,6 +1526,24 @@ static int save_commit_WAL(struct kndRepo *self, struct kndCommit *commit, struc
     return knd_OK;
 }
 
+static int resolve_class_inst_commit(struct kndStateRef *state_refs,
+                                     struct kndCommit *commit, struct kndTask *unused_var(task))
+{
+    struct kndState *state;
+    struct kndClassInstEntry *entry;
+    struct kndStateRef *ref;
+    // int err;
+
+    for (ref = state_refs; ref; ref = ref->next) {
+        entry = ref->obj;
+        state = ref->state;
+        state->commit = commit;
+
+        // TODO: resolve class inst
+    }
+    return knd_OK;
+}
+
 static int resolve_commit(struct kndCommit *commit, struct kndTask *task)
 {
     struct kndState *state;
@@ -1515,20 +1563,13 @@ static int resolve_commit(struct kndCommit *commit, struct kndTask *task)
                          entry->name_size, entry->name);
         }
 
-        knd_log("resolve status of %.*s (%.*s): %d",
-                entry->name_size, entry->name,
-                entry->id_size, entry->id,
-                entry->class->is_resolved);
-
         state = ref->state;
         state->commit = commit;
         if (!state->children) continue;
 
-        //for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
-        //    entry = child_ref->obj;
-        //    state = child_ref->state;
-        //    state->commit = commit;
-        //}
+        err = resolve_class_inst_commit(state->children, commit, task);
+        KND_TASK_ERR("failed to resolve commit of class insts");
+
     }
 
     /* PROCS */
@@ -1625,7 +1666,8 @@ int knd_repo_new(struct kndRepo **repo,
     memcpy(self->name, name, name_size);
     self->name_size = name_size;
 
-    knd_log("REPO: %.*s", name_size, name);
+    knd_log("new REPO: %.*s %.*s",
+            self->path_size, self->path, name_size, name);
 
     if (self->name[0] != '/') {
         memcpy(self->path, name, name_size);

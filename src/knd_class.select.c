@@ -665,13 +665,10 @@ parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        err = knd_dict_new(&task->class_name_idx, task->mempool, KND_SMALL_DICT_SIZE);
-        if (err) return make_gsl_err_external(err);
-
         task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
                                                                 memory_order_relaxed);
     }
-    
+
     err = knd_parse_import_class_inst(ctx->selected_class, rec, total_size, task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
@@ -895,17 +892,6 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
           .parse = parse_select_class_desc,
           .obj = &ctx
         },
-        { .name = "_inst",
-          .name_size = strlen("_inst"),
-          .parse = parse_select_class_inst,
-          .obj = &ctx
-        },
-        { .type = GSL_SET_STATE,
-          .name = "_inst",
-          .name_size = strlen("_inst"),
-          .parse = parse_import_class_inst,
-          .obj = &ctx
-        },
         { .validate = validate_select_class_attr,
           .obj = &ctx
         },
@@ -913,18 +899,6 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
           .name = "_rm",
           .name_size = strlen("_rm"),
           .run = run_remove_class,
-          .obj = &ctx
-        },
-    // TODO(k15tfu): review the specs below
-        { .type = GSL_SET_STATE,
-          .name = "instance",
-          .name_size = strlen("instance"),
-          .parse = parse_import_class_inst,
-          .obj = task
-        },
-        { .name = "instance",
-          .name_size = strlen("instance"),
-          .parse = parse_select_class_inst,
           .obj = &ctx
         },
         { .name = "inst",
@@ -959,19 +933,13 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
     if (parser_err.code) {
         return parser_err;
     }
-
     if (!ctx.selected_class)
         return make_gsl_err(gsl_OK);
-
-    knd_state_phase phase;
 
     /* any commits happened? */
     switch (task->type) {
     case KND_COMMIT_STATE:
-        phase = KND_UPDATED;
-        if (task->phase == KND_REMOVED)
-            phase = KND_REMOVED;
-        err = knd_class_commit_state(ctx.selected_class, phase, task);
+        err = knd_class_commit_state(ctx.selected_class, task->phase, task);
         if (err) return make_gsl_err_external(err);
         break;
     default:

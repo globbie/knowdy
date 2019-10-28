@@ -137,10 +137,12 @@ struct kndTaskContext {
     struct kndTaskDestination *dest;
     struct kndRepo *repo;
 
-    /* commits */
+    /* temp refs to commits */
     struct kndStateRef  *class_state_refs;
     struct kndStateRef  *inner_class_state_refs;
     struct kndStateRef  *class_inst_state_refs;
+    size_t num_class_inst_state_refs;
+
     struct kndStateRef  *proc_state_refs;
     struct kndStateRef  *proc_inst_state_refs;
 

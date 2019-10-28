@@ -264,7 +264,7 @@ knd_append_file(const char *filename,
     return written == -1 || (size_t)written != buf_size ? knd_IO_FAIL : knd_OK;
 }
 
-int knd_read_file_footer(const char *filename,
+/*int knd_read_file_footer(const char *filename,
                          void *footer,
                          size_t footer_size,
                          struct kndTask *task)
@@ -283,7 +283,7 @@ int knd_read_file_footer(const char *filename,
 
     close(fd);
     return knd_OK;
-}
+    }*/
 
 
 int knd_make_id_path(char *buf,

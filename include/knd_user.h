@@ -57,6 +57,8 @@ struct kndUser
 
     const char *class_name;
     size_t class_name_size;
+    struct kndClass *class;
+
     const char *repo_name;
     size_t repo_name_size;
     const char *schema_path;
@@ -79,20 +81,19 @@ struct kndUser
     size_t max_users;
     size_t num_users;
 
-    /* user context storage */
-    struct kndSet *user_idx;
     struct kndUserContext *curr_ctx;
-
     struct kndRepo *repo;
 };
 
-int knd_user_new(struct kndUser **self, struct kndMemPool *mempool);
-int knd_user_init(struct kndUser *self, struct kndTask *task);
+int knd_user_new(struct kndUser **self);
 void knd_user_del(struct kndUser *self);
 
-extern gsl_err_t knd_parse_select_user(void *obj,
-                                       const char *rec,
-                                       size_t *total_size);
+gsl_err_t knd_create_user(void *obj,
+                          const char *rec,
+                          size_t *total_size);
+gsl_err_t knd_parse_select_user(void *obj,
+                                const char *rec,
+                                size_t *total_size);
 
-extern int knd_user_context_new(struct kndMemPool *mempool,
+int knd_user_context_new(struct kndMemPool *mempool,
                                 struct kndUserContext **result);

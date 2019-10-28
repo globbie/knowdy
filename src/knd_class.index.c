@@ -240,6 +240,21 @@ static int index_baseclasses(struct kndClass *self,
     return knd_OK;
 }
 
+int knd_class_update_indices(struct kndClassEntry *self,
+                             struct kndState *unused_var(state),
+                             struct kndTask *task)
+{
+    struct kndRepo *repo = task->repo;
+    struct kndSet *idx = repo->class_idx;
+    //struct kndStateRef *ref;
+    //int err;
+
+    knd_log(".. update class %.*s indices: idx:%p",
+            self->name_size, self->name, idx);    
+
+    return knd_OK;
+}
+
 int knd_class_index(struct kndClass *self,
                     struct kndTask *task)
 {

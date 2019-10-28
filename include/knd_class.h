@@ -36,13 +36,11 @@ struct kndProcCallArg;
 struct kndClass;
 struct kndTranslation;
 struct kndClass;
-struct kndRel;
 struct kndTask;
 struct kndSet;
 struct kndUser;
 struct kndClassCommit;
 struct kndClassCommitRef;
-struct kndObjEntry;
 struct glbOutput;
 struct kndClassInstEntry;
 struct kndAttrRef;
@@ -150,11 +148,11 @@ struct kndClass
     size_t init_state;
     size_t num_states;
 
-    struct kndState *desc_states;
+    struct kndState * _Atomic desc_states;
     size_t init_desc_state;
     size_t num_desc_states;
 
-    struct kndState *inst_states;
+    struct kndState * _Atomic inst_states;
     size_t init_inst_state;
     size_t num_inst_states;
 
@@ -350,8 +348,7 @@ int knd_class_resolve_base(struct kndClass *self,
                            struct kndTask *task);
 int knd_class_resolve(struct kndClass *self,
                              struct kndTask *task);
-int knd_class_index(struct kndClass *self,
-                    struct kndTask *task);
+
 
 int knd_class_commit_new(struct kndMemPool *mempool,
                                 struct kndClassCommit **result);
@@ -400,4 +397,11 @@ int knd_resolve_class_ref(struct kndClass *self,
                                  struct kndClass *base,
                                  struct kndClass **result,
                                  struct kndTask *task);
+
+// knd_class.index.c
+int knd_class_update_indices(struct kndClassEntry *self,
+                             struct kndState *state,
+                             struct kndTask *task);
+int knd_class_index(struct kndClass *self,
+                    struct kndTask *task);
 
