@@ -1539,6 +1539,7 @@ static int resolve_class_inst_commit(struct kndStateRef *state_refs,
         state = ref->state;
         state->commit = commit;
 
+        knd_log(".. resolve inst entry: %.*s", entry->name_size, entry->name);
         // TODO: resolve class inst
     }
     return knd_OK;
