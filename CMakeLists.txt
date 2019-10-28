@@ -77,7 +77,7 @@ set(SOURCES src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr
         src/knd_proc.resolve.c
         src/knd_proc.gsl.c src/knd_proc.json.c src/knd_proc.svg.c src/knd_proc_arg.c
         src/knd_proc_arg.gsl.c src/knd_proc_call.c
-        src/knd_ref.c src/knd_repo.c
+        src/knd_ref.c src/knd_repo.c src/knd_repo.gsp.c
         src/knd_set.c src/knd_set_idx.c src/knd_shard.c
         src/knd_state.c
         src/knd_task.c src/knd_task.select.c src/knd_text.c
