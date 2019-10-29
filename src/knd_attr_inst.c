@@ -62,8 +62,9 @@ void knd_attr_inst_str(struct kndAttrInst *self, size_t depth)
 
     switch (self->attr->type) {
     case KND_ATTR_REF:
-        if (self->ref_inst) {
-            knd_class_inst_str(self->ref_inst, 0);
+        if (self->class_inst) {
+            if (self->class_inst->inst)
+                knd_class_inst_str(self->class_inst->inst, 0);
         } else {
             knd_log("%*s%.*s => %.*s", depth * KND_OFFSET_SIZE, "",
                     self->attr->name_size, self->attr->name,
@@ -158,7 +159,7 @@ static int export_JSON(struct kndAttrInst *self,
         if (err) goto final;
         return knd_OK;
     case KND_ATTR_REF:
-        //err = self->ref_inst->export(self->ref_inst, KND_FORMAT_JSON, out);
+        //err = self->class_inst->export(self->class_inst, KND_FORMAT_JSON, out);
         //if (err) return err;
         //return knd_OK;
     case KND_ATTR_DATE:
@@ -210,14 +211,26 @@ final:
     return err;
 }
 
+static int export_class_ref_GSL(struct kndAttrInst *self,
+                                struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    int err;
+
+    err = out->write(out, self->val, self->val_size);
+    if (err) return err;
+
+    return knd_OK;
+}
+
 static int export_GSL(struct kndAttrInst *self,
                       struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
 
-    if (DEBUG_ATTR_INST_LEVEL_TMP)
-        knd_log("\n  .. GSL export of \"%.*s\" attr_inst.. ",
+    if (DEBUG_ATTR_INST_LEVEL_2)
+        knd_log(".. GSL export of \"%.*s\" attr_inst.. ",
                 self->attr->name_size, self->attr->name);
 
     /* single anonymous inner obj */
@@ -258,9 +271,8 @@ static int export_GSL(struct kndAttrInst *self,
         if (err) return err;
         break; */
     case KND_ATTR_REF:
-        // TODO
-        err = out->write(out, self->val, self->val_size);
-        if (err) return err;
+        err = export_class_ref_GSL(self, task);
+        KND_TASK_ERR("failed to export class ref");
         break;
     default:
         break;
@@ -305,9 +317,12 @@ static gsl_err_t run_empty_val_warning(void *obj,
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndAttrInst *inst = ctx->attr_inst;
-    KND_TASK_LOG("empty val of \"%.*s\" not accepted",
-                 inst->attr->name_size, inst->attr->name);
-    return make_gsl_err(gsl_FAIL);
+    if (!inst->val_size) {
+        KND_TASK_LOG("empty val of \"%.*s\" not accepted",
+                     inst->attr->name_size, inst->attr->name);
+        return make_gsl_err(gsl_FAIL);
+    }
+    return make_gsl_err(gsl_OK);
 }
 
 static void register_state(struct kndAttrInst *self,
@@ -377,25 +392,21 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t check_class_inst_name(void *obj,
-                                       const char *name, size_t name_size)
+static gsl_err_t set_class_inst_name(void *obj,
+                                     const char *name, size_t name_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndAttrInst *self = ctx->attr_inst;
-    struct kndClass *c = ctx->class;
-    struct kndClassInst *inst;
-    int err;
+    struct LocalContext *ctx  = obj;
+    struct kndAttrInst  *self = ctx->attr_inst;
+    // struct kndTask      *task = ctx->task;
+    // int err;
 
-    if (DEBUG_ATTR_INST_LEVEL_2)
-        knd_log(".. class \"%.*s\" to check inst name: \"%.*s\"",
-                c->name_size, c->name,
+    if (DEBUG_ATTR_INST_LEVEL_TMP)
+        knd_log(".. set ref to class \"%.*s\" (inst name: \"%.*s\")",
+                self->val_size, self->val,
                 name_size, name);
 
-    err = knd_get_class_inst(c, name, name_size, task, &inst);
-    if (err) return make_gsl_err_external(err);
-
-    self->ref_inst = inst;
+    self->class_inst_name = name;
+    self->class_inst_name_size = name_size;
 
     return make_gsl_err(gsl_OK);
 }
@@ -405,18 +416,19 @@ static gsl_err_t parse_class_inst_ref(void *obj,
                                       size_t *total_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
 
     if (DEBUG_ATTR_INST_LEVEL_2)
         knd_log(".. parse class inst: \"%.*s\"", 16, rec);
 
-    if (!ctx->class) {
-        knd_log("-- no class specified");
+    if (!ctx->attr_inst->val_size) {
+        KND_TASK_LOG("no class name specified");
         return make_gsl_err(gsl_FAIL);
     }
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = check_class_inst_name,
+          .run = set_class_inst_name,
           .obj = ctx
         },
         { .is_default = true,
@@ -455,7 +467,8 @@ static gsl_err_t check_class_name(void *obj, const char *name, size_t name_size)
     err = knd_is_base(ref_class, c);
     if (err) return make_gsl_err_external(err);
 
-    ctx->class = c;
+    self->class = c->entry;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -488,8 +501,8 @@ static gsl_err_t parse_class_ref(void *obj,
 }
 
 gsl_err_t knd_import_attr_inst(struct kndAttrInst *self,
-                          const char *rec, size_t *total_size,
-                          struct kndTask *task)
+                               const char *rec, size_t *total_size,
+                               struct kndTask *task)
 {
     if (DEBUG_ATTR_INST_LEVEL_1)
         knd_log(".. ATTR_INST \"%.*s\" parse REC: \"%.*s\"",
@@ -508,6 +521,11 @@ gsl_err_t knd_import_attr_inst(struct kndAttrInst *self,
         { .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_ref,
+          .obj = &ctx
+        },
+        { .name = "inst",
+          .name_size = strlen("inst"),
+          .parse = parse_class_inst_ref,
           .obj = &ctx
         },
         { .is_default = true,
@@ -545,13 +563,35 @@ int knd_attr_inst_resolve(struct kndAttrInst *self,
                           struct kndTask *task)
 {
     struct kndClassInst *inst;
+    struct kndRepo *repo = task->repo;
+    struct kndClass *c;
     int err;
-    
+
     if (self->inner) {
         for (inst = self->inner; inst; inst = inst->next) {
             err = knd_class_inst_resolve(inst, task);
             if (err) return err;
         }
+    }
+
+    switch (self->attr->type) {
+    case KND_ATTR_REF:
+        err = knd_get_class(repo, self->val, self->val_size, &c, task);
+        KND_TASK_ERR("no such class: %.*s");
+
+        if (self->class_inst_name_size) {
+            err = knd_get_class_inst(c,
+                                     self->class_inst_name,
+                                     self->class_inst_name_size, task, &inst);
+            KND_TASK_ERR("class \"%.*s\" has no such inst: %.*s",
+                         c->name_size, c->name,
+                         self->class_inst_name_size, self->class_inst_name);
+            self->class_inst = inst->entry;
+            
+        }
+        break;
+    default:
+        break;
     }
     return knd_OK;
 }

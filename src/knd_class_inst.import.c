@@ -168,7 +168,6 @@ static gsl_err_t parse_import_attr_inst(void *obj1,
     if (attr_inst) {
         switch (attr_inst->attr->type) {
             case KND_ATTR_INNER:
-                knd_log(".. inner obj import.. %p", attr_inst->inner);
                 parser_err = import_class_inst(attr_inst->inner, rec, total_size, task);
                 if (parser_err.code) return parser_err;
                 break;
@@ -280,7 +279,7 @@ static gsl_err_t parse_import_attr_inst(void *obj1,
 
     final:
 
-    KND_TASK_LOG("validation of \"%.*s\" attr_inst failed", name_size, name);
+    KND_TASK_LOG("failed to import the \"%.*s\" attr inst", name_size, name);
 
     // TODO attr_inst->del(attr_inst);
 

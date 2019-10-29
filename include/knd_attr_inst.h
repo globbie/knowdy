@@ -43,7 +43,10 @@ struct kndAttrInst
     struct kndClassInst *inner;
     struct kndClassInst *inner_tail;
 
-    struct kndClassInst *ref_inst;
+    struct kndClassEntry     *class;
+    struct kndClassInstEntry *class_inst;
+    const char *class_inst_name;
+    size_t class_inst_name_size;
 
     bool is_list;
 
