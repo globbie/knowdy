@@ -55,19 +55,22 @@ int knd_class_inst_update_indices(struct kndClassEntry *baseclass,
     struct kndStateRef *ref;
     struct kndClassInstEntry *entry;
     struct kndSharedDict *name_idx = baseclass->inst_name_idx;
-    //struct kndSet *idx = baseclass->inst_idx;
+    struct kndSet *idx = baseclass->inst_idx;
     struct kndCommit *commit = state_refs->state->commit;
     struct kndSharedDictItem *item = NULL;
     int err;
 
-    knd_log("== update idx of selected class insts");
-
     if (!name_idx) {
         err = knd_shared_dict_new(&name_idx, KND_MEDIUM_DICT_SIZE);
         KND_TASK_ERR("failed to create inst name idx");
-
         // TODO: atomic
         baseclass->inst_name_idx = name_idx; 
+    }
+    if (!idx) {
+        // TODO: thread safe
+        err = knd_set_new(task->mempool, &idx);
+        KND_TASK_ERR("failed to create inst idx");
+        baseclass->inst_idx = idx; 
     }
 
     for (ref = state_refs; ref; ref = ref->next) {
@@ -79,12 +82,16 @@ int knd_class_inst_update_indices(struct kndClassEntry *baseclass,
                                       (void*)entry,
                                       task->mempool,
                                       commit, &item, false);
-            KND_TASK_ERR("failed to register class inst %.*s",
+            KND_TASK_ERR("name idx failed to register class inst %.*s",
                          entry->name_size, entry->name);
             entry->dict_item = item;
 
-            knd_log("++ registered class inst %.*s",
-                    entry->name_size, entry->name);
+            err = knd_set_add(idx,
+                              entry->id, entry->id_size,
+                              (void*)entry);
+            KND_TASK_ERR("failed to register class inst %.*s err:%d",
+                         entry->name_size, entry->name, err);
+            
             break;
         default:
             break;
@@ -166,11 +173,11 @@ int knd_class_inst_export_commit(struct kndStateRef *state_refs,
         }
 
         err = out->write(out, "inst ", strlen("inst "));                        RET_ERR();
-        err = out->write(out, entry->name, entry->name_size);                     RET_ERR();
+
+        err = knd_class_inst_export(entry->inst, KND_FORMAT_GSL, task);               RET_ERR();
 
         err = out->writec(out, '}');                                              RET_ERR();
     }
-
     return knd_OK;
 }
 

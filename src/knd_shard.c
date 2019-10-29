@@ -329,7 +329,6 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     if (err != knd_OK) goto error;
 
     /* system repo */
-    knd_log(".. shard to create sys repo..");
     err = knd_repo_new(&repo, "/", 1, mempool);
     if (err != knd_OK) goto error;
     repo->schema_path = self->schema_path;

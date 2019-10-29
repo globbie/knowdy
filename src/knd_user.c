@@ -249,8 +249,8 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
         if (err) return make_gsl_err_external(err);
     }
 
+    ctx->user_inst = inst;
     task->user_ctx = ctx;
-    // task->repo = repo;
 
     return make_gsl_err(gsl_OK);
 }
@@ -492,7 +492,7 @@ gsl_err_t knd_create_user(void *obj,
                                                                 memory_order_relaxed);
     }
 
-    err = knd_parse_import_class_inst(self->class, rec, total_size, task);
+    err = knd_import_class_inst(self->class, rec, total_size, task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     err = knd_class_inst_commit_state(self->class,

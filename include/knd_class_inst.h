@@ -84,33 +84,10 @@ struct kndClassInst
     size_t num_attr_insts;
     struct kndStateRef *attr_inst_state_refs;
 
-    size_t depth;
-    size_t max_depth;
-
-    /* relations */
-    struct kndRelRef *rels;
-    struct kndState *rel_state;
-
-    /* rel selection */
-    struct kndRelRef *curr_rel;
+    bool resolving_in_progress;
+    bool is_resolved;
 
     struct kndClassInst *next;
-
-    gsl_err_t (*parse)(struct kndClassInst *self,
-                 const char       *rec,
-                 size_t           *total_size);
-//    gsl_err_t (*read)(struct kndClassInst *self,
-//                      const char *rec,
-//                      size_t *total_size);
-
-//    gsl_err_t (*read_state)(struct kndClassInst *self,
-//                            const char *rec,
-//                            size_t *total_size);
-    int (*resolve)(struct kndClassInst *self);
-
-    int (*export)(struct kndClassInst *self,
-                  knd_format format,
-                  struct kndTask *task);
 };
 
 /* constructors */
@@ -127,9 +104,10 @@ int knd_class_inst_new(struct kndMemPool *mempool,
 int knd_class_inst_mem(struct kndMemPool *mempool,
                        struct kndClassInst **result);
 int knd_class_inst_export(struct kndClassInst *self, knd_format format,
-                                  struct kndTask *task);
+                          struct kndTask *task);
 int knd_class_inst_set_export(struct kndClassInst *self, knd_format format,
                                      struct kndTask *task);
+
 int knd_class_inst_commit_state(struct kndClass *self,
                                 struct kndStateRef *children,
                                 size_t num_children,
@@ -147,12 +125,16 @@ int knd_class_inst_export_GSP(struct kndClassInst *self,  struct kndTask *task);
 int knd_class_inst_export_GSL(struct kndClassInst *self,  struct kndTask *task);
 
 // knd_class_inst.import.c
-gsl_err_t knd_import_class_inst(struct kndClassInst *self,
-                                       const char *rec, size_t *total_size,
-                                       struct kndTask *task);
+//gsl_err_t knd_import_class_inst(struct kndClassInst *self,
+//                                const char *rec, size_t *total_size,
+//                                struct kndTask *task);
 gsl_err_t kndClassInst_read_state(struct kndClassInst *self,
-                                         const char *rec, size_t *total_size,
-                                         struct kndTask *task);
+                                  const char *rec, size_t *total_size,
+                                  struct kndTask *task);
+int knd_import_class_inst(struct kndClass *self,
+                          const char *rec,
+                          size_t *total_size,
+                          struct kndTask *task);
 
 // knd_class_inst.json.c
 int knd_class_inst_export_JSON(struct kndClassInst *self, struct kndTask *task);
@@ -162,3 +144,7 @@ int knd_class_inst_set_export_JSON(struct kndSet *set, struct kndTask *task);
 gsl_err_t knd_select_class_inst(struct kndClass *c,
                                        const char *rec, size_t *total_size,
                                        struct kndTask *task);
+// knd_class_inst.resolve.c
+int knd_class_inst_resolve(struct kndClassInst *self,
+                           struct kndTask *task);
+

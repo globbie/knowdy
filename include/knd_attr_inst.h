@@ -21,13 +21,11 @@
 #pragma once
 
 #include "knd_config.h"
-#include "knd_ref.h"
 #include "knd_text.h"
 #include "knd_attr.h"
 
 struct kndClassInst;
 struct glbOutput;
-struct kndObjRef;
 struct kndRelType;
 
 struct kndUser;
@@ -52,8 +50,6 @@ struct kndAttrInst
     const char *val;
     size_t val_size;
 
-    // struct kndClass *curr_class;
-
     struct kndText *text;
     struct kndNum *num;
 
@@ -64,21 +60,23 @@ struct kndAttrInst
     struct kndAttrInst *next;
 };
 
-extern void knd_attr_inst_str(struct kndAttrInst *self, size_t depth);
+void knd_attr_inst_str(struct kndAttrInst *self, size_t depth);
 
-extern gsl_err_t knd_attr_inst_parse_select(struct kndAttrInst *self,
-                                            const char *rec,
-                                            size_t *total_size);
+gsl_err_t knd_attr_inst_parse_select(struct kndAttrInst *self,
+                                     const char *rec,
+                                     size_t *total_size);
 
-extern int knd_attr_inst_export(struct kndAttrInst *self,
-                                knd_format format,
-                                struct kndTask *task);
+int knd_attr_inst_export(struct kndAttrInst *self,
+                         knd_format format,
+                         struct kndTask *task);
 
-extern int knd_attr_inst_new(struct kndMemPool *mempool,
-                             struct kndAttrInst **result);
-extern int knd_attr_inst_mem(struct kndMemPool *mempool,
-                             struct kndAttrInst **result);
+int knd_attr_inst_new(struct kndMemPool *mempool,
+                      struct kndAttrInst **result);
+int knd_attr_inst_mem(struct kndMemPool *mempool,
+                      struct kndAttrInst **result);
 
-extern gsl_err_t knd_import_attr_inst(struct kndAttrInst *self,
-                                      const char *rec, size_t *total_size,
-                                      struct kndTask *task);
+gsl_err_t knd_import_attr_inst(struct kndAttrInst *self,
+                               const char *rec, size_t *total_size,
+                               struct kndTask *task);
+int knd_attr_inst_resolve(struct kndAttrInst *self,
+                          struct kndTask *task);

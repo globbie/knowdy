@@ -128,7 +128,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
 
     if (DEBUG_INST_LEVEL_2) {
         knd_log(".. JSON export class inst \"%.*s\" curr depth:%zu max depth:%zu",
-                self->name_size, self->name, self->depth, task->max_depth);
+                self->name_size, self->name, task->depth, task->max_depth);
         if (self->base) {
             knd_log("   (class: %.*s)",
                     self->base->name_size, self->base->name);
@@ -179,7 +179,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
         }
     }
 
-    if (self->depth >= task->max_depth) {
+    if (task->depth >= task->max_depth) {
         /* any concise fields? */
         err = export_concise_JSON(self, task);                                     RET_ERR();
         goto final;

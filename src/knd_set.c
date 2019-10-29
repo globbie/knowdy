@@ -234,14 +234,16 @@ static int get_elem(struct kndSet *self,
     return knd_OK;
 }
 
-static int kndSet_add_elem(struct kndSet *self,
-                           const char *key,
-                           size_t key_size,
-                           void *elem)
+int knd_set_add(struct kndSet *self,
+                const char *key,
+                size_t key_size,
+                void *elem)
 {
     int err;
     assert(key_size != 0);
     assert(key != NULL);
+
+    // knd_log(".. adding ELEM \"%.*s\"", key_size, key);
 
     err = save_elem(self, self->idx, elem, key, key_size);
     if (err) return err;
@@ -467,7 +469,7 @@ int knd_set_sync(struct kndSet *self,
 
 int knd_set_init(struct kndSet *self)
 {
-    self->add = kndSet_add_elem;
+    self->add = knd_set_add;
     self->get = kndSet_get_elem;
     self->map = kndSet_map;
     return knd_OK;

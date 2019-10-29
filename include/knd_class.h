@@ -279,15 +279,10 @@ int knd_class_export_commits_GSP(struct kndClass *self,
                                         struct kndClassCommit *commit,
                                         struct kndTask *task);
 
-int knd_parse_import_class_inst(struct kndClass *self,
-                                const char *rec,
-                                size_t *total_size,
-                                struct kndTask *task);
-
-extern gsl_err_t knd_class_import(struct kndRepo *repo,
-                                  const char *rec,
-                                  size_t *total_size,
-                                  struct kndTask *task);
+gsl_err_t knd_class_import(struct kndRepo *repo,
+                           const char *rec,
+                           size_t *total_size,
+                           struct kndTask *task);
 
 int knd_inherit_attrs(struct kndClass *self,
                              struct kndClass *base,

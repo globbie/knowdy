@@ -669,7 +669,7 @@ parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
                                                                 memory_order_relaxed);
     }
 
-    err = knd_parse_import_class_inst(ctx->selected_class, rec, total_size, task);
+    err = knd_import_class_inst(ctx->selected_class, rec, total_size, task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);

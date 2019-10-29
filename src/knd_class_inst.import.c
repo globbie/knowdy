@@ -19,11 +19,15 @@
 
 #include <gsl-parser.h>
 
-#define DEBUG_INST_LEVEL_1 0
-#define DEBUG_INST_LEVEL_2 0
-#define DEBUG_INST_LEVEL_3 0
-#define DEBUG_INST_LEVEL_4 0
-#define DEBUG_INST_LEVEL_TMP 1
+#define DEBUG_INST_IMPORT_LEVEL_1 0
+#define DEBUG_INST_IMPORT_LEVEL_2 0
+#define DEBUG_INST_IMPORT_LEVEL_3 0
+#define DEBUG_INST_IMPORT_LEVEL_4 0
+#define DEBUG_INST_IMPORT_LEVEL_TMP 1
+
+static gsl_err_t import_class_inst(struct kndClassInst *self,
+                                   const char *rec, size_t *total_size,
+                                   struct kndTask *task);
 
 struct LocalContext {
     struct kndClassInst *class_inst;
@@ -50,16 +54,16 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     if (self->type == KND_OBJ_INNER) {
         class_entry = knd_shared_dict_get(class_name_idx, name, name_size);
         if (!class_entry) {
-            knd_log("-- inner obj: no such class: %.*s", name_size, name);
+            KND_TASK_LOG("inner obj: no such class: %.*s", name_size, name);
             return make_gsl_err(gsl_FAIL);
         }
         c = class_entry->class;
 
         err = knd_is_base(self->base, c);
         if (err) {
-            knd_log("-- no inheritance from %.*s to %.*s",
-                    self->base->name_size, self->base->name,
-                    c->name_size, c->name);
+            KND_TASK_LOG("no inheritance from %.*s to %.*s",
+                         self->base->name_size, self->base->name,
+                         c->name_size, c->name);
             return make_gsl_err_external(err);
         }
         self->base = c;
@@ -85,7 +89,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     self->entry->name = name;
     self->entry->name_size = name_size;
 
-    if (DEBUG_INST_LEVEL_2)
+    if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log("++ class inst name: \"%.*s\"",
                 self->name_size, self->name);
     return make_gsl_err(gsl_OK);
@@ -103,7 +107,7 @@ static int validate_attr(struct kndClassInst *self,
     struct kndAttrInst *attr_inst = NULL;
     int err;
 
-    if (DEBUG_INST_LEVEL_2)
+    if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log(".. \"%.*s\" (base class: %.*s) to validate attr_inst: \"%.*s\"",
                 self->name_size, self->name,
                 self->base->name_size, self->base->name,
@@ -112,7 +116,7 @@ static int validate_attr(struct kndClassInst *self,
     /* check existing attr_insts */
     for (attr_inst = self->attr_insts; attr_inst; attr_inst = attr_inst->next) {
         if (!memcmp(attr_inst->attr->name, name, name_size)) {
-            if (DEBUG_INST_LEVEL_2)
+            if (DEBUG_INST_IMPORT_LEVEL_2)
                 knd_log("++ ATTR_INST \"%.*s\" is already set!", name_size, name);
             *result_attr_inst = attr_inst;
             return knd_OK;
@@ -131,7 +135,7 @@ static int validate_attr(struct kndClassInst *self,
         return err;
     }
     attr = attr_ref->attr;
-    if (DEBUG_INST_LEVEL_2) {
+    if (DEBUG_INST_IMPORT_LEVEL_2) {
         const char *type_name = knd_attr_names[attr->type];
         knd_log("++ \"%.*s\" ATTR_INST \"%s\" attr type: \"%s\"",
                 name_size, name, attr->name, type_name);
@@ -151,10 +155,11 @@ static gsl_err_t parse_import_attr_inst(void *obj1,
     struct kndAttr *attr = NULL;
     struct kndNum *num = NULL;
     struct kndMemPool *mempool;
+    struct kndTask *task = ctx->task;
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_INST_LEVEL_2)
+    if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log(".. parsing attr_inst import REC: %.*s", 128, rec);
 
     err = validate_attr(self, name, name_size, &attr, &attr_inst);
@@ -164,7 +169,7 @@ static gsl_err_t parse_import_attr_inst(void *obj1,
         switch (attr_inst->attr->type) {
             case KND_ATTR_INNER:
                 knd_log(".. inner obj import.. %p", attr_inst->inner);
-                parser_err = knd_import_class_inst(attr_inst->inner, rec, total_size, ctx->task);
+                parser_err = import_class_inst(attr_inst->inner, rec, total_size, task);
                 if (parser_err.code) return parser_err;
                 break;
             case KND_ATTR_NUM:
@@ -184,7 +189,7 @@ static gsl_err_t parse_import_attr_inst(void *obj1,
         return *total_size = 0, make_gsl_err(gsl_OK);
     }
 
-    mempool = ctx->task->mempool;
+    mempool = task->mempool;
     err = knd_attr_inst_new(mempool, &attr_inst);
     if (err) {
         knd_log("-- attr_inst alloc failed :(");
@@ -194,7 +199,7 @@ static gsl_err_t parse_import_attr_inst(void *obj1,
     attr_inst->root = self->root ? self->root : self;
     attr_inst->attr = attr;
 
-    if (DEBUG_INST_LEVEL_2)
+    if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log("== basic attr_inst type: %s", knd_attr_names[attr->type]);
 
     switch (attr->type) {
@@ -218,11 +223,11 @@ static gsl_err_t parse_import_attr_inst(void *obj1,
             obj->base = attr->ref_class;
             obj->root = self->root ? self->root : self;
 
-            if (DEBUG_INST_LEVEL_2)
+            if (DEBUG_INST_IMPORT_LEVEL_2)
                 knd_log(".. import inner obj of default class: %.*s",
                         obj->base->name_size, obj->base->name);
 
-            parser_err = knd_import_class_inst(obj, rec, total_size, ctx->task);
+            parser_err = import_class_inst(obj, rec, total_size, ctx->task);
             if (parser_err.code) return parser_err;
 
             attr_inst->inner = obj;
@@ -253,7 +258,7 @@ static gsl_err_t parse_import_attr_inst(void *obj1,
             break;
     }
 
-    parser_err = knd_import_attr_inst(attr_inst, rec, total_size, ctx->task);
+    parser_err = knd_import_attr_inst(attr_inst, rec, total_size, task);
     if (parser_err.code) goto final;
 
     append_attr_inst:
@@ -267,7 +272,7 @@ static gsl_err_t parse_import_attr_inst(void *obj1,
     }
     self->num_attr_insts++;
 
-    if (DEBUG_INST_LEVEL_2)
+    if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log("++ attr_inst %.*s parsing OK!",
                 attr_inst->attr->name_size, attr_inst->attr->name);
 
@@ -275,7 +280,7 @@ static gsl_err_t parse_import_attr_inst(void *obj1,
 
     final:
 
-    knd_log("-- validation of \"%.*s\" attr_inst failed :(", name_size, name);
+    KND_TASK_LOG("validation of \"%.*s\" attr_inst failed", name_size, name);
 
     // TODO attr_inst->del(attr_inst);
 
@@ -283,8 +288,8 @@ static gsl_err_t parse_import_attr_inst(void *obj1,
 }
 
 static gsl_err_t import_attr_inst_list(void *unused_var(obj),
-                                  const char *name, size_t name_size,
-                                  const char *rec, size_t *total_size)
+                                       const char *name, size_t name_size,
+                                       const char *rec, size_t *total_size)
 {
     //struct kndClassInst *self = obj;
     //struct kndOutput *log;
@@ -295,7 +300,7 @@ static gsl_err_t import_attr_inst_list(void *unused_var(obj),
 
     //mempool = self->base->entry->repo->mempool;
 
-    if (DEBUG_INST_LEVEL_2)
+    if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log("== import attr_inst list: \"%.*s\" REC: %.*s size:%zu",
                 name_size, name, 32, rec, *total_size);
 
@@ -323,11 +328,11 @@ static gsl_err_t import_attr_inst_list(void *unused_var(obj),
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_import_class_inst(struct kndClassInst *self,
-                                const char *rec, size_t *total_size,
-                                struct kndTask *task)
+static gsl_err_t import_class_inst(struct kndClassInst *self,
+                                   const char *rec, size_t *total_size,
+                                   struct kndTask *task)
 {
-    if (DEBUG_INST_LEVEL_2)
+    if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log(".. class inst import REC: %.*s", 128, rec);
 
     struct LocalContext ctx = {
@@ -362,7 +367,7 @@ static gsl_err_t run_set_state_id(void *obj, const char *name, size_t name_size)
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    if (DEBUG_INST_LEVEL_2)
+    if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log("++ class inst state: \"%.*s\" inst:%.*s",
                 name_size, name, self->name_size, self->name);
 
@@ -391,8 +396,95 @@ gsl_err_t kndClassInst_read_state(struct kndClassInst *self,
         }
     };
 
-    if (DEBUG_INST_LEVEL_2)
+    if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log(".. reading class inst state: %.*s", 128, rec);
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+int knd_import_class_inst(struct kndClass *self,
+                          const char *rec,
+                          size_t *total_size,
+                          struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->mempool;
+    struct kndClass *c = self;
+    struct kndClassInst *inst;
+    struct kndClassInstEntry *entry;
+    struct kndRepo *repo = task->repo;
+    struct kndState *state;
+    struct kndStateRef *state_ref;
+    int err;
+    gsl_err_t parser_err;
+
+    if (DEBUG_INST_IMPORT_LEVEL_2) {
+        knd_log(".. import \"%.*s\" inst.. (repo:%.*s)",
+                128, rec, repo->name_size, repo->name);
+    }
+
+    /* user ctx should have its own copy of a selected class */
+    if (self->entry->repo != repo) {
+        err = knd_class_clone(self, repo, &c, mempool);
+        if (err) return err;
+    }
+
+    err = knd_class_inst_new(mempool, &inst);
+    if (err) {
+        knd_log("-- class inst alloc failed :(");
+        return err;
+    }
+
+    err = knd_state_new(mempool, &state);
+    KND_TASK_ERR("state alloc failed");
+
+    err = knd_class_inst_entry_new(mempool, &entry);
+    KND_TASK_ERR("class inst  alloc failed");
+
+    inst->entry = entry;
+    entry->inst = inst;
+    state->phase = KND_CREATED;
+    state->numid = 1;
+    inst->base = c;
+    inst->states = state;
+    inst->num_states = 1;
+
+    parser_err = import_class_inst(inst, rec, total_size, task);
+    if (parser_err.code) return parser_err.code;
+
+    err = knd_state_ref_new(mempool, &state_ref);
+    if (err) {
+        knd_log("-- state ref alloc for imported inst failed");
+        return err;
+    }
+    state_ref->state = state;
+    state_ref->type = KND_STATE_CLASS_INST;
+    state_ref->obj = (void*)entry;
+
+    state_ref->next = task->ctx->class_inst_state_refs;
+    task->ctx->class_inst_state_refs = state_ref;
+    task->ctx->num_class_inst_state_refs++;
+
+    /* generate unique inst id */
+    inst->entry->numid = atomic_fetch_add_explicit(&c->entry->inst_id_count, 1,
+                                                   memory_order_relaxed);
+    inst->entry->numid++;
+    knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
+
+    /* automatic name assignment if no explicit name given */
+    if (!inst->name_size) {
+        // TODO add snapshot numid
+        inst->name = inst->entry->id;
+        inst->name_size = inst->entry->id_size;
+    }
+
+    if (DEBUG_INST_IMPORT_LEVEL_2) {
+        knd_log("++ inst \"%.*s\" of \"%.*s\" class import  OK!",
+                inst->entry->id_size, inst->entry->id,
+                self->name_size, self->name);
+        knd_class_inst_str(inst, 0);
+    }
+
+    task->type = KND_COMMIT_STATE;
+
+    return knd_OK;
 }
