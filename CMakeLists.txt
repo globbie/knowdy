@@ -61,7 +61,7 @@ set(HEADERS include/knd_attr.h include/knd_attr_inst.h
         include/knd_mempool.h include/knd_num.h
         include/knd_proc.h include/knd_proc_arg.h include/knd_proc_call.h
         include/knd_queue.h include/knd_query.h
-        include/knd_ref.h include/knd_repo.h
+        include/knd_repo.h
         include/knd_set.h include/knd_set_idx.h include/knd_shard.h include/knd_state.h
         include/knd_task.h include/knd_text.h
         include/knd_user.h include/knd_utils.h)
