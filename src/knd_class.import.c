@@ -102,10 +102,24 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     /* commit in progress */
     err = knd_get_class(repo, name, name_size, &c, task);
     if (!err) {
-        KND_TASK_LOG("\"%.*s\" class already exists", name_size, name);
+        KND_TASK_LOG("\"%.*s\" class already exists in repo %.*s", name_size, name);
         task->ctx->http_code = HTTP_CONFLICT;
         task->ctx->error = KND_CONFLICT;
         return make_gsl_err(gsl_FAIL);
+    }
+
+    /* check user shared repo */
+    if (task->user_ctx) {
+        err = knd_get_class(task->user_ctx->base_repo, name, name_size, &c, task);
+        if (!err) {
+            KND_TASK_LOG("\"%.*s\" class already exists in a base repo: %.*s",
+                         name_size, name,
+                         task->user_ctx->base_repo->name_size,
+                         task->user_ctx->base_repo->name);
+            task->ctx->http_code = HTTP_CONFLICT;
+            task->ctx->error = KND_CONFLICT;
+            return make_gsl_err(gsl_FAIL);
+        }
     }
 
     /* update local task idx */
@@ -392,7 +406,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("..worker \"%zu\" to import class: \"%.*s\"..",
+        knd_log("..worker \"%zu\" to import class: \"%.*s\"",
                 task->id, 128, rec);
 
     err = knd_class_new(mempool, &c);
@@ -467,12 +481,11 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
         task->ctx->tr = NULL;
     }
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
         knd_log("++  \"%.*s\" class import completed!",
                 c->name_size, c->name);
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         c->str(c, 1);
+    }
 
     switch (task->type) {
     case KND_RESTORE_STATE:

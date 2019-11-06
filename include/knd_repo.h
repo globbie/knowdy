@@ -57,11 +57,9 @@ struct kndRepo
 
     const char *schema_name;
     size_t schema_name_size;
-
     const char *schema_path;
     size_t schema_path_size;
 
-    struct kndUserContext *user_ctx;
     struct kndRepo *base;
 
     char **source_files;
@@ -72,8 +70,6 @@ struct kndRepo
 
     /* local repo index */
     struct kndSharedDict *repo_idx;
-
-    struct kndUser *user;
 
     bool restore_mode;
     size_t intersect_matrix_size;
@@ -140,4 +136,6 @@ int knd_repo_sync(struct kndRepo *self, struct kndTask *task);
 void knd_repo_del(struct kndRepo *self);
 
 int knd_repo_new(struct kndRepo **self,
-                 const char *name, size_t name_size, struct kndMemPool *mempool);
+                 const char *name, size_t name_size,
+                 const char *schema_path, size_t schema_path_size,
+                 struct kndMemPool *mempool);

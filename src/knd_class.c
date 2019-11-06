@@ -147,7 +147,7 @@ int knd_get_class_inst(struct kndClass *self,
     struct kndSharedDict *name_idx;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. \"%.*s\" class (%.*s) to get instance: \"%.*s\"..",
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
@@ -171,7 +171,11 @@ int knd_get_class_inst(struct kndClass *self,
         knd_log("++ got obj entry %.*s  size: %zu",
                 name_size, name, entry->block_size);
 
-    if (!entry->inst) goto read_entry;
+    if (!entry->inst) {
+        //err = unfreeze_obj_entry(self, entry, result);
+        //if (err) return err;
+        return knd_FAIL;
+    }
 
     if (entry->inst->states->phase == KND_REMOVED) {
         KND_TASK_LOG("\"%s\" instance was removed", name);
@@ -180,13 +184,6 @@ int knd_get_class_inst(struct kndClass *self,
 
     obj = entry->inst;
     *result = obj;
-    return knd_OK;
-
- read_entry:
-
-    //err = unfreeze_obj_entry(self, entry, result);
-    //if (err) return err;
-
     return knd_OK;
 }
 
@@ -386,12 +383,11 @@ int knd_class_commit_state(struct kndClass *self,
     state_ref->next = commit->class_state_refs;
     commit->class_state_refs = state_ref;
     commit->num_class_state_refs++;
-
     return knd_OK;
 }
 
 
-extern int knd_class_facets_export(struct kndTask *task)
+int knd_class_facets_export(struct kndTask *task)
 {
     task->out->reset(task->out);
 
@@ -474,7 +470,6 @@ int knd_is_base(struct kndClass *self,
 
     for (ref = entry->ancestors; ref; ref = ref->next) {
          c = ref->class;
-
          if (DEBUG_CLASS_LEVEL_2) {
              knd_log("  => is %zu): %.*s (repo:%.*s)  base resolved:%d",
                      count,
@@ -823,8 +818,9 @@ int knd_unregister_class_inst(struct kndClass *self,
 
 int knd_register_class_inst(struct kndClass *self,
                             struct kndClassInstEntry *entry,
-                            struct kndMemPool *mempool)
+                            struct kndTask *task)
 {
+    struct kndMemPool *mempool = task->mempool;
     struct kndRepo *repo = self->entry->repo;
     struct kndSet *inst_idx;
     struct kndClass *c;
@@ -877,12 +873,12 @@ int knd_register_class_inst(struct kndClass *self,
                 ref->entry = prev_entry;
             } else {
                 //knd_log(".. cloning %.*s..", c->name_size, c->name);
-                err = knd_class_clone(ref->entry->class, self->entry->repo, &c, mempool);
+                err = knd_class_clone(ref->entry->class, self->entry->repo, &c, task);
                 if (err) return err;
                 ref->entry = c->entry;
             }
         }
-        err = knd_register_class_inst(c, entry, mempool);                         RET_ERR();
+        err = knd_register_class_inst(c, entry, task);                         RET_ERR();
     }
     return knd_OK;
 }
@@ -890,13 +886,13 @@ int knd_register_class_inst(struct kndClass *self,
 int knd_class_clone(struct kndClass *self,
                     struct kndRepo *target_repo,
                     struct kndClass **result,
-                    struct kndMemPool *mempool)
+                    struct kndTask *task)
 {
+    struct kndMemPool *mempool = task->mempool;
     struct kndClass *c;
     struct kndClassEntry *entry;
-    struct kndSharedDict *class_name_idx = target_repo->class_name_idx;
-    struct kndSet *class_idx = target_repo->class_idx;
-    void *ref;
+    // struct kndSharedDict *class_name_idx = target_repo->class_name_idx;
+    // struct kndSet *class_idx = target_repo->class_idx;
     int err;
 
     if (DEBUG_CLASS_LEVEL_2)
@@ -912,18 +908,16 @@ int knd_class_clone(struct kndClass *self,
     entry->class = c;
     c->entry = entry;
 
-    target_repo->num_classes++;
-    entry->numid = target_repo->num_classes;
-    knd_uid_create(entry->numid, entry->id, &entry->id_size);
+    // TODO: atomic
+    //target_repo->num_classes++;
+    //entry->numid = target_repo->num_classes;
+    //knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
     err = knd_class_copy(self, c, mempool);
-    if (err) {
-        knd_log("-- class copy failed");
-        return err;
-    }
+    KND_TASK_ERR("class copy failed");
 
     /* idx register */
-    ref = knd_shared_dict_get(class_name_idx,
+    /*    ref = knd_shared_dict_get(class_name_idx,
                               entry->name, entry->name_size);
 
     if (!ref) {
@@ -937,6 +931,7 @@ int knd_class_clone(struct kndClass *self,
     err = class_idx->add(class_idx,
                          entry->id, entry->id_size,
                          (void*)entry);                                           RET_ERR();
+    */
 
     if (DEBUG_CLASS_LEVEL_2)
         c->str(c, 1);

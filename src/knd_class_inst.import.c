@@ -78,7 +78,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
               name_size, name);
               goto assign_name;
               }*/
-            KND_TASK_LOG("class instance name doublet found: %.*s",
+            KND_TASK_LOG("class instance name already exists: %.*s",
                          name_size, name);
             return make_gsl_err(gsl_EXISTS);
         }
@@ -416,15 +416,25 @@ int knd_import_class_inst(struct kndClass *self,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_INST_IMPORT_LEVEL_2) {
+    if (DEBUG_INST_IMPORT_LEVEL_TMP) {
         knd_log(".. import \"%.*s\" inst.. (repo:%.*s)",
                 128, rec, repo->name_size, repo->name);
     }
 
+    if (task->user_ctx) {
+        repo = task->user_ctx->repo;
+        if (DEBUG_INST_IMPORT_LEVEL_TMP) {
+            knd_log("class inst import by user:%.*s  repo:%.*s",
+                    task->user_ctx->user_inst->name_size,
+                    task->user_ctx->user_inst->name,
+                    repo->name_size, repo->name);
+        }
+    }
+
     /* user ctx should have its own copy of a selected class */
     if (self->entry->repo != repo) {
-        err = knd_class_clone(self, repo, &c, mempool);
-        if (err) return err;
+        err = knd_class_clone(self, repo, &c, task);
+        KND_TASK_ERR("failed to clone a class");
     }
 
     err = knd_class_inst_new(mempool, &inst);
@@ -476,7 +486,7 @@ int knd_import_class_inst(struct kndClass *self,
         inst->name_size = inst->entry->id_size;
     }
 
-    if (DEBUG_INST_IMPORT_LEVEL_2) {
+    if (DEBUG_INST_IMPORT_LEVEL_TMP) {
         knd_log("++ inst \"%.*s\" of \"%.*s\" class import  OK!",
                 inst->entry->id_size, inst->entry->id,
                 self->name_size, self->name);

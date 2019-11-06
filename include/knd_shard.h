@@ -8,6 +8,8 @@
 #include <knd_storage.h>
 
 struct kndMemPool;
+struct kndUser;
+struct kndSharedDict;
 
 struct kndMemConfig {
     size_t num_pages;
@@ -36,6 +38,7 @@ struct kndShard
     size_t user_repo_name_size;
     char user_schema_path[KND_PATH_SIZE];
     size_t user_schema_path_size;
+    struct kndUser *user;
 
     struct kndMemConfig mem_config;
     struct kndMemConfig ctx_mem_config;
@@ -45,10 +48,8 @@ struct kndShard
 
     /* system repo */
     struct kndRepo *repo;
-
-    /* user space */
     struct kndSet *repo_idx;
-    struct kndSet *user_idx;
+    struct kndSharedDict *repo_name_idx;
 };
 
 int knd_shard_new(struct kndShard **self, const char *config, size_t config_size);

@@ -352,6 +352,7 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
     struct kndState *state;
     struct kndStateVal *state_val;
     struct kndStateRef *state_ref;
+    struct kndTask *task = ctx->task;
     struct kndMemPool *mempool = ctx->task->mempool;
     int err;
 
@@ -360,7 +361,7 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 
     err = knd_state_new(mempool, &state);
     if (err) {
-        knd_log("-- state alloc failed");
+        KND_TASK_LOG("kndState alloc failed");
         return make_gsl_err_external(err);
     }
     err = knd_state_val_new(mempool, &state_val);
@@ -385,7 +386,7 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 
     register_state(self, state, state_ref);
 
-    if (DEBUG_ATTR_INST_LEVEL_TMP)
+    if (DEBUG_ATTR_INST_LEVEL_2)
         knd_log("++ attr_inst val set: \"%.*s\" [state:%zu]",
                 self->val_size, self->val, state->numid);
 
@@ -405,6 +406,7 @@ static gsl_err_t set_class_inst_name(void *obj,
                 self->val_size, self->val,
                 name_size, name);
 
+    // TODO state val
     self->class_inst_name = name;
     self->class_inst_name_size = name_size;
 

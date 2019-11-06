@@ -11,6 +11,7 @@
 #include "knd_user.h"
 #include "knd_query.h"
 #include "knd_task.h"
+#include "knd_shard.h"
 #include "knd_dict.h"
 #include "knd_shared_dict.h"
 #include "knd_class.h"
@@ -28,6 +29,11 @@
 #define DEBUG_REPO_LEVEL_3 0
 #define DEBUG_REPO_LEVEL_TMP 1
 
+struct LocalContext {
+    struct kndTask *task;
+    struct kndRepo *repo;
+};
+
 static int update_indices(struct kndRepo *self,
                           struct kndCommit *commit,
                           struct kndTask *task);
@@ -43,7 +49,6 @@ void knd_repo_del(struct kndRepo *self)
         }
         free(self->source_files);
     }
-
     knd_shared_dict_del(self->class_name_idx);
     knd_shared_dict_del(self->attr_name_idx);
     knd_shared_dict_del(self->proc_name_idx);
@@ -77,10 +82,30 @@ static gsl_err_t set_commit_numid(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t save_commit_body(void *obj, const char *rec, size_t *total_size)
+static int save_commit_body(struct kndCommit *commit,
+                            const char *tag,
+                            size_t tag_size,
+                            const char *rec,
+                            size_t rec_size)
+{
+    /* task header not needed anymore */
+    commit->rec = malloc(rec_size + 1);
+    if (!commit->rec) return knd_NOMEM;
+
+    /* add opening tag */
+    memcpy(commit->rec, tag, tag_size);
+    memcpy(commit->rec + tag_size, rec, rec_size);
+    commit->rec[rec_size] = '\0';
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("#%zu COMMIT: \"%.*s\"",
+                commit->numid, commit->rec_size, commit->rec);
+    return knd_OK;
+}
+
+static gsl_err_t save_user_commit_body(void *obj, const char *rec, size_t *total_size)
 {
     struct kndCommit *commit = obj;
-    size_t rec_size;
     int err;
 
     if (!commit->rec_size) {
@@ -88,21 +113,27 @@ static gsl_err_t save_commit_body(void *obj, const char *rec, size_t *total_size
         return make_gsl_err_external(err);
     }
 
-    /* task header not needed anymore */
-    rec_size = commit->rec_size - strlen("{task");
+    err = save_commit_body(commit, "{user", strlen("{user"), rec, commit->rec_size);
+    if (err) return make_gsl_err_external(err);
 
-    commit->rec = malloc(rec_size);
-    if (!commit->rec) {
-        err = knd_NOMEM;
+    *total_size = commit->rec_size - strlen("{user") - 1; // leave closing brace
+    return make_gsl_err(gsl_OK);
+}
+
+
+static gsl_err_t save_sysrepo_commit_body(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndCommit *commit = obj;
+    int err;
+
+    if (!commit->rec_size) {
+        err = knd_FAIL;
         return make_gsl_err_external(err);
     }
-    memcpy(commit->rec, rec, rec_size);
-    commit->rec[rec_size] = '\0';
+    err = save_commit_body(commit, "{repo", strlen("{repo"), rec, commit->rec_size);
+    if (err) return make_gsl_err_external(err);
 
-    commit->rec_size = rec_size;
-    //knd_log("COMMIT REC: \"%.*s\"", commit->rec_size, commit->rec);
-
-    *total_size = rec_size - 1; // closing brace
+    *total_size = commit->rec_size - strlen("{repo") - 1; // leave closing brace
     return make_gsl_err(gsl_OK);
 }
 
@@ -110,8 +141,10 @@ static gsl_err_t parse_commit(void *obj,
                               const char *rec,
                               size_t *total_size)
 {
-    struct kndTask *task = obj;
-    struct kndRepo *repo = task->repo;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
+    struct kndUserContext *user_ctx = task->user_ctx;
     size_t ts = 0;
     int err;
 
@@ -122,9 +155,11 @@ static gsl_err_t parse_commit(void *obj,
         return make_gsl_err_external(err);
     }
     memset(commit, 0, sizeof(struct kndCommit));
+    commit->is_restored = true;
 
     knd_task_reset(task);
     task->ctx->commit = commit;
+    task->user_ctx = user_ctx;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -142,17 +177,24 @@ static gsl_err_t parse_commit(void *obj,
           .parse = gsl_parse_size_t,
           .obj = &commit->rec_size
         },
-        { .name = "task",
-          .name_size = strlen("task"),
-          .parse = save_commit_body,
+        { .name = "user",
+          .name_size = strlen("user"),
+          .parse = save_user_commit_body,
+          .obj = commit
+        },
+        { .name = "repo",
+          .name_size = strlen("repo"),
+          .parse = save_sysrepo_commit_body,
           .obj = commit
         }
     };
     gsl_err_t parser_err;
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
+    if (parser_err.code) {
+        KND_TASK_LOG("failed to parse commit rec \"%.*s...\"", 32, rec);
+        return parser_err;
+    }
     err = repo->snapshot.commit_idx->add(repo->snapshot.commit_idx,
                                          commit->id, commit->id_size,
                                          (void*)commit);
@@ -185,16 +227,22 @@ static gsl_err_t parse_WAL(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static int restore_commits(struct kndMemBlock *memblock,
+static int restore_commits(struct kndRepo *repo,
+                           struct kndMemBlock *memblock,
                            struct kndTask *task)
 {
     size_t total_size;
+
+    struct LocalContext ctx = {
+        .task = task,
+        .repo = repo
+    };
 
     struct gslTaskSpec specs[] = {
         { .name = "WAL",
           .name_size = strlen("WAL"),
           .parse = parse_WAL,
-          .obj = task
+          .obj = &ctx
         }
     };
     gsl_err_t parser_err;
@@ -211,7 +259,7 @@ static int restore_commits(struct kndMemBlock *memblock,
 static int restore_journals(struct kndRepo *self,
                             struct kndTask *task)
 {
-    struct kndOutput *file_out = task->file_out;
+    struct kndOutput *out = task->out;
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
     struct stat st;
@@ -221,11 +269,11 @@ static int restore_journals(struct kndRepo *self,
     for (size_t i = 0; i < self->snapshot.max_journals; i++) {
         buf_size = snprintf(buf, KND_TEMP_BUF_SIZE, "journal_%zu.log", i);
 
-        err = file_out->write(file_out, buf, buf_size);
+        err = out->write(out, buf, buf_size);
         KND_TASK_ERR("log filename construction failed");
 
-        if (stat(file_out->buf, &st)) {
-            file_out->rtrim(file_out, buf_size);
+        if (stat(out->buf, &st)) {
+            out->rtrim(out, buf_size);
             break;
         }
         if ((size_t)st.st_size >= self->snapshot.max_journal_size) {
@@ -235,18 +283,17 @@ static int restore_journals(struct kndRepo *self,
 
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log(".. restoring the journal file: %.*s",
-                    file_out->buf_size, file_out->buf);
+                    out->buf_size, out->buf);
 
-        err = knd_task_read_file_block(task, file_out->buf, (size_t)st.st_size,
+        err = knd_task_read_file_block(task, out->buf, (size_t)st.st_size,
                                        &memblock);
-        KND_TASK_ERR("failed to read memblock from %s", file_out->buf);
+        KND_TASK_ERR("failed to read memblock from %s", out->buf);
 
-        task->repo = self;
-        err = restore_commits(memblock, task);
-        KND_TASK_ERR("failed to restore commits from %s", file_out->buf);
+        err = restore_commits(self, memblock, task);
+        KND_TASK_ERR("failed to restore commits from %s", out->buf);
 
         /* restore prev path */
-        file_out->rtrim(file_out, buf_size);
+        out->rtrim(out, buf_size);
     }
 
     return knd_OK;
@@ -259,6 +306,7 @@ static int apply_commit(void *obj,
                         void *elem)
 {
     struct kndTask *task = obj;
+    struct kndUserContext *user_ctx = task->user_ctx;
     struct kndCommit *commit = elem;
     struct kndCommit *head_commit;
     struct kndRepo *repo = task->repo;
@@ -266,11 +314,19 @@ static int apply_commit(void *obj,
     size_t total_size = commit->rec_size;
     int err;
 
+    knd_log(".. applying commit: #%zu", commit->numid);
+
     knd_task_reset(task);
     task->type = KND_RESTORE_STATE;
     task->ctx->commit = commit;
+    task->user_ctx = user_ctx;
 
     struct gslTaskSpec specs[] = {
+        { .name = "user",
+          .name_size = strlen("user"),
+          .parse = knd_parse_select_user,
+          .obj = task
+        },
         { .name = "repo",
           .name_size = strlen("repo"),
           .parse = knd_parse_repo,
@@ -283,7 +339,7 @@ static int apply_commit(void *obj,
 
     err = resolve_commit(commit, task);
     KND_TASK_ERR("failed to resolve commit #%zu", commit->numid);
-    
+
     err = update_indices(repo, commit, task);
     KND_TASK_ERR("index update failed");
 
@@ -300,37 +356,55 @@ static int apply_commit(void *obj,
 static int restore_state(struct kndRepo *self,
                          struct kndTask *task)
 {
-    struct kndOutput *file_out = task->file_out;
+    struct kndOutput *out = task->out;
+    struct kndClassInst *user_inst;
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
     struct stat st;
     int latest_snapshot_id = -1;
     int err;
 
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log("  .. restoring the latest valid state of repo \"%.*s\"..",
-                self->name_size, self->name);
+    if (DEBUG_REPO_LEVEL_TMP) {
+        const char *owner_name = "/";
+        size_t owner_name_size = 1;
+        if (task->user_ctx) {
+            user_inst = task->user_ctx->user_inst;
+            owner_name = user_inst->name;
+            owner_name_size = user_inst->name_size;
+        }
+        knd_log(".. restoring the latest valid state of repo \"%.*s\""
+                " (owner:%.*s) ",
+                self->name_size, self->name,
+                owner_name_size, owner_name);
+    }
 
-    file_out->reset(file_out);
-    err = file_out->write(file_out, task->path, task->path_size);
+    out->reset(out);
+    err = out->write(out, task->path, task->path_size);
     KND_TASK_ERR("system path construction failed");
 
+    if (task->user_ctx) {
+        user_inst = task->user_ctx->user_inst;
+        err = out->writef(out, "users/%.*s/",
+                          user_inst->entry->id_size,
+                          user_inst->entry->id);             RET_ERR();
+    }
+    
     if (self->path_size) {
-        err = file_out->write(file_out, self->path, self->path_size);
+        err = out->write(out, self->path, self->path_size);
         KND_TASK_ERR("repo path construction failed");
     }
 
     for (size_t i = 0; i < KND_MAX_SNAPSHOTS; i++) {
         buf_size = snprintf(buf, KND_TEMP_BUF_SIZE,
                             "snapshot_%zu/", i);
-        err = file_out->write(file_out, buf, buf_size);
+        err = out->write(out, buf, buf_size);
         KND_TASK_ERR("snapshot path construction failed");
-        if (stat(file_out->buf, &st)) {
-            file_out->rtrim(file_out, buf_size);
+        if (stat(out->buf, &st)) {
+            out->rtrim(out, buf_size);
             break;
         }
         latest_snapshot_id = (int)i;
-        file_out->rtrim(file_out, buf_size);
+        out->rtrim(out, buf_size);
     }
 
     if (latest_snapshot_id < 0) {
@@ -342,27 +416,33 @@ static int restore_state(struct kndRepo *self,
         knd_log("== the latest snapshot of \"%.*s\" is #%d",
                 self->name_size, self->name, latest_snapshot_id);
 
-    err = file_out->writef(file_out, "snapshot_%d/", latest_snapshot_id);
+    err = out->writef(out, "snapshot_%d/", latest_snapshot_id);
     KND_TASK_ERR("snapshot path construction failed");
 
     // NB: agent count starts from 1
     for (size_t i = 1; i < KND_MAX_TASKS; i++) {
         buf_size = snprintf(buf, KND_TEMP_BUF_SIZE,
                             "agent_%zu/", i);
-        err = file_out->write(file_out, buf, buf_size);
+        err = out->write(out, buf, buf_size);
         KND_TASK_ERR("agent path construction failed");
 
-        if (stat(file_out->buf, &st)) {
-            // knd_log("-- no such file: %.*s", file_out->buf_size, file_out->buf);
+        if (stat(out->buf, &st)) {
+            knd_log("-- no such file: %.*s", out->buf_size, out->buf);
             break;
         }
         err = restore_journals(self, task);
-        KND_TASK_ERR("failed to restore journals in %.*s", file_out->buf_size, file_out->buf);
-        file_out->rtrim(file_out, buf_size);
+        KND_TASK_ERR("failed to restore journals in %.*s", out->buf_size, out->buf);
+        out->rtrim(out, buf_size);
+    }
+
+    if (self->snapshot.commit_idx->num_elems == 0) {
+        knd_log("-- no commits to restore in repo %.*s", self->name_size, self->name);
+        return knd_OK;
     }
 
     /* all commits are there in the idx,
        time to apply them in timely order */
+    task->repo = self;
     err = self->snapshot.commit_idx->map(self->snapshot.commit_idx,
                                          apply_commit,
                                          (void*)task);
@@ -372,8 +452,7 @@ static int restore_state(struct kndRepo *self,
                           self->snapshot.commit_idx->num_elems, memory_order_relaxed);
 
     knd_log("== total commits applied: %zu", self->snapshot.commit_idx->num_elems);
-    knd_task_free_blocks(task);
-
+                         
     return knd_OK;
 }
 
@@ -538,23 +617,24 @@ static gsl_err_t parse_repo_state(void *obj,
 static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *task = obj;
+    struct kndRepo *repo;
 
-    if (!name_size)  return make_gsl_err(gsl_FAIL);
+    if (!name_size) return make_gsl_err(gsl_FAIL);
 
     if (task->user_ctx) {
         switch (*name) {
         case '~':
-            knd_log("== user home repo selected!");
-            task->repo = task->user_ctx->repo;
+            knd_log("== private repo selected: %p", task->user_ctx->repo);
             return make_gsl_err(gsl_OK);
         default:
             break;
         }
-        knd_log("== user base repo selected!");
-        task->repo = task->user_ctx->repo;
+        knd_log("== read-only base repo selected!");
+        task->repo = task->shard->user->repo;
         return make_gsl_err(gsl_OK);
     }
 
+    /* system repo */
     if (name_size == 1) {
         switch (*name) {
         case '/':
@@ -564,9 +644,12 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
         }
     }
 
-    // TODO: repo name match
-    task->repo = task->user->repo;
-
+    repo = knd_shared_dict_get(task->shard->repo_name_idx, name, name_size);
+    if (!repo) {
+        KND_TASK_LOG("no such repo: %.*s", name_size, name);
+        return make_gsl_err(gsl_FAIL);
+    }
+    task->repo = repo;
     return make_gsl_err(gsl_OK);
 }
 
@@ -579,9 +662,8 @@ static gsl_err_t parse_class_select(void *obj,
     struct kndRepo *repo;
 
     repo = task->repo;
-    if (ctx) {
+    if (ctx && ctx->repo) {
         repo = ctx->repo;
-        task->repo = repo;
     }
 
     return knd_class_select(repo, rec, total_size, task);
@@ -831,9 +913,8 @@ static int read_GSL_file(struct kndRepo *repo,
 
     out->reset(out);
     err = out->write(out, repo->schema_path,
-                     repo->schema_path_size);                        RET_ERR();
+                     repo->schema_path_size);                                     RET_ERR();
     err = out->write(out, "/", 1);                                                RET_ERR();
-
     if (parent_folder) {
         err = write_filepath(out, parent_folder);                                 RET_ERR();
     }
@@ -1115,38 +1196,17 @@ static int resolve_procs(struct kndRepo *self,
 
 int knd_repo_open(struct kndRepo *self, struct kndTask *task)
 {
-    struct kndOutput *out;
-    struct kndClassInst *inst;
+    struct kndOutput *out = task->out;
     struct stat st;
     int err;
 
-    out = task->file_out;
-    task->repo = self;
-
-    /* extend user DB path */
-    if (self->user_ctx) {
-        memcpy(self->path, self->user->path, self->user->path_size);
-        self->path_size = self->user->path_size;
-
-        inst = self->user_ctx->user_inst;
-        
-        char *p = self->path + self->path_size;
-        memcpy(p, "/", 1);
-        p++;
-        self->path_size++;
-
-        memcpy(p, inst->entry->id, inst->entry->id_size);
-        self->path_size += inst->entry->id_size;
-        self->path[self->path_size] = '\0';
-
-        err = knd_mkpath((const char*)self->path, self->path_size, 0755, false);
-        if (err) return err;
-    }
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("..open repo: %.*s", self->name_size, self->name);
 
     out->reset(out);
     err = out->write(out, self->path, self->path_size);
     if (err) return err;
-    err = out->write(out, "/frozen.gsp", strlen("/frozen.gsp"));
+    err = out->write(out, "/snapshot.gsp", strlen("/snapshot.gsp"));
     if (err) return err;
 
     /* frozen DB exists? */
@@ -1159,7 +1219,7 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
             return err;
             }*/
     } else {
-        if (!self->user_ctx) {
+        if (!task->user_ctx) {
             /* read a system-wide schema */
             task->type = KND_LOAD_STATE;
             err = read_GSL_file(self, NULL, "index", strlen("index"), task);
@@ -1185,7 +1245,8 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     /* read any existing commits from the WAL
        to the latest snapshot */
     err = restore_state(self, task);
-    KND_TASK_ERR("failed to restore the latest state of %.*s", self->name_size, self->name);
+    KND_TASK_ERR("failed to restore the latest state of %.*s",
+                 self->name_size, self->name);
 
     return knd_OK;
 }
@@ -1198,10 +1259,18 @@ static int export_commit_GSL(struct kndRepo *self,
     struct kndStateRef *ref;
     struct kndState *state;
     struct kndClassEntry *entry;
+    struct kndClassInst *user_inst;
     // struct kndProcEntry *proc_entry;
     int err;
 
     err = out->write(out, "{task", strlen("{task"));                              RET_ERR();
+
+    if (task->user_ctx) {
+        user_inst = task->user_ctx->user_inst;
+        err = out->write(out, "{user ", strlen("{user "));                        RET_ERR();
+        err = out->write(out, user_inst->name, user_inst->name_size);             RET_ERR();
+    }
+
     err = out->write(out, "{repo ", strlen("{repo "));                            RET_ERR();
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
 
@@ -1234,6 +1303,11 @@ static int export_commit_GSL(struct kndRepo *self,
     }    
     
     err = out->writec(out, '}');                                                  RET_ERR();
+
+    if (task->user_ctx) {
+        err = out->writec(out, '}');                                                  RET_ERR();
+    }
+
     err = out->writec(out, '}');                                                  RET_ERR();
 
     return knd_OK;
@@ -1248,17 +1322,27 @@ static int update_indices(struct kndRepo *self,
     struct kndProcEntry *proc_entry;
     struct kndSharedDict *name_idx = self->class_name_idx;
     struct kndSharedDictItem *item = NULL;
+    struct kndMemPool *mempool = task->mempool;
     int err;
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log(".. commit #%zu updating indices..", commit->numid);
+
+    if (task->user_ctx) {
+        mempool = task->shard->user->mempool;
+    }
 
     for (ref = commit->class_state_refs; ref; ref = ref->next) {
         entry = ref->obj;
+
+        knd_log("== class state phase: %d", ref->state->phase);
         switch (ref->state->phase) {
         case KND_CREATED:
             /* register new class */
             err = knd_shared_dict_set(name_idx,
                                       entry->name,  entry->name_size,
                                       (void*)entry,
-                                      task->mempool,
+                                      mempool,
                                       commit, &item, false);
             KND_TASK_ERR("failed to register class %.*s", entry->name_size, entry->name);
             entry->dict_item = item;
@@ -1274,7 +1358,8 @@ static int update_indices(struct kndRepo *self,
                          entry->name_size, entry->name);
             continue;
         default:
-
+            // KND_SELECTED
+            knd_log(".. update class inst indices..");
             err = knd_class_inst_update_indices(entry, ref->state->children, task);
             KND_TASK_ERR("failed to update inst idx of class %.*s",
                          entry->name_size, entry->name);
@@ -1401,8 +1486,12 @@ static int check_commit_conflicts(struct kndRepo *self,
 static int save_commit_WAL(struct kndRepo *self, struct kndCommit *commit, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndOutput *file_out = task->file_out;
+    char filename[KND_PATH_SIZE + 1];
+    size_t filename_size;
     size_t planned_journal_size = 0;
+    const char *rec = task->input + strlen("{task");
+    size_t rec_size = task->input_size - strlen("{task") - 1;
+    struct kndClassInst *user_inst;
     struct stat st;
     int err;
 
@@ -1410,49 +1499,58 @@ static int save_commit_WAL(struct kndRepo *self, struct kndCommit *commit, struc
     if (DEBUG_REPO_LEVEL_2) {
         knd_log(".. kndTask #%zu to write a WAL entry: %.*s (path:%.*s)",
                 task->id,
-                task->input_size, task->input, task->path_size, task->path);
+                rec_size, rec, rec_size, task->path);
     }
 
     out->reset(out);
-    err = out->writef(out, "{commit %zu{_ts %zu}{_size %zu}",
-                      commit->numid, (size_t)commit->timestamp, task->input_size);
-    KND_TASK_ERR("commit header output failed");
-    err = out->write(out, task->input, task->input_size);
-    KND_TASK_ERR("commit body output failed");
-    err = out->write(out, "}\n", strlen("}\n"));
-    KND_TASK_ERR("commit footer output failed");
-    
-
-    file_out->reset(file_out);
-    err = file_out->write(file_out, task->path, task->path_size);
+    err = out->write(out, task->path, task->path_size);
     KND_TASK_ERR("system path construction failed");
 
+    if (task->user_ctx) {
+        err = out->write(out, "users/", strlen("users/"));
+        KND_TASK_ERR("users path construction failed");
+
+        user_inst = task->user_ctx->user_inst;
+        err = out->writef(out, "%.*s/",
+                               user_inst->entry->id_size,
+                               user_inst->entry->id);
+        KND_TASK_ERR("user home path construction failed");
+    }
+
     if (self->path_size) {
-        err = file_out->write(file_out, self->path, self->path_size);
+        err = out->write(out, self->path, self->path_size);
         KND_TASK_ERR("repo path construction failed");
     }
-    err = file_out->writef(file_out, "snapshot_%zu/", self->snapshot.numid);
+    err = out->writef(out, "snapshot_%zu/", self->snapshot.numid);
     KND_TASK_ERR("snapshot path construction failed");
 
-    err = file_out->writef(file_out, "agent_%d/", task->id);
+    err = out->writef(out, "agent_%d/", task->id);
     KND_TASK_ERR("agent path construction failed");
 
-    err = knd_mkpath((const char*)file_out->buf, file_out->buf_size, 0755, false);
-    KND_TASK_ERR("mkpath %.*s failed", file_out->buf_size, file_out->buf);
+    err = knd_mkpath((const char*)out->buf, out->buf_size, 0755, false);
+    KND_TASK_ERR("mkpath %.*s failed", out->buf_size, out->buf);
 
-    err = file_out->writef(file_out, "journal_%zu.log", self->snapshot.num_journals[task->id]);
+    err = out->writef(out, "journal_%zu.log", self->snapshot.num_journals[task->id]);
     KND_TASK_ERR("log filename construction failed");
-    file_out->buf[file_out->buf_size] = '\0';
 
-    // knd_log("WAL filename: %.*s", file_out->buf_size, file_out->buf);
+    if (out->buf_size >= KND_PATH_SIZE) {
+        err = knd_LIMIT;
+        KND_TASK_ERR("journal filename too long");
+    }
 
-    if (stat(file_out->buf, &st)) {
+    memcpy(filename, out->buf, out->buf_size);
+    filename_size = out->buf_size;
+    filename[filename_size] = '\0';
+
+    // knd_log("WAL filename: %.*s", out->buf_size, out->buf);
+
+    if (stat(out->buf, &st)) {
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log(".. initializing the journal: \"%.*s\"",
-                    file_out->buf_size, file_out->buf);
-        err = knd_write_file((const char*)file_out->buf,
+                    filename_size, filename);
+        err = knd_write_file((const char*)filename,
                              "{WAL\n", strlen("{WAL\n"));
-        KND_TASK_ERR("failed writing to file %.*s", file_out->buf_size, file_out->buf);
+        KND_TASK_ERR("failed writing to file %.*s", filename, filename_size);
         goto append_wal_rec;
     }
 
@@ -1462,24 +1560,24 @@ static int save_commit_WAL(struct kndRepo *self, struct kndCommit *commit, struc
             knd_log("!NB: journal size limit reached!");
         self->snapshot.num_journals[task->id]++;
 
-        file_out->reset(file_out);
-        err = file_out->write(file_out, task->path, task->path_size);
+        out->reset(out);
+        err = out->write(out, task->path, task->path_size);
         if (err) return err;
 
         if (self->path_size) {
-            err = file_out->write(file_out, self->path, self->path_size);
+            err = out->write(out, self->path, self->path_size);
             if (err) return err;
         }
 
-        //err = out->writef(file_out, "journal%zu.log", ctx->self->num_journals);
+        //err = out->writef(out, "journal%zu.log", ctx->self->num_journals);
         //if (err) return err;
-        //file_out->buf[file_out->buf_size] = '\0';
+        //out->buf[out->buf_size] = '\0';
 
         //if (DEBUG_REPO_LEVEL_TMP)
         //    knd_log(".. switching to a new journal: \"%.*s\"",
-        //            file_out->buf_size, file_out->buf);
+        //            out->buf_size, out->buf);
 
-        // err = knd_write_file((const char*)file_out->buf,
+        // err = knd_write_file((const char*)out->buf,
         //                     "{WAL\n", strlen("{WAL\n"));
         // if (err) return err;
     }
@@ -1487,9 +1585,20 @@ static int save_commit_WAL(struct kndRepo *self, struct kndCommit *commit, struc
  append_wal_rec:
 
     // TODO: bufferize WAL
+    out->reset(out);
+    err = out->writef(out, "{commit %zu{_ts %zu}{_size %zu}",
+                      commit->numid, (size_t)commit->timestamp,
+                      rec_size);
+    KND_TASK_ERR("commit header output failed");
+
+    err = out->write(out, rec, rec_size);
+    KND_TASK_ERR("commit body output failed");
+
+    err = out->write(out, "}\n", strlen("}\n"));
+    KND_TASK_ERR("commit footer output failed");
 
     // knd_log(".. appending to WAL: %.*s", out->buf_size, out->buf);
-    err = knd_append_file((const char*)file_out->buf,
+    err = knd_append_file((const char*)filename,
                           out->buf, out->buf_size);
     KND_TASK_ERR("WAL file append failed");
 
@@ -1552,7 +1661,6 @@ static int resolve_commit(struct kndCommit *commit, struct kndTask *task)
 
         err = resolve_class_inst_commit(state->children, commit, task);
         KND_TASK_ERR("failed to resolve commit of class insts");
-
     }
 
     /* PROCS */
@@ -1562,6 +1670,7 @@ static int resolve_commit(struct kndCommit *commit, struct kndTask *task)
             continue;
         }
         proc_entry = ref->obj;
+
         /* proc resolving */
         if (!proc_entry->proc->is_resolved) {
             err = knd_proc_resolve(proc_entry->proc, task);                       RET_ERR();
@@ -1578,8 +1687,8 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
 
     assert(commit != NULL);
 
-    if (DEBUG_REPO_LEVEL_TMP) {
-        knd_log(".. \"%.*s\" repo to apply commit #%zu..",
+    if (DEBUG_REPO_LEVEL_2) {
+        knd_log(".. \"%.*s\" repo to apply commit #%zu",
                 self->name_size, self->name, commit->numid);
     }
     commit->repo = self;
@@ -1629,8 +1738,8 @@ int knd_conc_folder_new(struct kndMemPool *mempool,
 }
 
 int knd_repo_new(struct kndRepo **repo,
-                 const char *name,
-                 size_t name_size,
+                 const char *name, size_t name_size,
+                 const char *schema_path, size_t schema_path_size,
                  struct kndMemPool *mempool)
 {
     struct kndRepo *self;
@@ -1649,12 +1758,20 @@ int knd_repo_new(struct kndRepo **repo,
     memcpy(self->name, name, name_size);
     self->name_size = name_size;
 
-    if (self->name[0] != '/') {
+    /* special repo names */
+    switch (self->name[0]) {
+    case '/':
+    case '~':
+        break;
+    default:
         memcpy(self->path, name, name_size);
         self->path[name_size] = '/';
         self->path[name_size + 1] = '\0';
         self->path_size = name_size + 1;
     }
+
+    self->schema_path = schema_path;
+    self->schema_path_size = schema_path_size;
 
     err = knd_class_entry_new(mempool, &entry);
     if (err) goto error;

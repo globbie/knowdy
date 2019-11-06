@@ -8,6 +8,7 @@
 #include "knd_attr.h"
 #include "knd_attr_inst.h"
 #include "knd_repo.h"
+#include "knd_shard.h"
 
 #include "knd_text.h"
 #include "knd_num.h"
@@ -58,7 +59,11 @@ int knd_class_inst_update_indices(struct kndClassEntry *baseclass,
     struct kndSet *idx = baseclass->inst_idx;
     struct kndCommit *commit = state_refs->state->commit;
     struct kndSharedDictItem *item = NULL;
+    struct kndMemPool *mempool = task->mempool;
     int err;
+
+    if (task->user_ctx)
+        mempool = task->shard->user->mempool;
 
     if (!name_idx) {
         err = knd_shared_dict_new(&name_idx, KND_MEDIUM_DICT_SIZE);
@@ -68,7 +73,7 @@ int knd_class_inst_update_indices(struct kndClassEntry *baseclass,
     }
     if (!idx) {
         // TODO: thread safe
-        err = knd_set_new(task->mempool, &idx);
+        err = knd_set_new(mempool, &idx);
         KND_TASK_ERR("failed to create inst idx");
         baseclass->inst_idx = idx; 
     }
@@ -80,7 +85,7 @@ int knd_class_inst_update_indices(struct kndClassEntry *baseclass,
             err = knd_shared_dict_set(name_idx,
                                       entry->name,  entry->name_size,
                                       (void*)entry,
-                                      task->mempool,
+                                      mempool,
                                       commit, &item, false);
             KND_TASK_ERR("name idx failed to register class inst %.*s",
                          entry->name_size, entry->name);
@@ -91,7 +96,6 @@ int knd_class_inst_update_indices(struct kndClassEntry *baseclass,
                               (void*)entry);
             KND_TASK_ERR("failed to register class inst %.*s err:%d",
                          entry->name_size, entry->name, err);
-            
             break;
         default:
             break;

@@ -29,8 +29,6 @@ void knd_task_del(struct kndTask *self)
     self->log->del(self->log);
     self->out->del(self->out);
     self->file_out->del(self->file_out);
-    if (self->user)
-        knd_user_del(self->user);
     if (self->is_mempool_owner)
         knd_mempool_del(self->mempool);
     free(self);
@@ -195,7 +193,7 @@ int knd_task_copy_block(struct kndTask *task,
                         const char **output, size_t *output_size)
 {
     int err;
-    struct kndMemBlock *block = malloc(sizeof(struct kndMemBlock));
+    struct kndMemBlock *block = calloc(1, sizeof(struct kndMemBlock));
     if (!block) {
         err = knd_NOMEM;
         KND_TASK_ERR("block alloc failed");
@@ -233,7 +231,7 @@ int knd_task_read_file_block(struct kndTask *task,
     size_t num_extra_bytes = 2; // closing brace + null term
     int err;
 
-    struct kndMemBlock *block = malloc(sizeof(struct kndMemBlock));
+    struct kndMemBlock *block = calloc(1, sizeof(struct kndMemBlock));
     if (!block) {
         err = knd_NOMEM;
         KND_TASK_ERR("block alloc failed");
@@ -276,10 +274,10 @@ int knd_task_read_file_block(struct kndTask *task,
 void knd_task_free_blocks(struct kndTask *task)
 {
     struct kndMemBlock *block, *next_block = NULL;
-
     for (block = task->blocks; block; block = next_block) {
         next_block = block->next;
-        free(block->buf);
+        if (block->buf)
+            free(block->buf);
         free(block);
     }
     task->total_block_size = 0;
@@ -315,7 +313,6 @@ int knd_task_new(struct kndShard *shard,
 {
     struct kndTask *self;
     struct kndRepo *repo = shard->repo;
-    struct kndUser *user;
     int err;
 
     self = malloc(sizeof(struct kndTask));
@@ -365,30 +362,6 @@ int knd_task_new(struct kndShard *shard,
     /* system repo defaults */
     self->system_repo       = repo;
     self->repo              = repo;
-
-    /* user */
-    err = knd_user_new(&user);
-    if (err != knd_OK) goto error;
-
-    if (repo->class_idx->num_elems) {
-        err = knd_get_class(repo,
-                            shard->user_class_name,
-                            shard->user_class_name_size,
-                            &user->class, self);
-        if (err) {
-            knd_log("no such user class: %.*s",
-                    shard->user_class_name_size,
-                    shard->user_class_name);
-            goto error;
-        }
-    }
-
-    user->class_name = shard->user_class_name;
-    user->class_name_size = shard->user_class_name_size;
-    user->schema_path = shard->user_schema_path;
-    user->schema_path_size = shard->user_schema_path_size;
-    self->user = user;
-
 
     *task = self;
 

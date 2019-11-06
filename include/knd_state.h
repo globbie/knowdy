@@ -77,6 +77,7 @@ struct kndCommit
     struct kndStateRef *proc_state_refs;
     size_t num_proc_state_refs;
 
+    bool is_restored;
     struct kndCommit *prev;
 };
 

@@ -311,21 +311,21 @@ int knd_get_class_inst(struct kndClass *self,
                               struct kndClassInst **result);
 
 int knd_register_class_inst(struct kndClass *self,
-                                   struct kndClassInstEntry *entry,
-                                   struct kndMemPool *mempool);
+                            struct kndClassInstEntry *entry,
+                            struct kndTask *task);
 
 int knd_unregister_class_inst(struct kndClass *self,
-                                     struct kndClassInstEntry *entry,
-                                     struct kndTask *task);
+                              struct kndClassInstEntry *entry,
+                              struct kndTask *task);
 
 int knd_class_clone(struct kndClass *self,
                            struct kndRepo *target_repo,
                            struct kndClass **result,
-                           struct kndMemPool *mempool);
+                           struct kndTask *task);
 
 int knd_class_copy(struct kndClass *self,
-                          struct kndClass *target,
-                          struct kndMemPool *mempool);
+                   struct kndClass *target,
+                   struct kndMemPool *mempool);
 
 int knd_register_state(struct kndClass *self);
 int knd_register_descendant_states(struct kndClass *self);

@@ -186,7 +186,7 @@ static int link_ancestor(struct kndClass *self,
                     self->entry->repo->name_size, self->entry->repo->name);
 
             err = knd_class_clone(base_entry->class,
-                                  self->entry->repo, &base, mempool);             RET_ERR();
+                                  self->entry->repo, &base, task);             RET_ERR();
         }
     }
 
@@ -222,7 +222,7 @@ static int link_baseclass(struct kndClass *self,
                 base->entry->class->state_top);
 
     if (base->entry->repo != repo) {
-        err = knd_class_clone(base, repo, &base_copy, mempool);                   RET_ERR();
+        err = knd_class_clone(base, repo, &base_copy, task);                   RET_ERR();
         base = base_copy;
         err = link_ancestor(self, base->entry, task);                             RET_ERR();
         parent_linked = true;

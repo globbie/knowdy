@@ -27,6 +27,13 @@
 #include "knd_proc_call.h"
 #include "knd_proc_arg.h"
 
+struct kndProcDuration
+{
+    size_t begin;
+    size_t end;
+    size_t total;
+};
+
 struct kndProcEstimate
 {
     size_t cost;
@@ -35,8 +42,10 @@ struct kndProcEstimate
     size_t time;
     size_t aggr_time;
 
-    size_t num_agents;
-    size_t aggr_num_agents;
+    //size_t num_agents;
+    //size_t aggr_num_agents;
+
+    struct kndProcDuration duration;
 };
 
 struct kndCommit;

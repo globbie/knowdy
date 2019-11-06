@@ -39,8 +39,8 @@ func init() {
 	)
 
 	flag.StringVar(&configPath, "config-path", "/etc/knowdy/service.json", "path to http service config")
-	flag.StringVar(&kndConfigPath, "knd-config-path", "/etc/knowdy/shard.gsl", "path to Knowdy config")
-	flag.StringVar(&listenAddress, "listen-address", "127.0.0.1:8089", "Knowdy listen address")
+	flag.StringVar(&kndConfigPath, "shard-config", "/etc/knowdy/shard.gsl", "path to Knowdy config")
+	flag.StringVar(&listenAddress, "listen-address", "127.0.0.1:8080", "Knowdy listen address")
 	flag.StringVar(&parentAddress, "parent-address", "", "parent service address")
 	flag.IntVar(&requestsMax, "requests-limit", 10, "maximum number of requests to process simultaneously")
 	flag.DurationVar(&duration, "request-limit-duration", 1*time.Second, "free slot awaiting time")

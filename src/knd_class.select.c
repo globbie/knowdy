@@ -2,6 +2,7 @@
 #include "knd_attr.h"
 #include "knd_task.h"
 #include "knd_repo.h"
+#include "knd_user.h"
 #include "knd_set.h"
 #include "knd_output.h"
 
@@ -653,9 +654,7 @@ parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
     int err;
 
     if (!ctx->selected_class) {
-        knd_log("-- class not selected");
-        int err = ctx->task->log->writef(ctx->task->log, "class not selected");
-        if (err) return *total_size = 0, make_gsl_err_external(err);
+        KND_TASK_LOG("class not selected");
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
@@ -855,9 +854,10 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
-        knd_log(".. parsing class select rec: \"%.*s\" (repo:%.*s) INPUT:%.*s",
-                32, rec, repo->name_size, repo->name, task->input_size, task->input);
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+        knd_log(".. parsing class select rec: \"%.*s\" (repo:%.*s)",
+                32, rec, repo->name_size, repo->name);
+    }
 
     struct LocalContext ctx = {
         .task = task,

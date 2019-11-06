@@ -273,6 +273,7 @@ static gsl_err_t parse_sync_task(void *obj,
 gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *self = obj;
+    struct kndRepo *repo;
     gsl_err_t parser_err;
     int err;
 
@@ -342,10 +343,14 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
         goto final;
     }
 
-    /* any system repo commits? */
+    /* any commits? */
     switch (self->type) {
     case KND_COMMIT_STATE:
-        err = knd_confirm_commit(self->repo, self);
+        repo = self->repo;
+        if (self->user_ctx) repo = self->user_ctx->repo;
+
+        knd_log("TASK confirm state of repo:%p", repo);
+        err = knd_confirm_commit(repo, self);
         if (err) return make_gsl_err_external(err);
         break;
     case KND_RESTORE_STATE:
