@@ -167,10 +167,7 @@ int knd_get_class_inst(struct kndClass *self,
         KND_TASK_ERR("no such class inst: \"%.*s\"", name_size, name);
     }
 
-    if (DEBUG_CLASS_LEVEL_2)
-        knd_log("++ got obj entry %.*s  size: %zu",
-                name_size, name, entry->block_size);
-
+    // TODO
     if (!entry->inst) {
         //err = unfreeze_obj_entry(self, entry, result);
         //if (err) return err;
@@ -182,7 +179,13 @@ int knd_get_class_inst(struct kndClass *self,
         return knd_NO_MATCH;
     }
 
+    if (DEBUG_CLASS_LEVEL_2) {
+        knd_log("++ got class inst: %.*s",  name_size, name);
+        knd_class_inst_str(entry->inst, 1);
+    }
+
     obj = entry->inst;
+    
     *result = obj;
     return knd_OK;
 }
@@ -696,7 +699,7 @@ int knd_get_class_by_id(struct kndRepo *repo,
     struct kndState *state;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_TMP) {
         knd_log(".. repo \"%.*s\" to get class by id: \"%.*s\"..",
                 repo->name_size, repo->name, id_size, id);
     }

@@ -743,6 +743,9 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
     struct kndTask *task = ctx->task;
     int err;
 
+    // knd_log(".. present selected class: %.*s",
+    //        ctx->selected_class->name_size, ctx->selected_class->name);
+
     /* select a set of classes by base class */
     if (ctx->selected_base) {
         /** 
@@ -854,7 +857,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+    if (DEBUG_CLASS_SELECT_LEVEL_1) {
         knd_log(".. parsing class select rec: \"%.*s\" (repo:%.*s)",
                 32, rec, repo->name_size, repo->name);
     }

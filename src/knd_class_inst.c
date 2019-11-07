@@ -91,11 +91,12 @@ int knd_class_inst_update_indices(struct kndClassEntry *baseclass,
                          entry->name_size, entry->name);
             entry->dict_item = item;
 
-            err = knd_set_add(idx,
+            /* err = knd_set_add(idx,
                               entry->id, entry->id_size,
                               (void*)entry);
             KND_TASK_ERR("failed to register class inst %.*s err:%d",
                          entry->name_size, entry->name, err);
+            */
             break;
         default:
             break;

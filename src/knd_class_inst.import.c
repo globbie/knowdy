@@ -8,6 +8,7 @@
 #include "knd_attr.h"
 #include "knd_attr_inst.h"
 #include "knd_repo.h"
+#include "knd_shard.h"
 
 #include "knd_text.h"
 #include "knd_num.h"
@@ -416,19 +417,22 @@ int knd_import_class_inst(struct kndClass *self,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_INST_IMPORT_LEVEL_TMP) {
+    if (DEBUG_INST_IMPORT_LEVEL_2) {
         knd_log(".. import \"%.*s\" inst.. (repo:%.*s)",
                 128, rec, repo->name_size, repo->name);
     }
 
     if (task->user_ctx) {
         repo = task->user_ctx->repo;
-        if (DEBUG_INST_IMPORT_LEVEL_TMP) {
+
+        if (DEBUG_INST_IMPORT_LEVEL_2) {
             knd_log("class inst import by user:%.*s  repo:%.*s",
                     task->user_ctx->user_inst->name_size,
                     task->user_ctx->user_inst->name,
                     repo->name_size, repo->name);
         }
+        // use non-ephemeral mempool
+        mempool = task->shard->user->mempool;
     }
 
     /* user ctx should have its own copy of a selected class */
@@ -486,7 +490,7 @@ int knd_import_class_inst(struct kndClass *self,
         inst->name_size = inst->entry->id_size;
     }
 
-    if (DEBUG_INST_IMPORT_LEVEL_TMP) {
+    if (DEBUG_INST_IMPORT_LEVEL_2) {
         knd_log("++ inst \"%.*s\" of \"%.*s\" class import  OK!",
                 inst->entry->id_size, inst->entry->id,
                 self->name_size, self->name);

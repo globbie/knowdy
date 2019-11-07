@@ -97,7 +97,7 @@ static int save_commit_body(struct kndCommit *commit,
     memcpy(commit->rec + tag_size, rec, rec_size);
     commit->rec[rec_size] = '\0';
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("#%zu COMMIT: \"%.*s\"",
                 commit->numid, commit->rec_size, commit->rec);
     return knd_OK;
@@ -281,7 +281,7 @@ static int restore_journals(struct kndRepo *self,
             KND_TASK_ERR("journal size limit reached");
         }
 
-        if (DEBUG_REPO_LEVEL_TMP)
+        if (DEBUG_REPO_LEVEL_2)
             knd_log(".. restoring the journal file: %.*s",
                     out->buf_size, out->buf);
 
@@ -314,7 +314,8 @@ static int apply_commit(void *obj,
     size_t total_size = commit->rec_size;
     int err;
 
-    knd_log(".. applying commit: #%zu", commit->numid);
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log(".. applying commit: #%zu", commit->numid);
 
     knd_task_reset(task);
     task->type = KND_RESTORE_STATE;
@@ -349,7 +350,9 @@ static int apply_commit(void *obj,
         commit->prev = head_commit;
     } while (!atomic_compare_exchange_weak(&repo->snapshot.commits,
                                            &head_commit, commit));
-    
+    /* restore repo ref */
+    task->repo = repo;
+
     return knd_OK;
 }
 
@@ -364,7 +367,7 @@ static int restore_state(struct kndRepo *self,
     int latest_snapshot_id = -1;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP) {
+    if (DEBUG_REPO_LEVEL_1) {
         const char *owner_name = "/";
         size_t owner_name_size = 1;
         if (task->user_ctx) {
@@ -624,7 +627,7 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
     if (task->user_ctx) {
         switch (*name) {
         case '~':
-            knd_log("== private repo selected: %p", task->user_ctx->repo);
+            // knd_log("== private repo selected: %p", task->user_ctx->repo);
             return make_gsl_err(gsl_OK);
         default:
             break;
@@ -1200,7 +1203,7 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     struct stat st;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("..open repo: %.*s", self->name_size, self->name);
 
     out->reset(out);
@@ -1320,24 +1323,33 @@ static int update_indices(struct kndRepo *self,
     struct kndStateRef *ref;
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
-    struct kndSharedDict *name_idx = self->class_name_idx;
     struct kndSharedDictItem *item = NULL;
     struct kndMemPool *mempool = task->mempool;
+    struct kndRepo *repo = self;
+    struct kndSharedDict *name_idx = repo->class_name_idx;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log(".. commit #%zu updating indices..", commit->numid);
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log(".. commit #%zu updating indices of %.*s..",
+                commit->numid, self->name_size, self->name);
 
     if (task->user_ctx) {
         mempool = task->shard->user->mempool;
+        repo = task->user_ctx->repo;
+        name_idx = repo->class_name_idx;
     }
 
     for (ref = commit->class_state_refs; ref; ref = ref->next) {
         entry = ref->obj;
 
-        knd_log("== class state phase: %d", ref->state->phase);
         switch (ref->state->phase) {
         case KND_CREATED:
+
+            if (DEBUG_REPO_LEVEL_3)
+                knd_log(".. class name idx (%p) of repo \"%.*s\" to register class \"%.*s\"",
+                        name_idx, self->name_size, self->name,
+                        entry->name_size, entry->name);
+
             /* register new class */
             err = knd_shared_dict_set(name_idx,
                                       entry->name,  entry->name_size,
@@ -1359,9 +1371,8 @@ static int update_indices(struct kndRepo *self,
             continue;
         default:
             // KND_SELECTED
-            knd_log(".. update class inst indices..");
             err = knd_class_inst_update_indices(entry, ref->state->children, task);
-            KND_TASK_ERR("failed to update inst idx of class %.*s",
+            KND_TASK_ERR("failed to update inst indices of class \"%.*s\"",
                          entry->name_size, entry->name);
             
             break;

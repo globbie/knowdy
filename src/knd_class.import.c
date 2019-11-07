@@ -17,6 +17,7 @@
 #include "knd_config.h"
 #include "knd_mempool.h"
 #include "knd_repo.h"
+#include "knd_shard.h"
 #include "knd_state.h"
 #include "knd_class.h"
 #include "knd_class_inst.h"
@@ -408,6 +409,9 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log("..worker \"%zu\" to import class: \"%.*s\"",
                 task->id, 128, rec);
+
+    if (task->user_ctx)
+        mempool = task->shard->user->mempool;
 
     err = knd_class_new(mempool, &c);
     if (err) {

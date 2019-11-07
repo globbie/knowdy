@@ -252,6 +252,7 @@ int knd_class_update_indices(struct kndClassEntry *self,
     knd_log(".. update class %.*s indices: idx:%p",
             self->name_size, self->name, idx);    
 
+    
     return knd_OK;
 }
 
