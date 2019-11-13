@@ -215,7 +215,7 @@ static int export_gloss_JSON(struct kndClass *self,
                              struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndTranslation *tr;
+    struct kndText *tr;
     int err;
 
     for (tr = self->tr; tr; tr = tr->next) {
@@ -224,9 +224,8 @@ static int export_gloss_JSON(struct kndClass *self,
         if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
             continue;
         }
-
         err = out->write(out, ",\"_gloss\":\"", strlen(",\"_gloss\":\""));        RET_ERR();
-        err = out->write_escaped(out, tr->val,  tr->val_size);                    RET_ERR();
+        err = out->write_escaped(out, tr->seq,  tr->seq_size);                    RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
         break;
     }

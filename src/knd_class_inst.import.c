@@ -99,7 +99,6 @@ static int validate_attr(struct kndClassInst *self,
                          struct kndAttr **result,
                          struct kndAttrInst **result_attr_inst)
 {
-    struct kndClass *conc;
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct kndAttrInst *attr_inst = NULL;
@@ -120,8 +119,7 @@ static int validate_attr(struct kndClassInst *self,
             return knd_OK;
         }
     }
-    conc = self->blueprint;
-    err = knd_class_get_attr(conc, name, name_size, &attr_ref);
+    err = knd_class_get_attr(self->blueprint, name, name_size, &attr_ref);
     if (err) {
         knd_log("  -- \"%.*s\" attr is not approved :(", name_size, name);
         /*log->reset(log);
@@ -142,16 +140,17 @@ static int validate_attr(struct kndClassInst *self,
     return knd_OK;
 }
 
-static gsl_err_t parse_import_attr_inst(void *obj1,
+static gsl_err_t parse_import_attr_inst(void *obj,
                                         const char *name, size_t name_size,
                                         const char *rec, size_t *total_size)
 {
-    struct LocalContext *ctx = obj1;
+    struct LocalContext *ctx = obj;
     struct kndClassInst *self = ctx->class_inst;
-    struct kndClassInst *obj;
+    struct kndClassInst *inst;
     struct kndAttrInst *attr_inst = NULL;
     struct kndAttr *attr = NULL;
     struct kndNum *num = NULL;
+    struct kndText *text;
     struct kndMemPool *mempool;
     struct kndTask *task = ctx->task;
     int err;
@@ -201,34 +200,34 @@ static gsl_err_t parse_import_attr_inst(void *obj1,
 
     switch (attr->type) {
         case KND_ATTR_INNER:
-            err = knd_class_inst_new(mempool, &obj);
+            err = knd_class_inst_new(mempool, &inst);
             if (err) {
                 knd_log("-- inner class inst alloc failed :(");
                 return *total_size = 0, make_gsl_err_external(err);
             }
             // CHECK: do we need a state here?
-            err = knd_state_new(mempool, &obj->states);
+            err = knd_state_new(mempool, &inst->states);
             if (err) {
                 knd_log("-- state alloc failed :(");
                 return *total_size = 0, make_gsl_err_external(err);
             }
-            obj->states->phase = KND_CREATED;
-            obj->type = KND_OBJ_INNER;
-            obj->name = attr->name;
-            obj->name_size = attr->name_size;
+            inst->states->phase = KND_CREATED;
+            inst->type = KND_OBJ_INNER;
+            inst->name = attr->name;
+            inst->name_size = attr->name_size;
 
-            obj->blueprint = attr->ref_class;
-            obj->root = self->root ? self->root : self;
+            inst->blueprint = attr->ref_class;
+            inst->root = self->root ? self->root : self;
 
             if (DEBUG_INST_IMPORT_LEVEL_2)
-                knd_log(".. import inner obj of default class: %.*s",
-                        obj->blueprint->name_size, obj->blueprint->name);
+                knd_log(".. import inner inst of default class: %.*s",
+                        inst->blueprint->name_size, inst->blueprint->name);
 
-            parser_err = import_class_inst(obj, rec, total_size, ctx->task);
+            parser_err = import_class_inst(inst, rec, total_size, ctx->task);
             if (parser_err.code) return parser_err;
 
-            attr_inst->inner = obj;
-            obj->parent = attr_inst;
+            attr_inst->inner = inst;
+            inst->parent = attr_inst;
             goto append_attr_inst;
 
             /*case KND_ATTR_NUM:
@@ -237,22 +236,20 @@ static gsl_err_t parse_import_attr_inst(void *obj1,
             num->attr_inst = attr_inst;
             parser_err = num->parse(num, rec, total_size);
             if (parser_err.code) goto final;
-
             attr_inst->num = num;
-            goto append_attr_inst;
-            case KND_ATTR_TEXT:
-            err = kndText_new(&text);
-            if (err) return *total_size = 0, make_gsl_err_external(err);
-
-            text->attr_inst = attr_inst;
-            parser_err = text->parse(text, rec, total_size);
-            if (parser_err.code) goto final;
-
-            attr_inst->text = text;
-            goto append_attr_inst;
-            */
-        default:
-            break;
+            goto append_attr_inst; */
+    case KND_ATTR_TEXT:
+        err = knd_text_new(mempool, &text);
+        if (err) {
+            KND_TASK_LOG("failed to alloc kndText");
+            return *total_size = 0, make_gsl_err_external(err);
+        }
+        parser_err = knd_text_import(text, rec, total_size, task);
+        if (parser_err.code) goto final;
+        attr_inst->text = text;
+        goto append_attr_inst;
+    default:
+        break;
     }
 
     parser_err = knd_import_attr_inst(attr_inst, rec, total_size, task);

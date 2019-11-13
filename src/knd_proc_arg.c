@@ -49,7 +49,7 @@ void knd_proc_arg_str(struct kndProcArg *self,
 }
 
 
-static int export_gloss_JSON(struct kndTranslation *tr,
+static int export_gloss_JSON(struct kndText *tr,
                              struct kndTask *task,
                              struct kndOutput *out,
                              bool separ_needed)
@@ -66,7 +66,7 @@ static int export_gloss_JSON(struct kndTranslation *tr,
             err = out->write(out, ",", 1);                                        RET_ERR();
         }
         err = out->write(out, "\"_gloss\":\"", strlen("\"_gloss\":\""));          RET_ERR();
-        err = out->write(out, tr->val,  tr->val_size);                            RET_ERR();
+        err = out->write(out, tr->seq,  tr->seq_size);                            RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
         break;
     next_tr:
@@ -142,7 +142,7 @@ static int export_GSP(struct kndProcArg *self,
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
-    struct kndTranslation *tr;
+    struct kndText *tr;
     int err;
     err = out->writec(out, '{');                                                  RET_ERR();
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
@@ -155,7 +155,7 @@ static int export_GSP(struct kndProcArg *self,
         err = out->write(out, "{", 1);                                            RET_ERR();
         err = out->write(out, tr->locale,  tr->locale_size);                      RET_ERR();
         err = out->write(out, "{t ", 3);                                          RET_ERR();
-        err = out->write(out, tr->val,  tr->val_size);                            RET_ERR();
+        err = out->write(out, tr->seq,  tr->seq_size);                            RET_ERR();
         err = out->write(out, "}}", 2);                                           RET_ERR();
     }
     if (self->tr) {

@@ -177,7 +177,7 @@ struct kndProc
 
     struct kndProcEntry *entry;
 
-    struct kndTranslation *tr;
+    struct kndText *tr;
 
     struct kndState * _Atomic states;
     size_t num_states;
@@ -350,7 +350,7 @@ int knd_proc_commit_state(struct kndProc *self,
                           knd_state_phase phase,
                           struct kndTask *task);
 
-static inline void kndProc_declare_tr(struct kndProc *self, struct kndTranslation *tr)
+static inline void kndProc_declare_tr(struct kndProc *self, struct kndText *tr)
 {
     tr->next = self->tr;
     self->tr = tr;

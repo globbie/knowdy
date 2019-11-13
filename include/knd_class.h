@@ -34,7 +34,7 @@ struct kndAttr;
 struct kndAttrVar;
 struct kndProcCallArg;
 struct kndClass;
-struct kndTranslation;
+struct kndText;
 struct kndClass;
 struct kndTask;
 struct kndSet;
@@ -158,8 +158,8 @@ struct kndClass
     size_t num_desc_states;
 
 
-    struct kndTranslation *tr;
-    struct kndTranslation *summary;
+    struct kndText *tr;
+    struct kndText *summary;
 
     struct kndClassVar *baseclass_vars;
     size_t num_baseclass_vars;
@@ -263,7 +263,7 @@ int knd_class_export_GSL(struct kndClassEntry *self,
 int knd_empty_set_export_GSL(struct kndClass *self,
                              struct kndTask *task);
 
-int knd_export_gloss_GSL(struct kndTranslation *tr,
+int knd_export_gloss_GSL(struct kndText *tr,
                          struct kndTask *task);
 
 int knd_class_facets_export(struct kndTask *task);

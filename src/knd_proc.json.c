@@ -44,7 +44,7 @@ static int proc_call_arg_export_JSON(struct kndProc *unused_var(self),
     return knd_OK;
 }
 
-static int export_gloss_JSON(struct kndTranslation *tr,
+static int export_gloss_JSON(struct kndText *tr,
                              struct kndTask *task,
                              struct kndOutput *out,
                              bool separ_needed)
@@ -61,7 +61,7 @@ static int export_gloss_JSON(struct kndTranslation *tr,
             err = out->write(out, ",", 1);                                        RET_ERR();
         }
         err = out->write(out, "\"_gloss\":\"", strlen("\"_gloss\":\""));          RET_ERR();
-        err = out->write(out, tr->val,  tr->val_size);                            RET_ERR();
+        err = out->write(out, tr->seq,  tr->seq_size);                            RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
         break;
     next_tr:

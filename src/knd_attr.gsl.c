@@ -517,7 +517,7 @@ extern int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_
 {
     char buf[KND_NAME_SIZE] = {0};
     size_t buf_size = 0;
-    struct kndTranslation *tr;
+    struct kndText *tr;
     struct kndOutput *out = task->out;
     const char *type_name = knd_attr_names[self->type];
     size_t type_name_size = strlen(knd_attr_names[self->type]);
@@ -589,7 +589,7 @@ extern int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_
         if (err) return err;
         err = out->write(out, "{t ", 3);
         if (err) return err;
-        err = out->write(out, tr->val,  tr->val_size);
+        err = out->write(out, tr->seq,  tr->seq_size);
         if (err) return err;
         err = out->write(out, "}}", 2);
         if (err) return err;

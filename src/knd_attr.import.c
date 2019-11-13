@@ -49,19 +49,19 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t set_gloss_locale(void *obj, const char *name, size_t name_size)
 {
-    struct kndTranslation *self = obj;
+    struct kndText *self = obj;
     if (name_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-    self->curr_locale = name;
-    self->curr_locale_size = name_size;
+    self->locale = name;
+    self->locale_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t set_gloss_value(void *obj, const char *name, size_t name_size)
 {
-    struct kndTranslation *self = obj;
+    struct kndText *self = obj;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    self->val = name;
-    self->val_size = name_size;
+    self->seq = name;
+    self->seq_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -70,7 +70,7 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndAttr *self = ctx->attr;
-    struct kndTranslation *tr;
+    struct kndText *tr;
     struct kndMemPool *mempool = task->mempool;
     int err;
 
@@ -78,9 +78,9 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
         knd_log(".. %.*s: allocate gloss translation",
                 self->name_size, self->name);
 
-    err = knd_text_translation_new(mempool, &tr);
+    err = knd_text_new(mempool, &tr);
     if (err) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
-    memset(tr, 0, sizeof(struct kndTranslation));
+    memset(tr, 0, sizeof(struct kndText));
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -98,15 +98,15 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
-    if (tr->curr_locale_size == 0 || tr->val_size == 0)
+    if (tr->locale_size == 0 || tr->seq_size == 0)
         return make_gsl_err(gsl_FORMAT);  // error: both of them are required
 
-    tr->locale = tr->curr_locale;
-    tr->locale_size = tr->curr_locale_size;
+    tr->locale = tr->locale;
+    tr->locale_size = tr->locale_size;
 
     if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
-                tr->locale_size, tr->locale, tr->val_size, tr->val);
+                tr->locale_size, tr->locale, tr->seq_size, tr->seq);
 
     // append
     tr->next = self->tr;

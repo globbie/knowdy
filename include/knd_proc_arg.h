@@ -27,7 +27,7 @@
 
 struct kndClass;
 struct kndMemPool;
-struct kndTranslation;
+struct kndText;
 struct kndClassInst;
 struct kndClassVar;
 struct kndTask;
@@ -91,7 +91,7 @@ struct kndProcArg
     size_t numval;
     const char *val;
     size_t val_size;
-    struct kndTranslation *tr;
+    struct kndText *tr;
 
     struct kndProcArg *next;
 };

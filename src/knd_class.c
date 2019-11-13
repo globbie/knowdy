@@ -60,13 +60,11 @@ static int str_attr_idx_rec(void *unused_var(obj),
 
 static void str(struct kndClass *self, size_t depth)
 {
-    struct kndTranslation *tr;
+    struct kndText *tr;
     struct kndClassVar *item;
     struct kndClassRef *ref;
     struct kndClass *c;
     struct kndState *state;
-    //struct kndSet *set;
-    //struct kndFacet *f;
     const char *name;
     size_t name_size;
     char resolved_state = '-';
@@ -97,7 +95,7 @@ static void str(struct kndClass *self, size_t depth)
         knd_log("%*s~ %.*s %.*s",
                 (depth + 1) * KND_OFFSET_SIZE, "",
                 tr->locale_size, tr->locale,
-                tr->val_size, tr->val);
+                tr->seq_size, tr->seq);
     }
 
     if (self->baseclass_vars) {

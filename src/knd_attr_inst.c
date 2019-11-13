@@ -35,9 +35,9 @@ void knd_attr_inst_str(struct kndAttrInst *self, size_t depth)
 {
     struct kndState *state = self->states;
 
-    knd_log("%*s%.*s (%d)", depth * KND_OFFSET_SIZE, "",
-            self->attr->name_size, self->attr->name,
-            self->attr->type);
+    //knd_log("%*s%.*s (%d)", depth * KND_OFFSET_SIZE, "",
+    //        self->attr->name_size, self->attr->name,
+    //        self->attr->type);
 
     if (self->inner) {
         if (self->is_list) {
@@ -74,11 +74,10 @@ void knd_attr_inst_str(struct kndAttrInst *self, size_t depth)
         /*case KND_ATTR_NUM:
         self->num->depth = self->depth;
         self->num->str(self->num);
-        return;
-    case KND_ATTR_TEXT:
-        self->text->depth = self->depth;
-        self->text->str(self->text);
         return;*/
+    case KND_ATTR_TEXT:
+        knd_text_str(self->text, depth);
+        return;
     default:
         break;
     }
@@ -345,16 +344,17 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
     struct kndAttrInst *self = ctx->attr_inst;
-    if (DEBUG_ATTR_INST_LEVEL_2)
-        knd_log(".. attr \"%.*s\" [%s] to set val \"%.*s\"",
-                self->attr->name_size, self->attr->name,
-                knd_attr_names[self->attr->type], val_size, val);
     struct kndState *state;
     struct kndStateVal *state_val;
     struct kndStateRef *state_ref;
     struct kndTask *task = ctx->task;
     struct kndMemPool *mempool = ctx->task->mempool;
     int err;
+
+    if (DEBUG_ATTR_INST_LEVEL_TMP)
+        knd_log(".. attr \"%.*s\" [%s] to set val \"%.*s\"",
+                self->attr->name_size, self->attr->name,
+                knd_attr_names[self->attr->type], val_size, val);
 
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_VAL_SIZE) return make_gsl_err(gsl_LIMIT);

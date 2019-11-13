@@ -53,7 +53,7 @@ struct LocalContext {
 static int export_glosses(struct kndClass *self,
                           struct kndOutput *out)
 {
-    struct kndTranslation *tr;
+    struct kndText *tr;
     int err;
     err = out->write(out, "[!_g", strlen("[!_g"));
     if (err) return err;
@@ -65,7 +65,7 @@ static int export_glosses(struct kndClass *self,
         if (err) return err;
         err = out->write(out, "{t ", 3);
         if (err) return err;
-        err = out->write(out, tr->val, tr->val_size);
+        err = out->write(out, tr->seq, tr->seq_size);
         if (err) return err;
         err = out->write(out, "}}", 2);
         if (err) return err;
@@ -78,7 +78,7 @@ static int export_glosses(struct kndClass *self,
 /*static int export_summary(struct kndClass *self,
                           struct kndOutput *out)
 {
-    struct kndTranslation *tr;
+    struct kndText *tr;
     int err;
 
     err = out->write(out, "[!_summary", strlen("[!_summary"));
@@ -91,7 +91,7 @@ static int export_glosses(struct kndClass *self,
         if (err) return err;
         err = out->write(out, "{t ", 3);
         if (err) return err;
-        err = out->write(out, tr->val, tr->val_size);
+        err = out->write(out, tr->seq, tr->seq_size);
         if (err) return err;
         err = out->write(out, "}}", 2);
         if (err) return err;

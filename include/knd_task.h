@@ -40,7 +40,7 @@ struct kndClassVar;
 struct kndQuery;
 struct kndClassInst;
 struct kndConcFolder;
-struct kndTranslation;
+struct kndText;
 
 typedef int (*task_cb_func)(void *obj,
                             const char *msg,
@@ -121,7 +121,7 @@ struct kndTaskContext {
     knd_format format;
     size_t format_offset;
 
-    struct kndTranslation *tr;
+    struct kndText *tr;
 
     size_t batch_max;
     size_t batch_from;

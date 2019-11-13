@@ -27,7 +27,7 @@
 static void str(struct kndAttr *self,
                 size_t depth)
 {
-    struct kndTranslation *tr;
+    struct kndText *tr;
     const char *type_name = knd_attr_names[self->type];
 
     if (self->is_a_set)
@@ -55,8 +55,8 @@ static void str(struct kndAttr *self,
 
     tr = self->tr;
     while (tr) {
-        knd_log("%*s   ~ %s %s",
-                depth * KND_OFFSET_SIZE, "", tr->locale, tr->val);
+        knd_log("%*s   ~ %s %.*s",
+                depth * KND_OFFSET_SIZE, "", tr->locale, tr->seq_size, tr->seq);
         tr = tr->next;
     }
 
@@ -156,7 +156,7 @@ static int export_JSON(struct kndAttr *self,
                        struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndTranslation *tr;
+    struct kndText *tr;
     struct kndProc *p;
     const char *type_name = knd_attr_names[self->type];
     size_t type_name_size = strlen(knd_attr_names[self->type]);
@@ -206,7 +206,7 @@ static int export_JSON(struct kndAttr *self,
                          ",\"_gloss\":\"", strlen(",\"_gloss\":\""));
         if (err) return err;
 
-        err = out->write(out, tr->val,  tr->val_size);
+        err = out->write(out, tr->seq,  tr->seq_size);
         if (err) return err;
 
         err = out->write(out, "\"", 1);
@@ -235,7 +235,7 @@ static int export_GSP(struct kndAttr *self, struct kndOutput *out)
 {
     char buf[KND_NAME_SIZE] = {0};
     size_t buf_size = 0;
-    struct kndTranslation *tr;
+    struct kndText *tr;
 
     const char *type_name = knd_attr_names[self->type];
     size_t type_name_size = strlen(knd_attr_names[self->type]);
@@ -307,7 +307,7 @@ static int export_GSP(struct kndAttr *self, struct kndOutput *out)
         if (err) return err;
         err = out->write(out, "{t ", 3);
         if (err) return err;
-        err = out->write(out, tr->val,  tr->val_size);
+        err = out->write(out, tr->seq,  tr->seq_size);
         if (err) return err;
         err = out->write(out, "}}", 2);
         if (err) return err;

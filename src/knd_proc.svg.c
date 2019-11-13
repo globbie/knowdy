@@ -66,7 +66,7 @@ int knd_proc_export_SVG(struct kndProc *self,
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size = 0;
     struct kndProcArg *arg;
-    struct kndTranslation *tr;
+    struct kndText *tr;
     size_t x_offset = 0;
     size_t y_offset = 0;
     int err;
@@ -90,7 +90,7 @@ int knd_proc_export_SVG(struct kndProc *self,
         err = out->write(out, buf, buf_size);          RET_ERR();
         err = out->write(out, ">", 1);          RET_ERR();
 
-        err = out->write(out, tr->val,  tr->val_size);                            RET_ERR();
+        err = out->write(out, tr->seq,  tr->seq_size);                            RET_ERR();
         err = out->write(out, "</text>", strlen("</text>"));                        RET_ERR();
         break;
     next_tr:

@@ -32,7 +32,7 @@
 
 struct kndClass;
 struct kndClassEntry;
-struct kndTranslation;
+struct kndText;
 struct kndAttr;
 struct kndProc;
 struct kndClassUpdate;
@@ -227,7 +227,7 @@ struct kndAttr
     size_t init_state;
     size_t num_states;
 
-    struct kndTranslation *tr;
+    struct kndText *tr;
 
     struct kndAttr *next;
 

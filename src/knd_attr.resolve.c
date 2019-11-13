@@ -67,7 +67,7 @@ static int resolve_text(struct kndAttrVar *attr_var,
     struct kndAttrVar *curr_item;
     struct kndAttrVar *val_item;
     struct kndText *text;
-    struct kndTranslation *tr;
+    struct kndText *tr;
     struct kndMemPool *mempool = task->mempool;
     int err;
 
@@ -77,8 +77,6 @@ static int resolve_text(struct kndAttrVar *attr_var,
                 attr_var->class_var->parent->name_size,
                 attr_var->class_var->parent->name);
 
-    //str_attr_vars(attr_var, 1);
-
     err = knd_text_new(mempool, &text);
     if (err) {
         knd_log("-- no text alloc");
@@ -86,7 +84,7 @@ static int resolve_text(struct kndAttrVar *attr_var,
     }
 
     for (curr_item = attr_var->list; curr_item; curr_item = curr_item->next) {
-        err = knd_text_translation_new(mempool, &tr);
+        err = knd_text_new(mempool, &tr);
         if (err) {
             knd_log("-- no text alloc");
         }
@@ -105,12 +103,12 @@ static int resolve_text(struct kndAttrVar *attr_var,
             return knd_FAIL;
         }
 
-        tr->val = val_item->val;
-        tr->val_size = val_item->val_size;
+        tr->seq = val_item->val;
+        tr->seq_size = val_item->val_size;
 
-        tr->next = text->tr;
-        text->tr = tr;
-        //str_attr_vars(curr_item, 1);
+        tr->next = text->trs;
+        text->trs = tr;
+        text->num_trs++;
     }
 
     attr_var->text = text;
