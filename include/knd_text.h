@@ -87,7 +87,7 @@ struct kndTranslation
 
 struct kndText
 {
-    /* translations of master text: manual or automatic */
+    /* translated renderings of master content: manual or automatic */
     struct kndTranslation *tr;
     size_t num_trs;
 
@@ -98,9 +98,9 @@ struct kndText
     size_t num_states;
 };
 
-extern int knd_text_export(struct kndText *self,
-                           knd_format format,
-                           struct kndTask *task);
+int knd_text_export(struct kndText *self,
+                    knd_format format,
+                    struct kndTask *task);
 
 extern int knd_text_translation_new(struct kndMemPool *mempool,
                                     struct kndTranslation   **self);

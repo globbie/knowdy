@@ -45,7 +45,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndRepo *repo = ctx->task->repo;
     struct kndTask *task = ctx->task;
     struct kndSharedDict *class_name_idx = repo->class_name_idx;
-    struct kndSharedDict *name_idx = self->base->entry->inst_name_idx;
+    struct kndSharedDict *name_idx = self->blueprint->entry->inst_name_idx;
     struct kndClass *c;
     int err;
 
@@ -60,14 +60,14 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
         }
         c = class_entry->class;
 
-        err = knd_is_base(self->base, c);
+        err = knd_is_base(self->blueprint, c);
         if (err) {
             KND_TASK_LOG("no inheritance from %.*s to %.*s",
-                         self->base->name_size, self->base->name,
+                         self->blueprint->name_size, self->blueprint->name,
                          c->name_size, c->name);
             return make_gsl_err_external(err);
         }
-        self->base = c;
+        self->blueprint = c;
         return make_gsl_err(gsl_OK);
     }
 
@@ -90,9 +90,6 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     self->entry->name = name;
     self->entry->name_size = name_size;
 
-    if (DEBUG_INST_IMPORT_LEVEL_2)
-        knd_log("++ class inst name: \"%.*s\"",
-                self->name_size, self->name);
     return make_gsl_err(gsl_OK);
 }
 
@@ -111,7 +108,7 @@ static int validate_attr(struct kndClassInst *self,
     if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log(".. \"%.*s\" (base class: %.*s) to validate attr_inst: \"%.*s\"",
                 self->name_size, self->name,
-                self->base->name_size, self->base->name,
+                self->blueprint->name_size, self->blueprint->name,
                 name_size, name);
 
     /* check existing attr_insts */
@@ -123,7 +120,7 @@ static int validate_attr(struct kndClassInst *self,
             return knd_OK;
         }
     }
-    conc = self->base;
+    conc = self->blueprint;
     err = knd_class_get_attr(conc, name, name_size, &attr_ref);
     if (err) {
         knd_log("  -- \"%.*s\" attr is not approved :(", name_size, name);
@@ -220,12 +217,12 @@ static gsl_err_t parse_import_attr_inst(void *obj1,
             obj->name = attr->name;
             obj->name_size = attr->name_size;
 
-            obj->base = attr->ref_class;
+            obj->blueprint = attr->ref_class;
             obj->root = self->root ? self->root : self;
 
             if (DEBUG_INST_IMPORT_LEVEL_2)
                 knd_log(".. import inner obj of default class: %.*s",
-                        obj->base->name_size, obj->base->name);
+                        obj->blueprint->name_size, obj->blueprint->name);
 
             parser_err = import_class_inst(obj, rec, total_size, ctx->task);
             if (parser_err.code) return parser_err;
@@ -298,7 +295,7 @@ static gsl_err_t import_attr_inst_list(void *unused_var(obj),
     //gsl_err_t parser_err;
     //int err, e;
 
-    //mempool = self->base->entry->repo->mempool;
+    //mempool = self->blueprint->entry->repo->mempool;
 
     if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log("== import attr_inst list: \"%.*s\" REC: %.*s size:%zu",
@@ -417,47 +414,31 @@ int knd_import_class_inst(struct kndClass *self,
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_INST_IMPORT_LEVEL_2) {
-        knd_log(".. import \"%.*s\" inst.. (repo:%.*s)",
-                128, rec, repo->name_size, repo->name);
-    }
 
     if (task->user_ctx) {
         repo = task->user_ctx->repo;
-
-        if (DEBUG_INST_IMPORT_LEVEL_2) {
-            knd_log("class inst import by user:%.*s  repo:%.*s",
-                    task->user_ctx->user_inst->name_size,
-                    task->user_ctx->user_inst->name,
-                    repo->name_size, repo->name);
-        }
         // use non-ephemeral mempool
         mempool = task->shard->user->mempool;
     }
 
-    /* user ctx should have its own copy of a selected class */
-    if (self->entry->repo != repo) {
-        err = knd_class_clone(self, repo, &c, task);
-        KND_TASK_ERR("failed to clone a class");
+    if (DEBUG_INST_IMPORT_LEVEL_TMP) {
+        knd_log(".. import \"%.*s\" inst.. (repo:%.*s)",
+                128, rec, repo->name_size, repo->name);
     }
-
-    err = knd_class_inst_new(mempool, &inst);
-    if (err) {
-        knd_log("-- class inst alloc failed :(");
-        return err;
-    }
-
-    err = knd_state_new(mempool, &state);
-    KND_TASK_ERR("state alloc failed");
-
+    
     err = knd_class_inst_entry_new(mempool, &entry);
     KND_TASK_ERR("class inst  alloc failed");
 
+    err = knd_class_inst_new(mempool, &inst);
+    KND_TASK_ERR("class inst alloc failed");
     inst->entry = entry;
     entry->inst = inst;
+    inst->blueprint = c;
+
+    err = knd_state_new(mempool, &state);
+    KND_TASK_ERR("state alloc failed");
     state->phase = KND_CREATED;
     state->numid = 1;
-    inst->base = c;
     inst->states = state;
     inst->num_states = 1;
 
@@ -490,7 +471,7 @@ int knd_import_class_inst(struct kndClass *self,
         inst->name_size = inst->entry->id_size;
     }
 
-    if (DEBUG_INST_IMPORT_LEVEL_2) {
+    if (DEBUG_INST_IMPORT_LEVEL_TMP) {
         knd_log("++ inst \"%.*s\" of \"%.*s\" class import  OK!",
                 inst->entry->id_size, inst->entry->id,
                 self->name_size, self->name);

@@ -93,7 +93,7 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
 
         c = parent_item->class;
 
-        err = knd_class_export_GSL(c, task, false, depth + 1);
+        err = knd_class_export_GSL(c->entry, task, false, depth + 1);
         if (err) return err;
     }
 
@@ -117,7 +117,7 @@ static int inner_item_export_GSL(struct kndAttrVar *parent_item,
         case KND_ATTR_REF:
             assert(item->class != NULL);
             c = item->class;
-            err = knd_class_export_GSL(c, task, false, depth + 1);                       RET_ERR();
+            err = knd_class_export_GSL(c->entry, task, false, depth + 1);                       RET_ERR();
             break;
         case KND_ATTR_INNER:
             err = inner_item_export_GSL(item, task, depth + 1);
@@ -270,7 +270,7 @@ static int ref_item_export_GSL(struct kndAttrVar *item,
                 c->name_size, c->name, task->depth, task->max_depth);
     }
 
-    err = knd_class_export_GSL(c, task, false, depth);                            RET_ERR();
+    err = knd_class_export_GSL(c->entry, task, false, depth);                            RET_ERR();
     task->depth = curr_depth;
 
     return knd_OK;
@@ -498,12 +498,12 @@ extern int knd_attr_var_export_GSL(struct kndAttrVar *item,
         }
         break;
     case KND_ATTR_INNER:
-        knd_log(".. export inner item..");
+        // knd_log(".. export inner item..");
         if (!item->class) {
             err = inner_item_export_GSL(item, task, depth + 1);                   RET_ERR();
         } else {
             c = item->class;
-            err = knd_class_export_GSL(c, task, false, depth + 1);                RET_ERR();
+            err = knd_class_export_GSL(c->entry, task, false, depth + 1);                RET_ERR();
         }
         break;
     default:

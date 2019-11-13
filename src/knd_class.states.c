@@ -80,7 +80,7 @@ static int retrieve_inst_updates(struct kndStateRef *ref,
     return knd_OK;
 }
 
-extern int knd_class_get_inst_updates(struct kndClass *self,
+extern int knd_class_get_inst_updates(struct kndClassEntry *self,
                                       size_t gt, size_t lt,
                                       size_t unused_var(eq),
                                       struct kndSet *set)
@@ -92,7 +92,7 @@ extern int knd_class_get_inst_updates(struct kndClass *self,
     if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log(".. class %.*s (repo:%.*s) to extract instance updates",
                 self->name_size, self->name,
-                self->entry->repo->name_size, self->entry->repo->name);
+                self->repo->name_size, self->repo->name);
 
     if (!lt) lt = self->num_inst_states + 1;
 

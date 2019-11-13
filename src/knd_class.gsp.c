@@ -518,8 +518,8 @@ extern int knd_class_export_commits_GSP(struct kndClass *self,
         err = export_class_body_commits(self, class_commit, task);                 RET_ERR();
     }
 
-    if (self->inst_states) {
-        state = self->inst_states;
+    if (self->entry->inst_states) {
+        state = self->entry->inst_states;
         /* any commits of the class insts? */
         if (state->commit == commit) {
             err = export_class_inst_commits(self, class_commit, task);             RET_ERR();
@@ -910,7 +910,7 @@ static gsl_err_t alloc_class_inst_item(struct LocalContext *ctx, struct kndClass
 
     inst->entry = entry;
     entry->inst = inst;
-    inst->base = self;
+    inst->blueprint = self;
 
     *item = inst;
 

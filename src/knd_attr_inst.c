@@ -138,7 +138,7 @@ static int export_JSON(struct kndAttrInst *self,
         err = out->write(out, "\":", strlen("\":"));
         if (err) goto final;
 
-        err = knd_class_inst_export(self->inner, KND_FORMAT_JSON, task);
+        err = knd_class_inst_export(self->inner, KND_FORMAT_JSON, false, task);
         
         return err;
     }
@@ -240,7 +240,7 @@ static int export_GSL(struct kndAttrInst *self,
         err = out->write(out, self->attr->name, self->attr->name_size);
         if (err) return err;
 
-        err = knd_class_inst_export(self->inner, KND_FORMAT_GSL, task);
+        err = knd_class_inst_export(self->inner, KND_FORMAT_GSL, false, task);
 
         err = out->write(out, "}", 1);
         if (err) return err;
@@ -446,7 +446,7 @@ static gsl_err_t check_class_name(void *obj, const char *name, size_t name_size)
     struct LocalContext *ctx = obj;
     struct kndAttrInst *self = ctx->attr_inst;
     struct kndClass *ref_class = self->attr->ref_class;
-    struct kndRepo *repo = self->root->base->entry->repo;
+    struct kndRepo *repo = self->root->blueprint->entry->repo;
     struct kndClass *c;
     int err;
 
@@ -582,7 +582,7 @@ int knd_attr_inst_resolve(struct kndAttrInst *self,
         KND_TASK_ERR("no such class: %.*s");
 
         if (self->class_inst_name_size) {
-            err = knd_get_class_inst(c,
+            err = knd_get_class_inst(c->entry,
                                      self->class_inst_name,
                                      self->class_inst_name_size, task, &inst);
             KND_TASK_ERR("class \"%.*s\" has no such inst: %.*s",

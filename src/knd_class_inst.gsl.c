@@ -30,7 +30,9 @@ static int export_inner_GSL(struct kndClassInst *self,
     return knd_OK;
 }
 
-int knd_class_inst_export_GSL(struct kndClassInst *self, struct kndTask *task)
+int knd_class_inst_export_GSL(struct kndClassInst *self,
+                              bool is_list_item,
+                              struct kndTask *task)
 {
     struct kndAttrInst *attr_inst;
     struct kndOutput *out = task->out;
@@ -43,6 +45,11 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, struct kndTask *task)
             return err;
         }
         return knd_OK;
+    }
+
+    if (!is_list_item) {
+        err = out->writec(out, '{');                                              RET_ERR();
+        err = out->write(out, "inst ", strlen("inst "));                          RET_ERR();
     }
 
     err = out->write(out, self->name, self->name_size);              RET_ERR();
@@ -60,5 +67,10 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, struct kndTask *task)
         KND_TASK_ERR("export of \"%.*s\" attr_inst failed",
                      attr_inst->attr->name_size, attr_inst->attr->name);
     }
+
+    if (!is_list_item) {
+        err = out->writec(out, '}');                                                  RET_ERR();
+    }
+
     return knd_OK;
 }

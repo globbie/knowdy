@@ -24,8 +24,12 @@ struct LocalContext {
     struct kndTask *task;
     struct kndRepo *repo;
 
-    struct kndClass *selected_class;  // get by class name/_id
-    struct kndClass *selected_base;   // get by base class
+    struct kndClassEntry *class_entry;
+    struct kndClass *class;
+    struct kndAttr *attr;
+
+    struct kndClass *selected_class;
+    struct kndClass *selected_base;
 
     struct {
         size_t state_eq;
@@ -37,8 +41,6 @@ struct LocalContext {
 
     bool create_subsets;
 
-    struct kndClass *class;
-    struct kndAttr *attr;
 };
 
 static gsl_err_t
@@ -56,7 +58,7 @@ run_get_class(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_OK);
     }
 
-    err = knd_get_class(ctx->repo, name, name_size, &ctx->selected_class, task);
+    err = knd_get_class_entry(ctx->repo, name, name_size, &ctx->class_entry, task);
     if (err) {
         KND_TASK_LOG("%.*s class name not found", name_size, name);
         task->ctx->http_code = HTTP_NOT_FOUND;
@@ -64,6 +66,7 @@ run_get_class(void *obj, const char *name, size_t name_size)
         return make_gsl_err_external(err);
     }
 
+    ctx->selected_class = ctx->class_entry->class;
     return make_gsl_err(gsl_OK);
 }
 
@@ -398,7 +401,8 @@ present_class_state(void *obj, const char *unused_var(name), size_t unused_var(n
         return make_gsl_err_external(knd_FAIL);
     }
 
-    err = knd_class_export_state(ctx->selected_class, task->ctx->format, task);
+    err = knd_class_export_state(ctx->selected_class->entry,
+                                 task->ctx->format, task);
     if (err) {
         knd_log("-- class state export failed");
         return make_gsl_err_external(err);
@@ -635,15 +639,14 @@ static gsl_err_t
 parse_select_class_inst(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
 
-    if (!ctx->selected_class) {
-        knd_log("-- class not selected");
-        int err = ctx->task->log->writef(ctx->task->log, "class not selected");
-        if (err) return *total_size = 0, make_gsl_err_external(err);
+    if (!ctx->class_entry) {
+        KND_TASK_LOG("no class entry selected");
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    return knd_select_class_inst(ctx->selected_class, rec, total_size, ctx->task);
+    return knd_select_class_inst(ctx->class_entry, rec, total_size, ctx->task);
 }
 
 static gsl_err_t
@@ -857,8 +860,8 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_1) {
-        knd_log(".. parsing class select rec: \"%.*s\" (repo:%.*s)",
+    if (DEBUG_CLASS_SELECT_LEVEL_2) {
+        knd_log("\n.. parsing class select rec: \"%.*s\" (repo:%.*s)",
                 32, rec, repo->name_size, repo->name);
     }
 

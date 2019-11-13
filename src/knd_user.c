@@ -243,7 +243,8 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     assert(name_size != 0);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_get_class_inst(self->class, name, name_size, task, &inst);
+    err = knd_get_class_inst(self->class->entry,
+                             name, name_size, task, &inst);
     if (err) {
         KND_TASK_LOG("no such user: %.*s", name_size, name);
         return make_gsl_err_external(err);
@@ -322,7 +323,7 @@ static gsl_err_t run_present_user(void *obj,
     if (err) return make_gsl_err_external(err);
 
     user_inst = task->user_ctx->user_inst;
-    err = knd_class_inst_export(user_inst, task->ctx->format, task);
+    err = knd_class_inst_export(user_inst, task->ctx->format, false, task);
     if (err) return make_gsl_err_external(err);
 
     err = user_footer_export(task);

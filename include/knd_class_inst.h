@@ -55,7 +55,6 @@ struct kndClassInstEntry
     struct kndSharedDictItem   *dict_item;
 
     struct kndClassInst *inst;
-    struct kndRelRef *rels;
 };
 
 struct kndClassInst
@@ -73,11 +72,11 @@ struct kndClassInst
     bool is_concise;
 
     struct kndClassInstEntry *entry;
-    struct kndClass *base;
+    struct kndClass *blueprint;
     struct kndClassInst *root;
 
     struct kndAttrInst *parent;
-    struct kndClassInst *curr_inst;
+    //struct kndClassInst *curr_inst;
 
     struct kndAttrInst *attr_insts;
     struct kndAttrInst *tail;
@@ -103,7 +102,9 @@ int knd_class_inst_new(struct kndMemPool *mempool,
                        struct kndClassInst **result);
 int knd_class_inst_mem(struct kndMemPool *mempool,
                        struct kndClassInst **result);
-int knd_class_inst_export(struct kndClassInst *self, knd_format format,
+int knd_class_inst_export(struct kndClassInst *self,
+                          knd_format format,
+                          bool is_list_item,
                           struct kndTask *task);
 int knd_class_inst_set_export(struct kndClassInst *self, knd_format format,
                                      struct kndTask *task);
@@ -114,7 +115,8 @@ int knd_class_inst_commit_state(struct kndClass *self,
                                 struct kndTask *task);
 int knd_class_inst_export_commit(struct kndStateRef *state_refs,
                                  struct kndTask *task);
-int knd_class_inst_update_indices(struct kndClassEntry *baseclass,
+int knd_class_inst_update_indices(struct kndRepo *repo,
+                                  struct kndClassEntry *baseclass,
                                   struct kndStateRef *state_refs,
                                   struct kndTask *task);
 
@@ -122,7 +124,8 @@ int knd_class_inst_update_indices(struct kndClassEntry *baseclass,
 int knd_class_inst_export_GSP(struct kndClassInst *self,  struct kndTask *task);
 
 // knd_class_inst.gsl.c
-int knd_class_inst_export_GSL(struct kndClassInst *self,  struct kndTask *task);
+int knd_class_inst_export_GSL(struct kndClassInst *self,
+                              bool is_list_item, struct kndTask *task);
 
 // knd_class_inst.import.c
 //gsl_err_t knd_import_class_inst(struct kndClassInst *self,
@@ -137,13 +140,16 @@ int knd_import_class_inst(struct kndClass *self,
                           struct kndTask *task);
 
 // knd_class_inst.json.c
-int knd_class_inst_export_JSON(struct kndClassInst *self, struct kndTask *task);
+int knd_class_inst_export_JSON(struct kndClassInst *self,
+                               bool is_list_item,
+                               struct kndTask *task);
+
 int knd_class_inst_set_export_JSON(struct kndSet *set, struct kndTask *task);
 
 // knd_class_inst.select.c
-gsl_err_t knd_select_class_inst(struct kndClass *c,
-                                       const char *rec, size_t *total_size,
-                                       struct kndTask *task);
+gsl_err_t knd_select_class_inst(struct kndClassEntry *c,
+                                const char *rec, size_t *total_size,
+                                struct kndTask *task);
 // knd_class_inst.resolve.c
 int knd_class_inst_resolve(struct kndClassInst *self,
                            struct kndTask *task);

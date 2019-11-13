@@ -173,7 +173,6 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
 
     err = knd_class_entry_new(mempool, &entry);
     if (err) return make_gsl_err_external(err);
-
     entry->name = name;
     entry->name_size = name_size;
 

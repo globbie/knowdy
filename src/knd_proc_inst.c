@@ -69,7 +69,7 @@ static int proc_arg_inst_export_GSL(struct kndProcArgInst *self,
                       depth * KND_OFFSET_SIZE, "",
                       self->arg->name_size, self->arg->name);                     RET_ERR();
     if (self->class_inst) {
-        c = self->class_inst->base;
+        c = self->class_inst->blueprint;
 
         err = out->writef(out, "%*s{class %.*s\n",
                           (depth + 1) * KND_OFFSET_SIZE, "",

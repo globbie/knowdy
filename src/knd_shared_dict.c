@@ -104,8 +104,8 @@ int knd_shared_dict_set(struct kndSharedDict *self,
     if (item && !allow_overwrite) {
         switch (item->phase) {
         case KND_SHARED_DICT_VALID:
-            knd_log("-- valid entry already present in kndSharedDict: %.*s",
-                    item->key_size, item->key);
+            //knd_log("-- valid entry already present in kndSharedDict: %.*s",
+            //        item->key_size, item->key);
             return knd_CONFLICT;
         default:
             break;
@@ -151,7 +151,6 @@ int knd_shared_dict_set(struct kndSharedDict *self,
             item = item->next;
         }
         if (item) {
-            knd_log("last item found:%.*s", item->key_size, item->key);
             // free mempool item
             return knd_CONFLICT;
         }

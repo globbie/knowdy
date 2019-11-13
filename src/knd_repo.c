@@ -430,7 +430,7 @@ static int restore_state(struct kndRepo *self,
         KND_TASK_ERR("agent path construction failed");
 
         if (stat(out->buf, &st)) {
-            knd_log("-- no such file: %.*s", out->buf_size, out->buf);
+            //knd_log("-- no such file: %.*s", out->buf_size, out->buf);
             break;
         }
         err = restore_journals(self, task);
@@ -1365,13 +1365,13 @@ static int update_indices(struct kndRepo *self,
         case KND_UPDATED:
             entry->phase = KND_UPDATED;
 
-            err = knd_class_update_indices(entry, ref->state, task);
+            err = knd_class_update_indices(self, entry, ref->state, task);
             KND_TASK_ERR("failed to update indices of class %.*s",
                          entry->name_size, entry->name);
             continue;
         default:
             // KND_SELECTED
-            err = knd_class_inst_update_indices(entry, ref->state->children, task);
+            err = knd_class_inst_update_indices(self, entry, ref->state->children, task);
             KND_TASK_ERR("failed to update inst indices of class \"%.*s\"",
                          entry->name_size, entry->name);
             
@@ -1415,6 +1415,8 @@ static int check_class_conflicts(struct kndRepo *unused_var(self),
     knd_commit_confirm confirm;
     int err;
 
+    knd_log(".. any class conflicts?");
+
     for (ref = new_commit->class_state_refs; ref; ref = ref->next) {
         entry = ref->obj;
         state = ref->state;
@@ -1456,7 +1458,9 @@ static int check_class_conflicts(struct kndRepo *unused_var(self),
             break;
         }
     }
-    
+
+    knd_log(".. no conflicts found!");
+
     return knd_OK;
 }
 

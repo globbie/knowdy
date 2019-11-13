@@ -35,7 +35,7 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
     if (self->type == KND_OBJ_ADDR) {
         knd_log("\n%*sClass Instance \"%.*s::%.*s\"  numid:%zu",
                 depth * KND_OFFSET_SIZE, "",
-                self->base->name_size, self->base->name,
+                self->blueprint->name_size, self->blueprint->name,
                 self->name_size, self->name,
                 self->entry->numid);
         if (state) {
@@ -49,34 +49,79 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
     }
 }
 
-int knd_class_inst_update_indices(struct kndClassEntry *baseclass,
+int knd_class_inst_update_indices(struct kndRepo *repo,
+                                  struct kndClassEntry *baseclass,
                                   struct kndStateRef *state_refs,
                                   struct kndTask *task)
 {
+    struct kndClassEntry *c = baseclass;
     struct kndStateRef *ref;
     struct kndClassInstEntry *entry;
-    struct kndSharedDict *name_idx = baseclass->inst_name_idx;
-    struct kndSet *idx = baseclass->inst_idx;
+    struct kndSharedDict *name_idx;
+    // struct kndSet *idx;
     struct kndCommit *commit = state_refs->state->commit;
     struct kndSharedDictItem *item = NULL;
     struct kndMemPool *mempool = task->mempool;
     int err;
 
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    if (DEBUG_INST_LEVEL_TMP) {
+        knd_log(".. repo \"%.*s\" to update inst indices of class \"%.*s\" (repo:%.*s)..",
+                repo->name_size, repo->name,
+                baseclass->name_size, baseclass->name,
+                baseclass->repo->name_size, baseclass->repo->name);
+    }
 
+    /* user repo selected: activate copy-on-write */
+    if (task->user_ctx) {
+        mempool = task->shard->user->mempool;
+        c = knd_shared_dict_get(repo->class_name_idx,
+                                baseclass->name,
+                                baseclass->name_size);
+
+        if (baseclass->repo != repo) {
+            if (!c) {
+                knd_log("NB: copy-on-write activated in repo %.*s",
+                        repo->name_size, repo->name);
+                err = knd_class_entry_new(mempool, &c);
+                KND_TASK_ERR("failed to alloc kndClassEntry");
+                c->repo = repo;
+                c->name = baseclass->name;
+                c->name_size = baseclass->name_size;
+                c->class = baseclass->class;
+
+                err = knd_shared_dict_set(repo->class_name_idx,
+                                          c->name, c->name_size,
+                                          (void*)c,
+                                          mempool,
+                                          NULL, &item, false);
+                KND_TASK_ERR("failed to register class entry \"%.*s\"",
+                             c->name_size, c->name);
+                c->dict_item = item;
+            }
+        }
+    }
+
+    if (!c) {
+        err = knd_FAIL;
+        KND_TASK_ERR("class not found: %.*s",
+                     baseclass->name_size, baseclass->name);
+    }
+
+    name_idx = c->inst_name_idx;
     if (!name_idx) {
         err = knd_shared_dict_new(&name_idx, KND_MEDIUM_DICT_SIZE);
         KND_TASK_ERR("failed to create inst name idx");
+
         // TODO: atomic
-        baseclass->inst_name_idx = name_idx; 
+        c->inst_name_idx = name_idx; 
     }
-    if (!idx) {
+
+    /*if (!idx) {
         // TODO: thread safe
         err = knd_set_new(mempool, &idx);
         KND_TASK_ERR("failed to create inst idx");
         baseclass->inst_idx = idx; 
-    }
+        }*/
 
     for (ref = state_refs; ref; ref = ref->next) {
         entry = ref->obj;
@@ -89,7 +134,8 @@ int knd_class_inst_update_indices(struct kndClassEntry *baseclass,
                                       commit, &item, false);
             KND_TASK_ERR("name idx failed to register class inst %.*s",
                          entry->name_size, entry->name);
-            entry->dict_item = item;
+            // TODO
+            item->phase = KND_SHARED_DICT_VALID;
 
             /* err = knd_set_add(idx,
                               entry->id, entry->id_size,
@@ -107,13 +153,14 @@ int knd_class_inst_update_indices(struct kndClassEntry *baseclass,
 
 int knd_class_inst_export(struct kndClassInst *self,
                           knd_format format,
+                          bool is_list_item,
                           struct kndTask *task)
 {
     switch (format) {
         case KND_FORMAT_JSON:
-            return knd_class_inst_export_JSON(self, task);
+            return knd_class_inst_export_JSON(self, is_list_item, task);
         case KND_FORMAT_GSL:
-            return knd_class_inst_export_GSL(self, task);
+            return knd_class_inst_export_GSL(self, is_list_item, task);
         case KND_FORMAT_GSP:
             return knd_class_inst_export_GSP(self, task);
         default:
@@ -139,13 +186,13 @@ int knd_class_inst_commit_state(struct kndClass *self,
     state->num_children = num_children;
 
     do {
-        head = atomic_load_explicit(&self->inst_states,
+        head = atomic_load_explicit(&self->entry->inst_states,
                                     memory_order_relaxed);
         if (head) {
             state->next = head;
             state->numid = head->numid + 1;
         }
-    } while (!atomic_compare_exchange_weak(&self->inst_states, &head, state));
+    } while (!atomic_compare_exchange_weak(&self->entry->inst_states, &head, state));
 
     /* inform our repo */
     err = knd_state_ref_new(mempool, &ref);                                 RET_ERR();
@@ -177,9 +224,9 @@ int knd_class_inst_export_commit(struct kndStateRef *state_refs,
             err = out->writec(out, '!');                                          RET_ERR();
         }
 
-        err = out->write(out, "inst ", strlen("inst "));                        RET_ERR();
+        err = out->write(out, "inst ", strlen("inst "));                          RET_ERR();
 
-        err = knd_class_inst_export(entry->inst, KND_FORMAT_GSL, task);               RET_ERR();
+        err = knd_class_inst_export(entry->inst, KND_FORMAT_GSL, true, task);     RET_ERR();
 
         err = out->writec(out, '}');                                              RET_ERR();
     }

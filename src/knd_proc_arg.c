@@ -740,7 +740,7 @@ static gsl_err_t check_class_inst_name(void *obj,
         knd_log(".. class \"%.*s\" to check inst name: \"%.*s\"",
                 c->name_size, c->name, name_size, name);
 
-    err = knd_get_class_inst(c, name, name_size, task, &inst);
+    err = knd_get_class_inst(c->entry, name, name_size, task, &inst);
     if (err) return make_gsl_err_external(err);
 
     self->class_inst = inst;

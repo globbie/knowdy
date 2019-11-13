@@ -207,7 +207,7 @@ extern int knd_class_export_updates_GSL(struct kndClass *self,
     return knd_OK;
 }
 
-int knd_export_class_state_GSL(struct kndClass *self,
+int knd_export_class_state_GSL(struct kndClassEntry *self,
                                struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -217,7 +217,7 @@ int knd_export_class_state_GSL(struct kndClass *self,
 
     err = out->write(out, "{state ", strlen("{state "));                          RET_ERR();
 
-    state = atomic_load_explicit(&self->states,
+    state = atomic_load_explicit(&self->class->states,
                                  memory_order_relaxed);
 
     if (state) {
@@ -225,7 +225,7 @@ int knd_export_class_state_GSL(struct kndClass *self,
         timestamp = state->commit->timestamp;
     } else {
         err = out->writec(out, '0');                                              RET_ERR();
-        timestamp = self->entry->repo->snapshot.timestamp;
+        timestamp = self->repo->snapshot.timestamp;
     }
     
     err = out->write(out, "{time ", strlen("{time "));                            RET_ERR();
@@ -243,8 +243,8 @@ static int export_class_inst_state_GSL(struct kndClass *self,
     size_t latest_state_id = 0;
     int err;
 
-    if (self->inst_states)
-        latest_state_id = self->inst_states->numid;
+    if (self->entry->inst_states)
+        latest_state_id = self->entry->inst_states->numid;
 
     err = out->write(out, "\"_state\":",
                      strlen("\"_state\":"));                                      RET_ERR();
@@ -270,7 +270,6 @@ static int export_conc_elem_GSL(void *obj,
     if (task->batch_size >= task->batch_max) return knd_RANGE;
     struct kndOutput *out = task->out;
     struct kndClassEntry *entry = elem;
-    struct kndClass *c = entry->class;
     struct kndState *state;
     size_t curr_depth = 0;
     int err;
@@ -279,13 +278,8 @@ static int export_conc_elem_GSL(void *obj,
         knd_log(".. GSL export class set elem: %.*s",
                 elem_id_size, elem_id);
 
-    if (!c) {
-        //err = unfreeze_class(self, entry, &c);                                      RET_ERR();
-        return knd_OK;
-    }
-
     if (!task->show_removed_objs) {
-        state = c->states;
+        state = entry->class->states;
         if (state && state->phase == KND_REMOVED) return knd_OK;
     }
 
@@ -296,7 +290,7 @@ static int export_conc_elem_GSL(void *obj,
         err = knd_print_offset(out, task->ctx->format_offset);                         RET_ERR();
     }
 
-    err = knd_class_export_GSL(c, task, true, 1);                                 RET_ERR();
+    err = knd_class_export_GSL(entry, task, true, 1);                                 RET_ERR();
 
     task->depth = curr_depth;
     task->ctx->batch_size++;
@@ -312,7 +306,6 @@ static int export_class_ref_GSL(void *obj,
     struct kndTask *task = obj;
     struct kndOutput *out = task->out;
     struct kndClassEntry *entry = elem;
-    struct kndClass *c = entry->class;
     int err;
 
     task->depth = 0;
@@ -321,7 +314,7 @@ static int export_class_ref_GSL(void *obj,
         err = knd_print_offset(out, task->ctx->format_offset);                    RET_ERR();
     }
 
-    err = knd_class_export_GSL(c, task, true, 1);                                 RET_ERR();
+    err = knd_class_export_GSL(entry, task, true, 1);                                 RET_ERR();
 
     return knd_OK;
 }
@@ -507,7 +500,7 @@ static int present_subclasses(struct kndClass *self,
     struct kndOutput *out = task->out;
     struct kndClassRef *ref;
     struct kndClassEntry *entry = self->entry;
-    struct kndClassEntry *orig_entry = entry->orig;
+    struct kndClassEntry *orig_entry = entry->base;
     struct kndClass *c;
     struct kndState *state;
     int err;
@@ -701,13 +694,13 @@ static int export_attr_hub_GSL(struct kndAttrHub *hub,
     return knd_OK;
 }
 
-int knd_class_export_GSL(struct kndClass *self,
+int knd_class_export_GSL(struct kndClassEntry *entry,
                          struct kndTask *task,
                          bool is_list_item,
                          size_t depth)
 {
-    struct kndClassEntry *entry = self->entry;
-    struct kndClassEntry *orig_entry = entry->orig;
+    struct kndClass *self = entry->class;
+    struct kndClassEntry *orig_entry = entry->base;
     struct kndOutput *out = task->out;
     struct kndAttrHub *attr_hub;
     struct kndState *state = self->states;
@@ -800,7 +793,7 @@ int knd_class_export_GSL(struct kndClass *self,
 
     /* state info */
     if (0 && self->num_states) {
-        err = knd_export_class_state_GSL(self, task);                             RET_ERR();
+        err = knd_export_class_state_GSL(self->entry, task);                             RET_ERR();
     }
 
     /* display base classes only once */
@@ -867,7 +860,7 @@ int knd_class_export_GSL(struct kndClass *self,
         err = out->write(out, "{instance-state",
                          strlen("{instance-state"));                                   RET_ERR();
 
-        if (self->inst_states) {
+        if (self->entry->inst_states) {
             err = export_class_inst_state_GSL(self, task);                          RET_ERR();
         }
 
