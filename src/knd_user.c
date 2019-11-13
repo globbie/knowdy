@@ -224,6 +224,10 @@ static gsl_err_t parse_class_select(void *obj,
         if (parser_err.code == gsl_OK) {
             return parser_err;
         }
+        // failed import? 
+        if (task->type == KND_COMMIT_STATE) {
+            return make_gsl_err(gsl_FAIL);
+        }
     }
 
     /* shared read-only repo */

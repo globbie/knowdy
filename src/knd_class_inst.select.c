@@ -315,7 +315,7 @@ static gsl_err_t parse_select_attr_inst(void *obj,
             if (parser_err.code) return parser_err;
             break;
         default:
-            parser_err = knd_attr_inst_parse_select(attr_inst, rec, total_size);
+            parser_err = knd_attr_inst_parse_select(attr_inst, rec, total_size, task);
             if (parser_err.code) return parser_err;
             break;
     }

@@ -67,7 +67,8 @@ void knd_attr_inst_str(struct kndAttrInst *self, size_t depth);
 
 gsl_err_t knd_attr_inst_parse_select(struct kndAttrInst *self,
                                      const char *rec,
-                                     size_t *total_size);
+                                     size_t *total_size,
+                                     struct kndTask *task);
 
 int knd_attr_inst_export(struct kndAttrInst *self,
                          knd_format format,

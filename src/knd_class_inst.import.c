@@ -186,6 +186,10 @@ static gsl_err_t parse_import_attr_inst(void *obj,
     }
 
     mempool = task->mempool;
+    if (task->user_ctx) {
+        mempool = task->shard->user->mempool;
+    }
+
     err = knd_attr_inst_new(mempool, &attr_inst);
     if (err) {
         knd_log("-- attr_inst alloc failed :(");
@@ -338,10 +342,6 @@ static gsl_err_t import_class_inst(struct kndClassInst *self,
           .run = run_set_name,
           .obj = &ctx
         },
-        { .type = GSL_SET_STATE,
-          .validate = parse_import_attr_inst,
-          .obj = &ctx
-        },
         { .validate = parse_import_attr_inst,
           .obj = &ctx
         },
@@ -419,7 +419,7 @@ int knd_import_class_inst(struct kndClass *self,
     }
 
     if (DEBUG_INST_IMPORT_LEVEL_TMP) {
-        knd_log(".. import \"%.*s\" inst.. (repo:%.*s)",
+        knd_log(".. import class inst: \"%.*s\" (repo:%.*s)",
                 128, rec, repo->name_size, repo->name);
     }
     
@@ -436,6 +436,7 @@ int knd_import_class_inst(struct kndClass *self,
     KND_TASK_ERR("state alloc failed");
     state->phase = KND_CREATED;
     state->numid = 1;
+
     inst->states = state;
     inst->num_states = 1;
 

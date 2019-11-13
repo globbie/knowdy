@@ -15,6 +15,8 @@
 #include "knd_state.h"
 #include "knd_mempool.h"
 #include "knd_output.h"
+#include "knd_shard.h"
+#include "knd_user.h"
 
 #include "knd_text.h"
 #include "knd_num.h"
@@ -76,7 +78,9 @@ void knd_attr_inst_str(struct kndAttrInst *self, size_t depth)
         self->num->str(self->num);
         return;*/
     case KND_ATTR_TEXT:
-        knd_text_str(self->text, depth);
+        knd_log("%*s%.*s =>", depth * KND_OFFSET_SIZE, "",
+                self->attr->name_size, self->attr->name);
+        knd_text_str(self->text, depth + 1);
         return;
     default:
         break;
@@ -264,11 +268,10 @@ static int export_GSL(struct kndAttrInst *self,
         err = out->write(out, self->val, self->val_size);
         if (err) return err;
         break;
-        /*case  KND_ATTR_TEXT:
-        text = self->text;
-        err = text->export(text, KND_FORMAT_GSP, out);
+    case  KND_ATTR_TEXT:
+        err = knd_text_export(self->text, KND_FORMAT_GSL, task);
         if (err) return err;
-        break; */
+        break;
     case KND_ATTR_REF:
         err = export_class_ref_GSL(self, task);
         KND_TASK_ERR("failed to export class ref");
@@ -348,7 +351,10 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
     struct kndStateVal *state_val;
     struct kndStateRef *state_ref;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = ctx->task->mempool;
+    struct kndMemPool *mempool = task->mempool;
+    if (task->user_ctx) {
+        mempool = task->shard->user->mempool;
+    }
     int err;
 
     if (DEBUG_ATTR_INST_LEVEL_TMP)
@@ -539,23 +545,46 @@ gsl_err_t knd_import_attr_inst(struct kndAttrInst *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-extern gsl_err_t knd_attr_inst_parse_select(struct kndAttrInst *self,
-                                       const char *rec,
-                                       size_t *total_size)
+static gsl_err_t present_attr_inst_selection(void *obj, const char *unused_var(val),
+                                             size_t unused_var(val_size))
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    int err;
+
+    if (DEBUG_ATTR_INST_LEVEL_2)
+        knd_log(".. presenting attr inst selection of class \"%.*s\"",
+                ctx->attr_inst->attr->name_size, ctx->attr_inst->attr->name);
+
+    err = knd_attr_inst_export(ctx->attr_inst, task->ctx->format, task);
+    if (err) return make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
+}
+
+gsl_err_t knd_attr_inst_parse_select(struct kndAttrInst *self,
+                                     const char *rec,
+                                     size_t *total_size,
+                                     struct kndTask *task)
 {
     if (DEBUG_ATTR_INST_LEVEL_2)
         knd_log(".. ATTR_INST \"%.*s\" parse REC: \"%.*s\"",
                 self->attr->name_size, self->attr->name,
                 16, rec);
 
+    struct LocalContext ctx = {
+        .attr_inst = self,
+        .task = task
+    };
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_val,
-          .obj = self
+          .obj = &ctx
         },
         { .is_default = true,
-          .run = run_empty_val_warning,
-          .obj = self
+          .run = present_attr_inst_selection,
+          .obj = &ctx
         }
     };
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);

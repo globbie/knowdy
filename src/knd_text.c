@@ -29,11 +29,74 @@ void knd_text_str(struct kndText *self, size_t depth)
 
     state = atomic_load_explicit(&self->states,
                                  memory_order_relaxed);
+    if (!state) {
+        knd_log("%*stext: \"%.*s\" (lang:%.*s)",
+                depth * KND_OFFSET_SIZE, "",
+                self->seq_size, self->seq, self->locale_size, self->locale);
+        return;
+    }
     val = state->val;
-
-    knd_log("\n%*stext: \"%.*s\"",
+    knd_log("%*stext: \"%.*s\" (lang:%.*s)",
             depth * KND_OFFSET_SIZE, "",
-            val->val_size, val->val);
+            val->val_size, val->val, self->locale_size, self->locale);
+}
+
+static int export_GSL(struct kndText *self,
+                      struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    //const char *locale = task->ctx->locale;
+    // size_t locale_size = task->ctx->locale_size;
+    struct kndState *state;
+    const char *seq = self->seq;
+    size_t seq_size = self->seq_size;
+    //struct kndStateVal *val;
+    // struct kndText *t;
+    int err;
+
+    state = atomic_load_explicit(&self->states,
+                                 memory_order_relaxed);
+    if (state) {
+        seq = state->val->val;
+        seq_size = state->val->val_size;
+        return knd_OK;
+    }
+
+    err = out->write(out, seq, seq_size);                       RET_ERR();
+    if (self->locale_size) {
+        err = out->writec(out, '{');                            RET_ERR();
+        err = out->write(out, "_lang ", strlen("_lang "));      RET_ERR();
+        err = out->write(out, self->locale, self->locale_size); RET_ERR();
+        err = out->writec(out, '}');                            RET_ERR();
+    }
+
+    return knd_OK;
+}
+
+static int export_JSON(struct kndText *self,
+                       struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    struct kndState *state;
+    int err;
+
+    state = atomic_load_explicit(&self->states,
+                                 memory_order_relaxed);
+    if (!state) {
+        err = out->write_escaped(out, self->seq, self->seq_size);
+        if (err) return err;
+        if (self->locale_size) {
+            err = out->write(out, "\"_lang\":\"", strlen("\"_lang:\""));      RET_ERR();
+            err = out->write(out, self->locale, self->locale_size); RET_ERR();
+            err = out->writec(out, '"');                            RET_ERR();
+        }
+        return knd_OK;
+    }
+
+    err = out->write_escaped(out, state->val->val, state->val->val_size);
+    if (err) return err;
+    
+    return knd_OK;
 }
 
 int knd_text_export(struct kndText *self,
@@ -43,13 +106,13 @@ int knd_text_export(struct kndText *self,
     int err;
 
     switch (format) {
-        /*case KND_FORMAT_GSL:
-        err = export_GSL(self, task);  RET_ERR();
+    case KND_FORMAT_GSL:
+        err = export_GSL(self, task);                            RET_ERR();
         break;
     case KND_FORMAT_JSON:
         err = export_JSON(self, task);                           RET_ERR();
         break;
-    case KND_FORMAT_GSP:
+        /*case KND_FORMAT_GSP:
         err = export_GSP(self, task, task->out);  RET_ERR();
         break;*/
     default:
@@ -59,18 +122,63 @@ int knd_text_export(struct kndText *self,
     return knd_OK;
 }
 
-static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)    
+static gsl_err_t set_text_lang(void *obj, const char *val, size_t val_size)    
 {
     struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
+    struct kndText *self = ctx->text;
+    self->locale_size = val_size;
+    self->locale = val;
+    return make_gsl_err(gsl_OK);
+}
 
-    
-    if (DEBUG_TEXT_LEVEL_TMP)
+static gsl_err_t set_text_seq(void *obj, const char *val, size_t val_size)    
+{
+    struct LocalContext *ctx = obj;
+    struct kndText *self = ctx->text;
+
+    //struct kndTask *task = ctx->task;
+    // struct kndMemPool *mempool = task->mempool;
+    //struct kndState *state;
+    //struct kndStateVal *state_val;
+    //struct kndStateRef *state_ref;
+    // int err;
+
+    //if (task->user_ctx) {
+    //    mempool = task->shard->user->mempool;
+    //}
+
+    if (DEBUG_TEXT_LEVEL_2)
         knd_log("++ text val set: \"%.*s\"",
                 val_size, val);
 
+    /*err = knd_state_new(mempool, &state);
+    if (err) {
+        KND_TASK_LOG("kndState alloc failed");
+        return make_gsl_err_external(err);
+    }
+    err = knd_state_val_new(mempool, &state_val);
+    if (err) {
+        knd_log("-- state val alloc failed");
+        return make_gsl_err_external(err);
+    }
+    err = knd_state_ref_new(mempool, &state_ref);
+    if (err) {
+        knd_log("-- state ref alloc failed");
+        return make_gsl_err_external(err);
+    }
+    state_ref->state = state;
+
+    state_val->obj = (void*)ctx->text;
+    state_val->val      = val;
+    state_val->val_size = val_size;
+    state->val          = state_val;
+
+    state->commit = task->ctx->commit;
+    */
+
+    self->seq_size = val_size;
+    self->seq = val;
     return make_gsl_err(gsl_OK);
-   
 }
 
 gsl_err_t knd_text_import(struct kndText *self,
@@ -86,8 +194,13 @@ gsl_err_t knd_text_import(struct kndText *self,
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .is_selector = true,
-          .run = run_set_val,
+          .run = set_text_seq,
+          .obj = &ctx
+        },
+        {
+          .name = "_lang",
+          .name_size = strlen("_lang"),
+          .run = set_text_lang,
           .obj = &ctx
         }
     };
