@@ -348,8 +348,6 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
     case KND_COMMIT_STATE:
         repo = self->repo;
         if (self->user_ctx) repo = self->user_ctx->repo;
-
-        knd_log("TASK confirm state of repo:%p", repo);
         err = knd_confirm_commit(repo, self);
         if (err) return make_gsl_err_external(err);
         break;
