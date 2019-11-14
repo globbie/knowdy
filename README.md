@@ -1,6 +1,6 @@
 # Knowdy
 
-![Build Status](https://github.com/globbie/knowdy/workflows/.github/workflows/ccpp.yml/badge.svg)
+![Build Status](https://github.com/globbie/knowdy/workflows/Knowdy%20CI/badge.svg)
 
 [![Travis Status](https://travis-ci.org/globbie/knowdy.svg?branch=master)](https://travis-ci.org/globbie/knowdy)
 
