@@ -1,9 +1,11 @@
 # Knowdy
 
-[![Build Status](https://travis-ci.org/globbie/knowdy.svg?branch=master)](https://travis-ci.org/globbie/knowdy)
+![Build Status](https://github.com/globbie/knowdy/workflows/Knowdy%20CI/badge.svg)
 
-An embedded semantic graph database.
-If you want to test Knowdy as a HTTP service, please see [Gnode](https://github.com/globbie/gnode) Golang wrapper.
+[![Travis Status](https://travis-ci.org/globbie/knowdy.svg?branch=master)](https://travis-ci.org/globbie/knowdy)
+
+
+Conceptual graph database.
 
 ## Build
 

@@ -1,0 +1,19 @@
+name: Knowdy CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Install packages
+      run: sudo apt-get install lcov check libreadline-dev
+    - name: cmake
+      run: mkdir build && cd build && cmake ../
+    - name: make
+      run: cd build && make
