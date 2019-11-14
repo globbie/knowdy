@@ -9,8 +9,8 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
-    - name: Install lcov
-      run: sudo apt-get install lcov
+    - name: Install packages
+      run: sudo apt-get install lcov check libreadline-dev
     - name: cmake
       run: mkdir build && cd build && cmake ../
     - name: make
