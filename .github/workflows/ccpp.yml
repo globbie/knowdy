@@ -16,6 +16,4 @@ jobs:
     - name: cmake
       run: mkdir build && cd build && cmake ../
     - name: make
-      run: make
-    - name: make check-knowdy
-      run: make check-knowdy
+      run: cd build && make
