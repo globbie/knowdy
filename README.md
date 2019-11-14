@@ -1,6 +1,9 @@
 # Knowdy
 
-[![Build Status](https://travis-ci.org/globbie/knowdy.svg?branch=master)](https://travis-ci.org/globbie/knowdy)
+![Build Status](https://github.com/globbie/knowdy/.github/workflows/ccpp.yml/badge.svg)
+
+[![Travis Status](https://travis-ci.org/globbie/knowdy.svg?branch=master)](https://travis-ci.org/globbie/knowdy)
+
 
 Conceptual graph database.
 
