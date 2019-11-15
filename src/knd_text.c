@@ -7,6 +7,8 @@
 #include "knd_text.h"
 #include "knd_task.h"
 #include "knd_repo.h"
+#include "knd_shard.h"
+#include "knd_user.h"
 #include "knd_utils.h"
 #include "knd_mempool.h"
 #include "knd_output.h"
@@ -18,21 +20,106 @@
 #define DEBUG_TEXT_LEVEL_TMP 1
 
 struct LocalContext {
-    struct kndTask *task;
-    struct kndText *text;
+    struct kndTask      *task;
+    struct kndText      *text;
+    struct kndPar       *par;
+    struct kndSentence  *sent;
+    struct kndSyNode    *syn;
+    struct kndStatement *stm;
 };
+
+static int knd_sent_new(struct kndMemPool *mempool,
+                        struct kndSentence **result)
+{
+    void *page;
+    int err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                                sizeof(struct kndSentence), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
+                                     sizeof(struct kndSentence), &page);
+        if (err) return err;
+    }
+    *result = page;
+    return knd_OK;
+}
+
+static int knd_par_new(struct kndMemPool *mempool,
+                       struct kndPar **result)
+{
+    void *page;
+    int err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndPar), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
+                                     sizeof(struct kndPar), &page);
+        if (err) return err;
+    }
+    *result = page;
+    return knd_OK;
+}
+
+int knd_text_new(struct kndMemPool *mempool,
+                 struct kndText **result)
+{
+    void *page;
+    int err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                                sizeof(struct kndText), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
+                                     sizeof(struct kndText), &page);
+        if (err) return err;
+    }
+    *result = page;
+    return knd_OK;
+}
+
 
 void knd_text_str(struct kndText *self, size_t depth)
 {
     struct kndState *state;
     struct kndStateVal *val;
+    struct kndPar *par;
+    struct kndSentence *sent;
 
     state = atomic_load_explicit(&self->states,
                                  memory_order_relaxed);
     if (!state) {
-        knd_log("%*stext: \"%.*s\" (lang:%.*s)",
-                depth * KND_OFFSET_SIZE, "",
-                self->seq_size, self->seq, self->locale_size, self->locale);
+        if (self->seq_size) {
+            knd_log("%*stext: \"%.*s\" (lang:%.*s)",
+                    depth * KND_OFFSET_SIZE, "",
+                    self->seq_size, self->seq, self->locale_size, self->locale);
+            return;
+        }
+        if (self->num_pars) {
+            knd_log("%*stext (lang:%.*s) [par",
+                    depth * KND_OFFSET_SIZE, "",
+                    self->locale_size, self->locale);
+            for (par = self->pars; par; par = par->next) {
+                knd_log("%*s#%zu:", (depth + 1) * KND_OFFSET_SIZE, "", par->numid);
+
+                for (sent = par->sents; sent; sent = sent->next) {
+                    knd_log("%*s#%zu: \"%.*s\"",
+                            (depth + 2) * KND_OFFSET_SIZE, "",
+                            sent->numid, sent->seq_size, sent->seq);
+                }
+            }
+            knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
+        }
         return;
     }
     val = state->val;
@@ -47,6 +134,8 @@ static int export_GSL(struct kndText *self,
     struct kndOutput *out = task->out;
     //const char *locale = task->ctx->locale;
     // size_t locale_size = task->ctx->locale_size;
+    struct kndPar *par;
+    struct kndSentence *sent;
     struct kndState *state;
     const char *seq = self->seq;
     size_t seq_size = self->seq_size;
@@ -62,7 +151,9 @@ static int export_GSL(struct kndText *self,
         return knd_OK;
     }
 
-    err = out->write(out, seq, seq_size);                       RET_ERR();
+    if (seq_size) {
+        err = out->write(out, seq, seq_size);                   RET_ERR();
+    }
     if (self->locale_size) {
         err = out->writec(out, '{');                            RET_ERR();
         err = out->write(out, "_lang ", strlen("_lang "));      RET_ERR();
@@ -70,6 +161,22 @@ static int export_GSL(struct kndText *self,
         err = out->writec(out, '}');                            RET_ERR();
     }
 
+    if (self->num_pars) {
+        err = out->write(out, "[p", strlen("[p"));                  RET_ERR();
+        for (par = self->pars; par; par = par->next) {
+            err = out->writec(out, '{');                            RET_ERR();
+            err = out->write(out, "[s", strlen("[s"));              RET_ERR();
+            for (sent = par->sents; sent; sent = sent->next) {
+                err = out->writec(out, '{');                        RET_ERR();
+                err = out->write(out, sent->seq, sent->seq_size);   RET_ERR();
+                err = out->writec(out, '}');                        RET_ERR();
+            }
+            err = out->writec(out, ']');                            RET_ERR();
+            err = out->writec(out, '}');                            RET_ERR();
+        }
+        err = out->writec(out, ']');                            RET_ERR();
+    }
+    
     return knd_OK;
 }
 
@@ -181,6 +288,152 @@ static gsl_err_t set_text_seq(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t set_sent_seq(void *obj, const char *val, size_t val_size)    
+{
+    struct LocalContext *ctx = obj;
+    struct kndSentence *self = ctx->sent;
+    self->seq_size = val_size;
+    self->seq = val;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_sent_item(void *obj,
+                                 const char *rec,
+                                 size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndPar *par = ctx->par;
+    struct kndSentence *sent;
+    struct kndMemPool *mempool = task->mempool;
+    if (task->user_ctx)
+        mempool = task->shard->user->mempool;
+    gsl_err_t parser_err;
+    int err;
+    
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_sent_seq,
+          .obj = obj
+        }/*,
+        { .type = GSL_GET_ARRAY_STATE,
+          .name = "syn",
+          .name_size = strlen("syn"),
+          .parse = parse_synode_array,
+          .obj = obj
+          }*/
+    };
+
+    err = knd_sent_new(mempool, &sent);
+    if (err) return make_gsl_err_external(err);
+    ctx->sent = sent;
+    
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err;
+
+    if (par->last_sent)
+        par->last_sent->next = sent;
+    else
+        par->sents = sent;
+
+    par->last_sent = sent;
+    par->num_sents++;
+    sent->numid = par->num_sents;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_sent_array(void *obj,
+                                  const char *rec,
+                                  size_t *total_size)
+{
+    struct gslTaskSpec item_spec = {
+        .is_list_item = true,
+        .parse = parse_sent_item,
+        .obj = obj
+    };
+    return gsl_parse_array(&item_spec, rec, total_size);
+}
+
+static gsl_err_t set_par_numid(void *obj, const char *val, size_t val_size)    
+{
+    struct LocalContext *ctx = obj;
+    struct kndPar *self = ctx->par;
+    char buf[KND_NAME_SIZE];
+    long numval;
+    int err;
+
+    if (val_size >= KND_NAME_SIZE)
+        return make_gsl_err(gsl_FAIL);
+
+    memcpy(buf, val, val_size);
+    buf[val_size] = '\0';
+            
+    err = knd_parse_num(buf, &numval);
+    if (err) {
+        return make_gsl_err_external(err);
+    }
+    self->numid = (size_t)numval;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_par_item(void *obj,
+                                const char *rec,
+                                size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndText *text = ctx->text;
+    struct kndPar *par;
+    struct kndMemPool *mempool = task->mempool;
+    if (task->user_ctx)
+        mempool = task->shard->user->mempool;
+    gsl_err_t parser_err;
+    int err;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_par_numid,
+          .obj = obj
+        },
+        { .type = GSL_GET_ARRAY_STATE,
+          .name = "s",
+          .name_size = strlen("s"),
+          .parse = parse_sent_array,
+          .obj = obj
+        }
+    };
+
+    err = knd_par_new(mempool, &par);
+    if (err) return make_gsl_err_external(err);
+    ctx->par = par;
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err;
+
+    if (text->last_par)
+        text->last_par->next = par;
+    else
+        text->pars = par;
+
+    text->last_par = par;
+    text->num_pars++;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_par_array(void *obj,
+                                 const char *rec,
+                                 size_t *total_size)
+{
+    struct gslTaskSpec item_spec = {
+        .is_list_item = true,
+        .parse = parse_par_item,
+        .obj = obj
+    };
+    return gsl_parse_array(&item_spec, rec, total_size);
+}
+
 gsl_err_t knd_text_import(struct kndText *self,
                           const char *rec,
                           size_t *total_size,
@@ -197,10 +450,15 @@ gsl_err_t knd_text_import(struct kndText *self,
           .run = set_text_seq,
           .obj = &ctx
         },
-        {
-          .name = "_lang",
+        { .name = "_lang",
           .name_size = strlen("_lang"),
           .run = set_text_lang,
+          .obj = &ctx
+        },
+        { .type = GSL_GET_ARRAY_STATE,
+          .name = "p",
+          .name_size = strlen("p"),
+          .parse = parse_par_array,
           .obj = &ctx
         }
     };
@@ -211,22 +469,3 @@ gsl_err_t knd_text_import(struct kndText *self,
     return make_gsl_err(gsl_OK);
 }
 
-int knd_text_new(struct kndMemPool *mempool,
-                 struct kndText **result)
-{
-    void *page;
-    int err;
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                                sizeof(struct kndText), &page);
-        if (err) return err;
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
-                                     sizeof(struct kndText), &page);
-        if (err) return err;
-    }
-    *result = page;
-    return knd_OK;
-}

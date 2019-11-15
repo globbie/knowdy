@@ -23,7 +23,52 @@
 #include "knd_state.h"
 
 struct kndTask;
-struct kndStatement;
+struct kndClass;
+struct kndProc;
+
+struct kndStatement
+{
+    size_t numid;
+    struct kndClass *class;
+    struct kndProc *proc;
+
+    struct kndStatement *next;
+};
+
+struct kndSyNode
+{
+    size_t numid;
+    struct kndClass *class;
+
+    struct kndSyNode *next;
+};
+
+struct kndSentence
+{
+    size_t numid;
+    const char *lang;
+    size_t lang_size;
+
+    const char *seq;
+    size_t seq_size;
+
+    struct kndSyNode *synodes;
+    size_t num_synodes;
+    struct kndStatement *stms;
+
+    struct kndSentence *prev;
+    struct kndSentence *next;
+};
+
+struct kndPar
+{
+    size_t numid;
+    struct kndSentence *sents;
+    struct kndSentence *last_sent;
+    size_t num_sents;
+
+    struct kndPar *next;
+};
 
 struct kndText
 {
@@ -32,13 +77,16 @@ struct kndText
 
     const char *seq;
     size_t seq_size;
+    struct kndSyNode *synodes;
+    struct kndStatement *stms;
+
+    struct kndPar *pars;
+    struct kndPar *last_par;
+    size_t num_pars;
 
     /* translated renderings of master content: manual or automatic */
     struct kndText *trs;
     size_t num_trs;
-
-    // TODO: sem graph
-    struct kndStatement *stm;
 
     struct kndState * _Atomic states;
     size_t num_states;
