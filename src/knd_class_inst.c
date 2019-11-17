@@ -49,6 +49,25 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
     }
 }
 
+static int update_attr_inst_indices(struct kndClassEntry *blueprint,
+                                    struct kndClassInstEntry *entry,
+                                    struct kndTask *unused_var(task))
+{
+    struct kndAttrInst *attr_inst;
+    
+    for (attr_inst = entry->inst->attr_insts; attr_inst; attr_inst = attr_inst->next) {
+        if (!attr_inst->attr->is_indexed) continue;
+
+        knd_log(".. class %.*s is indexing %.*s..",
+                blueprint->name_size, blueprint->name, 
+                attr_inst->attr->name_size, attr_inst->attr->name);
+
+
+    }
+
+    return knd_OK;
+}
+
 int knd_class_inst_update_indices(struct kndRepo *repo,
                                   struct kndClassEntry *baseclass,
                                   struct kndStateRef *state_refs,
@@ -64,7 +83,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
     struct kndMemPool *mempool = task->mempool;
     int err;
 
-    if (DEBUG_INST_LEVEL_TMP) {
+    if (DEBUG_INST_LEVEL_2) {
         knd_log(".. repo \"%.*s\" to update inst indices of class \"%.*s\" (repo:%.*s)..",
                 repo->name_size, repo->name,
                 baseclass->name_size, baseclass->name,
@@ -143,6 +162,11 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
             KND_TASK_ERR("failed to register class inst %.*s err:%d",
                          entry->name_size, entry->name, err);
             */
+
+            err = update_attr_inst_indices(c, entry, task);
+            KND_TASK_ERR("failed to update attr inst indices with \"%.*s\"",
+                         entry->name_size, entry->name);
+
             break;
         default:
             break;

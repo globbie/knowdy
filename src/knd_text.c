@@ -418,6 +418,7 @@ static gsl_err_t parse_par_item(void *obj,
 
     text->last_par = par;
     text->num_pars++;
+    par->numid = text->num_pars;
 
     return make_gsl_err(gsl_OK);
 }

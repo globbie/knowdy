@@ -439,7 +439,7 @@ static int restore_state(struct kndRepo *self,
     }
 
     if (self->snapshot.commit_idx->num_elems == 0) {
-        knd_log("-- no commits to restore in repo %.*s", self->name_size, self->name);
+        knd_log("-- no commits to restore in repo \"%.*s\"", self->name_size, self->name);
         return knd_OK;
     }
 
@@ -454,8 +454,11 @@ static int restore_state(struct kndRepo *self,
     atomic_store_explicit(&self->snapshot.num_commits,
                           self->snapshot.commit_idx->num_elems, memory_order_relaxed);
 
-    knd_log("== total commits applied: %zu", self->snapshot.commit_idx->num_elems);
-                         
+    if (DEBUG_REPO_LEVEL_TMP) {
+        knd_log("== repo \"%.*s\", total commits applied: %zu",
+                self->name_size, self->name,
+                self->snapshot.commit_idx->num_elems);
+    }                 
     return knd_OK;
 }
 
@@ -1415,8 +1418,6 @@ static int check_class_conflicts(struct kndRepo *unused_var(self),
     knd_commit_confirm confirm;
     int err;
 
-    knd_log(".. any class conflicts?");
-
     for (ref = new_commit->class_state_refs; ref; ref = ref->next) {
         entry = ref->obj;
         state = ref->state;
@@ -1458,8 +1459,6 @@ static int check_class_conflicts(struct kndRepo *unused_var(self),
             break;
         }
     }
-
-    knd_log(".. no conflicts found!");
 
     return knd_OK;
 }

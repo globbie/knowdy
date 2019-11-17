@@ -377,10 +377,10 @@ static int attr_var_list_export_GSL(struct kndAttrVar *parent_item,
     return knd_OK;
 }
 
-extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
-                                    struct kndTask *task,
-                                    bool is_concise,
-                                    size_t depth)
+int knd_attr_vars_export_GSL(struct kndAttrVar *items,
+                             struct kndTask *task,
+                             bool is_concise,
+                             size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndAttrVar *item;
@@ -392,7 +392,7 @@ extern int knd_attr_vars_export_GSL(struct kndAttrVar *items,
         attr = item->attr;
         
         if (is_concise && !attr->concise_level) {
-            knd_log(".. concise level: %d", attr->concise_level);
+            //knd_log(".. concise level: %d", attr->concise_level);
             if (item->attr->type != KND_ATTR_INNER) 
                 continue;
         }

@@ -418,7 +418,7 @@ int knd_import_class_inst(struct kndClass *self,
         mempool = task->shard->user->mempool;
     }
 
-    if (DEBUG_INST_IMPORT_LEVEL_TMP) {
+    if (DEBUG_INST_IMPORT_LEVEL_2) {
         knd_log(".. import class inst: \"%.*s\" (repo:%.*s)",
                 128, rec, repo->name_size, repo->name);
     }
@@ -469,7 +469,7 @@ int knd_import_class_inst(struct kndClass *self,
         inst->name_size = inst->entry->id_size;
     }
 
-    if (DEBUG_INST_IMPORT_LEVEL_TMP) {
+    if (DEBUG_INST_IMPORT_LEVEL_2) {
         knd_log("++ inst \"%.*s\" of \"%.*s\" class import  OK!",
                 inst->entry->id_size, inst->entry->id,
                 self->name_size, self->name);

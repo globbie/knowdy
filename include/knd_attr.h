@@ -159,7 +159,7 @@ struct kndAttrVar
     struct kndState *states;
     size_t init_state;
     size_t num_states;
-    
+
     /* siblings */
     struct kndAttrVar *list;
     struct kndAttrVar *list_tail;
@@ -302,9 +302,9 @@ int knd_attr_var_new(struct kndMemPool *mempool,
 int knd_attr_ref_new(struct kndMemPool *mempool,
                             struct kndAttrRef **result);
 int knd_attr_facet_new(struct kndMemPool *mempool,
-                              struct kndAttrFacet **result);
+                       struct kndAttrFacet **result);
 int knd_attr_hub_new(struct kndMemPool *mempool,
-                            struct kndAttrHub **result);
+                     struct kndAttrHub **result);
 
 int knd_attr_new(struct kndMemPool *mempool,
                         struct kndAttr **result);

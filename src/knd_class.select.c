@@ -860,7 +860,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+    if (DEBUG_CLASS_SELECT_LEVEL_2) {
         knd_log("\n.. parsing class select rec: \"%.*s\" (repo:%.*s)",
                 32, rec, repo->name_size, repo->name);
     }
