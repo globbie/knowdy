@@ -28,13 +28,62 @@ struct LocalContext {
     struct kndStatement *stm;
 };
 
+static gsl_err_t present_pars(void *obj, const char *unused_var(name), size_t unused_var(name_size))
+{
+    struct LocalContext *ctx = obj;
+    //struct kndTask *task = ctx->task;
+    //int err;
+    knd_log("ctx:%p", ctx);
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t get_par_by_numid(void *obj, const char *val, size_t val_size)    
+{
+    struct LocalContext *ctx = obj;
+    struct kndPar *par = NULL;
+    char buf[KND_NAME_SIZE];
+    long numval;
+    int err;
+
+    if (val_size >= KND_NAME_SIZE)
+        return make_gsl_err(gsl_FAIL);
+
+    memcpy(buf, val, val_size);
+    buf[val_size] = '\0';
+            
+    err = knd_parse_num(buf, &numval);
+    if (err) {
+        return make_gsl_err_external(err);
+    }
+
+    ctx->par = par;
+    knd_log("%p par:%zu", par, (size_t)numval);
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_text_par(void *obj,
+                                const char *rec,
+                                size_t *total_size)
+{
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .is_selector = true,
+          .run = get_par_by_numid,
+          .obj = obj
+        },
+        { .is_default = true,
+          .run = present_pars,
+          .obj = obj
+        }
+    };
+
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 gsl_err_t knd_text_select(struct kndText *self,
                           const char *rec, size_t *total_size,
                           struct kndTask *task)
 {
-    gsl_err_t parser_err;
-    int err;
-
     if (DEBUG_TEXT_SELECT_LEVEL_TMP) {
         knd_log("\n.. parsing text select rec: \"%.*s\"",
                 32, rec);
@@ -42,19 +91,13 @@ gsl_err_t knd_text_select(struct kndText *self,
 
     struct LocalContext ctx = {
         .task = task,
-        .repo = repo
+        .text = self
     };
 
     struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .is_selector = true,
-          .run = run_get_class,
-          .obj = &ctx
-        },
-        { .is_selector = true,
-          .name = "_id",
-          .name_size = strlen("_id"),
-          .parse = parse_get_class_by_numid,
+        { .name = "p",
+          .name_size = strlen("p"),
+          .parse = parse_text_par,
           .obj = &ctx
         }
     };

@@ -93,9 +93,9 @@ static gsl_err_t parse_class_import(void *obj,
 
     assert(user_ctx->repo);
 
-    if (DEBUG_USER_LEVEL_TMP) {
-        knd_log(".. parsing user class import: \"%.*s\".. commit:%p",
-                64, rec, task->ctx->commit);
+    if (DEBUG_USER_LEVEL_2) {
+        knd_log(".. parsing user class import: \"%.*s\"..",
+                64, rec);
     }
 
     task->type = KND_COMMIT_STATE;

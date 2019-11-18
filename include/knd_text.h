@@ -25,6 +25,7 @@
 struct kndTask;
 struct kndClass;
 struct kndProc;
+struct kndSyNode;
 
 struct kndStatement
 {
@@ -35,12 +36,38 @@ struct kndStatement
     struct kndStatement *next;
 };
 
+struct kndSyNodeSpec
+{
+    size_t numid;
+    struct kndClass *class;
+    struct kndSyNode *synode;
+
+    struct kndSyNodeSpec *next;
+};
+
 struct kndSyNode
 {
     size_t numid;
     struct kndClass *class;
 
+    struct kndSyNodeSpec *specs;
+    size_t num_specs;
+
+    size_t pos;
+    size_t len;
+
     struct kndSyNode *next;
+};
+
+struct kndClause
+{
+    size_t numid;
+    struct kndClass *class;
+
+    struct kndSyNode *subj;
+    struct kndSyNode *pred;
+
+    struct kndClause *next;
 };
 
 struct kndSentence
@@ -52,9 +79,8 @@ struct kndSentence
     const char *seq;
     size_t seq_size;
 
-    struct kndSyNode *synodes;
-    size_t num_synodes;
-    struct kndStatement *stms;
+    struct kndClause *clause;
+    struct kndStatement *stm;
 
     struct kndSentence *prev;
     struct kndSentence *next;

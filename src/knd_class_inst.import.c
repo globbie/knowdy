@@ -418,7 +418,7 @@ int knd_import_class_inst(struct kndClass *self,
         mempool = task->shard->user->mempool;
     }
 
-    if (DEBUG_INST_IMPORT_LEVEL_2) {
+    if (DEBUG_INST_IMPORT_LEVEL_TMP) {
         knd_log(".. import class inst: \"%.*s\" (repo:%.*s)",
                 128, rec, repo->name_size, repo->name);
     }

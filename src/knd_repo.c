@@ -117,6 +117,7 @@ static gsl_err_t save_user_commit_body(void *obj, const char *rec, size_t *total
     if (err) return make_gsl_err_external(err);
 
     *total_size = commit->rec_size - strlen("{user") - 1; // leave closing brace
+    //knd_log("== total parsed size:%zu", *total_size);
     return make_gsl_err(gsl_OK);
 }
 
