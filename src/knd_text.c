@@ -36,6 +36,26 @@ static gsl_err_t parse_synode(void *obj,
                               const char *rec,
                               size_t *total_size);
 
+static int knd_class_declar_new(struct kndMemPool *mempool,
+                                struct kndClassDeclaration **result)
+{
+    void *page;
+    int err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndClassDeclaration), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
+                                     sizeof(struct kndClassDeclaration), &page);
+        if (err) return err;
+    }
+    *result = page;
+    return knd_OK;
+}
+
 static int knd_synode_spec_new(struct kndMemPool *mempool,
                                struct kndSyNodeSpec **result)
 {
@@ -245,8 +265,9 @@ static gsl_err_t set_synode_spec_class(void *obj, const char *val, size_t val_si
 
 static gsl_err_t set_synode_class(void *obj, const char *val, size_t val_size)    
 {
-    struct kndSyNode *self = obj;
-    knd_log("== %p synode class: %.*s", self, val_size, val);
+    struct kndSyNode *unused_var(self) = obj;
+    knd_log("== synode class: %.*s", val_size, val);
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -270,7 +291,8 @@ static gsl_err_t set_statement_id(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
     struct kndStatement *stm = ctx->stm;
-    knd_log("== %p stm id: %.*s", stm, val_size, val);
+    stm->name = val;
+    stm->name_size = val_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -650,27 +672,82 @@ static gsl_err_t parse_clause(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
+static int append_class_declar(struct kndStatement *stm,
+                               struct kndTask *task)
+{
+    struct kndClassDeclaration *decl;
+    struct kndClassInstEntry *entry;
+    struct kndTaskContext *ctx = task->ctx;
+    struct kndMemPool *mempool = task->mempool;
+    if (task->user_ctx)
+        mempool = task->shard->user->mempool;
+    int err;
+
+    entry = ctx->stm_class_insts;
+
+    // TODO pure classes
+    if (!entry) return knd_FAIL;
+
+    err = knd_class_declar_new(mempool, &decl);
+    if (err) return err;
+
+    decl->insts = entry;
+    decl->num_insts = ctx->num_stm_class_insts;
+    decl->class = entry->inst->blueprint;
+
+    decl->next = stm->class_declars;
+    stm->class_declars = decl;
+
+    ctx->stm_class_insts = NULL;
+    ctx->num_stm_class_insts = 0;
+
+    return knd_OK;
+}
+
 static gsl_err_t parse_class_select(void *obj,
                                     const char *rec,
                                     size_t *total_size)
 {
-    struct kndTask *task = obj;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    knd_task_spec_type orig_task_type = task->type;
     gsl_err_t parser_err;
+    int err;
+    // TODO sys repo
+    if (!task->user_ctx) {
+        return make_gsl_err(gsl_FAIL);
+    }
+
+    /* switch to statement's local scope */
+    task->type = KND_INNER_STATE;
 
     /* check private repo first */
     if (task->user_ctx->repo) {
         parser_err = knd_class_select(task->user_ctx->repo, rec, total_size, task);
         if (parser_err.code == gsl_OK) {
+            task->type = orig_task_type;
+
+            err = append_class_declar(ctx->stm, task);
+            if (err) return make_gsl_err_external(err);        
             return parser_err;
         }
-        // failed import? 
-        if (task->type == KND_COMMIT_STATE) {
+
+        // failed import?
+        if (task->type == KND_INNER_COMMIT_STATE) {
+            task->type = orig_task_type;
             return make_gsl_err(gsl_FAIL);
         }
     }
 
     /* shared read-only repo */
-    return knd_class_select(task->user_ctx->base_repo, rec, total_size, task);
+    parser_err = knd_class_select(task->user_ctx->base_repo, rec, total_size, task);
+    task->type = orig_task_type;
+    if (parser_err.code) return parser_err;
+
+    err = append_class_declar(ctx->stm, task);
+    if (err) return make_gsl_err_external(err);        
+
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_statement(void *obj,
@@ -699,7 +776,7 @@ static gsl_err_t parse_statement(void *obj,
         { .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_select,
-          .obj = task
+          .obj = obj
         }        
     };
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);

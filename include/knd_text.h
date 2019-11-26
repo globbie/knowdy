@@ -26,12 +26,35 @@ struct kndTask;
 struct kndClass;
 struct kndProc;
 struct kndSyNode;
+struct kndStatement;
+
+struct kndDiscourseContext
+{
+    struct kndStatement *stms;
+
+};
+
+struct kndClassDeclaration
+{
+    struct kndClass *class;
+
+    struct kndClassInstEntry *insts;
+    struct kndClassInstEntry *inst_tail;
+    size_t num_insts;
+
+    struct kndClassDeclaration *next;
+};
 
 struct kndStatement
 {
+    const char *name;
+    size_t name_size;
     size_t numid;
-    struct kndClass *class;
-    struct kndProc *proc;
+
+    struct kndClass *stm_type;
+
+    struct kndDiscourseContext *discourse;
+    struct kndClassDeclaration *class_declars;
 
     struct kndStatement *next;
 };

@@ -55,6 +55,7 @@ struct kndClassInstEntry
     struct kndSharedDictItem   *dict_item;
 
     struct kndClassInst *inst;
+    struct kndClassInstEntry *next;
 };
 
 struct kndClassInst
@@ -64,19 +65,18 @@ struct kndClassInst
     const char *name;
     size_t name_size;
 
+    const char *alias;
+    size_t alias_size;
+
     struct kndState *states;
     size_t init_state;
     size_t num_states;
-
-    bool is_subord;
-    bool is_concise;
 
     struct kndClassInstEntry *entry;
     struct kndClass *blueprint;
     struct kndClassInst *root;
 
     struct kndAttrInst *parent;
-    //struct kndClassInst *curr_inst;
 
     struct kndAttrInst *attr_insts;
     struct kndAttrInst *tail;

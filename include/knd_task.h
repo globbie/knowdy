@@ -56,6 +56,8 @@ typedef enum knd_task_spec_type {
     KND_GET_STATE,
     KND_SELECT_STATE,
     KND_COMMIT_STATE,
+    KND_INNER_STATE,
+    KND_INNER_COMMIT_STATE,
     KND_LIQUID_STATE,
     KND_SYNC_STATE,
     KND_DELTA_STATE,
@@ -149,6 +151,10 @@ struct kndTaskContext {
     struct kndCommit *commit;
     bool commit_confirmed;
 
+    /* inner statements */
+    struct kndClassInstEntry *stm_class_insts;
+    size_t num_stm_class_insts;
+
     struct kndTaskContext *next;
 };
 
@@ -225,6 +231,8 @@ struct kndTask
     size_t total_block_size;
 
     struct kndDict *class_name_idx;
+    struct kndDict *class_inst_alias_idx;
+
     struct kndDict *attr_name_idx;
     struct kndDict *proc_name_idx;
     struct kndDict *proc_arg_name_idx;

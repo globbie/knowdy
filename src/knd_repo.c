@@ -1375,10 +1375,11 @@ static int update_indices(struct kndRepo *self,
             continue;
         default:
             // KND_SELECTED
-            err = knd_class_inst_update_indices(self, entry, ref->state->children, task);
-            KND_TASK_ERR("failed to update inst indices of class \"%.*s\"",
-                         entry->name_size, entry->name);
-            
+            if (ref->state->children != NULL) {
+                err = knd_class_inst_update_indices(self, entry, ref->state->children, task);
+                KND_TASK_ERR("failed to update inst indices of class \"%.*s\"",
+                             entry->name_size, entry->name);
+            }
             break;
         }
 

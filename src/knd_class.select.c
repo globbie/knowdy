@@ -654,6 +654,7 @@ parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndCommit *commit = task->ctx->commit;
     int err;
 
     if (!ctx->selected_class) {
@@ -661,14 +662,18 @@ parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    /* flag commit */
-    task->type = KND_COMMIT_STATE;
-    if (!task->ctx->commit) {
-        err = knd_commit_new(task->mempool, &task->ctx->commit);
-        if (err) return make_gsl_err_external(err);
-
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
-                                                                memory_order_relaxed);
+    switch (task->type) {
+    case KND_SELECT_STATE:
+        if (!commit) {
+            err = knd_commit_new(task->mempool, &commit);
+            if (err) return make_gsl_err_external(err);
+            commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
+                                                         memory_order_relaxed);
+            task->ctx->commit = commit;
+        }
+        break;
+    default:
+        break;
     }
 
     err = knd_import_class_inst(ctx->selected_class, rec, total_size, task);
@@ -689,7 +694,6 @@ validate_select_class_attr(void *obj, const char *name, size_t name_size,
         if (err) return *total_size = 0, make_gsl_err_external(err);
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
-
     return knd_select_attr_var(ctx->selected_class, name, name_size,
                                rec, total_size, ctx->task);
 }
@@ -954,8 +958,8 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
     return make_gsl_err(gsl_OK);
 }
 
-extern int knd_class_match_query(struct kndClass *self,
-                                 struct kndAttrVar *query)
+int knd_class_match_query(struct kndClass *self,
+                          struct kndAttrVar *query)
 {
     struct kndSet *attr_idx = self->attr_idx;
     knd_logic logic = query->logic;
