@@ -15,6 +15,8 @@
 #include "knd_text.h"
 #include "knd_class.h"
 #include "knd_repo.h"
+#include "knd_user.h"
+#include "knd_shard.h"
 
 #define DEBUG_PROC_IMPORT_LEVEL_0 0
 #define DEBUG_PROC_IMPORT_LEVEL_1 0
@@ -383,18 +385,32 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
                                      struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
+    if (task->user_ctx)
+        mempool = task->shard->user->mempool;
+
     struct kndProcInst *inst;
     struct kndProcInstEntry *entry;
     // struct kndDict *name_idx;
     struct kndState *state;
     struct kndStateRef *state_ref;
+    struct kndTaskContext *ctx = task->ctx;
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_PROC_IMPORT_LEVEL_2) {
-        knd_log(".. import \"%.*s\" inst.. (repo:%.*s)",
+    if (DEBUG_PROC_IMPORT_LEVEL_TMP) {
+        knd_log(".. import \"%.*s\" proc inst.. (repo:%.*s)",
                 128, rec,
                 repo->name_size, repo->name);
+    }
+
+    switch (task->type) {
+    case KND_INNER_COMMIT_STATE:
+        // fall through
+    case KND_INNER_STATE:
+        task->type = KND_INNER_COMMIT_STATE;
+        break;
+    default:
+        task->type = KND_COMMIT_STATE;
     }
 
     err = knd_proc_inst_new(mempool, &inst);
@@ -403,24 +419,46 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
         return *total_size = 0, make_gsl_err_external(err);
     }
 
-    err = knd_state_new(mempool, &state);
-    if (err) {
-        knd_log("-- state alloc failed");
-        return *total_size = 0, make_gsl_err_external(err);
-    }
     err = knd_proc_inst_entry_new(mempool, &entry);
     if (err) return make_gsl_err_external(err);
 
     inst->entry = entry;
     entry->inst = inst;
-    state->phase = KND_CREATED;
-    state->numid = 1;
-    inst->base = self;
-    inst->states = state;
-    inst->num_states = 1;
+    inst->blueprint = self;
 
     parser_err = knd_proc_inst_import(inst, repo, rec, total_size, task);
     if (parser_err.code) return parser_err;
+
+    inst->entry->numid = atomic_fetch_add_explicit(&self->entry->inst_id_count, 1, \
+                                                   memory_order_relaxed);
+    inst->entry->numid++;
+    knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
+
+    /* automatic name assignment if no explicit name given */
+    if (!inst->name_size) {
+        inst->name = inst->entry->id;
+        inst->name_size = inst->entry->id_size;
+    }
+
+    switch (task->type) {
+    case KND_INNER_COMMIT_STATE:
+        entry->next = ctx->stm_proc_insts;
+        ctx->stm_proc_insts = entry;
+        ctx->num_stm_proc_insts++;
+        return parser_err;
+    default:
+        break;
+    }
+
+    err = knd_state_new(mempool, &state);
+    if (err) {
+        knd_log("-- state alloc failed");
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+    state->phase = KND_CREATED;
+    state->numid = 1;
+    inst->states = state;
+    inst->num_states = 1;
 
     err = knd_state_ref_new(mempool, &state_ref);
     if (err) {
@@ -431,25 +469,15 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
     state_ref->type = KND_STATE_PROC_INST;
     state_ref->obj = (void*)entry;
 
-    state_ref->next = task->ctx->proc_inst_state_refs;
-    task->ctx->proc_inst_state_refs = state_ref;
+    state_ref->next = ctx->proc_inst_state_refs;
+    ctx->proc_inst_state_refs = state_ref;
 
-    inst->entry->numid = atomic_fetch_add_explicit(&repo->num_proc_insts, 1,\
-                                                   memory_order_relaxed);
-    inst->entry->numid++;
-    knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
 
-    if (DEBUG_PROC_IMPORT_LEVEL_2)
+    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
         knd_log("++ \"%.*s\" (%.*s) proc inst parse OK!",
                 inst->name_size, inst->name,
                 inst->entry->id_size, inst->entry->id,
                 self->name_size, self->name);
-
-    /* automatic name assignment if no explicit name given */
-    if (!inst->name_size) {
-        inst->name = inst->entry->id;
-        inst->name_size = inst->entry->id_size;
-    }
 
     //name_idx = repo->proc_inst_name_idx;
 
@@ -465,14 +493,14 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
 
     task->type = KND_COMMIT_STATE;
 
-    if (!task->ctx->commit) {
-        err = knd_commit_new(task->mempool, &task->ctx->commit);
+    if (!ctx->commit) {
+        err = knd_commit_new(task->mempool, &ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
+        ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
                                                                 memory_order_relaxed);
     }
-    state->commit = task->ctx->commit;
+    state->commit = ctx->commit;
 
     return make_gsl_err(gsl_OK);
 }

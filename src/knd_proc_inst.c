@@ -89,9 +89,9 @@ int knd_proc_inst_export_GSL(struct kndProcInst *self,
     struct kndProcArgInst *arg;
     int err;
 
-    err = out->writef(out, "%*s{proc-inst %.*s\n",
+    err = out->writef(out, "%*s{inst %.*s\n",
                       depth * KND_OFFSET_SIZE, "",
-                      self->name_size, self->name);                RET_ERR();
+                      self->name_size, self->name);                            RET_ERR();
 
     if (self->args) {
         err = out->writef(out, "%*s[arg\n", (depth + 1) * KND_OFFSET_SIZE, "");
@@ -112,8 +112,15 @@ int knd_proc_inst_entry_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndProcInstEntry), &page);              RET_ERR();
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndProcInstEntry), &page);              RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
+                                     sizeof(struct kndProcInstEntry), &page);         RET_ERR();
+    }
     *result = page;
     return knd_OK;
 }
@@ -123,12 +130,14 @@ int knd_proc_inst_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    if (mempool->type == KND_ALLOC_INCR) {
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
-                                     sizeof(struct kndProcInst), &page);          RET_ERR();
-    } else {
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
         err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
                                 sizeof(struct kndProcInst), &page);               RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
+                                     sizeof(struct kndProcInst), &page);          RET_ERR();
     }
     *result = page;
     return knd_OK;

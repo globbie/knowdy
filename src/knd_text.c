@@ -52,6 +52,29 @@ static int knd_class_declar_new(struct kndMemPool *mempool,
                                      sizeof(struct kndClassDeclaration), &page);
         if (err) return err;
     }
+    memset(page, 0, sizeof(struct kndClassDeclaration));
+
+    *result = page;
+    return knd_OK;
+}
+
+static int knd_proc_declar_new(struct kndMemPool *mempool,
+                                struct kndProcDeclaration **result)
+{
+    void *page;
+    int err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndProcDeclaration), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
+                                     sizeof(struct kndProcDeclaration), &page);
+        if (err) return err;
+    }
+    memset(page, 0, sizeof(struct kndProcDeclaration));
     *result = page;
     return knd_OK;
 }
@@ -259,15 +282,17 @@ static gsl_err_t set_synode_spec_class(void *obj, const char *val, size_t val_si
 {
     struct LocalContext *ctx = obj;
     struct kndSyNodeSpec *self = ctx->synode_spec;
-    knd_log("== %p synode spec class: %.*s", self, val_size, val);
+    self->name = val;
+    self->name_size = val_size;
     return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t set_synode_class(void *obj, const char *val, size_t val_size)    
 {
-    struct kndSyNode *unused_var(self) = obj;
-    knd_log("== synode class: %.*s", val_size, val);
-
+    struct kndSyNode *self = obj;
+    knd_log("synode class:%.*s", val_size, val);
+    self->name = val;
+    self->name_size = val_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -275,7 +300,8 @@ static gsl_err_t set_clause_class(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
     struct kndClause *self = ctx->clause;
-    knd_log("== %p clause class: %.*s", self, val_size, val);
+    self->name = val;
+    self->name_size = val_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -416,7 +442,7 @@ static gsl_err_t parse_term_synode(void *obj,
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_synode_class,
-          .obj = &synode
+          .obj = synode
         },
         { .name = "syn",
           .name_size = strlen("syn"),
@@ -444,7 +470,6 @@ static gsl_err_t parse_term_synode(void *obj,
     */
     ctx->synode = NULL;
 
-    knd_log("synode:%p pos:%zu len:%zu", synode, synode->pos, synode->len);
     return make_gsl_err(gsl_OK);
 }
 
@@ -481,7 +506,7 @@ static gsl_err_t parse_synode(void *obj,
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_synode_class,
-          .obj = &synode
+          .obj = synode
         },
         { .name = "syn",
           .name_size = strlen("syn"),
@@ -491,7 +516,7 @@ static gsl_err_t parse_synode(void *obj,
         { .name = "pos",
           .name_size = strlen("pos"),
           .parse = parse_linear_pos,
-          .obj = &synode
+          .obj = synode
         },
         { .name = "term",
           .name_size = strlen("term"),
@@ -542,7 +567,7 @@ static gsl_err_t parse_subj(void *obj,
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_synode_class,
-          .obj = obj
+          .obj = synode
         },
         { .name = "syn",
           .name_size = strlen("syn"),
@@ -589,7 +614,7 @@ static gsl_err_t parse_pred(void *obj,
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_synode_class,
-          .obj = obj
+          .obj = synode
         },
         { .name = "syn",
           .name_size = strlen("syn"),
@@ -704,6 +729,36 @@ static int append_class_declar(struct kndStatement *stm,
     return knd_OK;
 }
 
+static int append_proc_declar(struct kndStatement *stm,
+                              struct kndTask *task)
+{
+    struct kndProcDeclaration *decl;
+    struct kndProcInstEntry *entry;
+    struct kndTaskContext *ctx = task->ctx;
+    struct kndMemPool *mempool = task->mempool;
+    if (task->user_ctx)
+        mempool = task->shard->user->mempool;
+    int err;
+
+    entry = ctx->stm_proc_insts;
+    if (!entry) return knd_FAIL;
+
+    err = knd_proc_declar_new(mempool, &decl);
+    if (err) return err;
+
+    decl->insts = entry;
+    decl->num_insts = ctx->num_stm_proc_insts;
+    decl->proc = entry->inst->blueprint;
+
+    decl->next = stm->proc_declars;
+    stm->proc_declars = decl;
+
+    ctx->stm_proc_insts = NULL;
+    ctx->num_stm_proc_insts = 0;
+
+    return knd_OK;
+}
+
 static gsl_err_t parse_class_select(void *obj,
                                     const char *rec,
                                     size_t *total_size)
@@ -750,6 +805,53 @@ static gsl_err_t parse_class_select(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t parse_proc_select(void *obj,
+                                   const char *rec,
+                                   size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    knd_task_spec_type orig_task_type = task->type;
+    gsl_err_t parser_err;
+    int err;
+    // TODO sys repo
+    if (!task->user_ctx) {
+        return make_gsl_err(gsl_FAIL);
+    }
+
+    /* switch to statement's local scope */
+    task->type = KND_INNER_STATE;
+
+    /* check private repo first */
+    if (task->user_ctx->repo) {
+        parser_err = knd_proc_select(task->user_ctx->repo, rec, total_size, task);
+        if (parser_err.code == gsl_OK) {
+            task->type = orig_task_type;
+
+            err = append_proc_declar(ctx->stm, task);
+            if (err) return make_gsl_err_external(err);        
+            return parser_err;
+        }
+
+        // failed import?
+        if (task->type == KND_INNER_COMMIT_STATE) {
+            task->type = orig_task_type;
+            return make_gsl_err(gsl_FAIL);
+        }
+    }
+
+    /* shared read-only repo */
+    parser_err = knd_proc_select(task->user_ctx->base_repo, rec, total_size, task);
+    task->type = orig_task_type;
+    if (parser_err.code) {
+        knd_log("-- proc select failed: %d", parser_err.code);
+        return parser_err;
+    }
+    err = append_proc_declar(ctx->stm, task);
+    if (err) return make_gsl_err_external(err);        
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t parse_statement(void *obj,
                                  const char *rec,
                                  size_t *total_size)
@@ -776,6 +878,11 @@ static gsl_err_t parse_statement(void *obj,
         { .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_select,
+          .obj = obj
+        },
+        { .name = "proc",
+          .name_size = strlen("proc"),
+          .parse = parse_proc_select,
           .obj = obj
         }        
     };

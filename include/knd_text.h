@@ -45,6 +45,17 @@ struct kndClassDeclaration
     struct kndClassDeclaration *next;
 };
 
+struct kndProcDeclaration
+{
+    struct kndProc *proc;
+
+    struct kndProcInstEntry *insts;
+    struct kndProcInstEntry *inst_tail;
+    size_t num_insts;
+
+    struct kndProcDeclaration *next;
+};
+
 struct kndStatement
 {
     const char *name;
@@ -54,15 +65,19 @@ struct kndStatement
     struct kndClass *stm_type;
 
     struct kndDiscourseContext *discourse;
+
     struct kndClassDeclaration *class_declars;
+    struct kndProcDeclaration  *proc_declars;
 
     struct kndStatement *next;
 };
 
 struct kndSyNodeSpec
 {
-    size_t numid;
+    const char *name;
+    size_t name_size;
     struct kndClass *class;
+
     struct kndSyNode *synode;
 
     struct kndSyNodeSpec *next;
@@ -70,7 +85,8 @@ struct kndSyNodeSpec
 
 struct kndSyNode
 {
-    size_t numid;
+    const char *name;
+    size_t name_size;
     struct kndClass *class;
 
     struct kndSyNodeSpec *specs;
@@ -84,6 +100,8 @@ struct kndSyNode
 
 struct kndClause
 {
+    const char *name;
+    size_t name_size;
     size_t numid;
     struct kndClass *class;
 

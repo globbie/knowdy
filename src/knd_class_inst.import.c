@@ -447,13 +447,24 @@ int knd_import_class_inst(struct kndClass *self,
     parser_err = import_class_inst(inst, rec, total_size, task);
     if (parser_err.code) return parser_err.code;
 
+    /* generate unique inst id */
+    inst->entry->numid = atomic_fetch_add_explicit(&c->entry->inst_id_count, 1,
+                                                   memory_order_relaxed);
+    inst->entry->numid++;
+    knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
+
+    /* automatic name assignment if no explicit name given */
+    if (!inst->name_size) {
+        // TODO add snapshot numid
+        inst->name = inst->entry->id;
+        inst->name_size = inst->entry->id_size;
+    }
+
     switch (task->type) {
     case KND_INNER_COMMIT_STATE:
-        knd_log("prev:%p curr:%p", ctx->stm_class_insts, entry);
         entry->next = ctx->stm_class_insts;
         ctx->stm_class_insts = entry;
         ctx->num_stm_class_insts++;
-        knd_log("NUM stm insts: %zu", ctx->num_stm_class_insts);
         return knd_OK;
     default:
         break;
@@ -479,18 +490,6 @@ int knd_import_class_inst(struct kndClass *self,
     ctx->class_inst_state_refs = state_ref;
     ctx->num_class_inst_state_refs++;
 
-    /* generate unique inst id */
-    inst->entry->numid = atomic_fetch_add_explicit(&c->entry->inst_id_count, 1,
-                                                   memory_order_relaxed);
-    inst->entry->numid++;
-    knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
-
-    /* automatic name assignment if no explicit name given */
-    if (!inst->name_size) {
-        // TODO add snapshot numid
-        inst->name = inst->entry->id;
-        inst->name_size = inst->entry->id_size;
-    }
 
     if (DEBUG_INST_IMPORT_LEVEL_2) {
         knd_log("++ inst \"%.*s\" of \"%.*s\" class import  OK!",

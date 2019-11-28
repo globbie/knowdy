@@ -177,11 +177,9 @@ static gsl_err_t
 parse_proc_inst_import(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-
+    struct kndTask *task = ctx->task;
     if (!ctx->proc) {
-        knd_log("-- proc not selected");
-        int err = ctx->task->log->writef(ctx->task->log, "no proc selected");
-        if (err) return *total_size = 0, make_gsl_err_external(err);
+        KND_TASK_LOG("no proc selected");
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
     return knd_proc_inst_parse_import(ctx->proc, ctx->repo, rec, total_size, ctx->task);
@@ -228,19 +226,12 @@ gsl_err_t knd_proc_select(struct kndRepo *repo,
 
     parser_err = gsl_parse_task(rec, total_size, specs,
                                 sizeof specs / sizeof specs[0]);
-    if (parser_err.code) {
-        /*knd_log("-- proc parse error: \"%.*s\"",
-                repo->log->buf_size, repo->log->buf);
-        if (!repo->log->buf_size) {
-            e = repo->log->write(repo->log, "proc parse failure",
-                                 strlen("proc parse failure"));
-            if (e) return make_gsl_err_external(e);
-            }*/
-        return parser_err;
-    }
+    if (parser_err.code) return parser_err;
 
-    if (!ctx.proc)
+    if (!ctx.proc) {
+        KND_TASK_LOG("no proc selected");
         return make_gsl_err(gsl_FAIL);
+    }
 
     knd_state_phase phase;
 
@@ -400,7 +391,7 @@ int knd_get_proc(struct kndRepo *repo,
     struct kndOutput *log = task->log;
     int err;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_TMP)
         knd_log(".. \"%.*s\" repo to get proc: \"%.*s\"..",
                 repo->name_size, repo->name, name_size, name);
 
@@ -409,19 +400,11 @@ int knd_get_proc(struct kndRepo *repo,
     if (!entry) {
         if (repo->base) {
             err = knd_get_proc(repo->base, name, name_size, result, task);
-            if (err) return err;
+            KND_TASK_ERR("no such proc: \"%.*s\"", name_size, name);
             return knd_OK;
         }
-
-        knd_log("-- no such proc: \"%.*s\"", name_size, name);
-
-        log->reset(log);
-        err = log->write(log, name, name_size);
-        if (err) return err;
-        err = log->write(log, " proc name not found",
-                         strlen(" proc name not found"));
-        if (err) return err;
-        return knd_NO_MATCH;
+        err = knd_NO_MATCH;
+        KND_TASK_ERR("no such proc: \"%.*s\"", name_size, name);
     }
 
     if (entry->phase == KND_REMOVED) {

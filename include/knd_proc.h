@@ -64,6 +64,8 @@ struct kndProcInstEntry
     //size_t offset;
     knd_state_phase phase;
     struct kndProcInst *inst;
+
+    struct kndProcInstEntry *next;
 };
 
 struct kndProcInst
@@ -71,8 +73,11 @@ struct kndProcInst
     const char *name;
     size_t name_size;
 
+    const char *alias;
+    size_t alias_size;
+
     struct kndProcInstEntry *entry;
-    struct kndProc *base;
+    struct kndProc *blueprint;
 
     struct kndClassInst *agent;
 
@@ -118,6 +123,8 @@ struct kndProcEntry
     struct kndAttrHub *attr_hubs;
 
     struct kndSharedDict *inst_name_idx;
+    atomic_size_t    num_insts;
+    atomic_size_t    inst_id_count;
 
     struct kndSharedDictItem *dict_item;
 };

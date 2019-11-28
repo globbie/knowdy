@@ -154,6 +154,8 @@ struct kndTaskContext {
     /* inner statements */
     struct kndClassInstEntry *stm_class_insts;
     size_t num_stm_class_insts;
+    struct kndProcInstEntry *stm_proc_insts;
+    size_t num_stm_proc_insts;
 
     struct kndTaskContext *next;
 };

@@ -11,6 +11,7 @@
 #include "knd_user.h"
 #include "knd_class.h"
 #include "knd_class_inst.h"
+#include "knd_proc.h"
 #include "knd_utils.h"
 #include "knd_mempool.h"
 #include "knd_output.h"
@@ -60,19 +61,15 @@ void knd_text_str(struct kndText *self, size_t depth)
             val->val_size, val->val, self->locale_size, self->locale);
 }
 
-static int stm_export_GSL(struct kndStatement *stm,
-                          struct kndOutput *out)
+static int export_class_declars(struct kndClassDeclaration *decl,
+                                struct kndOutput *out)
 {
-    struct kndClassDeclaration *decl;
     struct kndClass *c;
     struct kndClassInstEntry *entry;
     struct kndClassInst *inst;
     int err;
 
-    err = out->write(out, "{stm ", strlen("{stm "));                 RET_ERR();
-    err = out->write(out, stm->name, stm->name_size);                RET_ERR();
-
-    for (decl = stm->class_declars; decl; decl = decl->next) {
+    for (; decl; decl = decl->next) {
         c = decl->class;
 
         err = out->write(out, "{class ", strlen("{class "));         RET_ERR();
@@ -94,8 +91,56 @@ static int stm_export_GSL(struct kndStatement *stm,
         
         err = out->writec(out, '}');                                 RET_ERR();
     }
+    return knd_OK;
+}
 
-    err = out->writec(out, '}');                                     RET_ERR();
+static int export_proc_declars(struct kndProcDeclaration *decl,
+                               struct kndOutput *out)
+{
+    struct kndProc *proc;
+    struct kndProcInstEntry *entry;
+    struct kndProcInst *inst;
+    int err;
+
+    for (; decl; decl = decl->next) {
+        proc = decl->proc;
+
+        err = out->write(out, "{proc ", strlen("{proc "));                        RET_ERR();
+        err = out->write(out, proc->name, proc->name_size);                       RET_ERR();
+
+        for (entry = decl->insts; entry; entry = entry->next) {
+            inst = entry->inst;
+
+            err = out->write(out, "{!inst ", strlen("{!inst "));                  RET_ERR();
+            err = out->write(out, inst->name, inst->name_size);                   RET_ERR();
+
+            if (inst->alias_size) {
+                err = out->write(out, "{_as ", strlen("{_as "));                  RET_ERR();
+                err = out->write(out, inst->alias, inst->alias_size);             RET_ERR();
+                err = out->writec(out, '}');                                      RET_ERR();
+            }
+            err = out->writec(out, '}');                                          RET_ERR();
+        }
+        err = out->writec(out, '}');                                              RET_ERR();
+    }
+    return knd_OK;
+}
+
+ static int stm_export_GSL(struct kndStatement *stm,
+                           struct kndOutput *out)
+{
+    int err;
+
+    err = out->write(out, "{stm ", strlen("{stm "));                              RET_ERR();
+    err = out->write(out, stm->name, stm->name_size);                             RET_ERR();
+
+    if (stm->class_declars) {
+        err = export_class_declars(stm->class_declars, out);                      RET_ERR();
+    }
+    if (stm->proc_declars) {
+        err = export_proc_declars(stm->proc_declars, out);                        RET_ERR();
+    }
+    err = out->writec(out, '}');                                                  RET_ERR();
 
     return knd_OK;
 }
