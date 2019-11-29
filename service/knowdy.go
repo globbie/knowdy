@@ -6,8 +6,8 @@ package main
 // #include <string.h>
 // #cgo CFLAGS: -I../include
 // #cgo CFLAGS: -I../libs/gsl-parser/include
-// #cgo LDFLAGS: -L../build/libs/gsl-parser/lib/ -lgsl-parser_static
 // #cgo LDFLAGS: -L../build/lib/ -lknowdy_static
+// #cgo LDFLAGS: -L../build/libs/gsl-parser/lib/ -lgsl-parser_static
 // #include <knd_shard.h>
 // #include <knd_task.h>
 // static void kndShard_del__(struct kndShard *shard)
