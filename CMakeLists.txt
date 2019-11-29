@@ -31,7 +31,7 @@ find_library(CHECK_LIBRARY NAMES check PATHS ${CHECK_LIBRARY_DIRS})
 include_directories(${CHECK_INCLUDE_DIR})
 
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-    set(CHECK_LIBRARY ${CHECK_LIBRARY} rt m pthread)
+    set(CHECK_LIBRARY ${CHECK_LIBRARY} rt m pthread subunit)
 endif()
 
 include(ExternalProject)
