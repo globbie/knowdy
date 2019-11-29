@@ -1,0 +1,9 @@
+.cache
+build
+delenda
+server
+*~
+*/*~
+.git*
+libs/gsl-parser/build
+libs/gsl-parser/.git*

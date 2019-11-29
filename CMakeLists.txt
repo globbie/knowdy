@@ -10,7 +10,7 @@ set(CMAKE_INSTALL_PREFIX /)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -pedantic -D_GNU_SOURCE")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g3 -Wno-gnu-zero-variadic-macro-arguments")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -Wgnu-zero-variadic-macro-arguments")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
 
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Using 'Debug' build type as default")
@@ -31,7 +31,7 @@ find_library(CHECK_LIBRARY NAMES check PATHS ${CHECK_LIBRARY_DIRS})
 include_directories(${CHECK_INCLUDE_DIR})
 
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-    set(CHECK_LIBRARY ${CHECK_LIBRARY} rt m pthread subunit)
+    set(CHECK_LIBRARY ${CHECK_LIBRARY} rt m pthread)
 endif()
 
 include(ExternalProject)
