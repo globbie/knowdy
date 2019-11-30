@@ -388,10 +388,9 @@ int knd_get_proc(struct kndRepo *repo,
 {
     struct kndProcEntry *entry;
     struct kndProc *proc;
-    struct kndOutput *log = task->log;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP)
+    if (DEBUG_PROC_LEVEL_2)
         knd_log(".. \"%.*s\" repo to get proc: \"%.*s\"..",
                 repo->name_size, repo->name, name_size, name);
 
@@ -408,14 +407,7 @@ int knd_get_proc(struct kndRepo *repo,
     }
 
     if (entry->phase == KND_REMOVED) {
-        knd_log("-- \"%s\" proc was removed", name);
-        log->reset(log);
-        err = log->write(log, name, name_size);
-        if (err) return err;
-        err = log->write(log, " proc was removed",
-                         strlen(" proc was removed"));
-        if (err) return err;
-        task->ctx->http_code = HTTP_GONE;
+        KND_TASK_LOG("\"%s\" proc was removed", name);
         return knd_NO_MATCH;
     }
 
@@ -441,10 +433,7 @@ static int commit_state(struct kndProc *self,
     int err;
 
     err = knd_state_new(mempool, &state);
-    if (err) {
-        knd_log("-- proc state alloc failed");
-        return err;
-    }
+    KND_TASK_ERR("proc state alloc failed");
     state->phase = phase;
     state->commit = task->ctx->commit;
     state->children = children;

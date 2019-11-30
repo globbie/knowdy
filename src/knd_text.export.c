@@ -62,8 +62,9 @@ void knd_text_str(struct kndText *self, size_t depth)
 }
 
 static int export_class_declars(struct kndClassDeclaration *decl,
-                                struct kndOutput *out)
+                                struct kndTask *task)
 {
+    struct kndOutput *out = task->out;
     struct kndClass *c;
     struct kndClassInstEntry *entry;
     struct kndClassInst *inst;
@@ -88,15 +89,15 @@ static int export_class_declars(struct kndClassDeclaration *decl,
             }
             err = out->writec(out, '}');                                 RET_ERR();
         }
-        
         err = out->writec(out, '}');                                 RET_ERR();
     }
     return knd_OK;
 }
 
 static int export_proc_declars(struct kndProcDeclaration *decl,
-                               struct kndOutput *out)
+                               struct kndTask *task)
 {
+    struct kndOutput *out = task->out;
     struct kndProc *proc;
     struct kndProcInstEntry *entry;
     struct kndProcInst *inst;
@@ -112,13 +113,7 @@ static int export_proc_declars(struct kndProcDeclaration *decl,
             inst = entry->inst;
 
             err = out->write(out, "{!inst ", strlen("{!inst "));                  RET_ERR();
-            err = out->write(out, inst->name, inst->name_size);                   RET_ERR();
-
-            if (inst->alias_size) {
-                err = out->write(out, "{_as ", strlen("{_as "));                  RET_ERR();
-                err = out->write(out, inst->alias, inst->alias_size);             RET_ERR();
-                err = out->writec(out, '}');                                      RET_ERR();
-            }
+            err = knd_proc_inst_export_GSL(inst, false, task);                    RET_ERR();
             err = out->writec(out, '}');                                          RET_ERR();
         }
         err = out->writec(out, '}');                                              RET_ERR();
@@ -126,19 +121,20 @@ static int export_proc_declars(struct kndProcDeclaration *decl,
     return knd_OK;
 }
 
- static int stm_export_GSL(struct kndStatement *stm,
-                           struct kndOutput *out)
+static int stm_export_GSL(struct kndStatement *stm,
+                          struct kndTask *task)
 {
+    struct kndOutput *out = task->out;
     int err;
 
     err = out->write(out, "{stm ", strlen("{stm "));                              RET_ERR();
     err = out->write(out, stm->name, stm->name_size);                             RET_ERR();
 
     if (stm->class_declars) {
-        err = export_class_declars(stm->class_declars, out);                      RET_ERR();
+        err = export_class_declars(stm->class_declars, task);                      RET_ERR();
     }
     if (stm->proc_declars) {
-        err = export_proc_declars(stm->proc_declars, out);                        RET_ERR();
+        err = export_proc_declars(stm->proc_declars, task);                        RET_ERR();
     }
     err = out->writec(out, '}');                                                  RET_ERR();
 
@@ -146,14 +142,15 @@ static int export_proc_declars(struct kndProcDeclaration *decl,
 }
 
 static int sent_export_GSL(struct kndSentence *sent,
-                           struct kndOutput *out)
+                           struct kndTask *task)
 {
+    struct kndOutput *out = task->out;
     int err;
     err = out->writec(out, '{');                        RET_ERR();
     err = out->write(out, sent->seq, sent->seq_size);   RET_ERR();
 
     if (sent->stm) {
-        err = stm_export_GSL(sent->stm, out);           RET_ERR();
+        err = stm_export_GSL(sent->stm, task);           RET_ERR();
     }
 
     err = out->writec(out, '}');                        RET_ERR();
@@ -200,7 +197,7 @@ static int export_GSL(struct kndText *self,
             err = out->writec(out, '{');                            RET_ERR();
             err = out->write(out, "[s", strlen("[s"));              RET_ERR();
             for (sent = par->sents; sent; sent = sent->next) {
-                err = sent_export_GSL(sent, out);               RET_ERR();
+                err = sent_export_GSL(sent, task);                  RET_ERR();
             }
             err = out->writec(out, ']');                            RET_ERR();
             err = out->writec(out, '}');                            RET_ERR();
@@ -224,9 +221,9 @@ static int export_JSON(struct kndText *self,
         err = out->write_escaped(out, self->seq, self->seq_size);
         if (err) return err;
         if (self->locale_size) {
-            err = out->write(out, "\"_lang\":\"", strlen("\"_lang:\""));      RET_ERR();
-            err = out->write(out, self->locale, self->locale_size); RET_ERR();
-            err = out->writec(out, '"');                            RET_ERR();
+            err = out->write(out, "\"_lang\":\"", strlen("\"_lang:\""));          RET_ERR();
+            err = out->write(out, self->locale, self->locale_size);               RET_ERR();
+            err = out->writec(out, '"');                                          RET_ERR();
         }
         return knd_OK;
     }
