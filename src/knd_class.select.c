@@ -3,6 +3,7 @@
 #include "knd_task.h"
 #include "knd_repo.h"
 #include "knd_user.h"
+#include "knd_shard.h"
 #include "knd_set.h"
 #include "knd_output.h"
 
@@ -655,6 +656,9 @@ parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndCommit *commit = task->ctx->commit;
+    struct kndMemPool *mempool = task->mempool;
+    if (task->user_ctx)
+        mempool = task->shard->user->mempool;
     int err;
 
     if (!ctx->selected_class) {
@@ -663,9 +667,9 @@ parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
     }
 
     switch (task->type) {
-    case KND_SELECT_STATE:
+    case KND_GET_STATE:
         if (!commit) {
-            err = knd_commit_new(task->mempool, &commit);
+            err = knd_commit_new(mempool, &commit);
             if (err) return make_gsl_err_external(err);
             commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
                                                          memory_order_relaxed);
@@ -678,7 +682,6 @@ parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
 
     err = knd_import_class_inst(ctx->selected_class, rec, total_size, task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-
     return make_gsl_err(gsl_OK);
 }
 

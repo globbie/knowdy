@@ -66,16 +66,18 @@ typedef enum knd_task_spec_type {
     KND_STOP_STATE
 } knd_task_spec_type;
 
-typedef enum knd_task_phase_t { KND_REGISTER,
-                                KND_SUBMIT,
-                                KND_CANCEL,
-                                KND_REJECT,
-                                KND_CONFLICT,
-                                KND_CONFIRM_COMMIT,
-                                KND_WAL_WRITE,
-                                KND_COMMIT_INDICES,
-                                KND_DELIVER_RESULT,
-                                KND_COMPLETE } knd_task_phase_t;
+typedef enum knd_task_phase_t {
+     KND_REGISTER,
+     KND_SUBMIT,
+     KND_CANCEL,
+     KND_REJECT,
+     KND_CONFLICT,
+     KND_CONFIRM_COMMIT,
+     KND_WAL_WRITE,
+     KND_COMMIT_INDICES,
+     KND_DELIVER_RESULT,
+     KND_COMPLETE
+} knd_task_phase_t;
 
 struct kndTaskDestination
 {

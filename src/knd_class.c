@@ -361,13 +361,15 @@ int knd_class_commit_state(struct kndClass *self,
     struct kndStateRef *state_ref;
     int err;
 
+    assert(commit != NULL);
+
     if (DEBUG_CLASS_LEVEL_2) {
-        knd_log(".. \"%.*s\" class (repo:%.*s) to commit its state (phase:%d)",
+        knd_log(".. \"%.*s\" class (repo:%.*s) to commit its state "
+                " (phase:%d) ",
                 self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name,
                 phase);
     }
-
     err = commit_state(self, NULL, phase, &state, task);
     KND_TASK_ERR("failed to alloc kndState");
 

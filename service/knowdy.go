@@ -43,7 +43,7 @@ func New(conf string, parentAddress string, concurrencyFactor int) (*kndProc, er
 
 	for i := 0; i < concurrencyFactor; i++ {
 		var task *C.struct_kndTask
-		errCode := C.knd_task_new(shard, nil, C.int(i), &task)
+		errCode := C.knd_task_new(shard, nil, C.int(i + 1), &task)
 		if errCode != C.int(0) {
 			proc.Del()
 			return nil, errors.New("could not create kndTask")

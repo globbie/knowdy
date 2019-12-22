@@ -97,7 +97,7 @@ static int save_commit_body(struct kndCommit *commit,
     memcpy(commit->rec + tag_size, rec, rec_size);
     commit->rec[rec_size] = '\0';
 
-    if (DEBUG_REPO_LEVEL_2)
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log("#%zu COMMIT: \"%.*s\"",
                 commit->numid, commit->rec_size, commit->rec);
     return knd_OK;
@@ -135,6 +135,22 @@ static gsl_err_t save_sysrepo_commit_body(void *obj, const char *rec, size_t *to
     if (err) return make_gsl_err_external(err);
 
     *total_size = commit->rec_size - strlen("{repo") - 1; // leave closing brace
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t save_sysrepo_class_commit_body(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndCommit *commit = obj;
+    int err;
+
+    if (!commit->rec_size) {
+        err = knd_FAIL;
+        return make_gsl_err_external(err);
+    }
+    err = save_commit_body(commit, "{class", strlen("{class"), rec, commit->rec_size);
+    if (err) return make_gsl_err_external(err);
+
+    *total_size = commit->rec_size - strlen("{class") - 1; // leave closing brace
     return make_gsl_err(gsl_OK);
 }
 
@@ -186,6 +202,11 @@ static gsl_err_t parse_commit(void *obj,
         { .name = "repo",
           .name_size = strlen("repo"),
           .parse = save_sysrepo_commit_body,
+          .obj = commit
+        },
+        { .name = "class",
+          .name_size = strlen("class"),
+          .parse = save_sysrepo_class_commit_body,
           .obj = commit
         }
     };
@@ -260,7 +281,7 @@ static int restore_commits(struct kndRepo *repo,
 static int restore_journals(struct kndRepo *self,
                             struct kndTask *task)
 {
-    struct kndOutput *out = task->out;
+    struct kndOutput *out = task->file_out;
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
     struct stat st;
@@ -300,6 +321,18 @@ static int restore_journals(struct kndRepo *self,
     return knd_OK;
 }
 
+static gsl_err_t parse_sysrepo_class(void *obj,
+                                     const char *rec,
+                                     size_t *total_size)
+{
+    struct kndTask *task = obj;
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log(".. parsing the system repo class select: \"%.*s\"", 64, rec);
+
+    return knd_class_select(task->repo, rec, total_size, task);
+}
+
 static int apply_commit(void *obj,
                         const char *unused_var(elem_id),
                         size_t unused_var(elem_id_size),
@@ -315,7 +348,7 @@ static int apply_commit(void *obj,
     size_t total_size = commit->rec_size;
     int err;
 
-    if (DEBUG_REPO_LEVEL_2)
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log(".. applying commit: #%zu", commit->numid);
 
     knd_task_reset(task);
@@ -332,6 +365,11 @@ static int apply_commit(void *obj,
         { .name = "repo",
           .name_size = strlen("repo"),
           .parse = knd_parse_repo,
+          .obj = task
+        },
+        { .name = "class",
+          .name_size = strlen("class"),
+          .parse = parse_sysrepo_class,
           .obj = task
         }
     };
@@ -360,7 +398,7 @@ static int apply_commit(void *obj,
 static int restore_state(struct kndRepo *self,
                          struct kndTask *task)
 {
-    struct kndOutput *out = task->out;
+    struct kndOutput *out = task->file_out;
     struct kndClassInst *user_inst;
     char buf[KND_TEMP_BUF_SIZE];
     size_t buf_size;
@@ -431,7 +469,7 @@ static int restore_state(struct kndRepo *self,
         KND_TASK_ERR("agent path construction failed");
 
         if (stat(out->buf, &st)) {
-            //knd_log("-- no such file: %.*s", out->buf_size, out->buf);
+            knd_log("-- no such file: %.*s", out->buf_size, out->buf);
             break;
         }
         err = restore_journals(self, task);
@@ -1333,7 +1371,7 @@ static int update_indices(struct kndRepo *self,
     struct kndSharedDict *name_idx = repo->class_name_idx;
     int err;
 
-    if (DEBUG_REPO_LEVEL_2)
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log(".. commit #%zu updating indices of %.*s..",
                 commit->numid, self->name_size, self->name);
 
@@ -1345,6 +1383,10 @@ static int update_indices(struct kndRepo *self,
 
     for (ref = commit->class_state_refs; ref; ref = ref->next) {
         entry = ref->obj;
+
+        if (DEBUG_REPO_LEVEL_TMP)
+            knd_log(".. idx update of class \"%.*s\" (phase:%d)",
+                    entry->name_size, entry->name, ref->state->phase);
 
         switch (ref->state->phase) {
         case KND_CREATED:
@@ -1511,6 +1553,16 @@ static int save_commit_WAL(struct kndRepo *self, struct kndCommit *commit, struc
     struct stat st;
     int err;
 
+    /* ltrim task rec */
+    while (rec_size) {
+        if (*rec == ' ' || *rec == '\n' || *rec == '\t') {
+            rec_size--;
+            rec++;
+            continue;
+        }
+        break;
+    }
+    
     commit->timestamp = time(NULL);
     if (DEBUG_REPO_LEVEL_2) {
         knd_log(".. kndTask #%zu to write a WAL entry: %.*s (path:%.*s)",

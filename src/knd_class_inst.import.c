@@ -419,11 +419,10 @@ int knd_import_class_inst(struct kndClass *self,
         // use non-ephemeral mempool
         mempool = task->shard->user->mempool;
     }
-
-    if (DEBUG_INST_IMPORT_LEVEL_TMP) {
-        knd_log(".. class \"%.*s\" to import inst \"%.*s\" (repo:%.*s) task:%d",
+    if (DEBUG_INST_IMPORT_LEVEL_2) {
+        knd_log(".. class \"%.*s\" to import inst \"%.*s\" (repo:%.*s) task #%d type:%d",
                 self->name_size, self->name,
-                128, rec, repo->name_size, repo->name, task->type);
+                128, rec, repo->name_size, repo->name, task->id, task->type);
     }
     switch (task->type) {
     case KND_INNER_COMMIT_STATE:
@@ -489,7 +488,6 @@ int knd_import_class_inst(struct kndClass *self,
     state_ref->next = ctx->class_inst_state_refs;
     ctx->class_inst_state_refs = state_ref;
     ctx->num_class_inst_state_refs++;
-
 
     if (DEBUG_INST_IMPORT_LEVEL_2) {
         knd_log("++ inst \"%.*s\" of \"%.*s\" class import  OK!",

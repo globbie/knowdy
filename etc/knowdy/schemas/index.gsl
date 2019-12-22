@@ -1,2 +1,2 @@
 {include basic/index}
-{include mindmap/index}
+{-- include mindmap/index --}
