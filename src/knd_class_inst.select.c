@@ -225,11 +225,11 @@ static gsl_err_t parse_select_state(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int kndClassInst_validate_attr(struct kndClassInst *self,
-                                      const char *name,
-                                      size_t name_size,
-                                      struct kndAttr **result,
-                                      struct kndAttrInst **result_attr_inst)
+static int validate_attr(struct kndClassInst *self,
+                         const char *name,
+                         size_t name_size,
+                         struct kndAttr **result,
+                         struct kndAttrInst **result_attr_inst)
 {
     struct kndClass *conc;
     struct kndAttrRef *attr_ref;
@@ -297,7 +297,7 @@ static gsl_err_t parse_select_attr_inst(void *obj,
         knd_log(".. parsing attr_inst \"%.*s\" select REC: %.*s",
                 name_size, name, 128, rec);
 
-    err = kndClassInst_validate_attr(inst, name, name_size, &attr, &attr_inst);
+    err = validate_attr(inst, name, name_size, &attr, &attr_inst);
     if (err) {
         knd_log("-- \"%.*s\" attr not validated", name_size, name);
         return *total_size = 0, make_gsl_err_external(err);
@@ -309,15 +309,18 @@ static gsl_err_t parse_select_attr_inst(void *obj,
     }
 
     switch (attr_inst->attr->type) {
-        case KND_ATTR_INNER:
-            parser_err = knd_select_class_inst(attr_inst->inner->blueprint->entry,
-                                               rec, total_size, task);
-            if (parser_err.code) return parser_err;
-            break;
-        default:
-            parser_err = knd_attr_inst_parse_select(attr_inst, rec, total_size, task);
-            if (parser_err.code) return parser_err;
-            break;
+    case KND_ATTR_INNER:
+        parser_err = knd_select_class_inst(attr_inst->inner->blueprint->entry,
+                                           rec, total_size, task);
+        if (parser_err.code) return parser_err;
+        break;
+        /*case KND_ATTR_TEXT:
+        parser_err = knd_text_parse_select(attr_inst, rec, total_size, task);
+        if (parser_err.code) return parser_err;
+        break;*/
+    default:
+        parser_err = knd_attr_inst_parse_select(attr_inst, rec, total_size, task);
+        if (parser_err.code) return parser_err;
     }
 
     if (DEBUG_INST_LEVEL_2)

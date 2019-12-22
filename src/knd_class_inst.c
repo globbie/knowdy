@@ -49,6 +49,26 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
     }
 }
 
+static int update_attr_inst_indices(struct kndClassEntry *blueprint,
+                                    struct kndClassInstEntry *entry,
+                                    struct kndTask *unused_var(task))
+{
+    struct kndAttrInst *attr_inst;
+    
+    for (attr_inst = entry->inst->attr_insts; attr_inst; attr_inst = attr_inst->next) {
+        if (!attr_inst->attr->is_indexed) continue;
+
+        knd_log(".. class %.*s is indexing attr \"%.*s\" (inst: %.*s)..",
+                blueprint->name_size, blueprint->name,
+                attr_inst->attr->name_size, attr_inst->attr->name,
+                entry->name_size, entry->name);
+
+
+    }
+
+    return knd_OK;
+}
+
 int knd_class_inst_update_indices(struct kndRepo *repo,
                                   struct kndClassEntry *baseclass,
                                   struct kndStateRef *state_refs,
@@ -80,8 +100,10 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
 
         if (baseclass->repo != repo) {
             if (!c) {
-                knd_log("NB: copy-on-write activated in repo %.*s",
-                        repo->name_size, repo->name);
+                if (DEBUG_INST_LEVEL_2) {
+                    knd_log("NB: copy-on-write activated in repo %.*s",
+                            repo->name_size, repo->name);
+                }
                 err = knd_class_entry_new(mempool, &c);
                 KND_TASK_ERR("failed to alloc kndClassEntry");
                 c->repo = repo;
@@ -143,6 +165,11 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
             KND_TASK_ERR("failed to register class inst %.*s err:%d",
                          entry->name_size, entry->name, err);
             */
+
+            err = update_attr_inst_indices(c, entry, task);
+            KND_TASK_ERR("failed to update attr inst indices with \"%.*s\"",
+                         entry->name_size, entry->name);
+
             break;
         default:
             break;

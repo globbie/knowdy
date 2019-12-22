@@ -64,6 +64,8 @@ struct kndProcInstEntry
     //size_t offset;
     knd_state_phase phase;
     struct kndProcInst *inst;
+
+    struct kndProcInstEntry *next;
 };
 
 struct kndProcInst
@@ -71,8 +73,11 @@ struct kndProcInst
     const char *name;
     size_t name_size;
 
+    const char *alias;
+    size_t alias_size;
+
     struct kndProcInstEntry *entry;
-    struct kndProc *base;
+    struct kndProc *blueprint;
 
     struct kndClassInst *agent;
 
@@ -118,6 +123,8 @@ struct kndProcEntry
     struct kndAttrHub *attr_hubs;
 
     struct kndSharedDict *inst_name_idx;
+    atomic_size_t    num_insts;
+    atomic_size_t    inst_id_count;
 
     struct kndSharedDictItem *dict_item;
 };
@@ -239,9 +246,10 @@ int knd_proc_inst_entry_new(struct kndMemPool *mempool,
 void knd_proc_str(struct kndProc *self, size_t depth);
 
 void knd_proc_inst_str(struct kndProcInst *self, size_t depth);
+
 int knd_proc_inst_export_GSL(struct kndProcInst *self,
-                             struct kndOutput *out,
-                             size_t depth);
+                             bool is_list_item,
+                             struct kndTask *task);
 
 gsl_err_t knd_proc_inst_import(struct kndProcInst *self,
                                struct kndRepo *repo,

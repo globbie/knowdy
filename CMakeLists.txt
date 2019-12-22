@@ -10,7 +10,7 @@ set(CMAKE_INSTALL_PREFIX /)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -pedantic -D_GNU_SOURCE")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g3 -Wno-gnu-zero-variadic-macro-arguments")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -Wgnu-zero-variadic-macro-arguments")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
 
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Using 'Debug' build type as default")
@@ -80,7 +80,8 @@ set(SOURCES src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr
         src/knd_repo.c src/knd_repo.gsp.c
         src/knd_set.c src/knd_set_idx.c src/knd_shard.c
         src/knd_state.c
-        src/knd_task.c src/knd_task.select.c src/knd_text.c
+        src/knd_task.c src/knd_task.select.c
+        src/knd_text.c src/knd_text.select.c src/knd_text.export.c
         src/knd_user.c src/knd_utils.c)
 
 add_library(${PROJECT_NAME}_obj OBJECT ${HEADERS} ${SOURCES})

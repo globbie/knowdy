@@ -527,8 +527,8 @@ static gsl_err_t parse_inst_class(void *data,
           .run = set_inst_procname,
           .obj = self
         },
-        { .name = "obj",
-          .name_size = strlen("obj"),
+        { .name = "inst",
+          .name_size = strlen("inst"),
           .parse = parse_inst_obj,
           .obj = self
         }
@@ -653,65 +653,19 @@ int knd_proc_arg_compute(struct kndProcArg *self,
     return knd_OK;
 }
 
-static void register_state(struct kndProcArgInst *self,
-                           struct kndState *state,
-                           struct kndStateRef *state_ref)
-{
-    if (!self->states)
-        state->phase = KND_CREATED;
-    else
-        state->phase = KND_UPDATED;
-
-    self->states = state;
-    self->num_states++;
-    state->numid = self->num_states;
-    state_ref->next =  self->parent->arg_inst_state_refs;
-    self->parent->arg_inst_state_refs = state_ref;
-}
-
-static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
+static gsl_err_t run_set_arg_ref(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
     struct kndProcArgInst *self = ctx->proc_arg_inst;
-    struct kndState *state;
-    struct kndStateVal *state_val;
-    struct kndStateRef *state_ref;
-    struct kndMemPool *mempool = ctx->task->mempool;
-    int err;
 
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_VAL_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_state_new(mempool, &state);
-    if (err) {
-        knd_log("-- state alloc failed");
-        return make_gsl_err_external(err);
-    }
-    err = knd_state_val_new(mempool, &state_val);
-    if (err) {
-        knd_log("-- state val alloc failed");
-        return make_gsl_err_external(err);
-    }
-    err = knd_state_ref_new(mempool, &state_ref);
-    if (err) {
-        knd_log("-- state ref alloc failed");
-        return make_gsl_err_external(err);
-    }
-    state_ref->state = state;
-
-    state_val->obj = (void*)self;
-    state_val->val      = val;
-    state_val->val_size = val_size;
-    state->val          = state_val;
-
     self->val = val;
     self->val_size = val_size;
-
-    register_state(self, state, state_ref);
-
-    if (DEBUG_PROC_ARG_LEVEL_2)
-        knd_log("++ arg inst val set: \"%.*s\" [state:%zu]",
-                self->val_size, self->val, state->numid);
+    if (DEBUG_PROC_ARG_LEVEL_TMP)
+        knd_log("++ arg inst ref: \"%.*s\"",
+                self->val_size, self->val);
 
     return make_gsl_err(gsl_OK);
 }
@@ -848,7 +802,7 @@ gsl_err_t knd_arg_inst_import(struct kndProcArgInst *self,
     };
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_set_val,
+          .run = run_set_arg_ref,
           .obj = &ctx
         },
         { .name = "class",
@@ -913,10 +867,20 @@ int knd_proc_arg_inst_resolve(struct kndProcArg *self,
 int knd_proc_arg_inst_new(struct kndMemPool *mempool,
                           struct kndProcArgInst **self)
 {
-    int err = knd_mempool_alloc(mempool,
+    int err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool,
                                 KND_MEMPAGE_SMALL,
                                 sizeof(struct kndProcArgInst),
                                 (void**)self);                      RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool,
+                                     KND_MEMPAGE_SMALL,
+                                     sizeof(struct kndProcArgInst),
+                                     (void**)self);                      RET_ERR();
+    }
     return knd_OK;
 }
 
@@ -943,9 +907,20 @@ int knd_proc_arg_ref_new(struct kndMemPool *mempool,
 int knd_proc_arg_new(struct kndMemPool *mempool,
                      struct kndProcArg **self)
 {
-    int err = knd_mempool_alloc(mempool,
+    int err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool,
                                 KND_MEMPAGE_SMALL_X2,
                                 sizeof(struct kndProcArg),
                                 (void**)self);                     RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool,
+                                KND_MEMPAGE_SMALL_X2,
+                                sizeof(struct kndProcArg),
+                                (void**)self);                     RET_ERR();
+
+    }
     return knd_OK;
 }

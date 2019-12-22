@@ -11,6 +11,7 @@
 #include "knd_repo.h"
 
 #include "knd_user.h"
+#include "knd_shard.h"
 #include "knd_state.h"
 #include "knd_output.h"
 
@@ -68,13 +69,23 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t run_set_alias(void *obj, const char *name, size_t name_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndProcInst *self = ctx->proc_inst;
+    self->alias = name;
+    self->alias_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+
 static int validate_arg(struct kndProcInst *self,
                         const char *name,
                         size_t name_size,
                         struct kndProcArg **result,
-                        struct kndProcArgInst **result_arg)
+                        struct kndProcArgInst **result_arg,
+                        struct kndTask *task)
 {
-    struct kndProc *conc;
+    struct kndProc *proc;
     struct kndProcArgRef *arg_ref;
     struct kndProcArg *proc_arg;
     struct kndProcArgInst *arg = NULL;
@@ -82,9 +93,9 @@ static int validate_arg(struct kndProcInst *self,
     int err;
 
     if (DEBUG_PROC_INST_LEVEL_2)
-        knd_log(".. \"%.*s\" (base proc: %.*s) to validate arg: \"%.*s\"",
+        knd_log(".. \"%.*s\" (blueprint proc: %.*s) to validate arg: \"%.*s\"",
                 self->name_size, self->name,
-                self->base->name_size, self->base->name,
+                self->blueprint->name_size, self->blueprint->name,
                 name_size, name);
 
     /* check existing args */
@@ -96,19 +107,9 @@ static int validate_arg(struct kndProcInst *self,
             return knd_OK;
         }
     }
-
-    conc = self->base;
-    err = knd_proc_get_arg(conc, name, name_size, &arg_ref);
-    if (err) {
-        knd_log("  -- \"%.*s\" proc arg not approved", name_size, name);
-        /*log->reset(log);
-        e = log->write(log, name, name_size);
-        if (e) return e;
-        e = log->write(log, " arg not confirmed",
-                       strlen(" arg not confirmed"));
-                       if (e) return e;*/
-        return err;
-    }
+    proc = self->blueprint;
+    err = knd_proc_get_arg(proc, name, name_size, &arg_ref);
+    KND_TASK_ERR("\"%.*s\" proc arg not approved", name_size, name);
 
     proc_arg = arg_ref->arg;
     *result = proc_arg;
@@ -123,17 +124,22 @@ static gsl_err_t parse_import_arg(void *obj,
     struct kndProcInst *self = ctx->proc_inst;
     struct kndProcArgInst *arg = NULL;
     struct kndProcArg *proc_arg = NULL;
-    struct kndMemPool *mempool;
+    struct kndTask *task = ctx->task;
+    struct kndMemPool *mempool = task->mempool;
     int err;
     gsl_err_t parser_err;
 
     if (DEBUG_PROC_INST_LEVEL_2)
         knd_log(".. parsing arg import REC: %.*s", 128, rec);
 
-    err = validate_arg(self, name, name_size, &proc_arg, &arg);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
+    err = validate_arg(self, name, name_size, &proc_arg, &arg, task);
+    if (err) {
+        return *total_size = 0, make_gsl_err_external(err);
+    }
 
-    mempool = ctx->task->mempool;
+    if (task->user_ctx)
+        mempool = task->shard->user->mempool;
+
     err = knd_proc_arg_inst_new(mempool, &arg);
     if (err) {
         knd_log("-- arg alloc failed :(");
@@ -187,8 +193,9 @@ gsl_err_t knd_proc_inst_import(struct kndProcInst *self,
           .run = run_set_name,
           .obj = &ctx
         },
-        { .type = GSL_SET_STATE,
-          .validate = parse_import_arg,
+        { .name = "_as",
+          .name_size = strlen("_as"),
+          .run = run_set_alias,
           .obj = &ctx
         },
         { .validate = parse_import_arg,

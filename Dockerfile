@@ -1,9 +1,39 @@
-FROM globbie/build
+FROM alpine:3.8 as builder
+RUN apk --update add \
+    go \
+    dep \
+    cmake \
+    make \
+    check \
+    check-dev \
+    readline-dev \
+    subunit-dev \
+    git \
+    musl-dev
+RUN apk --update add \
+    util-linux-dev
 
-RUN apt-get update && apt-get -y install \
-        lcov \
-        libreadline-dev
+WORKDIR /tmp
+COPY . .
 
-ADD . /src
+WORKDIR build/
+RUN cmake ../ -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=`go env CC` && make && cd ../service && go build -o knd-service -ldflags "-linkmode external -extldflags '-static' -s -w" server.go knowdy.go
 
-RUN cd /src && rm -rf build && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make && make check-knowdy && make knowdy_coverage
+RUN addgroup -S knowdy && adduser -S knowdy -G knowdy
+WORKDIR /var/lib/knowdy/db
+RUN chown knowdy /var/lib/knowdy/db
+
+FROM scratch
+
+COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /etc/group /etc/group
+USER knowdy
+
+COPY ./etc/knowdy/shard.gsl /etc/knowdy/shard.gsl
+COPY ./etc/knowdy/service.json /etc/knowdy/service.json
+COPY ./etc/knowdy/schemas /etc/knowdy/schemas
+COPY --from=builder /tmp/service/knd-service /usr/bin/knd-service
+COPY --from=builder --chown=knowdy /var/lib/knowdy/db /var/lib/knowdy/db
+
+EXPOSE 8080
+CMD ["/usr/bin/knd-service", "--listen-address=0.0.0.0:8080", "--config-path=/etc/knowdy/service.json"]

@@ -56,6 +56,8 @@ typedef enum knd_task_spec_type {
     KND_GET_STATE,
     KND_SELECT_STATE,
     KND_COMMIT_STATE,
+    KND_INNER_STATE,
+    KND_INNER_COMMIT_STATE,
     KND_LIQUID_STATE,
     KND_SYNC_STATE,
     KND_DELTA_STATE,
@@ -64,16 +66,18 @@ typedef enum knd_task_spec_type {
     KND_STOP_STATE
 } knd_task_spec_type;
 
-typedef enum knd_task_phase_t { KND_REGISTER,
-                                KND_SUBMIT,
-                                KND_CANCEL,
-                                KND_REJECT,
-                                KND_CONFLICT,
-                                KND_CONFIRM_COMMIT,
-                                KND_WAL_WRITE,
-                                KND_COMMIT_INDICES,
-                                KND_DELIVER_RESULT,
-                                KND_COMPLETE } knd_task_phase_t;
+typedef enum knd_task_phase_t {
+     KND_REGISTER,
+     KND_SUBMIT,
+     KND_CANCEL,
+     KND_REJECT,
+     KND_CONFLICT,
+     KND_CONFIRM_COMMIT,
+     KND_WAL_WRITE,
+     KND_COMMIT_INDICES,
+     KND_DELIVER_RESULT,
+     KND_COMPLETE
+} knd_task_phase_t;
 
 struct kndTaskDestination
 {
@@ -148,6 +152,12 @@ struct kndTaskContext {
 
     struct kndCommit *commit;
     bool commit_confirmed;
+
+    /* inner statements */
+    struct kndClassInstEntry *stm_class_insts;
+    size_t num_stm_class_insts;
+    struct kndProcInstEntry *stm_proc_insts;
+    size_t num_stm_proc_insts;
 
     struct kndTaskContext *next;
 };
@@ -225,6 +235,8 @@ struct kndTask
     size_t total_block_size;
 
     struct kndDict *class_name_idx;
+    struct kndDict *class_inst_alias_idx;
+
     struct kndDict *attr_name_idx;
     struct kndDict *proc_name_idx;
     struct kndDict *proc_arg_name_idx;

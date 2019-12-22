@@ -88,7 +88,7 @@ func init() {
 func main() {
 	proc, err := New(KndConfig, cfg.ParentAddress, runtime.GOMAXPROCS(0))
 	if err != nil {
-		log.Fatalln("could not create kndShard, error:", err)
+		log.Fatalln("Failed to start Knowdy Service: ", err)
 	}
 	defer proc.Del()
 

@@ -96,9 +96,7 @@ struct kndRepo
 
     atomic_size_t num_procs;
     atomic_size_t proc_id_count;
-    atomic_size_t num_proc_insts;
-    atomic_size_t proc_inst_id_count;
-    
+
     struct kndSharedDict *proc_arg_name_idx;
     struct kndSet  *proc_arg_idx;
     atomic_size_t   proc_arg_id_count;

@@ -65,46 +65,67 @@ static int proc_arg_inst_export_GSL(struct kndProcArgInst *self,
     struct kndClass *c;
     int err;
     
-    err = out->writef(out, "%*s{%.*s\n",
+    err = out->writef(out, "%*s{%.*s",
                       depth * KND_OFFSET_SIZE, "",
                       self->arg->name_size, self->arg->name);                     RET_ERR();
     if (self->class_inst) {
         c = self->class_inst->blueprint;
-
-        err = out->writef(out, "%*s{class %.*s\n",
+        err = out->writef(out, "%*s{class %.*s",
                           (depth + 1) * KND_OFFSET_SIZE, "",
                           c->name_size, c->name);                     RET_ERR();
         err = out->writec(out, '}');
-        
+    } else {
+        err = out->writef(out, "%*s%.*s",
+                          depth * KND_OFFSET_SIZE, "",
+                          self->val_size, self->val);                     RET_ERR();
     }
-
     err = out->writec(out, '}');
     return knd_OK;
 }
 
 int knd_proc_inst_export_GSL(struct kndProcInst *self,
-                             struct kndOutput *out,
-                             size_t depth)
+                             bool is_list_item,
+                             struct kndTask *task)
 {
+    struct kndOutput *out = task->out;
     struct kndProcArgInst *arg;
+    size_t depth = task->ctx->depth;
     int err;
 
-    err = out->writef(out, "%*s{proc-inst %.*s\n",
-                      depth * KND_OFFSET_SIZE, "",
-                      self->name_size, self->name);                RET_ERR();
-
-    if (self->args) {
-        err = out->writef(out, "%*s[arg\n", (depth + 1) * KND_OFFSET_SIZE, "");
-
-        for (arg = self->args; arg; arg = arg->next) {
-            proc_arg_inst_export_GSL(arg, out, depth + 2);
-        }
-
-        err = out->writef(out, "%*s]", (depth + 1) * KND_OFFSET_SIZE, "");
+    if (is_list_item) {
+        err = out->writef(out, "%*s{", depth * KND_OFFSET_SIZE, "");        RET_ERR();
     }
-    err = out->writef(out, "%*s}",
-                      depth * KND_OFFSET_SIZE, "");
+    err = out->write(out, self->name, self->name_size);                       RET_ERR();
+
+    if (self->alias_size) {
+        err = out->write(out, "{_as ", strlen("{_as "));                  RET_ERR();
+        err = out->write(out, self->alias, self->alias_size);             RET_ERR();
+        err = out->writec(out, '}');                                      RET_ERR();
+    }
+
+    for (arg = self->args; arg; arg = arg->next) {
+        proc_arg_inst_export_GSL(arg, out, depth + 2);
+    }
+
+    if (is_list_item) {
+        err = out->writef(out, "%*s}", depth * KND_OFFSET_SIZE, "");  RET_ERR();
+    }
     return knd_OK;
+}
+
+int knd_proc_inst_export(struct kndProcInst *self,
+                         knd_format format,
+                         bool is_list_item,
+                         struct kndTask *task)
+{
+    switch (format) {
+        //case KND_FORMAT_JSON:
+        //    return knd_proc_inst_export_JSON(self, is_list_item, task);
+        case KND_FORMAT_GSL:
+            return knd_proc_inst_export_GSL(self, is_list_item, task);
+        default:
+            return knd_RANGE;
+    }
 }
 
 int knd_proc_inst_entry_new(struct kndMemPool *mempool,
@@ -112,8 +133,15 @@ int knd_proc_inst_entry_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndProcInstEntry), &page);              RET_ERR();
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndProcInstEntry), &page);              RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
+                                     sizeof(struct kndProcInstEntry), &page);         RET_ERR();
+    }
     *result = page;
     return knd_OK;
 }
@@ -123,12 +151,14 @@ int knd_proc_inst_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    if (mempool->type == KND_ALLOC_INCR) {
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
-                                     sizeof(struct kndProcInst), &page);          RET_ERR();
-    } else {
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
         err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
                                 sizeof(struct kndProcInst), &page);               RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
+                                     sizeof(struct kndProcInst), &page);          RET_ERR();
     }
     *result = page;
     return knd_OK;

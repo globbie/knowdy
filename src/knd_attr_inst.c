@@ -357,7 +357,7 @@ static gsl_err_t run_set_val(void *obj, const char *val, size_t val_size)
     }
     int err;
 
-    if (DEBUG_ATTR_INST_LEVEL_TMP)
+    if (DEBUG_ATTR_INST_LEVEL_2)
         knd_log(".. attr \"%.*s\" [%s] to set val \"%.*s\"",
                 self->attr->name_size, self->attr->name,
                 knd_attr_names[self->attr->type], val_size, val);

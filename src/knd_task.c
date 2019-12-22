@@ -64,6 +64,7 @@ void knd_task_reset(struct kndTask *self)
         knd_mempool_reset(self->mempool);
 
     knd_dict_reset(self->class_name_idx);
+    knd_dict_reset(self->class_inst_alias_idx);
     knd_dict_reset(self->attr_name_idx);
     knd_dict_reset(self->proc_name_idx);
     knd_dict_reset(self->proc_arg_name_idx);
@@ -352,6 +353,9 @@ int knd_task_new(struct kndShard *shard,
     /* local name indices */
     err = knd_dict_new(&self->class_name_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) goto error;
+    err = knd_dict_new(&self->class_inst_alias_idx, mempool, KND_SMALL_DICT_SIZE);
+    if (err) goto error;
+
     err = knd_dict_new(&self->attr_name_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) goto error;
     err = knd_dict_new(&self->proc_name_idx, mempool, KND_SMALL_DICT_SIZE);

@@ -23,7 +23,119 @@
 #include "knd_state.h"
 
 struct kndTask;
+struct kndClass;
+struct kndProc;
+struct kndSyNode;
 struct kndStatement;
+
+struct kndDiscourseContext
+{
+    struct kndStatement *stms;
+
+};
+
+struct kndClassDeclaration
+{
+    struct kndClass *class;
+
+    struct kndClassInstEntry *insts;
+    struct kndClassInstEntry *inst_tail;
+    size_t num_insts;
+
+    struct kndClassDeclaration *next;
+};
+
+struct kndProcDeclaration
+{
+    struct kndProc *proc;
+
+    struct kndProcInstEntry *insts;
+    struct kndProcInstEntry *inst_tail;
+    size_t num_insts;
+
+    struct kndProcDeclaration *next;
+};
+
+struct kndStatement
+{
+    const char *name;
+    size_t name_size;
+    size_t numid;
+
+    struct kndClass *stm_type;
+
+    struct kndDiscourseContext *discourse;
+
+    struct kndClassDeclaration *class_declars;
+    struct kndProcDeclaration  *proc_declars;
+
+    struct kndStatement *next;
+};
+
+struct kndSyNodeSpec
+{
+    const char *name;
+    size_t name_size;
+    struct kndClass *class;
+
+    struct kndSyNode *synode;
+
+    struct kndSyNodeSpec *next;
+};
+
+struct kndSyNode
+{
+    const char *name;
+    size_t name_size;
+    struct kndClass *class;
+
+    struct kndSyNodeSpec *specs;
+    size_t num_specs;
+
+    size_t pos;
+    size_t len;
+
+    struct kndSyNode *next;
+};
+
+struct kndClause
+{
+    const char *name;
+    size_t name_size;
+    size_t numid;
+    struct kndClass *class;
+
+    struct kndSyNode *subj;
+    struct kndSyNode *pred;
+
+    struct kndClause *next;
+};
+
+struct kndSentence
+{
+    size_t numid;
+    const char *lang;
+    size_t lang_size;
+
+    const char *seq;
+    size_t seq_size;
+
+    struct kndClause *clause;
+    struct kndStatement *stm;
+
+    struct kndSentence *prev;
+    struct kndSentence *next;
+};
+
+struct kndPar
+{
+    size_t numid;
+    struct kndSentence *sents;
+    struct kndSentence *last_sent;
+    size_t num_sents;
+
+    struct kndPar *next;
+};
 
 struct kndText
 {
@@ -32,13 +144,16 @@ struct kndText
 
     const char *seq;
     size_t seq_size;
+    struct kndSyNode *synodes;
+    struct kndStatement *stms;
+
+    struct kndPar *pars;
+    struct kndPar *last_par;
+    size_t num_pars;
 
     /* translated renderings of master content: manual or automatic */
     struct kndText *trs;
     size_t num_trs;
-
-    // TODO: sem graph
-    struct kndStatement *stm;
 
     struct kndState * _Atomic states;
     size_t num_states;
