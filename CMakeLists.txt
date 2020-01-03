@@ -20,9 +20,9 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
   include(CodeCoverage)
-  APPEND_COVERAGE_COMPILER_FLAGS()
-  SETUP_TARGET_FOR_COVERAGE_LCOV(NAME ${PROJECT_NAME}_coverage
-                                 EXECUTABLE knd-shard-test)
+  #APPEND_COVERAGE_COMPILER_FLAGS()
+  #SETUP_TARGET_FOR_COVERAGE_LCOV(NAME ${PROJECT_NAME}_coverage
+  #                               EXECUTABLE knd-shard-test)
 endif()
 
 pkg_check_modules(CHECK REQUIRED check)
@@ -90,8 +90,8 @@ target_link_libraries(${PROJECT_NAME}_static ${GSL_PARSER_LIBRARY})
 
 enable_testing()
 
-add_subdirectory(tests)
-add_subdirectory(shell)
+#add_subdirectory(tests)
+#add_subdirectory(shell)
 
 install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)
 install(DIRECTORY etc/systemd/system/ DESTINATION usr/lib/systemd/system)

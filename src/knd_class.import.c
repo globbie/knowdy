@@ -61,10 +61,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClass *c;
     int err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
-        knd_log(".. set class name: \"%.*s\"..",
-                name_size, name);
-    }
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+        knd_log(".. set class name: \"%.*s\"..", name_size, name);
 
     /* initial bulk load in progress */
     if (task->type == KND_LOAD_STATE) {
@@ -82,7 +80,10 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
                                       (void*)entry,
                                       task->mempool,
                                       NULL, NULL, false);
-            if (err) return make_gsl_err_external(err);
+            if (err) {
+                knd_log("failed to register a class name");
+                return make_gsl_err_external(err);
+            }
             return make_gsl_err(gsl_OK);
         }
         /* class entry has no class body */

@@ -65,10 +65,12 @@ static gsl_err_t parse_gloss_item(void *obj,
     struct kndText *tr;
     int err;
 
-    err = knd_mempool_alloc(task->mempool, KND_MEMPAGE_SMALL,
-                            sizeof(struct kndText), (void **)&tr);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    memset(tr, 0, sizeof(struct kndText));
+    err = knd_text_new(task->mempool, &tr);
+    if (err) {
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+
+    //memset(tr, 0, sizeof(struct kndText));
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -131,6 +133,7 @@ static gsl_err_t parse_summary_array_item(void *obj,
         knd_log(".. %.*s: allocate summary translation",
                 self->entry->name_size, self->entry->name);
 
+    // TODO
     err = knd_mempool_alloc(task->mempool, KND_MEMPAGE_SMALL,
                             sizeof(struct kndText), (void **)&tr);
     if (err) return *total_size = 0, make_gsl_err_external(err);

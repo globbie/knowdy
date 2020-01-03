@@ -101,6 +101,8 @@ int knd_dict_set(struct kndDict *self,
     new_item->key = key;
     new_item->key_size = key_size;
     new_item->next = orig_head;
+
+    self->hash_array[h] = new_item;
     self->num_items++;
     return knd_OK;
 }

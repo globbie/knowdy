@@ -385,10 +385,7 @@ static int resolve_attr_var_list(struct kndClass *self,
             }
             err = knd_resolve_class_ref(self, classname, classname_size,
                                         c, &item->class, task);
-            if (err) {
-                knd_log("-- class ref not resolved");
-                return err;
-            }
+            KND_TASK_ERR("class ref not resolved: %.*s", classname_size, classname);
             break;
         default:
             break;
@@ -630,11 +627,9 @@ int knd_resolve_attr_vars(struct kndClass *self,
             attr_var->attr = attr;
 
             err = resolve_attr_var_list(self, attr_var, task);
-            if (err) {
-                knd_log("-- attr var list not resolved: %.*s",
-                        attr_var->name_size, attr_var->name);
-                return err;
-            }
+            KND_TASK_ERR("attr var list not resolved: %.*s",
+                         attr_var->name_size, attr_var->name);
+
             if (attr_var->val_size)
                 attr_var->num_list_elems++;
 

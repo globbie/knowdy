@@ -744,14 +744,16 @@ static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
     struct kndMemPool *mempool = task->mempool;
     int err;
 
-    if (DEBUG_REPO_LEVEL_1)
-        knd_log(".. running include file func.. name: \"%.*s\" [%zu]",
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log(".. include file name: \"%.*s\" [%zu]",
                 (int)name_size, name, name_size);
     if (!name_size) return make_gsl_err(gsl_FORMAT);
 
     err = knd_conc_folder_new(mempool, &folder);
-    if (err) return make_gsl_err_external(knd_NOMEM);
-
+    if (err) {
+        knd_log("failed to alloc a conc folder");
+        return make_gsl_err_external(knd_NOMEM);
+    }
     folder->name = name;
     folder->name_size = name_size;
 
@@ -1081,11 +1083,8 @@ static int resolve_classes(struct kndRepo *self,
             if (c->is_resolved) continue;
 
             err = knd_class_resolve(c, task);
-            if (err) {
-                knd_log("-- couldn't resolve the \"%.*s\" class",
-                        c->entry->name_size, c->entry->name);
-                return err;
-            }
+            KND_TASK_ERR("failed to resolve a class: \"%.*s\"",
+                         c->entry->name_size, c->entry->name);
 
             if (DEBUG_REPO_LEVEL_2) {
                 c->str(c, 1);
@@ -1747,8 +1746,17 @@ int knd_conc_folder_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                            sizeof(struct kndConcFolder), &page);                 RET_ERR();
+
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
+                                sizeof(struct kndConcFolder), &page);                 RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
+                                     sizeof(struct kndConcFolder), &page);                 RET_ERR();
+        break;
+    }
     *result = page;
     return knd_OK;
 }
