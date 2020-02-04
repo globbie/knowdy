@@ -88,8 +88,8 @@ static gsl_err_t set_result_classname(void *obj, const char *name, size_t name_s
 {
     struct kndProc *self = obj;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    self->name = name;
-    self->name_size = name_size;
+    self->result_classname = name;
+    self->result_classname_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -575,8 +575,8 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
             .obj = &proc_arg_spec
         },
         {
-            .name = "result",
-            .name_size = strlen("result"),
+            .name = "effect",
+            .name_size = strlen("effect"),
             .run = set_result_classname,
             .obj = proc
         },

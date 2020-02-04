@@ -101,7 +101,7 @@ int knd_index_attr(struct kndClass *self,
     struct kndClass *c, *curr_class;
     int err;
 
-    if (DEBUG_ATTR_INDEX_LEVEL_TMP) {
+    if (DEBUG_ATTR_INDEX_LEVEL_2) {
         knd_log(".. indexing attr \"%.*s\" [type:%d] of class \"%.*s\" (id:%.*s)"
                 " refclass: \"%.*s\" (name:%.*s val:%.*s)",
                 attr->name_size, attr->name, attr->type,
@@ -260,7 +260,7 @@ static void str_hub_path(struct kndAttrVar *item)
 static int update_attr_hub(struct kndClass   *topic,
                            struct kndClass   *spec,
                            struct kndClassEntry *hub_owner,
-                           struct kndAttrVar *item,
+                           struct kndAttrVar *unused_var(item),
                            struct kndAttr    *attr,
                            struct kndTask    *task,
                            bool is_ancestor)
@@ -319,9 +319,10 @@ static int update_attr_hub(struct kndClass   *topic,
     err = set->get(set, topic->entry->id, topic->entry->id_size,
                    &entry);
     if (err == knd_OK) {
-        knd_log("?? topic %.*s (id:%.*s) already registered?",
-                topic->entry->name_size, topic->entry->name,
-                topic->entry->id_size, topic->entry->id);
+        if (DEBUG_ATTR_INDEX_LEVEL_2)
+            knd_log("?? topic %.*s (id:%.*s) already registered?",
+                    topic->entry->name_size, topic->entry->name,
+                    topic->entry->id_size, topic->entry->id);
         return knd_OK;
     }
     err = set->add(set, topic->entry->id, topic->entry->id_size,

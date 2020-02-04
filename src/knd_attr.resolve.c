@@ -499,7 +499,7 @@ static int check_attr_name_conflict(struct kndClass *self,
 
 static int resolve_attr_ref(struct kndClass *self,
 			    struct kndAttrVar *parent_item,
-			    struct kndTask *unused_var(task))
+			    struct kndTask *task)
 {
     struct kndRepo *repo = self->entry->repo;
     struct kndSharedDict *class_name_idx = repo->class_name_idx;
@@ -507,9 +507,10 @@ static int resolve_attr_ref(struct kndClass *self,
     size_t classname_size = 0;
     const char *attrname = NULL;
     size_t attrname_size = 0;
+    const char *val_classname = NULL;
+    size_t val_classname_size = 0;
     struct kndClassEntry *entry;
     struct kndAttrVar *attr_var = NULL;
-    struct kndAttrVar *item = NULL;
     struct kndAttrRef *attr_ref;
     int err;
 
@@ -518,51 +519,60 @@ static int resolve_attr_ref(struct kndClass *self,
 		parent_item->name_size, parent_item->name);
     }
     for (attr_var = parent_item->children; attr_var; attr_var = attr_var->next) {
-	if (!memcmp(attr_var->name, "c", 1)) {
+	if (!memcmp(attr_var->name, "c", strlen("c"))) {
 	    classname = attr_var->val;
 	    classname_size = attr_var->val_size;
-	    break;
+	}
+	if (!memcmp(attr_var->name, "val", strlen("val"))) {
+	    val_classname = attr_var->val;
+	    val_classname_size = attr_var->val_size;
 	}
     }
     if (!classname_size) {
-	knd_log("-- no classname specified for attr ref \"%.*s\"",
-		item->name_size, item->name);
-	return knd_FAIL;
+        err = knd_FAIL;
+	KND_TASK_ERR("no classname specified for attr ref \"%.*s\" (val:%.*s)",
+                     parent_item->name_size, parent_item->name,
+                     parent_item->val_size, parent_item->val);
     }
 
     entry = knd_shared_dict_get(class_name_idx, classname, classname_size);
     if (!entry) {
-	knd_log("-- no such class: \"%.*s\" .."
-		"couldn't resolve the \"%.*s\" attr ref",
-		classname_size, classname,
-		parent_item->name_size, parent_item->name);
-	return knd_FAIL;
+	 err = knd_NO_MATCH;
+         KND_TASK_ERR("no such class: \"%.*s\" .."
+                      "couldn't resolve the \"%.*s\" attr ref",
+                      classname_size, classname,
+                      parent_item->name_size, parent_item->name);
     }
 
     /* get attr name */
-    for (item = attr_var->children; item; item = item->next) {
-	if (!memcmp(item->name, "attr", 1)) {
-	    attrname = item->val;
-	    attrname_size = item->val_size;
-	    break;
-	}
-    }
+    attrname = parent_item->val;
+    attrname_size = parent_item->val_size;
     if (!attrname_size) {
-	knd_log("-- no attr name specified in attr ref \"%.*s\"",
-		parent_item->name_size, parent_item->name);
-	return knd_FAIL;
+        err = knd_FAIL;
+	KND_TASK_ERR("no attr name specified in attr ref \"%.*s\"",
+                     parent_item->name_size, parent_item->name);
     }
-    err = knd_class_get_attr(entry->class,
-			     attrname, attrname_size,
+    err = knd_class_get_attr(entry->class, attrname, attrname_size,
 			     &attr_ref);
     if (err) {
-	knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
-		attrname_size, attrname,
-		entry->class->name_size, entry->class->name);
-	return err;
+	KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"",
+                     attrname_size, attrname,
+                     entry->class->name_size, entry->class->name);
     }
+    parent_item->class    = entry->class;
     parent_item->ref_attr = attr_ref->attr;
-    
+
+    if (val_classname_size) {
+        entry = knd_shared_dict_get(class_name_idx, val_classname, val_classname_size);
+        if (!entry) {
+            err = knd_NO_MATCH;
+            KND_TASK_ERR("no such class: \"%.*s\" .."
+                         "couldn't resolve the \"%.*s\" attr ref val",
+                         val_classname_size, val_classname,
+                         parent_item->name_size, parent_item->name);
+        }
+        parent_item->class_entry = entry;
+    }
     return knd_OK;
 }
 

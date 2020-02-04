@@ -195,6 +195,13 @@ int knd_proc_resolve(struct kndProc *self,
         err = resolve_parents(self, repo, task);                                  RET_ERR();
     }
 
+    if (self->result_classname_size) {
+        err = knd_get_class_entry(repo, self->result_classname, self->result_classname_size,
+                                  &self->result, task);
+        KND_TASK_ERR("no such class: %.*s", self->result_classname_size, self->result_classname);
+        //knd_log("EFFECT: %.*s", self->result_classname_size, self->result_classname);
+    }
+
     //   if (self->proc_call) {
     //     err = resolve_proc_call(self);                                            RET_ERR();
     //}

@@ -179,11 +179,7 @@ struct kndProc
     const char *name;
     size_t name_size;
 
-    size_t id;
-    size_t next_id;
-
     struct kndProcEntry *entry;
-
     struct kndText *tr;
 
     struct kndState * _Atomic states;
@@ -211,6 +207,7 @@ struct kndProc
 
     const char *result_classname;
     size_t result_classname_size;
+    struct kndClassEntry *result;
 
     struct kndProcEstimate estimate;
 

@@ -229,7 +229,7 @@ static gsl_err_t confirm_attr(void *obj,
 {
     struct kndAttr *attr = obj;
 
-    if (DEBUG_ATTR_LEVEL_TMP) {
+    if (DEBUG_ATTR_LEVEL_2) {
         knd_log("++ confirm attr: %.*s",
                 attr->name_size, attr->name);
     }
@@ -309,7 +309,7 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
     struct kndAttrVar *self = obj;
 
     if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. set attr var value: %.*s %.*s",
+        knd_log(".. set attr var value: \"%.*s\" => \"%.*s\"",
                 self->name_size, self->name, val_size, val);
 
     if (!val_size) return make_gsl_err(gsl_FORMAT);
@@ -350,7 +350,7 @@ static gsl_err_t import_nested_attr_var_list(void *obj,
     int err;
 
     if (DEBUG_ATTR_LEVEL_2)
-        knd_log("== import nested attr_var list: \"%.*s\" REC: %.*s",
+        knd_log(".. import nested attr_var list: \"%.*s\" REC: %.*s",
                 name_size, name, 32, rec);
 
     err = knd_attr_var_new(mempool, &attr_var);
@@ -533,8 +533,7 @@ int knd_import_attr_var_list(struct kndClassVar *self,
     int err, e;
 
     if (!self->entry) {
-        knd_log("-- anonymous class var: %.*s?  REC:%.*s",
-                64, rec);
+        knd_log("-- anonymous class var: %.*s?  REC:%.*s", 64, rec);
         struct kndOutput *log = task->log; 
         log->reset(log);
         e = log->write(log, "no baseclass name specified",
@@ -605,18 +604,18 @@ static gsl_err_t import_nested_attr_var(void *obj,
           .run = set_attr_var_value,
           .obj = attr_var
         },
-        { .type = GSL_SET_STATE,
-          .validate = import_nested_attr_var,
-          .obj = ctx
-        },
         { .validate = import_nested_attr_var,
           .obj = ctx
-        }/*,
-        { .name = "_cdata",
+        },
+        { .type = GSL_GET_ARRAY_STATE,
+          .validate = import_nested_attr_var_list,
+          .obj = ctx
+        },
+        /*{ .name = "_cdata",
           .name_size = strlen("_cdata"),
           .parse = parse_attr_var_cdata,
           .obj = attr_var
-          }*/,
+          }*/
         { .is_default = true,
           .run = confirm_attr_var,
           .obj = attr_var
@@ -625,7 +624,7 @@ static gsl_err_t import_nested_attr_var(void *obj,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("-- attr var import failed: %d", parser_err.code);
+        KND_TASK_LOG("attr var import failed: %d", parser_err.code);
         return parser_err;
     }
 

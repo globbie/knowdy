@@ -144,9 +144,7 @@ struct kndAttrVar
     struct kndAttr *implied_attr;
 
     struct kndClassVar *class_var;
-
     struct kndText *text;
-
     struct kndAttrVar *parent;
     struct kndAttrVar *children;
     struct kndAttrVar *tail;
@@ -154,9 +152,6 @@ struct kndAttrVar
 
     bool is_list_item;
     size_t list_count;
-
-    size_t depth;
-    size_t max_depth;
 
     struct kndState *states;
     size_t init_state;
@@ -320,6 +315,15 @@ int knd_import_attr_var_list(struct kndClassVar *self,
                              const char *name, size_t name_size,
                              const char *rec, size_t *total_size,
                              struct kndTask *task);
+// knd_attr.gsl.c
+int knd_read_attr_var(struct kndClassVar *self,
+                      const char *name, size_t name_size,
+                      const char *rec, size_t *total_size,
+                      struct kndTask *task);
+int knd_read_attr_var_list(struct kndClassVar *self,
+                           const char *name, size_t name_size,
+                           const char *rec, size_t *total_size,
+                           struct kndTask *task);
 
 extern gsl_err_t knd_import_attr(struct kndAttr *attr,
                                  struct kndTask *task,
@@ -327,7 +331,7 @@ extern gsl_err_t knd_import_attr(struct kndAttr *attr,
 
 // knd_attr.select.c
 int knd_attr_var_match(struct kndAttrVar *self,
-                              struct kndAttrVar *template);
+                       struct kndAttrVar *template);
 
 int knd_attr_select_clause(struct kndAttr *attr,
                            struct kndClass *c,
