@@ -92,7 +92,7 @@ int knd_dict_set(struct kndDict *self,
     if (item) {
         if (item->phase == KND_DICT_VALID)
             return knd_CONFLICT;
-    }
+    } 
 
     /* add new item */
     if (dict_item_new(self->mempool, &new_item) != knd_OK) return knd_NOMEM;
@@ -101,8 +101,9 @@ int knd_dict_set(struct kndDict *self,
     new_item->key = key;
     new_item->key_size = key_size;
     new_item->next = orig_head;
-
     self->hash_array[h] = new_item;
+
+    self->num_keys++;
     self->num_items++;
     return knd_OK;
 }
@@ -126,6 +127,7 @@ int knd_dict_remove(struct kndDict *self,
     if (!item) return knd_FAIL;
 
     item->phase = KND_DICT_REMOVED;
+    self->num_keys--;
     return knd_OK;
 }
 
@@ -154,8 +156,8 @@ int knd_dict_new(struct kndDict **dict,
     if (!self->hash_array) return knd_NOMEM;
     self->size = init_size;
     self->num_items = 0;
+    self->num_keys = 0;
 
     *dict = self;
-
     return knd_OK;
 }

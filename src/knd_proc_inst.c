@@ -85,11 +85,11 @@ static int proc_arg_inst_export_GSL(struct kndProcArgInst *self,
 
 int knd_proc_inst_export_GSL(struct kndProcInst *self,
                              bool is_list_item,
-                             struct kndTask *task)
+                             struct kndTask *task,
+                             size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndProcArgInst *arg;
-    size_t depth = task->ctx->depth;
     int err;
 
     if (is_list_item) {
@@ -122,7 +122,7 @@ int knd_proc_inst_export(struct kndProcInst *self,
         //case KND_FORMAT_JSON:
         //    return knd_proc_inst_export_JSON(self, is_list_item, task);
         case KND_FORMAT_GSL:
-            return knd_proc_inst_export_GSL(self, is_list_item, task);
+            return knd_proc_inst_export_GSL(self, is_list_item, task, 0);
         default:
             return knd_RANGE;
     }

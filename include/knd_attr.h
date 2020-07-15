@@ -297,7 +297,7 @@ extern void str_attr_vars(struct kndAttrVar *item, size_t depth);
 int knd_attr_var_new(struct kndMemPool *mempool,
                             struct kndAttrVar **result);
 int knd_attr_ref_new(struct kndMemPool *mempool,
-                            struct kndAttrRef **result);
+                     struct kndAttrRef **result);
 int knd_attr_facet_new(struct kndMemPool *mempool,
                        struct kndAttrFacet **result);
 int knd_attr_hub_new(struct kndMemPool *mempool,

@@ -113,7 +113,7 @@ static int export_proc_declars(struct kndProcDeclaration *decl,
             inst = entry->inst;
 
             err = out->write(out, "{!inst ", strlen("{!inst "));                  RET_ERR();
-            err = knd_proc_inst_export_GSL(inst, false, task);                    RET_ERR();
+            err = knd_proc_inst_export_GSL(inst, false, task, 0);                    RET_ERR();
             err = out->writec(out, '}');                                          RET_ERR();
         }
         err = out->writec(out, '}');                                              RET_ERR();
@@ -133,6 +133,7 @@ static int stm_export_GSL(struct kndStatement *stm,
     if (stm->class_declars) {
         err = export_class_declars(stm->class_declars, task);                      RET_ERR();
     }
+
     if (stm->proc_declars) {
         err = export_proc_declars(stm->proc_declars, task);                        RET_ERR();
     }

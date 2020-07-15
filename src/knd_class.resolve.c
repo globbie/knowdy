@@ -417,8 +417,7 @@ int knd_resolve_class_ref(struct kndClass *self,
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
-        knd_log(".. checking class ref:  \"%.*s\"..",
-                name_size, name);
+        knd_log(".. checking class ref:  \"%.*s\"..", name_size, name);
         if (base) {
             knd_log(".. base template: \"%.*s\"..",
                     base->name_size, base->name);
@@ -450,12 +449,13 @@ int knd_resolve_class_ref(struct kndClass *self,
                 err = knd_class_resolve_base(base, task);                            RET_ERR();
             }
 
-            err = knd_is_base(base, c);
-            if (err) {
-                knd_log("-- no inheritance from %.*s to %.*s",
-                        base->name_size, base->name,
-                        c->name_size, c->name);
-                return err;
+            if (base != c) {
+                err = knd_is_base(base, c);
+                if (err) {
+                    knd_log("-- no inheritance from %.*s to %.*s",
+                            base->name_size, base->name, c->name_size, c->name);
+                    return err;
+                }
             }
         }
         *result = c;

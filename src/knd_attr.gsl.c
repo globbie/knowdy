@@ -716,7 +716,7 @@ static gsl_err_t read_class_var(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_ATTR_GSL_LEVEL_TMP)
+    if (DEBUG_ATTR_GSL_LEVEL_2)
         knd_log(".. reading a class var: \"%.*s\"", 32, rec);
 
     err = knd_class_var_new(mempool, &class_var);
@@ -754,7 +754,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
 
     ctx->attr_var = attr_var;
 
-    if (DEBUG_ATTR_GSL_LEVEL_TMP)
+    if (DEBUG_ATTR_GSL_LEVEL_2)
         knd_log(".. read nested attr var: \"%.*s\" (parent item:%.*s)",
                 attr_var->name_size, attr_var->name,
                 self->name_size, self->name);
@@ -843,7 +843,7 @@ static gsl_err_t confirm_attr_var(void *obj,
     struct kndAttrVar *attr_var = obj;
 
     // TODO empty values?
-    if (DEBUG_ATTR_GSL_LEVEL_TMP) {
+    if (DEBUG_ATTR_GSL_LEVEL_2) {
         if (!attr_var->val_size)
             knd_log("NB: attr var value not set in %.*s (class: %.*s)",
                     attr_var->name_size, attr_var->name,

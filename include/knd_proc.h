@@ -246,7 +246,8 @@ void knd_proc_inst_str(struct kndProcInst *self, size_t depth);
 
 int knd_proc_inst_export_GSL(struct kndProcInst *self,
                              bool is_list_item,
-                             struct kndTask *task);
+                             struct kndTask *task,
+                             size_t depth);
 
 gsl_err_t knd_proc_inst_import(struct kndProcInst *self,
                                struct kndRepo *repo,
